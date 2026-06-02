@@ -1,0 +1,33 @@
+{
+  "id": "metal_edge_sweep",
+  "assetType": "avatar_frame",
+  "description": "A narrow highlight travels around the metallic edge to suggest polished material.",
+  "notes": "The MVP stores the sweep as abstract keyframes. A real exporter can turn it into a masked gradient sprite.",
+  "defaultDurationMs": 1800,
+  "parameters": [
+    {
+      "name": "color",
+      "type": "color",
+      "default": "#FFF3C4",
+      "description": "Sweep highlight color."
+    },
+    {
+      "name": "width",
+      "type": "number",
+      "default": 0.16,
+      "description": "Normalized highlight width along the ring."
+    },
+    {
+      "name": "intensity",
+      "type": "number",
+      "default": 0.55,
+      "description": "Sweep brightness. Keep restrained to avoid a cheap flashing effect."
+    },
+    {
+      "name": "startAngle",
+      "type": "number",
+      "default": -40,
+      "description": "Starting angle in degrees."
+    }
+  ]
+}

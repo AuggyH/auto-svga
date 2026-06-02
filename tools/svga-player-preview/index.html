@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SVGA 播放预览 / SVGA Playback Preview</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1>SVGA 播放预览 / SVGA Playback Preview</h1>
+          <p>对比真实 SVGA 播放效果、GIF 预览和导出报告 / Compare SVGA playback, GIF preview and export report.</p>
+        </div>
+        <div class="actions">
+          <button id="replayButton" type="button">重新播放 / Replay</button>
+          <button id="syncReplayButton" type="button">同步重播 / Sync Replay</button>
+        </div>
+      </header>
+
+      <section class="fileBar" aria-label="Local file controls">
+        <label>
+          <span>SVGA 文件 / SVGA file</span>
+          <input id="svgaFileInput" type="file" accept=".svga,application/octet-stream">
+        </label>
+        <label>
+          <span>GIF 预览 / GIF preview</span>
+          <input id="gifFileInput" type="file" accept=".gif,image/gif">
+        </label>
+        <label>
+          <span>显示模式 / Display mode</span>
+          <select id="compareModeSelect">
+            <option value="svgaGif" selected>SVGA vs GIF</option>
+            <option value="svgaAB">SVGA A/B</option>
+          </select>
+        </label>
+        <label>
+          <span>尺寸模式 / Fit mode</span>
+          <select id="fitModeSelect">
+            <option value="contain" selected>Fit contain</option>
+            <option value="original">Original size</option>
+            <option value="fitWidth">Fit width</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="comparison" aria-label="Preview comparison">
+        <article id="svgaPanelA" class="panel" data-drop-kind="svga" data-player-slot="a">
+          <div class="panelHeader">
+            <h2>SVGA 播放器 A / SVGA Player A</h2>
+            <span id="svgaStatusA">加载中 / LOADING</span>
+          </div>
+          <div class="stage">
+            <div id="svgaFrameA" class="mediaFrame">
+              <div id="svgaCanvasA" aria-label="SVGA player A canvas"></div>
+            </div>
+            <p class="dropHint">拖拽 .svga 文件到这里播放 / Drop .svga here</p>
+          </div>
+          <dl id="svgaSizeInfoA" class="sizeInfo"></dl>
+        </article>
+
+        <article id="svgaPanelB" class="panel isHidden" data-drop-kind="svga" data-player-slot="b">
+          <div class="panelHeader">
+            <h2>SVGA 播放器 B / SVGA Player B</h2>
+            <span id="svgaStatusB">空 / EMPTY</span>
+          </div>
+          <div class="stage">
+            <div id="svgaFrameB" class="mediaFrame">
+              <div id="svgaCanvasB" aria-label="SVGA player B canvas"></div>
+            </div>
+            <p class="dropHint">拖拽 .svga 文件到这里播放 / Drop .svga here</p>
+          </div>
+          <dl id="svgaSizeInfoB" class="sizeInfo"></dl>
+        </article>
+
+        <article id="gifPanel" class="panel" data-drop-kind="gif">
+          <div class="panelHeader">
+            <h2>GIF 预览 / GIF Preview</h2>
+            <span id="gifStatus">加载中 / LOADING</span>
+          </div>
+          <div class="stage">
+            <div id="gifFrame" class="mediaFrame">
+              <img id="gifPreview" alt="Generated GIF preview">
+            </div>
+            <p id="gifEmptyState" class="emptyState" hidden>当前未加载 GIF。可拖入对应 GIF 进行对比。/ No GIF loaded. Drop a matching GIF here if you want to compare.</p>
+            <p class="dropHint">拖拽 .gif 文件到这里对比 / Drop .gif here</p>
+          </div>
+          <dl id="gifSizeInfo" class="sizeInfo"></dl>
+        </article>
+      </section>
+
+      <section class="details" aria-label="Report summary">
+        <h2>导出报告 / Report</h2>
+        <dl id="reportGrid"></dl>
+      </section>
+
+      <section id="errorBox" class="errorBox" hidden aria-live="polite"></section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/svgaplayerweb@2.3.1/build/svga.min.js"></script>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

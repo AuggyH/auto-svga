@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/svga-avatar-frame/asset.config.schema.json",
+  "title": "Avatar Frame Asset Config",
+  "description": "Input configuration for one avatar_frame animation build.",
+  "$comment": "MVP schema. Keep this explicit and narrow until more asset types are requested.",
+  "type": "object",
+  "required": ["assetType", "name", "source", "canvas", "templates"],
+  "additionalProperties": false,
+  "properties": {
+    "assetType": {
+      "const": "avatar_frame",
+      "description": "MVP only supports avatar_frame."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable human-readable asset name."
+    },
+    "source": {
+      "type": "object",
+      "required": ["framePng"],
+      "additionalProperties": false,
+      "properties": {
+        "framePng": {
+          "type": "string",
+          "description": "Path to a transparent PNG, relative to this config file."
+        }
+      }
+    },
+    "canvas": {
+      "type": "object",
+      "required": ["width", "height", "fps"],
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 64,
+          "description": "Output canvas width in pixels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 64,
+          "description": "Output canvas height in pixels."
+        },
+        "fps": {
+          "type": "integer",
+          "minimum": 12,
+          "maximum": 60,
+          "description": "Timeline frame rate."
+        },
+        "durationFrames": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Preferred loop duration in frames. Example MVP default: 72 frames at 24fps."
+        },
+        "durationSeconds": {
+          "type": "number",
+          "minimum": 0.1,
+          "description": "Optional human-readable duration. If durationFrames is omitted, it can be used with fps."
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 500,
+          "description": "Legacy loop duration in milliseconds. Prefer durationFrames."
+        }
+      }
+    },
+    "gemGlints": {
+      "type": "array",
+      "description": "Optional configurable gem glint points. If empty, gem_twinkle produces no glint layers and emits a warning.",
+      "items": {
+        "type": "object",
+        "required": ["id", "x", "y", "delayFrame"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable suffix for generated layer IDs, e.g. top/right/left."
+          },
+          "x": {
+            "type": "number",
+            "description": "Canvas-space glint center x."
+          },
+          "y": {
+            "type": "number",
+            "description": "Canvas-space glint center y."
+          },
+          "delayFrame": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Frame at which this glint starts."
+          }
+        }
+      }
+    },
+    "bakedSweep": {
+      "type": "object",
+      "description": "Controls baked sweep frame sampling for the metal_edge_sweep export path.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "frameStride": {
+          "type": "integer",
+          "enum": [1, 2, 3],
+          "default": 2,
+          "description": "1 bakes every frame, 2 samples every two frames, 3 samples every three frames."
+        },
+        "skipTransparentFrames": {
+          "type": "boolean",
+          "default": true
+        },
+        "dedupeIdenticalFrames": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "templates": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of animation templates to apply.",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "enum": ["breathing_glow", "metal_edge_sweep", "gem_twinkle"]
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "params": {
+            "type": "object",
+            "description": "Template-specific parameter overrides."
+          }
+        }
+      }
+    }
+  }
+}

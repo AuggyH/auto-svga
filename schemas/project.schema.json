@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/svga-avatar-frame/project.schema.json",
+  "title": "Avatar Frame Intermediate Project Protocol",
+  "description": "Exporter-ready intermediate project protocol generated before real SVGA binary export.",
+  "$comment": "Exporter adapters should consume layers, assets and animations directly. Template semantics are intentionally expanded away.",
+  "type": "object",
+  "required": ["schemaVersion", "version", "projectId", "assetType", "canvas", "fps", "durationFrames", "loop", "assets", "layers", "animations", "export"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": "0.4.0" },
+    "version": { "const": "0.4.0" },
+    "projectId": { "type": "string" },
+    "assetType": { "const": "avatar_frame" },
+    "canvas": {
+      "type": "object",
+      "required": ["width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "integer" },
+        "height": { "type": "integer" }
+      }
+    },
+    "fps": { "type": "integer" },
+    "durationFrames": { "type": "integer" },
+    "loop": { "type": "boolean" },
+    "assets": {
+      "type": "array",
+      "$comment": "Every layer must reference one of these real image assets.",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "path", "width", "height", "sha256", "generated"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "const": "image" },
+          "path": { "type": "string" },
+          "width": { "type": "integer" },
+          "height": { "type": "integer" },
+          "sha256": { "type": "string" },
+          "generated": { "type": "boolean" }
+        }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "$comment": "No abstract effect layers are allowed. All layers are image layers. Coordinate convention is frozen: transform.x/y is the anchor position in canvas coordinates; anchor.x/y is the local anchor; rotation and scale occur around anchor.",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "assetId", "zIndex", "visible", "blendMode", "fallbackBlendMode", "fallbackOpacityMultiplier", "anchor", "transform"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "const": "image" },
+          "assetId": { "type": "string" },
+          "zIndex": { "type": "integer" },
+          "visible": { "type": "boolean" },
+          "blendMode": { "enum": ["normal", "screen", "add"] },
+          "fallbackBlendMode": {
+            "const": "normal",
+            "$comment": "Exporter fallback for platforms without add/screen support."
+          },
+          "fallbackOpacityMultiplier": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "$comment": "Opacity multiplier to apply when fallbackBlendMode is used."
+          },
+          "mask": {
+            "$comment": "Reserved exporter protocol for alpha masks. Preview may warn when mask is present.",
+            "type": "object",
+            "required": ["type", "sourceLayerId"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "alpha" },
+              "sourceLayerId": { "type": "string" }
+            }
+          },
+          "anchor": { "$ref": "#/$defs/point" },
+          "transform": { "$ref": "#/$defs/transform" }
+        }
+      }
+    },
+    "animations": {
+      "type": "array",
+      "$comment": "Animations are frame-based and target concrete image layer IDs.",
+      "items": {
+        "type": "object",
+        "required": ["id", "templateId", "targetLayerId", "keyframes", "easing"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "templateId": { "enum": ["breathing_glow", "metal_edge_sweep", "gem_twinkle"] },
+          "targetLayerId": { "type": "string" },
+          "easing": { "enum": ["linear", "easeInOut", "easeOut"] },
+          "keyframes": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/keyframe" }
+          }
+        }
+      }
+    },
+    "export": {
+      "type": "object",
+      "required": ["format", "exporter", "svgaExporter"],
+      "properties": {
+        "format": { "const": "intermediate-json" },
+        "exporter": { "const": "json-exporter" },
+        "svgaExporter": {
+          "type": "object",
+          "required": ["status", "notes"],
+          "properties": {
+            "status": { "const": "stub" },
+            "notes": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "transform": {
+      "type": "object",
+      "$comment": "transform.x/y is the layer anchor position in canvas coordinates. rotation and scale are applied around layer.anchor.",
+      "required": ["x", "y", "scaleX", "scaleY", "rotation", "opacity"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "scaleX": { "type": "number" },
+        "scaleY": { "type": "number" },
+        "rotation": { "type": "number" },
+        "opacity": { "type": "number" }
+      }
+    },
+    "keyframe": {
+      "type": "object",
+      "required": ["frame"],
+      "properties": {
+        "frame": { "type": "integer" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "scaleX": { "type": "number" },
+        "scaleY": { "type": "number" },
+        "rotation": { "type": "number" },
+        "opacity": { "type": "number" },
+        "debugTimeMs": { "type": "number" }
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "assetType": "avatar_frame",
+  "name": "avatar_frame_basic",
+  "source": {
+    "framePng": "assets/frame.png"
+  },
+  "canvas": {
+    "width": 256,
+    "height": 256,
+    "fps": 24,
+    "durationFrames": 72,
+    "durationSeconds": 3
+  },
+  "bakedSweep": {
+    "enabled": true,
+    "frameStride": 2,
+    "skipTransparentFrames": true,
+    "dedupeIdenticalFrames": true
+  },
+  "gemGlints": [
+    { "id": "top", "x": 165, "y": 20, "delayFrame": 8 },
+    { "id": "right", "x": 194, "y": 137, "delayFrame": 32 },
+    { "id": "left", "x": 27, "y": 155, "delayFrame": 54 }
+  ],
+  "templates": [
+    {
+      "id": "breathing_glow",
+      "params": {
+        "color": "#BFDFFF",
+        "minAlpha": 0.16,
+        "maxAlpha": 0.38
+      }
+    },
+    {
+      "id": "metal_edge_sweep",
+      "params": {
+        "color": "#FFE8A3",
+        "intensity": 0.5
+      }
+    },
+    {
+      "id": "gem_twinkle",
+      "params": {
+        "count": 3,
+        "intensity": 0.62
+      }
+    }
+  ]
+}

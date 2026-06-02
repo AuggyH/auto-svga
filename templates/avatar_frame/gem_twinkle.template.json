@@ -1,0 +1,33 @@
+{
+  "id": "gem_twinkle",
+  "assetType": "avatar_frame",
+  "description": "Small localized sparkle pulses for gem-like details on the frame.",
+  "notes": "Use a small count and staggered timings. This template should accent the frame, not dominate it.",
+  "defaultDurationMs": 2200,
+  "parameters": [
+    {
+      "name": "color",
+      "type": "color",
+      "default": "#FFFFFF",
+      "description": "Sparkle color."
+    },
+    {
+      "name": "count",
+      "type": "number",
+      "default": 3,
+      "description": "Number of sparkle points."
+    },
+    {
+      "name": "intensity",
+      "type": "number",
+      "default": 0.7,
+      "description": "Peak sparkle opacity."
+    },
+    {
+      "name": "radius",
+      "type": "number",
+      "default": 4,
+      "description": "Sparkle radius in pixels for preview and exporter hints."
+    }
+  ]
+}
