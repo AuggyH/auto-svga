@@ -1,4 +1,6 @@
-# SVGA Avatar Frame MVP
+# Auto_SVGA
+
+SVGA Avatar Frame MVP
 
 一个用于自动化生成“头像框”类型 SVGA 动效工程的最小可行项目。当前版本聚焦工程结构、模板系统和 CLI 工作流，输出的是可被后续 exporter 消费的中间工程格式，不直接生成真实 `.svga` 二进制文件。
 
