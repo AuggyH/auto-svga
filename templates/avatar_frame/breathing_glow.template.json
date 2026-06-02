@@ -1,0 +1,33 @@
+{
+  "id": "breathing_glow",
+  "assetType": "avatar_frame",
+  "description": "Subtle outer-ring glow that breathes slowly without changing the frame silhouette.",
+  "notes": "Use this as a restrained ambient layer. Avoid high alpha values; premium avatar frames should feel calm.",
+  "defaultDurationMs": 2400,
+  "parameters": [
+    {
+      "name": "color",
+      "type": "color",
+      "default": "#C9E7FF",
+      "description": "Glow color. Prefer cool white, pale gold, or other low-saturation premium tones."
+    },
+    {
+      "name": "minAlpha",
+      "type": "number",
+      "default": 0.18,
+      "description": "Lowest glow opacity in the loop."
+    },
+    {
+      "name": "maxAlpha",
+      "type": "number",
+      "default": 0.42,
+      "description": "Highest glow opacity. Keep below 0.55 for a clean visual result."
+    },
+    {
+      "name": "scale",
+      "type": "number",
+      "default": 1.035,
+      "description": "Small scale expansion applied at peak glow."
+    }
+  ]
+}

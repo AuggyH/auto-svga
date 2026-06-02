@@ -1,0 +1,24 @@
+{
+  "name": "svga-avatar-frame-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MVP CLI for generating intermediate SVGA-like avatar frame animation projects.",
+  "type": "module",
+  "bin": {
+    "svga-avatar-frame": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "validate:example": "tsc -p tsconfig.json && node dist/cli.js validate examples/avatar_frame_basic",
+    "build:example": "tsc -p tsconfig.json && node dist/cli.js build examples/avatar_frame_basic"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "packageManager": "pnpm@9.12.0"
+}

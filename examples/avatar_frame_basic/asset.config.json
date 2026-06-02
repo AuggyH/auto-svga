@@ -1,0 +1,37 @@
+{
+  "assetType": "avatar_frame",
+  "name": "avatar_frame_basic",
+  "source": {
+    "framePng": "assets/frame.png"
+  },
+  "canvas": {
+    "width": 256,
+    "height": 256,
+    "fps": 24,
+    "durationMs": 2400
+  },
+  "templates": [
+    {
+      "id": "breathing_glow",
+      "params": {
+        "color": "#BFDFFF",
+        "minAlpha": 0.16,
+        "maxAlpha": 0.38
+      }
+    },
+    {
+      "id": "metal_edge_sweep",
+      "params": {
+        "color": "#FFE8A3",
+        "intensity": 0.5
+      }
+    },
+    {
+      "id": "gem_twinkle",
+      "params": {
+        "count": 3,
+        "intensity": 0.62
+      }
+    }
+  ]
+}
