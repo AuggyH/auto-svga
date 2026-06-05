@@ -14,6 +14,8 @@ const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".json", "application/json; charset=utf-8"],
   [".gif", "image/gif"],
+  [".mp4", "video/mp4"],
+  [".webm", "video/webm"],
   [".png", "image/png"],
   [".svga", "application/octet-stream"]
 ]);

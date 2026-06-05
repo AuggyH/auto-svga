@@ -1,0 +1,16 @@
+{
+  "assetType": "avatar_frame",
+  "canvas": {
+    "width": 512,
+    "height": 512
+  },
+  "fps": 30,
+  "durationMs": 2400,
+  "outputName": "avatar_frame_test_001",
+  "export": {
+    "previewGif": true,
+    "svga": true,
+    "report": true,
+    "deliveryZip": true
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "assetType": "avatar_frame",
+  "motionStyle": "luxury_subtle_loop",
+  "durationMs": 2400,
+  "fps": 30,
+  "rules": {
+    "protectSafeArea": true,
+    "avoidLargeMotion": true,
+    "loopSeamless": true,
+    "smallSizeReadable": true
+  },
+  "effects": [
+    {
+      "id": "base_frame_breath",
+      "template": "frame_breath",
+      "target": "base_frame",
+      "intensity": 0.25,
+      "durationMs": 2400
+    },
+    {
+      "id": "base_frame_sweep",
+      "template": "metal_sweep",
+      "target": "base_frame",
+      "intensity": 0.45,
+      "durationMs": 2200
+    },
+    {
+      "id": "left_wing_flap",
+      "template": "wing_flap",
+      "target": "left_wing",
+      "intensity": 0.35,
+      "durationMs": 2400
+    },
+    {
+      "id": "right_wing_flap",
+      "template": "wing_flap",
+      "target": "right_wing",
+      "intensity": 0.35,
+      "durationMs": 2400,
+      "mirrorOf": "left_wing_flap"
+    },
+    {
+      "id": "top_gem_twinkle",
+      "template": "gem_twinkle",
+      "target": "top_gem",
+      "intensity": 0.55,
+      "durationMs": 1600
+    }
+  ]
+}

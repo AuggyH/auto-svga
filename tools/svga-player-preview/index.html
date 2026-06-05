@@ -1,93 +1,266 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SVGA 播放预览 / SVGA Playback Preview</title>
+    <title>auto-svga 播放验证 / Playback Validation</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
     <main class="shell">
-      <header class="topbar">
-        <div>
-          <h1>SVGA 播放预览 / SVGA Playback Preview</h1>
-          <p>对比真实 SVGA 播放效果、GIF 预览和导出报告 / Compare SVGA playback, GIF preview and export report.</p>
+      <header class="toolbar" data-drop-kind="auto">
+        <div class="brand">
+          <span class="brandMark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M7.2 5.3h5.15a5.6 5.6 0 0 1 0 11.2H8.65" />
+              <path d="M7.4 9.2h5.05a1.7 1.7 0 0 1 0 3.4H7.4" />
+              <path d="M4.6 12h3.5" />
+              <path d="M4.6 16.5h4.05" />
+            </svg>
+          </span>
+          <span class="brandCopy">
+            <strong>auto-svga</strong>
+            <span>SVGA Preview &amp; Export Review Tool</span>
+          </span>
         </div>
-        <div class="actions">
-          <button id="replayButton" type="button">重新播放 / Replay</button>
-          <button id="syncReplayButton" type="button">同步重播 / Sync Replay</button>
+        <div class="modeControl">
+          <span class="modeDot" aria-hidden="true"></span>
+          <label>
+            <span class="srOnly">显示模式 / Display mode</span>
+            <select id="modeSelect">
+              <option value="localPreview" selected>本地预览 / Local Preview</option>
+              <option value="exportReview">导出验收 / Export Review</option>
+            </select>
+          </label>
+        </div>
+        <div class="actionRow">
+          <button id="infoPanelButton" class="iconButton" type="button" title="信息面板 / Info Panel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" /><path d="M14 3v6h6" /><path d="M8 13h8" /><path d="M8 17h5" /></svg>
+          </button>
+          <button id="logsButton" class="iconButton" type="button" title="查看日志 / Logs">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="M8 9l3 3-3 3" /><path d="M13 15h4" /></svg>
+          </button>
+          <button id="themeToggleButton" class="iconButton" type="button" title="主题切换 / Theme">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z" /></svg>
+          </button>
+          <button id="settingsButton" class="iconButton" type="button" title="设置 / Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.05.05a2 2 0 0 1-2.83 2.83l-.05-.05a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.08a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.08a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.05-.05A2 2 0 1 1 7.04 4.3l.05.05A1.65 1.65 0 0 0 8.91 4a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.08a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.65 1.65 0 0 0 19.4 9c.14.46.5.82.96.96H21a2 2 0 0 1 0 4h-.08a1.65 1.65 0 0 0-1.52 1Z" /></svg>
+          </button>
         </div>
       </header>
 
-      <section class="fileBar" aria-label="Local file controls">
-        <label>
-          <span>SVGA 文件 / SVGA file</span>
-          <input id="svgaFileInput" type="file" accept=".svga,application/octet-stream">
-        </label>
-        <label>
-          <span>GIF 预览 / GIF preview</span>
-          <input id="gifFileInput" type="file" accept=".gif,image/gif">
-        </label>
-        <label>
-          <span>显示模式 / Display mode</span>
-          <select id="compareModeSelect">
-            <option value="svgaGif" selected>SVGA vs GIF</option>
-            <option value="svgaAB">SVGA A/B</option>
-          </select>
-        </label>
-        <label>
-          <span>尺寸模式 / Fit mode</span>
-          <select id="fitModeSelect">
-            <option value="contain" selected>Fit contain</option>
-            <option value="original">Original size</option>
-            <option value="fitWidth">Fit width</option>
-          </select>
-        </label>
+      <section id="previewControlStrip" class="previewControlStrip">
+        <div>
+          <strong>本地预览 / Local Preview</strong>
+          <span>打开对比后可同时检查 SVGA A / B</span>
+        </div>
+        <label id="compareToggleWrap" class="compareToggle"><input id="compareToggle" type="checkbox"><span>开启对比 / Compare</span></label>
       </section>
 
-      <section class="comparison" aria-label="Preview comparison">
-        <article id="svgaPanelA" class="panel" data-drop-kind="svga" data-player-slot="a">
-          <div class="panelHeader">
-            <h2>SVGA 播放器 A / SVGA Player A</h2>
-            <span id="svgaStatusA">加载中 / LOADING</span>
+      <section id="workspace" class="workspace mode-localPreview" aria-label="Preview workspace">
+        <article id="svgaPanelA" class="previewCard isPrimary" data-drop-kind="svga" data-player-slot="a">
+          <div class="cardHeader">
+            <div>
+              <span id="svgaBadgeA" class="badge">SVGA A</span>
+              <h2 id="svgaTitleA" data-subtitle="Local SVGA Preview">SVGA 本地预览</h2>
+            </div>
+            <div class="cardActions">
+              <span id="svgaFilePillA" class="filePill" hidden></span>
+              <label class="cardFileButton" id="primaryFileButton">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
+                <span id="primaryInputLabel">选择 SVGA</span>
+                <input id="svgaFileInput" type="file" accept=".svga,application/octet-stream">
+              </label>
+              <label class="cardFitSelect" title="尺寸模式 / Fit mode">
+                <select id="fitModeA" data-fit-slot="a" aria-label="SVGA A fit mode">
+                  <option value="contain" selected>Fit contain</option>
+                  <option value="original">Original size</option>
+                  <option value="fitWidth">Fit width</option>
+                </select>
+              </label>
+            </div>
           </div>
           <div class="stage">
             <div id="svgaFrameA" class="mediaFrame">
               <div id="svgaCanvasA" aria-label="SVGA player A canvas"></div>
             </div>
-            <p class="dropHint">拖拽 .svga 文件到这里播放 / Drop .svga here</p>
+            <div class="centerEmptyState">
+              <span class="svgaMockPreview" aria-hidden="true">
+                <span class="mockRing mockRingOuter"></span>
+                <span class="mockRing mockRingMiddle"></span>
+                <span class="mockRing mockRingInner"></span>
+                <span class="mockCore">
+                  <span class="mockCube"></span>
+                </span>
+                <span class="mockCaption">SVGA · mock preview</span>
+              </span>
+              <strong id="svgaEmptyTitleA">拖拽 .svga 文件到此处</strong>
+              <span id="svgaEmptySubtitleA">Drop .svga file here or choose from toolbar</span>
+              <button id="primaryEmptyFileButton" class="emptyFileButton" type="button">选择 SVGA 文件</button>
+            </div>
           </div>
-          <dl id="svgaSizeInfoA" class="sizeInfo"></dl>
+          <div class="playerBar">
+            <button id="localPlayPauseButton" class="smallPlayButton" type="button" title="播放 / 暂停 / Play / Pause">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            </button>
+            <button id="localReplayButton" class="smallIconButton" type="button" title="重播 / Replay">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
+            </button>
+            <input id="localProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="Playback progress">
+            <span id="localTime">0:00 / 0:00</span>
+            <label class="loopToggle" title="循环 / Loop"><input id="localLoopToggle" type="checkbox" checked>循环</label>
+            <button id="localFitButton" class="smallIconButton" type="button" title="适应窗口 / Fit">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5" /><path d="M20 9V4h-5" /><path d="M4 15v5h5" /><path d="M20 15v5h-5" /></svg>
+            </button>
+          </div>
+          <span id="svgaStatusA" class="srOnly">空 / EMPTY</span>
+          <dl id="svgaSizeInfoA" class="quickInfo" hidden></dl>
         </article>
 
-        <article id="svgaPanelB" class="panel isHidden" data-drop-kind="svga" data-player-slot="b">
-          <div class="panelHeader">
-            <h2>SVGA 播放器 B / SVGA Player B</h2>
-            <span id="svgaStatusB">空 / EMPTY</span>
+        <article id="svgaPanelB" class="previewCard isHidden" data-drop-kind="svga" data-player-slot="b">
+          <div class="cardHeader">
+            <div>
+              <span class="badge badgePurple">SVGA B</span>
+              <h2 data-subtitle="SVGA B">SVGA B</h2>
+            </div>
+            <div class="cardActions">
+              <span id="svgaStatusB" class="statusPill">空 / EMPTY</span>
+              <label class="cardFileButton" id="secondaryInputWrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
+                <span id="secondaryInputLabel">选择 SVGA B</span>
+                <input id="secondaryFileInput" type="file" accept=".svga,application/octet-stream">
+              </label>
+              <label class="cardFitSelect" title="尺寸模式 / Fit mode">
+                <select id="fitModeB" data-fit-slot="b" aria-label="SVGA B fit mode">
+                  <option value="contain" selected>Fit contain</option>
+                  <option value="original">Original size</option>
+                  <option value="fitWidth">Fit width</option>
+                </select>
+              </label>
+            </div>
           </div>
           <div class="stage">
             <div id="svgaFrameB" class="mediaFrame">
               <div id="svgaCanvasB" aria-label="SVGA player B canvas"></div>
             </div>
-            <p class="dropHint">拖拽 .svga 文件到这里播放 / Drop .svga here</p>
+            <div class="centerEmptyState">
+              <span class="uploadMockIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
+              </span>
+              <strong>选择第二个 SVGA 文件</strong>
+              <span>Drop second .svga here</span>
+              <button id="secondaryEmptyFileButton" class="emptyFileButton" type="button">选择 SVGA B</button>
+            </div>
           </div>
-          <dl id="svgaSizeInfoB" class="sizeInfo"></dl>
+          <div class="playerBar">
+            <button id="playerBPlayPauseButton" class="smallPlayButton" type="button" title="播放 / 暂停 / Play / Pause">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            </button>
+            <button id="playerBReplayButton" class="smallIconButton" type="button" title="重播 / Replay">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
+            </button>
+            <input id="playerBProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="SVGA B progress">
+            <span id="playerBTime">0:00 / 0:00</span>
+            <label class="loopToggle" title="循环 / Loop"><input id="playerBLoopToggle" type="checkbox" checked>循环</label>
+          </div>
+          <dl id="svgaSizeInfoB" class="quickInfo"></dl>
         </article>
 
-        <article id="gifPanel" class="panel" data-drop-kind="gif">
-          <div class="panelHeader">
-            <h2>GIF 预览 / GIF Preview</h2>
-            <span id="gifStatus">加载中 / LOADING</span>
+        <article id="referencePanel" class="previewCard isHidden" data-drop-kind="reference">
+          <div class="cardHeader">
+            <div>
+              <span class="badge badgeGreen">MP4</span>
+              <h2 data-subtitle="Reference MP4">参考视频</h2>
+            </div>
+            <div class="cardActions">
+              <span id="referenceStatus" class="statusPill">空 / EMPTY</span>
+              <label class="cardFileButton" id="referenceFileButton">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4z" /><path d="m10 10 4 2-4 2z" /></svg>
+                <span>选择参考视频</span>
+                <input id="referenceFileInput" type="file" accept=".mp4,.webm,.gif,video/mp4,video/webm,image/gif">
+              </label>
+              <label class="cardFitSelect" title="尺寸模式 / Fit mode">
+                <select id="fitModeReference" data-fit-slot="reference" aria-label="Reference fit mode">
+                  <option value="contain" selected>Fit contain</option>
+                  <option value="original">Original size</option>
+                  <option value="fitWidth">Fit width</option>
+                </select>
+              </label>
+            </div>
           </div>
           <div class="stage">
-            <div id="gifFrame" class="mediaFrame">
-              <img id="gifPreview" alt="Generated GIF preview">
+            <div id="referenceFrame" class="mediaFrame">
+              <video id="referenceVideo" muted playsinline loop hidden></video>
+              <img id="referenceImage" alt="Reference GIF preview" hidden>
             </div>
-            <p id="gifEmptyState" class="emptyState" hidden>当前未加载 GIF。可拖入对应 GIF 进行对比。/ No GIF loaded. Drop a matching GIF here if you want to compare.</p>
-            <p class="dropHint">拖拽 .gif 文件到这里对比 / Drop .gif here</p>
+            <div id="referenceEmptyState" class="centerEmptyState referenceEmptyState">
+              <span class="mp4MockPreview" aria-hidden="true">
+                <span class="mp4Bars">
+                  <span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span><span></span><span></span>
+                </span>
+                <span class="mp4Core">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h12v10H4z" /><path d="m16 10 4-2v8l-4-2z" /></svg>
+                </span>
+                <span class="mockCaption">MP4 · mock preview</span>
+              </span>
+              <strong>拖拽 .mp4 参考视频到此处</strong>
+              <span>Drop .mp4 reference video here</span>
+              <button id="referenceEmptyFileButton" class="emptyFileButton" type="button">选择参考视频</button>
+            </div>
+            <p class="dropHint">拖拽参考视频到这里 / Drop reference video here</p>
           </div>
-          <dl id="gifSizeInfo" class="sizeInfo"></dl>
+          <div class="playerBar">
+            <button id="referencePlayPauseButton" class="smallPlayButton" type="button" title="播放 / 暂停 / Play / Pause">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            </button>
+            <button id="referenceReplayButton" class="smallIconButton" type="button" title="重播 / Replay">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
+            </button>
+            <input id="referenceProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="Reference progress">
+            <span id="referenceTime">0:00 / 0:00</span>
+            <label class="loopToggle" title="循环 / Loop"><input id="referenceLoopToggle" type="checkbox" checked>循环</label>
+          </div>
+          <dl id="referenceInfo" class="quickInfo"></dl>
         </article>
+
+        <aside id="infoPanel" class="infoPanel isHidden" aria-label="SVGA info panel">
+          <button id="infoPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整信息面板宽度 / Resize info panel"></button>
+          <div class="infoHeader">
+            <div>
+              <h2>SVGA 信息 / SVGA Info</h2>
+              <p>解析、资源和渲染状态 / Parse, assets and render status</p>
+            </div>
+            <span id="infoStatus" class="statusPill">加载中 / LOADING</span>
+          </div>
+          <nav class="tabs" aria-label="Info tabs">
+            <button class="tabButton isActive" type="button" data-tab="overview">概览 / Overview</button>
+            <button class="tabButton" type="button" data-tab="assets">资源 / Assets</button>
+          </nav>
+          <div id="tab-overview" class="tabPanel"></div>
+          <div id="tab-assets" class="tabPanel isHidden"></div>
+        </aside>
+      </section>
+
+      <section id="syncBar" class="syncBar isHidden" aria-label="Synchronized playback controls">
+        <div id="syncLeftInfo" class="syncFileInfo"></div>
+        <div class="syncControls">
+          <div id="syncWarnings" class="syncWarnings" aria-live="polite"></div>
+          <div class="syncControlRow">
+            <button id="syncPauseControl" class="syncIconButton" type="button" title="同步暂停 / Sync Pause">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>
+            </button>
+            <button id="syncPlayControl" class="syncPlayButton" type="button" title="同步播放 / Sync Play">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            </button>
+            <button id="syncReplayControl" class="syncIconButton" type="button" title="同步重播 / Sync Replay">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
+            </button>
+            <input id="syncProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="Sync progress">
+            <span id="syncTime">0:00 / 0:00</span>
+          </div>
+        </div>
+        <div id="syncRightInfo" class="syncFileInfo alignRight"></div>
       </section>
 
       <section class="details" aria-label="Report summary">
@@ -96,6 +269,112 @@
       </section>
 
       <section id="errorBox" class="errorBox" hidden aria-live="polite"></section>
+
+      <div id="assetPreviewModal" class="modalOverlay" hidden>
+        <section class="assetModal" role="dialog" aria-modal="true" aria-labelledby="assetPreviewTitle">
+          <header>
+            <div>
+              <h2 id="assetPreviewTitle">资源预览 / Asset Preview</h2>
+              <p id="assetPreviewMeta">imageKey</p>
+            </div>
+            <button id="assetPreviewClose" class="iconButton" type="button" title="关闭 / Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+          </header>
+          <div class="assetPreviewStage checkerboard">
+            <img id="assetPreviewImage" alt="Asset preview">
+          </div>
+          <footer>
+            <button id="copyImageKeyButton" class="toolButton" type="button">复制 imageKey</button>
+            <span id="assetPreviewDetails"></span>
+          </footer>
+        </section>
+      </div>
+
+      <div id="settingsModal" class="modalOverlay" hidden>
+        <section class="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+          <header>
+            <div class="modalTitle">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.05.05a2 2 0 0 1-2.83 2.83l-.05-.05a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.08a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.08a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.05-.05A2 2 0 1 1 7.04 4.3l.05.05A1.65 1.65 0 0 0 8.91 4a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.08a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.65 1.65 0 0 0 19.4 9c.14.46.5.82.96.96H21a2 2 0 0 1 0 4h-.08a1.65 1.65 0 0 0-1.52 1Z" /></svg>
+              <div>
+                <h2 id="settingsTitle">设置</h2>
+                <p>Preferences</p>
+              </div>
+            </div>
+            <button id="settingsCloseButton" class="iconButton" type="button" title="关闭 / Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+          </header>
+          <div class="settingsBody">
+            <section class="settingsSection">
+              <h3>播放 <span>PLAYBACK</span></h3>
+              <div class="settingsCard">
+                <label class="settingsToggleRow"><span><strong>循环播放</strong><small>Loop Playback</small></span><input type="checkbox" checked></label>
+                <label class="settingsToggleRow"><span><strong>打开新文件时清空另一侧</strong><small>Auto-clear opposite side when loading</small></span><input type="checkbox" checked></label>
+              </div>
+            </section>
+            <section class="settingsSection">
+              <h3>预览 <span>PREVIEW</span></h3>
+              <div class="settingsCard previewBackgroundCard">
+                <p>预览背景 <span>Background</span></p>
+                <div class="previewBgChoices">
+                  <label class="previewBgChoice"><input type="radio" name="previewBackground" value="checkerboard" checked><span class="bgSwatch checkerboard"></span><strong>棋盘格</strong><small>Checkerboard</small></label>
+                  <label class="previewBgChoice"><input type="radio" name="previewBackground" value="light"><span class="bgSwatch bgLight"></span><strong>浅色</strong><small>Light</small></label>
+                  <label class="previewBgChoice"><input type="radio" name="previewBackground" value="dark"><span class="bgSwatch bgDark"></span><strong>深色</strong><small>Dark</small></label>
+                  <label class="previewBgChoice"><input type="radio" name="previewBackground" value="transparent"><span class="bgSwatch bgTransparent"></span><strong>透明</strong><small>Transparent</small></label>
+                </div>
+              </div>
+            </section>
+            <section class="settingsSection">
+              <h3>工作流 <span>WORKFLOW</span></h3>
+              <div class="settingsCard">
+                <label class="settingsToggleRow"><span><strong>记住上次打开目录</strong><small>Remember last opened directory</small></span><input type="checkbox"></label>
+                <label class="settingsToggleRow"><span><strong>导出完成后自动进入验收模式</strong><small>Auto-enter Export Review after export</small></span><input type="checkbox"></label>
+              </div>
+            </section>
+            <section class="settingsSection">
+              <h3>显示 <span>DISPLAY</span></h3>
+              <div class="settingsCard">
+                <label class="settingsToggleRow"><span><strong>显示调试信息</strong><small>Show debug info</small></span><input type="checkbox"></label>
+                <label class="settingsToggleRow"><span><strong>中文优先，英文辅助</strong><small>Chinese primary, English secondary</small></span><input type="checkbox" checked></label>
+              </div>
+              <div class="settingsCard appearanceCard">
+                <div class="settingsControlHeader">
+                  <strong>外观 Appearance</strong>
+                  <small>选择应用界面的颜色主题 / Choose the app color theme</small>
+                </div>
+                <div class="themeChoiceGroup" aria-label="外观 / Appearance">
+                  <label><input type="radio" name="theme" value="system"><span>跟随系统<br><small>System</small></span></label>
+                  <label><input type="radio" name="theme" value="light"><span>浅色<br><small>Light</small></span></label>
+                  <label><input type="radio" name="theme" value="dark"><span>深色<br><small>Dark</small></span></label>
+                </div>
+              </div>
+            </section>
+          </div>
+          <footer><button id="settingsDoneButton" class="primaryDoneButton" type="button">完成 Done</button></footer>
+        </section>
+      </div>
+
+      <div id="fullLogsModal" class="drawerOverlay" hidden>
+        <section class="logsDrawer" role="dialog" aria-modal="true" aria-labelledby="fullLogsTitle">
+          <header>
+            <div class="modalTitle">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14" /><path d="M5 10h14" /><path d="M5 15h10" /><path d="M5 20h6" /></svg>
+              <div>
+                <h2 id="fullLogsTitle">运行日志</h2>
+                <p id="fullLogsSubtitle">Runtime Logs</p>
+              </div>
+            </div>
+            <div class="logsDrawerActions">
+              <button id="copyFullLogsButton" class="darkIconButton" type="button" title="复制日志 / Copy logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8z" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></svg></button>
+              <button id="clearFullLogsButton" class="darkIconButton" type="button" title="清空日志 / Clear logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 15h10l1-15" /></svg></button>
+              <button id="fullLogsCloseButton" class="darkIconButton" type="button" title="关闭 / Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg></button>
+            </div>
+          </header>
+          <div id="fullLogsContent" class="logsDrawerList"></div>
+          <footer><span class="rendererDot"></span><span>渲染器运行中 / Renderer active</span></footer>
+        </section>
+      </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>

@@ -1,10 +1,7 @@
 #!/usr/bin/env node
-import { buildCommand } from "./commands/build.js";
-import { exportCommand } from "./commands/export.js";
-import { initCommand } from "./commands/init.js";
-import { previewCommand } from "./commands/preview.js";
-import { validateCommand } from "./commands/validate.js";
 import { hasErrors } from "./core/validator.js";
+import type { PlanningResult } from "./mvp/types.js";
+import type { PreviewCommandResult } from "./commands/preview.js";
 
 interface ParsedArgs {
   command?: string;
@@ -18,10 +15,14 @@ async function main(): Promise<void> {
 
   switch (args.command) {
     case "init":
+      {
+      const { initCommand } = await import("./commands/init.js");
       await initCommand(args.input ?? "avatar_frame_project");
       console.log(`Initialized avatar frame project at ${args.input ?? "avatar_frame_project"}`);
       break;
+      }
     case "validate": {
+      const { validateCommand } = await import("./commands/validate.js");
       const input = requireInput(args);
       const issues = await validateCommand(input);
       printIssues(issues);
@@ -29,6 +30,7 @@ async function main(): Promise<void> {
       break;
     }
     case "build": {
+      const { buildCommand } = await import("./commands/build.js");
       const input = requireInput(args);
       const report = await buildCommand(input, args.output, { sweepStride: args.sweepStride });
       printIssues([...report.warnings, ...report.errors]);
@@ -36,13 +38,28 @@ async function main(): Promise<void> {
       process.exitCode = report.status === "success" ? 0 : 1;
       break;
     }
-    case "preview": {
+    case "plan": {
+      const { planCommand } = await import("./commands/plan.js");
       const input = requireInput(args);
-      const previewPath = await previewCommand(input, args.output);
-      console.log(`Preview generated: ${previewPath}`);
+      const result = await planCommand(input);
+      printIssues(result.issues);
+      printPlanSummary(result);
+      process.exitCode = hasErrors(result.issues) ? 1 : 0;
+      break;
+    }
+    case "preview": {
+      const { previewCommand } = await import("./commands/preview.js");
+      const input = requireInput(args);
+      const result = await previewCommand(input, args.output);
+      if (result.mode === "mvp") {
+        printMvpPreviewSummary(result);
+      } else {
+        console.log(`Preview generated: ${result.previewPath}`);
+      }
       break;
     }
     case "export": {
+      const { exportCommand } = await import("./commands/export.js");
       const input = requireInput(args);
       const report = await exportCommand(input, args.output, { sweepStride: args.sweepStride });
       printIssues([...report.warnings, ...report.errors]);
@@ -99,12 +116,65 @@ function printIssues(issues: Array<{ level: string; code: string; message: strin
   }
 }
 
+function printPlanSummary(result: PlanningResult): void {
+  if (hasErrors(result.issues)) {
+    console.log("\nauto-svga MVP 0.1 planning failed");
+    return;
+  }
+
+  console.log(`\nauto-svga MVP 0.1 planning completed
+
+Job: ${result.jobName}
+Asset type: ${result.config.assetType}
+Canvas: ${result.config.canvas.width}x${result.config.canvas.height}
+FPS: ${result.config.fps}
+Duration: ${result.config.durationMs}ms
+Frames: ${result.project.frames}
+Parts: ${result.structure.parts.length}
+Effects: ${result.motionPlan.effects.length}
+Project layers: ${result.project.layers.length}
+
+Generated:
+${result.generated.map((file) => `- ${file}`).join("\n")}
+`);
+
+  const warnings = [
+    ...result.issues.filter((issue) => issue.level === "warning").map((issue) => issue.message),
+    ...result.project.warnings
+  ];
+  if (warnings.length > 0) {
+    console.log(`Warnings:\n${warnings.map((warning) => `- ${warning}`).join("\n")}`);
+  }
+}
+
+function printMvpPreviewSummary(result: Extract<PreviewCommandResult, { mode: "mvp" }>): void {
+  const report = result.report;
+  console.log(`auto-svga MVP preview completed
+
+Job: ${result.jobName}
+Project: project/project.json
+Canvas: ${report.canvas.width}x${report.canvas.height}
+FPS: ${report.fps}
+Frames: ${report.frames}
+Layers: ${report.layers}
+Generated assets: ${report.generatedAssets.length}
+Output:
+- ${result.previewPath}
+- ${result.reportPath}
+`);
+
+  if (report.warnings.length > 0) {
+    console.log(`Warnings:\n${report.warnings.map((warning) => `- ${warning}`).join("\n")}`);
+  }
+}
+
 function printHelp(): void {
   console.log(`SVGA Avatar Frame MVP
 
 Usage:
   svga-avatar-frame init <dir>
   svga-avatar-frame validate <dir>
+  svga-avatar-frame plan <job-dir>
   svga-avatar-frame build <dir> [--out <dir>]
   svga-avatar-frame preview <dir> [--out <dir>]
   svga-avatar-frame export <dir> [--out <dir>] [--sweep-stride 1|2|3]

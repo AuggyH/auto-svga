@@ -6,3 +6,10 @@ outputs/
 *.log
 
 *.zip
+
+review/
+
+jobs/**/generated/*
+jobs/**/output/*
+!jobs/**/generated/.gitkeep
+!jobs/**/output/.gitkeep

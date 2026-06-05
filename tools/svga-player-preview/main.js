@@ -1,6 +1,5 @@
 const paths = {
   svga: "/examples/avatar_frame_basic/output/avatar_frame_basic.svga",
-  gif: "/examples/avatar_frame_basic/output/preview.gif",
   report: "/examples/avatar_frame_basic/output/report.json"
 };
 
@@ -24,36 +23,119 @@ const statusText = {
   loaded: "已加载 / LOADED",
   playing: "播放中 / PLAYING",
   empty: "空 / EMPTY",
-  error: "错误 / ERROR"
+  error: "错误 / ERROR",
+  ready: "就绪 / READY"
 };
 
+const appLogs = [];
 const players = {
   a: createPlayerSlot("A"),
   b: createPlayerSlot("B")
 };
 
-const gifState = {
-  frame: document.querySelector("#gifFrame"),
-  panel: document.querySelector("#gifPanel"),
-  preview: document.querySelector("#gifPreview"),
-  emptyState: document.querySelector("#gifEmptyState"),
-  info: document.querySelector("#gifSizeInfo"),
-  status: document.querySelector("#gifStatus"),
+const referenceState = {
+  panel: document.querySelector("#referencePanel"),
+  frame: document.querySelector("#referenceFrame"),
+  video: document.querySelector("#referenceVideo"),
+  image: document.querySelector("#referenceImage"),
+  emptyState: document.querySelector("#referenceEmptyState"),
+  info: document.querySelector("#referenceInfo"),
+  status: document.querySelector("#referenceStatus"),
   objectUrl: undefined,
-  metrics: undefined
+  metrics: undefined,
+  kind: undefined
 };
 
-const replayButton = document.querySelector("#replayButton");
-const syncReplayButton = document.querySelector("#syncReplayButton");
+const modeSelect = document.querySelector("#modeSelect");
+const workspace = document.querySelector("#workspace");
+const compareToggle = document.querySelector("#compareToggle");
+const compareToggleWrap = document.querySelector("#compareToggleWrap");
+const infoPanelButton = document.querySelector("#infoPanelButton");
+const logsButton = document.querySelector("#logsButton");
+const themeToggleButton = document.querySelector("#themeToggleButton");
+const settingsButton = document.querySelector("#settingsButton");
+const syncBar = document.querySelector("#syncBar");
+const syncProgress = document.querySelector("#syncProgress");
+const syncTime = document.querySelector("#syncTime");
+const syncLeftInfo = document.querySelector("#syncLeftInfo");
+const syncRightInfo = document.querySelector("#syncRightInfo");
+const syncWarnings = document.querySelector("#syncWarnings");
+const svgaBadgeA = document.querySelector("#svgaBadgeA");
+const svgaTitleA = document.querySelector("#svgaTitleA");
+const svgaEmptyTitleA = document.querySelector("#svgaEmptyTitleA");
+const svgaEmptySubtitleA = document.querySelector("#svgaEmptySubtitleA");
+const localReplayButton = document.querySelector("#localReplayButton");
+const localPlayPauseButton = document.querySelector("#localPlayPauseButton");
+const localLoopToggle = document.querySelector("#localLoopToggle");
+const localProgress = document.querySelector("#localProgress");
+const localTime = document.querySelector("#localTime");
+const localFitButton = document.querySelector("#localFitButton");
+const playerBPlayPauseButton = document.querySelector("#playerBPlayPauseButton");
+const playerBReplayButton = document.querySelector("#playerBReplayButton");
+const playerBProgress = document.querySelector("#playerBProgress");
+const playerBTime = document.querySelector("#playerBTime");
+const playerBLoopToggle = document.querySelector("#playerBLoopToggle");
+const referencePlayPauseButton = document.querySelector("#referencePlayPauseButton");
+const referenceReplayButton = document.querySelector("#referenceReplayButton");
+const referenceProgress = document.querySelector("#referenceProgress");
+const referenceTime = document.querySelector("#referenceTime");
+const referenceLoopToggle = document.querySelector("#referenceLoopToggle");
+const syncPlayControl = document.querySelector("#syncPlayControl");
+const syncPauseControl = document.querySelector("#syncPauseControl");
+const syncReplayControl = document.querySelector("#syncReplayControl");
 const reportGrid = document.querySelector("#reportGrid");
 const errorBox = document.querySelector("#errorBox");
 const svgaFileInput = document.querySelector("#svgaFileInput");
-const gifFileInput = document.querySelector("#gifFileInput");
-const compareModeSelect = document.querySelector("#compareModeSelect");
-const fitModeSelect = document.querySelector("#fitModeSelect");
-const fileBar = document.querySelector(".fileBar");
+const secondaryFileInput = document.querySelector("#secondaryFileInput");
+const referenceFileInput = document.querySelector("#referenceFileInput");
+const primaryEmptyFileButton = document.querySelector("#primaryEmptyFileButton");
+const secondaryEmptyFileButton = document.querySelector("#secondaryEmptyFileButton");
+const referenceEmptyFileButton = document.querySelector("#referenceEmptyFileButton");
+const secondaryInputWrap = document.querySelector("#secondaryInputWrap");
+const secondaryInputLabel = document.querySelector("#secondaryInputLabel");
+const primaryInputLabel = document.querySelector("#primaryInputLabel");
+const fitModeA = document.querySelector("#fitModeA");
+const fitModeB = document.querySelector("#fitModeB");
+const fitModeReference = document.querySelector("#fitModeReference");
+const toolbar = document.querySelector(".toolbar");
+const infoStatus = document.querySelector("#infoStatus");
+const tabButtons = Array.from(document.querySelectorAll(".tabButton"));
+const svgaFilePillA = document.querySelector("#svgaFilePillA");
+const assetPreviewModal = document.querySelector("#assetPreviewModal");
+const assetPreviewClose = document.querySelector("#assetPreviewClose");
+const assetPreviewImage = document.querySelector("#assetPreviewImage");
+const assetPreviewTitle = document.querySelector("#assetPreviewTitle");
+const assetPreviewMeta = document.querySelector("#assetPreviewMeta");
+const assetPreviewDetails = document.querySelector("#assetPreviewDetails");
+const copyImageKeyButton = document.querySelector("#copyImageKeyButton");
+const settingsModal = document.querySelector("#settingsModal");
+const settingsCloseButton = document.querySelector("#settingsCloseButton");
+const settingsDoneButton = document.querySelector("#settingsDoneButton");
+const fullLogsModal = document.querySelector("#fullLogsModal");
+const fullLogsCloseButton = document.querySelector("#fullLogsCloseButton");
+const fullLogsContent = document.querySelector("#fullLogsContent");
+const fullLogsSubtitle = document.querySelector("#fullLogsSubtitle");
+const copyFullLogsButton = document.querySelector("#copyFullLogsButton");
+const clearFullLogsButton = document.querySelector("#clearFullLogsButton");
+const infoPanelResizeHandle = document.querySelector("#infoPanelResizeHandle");
 
 let defaultReport;
+let syncTimer;
+let localTimer;
+let localStartedAt = 0;
+let localPausedPercent = 0;
+let playerBTimer;
+let playerBStartedAt = 0;
+let referenceTimer;
+let selectedLayerKey;
+let selectedImageKey;
+let selectedAssetKey;
+let assetFilter = "all";
+const expandedSequenceGroups = new Set();
+let previewImageKey;
+let effectiveTheme = "light";
+let compareEnabled = false;
+let infoPanelWidth = Number(localStorage.getItem("autoSvgaInfoPanelWidth")) || 380;
 
 function createPlayerSlot(slotName) {
   const suffix = slotName.toUpperCase();
@@ -69,13 +151,27 @@ function createPlayerSlot(slotName) {
     objectUrl: undefined,
     metrics: undefined,
     report: undefined,
-    source: undefined
+    source: undefined,
+    parseStatus: "empty",
+    renderStatus: "empty",
+    isPlaying: false,
+    loop: true
   };
+}
+
+function addLog(level, message) {
+  appLogs.push({
+    level,
+    message,
+    time: new Date().toLocaleTimeString("zh-CN", { hour12: false })
+  });
+  renderInfoPanel();
 }
 
 function showError(message) {
   errorBox.hidden = false;
   errorBox.textContent = message;
+  addLog("error", message);
 }
 
 function clearError() {
@@ -95,7 +191,7 @@ function ensureSvgaLibrary() {
 
 function ensurePakoLibrary() {
   if (!window.pako?.inflate) {
-    throw new Error("pako 加载失败，无法解析 SVGA 尺寸。/ pako failed to load; SVGA metadata cannot be decoded.");
+    throw new Error("pako 加载失败，无法解析 SVGA。/ pako failed to load; SVGA metadata cannot be decoded.");
   }
 }
 
@@ -143,7 +239,9 @@ function extractReportMetrics(report) {
     imageCount: validation.imageCount,
     spriteCount: validation.spriteCount,
     bakedSweepFrameStride: report?.bakedSweepFrameStride,
-    sampledFrameCount: report?.bakedSweepSampledFrameCount ?? report?.sampledFrameCount
+    sampledFrameCount: report?.bakedSweepSampledFrameCount ?? report?.sampledFrameCount,
+    fps: report?.fps,
+    durationSeconds: report?.durationSeconds
   };
   return Object.fromEntries(Object.entries(metrics).filter(([, value]) => value !== undefined && value !== null));
 }
@@ -153,17 +251,15 @@ function getStageAvailableSize(frameElement) {
   const style = window.getComputedStyle(stage);
   const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
   const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-
   return {
     width: Math.max(1, stage.clientWidth - horizontalPadding),
     height: Math.max(1, stage.clientHeight - verticalPadding)
   };
 }
 
-function computeDisplaySize(sourceWidth, sourceHeight, frameElement) {
+function computeDisplaySize(sourceWidth, sourceHeight, frameElement, mode = "contain") {
   const available = getStageAvailableSize(frameElement);
   const aspectRatio = sourceWidth / sourceHeight;
-  const mode = fitModeSelect.value;
   let width;
   let height;
 
@@ -190,17 +286,16 @@ function computeDisplaySize(sourceWidth, sourceHeight, frameElement) {
   };
 }
 
-function applyMediaSize(frameElement, metrics) {
+function applyMediaSize(frameElement, metrics, mode = "contain") {
   if (!metrics?.sourceWidth || !metrics?.sourceHeight) {
     frameElement.style.removeProperty("width");
     frameElement.style.removeProperty("height");
     return;
   }
 
-  const displaySize = computeDisplaySize(metrics.sourceWidth, metrics.sourceHeight, frameElement);
+  const displaySize = computeDisplaySize(metrics.sourceWidth, metrics.sourceHeight, frameElement, mode);
   frameElement.style.width = `${displaySize.width}px`;
   frameElement.style.height = `${displaySize.height}px`;
-
   metrics.displayedWidth = displaySize.width;
   metrics.displayedHeight = displaySize.height;
 }
@@ -212,22 +307,15 @@ function renderSvgaInfo(slot) {
     return;
   }
 
-  const aspectRatio = metrics.sourceWidth && metrics.sourceHeight
-    ? (metrics.sourceWidth / metrics.sourceHeight).toFixed(4)
-    : "n/a";
   const rows = [
-    ["文件名 / fileName", metrics.fileName],
-    [reportLabels.fileSizeBytes, formatBytes(metrics.fileSizeBytes)],
-    ["SVGA viewBoxWidth", metrics.sourceWidth],
-    ["SVGA viewBoxHeight", metrics.sourceHeight],
-    ["宽高比 / aspectRatio", aspectRatio],
-    ["显示宽度 / displayedWidth", metrics.displayedWidth],
-    ["显示高度 / displayedHeight", metrics.displayedHeight],
-    [reportLabels.frameCount, metrics.frameCount],
-    [reportLabels.imageCount, metrics.imageCount],
-    [reportLabels.spriteCount, metrics.spriteCount],
-    [reportLabels.bakedSweepFrameStride, metrics.bakedSweepFrameStride],
-    [reportLabels.sampledFrameCount, metrics.sampledFrameCount]
+    ["文件 / file", metrics.fileName],
+    ["体积 / size", formatBytes(metrics.fileSizeBytes)],
+    ["画布 / canvas", formatSize(metrics.sourceWidth, metrics.sourceHeight)],
+    ["时长 / duration", formatDuration(metrics)],
+    ["FPS", metrics.fps],
+    ["图层 / layers", metrics.spriteCount],
+    ["图片 / images", metrics.imageCount],
+    ["显示 / displayed", formatSize(metrics.displayedWidth, metrics.displayedHeight)]
   ];
 
   slot.info.innerHTML = rows.map(([label, value]) => (
@@ -235,93 +323,198 @@ function renderSvgaInfo(slot) {
   )).join("");
 }
 
-function renderGifInfo() {
-  const metrics = gifState.metrics;
+function renderReferenceInfo() {
+  const metrics = referenceState.metrics;
   if (!metrics) {
-    gifState.info.innerHTML = "";
+    referenceState.info.innerHTML = "";
     return;
   }
-
-  const aspectRatio = metrics.sourceWidth && metrics.sourceHeight
-    ? (metrics.sourceWidth / metrics.sourceHeight).toFixed(4)
-    : "n/a";
   const rows = [
-    ["文件名 / fileName", metrics.fileName],
-    ["GIF 宽度 / GIF width", metrics.sourceWidth],
-    ["GIF 高度 / GIF height", metrics.sourceHeight],
-    ["宽高比 / aspectRatio", aspectRatio],
-    ["显示宽度 / displayedWidth", metrics.displayedWidth],
-    ["显示高度 / displayedHeight", metrics.displayedHeight]
+    ["文件 / file", metrics.fileName],
+    ["体积 / size", formatBytes(metrics.fileSizeBytes)],
+    ["尺寸 / size", formatSize(metrics.sourceWidth, metrics.sourceHeight)],
+    ["时长 / duration", metrics.durationSeconds ? `${metrics.durationSeconds.toFixed(2)}s` : "n/a"],
+    ["显示 / displayed", formatSize(metrics.displayedWidth, metrics.displayedHeight)]
   ];
-
-  gifState.info.innerHTML = rows.map(([label, value]) => (
+  referenceState.info.innerHTML = rows.map(([label, value]) => (
     `<div><dt>${label}</dt><dd>${escapeHtml(value ?? "n/a")}</dd></div>`
   )).join("");
 }
 
 function refreshLayout() {
-  for (const slot of Object.values(players)) {
-    applyMediaSize(slot.frame, slot.metrics);
-    renderSvgaInfo(slot);
-  }
-  applyMediaSize(gifState.frame, gifState.metrics);
-  renderGifInfo();
+  applyMediaSize(players.a.frame, players.a.metrics, fitModeA.value);
+  renderSvgaInfo(players.a);
+  applyMediaSize(players.b.frame, players.b.metrics, fitModeB.value);
+  renderSvgaInfo(players.b);
+  applyMediaSize(referenceState.frame, referenceState.metrics, fitModeReference.value);
+  renderReferenceInfo();
+  renderInfoPanel();
+  renderSyncBar();
 }
 
 function updateButtons() {
-  replayButton.disabled = !players.a.videoItem;
-  syncReplayButton.disabled = compareModeSelect.value !== "svgaAB" || (!players.a.videoItem && !players.b.videoItem);
+  const mode = modeSelect.value;
+  const hasA = Boolean(players.a.videoItem);
+  const hasB = Boolean(players.b.videoItem);
+  const hasReference = Boolean(referenceState.metrics);
+  localReplayButton.disabled = !hasA;
+  compareToggleWrap.hidden = mode !== "localPreview";
+  infoPanelButton.hidden = false;
+  logsButton.hidden = false;
+  settingsButton.hidden = false;
+  const syncDisabled = isCompareActive() ? (!hasA && !hasB) : (!hasA && !hasReference);
+  syncPlayControl.disabled = syncDisabled;
+  syncPauseControl.disabled = syncDisabled;
+  syncReplayControl.disabled = syncDisabled;
+  updatePlaybackButtons();
 }
 
-function setCompareMode() {
-  const isAB = compareModeSelect.value === "svgaAB";
-  players.b.panel.classList.toggle("isHidden", !isAB);
-  gifState.panel.classList.toggle("isHidden", isAB);
-  syncReplayButton.hidden = !isAB;
+function setAppMode(nextMode = modeSelect.value) {
+  if (nextMode === "localCompare") nextMode = "localPreview";
+  modeSelect.value = nextMode;
+  workspace.className = `workspace mode-${nextMode}${compareEnabled && nextMode === "localPreview" ? " withCompare" : ""}`;
+  players.b.panel.classList.toggle("isHidden", !isCompareActive());
+  referenceState.panel.classList.toggle("isHidden", nextMode !== "exportReview");
+  document.querySelector("#infoPanel").classList.add("isHidden");
+  workspace.classList.remove("withInfoPanel");
+  syncBar.classList.toggle("isHidden", nextMode === "localPreview" && !compareEnabled);
+  secondaryFileInput.value = "";
+  referenceFileInput.value = "";
+
+  if (nextMode === "localPreview") {
+    primaryInputLabel.textContent = compareEnabled ? "选择 SVGA A" : "选择 SVGA";
+    primaryEmptyFileButton.textContent = compareEnabled ? "选择 SVGA A" : "选择 SVGA 文件";
+    secondaryInputLabel.textContent = "选择 SVGA B";
+    secondaryFileInput.accept = ".svga,application/octet-stream";
+    svgaBadgeA.textContent = compareEnabled ? "SVGA A" : "SVGA";
+    svgaTitleA.textContent = compareEnabled ? "SVGA A" : "SVGA 本地预览";
+    svgaTitleA.dataset.subtitle = compareEnabled ? "SVGA A" : "Local SVGA Preview";
+    svgaEmptyTitleA.textContent = compareEnabled ? "拖拽第一个 .svga 文件到此处" : "拖拽 .svga 文件到此处";
+    svgaEmptySubtitleA.textContent = compareEnabled ? "Drop first .svga file here" : "Drop .svga file here";
+  } else {
+    compareEnabled = false;
+    compareToggle.checked = false;
+    primaryInputLabel.textContent = "选择导出 SVGA";
+    primaryEmptyFileButton.textContent = "选择导出 SVGA";
+    svgaBadgeA.textContent = "SVGA";
+    svgaTitleA.textContent = "导出 SVGA";
+    svgaTitleA.dataset.subtitle = "Exported SVGA";
+    svgaEmptyTitleA.textContent = "拖拽导出的 .svga 文件到此处";
+    svgaEmptySubtitleA.textContent = "Drop exported .svga here";
+  }
+
   updateButtons();
   refreshLayout();
 }
 
-function loadGif(source = `${paths.gif}?t=${Date.now()}`, options = {}) {
+function isCompareActive() {
+  return modeSelect.value === "localPreview" && compareEnabled;
+}
+
+function openInfoPanel(tabName = "overview") {
+  document.querySelector("#infoPanel").classList.remove("isHidden");
+  workspace.classList.add("withInfoPanel");
+  const target = tabButtons.find((button) => button.dataset.tab === tabName) ?? tabButtons[0];
+  for (const item of tabButtons) item.classList.toggle("isActive", item === target);
+  for (const panel of document.querySelectorAll(".tabPanel")) panel.classList.add("isHidden");
+  document.querySelector(`#tab-${target.dataset.tab}`).classList.remove("isHidden");
+  refreshLayout();
+}
+
+function applyInfoPanelWidth(width) {
+  infoPanelWidth = Math.min(520, Math.max(320, Math.round(width)));
+  document.documentElement.style.setProperty("--info-panel-width", `${infoPanelWidth}px`);
+}
+
+function closeInfoPanel() {
+  document.querySelector("#infoPanel").classList.add("isHidden");
+  workspace.classList.remove("withInfoPanel");
+  refreshLayout();
+}
+
+function loadReference(fileOrSource, options = {}) {
   clearError();
-  setStatus(gifState.status, "loading");
-  gifState.emptyState.hidden = true;
-  gifState.preview.hidden = false;
-  gifState.preview.src = source;
-  gifState.preview.addEventListener("load", () => {
-    gifState.metrics = {
-      fileName: options.fileName ?? "preview.gif",
-      sourceWidth: gifState.preview.naturalWidth,
-      sourceHeight: gifState.preview.naturalHeight
+  clearReference();
+  const source = typeof fileOrSource === "string" ? fileOrSource : URL.createObjectURL(fileOrSource);
+  if (typeof fileOrSource !== "string") {
+    referenceState.objectUrl = source;
+  }
+
+  const fileName = options.fileName ?? (typeof fileOrSource === "string" ? "reference-video" : fileOrSource.name);
+  const fileSizeBytes = options.fileSizeBytes ?? (typeof fileOrSource === "string" ? undefined : fileOrSource.size);
+  const kind = options.kind ?? fileKind({ name: fileName });
+  referenceState.kind = kind;
+  setStatus(referenceState.status, "loading");
+  referenceState.emptyState.hidden = true;
+
+  if (kind === "gif") {
+    referenceState.image.hidden = false;
+    referenceState.video.hidden = true;
+    referenceState.image.src = source;
+    referenceState.image.addEventListener("load", () => {
+      referenceState.metrics = {
+        fileName,
+        fileSizeBytes,
+        sourceWidth: referenceState.image.naturalWidth,
+        sourceHeight: referenceState.image.naturalHeight
+      };
+      setStatus(referenceState.status, "loaded");
+      referenceState.panel.classList.add("hasMedia");
+      refreshLayout();
+    }, { once: true });
+    referenceState.image.addEventListener("error", () => {
+      setStatus(referenceState.status, "error");
+      showError(`参考 GIF 加载失败。/ Unable to load reference GIF: ${fileName}`);
+    }, { once: true });
+    return;
+  }
+
+  referenceState.video.hidden = false;
+  referenceState.image.hidden = true;
+  referenceState.video.src = source;
+  referenceState.video.addEventListener("loadedmetadata", () => {
+    referenceState.metrics = {
+      fileName,
+      fileSizeBytes,
+      sourceWidth: referenceState.video.videoWidth,
+      sourceHeight: referenceState.video.videoHeight,
+      durationSeconds: referenceState.video.duration
     };
+    setStatus(referenceState.status, "loaded");
+    referenceState.panel.classList.add("hasMedia");
     refreshLayout();
-    setStatus(gifState.status, "loaded");
   }, { once: true });
-  gifState.preview.addEventListener("error", () => {
-    setStatus(gifState.status, "error");
-    showError(`GIF 预览加载失败。/ Unable to load GIF preview: ${source}`);
+  referenceState.video.addEventListener("error", () => {
+    setStatus(referenceState.status, "error");
+    showError(`参考视频加载失败。/ Unable to load reference video: ${fileName}`);
   }, { once: true });
 }
 
-function clearGif() {
-  if (gifState.objectUrl) {
-    URL.revokeObjectURL(gifState.objectUrl);
-    gifState.objectUrl = undefined;
+function clearReference() {
+  if (referenceState.objectUrl) {
+    URL.revokeObjectURL(referenceState.objectUrl);
+    referenceState.objectUrl = undefined;
   }
-  gifState.preview.removeAttribute("src");
-  gifState.preview.hidden = true;
-  gifState.metrics = undefined;
-  gifState.frame.style.removeProperty("width");
-  gifState.frame.style.removeProperty("height");
-  gifState.info.innerHTML = "";
-  gifState.emptyState.hidden = false;
-  setStatus(gifState.status, "empty");
+  referenceState.video.pause();
+  referenceState.video.removeAttribute("src");
+  referenceState.video.load();
+  referenceState.video.hidden = true;
+  referenceState.image.removeAttribute("src");
+  referenceState.image.hidden = true;
+  referenceState.metrics = undefined;
+  referenceState.kind = undefined;
+  referenceState.panel.classList.remove("hasMedia");
+  referenceState.frame.style.removeProperty("width");
+  referenceState.frame.style.removeProperty("height");
+  referenceState.info.innerHTML = "";
+  referenceState.emptyState.hidden = false;
+  setStatus(referenceState.status, "empty");
 }
 
 function rebuildPlayer(slot) {
   slot.canvas.innerHTML = "";
   slot.player = new window.SVGA.Player(`#${slot.canvas.id}`);
-  slot.player.loops = 0;
+  slot.player.loops = slot.loop ? 0 : 1;
   slot.player.clearsAfterStop = false;
   slot.player.setContentMode("AspectFit");
 }
@@ -337,16 +530,236 @@ function replaySlot(slot, shouldShowError = true) {
   slot.player.clear();
   slot.player.setVideoItem(slot.videoItem);
   slot.player.startAnimation();
+  slot.renderStatus = "ready";
+  slot.isPlaying = true;
   setStatus(slot.status, "playing");
+  slot.panel.classList.add("hasMedia");
+  if (slot.slotName === "A") {
+    svgaFilePillA.hidden = false;
+    svgaFilePillA.textContent = slot.metrics?.fileName ?? "SVGA";
+    startLocalTicker(true);
+  } else {
+    startPlayerBTicker(true);
+  }
+  updatePlaybackButtons();
+}
+
+function pauseSlot(slot) {
+  if (slot.player?.pauseAnimation) {
+    slot.player.pauseAnimation();
+  }
+  slot.isPlaying = false;
+  if (slot.slotName === "A") {
+    stopLocalTicker();
+  } else {
+    stopPlayerBTicker();
+  }
+  updatePlaybackButtons();
+}
+
+function playSlot(slot) {
+  if (slot.player && slot.videoItem) {
+    slot.player.startAnimation();
+    slot.isPlaying = true;
+    setStatus(slot.status, "playing");
+    if (slot.slotName === "A") {
+      startLocalTicker(false);
+    } else {
+      startPlayerBTicker(false);
+    }
+  }
+  updatePlaybackButtons();
+}
+
+function toggleSlot(slot) {
+  if (!slot.videoItem) {
+    showError(`当前没有可播放的 SVGA。/ No SVGA loaded in player ${slot.slotName}.`);
+    return;
+  }
+  if (slot.isPlaying) {
+    pauseSlot(slot);
+  } else {
+    playSlot(slot);
+  }
+}
+
+function seekSlot(slot, percent, playAfter = false) {
+  if (!slot.player || !slot.videoItem || !slot.metrics?.frameCount || !slot.player.stepToFrame) {
+    return;
+  }
+  const frame = Math.max(0, Math.min(slot.metrics.frameCount - 1, Math.round((percent / 100) * (slot.metrics.frameCount - 1))));
+  slot.player.stepToFrame(frame, playAfter);
+}
+
+function syncPlay() {
+  clearError();
+  if (isCompareActive()) {
+    playSlot(players.a);
+    playSlot(players.b);
+  } else {
+    playSlot(players.a);
+    playReference();
+  }
+  startSyncTicker();
+}
+
+function syncPause() {
+  pauseSlot(players.a);
+  pauseSlot(players.b);
+  referenceState.video.pause();
+  stopSyncTicker();
 }
 
 function syncReplay() {
   clearError();
   replaySlot(players.a, false);
-  replaySlot(players.b, false);
-  if (!players.a.videoItem && !players.b.videoItem) {
-    showError("当前没有可同步播放的 SVGA。/ No SVGA files are loaded for sync replay.");
+  if (isCompareActive()) {
+    replaySlot(players.b, false);
+  } else {
+    replayReference();
   }
+  syncProgress.value = "0";
+  startSyncTicker();
+  if (!players.a.videoItem && !players.b.videoItem && !referenceState.metrics) {
+    showError("当前没有可同步播放的文件。/ No files are loaded for synchronized playback.");
+  }
+}
+
+function playReference() {
+  if (referenceState.kind === "video" || referenceState.kind === "mp4" || referenceState.kind === "webm") {
+    referenceState.video.play().catch(() => undefined);
+  }
+}
+
+function replayReference() {
+  if (referenceState.kind === "video" || referenceState.kind === "mp4" || referenceState.kind === "webm") {
+    referenceState.video.currentTime = 0;
+    referenceState.video.play().catch(() => undefined);
+  } else if (referenceState.kind === "gif" && referenceState.image.src) {
+    const src = referenceState.image.src;
+    referenceState.image.src = "";
+    referenceState.image.src = src;
+  }
+}
+
+function startSyncTicker() {
+  stopSyncTicker();
+  syncTimer = window.setInterval(() => {
+    const duration = getPrimaryDuration();
+    const current = isCompareActive()
+      ? (duration * Number(localProgress.value)) / 100
+      : (referenceState.video.duration ? referenceState.video.currentTime : 0);
+    const percent = duration ? Math.min(100, (current / duration) * 100) : Number(syncProgress.value);
+    syncProgress.value = String(percent);
+    updateSyncTime(percent);
+  }, 120);
+}
+
+function stopSyncTicker() {
+  if (syncTimer) {
+    window.clearInterval(syncTimer);
+    syncTimer = undefined;
+  }
+}
+
+function startLocalTicker(reset = false) {
+  stopLocalTicker();
+  if (reset) {
+    localPausedPercent = 0;
+    localProgress.value = "0";
+  }
+  const duration = getPrimaryDuration();
+  localStartedAt = performance.now() - ((Number(localProgress.value) / 100) * duration * 1000);
+  localTimer = window.setInterval(() => {
+    const nextPercent = duration ? (((performance.now() - localStartedAt) / 1000) / duration) * 100 : 0;
+    const normalized = duration ? nextPercent % 100 : 0;
+    localProgress.value = String(normalized);
+    updateLocalTime(normalized);
+  }, 120);
+  updateLocalTime(Number(localProgress.value));
+}
+
+function stopLocalTicker() {
+  if (localTimer) {
+    window.clearInterval(localTimer);
+    localTimer = undefined;
+  }
+  localPausedPercent = Number(localProgress.value);
+}
+
+function updateLocalTime(percent = Number(localProgress.value)) {
+  const duration = getPrimaryDuration();
+  updateRangeProgress(localProgress, percent);
+  localTime.textContent = `${formatClock((duration * percent) / 100)} / ${formatClock(duration)}`;
+}
+
+function startPlayerBTicker(reset = false) {
+  stopPlayerBTicker();
+  if (reset) {
+    playerBProgress.value = "0";
+  }
+  const duration = getSlotDuration(players.b);
+  playerBStartedAt = performance.now() - ((Number(playerBProgress.value) / 100) * duration * 1000);
+  playerBTimer = window.setInterval(() => {
+    const nextPercent = duration ? (((performance.now() - playerBStartedAt) / 1000) / duration) * 100 : 0;
+    const normalized = duration ? nextPercent % 100 : 0;
+    playerBProgress.value = String(normalized);
+    updatePlayerBTime(normalized);
+  }, 120);
+  updatePlayerBTime(Number(playerBProgress.value));
+}
+
+function stopPlayerBTicker() {
+  if (playerBTimer) {
+    window.clearInterval(playerBTimer);
+    playerBTimer = undefined;
+  }
+}
+
+function updatePlayerBTime(percent = Number(playerBProgress.value)) {
+  const duration = getSlotDuration(players.b);
+  updateRangeProgress(playerBProgress, percent);
+  playerBTime.textContent = `${formatClock((duration * percent) / 100)} / ${formatClock(duration)}`;
+}
+
+function startReferenceTicker() {
+  stopReferenceTicker();
+  referenceTimer = window.setInterval(() => {
+    const duration = referenceState.video.duration || referenceState.metrics?.durationSeconds || 0;
+    const percent = duration ? Math.min(100, (referenceState.video.currentTime / duration) * 100) : 0;
+    referenceProgress.value = String(percent);
+    updateRangeProgress(referenceProgress, percent);
+    referenceTime.textContent = `${formatClock(referenceState.video.currentTime)} / ${formatClock(duration)}`;
+  }, 120);
+}
+
+function stopReferenceTicker() {
+  if (referenceTimer) {
+    window.clearInterval(referenceTimer);
+    referenceTimer = undefined;
+  }
+}
+
+function getSlotDuration(slot) {
+  return slot.metrics?.durationSeconds
+    ?? (slot.metrics?.fps && slot.metrics?.frameCount ? slot.metrics.frameCount / slot.metrics.fps : 0)
+    ?? 0;
+}
+
+function getPrimaryDuration() {
+  const slotDuration = getSlotDuration(players.a);
+  return slotDuration || referenceState.metrics?.durationSeconds || 0;
+}
+
+function updateSyncTime(percent) {
+  const duration = getPrimaryDuration();
+  updateRangeProgress(syncProgress, percent);
+  syncTime.textContent = `${formatClock((duration * percent) / 100)} / ${formatClock(duration)}`;
+}
+
+function updateRangeProgress(input, percent = Number(input.value)) {
+  const safePercent = Math.max(0, Math.min(100, Number.isFinite(Number(percent)) ? Number(percent) : 0));
+  input.style.setProperty("--rangeProgress", `${safePercent}%`);
 }
 
 function extractSizeFromVideoItem(item) {
@@ -395,20 +808,66 @@ async function decodeSvgaInfo(source) {
   const width = widthField ? readFloat32(widthField.bytes, 0) : undefined;
   const height = heightField ? readFloat32(heightField.bytes, 0) : undefined;
 
+  const images = await Promise.all(movie
+    .filter((field) => field.number === 3 && field.wireType === 2)
+    .map(async (field, index) => {
+      const entry = parseMessage(field.bytes);
+      const keyField = entry.find((item) => item.number === 1 && item.wireType === 2);
+      const valueField = entry.find((item) => item.number === 2 && item.wireType === 2);
+      const key = keyField ? decodeUtf8(keyField.bytes) : `image_${index}`;
+      const byteSize = valueField?.bytes?.length ?? 0;
+      const previewUrl = valueField?.bytes ? URL.createObjectURL(new Blob([valueField.bytes], { type: "image/png" })) : undefined;
+      const size = valueField?.bytes ? await readImageDimensions(valueField.bytes) : {};
+      const warnings = buildImageWarnings({ ...size, byteSize });
+      return { key, name: key, byteSize, previewUrl, ...size, warnings, referenceCount: 0 };
+    }));
+
+  const imageByKey = new Map(images.map((image) => [image.key, image]));
+  const sprites = movie
+    .filter((field) => field.number === 4 && field.wireType === 2)
+    .map((field, index) => {
+      const sprite = parseMessage(field.bytes);
+      const imageKeyField = sprite.find((item) => item.number === 1 && item.wireType === 2);
+      const imageKey = imageKeyField ? decodeUtf8(imageKeyField.bytes) : `sprite_${index}`;
+      const frames = sprite.filter((item) => item.number === 2 && item.wireType === 2);
+      const image = imageByKey.get(imageKey);
+      if (image) image.referenceCount += 1;
+      return {
+        name: imageKey || `sprite_${index}`,
+        imageKey,
+        type: imageKey ? "image sprite" : "sprite",
+        frameCount: frames.length,
+        width: image?.width,
+        height: image?.height,
+        byteSize: image?.byteSize,
+        previewUrl: image?.previewUrl,
+        hasImage: Boolean(image),
+        warnings: image ? image.warnings : ["资源缺失 / missing resource"]
+      };
+    });
+
+  const pixelMemory = images.reduce((sum, image) => {
+    if (!image.width || !image.height) return sum;
+    return sum + image.width * image.height * 4;
+  }, 0);
+  const assetBytes = images.reduce((sum, image) => sum + image.byteSize, 0);
+
   return {
     sourceWidth: Number.isFinite(width) && width > 0 ? width : undefined,
     sourceHeight: Number.isFinite(height) && height > 0 ? height : undefined,
     fps: fpsField?.value,
     frameCount: framesField?.value,
-    imageCount: movie.filter((field) => field.number === 3 && field.wireType === 2).length,
-    spriteCount: movie.filter((field) => field.number === 4 && field.wireType === 2).length
+    imageCount: images.length,
+    spriteCount: sprites.length,
+    images,
+    sprites,
+    memoryBytes: pixelMemory + assetBytes
   };
 }
 
 function parseMessage(bytes) {
   const fields = [];
   let offset = 0;
-
   while (offset < bytes.length) {
     const tag = readVarint(bytes, offset);
     offset = tag.offset;
@@ -434,7 +893,6 @@ function parseMessage(bytes) {
       throw new Error(`不支持的 protobuf wire type。/ Unsupported protobuf wire type: ${wireType}`);
     }
   }
-
   return fields;
 }
 
@@ -442,7 +900,6 @@ function readVarint(bytes, offset) {
   let value = 0;
   let shift = 0;
   let cursor = offset;
-
   while (cursor < bytes.length) {
     const byte = bytes[cursor];
     value |= (byte & 0x7f) << shift;
@@ -452,7 +909,6 @@ function readVarint(bytes, offset) {
     }
     shift += 7;
   }
-
   throw new Error("protobuf varint 无效。/ Invalid protobuf varint.");
 }
 
@@ -460,22 +916,60 @@ function readFloat32(bytes, offset) {
   return new DataView(bytes.buffer, bytes.byteOffset + offset, 4).getFloat32(0, true);
 }
 
+function decodeUtf8(bytes) {
+  return new TextDecoder().decode(bytes);
+}
+
+function readImageDimensions(bytes) {
+  return new Promise((resolve) => {
+    const blob = new Blob([bytes]);
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({});
+    };
+    image.src = url;
+  });
+}
+
+function buildImageWarnings(image) {
+  const warnings = [];
+  if ((image.width ?? 0) > 1024 || (image.height ?? 0) > 1024) {
+    warnings.push("尺寸过大 / large dimensions");
+  }
+  if ((image.byteSize ?? 0) > 512 * 1024) {
+    warnings.push("体积过大 / large file");
+  }
+  if (image.width && image.height && image.byteSize > image.width * image.height * 3) {
+    warnings.push("疑似未压缩 / possibly uncompressed");
+  }
+  return warnings;
+}
+
 async function loadSvga(slotKey, source = paths.svga, options = {}) {
   ensureSvgaLibrary();
   const slot = players[slotKey];
   clearError();
-
-  if (!options.isDefault && compareModeSelect.value === "svgaGif" && slotKey === "a") {
-    clearGif();
-  }
-
   slot.source = source;
   slot.videoItem = undefined;
   slot.report = options.report;
+  slot.parseStatus = "loading";
+  slot.renderStatus = "loading";
   setStatus(slot.status, "loading");
   updateButtons();
+  renderInfoPanel();
+  addLog("info", `开始解析 SVGA：${options.fileName ?? source} / Parsing SVGA`);
 
-  const decodedInfoPromise = decodeSvgaInfo(source).catch(() => undefined);
+  const decodedInfoPromise = decodeSvgaInfo(source).catch((error) => {
+    slot.parseStatus = "error";
+    addLog("error", `SVGA 元数据解析失败 / Metadata parse failed: ${error.message}`);
+    return undefined;
+  });
   const parser = new window.SVGA.Parser(`#${slot.canvas.id}`);
 
   parser.load(
@@ -485,6 +979,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       const playerSize = extractSizeFromVideoItem(loadedVideoItem);
       const reportMetrics = extractReportMetrics(slot.report);
       slot.videoItem = loadedVideoItem;
+      slot.parseStatus = decodedInfo ? "success" : "warning";
       slot.metrics = {
         ...decodedInfo,
         ...playerSize,
@@ -494,6 +989,8 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
         sourceWidth: playerSize?.sourceWidth ?? decodedInfo?.sourceWidth,
         sourceHeight: playerSize?.sourceHeight ?? decodedInfo?.sourceHeight
       };
+      slot.metrics.durationSeconds = slot.metrics.durationSeconds
+        ?? (slot.metrics.fps && slot.metrics.frameCount ? slot.metrics.frameCount / slot.metrics.fps : undefined);
 
       if (!slot.metrics.sourceWidth || !slot.metrics.sourceHeight) {
         setStatus(slot.status, "loaded");
@@ -505,12 +1002,16 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       replaySlot(slot, false);
       refreshLayout();
       updateButtons();
+      addLog("success", `SVGA 加载完成：${slot.metrics.fileName} / SVGA loaded`);
     },
     (error) => {
       setStatus(slot.status, "error");
       slot.videoItem = undefined;
+      slot.parseStatus = "error";
+      slot.renderStatus = "error";
       showError(`SVGA 文件加载失败。/ Unable to load SVGA file: ${error?.message ?? error}`);
       updateButtons();
+      renderInfoPanel();
     }
   );
 }
@@ -521,6 +1022,7 @@ function handleSvgaFile(file, slotKey) {
     URL.revokeObjectURL(slot.objectUrl);
   }
   slot.objectUrl = URL.createObjectURL(file);
+  addLog("info", "本地文件模式下浏览器不能自动读取同目录 report.json。/ Browser cannot auto-read sibling report.json for local files.");
   loadSvga(slotKey, slot.objectUrl, {
     fileName: file.name,
     fileSizeBytes: file.size,
@@ -528,54 +1030,47 @@ function handleSvgaFile(file, slotKey) {
   });
 }
 
-function handleGifFile(file) {
-  if (gifState.objectUrl) {
-    URL.revokeObjectURL(gifState.objectUrl);
-  }
-  gifState.objectUrl = URL.createObjectURL(file);
-  loadGif(gifState.objectUrl, { fileName: file.name });
-}
-
 function handleDroppedFile(file, acceptedKind, slotKey = "a") {
   clearError();
   const kind = fileKind(file);
   if (!kind) {
-    showError(`文件类型不支持：${file.name}。/ Unsupported file type. Please drop a .svga file or .gif file.`);
+    showError(`文件类型不支持：${file.name}。/ Unsupported file type.`);
     return;
   }
-  if (acceptedKind !== "auto" && kind !== acceptedKind) {
-    showError(kind === "svga"
-      ? "文件类型不匹配，请把 .svga 文件拖入 SVGA 播放器面板。/ .svga files can only be dropped on an SVGA Player panel."
-      : "文件类型不匹配，请把 .gif 文件拖入 GIF 预览面板。/ .gif files can only be dropped on the GIF Preview panel.");
+  if (acceptedKind !== "auto" && acceptedKind !== kind && !(acceptedKind === "reference" && ["mp4", "webm", "gif"].includes(kind))) {
+    const message = acceptedKind === "svga"
+      ? "文件类型不支持，请拖入 .svga 文件。/ Unsupported file type. Please drop a .svga file."
+      : "文件类型不支持，请拖入 .mp4、.webm 或 .gif 文件。/ Unsupported file type. Please drop a video or GIF.";
+    showError(message);
     return;
   }
 
   if (kind === "svga") {
-    handleSvgaFile(file, acceptedKind === "auto" ? getAutoSvgaSlot() : slotKey);
-  } else {
-    if (compareModeSelect.value === "svgaAB") {
-      showError("当前是 SVGA A/B 模式，不显示 GIF 预览。/ GIF preview is hidden in SVGA A/B mode.");
-      return;
-    }
-    handleGifFile(file);
+    const targetSlot = acceptedKind === "auto" ? getAutoSvgaSlot() : slotKey;
+    handleSvgaFile(file, targetSlot);
+    return;
   }
+
+  if (modeSelect.value !== "exportReview") {
+    showError("参考视频只在导出验收模式显示。/ Reference video is only shown in Export Review Mode.");
+    return;
+  }
+  loadReference(file, { fileName: file.name, fileSizeBytes: file.size, kind });
 }
 
 function getAutoSvgaSlot() {
-  if (compareModeSelect.value !== "svgaAB") {
-    return "a";
+  if (isCompareActive()) {
+    return players.a.videoItem && !players.b.videoItem ? "b" : "a";
   }
-  return players.a.videoItem && !players.b.videoItem ? "b" : "a";
+  return "a";
 }
 
 function fileKind(file) {
   const name = file.name.toLowerCase();
-  if (name.endsWith(".svga")) {
-    return "svga";
-  }
-  if (name.endsWith(".gif")) {
-    return "gif";
-  }
+  if (name.endsWith(".svga")) return "svga";
+  if (name.endsWith(".mp4")) return "mp4";
+  if (name.endsWith(".webm")) return "webm";
+  if (name.endsWith(".gif")) return "gif";
   return undefined;
 }
 
@@ -584,29 +1079,414 @@ function setupDropZone(element, acceptedKind, slotKey) {
     event.preventDefault();
     element.classList.add("isDragOver");
   });
-
   element.addEventListener("dragleave", (event) => {
     if (!element.contains(event.relatedTarget)) {
       element.classList.remove("isDragOver");
     }
   });
-
   element.addEventListener("drop", (event) => {
     event.preventDefault();
     element.classList.remove("isDragOver");
     const file = event.dataTransfer?.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
     handleDroppedFile(file, acceptedKind, slotKey);
   });
 }
 
-function formatBytes(value) {
-  if (!Number.isFinite(Number(value))) {
-    return value ?? "n/a";
+function renderInfoPanel() {
+  const metrics = players.a.metrics;
+  setStatus(infoStatus, players.a.parseStatus === "success" ? "ready" : players.a.parseStatus === "error" ? "error" : players.a.parseStatus === "empty" ? "empty" : "loading");
+  document.querySelector("#tab-overview").innerHTML = renderOverview(metrics, players.a);
+  document.querySelector("#tab-assets").innerHTML = renderAssets(metrics);
+}
+
+function renderOverview(metrics, slot) {
+  if (!metrics) {
+    return `<div class="emptyPanel">暂无文件信息。选择或拖入 SVGA 文件后查看详情。/ No SVGA loaded.</div>`;
   }
-  return `${Number(value)} B`;
+  const rows = [
+    ["文件名", "fileName", metrics.fileName, "mono"],
+    ["文件体积", "fileSizeBytes", formatBytes(metrics.fileSizeBytes)],
+    ["内存占用", "memoryUsage", formatBytes(metrics.memoryBytes)],
+    ["画布尺寸", "canvasSize", formatSize(metrics.sourceWidth, metrics.sourceHeight), "mono"],
+    ["播放时长", "duration", formatDuration(metrics)],
+    ["帧率", "fps", metrics.fps ? `${metrics.fps} fps` : "n/a", "mono"],
+    ["图层数量", "spriteCount", metrics.spriteCount ? `${metrics.spriteCount} 个` : "n/a"],
+    ["图片资源", "imageCount", metrics.imageCount ? `${metrics.imageCount} 个` : "n/a"]
+  ];
+  const statusRows = [
+    ["解析状态", "parseStatus", slot.parseStatus],
+    ["渲染状态", "renderStatus", slot.renderStatus]
+  ];
+  return `
+    <dl class="overviewGrid">
+      ${rows.map(([label, key, value, tone]) => `
+        <div class="overviewRow">
+          <dt><span>${escapeHtml(label)}</span><small>${escapeHtml(key)}</small></dt>
+          <dd class="${tone === "mono" ? "monoValue" : ""}">${escapeHtml(value ?? "n/a")}</dd>
+        </div>
+      `).join("")}
+      <div class="overviewStatusBlock">
+        ${statusRows.map(([label, key, value]) => `
+          <div class="overviewStatusRow">
+            <dt><span>${escapeHtml(label)}</span><small>${escapeHtml(key)}</small></dt>
+            ${renderStatusBadge(value)}
+          </div>
+        `).join("")}
+      </div>
+    </dl>
+  `;
+}
+
+function renderStatusBadge(value) {
+  const normalized = value === "success" || value === "ready" || value === "playing"
+    ? "ready"
+    : value === "error"
+      ? "error"
+      : value === "warning" || value === "loading"
+        ? "warning"
+        : "neutral";
+  const label = normalized === "ready"
+    ? "就绪"
+    : normalized === "error"
+      ? "错误"
+      : normalized === "warning"
+        ? "警告"
+        : "空";
+  return `<dd class="statusBadge status-${normalized}"><span aria-hidden="true"></span>${label}</dd>`;
+}
+
+function renderAssets(metrics) {
+  const filterBar = `
+    <div class="assetFilters">
+      ${[
+        ["all", "全部"],
+        ["sprite", "Sprite"],
+        ["image", "图片"],
+        ["sequence", "序列帧"],
+        ["warning", "异常"]
+      ].map(([value, label]) => `<button type="button" class="${assetFilter === value ? "isActive" : ""}" data-asset-filter="${value}">${label}</button>`).join("")}
+    </div>
+  `;
+  if (!metrics?.sprites?.length && !metrics?.images?.length) {
+    return `${filterBar}<div class="emptyPanel">暂无资源信息 / No asset data</div>`;
+  }
+  const assets = buildAssetEntries(metrics);
+  const filtered = assets.filter((asset) => {
+    if (assetFilter === "all") return true;
+    if (assetFilter === "warning") return asset.warnings?.length;
+    return asset.kind === assetFilter;
+  });
+  return `
+    ${filterBar}
+    <div class="assetUnifiedList">
+      ${filtered.length ? filtered.map(renderAssetEntry).join("") : `<div class="emptyPanel">当前筛选没有资源 / No assets match this filter</div>`}
+    </div>
+  `;
+}
+
+function buildAssetEntries(metrics) {
+  const images = metrics.images ?? [];
+  const sprites = metrics.sprites ?? [];
+  const imageByKey = new Map(images.map((image) => [image.key, image]));
+  const sequenceGroups = buildSequenceGroups(images);
+  const groupedImageKeys = new Set(sequenceGroups.flatMap((group) => group.items.map((item) => item.key)));
+  const spriteEntries = sprites.map((sprite, index) => ({
+    kind: "sprite",
+    key: `sprite:${sprite.name || index}`,
+    name: sprite.name || `sprite_${index}`,
+    imageKey: sprite.imageKey,
+    typeLabel: "Sprite",
+    width: sprite.width,
+    height: sprite.height,
+    byteSize: sprite.byteSize,
+    referenceCount: sprite.imageKey ? imageByKey.get(sprite.imageKey)?.referenceCount ?? 1 : 0,
+    previewUrl: sprite.previewUrl,
+    warnings: sprite.warnings ?? [],
+    fullKey: sprite.imageKey || sprite.name || `sprite_${index}`
+  }));
+  const imageEntries = images
+    .filter((image) => !groupedImageKeys.has(image.key))
+    .map((image) => ({
+      kind: "image",
+      key: `image:${image.key}`,
+      name: image.name ?? image.key,
+      imageKey: image.key,
+      typeLabel: "图片",
+      width: image.width,
+      height: image.height,
+      byteSize: image.byteSize,
+      referenceCount: image.referenceCount ?? 0,
+      previewUrl: image.previewUrl,
+      warnings: image.warnings ?? [],
+      fullKey: image.key
+    }));
+  const sequenceEntries = sequenceGroups.map((group) => ({
+    kind: "sequence",
+    key: `sequence:${group.prefix}`,
+    name: group.prefix,
+    imageKey: group.keyRange,
+    typeLabel: "Sequence",
+    width: group.width,
+    height: group.height,
+    byteSize: group.byteSize,
+    referenceCount: group.items.reduce((sum, item) => sum + (item.referenceCount ?? 0), 0),
+    previewUrl: group.items[0]?.previewUrl,
+    previewItems: group.items.slice(0, 4),
+    warnings: group.warnings,
+    fullKey: group.keyRange,
+    frameCount: group.items.length,
+    items: group.items
+  }));
+  return [...spriteEntries, ...sequenceEntries, ...imageEntries];
+}
+
+function buildSequenceGroups(images = []) {
+  const buckets = new Map();
+  for (const image of images) {
+    const match = String(image.key).match(/^(.*?)(\d+)(\.[^.]+)?$/);
+    if (!match) continue;
+    const prefix = match[1];
+    const number = Number(match[2]);
+    const bucketKey = `${prefix}|${Math.round(image.width ?? 0)}x${Math.round(image.height ?? 0)}`;
+    if (!buckets.has(bucketKey)) buckets.set(bucketKey, { prefix, width: image.width, height: image.height, items: [] });
+    buckets.get(bucketKey).items.push({ ...image, sequenceNumber: number });
+  }
+  return [...buckets.values()]
+    .map((bucket) => ({
+      ...bucket,
+      items: bucket.items.sort((a, b) => a.sequenceNumber - b.sequenceNumber)
+    }))
+    .filter((bucket) => {
+      if (bucket.items.length < 3) return false;
+      for (let index = 1; index < bucket.items.length; index += 1) {
+        if (bucket.items[index].sequenceNumber !== bucket.items[index - 1].sequenceNumber + 1) return false;
+      }
+      return true;
+    })
+    .map((bucket) => {
+      const byteSize = bucket.items.reduce((sum, item) => sum + (item.byteSize ?? 0), 0);
+      const warnings = [...new Set(bucket.items.flatMap((item) => item.warnings ?? []))];
+      const first = bucket.items[0]?.key ?? bucket.prefix;
+      const last = bucket.items.at(-1)?.key ?? bucket.prefix;
+      return { ...bucket, byteSize, warnings, keyRange: `${first} ... ${last}` };
+    });
+}
+
+function renderAssetEntry(asset) {
+  const isSelected = selectedAssetKey === asset.key;
+  const warningHtml = asset.warnings?.length
+    ? `<div class="assetWarningTags">${asset.warnings.map((warning) => `<span>${escapeHtml(shortWarningLabel(warning))}</span>`).join("")}</div>`
+    : "";
+  const sequenceExpanded = asset.kind === "sequence" && expandedSequenceGroups.has(asset.key);
+  return `
+    <article class="assetUnifiedRow ${asset.warnings?.length ? "hasWarning" : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}">
+      <button class="assetUnifiedThumb checkerboard ${asset.kind === "sequence" ? "isSequence" : ""}" type="button" data-preview-image-key="${escapeHtml(asset.items?.[0]?.key ?? asset.imageKey ?? "")}" ${asset.previewUrl ? "" : "disabled"}>
+        ${asset.kind === "sequence"
+          ? (asset.previewItems ?? []).map((item) => item.previewUrl ? `<img src="${escapeHtml(item.previewUrl)}" alt="">` : `<span></span>`).join("")
+          : (asset.previewUrl ? `<img src="${escapeHtml(asset.previewUrl)}" alt="">` : `<span></span>`)}
+      </button>
+      <div class="assetUnifiedMain">
+        <div class="assetPrimaryLine">
+          <strong title="${escapeHtml(asset.name)}">${escapeHtml(asset.name)}</strong>
+          <span class="assetTypeTag ${asset.kind}">${escapeHtml(asset.typeLabel)}</span>
+        </div>
+        <div class="assetSecondaryLine">
+          <span title="${escapeHtml(asset.imageKey ?? "n/a")}">${escapeHtml(asset.imageKey ?? "n/a")}</span>
+          <span>${escapeHtml(formatSize(asset.width, asset.height))}</span>
+          <span>${escapeHtml(formatBytes(asset.byteSize))}</span>
+          <span>引用×${escapeHtml(asset.referenceCount ?? 0)}</span>
+          ${asset.frameCount ? `<span>${escapeHtml(asset.frameCount)} 帧</span>` : ""}
+        </div>
+        <div class="assetFullKey" title="${escapeHtml(asset.fullKey ?? "")}">${escapeHtml(asset.fullKey ?? "")}</div>
+        ${warningHtml}
+        ${asset.kind === "sequence" ? `<button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧 / Collapse" : "展开序列帧 / Expand frames"}</button>` : ""}
+      </div>
+    </article>
+    ${sequenceExpanded ? `<div class="sequenceChildren">${asset.items.map((item) => renderAssetEntry({
+      kind: "image",
+      key: `sequence-child:${item.key}`,
+      name: item.name ?? item.key,
+      imageKey: item.key,
+      typeLabel: "图片",
+      width: item.width,
+      height: item.height,
+      byteSize: item.byteSize,
+      referenceCount: item.referenceCount ?? 0,
+      previewUrl: item.previewUrl,
+      warnings: item.warnings ?? [],
+      fullKey: item.key
+    })).join("")}</div>` : ""}
+  `;
+}
+
+function renderLayerList(sprites = []) {
+  if (!sprites.length) {
+    return `<div class="emptyPanel">暂无图层信息 / No layer data</div>`;
+  }
+  return `<div class="layerList">${sprites.map((sprite, index) => `
+    <article class="layerRow ${sprite.warnings?.length ? "hasWarning" : ""} ${selectedLayerKey === sprite.name ? "isSelected" : ""}" data-layer-key="${escapeHtml(sprite.name)}" title="${escapeHtml(sprite.name || `sprite_${index}`)}">
+      <button class="layerTypeIcon ${sprite.previewUrl ? "hasPreview" : ""}" type="button" data-preview-image-key="${escapeHtml(sprite.imageKey ?? "")}" ${sprite.previewUrl ? "" : "disabled"} aria-label="查看图层资源 / View layer asset">
+        ${sprite.previewUrl ? `<img src="${escapeHtml(sprite.previewUrl)}" alt="">` : `<span></span>`}
+      </button>
+      <div class="layerMain">
+        <strong>${escapeHtml(sprite.name || `sprite_${index}`)}</strong>
+        <small>${escapeHtml(sprite.imageKey ?? sprite.type ?? "sprite")}</small>
+      </div>
+      <span class="layerSize">${escapeHtml(formatSize(sprite.width, sprite.height))}</span>
+      <span class="layerBytes">${escapeHtml(formatBytes(sprite.byteSize))}</span>
+      ${sprite.warnings?.length ? `<span class="layerWarning" title="${escapeHtml(sprite.warnings.join(", "))}">!</span>` : ""}
+    </article>
+  `).join("")}</div>`;
+}
+
+function renderImageList(images = []) {
+  if (!images.length) {
+    return `<div class="emptyPanel">暂无图片资源信息 / No image resource data</div>`;
+  }
+  return `<div class="imageList">${images.map((image) => `
+    <article class="imageRow ${image.warnings?.length ? "hasWarning" : ""} ${selectedImageKey === image.key ? "isSelected" : ""}" data-image-key="${escapeHtml(image.key)}" title="${escapeHtml(image.key)}">
+      <div class="imageRowTop">
+        <button class="imageThumb checkerboard" type="button" data-preview-image-key="${escapeHtml(image.key)}" aria-label="查看图片资源 / View image asset">
+          ${image.previewUrl ? `<img src="${escapeHtml(image.previewUrl)}" alt="">` : `<span></span>`}
+        </button>
+        <strong>${escapeHtml(image.name ?? image.key)}</strong>
+      </div>
+      <div class="imageRowMeta">
+        <span>${escapeHtml(formatSize(image.width, image.height))}</span>
+        <span class="${image.warnings?.some((warning) => warning.includes("体积")) ? "warningText" : ""}">${escapeHtml(formatBytes(image.byteSize))}</span>
+        <span>引用×${escapeHtml(image.referenceCount ?? 0)}</span>
+      </div>
+      ${image.warnings?.length ? `<div class="imageWarningTags">${image.warnings.map((warning) => `<span>${escapeHtml(shortWarningLabel(warning))}</span>`).join("")}</div>` : ""}
+    </article>
+  `).join("")}</div>`;
+}
+
+function shortWarningLabel(warning) {
+  if (warning.includes("体积")) return "图片体积偏大";
+  if (warning.includes("未压缩")) return "疑似未压缩";
+  if (warning.includes("尺寸")) return "图片尺寸偏大";
+  return warning.split(" / ")[0] || warning;
+}
+
+function renderLogs() {
+  const logs = appLogs.length
+    ? appLogs.slice(-8).reverse()
+    : [{ level: "info", message: "暂无日志 / No logs", time: "--:--:--" }];
+  return `
+    <div class="miniLogs">
+      ${logs.map((log) => `
+        <div class="miniLogRow ${escapeHtml(log.level)}">
+          <time>${escapeHtml(log.time)}</time>
+          <p><strong>${escapeHtml(logLevelLabel(log.level))}</strong>${escapeHtml(log.message)}</p>
+        </div>
+      `).join("")}
+      <div class="miniLogAction">
+        <button type="button" id="openFullLogsButton">打开完整日志 / Open Full Logs</button>
+      </div>
+    </div>
+  `;
+}
+
+function logLevelLabel(level) {
+  if (level === "success") return "SUCC";
+  if (level === "error") return "ERR";
+  if (level === "warning" || level === "warn") return "WARN";
+  return "INFO";
+}
+
+function renderSyncBar() {
+  if (modeSelect.value === "localPreview" && !compareEnabled) return;
+  const right = isCompareActive() ? players.b.metrics : referenceState.metrics;
+  syncLeftInfo.innerHTML = renderSyncFile(modeSelect.value === "exportReview" ? "SVGA" : "SVGA A", players.a.metrics, "svga");
+  syncRightInfo.innerHTML = renderSyncFile(isCompareActive() ? "SVGA B" : getReferenceSyncLabel(), right, isCompareActive() ? "svga" : "reference");
+  syncWarnings.innerHTML = renderSyncWarnings(players.a.metrics, right);
+  updateSyncTime(Number(syncProgress.value));
+}
+
+function renderSyncFile(label, metrics, tone = "svga") {
+  if (!metrics) {
+    return `<strong class="syncFileBadge ${tone === "reference" ? "isReference" : ""}">${label}</strong><span>暂未加载 / Not loaded</span>`;
+  }
+  const meta = [
+    formatSize(metrics.sourceWidth, metrics.sourceHeight),
+    formatBytes(metrics.fileSizeBytes),
+    formatDuration(metrics)
+  ].filter((item) => item && item !== "n/a").join(" · ");
+  return `
+    <strong class="syncFileBadge ${tone === "reference" ? "isReference" : ""}">${escapeHtml(label)}</strong>
+    <span title="${escapeHtml(metrics.fileName ?? "n/a")}">${escapeHtml(metrics.fileName ?? "n/a")}</span>
+    <small>${escapeHtml(meta || "n/a")}</small>
+  `;
+}
+
+function getReferenceSyncLabel() {
+  if (referenceState.kind === "gif") return "GIF";
+  if (referenceState.kind === "webm") return "WEBM";
+  return "MP4";
+}
+
+function renderSyncWarnings(left, right) {
+  if (!left || !right) return "";
+  const warnings = [];
+  const leftDuration = Number(left.durationSeconds ?? 0);
+  const rightDuration = Number(right.durationSeconds ?? 0);
+  if (leftDuration && rightDuration && Math.abs(leftDuration - rightDuration) > 0.05) {
+    const delta = rightDuration - leftDuration;
+    warnings.push({
+      title: `时长差异 ${delta >= 0 ? "+" : ""}${delta.toFixed(2)}s`,
+      subtitle: "Duration mismatch"
+    });
+  }
+  if (left.sourceWidth && left.sourceHeight && right.sourceWidth && right.sourceHeight) {
+    const sameSize = Math.round(left.sourceWidth) === Math.round(right.sourceWidth)
+      && Math.round(left.sourceHeight) === Math.round(right.sourceHeight);
+    if (!sameSize) {
+      warnings.push({
+        title: "尺寸存在差异",
+        subtitle: "Size mismatch"
+      });
+    }
+  }
+  if (!warnings.length && isCompareActive()) {
+    return `
+      <span class="syncMatchedStatus">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+        <span>规格一致 / Specs matched</span>
+      </span>
+    `;
+  }
+  return warnings.map((warning) => `
+    <span class="syncWarningPill">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5" /><path d="M12 17h.01" /><path d="M10.3 4.5 2.8 17.5A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.5L13.7 4.5a2 2 0 0 0-3.4 0Z" /></svg>
+      <span><strong>${escapeHtml(warning.title)}</strong><small>${escapeHtml(warning.subtitle)}</small></span>
+    </span>
+  `).join("");
+}
+
+function formatBytes(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return value ?? "n/a";
+  if (number < 1024) return `${number} B`;
+  if (number < 1024 * 1024) return `${(number / 1024).toFixed(1)} KB`;
+  return `${(number / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function formatSize(width, height) {
+  if (!Number.isFinite(Number(width)) || !Number.isFinite(Number(height))) return "n/a";
+  return `${Math.round(Number(width))} x ${Math.round(Number(height))}`;
+}
+
+function formatDuration(metrics) {
+  const duration = metrics?.durationSeconds ?? (metrics?.fps && metrics?.frameCount ? metrics.frameCount / metrics.fps : undefined);
+  return Number.isFinite(Number(duration)) ? `${Number(duration).toFixed(2)}s` : "n/a";
+}
+
+function formatClock(seconds) {
+  const safe = Number.isFinite(Number(seconds)) ? Number(seconds) : 0;
+  const minutes = Math.floor(safe / 60);
+  const secs = Math.floor(safe % 60);
+  return `${minutes}:${String(secs).padStart(2, "0")}`;
 }
 
 function escapeHtml(value) {
@@ -618,24 +1498,227 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-replayButton.addEventListener("click", () => {
+function updatePlaybackButtons() {
+  localPlayPauseButton.innerHTML = players.a.isPlaying
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
+  playerBPlayPauseButton.innerHTML = players.b.isPlaying
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
+  localPlayPauseButton.disabled = !players.a.videoItem;
+  localReplayButton.disabled = !players.a.videoItem;
+  playerBPlayPauseButton.disabled = !players.b.videoItem;
+  playerBReplayButton.disabled = !players.b.videoItem;
+  referencePlayPauseButton.disabled = !referenceState.metrics;
+  referenceReplayButton.disabled = !referenceState.metrics;
+}
+
+function getImageByKey(imageKey) {
+  return players.a.metrics?.images?.find((image) => image.key === imageKey)
+    ?? players.b.metrics?.images?.find((image) => image.key === imageKey);
+}
+
+function openAssetPreview(imageKey) {
+  const image = getImageByKey(imageKey);
+  if (!image?.previewUrl) return;
+  previewImageKey = image.key;
+  assetPreviewTitle.textContent = image.name ?? image.key;
+  assetPreviewMeta.textContent = `imageKey: ${image.key}`;
+  assetPreviewImage.src = image.previewUrl;
+  assetPreviewDetails.textContent = `${formatSize(image.width, image.height)} · ${formatBytes(image.byteSize)}`;
+  assetPreviewModal.hidden = false;
+}
+
+function closeAssetPreview() {
+  assetPreviewModal.hidden = true;
+  assetPreviewImage.removeAttribute("src");
+}
+
+function setThemePreference(value) {
+  localStorage.setItem("autoSvgaTheme", value);
+  applyThemePreference(value);
+}
+
+function applyThemePreference(value = localStorage.getItem("autoSvgaTheme") ?? "system") {
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  effectiveTheme = value === "system" ? (prefersDark ? "dark" : "light") : value;
+  document.documentElement.dataset.theme = effectiveTheme;
+  for (const input of document.querySelectorAll('input[name="theme"]')) {
+    input.checked = input.value === value;
+  }
+}
+
+function setPreviewBackground(value) {
+  localStorage.setItem("autoSvgaPreviewBackground", value);
+  document.documentElement.dataset.previewBackground = value;
+  for (const input of document.querySelectorAll('input[name="previewBackground"]')) {
+    input.checked = input.value === value;
+  }
+}
+
+function openSettings() {
+  settingsModal.hidden = false;
+}
+
+function closeSettings() {
+  settingsModal.hidden = true;
+}
+
+function openFullLogs() {
+  const logs = appLogs.length
+    ? appLogs
+    : [{ level: "info", message: "暂无日志 / No logs", time: "--:--:--" }];
+  fullLogsSubtitle.textContent = `Runtime Logs · ${appLogs.length} entries`;
+  fullLogsContent.innerHTML = logs.map(renderFullLogRow).join("");
+  fullLogsModal.hidden = false;
+}
+
+function closeFullLogs() {
+  fullLogsModal.hidden = true;
+}
+
+function renderFullLogRow(log) {
+  return `
+    <div class="fullLogRow ${escapeHtml(log.level)}">
+      <time>${escapeHtml(log.time)}</time>
+      <strong>${escapeHtml(logLevelLabel(log.level))}</strong>
+      <span>${escapeHtml(log.message)}</span>
+    </div>
+  `;
+}
+
+function serializeLogs() {
+  return appLogs.length
+    ? appLogs.map((log) => `${log.time} ${logLevelLabel(log.level)} ${log.message}`).join("\n")
+    : "暂无日志 / No logs";
+}
+
+localPlayPauseButton.addEventListener("click", () => {
+  clearError();
+  toggleSlot(players.a);
+});
+localReplayButton.addEventListener("click", () => {
   clearError();
   replaySlot(players.a);
 });
-
-syncReplayButton.addEventListener("click", syncReplay);
-
-compareModeSelect.addEventListener("change", setCompareMode);
-
-fitModeSelect.addEventListener("change", () => {
+localLoopToggle.addEventListener("change", () => {
+  players.a.loop = localLoopToggle.checked;
+  if (players.a.player) players.a.player.loops = players.a.loop ? 0 : 1;
+});
+localFitButton.addEventListener("click", () => {
+  fitModeA.value = "contain";
   refreshLayout();
-  for (const slot of Object.values(players)) {
-    if (slot.videoItem) {
+  if (players.a.videoItem) {
+    rebuildPlayer(players.a);
+    replaySlot(players.a, false);
+  }
+});
+compareToggle.addEventListener("change", () => {
+  compareEnabled = compareToggle.checked;
+  if (compareEnabled) {
+    addLog("info", "已开启对比，可拖入第二个 SVGA。/ Compare enabled; drop a second SVGA.");
+  }
+  setAppMode("localPreview");
+});
+infoPanelButton.addEventListener("click", () => {
+  const panel = document.querySelector("#infoPanel");
+  if (panel.classList.contains("isHidden")) {
+    openInfoPanel("overview");
+  } else {
+    closeInfoPanel();
+  }
+});
+logsButton.addEventListener("click", () => openFullLogs());
+settingsButton.addEventListener("click", () => {
+  openSettings();
+});
+themeToggleButton.addEventListener("click", () => {
+  const current = localStorage.getItem("autoSvgaTheme") ?? "system";
+  const next = current === "system" ? "light" : current === "light" ? "dark" : "system";
+  setThemePreference(next);
+});
+syncPlayControl.addEventListener("click", syncPlay);
+syncPauseControl.addEventListener("click", syncPause);
+syncReplayControl.addEventListener("click", syncReplay);
+primaryEmptyFileButton.addEventListener("click", () => svgaFileInput.click());
+secondaryEmptyFileButton.addEventListener("click", () => secondaryFileInput.click());
+referenceEmptyFileButton.addEventListener("click", () => referenceFileInput.click());
+modeSelect.addEventListener("change", () => setAppMode(modeSelect.value));
+
+playerBPlayPauseButton.addEventListener("click", () => toggleSlot(players.b));
+playerBReplayButton.addEventListener("click", () => replaySlot(players.b));
+playerBLoopToggle.addEventListener("change", () => {
+  players.b.loop = playerBLoopToggle.checked;
+  if (players.b.player) players.b.player.loops = players.b.loop ? 0 : 1;
+});
+playerBProgress.addEventListener("input", () => {
+  const percent = Number(playerBProgress.value);
+  seekSlot(players.b, percent);
+  updatePlayerBTime(percent);
+});
+referencePlayPauseButton.addEventListener("click", () => {
+  if (!referenceState.metrics) {
+    showError("当前没有可播放的参考视频。/ No reference media loaded.");
+    return;
+  }
+  if (referenceState.kind === "gif") {
+    replayReference();
+    return;
+  }
+  if (referenceState.video.paused) {
+    referenceState.video.play().catch(() => undefined);
+    startReferenceTicker();
+  } else {
+    referenceState.video.pause();
+    stopReferenceTicker();
+  }
+});
+referenceReplayButton.addEventListener("click", () => {
+  replayReference();
+  startReferenceTicker();
+});
+referenceLoopToggle.addEventListener("change", () => {
+  referenceState.video.loop = referenceLoopToggle.checked;
+});
+referenceProgress.addEventListener("input", () => {
+  const duration = referenceState.video.duration || 0;
+  if (duration) {
+    referenceState.video.currentTime = (duration * Number(referenceProgress.value)) / 100;
+  }
+  updateRangeProgress(referenceProgress, Number(referenceProgress.value));
+  referenceTime.textContent = `${formatClock(referenceState.video.currentTime || 0)} / ${formatClock(duration)}`;
+});
+
+syncProgress.addEventListener("input", () => {
+  const percent = Number(syncProgress.value);
+  seekSlot(players.a, percent);
+  if (isCompareActive()) {
+    seekSlot(players.b, percent);
+  } else if (referenceState.video.duration) {
+    referenceState.video.currentTime = (referenceState.video.duration * percent) / 100;
+  }
+  updateSyncTime(percent);
+});
+
+localProgress.addEventListener("input", () => {
+  const percent = Number(localProgress.value);
+  seekSlot(players.a, percent);
+  updateLocalTime(percent);
+  localPausedPercent = percent;
+});
+
+for (const select of [fitModeA, fitModeB, fitModeReference]) {
+  select.addEventListener("change", () => {
+    refreshLayout();
+    const slotKey = select.dataset.fitSlot;
+    if (slotKey === "reference") return;
+    const slot = players[slotKey];
+    if (slot?.videoItem) {
       rebuildPlayer(slot);
       replaySlot(slot, false);
     }
-  }
-});
+  });
+}
 
 window.addEventListener("resize", () => {
   refreshLayout();
@@ -649,33 +1732,139 @@ window.addEventListener("resize", () => {
 
 svgaFileInput.addEventListener("change", () => {
   const file = svgaFileInput.files?.[0];
-  if (file) {
-    handleDroppedFile(file, "svga", getAutoSvgaSlot());
+  if (file) handleDroppedFile(file, "svga", getAutoSvgaSlot());
+});
+
+secondaryFileInput.addEventListener("change", () => {
+  const file = secondaryFileInput.files?.[0];
+  if (!file) return;
+  handleDroppedFile(file, "svga", "b");
+});
+
+referenceFileInput.addEventListener("change", () => {
+  const file = referenceFileInput.files?.[0];
+  if (file) handleDroppedFile(file, "reference");
+});
+
+for (const button of tabButtons) {
+  button.addEventListener("click", () => {
+    for (const item of tabButtons) item.classList.toggle("isActive", item === button);
+    for (const panel of document.querySelectorAll(".tabPanel")) panel.classList.add("isHidden");
+    document.querySelector(`#tab-${button.dataset.tab}`).classList.remove("isHidden");
+  });
+}
+
+document.querySelector("#tab-assets").addEventListener("click", (event) => {
+  const filterButton = event.target.closest("[data-asset-filter]");
+  if (filterButton) {
+    assetFilter = filterButton.dataset.assetFilter;
+    renderInfoPanel();
+    return;
+  }
+  const toggleButton = event.target.closest("[data-sequence-toggle]");
+  if (toggleButton) {
+    const key = toggleButton.dataset.sequenceToggle;
+    if (expandedSequenceGroups.has(key)) {
+      expandedSequenceGroups.delete(key);
+    } else {
+      expandedSequenceGroups.add(key);
+    }
+    renderInfoPanel();
+    return;
+  }
+  const previewButton = event.target.closest("[data-preview-image-key]");
+  if (previewButton?.dataset.previewImageKey) {
+    openAssetPreview(previewButton.dataset.previewImageKey);
+    return;
+  }
+  const row = event.target.closest("[data-asset-key]");
+  if (row) {
+    selectedAssetKey = row.dataset.assetKey;
+    renderInfoPanel();
   }
 });
 
-gifFileInput.addEventListener("change", () => {
-  const file = gifFileInput.files?.[0];
-  if (file) {
-    handleDroppedFile(file, "gif");
+assetPreviewClose.addEventListener("click", closeAssetPreview);
+assetPreviewModal.addEventListener("click", (event) => {
+  if (event.target === assetPreviewModal) closeAssetPreview();
+});
+copyImageKeyButton.addEventListener("click", () => {
+  if (previewImageKey) {
+    navigator.clipboard?.writeText(previewImageKey).catch(() => undefined);
   }
+});
+settingsCloseButton.addEventListener("click", closeSettings);
+settingsDoneButton.addEventListener("click", closeSettings);
+settingsModal.addEventListener("click", (event) => {
+  if (event.target === settingsModal) closeSettings();
+});
+fullLogsCloseButton.addEventListener("click", closeFullLogs);
+fullLogsModal.addEventListener("click", (event) => {
+  if (event.target === fullLogsModal) closeFullLogs();
+});
+copyFullLogsButton.addEventListener("click", () => {
+  navigator.clipboard?.writeText(serializeLogs()).catch(() => undefined);
+});
+clearFullLogsButton.addEventListener("click", () => {
+  appLogs.length = 0;
+  renderInfoPanel();
+  openFullLogs();
+});
+for (const input of document.querySelectorAll('input[name="theme"]')) {
+  input.addEventListener("change", () => setThemePreference(input.value));
+}
+for (const input of document.querySelectorAll('input[name="previewBackground"]')) {
+  input.addEventListener("change", () => setPreviewBackground(input.value));
+}
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if ((localStorage.getItem("autoSvgaTheme") ?? "system") === "system") {
+    applyThemePreference("system");
+  }
+});
+infoPanelResizeHandle.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  const startX = event.clientX;
+  const startWidth = infoPanelWidth;
+  document.body.classList.add("isResizingInfoPanel");
+  infoPanelResizeHandle.setPointerCapture?.(event.pointerId);
+
+  const onPointerMove = (moveEvent) => {
+    applyInfoPanelWidth(startWidth + startX - moveEvent.clientX);
+    refreshLayout();
+  };
+  const onPointerUp = () => {
+    document.body.classList.remove("isResizingInfoPanel");
+    localStorage.setItem("autoSvgaInfoPanelWidth", String(infoPanelWidth));
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+  };
+
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
 });
 
 setupDropZone(players.a.panel, "svga", "a");
 setupDropZone(players.b.panel, "svga", "b");
-setupDropZone(gifState.panel, "gif");
-setupDropZone(fileBar, "auto");
+setupDropZone(referenceState.panel, "reference");
+setupDropZone(toolbar, "auto");
 
 try {
-  setCompareMode();
-  loadGif(`${paths.gif}?t=${Date.now()}`, { fileName: "preview.gif" });
-  defaultReport = await loadReport(paths.report);
-  renderReport(defaultReport);
-  await loadSvga("a", paths.svga, {
-    fileName: "avatar_frame_basic.svga",
-    isDefault: true,
-    report: defaultReport
-  });
+  applyInfoPanelWidth(infoPanelWidth);
+  applyThemePreference(localStorage.getItem("autoSvgaTheme") ?? "system");
+  setPreviewBackground(localStorage.getItem("autoSvgaPreviewBackground") ?? "checkerboard");
+  for (const input of [localProgress, playerBProgress, referenceProgress, syncProgress]) {
+    updateRangeProgress(input, Number(input.value));
+  }
+  setAppMode("localPreview");
+  setStatus(players.a.status, "empty");
+  updateButtons();
+  renderInfoPanel();
+  try {
+    defaultReport = await loadReport(paths.report);
+    renderReport(defaultReport);
+  } catch {
+    renderReport(undefined);
+  }
 } catch (error) {
   setStatus(players.a.status, "error");
   showError(error instanceof Error ? error.message : String(error));

@@ -12,6 +12,17 @@ Exporter-ready intermediate protocol MVP
 - 模板：`breathing_glow`、`metal_edge_sweep`、`gem_twinkle`
 - 技术栈：TypeScript + Node.js + pnpm
 
+## Design Direction
+
+Product and UI design guidance lives in [DESIGN.md](DESIGN.md). `AGENTS.md` describes engineering constraints; `DESIGN.md` describes how auto-svga product surfaces should look and behave.
+
+Current UI direction:
+
+- default local playback review uses one large SVGA preview plus an information panel
+- export review compares exported SVGA against a reference video, preferably MP4/WebM
+- local compare mode is explicit and used for SVGA A/B comparisons
+- Chinese labels are primary, while English labels and original report keys remain visible for debugging
+
 ## Quick Start
 
 ```bash
@@ -26,9 +37,117 @@ pnpm build:example
 examples/avatar_frame_basic/output/
 ```
 
+## MVP 0.1 Planning Chain
+
+当前 MVP 0.1 前半段链路聚焦 layered avatar frame job，不做 Web UI、preview.gif、真实 `.svga`、report、svga-map 或 delivery zip。
+
+标准 job 示例：
+
+```text
+jobs/avatar_frame_test_001/
+  input/
+    config.json
+    structure.json
+    requirement.txt
+    base_frame.png
+    left_wing.png
+    right_wing.png
+    top_gem.png
+  generated/
+  project/
+    motion-plan.json
+    project.json
+  output/
+```
+
+运行规划链路：
+
+```bash
+pnpm autosvga:plan -- jobs/avatar_frame_test_001
+```
+
+如果当前环境没有全局 `pnpm`，也可以在已安装依赖后使用：
+
+```bash
+./node_modules/.bin/tsc -p tsconfig.json
+node dist/cli.js plan jobs/avatar_frame_test_001
+```
+
+该命令会：
+
+- 读取并校验 `input/config.json`
+- 读取并校验 `input/structure.json`
+- 根据结构和 `motionAllowed` 自动生成 `project/motion-plan.json`
+- 将 motion plan 展开成 `project/project.json`
+- 将 canvas anchor 转换为 local anchor，例如 `left_wing` 的 `{ x: 145, y: 238 }` 和 bbox `[40, 150, 170, 300]` 会得到 `{ localX: 105, localY: 88 }`
+
+渲染 MVP preview：
+
+```bash
+pnpm autosvga:preview -- jobs/avatar_frame_test_001
+```
+
+或：
+
+```bash
+./node_modules/.bin/tsc -p tsconfig.json
+node dist/cli.js preview jobs/avatar_frame_test_001
+```
+
+该命令会读取 `jobs/avatar_frame_test_001/project/project.json`，自动补齐本阶段需要的 generated assets，并输出：
+
+```text
+jobs/avatar_frame_test_001/generated/
+  sweep_light.png
+  glow_frame.png
+  glow_dot.png
+
+jobs/avatar_frame_test_001/output/
+  preview.gif
+  preview-report.json
+```
+
+MVP PreviewRenderer 支持：
+
+- `canvas`
+- `fps`
+- `durationMs`
+- `frames`
+- `layers`
+- `zIndex`
+- `source`
+- `bbox`
+- `anchor.canvasX / anchor.canvasY`
+- `anchor.localX / anchor.localY`
+- keyframes 中的 `x`、`y`、`scaleX`、`scaleY`、`rotation`、`alpha`
+
+渲染时 rotation 和 scale 围绕 `anchor.localX/localY` 执行，不围绕图片中心或左上角。
+
+本阶段内置 5 个语义模板：
+
+- `wing_flap`
+- `gem_twinkle`
+- `metal_sweep`
+- `frame_breath`
+- `pop_settle`，仅定义，不默认启用
+
+基础测试：
+
+```bash
+pnpm test:mvp
+```
+
+或：
+
+```bash
+./node_modules/.bin/tsc -p tsconfig.json
+node --test dist/tests/mvp-planner.test.js
+```
+
 ## CLI
 
 ```bash
+pnpm dev plan jobs/avatar_frame_test_001
 pnpm dev init my_avatar_frame
 pnpm dev validate examples/avatar_frame_basic
 pnpm dev build examples/avatar_frame_basic

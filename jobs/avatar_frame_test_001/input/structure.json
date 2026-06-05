@@ -1,0 +1,78 @@
+{
+  "assetType": "avatar_frame",
+  "inputMode": "layered",
+  "canvas": {
+    "width": 512,
+    "height": 512
+  },
+  "safeArea": {
+    "type": "circle",
+    "centerX": 256,
+    "centerY": 256,
+    "radius": 174
+  },
+  "parts": [
+    {
+      "id": "base_frame",
+      "type": "base_frame",
+      "source": "input/base_frame.png",
+      "bbox": [0, 0, 512, 512],
+      "anchor": {
+        "x": 256,
+        "y": 256,
+        "space": "canvas",
+        "role": "center",
+        "confidence": 1
+      },
+      "zIndex": 1,
+      "motionAllowed": ["frame_breath", "metal_sweep"]
+    },
+    {
+      "id": "left_wing",
+      "type": "wing",
+      "source": "input/left_wing.png",
+      "bbox": [40, 150, 170, 300],
+      "anchor": {
+        "x": 145,
+        "y": 238,
+        "space": "canvas",
+        "role": "root_joint",
+        "confidence": 0.9
+      },
+      "zIndex": 5,
+      "motionAllowed": ["wing_flap", "glow"],
+      "symmetryPair": "right_wing"
+    },
+    {
+      "id": "right_wing",
+      "type": "wing",
+      "source": "input/right_wing.png",
+      "bbox": [342, 150, 472, 300],
+      "anchor": {
+        "x": 367,
+        "y": 238,
+        "space": "canvas",
+        "role": "root_joint",
+        "confidence": 0.9
+      },
+      "zIndex": 5,
+      "motionAllowed": ["wing_flap", "glow"],
+      "symmetryPair": "left_wing"
+    },
+    {
+      "id": "top_gem",
+      "type": "gem",
+      "source": "input/top_gem.png",
+      "bbox": [232, 30, 280, 82],
+      "anchor": {
+        "x": 256,
+        "y": 56,
+        "space": "canvas",
+        "role": "center",
+        "confidence": 0.95
+      },
+      "zIndex": 10,
+      "motionAllowed": ["gem_twinkle", "glow"]
+    }
+  ]
+}

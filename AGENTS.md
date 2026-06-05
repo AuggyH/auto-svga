@@ -35,6 +35,7 @@ Current scope is intentionally narrow:
 17. After generating a real .svga, prioritize validation in a real SVGA player
 18. Do not rely only on zlib inflate or protobuf decode to judge visual success
 19. Do not fabricate playback success; mark manual visual confirmation as required when automated playback verification is unavailable
+20. For product or UI work, read DESIGN.md and follow its mode, layout, language, and visual guidance
 
 ## Expected Core Modules
 
