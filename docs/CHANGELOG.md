@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-07 — UI and output validation
+
+**Commit**: (see git log after merge)
+
+Hermes real browser and visual output validation:
+- Browser-tested Web preview page: Chinese UI, asset panel, compare button, settings modal, job auto-load
+- Verified 002 job outputs: canvas 300×300, assets trimmed, baked sweep bbox, wing amplitude 7.5°
+- No code fixes needed — all tested items passed
+- Identified items requiring human visual review (spacing, sweep quality, drag-drop)
+
 ## 2026-06-07 — repo hygiene follow-up fixes
 
 **Commit**: 90a8165 (merge), c1c36e5 (baseline)
