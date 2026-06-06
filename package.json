@@ -11,6 +11,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
+    "test": "npm run test:mvp",
     "autosvga:plan": "tsx src/cli.ts plan",
     "autosvga:preview": "tsx src/cli.ts preview",
     "autosvga:report": "tsx src/cli.ts report",

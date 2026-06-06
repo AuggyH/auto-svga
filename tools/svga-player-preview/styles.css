@@ -3623,6 +3623,570 @@ html.reduceMotion *::after {
   }
 }
 
+/* Web preview layout polish: keep comparison, controls and panels stable in one viewport. */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  min-width: 0;
+}
+
+.shell {
+  display: grid;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  grid-template-rows: 56px minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.toolbar {
+  position: relative;
+  z-index: 30;
+  display: grid;
+  height: 56px;
+  min-height: 56px;
+  grid-template-columns: minmax(150px, 1fr) 190px minmax(150px, 1fr);
+  gap: 12px;
+  padding: 7px 14px;
+}
+
+.actionRow {
+  justify-self: end;
+}
+
+.modeControl {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  width: 190px;
+  height: 38px;
+}
+
+.modeControl::after {
+  content: none;
+}
+
+.dropdownMenuItem.isSelected::after {
+  content: none;
+}
+
+.dropdownMenuCheck {
+  display: block;
+}
+
+.workspace,
+.workspace.mode-localPreview,
+.workspace.mode-localPreview.withCompare,
+.workspace.mode-exportReview,
+.workspace.mode-localPreview.withSidePanel,
+.workspace.mode-localPreview.withCompare.withSidePanel,
+.workspace.mode-exportReview.withSidePanel {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 12px 14px;
+  overflow: hidden;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.workspace.mode-localPreview {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace.mode-localPreview.withCompare,
+.workspace.mode-exportReview {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.previewCard,
+.mode-localPreview.withCompare .previewCard,
+.mode-exportReview .previewCard {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.cardHeader {
+  min-height: 52px;
+  padding: 8px 12px;
+}
+
+.cardTitleGroup,
+.cardHeader > div:first-child {
+  min-width: 0;
+}
+
+.cardHeader h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.mediaFrame {
+  flex: none;
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+}
+
+.mediaFrame > div,
+.mediaFrame > video,
+.mediaFrame > img,
+.mediaFrame canvas {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.playerBar {
+  min-width: 0;
+  min-height: 48px;
+  padding: 7px 10px;
+}
+
+.playerBar input[type="range"] {
+  min-width: 42px;
+}
+
+.fitMenuButton {
+  width: auto;
+  min-width: 34px;
+  padding: 0 8px;
+  gap: 5px;
+}
+
+.fitMenuButtonLabel {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.fitMenu .isSelected::after {
+  width: 8px;
+  height: 5px;
+  margin-left: 12px;
+  border-bottom: 1.5px solid currentColor;
+  border-left: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(-45deg);
+}
+
+.infoPanel,
+.logsPanel {
+  position: fixed;
+  top: 68px;
+  right: 14px;
+  bottom: 14px;
+  z-index: 40;
+  display: flex;
+  width: min(var(--info-panel-width), calc(100vw - 28px));
+  min-width: min(320px, calc(100vw - 28px));
+  max-width: min(440px, calc(100vw - 28px));
+  height: auto;
+  min-height: 0;
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  transition: opacity 180ms ease-out, transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
+}
+
+.logsPanel {
+  width: min(var(--logs-panel-width), calc(100vw - 28px));
+  max-width: min(480px, calc(100vw - 28px));
+}
+
+.infoPanel.isHidden,
+.logsPanel.isHidden {
+  display: flex !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(calc(100% + 24px));
+  transition: opacity 160ms ease-out, transform 200ms ease-out, visibility 0s 200ms;
+}
+
+.infoPanel::before,
+.logsPanel::before {
+  position: fixed;
+  inset: 56px 0 0;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.tabPanel,
+.logsPanelList {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.resizeHandle {
+  display: none;
+}
+
+.syncBar {
+  display: grid;
+  height: 62px;
+  min-height: 62px;
+  margin: 0 14px 12px;
+  grid-template-columns: minmax(100px, 190px) minmax(0, 1fr) minmax(100px, 190px);
+  border-radius: 12px;
+}
+
+.syncBar.isHidden {
+  display: none !important;
+}
+
+.details {
+  display: none;
+}
+
+.cardUtilityButton {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surfaceElevated);
+  color: var(--textPrimary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+}
+
+.cardUtilityButton[hidden] {
+  display: none;
+}
+
+.cardUtilityButton svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.cardUtilityButton[data-state="scanning"] {
+  color: var(--blue);
+}
+
+.cardUtilityButton[data-state="success"] {
+  border-color: color-mix(in srgb, var(--green) 35%, var(--control-border));
+  color: var(--green);
+}
+
+.cardUtilityButton[data-state="error"] {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--control-border));
+  color: var(--danger);
+}
+
+.panelActionGroup {
+  position: relative;
+}
+
+.panelActionFeedback {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 2;
+  padding: 5px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--surfaceElevated);
+  box-shadow: var(--shadow-control);
+  color: var(--textSecondary);
+  font-size: 11px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  white-space: nowrap;
+  transition: opacity 140ms ease-out, transform 160ms ease-out;
+}
+
+.panelActionFeedback.isVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.panelActionFeedback[data-state="success"] {
+  color: var(--green);
+}
+
+.panelActionFeedback[data-state="error"] {
+  color: var(--danger);
+}
+
+.assetFilters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 7px 8px;
+}
+
+.assetFilters button {
+  height: 30px;
+  min-width: 0;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 12px;
+}
+
+.assetFilters button.isActive {
+  border: 0;
+  background: color-mix(in srgb, var(--blue) 11%, transparent);
+}
+
+.assetUnifiedList {
+  gap: 4px;
+  padding: 4px 8px 10px;
+}
+
+.assetUnifiedRow {
+  min-height: 64px;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 9px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transform: none;
+}
+
+.assetUnifiedRow:hover {
+  transform: none;
+}
+
+.assetUnifiedThumb,
+.assetUnifiedThumb.isSequence {
+  width: 44px;
+  height: 44px;
+  border-radius: 7px;
+}
+
+.assetUnifiedMain {
+  align-content: center;
+  gap: 3px;
+}
+
+.assetPrimaryLine strong {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.assetTypeTag,
+.assetWarningTags span {
+  padding: 2px 5px;
+  font-size: 9px;
+}
+
+.assetSecondaryLine {
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.assetSecondaryLine span {
+  flex: none;
+}
+
+.assetSecondaryLine span:first-child {
+  flex: 1;
+  min-width: 24px;
+}
+
+.assetFullKey {
+  display: none;
+}
+
+.assetWarningTags {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+}
+
+.assetUnifiedRow {
+  position: relative;
+}
+
+.sequenceToggle {
+  position: absolute;
+  right: 8px;
+  top: 31px;
+  font-size: 10px;
+}
+
+.sequenceChildren {
+  gap: 4px;
+  margin-left: 10px;
+  padding-left: 7px;
+}
+
+.narrowWindowHint {
+  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: 8px;
+  z-index: 60;
+  padding: 5px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surfaceElevated) 92%, transparent);
+  color: var(--textSecondary);
+  font-size: 10px;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    grid-template-columns: minmax(110px, 1fr) 160px auto;
+    gap: 7px;
+    padding: 7px 10px;
+  }
+
+  .modeControl {
+    grid-column: 2;
+    grid-row: 1;
+    width: 160px;
+  }
+
+  .brandCopy span {
+    display: none;
+  }
+
+  .workspace,
+  .workspace.mode-localPreview,
+  .workspace.mode-localPreview.withCompare,
+  .workspace.mode-exportReview {
+    min-height: 0;
+    padding: 9px 10px;
+    gap: 9px;
+  }
+
+  .workspace.mode-localPreview.withCompare,
+  .workspace.mode-exportReview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .previewCard,
+  .mode-localPreview.withCompare .previewCard,
+  .mode-exportReview .previewCard {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .cardHeader {
+    min-height: 48px;
+    padding: 7px 9px;
+  }
+
+  .cardHeader h2 {
+    font-size: 13px;
+  }
+
+  .badge,
+  .statusPill {
+    font-size: 9px;
+  }
+
+  .cardFileButton {
+    padding: 0 7px;
+  }
+
+  .cardFileButton span,
+  .loopToggle,
+  .fitMenuButtonLabel {
+    display: none;
+  }
+
+  .playerBar {
+    gap: 5px;
+    padding: 6px 7px;
+  }
+
+  .syncBar {
+    height: 58px;
+    min-height: 58px;
+    margin: 0 10px 9px;
+    grid-template-columns: 92px minmax(0, 1fr) 92px;
+  }
+
+  .syncFileInfo {
+    padding: 0 9px;
+  }
+
+  .infoPanel,
+  .logsPanel {
+    top: 64px;
+    right: 10px;
+    bottom: 10px;
+    width: min(420px, calc(100vw - 20px));
+    min-width: min(300px, calc(100vw - 20px));
+  }
+
+  .narrowWindowHint {
+    display: block;
+  }
+}
+
+@media (max-height: 680px) {
+  .workspace {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .cardHeader {
+    min-height: 44px;
+  }
+
+  .centerEmptyState {
+    gap: 7px;
+  }
+
+  .uploadMockIcon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .syncBar {
+    height: 54px;
+    min-height: 54px;
+  }
+}
+
 .isHidden {
   display: none !important;
 }
@@ -3704,5 +4268,77 @@ html.reduceMotion *::after {
   .mode-localPreview.withCompare .previewCard,
   .mode-exportReview .previewCard {
     height: min(620px, calc(100dvh - 150px));
+  }
+}
+
+/* Final responsive guard: earlier compatibility rules must not re-enable page scrolling or card wrapping. */
+html,
+body,
+.shell {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.shell {
+  height: 100dvh;
+  min-height: 0;
+}
+
+.workspace {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace.mode-localPreview.withCompare,
+.workspace.mode-exportReview {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.previewCard,
+.mode-localPreview.withCompare .previewCard,
+.mode-exportReview .previewCard {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    height: 56px;
+    min-height: 56px;
+    grid-template-columns: minmax(110px, 1fr) 160px auto;
+    gap: 7px;
+    padding: 7px 10px;
+  }
+
+  .modeControl {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    width: 160px;
+  }
+
+  .workspace,
+  .workspace.mode-localPreview,
+  .workspace.mode-localPreview.withCompare,
+  .workspace.mode-exportReview {
+    height: 100%;
+    min-height: 0;
+    padding: 9px 10px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace.mode-localPreview.withCompare,
+  .workspace.mode-exportReview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .previewCard,
+  .mode-localPreview.withCompare .previewCard,
+  .mode-exportReview .previewCard {
+    height: 100%;
+    min-height: 0;
   }
 }

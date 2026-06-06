@@ -104,6 +104,7 @@
             <div class="fitMenuWrap">
               <button id="localFitButton" class="smallIconButton fitMenuButton" type="button" title="显示模式" aria-expanded="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5" /><path d="M20 9V4h-5" /><path d="M4 15v5h5" /><path d="M20 15v5h-5" /></svg>
+                <span class="fitMenuButtonLabel">原始尺寸</span>
               </button>
               <div class="fitMenu" data-fit-menu="a" hidden>
                 <button type="button" data-fit-value="contain">适应窗口</button>
@@ -111,8 +112,8 @@
                 <button type="button" data-fit-value="fitWidth">适应宽度</button>
               </div>
               <select id="fitModeA" data-fit-slot="a" aria-label="SVGA A fit mode" hidden>
-                <option value="contain" selected>Fit contain</option>
-                <option value="original">Original size</option>
+                <option value="contain">Fit contain</option>
+                <option value="original" selected>Original size</option>
                 <option value="fitWidth">Fit width</option>
               </select>
             </div>
@@ -163,6 +164,7 @@
             <div class="fitMenuWrap">
               <button id="playerBFitButton" class="smallIconButton fitMenuButton" type="button" title="显示模式" aria-expanded="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5" /><path d="M20 9V4h-5" /><path d="M4 15v5h5" /><path d="M20 15v5h-5" /></svg>
+                <span class="fitMenuButtonLabel">原始尺寸</span>
               </button>
               <div class="fitMenu" data-fit-menu="b" hidden>
                 <button type="button" data-fit-value="contain">适应窗口</button>
@@ -170,8 +172,8 @@
                 <button type="button" data-fit-value="fitWidth">适应宽度</button>
               </div>
               <select id="fitModeB" data-fit-slot="b" aria-label="SVGA B fit mode" hidden>
-                <option value="contain" selected>Fit contain</option>
-                <option value="original">Original size</option>
+                <option value="contain">Fit contain</option>
+                <option value="original" selected>Original size</option>
                 <option value="fitWidth">Fit width</option>
               </select>
             </div>
@@ -186,6 +188,11 @@
               <h2>参考视频</h2>
             </div>
             <div class="cardActions">
+              <button id="rescanButton" class="cardUtilityButton" type="button" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
+                <span>重新扫描</span>
+              </button>
+              <span id="rescanStatus" class="srOnly" aria-live="polite">尚未扫描</span>
               <span id="referenceStatus" class="statusPill">空</span>
               <label class="cardFileButton" id="referenceFileButton">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4z" /><path d="m10 10 4 2-4 2z" /></svg>
@@ -222,6 +229,7 @@
             <div class="fitMenuWrap">
               <button id="referenceFitButton" class="smallIconButton fitMenuButton" type="button" title="显示模式" aria-expanded="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5" /><path d="M20 9V4h-5" /><path d="M4 15v5h5" /><path d="M20 15v5h-5" /></svg>
+                <span class="fitMenuButtonLabel">原始尺寸</span>
               </button>
               <div class="fitMenu" data-fit-menu="reference" hidden>
                 <button type="button" data-fit-value="contain">适应窗口</button>
@@ -229,8 +237,8 @@
                 <button type="button" data-fit-value="fitWidth">适应宽度</button>
               </div>
               <select id="fitModeReference" data-fit-slot="reference" aria-label="Reference fit mode" hidden>
-                <option value="contain" selected>Fit contain</option>
-                <option value="original">Original size</option>
+                <option value="contain">Fit contain</option>
+                <option value="original" selected>Original size</option>
                 <option value="fitWidth">Fit width</option>
               </select>
             </div>
@@ -263,6 +271,7 @@
               <p id="fullLogsSubtitle">加载、解析和渲染事件 / Load, parse and render events</p>
             </div>
             <div class="panelActionGroup">
+              <span id="logsActionFeedback" class="panelActionFeedback" aria-live="polite"></span>
               <button id="copyFullLogsButton" class="iconButton" type="button" title="复制日志 / Copy logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8z" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></svg></button>
               <button id="clearFullLogsButton" class="iconButton" type="button" title="清空日志 / Clear logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 15h10l1-15" /></svg></button>
             </div>
@@ -354,18 +363,13 @@
                   <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="light"><span class="themeSwatch themeLight"></span><strong>浅色</strong></label>
                   <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="dark"><span class="themeSwatch themeDark"></span><strong>深色</strong></label>
                 </div>
-                <div class="settingsDivider"></div>
-                <label class="settingsToggleRow"><span><strong>自动加载最新产物</strong><small>进入导出验收时优先加载最新含 SVGA 的产物组</small></span><input id="autoLoadLatestToggle" type="checkbox" checked></label>
-                <div class="settingsActionRow">
-                  <span><strong>重新扫描最新产物</strong><small id="rescanStatus">覆盖当前手动选择并重新加载</small></span>
-                  <button id="rescanButton" class="settingActionButton" type="button">重新扫描</button>
-                </div>
               </div>
             </section>
             <section class="settingsSection">
               <h3>播放与验收</h3>
               <div class="settingsCard">
                 <label class="settingsToggleRow"><span><strong>循环播放</strong><small>播放结束后自动从头开始</small></span><input id="globalLoopToggle" type="checkbox" checked></label>
+                <label class="settingsToggleRow"><span><strong>自动加载最新产物</strong><small>进入导出验收时自动加载最新含 SVGA 的产物组</small></span><input id="autoLoadLatestToggle" type="checkbox" checked></label>
                 <label class="settingsToggleRow"><span><strong>导出后进入验收模式</strong><small>导出完成后自动打开对比视图</small></span><input type="checkbox"></label>
               </div>
             </section>
@@ -382,6 +386,7 @@
       </div>
 
       <div id="statusAnnouncer" class="srOnly" aria-live="polite"></div>
+      <div class="narrowWindowHint">窗口较窄，建议使用更大窗口获得更好的对比体验</div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>

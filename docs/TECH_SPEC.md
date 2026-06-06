@@ -110,4 +110,13 @@ Key references:
 - `tools/svga-player-preview/styles.css` — CSS custom properties, motion presets, unified dropdown menu, responsive breakpoints
 - `tools/svga-player-preview/server.mjs` — `/api/latest-artifact` endpoint for auto-loading latest export outputs
 
+### Preview layout state
+
+- The application shell is fixed to `100dvh`; only information, asset, and log content areas may scroll.
+- Local Compare and Export Review always use two equal `minmax(0, 1fr)` columns, including narrow widths.
+- Diagnostics use one mutually exclusive side-panel state: `null`, `info`, or `logs`.
+- Side panels are overlays and must not re-parent or rebuild SVGA player canvases.
+- Fit modes are stored independently for `a`, `b`, and `reference`; first-run default is `original`.
+- Fit changes and viewport resizes only recalculate the media frame. They do not rebuild or replay the SVGA player.
+
 UI changes must follow the 10 rules in `AGENTS.md` → UI Design Rules section.
