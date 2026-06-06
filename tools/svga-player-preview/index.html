@@ -8,6 +8,7 @@
   </head>
   <body>
     <a href="#workspace" class="skipLink">跳到主内容 / Skip to main content</a>
+    <h1 class="srOnly">auto-svga SVGA 播放验证</h1>
     <main class="shell">
       <header class="toolbar" data-drop-kind="auto">
         <div class="brand">
@@ -228,7 +229,7 @@
           <dl id="referenceInfo" class="quickInfo"></dl>
         </article>
 
-        <aside id="infoPanel" class="infoPanel isHidden" aria-label="SVGA info panel">
+        <div id="infoPanel" class="infoPanel isHidden" role="complementary" aria-label="SVGA info panel">
           <button id="infoPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整信息面板宽度 / Resize info panel"></button>
           <div class="infoHeader">
             <div>
@@ -243,9 +244,10 @@
           </nav>
           <div id="tab-overview" class="tabPanel"></div>
           <div id="tab-assets" class="tabPanel isHidden"></div>
-        </aside>
+        </div>
+        <!-- end infoPanel -->
 
-        <aside id="logsPanel" class="logsPanel isHidden" aria-label="Runtime logs panel">
+        <div id="logsPanel" class="logsPanel isHidden" aria-label="Runtime logs panel">
           <div class="infoHeader">
             <div>
               <h2>运行日志 / Runtime Logs</h2>
@@ -257,7 +259,8 @@
             </div>
           </div>
           <div id="fullLogsContent" class="logsPanelList"></div>
-        </aside>
+        </div>
+        <!-- end logsPanel -->
       </section>
 
       <section id="syncBar" class="syncBar isHidden" aria-label="Synchronized playback controls">
