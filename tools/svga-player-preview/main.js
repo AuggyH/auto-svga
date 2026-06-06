@@ -2221,6 +2221,61 @@ setupDropZone(referenceState.panel, "reference");
 setupDropZone(toolbar, "auto");
 setupFitMenus();
 
+// ── Settings: auto-load toggle + rescan ──
+const autoLoadToggle = document.querySelector("#autoLoadToggle");
+const rescanButton = document.querySelector("#rescanButton");
+if (autoLoadToggle) {
+  autoLoadToggle.checked = localStorage.getItem("autoSvgaAutoLoad") !== "false";
+  autoLoadToggle.addEventListener("change", () => {
+    localStorage.setItem("autoSvgaAutoLoad", String(autoLoadToggle.checked));
+  });
+}
+if (rescanButton) {
+  rescanButton.addEventListener("click", () => {
+    closeSettings();
+    autoLoadLatestArtifact();
+  });
+}
+
+// ── Drag: improve rejected file feedback ──
+function getRejectMessage(file, acceptedKind) {
+  const kind = fileKind({ name: file.name });
+  if (acceptedKind === "reference" && !["mp4", "webm", "gif"].includes(kind)) {
+    return `不支持的文件类型：${file.name || "未知"}。参考视频仅支持 MP4、WebM 或 GIF。`;
+  }
+  if (acceptedKind === "svga" && kind !== "svga") {
+    return `不支持的文件类型：${file.name || "未知"}。请使用 .svga 文件。`;
+  }
+  return `无法识别文件类型：${file.name || "未知"}`;
+}
+// Override handleDroppedFile to show reject reason
+const _origHandleDroppedFile = handleDroppedFile;
+handleDroppedFile = function(file, acceptedKind, slotKey) {
+  if (!isAcceptedDropKind(fileKind({ name: file.name }), acceptedKind)) {
+    showError(getRejectMessage(file, acceptedKind));
+    addLog("warning", getRejectMessage(file, acceptedKind));
+    return;
+  }
+  return _origHandleDroppedFile(file, acceptedKind, slotKey);
+};
+
+// ── SVGA auto-load with CDN retry ──
+async function loadSvgaWithRetry(file, slotKey, retries = 3, delayMs = 800) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await loadSvgaFile({ file, slotKey });
+      return;
+    } catch (e) {
+      if (i < retries - 1 && e.message?.includes("SVGA")) {
+        addLog("info", `SVGA 加载重试 ${i + 1}/${retries}…`);
+        await new Promise(r => setTimeout(r, delayMs));
+      } else {
+        throw e;
+      }
+    }
+  }
+}
+
 document.addEventListener("keydown", (event) => {
   if (event.code !== "Space" || event.repeat) return;
   const target = event.target;
@@ -2257,7 +2312,7 @@ async function autoLoadLatestArtifact() {
           const blob = await svgaResponse.blob();
           const file = new File([blob], a.svgaPath.split("/").pop(), { type: "application/octet-stream" });
           setAppMode("exportReview");
-          await loadSvgaFile({ file, slotKey: "a" });
+          await loadSvgaWithRetry(file, "a");
           addLog("success", `已自动加载 SVGA: ${a.svgaPath}`);
         }
       } catch (e) {
