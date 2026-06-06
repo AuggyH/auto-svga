@@ -44,8 +44,11 @@ tools/
   svga-player-preview/      Web playback validation tool
     index.html / main.js / styles.css / server.mjs
 
-jobs/                       Job directories
-  avatar_frame_gold_green_real_002/  Current real asset job
+jobs/                       Local runtime job workspace, gitignored
+  <job-dir>/                Local input/output workspace, not committed
+
+fixtures/                   Mock assets for tests (small, public-safe, no real designs)
+examples/                   Example configs and mock fixtures (outputs gitignored)
 
 proto/
   svga.proto                SVGA 2.x MovieEntity protobuf schema
@@ -96,3 +99,15 @@ Default: 300×300. Source scaling handled by `production-assets.ts`:
 - Hard limit: 8MB decoded image memory
 - Recommended: ≤6.5MB
 - Current 002 job: 2.23MB — well within budget
+
+## UI Design System
+
+The Web preview page follows the design system defined in `DESIGN.md` and `docs/decisions/ADR-002-apple-design-translation.md`.
+
+Key references:
+- `DESIGN.md` — color tokens, typography, spacing, motion, accessibility, Do/Don't
+- `ADR-002` — DESIGN-apple.md → Auto SVGA translation map (28 adopted, 14 adapted, 20 excluded)
+- `tools/svga-player-preview/styles.css` — CSS custom properties, motion presets, unified dropdown menu, responsive breakpoints
+- `tools/svga-player-preview/server.mjs` — `/api/latest-artifact` endpoint for auto-loading latest export outputs
+
+UI changes must follow the 10 rules in `AGENTS.md` → UI Design Rules section.
