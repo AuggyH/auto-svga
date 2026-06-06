@@ -2299,11 +2299,15 @@ async function autoLoadLatestArtifact() {
     const response = await fetch("/api/latest-artifact");
     if (!response.ok) throw new Error(`API ${response.status}`);
     const data = await response.json();
-    if (!data.latest) {
+    const target = data.latestWithSvga || data.latestAny;
+    if (!target) {
       addLog("warning", "未找到本地输出产物 / No local export artifacts found");
       return;
     }
-    const a = data.latest;
+    if (!data.latestWithSvga && data.latestAny) {
+      addLog("warning", "未找到含 SVGA 的产物组，使用最新可用参考文件");
+    }
+    const a = target;
     addLog("success", `找到最新产物：${a.jobId} / Latest: ${a.jobId}`);
 
     // Load SVGA

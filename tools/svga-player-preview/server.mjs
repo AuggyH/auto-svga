@@ -89,26 +89,32 @@ async function scanOutputDirs(baseDir) {
       }
     } catch { /* skip missing scan dirs */ }
   }
-  // Sort: SVGA-containing groups first, then by mtime descending
+  // Compute updatedAt from latest file mtime in group
+  for (const c of candidates) {
+    const files = [c.svgaPath, c.gifPath, c.mp4Path, c.webmPath, c.reportPath].filter(Boolean);
+    let latestMs = 0;
+    for (const f of files) {
+      try { const s = await stat(path.join(baseDir, f)); if (s.mtimeMs > latestMs) latestMs = s.mtimeMs; } catch {}
+    }
+    if (latestMs > 0) c.updatedAt = new Date(latestMs).toISOString();
+  }
+  // Sort: SVGA-containing first, then by mtime
   candidates.sort((a, b) => {
-    const aHasSvga = !!a.svgaPath;
-    const bHasSvga = !!b.svgaPath;
-    if (aHasSvga !== bHasSvga) return aHasSvga ? -1 : 1;
+    if (!!a.svgaPath !== !!b.svgaPath) return a.svgaPath ? -1 : 1;
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
-  // Flag: if latest group has no SVGA, add warning
-  if (candidates.length > 0 && !candidates[0].svgaPath) {
-    candidates[0].warnings.push("Latest group has no SVGA — showing fallback");
-  }
-  return candidates;
+  const latestWithSvga = candidates.find(c => !!c.svgaPath) ?? null;
+  const latestAny = candidates[0] ?? null;
+  if (latestAny && !latestAny.svgaPath) latestAny.warnings.push("No SVGA in latest group");
+  return { artifacts: candidates, latestWithSvga, latestAny };
 }
 
 const server = createServer(async (request, response) => {
   // ── API routes ──
   if (request.url === "/api/latest-artifact" && request.method === "GET") {
     try {
-      const artifacts = await scanOutputDirs(repoRoot);
-      sendJson(response, { artifacts, latest: artifacts[0] ?? null });
+      const data = await scanOutputDirs(repoRoot);
+      sendJson(response, data);
     } catch (err) {
       sendJson(response, { error: String(err) }, 500);
     }
