@@ -89,7 +89,17 @@ async function scanOutputDirs(baseDir) {
       }
     } catch { /* skip missing scan dirs */ }
   }
-  candidates.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  // Sort: SVGA-containing groups first, then by mtime descending
+  candidates.sort((a, b) => {
+    const aHasSvga = !!a.svgaPath;
+    const bHasSvga = !!b.svgaPath;
+    if (aHasSvga !== bHasSvga) return aHasSvga ? -1 : 1;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+  // Flag: if latest group has no SVGA, add warning
+  if (candidates.length > 0 && !candidates[0].svgaPath) {
+    candidates[0].warnings.push("Latest group has no SVGA — showing fallback");
+  }
   return candidates;
 }
 

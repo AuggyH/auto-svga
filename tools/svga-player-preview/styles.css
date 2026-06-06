@@ -78,10 +78,10 @@
 
 body {
   min-width: 900px;
-  height: 100vh;
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
-  overflow: hidden;
+  overflow: auto;
   background: var(--background);
   font-size: 13px;
 }
@@ -132,11 +132,11 @@ svg {
 .shell {
   display: flex;
   width: 100vw;
-  height: 100vh;
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
   min-height: 0;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   background: var(--backgroundGradient);
 }
 
@@ -399,10 +399,9 @@ label.isDisabled {
 .workspace {
   display: grid;
   flex: 1;
-  height: 0;
   min-height: 0;
   padding: 14px 18px 18px;
-  overflow: hidden;
+  overflow: auto;
   transition: grid-template-columns var(--motion-panel), gap var(--motion-panel), padding var(--motion-fast);
 }
 
@@ -466,7 +465,7 @@ label.isDisabled {
   display: flex;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
   flex-direction: column;
   animation: cardEnter 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -625,7 +624,7 @@ label.isDisabled {
   max-width: 200px;
   height: 20.5px;
   padding: 1px 8px 0;
-  overflow: hidden;
+  overflow: auto;
   border-radius: 6px;
   background: color-mix(in srgb, var(--textPrimary) 6%, transparent);
   color: var(--textSecondary);
@@ -643,7 +642,7 @@ label.isDisabled {
   place-items: center;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
   background: var(--surfaceSubtle);
   transition: background var(--motion-fast);
 }
@@ -1199,7 +1198,7 @@ label.isDisabled {
   position: relative;
   display: flex;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
   flex-direction: column;
   width: 100%;
   height: 100%;
@@ -1619,7 +1618,7 @@ dd {
 }
 
 .miniLogRow time {
-  overflow: hidden;
+  overflow: auto;
   color: var(--textTertiary);
   font-size: 9px;
   line-height: 18px;
@@ -1694,7 +1693,7 @@ dd {
   flex: 0 0 76px;
   margin: 0 18px 18px;
   padding: 0;
-  overflow: hidden;
+  overflow: auto;
   border-radius: 18px;
   background: var(--surface);
   box-shadow: var(--shadow-panel);
@@ -1734,7 +1733,7 @@ dd {
 .syncFileInfo span,
 .syncFileInfo small,
 .syncControlRow > span {
-  overflow: hidden;
+  overflow: auto;
   color: var(--textSecondary);
   font-size: 11px;
   text-overflow: ellipsis;
@@ -1895,7 +1894,7 @@ dd {
   width: 12px;
   height: 12px;
   place-items: center;
-  overflow: hidden;
+  overflow: auto;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
   border-radius: 3px;
@@ -2011,7 +2010,7 @@ dd {
   width: 24px;
   height: 24px;
   place-items: center;
-  overflow: hidden;
+  overflow: auto;
   padding: 0;
   border: 0;
   border-radius: 5px;
@@ -2150,7 +2149,7 @@ dd {
   width: 68px;
   height: 68px;
   place-items: center;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid var(--hairline);
   border-radius: 10px;
   cursor: pointer;
@@ -2232,7 +2231,7 @@ dd {
 
 .assetSecondaryLine span:first-child,
 .assetFullKey {
-  overflow: hidden;
+  overflow: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2295,7 +2294,7 @@ dd {
   width: 50px;
   height: 50px;
   place-items: center;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--textTertiary);
@@ -2345,7 +2344,7 @@ dd {
 .assetSubline span,
 .assetAssist span {
   min-width: 0;
-  overflow: hidden;
+  overflow: auto;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2519,7 +2518,7 @@ dd {
   display: grid;
   width: min(720px, 92vw);
   max-height: 86vh;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid var(--panel-border);
   border-radius: 20px;
   background: var(--surfaceElevated);
@@ -2583,8 +2582,8 @@ dd {
   display: grid;
   grid-template-rows: 68px minmax(0, 1fr) 38px;
   width: min(380px, 94vw);
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow: auto;
   border-left: 1px solid rgba(255, 255, 255, 0.06);
   background: #111114;
   box-shadow: -24px 0 80px rgba(0, 0, 0, 0.28);
@@ -2779,7 +2778,7 @@ dd {
 
 .settingsCard {
   display: grid;
-  overflow: hidden;
+  overflow: auto;
   border: 1px solid var(--hairline);
   border-radius: 12px;
   background: color-mix(in srgb, var(--surfaceElevated) 85%, transparent);
@@ -3064,7 +3063,7 @@ dd {
 
   .toolButton span {
     max-width: 88px;
-    overflow: hidden;
+    overflow: auto;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
