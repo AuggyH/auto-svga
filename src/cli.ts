@@ -2,12 +2,17 @@
 import { hasErrors } from "./core/validator.js";
 import type { PlanningResult } from "./mvp/types.js";
 import type { PreviewCommandResult } from "./commands/preview.js";
+import type { MvpReportCommandResult } from "./commands/report.js";
+import type { ExportCommandResult } from "./commands/export.js";
+import type { MvpPackageCommandResult } from "./commands/package.js";
+import type { AcceptanceCommandResult } from "./commands/acceptance.js";
 
 interface ParsedArgs {
   command?: string;
   input?: string;
   output?: string;
   sweepStride?: 1 | 2 | 3;
+  notes?: string;
 }
 
 async function main(): Promise<void> {
@@ -58,10 +63,21 @@ async function main(): Promise<void> {
       }
       break;
     }
+    case "report": {
+      const { reportCommand } = await import("./commands/report.js");
+      const input = requireInput(args);
+      const result = await reportCommand(input);
+      printMvpReportSummary(result);
+      break;
+    }
     case "export": {
       const { exportCommand } = await import("./commands/export.js");
       const input = requireInput(args);
-      const report = await exportCommand(input, args.output, { sweepStride: args.sweepStride });
+      const report: ExportCommandResult = await exportCommand(input, args.output, { sweepStride: args.sweepStride });
+      if (isMvpExportResult(report)) {
+        printMvpExportSummary(report);
+        break;
+      }
       printIssues([...report.warnings, ...report.errors]);
       if (report.svgaExport.success) {
         console.log(`SVGA export completed: ${report.svgaExport.outputPath}`);
@@ -69,6 +85,21 @@ async function main(): Promise<void> {
         console.log(`SVGA export failed: ${report.svgaExport.error ?? "unknown error"}`);
       }
       process.exitCode = report.svgaExport.success ? 0 : 1;
+      break;
+    }
+    case "package": {
+      const { packageCommand } = await import("./commands/package.js");
+      const input = requireInput(args);
+      const result = await packageCommand(input);
+      printMvpPackageSummary(result);
+      break;
+    }
+    case "accept":
+    case "reject": {
+      const { acceptanceCommand } = await import("./commands/acceptance.js");
+      const input = requireInput(args);
+      const result = await acceptanceCommand(input, args.command === "accept" ? "accepted" : "rejected", args.notes);
+      printAcceptanceSummary(result);
       break;
     }
     default:
@@ -83,7 +114,9 @@ function parseArgs(values: string[]): ParsedArgs {
   const output = outputFlagIndex >= 0 ? rest[outputFlagIndex + 1] : undefined;
   const strideFlagIndex = rest.indexOf("--sweep-stride");
   const sweepStride = parseSweepStride(strideFlagIndex >= 0 ? rest[strideFlagIndex + 1] : undefined);
-  return { command, input, output, sweepStride };
+  const notesFlagIndex = rest.indexOf("--notes");
+  const notes = notesFlagIndex >= 0 ? rest[notesFlagIndex + 1] : undefined;
+  return { command, input, output, sweepStride, notes };
 }
 
 function parseSweepStride(value: string | undefined): 1 | 2 | 3 | undefined {
@@ -159,13 +192,83 @@ Frames: ${report.frames}
 Layers: ${report.layers}
 Generated assets: ${report.generatedAssets.length}
 Output:
-- ${result.previewPath}
+- ${report.framesPath}
+- ${report.previewOutputs.webm.path}${report.previewOutputs.webm.generated ? "" : " (not generated)"}
+- ${report.previewOutputs.mp4.path}${report.previewOutputs.mp4.generated ? "" : " (not generated)"}
+- ${result.previewPath} (fallback only)
 - ${result.reportPath}
 `);
 
   if (report.warnings.length > 0) {
     console.log(`Warnings:\n${report.warnings.map((warning) => `- ${warning}`).join("\n")}`);
   }
+}
+
+function printMvpReportSummary(result: MvpReportCommandResult): void {
+  console.log(`auto-svga MVP report completed
+
+Job: ${result.jobName}
+Asset type: ${result.assetType}
+Input mode: ${result.inputMode}
+Parts: ${result.partCount}
+Effects: ${result.effectCount}
+Project layers: ${result.projectLayerCount}
+Generated assets: ${result.generatedAssetCount}
+
+Generated:
+- ${result.reportPath}
+- ${result.svgaMapPath}
+`);
+
+  if (result.report.warnings.length > 0) {
+    console.log(`Warnings:\n${result.report.warnings.map((warning) => `- ${warning}`).join("\n")}`);
+  }
+}
+
+function isMvpExportResult(result: ExportCommandResult): result is Extract<ExportCommandResult, { mode: "mvp" }> {
+  return "mode" in result && result.mode === "mvp";
+}
+
+function printMvpExportSummary(result: Extract<ExportCommandResult, { mode: "mvp" }>): void {
+  console.log(`auto-svga MVP export completed
+
+Job: ${result.jobName}
+Project: ${result.projectPath}
+Canvas: ${result.canvas.width}x${result.canvas.height}
+FPS: ${result.fps}
+Frames: ${result.frames}
+Layers: ${result.layers}
+Images: ${result.images}
+Sprites: ${result.sprites}
+
+Generated:
+- ${result.svgaPath}
+Updated:
+- ${result.reportPath}
+- ${result.svgaMapPath}
+`);
+}
+
+function printMvpPackageSummary(result: MvpPackageCommandResult): void {
+  console.log(`auto-svga MVP package completed
+
+Job: ${result.jobName}
+Included files: ${result.includedFiles.length}
+Generated:
+- ${result.deliveryPath}
+`);
+}
+
+function printAcceptanceSummary(result: AcceptanceCommandResult): void {
+  console.log(`auto-svga MVP acceptance updated
+
+Job: ${result.jobName}
+Status: ${result.status}
+Generated:
+- ${result.acceptancePath}
+Updated:
+- ${result.reportPath}
+`);
 }
 
 function printHelp(): void {
@@ -175,9 +278,13 @@ Usage:
   svga-avatar-frame init <dir>
   svga-avatar-frame validate <dir>
   svga-avatar-frame plan <job-dir>
+  svga-avatar-frame report <job-dir>
   svga-avatar-frame build <dir> [--out <dir>]
   svga-avatar-frame preview <dir> [--out <dir>]
   svga-avatar-frame export <dir> [--out <dir>] [--sweep-stride 1|2|3]
+  svga-avatar-frame package <job-dir>
+  svga-avatar-frame accept <job-dir>
+  svga-avatar-frame reject <job-dir> [--notes <reason>]
 `);
 }
 

@@ -1,0 +1,29 @@
+{
+  "jobName": "avatar_frame_gold_green_real_002",
+  "canvas": [
+    300,
+    300
+  ],
+  "sourceCanvas": [
+    600,
+    600
+  ],
+  "coreLayers": [
+    "01_base_frame_full.png",
+    "02_upper_left_wing_tip.png",
+    "03_upper_right_wing_tip.png",
+    "04_left_outer_green_feathers.png",
+    "05_right_outer_green_feathers.png",
+    "06_bottom_left_outer_feathers.png",
+    "07_bottom_right_outer_feathers.png",
+    "08_top_crest_metal.png",
+    "09_top_gem_core.png",
+    "10_bottom_crest_metal.png",
+    "11_bottom_gem_core.png"
+  ],
+  "notes": [
+    "Includes complete base_frame_full",
+    "Uses cropped production layers for movable/effect parts",
+    "Intended for auto-svga MVP visual validation"
+  ]
+}

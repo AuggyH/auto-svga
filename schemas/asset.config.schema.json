@@ -36,11 +36,13 @@
         "width": {
           "type": "integer",
           "minimum": 64,
+          "default": 300,
           "description": "Output canvas width in pixels."
         },
         "height": {
           "type": "integer",
           "minimum": 64,
+          "default": 300,
           "description": "Output canvas height in pixels."
         },
         "fps": {
@@ -106,9 +108,9 @@
         },
         "frameStride": {
           "type": "integer",
-          "enum": [1, 2, 3],
-          "default": 2,
-          "description": "1 bakes every frame, 2 samples every two frames, 3 samples every three frames."
+          "enum": [1, 2, 3, 4],
+          "default": 3,
+          "description": "1 bakes every frame; 3 is the balanced avatar-frame default; 4 is the performance mode."
         },
         "skipTransparentFrames": {
           "type": "boolean",

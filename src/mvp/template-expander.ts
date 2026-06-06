@@ -47,16 +47,17 @@ export function expandMotionPlan(config: MvpConfig, structure: MvpStructure, mot
     }
 
     const expanded = template.expand(effect, part, { config, frames });
-    if (expanded.length === 1 && expanded[0].role === "part") {
-      layersByPart.set(part.id, expanded[0]);
-    } else {
-      effectLayers.push(...expanded);
+    const replacementPartLayer = expanded.find((layer) => layer.role === "part");
+    if (replacementPartLayer) {
+      layersByPart.set(part.id, replacementPartLayer);
     }
+    effectLayers.push(...expanded.filter((layer) => layer !== replacementPartLayer));
   }
 
-  const warnings = effectLayers
+  const requiredSources = [...new Set(effectLayers
     .filter((layer) => layer.requiredGeneratedAsset)
-    .map((layer) => `${layer.source} is required but not generated in this stage`);
+    .map((layer) => layer.source.startsWith("generated/sweep_baked/") ? "generated/sweep_baked/*.png" : layer.source))];
+  const warnings = requiredSources.map((source) => `${source} is required but not generated in this stage`);
 
   return {
     project: {
@@ -69,6 +70,11 @@ export function expandMotionPlan(config: MvpConfig, structure: MvpStructure, mot
       fps: config.fps,
       durationMs: config.durationMs,
       frames,
+      sweepFrameStride: config.sweepFrameStride
+        ?? (config.sweepQuality === "performance" ? 4 : config.sweepQuality === "high" ? 2 : 3),
+      effectResolutionScale: config.effectResolutionScale
+        ?? (config.sweepQuality === "performance" ? 0.5 : 1),
+      optimizationActions: [],
       layers: [...layersByPart.values(), ...effectLayers].sort((a, b) => a.zIndex - b.zIndex),
       warnings
     },

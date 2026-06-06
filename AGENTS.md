@@ -125,6 +125,57 @@ Playback verification:
 - Keep preview rendering driven by project.json layers, animations, and keyframes
 - Keep exporter integration behind src/exporters interfaces
 
+## Git Collaboration Rules
+
+1. `main` branch represents stable, runnable state. Never force-push to main.
+2. Each task starts from latest `main` and creates an agent branch.
+3. Branch naming:
+   - `agent/codex/<task-name>` — Codex agent work
+   - `agent/hermes/<task-name>` — Hermes agent work
+   - `fix/<issue-name>` — bug fixes
+   - `review/<review-name>` — review/handoff branches
+4. Each branch focuses on one task. No mixed-scope branches.
+5. After development, run full verification (build + test + pipeline).
+6. Produce a review file in `docs/reviews/` before merging.
+7. Merge to main only after review passes. Use `--no-ff` or squash merge.
+8. If a merge causes issues, fix via `revert` or a new `fix/` branch — never force-push.
+9. Never delete untracked files or generated output without confirmed understanding.
+10. Update `docs/CHANGELOG.md` and `docs/CURRENT_STATUS.md` after each merge to main.
+11. Tag stable baselines after major milestone merges.
+12. Commit authors: use agent name for traceability. Set per-repo:
+    - Hermes: `git config user.name "Hermes"` / `user.email "hermes-agent@local"`
+    - Codex: `git config user.name "Codex"` / `user.email "codex-agent@local"`
+
+## Agent Handoff
+
+When a new agent takes over this repo:
+
+1. Read `AGENTS.md` first (this file).
+2. Read `docs/CURRENT_STATUS.md` for latest state.
+3. Check `git status`, `git log`, `git branch` — never pull/reset before understanding current state.
+4. If there are uncommitted changes, create a safety branch before working.
+5. Read `docs/TOKEN_BUDGET_RULES.md` for token usage rules.
+6. Load `docs/TECH_SPEC.md` only if technical details are needed.
+7. Do not expand beyond avatar_frame MVP scope unless explicitly requested.
+
+## Review Process
+
+1. Each task outputs a review file in `docs/reviews/`:
+   - Filename: `YYYY-MM-DD-agent-task-name.md`
+   - Template: `docs/REVIEW_TEMPLATE.md`
+2. Review must include: summary, git state, changed files, requirement checks, verification, risks, next steps.
+3. Do NOT include: full diffs, full logs, project background repetition.
+4. Review is for the next agent — write only what they need to continue.
+
+## Current Template List
+
+Now 5 templates (expanded from original 3):
+- `wing_flap` — wing tip micro-flap rotation around root_joint
+- `gem_twinkle` — gem glint scale + alpha pulse
+- `metal_sweep` — metal edge light sweep with baked mask
+- `frame_breath` — full frame scale + alpha breathing
+- `pop_settle` — defined, not enabled by default
+
 ## Future Extension Direction
 
 Possible later phases:

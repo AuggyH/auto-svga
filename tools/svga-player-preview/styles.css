@@ -32,9 +32,22 @@
   --control-border: rgba(0, 0, 0, 0.09);
   --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.03);
   --shadow-control: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --info-panel-width: 380px;
-  --motion-fast: 170ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  --motion-panel: 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --info-panel-width: 15vw;
+  --logs-panel-width: min(260px, 15vw);
+  --font-title: 13px;
+  --font-subtitle: 11px;
+  --font-body: 12px;
+  --font-meta: 10px;
+  --font-badge: 10px;
+  --line-title: 17px;
+  --line-subtitle: 15px;
+  --line-body: 17px;
+  --line-meta: 15px;
+  --gap-tight: 6px;
+  --gap-body: 10px;
+  --gap-section: 14px;
+  --motion-fast: 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-panel: 240ms cubic-bezier(0.22, 0.78, 0.2, 1);
 }
 
 :root[data-theme="dark"] {
@@ -65,10 +78,12 @@
 
 body {
   min-width: 900px;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   margin: 0;
+  overflow: hidden;
   background: var(--background);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 h1,
@@ -117,7 +132,9 @@ svg {
 .shell {
   display: flex;
   width: 100vw;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   flex-direction: column;
   overflow: hidden;
   background: var(--backgroundGradient);
@@ -130,7 +147,7 @@ svg {
   grid-template-columns: 222px minmax(160px, 1fr) auto;
   align-items: center;
   gap: 16px;
-  height: 64px;
+  height: 60px;
   padding: 0 20px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--background) 88%, transparent);
@@ -171,7 +188,7 @@ svg {
 .brand strong {
   overflow: hidden;
   color: var(--textPrimary);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 19px;
   letter-spacing: -0.55px;
@@ -182,7 +199,7 @@ svg {
 .brandCopy span {
   overflow: hidden;
   color: var(--textSecondary);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 400;
   line-height: 12px;
   letter-spacing: 0.22px;
@@ -196,7 +213,7 @@ svg {
   display: flex;
   align-items: center;
   width: 178px;
-  height: 48px;
+  height: 42px;
   padding: 6px 28px 6px 26px;
   border: 1px solid var(--control-border);
   border-radius: 10px;
@@ -219,7 +236,7 @@ svg {
   content: "";
   position: absolute;
   right: 13px;
-  top: 16px;
+  top: 13px;
   width: 7px;
   height: 7px;
   border-right: 1.5px solid var(--textSecondary);
@@ -231,7 +248,7 @@ svg {
 .modeDot {
   position: absolute;
   left: 13px;
-  top: 19px;
+  top: 17px;
   width: 6px;
   height: 6px;
   border-radius: 3px;
@@ -265,34 +282,17 @@ svg {
   content: "本地预览";
   position: absolute;
   left: 26px;
-  top: 6px;
+  top: 11px;
   color: var(--textPrimary);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 18px;
   letter-spacing: -0.1px;
   pointer-events: none;
 }
 
-.modeControl label::after {
-  content: "Local Preview";
-  position: absolute;
-  left: 26px;
-  top: 24px;
-  color: var(--textSecondary);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 13.5px;
-  letter-spacing: 0.17px;
-  pointer-events: none;
-}
-
 .toolbar:has(#modeSelect option[value="exportReview"]:checked) .modeControl label::before {
   content: "导出验收";
-}
-
-.toolbar:has(#modeSelect option[value="exportReview"]:checked) .modeControl label::after {
-  content: "Export Review";
 }
 
 .actionRow {
@@ -366,6 +366,13 @@ svg {
   background: color-mix(in srgb, var(--textPrimary) 7%, transparent);
 }
 
+.actionRow .iconButton.isActive {
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+  background: color-mix(in srgb, var(--blue) 13%, transparent);
+  color: var(--blue);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 8%, transparent);
+}
+
 .toolButtonPrimary:hover {
   background: #087ffb;
 }
@@ -389,46 +396,10 @@ label.isDisabled {
   opacity: 0.45;
 }
 
-.previewControlStrip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 46px;
-  padding: 8px 20px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--background) 78%, transparent);
-  transition: opacity var(--motion-fast), transform var(--motion-fast), background var(--motion-fast);
-}
-
-.previewControlStrip > div {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.previewControlStrip strong {
-  color: var(--textPrimary);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.previewControlStrip span {
-  color: var(--textSecondary);
-  font-size: 12px;
-}
-
-.toolbar:has(#modeSelect option[value="exportReview"]:checked) + .previewControlStrip {
-  min-height: 0;
-  height: 0;
-  padding-block: 0;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .workspace {
   display: grid;
   flex: 1;
+  height: 0;
   min-height: 0;
   padding: 14px 18px 18px;
   overflow: hidden;
@@ -444,9 +415,31 @@ label.isDisabled {
   gap: 12px;
 }
 
+.workspace.mode-localPreview.withLogsPanel {
+  grid-template-columns: minmax(0, 1fr) var(--logs-panel-width);
+  gap: 12px;
+}
+
+.workspace.mode-localPreview.withInfoPanel.withLogsPanel {
+  grid-template-columns: minmax(0, 1fr) var(--info-panel-width) var(--logs-panel-width);
+  gap: 12px;
+}
+
 .workspace.mode-localPreview.withCompare.withInfoPanel,
 .workspace.mode-exportReview.withInfoPanel {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--info-panel-width);
+  gap: 12px;
+}
+
+.workspace.mode-localPreview.withCompare.withLogsPanel,
+.workspace.mode-exportReview.withLogsPanel {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--logs-panel-width);
+  gap: 12px;
+}
+
+.workspace.mode-localPreview.withCompare.withInfoPanel.withLogsPanel,
+.workspace.mode-exportReview.withInfoPanel.withLogsPanel {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--info-panel-width) var(--logs-panel-width);
   gap: 12px;
 }
 
@@ -458,6 +451,7 @@ label.isDisabled {
 
 .previewCard,
 .infoPanel,
+.logsPanel,
 .syncBar,
 .details,
 .errorBox {
@@ -474,6 +468,14 @@ label.isDisabled {
   min-height: 0;
   overflow: hidden;
   flex-direction: column;
+  animation: cardEnter 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.992);
+  }
 }
 
 .cardHeader,
@@ -481,7 +483,7 @@ label.isDisabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--gap-section);
   min-height: 53px;
   padding: 12px 18px 11px;
   border-bottom: 1px solid var(--hairline);
@@ -494,6 +496,10 @@ label.isDisabled {
   min-width: 0;
 }
 
+.cardTitleGroup h2 {
+  min-width: 0;
+}
+
 .cardActions {
   display: flex;
   align-items: center;
@@ -503,7 +509,6 @@ label.isDisabled {
 }
 
 .cardFileButton,
-.cardFitSelect,
 .compareToggle {
   display: inline-flex;
   align-items: center;
@@ -512,13 +517,12 @@ label.isDisabled {
   border-radius: 9px;
   background: color-mix(in srgb, var(--surfaceElevated) 76%, transparent);
   color: var(--textPrimary);
-  font-size: 13px;
+  font-size: var(--font-meta);
   transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
   white-space: nowrap;
 }
 
 .cardFileButton:hover,
-.cardFitSelect:hover,
 .compareToggle:hover,
 .emptyFileButton:hover {
   border-color: color-mix(in srgb, var(--blue) 35%, var(--control-border));
@@ -551,25 +555,27 @@ label.isDisabled {
   display: none;
 }
 
-.cardFitSelect {
-  position: relative;
-  overflow: hidden;
+.compareToggle {
+  flex: none;
+  height: 28px;
+  padding: 0 9px;
 }
 
-.cardFitSelect select {
-  height: 32px;
-  min-width: 112px;
-  padding: 0 8px;
-  border: 0;
-  background: transparent;
-  color: var(--textSecondary);
-  font: inherit;
-  outline: none;
+.compareToggle span {
+  color: inherit;
+  font-size: var(--font-meta);
+  font-weight: 600;
+  line-height: var(--line-meta);
+}
+
+.compareToggle:has(input:checked) {
+  border-color: color-mix(in srgb, var(--blue) 46%, var(--control-border));
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  color: var(--blue);
 }
 
 .compareToggle {
-  gap: 6px;
-  padding: 0 12px;
+  gap: 5px;
   color: var(--textSecondary);
 }
 
@@ -584,20 +590,10 @@ label.isDisabled {
 .infoHeader h2,
 .details h2 {
   color: var(--textPrimary);
-  font-size: 16px;
+  font-size: var(--font-title);
   font-weight: 600;
-  line-height: 16.25px;
+  line-height: var(--line-title);
   letter-spacing: -0.28px;
-}
-
-.cardHeader h2[data-subtitle]::after {
-  content: attr(data-subtitle);
-  display: block;
-  color: var(--textSecondary);
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 12px;
-  letter-spacing: 0.12px;
 }
 
 .badge {
@@ -608,7 +604,7 @@ label.isDisabled {
   border-radius: 10px;
   background: rgba(0, 122, 255, 0.1);
   color: var(--blue);
-  font-size: 10px;
+  font-size: var(--font-badge);
   font-weight: 700;
   line-height: 15px;
   letter-spacing: 0.52px;
@@ -649,6 +645,7 @@ label.isDisabled {
   min-height: 0;
   overflow: hidden;
   background: var(--surfaceSubtle);
+  transition: background var(--motion-fast);
 }
 
 .previewCard.hasMedia .stage {
@@ -665,7 +662,7 @@ label.isDisabled {
 
 .mode-localPreview.withCompare .previewCard,
 .mode-exportReview .previewCard {
-  height: calc(100vh - 192px);
+  height: 100%;
 }
 
 .mediaFrame {
@@ -710,7 +707,7 @@ label.isDisabled {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   transform: translate(-50%, -50%);
   pointer-events: none;
   text-align: center;
@@ -718,18 +715,18 @@ label.isDisabled {
 }
 
 .centerEmptyState strong {
-  color: var(--textPrimary);
-  font-size: 15px;
+  color: var(--textSecondary);
+  font-size: 12px;
   font-weight: 500;
-  line-height: 19.5px;
+  line-height: 17px;
   letter-spacing: -0.08px;
 }
 
 .centerEmptyState span:not(.svgaMockPreview, .mockRing, .mockCore, .mockCube, .mockCaption) {
-  color: var(--textSecondary);
-  font-size: 13px;
+  color: var(--textTertiary);
+  font-size: 10px;
   font-weight: 400;
-  line-height: 16.5px;
+  line-height: var(--line-body);
   letter-spacing: 0.06px;
 }
 
@@ -742,9 +739,18 @@ label.isDisabled {
   background: var(--surfaceElevated);
   color: var(--textPrimary);
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 500;
   pointer-events: auto;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+}
+
+.dropFeedbackText {
+  display: none;
+  color: var(--textSecondary);
+  font-size: var(--font-meta);
+  font-style: normal;
+  line-height: var(--line-meta);
 }
 
 .previewCard:not(.hasMedia) .cardHeader .cardFileButton {
@@ -901,24 +907,36 @@ label.isDisabled {
 
 .uploadMockIcon {
   display: grid;
-  width: 58px;
-  height: 58px;
-  margin-bottom: 16px;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 12px;
   place-items: center;
   border: 1px dashed color-mix(in srgb, var(--textPrimary) 14%, transparent);
   border-radius: 16px;
   background: color-mix(in srgb, var(--textPrimary) 5%, transparent);
   color: var(--textTertiary);
+  animation: emptyIconFloat 3s ease-in-out infinite;
 }
 
 .uploadMockIcon svg {
-  width: 24px;
-  height: 24px;
+  width: 21px;
+  height: 21px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+@keyframes emptyIconFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
 .dropHint {
@@ -948,8 +966,59 @@ label.isDisabled {
 
 .previewCard.isDragOver,
 .toolbar.isDragOver {
-  border-color: rgba(0, 122, 255, 0.55);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15), var(--shadow-panel);
+  border-color: color-mix(in srgb, var(--green) 68%, var(--panel-border));
+  background: color-mix(in srgb, var(--green) 7%, var(--panel));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent), var(--shadow-panel);
+}
+
+.previewCard.isDragOver .stage {
+  background: color-mix(in srgb, var(--green) 10%, var(--surfaceSubtle));
+}
+
+.previewCard.isDragOver .centerEmptyState strong,
+.previewCard.isDragOver .centerEmptyState span,
+.previewCard.isDragOver .dropFeedbackText,
+.previewCard.isDragOver .uploadMockIcon,
+.previewCard.isDragOver .svgaMockPreview,
+.toolbar.isDragOver {
+  color: var(--green);
+}
+
+.previewCard.isDragOver .dropFeedbackText {
+  display: block;
+}
+
+.previewCard.isDragOver .emptyFileButton {
+  border-color: color-mix(in srgb, var(--green) 45%, var(--control-border));
+  background: color-mix(in srgb, var(--green) 13%, var(--surfaceElevated));
+  color: var(--green);
+}
+
+.previewCard.isDragReject,
+.toolbar.isDragReject {
+  border-color: color-mix(in srgb, var(--danger) 70%, var(--panel-border));
+  background: color-mix(in srgb, var(--danger) 7%, var(--panel));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent), var(--shadow-panel);
+}
+
+.previewCard.isDragReject .stage {
+  background: color-mix(in srgb, var(--danger) 9%, var(--surfaceSubtle));
+}
+
+.previewCard.isDragReject .centerEmptyState strong,
+.previewCard.isDragReject .centerEmptyState span,
+.previewCard.isDragReject .dropFeedbackText,
+.previewCard.isDragReject .uploadMockIcon,
+.toolbar.isDragReject {
+  color: var(--danger);
+}
+
+.previewCard.isDragReject .dropFeedbackText {
+  display: block;
+}
+
+.previewCard.isDragReject .dropFeedbackText::before {
+  content: "不支持的文件类型：";
 }
 
 .playerBar {
@@ -961,6 +1030,78 @@ label.isDisabled {
   border-top: 1px solid var(--hairline);
   background: color-mix(in srgb, var(--surfaceElevated) 78%, transparent);
   backdrop-filter: blur(18px);
+}
+
+.fitMenuWrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.fitMenuButton[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  color: var(--blue);
+}
+
+.fitMenu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 9px);
+  z-index: 12;
+  display: grid;
+  width: 176px;
+  overflow: hidden;
+  padding: 5px;
+  border: 1px solid var(--borderStrong);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surfaceElevated) 94%, transparent);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(20px);
+  transform-origin: right bottom;
+  animation: fitMenuIn 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.fitMenu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--textPrimary);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.fitMenu button:hover {
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+  color: var(--blue);
+}
+
+.fitMenu button.isSelected {
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.fitMenu button.isSelected::after {
+  width: 7px;
+  height: 4px;
+  margin-left: auto;
+  border-bottom: 1.5px solid currentColor;
+  border-left: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+@keyframes fitMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.98);
+  }
 }
 
 .previewCard.hasMedia .playerBar {
@@ -1086,15 +1227,33 @@ label.isDisabled {
   display: none;
 }
 
-.infoPanel {
+.infoPanel,
+.logsPanel {
   position: relative;
   display: flex;
   min-height: 0;
   overflow: hidden;
   flex-direction: column;
-  height: fit-content;
+  width: 100%;
+  height: 100%;
   max-height: 100%;
   border-radius: 20px;
+  animation: sidePanelEnter var(--motion-panel);
+}
+
+@keyframes sidePanelEnter {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+.infoPanel {
+  max-width: 15vw;
+}
+
+.logsPanel {
+  max-width: 15vw;
 }
 
 .resizeHandle {
@@ -1129,13 +1288,93 @@ body.isResizingInfoPanel .resizeHandle::after {
 }
 
 .infoHeader {
+  align-items: flex-start;
+  flex-wrap: wrap;
   min-height: 58px;
   padding: 12px 16px 11px;
 }
 
+.infoHeader > div:first-child {
+  min-width: 0;
+}
+
+.infoHeader h2 {
+  overflow-wrap: anywhere;
+}
+
 .infoHeader p {
   color: var(--textSecondary);
-  font-size: 12px;
+  font-size: var(--font-meta);
+  line-height: var(--line-meta);
+  overflow-wrap: anywhere;
+}
+
+.panelActionGroup {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 6px;
+  flex: none;
+}
+
+.logsPanel .infoHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.logsPanelList {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.logsPanelList .fullLogRow {
+  display: grid;
+  grid-template-columns: 58px 38px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 7px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surfaceElevated) 72%, transparent);
+}
+
+.logsPanelList .fullLogRow time,
+.logsPanelList .fullLogRow strong,
+.logsPanelList .fullLogRow span {
+  font-size: var(--font-meta);
+  line-height: var(--line-meta);
+}
+
+.logsPanelList .fullLogRow time {
+  color: var(--textTertiary);
+}
+
+.logsPanelList .fullLogRow strong {
+  color: var(--textSecondary);
+}
+
+.logsPanelList .fullLogRow span {
+  min-width: 0;
+  color: var(--textPrimary);
+  overflow-wrap: anywhere;
+}
+
+.logsPanelList .fullLogRow.success strong {
+  color: var(--green);
+}
+
+.logsPanelList .fullLogRow.warning strong,
+.logsPanelList .fullLogRow.warn strong {
+  color: var(--warning);
+}
+
+.logsPanelList .fullLogRow.error strong {
+  color: var(--danger);
 }
 
 .tabs {
@@ -1484,7 +1723,8 @@ dd {
   grid-template-columns: 240px minmax(0, 1fr) 240px;
   gap: 0;
   align-items: center;
-  height: 84px;
+  height: 76px;
+  flex: 0 0 76px;
   margin: 0 18px 18px;
   padding: 0;
   overflow: hidden;
@@ -1911,14 +2151,14 @@ dd {
 
 .assetUnifiedList {
   display: grid;
-  gap: 7px;
+  gap: var(--gap-body);
   padding: 8px;
 }
 
 .assetUnifiedRow {
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr);
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
   padding: 10px;
   border: 1px solid var(--hairline);
@@ -1972,7 +2212,7 @@ dd {
 
 .assetUnifiedMain {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -1988,20 +2228,20 @@ dd {
   min-width: 0;
   overflow: hidden;
   color: var(--textPrimary);
-  font-size: 12px;
+  font-size: var(--font-body);
   font-weight: 600;
-  line-height: 17px;
+  line-height: var(--line-body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .assetTypeTag {
   flex: none;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--blue) 10%, transparent);
   color: var(--blue);
-  font-size: 9px;
+  font-size: var(--font-badge);
   font-weight: 700;
 }
 
@@ -2018,8 +2258,9 @@ dd {
 .assetSecondaryLine {
   flex-wrap: wrap;
   color: var(--textTertiary);
-  font-size: 10px;
-  line-height: 15px;
+  gap: 8px;
+  font-size: var(--font-meta);
+  line-height: var(--line-meta);
 }
 
 .assetSecondaryLine span:first-child,
@@ -2036,8 +2277,8 @@ dd {
 
 .assetFullKey {
   color: var(--textTertiary);
-  font-size: 9px;
-  line-height: 13.5px;
+  font-size: var(--font-meta);
+  line-height: var(--line-meta);
 }
 
 .assetWarningTags {
@@ -2047,11 +2288,11 @@ dd {
 }
 
 .assetWarningTags span {
-  padding: 2px 5px;
+  padding: 3px 7px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--warning) 12%, transparent);
   color: var(--warning);
-  font-size: 9px;
+  font-size: var(--font-badge);
 }
 
 .sequenceToggle {
@@ -2061,7 +2302,8 @@ dd {
   background: transparent;
   color: var(--blue);
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--font-meta);
+  line-height: var(--line-meta);
 }
 
 .sequenceChildren {
@@ -2264,7 +2506,7 @@ dd {
 
 .modalOverlay:not([hidden]) .settingsModal,
 .modalOverlay:not([hidden]) .assetModal {
-  animation: modalIn 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: modalIn 260ms cubic-bezier(0.18, 0.84, 0.22, 1);
 }
 
 .drawerOverlay:not([hidden]) .logsDrawer {
@@ -2277,11 +2519,17 @@ dd {
 }
 
 @keyframes modalIn {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.985);
+    transform: translateY(10px) scale(0.965);
   }
-  to {
+
+  72% {
+    opacity: 1;
+    transform: translateY(-1px) scale(1.004);
+  }
+
+  100% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
@@ -2442,7 +2690,7 @@ dd {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-.fullLogRow {
+.logsDrawer .fullLogRow {
   display: grid;
   grid-template-columns: 47px 30px minmax(0, 1fr);
   gap: 10px;
@@ -2451,20 +2699,20 @@ dd {
   padding: 4px 18px;
 }
 
-.fullLogRow time {
+.logsDrawer .fullLogRow time {
   color: #3a3a3c;
   font-size: 10px;
   line-height: 19px;
   letter-spacing: -0.2px;
 }
 
-.fullLogRow strong {
+.logsDrawer .fullLogRow strong {
   color: #636366;
   font-size: 10px;
   line-height: 19px;
 }
 
-.fullLogRow span {
+.logsDrawer .fullLogRow span {
   min-width: 0;
   color: #ebebf5;
   font-size: 11px;
@@ -2472,20 +2720,20 @@ dd {
   overflow-wrap: anywhere;
 }
 
-.fullLogRow.success strong {
+.logsDrawer .fullLogRow.success strong {
   color: #30d158;
 }
 
-.fullLogRow.warning strong,
-.fullLogRow.warn strong {
+.logsDrawer .fullLogRow.warning strong,
+.logsDrawer .fullLogRow.warn strong {
   color: #ff9f0a;
 }
 
-.fullLogRow.error strong {
+.logsDrawer .fullLogRow.error strong {
   color: #ff453a;
 }
 
-.fullLogRow.debug span {
+.logsDrawer .fullLogRow.debug span {
   color: #8e8e93;
   opacity: 0.72;
 }
@@ -2544,7 +2792,7 @@ dd {
 
 .settingsSection {
   display: grid;
-  gap: 8px;
+  gap: var(--gap-body);
   padding-top: 16px;
 }
 
@@ -2559,7 +2807,7 @@ dd {
 }
 
 .settingsSection h3 span {
-  color: inherit;
+  display: none;
 }
 
 .settingsCard {
@@ -2575,26 +2823,28 @@ dd {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 56px;
-  padding: 11px 14px;
+  min-height: 60px;
+  padding: 12px 14px;
   border-bottom: 1px solid color-mix(in srgb, var(--textPrimary) 5%, transparent);
 }
 
 .settingsControlHeader {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   padding: 13px 14px 10px;
 }
 
 .settingsControlHeader strong {
   color: var(--textPrimary);
-  font-size: 13px;
+  font-size: var(--font-body);
   font-weight: 600;
+  line-height: var(--line-body);
 }
 
 .settingsControlHeader small {
   color: var(--textSecondary);
-  font-size: 12px;
+  font-size: var(--font-meta);
+  line-height: var(--line-meta);
 }
 
 .settingsToggleRow:last-child {
@@ -2611,7 +2861,7 @@ dd {
 .previewBackgroundCard > p {
   margin: 0;
   color: var(--textPrimary);
-  font-size: 12px;
+  font-size: var(--font-body);
   font-weight: 500;
   line-height: 18px;
 }
@@ -2619,7 +2869,7 @@ dd {
 .settingsToggleRow small,
 .previewBackgroundCard > p span {
   color: var(--textSecondary);
-  font-size: 10px;
+  font-size: var(--font-meta);
   font-weight: 400;
   line-height: 15px;
   letter-spacing: 0.12px;
@@ -2661,17 +2911,24 @@ dd {
 }
 
 .previewBackgroundCard {
-  padding: 12px 14px;
+  padding: 0;
+}
+
+.settingsOptionChoices {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 14px;
 }
 
 .previewBgChoices {
-  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  padding-top: 10px;
 }
 
-.previewBgChoice {
+.themeChoiceGroup {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settingsOptionChoice {
   position: relative;
   display: grid;
   min-height: 74px;
@@ -2683,27 +2940,33 @@ dd {
   border-radius: 10px;
   background: color-mix(in srgb, var(--surfaceElevated) 70%, transparent);
   cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
 }
 
-.previewBgChoice:has(input:checked) {
+.settingsOptionChoice:hover {
+  border-color: color-mix(in srgb, var(--blue) 30%, var(--control-border));
+  transform: translateY(-1px);
+}
+
+.settingsOptionChoice:has(input:checked) {
   border-color: var(--blue);
   background: color-mix(in srgb, var(--blue) 7%, transparent);
 }
 
-.previewBgChoice input {
+.settingsOptionChoice input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.previewBgChoice strong {
+.settingsOptionChoice strong {
   color: var(--textPrimary);
   font-size: 11px;
   font-weight: 500;
   line-height: 16.5px;
 }
 
-.previewBgChoice small {
+.settingsOptionChoice small {
   color: var(--textSecondary);
   font-size: 9px;
   font-weight: 500;
@@ -2739,14 +3002,7 @@ dd {
 }
 
 .appearanceCard {
-  margin-top: 8px;
-}
-
-.themeChoiceGroup {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  padding: 0 14px 14px;
+  margin-top: 0;
 }
 
 .loopToggle {
@@ -2754,37 +3010,25 @@ dd {
   font-size: 12px;
 }
 
-.themeChoiceGroup label {
-  position: relative;
-  display: grid;
-  align-items: center;
-  min-height: 48px;
-  padding: 8px 10px;
-  border: 1px solid var(--control-border);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--surfaceElevated) 60%, transparent);
-  color: var(--textPrimary);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+.themeSwatch {
+  display: block;
+  width: 28px;
+  height: 20px;
+  margin-bottom: 3px;
+  border: 1px solid color-mix(in srgb, var(--textPrimary) 12%, transparent);
+  border-radius: 5px;
 }
 
-.themeChoiceGroup input {
-  position: absolute;
-  opacity: 0;
+.themeSystem {
+  background: linear-gradient(90deg, #f5f5f7 0 50%, #252528 50% 100%);
 }
 
-.themeChoiceGroup label:has(input:checked) {
-  border-color: color-mix(in srgb, var(--blue) 46%, var(--control-border));
-  background: color-mix(in srgb, var(--blue) 12%, transparent);
-  color: var(--blue);
+.themeLight {
+  background: #fff;
 }
 
-.themeChoiceGroup small {
-  color: var(--textSecondary);
-  font-size: 11px;
-  font-weight: 500;
+.themeDark {
+  background: #1c1c1e;
 }
 
 .settingsModal footer {
@@ -2876,8 +3120,22 @@ dd {
 
   .workspace.mode-localPreview.withCompare,
   .workspace.mode-exportReview,
+  .workspace.mode-localPreview.withInfoPanel,
+  .workspace.mode-localPreview.withLogsPanel,
+  .workspace.mode-localPreview.withInfoPanel.withLogsPanel,
+  .workspace.mode-localPreview.withCompare.withInfoPanel,
+  .workspace.mode-localPreview.withCompare.withLogsPanel,
+  .workspace.mode-localPreview.withCompare.withInfoPanel.withLogsPanel,
+  .workspace.mode-exportReview.withInfoPanel,
+  .workspace.mode-exportReview.withLogsPanel,
+  .workspace.mode-exportReview.withInfoPanel.withLogsPanel,
   .syncBar {
     grid-template-columns: 1fr;
+  }
+
+  .infoPanel,
+  .logsPanel {
+    max-height: 520px;
   }
 
   .mode-localPreview.withCompare .previewCard,

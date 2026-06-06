@@ -1,9 +1,14 @@
 export type MvpAssetType = "avatar_frame";
 export type MvpInputMode = "layered";
 export type MotionTemplateId = "wing_flap" | "gem_twinkle" | "metal_sweep" | "frame_breath" | "pop_settle";
+export type MvpEasing = "linear" | "easeInSine" | "easeOutSine" | "easeInOutSine" | "easeInQuad" | "easeOutQuad" | "easeInOutQuad" | "easeOutBack";
 
 export interface MvpConfig {
   assetType: MvpAssetType;
+  sourceCanvas?: {
+    width: number;
+    height: number;
+  };
   canvas: {
     width: number;
     height: number;
@@ -11,6 +16,10 @@ export interface MvpConfig {
   fps: number;
   durationMs: number;
   outputName: string;
+  sweepQuality?: "balanced" | "performance" | "high";
+  sweepFrameStride?: number;
+  effectResolutionScale?: number;
+  maxDecodedImageMB?: number;
   export?: {
     previewGif?: boolean;
     svga?: boolean;
@@ -22,6 +31,10 @@ export interface MvpConfig {
 export interface MvpStructure {
   assetType: MvpAssetType;
   inputMode: MvpInputMode;
+  sourceCanvas?: {
+    width: number;
+    height: number;
+  };
   canvas: {
     width: number;
     height: number;
@@ -39,6 +52,7 @@ export interface MvpPart {
   id: string;
   type: string;
   source: string;
+  originalSource?: string;
   bbox: [number, number, number, number];
   anchor: {
     x: number;
@@ -50,6 +64,15 @@ export interface MvpPart {
   zIndex: number;
   motionAllowed?: MotionTemplateId[];
   symmetryPair?: string;
+  layerMode?: "full_canvas" | "cropped";
+  motionProfile?: {
+    amplitudeDeg?: number;
+    phase?: number;
+    easing?: MvpEasing;
+    mode?: "micro_flap" | "soft_sway" | "flap";
+  };
+  trimmedBbox?: [number, number, number, number];
+  decodedBytes?: number;
 }
 
 export interface ValidationIssue {
@@ -99,6 +122,9 @@ export interface MvpProject {
   fps: number;
   durationMs: number;
   frames: number;
+  sweepFrameStride?: number;
+  effectResolutionScale?: number;
+  optimizationActions?: string[];
   layers: MvpProjectLayer[];
   warnings: string[];
 }
@@ -110,10 +136,20 @@ export interface MvpProjectLayer {
   role: "part" | "effect" | "effect_placeholder";
   zIndex: number;
   bbox?: [number, number, number, number];
+  sourcePart?: string;
+  originalSource?: string;
+  trimmedBbox?: [number, number, number, number];
+  decodedBytes?: number;
   anchor?: AnchorConversion;
   keyframes: MvpKeyframe[];
   sourceEffect?: string;
   requiredGeneratedAsset?: boolean;
+  frameIndex?: number;
+  visibleFrameRange?: [number, number];
+  imageHash?: string;
+  reusedFrom?: string;
+  maskSource?: string;
+  maskMode?: "baked_sweep_frames";
 }
 
 export interface MvpKeyframe {
@@ -124,6 +160,7 @@ export interface MvpKeyframe {
   scaleY?: number;
   rotation?: number;
   alpha?: number;
+  easing?: MvpEasing | string;
 }
 
 export interface PlanningResult {

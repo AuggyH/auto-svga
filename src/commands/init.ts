@@ -16,8 +16,8 @@ export async function initCommand(targetDir: string): Promise<void> {
         framePng: "assets/frame.png"
       },
       canvas: {
-        width: 256,
-        height: 256,
+        width: 300,
+        height: 300,
         fps: 24,
         durationFrames: 72,
         durationSeconds: 3

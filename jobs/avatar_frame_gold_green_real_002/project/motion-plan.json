@@ -11,38 +11,45 @@
   },
   "effects": [
     {
-      "id": "base_frame_breath",
+      "id": "base_frame_full_breath",
       "template": "frame_breath",
-      "target": "base_frame",
+      "target": "base_frame_full",
       "intensity": 0.25,
       "durationMs": 2400
     },
     {
-      "id": "base_frame_sweep",
+      "id": "base_frame_full_sweep",
       "template": "metal_sweep",
-      "target": "base_frame",
+      "target": "base_frame_full",
       "intensity": 0.45,
       "durationMs": 2200
     },
     {
-      "id": "left_wing_flap",
+      "id": "upper_left_wing_tip_flap",
       "template": "wing_flap",
-      "target": "left_wing",
+      "target": "upper_left_wing_tip",
       "intensity": 0.35,
       "durationMs": 2400
     },
     {
-      "id": "right_wing_flap",
+      "id": "upper_right_wing_tip_flap",
       "template": "wing_flap",
-      "target": "right_wing",
+      "target": "upper_right_wing_tip",
       "intensity": 0.35,
       "durationMs": 2400,
-      "mirrorOf": "left_wing_flap"
+      "mirrorOf": "upper_left_wing_tip_flap"
     },
     {
-      "id": "top_gem_twinkle",
+      "id": "top_gem_core_twinkle",
       "template": "gem_twinkle",
-      "target": "top_gem",
+      "target": "top_gem_core",
+      "intensity": 0.55,
+      "durationMs": 1600
+    },
+    {
+      "id": "bottom_gem_core_twinkle",
+      "template": "gem_twinkle",
+      "target": "bottom_gem_core",
       "intensity": 0.55,
       "durationMs": 1600
     }

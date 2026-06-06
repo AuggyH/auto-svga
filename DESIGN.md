@@ -78,7 +78,7 @@ Never imply success before it is proven. If visual playback cannot be automatica
 
 ### 本地预览 / Local Preview
 
-Default mode. Show one large SVGA playback window and a right-side information panel.
+Default mode. Show one large SVGA playback window. `Compare` is a stable switch inside Local Preview, not a separate top-level mode.
 
 Use this mode when the user drags or chooses a local `.svga` file. The goal is to inspect the file, not compare it against a potentially unrelated asset.
 
@@ -86,7 +86,8 @@ Do:
 
 - Give the SVGA player the largest area on screen.
 - Keep the transparent checkerboard behind the canvas.
-- Show `SVGA 信息 / SVGA Info` with tabs for overview, layers, image resources, and logs.
+- Show `SVGA 信息 / SVGA Info` with tabs for overview and assets.
+- Show `运行日志 / Runtime Logs` as a separate right-side panel.
 - Keep lists scrollable inside the panel.
 
 Do not:
@@ -110,13 +111,11 @@ Required controls:
 
 The right panel should be named `参考视频 / Reference Video` or `对比预览 / Comparison Preview`, not `GIF Preview`.
 
-### 本地对比 / Local Compare
+### Compare 开关
 
-Explicit comparison mode opened by the user from Local Preview or selected from the display mode control.
+Local Compare is a Compare switch inside Local Preview. It opens SVGA B beside SVGA A for comparing two `.svga` files, such as different `bakedSweep.frameStride` exports.
 
-Use it to compare two `.svga` files, such as different `bakedSweep.frameStride` exports. SVGA A and SVGA B should be visually symmetrical and support synchronized playback controls.
-
-Do not use this mode as the default landing state.
+Do not expose Local Compare as a third top-level mode.
 
 ## Layout
 
@@ -126,7 +125,7 @@ The default preview page should use:
 
 - a compact top toolbar
 - a large central preview area
-- a right-side information panel in Local Preview
+- right-side information and logs panels that can coexist
 - a bottom sync bar only in comparison modes
 - a report section below the primary work area
 
@@ -158,9 +157,7 @@ Sizing priority:
 The SVGA info panel should support these tabs:
 
 - `概览 / Overview`
-- `图层 / Layers`
-- `图片资源 / Images`
-- `日志 / Logs`
+- `资源 / Assets`
 
 Overview should show:
 
@@ -287,10 +284,11 @@ When implementing UI for this repository:
 5. Keep Chinese primary, English secondary.
 6. Verify the page through the local preview server when possible.
 
-For `tools/svga-player-preview`, preserve the three-mode model:
+For `tools/svga-player-preview`, preserve the two top-level mode model:
 
 ```text
-Local Preview -> one SVGA + info panel
+Local Preview -> one SVGA, optional Compare switch for SVGA B
 Export Review -> exported SVGA + reference video
-Local Compare -> SVGA A + SVGA B
 ```
+
+File selection controls belong to each preview card. Fit mode controls belong to each preview card. Single-window playback controls live inside the relevant preview card. Synchronized controls only affect both visible windows and live in the shared sync bar.

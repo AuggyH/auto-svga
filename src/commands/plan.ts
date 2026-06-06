@@ -1,10 +1,15 @@
 import path from "node:path";
+import { readFile } from "node:fs/promises";
 import { ensureDir, writeJsonFile } from "../utils/fs.js";
 import { hasErrors } from "../core/validator.js";
 import { expandMotionPlan } from "../mvp/template-expander.js";
 import { loadMvpJob } from "../mvp/job-loader.js";
 import { planMotions } from "../mvp/motion-planner.js";
+import { prepareMvpProductionAssets } from "../mvp/production-assets.js";
+import { ensureMvpGeneratedAssets } from "../mvp/generated-assets.js";
 import type { PlanningResult, ValidationIssue } from "../mvp/types.js";
+import type { MvpProject } from "../mvp/types.js";
+import { decodeRgbaPng } from "../utils/png-reader.js";
 
 export async function planCommand(jobDir: string): Promise<PlanningResult> {
   const loaded = await loadMvpJob(jobDir);
@@ -24,8 +29,50 @@ export async function planCommand(jobDir: string): Promise<PlanningResult> {
     };
   }
 
-  const motionPlan = planMotions(loaded.config, loaded.structure);
-  const expansion = expandMotionPlan(loaded.config, loaded.structure, motionPlan);
+  const productionAssets = await prepareMvpProductionAssets(loaded.jobDir, loaded.config, loaded.structure);
+  generated.push(...productionAssets.generated);
+  const motionPlan = planMotions(loaded.config, productionAssets.structure);
+  let resolvedConfig = { ...loaded.config };
+  let expansion = expandMotionPlan(resolvedConfig, productionAssets.structure, motionPlan);
+  let generatedAssets = await ensureMvpGeneratedAssets(loaded.jobDir, expansion.project);
+  generated.push(...generatedAssets.generated);
+  const optimizationActions: string[] = [];
+  const budgetWarnings: string[] = [];
+  const maxDecodedBytes = (loaded.config.maxDecodedImageMB ?? 8) * 1024 * 1024;
+  let decodedBytes = await estimateDecodedBytes(loaded.jobDir, expansion.project);
+
+  if (decodedBytes > maxDecodedBytes && (expansion.project.sweepFrameStride ?? 3) < 4) {
+    const previousStride = expansion.project.sweepFrameStride ?? 3;
+    resolvedConfig = { ...resolvedConfig, sweepFrameStride: 4 };
+    optimizationActions.push(`sweepFrameStride changed from ${previousStride} to 4`);
+    expansion = expandMotionPlan(resolvedConfig, productionAssets.structure, motionPlan);
+    generatedAssets = await ensureMvpGeneratedAssets(loaded.jobDir, expansion.project);
+    generated.push(...generatedAssets.generated);
+    decodedBytes = await estimateDecodedBytes(loaded.jobDir, expansion.project);
+  }
+  if (decodedBytes > maxDecodedBytes && (expansion.project.effectResolutionScale ?? 1) > 0.5) {
+    resolvedConfig = { ...resolvedConfig, effectResolutionScale: 0.5 };
+    optimizationActions.push("effectResolutionScale changed to 0.5");
+    expansion = expandMotionPlan(resolvedConfig, productionAssets.structure, motionPlan);
+    generatedAssets = await ensureMvpGeneratedAssets(loaded.jobDir, expansion.project);
+    generated.push(...generatedAssets.generated);
+    decodedBytes = await estimateDecodedBytes(loaded.jobDir, expansion.project);
+  }
+  if (decodedBytes > maxDecodedBytes) {
+    const sweepLayers = expansion.project.layers.filter((layer) => layer.maskMode === "baked_sweep_frames");
+    expansion.project.layers = expansion.project.layers.filter((layer) => layer.maskMode !== "baked_sweep_frames")
+      .concat(sweepLayers.filter((_, index) => index % 2 === 0))
+      .sort((a, b) => a.zIndex - b.zIndex);
+    optimizationActions.push("sweep visible frames reduced by half");
+    decodedBytes = await estimateDecodedBytes(loaded.jobDir, expansion.project);
+  }
+  if (decodedBytes > maxDecodedBytes) {
+    expansion.project.layers = expansion.project.layers.filter((layer) => layer.maskMode !== "baked_sweep_frames");
+    optimizationActions.push("metal sweep disabled due to decoded image memory budget");
+    budgetWarnings.push("metalSweepDisabledDueToMemoryBudget = true");
+  }
+  expansion.project.optimizationActions = optimizationActions;
+  expansion.project.warnings = [...productionAssets.warnings, ...generatedAssets.warnings, ...budgetWarnings];
   const issues: ValidationIssue[] = [...loaded.issues, ...expansion.issues];
 
   if (!hasErrors(issues)) {
@@ -41,12 +88,25 @@ export async function planCommand(jobDir: string): Promise<PlanningResult> {
     jobName: loaded.jobName,
     jobDir: loaded.jobDir,
     config: loaded.config,
-    structure: loaded.structure,
+    structure: productionAssets.structure,
     motionPlan,
     project: expansion.project,
     issues,
     generated
   };
+}
+
+async function estimateDecodedBytes(jobDir: string, project: MvpProject): Promise<number> {
+  let total = 0;
+  for (const source of new Set(project.layers.map((layer) => layer.source))) {
+    try {
+      const image = decodeRgbaPng(await readFile(path.join(jobDir, source)));
+      total += image.width * image.height * 4;
+    } catch {
+      // Missing sources are reported by the generated asset and export stages.
+    }
+  }
+  return total;
 }
 
 function emptyMotionPlan(config: { durationMs?: number; fps?: number }) {

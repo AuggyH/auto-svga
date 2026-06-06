@@ -1,5 +1,0 @@
-头像框 MVP 0.1 测试 job。
-
-目标：验证 layered avatar frame 可以从 config.json 和 structure.json 自动生成 motion-plan.json 与 project.json。
-
-视觉方向：轻奢、克制、循环自然。翅膀围绕根部轻微扇动，顶部宝石轻微闪烁，基础框有微弱呼吸和金属扫光占位。
