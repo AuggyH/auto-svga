@@ -1,16 +1,40 @@
 node_modules/
 dist/
 .DS_Store
-jobs/
-examples/**/output/
-outputs/
 *.log
 
+# Generated outputs
 *.zip
+*.svga
+*.gif
+*.webm
+*.mp4
 
+# Local runtime workspaces
+jobs/
+input/
+generated/
+output/
+preview/
+exports/
+
+# Real design source assets
+*.psd
+*.fig
+*.sketch
+
+# Temporary review artifacts
 review/
+outputs/
 
-jobs/**/generated/*
-jobs/**/output/*
-!jobs/**/generated/.gitkeep
-!jobs/**/output/.gitkeep
+# Allow approved fixtures and examples, but not their generated outputs
+!fixtures/
+!fixtures/**
+!examples/
+!examples/**
+examples/**/output/
+examples/**/*.zip
+examples/**/*.svga
+examples/**/*.gif
+examples/**/*.webm
+examples/**/*.mp4

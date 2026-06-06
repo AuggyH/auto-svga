@@ -118,5 +118,5 @@ and the full keyboard matrix pass.
 
 ## 17. Commit
 
-- Implementation commits: `23ec4d1`, `4e1a6bc`
+- Implementation commits: `23ec4d1`, `4e1a6bc`, `6c38fad`, `429cfa3`
 - Tag: not created
