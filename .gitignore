@@ -38,3 +38,4 @@ examples/**/*.svga
 examples/**/*.gif
 examples/**/*.webm
 examples/**/*.mp4
+examples/**/.DS_Store
