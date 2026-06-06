@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-06-07 — Web preview rebuild from baseline
+
+**Baseline**: `v0.1.0-avatar-frame-handoff-baseline` (`ea4e34d`)
+**Branch**: `agent/codex/web-preview-rebuild-from-baseline`
+**Implementation commits**: `23ec4d1`, `4e1a6bc`
+**Tag**: not created
+
+- Rebuilt latest-artifact discovery around complete artifact groups and real SVGA priority
+- Kept reference media and report data in the same artifact group
+- Prevented reference success from masking a missing or failed SVGA
+- Replaced 15vw panel sizing with readable, resizable information and log panels
+- Restored vertical reachability and narrow-width overlay fallbacks
+- Unified mode and card display dropdown behavior
+- Added shared playback-button state rendering and grouped settings
+- Removed the real `jobs/avatar_frame_gold_green_real_002` workspace from Git tracking while preserving local files
+- Kept WCAG AAA status at Partial pending axe and full viewport verification
+
 ## 2026-06-07 — v0.1.0-avatar-frame-handoff-baseline
 
 **Commit**: (see git log)

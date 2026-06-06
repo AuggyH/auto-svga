@@ -37,3 +37,5 @@ Agent behavior rules for this repository. Applies to all agents (Codex, Hermes, 
 19. Locate first, change second, verify third.
 20. Run build + test + pipeline before claiming completion.
 21. If verification fails, report the exact error — do not guess at success.
+22. For Web UI verification, keep one representative screenshot per meaningful state; do not dump repetitive viewport captures into reviews.
+23. Record unverified accessibility or viewport checks as Partial/Not verified instead of spending tokens restating the requirement.

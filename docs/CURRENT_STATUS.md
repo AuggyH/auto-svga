@@ -4,10 +4,33 @@ Date: 2026-06-07
 
 ## Main Branch
 
-- **Runnable**: yes
-- **Latest commit**: (to be recorded after merge)
+- **Runnable**: yes at the handoff baseline
+- **Latest implementation commit**: `4e1a6bc`
 - **Latest tag**: v0.1.0-avatar-frame-handoff-baseline
-- **Branch**: main
+- **Active branch**: agent/codex/web-preview-rebuild-from-baseline
+
+## Web Preview Rebuild
+
+The current branch rebuilds the Web preview from
+`v0.1.0-avatar-frame-handoff-baseline`; it does not continue the failed Round
+6/7 layout patches.
+
+Preserved:
+- Git handoff/review workflow and runtime artifact ignore rules
+- avatar_frame 300x300 production pipeline and real SVGA output
+- local drag/drop, comparison modes, report/resource inspection, and real player validation
+
+Discarded or rewritten:
+- 15vw information/log panel widths
+- hidden-overflow layouts that made wrapped content unreachable
+- split mode/fit menu implementations
+- latest-artifact selection that allowed a newer GIF-only group to displace a valid SVGA group
+- reference success masking primary SVGA failure
+
+Status:
+- **Done**: grouped latest-artifact API, SVGA-first same-group loading, manual-selection protection, rescan feedback, readable/resizable panels, narrow-width overlay fallback, unified playback rendering, unified dropdown structure, settings regrouping, reduced-motion support
+- **Partial**: keyboard menu automation and WCAG AAA target
+- **Not verified**: axe zero violations, complete 1600/1440/1280/1024/900/768 screenshot matrix
 
 ## Last Completed
 
@@ -35,10 +58,11 @@ avatar_frame MVP only. No other asset types.
 - `duplicateOverlayRisk: true` — base_frame_full may overlap with local part layers; needs human visual confirmation
 - No automated visual playback verification — manual review required
 - Sweep frame 000 shows white edge artifact on non-transparent background
+- Full accessibility certification remains Partial; no axe-zero claim
+- Browser automation verified the narrow 499px fallback and live artifacts, but the complete desktop viewport matrix still needs a dedicated pass
 
 ## Next Steps
 
-- Human visual acceptance of avatar_frame_gold_green_real_002
-- Consider phase offset between left/right wing flap
-- Consider gem glint/breath glow visual tuning
-- Evaluate sweep stride vs quality balance
+- Complete axe and explicit desktop viewport matrix checks
+- Review and merge the Web preview rebuild branch after human UI approval
+- Human visual acceptance of avatar_frame_gold_green_real_002 remains required

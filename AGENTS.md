@@ -36,6 +36,10 @@ Current scope is intentionally narrow:
 18. Do not rely only on zlib inflate or protobuf decode to judge visual success
 19. Do not fabricate playback success; mark manual visual confirmation as required when automated playback verification is unavailable
 20. For product or UI work, read DESIGN.md and follow its mode, layout, language, and visual guidance
+21. Web preview artifact discovery must prefer the newest complete group containing a real SVGA; reference media must come from the same group
+22. Do not let a successful GIF/video reference hide a failed or missing SVGA
+23. Keep preview workspaces vertically reachable at narrow desktop widths; do not lock wrapped content behind hidden overflow
+24. Treat WCAG AAA as Partial until axe, contrast, keyboard, resize, and reduced-motion checks are complete
 
 ## Expected Core Modules
 

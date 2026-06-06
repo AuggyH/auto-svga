@@ -69,6 +69,20 @@ docs/                       Documentation
 8. `svga-exporter` encodes protobuf + zlib → `.svga`
 9. `package` → `delivery.zip`
 
+## Web Artifact Discovery
+
+`GET /api/latest-artifact` returns:
+
+- `latestWithSvga`: newest artifact group containing a real `.svga`
+- `latestAny`: newest group regardless of completeness
+- `artifacts`: all discovered groups sorted by key-file modification time
+- `warnings`: scan-level fallback information
+
+Groups are built from `jobs/*/output`, `examples/*/output`, `exports`, and
+`preview`; optional generated directories contribute reference files without
+changing group identity. The UI loads SVGA, reference media, and report from
+one group. Manual selections remain authoritative until an explicit rescan.
+
 ## Production Canvas
 
 Default: 300×300. Source scaling handled by `production-assets.ts`:

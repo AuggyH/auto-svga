@@ -14,6 +14,10 @@
 - [x] Acceptance workflow
 - [x] Web playback validation tool
 - [x] Agent collaboration docs + review process
+- [x] Web preview rebuild: grouped latest artifacts, SVGA-first loading, readable panels
+- [x] Unified dropdown, playback state, settings groups, and reduced motion
+- [ ] WCAG AAA verification (axe, contrast, complete keyboard and resize checks)
+- [ ] Full 1600/1440/1280/1024/900/768 visual matrix
 
 ## Next: MVP 0.2
 

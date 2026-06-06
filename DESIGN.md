@@ -74,6 +74,14 @@ Treat playback truth as higher priority than generated previews. GIF preview can
 
 Never imply success before it is proven. If visual playback cannot be automatically judged, the UI should clearly show that manual review is required.
 
+Use one interaction color. Action blue (`#0066cc`) is reserved for primary
+actions, selection, focus, and links. Success, warning, and danger colors are
+status semantics, not alternate brand colors.
+
+Separate visual size from hit area. Toolbar icons may remain visually compact
+(32-36px controls with 15-18px icons) while their practical hit area is
+expanded without globally forcing every button to 44px.
+
 ## App Modes
 
 ### 本地预览 / Local Preview
@@ -133,6 +141,11 @@ Panels may use a light translucent surface with subtle blur and soft shadow. Thi
 
 Avoid nested cards. A preview card can contain the canvas and quick metrics, but do not place decorative cards inside it.
 
+Use an 8px-derived spacing system: 4, 8, 12, 16, 24, and 32px. Responsive
+layouts must remain vertically scrollable. Never combine fixed viewport
+heights and hidden overflow in a way that makes wrapped previews, sync
+controls, or reports unreachable.
+
 ## Preview Cards
 
 Preview cards should have:
@@ -172,6 +185,31 @@ Overview should show:
 - render status
 
 Layer and image lists must be scrollable. Use monospace for layer names, image keys, dimensions, and byte sizes.
+
+The information panel is 320-560px wide with a 420px default. The logs panel
+is 420-720px wide with a 560px default. Both support resizing and persist the
+selected width. At narrow desktop widths they become dismissible overlay
+panels rather than crushing preview cards into unreadable columns.
+
+## Menus
+
+Top-level mode selection and card display modes use one dropdown system.
+Shared behavior includes selected state, focus-visible state, arrow-key
+navigation, Enter/Space selection, Escape dismissal, outside-click dismissal,
+viewport-aware positioning, and reduced-motion behavior. A hidden native
+select may remain as a fallback, but it is not the primary visual control.
+
+## Settings
+
+Settings are grouped as:
+
+- preview and appearance
+- playback and acceptance
+- debugging and accessibility
+
+Every row uses the same title, description, and trailing-control hierarchy.
+Rescanning artifacts is a workflow action with scanning, success, and error
+feedback, not a temporary debug button.
 
 Resource warnings should be visible but not alarming unless the state is truly blocking. Use warning color for:
 
@@ -222,6 +260,11 @@ Rules:
 
 UI motion should be subtle. The animation under review is the content; the interface should not compete with it.
 
+Motion only explains state changes: panel entry, modal entry, dropdown entry,
+loading, success, error, and drag acceptance. `prefers-reduced-motion` and the
+manual reduce-motion setting replace movement and scale with near-instant
+state changes.
+
 Allowed:
 
 - hover state
@@ -235,6 +278,13 @@ Avoid:
 - animated backgrounds
 - large entrance animations
 - motion that can be mistaken for SVGA playback behavior
+
+## Accessibility Status
+
+WCAG AAA is a target, currently **Partial**. Do not mark it complete until
+axe reports zero violations and contrast, keyboard order, focus visibility,
+dropdown navigation, resize semantics, and reduced motion have all been
+verified in both themes.
 
 ## Drag And Drop
 
