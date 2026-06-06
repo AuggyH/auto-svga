@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
-import { createReadStream, readdir } from "node:fs";
-import { stat } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { stat, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
