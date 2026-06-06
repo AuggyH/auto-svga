@@ -34,7 +34,7 @@ Status:
 
 ## Web Preview Layout Polish
 
-Current branch: `agent/codex/web-preview-layout-polish`
+Merged to `main`: `3928e4a`
 
 - Fixed comparison layouts to remain horizontal and page-level scrolling to remain disabled.
 - Replaced independent information/log booleans with one mutually exclusive side-panel state.

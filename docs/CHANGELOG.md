@@ -4,6 +4,7 @@
 
 **Branch**: `agent/codex/web-preview-layout-polish`
 **Implementation commit**: `49d6795`
+**Merge commit**: `3928e4a`
 
 - Locked the preview shell to one viewport and retained horizontal comparison cards on narrow widths
 - Made SVGA information and runtime logs mutually exclusive overlay panels
