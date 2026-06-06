@@ -5,7 +5,7 @@ Date: 2026-06-07
 ## Main Branch
 
 - **Runnable**: yes
-- **Latest commit**: (to be recorded after merge)
+- **Latest commit**: ea4e34d (merge), 59275ff (baseline)
 - **Latest tag**: v0.1.0-avatar-frame-handoff-baseline
 - **Branch**: main
 

@@ -2,7 +2,7 @@
 
 ## 2026-06-07 — v0.1.0-avatar-frame-handoff-baseline
 
-**Commit**: (see git log)
+**Commit**: ea4e34d (merge), 59275ff (baseline)
 **Tag**: v0.1.0-avatar-frame-handoff-baseline
 
 Hermes handoff baseline. Preserved Codex uncommitted avatar frame improvements:
