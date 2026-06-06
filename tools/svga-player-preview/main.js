@@ -657,7 +657,7 @@ function toggleSlot(slot) {
     playSlot(slot);
   }
   updateSyncPlaybackState();
-}
+  updatePlaybackButtons();}
 
 function seekSlot(slot, percent, playAfter = false) {
   if (!slot.player || !slot.videoItem || !slot.metrics?.frameCount || !slot.player.stepToFrame) {
@@ -684,7 +684,7 @@ function finishSlotPlayback(slot) {
   }
   updatePlaybackButtons();
   updateSyncPlaybackState();
-}
+  updatePlaybackButtons();}
 
 function setSlotLoop(slot, enabled) {
   slot.loop = enabled;
@@ -795,7 +795,7 @@ function playReference() {
     referenceState.video.play().catch((error) => {
       addLog("warning", `参考视频需要用户手动播放。/ Reference autoplay was blocked: ${error.message}`);
       updateSyncPlaybackState();
-    });
+  updatePlaybackButtons();    });
   }
 }
 
@@ -1796,9 +1796,11 @@ function escapeHtml(value) {
 }
 
 function updatePlaybackButtons() {
+    localPlayPauseButton.title = players.a.isPlaying ? "暂停" : "播放";
   localPlayPauseButton.innerHTML = players.a.isPlaying
     ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>`
     : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
+    playerBPlayPauseButton.title = players.b.isPlaying ? "暂停" : "播放";
   playerBPlayPauseButton.innerHTML = players.b.isPlaying
     ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>`
     : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
@@ -2099,12 +2101,12 @@ window.addEventListener("resize", () => {
 referenceState.video.addEventListener("play", () => {
   startReferenceTicker();
   updateSyncPlaybackState();
-});
+  updatePlaybackButtons();});
 referenceState.video.addEventListener("pause", updateSyncPlaybackState);
 referenceState.video.addEventListener("ended", () => {
   stopReferenceTicker();
   updateSyncPlaybackState();
-});
+  updatePlaybackButtons();});
 
 svgaFileInput.addEventListener("change", () => {
   const file = svgaFileInput.files?.[0];
