@@ -1,15 +1,36 @@
 node_modules/
 dist/
 .DS_Store
-examples/**/output/
-outputs/
 *.log
 
+# Generated outputs
 *.zip
+*.svga
+*.gif
+*.webm
+*.mp4
 
+# Local runtime workspaces (jobs, inputs, generated, outputs)
+jobs/
+input/
+generated/
+output/
+preview/
+exports/
+
+# Real design source assets
+*.psd
+*.fig
+*.sketch
+
+# Review artifacts (temporary)
 review/
+outputs/
 
-jobs/**/generated/*
-jobs/**/output/*
-!jobs/**/generated/.gitkeep
-!jobs/**/output/.gitkeep
+# Allow mock fixtures and examples explicitly
+!fixtures/
+!fixtures/**
+!examples/
+!examples/**
+# But keep example outputs gitignored
+examples/**/output/

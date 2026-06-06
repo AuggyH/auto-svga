@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-07 — repo hygiene and doc fixes
+
+**Commit**: (see git log after merge)
+
+Hermes repo hygiene pass:
+- Fixed AGENTS.md template count (3 → 5)
+- Added ADR-001 (avatar frame MVP scope) to docs/decisions/
+- Added Asset Commit Rules to AGENTS.md
+- Updated .gitignore: jobs/, input/, generated/, output/, *.svga, *.gif, etc.
+- Removed jobs/ from Git tracking (local files preserved)
+- Updated CURRENT_STATUS with known issues and asset rules
+- Verified build + 28 tests pass without tracked jobs/
+
 ## 2026-06-07 — v0.1.0-avatar-frame-handoff-baseline
 
 **Commit**: ea4e34d (merge), 59275ff (baseline)
