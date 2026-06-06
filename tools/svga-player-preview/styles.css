@@ -32,8 +32,8 @@
   --control-border: rgba(0, 0, 0, 0.09);
   --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.03);
   --shadow-control: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --info-panel-width: clamp(320px, 32vw, 560px);
-  --logs-panel-width: clamp(420px, 42vw, 720px);
+  --info-panel-width: 15vw;
+  --logs-panel-width: min(260px, 15vw);
   --font-title: 13px;
   --font-subtitle: 11px;
   --font-body: 12px;
@@ -81,7 +81,7 @@ body {
   height: 100vh;
   height: 100dvh;
   margin: 0;
-  overflow: auto;
+  overflow: hidden;
   background: var(--background);
   font-size: 13px;
 }
@@ -124,20 +124,6 @@ svg {
   white-space: nowrap !important;
   border: 0 !important;
 }
-
-.skipLink {
-  position: absolute;
-  top: -100%;
-  left: 8px;
-  background: var(--blue);
-  color: #fff;
-  padding: 8px 16px;
-  border-radius: 8px;
-  z-index: 200;
-  font-size: 14px;
-  text-decoration: none;
-}
-.skipLink:focus { top: 8px; }
 
 [hidden] {
   display: none !important;
@@ -1263,11 +1249,11 @@ label.isDisabled {
 }
 
 .infoPanel {
-  max-width: none;
+  max-width: 15vw;
 }
 
 .logsPanel {
-  max-width: none;
+  max-width: 15vw;
 }
 
 .resizeHandle {
@@ -1348,7 +1334,7 @@ body.isResizingInfoPanel .resizeHandle::after {
 
 .logsPanelList .fullLogRow {
   display: grid;
-  grid-template-columns: 82px 48px minmax(0, 1fr);
+  grid-template-columns: 58px 38px minmax(0, 1fr);
   gap: 9px;
   align-items: start;
   padding: 7px 8px;
