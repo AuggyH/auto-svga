@@ -1956,9 +1956,9 @@ function setupFitMenus() {
 function renderFullLogRow(log) {
   return `
     <div class="fullLogRow ${escapeHtml(log.level)}">
-      <time>${escapeHtml(log.time)}</time>
-      <strong>${escapeHtml(logLevelLabel(log.level))}</strong>
-      <span>${escapeHtml(log.message)}</span>
+      <time class="logTime">${escapeHtml(log.time)}</time>
+      <strong class="logLevel">${escapeHtml(logLevelLabel(log.level))}</strong>
+      <span class="logMessage">${escapeHtml(log.message)}</span>
     </div>
   `;
 }
@@ -2375,9 +2375,26 @@ function setupPanelResize() {
     handle.setAttribute("aria-label", "调整面板宽度");
     handle.setAttribute("role", "separator");
     handle.setAttribute("tabindex", "0");
+    handle.setAttribute("aria-valuemin", String(minW));
+    handle.setAttribute("aria-valuemax", String(maxW));
+    handle.setAttribute("aria-valuenow", String(saved >= minW && saved <= maxW ? saved : defaultW));
+    handle.setAttribute("aria-orientation", "horizontal");
     handle.addEventListener("dblclick", () => {
       panel.style.width = `${defaultW}px`;
       localStorage.setItem(storageKey, String(defaultW));
+      handle.setAttribute("aria-valuenow", String(defaultW));
+      refreshLayout();
+    });
+    // Keyboard resize
+    handle.addEventListener("keydown", (e) => {
+      const step = e.key === "ArrowLeft" ? -20 : e.key === "ArrowRight" ? 20 : 0;
+      if (!step) return;
+      e.preventDefault();
+      const cur = parseInt(handle.getAttribute("aria-valuenow") || String(defaultW));
+      const next = Math.max(minW, Math.min(maxW, cur + step));
+      panel.style.width = `${next}px`;
+      handle.setAttribute("aria-valuenow", String(next));
+      localStorage.setItem(storageKey, String(next));
       refreshLayout();
     });
     let dragging = false, startX = 0, startW = 0;
@@ -2394,6 +2411,7 @@ function setupPanelResize() {
       const delta = startX - e.clientX;
       const newW = Math.max(minW, Math.min(maxW, startW + delta));
       panel.style.width = `${newW}px`;
+      handle.setAttribute("aria-valuenow", String(Math.round(newW)));
       localStorage.setItem(storageKey, String(Math.round(newW)));
       refreshLayout();
     });

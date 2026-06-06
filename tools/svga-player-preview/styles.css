@@ -1300,7 +1300,7 @@ body.isResizingInfoPanel .resizeHandle::after {
 
 .logsPanelList .fullLogRow {
   display: grid;
-  grid-template-columns: 58px 38px minmax(0, 1fr);
+  grid-template-columns: 82px 48px minmax(0, 1fr);
   gap: 9px;
   align-items: start;
   padding: 7px 8px;
@@ -1308,6 +1308,10 @@ body.isResizingInfoPanel .resizeHandle::after {
   border-radius: 10px;
   background: color-mix(in srgb, var(--surfaceElevated) 72%, transparent);
 }
+
+.logTime { color: var(--textTertiary); font-size: 12px; white-space: nowrap; }
+.logLevel { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.logMessage { font-size: 12px; word-break: break-word; min-width: 0; }
 
 .logsPanelList .fullLogRow time,
 .logsPanelList .fullLogRow strong,
