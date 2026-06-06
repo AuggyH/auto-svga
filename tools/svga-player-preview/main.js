@@ -1909,6 +1909,8 @@ function setupFitMenus() {
   for (const menu of document.querySelectorAll("[data-fit-menu]")) {
     const slotKey = menu.dataset.fitMenu;
     const trigger = menu.parentElement.querySelector(".fitMenuButton");
+    const items = [...menu.querySelectorAll(".dropdownMenuItem")];
+
     trigger.addEventListener("click", (event) => {
       event.stopPropagation();
       const shouldOpen = menu.hidden;
@@ -1916,6 +1918,28 @@ function setupFitMenus() {
       updateFitMenuSelection(slotKey);
       menu.hidden = !shouldOpen;
       trigger.setAttribute("aria-expanded", String(shouldOpen));
+      if (shouldOpen && items.length) items[0].focus();
+    });
+    trigger.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        menu.hidden = false;
+        trigger.setAttribute("aria-expanded", "true");
+        if (items.length) items[0].focus();
+      }
+    });
+    menu.addEventListener("keydown", (event) => {
+      const idx = items.indexOf(document.activeElement);
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        items[Math.min(idx + 1, items.length - 1)]?.focus();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        items[Math.max(idx - 1, 0)]?.focus();
+      } else if (event.key === "Escape") {
+        closeFitMenus();
+        trigger.focus();
+      }
     });
     menu.addEventListener("click", (event) => {
       const option = event.target.closest("[data-fit-value]");

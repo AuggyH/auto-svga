@@ -1043,51 +1043,18 @@ label.isDisabled {
   color: var(--blue);
 }
 
+/* Fit menu now extends dropdownMenu — only positioning differs */
 .fitMenu {
   position: absolute;
   right: 0;
   bottom: calc(100% + 9px);
   z-index: 12;
-  display: grid;
   width: 176px;
-  overflow: hidden;
-  padding: 5px;
-  border: 1px solid var(--borderStrong);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surfaceElevated) 94%, transparent);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(20px);
   transform-origin: right bottom;
   animation: fitMenuIn 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-
-.fitMenu button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 34px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--textPrimary);
-  cursor: pointer;
-  font-size: 12px;
-  text-align: left;
-}
-
-.fitMenu button:hover {
-  background: color-mix(in srgb, var(--blue) 10%, transparent);
-  color: var(--blue);
-}
-
-.fitMenu button.isSelected {
-  background: color-mix(in srgb, var(--blue) 12%, transparent);
-  color: var(--blue);
-  font-weight: 600;
-}
-
-.fitMenu button.isSelected::after {
+.fitMenu.dropdownMenu { min-width: 176px; }
+.fitMenu .dropdownMenuItem.isSelected::after {
   width: 7px;
   height: 4px;
   margin-left: auto;

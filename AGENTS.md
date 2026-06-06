@@ -164,6 +164,21 @@ git diff --cached --name-only
 ```
 Confirm no real PNG, SVGA, GIF, job output, or design asset is staged.
 
+## UI Design Rules
+
+Before modifying the Web preview page (`tools/svga-player-preview/`):
+
+1. Read `DESIGN.md` first — it defines the color tokens, typography, spacing, motion, and accessibility rules.
+2. Read `docs/decisions/ADR-002-apple-design-translation.md` to understand which Apple patterns we adopt vs exclude.
+3. Do NOT copy Apple's marketing-page patterns (56px headlines, 80px padding, pure-black nav, product shadows).
+4. This is a production tool — information density and readability take priority over decorative effects.
+5. Use CSS custom properties from DESIGN.md — no hardcoded hex values.
+6. Test both light and dark modes.
+7. Verify `prefers-reduced-motion: reduce` behavior.
+8. Ensure all interactive elements have visible `:focus-visible` outlines.
+9. Chinese labels primary, English secondary for debug traceability.
+10. Do NOT add multiple menu styles — use the unified `.dropdownMenu` / `.dropdownMenuItem` classes.
+
 ## Agent Handoff
 
 When a new agent takes over this repo:

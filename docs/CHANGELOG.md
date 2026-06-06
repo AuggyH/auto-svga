@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-07 — web preview UX upgrade (R1-R3)
+
+**Commit**: (see git log after merge)
+
+Web preview UX overhaul across 3 rounds:
+- R1: DESIGN.md, `/api/latest-artifact`, panel resize, responsive CSS, CSS tokens
+- R2: ADR-002 Apple translation map, motion presets, unified dropdownMenu, WCAG AAA, skip link
+- R3: Fit menu → dropdownMenu unification, keyboard nav (Arrow/Enter/Escape), AGENTS.md UI rules, TECH_SPEC UI section
+
 ## 2026-06-07 — UI and output validation
 
 **Commit**: 089e264 (merge), 61b6412 (baseline)
