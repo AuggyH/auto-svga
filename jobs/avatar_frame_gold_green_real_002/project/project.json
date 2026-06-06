@@ -1,0 +1,1690 @@
+{
+  "version": "0.1.0",
+  "assetType": "avatar_frame",
+  "canvas": {
+    "width": 300,
+    "height": 300
+  },
+  "fps": 30,
+  "durationMs": 2400,
+  "frames": 72,
+  "sweepFrameStride": 3,
+  "effectResolutionScale": 1,
+  "optimizationActions": [],
+  "layers": [
+    {
+      "id": "base_frame_full_layer",
+      "type": "image",
+      "source": "generated/optimized/base_frame_full.png",
+      "role": "part",
+      "zIndex": 1,
+      "bbox": [
+        2,
+        11,
+        299,
+        288
+      ],
+      "sourcePart": "base_frame_full",
+      "originalSource": "input/01_base_frame_full.png",
+      "trimmedBbox": [
+        2,
+        11,
+        297,
+        277
+      ],
+      "decodedBytes": 329076,
+      "anchor": {
+        "canvasX": 150,
+        "canvasY": 150,
+        "localX": 148,
+        "localY": 139
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 2,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1
+        }
+      ],
+      "sourceEffect": "static_part"
+    },
+    {
+      "id": "base_frame_full_breath_layer",
+      "type": "image",
+      "source": "generated/glow_frame.png",
+      "role": "effect_placeholder",
+      "zIndex": 2,
+      "bbox": [
+        2,
+        11,
+        299,
+        288
+      ],
+      "sourcePart": "base_frame_full",
+      "originalSource": "input/01_base_frame_full.png",
+      "anchor": {
+        "canvasX": 150,
+        "canvasY": 150,
+        "localX": 148,
+        "localY": 139
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 2,
+          "y": 11,
+          "alpha": 0.12
+        },
+        {
+          "frame": 36,
+          "x": 2,
+          "y": 11,
+          "alpha": 0.28
+        },
+        {
+          "frame": 72,
+          "x": 2,
+          "y": 11,
+          "alpha": 0.12
+        }
+      ],
+      "sourceEffect": "base_frame_full_breath",
+      "requiredGeneratedAsset": true
+    },
+    {
+      "id": "base_frame_full_sweep_baked_003",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_003.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        3,
+        55,
+        91,
+        286
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 3,
+          "y": 55,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 2,
+          "alpha": 0,
+          "x": 3,
+          "y": 55,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 3,
+          "alpha": 1,
+          "x": 3,
+          "y": 55,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 5,
+          "alpha": 1,
+          "x": 3,
+          "y": 55,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 6,
+          "alpha": 0,
+          "x": 3,
+          "y": 55,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 3,
+          "y": 55,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 3,
+      "visibleFrameRange": [
+        3,
+        5
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "3dd9c0d4c828eff1ad2c1bbadddc6a51e8cbb50197596ff024e7ec5bedba91f3",
+      "trimmedBbox": [
+        3,
+        55,
+        88,
+        231
+      ],
+      "decodedBytes": 81312
+    },
+    {
+      "id": "base_frame_full_sweep_baked_006",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_006.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        4,
+        40,
+        120,
+        287
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 4,
+          "y": 40,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 5,
+          "alpha": 0,
+          "x": 4,
+          "y": 40,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 6,
+          "alpha": 1,
+          "x": 4,
+          "y": 40,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 8,
+          "alpha": 1,
+          "x": 4,
+          "y": 40,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 9,
+          "alpha": 0,
+          "x": 4,
+          "y": 40,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 4,
+          "y": 40,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 6,
+      "visibleFrameRange": [
+        6,
+        8
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "accf12880924dc8ae6544ec8a180205402c153d17dad11ac8d9a69e18de88f5d",
+      "trimmedBbox": [
+        4,
+        40,
+        116,
+        247
+      ],
+      "decodedBytes": 114608
+    },
+    {
+      "id": "base_frame_full_sweep_baked_009",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_009.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        22,
+        13,
+        152,
+        287
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 22,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 8,
+          "alpha": 0,
+          "x": 22,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 9,
+          "alpha": 1,
+          "x": 22,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 11,
+          "alpha": 1,
+          "x": 22,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 12,
+          "alpha": 0,
+          "x": 22,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 22,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 9,
+      "visibleFrameRange": [
+        9,
+        11
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "67acd8a9eee739865c792d338bf8dbf6659163d3ba63c7c81ae3b13f3ed15d16",
+      "trimmedBbox": [
+        22,
+        13,
+        130,
+        274
+      ],
+      "decodedBytes": 142480
+    },
+    {
+      "id": "base_frame_full_sweep_baked_012",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_012.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        33,
+        13,
+        174,
+        288
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 33,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 11,
+          "alpha": 0,
+          "x": 33,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 12,
+          "alpha": 1,
+          "x": 33,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 14,
+          "alpha": 1,
+          "x": 33,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 15,
+          "alpha": 0,
+          "x": 33,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 33,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 12,
+      "visibleFrameRange": [
+        12,
+        14
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "24ebee2776699609bfc2b7cf1288161ee8f905218e834716dccb4d7f235fafdf",
+      "trimmedBbox": [
+        33,
+        13,
+        141,
+        275
+      ],
+      "decodedBytes": 155100
+    },
+    {
+      "id": "base_frame_full_sweep_baked_015",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_015.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        70,
+        11,
+        199,
+        287
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 70,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 14,
+          "alpha": 0,
+          "x": 70,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 15,
+          "alpha": 1,
+          "x": 70,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 17,
+          "alpha": 1,
+          "x": 70,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 18,
+          "alpha": 0,
+          "x": 70,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 70,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 15,
+      "visibleFrameRange": [
+        15,
+        17
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "a310103875424db1fc39d366467a3a31e98c9c2121c66616f94dcda0ad923ca8",
+      "trimmedBbox": [
+        70,
+        11,
+        129,
+        276
+      ],
+      "decodedBytes": 142416
+    },
+    {
+      "id": "base_frame_full_sweep_baked_018",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_018.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        87,
+        11,
+        229,
+        287
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 87,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 17,
+          "alpha": 0,
+          "x": 87,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 18,
+          "alpha": 1,
+          "x": 87,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 20,
+          "alpha": 1,
+          "x": 87,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 21,
+          "alpha": 0,
+          "x": 87,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 87,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 18,
+      "visibleFrameRange": [
+        18,
+        20
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "c9ea9f2433da56c7516b6c5e665cd5b375285f108df871f6e3b13261c90ab6cd",
+      "trimmedBbox": [
+        87,
+        11,
+        142,
+        276
+      ],
+      "decodedBytes": 156768
+    },
+    {
+      "id": "base_frame_full_sweep_baked_021",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_021.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        113,
+        17,
+        251,
+        286
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 113,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 20,
+          "alpha": 0,
+          "x": 113,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 21,
+          "alpha": 1,
+          "x": 113,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 23,
+          "alpha": 1,
+          "x": 113,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 24,
+          "alpha": 0,
+          "x": 113,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 113,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 21,
+      "visibleFrameRange": [
+        21,
+        23
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "117f4a652f39cfa828729175a5fe3204d81c75e8db3b3ba3c7fd178f5f734d03",
+      "trimmedBbox": [
+        113,
+        17,
+        138,
+        269
+      ],
+      "decodedBytes": 148488
+    },
+    {
+      "id": "base_frame_full_sweep_baked_024",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_024.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        137,
+        17,
+        268,
+        275
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 137,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 23,
+          "alpha": 0,
+          "x": 137,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 24,
+          "alpha": 1,
+          "x": 137,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 26,
+          "alpha": 1,
+          "x": 137,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 27,
+          "alpha": 0,
+          "x": 137,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 137,
+          "y": 17,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 24,
+      "visibleFrameRange": [
+        24,
+        26
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "b4f4abe3de151372d923fcdfffb1a45ed61f311b302d6dcde990c8fbc7d82b27",
+      "trimmedBbox": [
+        137,
+        17,
+        131,
+        258
+      ],
+      "decodedBytes": 135192
+    },
+    {
+      "id": "base_frame_full_sweep_baked_027",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_027.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        163,
+        16,
+        287,
+        263
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 163,
+          "y": 16,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 26,
+          "alpha": 0,
+          "x": 163,
+          "y": 16,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 27,
+          "alpha": 1,
+          "x": 163,
+          "y": 16,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 29,
+          "alpha": 1,
+          "x": 163,
+          "y": 16,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 30,
+          "alpha": 0,
+          "x": 163,
+          "y": 16,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 163,
+          "y": 16,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 27,
+      "visibleFrameRange": [
+        27,
+        29
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "de4646a0e1bb3e4408aac6399d7a5c5faa6de90d44c03efa6b9a74fc7456f9ac",
+      "trimmedBbox": [
+        163,
+        16,
+        124,
+        247
+      ],
+      "decodedBytes": 122512
+    },
+    {
+      "id": "base_frame_full_sweep_baked_030",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_030.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        191,
+        11,
+        293,
+        243
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 191,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 29,
+          "alpha": 0,
+          "x": 191,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 30,
+          "alpha": 1,
+          "x": 191,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 32,
+          "alpha": 1,
+          "x": 191,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 33,
+          "alpha": 0,
+          "x": 191,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 191,
+          "y": 11,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 30,
+      "visibleFrameRange": [
+        30,
+        32
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "19ac54282417271c20b34f0aa4523f8fa70edf97282560498db94ea1e1a4ce2e",
+      "trimmedBbox": [
+        191,
+        11,
+        102,
+        232
+      ],
+      "decodedBytes": 94656
+    },
+    {
+      "id": "base_frame_full_sweep_baked_033",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_033.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        209,
+        13,
+        298,
+        205
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 209,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 32,
+          "alpha": 0,
+          "x": 209,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 33,
+          "alpha": 1,
+          "x": 209,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 35,
+          "alpha": 1,
+          "x": 209,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 36,
+          "alpha": 0,
+          "x": 209,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 209,
+          "y": 13,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 33,
+      "visibleFrameRange": [
+        33,
+        35
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "93e5e273503ddb3fd2506f131d9851b6cc80dcc34fdcadc2cdb734ec9b487672",
+      "trimmedBbox": [
+        209,
+        13,
+        89,
+        192
+      ],
+      "decodedBytes": 68352
+    },
+    {
+      "id": "base_frame_full_sweep_baked_036",
+      "type": "image",
+      "source": "generated/sweep_baked/sweep_036.png",
+      "role": "effect",
+      "zIndex": 3,
+      "bbox": [
+        250,
+        12,
+        298,
+        161
+      ],
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0,
+          "x": 250,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 35,
+          "alpha": 0,
+          "x": 250,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 36,
+          "alpha": 1,
+          "x": 250,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 38,
+          "alpha": 1,
+          "x": 250,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 39,
+          "alpha": 0,
+          "x": 250,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0,
+          "x": 250,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "base_frame_full_sweep",
+      "requiredGeneratedAsset": true,
+      "frameIndex": 36,
+      "visibleFrameRange": [
+        36,
+        38
+      ],
+      "maskSource": "input/01_base_frame_full.png",
+      "maskMode": "baked_sweep_frames",
+      "imageHash": "764257ef5cf0368c0604c982a0c5a186276656f8541f4d4c36c5650023026553",
+      "trimmedBbox": [
+        250,
+        12,
+        48,
+        149
+      ],
+      "decodedBytes": 28608
+    },
+    {
+      "id": "left_outer_green_feathers_layer",
+      "type": "image",
+      "source": "generated/optimized/left_outer_green_feathers.png",
+      "role": "part",
+      "zIndex": 6,
+      "bbox": [
+        3,
+        108,
+        53,
+        233
+      ],
+      "sourcePart": "left_outer_green_feathers",
+      "originalSource": "input/04_left_outer_green_feathers.png",
+      "trimmedBbox": [
+        0,
+        0,
+        50,
+        125
+      ],
+      "decodedBytes": 25000,
+      "anchor": {
+        "canvasX": 62.5,
+        "canvasY": 167.5,
+        "localX": 59.5,
+        "localY": 59.5
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 3,
+          "y": 108,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1
+        }
+      ],
+      "sourceEffect": "static_part"
+    },
+    {
+      "id": "right_outer_green_feathers_layer",
+      "type": "image",
+      "source": "generated/optimized/right_outer_green_feathers.png",
+      "role": "part",
+      "zIndex": 6,
+      "bbox": [
+        249,
+        108,
+        299,
+        233
+      ],
+      "sourcePart": "right_outer_green_feathers",
+      "originalSource": "input/05_right_outer_green_feathers.png",
+      "trimmedBbox": [
+        0,
+        0,
+        50,
+        125
+      ],
+      "decodedBytes": 25000,
+      "anchor": {
+        "canvasX": 237.5,
+        "canvasY": 167.5,
+        "localX": -11.5,
+        "localY": 59.5
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 249,
+          "y": 108,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1
+        }
+      ],
+      "sourceEffect": "static_part"
+    },
+    {
+      "id": "bottom_left_outer_feathers_layer",
+      "type": "image",
+      "source": "generated/optimized/bottom_left_outer_feathers.png",
+      "role": "part",
+      "zIndex": 7,
+      "bbox": [
+        14,
+        187,
+        117,
+        287
+      ],
+      "sourcePart": "bottom_left_outer_feathers",
+      "originalSource": "input/06_bottom_left_outer_feathers.png",
+      "trimmedBbox": [
+        0,
+        0,
+        103,
+        100
+      ],
+      "decodedBytes": 41200,
+      "anchor": {
+        "canvasX": 117.5,
+        "canvasY": 250,
+        "localX": 103.5,
+        "localY": 63
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 14,
+          "y": 187,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1
+        }
+      ],
+      "sourceEffect": "static_part"
+    },
+    {
+      "id": "bottom_right_outer_feathers_layer",
+      "type": "image",
+      "source": "generated/optimized/bottom_right_outer_feathers.png",
+      "role": "part",
+      "zIndex": 7,
+      "bbox": [
+        184,
+        187,
+        288,
+        287
+      ],
+      "sourcePart": "bottom_right_outer_feathers",
+      "originalSource": "input/07_bottom_right_outer_feathers.png",
+      "trimmedBbox": [
+        0,
+        0,
+        104,
+        100
+      ],
+      "decodedBytes": 41600,
+      "anchor": {
+        "canvasX": 182.5,
+        "canvasY": 250,
+        "localX": -1.5,
+        "localY": 63
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 184,
+          "y": 187,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1
+        }
+      ],
+      "sourceEffect": "static_part"
+    },
+    {
+      "id": "upper_left_wing_tip_layer",
+      "type": "image",
+      "source": "generated/optimized/upper_left_wing_tip.png",
+      "role": "part",
+      "zIndex": 8,
+      "bbox": [
+        35,
+        12,
+        122,
+        57
+      ],
+      "sourcePart": "upper_left_wing_tip",
+      "originalSource": "input/02_upper_left_wing_tip.png",
+      "trimmedBbox": [
+        0,
+        0,
+        87,
+        45
+      ],
+      "decodedBytes": 15660,
+      "anchor": {
+        "canvasX": 102.5,
+        "canvasY": 62.5,
+        "localX": 67.5,
+        "localY": 50.5
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 35,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": -7.5,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        },
+        {
+          "frame": 18,
+          "x": 35,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        },
+        {
+          "frame": 36,
+          "x": 35,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 7.5,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        },
+        {
+          "frame": 54,
+          "x": 35,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        },
+        {
+          "frame": 72,
+          "x": 35,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": -7.5,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        }
+      ],
+      "sourceEffect": "upper_left_wing_tip_flap"
+    },
+    {
+      "id": "upper_right_wing_tip_layer",
+      "type": "image",
+      "source": "generated/optimized/upper_right_wing_tip.png",
+      "role": "part",
+      "zIndex": 8,
+      "bbox": [
+        180,
+        12,
+        267,
+        57
+      ],
+      "sourcePart": "upper_right_wing_tip",
+      "originalSource": "input/03_upper_right_wing_tip.png",
+      "trimmedBbox": [
+        0,
+        0,
+        87,
+        45
+      ],
+      "decodedBytes": 15660,
+      "anchor": {
+        "canvasX": 197.5,
+        "canvasY": 62.5,
+        "localX": 17.5,
+        "localY": 50.5
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 180,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 7.5,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        },
+        {
+          "frame": 24,
+          "x": 180,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        },
+        {
+          "frame": 42,
+          "x": 180,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": -7.5,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        },
+        {
+          "frame": 60,
+          "x": 180,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        },
+        {
+          "frame": 72,
+          "x": 180,
+          "y": 12,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 7.5,
+          "alpha": 1,
+          "easing": "easeInOutSine"
+        }
+      ],
+      "sourceEffect": "upper_right_wing_tip_flap"
+    },
+    {
+      "id": "top_crest_metal_layer",
+      "type": "image",
+      "source": "generated/optimized/top_crest_metal.png",
+      "role": "part",
+      "zIndex": 10,
+      "bbox": [
+        93,
+        24,
+        209,
+        77
+      ],
+      "sourcePart": "top_crest_metal",
+      "originalSource": "input/08_top_crest_metal.png",
+      "trimmedBbox": [
+        0,
+        0,
+        116,
+        53
+      ],
+      "decodedBytes": 24592,
+      "anchor": {
+        "canvasX": 150,
+        "canvasY": 48,
+        "localX": 57,
+        "localY": 24
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 93,
+          "y": 24,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1
+        }
+      ],
+      "sourceEffect": "static_part"
+    },
+    {
+      "id": "bottom_crest_metal_layer",
+      "type": "image",
+      "source": "generated/optimized/bottom_crest_metal.png",
+      "role": "part",
+      "zIndex": 10,
+      "bbox": [
+        61,
+        185,
+        240,
+        287
+      ],
+      "sourcePart": "bottom_crest_metal",
+      "originalSource": "input/10_bottom_crest_metal.png",
+      "trimmedBbox": [
+        0,
+        0,
+        179,
+        102
+      ],
+      "decodedBytes": 73032,
+      "anchor": {
+        "canvasX": 150,
+        "canvasY": 240,
+        "localX": 89,
+        "localY": 55
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 61,
+          "y": 185,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "alpha": 1
+        }
+      ],
+      "sourceEffect": "static_part"
+    },
+    {
+      "id": "top_gem_core_layer",
+      "type": "image",
+      "source": "generated/optimized/top_gem_core.png",
+      "role": "part",
+      "zIndex": 12,
+      "bbox": [
+        125,
+        18,
+        176,
+        70
+      ],
+      "sourcePart": "top_gem_core",
+      "originalSource": "input/09_top_gem_core.png",
+      "trimmedBbox": [
+        0,
+        0,
+        51,
+        52
+      ],
+      "decodedBytes": 10608,
+      "anchor": {
+        "canvasX": 150,
+        "canvasY": 48,
+        "localX": 25,
+        "localY": 30
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0.85,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 8,
+          "alpha": 1,
+          "scaleX": 1.08,
+          "scaleY": 1.08
+        },
+        {
+          "frame": 16,
+          "alpha": 0.75,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0.85,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "top_gem_core_twinkle"
+    },
+    {
+      "id": "bottom_gem_core_layer",
+      "type": "image",
+      "source": "generated/optimized/bottom_gem_core.png",
+      "role": "part",
+      "zIndex": 12,
+      "bbox": [
+        122,
+        220,
+        179,
+        285
+      ],
+      "sourcePart": "bottom_gem_core",
+      "originalSource": "input/11_bottom_gem_core.png",
+      "trimmedBbox": [
+        0,
+        0,
+        57,
+        65
+      ],
+      "decodedBytes": 14820,
+      "anchor": {
+        "canvasX": 150,
+        "canvasY": 240,
+        "localX": 28,
+        "localY": 20
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "alpha": 0.85,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 8,
+          "alpha": 1,
+          "scaleX": 1.08,
+          "scaleY": 1.08
+        },
+        {
+          "frame": 16,
+          "alpha": 0.75,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        {
+          "frame": 72,
+          "alpha": 0.85,
+          "scaleX": 1,
+          "scaleY": 1
+        }
+      ],
+      "sourceEffect": "bottom_gem_core_twinkle"
+    },
+    {
+      "id": "top_gem_core_glint_layer",
+      "type": "image",
+      "source": "generated/glow_dot.png",
+      "role": "effect",
+      "zIndex": 13,
+      "bbox": [
+        134,
+        32,
+        166,
+        64
+      ],
+      "anchor": {
+        "canvasX": 150,
+        "canvasY": 48,
+        "localX": 16,
+        "localY": 16
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 134,
+          "y": 32,
+          "scaleX": 0.72,
+          "scaleY": 0.72,
+          "rotation": 0,
+          "alpha": 0
+        },
+        {
+          "frame": 8,
+          "x": 134,
+          "y": 32,
+          "scaleX": 1.1,
+          "scaleY": 1.1,
+          "rotation": 22,
+          "alpha": 0.85
+        },
+        {
+          "frame": 16,
+          "x": 134,
+          "y": 32,
+          "scaleX": 0.82,
+          "scaleY": 0.82,
+          "rotation": 45,
+          "alpha": 0
+        },
+        {
+          "frame": 72,
+          "x": 134,
+          "y": 32,
+          "scaleX": 0.72,
+          "scaleY": 0.72,
+          "rotation": 0,
+          "alpha": 0
+        }
+      ],
+      "sourceEffect": "top_gem_core_twinkle",
+      "requiredGeneratedAsset": true
+    },
+    {
+      "id": "bottom_gem_core_glint_layer",
+      "type": "image",
+      "source": "generated/glow_dot.png",
+      "role": "effect",
+      "zIndex": 13,
+      "bbox": [
+        134,
+        224,
+        166,
+        256
+      ],
+      "anchor": {
+        "canvasX": 150,
+        "canvasY": 240,
+        "localX": 16,
+        "localY": 16
+      },
+      "keyframes": [
+        {
+          "frame": 0,
+          "x": 134,
+          "y": 224,
+          "scaleX": 0.72,
+          "scaleY": 0.72,
+          "rotation": 0,
+          "alpha": 0
+        },
+        {
+          "frame": 8,
+          "x": 134,
+          "y": 224,
+          "scaleX": 1.1,
+          "scaleY": 1.1,
+          "rotation": 22,
+          "alpha": 0.85
+        },
+        {
+          "frame": 16,
+          "x": 134,
+          "y": 224,
+          "scaleX": 0.82,
+          "scaleY": 0.82,
+          "rotation": 45,
+          "alpha": 0
+        },
+        {
+          "frame": 72,
+          "x": 134,
+          "y": 224,
+          "scaleX": 0.72,
+          "scaleY": 0.72,
+          "rotation": 0,
+          "alpha": 0
+        }
+      ],
+      "sourceEffect": "bottom_gem_core_twinkle",
+      "requiredGeneratedAsset": true
+    }
+  ],
+  "warnings": []
+}

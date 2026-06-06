@@ -1,0 +1,59 @@
+# Project Context
+
+## What
+
+auto-svga — CLI tool that converts layered PNG avatar frame assets into SVGA animation files. Target user: visual designers of overseas voice-chat apps.
+
+## Scope
+
+- Asset type: `avatar_frame` only
+- Input: transparent PNG parts + `asset.config.json` + `structure.json`
+- Output: `.svga` + previews (WebM/MP4/GIF/PNG frames) + report + svga-map + delivery.zip
+- 5 animation templates: `wing_flap`, `gem_twinkle`, `metal_sweep`, `frame_breath`, `pop_settle`
+
+## Key Principles
+
+- Configuration-driven (no hardcoded canvas sizes, glint positions, etc.)
+- Template semantics expand to concrete layers before export — exporters don't understand templates
+- Coordinate convention: `transform.x/y` = canvas coords, `anchor.x/y` = local coords, rotation/scale around anchor
+- Acceptance is split: `technicalStatus` (pipeline) vs `visualStatus` (human review)
+- Do not fabricate playback success
+- See `AGENTS.md` for full engineering rules
+
+## Tech Stack
+
+- TypeScript + Node.js (ES2022, ESM)
+- pnpm (package manager)
+- protobufjs (only dependency, for real SVGA export)
+- No other external runtime deps
+
+## Key File Paths
+
+- `AGENTS.md` — engineering rules, git workflow, agent handoff
+- `DESIGN.md` — UI/UX design direction for Web preview tool
+- `docs/CURRENT_STATUS.md` — latest state
+- `docs/ROADMAP.md` — future direction
+- `docs/CHANGELOG.md` — merge history
+- `docs/TECH_SPEC.md` — module architecture
+- `docs/TOKEN_BUDGET_RULES.md` — agent behavior rules
+- `docs/REVIEW_TEMPLATE.md` — per-task review template
+- `docs/reviews/` — review records
+- `docs/decisions/` — ADR records
+- `docs/exporter-contract.md` — exporter protocol contract
+- `docs/svga-packaging-strategy.md` — SVGA binary strategy
+- `docs/motion-system-research-notes.md` — animation system research
+
+## Run Commands
+
+```bash
+node_modules/.bin/tsc -p tsconfig.json        # build
+node --test dist/tests/mvp-planner.test.js     # test
+node dist/cli.js plan jobs/<job-dir>           # plan
+node dist/cli.js preview jobs/<job-dir>        # preview
+node dist/cli.js report jobs/<job-dir>         # report
+node dist/cli.js export jobs/<job-dir>         # export SVGA
+node dist/cli.js package jobs/<job-dir>        # package delivery.zip
+node tools/svga-player-preview/server.mjs      # Web preview server
+```
+
+Web preview: `http://127.0.0.1:4173/tools/svga-player-preview/`

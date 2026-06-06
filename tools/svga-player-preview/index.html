@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>auto-svga 播放验证 / Playback Validation</title>
+    <title>auto-svga 播放验证</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
@@ -20,49 +20,42 @@
           </span>
           <span class="brandCopy">
             <strong>auto-svga</strong>
-            <span>SVGA Preview &amp; Export Review Tool</span>
+            <span>SVGA 播放与导出验收</span>
           </span>
         </div>
         <div class="modeControl">
           <span class="modeDot" aria-hidden="true"></span>
           <label>
-            <span class="srOnly">显示模式 / Display mode</span>
+            <span class="srOnly">显示模式</span>
             <select id="modeSelect">
-              <option value="localPreview" selected>本地预览 / Local Preview</option>
-              <option value="exportReview">导出验收 / Export Review</option>
+              <option value="localPreview" selected>本地预览</option>
+              <option value="exportReview">导出验收</option>
             </select>
           </label>
         </div>
         <div class="actionRow">
-          <button id="infoPanelButton" class="iconButton" type="button" title="信息面板 / Info Panel">
+          <button id="infoPanelButton" class="iconButton" type="button" title="SVGA 信息">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" /><path d="M14 3v6h6" /><path d="M8 13h8" /><path d="M8 17h5" /></svg>
           </button>
-          <button id="logsButton" class="iconButton" type="button" title="查看日志 / Logs">
+          <button id="logsButton" class="iconButton" type="button" title="运行日志">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="M8 9l3 3-3 3" /><path d="M13 15h4" /></svg>
           </button>
-          <button id="themeToggleButton" class="iconButton" type="button" title="主题切换 / Theme">
+          <button id="themeToggleButton" class="iconButton" type="button" title="切换主题">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z" /></svg>
           </button>
-          <button id="settingsButton" class="iconButton" type="button" title="设置 / Settings">
+          <button id="settingsButton" class="iconButton" type="button" title="设置">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.05.05a2 2 0 0 1-2.83 2.83l-.05-.05a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.08a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.08a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.05-.05A2 2 0 1 1 7.04 4.3l.05.05A1.65 1.65 0 0 0 8.91 4a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.08a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.65 1.65 0 0 0 19.4 9c.14.46.5.82.96.96H21a2 2 0 0 1 0 4h-.08a1.65 1.65 0 0 0-1.52 1Z" /></svg>
           </button>
         </div>
       </header>
 
-      <section id="previewControlStrip" class="previewControlStrip">
-        <div>
-          <strong>本地预览 / Local Preview</strong>
-          <span>打开对比后可同时检查 SVGA A / B</span>
-        </div>
-        <label id="compareToggleWrap" class="compareToggle"><input id="compareToggle" type="checkbox"><span>开启对比 / Compare</span></label>
-      </section>
-
       <section id="workspace" class="workspace mode-localPreview" aria-label="Preview workspace">
         <article id="svgaPanelA" class="previewCard isPrimary" data-drop-kind="svga" data-player-slot="a">
           <div class="cardHeader">
-            <div>
+            <div class="cardTitleGroup">
               <span id="svgaBadgeA" class="badge">SVGA A</span>
-              <h2 id="svgaTitleA" data-subtitle="Local SVGA Preview">SVGA 本地预览</h2>
+              <h2 id="svgaTitleA">SVGA 本地预览</h2>
+              <label id="compareToggleWrap" class="compareToggle"><input id="compareToggle" type="checkbox"><span>开启对比</span></label>
             </div>
             <div class="cardActions">
               <span id="svgaFilePillA" class="filePill" hidden></span>
@@ -71,13 +64,6 @@
                 <span id="primaryInputLabel">选择 SVGA</span>
                 <input id="svgaFileInput" type="file" accept=".svga,application/octet-stream">
               </label>
-              <label class="cardFitSelect" title="尺寸模式 / Fit mode">
-                <select id="fitModeA" data-fit-slot="a" aria-label="SVGA A fit mode">
-                  <option value="contain" selected>Fit contain</option>
-                  <option value="original">Original size</option>
-                  <option value="fitWidth">Fit width</option>
-                </select>
-              </label>
             </div>
           </div>
           <div class="stage">
@@ -85,35 +71,42 @@
               <div id="svgaCanvasA" aria-label="SVGA player A canvas"></div>
             </div>
             <div class="centerEmptyState">
-              <span class="svgaMockPreview" aria-hidden="true">
-                <span class="mockRing mockRingOuter"></span>
-                <span class="mockRing mockRingMiddle"></span>
-                <span class="mockRing mockRingInner"></span>
-                <span class="mockCore">
-                  <span class="mockCube"></span>
+                <span class="uploadMockIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
                 </span>
-                <span class="mockCaption">SVGA · mock preview</span>
-              </span>
-              <strong id="svgaEmptyTitleA">拖拽 .svga 文件到此处</strong>
-              <span id="svgaEmptySubtitleA">Drop .svga file here or choose from toolbar</span>
+              <strong id="svgaEmptyTitleA">拖拽 SVGA 文件到此处</strong>
+              <span id="svgaEmptySubtitleA">或选择本地文件</span>
+              <em class="dropFeedbackText">可加载此文件</em>
               <button id="primaryEmptyFileButton" class="emptyFileButton" type="button">选择 SVGA 文件</button>
             </div>
           </div>
           <div class="playerBar">
-            <button id="localPlayPauseButton" class="smallPlayButton" type="button" title="播放 / 暂停 / Play / Pause">
+            <button id="localPlayPauseButton" class="smallPlayButton" type="button" title="播放或暂停">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
             </button>
-            <button id="localReplayButton" class="smallIconButton" type="button" title="重播 / Replay">
+            <button id="localReplayButton" class="smallIconButton" type="button" title="重新播放">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
             </button>
             <input id="localProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="Playback progress">
             <span id="localTime">0:00 / 0:00</span>
-            <label class="loopToggle" title="循环 / Loop"><input id="localLoopToggle" type="checkbox" checked>循环</label>
-            <button id="localFitButton" class="smallIconButton" type="button" title="适应窗口 / Fit">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5" /><path d="M20 9V4h-5" /><path d="M4 15v5h5" /><path d="M20 15v5h-5" /></svg>
-            </button>
+            <label class="loopToggle" title="循环播放"><input id="localLoopToggle" type="checkbox" checked>循环</label>
+            <div class="fitMenuWrap">
+              <button id="localFitButton" class="smallIconButton fitMenuButton" type="button" title="显示模式" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5" /><path d="M20 9V4h-5" /><path d="M4 15v5h5" /><path d="M20 15v5h-5" /></svg>
+              </button>
+              <div class="fitMenu" data-fit-menu="a" hidden>
+                <button type="button" data-fit-value="contain">适应窗口</button>
+                <button type="button" data-fit-value="original">原始尺寸</button>
+                <button type="button" data-fit-value="fitWidth">适应宽度</button>
+              </div>
+              <select id="fitModeA" data-fit-slot="a" aria-label="SVGA A fit mode" hidden>
+                <option value="contain" selected>Fit contain</option>
+                <option value="original">Original size</option>
+                <option value="fitWidth">Fit width</option>
+              </select>
+            </div>
           </div>
-          <span id="svgaStatusA" class="srOnly">空 / EMPTY</span>
+          <span id="svgaStatusA" class="srOnly">空</span>
           <dl id="svgaSizeInfoA" class="quickInfo" hidden></dl>
         </article>
 
@@ -121,21 +114,14 @@
           <div class="cardHeader">
             <div>
               <span class="badge badgePurple">SVGA B</span>
-              <h2 data-subtitle="SVGA B">SVGA B</h2>
+              <h2>SVGA B</h2>
             </div>
             <div class="cardActions">
-              <span id="svgaStatusB" class="statusPill">空 / EMPTY</span>
+              <span id="svgaStatusB" class="statusPill">空</span>
               <label class="cardFileButton" id="secondaryInputWrap">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
                 <span id="secondaryInputLabel">选择 SVGA B</span>
                 <input id="secondaryFileInput" type="file" accept=".svga,application/octet-stream">
-              </label>
-              <label class="cardFitSelect" title="尺寸模式 / Fit mode">
-                <select id="fitModeB" data-fit-slot="b" aria-label="SVGA B fit mode">
-                  <option value="contain" selected>Fit contain</option>
-                  <option value="original">Original size</option>
-                  <option value="fitWidth">Fit width</option>
-                </select>
               </label>
             </div>
           </div>
@@ -147,21 +133,37 @@
               <span class="uploadMockIcon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
               </span>
-              <strong>选择第二个 SVGA 文件</strong>
-              <span>Drop second .svga here</span>
+              <strong>拖拽第二个 SVGA 文件到此处</strong>
+              <span>或选择本地文件</span>
+              <em class="dropFeedbackText">可加载此文件</em>
               <button id="secondaryEmptyFileButton" class="emptyFileButton" type="button">选择 SVGA B</button>
             </div>
           </div>
           <div class="playerBar">
-            <button id="playerBPlayPauseButton" class="smallPlayButton" type="button" title="播放 / 暂停 / Play / Pause">
+            <button id="playerBPlayPauseButton" class="smallPlayButton" type="button" title="播放或暂停">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
             </button>
-            <button id="playerBReplayButton" class="smallIconButton" type="button" title="重播 / Replay">
+            <button id="playerBReplayButton" class="smallIconButton" type="button" title="重新播放">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
             </button>
             <input id="playerBProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="SVGA B progress">
             <span id="playerBTime">0:00 / 0:00</span>
-            <label class="loopToggle" title="循环 / Loop"><input id="playerBLoopToggle" type="checkbox" checked>循环</label>
+            <label class="loopToggle" title="循环播放"><input id="playerBLoopToggle" type="checkbox" checked>循环</label>
+            <div class="fitMenuWrap">
+              <button id="playerBFitButton" class="smallIconButton fitMenuButton" type="button" title="显示模式" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5" /><path d="M20 9V4h-5" /><path d="M4 15v5h5" /><path d="M20 15v5h-5" /></svg>
+              </button>
+              <div class="fitMenu" data-fit-menu="b" hidden>
+                <button type="button" data-fit-value="contain">适应窗口</button>
+                <button type="button" data-fit-value="original">原始尺寸</button>
+                <button type="button" data-fit-value="fitWidth">适应宽度</button>
+              </div>
+              <select id="fitModeB" data-fit-slot="b" aria-label="SVGA B fit mode" hidden>
+                <option value="contain" selected>Fit contain</option>
+                <option value="original">Original size</option>
+                <option value="fitWidth">Fit width</option>
+              </select>
+            </div>
           </div>
           <dl id="svgaSizeInfoB" class="quickInfo"></dl>
         </article>
@@ -170,56 +172,57 @@
           <div class="cardHeader">
             <div>
               <span class="badge badgeGreen">MP4</span>
-              <h2 data-subtitle="Reference MP4">参考视频</h2>
+              <h2>参考视频</h2>
             </div>
             <div class="cardActions">
-              <span id="referenceStatus" class="statusPill">空 / EMPTY</span>
+              <span id="referenceStatus" class="statusPill">空</span>
               <label class="cardFileButton" id="referenceFileButton">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4z" /><path d="m10 10 4 2-4 2z" /></svg>
                 <span>选择参考视频</span>
                 <input id="referenceFileInput" type="file" accept=".mp4,.webm,.gif,video/mp4,video/webm,image/gif">
               </label>
-              <label class="cardFitSelect" title="尺寸模式 / Fit mode">
-                <select id="fitModeReference" data-fit-slot="reference" aria-label="Reference fit mode">
-                  <option value="contain" selected>Fit contain</option>
-                  <option value="original">Original size</option>
-                  <option value="fitWidth">Fit width</option>
-                </select>
-              </label>
             </div>
           </div>
           <div class="stage">
             <div id="referenceFrame" class="mediaFrame">
-              <video id="referenceVideo" muted playsinline loop hidden></video>
+              <video id="referenceVideo" controls muted playsinline loop preload="auto" hidden></video>
               <img id="referenceImage" alt="Reference GIF preview" hidden>
             </div>
             <div id="referenceEmptyState" class="centerEmptyState referenceEmptyState">
-              <span class="mp4MockPreview" aria-hidden="true">
-                <span class="mp4Bars">
-                  <span></span><span></span><span></span><span></span><span></span>
-                  <span></span><span></span><span></span><span></span><span></span>
-                </span>
-                <span class="mp4Core">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h12v10H4z" /><path d="m16 10 4-2v8l-4-2z" /></svg>
-                </span>
-                <span class="mockCaption">MP4 · mock preview</span>
+              <span class="uploadMockIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 7h12v10H4z" /><path d="m16 10 4-2v8l-4-2z" /></svg>
               </span>
-              <strong>拖拽 .mp4 参考视频到此处</strong>
-              <span>Drop .mp4 reference video here</span>
+              <strong>拖拽参考视频到此处</strong>
+              <span>支持 MP4、WebM 或 GIF</span>
+              <em class="dropFeedbackText">可加载此文件</em>
               <button id="referenceEmptyFileButton" class="emptyFileButton" type="button">选择参考视频</button>
             </div>
-            <p class="dropHint">拖拽参考视频到这里 / Drop reference video here</p>
           </div>
           <div class="playerBar">
-            <button id="referencePlayPauseButton" class="smallPlayButton" type="button" title="播放 / 暂停 / Play / Pause">
+            <button id="referencePlayPauseButton" class="smallPlayButton" type="button" title="播放或暂停">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
             </button>
-            <button id="referenceReplayButton" class="smallIconButton" type="button" title="重播 / Replay">
+            <button id="referenceReplayButton" class="smallIconButton" type="button" title="重新播放">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
             </button>
             <input id="referenceProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="Reference progress">
             <span id="referenceTime">0:00 / 0:00</span>
-            <label class="loopToggle" title="循环 / Loop"><input id="referenceLoopToggle" type="checkbox" checked>循环</label>
+            <label class="loopToggle" title="循环播放"><input id="referenceLoopToggle" type="checkbox" checked>循环</label>
+            <div class="fitMenuWrap">
+              <button id="referenceFitButton" class="smallIconButton fitMenuButton" type="button" title="显示模式" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5" /><path d="M20 9V4h-5" /><path d="M4 15v5h5" /><path d="M20 15v5h-5" /></svg>
+              </button>
+              <div class="fitMenu" data-fit-menu="reference" hidden>
+                <button type="button" data-fit-value="contain">适应窗口</button>
+                <button type="button" data-fit-value="original">原始尺寸</button>
+                <button type="button" data-fit-value="fitWidth">适应宽度</button>
+              </div>
+              <select id="fitModeReference" data-fit-slot="reference" aria-label="Reference fit mode" hidden>
+                <option value="contain" selected>Fit contain</option>
+                <option value="original">Original size</option>
+                <option value="fitWidth">Fit width</option>
+              </select>
+            </div>
           </div>
           <dl id="referenceInfo" class="quickInfo"></dl>
         </article>
@@ -240,6 +243,20 @@
           <div id="tab-overview" class="tabPanel"></div>
           <div id="tab-assets" class="tabPanel isHidden"></div>
         </aside>
+
+        <aside id="logsPanel" class="logsPanel isHidden" aria-label="Runtime logs panel">
+          <div class="infoHeader">
+            <div>
+              <h2>运行日志 / Runtime Logs</h2>
+              <p id="fullLogsSubtitle">加载、解析和渲染事件 / Load, parse and render events</p>
+            </div>
+            <div class="panelActionGroup">
+              <button id="copyFullLogsButton" class="iconButton" type="button" title="复制日志 / Copy logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8z" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></svg></button>
+              <button id="clearFullLogsButton" class="iconButton" type="button" title="清空日志 / Clear logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 15h10l1-15" /></svg></button>
+            </div>
+          </div>
+          <div id="fullLogsContent" class="logsPanelList"></div>
+        </aside>
       </section>
 
       <section id="syncBar" class="syncBar isHidden" aria-label="Synchronized playback controls">
@@ -247,13 +264,10 @@
         <div class="syncControls">
           <div id="syncWarnings" class="syncWarnings" aria-live="polite"></div>
           <div class="syncControlRow">
-            <button id="syncPauseControl" class="syncIconButton" type="button" title="同步暂停 / Sync Pause">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>
-            </button>
-            <button id="syncPlayControl" class="syncPlayButton" type="button" title="同步播放 / Sync Play">
+            <button id="syncPlayControl" class="syncPlayButton" type="button" title="同步播放">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
             </button>
-            <button id="syncReplayControl" class="syncIconButton" type="button" title="同步重播 / Sync Replay">
+            <button id="syncReplayControl" class="syncIconButton" type="button" title="同步重播">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
             </button>
             <input id="syncProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="Sync progress">
@@ -298,10 +312,9 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.05.05a2 2 0 0 1-2.83 2.83l-.05-.05a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.08a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.08a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.05-.05A2 2 0 1 1 7.04 4.3l.05.05A1.65 1.65 0 0 0 8.91 4a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.08a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.65 1.65 0 0 0 19.4 9c.14.46.5.82.96.96H21a2 2 0 0 1 0 4h-.08a1.65 1.65 0 0 0-1.52 1Z" /></svg>
               <div>
                 <h2 id="settingsTitle">设置</h2>
-                <p>Preferences</p>
               </div>
             </div>
-            <button id="settingsCloseButton" class="iconButton" type="button" title="关闭 / Close">
+            <button id="settingsCloseButton" class="iconButton" type="button" title="关闭">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
             </button>
           </header>
@@ -309,72 +322,57 @@
             <section class="settingsSection">
               <h3>播放 <span>PLAYBACK</span></h3>
               <div class="settingsCard">
-                <label class="settingsToggleRow"><span><strong>循环播放</strong><small>Loop Playback</small></span><input type="checkbox" checked></label>
-                <label class="settingsToggleRow"><span><strong>打开新文件时清空另一侧</strong><small>Auto-clear opposite side when loading</small></span><input type="checkbox" checked></label>
+                <label class="settingsToggleRow"><span><strong>循环播放</strong><small>播放结束后自动从头开始</small></span><input type="checkbox" checked></label>
+                <label class="settingsToggleRow"><span><strong>加载时清空另一侧</strong><small>避免误将不匹配的文件进行对比</small></span><input type="checkbox" checked></label>
               </div>
             </section>
             <section class="settingsSection">
               <h3>预览 <span>PREVIEW</span></h3>
-              <div class="settingsCard previewBackgroundCard">
-                <p>预览背景 <span>Background</span></p>
-                <div class="previewBgChoices">
-                  <label class="previewBgChoice"><input type="radio" name="previewBackground" value="checkerboard" checked><span class="bgSwatch checkerboard"></span><strong>棋盘格</strong><small>Checkerboard</small></label>
-                  <label class="previewBgChoice"><input type="radio" name="previewBackground" value="light"><span class="bgSwatch bgLight"></span><strong>浅色</strong><small>Light</small></label>
-                  <label class="previewBgChoice"><input type="radio" name="previewBackground" value="dark"><span class="bgSwatch bgDark"></span><strong>深色</strong><small>Dark</small></label>
-                  <label class="previewBgChoice"><input type="radio" name="previewBackground" value="transparent"><span class="bgSwatch bgTransparent"></span><strong>透明</strong><small>Transparent</small></label>
+              <div class="settingsCard settingsOptionCard previewBackgroundCard">
+                <div class="settingsControlHeader">
+                  <strong>预览背景</strong>
+                  <small>选择透明区域的显示方式</small>
+                </div>
+                <div class="settingsOptionChoices previewBgChoices">
+                  <label class="settingsOptionChoice previewBgChoice"><input type="radio" name="previewBackground" value="checkerboard" checked><span class="bgSwatch checkerboard"></span><strong>棋盘格</strong></label>
+                  <label class="settingsOptionChoice previewBgChoice"><input type="radio" name="previewBackground" value="light"><span class="bgSwatch bgLight"></span><strong>浅色</strong></label>
+                  <label class="settingsOptionChoice previewBgChoice"><input type="radio" name="previewBackground" value="dark"><span class="bgSwatch bgDark"></span><strong>深色</strong></label>
+                  <label class="settingsOptionChoice previewBgChoice"><input type="radio" name="previewBackground" value="transparent"><span class="bgSwatch bgTransparent"></span><strong>透明</strong></label>
                 </div>
               </div>
             </section>
             <section class="settingsSection">
               <h3>工作流 <span>WORKFLOW</span></h3>
               <div class="settingsCard">
-                <label class="settingsToggleRow"><span><strong>记住上次打开目录</strong><small>Remember last opened directory</small></span><input type="checkbox"></label>
-                <label class="settingsToggleRow"><span><strong>导出完成后自动进入验收模式</strong><small>Auto-enter Export Review after export</small></span><input type="checkbox"></label>
+                <label class="settingsToggleRow"><span><strong>记住上次打开目录</strong><small>下次选择文件时从该目录开始</small></span><input type="checkbox"></label>
+                <label class="settingsToggleRow"><span><strong>导出后进入验收模式</strong><small>导出完成后自动打开对比视图</small></span><input type="checkbox"></label>
               </div>
             </section>
             <section class="settingsSection">
               <h3>显示 <span>DISPLAY</span></h3>
               <div class="settingsCard">
-                <label class="settingsToggleRow"><span><strong>显示调试信息</strong><small>Show debug info</small></span><input type="checkbox"></label>
-                <label class="settingsToggleRow"><span><strong>中文优先，英文辅助</strong><small>Chinese primary, English secondary</small></span><input type="checkbox" checked></label>
+                <label class="settingsToggleRow"><span><strong>显示调试信息</strong><small>在预览页显示额外的解析数据</small></span><input type="checkbox"></label>
               </div>
-              <div class="settingsCard appearanceCard">
+            </section>
+            <section class="settingsSection">
+              <h3>外观 <span>APPEARANCE</span></h3>
+              <div class="settingsCard settingsOptionCard appearanceCard">
                 <div class="settingsControlHeader">
-                  <strong>外观 Appearance</strong>
-                  <small>选择应用界面的颜色主题 / Choose the app color theme</small>
+                  <strong>外观</strong>
+                  <small>选择应用界面的颜色主题</small>
                 </div>
-                <div class="themeChoiceGroup" aria-label="外观 / Appearance">
-                  <label><input type="radio" name="theme" value="system"><span>跟随系统<br><small>System</small></span></label>
-                  <label><input type="radio" name="theme" value="light"><span>浅色<br><small>Light</small></span></label>
-                  <label><input type="radio" name="theme" value="dark"><span>深色<br><small>Dark</small></span></label>
+                <div class="settingsOptionChoices themeChoiceGroup" aria-label="外观 / Appearance">
+                  <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="system"><span class="themeSwatch themeSystem"></span><strong>跟随系统</strong></label>
+                  <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="light"><span class="themeSwatch themeLight"></span><strong>浅色</strong></label>
+                  <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="dark"><span class="themeSwatch themeDark"></span><strong>深色</strong></label>
                 </div>
               </div>
             </section>
           </div>
-          <footer><button id="settingsDoneButton" class="primaryDoneButton" type="button">完成 Done</button></footer>
+          <footer><button id="settingsDoneButton" class="primaryDoneButton" type="button">完成</button></footer>
         </section>
       </div>
 
-      <div id="fullLogsModal" class="drawerOverlay" hidden>
-        <section class="logsDrawer" role="dialog" aria-modal="true" aria-labelledby="fullLogsTitle">
-          <header>
-            <div class="modalTitle">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14" /><path d="M5 10h14" /><path d="M5 15h10" /><path d="M5 20h6" /></svg>
-              <div>
-                <h2 id="fullLogsTitle">运行日志</h2>
-                <p id="fullLogsSubtitle">Runtime Logs</p>
-              </div>
-            </div>
-            <div class="logsDrawerActions">
-              <button id="copyFullLogsButton" class="darkIconButton" type="button" title="复制日志 / Copy logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8z" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></svg></button>
-              <button id="clearFullLogsButton" class="darkIconButton" type="button" title="清空日志 / Clear logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 15h10l1-15" /></svg></button>
-              <button id="fullLogsCloseButton" class="darkIconButton" type="button" title="关闭 / Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg></button>
-            </div>
-          </header>
-          <div id="fullLogsContent" class="logsDrawerList"></div>
-          <footer><span class="rendererDot"></span><span>渲染器运行中 / Renderer active</span></footer>
-        </section>
-      </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>

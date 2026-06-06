@@ -2,13 +2,13 @@
 
 Exporter-ready intermediate protocol MVP
 
-一个用于自动化生成“头像框”类型 SVGA 动效工程的最小可行项目。当前版本优先建设可稳定接入真实 SVGA exporter 的中间工程协议，输出 `project.json`、`svga-map.json`、真实 generated assets、由协议驱动的 `preview.gif`、`report.json` 和真实 `.svga` 文件。
+一个用于自动化生成“头像框”类型 SVGA 动效工程的最小可行项目。当前版本输出 exporter-ready 工程协议、真实 generated assets、透明 PNG 帧序列、WebM/MP4 辅助预览、报告和真实 `.svga` 文件。
 
 ## Scope
 
 - 资产类型：仅支持 `avatar_frame`
 - 输入：透明背景 PNG 头像框素材 + `asset.config.json`
-- 输出：`project.json`、`svga-map.json`、真实生成后的 assets、`preview.gif`、`report.json`、`avatar_frame_basic.svga`
+- 输出：`project.json`、`svga-map.json`、generated assets、`preview_frames/`、`preview.webm`、`preview.mp4`、fallback `preview.gif`、`report.json` 和真实 `.svga`
 - 模板：`breathing_glow`、`metal_edge_sweep`、`gem_twinkle`
 - 技术栈：TypeScript + Node.js + pnpm
 
@@ -39,7 +39,9 @@ examples/avatar_frame_basic/output/
 
 ## MVP 0.1 Planning Chain
 
-当前 MVP 0.1 前半段链路聚焦 layered avatar frame job，不做 Web UI、preview.gif、真实 `.svga`、report、svga-map 或 delivery zip。
+当前 MVP 0.1 链路聚焦 layered avatar frame job；现阶段已支持生成 `motion-plan.json`、`project.json`、generated assets、透明预览帧、WebM/MP4 辅助预览、fallback GIF、报告、真实 `.svga`、验收状态和 `delivery.zip`。
+
+`avatar_frame` 的默认生产画布为 `300 × 300`。真实素材可以通过 `sourceCanvas` 保留原始坐标规格，例如 `600 × 600 → 300 × 300`；planning chain 会生成缩放并按 alpha 极限裁切后的 `generated/optimized/*.png`，SVGA 不直接打包带有大面积透明空白的源图。
 
 标准 job 示例：
 
@@ -99,13 +101,28 @@ node dist/cli.js preview jobs/avatar_frame_test_001
 ```text
 jobs/avatar_frame_test_001/generated/
   sweep_light.png
+  sweep_light_masked.png
   glow_frame.png
   glow_dot.png
 
 jobs/avatar_frame_test_001/output/
+  preview_frames/
+    frame_000.png
+    ...
+  preview.webm
+  preview.mp4
   preview.gif
+  review_frames_contact_sheet.png
   preview-report.json
 ```
+
+验收优先级：
+
+1. 真实 `.svga` 在 Web 验收页中的播放效果
+2. `preview.webm`、`preview.mp4` 和 RGBA `preview_frames/`
+3. `preview.gif`，仅用于 fallback、快速浏览或文档展示
+
+`preview_frames` 保留透明 RGBA；`preview.webm` 优先使用 VP9 alpha；`preview.mp4` 合成到 `#111827` 深色背景。ffmpeg 不可用时 WebM/MP4 会记录 warning，但不会阻断 PNG frames、GIF 或后续主链路。
 
 MVP PreviewRenderer 支持：
 
@@ -120,8 +137,119 @@ MVP PreviewRenderer 支持：
 - `anchor.canvasX / anchor.canvasY`
 - `anchor.localX / anchor.localY`
 - keyframes 中的 `x`、`y`、`scaleX`、`scaleY`、`rotation`、`alpha`
+- keyframe `easing`，PreviewRenderer 与 SVGAExporter 共用同一套插值器
 
 渲染时 rotation 和 scale 围绕 `anchor.localX/localY` 执行，不围绕图片中心或左上角。
+
+当前 easing 支持：
+
+```text
+linear
+easeInSine
+easeOutSine
+easeInOutSine
+easeInQuad
+easeOutQuad
+easeInOutQuad
+easeOutBack
+```
+
+`metal_sweep` 使用逐帧 baked mask：moving sweep 先与 base frame alpha 合成，再排除 `structure.safeArea`，输出 `generated/sweep_baked/sweep_###.png`。默认 balanced 模式使用 `sweepFrameStride = 3`，透明帧和低贡献帧会跳过，保留帧按 alpha bbox 裁切并做完全相同 hash 去重。每个 sprite 保存自己的画布偏移，不再把 full-canvas baked PNG 写入 SVGA。
+
+`report.json.memoryEstimate` 按唯一图片的 `width × height × 4` 估算解码内存。头像框硬预算为 `8 MB`，推荐控制在 `6.5 MB` 以下；超过推荐值会产生 performance warning。`technicalStatus` 表示工程链路状态，`visualStatus` 和 `acceptance.status` 表示人工视觉验收状态，两者不会混用。
+
+运行 report 链路：
+
+```bash
+pnpm autosvga:report -- jobs/avatar_frame_test_001
+```
+
+或：
+
+```bash
+./node_modules/.bin/tsc -p tsconfig.json
+node dist/cli.js report jobs/avatar_frame_test_001
+```
+
+该命令会读取 `input/config.json`、`input/structure.json`、`project/motion-plan.json`、`project/project.json`，并尽量合并 `output/preview-report.json` 的预览结果，输出：
+
+```text
+jobs/avatar_frame_test_001/output/
+  report.json
+  svga-map.json
+```
+
+`report.json` 记录生成摘要、预览结果、基础验收状态和 applied effects。`svga-map.json` 记录 project layer、source part、source effect、资源引用关系，以及真实 SVGA exporter 可使用的 `svgaSpriteId` / `svgaImageKey` 字段。
+
+导出 MVP SVGA：
+
+```bash
+pnpm autosvga:export -- jobs/avatar_frame_test_001
+```
+
+或：
+
+```bash
+./node_modules/.bin/tsc -p tsconfig.json
+node dist/cli.js export jobs/avatar_frame_test_001
+```
+
+该命令会读取 `project/project.json`，自动补齐缺失的 generated assets，使用 `proto/svga.proto` 和 `protobufjs` 生成真实可解析的 zlib-compressed protobuf `.svga`，并输出：
+
+```text
+jobs/avatar_frame_test_001/output/
+  avatar_frame_test_001.svga
+  report.json
+  svga-map.json
+```
+
+完整 MVP 0.1 链路命令：
+
+```bash
+node dist/cli.js plan jobs/avatar_frame_test_001
+node dist/cli.js preview jobs/avatar_frame_test_001
+node dist/cli.js report jobs/avatar_frame_test_001
+node dist/cli.js export jobs/avatar_frame_test_001
+node dist/cli.js package jobs/avatar_frame_test_001
+```
+
+当前 MVP SVGA exporter 只支持 image layer、keyframes、zIndex、alpha、x/y、scale、rotation 和 anchor transform；暂不支持 mask、text、audio、shape、nested composition 或复杂编辑能力。
+
+`package` 会验证交付必需文件，创建默认 `output/acceptance.json`，并生成：
+
+```text
+jobs/avatar_frame_test_001/output/delivery.zip
+```
+
+ZIP 内保留 job 相对路径。必需文件为 `.svga`、report、svga-map、project、motion-plan、config 和 structure；推荐包含 WebM、MP4、preview-report、generated PNG 和 requirement。`preview.gif` 是可选 fallback，不再是打包前置条件；逐帧 PNG 默认不进入 ZIP。
+
+验收状态可以通过 CLI 更新：
+
+```bash
+node dist/cli.js accept jobs/avatar_frame_test_001
+node dist/cli.js reject jobs/avatar_frame_test_001 --notes "需要调整扫光节奏"
+```
+
+命令会更新：
+
+```text
+output/acceptance.json
+output/report.json
+```
+
+完整输出包括：
+
+```text
+output/preview.gif
+output/preview_frames/
+output/preview.webm
+output/preview.mp4
+output/avatar_frame_test_001.svga
+output/report.json
+output/svga-map.json
+output/delivery.zip
+output/acceptance.json
+```
 
 本阶段内置 5 个语义模板：
 
@@ -185,15 +313,29 @@ pnpm preview:player
 http://localhost:4173/tools/svga-player-preview/
 ```
 
-页面会自动加载：
+页面默认进入 `本地预览 / Local Preview`，优先显示一个大尺寸 SVGA 播放窗口。播放器脚本来自 jsDelivr CDN；`.svga`、参考视频和 report 通过本地 dev server 访问，不能直接用 `file://` 打开页面。
+
+Web 播放验证页的信息架构：
+
+- 顶层模式只有 `本地预览 / Local Preview` 和 `导出验收 / Export Review`
+- `Compare` 是 Local Preview 下的开关，不是第三个顶层模式
+- `SVGA 信息 / SVGA Info` 只包含 `概览 / Overview` 和 `资源 / Assets`
+- `图层 / Layers` 和 `图片资源 / Images` 已合并为 `资源 / Assets`
+- `运行日志 / Runtime Logs` 是独立右侧 panel，可与 SVGA 信息 panel 同时打开
+- 文件选择按钮属于对应预览卡片
+- 显示模式属于对应预览卡片
+- 播放控件属于对应预览卡片
+- 同步控件只影响双窗口共同状态
+
+也可以通过 job 相对路径直接进入导出验收：
 
 ```text
-examples/avatar_frame_basic/output/preview.gif
-examples/avatar_frame_basic/output/avatar_frame_basic.svga
-examples/avatar_frame_basic/output/report.json
+http://127.0.0.1:4173/tools/svga-player-preview/?job=jobs/avatar_frame_test_001
 ```
 
-页面左侧是 `preview.gif`，右侧是公开 SVGA Web Player 包 `svgaplayerweb@2.3.1` 播放的真实 `.svga`。播放器脚本来自 jsDelivr CDN；`.svga`、GIF 和 report 通过本地 dev server 访问，不能直接用 `file://` 打开页面。
+页面会自动读取该 job 的 `output/report.json`、`output/svga-map.json` 和导出 `.svga`。辅助预览按 `preview.webm`、`preview.mp4`、`preview.gif` 的顺序加载；WebM 实际解码失败时也会继续尝试 MP4。右侧视频支持原生 controls 和页面同步控制。GIF 只作为 fallback，缺失单个辅助预览不会影响真实 SVGA 播放。
+
+导出验收模式下，左侧显示导出的 SVGA，右侧显示参考视频，优先使用 MP4 或 WebM。GIF 仍可作为本地调试 fallback，但不作为线上交付资源。
 
 播放器尺寸来自真实 SVGA viewBox，而不是由页面容器强行决定。工具会优先从 SVGA Web Player 的 `videoItem` 读取尺寸；如果播放器 API 没暴露尺寸，会 inflate `.svga` 并读取 protobuf `MovieEntity.params.viewBoxWidth/viewBoxHeight`。页面按 `aspectRatio = viewBoxWidth / viewBoxHeight` 计算播放器显示尺寸，默认使用 `Fit contain`，也可以切换到 `Original size` 或 `Fit width`。
 
@@ -213,9 +355,9 @@ examples/avatar_frame_basic/output/report.json
 - 画布尺寸、内容居中、裁切和透明背景是否正常
 - 下方 report 中的 `fileSizeBytes`、`imageCount`、`spriteCount`、`frameCount`、`fps`、`durationSeconds`、`exporterReady`、`svgaExport.success` 是否符合预期
 
-当前 `report.json.playbackTest` 会记录播放验证要求，但不会伪造视觉成功。如果工具能加载真实 `.svga`，仍需要人工目视确认 `preview.gif` 与真实 SVGA 播放是否一致。
+真实 `.svga` 能 inflate、decode 或加载并不等于视觉验收成功。仍需在 Web 播放器中人工确认主体叠加、翼尖幅度、宝石 glint、扫光范围、透明边缘和循环接缝。
 
-`preview.gif` 仅用于本地调试和视觉对比，不作为线上交付资源。线上交付应以真实 `.svga` 及其播放验证结果为准。
+不要使用 GIF 判断最终视觉效果是否达标。`preview.gif` 仅用于 fallback、快速浏览和文档展示；线上交付与主验收以真实 `.svga` 及其 Web 播放结果为准。
 
 ## Input Contract
 

@@ -24,17 +24,25 @@ This page uses the public `svgaplayerweb@2.3.1` prebuilt browser bundle from jsD
 
 This is the default mode. It shows one large SVGA player, with an on-demand right-side `SVGA 信息 / SVGA Info` panel opened from the toolbar.
 
-Use it when you drag or choose a local `.svga` file and want to inspect playback, sizing, parse status, render status, layers, image resources, warnings, and logs. The page does not show a default GIF beside the SVGA in this mode, to avoid accidental false comparisons.
+To review a generated MVP job directly, pass its repository-relative job path:
+
+```text
+http://127.0.0.1:4173/tools/svga-player-preview/?job=jobs/avatar_frame_test_001
+```
+
+The page switches to Export Review and loads the job's exported SVGA, `report.json`, and `svga-map.json`. The reference side tries `preview.webm`, then `preview.mp4`, and finally the deprecated `preview.gif` fallback. A video candidate must reach `canplay`; a successful HTTP response alone is not treated as playable. Missing or unsupported auxiliary previews are logged as warnings without blocking SVGA playback.
+
+Use it when you drag or choose a local `.svga` file and want to inspect playback, sizing, parse status, render status, assets, warnings, and logs. The page does not show a default GIF beside the SVGA in this mode, to avoid accidental false comparisons.
 
 The info panel includes:
 
 - file size, estimated memory usage, canvas size, duration, FPS
-- layer count, image resource count, layer names
+- layer count, image resource count, sprite/image relationships
 - image dimensions and image byte sizes
 - parse status and render status
 - warning badges for oversized or suspicious resources
 
-`图层 / Layers` and `图片资源 / Images` use thumbnail cards instead of plain text rows. Click a row to select it, or click the thumbnail / `查看` button to open a larger checkerboard preview with imageKey, dimensions, and byte size.
+`SVGA 信息 / SVGA Info` only contains `概览 / Overview` and `资源 / Assets`. The Assets tab merges sprite and image resource views, groups continuous numbered image resources into expandable `序列帧` groups, and uses thumbnail cards instead of plain text rows.
 
 ### 导出验收 / Export Review
 
@@ -43,20 +51,29 @@ Use this after exporting an SVGA from the tool. The page switches to a dual prev
 - left: exported SVGA
 - right: `参考视频 / Reference Video`
 
-Prefer `.mp4` or `.webm` as the reference video. `.gif` is still accepted as a temporary fallback, but `preview.gif` is only for local debugging and is not an online delivery artifact.
+Prefer `.webm` or `.mp4` as the reference video. `.gif` remains accepted as a fallback, but it is not the visual acceptance baseline or an online delivery artifact. The primary review target is always the real `.svga` playback.
+
+The reference `<video>` uses `controls`, `muted`, `playsInline`, `loop`, and `preload=auto`. Source changes call `video.load()`, and both the card controls and synchronized controls operate on the same video element.
 
 This mode provides synchronized play, pause, replay, and a progress slider. SVGA seeking uses `stepToFrame` when the public player exposes it; otherwise replay remains the reliable alignment point.
 
-### 本地对比 / Local Compare
+### Compare 开关
 
-Click `开启对比模式 / Enable Compare` from Local Preview, or choose `本地对比 / Local Compare` from the display mode selector.
+Click `开启对比 / Compare` from the Local Preview card header.
 
-This mode compares two local `.svga` files side by side:
+This opens a second local `.svga` card side by side:
 
 - left: SVGA A
 - right: SVGA B
 
 Use it to compare different `bakedSweep.frameStride` exports such as stride 1, 2, and 3. The recommended default export setting is `frameStride = 2`, which balances visual smoothness and package size.
+
+Top-level modes remain only:
+
+- `本地预览 / Local Preview`
+- `导出验收 / Export Review`
+
+Compare is not a third top-level mode.
 
 ## Playback controls
 
@@ -70,6 +87,17 @@ The top toolbar does not contain ordinary playback controls. In dual-window mode
 - synchronized progress slider
 
 This avoids duplicate replay or play buttons across the same page.
+
+File selection buttons belong to their preview cards. Fit mode controls also belong to each preview card, so each side can choose its own contain / original / fit-width behavior.
+
+## Panels
+
+The toolbar has two independent right-side panels:
+
+- `SVGA 信息 / SVGA Info`: Overview and Assets only.
+- `运行日志 / Runtime Logs`: copy logs, clear logs, and empty state. Open or close it with the toolbar log button.
+
+Both panels use the same right-side panel style and can be open at the same time. Logs are no longer shown as a separate terminal-style drawer, and Logs are not restored as an info-panel tab.
 
 ## Appearance
 
