@@ -2,7 +2,7 @@
 
 ## 2026-06-07 — repo hygiene follow-up fixes
 
-**Commit**: (see git log after merge)
+**Commit**: 90a8165 (merge), c1c36e5 (baseline)
 
 Hermes follow-up:
 - Tightened .gitignore examples exception rules (zip, svga, gif, webm, mp4)
