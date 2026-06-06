@@ -3082,6 +3082,547 @@ dd {
   background-clip: content-box;
 }
 
+/* Rebuilt tool layout: readable panels, shared menus, and recoverable scrolling. */
+:root {
+  --blue: #0066cc;
+  --info-panel-width: 420px;
+  --logs-panel-width: 560px;
+  --font-title: 15px;
+  --font-subtitle: 12px;
+  --font-body: 14px;
+  --font-meta: 12px;
+  --font-badge: 11px;
+  --line-title: 20px;
+  --line-subtitle: 17px;
+  --line-body: 19px;
+  --line-meta: 17px;
+}
+
+body {
+  min-width: 0;
+  height: auto;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
+}
+
+.shell {
+  width: 100%;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  min-height: 56px;
+  height: 56px;
+  background: color-mix(in srgb, var(--background) 94%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.brandMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--blue);
+  filter: none;
+}
+
+.brand strong {
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.brandCopy span {
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.workspace {
+  flex: none;
+  height: auto;
+  min-height: calc(100dvh - 72px);
+  overflow: visible;
+  align-items: stretch;
+}
+
+.workspace.mode-localPreview.withInfoPanel {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, var(--info-panel-width));
+}
+
+.workspace.mode-localPreview.withLogsPanel {
+  grid-template-columns: minmax(0, 1fr) minmax(420px, var(--logs-panel-width));
+}
+
+.workspace.mode-localPreview.withInfoPanel.withLogsPanel {
+  grid-template-columns: minmax(420px, 1fr) minmax(320px, var(--info-panel-width)) minmax(420px, var(--logs-panel-width));
+}
+
+.workspace.mode-localPreview.withCompare.withInfoPanel,
+.workspace.mode-exportReview.withInfoPanel {
+  grid-template-columns: repeat(2, minmax(320px, 1fr)) minmax(320px, var(--info-panel-width));
+}
+
+.workspace.mode-localPreview.withCompare.withLogsPanel,
+.workspace.mode-exportReview.withLogsPanel {
+  grid-template-columns: repeat(2, minmax(320px, 1fr)) minmax(420px, var(--logs-panel-width));
+}
+
+.workspace.mode-localPreview.withCompare.withInfoPanel.withLogsPanel,
+.workspace.mode-exportReview.withInfoPanel.withLogsPanel {
+  grid-template-columns: repeat(2, minmax(320px, 1fr)) minmax(320px, var(--info-panel-width)) minmax(420px, var(--logs-panel-width));
+}
+
+.previewCard,
+.infoPanel,
+.logsPanel,
+.syncBar,
+.details,
+.errorBox {
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 8px 28px rgba(0, 0, 0, 0.04);
+}
+
+.previewCard {
+  min-height: 520px;
+}
+
+.infoPanel,
+.logsPanel {
+  width: 100%;
+  max-width: none;
+  min-height: 520px;
+}
+
+.infoPanel {
+  width: var(--info-panel-width);
+  min-width: 320px;
+  max-width: min(560px, 42vw);
+}
+
+.logsPanel {
+  width: var(--logs-panel-width);
+  min-width: 420px;
+  max-width: min(720px, 50vw);
+}
+
+.resizeHandle {
+  left: -7px;
+  width: 14px;
+}
+
+.resizeHandle:focus-visible::after,
+.resizeHandle:hover::after,
+body.isResizingInfoPanel .infoPanel .resizeHandle::after,
+body.isResizingLogsPanel .logsPanel .resizeHandle::after {
+  opacity: 1;
+  background: var(--blue);
+}
+
+.infoGrid > div,
+#reportGrid > div {
+  grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
+}
+
+.overviewRow,
+.overviewStatusRow {
+  display: grid;
+  grid-template-columns: minmax(118px, 0.46fr) minmax(0, 1fr);
+}
+
+.overviewRow dt,
+.overviewStatusRow dt {
+  display: grid;
+  gap: 1px;
+  white-space: normal;
+}
+
+.overviewRow dd {
+  width: 100%;
+  max-width: none;
+}
+
+.infoGrid dd,
+#reportGrid dd,
+.quickInfo dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.logsPanelList .fullLogRow {
+  grid-template-columns: 68px 48px minmax(0, 1fr);
+}
+
+.modeControl {
+  width: 190px;
+  height: 38px;
+  padding: 0;
+}
+
+.modeDot {
+  position: absolute;
+  left: 13px;
+  z-index: 1;
+}
+
+.dropdown {
+  position: relative;
+}
+
+.dropdownTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  padding: 0 12px 0 27px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--textPrimary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dropdownTrigger > svg {
+  width: 14px;
+  height: 14px;
+  transition: transform var(--motion-fast);
+}
+
+.dropdownTrigger[aria-expanded="true"] > svg {
+  transform: rotate(180deg);
+}
+
+.dropdownMenu,
+.fitMenu.dropdownMenu {
+  position: absolute;
+  z-index: 40;
+  display: grid;
+  width: 220px;
+  padding: 5px;
+  overflow: hidden;
+  border: 1px solid var(--borderStrong);
+  border-radius: 10px;
+  background: var(--surfaceElevated);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(18px);
+  animation: dropdownIn 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.modeControl .dropdownMenu {
+  top: calc(100% + 7px);
+}
+
+.fitMenu.dropdownMenu {
+  top: auto;
+  bottom: calc(100% + 8px);
+  width: 178px;
+}
+
+.dropdownMenuItem,
+.fitMenu.dropdownMenu .dropdownMenuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--textPrimary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.dropdownMenuItem:hover,
+.dropdownMenuItem:focus-visible,
+.fitMenu.dropdownMenu .dropdownMenuItem:hover,
+.fitMenu.dropdownMenu .dropdownMenuItem:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+  color: var(--blue);
+}
+
+.dropdownMenuItem.isSelected {
+  color: var(--blue);
+}
+
+.dropdownMenuItemText {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.dropdownMenuItemText strong {
+  font-size: 13px;
+  line-height: 17px;
+}
+
+.dropdownMenuItemText small {
+  color: var(--textSecondary);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 15px;
+}
+
+.dropdownMenuCheck,
+.dropdownMenuItem.isSelected::after {
+  width: 8px;
+  height: 5px;
+  margin-left: 12px;
+  border-bottom: 1.5px solid currentColor;
+  border-left: 1.5px solid currentColor;
+  content: "";
+  opacity: 0;
+  transform: rotate(-45deg);
+}
+
+.dropdownMenuItem.isSelected .dropdownMenuCheck,
+.dropdownMenuItem.isSelected::after {
+  opacity: 1;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.98);
+  }
+}
+
+.settingsSection h3 {
+  color: var(--textSecondary);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.settingsCard {
+  padding: 0;
+}
+
+.settingsControlHeader,
+.settingsToggleRow,
+.settingsActionRow {
+  padding: 14px 16px;
+}
+
+.settingsOptionChoices {
+  padding: 0 16px 14px;
+}
+
+.settingsDivider {
+  height: 1px;
+  margin: 0 16px;
+  background: var(--hairline);
+}
+
+.settingsActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settingsActionRow > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.settingsActionRow strong {
+  color: var(--textPrimary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.settingsActionRow small {
+  color: var(--textSecondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.settingActionButton {
+  height: 32px;
+  padding: 0 12px;
+  flex: none;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surfaceElevated);
+  color: var(--textPrimary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.settingActionButton[data-state="scanning"] {
+  color: var(--blue);
+}
+
+.settingActionButton[data-state="success"] {
+  color: var(--green);
+}
+
+.settingActionButton[data-state="error"] {
+  color: var(--danger);
+}
+
+button:focus-visible,
+label:has(input:focus-visible),
+.resizeHandle:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+button:not(:disabled):active,
+.cardFileButton:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html.reduceMotion *,
+html.reduceMotion *::before,
+html.reduceMotion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+@media (max-width: 1799px) {
+  .workspace.withLogsPanel,
+  .workspace.withInfoPanel.withLogsPanel,
+  .workspace.mode-localPreview.withCompare.withLogsPanel,
+  .workspace.mode-localPreview.withCompare.withInfoPanel.withLogsPanel,
+  .workspace.mode-exportReview.withLogsPanel,
+  .workspace.mode-exportReview.withInfoPanel.withLogsPanel {
+    grid-template-columns: repeat(2, minmax(320px, 1fr));
+  }
+
+  .workspace.mode-localPreview.withLogsPanel:not(.withCompare) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace.withInfoPanel.withLogsPanel:not(.withCompare):not(.mode-exportReview) {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, var(--info-panel-width));
+  }
+
+  .logsPanel {
+    position: fixed;
+    top: 68px;
+    right: 14px;
+    bottom: 14px;
+    z-index: 25;
+    height: auto;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 1199px) {
+  .workspace.mode-localPreview.withInfoPanel,
+  .workspace.mode-localPreview.withInfoPanel.withLogsPanel,
+  .workspace.mode-localPreview.withCompare.withInfoPanel,
+  .workspace.mode-exportReview.withInfoPanel,
+  .workspace.mode-localPreview.withCompare.withInfoPanel.withLogsPanel,
+  .workspace.mode-exportReview.withInfoPanel.withLogsPanel {
+    grid-template-columns: repeat(2, minmax(320px, 1fr));
+  }
+
+  .workspace.mode-localPreview.withInfoPanel:not(.withCompare) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .infoPanel {
+    position: fixed;
+    top: 68px;
+    right: 14px;
+    bottom: 14px;
+    z-index: 24;
+    height: auto;
+    min-height: 0;
+  }
+
+  .workspace.withInfoPanel.withLogsPanel .logsPanel {
+    z-index: 26;
+  }
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto;
+    height: auto;
+    gap: 10px;
+  }
+
+  .modeControl {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .actionRow {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .workspace,
+  .workspace.mode-localPreview.withCompare,
+  .workspace.mode-exportReview,
+  .workspace.mode-localPreview.withInfoPanel,
+  .workspace.mode-localPreview.withLogsPanel,
+  .workspace.mode-localPreview.withInfoPanel.withLogsPanel,
+  .workspace.mode-localPreview.withCompare.withInfoPanel,
+  .workspace.mode-localPreview.withCompare.withLogsPanel,
+  .workspace.mode-localPreview.withCompare.withInfoPanel.withLogsPanel,
+  .workspace.mode-exportReview.withInfoPanel,
+  .workspace.mode-exportReview.withLogsPanel,
+  .workspace.mode-exportReview.withInfoPanel.withLogsPanel {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .previewCard,
+  .mode-localPreview.withCompare .previewCard,
+  .mode-exportReview .previewCard {
+    height: min(620px, calc(100dvh - 150px));
+    min-height: 460px;
+  }
+
+  .infoPanel,
+  .logsPanel {
+    top: 112px;
+    right: 12px;
+    bottom: 12px;
+    width: min(calc(100vw - 24px), var(--info-panel-width));
+    max-width: calc(100vw - 24px);
+  }
+
+  .logsPanel {
+    width: min(calc(100vw - 24px), var(--logs-panel-width));
+  }
+
+  .syncBar {
+    margin: 0 12px 12px;
+  }
+}
+
 .isHidden {
   display: none !important;
 }
@@ -3141,5 +3682,27 @@ dd {
   .mode-localPreview.withCompare .previewCard,
   .mode-exportReview .previewCard {
     height: 480px;
+  }
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .modeControl {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+
+  .infoPanel,
+  .logsPanel {
+    position: fixed;
+    max-height: none;
+  }
+
+  .mode-localPreview.withCompare .previewCard,
+  .mode-exportReview .previewCard {
+    height: min(620px, calc(100dvh - 150px));
   }
 }

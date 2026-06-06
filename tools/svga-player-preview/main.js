@@ -59,6 +59,9 @@ const referenceState = {
 };
 
 const modeSelect = document.querySelector("#modeSelect");
+const modeDropdownTrigger = document.querySelector("#modeDropdownTrigger");
+const modeDropdownLabel = document.querySelector("#modeDropdownLabel");
+const modeDropdownMenu = document.querySelector("#modeDropdownMenu");
 const workspace = document.querySelector("#workspace");
 const compareToggle = document.querySelector("#compareToggle");
 const compareToggleWrap = document.querySelector("#compareToggleWrap");
@@ -128,6 +131,13 @@ const fullLogsSubtitle = document.querySelector("#fullLogsSubtitle");
 const copyFullLogsButton = document.querySelector("#copyFullLogsButton");
 const clearFullLogsButton = document.querySelector("#clearFullLogsButton");
 const infoPanelResizeHandle = document.querySelector("#infoPanelResizeHandle");
+const logsPanelResizeHandle = document.querySelector("#logsPanelResizeHandle");
+const autoLoadLatestToggle = document.querySelector("#autoLoadLatestToggle");
+const rescanButton = document.querySelector("#rescanButton");
+const rescanStatus = document.querySelector("#rescanStatus");
+const globalLoopToggle = document.querySelector("#globalLoopToggle");
+const reduceMotionToggle = document.querySelector("#reduceMotionToggle");
+const statusAnnouncer = document.querySelector("#statusAnnouncer");
 
 let defaultReport;
 let defaultSvgaMap;
@@ -147,7 +157,11 @@ let previewImageKey;
 let effectiveTheme = "light";
 let compareEnabled = false;
 let syncIsPlaying = false;
-let infoPanelWidth = Number(localStorage.getItem("autoSvgaInfoPanelWidth")) || Math.round(window.innerWidth * 0.15);
+let infoPanelWidth = Number(localStorage.getItem("autoSvgaInfoPanelWidth")) || 420;
+let logsPanelWidth = Number(localStorage.getItem("autoSvgaLogsPanelWidth")) || 560;
+let manualArtifactSelection = false;
+let latestArtifactGroup;
+let artifactAutoLoading = false;
 
 function createPlayerSlot(slotName) {
   const suffix = slotName.toUpperCase();
@@ -185,6 +199,10 @@ function showError(message) {
   errorBox.hidden = false;
   errorBox.textContent = String(message).split(" / ")[0];
   addLog("error", message);
+}
+
+function announce(message) {
+  if (statusAnnouncer) statusAnnouncer.textContent = message;
 }
 
 function clearError() {
@@ -403,6 +421,8 @@ function updateButtons() {
 function setAppMode(nextMode = modeSelect.value) {
   if (nextMode === "localCompare") nextMode = "localPreview";
   modeSelect.value = nextMode;
+  modeDropdownLabel.textContent = nextMode === "exportReview" ? "导出验收" : "本地预览";
+  syncDropdownSelection(modeDropdownMenu, nextMode);
   workspace.className = `workspace mode-${nextMode}${compareEnabled && nextMode === "localPreview" ? " withCompare" : ""}`;
   workspace.classList.toggle("withInfoPanel", !document.querySelector("#infoPanel").classList.contains("isHidden"));
   workspace.classList.toggle("withLogsPanel", !logsPanel.classList.contains("isHidden"));
@@ -455,10 +475,17 @@ function openInfoPanel(tabName = "overview") {
 }
 
 function applyInfoPanelWidth(width) {
-  const viewportMaximum = Math.max(1, Math.floor(window.innerWidth * 0.15));
-  const minimum = Math.min(220, viewportMaximum);
-  infoPanelWidth = Math.min(viewportMaximum, Math.max(minimum, Math.round(width)));
+  const viewportMaximum = Math.max(320, Math.min(560, Math.floor(window.innerWidth * 0.42)));
+  infoPanelWidth = Math.min(viewportMaximum, Math.max(320, Math.round(width)));
   document.documentElement.style.setProperty("--info-panel-width", `${infoPanelWidth}px`);
+  infoPanelResizeHandle?.setAttribute("aria-valuenow", String(infoPanelWidth));
+}
+
+function applyLogsPanelWidth(width) {
+  const viewportMaximum = Math.max(420, Math.min(720, Math.floor(window.innerWidth * 0.5)));
+  logsPanelWidth = Math.min(viewportMaximum, Math.max(420, Math.round(width)));
+  document.documentElement.style.setProperty("--logs-panel-width", `${logsPanelWidth}px`);
+  logsPanelResizeHandle?.setAttribute("aria-valuenow", String(logsPanelWidth));
 }
 
 function closeInfoPanel() {
@@ -751,10 +778,11 @@ function syncReplay() {
 }
 
 function updateSyncPlaybackButton() {
-  syncPlayControl.innerHTML = syncIsPlaying
-    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>`
-    : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
-  syncPlayControl.title = syncIsPlaying ? "同步暂停" : "同步播放";
+  renderPlaybackButton(syncPlayControl, {
+    kind: syncIsPlaying ? "playing" : "paused",
+    canPlay: !syncPlayControl.disabled,
+    mediaType: "video"
+  }, "同步");
 }
 
 function updateSyncPlaybackState() {
@@ -1133,6 +1161,10 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
   clearError();
   slot.source = source;
   slot.videoItem = undefined;
+  slot.metrics = undefined;
+  slot.isPlaying = false;
+  slot.panel.classList.remove("hasMedia");
+  slot.canvas.innerHTML = "";
   slot.report = options.report;
   slot.parseStatus = "loading";
   slot.renderStatus = "loading";
@@ -1148,48 +1180,53 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
   });
   const parser = new window.SVGA.Parser(`#${slot.canvas.id}`);
 
-  parser.load(
-    source,
-    async (loadedVideoItem) => {
-      const decodedInfo = await decodedInfoPromise;
-      const playerSize = extractSizeFromVideoItem(loadedVideoItem);
-      const reportMetrics = extractReportMetrics(slot.report);
-      slot.videoItem = loadedVideoItem;
-      slot.parseStatus = decodedInfo ? "success" : "warning";
-      slot.metrics = {
-        ...decodedInfo,
-        ...playerSize,
-        ...reportMetrics,
-        fileName: options.fileName ?? `SVGA ${slot.slotName}`,
-        fileSizeBytes: options.fileSizeBytes ?? reportMetrics.fileSizeBytes,
-        sourceWidth: playerSize?.sourceWidth ?? decodedInfo?.sourceWidth,
-        sourceHeight: playerSize?.sourceHeight ?? decodedInfo?.sourceHeight
-      };
-      slot.metrics.durationSeconds = slot.metrics.durationSeconds
-        ?? (slot.metrics.fps && slot.metrics.frameCount ? slot.metrics.frameCount / slot.metrics.fps : undefined);
+  return new Promise((resolve, reject) => {
+    parser.load(
+      source,
+      async (loadedVideoItem) => {
+        const decodedInfo = await decodedInfoPromise;
+        const playerSize = extractSizeFromVideoItem(loadedVideoItem);
+        const reportMetrics = extractReportMetrics(slot.report);
+        slot.videoItem = loadedVideoItem;
+        slot.parseStatus = decodedInfo ? "success" : "warning";
+        slot.metrics = {
+          ...decodedInfo,
+          ...playerSize,
+          ...reportMetrics,
+          fileName: options.fileName ?? `SVGA ${slot.slotName}`,
+          fileSizeBytes: options.fileSizeBytes ?? reportMetrics.fileSizeBytes,
+          sourceWidth: playerSize?.sourceWidth ?? decodedInfo?.sourceWidth,
+          sourceHeight: playerSize?.sourceHeight ?? decodedInfo?.sourceHeight
+        };
+        slot.metrics.durationSeconds = slot.metrics.durationSeconds
+          ?? (slot.metrics.fps && slot.metrics.frameCount ? slot.metrics.frameCount / slot.metrics.fps : undefined);
 
-      if (!slot.metrics.sourceWidth || !slot.metrics.sourceHeight) {
-        setStatus(slot.status, "loaded");
-        showError(`SVGA 已加载，但无法读取 viewBox 尺寸。/ SVGA loaded, but viewBox size could not be read for player ${slot.slotName}.`);
+        if (!slot.metrics.sourceWidth || !slot.metrics.sourceHeight) {
+          setStatus(slot.status, "loaded");
+          showError(`SVGA 已加载，但无法读取 viewBox 尺寸。/ SVGA loaded, but viewBox size could not be read for player ${slot.slotName}.`);
+        }
+
+        refreshLayout();
+        rebuildPlayer(slot);
+        replaySlot(slot, false);
+        refreshLayout();
+        updateButtons();
+        addLog("success", `SVGA 加载完成：${slot.metrics.fileName} / SVGA loaded`);
+        resolve(slot);
+      },
+      (error) => {
+        const loadError = new Error(`SVGA 文件加载失败：${error?.message ?? error}`);
+        setStatus(slot.status, "error");
+        slot.videoItem = undefined;
+        slot.parseStatus = "error";
+        slot.renderStatus = "error";
+        showError(`${loadError.message} / Unable to load SVGA file`);
+        updateButtons();
+        renderInfoPanel();
+        reject(loadError);
       }
-
-      refreshLayout();
-      rebuildPlayer(slot);
-      replaySlot(slot, false);
-      refreshLayout();
-      updateButtons();
-      addLog("success", `SVGA 加载完成：${slot.metrics.fileName} / SVGA loaded`);
-    },
-    (error) => {
-      setStatus(slot.status, "error");
-      slot.videoItem = undefined;
-      slot.parseStatus = "error";
-      slot.renderStatus = "error";
-      showError(`SVGA 文件加载失败。/ Unable to load SVGA file: ${error?.message ?? error}`);
-      updateButtons();
-      renderInfoPanel();
-    }
-  );
+    );
+  });
 }
 
 function normalizeJobPath(value) {
@@ -1304,6 +1341,7 @@ function handleSvgaFile(file, slotKey) {
 
 function handleDroppedFile(file, acceptedKind, slotKey = "a") {
   clearError();
+  if (!artifactAutoLoading) manualArtifactSelection = true;
   const kind = fileKind(file);
   if (!kind) {
     showError(`文件类型不支持：${file.name}。/ Unsupported file type.`);
@@ -1345,6 +1383,122 @@ function fileKind(file) {
   if (name.endsWith(".webm")) return "webm";
   if (name.endsWith(".gif")) return "gif";
   return undefined;
+}
+
+async function fetchFileSize(url) {
+  try {
+    const response = await fetch(url, { method: "HEAD" });
+    if (!response.ok) return undefined;
+    return Number(response.headers.get("content-length")) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function setRescanState(kind, message) {
+  if (!rescanButton || !rescanStatus) return;
+  rescanButton.dataset.state = kind;
+  rescanButton.disabled = kind === "scanning";
+  rescanButton.textContent = kind === "scanning" ? "扫描中…" : kind === "success" ? "已更新" : kind === "error" ? "重试" : "重新扫描";
+  rescanStatus.textContent = message;
+  announce(message);
+}
+
+async function loadArtifactGroup(group, { force = false } = {}) {
+  if (!group) return false;
+  if (manualArtifactSelection && !force) {
+    addLog("info", "已保留本次会话中的手动文件选择。/ Manual selection preserved.");
+    return false;
+  }
+
+  artifactAutoLoading = true;
+  latestArtifactGroup = group;
+  setAppMode("exportReview");
+  clearError();
+  let svgaLoaded = false;
+
+  try {
+    if (group.reportPath) {
+      try {
+        defaultReport = await loadReport(group.reportPath);
+        renderReport(defaultReport);
+      } catch (error) {
+        addLog("warning", `同组报告加载失败：${error.message} / Group report failed`);
+      }
+    } else {
+      renderReport(undefined);
+    }
+
+    if (group.svgaPath) {
+      try {
+        await loadSvga("a", group.svgaPath, {
+          fileName: group.svgaPath.split("/").at(-1),
+          fileSizeBytes: await fetchFileSize(group.svgaPath),
+          report: defaultReport
+        });
+        svgaLoaded = true;
+      } catch (error) {
+        addLog("error", `主验收 SVGA 加载失败：${error.message} / Primary SVGA failed`);
+        showError(`主验收 SVGA 加载失败：${error.message}`);
+      }
+    } else {
+      players.a.parseStatus = "error";
+      players.a.renderStatus = "error";
+      setStatus(players.a.status, "error");
+      showError("当前产物组不包含 SVGA，仅可查看参考文件。");
+    }
+
+    const referencePath = group.mp4Path ?? group.webmPath ?? group.gifPath;
+    if (referencePath) {
+      try {
+        await loadReference(referencePath, {
+          fileName: referencePath.split("/").at(-1),
+          fileSizeBytes: await fetchFileSize(referencePath),
+          kind: referencePath.split(".").at(-1).toLowerCase()
+        });
+      } catch (error) {
+        addLog("warning", `同组参考文件加载失败：${error.message} / Group reference failed`);
+      }
+    } else {
+      clearReference();
+    }
+
+    for (const warning of group.warnings ?? []) addLog("warning", `${warning} / Artifact warning`);
+    if (!svgaLoaded && referencePath) {
+      addLog("error", "参考文件可用，但不能替代真实 SVGA 验收。/ Reference cannot replace SVGA validation.");
+    }
+    addLog(svgaLoaded ? "success" : "warning", `已加载产物组：${group.jobId} / Artifact group loaded`);
+    return svgaLoaded;
+  } finally {
+    artifactAutoLoading = false;
+    updateButtons();
+  }
+}
+
+async function scanLatestArtifact({ force = false } = {}) {
+  if (manualArtifactSelection && !force) return;
+  setRescanState("scanning", "正在扫描本地导出产物");
+  addLog("info", "正在扫描本地最新导出产物… / Scanning local artifacts");
+  try {
+    const response = await fetch("/api/latest-artifact");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const target = data.latestWithSvga ?? data.latestAny;
+    for (const warning of data.warnings ?? []) addLog("warning", `${warning} / Scan warning`);
+    if (!target) {
+      setRescanState("error", "未找到可用产物");
+      return;
+    }
+    if (force) manualArtifactSelection = false;
+    await loadArtifactGroup(target, { force });
+    const message = data.latestWithSvga
+      ? `已加载 ${target.jobId}`
+      : `未找到 SVGA，已加载 ${target.jobId} 的参考文件`;
+    setRescanState(data.latestWithSvga ? "success" : "error", message);
+  } catch (error) {
+    setRescanState("error", `扫描失败：${error.message}`);
+    addLog("error", `产物扫描失败：${error.message} / Artifact scan failed`);
+  }
 }
 
 function setupDropZone(element, acceptedKind, slotKey) {
@@ -1795,19 +1949,56 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function playbackStateForSlot(slot) {
+  return {
+    kind: slot.parseStatus === "error" || slot.renderStatus === "error"
+      ? "error"
+      : slot.parseStatus === "loading"
+        ? "loading"
+        : slot.isPlaying
+          ? "playing"
+          : slot.videoItem
+            ? "paused"
+            : "idle",
+    canPlay: Boolean(slot.videoItem),
+    mediaType: slot.videoItem ? "svga" : "none"
+  };
+}
+
+function renderPlaybackButton(button, state, labelPrefix = "") {
+  const isGif = state.mediaType === "gif";
+  const isPlaying = state.kind === "playing";
+  const label = isGif ? "重新播放" : isPlaying ? "暂停" : "播放";
+  button.innerHTML = isGif
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>`
+    : isPlaying
+      ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>`
+      : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
+  button.disabled = !state.canPlay || state.kind === "loading";
+  button.title = `${labelPrefix}${label}`;
+  button.setAttribute("aria-label", `${labelPrefix}${label}`);
+  button.setAttribute("aria-pressed", String(isPlaying));
+  button.classList.toggle("isLoading", state.kind === "loading");
+  button.classList.toggle("hasError", state.kind === "error");
+}
+
 function updatePlaybackButtons() {
-  localPlayPauseButton.innerHTML = players.a.isPlaying
-    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>`
-    : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
-  playerBPlayPauseButton.innerHTML = players.b.isPlaying
-    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14" /><path d="M16 5v14" /></svg>`
-    : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
-  localPlayPauseButton.disabled = !players.a.videoItem;
+  renderPlaybackButton(localPlayPauseButton, playbackStateForSlot(players.a), "SVGA A ");
+  renderPlaybackButton(playerBPlayPauseButton, playbackStateForSlot(players.b), "SVGA B ");
+  const referenceKind = referenceState.kind === "gif" ? "gif" : referenceState.metrics ? "video" : "none";
+  renderPlaybackButton(referencePlayPauseButton, {
+    kind: referenceKind === "video" && !referenceState.video.paused ? "playing" : referenceState.metrics ? "paused" : "idle",
+    canPlay: Boolean(referenceState.metrics),
+    mediaType: referenceKind
+  }, "参考预览 ");
   localReplayButton.disabled = !players.a.videoItem;
-  playerBPlayPauseButton.disabled = !players.b.videoItem;
   playerBReplayButton.disabled = !players.b.videoItem;
-  referencePlayPauseButton.disabled = !referenceState.metrics;
   referenceReplayButton.disabled = !referenceState.metrics;
+  renderPlaybackButton(syncPlayControl, {
+    kind: syncIsPlaying ? "playing" : "paused",
+    canPlay: !syncPlayControl.disabled,
+    mediaType: "video"
+  }, "同步");
 }
 
 function getImageByKey(imageKey) {
@@ -1879,10 +2070,9 @@ function closeFullLogs() {
 }
 
 function closeFitMenus(exceptSlot) {
-  for (const menu of document.querySelectorAll("[data-fit-menu]")) {
+  for (const menu of document.querySelectorAll(".dropdownMenu, [data-fit-menu]")) {
     if (menu.dataset.fitMenu === exceptSlot) continue;
-    menu.hidden = true;
-    menu.parentElement?.querySelector(".fitMenuButton")?.setAttribute("aria-expanded", "false");
+    closeDropdown(menu);
   }
 }
 
@@ -1901,26 +2091,110 @@ function updateFitMenuSelection(slotKey) {
   for (const option of menu.querySelectorAll("[data-fit-value]")) {
     const selected = option.dataset.fitValue === select.value;
     option.classList.toggle("isSelected", selected);
-    option.setAttribute("aria-current", selected ? "true" : "false");
+    option.setAttribute("aria-checked", String(selected));
   }
 }
 
-function setupFitMenus() {
+function syncDropdownSelection(menu, value) {
+  if (!menu) return;
+  for (const item of menu.querySelectorAll("[data-value], [data-fit-value]")) {
+    const itemValue = item.dataset.value ?? item.dataset.fitValue;
+    const selected = itemValue === value;
+    item.classList.toggle("isSelected", selected);
+    item.setAttribute("aria-checked", String(selected));
+  }
+}
+
+function positionDropdown(trigger, menu) {
+  menu.style.removeProperty("left");
+  menu.style.removeProperty("right");
+  const triggerRect = trigger.getBoundingClientRect();
+  const menuWidth = Math.max(menu.offsetWidth, 180);
+  if (triggerRect.left + menuWidth > window.innerWidth - 12) {
+    menu.style.right = "0";
+  } else {
+    menu.style.left = "0";
+  }
+}
+
+function openDropdown(trigger, menu) {
+  for (const other of document.querySelectorAll(".dropdownMenu, [data-fit-menu]")) {
+    if (other !== menu) closeDropdown(other);
+  }
+  menu.hidden = false;
+  trigger.setAttribute("aria-expanded", "true");
+  positionDropdown(trigger, menu);
+  menu.querySelector(".isSelected, [role^='menuitem']")?.focus();
+}
+
+function closeDropdown(menu, restoreFocus = false) {
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  const trigger = menu.parentElement?.querySelector("[aria-expanded]");
+  trigger?.setAttribute("aria-expanded", "false");
+  if (restoreFocus) trigger?.focus();
+}
+
+function setupDropdown({ trigger, menu, itemSelector, getValue, onSelect }) {
+  if (!trigger || !menu) return;
+  menu.classList.add("dropdownMenu");
+  for (const item of menu.querySelectorAll(itemSelector)) {
+    item.classList.add("dropdownMenuItem");
+    item.setAttribute("role", "menuitemradio");
+    item.tabIndex = -1;
+  }
+  trigger.classList.add("dropdownTrigger");
+  trigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (menu.hidden) openDropdown(trigger, menu);
+    else closeDropdown(menu);
+  });
+  menu.addEventListener("click", (event) => {
+    const item = event.target.closest(itemSelector);
+    if (!item) return;
+    onSelect(getValue(item));
+    closeDropdown(menu, true);
+  });
+  menu.addEventListener("keydown", (event) => {
+    const items = [...menu.querySelectorAll(itemSelector)].filter((item) => !item.disabled);
+    const currentIndex = Math.max(0, items.indexOf(document.activeElement));
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      items[(currentIndex + direction + items.length) % items.length]?.focus();
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      document.activeElement?.click();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      closeDropdown(menu, true);
+    }
+  });
+}
+
+function setupDropdownMenus() {
+  setupDropdown({
+    trigger: modeDropdownTrigger,
+    menu: modeDropdownMenu,
+    itemSelector: "[data-value]",
+    getValue: (item) => item.dataset.value,
+    onSelect: (value) => {
+      setAppMode(value);
+      if (value === "exportReview" && autoLoadLatestToggle.checked) {
+        scanLatestArtifact();
+      }
+    }
+  });
+
   for (const menu of document.querySelectorAll("[data-fit-menu]")) {
     const slotKey = menu.dataset.fitMenu;
     const trigger = menu.parentElement.querySelector(".fitMenuButton");
-    trigger.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const shouldOpen = menu.hidden;
-      closeFitMenus(slotKey);
-      updateFitMenuSelection(slotKey);
-      menu.hidden = !shouldOpen;
-      trigger.setAttribute("aria-expanded", String(shouldOpen));
-    });
-    menu.addEventListener("click", (event) => {
-      const option = event.target.closest("[data-fit-value]");
-      if (!option) return;
-      applyFitMode(slotKey, option.dataset.fitValue);
+    setupDropdown({
+      trigger,
+      menu,
+      itemSelector: "[data-fit-value]",
+      getValue: (item) => item.dataset.fitValue,
+      onSelect: (value) => applyFitMode(slotKey, value)
     });
     updateFitMenuSelection(slotKey);
   }
@@ -1986,7 +2260,12 @@ syncReplayControl.addEventListener("click", syncReplay);
 primaryEmptyFileButton.addEventListener("click", () => svgaFileInput.click());
 secondaryEmptyFileButton.addEventListener("click", () => secondaryFileInput.click());
 referenceEmptyFileButton.addEventListener("click", () => referenceFileInput.click());
-modeSelect.addEventListener("change", () => setAppMode(modeSelect.value));
+modeSelect.addEventListener("change", () => {
+  setAppMode(modeSelect.value);
+  if (modeSelect.value === "exportReview" && autoLoadLatestToggle.checked) {
+    scanLatestArtifact();
+  }
+});
 
 playerBPlayPauseButton.addEventListener("click", () => toggleSlot(players.b));
 playerBReplayButton.addEventListener("click", () => replaySlot(players.b));
@@ -2058,6 +2337,7 @@ for (const select of [fitModeA, fitModeB, fitModeReference]) {
 
 window.addEventListener("resize", () => {
   applyInfoPanelWidth(infoPanelWidth);
+  applyLogsPanelWidth(logsPanelWidth);
   refreshLayout();
   for (const slot of Object.values(players)) {
     if (slot.videoItem) {
@@ -2159,38 +2439,104 @@ for (const input of document.querySelectorAll('input[name="theme"]')) {
 for (const input of document.querySelectorAll('input[name="previewBackground"]')) {
   input.addEventListener("change", () => setPreviewBackground(input.value));
 }
+autoLoadLatestToggle.checked = localStorage.getItem("autoSvgaAutoLoad") !== "false";
+autoLoadLatestToggle.addEventListener("change", () => {
+  localStorage.setItem("autoSvgaAutoLoad", String(autoLoadLatestToggle.checked));
+});
+rescanButton.addEventListener("click", async () => {
+  await scanLatestArtifact({ force: true });
+});
+globalLoopToggle.addEventListener("change", () => {
+  localLoopToggle.checked = globalLoopToggle.checked;
+  playerBLoopToggle.checked = globalLoopToggle.checked;
+  referenceLoopToggle.checked = globalLoopToggle.checked;
+  setSlotLoop(players.a, globalLoopToggle.checked);
+  setSlotLoop(players.b, globalLoopToggle.checked);
+  referenceState.video.loop = globalLoopToggle.checked;
+});
+reduceMotionToggle.checked = localStorage.getItem("autoSvgaReduceMotion") === "true";
+document.documentElement.classList.toggle("reduceMotion", reduceMotionToggle.checked);
+reduceMotionToggle.addEventListener("change", () => {
+  localStorage.setItem("autoSvgaReduceMotion", String(reduceMotionToggle.checked));
+  document.documentElement.classList.toggle("reduceMotion", reduceMotionToggle.checked);
+});
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   if ((localStorage.getItem("autoSvgaTheme") ?? "system") === "system") {
     applyThemePreference("system");
   }
 });
-infoPanelResizeHandle.addEventListener("pointerdown", (event) => {
-  event.preventDefault();
-  const startX = event.clientX;
-  const startWidth = infoPanelWidth;
-  document.body.classList.add("isResizingInfoPanel");
-  infoPanelResizeHandle.setPointerCapture?.(event.pointerId);
-
-  const onPointerMove = (moveEvent) => {
-    applyInfoPanelWidth(startWidth + startX - moveEvent.clientX);
+function setupPanelResize(handle, options) {
+  if (!handle) return;
+  const { defaultWidth, storageKey, apply, getWidth, bodyClass } = options;
+  const updateAria = () => {
+    handle.setAttribute("role", "separator");
+    handle.setAttribute("aria-orientation", "vertical");
+    handle.setAttribute("aria-valuemin", String(options.minimum));
+    handle.setAttribute("aria-valuemax", String(options.maximum()));
+    handle.setAttribute("aria-valuenow", String(getWidth()));
+  };
+  handle.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = getWidth();
+    document.body.classList.add(bodyClass);
+    handle.setPointerCapture?.(event.pointerId);
+    const onPointerMove = (moveEvent) => {
+      apply(startWidth + startX - moveEvent.clientX);
+      refreshLayout();
+    };
+    const onPointerUp = () => {
+      document.body.classList.remove(bodyClass);
+      localStorage.setItem(storageKey, String(getWidth()));
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  });
+  handle.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === "Home"
+      ? options.minimum
+      : event.key === "End"
+        ? options.maximum()
+        : getWidth() + (event.key === "ArrowLeft" ? -20 : 20);
+    apply(next);
+    localStorage.setItem(storageKey, String(getWidth()));
     refreshLayout();
-  };
-  const onPointerUp = () => {
-    document.body.classList.remove("isResizingInfoPanel");
-    localStorage.setItem("autoSvgaInfoPanelWidth", String(infoPanelWidth));
-    window.removeEventListener("pointermove", onPointerMove);
-    window.removeEventListener("pointerup", onPointerUp);
-  };
-
-  window.addEventListener("pointermove", onPointerMove);
-  window.addEventListener("pointerup", onPointerUp);
-});
+  });
+  handle.addEventListener("dblclick", () => {
+    apply(defaultWidth);
+    localStorage.setItem(storageKey, String(defaultWidth));
+    refreshLayout();
+  });
+  updateAria();
+}
 
 setupDropZone(players.a.panel, "svga", "a");
 setupDropZone(players.b.panel, "svga", "b");
 setupDropZone(referenceState.panel, "reference");
 setupDropZone(toolbar, "auto");
-setupFitMenus();
+setupDropdownMenus();
+setupPanelResize(infoPanelResizeHandle, {
+  defaultWidth: 420,
+  minimum: 320,
+  maximum: () => Math.max(320, Math.min(560, Math.floor(window.innerWidth * 0.42))),
+  storageKey: "autoSvgaInfoPanelWidth",
+  apply: applyInfoPanelWidth,
+  getWidth: () => infoPanelWidth,
+  bodyClass: "isResizingInfoPanel"
+});
+setupPanelResize(logsPanelResizeHandle, {
+  defaultWidth: 560,
+  minimum: 420,
+  maximum: () => Math.max(420, Math.min(720, Math.floor(window.innerWidth * 0.5))),
+  storageKey: "autoSvgaLogsPanelWidth",
+  apply: applyLogsPanelWidth,
+  getWidth: () => logsPanelWidth,
+  bodyClass: "isResizingLogsPanel"
+});
 
 document.addEventListener("keydown", (event) => {
   if (event.code !== "Space" || event.repeat) return;
@@ -2208,6 +2554,7 @@ document.addEventListener("keydown", (event) => {
 
 try {
   applyInfoPanelWidth(infoPanelWidth);
+  applyLogsPanelWidth(logsPanelWidth);
   applyThemePreference(localStorage.getItem("autoSvgaTheme") ?? "system");
   setPreviewBackground(localStorage.getItem("autoSvgaPreviewBackground") ?? "checkerboard");
   for (const input of [localProgress, playerBProgress, referenceProgress, syncProgress]) {
@@ -2218,6 +2565,7 @@ try {
   updateButtons();
   renderInfoPanel();
   const requestedJob = new URLSearchParams(window.location.search).get("job");
+  const requestedMode = new URLSearchParams(window.location.search).get("mode");
   if (requestedJob) {
     await loadJobOutput(requestedJob);
   } else {
@@ -2226,6 +2574,9 @@ try {
       renderReport(defaultReport);
     } catch {
       renderReport(undefined);
+    }
+    if (requestedMode === "export" && autoLoadLatestToggle.checked) {
+      await scanLatestArtifact();
     }
   }
 } catch (error) {

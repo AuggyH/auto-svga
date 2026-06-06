@@ -23,15 +23,26 @@
             <span>SVGA 播放与导出验收</span>
           </span>
         </div>
-        <div class="modeControl">
+        <div class="modeControl dropdown" data-dropdown="mode">
           <span class="modeDot" aria-hidden="true"></span>
-          <label>
-            <span class="srOnly">显示模式</span>
-            <select id="modeSelect">
-              <option value="localPreview" selected>本地预览</option>
-              <option value="exportReview">导出验收</option>
-            </select>
-          </label>
+          <button id="modeDropdownTrigger" class="dropdownTrigger" type="button" aria-haspopup="menu" aria-expanded="false">
+            <span id="modeDropdownLabel">本地预览</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+          </button>
+          <div id="modeDropdownMenu" class="dropdownMenu isToolbarMenu" role="menu" hidden>
+            <button class="dropdownMenuItem isSelected" type="button" role="menuitemradio" aria-checked="true" data-value="localPreview">
+              <span class="dropdownMenuItemText"><strong>本地预览</strong><small>检查本地 SVGA 或开启对比</small></span>
+              <span class="dropdownMenuCheck" aria-hidden="true"></span>
+            </button>
+            <button class="dropdownMenuItem" type="button" role="menuitemradio" aria-checked="false" data-value="exportReview">
+              <span class="dropdownMenuItemText"><strong>导出验收</strong><small>对照最新导出与参考文件</small></span>
+              <span class="dropdownMenuCheck" aria-hidden="true"></span>
+            </button>
+          </div>
+          <select id="modeSelect" aria-label="显示模式" hidden>
+            <option value="localPreview" selected>本地预览</option>
+            <option value="exportReview">导出验收</option>
+          </select>
         </div>
         <div class="actionRow">
           <button id="infoPanelButton" class="iconButton" type="button" title="SVGA 信息">
@@ -245,6 +256,7 @@
         </aside>
 
         <aside id="logsPanel" class="logsPanel isHidden" aria-label="Runtime logs panel">
+          <button id="logsPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整日志面板宽度"></button>
           <div class="infoHeader">
             <div>
               <h2>运行日志 / Runtime Logs</h2>
@@ -320,15 +332,8 @@
           </header>
           <div class="settingsBody">
             <section class="settingsSection">
-              <h3>播放 <span>PLAYBACK</span></h3>
+              <h3>预览与外观</h3>
               <div class="settingsCard">
-                <label class="settingsToggleRow"><span><strong>循环播放</strong><small>播放结束后自动从头开始</small></span><input type="checkbox" checked></label>
-                <label class="settingsToggleRow"><span><strong>加载时清空另一侧</strong><small>避免误将不匹配的文件进行对比</small></span><input type="checkbox" checked></label>
-              </div>
-            </section>
-            <section class="settingsSection">
-              <h3>预览 <span>PREVIEW</span></h3>
-              <div class="settingsCard settingsOptionCard previewBackgroundCard">
                 <div class="settingsControlHeader">
                   <strong>预览背景</strong>
                   <small>选择透明区域的显示方式</small>
@@ -339,24 +344,7 @@
                   <label class="settingsOptionChoice previewBgChoice"><input type="radio" name="previewBackground" value="dark"><span class="bgSwatch bgDark"></span><strong>深色</strong></label>
                   <label class="settingsOptionChoice previewBgChoice"><input type="radio" name="previewBackground" value="transparent"><span class="bgSwatch bgTransparent"></span><strong>透明</strong></label>
                 </div>
-              </div>
-            </section>
-            <section class="settingsSection">
-              <h3>工作流 <span>WORKFLOW</span></h3>
-              <div class="settingsCard">
-                <label class="settingsToggleRow"><span><strong>记住上次打开目录</strong><small>下次选择文件时从该目录开始</small></span><input type="checkbox"></label>
-                <label class="settingsToggleRow"><span><strong>导出后进入验收模式</strong><small>导出完成后自动打开对比视图</small></span><input type="checkbox"></label>
-              </div>
-            </section>
-            <section class="settingsSection">
-              <h3>显示 <span>DISPLAY</span></h3>
-              <div class="settingsCard">
-                <label class="settingsToggleRow"><span><strong>显示调试信息</strong><small>在预览页显示额外的解析数据</small></span><input type="checkbox"></label>
-              </div>
-            </section>
-            <section class="settingsSection">
-              <h3>外观 <span>APPEARANCE</span></h3>
-              <div class="settingsCard settingsOptionCard appearanceCard">
+                <div class="settingsDivider"></div>
                 <div class="settingsControlHeader">
                   <strong>外观</strong>
                   <small>选择应用界面的颜色主题</small>
@@ -366,6 +354,26 @@
                   <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="light"><span class="themeSwatch themeLight"></span><strong>浅色</strong></label>
                   <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="dark"><span class="themeSwatch themeDark"></span><strong>深色</strong></label>
                 </div>
+                <div class="settingsDivider"></div>
+                <label class="settingsToggleRow"><span><strong>自动加载最新产物</strong><small>进入导出验收时优先加载最新含 SVGA 的产物组</small></span><input id="autoLoadLatestToggle" type="checkbox" checked></label>
+                <div class="settingsActionRow">
+                  <span><strong>重新扫描最新产物</strong><small id="rescanStatus">覆盖当前手动选择并重新加载</small></span>
+                  <button id="rescanButton" class="settingActionButton" type="button">重新扫描</button>
+                </div>
+              </div>
+            </section>
+            <section class="settingsSection">
+              <h3>播放与验收</h3>
+              <div class="settingsCard">
+                <label class="settingsToggleRow"><span><strong>循环播放</strong><small>播放结束后自动从头开始</small></span><input id="globalLoopToggle" type="checkbox" checked></label>
+                <label class="settingsToggleRow"><span><strong>导出后进入验收模式</strong><small>导出完成后自动打开对比视图</small></span><input type="checkbox"></label>
+              </div>
+            </section>
+            <section class="settingsSection">
+              <h3>调试与可访问性</h3>
+              <div class="settingsCard">
+                <label class="settingsToggleRow"><span><strong>显示调试信息</strong><small>保留中英文 key 和解析数据</small></span><input type="checkbox"></label>
+                <label class="settingsToggleRow"><span><strong>减少动态效果</strong><small>停用非必要的位移与缩放动画</small></span><input id="reduceMotionToggle" type="checkbox"></label>
               </div>
             </section>
           </div>
@@ -373,6 +381,7 @@
         </section>
       </div>
 
+      <div id="statusAnnouncer" class="srOnly" aria-live="polite"></div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
