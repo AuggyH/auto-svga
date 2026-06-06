@@ -2,7 +2,7 @@
 
 ## 2026-06-07 — web preview UX upgrade (R1-R3)
 
-**Commit**: (see git log after merge)
+**Commit**: cc2c085
 
 Web preview UX overhaul across 3 rounds:
 - R1: DESIGN.md, `/api/latest-artifact`, panel resize, responsive CSS, CSS tokens
