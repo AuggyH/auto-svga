@@ -5,7 +5,7 @@
 **Baseline**: `v0.1.0-avatar-frame-handoff-baseline` (`ea4e34d`)
 **Branch**: `agent/codex/web-preview-rebuild-from-baseline`
 **Implementation commits**: `23ec4d1`, `4e1a6bc`, `6c38fad`, `429cfa3`
-**Tag**: not created
+**Tag**: `v0.1.4-web-preview-rebuild`
 
 - Rebuilt latest-artifact discovery around complete artifact groups and real SVGA priority
 - Kept reference media and report data in the same artifact group

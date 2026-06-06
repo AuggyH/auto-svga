@@ -4,9 +4,9 @@ Date: 2026-06-07
 
 ## Main Branch
 
-- **Runnable**: yes at the handoff baseline
+- **Runnable**: yes after Web preview rebuild
 - **Latest implementation commit**: `429cfa3`
-- **Latest tag**: v0.1.0-avatar-frame-handoff-baseline
+- **Latest tag**: v0.1.4-web-preview-rebuild
 - **Branch**: main
 
 ## Web Preview Rebuild
