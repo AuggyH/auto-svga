@@ -125,11 +125,13 @@ const copyImageKeyButton = document.querySelector("#copyImageKeyButton");
 const settingsModal = document.querySelector("#settingsModal");
 const settingsCloseButton = document.querySelector("#settingsCloseButton");
 const settingsDoneButton = document.querySelector("#settingsDoneButton");
+const infoPanel = document.querySelector("#infoPanel");
 const logsPanel = document.querySelector("#logsPanel");
 const fullLogsContent = document.querySelector("#fullLogsContent");
 const fullLogsSubtitle = document.querySelector("#fullLogsSubtitle");
 const copyFullLogsButton = document.querySelector("#copyFullLogsButton");
 const clearFullLogsButton = document.querySelector("#clearFullLogsButton");
+const logsActionFeedback = document.querySelector("#logsActionFeedback");
 const infoPanelResizeHandle = document.querySelector("#infoPanelResizeHandle");
 const logsPanelResizeHandle = document.querySelector("#logsPanelResizeHandle");
 const autoLoadLatestToggle = document.querySelector("#autoLoadLatestToggle");
@@ -155,6 +157,7 @@ let assetFilter = "all";
 const expandedSequenceGroups = new Set();
 let previewImageKey;
 let effectiveTheme = "light";
+let activeSidePanel = null;
 let compareEnabled = false;
 let syncIsPlaying = false;
 let infoPanelWidth = Number(localStorage.getItem("autoSvgaInfoPanelWidth")) || 420;
@@ -410,10 +413,10 @@ function updateButtons() {
   const syncDisabled = isCompareActive() ? (!hasA && !hasB) : (!hasA && !hasReference);
   syncPlayControl.disabled = syncDisabled;
   syncReplayControl.disabled = syncDisabled;
-  infoPanelButton.classList.toggle("isActive", !document.querySelector("#infoPanel").classList.contains("isHidden"));
-  logsButton.classList.toggle("isActive", !logsPanel.classList.contains("isHidden"));
-  infoPanelButton.setAttribute("aria-pressed", String(!document.querySelector("#infoPanel").classList.contains("isHidden")));
-  logsButton.setAttribute("aria-pressed", String(!logsPanel.classList.contains("isHidden")));
+  infoPanelButton.classList.toggle("isActive", activeSidePanel === "info");
+  logsButton.classList.toggle("isActive", activeSidePanel === "logs");
+  infoPanelButton.setAttribute("aria-pressed", String(activeSidePanel === "info"));
+  logsButton.setAttribute("aria-pressed", String(activeSidePanel === "logs"));
   updatePlaybackButtons();
   updateSyncPlaybackButton();
 }
@@ -423,11 +426,10 @@ function setAppMode(nextMode = modeSelect.value) {
   modeSelect.value = nextMode;
   modeDropdownLabel.textContent = nextMode === "exportReview" ? "导出验收" : "本地预览";
   syncDropdownSelection(modeDropdownMenu, nextMode);
-  workspace.className = `workspace mode-${nextMode}${compareEnabled && nextMode === "localPreview" ? " withCompare" : ""}`;
-  workspace.classList.toggle("withInfoPanel", !document.querySelector("#infoPanel").classList.contains("isHidden"));
-  workspace.classList.toggle("withLogsPanel", !logsPanel.classList.contains("isHidden"));
+  workspace.className = `workspace mode-${nextMode}${compareEnabled && nextMode === "localPreview" ? " withCompare" : ""}${activeSidePanel ? " withSidePanel" : ""}`;
   players.b.panel.classList.toggle("isHidden", !isCompareActive());
   referenceState.panel.classList.toggle("isHidden", nextMode !== "exportReview");
+  rescanButton.hidden = nextMode !== "exportReview";
   syncBar.classList.toggle("isHidden", nextMode === "localPreview" && !compareEnabled);
   secondaryFileInput.value = "";
   referenceFileInput.value = "";
@@ -462,38 +464,41 @@ function isCompareActive() {
   return modeSelect.value === "localPreview" && compareEnabled;
 }
 
+function setActiveSidePanel(nextPanel) {
+  activeSidePanel = nextPanel === activeSidePanel ? null : nextPanel;
+  infoPanel.classList.toggle("isHidden", activeSidePanel !== "info");
+  logsPanel.classList.toggle("isHidden", activeSidePanel !== "logs");
+  workspace.classList.toggle("withSidePanel", Boolean(activeSidePanel));
+  updateButtons();
+  if (activeSidePanel === "info") renderInfoPanel();
+  if (activeSidePanel === "logs") renderLogsPanel();
+  window.requestAnimationFrame(refreshLayout);
+}
+
 function openInfoPanel(tabName = "overview") {
-  document.querySelector("#infoPanel").classList.remove("isHidden");
-  workspace.classList.add("withInfoPanel");
-  infoPanelButton.classList.add("isActive");
-  infoPanelButton.setAttribute("aria-pressed", "true");
   const target = tabButtons.find((button) => button.dataset.tab === tabName) ?? tabButtons[0];
   for (const item of tabButtons) item.classList.toggle("isActive", item === target);
   for (const panel of document.querySelectorAll(".tabPanel")) panel.classList.add("isHidden");
   document.querySelector(`#tab-${target.dataset.tab}`).classList.remove("isHidden");
-  refreshLayout();
+  setActiveSidePanel("info");
 }
 
 function applyInfoPanelWidth(width) {
-  const viewportMaximum = Math.max(320, Math.min(560, Math.floor(window.innerWidth * 0.42)));
+  const viewportMaximum = Math.max(300, Math.min(440, Math.floor(window.innerWidth * 0.42)));
   infoPanelWidth = Math.min(viewportMaximum, Math.max(320, Math.round(width)));
   document.documentElement.style.setProperty("--info-panel-width", `${infoPanelWidth}px`);
   infoPanelResizeHandle?.setAttribute("aria-valuenow", String(infoPanelWidth));
 }
 
 function applyLogsPanelWidth(width) {
-  const viewportMaximum = Math.max(420, Math.min(720, Math.floor(window.innerWidth * 0.5)));
-  logsPanelWidth = Math.min(viewportMaximum, Math.max(420, Math.round(width)));
+  const viewportMaximum = Math.max(320, Math.min(480, Math.floor(window.innerWidth * 0.46)));
+  logsPanelWidth = Math.min(viewportMaximum, Math.max(320, Math.round(width)));
   document.documentElement.style.setProperty("--logs-panel-width", `${logsPanelWidth}px`);
   logsPanelResizeHandle?.setAttribute("aria-valuenow", String(logsPanelWidth));
 }
 
 function closeInfoPanel() {
-  document.querySelector("#infoPanel").classList.add("isHidden");
-  workspace.classList.remove("withInfoPanel");
-  infoPanelButton.classList.remove("isActive");
-  infoPanelButton.setAttribute("aria-pressed", "false");
-  refreshLayout();
+  if (activeSidePanel === "info") setActiveSidePanel(null);
 }
 
 function loadReference(fileOrSource, options = {}) {
@@ -1399,7 +1404,8 @@ function setRescanState(kind, message) {
   if (!rescanButton || !rescanStatus) return;
   rescanButton.dataset.state = kind;
   rescanButton.disabled = kind === "scanning";
-  rescanButton.textContent = kind === "scanning" ? "扫描中…" : kind === "success" ? "已更新" : kind === "error" ? "重试" : "重新扫描";
+  const label = rescanButton.querySelector("span");
+  if (label) label.textContent = kind === "scanning" ? "扫描中…" : kind === "success" ? "已更新" : kind === "error" ? "重试" : "重新扫描";
   rescanStatus.textContent = message;
   announce(message);
 }
@@ -2034,6 +2040,12 @@ function applyThemePreference(value = localStorage.getItem("autoSvgaTheme") ?? "
   for (const input of document.querySelectorAll('input[name="theme"]')) {
     input.checked = input.value === value;
   }
+  const targetTheme = effectiveTheme === "light" ? "深色" : "浅色";
+  themeToggleButton.title = `切换到${targetTheme}模式`;
+  themeToggleButton.setAttribute("aria-label", `切换到${targetTheme}模式`);
+  themeToggleButton.innerHTML = effectiveTheme === "light"
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 7.5A9 9 0 1 1 12 3Z" /></svg>`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>`;
 }
 
 function setPreviewBackground(value) {
@@ -2053,20 +2065,11 @@ function closeSettings() {
 }
 
 function openFullLogs() {
-  logsPanel.classList.remove("isHidden");
-  workspace.classList.add("withLogsPanel");
-  logsButton.classList.add("isActive");
-  logsButton.setAttribute("aria-pressed", "true");
-  renderLogsPanel();
-  refreshLayout();
+  setActiveSidePanel("logs");
 }
 
 function closeFullLogs() {
-  logsPanel.classList.add("isHidden");
-  workspace.classList.remove("withLogsPanel");
-  logsButton.classList.remove("isActive");
-  logsButton.setAttribute("aria-pressed", "false");
-  refreshLayout();
+  if (activeSidePanel === "logs") setActiveSidePanel(null);
 }
 
 function closeFitMenus(exceptSlot) {
@@ -2079,6 +2082,7 @@ function closeFitMenus(exceptSlot) {
 function applyFitMode(slotKey, value) {
   const select = slotKey === "a" ? fitModeA : slotKey === "b" ? fitModeB : fitModeReference;
   select.value = value;
+  localStorage.setItem(`autoSvgaFitMode:${slotKey}`, value);
   select.dispatchEvent(new Event("change"));
   updateFitMenuSelection(slotKey);
   closeFitMenus();
@@ -2093,6 +2097,16 @@ function updateFitMenuSelection(slotKey) {
     option.classList.toggle("isSelected", selected);
     option.setAttribute("aria-checked", String(selected));
   }
+  const label = menu.parentElement.querySelector(".fitMenuButtonLabel");
+  if (label) {
+    label.textContent = select.value === "original" ? "原始尺寸" : select.value === "fitWidth" ? "适应宽度" : "适应窗口";
+  }
+}
+
+function restoreFitMode(slotKey) {
+  const select = slotKey === "a" ? fitModeA : slotKey === "b" ? fitModeB : fitModeReference;
+  const stored = localStorage.getItem(`autoSvgaFitMode:${slotKey}`);
+  select.value = ["contain", "original", "fitWidth"].includes(stored) ? stored : "original";
 }
 
 function syncDropdownSelection(menu, value) {
@@ -2217,6 +2231,19 @@ function serializeLogs() {
     : "暂无日志 / No logs";
 }
 
+let feedbackTimer;
+function showActionFeedback(target, { type = "info", text }) {
+  if (!target) return;
+  window.clearTimeout(feedbackTimer);
+  target.textContent = text;
+  target.dataset.state = type;
+  target.classList.add("isVisible");
+  feedbackTimer = window.setTimeout(() => {
+    target.classList.remove("isVisible");
+    target.removeAttribute("data-state");
+  }, 1800);
+}
+
 localPlayPauseButton.addEventListener("click", () => {
   clearError();
   toggleSlot(players.a);
@@ -2251,9 +2278,7 @@ settingsButton.addEventListener("click", () => {
   openSettings();
 });
 themeToggleButton.addEventListener("click", () => {
-  const current = localStorage.getItem("autoSvgaTheme") ?? "system";
-  const next = current === "system" ? "light" : current === "light" ? "dark" : "system";
-  setThemePreference(next);
+  setThemePreference(effectiveTheme === "light" ? "dark" : "light");
 });
 syncPlayControl.addEventListener("click", toggleSyncPlayback);
 syncReplayControl.addEventListener("click", syncReplay);
@@ -2326,25 +2351,14 @@ for (const select of [fitModeA, fitModeB, fitModeReference]) {
   select.addEventListener("change", () => {
     refreshLayout();
     const slotKey = select.dataset.fitSlot;
-    if (slotKey === "reference") return;
-    const slot = players[slotKey];
-    if (slot?.videoItem) {
-      rebuildPlayer(slot);
-      replaySlot(slot, false);
-    }
+    updateFitMenuSelection(slotKey);
   });
 }
 
 window.addEventListener("resize", () => {
   applyInfoPanelWidth(infoPanelWidth);
   applyLogsPanelWidth(logsPanelWidth);
-  refreshLayout();
-  for (const slot of Object.values(players)) {
-    if (slot.videoItem) {
-      rebuildPlayer(slot);
-      replaySlot(slot, false);
-    }
-  }
+  window.requestAnimationFrame(refreshLayout);
 });
 
 referenceState.video.addEventListener("play", () => {
@@ -2426,12 +2440,19 @@ settingsModal.addEventListener("click", (event) => {
   if (event.target === settingsModal) closeSettings();
 });
 copyFullLogsButton.addEventListener("click", () => {
-  navigator.clipboard?.writeText(serializeLogs()).catch(() => undefined);
+  navigator.clipboard?.writeText(serializeLogs())
+    .then(() => showActionFeedback(logsActionFeedback, { type: "success", text: "已复制" }))
+    .catch(() => showActionFeedback(logsActionFeedback, { type: "error", text: "复制失败" }));
 });
 clearFullLogsButton.addEventListener("click", () => {
+  if (!appLogs.length) {
+    showActionFeedback(logsActionFeedback, { text: "暂无日志可清除" });
+    return;
+  }
   appLogs.length = 0;
   renderInfoPanel();
   renderLogsPanel();
+  showActionFeedback(logsActionFeedback, { type: "success", text: "已清除" });
 });
 for (const input of document.querySelectorAll('input[name="theme"]')) {
   input.addEventListener("change", () => setThemePreference(input.value));
@@ -2518,20 +2539,21 @@ setupDropZone(players.a.panel, "svga", "a");
 setupDropZone(players.b.panel, "svga", "b");
 setupDropZone(referenceState.panel, "reference");
 setupDropZone(toolbar, "auto");
+for (const slotKey of ["a", "b", "reference"]) restoreFitMode(slotKey);
 setupDropdownMenus();
 setupPanelResize(infoPanelResizeHandle, {
   defaultWidth: 420,
   minimum: 320,
-  maximum: () => Math.max(320, Math.min(560, Math.floor(window.innerWidth * 0.42))),
+  maximum: () => Math.max(320, Math.min(440, Math.floor(window.innerWidth * 0.42))),
   storageKey: "autoSvgaInfoPanelWidth",
   apply: applyInfoPanelWidth,
   getWidth: () => infoPanelWidth,
   bodyClass: "isResizingInfoPanel"
 });
 setupPanelResize(logsPanelResizeHandle, {
-  defaultWidth: 560,
-  minimum: 420,
-  maximum: () => Math.max(420, Math.min(720, Math.floor(window.innerWidth * 0.5))),
+  defaultWidth: 440,
+  minimum: 320,
+  maximum: () => Math.max(320, Math.min(480, Math.floor(window.innerWidth * 0.46))),
   storageKey: "autoSvgaLogsPanelWidth",
   apply: applyLogsPanelWidth,
   getWidth: () => logsPanelWidth,
