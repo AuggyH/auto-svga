@@ -2,7 +2,7 @@
 
 ## 2026-06-07 — UI and output validation
 
-**Commit**: (see git log after merge)
+**Commit**: 089e264 (merge), 61b6412 (baseline)
 
 Hermes real browser and visual output validation:
 - Browser-tested Web preview page: Chinese UI, asset panel, compare button, settings modal, job auto-load
