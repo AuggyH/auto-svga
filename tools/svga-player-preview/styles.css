@@ -32,8 +32,8 @@
   --control-border: rgba(0, 0, 0, 0.09);
   --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.03);
   --shadow-control: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --info-panel-width: 15vw;
-  --logs-panel-width: min(260px, 15vw);
+  --info-panel-width: clamp(320px, 32vw, 560px);
+  --logs-panel-width: clamp(420px, 42vw, 720px);
   --font-title: 13px;
   --font-subtitle: 11px;
   --font-body: 12px;
@@ -1263,11 +1263,11 @@ label.isDisabled {
 }
 
 .infoPanel {
-  max-width: 15vw;
+  max-width: none;
 }
 
 .logsPanel {
-  max-width: 15vw;
+  max-width: none;
 }
 
 .resizeHandle {
