@@ -1986,7 +1986,12 @@ syncReplayControl.addEventListener("click", syncReplay);
 primaryEmptyFileButton.addEventListener("click", () => svgaFileInput.click());
 secondaryEmptyFileButton.addEventListener("click", () => secondaryFileInput.click());
 referenceEmptyFileButton.addEventListener("click", () => referenceFileInput.click());
-modeSelect.addEventListener("change", () => setAppMode(modeSelect.value));
+modeSelect.addEventListener("change", () => {
+  setAppMode(modeSelect.value);
+  if (modeSelect.value === "exportReview") {
+    autoLoadLatestArtifact();
+  }
+});
 
 playerBPlayPauseButton.addEventListener("click", () => toggleSlot(players.b));
 playerBReplayButton.addEventListener("click", () => replaySlot(players.b));
@@ -2206,6 +2211,121 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+// ── Auto-load latest export artifact ──
+async function autoLoadLatestArtifact() {
+  addLog("info", "正在扫描本地最新导出产物… / Scanning for latest export artifacts");
+  try {
+    const response = await fetch("/api/latest-artifact");
+    if (!response.ok) throw new Error(`API ${response.status}`);
+    const data = await response.json();
+    if (!data.latest) {
+      addLog("warning", "未找到本地输出产物 / No local export artifacts found");
+      return;
+    }
+    const a = data.latest;
+    addLog("success", `找到最新产物：${a.jobId} / Latest: ${a.jobId}`);
+
+    // Load SVGA
+    if (a.svgaPath) {
+      try {
+        const svgaResponse = await fetch(`/${a.svgaPath}`);
+        if (svgaResponse.ok) {
+          const blob = await svgaResponse.blob();
+          const file = new File([blob], a.svgaPath.split("/").pop(), { type: "application/octet-stream" });
+          setAppMode("exportReview");
+          await loadSvgaFile({ file, slotKey: "a" });
+          addLog("success", `已自动加载 SVGA: ${a.svgaPath}`);
+        }
+      } catch (e) {
+        addLog("error", `SVGA 加载失败: ${e.message}`);
+      }
+    }
+
+    // Load reference (MP4 preferred, WebM fallback, GIF last)
+    const refPath = a.mp4Path || a.webmPath || a.gifPath;
+    if (refPath) {
+      try {
+        const refResponse = await fetch(`/${refPath}`);
+        if (refResponse.ok) {
+          const blob = await refResponse.blob();
+          const file = new File([blob], refPath.split("/").pop());
+          await loadReference(file, { fileName: file.name, fileSizeBytes: file.size });
+          addLog("success", `已自动加载参考: ${refPath}`);
+        }
+      } catch (e) {
+        addLog("warning", `参考加载失败: ${e.message}`);
+      }
+    }
+
+    // Load report if available
+    if (a.reportPath) {
+      try {
+        const r = await loadReport(`/${a.reportPath}`);
+        if (r) {
+          defaultReport = r;
+          renderReport(r);
+        }
+      } catch { /* silent */ }
+    }
+  } catch (err) {
+    addLog("error", `产物扫描失败: ${err.message}`);
+  }
+}
+
+// ── Panel resize handles ──
+function setupPanelResize() {
+  const infoPanel = document.querySelector("#infoPanel");
+  const logsPanel = document.querySelector("#logsPanel");
+
+  for (const [panel, storageKey, minW, maxW, defaultW] of [
+    [infoPanel, "autoSvgaInfoPanelWidth", 320, Math.min(560, Math.floor(window.innerWidth * 0.42)), 420],
+    [logsPanel, "autoSvgaLogsPanelWidth", 420, Math.min(720, Math.floor(window.innerWidth * 0.5)), 560]
+  ]) {
+    if (!panel) continue;
+    // Restore saved width
+    const saved = Number(localStorage.getItem(storageKey));
+    if (saved >= minW && saved <= maxW) {
+      panel.style.width = `${saved}px`;
+    }
+    // Create resize handle
+    const handle = document.createElement("div");
+    handle.className = "panelResizeHandle";
+    handle.title = "拖拽调整宽度 / Drag to resize";
+    handle.setAttribute("aria-label", "调整面板宽度");
+    handle.setAttribute("role", "separator");
+    handle.setAttribute("tabindex", "0");
+    handle.addEventListener("dblclick", () => {
+      panel.style.width = `${defaultW}px`;
+      localStorage.setItem(storageKey, String(defaultW));
+      refreshLayout();
+    });
+    let dragging = false, startX = 0, startW = 0;
+    handle.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      startX = e.clientX;
+      startW = panel.offsetWidth;
+      handle.setPointerCapture(e.pointerId);
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "col-resize";
+    });
+    window.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const delta = startX - e.clientX;
+      const newW = Math.max(minW, Math.min(maxW, startW + delta));
+      panel.style.width = `${newW}px`;
+      localStorage.setItem(storageKey, String(Math.round(newW)));
+      refreshLayout();
+    });
+    window.addEventListener("pointerup", () => {
+      if (!dragging) return;
+      dragging = false;
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    });
+    panel.insertBefore(handle, panel.firstChild);
+  }
+}
+
 try {
   applyInfoPanelWidth(infoPanelWidth);
   applyThemePreference(localStorage.getItem("autoSvgaTheme") ?? "system");
@@ -2226,6 +2346,16 @@ try {
       renderReport(defaultReport);
     } catch {
       renderReport(undefined);
+    }
+  }
+
+  // Auto-load in export review mode
+  setupPanelResize();
+  const urlMode = new URLSearchParams(window.location.search).get("mode");
+  if (urlMode === "export" || (!requestedJob && localStorage.getItem("autoSvgaAutoLoad") !== "false")) {
+    const autoLoadEnabled = localStorage.getItem("autoSvgaAutoLoad") !== "false";
+    if (autoLoadEnabled) {
+      autoLoadLatestArtifact();
     }
   }
 } catch (error) {
