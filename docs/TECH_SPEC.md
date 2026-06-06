@@ -44,8 +44,11 @@ tools/
   svga-player-preview/      Web playback validation tool
     index.html / main.js / styles.css / server.mjs
 
-jobs/                       Job directories
-  avatar_frame_gold_green_real_002/  Current real asset job
+jobs/                       Local runtime job workspace, gitignored
+  <job-dir>/                Local input/output workspace, not committed
+
+fixtures/                   Mock assets for tests (small, public-safe, no real designs)
+examples/                   Example configs and mock fixtures (outputs gitignored)
 
 proto/
   svga.proto                SVGA 2.x MovieEntity protobuf schema

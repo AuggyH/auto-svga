@@ -60,6 +60,9 @@ Tests use `createTempJob()` with programmatically generated PNGs — no dependen
 
 ## 9. Commit
 
+- Commit: `4efad20` (baseline)
+- Merge commit: `6079e90`
+- Tag: none
 - Branch: `agent/hermes/repo-hygiene-and-doc-fixes`
 - Merged to: `main`
 - Agent: Hermes

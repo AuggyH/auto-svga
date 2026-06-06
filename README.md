@@ -43,10 +43,12 @@ examples/avatar_frame_basic/output/
 
 `avatar_frame` 的默认生产画布为 `300 × 300`。真实素材可以通过 `sourceCanvas` 保留原始坐标规格，例如 `600 × 600 → 300 × 300`；planning chain 会生成缩放并按 alpha 极限裁切后的 `generated/optimized/*.png`，SVGA 不直接打包带有大面积透明空白的源图。
 
+`jobs/` is a local runtime workspace and is ignored by Git. Real input assets and generated outputs should stay local. Use `examples/` or `fixtures/` only for approved mock assets.
+
 标准 job 示例：
 
 ```text
-jobs/avatar_frame_test_001/
+jobs/avatar_frame_local_001/
   input/
     config.json
     structure.json
@@ -65,14 +67,14 @@ jobs/avatar_frame_test_001/
 运行规划链路：
 
 ```bash
-pnpm autosvga:plan -- jobs/avatar_frame_test_001
+pnpm autosvga:plan -- jobs/avatar_frame_local_001
 ```
 
 如果当前环境没有全局 `pnpm`，也可以在已安装依赖后使用：
 
 ```bash
 ./node_modules/.bin/tsc -p tsconfig.json
-node dist/cli.js plan jobs/avatar_frame_test_001
+node dist/cli.js plan jobs/avatar_frame_local_001
 ```
 
 该命令会：
@@ -86,26 +88,26 @@ node dist/cli.js plan jobs/avatar_frame_test_001
 渲染 MVP preview：
 
 ```bash
-pnpm autosvga:preview -- jobs/avatar_frame_test_001
+pnpm autosvga:preview -- jobs/avatar_frame_local_001
 ```
 
 或：
 
 ```bash
 ./node_modules/.bin/tsc -p tsconfig.json
-node dist/cli.js preview jobs/avatar_frame_test_001
+node dist/cli.js preview jobs/avatar_frame_local_001
 ```
 
-该命令会读取 `jobs/avatar_frame_test_001/project/project.json`，自动补齐本阶段需要的 generated assets，并输出：
+该命令会读取 `jobs/avatar_frame_local_001/project/project.json`，自动补齐本阶段需要的 generated assets，并输出：
 
 ```text
-jobs/avatar_frame_test_001/generated/
+jobs/avatar_frame_local_001/generated/
   sweep_light.png
   sweep_light_masked.png
   glow_frame.png
   glow_dot.png
 
-jobs/avatar_frame_test_001/output/
+jobs/avatar_frame_local_001/output/
   preview_frames/
     frame_000.png
     ...
@@ -161,20 +163,20 @@ easeOutBack
 运行 report 链路：
 
 ```bash
-pnpm autosvga:report -- jobs/avatar_frame_test_001
+pnpm autosvga:report -- jobs/avatar_frame_local_001
 ```
 
 或：
 
 ```bash
 ./node_modules/.bin/tsc -p tsconfig.json
-node dist/cli.js report jobs/avatar_frame_test_001
+node dist/cli.js report jobs/avatar_frame_local_001
 ```
 
 该命令会读取 `input/config.json`、`input/structure.json`、`project/motion-plan.json`、`project/project.json`，并尽量合并 `output/preview-report.json` 的预览结果，输出：
 
 ```text
-jobs/avatar_frame_test_001/output/
+jobs/avatar_frame_local_001/output/
   report.json
   svga-map.json
 ```
@@ -184,21 +186,21 @@ jobs/avatar_frame_test_001/output/
 导出 MVP SVGA：
 
 ```bash
-pnpm autosvga:export -- jobs/avatar_frame_test_001
+pnpm autosvga:export -- jobs/avatar_frame_local_001
 ```
 
 或：
 
 ```bash
 ./node_modules/.bin/tsc -p tsconfig.json
-node dist/cli.js export jobs/avatar_frame_test_001
+node dist/cli.js export jobs/avatar_frame_local_001
 ```
 
 该命令会读取 `project/project.json`，自动补齐缺失的 generated assets，使用 `proto/svga.proto` 和 `protobufjs` 生成真实可解析的 zlib-compressed protobuf `.svga`，并输出：
 
 ```text
-jobs/avatar_frame_test_001/output/
-  avatar_frame_test_001.svga
+jobs/avatar_frame_local_001/output/
+  avatar_frame_local_001.svga
   report.json
   svga-map.json
 ```
@@ -206,11 +208,11 @@ jobs/avatar_frame_test_001/output/
 完整 MVP 0.1 链路命令：
 
 ```bash
-node dist/cli.js plan jobs/avatar_frame_test_001
-node dist/cli.js preview jobs/avatar_frame_test_001
-node dist/cli.js report jobs/avatar_frame_test_001
-node dist/cli.js export jobs/avatar_frame_test_001
-node dist/cli.js package jobs/avatar_frame_test_001
+node dist/cli.js plan jobs/avatar_frame_local_001
+node dist/cli.js preview jobs/avatar_frame_local_001
+node dist/cli.js report jobs/avatar_frame_local_001
+node dist/cli.js export jobs/avatar_frame_local_001
+node dist/cli.js package jobs/avatar_frame_local_001
 ```
 
 当前 MVP SVGA exporter 只支持 image layer、keyframes、zIndex、alpha、x/y、scale、rotation 和 anchor transform；暂不支持 mask、text、audio、shape、nested composition 或复杂编辑能力。
@@ -218,7 +220,7 @@ node dist/cli.js package jobs/avatar_frame_test_001
 `package` 会验证交付必需文件，创建默认 `output/acceptance.json`，并生成：
 
 ```text
-jobs/avatar_frame_test_001/output/delivery.zip
+jobs/avatar_frame_local_001/output/delivery.zip
 ```
 
 ZIP 内保留 job 相对路径。必需文件为 `.svga`、report、svga-map、project、motion-plan、config 和 structure；推荐包含 WebM、MP4、preview-report、generated PNG 和 requirement。`preview.gif` 是可选 fallback，不再是打包前置条件；逐帧 PNG 默认不进入 ZIP。
@@ -226,8 +228,8 @@ ZIP 内保留 job 相对路径。必需文件为 `.svga`、report、svga-map、p
 验收状态可以通过 CLI 更新：
 
 ```bash
-node dist/cli.js accept jobs/avatar_frame_test_001
-node dist/cli.js reject jobs/avatar_frame_test_001 --notes "需要调整扫光节奏"
+node dist/cli.js accept jobs/avatar_frame_local_001
+node dist/cli.js reject jobs/avatar_frame_local_001 --notes "需要调整扫光节奏"
 ```
 
 命令会更新：
@@ -244,7 +246,7 @@ output/preview.gif
 output/preview_frames/
 output/preview.webm
 output/preview.mp4
-output/avatar_frame_test_001.svga
+output/avatar_frame_local_001.svga
 output/report.json
 output/svga-map.json
 output/delivery.zip
@@ -275,7 +277,7 @@ node --test dist/tests/mvp-planner.test.js
 ## CLI
 
 ```bash
-pnpm dev plan jobs/avatar_frame_test_001
+pnpm dev plan jobs/avatar_frame_local_001
 pnpm dev init my_avatar_frame
 pnpm dev validate examples/avatar_frame_basic
 pnpm dev build examples/avatar_frame_basic
@@ -330,7 +332,7 @@ Web 播放验证页的信息架构：
 也可以通过 job 相对路径直接进入导出验收：
 
 ```text
-http://127.0.0.1:4173/tools/svga-player-preview/?job=jobs/avatar_frame_test_001
+http://127.0.0.1:4173/tools/svga-player-preview/?job=jobs/avatar_frame_local_001
 ```
 
 页面会自动读取该 job 的 `output/report.json`、`output/svga-map.json` 和导出 `.svga`。辅助预览按 `preview.webm`、`preview.mp4`、`preview.gif` 的顺序加载；WebM 实际解码失败时也会继续尝试 MP4。右侧视频支持原生 controls 和页面同步控制。GIF 只作为 fallback，缺失单个辅助预览不会影响真实 SVGA 播放。

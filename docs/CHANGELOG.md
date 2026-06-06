@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-07 — repo hygiene follow-up fixes
+
+**Commit**: (see git log after merge)
+
+Hermes follow-up:
+- Tightened .gitignore examples exception rules (zip, svga, gif, webm, mp4)
+- Updated TECH_SPEC jobs/ description (local runtime workspace, gitignored)
+- Updated README: `avatar_frame_test_001` → `avatar_frame_local_001`, added gitignore note
+- Added commit hash to previous repo hygiene review
+
 ## 2026-06-07 — repo hygiene and doc fixes
 
 **Commit**: 6079e90 (merge), 4efad20 (baseline)
