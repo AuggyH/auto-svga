@@ -95,10 +95,10 @@
               <button id="localFitButton" class="smallIconButton fitMenuButton" type="button" title="显示模式" aria-expanded="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5" /><path d="M20 9V4h-5" /><path d="M4 15v5h5" /><path d="M20 15v5h-5" /></svg>
               </button>
-              <div class="fitMenu" data-fit-menu="a" hidden>
-                <button type="button" data-fit-value="contain">适应窗口</button>
-                <button type="button" data-fit-value="original">原始尺寸</button>
-                <button type="button" data-fit-value="fitWidth">适应宽度</button>
+              <div class="fitMenu dropdownMenu" data-fit-menu="a" hidden>
+                <button type="button" class="dropdownMenuItem" data-fit-value="contain">适应窗口</button>
+                <button type="button" class="dropdownMenuItem" data-fit-value="original">原始尺寸</button>
+                <button type="button" class="dropdownMenuItem" data-fit-value="fitWidth">适应宽度</button>
               </div>
               <select id="fitModeA" data-fit-slot="a" aria-label="SVGA A fit mode" hidden>
                 <option value="contain" selected>Fit contain</option>
