@@ -14,17 +14,27 @@
 - [x] Acceptance workflow
 - [x] Web playback validation tool
 - [x] Agent collaboration docs + review process
+- [x] DESIGN.md Apple-adapted design system
+- [x] Latest artifact auto-load API + frontend
+- [x] Panel drag-to-resize (info panel + logs)
+- [x] CSS token system + reduced motion + responsive breakpoints
 
-## Next: MVP 0.2
+## Next: MVP 0.2 UX Polish
 
-- Visual tuning (wing phase, gem glint, breath glow)
-- Sweep quality/stride evaluation
-- Additional template parameters (easing curves, amplitude ranges)
-- CI pipeline for automated build+test verification
+- [ ] Motion presets migration (fadeInOut, panelSlideIn, modalPop, dropdown, etc.)
+- [ ] Menu component unification (GlassDropdownMenu)
+- [ ] WCAG AAA compliance sweep (contrast audit, keyboard nav, axe testing)
+- [ ] Drag-drop UX polish (hover states, error feedback)
+- [ ] Visual tuning (wing phase, gem glint, breath glow)
+- [ ] Sweep quality/stride evaluation
 
 ## Future Phases
 
-- Additional asset types: medal, title, bubble
-- Web preview editor (template parameter tweaking without CLI)
-- Runtime mask support in SVGA export
-- Composition/precomp support
+- [ ] Mobile responsive layout (< 768px)
+- [ ] Automated visual playback verification (Playwright + axe)
+- [ ] CI pipeline for build+test+a11y checks
+- [ ] Additional asset types: medal, title, bubble
+- [ ] Web preview editor (template parameter tweaking without CLI)
+- [ ] Runtime mask support in SVGA export
+- [ ] Multi-job history selector
+- [ ] Full reduce-transparency support
