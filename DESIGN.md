@@ -191,6 +191,16 @@ is 420-720px wide with a 560px default. Both support resizing and persist the
 selected width. At narrow desktop widths they become dismissible overlay
 panels rather than crushing preview cards into unreadable columns.
 
+Information and runtime logs share one right-side diagnostic slot. They are
+mutually exclusive and should open as a restrained overlay so the two preview
+cards keep stable dimensions. Clicking an active toolbar button closes its
+panel; clicking the other button switches panels directly.
+
+Comparison cards remain horizontal at all supported widths. The page shell is
+one viewport tall with no page-level scrolling; preview stages shrink before
+toolbars or synchronized controls are clipped. Narrow windows may show a quiet
+recommendation to use a larger viewport.
+
 ## Menus
 
 Top-level mode selection and card display modes use one dropdown system.
@@ -248,6 +258,14 @@ Avoid one-note purple, beige, dark slate, or gradient-heavy themes. The product 
 ## Typography
 
 Use compact type. This is an inspection tool, so space should be spent on the preview canvas and data density.
+
+Asset inspection uses compact 64–72px rows with 40–48px thumbnails and a
+single-line metadata summary. Asset filters use a low-emphasis 28–32px
+segmented control.
+
+Preview cards default to original-size rendering, constrained by the available
+stage when the logical canvas would overflow. Each card remembers its own fit
+choice.
 
 Rules:
 

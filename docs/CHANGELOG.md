@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-07 — Web preview layout and interaction polish
+
+**Branch**: `agent/codex/web-preview-layout-polish`
+**Implementation commit**: `49d6795`
+
+- Locked the preview shell to one viewport and retained horizontal comparison cards on narrow widths
+- Made SVGA information and runtime logs mutually exclusive overlay panels
+- Stabilized the main preview by removing resize/filter-related player reconstruction
+- Added compact asset rows and segmented filters
+- Removed duplicate mode-menu indicators and added log copy/clear feedback
+- Moved artifact rescan to Export Review and auto-load settings to Playback & Acceptance
+- Added target-aware theme toggle icons and independent original-size fit defaults
+- Added the standard `npm test` alias for the existing MVP test suite
+
 ## 2026-06-07 — Web preview rebuild from baseline
 
 **Baseline**: `v0.1.0-avatar-frame-handoff-baseline` (`ea4e34d`)
