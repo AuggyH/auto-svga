@@ -2,7 +2,7 @@
 
 ## 2026-06-07 — repo hygiene and doc fixes
 
-**Commit**: (see git log after merge)
+**Commit**: 6079e90 (merge), 4efad20 (baseline)
 
 Hermes repo hygiene pass:
 - Fixed AGENTS.md template count (3 → 5)
