@@ -3166,12 +3166,145 @@ dd {
   outline-offset: -2px;
 }
 
+/* ── Motion presets (adapted from Figma/source analysis) ── */
+:root {
+  --motion-fast: 0.14s;
+  --motion-base: 0.2s;
+  --motion-panel: 0.26s;
+  --ease-out: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* fade in/out */
+.fadeIn  { animation: fadeIn  var(--motion-base) var(--ease-out) both; }
+.fadeOut { animation: fadeOut var(--motion-base) var(--ease-out) both; }
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+/* panel slide-in from right */
+.panelSlideIn  { animation: panelSlideIn  var(--motion-panel) var(--ease-out) both; }
+.panelSlideOut { animation: panelSlideOut var(--motion-panel) var(--ease-out) both; }
+@keyframes panelSlideIn  { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes panelSlideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(24px); opacity: 0; } }
+
+/* modal pop */
+.modalPop  { animation: modalPopIn  var(--motion-panel) var(--ease-spring) both; }
+.modalPopOut { animation: modalPopOut var(--motion-base) var(--ease-out) both; }
+@keyframes modalPopIn  { from { transform: scale(0.96) translateY(8px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+@keyframes modalPopOut { from { transform: scale(1) translateY(0); opacity: 1; } to { transform: scale(0.96) translateY(8px); opacity: 0; } }
+
+/* dropdown pop */
+.dropdownPop { animation: dropdownPopIn var(--motion-base) var(--ease-out) both; }
+@keyframes dropdownPopIn { from { transform: translateY(-4px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+
+/* card state crossfade */
+.cardStateFade { transition: opacity var(--motion-base) var(--ease-out); }
+
+/* controls rise */
+.controlsRise { animation: controlsRiseIn var(--motion-base) var(--ease-out) both; }
+@keyframes controlsRiseIn { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* tab indicator spring */
+.tabIndicatorSpring { transition: transform var(--motion-panel) var(--ease-out); }
+
+/* drag glow */
+.dragGlow { transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
+.dragGlowActive { border-color: var(--blue) !important; box-shadow: 0 0 0 2px rgba(0,122,255,0.25); }
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
+  .panelSlideIn, .panelSlideOut, .modalPop, .modalPopOut,
+  .dropdownPop, .controlsRise { animation: fadeIn 0.01ms both !important; }
+}
+
+/* ── Unified dropdown menu ── */
+.dropdownMenu {
+  position: absolute;
+  background: var(--surfaceElevated);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 4px;
+  min-width: 160px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+}
+.dropdownMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  min-height: 36px;
+  border-radius: 7px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--textPrimary);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: background var(--motion-fast) var(--ease-out);
+}
+.dropdownMenuItem:hover { background: rgba(0,122,255,0.08); }
+.dropdownMenuItem:active { background: rgba(0,122,255,0.14); }
+.dropdownMenuItem:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+.dropdownMenuItem[aria-checked="true"] { color: var(--blue); font-weight: 500; }
+.dropdownMenuItem .checkIcon { margin-left: auto; color: var(--blue); }
+.dropdownMenuSeparator {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+
+/* ── WCAG AAA compliance ── */
+/* touch targets ≥ 44px */
+button, [role="button"], .dropdownMenuItem, .tabButton,
+.toolButton, .cardFileButton, .filePill {
+  min-height: 44px;
+  min-width: 44px;
+}
+/* compact exceptions */
+input[type="checkbox"], input[type="radio"], .modeControl select {
+  min-height: 24px;
+  min-width: 24px;
+}
+
+/* contrast-safe focus ring */
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* skip link for keyboard users */
+.skipLink {
+  position: absolute;
+  top: -100%;
+  left: 8px;
+  background: var(--blue);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  z-index: 200;
+  font-size: 14px;
+}
+.skipLink:focus { top: 8px; }
+
+/* high contrast mode support */
+@media (forced-colors: active) {
+  .dropdownMenu { border: 1px solid ButtonText; }
+  .dropdownMenuItem:hover { background: Highlight; color: HighlightText; }
+  :focus-visible { outline: 3px solid Highlight; }
 }
 
 /* ── Responsive ── */
@@ -3194,4 +3327,13 @@ dd {
 @media (max-width: 767px) {
   .workspace { padding: 8px; }
   .previewCard { min-width: 280px; }
+  body::after {
+    content: "建议使用更大窗口 / Larger window recommended";
+    display: block;
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    color: var(--textSecondary);
+    background: var(--surfaceSubtle);
+  }
 }
