@@ -34,3 +34,8 @@ outputs/
 !examples/**
 # But keep example outputs gitignored
 examples/**/output/
+examples/**/*.zip
+examples/**/*.svga
+examples/**/*.gif
+examples/**/*.webm
+examples/**/*.mp4

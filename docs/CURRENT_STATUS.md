@@ -11,25 +11,23 @@ Date: 2026-06-07
 
 ## Last Completed
 
-Hermes repo hygiene (2026-06-07):
-- Fixed AGENTS.md template count (3 → 5)
-- Added ADR-001 (avatar frame MVP scope)
-- Added Asset Commit Rules to AGENTS.md
-- Updated .gitignore: jobs/, input/, generated/, output/, *.svga, *.gif, etc.
-- Removed jobs/ from Git tracking (local files preserved)
-- Verified build + 28 tests pass without tracked jobs/
+Hermes repo hygiene follow-up (2026-06-07):
+- Tightened .gitignore examples exception rules (zip, svga, gif, webm, mp4 now ignored under examples/)
+- Updated TECH_SPEC jobs/ description (local runtime workspace, gitignored)
+- Updated README: `avatar_frame_test_001` → `avatar_frame_local_001`, added jobs/ gitignore note
+- Added commit hash to previous review file
 
-Previous (Hermes handoff, 2026-06-07):
-- Codex uncommitted changes reviewed and committed
-- Git collaboration rules, review process, agent handoff docs established
-- Baseline commit + tag v0.1.0-avatar-frame-handoff-baseline
+Hermes repo hygiene (2026-06-07):
+- AGENTS.md template count fix, ADR-001, Asset Commit Rules
+- .gitignore overhaul, jobs/ removed from tracking
+- Verified build + 28 tests pass without tracked jobs/
 
 ## Asset Commit Rules
 
 - `jobs/` and `input/` are local runtime workspaces — gitignored, not tracked.
-- Real design assets (PNG, PSD, Figma) and generated outputs (SVGA, GIF, WebM, MP4, frame sequences) must not enter Git.
-- Tests use programmatically generated temp assets (see `src/tests/mvp-planner.test.ts`).
-- Mock fixtures go under `fixtures/` if needed.
+- Example outputs under `examples/` are also gitignored (zip, svga, gif, webm, mp4).
+- Real design assets and generated outputs must not enter Git.
+- Tests use programmatically generated temp assets.
 
 ## Scope
 
@@ -37,7 +35,7 @@ avatar_frame MVP only. No other asset types.
 
 ## Known Issues
 
-- `duplicateOverlayRisk: true` — base_frame_full may overlap with local part layers; needs human visual confirmation
+- `duplicateOverlayRisk: true` — base_frame_full may overlap with local part layers
 - No automated visual playback verification — manual review required
 - Sweep frame 000 shows white edge artifact on non-transparent background
 - UI items from previous review still need verification: double-line text spacing, vertical/horizontal spacing, settings modal style consistency, global style review
