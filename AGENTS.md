@@ -9,10 +9,7 @@ Current scope is intentionally narrow:
 - CLI first
 - intermediate project format first
 - exporter-ready project.json protocol first
-- 3 animation templates only:
-  - breathing_glow
-  - metal_edge_sweep
-  - gem_twinkle
+- 5 animation templates: wing_flap, gem_twinkle, metal_sweep, frame_breath, pop_settle (pop_settle defined but not enabled by default)
 
 ## Priorities
 
@@ -145,6 +142,27 @@ Playback verification:
 12. Commit authors: use agent name for traceability. Set per-repo:
     - Hermes: `git config user.name "Hermes"` / `user.email "hermes-agent@local"`
     - Codex: `git config user.name "Codex"` / `user.email "codex-agent@local"`
+
+## Asset Commit Rules
+
+The repository should contain engineering files only. Do not commit:
+
+- Real design assets (PNG, PSD, Figma exports, Sketch files)
+- Local job workspaces (`jobs/`, `input/`)
+- Generated runtime outputs (`generated/`, `output/`, `preview/`)
+- Exported SVGA, GIF, WebM, MP4, or frame sequences
+- Production design reference images
+
+The `jobs/` and `input/` directories are local runtime workspaces and are gitignored.
+
+If tests require image assets, use small mock fixtures under `fixtures/` or generate temporary PNGs programmatically during test setup (see `src/tests/mvp-planner.test.ts` for patterns).
+
+Before committing, always verify:
+```bash
+git status
+git diff --cached --name-only
+```
+Confirm no real PNG, SVGA, GIF, job output, or design asset is staged.
 
 ## Agent Handoff
 
