@@ -15,6 +15,7 @@
   --backgroundGradient: linear-gradient(163.47deg, #f4f4f9 8.49%, #eeeef5 58.3%, #eff0f7 91.51%);
   --surface: rgba(255, 255, 255, 0.72);
   --surfaceElevated: rgba(255, 255, 255, 0.88);
+  --floatingSurface: #ffffff;
   --surfaceSubtle: rgba(248, 248, 250, 0.72);
   --textPrimary: #1c1c1e;
   --textSecondary: #8e8e93;
@@ -56,6 +57,7 @@
   --backgroundGradient: linear-gradient(163.47deg, #202124 8.49%, #191a1d 58.3%, #202126 91.51%);
   --surface: rgba(44, 44, 46, 0.72);
   --surfaceElevated: rgba(52, 52, 56, 0.9);
+  --floatingSurface: #343438;
   --surfaceSubtle: rgba(35, 35, 38, 0.72);
   --textPrimary: #f5f5f7;
   --textSecondary: #aeaeb2;
@@ -3623,6 +3625,423 @@ html.reduceMotion *::after {
   }
 }
 
+/* Final overlay guard: these rules intentionally win over legacy compatibility blocks. */
+.toolbar {
+  z-index: var(--z-toolbar);
+  grid-template-columns: minmax(132px, 1fr) auto minmax(132px, 1fr);
+}
+
+.brand {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.modeControl {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+}
+
+.actionRow {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.dropdownMenu,
+.fitMenu.dropdownMenu {
+  z-index: var(--z-dropdown);
+}
+
+.infoPanel,
+.logsPanel {
+  z-index: var(--z-side-panel);
+  border: 1px solid var(--borderStrong);
+  background: color-mix(in srgb, var(--floatingSurface) 97%, transparent);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(20px) saturate(1.05);
+}
+
+.infoPanel {
+  display: grid;
+  grid-template-rows: auto 42px minmax(0, 1fr);
+}
+
+.logsPanel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.infoPanel.isHidden,
+.logsPanel.isHidden {
+  display: grid !important;
+}
+
+.tabPanel,
+.logsPanelList {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+.stage {
+  display: grid;
+  place-items: center;
+}
+
+.mediaFrame {
+  justify-self: center;
+  align-self: center;
+  margin: auto;
+}
+
+#settingsModal {
+  z-index: var(--z-settings-backdrop);
+}
+
+#assetPreviewModal {
+  z-index: var(--z-asset-lightbox-backdrop);
+}
+
+.settingsToast {
+  z-index: var(--z-toast);
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    grid-template-columns: minmax(132px, 1fr) 160px minmax(132px, 1fr);
+  }
+
+  .modeControl {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    width: 160px;
+  }
+}
+
+@media (max-width: 620px) {
+  .toolbar {
+    grid-template-columns: minmax(42px, 1fr) 138px minmax(132px, 1fr);
+  }
+
+  .brandCopy {
+    display: none;
+  }
+
+  .modeControl {
+    width: 138px;
+  }
+}
+
+/* Overlay and responsive polish. Keep all floating surfaces on one explicit layer scale. */
+:root {
+  --z-base: 0;
+  --z-toolbar: 100;
+  --z-dropdown: 500;
+  --z-side-panel: 400;
+  --z-settings-backdrop: 700;
+  --z-settings-modal: 720;
+  --z-asset-lightbox-backdrop: 800;
+  --z-asset-lightbox: 820;
+  --z-toast: 900;
+}
+
+.toolbar {
+  z-index: var(--z-toolbar);
+}
+
+.dropdownMenu,
+.fitMenu.dropdownMenu {
+  z-index: var(--z-dropdown);
+  transform-origin: top center;
+  transition: opacity 130ms ease-out, transform 130ms ease-out;
+}
+
+.fitMenu.dropdownMenu {
+  transform-origin: bottom center;
+}
+
+.dropdownMenu.isClosing,
+.fitMenu.dropdownMenu.isClosing {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px) scale(0.98);
+}
+
+.fitMenu.dropdownMenu.isClosing {
+  transform: translateY(4px) scale(0.98);
+}
+
+.infoPanel,
+.logsPanel {
+  z-index: var(--z-side-panel);
+  overflow: hidden;
+  border: 1px solid var(--borderStrong);
+  background: color-mix(in srgb, var(--surfaceElevated) 97%, var(--background));
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(20px) saturate(1.05);
+}
+
+.infoPanel {
+  display: grid;
+  grid-template-rows: auto 42px minmax(0, 1fr);
+}
+
+.logsPanel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.infoPanel::before,
+.logsPanel::before {
+  content: none;
+}
+
+.infoHeader {
+  min-height: 68px;
+}
+
+.tabs {
+  height: 42px;
+  min-height: 42px;
+}
+
+.tabPanel,
+.logsPanelList {
+  width: 100%;
+  min-height: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+.assetFilters {
+  height: 44px;
+  min-height: 44px;
+  align-items: center;
+}
+
+.assetUnifiedList {
+  align-content: start;
+  min-height: 100%;
+}
+
+.assetUnifiedRow {
+  height: 64px;
+  min-height: 64px;
+  max-height: 64px;
+}
+
+.sequenceChildren .assetUnifiedRow {
+  height: 60px;
+  min-height: 60px;
+}
+
+.emptyPanel {
+  min-height: 180px;
+}
+
+#settingsModal {
+  z-index: var(--z-settings-backdrop);
+}
+
+#settingsModal .settingsModal {
+  z-index: var(--z-settings-modal);
+}
+
+#assetPreviewModal {
+  z-index: var(--z-asset-lightbox-backdrop);
+}
+
+#assetPreviewModal .assetModal {
+  z-index: var(--z-asset-lightbox);
+}
+
+.modalOverlay {
+  opacity: 0;
+  backdrop-filter: blur(20px);
+  transition: opacity 170ms ease-out;
+  animation: none;
+}
+
+.modalOverlay.isOpen {
+  opacity: 1;
+}
+
+.modalOverlay.isClosing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modalOverlay .settingsModal,
+.modalOverlay .assetModal {
+  opacity: 0;
+  transform: translateY(10px) scale(0.975);
+  transition: opacity 180ms ease-out, transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: none !important;
+}
+
+.modalOverlay.isOpen .settingsModal,
+.modalOverlay.isOpen .assetModal {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.modalOverlay.isClosing .settingsModal,
+.modalOverlay.isClosing .assetModal {
+  opacity: 0;
+  transform: translateY(6px) scale(0.985);
+}
+
+.settingsModal,
+.assetModal {
+  position: relative;
+  border: 1px solid var(--borderStrong);
+  background: color-mix(in srgb, var(--floatingSurface) 98%, transparent);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28), 0 8px 28px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(22px);
+}
+
+.settingsModal {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.settingsModal footer {
+  display: none;
+}
+
+.settingsToast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: var(--z-toast);
+  padding: 9px 13px;
+  border: 1px solid var(--borderStrong);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surfaceElevated) 98%, var(--background));
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
+  color: var(--textPrimary);
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 150ms ease-out, transform 170ms ease-out;
+}
+
+.settingsToast.isOpen {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.settingsToast.isClosing {
+  opacity: 0;
+  transform: translateY(5px);
+}
+
+html.reduceBlur .infoPanel,
+html.reduceBlur .logsPanel,
+html.reduceBlur .settingsModal,
+html.reduceBlur .assetModal,
+html.reduceBlur .modalOverlay,
+html.reduceBlur .dropdownMenu,
+html.reduceBlur .settingsToast {
+  backdrop-filter: none !important;
+}
+
+html.reduceBlur .infoPanel,
+html.reduceBlur .logsPanel,
+html.reduceBlur .settingsModal,
+html.reduceBlur .assetModal,
+html.reduceBlur .dropdownMenu,
+html.reduceBlur .settingsToast {
+  background: var(--floatingSurface);
+}
+
+.stage {
+  display: grid;
+  place-items: center;
+}
+
+.mediaFrame {
+  justify-self: center;
+  align-self: center;
+  margin: auto;
+}
+
+button,
+.cardFileButton,
+.settingsOptionChoice,
+.settingsToggleRow {
+  transition: color var(--motion-fast), background var(--motion-fast), border-color var(--motion-fast), opacity var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+button:not(:disabled):active,
+.cardFileButton:active,
+.settingsOptionChoice:active,
+.settingsToggleRow:active {
+  transform: scale(0.98);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.iconButton.isActive,
+.iconButton[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--blue) 35%, var(--control-border));
+  background: color-mix(in srgb, var(--blue) 12%, var(--surfaceElevated));
+  color: var(--blue);
+}
+
+/* The center mode control stays geometrically centered around the 900px breakpoint. */
+@media (max-width: 900px) {
+  .toolbar {
+    grid-template-columns: minmax(132px, 1fr) auto minmax(132px, 1fr);
+  }
+
+  .brand {
+    grid-column: 1;
+    justify-self: start;
+    min-width: 0;
+  }
+
+  .modeControl {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    width: 160px;
+  }
+
+  .actionRow {
+    grid-column: 3;
+    justify-self: end;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .toolbar {
+    grid-template-columns: minmax(42px, 1fr) 138px minmax(132px, 1fr);
+  }
+
+  .brandCopy {
+    display: none;
+  }
+
+  .modeControl {
+    width: 138px;
+  }
+}
+
+html.reduceMotion .modalOverlay .settingsModal,
+html.reduceMotion .modalOverlay .assetModal,
+html.reduceMotion .settingsToast,
+html.reduceMotion .dropdownMenu,
+html.reduceMotion .fitMenu.dropdownMenu {
+  transform: none !important;
+}
+
 /* Web preview layout polish: keep comparison, controls and panels stable in one viewport. */
 html,
 body {
@@ -4341,4 +4760,74 @@ body,
     height: 100%;
     min-height: 0;
   }
+}
+
+/* Overlay precedence guard. */
+.toolbar {
+  z-index: var(--z-toolbar);
+  grid-template-columns: minmax(132px, 1fr) auto minmax(132px, 1fr);
+}
+
+.brand { grid-column: 1; justify-self: start; }
+.modeControl { grid-column: 2; grid-row: 1; justify-self: center; }
+.actionRow { grid-column: 3; justify-self: end; }
+
+.dropdownMenu,
+.fitMenu.dropdownMenu { z-index: var(--z-dropdown); }
+
+.infoPanel,
+.logsPanel {
+  z-index: var(--z-side-panel);
+  border: 1px solid var(--borderStrong);
+  background: color-mix(in srgb, var(--floatingSurface) 97%, transparent);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(20px) saturate(1.05);
+}
+
+.infoPanel {
+  display: grid;
+  grid-template-rows: auto 42px minmax(0, 1fr);
+}
+
+.logsPanel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.infoPanel.isHidden,
+.logsPanel.isHidden { display: grid !important; }
+
+.tabPanel,
+.logsPanelList {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+.stage { display: grid; place-items: center; }
+.mediaFrame { justify-self: center; align-self: center; margin: auto; }
+
+#settingsModal { z-index: var(--z-settings-backdrop); }
+#assetPreviewModal { z-index: var(--z-asset-lightbox-backdrop); }
+.settingsToast { z-index: var(--z-toast); }
+
+@media (max-width: 900px) {
+  .toolbar {
+    grid-template-columns: minmax(132px, 1fr) 160px minmax(132px, 1fr);
+  }
+
+  .modeControl {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    width: 160px;
+  }
+}
+
+@media (max-width: 620px) {
+  .toolbar {
+    grid-template-columns: minmax(42px, 1fr) 138px minmax(132px, 1fr);
+  }
+
+  .brandCopy { display: none; }
+  .modeControl { width: 138px; }
 }

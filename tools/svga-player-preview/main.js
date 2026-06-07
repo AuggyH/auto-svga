@@ -124,7 +124,7 @@ const assetPreviewDetails = document.querySelector("#assetPreviewDetails");
 const copyImageKeyButton = document.querySelector("#copyImageKeyButton");
 const settingsModal = document.querySelector("#settingsModal");
 const settingsCloseButton = document.querySelector("#settingsCloseButton");
-const settingsDoneButton = document.querySelector("#settingsDoneButton");
+const settingsToast = document.querySelector("#settingsToast");
 const infoPanel = document.querySelector("#infoPanel");
 const logsPanel = document.querySelector("#logsPanel");
 const fullLogsContent = document.querySelector("#fullLogsContent");
@@ -139,6 +139,7 @@ const rescanButton = document.querySelector("#rescanButton");
 const rescanStatus = document.querySelector("#rescanStatus");
 const globalLoopToggle = document.querySelector("#globalLoopToggle");
 const reduceMotionToggle = document.querySelector("#reduceMotionToggle");
+const reduceBlurToggle = document.querySelector("#reduceBlurToggle");
 const statusAnnouncer = document.querySelector("#statusAnnouncer");
 
 let defaultReport;
@@ -165,6 +166,9 @@ let logsPanelWidth = Number(localStorage.getItem("autoSvgaLogsPanelWidth")) || 5
 let manualArtifactSelection = false;
 let latestArtifactGroup;
 let artifactAutoLoading = false;
+let activeModal = null;
+let modalReturnFocus = null;
+let toastTimer;
 
 function createPlayerSlot(slotName) {
   const suffix = slotName.toUpperCase();
@@ -473,6 +477,43 @@ function setActiveSidePanel(nextPanel) {
   if (activeSidePanel === "info") renderInfoPanel();
   if (activeSidePanel === "logs") renderLogsPanel();
   window.requestAnimationFrame(refreshLayout);
+}
+
+function openModal(layer, trigger) {
+  if (!layer) return;
+  activeModal = layer;
+  modalReturnFocus = trigger ?? document.activeElement;
+  layer.hidden = false;
+  layer.classList.remove("isClosing");
+  window.requestAnimationFrame(() => layer.classList.add("isOpen"));
+}
+
+function closeModal(layer, { restoreFocus = true } = {}) {
+  if (!layer || layer.hidden || layer.classList.contains("isClosing")) return;
+  layer.classList.remove("isOpen");
+  layer.classList.add("isClosing");
+  window.setTimeout(() => {
+    layer.hidden = true;
+    layer.classList.remove("isClosing");
+    if (activeModal === layer) activeModal = null;
+    if (restoreFocus) modalReturnFocus?.focus?.();
+  }, document.documentElement.classList.contains("reduceMotion") ? 20 : 190);
+}
+
+function showSettingsToast(message = "设置已更新") {
+  window.clearTimeout(toastTimer);
+  settingsToast.textContent = message;
+  settingsToast.hidden = false;
+  settingsToast.classList.remove("isClosing");
+  window.requestAnimationFrame(() => settingsToast.classList.add("isOpen"));
+  toastTimer = window.setTimeout(() => {
+    settingsToast.classList.remove("isOpen");
+    settingsToast.classList.add("isClosing");
+    window.setTimeout(() => {
+      settingsToast.hidden = true;
+      settingsToast.classList.remove("isClosing");
+    }, document.documentElement.classList.contains("reduceMotion") ? 20 : 170);
+  }, 1700);
 }
 
 function openInfoPanel(tabName = "overview") {
@@ -2020,12 +2061,12 @@ function openAssetPreview(imageKey) {
   assetPreviewMeta.textContent = `imageKey: ${image.key}`;
   assetPreviewImage.src = image.previewUrl;
   assetPreviewDetails.textContent = `${formatSize(image.width, image.height)} · ${formatBytes(image.byteSize)}`;
-  assetPreviewModal.hidden = false;
+  openModal(assetPreviewModal, document.activeElement);
 }
 
 function closeAssetPreview() {
-  assetPreviewModal.hidden = true;
-  assetPreviewImage.removeAttribute("src");
+  closeModal(assetPreviewModal);
+  window.setTimeout(() => assetPreviewImage.removeAttribute("src"), 200);
 }
 
 function setThemePreference(value) {
@@ -2057,11 +2098,11 @@ function setPreviewBackground(value) {
 }
 
 function openSettings() {
-  settingsModal.hidden = false;
+  openModal(settingsModal, settingsButton);
 }
 
 function closeSettings() {
-  settingsModal.hidden = true;
+  closeModal(settingsModal);
 }
 
 function openFullLogs() {
@@ -2135,6 +2176,7 @@ function openDropdown(trigger, menu) {
   for (const other of document.querySelectorAll(".dropdownMenu, [data-fit-menu]")) {
     if (other !== menu) closeDropdown(other);
   }
+  menu.classList.remove("isClosing");
   menu.hidden = false;
   trigger.setAttribute("aria-expanded", "true");
   positionDropdown(trigger, menu);
@@ -2143,10 +2185,14 @@ function openDropdown(trigger, menu) {
 
 function closeDropdown(menu, restoreFocus = false) {
   if (!menu || menu.hidden) return;
-  menu.hidden = true;
   const trigger = menu.parentElement?.querySelector("[aria-expanded]");
   trigger?.setAttribute("aria-expanded", "false");
-  if (restoreFocus) trigger?.focus();
+  menu.classList.add("isClosing");
+  window.setTimeout(() => {
+    menu.hidden = true;
+    menu.classList.remove("isClosing");
+    if (restoreFocus) trigger?.focus();
+  }, document.documentElement.classList.contains("reduceMotion") ? 20 : 130);
 }
 
 function setupDropdown({ trigger, menu, itemSelector, getValue, onSelect }) {
@@ -2435,7 +2481,6 @@ copyImageKeyButton.addEventListener("click", () => {
   }
 });
 settingsCloseButton.addEventListener("click", closeSettings);
-settingsDoneButton.addEventListener("click", closeSettings);
 settingsModal.addEventListener("click", (event) => {
   if (event.target === settingsModal) closeSettings();
 });
@@ -2455,14 +2500,21 @@ clearFullLogsButton.addEventListener("click", () => {
   showActionFeedback(logsActionFeedback, { type: "success", text: "已清除" });
 });
 for (const input of document.querySelectorAll('input[name="theme"]')) {
-  input.addEventListener("change", () => setThemePreference(input.value));
+  input.addEventListener("change", () => {
+    setThemePreference(input.value);
+    showSettingsToast("外观设置已更新");
+  });
 }
 for (const input of document.querySelectorAll('input[name="previewBackground"]')) {
-  input.addEventListener("change", () => setPreviewBackground(input.value));
+  input.addEventListener("change", () => {
+    setPreviewBackground(input.value);
+    showSettingsToast("预览背景已更新");
+  });
 }
 autoLoadLatestToggle.checked = localStorage.getItem("autoSvgaAutoLoad") !== "false";
 autoLoadLatestToggle.addEventListener("change", () => {
   localStorage.setItem("autoSvgaAutoLoad", String(autoLoadLatestToggle.checked));
+  showSettingsToast("验收设置已更新");
 });
 rescanButton.addEventListener("click", async () => {
   await scanLatestArtifact({ force: true });
@@ -2474,12 +2526,21 @@ globalLoopToggle.addEventListener("change", () => {
   setSlotLoop(players.a, globalLoopToggle.checked);
   setSlotLoop(players.b, globalLoopToggle.checked);
   referenceState.video.loop = globalLoopToggle.checked;
+  showSettingsToast("播放设置已更新");
 });
 reduceMotionToggle.checked = localStorage.getItem("autoSvgaReduceMotion") === "true";
 document.documentElement.classList.toggle("reduceMotion", reduceMotionToggle.checked);
 reduceMotionToggle.addEventListener("change", () => {
   localStorage.setItem("autoSvgaReduceMotion", String(reduceMotionToggle.checked));
   document.documentElement.classList.toggle("reduceMotion", reduceMotionToggle.checked);
+  showSettingsToast("可访问性设置已更新");
+});
+reduceBlurToggle.checked = localStorage.getItem("autoSvgaReduceBlur") === "true";
+document.documentElement.classList.toggle("reduceBlur", reduceBlurToggle.checked);
+reduceBlurToggle.addEventListener("change", () => {
+  localStorage.setItem("autoSvgaReduceBlur", String(reduceBlurToggle.checked));
+  document.documentElement.classList.toggle("reduceBlur", reduceBlurToggle.checked);
+  showSettingsToast("浮层显示已更新");
 });
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   if ((localStorage.getItem("autoSvgaTheme") ?? "system") === "system") {
@@ -2560,7 +2621,40 @@ setupPanelResize(logsPanelResizeHandle, {
   bodyClass: "isResizingLogsPanel"
 });
 
+document.addEventListener("click", (event) => {
+  if (!activeSidePanel || activeModal) return;
+  const activePanel = activeSidePanel === "info" ? infoPanel : logsPanel;
+  const activeTrigger = activeSidePanel === "info" ? infoPanelButton : logsButton;
+  const eventPath = event.composedPath();
+  if (eventPath.includes(activePanel) || eventPath.includes(activeTrigger)) return;
+  if (event.target.closest(".dropdownMenu, .fitMenu, .resizeHandle")) return;
+  setActiveSidePanel(null);
+});
+
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    if (!assetPreviewModal.hidden) {
+      event.preventDefault();
+      closeAssetPreview();
+      return;
+    }
+    if (!settingsModal.hidden) {
+      event.preventDefault();
+      closeSettings();
+      return;
+    }
+    const openMenu = [...document.querySelectorAll(".dropdownMenu, [data-fit-menu]")].find((menu) => !menu.hidden);
+    if (openMenu) {
+      event.preventDefault();
+      closeDropdown(openMenu, true);
+      return;
+    }
+    if (activeSidePanel) {
+      event.preventDefault();
+      setActiveSidePanel(null);
+      return;
+    }
+  }
   if (event.code !== "Space" || event.repeat) return;
   const target = event.target;
   const tagName = target?.tagName?.toLowerCase();

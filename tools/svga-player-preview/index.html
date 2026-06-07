@@ -378,14 +378,15 @@
               <div class="settingsCard">
                 <label class="settingsToggleRow"><span><strong>显示调试信息</strong><small>保留中英文 key 和解析数据</small></span><input type="checkbox"></label>
                 <label class="settingsToggleRow"><span><strong>减少动态效果</strong><small>停用非必要的位移与缩放动画</small></span><input id="reduceMotionToggle" type="checkbox"></label>
+                <label class="settingsToggleRow"><span><strong>减少模糊效果</strong><small>使用更实的浮层背景，提升文字可读性</small></span><input id="reduceBlurToggle" type="checkbox"></label>
               </div>
             </section>
           </div>
-          <footer><button id="settingsDoneButton" class="primaryDoneButton" type="button">完成</button></footer>
         </section>
       </div>
 
       <div id="statusAnnouncer" class="srOnly" aria-live="polite"></div>
+      <div id="settingsToast" class="settingsToast" role="status" aria-live="polite" hidden>设置已更新</div>
       <div class="narrowWindowHint">窗口较窄，建议使用更大窗口获得更好的对比体验</div>
     </main>
 
