@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-06-07 — Web preview component consistency
+
+**Branch**: `agent/codex/web-preview-component-consistency`
+**Implementation commit**: `691f7df`
+
+- Portaled all mode and fit menus to a shared fixed floating root with viewport-safe positioning
+- Unified menu blur, Reduce Blur fallback, selection, focus, and exit behavior
+- Rebalanced the synchronized footer so both file summaries remain visible at narrow widths
+- Standardized media centering for SVGA and reference preview card variants
+- Refined Overview spacing, filename wrapping, compact status badges, and bilingual hierarchy
+- Kept Assets filters fixed while making only the 48px-thumbnail list scroll
+- Split asset metadata into two readable lines and compacted runtime log presentation
+- Preserved side panels during toolbar actions while retaining modal backdrop click protection
+- Added icon-only responsive fallbacks and visible rescan toast feedback
+
 ## 2026-06-07 — Web preview overlay and responsive polish
 
 **Branch**: `agent/codex/web-preview-overlay-polish`
