@@ -196,6 +196,16 @@ mutually exclusive and should open as a restrained overlay so the two preview
 cards keep stable dimensions. Clicking an active toolbar button closes its
 panel; clicking the other button switches panels directly.
 
+All floating surfaces follow one layer hierarchy: side diagnostics, dropdowns,
+settings, asset lightbox, then toast. Settings and lightboxes must never be
+covered by diagnostics. Clicking outside closes only the highest active layer;
+Escape follows the same order and returns focus to the trigger.
+
+Diagnostic panels use a nearly solid surface, hairline border, restrained blur,
+and soft shadow. The Reduce Blur accessibility option persists locally and
+replaces blurred surfaces with solid fills without changing the selected app
+theme or preview background.
+
 Comparison cards remain horizontal at all supported widths. The page shell is
 one viewport tall with no page-level scrolling; preview stages shrink before
 toolbars or synchronized controls are clipped. Narrow windows may show a quiet
@@ -220,6 +230,9 @@ Settings are grouped as:
 Every row uses the same title, description, and trailing-control hierarchy.
 Rescanning artifacts is a workflow action with scanning, success, and error
 feedback, not a temporary debug button.
+
+Settings apply immediately. Do not add a Save or Done footer. Each change uses
+one reusable toast with a brief setting-specific confirmation.
 
 Resource warnings should be visible but not alarming unless the state is truly blocking. Use warning color for:
 
@@ -282,6 +295,10 @@ Motion only explains state changes: panel entry, modal entry, dropdown entry,
 loading, success, error, and drag acceptance. `prefers-reduced-motion` and the
 manual reduce-motion setting replace movement and scale with near-instant
 state changes.
+
+Every entrance must have a matching exit. Closing should transition to an
+`isClosing` state before the surface becomes hidden. Reduced motion keeps the
+state feedback but removes translation and scale.
 
 Allowed:
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-06-07 — Web preview overlay and responsive polish
+
+**Branch**: `agent/codex/web-preview-overlay-polish`
+**Implementation commit**: `0c1644b`
+
+- Added a documented floating-layer z-index scale for dropdowns, diagnostics, settings, asset lightbox, and toast
+- Improved information/log panel readability with stronger surfaces, borders, blur, and shadow
+- Added a persisted Reduce Blur accessibility setting with solid floating-surface fallback
+- Added outside-click and Escape dismissal with highest-layer priority and focus restoration
+- Added matching exit motion for modals, lightbox, dropdowns, panels, and setting feedback
+- Removed the settings Done action and added reusable real-time setting toasts
+- Stabilized resource filter scrolling and dimensions to prevent Sequence/Warning layout shifts
+- Kept the toolbar mode selector and preview media centered at the verified narrow viewport
+- Preserved information/log mutual exclusion and real-player rendering behavior
+
 ## 2026-06-07 — Web preview layout and interaction polish
 
 **Branch**: `agent/codex/web-preview-layout-polish`
