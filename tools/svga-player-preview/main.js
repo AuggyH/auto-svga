@@ -141,6 +141,8 @@ const globalLoopToggle = document.querySelector("#globalLoopToggle");
 const reduceMotionToggle = document.querySelector("#reduceMotionToggle");
 const reduceBlurToggle = document.querySelector("#reduceBlurToggle");
 const statusAnnouncer = document.querySelector("#statusAnnouncer");
+const floatingRoot = document.querySelector("#floatingRoot");
+const dropdownBindings = new Map();
 
 let defaultReport;
 let defaultSvgaMap;
@@ -1534,6 +1536,7 @@ async function scanLatestArtifact({ force = false } = {}) {
     for (const warning of data.warnings ?? []) addLog("warning", `${warning} / Scan warning`);
     if (!target) {
       setRescanState("error", "未找到可用产物");
+      showSettingsToast("未找到可用产物");
       return;
     }
     if (force) manualArtifactSelection = false;
@@ -1542,8 +1545,10 @@ async function scanLatestArtifact({ force = false } = {}) {
       ? `已加载 ${target.jobId}`
       : `未找到 SVGA，已加载 ${target.jobId} 的参考文件`;
     setRescanState(data.latestWithSvga ? "success" : "error", message);
+    showSettingsToast(message);
   } catch (error) {
     setRescanState("error", `扫描失败：${error.message}`);
+    showSettingsToast("扫描失败，请查看运行日志");
     addLog("error", `产物扫描失败：${error.message} / Artifact scan failed`);
   }
 }
@@ -1590,7 +1595,7 @@ function renderInfoPanel() {
 
 function renderOverview(metrics, slot) {
   if (!metrics) {
-    return `<div class="emptyPanel">暂无文件信息。选择或拖入 SVGA 文件后查看详情。/ No SVGA loaded.</div>`;
+    return renderBilingualEmpty("暂无文件信息。选择或拖入 SVGA 文件后查看详情。", "No SVGA loaded.");
   }
   const rows = [
     ["文件名", "fileName", metrics.fileName, "mono"],
@@ -1611,7 +1616,7 @@ function renderOverview(metrics, slot) {
       ${rows.map(([label, key, value, tone]) => `
         <div class="overviewRow">
           <dt><span>${escapeHtml(label)}</span><small>${escapeHtml(key)}</small></dt>
-          <dd class="${tone === "mono" ? "monoValue" : ""}">${escapeHtml(value ?? "n/a")}</dd>
+          <dd class="${tone === "mono" ? "monoValue" : ""} ${key === "fileName" ? "fileNameValue" : ""}" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
         </div>
       `).join("")}
       <div class="overviewStatusBlock">
@@ -1644,6 +1649,15 @@ function renderStatusBadge(value) {
   return `<dd class="statusBadge status-${normalized}"><span aria-hidden="true"></span>${label}</dd>`;
 }
 
+function renderBilingualEmpty(primary, secondary) {
+  return `
+    <div class="emptyPanel bilingualEmpty">
+      <span>${escapeHtml(primary)}</span>
+      <small>${escapeHtml(secondary)}</small>
+    </div>
+  `;
+}
+
 function renderAssets(metrics) {
   const filterBar = `
     <div class="assetFilters">
@@ -1657,7 +1671,7 @@ function renderAssets(metrics) {
     </div>
   `;
   if (!metrics?.sprites?.length && !metrics?.images?.length) {
-    return `${filterBar}<div class="emptyPanel">暂无资源信息 / No asset data</div>`;
+    return `${filterBar}${renderBilingualEmpty("暂无资源信息", "No asset data")}`;
   }
   const assets = buildAssetEntries(metrics);
   const filtered = assets.filter((asset) => {
@@ -1668,7 +1682,7 @@ function renderAssets(metrics) {
   return `
     ${filterBar}
     <div class="assetUnifiedList">
-      ${filtered.length ? filtered.map(renderAssetEntry).join("") : `<div class="emptyPanel">当前筛选没有资源 / No assets match this filter</div>`}
+      ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "No assets match this filter")}
     </div>
   `;
 }
@@ -1801,12 +1815,16 @@ function renderAssetEntry(asset) {
           <strong title="${escapeHtml(asset.name)}">${escapeHtml(asset.name)}</strong>
           <span class="assetTypeTag ${asset.kind}">${escapeHtml(asset.typeLabel)}</span>
         </div>
-        <div class="assetSecondaryLine">
-          <span title="${escapeHtml(asset.imageKey ?? "n/a")}">${escapeHtml(asset.imageKey ?? "n/a")}</span>
-          <span>${escapeHtml(formatSize(asset.width, asset.height))}</span>
-          <span>${escapeHtml(formatBytes(asset.byteSize))}</span>
-          <span>引用×${escapeHtml(asset.referenceCount ?? 0)}</span>
-          ${asset.frameCount ? `<span>${escapeHtml(asset.frameCount)} 帧</span>` : ""}
+        <div class="assetMetaLines">
+          <div>
+            <span>${escapeHtml(formatSize(asset.width, asset.height))}</span>
+            <span>${escapeHtml(formatBytes(asset.byteSize))}</span>
+            ${asset.frameCount ? `<span>${escapeHtml(asset.frameCount)} 帧</span>` : ""}
+          </div>
+          <div>
+            <span class="assetImageKey" title="${escapeHtml(asset.imageKey ?? "n/a")}">${escapeHtml(asset.imageKey ?? "n/a")}</span>
+            <span>引用 ×${escapeHtml(asset.referenceCount ?? 0)}</span>
+          </div>
         </div>
         <div class="assetFullKey" title="${escapeHtml(asset.fullKey ?? "")}">${escapeHtml(asset.fullKey ?? "")}</div>
         ${warningHtml}
@@ -1884,7 +1902,7 @@ function renderLogsPanel() {
   const logs = appLogs.length
     ? appLogs.slice().reverse()
     : [{ level: "info", message: "暂无日志 / No logs", time: "--:--:--" }];
-  fullLogsSubtitle.textContent = `运行日志 · ${appLogs.length} 条 / Runtime Logs`;
+  fullLogsSubtitle.innerHTML = `<span>运行日志 · ${appLogs.length} 条</span><small>Runtime Logs</small>`;
   fullLogsContent.innerHTML = logs.map(renderFullLogRow).join("");
 }
 
@@ -1906,17 +1924,19 @@ function renderSyncBar() {
 
 function renderSyncFile(label, metrics, tone = "svga") {
   if (!metrics) {
-    return `<strong class="syncFileBadge ${tone === "reference" ? "isReference" : ""}">${label}</strong><span>暂未加载</span>`;
+    return `
+      <strong class="syncFileBadge ${tone === "reference" ? "isReference" : ""}">${label}</strong>
+      <span class="syncFileName">暂未加载</span>
+    `;
   }
-  const meta = [
-    formatSize(metrics.sourceWidth, metrics.sourceHeight),
-    formatBytes(metrics.fileSizeBytes),
-    formatDuration(metrics)
-  ].filter((item) => item && item !== "n/a").join(" · ");
+  const primaryMeta = formatSize(metrics.sourceWidth, metrics.sourceHeight);
+  const secondaryMeta = [formatBytes(metrics.fileSizeBytes), formatDuration(metrics)]
+    .filter((item) => item && item !== "n/a")
+    .join(" · ");
   return `
     <strong class="syncFileBadge ${tone === "reference" ? "isReference" : ""}">${escapeHtml(label)}</strong>
-    <span title="${escapeHtml(metrics.fileName ?? "n/a")}">${escapeHtml(metrics.fileName ?? "n/a")}</span>
-    <small>${escapeHtml(meta || "n/a")}</small>
+    <span class="syncFileName" title="${escapeHtml(metrics.fileName ?? "n/a")}">${escapeHtml(metrics.fileName ?? "n/a")}</span>
+    <small><span>${escapeHtml(primaryMeta)}</span><span class="syncOptionalMeta">${escapeHtml(secondaryMeta)}</span></small>
   `;
 }
 
@@ -1927,7 +1947,9 @@ function getReferenceSyncLabel() {
 }
 
 function renderSyncWarnings(left, right) {
-  if (!left || !right) return "";
+  if (!left || !right) {
+    return left || right ? `<span class="syncStatusPill isWaiting">等待另一侧文件</span>` : "";
+  }
   const warnings = [];
   const leftDuration = Number(left.durationSeconds ?? 0);
   const rightDuration = Number(right.durationSeconds ?? 0);
@@ -1947,18 +1969,10 @@ function renderSyncWarnings(left, right) {
     }
   }
   if (!warnings.length && isCompareActive()) {
-    return `
-      <span class="syncMatchedStatus">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
-        <span>规格一致</span>
-      </span>
-    `;
+    return `<span class="syncStatusPill isMatched">规格一致</span>`;
   }
   return warnings.map((warning) => `
-    <span class="syncWarningPill">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5" /><path d="M12 17h.01" /><path d="M10.3 4.5 2.8 17.5A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.5L13.7 4.5a2 2 0 0 0-3.4 0Z" /></svg>
-      <span><strong>${escapeHtml(warning.title)}</strong></span>
-    </span>
+    <span class="syncStatusPill isWarning">${escapeHtml(warning.title)}</span>
   `).join("");
 }
 
@@ -2138,7 +2152,7 @@ function updateFitMenuSelection(slotKey) {
     option.classList.toggle("isSelected", selected);
     option.setAttribute("aria-checked", String(selected));
   }
-  const label = menu.parentElement.querySelector(".fitMenuButtonLabel");
+  const label = dropdownBindings.get(menu)?.trigger.querySelector(".fitMenuButtonLabel");
   if (label) {
     label.textContent = select.value === "original" ? "原始尺寸" : select.value === "fitWidth" ? "适应宽度" : "适应窗口";
   }
@@ -2161,15 +2175,29 @@ function syncDropdownSelection(menu, value) {
 }
 
 function positionDropdown(trigger, menu) {
-  menu.style.removeProperty("left");
-  menu.style.removeProperty("right");
+  menu.style.left = "auto";
+  menu.style.right = "auto";
+  menu.style.top = "auto";
+  menu.style.bottom = "auto";
   const triggerRect = trigger.getBoundingClientRect();
   const menuWidth = Math.max(menu.offsetWidth, 180);
-  if (triggerRect.left + menuWidth > window.innerWidth - 12) {
-    menu.style.right = "0";
-  } else {
-    menu.style.left = "0";
-  }
+  const menuHeight = menu.offsetHeight;
+  const gutter = 10;
+  const preferredLeft = trigger.closest(".modeControl")
+    ? triggerRect.left + (triggerRect.width - menuWidth) / 2
+    : triggerRect.right - menuWidth;
+  const left = Math.min(
+    Math.max(gutter, preferredLeft),
+    Math.max(gutter, window.innerWidth - menuWidth - gutter)
+  );
+  const prefersAbove = trigger.classList.contains("fitMenuButton");
+  const fitsAbove = triggerRect.top - menuHeight - 8 >= gutter;
+  const top = prefersAbove && fitsAbove
+    ? triggerRect.top - menuHeight - 8
+    : Math.min(triggerRect.bottom + 8, window.innerHeight - menuHeight - gutter);
+  menu.style.left = `${Math.round(left)}px`;
+  menu.style.top = `${Math.round(Math.max(gutter, top))}px`;
+  menu.classList.toggle("opensAbove", prefersAbove && fitsAbove);
 }
 
 function openDropdown(trigger, menu) {
@@ -2185,7 +2213,7 @@ function openDropdown(trigger, menu) {
 
 function closeDropdown(menu, restoreFocus = false) {
   if (!menu || menu.hidden) return;
-  const trigger = menu.parentElement?.querySelector("[aria-expanded]");
+  const trigger = dropdownBindings.get(menu)?.trigger;
   trigger?.setAttribute("aria-expanded", "false");
   menu.classList.add("isClosing");
   window.setTimeout(() => {
@@ -2197,6 +2225,7 @@ function closeDropdown(menu, restoreFocus = false) {
 
 function setupDropdown({ trigger, menu, itemSelector, getValue, onSelect }) {
   if (!trigger || !menu) return;
+  dropdownBindings.set(menu, { trigger });
   menu.classList.add("dropdownMenu");
   for (const item of menu.querySelectorAll(itemSelector)) {
     item.classList.add("dropdownMenuItem");
@@ -2204,6 +2233,7 @@ function setupDropdown({ trigger, menu, itemSelector, getValue, onSelect }) {
     item.tabIndex = -1;
   }
   trigger.classList.add("dropdownTrigger");
+  floatingRoot.append(menu);
   trigger.addEventListener("click", (event) => {
     event.stopPropagation();
     if (menu.hidden) openDropdown(trigger, menu);
@@ -2402,6 +2432,7 @@ for (const select of [fitModeA, fitModeB, fitModeReference]) {
 }
 
 window.addEventListener("resize", () => {
+  closeFitMenus();
   applyInfoPanelWidth(infoPanelWidth);
   applyLogsPanelWidth(logsPanelWidth);
   window.requestAnimationFrame(refreshLayout);
@@ -2627,7 +2658,8 @@ document.addEventListener("click", (event) => {
   const activeTrigger = activeSidePanel === "info" ? infoPanelButton : logsButton;
   const eventPath = event.composedPath();
   if (eventPath.includes(activePanel) || eventPath.includes(activeTrigger)) return;
-  if (event.target.closest(".dropdownMenu, .fitMenu, .resizeHandle")) return;
+  if (eventPath.includes(toolbar) || eventPath.includes(rescanButton)) return;
+  if (event.target.closest(".toolbar, #rescanButton, .dropdownMenu, .fitMenu, .resizeHandle")) return;
   setActiveSidePanel(null);
 });
 

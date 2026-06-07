@@ -117,12 +117,16 @@ Key references:
 - Diagnostics use one mutually exclusive side-panel state: `null`, `info`, or `logs`.
 - Side panels are overlays and must not re-parent or rebuild SVGA player canvases.
 - Floating layers use one explicit order: toolbar, side panels, dropdowns, settings, asset lightbox, toast.
+- Dropdowns are moved to `#floatingRoot` and positioned with viewport coordinates. Preview cards never own dropdown stacking or clipping.
 - Settings and asset lightbox are modal layers above diagnostics. Escape closes only the highest visible layer.
 - Side panels, modals, lightboxes, and dropdowns support outside-click dismissal without treating internal scrolling, filters, or resize handles as outside interaction.
+- Temporary side panels ignore persistent toolbar actions and rescan actions; modal/lightbox backdrops intercept the click and do not activate controls underneath.
 - Floating surfaces default to a nearly solid background with blur, hairline border, and shadow. The persisted Reduce Blur setting switches them to solid fills and disables backdrop blur.
 - Fit modes are stored independently for `a`, `b`, and `reference`; first-run default is `original`.
 - Fit changes and viewport resizes only recalculate the media frame. They do not rebuild or replay the SVGA player.
 - The toolbar remains a three-column grid through the 900px breakpoint so the mode selector keeps its centered column.
 - Preview stages and media frames use centered grid alignment at narrow widths.
+- The synchronized footer keeps equal left/right file summaries. At narrow widths optional metadata and button labels hide before either summary disappears.
+- Buttons that combine an icon and label expose a title/accessible name and collapse to icon-only below the compact breakpoint.
 
 UI changes must follow the 10 rules in `AGENTS.md` → UI Design Rules section.

@@ -3718,20 +3718,6 @@ html.reduceMotion *::after {
   }
 }
 
-@media (max-width: 620px) {
-  .toolbar {
-    grid-template-columns: minmax(42px, 1fr) 138px minmax(132px, 1fr);
-  }
-
-  .brandCopy {
-    display: none;
-  }
-
-  .modeControl {
-    width: 138px;
-  }
-}
-
 /* Overlay and responsive polish. Keep all floating surfaces on one explicit layer scale. */
 :root {
   --z-base: 0;
@@ -4830,4 +4816,561 @@ body,
 
   .brandCopy { display: none; }
   .modeControl { width: 138px; }
+}
+
+/* Component consistency pass: shared floating menus, preview stages and responsive controls. */
+:root {
+  --menu-bg: color-mix(in srgb, var(--floatingSurface) 90%, transparent);
+  --menu-bg-solid: var(--floatingSurface);
+  --menu-border: color-mix(in srgb, var(--textPrimary) 12%, transparent);
+  --menu-shadow: 0 18px 48px rgba(0, 0, 0, 0.18), 0 3px 12px rgba(0, 0, 0, 0.08);
+  --menu-blur: 18px;
+}
+
+.floatingRoot {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dropdown);
+  pointer-events: none;
+}
+
+.floatingRoot > .dropdownMenu {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  width: 220px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--menu-border);
+  border-radius: 11px;
+  background: var(--menu-bg);
+  box-shadow: var(--menu-shadow);
+  backdrop-filter: blur(var(--menu-blur)) saturate(1.08);
+  pointer-events: auto;
+  transform-origin: top center;
+}
+
+.floatingRoot > .fitMenu.dropdownMenu {
+  width: 178px;
+  transform-origin: top right;
+}
+
+.floatingRoot > .fitMenu.dropdownMenu.opensAbove {
+  transform-origin: bottom right;
+}
+
+.floatingRoot > .dropdownMenu.isClosing {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+}
+
+.floatingRoot > .fitMenu.dropdownMenu.opensAbove.isClosing {
+  transform: translateY(4px) scale(0.98);
+}
+
+html.reduceBlur .floatingRoot > .dropdownMenu {
+  background: var(--menu-bg-solid);
+  backdrop-filter: none;
+}
+
+.dropdownMenuItem,
+.fitMenu.dropdownMenu .dropdownMenuItem {
+  white-space: nowrap;
+}
+
+.dropdownMenuItem:active,
+.fitMenu.dropdownMenu .dropdownMenuItem:active {
+  transform: scale(0.985);
+}
+
+.previewCard,
+.stage,
+.mediaFrame,
+.mediaFrame > div {
+  min-width: 0;
+  min-height: 0;
+}
+
+.stage {
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.mediaFrame {
+  position: relative;
+  left: auto;
+  right: auto;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  align-self: center;
+  margin: auto;
+  transform-origin: center center;
+}
+
+.mediaFrame > div,
+.mediaFrame > video,
+.mediaFrame > img,
+.mediaFrame canvas {
+  justify-self: center;
+  align-self: center;
+  margin: auto;
+  transform-origin: center center;
+}
+
+.syncBar {
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.86fr) minmax(0, 1fr);
+  gap: 14px;
+  height: 74px;
+  min-height: 74px;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+.syncFileInfo {
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+}
+
+.syncFileInfo.alignRight {
+  text-align: right;
+}
+
+.syncFileName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--textPrimary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.syncFileInfo small {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--textTertiary);
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.syncFileInfo.alignRight small {
+  justify-content: flex-end;
+}
+
+.syncFileInfo small span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.syncFileBadge {
+  width: fit-content;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.syncFileInfo.alignRight .syncFileBadge {
+  justify-self: end;
+}
+
+.syncControls {
+  display: grid;
+  grid-template-rows: 22px 30px;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 14px;
+  border-right: 1px solid color-mix(in srgb, var(--textPrimary) 7%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--textPrimary) 7%, transparent);
+}
+
+.syncWarnings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 22px;
+  overflow: hidden;
+}
+
+.syncStatusPill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.syncStatusPill.isMatched {
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: color-mix(in srgb, var(--green) 80%, var(--textPrimary));
+}
+
+.syncStatusPill.isWarning {
+  background: color-mix(in srgb, var(--warning) 11%, transparent);
+  color: var(--warning);
+}
+
+.syncStatusPill.isWaiting {
+  background: color-mix(in srgb, var(--textPrimary) 6%, transparent);
+  color: var(--textSecondary);
+}
+
+.syncControlRow {
+  min-width: 0;
+}
+
+.syncControlRow input[type="range"] {
+  min-width: 42px;
+}
+
+.bilingualHeading,
+.bilingualCopy,
+.bilingualEmpty {
+  display: grid;
+}
+
+.bilingualHeading {
+  gap: 1px;
+}
+
+.bilingualHeading small {
+  color: var(--textTertiary);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 12px;
+  letter-spacing: 0;
+}
+
+.bilingualCopy {
+  gap: 1px;
+}
+
+.bilingualCopy small,
+.bilingualEmpty small,
+.tabButton small {
+  color: var(--textTertiary);
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 11px;
+}
+
+.tabs {
+  overflow: hidden;
+}
+
+.tabButton {
+  display: grid;
+  place-content: center;
+  gap: 1px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.tabButton span,
+.tabButton small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overviewGrid {
+  gap: 0;
+}
+
+.overviewRow,
+.overviewStatusRow {
+  min-height: 46px;
+  padding: 8px 0;
+}
+
+.overviewRow dd {
+  line-height: 18px;
+}
+
+.overviewRow dd.fileNameValue {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.overviewStatusBlock {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.overviewStatusRow {
+  min-height: 38px;
+  padding: 5px 0;
+}
+
+.statusBadge {
+  width: fit-content;
+  min-width: 0;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+#tab-assets {
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+}
+
+#tab-assets.isHidden {
+  display: none !important;
+}
+
+#tab-assets .assetFilters {
+  height: 44px;
+  min-height: 44px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+#tab-assets .assetFilters::-webkit-scrollbar {
+  display: none;
+}
+
+#tab-assets .assetUnifiedList {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.assetUnifiedRow {
+  min-height: 76px;
+  height: auto;
+  max-height: none;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px;
+}
+
+.sequenceChildren .assetUnifiedRow {
+  min-height: 72px;
+  height: auto;
+  max-height: none;
+}
+
+.assetUnifiedThumb,
+.assetUnifiedThumb.isSequence {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+}
+
+.assetUnifiedMain {
+  align-content: center;
+  gap: 4px;
+}
+
+.assetMetaLines {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.assetMetaLines > div {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--textTertiary);
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.assetMetaLines > div > span {
+  flex: none;
+}
+
+.assetMetaLines .assetImageKey {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assetFullKey {
+  display: none;
+}
+
+.emptyPanel.bilingualEmpty {
+  align-content: center;
+  gap: 4px;
+  padding: 16px;
+}
+
+.emptyPanel.bilingualEmpty span {
+  color: var(--textSecondary);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.logsPanelList {
+  padding: 4px 8px 10px;
+}
+
+.logsPanelList .fullLogRow {
+  min-height: 32px;
+  padding: 5px 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--textPrimary) 5%, transparent);
+  border-radius: 0;
+  background: transparent;
+}
+
+.logsPanelList .fullLogRow strong {
+  opacity: 0.78;
+}
+
+.cardFileButton,
+.cardUtilityButton,
+.emptyFileButton,
+.compareToggle,
+.syncStatusPill,
+.syncFileInfo,
+.statusPill,
+.filePill,
+.toolbar button {
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.cardFileButton,
+.cardUtilityButton,
+.emptyFileButton,
+.compareToggle,
+.syncFileName,
+.syncFileInfo small,
+.statusPill,
+.filePill {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .syncBar {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 0.82fr) minmax(0, 1fr);
+    gap: 9px;
+    padding: 0 10px;
+  }
+
+  .syncControls {
+    padding: 0 8px;
+  }
+
+  .syncOptionalMeta {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .responsiveButtonLabel,
+  .cardFileButton .responsiveButtonLabel,
+  .cardUtilityButton .responsiveButtonLabel {
+    display: none;
+  }
+
+  .cardFileButton,
+  .cardUtilityButton {
+    width: 30px;
+    min-width: 30px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .syncBar {
+    grid-template-columns: minmax(70px, 1fr) minmax(150px, 0.9fr) minmax(70px, 1fr);
+    gap: 7px;
+    padding: 0 8px;
+  }
+
+  .syncFileInfo {
+    overflow: hidden;
+  }
+
+  .syncFileInfo small {
+    display: none;
+  }
+
+  .syncControls {
+    padding: 0 6px;
+  }
+
+  .syncStatusPill {
+    max-width: 92px;
+  }
+
+  .cardTitleGroup,
+  .cardActions,
+  .playerBar {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .syncBar {
+    grid-template-columns: minmax(58px, 1fr) minmax(132px, 0.9fr) minmax(58px, 1fr);
+    gap: 5px;
+    padding: 0 6px;
+  }
+
+  .syncFileName {
+    font-size: 9px;
+  }
+
+  .syncFileBadge {
+    height: 15px;
+    padding: 0 4px;
+    font-size: 8px;
+  }
+
+  .syncControls {
+    border-color: transparent;
+  }
+
+  .syncWarnings {
+    display: none;
+  }
+
+  .syncControls {
+    grid-template-rows: 30px;
+  }
+}
+
+@media (max-width: 620px) {
+  .toolbar {
+    grid-template-columns: minmax(42px, 1fr) 138px minmax(132px, 1fr);
+  }
+
+  .brandCopy {
+    display: none;
+  }
+
+  .modeControl {
+    width: 138px;
+  }
 }

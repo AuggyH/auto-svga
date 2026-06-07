@@ -4,8 +4,8 @@ Date: 2026-06-07
 
 ## Main Branch
 
-- **Runnable**: yes after Web preview overlay polish
-- **Latest implementation commit**: `0c1644b`
+- **Runnable**: yes after Web preview component consistency polish
+- **Latest implementation commit**: `691f7df`
 - **Latest tag**: v0.1.4-web-preview-rebuild
 - **Branch**: main
 
@@ -60,6 +60,21 @@ Implementation commit: `0c1644b`
 - Preserved centered playback media and a centered mode control at the available 499px narrow viewport.
 - Browser verified both themes and Reduce Motion / Reduce Blur behavior at the available viewport.
 
+## Web Preview Component Consistency
+
+Implementation commit: `691f7df`
+
+- Moved every mode/fit dropdown into one fixed `floatingRoot`, eliminating preview-card clipping.
+- Unified menu blur, solid Reduce Blur fallback, selection, focus, animation, and viewport clamping.
+- Rebalanced synchronized playback into visible left summary, compact center controls/status, and visible right summary.
+- Unified stage/media centering across SVGA A, SVGA B, and reference variants.
+- Kept temporary diagnostics open during toolbar actions; modal/lightbox backdrops still close without click-through.
+- Improved Overview filename wrapping, row spacing, status badge sizing, and bilingual hierarchy.
+- Made Assets filters non-scrolling vertically; only the 48px-thumbnail resource list scrolls.
+- Split resource metadata into dimensions/size and imageKey/reference lines.
+- Added narrow-width icon-only fallbacks and no-vertical-text constraints.
+- Added visible rescan toast feedback and retained log action feedback.
+
 ## Last Completed
 
 Codex implemented a batch of avatar frame improvements including:
@@ -89,9 +104,10 @@ avatar_frame MVP only. No other asset types.
 - Full accessibility certification remains Partial; no axe-zero claim
 - Browser automation verified the narrow 499px fallback and live artifacts, but the complete desktop viewport matrix still needs a dedicated pass
 - Explicit 900px and 768px viewport emulation is still not available in the current browser session; responsive rules are implemented but those exact widths remain not verified
+- Two-file Local Compare with both SVGA A and SVGA B loaded remains a manual verification item in this browser environment
 
 ## Next Steps
 
 - Complete axe and explicit 1600/1440/1280/1024/900/768 viewport matrix checks
-- Human review of overlay opacity, exit motion, and one-screen comparison layout
+- Human review of the synchronized footer at 900px/768px and a real two-SVGA Local Compare session
 - Human visual acceptance of avatar_frame_gold_green_real_002 remains required

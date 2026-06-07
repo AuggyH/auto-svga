@@ -201,10 +201,18 @@ settings, asset lightbox, then toast. Settings and lightboxes must never be
 covered by diagnostics. Clicking outside closes only the highest active layer;
 Escape follows the same order and returns focus to the trigger.
 
+Dropdowns belong to the shared floating root, not to preview-card overflow
+contexts. Mode and display menus share one blur, border, shadow, selection,
+focus, motion, and viewport-clamping implementation.
+
 Diagnostic panels use a nearly solid surface, hairline border, restrained blur,
 and soft shadow. The Reduce Blur accessibility option persists locally and
 replaces blurred surfaces with solid fills without changing the selected app
 theme or preview background.
+
+Temporary diagnostic panels stay open when the user invokes persistent toolbar
+actions such as theme or settings. Modal and lightbox backdrops close only the
+top layer and must never pass the click through to the toolbar beneath.
 
 Comparison cards remain horizontal at all supported widths. The page shell is
 one viewport tall with no page-level scrolling; preview stages shrink before
@@ -276,6 +284,10 @@ Asset inspection uses compact 64–72px rows with 40–48px thumbnails and a
 single-line metadata summary. Asset filters use a low-emphasis 28–32px
 segmented control.
 
+Current resource rows use a fixed 48px thumbnail and two metadata lines:
+dimensions/size, then imageKey/reference count. The filter row never owns a
+vertical scrollbar; only the resource list scrolls.
+
 Preview cards default to original-size rendering, constrained by the available
 stage when the logical canvas would overflow. Each card remembers its own fit
 choice.
@@ -286,6 +298,8 @@ Rules:
 - Use monospace for keys, dimensions, frame counts, hashes, and file names.
 - Do not use hero-scale text inside tool panels.
 - Keep button labels short and action-oriented.
+- At compact widths, icon-plus-label controls collapse to icons before text can wrap vertically.
+- File summaries may ellipsize, but neither side of the synchronized footer may disappear.
 
 ## Motion
 

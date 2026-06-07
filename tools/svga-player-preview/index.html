@@ -70,9 +70,9 @@
             </div>
             <div class="cardActions">
               <span id="svgaFilePillA" class="filePill" hidden></span>
-              <label class="cardFileButton" id="primaryFileButton">
+              <label class="cardFileButton" id="primaryFileButton" title="选择 SVGA 文件" aria-label="选择 SVGA 文件">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
-                <span id="primaryInputLabel">选择 SVGA</span>
+                <span id="primaryInputLabel" class="responsiveButtonLabel">选择 SVGA</span>
                 <input id="svgaFileInput" type="file" accept=".svga,application/octet-stream">
               </label>
             </div>
@@ -130,9 +130,9 @@
             </div>
             <div class="cardActions">
               <span id="svgaStatusB" class="statusPill">空</span>
-              <label class="cardFileButton" id="secondaryInputWrap">
+              <label class="cardFileButton" id="secondaryInputWrap" title="选择 SVGA B" aria-label="选择 SVGA B">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
-                <span id="secondaryInputLabel">选择 SVGA B</span>
+                <span id="secondaryInputLabel" class="responsiveButtonLabel">选择 SVGA B</span>
                 <input id="secondaryFileInput" type="file" accept=".svga,application/octet-stream">
               </label>
             </div>
@@ -188,15 +188,15 @@
               <h2>参考视频</h2>
             </div>
             <div class="cardActions">
-              <button id="rescanButton" class="cardUtilityButton" type="button" hidden>
+              <button id="rescanButton" class="cardUtilityButton" type="button" title="重新扫描产物" aria-label="重新扫描产物" hidden>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.35-5.65" /><path d="M20 4v6h-6" /></svg>
-                <span>重新扫描</span>
+                <span class="responsiveButtonLabel">重新扫描</span>
               </button>
               <span id="rescanStatus" class="srOnly" aria-live="polite">尚未扫描</span>
               <span id="referenceStatus" class="statusPill">空</span>
-              <label class="cardFileButton" id="referenceFileButton">
+              <label class="cardFileButton" id="referenceFileButton" title="选择参考视频" aria-label="选择参考视频">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4z" /><path d="m10 10 4 2-4 2z" /></svg>
-                <span>选择参考视频</span>
+                <span class="responsiveButtonLabel">选择参考视频</span>
                 <input id="referenceFileInput" type="file" accept=".mp4,.webm,.gif,video/mp4,video/webm,image/gif">
               </label>
             </div>
@@ -250,14 +250,14 @@
           <button id="infoPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整信息面板宽度 / Resize info panel"></button>
           <div class="infoHeader">
             <div>
-              <h2>SVGA 信息 / SVGA Info</h2>
-              <p>解析、资源和渲染状态 / Parse, assets and render status</p>
+              <h2 class="bilingualHeading"><span>SVGA 信息</span><small>SVGA Info</small></h2>
+              <p class="bilingualCopy"><span>解析、资源和渲染状态</span><small>Parse, assets and render status</small></p>
             </div>
-            <span id="infoStatus" class="statusPill">加载中 / LOADING</span>
+            <span id="infoStatus" class="statusPill">加载中</span>
           </div>
           <nav class="tabs" aria-label="Info tabs">
-            <button class="tabButton isActive" type="button" data-tab="overview">概览 / Overview</button>
-            <button class="tabButton" type="button" data-tab="assets">资源 / Assets</button>
+            <button class="tabButton isActive" type="button" data-tab="overview"><span>概览</span><small>Overview</small></button>
+            <button class="tabButton" type="button" data-tab="assets"><span>资源</span><small>Assets</small></button>
           </nav>
           <div id="tab-overview" class="tabPanel"></div>
           <div id="tab-assets" class="tabPanel isHidden"></div>
@@ -267,8 +267,8 @@
           <button id="logsPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整日志面板宽度"></button>
           <div class="infoHeader">
             <div>
-              <h2>运行日志 / Runtime Logs</h2>
-              <p id="fullLogsSubtitle">加载、解析和渲染事件 / Load, parse and render events</p>
+              <h2 class="bilingualHeading"><span>运行日志</span><small>Runtime Logs</small></h2>
+              <p id="fullLogsSubtitle" class="bilingualCopy"><span>加载、解析和渲染事件</span><small>Load, parse and render events</small></p>
             </div>
             <div class="panelActionGroup">
               <span id="logsActionFeedback" class="panelActionFeedback" aria-live="polite"></span>
@@ -309,7 +309,7 @@
         <section class="assetModal" role="dialog" aria-modal="true" aria-labelledby="assetPreviewTitle">
           <header>
             <div>
-              <h2 id="assetPreviewTitle">资源预览 / Asset Preview</h2>
+              <h2 id="assetPreviewTitle" class="bilingualHeading"><span>资源预览</span><small>Asset Preview</small></h2>
               <p id="assetPreviewMeta">imageKey</p>
             </div>
             <button id="assetPreviewClose" class="iconButton" type="button" title="关闭 / Close">
@@ -388,6 +388,7 @@
       <div id="statusAnnouncer" class="srOnly" aria-live="polite"></div>
       <div id="settingsToast" class="settingsToast" role="status" aria-live="polite" hidden>设置已更新</div>
       <div class="narrowWindowHint">窗口较窄，建议使用更大窗口获得更好的对比体验</div>
+      <div id="floatingRoot" class="floatingRoot" aria-live="off"></div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
