@@ -116,7 +116,13 @@ Key references:
 - Local Compare and Export Review always use two equal `minmax(0, 1fr)` columns, including narrow widths.
 - Diagnostics use one mutually exclusive side-panel state: `null`, `info`, or `logs`.
 - Side panels are overlays and must not re-parent or rebuild SVGA player canvases.
+- Floating layers use one explicit order: toolbar, side panels, dropdowns, settings, asset lightbox, toast.
+- Settings and asset lightbox are modal layers above diagnostics. Escape closes only the highest visible layer.
+- Side panels, modals, lightboxes, and dropdowns support outside-click dismissal without treating internal scrolling, filters, or resize handles as outside interaction.
+- Floating surfaces default to a nearly solid background with blur, hairline border, and shadow. The persisted Reduce Blur setting switches them to solid fills and disables backdrop blur.
 - Fit modes are stored independently for `a`, `b`, and `reference`; first-run default is `original`.
 - Fit changes and viewport resizes only recalculate the media frame. They do not rebuild or replay the SVGA player.
+- The toolbar remains a three-column grid through the 900px breakpoint so the mode selector keeps its centered column.
+- Preview stages and media frames use centered grid alignment at narrow widths.
 
 UI changes must follow the 10 rules in `AGENTS.md` → UI Design Rules section.
