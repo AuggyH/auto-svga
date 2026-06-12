@@ -172,3 +172,14 @@ The adapter maps:
 - version, image/sprite/audio counts, matte keys → metadata
 
 It is not imported by the CLI, exporter, or Web preview.
+
+### Inspection application service
+
+`MotionAssetInspectionService` is a host-neutral application boundary that
+delegates inspection to one injected `FormatAdapter`. It accepts the existing
+`MotionAssetSource`, so memory, filesystem, browser, or desktop hosts own byte
+access through `source.read()` without adding those APIs to the service.
+
+The first integration uses `SvgaFormatAdapter`. The service does not select
+formats, play media, write files, or participate in the CLI, exporter, or Web
+preview.

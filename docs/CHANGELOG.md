@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-13 — Motion inspection application service
+
+**Branch**: `agent/codex/svga-inspection-service`
+**Implementation commit**: `25c9a8c`
+
+- Added a host-neutral application service over injected `FormatAdapter`
+- Verified `SvgaFormatAdapter` parity through the service
+- Verified memory and host-provided local file sources
+- Kept CLI, exporter, Web preview, playback, and dependencies unchanged
+
 ## 2026-06-13 — Verification budget skill
 
 **Branch**: `agent/codex/verification-budget-skill`
