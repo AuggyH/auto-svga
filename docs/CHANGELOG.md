@@ -3,6 +3,7 @@
 ## 2026-06-13 — Token-saving Codex skills
 
 **Branch**: `agent/codex/token-saving-skills`
+**Implementation commit**: `6cb0e6f`
 
 - Added `caveman-report` for compact evidence-first reports
 - Added `context-budget` for minimal repository context loading
