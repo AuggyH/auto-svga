@@ -58,5 +58,5 @@ Base: `e1bc0e5`
 ## Commit
 
 - Commit: `2535bc3`
-- Merge: pending
+- Merge: `e2ad3cd`
 - Tag: none

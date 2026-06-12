@@ -52,6 +52,7 @@ Merged to main: `708063c`
 ## Project-specific Codex Skills
 
 Branch: `agent/codex/project-specific-skills`
+Merged to main: `e2ad3cd`
 
 - Added required `auto-svga-core-guard`.
 - Added focused skills for motion formats, specification checks, UI stability,
