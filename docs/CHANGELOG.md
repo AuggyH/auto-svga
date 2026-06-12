@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-13 — Verification budget skill
+
+**Branch**: `agent/codex/verification-budget-skill`
+**Implementation commit**: `a71232b`
+
+- Added `verification-budget` with Tier 0-4 validation guidance
+- Added concise passing/failing test evidence rules
+- Documented protected Auto SVGA flows
+- Kept runtime code, dependencies, and tests unchanged
+
 ## 2026-06-13 — Project-specific Codex skills
 
 **Branch**: `agent/codex/project-specific-skills`
