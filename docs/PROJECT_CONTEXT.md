@@ -27,6 +27,19 @@ auto-svga — CLI tool that converts layered PNG avatar frame assets into SVGA a
 - protobufjs (only dependency, for real SVGA export)
 - No other external runtime deps
 
+## Workbench architecture preparation
+
+The repository includes an isolated P1 contract proposal for future motion
+format inspection, playback, checks, recommendations, and conversion:
+
+- `src/workbench/contracts.ts`
+- `src/workbench/capabilities.ts`
+- `docs/multiformat-workbench-architecture.md`
+- `docs/decisions/ADR-003-multiformat-workbench-boundaries.md`
+
+These files are not connected to the current CLI or Web preview runtime.
+Current production scope remains `avatar_frame` to SVGA.
+
 ## Key File Paths
 
 - `AGENTS.md` — engineering rules, git workflow, agent handoff
@@ -42,6 +55,7 @@ auto-svga — CLI tool that converts layered PNG avatar frame assets into SVGA a
 - `docs/exporter-contract.md` — exporter protocol contract
 - `docs/svga-packaging-strategy.md` — SVGA binary strategy
 - `docs/motion-system-research-notes.md` — animation system research
+- `docs/multiformat-workbench-architecture.md` — future format capability matrix and staged architecture
 
 ## Run Commands
 

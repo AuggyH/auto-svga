@@ -23,6 +23,19 @@ Current UI direction:
 - local compare mode is explicit and used for SVGA A/B comparisons
 - Chinese labels are primary, while English labels and original report keys remain visible for debugging
 
+## Multi-format workbench preparation
+
+The current production scope is still `avatar_frame` to SVGA. A host-neutral
+architecture proposal for future SVGA, VAP, Lottie, animated WebP, WebM, APNG,
+and sprite-sequence inspection is documented in:
+
+- [docs/multiformat-workbench-architecture.md](docs/multiformat-workbench-architecture.md)
+- [docs/decisions/ADR-003-multiformat-workbench-boundaries.md](docs/decisions/ADR-003-multiformat-workbench-boundaries.md)
+
+The initial contracts under `src/workbench/` are isolated from the current CLI,
+exporter, and Web preview runtime. No additional player, encoder, or runtime
+dependency is enabled by this preparation work.
+
 ## Quick Start
 
 ```bash

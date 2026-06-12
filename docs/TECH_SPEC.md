@@ -39,6 +39,9 @@ src/
   types/                    Type definitions
   utils/                    PNG I/O, hash, fs, zip
   tests/                    Test suite
+  workbench/                Isolated future multi-format contracts
+    contracts.ts            Host-neutral adapter and workflow interfaces
+    capabilities.ts         Audited format capability maturity baselines
 
 tools/
   svga-player-preview/      Web playback validation tool
@@ -130,3 +133,18 @@ Key references:
 - Buttons that combine an icon and label expose a title/accessible name and collapse to icon-only below the compact breakpoint.
 
 UI changes must follow the 10 rules in `AGENTS.md` → UI Design Rules section.
+
+## Future workbench boundary
+
+The proposed multi-format workbench is documented in
+`docs/multiformat-workbench-architecture.md`. Its contracts do not currently
+participate in the production pipeline.
+
+Key boundaries:
+
+- format parsing does not own playback
+- playback sessions do not own product synchronization
+- exporters return bytes; hosts choose filesystem destinations
+- Node process/filesystem and browser DOM/canvas APIs stay outside core contracts
+- frame sequences are a raster conversion bridge, not a universal semantic model
+- new dependencies require license, maintenance, bundle-size, and redistribution review
