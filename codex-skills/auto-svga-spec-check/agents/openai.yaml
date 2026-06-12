@@ -1,0 +1,4 @@
+interface:
+  display_name: "Auto SVGA Spec Check"
+  short_description: "Validate motion assets against production specifications"
+  default_prompt: "Use $auto-svga-spec-check to validate these motion assets."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Auto SVGA Client Ready"
+  short_description: "Assess desktop packaging and cross-platform boundaries"
+  default_prompt: "Use $auto-svga-client-ready to assess this module or dependency change."

@@ -199,13 +199,19 @@ When a new agent takes over this repo:
 
 Repository-local reusable skills live under `codex-skills/`:
 
+- `auto-svga-core-guard` — required for every Auto SVGA task
+- `auto-svga-motion-formats` — format parsing, playback, replacement, conversion, and export
+- `auto-svga-spec-check` — asset specifications and performance checks
+- `auto-svga-ui-stability` — Web preview and responsive UI work
+- `auto-svga-client-ready` — dependencies, filesystem, offline, and desktop packaging
 - `caveman-report` — compact plans, progress updates, completion reports, and risks
 - `context-budget` — minimal context loading and precise file reads
 - `diff-first` — change/evidence/regression-first engineering reports
 
-Load only the skill needed for the current task. These files are source
-artifacts; installing them into a user's global Codex skill directory is a
-separate explicit action.
+Load `auto-svga-core-guard` for every task, then load only the domain skills
+needed. See `docs/codex-skill-usage.md`. These files are source artifacts;
+installing them into a user's global Codex skill directory is a separate
+explicit action.
 
 ## Review Process
 

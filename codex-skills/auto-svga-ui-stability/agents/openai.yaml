@@ -1,0 +1,4 @@
+interface:
+  display_name: "Auto SVGA UI Stability"
+  short_description: "Protect preview UI behavior and responsive stability"
+  default_prompt: "Use $auto-svga-ui-stability for this Web preview UI task."
