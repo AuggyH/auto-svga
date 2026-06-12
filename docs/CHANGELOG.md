@@ -3,6 +3,7 @@
 ## 2026-06-13 — Multi-format workbench architecture preparation
 
 **Branch**: `agent/codex/multiformat-workbench-architecture`
+**Implementation commit**: `39b21e2`
 
 - Audited current SVGA parser, playback, exporter, Web host, and FFmpeg coupling
 - Added isolated workbench contracts for adapters, playback sessions, checks, recommendations, exports, progress, and cancellation
