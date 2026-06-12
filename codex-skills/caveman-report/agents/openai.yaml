@@ -1,0 +1,4 @@
+interface:
+  display_name: "Caveman Report"
+  short_description: "Write compact, evidence-first engineering reports"
+  default_prompt: "Use $caveman-report to compress this plan or completion report."

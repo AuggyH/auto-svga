@@ -195,6 +195,18 @@ When a new agent takes over this repo:
 6. Load `docs/TECH_SPEC.md` only if technical details are needed.
 7. Do not expand beyond avatar_frame MVP scope unless explicitly requested.
 
+## Token-saving Skills
+
+Repository-local reusable skills live under `codex-skills/`:
+
+- `caveman-report` — compact plans, progress updates, completion reports, and risks
+- `context-budget` — minimal context loading and precise file reads
+- `diff-first` — change/evidence/regression-first engineering reports
+
+Load only the skill needed for the current task. These files are source
+artifacts; installing them into a user's global Codex skill directory is a
+separate explicit action.
+
 ## Review Process
 
 1. Each task outputs a review file in `docs/reviews/`:

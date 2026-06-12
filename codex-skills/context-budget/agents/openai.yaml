@@ -1,0 +1,4 @@
+interface:
+  display_name: "Context Budget"
+  short_description: "Limit file reads and repeated project context"
+  default_prompt: "Use $context-budget to inspect only the context needed for this task."

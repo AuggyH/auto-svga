@@ -39,6 +39,15 @@ Merged to main: `1790483`
 - Current CLI, exporters, Web preview, and generated SVGA bytes are untouched.
 - Full test result: 35 passed, 0 failed.
 
+## Token-saving Skills
+
+Branch: `agent/codex/token-saving-skills`
+
+- Added repository-local `caveman-report`, `context-budget`, and `diff-first`.
+- Each skill contains concise task rules plus standard Codex UI metadata.
+- All three skills pass the official `quick_validate.py` validator.
+- No runtime code, dependency, output protocol, or global Codex installation changed.
+
 ## Web Preview Rebuild
 
 The current branch rebuilds the Web preview from
