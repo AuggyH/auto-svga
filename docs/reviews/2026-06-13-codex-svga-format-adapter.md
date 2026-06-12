@@ -119,5 +119,5 @@ Parity coverage:
 
 - Commit: `1866efc`
 - Branch: `agent/codex/svga-format-adapter`
-- Merge: pending
+- Merge: `1790483`
 - Tag: none

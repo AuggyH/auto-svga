@@ -28,6 +28,7 @@ Merged to main: `4498e64`
 ## SVGA FormatAdapter
 
 Branch: `agent/codex/svga-format-adapter`
+Merged to main: `1790483`
 
 - Added a host-neutral `SvgaFormatAdapter` that maps standard MovieEntity
   metadata to `MotionAssetInfo`.
