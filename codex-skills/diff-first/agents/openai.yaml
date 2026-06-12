@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diff First"
+  short_description: "Report changes, evidence, regressions, and risks first"
+  default_prompt: "Use $diff-first to report this change from the diff and verification evidence."
