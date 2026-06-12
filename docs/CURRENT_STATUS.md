@@ -5,7 +5,7 @@ Date: 2026-06-13
 ## Main Branch
 
 - **Runnable**: yes after Web preview component consistency polish
-- **Latest implementation commit**: `39b21e2`
+- **Latest implementation commit**: pending SVGA FormatAdapter commit
 - **Latest tag**: v0.1.4-web-preview-rebuild
 - **Branch**: main
 
@@ -24,6 +24,19 @@ Merged to main: `4498e64`
   and Web preview behavior remain unchanged.
 - No new runtime dependency was added.
 - Standard test now runs all compiled test files; latest result is 31 passed.
+
+## SVGA FormatAdapter
+
+Branch: `agent/codex/svga-format-adapter`
+
+- Added a host-neutral `SvgaFormatAdapter` that maps standard MovieEntity
+  metadata to `MotionAssetInfo`.
+- Added an injected `SvgaBinaryInspector` boundary.
+- Added a Node host inspector for zlib and protobuf decoding.
+- Added metadata parity tests for dimensions, FPS, duration, image keys,
+  Sprite references, resource counts, and existing validator counts.
+- Current CLI, exporters, Web preview, and generated SVGA bytes are untouched.
+- Full test result: 35 passed, 0 failed.
 
 ## Web Preview Rebuild
 
@@ -124,8 +137,8 @@ avatar_frame MVP only. No other asset types.
 
 ## Next Steps
 
-- Wrap current SVGA inspection behind `FormatAdapter` without changing parsed
-  values, exporter bytes, or Web playback behavior.
+- Integrate SVGA inspection into one non-UI application service without
+  changing CLI output or Web playback behavior.
 - Complete axe and explicit 1600/1440/1280/1024/900/768 viewport matrix checks
 - Human review of the synchronized footer at 900px/768px and a real two-SVGA Local Compare session
 - Human visual acceptance of avatar_frame_gold_green_real_002 remains required

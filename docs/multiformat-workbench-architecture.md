@@ -1,7 +1,7 @@
 # Multi-format Motion Workbench Architecture
 
 Date: 2026-06-13
-Status: P1 infrastructure proposal. No runtime integration.
+Status: P1 infrastructure proposal with an isolated SVGA inspection adapter.
 
 ## 1. Goal and boundary
 
@@ -153,6 +153,16 @@ The initial contracts are in:
 - `src/workbench/capabilities.ts`
 
 They are deliberately not connected to the existing runtime.
+
+The first implementation slice is in `src/workbench/svga/`:
+
+- `format-adapter.ts` maps inspected SVGA bytes to `MotionAssetInfo`
+- `types.ts` defines the format-specific inspection boundary
+- `node-protobuf-inspector.ts` contains Node zlib and protobuf loading
+
+The adapter has no Node, DOM, Canvas, filesystem, or browser dependency. The
+Node inspector is injected and may later be replaced by a browser or desktop
+host implementation. No production command imports this adapter yet.
 
 ## 5. Core interfaces
 
@@ -313,12 +323,16 @@ Exit: contracts compile, capability claims match current code, no behavior chang
 
 ### Phase 1: wrap SVGA inspection
 
-- implement an SVGA `FormatAdapter` by reusing current protobuf decoding
-- return `MotionAssetInfo`
-- add adapter contract tests
+- [x] implement an SVGA `FormatAdapter` by reusing current protobuf decoding
+- [x] return `MotionAssetInfo`
+- [x] add adapter metadata parity tests
+- [ ] choose the first production inspection call site in a separate task
 - do not change exporter bytes or player UI
 
-Exit: existing SVGA fixtures produce equivalent counts and dimensions.
+Current evidence: synthetic standard SVGA bytes preserve dimensions, FPS,
+duration, image keys, Sprite references, and counts; counts also match the
+existing MVP SVGA validator. Production integration remains intentionally
+deferred.
 
 ### Phase 2: extract playback sessions
 

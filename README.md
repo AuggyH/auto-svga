@@ -36,6 +36,12 @@ The initial contracts under `src/workbench/` are isolated from the current CLI,
 exporter, and Web preview runtime. No additional player, encoder, or runtime
 dependency is enabled by this preparation work.
 
+The first adapter slice is available under `src/workbench/svga/`. It maps
+standard SVGA protobuf metadata to `MotionAssetInfo` without changing the
+existing exporter, CLI, or Web player. The adapter itself consumes bytes and an
+injected inspector; Node-specific zlib and proto loading remain in a separate
+host implementation.
+
 ## Quick Start
 
 ```bash
