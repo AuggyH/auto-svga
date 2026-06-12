@@ -184,6 +184,11 @@ The first integration uses `SvgaFormatAdapter`. The service does not select
 formats, play media, write files, or participate in the CLI, exporter, or Web
 preview.
 
+The existing `inspect()` method remains unchanged. Callers that also provide a
+`MotionSpec` and `MotionSpecChecker` may use `inspectWithSpec()` to receive the
+parsed asset and `MotionSpecCheckReport` together. Specification failures do
+not remove or mutate a successfully parsed asset.
+
 ### Minimal SVGA specification checker
 
 `SvgaMotionSpecChecker` consumes `MotionAssetInfo` and `MotionSpec` without

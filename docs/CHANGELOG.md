@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-13 — Inspection service specification integration
+
+**Branch**: `agent/codex/inspection-spec-integration`
+**Implementation commit**: `62ddcc6`
+
+- Added optional specification checking to `MotionAssetInspectionService`
+- Kept the existing `inspect()` behavior and return type unchanged
+- Returned parsed asset and `MotionSpecCheckReport` together through `inspectWithSpec()`
+- Kept adapter, checker rules, exporter, CLI, Web preview, and dependencies unchanged
+
 ## 2026-06-13 — Minimal SVGA MotionSpecChecker
 
 **Branch**: `agent/codex/minimal-svga-spec-checker`
