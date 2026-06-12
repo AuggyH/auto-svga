@@ -183,3 +183,19 @@ access through `source.read()` without adding those APIs to the service.
 The first integration uses `SvgaFormatAdapter`. The service does not select
 formats, play media, write files, or participate in the CLI, exporter, or Web
 preview.
+
+### Minimal SVGA specification checker
+
+`SvgaMotionSpecChecker` consumes `MotionAssetInfo` and `MotionSpec` without
+reading or decoding source bytes. The current deterministic checks are:
+
+- file size
+- canvas dimensions
+- duration
+- FPS
+- resource count
+
+Each exceeded or unavailable required value produces a structured issue with a
+stable code, field path, and actual/maximum details. Exact limit values pass.
+Transparent padding, effective pixels, sequence consistency, texture memory,
+and device performance remain outside this slice.
