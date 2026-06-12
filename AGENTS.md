@@ -207,6 +207,7 @@ Repository-local reusable skills live under `codex-skills/`:
 - `caveman-report` — compact plans, progress updates, completion reports, and risks
 - `context-budget` — minimal context loading and precise file reads
 - `diff-first` — change/evidence/regression-first engineering reports
+- `verification-budget` — risk-proportional validation and concise test evidence
 
 Load `auto-svga-core-guard` for every task, then load only the domain skills
 needed. See `docs/codex-skill-usage.md`. These files are source artifacts;
