@@ -32,7 +32,8 @@
 - [x] Define host-neutral workbench contracts and capability maturity language
 - [x] Record initial capability matrix for SVGA, VAP, Lottie, animated WebP, WebM, APNG, and sprite sequences
 - [x] Record dependency, license, maintenance, and desktop redistribution risks
-- [ ] Wrap current SVGA inspection behind `FormatAdapter` without changing output
+- [x] Wrap current SVGA inspection behind `FormatAdapter` without changing output
+- [ ] Integrate SVGA inspection into one non-UI application service
 - [ ] Extract browser SVGA playback behind `PlaybackAdapter`
 - [ ] Replace CDN runtime loading with an approved local bundle
 - [ ] Define versioned delivery specifications and deterministic checks

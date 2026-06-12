@@ -42,6 +42,10 @@ src/
   workbench/                Isolated future multi-format contracts
     contracts.ts            Host-neutral adapter and workflow interfaces
     capabilities.ts         Audited format capability maturity baselines
+    svga/
+      format-adapter.ts      SVGA inspection → MotionAssetInfo mapping
+      types.ts               Host-neutral SVGA inspection boundary
+      node-protobuf-inspector.ts  Node zlib/protobuf inspector implementation
 
 tools/
   svga-player-preview/      Web playback validation tool
@@ -148,3 +152,23 @@ Key boundaries:
 - Node process/filesystem and browser DOM/canvas APIs stay outside core contracts
 - frame sequences are a raster conversion bridge, not a universal semantic model
 - new dependencies require license, maintenance, bundle-size, and redistribution review
+
+### SVGA inspection adapter
+
+`SvgaFormatAdapter` accepts a `MotionAssetSource` and injected
+`SvgaBinaryInspector`. It does not accept filesystem paths and does not import
+Node or browser APIs. `NodeProtobufSvgaInspector` is the current host
+implementation and owns:
+
+- zlib inflation
+- `proto/svga.proto` loading
+- protobuf decoding
+
+The adapter maps:
+
+- Movie params → dimensions and timing
+- image map → resources keyed by `imageKey`
+- SpriteEntity list → layers with resource references
+- version, image/sprite/audio counts, matte keys → metadata
+
+It is not imported by the CLI, exporter, or Web preview.
