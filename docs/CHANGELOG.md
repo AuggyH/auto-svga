@@ -3,6 +3,7 @@
 ## 2026-06-13 — SVGA FormatAdapter
 
 **Branch**: `agent/codex/svga-format-adapter`
+**Implementation commit**: `1866efc`
 
 - Added a host-neutral SVGA `FormatAdapter` and inspection data boundary
 - Added a Node zlib/protobuf inspector as a separate host implementation

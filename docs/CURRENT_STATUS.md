@@ -5,7 +5,7 @@ Date: 2026-06-13
 ## Main Branch
 
 - **Runnable**: yes after Web preview component consistency polish
-- **Latest implementation commit**: pending SVGA FormatAdapter commit
+- **Latest implementation commit**: `1866efc`
 - **Latest tag**: v0.1.4-web-preview-rebuild
 - **Branch**: main
 
