@@ -3,6 +3,7 @@
 ## 2026-06-13 — Project-specific Codex skills
 
 **Branch**: `agent/codex/project-specific-skills`
+**Implementation commit**: `2535bc3`
 
 - Added the required Auto SVGA core guard
 - Added focused format, specification, UI, and client-readiness skills
