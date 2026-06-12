@@ -49,6 +49,16 @@ Merged to main: `708063c`
 - All three skills pass the official `quick_validate.py` validator.
 - No runtime code, dependency, output protocol, or global Codex installation changed.
 
+## Verification Budget Skill
+
+Branch: `agent/codex/verification-budget-skill`
+Implementation commit: `a71232b`
+
+- Added repository-local `verification-budget` for risk-proportional validation.
+- Defines Tier 0-4 requirements, concise evidence rules, and protected Auto SVGA flows.
+- Official skill validation and Git whitespace checks pass.
+- Runtime code, tests, dependencies, exporter, playback, CLI, and Web preview are unchanged.
+
 ## Project-specific Codex Skills
 
 Branch: `agent/codex/project-specific-skills`
