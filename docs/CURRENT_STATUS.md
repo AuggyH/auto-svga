@@ -12,7 +12,7 @@ Date: 2026-06-13
 ## Multi-format Workbench Architecture Preparation
 
 Branch: `agent/codex/multiformat-workbench-architecture`
-Status: verified and ready for merge
+Merged to main: `4498e64`
 
 - Added isolated host-neutral contracts for format parsing, playback sessions,
   specification checks, recommendations, exports, cancellation, and progress.
