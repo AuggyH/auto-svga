@@ -1,0 +1,4 @@
+interface:
+  display_name: "Auto SVGA Motion Formats"
+  short_description: "Guide motion format parsing, playback, and conversion work"
+  default_prompt: "Use $auto-svga-motion-formats for this motion format task."

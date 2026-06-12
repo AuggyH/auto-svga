@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-13 — Project-specific Codex skills
+
+**Branch**: `agent/codex/project-specific-skills`
+
+- Added the required Auto SVGA core guard
+- Added focused format, specification, UI, and client-readiness skills
+- Added task-to-skill routing guidance
+- Added a compact main prompt to replace repeated project instructions
+
 ## 2026-06-13 — Token-saving Codex skills
 
 **Branch**: `agent/codex/token-saving-skills`

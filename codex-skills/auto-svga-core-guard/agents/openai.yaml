@@ -1,0 +1,4 @@
+interface:
+  display_name: "Auto SVGA Core Guard"
+  short_description: "Lock every Auto SVGA task to the product mainline"
+  default_prompt: "Use $auto-svga-core-guard to scope and execute this Auto SVGA task."

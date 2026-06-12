@@ -49,6 +49,18 @@ Merged to main: `708063c`
 - All three skills pass the official `quick_validate.py` validator.
 - No runtime code, dependency, output protocol, or global Codex installation changed.
 
+## Project-specific Codex Skills
+
+Branch: `agent/codex/project-specific-skills`
+
+- Added required `auto-svga-core-guard`.
+- Added focused skills for motion formats, specification checks, UI stability,
+  and desktop-client preparation.
+- Added skill routing guidance and a compact replacement main prompt.
+- All five project skills pass the official validator.
+- Full project test result: 35 passed, 0 failed.
+- Runtime code, tests, dependencies, SVGA output, and Web preview are unchanged.
+
 ## Web Preview Rebuild
 
 The current branch rebuilds the Web preview from
