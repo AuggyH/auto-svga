@@ -64,5 +64,5 @@ passed
 ## Commit
 
 - Commit: `6cb0e6f`
-- Merge: pending
+- Merge: `708063c`
 - Tag: none

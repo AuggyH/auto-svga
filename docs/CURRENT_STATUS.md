@@ -42,6 +42,7 @@ Merged to main: `1790483`
 ## Token-saving Skills
 
 Branch: `agent/codex/token-saving-skills`
+Merged to main: `708063c`
 
 - Added repository-local `caveman-report`, `context-budget`, and `diff-first`.
 - Each skill contains concise task rules plus standard Codex UI metadata.
