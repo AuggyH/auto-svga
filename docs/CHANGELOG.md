@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-13 — Multi-format workbench architecture preparation
+
+**Branch**: `agent/codex/multiformat-workbench-architecture`
+
+- Audited current SVGA parser, playback, exporter, Web host, and FFmpeg coupling
+- Added isolated workbench contracts for adapters, playback sessions, checks, recommendations, exports, progress, and cancellation
+- Added capability maturity baselines for seven target motion formats
+- Added ADR-003 and a staged architecture, dependency, licensing, and desktop-client plan
+- Kept all current avatar-frame runtime paths unchanged and added no dependencies
+- Expanded the standard test command to include all compiled test files
+
 ## 2026-06-07 — Web preview component consistency
 
 **Branch**: `agent/codex/web-preview-component-consistency`

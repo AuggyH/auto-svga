@@ -1,6 +1,6 @@
 # Current Status
 
-Date: 2026-06-07
+Date: 2026-06-13
 
 ## Main Branch
 
@@ -8,6 +8,21 @@ Date: 2026-06-07
 - **Latest implementation commit**: `691f7df`
 - **Latest tag**: v0.1.4-web-preview-rebuild
 - **Branch**: main
+
+## Multi-format Workbench Architecture Preparation
+
+Branch: `agent/codex/multiformat-workbench-architecture`
+
+- Added isolated host-neutral contracts for format parsing, playback sessions,
+  specification checks, recommendations, exports, cancellation, and progress.
+- Added an audited capability baseline for SVGA, VAP, Lottie, animated WebP,
+  WebM, APNG, and sprite sequences.
+- Documented the current SVGA coupling, raster conversion boundary, desktop
+  host ports, dependency/license risks, and staged rollout.
+- Recorded ADR-003. Current `avatar_frame` runtime, project protocol, exporter,
+  and Web preview behavior remain unchanged.
+- No new runtime dependency was added.
+- Standard test now runs all compiled test files; latest result is 31 passed.
 
 ## Web Preview Rebuild
 
@@ -108,6 +123,8 @@ avatar_frame MVP only. No other asset types.
 
 ## Next Steps
 
+- Wrap current SVGA inspection behind `FormatAdapter` without changing parsed
+  values, exporter bytes, or Web playback behavior.
 - Complete axe and explicit 1600/1440/1280/1024/900/768 viewport matrix checks
 - Human review of the synchronized footer at 900px/768px and a real two-SVGA Local Compare session
 - Human visual acceptance of avatar_frame_gold_green_real_002 remains required
