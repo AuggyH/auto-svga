@@ -52,6 +52,18 @@ Implementation commit: `25c9a8c`
 - Service tests: 3 passed; existing SVGA adapter tests: 4 passed.
 - Build passed. Exporter, CLI, Web preview, playback, and dependencies are untouched.
 
+## Minimal SVGA MotionSpecChecker
+
+Branch: `agent/codex/minimal-svga-spec-checker`
+Implementation commit: `870ea1f`
+
+- Added host-neutral `SvgaMotionSpecChecker`.
+- Checks file size, canvas dimensions, duration, FPS, and resource count from
+  existing `MotionAssetInfo`.
+- Emits structured issues for exceeded limits and required metadata that is unavailable.
+- Checker tests: 5 passed; inspection service tests: 3 passed; build passed.
+- Adapter, inspection service, exporter, CLI, Web preview, playback, and dependencies are untouched.
+
 ## Token-saving Skills
 
 Branch: `agent/codex/token-saving-skills`
