@@ -39,6 +39,19 @@ Merged to main: `1790483`
 - Current CLI, exporters, Web preview, and generated SVGA bytes are untouched.
 - Full test result: 35 passed, 0 failed.
 
+## Motion Inspection Application Service
+
+Branch: `agent/codex/svga-inspection-service`
+Implementation commit: `25c9a8c`
+
+- Added host-neutral `MotionAssetInspectionService`.
+- The service delegates to one injected `FormatAdapter` and returns its
+  `WorkbenchResult<MotionAssetInfo>` unchanged.
+- Verified memory sources and host-provided local file sources with
+  `SvgaFormatAdapter`.
+- Service tests: 3 passed; existing SVGA adapter tests: 4 passed.
+- Build passed. Exporter, CLI, Web preview, playback, and dependencies are untouched.
+
 ## Token-saving Skills
 
 Branch: `agent/codex/token-saving-skills`
