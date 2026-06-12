@@ -64,6 +64,18 @@ Implementation commit: `870ea1f`
 - Checker tests: 5 passed; inspection service tests: 3 passed; build passed.
 - Adapter, inspection service, exporter, CLI, Web preview, playback, and dependencies are untouched.
 
+## Inspection Service Specification Integration
+
+Branch: `agent/codex/inspection-spec-integration`
+Implementation commit: `62ddcc6`
+
+- Preserved the existing `MotionAssetInspectionService.inspect()` API.
+- Added `inspectWithSpec()` to return parsed `MotionAssetInfo` and an optional
+  `MotionSpecCheckReport` in one application-service call.
+- Specification failures do not remove or mutate the successfully parsed asset.
+- Inspection integration tests: 7 passed; checker tests: 5 passed; build passed.
+- Adapter, checker implementation, exporter, CLI, Web preview, playback, and dependencies are untouched.
+
 ## Token-saving Skills
 
 Branch: `agent/codex/token-saving-skills`
