@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-13 — Minimal SVGA MotionSpecChecker
+
+**Branch**: `agent/codex/minimal-svga-spec-checker`
+**Implementation commit**: `870ea1f`
+
+- Added static SVGA checks for file size, dimensions, duration, FPS, and resource count
+- Added structured exceeded-limit and unavailable-metadata issues
+- Added passing, failing, multi-issue, and boundary-value tests
+- Kept adapter, inspection service, exporter, CLI, Web preview, and dependencies unchanged
+
 ## 2026-06-13 — Motion inspection application service
 
 **Branch**: `agent/codex/svga-inspection-service`
