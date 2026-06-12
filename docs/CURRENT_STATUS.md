@@ -5,13 +5,14 @@ Date: 2026-06-13
 ## Main Branch
 
 - **Runnable**: yes after Web preview component consistency polish
-- **Latest implementation commit**: `691f7df`
+- **Latest implementation commit**: `39b21e2`
 - **Latest tag**: v0.1.4-web-preview-rebuild
 - **Branch**: main
 
 ## Multi-format Workbench Architecture Preparation
 
 Branch: `agent/codex/multiformat-workbench-architecture`
+Status: verified and ready for merge
 
 - Added isolated host-neutral contracts for format parsing, playback sessions,
   specification checks, recommendations, exports, cancellation, and progress.
