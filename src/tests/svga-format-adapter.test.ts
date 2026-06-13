@@ -8,6 +8,7 @@ import { deflateSync } from "node:zlib";
 import test from "node:test";
 import protobuf from "protobufjs";
 import { validateMvpSvgaOutput } from "../mvp/svga-exporter.js";
+import { createTransparentImage, encodeRgbaPng } from "../utils/png-writer.js";
 import type { MotionAssetSource } from "../workbench/contracts.js";
 import {
   NodeProtobufSvgaInspector,
@@ -42,6 +43,17 @@ test("SVGA FormatAdapter preserves current protobuf inspection metadata", async 
   assert.deepEqual(
     asset.resources.map(({ sizeBytes }) => sizeBytes),
     reference.images.map(({ bytes: imageBytes }) => imageBytes.byteLength)
+  );
+  assert.deepEqual(
+    asset.resources.map(({ dimensions }) => dimensions),
+    [
+      { width: 300, height: 300 },
+      { width: 48, height: 96 }
+    ]
+  );
+  assert.deepEqual(
+    asset.resources.map(({ metadata }) => metadata?.imageFormat),
+    ["png", "png"]
   );
   assert.deepEqual(
     asset.layers.map(({ resourceIds }) => resourceIds),
@@ -132,8 +144,8 @@ async function createSvgaFixture(): Promise<Uint8Array> {
       frames: 48
     },
     images: {
-      img_frame: Uint8Array.from([1, 2, 3]),
-      img_sweep: Uint8Array.from([4, 5])
+      img_frame: encodeRgbaPng(createTransparentImage(300, 300)),
+      img_sweep: encodeRgbaPng(createTransparentImage(48, 96))
     },
     sprites: [
       {

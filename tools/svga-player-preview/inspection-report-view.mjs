@@ -38,6 +38,8 @@ function issueMessage(issue) {
     duration_exceeds_limit: "播放时长超过生产规范上限。",
     fps_exceeds_limit: "帧率超过生产规范上限。",
     resource_count_exceeds_limit: "图片资源数量超过生产规范上限。",
+    resource_dimensions_exceed_limit: "内嵌图片资源尺寸超过 300 × 300 上限。",
+    resource_dimensions_unavailable: "无法识别内嵌图片资源尺寸。",
     duration_unavailable: "无法读取播放时长。",
     fps_unavailable: "无法读取帧率。"
   };

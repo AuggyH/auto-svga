@@ -20,6 +20,10 @@ test("avatar-frame production preset contains the current production baseline", 
   assert.equal(avatarFrameProductionSpec.maxDurationMs, 3_000);
   assert.equal(avatarFrameProductionSpec.maxFileSizeBytes, 512 * 1024);
   assert.equal(avatarFrameProductionSpec.maxResourceCount, 32);
+  assert.deepEqual(avatarFrameProductionSpec.maxResourceDimensions, {
+    width: 300,
+    height: 300
+  });
   assert.equal(avatarFrameProductionSpec.metadata?.assetType, "avatar_frame");
   assert.equal(avatarFrameProductionSpec.metadata?.target, "production");
   assert.equal(avatarFrameProductionSpec.metadata?.calibrationStatus, "provisional");
@@ -115,7 +119,8 @@ function asset(
     resources: Array.from({ length: options.resourceCount ?? 0 }, (_, index) => ({
       id: `resource_${index}`,
       name: `resource_${index}`,
-      kind: "image" as const
+      kind: "image" as const,
+      dimensions: { width: 1, height: 1 }
     }))
   };
 }

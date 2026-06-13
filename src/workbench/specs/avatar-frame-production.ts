@@ -11,6 +11,10 @@ export const avatarFrameProductionSpec: MotionSpec = {
   maxDurationMs: 3_000,
   maxFps: 24,
   maxResourceCount: 32,
+  maxResourceDimensions: {
+    width: 300,
+    height: 300
+  },
   metadata: {
     assetType: "avatar_frame",
     target: "production",
@@ -29,7 +33,8 @@ export const avatarFrameProductionSpec: MotionSpec = {
       maxFps: "Current default avatar-frame export configuration.",
       maxDurationMs: "Current default 72-frame / 24-FPS loop.",
       maxFileSizeBytes: "Two unique 300x300 outputs measured 107,034 and 346,987 bytes; 512 KiB keeps 51% headroom above the larger current sample.",
-      maxResourceCount: "Two unique 300x300 outputs contained 28 and 25 image resources; 32 keeps four resources of headroom above the larger current sample."
+      maxResourceCount: "Two unique 300x300 outputs contained 28 and 25 image resources; 32 keeps four resources of headroom above the larger current sample.",
+      maxResourceDimensions: "Embedded avatar-frame image resources should stay within the 300x300 production canvas."
     }
   }
 };

@@ -8,6 +8,7 @@ import type {
   WorkbenchOperationContext,
   WorkbenchResult
 } from "../contracts.js";
+import { readEmbeddedImageMetadata } from "./image-metadata.js";
 import type { SvgaBinaryInspector, SvgaMovieInspection } from "./types.js";
 
 export class SvgaFormatAdapter implements FormatAdapter {
@@ -68,15 +69,20 @@ export class SvgaFormatAdapter implements FormatAdapter {
 function toMotionAssetInfo(source: MotionAssetSource, movie: SvgaMovieInspection): MotionAssetInfo {
   const { params } = movie;
   const durationMs = params.fps > 0 ? (params.frames / params.fps) * 1000 : undefined;
-  const resources: MotionResourceInfo[] = movie.images.map((image) => ({
-    id: image.imageKey,
-    name: image.imageKey,
-    kind: "image",
-    sizeBytes: image.bytes.byteLength,
-    metadata: {
-      imageKey: image.imageKey
-    }
-  }));
+  const resources: MotionResourceInfo[] = movie.images.map((image) => {
+    const imageMetadata = readEmbeddedImageMetadata(image.bytes);
+    return {
+      id: image.imageKey,
+      name: image.imageKey,
+      kind: "image",
+      sizeBytes: image.bytes.byteLength,
+      dimensions: imageMetadata.dimensions,
+      metadata: {
+        imageKey: image.imageKey,
+        imageFormat: imageMetadata.format
+      }
+    };
+  });
   const layers: MotionLayerInfo[] = movie.sprites.map((sprite) => ({
     id: `sprite_${sprite.index}`,
     name: sprite.imageKey || `sprite_${sprite.index}`,

@@ -7,6 +7,7 @@ import { deflateSync } from "node:zlib";
 import test from "node:test";
 import protobuf from "protobufjs";
 import { inspectAvatarFrameCommand } from "../commands/inspect-avatar-frame.js";
+import { createTransparentImage, encodeRgbaPng } from "../utils/png-writer.js";
 
 test("avatar-frame inspection command returns a passing structured report", async () => {
   const report = await inspectFixture({ width: 300, height: 300 });
@@ -65,7 +66,7 @@ async function createSvgaFixture(dimensions: { width: number; height: number }):
       frames: 72
     },
     images: {
-      img_frame: Uint8Array.from([1, 2, 3])
+      img_frame: encodeRgbaPng(createTransparentImage(300, 300))
     },
     sprites: [{
       imageKey: "img_frame",
