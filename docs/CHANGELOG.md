@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-13 — Avatar-frame production specification preset
+
+**Branch**: `agent/codex/avatar-frame-production-spec`
+**Implementation commit**: `5df8831`
+
+- Added reusable `avatarFrameProductionSpec`
+- Added confirmed production limits for canvas, FPS, and duration
+- Marked file-size and resource-count placeholders for product calibration
+- Verified the preset through `inspectWithSpec()` without changing runtime flows
+
 ## 2026-06-13 — Inspection service specification integration
 
 **Branch**: `agent/codex/inspection-spec-integration`
