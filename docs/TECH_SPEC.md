@@ -204,3 +204,16 @@ Each exceeded or unavailable required value produces a structured issue with a
 stable code, field path, and actual/maximum details. Exact limit values pass.
 Transparent padding, effective pixels, sequence consistency, texture memory,
 and device performance remain outside this slice.
+
+### Avatar-frame production specification preset
+
+`avatarFrameProductionSpec` is a host-neutral `MotionSpec` shared from
+`src/workbench/specs/`. Its current confirmed baseline is:
+
+- maximum canvas: `300 x 300`
+- maximum FPS: `24`
+- maximum duration: `3000 ms`
+
+File size (`500,000 bytes`) and resource count (`64`) are conservative
+placeholders. Both are listed in `metadata.needsProductCalibration`; callers
+must not treat them as final product policy until calibrated.
