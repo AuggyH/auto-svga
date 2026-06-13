@@ -9,13 +9,17 @@ import {
 } from "../workbench/svga/index.js";
 import { FastPngAlphaAnalyzer } from "./fast-png-alpha-analyzer.js";
 
-export function createAvatarFrameInspectionReportService(): AvatarFrameInspectionReportService {
+export function createAvatarFrameInspectionService(): MotionAssetInspectionService {
   const adapter = new SvgaFormatAdapter(
     new NodeProtobufSvgaInspector(),
     new FastPngAlphaAnalyzer()
   );
+  return new MotionAssetInspectionService(adapter);
+}
+
+export function createAvatarFrameInspectionReportService(): AvatarFrameInspectionReportService {
   return new AvatarFrameInspectionReportService(
-    new MotionAssetInspectionService(adapter),
+    createAvatarFrameInspectionService(),
     new SvgaMotionSpecChecker()
   );
 }
