@@ -30,12 +30,29 @@ export interface MotionTiming {
   loop?: boolean;
 }
 
+export type ImageAlphaBoundsStatus =
+  | "known"
+  | "fullyTransparent"
+  | "opaqueOnly"
+  | "unknown"
+  | "unsupported";
+
+export interface ImageAlphaBounds {
+  status: ImageAlphaBoundsStatus;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  transparentPaddingRatio?: number;
+}
+
 export interface MotionResourceInfo {
   id: string;
   name: string;
   kind: "image" | "video" | "vector" | "audio" | "font" | "unknown";
   sizeBytes?: number;
   dimensions?: MotionDimensions;
+  alphaBounds?: ImageAlphaBounds;
   replaceable?: boolean;
   metadata?: Readonly<Record<string, unknown>>;
 }
@@ -143,6 +160,7 @@ export interface MotionSpec {
   maxFps?: number;
   maxResourceCount?: number;
   maxResourceDimensions?: MotionDimensions;
+  maxTransparentPaddingRatio?: number;
   metadata?: Readonly<Record<string, unknown>>;
 }
 

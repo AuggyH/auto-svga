@@ -18,7 +18,10 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.equal(report.asset.resourceCount, 1);
   assert.equal(report.specId, "avatar-frame-production");
   assert.equal(report.passed, true);
-  assert.deepEqual(report.issues, []);
+  assert.deepEqual(
+    report.issues.map(({ code }) => code),
+    ["resource_alpha_bounds_unavailable"]
+  );
 });
 
 test("avatar-frame inspection command reports dimensions over 300x300", async () => {
@@ -27,7 +30,7 @@ test("avatar-frame inspection command reports dimensions over 300x300", async ()
   assert.equal(report.passed, false);
   assert.deepEqual(
     report.issues.map(({ code }) => code),
-    ["dimensions_exceed_limit"]
+    ["dimensions_exceed_limit", "resource_alpha_bounds_unavailable"]
   );
 });
 
@@ -36,7 +39,7 @@ test("avatar-frame inspection command preserves calibration notes", async () => 
 
   assert.deepEqual(
     report.calibrationNotes.map(({ field }) => field),
-    ["maxFileSizeBytes", "maxResourceCount"]
+    ["maxFileSizeBytes", "maxResourceCount", "maxTransparentPaddingRatio"]
   );
   assert.ok(report.calibrationNotes.every(({ message }) => message.includes("Provisional")));
   assert.ok(report.calibrationNotes.every(({ message }) => message.includes("needs product calibration")));

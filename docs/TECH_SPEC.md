@@ -171,6 +171,13 @@ The adapter maps:
 - SpriteEntity list → layers with resource references
 - version, image/sprite/audio counts, matte keys → metadata
 
+The shared workbench `EmbeddedImageAlphaAnalyzer` boundary may enrich image resources with
+`alphaBounds`. This is an explicit host boundary: the adapter passes image
+bytes, detected format, and dimensions to the injected analyzer, while the
+core contract remains independent of Node, DOM, Canvas, browser, and filesystem
+APIs. Analyzer failures become `unknown` metadata and do not abort SVGA parsing.
+No concrete PNG alpha decoder is bundled in the current slice.
+
 It is not imported by the CLI, exporter, or Web preview.
 
 ### Inspection application service
@@ -197,6 +204,7 @@ reading or decoding source bytes. The current deterministic checks are:
 - file size
 - canvas dimensions
 - embedded image resource dimensions
+- embedded image transparent padding when `alphaBounds.status` is `known`
 - duration
 - FPS
 - resource count
@@ -206,8 +214,11 @@ stable code, field path, and actual/maximum details. Exact limit values pass.
 The SVGA adapter reads PNG `IHDR` dimensions from embedded image bytes without
 DOM, Canvas, or filesystem access. Avatar-frame resources should remain within
 `300 x 300`. Unknown image dimensions produce a warning and do not make the
-report fail by themselves. Transparent padding, effective pixels, sequence
-consistency, texture memory, and device performance remain outside this slice.
+report fail by themselves. Effective-pixel analysis beyond supplied alpha
+bounds, sequence consistency, texture memory, and device performance remain
+outside this slice.
+Unknown or unsupported alpha bounds produce a non-blocking warning. Fully
+transparent resources are errors. The checker never decodes image bytes.
 
 ### Avatar-frame production specification preset
 
@@ -223,6 +234,10 @@ from two unique 300x300 repository outputs. Both remain listed in
 `metadata.needsProductCalibration`; callers must not treat them as final
 product policy until a larger delivery sample confirms the limits. See
 `docs/avatar-frame-spec-calibration.md`.
+
+The transparent-padding limit is provisionally `50%` and is also marked for
+product calibration. It only applies when a host supplies known alpha-bound
+metadata; unavailable analysis remains a warning rather than a failed report.
 
 ### Avatar-frame inspection report
 

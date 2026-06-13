@@ -8,13 +8,17 @@ import type {
   WorkbenchOperationContext,
   WorkbenchResult
 } from "../contracts.js";
+import type { EmbeddedImageAlphaAnalyzer } from "../image-alpha-analyzer.js";
 import { readEmbeddedImageMetadata } from "./image-metadata.js";
 import type { SvgaBinaryInspector, SvgaMovieInspection } from "./types.js";
 
 export class SvgaFormatAdapter implements FormatAdapter {
   readonly format = "svga" as const;
 
-  constructor(private readonly inspector: SvgaBinaryInspector) {}
+  constructor(
+    private readonly inspector: SvgaBinaryInspector,
+    private readonly alphaAnalyzer?: EmbeddedImageAlphaAnalyzer
+  ) {}
 
   async probe(source: MotionAssetSource, context?: WorkbenchOperationContext): Promise<FormatProbeResult> {
     try {
@@ -51,7 +55,7 @@ export class SvgaFormatAdapter implements FormatAdapter {
       context?.cancellation?.throwIfCancelled();
 
       return {
-        value: toMotionAssetInfo(source, movie),
+        value: await toMotionAssetInfo(source, movie, this.alphaAnalyzer),
         issues: []
       };
     } catch (error) {
@@ -66,23 +70,40 @@ export class SvgaFormatAdapter implements FormatAdapter {
   }
 }
 
-function toMotionAssetInfo(source: MotionAssetSource, movie: SvgaMovieInspection): MotionAssetInfo {
+async function toMotionAssetInfo(
+  source: MotionAssetSource,
+  movie: SvgaMovieInspection,
+  alphaAnalyzer?: EmbeddedImageAlphaAnalyzer
+): Promise<MotionAssetInfo> {
   const { params } = movie;
   const durationMs = params.fps > 0 ? (params.frames / params.fps) * 1000 : undefined;
-  const resources: MotionResourceInfo[] = movie.images.map((image) => {
+  const resources: MotionResourceInfo[] = await Promise.all(movie.images.map(async (image) => {
     const imageMetadata = readEmbeddedImageMetadata(image.bytes);
+    let alphaBounds;
+    if (alphaAnalyzer) {
+      try {
+        alphaBounds = await alphaAnalyzer.analyze({
+          bytes: image.bytes,
+          format: imageMetadata.format,
+          dimensions: imageMetadata.dimensions
+        });
+      } catch {
+        alphaBounds = { status: "unknown" as const };
+      }
+    }
     return {
       id: image.imageKey,
       name: image.imageKey,
       kind: "image",
       sizeBytes: image.bytes.byteLength,
       dimensions: imageMetadata.dimensions,
+      alphaBounds,
       metadata: {
         imageKey: image.imageKey,
         imageFormat: imageMetadata.format
       }
     };
-  });
+  }));
   const layers: MotionLayerInfo[] = movie.sprites.map((sprite) => ({
     id: `sprite_${sprite.index}`,
     name: sprite.imageKey || `sprite_${sprite.index}`,

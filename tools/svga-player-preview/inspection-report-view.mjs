@@ -40,6 +40,9 @@ function issueMessage(issue) {
     resource_count_exceeds_limit: "图片资源数量超过生产规范上限。",
     resource_dimensions_exceed_limit: "内嵌图片资源尺寸超过 300 × 300 上限。",
     resource_dimensions_unavailable: "无法识别内嵌图片资源尺寸。",
+    resource_transparent_padding_exceeds_limit: "内嵌图片资源存在过多透明空白。",
+    resource_fully_transparent: "内嵌图片资源完全透明。",
+    resource_alpha_bounds_unavailable: "部分内嵌图片暂时无法分析透明边界。",
     duration_unavailable: "无法读取播放时长。",
     fps_unavailable: "无法读取帧率。"
   };

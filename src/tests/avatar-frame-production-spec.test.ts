@@ -24,13 +24,14 @@ test("avatar-frame production preset contains the current production baseline", 
     width: 300,
     height: 300
   });
+  assert.equal(avatarFrameProductionSpec.maxTransparentPaddingRatio, 0.5);
   assert.equal(avatarFrameProductionSpec.metadata?.assetType, "avatar_frame");
   assert.equal(avatarFrameProductionSpec.metadata?.target, "production");
   assert.equal(avatarFrameProductionSpec.metadata?.calibrationStatus, "provisional");
   assert.equal(avatarFrameProductionSpec.metadata?.calibrationSampleCount, 2);
   assert.deepEqual(
     avatarFrameProductionSpec.metadata?.needsProductCalibration,
-    ["maxFileSizeBytes", "maxResourceCount"]
+    ["maxFileSizeBytes", "maxResourceCount", "maxTransparentPaddingRatio"]
   );
 });
 
@@ -120,7 +121,15 @@ function asset(
       id: `resource_${index}`,
       name: `resource_${index}`,
       kind: "image" as const,
-      dimensions: { width: 1, height: 1 }
+      dimensions: { width: 1, height: 1 },
+      alphaBounds: {
+        status: "known" as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        transparentPaddingRatio: 0
+      }
     }))
   };
 }

@@ -24,6 +24,10 @@ function report(overrides = {}) {
       {
         field: "maxResourceCount",
         message: "Provisional 32-resource recommendation based on a limited sample; needs product calibration."
+      },
+      {
+        field: "maxTransparentPaddingRatio",
+        message: "Provisional transparent-padding recommendation; needs product calibration."
       }
     ],
     ...overrides
@@ -41,6 +45,7 @@ test("renders passing report, asset summary, and calibration notes", () => {
   assert.match(html, /当前为有限样本建议值/);
   assert.match(html, /maxFileSizeBytes/);
   assert.match(html, /maxResourceCount/);
+  assert.match(html, /maxTransparentPaddingRatio/);
 });
 
 test("renders failed issues with severity, code, and escaped message", () => {
@@ -84,4 +89,27 @@ test("renders embedded resource dimension issues from the report", () => {
 
   assert.match(html, /内嵌图片资源尺寸超过 300 × 300 上限/);
   assert.match(html, /无法识别内嵌图片资源尺寸/);
+});
+
+test("renders embedded resource alpha-bound issues from the report", () => {
+  const html = renderAvatarFrameInspectionReport(report({
+    passed: false,
+    issues: [{
+      severity: "error",
+      code: "resource_transparent_padding_exceeds_limit",
+      message: "Embedded image transparent padding exceeds the specification limit."
+    }, {
+      severity: "error",
+      code: "resource_fully_transparent",
+      message: "Embedded image resource is fully transparent."
+    }, {
+      severity: "warning",
+      code: "resource_alpha_bounds_unavailable",
+      message: "Alpha-bound metadata is unavailable."
+    }]
+  }), "success");
+
+  assert.match(html, /内嵌图片资源存在过多透明空白/);
+  assert.match(html, /内嵌图片资源完全透明/);
+  assert.match(html, /部分内嵌图片暂时无法分析透明边界/);
 });

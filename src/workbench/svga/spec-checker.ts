@@ -65,9 +65,97 @@ export class SvgaMotionSpecChecker implements MotionSpecChecker {
       "resources.length"
     );
     checkResourceDimensions(issues, asset, spec);
+    checkTransparentPadding(issues, asset, spec);
 
     context?.cancellation?.throwIfCancelled();
     return report(spec.id, issues);
+  }
+}
+
+function checkTransparentPadding(
+  issues: WorkbenchIssue[],
+  asset: MotionAssetInfo,
+  spec: MotionSpec
+): void {
+  const maximum = spec.maxTransparentPaddingRatio;
+  if (maximum === undefined) {
+    return;
+  }
+
+  const unavailable: Array<{ resourceId: string; status: string }> = [];
+  asset.resources.forEach((resource, index) => {
+    if (resource.kind !== "image") {
+      return;
+    }
+
+    const alphaBounds = resource.alphaBounds;
+    if (!alphaBounds || alphaBounds.status === "unknown" || alphaBounds.status === "unsupported") {
+      unavailable.push({
+        resourceId: resource.id,
+        status: alphaBounds?.status ?? "unknown"
+      });
+      return;
+    }
+
+    const path = `resources[${index}].alphaBounds`;
+    if (alphaBounds.status === "fullyTransparent") {
+      issues.push({
+        severity: "error",
+        code: "resource_fully_transparent",
+        message: "Embedded image resource is fully transparent.",
+        path,
+        details: {
+          resourceId: resource.id
+        }
+      });
+      return;
+    }
+
+    if (alphaBounds.status !== "known") {
+      return;
+    }
+
+    const actual = alphaBounds.transparentPaddingRatio;
+    if (actual === undefined) {
+      unavailable.push({
+        resourceId: resource.id,
+        status: "unknown"
+      });
+      return;
+    }
+
+    if (actual > maximum) {
+      issues.push({
+        severity: "error",
+        code: "resource_transparent_padding_exceeds_limit",
+        message: "Embedded image transparent padding exceeds the specification limit.",
+        path,
+        details: {
+          resourceId: resource.id,
+          actual,
+          maximum,
+          alphaBounds: {
+            x: alphaBounds.x,
+            y: alphaBounds.y,
+            width: alphaBounds.width,
+            height: alphaBounds.height
+          }
+        }
+      });
+    }
+  });
+
+  if (unavailable.length > 0) {
+    issues.push({
+      severity: "warning",
+      code: "resource_alpha_bounds_unavailable",
+      message: "Alpha-bound metadata is unavailable for one or more embedded image resources.",
+      path: "resources",
+      details: {
+        resources: unavailable,
+        maximumTransparentPaddingRatio: maximum
+      }
+    });
   }
 }
 

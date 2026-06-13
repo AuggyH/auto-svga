@@ -13,10 +13,13 @@ test("preview host returns the existing avatar-frame inspection report", async (
   assert.deepEqual(report.asset.dimensions, { width: 301, height: 300 });
   assert.equal(report.specId, "avatar-frame-production");
   assert.equal(report.passed, false);
-  assert.deepEqual(report.issues.map(({ code }) => code), ["dimensions_exceed_limit"]);
+  assert.deepEqual(
+    report.issues.map(({ code }) => code),
+    ["dimensions_exceed_limit", "resource_alpha_bounds_unavailable"]
+  );
   assert.deepEqual(
     report.calibrationNotes.map(({ field }) => field),
-    ["maxFileSizeBytes", "maxResourceCount"]
+    ["maxFileSizeBytes", "maxResourceCount", "maxTransparentPaddingRatio"]
   );
 });
 
