@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-13 — Embedded SVGA resource dimension checks
+
+**Branch**: `agent/codex/svga-resource-dimensions`
+**Implementation commit**: `371583c`
+
+- Added host-neutral PNG dimensions to SVGA resource inspection metadata
+- Added a 300x300 avatar-frame embedded-resource limit
+- Added structured oversized-resource errors and unknown-dimension warnings
+- Kept warnings non-failing while preserving error-based pass/fail behavior
+- Kept exporter, Web player, CLI defaults, import, drag-drop, and comparison unchanged
+
 ## 2026-06-13 — Avatar-frame specification calibration
 
 **Branch**: `agent/codex/avatar-frame-spec-calibration`

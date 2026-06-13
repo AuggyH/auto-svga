@@ -135,6 +135,23 @@ Implementation commit: `3f7ea64`
 - Exporter, Web player implementation, CLI defaults, import, drag-drop, and
   comparison behavior are unchanged.
 
+## Embedded SVGA Resource Dimension Checks
+
+Branch: `agent/codex/svga-resource-dimensions`
+Implementation commit: `371583c`
+
+- Added host-neutral PNG `IHDR` dimension parsing for embedded SVGA images.
+- `MotionAssetInfo.resources[*]` now exposes dimensions and image format when known.
+- Added the avatar-frame `300 x 300` per-resource limit.
+- Oversized resources emit errors with resource path/details; unknown formats
+  emit warnings without failing the report by themselves.
+- Real repository check: 53/53 current embedded resources were recognized as
+  PNG, and none exceeded 300x300.
+- Related adapter/checker/report tests: 29 passed; Web report tests: 6 passed;
+  build passed.
+- Exporter, Web player implementation/layout, CLI defaults, import, drag-drop,
+  and comparison behavior are unchanged.
+
 ## Token-saving Skills
 
 Branch: `agent/codex/token-saving-skills`
