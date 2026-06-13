@@ -76,6 +76,18 @@ Implementation commit: `62ddcc6`
 - Inspection integration tests: 7 passed; checker tests: 5 passed; build passed.
 - Adapter, checker implementation, exporter, CLI, Web preview, playback, and dependencies are untouched.
 
+## Avatar-frame Production Specification Preset
+
+Branch: `agent/codex/avatar-frame-production-spec`
+Implementation commit: `5df8831`
+
+- Added shared `avatarFrameProductionSpec`.
+- Confirmed limits: `300 x 300`, `24 FPS`, and `3000 ms`.
+- Placeholder limits: `500,000 bytes` and `64 resources`, explicitly marked
+  in `metadata.needsProductCalibration`.
+- Preset integration tests: 3 passed; checker tests: 5 passed; inspection tests: 7 passed.
+- Build passed. Exporter, CLI, Web preview, playback, adapter, service, checker, and dependencies are untouched.
+
 ## Token-saving Skills
 
 Branch: `agent/codex/token-saving-skills`
