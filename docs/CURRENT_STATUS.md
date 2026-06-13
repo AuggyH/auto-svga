@@ -88,6 +88,20 @@ Implementation commit: `5df8831`
 - Preset integration tests: 3 passed; checker tests: 5 passed; inspection tests: 7 passed.
 - Build passed. Exporter, CLI, Web preview, playback, adapter, service, checker, and dependencies are untouched.
 
+## Avatar-frame Inspection Report Command
+
+Branch: `agent/codex/avatar-frame-inspection-report`
+Implementation commit: `21cdb36`
+
+- Added host-neutral `AvatarFrameInspectionReportService`.
+- Added `inspect-avatar-frame <file.svga>` as an independent dynamic CLI branch.
+- JSON output includes asset summary, spec ID, pass/fail, structured issues,
+  and product-calibration notes.
+- Report tests: 3 passed; preset tests: 3 passed; checker tests: 5 passed;
+  inspection tests: 7 passed; build and CLI smoke tests passed.
+- Exporter, Web preview, playback, import, drag-drop, comparison, dependencies,
+  and existing CLI command behavior are unchanged.
+
 ## Token-saving Skills
 
 Branch: `agent/codex/token-saving-skills`

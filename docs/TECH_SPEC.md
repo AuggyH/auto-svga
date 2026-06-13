@@ -217,3 +217,17 @@ and device performance remain outside this slice.
 File size (`500,000 bytes`) and resource count (`64`) are conservative
 placeholders. Both are listed in `metadata.needsProductCalibration`; callers
 must not treat them as final product policy until calibrated.
+
+### Avatar-frame inspection report
+
+`AvatarFrameInspectionReportService` combines the existing inspection service,
+SVGA checker, and production preset into a host-neutral structured report:
+
+- asset summary
+- specification ID and pass/fail status
+- structured specification issues
+- calibration notes derived from the preset metadata
+
+The Node command `inspect-avatar-frame <file.svga>` owns local file access and
+prints the report as JSON. Existing CLI commands and Web preview behavior are
+unchanged.
