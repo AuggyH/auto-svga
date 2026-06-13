@@ -142,6 +142,7 @@ export interface MotionSpec {
   maxDurationMs?: number;
   maxFps?: number;
   maxResourceCount?: number;
+  maxResourceDimensions?: MotionDimensions;
   metadata?: Readonly<Record<string, unknown>>;
 }
 

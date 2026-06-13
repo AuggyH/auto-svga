@@ -39,6 +39,7 @@ The info panel includes:
 - file size, estimated memory usage, canvas size, duration, FPS
 - layer count, image resource count, sprite/image relationships
 - image dimensions and image byte sizes
+- production warnings for embedded images larger than 300x300 or with unknown dimensions
 - parse status and render status
 - avatar-frame production specification status, issues, and calibration notes
 

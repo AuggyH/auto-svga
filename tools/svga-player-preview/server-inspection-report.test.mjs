@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { deflateSync } from "node:zlib";
 import test from "node:test";
 import protobuf from "protobufjs";
+import { createTransparentImage, encodeRgbaPng } from "../../dist/utils/png-writer.js";
 import { createPreviewServer, inspectAvatarFrameBytes } from "./server.mjs";
 
 test("preview host returns the existing avatar-frame inspection report", async () => {
@@ -52,7 +53,7 @@ async function createSvgaFixture(width, height) {
   const payload = MovieEntity.create({
     version: "2.0",
     params: { viewBoxWidth: width, viewBoxHeight: height, fps: 24, frames: 1 },
-    images: { img_frame: Uint8Array.from([1, 2, 3]) },
+    images: { img_frame: encodeRgbaPng(createTransparentImage(300, 300)) },
     sprites: [{
       imageKey: "img_frame",
       frames: [{

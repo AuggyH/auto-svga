@@ -67,3 +67,21 @@ test("renders a non-blocking error state", () => {
   assert.match(html, /暂不可用/);
   assert.match(html, /不影响当前播放/);
 });
+
+test("renders embedded resource dimension issues from the report", () => {
+  const html = renderAvatarFrameInspectionReport(report({
+    passed: false,
+    issues: [{
+      severity: "error",
+      code: "resource_dimensions_exceed_limit",
+      message: "Embedded image dimensions exceed the specification limit."
+    }, {
+      severity: "warning",
+      code: "resource_dimensions_unavailable",
+      message: "Embedded image dimensions are unavailable."
+    }]
+  }), "success");
+
+  assert.match(html, /内嵌图片资源尺寸超过 300 × 300 上限/);
+  assert.match(html, /无法识别内嵌图片资源尺寸/);
+});

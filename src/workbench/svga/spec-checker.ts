@@ -64,10 +64,58 @@ export class SvgaMotionSpecChecker implements MotionSpecChecker {
       "Resource count exceeds the specification limit.",
       "resources.length"
     );
+    checkResourceDimensions(issues, asset, spec);
 
     context?.cancellation?.throwIfCancelled();
     return report(spec.id, issues);
   }
+}
+
+function checkResourceDimensions(
+  issues: WorkbenchIssue[],
+  asset: MotionAssetInfo,
+  spec: MotionSpec
+): void {
+  const maximum = spec.maxResourceDimensions;
+  if (!maximum) {
+    return;
+  }
+
+  asset.resources.forEach((resource, index) => {
+    if (resource.kind !== "image") {
+      return;
+    }
+    const path = `resources[${index}].dimensions`;
+    if (!resource.dimensions) {
+      issues.push({
+        severity: "warning",
+        code: "resource_dimensions_unavailable",
+        message: "Embedded image dimensions are unavailable.",
+        path,
+        details: {
+          resourceId: resource.id,
+          maximum
+        }
+      });
+      return;
+    }
+    if (
+      resource.dimensions.width > maximum.width
+      || resource.dimensions.height > maximum.height
+    ) {
+      issues.push({
+        severity: "error",
+        code: "resource_dimensions_exceed_limit",
+        message: "Embedded image dimensions exceed the specification limit.",
+        path,
+        details: {
+          resourceId: resource.id,
+          actual: resource.dimensions,
+          maximum
+        }
+      });
+    }
+  });
 }
 
 function checkDimensions(
@@ -153,7 +201,7 @@ function checkMaximum(
 function report(specId: string, issues: readonly WorkbenchIssue[]): MotionSpecCheckReport {
   return {
     specId,
-    passed: issues.length === 0,
+    passed: !issues.some(({ severity }) => severity === "error"),
     issues
   };
 }

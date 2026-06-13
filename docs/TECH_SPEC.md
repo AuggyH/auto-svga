@@ -196,14 +196,18 @@ reading or decoding source bytes. The current deterministic checks are:
 
 - file size
 - canvas dimensions
+- embedded image resource dimensions
 - duration
 - FPS
 - resource count
 
 Each exceeded or unavailable required value produces a structured issue with a
 stable code, field path, and actual/maximum details. Exact limit values pass.
-Transparent padding, effective pixels, sequence consistency, texture memory,
-and device performance remain outside this slice.
+The SVGA adapter reads PNG `IHDR` dimensions from embedded image bytes without
+DOM, Canvas, or filesystem access. Avatar-frame resources should remain within
+`300 x 300`. Unknown image dimensions produce a warning and do not make the
+report fail by themselves. Transparent padding, effective pixels, sequence
+consistency, texture memory, and device performance remain outside this slice.
 
 ### Avatar-frame production specification preset
 
