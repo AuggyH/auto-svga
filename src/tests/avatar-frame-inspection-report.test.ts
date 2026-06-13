@@ -37,6 +37,7 @@ test("avatar-frame inspection command preserves calibration notes", async () => 
     report.calibrationNotes.map(({ field }) => field),
     ["maxFileSizeBytes", "maxResourceCount"]
   );
+  assert.ok(report.calibrationNotes.every(({ message }) => message.includes("Provisional")));
   assert.ok(report.calibrationNotes.every(({ message }) => message.includes("needs product calibration")));
 });
 

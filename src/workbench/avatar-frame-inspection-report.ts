@@ -83,10 +83,21 @@ function calibrationNotes(): readonly SpecCalibrationNote[] {
   if (!Array.isArray(fields)) {
     return [];
   }
+  const configuredNotes = avatarFrameProductionSpec.metadata?.calibrationNotes;
   return fields
     .filter((field): field is string => typeof field === "string")
     .map((field) => ({
       field,
-      message: `${field} uses a placeholder threshold and needs product calibration.`
+      message: calibrationMessage(configuredNotes, field)
     }));
+}
+
+function calibrationMessage(value: unknown, field: string): string {
+  if (value && typeof value === "object") {
+    const message = (value as Record<string, unknown>)[field];
+    if (typeof message === "string") {
+      return message;
+    }
+  }
+  return `${field} needs product calibration.`;
 }

@@ -48,8 +48,10 @@ inspection endpoint. The server reuses the existing
 result and does not duplicate specification rules. A report failure is shown as
 a non-blocking warning and does not stop playback.
 
-The current file-size and resource-count limits are placeholders. They are
-listed under `待产品校准 / Calibration` until product thresholds are confirmed.
+The current file-size (`512 KiB`) and resource-count (`32`) limits are
+provisional recommendations from two unique 300x300 repository outputs. They
+remain listed under `待产品校准 / Calibration` until a larger delivery sample
+confirms the product thresholds.
 - warning badges for oversized or suspicious resources
 
 `SVGA 信息 / SVGA Info` only contains `概览 / Overview` and `资源 / Assets`. The Assets tab merges sprite and image resource views, groups continuous numbered image resources into expandable `序列帧` groups, and uses thumbnail cards instead of plain text rows.

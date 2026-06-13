@@ -115,7 +115,7 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
             ${calibrationNotes.map((note) => `
               <li>
                 <code>${escapeHtml(note.field)}</code>
-                <span>该阈值当前为占位值，待产品确认。</span>
+                <span>当前为有限样本建议值，待产品确认。</span>
                 <small>${escapeHtml(note.message)}</small>
               </li>
             `).join("")}

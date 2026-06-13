@@ -18,13 +18,38 @@ test("avatar-frame production preset contains the current production baseline", 
   });
   assert.equal(avatarFrameProductionSpec.maxFps, 24);
   assert.equal(avatarFrameProductionSpec.maxDurationMs, 3_000);
-  assert.equal(avatarFrameProductionSpec.maxFileSizeBytes, 500_000);
-  assert.equal(avatarFrameProductionSpec.maxResourceCount, 64);
+  assert.equal(avatarFrameProductionSpec.maxFileSizeBytes, 512 * 1024);
+  assert.equal(avatarFrameProductionSpec.maxResourceCount, 32);
   assert.equal(avatarFrameProductionSpec.metadata?.assetType, "avatar_frame");
   assert.equal(avatarFrameProductionSpec.metadata?.target, "production");
+  assert.equal(avatarFrameProductionSpec.metadata?.calibrationStatus, "provisional");
+  assert.equal(avatarFrameProductionSpec.metadata?.calibrationSampleCount, 2);
   assert.deepEqual(
     avatarFrameProductionSpec.metadata?.needsProductCalibration,
     ["maxFileSizeBytes", "maxResourceCount"]
+  );
+});
+
+test("avatar-frame calibrated file-size and resource limits pass exact boundaries", async () => {
+  const result = await inspectAsset(asset(
+    { width: 300, height: 300 },
+    { sizeBytes: 512 * 1024, resourceCount: 32 }
+  ));
+
+  assert.ok(result.value);
+  assert.equal(result.value.specReport.passed, true);
+});
+
+test("avatar-frame calibrated limits reject values above their boundaries", async () => {
+  const result = await inspectAsset(asset(
+    { width: 300, height: 300 },
+    { sizeBytes: 512 * 1024 + 1, resourceCount: 33 }
+  ));
+
+  assert.ok(result.value);
+  assert.deepEqual(
+    result.value.specReport.issues.map(({ code }) => code),
+    ["file_size_exceeds_limit", "resource_count_exceeds_limit"]
   );
 });
 
@@ -72,11 +97,14 @@ function adapterReturning(assetInfo: MotionAssetInfo): FormatAdapter {
   };
 }
 
-function asset(dimensions: { width: number; height: number }): MotionAssetInfo {
+function asset(
+  dimensions: { width: number; height: number },
+  options: { sizeBytes?: number; resourceCount?: number } = {}
+): MotionAssetInfo {
   return {
     format: "svga",
     name: "avatar-frame.svga",
-    sizeBytes: 120_000,
+    sizeBytes: options.sizeBytes ?? 120_000,
     dimensions,
     timing: {
       fps: 24,
@@ -84,7 +112,11 @@ function asset(dimensions: { width: number; height: number }): MotionAssetInfo {
       durationMs: 3_000
     },
     layers: [],
-    resources: []
+    resources: Array.from({ length: options.resourceCount ?? 0 }, (_, index) => ({
+      id: `resource_${index}`,
+      name: `resource_${index}`,
+      kind: "image" as const
+    }))
   };
 }
 
