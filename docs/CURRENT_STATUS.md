@@ -102,6 +102,23 @@ Implementation commit: `21cdb36`
 - Exporter, Web preview, playback, import, drag-drop, comparison, dependencies,
   and existing CLI command behavior are unchanged.
 
+## Web Avatar-frame Specification Report
+
+Branch: `agent/codex/web-inspection-report`
+Implementation commit: `a74fd18`
+
+- Added a minimal local HTTP boundary that sends in-memory SVGA bytes through
+  the existing `AvatarFrameInspectionReportService`.
+- Added a read-only production specification section to the existing Overview
+  panel with pass/fail, spec ID, asset summary, issues, and calibration notes.
+- Specification failures remain non-blocking and do not interrupt playback.
+- Targeted Web view/host tests: 5 passed; related report, preset, checker, and
+  inspection tests: 18 passed; build and job-loader smoke passed.
+- Browser smoke passed at 1280, 760, 480, and 360 px widths without horizontal
+  overflow or vertical text.
+- Exporter, CLI defaults, SVGA bytes, import, drag-drop, and comparison behavior
+  are unchanged.
+
 ## Token-saving Skills
 
 Branch: `agent/codex/token-saving-skills`
