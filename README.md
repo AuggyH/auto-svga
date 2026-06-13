@@ -234,6 +234,16 @@ node dist/cli.js export jobs/avatar_frame_local_001
 node dist/cli.js package jobs/avatar_frame_local_001
 ```
 
+可对任意本地 SVGA 头像框运行生产规范检查：
+
+```bash
+node dist/cli.js inspect-avatar-frame path/to/avatar-frame.svga
+```
+
+命令输出 JSON，包含资产摘要、`avatar-frame-production` 检查结果、
+结构化 issues 和仍需产品校准的文件体积/资源数量说明。检查不通过时
+退出码为 `1`，但仍会输出完整报告。
+
 当前 MVP SVGA exporter 只支持 image layer、keyframes、zIndex、alpha、x/y、scale、rotation 和 anchor transform；暂不支持 mask、text、audio、shape、nested composition 或复杂编辑能力。
 
 `package` 会验证交付必需文件，创建默认 `output/acceptance.json`，并生成：

@@ -6,6 +6,7 @@ import type { MvpReportCommandResult } from "./commands/report.js";
 import type { ExportCommandResult } from "./commands/export.js";
 import type { MvpPackageCommandResult } from "./commands/package.js";
 import type { AcceptanceCommandResult } from "./commands/acceptance.js";
+import type { AvatarFrameInspectionReport } from "./workbench/avatar-frame-inspection-report.js";
 
 interface ParsedArgs {
   command?: string;
@@ -68,6 +69,14 @@ async function main(): Promise<void> {
       const input = requireInput(args);
       const result = await reportCommand(input);
       printMvpReportSummary(result);
+      break;
+    }
+    case "inspect-avatar-frame": {
+      const { inspectAvatarFrameCommand } = await import("./commands/inspect-avatar-frame.js");
+      const input = requireInput(args);
+      const report = await inspectAvatarFrameCommand(input);
+      printAvatarFrameInspectionReport(report);
+      process.exitCode = report.passed ? 0 : 1;
       break;
     }
     case "export": {
@@ -271,6 +280,10 @@ Updated:
 `);
 }
 
+function printAvatarFrameInspectionReport(report: AvatarFrameInspectionReport): void {
+  console.log(JSON.stringify(report, null, 2));
+}
+
 function printHelp(): void {
   console.log(`SVGA Avatar Frame MVP
 
@@ -279,6 +292,7 @@ Usage:
   svga-avatar-frame validate <dir>
   svga-avatar-frame plan <job-dir>
   svga-avatar-frame report <job-dir>
+  svga-avatar-frame inspect-avatar-frame <file.svga>
   svga-avatar-frame build <dir> [--out <dir>]
   svga-avatar-frame preview <dir> [--out <dir>]
   svga-avatar-frame export <dir> [--out <dir>] [--sweep-stride 1|2|3]
