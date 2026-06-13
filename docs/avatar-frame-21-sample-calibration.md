@@ -130,8 +130,14 @@ Before changing pass/fail:
 3. Evaluate sequence frames as groups, including alignment purpose, frame
    continuity, dimensions, and total texture cost.
 4. Do not exempt all sequence frames automatically.
-5. Define separate `production_target` and `legacy_compatibility` profiles if
-   existing catalog acceptance is required.
+5. Keep the default `production_target` gate separate from the
+   `legacy_compatibility` descriptor. The compatibility profile is not
+   approved for new delivery and must not inherit thresholds from historical
+   distribution without an explicit product decision.
+
+The profile boundary is documented in
+`docs/avatar-frame-spec-profiles.md`. No compatibility thresholds are approved
+by this calibration.
 
 ## Reproduction
 

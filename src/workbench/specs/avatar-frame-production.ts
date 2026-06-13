@@ -1,8 +1,16 @@
-import type { MotionSpec } from "../contracts.js";
+import type { MotionSpec, MotionSpecProfile } from "../contracts.js";
+
+export const avatarFrameProductionProfile: MotionSpecProfile = {
+  id: "production_target",
+  label: "Avatar Frame Production Target",
+  purpose: "Gate new avatar-frame deliveries against the approved production target.",
+  approvedForNewDelivery: true
+};
 
 export const avatarFrameProductionSpec: MotionSpec = {
   id: "avatar-frame-production",
   label: "Avatar Frame Production",
+  profile: avatarFrameProductionProfile,
   maxFileSizeBytes: 512 * 1024,
   maxDimensions: {
     width: 300,
@@ -18,7 +26,7 @@ export const avatarFrameProductionSpec: MotionSpec = {
   maxTransparentPaddingRatio: 0.5,
   metadata: {
     assetType: "avatar_frame",
-    target: "production",
+    target: "production_target",
     calibrationStatus: "provisional",
     calibrationSampleCount: 2,
     needsProductCalibration: [

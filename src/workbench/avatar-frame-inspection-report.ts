@@ -7,7 +7,10 @@ import type {
   WorkbenchResult
 } from "./contracts.js";
 import { MotionAssetInspectionService } from "./inspection-service.js";
-import { avatarFrameProductionSpec } from "./specs/index.js";
+import {
+  avatarFrameProductionProfile,
+  avatarFrameProductionSpec
+} from "./specs/index.js";
 
 export interface MotionAssetSummary {
   format: MotionAssetInfo["format"];
@@ -27,6 +30,9 @@ export interface SpecCalibrationNote {
 export interface AvatarFrameInspectionReport {
   asset: MotionAssetSummary;
   specId: string;
+  profileId: string;
+  profileLabel: string;
+  profilePurpose: string;
   passed: boolean;
   issues: readonly WorkbenchIssue[];
   calibrationNotes: readonly SpecCalibrationNote[];
@@ -57,6 +63,9 @@ export class AvatarFrameInspectionReportService {
       value: {
         asset: summarize(asset),
         specId: specReport.specId,
+        profileId: avatarFrameProductionProfile.id,
+        profileLabel: avatarFrameProductionProfile.label,
+        profilePurpose: avatarFrameProductionProfile.purpose,
         passed: specReport.passed,
         issues: specReport.issues,
         calibrationNotes: calibrationNotes()

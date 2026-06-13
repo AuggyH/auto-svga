@@ -14,6 +14,9 @@ function report(overrides = {}) {
       resourceCount: 6
     },
     specId: "avatar-frame-production",
+    profileId: "production_target",
+    profileLabel: "Avatar Frame Production Target",
+    profilePurpose: "Gate new avatar-frame deliveries against the approved production target.",
     passed: true,
     issues: [],
     calibrationNotes: [
@@ -39,6 +42,9 @@ test("renders passing report, asset summary, and calibration notes", () => {
 
   assert.match(html, /通过/);
   assert.match(html, /avatar-frame-production/);
+  assert.match(html, /Avatar Frame Production Target/);
+  assert.match(html, /production_target/);
+  assert.match(html, /Gate new avatar-frame deliveries/);
   assert.match(html, /300 × 300/);
   assert.match(html, /24 fps/);
   assert.match(html, /待产品校准/);

@@ -95,6 +95,12 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
         <span class="specReportBadge ${report.passed ? "isPassed" : "isFailed"}">${report.passed ? "通过" : "未通过"}</span>
       </div>
       <div class="specReportId"><span>规范</span><code>${escapeHtml(report.specId ?? "n/a")}</code></div>
+      <div class="specReportId">
+        <span>检查档案</span>
+        <code>${escapeHtml(report.profileLabel ?? "n/a")}</code>
+        <small>${escapeHtml(report.profileId ?? "n/a")}</small>
+      </div>
+      <p class="specReportHint">${escapeHtml(report.profilePurpose ?? "")}</p>
       <dl class="specAssetSummary">
         ${summary.map(([label, value]) => `
           <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>

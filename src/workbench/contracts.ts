@@ -159,9 +159,17 @@ export interface PlaybackAdapter<TTarget = unknown> {
   createSession(target: TTarget): PlaybackSession;
 }
 
+export interface MotionSpecProfile {
+  id: string;
+  label: string;
+  purpose: string;
+  approvedForNewDelivery: boolean;
+}
+
 export interface MotionSpec {
   id: string;
   label: string;
+  profile?: MotionSpecProfile;
   maxFileSizeBytes?: number;
   maxDimensions?: MotionDimensions;
   maxDurationMs?: number;

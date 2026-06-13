@@ -15,6 +15,9 @@ test("preview host returns the existing avatar-frame inspection report", async (
   assert.equal(report.asset.name, "oversized.svga");
   assert.deepEqual(report.asset.dimensions, { width: 301, height: 300 });
   assert.equal(report.specId, "avatar-frame-production");
+  assert.equal(report.profileId, "production_target");
+  assert.equal(report.profileLabel, "Avatar Frame Production Target");
+  assert.match(report.profilePurpose, /new avatar-frame deliveries/i);
   assert.equal(report.passed, false);
   assert.deepEqual(
     report.issues.map(({ code }) => code),

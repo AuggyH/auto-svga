@@ -252,7 +252,9 @@ transparent resources are errors. The checker never decodes image bytes.
 ### Avatar-frame production specification preset
 
 `avatarFrameProductionSpec` is a host-neutral `MotionSpec` shared from
-`src/workbench/specs/`. Its current confirmed baseline is:
+`src/workbench/specs/`. It is attached to the `production_target` profile,
+which is the default and only profile approved for new deliveries. Its current
+confirmed baseline is:
 
 - maximum canvas: `300 x 300`
 - maximum FPS: `24`
@@ -268,6 +270,11 @@ The transparent-padding limit is provisionally `50%` and is also marked for
 product calibration. It only applies when a host supplies known alpha-bound
 metadata; unavailable analysis remains a warning rather than a failed report.
 
+`legacy_compatibility` is a separate non-production profile descriptor for
+future historical-catalog analysis. It has no thresholds and is not selected
+by the default inspection flow. The 21-sample historical distribution does not
+relax `production_target`. See `docs/avatar-frame-spec-profiles.md`.
+
 SVGA embedded image resources may also expose a conservative
 `MotionResourceInfo.role`: `static_image`, `sequence_frame`,
 `baked_sweep_frame`, `mask_or_matte`, or `unknown`. The adapter derives this
@@ -282,7 +289,8 @@ unchanged.
 SVGA checker, and production preset into a host-neutral structured report:
 
 - asset summary
-- specification ID and pass/fail status
+- specification ID, profile ID, profile label, profile purpose, and pass/fail
+  status
 - structured specification issues
 - calibration notes derived from the preset metadata
 

@@ -17,6 +17,9 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.equal(report.asset.layerCount, 1);
   assert.equal(report.asset.resourceCount, 1);
   assert.equal(report.specId, "avatar-frame-production");
+  assert.equal(report.profileId, "production_target");
+  assert.equal(report.profileLabel, "Avatar Frame Production Target");
+  assert.match(report.profilePurpose, /new avatar-frame deliveries/i);
   assert.equal(report.passed, true);
   assert.deepEqual(report.issues, []);
 });
