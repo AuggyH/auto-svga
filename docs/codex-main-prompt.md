@@ -12,3 +12,5 @@ For every task:
    client readiness, risks, and one next mainline task.
 
 Keep the current SVGA workflow runnable and never claim unsupported capability.
+Default to local, deterministic technical solutions; never add AI or external
+model capability without explicit user approval.

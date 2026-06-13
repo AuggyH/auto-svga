@@ -25,6 +25,17 @@ priority, scope, validation, anti-drift rules, and report contract.
 Do not load every skill by default. Combine `auto-svga-core-guard` with only the
 domain skills required by the task.
 
+## AI or External Models
+
+External AI, large language, multimodal, vision, or hosted inference capability
+is not a normal implementation option. If a task appears to require one, stop
+before design or integration and request explicit user confirmation.
+
+The confirmation request must state the function, network requirement, uploaded
+user data, privacy and retention risk, cost and frequency, offline impact,
+macOS/Windows packaging impact, and available local or deterministic
+alternatives. Only explicitly approved generative modules may proceed.
+
 Examples:
 
 - SVGA parser task: core guard + motion formats + client ready.

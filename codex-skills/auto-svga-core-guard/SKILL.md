@@ -33,6 +33,57 @@ conversion, export, and desktop-client preparation.
 5. Preserve truthful support boundaries. Never claim unverified playback,
    conversion, export, or visual success.
 
+## AI Capability Boundary
+
+Keep the core pipeline and routine capabilities local, deterministic, and
+explainable. Prefer technical algorithms, platform APIs, and approved
+open-source libraries for:
+
+1. Format recognition and parsing.
+2. Playback and preview.
+3. Replaceable-element editing.
+4. Design specification checks.
+5. File-size analysis.
+6. Decode and memory performance assessment.
+7. Resource-dimension and transparent-padding checks.
+8. Frame-sequence consistency checks.
+9. Format conversion and export.
+10. Report generation.
+11. Desktop packaging.
+12. Logs and error diagnostics.
+
+Do not add external AI APIs, large language models, multimodal or vision
+models, or network-dependent AI services unless the user explicitly plans and
+approves an isolated generative module such as text-to-image, image-to-image,
+image-to-video, or another clearly generative capability.
+
+Never:
+
+1. Add an external AI API without approval.
+2. Add a large language, multimodal, vision, or other model without approval.
+3. Replace deterministic parsing, dimensions, alpha, performance, or
+   specification checks with AI inference.
+4. Make a core capability depend on a network AI service.
+5. Upload user assets, SVGA, images, video, logs, or local files to an external
+   AI service without explicit approval.
+6. Add opaque AI judgment only to implement a check faster.
+7. Use AI output as the only production gate.
+
+If AI appears necessary, stop implementation and report:
+
+1. Why a technical solution is insufficient.
+2. The exact function using AI.
+3. Whether network access is required.
+4. Whether user files or assets are uploaded.
+5. Data flow and privacy risks.
+6. Cost and expected call frequency.
+7. Offline-availability impact.
+8. macOS and Windows client impact.
+9. Local or open-source alternatives.
+10. Recommended and rejected options.
+
+Proceed only after explicit user confirmation.
+
 ## Start Report
 
 Before implementation, state:

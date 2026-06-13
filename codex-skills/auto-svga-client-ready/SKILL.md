@@ -19,6 +19,7 @@ service and Web preview page.
 - logs and diagnostics
 - configuration migration
 - licenses and redistribution
+- external AI network, privacy, usage-cost, and data-retention risks
 
 ## Design Rules
 
@@ -28,6 +29,21 @@ service and Web preview page.
 4. Keep format parsing, specification checks, recommendations, and export flows independent.
 5. Avoid tight coupling between players, converters, and checkers.
 6. Isolate host-specific filesystem, process, network, and rendering APIs.
+
+## AI and External Model Constraints
+
+1. Keep normal desktop workflows fully usable offline without AI accounts,
+   API keys, usage billing, or external inference services.
+2. Do not upload local assets, animations, video, logs, or diagnostics to an AI
+   provider without explicit user approval and a documented data flow.
+3. Treat AI SDKs, model runtimes, native inference libraries, and model weights
+   as distribution dependencies requiring license, installer-size, update,
+   signing, sandbox, and macOS/Windows compatibility review.
+4. Keep any approved generative AI module isolated behind a host boundary so
+   parsing, validation, playback, conversion, export, and reporting remain
+   deterministic and available without it.
+5. Before proposing AI, document recurring cost, request frequency, retention
+   policy, offline degradation, local alternatives, and removal strategy.
 
 ## Completion Assessment
 
@@ -40,3 +56,4 @@ State:
 - bundle-size effect
 - license or redistribution risk
 - ease of migration into a desktop host
+- AI data flow, privacy, cost, offline impact, and fallback when applicable
