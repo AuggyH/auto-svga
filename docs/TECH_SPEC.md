@@ -214,9 +214,11 @@ and device performance remain outside this slice.
 - maximum FPS: `24`
 - maximum duration: `3000 ms`
 
-File size (`500,000 bytes`) and resource count (`64`) are conservative
-placeholders. Both are listed in `metadata.needsProductCalibration`; callers
-must not treat them as final product policy until calibrated.
+File size (`512 KiB`) and resource count (`32`) are provisional recommendations
+from two unique 300x300 repository outputs. Both remain listed in
+`metadata.needsProductCalibration`; callers must not treat them as final
+product policy until a larger delivery sample confirms the limits. See
+`docs/avatar-frame-spec-calibration.md`.
 
 ### Avatar-frame inspection report
 

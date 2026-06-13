@@ -19,11 +19,11 @@ function report(overrides = {}) {
     calibrationNotes: [
       {
         field: "maxFileSizeBytes",
-        message: "maxFileSizeBytes uses a placeholder threshold and needs product calibration."
+        message: "Provisional 512 KiB recommendation based on a limited sample; needs product calibration."
       },
       {
         field: "maxResourceCount",
-        message: "maxResourceCount uses a placeholder threshold and needs product calibration."
+        message: "Provisional 32-resource recommendation based on a limited sample; needs product calibration."
       }
     ],
     ...overrides
@@ -38,6 +38,7 @@ test("renders passing report, asset summary, and calibration notes", () => {
   assert.match(html, /300 × 300/);
   assert.match(html, /24 fps/);
   assert.match(html, /待产品校准/);
+  assert.match(html, /当前为有限样本建议值/);
   assert.match(html, /maxFileSizeBytes/);
   assert.match(html, /maxResourceCount/);
 });
