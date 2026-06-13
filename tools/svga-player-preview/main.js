@@ -1,3 +1,5 @@
+import { renderAvatarFrameInspectionReport } from "./inspection-report-view.mjs";
+
 const paths = {
   svga: "/examples/avatar_frame_basic/output/avatar_frame_basic.svga",
   report: "/examples/avatar_frame_basic/output/report.json"
@@ -186,6 +188,9 @@ function createPlayerSlot(slotName) {
     objectUrl: undefined,
     metrics: undefined,
     report: undefined,
+    inspectionReport: undefined,
+    inspectionStatus: "idle",
+    inspectionRequestId: 0,
     source: undefined,
     parseStatus: "empty",
     renderStatus: "empty",
@@ -1214,12 +1219,30 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
   slot.panel.classList.remove("hasMedia");
   slot.canvas.innerHTML = "";
   slot.report = options.report;
+  slot.inspectionReport = undefined;
+  slot.inspectionStatus = "loading";
+  const inspectionRequestId = ++slot.inspectionRequestId;
   slot.parseStatus = "loading";
   slot.renderStatus = "loading";
   setStatus(slot.status, "loading");
   updateButtons();
   renderInfoPanel();
   addLog("info", `开始解析 SVGA：${options.fileName ?? source} / Parsing SVGA`);
+
+  loadAvatarFrameInspectionReport(source, options.fileName ?? `SVGA ${slot.slotName}`)
+    .then((report) => {
+      if (slot.inspectionRequestId !== inspectionRequestId) return;
+      slot.inspectionReport = report;
+      slot.inspectionStatus = "success";
+      renderInfoPanel();
+      addLog("success", `生产规范检查完成：${report.passed ? "通过" : "未通过"} / Spec check completed`);
+    })
+    .catch((error) => {
+      if (slot.inspectionRequestId !== inspectionRequestId) return;
+      slot.inspectionStatus = "error";
+      renderInfoPanel();
+      addLog("warning", `生产规范检查暂不可用，不影响播放。/ Spec check unavailable: ${error.message}`);
+    });
 
   const decodedInfoPromise = decodeSvgaInfo(source).catch((error) => {
     slot.parseStatus = "error";
@@ -1275,6 +1298,24 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       }
     );
   });
+}
+
+async function loadAvatarFrameInspectionReport(source, fileName) {
+  const sourceResponse = await fetch(source);
+  if (!sourceResponse.ok) {
+    throw new Error(`无法读取 SVGA：HTTP ${sourceResponse.status}`);
+  }
+  const bytes = await sourceResponse.arrayBuffer();
+  const response = await fetch(`/api/avatar-frame-inspection-report?name=${encodeURIComponent(fileName)}`, {
+    method: "POST",
+    headers: { "content-type": "application/octet-stream" },
+    body: bytes
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error ?? `HTTP ${response.status}`);
+  }
+  return payload;
 }
 
 function normalizeJobPath(value) {
@@ -1612,7 +1653,8 @@ function renderOverview(metrics, slot) {
     ["渲染状态", "renderStatus", slot.renderStatus]
   ];
   return `
-    <dl class="overviewGrid">
+    <div class="overviewContent">
+      <dl class="overviewGrid">
       ${rows.map(([label, key, value, tone]) => `
         <div class="overviewRow">
           <dt><span>${escapeHtml(label)}</span><small>${escapeHtml(key)}</small></dt>
@@ -1627,7 +1669,9 @@ function renderOverview(metrics, slot) {
           </div>
         `).join("")}
       </div>
-    </dl>
+      </dl>
+      ${renderAvatarFrameInspectionReport(slot.inspectionReport, slot.inspectionStatus)}
+    </div>
   `;
 }
 

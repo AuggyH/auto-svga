@@ -5092,6 +5092,12 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   gap: 0;
 }
 
+.overviewContent {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
 .overviewRow,
 .overviewStatusRow {
   min-height: 46px;
@@ -5128,6 +5134,222 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   min-width: 0;
   justify-self: end;
   white-space: nowrap;
+}
+
+.specReportSection {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--textPrimary);
+  writing-mode: horizontal-tb;
+}
+
+.specReportHeader,
+.specReportHeader > div,
+.specReportId,
+.specIssueList li > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.specReportHeader {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.specReportHeader > div {
+  gap: 7px;
+  overflow: hidden;
+}
+
+.specReportHeader strong {
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.specReportHeader small,
+.specReportGroup h3 small {
+  color: var(--textTertiary);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 14px;
+}
+
+.specReportBadge {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--surfaceElevated);
+  color: var(--textSecondary);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.specReportBadge.isPassed {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green);
+}
+
+.specReportBadge.isFailed,
+.specReportBadge.isError {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.specReportBadge.isPending {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+}
+
+.specReportId {
+  gap: 7px;
+  color: var(--textSecondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.specReportId code,
+.specIssueList code,
+.calibrationList code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--textSecondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.specAssetSummary {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.specAssetSummary > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.specAssetSummary dt,
+.specAssetSummary dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.specAssetSummary dt {
+  color: var(--textTertiary);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.specAssetSummary dd {
+  color: var(--textPrimary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.specReportGroup {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.specReportGroup h3 {
+  display: flex;
+  margin: 0;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.specIssueList,
+.calibrationList {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  gap: 6px;
+  list-style: none;
+}
+
+.specIssueList li,
+.calibrationList li {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--surfaceElevated);
+}
+
+.specIssueList li > div {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.specIssueList li > div > span {
+  color: var(--danger);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 14px;
+}
+
+.specIssueList p,
+.specReportHint {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--textSecondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.specIssueList p small,
+.calibrationList small {
+  display: block;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  color: var(--textTertiary);
+  font-size: 9px;
+  line-height: 14px;
+}
+
+.specReportHint {
+  margin: 0;
+}
+
+.calibrationList li {
+  display: grid;
+  gap: 3px;
+  background: color-mix(in srgb, var(--warning) 8%, var(--surfaceElevated));
+}
+
+.calibrationList span {
+  overflow-wrap: anywhere;
+  color: var(--textSecondary);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+@media (max-width: 620px) {
+  .specAssetSummary {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 #tab-assets {

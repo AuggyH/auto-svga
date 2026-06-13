@@ -1,0 +1,68 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { renderAvatarFrameInspectionReport } from "./inspection-report-view.mjs";
+
+function report(overrides = {}) {
+  return {
+    asset: {
+      format: "svga",
+      name: "avatar-frame.svga",
+      sizeBytes: 10240,
+      dimensions: { width: 300, height: 300 },
+      timing: { fps: 24, frameCount: 72, durationMs: 3000 },
+      layerCount: 4,
+      resourceCount: 6
+    },
+    specId: "avatar-frame-production",
+    passed: true,
+    issues: [],
+    calibrationNotes: [
+      {
+        field: "maxFileSizeBytes",
+        message: "maxFileSizeBytes uses a placeholder threshold and needs product calibration."
+      },
+      {
+        field: "maxResourceCount",
+        message: "maxResourceCount uses a placeholder threshold and needs product calibration."
+      }
+    ],
+    ...overrides
+  };
+}
+
+test("renders passing report, asset summary, and calibration notes", () => {
+  const html = renderAvatarFrameInspectionReport(report(), "success");
+
+  assert.match(html, /通过/);
+  assert.match(html, /avatar-frame-production/);
+  assert.match(html, /300 × 300/);
+  assert.match(html, /24 fps/);
+  assert.match(html, /待产品校准/);
+  assert.match(html, /maxFileSizeBytes/);
+  assert.match(html, /maxResourceCount/);
+});
+
+test("renders failed issues with severity, code, and escaped message", () => {
+  const html = renderAvatarFrameInspectionReport(report({
+    passed: false,
+    issues: [{
+      severity: "error",
+      code: "dimensions_exceed_limit",
+      message: "Canvas < 301 is invalid."
+    }]
+  }), "success");
+
+  assert.match(html, /未通过/);
+  assert.match(html, /错误/);
+  assert.match(html, /dimensions_exceed_limit/);
+  assert.match(html, /画布尺寸超过 300 × 300 生产上限/);
+  assert.match(html, /Canvas &lt; 301 is invalid\./);
+  assert.doesNotMatch(html, /Canvas < 301/);
+});
+
+test("renders a non-blocking error state", () => {
+  const html = renderAvatarFrameInspectionReport(undefined, "error");
+
+  assert.match(html, /暂不可用/);
+  assert.match(html, /不影响当前播放/);
+});
