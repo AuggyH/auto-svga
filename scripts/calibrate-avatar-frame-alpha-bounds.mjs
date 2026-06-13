@@ -6,6 +6,13 @@ import { createAvatarFrameInspectionService } from "../dist/hosts/avatar-frame-i
 
 const DEFAULT_THRESHOLD = 0.5;
 const STATUSES = ["known", "fullyTransparent", "opaqueOnly", "unknown", "unsupported"];
+const ROLES = [
+  "static_image",
+  "sequence_frame",
+  "baked_sweep_frame",
+  "mask_or_matte",
+  "unknown"
+];
 
 export async function calibrateAvatarFrameAlphaBounds(
   inputPaths,
@@ -89,6 +96,8 @@ export function summarizeResources(resources, threshold = DEFAULT_THRESHOLD) {
   return {
     resourceCount: resources.length,
     statusCounts,
+    roleCounts: countRoles(resources),
+    roleStats: summarizeRoles(resources, threshold),
     ratioStats: ratioStats(ratios),
     overThresholdResources: overThresholdResources.map(resourceSummary),
     fullyTransparentResources: fullyTransparentResources.map(resourceSummary)
@@ -100,6 +109,7 @@ function summarizeSample(samplePath, sha256, asset, threshold) {
     samplePath,
     id: resource.id,
     name: resource.name,
+    role: resource.role ?? "unknown",
     sizeBytes: resource.sizeBytes,
     dimensions: resource.dimensions,
     alphaBounds: resource.alphaBounds ?? { status: "unknown" }
@@ -113,6 +123,41 @@ function summarizeSample(samplePath, sha256, asset, threshold) {
     ...summarizeResources(resources, threshold),
     resources
   };
+}
+
+function countRoles(resources) {
+  const counts = Object.fromEntries(ROLES.map((role) => [role, 0]));
+  for (const resource of resources) {
+    const role = resource.role ?? "unknown";
+    counts[role] = (counts[role] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function summarizeRoles(resources, threshold) {
+  return Object.fromEntries(ROLES.map((role) => {
+    const roleResources = resources.filter((resource) => (resource.role ?? "unknown") === role);
+    const ratios = roleResources.flatMap((resource) => {
+      if (resource.alphaBounds?.status === "opaqueOnly") {
+        return [0];
+      }
+      const ratio = resource.alphaBounds?.transparentPaddingRatio;
+      return resource.alphaBounds?.status === "known" && Number.isFinite(ratio)
+        ? [ratio]
+        : [];
+    });
+    return [role, {
+      resourceCount: roleResources.length,
+      ratioStats: ratioStats(ratios),
+      overThresholdCount: roleResources.filter((resource) => (
+        resource.alphaBounds?.status === "known"
+        && resource.alphaBounds.transparentPaddingRatio > threshold
+      )).length,
+      fullyTransparentCount: roleResources.filter((resource) => (
+        resource.alphaBounds?.status === "fullyTransparent"
+      )).length
+    }];
+  }));
 }
 
 function ratioStats(values) {
@@ -137,6 +182,7 @@ function resourceSummary(resource) {
   return {
     samplePath: resource.samplePath,
     id: resource.id,
+    role: resource.role ?? "unknown",
     dimensions: resource.dimensions,
     sizeBytes: resource.sizeBytes,
     alphaBounds: resource.alphaBounds

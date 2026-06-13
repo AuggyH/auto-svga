@@ -22,6 +22,25 @@ test("summarizes alpha status counts, ratios and threshold exceptions", () => {
     unknown: 1,
     unsupported: 1
   });
+  assert.deepEqual(summary.roleCounts, {
+    static_image: 2,
+    sequence_frame: 1,
+    baked_sweep_frame: 1,
+    mask_or_matte: 1,
+    unknown: 1
+  });
+  assert.deepEqual(summary.roleStats.sequence_frame, {
+    resourceCount: 1,
+    ratioStats: {
+      count: 1,
+      min: 0.75,
+      max: 0.75,
+      average: 0.75,
+      median: 0.75
+    },
+    overThresholdCount: 1,
+    fullyTransparentCount: 0
+  });
   assert.deepEqual(summary.ratioStats, {
     count: 3,
     min: 0,
@@ -55,11 +74,20 @@ test("returns empty ratio statistics when no measured resource is available", ()
 });
 
 function resource(id, alphaBounds) {
+  const roles = {
+    "known-low": "static_image",
+    "known-high": "sequence_frame",
+    opaque: "static_image",
+    transparent: "baked_sweep_frame",
+    unknown: "unknown",
+    unsupported: "mask_or_matte"
+  };
   return {
     samplePath: "fixture.svga",
     id,
     dimensions: { width: 300, height: 300 },
     sizeBytes: 100,
+    role: roles[id],
     alphaBounds
   };
 }

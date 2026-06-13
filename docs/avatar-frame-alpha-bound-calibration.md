@@ -8,6 +8,11 @@ Date: 2026-06-13
 - Keep `maxTransparentPaddingRatio` in `needsProductCalibration`.
 - Do not treat this sample set as a final product standard.
 
+This initial repository-only baseline has since been supplemented by 21
+external real avatar-frame samples. See
+`docs/avatar-frame-21-sample-calibration.md`. The larger cohort supports
+role-aware analysis but still does not justify changing the global threshold.
+
 Only two available samples use the current `300 x 300` production canvas, and
 their distributions differ sharply. One contains canvas-sized baked frames
 with substantial transparent bounds; the other has full-canvas alpha bounds
