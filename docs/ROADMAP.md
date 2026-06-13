@@ -44,6 +44,42 @@ This track is infrastructure only. It does not expand the production asset
 scope beyond `avatar_frame`, and it does not authorize new format dependencies
 or conversion features.
 
+## Roadmap Principle: Inspection Primitives First
+
+Auto SVGA should make stable, reusable inspection primitives reliable before
+building higher-level product features. Current P1/P2 work should prioritize:
+
+1. format recognition and parsing
+2. normalized `MotionAssetInfo`
+3. file size, dimensions, FPS, frame count, and duration
+4. embedded resource metadata and image dimensions
+5. `alphaBounds` and `transparentPaddingRatio`
+6. resource role classification
+7. versioned spec profiles and role-aware policies
+8. decoded memory estimation and resource-level diagnostics
+9. stable report output contracts
+
+Higher-level features must be composed from those primitives:
+
+- Motion Asset Audit
+- Performance Audit
+- Format Recommendation Engine
+- Optimization Suggestions
+- Export Preflight
+- Batch Inspection
+- Legacy Asset Cleanup
+- Multi-format Comparison
+
+Do not implement these as isolated one-off UI logic. Their evidence should come
+from deterministic local metadata and rules: parsed metadata, resource
+dimensions, alpha statistics, decoded memory estimates, timing, resource
+counts, file size, roles, profile thresholds, and the format capability matrix.
+
+Do not use AI, external models, multimodal models, or network services to
+replace deterministic inspection, performance analysis, format decisions, or
+optimization recommendations. Any separately approved generative capability
+must remain outside this inspection foundation.
+
 ## Future Phases
 
 - Additional asset types: medal, title, bubble

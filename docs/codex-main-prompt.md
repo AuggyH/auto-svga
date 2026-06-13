@@ -14,3 +14,7 @@ For every task:
 Keep the current SVGA workflow runnable and never claim unsupported capability.
 Default to local, deterministic technical solutions; never add AI or external
 model capability without explicit user approval.
+
+Build reusable inspection primitives before higher-level product features.
+Performance audit, format recommendation, and optimization suggestions must be
+composed from deterministic local metadata and rules.

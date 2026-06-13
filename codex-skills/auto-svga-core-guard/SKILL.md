@@ -33,6 +33,16 @@ conversion, export, and desktop-client preparation.
 5. Preserve truthful support boundaries. Never claim unverified playback,
    conversion, export, or visual success.
 
+## Inspection Primitives First
+
+Build reusable parsing, normalized metadata, resource facts, spec profiles,
+role-aware policies, decoded memory estimates, diagnostics, and report
+contracts before higher-level audit, recommendation, optimization, preflight,
+batch, cleanup, or comparison features.
+
+Compose higher-level features from deterministic local metadata and rules.
+Do not duplicate inspection or recommendation logic in one-off UI components.
+
 ## AI Capability Boundary
 
 Keep the core pipeline and routine capabilities local, deterministic, and

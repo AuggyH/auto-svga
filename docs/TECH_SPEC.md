@@ -144,6 +144,28 @@ The proposed multi-format workbench is documented in
 `docs/multiformat-workbench-architecture.md`. Its contracts do not currently
 participate in the production pipeline.
 
+### Inspection primitives before product features
+
+Inspection is a layered foundation, not a collection of page-specific checks:
+
+1. adapters parse source bytes into normalized `MotionAssetInfo`;
+2. resource metadata adds dimensions, alpha bounds, roles, and future decoded
+   memory estimates;
+3. spec profiles and role-aware policies turn facts into deterministic issues;
+4. stable report contracts expose those facts and issues to any host.
+
+Motion Asset Audit, performance diagnosis, format recommendation, optimization
+suggestions, export preflight, batch inspection, legacy cleanup, and
+multi-format comparison must compose these layers. UI components may present
+or filter reports but must not duplicate parsing, measurement, policy, or
+recommendation logic.
+
+Inspection and recommendation evidence must remain local, deterministic, and
+explainable. Approved sources include parsed metadata, dimensions, alpha
+statistics, decoded memory estimates, frame/FPS/duration data, resource counts,
+file size, resource roles, spec thresholds, and the format capability matrix.
+AI or external model inference is not an inspection primitive.
+
 Key boundaries:
 
 - format parsing does not own playback

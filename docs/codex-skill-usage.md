@@ -25,6 +25,18 @@ priority, scope, validation, anti-drift rules, and report contract.
 Do not load every skill by default. Combine `auto-svga-core-guard` with only the
 domain skills required by the task.
 
+## Inspection Primitives
+
+Build parsing, normalized metadata, resource facts, spec profiles, role-aware
+policies, memory estimates, diagnostics, and report contracts before product
+features such as audit dashboards, recommendations, preflight, or batch tools.
+
+For inspection primitives, load the core guard plus `auto-svga-spec-check`;
+also load `auto-svga-motion-formats` for adapter/format work and
+`auto-svga-client-ready` for host boundaries, dependencies, filesystem, memory,
+or desktop reuse. Load `auto-svga-ui-stability` only when presenting an already
+defined report. Do not put inspection or recommendation logic in UI components.
+
 ## AI or External Models
 
 External AI, large language, multimodal, vision, or hosted inference capability
