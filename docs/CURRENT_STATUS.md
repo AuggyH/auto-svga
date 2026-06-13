@@ -83,8 +83,9 @@ Implementation commit: `5df8831`
 
 - Added shared `avatarFrameProductionSpec`.
 - Confirmed limits: `300 x 300`, `24 FPS`, and `3000 ms`.
-- Placeholder limits: `500,000 bytes` and `64 resources`, explicitly marked
-  in `metadata.needsProductCalibration`.
+- Provisional limits: `512 KiB` and `32 resources`, based on two unique
+  300x300 repository outputs and still marked in
+  `metadata.needsProductCalibration`.
 - Preset integration tests: 3 passed; checker tests: 5 passed; inspection tests: 7 passed.
 - Build passed. Exporter, CLI, Web preview, playback, adapter, service, checker, and dependencies are untouched.
 
@@ -118,6 +119,21 @@ Implementation commit: `a74fd18`
   overflow or vertical text.
 - Exporter, CLI defaults, SVGA bytes, import, drag-drop, and comparison behavior
   are unchanged.
+
+## Avatar-frame Specification Calibration
+
+Branch: `agent/codex/avatar-frame-spec-calibration`
+Implementation commit: `3f7ea64`
+
+- Measured two unique 300x300 SVGA outputs at 107,034 / 346,987 bytes and
+  28 / 25 image resources.
+- Set provisional production recommendations to `512 KiB` and `32 resources`.
+- Kept `needsProductCalibration` because the valid-canvas sample count is two.
+- Excluded a historical 600x600, 931,514-byte delivery from the production
+  baseline and confirmed it fails file-size, canvas, and FPS checks.
+- Preset/report tests: 8 passed; Web report view/host tests: 5 passed; build passed.
+- Exporter, Web player implementation, CLI defaults, import, drag-drop, and
+  comparison behavior are unchanged.
 
 ## Token-saving Skills
 

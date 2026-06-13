@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-13 — Avatar-frame specification calibration
+
+**Branch**: `agent/codex/avatar-frame-spec-calibration`
+**Implementation commit**: `3f7ea64`
+
+- Calibrated provisional avatar-frame limits to `512 KiB` and `32 resources`
+- Documented the two unique 300x300 samples and excluded historical 600x600 output
+- Preserved explicit product-calibration notes because the sample remains limited
+- Added exact-boundary and over-limit tests
+- Kept exporter, Web player, CLI defaults, import, drag-drop, and comparison unchanged
+
 ## 2026-06-13 — Web avatar-frame specification report
 
 **Branch**: `agent/codex/web-inspection-report`
