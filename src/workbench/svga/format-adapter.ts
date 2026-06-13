@@ -10,6 +10,7 @@ import type {
 } from "../contracts.js";
 import type { EmbeddedImageAlphaAnalyzer } from "../image-alpha-analyzer.js";
 import { readEmbeddedImageMetadata } from "./image-metadata.js";
+import { classifySvgaResources } from "./resource-classifier.js";
 import type { SvgaBinaryInspector, SvgaMovieInspection } from "./types.js";
 
 export class SvgaFormatAdapter implements FormatAdapter {
@@ -77,15 +78,26 @@ async function toMotionAssetInfo(
 ): Promise<MotionAssetInfo> {
   const { params } = movie;
   const durationMs = params.fps > 0 ? (params.frames / params.fps) * 1000 : undefined;
-  const resources: MotionResourceInfo[] = await Promise.all(movie.images.map(async (image) => {
-    const imageMetadata = readEmbeddedImageMetadata(image.bytes);
+  const imagesWithMetadata = movie.images.map((image) => ({
+    ...image,
+    imageMetadata: readEmbeddedImageMetadata(image.bytes)
+  }));
+  const classifications = classifySvgaResources({
+    images: imagesWithMetadata.map(({ imageMetadata, ...image }) => ({
+      ...image,
+      dimensions: imageMetadata.dimensions
+    })),
+    sprites: movie.sprites
+  });
+  const resources: MotionResourceInfo[] = await Promise.all(imagesWithMetadata.map(async (image) => {
+    const classification = classifications.get(image.imageKey);
     let alphaBounds;
     if (alphaAnalyzer) {
       try {
         alphaBounds = await alphaAnalyzer.analyze({
           bytes: image.bytes,
-          format: imageMetadata.format,
-          dimensions: imageMetadata.dimensions
+          format: image.imageMetadata.format,
+          dimensions: image.imageMetadata.dimensions
         });
       } catch {
         alphaBounds = { status: "unknown" as const };
@@ -95,12 +107,14 @@ async function toMotionAssetInfo(
       id: image.imageKey,
       name: image.imageKey,
       kind: "image",
+      role: classification?.role ?? "unknown",
       sizeBytes: image.bytes.byteLength,
-      dimensions: imageMetadata.dimensions,
+      dimensions: image.imageMetadata.dimensions,
       alphaBounds,
       metadata: {
         imageKey: image.imageKey,
-        imageFormat: imageMetadata.format
+        imageFormat: image.imageMetadata.format,
+        roleEvidence: classification?.evidence ?? ["insufficient_evidence"]
       }
     };
   }));

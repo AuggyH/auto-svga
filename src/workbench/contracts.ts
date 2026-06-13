@@ -46,10 +46,18 @@ export interface ImageAlphaBounds {
   transparentPaddingRatio?: number;
 }
 
+export type MotionResourceRole =
+  | "static_image"
+  | "sequence_frame"
+  | "baked_sweep_frame"
+  | "mask_or_matte"
+  | "unknown";
+
 export interface MotionResourceInfo {
   id: string;
   name: string;
   kind: "image" | "video" | "vector" | "audio" | "font" | "unknown";
+  role?: MotionResourceRole;
   sizeBytes?: number;
   dimensions?: MotionDimensions;
   alphaBounds?: ImageAlphaBounds;

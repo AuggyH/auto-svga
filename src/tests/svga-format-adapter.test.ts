@@ -56,6 +56,14 @@ test("SVGA FormatAdapter preserves current protobuf inspection metadata", async 
     ["png", "png"]
   );
   assert.deepEqual(
+    asset.resources.map(({ role }) => role),
+    ["mask_or_matte", "static_image"]
+  );
+  assert.deepEqual(
+    asset.resources.map(({ metadata }) => metadata?.roleEvidence),
+    [["referenced_by_matteKey"], ["referenced_by_sprite"]]
+  );
+  assert.deepEqual(
     asset.layers.map(({ resourceIds }) => resourceIds),
     reference.sprites.map(({ imageKey }) => imageKey ? [imageKey] : [])
   );

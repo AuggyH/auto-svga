@@ -246,6 +246,14 @@ The transparent-padding limit is provisionally `50%` and is also marked for
 product calibration. It only applies when a host supplies known alpha-bound
 metadata; unavailable analysis remains a warning rather than a failed report.
 
+SVGA embedded image resources may also expose a conservative
+`MotionResourceInfo.role`: `static_image`, `sequence_frame`,
+`baked_sweep_frame`, `mask_or_matte`, or `unknown`. The adapter derives this
+from embedded image keys, dimensions, sprite references, and `matteKey`.
+`metadata.roleEvidence` records the reason. Resource roles are metadata only;
+the current transparent-padding threshold and pass/fail behavior remain
+unchanged.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,
