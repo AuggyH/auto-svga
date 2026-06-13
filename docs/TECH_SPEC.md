@@ -171,14 +171,21 @@ The adapter maps:
 - SpriteEntity list → layers with resource references
 - version, image/sprite/audio counts, matte keys → metadata
 
-The shared workbench `EmbeddedImageAlphaAnalyzer` boundary may enrich image resources with
-`alphaBounds`. This is an explicit host boundary: the adapter passes image
-bytes, detected format, and dimensions to the injected analyzer, while the
-core contract remains independent of Node, DOM, Canvas, browser, and filesystem
-APIs. Analyzer failures become `unknown` metadata and do not abort SVGA parsing.
-No concrete PNG alpha decoder is bundled in the current slice.
+The shared workbench `EmbeddedImageAlphaAnalyzer` boundary may enrich image
+resources with `alphaBounds`. This is an explicit host boundary: the adapter
+passes image bytes, detected format, and dimensions to the injected analyzer,
+while the core contract remains independent of Node, DOM, Canvas, browser, and
+filesystem APIs. Analyzer failures become `unknown` metadata and do not abort
+SVGA parsing.
 
-It is not imported by the CLI, exporter, or Web preview.
+The avatar-frame host composition injects `FastPngAlphaAnalyzer`. It reads
+dimensions directly from PNG IHDR before decode, enforces compressed input,
+width, height, pixel-count, and decoded-memory limits, then maps RGBA,
+grayscale-alpha, indexed transparency, opaque, and fully transparent resources
+into the shared contract. The checker and Web UI do not decode PNG bytes.
+
+The host composition is used by the additive avatar-frame inspection command
+and the Web report service. It is not used by the exporter or player.
 
 ### Inspection application service
 

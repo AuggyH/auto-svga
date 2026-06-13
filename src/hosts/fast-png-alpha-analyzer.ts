@@ -10,21 +10,22 @@ import type {
 import { readEmbeddedImageMetadata } from "../workbench/svga/image-metadata.js";
 
 export interface FastPngAlphaAnalyzerOptions {
+  maxInputBytes?: number;
   maxPixels?: number;
+  maxDecodedBytes?: number;
   maxWidth?: number;
   maxHeight?: number;
 }
 
 const defaultOptions: Required<FastPngAlphaAnalyzerOptions> = {
+  maxInputBytes: 25 * 1024 * 1024,
   maxPixels: 4_000_000,
+  maxDecodedBytes: 32 * 1024 * 1024,
   maxWidth: 4_096,
   maxHeight: 4_096
 };
 
-/**
- * Experimental host adapter. It is not wired into production inspection.
- */
-export class FastPngAlphaAnalyzerPrototype implements EmbeddedImageAlphaAnalyzer {
+export class FastPngAlphaAnalyzer implements EmbeddedImageAlphaAnalyzer {
   private readonly limits: Required<FastPngAlphaAnalyzerOptions>;
 
   constructor(options: FastPngAlphaAnalyzerOptions = {}) {
@@ -35,13 +36,25 @@ export class FastPngAlphaAnalyzerPrototype implements EmbeddedImageAlphaAnalyzer
     if (input.format !== "png") {
       return { status: "unsupported" };
     }
+    if (input.bytes.byteLength > this.limits.maxInputBytes) {
+      return { status: "unsupported" };
+    }
 
-    const dimensions = input.dimensions ?? readEmbeddedImageMetadata(input.bytes).dimensions;
+    const dimensions = readEmbeddedImageMetadata(input.bytes).dimensions;
     if (!dimensions) {
       return { status: "unknown" };
     }
     if (exceedsLimits(dimensions, this.limits)) {
       return { status: "unsupported" };
+    }
+    if (
+      input.dimensions
+      && (
+        input.dimensions.width !== dimensions.width
+        || input.dimensions.height !== dimensions.height
+      )
+    ) {
+      return { status: "unknown" };
     }
 
     try {
@@ -68,7 +81,8 @@ function exceedsLimits(
     || dimensions.height <= 0
     || dimensions.width > limits.maxWidth
     || dimensions.height > limits.maxHeight
-    || dimensions.width * dimensions.height > limits.maxPixels;
+    || dimensions.width * dimensions.height > limits.maxPixels
+    || dimensions.width * dimensions.height * 8 > limits.maxDecodedBytes;
 }
 
 function scanAlpha(decoded: DecodedPng): ImageAlphaBounds {

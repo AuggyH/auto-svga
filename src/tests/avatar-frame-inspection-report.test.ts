@@ -10,7 +10,7 @@ import { inspectAvatarFrameCommand } from "../commands/inspect-avatar-frame.js";
 import { createTransparentImage, encodeRgbaPng } from "../utils/png-writer.js";
 
 test("avatar-frame inspection command returns a passing structured report", async () => {
-  const report = await inspectFixture({ width: 300, height: 300 });
+  const report = await inspectFixture({ width: 300, height: 300 }, "opaque");
 
   assert.equal(report.asset.format, "svga");
   assert.deepEqual(report.asset.dimensions, { width: 300, height: 300 });
@@ -18,24 +18,35 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.equal(report.asset.resourceCount, 1);
   assert.equal(report.specId, "avatar-frame-production");
   assert.equal(report.passed, true);
-  assert.deepEqual(
-    report.issues.map(({ code }) => code),
-    ["resource_alpha_bounds_unavailable"]
-  );
+  assert.deepEqual(report.issues, []);
 });
 
 test("avatar-frame inspection command reports dimensions over 300x300", async () => {
-  const report = await inspectFixture({ width: 301, height: 300 });
+  const report = await inspectFixture({ width: 301, height: 300 }, "opaque");
 
   assert.equal(report.passed, false);
   assert.deepEqual(
     report.issues.map(({ code }) => code),
-    ["dimensions_exceed_limit", "resource_alpha_bounds_unavailable"]
+    ["dimensions_exceed_limit"]
   );
 });
 
+test("avatar-frame inspection command reports transparent padding from embedded PNG", async () => {
+  const report = await inspectFixture({ width: 300, height: 300 }, "padded");
+
+  assert.equal(report.passed, false);
+  assert.equal(report.issues[0].code, "resource_transparent_padding_exceeds_limit");
+  assert.equal(report.issues[0].path, "resources[0].alphaBounds");
+  assert.deepEqual(report.issues[0].details?.alphaBounds, {
+    x: 100,
+    y: 100,
+    width: 100,
+    height: 100
+  });
+});
+
 test("avatar-frame inspection command preserves calibration notes", async () => {
-  const report = await inspectFixture({ width: 300, height: 300 });
+  const report = await inspectFixture({ width: 300, height: 300 }, "opaque");
 
   assert.deepEqual(
     report.calibrationNotes.map(({ field }) => field),
@@ -45,19 +56,25 @@ test("avatar-frame inspection command preserves calibration notes", async () => 
   assert.ok(report.calibrationNotes.every(({ message }) => message.includes("needs product calibration")));
 });
 
-async function inspectFixture(dimensions: { width: number; height: number }) {
+async function inspectFixture(
+  dimensions: { width: number; height: number },
+  imageMode: "opaque" | "padded"
+) {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-report-"));
   const inputPath = path.join(tempDir, "avatar-frame.svga");
 
   try {
-    await writeFile(inputPath, await createSvgaFixture(dimensions));
+    await writeFile(inputPath, await createSvgaFixture(dimensions, imageMode));
     return await inspectAvatarFrameCommand(inputPath);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
 }
 
-async function createSvgaFixture(dimensions: { width: number; height: number }): Promise<Uint8Array> {
+async function createSvgaFixture(
+  dimensions: { width: number; height: number },
+  imageMode: "opaque" | "padded"
+): Promise<Uint8Array> {
   const root = await protobuf.load(protoPath());
   const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
   const payload = {
@@ -69,7 +86,7 @@ async function createSvgaFixture(dimensions: { width: number; height: number }):
       frames: 72
     },
     images: {
-      img_frame: encodeRgbaPng(createTransparentImage(300, 300))
+      img_frame: encodeRgbaPng(createFrameImage(imageMode))
     },
     sprites: [{
       imageKey: "img_frame",
@@ -80,6 +97,18 @@ async function createSvgaFixture(dimensions: { width: number; height: number }):
   const verificationError = MovieEntity.verify(payload);
   assert.equal(verificationError, null);
   return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+function createFrameImage(mode: "opaque" | "padded") {
+  const image = createTransparentImage(300, 300);
+  const start = mode === "opaque" ? 0 : 100;
+  const end = mode === "opaque" ? 300 : 200;
+  for (let y = start; y < end; y += 1) {
+    for (let x = start; x < end; x += 1) {
+      image.pixels[(y * image.width + x) * 4 + 3] = 255;
+    }
+  }
+  return image;
 }
 
 function protoPath(): string {

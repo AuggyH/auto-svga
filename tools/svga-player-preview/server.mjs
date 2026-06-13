@@ -160,17 +160,10 @@ export async function scanLatestArtifacts(rootPath = artifactRoot) {
 let reportServicePromise;
 
 async function getAvatarFrameInspectionReportService() {
-  reportServicePromise ??= Promise.all([
-    import("../../dist/workbench/avatar-frame-inspection-report.js"),
-    import("../../dist/workbench/inspection-service.js"),
-    import("../../dist/workbench/svga/index.js")
-  ]).then(([reportModule, inspectionModule, svgaModule]) => {
-    const adapter = new svgaModule.SvgaFormatAdapter(new svgaModule.NodeProtobufSvgaInspector());
-    return new reportModule.AvatarFrameInspectionReportService(
-      new inspectionModule.MotionAssetInspectionService(adapter),
-      new svgaModule.SvgaMotionSpecChecker()
-    );
-  });
+  reportServicePromise ??= import("../../dist/hosts/avatar-frame-inspection.js")
+    .then(({ createAvatarFrameInspectionReportService }) => (
+      createAvatarFrameInspectionReportService()
+    ));
   return reportServicePromise;
 }
 

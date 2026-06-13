@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { encode } from "fast-png";
-import { FastPngAlphaAnalyzerPrototype } from "../spikes/fast-png-alpha-analyzer.js";
+import { FastPngAlphaAnalyzer } from "../hosts/fast-png-alpha-analyzer.js";
 
-const analyzer = new FastPngAlphaAnalyzerPrototype();
+const analyzer = new FastPngAlphaAnalyzer();
 
-test("fast-png prototype finds RGBA transparent padding", () => {
+test("fast-png host analyzer finds RGBA transparent padding", () => {
   const data = new Uint8Array(4 * 4 * 4);
   for (const [x, y] of [[1, 1], [2, 1], [1, 2], [2, 2]]) {
     data[(y * 4 + x) * 4 + 3] = 255;
@@ -21,7 +21,7 @@ test("fast-png prototype finds RGBA transparent padding", () => {
   });
 });
 
-test("fast-png prototype reports fully transparent RGBA", () => {
+test("fast-png host analyzer reports fully transparent RGBA", () => {
   assert.deepEqual(
     analyze(encode({
       width: 2,
@@ -33,7 +33,7 @@ test("fast-png prototype reports fully transparent RGBA", () => {
   );
 });
 
-test("fast-png prototype reports opaque alpha and RGB images", () => {
+test("fast-png host analyzer reports opaque alpha and RGB images", () => {
   const rgba = new Uint8Array(2 * 2 * 4);
   for (let index = 3; index < rgba.length; index += 4) {
     rgba[index] = 255;
@@ -50,7 +50,7 @@ test("fast-png prototype reports opaque alpha and RGB images", () => {
   );
 });
 
-test("fast-png prototype supports grayscale alpha", () => {
+test("fast-png host analyzer supports grayscale alpha", () => {
   const data = Uint8Array.from([
     127, 0,
     127, 255,
@@ -70,7 +70,7 @@ test("fast-png prototype supports grayscale alpha", () => {
   );
 });
 
-test("fast-png prototype supports indexed transparency", () => {
+test("fast-png host analyzer supports indexed transparency", () => {
   const bytes = encode({
     width: 3,
     height: 1,
@@ -93,7 +93,7 @@ test("fast-png prototype supports indexed transparency", () => {
   });
 });
 
-test("fast-png prototype maps malformed decode to unknown", () => {
+test("fast-png host analyzer maps malformed decode to unknown", () => {
   assert.deepEqual(
     analyzer.analyze({
       bytes: Uint8Array.from([
@@ -108,16 +108,23 @@ test("fast-png prototype maps malformed decode to unknown", () => {
   );
 });
 
-test("fast-png prototype rejects oversized images before decode", () => {
-  const limited = new FastPngAlphaAnalyzerPrototype({
+test("fast-png host analyzer rejects oversized images before decode", () => {
+  const limited = new FastPngAlphaAnalyzer({
     maxPixels: 4,
+    maxDecodedBytes: 32,
     maxWidth: 4,
     maxHeight: 4
+  });
+  const bytes = encode({
+    width: 3,
+    height: 3,
+    data: new Uint8Array(3 * 3 * 4),
+    channels: 4
   });
 
   assert.deepEqual(
     limited.analyze({
-      bytes: new Uint8Array(),
+      bytes,
       format: "png",
       dimensions: { width: 3, height: 3 }
     }),
@@ -125,7 +132,46 @@ test("fast-png prototype rejects oversized images before decode", () => {
   );
 });
 
-test("fast-png prototype maps non-PNG formats to unsupported", () => {
+test("fast-png host analyzer does not trust caller dimensions for allocation limits", () => {
+  const limited = new FastPngAlphaAnalyzer({
+    maxPixels: 4,
+    maxDecodedBytes: 32,
+    maxWidth: 4,
+    maxHeight: 4
+  });
+  const bytes = encode({
+    width: 3,
+    height: 3,
+    data: new Uint8Array(3 * 3 * 4),
+    channels: 4
+  });
+
+  assert.deepEqual(
+    limited.analyze({
+      bytes,
+      format: "png",
+      dimensions: { width: 1, height: 1 }
+    }),
+    { status: "unsupported" }
+  );
+});
+
+test("fast-png host analyzer rejects oversized compressed inputs before decode", () => {
+  const limited = new FastPngAlphaAnalyzer({
+    maxInputBytes: 3
+  });
+
+  assert.deepEqual(
+    limited.analyze({
+      bytes: new Uint8Array(4),
+      format: "png",
+      dimensions: { width: 1, height: 1 }
+    }),
+    { status: "unsupported" }
+  );
+});
+
+test("fast-png host analyzer maps non-PNG formats to unsupported", () => {
   assert.deepEqual(
     analyzer.analyze({
       bytes: new Uint8Array(),

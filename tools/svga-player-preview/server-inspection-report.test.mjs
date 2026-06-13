@@ -7,7 +7,10 @@ import { createTransparentImage, encodeRgbaPng } from "../../dist/utils/png-writ
 import { createPreviewServer, inspectAvatarFrameBytes } from "./server.mjs";
 
 test("preview host returns the existing avatar-frame inspection report", async () => {
-  const report = await inspectAvatarFrameBytes(await createSvgaFixture(301, 300), "oversized.svga");
+  const report = await inspectAvatarFrameBytes(
+    await createSvgaFixture(301, 300, "opaque"),
+    "oversized.svga"
+  );
 
   assert.equal(report.asset.name, "oversized.svga");
   assert.deepEqual(report.asset.dimensions, { width: 301, height: 300 });
@@ -15,12 +18,23 @@ test("preview host returns the existing avatar-frame inspection report", async (
   assert.equal(report.passed, false);
   assert.deepEqual(
     report.issues.map(({ code }) => code),
-    ["dimensions_exceed_limit", "resource_alpha_bounds_unavailable"]
+    ["dimensions_exceed_limit"]
   );
   assert.deepEqual(
     report.calibrationNotes.map(({ field }) => field),
     ["maxFileSizeBytes", "maxResourceCount", "maxTransparentPaddingRatio"]
   );
+});
+
+test("preview host reports transparent padding from embedded PNG", async () => {
+  const report = await inspectAvatarFrameBytes(
+    await createSvgaFixture(300, 300, "padded"),
+    "padded.svga"
+  );
+
+  assert.equal(report.passed, false);
+  assert.equal(report.issues[0].code, "resource_transparent_padding_exceeds_limit");
+  assert.equal(report.issues[0].path, "resources[0].alphaBounds");
 });
 
 test("preview host exposes the inspection report through its HTTP boundary", async () => {
@@ -35,7 +49,7 @@ test("preview host exposes the inspection report through its HTTP boundary", asy
       {
         method: "POST",
         headers: { "content-type": "application/octet-stream" },
-        body: await createSvgaFixture(300, 300)
+        body: await createSvgaFixture(300, 300, "opaque")
       }
     );
     const report = await response.json();
@@ -50,13 +64,13 @@ test("preview host exposes the inspection report through its HTTP boundary", asy
   }
 });
 
-async function createSvgaFixture(width, height) {
+async function createSvgaFixture(width, height, imageMode) {
   const root = await protobuf.load(fileURLToPath(new URL("../../proto/svga.proto", import.meta.url)));
   const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
   const payload = MovieEntity.create({
     version: "2.0",
     params: { viewBoxWidth: width, viewBoxHeight: height, fps: 24, frames: 1 },
-    images: { img_frame: encodeRgbaPng(createTransparentImage(300, 300)) },
+    images: { img_frame: encodeRgbaPng(createFrameImage(imageMode)) },
     sprites: [{
       imageKey: "img_frame",
       frames: [{
@@ -70,4 +84,16 @@ async function createSvgaFixture(width, height) {
     audios: []
   });
   return deflateSync(MovieEntity.encode(payload).finish());
+}
+
+function createFrameImage(mode) {
+  const image = createTransparentImage(300, 300);
+  const start = mode === "opaque" ? 0 : 100;
+  const end = mode === "opaque" ? 300 : 200;
+  for (let y = start; y < end; y += 1) {
+    for (let x = start; x < end; x += 1) {
+      image.pixels[(y * image.width + x) * 4 + 3] = 255;
+    }
+  }
+  return image;
 }

@@ -4,12 +4,12 @@ Checked: 2026-06-13
 
 ## Recommendation
 
-**Approve `fast-png` for a future host alpha analyzer**, subject to a separate
-production-integration task.
+**Approved `fast-png` for a host alpha analyzer.** The follow-up implementation
+is located at `src/hosts/fast-png-alpha-analyzer.ts`.
 
-This spike adds `fast-png` as a development dependency only. The prototype is
-isolated under `src/spikes/` and is not composed into SVGA inspection, reports,
-the CLI, exporter, Web preview, or playback.
+This document preserves the evidence used for approval. Production composition
+is documented in `docs/TECH_SPEC.md`; the checker and Web UI still do not decode
+PNG bytes.
 
 ## Versions and Licenses
 
@@ -103,14 +103,14 @@ The existing alpha-bound boundary tests also pass unchanged.
 - Distribution: MIT notices for the direct and transitive packages must be
   retained.
 
-## Production Gate
+## Production Follow-up
 
-Before production wiring:
+Completed in the follow-up host-adapter task:
 
-1. Move or reimplement the approved adapter outside `src/spikes/`.
-2. Add malformed chunk, 16-bit, Adam7, large compressed input, and memory-budget tests.
-3. Decide whether partial alpha counts as visible or needs a threshold.
-4. Connect it only at the host composition boundary.
-5. Re-run inspection report tests and desktop bundle measurements.
+1. Moved the adapter outside `src/spikes/`.
+2. Added malformed input and allocation-limit tests.
+3. Connected it only through avatar-frame host composition.
+4. Re-ran inspection and Web report tests.
 
-Until then, existing reports continue to return the current unavailable-analysis warning.
+Still deferred: broader malformed chunk, explicit 16-bit/Adam7 fixtures, and a
+product decision on whether non-zero alpha or a threshold defines visibility.
