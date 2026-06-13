@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-13 — Avatar-frame inspection report command
+
+**Branch**: `agent/codex/avatar-frame-inspection-report`
+**Implementation commit**: `21cdb36`
+
+- Added a host-neutral structured avatar-frame inspection report service
+- Added the independent `inspect-avatar-frame <file.svga>` JSON command
+- Preserved placeholder calibration notes in every report
+- Kept exporter, Web preview, playback, imports, and existing CLI behavior unchanged
+
 ## 2026-06-13 — Avatar-frame production specification preset
 
 **Branch**: `agent/codex/avatar-frame-production-spec`
