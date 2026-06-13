@@ -40,6 +40,16 @@ The info panel includes:
 - layer count, image resource count, sprite/image relationships
 - image dimensions and image byte sizes
 - parse status and render status
+- avatar-frame production specification status, issues, and calibration notes
+
+When an SVGA is loaded, the page sends its bytes to the local preview server's
+inspection endpoint. The server reuses the existing
+`AvatarFrameInspectionReportService`; the browser only renders the structured
+result and does not duplicate specification rules. A report failure is shown as
+a non-blocking warning and does not stop playback.
+
+The current file-size and resource-count limits are placeholders. They are
+listed under `待产品校准 / Calibration` until product thresholds are confirmed.
 - warning badges for oversized or suspicious resources
 
 `SVGA 信息 / SVGA Info` only contains `概览 / Overview` and `资源 / Assets`. The Assets tab merges sprite and image resource views, groups continuous numbered image resources into expandable `序列帧` groups, and uses thumbnail cards instead of plain text rows.

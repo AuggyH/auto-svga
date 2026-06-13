@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-13 — Web avatar-frame specification report
+
+**Branch**: `agent/codex/web-inspection-report`
+**Implementation commit**: `a74fd18`
+
+- Added a local preview-server endpoint backed by the existing inspection report service
+- Added a read-only production specification report to the Web Overview panel
+- Added Chinese-first issue summaries while preserving original issue codes and messages
+- Kept report failures non-blocking for SVGA playback
+- Preserved exporter bytes, CLI defaults, import, drag-drop, and comparison behavior
+
 ## 2026-06-13 — Avatar-frame inspection report command
 
 **Branch**: `agent/codex/avatar-frame-inspection-report`

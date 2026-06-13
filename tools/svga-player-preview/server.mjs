@@ -12,6 +12,7 @@ const host = process.env.HOST ?? "127.0.0.1";
 const mimeTypes = new Map([
   [".html", "text/html; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
+  [".mjs", "text/javascript; charset=utf-8"],
   [".css", "text/css; charset=utf-8"],
   [".json", "application/json; charset=utf-8"],
   [".gif", "image/gif"],
@@ -156,55 +157,136 @@ export async function scanLatestArtifacts(rootPath = artifactRoot) {
   return { latestWithSvga, latestAny, artifacts: groups, warnings };
 }
 
-const server = createServer(async (request, response) => {
-  if (!request.url || !["GET", "HEAD"].includes(request.method ?? "")) {
-    sendText(response, 405, "Method not allowed");
-    return;
-  }
+let reportServicePromise;
 
-  const requestUrl = new URL(request.url, `http://localhost:${port}`);
-  if (requestUrl.pathname === "/api/latest-artifact") {
+async function getAvatarFrameInspectionReportService() {
+  reportServicePromise ??= Promise.all([
+    import("../../dist/workbench/avatar-frame-inspection-report.js"),
+    import("../../dist/workbench/inspection-service.js"),
+    import("../../dist/workbench/svga/index.js")
+  ]).then(([reportModule, inspectionModule, svgaModule]) => {
+    const adapter = new svgaModule.SvgaFormatAdapter(new svgaModule.NodeProtobufSvgaInspector());
+    return new reportModule.AvatarFrameInspectionReportService(
+      new inspectionModule.MotionAssetInspectionService(adapter),
+      new svgaModule.SvgaMotionSpecChecker()
+    );
+  });
+  return reportServicePromise;
+}
+
+export async function inspectAvatarFrameBytes(bytes, name = "local.svga") {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const reportService = await getAvatarFrameInspectionReportService();
+  const result = await reportService.inspect({
+    id: `memory:${name}`,
+    name,
+    sizeBytes: data.byteLength,
+    mediaType: "application/octet-stream",
+    async read() {
+      return data;
+    }
+  });
+  if (!result.value) {
+    const error = new Error(result.issues.map(({ message }) => message).join("; ") || "SVGA inspection failed.");
+    error.issues = result.issues;
+    throw error;
+  }
+  return result.value;
+}
+
+async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > maxBytes) {
+      const error = new Error("SVGA 文件超过检查接口的 25 MB 限制。");
+      error.statusCode = 413;
+      throw error;
+    }
+    chunks.push(chunk);
+  }
+  return new Uint8Array(Buffer.concat(chunks));
+}
+
+export function createPreviewServer() {
+  return createServer(async (request, response) => {
+    if (!request.url) {
+      sendText(response, 400, "Bad request");
+      return;
+    }
+
+    const requestUrl = new URL(request.url, `http://localhost:${port}`);
+    if (request.method === "POST" && requestUrl.pathname === "/api/avatar-frame-inspection-report") {
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        sendJson(response, 200, await inspectAvatarFrameBytes(bytes, name));
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error),
+          ...(Array.isArray(error?.issues) ? { issues: error.issues } : {})
+        });
+      }
+      return;
+    }
+
+    if (!["GET", "HEAD"].includes(request.method ?? "")) {
+      sendText(response, 405, "Method not allowed");
+      return;
+    }
+
+    if (requestUrl.pathname === "/api/latest-artifact") {
+      try {
+        sendJson(response, 200, await scanLatestArtifacts());
+      } catch (error) {
+        sendJson(response, 500, {
+          latestWithSvga: null,
+          latestAny: null,
+          artifacts: [],
+          warnings: [`扫描产物失败：${error instanceof Error ? error.message : String(error)}`]
+        });
+      }
+      return;
+    }
+
+    const filePath = resolveRequestPath(request.url);
+    if (!filePath) {
+      sendText(response, 403, "Forbidden");
+      return;
+    }
+
     try {
-      sendJson(response, 200, await scanLatestArtifacts());
-    } catch (error) {
-      sendJson(response, 500, {
-        latestWithSvga: null,
-        latestAny: null,
-        artifacts: [],
-        warnings: [`扫描产物失败：${error instanceof Error ? error.message : String(error)}`]
+      const fileStat = await stat(filePath);
+      if (!fileStat.isFile()) {
+        sendText(response, 404, "Not found");
+        return;
+      }
+
+      const contentType = mimeTypes.get(path.extname(filePath)) ?? "application/octet-stream";
+      response.writeHead(200, {
+        "content-type": contentType,
+        "cache-control": "no-store"
       });
-    }
-    return;
-  }
-
-  const filePath = resolveRequestPath(request.url);
-  if (!filePath) {
-    sendText(response, 403, "Forbidden");
-    return;
-  }
-
-  try {
-    const fileStat = await stat(filePath);
-    if (!fileStat.isFile()) {
+      if (request.method === "HEAD") {
+        response.end();
+        return;
+      }
+      createReadStream(filePath).pipe(response);
+    } catch {
       sendText(response, 404, "Not found");
-      return;
     }
+  });
+}
 
-    const contentType = mimeTypes.get(path.extname(filePath)) ?? "application/octet-stream";
-    response.writeHead(200, {
-      "content-type": contentType,
-      "cache-control": "no-store"
-    });
-    if (request.method === "HEAD") {
-      response.end();
-      return;
-    }
-    createReadStream(filePath).pipe(response);
-  } catch {
-    sendText(response, 404, "Not found");
-  }
-});
+export function startPreviewServer() {
+  const server = createPreviewServer();
+  server.listen(port, host, () => {
+    console.log(`SVGA playback preview: http://localhost:${port}/tools/svga-player-preview/`);
+  });
+  return server;
+}
 
-server.listen(port, host, () => {
-  console.log(`SVGA playback preview: http://localhost:${port}/tools/svga-player-preview/`);
-});
+const isDirectRun = process.argv[1]
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isDirectRun) startPreviewServer();
