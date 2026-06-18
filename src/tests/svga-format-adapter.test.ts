@@ -8,6 +8,7 @@ import { deflateSync } from "node:zlib";
 import test from "node:test";
 import protobuf from "protobufjs";
 import { validateMvpSvgaOutput } from "../mvp/svga-exporter.js";
+import { Sha256ResourceHasher } from "../hosts/sha256-resource-hasher.js";
 import { createTransparentImage, encodeRgbaPng } from "../utils/png-writer.js";
 import type { MotionAssetSource } from "../workbench/contracts.js";
 import {
@@ -94,6 +95,28 @@ test("SVGA FormatAdapter probe recognizes valid SVGA bytes", async () => {
   assert.equal(result.format, "svga");
   assert.equal(result.confidence, 1);
   assert.deepEqual(result.issues, []);
+});
+
+test("SVGA FormatAdapter accepts host-provided encoded resource hashes", async () => {
+  const bytes = await createSvgaFixture();
+  const inspector = new NodeProtobufSvgaInspector();
+  const reference = await inspector.inspect(bytes);
+  const adapter = new SvgaFormatAdapter(
+    inspector,
+    undefined,
+    new Sha256ResourceHasher()
+  );
+  const result = await adapter.parse(sourceFromBytes("fixture.svga", bytes));
+
+  assert.ok(result.value);
+  assert.deepEqual(
+    result.value.resources.map(({ contentHash }) => contentHash),
+    reference.images.map(({ bytes: imageBytes }) => ({
+      algorithm: "sha256",
+      value: sha256(imageBytes),
+      scope: "encoded_bytes"
+    }))
+  );
 });
 
 test("SVGA FormatAdapter counts match the existing MVP SVGA validator", async () => {

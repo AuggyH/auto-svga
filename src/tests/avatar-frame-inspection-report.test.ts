@@ -29,6 +29,8 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.equal(report.sequenceResidencyDiagnostics.sequenceGroupCount, 0);
   assert.equal(report.sequenceResidencyDiagnostics.totalSequenceFrameEstimatedDecodedBytes, 0);
   assert.deepEqual(report.sequenceResidencyDiagnostics.possibleResidencyModels, ["unknown"]);
+  assert.equal(report.sequenceFrameEvidence.analyzedResourceCount, 0);
+  assert.equal(report.sequenceFrameEvidence.duplicateEvidenceStatus, "not_applicable");
   assert.equal(report.specId, "avatar-frame-production");
   assert.equal(report.profileId, "production_target");
   assert.equal(report.profileLabel, "Avatar Frame Production Target");

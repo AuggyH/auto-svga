@@ -8,11 +8,13 @@ import {
   SvgaMotionSpecChecker
 } from "../workbench/svga/index.js";
 import { FastPngAlphaAnalyzer } from "./fast-png-alpha-analyzer.js";
+import { Sha256ResourceHasher } from "./sha256-resource-hasher.js";
 
 export function createAvatarFrameInspectionService(): MotionAssetInspectionService {
   const adapter = new SvgaFormatAdapter(
     new NodeProtobufSvgaInspector(),
-    new FastPngAlphaAnalyzer()
+    new FastPngAlphaAnalyzer(),
+    new Sha256ResourceHasher()
   );
   return new MotionAssetInspectionService(adapter);
 }

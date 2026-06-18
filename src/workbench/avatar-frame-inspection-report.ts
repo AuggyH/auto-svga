@@ -3,6 +3,7 @@ import type {
   MotionAssetMemoryEstimation,
   MotionAssetSource,
   RoleAwareMemoryDiagnostics,
+  SequenceFrameEvidence,
   SequenceResidencyDiagnostics,
   MotionSpecChecker,
   WorkbenchIssue,
@@ -13,6 +14,7 @@ import { MotionAssetInspectionService } from "./inspection-service.js";
 import { diagnoseMemoryByRole } from "./memory-diagnostics.js";
 import { estimateDecodedMemory } from "./memory-estimation.js";
 import { diagnoseSequenceResidency } from "./sequence-residency-diagnostics.js";
+import { collectSequenceFrameEvidence } from "./sequence-frame-evidence.js";
 import {
   avatarFrameProductionProfile,
   avatarFrameProductionSpec
@@ -38,6 +40,7 @@ export interface AvatarFrameInspectionReport {
   memoryEstimation: MotionAssetMemoryEstimation;
   memoryDiagnostics: RoleAwareMemoryDiagnostics;
   sequenceResidencyDiagnostics: SequenceResidencyDiagnostics;
+  sequenceFrameEvidence: SequenceFrameEvidence;
   specId: string;
   profileId: string;
   profileLabel: string;
@@ -78,6 +81,7 @@ export class AvatarFrameInspectionReportService {
           asset.resources,
           memoryEstimation
         ),
+        sequenceFrameEvidence: collectSequenceFrameEvidence(asset.resources),
         specId: specReport.specId,
         profileId: avatarFrameProductionProfile.id,
         profileLabel: avatarFrameProductionProfile.label,

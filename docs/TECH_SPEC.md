@@ -342,6 +342,28 @@ Advisory risk is high above `16 MiB`, or above `4 MiB` when sequence resources
 also represent at least half of known decoded resource memory. A smaller
 sequence-dominant asset is medium risk rather than high risk.
 
+### Deterministic sequence-frame evidence
+
+`collectSequenceFrameEvidence()` inspects only `sequence_frame` and
+`baked_sweep_frame` resources. It reports exact duplicate hash groups, fully
+transparent frames, provisional near-empty frames, repeated alpha bounds,
+repeated dimensions, evidence availability, confidence, and uncertainty.
+
+Duplicate evidence requires a stable `ResourceContentHash`. The current Node
+inspection host provides SHA-256 over embedded encoded image bytes through the
+`EmbeddedResourceHasher` boundary. Equal hashes therefore prove byte-identical
+embedded resources; they do not detect visually identical images encoded with
+different compression. Missing hashes produce `insufficient_evidence` or
+`partial`, never a guessed duplicate.
+
+Fully transparent evidence comes directly from `alphaBounds.status`.
+Near-empty is advisory and provisional at a transparent-padding ratio of
+`0.99`; unknown or unsupported alpha bounds are never classified as empty.
+Repeated alpha bounds use exact status and rectangle fields. Repeated dimensions
+only prove equal dimensions and do not imply equal content. These evidence
+fields do not change any production gate, profile, transparent-padding policy,
+or specification pass/fail result.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,
@@ -355,6 +377,7 @@ SVGA checker, and production preset into a host-neutral structured report:
 - additive decoded-memory estimation summary
 - additive role-aware memory diagnostics
 - additive advisory sequence residency diagnostics
+- additive deterministic sequence-frame evidence
 
 The Node command `inspect-avatar-frame <file.svga>` owns local file access and
 prints the report as JSON. Existing CLI commands and Web preview behavior are

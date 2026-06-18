@@ -9,6 +9,7 @@ import type {
   WorkbenchResult
 } from "../contracts.js";
 import type { EmbeddedImageAlphaAnalyzer } from "../image-alpha-analyzer.js";
+import type { EmbeddedResourceHasher } from "../resource-hasher.js";
 import { readEmbeddedImageMetadata } from "./image-metadata.js";
 import { classifySvgaResources } from "./resource-classifier.js";
 import type { SvgaBinaryInspector, SvgaMovieInspection } from "./types.js";
@@ -18,7 +19,8 @@ export class SvgaFormatAdapter implements FormatAdapter {
 
   constructor(
     private readonly inspector: SvgaBinaryInspector,
-    private readonly alphaAnalyzer?: EmbeddedImageAlphaAnalyzer
+    private readonly alphaAnalyzer?: EmbeddedImageAlphaAnalyzer,
+    private readonly resourceHasher?: EmbeddedResourceHasher
   ) {}
 
   async probe(source: MotionAssetSource, context?: WorkbenchOperationContext): Promise<FormatProbeResult> {
@@ -56,7 +58,12 @@ export class SvgaFormatAdapter implements FormatAdapter {
       context?.cancellation?.throwIfCancelled();
 
       return {
-        value: await toMotionAssetInfo(source, movie, this.alphaAnalyzer),
+        value: await toMotionAssetInfo(
+          source,
+          movie,
+          this.alphaAnalyzer,
+          this.resourceHasher
+        ),
         issues: []
       };
     } catch (error) {
@@ -74,7 +81,8 @@ export class SvgaFormatAdapter implements FormatAdapter {
 async function toMotionAssetInfo(
   source: MotionAssetSource,
   movie: SvgaMovieInspection,
-  alphaAnalyzer?: EmbeddedImageAlphaAnalyzer
+  alphaAnalyzer?: EmbeddedImageAlphaAnalyzer,
+  resourceHasher?: EmbeddedResourceHasher
 ): Promise<MotionAssetInfo> {
   const { params } = movie;
   const durationMs = params.fps > 0 ? (params.frames / params.fps) * 1000 : undefined;
@@ -92,6 +100,7 @@ async function toMotionAssetInfo(
   const resources: MotionResourceInfo[] = await Promise.all(imagesWithMetadata.map(async (image) => {
     const classification = classifications.get(image.imageKey);
     let alphaBounds;
+    let contentHash;
     if (alphaAnalyzer) {
       try {
         alphaBounds = await alphaAnalyzer.analyze({
@@ -103,6 +112,13 @@ async function toMotionAssetInfo(
         alphaBounds = { status: "unknown" as const };
       }
     }
+    if (resourceHasher) {
+      try {
+        contentHash = await resourceHasher.hash(image.bytes);
+      } catch {
+        contentHash = undefined;
+      }
+    }
     return {
       id: image.imageKey,
       name: image.imageKey,
@@ -111,6 +127,7 @@ async function toMotionAssetInfo(
       sizeBytes: image.bytes.byteLength,
       dimensions: image.imageMetadata.dimensions,
       alphaBounds,
+      contentHash,
       metadata: {
         imageKey: image.imageKey,
         imageFormat: image.imageMetadata.format,

@@ -46,6 +46,12 @@ export interface ImageAlphaBounds {
   transparentPaddingRatio?: number;
 }
 
+export interface ResourceContentHash {
+  algorithm: string;
+  value: string;
+  scope: "encoded_bytes" | "decoded_content";
+}
+
 export type MotionResourceRole =
   | "static_image"
   | "sequence_frame"
@@ -61,6 +67,7 @@ export interface MotionResourceInfo {
   sizeBytes?: number;
   dimensions?: MotionDimensions;
   alphaBounds?: ImageAlphaBounds;
+  contentHash?: ResourceContentHash;
   replaceable?: boolean;
   metadata?: Readonly<Record<string, unknown>>;
 }
@@ -129,6 +136,33 @@ export interface SequenceResidencyDiagnostics {
   evidence: readonly string[];
   uncertainty: SequenceResidencyUncertainty;
   ungroupedResourceIds: readonly string[];
+}
+
+export type EvidenceConfidence = "high" | "medium" | "low" | "unknown";
+export type EvidenceAvailability =
+  | "known"
+  | "partial"
+  | "insufficient_evidence"
+  | "not_applicable";
+
+export interface SequenceFrameEvidenceGroup {
+  key: string;
+  resourceIds: readonly string[];
+}
+
+export interface SequenceFrameEvidence {
+  analyzedResourceCount: number;
+  duplicateEvidenceStatus: EvidenceAvailability;
+  duplicateFrameGroups: readonly SequenceFrameEvidenceGroup[];
+  fullyTransparentFrames: readonly string[];
+  emptyOrNearEmptyFrames: readonly string[];
+  nearEmptyTransparentPaddingRatio: number;
+  repeatedAlphaBoundsGroups: readonly SequenceFrameEvidenceGroup[];
+  repeatedDimensionsGroups: readonly SequenceFrameEvidenceGroup[];
+  missingContentHashResourceIds: readonly string[];
+  missingAlphaBoundsResourceIds: readonly string[];
+  evidenceConfidence: EvidenceConfidence;
+  uncertainty: SequenceResidencyUncertainty;
 }
 
 export interface MotionLayerInfo {
