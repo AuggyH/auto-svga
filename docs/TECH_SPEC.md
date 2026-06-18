@@ -316,6 +316,32 @@ future group-level residency analysis. These diagnostics are advisory metadata
 only and do not change specification thresholds, profiles, transparent-padding
 policy, or pass/fail behavior.
 
+### Advisory sequence residency model
+
+`diagnoseSequenceResidency()` consumes normalized resources and the raw memory
+estimate. It only considers `sequence_frame` and `baked_sweep_frame` roles.
+Groups require explicit `metadata.sequenceGroupId`, or at least three resources
+with the same role and dimensions plus a continuous numeric name suffix.
+Resources without enough grouping evidence remain ungrouped.
+
+The diagnostic reports group counts and frame counts, total sequence decoded
+bytes, largest groups, possible residency models, advisory risk, evidence,
+uncertainty, and ungrouped resource IDs. Possible models are
+`all_frames_resident`, `group_resident`, `windowed_or_streaming`,
+`sprite_sheet_candidate`, and `unknown`. They describe plausible review paths,
+not observed player behavior or measured peak memory. Repeated dimensions make
+sprite-sheet packing a candidate; groups with at least eight frames make a
+windowed or streaming review worth considering.
+
+Missing dimensions make sequence totals and risk `unknown`. Explicit group
+metadata can lower grouping uncertainty; inferred numeric groups remain medium
+uncertainty, while missing groups or incomplete memory remain high uncertainty.
+The advisory does not change raw memory facts, specification profiles,
+production gates, transparent-padding policy, or pass/fail behavior.
+Advisory risk is high above `16 MiB`, or above `4 MiB` when sequence resources
+also represent at least half of known decoded resource memory. A smaller
+sequence-dominant asset is medium risk rather than high risk.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,
@@ -328,6 +354,7 @@ SVGA checker, and production preset into a host-neutral structured report:
 - calibration notes derived from the preset metadata
 - additive decoded-memory estimation summary
 - additive role-aware memory diagnostics
+- additive advisory sequence residency diagnostics
 
 The Node command `inspect-avatar-frame <file.svga>` owns local file access and
 prints the report as JSON. Existing CLI commands and Web preview behavior are

@@ -100,6 +100,37 @@ export interface RoleAwareMemoryDiagnostics {
   sequenceFrameEstimatedDecodedBytes: number | null;
 }
 
+export type SequenceResidencyModel =
+  | "all_frames_resident"
+  | "group_resident"
+  | "windowed_or_streaming"
+  | "sprite_sheet_candidate"
+  | "unknown";
+
+export type SequenceResidencyUncertainty = "low" | "medium" | "high";
+
+export interface SequenceResidencyGroup {
+  groupId: string;
+  role: "sequence_frame" | "baked_sweep_frame";
+  resourceIds: readonly string[];
+  frameCount: number;
+  totalEstimatedDecodedBytes: number | null;
+  evidence: readonly string[];
+  uncertainty: SequenceResidencyUncertainty;
+}
+
+export interface SequenceResidencyDiagnostics {
+  sequenceGroupCount: number;
+  framesPerGroup: readonly { groupId: string; frameCount: number }[];
+  totalSequenceFrameEstimatedDecodedBytes: number | null;
+  largestSequenceGroupsByDecodedBytes: readonly SequenceResidencyGroup[];
+  possibleResidencyModels: readonly SequenceResidencyModel[];
+  advisoryRiskLevel: MemoryRiskLevel;
+  evidence: readonly string[];
+  uncertainty: SequenceResidencyUncertainty;
+  ungroupedResourceIds: readonly string[];
+}
+
 export interface MotionLayerInfo {
   id: string;
   name: string;
