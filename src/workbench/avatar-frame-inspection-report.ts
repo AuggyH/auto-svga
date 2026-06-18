@@ -11,6 +11,10 @@ import type {
   WorkbenchResult
 } from "./contracts.js";
 import { MotionAssetInspectionService } from "./inspection-service.js";
+import {
+  createMotionAssetAuditSummary,
+  type MotionAssetAuditSummary
+} from "./motion-asset-audit-summary.js";
 import { diagnoseMemoryByRole } from "./memory-diagnostics.js";
 import { estimateDecodedMemory } from "./memory-estimation.js";
 import { diagnoseSequenceResidency } from "./sequence-residency-diagnostics.js";
@@ -41,6 +45,7 @@ export interface AvatarFrameInspectionReport {
   memoryDiagnostics: RoleAwareMemoryDiagnostics;
   sequenceResidencyDiagnostics: SequenceResidencyDiagnostics;
   sequenceFrameEvidence: SequenceFrameEvidence;
+  auditSummary: MotionAssetAuditSummary;
   specId: string;
   profileId: string;
   profileLabel: string;
@@ -72,16 +77,26 @@ export class AvatarFrameInspectionReportService {
 
     const { asset, specReport } = result.value;
     const memoryEstimation = estimateDecodedMemory(asset.resources);
+    const memoryDiagnostics = diagnoseMemoryByRole(memoryEstimation);
+    const sequenceResidencyDiagnostics = diagnoseSequenceResidency(
+      asset.resources,
+      memoryEstimation
+    );
+    const sequenceFrameEvidence = collectSequenceFrameEvidence(asset.resources);
     return {
       value: {
         asset: summarize(asset),
         memoryEstimation,
-        memoryDiagnostics: diagnoseMemoryByRole(memoryEstimation),
-        sequenceResidencyDiagnostics: diagnoseSequenceResidency(
-          asset.resources,
-          memoryEstimation
-        ),
-        sequenceFrameEvidence: collectSequenceFrameEvidence(asset.resources),
+        memoryDiagnostics,
+        sequenceResidencyDiagnostics,
+        sequenceFrameEvidence,
+        auditSummary: createMotionAssetAuditSummary({
+          asset,
+          issues: specReport.issues,
+          memoryEstimation,
+          sequenceResidencyDiagnostics,
+          sequenceFrameEvidence
+        }),
         specId: specReport.specId,
         profileId: avatarFrameProductionProfile.id,
         profileLabel: avatarFrameProductionProfile.label,

@@ -364,6 +364,26 @@ only prove equal dimensions and do not imply equal content. These evidence
 fields do not change any production gate, profile, transparent-padding policy,
 or specification pass/fail result.
 
+### Preliminary Motion Asset Audit summary
+
+`createMotionAssetAuditSummary()` is a host-neutral composition helper. It
+consumes existing specification issues, decoded-memory estimates, sequence
+residency diagnostics, and deterministic sequence-frame evidence. It does not
+parse files or recompute those primitives.
+
+The additive summary reports an audit status, primary findings, optimization
+opportunities, risk signals, evidence references, and explicit uncertainty.
+Every finding and opportunity must reference an existing issue, metric,
+resource, hash group, or sequence group. Duplicate-frame and empty-frame
+opportunities require deterministic evidence. FPS and duration review is only
+suggested when the active specification already reports those violations.
+
+`pass`, `advisory`, `needs_review`, and `unknown` are report-level summaries,
+not production gates. Insufficient hashes, unknown dimensions, or uncertain
+sequence grouping remain explicit rather than being guessed. The summary does
+not change specification pass/fail, profile thresholds, transparent-padding
+policy, raw memory facts, or sequence residency diagnostics.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,
@@ -378,6 +398,7 @@ SVGA checker, and production preset into a host-neutral structured report:
 - additive role-aware memory diagnostics
 - additive advisory sequence residency diagnostics
 - additive deterministic sequence-frame evidence
+- additive preliminary Motion Asset Audit summary
 
 The Node command `inspect-avatar-frame <file.svga>` owns local file access and
 prints the report as JSON. Existing CLI commands and Web preview behavior are
