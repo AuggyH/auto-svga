@@ -301,6 +301,21 @@ not change any `MotionSpec` threshold or pass/fail result. The estimate covers
 resource pixel allocation only; it does not claim player peak memory, duplicate
 GPU uploads, frame buffers, decoder workspaces, or platform overhead.
 
+### Role-aware memory diagnostics
+
+`diagnoseMemoryByRole()` consumes the raw `MotionAssetMemoryEstimation` result
+and groups it by `static_image`, `sequence_frame`, `baked_sweep_frame`,
+`mask_or_matte`, and `unknown`. Each role reports resource count, known and
+unknown memory counts, decoded/texture totals, and known resources ranked by
+decoded bytes. A missing role is conservatively grouped as `unknown`.
+
+If any resource in a role lacks a usable memory estimate, that role's complete
+decoded and texture totals are `null`; known resources remain ranked for
+diagnostic use. The sequence-frame role also exposes a direct subtotal for
+future group-level residency analysis. These diagnostics are advisory metadata
+only and do not change specification thresholds, profiles, transparent-padding
+policy, or pass/fail behavior.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,
@@ -312,6 +327,7 @@ SVGA checker, and production preset into a host-neutral structured report:
 - structured specification issues
 - calibration notes derived from the preset metadata
 - additive decoded-memory estimation summary
+- additive role-aware memory diagnostics
 
 The Node command `inspect-avatar-frame <file.svga>` owns local file access and
 prints the report as JSON. Existing CLI commands and Web preview behavior are

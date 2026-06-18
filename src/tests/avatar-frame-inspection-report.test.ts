@@ -20,6 +20,12 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.equal(report.memoryEstimation.totalEstimatedDecodedResourceBytes, 300 * 300 * 4);
   assert.equal(report.memoryEstimation.largestResourcesByDecodedBytes[0].resourceId, "img_frame");
   assert.equal(report.memoryEstimation.memoryRiskLevel, "low");
+  assert.equal(report.memoryDiagnostics.byRole.static_image.resourceCount, 1);
+  assert.equal(
+    report.memoryDiagnostics.byRole.static_image.totalEstimatedDecodedBytes,
+    300 * 300 * 4
+  );
+  assert.equal(report.memoryDiagnostics.sequenceFrameEstimatedDecodedBytes, 0);
   assert.equal(report.specId, "avatar-frame-production");
   assert.equal(report.profileId, "production_target");
   assert.equal(report.profileLabel, "Avatar Frame Production Target");

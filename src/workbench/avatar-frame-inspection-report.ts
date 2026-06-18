@@ -2,12 +2,14 @@ import type {
   MotionAssetInfo,
   MotionAssetMemoryEstimation,
   MotionAssetSource,
+  RoleAwareMemoryDiagnostics,
   MotionSpecChecker,
   WorkbenchIssue,
   WorkbenchOperationContext,
   WorkbenchResult
 } from "./contracts.js";
 import { MotionAssetInspectionService } from "./inspection-service.js";
+import { diagnoseMemoryByRole } from "./memory-diagnostics.js";
 import { estimateDecodedMemory } from "./memory-estimation.js";
 import {
   avatarFrameProductionProfile,
@@ -32,6 +34,7 @@ export interface SpecCalibrationNote {
 export interface AvatarFrameInspectionReport {
   asset: MotionAssetSummary;
   memoryEstimation: MotionAssetMemoryEstimation;
+  memoryDiagnostics: RoleAwareMemoryDiagnostics;
   specId: string;
   profileId: string;
   profileLabel: string;
@@ -62,10 +65,12 @@ export class AvatarFrameInspectionReportService {
     }
 
     const { asset, specReport } = result.value;
+    const memoryEstimation = estimateDecodedMemory(asset.resources);
     return {
       value: {
         asset: summarize(asset),
-        memoryEstimation: estimateDecodedMemory(asset.resources),
+        memoryEstimation,
+        memoryDiagnostics: diagnoseMemoryByRole(memoryEstimation),
         specId: specReport.specId,
         profileId: avatarFrameProductionProfile.id,
         profileLabel: avatarFrameProductionProfile.label,

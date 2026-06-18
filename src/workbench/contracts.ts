@@ -85,6 +85,21 @@ export interface MotionAssetMemoryEstimation {
   memoryRiskLevel: MemoryRiskLevel;
 }
 
+export interface RoleMemoryDiagnostic {
+  role: MotionResourceRole;
+  resourceCount: number;
+  knownMemoryCount: number;
+  unknownMemoryCount: number;
+  totalEstimatedDecodedBytes: number | null;
+  totalEstimatedTextureBytes: number | null;
+  largestResourcesByDecodedBytes: readonly MotionResourceMemoryEstimate[];
+}
+
+export interface RoleAwareMemoryDiagnostics {
+  byRole: Readonly<Record<MotionResourceRole, RoleMemoryDiagnostic>>;
+  sequenceFrameEstimatedDecodedBytes: number | null;
+}
+
 export interface MotionLayerInfo {
   id: string;
   name: string;
