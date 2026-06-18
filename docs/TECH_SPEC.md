@@ -283,6 +283,24 @@ from embedded image keys, dimensions, sprite references, and `matteKey`.
 the current transparent-padding threshold and pass/fail behavior remain
 unchanged.
 
+### Decoded memory estimation
+
+`estimateDecodedMemory()` is a host-neutral inspection primitive. It consumes
+normalized resource dimensions and estimates RGBA8 decoded and texture memory
+with `width x height x 4 bytes`.
+
+Its additive summary includes per-resource decoded/texture bytes, the complete
+resource total, resources sorted by decoded bytes, the sequence-frame subtotal,
+unknown resource IDs, and an advisory memory risk level. Missing, invalid, or
+unsafe dimensions produce `null` totals and `unknown` risk rather than a guessed
+value. Known resources remain available for largest-resource ranking.
+
+Advisory risk bands are low through `4 MiB`, medium above `4 MiB` through
+`16 MiB`, and high above `16 MiB`. These bands are not a production gate and do
+not change any `MotionSpec` threshold or pass/fail result. The estimate covers
+resource pixel allocation only; it does not claim player peak memory, duplicate
+GPU uploads, frame buffers, decoder workspaces, or platform overhead.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,
@@ -293,6 +311,7 @@ SVGA checker, and production preset into a host-neutral structured report:
   status
 - structured specification issues
 - calibration notes derived from the preset metadata
+- additive decoded-memory estimation summary
 
 The Node command `inspect-avatar-frame <file.svga>` owns local file access and
 prints the report as JSON. Existing CLI commands and Web preview behavior are

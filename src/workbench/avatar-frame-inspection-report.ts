@@ -1,5 +1,6 @@
 import type {
   MotionAssetInfo,
+  MotionAssetMemoryEstimation,
   MotionAssetSource,
   MotionSpecChecker,
   WorkbenchIssue,
@@ -7,6 +8,7 @@ import type {
   WorkbenchResult
 } from "./contracts.js";
 import { MotionAssetInspectionService } from "./inspection-service.js";
+import { estimateDecodedMemory } from "./memory-estimation.js";
 import {
   avatarFrameProductionProfile,
   avatarFrameProductionSpec
@@ -29,6 +31,7 @@ export interface SpecCalibrationNote {
 
 export interface AvatarFrameInspectionReport {
   asset: MotionAssetSummary;
+  memoryEstimation: MotionAssetMemoryEstimation;
   specId: string;
   profileId: string;
   profileLabel: string;
@@ -62,6 +65,7 @@ export class AvatarFrameInspectionReportService {
     return {
       value: {
         asset: summarize(asset),
+        memoryEstimation: estimateDecodedMemory(asset.resources),
         specId: specReport.specId,
         profileId: avatarFrameProductionProfile.id,
         profileLabel: avatarFrameProductionProfile.label,

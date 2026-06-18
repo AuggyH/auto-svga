@@ -65,6 +65,26 @@ export interface MotionResourceInfo {
   metadata?: Readonly<Record<string, unknown>>;
 }
 
+export type MemoryRiskLevel = "low" | "medium" | "high" | "unknown";
+
+export interface MotionResourceMemoryEstimate {
+  resourceId: string;
+  resourceName: string;
+  role?: MotionResourceRole;
+  estimatedDecodedBytes: number | null;
+  estimatedTextureBytes: number | null;
+}
+
+export interface MotionAssetMemoryEstimation {
+  bytesPerPixel: number;
+  resources: readonly MotionResourceMemoryEstimate[];
+  totalEstimatedDecodedResourceBytes: number | null;
+  largestResourcesByDecodedBytes: readonly MotionResourceMemoryEstimate[];
+  sequenceFrameEstimatedDecodedBytes: number | null;
+  unknownResourceIds: readonly string[];
+  memoryRiskLevel: MemoryRiskLevel;
+}
+
 export interface MotionLayerInfo {
   id: string;
   name: string;
