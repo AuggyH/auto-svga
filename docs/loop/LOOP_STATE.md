@@ -19,7 +19,8 @@ Date: 2026-06-20
 - M2-R2 is limited to terminal handoff trust hardening and loop validation infrastructure.
 - M2-R2 implementation commits: `d71c05da0327b17d97fc4987e55cb5e6cfbbfeb4`,
   `99c86085cf19c366164670fbfa5a694b8d4b83b8`,
-  `73e1f1a44c09f90165ec362f45e87590045ccb47`.
+  `73e1f1a44c09f90165ec362f45e87590045ccb47`,
+  `4126fe832a5106809455a4b33f6de597034d26cc`.
 - Terminal source state is committed in the current branch tip before final
   validation, reviewer JSON, and sealed handoff generation.
 
