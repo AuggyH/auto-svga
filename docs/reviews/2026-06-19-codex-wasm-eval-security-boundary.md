@@ -10,7 +10,9 @@
 - Decision commit: `2ddc80b452d81955467f2e4c4d8c254373e61db3`
 - Checked branch tip: `agent/codex/local-preview-launcher` at `9bf7296f4562d7c677092d7b716024a942dbc747` before this decision commit
 - Checked branch tip: `agent/codex/svga-web-strict-csp-spike` at `351c0ebd193beb85266555bdf2a1293601ffcf35`
-- Working tree after decision commit: clean before this review file was added
+- Review commit: `2fcc9a4f46c1a0d7eba2f797c7ee6ac2a6c7f507`
+- Final cleanup commit: `ffae8d655daf2a9e049644375b4acc553a2d3cbd`
+- Working tree after delivery: clean
 
 ## 3. Changed files
 - `docs/decisions/ADR-010-electron-player-wasm-eval-boundary.md`
@@ -69,5 +71,8 @@ Build/test: not run. Runtime code not touched in this round.
 
 ## 9. Commit
 - Decision commit: `2ddc80b452d81955467f2e4c4d8c254373e61db3`
+- Review commit: `2fcc9a4f46c1a0d7eba2f797c7ee6ac2a6c7f507`
+- Final cleanup commit: `ffae8d655daf2a9e049644375b4acc553a2d3cbd`
 - Branch: `agent/codex/local-preview-launcher`
 - Tag: none
+- Working tree after delivery: clean
