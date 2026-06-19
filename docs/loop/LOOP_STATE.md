@@ -5,7 +5,7 @@ Date: 2026-06-20
 ## Current Milestone
 
 - Milestone: M2-R2 Terminal Handoff Trust Hardening
-- State: implementation_in_progress
+- State: terminal_pass
 - Repair round: 1
 - Consecutive rounds without new evidence: 0
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -17,9 +17,12 @@ Date: 2026-06-20
 - M2-R1 external review outcome: `REPAIR_REQUIRED`.
 - Blocking findings are recorded in `docs/loop/reviews/M2-R1-external-review.md`.
 - M2-R2 is limited to terminal handoff trust hardening and loop validation infrastructure.
+- M2-R2 implementation commit: `d71c05da0327b17d97fc4987e55cb5e6cfbbfeb4`.
+- Terminal source state is committed in the current branch tip before final
+  validation, reviewer JSON, and sealed handoff generation.
 
 ## Next Action
 
-Finish M2-R2 implementation, run targeted handoff and validation tests, run
-preliminary `npm run loop:validate`, then move to terminal state only after
-final source commit and reviewer JSON verdicts are ready.
+Run final validation twice against the terminal source HEAD, generate the
+candidate packet, collect structured reviewer JSON, seal the packet, and send
+`FINAL_RESPONSE.txt`.
