@@ -26,6 +26,7 @@ exports/
 # Temporary review artifacts
 review/
 outputs/
+.artifacts/loop-validation/
 
 # Allow approved fixtures and examples, but not their generated outputs
 !fixtures/
