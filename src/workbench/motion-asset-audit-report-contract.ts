@@ -1,6 +1,12 @@
 import type { AvatarFrameInspectionReport } from "./avatar-frame-inspection-report.js";
 
 export const MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION = 1 as const;
+const SUPPORTED_REPORT_CONTRACT_VERSIONS = [
+  MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION
+] as const;
+
+export type SupportedMotionAssetAuditReportContractVersion =
+  (typeof SUPPORTED_REPORT_CONTRACT_VERSIONS)[number];
 
 export interface MotionAssetAuditReportContractValidation {
   valid: boolean;
@@ -100,10 +106,51 @@ export function serializeMotionAssetAuditReportV1(
   return JSON.stringify(report);
 }
 
+export function getCurrentReportContractVersion(
+): SupportedMotionAssetAuditReportContractVersion {
+  return MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION;
+}
+
+export function getSupportedReportContractVersions(
+): readonly SupportedMotionAssetAuditReportContractVersion[] {
+  return [...SUPPORTED_REPORT_CONTRACT_VERSIONS];
+}
+
+export function isSupportedReportContractVersion(
+  version: unknown
+): version is SupportedMotionAssetAuditReportContractVersion {
+  return typeof version === "number"
+    && SUPPORTED_REPORT_CONTRACT_VERSIONS.some((supported) => supported === version);
+}
+
+export function assertSupportedReportContractVersion(
+  version: unknown
+): asserts version is SupportedMotionAssetAuditReportContractVersion {
+  if (!isSupportedReportContractVersion(version)) {
+    throw new Error(`Unsupported Motion Asset Audit report contract version: ${String(version)}`);
+  }
+}
+
+export function parseReportContractVersion(value: unknown): number {
+  if (!isRecord(value) || !("contractVersion" in value)) {
+    throw new Error("Motion Asset Audit report contractVersion is required");
+  }
+  const version = value.contractVersion;
+  if (!Number.isSafeInteger(version) || (version as number) < 1) {
+    throw new Error("Motion Asset Audit report contractVersion must be a positive integer");
+  }
+  return version as number;
+}
+
 export function parseMotionAssetAuditReportV1(
   serialized: string
 ): AvatarFrameInspectionReport {
   const value: unknown = JSON.parse(serialized);
+  const version = parseReportContractVersion(value);
+  assertSupportedReportContractVersion(version);
+  if (version !== MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION) {
+    throw new Error(`Motion Asset Audit report version ${version} requires a version-specific parser`);
+  }
   const validation = validateMotionAssetAuditReportV1(value);
   if (!validation.valid) {
     throw new Error(`Invalid Motion Asset Audit report v1: ${validation.errors.join(", ")}`);
@@ -117,8 +164,13 @@ export function validateMotionAssetAuditReportV1(
   if (!isRecord(value)) return { valid: false, errors: ["report must be an object"] };
   const errors: string[] = [];
 
-  if (value.contractVersion !== MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION) {
-    errors.push(`contractVersion must equal ${MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION}`);
+  try {
+    const version = parseReportContractVersion(value);
+    if (version !== MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION) {
+      errors.push(`contractVersion must equal ${MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION} for v1 validation`);
+    }
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : "contractVersion is invalid");
   }
   validatePaths(value, OBJECT_PATHS, isRecord, "an object", errors);
   validatePaths(value, ARRAY_PATHS, Array.isArray, "an array", errors);

@@ -427,6 +427,18 @@ boundary. The checked-in representative fixture freezes stable field presence
 and types without snapshotting dynamic metrics, environment paths, timestamps,
 or ordering. Opportunity actions are validated as `review_only`.
 
+Version negotiation is strict: the current version is `1`, and the supported
+version set is `[1]`. Missing, malformed, or unknown major versions are rejected
+before v1 parsing; clients must not silently reinterpret them as v1. Clients may
+show an unsupported-version state without attempting normal report rendering.
+
+V1 may gain optional additive fields only when existing required fields, field
+types, and stable enum meanings remain unchanged. Required fields cannot be
+removed or retyped, and v1 semantics cannot be silently redefined. A future
+breaking change must increment the contract version. V1-to-v2 migration must be
+an explicit, separately tested operation and must never rewrite a user report
+implicitly.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,

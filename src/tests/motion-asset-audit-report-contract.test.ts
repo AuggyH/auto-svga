@@ -42,7 +42,7 @@ test("rejects incompatible versions and missing stable sections", async () => {
   assert.equal(validateMotionAssetAuditReportV1(missingPresentation).valid, false);
   assert.throws(
     () => parseMotionAssetAuditReportV1(JSON.stringify(wrongVersion)),
-    /contractVersion must equal 1/
+    /Unsupported Motion Asset Audit report contract version: 2/
   );
 });
 
