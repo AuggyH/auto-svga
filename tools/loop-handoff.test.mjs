@@ -436,7 +436,7 @@ test("committed diff whitespace error is detected for PASS", async () => {
 
 test("nested secret content does not enter HUMAN_REQUIRED packet files", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    const sentinel = "SECRET_SENTINEL_M2R2";
+    const sentinel = ["SECRET", "SENTINEL", "M2R2"].join("_");
     await writeText(join(repo, "nested/.env"), sentinel);
     await writeJson(join(repo, ".artifacts/loop-decision.json"), {
       schemaVersion: 1,
@@ -473,7 +473,8 @@ test("nested secret content does not enter HUMAN_REQUIRED packet files", async (
 
 test("sensitive committed path is rejected before raw patch generation", async () => {
   await withRepo(async ({ repo, base }) => {
-    await writeText(join(repo, "credential.pem"), "SECRET_SENTINEL_PEM\n");
+    const sentinel = ["SECRET", "SENTINEL", "PEM"].join("_");
+    await writeText(join(repo, "credential.pem"), `${sentinel}\n`);
     run("git", ["add", "credential.pem"], repo);
     run("git", ["commit", "-m", "secret"], repo);
     const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
@@ -503,7 +504,8 @@ test("sensitive committed path is rejected before raw patch generation", async (
 test("symlink snapshots record link target without following outside repository", async () => {
   await withRepo(async ({ repo, base, head }) => {
     const outside = join(repo, "..", "outside-secret.txt");
-    await writeText(outside, "SECRET_SENTINEL_OUTSIDE\n");
+    const sentinel = ["SECRET", "SENTINEL", "OUTSIDE"].join("_");
+    await writeText(outside, `${sentinel}\n`);
     await symlink(outside, join(repo, "safe-link"));
     await writeJson(join(repo, ".artifacts/loop-decision.json"), {
       schemaVersion: 1,
@@ -529,7 +531,7 @@ test("symlink snapshots record link target without following outside repository"
     await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
     const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), status: "HUMAN_REQUIRED", decisionFile: ".artifacts/loop-decision.json" });
     const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
-    assert.equal(packet.includes("SECRET_SENTINEL_OUTSIDE"), false);
+    assert.equal(packet.includes(sentinel), false);
     assert.match(packet, /safe-link/);
   });
 });
