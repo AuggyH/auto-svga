@@ -338,6 +338,26 @@ test("reviewer text and validation summary are preserved", async () => {
   });
 });
 
+test("retrospective packets distinguish authoritative unavailable evidence from loop history", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const result = await generateHandoffPacket({
+      repoRoot: repo,
+      status: "PASS",
+      milestone: "M1",
+      base,
+      head,
+      validation: "missing-validation.json",
+      reviewerReport: "missing-reviewer.md",
+      retrospective: true
+    });
+    const reviewPacket = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
+    const validation = await readJson(join(result.packetRoot, "validation.json"));
+    assert.equal(validation.status, "not_available");
+    assert.match(reviewPacket, /Retrospective evidence authority/);
+    assert.match(reviewPacket, /Loop History` is narrative context only/);
+  });
+});
+
 test("FINAL_RESPONSE format is stable", async () => {
   await withRepo(async ({ repo, base, head }) => {
     const result = await generateHandoffPacket({

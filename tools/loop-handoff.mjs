@@ -581,10 +581,14 @@ export async function generateHandoffPacket(options) {
     "# Acceptance Evidence",
     "",
     acceptanceEvidence({ milestone: milestoneId, validation, reviewerStatus, packetStatus }),
+    options.retrospective
+      ? "\nRetrospective evidence authority: `validation.json` and `reviewer-report.md` are the authoritative availability markers for historical evidence. `Loop History` is narrative context only when original evidence files are marked `not_available`."
+      : "\nEvidence authority: `validation.json`, `reviewer-report.md`, `MANIFEST.json`, and current Git state are authoritative for this packet.",
     "",
     "# Validation Evidence",
     "",
     `- validation status: ${validationStatus}`,
+    `- evidence authority: ${options.retrospective ? "retrospective official evidence availability marker; loop history is narrative context only" : "current validation artifact"}`,
     "- step summary:",
     summarizeValidation(validation),
     `- consecutive validation count: ${milestoneId === "M2" ? "2 required before PASS" : "not_available for retrospective packaging"}`,
