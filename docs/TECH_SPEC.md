@@ -283,6 +283,24 @@ from embedded image keys, dimensions, sprite references, and `matteKey`.
 the current transparent-padding threshold and pass/fail behavior remain
 unchanged.
 
+### Role-aware transparent-padding policy
+
+`evaluateRoleAwareTransparentPadding()` is a host-neutral advisory layer over
+existing resource roles and alpha-bound metadata. It does not decode images,
+change raw `alphaBounds`, or participate in the production specification gate.
+
+Static images retain the provisional `50%` threshold as an explicit diagnostic.
+Sequence frames are evaluated at group level when deterministic grouping is
+available; an individual padded sequence frame never becomes a policy failure.
+Baked sweep frames remain advisory. Mask or matte padding is informational
+unless the resource is fully transparent. Unknown roles remain `unknown` and
+require classification review.
+
+The additive report summary records role, resource or group identity, padding
+ratio, severity, policy code, evidence references, uncertainty, and the
+recommended review. Existing specification issues and `passed` remain
+unchanged while this role-aware policy is calibrated.
+
 ### Decoded memory estimation
 
 `estimateDecodedMemory()` is a host-neutral inspection primitive. It consumes

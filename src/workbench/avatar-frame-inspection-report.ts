@@ -25,6 +25,10 @@ import { estimateDecodedMemory } from "./memory-estimation.js";
 import { diagnoseSequenceResidency } from "./sequence-residency-diagnostics.js";
 import { collectSequenceFrameEvidence } from "./sequence-frame-evidence.js";
 import {
+  evaluateRoleAwareTransparentPadding,
+  type RoleAwareTransparentPaddingPolicySummary
+} from "./role-aware-transparent-padding.js";
+import {
   avatarFrameProductionProfile,
   avatarFrameProductionSpec
 } from "./specs/index.js";
@@ -51,6 +55,7 @@ export interface AvatarFrameInspectionReport {
   memoryDiagnostics: RoleAwareMemoryDiagnostics;
   sequenceResidencyDiagnostics: SequenceResidencyDiagnostics;
   sequenceFrameEvidence: SequenceFrameEvidence;
+  transparentPaddingPolicy?: RoleAwareTransparentPaddingPolicySummary;
   auditSummary: MotionAssetAuditSummary;
   auditPresentation: MotionAssetAuditPresentation;
   specId: string;
@@ -90,6 +95,13 @@ export class AvatarFrameInspectionReportService {
       memoryEstimation
     );
     const sequenceFrameEvidence = collectSequenceFrameEvidence(asset.resources);
+    const transparentPaddingPolicy = avatarFrameProductionSpec.maxTransparentPaddingRatio === undefined
+      ? undefined
+      : evaluateRoleAwareTransparentPadding({
+        resources: asset.resources,
+        sequenceResidencyDiagnostics,
+        maximumTransparentPaddingRatio: avatarFrameProductionSpec.maxTransparentPaddingRatio
+      });
     const auditSummary = createMotionAssetAuditSummary({
       asset,
       issues: specReport.issues,
@@ -105,6 +117,7 @@ export class AvatarFrameInspectionReportService {
         memoryDiagnostics,
         sequenceResidencyDiagnostics,
         sequenceFrameEvidence,
+        transparentPaddingPolicy,
         auditSummary,
         auditPresentation: createMotionAssetAuditPresentation(auditSummary),
         specId: specReport.specId,

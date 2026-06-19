@@ -37,6 +37,9 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.deepEqual(report.sequenceResidencyDiagnostics.possibleResidencyModels, ["unknown"]);
   assert.equal(report.sequenceFrameEvidence.analyzedResourceCount, 0);
   assert.equal(report.sequenceFrameEvidence.duplicateEvidenceStatus, "not_applicable");
+  assert.equal(report.transparentPaddingPolicy?.maximumTransparentPaddingRatio, 0.5);
+  assert.equal(report.transparentPaddingPolicy?.evaluatedResourceCount, 1);
+  assert.deepEqual(report.transparentPaddingPolicy?.diagnostics, []);
   assert.equal(report.auditSummary.auditStatus, "pass");
   assert.equal(report.auditSummary.uncertainty, "low");
   assert.deepEqual(report.auditSummary.primaryFindings, []);
@@ -84,6 +87,11 @@ test("avatar-frame inspection command reports transparent padding from embedded 
     height: 100
   });
   assert.equal(report.auditSummary.auditStatus, "needs_review");
+  assert.equal(
+    report.transparentPaddingPolicy?.diagnostics[0].policyCode,
+    "static_image_padding_exceeds_threshold"
+  );
+  assert.equal(report.transparentPaddingPolicy?.diagnostics[0].severity, "error");
   assert.ok(report.auditSummary.optimizationOpportunities.some(
     ({ code }) => code === "crop_static_transparent_padding"
   ));
