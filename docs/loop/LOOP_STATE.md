@@ -6,9 +6,9 @@ Date: 2026-06-20
 
 - milestoneId: M2-R3
 - Milestone: M2-R3 Review Packet Fidelity And Loop Budget Enforcement
-- State: in_progress
-- Next Action: implement_packet_fidelity_repair
-- repairRound: 0
+- State: terminal_pass
+- Next Action: external_review
+- repairRound: 1
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -22,8 +22,13 @@ Date: 2026-06-20
 - M2-R2 exceeded the intended repair budget before machine-enforced budget
   checking existed; historical records remain unchanged.
 - M2-R3 is limited to Agent Loop Review Packet fidelity and budget enforcement.
+- M2-R3 packet schema v4 now keeps PASS diffs byte-exact, binds source and
+  packet diff hashes, enforces reviewer JSON v2 diff hash binding, and includes
+  loop budget evidence in the candidate digest.
+- Targeted loop tests passed: handoff 39, budget 6, validation 11.
+- Root `npm test` passed: 155 tests.
 
 ## Next Action
 
-Implement the frozen M2-R3 packet fidelity, literal path, rename/copy,
-terminal-state, budget, reviewer-binding, and validation repairs.
+Generate the final M2-R3 candidate packet, complete independent review, seal the
+handoff packet, and send it for external review.

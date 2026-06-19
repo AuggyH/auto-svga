@@ -28,6 +28,7 @@ review/
 outputs/
 .artifacts/loop-validation/
 .artifacts/loop-handoff/
+.artifacts/loop-budget-check/
 
 # Allow approved fixtures and examples, but not their generated outputs
 !fixtures/

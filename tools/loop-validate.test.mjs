@@ -110,11 +110,18 @@ test("file summary is parseable and matches console summary semantics", async ()
   });
 });
 
+test("loop validation starts with handoff, reviewer config, and budget gates", () => {
+  const ids = createLoopValidationSteps().map(({ id }) => id);
+  assert.deepEqual(ids.slice(0, 3), [
+    "handoff-tests",
+    "reviewer-config-check",
+    "loop-budget-check"
+  ]);
+});
+
 test("electron steps are ordered after web smoke and are not parallelized", () => {
   const ids = createLoopValidationSteps().map(({ id }) => id);
-  assert.equal(ids.includes("handoff-tests"), true);
-  assert.equal(ids.includes("reviewer-config-check"), true);
-  assert.deepEqual(ids.slice(10, 13), [
+  assert.deepEqual(ids.slice(11, 14), [
     "web-local-smoke",
     "electron-prototype-tests",
     "svga-web-prototype-tests"

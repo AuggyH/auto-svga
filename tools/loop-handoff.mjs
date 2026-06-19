@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultRepoRoot = path.resolve(scriptDir, "..");
-const packetSchemaVersion = 3;
+const packetSchemaVersion = 4;
 const inlineDiffMaxBytes = 1_000_000;
 const inlineDiffMaxLines = 5_000;
 const sensitiveSentinelLabel = "redacted";
@@ -122,6 +122,14 @@ function gitBytes(args, { cwd, allowFailure = false } = {}) {
     stdout: result.stdout ?? Buffer.alloc(0),
     stderr: result.stderr ?? Buffer.alloc(0)
   };
+}
+
+function gitLiteral(args, options = {}) {
+  return git(["--literal-pathspecs", ...args], options);
+}
+
+function gitLiteralBytes(args, options = {}) {
+  return gitBytes(["--literal-pathspecs", ...args], options);
 }
 
 function toPosixPath(value) {
@@ -244,8 +252,8 @@ function parsePorcelainZ(buffer) {
     const status = token.slice(0, 2).trim() || "modified";
     const firstPath = token.slice(3);
     if (status.startsWith("R") || status.startsWith("C")) {
-      const newPath = tokens[index++];
-      entries.push({ status, oldPath: firstPath, path: newPath });
+      const oldPath = tokens[index++];
+      entries.push({ status, path: firstPath, oldPath });
       continue;
     }
     entries.push({ status, path: firstPath });
@@ -302,7 +310,7 @@ function isTextBuffer(buffer) {
 }
 
 async function readPathAtHead(repoRoot, head, repoPath) {
-  const result = gitBytes(["show", `${head}:${repoPath}`], { cwd: repoRoot, allowFailure: true });
+  const result = gitLiteralBytes(["show", `${head}:./${repoPath}`], { cwd: repoRoot, allowFailure: true });
   if (result.status !== 0) return undefined;
   return result.stdout;
 }
@@ -452,6 +460,35 @@ function validateCurrentValidationSummary({ validation, validationExists, headCo
   if (steps.some((step) => step.required && step.status !== "pass")) {
     throw new Error("Validation summary has a required step that did not pass.");
   }
+  for (const requiredStep of ["handoff-tests", "reviewer-config-check", "loop-budget-check"]) {
+    const step = steps.find((item) => item.id === requiredStep);
+    if (!step || step.status !== "pass" || step.required !== true) {
+      throw new Error(`Validation summary requires ${requiredStep} to pass.`);
+    }
+  }
+}
+
+function validateBudgetCheckSummary({ budget, budgetExists, milestoneId }) {
+  if (!budgetExists) {
+    throw new Error("PASS handoff requires loop budget check summary.");
+  }
+  if (budget.schemaVersion !== 1) {
+    throw new Error("Loop budget check summary schemaVersion must be 1.");
+  }
+  if (budget.status !== "pass") {
+    throw new Error("PASS handoff requires loop budget check status pass.");
+  }
+  if (budget.milestoneId !== milestoneId) {
+    throw new Error("Loop budget check milestoneId does not match handoff milestone.");
+  }
+  if (budget.budgetStatus !== "within_budget") {
+    throw new Error("PASS handoff requires loop budgetStatus within_budget.");
+  }
+  for (const key of ["maxRepairRounds", "maxConsecutiveNoProgressRounds", "repairRound", "consecutiveNoProgressRounds"]) {
+    if (!Number.isInteger(budget[key])) {
+      throw new Error(`Loop budget check missing integer ${key}.`);
+    }
+  }
 }
 
 function summarizeValidation(validation) {
@@ -471,8 +508,8 @@ async function readReviewerVerdict(filePath, { reviewerId, headCommit, candidate
     throw new Error(`Reviewer ${reviewerId} JSON verdict is missing.`);
   }
   const verdict = await readJsonFile(filePath);
-  if (verdict.schemaVersion !== 1) {
-    throw new Error(`Reviewer ${reviewerId} verdict schemaVersion must be 1.`);
+  if (verdict.schemaVersion !== 2) {
+    throw new Error(`Reviewer ${reviewerId} verdict schemaVersion must be 2.`);
   }
   if (verdict.reviewerId !== reviewerId) {
     throw new Error(`Reviewer verdict role mismatch: expected ${reviewerId}.`);
@@ -485,6 +522,12 @@ async function readReviewerVerdict(filePath, { reviewerId, headCommit, candidate
   }
   if (verdict.candidateDigest !== candidateDigest) {
     throw new Error(`Reviewer ${reviewerId} candidateDigest mismatch.`);
+  }
+  if (reviewerId === "A" && !verdict.sourceDiffSha256) {
+    throw new Error("Reviewer A verdict requires sourceDiffSha256.");
+  }
+  if (reviewerId === "B" && !verdict.packetDiffSha256) {
+    throw new Error("Reviewer B verdict requires packetDiffSha256.");
   }
   if (verdict.verdict === "PASS") {
     if (Array.isArray(verdict.conditions) && verdict.conditions.length > 0) {
@@ -508,8 +551,9 @@ function reviewerVerdictMarkdown(verdict) {
 }
 
 function patchMetadata(patch) {
-  const sizeBytes = Buffer.byteLength(patch, "utf8");
-  const lineCount = patch.length ? patch.split("\n").length : 0;
+  const text = Buffer.isBuffer(patch) ? patch.toString("utf8") : patch;
+  const sizeBytes = Buffer.isBuffer(patch) ? patch.length : Buffer.byteLength(patch, "utf8");
+  const lineCount = text.length ? text.split("\n").length : 0;
   const companionRequired = sizeBytes > inlineDiffMaxBytes || lineCount > inlineDiffMaxLines;
   return {
     sizeBytes,
@@ -519,10 +563,28 @@ function patchMetadata(patch) {
   };
 }
 
-function redactSensitiveText(text) {
-  return text
-    .replace(/\b(SECRET|TOKEN|PASSWORD|PASSWD|API[_-]?KEY|ACCESS[_-]?KEY|PRIVATE[_-]?KEY)\s*=\s*[^\\\s"'`]+/gi, "$1=[redacted]")
-    .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, "[redacted-private-key]");
+function findHighConfidenceSecrets(text) {
+  const findings = [];
+  const rules = [
+    { id: "private-key-block", pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/g },
+    { id: "aws-access-key-id", pattern: /AKIA[0-9A-Z]{16}/g },
+    { id: "github-token", pattern: /gh[pousr]_[A-Za-z0-9_]{36,}/g },
+    {
+      id: "high-entropy-secret-assignment",
+      pattern: /\b(SECRET|TOKEN|PASSWORD|PASSWD|API[_-]?KEY|ACCESS[_-]?KEY|PRIVATE[_-]?KEY)\s*=\s*["']?([A-Za-z0-9/+_=.-]{24,})["']?/gi,
+      entropyGroup: 2
+    }
+  ];
+  for (const rule of rules) {
+    for (const match of text.matchAll(rule.pattern)) {
+      const value = rule.entropyGroup ? match[rule.entropyGroup] : match[0];
+      const line = text.slice(0, match.index).split("\n").length;
+      const distinct = new Set(value).size;
+      if (rule.entropyGroup && distinct < 10) continue;
+      findings.push({ ruleId: rule.id, lineStart: line, lineEnd: line, redacted: true });
+    }
+  }
+  return findings;
 }
 
 function stableJson(value) {
@@ -535,6 +597,10 @@ function stableJson(value) {
 
 function sha256Text(text) {
   return createHash("sha256").update(text).digest("hex");
+}
+
+function sha256Buffer(buffer) {
+  return createHash("sha256").update(buffer).digest("hex");
 }
 
 function computeCandidateDigest(parts) {
@@ -576,10 +642,10 @@ function pathspecsForEntries(entries) {
 }
 
 function diffCheckRecord({ repoRoot, label, args }) {
-  const result = git(["diff", "--check", ...args], { cwd: repoRoot, allowFailure: true });
+  const result = gitLiteral(["diff", "--check", ...args], { cwd: repoRoot, allowFailure: true });
   return {
     label,
-    command: `git diff --check ${args.join(" ")}`.trim(),
+    command: `git --literal-pathspecs diff --check ${args.join(" ")}`.trim(),
     status: result.status === 0 ? "pass" : "fail",
     exitCode: result.status,
     output: `${result.stdout}${result.stderr}`.trim()
@@ -746,6 +812,9 @@ async function validateTerminalState({ repoRoot, milestoneId, status }) {
   if (!stateText.includes(`Milestone: ${milestoneId}`) || !stateText.includes(`State: ${expectedState}`)) {
     throw new Error(`LOOP_STATE.md must mark ${milestoneId} as ${expectedState}.`);
   }
+  if (!stateText.includes("Next Action: external_review")) {
+    throw new Error("LOOP_STATE.md terminal next action must be external_review.");
+  }
   const entries = await readLoopHistoryEntries(repoRoot, milestoneId);
   const last = entries.at(-1);
   if (!last) {
@@ -757,7 +826,7 @@ async function validateTerminalState({ repoRoot, milestoneId, status }) {
   if (!["external_review", "wait_for_next_milestone"].includes(last.nextAction)) {
     throw new Error("Terminal LOOP_HISTORY nextAction must be external_review or wait_for_next_milestone.");
   }
-  return { state: expectedState, lastHistory: last };
+  return { state: expectedState, nextAction: "external_review", lastHistory: last };
 }
 
 async function readLoopHistoryForMilestone(repoRoot, milestoneId) {
@@ -912,7 +981,64 @@ export async function verifySealedPacket({ repoRoot, packetRoot, latestRoot, man
     errors.push("reviewer B candidateDigest mismatch");
   }
   const artifactIndexPath = path.join(packetRoot, "artifact-index.json");
+  const patchPath = path.join(packetRoot, "changes.patch");
   let checkedArtifactCount = 0;
+  if (manifest.packetStatus !== "COMPLETE") {
+    errors.push("sealed manifest packetStatus must be COMPLETE");
+  }
+  if (manifest.milestoneOutcome === "PASS" && manifest.diffFidelity !== "EXACT") {
+    errors.push("PASS packet diffFidelity must be EXACT");
+  }
+  if (manifest.candidateDigestParts) {
+    const recomputedCandidateDigest = computeCandidateDigest(manifest.candidateDigestParts);
+    if (recomputedCandidateDigest !== manifest.candidateDigest) {
+      errors.push("candidateDigest does not match candidateDigestParts");
+    }
+  } else {
+    errors.push("candidateDigestParts missing");
+  }
+  if (manifest.milestoneOutcome === "PASS" && repoRoot && manifest.reviewedBaseCommit && manifest.reviewedHeadCommit) {
+    const pathspecs = Array.isArray(manifest.changedFileIndex)
+      ? pathspecsForEntries(manifest.changedFileIndex)
+      : [];
+    const diffArgs = pathspecs.length
+      ? [`${manifest.reviewedBaseCommit}..${manifest.reviewedHeadCommit}`, "--", ...pathspecs]
+      : [`${manifest.reviewedBaseCommit}..${manifest.reviewedHeadCommit}`];
+    let sourcePatch = gitLiteralBytes(["diff", "--binary", "--no-ext-diff", "--no-textconv", ...diffArgs], { cwd: repoRoot, allowFailure: true });
+    if (sourcePatch.status !== 0) {
+      errors.push("source diff could not be regenerated");
+    } else {
+      if (sourcePatch.stdout.length === 0) {
+        sourcePatch = { ...sourcePatch, stdout: Buffer.from("# No textual diff.\n") };
+      }
+      const regeneratedSourceDiffSha256 = sha256Buffer(sourcePatch.stdout);
+      if (regeneratedSourceDiffSha256 !== manifest.sourceDiffSha256) {
+        errors.push("sourceDiffSha256 does not match regenerated source diff");
+      }
+    }
+  }
+  if (!existsSync(patchPath)) {
+    errors.push("changes.patch missing");
+  } else {
+    const packetPatch = await readFile(patchPath);
+    const regeneratedPacketDiffSha256 = sha256Buffer(packetPatch);
+    if (regeneratedPacketDiffSha256 !== manifest.packetDiffSha256) {
+      errors.push("packetDiffSha256 does not match changes.patch");
+    }
+    if (manifest.milestoneOutcome === "PASS"
+      && manifest.sourceDiffSha256
+      && manifest.sourceDiffSha256 !== regeneratedPacketDiffSha256) {
+      errors.push("PASS source diff and packet diff hashes differ");
+    }
+  }
+  if (manifest.reviewers.reviewerA?.sourceDiffSha256
+    && manifest.reviewers.reviewerA.sourceDiffSha256 !== manifest.sourceDiffSha256) {
+    errors.push("reviewer A sourceDiffSha256 mismatch");
+  }
+  if (manifest.reviewers.reviewerB?.packetDiffSha256
+    && manifest.reviewers.reviewerB.packetDiffSha256 !== manifest.packetDiffSha256) {
+    errors.push("reviewer B packetDiffSha256 mismatch");
+  }
   if (!Array.isArray(manifest.artifacts)) {
     errors.push("manifest artifacts missing or invalid");
   } else {
@@ -1037,6 +1163,7 @@ export async function generateHandoffPacket(options) {
   const status = options.status.toUpperCase();
   const contractPath = options.contract ?? "docs/loop/CURRENT_MILESTONE.md";
   const validationPath = options.validation ?? ".artifacts/loop-validation/latest.json";
+  const budgetPath = options.budget ?? ".artifacts/loop-budget-check/latest.json";
   const headCommit = git(["rev-parse", options.head ?? "HEAD"], { cwd: repoRoot }).stdout.trim();
   const headShortSha = git(["rev-parse", "--short", headCommit], { cwd: repoRoot }).stdout.trim();
   const branch = git(["branch", "--show-current"], { cwd: repoRoot }).stdout.trim() || "detached";
@@ -1098,9 +1225,18 @@ export async function generateHandoffPacket(options) {
     knownGaps: {}
   }, null, 2));
   const validation = parseValidationSummary(validationText);
+  const budgetSourcePath = resolveRepoPath(repoRoot, budgetPath);
+  const budgetExists = existsSync(budgetSourcePath);
+  const budgetText = await readOptionalFile(budgetSourcePath, JSON.stringify({
+    schemaVersion: 1,
+    status: "not_available",
+    errors: ["loop budget check summary not available"]
+  }, null, 2));
+  const budget = parseValidationSummary(budgetText);
 
   if (status === "PASS" && !options.retrospective) {
     validateCurrentValidationSummary({ validation, validationExists, headCommit });
+    validateBudgetCheckSummary({ budget, budgetExists, milestoneId });
   }
 
   let humanDecision = null;
@@ -1118,11 +1254,12 @@ export async function generateHandoffPacket(options) {
   }
 
   await writeFile(path.join(packetRoot, "validation.json"), `${JSON.stringify(validation, null, 2)}\n`);
+  await writeFile(path.join(packetRoot, "budget-check.json"), `${JSON.stringify(budget, null, 2)}\n`);
 
-  const nameStatus = parseNameStatusZ(gitBytes(["diff", "--name-status", "--find-renames", "--find-copies", "-z", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout);
+  const nameStatus = parseNameStatusZ(gitLiteralBytes(["diff", "--name-status", "--find-renames", "--find-copies", "-z", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout);
   const dirtyStatus = status === "HUMAN_REQUIRED"
     ? [
-      ...parsePorcelainZ(gitBytes(["status", "--short", "-z"], { cwd: repoRoot }).stdout),
+      ...parsePorcelainZ(gitBytes(["status", "--porcelain=v1", "-z"], { cwd: repoRoot }).stdout),
       ...listUntrackedFiles(repoRoot)
     ]
     : [];
@@ -1148,7 +1285,7 @@ export async function generateHandoffPacket(options) {
   const committedDiffArgs = safePathspecs.length
     ? [`${baseCommit}..${headCommit}`, "--", ...safePathspecs]
     : [`${baseCommit}..${headCommit}`];
-  const diffStat = git(["diff", "--stat", ...committedDiffArgs], { cwd: repoRoot }).stdout.trim() || "No committed diff.";
+  const diffStat = gitLiteral(["diff", "--stat", ...committedDiffArgs], { cwd: repoRoot }).stdout.trim() || "No committed diff.";
   const diffChecks = [
     diffCheckRecord({ repoRoot, label: "baseRange", args: [`${baseCommit}..${headCommit}`] })
   ];
@@ -1159,24 +1296,49 @@ export async function generateHandoffPacket(options) {
   if (status === "PASS" && diffChecks.some((record) => record.status !== "pass")) {
     throw new Error("PASS handoff requires git diff --check base..head to pass.");
   }
-  let patch = git(["diff", "--binary", ...committedDiffArgs], { cwd: repoRoot }).stdout;
+  let sourcePatchBuffer = gitLiteralBytes(["diff", "--binary", "--no-ext-diff", "--no-textconv", ...committedDiffArgs], { cwd: repoRoot }).stdout;
   if (status === "HUMAN_REQUIRED") {
-    patch += "\n\n# Uncommitted tracked changes\n";
-    patch += safePathspecs.length
-      ? git(["diff", "--binary", "--", ...safePathspecs], { cwd: repoRoot }).stdout
-      : "# No safe uncommitted tracked paths.\n";
+    const worktreePatch = safePathspecs.length
+      ? gitLiteralBytes(["diff", "--binary", "--no-ext-diff", "--no-textconv", "--", ...safePathspecs], { cwd: repoRoot }).stdout
+      : Buffer.from("# No safe uncommitted tracked paths.\n");
+    sourcePatchBuffer = Buffer.concat([
+      sourcePatchBuffer,
+      Buffer.from("\n\n# Uncommitted tracked changes\n"),
+      worktreePatch
+    ]);
     const untracked = dirtyStatus.filter((entry) => entry.status === "??");
     if (untracked.length) {
-      patch += "\n\n# Untracked files are included as snapshots and indexed in MANIFEST.json.\n";
-      patch += untracked
+      const untrackedText = [
+        "\n\n# Untracked files are included as snapshots and indexed in MANIFEST.json.",
+        ...untracked
         .filter((entry) => !isSensitiveRepoPath(entry.path))
-        .map((entry) => `# ${entry.path}`).join("\n");
-      patch += "\n";
+        .map((entry) => `# ${entry.path}`),
+        ""
+      ].join("\n");
+      sourcePatchBuffer = Buffer.concat([sourcePatchBuffer, Buffer.from(untrackedText)]);
     }
   }
-  const normalizedPatch = redactSensitiveText(patch || "# No textual diff.\n");
-  const patchInfo = patchMetadata(normalizedPatch);
-  await writeFile(path.join(packetRoot, "changes.patch"), normalizedPatch);
+  if (sourcePatchBuffer.length === 0) {
+    sourcePatchBuffer = Buffer.from("# No textual diff.\n");
+  }
+  const secretFindings = findHighConfidenceSecrets(sourcePatchBuffer.toString("utf8"));
+  if (status === "PASS" && secretFindings.length > 0) {
+    throw new Error(`PASS handoff refuses high-confidence secret content in diff: ${secretFindings.map((finding) => finding.ruleId).join(", ")}`);
+  }
+  const hasSensitiveHumanRequiredContent = status === "HUMAN_REQUIRED" && (sensitiveFiles.length > 0 || secretFindings.length > 0);
+  const packetPatchBuffer = hasSensitiveHumanRequiredContent
+    ? Buffer.from([
+      "# Diff redacted because HUMAN_REQUIRED contains sensitive content.",
+      "# Source diff hash is recorded in MANIFEST.json.",
+      "# Upload this packet for the structured human decision; do not upload source-sensitive content.",
+      ""
+    ].join("\n"))
+    : sourcePatchBuffer;
+  const diffFidelity = Buffer.compare(sourcePatchBuffer, packetPatchBuffer) === 0 ? "EXACT" : "PARTIAL_REDACTED";
+  const sourceDiffSha256 = sha256Buffer(sourcePatchBuffer);
+  const packetDiffSha256 = sha256Buffer(packetPatchBuffer);
+  const patchInfo = patchMetadata(packetPatchBuffer);
+  await writeFile(path.join(packetRoot, "changes.patch"), packetPatchBuffer);
   if (patchInfo.companionRequired && !existsSync(path.join(packetRoot, "changes.patch"))) {
     throw new Error("changes.patch is required but was not written.");
   }
@@ -1190,8 +1352,8 @@ export async function generateHandoffPacket(options) {
   });
 
   const validationEvidenceStatus = validationStatusFromFile(validation, validationExists);
-  const packetStatus = options.candidate ? "CANDIDATE" : "COMPLETE";
-  const packetEvidenceCompleteness = options.candidate ? "PENDING_CANDIDATE_REVIEW" : input.evidenceCompleteness;
+  const packetStatus = options.candidate ? "INCOMPLETE" : "COMPLETE";
+  const packetEvidenceCompleteness = options.candidate ? "PARTIAL" : input.evidenceCompleteness;
   const packetReviewerEvidence = options.candidate ? "PENDING_CANDIDATE_REVIEW" : input.historicalReviewerEvidence;
   const commitsInRange = git(["log", "--oneline", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout.trim() || "none";
   const loopHistory = await readLoopHistoryForMilestone(repoRoot, milestoneId);
@@ -1199,20 +1361,28 @@ export async function generateHandoffPacket(options) {
   const optionalReference = options.retrospectivePacket ? resolveRepoPath(repoRoot, options.retrospectivePacket) : null;
   const reportGeneratedAt = new Date().toISOString();
   const contractHash = sha256Text(contractText);
-  const diffHash = sha256Text(normalizedPatch);
-  const validationHash = sha256Text(JSON.stringify(validation));
-  const acceptanceHash = sha256Text(JSON.stringify(input.acceptanceEvidence));
-  const stateHistoryHash = sha256Text(JSON.stringify({
-    terminalState,
-    loopHistory
+  const validationSha256 = sha256Text(JSON.stringify(validation));
+  const acceptanceEvidenceSha256 = sha256Text(JSON.stringify(input.acceptanceEvidence));
+  const loopStateText = await readOptionalFile(path.join(repoRoot, "docs/loop/LOOP_STATE.md"), "");
+  const loopStateSha256 = sha256Text(loopStateText);
+  const milestoneHistorySha256 = sha256Text(loopHistory);
+  const budgetCheckSha256 = sha256Text(JSON.stringify(budget));
+  const changedFileIndex = changedFiles.map((entry) => ({
+    status: entry.status,
+    path: entry.path,
+    oldPath: entry.oldPath ?? null
   }));
+  const changedFileIndexSha256 = sha256Text(JSON.stringify(changedFileIndex));
   const candidateDigest = computeCandidateDigest({
     reviewedHeadCommit: headCommit,
-    contractHash,
-    diffHash,
-    validationHash,
-    acceptanceHash,
-    stateHistoryHash
+    contractSha256: contractHash,
+    sourceDiffSha256,
+    validationSha256,
+    acceptanceEvidenceSha256,
+    loopStateSha256,
+    milestoneHistorySha256,
+    budgetCheckSha256,
+    changedFileIndexSha256
   });
 
   const reviewerAPath = options.reviewerA ?? options.reviewerReport;
@@ -1228,6 +1398,12 @@ export async function generateHandoffPacket(options) {
       reviewerBPath ? resolveRepoPath(repoRoot, reviewerBPath) : undefined,
       { reviewerId: "B", headCommit, candidateDigest }
     );
+    if (reviewerAVerdict.sourceDiffSha256 !== sourceDiffSha256) {
+      throw new Error("Reviewer A sourceDiffSha256 mismatch.");
+    }
+    if (reviewerBVerdict.packetDiffSha256 !== packetDiffSha256) {
+      throw new Error("Reviewer B packetDiffSha256 mismatch.");
+    }
     if (reviewerAVerdict.verdict !== "PASS" || reviewerBVerdict.verdict !== "PASS") {
       throw new Error("PASS handoff requires reviewer A and reviewer B structured PASS verdicts.");
     }
@@ -1254,7 +1430,7 @@ export async function generateHandoffPacket(options) {
       `- patch line count: ${patchInfo.lineCount}`,
       "",
       "```diff",
-      normalizedPatch,
+      packetPatchBuffer.toString("utf8"),
       "```"
     ].join("\n");
 
@@ -1280,6 +1456,14 @@ export async function generateHandoffPacket(options) {
     `workspaceCleanAtGeneration: ${workspaceClean}`,
     `companionRequired: ${patchInfo.companionRequired}`,
     `mandatoryCompanions: ${JSON.stringify(patchInfo.mandatoryCompanions)}`,
+    `sourceDiffSha256: ${sourceDiffSha256}`,
+    `packetDiffSha256: ${packetDiffSha256}`,
+    `diffFidelity: ${diffFidelity}`,
+    `budgetStatus: ${budget.budgetStatus ?? "not_available"}`,
+    `repairRound: ${budget.repairRound ?? "not_available"}`,
+    `maxRepairRounds: ${budget.maxRepairRounds ?? "not_available"}`,
+    `consecutiveNoProgressRounds: ${budget.consecutiveNoProgressRounds ?? "not_available"}`,
+    `maxConsecutiveNoProgressRounds: ${budget.maxConsecutiveNoProgressRounds ?? "not_available"}`,
     `candidateDigest: ${candidateDigest}`,
     "---",
     "",
@@ -1311,6 +1495,9 @@ export async function generateHandoffPacket(options) {
     diffChecks.map((record) => `  - ${record.label}: ${record.status}, exitCode=${record.exitCode}, command=${record.command}`).join("\n"),
     `- workspace clean at generation: ${workspaceClean}`,
     "- ignored runtime artifacts: `.artifacts/loop-validation/`, `.artifacts/loop-handoff/`, Electron `.runtime/` directories are excluded from source status.",
+    `- loop budget status: ${budget.budgetStatus ?? "not_available"}`,
+    `- loop budget repair round: ${budget.repairRound ?? "not_available"} / ${budget.maxRepairRounds ?? "not_available"}`,
+    `- loop budget no-progress round: ${budget.consecutiveNoProgressRounds ?? "not_available"} / ${budget.maxConsecutiveNoProgressRounds ?? "not_available"}`,
     "",
     "# Changed Files",
     "",
@@ -1406,7 +1593,8 @@ export async function generateHandoffPacket(options) {
   const artifactIndexRecords = [
     await artifactRecord(packetRoot, "REVIEW_PACKET.md", "review-packet", "text/markdown", true),
     await artifactRecord(packetRoot, "changes.patch", "diff", "text/x-diff", true),
-    await artifactRecord(packetRoot, "validation.json", "validation-summary", "application/json", false)
+    await artifactRecord(packetRoot, "validation.json", "validation-summary", "application/json", false),
+    await artifactRecord(packetRoot, "budget-check.json", "loop-budget-check", "application/json", false)
   ];
   if (reviewerAVerdict) {
     artifactIndexRecords.push(await artifactRecord(packetRoot, "reviewer-a.json", "independent-reviewer-a-verdict", "application/json", false));
@@ -1441,15 +1629,22 @@ export async function generateHandoffPacket(options) {
     workspaceCleanAtGeneration: workspaceClean,
     companionRequired: patchInfo.companionRequired,
     mandatoryCompanions: patchInfo.mandatoryCompanions,
+    sourceDiffSha256,
+    packetDiffSha256,
+    diffFidelity,
     candidateDigest,
     candidateDigestParts: {
       reviewedHeadCommit: headCommit,
-      contractHash,
-      diffHash,
-      validationHash,
-      acceptanceHash,
-      stateHistoryHash
+      contractSha256: contractHash,
+      sourceDiffSha256,
+      validationSha256,
+      acceptanceEvidenceSha256,
+      loopStateSha256,
+      milestoneHistorySha256,
+      budgetCheckSha256,
+      changedFileIndexSha256
     },
+    changedFileIndex,
     seal: {
       phase: options.candidate ? "candidate" : "sealed",
       allowedAdditions: [
@@ -1476,12 +1671,31 @@ export async function generateHandoffPacket(options) {
       status: validationEvidenceStatus,
       summaryPath: "validation.json"
     },
+    budgetCheck: {
+      status: budget.status ?? "not_available",
+      summaryPath: "budget-check.json",
+      budgetStatus: budget.budgetStatus ?? "not_available",
+      repairRound: budget.repairRound ?? null,
+      maxRepairRounds: budget.maxRepairRounds ?? null,
+      consecutiveNoProgressRounds: budget.consecutiveNoProgressRounds ?? null,
+      maxConsecutiveNoProgressRounds: budget.maxConsecutiveNoProgressRounds ?? null
+    },
     reviewers: {
       reviewerA: reviewerAVerdict
-        ? { status: reviewerAVerdict.verdict, verdictPath: "reviewer-a.json", candidateDigest: reviewerAVerdict.candidateDigest }
+        ? {
+          status: reviewerAVerdict.verdict,
+          verdictPath: "reviewer-a.json",
+          candidateDigest: reviewerAVerdict.candidateDigest,
+          sourceDiffSha256: reviewerAVerdict.sourceDiffSha256
+        }
         : { status: options.candidate ? "PENDING_CANDIDATE_REVIEW" : "NOT_AVAILABLE" },
       reviewerB: reviewerBVerdict
-        ? { status: reviewerBVerdict.verdict, verdictPath: "reviewer-b.json", candidateDigest: reviewerBVerdict.candidateDigest }
+        ? {
+          status: reviewerBVerdict.verdict,
+          verdictPath: "reviewer-b.json",
+          candidateDigest: reviewerBVerdict.candidateDigest,
+          packetDiffSha256: reviewerBVerdict.packetDiffSha256
+        }
         : { status: options.candidate ? "PENDING_CANDIDATE_REVIEW" : "NOT_AVAILABLE" }
     },
     files: snapshots,
@@ -1492,6 +1706,7 @@ export async function generateHandoffPacket(options) {
       "MANIFEST.json",
       "changes.patch",
       "validation.json",
+      "budget-check.json",
       reviewerAVerdict ? "reviewer-a.json" : null,
       reviewerBVerdict ? "reviewer-b.json" : null,
       "artifact-index.json",

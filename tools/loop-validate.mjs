@@ -26,18 +26,6 @@ export function createLoopValidationSteps() {
   const npm = npmCommand();
   return [
     {
-      id: "build",
-      command: "npm run build",
-      required: true,
-      run: { cmd: npm, args: ["run", "build"] }
-    },
-    {
-      id: "root-tests",
-      command: "npm test",
-      required: true,
-      run: { cmd: npm, args: ["test"] }
-    },
-    {
       id: "handoff-tests",
       command: "node --test tools/loop-handoff.test.mjs",
       required: true,
@@ -48,6 +36,24 @@ export function createLoopValidationSteps() {
       command: "node tools/loop-reviewer-config-check.mjs",
       required: true,
       run: { cmd: process.execPath, args: ["tools/loop-reviewer-config-check.mjs"] }
+    },
+    {
+      id: "loop-budget-check",
+      command: "node tools/loop-budget-check.mjs",
+      required: true,
+      run: { cmd: process.execPath, args: ["tools/loop-budget-check.mjs"] }
+    },
+    {
+      id: "build",
+      command: "npm run build",
+      required: true,
+      run: { cmd: npm, args: ["run", "build"] }
+    },
+    {
+      id: "root-tests",
+      command: "npm test",
+      required: true,
+      run: { cmd: npm, args: ["test"] }
     },
     {
       id: "validate-example",

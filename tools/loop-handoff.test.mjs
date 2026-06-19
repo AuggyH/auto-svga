@@ -40,6 +40,31 @@ async function writeJson(filePath, value) {
   await writeText(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function requiredValidationSteps() {
+  return [
+    { id: "handoff-tests", command: "node --test tools/loop-handoff.test.mjs", required: true, status: "pass", exitCode: 0, durationMs: 1, reason: null },
+    { id: "reviewer-config-check", command: "node tools/loop-reviewer-config-check.mjs", required: true, status: "pass", exitCode: 0, durationMs: 1, reason: null },
+    { id: "loop-budget-check", command: "node tools/loop-budget-check.mjs", required: true, status: "pass", exitCode: 0, durationMs: 1, reason: null }
+  ];
+}
+
+function budgetSummary({ milestoneId = "M2-R2" } = {}) {
+  return {
+    schemaVersion: 1,
+    status: "pass",
+    milestoneId,
+    maxRepairRounds: 2,
+    maxConsecutiveNoProgressRounds: 1,
+    repairRound: 0,
+    actualRepairRound: 0,
+    consecutiveNoProgressRounds: 0,
+    budgetStatus: "within_budget",
+    nextRepairRound: 1,
+    nextRepairAllowed: true,
+    errors: []
+  };
+}
+
 function hashText(text) {
   return createHash("sha256").update(text).digest("hex");
 }
@@ -111,7 +136,7 @@ function baseInput({ base, head, changedFilePurposes, humanDecision = null } = {
     historicalReviewerEvidence: "PASS",
     retrospectiveRevalidation: "NOT_APPLICABLE",
     retrospectiveReviewerStatus: "NOT_APPLICABLE",
-    implementationSummary: "M2-R2 hardens terminal handoff trust with schema v3, structured reviewer verdicts, validation head binding, candidate seal, safe patch filtering, and concrete human gates.",
+    implementationSummary: "M2-R2 hardens terminal handoff trust with schema v4, structured reviewer verdicts, validation head binding, candidate seal, safe patch filtering, and concrete human gates.",
     changedFilePurposes,
     acceptanceEvidence: acceptanceEvidence(),
     validationRuns: [
@@ -140,6 +165,7 @@ async function createRepo() {
     "",
     "- Milestone: M2-R2 Terminal Handoff Trust Hardening",
     "- State: terminal_pass",
+    "- Next Action: external_review",
     ""
   ].join("\n"));
   await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({
@@ -174,14 +200,15 @@ async function createRepo() {
     status: "pass",
     startedAt: "2026-06-20T00:00:00.000Z",
     finishedAt: "2026-06-20T00:01:00.000Z",
-    steps: [{ id: "handoff-tests", command: "node --test tools/loop-handoff.test.mjs", required: true, status: "pass", exitCode: 0, durationMs: 1, reason: null }],
+    steps: requiredValidationSteps(),
     knownGaps: {}
   });
+  await writeJson(join(repo, ".artifacts/loop-budget-check/latest.json"), budgetSummary());
   await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), baseInput({
     base,
     head,
     changedFilePurposes: {
-      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior."
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior."
     }
   }));
   return { repo, base, head };
@@ -208,24 +235,29 @@ function defaultOptions(repo, base, head) {
   };
 }
 
-async function writeReviewerVerdicts(repo, head, candidateDigest, overrides = {}) {
+async function writeReviewerVerdicts(repo, head, candidate, overrides = {}) {
+  const candidateDigest = typeof candidate === "string" ? candidate : candidate.candidateDigest;
+  const sourceDiffSha256 = typeof candidate === "string" ? overrides.A?.sourceDiffSha256 : candidate.sourceDiffSha256;
+  const packetDiffSha256 = typeof candidate === "string" ? overrides.B?.packetDiffSha256 : candidate.packetDiffSha256;
   await writeJson(join(repo, ".artifacts/loop-review/reviewer-a.json"), {
-    schemaVersion: 1,
+    schemaVersion: 2,
     reviewerId: "A",
     verdict: "PASS",
     reviewedHeadCommit: head,
     candidateDigest,
+    sourceDiffSha256,
     generatedAt: "2026-06-20T00:02:00.000Z",
     conditions: [],
     findings: [],
     ...overrides.A
   });
   await writeJson(join(repo, ".artifacts/loop-review/reviewer-b.json"), {
-    schemaVersion: 1,
+    schemaVersion: 2,
     reviewerId: "B",
     verdict: "PASS",
     reviewedHeadCommit: head,
     candidateDigest,
+    packetDiffSha256,
     generatedAt: "2026-06-20T00:02:00.000Z",
     conditions: [],
     findings: [],
@@ -243,9 +275,10 @@ async function refreshValidationAndInput(repo, base, head, changedFilePurposes, 
     status: "pass",
     startedAt: "2026-06-20T00:00:00.000Z",
     finishedAt: "2026-06-20T00:01:00.000Z",
-    steps: [{ id: "handoff-tests", command: "node --test tools/loop-handoff.test.mjs", required: true, status: "pass", exitCode: 0, durationMs: 1, reason: null }],
+    steps: requiredValidationSteps(),
     knownGaps: {}
   });
+  await writeJson(join(repo, ".artifacts/loop-budget-check/latest.json"), budgetSummary());
   await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), {
     ...baseInput({ base, head, changedFilePurposes }),
     ...inputOverrides
@@ -264,7 +297,7 @@ async function generateSealedPacket({ repo, base, head, options = {}, reviewerOv
     ...options,
     candidate: true
   });
-  await writeReviewerVerdicts(repo, head, candidate.manifest.candidateDigest, reviewerOverrides);
+  await writeReviewerVerdicts(repo, head, candidate.manifest, reviewerOverrides);
   return generateHandoffPacket({
     ...defaultOptions(repo, base, head),
     ...options,
@@ -287,21 +320,117 @@ test("reviewer.toml config validates and remains read-only", async () => {
   assert.equal(result.mustCheck.includes("review handoff completeness"), true);
 });
 
-test("PASS packet generation creates schema v3 sealed packet", async () => {
+test("PASS packet generation creates schema v4 sealed packet", async () => {
   await withRepo(async ({ repo, base, head }) => {
     const result = await generateSealedPacket({ repo, base, head });
     const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
     const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
 
-    assert.equal(manifest.schemaVersion, 3);
+    assert.equal(manifest.schemaVersion, 4);
     assert.equal(manifest.packetStatus, "COMPLETE");
     assert.equal(manifest.milestoneOutcome, "PASS");
     assert.equal(manifest.seal.phase, "sealed");
     assert.equal(manifest.reviewers.reviewerA.status, "PASS");
     assert.equal(manifest.reviewers.reviewerA.candidateDigest, manifest.candidateDigest);
-    assert.match(packet, /schemaVersion: 3/);
+    assert.equal(manifest.diffFidelity, "EXACT");
+    assert.equal(manifest.sourceDiffSha256, manifest.packetDiffSha256);
+    assert.equal(manifest.reviewers.reviewerA.sourceDiffSha256, manifest.sourceDiffSha256);
+    assert.equal(manifest.reviewers.reviewerB.packetDiffSha256, manifest.packetDiffSha256);
+    assert.match(packet, /schemaVersion: 4/);
     assert.match(packet, /candidateDigest:/);
     assert.match(packet, /```diff/);
+  });
+});
+
+test("PASS changes.patch is byte-exact with literal source diff", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const result = await generateSealedPacket({ repo, base, head });
+    const packetPatch = await readFile(join(result.packetRoot, "changes.patch"), "utf8");
+    const sourcePatch = run("git", [
+      "--literal-pathspecs",
+      "diff",
+      "--binary",
+      "--no-ext-diff",
+      "--no-textconv",
+      `${base}..${head}`,
+      "--",
+      "src/example.txt"
+    ], repo).stdout;
+
+    assert.equal(packetPatch, sourcePatch);
+    assert.equal(result.manifest.diffFidelity, "EXACT");
+    assert.equal(result.manifest.sourceDiffSha256, hashText(sourcePatch));
+    assert.equal(result.manifest.packetDiffSha256, hashText(packetPatch));
+  });
+});
+
+test("safe token-like source code is not redacted from PASS packet diff", async () => {
+  await withRepo(async ({ repo, base }) => {
+    await writeText(join(repo, "src/token-code.js"), [
+      "const token = argv[index];",
+      "const passwordPolicy = config.passwordPolicy;",
+      ""
+    ].join("\n"));
+    run("git", ["add", "src/token-code.js"], repo);
+    run("git", ["commit", "-m", "token code"], repo);
+    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "src/token-code.js": "Adds safe token-named source code to verify packet diffs are not generically redacted."
+    });
+
+    const result = await generateSealedPacket({ repo, base, head });
+    const patch = await readFile(join(result.packetRoot, "changes.patch"), "utf8");
+    assert.match(patch, /const token = argv\[index\];/);
+    assert.match(patch, /const passwordPolicy = config\.passwordPolicy;/);
+    assert.equal(patch.includes("[redacted]"), false);
+  });
+});
+
+test("PASS fails closed on high-confidence secret content", async () => {
+  await withRepo(async ({ repo, base }) => {
+    await writeText(join(repo, "src/secret-code.js"), "const API_KEY = \"abcdefghijklmnopqrstuvwxyzABC1234567890\";\n");
+    run("git", ["add", "src/secret-code.js"], repo);
+    run("git", ["commit", "-m", "secret code"], repo);
+    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "src/secret-code.js": "Adds a high-confidence secret fixture to verify PASS fail-closed behavior."
+    });
+
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /high-confidence secret/
+    );
+  });
+});
+
+test("PASS requires loop budget check summary", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await rm(join(repo, ".artifacts/loop-budget-check/latest.json"), { force: true });
+
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /loop budget check summary/
+    );
+  });
+});
+
+test("literal pathspec handles pathspec-magic-looking file names", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const weirdPath = "src/:(glob)literal.txt";
+    await writeText(join(repo, weirdPath), "literal pathspec content\n");
+    run("git", ["add", weirdPath], repo);
+    run("git", ["commit", "-m", "literal pathspec"], repo);
+    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      [weirdPath]: "Adds a pathspec-magic-looking filename to verify literal Git path handling."
+    });
+
+    const result = await generateSealedPacket({ repo, base, head });
+    const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
+    assert.match(packet, /src\/:\(glob\)literal\.txt/);
   });
 });
 
@@ -310,7 +439,7 @@ test("terminal state mismatch fails PASS generation", async () => {
     await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: implementation_in_progress\n");
     head = await commitFixture(repo, "bad state");
     await refreshValidationAndInput(repo, base, head, {
-      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
       "docs/loop/LOOP_STATE.md": "Records an intentionally invalid terminal state for regression coverage."
     });
     await assert.rejects(
@@ -320,12 +449,27 @@ test("terminal state mismatch fails PASS generation", async () => {
   });
 });
 
+test("terminal state requires external_review next action", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_pass\n- Next Action: final_validation\n");
+    head = await commitFixture(repo, "bad terminal next action");
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records an intentionally invalid terminal next action for regression coverage."
+    });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /next action/
+    );
+  });
+});
+
 test("terminal history final result must match PASS", async () => {
   await withRepo(async ({ repo, base, head }) => {
     await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "IN_PROGRESS", nextAction: "repair" })}\n`);
     head = await commitFixture(repo, "bad history");
     await refreshValidationAndInput(repo, base, head, {
-      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
       "docs/loop/LOOP_HISTORY.jsonl": "Records an intentionally invalid terminal history result for regression coverage."
     });
     await assert.rejects(
@@ -338,7 +482,7 @@ test("terminal history final result must match PASS", async () => {
 test("reviewer JSON head mismatch is rejected", async () => {
   await withRepo(async ({ repo, base, head }) => {
     const candidate = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
-    await writeReviewerVerdicts(repo, head, candidate.manifest.candidateDigest, { A: { reviewedHeadCommit: base } });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, { A: { reviewedHeadCommit: base } });
     await assert.rejects(
       generateHandoffPacket({ ...defaultOptions(repo, base, head), reviewerA: ".artifacts/loop-review/reviewer-a.json", reviewerB: ".artifacts/loop-review/reviewer-b.json" }),
       /reviewedHeadCommit mismatch/
@@ -349,7 +493,7 @@ test("reviewer JSON head mismatch is rejected", async () => {
 test("reviewer JSON candidate digest mismatch is rejected", async () => {
   await withRepo(async ({ repo, base, head }) => {
     const candidate = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
-    await writeReviewerVerdicts(repo, head, candidate.manifest.candidateDigest, { B: { candidateDigest: "bad" } });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, { B: { candidateDigest: "bad" } });
     await assert.rejects(
       generateHandoffPacket({ ...defaultOptions(repo, base, head), reviewerA: ".artifacts/loop-review/reviewer-a.json", reviewerB: ".artifacts/loop-review/reviewer-b.json" }),
       /candidateDigest mismatch/
@@ -357,10 +501,32 @@ test("reviewer JSON candidate digest mismatch is rejected", async () => {
   });
 });
 
+test("reviewer A sourceDiffSha256 mismatch is rejected", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const candidate = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, { A: { sourceDiffSha256: "bad" } });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), reviewerA: ".artifacts/loop-review/reviewer-a.json", reviewerB: ".artifacts/loop-review/reviewer-b.json" }),
+      /sourceDiffSha256 mismatch/
+    );
+  });
+});
+
+test("reviewer B packetDiffSha256 mismatch is rejected", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const candidate = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, { B: { packetDiffSha256: "bad" } });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), reviewerA: ".artifacts/loop-review/reviewer-a.json", reviewerB: ".artifacts/loop-review/reviewer-b.json" }),
+      /packetDiffSha256 mismatch/
+    );
+  });
+});
+
 test("reviewer JSON PASS with conditions is rejected", async () => {
   await withRepo(async ({ repo, base, head }) => {
     const candidate = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
-    await writeReviewerVerdicts(repo, head, candidate.manifest.candidateDigest, { A: { conditions: ["needs follow-up"] } });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, { A: { conditions: ["needs follow-up"] } });
     await assert.rejects(
       generateHandoffPacket({ ...defaultOptions(repo, base, head), reviewerA: ".artifacts/loop-review/reviewer-a.json", reviewerB: ".artifacts/loop-review/reviewer-b.json" }),
       /cannot include conditions/
@@ -416,13 +582,13 @@ test("committed diff whitespace error is detected for PASS", async () => {
       sourceWorkspaceCleanAtStart: true,
       sourceWorkspaceCleanAtFinish: true,
       status: "pass",
-      steps: [{ id: "handoff-tests", required: true, status: "pass", exitCode: 0 }]
+      steps: requiredValidationSteps()
     });
     const input = baseInput({
       base,
       head,
       changedFilePurposes: {
-        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
         "src/bad.txt": "Adds a whitespace failure fixture used to verify committed diff checking."
       }
     });
@@ -451,13 +617,13 @@ test("nested secret content does not enter HUMAN_REQUIRED packet files", async (
       safeDefaultWhileWaiting: "Do not generate PASS."
     });
     const input = baseInput({ base, head, changedFilePurposes: {
-      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
       "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
       "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
     } });
     input.milestoneOutcome = "HUMAN_REQUIRED";
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
-    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n");
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
     await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
     const result = await generateHandoffPacket({
       ...defaultOptions(repo, base, head),
@@ -485,13 +651,13 @@ test("sensitive committed path is rejected before raw patch generation", async (
       sourceWorkspaceCleanAtStart: true,
       sourceWorkspaceCleanAtFinish: true,
       status: "pass",
-      steps: [{ id: "handoff-tests", required: true, status: "pass", exitCode: 0 }]
+      steps: requiredValidationSteps()
     });
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), baseInput({
       base,
       head,
       changedFilePurposes: {
-        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior."
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior."
       }
     }));
     await assert.rejects(
@@ -501,7 +667,7 @@ test("sensitive committed path is rejected before raw patch generation", async (
   });
 });
 
-test("secret-like literals in safe diffs are redacted from packet files", async () => {
+test("secret-like safe diffs remain byte-exact when not high-confidence secrets", async () => {
   await withRepo(async ({ repo, base }) => {
     const secretLiteral = ["SECRET", "=", "1"].join("");
     await writeText(join(repo, "src/fixture.js"), `const fixture = "${secretLiteral}";\n`);
@@ -515,21 +681,20 @@ test("secret-like literals in safe diffs are redacted from packet files", async 
       sourceWorkspaceCleanAtStart: true,
       sourceWorkspaceCleanAtFinish: true,
       status: "pass",
-      steps: [{ id: "handoff-tests", required: true, status: "pass", exitCode: 0 }]
+      steps: requiredValidationSteps()
     });
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), baseInput({
       base,
       head,
       changedFilePurposes: {
-        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
-        "src/fixture.js": "Adds a safe source fixture used to verify sensitive literal redaction in diffs."
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+        "src/fixture.js": "Adds a safe source fixture used to verify byte-exact diff behavior."
       }
     }));
     const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
     for (const fileName of ["REVIEW_PACKET.md", "changes.patch"]) {
       const text = await readFile(join(result.packetRoot, fileName), "utf8");
-      assert.equal(text.includes(secretLiteral), false, fileName);
-      assert.match(text, /SECRET=\[redacted\]/);
+      assert.equal(text.includes(secretLiteral), true, fileName);
     }
   });
 });
@@ -553,14 +718,14 @@ test("symlink snapshots record link target without following outside repository"
       safeDefaultWhileWaiting: "Do not follow symlink."
     });
     const input = baseInput({ base, head, changedFilePurposes: {
-      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
       "safe-link": "Adds a symlink fixture used to verify safe snapshot behavior.",
       "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
       "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
     } });
     input.milestoneOutcome = "HUMAN_REQUIRED";
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
-    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n");
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
     await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
     const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), status: "HUMAN_REQUIRED", decisionFile: ".artifacts/loop-decision.json" });
     const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
@@ -596,7 +761,7 @@ test("paths with spaces, renames, and copies are handled", async () => {
       sourceWorkspaceCleanAtStart: true,
       sourceWorkspaceCleanAtFinish: true,
       status: "pass",
-      steps: [{ id: "handoff-tests", required: true, status: "pass", exitCode: 0 }]
+      steps: requiredValidationSteps()
     });
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), baseInput({
       base: copyBase,
@@ -628,13 +793,13 @@ test("HUMAN_REQUIRED final response contains the actual question and recommendat
       safeDefaultWhileWaiting: "Continue no product changes."
     });
     const input = baseInput({ base, head, changedFilePurposes: {
-      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
       "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
       "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
     } });
     input.milestoneOutcome = "HUMAN_REQUIRED";
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
-    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n");
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
     await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
     const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), status: "HUMAN_REQUIRED", decisionFile: ".artifacts/loop-decision.json" });
     const response = await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8");
@@ -645,7 +810,7 @@ test("HUMAN_REQUIRED final response contains the actual question and recommendat
 
 test("CLI status and input milestoneOutcome mismatch fails", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior." } });
+    const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior." } });
     input.milestoneOutcome = "HUMAN_REQUIRED";
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
     await assert.rejects(
@@ -657,7 +822,7 @@ test("CLI status and input milestoneOutcome mismatch fails", async () => {
 
 test("current packets require NOT_APPLICABLE retrospective fields", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior." } });
+    const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior." } });
     input.retrospectiveRevalidation = "PASS";
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
     await assert.rejects(
@@ -667,9 +832,9 @@ test("current packets require NOT_APPLICABLE retrospective fields", async () => 
   });
 });
 
-test("schema v3 rejects invalid enum values from handoff input", async () => {
+test("schema v4 rejects invalid enum values from handoff input", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior." } });
+    const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior." } });
     input.evidenceCompleteness = "BOGUS";
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
     await assert.rejects(
@@ -684,7 +849,7 @@ test("contract ID in prose does not satisfy exact milestone ID", async () => {
     await writeText(join(repo, "docs/loop/CURRENT_MILESTONE.md"), `${contractText({ milestoneId: "M2" })}\nM2-R2 appears only in prose.\n`);
     head = await commitFixture(repo, "bad contract id");
     await refreshValidationAndInput(repo, base, head, {
-      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
       "docs/loop/CURRENT_MILESTONE.md": "Records an intentionally wrong milestone id for regression coverage."
     });
     await assert.rejects(
@@ -729,8 +894,8 @@ test("candidate packet does not update latest handoff pointer", async () => {
 
     assert.equal(candidate.packetRoot.endsWith(`M2-R2-${head.slice(0, 7)}-candidate`), true);
     assert.equal(existsSync(join(repo, ".artifacts/loop-handoff/latest")), false);
-    assert.equal(candidate.manifest.packetStatus, "CANDIDATE");
-    assert.equal(candidate.manifest.evidenceCompleteness, "PENDING_CANDIDATE_REVIEW");
+    assert.equal(candidate.manifest.packetStatus, "INCOMPLETE");
+    assert.equal(candidate.manifest.evidenceCompleteness, "PARTIAL");
     assert.equal(candidate.manifest.historicalReviewerEvidence, "PENDING_CANDIDATE_REVIEW");
     assert.equal(candidate.manifest.seal.phase, "candidate");
     assert.equal(candidate.manifest.sealVerification.status, "not_run");
@@ -824,7 +989,7 @@ test("failure path uses only temporary repository files", async () => {
       await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: wrong\n");
       head = await commitFixture(repo, "bad terminal state");
       await refreshValidationAndInput(repo, base, head, {
-        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
         "docs/loop/LOOP_STATE.md": "Records an intentionally wrong terminal state for failure-path isolation coverage."
       });
       await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });

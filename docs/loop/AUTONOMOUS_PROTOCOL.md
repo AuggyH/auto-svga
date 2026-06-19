@@ -27,12 +27,16 @@ Each loop executes:
 
 Rules:
 
-1. Maximum repair rounds: 4.
-2. Consecutive rounds with no new evidence: 2, then enter `HUMAN_REQUIRED`.
+1. Maximum repair rounds come from the frozen milestone contract.
+2. Consecutive rounds with no new evidence come from the frozen milestone
+   contract.
 3. Each round updates `docs/loop/LOOP_STATE.md`.
 4. Each round appends evidence to `docs/loop/LOOP_HISTORY.md`.
 5. Work on one primary failure cause per repair round.
 6. Run the smallest relevant test first, then the full milestone validation.
+7. `tools/loop-budget-check.mjs` must pass before any terminal handoff.
+8. If the budget check fails, continue repair only when the checker says the
+   next repair is allowed; otherwise enter `HUMAN_REQUIRED`.
 
 ## Autonomy
 
@@ -96,3 +100,6 @@ Do not stop in any other state.
 4. Missing or incomplete packets are blocking failures.
 5. Future reviewers must check handoff completeness.
 6. The final chat response must be the generated `FINAL_RESPONSE.txt` content.
+7. Terminal `LOOP_STATE.md` must set `Next Action: external_review`.
+8. PASS Review Packets must keep `changes.patch` byte-exact with the source
+   Git diff and bind both source and packet diff hashes.

@@ -206,6 +206,10 @@ Before returning `PASS` or `HUMAN_REQUIRED`, run the repository handoff command
 successfully and return the generated `FINAL_RESPONSE.txt` verbatim. Never
 substitute a chat summary for the review packet.
 
+Review Packet v4 requires byte-exact `PASS` diffs, source/packet diff hash
+binding, loop budget evidence, structured reviewer JSON v2, and terminal
+`Next Action: external_review`.
+
 ## Token-saving Skills
 
 Repository-local reusable skills live under `codex-skills/`:

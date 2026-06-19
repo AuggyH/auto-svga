@@ -15,6 +15,9 @@ Codex may stop for human input only when one of these gates is reached:
 7. Existing user work cannot be safely separated from the loop task.
 8. Completion requires changing protected product code outside the milestone scope.
 9. Completion requires adding a third-party dependency when prohibited by the milestone.
+10. Loop budget is exhausted by the frozen milestone limits.
+11. A terminal packet would expose high-confidence sensitive content and cannot
+    be safely represented by `HUMAN_REQUIRED` redacted evidence.
 
 ## Not Human Gates
 
@@ -39,3 +42,6 @@ For M1 Unified Loop Validation, enter `HUMAN_REQUIRED` only if:
 ## Handoff Gate
 
 Before any terminal `PASS` or `HUMAN_REQUIRED`, the repository handoff command must generate a complete Review Packet. If packet generation fails or mandatory content is missing, continue repair instead of asking the user to assemble materials.
+
+`PASS` handoff must not rewrite or redact the source diff. If sensitive content
+is detected, fail closed or use a structured `HUMAN_REQUIRED` decision packet.
