@@ -69,6 +69,15 @@ export async function validateReviewerConfig(configPath = ".codex/agents/reviewe
   if (readScalar(text, "permissions", "allow_network") !== false) {
     errors.push("permissions.allow_network must be false.");
   }
+  if (readScalar(text, "scope", "contract") !== "docs/loop/CURRENT_MILESTONE.md") {
+    errors.push("scope.contract must point to docs/loop/CURRENT_MILESTONE.md.");
+  }
+  if (readScalar(text, "scope", "state") !== "docs/loop/LOOP_STATE.md") {
+    errors.push("scope.state must point to docs/loop/LOOP_STATE.md.");
+  }
+  if (readScalar(text, "scope", "history") !== "docs/loop/LOOP_HISTORY.jsonl") {
+    errors.push("scope.history must point to docs/loop/LOOP_HISTORY.jsonl.");
+  }
   for (const required of requiredMustCheckItems) {
     if (!mustCheck.includes(required)) {
       errors.push(`review.must_check must include ${required}.`);
@@ -88,6 +97,11 @@ export async function validateReviewerConfig(configPath = ".codex/agents/reviewe
       allow_writes: false,
       allow_commits: false,
       allow_network: false
+    },
+    scope: {
+      contract: "docs/loop/CURRENT_MILESTONE.md",
+      state: "docs/loop/LOOP_STATE.md",
+      history: "docs/loop/LOOP_HISTORY.jsonl"
     },
     mustCheck
   };

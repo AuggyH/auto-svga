@@ -10,7 +10,7 @@ allow_network = false
 [scope]
 contract = "docs/loop/CURRENT_MILESTONE.md"
 state = "docs/loop/LOOP_STATE.md"
-history = "docs/loop/LOOP_HISTORY.md"
+history = "docs/loop/LOOP_HISTORY.jsonl"
 
 [review]
 must_check = [

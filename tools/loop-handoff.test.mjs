@@ -545,13 +545,16 @@ test("repository path traversal is rejected", async () => {
   });
 });
 
-test("paths with spaces and renames are handled", async () => {
+test("paths with spaces, renames, and copies are handled", async () => {
   await withRepo(async ({ repo, base }) => {
     await writeText(join(repo, "space name.txt"), "one\n");
     run("git", ["add", "space name.txt"], repo);
     run("git", ["commit", "-m", "space"], repo);
+    const copyBase = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
     run("git", ["mv", "space name.txt", "renamed file.txt"], repo);
-    run("git", ["commit", "-m", "rename"], repo);
+    await writeText(join(repo, "copied file.txt"), "one\n");
+    run("git", ["add", "copied file.txt"], repo);
+    run("git", ["commit", "-m", "rename and copy"], repo);
     const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
     await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), {
       schemaVersion: 2,
@@ -563,16 +566,17 @@ test("paths with spaces and renames are handled", async () => {
       steps: [{ id: "handoff-tests", required: true, status: "pass", exitCode: 0 }]
     });
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), baseInput({
-      base,
+      base: copyBase,
       head,
       changedFilePurposes: {
-        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
-        "renamed file.txt": "Renames a file with spaces to verify NUL-delimited path handling."
+        "renamed file.txt": "Renames a file with spaces to verify NUL-delimited path handling.",
+        "copied file.txt": "Copies a file with spaces to verify copy path handling."
       }
     }));
-    const result = await generateSealedPacket({ repo, base, head });
+    const result = await generateSealedPacket({ repo, base: copyBase, head });
     const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
     assert.match(packet, /renamed file\.txt/);
+    assert.match(packet, /copied file\.txt/);
   });
 });
 

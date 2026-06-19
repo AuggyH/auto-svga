@@ -1113,7 +1113,7 @@ export async function generateHandoffPacket(options) {
 
   await writeFile(path.join(packetRoot, "validation.json"), `${JSON.stringify(validation, null, 2)}\n`);
 
-  const nameStatus = parseNameStatusZ(gitBytes(["diff", "--name-status", "-z", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout);
+  const nameStatus = parseNameStatusZ(gitBytes(["diff", "--name-status", "--find-renames", "--find-copies", "-z", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout);
   const dirtyStatus = status === "HUMAN_REQUIRED"
     ? [
       ...parsePorcelainZ(gitBytes(["status", "--short", "-z"], { cwd: repoRoot }).stdout),
