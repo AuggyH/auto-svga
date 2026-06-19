@@ -1,4 +1,5 @@
 import { resolveAuditPresentationLabel } from "../../dist/workbench/motion-asset-audit-localization-bundle.js";
+import { isSupportedReportContractVersion } from "../../dist/workbench/motion-asset-audit-report-contract.js";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -168,6 +169,22 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
   }
 
   if (!report) return "";
+
+  if (!isSupportedReportContractVersion(report.contractVersion)) {
+    return `
+      <section class="specReportSection isError" aria-live="polite">
+        <div class="specReportHeader">
+          <div><strong>报告版本</strong><small>Report Contract</small></div>
+          <span class="specReportBadge isError">不支持</span>
+        </div>
+        <div class="specReportId">
+          <span>contractVersion</span>
+          <code>${escapeHtml(report.contractVersion ?? "missing")}</code>
+        </div>
+        <p class="specReportHint">当前报告版本不受支持，未继续解析诊断内容。</p>
+      </section>
+    `;
+  }
 
   const asset = report.asset ?? {};
   const timing = asset.timing ?? {};

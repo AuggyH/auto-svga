@@ -33,16 +33,34 @@
 - [x] Record initial capability matrix for SVGA, VAP, Lottie, animated WebP, WebM, APNG, and sprite sequences
 - [x] Record dependency, license, maintenance, and desktop redistribution risks
 - [x] Wrap current SVGA inspection behind `FormatAdapter` without changing output
-- [ ] Integrate SVGA inspection into one non-UI application service
+- [x] Integrate SVGA inspection into one non-UI application service
 - [ ] Extract browser SVGA playback behind `PlaybackAdapter`
 - [ ] Replace CDN runtime loading with an approved local bundle
-- [ ] Define versioned delivery specifications and deterministic checks
+- [x] Define versioned delivery specifications and deterministic checks
 - [ ] Define sprite-sequence manifest and bounded frame cache
 - [ ] Run separate Lottie, VAP, and desktop-host technical spikes
 
 This track is infrastructure only. It does not expand the production asset
 scope beyond `avatar_frame`, and it does not authorize new format dependencies
 or conversion features.
+
+## P2 Motion Asset Audit MVP
+
+- [x] Inspection primitives: resource dimensions, alpha bounds, roles, memory,
+  sequence residency, and deterministic duplicate/empty-frame evidence
+- [x] Additive Motion Asset Audit summary
+- [x] Read-only presentation contract
+- [x] Localization key catalog and shared `en` / `zh-CN` bundle
+- [x] Versioned serialization compatibility v1 and strict version negotiation
+- [x] Web read-only Motion Asset Audit panel
+
+The production gate remains the avatar-frame specification result. Audit status
+and opportunities are advisory and cannot trigger repair, conversion, export,
+or optimization actions.
+
+Not included in this milestone: a format recommendation engine, automatic
+optimization, one-click repair, export workbench, desktop client, complex audit
+UI, or additional motion formats.
 
 ## Roadmap Principle: Inspection Primitives First
 

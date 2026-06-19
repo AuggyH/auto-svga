@@ -4,6 +4,7 @@ import { renderAvatarFrameInspectionReport } from "./inspection-report-view.mjs"
 
 function report(overrides = {}) {
   return {
+    contractVersion: 1,
     asset: {
       format: "svga",
       name: "avatar-frame.svga",
@@ -159,6 +160,29 @@ test("keeps the existing spec report when auditPresentation is absent", () => {
   assert.match(html, /生产规范/);
   assert.match(html, /avatar-frame-production/);
   assert.doesNotMatch(html, /auditReportSection/);
+});
+
+test("rejects unsupported report versions without rendering audit content", () => {
+  const html = renderAvatarFrameInspectionReport(report({
+    contractVersion: 2,
+    auditPresentation: auditPresentation()
+  }), "success");
+
+  assert.match(html, /报告版本/);
+  assert.match(html, /不支持/);
+  assert.match(html, /contractVersion/);
+  assert.doesNotMatch(html, /动效资产诊断/);
+});
+
+test("omits evidence labels when presentation cards have no evidence refs", () => {
+  const presentation = auditPresentation();
+  delete presentation.findingCards[0].evidenceRefs;
+  delete presentation.opportunityCards[0].evidenceRefs;
+
+  const html = renderAvatarFrameInspectionReport(report({ auditPresentation: presentation }), "success");
+
+  assert.match(html, /动效资产诊断/);
+  assert.doesNotMatch(html, /Evidence ×/);
 });
 
 function auditPresentation() {
