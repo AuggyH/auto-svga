@@ -5,8 +5,8 @@ Date: 2026-06-19
 ## Current Milestone
 
 - Milestone: M2 Standardized Review Handoff Contract
-- State: m2_handoff_implementation_ready_for_commit
-- Repair round: 0
+- State: m2_handoff_reviewer_repair_ready_for_commit
+- Repair round: 1
 - Consecutive rounds without new evidence: 0
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
 
@@ -22,7 +22,9 @@ Date: 2026-06-19
 - Pre-M2 baseline `npm run loop:validate` passed.
 - Handoff generator targeted tests passed.
 - Handoff generator syntax checks passed.
+- Independent reviewers found packet integrity blockers; repair round fixed HUMAN_REQUIRED decision validation, PASS binary byte handling, and self-referential manifest hashes.
+- Handoff generator repair tests passed.
 
 ## Next Action
 
-Commit M2 handoff implementation, then run full M2 validation and independent reviewers.
+Commit M2 handoff repair, regenerate M1 retrospective packet, then rerun independent reviewers.

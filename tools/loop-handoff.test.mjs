@@ -41,7 +41,7 @@ async function createRepo() {
   await writeText(join(repo, "README.md"), "# fixture\n");
   await writeText(join(repo, "docs/loop/CURRENT_MILESTONE.md"), "# M2 fixture contract\n\n## Acceptance\n");
   await writeText(join(repo, "docs/loop/LOOP_HISTORY.md"), "# History\n");
-  await writeText(join(repo, "docs/decision.md"), "Question: bounded test decision\n");
+  await writeText(join(repo, "docs/decision.md"), "Question: bounded test decision\nRecommendation: choose one bounded next action\n");
   await writeText(join(repo, ".gitignore"), "node_modules/\n.artifacts/loop-handoff/\n.artifacts/loop-validation/\n*.log\n");
   run("git", ["add", "."], repo);
   run("git", ["commit", "-m", "base"], repo);
@@ -146,8 +146,39 @@ test("HUMAN_REQUIRED packet includes tracked and untracked work", async () => {
     const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
     const paths = manifest.files.map((file) => file.repositoryPath);
     assert.equal(manifest.status, "HUMAN_REQUIRED");
+    assert.equal(manifest.humanDecision.packetPath, "decisions/human-decision.md");
+    assert.match(await readFile(join(result.packetRoot, "decisions/human-decision.md"), "utf8"), /Recommendation:/);
     assert.ok(paths.includes("src/example.txt"));
     assert.ok(paths.includes("src/new-file.txt"));
+  });
+});
+
+test("HUMAN_REQUIRED fails when the bounded decision file is missing or incomplete", async () => {
+  await withRepo(async ({ repo, base }) => {
+    await assert.rejects(
+      generateHandoffPacket({
+        repoRoot: repo,
+        status: "HUMAN_REQUIRED",
+        milestone: "M2",
+        base,
+        reviewerReport: "docs/reviewer.md",
+        decisionFile: "docs/missing-decision.md"
+      }),
+      /decision file is missing/
+    );
+
+    await writeText(join(repo, "docs/incomplete-decision.md"), "Question: incomplete\n");
+    await assert.rejects(
+      generateHandoffPacket({
+        repoRoot: repo,
+        status: "HUMAN_REQUIRED",
+        milestone: "M2",
+        base,
+        reviewerReport: "docs/reviewer.md",
+        decisionFile: "docs/incomplete-decision.md"
+      }),
+      /Question: and Recommendation:/
+    );
   });
 });
 
@@ -205,6 +236,19 @@ test("file and artifact ordering is stable and sha256 values match", async () =>
       snapshot.sha256,
       await sha256File(join(result.packetRoot, snapshot.packetPath))
     );
+
+    const artifactIndex = await readJson(join(result.packetRoot, "artifact-index.json"));
+    const artifactPaths = artifactIndex.artifacts.map((artifact) => artifact.path);
+    assert.deepEqual(artifactPaths, [...artifactPaths].sort());
+    assert.equal(artifactPaths.includes("MANIFEST.json"), false);
+    assert.equal(artifactPaths.includes("artifact-index.json"), false);
+    for (const artifact of artifactIndex.artifacts) {
+      assert.equal(
+        artifact.sha256,
+        await sha256File(join(result.packetRoot, artifact.path)),
+        artifact.path
+      );
+    }
   });
 });
 
@@ -247,6 +291,32 @@ test("binary file is indexed without text snapshot", async () => {
     const binary = manifest.files.find((file) => file.repositoryPath === "src/binary.bin");
     assert.equal(binary.binary, true);
     assert.equal(binary.packetPath, null);
+  });
+});
+
+test("committed PASS binary files keep exact byte size and sha256", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const bytes = Buffer.from([0, 255, 128, 64, 10]);
+    await mkdir(join(repo, "src"), { recursive: true });
+    await writeFile(join(repo, "src/committed.bin"), bytes);
+    run("git", ["add", "src/committed.bin"], repo);
+    run("git", ["commit", "-m", "binary"], repo);
+    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+
+    const result = await generateHandoffPacket({
+      repoRoot: repo,
+      status: "PASS",
+      milestone: "M2",
+      base,
+      head,
+      reviewerReport: "docs/reviewer.md"
+    });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    const binary = manifest.files.find((file) => file.repositoryPath === "src/committed.bin");
+    assert.equal(binary.binary, true);
+    assert.equal(binary.packetPath, null);
+    assert.equal(binary.sizeBytes, bytes.length);
+    assert.equal(binary.sha256, createHash("sha256").update(bytes).digest("hex"));
   });
 });
 

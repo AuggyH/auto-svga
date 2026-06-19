@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   copyFile,
+  cp,
   mkdir,
   readFile,
   rm,
@@ -89,12 +90,33 @@ function git(args, { cwd, allowFailure = false } = {}) {
   };
 }
 
+function gitBytes(args, { cwd, allowFailure = false } = {}) {
+  const result = spawnSync("git", args, {
+    cwd,
+    maxBuffer: 50 * 1024 * 1024
+  });
+  if (!allowFailure && result.status !== 0) {
+    throw new Error(`git ${args.join(" ")} failed: ${result.stderr?.toString() || result.stdout?.toString()}`);
+  }
+  return {
+    status: result.status ?? 1,
+    stdout: result.stdout ?? Buffer.alloc(0),
+    stderr: result.stderr ?? Buffer.alloc(0)
+  };
+}
+
 function toPosixPath(value) {
   return value.split(path.sep).join("/");
 }
 
 function resolveRepoPath(repoRoot, value) {
   return path.resolve(repoRoot, value);
+}
+
+function compareStrings(left, right) {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
 }
 
 function isExcludedRepoPath(repoPath) {
@@ -155,7 +177,7 @@ function mergeChangedFiles(committed, worktree) {
   for (const entry of [...committed, ...worktree]) {
     byPath.set(entry.path, entry);
   }
-  return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+  return [...byPath.values()].sort((a, b) => compareStrings(a.path, b.path));
 }
 
 async function sha256Bytes(bytes) {
@@ -173,9 +195,9 @@ function isTextBuffer(buffer) {
 }
 
 async function readPathAtHead(repoRoot, head, repoPath) {
-  const result = git(["show", `${head}:${repoPath}`], { cwd: repoRoot, allowFailure: true });
+  const result = gitBytes(["show", `${head}:${repoPath}`], { cwd: repoRoot, allowFailure: true });
   if (result.status !== 0) return undefined;
-  return Buffer.from(result.stdout, "utf8");
+  return result.stdout;
 }
 
 async function snapshotChangedFiles({ repoRoot, packetRoot, changedFiles, status, head }) {
@@ -226,12 +248,33 @@ async function snapshotChangedFiles({ repoRoot, packetRoot, changedFiles, status
     });
   }
 
-  return snapshots.sort((a, b) => a.repositoryPath.localeCompare(b.repositoryPath));
+  return snapshots.sort((a, b) => compareStrings(a.repositoryPath, b.repositoryPath));
 }
 
 async function readOptionalFile(filePath, fallback) {
   if (!filePath || !existsSync(filePath)) return fallback;
   return readFile(filePath, "utf8");
+}
+
+async function readRequiredHumanDecision(filePath) {
+  if (!filePath || !existsSync(filePath)) {
+    throw new Error("HUMAN_REQUIRED handoff decision file is missing.");
+  }
+  const fileStat = await stat(filePath);
+  if (!fileStat.isFile()) {
+    throw new Error("HUMAN_REQUIRED handoff decision file must be a file.");
+  }
+  const text = await readFile(filePath, "utf8");
+  if (!text.trim()) {
+    throw new Error("HUMAN_REQUIRED handoff decision file is empty.");
+  }
+  if (text.length > 8000) {
+    throw new Error("HUMAN_REQUIRED handoff decision file must stay bounded.");
+  }
+  if (!text.includes("Question:") || !text.includes("Recommendation:")) {
+    throw new Error("HUMAN_REQUIRED handoff decision file must include Question: and Recommendation:.");
+  }
+  return text.endsWith("\n") ? text : `${text}\n`;
 }
 
 function parseValidationSummary(text) {
@@ -300,18 +343,13 @@ async function copyLatest(packetRoot, latestRoot) {
     ]) {
       await copyFile(path.join(packetRoot, fileName), path.join(latestRoot, fileName));
     }
+    for (const directoryName of ["files", "decisions"]) {
+      const source = path.join(packetRoot, directoryName);
+      if (existsSync(source)) {
+        await cp(source, path.join(latestRoot, directoryName), { recursive: true, force: true });
+      }
+    }
   }
-}
-
-async function fileRecord(packetRoot, relativePath, role) {
-  const filePath = path.join(packetRoot, relativePath);
-  const fileStat = await stat(filePath);
-  return {
-    path: relativePath,
-    role,
-    sha256: await sha256File(filePath),
-    sizeBytes: fileStat.size
-  };
 }
 
 async function artifactRecord(packetRoot, relativePath, role, type, generated, humanReviewRequired = false) {
@@ -423,9 +461,13 @@ export async function generateHandoffPacket(options) {
     options.reviewerReport ? resolveRepoPath(repoRoot, options.reviewerReport) : undefined,
     "not_available\n\nReason: reviewer report file was not available for this handoff."
   );
-  const humanDecisionText = status === "HUMAN_REQUIRED"
-    ? await readOptionalFile(options.decisionFile ? resolveRepoPath(repoRoot, options.decisionFile) : undefined, "not_available")
-    : "None";
+  let humanDecisionText = "None";
+  let humanDecisionPacketPath = null;
+  if (status === "HUMAN_REQUIRED") {
+    humanDecisionText = await readRequiredHumanDecision(resolveRepoPath(repoRoot, options.decisionFile));
+    humanDecisionPacketPath = "decisions/human-decision.md";
+    await writeFile(path.join(packetRoot, humanDecisionPacketPath), humanDecisionText);
+  }
 
   await writeFile(path.join(packetRoot, "validation.json"), `${JSON.stringify(validation, null, 2)}\n`);
   await writeFile(path.join(packetRoot, "reviewer-report.md"), reviewerText.endsWith("\n") ? reviewerText : `${reviewerText}\n`);
@@ -583,24 +625,22 @@ export async function generateHandoffPacket(options) {
   validatePacketContent(reviewPacket);
   await writeFile(path.join(packetRoot, "REVIEW_PACKET.md"), reviewPacket);
 
-  const packetFiles = [
-    ["REVIEW_PACKET.md", "review-packet"],
-    ["MANIFEST.json", "manifest"],
-    ["changes.patch", "diff"],
-    ["validation.json", "validation"],
-    ["reviewer-report.md", "reviewer-report"],
-    ["artifact-index.json", "artifact-index"],
-    ["FINAL_RESPONSE.txt", "final-response"]
-  ];
-
   const artifactIndexRecords = [
     await artifactRecord(packetRoot, "REVIEW_PACKET.md", "review-packet", "text/markdown", true),
     await artifactRecord(packetRoot, "changes.patch", "diff", "text/x-diff", true),
     await artifactRecord(packetRoot, "validation.json", "validation-summary", "application/json", false),
     await artifactRecord(packetRoot, "reviewer-report.md", "independent-reviewer-report", "text/markdown", false)
   ];
+  if (humanDecisionPacketPath) {
+    artifactIndexRecords.push(await artifactRecord(packetRoot, humanDecisionPacketPath, "human-decision", "text/markdown", false, true));
+  }
+  for (const snapshot of snapshots) {
+    if (snapshot.packetPath) {
+      artifactIndexRecords.push(await artifactRecord(packetRoot, snapshot.packetPath, "changed-file-snapshot", "application/octet-stream", true));
+    }
+  }
 
-  artifactIndexRecords.sort((a, b) => a.path.localeCompare(b.path));
+  artifactIndexRecords.sort((a, b) => compareStrings(a.path, b.path));
 
   const manifest = {
     schemaVersion: 1,
@@ -627,7 +667,24 @@ export async function generateHandoffPacket(options) {
     },
     files: snapshots,
     artifacts: artifactIndexRecords,
-    humanDecision: status === "HUMAN_REQUIRED" ? { path: options.decisionFile ?? null } : null
+    generatedFiles: [
+      "REVIEW_PACKET.md",
+      "MANIFEST.json",
+      "changes.patch",
+      "validation.json",
+      "reviewer-report.md",
+      "artifact-index.json",
+      "FINAL_RESPONSE.txt",
+      "files/",
+      "decisions/"
+    ],
+    selfReferentialFilesExcludedFromHash: [
+      "MANIFEST.json",
+      "artifact-index.json"
+    ],
+    humanDecision: status === "HUMAN_REQUIRED"
+      ? { sourcePath: options.decisionFile, packetPath: humanDecisionPacketPath }
+      : null
   };
 
   await writeFile(path.join(packetRoot, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}\n`);
@@ -636,26 +693,19 @@ export async function generateHandoffPacket(options) {
     packetRoot,
     manifestPath: path.join(packetRoot, "MANIFEST.json"),
     patchPath: path.join(packetRoot, "changes.patch"),
-    humanDecisionPath: options.decisionFile ? resolveRepoPath(repoRoot, options.decisionFile) : undefined,
+    humanDecisionPath: humanDecisionPacketPath ? path.join(packetRoot, humanDecisionPacketPath) : undefined,
     retrospectivePackets: options.retrospectivePacket ? [resolveRepoPath(repoRoot, options.retrospectivePacket)] : []
   });
   await writeFile(path.join(packetRoot, "FINAL_RESPONSE.txt"), response);
   artifactIndexRecords.push(await artifactRecord(packetRoot, "FINAL_RESPONSE.txt", "final-response", "text/plain", true));
-  artifactIndexRecords.sort((a, b) => a.path.localeCompare(b.path));
+  artifactIndexRecords.sort((a, b) => compareStrings(a.path, b.path));
   await writeFile(path.join(packetRoot, "artifact-index.json"), `${JSON.stringify({
     schemaVersion: 1,
     artifacts: artifactIndexRecords
   }, null, 2)}\n`);
 
-  const files = [];
-  for (const [relativePath, role] of packetFiles) {
-    if (existsSync(path.join(packetRoot, relativePath))) {
-      files.push(await fileRecord(packetRoot, relativePath, role));
-    }
-  }
   manifest.files = snapshots;
   manifest.artifacts = artifactIndexRecords;
-  manifest.packetFiles = files.sort((a, b) => a.path.localeCompare(b.path));
   await writeFile(path.join(packetRoot, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
   await copyLatest(packetRoot, latestRoot);
