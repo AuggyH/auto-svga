@@ -519,6 +519,12 @@ function patchMetadata(patch) {
   };
 }
 
+function redactSensitiveText(text) {
+  return text
+    .replace(/\b(SECRET|TOKEN|PASSWORD|PASSWD|API[_-]?KEY|ACCESS[_-]?KEY|PRIVATE[_-]?KEY)\s*=\s*[^\\\s"'`]+/gi, "$1=[redacted]")
+    .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, "[redacted-private-key]");
+}
+
 function stableJson(value) {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
   if (value && typeof value === "object") {
@@ -1168,7 +1174,7 @@ export async function generateHandoffPacket(options) {
       patch += "\n";
     }
   }
-  const normalizedPatch = patch || "# No textual diff.\n";
+  const normalizedPatch = redactSensitiveText(patch || "# No textual diff.\n");
   const patchInfo = patchMetadata(normalizedPatch);
   await writeFile(path.join(packetRoot, "changes.patch"), normalizedPatch);
   if (patchInfo.companionRequired && !existsSync(path.join(packetRoot, "changes.patch"))) {

@@ -501,6 +501,39 @@ test("sensitive committed path is rejected before raw patch generation", async (
   });
 });
 
+test("secret-like literals in safe diffs are redacted from packet files", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const secretLiteral = ["SECRET", "=", "1"].join("");
+    await writeText(join(repo, "src/fixture.js"), `const fixture = "${secretLiteral}";\n`);
+    run("git", ["add", "src/fixture.js"], repo);
+    run("git", ["commit", "-m", "fixture with secret literal"], repo);
+    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+    await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), {
+      schemaVersion: 2,
+      repositoryHeadCommitAtStart: head,
+      repositoryHeadCommitAtFinish: head,
+      sourceWorkspaceCleanAtStart: true,
+      sourceWorkspaceCleanAtFinish: true,
+      status: "pass",
+      steps: [{ id: "handoff-tests", required: true, status: "pass", exitCode: 0 }]
+    });
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), baseInput({
+      base,
+      head,
+      changedFilePurposes: {
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+        "src/fixture.js": "Adds a safe source fixture used to verify sensitive literal redaction in diffs."
+      }
+    }));
+    const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    for (const fileName of ["REVIEW_PACKET.md", "changes.patch"]) {
+      const text = await readFile(join(result.packetRoot, fileName), "utf8");
+      assert.equal(text.includes(secretLiteral), false, fileName);
+      assert.match(text, /SECRET=\[redacted\]/);
+    }
+  });
+});
+
 test("symlink snapshots record link target without following outside repository", async () => {
   await withRepo(async ({ repo, base, head }) => {
     const outside = join(repo, "..", "outside-secret.txt");
