@@ -39,7 +39,7 @@ git status --short
 git branch --list 'agent/codex/local-preview-launcher' 'agent/codex/svga-web-strict-csp-spike' -v --no-abbrev
 ```
 
-Result: branch tips confirmed; working tree clean before review-file creation.
+Result: branch tips confirmed; review cleanup later recorded final clean delivery state.
 
 ```text
 git diff --check
