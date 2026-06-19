@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { createAvatarFrameInspectionService } from "../dist/hosts/avatar-frame-inspection.js";
+import {
+  createAvatarFrameInspectionReportService,
+  createAvatarFrameInspectionService
+} from "../dist/hosts/avatar-frame-inspection.js";
 
 const DEFAULT_THRESHOLD = 0.5;
 const STATUSES = ["known", "fullyTransparent", "opaqueOnly", "unknown", "unsupported"];
@@ -41,10 +44,11 @@ export async function calibrateAvatarFrameAlphaBounds(
   }
 
   const service = createAvatarFrameInspectionService();
+  const reportService = createAvatarFrameInspectionReportService();
   const samples = [];
   for (const input of uniqueInputs) {
     const fileStats = await stat(input.absolutePath);
-    const result = await service.inspect({
+    const source = {
       id: `file:${input.path}`,
       name: path.basename(input.path),
       sizeBytes: fileStats.size,
@@ -52,14 +56,32 @@ export async function calibrateAvatarFrameAlphaBounds(
       async read() {
         return input.bytes;
       }
-    });
+    };
+    const [result, reportResult] = await Promise.all([
+      service.inspect(source),
+      reportService.inspect(source)
+    ]);
     if (!result.value) {
       throw new Error(
         `Inspection failed for ${input.path}: ${result.issues.map(({ message }) => message).join("; ")}`
       );
     }
-    samples.push(summarizeSample(input.path, input.sha256, result.value, threshold));
+    if (!reportResult.value) {
+      throw new Error(
+        `Report failed for ${input.path}: ${reportResult.issues.map(({ message }) => message).join("; ")}`
+      );
+    }
+    samples.push(summarizeSample(
+      input.path,
+      input.sha256,
+      result.value,
+      reportResult.value,
+      threshold
+    ));
   }
+
+  const policyDiagnostics = samples.flatMap(({ policyDiagnostics }) => policyDiagnostics);
+  const sequenceGroups = samples.flatMap(({ sequenceGroups }) => sequenceGroups);
 
   return {
     threshold,
@@ -67,6 +89,8 @@ export async function calibrateAvatarFrameAlphaBounds(
     uniqueSampleCount: samples.length,
     duplicateInputs,
     aggregate: summarizeResources(samples.flatMap(({ resources }) => resources), threshold),
+    policy: summarizePolicyDiagnostics(policyDiagnostics),
+    sequence: summarizeSequenceGroups(sequenceGroups),
     samples
   };
 }
@@ -104,7 +128,7 @@ export function summarizeResources(resources, threshold = DEFAULT_THRESHOLD) {
   };
 }
 
-function summarizeSample(samplePath, sha256, asset, threshold) {
+function summarizeSample(samplePath, sha256, asset, report, threshold) {
   const resources = asset.resources.map((resource) => ({
     samplePath,
     id: resource.id,
@@ -114,6 +138,16 @@ function summarizeSample(samplePath, sha256, asset, threshold) {
     dimensions: resource.dimensions,
     alphaBounds: resource.alphaBounds ?? { status: "unknown" }
   }));
+  const policyDiagnostics = (report.transparentPaddingPolicy?.diagnostics ?? []).map(
+    (diagnostic) => ({ samplePath, ...diagnostic })
+  );
+  const sequenceGroups = collectSequenceGroups(
+    samplePath,
+    resources,
+    report.sequenceResidencyDiagnostics,
+    policyDiagnostics,
+    threshold
+  );
   return {
     path: samplePath,
     sha256,
@@ -121,6 +155,10 @@ function summarizeSample(samplePath, sha256, asset, threshold) {
     dimensions: asset.dimensions,
     timing: asset.timing,
     ...summarizeResources(resources, threshold),
+    policy: summarizePolicyDiagnostics(policyDiagnostics),
+    sequence: summarizeSequenceGroups(sequenceGroups),
+    policyDiagnostics,
+    sequenceGroups,
     resources
   };
 }
@@ -148,6 +186,15 @@ function summarizeRoles(resources, threshold) {
     });
     return [role, {
       resourceCount: roleResources.length,
+      statusCounts: countStatuses(roleResources),
+      knownAlphaBoundsCount: roleResources.filter((resource) => (
+        resource.alphaBounds?.status === "known"
+      )).length,
+      unknownAlphaBoundsCount: roleResources.filter((resource) => (
+        !resource.alphaBounds
+        || resource.alphaBounds.status === "unknown"
+        || resource.alphaBounds.status === "unsupported"
+      )).length,
       ratioStats: ratioStats(ratios),
       overThresholdCount: roleResources.filter((resource) => (
         resource.alphaBounds?.status === "known"
@@ -158,6 +205,104 @@ function summarizeRoles(resources, threshold) {
       )).length
     }];
   }));
+}
+
+export function summarizePolicyDiagnostics(diagnostics) {
+  return {
+    diagnosticCount: diagnostics.length,
+    severityCounts: countBy(diagnostics, ({ severity }) => severity),
+    uncertaintyCounts: countBy(diagnostics, ({ uncertainty }) => uncertainty),
+    policyCodeCounts: countBy(diagnostics, ({ policyCode }) => policyCode),
+    byRole: Object.fromEntries(ROLES.map((role) => {
+      const roleDiagnostics = diagnostics.filter((diagnostic) => diagnostic.role === role);
+      return [role, {
+        diagnosticCount: roleDiagnostics.length,
+        severityCounts: countBy(roleDiagnostics, ({ severity }) => severity),
+        uncertaintyCounts: countBy(roleDiagnostics, ({ uncertainty }) => uncertainty),
+        policyCodeCounts: countBy(roleDiagnostics, ({ policyCode }) => policyCode)
+      }];
+    }))
+  };
+}
+
+export function summarizeSequenceGroups(groups) {
+  return {
+    groupCount: groups.length,
+    roleCounts: countBy(groups, ({ role }) => role),
+    framesPerGroup: ratioStats(groups.map(({ frameCount }) => frameCount)),
+    groupPaddingRatio: ratioStats(groups.flatMap(({ ratioStats: stats }) => (
+      stats.average === null ? [] : [stats.average]
+    ))),
+    highPaddingFrameRatio: ratioStats(groups.flatMap(({ highPaddingFrameRatio }) => (
+      highPaddingFrameRatio === null ? [] : [highPaddingFrameRatio]
+    ))),
+    advisoryCount: groups.filter(({ policySeverities }) => (
+      policySeverities.includes("advisory")
+    )).length,
+    warningCount: groups.filter(({ policySeverities }) => (
+      policySeverities.includes("warning")
+    )).length,
+    groups
+  };
+}
+
+function collectSequenceGroups(
+  samplePath,
+  resources,
+  diagnostics,
+  policyDiagnostics,
+  threshold
+) {
+  const byId = new Map(resources.map((resource) => [resource.id, resource]));
+  return diagnostics.largestSequenceGroupsByDecodedBytes.map((group) => {
+    const members = group.resourceIds.flatMap((id) => {
+      const resource = byId.get(id);
+      return resource ? [resource] : [];
+    });
+    const ratios = members.flatMap((resource) => {
+      if (resource.alphaBounds?.status === "fullyTransparent") return [1];
+      if (resource.alphaBounds?.status === "opaqueOnly") return [0];
+      const ratio = resource.alphaBounds?.transparentPaddingRatio;
+      return resource.alphaBounds?.status === "known" && Number.isFinite(ratio)
+        ? [ratio]
+        : [];
+    });
+    const highPaddingFrameCount = ratios.filter((ratio) => ratio > threshold).length;
+    const groupPolicy = policyDiagnostics.filter(({ groupId }) => groupId === group.groupId);
+    return {
+      samplePath,
+      groupId: group.groupId,
+      role: group.role,
+      frameCount: group.frameCount,
+      measuredFrameCount: ratios.length,
+      ratioStats: ratioStats(ratios),
+      highPaddingFrameCount,
+      highPaddingFrameRatio: ratios.length === 0
+        ? null
+        : round(highPaddingFrameCount / ratios.length),
+      policySeverities: [...new Set(groupPolicy.map(({ severity }) => severity))],
+      policyCodes: [...new Set(groupPolicy.map(({ policyCode }) => policyCode))],
+      uncertainty: group.uncertainty
+    };
+  });
+}
+
+function countStatuses(resources) {
+  const counts = Object.fromEntries(STATUSES.map((status) => [status, 0]));
+  for (const resource of resources) {
+    const status = resource.alphaBounds?.status ?? "unknown";
+    counts[status] = (counts[status] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function countBy(values, keyFor) {
+  const counts = {};
+  for (const value of values) {
+    const key = keyFor(value);
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
 }
 
 function ratioStats(values) {

@@ -300,6 +300,8 @@ The additive report summary records role, resource or group identity, padding
 ratio, severity, policy code, evidence references, uncertainty, and the
 recommended review. Existing specification issues and `passed` remain
 unchanged while this role-aware policy is calibrated.
+The current 21-sample evidence and coverage limits are recorded in
+`docs/role-aware-transparent-padding-calibration.md`.
 
 ### Decoded memory estimation
 
