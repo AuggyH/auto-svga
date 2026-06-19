@@ -4,31 +4,26 @@ Date: 2026-06-20
 
 ## Current Milestone
 
-- Milestone: M2-R2 Terminal Handoff Trust Hardening
-- State: terminal_pass
-- Repair round: 6
-- Consecutive rounds without new evidence: 0
+- milestoneId: M2-R3
+- Milestone: M2-R3 Review Packet Fidelity And Loop Budget Enforcement
+- State: in_progress
+- Next Action: implement_packet_fidelity_repair
+- repairRound: 0
+- consecutiveNoProgressRounds: 0
+- budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
-- Milestone start commit: `df49afb8e19097d1228f1a40091835984da1022a`
+- Milestone start commit: `676fee3051a8e9cc80defa550a8db7b6bb796240`
 
 ## Current Evidence
 
-- M2-R1 implementation head: `df49afb8e19097d1228f1a40091835984da1022a`.
-- M2-R1 external review outcome: `REPAIR_REQUIRED`.
-- Blocking findings are recorded in `docs/loop/reviews/M2-R1-external-review.md`.
-- M2-R2 is limited to terminal handoff trust hardening and loop validation infrastructure.
-- M2-R2 implementation commits: `d71c05da0327b17d97fc4987e55cb5e6cfbbfeb4`,
-  `99c86085cf19c366164670fbfa5a694b8d4b83b8`,
-  `73e1f1a44c09f90165ec362f45e87590045ccb47`,
-  `4126fe832a5106809455a4b33f6de597034d26cc`,
-  `f4b9e18806f85c8090f8c41b594225eac9bf2724`,
-  `fedf831f9c9edcbf5b43525a2c2fc6283631883a`,
-  `73dca32f27c01e7b39b36afbdbf037c84ae8d2fc`.
-- Terminal source state is committed in the current branch tip before final
-  validation, reviewer JSON, and sealed handoff generation.
+- M2-R2 reviewed head: `676fee3051a8e9cc80defa550a8db7b6bb796240`.
+- M2-R2 external review outcome: `REPAIR_REQUIRED`.
+- Blocking findings are recorded in `docs/loop/reviews/M2-R2-external-review.md`.
+- M2-R2 exceeded the intended repair budget before machine-enforced budget
+  checking existed; historical records remain unchanged.
+- M2-R3 is limited to Agent Loop Review Packet fidelity and budget enforcement.
 
 ## Next Action
 
-Run final validation twice against the terminal source HEAD, generate the
-candidate packet, collect structured reviewer JSON, seal the packet, and send
-`FINAL_RESPONSE.txt`.
+Implement the frozen M2-R3 packet fidelity, literal path, rename/copy,
+terminal-state, budget, reviewer-binding, and validation repairs.
