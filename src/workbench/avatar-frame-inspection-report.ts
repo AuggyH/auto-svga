@@ -11,6 +11,7 @@ import type {
   WorkbenchResult
 } from "./contracts.js";
 import { MotionAssetInspectionService } from "./inspection-service.js";
+import { MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION } from "./motion-asset-audit-report-contract.js";
 import {
   createMotionAssetAuditPresentation,
   type MotionAssetAuditPresentation
@@ -44,6 +45,7 @@ export interface SpecCalibrationNote {
 }
 
 export interface AvatarFrameInspectionReport {
+  contractVersion: typeof MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION;
   asset: MotionAssetSummary;
   memoryEstimation: MotionAssetMemoryEstimation;
   memoryDiagnostics: RoleAwareMemoryDiagnostics;
@@ -97,6 +99,7 @@ export class AvatarFrameInspectionReportService {
     });
     return {
       value: {
+        contractVersion: MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION,
         asset: summarize(asset),
         memoryEstimation,
         memoryDiagnostics,

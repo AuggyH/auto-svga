@@ -1,0 +1,219 @@
+{
+  "contractVersion": 1,
+  "asset": {
+    "format": "svga",
+    "name": "avatar-frame-fixture.svga",
+    "sizeBytes": 1024,
+    "dimensions": { "width": 300, "height": 300 },
+    "timing": { "fps": 24, "frameCount": 72, "durationMs": 3000, "loop": true },
+    "layerCount": 2,
+    "resourceCount": 3
+  },
+  "memoryEstimation": {
+    "bytesPerPixel": 4,
+    "resources": [
+      {
+        "resourceId": "frame_001",
+        "resourceName": "frame_001",
+        "role": "sequence_frame",
+        "estimatedDecodedBytes": 360000,
+        "estimatedTextureBytes": 360000
+      },
+      {
+        "resourceId": "frame_002",
+        "resourceName": "frame_002",
+        "role": "sequence_frame",
+        "estimatedDecodedBytes": 360000,
+        "estimatedTextureBytes": 360000
+      },
+      {
+        "resourceId": "frame_003",
+        "resourceName": "frame_003",
+        "role": "sequence_frame",
+        "estimatedDecodedBytes": 360000,
+        "estimatedTextureBytes": 360000
+      }
+    ],
+    "totalEstimatedDecodedResourceBytes": 1080000,
+    "largestResourcesByDecodedBytes": [
+      {
+        "resourceId": "frame_001",
+        "resourceName": "frame_001",
+        "role": "sequence_frame",
+        "estimatedDecodedBytes": 360000,
+        "estimatedTextureBytes": 360000
+      },
+      {
+        "resourceId": "frame_002",
+        "resourceName": "frame_002",
+        "role": "sequence_frame",
+        "estimatedDecodedBytes": 360000,
+        "estimatedTextureBytes": 360000
+      },
+      {
+        "resourceId": "frame_003",
+        "resourceName": "frame_003",
+        "role": "sequence_frame",
+        "estimatedDecodedBytes": 360000,
+        "estimatedTextureBytes": 360000
+      }
+    ],
+    "sequenceFrameEstimatedDecodedBytes": 1080000,
+    "unknownResourceIds": [],
+    "memoryRiskLevel": "low"
+  },
+  "memoryDiagnostics": {
+    "byRole": {
+      "static_image": {
+        "role": "static_image",
+        "resourceCount": 0,
+        "knownMemoryCount": 0,
+        "unknownMemoryCount": 0,
+        "totalEstimatedDecodedBytes": 0,
+        "totalEstimatedTextureBytes": 0,
+        "largestResourcesByDecodedBytes": []
+      },
+      "sequence_frame": {
+        "role": "sequence_frame",
+        "resourceCount": 3,
+        "knownMemoryCount": 3,
+        "unknownMemoryCount": 0,
+        "totalEstimatedDecodedBytes": 1080000,
+        "totalEstimatedTextureBytes": 1080000,
+        "largestResourcesByDecodedBytes": []
+      },
+      "baked_sweep_frame": {
+        "role": "baked_sweep_frame",
+        "resourceCount": 0,
+        "knownMemoryCount": 0,
+        "unknownMemoryCount": 0,
+        "totalEstimatedDecodedBytes": 0,
+        "totalEstimatedTextureBytes": 0,
+        "largestResourcesByDecodedBytes": []
+      },
+      "mask_or_matte": {
+        "role": "mask_or_matte",
+        "resourceCount": 0,
+        "knownMemoryCount": 0,
+        "unknownMemoryCount": 0,
+        "totalEstimatedDecodedBytes": 0,
+        "totalEstimatedTextureBytes": 0,
+        "largestResourcesByDecodedBytes": []
+      },
+      "unknown": {
+        "role": "unknown",
+        "resourceCount": 0,
+        "knownMemoryCount": 0,
+        "unknownMemoryCount": 0,
+        "totalEstimatedDecodedBytes": 0,
+        "totalEstimatedTextureBytes": 0,
+        "largestResourcesByDecodedBytes": []
+      }
+    },
+    "sequenceFrameEstimatedDecodedBytes": 1080000
+  },
+  "sequenceResidencyDiagnostics": {
+    "sequenceGroupCount": 1,
+    "framesPerGroup": [{ "groupId": "sequence_frame:frame_:300x300:1-3", "frameCount": 3 }],
+    "totalSequenceFrameEstimatedDecodedBytes": 1080000,
+    "largestSequenceGroupsByDecodedBytes": [],
+    "possibleResidencyModels": ["all_frames_resident", "group_resident"],
+    "advisoryRiskLevel": "medium",
+    "evidence": ["sequence_or_baked_role", "continuous_numeric_suffix"],
+    "uncertainty": "medium",
+    "ungroupedResourceIds": []
+  },
+  "sequenceFrameEvidence": {
+    "analyzedResourceCount": 3,
+    "duplicateEvidenceStatus": "known",
+    "duplicateFrameGroups": [{ "key": "sha256:encoded_bytes:fixture", "resourceIds": ["frame_001", "frame_002"] }],
+    "fullyTransparentFrames": ["frame_003"],
+    "emptyOrNearEmptyFrames": ["frame_003"],
+    "nearEmptyTransparentPaddingRatio": 0.99,
+    "repeatedAlphaBoundsGroups": [],
+    "repeatedDimensionsGroups": [{ "key": "300x300", "resourceIds": ["frame_001", "frame_002", "frame_003"] }],
+    "missingContentHashResourceIds": [],
+    "missingAlphaBoundsResourceIds": [],
+    "evidenceConfidence": "high",
+    "uncertainty": "low"
+  },
+  "auditSummary": {
+    "auditStatus": "needs_review",
+    "primaryFindings": [
+      {
+        "code": "fully_transparent_sequence_frames",
+        "severity": "error",
+        "message": "Fully transparent sequence frames were found.",
+        "evidenceRefs": ["resource:frame_003"]
+      }
+    ],
+    "optimizationOpportunities": [
+      {
+        "code": "review_fully_transparent_frames",
+        "message": "Review fully transparent sequence frames.",
+        "evidenceRefs": ["resource:frame_003"]
+      }
+    ],
+    "riskSignals": [
+      {
+        "code": "sequence_residency",
+        "level": "medium",
+        "evidenceRefs": ["metric:sequenceResidencyDiagnostics.advisoryRiskLevel"]
+      }
+    ],
+    "evidenceRefs": ["resource:frame_003", "metric:sequenceResidencyDiagnostics.advisoryRiskLevel"],
+    "uncertainty": "low"
+  },
+  "auditPresentation": {
+    "statusLabel": "audit.status.needs_review",
+    "severityLevel": "error",
+    "severityLabel": "audit.severity.error",
+    "summaryTitle": "audit.summary.needs_review.title",
+    "summaryDescription": "audit.summary.needs_review.description",
+    "findingCards": [
+      {
+        "code": "fully_transparent_sequence_frames",
+        "title": "audit.finding.fully_transparent_sequence_frames.title",
+        "descriptionKey": "audit.finding.fully_transparent_sequence_frames.description",
+        "description": "Fully transparent sequence frames were found.",
+        "severity": "error",
+        "severityLabel": "audit.severity.error",
+        "category": "transparency",
+        "categoryLabel": "audit.category.transparency",
+        "evidenceRefs": ["resource:frame_003"]
+      }
+    ],
+    "opportunityCards": [
+      {
+        "code": "review_fully_transparent_frames",
+        "title": "audit.opportunity.review_fully_transparent_frames.title",
+        "descriptionKey": "audit.opportunity.review_fully_transparent_frames.description",
+        "description": "Review fully transparent sequence frames.",
+        "category": "transparency",
+        "categoryLabel": "audit.category.transparency",
+        "evidenceRefs": ["resource:frame_003"],
+        "actionType": "review_only",
+        "actionTypeLabel": "audit.action.review_only"
+      }
+    ],
+    "uncertaintyNotes": [],
+    "evidenceRefs": ["resource:frame_003", "metric:sequenceResidencyDiagnostics.advisoryRiskLevel"]
+  },
+  "specId": "avatar-frame-production",
+  "profileId": "production_target",
+  "profileLabel": "Avatar Frame Production Target",
+  "profilePurpose": "Target for new avatar-frame deliveries.",
+  "passed": false,
+  "issues": [
+    {
+      "severity": "error",
+      "code": "resource_fully_transparent",
+      "message": "Embedded image resource is fully transparent.",
+      "path": "resources[2].alphaBounds",
+      "details": { "resourceId": "frame_003" }
+    }
+  ],
+  "calibrationNotes": [
+    { "field": "maxTransparentPaddingRatio", "message": "Provisional threshold; needs product calibration." }
+  ]
+}

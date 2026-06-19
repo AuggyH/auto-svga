@@ -414,6 +414,19 @@ the original report description. Unknown future codes fall back to the report
 message supplied by the caller. The catalog does not parse assets, calculate
 metrics, change severity, or introduce executable actions.
 
+### Motion Asset Audit report serialization v1
+
+Avatar-frame inspection reports include `contractVersion: 1`. The versioned
+contract covers profile and specification results, decoded and role-aware
+memory summaries, sequence residency, deterministic frame evidence, audit
+summary, read-only presentation data, and localization-key references.
+
+`validateMotionAssetAuditReportV1()`, `parseMotionAssetAuditReportV1()`, and
+`serializeMotionAssetAuditReportV1()` provide a host-neutral compatibility
+boundary. The checked-in representative fixture freezes stable field presence
+and types without snapshotting dynamic metrics, environment paths, timestamps,
+or ordering. Opportunity actions are validated as `review_only`.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,

@@ -8,6 +8,12 @@ import test from "node:test";
 import protobuf from "protobufjs";
 import { inspectAvatarFrameCommand } from "../commands/inspect-avatar-frame.js";
 import { createTransparentImage, encodeRgbaPng } from "../utils/png-writer.js";
+import {
+  MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION,
+  parseMotionAssetAuditReportV1,
+  serializeMotionAssetAuditReportV1,
+  validateMotionAssetAuditReportV1
+} from "../workbench/motion-asset-audit-report-contract.js";
 
 test("avatar-frame inspection command returns a passing structured report", async () => {
   const report = await inspectFixture({ width: 300, height: 300 }, "opaque");
@@ -37,6 +43,12 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.equal(report.auditPresentation.statusLabel, "audit.status.pass");
   assert.equal(report.auditPresentation.severityLevel, "success");
   assert.deepEqual(report.auditPresentation.opportunityCards, []);
+  assert.equal(report.contractVersion, MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION);
+  assert.equal(validateMotionAssetAuditReportV1(report).valid, true);
+  assert.deepEqual(
+    parseMotionAssetAuditReportV1(serializeMotionAssetAuditReportV1(report)),
+    report
+  );
   assert.equal(report.specId, "avatar-frame-production");
   assert.equal(report.profileId, "production_target");
   assert.equal(report.profileLabel, "Avatar Frame Production Target");
