@@ -5,8 +5,8 @@ Date: 2026-06-20
 ## Current Milestone
 
 - Milestone: M2-R2 Terminal Handoff Trust Hardening
-- State: contract_frozen
-- Repair round: 0
+- State: implementation_in_progress
+- Repair round: 1
 - Consecutive rounds without new evidence: 0
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
 - Milestone start commit: `df49afb8e19097d1228f1a40091835984da1022a`
@@ -20,7 +20,6 @@ Date: 2026-06-20
 
 ## Next Action
 
-Implement reviewer config validation, schema v3 handoff semantics,
-structured reviewer verdicts, validation-to-HEAD binding, candidate/review/seal
-flow, safe patch/snapshot filtering, concrete `HUMAN_REQUIRED` decision output,
-and loop validation regression coverage.
+Finish M2-R2 implementation, run targeted handoff and validation tests, run
+preliminary `npm run loop:validate`, then move to terminal state only after
+final source commit and reviewer JSON verdicts are ready.

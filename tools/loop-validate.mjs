@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,6 +36,18 @@ export function createLoopValidationSteps() {
       command: "npm test",
       required: true,
       run: { cmd: npm, args: ["test"] }
+    },
+    {
+      id: "handoff-tests",
+      command: "node --test tools/loop-handoff.test.mjs",
+      required: true,
+      run: { cmd: process.execPath, args: ["--test", "tools/loop-handoff.test.mjs"] }
+    },
+    {
+      id: "reviewer-config-check",
+      command: "node tools/loop-reviewer-config-check.mjs",
+      required: true,
+      run: { cmd: process.execPath, args: ["tools/loop-reviewer-config-check.mjs"] }
     },
     {
       id: "validate-example",
@@ -196,6 +209,36 @@ function makeStepResult(step, status, startedAtMs, finishedAtMs, extra = {}) {
   };
 }
 
+function isExcludedSourceStatus(line) {
+  const rawPath = line.slice(3).trim();
+  return rawPath === ".artifacts"
+    || rawPath.startsWith(".artifacts/")
+    || rawPath === "node_modules"
+    || rawPath.startsWith("node_modules/");
+}
+
+function gitText(args, cwd) {
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf8"
+  });
+  if (result.status !== 0) return undefined;
+  return result.stdout.trim();
+}
+
+function readRepositorySnapshot(cwd) {
+  const head = gitText(["rev-parse", "HEAD"], cwd);
+  const statusOutput = gitText(["status", "--short"], cwd);
+  const sourceLines = statusOutput === undefined
+    ? ["git status unavailable"]
+    : statusOutput.split("\n").filter(Boolean).filter((line) => !isExcludedSourceStatus(line));
+  return {
+    head,
+    sourceWorkspaceClean: sourceLines.length === 0,
+    sourceStatusCount: sourceLines.length
+  };
+}
+
 export async function runLoopValidation({
   steps = createLoopValidationSteps(),
   cwd = repoRoot,
@@ -207,6 +250,7 @@ export async function runLoopValidation({
 } = {}) {
   const startedAtMs = clock();
   const startedAt = new Date(startedAtMs).toISOString();
+  const startSnapshot = readRepositorySnapshot(cwd);
   const results = [];
   const activeChildren = new Set();
   let blocked = false;
@@ -271,8 +315,16 @@ export async function runLoopValidation({
   }
 
   const finishedAtMs = clock();
+  const finishSnapshot = readRepositorySnapshot(cwd);
+  if (startSnapshot.head && finishSnapshot.head && startSnapshot.head !== finishSnapshot.head) {
+    status = "fail";
+  }
   const summary = {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    repositoryHeadCommitAtStart: startSnapshot.head,
+    repositoryHeadCommitAtFinish: finishSnapshot.head,
+    sourceWorkspaceCleanAtStart: startSnapshot.sourceWorkspaceClean,
+    sourceWorkspaceCleanAtFinish: finishSnapshot.sourceWorkspaceClean,
     status,
     startedAt,
     finishedAt: new Date(finishedAtMs).toISOString(),

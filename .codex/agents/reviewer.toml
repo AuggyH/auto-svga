@@ -21,6 +21,6 @@ must_check = [
   "required checks are not silently skipped",
   "tests are not weakened",
   "product code is not modified",
-  "scope drift"
+  "scope drift",
   "review handoff completeness"
 ]

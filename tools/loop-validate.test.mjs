@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -10,6 +11,19 @@ import {
   runLoopValidation,
   runWebLocalSmoke
 } from "./loop-validate.mjs";
+import { validateReviewerConfig } from "./loop-reviewer-config-check.mjs";
+
+function run(cmd, args, cwd, options = {}) {
+  const result = spawnSync(cmd, args, {
+    cwd,
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024
+  });
+  if (!options.allowFailure && result.status !== 0) {
+    throw new Error(`${cmd} ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
+  }
+  return result;
+}
 
 function testSteps() {
   return [
@@ -84,8 +98,12 @@ test("file summary is parseable and matches console summary semantics", async ()
     const fileSummary = JSON.parse(await readFile(join(artifactDir, "latest.json"), "utf8"));
     const consoleSummary = JSON.parse(logs.at(-1).replace("AUTO_SVGA_LOOP_VALIDATE_RESULT=", ""));
 
-    assert.equal(fileSummary.schemaVersion, 1);
-    assert.equal(consoleSummary.schemaVersion, 1);
+    assert.equal(fileSummary.schemaVersion, 2);
+    assert.equal(consoleSummary.schemaVersion, 2);
+    assert.equal(typeof fileSummary.repositoryHeadCommitAtStart, "string");
+    assert.equal(typeof fileSummary.repositoryHeadCommitAtFinish, "string");
+    assert.equal(typeof fileSummary.sourceWorkspaceCleanAtStart, "boolean");
+    assert.equal(typeof fileSummary.sourceWorkspaceCleanAtFinish, "boolean");
     assert.equal(fileSummary.status, summary.status);
     assert.equal(consoleSummary.status, summary.status);
     assert.deepEqual(fileSummary.knownGaps, summary.knownGaps);
@@ -94,11 +112,76 @@ test("file summary is parseable and matches console summary semantics", async ()
 
 test("electron steps are ordered after web smoke and are not parallelized", () => {
   const ids = createLoopValidationSteps().map(({ id }) => id);
-  assert.deepEqual(ids.slice(8, 11), [
+  assert.equal(ids.includes("handoff-tests"), true);
+  assert.equal(ids.includes("reviewer-config-check"), true);
+  assert.deepEqual(ids.slice(10, 13), [
     "web-local-smoke",
     "electron-prototype-tests",
     "svga-web-prototype-tests"
   ]);
+});
+
+test("reviewer config check validates must_check array and read-only sandbox", async () => {
+  const result = await validateReviewerConfig(".codex/agents/reviewer.toml");
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.permissions.mode, "read-only");
+  assert.equal(result.permissions.allow_writes, false);
+  assert.equal(result.mustCheck.includes("scope drift"), true);
+  assert.equal(result.mustCheck.includes("review handoff completeness"), true);
+});
+
+test("reviewer config check rejects missing comma separators", async () => {
+  await withTempDir(async (directory) => {
+    const configPath = join(directory, "reviewer.toml");
+    await writeFile(configPath, [
+      "[permissions]",
+      "mode = \"read-only\"",
+      "allow_writes = false",
+      "allow_commits = false",
+      "allow_network = false",
+      "",
+      "[review]",
+      "must_check = [",
+      "  \"scope drift\"",
+      "  \"review handoff completeness\"",
+      "]",
+      ""
+    ].join("\n"));
+
+    await assert.rejects(
+      () => validateReviewerConfig(configPath),
+      /missing a comma separator/
+    );
+  });
+});
+
+test("validation fails when repository HEAD changes during a run", async () => {
+  await withTempDir(async (repo) => {
+    await mkdir(join(repo, "nested"), { recursive: true });
+    await writeFile(join(repo, "file.txt"), "one\n");
+    run("git", ["init"], repo);
+    run("git", ["config", "user.name", "Codex"], repo);
+    run("git", ["config", "user.email", "codex-agent@local"], repo);
+    run("git", ["add", "."], repo);
+    run("git", ["commit", "-m", "one"], repo);
+
+    const summary = await runLoopValidation({
+      cwd: repo,
+      steps: testSteps().slice(0, 1),
+      artifactDir: join(repo, ".artifacts/loop-validation"),
+      consoleLike: { log() {} },
+      executor: async () => {
+        await writeFile(join(repo, "file.txt"), "two\n");
+        run("git", ["add", "file.txt"], repo);
+        run("git", ["commit", "-m", "two"], repo);
+        return { exitCode: 0 };
+      }
+    });
+
+    assert.equal(summary.status, "fail");
+    assert.notEqual(summary.repositoryHeadCommitAtStart, summary.repositoryHeadCommitAtFinish);
+  });
 });
 
 test("runner waits for each step before starting the next step", async () => {

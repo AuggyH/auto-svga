@@ -5,8 +5,9 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readlink,
   rm,
-  stat,
+  symlink,
   writeFile
 } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -15,12 +16,14 @@ import { tmpdir } from "node:os";
 import test from "node:test";
 
 import { generateHandoffPacket } from "./loop-handoff.mjs";
+import { createLoopValidationSteps } from "./loop-validate.mjs";
+import { validateReviewerConfig } from "./loop-reviewer-config-check.mjs";
 
 function run(cmd, args, cwd, options = {}) {
   const result = spawnSync(cmd, args, {
     cwd,
     encoding: "utf8",
-    maxBuffer: 30 * 1024 * 1024
+    maxBuffer: 50 * 1024 * 1024
   });
   if (!options.allowFailure && result.status !== 0) {
     throw new Error(`${cmd} ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
@@ -37,76 +40,122 @@ async function writeJson(filePath, value) {
   await writeText(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function baseInput({ milestoneId, milestoneTitle, base, head, changedFilePurposes }) {
+function hashText(text) {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+function criteria() {
+  return Array.from({ length: 15 }, (_, index) => {
+    const id = `M2-R2-AC-${String(index + 1).padStart(2, "0")}`;
+    return {
+      id,
+      requirement: `M2-R2 fixture acceptance criterion ${index + 1}`
+    };
+  });
+}
+
+function contractText({ milestoneId = "M2-R2" } = {}) {
+  return [
+    "# M2-R2 Fixture",
+    "",
+    `Milestone ID: ${milestoneId}`,
+    "",
+    "## Acceptance Criteria",
+    "",
+    ...criteria().map((criterion) => `- \`${criterion.id}\`: ${criterion.requirement}`),
+    ""
+  ].join("\n");
+}
+
+function acceptanceEvidence({ omit, extra, badHash } = {}) {
+  const items = criteria()
+    .filter((criterion) => criterion.id !== omit)
+    .map((criterion) => ({
+      criterionId: criterion.id,
+      milestoneId: "M2-R2",
+      requirement: criterion.requirement,
+      requirementHash: badHash === criterion.id ? "bad" : hashText(criterion.requirement),
+      historicalEvidenceStatus: "PASS",
+      retrospectiveEvidenceStatus: "NOT_APPLICABLE",
+      evidenceSource: "validation.json, reviewer-a.json, reviewer-b.json, REVIEW_PACKET.md",
+      commands: ["node --test tools/loop-handoff.test.mjs"],
+      exitCodes: [0],
+      evidenceRefs: ["validation.json"],
+      limitation: "none"
+    }));
+  if (extra) {
+    items.push({
+      criterionId: extra,
+      milestoneId: "M2-R2",
+      requirement: "extra",
+      requirementHash: hashText("extra"),
+      evidenceSource: "extra",
+      commands: ["extra"],
+      exitCodes: [0],
+      evidenceRefs: ["extra"],
+      limitation: "extra"
+    });
+  }
+  return items;
+}
+
+function baseInput({ base, head, changedFilePurposes, humanDecision = null } = {}) {
   return {
-    milestoneId,
-    milestoneTitle,
+    milestoneId: "M2-R2",
+    milestoneTitle: "Terminal Handoff Trust Hardening",
     reviewedBaseCommit: base,
     reviewedHeadCommit: head,
     milestoneOutcome: "PASS",
-    evidenceCompleteness: milestoneId === "M1" ? "PARTIAL" : "COMPLETE",
-    historicalValidationEvidence: milestoneId === "M1" ? "NOT_AVAILABLE" : "PASS",
-    historicalReviewerEvidence: milestoneId === "M1" ? "NOT_AVAILABLE" : "PASS",
-    retrospectiveRevalidation: milestoneId === "M1" ? "NOT_AVAILABLE" : "PASS",
-    retrospectiveReviewerStatus: milestoneId === "M1" ? "NOT_AVAILABLE" : "PASS",
-    implementationSummary: milestoneId === "M1"
-      ? "M1 added unified source-safe validation command, sequential validation runner, failure propagation, stable machine-readable summary, targeted validator tests, and autonomous loop bootstrap docs."
-      : "M2-R1 repaired review packet integrity by embedding small diffs, separating packet status from milestone outcome, requiring milestone-specific acceptance evidence, filtering loop history by milestone, and requiring reviewer A/B handoff reports.",
-    retrospectivePackagingNote: milestoneId === "M1"
-      ? "This packet is retrospective packaging. It does not invent historical reviewer or validation evidence."
-      : undefined,
+    evidenceCompleteness: "COMPLETE",
+    historicalValidationEvidence: "PASS",
+    historicalReviewerEvidence: "PASS",
+    retrospectiveRevalidation: "NOT_APPLICABLE",
+    retrospectiveReviewerStatus: "NOT_APPLICABLE",
+    implementationSummary: "M2-R2 hardens terminal handoff trust with schema v3, structured reviewer verdicts, validation head binding, candidate seal, safe patch filtering, and concrete human gates.",
     changedFilePurposes,
-    acceptanceEvidence: milestoneId === "M1"
-      ? Array.from({ length: 8 }, (_, index) => ({
-        criterionId: `M1-AC-${String(index + 1).padStart(2, "0")}`,
-        milestoneId: "M1",
-        requirement: `M1 frozen acceptance criterion ${index + 1}`,
-        historicalEvidenceStatus: "NOT_AVAILABLE",
-        retrospectiveEvidenceStatus: "DERIVED_FROM_FROZEN_CONTRACT",
-        evidenceSource: "docs/loop/CURRENT_MILESTONE.md M1 frozen contract",
-        limitation: "Original M1 evidence was not packaged at the time.",
-        derivedFromFrozenContract: true
-      }))
-      : Array.from({ length: 10 }, (_, index) => ({
-        criterionId: `M2-R1-AC-${String(index + 1).padStart(2, "0")}`,
-        milestoneId: "M2-R1",
-        requirement: `M2-R1 explicit acceptance criterion ${index + 1}`,
-        historicalEvidenceStatus: "PASS",
-        retrospectiveEvidenceStatus: "PASS",
-        evidenceSource: "validation.json, reviewer-a.md, reviewer-b.md, REVIEW_PACKET.md",
-        limitation: "none"
-      })),
+    acceptanceEvidence: acceptanceEvidence(),
     validationRuns: [
       { command: "node --test tools/loop-handoff.test.mjs", result: "PASS", exitCode: 0 },
       { command: "npm run loop:validate", result: "PASS", exitCode: 0 }
     ],
     reviewerReports: [
-      { reviewer: "A", status: milestoneId === "M1" ? "NOT_AVAILABLE" : "PASS" },
-      { reviewer: "B", status: milestoneId === "M1" ? "NOT_AVAILABLE" : "PASS" }
+      { reviewer: "A", status: "PASS" },
+      { reviewer: "B", status: "PASS" }
     ],
     remainingRisks: ["No product runtime changes are included."],
     visualArtifacts: [],
-    humanDecision: null,
-    recommendedNextMilestone: "Do not start a new milestone until the packet is externally reviewed."
+    humanDecision,
+    recommendedNextMilestone: "Wait for external review."
   };
 }
 
 async function createRepo() {
-  const repo = await mkdtemp(join(tmpdir(), "auto-svga-handoff-"));
+  const repo = await mkdtemp(join(tmpdir(), "auto-svga-handoff-v3-"));
   run("git", ["init"], repo);
   run("git", ["config", "user.name", "Codex"], repo);
   run("git", ["config", "user.email", "codex-agent@local"], repo);
+  await writeText(join(repo, "docs/loop/CURRENT_MILESTONE.md"), contractText());
+  await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
+    "# Auto SVGA Loop State",
+    "",
+    "- Milestone: M2-R2 Terminal Handoff Trust Hardening",
+    "- State: terminal_pass",
+    ""
+  ].join("\n"));
+  await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({
+    milestoneId: "M2-R2",
+    iteration: "terminal",
+    phase: "seal",
+    timestamp: "2026-06-20T00:00:00.000Z",
+    hypothesis: "terminal fixture",
+    filesChanged: ["src/example.txt"],
+    commands: ["node --test tools/loop-handoff.test.mjs"],
+    result: "PASS",
+    evidence: ["validation.json"],
+    nextAction: "external_review"
+  })}\n`);
+  await writeText(join(repo, ".gitignore"), ".artifacts/\nnode_modules/\n");
   await writeText(join(repo, "README.md"), "# fixture\n");
-  await writeText(join(repo, "docs/loop/CURRENT_MILESTONE.md"), "# M2-R1 fixture contract\n\nMilestone: M2-R1\n");
-  await writeText(join(repo, "docs/loop/M1_CONTRACT.md"), "# M1 fixture contract\n\nMilestone: M1\n");
-  await writeText(join(repo, "docs/loop/WRONG_CONTRACT.md"), "# Wrong fixture contract\n\nMilestone: M2\n");
-  await writeText(join(repo, "docs/decision.md"), "Question: bounded test decision\nRecommendation: choose one bounded next action\n");
-  await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), [
-    JSON.stringify({ milestoneId: "M1", iteration: "M1", phase: "implementation", timestamp: "2026-06-19T00:00:00.000Z", hypothesis: "bootstrap validation", filesChanged: ["tools/loop-validate.mjs"], commands: ["npm run loop:validate"], result: "PASS", evidence: ["latest.json"], nextAction: "M2" }),
-    JSON.stringify({ milestoneId: "M2", iteration: "M2", phase: "implementation", timestamp: "2026-06-19T01:00:00.000Z", hypothesis: "old milestone should be filtered", filesChanged: ["tools/loop-handoff.mjs"], commands: ["npm run loop:handoff"], result: "PASS", evidence: ["M2 packet"], nextAction: "M2-R1" }),
-    JSON.stringify({ milestoneId: "M2-R1", iteration: "M2-R1", phase: "repair", timestamp: "2026-06-19T02:00:00.000Z", hypothesis: "repair packet integrity", filesChanged: ["tools/loop-handoff.mjs"], commands: ["node --test tools/loop-handoff.test.mjs"], result: "PASS", evidence: ["v2 packet"], nextAction: "external review" })
-  ].join("\n") + "\n");
-  await writeText(join(repo, ".gitignore"), "node_modules/\n.artifacts/\n*.log\n");
   run("git", ["add", "."], repo);
   run("git", ["commit", "-m", "base"], repo);
   const base = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
@@ -117,29 +166,22 @@ async function createRepo() {
   const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
 
   await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    repositoryHeadCommitAtStart: head,
+    repositoryHeadCommitAtFinish: head,
+    sourceWorkspaceCleanAtStart: true,
+    sourceWorkspaceCleanAtFinish: true,
     status: "pass",
-    steps: [{ id: "build", status: "pass", exitCode: 0, durationMs: 1 }],
-    knownGaps: { lint: "not_available" }
+    startedAt: "2026-06-20T00:00:00.000Z",
+    finishedAt: "2026-06-20T00:01:00.000Z",
+    steps: [{ id: "handoff-tests", command: "node --test tools/loop-handoff.test.mjs", required: true, status: "pass", exitCode: 0, durationMs: 1, reason: null }],
+    knownGaps: {}
   });
-  await writeText(join(repo, ".artifacts/loop-review/reviewer-a.md"), "PASS\n\nReviewer A original text.\n");
-  await writeText(join(repo, ".artifacts/loop-review/reviewer-b.md"), "PASS\n\nReviewer B original text.\n");
-  await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R1.json"), baseInput({
-    milestoneId: "M2-R1",
-    milestoneTitle: "Review Handoff Integrity Repair",
+  await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), baseInput({
     base,
     head,
     changedFilePurposes: {
-      "src/example.txt": "Adds the fixture implementation file used to verify packet diff, snapshot, and file purpose behavior."
-    }
-  }));
-  await writeJson(join(repo, ".artifacts/loop-handoff-input/M1.json"), baseInput({
-    milestoneId: "M1",
-    milestoneTitle: "Autonomous Loop Bootstrap",
-    base,
-    head,
-    changedFilePurposes: {
-      "src/example.txt": "Represents the historical M1 implementation output in a retrospective packet fixture."
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior."
     }
   }));
   return { repo, base, head };
@@ -154,465 +196,522 @@ async function withRepo(callback) {
   }
 }
 
-async function readJson(filePath) {
-  return JSON.parse(await readFile(filePath, "utf8"));
-}
-
-async function sha256File(filePath) {
-  return createHash("sha256").update(await readFile(filePath)).digest("hex");
-}
-
 function defaultOptions(repo, base, head) {
   return {
     repoRoot: repo,
     status: "PASS",
-    milestone: "M2-R1",
-    title: "Review Handoff Integrity Repair",
+    milestone: "M2-R2",
+    title: "Terminal Handoff Trust Hardening",
     base,
     head,
-    input: ".artifacts/loop-handoff-input/M2-R1.json",
-    reviewerA: ".artifacts/loop-review/reviewer-a.md",
-    reviewerB: ".artifacts/loop-review/reviewer-b.md"
+    input: ".artifacts/loop-handoff-input/M2-R2.json"
   };
 }
 
-test("PASS packet generation creates schema v2 required files", async () => {
+async function writeReviewerVerdicts(repo, head, candidateDigest, overrides = {}) {
+  await writeJson(join(repo, ".artifacts/loop-review/reviewer-a.json"), {
+    schemaVersion: 1,
+    reviewerId: "A",
+    verdict: "PASS",
+    reviewedHeadCommit: head,
+    candidateDigest,
+    generatedAt: "2026-06-20T00:02:00.000Z",
+    conditions: [],
+    findings: [],
+    ...overrides.A
+  });
+  await writeJson(join(repo, ".artifacts/loop-review/reviewer-b.json"), {
+    schemaVersion: 1,
+    reviewerId: "B",
+    verdict: "PASS",
+    reviewedHeadCommit: head,
+    candidateDigest,
+    generatedAt: "2026-06-20T00:02:00.000Z",
+    conditions: [],
+    findings: [],
+    ...overrides.B
+  });
+}
+
+async function refreshValidationAndInput(repo, base, head, changedFilePurposes, inputOverrides = {}) {
+  await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), {
+    schemaVersion: 2,
+    repositoryHeadCommitAtStart: head,
+    repositoryHeadCommitAtFinish: head,
+    sourceWorkspaceCleanAtStart: true,
+    sourceWorkspaceCleanAtFinish: true,
+    status: "pass",
+    startedAt: "2026-06-20T00:00:00.000Z",
+    finishedAt: "2026-06-20T00:01:00.000Z",
+    steps: [{ id: "handoff-tests", command: "node --test tools/loop-handoff.test.mjs", required: true, status: "pass", exitCode: 0, durationMs: 1, reason: null }],
+    knownGaps: {}
+  });
+  await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), {
+    ...baseInput({ base, head, changedFilePurposes }),
+    ...inputOverrides
+  });
+}
+
+async function commitFixture(repo, message) {
+  run("git", ["add", "."], repo);
+  run("git", ["commit", "-m", message], repo);
+  return run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+}
+
+async function generateSealedPacket({ repo, base, head, options = {}, reviewerOverrides = {} }) {
+  const candidate = await generateHandoffPacket({
+    ...defaultOptions(repo, base, head),
+    ...options,
+    candidate: true
+  });
+  await writeReviewerVerdicts(repo, head, candidate.manifest.candidateDigest, reviewerOverrides);
+  return generateHandoffPacket({
+    ...defaultOptions(repo, base, head),
+    ...options,
+    reviewerA: ".artifacts/loop-review/reviewer-a.json",
+    reviewerB: ".artifacts/loop-review/reviewer-b.json"
+  });
+}
+
+async function readJson(filePath) {
+  return JSON.parse(await readFile(filePath, "utf8"));
+}
+
+test("reviewer.toml config validates and remains read-only", async () => {
+  const result = await validateReviewerConfig(".codex/agents/reviewer.toml");
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.permissions.mode, "read-only");
+  assert.equal(result.permissions.allow_writes, false);
+  assert.equal(result.mustCheck.includes("scope drift"), true);
+  assert.equal(result.mustCheck.includes("review handoff completeness"), true);
+});
+
+test("PASS packet generation creates schema v3 sealed packet", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    for (const name of [
-      "REVIEW_PACKET.md",
-      "MANIFEST.json",
-      "changes.patch",
-      "validation.json",
-      "reviewer-a.md",
-      "reviewer-b.md",
-      "artifact-index.json",
-      "FINAL_RESPONSE.txt"
-    ]) {
-      assert.equal(existsSync(join(result.packetRoot, name)), true, name);
-    }
+    const result = await generateSealedPacket({ repo, base, head });
     const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
-    assert.equal(manifest.schemaVersion, 2);
+    const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
+
+    assert.equal(manifest.schemaVersion, 3);
     assert.equal(manifest.packetStatus, "COMPLETE");
     assert.equal(manifest.milestoneOutcome, "PASS");
-    assert.equal(manifest.evidenceCompleteness, "COMPLETE");
-    assert.equal(manifest.workspaceCleanAtGeneration, true);
+    assert.equal(manifest.seal.phase, "sealed");
+    assert.equal(manifest.reviewers.reviewerA.status, "PASS");
+    assert.equal(manifest.reviewers.reviewerA.candidateDigest, manifest.candidateDigest);
+    assert.match(packet, /schemaVersion: 3/);
+    assert.match(packet, /candidateDigest:/);
+    assert.match(packet, /```diff/);
   });
 });
 
-test("Review Packet contains all required sections and v2 status fields", async () => {
+test("terminal state mismatch fails PASS generation", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    const reviewPacket = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
-    for (const section of [
-      "Review Request",
-      "Frozen Milestone Contract",
-      "Implementation Result",
-      "Git State",
-      "Changed Files",
-      "Full Diff",
-      "Changed File Snapshots",
-      "Acceptance Evidence",
-      "Validation Evidence",
-      "Independent Reviewer Reports",
-      "Loop History",
-      "Remaining Risks And Gaps",
-      "Artifact Index",
-      "Human Decision",
-      "Recommended Next Milestone"
-    ]) {
-      assert.match(reviewPacket, new RegExp(`# ${section}`));
-    }
-    assert.match(reviewPacket, /schemaVersion: 2/);
-    assert.match(reviewPacket, /packetStatus: COMPLETE/);
-    assert.match(reviewPacket, /milestoneOutcome: PASS/);
-    assert.match(reviewPacket, /reviewedBaseCommit:/);
-    assert.match(reviewPacket, /reviewedHeadCommit:/);
-    assert.match(reviewPacket, /generatorCommit:/);
-    assert.match(reviewPacket, /repositoryHeadAtGeneration:/);
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: implementation_in_progress\n");
+    head = await commitFixture(repo, "bad state");
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records an intentionally invalid terminal state for regression coverage."
+    });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /LOOP_STATE/
+    );
   });
 });
 
-test("small diffs are embedded in REVIEW_PACKET and not mandatory companions", async () => {
+test("terminal history final result must match PASS", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    const reviewPacket = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
-    const finalResponse = await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8");
-    assert.match(reviewPacket, /```diff\n/);
-    assert.match(reviewPacket, /src\/example.txt/);
-    assert.match(reviewPacket, /companionRequired: false/);
-    assert.doesNotMatch(finalResponse, /changes\.patch/);
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "IN_PROGRESS", nextAction: "repair" })}\n`);
+    head = await commitFixture(repo, "bad history");
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records an intentionally invalid terminal history result for regression coverage."
+    });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /Last LOOP_HISTORY/
+    );
   });
 });
 
-test("large diffs require changes.patch companion", async () => {
+test("reviewer JSON head mismatch is rejected", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const candidate = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest.candidateDigest, { A: { reviewedHeadCommit: base } });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), reviewerA: ".artifacts/loop-review/reviewer-a.json", reviewerB: ".artifacts/loop-review/reviewer-b.json" }),
+      /reviewedHeadCommit mismatch/
+    );
+  });
+});
+
+test("reviewer JSON candidate digest mismatch is rejected", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const candidate = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest.candidateDigest, { B: { candidateDigest: "bad" } });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), reviewerA: ".artifacts/loop-review/reviewer-a.json", reviewerB: ".artifacts/loop-review/reviewer-b.json" }),
+      /candidateDigest mismatch/
+    );
+  });
+});
+
+test("reviewer JSON PASS with conditions is rejected", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const candidate = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest.candidateDigest, { A: { conditions: ["needs follow-up"] } });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), reviewerA: ".artifacts/loop-review/reviewer-a.json", reviewerB: ".artifacts/loop-review/reviewer-b.json" }),
+      /cannot include conditions/
+    );
+  });
+});
+
+test("reviewer markdown words do not affect structured verdict", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeText(join(repo, ".artifacts/loop-review/reviewer-a.md"), "no blocking findings\nfailure path passed\nPASS condition not met\n");
+    const result = await generateSealedPacket({ repo, base, head });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    assert.equal(manifest.reviewers.reviewerA.status, "PASS");
+  });
+});
+
+test("stale validation head is rejected", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const validation = await readJson(join(repo, ".artifacts/loop-validation/latest.json"));
+    validation.repositoryHeadCommitAtStart = base;
+    validation.repositoryHeadCommitAtFinish = base;
+    await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), validation);
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /not bound to reviewedHeadCommit/
+    );
+  });
+});
+
+test("validation run with changed HEAD is rejected", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const validation = await readJson(join(repo, ".artifacts/loop-validation/latest.json"));
+    validation.repositoryHeadCommitAtStart = base;
+    validation.repositoryHeadCommitAtFinish = head;
+    await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), validation);
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /not bound to reviewedHeadCommit/
+    );
+  });
+});
+
+test("committed diff whitespace error is detected for PASS", async () => {
   await withRepo(async ({ repo, base }) => {
-    await writeText(join(repo, "src/large.txt"), `${"line\n".repeat(5100)}`);
-    run("git", ["add", "src/large.txt"], repo);
-    run("git", ["commit", "-m", "large diff"], repo);
+    await writeText(join(repo, "src/bad.txt"), "bad trailing  \n");
+    run("git", ["add", "src/bad.txt"], repo);
+    run("git", ["commit", "-m", "bad whitespace"], repo);
     const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
-    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R1.json"), baseInput({
-      milestoneId: "M2-R1",
-      milestoneTitle: "Review Handoff Integrity Repair",
-      base,
-      head,
-      changedFilePurposes: {
-        "src/example.txt": "Adds the fixture implementation file used to verify packet diff behavior.",
-        "src/large.txt": "Adds a large deterministic text fixture to force companion patch handling."
-      }
-    }));
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
-    const finalResponse = await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8");
-    assert.equal(manifest.companionRequired, true);
-    assert.deepEqual(manifest.mandatoryCompanions, ["changes.patch"]);
-    assert.match(finalResponse, /changes\.patch/);
-  });
-});
-
-test("acceptance evidence must be milestone-specific", async () => {
-  await withRepo(async ({ repo, base, head }) => {
+    await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), {
+      schemaVersion: 2,
+      repositoryHeadCommitAtStart: head,
+      repositoryHeadCommitAtFinish: head,
+      sourceWorkspaceCleanAtStart: true,
+      sourceWorkspaceCleanAtFinish: true,
+      status: "pass",
+      steps: [{ id: "handoff-tests", required: true, status: "pass", exitCode: 0 }]
+    });
     const input = baseInput({
-      milestoneId: "M2-R1",
-      milestoneTitle: "Review Handoff Integrity Repair",
       base,
       head,
       changedFilePurposes: {
-        "src/example.txt": "Adds the fixture implementation file used to verify packet evidence behavior."
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+        "src/bad.txt": "Adds a whitespace failure fixture used to verify committed diff checking."
       }
     });
-    input.acceptanceEvidence[0].criterionId = "A1";
-    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R1.json"), input);
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
     await assert.rejects(
-      generateHandoffPacket(defaultOptions(repo, base, head)),
-      /must be milestone-specific/
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /git diff --check/
     );
   });
 });
 
-test("M1 retrospective packet derives explicit M1 acceptance IDs and marks evidence partial", async () => {
+test("nested secret content does not enter HUMAN_REQUIRED packet files", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    const result = await generateHandoffPacket({
-      repoRoot: repo,
-      status: "PASS",
-      milestone: "M1",
-      title: "Autonomous Loop Bootstrap",
-      base,
-      head,
-      contract: "docs/loop/M1_CONTRACT.md",
-      validation: "missing-validation.json",
-      input: ".artifacts/loop-handoff-input/M1.json",
-      retrospective: true
+    const sentinel = "SECRET_SENTINEL_M2R2";
+    await writeText(join(repo, "nested/.env"), sentinel);
+    await writeJson(join(repo, ".artifacts/loop-decision.json"), {
+      schemaVersion: 1,
+      gateType: "SECURITY",
+      question: "How should the secret path be handled?",
+      options: [
+        { id: "A", label: "Remove it", impact: "Keeps handoff safe." },
+        { id: "B", label: "Stop", impact: "Waits for manual cleanup." }
+      ],
+      recommendation: "A",
+      evidence: ["nested .env detected"],
+      safeDefaultWhileWaiting: "Do not generate PASS."
     });
-    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
-    const reviewPacket = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
-    assert.equal(manifest.evidenceCompleteness, "PARTIAL");
-    assert.equal(manifest.historicalValidationEvidence, "NOT_AVAILABLE");
-    assert.match(reviewPacket, /M1-AC-01/);
-    assert.match(reviewPacket, /M1-AC-08/);
-    assert.match(reviewPacket, /derivedFromFrozenContract: true/);
-    assert.doesNotMatch(reviewPacket, /M2-R1-AC/);
-  });
-});
-
-test("M1 retrospective acceptance evidence cannot cite M2 handoff facts", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    const input = baseInput({
-      milestoneId: "M1",
-      milestoneTitle: "Autonomous Loop Bootstrap",
-      base,
-      head,
-      changedFilePurposes: {
-        "src/example.txt": "Represents the historical M1 implementation output in a retrospective packet fixture."
-      }
-    });
-    input.acceptanceEvidence[0].evidenceSource = "M2 loop:handoff Review Packet";
-    await writeJson(join(repo, ".artifacts/loop-handoff-input/M1.json"), input);
-    await assert.rejects(
-      generateHandoffPacket({
-        repoRoot: repo,
-        status: "PASS",
-        milestone: "M1",
-        title: "Autonomous Loop Bootstrap",
-        base,
-        head,
-        contract: "docs/loop/M1_CONTRACT.md",
-        input: ".artifacts/loop-handoff-input/M1.json",
-        retrospective: true
-      }),
-      /M1 retrospective acceptance evidence/
-    );
-  });
-});
-
-test("implementation result comes from handoff input", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    const reviewPacket = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
-    assert.match(reviewPacket, /M2-R1 repaired review packet integrity/);
-    assert.doesNotMatch(reviewPacket, /generated a standardized review handoff packet for status/);
-  });
-});
-
-test("loop history is filtered by milestone", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    const result = await generateHandoffPacket({
-      repoRoot: repo,
-      status: "PASS",
-      milestone: "M1",
-      title: "Autonomous Loop Bootstrap",
-      base,
-      head,
-      contract: "docs/loop/M1_CONTRACT.md",
-      input: ".artifacts/loop-handoff-input/M1.json",
-      retrospective: true
-    });
-    const reviewPacket = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
-    assert.match(reviewPacket, /milestoneId: M1/);
-    assert.doesNotMatch(reviewPacket, /milestoneId: M2-R1/);
-    assert.doesNotMatch(reviewPacket, /old milestone should be filtered/);
-  });
-});
-
-test("placeholder file purposes fail generation", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    const input = baseInput({
-      milestoneId: "M2-R1",
-      milestoneTitle: "Review Handoff Integrity Repair",
-      base,
-      head,
-      changedFilePurposes: { "src/example.txt": "A change for milestone" }
-    });
-    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R1.json"), input);
-    await assert.rejects(
-      generateHandoffPacket(defaultOptions(repo, base, head)),
-      /purpose missing or placeholder/
-    );
-  });
-});
-
-test("current PASS requires reviewer A and reviewer B reports", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    await rm(join(repo, ".artifacts/loop-review/reviewer-b.md"), { force: true });
-    await assert.rejects(
-      generateHandoffPacket(defaultOptions(repo, base, head)),
-      /reviewer A and reviewer B PASS/
-    );
-  });
-});
-
-test("current PASS requires passing validation summary", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), { status: "fail", steps: [] });
-    await assert.rejects(
-      generateHandoffPacket(defaultOptions(repo, base, head)),
-      /passing validation summary/
-    );
-  });
-});
-
-test("base and head mismatch in handoff input fails", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    const input = baseInput({
-      milestoneId: "M2-R1",
-      milestoneTitle: "Review Handoff Integrity Repair",
-      base: head,
-      head,
-      changedFilePurposes: {
-        "src/example.txt": "Adds the fixture implementation file used to verify packet range checking."
-      }
-    });
-    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R1.json"), input);
-    await assert.rejects(
-      generateHandoffPacket(defaultOptions(repo, base, head)),
-      /reviewedBaseCommit/
-    );
-  });
-});
-
-test("FINAL_RESPONSE upload list excludes manifest, validation, reviewers, and files", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    const finalResponse = await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8");
-    assert.equal(finalResponse.startsWith("PASS\n\nREVIEW_PACKET_READY"), true);
-    assert.match(finalResponse, /UPLOAD_TO_REVIEW_ASSISTANT:\n1\./);
-    assert.match(finalResponse, /Do not upload:\n- MANIFEST\.json\n- validation\.json\n- reviewer reports\n- files directory/);
-    assert.doesNotMatch(finalResponse, /^- MANIFEST:/m);
-  });
-});
-
-test("artifact index and manifest use stable sorted paths and correct sha256", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
-    const filePaths = manifest.files.map((file) => file.repositoryPath);
-    assert.deepEqual(filePaths, [...filePaths].sort());
-    const snapshot = manifest.files.find((file) => file.repositoryPath === "src/example.txt");
-    assert.ok(snapshot);
-    assert.equal(snapshot.sha256, await sha256File(join(result.packetRoot, snapshot.packetPath)));
-    const artifactIndex = await readJson(join(result.packetRoot, "artifact-index.json"));
-    const artifactPaths = artifactIndex.artifacts.map((artifact) => artifact.path);
-    assert.deepEqual(artifactPaths, [...artifactPaths].sort());
-    assert.equal(artifactPaths.includes("MANIFEST.json"), false);
-    assert.equal(artifactPaths.includes("artifact-index.json"), false);
-  });
-});
-
-test("ignored runtime, node_modules, git, env, and sensitive files are not packed", async () => {
-  await withRepo(async ({ repo, base }) => {
-    await writeText(join(repo, "node_modules/pkg/index.js"), "bad\n");
-    await writeText(join(repo, ".env"), "SECRET=1\n");
-    await writeText(join(repo, "tools/electron-prototype/.runtime/file.txt"), "runtime\n");
-    await writeText(join(repo, "src/allowed.txt"), "ok\n");
-    const input = baseInput({
-      milestoneId: "M2-R1",
-      milestoneTitle: "Review Handoff Integrity Repair",
-      base,
-      head: run("git", ["rev-parse", "HEAD"], repo).stdout.trim(),
-      changedFilePurposes: {
-        "src/example.txt": "Adds the committed fixture implementation file included in the base-to-head diff.",
-        "src/allowed.txt": "Adds an allowed uncommitted fixture to verify sensitive path exclusion."
-      }
-    });
-    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R1.json"), input);
-    const result = await generateHandoffPacket({
-      ...defaultOptions(repo, base, input.reviewedHeadCommit),
-      status: "HUMAN_REQUIRED",
-      decisionFile: "docs/decision.md"
-    });
-    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
-    const packed = JSON.stringify(manifest);
-    assert.match(packed, /src\/allowed\.txt/);
-    assert.doesNotMatch(packed, /node_modules/);
-    assert.doesNotMatch(packed, /SECRET/);
-    assert.doesNotMatch(packed, /\.runtime/);
-  });
-});
-
-test("binary files are indexed without text snapshots", async () => {
-  await withRepo(async ({ repo, base }) => {
-    const bytes = Buffer.from([0, 255, 128, 64, 10]);
-    await writeFile(join(repo, "src/committed.bin"), bytes);
-    run("git", ["add", "src/committed.bin"], repo);
-    run("git", ["commit", "-m", "binary"], repo);
-    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
-    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R1.json"), baseInput({
-      milestoneId: "M2-R1",
-      milestoneTitle: "Review Handoff Integrity Repair",
-      base,
-      head,
-      changedFilePurposes: {
-        "src/example.txt": "Adds the fixture implementation file used to verify packet snapshot behavior.",
-        "src/committed.bin": "Adds a binary fixture to verify binary indexing without text snapshot."
-      }
-    }));
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
-    const binary = manifest.files.find((file) => file.repositoryPath === "src/committed.bin");
-    assert.equal(binary.binary, true);
-    assert.equal(binary.packetPath, null);
-    assert.equal(binary.sizeBytes, bytes.length);
-    assert.equal(binary.sha256, createHash("sha256").update(bytes).digest("hex"));
-  });
-});
-
-test("reviewer text and validation summary are preserved", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    assert.match(await readFile(join(result.packetRoot, "reviewer-a.md"), "utf8"), /Reviewer A original text/);
-    assert.match(await readFile(join(result.packetRoot, "reviewer-b.md"), "utf8"), /Reviewer B original text/);
-    assert.deepEqual(
-      await readJson(join(result.packetRoot, "validation.json")),
-      await readJson(join(repo, ".artifacts/loop-validation/latest.json"))
-    );
-  });
-});
-
-test("HUMAN_REQUIRED requires bounded decision file", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    await writeText(join(repo, "src/example.txt"), "dirty\n");
-    await assert.rejects(
-      generateHandoffPacket({
-        ...defaultOptions(repo, base, head),
-        status: "HUMAN_REQUIRED",
-        decisionFile: "docs/missing-decision.md"
-      }),
-      /decision file is missing/
-    );
-    await writeText(join(repo, "docs/incomplete-decision.md"), "Question: incomplete\n");
-    await assert.rejects(
-      generateHandoffPacket({
-        ...defaultOptions(repo, base, head),
-        status: "HUMAN_REQUIRED",
-        decisionFile: "docs/incomplete-decision.md"
-      }),
-      /Question: and Recommendation:/
-    );
-  });
-});
-
-test("PASS fails when tracked workspace is dirty", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    await writeText(join(repo, "src/example.txt"), "dirty\n");
-    await assert.rejects(
-      generateHandoffPacket(defaultOptions(repo, base, head)),
-      /requires a clean source workspace/
-    );
-  });
-});
-
-test("PASS ignores excluded runtime artifact roots", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    await writeText(join(repo, ".artifacts/loop-review/runtime-note.md"), "ignored runtime note\n");
-    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
-    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
-    assert.equal(manifest.workspaceCleanAtGeneration, true);
-  });
-});
-
-test("HUMAN_REQUIRED packet includes tracked and untracked work", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    await writeText(join(repo, "src/example.txt"), "changed but uncommitted\n");
-    await writeText(join(repo, "src/new-file.txt"), "new work\n");
-    const input = baseInput({
-      milestoneId: "M2-R1",
-      milestoneTitle: "Review Handoff Integrity Repair",
-      base,
-      head,
-      changedFilePurposes: {
-        "src/example.txt": "Captures the tracked uncommitted fixture change for HUMAN_REQUIRED packet coverage.",
-        "src/new-file.txt": "Captures the untracked fixture file for HUMAN_REQUIRED packet coverage."
-      }
-    });
-    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R1.json"), input);
+    const input = baseInput({ base, head, changedFilePurposes: {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
+    } });
+    input.milestoneOutcome = "HUMAN_REQUIRED";
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n");
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
     const result = await generateHandoffPacket({
       ...defaultOptions(repo, base, head),
       status: "HUMAN_REQUIRED",
-      decisionFile: "docs/decision.md"
+      decisionFile: ".artifacts/loop-decision.json"
     });
-    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
-    const paths = manifest.files.map((file) => file.repositoryPath);
-    assert.equal(manifest.packetStatus, "COMPLETE");
-    assert.equal(manifest.humanDecision.packetPath, "decisions/human-decision.md");
-    assert.ok(paths.includes("src/example.txt"));
-    assert.ok(paths.includes("src/new-file.txt"));
+    for (const fileName of ["REVIEW_PACKET.md", "changes.patch", "MANIFEST.json", "artifact-index.json"]) {
+      const text = await readFile(join(result.packetRoot, fileName), "utf8");
+      assert.equal(text.includes(sentinel), false, fileName);
+    }
   });
 });
 
-test("contract mismatch fails generation", async () => {
-  await withRepo(async ({ repo, base, head }) => {
+test("sensitive committed path is rejected before raw patch generation", async () => {
+  await withRepo(async ({ repo, base }) => {
+    await writeText(join(repo, "credential.pem"), "SECRET_SENTINEL_PEM\n");
+    run("git", ["add", "credential.pem"], repo);
+    run("git", ["commit", "-m", "secret"], repo);
+    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+    await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), {
+      schemaVersion: 2,
+      repositoryHeadCommitAtStart: head,
+      repositoryHeadCommitAtFinish: head,
+      sourceWorkspaceCleanAtStart: true,
+      sourceWorkspaceCleanAtFinish: true,
+      status: "pass",
+      steps: [{ id: "handoff-tests", required: true, status: "pass", exitCode: 0 }]
+    });
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), baseInput({
+      base,
+      head,
+      changedFilePurposes: {
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior."
+      }
+    }));
     await assert.rejects(
-      generateHandoffPacket({ ...defaultOptions(repo, base, head), contract: "docs/loop/WRONG_CONTRACT.md" }),
-      /does not mention M2-R1/
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /refuses sensitive/
     );
   });
 });
 
-test("failure path uses only temporary repository files", async () => {
+test("symlink snapshots record link target without following outside repository", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    await writeText(join(repo, "src/example.txt"), "dirty\n");
-    await assert.rejects(generateHandoffPacket(defaultOptions(repo, base, head)));
-    const repoStatus = run("git", ["status", "--short"], repo).stdout;
-    assert.match(repoStatus, /src\/example\.txt/);
+    const outside = join(repo, "..", "outside-secret.txt");
+    await writeText(outside, "SECRET_SENTINEL_OUTSIDE\n");
+    await symlink(outside, join(repo, "safe-link"));
+    await writeJson(join(repo, ".artifacts/loop-decision.json"), {
+      schemaVersion: 1,
+      gateType: "SECURITY",
+      question: "Review symlink?",
+      options: [
+        { id: "A", label: "Keep redacted", impact: "No outside file read." },
+        { id: "B", label: "Stop", impact: "Waits for cleanup." }
+      ],
+      recommendation: "A",
+      evidence: ["symlink detected"],
+      safeDefaultWhileWaiting: "Do not follow symlink."
+    });
+    const input = baseInput({ base, head, changedFilePurposes: {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "safe-link": "Adds a symlink fixture used to verify safe snapshot behavior.",
+      "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
+    } });
+    input.milestoneOutcome = "HUMAN_REQUIRED";
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n");
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
+    const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), status: "HUMAN_REQUIRED", decisionFile: ".artifacts/loop-decision.json" });
+    const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
+    assert.equal(packet.includes("SECRET_SENTINEL_OUTSIDE"), false);
+    assert.match(packet, /safe-link/);
   });
+});
+
+test("repository path traversal is rejected", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), contract: "../outside.md", candidate: true }),
+      /escapes repository root/
+    );
+  });
+});
+
+test("paths with spaces and renames are handled", async () => {
+  await withRepo(async ({ repo, base }) => {
+    await writeText(join(repo, "space name.txt"), "one\n");
+    run("git", ["add", "space name.txt"], repo);
+    run("git", ["commit", "-m", "space"], repo);
+    run("git", ["mv", "space name.txt", "renamed file.txt"], repo);
+    run("git", ["commit", "-m", "rename"], repo);
+    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+    await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), {
+      schemaVersion: 2,
+      repositoryHeadCommitAtStart: head,
+      repositoryHeadCommitAtFinish: head,
+      sourceWorkspaceCleanAtStart: true,
+      sourceWorkspaceCleanAtFinish: true,
+      status: "pass",
+      steps: [{ id: "handoff-tests", required: true, status: "pass", exitCode: 0 }]
+    });
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), baseInput({
+      base,
+      head,
+      changedFilePurposes: {
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+        "renamed file.txt": "Renames a file with spaces to verify NUL-delimited path handling."
+      }
+    }));
+    const result = await generateSealedPacket({ repo, base, head });
+    const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
+    assert.match(packet, /renamed file\.txt/);
+  });
+});
+
+test("HUMAN_REQUIRED final response contains the actual question and recommendation", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeJson(join(repo, ".artifacts/loop-decision.json"), {
+      schemaVersion: 1,
+      gateType: "PRODUCT",
+      question: "Choose the handoff repair direction?",
+      options: [
+        { id: "A", label: "Continue repair", impact: "Keeps the loop moving." },
+        { id: "B", label: "Pause", impact: "Waits for human review." }
+      ],
+      recommendation: "A",
+      evidence: ["bounded decision"],
+      safeDefaultWhileWaiting: "Continue no product changes."
+    });
+    const input = baseInput({ base, head, changedFilePurposes: {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
+    } });
+    input.milestoneOutcome = "HUMAN_REQUIRED";
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n");
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
+    const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), status: "HUMAN_REQUIRED", decisionFile: ".artifacts/loop-decision.json" });
+    const response = await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8");
+    assert.match(response, /Question:\nChoose the handoff repair direction\?/);
+    assert.match(response, /Recommendation:\nA: Continue repair/);
+  });
+});
+
+test("CLI status and input milestoneOutcome mismatch fails", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior." } });
+    input.milestoneOutcome = "HUMAN_REQUIRED";
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /CLI status/
+    );
+  });
+});
+
+test("current packets require NOT_APPLICABLE retrospective fields", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior." } });
+    input.retrospectiveRevalidation = "PASS";
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /NOT_APPLICABLE/
+    );
+  });
+});
+
+test("contract ID in prose does not satisfy exact milestone ID", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeText(join(repo, "docs/loop/CURRENT_MILESTONE.md"), `${contractText({ milestoneId: "M2" })}\nM2-R2 appears only in prose.\n`);
+    head = await commitFixture(repo, "bad contract id");
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+      "docs/loop/CURRENT_MILESTONE.md": "Records an intentionally wrong milestone id for regression coverage."
+    });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /does not match/
+    );
+  });
+});
+
+test("acceptance evidence missing, extra, or hash mismatch fails", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    for (const [label, evidence] of [
+      ["missing", acceptanceEvidence({ omit: "M2-R2-AC-01" })],
+      ["extra", acceptanceEvidence({ extra: "M2-R2-AC-99" })],
+      ["badHash", acceptanceEvidence({ badHash: "M2-R2-AC-01" })]
+    ]) {
+      const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": `Fixture purpose for ${label} acceptance evidence validation.` } });
+      input.acceptanceEvidence = evidence;
+      await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
+      await assert.rejects(
+        generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+        /acceptance evidence/
+      );
+    }
+  });
+});
+
+test("candidate digest changes when validation evidence changes", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const first = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    const validation = await readJson(join(repo, ".artifacts/loop-validation/latest.json"));
+    validation.steps.push({ id: "extra", required: true, status: "pass", exitCode: 0 });
+    await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), validation);
+    const second = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    assert.notEqual(first.manifest.candidateDigest, second.manifest.candidateDigest);
+  });
+});
+
+test("candidate packet does not update latest handoff pointer", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const candidate = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+
+    assert.equal(candidate.packetRoot.endsWith(`M2-R2-${head.slice(0, 7)}-candidate`), true);
+    assert.equal(existsSync(join(repo, ".artifacts/loop-handoff/latest")), false);
+    assert.equal(candidate.manifest.seal.phase, "candidate");
+    assert.equal(candidate.manifest.sealVerification.status, "not_run");
+  });
+});
+
+test("sealed packet post verifier records upload contract and latest pointer", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const result = await generateSealedPacket({ repo, base, head });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    const latestTarget = await readlink(join(repo, ".artifacts/loop-handoff/latest"));
+
+    assert.equal(manifest.sealVerification.status, "pass");
+    assert.equal(latestTarget.endsWith(`M2-R2-${head.slice(0, 7)}`), true);
+    assert.deepEqual(manifest.mandatoryCompanions, []);
+  });
+});
+
+test("loop validation contains handoff tests and reviewer config check", () => {
+  const ids = createLoopValidationSteps().map((step) => step.id);
+  assert.equal(ids.includes("handoff-tests"), true);
+  assert.equal(ids.includes("reviewer-config-check"), true);
+});
+
+test("failure path uses only temporary repository files", async () => {
+  await assert.rejects(
+    withRepo(async ({ repo, base, head }) => {
+      await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: wrong\n");
+      head = await commitFixture(repo, "bad terminal state");
+      await refreshValidationAndInput(repo, base, head, {
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior.",
+        "docs/loop/LOOP_STATE.md": "Records an intentionally wrong terminal state for failure-path isolation coverage."
+      });
+      await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    }),
+    /LOOP_STATE/
+  );
 });

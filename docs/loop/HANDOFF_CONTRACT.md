@@ -1,21 +1,21 @@
-# Standardized Review Handoff Contract v2
+# Standardized Review Handoff Contract v3
 
-Date: 2026-06-19
+Date: 2026-06-20
 
 ## Purpose
 
-Every terminal loop state must produce a fixed Review Packet before Codex returns `PASS` or `HUMAN_REQUIRED`. Chat summaries do not replace the packet.
+Every terminal loop state must produce a fixed Review Packet before Codex
+returns `PASS` or `HUMAN_REQUIRED`. Chat summaries do not replace the packet.
 
-The v2 contract separates:
+The v3 contract hardens trust boundaries:
 
-- `packetStatus`: whether the packet itself is complete.
-- `milestoneOutcome`: whether the milestone passed, requires a human decision, or failed.
-- `evidenceCompleteness`: whether current or historical evidence is complete.
-- retrospective evidence fields: whether validation and reviewer evidence existed at the original milestone time.
+- terminal state, loop history, and packet outcome must agree
+- validation evidence is bound to the exact reviewed HEAD
+- reviewer verdicts are structured JSON and bound to a candidate digest
+- patch and snapshot generation starts from a safe path set
+- `HUMAN_REQUIRED` contains a concrete single question and recommendation
 
-A single `status` field must not be reused for all meanings.
-
-## Required Packet Root
+## Packet Root
 
 Each handoff run writes:
 
@@ -35,18 +35,18 @@ The packet root contains:
 - `MANIFEST.json`
 - `changes.patch`
 - `validation.json`
-- `reviewer-a.md`
-- `reviewer-b.md`
+- `reviewer-a.json` when sealed
+- `reviewer-b.json` when sealed
 - `artifact-index.json`
 - `FINAL_RESPONSE.txt`
 - `files/`
 - `decisions/`
 
-## Required v2 Metadata
+## Required v3 Metadata
 
 `REVIEW_PACKET.md` and `MANIFEST.json` must include:
 
-- `schemaVersion: 2`
+- `schemaVersion: 3`
 - `packetStatus`
 - `milestoneOutcome`
 - `evidenceCompleteness`
@@ -60,47 +60,128 @@ The packet root contains:
 - `generatorCommit`
 - `repositoryHeadAtGeneration`
 - `workspaceCleanAtGeneration`
+- `candidateDigest`
 - `companionRequired`
-- `mandatoryCompanions`
+- `mandatoryCompanions` as an array
 
-## Rules
+## Candidate, Review, Seal
 
-1. `REVIEW_PACKET.md` is the required human-readable entrypoint.
-2. If `changes.patch` is at most 1,000,000 bytes and at most 5,000 lines, `REVIEW_PACKET.md` must embed the full unified diff.
-3. If the diff exceeds either limit, `companionRequired` must be `true`, `mandatoryCompanions` must include `changes.patch`, and `FINAL_RESPONSE.txt` must explicitly ask the user to upload `changes.patch`.
-4. All changed text files must have snapshots in `files/`.
-5. Binary files are indexed by size and sha256 only.
-6. `node_modules`, `.git`, `.env`, Electron `.runtime`, unrelated ignored files, and real external user assets must not be packed.
-7. `PASS` packets require a clean tracked/untracked source workspace.
-8. `PASS` packets require a passing validation summary and reviewer A/B PASS reports unless the packet is explicitly retrospective.
-9. `HUMAN_REQUIRED` packets may include uncommitted work but must include the current actual state and one bounded human decision.
-10. Packet files must be stable and locally generated without network access or third-party dependencies.
-11. Acceptance evidence must use milestone-specific IDs. Generic `A1`, `A2`, `A3` IDs are not allowed.
-12. A future milestone contract must define explicit acceptance IDs. Missing acceptance mapping fails PASS generation.
-13. Retrospective packets may derive acceptance IDs from the frozen contract, but must mark `derivedFromFrozenContract: true` and must not fabricate historical validation or reviewer evidence.
-14. Loop history must be machine-filterable by `milestoneId`; cross-milestone history must not leak into a packet.
-15. File purpose entries must be milestone-specific and must not use placeholders such as `changed file`, `miscellaneous`, `update`, or `change for milestone`.
-16. Handoff input JSON is the source of implementation summary, acceptance evidence, validation run summary, risks, and next milestone recommendation. The generator must not invent conclusions.
+1. Candidate generation computes `candidateDigest` from reviewed head,
+   contract hash, diff hash, validation hash, acceptance evidence hash, and
+   loop state/history hash.
+2. Reviewer A and Reviewer B output JSON verdicts only.
+3. Seal validates both reviewer JSON files against reviewed head and candidate
+   digest, then writes the final packet and `FINAL_RESPONSE.txt`.
+4. Post-seal verification checks latest pointer, upload file existence,
+   companion consistency, reviewer digest binding, and clean source state.
 
-## Required Review Packet Sections
+Reviewer JSON schema:
 
-`REVIEW_PACKET.md` must contain:
+```json
+{
+  "schemaVersion": 1,
+  "reviewerId": "A",
+  "verdict": "PASS",
+  "reviewedHeadCommit": "<full sha>",
+  "candidateDigest": "<sha256>",
+  "generatedAt": "<ISO-8601>",
+  "conditions": [],
+  "findings": []
+}
+```
 
-1. Review Request
-2. Frozen Milestone Contract
-3. Implementation Result
-4. Git State
-5. Changed Files
-6. Full Diff
-7. Changed File Snapshots
-8. Acceptance Evidence
-9. Validation Evidence
-10. Independent Reviewer Reports
-11. Loop History
-12. Remaining Risks And Gaps
-13. Artifact Index
-14. Human Decision
-15. Recommended Next Milestone
+Markdown reviewer prose may be kept for humans but must not determine verdict.
+
+## Terminal Consistency
+
+For current non-retrospective packets:
+
+1. `docs/loop/LOOP_STATE.md` must mark the milestone as terminal pass or
+   terminal human required.
+2. The last `docs/loop/LOOP_HISTORY.jsonl` entry for the milestone must have
+   `result` equal to the requested terminal outcome.
+3. Terminal history `nextAction` must be `external_review` or
+   `wait_for_next_milestone`.
+4. Packet `milestoneOutcome` must match CLI status and loop terminal state.
+
+## Validation Binding
+
+Current `PASS` packets require validation `schemaVersion: 2` with:
+
+- `repositoryHeadCommitAtStart`
+- `repositoryHeadCommitAtFinish`
+- `sourceWorkspaceCleanAtStart`
+- `sourceWorkspaceCleanAtFinish`
+- `status`
+- `steps`
+- `knownGaps`
+
+Start and finish HEAD must equal `reviewedHeadCommit`; both source clean fields
+must be true; every required step must pass.
+
+## Safe Path Rules
+
+Before generating patch, snapshots, manifest, or packet content, the generator
+must derive the full changed path set using NUL-delimited Git output.
+
+`PASS` fails if any changed path is sensitive or protected. `HUMAN_REQUIRED`
+may mention sensitive paths only as redacted metadata and must not read or copy
+their contents.
+
+Protected paths include:
+
+- `.env`, `.env.*`
+- `.npmrc`, `.pypirc`, `.netrc`
+- `*.pem`, `*.key`, `*.p12`, `*.pfx`
+- `id_rsa`, `id_ed25519`
+- `credentials*`, `secrets*`
+- `.git/**`, `node_modules/**`, `**/.runtime/**`
+- unapproved real user assets
+
+All repo input paths must resolve inside the repository. Snapshot logic uses
+`lstat`; symlinks are recorded as link metadata and are not followed.
+
+## Diff Checks
+
+`PASS` records and requires:
+
+```bash
+git diff --check <baseCommit>..<headCommit>
+```
+
+`HUMAN_REQUIRED` records:
+
+```bash
+git diff --check <baseCommit>..<headCommit>
+git diff --check
+git diff --cached --check
+```
+
+## Acceptance Evidence
+
+The frozen milestone contract is parsed for exact:
+
+- milestone ID
+- acceptance criterion IDs
+- criterion requirement text
+
+For current packets, acceptance evidence must have exactly the same criterion
+ID set as the frozen contract. Each item records the requirement hash, commands,
+exit codes, evidence refs, and limitations.
+
+## Human Decision
+
+`HUMAN_REQUIRED` requires one structured JSON decision with:
+
+- `schemaVersion`
+- `gateType`
+- one `question`
+- at least two options with `id`, `label`, and `impact`
+- `recommendation`
+- `evidence`
+- `safeDefaultWhileWaiting`
+
+`FINAL_RESPONSE.txt` prints the actual question and recommendation.
 
 ## Self-contained Upload Contract
 
@@ -129,6 +210,5 @@ Do not upload:
 unless explicitly listed above.
 ```
 
-For HUMAN_REQUIRED, use the same upload section and add one bounded `Question` and `Recommendation`.
-
-Do not ask the user to upload `MANIFEST.json`, `validation.json`, reviewer reports, or `files/` unless `FINAL_RESPONSE.txt` explicitly lists them.
+For `HUMAN_REQUIRED`, use the same upload section and include the concrete
+question, recommendation, and safe default.
