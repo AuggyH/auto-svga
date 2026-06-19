@@ -210,6 +210,10 @@ Implementation maturity changes require implementation evidence, and production
 support changes require a separate review. The validator does not use wall-clock
 time, so offline clients and tests remain deterministic.
 
+Evidence and maturity changes follow
+`docs/format-capability-evidence-review-workflow.md` and its public-safe review
+template. Review epochs advance only through that explicit workflow.
+
 `createFormatRecommendationReport()` is deliberately conservative. It can
 exclude capability mismatches and explain relevant sequence evidence, but it
 does not score or select a best format. Unknown usage, unsupported usage
