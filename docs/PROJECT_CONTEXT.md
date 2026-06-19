@@ -2,7 +2,11 @@
 
 ## What
 
-auto-svga — CLI tool that converts layered PNG avatar frame assets into SVGA animation files. Target user: visual designers of overseas voice-chat apps.
+Auto SVGA is evolving from an avatar-frame SVGA CLI into a designer-facing
+export and acceptance workbench. Its current production scope remains the
+layered `avatar_frame` pipeline; its product direction emphasizes playback,
+comparison, inspection, performance diagnosis, safe post-export refinement,
+and delivery evidence rather than full motion authoring.
 
 ## Scope
 
@@ -46,6 +50,9 @@ Current production scope remains `avatar_frame` to SVGA.
 - `DESIGN.md` — UI/UX design direction for Web preview tool
 - `docs/CURRENT_STATUS.md` — latest state
 - `docs/ROADMAP.md` — future direction
+- `docs/product/auto-svga-product-principles.md` — product positioning and anti-drift rules
+- `docs/product/auto-svga-backlog.md` — staged product candidates and explicit deferrals
+- `docs/research/figma-svga-editor-competitor-research.md` — black-box competitor findings
 - `docs/CHANGELOG.md` — merge history
 - `docs/TECH_SPEC.md` — module architecture
 - `docs/TOKEN_BUDGET_RULES.md` — agent behavior rules

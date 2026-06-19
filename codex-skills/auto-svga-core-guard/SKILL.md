@@ -11,6 +11,10 @@ Build a multi-format motion workbench for playback, preview, comparison,
 replaceable-element editing, specification checks, format recommendations,
 conversion, export, and desktop-client preparation.
 
+The workbench is not a small After Effects and does not replace designer
+judgment. Prioritize export acceptance, deterministic diagnostics, and bounded
+reversible post-export refinement over full motion authoring.
+
 ## Priority
 
 - P0: Keep the current tool runnable.
@@ -32,6 +36,14 @@ conversion, export, and desktop-client preparation.
 4. Keep scope tied to one verifiable task.
 5. Preserve truthful support boundaries. Never claim unverified playback,
    conversion, export, or visual success.
+6. Classify editing proposals as export acceptance, post-export refinement, or
+   full motion authoring. MVP work may prioritize only the first two.
+7. Treat complete timelines, complex keyframe curves, full particle editors,
+   and broad source-project authoring as long-term work requiring a separate
+   product decision.
+8. Prefer result files from Figma, PSD, After Effects, C4D, Blender, and
+   AI-assisted workflows. Do not add direct source-project ingestion without a
+   separate scope decision.
 
 ## Inspection Primitives First
 

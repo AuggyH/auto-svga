@@ -1,5 +1,24 @@
 # Roadmap
 
+## Product Positioning
+
+Auto SVGA is a designer-facing SVGA export and acceptance workbench. It does
+not replace the designer's creative judgment and is not a small After Effects.
+Its job is to reduce uncertainty around format compatibility, production
+specifications, resource cost, runtime risk, visual parity, safe refinement,
+and delivery acceptance.
+
+The early product should accept completed or near-completed result assets such
+as SVGA, MP4, WebP, transparent PNG, frame sequences, and layered PNG packages.
+Direct ingestion of Figma, PSD, After Effects, C4D, Blender, or other source
+projects is not an early mainline goal.
+
+See:
+
+- `docs/product/auto-svga-product-principles.md`
+- `docs/research/figma-svga-editor-competitor-research.md`
+- `docs/product/auto-svga-backlog.md`
+
 ## Current: MVP 0.1 avatar_frame
 
 - [x] Planning chain (config + structure → motion-plan → project.json)
@@ -62,6 +81,48 @@ Not included in this milestone: a format recommendation engine, automatic
 optimization, one-click repair, export workbench, desktop client, complex audit
 UI, or additional motion formats.
 
+## Product Phases
+
+### Phase 1: Export acceptance and diagnostics
+
+This is the active product direction:
+
+- SVGA parsing and playback
+- SVGA/reference-media comparison
+- asset, imageKey, resource, sprite, and sequence visibility
+- sweep, glow, ray, and particle semantic grouping
+- production specification checks
+- file-size, decoded-memory, and performance-risk diagnostics
+- delivery acceptance reports and explainable evidence
+
+Phase 1 remains read-only or advisory unless an existing production gate
+explicitly says otherwise.
+
+### Phase 2: Safe post-export refinement
+
+Only after Phase 1 is reliable:
+
+- replaceable image/imageKey preview
+- additive sweep, glow, and lightweight particle layers
+- blend-mode preview with target-runtime compatibility checks
+- animation parameter copy, batch apply, and mirrored apply
+- non-destructive changes with before/after comparison and rollback
+
+Prefer additive, reversible edits. Do not rewrite original transforms or
+animation structure without explicit evidence and recovery.
+
+### Phase 3: Semi-automatic motion generation
+
+Long-term only:
+
+- consume prepared layered assets
+- recommend bounded motion treatments
+- generate basic motion and optional sweep/glow/particle enhancements
+- evaluate resource and runtime cost before export
+
+This phase is not MVP authorization for a universal timeline, source-project
+import platform, complete particle editor, or cross-tool production suite.
+
 ## Roadmap Principle: Inspection Primitives First
 
 Auto SVGA should make stable, reusable inspection primitives reliable before
@@ -101,6 +162,18 @@ must remain outside this inspection foundation.
 ## Future Phases
 
 - Additional asset types: medal, title, bubble
-- Web preview editor (template parameter tweaking without CLI)
+- Safe post-export editor for bounded, reversible changes
 - Runtime mask support in SVGA export
 - Composition/precomp support
+
+## Anti-Drift Gate
+
+Before accepting an editing feature, classify it as export acceptance,
+post-export refinement, or full motion authoring. MVP work may prioritize the
+first two only. Complete timelines, complex keyframe curves, full particle
+editors, and multi-source authoring belong to long-term planning.
+
+Before accepting a new input format, check whether it expands Auto SVGA into a
+general production platform. Early work should consume result files from
+Figma, PSD, After Effects, C4D, Blender, and AI-assisted workflows rather than
+their original project formats.
