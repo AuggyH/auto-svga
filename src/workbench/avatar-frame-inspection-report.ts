@@ -12,6 +12,10 @@ import type {
 } from "./contracts.js";
 import { MotionAssetInspectionService } from "./inspection-service.js";
 import {
+  createMotionAssetAuditPresentation,
+  type MotionAssetAuditPresentation
+} from "./motion-asset-audit-presentation.js";
+import {
   createMotionAssetAuditSummary,
   type MotionAssetAuditSummary
 } from "./motion-asset-audit-summary.js";
@@ -46,6 +50,7 @@ export interface AvatarFrameInspectionReport {
   sequenceResidencyDiagnostics: SequenceResidencyDiagnostics;
   sequenceFrameEvidence: SequenceFrameEvidence;
   auditSummary: MotionAssetAuditSummary;
+  auditPresentation: MotionAssetAuditPresentation;
   specId: string;
   profileId: string;
   profileLabel: string;
@@ -83,6 +88,13 @@ export class AvatarFrameInspectionReportService {
       memoryEstimation
     );
     const sequenceFrameEvidence = collectSequenceFrameEvidence(asset.resources);
+    const auditSummary = createMotionAssetAuditSummary({
+      asset,
+      issues: specReport.issues,
+      memoryEstimation,
+      sequenceResidencyDiagnostics,
+      sequenceFrameEvidence
+    });
     return {
       value: {
         asset: summarize(asset),
@@ -90,13 +102,8 @@ export class AvatarFrameInspectionReportService {
         memoryDiagnostics,
         sequenceResidencyDiagnostics,
         sequenceFrameEvidence,
-        auditSummary: createMotionAssetAuditSummary({
-          asset,
-          issues: specReport.issues,
-          memoryEstimation,
-          sequenceResidencyDiagnostics,
-          sequenceFrameEvidence
-        }),
+        auditSummary,
+        auditPresentation: createMotionAssetAuditPresentation(auditSummary),
         specId: specReport.specId,
         profileId: avatarFrameProductionProfile.id,
         profileLabel: avatarFrameProductionProfile.label,

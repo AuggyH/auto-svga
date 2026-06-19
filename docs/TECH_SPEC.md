@@ -384,6 +384,22 @@ sequence grouping remain explicit rather than being guessed. The summary does
 not change specification pass/fail, profile thresholds, transparent-padding
 policy, raw memory facts, or sequence residency diagnostics.
 
+### Motion Asset Audit presentation contract
+
+`createMotionAssetAuditPresentation()` derives a stable, host-neutral,
+read-only presentation model from `MotionAssetAuditSummary`. It does not parse
+assets, inspect resources, recompute metrics, or change audit decisions.
+
+The contract exposes stable status, title, description, and uncertainty keys;
+categorized finding and opportunity cards; and the original evidence
+references. Finding descriptions preserve the audit message. Every opportunity
+uses `actionType: review_only`; the contract cannot request conversion,
+optimization, repair, or any other mutation.
+
+This layer is additive to the avatar-frame inspection report and leaves the raw
+audit summary intact. Web and desktop clients may localize the stable keys, but
+must not recreate audit rules in presentation components.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,
@@ -399,6 +415,7 @@ SVGA checker, and production preset into a host-neutral structured report:
 - additive advisory sequence residency diagnostics
 - additive deterministic sequence-frame evidence
 - additive preliminary Motion Asset Audit summary
+- additive read-only Motion Asset Audit presentation contract
 
 The Node command `inspect-avatar-frame <file.svga>` owns local file access and
 prints the report as JSON. Existing CLI commands and Web preview behavior are

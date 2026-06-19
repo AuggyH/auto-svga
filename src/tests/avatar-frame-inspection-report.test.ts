@@ -34,6 +34,9 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.equal(report.auditSummary.auditStatus, "pass");
   assert.equal(report.auditSummary.uncertainty, "low");
   assert.deepEqual(report.auditSummary.primaryFindings, []);
+  assert.equal(report.auditPresentation.statusLabel, "audit.status.pass");
+  assert.equal(report.auditPresentation.severityLevel, "success");
+  assert.deepEqual(report.auditPresentation.opportunityCards, []);
   assert.equal(report.specId, "avatar-frame-production");
   assert.equal(report.profileId, "production_target");
   assert.equal(report.profileLabel, "Avatar Frame Production Target");
@@ -52,6 +55,8 @@ test("avatar-frame inspection command reports dimensions over 300x300", async ()
   );
   assert.equal(report.auditSummary.auditStatus, "needs_review");
   assert.equal(report.auditSummary.primaryFindings[0].code, "dimensions_exceed_limit");
+  assert.equal(report.auditPresentation.severityLevel, "error");
+  assert.equal(report.auditPresentation.findingCards[0].category, "specification");
 });
 
 test("avatar-frame inspection command reports transparent padding from embedded PNG", async () => {
@@ -69,6 +74,9 @@ test("avatar-frame inspection command reports transparent padding from embedded 
   assert.equal(report.auditSummary.auditStatus, "needs_review");
   assert.ok(report.auditSummary.optimizationOpportunities.some(
     ({ code }) => code === "crop_static_transparent_padding"
+  ));
+  assert.ok(report.auditPresentation.opportunityCards.every(
+    ({ actionType }) => actionType === "review_only"
   ));
 });
 
