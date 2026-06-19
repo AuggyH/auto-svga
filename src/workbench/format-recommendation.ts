@@ -8,6 +8,10 @@ import type {
 } from "./contracts.js";
 import type { MotionAssetAuditSummary } from "./motion-asset-audit-summary.js";
 import type { RoleAwareTransparentPaddingPolicySummary } from "./role-aware-transparent-padding.js";
+import {
+  collectCapabilityMatrixWarnings,
+  validateFormatCapabilityMatrix
+} from "./format-capability-matrix.js";
 
 export type RecommendationFormat =
   | "svga"
@@ -40,6 +44,7 @@ export interface FormatCapabilityEvidence {
   evidenceType: FormatCapabilityEvidenceType;
   confidence: FormatCapabilityEvidenceConfidence;
   lastReviewedAt: string;
+  reviewEpoch: number;
   notes: string;
 }
 
@@ -65,9 +70,15 @@ export interface FormatCapability {
   typicalRisks: readonly string[];
   evidence: readonly FormatCapabilityEvidence[];
   implementationMaturity: readonly FormatImplementationMaturity[];
+  productionSupport: "supported" | "not_supported" | "experimental";
 }
 
 export type FormatCapabilityMatrix = Readonly<Record<RecommendationFormat, FormatCapability>>;
+
+export interface FormatCapabilityMatrixDocument {
+  capabilityMatrixVersion: number;
+  formats: FormatCapabilityMatrix;
+}
 
 export interface FormatRecommendationRequirements {
   requiresAlpha?: boolean;
@@ -92,6 +103,7 @@ export interface FormatRecommendationInput {
   currentFormat: RecommendationFormat;
   targetUsageContext: TargetUsageContext;
   requirements?: FormatRecommendationRequirements;
+  capabilityMatrixDocument?: FormatCapabilityMatrixDocument;
 }
 
 export type RecommendationCandidateStatus =
@@ -109,6 +121,7 @@ export interface FormatRecommendationCandidate {
   status: RecommendationCandidateStatus;
   implementationStatus: "supported" | "experimental" | "not_available";
   implementationMaturity: readonly FormatImplementationMaturity[];
+  productionSupport: FormatCapability["productionSupport"];
   rationale: readonly string[];
   tradeoffs: readonly FormatRecommendationTradeoff[];
   evidenceRefs: readonly string[];
@@ -123,6 +136,7 @@ const CAPABILITY_EVIDENCE: Readonly<Record<RecommendationFormat, readonly Format
     evidenceType: "implementation_verified",
     confidence: "high",
     lastReviewedAt: "2026-06-19",
+    reviewEpoch: 1,
     notes: "Verified only for the repository's current bounded SVGA workflows."
   }],
   vap: [needsVerification("architecture:multiformat-workbench VAP research boundary")],
@@ -136,6 +150,7 @@ const CAPABILITY_EVIDENCE: Readonly<Record<RecommendationFormat, readonly Format
     evidenceType: "needs_verification",
     confidence: "unknown",
     lastReviewedAt: "2026-06-19",
+    reviewEpoch: 1,
     notes: "No format identity or capability evidence is available."
   }]
 };
@@ -190,12 +205,22 @@ export const FORMAT_RECOMMENDATION_CAPABILITY_MATRIX: FormatCapabilityMatrix = {
 export const FORMAT_RECOMMENDATION_CAPABILITY_MATRIX_DOCUMENT = {
   capabilityMatrixVersion: FORMAT_RECOMMENDATION_CAPABILITY_MATRIX_VERSION,
   formats: FORMAT_RECOMMENDATION_CAPABILITY_MATRIX
-} as const;
+} as const satisfies FormatCapabilityMatrixDocument;
 
 export function createFormatRecommendationReport(
   input: FormatRecommendationInput
 ): FormatRecommendationReport {
   const evidenceRefs = baseEvidenceRefs(input);
+  const matrixDocument = input.capabilityMatrixDocument
+    ?? FORMAT_RECOMMENDATION_CAPABILITY_MATRIX_DOCUMENT;
+  const matrixValidation = validateFormatCapabilityMatrix(matrixDocument);
+  if (!matrixValidation.valid) {
+    return unresolved(input.currentFormat, "needs_more_data", [
+      "Capability matrix validation failed.",
+      ...matrixValidation.errors.map(({ message }) => message)
+    ], evidenceRefs);
+  }
+  const matrixWarnings = collectCapabilityMatrixWarnings(matrixDocument);
   if (input.currentFormat === "unknown" || input.targetUsageContext === "unknown") {
     return unresolved(input.currentFormat, "unknown", [
       "Current format and target usage context are required before evaluating candidates."
@@ -216,12 +241,22 @@ export function createFormatRecommendationReport(
     && input.sequenceResidencyDiagnostics.totalSequenceFrameEstimatedDecodedBytes !== null;
   const rationale = [
     "Candidates are capability constraints only; this MVP does not select a best format.",
+    ...matrixWarnings
+      .filter(({ code }) => code === "stale_capability_evidence")
+      .map(({ message }) => `Capability matrix warning: ${message}`),
     ...(sequenceHeavy
       ? ["Sequence resources are present, so frame-sequence capability and residency tradeoffs require review."]
       : [])
   ];
   const candidates = recommendationFormats().map((format) =>
-    evaluateCandidate(format, input.requirements, sequenceHeavy, evidenceRefs)
+    evaluateCandidate(
+      format,
+      matrixDocument.formats,
+      matrixWarnings,
+      input.requirements,
+      sequenceHeavy,
+      evidenceRefs
+    )
   );
 
   return {
@@ -237,11 +272,14 @@ export function createFormatRecommendationReport(
 
 function evaluateCandidate(
   format: Exclude<RecommendationFormat, "unknown">,
+  matrix: FormatCapabilityMatrix,
+  matrixWarnings: readonly { code: string; path: string; message: string }[],
   requirements: FormatRecommendationRequirements | undefined,
   sequenceHeavy: boolean,
   evidenceRefs: readonly string[]
 ): FormatRecommendationCandidate {
-  const capabilityProfile = FORMAT_RECOMMENDATION_CAPABILITY_MATRIX[format];
+  const capabilityProfile = matrix[format];
+  const relevantWarnings = matrixWarnings.filter(({ path }) => path.startsWith(`formats.${format}`));
   const constraints = [
     requirement("alpha", requirements?.requiresAlpha, capabilityProfile.supportsAlpha),
     requirement("replaceable image", requirements?.requiresReplaceableImage, capabilityProfile.supportsReplaceableImage),
@@ -252,6 +290,7 @@ function evaluateCandidate(
     : constraints.some(({ support }) => support === "unknown")
       ? "needs_more_data"
       : implementationStatus(capabilityProfile) === "supported"
+        && capabilityProfile.productionSupport === "supported"
         ? "capability_match"
         : "needs_more_data";
   const currentImplementationStatus = implementationStatus(capabilityProfile);
@@ -273,6 +312,7 @@ function evaluateCandidate(
     status,
     implementationStatus: currentImplementationStatus,
     implementationMaturity: capabilityProfile.implementationMaturity,
+    productionSupport: capabilityProfile.productionSupport,
     rationale: [
       `Format capability evidence is ${capabilityProfile.evidence[0]?.confidence ?? "unknown"} confidence.`,
       ...(currentImplementationStatus === "supported"
@@ -281,6 +321,7 @@ function evaluateCandidate(
             "Format capability may be known, but the required Auto SVGA implementation is not available.",
             "This candidate is not a production recommendation."
           ]),
+      ...relevantWarnings.map(({ message }) => `Capability matrix warning: ${message}`),
       ...(sequenceHeavy && capabilityProfile.supportsFrameSequence === true
         ? ["Frame-sequence capability is relevant to the observed sequence evidence."]
         : [])
@@ -288,6 +329,7 @@ function evaluateCandidate(
     tradeoffs,
     evidenceRefs,
     uncertainty: status === "capability_match" && currentImplementationStatus === "supported"
+      && capabilityProfile.productionSupport === "supported"
       ? "medium"
       : "high"
   };
@@ -363,7 +405,8 @@ function capability(
     typicalStrengths,
     typicalRisks,
     evidence: CAPABILITY_EVIDENCE[format],
-    implementationMaturity: IMPLEMENTATION_MATURITY[format]
+    implementationMaturity: IMPLEMENTATION_MATURITY[format],
+    productionSupport: format === "svga" ? "supported" : "not_supported"
   };
 }
 
@@ -373,6 +416,7 @@ function needsVerification(evidenceSource: string): FormatCapabilityEvidence {
     evidenceType: "needs_verification",
     confidence: "low",
     lastReviewedAt: "2026-06-19",
+    reviewEpoch: 1,
     notes: "Format characteristics are an architecture baseline, not implementation evidence."
   };
 }

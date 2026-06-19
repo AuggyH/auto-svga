@@ -195,6 +195,21 @@ separate implementation and validation tasks provide evidence. Matrix evidence
 uses repository review markers and does not silently upgrade implementation
 maturity.
 
+`src/workbench/format-capability-matrix.ts` validates matrix version, required
+capability fields, evidence, implementation maturity, and explicit production
+support. Version `1` is current and the only supported version. Unknown versions,
+missing structure, or contradictory maturity/production markers are errors.
+Known capability with unavailable implementation is a warning, not a validation
+failure.
+
+Evidence uses a static `reviewEpoch`; stale epochs produce warnings and never
+block TypeScript builds. A stale candidate remains advisory, carries the warning
+into recommendation rationale, and cannot gain production support from capability
+facts alone. Evidence updates must explicitly advance the review marker.
+Implementation maturity changes require implementation evidence, and production
+support changes require a separate review. The validator does not use wall-clock
+time, so offline clients and tests remain deterministic.
+
 `createFormatRecommendationReport()` is deliberately conservative. It can
 exclude capability mismatches and explain relevant sequence evidence, but it
 does not score or select a best format. Unknown usage, unsupported usage
