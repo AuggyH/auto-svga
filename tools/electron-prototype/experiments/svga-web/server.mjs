@@ -15,6 +15,7 @@ const mimeTypes = new Map([
 ]);
 
 export const internalTrialCsp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
+export const legacyBrowserBaselineAuditCsp = "default-src 'self'; script-src 'self' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 export const strictCsp = internalTrialCsp;
 
 const securityHeaders = {
@@ -24,6 +25,17 @@ const securityHeaders = {
   "referrer-policy": "no-referrer",
   "x-content-type-options": "nosniff"
 };
+
+function securityHeadersForRequest(request) {
+  const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
+  if (requestUrl.pathname === "/audit.html" && requestUrl.searchParams.get("player") === "svgaplayerweb") {
+    return {
+      ...securityHeaders,
+      "content-security-policy": legacyBrowserBaselineAuditCsp
+    };
+  }
+  return securityHeaders;
+}
 
 function sendText(response, statusCode, body) {
   response.writeHead(statusCode, {
@@ -67,9 +79,11 @@ function resolveStaticPath(appRoot, pathname) {
   const runtimeRoot = path.join(appRoot, ".runtime");
   const mappings = [
     ["/vendor/", path.join(appRoot, "vendor")],
+    ["/legacy-vendor/", path.resolve(appRoot, "../..", "vendor")],
     ["/dist/", path.join(runtimeRoot, "dist")],
     ["/tools/svga-player-preview/", path.join(runtimeRoot, "tools/svga-player-preview")],
     ["/fixture/", path.join(runtimeRoot, "fixture")],
+    ["/audit-samples/", path.join(runtimeRoot, "audit-samples")],
     ["/", path.join(appRoot, "web")]
   ];
 
@@ -87,7 +101,7 @@ async function sendStaticFile(request, response, filePath) {
     const fileStat = await stat(filePath);
     if (!fileStat.isFile()) return sendText(response, 404, "Not found");
     response.writeHead(200, {
-      ...securityHeaders,
+      ...securityHeadersForRequest(request),
       "content-type": mimeTypes.get(path.extname(filePath)) ?? "application/octet-stream",
       "content-length": fileStat.size
     });

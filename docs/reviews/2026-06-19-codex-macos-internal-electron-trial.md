@@ -60,7 +60,7 @@ npm run spike:svga-web:test
 Result: pass, 4 tests / 0 failed
 
 npm run spike:svga-web:smoke
-Result: pass; local page, local-only loading, strict CSP, playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, error file, lifecycle, cleanup
+Result: pass; local page, local-only loading, restricted CSP with internal-only wasm exception, playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, error file, lifecycle, cleanup
 
 npm run internal:trial:package:mac
 Result: pass; generated .app, .zip, and manifest

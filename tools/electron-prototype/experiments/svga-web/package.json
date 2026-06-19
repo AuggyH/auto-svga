@@ -9,6 +9,7 @@
     "spike:svga-web:prepare": "npm --prefix ../.. run spike:electron:prepare && node scripts/prepare-runtime.mjs",
     "spike:svga-web:test": "npm run spike:svga-web:prepare && node --test tests/*.test.mjs",
     "spike:svga-web:smoke": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron . --smoke",
+    "internal:trial:parity": "node scripts/run-real-sample-parity-audit.mjs",
     "spike:svga-web:package:mac": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=darwin --arch=arm64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
     "spike:svga-web:package:win": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=win32 --arch=x64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
     "internal:trial:package:mac": "node scripts/package-internal-trial.mjs"

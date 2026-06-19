@@ -16,7 +16,8 @@ npm run internal:trial:package:mac
 
 ## Boundary
 
-- strict CSP: `script-src 'self'`, no `unsafe-eval`
+- restricted CSP: `script-src 'self' 'wasm-unsafe-eval'`, no generic
+  `unsafe-eval`
 - local vendored player asset only
 - synthetic SVGA fixture copied from the parent prototype runtime
 - existing avatar-frame inspection report service reused from built `dist`

@@ -80,8 +80,8 @@ The internal trial follows ADR-011:
 - log redaction
 - visible "internal prototype, not production" labeling
 
-The final CSP permits only the WebAssembly execution exception required by
-`svga-web@2.4.4`:
+The final policy is a restricted CSP with an internal-only WebAssembly execution
+exception required by `svga-web@2.4.4`:
 
 ```text
 script-src 'self' 'wasm-unsafe-eval'
