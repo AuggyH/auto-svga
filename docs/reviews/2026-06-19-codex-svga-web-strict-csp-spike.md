@@ -8,9 +8,10 @@
 ## 2. Git state
 - Branch: `agent/codex/svga-web-strict-csp-spike`
 - Implementation commit: `de3d883cacdbffd75a5e2239e792b11d89aca571`
+- Review commit: `351c0ebd193beb85266555bdf2a1293601ffcf35`
 - Commit before work: `5f13043`
-- Uncommitted changes before review commit: this review file only
-- Untracked runtime/package artifacts: generated under ignored `.runtime/` and `.artifacts/`
+- Working tree after delivery: clean
+- Runtime/package artifacts after delivery: generated under ignored `.runtime/` and `.artifacts/`
 
 ## 3. Changed files
 - `docs/svga-web-strict-csp-spike.md`
@@ -104,5 +105,7 @@ Result: passed.
 
 ## 9. Commit
 - Implementation commit: `de3d883cacdbffd75a5e2239e792b11d89aca571`
+- Review commit: `351c0ebd193beb85266555bdf2a1293601ffcf35`
 - Branch: `agent/codex/svga-web-strict-csp-spike`
 - Tag: none
+- Working tree after delivery: clean

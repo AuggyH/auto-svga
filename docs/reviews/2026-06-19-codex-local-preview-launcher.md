@@ -8,9 +8,10 @@
 ## 2. Git state
 - Branch: `agent/codex/local-preview-launcher`
 - Implementation commit: `52c00cc80f3561d3f9bd55606785106dc6dc1f49`
+- Review commit: `9bf7296f4562d7c677092d7b716024a942dbc747`
 - Commit before work: `351c0eb`
-- Uncommitted changes before review commit: this review file only
-- Untracked files: none expected
+- Working tree after delivery: clean
+- Untracked files after delivery: none
 
 ## 3. Changed files
 - `tools/launch-local-preview.mjs`
@@ -87,5 +88,7 @@ Result: passed.
 
 ## 9. Commit
 - Implementation commit: `52c00cc80f3561d3f9bd55606785106dc6dc1f49`
+- Review commit: `9bf7296f4562d7c677092d7b716024a942dbc747`
 - Branch: `agent/codex/local-preview-launcher`
 - Tag: none
+- Working tree after delivery: clean
