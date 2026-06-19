@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Auto SVGA svga-web Strict CSP Spike</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">svga-web strict-CSP spike</p>
+        <h1>SVGA 播放兼容性验证</h1>
+        <p id="runtimeStatus">准备中</p>
+      </header>
+      <section aria-labelledby="playerTitle">
+        <div class="sectionTitle">
+          <h2 id="playerTitle">播放输出</h2>
+          <span id="playbackStatus">未开始</span>
+        </div>
+        <canvas id="player" width="300" height="300" aria-label="SVGA player output"></canvas>
+      </section>
+      <section aria-labelledby="reportTitle">
+        <div class="sectionTitle">
+          <h2 id="reportTitle">验收报告</h2>
+          <span>只读</span>
+        </div>
+        <div id="reportRoot"></div>
+      </section>
+    </main>
+    <script type="module" src="/prototype.js"></script>
+  </body>
+</html>

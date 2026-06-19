@@ -1,0 +1,80 @@
+:root {
+  color-scheme: light dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f5f6f8;
+  color: #1f2328;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  display: grid;
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+header,
+section {
+  border: 1px solid #d8dce2;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #5f6b7a;
+  font-size: 12px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+h2 {
+  font-size: 15px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sectionTitle span,
+#runtimeStatus {
+  color: #5f6b7a;
+  font-size: 12px;
+}
+
+#player {
+  display: block;
+  width: min(300px, 100%);
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #eef1f5, #f8fafc);
+}
+
+.specReportSection,
+.auditReportSection {
+  margin-top: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { background: #151618; color: #f4f4f5; }
+  header, section { background: #222428; border-color: #3a3d43; }
+  #player { background: linear-gradient(135deg, #1a1c20, #252932); }
+}

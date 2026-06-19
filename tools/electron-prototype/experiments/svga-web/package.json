@@ -1,0 +1,15 @@
+{
+  "name": "auto-svga-svga-web-strict-csp-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated strict-CSP svga-web playback spike for Auto SVGA.",
+  "main": "main.cjs",
+  "scripts": {
+    "spike:svga-web:prepare": "npm --prefix ../.. run spike:electron:prepare && node scripts/prepare-runtime.mjs",
+    "spike:svga-web:test": "npm run spike:svga-web:prepare && node --test tests/*.test.mjs",
+    "spike:svga-web:smoke": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron . --smoke",
+    "spike:svga-web:package:mac": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=darwin --arch=arm64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
+    "spike:svga-web:package:win": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=win32 --arch=x64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'"
+  }
+}

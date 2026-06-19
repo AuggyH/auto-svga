@@ -1,0 +1,166 @@
+import { timingSafeEqual } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import { createServer } from "node:http";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+const mimeTypes = new Map([
+  [".html", "text/html; charset=utf-8"],
+  [".js", "text/javascript; charset=utf-8"],
+  [".mjs", "text/javascript; charset=utf-8"],
+  [".css", "text/css; charset=utf-8"],
+  [".json", "application/json; charset=utf-8"],
+  [".svga", "application/octet-stream"]
+]);
+
+export const strictCsp = "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
+
+const securityHeaders = {
+  "cache-control": "no-store",
+  "content-security-policy": strictCsp,
+  "cross-origin-opener-policy": "same-origin",
+  "referrer-policy": "no-referrer",
+  "x-content-type-options": "nosniff"
+};
+
+function sendText(response, statusCode, body) {
+  response.writeHead(statusCode, {
+    ...securityHeaders,
+    "content-type": "text/plain; charset=utf-8"
+  });
+  response.end(body);
+}
+
+function sendJson(response, statusCode, value) {
+  response.writeHead(statusCode, {
+    ...securityHeaders,
+    "content-type": "application/json; charset=utf-8"
+  });
+  response.end(JSON.stringify(value));
+}
+
+function tokensMatch(actual, expected) {
+  const actualBytes = Buffer.from(actual ?? "");
+  const expectedBytes = Buffer.from(expected);
+  return actualBytes.length === expectedBytes.length
+    && timingSafeEqual(actualBytes, expectedBytes);
+}
+
+function isLoopback(request) {
+  return ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(request.socket.remoteAddress);
+}
+
+async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > maxBytes) throw Object.assign(new Error("Request is too large"), { statusCode: 413 });
+    chunks.push(chunk);
+  }
+  return new Uint8Array(Buffer.concat(chunks));
+}
+
+function resolveStaticPath(appRoot, pathname) {
+  const runtimeRoot = path.join(appRoot, ".runtime");
+  const mappings = [
+    ["/vendor/", path.join(appRoot, "vendor")],
+    ["/dist/", path.join(runtimeRoot, "dist")],
+    ["/tools/svga-player-preview/", path.join(runtimeRoot, "tools/svga-player-preview")],
+    ["/fixture/", path.join(runtimeRoot, "fixture")],
+    ["/", path.join(appRoot, "web")]
+  ];
+
+  for (const [prefix, root] of mappings) {
+    if (!pathname.startsWith(prefix)) continue;
+    const relativePath = pathname === "/" ? "index.html" : pathname.slice(prefix.length);
+    const requestedPath = path.resolve(root, relativePath);
+    if (requestedPath === root || requestedPath.startsWith(`${root}${path.sep}`)) return requestedPath;
+  }
+  return undefined;
+}
+
+async function sendStaticFile(request, response, filePath) {
+  try {
+    const fileStat = await stat(filePath);
+    if (!fileStat.isFile()) return sendText(response, 404, "Not found");
+    response.writeHead(200, {
+      ...securityHeaders,
+      "content-type": mimeTypes.get(path.extname(filePath)) ?? "application/octet-stream",
+      "content-length": fileStat.size
+    });
+    if (request.method === "HEAD") return response.end();
+    createReadStream(filePath).pipe(response);
+  } catch {
+    sendText(response, 404, "Not found");
+  }
+}
+
+export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
+  const reportModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/hosts/avatar-frame-inspection.js")
+  ).href;
+  let reportServicePromise;
+
+  const server = createServer(async (request, response) => {
+    if (!request.url || !isLoopback(request)) return sendText(response, 403, "Forbidden");
+    const requestUrl = new URL(request.url, "http://127.0.0.1");
+
+    if (request.method === "GET" && requestUrl.pathname === "/health") {
+      return sendJson(response, 200, { status: "ok", runtime: "svga-web-strict-csp-spike" });
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/avatar-frame-inspection-report") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "synthetic-fixture.svga");
+        reportServicePromise ??= import(reportModuleUrl)
+          .then(({ createAvatarFrameInspectionReportService }) => createAvatarFrameInspectionReportService());
+        const reportService = await reportServicePromise;
+        const result = await reportService.inspect({
+          id: `memory:${name}`,
+          name,
+          sizeBytes: bytes.byteLength,
+          mediaType: "application/octet-stream",
+          async read() {
+            return bytes;
+          }
+        });
+        if (!result.value) {
+          return sendJson(response, 422, { error: "Inspection failed", issues: result.issues });
+        }
+        return sendJson(response, 200, result.value);
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    if (!["GET", "HEAD"].includes(request.method ?? "")) return sendText(response, 405, "Method not allowed");
+    const filePath = resolveStaticPath(appRoot, decodeURIComponent(requestUrl.pathname));
+    if (!filePath) return sendText(response, 404, "Not found");
+    return sendStaticFile(request, response, filePath);
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Experiment server did not bind a TCP port");
+
+  return {
+    origin: `http://127.0.0.1:${address.port}`,
+    close() {
+      return new Promise((resolve, reject) => {
+        if (!server.listening) return resolve();
+        server.close((error) => error ? reject(error) : resolve());
+      });
+    }
+  };
+}
