@@ -9,6 +9,7 @@ test("maps a passing audit to stable read-only presentation keys", () => {
 
   assert.equal(presentation.statusLabel, "audit.status.pass");
   assert.equal(presentation.severityLevel, "success");
+  assert.equal(presentation.severityLabel, "audit.severity.success");
   assert.equal(presentation.summaryTitle, "audit.summary.pass.title");
   assert.equal(presentation.summaryDescription, "audit.summary.pass.description");
   assert.deepEqual(presentation.findingCards, []);
@@ -57,11 +58,19 @@ test("creates categorized finding and review-only opportunity cards", () => {
 
   assert.equal(presentation.severityLevel, "error");
   assert.equal(presentation.findingCards[0].category, "specification");
+  assert.equal(presentation.findingCards[0].categoryLabel, "audit.category.specification");
+  assert.equal(
+    presentation.findingCards[0].descriptionKey,
+    "audit.finding.file_size_exceeds_limit.description"
+  );
   assert.equal(presentation.findingCards[1].category, "memory");
   assert.equal(presentation.opportunityCards[0].category, "transparency");
   assert.equal(presentation.opportunityCards[1].category, "sequence");
   assert.ok(presentation.opportunityCards.every(
     ({ actionType }) => actionType === "review_only"
+  ));
+  assert.ok(presentation.opportunityCards.every(
+    ({ actionTypeLabel }) => actionTypeLabel === "audit.action.review_only"
   ));
   assert.deepEqual(presentation.evidenceRefs, summary.evidenceRefs);
 });

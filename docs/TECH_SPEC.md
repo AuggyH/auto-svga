@@ -400,6 +400,20 @@ This layer is additive to the avatar-frame inspection report and leaves the raw
 audit summary intact. Web and desktop clients may localize the stable keys, but
 must not recreate audit rules in presentation components.
 
+### Motion Asset Audit localization-key catalog
+
+`motion-asset-audit-localization-keys.ts` is the host-neutral key registry for
+the presentation contract. It owns status, severity, summary, finding,
+opportunity, uncertainty, category, and `review_only` action keys. Dynamic
+finding and opportunity builders keep new issue codes deterministic without
+moving audit decisions into a client.
+
+The catalog includes neutral English fallback labels for current keys. Clients
+may replace those labels with local translations while preserving the keys and
+the original report description. Unknown future codes fall back to the report
+message supplied by the caller. The catalog does not parse assets, calculate
+metrics, change severity, or introduce executable actions.
+
 ### Avatar-frame inspection report
 
 `AvatarFrameInspectionReportService` combines the existing inspection service,
