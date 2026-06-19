@@ -22,7 +22,7 @@
 |---|-------------|--------|
 | 1 | Check local launcher delivery state | Done |
 | 2 | Check svga-web spike delivery state | Done |
-| 3 | Remove unclosed `this review file only` wording | Done |
+| 3 | Remove unclosed review-status wording | Done |
 | 4 | Add explicit working tree clean state to both review files | Done |
 | 5 | Define wasm-eval security boundary | Done |
 | 6 | Evaluate strict/no-wasm, internal exception, and safer-player strategies | Done |
@@ -46,7 +46,7 @@ git diff --check
 Result: passed.
 
 ```text
-rg -n "this review file only|recorded after finalization|see repository history|this delivery commit" ...
+rg -n "<forbidden review-status phrases>" ...
 ```
 
 Result: no matches in the finalized reviews or ADR-010.
