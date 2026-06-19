@@ -414,6 +414,13 @@ the original report description. Unknown future codes fall back to the report
 message supplied by the caller. The catalog does not parse assets, calculate
 metrics, change severity, or introduce executable actions.
 
+`motion-asset-audit-localization-bundle.ts` is the shared handoff for Web and
+desktop clients. It provides version-independent locale bundles for `en` and
+`zh-CN`, identifies English as the default locale, and resolves labels in this
+order: requested locale, default English label, caller-provided report message,
+then the stable key. The resolver is host-neutral and never derives audit
+status, severity, findings, opportunities, or evidence.
+
 ### Motion Asset Audit report serialization v1
 
 Avatar-frame inspection reports include `contractVersion: 1`. The versioned
