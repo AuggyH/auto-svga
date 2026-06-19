@@ -39,3 +39,13 @@
 - Result: both reviewers returned PASS with no blocking findings.
 - Evidence: reviewers confirmed failure propagation, stable summary schema, sequential execution, child/server cleanup, required checks not silently skipped, tests not weakened, no product code changes, no new dependency, no public network requirement, and no local absolute path in latest summary.
 - Next action: commit M1 implementation.
+
+## 2026-06-19 M2 Start
+
+- Round: bootstrap
+- Hypothesis: M2 can start from completed M1 commits and add a standardized handoff contract without changing product code.
+- Files changed: `docs/loop/CURRENT_MILESTONE.md`, `docs/loop/AUTONOMOUS_PROTOCOL.md`, `docs/loop/HUMAN_GATES.md`, `docs/loop/HANDOFF_CONTRACT.md`, `docs/loop/milestones/M1-unified-loop-validation.md`, `docs/loop/reviews/M1-final-review-not-available.md`, `.gitignore`, `AGENTS.md`, `.codex/agents/reviewer.toml`, `docs/loop/LOOP_STATE.md`, `docs/loop/LOOP_HISTORY.md`.
+- Commands run: `git status --short --branch`; `git log --oneline --decorate -8`; `git rev-parse HEAD`; `git rev-parse 8ccc0cb^`; `git rev-parse 8ccc0cb`; `git rev-parse e412c3e`; `npm run loop:validate`.
+- Result: M1 commits verified; M1 contract archived; M2 contract created; baseline validation passed.
+- Evidence: M1 first commit `8ccc0cb55801099a8320c5d2f3b3307af86f4bff`; M1 final and M2 start commit `e412c3e1b5b45f992fec8acdda9c55230f831614`; M1 base `811498c0f278f1c6b8c38cf22c928df7d593bd36`; `npm run loop:validate` summary status `pass`.
+- Next action: implement handoff generator and tests.

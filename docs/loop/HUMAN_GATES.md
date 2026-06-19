@@ -35,3 +35,7 @@ For M1 Unified Loop Validation, enter `HUMAN_REQUIRED` only if:
 3. Completing M1 requires public network, credentials, or production service access.
 4. Existing non-loop user changes appear outside the expected audit/bootstrap/M1 files.
 5. The frozen M1 contract must be changed.
+
+## Handoff Gate
+
+Before any terminal `PASS` or `HUMAN_REQUIRED`, the repository handoff command must generate a complete Review Packet. If packet generation fails or mandatory content is missing, continue repair instead of asking the user to assemble materials.

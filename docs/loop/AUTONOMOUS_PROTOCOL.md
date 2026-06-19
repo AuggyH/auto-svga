@@ -12,6 +12,9 @@ This protocol governs long-running autonomous Auto SVGA tasks. It keeps implemen
 2. The milestone contract records objective, allowed changes, prohibited changes, validation gates, review gates, and stop conditions.
 3. Codex must not change the milestone objective or acceptance criteria after implementation begins.
 4. If the contract must change, stop and enter `HUMAN_REQUIRED`.
+5. `docs/loop/CURRENT_MILESTONE.md` is frozen only for the current milestone.
+6. Starting the next milestone requires archiving the previous contract to `docs/loop/milestones/` and the previous Final Review to `docs/loop/reviews/`.
+7. Each milestone records `milestoneStartCommit`.
 
 ## Execution Cycle
 
@@ -84,3 +87,12 @@ Allowed terminal states:
 - `HUMAN_REQUIRED`: further progress requires allowed human input.
 
 Do not stop in any other state.
+
+## Terminal Handoff
+
+1. Every terminal state must generate a Review Packet before returning `PASS` or `HUMAN_REQUIRED`.
+2. Review Packet generation must succeed before terminal output.
+3. Chat summaries do not replace Review Packets.
+4. Missing or incomplete packets are blocking failures.
+5. Future reviewers must check handoff completeness.
+6. The final chat response must be the generated `FINAL_RESPONSE.txt` content.

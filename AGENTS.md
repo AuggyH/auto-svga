@@ -202,6 +202,10 @@ Create a frozen milestone contract before implementation, execute
 Implement -> Validate -> Review -> Repair, and do not push, merge, release, or
 deploy automatically.
 
+Before returning `PASS` or `HUMAN_REQUIRED`, run the repository handoff command
+successfully and return the generated `FINAL_RESPONSE.txt` verbatim. Never
+substitute a chat summary for the review packet.
+
 ## Token-saving Skills
 
 Repository-local reusable skills live under `codex-skills/`:

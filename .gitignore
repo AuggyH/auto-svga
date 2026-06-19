@@ -27,6 +27,7 @@ exports/
 review/
 outputs/
 .artifacts/loop-validation/
+.artifacts/loop-handoff/
 
 # Allow approved fixtures and examples, but not their generated outputs
 !fixtures/

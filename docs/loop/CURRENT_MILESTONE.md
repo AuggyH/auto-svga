@@ -1,137 +1,146 @@
-# M1: Unified Loop Validation
+# M2: Standardized Review Handoff Contract
 
 Status: active
-Contract frozen after bootstrap commit.
+Milestone start commit: `e412c3e1b5b45f992fec8acdda9c55230f831614`
+Branch: `agent/codex/macos-internal-electron-trial`
+M1 first commit: `8ccc0cb55801099a8320c5d2f3b3307af86f4bff`
+M1 final commit: `e412c3e1b5b45f992fec8acdda9c55230f831614`
+M1 base commit: `811498c0f278f1c6b8c38cf22c928df7d593bd36`
 
 ## Objective
 
-Add one unified validation entrypoint:
+Create a no-dependency standardized review handoff system that generates complete Review Packets for `PASS` and `HUMAN_REQUIRED` terminal loop states.
+
+Add:
 
 ```bash
-npm run loop:validate
+npm run loop:handoff
 ```
 
-The command must be source-safe validation. It may write to `dist`, system temporary directories, ignored `.runtime` directories, and `.artifacts/loop-validation`. It must not modify tracked business code, fixtures, examples, jobs, outputs, schemas, templates, or product artifacts.
+The command must generate packet files an external reviewer can use without asking the user to collect diffs, validation summaries, reviewer reports, or changed file evidence.
 
-No third-party dependency may be added.
+## Required Outputs
 
-## Required Sequential Checks
-
-Run these checks in strict order. Do not use `Promise.all` or other parallel execution.
-
-1. `npm run build`
-2. `npm test`
-3. `npm run validate:example`
-4. `node --test tools/launch-local-preview.test.mjs`
-5. `node --test tools/svga-player-preview/inspection-report-view.test.mjs tools/svga-player-preview/server-inspection-report.test.mjs`
-6. `node --check tools/svga-player-preview/main.js`
-7. `node --check tools/svga-player-preview/server.mjs`
-8. `node --check tools/launch-local-preview.mjs`
-9. Web local smoke:
-   - use `127.0.0.1` and a random available port
-   - preview page endpoint returns 200
-   - `/api/latest-artifact` returns 200
-   - do not open a browser
-   - do not access public network
-   - always close the server after success or failure
-10. `npm --prefix tools/electron-prototype run spike:electron:test`
-11. `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`
-12. `git diff --check`
-
-Electron checks must run sequentially to avoid shared `.runtime` races.
-
-## Validator Contract
-
-Implement:
-
-- `tools/loop-validate.mjs`
-- `tools/loop-validate.test.mjs`
-- `package.json` script `loop:validate`
-
-Behavior:
-
-1. Default fail-fast.
-2. Required step failure exits non-zero.
-3. Steps after a required failure are recorded as `skipped`.
-4. Skipped reason is `blocked_by_previous_failure`.
-5. Child stdout and stderr are not swallowed.
-6. Child processes are reliably cleaned up.
-7. Summary paths do not contain local absolute paths.
-8. The validator does not access public network.
-
-Every run writes:
+Each handoff run writes:
 
 ```text
-.artifacts/loop-validation/latest.json
+.artifacts/loop-handoff/<milestone-id>-<head-short-sha>/
+  REVIEW_PACKET.md
+  MANIFEST.json
+  changes.patch
+  validation.json
+  reviewer-report.md
+  artifact-index.json
+  FINAL_RESPONSE.txt
+  files/
+  decisions/
 ```
 
-The final console line must be:
+and updates:
 
 ```text
-AUTO_SVGA_LOOP_VALIDATE_RESULT=<single-line-json>
+.artifacts/loop-handoff/latest/
 ```
 
-Summary JSON contains at least:
+`.artifacts/loop-handoff/` must be ignored by Git.
 
-- `schemaVersion: 1`
-- `status: pass | fail | aborted`
-- `startedAt`
-- `finishedAt`
-- `durationMs`
-- `steps`
-- `knownGaps`
+## Packet Contract
 
-Each step contains at least:
+`REVIEW_PACKET.md` must contain:
 
-- `id`
-- `command`
-- `required`
-- `status`
-- `exitCode`
-- `durationMs`
-- `reason`
+1. Stable metadata.
+2. Review Request.
+3. Frozen Milestone Contract with full current milestone text.
+4. Implementation Result.
+5. Git State.
+6. Changed Files.
+7. Full Diff or mandatory `changes.patch` reference.
+8. Changed File Snapshots.
+9. Acceptance Evidence.
+10. Validation Evidence.
+11. Independent Reviewer Report with original reviewer text.
+12. Loop History.
+13. Remaining Risks And Gaps.
+14. Artifact Index.
+15. Human Decision.
+16. Recommended Next Milestone.
 
-`knownGaps` must include:
+`MANIFEST.json` must have `schemaVersion: 1` and stable sorted arrays.
 
-- `lint: not_available`
-- `format: not_available`
-- `performance-benchmark: not_available`
-- `visual-quality: manual_review`
-- `svga-web-render-smoke: optional_heavy_check`
+`FINAL_RESPONSE.txt` must be the only final chat response content for terminal states.
+
+## Command Interface
+
+The command must support at least:
+
+```bash
+npm run loop:handoff -- --status PASS --milestone M2 --base <milestoneStartCommit> --head HEAD
+npm run loop:handoff -- --status HUMAN_REQUIRED --milestone <id> --base <milestoneStartCommit>
+```
+
+It must also support enough options to provide milestone title, contract path, validation summary path, reviewer report path, human decision file, and retrospective mode.
 
 ## Required Tests
 
-Tests must prove:
+Tests must cover:
 
-1. Success path executes in the defined order and returns 0.
-2. Middle-step failure returns non-zero.
-3. Steps after failure are not executed and are marked `skipped`.
-4. JSON summary is parseable and has `schemaVersion: 1`.
-5. Console summary and file summary have matching semantics.
-6. Electron steps do not run in parallel.
-7. Web smoke uses random loopback port and closes the server.
-8. Failure-path tests do not modify real project files.
+1. PASS packet generation.
+2. HUMAN_REQUIRED packet generation.
+3. PASS fails on dirty tracked workspace.
+4. HUMAN_REQUIRED includes tracked and untracked work.
+5. Accurate base..head diff range.
+6. Required Review Packet sections.
+7. `MANIFEST.json` schemaVersion 1.
+8. Stable file and artifact ordering.
+9. sha256 correctness.
+10. `.runtime`, `node_modules`, `.git`, `.env`, and sensitive files excluded.
+11. Text snapshots complete.
+12. Binary files indexed as binary.
+13. Reviewer original text preserved.
+14. `validation.json` matches loop validation summary.
+15. Stable `FINAL_RESPONSE.txt`.
+16. Missing mandatory content exits non-zero.
+17. No network dependency.
+18. No third-party dependency.
+19. Failure-path tests do not modify the real repository.
+
+## M1 Retrospective Packet
+
+After implementing the handoff tool, generate a retrospective M1 packet:
+
+- milestone: `M1`
+- base: `811498c0f278f1c6b8c38cf22c928df7d593bd36`
+- head: `e412c3e1b5b45f992fec8acdda9c55230f831614`
+- first commit: `8ccc0cb55801099a8320c5d2f3b3307af86f4bff`
+- retrospective: `true`
+
+The packet must distinguish M1 evidence that existed at the time from M2-generated packaging. Missing historical evidence must be marked `not_available`.
 
 ## Completion Gates
 
 Before `PASS`:
 
-1. Run targeted validator tests.
-2. Run `npm run loop:validate` twice consecutively.
-3. Run independent read-only review against this contract.
-4. Repair blocking findings.
-5. Commit the completed M1 implementation.
+1. Handoff tests pass.
+2. `npm run loop:validate` passes twice consecutively.
+3. Reviewer A returns PASS.
+4. Reviewer B returns PASS using only the generated M1 packet.
+5. M1 retrospective packet is generated.
+6. M2 packet is generated for final committed HEAD.
+7. Source workspace is clean except ignored artifacts.
+8. Final response is exactly `.artifacts/loop-handoff/latest/FINAL_RESPONSE.txt`.
 
 ## Prohibited
 
 Do not:
 
-1. Modify this milestone contract after bootstrap commit.
-2. Modify the three audit files.
-3. Delete or weaken tests.
-4. Modify product features or SVGA output semantics.
-5. Add a dependency.
-6. Add lint or formatter tooling.
-7. Run `build:example`, `export:example`, or autosvga job pipeline commands.
-8. Push, merge, release, or deploy.
-9. Hide required failures with ignore, skip, catch, or fallback success.
+1. Modify product code.
+2. Modify SVGA output behavior.
+3. Modify Web or Electron product positioning.
+4. Add dependencies.
+5. Add lint or formatter tooling.
+6. Push, merge, release, or deploy.
+7. Delete or rewrite M1 historical evidence.
+8. Fabricate historical logs or reviewer text.
+9. Pack real user assets.
+10. Ask the user to run commands.
+11. Use chat summary as a substitute for Review Packet.

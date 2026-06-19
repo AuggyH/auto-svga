@@ -22,4 +22,5 @@ must_check = [
   "tests are not weakened",
   "product code is not modified",
   "scope drift"
+  "review handoff completeness"
 ]
