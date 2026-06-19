@@ -20,7 +20,8 @@ Date: 2026-06-20
 - M2-R2 implementation commits: `d71c05da0327b17d97fc4987e55cb5e6cfbbfeb4`,
   `99c86085cf19c366164670fbfa5a694b8d4b83b8`,
   `73e1f1a44c09f90165ec362f45e87590045ccb47`,
-  `4126fe832a5106809455a4b33f6de597034d26cc`.
+  `4126fe832a5106809455a4b33f6de597034d26cc`,
+  `f4b9e18806f85c8090f8c41b594225eac9bf2724`.
 - Terminal source state is committed in the current branch tip before final
   validation, reviewer JSON, and sealed handoff generation.
 
