@@ -27,8 +27,9 @@ section {
 
 .eyebrow {
   margin: 0 0 6px;
-  color: #5f6b7a;
+  color: #b45309;
   font-size: 12px;
+  font-weight: 700;
 }
 
 h1,
@@ -68,6 +69,51 @@ h2 {
   background: linear-gradient(135deg, #eef1f5, #f8fafc);
 }
 
+.dropZone {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  border: 1px dashed #b9c1cc;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.dropZone.isDragOver {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.dropZone p {
+  color: #5f6b7a;
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.fileButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #b9c1cc;
+  border-radius: 999px;
+  color: #1f2328;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.fileButton input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .specReportSection,
 .auditReportSection {
   margin-top: 16px;
@@ -77,4 +123,8 @@ h2 {
   :root { background: #151618; color: #f4f4f5; }
   header, section { background: #222428; border-color: #3a3d43; }
   #player { background: linear-gradient(135deg, #1a1c20, #252932); }
+  .eyebrow { color: #fbbf24; }
+  .dropZone { border-color: #475569; }
+  .dropZone p { color: #a1a1aa; }
+  .fileButton { color: #f4f4f5; background: #1f2937; border-color: #475569; }
 }

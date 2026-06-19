@@ -13,6 +13,7 @@ let experimentServer;
 let expectedOrigin;
 let smokeFinished = false;
 let cspViolationSeen = false;
+let cleanedUp = false;
 
 mkdirSync(sessionRoot, { recursive: true });
 app.setPath("userData", path.join(sessionRoot, "user-data"));
@@ -34,6 +35,9 @@ function validateSmokeResult(value) {
     "canvasNonBlank",
     "inspectionReport",
     "auditPanel",
+    "fileInput",
+    "dragDrop",
+    "errorFile",
     "playerLifecycle",
     "cleanup"
   ];
@@ -52,9 +56,16 @@ async function finishSmoke(window, result) {
   smokeFinished = true;
   const passed = Object.values(result).every(Boolean);
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify({ ...result, passed })}`);
-  await experimentServer.close();
+  await cleanupRuntime();
   window.destroy();
   app.exit(passed ? 0 : 1);
+}
+
+async function cleanupRuntime() {
+  if (cleanedUp) return;
+  cleanedUp = true;
+  if (experimentServer) await experimentServer.close();
+  rmSync(sessionRoot, { recursive: true, force: true });
 }
 
 async function createExperimentWindow() {
@@ -94,7 +105,7 @@ async function createExperimentWindow() {
     const message = event?.message
       ?? legacyArguments.find((value) => typeof value === "string")
       ?? "renderer message unavailable";
-    if (/Content Security Policy|violates.+script-src|unsafe-eval/i.test(String(message))) cspViolationSeen = true;
+    if (/violates.+script-src|unsafe-eval|wasm-eval/i.test(String(message))) cspViolationSeen = true;
     console.log(`AUTO_SVGA_WEB_RENDERER ${redactLogMessage(message)}`);
   });
   window.webContents.on("will-navigate", (event, url) => {
@@ -120,6 +131,9 @@ async function createExperimentWindow() {
         canvasNonBlank: false,
         inspectionReport: false,
         auditPanel: false,
+        fileInput: false,
+        dragDrop: false,
+        errorFile: false,
         playerLifecycle: false,
         cleanup: false
       });
@@ -135,7 +149,6 @@ app.whenReady().then(createExperimentWindow).catch((error) => {
 });
 
 app.on("window-all-closed", async () => {
-  if (experimentServer) await experimentServer.close();
-  rmSync(sessionRoot, { recursive: true, force: true });
+  await cleanupRuntime();
   app.quit();
 });

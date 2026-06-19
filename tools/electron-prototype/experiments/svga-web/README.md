@@ -11,6 +11,7 @@ npm run spike:svga-web:test
 npm run spike:svga-web:smoke
 npm run spike:svga-web:package:mac
 npm run spike:svga-web:package:win
+npm run internal:trial:package:mac
 ```
 
 ## Boundary
@@ -21,5 +22,7 @@ npm run spike:svga-web:package:win
 - existing avatar-frame inspection report service reused from built `dist`
 - no user assets committed
 - no production dependency or default runtime change
+- internal trial artifacts are written to ignored `.artifacts/internal-trial/`
+- internal trial package is unsigned, not notarized, and not production-approved
 
 Remove this experiment by deleting `tools/electron-prototype/experiments/svga-web/`.

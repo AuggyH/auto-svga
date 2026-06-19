@@ -3,14 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Auto SVGA svga-web Strict CSP Spike</title>
+    <meta name="auto-svga-csp" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
+    <title>Auto SVGA Internal Prototype</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <main>
       <header>
-        <p class="eyebrow">svga-web strict-CSP spike</p>
-        <h1>SVGA 播放兼容性验证</h1>
+        <p class="eyebrow">内部原型 · 非生产版本 · 仅供内部测试</p>
+        <h1>Auto SVGA 内部试用原型</h1>
         <p id="runtimeStatus">准备中</p>
       </header>
       <section aria-labelledby="playerTitle">
@@ -18,7 +19,16 @@
           <h2 id="playerTitle">播放输出</h2>
           <span id="playbackStatus">未开始</span>
         </div>
-        <canvas id="player" width="300" height="300" aria-label="SVGA player output"></canvas>
+        <div id="dropZone" class="dropZone">
+          <canvas id="player" width="300" height="300" aria-label="SVGA player output"></canvas>
+          <p>选择或拖入本地 SVGA 文件。内部原型，非生产版本。</p>
+        </div>
+        <div class="actions">
+          <label class="fileButton">
+            选择本地 SVGA
+            <input id="fileInput" type="file" accept=".svga,application/octet-stream">
+          </label>
+        </div>
       </section>
       <section aria-labelledby="reportTitle">
         <div class="sectionTitle">

@@ -14,7 +14,8 @@ const mimeTypes = new Map([
   [".svga", "application/octet-stream"]
 ]);
 
-export const strictCsp = "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
+export const internalTrialCsp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
+export const strictCsp = internalTrialCsp;
 
 const securityHeaders = {
   "cache-control": "no-store",
@@ -108,7 +109,11 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
     const requestUrl = new URL(request.url, "http://127.0.0.1");
 
     if (request.method === "GET" && requestUrl.pathname === "/health") {
-      return sendJson(response, 200, { status: "ok", runtime: "svga-web-strict-csp-spike" });
+      return sendJson(response, 200, {
+        status: "ok",
+        runtime: "svga-web-internal-trial",
+        prototypeLabel: "internal prototype, not production"
+      });
     }
 
     if (request.method === "POST" && requestUrl.pathname === "/api/avatar-frame-inspection-report") {
