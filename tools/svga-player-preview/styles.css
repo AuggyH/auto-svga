@@ -5149,7 +5149,8 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 .specReportHeader,
 .specReportHeader > div,
 .specReportId,
-.specIssueList li > div {
+.specIssueList li > div,
+.auditCardMeta {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -5172,7 +5173,8 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 }
 
 .specReportHeader small,
-.specReportGroup h3 small {
+.specReportGroup h3 small,
+.auditUncertainty strong small {
   color: var(--textTertiary);
   font-size: 10px;
   font-weight: 500;
@@ -5344,6 +5346,122 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   color: var(--textSecondary);
   font-size: 10px;
   line-height: 15px;
+}
+
+.auditReportSection {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  writing-mode: horizontal-tb;
+}
+
+.auditSummary h3,
+.auditCard strong,
+.auditUncertainty > strong {
+  overflow-wrap: anywhere;
+  color: var(--textPrimary);
+}
+
+.auditStatusBadge {
+  background: var(--surfaceElevated);
+}
+
+.auditStatusBadge.severity-success {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green);
+}
+
+.auditStatusBadge.severity-warning {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+}
+
+.auditStatusBadge.severity-error {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.auditSummary,
+.auditUncertainty {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.auditSummary h3 {
+  margin: 0;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.auditSummary p,
+.auditCard p,
+.auditUncertainty li {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--textSecondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.auditCardList,
+.auditUncertainty ul {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  gap: 6px;
+  list-style: none;
+}
+
+.auditCard {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--surfaceElevated);
+}
+
+.auditCard.isOpportunity {
+  background: color-mix(in srgb, var(--warning) 6%, var(--surfaceElevated));
+}
+
+.auditCardMeta {
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.auditCardMeta span {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--textTertiary) 8%, transparent);
+  color: var(--textSecondary);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.auditCard strong,
+.auditUncertainty > strong {
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.auditEvidence {
+  overflow-wrap: anywhere;
+  color: var(--textTertiary);
+  font-size: 9px;
+  line-height: 14px;
+}
+
+.auditUncertainty {
+  padding: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 7%, var(--surfaceElevated));
 }
 
 @media (max-width: 620px) {

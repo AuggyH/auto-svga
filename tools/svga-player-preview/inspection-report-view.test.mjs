@@ -119,3 +119,78 @@ test("renders embedded resource alpha-bound issues from the report", () => {
   assert.match(html, /内嵌图片资源完全透明/);
   assert.match(html, /部分内嵌图片暂时无法分析透明边界/);
 });
+
+test("renders the read-only Motion Asset Audit presentation", () => {
+  const html = renderAvatarFrameInspectionReport(report({
+    auditPresentation: auditPresentation()
+  }), "success");
+
+  assert.match(html, /动效资产诊断/);
+  assert.match(html, /资产需要检查/);
+  assert.match(html, /解码内存存在风险/);
+  assert.match(html, /资源解码内存估算存在建议检查的风险/);
+  assert.match(html, /主要发现/);
+  assert.match(html, /建议评估/);
+  assert.match(html, /仅供检查/);
+  assert.match(html, /证据 2 项/);
+  assert.match(html, /当前证据不足/);
+  assert.doesNotMatch(html, /<button/i);
+});
+
+test("falls back to report text or stable keys when audit labels are missing", () => {
+  const presentation = auditPresentation();
+  presentation.summaryTitle = "audit.summary.custom.title";
+  presentation.summaryDescription = "audit.summary.custom.description";
+  presentation.findingCards[0].title = "audit.finding.custom.title";
+  presentation.findingCards[0].descriptionKey = "audit.finding.custom.description";
+  presentation.findingCards[0].description = "Raw report finding description.";
+
+  const html = renderAvatarFrameInspectionReport(report({ auditPresentation: presentation }), "success");
+
+  assert.match(html, /audit\.summary\.custom\.title/);
+  assert.match(html, /audit\.summary\.custom\.description/);
+  assert.match(html, /audit\.finding\.custom\.title/);
+  assert.match(html, /Raw report finding description\./);
+});
+
+test("keeps the existing spec report when auditPresentation is absent", () => {
+  const html = renderAvatarFrameInspectionReport(report(), "success");
+
+  assert.match(html, /生产规范/);
+  assert.match(html, /avatar-frame-production/);
+  assert.doesNotMatch(html, /auditReportSection/);
+});
+
+function auditPresentation() {
+  return {
+    statusLabel: "audit.status.needs_review",
+    severityLevel: "error",
+    severityLabel: "audit.severity.error",
+    summaryTitle: "audit.summary.needs_review.title",
+    summaryDescription: "audit.summary.needs_review.description",
+    findingCards: [{
+      code: "decoded_memory_risk",
+      title: "audit.finding.decoded_memory_risk.title",
+      descriptionKey: "audit.finding.decoded_memory_risk.description",
+      description: "Estimated decoded resource memory has advisory risk.",
+      severity: "warning",
+      severityLabel: "audit.severity.warning",
+      category: "memory",
+      categoryLabel: "audit.category.memory",
+      evidenceRefs: ["memory.totalEstimatedDecodedBytes", "memory.largestResources[0]"]
+    }],
+    opportunityCards: [{
+      code: "review_large_resources",
+      title: "audit.opportunity.review_large_resources.title",
+      descriptionKey: "audit.opportunity.review_large_resources.description",
+      description: "Review the largest decoded resources.",
+      category: "memory",
+      categoryLabel: "audit.category.memory",
+      evidenceRefs: ["memory.largestResources[0]"],
+      actionType: "review_only",
+      actionTypeLabel: "audit.action.review_only"
+    }],
+    uncertaintyNotes: ["audit.uncertainty.insufficient_evidence"],
+    evidenceRefs: ["memory.totalEstimatedDecodedBytes"]
+  };
+}
