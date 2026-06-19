@@ -1,7 +1,7 @@
 # M2-R1: Review Handoff Integrity Repair
 
 Status: active
-Milestone start commit: `312bbe463e24df03c1c32e50d0b0add6695c51dc`
+Milestone start commit: `e412c3e1b5b45f992fec8acdda9c55230f831614`
 Branch: `agent/codex/macos-internal-electron-trial`
 M1 base commit: `811498c0f278f1c6b8c38cf22c928df7d593bd36`
 M1 first commit: `8ccc0cb55801099a8320c5d2f3b3307af86f4bff`
