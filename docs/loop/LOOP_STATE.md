@@ -18,7 +18,8 @@ Date: 2026-06-20
 - Blocking findings are recorded in `docs/loop/reviews/M2-R1-external-review.md`.
 - M2-R2 is limited to terminal handoff trust hardening and loop validation infrastructure.
 - M2-R2 implementation commits: `d71c05da0327b17d97fc4987e55cb5e6cfbbfeb4`,
-  `99c86085cf19c366164670fbfa5a694b8d4b83b8`.
+  `99c86085cf19c366164670fbfa5a694b8d4b83b8`,
+  `73e1f1a44c09f90165ec362f45e87590045ccb47`.
 - Terminal source state is committed in the current branch tip before final
   validation, reviewer JSON, and sealed handoff generation.
 
