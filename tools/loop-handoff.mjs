@@ -1113,7 +1113,9 @@ export async function generateHandoffPacket(options) {
   });
 
   const validationEvidenceStatus = validationStatusFromFile(validation, validationExists);
-  const packetStatus = "COMPLETE";
+  const packetStatus = options.candidate ? "CANDIDATE" : "COMPLETE";
+  const packetEvidenceCompleteness = options.candidate ? "PENDING_CANDIDATE_REVIEW" : input.evidenceCompleteness;
+  const packetReviewerEvidence = options.candidate ? "PENDING_CANDIDATE_REVIEW" : input.historicalReviewerEvidence;
   const commitsInRange = git(["log", "--oneline", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout.trim() || "none";
   const loopHistory = await readLoopHistoryForMilestone(repoRoot, milestoneId);
   const visualArtifacts = Array.isArray(input.visualArtifacts) ? input.visualArtifacts : [];
@@ -1184,9 +1186,9 @@ export async function generateHandoffPacket(options) {
     `schemaVersion: ${packetSchemaVersion}`,
     `packetStatus: ${packetStatus}`,
     `milestoneOutcome: ${input.milestoneOutcome}`,
-    `evidenceCompleteness: ${input.evidenceCompleteness}`,
+    `evidenceCompleteness: ${packetEvidenceCompleteness}`,
     `historicalValidationEvidence: ${input.historicalValidationEvidence}`,
-    `historicalReviewerEvidence: ${input.historicalReviewerEvidence}`,
+    `historicalReviewerEvidence: ${packetReviewerEvidence}`,
     `retrospectiveRevalidation: ${input.retrospectiveRevalidation}`,
     `retrospectiveReviewerStatus: ${input.retrospectiveReviewerStatus}`,
     `retrospective: ${Boolean(options.retrospective)}`,
@@ -1263,9 +1265,12 @@ export async function generateHandoffPacket(options) {
     "# Acceptance Evidence",
     "",
     acceptanceEvidenceMarkdown(input.acceptanceEvidence),
+    options.candidate
+      ? "\nCandidate phase note: reviewer JSON, seal metadata, FINAL_RESPONSE.txt, latest pointer verification, and post-seal verifier evidence are intentionally pending until the seal phase. The candidate digest covers the pre-seal evidence reviewers must bind to."
+      : "",
     options.retrospective
       ? "\nRetrospective evidence authority: acceptance entries are derived from the frozen M1 contract and explicitly mark historical validation/reviewer evidence availability. Narrative loop history is not original evidence."
-      : "\nEvidence authority: acceptance entries are provided by the milestone handoff input and backed by validation.json, reviewer-a.md, reviewer-b.md, MANIFEST.json, and current Git state.",
+      : "\nEvidence authority: acceptance entries are provided by the milestone handoff input and backed by validation.json, reviewer-a.json, reviewer-b.json, MANIFEST.json, and current Git state.",
     "",
     "# Validation Evidence",
     "",
@@ -1275,7 +1280,7 @@ export async function generateHandoffPacket(options) {
     `- repositoryHeadCommitAtFinish: ${validation.repositoryHeadCommitAtFinish ?? "not_available"}`,
     `- sourceWorkspaceCleanAtStart: ${validation.sourceWorkspaceCleanAtStart ?? "not_available"}`,
     `- sourceWorkspaceCleanAtFinish: ${validation.sourceWorkspaceCleanAtFinish ?? "not_available"}`,
-    `- evidence completeness: ${input.evidenceCompleteness}`,
+    `- evidence completeness: ${packetEvidenceCompleteness}`,
     "- handoff input validation runs:",
     validationRunsMarkdown(input.validationRuns),
     "- validation.json step summary:",
@@ -1346,9 +1351,9 @@ export async function generateHandoffPacket(options) {
     schemaVersion: packetSchemaVersion,
     packetStatus,
     milestoneOutcome: input.milestoneOutcome,
-    evidenceCompleteness: input.evidenceCompleteness,
+    evidenceCompleteness: packetEvidenceCompleteness,
     historicalValidationEvidence: input.historicalValidationEvidence,
-    historicalReviewerEvidence: input.historicalReviewerEvidence,
+    historicalReviewerEvidence: packetReviewerEvidence,
     retrospectiveRevalidation: input.retrospectiveRevalidation,
     retrospectiveReviewerStatus: input.retrospectiveReviewerStatus,
     retrospective: Boolean(options.retrospective),

@@ -680,6 +680,9 @@ test("candidate packet does not update latest handoff pointer", async () => {
 
     assert.equal(candidate.packetRoot.endsWith(`M2-R2-${head.slice(0, 7)}-candidate`), true);
     assert.equal(existsSync(join(repo, ".artifacts/loop-handoff/latest")), false);
+    assert.equal(candidate.manifest.packetStatus, "CANDIDATE");
+    assert.equal(candidate.manifest.evidenceCompleteness, "PENDING_CANDIDATE_REVIEW");
+    assert.equal(candidate.manifest.historicalReviewerEvidence, "PENDING_CANDIDATE_REVIEW");
     assert.equal(candidate.manifest.seal.phase, "candidate");
     assert.equal(candidate.manifest.sealVerification.status, "not_run");
   });
