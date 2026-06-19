@@ -23,6 +23,14 @@ const packetSchemaVersion = 3;
 const inlineDiffMaxBytes = 1_000_000;
 const inlineDiffMaxLines = 5_000;
 const sensitiveSentinelLabel = "redacted";
+const enumValues = {
+  milestoneOutcome: ["PASS", "HUMAN_REQUIRED"],
+  evidenceCompleteness: ["COMPLETE", "PARTIAL", "PENDING_CANDIDATE_REVIEW"],
+  historicalValidationEvidence: ["PASS", "PARTIAL", "NOT_AVAILABLE"],
+  historicalReviewerEvidence: ["PASS", "PARTIAL", "NOT_AVAILABLE", "PENDING_CANDIDATE_REVIEW"],
+  retrospectiveRevalidation: ["PASS", "PARTIAL", "NOT_APPLICABLE", "NOT_AVAILABLE"],
+  retrospectiveReviewerStatus: ["PASS", "PARTIAL", "NOT_APPLICABLE", "NOT_AVAILABLE"]
+};
 const requiredSections = [
   "Review Request",
   "Frozen Milestone Contract",
@@ -134,6 +142,13 @@ function compareStrings(left, right) {
   if (left < right) return -1;
   if (left > right) return 1;
   return 0;
+}
+
+function assertEnumValue(name, value) {
+  const allowed = enumValues[name];
+  if (!allowed?.includes(value)) {
+    throw new Error(`${name} must be one of ${allowed.join(", ")}.`);
+  }
 }
 
 function isExcludedRepoPath(repoPath) {
@@ -687,6 +702,9 @@ async function readHandoffInput({ repoRoot, inputPath, milestoneId, baseCommit, 
   }
   if (title && input.milestoneTitle && input.milestoneTitle !== title) {
     throw new Error(`handoff input milestoneTitle ${input.milestoneTitle} does not match ${title}`);
+  }
+  for (const key of Object.keys(enumValues)) {
+    assertEnumValue(key, input[key]);
   }
   return input;
 }

@@ -630,6 +630,18 @@ test("current packets require NOT_APPLICABLE retrospective fields", async () => 
   });
 });
 
+test("schema v3 rejects invalid enum values from handoff input", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const input = baseInput({ base, head, changedFilePurposes: { "src/example.txt": "Adds a fixture implementation file used to verify schema v3 handoff behavior." } });
+    input.evidenceCompleteness = "BOGUS";
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /evidenceCompleteness must be one of/
+    );
+  });
+});
+
 test("contract ID in prose does not satisfy exact milestone ID", async () => {
   await withRepo(async ({ repo, base, head }) => {
     await writeText(join(repo, "docs/loop/CURRENT_MILESTONE.md"), `${contractText({ milestoneId: "M2" })}\nM2-R2 appears only in prose.\n`);
