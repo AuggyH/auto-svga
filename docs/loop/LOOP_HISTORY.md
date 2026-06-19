@@ -79,3 +79,13 @@
 - Result: reviewer gate passed after distinguishing code-level review from the final packet-generation step.
 - Evidence: handoff tests passed 14 tests; two consecutive full validations ended with summary status `pass`; Reviewer B returned PASS on the regenerated M1 retrospective packet; Reviewer A found no remaining code-level blocker and identified final M2 packet generation as the only remaining completion-gate step.
 - Next action: commit final loop state update and generate final M2 handoff packet for the final committed HEAD.
+
+## 2026-06-19 M2-R1 Review Handoff Integrity Repair
+
+- Round: repair 1
+- Hypothesis: packet integrity blockers can be repaired in the loop handoff layer without changing product runtime behavior.
+- Files changed: `tools/loop-handoff.mjs`, `tools/loop-handoff.test.mjs`, `docs/loop/CURRENT_MILESTONE.md`, `docs/loop/HANDOFF_CONTRACT.md`, `docs/loop/LOOP_STATE.md`, `docs/loop/LOOP_HISTORY.jsonl`, `docs/loop/LOOP_HISTORY.md`.
+- Commands run: `node --test tools/loop-handoff.test.mjs`; `git diff --check`; `npm run loop:validate`.
+- Result: implementation in progress; targeted handoff tests and first full loop validation passed.
+- Evidence: handoff tests passed 23 tests; first loop validation summary status `pass`.
+- Next action: commit repair, rerun validation, generate M1 retrospective and M2-R1 current packets, then complete reviewer A/B checks.

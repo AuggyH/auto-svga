@@ -1,131 +1,81 @@
-# M2: Standardized Review Handoff Contract
+# M2-R1: Review Handoff Integrity Repair
 
 Status: active
-Milestone start commit: `e412c3e1b5b45f992fec8acdda9c55230f831614`
+Milestone start commit: `312bbe463e24df03c1c32e50d0b0add6695c51dc`
 Branch: `agent/codex/macos-internal-electron-trial`
-M1 first commit: `8ccc0cb55801099a8320c5d2f3b3307af86f4bff`
-M1 final commit: `e412c3e1b5b45f992fec8acdda9c55230f831614`
 M1 base commit: `811498c0f278f1c6b8c38cf22c928df7d593bd36`
+M1 first commit: `8ccc0cb55801099a8320c5d2f3b3307af86f4bff`
+M1 final commit / M2 start commit: `e412c3e1b5b45f992fec8acdda9c55230f831614`
+M2 pre-repair tip: `312bbe463e24df03c1c32e50d0b0add6695c51dc`
 
 ## Objective
 
-Create a no-dependency standardized review handoff system that generates complete Review Packets for `PASS` and `HUMAN_REQUIRED` terminal loop states.
+Repair the standardized review handoff system so a future reviewer can use the generated Review Packet as the primary artifact without asking for missing diffs, mixed milestone history, hidden reviewer files, or ambiguous status interpretation.
 
-Add:
-
-```bash
-npm run loop:handoff
-```
-
-The command must generate packet files an external reviewer can use without asking the user to collect diffs, validation summaries, reviewer reports, or changed file evidence.
+This milestone does not start a new product feature. It repairs M2 handoff integrity.
 
 ## Required Outputs
 
-Each handoff run writes:
+Generate both packets before terminal PASS:
 
 ```text
-.artifacts/loop-handoff/<milestone-id>-<head-short-sha>/
-  REVIEW_PACKET.md
-  MANIFEST.json
-  changes.patch
-  validation.json
-  reviewer-report.md
-  artifact-index.json
-  FINAL_RESPONSE.txt
-  files/
-  decisions/
+.artifacts/loop-handoff/M1-<m1-final-short-sha>/REVIEW_PACKET.md
+.artifacts/loop-handoff/M2-R1-<current-head-short-sha>/REVIEW_PACKET.md
 ```
 
-and updates:
+The M1 packet is a retrospective reference packet. The M2-R1 packet is the current implementation packet.
 
-```text
-.artifacts/loop-handoff/latest/
-```
+## Acceptance Criteria
 
-`.artifacts/loop-handoff/` must be ignored by Git.
-
-## Packet Contract
-
-`REVIEW_PACKET.md` must contain:
-
-1. Stable metadata.
-2. Review Request.
-3. Frozen Milestone Contract with full current milestone text.
-4. Implementation Result.
-5. Git State.
-6. Changed Files.
-7. Full Diff or mandatory `changes.patch` reference.
-8. Changed File Snapshots.
-9. Acceptance Evidence.
-10. Validation Evidence.
-11. Independent Reviewer Report with original reviewer text.
-12. Loop History.
-13. Remaining Risks And Gaps.
-14. Artifact Index.
-15. Human Decision.
-16. Recommended Next Milestone.
-
-`MANIFEST.json` must have `schemaVersion: 1` and stable sorted arrays.
-
-`FINAL_RESPONSE.txt` must be the only final chat response content for terminal states.
-
-## Command Interface
-
-The command must support at least:
-
-```bash
-npm run loop:handoff -- --status PASS --milestone M2 --base <milestoneStartCommit> --head HEAD
-npm run loop:handoff -- --status HUMAN_REQUIRED --milestone <id> --base <milestoneStartCommit>
-```
-
-It must also support enough options to provide milestone title, contract path, validation summary path, reviewer report path, human decision file, and retrospective mode.
+- `M2-R1-AC-01`: schema v2 separates packet status, milestone outcome, evidence completeness, retrospective validation/reviewer evidence, generation commits, and clean workspace state.
+- `M2-R1-AC-02`: small diffs are fully embedded in `REVIEW_PACKET.md`; large diffs set `companionRequired: true` and list `changes.patch` as mandatory companion.
+- `M2-R1-AC-03`: acceptance evidence uses milestone-specific IDs and rejects generic A1/A2/A3 evidence.
+- `M2-R1-AC-04`: M1 retrospective acceptance evidence uses M1-AC-01 through M1-AC-08, marks derived retrospective evidence, and does not claim original unavailable evidence.
+- `M2-R1-AC-05`: implementation summary comes from milestone-specific handoff input, not generic generator prose.
+- `M2-R1-AC-06`: loop history is machine-filtered by `milestoneId`; M1 packet excludes M2 and M2-R1 history.
+- `M2-R1-AC-07`: changed file purposes are specific and placeholder purposes fail generation.
+- `M2-R1-AC-08`: PASS generation requires passing validation and reviewer A/B PASS reports for current milestones.
+- `M2-R1-AC-09`: final response upload list includes only `REVIEW_PACKET.md`, `changes.patch` when required, and visual artifacts when required; it does not ask for manifest, validation, reviewer files, or files directory.
+- `M2-R1-AC-10`: corrected M1 retrospective reference packet and M2-R1 current packet are generated after commit and validation.
 
 ## Required Tests
 
-Tests must cover:
+`tools/loop-handoff.test.mjs` must cover at least:
 
 1. PASS packet generation.
-2. HUMAN_REQUIRED packet generation.
-3. PASS fails on dirty tracked workspace.
-4. HUMAN_REQUIRED includes tracked and untracked work.
-5. Accurate base..head diff range.
-6. Required Review Packet sections.
-7. `MANIFEST.json` schemaVersion 1.
-8. Stable file and artifact ordering.
-9. sha256 correctness.
-10. `.runtime`, `node_modules`, `.git`, `.env`, and sensitive files excluded.
-11. Text snapshots complete.
-12. Binary files indexed as binary.
-13. Reviewer original text preserved.
-14. `validation.json` matches loop validation summary.
-15. Stable `FINAL_RESPONSE.txt`.
-16. Missing mandatory content exits non-zero.
-17. No network dependency.
-18. No third-party dependency.
-19. Failure-path tests do not modify the real repository.
-
-## M1 Retrospective Packet
-
-After implementing the handoff tool, generate a retrospective M1 packet:
-
-- milestone: `M1`
-- base: `811498c0f278f1c6b8c38cf22c928df7d593bd36`
-- head: `e412c3e1b5b45f992fec8acdda9c55230f831614`
-- first commit: `8ccc0cb55801099a8320c5d2f3b3307af86f4bff`
-- retrospective: `true`
-
-The packet must distinguish M1 evidence that existed at the time from M2-generated packaging. Missing historical evidence must be marked `not_available`.
+2. v2 metadata fields.
+3. Inline small diff behavior.
+4. Large diff companion behavior.
+5. Milestone-specific acceptance IDs.
+6. M1 retrospective explicit M1 acceptance IDs.
+7. M1 retrospective rejection of M2 evidence contamination.
+8. Input-driven implementation summary.
+9. Milestone-filtered loop history.
+10. Placeholder file purpose rejection.
+11. Reviewer A/B requirement.
+12. Validation summary requirement.
+13. base/head input mismatch rejection.
+14. Self-contained final upload list.
+15. Stable artifact ordering and hashes.
+16. Sensitive path exclusion.
+17. Binary file indexing.
+18. Reviewer and validation preservation.
+19. HUMAN_REQUIRED bounded decision file.
+20. PASS dirty workspace rejection.
+21. HUMAN_REQUIRED tracked/untracked inclusion.
+22. Contract mismatch rejection.
+23. Failure-path isolation.
 
 ## Completion Gates
 
 Before `PASS`:
 
-1. Handoff tests pass.
+1. Handoff targeted tests pass.
 2. `npm run loop:validate` passes twice consecutively.
-3. Reviewer A returns PASS.
-4. Reviewer B returns PASS using only the generated M1 packet.
-5. M1 retrospective packet is generated.
-6. M2 packet is generated for final committed HEAD.
+3. Corrected M1 retrospective packet is generated.
+4. M2-R1 current packet is generated.
+5. Reviewer A performs read-only code/packet review and returns PASS.
+6. Reviewer B simulates an external consumer using only the files listed in `FINAL_RESPONSE.txt` and returns PASS.
 7. Source workspace is clean except ignored artifacts.
 8. Final response is exactly `.artifacts/loop-handoff/latest/FINAL_RESPONSE.txt`.
 
@@ -133,14 +83,12 @@ Before `PASS`:
 
 Do not:
 
-1. Modify product code.
-2. Modify SVGA output behavior.
-3. Modify Web or Electron product positioning.
-4. Add dependencies.
-5. Add lint or formatter tooling.
+1. Start a new product feature milestone.
+2. Modify product runtime code.
+3. Modify SVGA output behavior.
+4. Modify Web or Electron product behavior.
+5. Add dependencies.
 6. Push, merge, release, or deploy.
-7. Delete or rewrite M1 historical evidence.
-8. Fabricate historical logs or reviewer text.
-9. Pack real user assets.
-10. Ask the user to run commands.
-11. Use chat summary as a substitute for Review Packet.
+7. Fabricate historical validation logs or reviewer text.
+8. Pack real user assets.
+9. Ask the user to collect unlisted companion files.

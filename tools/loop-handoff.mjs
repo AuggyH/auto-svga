@@ -17,6 +17,9 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const defaultRepoRoot = path.resolve(scriptDir, "..");
+const packetSchemaVersion = 2;
+const inlineDiffMaxBytes = 1_000_000;
+const inlineDiffMaxLines = 5_000;
 const requiredSections = [
   "Review Request",
   "Frozen Milestone Contract",
@@ -27,7 +30,7 @@ const requiredSections = [
   "Changed File Snapshots",
   "Acceptance Evidence",
   "Validation Evidence",
-  "Independent Reviewer Report",
+  "Independent Reviewer Reports",
   "Loop History",
   "Remaining Risks And Gaps",
   "Artifact Index",
@@ -40,10 +43,14 @@ function parseArgs(argv) {
     head: "HEAD",
     contract: "docs/loop/CURRENT_MILESTONE.md",
     validation: ".artifacts/loop-validation/latest.json",
+    input: undefined,
+    reviewerA: undefined,
+    reviewerB: undefined,
     reviewerReport: undefined,
     decisionFile: undefined,
     title: undefined,
     retrospective: false,
+    retrospectivePacket: undefined,
     repoRoot: defaultRepoRoot
   };
 
@@ -256,6 +263,15 @@ async function readOptionalFile(filePath, fallback) {
   return readFile(filePath, "utf8");
 }
 
+async function readJsonFile(filePath) {
+  const text = await readFile(filePath, "utf8");
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Invalid JSON file ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 async function readRequiredHumanDecision(filePath) {
   if (!filePath || !existsSync(filePath)) {
     throw new Error("HUMAN_REQUIRED handoff decision file is missing.");
@@ -298,23 +314,177 @@ function summarizeValidation(validation) {
   )).join("\n") || "- not_available";
 }
 
-function acceptanceEvidence({ milestone, validation, reviewerStatus, packetStatus }) {
-  const validationStatus = validation.status === "pass" ? "pass" : "not_available";
-  const rows = [
-    ["A1", "Handoff tests pass", milestone === "M2" ? "pass" : "not_available", "node --test tools/loop-handoff.test.mjs"],
-    ["A2", "loop validation passes", validationStatus, "npm run loop:validate"],
-    ["A3", "independent reviewer pass", reviewerStatus, "reviewer subagent"],
-    ["A4", "Review Packet generated", packetStatus, "npm run loop:handoff"],
-    ["A5", "No product code or dependencies changed", "pass", "git diff --name-only"],
-    ["A6", "Historical unavailable evidence is marked not_available", "pass", "packet generation"]
-  ];
-  return rows.map(([id, requirement, status, command]) => (
-    `- criterion id: ${id}\n  requirement: ${requirement}\n  status: ${status}\n  exact command: ${command}\n  exit code: ${status === "pass" ? 0 : "not_available"}\n  result: ${status}\n  evidence file: validation.json / reviewer-report.md / MANIFEST.json\n  limitation: ${status === "not_available" ? "historical evidence did not exist as a file" : "none"}`
-  )).join("\n");
+function validationStatusFromFile(validation, validationExists) {
+  if (!validationExists) return "NOT_AVAILABLE";
+  return validation.status === "pass" ? "PASS" : "FAIL";
 }
 
-function requiredSectionMarkdown() {
-  return requiredSections.map((section) => `# ${section}`).join("\n\n");
+function parseReviewerStatus(text) {
+  if (!text || text.includes("not_available")) return "NOT_AVAILABLE";
+  if (/BLOCKING|FAIL/i.test(text)) return "FAIL";
+  if (/\bPASS\b/i.test(text)) return "PASS";
+  return "UNKNOWN";
+}
+
+function patchMetadata(patch) {
+  const sizeBytes = Buffer.byteLength(patch, "utf8");
+  const lineCount = patch.length ? patch.split("\n").length : 0;
+  const companionRequired = sizeBytes > inlineDiffMaxBytes || lineCount > inlineDiffMaxLines;
+  return {
+    sizeBytes,
+    lineCount,
+    companionRequired,
+    mandatoryCompanions: companionRequired ? ["changes.patch"] : []
+  };
+}
+
+function isPlaceholderPurpose(value) {
+  if (!value || typeof value !== "string") return true;
+  const normalized = value.trim().toLowerCase();
+  return normalized.length < 12
+    || normalized === "update"
+    || normalized === "changed file"
+    || normalized === "miscellaneous"
+    || normalized.includes("change for milestone")
+    || normalized.includes("a/m change");
+}
+
+function validateChangedFilePurposes({ changedFiles, changedFilePurposes }) {
+  if (!changedFilePurposes || typeof changedFilePurposes !== "object") {
+    throw new Error("handoff input missing changedFilePurposes.");
+  }
+  for (const entry of changedFiles) {
+    const purpose = changedFilePurposes[entry.path];
+    if (isPlaceholderPurpose(purpose)) {
+      throw new Error(`changed file purpose missing or placeholder for ${entry.path}`);
+    }
+  }
+}
+
+function validateAcceptanceEvidence({ milestoneId, acceptanceEvidence, retrospective }) {
+  if (!Array.isArray(acceptanceEvidence) || acceptanceEvidence.length === 0) {
+    throw new Error("handoff input missing acceptanceEvidence.");
+  }
+  for (const item of acceptanceEvidence) {
+    if (!item || typeof item !== "object") {
+      throw new Error("acceptanceEvidence entries must be objects.");
+    }
+    if (!item.criterionId || !item.requirement) {
+      throw new Error("acceptanceEvidence entries require criterionId and requirement.");
+    }
+    if (item.milestoneId && item.milestoneId !== milestoneId) {
+      throw new Error(`acceptance evidence ${item.criterionId} references ${item.milestoneId}, expected ${milestoneId}`);
+    }
+    if (!String(item.criterionId).startsWith(`${milestoneId}-AC-`)) {
+      throw new Error(`acceptance evidence id ${item.criterionId} must be milestone-specific for ${milestoneId}`);
+    }
+    if (!item.evidenceSource || !item.limitation) {
+      throw new Error(`acceptance evidence ${item.criterionId} requires evidenceSource and limitation.`);
+    }
+    const text = JSON.stringify(item);
+    if (retrospective && milestoneId === "M1" && /\bM2\b|loop:handoff|Review Packet/i.test(text)) {
+      throw new Error(`M1 retrospective acceptance evidence ${item.criterionId} contains M2 or handoff-specific evidence.`);
+    }
+  }
+}
+
+async function readHandoffInput({ repoRoot, inputPath, milestoneId, baseCommit, headCommit, title }) {
+  if (!inputPath) {
+    throw new Error("Missing required --input handoff JSON.");
+  }
+  const input = await readJsonFile(resolveRepoPath(repoRoot, inputPath));
+  if (input.milestoneId !== milestoneId) {
+    throw new Error(`handoff input milestoneId ${input.milestoneId} does not match ${milestoneId}`);
+  }
+  if (input.reviewedBaseCommit !== baseCommit) {
+    throw new Error(`handoff input reviewedBaseCommit ${input.reviewedBaseCommit} does not match ${baseCommit}`);
+  }
+  if (input.reviewedHeadCommit !== headCommit) {
+    throw new Error(`handoff input reviewedHeadCommit ${input.reviewedHeadCommit} does not match ${headCommit}`);
+  }
+  for (const key of [
+    "milestoneOutcome",
+    "evidenceCompleteness",
+    "historicalValidationEvidence",
+    "historicalReviewerEvidence",
+    "retrospectiveRevalidation",
+    "retrospectiveReviewerStatus",
+    "implementationSummary",
+    "changedFilePurposes",
+    "acceptanceEvidence",
+    "remainingRisks",
+    "recommendedNextMilestone"
+  ]) {
+    if (input[key] === undefined || input[key] === null) {
+      throw new Error(`handoff input missing ${key}.`);
+    }
+  }
+  if (title && input.milestoneTitle && input.milestoneTitle !== title) {
+    throw new Error(`handoff input milestoneTitle ${input.milestoneTitle} does not match ${title}`);
+  }
+  return input;
+}
+
+function validateContractForMilestone(contractText, milestoneId) {
+  if (!contractText.includes(milestoneId)) {
+    throw new Error(`Milestone contract does not mention ${milestoneId}.`);
+  }
+}
+
+async function readLoopHistoryForMilestone(repoRoot, milestoneId) {
+  const jsonlPath = path.join(repoRoot, "docs/loop/LOOP_HISTORY.jsonl");
+  if (!existsSync(jsonlPath)) return "not_available";
+  const text = await readFile(jsonlPath, "utf8");
+  const entries = [];
+  for (const [lineIndex, line] of text.split("\n").entries()) {
+    if (!line.trim()) continue;
+    try {
+      const item = JSON.parse(line);
+      if (item.milestoneId === milestoneId) entries.push(item);
+    } catch (error) {
+      throw new Error(`Invalid docs/loop/LOOP_HISTORY.jsonl line ${lineIndex + 1}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  if (!entries.length) return `No structured history entries for ${milestoneId}.`;
+  return entries.map((entry) => [
+    `- milestoneId: ${entry.milestoneId}`,
+    `  iteration: ${entry.iteration ?? "not_available"}`,
+    `  phase: ${entry.phase ?? "not_available"}`,
+    `  timestamp: ${entry.timestamp ?? "not_available"}`,
+    `  hypothesis: ${entry.hypothesis ?? "not_available"}`,
+    `  filesChanged: ${(entry.filesChanged ?? []).join(", ") || "none"}`,
+    `  commands: ${(entry.commands ?? []).join("; ") || "none"}`,
+    `  result: ${entry.result ?? "not_available"}`,
+    `  evidence: ${(entry.evidence ?? []).join(", ") || "not_available"}`,
+    `  nextAction: ${entry.nextAction ?? "not_available"}`
+  ].join("\n")).join("\n");
+}
+
+function acceptanceEvidenceMarkdown(evidence) {
+  return evidence.map((item) => [
+    `- criterion id: ${item.criterionId}`,
+    `  requirement: ${item.requirement}`,
+    `  milestoneId: ${item.milestoneId}`,
+    `  historical evidence status: ${item.historicalEvidenceStatus ?? "NOT_AVAILABLE"}`,
+    `  retrospective evidence status: ${item.retrospectiveEvidenceStatus ?? "NOT_AVAILABLE"}`,
+    `  evidence source: ${item.evidenceSource}`,
+    `  limitation: ${item.limitation}`,
+    item.derivedFromFrozenContract !== undefined
+      ? `  derivedFromFrozenContract: ${Boolean(item.derivedFromFrozenContract)}`
+      : null
+  ].filter(Boolean).join("\n")).join("\n");
+}
+
+function remainingRisksMarkdown(risks) {
+  return Array.isArray(risks) && risks.length
+    ? risks.map((risk) => `- ${risk}`).join("\n")
+    : "- none recorded";
+}
+
+function validationRunsMarkdown(runs) {
+  return Array.isArray(runs) && runs.length
+    ? runs.map((run) => `- ${run.command}: ${run.result}${run.exitCode !== undefined ? `, exitCode=${run.exitCode}` : ""}`).join("\n")
+    : "- See validation.json.";
 }
 
 function validatePacketContent(content) {
@@ -337,7 +507,8 @@ async function copyLatest(packetRoot, latestRoot) {
       "MANIFEST.json",
       "changes.patch",
       "validation.json",
-      "reviewer-report.md",
+      "reviewer-a.md",
+      "reviewer-b.md",
       "artifact-index.json",
       "FINAL_RESPONSE.txt"
     ]) {
@@ -369,30 +540,39 @@ async function artifactRecord(packetRoot, relativePath, role, type, generated, h
   };
 }
 
-function finalResponse({ status, packetRoot, manifestPath, patchPath, humanDecisionPath, retrospectivePackets }) {
+function finalResponse({ status, packetRoot, companionRequired, visualArtifacts, optionalReference }) {
+  const uploadLines = [
+    `1. ${path.join(packetRoot, "REVIEW_PACKET.md")}`
+  ];
+  let nextIndex = 2;
+  if (companionRequired) {
+    uploadLines.push(`${nextIndex}. ${path.join(packetRoot, "changes.patch")}`);
+    nextIndex += 1;
+  }
+  const humanVisualArtifacts = Array.isArray(visualArtifacts) ? visualArtifacts.filter((artifact) => artifact.humanReviewRequired) : [];
+  for (const artifact of humanVisualArtifacts) {
+    uploadLines.push(`${nextIndex}. ${artifact.path ?? artifact}`);
+    nextIndex += 1;
+  }
+
   if (status === "PASS") {
     return [
       "PASS",
       "",
       "REVIEW_PACKET_READY",
       "",
-      "Current milestone packet:",
-      `- REVIEW_PACKET: ${path.join(packetRoot, "REVIEW_PACKET.md")}`,
-      `- MANIFEST: ${manifestPath}`,
-      `- CHANGES_PATCH: ${patchPath}`,
-      "- OPTIONAL_BUNDLE: not generated",
+      "UPLOAD_TO_REVIEW_ASSISTANT:",
+      ...uploadLines,
       "",
-      "Retrospective packets:",
-      retrospectivePackets.length
-        ? retrospectivePackets.map((item) => `- ${item}`).join("\n")
-        : "- none",
+      "OPTIONAL_REFERENCE:",
+      optionalReference ? `- ${optionalReference}` : "- none",
       "",
-      "Visual artifacts requiring owner review:",
-      "- none",
-      "",
-      "Upload REVIEW_PACKET.md to the planning/review assistant.",
-      "If CHANGES_PATCH is not embedded, upload it as well.",
-      "Upload listed visual artifacts only when human visual review is required.",
+      "Do not upload:",
+      "- MANIFEST.json",
+      "- validation.json",
+      "- reviewer reports",
+      "- files directory",
+      "unless explicitly listed above.",
       ""
     ].join("\n");
   }
@@ -402,16 +582,24 @@ function finalResponse({ status, packetRoot, manifestPath, patchPath, humanDecis
     "",
     "REVIEW_PACKET_READY",
     "",
-    `- REVIEW_PACKET: ${path.join(packetRoot, "REVIEW_PACKET.md")}`,
-    `- MANIFEST: ${manifestPath}`,
-    `- HUMAN_DECISION: ${humanDecisionPath ?? "not_available"}`,
-    `- CHANGES_PATCH: ${patchPath}`,
+    "UPLOAD_TO_REVIEW_ASSISTANT:",
+    ...uploadLines,
+    "",
+    "OPTIONAL_REFERENCE:",
+    optionalReference ? `- ${optionalReference}` : "- none",
     "",
     "Question:",
     "See REVIEW_PACKET.md Human Decision section.",
     "",
     "Recommendation:",
     "See REVIEW_PACKET.md Human Decision section.",
+    "",
+    "Do not upload:",
+    "- MANIFEST.json",
+    "- validation.json",
+    "- reviewer reports",
+    "- files directory",
+    "unless explicitly listed above.",
     ""
   ].join("\n");
 }
@@ -425,8 +613,8 @@ export async function generateHandoffPacket(options) {
   const headShortSha = git(["rev-parse", "--short", headCommit], { cwd: repoRoot }).stdout.trim();
   const branch = git(["branch", "--show-current"], { cwd: repoRoot }).stdout.trim() || "detached";
   const baseCommit = git(["rev-parse", options.base], { cwd: repoRoot }).stdout.trim();
+  const generatorCommit = git(["rev-parse", "HEAD"], { cwd: repoRoot }).stdout.trim();
   const milestoneId = options.milestone;
-  const milestoneTitle = options.title ?? milestoneId;
   const outputRoot = path.join(repoRoot, ".artifacts/loop-handoff");
   const packetRoot = path.join(outputRoot, `${milestoneId}-${headShortSha}`);
   const latestRoot = path.join(outputRoot, "latest");
@@ -442,6 +630,16 @@ export async function generateHandoffPacket(options) {
     throw new Error("HUMAN_REQUIRED handoff requires --decisionFile.");
   }
 
+  const input = await readHandoffInput({
+    repoRoot,
+    inputPath: options.input,
+    milestoneId,
+    baseCommit,
+    headCommit,
+    title: options.title
+  });
+  const milestoneTitle = options.title ?? input.milestoneTitle ?? milestoneId;
+
   await rm(packetRoot, { recursive: true, force: true });
   await mkdir(packetRoot, { recursive: true });
   await mkdir(path.join(packetRoot, "decisions"), { recursive: true });
@@ -450,17 +648,36 @@ export async function generateHandoffPacket(options) {
   if (contractText === "not_available") {
     throw new Error(`Milestone contract not_available: ${contractPath}`);
   }
-  const validationText = await readOptionalFile(resolveRepoPath(repoRoot, validationPath), JSON.stringify({
+  validateContractForMilestone(contractText, milestoneId);
+
+  const validationSourcePath = resolveRepoPath(repoRoot, validationPath);
+  const validationExists = existsSync(validationSourcePath);
+  const validationText = await readOptionalFile(validationSourcePath, JSON.stringify({
     schemaVersion: 1,
     status: "not_available",
     steps: [],
     knownGaps: {}
   }, null, 2));
   const validation = parseValidationSummary(validationText);
-  const reviewerText = await readOptionalFile(
-    options.reviewerReport ? resolveRepoPath(repoRoot, options.reviewerReport) : undefined,
-    "not_available\n\nReason: reviewer report file was not available for this handoff."
-  );
+
+  const reviewerAFallback = "not_available\n\nReason: reviewer A report file was not available for this handoff.\n";
+  const reviewerBFallback = "not_available\n\nReason: reviewer B report file was not available for this handoff.\n";
+  const reviewerAPath = options.reviewerA ?? options.reviewerReport;
+  const reviewerBPath = options.reviewerB ?? options.reviewerReport;
+  const reviewerAText = await readOptionalFile(reviewerAPath ? resolveRepoPath(repoRoot, reviewerAPath) : undefined, reviewerAFallback);
+  const reviewerBText = await readOptionalFile(reviewerBPath ? resolveRepoPath(repoRoot, reviewerBPath) : undefined, reviewerBFallback);
+  const reviewerAStatus = parseReviewerStatus(reviewerAText);
+  const reviewerBStatus = parseReviewerStatus(reviewerBText);
+
+  if (status === "PASS" && !options.retrospective) {
+    if (!validationExists || validation.status !== "pass") {
+      throw new Error("PASS handoff requires a passing validation summary.");
+    }
+    if (reviewerAStatus !== "PASS" || reviewerBStatus !== "PASS") {
+      throw new Error("PASS handoff requires reviewer A and reviewer B PASS reports.");
+    }
+  }
+
   let humanDecisionText = "None";
   let humanDecisionPacketPath = null;
   if (status === "HUMAN_REQUIRED") {
@@ -470,7 +687,8 @@ export async function generateHandoffPacket(options) {
   }
 
   await writeFile(path.join(packetRoot, "validation.json"), `${JSON.stringify(validation, null, 2)}\n`);
-  await writeFile(path.join(packetRoot, "reviewer-report.md"), reviewerText.endsWith("\n") ? reviewerText : `${reviewerText}\n`);
+  await writeFile(path.join(packetRoot, "reviewer-a.md"), reviewerAText.endsWith("\n") ? reviewerAText : `${reviewerAText}\n`);
+  await writeFile(path.join(packetRoot, "reviewer-b.md"), reviewerBText.endsWith("\n") ? reviewerBText : `${reviewerBText}\n`);
 
   const nameStatus = parseNameStatus(git(["diff", "--name-status", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout);
   const dirtyStatus = status === "HUMAN_REQUIRED"
@@ -480,6 +698,9 @@ export async function generateHandoffPacket(options) {
     ]
     : [];
   const changedFiles = mergeChangedFiles(nameStatus, dirtyStatus);
+  validateChangedFilePurposes({ changedFiles, changedFilePurposes: input.changedFilePurposes });
+  validateAcceptanceEvidence({ milestoneId, acceptanceEvidence: input.acceptanceEvidence, retrospective: Boolean(options.retrospective) });
+
   const diffStat = git(["diff", "--stat", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout.trim() || "No committed diff.";
   const diffCheck = git(["diff", "--check"], { cwd: repoRoot, allowFailure: true });
   let patch = git(["diff", "--binary", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout;
@@ -493,7 +714,12 @@ export async function generateHandoffPacket(options) {
       patch += "\n";
     }
   }
-  await writeFile(path.join(packetRoot, "changes.patch"), patch || "# No textual diff.\n");
+  const normalizedPatch = patch || "# No textual diff.\n";
+  const patchInfo = patchMetadata(normalizedPatch);
+  await writeFile(path.join(packetRoot, "changes.patch"), normalizedPatch);
+  if (patchInfo.companionRequired && !existsSync(path.join(packetRoot, "changes.patch"))) {
+    throw new Error("changes.patch is required but was not written.");
+  }
 
   const snapshots = await snapshotChangedFiles({
     repoRoot,
@@ -503,33 +729,60 @@ export async function generateHandoffPacket(options) {
     head: headCommit
   });
 
-  const reviewerStatus = reviewerText.includes("PASS") && !reviewerText.includes("BLOCKING")
-    ? "pass"
-    : reviewerText === "not_available" ? "not_available" : "unknown";
-  const validationStatus = validation.status ?? "not_available";
-  const packetStatus = "pass";
+  const validationEvidenceStatus = validationStatusFromFile(validation, validationExists);
+  const packetStatus = "COMPLETE";
   const commitsInRange = git(["log", "--oneline", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout.trim() || "none";
+  const loopHistory = await readLoopHistoryForMilestone(repoRoot, milestoneId);
+  const visualArtifacts = Array.isArray(input.visualArtifacts) ? input.visualArtifacts : [];
+  const optionalReference = options.retrospectivePacket ? resolveRepoPath(repoRoot, options.retrospectivePacket) : null;
+  const reportGeneratedAt = new Date().toISOString();
+
+  const fullDiffSection = patchInfo.companionRequired
+    ? [
+      "Full unified diff exceeds inline packet limits.",
+      "",
+      `- companionRequired: true`,
+      `- mandatory companion: changes.patch`,
+      `- patch size bytes: ${patchInfo.sizeBytes}`,
+      `- patch line count: ${patchInfo.lineCount}`
+    ].join("\n")
+    : [
+      `- companionRequired: false`,
+      `- patch size bytes: ${patchInfo.sizeBytes}`,
+      `- patch line count: ${patchInfo.lineCount}`,
+      "",
+      "```diff",
+      normalizedPatch,
+      "```"
+    ].join("\n");
+
   const reviewPacket = [
     "---",
-    "schemaVersion: 1",
-    `status: ${status}`,
+    `schemaVersion: ${packetSchemaVersion}`,
+    `packetStatus: ${packetStatus}`,
+    `milestoneOutcome: ${input.milestoneOutcome}`,
+    `evidenceCompleteness: ${input.evidenceCompleteness}`,
+    `historicalValidationEvidence: ${input.historicalValidationEvidence}`,
+    `historicalReviewerEvidence: ${input.historicalReviewerEvidence}`,
+    `retrospectiveRevalidation: ${input.retrospectiveRevalidation}`,
+    `retrospectiveReviewerStatus: ${input.retrospectiveReviewerStatus}`,
+    `retrospective: ${Boolean(options.retrospective)}`,
     `milestoneId: ${milestoneId}`,
     `milestoneTitle: ${milestoneTitle}`,
-    `generatedAt: ${new Date().toISOString()}`,
+    `generatedAt: ${reportGeneratedAt}`,
     `branch: ${branch}`,
-    `baseCommit: ${baseCommit}`,
-    `headCommit: ${headCommit}`,
-    `headShortSha: ${headShortSha}`,
-    `workspaceClean: ${workspaceClean}`,
-    `validationStatus: ${validationStatus}`,
-    `reviewerStatus: ${reviewerStatus}`,
-    `humanGateType: ${status === "HUMAN_REQUIRED" ? "required" : "none"}`,
-    `retrospective: ${Boolean(options.retrospective)}`,
+    `reviewedBaseCommit: ${baseCommit}`,
+    `reviewedHeadCommit: ${headCommit}`,
+    `generatorCommit: ${generatorCommit}`,
+    `repositoryHeadAtGeneration: ${generatorCommit}`,
+    `workspaceCleanAtGeneration: ${workspaceClean}`,
+    `companionRequired: ${patchInfo.companionRequired}`,
+    `mandatoryCompanions: ${patchInfo.mandatoryCompanions.join(",") || "none"}`,
     "---",
     "",
     "# Review Request",
     "",
-    "Review the packet against the frozen milestone contract. Check handoff completeness, diff range, validation evidence, reviewer evidence, changed file snapshots, artifact index, and terminal response correctness.",
+    "Review the packet against the frozen milestone contract. Use REVIEW_PACKET.md as the primary artifact. Upload changes.patch only when companionRequired is true. Do not request MANIFEST.json, validation.json, reviewer reports, or files directory unless this packet explicitly lists them.",
     "",
     "# Frozen Milestone Contract",
     "",
@@ -537,19 +790,22 @@ export async function generateHandoffPacket(options) {
     "",
     "# Implementation Result",
     "",
-    `${milestoneId} generated a standardized review handoff packet for status ${status}. Retrospective mode: ${Boolean(options.retrospective)}.`,
+    input.implementationSummary,
+    input.retrospectivePackagingNote ? `\nRetrospective Packaging Note: ${input.retrospectivePackagingNote}` : "",
     "",
     "# Git State",
     "",
     `- milestone start commit: ${baseCommit}`,
-    `- final head commit: ${headCommit}`,
+    `- reviewed head commit: ${headCommit}`,
+    `- generator commit: ${generatorCommit}`,
+    `- repository head at generation: ${generatorCommit}`,
     `- branch: ${branch}`,
     "- commits in range:",
     commitsInRange.split("\n").map((line) => `  - ${line}`).join("\n"),
     "- git status --short:",
     gitStatus.length ? gitStatus.map((line) => `  - ${line}`).join("\n") : "  - clean",
     `- git diff --check: ${diffCheck.status === 0 ? "pass" : "fail"}`,
-    `- workspace clean: ${workspaceClean}`,
+    `- workspace clean at generation: ${workspaceClean}`,
     "- ignored runtime artifacts: `.artifacts/loop-validation/`, `.artifacts/loop-handoff/`, Electron `.runtime/` directories are excluded from source status.",
     "",
     "# Changed Files",
@@ -566,11 +822,11 @@ export async function generateHandoffPacket(options) {
     "",
     "## File Purpose Index",
     "",
-    changedFiles.length ? changedFiles.map((entry) => `- ${entry.path}: ${entry.status} change for milestone ${milestoneId}`).join("\n") : "- none",
+    changedFiles.length ? changedFiles.map((entry) => `- ${entry.path}: ${input.changedFilePurposes[entry.path]}`).join("\n") : "- none",
     "",
     "# Full Diff",
     "",
-    "Full unified diff is stored in mandatory companion file `changes.patch`.",
+    fullDiffSection,
     "",
     "# Changed File Snapshots",
     "",
@@ -580,41 +836,46 @@ export async function generateHandoffPacket(options) {
     "",
     "# Acceptance Evidence",
     "",
-    acceptanceEvidence({ milestone: milestoneId, validation, reviewerStatus, packetStatus }),
+    acceptanceEvidenceMarkdown(input.acceptanceEvidence),
     options.retrospective
-      ? "\nRetrospective evidence authority: `validation.json` and `reviewer-report.md` are the authoritative availability markers for historical evidence. `Loop History` is narrative context only when original evidence files are marked `not_available`."
-      : "\nEvidence authority: `validation.json`, `reviewer-report.md`, `MANIFEST.json`, and current Git state are authoritative for this packet.",
+      ? "\nRetrospective evidence authority: acceptance entries are derived from the frozen M1 contract and explicitly mark historical validation/reviewer evidence availability. Narrative loop history is not original evidence."
+      : "\nEvidence authority: acceptance entries are provided by the milestone handoff input and backed by validation.json, reviewer-a.md, reviewer-b.md, MANIFEST.json, and current Git state.",
     "",
     "# Validation Evidence",
     "",
-    `- validation status: ${validationStatus}`,
-    `- evidence authority: ${options.retrospective ? "retrospective official evidence availability marker; loop history is narrative context only" : "current validation artifact"}`,
-    "- step summary:",
+    `- validation status: ${validationEvidenceStatus}`,
+    `- evidence completeness: ${input.evidenceCompleteness}`,
+    "- handoff input validation runs:",
+    validationRunsMarkdown(input.validationRuns),
+    "- validation.json step summary:",
     summarizeValidation(validation),
-    `- consecutive validation count: ${milestoneId === "M2" ? "2 required before PASS" : "not_available for retrospective packaging"}`,
     `- known gaps: ${JSON.stringify(validation.knownGaps ?? {})}`,
     "",
-    "# Independent Reviewer Report",
+    "# Independent Reviewer Reports",
     "",
-    reviewerText,
-    reviewerStatus === "pass" ? "\nPASS — no blocking findings" : "",
+    "## Reviewer A",
+    "",
+    `- status: ${reviewerAStatus}`,
+    "",
+    reviewerAText,
+    "",
+    "## Reviewer B",
+    "",
+    `- status: ${reviewerBStatus}`,
+    "",
+    reviewerBText,
     "",
     "# Loop History",
     "",
-    await readOptionalFile(path.join(repoRoot, "docs/loop/LOOP_HISTORY.md"), "not_available"),
+    loopHistory,
     "",
     "# Remaining Risks And Gaps",
     "",
-    "- known technical risk: packet generation is local and Git-based; future binary-heavy milestones may need bundle size limits.",
-    "- validation gap: passing protobuf decode, HTTP 200, or nonblank canvas is not complete visual acceptance.",
-    "- visual/manual gate: product animation quality remains owner-reviewed.",
-    "- product gate: production desktop and format recommendation approvals are out of scope.",
-    "- deferred work: optional archive bundle generation.",
-    "- nonblocking recommendation: keep packet schema versioned.",
+    remainingRisksMarkdown(input.remainingRisks),
     "",
     "# Artifact Index",
     "",
-    "See `artifact-index.json` for machine-readable artifact records.",
+    "See `artifact-index.json` for machine-readable artifact records. The Review Packet is designed to be sufficient without uploading MANIFEST.json, validation.json, reviewer reports, or files directory unless FINAL_RESPONSE.txt explicitly lists a companion.",
     "",
     "# Human Decision",
     "",
@@ -622,7 +883,7 @@ export async function generateHandoffPacket(options) {
     "",
     "# Recommended Next Milestone",
     "",
-    "Do not automatically start the next milestone. Suggested next work: consume Review Packets from an external reviewer and tighten any handoff schema gaps found in real use.",
+    input.recommendedNextMilestone,
     ""
   ].join("\n");
 
@@ -633,7 +894,8 @@ export async function generateHandoffPacket(options) {
     await artifactRecord(packetRoot, "REVIEW_PACKET.md", "review-packet", "text/markdown", true),
     await artifactRecord(packetRoot, "changes.patch", "diff", "text/x-diff", true),
     await artifactRecord(packetRoot, "validation.json", "validation-summary", "application/json", false),
-    await artifactRecord(packetRoot, "reviewer-report.md", "independent-reviewer-report", "text/markdown", false)
+    await artifactRecord(packetRoot, "reviewer-a.md", "independent-reviewer-a-report", "text/markdown", false),
+    await artifactRecord(packetRoot, "reviewer-b.md", "independent-reviewer-b-report", "text/markdown", false)
   ];
   if (humanDecisionPacketPath) {
     artifactIndexRecords.push(await artifactRecord(packetRoot, humanDecisionPacketPath, "human-decision", "text/markdown", false, true));
@@ -643,12 +905,26 @@ export async function generateHandoffPacket(options) {
       artifactIndexRecords.push(await artifactRecord(packetRoot, snapshot.packetPath, "changed-file-snapshot", "application/octet-stream", true));
     }
   }
-
   artifactIndexRecords.sort((a, b) => compareStrings(a.path, b.path));
 
   const manifest = {
-    schemaVersion: 1,
-    status,
+    schemaVersion: packetSchemaVersion,
+    packetStatus,
+    milestoneOutcome: input.milestoneOutcome,
+    evidenceCompleteness: input.evidenceCompleteness,
+    historicalValidationEvidence: input.historicalValidationEvidence,
+    historicalReviewerEvidence: input.historicalReviewerEvidence,
+    retrospectiveRevalidation: input.retrospectiveRevalidation,
+    retrospectiveReviewerStatus: input.retrospectiveReviewerStatus,
+    retrospective: Boolean(options.retrospective),
+    reviewedBaseCommit: baseCommit,
+    reviewedHeadCommit: headCommit,
+    generatorCommit,
+    repositoryHeadAtGeneration: generatorCommit,
+    workspaceCleanAtGeneration: workspaceClean,
+    companionRequired: patchInfo.companionRequired,
+    mandatoryCompanions: patchInfo.mandatoryCompanions,
+    patch: patchInfo,
     milestone: {
       id: milestoneId,
       title: milestoneTitle,
@@ -662,12 +938,12 @@ export async function generateHandoffPacket(options) {
       status: gitStatus
     },
     validation: {
-      status: validationStatus,
+      status: validationEvidenceStatus,
       summaryPath: "validation.json"
     },
-    reviewer: {
-      status: reviewerStatus,
-      reportPath: "reviewer-report.md"
+    reviewers: {
+      reviewerA: { status: reviewerAStatus, reportPath: "reviewer-a.md" },
+      reviewerB: { status: reviewerBStatus, reportPath: "reviewer-b.md" }
     },
     files: snapshots,
     artifacts: artifactIndexRecords,
@@ -676,7 +952,8 @@ export async function generateHandoffPacket(options) {
       "MANIFEST.json",
       "changes.patch",
       "validation.json",
-      "reviewer-report.md",
+      "reviewer-a.md",
+      "reviewer-b.md",
       "artifact-index.json",
       "FINAL_RESPONSE.txt",
       "files/",
@@ -695,16 +972,15 @@ export async function generateHandoffPacket(options) {
   const response = finalResponse({
     status,
     packetRoot,
-    manifestPath: path.join(packetRoot, "MANIFEST.json"),
-    patchPath: path.join(packetRoot, "changes.patch"),
-    humanDecisionPath: humanDecisionPacketPath ? path.join(packetRoot, humanDecisionPacketPath) : undefined,
-    retrospectivePackets: options.retrospectivePacket ? [resolveRepoPath(repoRoot, options.retrospectivePacket)] : []
+    companionRequired: patchInfo.companionRequired,
+    visualArtifacts,
+    optionalReference
   });
   await writeFile(path.join(packetRoot, "FINAL_RESPONSE.txt"), response);
   artifactIndexRecords.push(await artifactRecord(packetRoot, "FINAL_RESPONSE.txt", "final-response", "text/plain", true));
   artifactIndexRecords.sort((a, b) => compareStrings(a.path, b.path));
   await writeFile(path.join(packetRoot, "artifact-index.json"), `${JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: packetSchemaVersion,
     artifacts: artifactIndexRecords
   }, null, 2)}\n`);
 
