@@ -166,6 +166,30 @@ statistics, decoded memory estimates, frame/FPS/duration data, resource counts,
 file size, resource roles, spec thresholds, and the format capability matrix.
 AI or external model inference is not an inspection primitive.
 
+### Format Recommendation Engine MVP boundary
+
+`src/workbench/format-recommendation.ts` defines a host-neutral recommendation
+contract over existing inspection facts. Its input combines `MotionAssetInfo`,
+profile and specification metadata, Motion Asset Audit, memory and sequence
+diagnostics, deterministic frame evidence, optional transparent-padding policy
+output, current format, target usage context, and explicit replacement needs.
+
+The MVP capability matrix describes alpha, replacement, vector, video-like, and
+frame-sequence characteristics for `svga`, `vap`, `lottie`, `webp`, `webm`,
+`apng`, `sprite`, and `unknown`. These entries are product capability facts, not
+claims that parsers, players, converters, or exporters are implemented.
+
+`createFormatRecommendationReport()` is deliberately conservative. It can
+exclude capability mismatches and explain relevant sequence evidence, but it
+does not score or select a best format. Unknown usage, unsupported usage
+profiles, or insufficient audit evidence produce `unknown` or
+`needs_more_data` with no candidates. Candidate reports remain advisory and
+carry rationale, tradeoffs, evidence references, and uncertainty.
+
+Recommendation logic must remain outside Web UI and host APIs. No conversion,
+export, new-format parser, production gate, AI inference, or network service is
+part of this boundary.
+
 Key boundaries:
 
 - format parsing does not own playback
