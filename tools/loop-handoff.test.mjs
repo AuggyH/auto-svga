@@ -561,6 +561,15 @@ test("PASS fails when tracked workspace is dirty", async () => {
   });
 });
 
+test("PASS ignores excluded runtime artifact roots", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeText(join(repo, ".artifacts/loop-review/runtime-note.md"), "ignored runtime note\n");
+    const result = await generateHandoffPacket(defaultOptions(repo, base, head));
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    assert.equal(manifest.workspaceCleanAtGeneration, true);
+  });
+});
+
 test("HUMAN_REQUIRED packet includes tracked and untracked work", async () => {
   await withRepo(async ({ repo, base, head }) => {
     await writeText(join(repo, "src/example.txt"), "changed but uncommitted\n");

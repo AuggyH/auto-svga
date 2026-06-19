@@ -170,6 +170,21 @@ function parsePorcelain(output) {
     .filter((entry) => entry.path && !isExcludedRepoPath(entry.path));
 }
 
+
+function parseWorkspaceStatus(output) {
+  return output
+    .split("\n")
+    .filter(Boolean)
+    .filter((line) => {
+      const status = line.slice(0, 2).trim() || "modified";
+      const rawPath = line.slice(3).trim();
+      const repoPath = status.startsWith("R") || status.startsWith("C")
+        ? rawPath.split(/\s+/).at(-1)
+        : rawPath;
+      return repoPath && !isExcludedRepoPath(repoPath);
+    });
+}
+
 function listUntrackedFiles(repoRoot) {
   return git(["ls-files", "--others", "--exclude-standard"], { cwd: repoRoot }).stdout
     .split("\n")
@@ -618,9 +633,7 @@ export async function generateHandoffPacket(options) {
   const outputRoot = path.join(repoRoot, ".artifacts/loop-handoff");
   const packetRoot = path.join(outputRoot, `${milestoneId}-${headShortSha}`);
   const latestRoot = path.join(outputRoot, "latest");
-  const gitStatus = git(["status", "--short"], { cwd: repoRoot }).stdout
-    .split("\n")
-    .filter(Boolean);
+  const gitStatus = parseWorkspaceStatus(git(["status", "--short"], { cwd: repoRoot }).stdout);
   const workspaceClean = gitStatus.length === 0;
 
   if (status === "PASS" && !workspaceClean) {
