@@ -179,12 +179,31 @@ frame-sequence characteristics for `svga`, `vap`, `lottie`, `webp`, `webm`,
 `apng`, `sprite`, and `unknown`. These entries are product capability facts, not
 claims that parsers, players, converters, or exporters are implemented.
 
+The matrix is published as `capabilityMatrixVersion: 1`. Every format carries
+reviewed evidence metadata and independent implementation maturity markers.
+These layers have different meanings:
+
+1. **Capability** describes what the format can represent in principle.
+2. **Implementation maturity** describes which Auto SVGA parser, player,
+   exporter, or converter paths exist.
+3. **Production support** is an explicit delivery boundary and is never implied
+   by capability knowledge alone.
+
+SVGA is the current bounded implementation baseline. Other listed formats retain
+`production_not_supported` and component-level `*_not_implemented` markers until
+separate implementation and validation tasks provide evidence. Matrix evidence
+uses repository review markers and does not silently upgrade implementation
+maturity.
+
 `createFormatRecommendationReport()` is deliberately conservative. It can
 exclude capability mismatches and explain relevant sequence evidence, but it
 does not score or select a best format. Unknown usage, unsupported usage
 profiles, or insufficient audit evidence produce `unknown` or
 `needs_more_data` with no candidates. Candidate reports remain advisory and
-carry rationale, tradeoffs, evidence references, and uncertainty.
+carry rationale, tradeoffs, evidence references, implementation maturity, and
+uncertainty. A capability match with unavailable implementation remains
+`needs_more_data` and explicitly states that it is not a production
+recommendation.
 
 Recommendation logic must remain outside Web UI and host APIs. No conversion,
 export, new-format parser, production gate, AI inference, or network service is
