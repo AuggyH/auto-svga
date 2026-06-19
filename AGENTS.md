@@ -195,6 +195,13 @@ When a new agent takes over this repo:
 6. Load `docs/TECH_SPEC.md` only if technical details are needed.
 7. Do not expand beyond avatar_frame MVP scope unless explicitly requested.
 
+## Autonomous Loop Protocol
+
+For long-running autonomous tasks, follow `docs/loop/AUTONOMOUS_PROTOCOL.md`.
+Create a frozen milestone contract before implementation, execute
+Implement -> Validate -> Review -> Repair, and do not push, merge, release, or
+deploy automatically.
+
 ## Token-saving Skills
 
 Repository-local reusable skills live under `codex-skills/`:

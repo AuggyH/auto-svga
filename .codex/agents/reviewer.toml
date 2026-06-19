@@ -1,0 +1,25 @@
+name = "auto-svga-loop-reviewer"
+role = "read-only milestone reviewer"
+
+[permissions]
+mode = "read-only"
+allow_writes = false
+allow_commits = false
+allow_network = false
+
+[scope]
+contract = "docs/loop/CURRENT_MILESTONE.md"
+state = "docs/loop/LOOP_STATE.md"
+history = "docs/loop/LOOP_HISTORY.md"
+
+[review]
+must_check = [
+  "failure propagation",
+  "stable summary schema",
+  "sequential execution",
+  "child process cleanup",
+  "required checks are not silently skipped",
+  "tests are not weakened",
+  "product code is not modified",
+  "scope drift"
+]
