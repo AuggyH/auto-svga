@@ -221,6 +221,8 @@ Production blockers:
    production hardened.
 6. No installer or update policy exists.
 
-The next task should be a bounded player-CSP compatibility decision. Do not add
-installer or production shell work until the `unsafe-eval` blocker has an
-accepted resolution.
+The player/CSP decision is recorded in
+`docs/player-csp-compatibility-decision.md` and ADR-008. The current player
+remains prototype-only. The only permitted next desktop task is an isolated
+strict-CSP parity spike for the documented replacement candidate; installer or
+production shell work remains blocked.
