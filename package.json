@@ -21,6 +21,7 @@
     "test:all": "tsc -p tsconfig.json && node --test dist/tests/*.test.js",
     "test:mvp": "tsc -p tsconfig.json && node --test dist/tests/mvp-planner.test.js",
     "loop:validate": "node tools/loop-validate.mjs",
+    "loop:handoff": "node tools/loop-handoff.mjs",
     "validate:example": "tsc -p tsconfig.json && node dist/cli.js validate examples/avatar_frame_basic",
     "build:example": "tsc -p tsconfig.json && node dist/cli.js build examples/avatar_frame_basic",
     "export:example": "tsc -p tsconfig.json && node dist/cli.js export examples/avatar_frame_basic",

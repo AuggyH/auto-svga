@@ -5,7 +5,7 @@ Date: 2026-06-19
 ## Current Milestone
 
 - Milestone: M2 Standardized Review Handoff Contract
-- State: m2_implementation_in_progress
+- State: m2_handoff_implementation_ready_for_commit
 - Repair round: 0
 - Consecutive rounds without new evidence: 0
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -20,7 +20,9 @@ Date: 2026-06-19
 - M1 contract archived to `docs/loop/milestones/M1-unified-loop-validation.md`.
 - M1 file-based Final Review was not found; marker archived at `docs/loop/reviews/M1-final-review-not-available.md`.
 - Pre-M2 baseline `npm run loop:validate` passed.
+- Handoff generator targeted tests passed.
+- Handoff generator syntax checks passed.
 
 ## Next Action
 
-Implement `npm run loop:handoff` and targeted tests.
+Commit M2 handoff implementation, then run full M2 validation and independent reviewers.
