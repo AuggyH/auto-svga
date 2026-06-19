@@ -335,6 +335,12 @@ pnpm export:example
 启动本地播放器验证页：
 
 ```bash
+pnpm local:preview
+```
+
+该命令会检查本地 preview 服务是否已启动；未启动时会启动服务并打开浏览器。手动回退方式仍然保留：
+
+```bash
 pnpm preview:player
 ```
 

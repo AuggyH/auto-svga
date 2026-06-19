@@ -23,7 +23,8 @@
     "validate:example": "tsc -p tsconfig.json && node dist/cli.js validate examples/avatar_frame_basic",
     "build:example": "tsc -p tsconfig.json && node dist/cli.js build examples/avatar_frame_basic",
     "export:example": "tsc -p tsconfig.json && node dist/cli.js export examples/avatar_frame_basic",
-    "preview:player": "node tools/svga-player-preview/server.mjs"
+    "preview:player": "node tools/svga-player-preview/server.mjs",
+    "local:preview": "node tools/launch-local-preview.mjs"
   },
   "dependencies": {
     "fast-png": "8.0.0",
