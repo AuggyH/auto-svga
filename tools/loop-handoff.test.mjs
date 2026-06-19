@@ -15,7 +15,7 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
-import { generateHandoffPacket } from "./loop-handoff.mjs";
+import { generateHandoffPacket, verifySealedPacket } from "./loop-handoff.mjs";
 import { createLoopValidationSteps } from "./loop-validate.mjs";
 import { validateReviewerConfig } from "./loop-reviewer-config-check.mjs";
 
@@ -697,6 +697,69 @@ test("sealed packet post verifier records upload contract and latest pointer", a
     assert.equal(manifest.sealVerification.status, "pass");
     assert.equal(latestTarget.endsWith(`M2-R2-${head.slice(0, 7)}`), true);
     assert.deepEqual(manifest.mandatoryCompanions, []);
+    assert.equal(manifest.sealVerification.trackedSourceClean, true);
+    assert.equal(manifest.sealVerification.checkedArtifactCount > 0, true);
+  });
+});
+
+test("sealed packet post verifier fails when latest pointer targets another packet", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const result = await generateSealedPacket({ repo, base, head });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    const latestRoot = join(repo, ".artifacts/loop-handoff/latest");
+    const wrongTarget = join(repo, ".artifacts/loop-handoff/wrong-packet");
+    await mkdir(wrongTarget, { recursive: true });
+    await rm(latestRoot, { recursive: true, force: true });
+    await symlink(wrongTarget, latestRoot);
+
+    const seal = await verifySealedPacket({
+      repoRoot: repo,
+      packetRoot: result.packetRoot,
+      latestRoot,
+      manifest,
+      finalResponseText: await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8")
+    });
+
+    assert.equal(seal.status, "fail");
+    assert.equal(seal.errors.includes("latest does not point at packetRoot"), true);
+  });
+});
+
+test("sealed packet post verifier fails when an artifact hash changes", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const result = await generateSealedPacket({ repo, base, head });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    await writeText(join(result.packetRoot, "REVIEW_PACKET.md"), "tampered\n");
+
+    const seal = await verifySealedPacket({
+      repoRoot: repo,
+      packetRoot: result.packetRoot,
+      latestRoot: join(repo, ".artifacts/loop-handoff/latest"),
+      manifest,
+      finalResponseText: await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8")
+    });
+
+    assert.equal(seal.status, "fail");
+    assert.equal(seal.errors.includes("artifact sha256 mismatch: REVIEW_PACKET.md"), true);
+  });
+});
+
+test("sealed packet post verifier fails when tracked source changes after validation", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const result = await generateSealedPacket({ repo, base, head });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    await writeText(join(repo, "README.md"), "# dirty source\n");
+
+    const seal = await verifySealedPacket({
+      repoRoot: repo,
+      packetRoot: result.packetRoot,
+      latestRoot: join(repo, ".artifacts/loop-handoff/latest"),
+      manifest,
+      finalResponseText: await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8")
+    });
+
+    assert.equal(seal.status, "fail");
+    assert.equal(seal.errors.includes("tracked source workspace is not clean"), true);
   });
 });
 

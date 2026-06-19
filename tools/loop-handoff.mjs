@@ -850,7 +850,7 @@ function parseFinalResponseUploads(text) {
     .map((line) => line.replace(/^\d+\.\s*/, ""));
 }
 
-async function verifySealedPacket({ packetRoot, latestRoot, manifest, finalResponseText }) {
+export async function verifySealedPacket({ repoRoot, packetRoot, latestRoot, manifest, finalResponseText }) {
   let latestTarget = null;
   if (existsSync(latestRoot)) {
     const latestStat = await lstat(latestRoot);
@@ -862,10 +862,20 @@ async function verifySealedPacket({ packetRoot, latestRoot, manifest, finalRespo
   const uploadsExist = uploadFiles.every((filePath) => existsSync(filePath));
   const patchListed = uploadFiles.some((filePath) => filePath.endsWith("changes.patch"));
   const errors = [];
+  const trackedDiffClean = repoRoot
+    ? git(["diff", "--quiet"], { cwd: repoRoot, allowFailure: true }).status === 0
+    : false;
+  const trackedIndexClean = repoRoot
+    ? git(["diff", "--cached", "--quiet"], { cwd: repoRoot, allowFailure: true }).status === 0
+    : false;
+
   if (latestTarget && latestTarget !== path.resolve(packetRoot)) {
     errors.push("latest does not point at packetRoot");
   }
   if (!uploadsExist) errors.push("FINAL_RESPONSE upload file missing");
+  if (manifest.milestoneOutcome === "PASS" && (!trackedDiffClean || !trackedIndexClean)) {
+    errors.push("tracked source workspace is not clean");
+  }
   if (manifest.companionRequired !== patchListed) {
     errors.push("companionRequired does not match FINAL_RESPONSE upload list");
   }
@@ -877,11 +887,54 @@ async function verifySealedPacket({ packetRoot, latestRoot, manifest, finalRespo
     && manifest.reviewers.reviewerB.candidateDigest !== manifest.candidateDigest) {
     errors.push("reviewer B candidateDigest mismatch");
   }
+  const artifactIndexPath = path.join(packetRoot, "artifact-index.json");
+  let checkedArtifactCount = 0;
+  if (!Array.isArray(manifest.artifacts)) {
+    errors.push("manifest artifacts missing or invalid");
+  } else {
+    for (const artifact of manifest.artifacts) {
+      if (!artifact?.path) {
+        errors.push("manifest artifact path missing");
+        continue;
+      }
+      const artifactPath = path.join(packetRoot, artifact.path);
+      if (!existsSync(artifactPath)) {
+        errors.push(`artifact missing: ${artifact.path}`);
+        continue;
+      }
+      const artifactStat = await stat(artifactPath);
+      const artifactHash = await sha256File(artifactPath);
+      checkedArtifactCount += 1;
+      if (artifact.sizeBytes !== artifactStat.size) {
+        errors.push(`artifact size mismatch: ${artifact.path}`);
+      }
+      if (artifact.sha256 !== artifactHash) {
+        errors.push(`artifact sha256 mismatch: ${artifact.path}`);
+      }
+    }
+  }
+  if (!existsSync(artifactIndexPath)) {
+    errors.push("artifact-index.json missing");
+  } else {
+    try {
+      const artifactIndex = JSON.parse(await readFile(artifactIndexPath, "utf8"));
+      const indexedArtifacts = Array.isArray(artifactIndex.artifacts) ? artifactIndex.artifacts : null;
+      if (!indexedArtifacts) {
+        errors.push("artifact-index artifacts missing or invalid");
+      } else if (JSON.stringify(indexedArtifacts) !== JSON.stringify(manifest.artifacts ?? [])) {
+        errors.push("artifact-index does not match manifest artifacts");
+      }
+    } catch {
+      errors.push("artifact-index.json cannot be parsed");
+    }
+  }
   return {
     schemaVersion: 1,
     status: errors.length === 0 ? "pass" : "fail",
     errors,
-    uploadFiles
+    uploadFiles,
+    trackedSourceClean: trackedDiffClean && trackedIndexClean,
+    checkedArtifactCount
   };
 }
 
@@ -1459,6 +1512,7 @@ export async function generateHandoffPacket(options) {
   if (!options.candidate) {
     await copyLatest(packetRoot, latestRoot);
     sealVerification = await verifySealedPacket({
+      repoRoot,
       packetRoot,
       latestRoot,
       manifest,
