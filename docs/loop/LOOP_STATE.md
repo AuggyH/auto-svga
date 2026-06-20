@@ -6,9 +6,9 @@ Date: 2026-06-20
 
 - milestoneId: P2
 - Milestone: P2 Desktop Product Shell And Web Preview Parity
-- State: terminal_human_required
-- Next Action: external_review
-- repairRound: 1
+- State: implementation_in_progress
+- Next Action: repair
+- repairRound: 2
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -26,10 +26,10 @@ Date: 2026-06-20
 - Reviewer B passed the repaired P2 artifacts.
 - Reviewer A confirmed previous blockers appear repaired; remaining blocker is terminal state/history evidence, now being finalized.
 - P2 terminal validation evidence is complete: two final `npm run loop:validate` runs passed on `f3f49d69efd73ece86143d59c550111c1ae2946f` before terminal state normalization.
-- P2 implementation, validation, Reviewer A/B, and post-seal evidence passed, but product visual acceptance is intentionally left to the owner.
-- P2 is now terminal HUMAN_REQUIRED and ready for external product acceptance against the sealed handoff packet.
+- External product review selected `repair_p2` against `d17eee245f6db72ffcbe3aaa8069051f28dee889`.
+- P2 repair-2 is in progress to fix genuine Web/Desktop parity evidence, productized inspection, product shell hierarchy, and honest runtime proof.
 - Browser workflow remains the stable rollback.
 
 ## Next Action
 
-Await external product acceptance. No local action is required from this terminal state.
+Execute P2 repair-2. Do not start P3 until repaired P2 evidence returns to a terminal `HUMAN_REQUIRED` packet and receives product acceptance.
