@@ -149,8 +149,11 @@ async function captureProductArtifact(window, scenario) {
   productArtifactIndex.artifacts.push({
     scenario,
     path: `.artifacts/product/P1/${fileName}`,
+    mime: "image/png",
     sizeBytes: png.byteLength,
     sha256: createHash("sha256").update(png).digest("hex"),
+    fixture: "synthetic-avatar-frame.svga",
+    generatedAt: new Date().toISOString(),
     humanReviewRequired: true
   });
   writeProductArtifactIndex();
