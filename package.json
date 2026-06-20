@@ -40,7 +40,8 @@
     "nq1:model-history": "npm run build && node tools/nq1/generate-model-history-report.mjs",
     "nq1:async-race": "npm run build && node tools/nq1/generate-async-race-report.mjs",
     "nq1:round-trip-matrix": "npm run build && node tools/nq1/generate-round-trip-matrix-report.mjs",
-    "nq1:save-as-safety": "npm run build && node tools/nq1/generate-save-as-safety-report.mjs"
+    "nq1:save-as-safety": "npm run build && node tools/nq1/generate-save-as-safety-report.mjs",
+    "nq1:cleanup-stress": "npm run build && node tools/nq1/generate-cleanup-stress-report.mjs"
   },
   "dependencies": {
     "fast-png": "8.0.0",
