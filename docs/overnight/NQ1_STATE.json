@@ -8,7 +8,7 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP10",
+  "currentWorkPackage": "terminal-packaging",
   "completedWorkPackages": [
     "NQ1-WP01",
     "NQ1-WP02",
@@ -18,13 +18,12 @@
     "NQ1-WP06",
     "NQ1-WP07",
     "NQ1-WP08",
-    "NQ1-WP09"
+    "NQ1-WP09",
+    "NQ1-WP10"
   ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
-  "remainingWorkPackages": [
-    "NQ1-WP10"
-  ],
+  "remainingWorkPackages": [],
   "workPackages": [
     {
       "id": "NQ1-WP01",
@@ -611,16 +610,78 @@
     {
       "id": "NQ1-WP10",
       "title": "Test determinism, flake, and developer documentation",
-      "status": "pending",
-      "startedAt": null,
-      "finishedAt": null,
-      "startCommit": null,
-      "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
-      "deferredItems": []
+      "status": "complete",
+      "startedAt": "2026-06-20T21:28:08.000Z",
+      "finishedAt": "2026-06-20T21:34:03.894Z",
+      "startCommit": "96f3205b7d7b3a7862c1f736d8302a4fc448aa15",
+      "endCommit": "fc719b9c764d1479175ec0261562a0183acb990a",
+      "filesChanged": [
+        "package.json",
+        "docs/product/EDITOR_TEST_MATRIX.md",
+        "docs/product/EDITOR_TROUBLESHOOTING.md",
+        "docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md",
+        "src/tests/helpers/nq1-flake-stability.ts",
+        "src/tests/nq1-flake-stability.test.ts",
+        "tools/nq1/generate-flake-stability-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build && node --test dist/tests/nq1-flake-stability.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:flake-stability",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-fixture-matrix.test.js dist/tests/nq1-flake-stability.test.js dist/tests/nq1-round-trip-matrix.test.js dist/tests/nq1-performance-baseline.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "node --check tools/nq1/generate-flake-stability-report.mjs",
+          "status": "pass"
+        },
+        {
+          "command": "npm test",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-flake-stability-targeted",
+          "status": "pass",
+          "summary": "2 pass / 0 fail"
+        },
+        {
+          "id": "nq1-flake-stability-artifact",
+          "status": "pass",
+          "summary": "10 static checks passed; core targeted tests 5/5 pass; electron smoke 3/3 pass; round-trip subset 3/3 pass; no advisories"
+        },
+        {
+          "id": "adjacent-nq1-regressions",
+          "status": "pass",
+          "summary": "9 pass / 0 fail"
+        },
+        {
+          "id": "root-tests",
+          "status": "pass",
+          "summary": "184 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "WP10 adds a repeat-run flake stability report for core targeted tests, Electron smoke, and round-trip subset validation.",
+        "Developer documentation now maps editor tests, troubleshooting, and the supported editable SVGA boundary.",
+        "The generated flake report contains no absolute user paths and records no advisories."
+      ],
+      "deferredItems": [
+        "Real Windows runtime path behavior remains manual validation.",
+        "Screen-reader output and pixel-perfect visual parity remain manual validation.",
+        "Long-running renderer memory pressure remains outside the bounded NQ1 checks."
+      ]
     }
   ],
   "checkpointValidations": [
