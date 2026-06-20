@@ -1595,7 +1595,9 @@ export async function generateHandoffPacket(options) {
   const reviewerBPath = options.reviewerB ?? options.reviewerReport;
   let reviewerAVerdict = null;
   let reviewerBVerdict = null;
-  if (status === "PASS" && !options.retrospective && !options.candidate) {
+  const reviewerVerdictsProvided = Boolean(reviewerAPath || reviewerBPath);
+  const reviewerVerdictsRequired = status === "PASS";
+  if ((reviewerVerdictsRequired || reviewerVerdictsProvided) && !options.retrospective && !options.candidate) {
     reviewerAVerdict = await readReviewerVerdict(
       reviewerAPath ? resolveRepoPath(repoRoot, reviewerAPath) : undefined,
       { reviewerId: "A", headCommit, candidateDigest }
@@ -1611,7 +1613,7 @@ export async function generateHandoffPacket(options) {
       throw new Error("Reviewer B packetDiffSha256 mismatch.");
     }
     if (reviewerAVerdict.verdict !== "PASS" || reviewerBVerdict.verdict !== "PASS") {
-      throw new Error("PASS handoff requires reviewer A and reviewer B structured PASS verdicts.");
+      throw new Error(`${status} handoff requires reviewer A and reviewer B structured PASS verdicts when reviewer evidence is required or provided.`);
     }
   }
   if (reviewerAVerdict) {

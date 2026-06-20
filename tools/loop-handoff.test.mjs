@@ -393,6 +393,58 @@ test("PASS packet generation creates schema v4 sealed packet", async () => {
   });
 });
 
+test("HUMAN_REQUIRED sealed packet can carry reviewer PASS verdicts", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const humanDecision = {
+      schemaVersion: 1,
+      question: "Accept the visual result?",
+      options: [
+        { id: "accept", label: "Accept", impact: "Proceed to the next milestone." },
+        { id: "reject", label: "Reject", impact: "Keep the milestone blocked for repair." }
+      ],
+      recommendation: "reject",
+      evidence: ["visual artifact"],
+      safeDefaultWhileWaiting: "Keep the milestone in HUMAN_REQUIRED."
+    };
+    await refreshValidationAndInput(repo, base, head, {
+      "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture.",
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior."
+    }, {
+      milestoneOutcome: "HUMAN_REQUIRED",
+      evidenceCompleteness: "PARTIAL",
+      historicalReviewerEvidence: "PASS"
+    });
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- milestoneId: M2-R2\n- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", iteration: "terminal", result: "HUMAN_REQUIRED", progress: true, nextAction: "external_review" })}\n`);
+    await writeJson(join(repo, ".artifacts/loop-decision.json"), humanDecision);
+    const candidate = await generateHandoffPacket({
+      ...defaultOptions(repo, base, head),
+      status: "HUMAN_REQUIRED",
+      decisionFile: ".artifacts/loop-decision.json",
+      candidate: true
+    });
+    await writeReviewerVerdicts(repo, head, candidate.manifest);
+    const result = await generateHandoffPacket({
+      ...defaultOptions(repo, base, head),
+      status: "HUMAN_REQUIRED",
+      decisionFile: ".artifacts/loop-decision.json",
+      reviewerA: ".artifacts/loop-review/reviewer-a.json",
+      reviewerB: ".artifacts/loop-review/reviewer-b.json"
+    });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
+
+    assert.equal(manifest.milestoneOutcome, "HUMAN_REQUIRED");
+    assert.equal(manifest.reviewers.reviewerA.status, "PASS");
+    assert.equal(manifest.reviewers.reviewerA.sourceDiffSha256, manifest.sourceDiffSha256);
+    assert.equal(manifest.reviewers.reviewerB.status, "PASS");
+    assert.equal(manifest.reviewers.reviewerB.packetDiffSha256, manifest.packetDiffSha256);
+    assert.match(packet, /## Reviewer A\n\n- status: PASS/);
+    assert.match(packet, /## Reviewer B\n\n- status: PASS/);
+  });
+});
+
 test("PASS changes.patch is byte-exact with literal source diff", async () => {
   await withRepo(async ({ repo, base, head }) => {
     const result = await generateSealedPacket({ repo, base, head });
