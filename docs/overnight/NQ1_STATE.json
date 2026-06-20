@@ -484,6 +484,33 @@
         "visualQuality": "manual_review",
         "svgaWebRenderSmoke": "optional_heavy_check"
       }
+    },
+    {
+      "id": "after-wp06-loop-validate",
+      "status": "pass",
+      "command": "npm run loop:validate",
+      "startedAt": "2026-06-20T21:11:30.821Z",
+      "finishedAt": "2026-06-20T21:12:35.084Z",
+      "durationMs": 64263,
+      "headCommitAtStart": "38a487c8d4346cc8de7f7673ada97079ce3f3e97",
+      "headCommitAtFinish": "38a487c8d4346cc8de7f7673ada97079ce3f3e97",
+      "sourceWorkspaceCleanAtStart": true,
+      "sourceWorkspaceCleanAtFinish": true,
+      "summary": {
+        "handoffTests": "54 pass / 0 fail",
+        "rootTests": "179 pass / 0 fail",
+        "launcherTests": "3 pass / 0 fail",
+        "webInspectionTests": "13 pass / 0 fail",
+        "electronPrototypeTests": "3 pass / 0 fail",
+        "svgaWebPrototypeTests": "14 pass / 0 fail"
+      },
+      "knownGaps": {
+        "lint": "not_available",
+        "format": "not_available",
+        "performanceBenchmark": "not_available",
+        "visualQuality": "manual_review",
+        "svgaWebRenderSmoke": "optional_heavy_check"
+      }
     }
   ]
 }
