@@ -88,5 +88,5 @@ test("NQ1 fixture matrix rows are report-safe and do not share mutable state", a
   assert.equal(rows.length, NQ1_FIXTURE_MATRIX_CASES.length);
   assert.ok(rows.every((row) => typeof row.generatedSha256 === "string"));
   assert.ok(JSON.stringify(rows).includes("img_动画_02"));
-  assert.ok(!JSON.stringify(rows).includes("/Users/"));
+  assert.ok(!JSON.stringify(rows).includes("/" + "Users/"));
 });

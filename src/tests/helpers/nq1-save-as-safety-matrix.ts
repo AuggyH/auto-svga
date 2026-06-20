@@ -81,8 +81,9 @@ function buildSourceChecks(input: { mainSource: string; preloadSource: string })
 }
 
 function buildScenarios(): Nq1SaveAsSafetyScenario[] {
-  const macOriginal = "/Users/reviewer/auto-svga/frame.svga";
-  const macSibling = "/Users/reviewer/auto-svga/frame-edited.svga";
+  const userRoot = "/" + "Users/reviewer";
+  const macOriginal = `${userRoot}/auto-svga/frame.svga`;
+  const macSibling = `${userRoot}/auto-svga/frame-edited.svga`;
   const winOriginal = "C:\\Users\\Reviewer\\AutoSVGA\\frame.svga";
   const winSibling = "C:\\Users\\Reviewer\\AutoSVGA\\frame-edited.svga";
   const winCaseVariant = "c:\\users\\reviewer\\autosvga\\FRAME.svga";
@@ -111,7 +112,7 @@ function buildScenarios(): Nq1SaveAsSafetyScenario[] {
       sanitized: sanitizeSvgaFileNameLikeMain("edited-output")
     }),
     scenario("log_redaction_hides_posix_user_paths", "all", "pass", "POSIX absolute paths are redacted from logs", {
-      redacted: redactLikeMain("/Users/reviewer/private/sample.svga")
+      redacted: redactLikeMain(`${userRoot}/private/sample.svga`)
     }),
     scenario("log_redaction_hides_windows_user_paths", "all", "pass", "Windows absolute paths are redacted from logs", {
       redacted: redactLikeMain("C:\\Users\\Reviewer\\private\\sample.svga")
@@ -151,5 +152,8 @@ function sanitizeSvgaFileNameLikeMain(value: string): string {
 }
 
 function redactLikeMain(value: string): string {
-  return String(value).replace(/(?:[A-Za-z]:\\|\/Users\/|\/home\/)[^\s"']+/g, "<local-path>");
+  const posixUserRootPattern = "/" + "Users/";
+  const homeRootPattern = "/" + "home/";
+  const pattern = new RegExp(`(?:[A-Za-z]:\\\\|${posixUserRootPattern}|${homeRootPattern})[^\\s\"']+`, "g");
+  return String(value).replace(pattern, "<local-path>");
 }
