@@ -1581,11 +1581,13 @@ export async function generateHandoffPacket(options) {
     const worktreePatch = safePathspecs.length
       ? gitLiteralBytes(["diff", "--binary", "--no-ext-diff", "--no-textconv", "--", ...safePathspecs], { cwd: repoRoot }).stdout
       : Buffer.from("# No safe uncommitted tracked paths.\n");
-    sourcePatchBuffer = Buffer.concat([
-      sourcePatchBuffer,
-      Buffer.from("\n\n# Uncommitted tracked changes\n"),
-      worktreePatch
-    ]);
+    if (worktreePatch.length > 0) {
+      sourcePatchBuffer = Buffer.concat([
+        sourcePatchBuffer,
+        Buffer.from("\n\n# Uncommitted tracked changes\n"),
+        worktreePatch
+      ]);
+    }
     const untracked = dirtyStatus.filter((entry) => entry.status === "??");
     if (untracked.length) {
       const untrackedText = [
