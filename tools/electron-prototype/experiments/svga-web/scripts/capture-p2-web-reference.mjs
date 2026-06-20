@@ -52,6 +52,7 @@ async function waitForHealth(origin, timeoutMs = 12_000) {
 async function addArtifact(index, fileName, scenario, source, mode, viewport) {
   const filePath = path.join(artifactRoot, fileName);
   const bytes = await readFile(filePath);
+  const fixture = mode === "empty" ? null : mode === "expected-invalid" ? invalidFixture : selectedFixture;
   const record = {
     scenario,
     mode,
@@ -61,15 +62,9 @@ async function addArtifact(index, fileName, scenario, source, mode, viewport) {
     mime: fileName.endsWith(".json") ? "application/json" : fileName.endsWith(".svga") ? "application/octet-stream" : "image/png",
     sizeBytes: bytes.byteLength,
     sha256: createHash("sha256").update(bytes).digest("hex"),
-    fixture: selectedFixture?.label ?? "unknown",
+    fixture: fixture?.label ?? null,
     inputKind: mode === "empty" ? "none" : mode === "expected-invalid" ? "expected-invalid" : "valid",
-    ...(mode === "empty" ? {
-      fixtureLabel: null,
-      fixtureSha256: null,
-      fixtureSizeBytes: null,
-      fixtureSourcePath: null,
-      fixtureArtifactPath: null
-    } : fixtureFields(mode === "expected-invalid" ? invalidFixture : selectedFixture)),
+    ...fixtureFields(fixture),
     headCommit: index.headCommit,
     generatedAt: new Date().toISOString(),
     humanReviewRequired: true
