@@ -16,6 +16,7 @@ Status: in progress
 - `NQ1-WP07` complete: cleanup stress validation covered 17 source checks, 5 model scenarios, 80 stress cycles, and ended with 0 active resources.
 - `NQ1-WP08` complete: performance baseline captured 5 local metrics with totalDurationMs=224.131 and broad hangGuardMs=120000.
 - `NQ1-WP09` complete: accessibility and error-semantics audit covered 23 source checks and retained 2 manual-review advisories.
-- Current next step: checkpoint `npm run loop:validate` after `NQ1-WP07` through `NQ1-WP09`, then start `NQ1-WP10` test determinism, flake, and developer documentation.
+- Checkpoint after `NQ1-WP09`: `npm run loop:validate` passed on clean source commit `eaa26de6300ddae1d1bc541503eac34109e45059` with root tests 182 pass / 0 fail.
+- Current next package: `NQ1-WP10` test determinism, flake, and developer documentation.
 
 Final report will be completed during packaging. Do not treat this placeholder as terminal evidence.
