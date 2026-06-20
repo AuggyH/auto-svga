@@ -12,7 +12,7 @@
       <header>
         <p class="eyebrow">内部原型 · 非生产版本 · 仅供内部测试</p>
         <h1>Auto SVGA 内部试用原型</h1>
-        <p id="runtimeStatus">准备中</p>
+        <p id="runtimeStatus">请选择本地 SVGA 文件开始检查。</p>
       </header>
       <section aria-labelledby="playerTitle">
         <div class="sectionTitle">
@@ -21,14 +21,24 @@
         </div>
         <div id="dropZone" class="dropZone">
           <canvas id="player" width="300" height="300" aria-label="SVGA player output"></canvas>
-          <p>选择或拖入本地 SVGA 文件。内部原型，非生产版本。</p>
+          <p id="dropZoneHint">选择或拖入本地 SVGA 文件。内部原型，非生产版本。</p>
         </div>
         <div class="actions">
           <label class="fileButton">
             选择本地 SVGA
             <input id="fileInput" type="file" accept=".svga,application/octet-stream">
           </label>
+          <button id="playButton" type="button" disabled>播放</button>
+          <button id="pauseButton" type="button" disabled>暂停</button>
+          <button id="replayButton" type="button" disabled>重播</button>
         </div>
+        <dl id="fileInfo" class="fileInfo" aria-label="Loaded SVGA file information">
+          <div><dt>文件</dt><dd>未加载</dd></div>
+          <div><dt>大小</dt><dd>--</dd></div>
+          <div><dt>画布</dt><dd>--</dd></div>
+          <div><dt>帧率</dt><dd>--</dd></div>
+          <div><dt>帧数</dt><dd>--</dd></div>
+        </dl>
       </section>
       <section aria-labelledby="reportTitle">
         <div class="sectionTitle">

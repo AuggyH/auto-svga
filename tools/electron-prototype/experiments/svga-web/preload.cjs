@@ -10,5 +10,8 @@ contextBridge.exposeInMainWorld("autoSvgaPrototype", Object.freeze({
   },
   reportAuditResult(result) {
     return ipcRenderer.invoke("svga-web-experiment:audit-result", result);
+  },
+  captureArtifact(scenario) {
+    return ipcRenderer.invoke("svga-web-experiment:capture-artifact", scenario);
   }
 }));

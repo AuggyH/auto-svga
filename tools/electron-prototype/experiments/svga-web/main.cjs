@@ -1,15 +1,20 @@
-const { randomBytes } = require("node:crypto");
-const { mkdirSync, rmSync } = require("node:fs");
+const { createHash, randomBytes } = require("node:crypto");
+const { mkdirSync, rmSync, writeFileSync } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { app, BrowserWindow, ipcMain, session } = require("electron");
 
 const smokeMode = process.argv.includes("--smoke");
+const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
 const auditPlayerArgument = process.argv.find((argument) => argument.startsWith("--audit-player="));
 const auditPlayer = auditPlayerArgument?.split("=")[1];
 const auditMode = auditPlayer === "svga-web" || auditPlayer === "svgaplayerweb";
 const appRoot = app.getAppPath();
+const repoRoot = path.resolve(appRoot, "../../../..");
+const productArtifactRoot = process.env.AUTO_SVGA_P1_ARTIFACTS
+  ? path.resolve(process.env.AUTO_SVGA_P1_ARTIFACTS)
+  : path.join(repoRoot, ".artifacts/product/P1");
 const sessionRoot = path.join(os.tmpdir(), `auto-svga-svga-web-spike-${process.pid}`);
 const reportToken = randomBytes(24).toString("hex");
 let experimentServer;
@@ -18,8 +23,16 @@ let smokeFinished = false;
 let auditFinished = false;
 let cspViolationSeen = false;
 let cleanedUp = false;
+const productArtifactIndex = {
+  milestoneId: "P1",
+  title: "Electron Desktop Mainline Baseline: Local SVGA Open, Playback And Inspection",
+  generatedAt: new Date().toISOString(),
+  humanReviewRequired: true,
+  artifacts: []
+};
 
 mkdirSync(sessionRoot, { recursive: true });
+if (productSmokeMode) mkdirSync(productArtifactRoot, { recursive: true });
 app.setPath("userData", path.join(sessionRoot, "user-data"));
 app.setPath("sessionData", path.join(sessionRoot, "session-data"));
 
@@ -47,6 +60,16 @@ function validateSmokeResult(value) {
   ];
   if (!keys.every((key) => typeof value[key] === "boolean")) return undefined;
   return Object.fromEntries(keys.map((key) => [key, key === "noCspViolation" ? value[key] && !cspViolationSeen : value[key]]));
+}
+
+function validateArtifactScenario(value) {
+  const allowed = new Set([
+    "empty-state",
+    "valid-svga-loaded",
+    "inspection-panel",
+    "invalid-file-state"
+  ]);
+  return allowed.has(value) ? value : undefined;
 }
 
 function validateAuditResult(value) {
@@ -104,11 +127,34 @@ function redactLogMessage(value) {
 async function finishSmoke(window, result) {
   if (smokeFinished) return;
   smokeFinished = true;
+  if (productSmokeMode) writeProductArtifactIndex();
   const passed = Object.values(result).every(Boolean);
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify({ ...result, passed })}`);
   await cleanupRuntime();
   window.destroy();
   app.exit(passed ? 0 : 1);
+}
+
+function writeProductArtifactIndex() {
+  const indexPath = path.join(productArtifactRoot, "artifact-index.json");
+  writeFileSync(indexPath, `${JSON.stringify(productArtifactIndex, null, 2)}\n`);
+}
+
+async function captureProductArtifact(window, scenario) {
+  const png = (await window.webContents.capturePage()).toPNG();
+  const fileName = `${scenario}.png`;
+  const filePath = path.join(productArtifactRoot, fileName);
+  writeFileSync(filePath, png);
+  productArtifactIndex.artifacts = productArtifactIndex.artifacts.filter((artifact) => artifact.scenario !== scenario);
+  productArtifactIndex.artifacts.push({
+    scenario,
+    path: `.artifacts/product/P1/${fileName}`,
+    sizeBytes: png.byteLength,
+    sha256: createHash("sha256").update(png).digest("hex"),
+    humanReviewRequired: true
+  });
+  writeProductArtifactIndex();
+  return { path: `.artifacts/product/P1/${fileName}`, sizeBytes: png.byteLength };
 }
 
 async function finishAudit(window, result) {
@@ -184,6 +230,14 @@ async function createExperimentWindow() {
     return { accepted: true };
   });
 
+  ipcMain.handle("svga-web-experiment:capture-artifact", async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    if (!productSmokeMode) throw new Error("Product artifact capture is only available in product smoke mode");
+    const scenario = validateArtifactScenario(input);
+    if (!scenario) throw new Error("Invalid product artifact scenario");
+    return captureProductArtifact(window, scenario);
+  });
+
   ipcMain.handle("svga-web-experiment:audit-result", async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     const result = validateAuditResult(input);
@@ -223,7 +277,8 @@ async function createExperimentWindow() {
     }, 120_000).unref();
   }
 
-  await window.loadURL(auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}/`);
+  const productMode = smokeMode ? `?mode=smoke${productSmokeMode ? "&artifacts=1" : ""}` : "";
+  await window.loadURL(auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}/${productMode}`);
 }
 
 app.whenReady().then(createExperimentWindow).catch((error) => {

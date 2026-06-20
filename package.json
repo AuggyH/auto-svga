@@ -26,7 +26,9 @@
     "build:example": "tsc -p tsconfig.json && node dist/cli.js build examples/avatar_frame_basic",
     "export:example": "tsc -p tsconfig.json && node dist/cli.js export examples/avatar_frame_basic",
     "preview:player": "node tools/svga-player-preview/server.mjs",
-    "local:preview": "node tools/launch-local-preview.mjs"
+    "local:preview": "node tools/launch-local-preview.mjs",
+    "desktop:dev": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev",
+    "desktop:smoke": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke"
   },
   "dependencies": {
     "fast-png": "8.0.0",

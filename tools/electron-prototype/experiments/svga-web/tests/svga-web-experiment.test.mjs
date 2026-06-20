@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { legacyBrowserBaselineAuditCsp, strictCsp, startSvgaWebExperimentServer } from "../server.mjs";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = path.resolve(experimentRoot, "../../../..");
 const vendorPath = path.join(experimentRoot, "vendor/svga-web-2.4.4.js");
 
 test("vendored svga-web asset is pinned and strict-CSP compatible", async () => {
@@ -52,24 +53,53 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /contextIsolation:\s*true/);
   assert.match(main, /nodeIntegration:\s*false/);
   assert.match(main, /sandbox:\s*true/);
+  assert.match(main, /productSmokeMode/);
+  assert.match(main, /captureProductArtifact/);
+  assert.match(main, /validateArtifactScenario/);
   assert.match(main, /setPermissionRequestHandler/);
   assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/);
   assert.match(main, /will-navigate/);
   assert.match(main, /webRequest\.onBeforeRequest/);
   assert.match(preload, /reportSmokeResult/);
   assert.match(preload, /reportAuditResult/);
+  assert.match(preload, /captureArtifact/);
   assert.doesNotMatch(preload, /dialog|shell|openPath|readFile/);
   assert.doesNotMatch(preload, /require\("node:fs"\)|require\("fs"\)/);
 });
 
-test("renderer supports local file input and drag-drop without host filesystem access", async () => {
+test("renderer supports local file input, drag-drop, controls, and invalid file states without host filesystem access", async () => {
   const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   assert.match(renderer, /fileInput\.addEventListener\("change"/);
   assert.match(renderer, /dropZone\.addEventListener\("drop"/);
+  assert.match(renderer, /playButton\.addEventListener\("click"/);
+  assert.match(renderer, /pauseButton\.addEventListener\("click"/);
+  assert.match(renderer, /replayButton\.addEventListener\("click"/);
+  assert.match(renderer, /showEmptyState/);
+  assert.match(renderer, /SVGA 加载失败/);
+  assert.match(renderer, /captureArtifact\("empty-state"\)/);
+  assert.match(renderer, /captureArtifact\("valid-svga-loaded"\)/);
+  assert.match(renderer, /captureArtifact\("inspection-panel"\)/);
+  assert.match(renderer, /captureArtifact\("invalid-file-state"\)/);
   assert.match(renderer, /File\(\[bytes\], "file-input-smoke\.svga"/);
   assert.match(renderer, /File\(\[bytes\], "drag-drop-smoke\.svga"/);
   assert.match(renderer, /不支持的文件类型/);
+  assert.match(page, /id="playButton"/);
+  assert.match(page, /id="pauseButton"/);
+  assert.match(page, /id="replayButton"/);
+  assert.match(page, /id="fileInfo"/);
   assert.doesNotMatch(renderer, /require\(|ipcRenderer|node:fs|\/Users\//);
+});
+
+test("root package exposes explicit desktop entrypoints without changing default scripts", async () => {
+  const rootPackage = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
+  const experimentPackage = JSON.parse(await readFile(path.join(experimentRoot, "package.json"), "utf8"));
+  assert.equal(rootPackage.scripts["desktop:dev"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev");
+  assert.equal(rootPackage.scripts["desktop:smoke"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke");
+  assert.equal(rootPackage.scripts.test, "npm run test:all");
+  assert.equal(rootPackage.scripts["local:preview"], "node tools/launch-local-preview.mjs");
+  assert.match(experimentPackage.scripts["desktop:dev"], /electron \.$/);
+  assert.match(experimentPackage.scripts["desktop:smoke"], /--smoke --product-smoke/);
 });
 
 test("real sample audit harness stores aliases and avoids absolute paths in report output", async () => {
