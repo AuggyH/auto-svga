@@ -8,7 +8,7 @@ Date: 2026-06-21
 - Milestone: P4 Multi-Resource Editing, Undo/Redo And Export Integrity
 - State: terminal_human_required
 - Next Action: external_review
-- repairRound: 0
+- repairRound: 1
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -22,8 +22,10 @@ Date: 2026-06-21
 - P4 implementation adds multi-resource image replacement, schemaVersion 3 round-trip reports, undo/redo, save-point dirty state, stale preview operation guards, P4 Electron smoke artifacts, and visible review upload packaging.
 - Targeted editor/history tests pass.
 - Isolated svga-web prototype tests pass.
-- `AUTO_SVGA_PRODUCT_MILESTONE=P4 npm run desktop:smoke` passed and generated P4 screenshots, reports, and edited SVGA output from the real Electron app.
-- Pre-terminal `npm run loop:validate` passed with intentionally uncommitted P4 source changes.
+- Reviewer A candidate review found two blocking contract issues: P4 single-resource replacement could pass the schemaVersion 3 gate, and Save As was not bound tightly enough to the active validated revision.
+- Repair-1 fixes both blockers: P4 single-resource replacement is preview-only with `p4_minimum_replacement_count`, and Save As now requires revision/report/byte-hash validation plus reopened playback/report success before save-point advancement.
+- `AUTO_SVGA_PRODUCT_MILESTONE=P4 npm run desktop:smoke` passed after repair-1 and regenerated P4 screenshots, reports, and edited SVGA output from the real Electron app.
+- Pre-terminal `npm run loop:validate` must pass again after repair-1 before final sealed packet generation.
 
 ## Next Action
 

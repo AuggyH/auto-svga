@@ -297,6 +297,22 @@ test("SVGA image editor reports P4 per-resource integrity for multiple replaceme
   );
 });
 
+test("SVGA image editor does not mark P4 report passed with only one replacement", async () => {
+  const bytes = await createSvgaFixture();
+  const editor = new SvgaImageResourceEditor();
+  const replacementFrame = createColoredPng(300, 300, [0, 0, 255, 255]);
+
+  const result = await editor.replaceImages(bytes, [
+    { resourceKey: "img_frame", pngBytes: replacementFrame }
+  ], "fixture.svga", { milestoneId: "P4" });
+
+  assert.equal(result.roundTripReport.schemaVersion, 3);
+  assert.equal(result.roundTripReport.replacementCount, 1);
+  assert.deepEqual(result.roundTripReport.unexpectedChanges, ["p4_minimum_replacement_count"]);
+  assert.equal(result.roundTripReport.replacedResources.every((resource) => resource.passed), true);
+  assert.equal(result.roundTripReport.passed, false);
+});
+
 test("SVGA image editor rejects duplicate replacements for the same resource", async () => {
   const editor = new SvgaImageResourceEditor();
   const bytes = await createSvgaFixture();

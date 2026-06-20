@@ -163,6 +163,7 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   assert.match(renderer, /openSvgaFile/);
   assert.match(renderer, /saveEditedSvga/);
   assert.match(renderer, /sourceId: sourceFileId/);
+  assert.match(renderer, /validation/);
   assert.match(renderer, /\/api\/svga-image-edit-session/);
   assert.match(renderer, /\/api\/svga-image-replace/);
   assert.match(renderer, /renderP3ComparisonArtifact/);
@@ -247,6 +248,13 @@ test("P4 multi-resource editing keeps history and export integrity boundaries is
   assert.match(renderer, /operationSequence/);
   assert.match(renderer, /maybeRunP4EditSmoke/);
   assert.match(renderer, /reportP4EditResult/);
+  assert.match(renderer, /createSaveRevisionValidation/);
+  assert.match(renderer, /roundTripReportDigest/);
+  assert.match(renderer, /saveOperationSequence !== editOperationSequence/);
+  assert.match(renderer, /reopenedResult\.playback/);
+  assert.match(main, /validateSaveRevisionBinding/);
+  assert.match(main, /editedBytesSha256/);
+  assert.match(main, /value\.replacementCount < 2/);
   assert.match(preload, /reportP4EditResult/);
   assert.match(renderer, /milestoneId: productMilestoneId === "P3" \? "P3" : "P4"/);
   assert.match(server, /const milestoneId = input\?\.milestoneId === "P3" \? "P3" : "P4"/);

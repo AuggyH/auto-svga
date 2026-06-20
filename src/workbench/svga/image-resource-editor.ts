@@ -436,7 +436,10 @@ export class SvgaImageResourceEditor {
       replacements: replacementMap,
       options
     });
-    if (!report.passed) {
+    const onlyP4MinimumReplacementGateFailed = options.milestoneId === "P4"
+      && report.unexpectedChanges.length === 1
+      && report.unexpectedChanges[0] === "p4_minimum_replacement_count";
+    if (!report.passed && !onlyP4MinimumReplacementGateFailed) {
       throw new SvgaImageEditError("unsupported_round_trip_file", "Edited SVGA failed round-trip invariant checks.", {
         unexpectedChanges: report.unexpectedChanges
       });
@@ -693,6 +696,9 @@ function buildRoundTripReportV3(input: {
     checkEqual("audio_count", input.originalInvariants.audioCount, input.exportedInvariants.audioCount, "Audio count must not change."),
     checkDigest("audio_entries", input.originalInvariants.audios, input.exportedInvariants.audios, "Audio entries are canonicalized as known protobuf fields."),
     checkEqual("image_resource_key_set", input.originalInvariants.imageKeys, input.exportedInvariants.imageKeys, "Image resource key set must remain stable."),
+    ...(input.options?.milestoneId === "P4"
+      ? [checkEqual("p4_minimum_replacement_count", true, replacedResources.length >= 2, "P4 final pass requires at least two independent resource replacements.")]
+      : []),
     checkUntouchedImages(input.originalInvariants, input.exportedInvariants, input.replacements),
     checkReplacedResourceReferences(input.originalInvariants, input.replacements),
     checkReplacedImageHashes(replacedResources),
@@ -743,7 +749,7 @@ function buildRoundTripReportV3(input: {
     playbackPassed: false,
     canvasNonBlank: false,
     passed: unexpectedChanges.length === 0
-      && replacedResources.length > 0
+      && replacedResources.length >= 2
       && replacedResources.every((resource) => resource.passed)
   };
 }

@@ -754,6 +754,9 @@ async function saveEditedSvga() {
     renderCurrentReportEditOnly();
     return;
   }
+  const saveOperationSequence = editOperationSequence;
+  const saveReplacementDigest = replacementInputDigest(replacementInputs);
+  const validation = await createSaveRevisionValidation();
   editExportState = "exporting";
   renderCurrentReportEditOnly();
   try {
@@ -761,16 +764,33 @@ async function saveEditedSvga() {
       suggestedName: editedFileName(sourceSvgaName),
       bytesBase64: bytesToBase64(editedSvgaBytes),
       originalSha256: sourceSvgaSha256,
-      sourceId: sourceFileId
+      sourceId: sourceFileId,
+      validation
     });
     if (result.status === "cancelled") {
       editExportState = "idle";
       renderCurrentReportEditOnly();
       return;
     }
+    if (saveOperationSequence !== editOperationSequence
+      || saveReplacementDigest !== replacementInputDigest(replacementInputs)) {
+      throw new Error("保存期间编辑状态已变化，请重新另存为。");
+    }
+    const savedBytes = base64ToBytes(result.savedSvgaBase64);
+    const reopenedResult = await loadSvgaBytes(savedBytes, result.fileName, {
+      sizeBytes: result.sizeBytes,
+      preserveEditState: true,
+      source: "reopened-export",
+      operationSequence: saveOperationSequence
+    });
+    if (saveOperationSequence !== editOperationSequence
+      || !reopenedResult.playback
+      || !reopenedResult.canvasNonBlank
+      || !reopenedResult.inspectionReport) {
+      throw new Error("另存为文件重新打开验证失败，保存点未更新。");
+    }
     exportInfo = result;
     editExportState = "saved";
-    const savedBytes = base64ToBytes(result.savedSvgaBase64);
     sourceSvgaBytes = savedBytes.slice(0);
     sourceSvgaName = result.fileName;
     sourceSvgaSha256 = await sha256Hex(sourceSvgaBytes);
@@ -778,11 +798,7 @@ async function saveEditedSvga() {
     replacementInputs = new Map();
     editedSvgaBytes = undefined;
     resetEditHistoryToCurrent();
-    await loadSvgaBytes(savedBytes, result.fileName, {
-      sizeBytes: result.sizeBytes,
-      preserveEditState: true,
-      source: "reopened-export"
-    });
+    renderCurrentReportEditOnly();
     runtimeStatus.textContent = "已另存为新的 SVGA，并重新打开验证。";
   } catch (error) {
     editExportState = "failed";
@@ -792,7 +808,7 @@ async function saveEditedSvga() {
 }
 
 function canSaveEditedSvga() {
-  return Boolean(editedSvgaBytes) && (Boolean(sourceFileId) || isSmokeMode);
+  return Boolean(editedSvgaBytes) && (Boolean(sourceFileId) || isSmokeMode) && hasCurrentSaveValidation();
 }
 
 function hasUnsavedEdits() {
@@ -828,6 +844,51 @@ function replacementInputDigest(inputs) {
       pngSha256: replacement.pngSha256 ?? "",
       sizeBytes: replacement.pngBytes?.byteLength ?? 0
     })));
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+async function roundTripReportDigest(report) {
+  return sha256Hex(new TextEncoder().encode(stableStringify(report ?? null)));
+}
+
+function hasCurrentSaveValidation() {
+  if (!lastRoundTripReport?.passed) return false;
+  if (!Array.isArray(lastRoundTripReport.unexpectedChanges) || lastRoundTripReport.unexpectedChanges.length > 0) return false;
+  if (productMilestoneId === "P4") {
+    return lastRoundTripReport.schemaVersion === 3
+      && lastRoundTripReport.milestoneId === "P4"
+      && Array.isArray(lastRoundTripReport.replacements)
+      && lastRoundTripReport.replacements.length >= 2
+      && lastRoundTripReport.replacements.every((replacement) => replacement.passed === true);
+  }
+  return lastRoundTripReport.schemaVersion === 2;
+}
+
+async function createSaveRevisionValidation() {
+  if (!editedSvgaBytes || !hasCurrentSaveValidation()) {
+    throw new Error("当前编辑结果尚未通过导出完整性验证，不能另存为。");
+  }
+  return {
+    schemaVersion: 1,
+    milestoneId: productMilestoneId,
+    operationSequence: editOperationSequence,
+    replacementDigest: replacementInputDigest(replacementInputs),
+    roundTripReportDigest: await roundTripReportDigest(lastRoundTripReport),
+    editedBytesSha256: await sha256Hex(editedSvgaBytes),
+    reportSchemaVersion: lastRoundTripReport.schemaVersion,
+    reportMilestoneId: lastRoundTripReport.milestoneId,
+    reportPassed: lastRoundTripReport.passed === true,
+    replacementCount: Array.isArray(lastRoundTripReport.replacements) ? lastRoundTripReport.replacements.length : 1,
+    unexpectedChangesEmpty: Array.isArray(lastRoundTripReport.unexpectedChanges)
+      && lastRoundTripReport.unexpectedChanges.length === 0
+  };
 }
 
 function resetEditHistoryToCurrent() {

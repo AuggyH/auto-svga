@@ -130,6 +130,8 @@ function validateEditedSvgaSaveInput(value) {
   if (typeof value.bytesBase64 !== "string" || value.bytesBase64.length === 0) return undefined;
   const bytes = Buffer.from(value.bytesBase64, "base64");
   if (bytes.byteLength <= 0 || bytes.byteLength > 25 * 1024 * 1024) return undefined;
+  const validation = validateSaveRevisionBinding(value.validation, bytes);
+  if (!validation) return undefined;
   const suggestedName = sanitizeSvgaFileName(
     typeof value.suggestedName === "string" ? value.suggestedName : "untitled-edited.svga"
   );
@@ -137,7 +139,36 @@ function validateEditedSvgaSaveInput(value) {
   return {
     bytes,
     suggestedName,
-    sourceId
+    sourceId,
+    validation
+  };
+}
+
+function validateSaveRevisionBinding(value, bytes) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const milestoneId = value.milestoneId === "P3" ? "P3" : value.milestoneId === "P4" ? "P4" : "";
+  if (!milestoneId || milestoneId !== productMilestoneId) return undefined;
+  if (value.schemaVersion !== 1) return undefined;
+  if (!Number.isInteger(value.operationSequence) || value.operationSequence < 0) return undefined;
+  if (typeof value.replacementDigest !== "string" || value.replacementDigest.length === 0 || value.replacementDigest.length > 20_000) return undefined;
+  if (typeof value.roundTripReportDigest !== "string" || !/^[a-f0-9]{64}$/.test(value.roundTripReportDigest)) return undefined;
+  if (typeof value.editedBytesSha256 !== "string" || !/^[a-f0-9]{64}$/.test(value.editedBytesSha256)) return undefined;
+  if (value.editedBytesSha256 !== createHash("sha256").update(bytes).digest("hex")) return undefined;
+  if (value.reportPassed !== true || value.unexpectedChangesEmpty !== true) return undefined;
+  if (milestoneId === "P4") {
+    if (value.reportSchemaVersion !== 3 || value.reportMilestoneId !== "P4") return undefined;
+    if (!Number.isInteger(value.replacementCount) || value.replacementCount < 2) return undefined;
+  } else if (value.reportSchemaVersion !== 2) {
+    return undefined;
+  }
+  return {
+    milestoneId,
+    operationSequence: value.operationSequence,
+    replacementDigest: value.replacementDigest,
+    roundTripReportDigest: value.roundTripReportDigest,
+    editedBytesSha256: value.editedBytesSha256,
+    reportSchemaVersion: value.reportSchemaVersion,
+    replacementCount: value.replacementCount
   };
 }
 
