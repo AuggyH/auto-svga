@@ -31,4 +31,4 @@ Date: 2026-06-20
 
 ## Next Action
 
-Await external review and sealed PASS packet consumption. Do not implement, repair, validate, or continue P2 work from this terminal state unless a reviewer or owner explicitly returns `REPAIR_REQUIRED`.
+Await external packet consumption. No local action is required from this terminal state.
