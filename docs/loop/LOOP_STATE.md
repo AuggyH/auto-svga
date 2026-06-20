@@ -7,7 +7,7 @@ Date: 2026-06-20
 - milestoneId: P1
 - Milestone: P1 Electron Desktop Mainline Baseline: Local SVGA Open, Playback And Inspection
 - State: terminal_pass
-- Next Action: start_P2
+- Next Action: external_review
 - repairRound: 2
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
@@ -24,4 +24,4 @@ Date: 2026-06-20
 
 ## Next Action
 
-Start P2: Desktop Product Shell And Web Preview Parity.
+External review packet consumption. P2 contract follows after P1 PASS packet acceptance.
