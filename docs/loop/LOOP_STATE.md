@@ -4,15 +4,15 @@ Date: 2026-06-20
 
 ## Current Milestone
 
-- milestoneId: P2
-- Milestone: P2 Desktop Product Shell And Web Preview Parity
-- State: terminal_pass
-- Next Action: external_review
-- repairRound: 4
+- milestoneId: P3
+- Milestone: P3 Basic Image Resource Replacement And Save As
+- State: in_progress
+- Next Action: implementation
+- repairRound: 0
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
-- Milestone start commit: `116449560e9842a88597e1a70bb37417ea7223c4`
+- Milestone start commit: `2b5bd05a79a77d3f292a73267dd910f5b1f97013`
 
 ## Current Evidence
 
@@ -46,7 +46,12 @@ Date: 2026-06-20
 - P2 accepted capabilities include shared product identity, Web-aligned desktop shell, player-first workspace hierarchy, structured inspection, product states, same-fixture Web/Desktop evidence, independent normal/smoke runtime, local-only Electron security boundary, sanitized review bundle, and Reviewer A/B evidence.
 - P2 explicit evidence debt is non-blocking: final packet historicalReviewerEvidence remained PENDING_CANDIDATE_REVIEW despite sealed Reviewer A/B PASS, Human Decision evidence included one stale intermediate commit reference, and Reviewer B product categories did not expose a separate bundlePrivacy category while bundle-privacy-audit.json passed.
 - Browser workflow remains the stable rollback.
+- P2 owner acceptance was committed at `2b5bd05a79a77d3f292a73267dd910f5b1f97013`.
+- P2 final PASS packet was sealed at `.artifacts/loop-handoff/P2-2b5bd05/REVIEW_PACKET.md`.
+- P3 branch `agent/codex/p3-basic-image-resource-editing` was created from the P2 owner acceptance commit.
+- P3 baseline `npm run loop:validate` passed before implementation.
+- P3 editing capability audit confirms the safe default is a restricted SVGA subset editor: replace existing `MovieEntity.images[resourceKey]` PNG bytes only, then reject any export with failed decode/playback/invariant checks.
 
 ## Next Action
 
-External review is complete for P2. Start P3 from the accepted P2 head. Do not create P2 repair-5.
+Implement P3 according to the frozen contract. Do not modify P2 and do not create P2 repair-5.
