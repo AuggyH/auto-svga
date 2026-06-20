@@ -6,7 +6,7 @@ Date: 2026-06-20
 
 - milestoneId: P3
 - Milestone: P3 Basic Image Resource Replacement And Save As
-- State: external_review
+- State: terminal_pass
 - Next Action: external_review
 - repairRound: 2
 - consecutiveNoProgressRounds: 0
