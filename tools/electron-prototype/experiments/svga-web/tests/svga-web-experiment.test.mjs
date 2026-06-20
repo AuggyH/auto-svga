@@ -68,6 +68,11 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /normal-runtime-proof\.json/);
   assert.match(main, /desktop-loaded/);
   assert.match(main, /actual-normal-loaded/);
+  assert.match(main, /open-svga-file/);
+  assert.match(main, /save-edited-svga/);
+  assert.match(main, /p3-edit-result/);
+  assert.match(main, /sourceFilePaths/);
+  assert.match(main, /fsyncSync/);
   assert.match(main, /actualLaunchCommand/);
   assert.match(main, /actualArgvSanitized/);
   assert.match(main, /pathRedactionsApplied/);
@@ -80,6 +85,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(preload, /reportSmokeResult/);
   assert.match(preload, /reportAuditResult/);
   assert.match(preload, /captureArtifact/);
+  assert.match(preload, /openSvgaFile/);
+  assert.match(preload, /saveEditedSvga/);
+  assert.match(preload, /reportP3EditResult/);
   assert.doesNotMatch(preload, /dialog|shell|openPath|readFile/);
   assert.doesNotMatch(preload, /require\("node:fs"\)|require\("fs"\)/);
 });
@@ -149,9 +157,50 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   assert.match(page, /id="playButton"/);
   assert.match(page, /id="pauseButton"/);
   assert.match(page, /id="replayButton"/);
+  assert.match(page, /id="hostOpenButton"/);
+  assert.match(page, /id="pngInput"/);
+  assert.match(renderer, /openHostSvgaFile/);
+  assert.match(renderer, /openSvgaFile/);
+  assert.match(renderer, /saveEditedSvga/);
+  assert.match(renderer, /sourceId: sourceFileId/);
+  assert.match(renderer, /\/api\/svga-image-edit-session/);
+  assert.match(renderer, /\/api\/svga-image-replace/);
+  assert.match(renderer, /renderP3ComparisonArtifact/);
+  assert.match(renderer, /p3-original-edited-comparison/);
   assert.match(page, /id="fileInfo"/);
   assert.match(legacyPage, /Legacy Electron Spike — not product mainline/);
   assert.doesNotMatch(renderer, /require\(|ipcRenderer|node:fs|\/Users\//);
+});
+
+test("P3 image replacement prototype stays isolated and records verified Save As evidence", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
+  const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
+  const server = await readFile(path.join(experimentRoot, "server.mjs"), "utf8");
+  const runtimePrep = await readFile(path.join(experimentRoot, "../../scripts/prepare-runtime.mjs"), "utf8");
+  assert.match(main, /Basic Image Resource Replacement And Save As/);
+  assert.match(main, /Save As target must be different from the original SVGA/);
+  assert.match(main, /sourceFilePaths\.get\(value\.sourceId\)/);
+  assert.match(main, /writeJsonProductArtifact\("resource-edit-report\.json", "p3-resource-edit-report", verifiedResult\)/);
+  assert.match(main, /writeJsonProductArtifact\("round-trip-report\.json", "p3-round-trip-report", verifiedRoundTripReport\)/);
+  assert.match(main, /"p3-resource-list"/);
+  assert.match(main, /"p3-original-edited-comparison": "original-edited-comparison\.png"/);
+  assert.match(preload, /openSvgaFile/);
+  assert.match(preload, /saveEditedSvga/);
+  assert.match(preload, /reportP3EditResult/);
+  assert.match(renderer, /renderEditPanel/);
+  assert.match(renderer, /替换 PNG/);
+  assert.match(renderer, /重置此资源/);
+  assert.match(renderer, /另存为/);
+  assert.match(renderer, /replacement-p3\.png/);
+  assert.match(renderer, /originalCanvasHash !== editedCanvasHash/);
+  assert.match(renderer, /renderP3ComparisonArtifact/);
+  assert.match(server, /\/api\/svga-image-edit-session/);
+  assert.match(server, /\/api\/svga-image-replace/);
+  assert.match(server, /SvgaImageResourceEditor/);
+  assert.match(runtimePrep, /replacement-p3\.png/);
+  assert.doesNotMatch(renderer, /readFile|writeFile|dialog|shell|\/Users\//);
+  assert.doesNotMatch(main, /svga-web-experiment:open-svga-file[\s\S]*persistedAbsolutePath/);
 });
 
 test("root package exposes explicit desktop entrypoints without changing default scripts", async () => {

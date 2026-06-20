@@ -30,10 +30,14 @@ await cp(
 );
 await mkdir(path.join(runtimeRoot, "fixture"), { recursive: true });
 const fixture = await createSyntheticFixture();
+const replacement = await createSyntheticReplacementPng();
 await writeFile(path.join(runtimeRoot, "fixture/avatar-frame-smoke.svga"), fixture);
+await writeFile(path.join(runtimeRoot, "fixture/replacement-p3.png"), replacement);
 await writeFile(path.join(runtimeRoot, "manifest.json"), JSON.stringify({
   fixture: "fixture/avatar-frame-smoke.svga",
   fixtureSha256: sha256(fixture),
+  replacementFixture: "fixture/replacement-p3.png",
+  replacementFixtureSha256: sha256(replacement),
   vendor: expectedVendorHashes
 }, null, 2));
 console.log(`Electron prototype runtime prepared (${fixture.byteLength} byte synthetic SVGA)`);
@@ -78,6 +82,23 @@ async function createSyntheticFixture() {
   const verificationError = MovieEntity.verify(payload);
   if (verificationError) throw new Error(`Synthetic fixture verification failed: ${verificationError}`);
   return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+async function createSyntheticReplacementPng() {
+  const { createTransparentImage, encodeRgbaPng } = await import(
+    pathToFileURL(path.join(runtimeRoot, "dist/utils/png-writer.js")).href
+  );
+  const image = createTransparentImage(80, 80);
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      const offset = (y * image.width + x) * 4;
+      image.pixels[offset] = 230;
+      image.pixels[offset + 1] = 74 + Math.round(x * 0.6);
+      image.pixels[offset + 2] = 56 + Math.round(y * 0.4);
+      image.pixels[offset + 3] = 255;
+    }
+  }
+  return encodeRgbaPng(image);
 }
 
 function sha256(bytes) {

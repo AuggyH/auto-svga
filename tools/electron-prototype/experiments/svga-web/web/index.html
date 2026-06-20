@@ -52,10 +52,12 @@
             </div>
           </div>
           <div class="playerBar" data-player-control-bar>
+            <button id="hostOpenButton" class="fileButton" type="button">打开 SVGA</button>
             <label class="fileButton">
-              选择 SVGA
+              浏览器选择
               <input id="fileInput" type="file" accept=".svga,application/octet-stream">
             </label>
+            <input id="pngInput" type="file" accept=".png,image/png" hidden>
             <button id="playButton" type="button" disabled>播放</button>
             <button id="pauseButton" type="button" disabled>暂停</button>
             <button id="replayButton" type="button" disabled>重播</button>

@@ -494,6 +494,220 @@ summary:focus-visible {
   padding-left: var(--space-3);
 }
 
+.editPanel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.editSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.editSummary span,
+.resourceStatus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  color: var(--textSecondary);
+  background: color-mix(in srgb, var(--floatingSurface) 55%, transparent);
+  font-size: var(--font-meta);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.editError,
+.editWarning {
+  border-left: 2px solid var(--warning);
+  padding-left: var(--space-3);
+  color: var(--textSecondary);
+}
+
+.editError {
+  border-left-color: var(--danger);
+}
+
+.editSuccess {
+  border-left: 2px solid var(--success);
+  padding-left: var(--space-3);
+  color: var(--textSecondary);
+}
+
+.resourceEditorGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.resourceList {
+  display: grid;
+  max-height: 220px;
+  gap: var(--space-2);
+  overflow: auto;
+}
+
+.resourceItem {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 54px;
+  padding: var(--space-2);
+  text-align: left;
+}
+
+.resourceItem.isSelected {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--control-border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surfaceElevated));
+}
+
+.resourceThumb {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  background:
+    linear-gradient(45deg, var(--checkerboardA) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--checkerboardA) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--checkerboardA) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--checkerboardA) 75%);
+  background-color: var(--checkerboardB);
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  background-size: 10px 10px;
+}
+
+.resourceThumb img,
+.resourcePreview img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.resourceText {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.resourceText strong,
+.resourceText small,
+.resourceFacts dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resourceText strong {
+  color: var(--textPrimary);
+  font-size: var(--font-body);
+}
+
+.resourceText small,
+.resourceFacts dt {
+  color: var(--textTertiary);
+  font-size: var(--font-meta);
+}
+
+.resourceDetail {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.resourcePreview {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--floatingSurface) 58%, transparent);
+  color: var(--textTertiary);
+}
+
+.resourcePreview img {
+  width: min(120px, 80%);
+  height: min(120px, 80%);
+}
+
+.resourceFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.resourceFacts div {
+  min-width: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  padding: var(--space-2);
+}
+
+.resourceFacts dd {
+  margin: 2px 0 0;
+  color: var(--textPrimary);
+  font-size: var(--font-body);
+}
+
+.editActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.editActions button {
+  flex: 1 1 100px;
+}
+
+.p3ComparisonPanel {
+  margin-block-start: 0;
+}
+
+.p3ComparisonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.p3ComparisonGrid figure {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--floatingSurface) 58%, transparent);
+}
+
+.p3ComparisonGrid img {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background:
+    linear-gradient(45deg, var(--checkerboardA) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--checkerboardA) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--checkerboardA) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--checkerboardA) 75%);
+  background-color: var(--checkerboardB);
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  background-size: 10px 10px;
+}
+
+.p3ComparisonGrid figcaption {
+  padding: var(--space-2) var(--space-3);
+  color: var(--textSecondary);
+  font-size: var(--font-meta);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
 .inspectionEmpty {
   display: grid;
   min-height: 240px;

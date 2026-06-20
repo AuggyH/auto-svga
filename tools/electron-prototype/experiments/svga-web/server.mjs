@@ -75,6 +75,30 @@ async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
   return new Uint8Array(Buffer.concat(chunks));
 }
 
+async function readRequestJson(request, maxBytes = 50 * 1024 * 1024) {
+  const bytes = await readRequestBytes(request, maxBytes);
+  try {
+    return JSON.parse(Buffer.from(bytes).toString("utf8"));
+  } catch {
+    throw Object.assign(new Error("Request JSON is invalid"), { statusCode: 400 });
+  }
+}
+
+function decodeBase64Field(value, fieldName, maxBytes = 25 * 1024 * 1024) {
+  if (typeof value !== "string" || value.length === 0) {
+    throw Object.assign(new Error(`${fieldName} is required`), { statusCode: 400 });
+  }
+  const bytes = Buffer.from(value, "base64");
+  if (bytes.byteLength > maxBytes) {
+    throw Object.assign(new Error(`${fieldName} is too large`), { statusCode: 413 });
+  }
+  return new Uint8Array(bytes);
+}
+
+function encodeBase64(bytes) {
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("base64");
+}
+
 function resolveStaticPath(appRoot, pathname) {
   const runtimeRoot = path.join(appRoot, ".runtime");
   const mappings = [
@@ -117,7 +141,15 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
   const reportModuleUrl = pathToFileURL(
     path.join(appRoot, ".runtime/dist/hosts/avatar-frame-inspection.js")
   ).href;
+  const editorModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/workbench/svga/image-resource-editor.js")
+  ).href;
+  const inspectorModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/workbench/svga/node-protobuf-inspector.js")
+  ).href;
   let reportServicePromise;
+  let editorPromise;
+  let inspectorPromise;
 
   const server = createServer(async (request, response) => {
     if (!request.url || !isLoopback(request)) return sendText(response, 403, "Forbidden");
@@ -157,6 +189,75 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
       } catch (error) {
         return sendJson(response, error?.statusCode ?? 422, {
           error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/svga-image-edit-session") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const input = await readRequestJson(request);
+        const bytes = decodeBase64Field(input?.svgaBase64, "svgaBase64");
+        const name = path.basename(typeof input?.name === "string" ? input.name : "untitled.svga");
+        editorPromise ??= import(editorModuleUrl).then(({ SvgaImageResourceEditor }) => new SvgaImageResourceEditor());
+        inspectorPromise ??= import(inspectorModuleUrl).then(({ NodeProtobufSvgaInspector }) => new NodeProtobufSvgaInspector());
+        const [editor, inspector] = await Promise.all([editorPromise, inspectorPromise]);
+        const session = await editor.createSession(bytes, name);
+        const inspection = await inspector.inspect(bytes);
+        const imageBytesByKey = new Map(inspection.images.map((image) => [image.imageKey, image.bytes]));
+        return sendJson(response, 200, {
+          session: {
+            ...session,
+            imageResources: session.imageResources.map((resource) => {
+              const imageBytes = imageBytesByKey.get(resource.resourceKey);
+              return {
+                ...resource,
+                thumbnailDataUrl: imageBytes && resource.originalMime === "image/png"
+                  ? `data:image/png;base64,${encodeBase64(imageBytes)}`
+                  : undefined
+              };
+            })
+          }
+        });
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error),
+          code: error?.code
+        });
+      }
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/svga-image-replace") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const input = await readRequestJson(request);
+        const bytes = decodeBase64Field(input?.svgaBase64, "svgaBase64");
+        const name = path.basename(typeof input?.name === "string" ? input.name : "untitled.svga");
+        const replacements = Array.isArray(input?.replacements) ? input.replacements : [];
+        if (replacements.length === 0) {
+          throw Object.assign(new Error("At least one replacement is required"), { statusCode: 400 });
+        }
+        const decodedReplacements = replacements.map((replacement) => ({
+          resourceKey: String(replacement?.resourceKey ?? ""),
+          pngBytes: decodeBase64Field(replacement?.pngBase64, "pngBase64", 10 * 1024 * 1024)
+        }));
+        editorPromise ??= import(editorModuleUrl).then(({ SvgaImageResourceEditor }) => new SvgaImageResourceEditor());
+        const editor = await editorPromise;
+        const result = await editor.replaceImages(bytes, decodedReplacements, name);
+        return sendJson(response, 200, {
+          editedSvgaBase64: encodeBase64(result.editedBytes),
+          session: result.session,
+          roundTripReport: result.roundTripReport
+        });
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error),
+          code: error?.code,
+          details: error?.details
         });
       }
     }

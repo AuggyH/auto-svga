@@ -1,10 +1,10 @@
 const { execFileSync } = require("node:child_process");
 const { createHash, randomBytes } = require("node:crypto");
-const { mkdirSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync, writeSync } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { app, BrowserWindow, ipcMain, session } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -23,6 +23,10 @@ const stylesEntry = "web/styles.css";
 const playerIdentity = "svga-web@2.4.4";
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "P2";
+const productMilestoneTitle = {
+  P2: "Desktop Product Shell And Web Preview Parity",
+  P3: "Basic Image Resource Replacement And Save As"
+}[productMilestoneId] ?? "Auto SVGA Product Milestone";
 const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
   ? path.resolve(process.env.AUTO_SVGA_PRODUCT_ARTIFACTS)
   : path.join(repoRoot, ".artifacts/product", productMilestoneId);
@@ -36,9 +40,10 @@ let smokeFinished = false;
 let auditFinished = false;
 let cspViolationSeen = false;
 let cleanedUp = false;
+const sourceFilePaths = new Map();
 const productArtifactIndex = {
   milestoneId: productMilestoneId,
-  title: "Desktop Product Shell And Web Preview Parity",
+  title: productMilestoneTitle,
   productIdentity,
   headCommit: gitHeadCommit(),
   generatedAt: new Date().toISOString(),
@@ -88,9 +93,50 @@ function validateArtifactScenario(value) {
     "actual-normal-loaded",
     "smoke-loaded",
     "desktop-1280x800",
-    "desktop-1440x900"
+    "desktop-1440x900",
+    "p3-original-loaded",
+    "p3-resource-list",
+    "p3-replacement-selected",
+    "p3-replacement-preview",
+    "p3-dirty-state",
+    "p3-reset-to-original",
+    "p3-export-success",
+    "p3-reopened-export",
+    "p3-invalid-png-state",
+    "p3-original-edited-comparison"
   ]);
   return allowed.has(value) ? value : undefined;
+}
+
+function validateEditedSvgaSaveInput(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (typeof value.bytesBase64 !== "string" || value.bytesBase64.length === 0) return undefined;
+  const bytes = Buffer.from(value.bytesBase64, "base64");
+  if (bytes.byteLength <= 0 || bytes.byteLength > 25 * 1024 * 1024) return undefined;
+  const suggestedName = sanitizeSvgaFileName(
+    typeof value.suggestedName === "string" ? value.suggestedName : "untitled-edited.svga"
+  );
+  const sourceId = typeof value.sourceId === "string" && /^[a-f0-9]{24}$/.test(value.sourceId) ? value.sourceId : "";
+  return {
+    bytes,
+    suggestedName,
+    sourceId
+  };
+}
+
+function rememberSourceFile(filePath) {
+  const sourceId = randomBytes(12).toString("hex");
+  sourceFilePaths.set(sourceId, filePath);
+  while (sourceFilePaths.size > 20) {
+    const firstKey = sourceFilePaths.keys().next().value;
+    sourceFilePaths.delete(firstKey);
+  }
+  return sourceId;
+}
+
+function sanitizeSvgaFileName(value) {
+  const base = path.basename(String(value).replace(/[/\\]/g, "")).slice(0, 120) || "untitled-edited.svga";
+  return base.toLowerCase().endsWith(".svga") ? base : `${base}.svga`;
 }
 
 function validateNormalProofResult(value) {
@@ -116,6 +162,53 @@ function validateNormalProofResult(value) {
     localOnly: value.localOnly,
     cspAccepted: value.cspAccepted,
     noCspViolation: value.noCspViolation && !cspViolationSeen
+  };
+}
+
+function validateP3EditResult(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const requiredBooleans = [
+    "resourceList",
+    "replacementPreview",
+    "dirtyState",
+    "reset",
+    "saveAs",
+    "reopenedExport",
+    "invalidPngState",
+    "originalUnchanged",
+    "editedPixelsDiffer"
+  ];
+  if (!requiredBooleans.every((key) => typeof value[key] === "boolean")) return undefined;
+  const roundTripReport = value.roundTripReport && typeof value.roundTripReport === "object"
+    ? value.roundTripReport
+    : {};
+  return {
+    schemaVersion: 1,
+    milestoneId: "P3",
+    headCommit: productArtifactIndex.headCommit,
+    resourceList: value.resourceList,
+    replacementPreview: value.replacementPreview,
+    dirtyState: value.dirtyState,
+    reset: value.reset,
+    saveAs: value.saveAs,
+    reopenedExport: value.reopenedExport,
+    invalidPngState: value.invalidPngState,
+    originalUnchanged: value.originalUnchanged,
+    editedPixelsDiffer: value.editedPixelsDiffer,
+    selectedResourceKey: typeof value.selectedResourceKey === "string" ? value.selectedResourceKey.slice(0, 160) : "",
+    replacementSha256: typeof value.replacementSha256 === "string" ? value.replacementSha256.slice(0, 80) : "",
+    originalCanvasHash: typeof value.originalCanvasHash === "string" ? value.originalCanvasHash.slice(0, 80) : "",
+    editedCanvasHash: typeof value.editedCanvasHash === "string" ? value.editedCanvasHash.slice(0, 80) : "",
+    exportFileName: typeof value.exportFileName === "string" ? path.basename(value.exportFileName) : "",
+    errors: Array.isArray(value.errors)
+      ? value.errors.filter((error) => typeof error === "string").map((error) => redactLogMessage(error).slice(0, 240))
+      : [],
+    roundTripReport,
+    passed: requiredBooleans.every((key) => value[key] === true)
+      && roundTripReport.passed === true
+      && Array.isArray(roundTripReport.unexpectedChanges)
+      && roundTripReport.unexpectedChanges.length === 0,
+    generatedAt: new Date().toISOString()
   };
 }
 
@@ -244,6 +337,13 @@ function invalidFixtureMetadata() {
 }
 
 function scenarioFixtureMetadata(scenario) {
+  if (scenario?.startsWith?.("p3-")) {
+    return {
+      fixture: "synthetic-avatar-frame.svga",
+      inputKind: "p3-editing-smoke",
+      ...canonicalFixtureMetadata()
+    };
+  }
   if (scenario === "desktop-empty") {
     return {
       fixture: null,
@@ -522,7 +622,7 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
     window.setSize(originalSize[0], originalSize[1]);
   }
-  const fileName = `${scenario}.png`;
+  const fileName = artifactFileNameForScenario(scenario);
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
   await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName);
@@ -547,6 +647,21 @@ async function captureProductArtifact(window, scenario) {
   return { path: `.artifacts/product/${productMilestoneId}/${fileName}`, sizeBytes: png.byteLength };
 }
 
+function artifactFileNameForScenario(scenario) {
+  return {
+    "p3-original-loaded": "original-loaded.png",
+    "p3-resource-list": "resource-list.png",
+    "p3-replacement-selected": "replacement-selected.png",
+    "p3-replacement-preview": "replacement-preview.png",
+    "p3-dirty-state": "dirty-state.png",
+    "p3-reset-to-original": "reset-to-original.png",
+    "p3-export-success": "export-success.png",
+    "p3-reopened-export": "reopened-export.png",
+    "p3-invalid-png-state": "invalid-png-state.png",
+    "p3-original-edited-comparison": "original-edited-comparison.png"
+  }[scenario] ?? `${scenario}.png`;
+}
+
 function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
   const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
   writeFileSync(path.join(productArtifactRoot, fileName), bytes);
@@ -568,6 +683,93 @@ function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
     humanReviewRequired: true
   });
   writeProductArtifactIndex();
+}
+
+async function openSvgaFile() {
+  const result = await dialog.showOpenDialog({
+    title: "打开 SVGA",
+    filters: [{ name: "SVGA", extensions: ["svga"] }],
+    properties: ["openFile"]
+  });
+  if (result.canceled || !result.filePaths?.[0]) {
+    return { status: "cancelled" };
+  }
+  const filePath = result.filePaths[0];
+  if (!filePath.toLowerCase().endsWith(".svga")) {
+    throw new Error("Only .svga files can be opened.");
+  }
+  const bytes = readFileSync(filePath);
+  if (bytes.byteLength <= 0 || bytes.byteLength > 25 * 1024 * 1024) {
+    throw new Error("SVGA file size is outside the supported internal prototype limit.");
+  }
+  const sourceId = rememberSourceFile(filePath);
+  return {
+    status: "opened",
+    sourceId,
+    fileName: path.basename(filePath),
+    sizeBytes: bytes.byteLength,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    bytesBase64: bytes.toString("base64")
+  };
+}
+
+async function saveEditedSvga(input) {
+  const value = validateEditedSvgaSaveInput(input);
+  if (!value) throw new Error("Invalid Save As payload");
+  let targetPath;
+  if (productMilestoneId === "P3" && (smokeMode || productSmokeMode || normalProofMode)) {
+    mkdirSync(productArtifactRoot, { recursive: true });
+    targetPath = path.join(productArtifactRoot, "edited-output.svga");
+  } else {
+    const result = await dialog.showSaveDialog({
+      title: "另存为 SVGA",
+      defaultPath: value.suggestedName,
+      filters: [{ name: "SVGA", extensions: ["svga"] }],
+      properties: ["createDirectory", "showOverwriteConfirmation"]
+    });
+    if (result.canceled || !result.filePath) {
+      return { status: "cancelled" };
+    }
+    targetPath = result.filePath.toLowerCase().endsWith(".svga") ? result.filePath : `${result.filePath}.svga`;
+  }
+  const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
+  if (originalPath && path.resolve(targetPath) === path.resolve(originalPath)) {
+    throw new Error("Save As target must be different from the original SVGA.");
+  }
+
+  const temporaryPath = `${targetPath}.tmp-${process.pid}-${randomBytes(6).toString("hex")}`;
+  let descriptor;
+  try {
+    descriptor = openSync(temporaryPath, "wx");
+    writeSync(descriptor, value.bytes, 0, value.bytes.byteLength, 0);
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
+    renameSync(temporaryPath, targetPath);
+  } catch (error) {
+    if (descriptor !== undefined) {
+      try {
+        closeSync(descriptor);
+      } catch {
+        // Best-effort close before temporary file cleanup.
+      }
+    }
+    try {
+      unlinkSync(temporaryPath);
+    } catch {
+      // Temporary cleanup is best-effort after a failed write or rename.
+    }
+    throw error;
+  }
+
+  return {
+    status: "saved",
+    fileName: path.basename(targetPath),
+    sizeBytes: value.bytes.byteLength,
+    sha256: createHash("sha256").update(value.bytes).digest("hex"),
+    targetPathRedacted: sanitizeRuntimeArgument(targetPath),
+    savedSvgaBase64: value.bytes.toString("base64")
+  };
 }
 
 async function finishAudit(window, result) {
@@ -602,7 +804,10 @@ async function createExperimentWindow() {
     show: !(smokeMode || auditMode),
     webPreferences: {
       preload: path.join(appRoot, "preload.cjs"),
-      additionalArguments: [`--prototype-report-token=${reportToken}`],
+      additionalArguments: [
+        `--prototype-report-token=${reportToken}`,
+        `--prototype-product-milestone=${productMilestoneId}`
+      ],
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -665,6 +870,40 @@ async function createExperimentWindow() {
     const result = validateNormalProofResult(input);
     if (!result) throw new Error("Invalid normal proof result");
     if (normalProofMode) await finishNormalProof(window, result);
+    return { accepted: true };
+  });
+
+  ipcMain.handle("svga-web-experiment:save-edited-svga", async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return saveEditedSvga(input);
+  });
+
+  ipcMain.handle("svga-web-experiment:open-svga-file", async (event) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return openSvgaFile();
+  });
+
+  ipcMain.handle("svga-web-experiment:p3-edit-result", async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    if (productMilestoneId !== "P3") throw new Error("P3 edit result is only accepted in P3 artifact mode");
+    const result = validateP3EditResult(input);
+    if (!result) throw new Error("Invalid P3 edit result");
+    const verifiedRoundTripReport = {
+      ...result.roundTripReport,
+      playbackPassed: result.reopenedExport,
+      canvasNonBlank: result.reopenedExport,
+      passed: result.roundTripReport.passed === true
+        && result.reopenedExport
+        && Array.isArray(result.roundTripReport.unexpectedChanges)
+        && result.roundTripReport.unexpectedChanges.length === 0
+    };
+    const verifiedResult = {
+      ...result,
+      roundTripReport: verifiedRoundTripReport,
+      passed: result.passed === true && verifiedRoundTripReport.passed === true
+    };
+    writeJsonProductArtifact("resource-edit-report.json", "p3-resource-edit-report", verifiedResult);
+    writeJsonProductArtifact("round-trip-report.json", "p3-round-trip-report", verifiedRoundTripReport);
     return { accepted: true };
   });
 

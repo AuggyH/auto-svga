@@ -5,7 +5,9 @@ const canvas = document.querySelector("#player");
 const dropZone = document.querySelector("#dropZone");
 const dropZoneHint = document.querySelector("#dropZoneHint");
 const emptySelectButton = document.querySelector("#emptySelectButton");
+const hostOpenButton = document.querySelector("#hostOpenButton");
 const fileInput = document.querySelector("#fileInput");
+const pngInput = document.querySelector("#pngInput");
 const reportRoot = document.querySelector("#reportRoot");
 const playbackStatus = document.querySelector("#playbackStatus");
 const runtimeStatus = document.querySelector("#runtimeStatus");
@@ -16,6 +18,7 @@ const fileInfo = document.querySelector("#fileInfo");
 const urlParams = new URLSearchParams(location.search);
 const isSmokeMode = urlParams.get("mode") === "smoke";
 const shouldCaptureArtifacts = urlParams.get("artifacts") === "1";
+const productMilestoneId = window.autoSvgaPrototype?.productMilestoneId ?? "P2";
 const cspViolations = [];
 let activePlayer;
 let activeParser;
@@ -26,6 +29,18 @@ let playerPaused = false;
 let cleanupCount = 0;
 let desktopLoadingCaptured = false;
 let rejectedName = "";
+let sourceSvgaBytes;
+let sourceSvgaName = "";
+let sourceSvgaSha256 = "";
+let sourceFileId = "";
+let editSession;
+let selectedResourceKey = "";
+let replacementInputs = new Map();
+let editedSvgaBytes;
+let editError = "";
+let exportInfo;
+let editExportState = "idle";
+let lastRoundTripReport;
 
 globalThis.addEventListener("securitypolicyviolation", (event) => {
   cspViolations.push(`${event.violatedDirective}:${event.blockedURI}`);
@@ -35,10 +50,19 @@ globalThis.addEventListener("securitypolicyviolation", (event) => {
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files?.[0];
   if (!file) return;
+  sourceFileId = "";
   await loadSvgaFile(file, "file-picker");
 });
 
-emptySelectButton?.addEventListener("click", () => fileInput.click());
+hostOpenButton?.addEventListener("click", openHostSvgaFile);
+emptySelectButton?.addEventListener("click", () => hostOpenButton?.click() ?? fileInput.click());
+
+pngInput?.addEventListener("change", async () => {
+  const file = pngInput.files?.[0];
+  pngInput.value = "";
+  if (!file) return;
+  await replaceSelectedResource(file);
+});
 
 dropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
@@ -54,6 +78,7 @@ dropZone.addEventListener("drop", async (event) => {
   dropZone.classList.remove("isDragOver");
   const file = event.dataTransfer?.files?.[0];
   if (!file) return;
+  sourceFileId = "";
   await loadSvgaFile(file, "drag-drop");
 });
 
@@ -92,7 +117,7 @@ document.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
   if ((event.metaKey || event.ctrlKey) && key === "o") {
     event.preventDefault();
-    fileInput.click();
+    hostOpenButton?.click() ?? fileInput.click();
     return;
   }
   if (event.target instanceof HTMLInputElement) return;
@@ -131,6 +156,7 @@ async function runSmoke() {
   document.querySelector("#reportTitle")?.scrollIntoView({ block: "start" });
   await delay(180);
   await captureArtifact("desktop-inspection");
+  const p3EditSmoke = await maybeRunP3EditSmoke(bytes.slice(0));
   const fileInputSmoke = await smokeFileInput(bytes.slice(0));
   const dragDropSmoke = await smokeDragDrop(bytes.slice(0));
   const errorFileSmoke = await smokeErrorFile();
@@ -149,7 +175,7 @@ async function runSmoke() {
     dragDrop: dragDropSmoke,
     errorFile: errorFileSmoke,
     playerLifecycle: smoke.playerLifecycle,
-    cleanup: smoke.cleanup && cleanupCount >= 3
+    cleanup: smoke.cleanup && cleanupCount >= 3 && (productMilestoneId !== "P3" || p3EditSmoke.passed)
   };
   runtimeStatus.textContent = Object.values(result).every(Boolean) ? "内部原型验证通过" : "验证未通过";
   await reportSmoke(result);
@@ -167,7 +193,32 @@ async function loadSvgaFile(file, source) {
   return loadSvgaBytes(bytes, file.name, { sizeBytes: file.size, source });
 }
 
+async function openHostSvgaFile() {
+  if (!window.autoSvgaPrototype?.openSvgaFile) {
+    fileInput.click();
+    return;
+  }
+  try {
+    const result = await window.autoSvgaPrototype.openSvgaFile();
+    if (!result || result.status === "cancelled") return;
+    sourceFileId = result.sourceId ?? "";
+    const bytes = base64ToBytes(result.bytesBase64);
+    await loadSvgaBytes(bytes, result.fileName, {
+      sizeBytes: result.sizeBytes,
+      source: "host-file-picker",
+      sourceId: sourceFileId
+    });
+  } catch (error) {
+    showError("无法打开此 SVGA 文件。", productEditError(error));
+  }
+}
+
 async function loadSvgaBytes(bytes, name, metadata = {}) {
+  if (!metadata.preserveEditState) {
+    sourceFileId = typeof metadata.sourceId === "string" ? metadata.sourceId : "";
+  } else if (typeof metadata.sourceId === "string") {
+    sourceFileId = metadata.sourceId;
+  }
   cleanupPlayer();
   activeName = name;
   rejectedName = "";
@@ -213,7 +264,18 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
       throw new Error("SVGA 播放输出为空。");
     }
     const report = await reportPromise;
-    reportRoot.innerHTML = renderDesktopInspectionPresentation(report);
+    if (!metadata.preserveEditState) {
+      sourceSvgaBytes = bytes.slice(0);
+      sourceSvgaName = name;
+      sourceSvgaSha256 = await sha256Hex(sourceSvgaBytes);
+      editedSvgaBytes = undefined;
+      replacementInputs = new Map();
+      exportInfo = undefined;
+      editExportState = "idle";
+      await loadEditSession(sourceSvgaBytes, name);
+    }
+    reportRoot.innerHTML = `${renderEditPanel()}${renderDesktopInspectionPresentation(report)}`;
+    bindEditPanel();
     updateFileInfo(name, metadata.sizeBytes ?? bytes.byteLength, report);
     runtimeStatus.textContent = "SVGA 已加载，检查报告已生成。";
     playbackStatus.textContent = `正在播放：${safeDisplayName(name)}`;
@@ -296,6 +358,17 @@ async function smokeErrorFile() {
 function showEmptyState() {
   cleanupPlayer();
   rejectedName = "";
+  sourceSvgaBytes = undefined;
+  sourceSvgaName = "";
+  sourceSvgaSha256 = "";
+  sourceFileId = "";
+  editSession = undefined;
+  selectedResourceKey = "";
+  replacementInputs = new Map();
+  editedSvgaBytes = undefined;
+  editError = "";
+  exportInfo = undefined;
+  editExportState = "idle";
   runtimeStatus.textContent = "请选择本地 SVGA 文件开始检查。";
   playbackStatus.textContent = "未开始";
   dropZone.classList.remove("isError", "isLoading");
@@ -307,7 +380,7 @@ function showEmptyState() {
     <button class="dropZoneAction" type="button" data-empty-select-button>选择 SVGA 文件</button>
   `;
   dropZoneHint.dataset.state = "empty";
-  dropZoneHint.querySelector("[data-empty-select-button]")?.addEventListener("click", () => fileInput.click());
+  dropZoneHint.querySelector("[data-empty-select-button]")?.addEventListener("click", () => hostOpenButton?.click() ?? fileInput.click());
   reportRoot.innerHTML = renderInspectionEmpty("打开文件后显示检查结果", "这里会显示概览、规范检查和 Motion Asset Audit，只读展示，不会修改文件。");
   updateFileInfo();
   updatePlaybackControls();
@@ -347,10 +420,389 @@ function showError(message, detail = "") {
     </details>
   `;
   dropZoneHint.dataset.state = "invalid";
-  dropZoneHint.querySelector("[data-error-select-button]")?.addEventListener("click", () => fileInput.click());
+  dropZoneHint.querySelector("[data-error-select-button]")?.addEventListener("click", () => hostOpenButton?.click() ?? fileInput.click());
   reportRoot.innerHTML = renderInspectionEmpty("未生成检查报告", "请重新选择有效的 .svga 文件。技术错误已折叠在播放器区域。");
   updateFileInfo();
   updatePlaybackControls();
+}
+
+async function loadEditSession(bytes, name) {
+  try {
+    const response = await fetch("/api/svga-image-edit-session", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-auto-svga-prototype-token": window.autoSvgaPrototype.reportToken
+      },
+      body: JSON.stringify({
+        name,
+        svgaBase64: bytesToBase64(bytes)
+      })
+    }).then(readJsonResponse);
+    editSession = response.session;
+    selectedResourceKey = editSession.imageResources[0]?.resourceKey ?? "";
+    lastRoundTripReport = undefined;
+    editError = "";
+  } catch (error) {
+    editSession = undefined;
+    selectedResourceKey = "";
+    editError = productEditError(error);
+  }
+}
+
+async function replaceSelectedResource(file) {
+  if (!selectedResourceKey || !sourceSvgaBytes) return;
+  if (!file.name.toLowerCase().endsWith(".png")) {
+    editError = "仅支持 PNG 图片替换。";
+    renderCurrentReportEditOnly();
+    return;
+  }
+  const previousInputs = new Map(replacementInputs);
+  editError = "";
+  replacementInputs.set(selectedResourceKey, {
+    resourceKey: selectedResourceKey,
+    pngBytes: new Uint8Array(await file.arrayBuffer()),
+    fileName: file.name
+  });
+  try {
+    await rebuildEditedPreview();
+  } catch (error) {
+    replacementInputs = previousInputs;
+    editError = productEditError(error);
+    renderCurrentReportEditOnly();
+  }
+}
+
+async function rebuildEditedPreview() {
+  if (!sourceSvgaBytes) return;
+  if (replacementInputs.size === 0) {
+    editedSvgaBytes = undefined;
+    exportInfo = undefined;
+    editExportState = "idle";
+    await loadEditSession(sourceSvgaBytes, sourceSvgaName);
+    await loadSvgaBytes(sourceSvgaBytes.slice(0), sourceSvgaName, {
+      sizeBytes: sourceSvgaBytes.byteLength,
+      preserveEditState: true
+    });
+    return;
+  }
+
+  const response = await fetch("/api/svga-image-replace", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-auto-svga-prototype-token": window.autoSvgaPrototype.reportToken
+    },
+    body: JSON.stringify({
+      name: sourceSvgaName,
+      svgaBase64: bytesToBase64(sourceSvgaBytes),
+      replacements: [...replacementInputs.values()].map((replacement) => ({
+        resourceKey: replacement.resourceKey,
+        pngBase64: bytesToBase64(replacement.pngBytes)
+      }))
+    })
+  }).then(readJsonResponse);
+
+  editedSvgaBytes = base64ToBytes(response.editedSvgaBase64);
+  editSession = response.session;
+  lastRoundTripReport = response.roundTripReport;
+  editExportState = "idle";
+  await loadSvgaBytes(editedSvgaBytes.slice(0), `${sourceSvgaName} · 修改预览`, {
+    sizeBytes: editedSvgaBytes.byteLength,
+    preserveEditState: true,
+    source: "edited-preview"
+  });
+}
+
+function renderCurrentReportEditOnly() {
+  const existingReport = reportRoot.querySelector("[data-inspection-presentation]")?.outerHTML
+    ?? renderInspectionEmpty("检查报告暂不可用", "当前只更新编辑状态。");
+  reportRoot.innerHTML = `${renderEditPanel()}${existingReport}`;
+  bindEditPanel();
+}
+
+function renderEditPanel() {
+  if (!sourceSvgaBytes) {
+    return "";
+  }
+  if (!editSession) {
+    return `
+      <article class="inspectionGroup editPanel" data-inspection-group="edit">
+        <h3>编辑 <span class="statusPill">不可用</span></h3>
+        <p>${escapeHtml(editError || "当前文件无法进入资源替换编辑。")}</p>
+      </article>
+    `;
+  }
+  const resources = editSession.imageResources ?? [];
+  const selected = resources.find((resource) => resource.resourceKey === selectedResourceKey) ?? resources[0];
+  const replacementCount = Object.keys(editSession.replacements ?? {}).length;
+  const statusLabel = editExportState === "exporting"
+    ? "正在导出"
+    : editExportState === "saved"
+      ? "已另存为"
+      : replacementCount > 0
+        ? "有未保存修改"
+        : "未修改";
+  return `
+    <article class="inspectionGroup editPanel" data-inspection-group="edit">
+      <h3>检查 / 编辑 <span class="statusPill">${escapeHtml(statusLabel)}</span></h3>
+      <p>只替换已存在的 PNG 图像资源，不改变时间线、图层变换或原始文件。</p>
+      <div class="editSummary">
+        <span>资源 ${resources.length}</span>
+        <span>已替换 ${replacementCount}</span>
+        <span>${escapeHtml(sourceSvgaName || "当前文件")}</span>
+      </div>
+      ${editError ? `<p class="editError">${escapeHtml(editError)}</p>` : ""}
+      ${exportInfo ? `<p class="editSuccess">已另存为 ${escapeHtml(exportInfo.fileName)} · ${formatBytes(exportInfo.sizeBytes)}</p>` : ""}
+      <div class="resourceEditorGrid">
+        <div class="resourceList" role="listbox" aria-label="图像资源列表">
+          ${resources.length === 0 ? "<p>没有可替换的图像资源。</p>" : resources.map((resource) => renderResourceButton(resource, selected?.resourceKey)).join("")}
+        </div>
+        <div class="resourceDetail">
+          ${selected ? renderResourceDetail(selected) : "<p>请选择一个图像资源。</p>"}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderResourceButton(resource, selectedKey) {
+  const isSelected = resource.resourceKey === selectedKey;
+  const replaced = resource.replacementStatus === "replaced";
+  return `
+    <button class="resourceItem${isSelected ? " isSelected" : ""}" type="button" data-resource-key="${escapeHtml(resource.resourceKey)}">
+      <span class="resourceThumb">${renderResourceThumbnail(resource)}</span>
+      <span class="resourceText">
+        <strong>${escapeHtml(resource.displayName ?? resource.resourceKey)}</strong>
+        <small>${escapeHtml(resource.resourceKey)} · ${formatBytes(resource.originalSizeBytes ?? 0)} · 使用 ${resource.usageCount ?? 0}</small>
+      </span>
+      <span class="resourceStatus">${replaced ? "已替换" : "原始"}</span>
+    </button>
+  `;
+}
+
+function renderResourceThumbnail(resource) {
+  if (!resource.thumbnailDataUrl) return "";
+  return `<img src="${escapeHtml(resource.thumbnailDataUrl)}" alt="">`;
+}
+
+function renderResourceDetail(resource) {
+  const replacement = editSession.replacements?.[resource.resourceKey];
+  const dimensions = resource.decodedWidth && resource.decodedHeight
+    ? `${resource.decodedWidth} × ${resource.decodedHeight}`
+    : "未知";
+  const replacementDimensions = replacement
+    ? `${replacement.replacementWidth} × ${replacement.replacementHeight}`
+    : "未选择";
+  return `
+    <div class="resourcePreview">${renderResourceThumbnail(resource) || "<span>无缩略图</span>"}</div>
+    <dl class="resourceFacts">
+      <div><dt>Key</dt><dd>${escapeHtml(resource.resourceKey)}</dd></div>
+      <div><dt>原始尺寸</dt><dd>${escapeHtml(dimensions)}</dd></div>
+      <div><dt>替换尺寸</dt><dd>${escapeHtml(replacementDimensions)}</dd></div>
+      <div><dt>原始 Hash</dt><dd>${escapeHtml((resource.originalSha256 ?? "").slice(0, 12))}</dd></div>
+      <div><dt>替换 Hash</dt><dd>${escapeHtml((resource.replacementSha256 ?? "").slice(0, 12) || "无")}</dd></div>
+    </dl>
+    ${replacement?.dimensionWarning ? "<p class=\"editWarning\">替换 PNG 尺寸与原资源不同，将按原 SVGA 布局播放。</p>" : ""}
+    <div class="editActions">
+      <button type="button" data-edit-action="replace">替换 PNG</button>
+      <button type="button" data-edit-action="reset-selected" ${resource.replacementStatus === "replaced" ? "" : "disabled"}>重置此资源</button>
+      <button type="button" data-edit-action="reset-all" ${replacementInputs.size > 0 ? "" : "disabled"}>重置全部</button>
+      <button type="button" data-edit-action="save-as" ${editedSvgaBytes ? "" : "disabled"}>另存为</button>
+    </div>
+  `;
+}
+
+function bindEditPanel() {
+  reportRoot.querySelectorAll("[data-resource-key]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedResourceKey = button.dataset.resourceKey ?? "";
+      renderCurrentReportEditOnly();
+    });
+  });
+  reportRoot.querySelector('[data-edit-action="replace"]')?.addEventListener("click", () => pngInput?.click());
+  reportRoot.querySelector('[data-edit-action="reset-selected"]')?.addEventListener("click", async () => {
+    if (!selectedResourceKey) return;
+    replacementInputs.delete(selectedResourceKey);
+    await rebuildEditedPreview();
+  });
+  reportRoot.querySelector('[data-edit-action="reset-all"]')?.addEventListener("click", async () => {
+    replacementInputs = new Map();
+    await rebuildEditedPreview();
+  });
+  reportRoot.querySelector('[data-edit-action="save-as"]')?.addEventListener("click", saveEditedSvga);
+}
+
+async function saveEditedSvga() {
+  if (!editedSvgaBytes || !sourceSvgaBytes) return;
+  editExportState = "exporting";
+  renderCurrentReportEditOnly();
+  try {
+    const result = await window.autoSvgaPrototype.saveEditedSvga({
+      suggestedName: editedFileName(sourceSvgaName),
+      bytesBase64: bytesToBase64(editedSvgaBytes),
+      originalSha256: sourceSvgaSha256,
+      sourceId: sourceFileId
+    });
+    if (result.status === "cancelled") {
+      editExportState = "idle";
+      renderCurrentReportEditOnly();
+      return;
+    }
+    exportInfo = result;
+    editExportState = "saved";
+    const savedBytes = base64ToBytes(result.savedSvgaBase64);
+    await loadSvgaBytes(savedBytes, result.fileName, {
+      sizeBytes: result.sizeBytes,
+      preserveEditState: true,
+      source: "reopened-export"
+    });
+    runtimeStatus.textContent = "已另存为新的 SVGA，并重新打开验证。";
+  } catch (error) {
+    editExportState = "failed";
+    editError = productEditError(error);
+    renderCurrentReportEditOnly();
+  }
+}
+
+async function maybeRunP3EditSmoke(originalBytes) {
+  if (!isSmokeMode || !shouldCaptureArtifacts || productMilestoneId !== "P3") {
+    return { passed: true };
+  }
+  const errors = [];
+  try {
+    await captureArtifact("p3-original-loaded");
+    await captureArtifact("p3-resource-list");
+    const resourceList = Boolean(editSession?.imageResources?.length > 0);
+    const selectedResource = selectedResourceKey;
+    await captureArtifact("p3-replacement-selected");
+    const originalCanvasHash = await canvasHash(canvas);
+    const originalCanvasDataUrl = canvas.toDataURL("image/png");
+    const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-p3.png").then(assertResponse).then((response) => response.arrayBuffer()));
+    await replaceSelectedResource(new File([replacementBytes], "replacement-p3.png", { type: "image/png" }));
+    await delay(240);
+    const editedCanvasHash = await canvasHash(canvas);
+    const editedCanvasDataUrl = canvas.toDataURL("image/png");
+    await captureArtifact("p3-replacement-preview");
+    await captureArtifact("p3-dirty-state");
+    const replacementPreview = Boolean(editedSvgaBytes)
+      && Boolean(lastRoundTripReport?.passed)
+      && originalCanvasHash !== editedCanvasHash;
+    const dirtyState = replacementInputs.size > 0
+      && reportRoot.textContent.includes("有未保存修改");
+    const replacementSha256 = editSession?.replacements?.[selectedResource]?.replacementSha256 ?? "";
+
+    replacementInputs.delete(selectedResource);
+    await rebuildEditedPreview();
+    await delay(240);
+    await captureArtifact("p3-reset-to-original");
+    const reset = replacementInputs.size === 0 && !editedSvgaBytes && reportRoot.textContent.includes("未修改");
+
+    replacementInputs.set(selectedResource, {
+      resourceKey: selectedResource,
+      pngBytes: replacementBytes,
+      fileName: "replacement-p3.png"
+    });
+    await rebuildEditedPreview();
+    const roundTripReport = lastRoundTripReport;
+    await saveEditedSvga();
+    await delay(240);
+    await captureArtifact("p3-export-success");
+    await captureArtifact("p3-reopened-export");
+    const saveAs = exportInfo?.status === "saved";
+    const reopenedExport = playbackStatus.textContent.includes("正在播放")
+      && Boolean(reportRoot.querySelector('[data-inspection-group="audit"]'))
+      && canvasHasVisiblePixels(canvas);
+
+    await replaceSelectedResource(new File([Uint8Array.from([1, 2, 3])], "invalid.png", { type: "image/png" }));
+    await delay(120);
+    await captureArtifact("p3-invalid-png-state");
+    const invalidPngState = reportRoot.textContent.includes("PNG 无法使用");
+    renderP3ComparisonArtifact(originalCanvasDataUrl, editedCanvasDataUrl, {
+      selectedResource,
+      originalCanvasHash,
+      editedCanvasHash
+    });
+    await delay(120);
+    await captureArtifact("p3-original-edited-comparison");
+
+    const result = {
+      resourceList,
+      replacementPreview,
+      dirtyState,
+      reset,
+      saveAs,
+      reopenedExport,
+      invalidPngState,
+      originalUnchanged: sourceSvgaSha256 === await sha256Hex(originalBytes),
+      editedPixelsDiffer: originalCanvasHash !== editedCanvasHash,
+      selectedResourceKey: selectedResource,
+      replacementSha256,
+      originalCanvasHash,
+      editedCanvasHash,
+      exportFileName: exportInfo?.fileName ?? "",
+      errors,
+      roundTripReport,
+      passed: false
+    };
+    result.passed = [
+      result.resourceList,
+      result.replacementPreview,
+      result.dirtyState,
+      result.reset,
+      result.saveAs,
+      result.reopenedExport,
+      result.invalidPngState,
+      result.originalUnchanged,
+      result.editedPixelsDiffer,
+      result.roundTripReport?.passed === true
+    ].every(Boolean);
+    await window.autoSvgaPrototype.reportP3EditResult(result);
+    return result;
+  } catch (error) {
+    errors.push(productEditError(error));
+    const result = {
+      resourceList: false,
+      replacementPreview: false,
+      dirtyState: false,
+      reset: false,
+      saveAs: false,
+      reopenedExport: false,
+      invalidPngState: false,
+      originalUnchanged: false,
+      editedPixelsDiffer: false,
+      errors,
+      roundTripReport: {},
+      passed: false
+    };
+    await window.autoSvgaPrototype.reportP3EditResult(result).catch(() => undefined);
+    return result;
+  }
+}
+
+function renderP3ComparisonArtifact(originalDataUrl, editedDataUrl, metadata) {
+  reportRoot.innerHTML = `
+    <section class="editPanel p3ComparisonPanel" aria-label="P3 original and edited visual comparison">
+      <div class="editHeader">
+        <div>
+          <p class="eyebrow">P3 对比验收</p>
+          <h3>原始画面与替换后画面</h3>
+        </div>
+        <span class="editState isDirty">仅供验收</span>
+      </div>
+      <div class="p3ComparisonGrid">
+        <figure>
+          <img src="${escapeHtml(originalDataUrl)}" alt="原始 SVGA 首帧">
+          <figcaption>原始 SVGA<br><code>${escapeHtml((metadata.originalCanvasHash ?? "").slice(0, 12))}</code></figcaption>
+        </figure>
+        <figure>
+          <img src="${escapeHtml(editedDataUrl)}" alt="替换资源后的 SVGA 首帧">
+          <figcaption>替换后预览<br><code>${escapeHtml((metadata.editedCanvasHash ?? "").slice(0, 12))}</code></figcaption>
+        </figure>
+      </div>
+      <p class="editHint">资源 key：<code>${escapeHtml(metadata.selectedResource ?? "")}</code>。截图来自同一次 P3 smoke 的 canvas 输出；像素级人工判断仍需验收。</p>
+    </section>
+  `;
 }
 
 function installStateProbe() {
@@ -658,6 +1110,14 @@ function canvasHasVisiblePixels(target, region) {
   return false;
 }
 
+async function canvasHash(target) {
+  if (!target || target.width <= 0 || target.height <= 0) return "";
+  const context = target.getContext("2d");
+  if (!context) return "";
+  const pixels = context.getImageData(0, 0, target.width, target.height).data;
+  return sha256Hex(pixels);
+}
+
 async function waitForVisibleCanvasSamples(target, timeoutMs) {
   const startedAt = performance.now();
   let sampleCount = 0;
@@ -743,6 +1203,42 @@ function toArrayBuffer(bytes) {
   return copy.buffer.slice(copy.byteOffset, copy.byteOffset + copy.byteLength);
 }
 
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.byteLength; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(value) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+async function sha256Hex(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", toArrayBuffer(bytes));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function productEditError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/replacement_not_png|PNG|png/i.test(message)) return "PNG 无法使用。请选择完整的 PNG 图片。";
+  if (/too large|dimensions/i.test(message)) return "PNG 尺寸或文件过大，已拒绝替换。";
+  if (/unsupported_round_trip|invariant/i.test(message)) return "当前 SVGA 无法安全另存为，已阻止导出。";
+  return message || "编辑操作失败，请重新尝试。";
+}
+
+function editedFileName(name) {
+  const base = String(name || "untitled.svga").replace(/[/\\]/g, "").replace(/\.svga$/i, "");
+  return `${base || "untitled"}-edited.svga`;
+}
+
 function safeDisplayName(name) {
   return String(name).replace(/[/\\]/g, "").slice(0, 80);
 }
@@ -765,6 +1261,17 @@ function formatBytes(value) {
 function assertResponse(response) {
   if (!response.ok) throw new Error(`Request failed (${response.status})`);
   return response;
+}
+
+async function readJsonResponse(response) {
+  if (response.ok) return response.json();
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    body = {};
+  }
+  throw new Error(body.error || body.code || `Request failed (${response.status})`);
 }
 
 function delay(durationMs) {
