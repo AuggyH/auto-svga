@@ -8,7 +8,7 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP09",
+  "currentWorkPackage": "NQ1-WP10",
   "completedWorkPackages": [
     "NQ1-WP01",
     "NQ1-WP02",
@@ -17,12 +17,12 @@
     "NQ1-WP05",
     "NQ1-WP06",
     "NQ1-WP07",
-    "NQ1-WP08"
+    "NQ1-WP08",
+    "NQ1-WP09"
   ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
   "remainingWorkPackages": [
-    "NQ1-WP09",
     "NQ1-WP10"
   ],
   "workPackages": [
@@ -535,16 +535,78 @@
     {
       "id": "NQ1-WP09",
       "title": "Accessibility, keyboard, and error semantics audit",
-      "status": "pending",
-      "startedAt": null,
-      "finishedAt": null,
-      "startCommit": null,
-      "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
-      "deferredItems": []
+      "status": "complete",
+      "startedAt": "2026-06-20T21:21:43.160Z",
+      "finishedAt": "2026-06-20T21:21:43.160Z",
+      "startCommit": "56fd64ffed0b52e5c700e0194c67b3016c02761d",
+      "endCommit": "e7249cb9663d4f2b443ae747e55fdd67d3c6aeb7",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-accessibility-audit.ts",
+        "src/tests/nq1-accessibility-audit.test.ts",
+        "tools/nq1/generate-accessibility-audit-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-accessibility-audit.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:accessibility-audit",
+          "status": "pass"
+        },
+        {
+          "command": "node --test tools/svga-player-preview/inspection-report-view.test.mjs tools/svga-player-preview/server-inspection-report.test.mjs",
+          "status": "pass"
+        },
+        {
+          "command": "node --check tools/electron-prototype/experiments/svga-web/web/prototype.js && node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+          "status": "pass"
+        },
+        {
+          "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-accessibility-audit",
+          "status": "pass",
+          "summary": "1 pass / 0 fail"
+        },
+        {
+          "id": "nq1-accessibility-audit-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/accessibility-keyboard-error-semantics-audit-report.json passed with 23 source checks, 2 advisories, and no absolute user paths"
+        },
+        {
+          "id": "web-inspection-regression",
+          "status": "pass",
+          "summary": "13 pass / 0 fail"
+        },
+        {
+          "id": "svga-web-prototype-regression",
+          "status": "pass",
+          "summary": "14 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "Accessibility audit source-checked 23 document, keyboard, focus, and error semantics boundaries.",
+        "Keyboard source checks cover open, undo, redo, space playback toggle, replay, and input-field guard behavior.",
+        "Error semantics source checks cover retry action, folded technical details, and escaped error details."
+      ],
+      "deferredItems": [
+        "axe_and_screen_reader_not_run: This audit is source-level only; axe, VoiceOver/NVDA, real keyboard traversal, and reduced-motion checks remain manual.",
+        "resource_list_items_without_explicit_option_role: Resource items are native buttons inside a labelled listbox; keyboard activation is available, but explicit option semantics should be reviewed before production."
+      ]
     },
     {
       "id": "NQ1-WP10",
