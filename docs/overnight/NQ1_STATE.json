@@ -8,12 +8,13 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP01",
-  "completedWorkPackages": [],
+  "currentWorkPackage": "NQ1-WP02",
+  "completedWorkPackages": [
+    "NQ1-WP01"
+  ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
   "remainingWorkPackages": [
-    "NQ1-WP01",
     "NQ1-WP02",
     "NQ1-WP03",
     "NQ1-WP04",
@@ -28,15 +29,65 @@
     {
       "id": "NQ1-WP01",
       "title": "Baseline, queue, and resumable state",
-      "status": "in_progress",
+      "status": "complete",
       "startedAt": "2026-06-20T20:39:40.564Z",
-      "finishedAt": null,
+      "finishedAt": "2026-06-20T20:42:09.287Z",
       "startCommit": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-      "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
+      "endCommit": "f625aa6c795a865048cd7aab71d7724a9c6e6610",
+      "filesChanged": [
+        "docs/overnight/NQ1_QUEUE.md",
+        "docs/overnight/NQ1_STATE.json",
+        "docs/overnight/NQ1_HISTORY.jsonl",
+        "docs/overnight/NQ1_BLOCKERS.md",
+        "docs/overnight/NQ1_FINAL_REPORT.md",
+        "docs/overnight/NQ1_RESUME.md"
+      ],
+      "commands": [
+        {
+          "command": "git switch -c agent/codex/nq1-overnight-hardening",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --cached --check",
+          "status": "pass"
+        },
+        {
+          "command": "npm run loop:validate",
+          "status": "pass",
+          "durationMs": 63953
+        }
+      ],
+      "testResults": [
+        {
+          "id": "loop-validate-baseline",
+          "status": "pass",
+          "headCommitAtStart": "f625aa6c795a865048cd7aab71d7724a9c6e6610",
+          "headCommitAtFinish": "f625aa6c795a865048cd7aab71d7724a9c6e6610",
+          "sourceWorkspaceCleanAtStart": true,
+          "sourceWorkspaceCleanAtFinish": true,
+          "durationMs": 63953,
+          "summary": {
+            "handoffTests": "54 pass / 0 fail",
+            "rootTests": "170 pass / 0 fail",
+            "launcherTests": "3 pass / 0 fail",
+            "webInspectionTests": "13 pass / 0 fail",
+            "electronPrototypeTests": "3 pass / 0 fail",
+            "svgaWebPrototypeTests": "14 pass / 0 fail"
+          },
+          "knownGaps": {
+            "lint": "not_available",
+            "format": "not_available",
+            "performanceBenchmark": "not_available",
+            "visualQuality": "manual_review",
+            "svgaWebRenderSmoke": "optional_heavy_check"
+          }
+        }
+      ],
+      "findings": [
+        "P4 final machine HEAD is recorded.",
+        "NQ1 branch, deadline fields, queue, resume instructions, blocker log, and final report placeholder exist.",
+        "Initial loop validation passed on a clean source workspace."
+      ],
       "deferredItems": []
     },
     {
