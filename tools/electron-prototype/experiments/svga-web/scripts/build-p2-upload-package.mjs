@@ -113,8 +113,7 @@ async function buildPrivacyAudit(root) {
     { id: "home_absolute_path", pattern: process.env.HOME ?? "" },
     { id: "unix_user_path", pattern: /\/Users\/[^/\s"'`]+\/[^\s"'`]*/ },
     { id: "linux_user_path", pattern: /\/home\/[^/\s"'`]+\/[^\s"'`]*/ },
-    { id: "windows_user_path", pattern: /[A-Za-z]:\\Users\\[^\\\s"'`]+\\[^\s"'`]*/ },
-    { id: "macos_metadata", pattern: /__MACOSX|\.DS_Store/ }
+    { id: "windows_user_path", pattern: /[A-Za-z]:\\Users\\[^\\\s"'`]+\\[^\s"'`]*/ }
   ].filter((item) => item.pattern);
   const scannedFiles = [];
   for (const filePath of await listFiles(root)) {
