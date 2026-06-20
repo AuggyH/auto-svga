@@ -141,6 +141,25 @@ test("SVGA image editor rejects missing resources and SVGA with no images", asyn
   );
 });
 
+test("SVGA image editor rejects unsupported unknown protobuf fields", async () => {
+  const editor = new SvgaImageResourceEditor();
+  const bytesWithUnknownField = appendUnknownVarintField(await createSvgaFixture(), 99, 1);
+
+  await assert.rejects(
+    editor.createSession(bytesWithUnknownField, "unknown-field.svga"),
+    (error) => error instanceof SvgaImageEditError
+      && error.code === "unsupported_round_trip_file"
+  );
+  await assert.rejects(
+    editor.replaceImages(bytesWithUnknownField, [{
+      resourceKey: "img_sweep",
+      pngBytes: createColoredPng(4, 4, [255, 0, 0, 255])
+    }], "unknown-field.svga"),
+    (error) => error instanceof SvgaImageEditError
+      && error.code === "unsupported_round_trip_file"
+  );
+});
+
 async function createSvgaFixture(overrides: Partial<{ images: Record<string, Uint8Array> }> = {}): Promise<Uint8Array> {
   const root = await protobuf.load(protoPath());
   const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
@@ -179,6 +198,25 @@ async function createSvgaFixture(overrides: Partial<{ images: Record<string, Uin
   const verificationError = MovieEntity.verify(payload);
   assert.equal(verificationError, null);
   return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+function appendUnknownVarintField(sourceBytes: Uint8Array, fieldNumber: number, value: number): Uint8Array {
+  return deflateSync(Buffer.concat([
+    inflateSync(sourceBytes),
+    encodeVarint((fieldNumber << 3) | 0),
+    encodeVarint(value)
+  ]));
+}
+
+function encodeVarint(value: number): Buffer {
+  const bytes: number[] = [];
+  let remaining = value >>> 0;
+  while (remaining >= 0x80) {
+    bytes.push((remaining & 0x7f) | 0x80);
+    remaining >>>= 7;
+  }
+  bytes.push(remaining);
+  return Buffer.from(bytes);
 }
 
 function createFrames(count: number): unknown[] {

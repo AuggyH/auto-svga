@@ -180,6 +180,8 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   const runtimePrep = await readFile(path.join(experimentRoot, "../../scripts/prepare-runtime.mjs"), "utf8");
   assert.match(main, /Basic Image Resource Replacement And Save As/);
   assert.match(main, /Save As target must be different from the original SVGA/);
+  assert.match(main, /Save As requires the source SVGA to be opened through the desktop file picker/);
+  assert.match(main, /p3SmokeSaveAs/);
   assert.match(main, /sourceFilePaths\.get\(value\.sourceId\)/);
   assert.match(main, /writeJsonProductArtifact\("resource-edit-report\.json", "p3-resource-edit-report", verifiedResult\)/);
   assert.match(main, /writeJsonProductArtifact\("round-trip-report\.json", "p3-round-trip-report", verifiedRoundTripReport\)/);
@@ -192,6 +194,10 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   assert.match(renderer, /替换 PNG/);
   assert.match(renderer, /重置此资源/);
   assert.match(renderer, /另存为/);
+  assert.match(renderer, /confirmDiscardUnsavedEdits/);
+  assert.match(renderer, /window\.confirm/);
+  assert.match(renderer, /canSaveEditedSvga/);
+  assert.match(renderer, /浏览器选择或拖拽导入无法安全确认原始路径/);
   assert.match(renderer, /replacement-p3\.png/);
   assert.match(renderer, /originalCanvasHash !== editedCanvasHash/);
   assert.match(renderer, /renderP3ComparisonArtifact/);

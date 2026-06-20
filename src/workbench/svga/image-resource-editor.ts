@@ -144,6 +144,12 @@ interface DecodedKnownMovie {
   payload: KnownMoviePayload;
 }
 
+interface UnknownProtobufField {
+  path: string;
+  fieldNumber: number;
+  wireType: number;
+}
+
 interface NormalizedMovieInvariants {
   version: string;
   params: KnownMoviePayload["params"];
@@ -374,6 +380,14 @@ export class SvgaImageResourceEditor {
     try {
       const MovieEntity = await this.loadMovieEntity();
       const inflated = inflateSync(bytes);
+      const unknownFields = findUnknownProtobufFields(MovieEntity, inflated);
+      if (unknownFields.length > 0) {
+        throw new SvgaImageEditError(
+          "unsupported_round_trip_file",
+          "SVGA contains protobuf fields that P3 cannot safely preserve.",
+          { unknownFields: unknownFields.slice(0, 20) }
+        );
+      }
       const decoded = MovieEntity.decode(inflated);
       const payload = MovieEntity.toObject(decoded, {
         bytes: Buffer,
@@ -508,6 +522,68 @@ function toUint8Array(value: unknown): Uint8Array {
     return Uint8Array.from(value);
   }
   throw new SvgaImageEditError("svga_invalid_image_bytes", "SVGA image bytes are not readable.");
+}
+
+function findUnknownProtobufFields(type: protobuf.Type, bytes: Uint8Array, path = type.fullName): UnknownProtobufField[] {
+  const issues: UnknownProtobufField[] = [];
+  let offset = 0;
+  while (offset < bytes.byteLength) {
+    const tag = readVarint(bytes, offset);
+    offset = tag.offset;
+    const fieldNumber = Number(tag.value >> 3n);
+    const wireType = Number(tag.value & 7n);
+    const field = type.fieldsById[fieldNumber];
+    if (!field || fieldNumber <= 0) {
+      issues.push({ path, fieldNumber, wireType });
+    }
+
+    if (wireType === 0) {
+      offset = readVarint(bytes, offset).offset;
+    } else if (wireType === 1) {
+      offset = boundedOffset(bytes, offset, 8);
+    } else if (wireType === 2) {
+      const length = readVarint(bytes, offset);
+      offset = length.offset;
+      const dataStart = offset;
+      const dataEnd = boundedOffset(bytes, dataStart, Number(length.value));
+      if (field?.resolvedType instanceof protobuf.Type) {
+        issues.push(...findUnknownProtobufFields(
+          field.resolvedType,
+          bytes.subarray(dataStart, dataEnd),
+          `${path}.${field.name}`
+        ));
+      }
+      offset = dataEnd;
+    } else if (wireType === 5) {
+      offset = boundedOffset(bytes, offset, 4);
+    } else {
+      issues.push({ path, fieldNumber, wireType });
+      break;
+    }
+  }
+  return issues;
+}
+
+function readVarint(bytes: Uint8Array, startOffset: number): { value: bigint; offset: number } {
+  let value = 0n;
+  let shift = 0n;
+  let offset = startOffset;
+  while (offset < bytes.byteLength) {
+    const byte = BigInt(bytes[offset]);
+    value |= (byte & 0x7fn) << shift;
+    offset += 1;
+    if ((byte & 0x80n) === 0n) return { value, offset };
+    shift += 7n;
+    if (shift > 70n) break;
+  }
+  throw new SvgaImageEditError("svga_invalid_protobuf_wire", "SVGA protobuf wire data is invalid.");
+}
+
+function boundedOffset(bytes: Uint8Array, offset: number, length: number): number {
+  if (!Number.isSafeInteger(length) || length < 0 || offset + length > bytes.byteLength) {
+    throw new SvgaImageEditError("svga_invalid_protobuf_wire", "SVGA protobuf wire data is truncated.");
+  }
+  return offset + length;
 }
 
 function usageCountFor(resourceKey: string, sprites: KnownMoviePayload["sprites"]): number {

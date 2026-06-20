@@ -716,8 +716,13 @@ async function openSvgaFile() {
 async function saveEditedSvga(input) {
   const value = validateEditedSvgaSaveInput(input);
   if (!value) throw new Error("Invalid Save As payload");
+  const p3SmokeSaveAs = productMilestoneId === "P3" && (smokeMode || productSmokeMode || normalProofMode);
+  const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
+  if (!p3SmokeSaveAs && !originalPath) {
+    throw new Error("Save As requires the source SVGA to be opened through the desktop file picker.");
+  }
   let targetPath;
-  if (productMilestoneId === "P3" && (smokeMode || productSmokeMode || normalProofMode)) {
+  if (p3SmokeSaveAs) {
     mkdirSync(productArtifactRoot, { recursive: true });
     targetPath = path.join(productArtifactRoot, "edited-output.svga");
   } else {
@@ -732,7 +737,6 @@ async function saveEditedSvga(input) {
     }
     targetPath = result.filePath.toLowerCase().endsWith(".svga") ? result.filePath : `${result.filePath}.svga`;
   }
-  const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
   if (originalPath && path.resolve(targetPath) === path.resolve(originalPath)) {
     throw new Error("Save As target must be different from the original SVGA.");
   }

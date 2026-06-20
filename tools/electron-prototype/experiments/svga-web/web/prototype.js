@@ -50,6 +50,10 @@ globalThis.addEventListener("securitypolicyviolation", (event) => {
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files?.[0];
   if (!file) return;
+  if (!confirmDiscardUnsavedEdits()) {
+    fileInput.value = "";
+    return;
+  }
   sourceFileId = "";
   await loadSvgaFile(file, "file-picker");
 });
@@ -78,6 +82,7 @@ dropZone.addEventListener("drop", async (event) => {
   dropZone.classList.remove("isDragOver");
   const file = event.dataTransfer?.files?.[0];
   if (!file) return;
+  if (!confirmDiscardUnsavedEdits()) return;
   sourceFileId = "";
   await loadSvgaFile(file, "drag-drop");
 });
@@ -195,9 +200,11 @@ async function loadSvgaFile(file, source) {
 
 async function openHostSvgaFile() {
   if (!window.autoSvgaPrototype?.openSvgaFile) {
+    if (!confirmDiscardUnsavedEdits()) return;
     fileInput.click();
     return;
   }
+  if (!confirmDiscardUnsavedEdits()) return;
   try {
     const result = await window.autoSvgaPrototype.openSvgaFile();
     if (!result || result.status === "cancelled") return;
@@ -537,12 +544,13 @@ function renderEditPanel() {
   const selected = resources.find((resource) => resource.resourceKey === selectedResourceKey) ?? resources[0];
   const replacementCount = Object.keys(editSession.replacements ?? {}).length;
   const statusLabel = editExportState === "exporting"
-    ? "正在导出"
-    : editExportState === "saved"
-      ? "已另存为"
-      : replacementCount > 0
-        ? "有未保存修改"
-        : "未修改";
+      ? "正在导出"
+      : editExportState === "saved"
+        ? "已另存为"
+        : replacementCount > 0
+          ? "有未保存修改"
+          : "未修改";
+  const saveUnavailable = editedSvgaBytes && !canSaveEditedSvga();
   return `
     <article class="inspectionGroup editPanel" data-inspection-group="edit">
       <h3>检查 / 编辑 <span class="statusPill">${escapeHtml(statusLabel)}</span></h3>
@@ -553,6 +561,7 @@ function renderEditPanel() {
         <span>${escapeHtml(sourceSvgaName || "当前文件")}</span>
       </div>
       ${editError ? `<p class="editError">${escapeHtml(editError)}</p>` : ""}
+      ${saveUnavailable ? "<p class=\"editWarning\">浏览器选择或拖拽导入无法安全确认原始路径；请使用“打开 SVGA”加载后再另存为。</p>" : ""}
       ${exportInfo ? `<p class="editSuccess">已另存为 ${escapeHtml(exportInfo.fileName)} · ${formatBytes(exportInfo.sizeBytes)}</p>` : ""}
       <div class="resourceEditorGrid">
         <div class="resourceList" role="listbox" aria-label="图像资源列表">
@@ -608,7 +617,7 @@ function renderResourceDetail(resource) {
       <button type="button" data-edit-action="replace">替换 PNG</button>
       <button type="button" data-edit-action="reset-selected" ${resource.replacementStatus === "replaced" ? "" : "disabled"}>重置此资源</button>
       <button type="button" data-edit-action="reset-all" ${replacementInputs.size > 0 ? "" : "disabled"}>重置全部</button>
-      <button type="button" data-edit-action="save-as" ${editedSvgaBytes ? "" : "disabled"}>另存为</button>
+      <button type="button" data-edit-action="save-as" ${canSaveEditedSvga() ? "" : "disabled"}>另存为</button>
     </div>
   `;
 }
@@ -635,6 +644,11 @@ function bindEditPanel() {
 
 async function saveEditedSvga() {
   if (!editedSvgaBytes || !sourceSvgaBytes) return;
+  if (!canSaveEditedSvga()) {
+    editError = "请先使用“打开 SVGA”加载源文件，再另存为新的 SVGA。";
+    renderCurrentReportEditOnly();
+    return;
+  }
   editExportState = "exporting";
   renderCurrentReportEditOnly();
   try {
@@ -663,6 +677,20 @@ async function saveEditedSvga() {
     editError = productEditError(error);
     renderCurrentReportEditOnly();
   }
+}
+
+function canSaveEditedSvga() {
+  return Boolean(editedSvgaBytes) && (Boolean(sourceFileId) || isSmokeMode);
+}
+
+function hasUnsavedEdits() {
+  return replacementInputs.size > 0 && editExportState !== "saved";
+}
+
+function confirmDiscardUnsavedEdits() {
+  if (!hasUnsavedEdits()) return true;
+  if (isSmokeMode) return true;
+  return window.confirm("当前有未保存修改。要放弃这些修改并打开另一个 SVGA 吗？");
 }
 
 async function maybeRunP3EditSmoke(originalBytes) {

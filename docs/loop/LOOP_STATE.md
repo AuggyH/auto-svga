@@ -8,7 +8,7 @@ Date: 2026-06-20
 - Milestone: P3 Basic Image Resource Replacement And Save As
 - State: terminal_pass
 - Next Action: external_review
-- repairRound: 0
+- repairRound: 1
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -54,8 +54,12 @@ Date: 2026-06-20
 - P3 implementation plan is complete at `docs/product/P3_IMPLEMENTATION_PLAN.md`.
 - P3 implementation commit `ddca469d2e89aefcbd6ef742d6ed2c30dc8434ca` adds the restricted image-resource editor, resource list, controlled PNG replacement, reset, Save As, exported-file reopen, and P3 artifact capture.
 - P3 target validation passed: `npm run build`, `node --test dist/tests/svga-image-resource-editor.test.js`, `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`, `AUTO_SVGA_PRODUCT_MILESTONE=P3 npm run desktop:smoke`, `npm test`, and `git diff --check`.
-- P3 product artifacts under `.artifacts/product/P3/` are regenerated from the actual Electron app and bound to `ddca469d2e89aefcbd6ef742d6ed2c30dc8434ca`.
-- P3 `resource-edit-report.json` and `round-trip-report.json` both record `passed: true`; the round-trip report has no unexpected changes and records decode, playback, and nonblank canvas evidence.
+- P3 initial candidate review found three blocking issues: unknown protobuf fields could be dropped while passing, Save As original-path rejection did not protect browser-imported files, and unsaved-change confirmation was missing.
+- P3 repair-1 adds protobuf wire unknown-field fail-closed detection before edit decode.
+- P3 repair-1 requires host-opened source identity before user Save As, with P3 smoke as the only artifact-save exception.
+- P3 repair-1 adds unsaved-edit confirmation before loading another file and disables Save As for browser-selected or drag-dropped sources whose original path cannot be safely compared.
+- P3 repair-1 target validation passed: `npm run build`, `node --test dist/tests/svga-image-resource-editor.test.js`, `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`, `AUTO_SVGA_PRODUCT_MILESTONE=P3 npm run desktop:smoke`, `npm test`, and `git diff --check`.
+- P3 artifacts must be regenerated and rebound after the repair commit before final sealed handoff.
 
 ## Next Action
 

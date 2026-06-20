@@ -1,7 +1,8 @@
 # P3 Final Review
 
 externalOutcome: PASS_PENDING_PACKET_SEAL
-reviewedHeadCommit: ddca469d2e89aefcbd6ef742d6ed2c30dc8434ca
+reviewedHeadCommit: see final sealed packet `MANIFEST.json`
+repairBaseCommit: 041c71aed5aac194301a425c01949f454cb2fb3c
 branch: agent/codex/p3-basic-image-resource-editing
 packetStatus: PENDING_FINAL_HANDOFF
 
@@ -12,7 +13,7 @@ packetStatus: PENDING_FINAL_HANDOFF
 - controlled PNG replacement through token-bound local host endpoint
 - live edited SVGA preview using re-encoded SVGA bytes
 - dirty state plus reset selected / reset all
-- Save As through narrow Electron IPC with same-source-path rejection
+- Save As through narrow Electron IPC with host-source requirement and same-source-path rejection
 - exported SVGA reopen, playback smoke, nonblank canvas evidence, and round-trip invariant report
 - P3 product artifacts generated from the actual Electron app
 
@@ -27,17 +28,23 @@ packetStatus: PENDING_FINAL_HANDOFF
 ## Validation
 
 - `npm run build`: PASS
-- `node --test dist/tests/svga-image-resource-editor.test.js`: PASS, 4 tests
+- `node --test dist/tests/svga-image-resource-editor.test.js`: PASS, 5 tests
 - `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`: PASS, 12 tests
 - `AUTO_SVGA_PRODUCT_MILESTONE=P3 npm run desktop:smoke`: PASS
-- `npm test`: PASS, 159 tests
+- `npm test`: PASS, 160 tests
 - `git diff --check`: PASS
+
+## Repair-1 Reviewer A Blockers
+
+- A-P3-001 unknown protobuf field loss: repaired by wire-level unknown-field detection before edit decode; unsupported files fail closed with `unsupported_round_trip_file`.
+- A-P3-002 Save As original path protection for browser-imported files: repaired by requiring a host-opened source identity before user Save As; browser file input and drag/drop can preview but cannot save because original path cannot be safely compared.
+- A-P3-003 missing unsaved-change confirmation: repaired with a local confirmation before host open, file picker, or drag/drop when edits are unsaved.
 
 ## Evidence
 
-- `.artifacts/product/P3/resource-edit-report.json`: `passed=true`
-- `.artifacts/product/P3/round-trip-report.json`: `passed=true`, `unexpectedChanges=[]`, `decodePassed=true`, `playbackPassed=true`, `canvasNonBlank=true`
-- `.artifacts/product/P3/artifact-index.json`: bound to `ddca469d2e89aefcbd6ef742d6ed2c30dc8434ca`
+- `.artifacts/product/P3/resource-edit-report.json`: `passed=true` after final artifact regeneration.
+- `.artifacts/product/P3/round-trip-report.json`: `passed=true`, `unexpectedChanges=[]`, `decodePassed=true`, `playbackPassed=true`, `canvasNonBlank=true` after final artifact regeneration.
+- `.artifacts/product/P3/artifact-index.json`: regenerated and rebound after final repair commit.
 
 ## Remaining Risks
 
