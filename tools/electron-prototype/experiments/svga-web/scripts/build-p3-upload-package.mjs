@@ -697,16 +697,31 @@ async function main() {
   };
   await writeFile(path.join(artifactRoot, "p3-upload-package-summary.json"), `${JSON.stringify(zipSummary, null, 2)}\n`);
 
+  const visibleUploadZip = path.join(visibleRoot, path.basename(uploadZip));
   await rm(stagingRoot, { recursive: true, force: true });
+  await rm(visibleRoot, { recursive: true, force: true });
   await mkdir(visibleRoot, { recursive: true });
-  await cp(uploadZip, path.join(visibleRoot, path.basename(uploadZip)));
+  await cp(uploadZip, visibleUploadZip);
   await cp(path.join(packetRoot, "REVIEW_PACKET.md"), path.join(visibleRoot, "REVIEW_PACKET.md"));
   await cp(path.join(packetRoot, "MANIFEST.json"), path.join(visibleRoot, "MANIFEST.json"));
   await writeFile(path.join(visibleRoot, "FINAL_RESPONSE.txt"), finalResponseText({ uploadZipName: `P3-${headShort}-upload.zip`, headShort }));
+  await writeFile(path.join(visibleRoot, "UPLOAD_INDEX.json"), `${JSON.stringify({
+    schemaVersion: 2,
+    milestoneId: "P3",
+    headCommit,
+    visibleZip: path.relative(repoRoot, visibleUploadZip),
+    hiddenZip: path.relative(repoRoot, uploadZip),
+    sizeBytes: zipSummary.sizeBytes,
+    sha256: zipSummary.sha256,
+    entryCount: zipSummary.entryCount,
+    privacyAudit: zipSummary.privacyAudit,
+    generatedAt: "stable-p3-visible-upload-index"
+  }, null, 2)}\n`);
   await writeFile(path.join(visibleRoot, "README.md"), [
     "# P3 Review Materials",
     "",
     "Upload the ZIP in this folder for product review. P3 remains HUMAN_REQUIRED until product owner acceptance.",
+    "This folder is regenerated for the current HEAD and keeps only the latest P3 upload package.",
     "",
     `- ${path.basename(uploadZip)}`,
     "- REVIEW_PACKET.md is included in the ZIP and copied here for quick reading.",

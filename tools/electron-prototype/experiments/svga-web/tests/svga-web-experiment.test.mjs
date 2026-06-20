@@ -365,6 +365,9 @@ test("P3 upload package contract includes sealed review evidence and redacted bu
   assert.match(source, /product-bundle-validation\.json/);
   assert.match(source, /reviewer-b-product-categories\.json/);
   assert.match(source, /sealed-packet-manifest\.json/);
+  assert.match(source, /UPLOAD_INDEX\.json/);
+  assert.match(source, /stable-p3-visible-upload-index/);
+  assert.match(source, /await rm\(visibleRoot, \{ recursive: true, force: true \}\)/);
   assert.match(source, /replacementSelectedStateConfirmed/);
   assert.match(source, /POSIX_HOME_PATH/);
   assert.match(source, /MACOS_USERS_PATH/);
