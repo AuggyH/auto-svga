@@ -1,5 +1,6 @@
+const { execFileSync } = require("node:child_process");
 const { createHash, randomBytes } = require("node:crypto");
-const { mkdirSync, rmSync, writeFileSync } = require("node:fs");
+const { mkdirSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -12,10 +13,18 @@ const auditPlayer = auditPlayerArgument?.split("=")[1];
 const auditMode = auditPlayer === "svga-web" || auditPlayer === "svgaplayerweb";
 const appRoot = app.getAppPath();
 const repoRoot = path.resolve(appRoot, "../../../..");
+const productIdentity = "Auto SVGA Desktop — Internal Baseline";
+const mainEntry = "main.cjs";
+const preloadEntry = "preload.cjs";
+const rendererHtmlEntry = "web/index.html";
+const rendererEntry = "web/prototype.js";
+const stylesEntry = "web/styles.css";
+const playerIdentity = "svga-web@2.4.4";
+const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const productArtifactRoot = process.env.AUTO_SVGA_P1_ARTIFACTS
   ? path.resolve(process.env.AUTO_SVGA_P1_ARTIFACTS)
   : path.join(repoRoot, ".artifacts/product/P1");
-const sessionRoot = path.join(os.tmpdir(), `auto-svga-svga-web-spike-${process.pid}`);
+const sessionRoot = path.join(os.tmpdir(), `auto-svga-desktop-baseline-${process.pid}`);
 const reportToken = randomBytes(24).toString("hex");
 let experimentServer;
 let expectedOrigin;
@@ -26,6 +35,8 @@ let cleanedUp = false;
 const productArtifactIndex = {
   milestoneId: "P1",
   title: "Electron Desktop Mainline Baseline: Local SVGA Open, Playback And Inspection",
+  productIdentity,
+  headCommit: gitHeadCommit(),
   generatedAt: new Date().toISOString(),
   humanReviewRequired: true,
   artifacts: []
@@ -67,7 +78,9 @@ function validateArtifactScenario(value) {
     "empty-state",
     "valid-svga-loaded",
     "inspection-panel",
-    "invalid-file-state"
+    "invalid-file-state",
+    "canonical-normal-valid-loaded",
+    "canonical-smoke-valid-loaded"
   ]);
   return allowed.has(value) ? value : undefined;
 }
@@ -124,6 +137,90 @@ function redactLogMessage(value) {
     .replace(/(?:[A-Za-z]:\\|\/Users\/|\/home\/)[^\s"']+/g, "<local-path>");
 }
 
+function gitHeadCommit() {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repoRoot,
+      encoding: "utf8"
+    }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+function sha256RelativeFile(relativePath) {
+  return createHash("sha256").update(readFileSync(path.join(appRoot, relativePath))).digest("hex");
+}
+
+function runtimeIdentity(mode, rendererUrl) {
+  return {
+    schemaVersion: 1,
+    milestoneId: "P1",
+    headCommit: productArtifactIndex.headCommit,
+    entryCommand: "npm run desktop:dev",
+    mainEntry: `tools/electron-prototype/experiments/svga-web/${mainEntry}`,
+    preloadEntry: `tools/electron-prototype/experiments/svga-web/${preloadEntry}`,
+    rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
+    rendererUrl,
+    windowTitle: productIdentity,
+    documentTitle: productIdentity,
+    productIdentity,
+    mode,
+    player: playerIdentity,
+    csp,
+    indexHtmlSha256: sha256RelativeFile(rendererHtmlEntry),
+    rendererJsSha256: sha256RelativeFile(rendererEntry),
+    stylesCssSha256: sha256RelativeFile(stylesEntry),
+    preloadSha256: sha256RelativeFile(preloadEntry),
+    mainSha256: sha256RelativeFile(mainEntry),
+    loadingPipelineIdentity: "loadSvgaFile -> loadSvgaBytes -> Parser.do -> Player.mount -> inspection report",
+    cleanupPipelineIdentity: "cleanupPlayer -> clearCanvas -> reset active player/parser/video/status",
+    externalRequests: [],
+    generatedAt: new Date().toISOString()
+  };
+}
+
+function normalSmokeParity(normalIdentity, smokeIdentity) {
+  const checks = {
+    mainEntry: normalIdentity.mainEntry === smokeIdentity.mainEntry,
+    preloadEntry: normalIdentity.preloadEntry === smokeIdentity.preloadEntry,
+    rendererEntry: normalIdentity.rendererEntry === smokeIdentity.rendererEntry,
+    indexHtmlSha256: normalIdentity.indexHtmlSha256 === smokeIdentity.indexHtmlSha256,
+    rendererJsSha256: normalIdentity.rendererJsSha256 === smokeIdentity.rendererJsSha256,
+    stylesCssSha256: normalIdentity.stylesCssSha256 === smokeIdentity.stylesCssSha256,
+    preloadSha256: normalIdentity.preloadSha256 === smokeIdentity.preloadSha256,
+    mainSha256: normalIdentity.mainSha256 === smokeIdentity.mainSha256,
+    productIdentity: normalIdentity.productIdentity === smokeIdentity.productIdentity,
+    player: normalIdentity.player === smokeIdentity.player,
+    csp: normalIdentity.csp === smokeIdentity.csp,
+    loadingPipelineIdentity: normalIdentity.loadingPipelineIdentity === smokeIdentity.loadingPipelineIdentity,
+    cleanupPipelineIdentity: normalIdentity.cleanupPipelineIdentity === smokeIdentity.cleanupPipelineIdentity
+  };
+  return {
+    schemaVersion: 1,
+    milestoneId: "P1",
+    headCommit: productArtifactIndex.headCommit,
+    normalMode: normalIdentity.mode,
+    smokeMode: smokeIdentity.mode,
+    passed: Object.values(checks).every(Boolean),
+    checks,
+    allowedDifferences: [
+      "mode",
+      "rendererUrl query parameters",
+      "test-only automation trigger",
+      "deterministic fixture selection",
+      "screenshot capture",
+      "process cleanup"
+    ],
+    generatedAt: new Date().toISOString()
+  };
+}
+
+function addProductArtifactRecord(record) {
+  productArtifactIndex.artifacts = productArtifactIndex.artifacts.filter((artifact) => artifact.path !== record.path);
+  productArtifactIndex.artifacts.push(record);
+}
+
 async function finishSmoke(window, result) {
   if (smokeFinished) return;
   smokeFinished = true;
@@ -145,19 +242,42 @@ async function captureProductArtifact(window, scenario) {
   const fileName = `${scenario}.png`;
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
-  productArtifactIndex.artifacts = productArtifactIndex.artifacts.filter((artifact) => artifact.scenario !== scenario);
-  productArtifactIndex.artifacts.push({
+  addProductArtifactRecord({
     scenario,
+    mode: scenario.startsWith("canonical-normal") ? "normal" : "smoke",
     path: `.artifacts/product/P1/${fileName}`,
     mime: "image/png",
     sizeBytes: png.byteLength,
     sha256: createHash("sha256").update(png).digest("hex"),
     fixture: "synthetic-avatar-frame.svga",
+    headCommit: productArtifactIndex.headCommit,
+    rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
+    rendererSha256: sha256RelativeFile(rendererEntry),
     generatedAt: new Date().toISOString(),
     humanReviewRequired: true
   });
   writeProductArtifactIndex();
   return { path: `.artifacts/product/P1/${fileName}`, sizeBytes: png.byteLength };
+}
+
+function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
+  const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
+  writeFileSync(path.join(productArtifactRoot, fileName), bytes);
+  addProductArtifactRecord({
+    scenario,
+    mode,
+    path: `.artifacts/product/P1/${fileName}`,
+    mime: "application/json",
+    sizeBytes: bytes.byteLength,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    fixture: "synthetic-avatar-frame.svga",
+    headCommit: productArtifactIndex.headCommit,
+    rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
+    rendererSha256: sha256RelativeFile(rendererEntry),
+    generatedAt: new Date().toISOString(),
+    humanReviewRequired: true
+  });
+  writeProductArtifactIndex();
 }
 
 async function finishAudit(window, result) {
@@ -186,6 +306,7 @@ async function createExperimentWindow() {
   expectedOrigin = experimentServer.origin;
 
   const window = new BrowserWindow({
+    title: productIdentity,
     width: 1120,
     height: 760,
     show: !(smokeMode || auditMode),
@@ -281,7 +402,14 @@ async function createExperimentWindow() {
   }
 
   const productMode = smokeMode ? `?mode=smoke${productSmokeMode ? "&artifacts=1" : ""}` : "";
-  await window.loadURL(auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}/${productMode}`);
+  const rendererUrl = auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}/${productMode}`;
+  if (productSmokeMode) {
+    const normalIdentity = runtimeIdentity("normal", `${expectedOrigin}/`);
+    const smokeIdentity = runtimeIdentity("smoke", rendererUrl);
+    writeJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
+    writeJsonProductArtifact("normal-smoke-parity.json", "normal-smoke-parity", normalSmokeParity(normalIdentity, smokeIdentity));
+  }
+  await window.loadURL(rendererUrl);
 }
 
 app.whenReady().then(createExperimentWindow).catch((error) => {

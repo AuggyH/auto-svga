@@ -8,7 +8,7 @@ Date: 2026-06-20
 - Milestone: P1 Electron Desktop Mainline Baseline: Local SVGA Open, Playback And Inspection
 - State: terminal_human_required
 - Next Action: external_review
-- repairRound: 1
+- repairRound: 2
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -27,8 +27,13 @@ Date: 2026-06-20
 - P1-R1 reviewer evidence repair is complete at `5b22a6fb8b873c9b8a53a163f82246d62f3cf15b`.
 - Machine validation passed twice on final terminal HEAD.
 - P1 visual artifacts were generated under `.artifacts/product/P1/`.
-- Human visual acceptance is required before marking P1 as PASS.
+- P1 external visual review 1 outcome is `REPAIR_REQUIRED`.
+- P1 repair-2 canonical desktop entrypoint and runtime visual parity repairs are complete.
+- P1 repair-2 machine validation passed before final source commit.
+- P1 repair-2 visual artifacts were regenerated under `.artifacts/product/P1/`.
+- P1 still requires human visual acceptance before it can be marked `PASS`.
 
 ## Next Action
 
-External review should inspect the P1 review packet and visual artifacts. Do not continue implementation until the human visual decision is returned.
+Await external/human review of repaired P1 canonical Electron desktop artifacts.
+Do not start P2 until P1 is explicitly accepted.

@@ -125,8 +125,8 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
     if (request.method === "GET" && requestUrl.pathname === "/health") {
       return sendJson(response, 200, {
         status: "ok",
-        runtime: "svga-web-internal-trial",
-        prototypeLabel: "internal prototype, not production"
+        runtime: "auto-svga-desktop-internal-baseline",
+        prototypeLabel: "Auto SVGA Desktop — Internal Baseline; internal baseline, not production"
       });
     }
 

@@ -30,13 +30,14 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     const health = await fetch(`${server.origin}/health`).then((response) => response.json());
     assert.deepEqual(health, {
       status: "ok",
-      runtime: "svga-web-internal-trial",
-      prototypeLabel: "internal prototype, not production"
+      runtime: "auto-svga-desktop-internal-baseline",
+      prototypeLabel: "Auto SVGA Desktop — Internal Baseline; internal baseline, not production"
     });
     const unauthorized = await fetch(`${server.origin}/api/avatar-frame-inspection-report`, { method: "POST" });
     assert.equal(unauthorized.status, 401);
     const page = await fetch(`${server.origin}/`).then((response) => response.text());
-    assert.match(page, /内部原型 · 非生产版本 · 仅供内部测试/);
+    assert.match(page, /Auto SVGA Desktop — Internal Baseline/);
+    assert.match(page, /内部基线 · 非生产版本 · 仅供内部测试/);
     assert.doesNotMatch(page, /cdn\.jsdelivr|(?<!wasm-)unsafe-eval/);
     const missingAuditSample = await fetch(`${server.origin}/audit-samples/missing.svga`);
     assert.equal(missingAuditSample.status, 404);
@@ -56,6 +57,14 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /productSmokeMode/);
   assert.match(main, /captureProductArtifact/);
   assert.match(main, /validateArtifactScenario/);
+  assert.match(main, /Auto SVGA Desktop — Internal Baseline/);
+  assert.match(main, /runtimeIdentity/);
+  assert.match(main, /normalSmokeParity/);
+  assert.match(main, /runtime-identity\.json/);
+  assert.match(main, /normal-smoke-parity\.json/);
+  assert.match(main, /canonical-normal-valid-loaded/);
+  assert.match(main, /canonical-smoke-valid-loaded/);
+  assert.match(main, /entryCommand: "npm run desktop:dev"/);
   assert.match(main, /setPermissionRequestHandler/);
   assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/);
   assert.match(main, /will-navigate/);
@@ -70,6 +79,10 @@ test("main process keeps sandboxed Electron security settings", async () => {
 test("renderer supports local file input, drag-drop, controls, and invalid file states without host filesystem access", async () => {
   const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const legacyPage = await readFile(path.join(experimentRoot, "../../web/index.html"), "utf8");
+  assert.match(page, /<title>Auto SVGA Desktop — Internal Baseline<\/title>/);
+  assert.match(page, /<h1>Auto SVGA Desktop — Internal Baseline<\/h1>/);
+  assert.match(page, /SVGA 播放输出/);
   assert.match(renderer, /fileInput\.addEventListener\("change"/);
   assert.match(renderer, /dropZone\.addEventListener\("drop"/);
   assert.match(renderer, /playButton\.addEventListener\("click"/);
@@ -81,25 +94,38 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   assert.match(renderer, /captureArtifact\("valid-svga-loaded"\)/);
   assert.match(renderer, /captureArtifact\("inspection-panel"\)/);
   assert.match(renderer, /captureArtifact\("invalid-file-state"\)/);
+  assert.match(renderer, /captureArtifact\("canonical-normal-valid-loaded"\)/);
+  assert.match(renderer, /captureArtifact\("canonical-smoke-valid-loaded"\)/);
   assert.match(renderer, /File\(\[bytes\], "file-input-smoke\.svga"/);
   assert.match(renderer, /File\(\[bytes\], "drag-drop-smoke\.svga"/);
   assert.match(renderer, /不支持的文件类型/);
+  assert.match(renderer, /cleanupPlayer\(\);\n\s+showError\("不支持的文件类型/);
+  assert.match(renderer, /SVGA 播放输出为空/);
+  assert.match(renderer, /waitForVisibleCanvasSamples/);
+  assert.match(renderer, /visibleCanvas\.sampleCount >= 3/);
+  assert.match(renderer, /clearCanvas/);
+  assert.match(renderer, /summary\.dimensions/);
+  assert.match(renderer, /timing\.durationMs/);
   assert.match(page, /id="playButton"/);
   assert.match(page, /id="pauseButton"/);
   assert.match(page, /id="replayButton"/);
   assert.match(page, /id="fileInfo"/);
+  assert.match(legacyPage, /Legacy Electron Spike — not product mainline/);
   assert.doesNotMatch(renderer, /require\(|ipcRenderer|node:fs|\/Users\//);
 });
 
 test("root package exposes explicit desktop entrypoints without changing default scripts", async () => {
   const rootPackage = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   const experimentPackage = JSON.parse(await readFile(path.join(experimentRoot, "package.json"), "utf8"));
+  const legacyPackage = JSON.parse(await readFile(path.join(experimentRoot, "../../package.json"), "utf8"));
   assert.equal(rootPackage.scripts["desktop:dev"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev");
   assert.equal(rootPackage.scripts["desktop:smoke"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke");
   assert.equal(rootPackage.scripts.test, "npm run test:all");
   assert.equal(rootPackage.scripts["local:preview"], "node tools/launch-local-preview.mjs");
   assert.match(experimentPackage.scripts["desktop:dev"], /electron \.$/);
   assert.match(experimentPackage.scripts["desktop:smoke"], /--smoke --product-smoke/);
+  assert.notEqual(rootPackage.scripts["desktop:dev"], legacyPackage.scripts["spike:electron:smoke"]);
+  assert.doesNotMatch(rootPackage.scripts["desktop:dev"], /tools\/electron-prototype run/);
 });
 
 test("real sample audit harness stores aliases and avoids absolute paths in report output", async () => {

@@ -56,6 +56,10 @@ Not allowed:
    - `valid-svga-loaded.png`
    - `inspection-panel.png`
    - `invalid-file-state.png`
+   - `canonical-normal-valid-loaded.png`
+   - `canonical-smoke-valid-loaded.png`
+   - `runtime-identity.json`
+   - `normal-smoke-parity.json`
    - `artifact-index.json`
 
 ## Validation Plan

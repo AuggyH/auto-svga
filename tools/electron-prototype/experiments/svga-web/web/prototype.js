@@ -101,6 +101,8 @@ async function runSmoke() {
   const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
   const bytes = new Uint8Array(await fetch(fixtureUrl).then(assertResponse).then((response) => response.arrayBuffer()));
   const smoke = await loadSvgaBytes(bytes.slice(0), "synthetic-avatar-frame.svga", { sizeBytes: bytes.byteLength });
+  await captureArtifact("canonical-normal-valid-loaded");
+  await captureArtifact("canonical-smoke-valid-loaded");
   await captureArtifact("valid-svga-loaded");
   document.querySelector("#reportTitle")?.scrollIntoView({ block: "start" });
   await delay(180);
@@ -132,6 +134,7 @@ async function runSmoke() {
 
 async function loadSvgaFile(file, source) {
   if (!isSvgaFile(file)) {
+    cleanupPlayer();
     showError("不支持的文件类型。请选择 .svga 文件。");
     return false;
   }
@@ -172,13 +175,17 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
     playerStarted = true;
     playerPaused = false;
     updatePlaybackControls();
-    playbackStatus.textContent = `正在播放：${safeDisplayName(name)}`;
+    playbackStatus.textContent = `正在渲染：${safeDisplayName(name)}`;
 
-    const nonblank = await waitForCanvas(canvas, 1500);
+    const visibleCanvas = await waitForVisibleCanvasSamples(canvas, 1800);
+    if (!visibleCanvas.nonBlank || !visibleCanvas.centralContent) {
+      throw new Error("SVGA 播放输出为空。");
+    }
     const report = await reportPromise;
     reportRoot.innerHTML = renderAvatarFrameInspectionReport(report, "success");
     updateFileInfo(name, metadata.sizeBytes ?? bytes.byteLength, report);
     runtimeStatus.textContent = "SVGA 已加载，检查报告已生成。";
+    playbackStatus.textContent = `正在播放：${safeDisplayName(name)}`;
     dropZone.classList.remove("isError");
     dropZoneHint.textContent = "可以继续拖入或选择另一个本地 SVGA 文件。";
 
@@ -194,7 +201,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
 
     return {
       playback: video.frames > 0 && Boolean(canvas.getContext("2d")),
-      canvasNonBlank: nonblank,
+      canvasNonBlank: visibleCanvas.nonBlank && visibleCanvas.centralContent && visibleCanvas.sampleCount >= 3,
       inspectionReport: report.contractVersion === 1 && Boolean(reportRoot.querySelector(".specReportSection")),
       auditPanel: Boolean(report.auditPresentation) && Boolean(reportRoot.querySelector(".auditReportSection")),
       playerLifecycle: ["start", "process"].every((eventName) => lifecycle.has(eventName))
@@ -291,29 +298,44 @@ function updatePlaybackControls() {
 }
 
 function updateFileInfo(name = "未加载", sizeBytes, report) {
-  const summary = report?.assetSummary ?? report?.asset ?? {};
-  const canvasLabel = summary.canvasSize
-    ? `${summary.canvasSize.width}x${summary.canvasSize.height}`
-    : summary.width && summary.height
-      ? `${summary.width}x${summary.height}`
+  const summary = report?.asset ?? {};
+  const timing = summary.timing ?? {};
+  const dimensions = summary.dimensions ?? {};
+  const canvasLabel = dimensions.width && dimensions.height
+    ? `${dimensions.width} × ${dimensions.height}`
+    : summary.canvasSize
+      ? `${summary.canvasSize.width} × ${summary.canvasSize.height}`
+      : summary.width && summary.height
+        ? `${summary.width} × ${summary.height}`
+        : "--";
+  const timingLabel = typeof timing.durationMs === "number"
+    ? `${(timing.durationMs / 1000).toFixed(2)}s`
+    : typeof timing.frameCount === "number"
+      ? `${timing.frameCount} frames`
       : "--";
   const values = [
     safeDisplayName(name),
     typeof sizeBytes === "number" ? formatBytes(sizeBytes) : "--",
     canvasLabel,
-    summary.fps ?? "--",
-    summary.frames ?? "--"
+    typeof timing.fps === "number" ? `${timing.fps} fps` : summary.fps ?? "--",
+    timingLabel
   ];
   fileInfo.querySelectorAll("dd").forEach((node, index) => {
     node.textContent = String(values[index] ?? "--");
   });
 }
 
-function canvasHasVisiblePixels(target) {
+function canvasHasVisiblePixels(target, region) {
   if (!target || target.width <= 0 || target.height <= 0) return false;
   const context = target.getContext("2d");
   if (!context) return false;
-  const pixels = context.getImageData(0, 0, target.width, target.height).data;
+  const sampleRegion = region ?? { x: 0, y: 0, width: target.width, height: target.height };
+  const pixels = context.getImageData(
+    sampleRegion.x,
+    sampleRegion.y,
+    sampleRegion.width,
+    sampleRegion.height
+  ).data;
   for (let index = 0; index < pixels.length; index += 4) {
     if (pixels[index + 3] > 0 && (pixels[index] > 20 || pixels[index + 1] > 20 || pixels[index + 2] > 20)) {
       return true;
@@ -322,13 +344,27 @@ function canvasHasVisiblePixels(target) {
   return false;
 }
 
-async function waitForCanvas(target, timeoutMs) {
+async function waitForVisibleCanvasSamples(target, timeoutMs) {
   const startedAt = performance.now();
+  let sampleCount = 0;
+  let nonBlank = false;
+  let centralContent = false;
+  const centralRegion = {
+    x: Math.floor(target.width * 0.25),
+    y: Math.floor(target.height * 0.25),
+    width: Math.floor(target.width * 0.5),
+    height: Math.floor(target.height * 0.5)
+  };
   while (performance.now() - startedAt < timeoutMs) {
-    if (canvasHasVisiblePixels(target)) return true;
+    const sampleVisible = canvasHasVisiblePixels(target);
+    const sampleCentral = canvasHasVisiblePixels(target, centralRegion);
+    if (sampleVisible) nonBlank = true;
+    if (sampleCentral) centralContent = true;
+    if (sampleVisible && sampleCentral) sampleCount += 1;
+    if (sampleCount >= 3) return { nonBlank, centralContent, sampleCount };
     await delay(80);
   }
-  return false;
+  return { nonBlank, centralContent, sampleCount };
 }
 
 function resourcesAreLocal() {
@@ -377,8 +413,15 @@ function cleanupPlayer() {
   activePlayer = undefined;
   activeParser = undefined;
   activeVideo = undefined;
+  activeName = "";
   playerStarted = false;
   playerPaused = false;
+  clearCanvas();
+}
+
+function clearCanvas() {
+  const context = canvas.getContext("2d");
+  context?.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 function toArrayBuffer(bytes) {
