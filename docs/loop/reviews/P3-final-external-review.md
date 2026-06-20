@@ -1,57 +1,61 @@
-# P3 Final Review
+# P3 Final External Review
 
-externalOutcome: PASS_PENDING_PACKET_SEAL
-reviewedHeadCommit: see final sealed packet `MANIFEST.json`
-repairBaseCommit: 041c71aed5aac194301a425c01949f454cb2fb3c
+externalOutcome: PASS
+ownerDecision: ACCEPT_P3_AND_START_P4
+reviewedHeadCommit: afac37da8465e8f626907ca090c158a9e504d2ac
 branch: agent/codex/p3-basic-image-resource-editing
-packetStatus: PENDING_FINAL_HANDOFF
+packetStatus: COMPLETE
 
 ## Accepted Capabilities
 
-- restricted SVGA embedded PNG image-resource discovery
-- stable resource key, size, dimension, hash, and usage count display
-- controlled PNG replacement through token-bound local host endpoint
-- live edited SVGA preview using re-encoded SVGA bytes
-- dirty state plus reset selected / reset all
-- Save As through narrow Electron IPC with host-source requirement and same-source-path rejection
-- exported SVGA reopen, playback smoke, nonblank canvas evidence, and round-trip invariant report
-- P3 product artifacts generated from the actual Electron app
+- stable embedded image resource discovery
+- controlled local PNG replacement
+- visible replacement preview
+- dirty state
+- selected and all-resource reset
+- safe Save As
+- original file immutability
+- exported SVGA decode and playback
+- exported resource thumbnail reconstruction
+- granular known-field round-trip validation
+- privacy-clean sealed upload package
 
-## Protected Flows
+## Accepted Scope Boundary
 
-- Existing SVGA exporter was not touched.
-- Main Web preview player was not touched.
-- CLI default flow was not touched.
-- Browser import, drag/drop, comparison, and local preview rollback were not modified.
-- No real user SVGA / PNG assets were committed.
+- P3 acceptance proves the single-resource vertical editing loop.
+- P3 does not certify simultaneous multi-resource replacement integrity.
+- P3 does not certify arbitrary SVGA round-trip support.
+- Unknown protobuf fields remain fail-closed.
 
-## Validation
+## Nonblocking Evidence Debt
 
-- `npm run build`: PASS
-- `node --test dist/tests/svga-image-resource-editor.test.js`: PASS, 5 tests
-- `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`: PASS, 12 tests
-- `AUTO_SVGA_PRODUCT_MILESTONE=P3 npm run desktop:smoke`: PASS
-- `npm test`: PASS, 160 tests
-- `git diff --check`: PASS
+1. P3 `reviewer-b-product-categories.json` was generated deterministically from reports rather than authored by an independent visual Reviewer B.
+2. Final external product review directly inspected visual artifacts and supplies the missing product visual judgment for P3.
+3. P4 must use an actual independent read-only Reviewer B subagent. A deterministic script may validate Reviewer B JSON but may not generate verdicts or visual observations.
+4. P3 `round-trip-report.json` uses singular `replacedResourceKey` fields and does not certify every replacement in a multi-resource session.
 
-## Repair-1 Reviewer A Blockers
+## Do Not Repair In P3
 
-- A-P3-001 unknown protobuf field loss: repaired by wire-level unknown-field detection before edit decode; unsupported files fail closed with `unsupported_round_trip_file`.
-- A-P3-002 Save As original path protection for browser-imported files: repaired by requiring a host-opened source identity before user Save As; browser file input and drag/drop can preview but cannot save because original path cannot be safely compared.
-- A-P3-003 missing unsaved-change confirmation: repaired with a local confirmation before host open, file picker, or drag/drop when edits are unsaved.
+- Do not create P3 repair-4.
+- Do not expand Agent Loop infrastructure for P3.
+- Do not fix multi-resource integrity in P3.
+- Carry multi-resource integrity and independent visual Reviewer B into P4.
 
 ## Evidence
 
-- `.artifacts/product/P3/resource-edit-report.json`: `passed=true` after final artifact regeneration.
-- `.artifacts/product/P3/round-trip-report.json`: `passed=true`, `unexpectedChanges=[]`, `decodePassed=true`, `playbackPassed=true`, `canvasNonBlank=true` after final artifact regeneration.
-- `.artifacts/product/P3/artifact-index.json`: regenerated and rebound after final repair commit.
+- P3 accepted HEAD: `afac37da8465e8f626907ca090c158a9e504d2ac`
+- P3 visible upload ZIP: `review/P3-latest/P3-afac37d-upload.zip`
+- P3 sealed packet: `.artifacts/loop-handoff/P3-afac37d/REVIEW_PACKET.md`
+- P3 visible review packet: `review/P3-latest/REVIEW_PACKET.md`
 
-## Remaining Risks
+## Protected Flows
 
-- P3 is a restricted subset editor and does not preserve unknown protobuf fields by claim.
-- P3 does not edit text, timeline, transforms, layers, effects, or batch replacements.
-- Visual acceptance is based on smoke artifacts; no pixel-perfect parity claim is made.
+- Existing SVGA exporter was not touched by the acceptance closeout.
+- Main Web preview player was not touched by the acceptance closeout.
+- CLI default flow was not touched by the acceptance closeout.
+- Browser import, drag/drop, and comparison were not touched by the acceptance closeout.
 
 ## Next
 
-Generate final loop handoff packet, bind Reviewer A/B JSON, and return `FINAL_RESPONSE.txt` exactly.
+Close P3 as terminal PASS, generate the final P3 PASS packet, then start P4 on
+`agent/codex/p4-multi-resource-edit-history` from the accepted P3 closeout HEAD.
