@@ -6,7 +6,7 @@ Date: 2026-06-20
 
 - milestoneId: P2
 - Milestone: P2 Desktop Product Shell And Web Preview Parity
-- State: terminal_human_required
+- State: terminal_pass
 - Next Action: external_review
 - repairRound: 4
 - consecutiveNoProgressRounds: 0
@@ -42,9 +42,11 @@ Date: 2026-06-20
 - P2 repair-4 makes Reviewer B product categories require an independent input instead of auto-passing from the local parity report.
 - P2 repair-4 adds upload-bundle privacy scanning and sanitization before ZIP creation.
 - P2 repair-4 machine validation is complete: Electron product smoke, normal runtime proof, Web reference capture, parity report, isolated tests, root npm test, and git diff check passed.
-- P2 remains HUMAN_REQUIRED because the final product review upload packet still requires external product acceptance before P3 can begin.
+- P2 final product review was accepted by the owner at accepted head `87aec9caa31fc84fe48e1058e6c1ca1b2a04ffd5`.
+- P2 accepted capabilities include shared product identity, Web-aligned desktop shell, player-first workspace hierarchy, structured inspection, product states, same-fixture Web/Desktop evidence, independent normal/smoke runtime, local-only Electron security boundary, sanitized review bundle, and Reviewer A/B evidence.
+- P2 explicit evidence debt is non-blocking: final packet historicalReviewerEvidence remained PENDING_CANDIDATE_REVIEW despite sealed Reviewer A/B PASS, Human Decision evidence included one stale intermediate commit reference, and Reviewer B product categories did not expose a separate bundlePrivacy category while bundle-privacy-audit.json passed.
 - Browser workflow remains the stable rollback.
 
 ## Next Action
 
-External product review of the final P2 upload package. Do not start P3 until P2 is accepted. Do not create repair-5 without a new user directive.
+External review is complete for P2. Start P3 from the accepted P2 head. Do not create P2 repair-5.
