@@ -25,7 +25,7 @@ Date: 2026-06-21
 - Reviewer A candidate review found two blocking contract issues: P4 single-resource replacement could pass the schemaVersion 3 gate, and Save As was not bound tightly enough to the active validated revision.
 - Repair-1 fixes both blockers: P4 single-resource replacement is preview-only with `p4_minimum_replacement_count`, and Save As now requires revision/report/byte-hash validation plus reopened playback/report success before save-point advancement.
 - `AUTO_SVGA_PRODUCT_MILESTONE=P4 npm run desktop:smoke` passed after repair-1 and regenerated P4 screenshots, reports, and edited SVGA output from the real Electron app.
-- Pre-terminal `npm run loop:validate` must pass again after repair-1 before final sealed packet generation.
+- Final `npm run loop:validate` passed after repair-1 on the clean source HEAD.
 
 ## Next Action
 
