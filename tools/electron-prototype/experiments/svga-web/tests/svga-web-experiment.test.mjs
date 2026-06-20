@@ -69,6 +69,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /desktop-loaded/);
   assert.match(main, /actual-normal-loaded/);
   assert.match(main, /actualLaunchCommand/);
+  assert.match(main, /actualArgvSanitized/);
+  assert.match(main, /pathRedactionsApplied/);
+  assert.doesNotMatch(main, /actualArgv:\s*process\.argv/);
   assert.match(main, /driveCanonicalNormalProof/);
   assert.match(main, /setPermissionRequestHandler/);
   assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/);
@@ -121,6 +124,11 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   assert.match(renderer, /pauseButton\.addEventListener\("click"/);
   assert.match(renderer, /replayButton\.addEventListener\("click"/);
   assert.match(renderer, /showEmptyState/);
+  assert.match(renderer, /installStateProbe/);
+  assert.match(renderer, /collectRenderedStateProof/);
+  assert.match(page, /data-state-overlay/);
+  assert.match(styles, /\.loadingIndicator/);
+  assert.match(styles, /z-index:\s*4/);
   assert.match(renderer, /无法打开此 SVGA 文件/);
   assert.match(renderer, /captureArtifact\("desktop-empty"\)/);
   assert.match(renderer, /captureArtifact\("desktop-loaded"\)/);
@@ -131,7 +139,7 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   assert.match(renderer, /File\(\[bytes\], "file-input-smoke\.svga"/);
   assert.match(renderer, /File\(\[bytes\], "drag-drop-smoke\.svga"/);
   assert.match(renderer, /不支持的文件类型/);
-  assert.match(renderer, /cleanupPlayer\(\);\n\s+showError\("无法打开此 SVGA 文件/);
+  assert.match(renderer, /cleanupPlayer\(\);\n\s+rejectedName = name;\n\s+showError\("无法打开此 SVGA 文件/);
   assert.match(renderer, /SVGA 播放输出为空/);
   assert.match(renderer, /waitForVisibleCanvasSamples/);
   assert.match(renderer, /visibleCanvas\.sampleCount >= 3/);
@@ -183,6 +191,13 @@ test("P2 parity report generator is deterministic and not unconditional pass", a
   assert.match(source, /fixtureParity/);
   assert.match(source, /comparison-manifest\.json/);
   assert.match(source, /canonical-fixture\.json/);
+  assert.match(source, /invalid-fixture\.json/);
+  assert.match(source, /desktop-state-render-proof\.json/);
+  assert.match(source, /stateProof/);
+  assert.match(source, /empty_rendered_overlay_visible/);
+  assert.match(source, /loading_rendered_text/);
+  assert.match(source, /invalid_stale_metadata_cleared/);
+  assert.match(source, /comparison_blank_space_bounded/);
   assert.match(source, /web_valid_phase_playback_confirmed/);
   assert.match(source, /web_invalid_phase_isolated/);
   assert.match(source, /requiredCategoryStatus/);
@@ -209,6 +224,10 @@ test("P2 canonical fixture helper freezes one approved fixture for all proof pat
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   assert.match(helper, /canonical-fixture\.json/);
   assert.match(helper, /canonicalFixtureFileName = "canonical-fixture\.svga"/);
+  assert.match(helper, /invalid-fixture\.json/);
+  assert.match(helper, /invalidFixtureFileName = "invalid-fixture\.svga"/);
+  assert.match(helper, /expectedInvalid: true/);
+  assert.match(helper, /fixtureFields\(fixture\)/);
   assert.match(helper, /approvedSyntheticOrRepositoryFixture: true/);
   assert.match(helper, /readCanonicalFixture/);
   assert.match(webCapture, /ensureCanonicalFixture/);
@@ -221,6 +240,10 @@ test("P2 canonical fixture helper freezes one approved fixture for all proof pat
 test("P2 Reviewer B product categories are generated from required parity categories", async () => {
   const source = await readFile(path.join(experimentRoot, "scripts/build-p2-reviewer-b-categories.mjs"), "utf8");
   assert.match(source, /reviewer-b-product-categories\.json/);
+  assert.match(source, /Independent Reviewer B input is required/);
+  assert.match(source, /readReviewerInput/);
+  assert.match(source, /validateReviewerInput/);
+  assert.match(source, /schemaVersion !== 2/);
   assert.match(source, /productIdentity/);
   assert.match(source, /fixtureParity/);
   assert.match(source, /playerWorkspace/);
@@ -229,7 +252,7 @@ test("P2 Reviewer B product categories are generated from required parity catego
   assert.match(source, /invalidState/);
   assert.match(source, /webDesktopParity/);
   assert.match(source, /normalRuntimeEvidence/);
-  assert.match(source, /verdict: blocking\.length === 0 \? "PASS" : "BLOCKING"/);
+  assert.doesNotMatch(source, /verdict: blocking\.length === 0 \? "PASS" : "BLOCKING"/);
 });
 
 test("P2 upload package contract includes review packet, screenshots, and reports", async () => {
@@ -241,6 +264,12 @@ test("P2 upload package contract includes review packet, screenshots, and report
   assert.match(source, /reports/);
   assert.match(source, /canonical-fixture\.json/);
   assert.match(source, /comparison-manifest\.json/);
+  assert.match(source, /desktop-state-render-proof\.json/);
+  assert.match(source, /invalid-fixture\.json/);
+  assert.match(source, /bundle-privacy-audit\.json/);
+  assert.match(source, /sanitizeReviewText/);
+  assert.match(source, /buildPrivacyAudit/);
+  assert.match(source, /UPLOAD_TO_REVIEW_ASSISTANT:P2-\$\{headShort\}-upload\.zip/);
   assert.match(source, /reviewer-b-product-categories\.json/);
   assert.equal(source.includes("P2-${headShort}-upload.zip"), true);
   assert.equal(source.includes("review/P2-latest"), true);

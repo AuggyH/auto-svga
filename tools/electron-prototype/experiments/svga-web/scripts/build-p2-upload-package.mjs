@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,8 +31,10 @@ const screenshotFiles = [
 
 const reportFiles = [
   "canonical-fixture.json",
+  "invalid-fixture.json",
   "comparison-manifest.json",
   "artifact-index.json",
+  "desktop-state-render-proof.json",
   "normal-runtime-proof.json",
   "normal-smoke-parity.json",
   "runtime-identity.json",
@@ -41,6 +43,15 @@ const reportFiles = [
   "web-desktop-parity-report.json",
   "reviewer-b-product-categories.json"
 ];
+
+const comparisonMetaFiles = [
+  "matched-web-desktop-empty-comparison.png.meta.json",
+  "matched-web-desktop-loaded-comparison.png.meta.json",
+  "matched-web-desktop-inspection-comparison.png.meta.json",
+  "matched-web-desktop-invalid-comparison.png.meta.json"
+];
+
+const textExtensions = new Set([".json", ".md", ".txt"]);
 
 function readArgument(name) {
   const index = process.argv.indexOf(name);
@@ -54,6 +65,83 @@ function gitHeadCommit() {
 async function copyRequired(src, dest) {
   await readFile(src);
   await cp(src, dest);
+}
+
+function sanitizeReviewText(text, headShort) {
+  const patterns = [
+    [repoRoot, "<repo-root>"],
+    [artifactRoot, "<artifact-root>"],
+    [visibleRoot, "<visible-review-root>"],
+    [process.env.HOME ?? "", "<home>"]
+  ].filter(([pattern]) => pattern);
+  let sanitized = text;
+  for (const [pattern, replacement] of patterns) {
+    sanitized = sanitized.split(pattern).join(replacement);
+  }
+  sanitized = sanitized
+    .replace(/\/Users\/[^/\s"'`]+\/[^\s"'`]*/g, "<absolute-path-redacted>")
+    .replace(/\/home\/[^/\s"'`]+\/[^\s"'`]*/g, "<absolute-path-redacted>")
+    .replace(/[A-Za-z]:\\Users\\[^\\\s"'`]+\\[^\s"'`]*/g, "<absolute-path-redacted>");
+  return sanitized.replace(/UPLOAD_TO_REVIEW_ASSISTANT:[^\n]+/g, `UPLOAD_TO_REVIEW_ASSISTANT:P2-${headShort}-upload.zip`);
+}
+
+async function listFiles(root) {
+  const entries = await readdir(root, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const fullPath = path.join(root, entry.name);
+    if (entry.isDirectory()) files.push(...await listFiles(fullPath));
+    else files.push(fullPath);
+  }
+  return files;
+}
+
+async function sanitizeTextFiles(root, headShort) {
+  for (const filePath of await listFiles(root)) {
+    if (!textExtensions.has(path.extname(filePath))) continue;
+    const text = await readFile(filePath, "utf8");
+    await writeFile(filePath, sanitizeReviewText(text, headShort));
+  }
+}
+
+async function buildPrivacyAudit(root) {
+  const findings = [];
+  const forbiddenPatterns = [
+    { id: "repo_absolute_path", pattern: repoRoot },
+    { id: "artifact_absolute_path", pattern: artifactRoot },
+    { id: "visible_absolute_path", pattern: visibleRoot },
+    { id: "home_absolute_path", pattern: process.env.HOME ?? "" },
+    { id: "unix_user_path", pattern: /\/Users\/[^/\s"'`]+\/[^\s"'`]*/ },
+    { id: "linux_user_path", pattern: /\/home\/[^/\s"'`]+\/[^\s"'`]*/ },
+    { id: "windows_user_path", pattern: /[A-Za-z]:\\Users\\[^\\\s"'`]+\\[^\s"'`]*/ },
+    { id: "macos_metadata", pattern: /__MACOSX|\.DS_Store/ }
+  ].filter((item) => item.pattern);
+  const scannedFiles = [];
+  for (const filePath of await listFiles(root)) {
+    const relativePath = path.relative(root, filePath);
+    if (relativePath.includes("__MACOSX") || relativePath.endsWith(".DS_Store")) {
+      findings.push({ id: "macos_metadata", path: relativePath });
+      continue;
+    }
+    if (!textExtensions.has(path.extname(filePath))) continue;
+    scannedFiles.push(relativePath);
+    const text = await readFile(filePath, "utf8");
+    for (const forbidden of forbiddenPatterns) {
+      const matched = typeof forbidden.pattern === "string"
+        ? text.includes(forbidden.pattern)
+        : forbidden.pattern.test(text);
+      if (matched) findings.push({ id: forbidden.id, path: relativePath });
+    }
+  }
+  return {
+    schemaVersion: 1,
+    milestoneId: "P2",
+    passed: findings.length === 0,
+    scannedTextFiles: scannedFiles.sort(),
+    findings,
+    redactions: ["repoRoot", "artifactRoot", "visibleRoot", "homePath", "absoluteUserPaths"],
+    generatedAt: new Date().toISOString()
+  };
 }
 
 async function main() {
@@ -76,7 +164,7 @@ async function main() {
     "# P2 Review Upload Package",
     "",
     "Status: HUMAN_REQUIRED",
-    "This package contains the P2 Repair 3 review packet and product evidence.",
+    "This package contains the P2 final repair review packet and product evidence.",
     "",
     "Upload this ZIP only. REVIEW_PACKET.md is included inside the ZIP.",
     ""
@@ -87,6 +175,17 @@ async function main() {
   }
   for (const fileName of reportFiles) {
     await copyRequired(path.join(artifactRoot, fileName), path.join(stagingRoot, "reports", fileName));
+  }
+  for (const fileName of comparisonMetaFiles) {
+    await copyRequired(path.join(artifactRoot, fileName), path.join(stagingRoot, "reports", fileName));
+  }
+
+  await sanitizeTextFiles(stagingRoot, headShort);
+  const privacyAudit = await buildPrivacyAudit(stagingRoot);
+  await writeFile(path.join(stagingRoot, "reports", "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
+  await writeFile(path.join(artifactRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
+  if (!privacyAudit.passed) {
+    throw new Error(`Upload bundle privacy audit failed: ${privacyAudit.findings.map((finding) => `${finding.id}:${finding.path}`).join("; ")}`);
   }
 
   execFileSync("zip", ["-qr", uploadZip, "."], {
@@ -109,7 +208,11 @@ async function main() {
     sizeBytes: bytes.byteLength,
     sha256: createHash("sha256").update(bytes).digest("hex"),
     screenshotFiles,
-    reportFiles,
+    reportFiles: [...reportFiles, ...comparisonMetaFiles, "bundle-privacy-audit.json"],
+    privacyAudit: {
+      passed: privacyAudit.passed,
+      findingCount: privacyAudit.findings.length
+    },
     generatedAt: new Date().toISOString()
   };
   await writeFile(path.join(artifactRoot, "p2-upload-package-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);

@@ -24,6 +24,8 @@ let activeName = "";
 let playerStarted = false;
 let playerPaused = false;
 let cleanupCount = 0;
+let desktopLoadingCaptured = false;
+let rejectedName = "";
 
 globalThis.addEventListener("securitypolicyviolation", (event) => {
   cspViolations.push(`${event.violatedDirective}:${event.blockedURI}`);
@@ -111,6 +113,7 @@ start().catch(async (error) => {
 
 async function start() {
   showEmptyState();
+  installStateProbe();
   if (!isSmokeMode) return;
   await runSmoke();
 }
@@ -156,6 +159,7 @@ async function runSmoke() {
 async function loadSvgaFile(file, source) {
   if (!isSvgaFile(file)) {
     cleanupPlayer();
+    rejectedName = file.name;
     showError("无法打开此 SVGA 文件。", "不支持的文件类型。请选择 .svga 文件。");
     return false;
   }
@@ -166,9 +170,13 @@ async function loadSvgaFile(file, source) {
 async function loadSvgaBytes(bytes, name, metadata = {}) {
   cleanupPlayer();
   activeName = name;
+  rejectedName = "";
   setLoadingState(name);
   await delay(180);
-  await captureArtifact("desktop-loading");
+  if (!desktopLoadingCaptured && name === "synthetic-avatar-frame.svga") {
+    await captureArtifact("desktop-loading");
+    desktopLoadingCaptured = true;
+  }
   let reportPromise;
   try {
     reportPromise = fetch(`/api/avatar-frame-inspection-report?name=${encodeURIComponent(name)}`, {
@@ -235,6 +243,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
   } catch (error) {
     await reportPromise?.catch(() => undefined);
     cleanupPlayer();
+    rejectedName = name;
     showError("无法打开此 SVGA 文件。", error instanceof Error ? error.message : String(error));
     return {
       playback: false,
@@ -286,6 +295,7 @@ async function smokeErrorFile() {
 
 function showEmptyState() {
   cleanupPlayer();
+  rejectedName = "";
   runtimeStatus.textContent = "请选择本地 SVGA 文件开始检查。";
   playbackStatus.textContent = "未开始";
   dropZone.classList.remove("isError", "isLoading");
@@ -296,6 +306,7 @@ function showEmptyState() {
     <span>或选择本地文件，打开后会显示预览、概览、规范检查与动效诊断。</span>
     <button class="dropZoneAction" type="button" data-empty-select-button>选择 SVGA 文件</button>
   `;
+  dropZoneHint.dataset.state = "empty";
   dropZoneHint.querySelector("[data-empty-select-button]")?.addEventListener("click", () => fileInput.click());
   reportRoot.innerHTML = renderInspectionEmpty("打开文件后显示检查结果", "这里会显示概览、规范检查和 Motion Asset Audit，只读展示，不会修改文件。");
   updateFileInfo();
@@ -309,10 +320,11 @@ function setLoadingState(name) {
   runtimeStatus.textContent = "正在加载本地 SVGA...";
   playbackStatus.textContent = `加载中：${safeDisplayName(name)}`;
   dropZoneHint.innerHTML = `
-    <span class="uploadIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v5" /><path d="M12 16v5" /><path d="M3 12h5" /><path d="M16 12h5" /></svg></span>
+    <span class="loadingIndicator" aria-hidden="true"></span>
     <strong>正在加载 ${escapeHtml(safeDisplayName(name))}</strong>
     <span>正在解析动画、生成检查报告和动效诊断。</span>
   `;
+  dropZoneHint.dataset.state = "loading";
   reportRoot.innerHTML = renderInspectionEmpty("正在生成检查报告", "解析完成后会显示概览、规范检查和动效诊断。");
   updateFileInfo(name);
   updatePlaybackControls();
@@ -326,17 +338,131 @@ function showError(message, detail = "") {
   playbackStatus.textContent = "未播放";
   dropZoneHint.innerHTML = `
     <span class="uploadIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v5" /><path d="M12 17h.01" /><path d="M4.9 19h14.2L12 4.8 4.9 19Z" /></svg></span>
-    <strong>请换一个有效的 .svga 文件。</strong>
+    <strong>无法打开此 SVGA 文件</strong>
+    <span>请确认文件完整且为有效 SVGA，然后重新选择。</span>
     <button class="dropZoneAction" type="button" data-error-select-button>重新选择 SVGA 文件</button>
     <details class="errorDetails">
       <summary>查看技术细节</summary>
       <code>${escapeHtml(detail || message)}</code>
     </details>
   `;
+  dropZoneHint.dataset.state = "invalid";
   dropZoneHint.querySelector("[data-error-select-button]")?.addEventListener("click", () => fileInput.click());
   reportRoot.innerHTML = renderInspectionEmpty("未生成检查报告", "请重新选择有效的 .svga 文件。技术错误已折叠在播放器区域。");
   updateFileInfo();
   updatePlaybackControls();
+}
+
+function installStateProbe() {
+  window.__autoSvgaDesktopStateProbe = {
+    collect: (state) => collectRenderedStateProof(state)
+  };
+}
+
+function rectFor(node) {
+  if (!node) return null;
+  const rect = node.getBoundingClientRect();
+  return {
+    x: Math.round(rect.x),
+    y: Math.round(rect.y),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+    top: Math.round(rect.top),
+    right: Math.round(rect.right),
+    bottom: Math.round(rect.bottom),
+    left: Math.round(rect.left)
+  };
+}
+
+function isRectVisible(rect) {
+  return Boolean(rect && rect.width > 0 && rect.height > 0);
+}
+
+function elementLabel(node) {
+  if (!node) return "none";
+  const id = node.id ? `#${node.id}` : "";
+  const classes = node.classList?.length ? `.${Array.from(node.classList).join(".")}` : "";
+  return `${node.tagName?.toLowerCase?.() ?? "unknown"}${id}${classes}`;
+}
+
+function collectRenderedStateProof(state) {
+  const overlay = dropZoneHint;
+  const stageRect = rectFor(dropZone);
+  const canvasRect = rectFor(canvas);
+  const overlayRect = rectFor(overlay);
+  const overlayStyle = getComputedStyle(overlay);
+  const canvasStyle = getComputedStyle(canvas);
+  const button = overlay.querySelector("button");
+  const primaryActionRect = rectFor(button);
+  const centerX = overlayRect ? overlayRect.left + overlayRect.width / 2 : 0;
+  const centerY = overlayRect ? overlayRect.top + overlayRect.height / 2 : 0;
+  const topElement = document.elementFromPoint(centerX, centerY);
+  const overlayVisible = overlayStyle.display !== "none"
+    && overlayStyle.visibility !== "hidden"
+    && Number(overlayStyle.opacity) > 0.01
+    && isRectVisible(overlayRect);
+  const overlayInsideStage = Boolean(stageRect && overlayRect
+    && overlayRect.left >= stageRect.left
+    && overlayRect.right <= stageRect.right
+    && overlayRect.top >= stageRect.top
+    && overlayRect.bottom <= stageRect.bottom);
+  const overlayNotOccluded = !overlayVisible || overlay.contains(topElement);
+  const primaryActionVisible = Boolean(button)
+    && isRectVisible(primaryActionRect)
+    && getComputedStyle(button).display !== "none"
+    && getComputedStyle(button).visibility !== "hidden"
+    && Number(getComputedStyle(button).opacity) > 0.01;
+  const failures = [];
+  if (state === "empty") {
+    if (!overlayVisible) failures.push("empty overlay is not visible");
+    if (!overlayNotOccluded) failures.push("empty overlay is occluded");
+    if (!overlay.textContent.includes("拖拽 SVGA 文件到此处")) failures.push("empty text missing");
+    if (button?.textContent?.trim() !== "选择 SVGA 文件") failures.push("empty primary action text mismatch");
+    if (!primaryActionVisible) failures.push("empty primary action not visible");
+  }
+  if (state === "loading") {
+    if (!overlayVisible) failures.push("loading overlay is not visible");
+    if (!overlay.textContent.includes(activeName)) failures.push("loading file name missing");
+    if (!/解析|加载/.test(overlay.textContent)) failures.push("loading parse text missing");
+    if (!overlay.querySelector(".loadingIndicator")) failures.push("loading indicator missing");
+  }
+  if (state === "loaded") {
+    if (overlayVisible) failures.push("loaded overlay should be hidden");
+  }
+  if (state === "invalid") {
+    if (!overlayVisible) failures.push("invalid overlay is not visible");
+    if (!overlay.textContent.includes("无法打开此 SVGA 文件")) failures.push("invalid product message missing");
+    if (!button?.textContent?.includes("重新选择")) failures.push("invalid retry action missing");
+    if (!primaryActionVisible) failures.push("invalid retry action not visible");
+    if (rejectedName && fileInfo.textContent.includes(rejectedName)) failures.push("invalid metadata still references rejected file");
+    if (reportRoot.querySelector('[data-inspection-group="audit"], [data-inspection-group="spec"]')) failures.push("invalid report still visible");
+  }
+  return {
+    state,
+    stageRect,
+    canvasRect,
+    overlaySelector: "#dropZoneHint",
+    overlayRect,
+    overlayDisplay: overlayStyle.display,
+    overlayVisibility: overlayStyle.visibility,
+    overlayOpacity: overlayStyle.opacity,
+    overlayZIndex: overlayStyle.zIndex,
+    canvasZIndex: canvasStyle.zIndex,
+    overlayVisible,
+    overlayInsideStage,
+    overlayNotOccluded,
+    topElementAtOverlayCenter: elementLabel(topElement),
+    renderedText: overlay.textContent.replace(/\s+/g, " ").trim(),
+    primaryActionText: button?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    primaryActionRect,
+    primaryActionVisible,
+    primaryActionEnabled: button ? !button.disabled : false,
+    loadedCanvasNonBlank: state === "loaded" ? canvasHasVisiblePixels(canvas) : false,
+    staleMetadataCleared: state === "invalid" ? !rejectedName || !fileInfo.textContent.includes(rejectedName) : null,
+    staleInspectionCleared: state === "invalid" ? !reportRoot.querySelector('[data-inspection-group="audit"], [data-inspection-group="spec"]') : null,
+    passed: failures.length === 0,
+    failures
+  };
 }
 
 function updatePlaybackControls() {

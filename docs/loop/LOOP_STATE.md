@@ -8,7 +8,7 @@ Date: 2026-06-20
 - Milestone: P2 Desktop Product Shell And Web Preview Parity
 - State: terminal_human_required
 - Next Action: external_review
-- repairRound: 3
+- repairRound: 4
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -35,8 +35,16 @@ Date: 2026-06-20
 - P2 repair-3 adds product-state evidence for empty, loading, valid, inspection, and invalid states, plus Reviewer B category evidence.
 - P2 repair-3 upload evidence is consolidated into a single review ZIP and copied to a visible `review/P2-latest/` directory.
 - P2 repair-3 remains HUMAN_REQUIRED because product acceptance is still required before P3 starts.
+- External product review 3 selected `REPAIR_REQUIRED` against `2ae8b7bee0424ced23306ad353a8baa2ca7bac12`.
+- P2 repair-4 proves rendered empty/loading/loaded/invalid state visibility with DOM and screenshot-state evidence.
+- P2 repair-4 fixes state-specific fixture metadata: valid uses the canonical synthetic fixture, empty has no fixture, and invalid uses the expected broken fixture.
+- P2 repair-4 crops comparison artifacts and records content bounds, bottom margin, and blank-space metadata.
+- P2 repair-4 makes Reviewer B product categories require an independent input instead of auto-passing from the local parity report.
+- P2 repair-4 adds upload-bundle privacy scanning and sanitization before ZIP creation.
+- P2 repair-4 machine validation is complete: Electron product smoke, normal runtime proof, Web reference capture, parity report, isolated tests, root npm test, and git diff check passed.
+- P2 remains HUMAN_REQUIRED because the final product review upload packet still requires external product acceptance before P3 can begin.
 - Browser workflow remains the stable rollback.
 
 ## Next Action
 
-External product review: decide whether to accept P2 repair-3 product shell and same-fixture Web/Desktop evidence, then explicitly allow or block P3. Do not start P3 until accepted.
+External product review of the final P2 upload package. Do not start P3 until P2 is accepted. Do not create repair-5 without a new user directive.

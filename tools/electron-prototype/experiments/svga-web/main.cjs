@@ -208,6 +208,81 @@ function canonicalFixtureMetadata() {
   }
 }
 
+function invalidFixtureMetadata() {
+  const bytes = Buffer.from([1, 2, 3]);
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const artifactPath = path.join(productArtifactRoot, "invalid-fixture.svga");
+  const manifest = {
+    schemaVersion: 1,
+    milestoneId: productMilestoneId,
+    headCommit: productArtifactIndex.headCommit,
+    label: "broken.svga",
+    sourcePath: "generated-invalid-fixture:broken.svga",
+    artifactPath: path.relative(repoRoot, artifactPath),
+    sha256,
+    sizeBytes: bytes.byteLength,
+    approvedSyntheticOrRepositoryFixture: true,
+    expectedInvalid: true,
+    expectedErrorClass: "invalid_svga_bytes",
+    generatedAt: new Date().toISOString()
+  };
+  try {
+    writeFileSync(artifactPath, bytes);
+    writeFileSync(path.join(productArtifactRoot, "invalid-fixture.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  } catch {
+    // Artifact directory may not exist in non-product modes.
+  }
+  return {
+    fixtureLabel: manifest.label,
+    fixtureSha256: manifest.sha256,
+    fixtureSizeBytes: manifest.sizeBytes,
+    fixtureSourcePath: manifest.sourcePath,
+    fixtureArtifactPath: manifest.artifactPath,
+    expectedInvalid: true,
+    expectedErrorClass: manifest.expectedErrorClass
+  };
+}
+
+function scenarioFixtureMetadata(scenario) {
+  if (scenario === "desktop-empty") {
+    return {
+      fixture: null,
+      inputKind: "none",
+      fixtureLabel: null,
+      fixtureSha256: null,
+      fixtureSizeBytes: null,
+      fixtureSourcePath: null,
+      fixtureArtifactPath: null
+    };
+  }
+  if (scenario === "desktop-invalid") {
+    return {
+      fixture: "broken.svga",
+      inputKind: "expected-invalid",
+      ...invalidFixtureMetadata()
+    };
+  }
+  const fixture = canonicalFixtureMetadata();
+  return {
+    fixture: fixture.fixtureLabel,
+    inputKind: scenario === "desktop-loading" ? "valid-loading" : "valid",
+    ...fixture
+  };
+}
+
+function sanitizeRuntimeArgument(value) {
+  return String(value)
+    .replaceAll(appRoot, "<experiment-root>")
+    .replaceAll(repoRoot, "<repo-root>")
+    .replace(/\/Users\/[^/\s]+/g, "<home>")
+    .replace(/\/private\/var\/folders\/[^\s"]+/g, "<temp>")
+    .replace(/[A-Za-z]:\\Users\\[^\\\s]+/g, "<home>");
+}
+
+function sanitizedRuntimeArgv() {
+  return process.argv.map((argument) => sanitizeRuntimeArgument(argument));
+}
+
 function runtimeIdentity(mode, rendererUrl) {
   return {
     schemaVersion: 1,
@@ -215,7 +290,9 @@ function runtimeIdentity(mode, rendererUrl) {
     headCommit: productArtifactIndex.headCommit,
     entryCommand: "npm run desktop:dev",
     actualLaunchCommand: process.env.AUTO_SVGA_ACTUAL_LAUNCH_COMMAND ?? (normalProofMode ? "npm run desktop:dev" : "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev"),
-    actualArgv: process.argv.slice(0),
+    actualArgvSanitized: sanitizedRuntimeArgv(),
+    executableBasename: path.basename(process.argv[0] ?? ""),
+    pathRedactionsApplied: true,
     environmentOverrides: normalProofMode ? { AUTO_SVGA_P2_NORMAL_PROOF: "1" } : {},
     mainEntry: `tools/electron-prototype/experiments/svga-web/${mainEntry}`,
     preloadEntry: `tools/electron-prototype/experiments/svga-web/${preloadEntry}`,
@@ -320,7 +397,9 @@ async function finishNormalProof(window, result) {
     headCommit: productArtifactIndex.headCommit,
     runtimeIdentity: normalIdentity,
     actualLaunchCommand: normalIdentity.actualLaunchCommand,
-    actualArgv: normalIdentity.actualArgv,
+    actualArgvSanitized: normalIdentity.actualArgvSanitized,
+    executableBasename: normalIdentity.executableBasename,
+    pathRedactionsApplied: true,
     environmentOverrides: normalIdentity.environmentOverrides,
     rendererUrl: normalIdentity.rendererUrl,
     rendererQuery: "",
@@ -356,6 +435,79 @@ function writeProductArtifactIndex() {
   writeFileSync(indexPath, `${JSON.stringify(productArtifactIndex, null, 2)}\n`);
 }
 
+function stateForScenario(scenario) {
+  return {
+    "desktop-empty": "empty",
+    "desktop-loading": "loading",
+    "desktop-loaded": "loaded",
+    "desktop-invalid": "invalid"
+  }[scenario];
+}
+
+function overlayPixelRatio(image, rect) {
+  if (!rect || rect.width <= 0 || rect.height <= 0) return 0;
+  const size = image.getSize();
+  const bitmap = image.toBitmap();
+  const left = Math.max(0, Math.floor(rect.left ?? rect.x ?? 0));
+  const top = Math.max(0, Math.floor(rect.top ?? rect.y ?? 0));
+  const right = Math.min(size.width, Math.ceil(left + rect.width));
+  const bottom = Math.min(size.height, Math.ceil(top + rect.height));
+  if (right <= left || bottom <= top) return 0;
+  const buckets = new Map();
+  let total = 0;
+  for (let y = top; y < bottom; y += 1) {
+    for (let x = left; x < right; x += 1) {
+      const offset = (y * size.width + x) * 4;
+      const key = `${bitmap[offset] >> 4},${bitmap[offset + 1] >> 4},${bitmap[offset + 2] >> 4}`;
+      buckets.set(key, (buckets.get(key) ?? 0) + 1);
+      total += 1;
+    }
+  }
+  return Number(((total - Math.max(...buckets.values())) / total).toFixed(4));
+}
+
+async function maybeRecordRenderedStateProof(window, scenario, image, screenshotSha256, fileName) {
+  const state = stateForScenario(scenario);
+  if (!state) return;
+  let probe;
+  try {
+    probe = await window.webContents.executeJavaScript(`window.__autoSvgaDesktopStateProbe?.collect(${JSON.stringify(state)})`);
+  } catch (error) {
+    probe = { state, passed: false, failures: [`state probe failed: ${redactLogMessage(error.message ?? error)}`] };
+  }
+  const ratio = overlayPixelRatio(image, probe?.overlayRect);
+  const failures = [...(probe?.failures ?? [])];
+  if (state !== "loaded" && ratio <= 0.001) failures.push("overlay region lacks non-background screenshot pixels");
+  if (state === "loaded" && probe?.loadedCanvasNonBlank !== true) failures.push("loaded canvas is blank");
+  const proofPath = path.join(productArtifactRoot, "desktop-state-render-proof.json");
+  let proof = {
+    schemaVersion: 1,
+    milestoneId: productMilestoneId,
+    headCommit: productArtifactIndex.headCommit,
+    viewport: { width: 1280, height: 800 },
+    states: {},
+    generatedAt: new Date().toISOString()
+  };
+  try {
+    proof = JSON.parse(readFileSync(proofPath, "utf8"));
+  } catch {
+    // Built incrementally as state screenshots are captured.
+  }
+  proof.headCommit = productArtifactIndex.headCommit;
+  proof.states[state] = {
+    ...probe,
+    state,
+    screenshotPath: `.artifacts/product/${productMilestoneId}/${fileName}`,
+    screenshotSha256,
+    overlayRegionNonBackgroundPixelRatio: ratio,
+    passed: failures.length === 0,
+    failures
+  };
+  proof.passed = ["empty", "loading", "loaded", "invalid"].every((key) => proof.states[key]?.passed === true);
+  proof.generatedAt = new Date().toISOString();
+  writeFileSync(proofPath, `${JSON.stringify(proof, null, 2)}\n`);
+}
+
 async function captureProductArtifact(window, scenario) {
   const originalSize = window.getSize();
   if (scenario === "desktop-1280x800") window.setSize(1280, 800);
@@ -363,7 +515,9 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
-  const png = (await window.webContents.capturePage()).toPNG();
+  const image = await window.webContents.capturePage();
+  const png = image.toPNG();
+  const pngHash = createHash("sha256").update(png).digest("hex");
   const capturedSize = window.getSize();
   if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
     window.setSize(originalSize[0], originalSize[1]);
@@ -371,7 +525,8 @@ async function captureProductArtifact(window, scenario) {
   const fileName = `${scenario}.png`;
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
-  const fixture = canonicalFixtureMetadata();
+  await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName);
+  const fixture = scenarioFixtureMetadata(scenario);
   addProductArtifactRecord({
     scenario,
     mode: scenario === "actual-normal-loaded" ? "normal" : "smoke",
@@ -380,8 +535,7 @@ async function captureProductArtifact(window, scenario) {
     path: `.artifacts/product/${productMilestoneId}/${fileName}`,
     mime: "image/png",
     sizeBytes: png.byteLength,
-    sha256: createHash("sha256").update(png).digest("hex"),
-    fixture: fixture.fixtureLabel,
+    sha256: pngHash,
     ...fixture,
     headCommit: productArtifactIndex.headCommit,
     rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
@@ -396,7 +550,7 @@ async function captureProductArtifact(window, scenario) {
 function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
   const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
   writeFileSync(path.join(productArtifactRoot, fileName), bytes);
-  const fixture = canonicalFixtureMetadata();
+  const fixture = scenarioFixtureMetadata(scenario);
   addProductArtifactRecord({
     scenario,
     mode,
@@ -406,7 +560,6 @@ function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
     mime: "application/json",
     sizeBytes: bytes.byteLength,
     sha256: createHash("sha256").update(bytes).digest("hex"),
-    fixture: fixture.fixtureLabel,
     ...fixture,
     headCommit: productArtifactIndex.headCommit,
     rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,

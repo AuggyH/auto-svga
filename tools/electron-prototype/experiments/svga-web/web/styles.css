@@ -254,7 +254,7 @@ input {
 
 #player {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: block;
   width: min(520px, 74%);
   aspect-ratio: 1;
@@ -264,16 +264,25 @@ input {
 }
 
 .dropZoneHint {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  z-index: 4;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
   display: grid;
   justify-items: center;
   gap: var(--space-2);
+  width: min(360px, calc(100% - 48px));
   max-width: 360px;
+  padding: var(--space-5);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  box-shadow: var(--shadow-panel);
   color: var(--textSecondary);
   font-size: var(--font-body);
   line-height: var(--line-body);
   text-align: center;
+  pointer-events: auto;
 }
 
 .dropZoneHint strong {
@@ -296,6 +305,27 @@ input {
   border-color: color-mix(in srgb, var(--accent) 42%, transparent);
   color: #fff;
   background: var(--accent);
+}
+
+.loadingIndicator {
+  width: 28px;
+  height: 28px;
+  border: 3px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: autoSvgaSpin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loadingIndicator {
+    animation: none;
+  }
+}
+
+@keyframes autoSvgaSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .playerBar {
