@@ -8,7 +8,7 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "terminal-packaging",
+  "currentWorkPackage": "terminal-source-state",
   "completedWorkPackages": [
     "NQ1-WP01",
     "NQ1-WP02",
@@ -766,5 +766,8 @@
         "svgaWebRenderSmoke": "optional_heavy_check"
       }
     }
-  ]
+  ],
+  "terminalStatus": "PASS",
+  "terminalNextAction": "external_review",
+  "terminalSourcePreparedAt": "2026-06-20T21:37:34.259Z"
 }
