@@ -25,7 +25,8 @@ const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-sr
 const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "P2";
 const productMilestoneTitle = {
   P2: "Desktop Product Shell And Web Preview Parity",
-  P3: "Basic Image Resource Replacement And Save As"
+  P3: "Basic Image Resource Replacement And Save As",
+  P4: "Multi-Resource Editing, Undo/Redo And Export Integrity"
 }[productMilestoneId] ?? "Auto SVGA Product Milestone";
 const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
   ? path.resolve(process.env.AUTO_SVGA_PRODUCT_ARTIFACTS)
@@ -103,7 +104,23 @@ function validateArtifactScenario(value) {
     "p3-export-success",
     "p3-reopened-export",
     "p3-invalid-png-state",
-    "p3-original-edited-comparison"
+    "p3-original-edited-comparison",
+    "p4-multi-resource-original",
+    "p4-multi-resource-list",
+    "p4-first-replacement",
+    "p4-two-replacements",
+    "p4-undo-second-replacement",
+    "p4-redo-second-replacement",
+    "p4-reset-selected",
+    "p4-undo-reset-selected",
+    "p4-reset-all",
+    "p4-undo-reset-all",
+    "p4-dirty-two-edits",
+    "p4-save-point-clean",
+    "p4-post-save-new-edit",
+    "p4-reopened-multi-resource-export",
+    "p4-invalid-second-png",
+    "p4-multi-resource-comparison"
   ]);
   return allowed.has(value) ? value : undefined;
 }
@@ -288,6 +305,85 @@ function validateP3ThumbnailEvidence(value) {
     passed: failures.length === 0,
     failures
   };
+}
+
+function validateP4EditResult(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const requiredBooleans = [
+    "resourceList",
+    "twoReplacements",
+    "undoSecond",
+    "redoSecond",
+    "resetSelected",
+    "undoResetSelected",
+    "resetAll",
+    "undoResetAll",
+    "saveAs",
+    "savePointClean",
+    "postSaveNewEditDirty",
+    "reopenedExport",
+    "invalidSecondPng",
+    "originalUnchanged",
+    "editedPixelsDiffer"
+  ];
+  if (!requiredBooleans.every((key) => typeof value[key] === "boolean")) return undefined;
+  const roundTripReport = value.roundTripReport && typeof value.roundTripReport === "object"
+    ? value.roundTripReport
+    : {};
+  const historyReport = value.historyReport && typeof value.historyReport === "object"
+    ? value.historyReport
+    : {};
+  const thumbnailEvidence = value.thumbnailEvidence && typeof value.thumbnailEvidence === "object"
+    ? value.thumbnailEvidence
+    : {};
+  const replacementCount = Array.isArray(roundTripReport.replacements) ? roundTripReport.replacements.length : 0;
+  const replacementHashes = value.replacementHashes && typeof value.replacementHashes === "object" && !Array.isArray(value.replacementHashes)
+    ? value.replacementHashes
+    : {};
+  const normalized = {
+    schemaVersion: 1,
+    milestoneId: "P4",
+    headCommit: productArtifactIndex.headCommit,
+    resourceList: value.resourceList,
+    selectedResourceKeys: Array.isArray(value.selectedResourceKeys)
+      ? value.selectedResourceKeys.filter((key) => typeof key === "string").map((key) => key.slice(0, 160))
+      : [],
+    untouchedResourceKey: typeof value.untouchedResourceKey === "string" ? value.untouchedResourceKey.slice(0, 160) : "",
+    replacementASha256: typeof value.replacementASha256 === "string" ? value.replacementASha256.slice(0, 80) : "",
+    replacementBSha256: typeof value.replacementBSha256 === "string" ? value.replacementBSha256.slice(0, 80) : "",
+    replacementHashes,
+    twoReplacements: value.twoReplacements,
+    undoSecond: value.undoSecond,
+    redoSecond: value.redoSecond,
+    resetSelected: value.resetSelected,
+    undoResetSelected: value.undoResetSelected,
+    resetAll: value.resetAll,
+    undoResetAll: value.undoResetAll,
+    saveAs: value.saveAs,
+    savePointClean: value.savePointClean,
+    postSaveNewEditDirty: value.postSaveNewEditDirty,
+    reopenedExport: value.reopenedExport,
+    invalidSecondPng: value.invalidSecondPng,
+    originalUnchanged: value.originalUnchanged,
+    editedPixelsDiffer: value.editedPixelsDiffer,
+    errors: Array.isArray(value.errors)
+      ? value.errors.filter((error) => typeof error === "string").map((error) => redactLogMessage(error).slice(0, 240))
+      : [],
+    roundTripReport,
+    historyReport,
+    thumbnailEvidence,
+    generatedAt: new Date().toISOString()
+  };
+  normalized.passed = requiredBooleans.every((key) => value[key] === true)
+    && roundTripReport.schemaVersion === 3
+    && roundTripReport.milestoneId === "P4"
+    && roundTripReport.passed === true
+    && replacementCount >= 2
+    && Array.isArray(roundTripReport.unexpectedChanges)
+    && roundTripReport.unexpectedChanges.length === 0
+    && historyReport.passed === true
+    && thumbnailEvidence.passed === true;
+  return normalized;
 }
 
 function validateAuditResult(value) {
@@ -736,7 +832,23 @@ function artifactFileNameForScenario(scenario) {
     "p3-export-success": "export-success.png",
     "p3-reopened-export": "reopened-export.png",
     "p3-invalid-png-state": "invalid-png-state.png",
-    "p3-original-edited-comparison": "original-edited-comparison.png"
+    "p3-original-edited-comparison": "original-edited-comparison.png",
+    "p4-multi-resource-original": "multi-resource-original.png",
+    "p4-multi-resource-list": "multi-resource-list.png",
+    "p4-first-replacement": "first-replacement.png",
+    "p4-two-replacements": "two-replacements.png",
+    "p4-undo-second-replacement": "undo-second-replacement.png",
+    "p4-redo-second-replacement": "redo-second-replacement.png",
+    "p4-reset-selected": "reset-selected.png",
+    "p4-undo-reset-selected": "undo-reset-selected.png",
+    "p4-reset-all": "reset-all.png",
+    "p4-undo-reset-all": "undo-reset-all.png",
+    "p4-dirty-two-edits": "dirty-two-edits.png",
+    "p4-save-point-clean": "save-point-clean.png",
+    "p4-post-save-new-edit": "post-save-new-edit.png",
+    "p4-reopened-multi-resource-export": "reopened-multi-resource-export.png",
+    "p4-invalid-second-png": "invalid-second-png.png",
+    "p4-multi-resource-comparison": "multi-resource-comparison.png"
   }[scenario] ?? `${scenario}.png`;
 }
 
@@ -795,14 +907,16 @@ async function saveEditedSvga(input) {
   const value = validateEditedSvgaSaveInput(input);
   if (!value) throw new Error("Invalid Save As payload");
   const p3SmokeSaveAs = productMilestoneId === "P3" && (smokeMode || productSmokeMode || normalProofMode);
+  const p4SmokeSaveAs = productMilestoneId === "P4" && (smokeMode || productSmokeMode || normalProofMode);
+  const automatedProductSaveAs = p3SmokeSaveAs || p4SmokeSaveAs;
   const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
-  if (!p3SmokeSaveAs && !originalPath) {
+  if (!automatedProductSaveAs && !originalPath) {
     throw new Error("Save As requires the source SVGA to be opened through the desktop file picker.");
   }
   let targetPath;
-  if (p3SmokeSaveAs) {
+  if (automatedProductSaveAs) {
     mkdirSync(productArtifactRoot, { recursive: true });
-    targetPath = path.join(productArtifactRoot, "edited-output.svga");
+    targetPath = path.join(productArtifactRoot, p4SmokeSaveAs ? "multi-resource-edited-output.svga" : "edited-output.svga");
   } else {
     const result = await dialog.showSaveDialog({
       title: "另存为 SVGA",
@@ -843,18 +957,19 @@ async function saveEditedSvga(input) {
     }
     throw error;
   }
-  if (p3SmokeSaveAs) {
+  if (automatedProductSaveAs) {
+    const scenario = p4SmokeSaveAs ? "p4-multi-resource-edited-output-svga" : "p3-edited-output-svga";
     addProductArtifactRecord({
-      scenario: "p3-edited-output-svga",
+      scenario,
       mode: "smoke",
       source: "desktop",
       viewport: { width: null, height: null },
-      path: `.artifacts/product/${productMilestoneId}/edited-output.svga`,
+      path: `.artifacts/product/${productMilestoneId}/${p4SmokeSaveAs ? "multi-resource-edited-output.svga" : "edited-output.svga"}`,
       mime: "application/x-svga",
       sizeBytes: value.bytes.byteLength,
       sha256: createHash("sha256").update(value.bytes).digest("hex"),
       fixture: "synthetic-avatar-frame.svga",
-      inputKind: "p3-edited-output",
+      inputKind: p4SmokeSaveAs ? "p4-multi-resource-edited-output" : "p3-edited-output",
       ...canonicalFixtureMetadata(),
       headCommit: productArtifactIndex.headCommit,
       rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
@@ -864,9 +979,11 @@ async function saveEditedSvga(input) {
     });
     writeProductArtifactIndex();
   }
+  const savedSourceId = rememberSourceFile(targetPath);
 
   return {
     status: "saved",
+    sourceId: savedSourceId,
     fileName: path.basename(targetPath),
     sizeBytes: value.bytes.byteLength,
     sha256: createHash("sha256").update(value.bytes).digest("hex"),
@@ -1017,6 +1134,74 @@ async function createExperimentWindow() {
       milestoneId: "P3",
       headCommit: productArtifactIndex.headCommit,
       ...result.thumbnailEvidence
+    });
+    return { accepted: true };
+  });
+
+  ipcMain.handle("svga-web-experiment:p4-edit-result", async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    if (productMilestoneId !== "P4") throw new Error("P4 edit result is only accepted in P4 artifact mode");
+    const result = validateP4EditResult(input);
+    if (!result) throw new Error("Invalid P4 edit result");
+    const verifiedRoundTripReport = {
+      ...result.roundTripReport,
+      schemaVersion: 3,
+      milestoneId: "P4",
+      headCommit: productArtifactIndex.headCommit,
+      playbackPassed: result.reopenedExport,
+      canvasNonBlank: result.reopenedExport,
+      passed: result.roundTripReport.passed === true
+        && result.roundTripReport.schemaVersion === 3
+        && result.reopenedExport
+        && Array.isArray(result.roundTripReport.replacements)
+        && result.roundTripReport.replacements.length >= 2
+        && result.roundTripReport.replacements.every((replacement) => replacement.passed === true)
+        && Array.isArray(result.roundTripReport.unexpectedChanges)
+        && result.roundTripReport.unexpectedChanges.length === 0
+    };
+    const verifiedResult = {
+      ...result,
+      roundTripReport: verifiedRoundTripReport,
+      passed: result.passed === true && verifiedRoundTripReport.passed === true
+    };
+    const fixture = canonicalFixtureMetadata();
+    writeJsonProductArtifact("canonical-multi-resource-fixture.json", "p4-canonical-multi-resource-fixture", {
+      schemaVersion: 1,
+      milestoneId: "P4",
+      headCommit: productArtifactIndex.headCommit,
+      fixturePath: fixture.fixtureArtifactPath,
+      fixtureSha256: fixture.fixtureSha256,
+      dimensions: { width: 300, height: 300 },
+      fps: 24,
+      frames: 24,
+      approvedSynthetic: true,
+      resourceKeys: [
+        ...result.selectedResourceKeys,
+        result.untouchedResourceKey
+      ].filter(Boolean),
+      resourceSha256: result.thumbnailEvidence.original ?? {},
+      spriteUsage: {
+        [result.selectedResourceKeys[0] ?? ""]: 1,
+        [result.selectedResourceKeys[1] ?? ""]: 1,
+        [result.untouchedResourceKey ?? ""]: 0
+      },
+      replacements: {
+        replacementA: result.replacementASha256,
+        replacementB: result.replacementBSha256
+      },
+      generatedAt: new Date().toISOString()
+    });
+    writeJsonProductArtifact("multi-resource-edit-report.json", "p4-multi-resource-edit-report", verifiedResult);
+    writeJsonProductArtifact("multi-resource-round-trip-report.json", "p4-multi-resource-round-trip-report", verifiedRoundTripReport);
+    writeJsonProductArtifact("edit-history-report.json", "p4-edit-history-report", {
+      ...result.historyReport,
+      headCommit: productArtifactIndex.headCommit,
+      passed: result.historyReport.passed === true
+    });
+    writeJsonProductArtifact("thumbnail-evidence.json", "p4-thumbnail-evidence", {
+      ...result.thumbnailEvidence,
+      headCommit: productArtifactIndex.headCommit,
+      passed: result.thumbnailEvidence.passed === true
     });
     return { accepted: true };
   });

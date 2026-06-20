@@ -107,7 +107,7 @@ export interface SvgaRoundTripCanonicalization {
   rules: readonly string[];
 }
 
-export interface SvgaRoundTripReport {
+export interface SvgaRoundTripReportV2 {
   schemaVersion: 2;
   milestoneId: "P3";
   headCommit: string;
@@ -127,6 +127,64 @@ export interface SvgaRoundTripReport {
   playbackPassed: boolean;
   canvasNonBlank: boolean;
   passed: boolean;
+}
+
+export interface SvgaRoundTripReplacedResourceCheck {
+  resourceKey: string;
+  usageCount: number;
+  originalSha256: string;
+  replacementSha256: string;
+  exportedSha256: string;
+  originalResourceSha256: string;
+  exportedResourceSha256: string;
+  originalSizeBytes: number;
+  replacementSizeBytes: number;
+  originalWidth?: number;
+  originalHeight?: number;
+  replacementWidth: number;
+  replacementHeight: number;
+  keyStillPresent: boolean;
+  referencedBySameSprites: boolean;
+  exportedMatchesReplacement: boolean;
+  passed: boolean;
+}
+
+export interface SvgaRoundTripUntouchedResourceCheck {
+  resourceKey: string;
+  originalSha256: string;
+  exportedSha256: string;
+  passed: boolean;
+}
+
+export interface SvgaRoundTripReportV3 {
+  schemaVersion: 3;
+  milestoneId: "P4";
+  headCommit: string;
+  sourceSha256: string;
+  sourceSha256AfterEditing: string;
+  exportedSha256: string;
+  replacementCount: number;
+  replacedResourceKeys: readonly string[];
+  unchangedResourceKeys: readonly string[];
+  replacements: readonly SvgaRoundTripReplacedResourceCheck[];
+  untouchedResources: readonly SvgaRoundTripUntouchedResourceCheck[];
+  replacedResources: readonly SvgaRoundTripReplacedResourceCheck[];
+  unknownFieldBoundary: SvgaUnknownFieldBoundary;
+  canonicalization: SvgaRoundTripCanonicalization;
+  invariantChecks: readonly SvgaInvariantCheck[];
+  changedFields: readonly string[];
+  unexpectedChanges: readonly string[];
+  decodePassed: boolean;
+  playbackPassed: boolean;
+  canvasNonBlank: boolean;
+  passed: boolean;
+}
+
+export type SvgaRoundTripReport = SvgaRoundTripReportV2 | SvgaRoundTripReportV3;
+
+export interface SvgaRoundTripReportOptions {
+  milestoneId?: "P3" | "P4";
+  headCommit?: string;
 }
 
 export interface SvgaImageEditExportResult {
@@ -194,6 +252,9 @@ interface NormalizedMovieInvariants {
   audios: unknown;
   imageKeys: readonly string[];
   imageHashes: Readonly<Record<string, string>>;
+  imageSizes: Readonly<Record<string, number>>;
+  imageDimensions: Readonly<Record<string, { width: number; height: number }>>;
+  imageUsageCounts: Readonly<Record<string, number>>;
 }
 
 const defaultPngLimits: Required<SvgaPngValidationLimits> = {
@@ -320,7 +381,8 @@ export class SvgaImageResourceEditor {
   async replaceImages(
     sourceBytes: Uint8Array,
     replacements: readonly SvgaImageReplacementInput[],
-    name = "untitled.svga"
+    name = "untitled.svga",
+    options: SvgaRoundTripReportOptions = {}
   ): Promise<SvgaImageEditExportResult> {
     if (replacements.length === 0) {
       throw new SvgaImageEditError("replacement_required", "At least one replacement is required.");
@@ -333,6 +395,11 @@ export class SvgaImageResourceEditor {
     for (const replacement of replacements) {
       if (!Object.hasOwn(originalImages, replacement.resourceKey)) {
         throw new SvgaImageEditError("resource_not_found", "Selected image resource does not exist.", {
+          resourceKey: replacement.resourceKey
+        });
+      }
+      if (replacementMap.has(replacement.resourceKey)) {
+        throw new SvgaImageEditError("duplicate_resource_replacement", "A resource can only have one pending replacement.", {
           resourceKey: replacement.resourceKey
         });
       }
@@ -366,7 +433,8 @@ export class SvgaImageResourceEditor {
       editedBytes,
       originalInvariants,
       exportedInvariants,
-      replacements: replacementMap
+      replacements: replacementMap,
+      options
     });
     if (!report.passed) {
       throw new SvgaImageEditError("unsupported_round_trip_file", "Edited SVGA failed round-trip invariant checks.", {
@@ -416,12 +484,18 @@ export class SvgaImageResourceEditor {
   async validateRoundTrip(
     sourceBytes: Uint8Array,
     editedBytes: Uint8Array,
-    replacements: readonly SvgaImageReplacementInput[]
+    replacements: readonly SvgaImageReplacementInput[],
+    options: SvgaRoundTripReportOptions = {}
   ): Promise<SvgaRoundTripReport> {
     const originalDecoded = await this.decode(sourceBytes);
     const exportedDecoded = await this.decode(editedBytes);
     const replacementMap = new Map<string, SvgaPngValidationResult>();
     for (const replacement of replacements) {
+      if (replacementMap.has(replacement.resourceKey)) {
+        throw new SvgaImageEditError("duplicate_resource_replacement", "A resource can only have one pending replacement.", {
+          resourceKey: replacement.resourceKey
+        });
+      }
       replacementMap.set(replacement.resourceKey, this.validatePngReplacement(replacement.pngBytes));
     }
     return buildRoundTripReport({
@@ -429,7 +503,8 @@ export class SvgaImageResourceEditor {
       editedBytes,
       originalInvariants: normalizeMovieInvariants(originalDecoded.payload),
       exportedInvariants: normalizeMovieInvariants(exportedDecoded.payload),
-      replacements: replacementMap
+      replacements: replacementMap,
+      options
     });
   }
 
@@ -483,8 +558,23 @@ function buildRoundTripReport(input: {
   originalInvariants: NormalizedMovieInvariants;
   exportedInvariants: NormalizedMovieInvariants;
   replacements: ReadonlyMap<string, SvgaPngValidationResult>;
+  options?: SvgaRoundTripReportOptions;
 }): SvgaRoundTripReport {
-  const replacedResourceKey = [...input.replacements.keys()][0] ?? "";
+  if (input.options?.milestoneId !== "P3") {
+    return buildRoundTripReportV3(input);
+  }
+  return buildRoundTripReportV2(input);
+}
+
+function buildRoundTripReportV2(input: {
+  sourceBytes: Uint8Array;
+  editedBytes: Uint8Array;
+  originalInvariants: NormalizedMovieInvariants;
+  exportedInvariants: NormalizedMovieInvariants;
+  replacements: ReadonlyMap<string, SvgaPngValidationResult>;
+  options?: SvgaRoundTripReportOptions;
+}): SvgaRoundTripReportV2 {
+  const replacedResourceKey = replacementEntries(input.replacements)[0]?.[0] ?? "";
   const replacement = input.replacements.get(replacedResourceKey);
   const sourceSha256 = sha256(input.sourceBytes);
   const sourceSha256AfterEditing = sha256(input.sourceBytes);
@@ -526,7 +616,7 @@ function buildRoundTripReport(input: {
   return {
     schemaVersion: 2,
     milestoneId: "P3",
-    headCommit: "",
+    headCommit: input.options?.headCommit ?? "",
     sourceSha256,
     sourceSha256AfterEditing,
     exportedSha256: sha256(input.editedBytes),
@@ -559,6 +649,102 @@ function buildRoundTripReport(input: {
     passed: unexpectedChanges.length === 0
       && Boolean(replacement)
       && exportedResourceSha256 === replacement?.sha256
+  };
+}
+
+function buildRoundTripReportV3(input: {
+  sourceBytes: Uint8Array;
+  editedBytes: Uint8Array;
+  originalInvariants: NormalizedMovieInvariants;
+  exportedInvariants: NormalizedMovieInvariants;
+  replacements: ReadonlyMap<string, SvgaPngValidationResult>;
+  options?: SvgaRoundTripReportOptions;
+}): SvgaRoundTripReportV3 {
+  const sourceSha256 = sha256(input.sourceBytes);
+  const sourceSha256AfterEditing = sha256(input.sourceBytes);
+  const replacedResources = buildReplacedResourceChecks(
+    input.originalInvariants,
+    input.exportedInvariants,
+    input.replacements
+  );
+  const replacedResourceKeys = replacedResources.map((resource) => resource.resourceKey);
+  const untouchedResources = buildUntouchedResourceChecks(
+    input.originalInvariants,
+    input.exportedInvariants,
+    input.replacements
+  );
+  const unchangedResourceKeys = untouchedResources.map((resource) => resource.resourceKey);
+  const checks: SvgaInvariantCheck[] = [
+    checkEqual("movie_version", input.originalInvariants.version, input.exportedInvariants.version, "MovieEntity.version must not change."),
+    checkEqual("canvas_width", input.originalInvariants.canvasWidth, input.exportedInvariants.canvasWidth, "params.viewBoxWidth must not change."),
+    checkEqual("canvas_height", input.originalInvariants.canvasHeight, input.exportedInvariants.canvasHeight, "params.viewBoxHeight must not change."),
+    checkEqual("fps", input.originalInvariants.fps, input.exportedInvariants.fps, "params.fps must not change."),
+    checkEqual("frame_count", input.originalInvariants.frameCount, input.exportedInvariants.frameCount, "params.frames must not change."),
+    checkEqual("sprite_count", input.originalInvariants.spriteCount, input.exportedInvariants.spriteCount, "Sprite count must not change."),
+    checkDigest("sprite_order", input.originalInvariants.spriteOrder, input.exportedInvariants.spriteOrder, "Sprite ordering is compared by canonical imageKey/matteKey sequence."),
+    checkDigest("sprite_image_key", input.originalInvariants.spriteImageKeys, input.exportedInvariants.spriteImageKeys, "Each sprite imageKey must remain stable."),
+    checkDigest("sprite_matte_key", input.originalInvariants.spriteMatteKeys, input.exportedInvariants.spriteMatteKeys, "Each sprite matteKey must remain stable."),
+    checkDigest("sprite_frame_count", input.originalInvariants.spriteFrameCounts, input.exportedInvariants.spriteFrameCounts, "Each sprite frame count must remain stable."),
+    checkDigest("frame_alpha", input.originalInvariants.spriteFrameAlpha, input.exportedInvariants.spriteFrameAlpha, "Frame alpha values are canonicalized per sprite and frame."),
+    checkDigest("frame_layout", input.originalInvariants.spriteFrameLayout, input.exportedInvariants.spriteFrameLayout, "Frame layout values are canonicalized per sprite and frame."),
+    checkDigest("frame_transform", input.originalInvariants.spriteFrameTransform, input.exportedInvariants.spriteFrameTransform, "Frame transform values are canonicalized per sprite and frame."),
+    checkDigest("frame_clip_path", input.originalInvariants.spriteFrameClipPath, input.exportedInvariants.spriteFrameClipPath, "Frame clipPath values are canonicalized per sprite and frame."),
+    checkDigest("frame_shapes", input.originalInvariants.spriteFrameShapes, input.exportedInvariants.spriteFrameShapes, "Frame shapes are canonicalized per sprite and frame."),
+    checkEqual("audio_count", input.originalInvariants.audioCount, input.exportedInvariants.audioCount, "Audio count must not change."),
+    checkDigest("audio_entries", input.originalInvariants.audios, input.exportedInvariants.audios, "Audio entries are canonicalized as known protobuf fields."),
+    checkEqual("image_resource_key_set", input.originalInvariants.imageKeys, input.exportedInvariants.imageKeys, "Image resource key set must remain stable."),
+    checkUntouchedImages(input.originalInvariants, input.exportedInvariants, input.replacements),
+    checkReplacedResourceReferences(input.originalInvariants, input.replacements),
+    checkReplacedImageHashes(replacedResources),
+    checkEqual("original_source_sha256_immutability", sourceSha256, sourceSha256AfterEditing, "Source bytes are treated as immutable input and are never written in place.")
+  ];
+  const unexpectedChanges = checks
+    .filter((check) => !check.passed)
+    .map((check) => check.code);
+  const changedFields = [
+    ...replacedResourceKeys.map((key) => `images.${key}`),
+    "zlib_bytes",
+    "protobuf_serialization"
+  ];
+  return {
+    schemaVersion: 3,
+    milestoneId: "P4",
+    headCommit: input.options?.headCommit ?? "",
+    sourceSha256,
+    sourceSha256AfterEditing,
+    exportedSha256: sha256(input.editedBytes),
+    replacementCount: replacedResources.length,
+    replacedResourceKeys,
+    unchangedResourceKeys,
+    replacements: replacedResources,
+    untouchedResources,
+    replacedResources,
+    unknownFieldBoundary: {
+      scannerVersion: "p3-wire-unknown-field-scanner-v1",
+      unknownFieldsDetected: false,
+      unsupportedReason: "none",
+      supportedSubset: "known proto/svga.proto MovieEntity fields with edits limited to existing images.<resourceKey> PNG bytes",
+      checkedBeforeDecodeEdit: true,
+      passed: true
+    },
+    canonicalization: {
+      rules: [
+        "Known protobuf fields are converted with defaults enabled.",
+        "Object keys are sorted recursively before digesting.",
+        "Large sprite frame arrays are compared by SHA-256 canonical digests instead of inline JSON expansion.",
+        "Only images.<resource-key>, zlib bytes, and protobuf serialization bytes are allowed to change.",
+        "Every replaced resource must independently match its replacement PNG hash after export."
+      ]
+    },
+    invariantChecks: checks,
+    changedFields,
+    unexpectedChanges,
+    decodePassed: true,
+    playbackPassed: false,
+    canvasNonBlank: false,
+    passed: unexpectedChanges.length === 0
+      && replacedResources.length > 0
+      && replacedResources.every((resource) => resource.passed)
   };
 }
 
@@ -637,10 +823,130 @@ function checkSelectedResource(original: NormalizedMovieInvariants, resourceKey:
   };
 }
 
+function checkReplacedResourceReferences(
+  original: NormalizedMovieInvariants,
+  replacements: ReadonlyMap<string, SvgaPngValidationResult>
+): SvgaInvariantCheck {
+  const actual = Object.fromEntries(replacementEntries(replacements).map(([resourceKey]) => [
+    resourceKey,
+    {
+      existsInImageResources: original.imageKeys.includes(resourceKey),
+      referencedBySpriteCount: original.spriteImageKeys.filter((key) => key === resourceKey).length
+        + original.spriteMatteKeys.filter((key) => key === resourceKey).length
+    }
+  ]));
+  const missing = Object.entries(actual)
+    .filter(([, value]) => !value.existsInImageResources)
+    .map(([resourceKey]) => resourceKey);
+  return {
+    code: "replacement_resource_key_references",
+    passed: replacements.size > 0 && missing.length === 0,
+    expected: Object.fromEntries([...replacements.keys()].sort().map((resourceKey) => [
+      resourceKey,
+      { existsInImageResources: true }
+    ])),
+    actual,
+    evidenceHash: digest(actual),
+    limitation: "P4 requires every replacement key to exist in MovieEntity.images; a zero sprite reference count remains allowed for unused embedded resources.",
+    details: missing.length > 0 ? { missing } : undefined
+  };
+}
+
+function checkReplacedImageHashes(replacedResources: readonly SvgaRoundTripReplacedResourceCheck[]): SvgaInvariantCheck {
+  const expected = Object.fromEntries(replacedResources.map((resource) => [
+    resource.resourceKey,
+    { exportedResourceSha256: resource.replacementSha256 }
+  ]));
+  const actual = Object.fromEntries(replacedResources.map((resource) => [
+    resource.resourceKey,
+    {
+      exportedResourceSha256: resource.exportedResourceSha256,
+      exportedMatchesReplacement: resource.exportedMatchesReplacement
+    }
+  ]));
+  const failed = replacedResources
+    .filter((resource) => !resource.passed)
+    .map((resource) => resource.resourceKey);
+  return {
+    code: "replaced_image_hashes",
+    passed: replacedResources.length > 0 && failed.length === 0,
+    expected,
+    actual,
+    comparisonDigest: digest({ expected, actual }),
+    limitation: "Every changed image resource must decode from the exported SVGA with the exact replacement PNG SHA-256.",
+    details: failed.length > 0 ? { failed } : undefined
+  };
+}
+
+function buildReplacedResourceChecks(
+  original: NormalizedMovieInvariants,
+  exported: NormalizedMovieInvariants,
+  replacements: ReadonlyMap<string, SvgaPngValidationResult>
+): SvgaRoundTripReplacedResourceCheck[] {
+  return replacementEntries(replacements).map(([resourceKey, replacement]) => {
+    const originalResourceSha256 = original.imageHashes[resourceKey] ?? "";
+    const exportedResourceSha256 = exported.imageHashes[resourceKey] ?? "";
+    const originalDimensions = original.imageDimensions[resourceKey];
+    const exportedMatchesReplacement = exportedResourceSha256 === replacement.sha256;
+    const keyStillPresent = exported.imageKeys.includes(resourceKey);
+    const referencedBySameSprites = original.imageUsageCounts[resourceKey] === exported.imageUsageCounts[resourceKey];
+    return {
+      resourceKey,
+      usageCount: original.imageUsageCounts[resourceKey] ?? 0,
+      originalSha256: originalResourceSha256,
+      replacementSha256: replacement.sha256,
+      exportedSha256: exportedResourceSha256,
+      originalResourceSha256,
+      exportedResourceSha256,
+      originalSizeBytes: original.imageSizes[resourceKey] ?? 0,
+      replacementSizeBytes: replacement.sizeBytes,
+      originalWidth: originalDimensions?.width,
+      originalHeight: originalDimensions?.height,
+      replacementWidth: replacement.width,
+      replacementHeight: replacement.height,
+      keyStillPresent,
+      referencedBySameSprites,
+      exportedMatchesReplacement,
+      passed: Boolean(originalResourceSha256)
+        && keyStillPresent
+        && referencedBySameSprites
+        && exportedMatchesReplacement
+    };
+  });
+}
+
+function buildUntouchedResourceChecks(
+  original: NormalizedMovieInvariants,
+  exported: NormalizedMovieInvariants,
+  replacements: ReadonlyMap<string, SvgaPngValidationResult>
+): SvgaRoundTripUntouchedResourceCheck[] {
+  return original.imageKeys
+    .filter((key) => !replacements.has(key))
+    .map((resourceKey) => {
+      const originalSha256 = original.imageHashes[resourceKey] ?? "";
+      const exportedSha256 = exported.imageHashes[resourceKey] ?? "";
+      return {
+        resourceKey,
+        originalSha256,
+        exportedSha256,
+        passed: Boolean(originalSha256) && originalSha256 === exportedSha256
+      };
+    });
+}
+
+function replacementEntries(
+  replacements: ReadonlyMap<string, SvgaPngValidationResult>
+): Array<[string, SvgaPngValidationResult]> {
+  return [...replacements.entries()].sort(([left], [right]) => left.localeCompare(right));
+}
+
 function normalizeMovieInvariants(payload: KnownMoviePayload): NormalizedMovieInvariants {
   const images = normalizeImages(payload.images);
   const sprites = payload.sprites ?? [];
   const params = payload.params ?? {};
+  const imageMetadata = Object.fromEntries(
+    Object.entries(images).map(([key, bytes]) => [key, readEmbeddedImageMetadata(bytes)])
+  );
   return {
     version: payload.version ?? "",
     canvasWidth: params.viewBoxWidth ?? 0,
@@ -662,6 +968,16 @@ function normalizeMovieInvariants(payload: KnownMoviePayload): NormalizedMovieIn
     imageKeys: Object.keys(images).sort(),
     imageHashes: Object.fromEntries(
       Object.entries(images).map(([key, bytes]) => [key, sha256(bytes)])
+    ),
+    imageSizes: Object.fromEntries(
+      Object.entries(images).map(([key, bytes]) => [key, bytes.byteLength])
+    ),
+    imageDimensions: Object.fromEntries(
+      Object.entries(imageMetadata)
+        .flatMap(([key, metadata]) => metadata.dimensions ? [[key, metadata.dimensions]] : [])
+    ),
+    imageUsageCounts: Object.fromEntries(
+      Object.keys(images).map((key) => [key, usageCountFor(key, sprites)])
     )
   };
 }

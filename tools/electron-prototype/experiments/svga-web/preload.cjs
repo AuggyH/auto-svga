@@ -28,5 +28,8 @@ contextBridge.exposeInMainWorld("autoSvgaPrototype", Object.freeze({
   },
   reportP3EditResult(result) {
     return ipcRenderer.invoke("svga-web-experiment:p3-edit-result", result);
+  },
+  reportP4EditResult(result) {
+    return ipcRenderer.invoke("svga-web-experiment:p4-edit-result", result);
   }
 }));

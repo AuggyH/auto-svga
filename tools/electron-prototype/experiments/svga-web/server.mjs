@@ -241,6 +241,7 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
         const input = await readRequestJson(request);
         const bytes = decodeBase64Field(input?.svgaBase64, "svgaBase64");
         const name = path.basename(typeof input?.name === "string" ? input.name : "untitled.svga");
+        const milestoneId = input?.milestoneId === "P3" ? "P3" : "P4";
         const replacements = Array.isArray(input?.replacements) ? input.replacements : [];
         if (replacements.length === 0) {
           throw Object.assign(new Error("At least one replacement is required"), { statusCode: 400 });
@@ -252,7 +253,7 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
         editorPromise ??= import(editorModuleUrl).then(({ SvgaImageResourceEditor }) => new SvgaImageResourceEditor());
         inspectorPromise ??= import(inspectorModuleUrl).then(({ NodeProtobufSvgaInspector }) => new NodeProtobufSvgaInspector());
         const [editor, inspector] = await Promise.all([editorPromise, inspectorPromise]);
-        const result = await editor.replaceImages(bytes, decodedReplacements, name);
+        const result = await editor.replaceImages(bytes, decodedReplacements, name, { milestoneId });
         return sendJson(response, 200, {
           editedSvgaBase64: encodeBase64(result.editedBytes),
           session: await attachSessionThumbnails(result.session, result.editedBytes, inspector),

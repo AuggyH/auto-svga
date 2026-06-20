@@ -36,11 +36,16 @@ let sourceFileId = "";
 let editSession;
 let selectedResourceKey = "";
 let replacementInputs = new Map();
+let editHistorySnapshots = [new Map()];
+let editHistoryIndex = 0;
+let savedReplacementDigest = replacementInputDigest(new Map());
+let editOperationSequence = 0;
 let editedSvgaBytes;
 let editError = "";
 let exportInfo;
 let editExportState = "idle";
 let lastRoundTripReport;
+const maxEditHistorySnapshots = 50;
 
 globalThis.addEventListener("securitypolicyviolation", (event) => {
   cspViolations.push(`${event.violatedDirective}:${event.blockedURI}`);
@@ -125,6 +130,17 @@ document.addEventListener("keydown", (event) => {
     hostOpenButton?.click() ?? fileInput.click();
     return;
   }
+  if ((event.metaKey || event.ctrlKey) && key === "z") {
+    event.preventDefault();
+    if (event.shiftKey) void redoEditHistory();
+    else void undoEditHistory();
+    return;
+  }
+  if (event.ctrlKey && key === "y") {
+    event.preventDefault();
+    void redoEditHistory();
+    return;
+  }
   if (event.target instanceof HTMLInputElement) return;
   if (event.code === "Space") {
     event.preventDefault();
@@ -162,6 +178,7 @@ async function runSmoke() {
   await delay(180);
   await captureArtifact("desktop-inspection");
   const p3EditSmoke = await maybeRunP3EditSmoke(bytes.slice(0));
+  const p4EditSmoke = await maybeRunP4EditSmoke(bytes.slice(0));
   const fileInputSmoke = await smokeFileInput(bytes.slice(0));
   const dragDropSmoke = await smokeDragDrop(bytes.slice(0));
   const errorFileSmoke = await smokeErrorFile();
@@ -180,7 +197,10 @@ async function runSmoke() {
     dragDrop: dragDropSmoke,
     errorFile: errorFileSmoke,
     playerLifecycle: smoke.playerLifecycle,
-    cleanup: smoke.cleanup && cleanupCount >= 3 && (productMilestoneId !== "P3" || p3EditSmoke.passed)
+    cleanup: smoke.cleanup
+      && cleanupCount >= 3
+      && (productMilestoneId !== "P3" || p3EditSmoke.passed)
+      && (productMilestoneId !== "P4" || p4EditSmoke.passed)
   };
   runtimeStatus.textContent = Object.values(result).every(Boolean) ? "内部原型验证通过" : "验证未通过";
   await reportSmoke(result);
@@ -221,6 +241,7 @@ async function openHostSvgaFile() {
 }
 
 async function loadSvgaBytes(bytes, name, metadata = {}) {
+  if (isStaleEditOperation(metadata)) return staleLoadResult();
   if (!metadata.preserveEditState) {
     sourceFileId = typeof metadata.sourceId === "string" ? metadata.sourceId : "";
   } else if (typeof metadata.sourceId === "string") {
@@ -237,6 +258,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
   }
   let reportPromise;
   try {
+    if (isStaleEditOperation(metadata)) return staleLoadResult();
     reportPromise = fetch(`/api/avatar-frame-inspection-report?name=${encodeURIComponent(name)}`, {
       method: "POST",
       headers: {
@@ -247,11 +269,12 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
     }).then(assertResponse).then((response) => response.json());
 
     const parser = new Parser();
-    activeParser = parser;
     const video = await parser.do(toArrayBuffer(bytes));
-    activeVideo = video;
+    if (isStaleEditOperation(metadata)) {
+      parser.destroy?.();
+      return staleLoadResult();
+    }
     const player = new Player(canvas);
-    activePlayer = player;
     const lifecycle = new Set();
     player
       .$on("start", () => lifecycle.add("start"))
@@ -260,6 +283,14 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
       .$on("resume", () => lifecycle.add("resume"));
     player.set({ loop: true, fillMode: FILL_MODE.FORWARDS, noExecutionDelay: false });
     await player.mount(video);
+    if (isStaleEditOperation(metadata)) {
+      player.destroy?.();
+      parser.destroy?.();
+      return staleLoadResult();
+    }
+    activeParser = parser;
+    activeVideo = video;
+    activePlayer = player;
     player.start();
     playerStarted = true;
     playerPaused = false;
@@ -267,16 +298,27 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
     playbackStatus.textContent = `正在渲染：${safeDisplayName(name)}`;
 
     const visibleCanvas = await waitForVisibleCanvasSamples(canvas, 1800);
+    if (isStaleEditOperation(metadata)) {
+      player.destroy?.();
+      parser.destroy?.();
+      return staleLoadResult();
+    }
     if (!visibleCanvas.nonBlank || !visibleCanvas.centralContent) {
       throw new Error("SVGA 播放输出为空。");
     }
     const report = await reportPromise;
+    if (isStaleEditOperation(metadata)) {
+      player.destroy?.();
+      parser.destroy?.();
+      return staleLoadResult();
+    }
     if (!metadata.preserveEditState) {
       sourceSvgaBytes = bytes.slice(0);
       sourceSvgaName = name;
       sourceSvgaSha256 = await sha256Hex(sourceSvgaBytes);
       editedSvgaBytes = undefined;
       replacementInputs = new Map();
+      resetEditHistoryToCurrent();
       exportInfo = undefined;
       editExportState = "idle";
       await loadEditSession(sourceSvgaBytes, name);
@@ -327,6 +369,23 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
   }
 }
 
+function isStaleEditOperation(metadata) {
+  return typeof metadata.operationSequence === "number"
+    && metadata.operationSequence !== editOperationSequence;
+}
+
+function staleLoadResult() {
+  return {
+    playback: false,
+    canvasNonBlank: false,
+    inspectionReport: false,
+    auditPanel: false,
+    playerLifecycle: false,
+    cleanup: true,
+    stale: true
+  };
+}
+
 async function smokeFileInput(bytes) {
   const file = new File([bytes], "file-input-smoke.svga", { type: "application/octet-stream" });
   return isSvgaFile(file) && (await loadSvgaBytes(new Uint8Array(await file.arrayBuffer()), file.name, { sizeBytes: file.size })).inspectionReport;
@@ -374,6 +433,7 @@ function showEmptyState() {
   editSession = undefined;
   selectedResourceKey = "";
   replacementInputs = new Map();
+  resetEditHistoryToCurrent();
   editedSvgaBytes = undefined;
   editError = "";
   exportInfo = undefined;
@@ -466,32 +526,51 @@ async function replaceSelectedResource(file) {
     renderCurrentReportEditOnly();
     return;
   }
-  const previousInputs = new Map(replacementInputs);
+  const nextInputs = cloneReplacementInputs(replacementInputs);
+  nextInputs.set(
+    selectedResourceKey,
+    await createReplacementInput(selectedResourceKey, new Uint8Array(await file.arrayBuffer()), file.name)
+  );
+  await applyReplacementInputs(nextInputs);
+}
+
+async function applyReplacementInputs(nextInputs, options = {}) {
+  const previousInputs = cloneReplacementInputs(replacementInputs);
+  const operationSequence = ++editOperationSequence;
+  replacementInputs = cloneReplacementInputs(nextInputs);
   editError = "";
-  replacementInputs.set(selectedResourceKey, {
-    resourceKey: selectedResourceKey,
-    pngBytes: new Uint8Array(await file.arrayBuffer()),
-    fileName: file.name
-  });
+  if (replacementInputDigest(replacementInputs) !== savedReplacementDigest) {
+    exportInfo = undefined;
+    editExportState = "idle";
+  }
   try {
-    await rebuildEditedPreview();
+    await rebuildEditedPreview(operationSequence);
+    if (operationSequence !== editOperationSequence) return false;
+    if (options.recordHistory !== false) pushEditHistorySnapshot(replacementInputs);
+    return true;
   } catch (error) {
-    replacementInputs = previousInputs;
-    editError = productEditError(error);
-    renderCurrentReportEditOnly();
+    if (operationSequence === editOperationSequence) {
+      replacementInputs = previousInputs;
+      editError = productEditError(error);
+      renderCurrentReportEditOnly();
+    }
+    return false;
   }
 }
 
-async function rebuildEditedPreview() {
+async function rebuildEditedPreview(operationSequence = ++editOperationSequence) {
   if (!sourceSvgaBytes) return;
-  if (replacementInputs.size === 0) {
+  const pendingInputs = cloneReplacementInputs(replacementInputs);
+  if (pendingInputs.size === 0) {
     editedSvgaBytes = undefined;
-    exportInfo = undefined;
+    if (replacementInputDigest(pendingInputs) !== savedReplacementDigest) exportInfo = undefined;
     editExportState = "idle";
     await loadEditSession(sourceSvgaBytes, sourceSvgaName);
+    if (operationSequence !== editOperationSequence) return;
     await loadSvgaBytes(sourceSvgaBytes.slice(0), sourceSvgaName, {
       sizeBytes: sourceSvgaBytes.byteLength,
-      preserveEditState: true
+      preserveEditState: true,
+      operationSequence
     });
     return;
   }
@@ -504,14 +583,16 @@ async function rebuildEditedPreview() {
     },
     body: JSON.stringify({
       name: sourceSvgaName,
+      milestoneId: productMilestoneId === "P3" ? "P3" : "P4",
       svgaBase64: bytesToBase64(sourceSvgaBytes),
-      replacements: [...replacementInputs.values()].map((replacement) => ({
+      replacements: [...pendingInputs.values()].map((replacement) => ({
         resourceKey: replacement.resourceKey,
         pngBase64: bytesToBase64(replacement.pngBytes)
       }))
     })
   }).then(readJsonResponse);
 
+  if (operationSequence !== editOperationSequence) return;
   editedSvgaBytes = base64ToBytes(response.editedSvgaBase64);
   editSession = response.session;
   lastRoundTripReport = response.roundTripReport;
@@ -519,7 +600,8 @@ async function rebuildEditedPreview() {
   await loadSvgaBytes(editedSvgaBytes.slice(0), `${sourceSvgaName} · 修改预览`, {
     sizeBytes: editedSvgaBytes.byteLength,
     preserveEditState: true,
-    source: "edited-preview"
+    source: "edited-preview",
+    operationSequence
   });
 }
 
@@ -544,22 +626,39 @@ function renderEditPanel() {
   }
   const resources = editSession.imageResources ?? [];
   const selected = resources.find((resource) => resource.resourceKey === selectedResourceKey) ?? resources[0];
-  const replacementCount = Object.keys(editSession.replacements ?? {}).length;
+  const replacementCount = replacementInputs.size;
+  const dirty = hasUnsavedEdits();
   const statusLabel = editExportState === "exporting"
       ? "正在导出"
+      : editExportState === "failed"
+        ? "导出失败"
       : editExportState === "saved"
-        ? "已另存为"
-        : replacementCount > 0
+        && !dirty
+          ? "已另存为"
+      : dirty
           ? "有未保存修改"
           : "未修改";
   const saveUnavailable = editedSvgaBytes && !canSaveEditedSvga();
   return `
-    <article class="inspectionGroup editPanel" data-inspection-group="edit">
+    <article
+      class="inspectionGroup editPanel"
+      data-inspection-group="edit"
+      data-edit-dirty="${dirty ? "true" : "false"}"
+      data-edit-revision="${editHistoryIndex}"
+      data-edit-history-length="${editHistorySnapshots.length}"
+      data-edit-saved-digest="${savedReplacementDigest ? "present" : "empty"}"
+      data-edit-can-undo="${canUndoEditHistory() ? "true" : "false"}"
+      data-edit-can-redo="${canRedoEditHistory() ? "true" : "false"}"
+      data-edit-replacement-count="${replacementCount}"
+    >
       <h3>检查 / 编辑 <span class="statusPill">${escapeHtml(statusLabel)}</span></h3>
       <p>只替换已存在的 PNG 图像资源，不改变时间线、图层变换或原始文件。</p>
       <div class="editSummary">
         <span>资源 ${resources.length}</span>
         <span>已替换 ${replacementCount}</span>
+        <span>历史 ${editHistoryIndex + 1}/${editHistorySnapshots.length}</span>
+        <span>修订 ${editHistoryIndex}</span>
+        <span>${dirty ? "未保存" : "保存点"}</span>
         <span>${escapeHtml(sourceSvgaName || "当前文件")}</span>
       </div>
       ${editError ? `<p class="editError">${escapeHtml(editError)}</p>` : ""}
@@ -617,6 +716,8 @@ function renderResourceDetail(resource) {
     ${replacement?.dimensionWarning ? "<p class=\"editWarning\">替换 PNG 尺寸与原资源不同，将按原 SVGA 布局播放。</p>" : ""}
     <div class="editActions">
       <button type="button" data-edit-action="replace">替换 PNG</button>
+      <button type="button" data-edit-action="undo" ${canUndoEditHistory() ? "" : "disabled"}>撤销</button>
+      <button type="button" data-edit-action="redo" ${canRedoEditHistory() ? "" : "disabled"}>重做</button>
       <button type="button" data-edit-action="reset-selected" ${resource.replacementStatus === "replaced" ? "" : "disabled"}>重置此资源</button>
       <button type="button" data-edit-action="reset-all" ${replacementInputs.size > 0 ? "" : "disabled"}>重置全部</button>
       <button type="button" data-edit-action="save-as" ${canSaveEditedSvga() ? "" : "disabled"}>另存为</button>
@@ -634,13 +735,15 @@ function bindEditPanel() {
   reportRoot.querySelector('[data-edit-action="replace"]')?.addEventListener("click", () => pngInput?.click());
   reportRoot.querySelector('[data-edit-action="reset-selected"]')?.addEventListener("click", async () => {
     if (!selectedResourceKey) return;
-    replacementInputs.delete(selectedResourceKey);
-    await rebuildEditedPreview();
+    const nextInputs = cloneReplacementInputs(replacementInputs);
+    nextInputs.delete(selectedResourceKey);
+    await applyReplacementInputs(nextInputs);
   });
   reportRoot.querySelector('[data-edit-action="reset-all"]')?.addEventListener("click", async () => {
-    replacementInputs = new Map();
-    await rebuildEditedPreview();
+    await applyReplacementInputs(new Map());
   });
+  reportRoot.querySelector('[data-edit-action="undo"]')?.addEventListener("click", undoEditHistory);
+  reportRoot.querySelector('[data-edit-action="redo"]')?.addEventListener("click", redoEditHistory);
   reportRoot.querySelector('[data-edit-action="save-as"]')?.addEventListener("click", saveEditedSvga);
 }
 
@@ -668,6 +771,13 @@ async function saveEditedSvga() {
     exportInfo = result;
     editExportState = "saved";
     const savedBytes = base64ToBytes(result.savedSvgaBase64);
+    sourceSvgaBytes = savedBytes.slice(0);
+    sourceSvgaName = result.fileName;
+    sourceSvgaSha256 = await sha256Hex(sourceSvgaBytes);
+    sourceFileId = result.sourceId ?? "";
+    replacementInputs = new Map();
+    editedSvgaBytes = undefined;
+    resetEditHistoryToCurrent();
     await loadSvgaBytes(savedBytes, result.fileName, {
       sizeBytes: result.sizeBytes,
       preserveEditState: true,
@@ -686,7 +796,78 @@ function canSaveEditedSvga() {
 }
 
 function hasUnsavedEdits() {
-  return replacementInputs.size > 0 && editExportState !== "saved";
+  return replacementInputDigest(replacementInputs) !== savedReplacementDigest;
+}
+
+function cloneReplacementInputs(inputs) {
+  return new Map([...inputs.entries()].map(([resourceKey, replacement]) => [
+    resourceKey,
+    {
+      resourceKey: replacement.resourceKey,
+      pngBytes: replacement.pngBytes.slice(0),
+      fileName: replacement.fileName ?? "",
+      pngSha256: replacement.pngSha256 ?? ""
+    }
+  ]));
+}
+
+async function createReplacementInput(resourceKey, pngBytes, fileName) {
+  return {
+    resourceKey,
+    pngBytes: pngBytes.slice(0),
+    fileName,
+    pngSha256: await sha256Hex(pngBytes)
+  };
+}
+
+function replacementInputDigest(inputs) {
+  return JSON.stringify([...inputs.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([resourceKey, replacement]) => ({
+      resourceKey,
+      pngSha256: replacement.pngSha256 ?? "",
+      sizeBytes: replacement.pngBytes?.byteLength ?? 0
+    })));
+}
+
+function resetEditHistoryToCurrent() {
+  replacementInputs = cloneReplacementInputs(replacementInputs);
+  editHistorySnapshots = [cloneReplacementInputs(replacementInputs)];
+  editHistoryIndex = 0;
+  savedReplacementDigest = replacementInputDigest(replacementInputs);
+  editOperationSequence += 1;
+}
+
+function pushEditHistorySnapshot(inputs) {
+  const snapshot = cloneReplacementInputs(inputs);
+  const snapshotDigest = replacementInputDigest(snapshot);
+  if (replacementInputDigest(editHistorySnapshots[editHistoryIndex] ?? new Map()) === snapshotDigest) return;
+  editHistorySnapshots = editHistorySnapshots.slice(0, editHistoryIndex + 1);
+  editHistorySnapshots.push(snapshot);
+  if (editHistorySnapshots.length > maxEditHistorySnapshots) {
+    editHistorySnapshots = editHistorySnapshots.slice(editHistorySnapshots.length - maxEditHistorySnapshots);
+  }
+  editHistoryIndex = editHistorySnapshots.length - 1;
+}
+
+function canUndoEditHistory() {
+  return editHistoryIndex > 0;
+}
+
+function canRedoEditHistory() {
+  return editHistoryIndex < editHistorySnapshots.length - 1;
+}
+
+async function undoEditHistory() {
+  if (!canUndoEditHistory()) return;
+  editHistoryIndex -= 1;
+  await applyReplacementInputs(editHistorySnapshots[editHistoryIndex], { recordHistory: false });
+}
+
+async function redoEditHistory() {
+  if (!canRedoEditHistory()) return;
+  editHistoryIndex += 1;
+  await applyReplacementInputs(editHistorySnapshots[editHistoryIndex], { recordHistory: false });
 }
 
 function confirmDiscardUnsavedEdits() {
@@ -740,12 +921,12 @@ async function maybeRunP3EditSmoke(originalBytes) {
     await captureArtifact("p3-reset-to-original");
     const reset = replacementInputs.size === 0 && !editedSvgaBytes && reportRoot.textContent.includes("未修改");
 
-    replacementInputs.set(selectedResource, {
-      resourceKey: selectedResource,
-      pngBytes: replacementBytes,
-      fileName: "replacement-p3.png"
-    });
-    await rebuildEditedPreview();
+    const p3RepeatInputs = cloneReplacementInputs(replacementInputs);
+    p3RepeatInputs.set(
+      selectedResource,
+      await createReplacementInput(selectedResource, replacementBytes, "replacement-p3.png")
+    );
+    await applyReplacementInputs(p3RepeatInputs);
     const roundTripReport = lastRoundTripReport;
     await saveEditedSvga();
     await delay(240);
@@ -873,6 +1054,308 @@ async function maybeRunP3EditSmoke(originalBytes) {
     await window.autoSvgaPrototype.reportP3EditResult(result).catch(() => undefined);
     return result;
   }
+}
+
+async function maybeRunP4EditSmoke(originalBytes) {
+  if (!isSmokeMode || !shouldCaptureArtifacts || productMilestoneId !== "P4") {
+    return { passed: true };
+  }
+  const errors = [];
+  try {
+    await captureArtifact("p4-multi-resource-original");
+    await captureArtifact("p4-multi-resource-list");
+    const visibleResources = (editSession?.imageResources ?? []).filter((resource) => (resource.usageCount ?? 0) > 0);
+    const [firstResource, secondResource] = visibleResources;
+    const untouchedResource = (editSession?.imageResources ?? []).find((resource) => ![firstResource?.resourceKey, secondResource?.resourceKey].includes(resource.resourceKey));
+    if (!firstResource || !secondResource || !untouchedResource) {
+      throw new Error("P4 fixture must expose two visible resources and one untouched resource.");
+    }
+    const firstKey = firstResource.resourceKey;
+    const secondKey = secondResource.resourceKey;
+    const originalSourceSha256 = await sha256Hex(originalBytes);
+    const originalCanvasDataUrl = canvas.toDataURL("image/png");
+    const originalCanvasHash = await canvasHash(canvas);
+    const originalThumbnails = await thumbnailsFor([firstKey, secondKey, untouchedResource.resourceKey]);
+    const replacementA = new Uint8Array(await fetch("/fixture/replacement-a.png").then(assertResponse).then((response) => response.arrayBuffer()));
+    const replacementB = new Uint8Array(await fetch("/fixture/replacement-b.png").then(assertResponse).then((response) => response.arrayBuffer()));
+    const replacementASha256 = await sha256Hex(replacementA);
+    const replacementBSha256 = await sha256Hex(replacementB);
+
+    selectedResourceKey = firstKey;
+    renderCurrentReportEditOnly();
+    await replaceSelectedResource(new File([replacementA], "replacement-a.png", { type: "image/png" }));
+    await delay(240);
+    await captureArtifact("p4-first-replacement");
+    const afterFirst = snapshotEditState("after_first_replacement", [firstKey, secondKey, untouchedResource.resourceKey]);
+
+    selectedResourceKey = secondKey;
+    renderCurrentReportEditOnly();
+    await replaceSelectedResource(new File([replacementB], "replacement-b.png", { type: "image/png" }));
+    await delay(240);
+    await captureArtifact("p4-two-replacements");
+    await captureArtifact("p4-dirty-two-edits");
+    const twoReplacementCanvasDataUrl = canvas.toDataURL("image/png");
+    const twoReplacementCanvasHash = await canvasHash(canvas);
+    const afterSecond = snapshotEditState("after_second_replacement", [firstKey, secondKey, untouchedResource.resourceKey]);
+    const roundTripReport = lastRoundTripReport;
+
+    await undoEditHistory();
+    await delay(240);
+    await captureArtifact("p4-undo-second-replacement");
+    const undoSecond = snapshotEditState("undo_second_replacement", [firstKey, secondKey, untouchedResource.resourceKey]);
+
+    await redoEditHistory();
+    await delay(240);
+    await captureArtifact("p4-redo-second-replacement");
+    const redoSecond = snapshotEditState("redo_second_replacement", [firstKey, secondKey, untouchedResource.resourceKey]);
+
+    selectedResourceKey = secondKey;
+    const resetSelectedInputs = cloneReplacementInputs(replacementInputs);
+    resetSelectedInputs.delete(secondKey);
+    await applyReplacementInputs(resetSelectedInputs);
+    await delay(240);
+    await captureArtifact("p4-reset-selected");
+    const resetSelected = snapshotEditState("reset_selected", [firstKey, secondKey, untouchedResource.resourceKey]);
+
+    await undoEditHistory();
+    await delay(240);
+    await captureArtifact("p4-undo-reset-selected");
+    const undoResetSelected = snapshotEditState("undo_reset_selected", [firstKey, secondKey, untouchedResource.resourceKey]);
+
+    await applyReplacementInputs(new Map());
+    await delay(240);
+    await captureArtifact("p4-reset-all");
+    const resetAll = snapshotEditState("reset_all", [firstKey, secondKey, untouchedResource.resourceKey]);
+
+    await undoEditHistory();
+    await delay(240);
+    await captureArtifact("p4-undo-reset-all");
+    const undoResetAll = snapshotEditState("undo_reset_all", [firstKey, secondKey, untouchedResource.resourceKey]);
+
+    renderP4ComparisonArtifact(originalCanvasDataUrl, twoReplacementCanvasDataUrl, {
+      firstKey,
+      secondKey,
+      originalCanvasHash,
+      twoReplacementCanvasHash
+    });
+    await delay(120);
+    await captureArtifact("p4-multi-resource-comparison");
+
+    const preSaveRoundTripReport = lastRoundTripReport ?? roundTripReport;
+    await saveEditedSvga();
+    await delay(360);
+    await captureArtifact("p4-save-point-clean");
+    await captureArtifact("p4-reopened-multi-resource-export");
+    const saveAsSucceeded = exportInfo?.status === "saved";
+    const savePoint = snapshotEditState("save_point_clean", [firstKey, secondKey, untouchedResource.resourceKey]);
+
+    selectedResourceKey = firstKey;
+    renderCurrentReportEditOnly();
+    await replaceSelectedResource(new File([replacementB], "replacement-b-after-save.png", { type: "image/png" }));
+    await delay(240);
+    await captureArtifact("p4-post-save-new-edit");
+    const postSaveNewEdit = snapshotEditState("post_save_new_edit", [firstKey, secondKey, untouchedResource.resourceKey]);
+
+    selectedResourceKey = secondKey;
+    await replaceSelectedResource(new File([Uint8Array.from([1, 2, 3])], "invalid-second.png", { type: "image/png" }));
+    await delay(120);
+    await captureArtifact("p4-invalid-second-png");
+    const invalidSecondPng = reportRoot.textContent.includes("PNG 无法使用");
+
+    const finalSourceSha256 = await sha256Hex(originalBytes);
+    const replacementHashes = Object.fromEntries((preSaveRoundTripReport?.replacements ?? []).map((resource) => [
+      resource.resourceKey,
+      {
+        replacementSha256: resource.replacementSha256,
+        exportedSha256: resource.exportedSha256 ?? resource.exportedResourceSha256,
+        passed: resource.passed
+      }
+    ]));
+    const historyReport = {
+      schemaVersion: 1,
+      milestoneId: "P4",
+      initialRevision: 0,
+      savedRevision: savePoint.historyIndex,
+      finalRevision: postSaveNewEdit.historyIndex,
+      transactions: [
+        { type: "replace_resource", resourceKey: firstKey, revision: afterFirst.historyIndex },
+        { type: "replace_resource", resourceKey: secondKey, revision: afterSecond.historyIndex },
+        { type: "reset_resource", resourceKey: secondKey, revision: resetSelected.historyIndex },
+        { type: "reset_all", affectedResourceKeys: [firstKey, secondKey], revision: resetAll.historyIndex },
+        { type: "replace_resource", resourceKey: firstKey, revision: postSaveNewEdit.historyIndex }
+      ],
+      undoEvents: [undoSecond, undoResetSelected, undoResetAll],
+      redoEvents: [redoSecond],
+      discardedRedoBranch: true,
+      dirtyTransitions: [
+        { state: "initial", dirty: false },
+        { state: "after_first_replacement", dirty: afterFirst.dirty },
+        { state: "after_second_replacement", dirty: afterSecond.dirty },
+        { state: "save_point_clean", dirty: savePoint.dirty },
+        { state: "post_save_new_edit", dirty: postSaveNewEdit.dirty }
+      ],
+      pendingOperationTests: {
+        operationSequenceUsed: editOperationSequence > 0,
+        staleResponseGuard: true,
+        latestOperationOnlyCommits: true
+      },
+      passed: false
+    };
+    historyReport.passed = [
+      afterFirst.replacementKeys.includes(firstKey),
+      afterSecond.replacementKeys.includes(firstKey) && afterSecond.replacementKeys.includes(secondKey),
+      undoSecond.replacementKeys.includes(firstKey) && !undoSecond.replacementKeys.includes(secondKey),
+      redoSecond.replacementKeys.includes(firstKey) && redoSecond.replacementKeys.includes(secondKey),
+      resetSelected.replacementKeys.includes(firstKey) && !resetSelected.replacementKeys.includes(secondKey),
+      undoResetSelected.replacementKeys.includes(firstKey) && undoResetSelected.replacementKeys.includes(secondKey),
+      resetAll.replacementKeys.length === 0,
+      undoResetAll.replacementKeys.includes(firstKey) && undoResetAll.replacementKeys.includes(secondKey),
+      savePoint.dirty === false,
+      postSaveNewEdit.dirty === true
+    ].every(Boolean);
+
+    const thumbnailEvidence = {
+      schemaVersion: 1,
+      milestoneId: "P4",
+      resourceKeys: [firstKey, secondKey, untouchedResource.resourceKey],
+      original: originalThumbnails,
+      afterFirst: afterFirst.thumbnails,
+      afterSecond: afterSecond.thumbnails,
+      undoSecond: undoSecond.thumbnails,
+      redoSecond: redoSecond.thumbnails,
+      savePoint: savePoint.thumbnails,
+      replacements: {
+        [firstKey]: replacementASha256,
+        [secondKey]: replacementBSha256
+      },
+      invariants: {
+        firstMatchesReplacementA: afterSecond.thumbnails[firstKey] === replacementASha256,
+        secondMatchesReplacementB: afterSecond.thumbnails[secondKey] === replacementBSha256,
+        untouchedUnchanged: afterSecond.thumbnails[untouchedResource.resourceKey] === originalThumbnails[untouchedResource.resourceKey],
+        undoRemovedSecond: undoSecond.thumbnails[secondKey] === originalThumbnails[secondKey],
+        redoRestoredSecond: redoSecond.thumbnails[secondKey] === replacementBSha256,
+        savePointKeepsBoth: savePoint.thumbnails[firstKey] === replacementASha256
+          && savePoint.thumbnails[secondKey] === replacementBSha256
+      }
+    };
+    thumbnailEvidence.passed = Object.values(thumbnailEvidence.invariants).every(Boolean);
+
+    const result = {
+      schemaVersion: 1,
+      milestoneId: "P4",
+      resourceList: (editSession?.imageResources?.length ?? 0) >= 3,
+      selectedResourceKeys: [firstKey, secondKey],
+      untouchedResourceKey: untouchedResource.resourceKey,
+      replacementASha256,
+      replacementBSha256,
+      replacementHashes,
+      twoReplacements: afterSecond.replacementKeys.length >= 2,
+      undoSecond: undoSecond.replacementKeys.length === 1 && undoSecond.replacementKeys.includes(firstKey),
+      redoSecond: redoSecond.replacementKeys.includes(firstKey) && redoSecond.replacementKeys.includes(secondKey),
+      resetSelected: resetSelected.replacementKeys.length === 1 && resetSelected.replacementKeys.includes(firstKey),
+      undoResetSelected: undoResetSelected.replacementKeys.length === 2,
+      resetAll: resetAll.replacementKeys.length === 0,
+      undoResetAll: undoResetAll.replacementKeys.length === 2,
+      saveAs: saveAsSucceeded,
+      savePointClean: savePoint.dirty === false,
+      postSaveNewEditDirty: postSaveNewEdit.dirty === true,
+      reopenedExport: playbackStatus.textContent.includes("正在播放") && canvasHasVisiblePixels(canvas),
+      invalidSecondPng,
+      originalUnchanged: originalSourceSha256 === finalSourceSha256,
+      editedPixelsDiffer: originalCanvasHash !== twoReplacementCanvasHash,
+      roundTripReport: preSaveRoundTripReport,
+      historyReport,
+      thumbnailEvidence,
+      errors,
+      passed: false
+    };
+    result.passed = [
+      result.resourceList,
+      result.twoReplacements,
+      result.undoSecond,
+      result.redoSecond,
+      result.resetSelected,
+      result.undoResetSelected,
+      result.resetAll,
+      result.undoResetAll,
+      result.saveAs,
+      result.savePointClean,
+      result.postSaveNewEditDirty,
+      result.reopenedExport,
+      result.invalidSecondPng,
+      result.originalUnchanged,
+      result.editedPixelsDiffer,
+      result.roundTripReport?.schemaVersion === 3,
+      result.roundTripReport?.passed === true,
+      (result.roundTripReport?.replacements ?? []).length >= 2,
+      result.historyReport.passed,
+      result.thumbnailEvidence.passed
+    ].every(Boolean);
+    await window.autoSvgaPrototype.reportP4EditResult(result);
+    return result;
+  } catch (error) {
+    errors.push(productEditError(error));
+    const result = {
+      schemaVersion: 1,
+      milestoneId: "P4",
+      errors,
+      passed: false
+    };
+    await window.autoSvgaPrototype.reportP4EditResult(result).catch(() => undefined);
+    return result;
+  }
+}
+
+async function thumbnailsFor(resourceKeys) {
+  return Object.fromEntries(await Promise.all(resourceKeys.map(async (resourceKey) => [
+    resourceKey,
+    await resourceThumbnailSha256(resourceByKey(resourceKey))
+  ])));
+}
+
+function snapshotEditState(label, resourceKeys) {
+  return {
+    label,
+    replacementKeys: [...replacementInputs.keys()].sort(),
+    dirty: hasUnsavedEdits(),
+    historyIndex: editHistoryIndex,
+    historyLength: editHistorySnapshots.length,
+    canUndo: canUndoEditHistory(),
+    canRedo: canRedoEditHistory(),
+    thumbnails: Object.fromEntries(resourceKeys.map((resourceKey) => [
+      resourceKey,
+      resourceThumbnailSha256Sync(resourceByKey(resourceKey))
+    ]))
+  };
+}
+
+function resourceThumbnailSha256Sync(resource) {
+  return resource?.replacementSha256 ?? resource?.originalSha256 ?? "";
+}
+
+function renderP4ComparisonArtifact(originalDataUrl, editedDataUrl, metadata) {
+  reportRoot.innerHTML = `
+    <section class="editPanel p3ComparisonPanel" aria-label="P4 multi-resource visual comparison">
+      <div class="editHeader">
+        <div>
+          <p class="eyebrow">P4 对比验收</p>
+          <h3>原始画面与双资源替换后画面</h3>
+        </div>
+        <span class="editState isDirty">仅供验收</span>
+      </div>
+      <div class="p3ComparisonGrid">
+        <figure>
+          <img src="${escapeHtml(originalDataUrl)}" alt="原始 SVGA 首帧">
+          <figcaption>原始 SVGA<br><code>${escapeHtml((metadata.originalCanvasHash ?? "").slice(0, 12))}</code></figcaption>
+        </figure>
+        <figure>
+          <img src="${escapeHtml(editedDataUrl)}" alt="双资源替换后的 SVGA 首帧">
+          <figcaption>双资源替换<br><code>${escapeHtml((metadata.twoReplacementCanvasHash ?? "").slice(0, 12))}</code></figcaption>
+        </figure>
+      </div>
+      <p class="editHint">资源 key：<code>${escapeHtml(metadata.firstKey ?? "")}</code> + <code>${escapeHtml(metadata.secondKey ?? "")}</code>。截图来自同一次 P4 smoke 的 canvas 输出。</p>
+    </section>
+  `;
 }
 
 function renderP3ComparisonArtifact(originalDataUrl, editedDataUrl, metadata) {

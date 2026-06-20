@@ -222,6 +222,51 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   assert.doesNotMatch(main, /svga-web-experiment:open-svga-file[\s\S]*persistedAbsolutePath/);
 });
 
+test("P4 multi-resource editing keeps history and export integrity boundaries isolated", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
+  const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
+  const server = await readFile(path.join(experimentRoot, "server.mjs"), "utf8");
+  assert.match(renderer, /editHistorySnapshots/);
+  assert.match(renderer, /savedReplacementDigest/);
+  assert.match(renderer, /editOperationSequence/);
+  assert.match(renderer, /maxEditHistorySnapshots/);
+  assert.match(renderer, /replacementInputDigest/);
+  assert.match(renderer, /data-edit-action="undo"/);
+  assert.match(renderer, /data-edit-action="redo"/);
+  assert.match(renderer, /data-edit-dirty/);
+  assert.match(renderer, /data-edit-revision/);
+  assert.match(renderer, /data-edit-can-undo/);
+  assert.match(renderer, /data-edit-can-redo/);
+  assert.match(renderer, /key === "z"/);
+  assert.match(renderer, /key === "y"/);
+  assert.match(renderer, /undoEditHistory/);
+  assert.match(renderer, /redoEditHistory/);
+  assert.match(renderer, /isStaleEditOperation/);
+  assert.match(renderer, /staleLoadResult/);
+  assert.match(renderer, /operationSequence/);
+  assert.match(renderer, /maybeRunP4EditSmoke/);
+  assert.match(renderer, /reportP4EditResult/);
+  assert.match(preload, /reportP4EditResult/);
+  assert.match(renderer, /milestoneId: productMilestoneId === "P3" \? "P3" : "P4"/);
+  assert.match(server, /const milestoneId = input\?\.milestoneId === "P3" \? "P3" : "P4"/);
+  assert.match(server, /replaceImages\(bytes, decodedReplacements, name, \{ milestoneId \}\)/);
+  assert.match(main, /const savedSourceId = rememberSourceFile\(targetPath\)/);
+  assert.match(main, /sourceId: savedSourceId/);
+  assert.match(main, /p4-edit-result/);
+  assert.match(main, /validateP4EditResult/);
+  assert.match(main, /multi-resource-round-trip-report\.json/);
+  assert.match(main, /edit-history-report\.json/);
+  assert.match(main, /canonical-multi-resource-fixture\.json/);
+  assert.match(main, /multi-resource-edited-output\.svga/);
+  const p4UploadScript = await readFile(path.join(experimentRoot, "scripts/build-p4-upload-package.mjs"), "utf8");
+  assert.match(p4UploadScript, /review\/P4-latest/);
+  assert.match(p4UploadScript, /P4 upload ZIP/);
+  assert.match(p4UploadScript, /reviewSource: "independent-read-only-reviewer-b-json"/);
+  assert.doesNotMatch(p4UploadScript, /generatedAt: "stable-reviewer-b-product-categories"/);
+  assert.doesNotMatch(renderer, /readFile|writeFile|dialog|shell|\/Users\//);
+});
+
 test("root package exposes explicit desktop entrypoints without changing default scripts", async () => {
   const rootPackage = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   const experimentPackage = JSON.parse(await readFile(path.join(experimentRoot, "package.json"), "utf8"));
@@ -232,6 +277,7 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.equal(rootPackage.scripts["desktop:p2:reviewer-b"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:reviewer-b");
   assert.equal(rootPackage.scripts["desktop:p2:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:upload-package");
   assert.equal(rootPackage.scripts["desktop:p3:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p3:upload-package");
+  assert.equal(rootPackage.scripts["desktop:p4:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p4:upload-package");
   assert.equal(rootPackage.scripts.test, "npm run test:all");
   assert.equal(rootPackage.scripts["local:preview"], "node tools/launch-local-preview.mjs");
   assert.match(experimentPackage.scripts["desktop:dev"], /electron \.$/);
@@ -240,6 +286,7 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.match(experimentPackage.scripts["desktop:p2:reviewer-b"], /build-p2-reviewer-b-categories\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p2:upload-package"], /build-p2-upload-package\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p3:upload-package"], /build-p3-upload-package\.mjs/);
+  assert.match(experimentPackage.scripts["desktop:p4:upload-package"], /build-p4-upload-package\.mjs/);
   assert.doesNotMatch(experimentPackage.scripts["desktop:p2:normal-proof"], /--p2-normal-proof/);
   assert.notEqual(rootPackage.scripts["desktop:dev"], legacyPackage.scripts["spike:electron:smoke"]);
   assert.doesNotMatch(rootPackage.scripts["desktop:dev"], /tools\/electron-prototype run/);

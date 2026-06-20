@@ -30,14 +30,22 @@ await cp(
 );
 await mkdir(path.join(runtimeRoot, "fixture"), { recursive: true });
 const fixture = await createSyntheticFixture();
-const replacement = await createSyntheticReplacementPng();
+const replacement = await createSyntheticReplacementPng("p3");
+const replacementA = await createSyntheticReplacementPng("a");
+const replacementB = await createSyntheticReplacementPng("b");
 await writeFile(path.join(runtimeRoot, "fixture/avatar-frame-smoke.svga"), fixture);
 await writeFile(path.join(runtimeRoot, "fixture/replacement-p3.png"), replacement);
+await writeFile(path.join(runtimeRoot, "fixture/replacement-a.png"), replacementA);
+await writeFile(path.join(runtimeRoot, "fixture/replacement-b.png"), replacementB);
 await writeFile(path.join(runtimeRoot, "manifest.json"), JSON.stringify({
   fixture: "fixture/avatar-frame-smoke.svga",
   fixtureSha256: sha256(fixture),
   replacementFixture: "fixture/replacement-p3.png",
   replacementFixtureSha256: sha256(replacement),
+  replacementA: "fixture/replacement-a.png",
+  replacementASha256: sha256(replacementA),
+  replacementB: "fixture/replacement-b.png",
+  replacementBSha256: sha256(replacementB),
   vendor: expectedVendorHashes
 }, null, 2));
 console.log(`Electron prototype runtime prepared (${fixture.byteLength} byte synthetic SVGA)`);
@@ -52,31 +60,35 @@ async function verifyVendorAssets() {
 async function createSyntheticFixture() {
   const root = await protobuf.load(path.join(repoRoot, "proto/svga.proto"));
   const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
-  const { createTransparentImage, encodeRgbaPng } = await import(
-    pathToFileURL(path.join(runtimeRoot, "dist/utils/png-writer.js")).href
-  );
-  const image = createTransparentImage(80, 80);
-  for (let y = 0; y < image.height; y += 1) {
-    for (let x = 0; x < image.width; x += 1) {
-      const offset = (y * image.width + x) * 4;
-      image.pixels[offset] = 36 + Math.round(x * 1.5);
-      image.pixels[offset + 1] = 150 + Math.round(y * 0.8);
-      image.pixels[offset + 2] = 120 + Math.round((x + y) * 0.5);
-      image.pixels[offset + 3] = 255;
-    }
-  }
-  const frames = Array.from({ length: 24 }, (_unused, frame) => ({
+  const leftImage = await createSyntheticImagePng(80, 80, "left");
+  const rightImage = await createSyntheticImagePng(72, 72, "right");
+  const unusedImage = await createSyntheticImagePng(24, 24, "unused");
+  const leftFrames = Array.from({ length: 24 }, (_unused, frame) => ({
     alpha: 1,
     layout: { x: 0, y: 0, width: 80, height: 80 },
-    transform: { a: 1, b: 0, c: 0, d: 1, tx: 110 + Math.sin(frame / 24 * Math.PI * 2) * 12, ty: 110 },
+    transform: { a: 1, b: 0, c: 0, d: 1, tx: 58 + Math.sin(frame / 24 * Math.PI * 2) * 8, ty: 110 },
+    clipPath: "",
+    shapes: []
+  }));
+  const rightFrames = Array.from({ length: 24 }, (_unused, frame) => ({
+    alpha: 0.9 + Math.sin(frame / 24 * Math.PI * 2) * 0.08,
+    layout: { x: 0, y: 0, width: 72, height: 72 },
+    transform: { a: 1, b: 0, c: 0, d: 1, tx: 176, ty: 112 + Math.cos(frame / 24 * Math.PI * 2) * 7 },
     clipPath: "",
     shapes: []
   }));
   const payload = {
     version: "2.0",
     params: { viewBoxWidth: 300, viewBoxHeight: 300, fps: 24, frames: 24 },
-    images: { img_synthetic_frame: encodeRgbaPng(image) },
-    sprites: [{ imageKey: "img_synthetic_frame", frames }],
+    images: {
+      img_frame_left: leftImage,
+      img_frame_right: rightImage,
+      img_unused_marker: unusedImage
+    },
+    sprites: [
+      { imageKey: "img_frame_left", frames: leftFrames },
+      { imageKey: "img_frame_right", frames: rightFrames }
+    ],
     audios: []
   };
   const verificationError = MovieEntity.verify(payload);
@@ -84,21 +96,44 @@ async function createSyntheticFixture() {
   return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
 }
 
-async function createSyntheticReplacementPng() {
+async function createSyntheticImagePng(width, height, variant) {
   const { createTransparentImage, encodeRgbaPng } = await import(
     pathToFileURL(path.join(runtimeRoot, "dist/utils/png-writer.js")).href
   );
-  const image = createTransparentImage(80, 80);
+  const image = createTransparentImage(width, height);
   for (let y = 0; y < image.height; y += 1) {
     for (let x = 0; x < image.width; x += 1) {
       const offset = (y * image.width + x) * 4;
-      image.pixels[offset] = 230;
-      image.pixels[offset + 1] = 74 + Math.round(x * 0.6);
-      image.pixels[offset + 2] = 56 + Math.round(y * 0.4);
+      if (variant === "right") {
+        image.pixels[offset] = 126 + Math.round(y * 0.7);
+        image.pixels[offset + 1] = 78 + Math.round(x * 0.8);
+        image.pixels[offset + 2] = 220;
+      } else if (variant === "unused") {
+        image.pixels[offset] = 96;
+        image.pixels[offset + 1] = 96;
+        image.pixels[offset + 2] = 96;
+      } else if (variant === "b") {
+        image.pixels[offset] = 250;
+        image.pixels[offset + 1] = 205 - Math.round(x * 0.5);
+        image.pixels[offset + 2] = 52 + Math.round(y * 0.7);
+      } else if (variant === "a") {
+        image.pixels[offset] = 42 + Math.round(x * 0.9);
+        image.pixels[offset + 1] = 180 + Math.round(y * 0.5);
+        image.pixels[offset + 2] = 245;
+      } else {
+        image.pixels[offset] = 36 + Math.round(x * 0.8);
+        image.pixels[offset + 1] = 156 + Math.round(y * 0.7);
+        image.pixels[offset + 2] = 104 + Math.round((x + y) * 0.35);
+      }
       image.pixels[offset + 3] = 255;
     }
   }
   return encodeRgbaPng(image);
+}
+
+async function createSyntheticReplacementPng(variant) {
+  if (variant === "b") return createSyntheticImagePng(72, 72, "b");
+  return createSyntheticImagePng(80, 80, "a");
 }
 
 function sha256(bytes) {

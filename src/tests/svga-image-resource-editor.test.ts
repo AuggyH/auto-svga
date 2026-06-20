@@ -79,7 +79,7 @@ test("SVGA image editor replaces selected PNG bytes and preserves round-trip inv
   const result = await editor.replaceImages(bytes, [{
     resourceKey: "img_sweep",
     pngBytes: replacement
-  }], "fixture.svga");
+  }], "fixture.svga", { milestoneId: "P3" });
 
   assert.equal(sha256(bytes), originalHash, "source bytes must remain unchanged");
   assert.notEqual(sha256(result.editedBytes), originalHash);
@@ -193,7 +193,7 @@ test("SVGA image editor round-trip v2 fails closed on granular non-image mutatio
   const report = await editor.validateRoundTrip(sourceBytes, mutatedBytes, [{
     resourceKey: "img_sweep",
     pngBytes: replacement
-  }]);
+  }], { milestoneId: "P3" });
 
   assert.equal(report.schemaVersion, 2);
   assert.equal(report.passed, false);
@@ -224,6 +224,91 @@ test("SVGA image editor round-trip v2 fails closed on granular non-image mutatio
     ]
   );
   assert.ok(report.invariantChecks.every((check) => "expected" in check && "actual" in check));
+});
+
+test("SVGA image editor reports P4 per-resource integrity for multiple replacements", async () => {
+  const bytes = await createSvgaFixture();
+  const originalHash = sha256(bytes);
+  const editor = new SvgaImageResourceEditor();
+  const replacementFrame = createColoredPng(300, 300, [0, 0, 255, 255]);
+  const replacementSweep = createColoredPng(48, 96, [255, 255, 0, 255]);
+
+  const result = await editor.replaceImages(bytes, [
+    { resourceKey: "img_frame", pngBytes: replacementFrame },
+    { resourceKey: "img_sweep", pngBytes: replacementSweep }
+  ], "fixture.svga", { milestoneId: "P4", headCommit: "p4-test-head" });
+
+  assert.equal(sha256(bytes), originalHash, "source bytes must remain unchanged");
+  assert.equal(result.roundTripReport.schemaVersion, 3);
+  assert.equal(result.roundTripReport.milestoneId, "P4");
+  assert.equal(result.roundTripReport.headCommit, "p4-test-head");
+  assert.equal(result.roundTripReport.replacementCount, 2);
+  assert.deepEqual(result.roundTripReport.replacedResourceKeys, ["img_frame", "img_sweep"]);
+  assert.deepEqual(result.roundTripReport.unchangedResourceKeys, ["img_unused"]);
+  assert.deepEqual(
+    result.roundTripReport.replacedResources.map((resource) => ({
+      resourceKey: resource.resourceKey,
+      replacementSha256: resource.replacementSha256,
+      exportedResourceSha256: resource.exportedResourceSha256,
+      passed: resource.passed
+    })),
+    [
+      {
+        resourceKey: "img_frame",
+        replacementSha256: sha256(replacementFrame),
+        exportedResourceSha256: sha256(replacementFrame),
+        passed: true
+      },
+      {
+        resourceKey: "img_sweep",
+        replacementSha256: sha256(replacementSweep),
+        exportedResourceSha256: sha256(replacementSweep),
+        passed: true
+      }
+    ]
+  );
+  assert.equal(result.roundTripReport.passed, true);
+  assert.deepEqual(result.roundTripReport.unexpectedChanges, []);
+  assert.deepEqual(
+    result.roundTripReport.changedFields,
+    ["images.img_frame", "images.img_sweep", "zlib_bytes", "protobuf_serialization"]
+  );
+  assert.deepEqual(
+    result.roundTripReport.invariantChecks
+      .filter(({ code }) => code === "replaced_image_hashes" || code === "replacement_resource_key_references")
+      .map(({ code, passed }) => ({ code, passed })),
+    [
+      { code: "replacement_resource_key_references", passed: true },
+      { code: "replaced_image_hashes", passed: true }
+    ]
+  );
+  assert.equal(result.session.replacements.img_frame.replacementSha256, sha256(replacementFrame));
+  assert.equal(result.session.replacements.img_sweep.replacementSha256, sha256(replacementSweep));
+  assert.equal(result.session.imageResources.filter(({ replacementStatus }) => replacementStatus === "replaced").length, 2);
+
+  const inspected = await new NodeProtobufSvgaInspector().inspect(result.editedBytes);
+  assert.deepEqual(
+    Object.fromEntries(inspected.images.map(({ imageKey, bytes: imageBytes }) => [imageKey, sha256(imageBytes)])),
+    {
+      img_frame: sha256(replacementFrame),
+      img_sweep: sha256(replacementSweep),
+      img_unused: sha256(createTransparentPng(12, 12))
+    }
+  );
+});
+
+test("SVGA image editor rejects duplicate replacements for the same resource", async () => {
+  const editor = new SvgaImageResourceEditor();
+  const bytes = await createSvgaFixture();
+  const replacement = createColoredPng(16, 16, [0, 255, 0, 255]);
+
+  await assert.rejects(
+    editor.replaceImages(bytes, [
+      { resourceKey: "img_sweep", pngBytes: replacement },
+      { resourceKey: "img_sweep", pngBytes: replacement }
+    ], "fixture.svga", { milestoneId: "P4" }),
+    (error) => error instanceof SvgaImageEditError && error.code === "duplicate_resource_replacement"
+  );
 });
 
 test("SVGA image editor rejects missing resources and SVGA with no images", async () => {

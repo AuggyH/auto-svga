@@ -6,8 +6,8 @@ Date: 2026-06-21
 
 - milestoneId: P4
 - Milestone: P4 Multi-Resource Editing, Undo/Redo And Export Integrity
-- State: in_progress
-- Next Action: implementation
+- State: terminal_human_required
+- Next Action: external_review
 - repairRound: 0
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
@@ -16,14 +16,17 @@ Date: 2026-06-21
 
 ## Current Evidence
 
-- P3 owner acceptance is complete.
-- P3 final external review is archived at `docs/loop/reviews/P3-final-external-review.md`.
-- P3 frozen contract is archived at `docs/loop/milestones/P3-basic-image-resource-replacement-and-save-as.md`.
-- P3 final PASS packet is sealed at `.artifacts/loop-handoff/P3-1fc3bd3/REVIEW_PACKET.md`.
-- P4 branch `agent/codex/p4-multi-resource-edit-history` was created from the accepted P3 closeout HEAD.
-- P4 baseline `npm run loop:validate` passed before P4 contract changes.
-- P4 audit and contract freeze are in progress.
+- P3 owner acceptance is complete and archived.
+- P4 contract is frozen in `docs/loop/CURRENT_MILESTONE.md`.
+- P4 multi-resource audit and implementation plan are complete.
+- P4 implementation adds multi-resource image replacement, schemaVersion 3 round-trip reports, undo/redo, save-point dirty state, stale preview operation guards, P4 Electron smoke artifacts, and visible review upload packaging.
+- Targeted editor/history tests pass.
+- Isolated svga-web prototype tests pass.
+- `AUTO_SVGA_PRODUCT_MILESTONE=P4 npm run desktop:smoke` passed and generated P4 screenshots, reports, and edited SVGA output from the real Electron app.
+- Pre-terminal `npm run loop:validate` passed with intentionally uncommitted P4 source changes.
 
 ## Next Action
 
-Implement P4 according to the frozen contract. Do not start the next milestone.
+Await external product review. Do not start the next milestone.
+
+Safe default while waiting: do not accept P4 and do not begin P5.
