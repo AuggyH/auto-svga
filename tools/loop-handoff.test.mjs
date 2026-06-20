@@ -711,30 +711,40 @@ test("terminal state rejects implementation, validation, or review requests in h
 });
 
 test("terminal state allows await external review with negative action guidance", async () => {
-  await withRepo(async ({ repo, base, head }) => {
-    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
-      "# Auto SVGA Loop State",
-      "",
-      "- milestoneId: M2-R2",
-      "- Milestone: M2-R2",
-      "- State: terminal_pass",
-      "- Next Action: external_review",
-      "",
-      "## Next Action",
-      "",
+  for (const guidance of [
+    [
       "Await external review.",
-      "Do not perform additional implementation, validation, review, candidate generation, or sealing until a new directive is received.",
-      ""
-    ].join("\n"));
-    head = await commitFixture(repo, "terminal await external review");
-    await refreshValidationAndInput(repo, base, head, {
-      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
-      "docs/loop/LOOP_STATE.md": "Records terminal external review guidance for regression coverage."
-    });
+      "Do not perform additional implementation, validation, review, candidate generation, or sealing until a new directive is received."
+    ],
+    [
+      "Await external review. Do not perform additional implementation, validation,",
+      "candidate generation, review, or sealing until a new directive is received."
+    ]
+  ]) {
+    await withRepo(async ({ repo, base, head }) => {
+      await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
+        "# Auto SVGA Loop State",
+        "",
+        "- milestoneId: M2-R2",
+        "- Milestone: M2-R2",
+        "- State: terminal_pass",
+        "- Next Action: external_review",
+        "",
+        "## Next Action",
+        "",
+        ...guidance,
+        ""
+      ].join("\n"));
+      head = await commitFixture(repo, "terminal await external review");
+      await refreshValidationAndInput(repo, base, head, {
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+        "docs/loop/LOOP_STATE.md": "Records terminal external review guidance for regression coverage."
+      });
 
-    const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
-    assert.equal(result.manifest.packetStatus, "INCOMPLETE");
-  });
+      const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+      assert.equal(result.manifest.packetStatus, "INCOMPLETE");
+    });
+  }
 });
 
 test("terminal history final result must match PASS", async () => {

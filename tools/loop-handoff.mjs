@@ -970,12 +970,12 @@ function parseUniqueLoopStateFields(text) {
 }
 
 function validateHumanNextActionSection(text) {
-  const match = text.match(/^## Next Action\s*\n([\s\S]*?)(?:\n## |\s*$)/m);
+  const match = text.match(/(?:^|\n)## Next Action\s*\n([\s\S]*?)(?=\n## |\s*$)/);
   if (!match) return;
-  const actionableSection = match[1]
-    .split("\n")
-    .filter((line) => !/^\s*(do not|don't|must not|no additional|no more)\b/i.test(line))
-    .join("\n");
+  const normalizedSection = match[1].replace(/\s+/g, " ");
+  const actionableSection = normalizedSection
+    .replace(/\b(do not|don't|must not|no additional|no more)\b[^.]*\./gi, " ")
+    .trim();
   if (/(generate|create).{0,60}candidate/i.test(actionableSection)
     || /\brun.{0,60}(validation|validate|review)\b/i.test(actionableSection)
     || /\b(do|perform|start|execute).{0,60}(implementation|implement|validation|validate|review|repair)\b/i.test(actionableSection)

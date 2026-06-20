@@ -31,6 +31,8 @@ Date: 2026-06-20
   and packet output containment.
 - Targeted loop tests passed: handoff 50, budget 15, validation 11.
 - Preliminary `npm run loop:validate` passed before terminal source commit.
+- Final terminal Next Action extraction handles wrapped negative guidance and
+  candidate generation remains blocked after terminal PASS.
 
 ## Next Action
 
