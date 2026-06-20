@@ -11,6 +11,7 @@ Status: in progress
 - Checkpoint after `NQ1-WP03`: `npm run loop:validate` passed on clean source commit `3d8498f24fe7d4cf1208034897eefcd03721bba8`.
 - `NQ1-WP04` complete: async race and failure injection validation covered 7 scenarios with 0 failures.
 - `NQ1-WP05` complete: multi-resource round-trip matrix covered 6 supported fixtures, 1 unsupported fixture, and 15 replacement attempts.
-- Current next package: `NQ1-WP06` cross-platform path and Save As safety matrix.
+- `NQ1-WP06` complete: Save As safety matrix covered 13 source checks and 9 scenarios; Windows case-variant same-path behavior remains deferred for real Windows runtime validation.
+- Current next step: checkpoint `npm run loop:validate` after `NQ1-WP04` through `NQ1-WP06`, then start `NQ1-WP07` resource, process, and memory cleanup stress.
 
 Final report will be completed during packaging. Do not treat this placeholder as terminal evidence.

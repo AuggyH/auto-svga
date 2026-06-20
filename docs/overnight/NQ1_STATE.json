@@ -8,18 +8,18 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP06",
+  "currentWorkPackage": "NQ1-WP07",
   "completedWorkPackages": [
     "NQ1-WP01",
     "NQ1-WP02",
     "NQ1-WP03",
     "NQ1-WP04",
-    "NQ1-WP05"
+    "NQ1-WP05",
+    "NQ1-WP06"
   ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
   "remainingWorkPackages": [
-    "NQ1-WP06",
     "NQ1-WP07",
     "NQ1-WP08",
     "NQ1-WP09",
@@ -341,16 +341,64 @@
     {
       "id": "NQ1-WP06",
       "title": "Cross-platform path and Save As safety matrix",
-      "status": "pending",
-      "startedAt": null,
-      "finishedAt": null,
-      "startCommit": null,
-      "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
-      "deferredItems": []
+      "status": "complete",
+      "startedAt": "2026-06-20T21:11:17.488Z",
+      "finishedAt": "2026-06-20T21:11:17.488Z",
+      "startCommit": "be4ea49892b19b56fc2cb376b5847784e835a810",
+      "endCommit": "f02284ac18ebdaf3b6388f268acd7e9a8c06e78f",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-save-as-safety-matrix.ts",
+        "src/tests/nq1-save-as-safety-matrix.test.ts",
+        "tools/nq1/generate-save-as-safety-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-save-as-safety-matrix.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:save-as-safety",
+          "status": "pass"
+        },
+        {
+          "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-save-as-safety-matrix",
+          "status": "pass",
+          "summary": "1 pass / 0 fail"
+        },
+        {
+          "id": "nq1-save-as-safety-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/save-as-safety-matrix-report.json passed with 13 source checks, 9 scenarios, 1 deferred Windows runtime risk, and no absolute user paths"
+        },
+        {
+          "id": "svga-web-prototype-regression",
+          "status": "pass",
+          "summary": "14 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "Save As source and target same-path rejection, picker-source binding, exclusive temporary file writes, cleanup, basename-only response, redacted target path, bounded sourceId cache, and IPC sender validation are covered by source checks.",
+        "macOS and Windows same-case Save As scenarios are covered by deterministic path checks.",
+        "The Electron prototype preload bridge still exposes no filesystem, dialog, or shell module."
+      ],
+      "deferredItems": [
+        "Windows case-variant same-path detection requires real Windows filesystem runtime validation because path.win32.resolve does not prove case-insensitive equality."
+      ]
     },
     {
       "id": "NQ1-WP07",
