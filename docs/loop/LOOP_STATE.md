@@ -51,6 +51,7 @@ Date: 2026-06-20
 - P3 branch `agent/codex/p3-basic-image-resource-editing` was created from the P2 owner acceptance commit.
 - P3 baseline `npm run loop:validate` passed before implementation.
 - P3 editing capability audit confirms the safe default is a restricted SVGA subset editor: replace existing `MovieEntity.images[resourceKey]` PNG bytes only, then reject any export with failed decode/playback/invariant checks.
+- P3 implementation plan is complete at `docs/product/P3_IMPLEMENTATION_PLAN.md`.
 
 ## Next Action
 
