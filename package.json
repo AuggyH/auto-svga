@@ -33,7 +33,8 @@
     "desktop:p2:web-reference": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:web-reference",
     "desktop:p2:parity-report": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:parity-report",
     "desktop:p2:reviewer-b": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:reviewer-b",
-    "desktop:p2:upload-package": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:upload-package"
+    "desktop:p2:upload-package": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:upload-package",
+    "desktop:p3:upload-package": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p3:upload-package"
   },
   "dependencies": {
     "fast-png": "8.0.0",

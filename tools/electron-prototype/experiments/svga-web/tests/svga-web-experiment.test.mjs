@@ -185,6 +185,9 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   assert.match(main, /sourceFilePaths\.get\(value\.sourceId\)/);
   assert.match(main, /writeJsonProductArtifact\("resource-edit-report\.json", "p3-resource-edit-report", verifiedResult\)/);
   assert.match(main, /writeJsonProductArtifact\("round-trip-report\.json", "p3-round-trip-report", verifiedRoundTripReport\)/);
+  assert.match(main, /writeJsonProductArtifact\("thumbnail-evidence\.json", "p3-thumbnail-evidence"/);
+  assert.match(main, /validateP3ThumbnailEvidence/);
+  assert.match(main, /schemaVersion:\s*2/);
   assert.match(main, /"p3-resource-list"/);
   assert.match(main, /"p3-original-edited-comparison": "original-edited-comparison\.png"/);
   assert.match(preload, /openSvgaFile/);
@@ -200,9 +203,15 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   assert.match(renderer, /浏览器选择或拖拽导入无法安全确认原始路径/);
   assert.match(renderer, /replacement-p3\.png/);
   assert.match(renderer, /originalCanvasHash !== editedCanvasHash/);
+  assert.match(renderer, /thumbnailEvidence/);
+  assert.match(renderer, /replacementMatchesReopened/);
+  assert.match(renderer, /invalidPngRetainsLastValidThumbnail/);
+  assert.match(renderer, /resourceThumbnailSha256/);
   assert.match(renderer, /renderP3ComparisonArtifact/);
   assert.match(server, /\/api\/svga-image-edit-session/);
   assert.match(server, /\/api\/svga-image-replace/);
+  assert.match(server, /attachSessionThumbnails/);
+  assert.match(server, /thumbnailDataUrl/);
   assert.match(server, /SvgaImageResourceEditor/);
   assert.match(runtimePrep, /replacement-p3\.png/);
   assert.doesNotMatch(renderer, /readFile|writeFile|dialog|shell|\/Users\//);
@@ -218,6 +227,7 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.match(rootPackage.scripts["desktop:p2:normal-proof"], /desktop:p2:normal-proof/);
   assert.equal(rootPackage.scripts["desktop:p2:reviewer-b"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:reviewer-b");
   assert.equal(rootPackage.scripts["desktop:p2:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:upload-package");
+  assert.equal(rootPackage.scripts["desktop:p3:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p3:upload-package");
   assert.equal(rootPackage.scripts.test, "npm run test:all");
   assert.equal(rootPackage.scripts["local:preview"], "node tools/launch-local-preview.mjs");
   assert.match(experimentPackage.scripts["desktop:dev"], /electron \.$/);
@@ -225,6 +235,7 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.match(experimentPackage.scripts["desktop:p2:normal-proof"], /run-canonical-normal-proof\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p2:reviewer-b"], /build-p2-reviewer-b-categories\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p2:upload-package"], /build-p2-upload-package\.mjs/);
+  assert.match(experimentPackage.scripts["desktop:p3:upload-package"], /build-p3-upload-package\.mjs/);
   assert.doesNotMatch(experimentPackage.scripts["desktop:p2:normal-proof"], /--p2-normal-proof/);
   assert.notEqual(rootPackage.scripts["desktop:dev"], legacyPackage.scripts["spike:electron:smoke"]);
   assert.doesNotMatch(rootPackage.scripts["desktop:dev"], /tools\/electron-prototype run/);
@@ -328,6 +339,30 @@ test("P2 upload package contract includes review packet, screenshots, and report
   assert.match(source, /reviewer-b-product-categories\.json/);
   assert.equal(source.includes("P2-${headShort}-upload.zip"), true);
   assert.equal(source.includes("review/P2-latest"), true);
+});
+
+test("P3 upload package contract includes sealed review evidence and redacted bundle manifest", async () => {
+  const source = await readFile(path.join(experimentRoot, "scripts/build-p3-upload-package.mjs"), "utf8");
+  assert.match(source, /REVIEW_PACKET\.md/);
+  assert.match(source, /FINAL_RESPONSE\.txt/);
+  assert.match(source, /MANIFEST\.json/);
+  assert.match(source, /changes\.patch/);
+  assert.match(source, /validation\.json/);
+  assert.match(source, /budget-check\.json/);
+  assert.match(source, /reviewer-a\.json/);
+  assert.match(source, /reviewer-b\.json/);
+  assert.match(source, /post-seal-verification\.json/);
+  assert.match(source, /thumbnail-evidence\.json/);
+  assert.match(source, /edited-output\.svga/);
+  assert.match(source, /application\/x-svga/);
+  assert.match(source, /includedInBundle: true/);
+  assert.match(source, /POSIX_HOME_PATH/);
+  assert.match(source, /MACOS_USERS_PATH/);
+  assert.match(source, /valueHash/);
+  assert.match(source, /PRIVATE_SENTINELS/);
+  assert.match(source, /UPLOAD_TO_REVIEW_ASSISTANT:P3-\$\{headShort\}-upload\.zip/);
+  assert.equal(source.includes("P3-${headShort}-upload.zip"), true);
+  assert.equal(source.includes("review/P3-latest"), true);
 });
 
 test("real sample audit harness stores aliases and avoids absolute paths in report output", async () => {

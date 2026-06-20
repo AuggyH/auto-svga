@@ -99,6 +99,23 @@ function encodeBase64(bytes) {
   return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("base64");
 }
 
+async function attachSessionThumbnails(session, svgaBytes, inspector) {
+  const inspection = await inspector.inspect(svgaBytes);
+  const imageBytesByKey = new Map(inspection.images.map((image) => [image.imageKey, image.bytes]));
+  return {
+    ...session,
+    imageResources: session.imageResources.map((resource) => {
+      const imageBytes = imageBytesByKey.get(resource.resourceKey);
+      return {
+        ...resource,
+        thumbnailDataUrl: imageBytes && resource.originalMime === "image/png"
+          ? `data:image/png;base64,${encodeBase64(imageBytes)}`
+          : undefined
+      };
+    })
+  };
+}
+
 function resolveStaticPath(appRoot, pathname) {
   const runtimeRoot = path.join(appRoot, ".runtime");
   const mappings = [
@@ -205,21 +222,8 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
         inspectorPromise ??= import(inspectorModuleUrl).then(({ NodeProtobufSvgaInspector }) => new NodeProtobufSvgaInspector());
         const [editor, inspector] = await Promise.all([editorPromise, inspectorPromise]);
         const session = await editor.createSession(bytes, name);
-        const inspection = await inspector.inspect(bytes);
-        const imageBytesByKey = new Map(inspection.images.map((image) => [image.imageKey, image.bytes]));
         return sendJson(response, 200, {
-          session: {
-            ...session,
-            imageResources: session.imageResources.map((resource) => {
-              const imageBytes = imageBytesByKey.get(resource.resourceKey);
-              return {
-                ...resource,
-                thumbnailDataUrl: imageBytes && resource.originalMime === "image/png"
-                  ? `data:image/png;base64,${encodeBase64(imageBytes)}`
-                  : undefined
-              };
-            })
-          }
+          session: await attachSessionThumbnails(session, bytes, inspector)
         });
       } catch (error) {
         return sendJson(response, error?.statusCode ?? 422, {
@@ -246,11 +250,12 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
           pngBytes: decodeBase64Field(replacement?.pngBase64, "pngBase64", 10 * 1024 * 1024)
         }));
         editorPromise ??= import(editorModuleUrl).then(({ SvgaImageResourceEditor }) => new SvgaImageResourceEditor());
-        const editor = await editorPromise;
+        inspectorPromise ??= import(inspectorModuleUrl).then(({ NodeProtobufSvgaInspector }) => new NodeProtobufSvgaInspector());
+        const [editor, inspector] = await Promise.all([editorPromise, inspectorPromise]);
         const result = await editor.replaceImages(bytes, decodedReplacements, name);
         return sendJson(response, 200, {
           editedSvgaBase64: encodeBase64(result.editedBytes),
-          session: result.session,
+          session: await attachSessionThumbnails(result.session, result.editedBytes, inspector),
           roundTripReport: result.roundTripReport
         });
       } catch (error) {

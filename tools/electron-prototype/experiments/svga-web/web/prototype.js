@@ -280,6 +280,8 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
       exportInfo = undefined;
       editExportState = "idle";
       await loadEditSession(sourceSvgaBytes, name);
+    } else if (metadata.source === "reopened-export") {
+      await loadEditSession(bytes.slice(0), name);
     }
     reportRoot.innerHTML = `${renderEditPanel()}${renderDesktopInspectionPresentation(report)}`;
     bindEditPanel();
@@ -703,14 +705,18 @@ async function maybeRunP3EditSmoke(originalBytes) {
     await captureArtifact("p3-resource-list");
     const resourceList = Boolean(editSession?.imageResources?.length > 0);
     const selectedResource = selectedResourceKey;
+    const originalThumbnailSha256 = await resourceThumbnailSha256(resourceByKey(selectedResource));
     await captureArtifact("p3-replacement-selected");
     const originalCanvasHash = await canvasHash(canvas);
     const originalCanvasDataUrl = canvas.toDataURL("image/png");
     const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-p3.png").then(assertResponse).then((response) => response.arrayBuffer()));
+    const replacementCandidateSha256 = await sha256Hex(replacementBytes);
     await replaceSelectedResource(new File([replacementBytes], "replacement-p3.png", { type: "image/png" }));
     await delay(240);
     const editedCanvasHash = await canvasHash(canvas);
     const editedCanvasDataUrl = canvas.toDataURL("image/png");
+    const replacementThumbnailSha256 = await resourceThumbnailSha256(resourceByKey(selectedResource));
+    const replacementThumbnailVisible = resourceThumbnailVisible(selectedResource);
     await captureArtifact("p3-replacement-preview");
     await captureArtifact("p3-dirty-state");
     const replacementPreview = Boolean(editedSvgaBytes)
@@ -723,6 +729,7 @@ async function maybeRunP3EditSmoke(originalBytes) {
     replacementInputs.delete(selectedResource);
     await rebuildEditedPreview();
     await delay(240);
+    const resetThumbnailSha256 = await resourceThumbnailSha256(resourceByKey(selectedResource));
     await captureArtifact("p3-reset-to-original");
     const reset = replacementInputs.size === 0 && !editedSvgaBytes && reportRoot.textContent.includes("未修改");
 
@@ -735,6 +742,8 @@ async function maybeRunP3EditSmoke(originalBytes) {
     const roundTripReport = lastRoundTripReport;
     await saveEditedSvga();
     await delay(240);
+    const reopenedThumbnailSha256 = await resourceThumbnailSha256(resourceByKey(selectedResource));
+    const reopenedThumbnailVisible = resourceThumbnailVisible(selectedResource);
     await captureArtifact("p3-export-success");
     await captureArtifact("p3-reopened-export");
     const saveAs = exportInfo?.status === "saved";
@@ -744,6 +753,8 @@ async function maybeRunP3EditSmoke(originalBytes) {
 
     await replaceSelectedResource(new File([Uint8Array.from([1, 2, 3])], "invalid.png", { type: "image/png" }));
     await delay(120);
+    const invalidPngThumbnailSha256 = await resourceThumbnailSha256(resourceByKey(selectedResource));
+    const invalidPngRetainedLastValidThumbnail = invalidPngThumbnailSha256 === replacementThumbnailSha256;
     await captureArtifact("p3-invalid-png-state");
     const invalidPngState = reportRoot.textContent.includes("PNG 无法使用");
     renderP3ComparisonArtifact(originalCanvasDataUrl, editedCanvasDataUrl, {
@@ -766,6 +777,47 @@ async function maybeRunP3EditSmoke(originalBytes) {
       editedPixelsDiffer: originalCanvasHash !== editedCanvasHash,
       selectedResourceKey: selectedResource,
       replacementSha256,
+      thumbnailEvidence: {
+        schemaVersion: 1,
+        selectedResourceKey: selectedResource,
+        original: {
+          thumbnailSource: "original_resource",
+          thumbnailSha256: originalThumbnailSha256,
+          visible: Boolean(originalThumbnailSha256)
+        },
+        replacementCandidate: {
+          thumbnailSource: "replacement_bytes",
+          thumbnailSha256: replacementCandidateSha256,
+          visible: true
+        },
+        replacementPreview: {
+          thumbnailSource: "replacement_bytes",
+          thumbnailSha256: replacementThumbnailSha256,
+          visible: replacementThumbnailVisible
+        },
+        resetToOriginal: {
+          thumbnailSource: "original_resource",
+          thumbnailSha256: resetThumbnailSha256,
+          visible: Boolean(resetThumbnailSha256)
+        },
+        reopenedExport: {
+          thumbnailSource: "reopened_export_resource",
+          thumbnailSha256: reopenedThumbnailSha256,
+          visible: reopenedThumbnailVisible
+        },
+        invalidPngRetained: {
+          thumbnailSource: "replacement_bytes",
+          thumbnailSha256: invalidPngThumbnailSha256,
+          visible: invalidPngRetainedLastValidThumbnail
+        },
+        invariants: {
+          replacementMatchesCandidate: replacementThumbnailSha256 === replacementCandidateSha256,
+          replacementMatchesReopened: replacementThumbnailSha256 === reopenedThumbnailSha256,
+          originalMatchesReset: originalThumbnailSha256 === resetThumbnailSha256,
+          originalDiffersFromReplacement: originalThumbnailSha256 !== replacementThumbnailSha256,
+          invalidPngRetainsLastValidThumbnail: invalidPngRetainedLastValidThumbnail
+        }
+      },
       originalCanvasHash,
       editedCanvasHash,
       exportFileName: exportInfo?.fileName ?? "",
@@ -783,6 +835,9 @@ async function maybeRunP3EditSmoke(originalBytes) {
       result.invalidPngState,
       result.originalUnchanged,
       result.editedPixelsDiffer,
+      result.thumbnailEvidence?.invariants?.replacementMatchesReopened === true,
+      result.thumbnailEvidence?.invariants?.originalMatchesReset === true,
+      result.thumbnailEvidence?.invariants?.invalidPngRetainsLastValidThumbnail === true,
       result.roundTripReport?.passed === true
     ].every(Boolean);
     await window.autoSvgaPrototype.reportP3EditResult(result);
@@ -800,6 +855,7 @@ async function maybeRunP3EditSmoke(originalBytes) {
       originalUnchanged: false,
       editedPixelsDiffer: false,
       errors,
+      thumbnailEvidence: {},
       roundTripReport: {},
       passed: false
     };
@@ -1136,6 +1192,26 @@ function canvasHasVisiblePixels(target, region) {
     }
   }
   return false;
+}
+
+function resourceByKey(resourceKey) {
+  return editSession?.imageResources?.find((resource) => resource.resourceKey === resourceKey);
+}
+
+function resourceThumbnailBytes(resource) {
+  const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(resource?.thumbnailDataUrl ?? "");
+  return match ? base64ToBytes(match[1]) : undefined;
+}
+
+async function resourceThumbnailSha256(resource) {
+  const bytes = resourceThumbnailBytes(resource);
+  return bytes ? sha256Hex(bytes) : "";
+}
+
+function resourceThumbnailVisible(resourceKey) {
+  const previewImage = reportRoot.querySelector(".resourcePreview img");
+  const selectedButton = reportRoot.querySelector(`[data-resource-key="${CSS.escape(resourceKey)}"] img`);
+  return Boolean(previewImage || selectedButton);
 }
 
 async function canvasHash(target) {

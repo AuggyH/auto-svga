@@ -182,8 +182,9 @@ function validateP3EditResult(value) {
   const roundTripReport = value.roundTripReport && typeof value.roundTripReport === "object"
     ? value.roundTripReport
     : {};
+  const thumbnailEvidence = validateP3ThumbnailEvidence(value.thumbnailEvidence);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     milestoneId: "P3",
     headCommit: productArtifactIndex.headCommit,
     resourceList: value.resourceList,
@@ -197,6 +198,7 @@ function validateP3EditResult(value) {
     editedPixelsDiffer: value.editedPixelsDiffer,
     selectedResourceKey: typeof value.selectedResourceKey === "string" ? value.selectedResourceKey.slice(0, 160) : "",
     replacementSha256: typeof value.replacementSha256 === "string" ? value.replacementSha256.slice(0, 80) : "",
+    thumbnailEvidence,
     originalCanvasHash: typeof value.originalCanvasHash === "string" ? value.originalCanvasHash.slice(0, 80) : "",
     editedCanvasHash: typeof value.editedCanvasHash === "string" ? value.editedCanvasHash.slice(0, 80) : "",
     exportFileName: typeof value.exportFileName === "string" ? path.basename(value.exportFileName) : "",
@@ -205,10 +207,67 @@ function validateP3EditResult(value) {
       : [],
     roundTripReport,
     passed: requiredBooleans.every((key) => value[key] === true)
+      && thumbnailEvidence.passed === true
+      && roundTripReport.schemaVersion === 2
       && roundTripReport.passed === true
       && Array.isArray(roundTripReport.unexpectedChanges)
       && roundTripReport.unexpectedChanges.length === 0,
     generatedAt: new Date().toISOString()
+  };
+}
+
+function validateP3ThumbnailEvidence(value) {
+  const fallback = {
+    schemaVersion: 1,
+    selectedResourceKey: "",
+    passed: false,
+    failures: ["missing_thumbnail_evidence"]
+  };
+  if (!value || typeof value !== "object" || Array.isArray(value)) return fallback;
+  const selectedResourceKey = typeof value.selectedResourceKey === "string" ? value.selectedResourceKey.slice(0, 160) : "";
+  const phases = [
+    "original",
+    "replacementCandidate",
+    "replacementPreview",
+    "resetToOriginal",
+    "reopenedExport",
+    "invalidPngRetained"
+  ];
+  const normalized = {
+    schemaVersion: 1,
+    selectedResourceKey
+  };
+  for (const phase of phases) {
+    const entry = value[phase];
+    normalized[phase] = {
+      thumbnailSource: typeof entry?.thumbnailSource === "string" ? entry.thumbnailSource.slice(0, 80) : "unknown",
+      thumbnailSha256: typeof entry?.thumbnailSha256 === "string" ? entry.thumbnailSha256.slice(0, 80) : "",
+      visible: entry?.visible === true
+    };
+  }
+  const invariants = value.invariants && typeof value.invariants === "object" && !Array.isArray(value.invariants)
+    ? Object.fromEntries(Object.entries(value.invariants).filter(([, invariantValue]) => typeof invariantValue === "boolean"))
+    : {};
+  const requiredInvariants = [
+    "replacementMatchesCandidate",
+    "replacementMatchesReopened",
+    "originalMatchesReset",
+    "originalDiffersFromReplacement",
+    "invalidPngRetainsLastValidThumbnail"
+  ];
+  const failures = [];
+  for (const phase of phases) {
+    if (!normalized[phase].thumbnailSha256) failures.push(`${phase}_thumbnail_missing`);
+    if (!normalized[phase].visible) failures.push(`${phase}_thumbnail_not_visible`);
+  }
+  for (const invariant of requiredInvariants) {
+    if (invariants[invariant] !== true) failures.push(`${invariant}_failed`);
+  }
+  return {
+    ...normalized,
+    invariants,
+    passed: failures.length === 0,
+    failures
   };
 }
 
@@ -765,6 +824,27 @@ async function saveEditedSvga(input) {
     }
     throw error;
   }
+  if (p3SmokeSaveAs) {
+    addProductArtifactRecord({
+      scenario: "p3-edited-output-svga",
+      mode: "smoke",
+      source: "desktop",
+      viewport: { width: null, height: null },
+      path: `.artifacts/product/${productMilestoneId}/edited-output.svga`,
+      mime: "application/x-svga",
+      sizeBytes: value.bytes.byteLength,
+      sha256: createHash("sha256").update(value.bytes).digest("hex"),
+      fixture: "synthetic-avatar-frame.svga",
+      inputKind: "p3-edited-output",
+      ...canonicalFixtureMetadata(),
+      headCommit: productArtifactIndex.headCommit,
+      rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
+      rendererSha256: sha256RelativeFile(rendererEntry),
+      generatedAt: new Date().toISOString(),
+      humanReviewRequired: true
+    });
+    writeProductArtifactIndex();
+  }
 
   return {
     status: "saved",
@@ -894,12 +974,17 @@ async function createExperimentWindow() {
     if (!result) throw new Error("Invalid P3 edit result");
     const verifiedRoundTripReport = {
       ...result.roundTripReport,
+      schemaVersion: 2,
+      milestoneId: "P3",
+      headCommit: productArtifactIndex.headCommit,
       playbackPassed: result.reopenedExport,
       canvasNonBlank: result.reopenedExport,
       passed: result.roundTripReport.passed === true
+        && result.roundTripReport.schemaVersion === 2
         && result.reopenedExport
         && Array.isArray(result.roundTripReport.unexpectedChanges)
         && result.roundTripReport.unexpectedChanges.length === 0
+        && result.thumbnailEvidence.passed === true
     };
     const verifiedResult = {
       ...result,
@@ -908,6 +993,12 @@ async function createExperimentWindow() {
     };
     writeJsonProductArtifact("resource-edit-report.json", "p3-resource-edit-report", verifiedResult);
     writeJsonProductArtifact("round-trip-report.json", "p3-round-trip-report", verifiedRoundTripReport);
+    writeJsonProductArtifact("thumbnail-evidence.json", "p3-thumbnail-evidence", {
+      schemaVersion: 1,
+      milestoneId: "P3",
+      headCommit: productArtifactIndex.headCommit,
+      ...result.thumbnailEvidence
+    });
     return { accepted: true };
   });
 

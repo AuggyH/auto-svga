@@ -6,9 +6,9 @@ Date: 2026-06-20
 
 - milestoneId: P3
 - Milestone: P3 Basic Image Resource Replacement And Save As
-- State: terminal_pass
+- State: external_review
 - Next Action: external_review
-- repairRound: 1
+- repairRound: 2
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -59,8 +59,12 @@ Date: 2026-06-20
 - P3 repair-1 requires host-opened source identity before user Save As, with P3 smoke as the only artifact-save exception.
 - P3 repair-1 adds unsaved-edit confirmation before loading another file and disables Save As for browser-selected or drag-dropped sources whose original path cannot be safely compared.
 - P3 repair-1 target validation passed: `npm run build`, `node --test dist/tests/svga-image-resource-editor.test.js`, `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`, `AUTO_SVGA_PRODUCT_MILESTONE=P3 npm run desktop:smoke`, `npm test`, and `git diff --check`.
-- P3 artifacts must be regenerated and rebound after the repair commit before final sealed handoff.
+- P3 artifacts were regenerated and sealed for `31e4dbc73e578f95e245be8d00d54997206b9a4c`, but external product review still requires final upload bundle repair.
+- P3 external product review 1 selected `REPAIR_REQUIRED` for missing sealed evidence in the upload ZIP, privacy-audit leakage, coarse round-trip invariants, missing replacement thumbnails, and artifact index / ZIP mismatch.
+- P3 repair-2 closes the external review blockers with replacement/reopened/reset thumbnail evidence, round-trip report schemaVersion 2, edited SVGA artifact indexing, and a P3 upload-package builder with redacted privacy audit.
+- P3 repair-2 validation passed: targeted editor tests, isolated svga-web tests, P3 desktop smoke, root `npm test`, `git diff --check`, and `npm run loop:validate`.
+- Final source state is ready for external review; final sealed packet, upload ZIP, and visible review folder are generated after the source commit.
 
 ## Next Action
 
-External review and terminal handoff packet generation for P3. Do not perform more implementation in this milestone.
+Await external review of the sealed P3 repair-2 packet and upload ZIP. Do not start P4, validation repair, candidate regeneration, or additional implementation unless external review returns REPAIR_REQUIRED.

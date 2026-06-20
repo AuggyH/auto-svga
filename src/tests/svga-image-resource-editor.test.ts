@@ -89,22 +89,42 @@ test("SVGA image editor replaces selected PNG bytes and preserves round-trip inv
   assert.equal(result.session.replacements.img_sweep.dimensionWarning, "replacement_dimensions_differ_from_original");
 
   const report = result.roundTripReport;
+  assert.equal(report.schemaVersion, 2);
+  assert.equal(report.milestoneId, "P3");
+  assert.equal(report.sourceSha256, originalHash);
+  assert.equal(report.sourceSha256AfterEditing, originalHash);
   assert.equal(report.replacedResourceKey, "img_sweep");
   assert.equal(report.originalResourceSha256, sha256(createTransparentPng(48, 96)));
   assert.equal(report.replacementSha256, sha256(replacement));
   assert.equal(report.exportedResourceSha256, sha256(replacement));
+  assert.deepEqual(report.changedFields, ["images.img_sweep", "zlib_bytes", "protobuf_serialization"]);
   assert.deepEqual(report.unexpectedChanges, []);
   assert.equal(report.decodePassed, true);
   assert.equal(report.passed, true);
   assert.deepEqual(
     report.invariantChecks.map(({ code, passed }) => ({ code, passed })),
     [
-      { code: "version", passed: true },
-      { code: "params", passed: true },
-      { code: "sprites", passed: true },
-      { code: "audios", passed: true },
-      { code: "image_keys", passed: true },
-      { code: "untouched_image_hashes", passed: true }
+      { code: "movie_version", passed: true },
+      { code: "canvas_width", passed: true },
+      { code: "canvas_height", passed: true },
+      { code: "fps", passed: true },
+      { code: "frame_count", passed: true },
+      { code: "sprite_count", passed: true },
+      { code: "sprite_order", passed: true },
+      { code: "sprite_image_key", passed: true },
+      { code: "sprite_matte_key", passed: true },
+      { code: "sprite_frame_count", passed: true },
+      { code: "frame_alpha", passed: true },
+      { code: "frame_layout", passed: true },
+      { code: "frame_transform", passed: true },
+      { code: "frame_clip_path", passed: true },
+      { code: "frame_shapes", passed: true },
+      { code: "audio_count", passed: true },
+      { code: "audio_entries", passed: true },
+      { code: "image_resource_key_set", passed: true },
+      { code: "untouched_image_hashes", passed: true },
+      { code: "selected_resource_key_reference", passed: true },
+      { code: "original_source_sha256_immutability", passed: true }
     ]
   );
 
@@ -125,6 +145,85 @@ test("SVGA image editor replaces selected PNG bytes and preserves round-trip inv
       img_unused: sha256(createTransparentPng(12, 12))
     }
   );
+});
+
+test("SVGA image editor round-trip v2 fails closed on granular non-image mutations", async () => {
+  const editor = new SvgaImageResourceEditor();
+  const sourceBytes = await createSvgaFixture();
+  const replacement = createColoredPng(16, 16, [0, 255, 0, 255]);
+  const mutatedBytes = await createSvgaFixture({
+    version: "2.1",
+    params: {
+      viewBoxWidth: 481,
+      viewBoxHeight: 97,
+      fps: 30,
+      frames: 49
+    },
+    images: {
+      img_frame: createColoredPng(300, 300, [255, 0, 0, 255]),
+      img_sweep: replacement,
+      img_unused: createColoredPng(12, 12, [0, 0, 255, 255]),
+      img_extra: createColoredPng(4, 4, [255, 255, 0, 255])
+    },
+    sprites: [
+      {
+        imageKey: "img_sweep",
+        matteKey: "",
+        frames: createFrames(12, { alpha: 0.25, txOffset: 10, layoutX: 7, clipPath: "M0 0L1 1", shapeCount: 1 })
+      },
+      {
+        imageKey: "img_frame",
+        matteKey: "img_extra",
+        frames: createFrames(49, { alpha: 0.6, txOffset: 20, layoutX: 9 })
+      },
+      {
+        imageKey: "img_extra",
+        frames: createFrames(1)
+      }
+    ],
+    audios: [{
+      audioKey: "changed",
+      startFrame: 2,
+      endFrame: 10,
+      startTime: 100,
+      totalTime: 700
+    }]
+  });
+
+  const report = await editor.validateRoundTrip(sourceBytes, mutatedBytes, [{
+    resourceKey: "img_sweep",
+    pngBytes: replacement
+  }]);
+
+  assert.equal(report.schemaVersion, 2);
+  assert.equal(report.passed, false);
+  assert.equal(report.sourceSha256AfterEditing, report.sourceSha256);
+  assert.deepEqual(
+    report.invariantChecks
+      .filter(({ passed }) => !passed)
+      .map(({ code }) => code),
+    [
+      "movie_version",
+      "canvas_width",
+      "canvas_height",
+      "fps",
+      "frame_count",
+      "sprite_count",
+      "sprite_order",
+      "sprite_image_key",
+      "sprite_matte_key",
+      "sprite_frame_count",
+      "frame_alpha",
+      "frame_layout",
+      "frame_transform",
+      "frame_clip_path",
+      "frame_shapes",
+      "audio_entries",
+      "image_resource_key_set",
+      "untouched_image_hashes"
+    ]
+  );
+  assert.ok(report.invariantChecks.every((check) => "expected" in check && "actual" in check));
 });
 
 test("SVGA image editor rejects missing resources and SVGA with no images", async () => {
@@ -160,12 +259,27 @@ test("SVGA image editor rejects unsupported unknown protobuf fields", async () =
   );
 });
 
-async function createSvgaFixture(overrides: Partial<{ images: Record<string, Uint8Array> }> = {}): Promise<Uint8Array> {
+async function createSvgaFixture(overrides: Partial<{
+  version: string;
+  params: {
+    viewBoxWidth: number;
+    viewBoxHeight: number;
+    fps: number;
+    frames: number;
+  };
+  images: Record<string, Uint8Array>;
+  sprites: Array<{
+    imageKey?: string;
+    frames?: unknown[];
+    matteKey?: string;
+  }>;
+  audios: unknown[];
+}> = {}): Promise<Uint8Array> {
   const root = await protobuf.load(protoPath());
   const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
   const payload = {
-    version: "2.0",
-    params: {
+    version: overrides.version ?? "2.0",
+    params: overrides.params ?? {
       viewBoxWidth: 480,
       viewBoxHeight: 96,
       fps: 24,
@@ -176,7 +290,7 @@ async function createSvgaFixture(overrides: Partial<{ images: Record<string, Uin
       img_sweep: createTransparentPng(48, 96),
       img_unused: createTransparentPng(12, 12)
     },
-    sprites: [
+    sprites: overrides.sprites ?? [
       {
         imageKey: "img_frame",
         frames: createFrames(48)
@@ -187,7 +301,7 @@ async function createSvgaFixture(overrides: Partial<{ images: Record<string, Uin
         frames: createFrames(24)
       }
     ],
-    audios: [{
+    audios: overrides.audios ?? [{
       audioKey: "silent",
       startFrame: 0,
       endFrame: 12,
@@ -219,13 +333,25 @@ function encodeVarint(value: number): Buffer {
   return Buffer.from(bytes);
 }
 
-function createFrames(count: number): unknown[] {
+function createFrames(
+  count: number,
+  options: Partial<{
+    alpha: number;
+    txOffset: number;
+    layoutX: number;
+    clipPath: string;
+    shapeCount: number;
+  }> = {}
+): unknown[] {
   return Array.from({ length: count }, (_, index) => ({
-    alpha: index % 2 === 0 ? 1 : 0.8,
-    layout: { x: 1, y: 2, width: 10, height: 11 },
-    transform: { a: 1, b: 0, c: 0, d: 1, tx: index, ty: index + 1 },
-    clipPath: "",
-    shapes: []
+    alpha: options.alpha ?? (index % 2 === 0 ? 1 : 0.8),
+    layout: { x: options.layoutX ?? 1, y: 2, width: 10, height: 11 },
+    transform: { a: 1, b: 0, c: 0, d: 1, tx: index + (options.txOffset ?? 0), ty: index + 1 },
+    clipPath: options.clipPath ?? "",
+    shapes: Array.from({ length: options.shapeCount ?? 0 }, () => ({
+      type: 1,
+      rect: { x: 0, y: 0, width: 1, height: 1 }
+    }))
   }));
 }
 
