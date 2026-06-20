@@ -6,6 +6,8 @@ Agent: Codex
 
 Implementation commit: `7bd0888`
 
+Artifact metadata finalization commit: `f1e3ffe`
+
 Milestone: P1 - Electron Desktop Mainline Baseline: Local SVGA Open, Playback And Inspection
 
 ## Summary
