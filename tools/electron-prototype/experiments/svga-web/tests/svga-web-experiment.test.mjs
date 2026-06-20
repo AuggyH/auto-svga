@@ -30,14 +30,14 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     const health = await fetch(`${server.origin}/health`).then((response) => response.json());
     assert.deepEqual(health, {
       status: "ok",
-      runtime: "auto-svga-desktop-internal-baseline",
-      prototypeLabel: "Auto SVGA Desktop — Internal Baseline; internal baseline, not production"
+      runtime: "auto-svga-desktop-preview",
+      prototypeLabel: "Auto SVGA Desktop Preview; internal prototype, not production"
     });
     const unauthorized = await fetch(`${server.origin}/api/avatar-frame-inspection-report`, { method: "POST" });
     assert.equal(unauthorized.status, 401);
     const page = await fetch(`${server.origin}/`).then((response) => response.text());
-    assert.match(page, /Auto SVGA Desktop — Internal Baseline/);
-    assert.match(page, /内部基线 · 非生产版本 · 仅供内部测试/);
+    assert.match(page, /Auto SVGA — Desktop Preview/);
+    assert.match(page, /内部原型 · 非生产版本 · 仅供内部测试/);
     assert.doesNotMatch(page, /cdn\.jsdelivr|(?<!wasm-)unsafe-eval/);
     const missingAuditSample = await fetch(`${server.origin}/audit-samples/missing.svga`);
     assert.equal(missingAuditSample.status, 404);
@@ -57,13 +57,14 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /productSmokeMode/);
   assert.match(main, /captureProductArtifact/);
   assert.match(main, /validateArtifactScenario/);
-  assert.match(main, /Auto SVGA Desktop — Internal Baseline/);
+  assert.match(main, /const productIdentity = "Auto SVGA"/);
   assert.match(main, /runtimeIdentity/);
   assert.match(main, /normalSmokeParity/);
   assert.match(main, /runtime-identity\.json/);
   assert.match(main, /normal-smoke-parity\.json/);
-  assert.match(main, /canonical-normal-valid-loaded/);
-  assert.match(main, /canonical-smoke-valid-loaded/);
+  assert.match(main, /normal-runtime-proof\.json/);
+  assert.match(main, /desktop-loaded/);
+  assert.match(main, /actual-normal-loaded/);
   assert.match(main, /entryCommand: "npm run desktop:dev"/);
   assert.match(main, /setPermissionRequestHandler/);
   assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/);
@@ -80,26 +81,27 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const legacyPage = await readFile(path.join(experimentRoot, "../../web/index.html"), "utf8");
-  assert.match(page, /<title>Auto SVGA Desktop — Internal Baseline<\/title>/);
-  assert.match(page, /<h1>Auto SVGA Desktop — Internal Baseline<\/h1>/);
-  assert.match(page, /SVGA 播放输出/);
+  assert.match(page, /<title>Auto SVGA — Desktop Preview<\/title>/);
+  assert.match(page, /<h1>Auto SVGA<\/h1>/);
+  assert.match(page, /SVGA 预览/);
+  assert.match(page, /检查报告/);
   assert.match(renderer, /fileInput\.addEventListener\("change"/);
   assert.match(renderer, /dropZone\.addEventListener\("drop"/);
   assert.match(renderer, /playButton\.addEventListener\("click"/);
   assert.match(renderer, /pauseButton\.addEventListener\("click"/);
   assert.match(renderer, /replayButton\.addEventListener\("click"/);
   assert.match(renderer, /showEmptyState/);
-  assert.match(renderer, /SVGA 加载失败/);
-  assert.match(renderer, /captureArtifact\("empty-state"\)/);
-  assert.match(renderer, /captureArtifact\("valid-svga-loaded"\)/);
-  assert.match(renderer, /captureArtifact\("inspection-panel"\)/);
-  assert.match(renderer, /captureArtifact\("invalid-file-state"\)/);
-  assert.match(renderer, /captureArtifact\("canonical-normal-valid-loaded"\)/);
-  assert.match(renderer, /captureArtifact\("canonical-smoke-valid-loaded"\)/);
+  assert.match(renderer, /无法打开此 SVGA 文件/);
+  assert.match(renderer, /captureArtifact\("desktop-empty"\)/);
+  assert.match(renderer, /captureArtifact\("desktop-loaded"\)/);
+  assert.match(renderer, /captureArtifact\("desktop-inspection"\)/);
+  assert.match(renderer, /captureArtifact\("desktop-invalid"\)/);
+  assert.match(renderer, /captureArtifact\("actual-normal-loaded"\)/);
+  assert.match(renderer, /captureArtifact\("smoke-loaded"\)/);
   assert.match(renderer, /File\(\[bytes\], "file-input-smoke\.svga"/);
   assert.match(renderer, /File\(\[bytes\], "drag-drop-smoke\.svga"/);
   assert.match(renderer, /不支持的文件类型/);
-  assert.match(renderer, /cleanupPlayer\(\);\n\s+showError\("不支持的文件类型/);
+  assert.match(renderer, /cleanupPlayer\(\);\n\s+showError\("无法打开此 SVGA 文件/);
   assert.match(renderer, /SVGA 播放输出为空/);
   assert.match(renderer, /waitForVisibleCanvasSamples/);
   assert.match(renderer, /visibleCanvas\.sampleCount >= 3/);

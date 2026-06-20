@@ -4,48 +4,55 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="auto-svga-csp" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
-    <title>Auto SVGA Desktop — Internal Baseline</title>
+    <title>Auto SVGA — Desktop Preview</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
-    <main>
-      <header>
-        <p class="eyebrow">内部基线 · 非生产版本 · 仅供内部测试</p>
-        <h1>Auto SVGA Desktop — Internal Baseline</h1>
-        <p id="runtimeStatus">请选择本地 SVGA 文件开始检查。</p>
+    <main class="desktopShell">
+      <header class="appHeader">
+        <div>
+          <p class="eyebrow">内部原型 · 非生产版本 · 仅供内部测试</p>
+          <h1>Auto SVGA</h1>
+        </div>
+        <div class="headerMeta" aria-label="Runtime status">
+          <span class="modeBadge">Desktop Preview</span>
+          <span id="runtimeStatus">请选择本地 SVGA 文件开始检查。</span>
+        </div>
       </header>
-      <section aria-labelledby="playerTitle">
-        <div class="sectionTitle">
-          <h2 id="playerTitle">SVGA 播放输出</h2>
-          <span id="playbackStatus">未开始</span>
+      <section class="workspace" aria-label="SVGA preview workspace">
+        <div class="playerPane" aria-labelledby="playerTitle">
+          <div class="sectionTitle">
+            <h2 id="playerTitle">SVGA 预览</h2>
+            <span id="playbackStatus">未开始</span>
+          </div>
+          <div id="dropZone" class="dropZone">
+            <canvas id="player" width="300" height="300" aria-label="SVGA player output"></canvas>
+            <p id="dropZoneHint">选择或拖入本地 SVGA 文件。内部原型，非生产版本。</p>
+          </div>
+          <div class="actions">
+            <label class="fileButton">
+              选择 SVGA
+              <input id="fileInput" type="file" accept=".svga,application/octet-stream">
+            </label>
+            <button id="playButton" type="button" disabled>播放</button>
+            <button id="pauseButton" type="button" disabled>暂停</button>
+            <button id="replayButton" type="button" disabled>重播</button>
+          </div>
+          <dl id="fileInfo" class="fileInfo" aria-label="Loaded SVGA file information">
+            <div><dt>文件</dt><dd>未加载</dd></div>
+            <div><dt>大小</dt><dd>未加载</dd></div>
+            <div><dt>画布</dt><dd>未加载</dd></div>
+            <div><dt>帧率</dt><dd>未加载</dd></div>
+            <div><dt>时长</dt><dd>未加载</dd></div>
+          </dl>
         </div>
-        <div id="dropZone" class="dropZone">
-          <canvas id="player" width="300" height="300" aria-label="SVGA player output"></canvas>
-          <p id="dropZoneHint">选择或拖入本地 SVGA 文件。内部原型，非生产版本。</p>
+        <div class="reportPane" aria-labelledby="reportTitle">
+          <div class="sectionTitle">
+            <h2 id="reportTitle">检查报告</h2>
+            <span>只读</span>
+          </div>
+          <div id="reportRoot" class="reportRoot"></div>
         </div>
-        <div class="actions">
-          <label class="fileButton">
-            选择本地 SVGA
-            <input id="fileInput" type="file" accept=".svga,application/octet-stream">
-          </label>
-          <button id="playButton" type="button" disabled>播放</button>
-          <button id="pauseButton" type="button" disabled>暂停</button>
-          <button id="replayButton" type="button" disabled>重播</button>
-        </div>
-        <dl id="fileInfo" class="fileInfo" aria-label="Loaded SVGA file information">
-          <div><dt>文件</dt><dd>未加载</dd></div>
-          <div><dt>大小</dt><dd>--</dd></div>
-          <div><dt>画布</dt><dd>--</dd></div>
-          <div><dt>帧率</dt><dd>--</dd></div>
-          <div><dt>时长</dt><dd>--</dd></div>
-        </dl>
-      </section>
-      <section aria-labelledby="reportTitle">
-        <div class="sectionTitle">
-          <h2 id="reportTitle">验收报告</h2>
-          <span>只读</span>
-        </div>
-        <div id="reportRoot"></div>
       </section>
     </main>
     <script type="module" src="/prototype.js"></script>

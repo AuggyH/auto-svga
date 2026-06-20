@@ -8,12 +8,13 @@ const { app, BrowserWindow, ipcMain, session } = require("electron");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
+const normalProofMode = process.argv.includes("--p2-normal-proof");
 const auditPlayerArgument = process.argv.find((argument) => argument.startsWith("--audit-player="));
 const auditPlayer = auditPlayerArgument?.split("=")[1];
 const auditMode = auditPlayer === "svga-web" || auditPlayer === "svgaplayerweb";
 const appRoot = app.getAppPath();
 const repoRoot = path.resolve(appRoot, "../../../..");
-const productIdentity = "Auto SVGA Desktop — Internal Baseline";
+const productIdentity = "Auto SVGA";
 const mainEntry = "main.cjs";
 const preloadEntry = "preload.cjs";
 const rendererHtmlEntry = "web/index.html";
@@ -21,9 +22,10 @@ const rendererEntry = "web/prototype.js";
 const stylesEntry = "web/styles.css";
 const playerIdentity = "svga-web@2.4.4";
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
-const productArtifactRoot = process.env.AUTO_SVGA_P1_ARTIFACTS
-  ? path.resolve(process.env.AUTO_SVGA_P1_ARTIFACTS)
-  : path.join(repoRoot, ".artifacts/product/P1");
+const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "P2";
+const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
+  ? path.resolve(process.env.AUTO_SVGA_PRODUCT_ARTIFACTS)
+  : path.join(repoRoot, ".artifacts/product", productMilestoneId);
 const sessionRoot = path.join(os.tmpdir(), `auto-svga-desktop-baseline-${process.pid}`);
 const reportToken = randomBytes(24).toString("hex");
 let experimentServer;
@@ -33,17 +35,18 @@ let auditFinished = false;
 let cspViolationSeen = false;
 let cleanedUp = false;
 const productArtifactIndex = {
-  milestoneId: "P1",
-  title: "Electron Desktop Mainline Baseline: Local SVGA Open, Playback And Inspection",
+  milestoneId: productMilestoneId,
+  title: "Desktop Product Shell And Web Preview Parity",
   productIdentity,
   headCommit: gitHeadCommit(),
   generatedAt: new Date().toISOString(),
   humanReviewRequired: true,
   artifacts: []
 };
+mergeExistingProductArtifactIndex();
 
 mkdirSync(sessionRoot, { recursive: true });
-if (productSmokeMode) mkdirSync(productArtifactRoot, { recursive: true });
+if (productSmokeMode || normalProofMode) mkdirSync(productArtifactRoot, { recursive: true });
 app.setPath("userData", path.join(sessionRoot, "user-data"));
 app.setPath("sessionData", path.join(sessionRoot, "session-data"));
 
@@ -75,14 +78,43 @@ function validateSmokeResult(value) {
 
 function validateArtifactScenario(value) {
   const allowed = new Set([
-    "empty-state",
-    "valid-svga-loaded",
-    "inspection-panel",
-    "invalid-file-state",
-    "canonical-normal-valid-loaded",
-    "canonical-smoke-valid-loaded"
+    "desktop-empty",
+    "desktop-loading",
+    "desktop-loaded",
+    "desktop-inspection",
+    "desktop-invalid",
+    "actual-normal-loaded",
+    "smoke-loaded",
+    "desktop-1280x800",
+    "desktop-1440x900"
   ]);
   return allowed.has(value) ? value : undefined;
+}
+
+function validateNormalProofResult(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const keys = [
+    "normalMode",
+    "playback",
+    "canvasNonBlank",
+    "inspectionReport",
+    "auditPanel",
+    "localOnly",
+    "cspAccepted",
+    "noCspViolation"
+  ];
+  if (!keys.every((key) => typeof value[key] === "boolean")) return undefined;
+  return {
+    normalMode: value.normalMode,
+    rendererQuery: typeof value.rendererQuery === "string" ? value.rendererQuery.slice(0, 120) : "",
+    playback: value.playback,
+    canvasNonBlank: value.canvasNonBlank,
+    inspectionReport: value.inspectionReport,
+    auditPanel: value.auditPanel,
+    localOnly: value.localOnly,
+    cspAccepted: value.cspAccepted,
+    noCspViolation: value.noCspViolation && !cspViolationSeen
+  };
 }
 
 function validateAuditResult(value) {
@@ -155,7 +187,7 @@ function sha256RelativeFile(relativePath) {
 function runtimeIdentity(mode, rendererUrl) {
   return {
     schemaVersion: 1,
-    milestoneId: "P1",
+    milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
     entryCommand: "npm run desktop:dev",
     mainEntry: `tools/electron-prototype/experiments/svga-web/${mainEntry}`,
@@ -163,7 +195,7 @@ function runtimeIdentity(mode, rendererUrl) {
     rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
     rendererUrl,
     windowTitle: productIdentity,
-    documentTitle: productIdentity,
+    documentTitle: "Auto SVGA — Desktop Preview",
     productIdentity,
     mode,
     player: playerIdentity,
@@ -198,7 +230,7 @@ function normalSmokeParity(normalIdentity, smokeIdentity) {
   };
   return {
     schemaVersion: 1,
-    milestoneId: "P1",
+    milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
     normalMode: normalIdentity.mode,
     smokeMode: smokeIdentity.mode,
@@ -221,6 +253,15 @@ function addProductArtifactRecord(record) {
   productArtifactIndex.artifacts.push(record);
 }
 
+function mergeExistingProductArtifactIndex() {
+  try {
+    const existing = JSON.parse(readFileSync(path.join(productArtifactRoot, "artifact-index.json"), "utf8"));
+    if (Array.isArray(existing.artifacts)) productArtifactIndex.artifacts = existing.artifacts;
+  } catch {
+    // No previous P2 artifact index exists for this capture step.
+  }
+}
+
 async function finishSmoke(window, result) {
   if (smokeFinished) return;
   smokeFinished = true;
@@ -232,20 +273,51 @@ async function finishSmoke(window, result) {
   app.exit(passed ? 0 : 1);
 }
 
+async function finishNormalProof(window, result) {
+  if (smokeFinished) return;
+  smokeFinished = true;
+  const passed = Object.values(result).filter((value) => typeof value === "boolean").every(Boolean);
+  writeJsonProductArtifact("normal-runtime-proof.json", "normal-runtime-proof", {
+    schemaVersion: 1,
+    milestoneId: productMilestoneId,
+    headCommit: productArtifactIndex.headCommit,
+    ...result,
+    passed,
+    generatedAt: new Date().toISOString()
+  }, "normal");
+  writeProductArtifactIndex();
+  console.log(`AUTO_SVGA_DESKTOP_NORMAL_PROOF ${JSON.stringify({ ...result, passed })}`);
+  await cleanupRuntime();
+  window.destroy();
+  app.exit(passed ? 0 : 1);
+}
+
 function writeProductArtifactIndex() {
   const indexPath = path.join(productArtifactRoot, "artifact-index.json");
   writeFileSync(indexPath, `${JSON.stringify(productArtifactIndex, null, 2)}\n`);
 }
 
 async function captureProductArtifact(window, scenario) {
+  const originalSize = window.getSize();
+  if (scenario === "desktop-1280x800") window.setSize(1280, 800);
+  if (scenario === "desktop-1440x900") window.setSize(1440, 900);
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
+    await new Promise((resolve) => setTimeout(resolve, 180));
+  }
   const png = (await window.webContents.capturePage()).toPNG();
+  const capturedSize = window.getSize();
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
+    window.setSize(originalSize[0], originalSize[1]);
+  }
   const fileName = `${scenario}.png`;
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
   addProductArtifactRecord({
     scenario,
-    mode: scenario.startsWith("canonical-normal") ? "normal" : "smoke",
-    path: `.artifacts/product/P1/${fileName}`,
+    mode: scenario === "actual-normal-loaded" ? "normal" : "smoke",
+    source: "desktop",
+    viewport: { width: capturedSize[0], height: capturedSize[1] },
+    path: `.artifacts/product/${productMilestoneId}/${fileName}`,
     mime: "image/png",
     sizeBytes: png.byteLength,
     sha256: createHash("sha256").update(png).digest("hex"),
@@ -257,7 +329,7 @@ async function captureProductArtifact(window, scenario) {
     humanReviewRequired: true
   });
   writeProductArtifactIndex();
-  return { path: `.artifacts/product/P1/${fileName}`, sizeBytes: png.byteLength };
+  return { path: `.artifacts/product/${productMilestoneId}/${fileName}`, sizeBytes: png.byteLength };
 }
 
 function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
@@ -266,7 +338,8 @@ function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
   addProductArtifactRecord({
     scenario,
     mode,
-    path: `.artifacts/product/P1/${fileName}`,
+    source: "desktop",
+    path: `.artifacts/product/${productMilestoneId}/${fileName}`,
     mime: "application/json",
     sizeBytes: bytes.byteLength,
     sha256: createHash("sha256").update(bytes).digest("hex"),
@@ -307,9 +380,9 @@ async function createExperimentWindow() {
 
   const window = new BrowserWindow({
     title: productIdentity,
-    width: 1120,
-    height: 760,
-    show: !(smokeMode || auditMode),
+    width: 1280,
+    height: 800,
+    show: !(smokeMode || auditMode || normalProofMode),
     webPreferences: {
       preload: path.join(appRoot, "preload.cjs"),
       additionalArguments: [`--prototype-report-token=${reportToken}`],
@@ -356,7 +429,7 @@ async function createExperimentWindow() {
 
   ipcMain.handle("svga-web-experiment:capture-artifact", async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
-    if (!productSmokeMode) throw new Error("Product artifact capture is only available in product smoke mode");
+    if (!productSmokeMode && !normalProofMode) throw new Error("Product artifact capture is only available in product capture mode");
     const scenario = validateArtifactScenario(input);
     if (!scenario) throw new Error("Invalid product artifact scenario");
     return captureProductArtifact(window, scenario);
@@ -367,6 +440,14 @@ async function createExperimentWindow() {
     const result = validateAuditResult(input);
     if (!result) throw new Error("Invalid audit result");
     if (auditMode) await finishAudit(window, result);
+    return { accepted: true };
+  });
+
+  ipcMain.handle("svga-web-experiment:normal-proof-result", async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    const result = validateNormalProofResult(input);
+    if (!result) throw new Error("Invalid normal proof result");
+    if (normalProofMode) await finishNormalProof(window, result);
     return { accepted: true };
   });
 
@@ -401,7 +482,11 @@ async function createExperimentWindow() {
     }, 120_000).unref();
   }
 
-  const productMode = smokeMode ? `?mode=smoke${productSmokeMode ? "&artifacts=1" : ""}` : "";
+  const productMode = normalProofMode
+    ? "?normalProof=1&artifacts=1"
+    : smokeMode
+      ? `?mode=smoke${productSmokeMode ? "&artifacts=1" : ""}`
+      : "";
   const rendererUrl = auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}/${productMode}`;
   if (productSmokeMode) {
     const normalIdentity = runtimeIdentity("normal", `${expectedOrigin}/`);

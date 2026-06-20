@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld("autoSvgaPrototype", Object.freeze({
   reportSmokeResult(result) {
     return ipcRenderer.invoke("svga-web-experiment:smoke-result", result);
   },
+  reportNormalProofResult(result) {
+    return ipcRenderer.invoke("svga-web-experiment:normal-proof-result", result);
+  },
   reportAuditResult(result) {
     return ipcRenderer.invoke("svga-web-experiment:audit-result", result);
   },

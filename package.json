@@ -28,7 +28,10 @@
     "preview:player": "node tools/svga-player-preview/server.mjs",
     "local:preview": "node tools/launch-local-preview.mjs",
     "desktop:dev": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev",
-    "desktop:smoke": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke"
+    "desktop:smoke": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke",
+    "desktop:p2:normal-proof": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:normal-proof",
+    "desktop:p2:web-reference": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:web-reference",
+    "desktop:p2:parity-report": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:parity-report"
   },
   "dependencies": {
     "fast-png": "8.0.0",

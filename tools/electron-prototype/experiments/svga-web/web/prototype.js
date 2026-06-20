@@ -14,6 +14,7 @@ const replayButton = document.querySelector("#replayButton");
 const fileInfo = document.querySelector("#fileInfo");
 const urlParams = new URLSearchParams(location.search);
 const isSmokeMode = urlParams.get("mode") === "smoke";
+const isNormalProofMode = urlParams.get("normalProof") === "1";
 const shouldCaptureArtifacts = urlParams.get("artifacts") === "1";
 const cspViolations = [];
 let activePlayer;
@@ -83,34 +84,76 @@ replayButton.addEventListener("click", () => {
   playbackStatus.textContent = `重新播放：${safeDisplayName(activeName)}`;
 });
 
+document.addEventListener("keydown", (event) => {
+  const key = event.key.toLowerCase();
+  if ((event.metaKey || event.ctrlKey) && key === "o") {
+    event.preventDefault();
+    fileInput.click();
+    return;
+  }
+  if (event.target instanceof HTMLInputElement) return;
+  if (event.code === "Space") {
+    event.preventDefault();
+    if (!activePlayer) return;
+    (playerPaused || !playerStarted ? playButton : pauseButton).click();
+  } else if (key === "r") {
+    replayButton.click();
+  }
+});
+
 start().catch(async (error) => {
   console.error(error instanceof Error ? error.message : String(error));
-  showError(`加载失败：${error.message}`);
+  showError("启动失败。", error.message);
   await reportSmoke(emptyResult());
 });
 
 async function start() {
   showEmptyState();
+  if (isNormalProofMode) {
+    await runNormalProof();
+    return;
+  }
   if (!isSmokeMode) return;
   await runSmoke();
 }
 
+async function runNormalProof() {
+  await delay(180);
+  const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
+  const bytes = new Uint8Array(await fetch(fixtureUrl).then(assertResponse).then((response) => response.arrayBuffer()));
+  const proof = await loadSvgaBytes(bytes.slice(0), "synthetic-avatar-frame.svga", { sizeBytes: bytes.byteLength });
+  await delay(260);
+  await captureArtifact("actual-normal-loaded");
+  await reportNormalProof({
+    normalMode: true,
+    rendererQuery: location.search,
+    playback: proof.playback,
+    canvasNonBlank: proof.canvasNonBlank,
+    inspectionReport: proof.inspectionReport,
+    auditPanel: proof.auditPanel,
+    localOnly: resourcesAreLocal(),
+    cspAccepted: cspAllowsOnlyLocalWasm(),
+    noCspViolation: cspViolations.length === 0
+  });
+}
+
 async function runSmoke() {
   await delay(180);
-  await captureArtifact("empty-state");
+  await captureArtifact("desktop-empty");
   const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
   const bytes = new Uint8Array(await fetch(fixtureUrl).then(assertResponse).then((response) => response.arrayBuffer()));
   const smoke = await loadSvgaBytes(bytes.slice(0), "synthetic-avatar-frame.svga", { sizeBytes: bytes.byteLength });
-  await captureArtifact("canonical-normal-valid-loaded");
-  await captureArtifact("canonical-smoke-valid-loaded");
-  await captureArtifact("valid-svga-loaded");
+  await captureArtifact("desktop-loaded");
+  await captureArtifact("smoke-loaded");
+  await captureArtifact("desktop-1280x800");
+  await captureArtifact("desktop-1440x900");
   document.querySelector("#reportTitle")?.scrollIntoView({ block: "start" });
   await delay(180);
-  await captureArtifact("inspection-panel");
+  await captureArtifact("desktop-inspection");
   const fileInputSmoke = await smokeFileInput(bytes.slice(0));
   const dragDropSmoke = await smokeDragDrop(bytes.slice(0));
   const errorFileSmoke = await smokeErrorFile();
-  await captureArtifact("invalid-file-state");
+  await captureArtifact("desktop-invalid");
 
   const result = {
     localPage: location.hostname === "127.0.0.1",
@@ -135,7 +178,7 @@ async function runSmoke() {
 async function loadSvgaFile(file, source) {
   if (!isSvgaFile(file)) {
     cleanupPlayer();
-    showError("不支持的文件类型。请选择 .svga 文件。");
+    showError("无法打开此 SVGA 文件。", "不支持的文件类型。请选择 .svga 文件。");
     return false;
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -146,6 +189,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
   cleanupPlayer();
   activeName = name;
   setLoadingState(name);
+  await captureArtifact("desktop-loading");
   let reportPromise;
   try {
     reportPromise = fetch(`/api/avatar-frame-inspection-report?name=${encodeURIComponent(name)}`, {
@@ -183,6 +227,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
     }
     const report = await reportPromise;
     reportRoot.innerHTML = renderAvatarFrameInspectionReport(report, "success");
+    decorateInspectionReport();
     updateFileInfo(name, metadata.sizeBytes ?? bytes.byteLength, report);
     runtimeStatus.textContent = "SVGA 已加载，检查报告已生成。";
     playbackStatus.textContent = `正在播放：${safeDisplayName(name)}`;
@@ -211,7 +256,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
   } catch (error) {
     await reportPromise?.catch(() => undefined);
     cleanupPlayer();
-    showError(`SVGA 加载失败：${error instanceof Error ? error.message : String(error)}`);
+    showError("无法打开此 SVGA 文件。", error instanceof Error ? error.message : String(error));
     return {
       playback: false,
       canvasNonBlank: false,
@@ -253,10 +298,11 @@ async function smokeErrorFile() {
   event.dataTransfer.items.add(invalidType);
   dropZone.dispatchEvent(event);
   await delay(80);
-  const typeError = runtimeStatus.textContent.includes("不支持的文件类型");
+  const typeError = runtimeStatus.textContent.includes("无法打开此 SVGA 文件")
+    && dropZoneHint.textContent.includes("不支持的文件类型");
   await loadSvgaFile(invalidSvga, "smoke-invalid");
   await delay(80);
-  return typeError && runtimeStatus.textContent.includes("SVGA 加载失败");
+  return typeError && runtimeStatus.textContent.includes("无法打开此 SVGA 文件");
 }
 
 function showEmptyState() {
@@ -280,11 +326,17 @@ function setLoadingState(name) {
   updatePlaybackControls();
 }
 
-function showError(message) {
+function showError(message, detail = "") {
   dropZone.classList.add("isError");
   runtimeStatus.textContent = message;
   playbackStatus.textContent = "未播放";
-  dropZoneHint.textContent = "请换一个有效的 .svga 文件。";
+  dropZoneHint.innerHTML = `
+    <strong>请换一个有效的 .svga 文件。</strong>
+    <details class="errorDetails">
+      <summary>查看技术细节</summary>
+      <code>${escapeHtml(detail || message)}</code>
+    </details>
+  `;
   reportRoot.innerHTML = "";
   updateFileInfo();
   updatePlaybackControls();
@@ -307,22 +359,33 @@ function updateFileInfo(name = "未加载", sizeBytes, report) {
       ? `${summary.canvasSize.width} × ${summary.canvasSize.height}`
       : summary.width && summary.height
         ? `${summary.width} × ${summary.height}`
-        : "--";
+    : "未加载";
   const timingLabel = typeof timing.durationMs === "number"
     ? `${(timing.durationMs / 1000).toFixed(2)}s`
     : typeof timing.frameCount === "number"
       ? `${timing.frameCount} frames`
-      : "--";
+      : "未加载";
   const values = [
     safeDisplayName(name),
-    typeof sizeBytes === "number" ? formatBytes(sizeBytes) : "--",
+    typeof sizeBytes === "number" ? formatBytes(sizeBytes) : "未加载",
     canvasLabel,
-    typeof timing.fps === "number" ? `${timing.fps} fps` : summary.fps ?? "--",
+    typeof timing.fps === "number" ? `${timing.fps} fps` : summary.fps ?? "未加载",
     timingLabel
   ];
   fileInfo.querySelectorAll("dd").forEach((node, index) => {
     node.textContent = String(values[index] ?? "--");
   });
+}
+
+function decorateInspectionReport() {
+  const calibration = reportRoot.querySelector(".calibrationGroup");
+  if (!calibration || calibration.closest("details")) return;
+  const wrapper = document.createElement("details");
+  wrapper.className = "calibrationDetails";
+  const summary = document.createElement("summary");
+  summary.textContent = "产品校准说明";
+  calibration.before(wrapper);
+  wrapper.append(summary, calibration);
 }
 
 function canvasHasVisiblePixels(target, region) {
@@ -433,6 +496,15 @@ function safeDisplayName(name) {
   return String(name).replace(/[/\\]/g, "").slice(0, 80);
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function formatBytes(value) {
   if (value < 1024) return `${value} B`;
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KiB`;
@@ -450,6 +522,10 @@ function delay(durationMs) {
 
 function reportSmoke(result) {
   return window.autoSvgaPrototype?.reportSmokeResult(result) ?? Promise.resolve();
+}
+
+function reportNormalProof(result) {
+  return window.autoSvgaPrototype?.reportNormalProofResult?.(result) ?? Promise.resolve();
 }
 
 function captureArtifact(scenario) {

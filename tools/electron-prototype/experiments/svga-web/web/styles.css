@@ -1,33 +1,81 @@
 :root {
   color-scheme: light dark;
+  --color-bg: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f9fafb;
+  --color-text: #1d1d1f;
+  --color-muted: #6e6e73;
+  --color-border: #d2d2d7;
+  --color-accent: #0066cc;
+  --color-danger: #b42318;
+  --shadow-panel: 0 18px 52px rgba(15, 23, 42, 0.08);
+  --radius-panel: 12px;
+  --radius-control: 8px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f5f6f8;
-  color: #1f2328;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
+  min-width: 0;
   margin: 0;
+  overflow-x: hidden;
 }
 
-main {
+.desktopShell {
   display: grid;
   gap: 16px;
-  max-width: 1040px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 16px;
 }
 
-header,
-section {
-  border: 1px solid #d8dce2;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 18px;
+.appHeader,
+.playerPane,
+.reportPane {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.appHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+}
+
+.headerMeta {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  min-width: 220px;
+  text-align: right;
+}
+
+.modeBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(180, 83, 9, 0.28);
+  border-radius: 999px;
+  color: #92400e;
+  background: #fff7ed;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 .eyebrow {
-  margin: 0 0 6px;
-  color: #b45309;
+  margin: 0 0 4px;
+  color: #92400e;
   font-size: 12px;
   font-weight: 700;
 }
@@ -39,12 +87,31 @@ p {
 }
 
 h1 {
-  font-size: 22px;
-  line-height: 1.3;
+  font-size: 24px;
+  line-height: 1.25;
 }
 
 h2 {
   font-size: 15px;
+  line-height: 1.35;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(420px, 0.86fr) minmax(520px, 1.14fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.playerPane,
+.reportPane {
+  min-width: 0;
+  padding: 16px;
+}
+
+.reportPane {
+  max-height: calc(100vh - 112px);
+  overflow: auto;
 }
 
 .sectionTitle {
@@ -57,35 +124,49 @@ h2 {
 
 .sectionTitle span,
 #runtimeStatus {
-  color: #5f6b7a;
+  color: var(--color-muted);
   font-size: 12px;
+  line-height: 1.45;
 }
 
 #player {
   display: block;
-  width: min(300px, 100%);
+  width: min(360px, 100%);
   aspect-ratio: 1;
+  border: 1px solid rgba(0, 0, 0, 0.04);
   border-radius: 10px;
-  background: linear-gradient(135deg, #eef1f5, #f8fafc);
+  background:
+    linear-gradient(45deg, #eceef2 25%, transparent 25%),
+    linear-gradient(-45deg, #eceef2 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eceef2 75%),
+    linear-gradient(-45deg, transparent 75%, #eceef2 75%);
+  background-color: #ffffff;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
 }
 
 .dropZone {
   display: grid;
   place-items: center;
   gap: 12px;
-  border: 1px dashed #b9c1cc;
-  border-radius: 14px;
+  min-height: 438px;
+  border: 1px dashed #aeb4bf;
+  border-radius: 12px;
   padding: 18px;
+  background: var(--color-surface-muted);
 }
 
 .dropZone.isDragOver {
-  border-color: #2563eb;
-  background: rgba(37, 99, 235, 0.08);
+  border-color: var(--color-accent);
+  background: rgba(0, 102, 204, 0.08);
 }
 
 .dropZone p {
-  color: #5f6b7a;
+  max-width: 420px;
+  color: var(--color-muted);
   font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .actions {
@@ -101,21 +182,36 @@ button {
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 72px;
   min-height: 36px;
   padding: 0 14px;
   border: 1px solid #b9c1cc;
-  border-radius: 8px;
-  color: #1f2328;
-  background: #f8fafc;
+  border-radius: var(--radius-control);
+  color: var(--color-text);
+  background: var(--color-surface-muted);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
   white-space: nowrap;
 }
 
+.fileButton {
+  border-color: var(--color-accent);
+  color: #ffffff;
+  background: var(--color-accent);
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.52;
+}
+
+button:focus-visible,
+.fileButton:focus-within,
+summary:focus-visible {
+  outline: 3px solid rgba(0, 102, 204, 0.32);
+  outline-offset: 2px;
 }
 
 .fileButton input {
@@ -135,13 +231,13 @@ button:disabled {
 .fileInfo div {
   min-width: 0;
   border: 1px solid #e3e7ed;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 8px;
-  background: #f8fafc;
+  background: var(--color-surface-muted);
 }
 
 .fileInfo dt {
-  color: #5f6b7a;
+  color: var(--color-muted);
   font-size: 11px;
 }
 
@@ -152,8 +248,28 @@ button:disabled {
 }
 
 .dropZone.isError {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.06);
+  border-color: var(--color-danger);
+  background: rgba(180, 35, 24, 0.06);
+}
+
+.errorDetails {
+  max-width: 420px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.errorDetails code {
+  display: block;
+  max-height: 88px;
+  margin-top: 6px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.reportRoot {
+  min-width: 0;
 }
 
 .specReportSection,
@@ -161,13 +277,110 @@ button:disabled {
   margin-top: 16px;
 }
 
+.reportRoot details {
+  border: 1px solid #e3e7ed;
+  border-radius: 10px;
+  margin-top: 12px;
+  padding: 10px;
+}
+
+.reportRoot summary {
+  cursor: pointer;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.reportRoot * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1180px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .reportPane {
+    max-height: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .desktopShell {
+    padding: 10px;
+  }
+
+  .appHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .headerMeta {
+    justify-items: start;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .dropZone {
+    min-height: 360px;
+  }
+
+  .fileButton,
+  button {
+    flex: 1 1 96px;
+    min-width: 0;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
-  :root { background: #151618; color: #f4f4f5; }
-  header, section { background: #222428; border-color: #3a3d43; }
-  #player { background: linear-gradient(135deg, #1a1c20, #252932); }
-  .eyebrow { color: #fbbf24; }
-  .dropZone { border-color: #475569; }
-  .dropZone p { color: #a1a1aa; }
-  .fileButton, button { color: #f4f4f5; background: #1f2937; border-color: #475569; }
-  .fileInfo div { background: #1f2937; border-color: #3a3d43; }
+  :root {
+    --color-bg: #16171a;
+    --color-surface: #222428;
+    --color-surface-muted: #1b1d21;
+    --color-text: #f5f5f7;
+    --color-muted: #a1a1aa;
+    --color-border: #3a3d43;
+    --color-accent: #2997ff;
+    --shadow-panel: none;
+  }
+
+  .modeBadge {
+    border-color: rgba(251, 191, 36, 0.34);
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+  }
+
+  .eyebrow {
+    color: #fbbf24;
+  }
+
+  #player {
+    border-color: #3a3d43;
+    background:
+      linear-gradient(45deg, #2b2e34 25%, transparent 25%),
+      linear-gradient(-45deg, #2b2e34 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #2b2e34 75%),
+      linear-gradient(-45deg, transparent 75%, #2b2e34 75%);
+    background-color: #1a1c20;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    background-size: 16px 16px;
+  }
+
+  .dropZone {
+    border-color: #4b5563;
+  }
+
+  .fileButton,
+  button {
+    border-color: #4b5563;
+  }
+
+  .fileButton {
+    border-color: var(--color-accent);
+  }
+
+  .fileInfo div,
+  .reportRoot details {
+    border-color: #3a3d43;
+  }
 }
