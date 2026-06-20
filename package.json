@@ -37,7 +37,8 @@
     "desktop:p3:upload-package": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p3:upload-package",
     "desktop:p4:upload-package": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p4:upload-package",
     "nq1:fixture-matrix": "npm run build && node tools/nq1/generate-fixture-matrix.mjs",
-    "nq1:model-history": "npm run build && node tools/nq1/generate-model-history-report.mjs"
+    "nq1:model-history": "npm run build && node tools/nq1/generate-model-history-report.mjs",
+    "nq1:async-race": "npm run build && node tools/nq1/generate-async-race-report.mjs"
   },
   "dependencies": {
     "fast-png": "8.0.0",
