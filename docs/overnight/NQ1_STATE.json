@@ -8,19 +8,19 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP07",
+  "currentWorkPackage": "NQ1-WP08",
   "completedWorkPackages": [
     "NQ1-WP01",
     "NQ1-WP02",
     "NQ1-WP03",
     "NQ1-WP04",
     "NQ1-WP05",
-    "NQ1-WP06"
+    "NQ1-WP06",
+    "NQ1-WP07"
   ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
   "remainingWorkPackages": [
-    "NQ1-WP07",
     "NQ1-WP08",
     "NQ1-WP09",
     "NQ1-WP10"
@@ -403,16 +403,72 @@
     {
       "id": "NQ1-WP07",
       "title": "Resource, process, and memory cleanup stress",
-      "status": "pending",
-      "startedAt": null,
-      "finishedAt": null,
-      "startCommit": null,
-      "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
-      "deferredItems": []
+      "status": "complete",
+      "startedAt": "2026-06-20T21:16:37.695Z",
+      "finishedAt": "2026-06-20T21:16:37.695Z",
+      "startCommit": "f73045f53d0f139bb36e69271cefd152fddc8bbf",
+      "endCommit": "57bb4b3379d0669b40f1c15ca3a78d051c01ea20",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-cleanup-stress.ts",
+        "src/tests/nq1-cleanup-stress.test.ts",
+        "tools/nq1/generate-cleanup-stress-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-cleanup-stress.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:cleanup-stress",
+          "status": "pass"
+        },
+        {
+          "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+          "status": "pass"
+        },
+        {
+          "command": "node --check tools/electron-prototype/experiments/svga-web/web/prototype.js",
+          "status": "pass"
+        },
+        {
+          "command": "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-cleanup-stress",
+          "status": "pass",
+          "summary": "1 pass / 0 fail"
+        },
+        {
+          "id": "nq1-cleanup-stress-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/resource-process-memory-cleanup-stress-report.json passed with 17 source checks, 5 scenarios, cleanupCount=125, finalActiveResourceCount=0, and no absolute user paths"
+        },
+        {
+          "id": "svga-web-prototype-regression",
+          "status": "pass",
+          "summary": "14 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "Process cleanup boundaries are source-checked: session roots stay under os.tmpdir, userData/sessionData are scoped to the session root, cleanupRuntime is idempotent, closes the local server, and removes the session root.",
+        "Renderer cleanup boundaries are source-checked: cleanupPlayer destroys player/parser, clears active references, resets playback flags, clears canvas, and runs before new loads and on error paths.",
+        "The deterministic stress model ran 80 cycles with maxActiveResourceCount=2 and finalActiveResourceCount=0."
+      ],
+      "deferredItems": [
+        "This package validates deterministic cleanup boundaries and model stress, not OS-level memory pressure or real long-running renderer heap behavior."
+      ]
     },
     {
       "id": "NQ1-WP08",
