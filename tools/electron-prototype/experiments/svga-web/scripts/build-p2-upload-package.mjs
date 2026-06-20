@@ -196,7 +196,10 @@ async function main() {
   await mkdir(visibleRoot, { recursive: true });
   await cp(uploadZip, path.join(visibleRoot, path.basename(uploadZip)));
   await cp(path.join(packetRoot, "REVIEW_PACKET.md"), path.join(visibleRoot, "REVIEW_PACKET.md"));
-  await cp(path.join(packetRoot, "FINAL_RESPONSE.txt"), path.join(visibleRoot, "FINAL_RESPONSE.txt"));
+  await writeFile(
+    path.join(visibleRoot, "FINAL_RESPONSE.txt"),
+    sanitizeReviewText(await readFile(path.join(packetRoot, "FINAL_RESPONSE.txt"), "utf8"), headShort)
+  );
   await cp(path.join(packetRoot, "MANIFEST.json"), path.join(visibleRoot, "MANIFEST.json"));
   const bytes = await readFile(uploadZip);
   const summary = {
