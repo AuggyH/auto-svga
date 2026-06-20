@@ -8,17 +8,17 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP05",
+  "currentWorkPackage": "NQ1-WP06",
   "completedWorkPackages": [
     "NQ1-WP01",
     "NQ1-WP02",
     "NQ1-WP03",
-    "NQ1-WP04"
+    "NQ1-WP04",
+    "NQ1-WP05"
   ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
   "remainingWorkPackages": [
-    "NQ1-WP05",
     "NQ1-WP06",
     "NQ1-WP07",
     "NQ1-WP08",
@@ -272,15 +272,70 @@
     {
       "id": "NQ1-WP05",
       "title": "Multi-resource round-trip matrix",
-      "status": "pending",
-      "startedAt": null,
-      "finishedAt": null,
-      "startCommit": null,
-      "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
+      "status": "complete",
+      "startedAt": "2026-06-20T20:59:15.000Z",
+      "finishedAt": "2026-06-20T21:04:20.378Z",
+      "startCommit": "60f009782d5e7d3524b7bf556c6173f9a0d1af90",
+      "endCommit": "1d80f71788cd25b774c0b9574de330603fbc06ac",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-round-trip-matrix.ts",
+        "src/tests/nq1-round-trip-matrix.test.ts",
+        "tools/nq1/generate-round-trip-matrix-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-round-trip-matrix.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:round-trip-matrix",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/svga-image-resource-editor.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-fixture-matrix.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-round-trip-matrix-targeted",
+          "status": "pass",
+          "summary": "6 supported fixtures, 1 unsupported fixture, 15 replacement attempts, 1 fail-closed unsupported boundary"
+        },
+        {
+          "id": "svga-image-resource-editor-regression",
+          "status": "pass",
+          "summary": "9 pass / 0 fail"
+        },
+        {
+          "id": "nq1-fixture-matrix-regression",
+          "status": "pass",
+          "summary": "5 pass / 0 fail"
+        },
+        {
+          "id": "round-trip-matrix-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/multi-resource-round-trip-matrix-report.json passed and contains no absolute paths"
+        }
+      ],
+      "findings": [
+        "Supported synthetic fixtures with resource counts 1, 2, 3, 5, 10, and 25 preserve source bytes, replaced resource hashes, and untouched resource hashes across round trip.",
+        "P3 single-resource replacement and P4 multi-resource replacement boundaries are both represented.",
+        "Unsupported unknown-field fixture remains fail-closed before editing."
+      ],
       "deferredItems": []
     },
     {
