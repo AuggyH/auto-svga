@@ -151,7 +151,14 @@ function collectPrivacyFindingsFromText(text, entry, allowedUploadTargets) {
   for (const rule of privacyRules()) {
     for (const match of text.matchAll(rule.pattern)) {
       const value = match[0];
-      const allowed = allowedUploadTargets.some((target) => value.includes(target));
+      const matchIndex = match.index ?? 0;
+      const lineStart = text.lastIndexOf("\n", matchIndex) + 1;
+      const lineEndIndex = text.indexOf("\n", matchIndex);
+      const lineEnd = lineEndIndex >= 0 ? lineEndIndex : text.length;
+      const containingLine = text.slice(lineStart, lineEnd);
+      const allowed = allowedUploadTargets.some((target) => (
+        value.includes(target) || containingLine.includes(target)
+      ));
       findings.push({
         ruleId: rule.ruleId,
         entry,
