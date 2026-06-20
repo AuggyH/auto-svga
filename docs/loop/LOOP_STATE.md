@@ -67,4 +67,4 @@ Date: 2026-06-20
 
 ## Next Action
 
-Await external review of the sealed P3 repair-2 packet and upload ZIP. Do not start P4, validation repair, candidate regeneration, or additional implementation unless external review returns REPAIR_REQUIRED.
+Await external review of the sealed P3 repair-2 packet and upload ZIP.
