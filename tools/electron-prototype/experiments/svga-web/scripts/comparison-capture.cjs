@@ -1,6 +1,5 @@
 const { readFileSync, writeFileSync } = require("node:fs");
 const path = require("node:path");
-const { pathToFileURL } = require("node:url");
 const { app, BrowserWindow } = require("electron");
 
 function readArgument(name) {
@@ -20,8 +19,8 @@ if (!artifactRoot || !left || !right || !out) {
 
 function imageData(fileName) {
   const filePath = path.join(artifactRoot, fileName);
-  readFileSync(filePath);
-  return pathToFileURL(filePath).href;
+  const bytes = readFileSync(filePath);
+  return `data:image/png;base64,${bytes.toString("base64")}`;
 }
 
 async function main() {

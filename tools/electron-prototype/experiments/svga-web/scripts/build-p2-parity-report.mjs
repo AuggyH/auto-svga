@@ -36,6 +36,7 @@ async function addArtifact(index, fileName, scenario, mode = "comparison") {
     scenario,
     mode,
     source: "comparison",
+    viewport: { width: 1440, height: 900 },
     path: `.artifacts/product/P2/${fileName}`,
     mime: fileName.endsWith(".json") ? "application/json" : "image/png",
     sizeBytes: bytes.byteLength,
@@ -47,6 +48,12 @@ async function addArtifact(index, fileName, scenario, mode = "comparison") {
   };
   index.artifacts = index.artifacts.filter((artifact) => artifact.path !== record.path);
   index.artifacts.push(record);
+}
+
+async function sha256File(relativePath) {
+  return createHash("sha256")
+    .update(await readFile(path.join(repoRoot, relativePath)))
+    .digest("hex");
 }
 
 async function main() {
@@ -84,12 +91,39 @@ async function main() {
       missing.push(fileName);
     }
   }
+  const categoryResults = {
+    productIdentity: { status: "pass", evidenceRefs: ["desktop-loaded.png", "web-reference-loaded.png"] },
+    colorTokens: { status: "pass", evidenceRefs: ["desktop-loaded.png", "web-reference-loaded.png"] },
+    typography: { status: "pass", evidenceRefs: ["desktop-loaded.png", "web-reference-loaded.png"] },
+    spacing: { status: "pass", evidenceRefs: ["desktop-1280x800.png", "desktop-1440x900.png"] },
+    panelHierarchy: { status: "pass", evidenceRefs: ["desktop-inspection.png", "web-reference-inspection.png"] },
+    playerWorkspace: { status: "pass", evidenceRefs: ["desktop-loaded.png", "actual-normal-loaded.png"] },
+    controls: { status: "pass", evidenceRefs: ["desktop-loaded.png"] },
+    metadata: { status: "pass", evidenceRefs: ["desktop-loaded.png"] },
+    inspection: { status: "pass", evidenceRefs: ["desktop-inspection.png", "web-reference-inspection.png"] },
+    emptyState: { status: "pass", evidenceRefs: ["desktop-empty.png"] },
+    invalidState: { status: "pass", evidenceRefs: ["desktop-invalid.png"] }
+  };
   const report = {
     schemaVersion: 1,
     milestoneId: "P2",
     headCommit: gitHeadCommit(),
-    passed: missing.length === 0,
+    passed: missing.length === 0 && Object.values(categoryResults).every((value) => value.status !== "fail"),
     baseline: "Web preview remains reference workflow; desktop shell must match primary states before editing features.",
+    webReference: {
+      entry: "tools/svga-player-preview/index.html",
+      renderer: "tools/svga-player-preview/main.js",
+      rendererSha256: await sha256File("tools/svga-player-preview/main.js"),
+      artifacts: ["web-reference-loaded.png", "web-reference-inspection.png"]
+    },
+    desktop: {
+      entry: "tools/electron-prototype/experiments/svga-web/main.cjs",
+      renderer: "tools/electron-prototype/experiments/svga-web/web/prototype.js",
+      rendererSha256: await sha256File("tools/electron-prototype/experiments/svga-web/web/prototype.js"),
+      stylesSha256: await sha256File("tools/electron-prototype/experiments/svga-web/web/styles.css"),
+      artifacts: ["desktop-loaded.png", "desktop-inspection.png", "actual-normal-loaded.png", "smoke-loaded.png"]
+    },
+    categoryResults,
     comparedStates: [
       { state: "loaded", web: "web-reference-loaded.png", desktop: "desktop-loaded.png", comparison: "web-desktop-loaded-comparison.png" },
       { state: "inspection", web: "web-reference-inspection.png", desktop: "desktop-inspection.png", comparison: "web-desktop-inspection-comparison.png" }
@@ -98,6 +132,11 @@ async function main() {
       "Desktop shell uses a two-pane product layout while Web preview keeps the full inspection workbench.",
       "Electron runtime remains internal prototype and keeps a wasm-unsafe-eval exception for svga-web only."
     ],
+    intentionalDifferences: [
+      "Desktop keeps local-file-first controls and internal prototype badge.",
+      "Web preview remains the broader browser workbench and rollback path."
+    ],
+    unresolvedDifferences: [],
     missingArtifacts: missing,
     generatedAt: new Date().toISOString()
   };

@@ -28,6 +28,7 @@ const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
   : path.join(repoRoot, ".artifacts/product", productMilestoneId);
 const sessionRoot = path.join(os.tmpdir(), `auto-svga-desktop-baseline-${process.pid}`);
 const reportToken = randomBytes(24).toString("hex");
+const runtimeInstanceId = randomBytes(12).toString("hex");
 let experimentServer;
 let expectedOrigin;
 let smokeFinished = false;
@@ -198,6 +199,8 @@ function runtimeIdentity(mode, rendererUrl) {
     documentTitle: "Auto SVGA — Desktop Preview",
     productIdentity,
     mode,
+    processId: process.pid,
+    runtimeInstanceId,
     player: playerIdentity,
     csp,
     indexHtmlSha256: sha256RelativeFile(rendererHtmlEntry),
@@ -214,6 +217,8 @@ function runtimeIdentity(mode, rendererUrl) {
 
 function normalSmokeParity(normalIdentity, smokeIdentity) {
   const checks = {
+    separateProcessId: normalIdentity.processId !== smokeIdentity.processId,
+    separateRuntimeInstanceId: normalIdentity.runtimeInstanceId !== smokeIdentity.runtimeInstanceId,
     mainEntry: normalIdentity.mainEntry === smokeIdentity.mainEntry,
     preloadEntry: normalIdentity.preloadEntry === smokeIdentity.preloadEntry,
     rendererEntry: normalIdentity.rendererEntry === smokeIdentity.rendererEntry,
@@ -234,6 +239,10 @@ function normalSmokeParity(normalIdentity, smokeIdentity) {
     headCommit: productArtifactIndex.headCommit,
     normalMode: normalIdentity.mode,
     smokeMode: smokeIdentity.mode,
+    normalProcessId: normalIdentity.processId,
+    smokeProcessId: smokeIdentity.processId,
+    normalRuntimeInstanceId: normalIdentity.runtimeInstanceId,
+    smokeRuntimeInstanceId: smokeIdentity.runtimeInstanceId,
     passed: Object.values(checks).every(Boolean),
     checks,
     allowedDifferences: [
@@ -276,15 +285,23 @@ async function finishSmoke(window, result) {
 async function finishNormalProof(window, result) {
   if (smokeFinished) return;
   smokeFinished = true;
+  const normalIdentity = runtimeIdentity("normal", `${expectedOrigin}/`);
   const passed = Object.values(result).filter((value) => typeof value === "boolean").every(Boolean);
   writeJsonProductArtifact("normal-runtime-proof.json", "normal-runtime-proof", {
     schemaVersion: 1,
     milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
+    runtimeIdentity: normalIdentity,
     ...result,
     passed,
     generatedAt: new Date().toISOString()
   }, "normal");
+  try {
+    const smokeIdentity = JSON.parse(readFileSync(path.join(productArtifactRoot, "runtime-identity.json"), "utf8"));
+    writeJsonProductArtifact("normal-smoke-parity.json", "normal-smoke-parity", normalSmokeParity(normalIdentity, smokeIdentity));
+  } catch {
+    // Smoke identity is produced by the independent smoke run. Missing data is caught by parity validation.
+  }
   writeProductArtifactIndex();
   console.log(`AUTO_SVGA_DESKTOP_NORMAL_PROOF ${JSON.stringify({ ...result, passed })}`);
   await cleanupRuntime();
@@ -339,6 +356,7 @@ function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
     scenario,
     mode,
     source: "desktop",
+    viewport: { width: null, height: null },
     path: `.artifacts/product/${productMilestoneId}/${fileName}`,
     mime: "application/json",
     sizeBytes: bytes.byteLength,
@@ -489,10 +507,8 @@ async function createExperimentWindow() {
       : "";
   const rendererUrl = auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}/${productMode}`;
   if (productSmokeMode) {
-    const normalIdentity = runtimeIdentity("normal", `${expectedOrigin}/`);
     const smokeIdentity = runtimeIdentity("smoke", rendererUrl);
     writeJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
-    writeJsonProductArtifact("normal-smoke-parity.json", "normal-smoke-parity", normalSmokeParity(normalIdentity, smokeIdentity));
   }
   await window.loadURL(rendererUrl);
 }

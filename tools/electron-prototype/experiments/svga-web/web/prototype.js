@@ -121,7 +121,8 @@ async function runNormalProof() {
   await delay(180);
   const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
   const bytes = new Uint8Array(await fetch(fixtureUrl).then(assertResponse).then((response) => response.arrayBuffer()));
-  const proof = await loadSvgaBytes(bytes.slice(0), "synthetic-avatar-frame.svga", { sizeBytes: bytes.byteLength });
+  const file = new File([bytes], "synthetic-avatar-frame.svga", { type: "application/octet-stream" });
+  const proof = await loadSvgaFile(file, "normal-proof");
   await delay(260);
   await captureArtifact("actual-normal-loaded");
   await reportNormalProof({
@@ -189,6 +190,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
   cleanupPlayer();
   activeName = name;
   setLoadingState(name);
+  await delay(180);
   await captureArtifact("desktop-loading");
   let reportPromise;
   try {
