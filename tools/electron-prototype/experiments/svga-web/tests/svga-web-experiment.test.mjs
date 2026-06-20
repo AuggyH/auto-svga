@@ -97,6 +97,9 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) clamp\(360px, 29vw, 440px\)/);
   assert.match(styles, /\.prototypeBadge/);
   assert.match(styles, /\.playerBar/);
+  assert.match(styles, /\.dropZone\.isDragOver/);
+  assert.match(styles, /\.dropZone\.hasLoadedMedia \.dropZoneHint/);
+  assert.match(styles, /\.dropZoneAction/);
   assert.match(renderer, /renderDesktopInspectionPresentation/);
   assert.match(renderer, /createInspectionPresentation/);
   assert.match(renderer, /data-inspection-group="overview"/);
@@ -106,6 +109,12 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   assert.match(renderer, /data-technical-default-collapsed/);
   assert.match(renderer, /data-inspection-empty/);
   assert.match(renderer, /isLoading/);
+  assert.match(renderer, /拖拽 SVGA 文件到此处/);
+  assert.match(renderer, /选择 SVGA 文件/);
+  assert.match(renderer, /重新选择 SVGA 文件/);
+  assert.match(renderer, /hasLoadedMedia/);
+  assert.match(renderer, /userFacingAuditStatus/);
+  assert.match(renderer, /isRawAuditKey/);
   assert.match(renderer, /fileInput\.addEventListener\("change"/);
   assert.match(renderer, /dropZone\.addEventListener\("drop"/);
   assert.match(renderer, /playButton\.addEventListener\("click"/);
@@ -144,11 +153,15 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.equal(rootPackage.scripts["desktop:dev"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev");
   assert.equal(rootPackage.scripts["desktop:smoke"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke");
   assert.match(rootPackage.scripts["desktop:p2:normal-proof"], /desktop:p2:normal-proof/);
+  assert.equal(rootPackage.scripts["desktop:p2:reviewer-b"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:reviewer-b");
+  assert.equal(rootPackage.scripts["desktop:p2:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:upload-package");
   assert.equal(rootPackage.scripts.test, "npm run test:all");
   assert.equal(rootPackage.scripts["local:preview"], "node tools/launch-local-preview.mjs");
   assert.match(experimentPackage.scripts["desktop:dev"], /electron \.$/);
   assert.match(experimentPackage.scripts["desktop:smoke"], /--smoke --product-smoke/);
   assert.match(experimentPackage.scripts["desktop:p2:normal-proof"], /run-canonical-normal-proof\.mjs/);
+  assert.match(experimentPackage.scripts["desktop:p2:reviewer-b"], /build-p2-reviewer-b-categories\.mjs/);
+  assert.match(experimentPackage.scripts["desktop:p2:upload-package"], /build-p2-upload-package\.mjs/);
   assert.doesNotMatch(experimentPackage.scripts["desktop:p2:normal-proof"], /--p2-normal-proof/);
   assert.notEqual(rootPackage.scripts["desktop:dev"], legacyPackage.scripts["spike:electron:smoke"]);
   assert.doesNotMatch(rootPackage.scripts["desktop:dev"], /tools\/electron-prototype run/);
@@ -167,8 +180,70 @@ test("P2 parity report generator is deterministic and not unconditional pass", a
   assert.match(source, /shared_token_file_exists/);
   assert.match(source, /matched-web-desktop-loaded-comparison\.png/);
   assert.match(source, /normalRuntimeEvidence/);
+  assert.match(source, /fixtureParity/);
+  assert.match(source, /comparison-manifest\.json/);
+  assert.match(source, /canonical-fixture\.json/);
+  assert.match(source, /web_valid_phase_playback_confirmed/);
+  assert.match(source, /web_invalid_phase_isolated/);
+  assert.match(source, /requiredCategoryStatus/);
   assert.doesNotMatch(source, /productIdentity:\s*\{\s*status:\s*"pass"/);
   assert.doesNotMatch(source, /unresolvedDifferences:\s*\[\]/);
+});
+
+test("P2 web reference capture isolates valid and invalid SVGA phases", async () => {
+  const source = await readFile(path.join(experimentRoot, "scripts/web-reference-capture.cjs"), "utf8");
+  assert.match(source, /setPhase\("valid-load"\)/);
+  assert.match(source, /setPhase\("valid-inspection"\)/);
+  assert.match(source, /setPhase\("invalid-load"\)/);
+  assert.match(source, /validPhaseErrors/);
+  assert.match(source, /invalidPhaseErrors/);
+  assert.match(source, /validPhase:\s*\{/);
+  assert.match(source, /invalidPhase:\s*\{/);
+  assert.match(source, /playbackConfirmed = normalizedProof\.loaded === true/);
+  assert.doesNotMatch(source, /consoleMessages\.filter/);
+});
+
+test("P2 canonical fixture helper freezes one approved fixture for all proof paths", async () => {
+  const helper = await readFile(path.join(experimentRoot, "scripts/p2-fixture.mjs"), "utf8");
+  const webCapture = await readFile(path.join(experimentRoot, "scripts/capture-p2-web-reference.mjs"), "utf8");
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  assert.match(helper, /canonical-fixture\.json/);
+  assert.match(helper, /canonicalFixtureFileName = "canonical-fixture\.svga"/);
+  assert.match(helper, /approvedSyntheticOrRepositoryFixture: true/);
+  assert.match(helper, /readCanonicalFixture/);
+  assert.match(webCapture, /ensureCanonicalFixture/);
+  assert.match(webCapture, /readCanonicalFixture/);
+  assert.match(webCapture, /mergeFixtureMetadata\("web-reference-runtime-proof\.json"\)/);
+  assert.match(main, /canonicalFixtureMetadata/);
+  assert.match(main, /fixtureSha256/);
+});
+
+test("P2 Reviewer B product categories are generated from required parity categories", async () => {
+  const source = await readFile(path.join(experimentRoot, "scripts/build-p2-reviewer-b-categories.mjs"), "utf8");
+  assert.match(source, /reviewer-b-product-categories\.json/);
+  assert.match(source, /productIdentity/);
+  assert.match(source, /fixtureParity/);
+  assert.match(source, /playerWorkspace/);
+  assert.match(source, /emptyState/);
+  assert.match(source, /loadingState/);
+  assert.match(source, /invalidState/);
+  assert.match(source, /webDesktopParity/);
+  assert.match(source, /normalRuntimeEvidence/);
+  assert.match(source, /verdict: blocking\.length === 0 \? "PASS" : "BLOCKING"/);
+});
+
+test("P2 upload package contract includes review packet, screenshots, and reports", async () => {
+  const source = await readFile(path.join(experimentRoot, "scripts/build-p2-upload-package.mjs"), "utf8");
+  assert.match(source, /REVIEW_PACKET\.md/);
+  assert.match(source, /FINAL_RESPONSE\.txt/);
+  assert.match(source, /MANIFEST\.json/);
+  assert.match(source, /screenshots/);
+  assert.match(source, /reports/);
+  assert.match(source, /canonical-fixture\.json/);
+  assert.match(source, /comparison-manifest\.json/);
+  assert.match(source, /reviewer-b-product-categories\.json/);
+  assert.equal(source.includes("P2-${headShort}-upload.zip"), true);
+  assert.equal(source.includes("review/P2-latest"), true);
 });
 
 test("real sample audit harness stores aliases and avoids absolute paths in report output", async () => {

@@ -26,6 +26,7 @@ const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "P2";
 const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
   ? path.resolve(process.env.AUTO_SVGA_PRODUCT_ARTIFACTS)
   : path.join(repoRoot, ".artifacts/product", productMilestoneId);
+const canonicalFixtureRuntimePath = path.join(appRoot, ".runtime/fixture/avatar-frame-smoke.svga");
 const sessionRoot = path.join(os.tmpdir(), `auto-svga-desktop-baseline-${process.pid}`);
 const reportToken = randomBytes(24).toString("hex");
 const runtimeInstanceId = randomBytes(12).toString("hex");
@@ -185,6 +186,28 @@ function sha256RelativeFile(relativePath) {
   return createHash("sha256").update(readFileSync(path.join(appRoot, relativePath))).digest("hex");
 }
 
+function canonicalFixtureMetadata() {
+  try {
+    const manifest = JSON.parse(readFileSync(path.join(productArtifactRoot, "canonical-fixture.json"), "utf8"));
+    return {
+      fixtureLabel: manifest.label,
+      fixtureSha256: manifest.sha256,
+      fixtureSizeBytes: manifest.sizeBytes,
+      fixtureSourcePath: manifest.sourcePath,
+      fixtureArtifactPath: manifest.artifactPath
+    };
+  } catch {
+    const bytes = readFileSync(canonicalFixtureRuntimePath);
+    return {
+      fixtureLabel: "synthetic-avatar-frame.svga",
+      fixtureSha256: createHash("sha256").update(bytes).digest("hex"),
+      fixtureSizeBytes: bytes.byteLength,
+      fixtureSourcePath: "tools/electron-prototype/experiments/svga-web/.runtime/fixture/avatar-frame-smoke.svga",
+      fixtureArtifactPath: "tools/electron-prototype/experiments/svga-web/.runtime/fixture/avatar-frame-smoke.svga"
+    };
+  }
+}
+
 function runtimeIdentity(mode, rendererUrl) {
   return {
     schemaVersion: 1,
@@ -206,6 +229,7 @@ function runtimeIdentity(mode, rendererUrl) {
     runtimeInstanceId,
     player: playerIdentity,
     csp,
+    ...canonicalFixtureMetadata(),
     indexHtmlSha256: sha256RelativeFile(rendererHtmlEntry),
     rendererJsSha256: sha256RelativeFile(rendererEntry),
     stylesCssSha256: sha256RelativeFile(stylesEntry),
@@ -305,7 +329,8 @@ async function finishNormalProof(window, result) {
     windowShown: true,
     automationMechanism: "host-driven file input event in canonical renderer",
     fileOpenMechanism: "ordinary file input change event",
-    fixture: "synthetic-avatar-frame.svga",
+    fixture: canonicalFixtureMetadata().fixtureLabel,
+    ...canonicalFixtureMetadata(),
     screenshotHash: productArtifactIndex.artifacts.find((artifact) => artifact.scenario === "actual-normal-loaded")?.sha256 ?? null,
     processExitCode: passed ? 0 : 1,
     externalRequests: [],
@@ -346,6 +371,7 @@ async function captureProductArtifact(window, scenario) {
   const fileName = `${scenario}.png`;
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
+  const fixture = canonicalFixtureMetadata();
   addProductArtifactRecord({
     scenario,
     mode: scenario === "actual-normal-loaded" ? "normal" : "smoke",
@@ -355,7 +381,8 @@ async function captureProductArtifact(window, scenario) {
     mime: "image/png",
     sizeBytes: png.byteLength,
     sha256: createHash("sha256").update(png).digest("hex"),
-    fixture: "synthetic-avatar-frame.svga",
+    fixture: fixture.fixtureLabel,
+    ...fixture,
     headCommit: productArtifactIndex.headCommit,
     rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
     rendererSha256: sha256RelativeFile(rendererEntry),
@@ -369,6 +396,7 @@ async function captureProductArtifact(window, scenario) {
 function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
   const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
   writeFileSync(path.join(productArtifactRoot, fileName), bytes);
+  const fixture = canonicalFixtureMetadata();
   addProductArtifactRecord({
     scenario,
     mode,
@@ -378,7 +406,8 @@ function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
     mime: "application/json",
     sizeBytes: bytes.byteLength,
     sha256: createHash("sha256").update(bytes).digest("hex"),
-    fixture: "synthetic-avatar-frame.svga",
+    fixture: fixture.fixtureLabel,
+    ...fixture,
     headCommit: productArtifactIndex.headCommit,
     rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
     rendererSha256: sha256RelativeFile(rendererEntry),

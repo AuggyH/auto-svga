@@ -1,9 +1,9 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ensureCanonicalFixture, fixtureFields, readCanonicalFixture } from "./p2-fixture.mjs";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const experimentRoot = path.resolve(scriptRoot, "..");
@@ -12,21 +12,7 @@ const artifactRoot = path.join(repoRoot, ".artifacts/product/P2");
 const port = Number(process.env.AUTO_SVGA_P2_WEB_PORT ?? 4187);
 const serverUrl = `http://127.0.0.1:${port}/tools/svga-player-preview/`;
 const electronBin = path.resolve(experimentRoot, "../../node_modules/.bin/electron");
-const preferredFixtureCandidates = [
-  {
-    path: path.join(repoRoot, "examples/avatar_frame_basic/output/avatar_frame_basic.svga"),
-    label: "local-avatar-frame-basic-output.svga"
-  },
-  {
-    path: path.join(repoRoot, "jobs/avatar_frame_gold_green_real_002/output/avatar_frame_gold_green_real_002.svga"),
-    label: "local-avatar-frame-gold-green-real-002.svga"
-  },
-  {
-    path: path.join(repoRoot, "tools/electron-prototype/experiments/svga-web/.runtime/fixture/avatar-frame-smoke.svga"),
-    label: "synthetic-avatar-frame.svga"
-  }
-];
-const selectedFixture = preferredFixtureCandidates.find((candidate) => existsSync(candidate.path));
+let selectedFixture;
 
 function gitHeadCommit() {
   return execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).trim();
@@ -75,6 +61,7 @@ async function addArtifact(index, fileName, scenario, source, mode, viewport) {
     sizeBytes: bytes.byteLength,
     sha256: createHash("sha256").update(bytes).digest("hex"),
     fixture: selectedFixture?.label ?? "unknown",
+    ...fixtureFields(selectedFixture),
     headCommit: index.headCommit,
     generatedAt: new Date().toISOString(),
     humanReviewRequired: true
@@ -83,14 +70,24 @@ async function addArtifact(index, fileName, scenario, source, mode, viewport) {
   index.artifacts.push(record);
 }
 
+async function mergeFixtureMetadata(fileName) {
+  const filePath = path.join(artifactRoot, fileName);
+  const payload = JSON.parse(await readFile(filePath, "utf8"));
+  await writeFile(filePath, `${JSON.stringify({
+    ...payload,
+    ...fixtureFields(selectedFixture)
+  }, null, 2)}\n`);
+}
+
 async function main() {
   await mkdir(artifactRoot, { recursive: true });
   execFileSync("npm", ["--prefix", "tools/electron-prototype/experiments/svga-web", "run", "spike:svga-web:prepare"], {
     cwd: repoRoot,
     stdio: "ignore"
   });
-  if (!selectedFixture) throw new Error("No SVGA fixture available for Web reference capture.");
-  const fixturePath = selectedFixture.path;
+  await ensureCanonicalFixture({ repoRoot, artifactRoot, headCommit: gitHeadCommit() });
+  selectedFixture = await readCanonicalFixture({ repoRoot, artifactRoot });
+  const fixturePath = selectedFixture.absoluteArtifactPath;
   const server = spawn(process.execPath, ["tools/svga-player-preview/server.mjs"], {
     cwd: repoRoot,
     env: { ...process.env, PORT: String(port), HOST: "127.0.0.1" },
@@ -117,6 +114,8 @@ async function main() {
   if (server.exitCode && server.exitCode !== 0 && stderr.trim()) {
     console.error(stderr.trim());
   }
+  await mergeFixtureMetadata("web-reference-runtime-proof.json");
+  await mergeFixtureMetadata("web-reference-request-audit.json");
 
   const index = await readIndex();
   index.headCommit = gitHeadCommit();
@@ -127,6 +126,8 @@ async function main() {
   await addArtifact(index, "web-reference-invalid.png", "web-reference-invalid", "web", "reference", { width: 1440, height: 900 });
   await addArtifact(index, "web-reference-request-audit.json", "web-reference-request-audit", "web", "reference", { width: 0, height: 0 });
   await addArtifact(index, "web-reference-runtime-proof.json", "web-reference-runtime-proof", "web", "reference", { width: 0, height: 0 });
+  await addArtifact(index, "canonical-fixture.svga", "canonical-fixture-bytes", "fixture", "reference", { width: 0, height: 0 });
+  await addArtifact(index, "canonical-fixture.json", "canonical-fixture", "fixture", "reference", { width: 0, height: 0 });
   await writeFile(path.join(artifactRoot, "artifact-index.json"), `${JSON.stringify(index, null, 2)}\n`);
 }
 

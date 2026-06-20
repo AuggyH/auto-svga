@@ -14,6 +14,8 @@
     "desktop:p2:normal-proof": "npm run spike:svga-web:prepare && node scripts/run-canonical-normal-proof.mjs",
     "desktop:p2:web-reference": "node scripts/capture-p2-web-reference.mjs",
     "desktop:p2:parity-report": "node scripts/build-p2-parity-report.mjs",
+    "desktop:p2:reviewer-b": "node scripts/build-p2-reviewer-b-categories.mjs",
+    "desktop:p2:upload-package": "node scripts/build-p2-upload-package.mjs",
     "internal:trial:parity": "node scripts/run-real-sample-parity-audit.mjs",
     "spike:svga-web:package:mac": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=darwin --arch=arm64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
     "spike:svga-web:package:win": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=win32 --arch=x64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",

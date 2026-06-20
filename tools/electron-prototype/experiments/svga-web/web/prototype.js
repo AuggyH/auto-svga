@@ -4,6 +4,7 @@ import { FILL_MODE, Parser, Player } from "/vendor/svga-web-2.4.4.js";
 const canvas = document.querySelector("#player");
 const dropZone = document.querySelector("#dropZone");
 const dropZoneHint = document.querySelector("#dropZoneHint");
+const emptySelectButton = document.querySelector("#emptySelectButton");
 const fileInput = document.querySelector("#fileInput");
 const reportRoot = document.querySelector("#reportRoot");
 const playbackStatus = document.querySelector("#playbackStatus");
@@ -34,6 +35,8 @@ fileInput.addEventListener("change", async () => {
   if (!file) return;
   await loadSvgaFile(file, "file-picker");
 });
+
+emptySelectButton?.addEventListener("click", () => fileInput.click());
 
 dropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
@@ -207,7 +210,8 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
     runtimeStatus.textContent = "SVGA 已加载，检查报告已生成。";
     playbackStatus.textContent = `正在播放：${safeDisplayName(name)}`;
     dropZone.classList.remove("isError");
-    dropZoneHint.textContent = "可以继续拖入或选择另一个本地 SVGA 文件。";
+  dropZoneHint.textContent = "可以继续拖入或选择另一个本地 SVGA 文件。";
+    dropZone.classList.add("hasLoadedMedia");
 
     if (isSmokeMode) {
       player.pause();
@@ -285,11 +289,14 @@ function showEmptyState() {
   runtimeStatus.textContent = "请选择本地 SVGA 文件开始检查。";
   playbackStatus.textContent = "未开始";
   dropZone.classList.remove("isError", "isLoading");
+  dropZone.classList.remove("hasLoadedMedia");
   dropZoneHint.innerHTML = `
     <span class="uploadIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg></span>
-    <strong>选择或拖入本地 SVGA 文件</strong>
-    <span>打开后会显示预览、概览、规范检查与动效诊断。</span>
+    <strong>拖拽 SVGA 文件到此处</strong>
+    <span>或选择本地文件，打开后会显示预览、概览、规范检查与动效诊断。</span>
+    <button class="dropZoneAction" type="button" data-empty-select-button>选择 SVGA 文件</button>
   `;
+  dropZoneHint.querySelector("[data-empty-select-button]")?.addEventListener("click", () => fileInput.click());
   reportRoot.innerHTML = renderInspectionEmpty("打开文件后显示检查结果", "这里会显示概览、规范检查和 Motion Asset Audit，只读展示，不会修改文件。");
   updateFileInfo();
   updatePlaybackControls();
@@ -298,6 +305,7 @@ function showEmptyState() {
 function setLoadingState(name) {
   dropZone.classList.remove("isError");
   dropZone.classList.add("isLoading");
+  dropZone.classList.remove("hasLoadedMedia");
   runtimeStatus.textContent = "正在加载本地 SVGA...";
   playbackStatus.textContent = `加载中：${safeDisplayName(name)}`;
   dropZoneHint.innerHTML = `
@@ -313,15 +321,19 @@ function setLoadingState(name) {
 function showError(message, detail = "") {
   dropZone.classList.add("isError");
   dropZone.classList.remove("isLoading");
+  dropZone.classList.remove("hasLoadedMedia");
   runtimeStatus.textContent = message;
   playbackStatus.textContent = "未播放";
   dropZoneHint.innerHTML = `
+    <span class="uploadIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v5" /><path d="M12 17h.01" /><path d="M4.9 19h14.2L12 4.8 4.9 19Z" /></svg></span>
     <strong>请换一个有效的 .svga 文件。</strong>
+    <button class="dropZoneAction" type="button" data-error-select-button>重新选择 SVGA 文件</button>
     <details class="errorDetails">
       <summary>查看技术细节</summary>
       <code>${escapeHtml(detail || message)}</code>
     </details>
   `;
+  dropZoneHint.querySelector("[data-error-select-button]")?.addEventListener("click", () => fileInput.click());
   reportRoot.innerHTML = renderInspectionEmpty("未生成检查报告", "请重新选择有效的 .svga 文件。技术错误已折叠在播放器区域。");
   updateFileInfo();
   updatePlaybackControls();
@@ -441,11 +453,11 @@ function createInspectionPresentation(report) {
       }))
     },
     audit: {
-      statusLabel: audit.statusLabel ?? audit.auditStatus ?? "只读",
-      summary: audit.summaryDescription ?? audit.summaryTitle ?? "Motion Asset Audit 已生成，只读展示主要风险与建议。",
+      statusLabel: userFacingAuditStatus(audit.statusLabel ?? audit.auditStatus),
+      summary: userFacingAuditSummary(audit.summaryDescription ?? audit.summaryTitle, specPassed),
       findings: auditFindings.slice(0, 4).map((finding) => ({
-        title: finding.title ?? finding.titleKey ?? finding.code ?? "audit_finding",
-        description: finding.description ?? finding.descriptionKey ?? "动效诊断发现",
+        title: userFacingAuditText(finding.title ?? finding.titleKey ?? finding.code, "动效诊断项"),
+        description: userFacingAuditText(finding.description ?? finding.descriptionKey, "该项需要按报告证据复核。"),
         severity: finding.severity ?? "advisory"
       }))
     },
@@ -455,6 +467,29 @@ function createInspectionPresentation(report) {
         : "文件体积、资源数量和透明空白阈值仍保留产品校准说明。"
     }
   };
+}
+
+function userFacingAuditStatus(value) {
+  const text = String(value ?? "");
+  if (!text || isRawAuditKey(text)) return "动效诊断通过";
+  return text;
+}
+
+function userFacingAuditSummary(value, specPassed) {
+  const text = String(value ?? "");
+  if (!text || isRawAuditKey(text)) {
+    return specPassed ? "未发现需要立即处理的问题。" : "发现需要复核的动效诊断项。";
+  }
+  return text;
+}
+
+function userFacingAuditText(value, fallback) {
+  const text = String(value ?? "");
+  return !text || isRawAuditKey(text) ? fallback : text;
+}
+
+function isRawAuditKey(value) {
+  return /^(audit|finding|opportunity|severity|category|uncertainty)\.[a-z0-9_.-]+$/i.test(String(value));
 }
 
 function renderMetric([label, value]) {

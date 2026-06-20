@@ -248,6 +248,10 @@ input {
   background: color-mix(in srgb, var(--danger) 8%, var(--surfaceSubtle));
 }
 
+.dropZone.hasLoadedMedia .dropZoneHint {
+  display: none;
+}
+
 #player {
   position: relative;
   z-index: 1;
@@ -285,6 +289,13 @@ input {
   border-radius: 18px;
   background: color-mix(in srgb, var(--accent) 13%, transparent);
   color: var(--accent);
+}
+
+.dropZoneAction {
+  margin-top: var(--space-2);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  color: #fff;
+  background: var(--accent);
 }
 
 .playerBar {
