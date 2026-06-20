@@ -8,16 +8,16 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP04",
+  "currentWorkPackage": "NQ1-WP05",
   "completedWorkPackages": [
     "NQ1-WP01",
     "NQ1-WP02",
-    "NQ1-WP03"
+    "NQ1-WP03",
+    "NQ1-WP04"
   ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
   "remainingWorkPackages": [
-    "NQ1-WP04",
     "NQ1-WP05",
     "NQ1-WP06",
     "NQ1-WP07",
@@ -203,15 +203,70 @@
     {
       "id": "NQ1-WP04",
       "title": "Async race and failure injection",
-      "status": "pending",
-      "startedAt": null,
-      "finishedAt": null,
-      "startCommit": null,
-      "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
+      "status": "complete",
+      "startedAt": "2026-06-20T20:54:05.000Z",
+      "finishedAt": "2026-06-20T20:59:06.292Z",
+      "startCommit": "afeffd98d2ff5c505c2c28a2c98fa925d8d79bc6",
+      "endCommit": "f970080b58552de76809bddebbcd73e1aa58daaf",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-async-race-harness.ts",
+        "src/tests/nq1-async-race.test.ts",
+        "tools/nq1/generate-async-race-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-async-race.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:async-race",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/svga-image-edit-history.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-async-race-targeted",
+          "status": "pass",
+          "summary": "7 scenarios, 0 failures, staleResultCount=4, rollbackCount=1, saveRejectionCount=1"
+        },
+        {
+          "id": "svga-image-edit-history-regression",
+          "status": "pass",
+          "summary": "6 pass / 0 fail"
+        },
+        {
+          "id": "svga-web-prototype-regression",
+          "status": "pass",
+          "summary": "14 pass / 0 fail"
+        },
+        {
+          "id": "async-race-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/async-race-and-failure-injection-report.json passed and contains no absolute paths"
+        }
+      ],
+      "findings": [
+        "A synthetic async race harness now exercises stale success, stale failure, latest failure rollback, reset-all ordering, open-new-file invalidation, save rejection after state change, and clean save success.",
+        "The harness commits successful preview results through the existing SVGA edit history API and records ignored stale results without advancing history.",
+        "Generated NQ1 async race report is under ignored `.artifacts/product/NQ1/async-race-and-failure-injection-report.json`."
+      ],
       "deferredItems": []
     },
     {
