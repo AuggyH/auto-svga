@@ -6,8 +6,8 @@ Date: 2026-06-20
 
 - milestoneId: P1
 - Milestone: P1 Electron Desktop Mainline Baseline: Local SVGA Open, Playback And Inspection
-- State: contract_frozen
-- Next Action: implementation
+- State: human_required
+- Next Action: external_review
 - repairRound: 0
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
@@ -22,7 +22,11 @@ Date: 2026-06-20
 - M2-R3 final external review recorded at `docs/loop/reviews/M2-R3-final-external-review.md`.
 - Agent Loop infrastructure is frozen.
 - P1 product milestone contract is frozen.
+- P1 implementation is complete at `98f04c16f2efa43228ce4901bd250b887665ada6`.
+- Machine validation passed twice on final implementation HEAD.
+- P1 visual artifacts were generated under `.artifacts/product/P1/`.
+- Human visual acceptance is required before marking P1 as PASS.
 
 ## Next Action
 
-Implement P1 Electron desktop baseline against the frozen contract.
+External review should inspect the P1 review packet and visual artifacts. Do not continue implementation until the human visual decision is returned.
