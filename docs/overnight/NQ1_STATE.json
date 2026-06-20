@@ -8,15 +8,15 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP03",
+  "currentWorkPackage": "NQ1-WP04",
   "completedWorkPackages": [
     "NQ1-WP01",
-    "NQ1-WP02"
+    "NQ1-WP02",
+    "NQ1-WP03"
   ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
   "remainingWorkPackages": [
-    "NQ1-WP03",
     "NQ1-WP04",
     "NQ1-WP05",
     "NQ1-WP06",
@@ -150,15 +150,54 @@
     {
       "id": "NQ1-WP03",
       "title": "Model-driven undo/redo state-machine tests",
-      "status": "pending",
-      "startedAt": null,
-      "finishedAt": null,
-      "startCommit": null,
+      "status": "complete",
+      "startedAt": "2026-06-20T20:47:28.863Z",
+      "finishedAt": "2026-06-20T20:51:16.717Z",
+      "startCommit": "c30fe909dc985ae412d2f05995fce623bd535e2b",
       "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
+      "filesChanged": [
+        "src/tests/helpers/nq1-history-model.ts",
+        "src/tests/nq1-history-model.test.ts",
+        "tools/nq1/generate-model-history-report.mjs",
+        "package.json",
+        "docs/overnight/NQ1_STATE.json",
+        "docs/overnight/NQ1_HISTORY.jsonl"
+      ],
+      "commands": [
+        {
+          "command": "npm run build && node --test dist/tests/nq1-history-model.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:model-history",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/svga-image-edit-history.test.js",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-model-history-targeted",
+          "status": "pass",
+          "summary": "100 seeds x 100 operations = 10,000 operations, 0 failures"
+        },
+        {
+          "id": "svga-image-edit-history-regression",
+          "status": "pass",
+          "summary": "6 pass / 0 fail"
+        },
+        {
+          "id": "model-history-artifact",
+          "status": "pass",
+          "summary": "model-based-history-report.json passed with all invariant coverage flags true and no absolute path"
+        }
+      ],
+      "findings": [
+        "Pure reference model matched the implementation for replace, repeated replace, reset selected, reset all, undo, redo, save point, invalid replace, failed preview no-op, open new file, redo branch truncation, and history cap.",
+        "Generated `.artifacts/product/NQ1/model-based-history-report.json` records seed count, operation count, invariant coverage, and failures."
+      ],
       "deferredItems": []
     },
     {
