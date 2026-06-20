@@ -706,7 +706,6 @@ async function maybeRunP3EditSmoke(originalBytes) {
     const resourceList = Boolean(editSession?.imageResources?.length > 0);
     const selectedResource = selectedResourceKey;
     const originalThumbnailSha256 = await resourceThumbnailSha256(resourceByKey(selectedResource));
-    await captureArtifact("p3-replacement-selected");
     const originalCanvasHash = await canvasHash(canvas);
     const originalCanvasDataUrl = canvas.toDataURL("image/png");
     const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-p3.png").then(assertResponse).then((response) => response.arrayBuffer()));
@@ -717,6 +716,14 @@ async function maybeRunP3EditSmoke(originalBytes) {
     const editedCanvasDataUrl = canvas.toDataURL("image/png");
     const replacementThumbnailSha256 = await resourceThumbnailSha256(resourceByKey(selectedResource));
     const replacementThumbnailVisible = resourceThumbnailVisible(selectedResource);
+    const replacementSelectedArtifact = await captureArtifact("p3-replacement-selected");
+    const replacementSelectedStateText = reportRoot.textContent;
+    const replacementSelectedStateConfirmed =
+      replacementSelectedStateText.includes("有未保存修改")
+      && !replacementSelectedStateText.includes("替换尺寸未选择")
+      && !replacementSelectedStateText.includes("替换尺寸：未选择")
+      && !replacementSelectedStateText.includes("替换 Hash无")
+      && !replacementSelectedStateText.includes("替换 Hash：无");
     await captureArtifact("p3-replacement-preview");
     await captureArtifact("p3-dirty-state");
     const replacementPreview = Boolean(editedSvgaBytes)
@@ -790,6 +797,10 @@ async function maybeRunP3EditSmoke(originalBytes) {
           thumbnailSha256: replacementCandidateSha256,
           visible: true
         },
+        replacementSelectedScreenshotSha256: replacementSelectedArtifact?.sha256 ?? "",
+        replacementSelectedStateConfirmed,
+        replacementSelectedCandidateSha256: replacementCandidateSha256,
+        replacementSelectedCandidateVisible: replacementThumbnailVisible,
         replacementPreview: {
           thumbnailSource: "replacement_bytes",
           thumbnailSha256: replacementThumbnailSha256,

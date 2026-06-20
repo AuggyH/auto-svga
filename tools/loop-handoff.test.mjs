@@ -71,6 +71,20 @@ function hashText(text) {
   return createHash("sha256").update(text).digest("hex");
 }
 
+function extractEmbeddedDiffForTest(packetText) {
+  const startMarker = "# Full Diff\n\n";
+  const startIndex = packetText.indexOf(startMarker);
+  assert.notEqual(startIndex, -1);
+  const afterMarker = packetText.slice(startIndex + startMarker.length);
+  const fenceStart = afterMarker.indexOf("```diff\n");
+  assert.notEqual(fenceStart, -1);
+  const diffStart = fenceStart + "```diff\n".length;
+  const afterDiffStart = afterMarker.slice(diffStart);
+  const diffEnd = afterDiffStart.indexOf("\n```\n\n# Changed File Snapshots");
+  assert.notEqual(diffEnd, -1);
+  return afterDiffStart.slice(0, diffEnd);
+}
+
 function criteria(milestoneId = "M2-R2") {
   return Array.from({ length: 15 }, (_, index) => {
     const id = `${milestoneId}-AC-${String(index + 1).padStart(2, "0")}`;
@@ -464,6 +478,59 @@ test("PASS changes.patch is byte-exact with literal source diff", async () => {
     assert.equal(result.manifest.diffFidelity, "EXACT");
     assert.equal(result.manifest.sourceDiffSha256, hashText(sourcePatch));
     assert.equal(result.manifest.packetDiffSha256, hashText(packetPatch));
+  });
+});
+
+test("embedded full diff is byte-exact with changes.patch and recorded hashes", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const result = await generateSealedPacket({ repo, base, head });
+    const packetText = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
+    const patchText = await readFile(join(result.packetRoot, "changes.patch"), "utf8");
+    const embeddedDiff = extractEmbeddedDiffForTest(packetText);
+
+    assert.equal(result.manifest.companionRequired, false);
+    assert.equal(embeddedDiff, patchText);
+    assert.equal(hashText(embeddedDiff), result.manifest.sourceDiffSha256);
+    assert.equal(hashText(embeddedDiff), result.manifest.packetDiffSha256);
+  });
+});
+
+test("post-seal verifier fails when embedded full diff is changed without changing changes.patch", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const result = await generateSealedPacket({ repo, base, head });
+    const packetPath = join(result.packetRoot, "REVIEW_PACKET.md");
+    const packetText = await readFile(packetPath, "utf8");
+    await writeText(packetPath, packetText.replace("hello", "hullo"));
+
+    const seal = await verifySealedPacket({
+      repoRoot: repo,
+      packetRoot: result.packetRoot,
+      latestRoot: join(repo, ".artifacts/loop-handoff/latest"),
+      manifest: await readJson(join(result.packetRoot, "MANIFEST.json")),
+      finalResponseText: await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8")
+    });
+
+    assert.equal(seal.status, "fail");
+    assert.equal(seal.errors.some((error) => error.includes("embedded full diff") || error.includes("artifact sha256 mismatch")), true);
+  });
+});
+
+test("handoff refuses private local paths in source diff before sealing", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const privatePath = ["", "Users", "private-user", "example"].join("/");
+    await writeText(join(repo, "src/private-path.js"), `export const path = ${JSON.stringify(privatePath)};\n`);
+    run("git", ["add", "src/private-path.js"], repo);
+    run("git", ["commit", "-m", "private path"], repo);
+    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "src/private-path.js": "Adds a generated private-path fixture to verify seal-time privacy failure."
+    });
+
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /private local paths/
+    );
   });
 });
 

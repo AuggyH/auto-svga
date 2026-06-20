@@ -6,9 +6,9 @@ Date: 2026-06-20
 
 - milestoneId: P3
 - Milestone: P3 Basic Image Resource Replacement And Save As
-- State: terminal_pass
+- State: terminal_human_required
 - Next Action: external_review
-- repairRound: 2
+- repairRound: 3
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -63,8 +63,11 @@ Date: 2026-06-20
 - P3 external product review 1 selected `REPAIR_REQUIRED` for missing sealed evidence in the upload ZIP, privacy-audit leakage, coarse round-trip invariants, missing replacement thumbnails, and artifact index / ZIP mismatch.
 - P3 repair-2 closes the external review blockers with replacement/reopened/reset thumbnail evidence, round-trip report schemaVersion 2, edited SVGA artifact indexing, and a P3 upload-package builder with redacted privacy audit.
 - P3 repair-2 validation passed: targeted editor tests, isolated svga-web tests, P3 desktop smoke, root `npm test`, `git diff --check`, and `npm run loop:validate`.
-- Final source state is ready for external review; final sealed packet, upload ZIP, and visible review folder are generated after the source commit.
+- External product review 2 selected `REPAIR_REQUIRED` against `33323a17faab3662b3dc72e3dc6487dd68bb3fe9`.
+- P3 repair-3 fixes sealed packet diff fidelity, privacy-clean upload bundle generation, sealed reviewer/validation evidence identity, replacement-selected visual evidence, stale upload refs, and the required terminal Human Gate.
+- P3 repair-3 closes sealed packet diff fidelity checks, source-diff privacy failure, byte-exact sealed evidence upload copying, replacement-selected candidate evidence, stale upload evidence, and terminal Human Gate handling.
+- P3 repair-3 remains HUMAN_REQUIRED because product owner acceptance is required before any next milestone starts.
 
 ## Next Action
 
-Await external decision.
+Await external product owner review for P3 Human Gate. Do not start the next product milestone until option A is explicitly accepted.

@@ -15,7 +15,7 @@ functionalOutcome: PASS_WITH_HANDOFF_AND_PRODUCT_EVIDENCE_GAPS
    `PASS_PENDING_PACKET_SEAL`, `PENDING_FINAL_HANDOFF`, and
    `reviewedHeadCommit: see final sealed packet`.
 3. `bundle-privacy-audit.json` records real local forbidden patterns such as
-   `/Users/huangtengxin` and repository path fragments, so the audit file
+   `<real-user-home>` and repository path fragments, so the audit file
    itself leaks local identity data.
 4. `round-trip-report.json` uses broad boolean invariant evidence instead of
    individually checkable sprite, frame, transform, alpha, layout, shape,

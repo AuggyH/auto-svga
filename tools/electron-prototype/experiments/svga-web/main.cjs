@@ -255,16 +255,35 @@ function validateP3ThumbnailEvidence(value) {
     "originalDiffersFromReplacement",
     "invalidPngRetainsLastValidThumbnail"
   ];
+  const replacementSelectedScreenshotSha256 = typeof value.replacementSelectedScreenshotSha256 === "string"
+    ? value.replacementSelectedScreenshotSha256.slice(0, 80)
+    : "";
+  const replacementSelectedCandidateSha256 = typeof value.replacementSelectedCandidateSha256 === "string"
+    ? value.replacementSelectedCandidateSha256.slice(0, 80)
+    : "";
+  const replacementSelectedStateConfirmed = value.replacementSelectedStateConfirmed === true;
+  const replacementSelectedCandidateVisible = value.replacementSelectedCandidateVisible === true;
   const failures = [];
   for (const phase of phases) {
     if (!normalized[phase].thumbnailSha256) failures.push(`${phase}_thumbnail_missing`);
     if (!normalized[phase].visible) failures.push(`${phase}_thumbnail_not_visible`);
+  }
+  if (!replacementSelectedScreenshotSha256) failures.push("replacement_selected_screenshot_missing");
+  if (!replacementSelectedStateConfirmed) failures.push("replacement_selected_state_not_confirmed");
+  if (!replacementSelectedCandidateVisible) failures.push("replacement_selected_candidate_not_visible");
+  if (!replacementSelectedCandidateSha256) failures.push("replacement_selected_candidate_sha_missing");
+  if (replacementSelectedCandidateSha256 !== normalized.replacementCandidate.thumbnailSha256) {
+    failures.push("replacement_selected_candidate_sha_mismatch");
   }
   for (const invariant of requiredInvariants) {
     if (invariants[invariant] !== true) failures.push(`${invariant}_failed`);
   }
   return {
     ...normalized,
+    replacementSelectedScreenshotSha256,
+    replacementSelectedStateConfirmed,
+    replacementSelectedCandidateSha256,
+    replacementSelectedCandidateVisible,
     invariants,
     passed: failures.length === 0,
     failures
@@ -703,7 +722,7 @@ async function captureProductArtifact(window, scenario) {
     humanReviewRequired: true
   });
   writeProductArtifactIndex();
-  return { path: `.artifacts/product/${productMilestoneId}/${fileName}`, sizeBytes: png.byteLength };
+  return { path: `.artifacts/product/${productMilestoneId}/${fileName}`, sizeBytes: png.byteLength, sha256: pngHash };
 }
 
 function artifactFileNameForScenario(scenario) {

@@ -743,6 +743,10 @@ function sha256Buffer(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function computeCandidateDigest(parts) {
   return sha256Text(stableJson(parts));
 }
@@ -1087,11 +1091,12 @@ async function copyLatest({ packetRoot, latestRoot, outputRoot }) {
       "REVIEW_PACKET.md",
       "MANIFEST.json",
       "changes.patch",
-      "validation.json",
-      "reviewer-a.json",
-      "reviewer-b.json",
-      "artifact-index.json",
-      "FINAL_RESPONSE.txt"
+	      "validation.json",
+	      "reviewer-a.json",
+	      "reviewer-b.json",
+	      "post-seal-verification.json",
+	      "artifact-index.json",
+	      "FINAL_RESPONSE.txt"
     ]) {
       const source = path.join(packetRoot, fileName);
       if (existsSync(source)) {
@@ -1131,7 +1136,50 @@ function parseFinalResponseUploads(text) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => line.replace(/^\d+\.\s*/, ""));
+    .map((line) => {
+      const withoutIndex = line.replace(/^\d+\.\s*/, "");
+      const markdownLink = withoutIndex.match(/^\[[^\]]+\]\((.+)\)$/);
+      return markdownLink ? markdownLink[1] : withoutIndex;
+    });
+}
+
+function extractEmbeddedFullDiff(reviewPacketText) {
+  const marker = "# Full Diff\n\n";
+  const markerIndex = reviewPacketText.indexOf(marker);
+  if (markerIndex < 0) return { status: "missing_section" };
+  const afterMarker = reviewPacketText.slice(markerIndex + marker.length);
+  if (!afterMarker.includes("```diff\n")) return { status: "companion_required" };
+  const start = afterMarker.indexOf("```diff\n") + "```diff\n".length;
+  const afterStart = afterMarker.slice(start);
+  const end = afterStart.indexOf("\n```\n\n# Changed File Snapshots");
+  if (end < 0) return { status: "missing_closing_fence" };
+  return {
+    status: "embedded",
+    bytes: Buffer.from(afterStart.slice(0, end), "utf8")
+  };
+}
+
+function privatePathRules() {
+  const slash = "/";
+  const usersPath = ["", "Users", ""].join(slash);
+  const homePath = ["", "home", ""].join(slash);
+  const windowsUsers = ["[A-Za-z]:", "Users", ""].join("\\\\");
+  return [
+    { ruleId: "macos-user-path", pattern: new RegExp(`${escapeRegExp(usersPath)}[^/\\s"'\\\\\`]+(?:/[^\\s"'\\\\\`]*)?`, "g") },
+    { ruleId: "posix-home-path", pattern: new RegExp(`${escapeRegExp(homePath)}[^/\\s"'\\\\\`]+(?:/[^\\s"'\\\\\`]*)?`, "g") },
+    { ruleId: "windows-user-path", pattern: new RegExp(`${windowsUsers}[^\\\\\\s"'\\\`]+(?:\\\\[^\\s"'\\\`]*)?`, "g") }
+  ];
+}
+
+function findPrivatePathFindings(text) {
+  const findings = [];
+  for (const rule of privatePathRules()) {
+    for (const match of text.matchAll(rule.pattern)) {
+      const line = text.slice(0, match.index).split("\n").length;
+      findings.push({ ruleId: rule.ruleId, lineStart: line, lineEnd: line, redacted: true });
+    }
+  }
+  return findings;
 }
 
 export async function verifySealedPacket({ repoRoot, packetRoot, latestRoot, manifest, finalResponseText }) {
@@ -1193,7 +1241,8 @@ export async function verifySealedPacket({ repoRoot, packetRoot, latestRoot, man
   } else {
     errors.push("candidateDigestParts missing");
   }
-  if (manifest.milestoneOutcome === "PASS" && repoRoot && manifest.reviewedBaseCommit && manifest.reviewedHeadCommit) {
+  let regeneratedSourcePatch = null;
+  if (repoRoot && manifest.reviewedBaseCommit && manifest.reviewedHeadCommit && trackedDiffClean && trackedIndexClean) {
     const pathspecs = Array.isArray(manifest.changedFileIndex)
       ? pathspecsForEntries(manifest.changedFileIndex)
       : [];
@@ -1207,24 +1256,49 @@ export async function verifySealedPacket({ repoRoot, packetRoot, latestRoot, man
       if (sourcePatch.stdout.length === 0) {
         sourcePatch = { ...sourcePatch, stdout: Buffer.from("# No textual diff.\n") };
       }
+      regeneratedSourcePatch = sourcePatch.stdout;
       const regeneratedSourceDiffSha256 = sha256Buffer(sourcePatch.stdout);
       if (regeneratedSourceDiffSha256 !== manifest.sourceDiffSha256) {
         errors.push("sourceDiffSha256 does not match regenerated source diff");
       }
     }
   }
+  const reviewPacketPath = path.join(packetRoot, "REVIEW_PACKET.md");
+  let packetPatch = null;
   if (!existsSync(patchPath)) {
     errors.push("changes.patch missing");
   } else {
-    const packetPatch = await readFile(patchPath);
+    packetPatch = await readFile(patchPath);
     const regeneratedPacketDiffSha256 = sha256Buffer(packetPatch);
     if (regeneratedPacketDiffSha256 !== manifest.packetDiffSha256) {
       errors.push("packetDiffSha256 does not match changes.patch");
     }
-    if (manifest.milestoneOutcome === "PASS"
+    if (manifest.diffFidelity === "EXACT"
       && manifest.sourceDiffSha256
       && manifest.sourceDiffSha256 !== regeneratedPacketDiffSha256) {
-      errors.push("PASS source diff and packet diff hashes differ");
+      errors.push("EXACT source diff and packet diff hashes differ");
+    }
+  }
+  if (!existsSync(reviewPacketPath)) {
+    errors.push("REVIEW_PACKET.md missing");
+  } else if (packetPatch && manifest.companionRequired === false) {
+    const embeddedDiff = extractEmbeddedFullDiff(await readFile(reviewPacketPath, "utf8"));
+    if (embeddedDiff.status !== "embedded") {
+      errors.push(`embedded full diff not found: ${embeddedDiff.status}`);
+    } else {
+      const embeddedDiffSha256 = sha256Buffer(embeddedDiff.bytes);
+      if (embeddedDiffSha256 !== manifest.packetDiffSha256) {
+        errors.push("embedded full diff sha256 does not match packetDiffSha256");
+      }
+      if (manifest.diffFidelity === "EXACT" && embeddedDiffSha256 !== manifest.sourceDiffSha256) {
+        errors.push("embedded full diff sha256 does not match sourceDiffSha256");
+      }
+      if (Buffer.compare(embeddedDiff.bytes, packetPatch) !== 0) {
+        errors.push("embedded full diff bytes do not match changes.patch");
+      }
+      if (manifest.diffFidelity === "EXACT" && regeneratedSourcePatch && Buffer.compare(embeddedDiff.bytes, regeneratedSourcePatch) !== 0) {
+        errors.push("embedded full diff bytes do not match regenerated source diff");
+      }
     }
   }
   if (manifest.reviewers.reviewerA?.sourceDiffSha256
@@ -1528,6 +1602,10 @@ export async function generateHandoffPacket(options) {
     sourcePatchBuffer = Buffer.from("# No textual diff.\n");
   }
   const secretFindings = findHighConfidenceSecrets(sourcePatchBuffer.toString("utf8"));
+  const privatePathFindings = findPrivatePathFindings(sourcePatchBuffer.toString("utf8"));
+  if (privatePathFindings.length > 0) {
+    throw new Error(`handoff refuses private local paths in diff: ${privatePathFindings.map((finding) => finding.ruleId).join(", ")}`);
+  }
   if (status === "PASS" && secretFindings.length > 0) {
     throw new Error(`PASS handoff refuses high-confidence secret content in diff: ${secretFindings.map((finding) => finding.ruleId).join(", ")}`);
   }
@@ -1909,17 +1987,18 @@ export async function generateHandoffPacket(options) {
     files: snapshots,
     redactedFiles,
     artifacts: artifactIndexRecords,
-    generatedFiles: [
-      "REVIEW_PACKET.md",
-      "MANIFEST.json",
-      "changes.patch",
-      "validation.json",
-      "budget-check.json",
-      reviewerAVerdict ? "reviewer-a.json" : null,
-      reviewerBVerdict ? "reviewer-b.json" : null,
-      "artifact-index.json",
-      "FINAL_RESPONSE.txt",
-      "files/",
+	    generatedFiles: [
+	      "REVIEW_PACKET.md",
+	      "MANIFEST.json",
+	      "changes.patch",
+	      "validation.json",
+	      "budget-check.json",
+	      reviewerAVerdict ? "reviewer-a.json" : null,
+	      reviewerBVerdict ? "reviewer-b.json" : null,
+	      !options.candidate ? "post-seal-verification.json" : null,
+	      "artifact-index.json",
+	      "FINAL_RESPONSE.txt",
+	      "files/",
       "decisions/"
     ].filter(Boolean),
     selfReferentialFilesExcludedFromHash: [
@@ -1956,19 +2035,20 @@ export async function generateHandoffPacket(options) {
     status: "not_run",
     errors: ["candidate packet is not sealed"]
   };
-  if (!options.candidate) {
-    await copyLatest({ packetRoot, latestRoot, outputRoot });
-    sealVerification = await verifySealedPacket({
+	  if (!options.candidate) {
+	    await copyLatest({ packetRoot, latestRoot, outputRoot });
+	    sealVerification = await verifySealedPacket({
       repoRoot,
       packetRoot,
       latestRoot,
       manifest,
       finalResponseText: response
     });
-    if (sealVerification.status !== "pass") {
-      throw new Error(`post-seal verifier failed: ${sealVerification.errors.join("; ")}`);
-    }
-  }
+	    if (sealVerification.status !== "pass") {
+	      throw new Error(`post-seal verifier failed: ${sealVerification.errors.join("; ")}`);
+	    }
+	    await writeFile(path.join(packetRoot, "post-seal-verification.json"), `${JSON.stringify(sealVerification, null, 2)}\n`);
+	  }
   manifest.sealVerification = sealVerification;
   await writeFile(path.join(packetRoot, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   if (!options.candidate) {

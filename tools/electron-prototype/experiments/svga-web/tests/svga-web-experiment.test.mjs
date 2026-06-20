@@ -204,6 +204,10 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   assert.match(renderer, /replacement-p3\.png/);
   assert.match(renderer, /originalCanvasHash !== editedCanvasHash/);
   assert.match(renderer, /thumbnailEvidence/);
+  assert.match(renderer, /replacementSelectedScreenshotSha256/);
+  assert.match(renderer, /replacementSelectedStateConfirmed/);
+  assert.match(renderer, /replacementSelectedCandidateSha256/);
+  assert.match(renderer, /replacementSelectedCandidateVisible/);
   assert.match(renderer, /replacementMatchesReopened/);
   assert.match(renderer, /invalidPngRetainsLastValidThumbnail/);
   assert.match(renderer, /resourceThumbnailSha256/);
@@ -356,6 +360,11 @@ test("P3 upload package contract includes sealed review evidence and redacted bu
   assert.match(source, /edited-output\.svga/);
   assert.match(source, /application\/x-svga/);
   assert.match(source, /includedInBundle: true/);
+  assert.match(source, /copySealedEvidence/);
+  assert.match(source, /product-bundle-validation\.json/);
+  assert.match(source, /reviewer-b-product-categories\.json/);
+  assert.match(source, /sealed-packet-manifest\.json/);
+  assert.match(source, /replacementSelectedStateConfirmed/);
   assert.match(source, /POSIX_HOME_PATH/);
   assert.match(source, /MACOS_USERS_PATH/);
   assert.match(source, /valueHash/);
@@ -363,6 +372,15 @@ test("P3 upload package contract includes sealed review evidence and redacted bu
   assert.match(source, /UPLOAD_TO_REVIEW_ASSISTANT:P3-\$\{headShort\}-upload\.zip/);
   assert.equal(source.includes("P3-${headShort}-upload.zip"), true);
   assert.equal(source.includes("review/P3-latest"), true);
+  assert.equal(source.includes("sanitizeTextFiles"), false);
+  assert.equal(source.includes("sanitizeReviewText"), false);
+  assert.equal(source.includes('path.join(packetRoot, "FINAL_RESPONSE.txt")'), false);
+  const macPrivatePath = ["", "Users", "private-user", "example"].join("/");
+  const posixPrivatePath = ["", "home", "private-user", "example"].join("/");
+  const windowsPrivatePath = ["C:", "Users", "private-user", "example"].join("\\");
+  assert.equal(source.includes(macPrivatePath), false);
+  assert.equal(source.includes(posixPrivatePath), false);
+  assert.equal(source.includes(windowsPrivatePath), false);
 });
 
 test("real sample audit harness stores aliases and avoids absolute paths in report output", async () => {
