@@ -14,6 +14,7 @@ Status: in progress
 - `NQ1-WP06` complete: Save As safety matrix covered 13 source checks and 9 scenarios; Windows case-variant same-path behavior remains deferred for real Windows runtime validation.
 - Checkpoint after `NQ1-WP06`: `npm run loop:validate` passed on clean source commit `38a487c8d4346cc8de7f7673ada97079ce3f3e97`.
 - `NQ1-WP07` complete: cleanup stress validation covered 17 source checks, 5 model scenarios, 80 stress cycles, and ended with 0 active resources.
-- Current next package: `NQ1-WP08` performance baseline.
+- `NQ1-WP08` complete: performance baseline captured 5 local metrics with totalDurationMs=224.131 and broad hangGuardMs=120000.
+- Current next package: `NQ1-WP09` accessibility, keyboard, and error semantics audit.
 
 Final report will be completed during packaging. Do not treat this placeholder as terminal evidence.

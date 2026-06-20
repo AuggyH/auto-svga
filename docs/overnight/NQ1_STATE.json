@@ -8,7 +8,7 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP08",
+  "currentWorkPackage": "NQ1-WP09",
   "completedWorkPackages": [
     "NQ1-WP01",
     "NQ1-WP02",
@@ -16,12 +16,12 @@
     "NQ1-WP04",
     "NQ1-WP05",
     "NQ1-WP06",
-    "NQ1-WP07"
+    "NQ1-WP07",
+    "NQ1-WP08"
   ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
   "remainingWorkPackages": [
-    "NQ1-WP08",
     "NQ1-WP09",
     "NQ1-WP10"
   ],
@@ -473,16 +473,64 @@
     {
       "id": "NQ1-WP08",
       "title": "Performance baseline",
-      "status": "pending",
-      "startedAt": null,
-      "finishedAt": null,
-      "startCommit": null,
-      "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
-      "deferredItems": []
+      "status": "complete",
+      "startedAt": "2026-06-20T21:18:45.597Z",
+      "finishedAt": "2026-06-20T21:18:45.597Z",
+      "startCommit": "b5020c9ab61ac25f68aee8905456c4b06b06593e",
+      "endCommit": "7a3c1c72f45df94ad60054599aa17a8b4a75bbe9",
+      "filesChanged": [
+        "package.json",
+        "src/tests/helpers/nq1-performance-baseline.ts",
+        "src/tests/nq1-performance-baseline.test.ts",
+        "tools/nq1/generate-performance-baseline-report.mjs"
+      ],
+      "commands": [
+        {
+          "command": "npm run build",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-performance-baseline.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:performance-baseline",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/nq1-round-trip-matrix.test.js dist/tests/nq1-history-model.test.js dist/tests/nq1-cleanup-stress.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "git diff --check",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-performance-baseline",
+          "status": "pass",
+          "summary": "1 pass / 0 fail"
+        },
+        {
+          "id": "nq1-performance-baseline-artifact",
+          "status": "pass",
+          "summary": ".artifacts/product/NQ1/performance-baseline-report.json passed with 5 metrics, totalDurationMs=224.131, hangGuardMs=120000, and no absolute user paths"
+        },
+        {
+          "id": "nq1-adjacent-regressions",
+          "status": "pass",
+          "summary": "round-trip, history model, and cleanup stress tests: 3 pass / 0 fail"
+        }
+      ],
+      "findings": [
+        "Performance baseline captured 5 deterministic local hardening metrics with totalDurationMs=224.131.",
+        "The baseline covers fixture generation, multi-resource round trip, 10k history model operations, async race validation, and cleanup stress model.",
+        "The baseline uses a broad hang guard rather than strict timing thresholds to avoid flaky performance gates."
+      ],
+      "deferredItems": [
+        "This package records local baseline timings only; it is not a formal performance benchmark across machines or operating systems."
+      ]
     },
     {
       "id": "NQ1-WP09",
