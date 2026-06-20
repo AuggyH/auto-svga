@@ -209,7 +209,7 @@ async function main() {
       rightFixtureSha256: state.fixture?.sha256 ?? null,
       sameFixture: true,
       leftViewport: { width: 1440, height: 900 },
-      rightViewport: { width: 1440, height: 900 },
+      rightViewport: { width: 1280, height: 800 },
       leftHeadCommit: headCommit,
       rightHeadCommit: headCommit,
       title: `Matched ${state.state} · ${state.fixture?.label ?? state.inputKind}`,
