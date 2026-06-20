@@ -359,6 +359,7 @@ test("P3 upload package contract includes sealed review evidence and redacted bu
   assert.match(source, /thumbnail-evidence\.json/);
   assert.match(source, /edited-output\.svga/);
   assert.match(source, /application\/x-svga/);
+  assert.equal(source.includes('".patch"'), true);
   assert.match(source, /includedInBundle: true/);
   assert.match(source, /copySealedEvidence/);
   assert.match(source, /product-bundle-validation\.json/);

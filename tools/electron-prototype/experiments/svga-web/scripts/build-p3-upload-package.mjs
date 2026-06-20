@@ -10,7 +10,7 @@ const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptRoot, "../../../../..");
 const artifactRoot = path.join(repoRoot, ".artifacts/product/P3");
 const visibleRoot = path.join(repoRoot, "review/P3-latest");
-const textExtensions = new Set([".json", ".md", ".txt", ".html", ".js", ".mjs", ".css", ".svg", ".xml"]);
+const textExtensions = new Set([".json", ".md", ".txt", ".html", ".js", ".mjs", ".css", ".svg", ".xml", ".patch"]);
 const pngExtensions = new Set([".png"]);
 const svgaExtensions = new Set([".svga"]);
 
