@@ -115,6 +115,7 @@ async function sha256File(relativePath) {
 }
 
 function runComparison(left, right, out, title, leftLabel, rightLabel) {
+  const headCommit = gitHeadCommit();
   execFileSync(electronBin, [
     path.join(scriptRoot, "comparison-capture.cjs"),
     "--artifact-root", artifactRoot,
@@ -123,7 +124,10 @@ function runComparison(left, right, out, title, leftLabel, rightLabel) {
     "--out", out,
     "--title", title,
     "--left-label", leftLabel,
-    "--right-label", rightLabel
+    "--right-label", rightLabel,
+    "--head-commit", headCommit,
+    "--left-head-commit", headCommit,
+    "--right-head-commit", headCommit
   ], { cwd: experimentRoot, stdio: "inherit" });
 }
 

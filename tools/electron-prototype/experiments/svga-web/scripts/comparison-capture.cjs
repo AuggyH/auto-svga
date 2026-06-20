@@ -14,6 +14,9 @@ const out = readArgument("--out");
 const title = readArgument("--title") ?? "Parity comparison";
 const leftLabel = readArgument("--left-label") ?? "Web reference";
 const rightLabel = readArgument("--right-label") ?? "Desktop shell";
+const headCommit = readArgument("--head-commit") ?? null;
+const leftHeadCommit = readArgument("--left-head-commit") ?? headCommit;
+const rightHeadCommit = readArgument("--right-head-commit") ?? headCommit;
 if (!artifactRoot || !left || !right || !out) {
   console.error("Missing comparison arguments.");
   process.exit(1);
@@ -82,13 +85,14 @@ async function main() {
   writeFileSync(path.join(artifactRoot, out), (await window.webContents.capturePage()).toPNG());
   writeFileSync(path.join(artifactRoot, `${out}.meta.json`), `${JSON.stringify({
     schemaVersion: 1,
+    headCommit,
     outputFile: out,
     outputSize: { width: outputWidth, height: outputHeight },
     contentBounds,
     bottomMarginPx: bottomPadding,
     estimatedBlankRatio: Number(((outputWidth * bottomPadding) / (outputWidth * outputHeight)).toFixed(4)),
-    left: { file: left, sourceSize: leftSize, renderedSize: { width: columnWidth, height: leftHeight } },
-    right: { file: right, sourceSize: rightSize, renderedSize: { width: columnWidth, height: rightHeight } }
+    left: { file: left, headCommit: leftHeadCommit, sourceSize: leftSize, renderedSize: { width: columnWidth, height: leftHeight } },
+    right: { file: right, headCommit: rightHeadCommit, sourceSize: rightSize, renderedSize: { width: columnWidth, height: rightHeight } }
   }, null, 2)}\n`);
   window.destroy();
   app.exit(0);

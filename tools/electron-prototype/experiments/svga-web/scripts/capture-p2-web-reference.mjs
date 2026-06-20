@@ -77,6 +77,7 @@ async function mergeFixtureMetadata(fileName) {
   const filePath = path.join(artifactRoot, fileName);
   const payload = JSON.parse(await readFile(filePath, "utf8"));
   await writeFile(filePath, `${JSON.stringify({
+    headCommit: gitHeadCommit(),
     ...payload,
     ...fixtureFields(selectedFixture)
   }, null, 2)}\n`);
