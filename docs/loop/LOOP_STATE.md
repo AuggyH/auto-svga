@@ -6,8 +6,8 @@ Date: 2026-06-20
 
 - milestoneId: P3
 - Milestone: P3 Basic Image Resource Replacement And Save As
-- State: in_progress
-- Next Action: implementation
+- State: terminal_pass
+- Next Action: external_review
 - repairRound: 0
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
@@ -52,7 +52,11 @@ Date: 2026-06-20
 - P3 baseline `npm run loop:validate` passed before implementation.
 - P3 editing capability audit confirms the safe default is a restricted SVGA subset editor: replace existing `MovieEntity.images[resourceKey]` PNG bytes only, then reject any export with failed decode/playback/invariant checks.
 - P3 implementation plan is complete at `docs/product/P3_IMPLEMENTATION_PLAN.md`.
+- P3 implementation commit `ddca469d2e89aefcbd6ef742d6ed2c30dc8434ca` adds the restricted image-resource editor, resource list, controlled PNG replacement, reset, Save As, exported-file reopen, and P3 artifact capture.
+- P3 target validation passed: `npm run build`, `node --test dist/tests/svga-image-resource-editor.test.js`, `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`, `AUTO_SVGA_PRODUCT_MILESTONE=P3 npm run desktop:smoke`, `npm test`, and `git diff --check`.
+- P3 product artifacts under `.artifacts/product/P3/` are regenerated from the actual Electron app and bound to `ddca469d2e89aefcbd6ef742d6ed2c30dc8434ca`.
+- P3 `resource-edit-report.json` and `round-trip-report.json` both record `passed: true`; the round-trip report has no unexpected changes and records decode, playback, and nonblank canvas evidence.
 
 ## Next Action
 
-Implement P3 according to the frozen contract. Do not modify P2 and do not create P2 repair-5.
+External review and terminal handoff packet generation for P3. Do not perform more implementation in this milestone.
