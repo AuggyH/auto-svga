@@ -146,6 +146,33 @@ function resolveRepoPath(repoRoot, value) {
   throw new Error(`Path escapes repository root: ${value}`);
 }
 
+function assertInsideDirectory(parent, child, label) {
+  const relative = path.relative(parent, child);
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(`${label} must stay inside ${parent}`);
+  }
+}
+
+function validateMilestoneId(value) {
+  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(value)) {
+    throw new Error(`Invalid milestoneId: ${value}`);
+  }
+  if (value === "." || value.endsWith(".") || value.includes("..") || /[\\/]/.test(value) || value.includes("\0")) {
+    throw new Error(`Invalid milestoneId: ${value}`);
+  }
+  return value;
+}
+
+function buildPacketPaths({ repoRoot, milestoneId, headShortSha, candidate }) {
+  const safeMilestoneId = validateMilestoneId(milestoneId);
+  const outputRoot = path.resolve(repoRoot, ".artifacts/loop-handoff");
+  const packetRoot = path.resolve(outputRoot, `${safeMilestoneId}-${headShortSha}${candidate ? "-candidate" : ""}`);
+  const latestRoot = path.resolve(outputRoot, "latest");
+  assertInsideDirectory(outputRoot, packetRoot, "packetRoot");
+  assertInsideDirectory(outputRoot, latestRoot, "latestRoot");
+  return { outputRoot, packetRoot, latestRoot, milestoneId: safeMilestoneId };
+}
+
 function compareStrings(left, right) {
   if (left < right) return -1;
   if (left > right) return 1;
@@ -315,6 +342,30 @@ async function readPathAtHead(repoRoot, head, repoPath) {
   return result.stdout;
 }
 
+async function readPathAtIndex(repoRoot, repoPath) {
+  const result = gitLiteralBytes(["show", `:./${repoPath}`], { cwd: repoRoot, allowFailure: true });
+  if (result.status !== 0) return undefined;
+  return result.stdout;
+}
+
+async function readWorktreeSample(repoRoot, repoPath) {
+  const sourcePath = resolveRepoPath(repoRoot, repoPath);
+  if (!existsSync(sourcePath)) return undefined;
+  const fileStat = await lstat(sourcePath);
+  if (fileStat.isSymbolicLink()) {
+    const target = await readlink(sourcePath);
+    return {
+      bytes: Buffer.from(`symlink:${target}\n`),
+      symlink: true
+    };
+  }
+  if (!fileStat.isFile()) return undefined;
+  return {
+    bytes: await readFile(sourcePath),
+    symlink: false
+  };
+}
+
 async function snapshotBytesForEntry({ repoRoot, status, head, entry }) {
   if (status === "PASS") {
     return readPathAtHead(repoRoot, head, entry.path);
@@ -330,9 +381,97 @@ async function snapshotBytesForEntry({ repoRoot, status, head, entry }) {
   return readFile(sourcePath);
 }
 
+function secretMetadata({ entry, sample, finding }) {
+  return {
+    repositoryPath: entry.path,
+    oldPath: entry.oldPath,
+    changeType: entry.status,
+    source: sample.source,
+    sizeBytes: sample.bytes.length,
+    sha256: sha256Buffer(sample.bytes),
+    ruleId: finding.ruleId,
+    lineStart: finding.lineStart,
+    lineEnd: finding.lineEnd,
+    redacted: true
+  };
+}
+
+function scanTextSampleForSecrets(entry, sample) {
+  const text = sample.bytes.toString("utf8");
+  return findHighConfidenceSecrets(text).map((finding) => secretMetadata({ entry, sample, finding }));
+}
+
+async function contentSamplesForEntry({ repoRoot, head, entry }) {
+  const samples = [];
+  const pathStrings = [
+    { source: "path", bytes: Buffer.from(`${entry.path}\n`) },
+    entry.oldPath ? { source: "oldPath", bytes: Buffer.from(`${entry.oldPath}\n`) } : null
+  ].filter(Boolean);
+  samples.push(...pathStrings);
+
+  const headBytes = await readPathAtHead(repoRoot, head, entry.path);
+  if (headBytes) samples.push({ source: "head", bytes: headBytes });
+
+  const indexBytes = await readPathAtIndex(repoRoot, entry.path);
+  if (indexBytes) samples.push({ source: "index", bytes: indexBytes });
+
+  const worktreeSample = await readWorktreeSample(repoRoot, entry.path);
+  if (worktreeSample) {
+    samples.push({
+      source: worktreeSample.symlink ? "symlink" : "worktree",
+      bytes: worktreeSample.bytes,
+      symlink: worktreeSample.symlink
+    });
+  }
+  return samples;
+}
+
+async function classifyChangedFiles({ repoRoot, head, entries }) {
+  const safeEntries = [];
+  const redactedEntries = [];
+  for (const entry of entries) {
+    if (isSensitiveRepoPath(entry.path) || (entry.oldPath && isSensitiveRepoPath(entry.oldPath))) {
+      redactedEntries.push(createRedactedEntry(entry));
+      continue;
+    }
+    const samples = await contentSamplesForEntry({ repoRoot, head, entry });
+    const findings = [];
+    for (const sample of samples) {
+      if (!isTextBuffer(sample.bytes)) {
+        if (entry.status === "??") {
+          redactedEntries.push({
+            repositoryPath: entry.path,
+            oldPath: entry.oldPath,
+            changeType: entry.status,
+            source: sample.source,
+            sizeBytes: sample.bytes.length,
+            sha256: sha256Buffer(sample.bytes),
+            binary: true,
+            redacted: true,
+            reason: "binary_untracked_metadata_only"
+          });
+          findings.push("binary");
+        }
+        continue;
+      }
+      findings.push(...scanTextSampleForSecrets(entry, sample));
+    }
+    if (findings.length) {
+      redactedEntries.push(...findings.filter((finding) => finding !== "binary"));
+      continue;
+    }
+    safeEntries.push(entry);
+  }
+  return {
+    safeEntries,
+    redactedEntries
+  };
+}
+
 async function snapshotChangedFiles({ repoRoot, packetRoot, changedFiles, status, head }) {
   const snapshots = [];
-  const filesRoot = path.join(packetRoot, "files");
+  const filesRoot = path.resolve(packetRoot, "files");
+  assertInsideDirectory(packetRoot, filesRoot, "filesRoot");
   await mkdir(filesRoot, { recursive: true });
 
   for (const entry of changedFiles) {
@@ -354,7 +493,8 @@ async function snapshotChangedFiles({ repoRoot, packetRoot, changedFiles, status
     const binary = !isTextBuffer(bytes);
     const sha256 = await sha256Bytes(bytes);
     const sizeBytes = bytes.length;
-    const snapshotPath = path.join(filesRoot, ...entry.path.split("/"));
+    const snapshotPath = path.resolve(filesRoot, ...entry.path.split("/"));
+    assertInsideDirectory(filesRoot, snapshotPath, "snapshotPath");
     await mkdir(path.dirname(snapshotPath), { recursive: true });
     if (!binary) {
       await writeFile(snapshotPath, bytes);
@@ -806,25 +946,74 @@ async function readLoopHistoryEntries(repoRoot, milestoneId) {
   return entries;
 }
 
+function parseUniqueLoopStateFields(text) {
+  const fields = {};
+  const counts = {};
+  for (const line of text.split("\n")) {
+    const match = line.match(/^-\s+(milestoneId|State|Next Action|repairRound|consecutiveNoProgressRounds|budgetStatus):\s*(.+?)\s*$/);
+    if (!match) continue;
+    const key = match[1];
+    counts[key] = (counts[key] ?? 0) + 1;
+    fields[key] = match[2].trim();
+  }
+  for (const [key, count] of Object.entries(counts)) {
+    if (count !== 1) {
+      throw new Error(`LOOP_STATE.md must contain exactly one machine ${key} field.`);
+    }
+  }
+  for (const key of ["milestoneId", "State", "Next Action"]) {
+    if (!fields[key]) {
+      throw new Error(`LOOP_STATE.md missing machine ${key} field.`);
+    }
+  }
+  return fields;
+}
+
+function validateHumanNextActionSection(text) {
+  const match = text.match(/^## Next Action\s*\n([\s\S]*?)(?:\n## |\s*$)/m);
+  if (!match) return;
+  const actionableSection = match[1]
+    .split("\n")
+    .filter((line) => !/^\s*(do not|don't|must not|no additional|no more)\b/i.test(line))
+    .join("\n");
+  if (/(generate|create).{0,60}candidate/i.test(actionableSection)
+    || /\brun.{0,60}(validation|validate|review)\b/i.test(actionableSection)
+    || /\b(do|perform|start|execute).{0,60}(implementation|implement|validation|validate|review|repair)\b/i.test(actionableSection)
+    || /\bcollect.{0,60}(review|reviewer)\b/i.test(actionableSection)
+    || /\bseal.{0,60}(packet|handoff)\b/i.test(actionableSection)
+    || /\bcontinue.{0,60}repair\b/i.test(actionableSection)
+    || /\brepair the .*blockers\b/i.test(actionableSection)) {
+    throw new Error("LOOP_STATE.md human Next Action section contradicts terminal external_review state.");
+  }
+}
+
 async function validateTerminalState({ repoRoot, milestoneId, status }) {
   const stateText = await readOptionalFile(path.join(repoRoot, "docs/loop/LOOP_STATE.md"), "");
   const expectedState = status === "PASS" ? "terminal_pass" : "terminal_human_required";
-  if (!stateText.includes(`Milestone: ${milestoneId}`) || !stateText.includes(`State: ${expectedState}`)) {
+  const fields = parseUniqueLoopStateFields(stateText);
+  if (fields.milestoneId !== milestoneId || fields.State !== expectedState) {
     throw new Error(`LOOP_STATE.md must mark ${milestoneId} as ${expectedState}.`);
   }
-  if (!stateText.includes("Next Action: external_review")) {
+  if (fields["Next Action"] !== "external_review") {
     throw new Error("LOOP_STATE.md terminal next action must be external_review.");
   }
+  validateHumanNextActionSection(stateText);
   const entries = await readLoopHistoryEntries(repoRoot, milestoneId);
   const last = entries.at(-1);
   if (!last) {
     throw new Error(`LOOP_HISTORY.jsonl missing terminal record for ${milestoneId}.`);
   }
+  if (last.milestoneId !== milestoneId || last.iteration !== "terminal") {
+    throw new Error(`Last LOOP_HISTORY entry for ${milestoneId} must be terminal.`);
+  }
   if (last.result !== status) {
     throw new Error(`Last LOOP_HISTORY result ${last.result} does not match ${status}.`);
   }
-  if (!["external_review", "wait_for_next_milestone"].includes(last.nextAction)) {
-    throw new Error("Terminal LOOP_HISTORY nextAction must be external_review or wait_for_next_milestone.");
+  if (last.progress !== true) {
+    throw new Error("Terminal LOOP_HISTORY entry must record progress=true.");
+  }
+  if (last.nextAction !== "external_review") {
+    throw new Error("Terminal LOOP_HISTORY nextAction must be external_review.");
   }
   return { state: expectedState, nextAction: "external_review", lastHistory: last };
 }
@@ -885,7 +1074,9 @@ function validatePacketContent(content) {
   }
 }
 
-async function copyLatest(packetRoot, latestRoot) {
+async function copyLatest({ packetRoot, latestRoot, outputRoot }) {
+  assertInsideDirectory(outputRoot, packetRoot, "packetRoot");
+  assertInsideDirectory(outputRoot, latestRoot, "latestRoot");
   await rm(latestRoot, { recursive: true, force: true });
   await mkdir(path.dirname(latestRoot), { recursive: true });
   try {
@@ -944,6 +1135,11 @@ function parseFinalResponseUploads(text) {
 }
 
 export async function verifySealedPacket({ repoRoot, packetRoot, latestRoot, manifest, finalResponseText }) {
+  if (repoRoot) {
+    const outputRoot = path.resolve(repoRoot, ".artifacts/loop-handoff");
+    assertInsideDirectory(outputRoot, path.resolve(packetRoot), "packetRoot");
+    assertInsideDirectory(outputRoot, path.resolve(latestRoot), "latestRoot");
+  }
   let latestTarget = null;
   if (existsSync(latestRoot)) {
     const latestStat = await lstat(latestRoot);
@@ -1169,10 +1365,12 @@ export async function generateHandoffPacket(options) {
   const branch = git(["branch", "--show-current"], { cwd: repoRoot }).stdout.trim() || "detached";
   const baseCommit = git(["rev-parse", options.base], { cwd: repoRoot }).stdout.trim();
   const generatorCommit = git(["rev-parse", "HEAD"], { cwd: repoRoot }).stdout.trim();
-  const milestoneId = options.milestone;
-  const outputRoot = path.join(repoRoot, ".artifacts/loop-handoff");
-  const packetRoot = path.join(outputRoot, `${milestoneId}-${headShortSha}${options.candidate ? "-candidate" : ""}`);
-  const latestRoot = path.join(outputRoot, "latest");
+  const { outputRoot, packetRoot, latestRoot, milestoneId } = buildPacketPaths({
+    repoRoot,
+    milestoneId: options.milestone,
+    headShortSha,
+    candidate: Boolean(options.candidate)
+  });
   const gitStatus = parseWorkspaceStatus(git(["status", "--short"], { cwd: repoRoot }).stdout);
   const workspaceClean = gitStatus.length === 0;
 
@@ -1205,10 +1403,6 @@ export async function generateHandoffPacket(options) {
     && (input.historicalValidationEvidence === "NOT_AVAILABLE" || input.historicalReviewerEvidence === "NOT_AVAILABLE")) {
     throw new Error("Retrospective packets cannot claim COMPLETE evidence when original evidence is unavailable.");
   }
-
-  await rm(packetRoot, { recursive: true, force: true });
-  await mkdir(packetRoot, { recursive: true });
-  await mkdir(path.join(packetRoot, "decisions"), { recursive: true });
 
   const contractText = await readOptionalFile(resolveRepoPath(repoRoot, contractPath), "not_available");
   if (contractText === "not_available") {
@@ -1250,11 +1444,7 @@ export async function generateHandoffPacket(options) {
       "```"
     ].join("\n");
     humanDecisionPacketPath = "decisions/human-decision.json";
-    await writeFile(path.join(packetRoot, humanDecisionPacketPath), `${JSON.stringify(humanDecision, null, 2)}\n`);
   }
-
-  await writeFile(path.join(packetRoot, "validation.json"), `${JSON.stringify(validation, null, 2)}\n`);
-  await writeFile(path.join(packetRoot, "budget-check.json"), `${JSON.stringify(budget, null, 2)}\n`);
 
   const nameStatus = parseNameStatusZ(gitLiteralBytes(["diff", "--name-status", "--find-renames", "--find-copies", "-z", `${baseCommit}..${headCommit}`], { cwd: repoRoot }).stdout);
   const dirtyStatus = status === "HUMAN_REQUIRED"
@@ -1264,9 +1454,16 @@ export async function generateHandoffPacket(options) {
     ]
     : [];
   const allChangedFiles = mergeChangedFiles(nameStatus, dirtyStatus);
-  const { safe: changedFiles, sensitive: sensitiveFiles } = splitSafeAndSensitiveEntries(allChangedFiles);
-  if (status === "PASS" && sensitiveFiles.length > 0) {
-    throw new Error(`PASS handoff refuses sensitive or protected paths: ${sensitiveFiles.map((entry) => entry.path).join(", ")}`);
+  const { safeEntries: changedFiles, redactedEntries: redactedFiles } = await classifyChangedFiles({
+    repoRoot,
+    head: headCommit,
+    entries: allChangedFiles
+  });
+  if (status === "PASS" && redactedFiles.length > 0) {
+    const details = redactedFiles
+      .map((entry) => `${entry.repositoryPath}:${entry.lineStart ?? "?"}-${entry.lineEnd ?? "?"}:${entry.ruleId ?? entry.reason ?? "sensitive_path"}`)
+      .join(", ");
+    throw new Error(`PASS handoff refuses sensitive content or protected paths: ${details}`);
   }
   validateChangedFilePurposes({ changedFiles, changedFilePurposes: input.changedFilePurposes });
   validateAcceptanceEvidence({
@@ -1280,6 +1477,15 @@ export async function generateHandoffPacket(options) {
   if (!options.retrospective) {
     terminalState = await validateTerminalState({ repoRoot, milestoneId, status });
   }
+
+  await rm(packetRoot, { recursive: true, force: true });
+  await mkdir(packetRoot, { recursive: true });
+  await mkdir(path.resolve(packetRoot, "decisions"), { recursive: true });
+  if (humanDecisionPacketPath) {
+    await writeFile(path.join(packetRoot, humanDecisionPacketPath), `${JSON.stringify(humanDecision, null, 2)}\n`);
+  }
+  await writeFile(path.join(packetRoot, "validation.json"), `${JSON.stringify(validation, null, 2)}\n`);
+  await writeFile(path.join(packetRoot, "budget-check.json"), `${JSON.stringify(budget, null, 2)}\n`);
 
   const safePathspecs = pathspecsForEntries(changedFiles);
   const committedDiffArgs = safePathspecs.length
@@ -1325,7 +1531,7 @@ export async function generateHandoffPacket(options) {
   if (status === "PASS" && secretFindings.length > 0) {
     throw new Error(`PASS handoff refuses high-confidence secret content in diff: ${secretFindings.map((finding) => finding.ruleId).join(", ")}`);
   }
-  const hasSensitiveHumanRequiredContent = status === "HUMAN_REQUIRED" && (sensitiveFiles.length > 0 || secretFindings.length > 0);
+  const hasSensitiveHumanRequiredContent = status === "HUMAN_REQUIRED" && (redactedFiles.length > 0 || secretFindings.length > 0);
   const packetPatchBuffer = hasSensitiveHumanRequiredContent
     ? Buffer.from([
       "# Diff redacted because HUMAN_REQUIRED contains sensitive content.",
@@ -1504,7 +1710,7 @@ export async function generateHandoffPacket(options) {
     "## git diff --name-status",
     "",
     changedFiles.length ? changedFiles.map((entry) => `- ${entry.status} ${entry.path}`).join("\n") : "- none",
-    sensitiveFiles.length ? "\nSensitive or protected changed paths:\n" + sensitiveFiles.map((entry) => `- ${entry.status} ${entry.path}: redacted=true`).join("\n") : "",
+    redactedFiles.length ? "\nRedacted changed paths:\n" + redactedFiles.map((entry) => `- ${entry.changeType ?? entry.status} ${entry.repositoryPath}: redacted=true, ruleId=${entry.ruleId ?? entry.reason ?? "sensitive_path"}`).join("\n") : "",
     "",
     "## git diff --stat",
     "",
@@ -1699,7 +1905,7 @@ export async function generateHandoffPacket(options) {
         : { status: options.candidate ? "PENDING_CANDIDATE_REVIEW" : "NOT_AVAILABLE" }
     },
     files: snapshots,
-    redactedFiles: sensitiveFiles.map(createRedactedEntry),
+    redactedFiles,
     artifacts: artifactIndexRecords,
     generatedFiles: [
       "REVIEW_PACKET.md",
@@ -1749,7 +1955,7 @@ export async function generateHandoffPacket(options) {
     errors: ["candidate packet is not sealed"]
   };
   if (!options.candidate) {
-    await copyLatest(packetRoot, latestRoot);
+    await copyLatest({ packetRoot, latestRoot, outputRoot });
     sealVerification = await verifySealedPacket({
       repoRoot,
       packetRoot,
@@ -1764,7 +1970,7 @@ export async function generateHandoffPacket(options) {
   manifest.sealVerification = sealVerification;
   await writeFile(path.join(packetRoot, "MANIFEST.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   if (!options.candidate) {
-    await copyLatest(packetRoot, latestRoot);
+    await copyLatest({ packetRoot, latestRoot, outputRoot });
   }
   return { packetRoot, latestRoot, manifest, finalResponse: response };
 }

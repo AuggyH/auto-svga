@@ -65,13 +65,66 @@ export function parseLoopHistory(text, milestoneId) {
   return entries;
 }
 
-export function countRepairRounds(entries) {
-  const rounds = new Set();
+function isLegacyProgressEntry(entry) {
+  return entry.iteration === "repair-1"
+    && entry.result === "PASS"
+    && Array.isArray(entry.evidence)
+    && entry.evidence.length > 0;
+}
+
+function repairRoundProgress(entry, errors) {
+  if (typeof entry.progress === "boolean") return entry.progress;
+  if (isLegacyProgressEntry(entry)) return true;
+  errors.push(`repair history entry ${entry.iteration} is missing required progress boolean.`);
+  return false;
+}
+
+export function deriveRepairBudgetFromHistory(entries) {
+  const errors = [];
+  const byRound = new Map();
   for (const entry of entries) {
-    const match = String(entry.iteration ?? "").match(/^repair-(\d+)$/);
-    if (match) rounds.add(Number(match[1]));
+    const iteration = String(entry.iteration ?? "");
+    const exactMatch = iteration.match(/^repair-(\d+)$/);
+    if (!exactMatch) {
+      if (/repair/i.test(iteration)) {
+        errors.push(`repair history iteration ${iteration || "not_available"} must use repair-N format.`);
+      }
+      continue;
+    }
+    const round = Number(exactMatch[1]);
+    if (!Number.isSafeInteger(round) || round < 1) {
+      errors.push(`repair history iteration ${iteration} has an invalid round number.`);
+      continue;
+    }
+    if (!byRound.has(round)) byRound.set(round, []);
+    byRound.get(round).push(entry);
   }
-  return rounds.size ? Math.max(...rounds) : 0;
+  const rounds = [...byRound.keys()].sort((a, b) => a - b);
+  const actualRepairRound = rounds.length ? Math.max(...rounds) : 0;
+  for (let expected = 1; expected <= actualRepairRound; expected += 1) {
+    if (!byRound.has(expected)) {
+      errors.push(`repair history skips repair-${expected}.`);
+    }
+  }
+  const progressByRound = new Map();
+  for (const round of rounds) {
+    const entriesForRound = byRound.get(round);
+    const progressValues = entriesForRound.map((entry) => repairRoundProgress(entry, errors));
+    progressByRound.set(round, progressValues.at(-1) === true);
+  }
+  let actualConsecutiveNoProgressRounds = 0;
+  for (let round = actualRepairRound; round >= 1; round -= 1) {
+    if (progressByRound.get(round) === false) {
+      actualConsecutiveNoProgressRounds += 1;
+      continue;
+    }
+    break;
+  }
+  return {
+    actualRepairRound,
+    actualConsecutiveNoProgressRounds,
+    errors
+  };
 }
 
 export function evaluateLoopBudget({ contract, state, historyEntries }) {
@@ -82,9 +135,19 @@ export function evaluateLoopBudget({ contract, state, historyEntries }) {
   if (!["within_budget", "exhausted"].includes(state.budgetStatus)) {
     errors.push("budgetStatus must be within_budget or exhausted.");
   }
-  const actualRepairRound = countRepairRounds(historyEntries);
+  const {
+    actualRepairRound,
+    actualConsecutiveNoProgressRounds,
+    errors: historyErrors
+  } = deriveRepairBudgetFromHistory(historyEntries);
+  errors.push(...historyErrors);
   if (state.repairRound !== actualRepairRound) {
     errors.push(`state repairRound ${state.repairRound} does not match actual repair history ${actualRepairRound}`);
+  }
+  if (state.consecutiveNoProgressRounds !== actualConsecutiveNoProgressRounds) {
+    errors.push(
+      `state consecutiveNoProgressRounds ${state.consecutiveNoProgressRounds} does not match actual repair history ${actualConsecutiveNoProgressRounds}`
+    );
   }
   if (state.repairRound > contract.maxRepairRounds) {
     errors.push(`repairRound ${state.repairRound} exceeds maxRepairRounds ${contract.maxRepairRounds}`);
@@ -94,9 +157,16 @@ export function evaluateLoopBudget({ contract, state, historyEntries }) {
       `consecutiveNoProgressRounds ${state.consecutiveNoProgressRounds} exceeds maxConsecutiveNoProgressRounds ${contract.maxConsecutiveNoProgressRounds}`
     );
   }
+  const calculatedBudgetStatus = state.repairRound > contract.maxRepairRounds
+    || state.consecutiveNoProgressRounds > contract.maxConsecutiveNoProgressRounds
+    ? "exhausted"
+    : "within_budget";
+  if (state.budgetStatus !== calculatedBudgetStatus) {
+    errors.push(`state budgetStatus ${state.budgetStatus} does not match calculated ${calculatedBudgetStatus}`);
+  }
   const nextRepairRound = state.repairRound + 1;
-  const nextRepairAllowed = nextRepairRound <= contract.maxRepairRounds
-    && state.consecutiveNoProgressRounds <= contract.maxConsecutiveNoProgressRounds
+  const nextRepairAllowed = state.repairRound < contract.maxRepairRounds
+    && state.consecutiveNoProgressRounds < contract.maxConsecutiveNoProgressRounds
     && errors.length === 0;
   return {
     schemaVersion: 1,
@@ -107,6 +177,7 @@ export function evaluateLoopBudget({ contract, state, historyEntries }) {
     repairRound: state.repairRound,
     actualRepairRound,
     consecutiveNoProgressRounds: state.consecutiveNoProgressRounds,
+    actualConsecutiveNoProgressRounds,
     budgetStatus: state.budgetStatus,
     nextRepairRound,
     nextRepairAllowed,

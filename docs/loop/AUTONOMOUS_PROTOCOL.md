@@ -31,12 +31,14 @@ Rules:
 2. Consecutive rounds with no new evidence come from the frozen milestone
    contract.
 3. Each round updates `docs/loop/LOOP_STATE.md`.
-4. Each round appends evidence to `docs/loop/LOOP_HISTORY.md`.
+4. Each round appends evidence to `docs/loop/LOOP_HISTORY.jsonl`.
 5. Work on one primary failure cause per repair round.
 6. Run the smallest relevant test first, then the full milestone validation.
 7. `tools/loop-budget-check.mjs` must pass before any terminal handoff.
 8. If the budget check fails, continue repair only when the checker says the
    next repair is allowed; otherwise enter `HUMAN_REQUIRED`.
+9. Repair entries must record `progress: true | false`; budget state is derived
+   from history and cannot be lowered by editing `LOOP_STATE.md`.
 
 ## Autonomy
 
@@ -103,3 +105,11 @@ Do not stop in any other state.
 7. Terminal `LOOP_STATE.md` must set `Next Action: external_review`.
 8. PASS Review Packets must keep `changes.patch` byte-exact with the source
    Git diff and bind both source and packet diff hashes.
+9. Terminal `LOOP_STATE.md` must have one machine next action only; the human
+   next-action section must not request more implementation, validation,
+   review, candidate generation, or sealing.
+10. Packet output paths must be validated under `.artifacts/loop-handoff`
+    before any recursive remove, copy, mkdir, or latest-pointer update.
+11. `HUMAN_REQUIRED` packets must classify changed file contents before
+    snapshots; files with high-confidence secret content are metadata-only and
+    must not be copied into `files/`.

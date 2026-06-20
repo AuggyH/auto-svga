@@ -4,9 +4,11 @@ import { createHash } from "node:crypto";
 import {
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   readlink,
   rm,
+  lstat,
   symlink,
   writeFile
 } from "node:fs/promises";
@@ -69,12 +71,12 @@ function hashText(text) {
   return createHash("sha256").update(text).digest("hex");
 }
 
-function criteria() {
+function criteria(milestoneId = "M2-R2") {
   return Array.from({ length: 15 }, (_, index) => {
-    const id = `M2-R2-AC-${String(index + 1).padStart(2, "0")}`;
+    const id = `${milestoneId}-AC-${String(index + 1).padStart(2, "0")}`;
     return {
       id,
-      requirement: `M2-R2 fixture acceptance criterion ${index + 1}`
+      requirement: `${milestoneId} fixture acceptance criterion ${index + 1}`
     };
   });
 }
@@ -87,17 +89,17 @@ function contractText({ milestoneId = "M2-R2" } = {}) {
     "",
     "## Acceptance Criteria",
     "",
-    ...criteria().map((criterion) => `- \`${criterion.id}\`: ${criterion.requirement}`),
+    ...criteria(milestoneId).map((criterion) => `- \`${criterion.id}\`: ${criterion.requirement}`),
     ""
   ].join("\n");
 }
 
-function acceptanceEvidence({ omit, extra, badHash } = {}) {
-  const items = criteria()
+function acceptanceEvidence({ omit, extra, badHash, milestoneId = "M2-R2" } = {}) {
+  const items = criteria(milestoneId)
     .filter((criterion) => criterion.id !== omit)
     .map((criterion) => ({
       criterionId: criterion.id,
-      milestoneId: "M2-R2",
+      milestoneId,
       requirement: criterion.requirement,
       requirementHash: badHash === criterion.id ? "bad" : hashText(criterion.requirement),
       historicalEvidenceStatus: "PASS",
@@ -111,7 +113,7 @@ function acceptanceEvidence({ omit, extra, badHash } = {}) {
   if (extra) {
     items.push({
       criterionId: extra,
-      milestoneId: "M2-R2",
+      milestoneId,
       requirement: "extra",
       requirementHash: hashText("extra"),
       evidenceSource: "extra",
@@ -124,9 +126,9 @@ function acceptanceEvidence({ omit, extra, badHash } = {}) {
   return items;
 }
 
-function baseInput({ base, head, changedFilePurposes, humanDecision = null } = {}) {
+function baseInput({ base, head, changedFilePurposes, humanDecision = null, milestoneId = "M2-R2" } = {}) {
   return {
-    milestoneId: "M2-R2",
+    milestoneId,
     milestoneTitle: "Terminal Handoff Trust Hardening",
     reviewedBaseCommit: base,
     reviewedHeadCommit: head,
@@ -138,7 +140,7 @@ function baseInput({ base, head, changedFilePurposes, humanDecision = null } = {
     retrospectiveReviewerStatus: "NOT_APPLICABLE",
     implementationSummary: "M2-R2 hardens terminal handoff trust with schema v4, structured reviewer verdicts, validation head binding, candidate seal, safe patch filtering, and concrete human gates.",
     changedFilePurposes,
-    acceptanceEvidence: acceptanceEvidence(),
+    acceptanceEvidence: acceptanceEvidence({ milestoneId }),
     validationRuns: [
       { command: "node --test tools/loop-handoff.test.mjs", result: "PASS", exitCode: 0 },
       { command: "npm run loop:validate", result: "PASS", exitCode: 0 }
@@ -163,6 +165,7 @@ async function createRepo() {
   await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
     "# Auto SVGA Loop State",
     "",
+    "- milestoneId: M2-R2",
     "- Milestone: M2-R2 Terminal Handoff Trust Hardening",
     "- State: terminal_pass",
     "- Next Action: external_review",
@@ -177,6 +180,7 @@ async function createRepo() {
     filesChanged: ["src/example.txt"],
     commands: ["node --test tools/loop-handoff.test.mjs"],
     result: "PASS",
+    progress: true,
     evidence: ["validation.json"],
     nextAction: "external_review"
   })}\n`);
@@ -310,6 +314,53 @@ async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
 }
 
+async function readAllPacketTextFiles(root) {
+  const result = [];
+  async function walk(current) {
+    const entries = await readdir(current);
+    for (const entry of entries) {
+      const filePath = join(current, entry);
+      const fileStat = await lstat(filePath);
+      if (fileStat.isDirectory()) {
+        await walk(filePath);
+        continue;
+      }
+      if (fileStat.isFile()) {
+        const bytes = await readFile(filePath);
+        if (!bytes.includes(0)) result.push(bytes.toString("utf8"));
+      }
+    }
+  }
+  await walk(root);
+  return result;
+}
+
+async function writeHumanDecision(repo) {
+  await writeJson(join(repo, ".artifacts/loop-decision.json"), {
+    schemaVersion: 1,
+    gateType: "SECURITY",
+    question: "How should the redacted file be handled?",
+    options: [
+      { id: "A", label: "Keep redacted", impact: "Prevents leaking sensitive content." },
+      { id: "B", label: "Stop", impact: "Waits for manual cleanup." }
+    ],
+    recommendation: "A",
+    evidence: ["secret redaction required"],
+    safeDefaultWhileWaiting: "Do not generate PASS."
+  });
+}
+
+async function setHumanRequiredState(repo) {
+  await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- milestoneId: M2-R2\n- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
+  await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", iteration: "terminal", result: "HUMAN_REQUIRED", progress: true, nextAction: "external_review" })}\n`);
+}
+
+async function expectPacketExcludesSentinel(packetRoot, sentinel) {
+  for (const text of await readAllPacketTextFiles(packetRoot)) {
+    assert.equal(text.includes(sentinel), false);
+  }
+}
+
 test("reviewer.toml config validates and remains read-only", async () => {
   const result = await validateReviewerConfig(".codex/agents/reviewer.toml");
 
@@ -389,7 +440,8 @@ test("safe token-like source code is not redacted from PASS packet diff", async 
 
 test("PASS fails closed on high-confidence secret content", async () => {
   await withRepo(async ({ repo, base }) => {
-    await writeText(join(repo, "src/secret-code.js"), "const API_KEY = \"abcdefghijklmnopqrstuvwxyzABC1234567890\";\n");
+    const secretValue = ["abcdefghijklmnopqrstuvwxyz", "ABC1234567890"].join("");
+    await writeText(join(repo, "src/secret-code.js"), `const API_KEY = "${secretValue}";\n`);
     run("git", ["add", "src/secret-code.js"], repo);
     run("git", ["commit", "-m", "secret code"], repo);
     const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
@@ -400,8 +452,120 @@ test("PASS fails closed on high-confidence secret content", async () => {
 
     await assert.rejects(
       generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
-      /high-confidence secret/
+      /refuses sensitive content|high-confidence secret/
     );
+  });
+});
+
+test("HUMAN_REQUIRED redacts committed safe-path secret snapshots", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const secretValue = ["abcdefghijklmnopqrstuvwxyz", "ABC1234567890"].join("");
+    const secretPath = "src/committed-secret.js";
+    await writeText(join(repo, secretPath), `const API_KEY = "${secretValue}";\n`);
+    run("git", ["add", secretPath], repo);
+    run("git", ["commit", "-m", "committed safe secret"], repo);
+    const head = run("git", ["rev-parse", "HEAD"], repo).stdout.trim();
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
+    }, { milestoneOutcome: "HUMAN_REQUIRED" });
+    await writeHumanDecision(repo);
+    await setHumanRequiredState(repo);
+
+    const result = await generateHandoffPacket({
+      ...defaultOptions(repo, base, head),
+      status: "HUMAN_REQUIRED",
+      decisionFile: ".artifacts/loop-decision.json"
+    });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    const redacted = manifest.redactedFiles.find((entry) => entry.repositoryPath === secretPath);
+
+    assert.equal(Boolean(redacted), true);
+    assert.equal(redacted.redacted, true);
+    assert.equal(redacted.ruleId, "high-entropy-secret-assignment");
+    assert.equal(typeof redacted.sha256, "string");
+    assert.equal(redacted.sizeBytes > 0, true);
+    assert.equal(manifest.files.some((entry) => entry.repositoryPath === secretPath), false);
+    await expectPacketExcludesSentinel(result.packetRoot, secretValue);
+  });
+});
+
+test("HUMAN_REQUIRED redacts staged safe-path secret snapshots", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const secretValue = ["ZYXWVUTSRQPONMLKJIHGFEDCBA", "9876543210"].join("");
+    const secretPath = "src/staged-secret.js";
+    await writeText(join(repo, secretPath), `const API_KEY = "${secretValue}";\n`);
+    run("git", ["add", secretPath], repo);
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
+    }, { milestoneOutcome: "HUMAN_REQUIRED" });
+    await writeHumanDecision(repo);
+    await setHumanRequiredState(repo);
+
+    const result = await generateHandoffPacket({
+      ...defaultOptions(repo, base, head),
+      status: "HUMAN_REQUIRED",
+      decisionFile: ".artifacts/loop-decision.json"
+    });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+
+    assert.equal(manifest.redactedFiles.some((entry) => entry.repositoryPath === secretPath && entry.redacted), true);
+    assert.equal(manifest.files.some((entry) => entry.repositoryPath === secretPath), false);
+    await expectPacketExcludesSentinel(result.packetRoot, secretValue);
+  });
+});
+
+test("HUMAN_REQUIRED redacts untracked safe-path secret snapshots", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const secretValue = ["MNOPQRSTUVWXYZabcdefghijkl", "1234567890"].join("");
+    const secretPath = "src/untracked-secret.js";
+    await writeText(join(repo, secretPath), `const API_KEY = "${secretValue}";\n`);
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
+    }, { milestoneOutcome: "HUMAN_REQUIRED" });
+    await writeHumanDecision(repo);
+    await setHumanRequiredState(repo);
+
+    const result = await generateHandoffPacket({
+      ...defaultOptions(repo, base, head),
+      status: "HUMAN_REQUIRED",
+      decisionFile: ".artifacts/loop-decision.json"
+    });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+
+    assert.equal(manifest.redactedFiles.some((entry) => entry.repositoryPath === secretPath && entry.redacted), true);
+    assert.equal(manifest.files.some((entry) => entry.repositoryPath === secretPath), false);
+    await expectPacketExcludesSentinel(result.packetRoot, secretValue);
+  });
+});
+
+test("HUMAN_REQUIRED redacts tracked worktree safe-path secret snapshots", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const secretValue = ["QRSTUVWXabcdefghijklmnop", "1234567890"].join("");
+    const secretPath = "src/example.txt";
+    await writeText(join(repo, secretPath), `const API_KEY = "${secretValue}";\n`);
+    await refreshValidationAndInput(repo, base, head, {
+      "docs/loop/LOOP_STATE.md": "Records the terminal human required state used by the fixture.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records the terminal human required history used by the fixture."
+    }, { milestoneOutcome: "HUMAN_REQUIRED" });
+    await writeHumanDecision(repo);
+    await setHumanRequiredState(repo);
+
+    const result = await generateHandoffPacket({
+      ...defaultOptions(repo, base, head),
+      status: "HUMAN_REQUIRED",
+      decisionFile: ".artifacts/loop-decision.json"
+    });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+
+    assert.equal(manifest.redactedFiles.some((entry) => entry.repositoryPath === secretPath && entry.redacted), true);
+    assert.equal(manifest.files.some((entry) => entry.repositoryPath === secretPath), false);
+    await expectPacketExcludesSentinel(result.packetRoot, secretValue);
   });
 });
 
@@ -436,7 +600,7 @@ test("literal pathspec handles pathspec-magic-looking file names", async () => {
 
 test("terminal state mismatch fails PASS generation", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: implementation_in_progress\n");
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- milestoneId: M2-R2\n- Milestone: M2-R2\n- State: implementation_in_progress\n- Next Action: repair\n");
     head = await commitFixture(repo, "bad state");
     await refreshValidationAndInput(repo, base, head, {
       "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
@@ -451,7 +615,7 @@ test("terminal state mismatch fails PASS generation", async () => {
 
 test("terminal state requires external_review next action", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_pass\n- Next Action: final_validation\n");
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- milestoneId: M2-R2\n- Milestone: M2-R2\n- State: terminal_pass\n- Next Action: final_validation\n");
     head = await commitFixture(repo, "bad terminal next action");
     await refreshValidationAndInput(repo, base, head, {
       "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
@@ -464,9 +628,118 @@ test("terminal state requires external_review next action", async () => {
   });
 });
 
+test("terminal state rejects duplicate machine Next Action fields", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
+      "- milestoneId: M2-R2",
+      "- Milestone: M2-R2",
+      "- State: terminal_pass",
+      "- Next Action: external_review",
+      "- Next Action: repair",
+      ""
+    ].join("\n"));
+    head = await commitFixture(repo, "duplicate next action");
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records an intentionally duplicated terminal next action for regression coverage."
+    });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /exactly one machine Next Action/
+    );
+  });
+});
+
+test("terminal state rejects contradictory human next action section", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
+      "# Auto SVGA Loop State",
+      "",
+      "- milestoneId: M2-R2",
+      "- Milestone: M2-R2",
+      "- State: terminal_pass",
+      "- Next Action: external_review",
+      "",
+      "## Next Action",
+      "",
+      "Generate the final candidate and seal packet.",
+      ""
+    ].join("\n"));
+    head = await commitFixture(repo, "contradictory next action section");
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records an intentionally contradictory human next action section for regression coverage."
+    });
+    await assert.rejects(
+      generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+      /contradicts/
+    );
+  });
+});
+
+test("terminal state rejects implementation, validation, or review requests in human next action section", async () => {
+  for (const actionText of [
+    "Perform more implementation before external review.",
+    "Do validation before external review.",
+    "Run review before external_review."
+  ]) {
+    await withRepo(async ({ repo, base, head }) => {
+      await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
+        "# Auto SVGA Loop State",
+        "",
+        "- milestoneId: M2-R2",
+        "- Milestone: M2-R2",
+        "- State: terminal_pass",
+        "- Next Action: external_review",
+        "",
+        "## Next Action",
+        "",
+        actionText,
+        ""
+      ].join("\n"));
+      head = await commitFixture(repo, `contradictory ${actionText.slice(0, 8)}`);
+      await refreshValidationAndInput(repo, base, head, {
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+        "docs/loop/LOOP_STATE.md": "Records an intentionally contradictory human next action section for regression coverage."
+      });
+      await assert.rejects(
+        generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
+        /contradicts/
+      );
+    });
+  }
+});
+
+test("terminal state allows await external review with negative action guidance", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
+      "# Auto SVGA Loop State",
+      "",
+      "- milestoneId: M2-R2",
+      "- Milestone: M2-R2",
+      "- State: terminal_pass",
+      "- Next Action: external_review",
+      "",
+      "## Next Action",
+      "",
+      "Await external review.",
+      "Do not perform additional implementation, validation, review, candidate generation, or sealing until a new directive is received.",
+      ""
+    ].join("\n"));
+    head = await commitFixture(repo, "terminal await external review");
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records terminal external review guidance for regression coverage."
+    });
+
+    const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    assert.equal(result.manifest.packetStatus, "INCOMPLETE");
+  });
+});
+
 test("terminal history final result must match PASS", async () => {
   await withRepo(async ({ repo, base, head }) => {
-    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "IN_PROGRESS", nextAction: "repair" })}\n`);
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", iteration: "terminal", result: "IN_PROGRESS", progress: false, nextAction: "repair" })}\n`);
     head = await commitFixture(repo, "bad history");
     await refreshValidationAndInput(repo, base, head, {
       "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
@@ -623,8 +896,8 @@ test("nested secret content does not enter HUMAN_REQUIRED packet files", async (
     } });
     input.milestoneOutcome = "HUMAN_REQUIRED";
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
-    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
-    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- milestoneId: M2-R2\n- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", iteration: "terminal", result: "HUMAN_REQUIRED", progress: true, nextAction: "external_review" })}\n`);
     const result = await generateHandoffPacket({
       ...defaultOptions(repo, base, head),
       status: "HUMAN_REQUIRED",
@@ -725,8 +998,8 @@ test("symlink snapshots record link target without following outside repository"
     } });
     input.milestoneOutcome = "HUMAN_REQUIRED";
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
-    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
-    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- milestoneId: M2-R2\n- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", iteration: "terminal", result: "HUMAN_REQUIRED", progress: true, nextAction: "external_review" })}\n`);
     const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), status: "HUMAN_REQUIRED", decisionFile: ".artifacts/loop-decision.json" });
     const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
     assert.equal(packet.includes(sentinel), false);
@@ -740,6 +1013,102 @@ test("repository path traversal is rejected", async () => {
       generateHandoffPacket({ ...defaultOptions(repo, base, head), contract: "../outside.md", candidate: true }),
       /escapes repository root/
     );
+  });
+});
+
+test("malicious milestoneId cannot create packet outside loop-handoff root", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const outside = join(repo, "..", "outside-sentinel.txt");
+    await writeText(outside, "unchanged\n");
+
+    await assert.rejects(
+      generateHandoffPacket({
+        ...defaultOptions(repo, base, head),
+        milestone: "../../outside",
+        candidate: true
+      }),
+      /Invalid milestoneId/
+    );
+    assert.equal(await readFile(outside, "utf8"), "unchanged\n");
+    assert.equal(existsSync(join(repo, ".artifacts/loop-handoff/latest")), false);
+    assert.equal(existsSync(join(repo, "..", "outside")), false);
+  });
+});
+
+test("invalid milestoneId matrix is rejected before packet output", async () => {
+  for (const milestone of ["/tmp/outside", "M2/R3", ".hidden"]) {
+    await withRepo(async ({ repo, base, head }) => {
+      const outside = join(repo, "..", `outside-${milestone.replaceAll("/", "_")}.txt`);
+      await writeText(outside, "unchanged\n");
+
+      await assert.rejects(
+        generateHandoffPacket({
+          ...defaultOptions(repo, base, head),
+          milestone,
+          candidate: true
+        }),
+        /Invalid milestoneId/
+      );
+      assert.equal(await readFile(outside, "utf8"), "unchanged\n");
+      assert.equal(existsSync(join(repo, ".artifacts/loop-handoff/latest")), false);
+    });
+  }
+});
+
+test("legal M2-R3 milestoneId can generate a candidate packet", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    const milestoneId = "M2-R3";
+    await writeText(join(repo, "docs/loop/CURRENT_MILESTONE.md"), contractText({ milestoneId }));
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
+      "# Auto SVGA Loop State",
+      "",
+      "- milestoneId: M2-R3",
+      "- Milestone: M2-R3",
+      "- State: terminal_pass",
+      "- Next Action: external_review",
+      ""
+    ].join("\n"));
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({
+      milestoneId,
+      iteration: "terminal",
+      result: "PASS",
+      progress: true,
+      evidence: ["validation.json"],
+      nextAction: "external_review"
+    })}\n`);
+    head = await commitFixture(repo, "legal m2 r3");
+    await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), {
+      schemaVersion: 2,
+      repositoryHeadCommitAtStart: head,
+      repositoryHeadCommitAtFinish: head,
+      sourceWorkspaceCleanAtStart: true,
+      sourceWorkspaceCleanAtFinish: true,
+      status: "pass",
+      steps: requiredValidationSteps(),
+      knownGaps: {}
+    });
+    await writeJson(join(repo, ".artifacts/loop-budget-check/latest.json"), budgetSummary({ milestoneId }));
+    await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R3.json"), baseInput({
+      base,
+      head,
+      milestoneId,
+      changedFilePurposes: {
+        "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+        "docs/loop/CURRENT_MILESTONE.md": "Records the M2-R3 fixture contract.",
+        "docs/loop/LOOP_STATE.md": "Records the M2-R3 fixture terminal state.",
+        "docs/loop/LOOP_HISTORY.jsonl": "Records the M2-R3 fixture terminal history."
+      }
+    }));
+
+    const result = await generateHandoffPacket({
+      ...defaultOptions(repo, base, head),
+      milestone: milestoneId,
+      input: ".artifacts/loop-handoff-input/M2-R3.json",
+      candidate: true
+    });
+
+    assert.equal(result.packetRoot.endsWith(`M2-R3-${head.slice(0, 7)}-candidate`), true);
+    assert.equal(result.manifest.milestone.id, milestoneId);
   });
 });
 
@@ -799,8 +1168,8 @@ test("HUMAN_REQUIRED final response contains the actual question and recommendat
     } });
     input.milestoneOutcome = "HUMAN_REQUIRED";
     await writeJson(join(repo, ".artifacts/loop-handoff-input/M2-R2.json"), input);
-    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
-    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", result: "HUMAN_REQUIRED", nextAction: "external_review" })}\n`);
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- milestoneId: M2-R2\n- Milestone: M2-R2\n- State: terminal_human_required\n- Next Action: external_review\n");
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", iteration: "terminal", result: "HUMAN_REQUIRED", progress: true, nextAction: "external_review" })}\n`);
     const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), status: "HUMAN_REQUIRED", decisionFile: ".artifacts/loop-decision.json" });
     const response = await readFile(join(result.packetRoot, "FINAL_RESPONSE.txt"), "utf8");
     assert.match(response, /Question:\nChoose the handoff repair direction\?/);
@@ -986,7 +1355,7 @@ test("loop validation contains handoff tests and reviewer config check", () => {
 test("failure path uses only temporary repository files", async () => {
   await assert.rejects(
     withRepo(async ({ repo, base, head }) => {
-      await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- Milestone: M2-R2\n- State: wrong\n");
+      await writeText(join(repo, "docs/loop/LOOP_STATE.md"), "- milestoneId: M2-R2\n- Milestone: M2-R2\n- State: wrong\n- Next Action: external_review\n");
       head = await commitFixture(repo, "bad terminal state");
       await refreshValidationAndInput(repo, base, head, {
         "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",

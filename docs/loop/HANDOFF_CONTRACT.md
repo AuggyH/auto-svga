@@ -16,6 +16,9 @@ The v4 contract hardens trust boundaries:
 - patch, snapshot, and Git diff commands use literal pathspecs with `--`
 - packet diff hashes are bound separately from source diff hashes
 - loop budget evidence is bound into the candidate digest
+- loop budget counts are derived from history, not trusted from state alone
+- HUMAN_REQUIRED file snapshots are content-classified before packet output
+- packet output paths are containment-checked under `.artifacts/loop-handoff`
 - `HUMAN_REQUIRED` contains a concrete single question and recommendation
 
 ## Packet Root
@@ -117,13 +120,16 @@ For current non-retrospective packets:
 
 1. `docs/loop/LOOP_STATE.md` must mark the milestone as terminal pass or
    terminal human required.
-2. `docs/loop/LOOP_STATE.md` terminal `Next Action` must be
+2. `docs/loop/LOOP_STATE.md` must contain exactly one machine `milestoneId`,
+   `State`, and `Next Action` field.
+3. `docs/loop/LOOP_STATE.md` terminal `Next Action` must be
    `external_review`.
-3. The last `docs/loop/LOOP_HISTORY.jsonl` entry for the milestone must have
-   `result` equal to the requested terminal outcome.
-4. Terminal history `nextAction` must be `external_review` or
-   `wait_for_next_milestone`.
-5. Packet `milestoneOutcome` must match CLI status and loop terminal state.
+4. The human-readable `## Next Action` section must not ask for candidate
+   generation, validation, repair, review collection, or packet sealing.
+5. The last `docs/loop/LOOP_HISTORY.jsonl` entry for the milestone must have
+   `iteration: terminal`, `result` equal to the requested terminal outcome,
+   `progress: true`, and `nextAction: external_review`.
+6. Packet `milestoneOutcome` must match CLI status and loop terminal state.
 
 ## Validation Binding
 
@@ -154,10 +160,20 @@ Current `PASS` packets also require `budget-check.json` with:
 `loop-budget-check` is a required sequential validation step after
 `handoff-tests` and `reviewer-config-check`.
 
+The budget checker derives `repairRound` and `consecutiveNoProgressRounds`
+from `docs/loop/LOOP_HISTORY.jsonl`. State values must match the derived
+values. New repair history entries require `progress: true | false`; only
+legacy `repair-1` PASS entries with non-empty evidence may be treated as
+progress for migration. `nextRepairAllowed` is true only when repair rounds and
+no-progress rounds are strictly below the frozen limits and validation has no
+errors.
+
 ## Safe Path Rules
 
-Before generating patch, snapshots, manifest, or packet content, the generator
-must derive the full changed path set using NUL-delimited Git output.
+Before generating patch, snapshots, manifest, artifact index, reviewer
+candidate, logs, errors, or packet content, the generator must derive the full
+changed path set using NUL-delimited Git output and classify all changed
+content.
 
 `PASS` fails if any changed path is sensitive or protected. `HUMAN_REQUIRED`
 may mention sensitive paths only as redacted metadata and must not read or copy
@@ -177,6 +193,15 @@ All repo input paths must resolve inside the repository. All Git path inputs
 must use literal pathspecs and `--`; pathspec magic must not be interpreted.
 Snapshot logic uses `lstat`; symlinks are recorded as link metadata and are not
 followed.
+
+For safe paths, content classification covers committed HEAD content, staged
+content, tracked worktree content, untracked file content, rename/copy old and
+new path strings, and symlink target strings. High-confidence secret content
+causes `PASS` to fail closed without writing a terminal packet. In
+`HUMAN_REQUIRED`, matching files are metadata-only: repository path, change
+type, size, SHA-256, rule id, line range, and `redacted: true`; `files/` must
+not contain their content. Binary files are metadata-only in
+`HUMAN_REQUIRED` unless a frozen milestone explicitly approves that binary.
 
 `git status --porcelain=v1 -z` rename/copy records must treat the path in the
 status token as the new path and the following NUL token as the old path.
@@ -208,6 +233,12 @@ allowed in a `PASS` packet. High-confidence secret content fails closed before
 packet generation. `HUMAN_REQUIRED` may use `diffFidelity:
 PARTIAL_REDACTED` only when sensitive paths or high-confidence sensitive
 content must be kept out of the packet.
+
+Packet directory names are built only after validating `milestoneId` as a safe
+single-segment identifier. `packetRoot`, `candidateRoot`, `latestRoot`,
+snapshots, and decision files must resolve inside `.artifacts/loop-handoff`;
+containment validation happens before any recursive remove, directory creation,
+copy, or symlink operation.
 
 ## Acceptance Evidence
 

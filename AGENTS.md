@@ -209,6 +209,8 @@ substitute a chat summary for the review packet.
 Review Packet v4 requires byte-exact `PASS` diffs, source/packet diff hash
 binding, loop budget evidence, structured reviewer JSON v2, and terminal
 `Next Action: external_review`.
+Loop budget counts must be derived from `LOOP_HISTORY.jsonl`, and
+`HUMAN_REQUIRED` snapshots must never include high-confidence secret content.
 
 ## Token-saving Skills
 
