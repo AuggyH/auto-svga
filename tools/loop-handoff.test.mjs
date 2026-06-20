@@ -1404,6 +1404,7 @@ test("sealed packet post verifier records upload contract and latest pointer", a
   await withRepo(async ({ repo, base, head }) => {
     const result = await generateSealedPacket({ repo, base, head });
     const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    const postSealVerification = await readJson(join(result.packetRoot, "post-seal-verification.json"));
     const latestTarget = await readlink(join(repo, ".artifacts/loop-handoff/latest"));
 
     assert.equal(manifest.sealVerification.status, "pass");
@@ -1411,6 +1412,10 @@ test("sealed packet post verifier records upload contract and latest pointer", a
     assert.deepEqual(manifest.mandatoryCompanions, []);
     assert.equal(manifest.sealVerification.trackedSourceClean, true);
     assert.equal(manifest.sealVerification.checkedArtifactCount > 0, true);
+    assert.deepEqual(postSealVerification.uploadFiles, [
+      `.artifacts/loop-handoff/M2-R2-${head.slice(0, 7)}/REVIEW_PACKET.md`
+    ]);
+    assert.equal(JSON.stringify(postSealVerification).includes(repo), false);
   });
 });
 

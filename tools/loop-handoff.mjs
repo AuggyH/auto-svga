@@ -1196,6 +1196,13 @@ export async function verifySealedPacket({ repoRoot, packetRoot, latestRoot, man
       : path.resolve(latestRoot);
   }
   const uploadFiles = parseFinalResponseUploads(finalResponseText);
+  const reportedUploadFiles = uploadFiles.map((filePath) => {
+    if (!repoRoot) return filePath;
+    const relativePath = path.relative(repoRoot, filePath);
+    return relativePath.startsWith("..") || path.isAbsolute(relativePath)
+      ? toPosixPath(path.basename(filePath))
+      : toPosixPath(relativePath);
+  });
   const uploadsExist = uploadFiles.every((filePath) => existsSync(filePath));
   const patchListed = uploadFiles.some((filePath) => filePath.endsWith("changes.patch"));
   const errors = [];
@@ -1352,7 +1359,7 @@ export async function verifySealedPacket({ repoRoot, packetRoot, latestRoot, man
     schemaVersion: 1,
     status: errors.length === 0 ? "pass" : "fail",
     errors,
-    uploadFiles,
+    uploadFiles: reportedUploadFiles,
     trackedSourceClean: trackedDiffClean && trackedIndexClean,
     checkedArtifactCount
   };
