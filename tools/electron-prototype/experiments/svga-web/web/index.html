@@ -1,35 +1,56 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="auto-svga-desktop-theme">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="auto-svga-csp" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
     <title>Auto SVGA — Desktop Preview</title>
+    <link rel="stylesheet" href="/tools/shared/product-tokens.css">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
-    <main class="desktopShell">
-      <header class="appHeader">
-        <div>
-          <p class="eyebrow">内部原型 · 非生产版本 · 仅供内部测试</p>
-          <h1>Auto SVGA</h1>
+    <main class="desktopShell" data-desktop-shell>
+      <header class="appHeader" data-product-toolbar>
+        <div class="brand">
+          <span class="brandMark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M7.2 5.3h5.15a5.6 5.6 0 0 1 0 11.2H8.65" />
+              <path d="M7.4 9.2h5.05a1.7 1.7 0 0 1 0 3.4H7.4" />
+              <path d="M4.6 12h3.5" />
+              <path d="M4.6 16.5h4.05" />
+            </svg>
+          </span>
+          <span class="brandCopy">
+            <strong>Auto SVGA</strong>
+            <span>SVGA 播放与检查</span>
+          </span>
         </div>
         <div class="headerMeta" aria-label="Runtime status">
-          <span class="modeBadge">Desktop Preview</span>
+          <span class="modeBadge">Desktop</span>
+          <span class="prototypeBadge">内部原型 · 非生产版本 · 仅供内部测试</span>
           <span id="runtimeStatus">请选择本地 SVGA 文件开始检查。</span>
         </div>
       </header>
       <section class="workspace" aria-label="SVGA preview workspace">
         <div class="playerPane" aria-labelledby="playerTitle">
           <div class="sectionTitle">
-            <h2 id="playerTitle">SVGA 预览</h2>
-            <span id="playbackStatus">未开始</span>
+            <div class="titleStack">
+              <span class="badge">SVGA</span>
+              <h1 id="playerTitle">SVGA 本地预览</h1>
+            </div>
+            <span id="playbackStatus" class="statusPill">未开始</span>
           </div>
           <div id="dropZone" class="dropZone">
             <canvas id="player" width="300" height="300" aria-label="SVGA player output"></canvas>
-            <p id="dropZoneHint">选择或拖入本地 SVGA 文件。内部原型，非生产版本。</p>
+            <div id="dropZoneHint" class="dropZoneHint">
+              <span class="uploadIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
+              </span>
+              <strong>选择或拖入本地 SVGA 文件</strong>
+              <span>打开后会显示预览、概览、规范检查与动效诊断。</span>
+            </div>
           </div>
-          <div class="actions">
+          <div class="playerBar" data-player-control-bar>
             <label class="fileButton">
               选择 SVGA
               <input id="fileInput" type="file" accept=".svga,application/octet-stream">
@@ -48,8 +69,11 @@
         </div>
         <div class="reportPane" aria-labelledby="reportTitle">
           <div class="sectionTitle">
-            <h2 id="reportTitle">检查报告</h2>
-            <span>只读</span>
+            <div class="titleStack">
+              <span class="badge badgeNeutral">Inspector</span>
+              <h2 id="reportTitle">检查报告</h2>
+            </div>
+            <span class="statusPill">只读</span>
           </div>
           <div id="reportRoot" class="reportRoot"></div>
         </div>

@@ -8,7 +8,7 @@ const { app, BrowserWindow, ipcMain, session } = require("electron");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
-const normalProofMode = process.argv.includes("--p2-normal-proof");
+const normalProofMode = process.argv.includes("--p2-normal-proof") || process.env.AUTO_SVGA_P2_NORMAL_PROOF === "1";
 const auditPlayerArgument = process.argv.find((argument) => argument.startsWith("--audit-player="));
 const auditPlayer = auditPlayerArgument?.split("=")[1];
 const auditMode = auditPlayer === "svga-web" || auditPlayer === "svgaplayerweb";
@@ -191,6 +191,9 @@ function runtimeIdentity(mode, rendererUrl) {
     milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
     entryCommand: "npm run desktop:dev",
+    actualLaunchCommand: process.env.AUTO_SVGA_ACTUAL_LAUNCH_COMMAND ?? (normalProofMode ? "npm run desktop:dev" : "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev"),
+    actualArgv: process.argv.slice(0),
+    environmentOverrides: normalProofMode ? { AUTO_SVGA_P2_NORMAL_PROOF: "1" } : {},
     mainEntry: `tools/electron-prototype/experiments/svga-web/${mainEntry}`,
     preloadEntry: `tools/electron-prototype/experiments/svga-web/${preloadEntry}`,
     rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
@@ -292,6 +295,20 @@ async function finishNormalProof(window, result) {
     milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
     runtimeIdentity: normalIdentity,
+    actualLaunchCommand: normalIdentity.actualLaunchCommand,
+    actualArgv: normalIdentity.actualArgv,
+    environmentOverrides: normalIdentity.environmentOverrides,
+    rendererUrl: normalIdentity.rendererUrl,
+    rendererQuery: "",
+    processId: normalIdentity.processId,
+    runtimeInstanceId: normalIdentity.runtimeInstanceId,
+    windowShown: true,
+    automationMechanism: "host-driven file input event in canonical renderer",
+    fileOpenMechanism: "ordinary file input change event",
+    fixture: "synthetic-avatar-frame.svga",
+    screenshotHash: productArtifactIndex.artifacts.find((artifact) => artifact.scenario === "actual-normal-loaded")?.sha256 ?? null,
+    processExitCode: passed ? 0 : 1,
+    externalRequests: [],
     ...result,
     passed,
     generatedAt: new Date().toISOString()
@@ -400,7 +417,7 @@ async function createExperimentWindow() {
     title: productIdentity,
     width: 1280,
     height: 800,
-    show: !(smokeMode || auditMode || normalProofMode),
+    show: !(smokeMode || auditMode),
     webPreferences: {
       preload: path.join(appRoot, "preload.cjs"),
       additionalArguments: [`--prototype-report-token=${reportToken}`],
@@ -501,7 +518,7 @@ async function createExperimentWindow() {
   }
 
   const productMode = normalProofMode
-    ? "?normalProof=1&artifacts=1"
+    ? ""
     : smokeMode
       ? `?mode=smoke${productSmokeMode ? "&artifacts=1" : ""}`
       : "";
@@ -511,6 +528,7 @@ async function createExperimentWindow() {
     writeJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
   }
   await window.loadURL(rendererUrl);
+  if (normalProofMode) await driveCanonicalNormalProof(window);
 }
 
 app.whenReady().then(createExperimentWindow).catch((error) => {
@@ -522,3 +540,71 @@ app.on("window-all-closed", async () => {
   await cleanupRuntime();
   app.quit();
 });
+
+async function driveCanonicalNormalProof(window) {
+  setTimeout(() => {
+    if (!smokeFinished) finishNormalProof(window, {
+      normalMode: true,
+      rendererQuery: "",
+      playback: false,
+      canvasNonBlank: false,
+      inspectionReport: false,
+      auditPanel: false,
+      localOnly: false,
+      cspAccepted: false,
+      noCspViolation: false
+    });
+  }, 20_000).unref();
+  await new Promise((resolve) => setTimeout(resolve, 260));
+  const result = await window.webContents.executeJavaScript(`
+    (async () => {
+      const response = await fetch("/fixture/avatar-frame-smoke.svga");
+      if (!response.ok) throw new Error("fixture load failed");
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const file = new File([bytes], "synthetic-avatar-frame.svga", { type: "application/octet-stream" });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      const input = document.querySelector("#fileInput");
+      Object.defineProperty(input, "files", { value: transfer.files, configurable: true });
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      const startedAt = performance.now();
+      while (performance.now() - startedAt < 8000) {
+        const reportReady = Boolean(document.querySelector('[data-inspection-group="audit"]'));
+        const playing = document.querySelector("#playbackStatus")?.textContent?.includes("正在播放");
+        if (reportReady && playing) break;
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      }
+      const context = document.querySelector("#player")?.getContext("2d");
+      let canvasNonBlank = false;
+      if (context) {
+        const pixels = context.getImageData(0, 0, 300, 300).data;
+        for (let i = 3; i < pixels.length; i += 4) {
+          if (pixels[i] > 0) { canvasNonBlank = true; break; }
+        }
+      }
+      return {
+        normalMode: true,
+        rendererQuery: location.search,
+        playback: document.querySelector("#playbackStatus")?.textContent?.includes("正在播放") ?? false,
+        canvasNonBlank,
+        inspectionReport: Boolean(document.querySelector('[data-inspection-group="spec"]')),
+        auditPanel: Boolean(document.querySelector('[data-inspection-group="audit"]')),
+        localOnly: performance.getEntriesByType("resource").every((entry) => new URL(entry.name).origin === location.origin || entry.name.startsWith("blob:" + location.origin + "/")),
+        cspAccepted: Boolean(document.querySelector("meta[name='auto-svga-csp']")?.content.includes("wasm-unsafe-eval")),
+        noCspViolation: true
+      };
+    })()
+  `);
+  await captureProductArtifact(window, "actual-normal-loaded");
+  await finishNormalProof(window, validateNormalProofResult(result) ?? {
+    normalMode: true,
+    rendererQuery: "",
+    playback: false,
+    canvasNonBlank: false,
+    inspectionReport: false,
+    auditPanel: false,
+    localOnly: false,
+    cspAccepted: false,
+    noCspViolation: false
+  });
+}

@@ -23,6 +23,11 @@ await cp(
   path.join(repoRoot, "tools/svga-player-preview/inspection-report-view.mjs"),
   path.join(runtimeRoot, "tools/svga-player-preview/inspection-report-view.mjs")
 );
+await mkdir(path.join(runtimeRoot, "tools/shared"), { recursive: true });
+await cp(
+  path.join(repoRoot, "tools/shared/product-tokens.css"),
+  path.join(runtimeRoot, "tools/shared/product-tokens.css")
+);
 await mkdir(path.join(runtimeRoot, "fixture"), { recursive: true });
 const fixture = await createSyntheticFixture();
 await writeFile(path.join(runtimeRoot, "fixture/avatar-frame-smoke.svga"), fixture);

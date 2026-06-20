@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,8 +10,23 @@ const experimentRoot = path.resolve(scriptRoot, "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
 const artifactRoot = path.join(repoRoot, ".artifacts/product/P2");
 const port = Number(process.env.AUTO_SVGA_P2_WEB_PORT ?? 4187);
-const serverUrl = `http://127.0.0.1:${port}/tools/svga-player-preview/?mode=export`;
+const serverUrl = `http://127.0.0.1:${port}/tools/svga-player-preview/`;
 const electronBin = path.resolve(experimentRoot, "../../node_modules/.bin/electron");
+const preferredFixtureCandidates = [
+  {
+    path: path.join(repoRoot, "examples/avatar_frame_basic/output/avatar_frame_basic.svga"),
+    label: "local-avatar-frame-basic-output.svga"
+  },
+  {
+    path: path.join(repoRoot, "jobs/avatar_frame_gold_green_real_002/output/avatar_frame_gold_green_real_002.svga"),
+    label: "local-avatar-frame-gold-green-real-002.svga"
+  },
+  {
+    path: path.join(repoRoot, "tools/electron-prototype/experiments/svga-web/.runtime/fixture/avatar-frame-smoke.svga"),
+    label: "synthetic-avatar-frame.svga"
+  }
+];
+const selectedFixture = preferredFixtureCandidates.find((candidate) => existsSync(candidate.path));
 
 function gitHeadCommit() {
   return execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).trim();
@@ -58,7 +74,7 @@ async function addArtifact(index, fileName, scenario, source, mode, viewport) {
     mime: fileName.endsWith(".json") ? "application/json" : "image/png",
     sizeBytes: bytes.byteLength,
     sha256: createHash("sha256").update(bytes).digest("hex"),
-    fixture: "examples/avatar_frame_basic/output/avatar_frame_basic.svga",
+    fixture: selectedFixture?.label ?? "unknown",
     headCommit: index.headCommit,
     generatedAt: new Date().toISOString(),
     humanReviewRequired: true
@@ -69,7 +85,12 @@ async function addArtifact(index, fileName, scenario, source, mode, viewport) {
 
 async function main() {
   await mkdir(artifactRoot, { recursive: true });
-  execFileSync("npm", ["run", "export:example"], { cwd: repoRoot, stdio: "ignore" });
+  execFileSync("npm", ["--prefix", "tools/electron-prototype/experiments/svga-web", "run", "spike:svga-web:prepare"], {
+    cwd: repoRoot,
+    stdio: "ignore"
+  });
+  if (!selectedFixture) throw new Error("No SVGA fixture available for Web reference capture.");
+  const fixturePath = selectedFixture.path;
   const server = spawn(process.execPath, ["tools/svga-player-preview/server.mjs"], {
     cwd: repoRoot,
     env: { ...process.env, PORT: String(port), HOST: "127.0.0.1" },
@@ -84,7 +105,8 @@ async function main() {
     execFileSync(electronBin, [
       path.join(scriptRoot, "web-reference-capture.cjs"),
       "--url", serverUrl,
-      "--artifact-root", artifactRoot
+      "--artifact-root", artifactRoot,
+      "--fixture", fixturePath
     ], {
       cwd: experimentRoot,
       stdio: "inherit"
@@ -101,6 +123,10 @@ async function main() {
   index.generatedAt = new Date().toISOString();
   await addArtifact(index, "web-reference-loaded.png", "web-reference-loaded", "web", "reference", { width: 1440, height: 900 });
   await addArtifact(index, "web-reference-inspection.png", "web-reference-inspection", "web", "reference", { width: 1440, height: 900 });
+  await addArtifact(index, "web-reference-empty.png", "web-reference-empty", "web", "reference", { width: 1440, height: 900 });
+  await addArtifact(index, "web-reference-invalid.png", "web-reference-invalid", "web", "reference", { width: 1440, height: 900 });
+  await addArtifact(index, "web-reference-request-audit.json", "web-reference-request-audit", "web", "reference", { width: 0, height: 0 });
+  await addArtifact(index, "web-reference-runtime-proof.json", "web-reference-runtime-proof", "web", "reference", { width: 0, height: 0 });
   await writeFile(path.join(artifactRoot, "artifact-index.json"), `${JSON.stringify(index, null, 2)}\n`);
 }
 

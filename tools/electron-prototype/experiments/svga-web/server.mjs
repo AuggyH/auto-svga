@@ -82,6 +82,7 @@ function resolveStaticPath(appRoot, pathname) {
     ["/legacy-vendor/", path.resolve(appRoot, "../..", "vendor")],
     ["/dist/", path.join(runtimeRoot, "dist")],
     ["/tools/svga-player-preview/", path.join(runtimeRoot, "tools/svga-player-preview")],
+    ["/tools/shared/", path.join(runtimeRoot, "tools/shared")],
     ["/fixture/", path.join(runtimeRoot, "fixture")],
     ["/audit-samples/", path.join(runtimeRoot, "audit-samples")],
     ["/", path.join(appRoot, "web")]

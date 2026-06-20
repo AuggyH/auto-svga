@@ -1,19 +1,9 @@
 :root {
-  color-scheme: light dark;
-  --color-bg: #f5f5f7;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f9fafb;
-  --color-text: #1d1d1f;
-  --color-muted: #6e6e73;
-  --color-border: #d2d2d7;
-  --color-accent: #0066cc;
-  --color-danger: #b42318;
-  --shadow-panel: 0 18px 52px rgba(15, 23, 42, 0.08);
-  --radius-panel: 12px;
-  --radius-control: 8px;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: var(--color-bg);
-  color: var(--color-text);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: var(--background);
+  color: var(--textPrimary);
 }
 
 * {
@@ -22,159 +12,292 @@
 
 body {
   min-width: 0;
+  min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
+  background: var(--backgroundGradient);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+button,
+input {
+  font: inherit;
 }
 
 .desktopShell {
   display: grid;
-  gap: 16px;
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 16px;
+  grid-template-rows: 60px minmax(0, 1fr);
+  gap: var(--space-6);
+  width: 100vw;
+  height: 100vh;
+  padding: var(--space-6);
+  overflow: hidden;
 }
 
 .appHeader,
 .playerPane,
 .reportPane {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-panel);
-  background: var(--color-surface);
+  background: var(--panel);
   box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(18px);
 }
 
 .appHeader {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  padding: 0 var(--space-7);
+}
+
+.brand {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
+  gap: 12px;
+  min-width: 0;
 }
 
-.headerMeta {
+.brandMark {
   display: grid;
-  justify-items: end;
-  gap: 6px;
-  min-width: 220px;
-  text-align: right;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  flex: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-2) 100%);
+  color: #fff;
+  filter: drop-shadow(0 2px 4px rgba(0, 122, 255, 0.28));
 }
 
-.modeBadge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 8px;
-  border: 1px solid rgba(180, 83, 9, 0.28);
-  border-radius: 999px;
-  color: #92400e;
-  background: #fff7ed;
-  font-size: 12px;
-  font-weight: 650;
+.brandMark svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.25;
+}
+
+.brandCopy {
+  display: grid;
+  min-width: 0;
+}
+
+.brand strong {
+  overflow: hidden;
+  color: var(--textPrimary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.eyebrow {
-  margin: 0 0 4px;
-  color: #92400e;
-  font-size: 12px;
+.brandCopy span,
+.prototypeBadge,
+#runtimeStatus,
+.sectionTitle > span {
+  color: var(--textTertiary);
+  font-size: var(--font-meta);
+  line-height: var(--line-meta);
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.modeBadge,
+.prototypeBadge,
+.statusPill,
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--surfaceSubtle);
+  color: var(--textSecondary);
+  font-size: var(--font-badge);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.modeBadge,
+.badge {
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
   font-weight: 700;
 }
 
-h1,
-h2,
-p {
-  margin: 0;
-}
-
-h1 {
-  font-size: 24px;
-  line-height: 1.25;
-}
-
-h2 {
-  font-size: 15px;
-  line-height: 1.35;
+.prototypeBadge {
+  color: var(--textTertiary);
 }
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(420px, 0.86fr) minmax(520px, 1.14fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) clamp(360px, 29vw, 440px);
+  gap: var(--space-6);
   min-width: 0;
+  min-height: 0;
 }
 
 .playerPane,
 .reportPane {
+  display: grid;
   min-width: 0;
-  padding: 16px;
+  min-height: 0;
+  padding: var(--space-6);
+}
+
+.playerPane {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
 }
 
 .reportPane {
-  max-height: calc(100vh - 112px);
-  overflow: auto;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .sectionTitle {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: var(--space-4);
+  min-width: 0;
+  margin-bottom: var(--space-5);
 }
 
-.sectionTitle span,
-#runtimeStatus {
-  color: var(--color-muted);
-  font-size: 12px;
-  line-height: 1.45;
+.titleStack {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
-#player {
-  display: block;
-  width: min(360px, 100%);
-  aspect-ratio: 1;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  border-radius: 10px;
-  background:
-    linear-gradient(45deg, #eceef2 25%, transparent 25%),
-    linear-gradient(-45deg, #eceef2 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #eceef2 75%),
-    linear-gradient(-45deg, transparent 75%, #eceef2 75%);
-  background-color: #ffffff;
-  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-  background-size: 16px 16px;
+.titleStack h1,
+.titleStack h2 {
+  overflow: hidden;
+  color: var(--textPrimary);
+  font-size: var(--font-title);
+  line-height: var(--line-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dropZone {
+  position: relative;
   display: grid;
+  min-height: 0;
   place-items: center;
-  gap: 12px;
-  min-height: 438px;
-  border: 1px dashed #aeb4bf;
-  border-radius: 12px;
-  padding: 18px;
-  background: var(--color-surface-muted);
+  gap: var(--space-5);
+  border: 1px dashed var(--borderStrong);
+  border-radius: var(--radius-panel);
+  padding: var(--space-6);
+  overflow: hidden;
+  background: var(--surfaceSubtle);
+}
+
+.dropZone::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.42;
+  background:
+    linear-gradient(45deg, var(--checkerboardA) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--checkerboardA) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--checkerboardA) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--checkerboardA) 75%);
+  background-color: var(--checkerboardB);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
 }
 
 .dropZone.isDragOver {
-  border-color: var(--color-accent);
-  background: rgba(0, 102, 204, 0.08);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surfaceSubtle));
 }
 
-.dropZone p {
-  max-width: 420px;
-  color: var(--color-muted);
-  font-size: 13px;
-  line-height: 1.45;
+.dropZone.isLoading {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.dropZone.isError {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surfaceSubtle));
+}
+
+#player {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(520px, 74%);
+  aspect-ratio: 1;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  background: transparent;
+}
+
+.dropZoneHint {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  max-width: 360px;
+  color: var(--textSecondary);
+  font-size: var(--font-body);
+  line-height: var(--line-body);
   text-align: center;
 }
 
-.actions {
+.dropZoneHint strong {
+  color: var(--textPrimary);
+  font-size: 14px;
+}
+
+.uploadIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: var(--accent);
+}
+
+.playerBar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
   justify-content: center;
-  margin-top: 14px;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-top: var(--space-5);
+  padding: var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  background: var(--surfaceSubtle);
 }
 
 .fileButton,
@@ -183,35 +306,36 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 72px;
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid #b9c1cc;
+  min-width: 74px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-control);
-  color: var(--color-text);
-  background: var(--color-surface-muted);
+  color: var(--textPrimary);
+  background: var(--surfaceElevated);
+  box-shadow: var(--shadow-control);
   cursor: pointer;
-  font: inherit;
-  font-size: 13px;
+  font-size: var(--font-body);
+  line-height: 1;
   white-space: nowrap;
 }
 
 .fileButton {
-  border-color: var(--color-accent);
-  color: #ffffff;
-  background: var(--color-accent);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  color: #fff;
+  background: var(--accent);
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.52;
+  opacity: 0.48;
 }
 
 button:focus-visible,
 .fileButton:focus-within,
 summary:focus-visible {
-  outline: 3px solid rgba(0, 102, 204, 0.32);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .fileButton input {
@@ -223,71 +347,126 @@ summary:focus-visible {
 
 .fileInfo {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
-  gap: 8px;
-  margin: 14px 0 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+  margin: var(--space-5) 0 0;
 }
 
 .fileInfo div {
   min-width: 0;
-  border: 1px solid #e3e7ed;
-  border-radius: var(--radius-control);
-  padding: 8px;
-  background: var(--color-surface-muted);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  padding: var(--space-3);
+  background: var(--surfaceSubtle);
 }
 
 .fileInfo dt {
-  color: var(--color-muted);
-  font-size: 11px;
+  color: var(--textTertiary);
+  font-size: var(--font-meta);
 }
 
 .fileInfo dd {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
-  font-size: 13px;
-}
-
-.dropZone.isError {
-  border-color: var(--color-danger);
-  background: rgba(180, 35, 24, 0.06);
-}
-
-.errorDetails {
-  max-width: 420px;
-  color: var(--color-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.errorDetails code {
-  display: block;
-  max-height: 88px;
-  margin-top: 6px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--textPrimary);
+  font-size: var(--font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reportRoot {
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
 }
 
-.specReportSection,
-.auditReportSection {
-  margin-top: 16px;
+.inspectionSummary {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.inspectionGroup,
+.reportRoot details {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  padding: var(--space-4);
+  background: var(--surfaceSubtle);
+}
+
+.inspectionGroup h3 {
+  color: var(--textPrimary);
+  font-size: var(--font-title);
+  line-height: var(--line-title);
+}
+
+.inspectionGroup p,
+.inspectionGroup li,
+.reportRoot summary {
+  color: var(--textSecondary);
+  font-size: var(--font-body);
+  line-height: var(--line-body);
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.metricItem {
+  min-width: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--floatingSurface) 58%, transparent);
+}
+
+.metricItem span {
+  display: block;
+  color: var(--textTertiary);
+  font-size: var(--font-meta);
+}
+
+.metricItem strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--textPrimary);
+  font-size: var(--font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.findingsList {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.findingsList li {
+  border-left: 2px solid var(--warning);
+  padding-left: var(--space-3);
+}
+
+.inspectionEmpty {
+  display: grid;
+  min-height: 240px;
+  align-content: center;
+  gap: var(--space-3);
+  color: var(--textSecondary);
 }
 
 .reportRoot details {
-  border: 1px solid #e3e7ed;
-  border-radius: 10px;
-  margin-top: 12px;
-  padding: 10px;
+  margin-top: var(--space-3);
 }
 
 .reportRoot summary {
   cursor: pointer;
-  color: var(--color-muted);
-  font-size: 13px;
 }
 
 .reportRoot * {
@@ -295,92 +474,61 @@ summary:focus-visible {
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 1180px) {
+.errorDetails code {
+  display: block;
+  max-height: 88px;
+  margin-top: var(--space-2);
+  overflow: auto;
+  color: var(--textTertiary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 1120px) {
+  .desktopShell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
   .workspace {
     grid-template-columns: 1fr;
   }
 
   .reportPane {
-    max-height: none;
+    min-height: 360px;
   }
 }
 
 @media (max-width: 680px) {
   .desktopShell {
-    padding: 10px;
+    padding: var(--space-4);
   }
 
   .appHeader {
-    align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    height: auto;
+    padding: var(--space-4);
   }
 
   .headerMeta {
-    justify-items: start;
-    min-width: 0;
-    text-align: left;
+    justify-content: start;
+    flex-wrap: wrap;
   }
 
-  .dropZone {
-    min-height: 360px;
+  .fileInfo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .playerBar {
+    justify-content: start;
+    flex-wrap: wrap;
   }
 
   .fileButton,
   button {
     flex: 1 1 96px;
     min-width: 0;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #16171a;
-    --color-surface: #222428;
-    --color-surface-muted: #1b1d21;
-    --color-text: #f5f5f7;
-    --color-muted: #a1a1aa;
-    --color-border: #3a3d43;
-    --color-accent: #2997ff;
-    --shadow-panel: none;
-  }
-
-  .modeBadge {
-    border-color: rgba(251, 191, 36, 0.34);
-    color: #fbbf24;
-    background: rgba(251, 191, 36, 0.1);
-  }
-
-  .eyebrow {
-    color: #fbbf24;
-  }
-
-  #player {
-    border-color: #3a3d43;
-    background:
-      linear-gradient(45deg, #2b2e34 25%, transparent 25%),
-      linear-gradient(-45deg, #2b2e34 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #2b2e34 75%),
-      linear-gradient(-45deg, transparent 75%, #2b2e34 75%);
-    background-color: #1a1c20;
-    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-    background-size: 16px 16px;
-  }
-
-  .dropZone {
-    border-color: #4b5563;
-  }
-
-  .fileButton,
-  button {
-    border-color: #4b5563;
-  }
-
-  .fileButton {
-    border-color: var(--color-accent);
-  }
-
-  .fileInfo div,
-  .reportRoot details {
-    border-color: #3a3d43;
   }
 }

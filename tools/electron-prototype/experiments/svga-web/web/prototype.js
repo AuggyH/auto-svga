@@ -14,7 +14,6 @@ const replayButton = document.querySelector("#replayButton");
 const fileInfo = document.querySelector("#fileInfo");
 const urlParams = new URLSearchParams(location.search);
 const isSmokeMode = urlParams.get("mode") === "smoke";
-const isNormalProofMode = urlParams.get("normalProof") === "1";
 const shouldCaptureArtifacts = urlParams.get("artifacts") === "1";
 const cspViolations = [];
 let activePlayer;
@@ -109,33 +108,8 @@ start().catch(async (error) => {
 
 async function start() {
   showEmptyState();
-  if (isNormalProofMode) {
-    await runNormalProof();
-    return;
-  }
   if (!isSmokeMode) return;
   await runSmoke();
-}
-
-async function runNormalProof() {
-  await delay(180);
-  const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
-  const bytes = new Uint8Array(await fetch(fixtureUrl).then(assertResponse).then((response) => response.arrayBuffer()));
-  const file = new File([bytes], "synthetic-avatar-frame.svga", { type: "application/octet-stream" });
-  const proof = await loadSvgaFile(file, "normal-proof");
-  await delay(260);
-  await captureArtifact("actual-normal-loaded");
-  await reportNormalProof({
-    normalMode: true,
-    rendererQuery: location.search,
-    playback: proof.playback,
-    canvasNonBlank: proof.canvasNonBlank,
-    inspectionReport: proof.inspectionReport,
-    auditPanel: proof.auditPanel,
-    localOnly: resourcesAreLocal(),
-    cspAccepted: cspAllowsOnlyLocalWasm(),
-    noCspViolation: cspViolations.length === 0
-  });
 }
 
 async function runSmoke() {
@@ -228,8 +202,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
       throw new Error("SVGA 播放输出为空。");
     }
     const report = await reportPromise;
-    reportRoot.innerHTML = renderAvatarFrameInspectionReport(report, "success");
-    decorateInspectionReport();
+    reportRoot.innerHTML = renderDesktopInspectionPresentation(report);
     updateFileInfo(name, metadata.sizeBytes ?? bytes.byteLength, report);
     runtimeStatus.textContent = "SVGA 已加载，检查报告已生成。";
     playbackStatus.textContent = `正在播放：${safeDisplayName(name)}`;
@@ -249,8 +222,8 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
     return {
       playback: video.frames > 0 && Boolean(canvas.getContext("2d")),
       canvasNonBlank: visibleCanvas.nonBlank && visibleCanvas.centralContent && visibleCanvas.sampleCount >= 3,
-      inspectionReport: report.contractVersion === 1 && Boolean(reportRoot.querySelector(".specReportSection")),
-      auditPanel: Boolean(report.auditPresentation) && Boolean(reportRoot.querySelector(".auditReportSection")),
+      inspectionReport: report.contractVersion === 1 && Boolean(reportRoot.querySelector('[data-inspection-group="spec"]')),
+      auditPanel: Boolean(report.auditPresentation) && Boolean(reportRoot.querySelector('[data-inspection-group="audit"]')),
       playerLifecycle: ["start", "process"].every((eventName) => lifecycle.has(eventName))
         && (!isSmokeMode || ["pause", "resume"].every((eventName) => lifecycle.has(eventName))),
       cleanup: typeof player.destroy === "function" && typeof parser.destroy === "function"
@@ -286,7 +259,7 @@ async function smokeDragDrop(bytes) {
   dropZone.dispatchEvent(event);
   await delay(1800);
   return playbackStatus.textContent.includes("drag-drop-smoke.svga")
-    && Boolean(reportRoot.querySelector(".auditReportSection"));
+    && Boolean(reportRoot.querySelector('[data-inspection-group="audit"]'));
 }
 
 async function smokeErrorFile() {
@@ -311,25 +284,35 @@ function showEmptyState() {
   cleanupPlayer();
   runtimeStatus.textContent = "请选择本地 SVGA 文件开始检查。";
   playbackStatus.textContent = "未开始";
-  dropZone.classList.remove("isError");
-  dropZoneHint.textContent = "选择或拖入本地 SVGA 文件。内部原型，非生产版本。";
-  reportRoot.innerHTML = "";
+  dropZone.classList.remove("isError", "isLoading");
+  dropZoneHint.innerHTML = `
+    <span class="uploadIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg></span>
+    <strong>选择或拖入本地 SVGA 文件</strong>
+    <span>打开后会显示预览、概览、规范检查与动效诊断。</span>
+  `;
+  reportRoot.innerHTML = renderInspectionEmpty("打开文件后显示检查结果", "这里会显示概览、规范检查和 Motion Asset Audit，只读展示，不会修改文件。");
   updateFileInfo();
   updatePlaybackControls();
 }
 
 function setLoadingState(name) {
   dropZone.classList.remove("isError");
+  dropZone.classList.add("isLoading");
   runtimeStatus.textContent = "正在加载本地 SVGA...";
   playbackStatus.textContent = `加载中：${safeDisplayName(name)}`;
-  dropZoneHint.textContent = "正在解析和生成只读检查报告。";
-  reportRoot.innerHTML = "";
+  dropZoneHint.innerHTML = `
+    <span class="uploadIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v5" /><path d="M12 16v5" /><path d="M3 12h5" /><path d="M16 12h5" /></svg></span>
+    <strong>正在加载 ${escapeHtml(safeDisplayName(name))}</strong>
+    <span>正在解析动画、生成检查报告和动效诊断。</span>
+  `;
+  reportRoot.innerHTML = renderInspectionEmpty("正在生成检查报告", "解析完成后会显示概览、规范检查和动效诊断。");
   updateFileInfo(name);
   updatePlaybackControls();
 }
 
 function showError(message, detail = "") {
   dropZone.classList.add("isError");
+  dropZone.classList.remove("isLoading");
   runtimeStatus.textContent = message;
   playbackStatus.textContent = "未播放";
   dropZoneHint.innerHTML = `
@@ -339,7 +322,7 @@ function showError(message, detail = "") {
       <code>${escapeHtml(detail || message)}</code>
     </details>
   `;
-  reportRoot.innerHTML = "";
+  reportRoot.innerHTML = renderInspectionEmpty("未生成检查报告", "请重新选择有效的 .svga 文件。技术错误已折叠在播放器区域。");
   updateFileInfo();
   updatePlaybackControls();
 }
@@ -379,15 +362,120 @@ function updateFileInfo(name = "未加载", sizeBytes, report) {
   });
 }
 
-function decorateInspectionReport() {
-  const calibration = reportRoot.querySelector(".calibrationGroup");
-  if (!calibration || calibration.closest("details")) return;
-  const wrapper = document.createElement("details");
-  wrapper.className = "calibrationDetails";
-  const summary = document.createElement("summary");
-  summary.textContent = "产品校准说明";
-  calibration.before(wrapper);
-  wrapper.append(summary, calibration);
+function renderInspectionEmpty(title, description) {
+  return `
+    <section class="inspectionEmpty" data-inspection-empty>
+      <span class="badge badgeNeutral">等待文件</span>
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(description)}</p>
+    </section>
+  `;
+}
+
+function renderDesktopInspectionPresentation(report) {
+  const model = createInspectionPresentation(report);
+  return `
+    <section class="inspectionSummary" data-inspection-presentation>
+      <article class="inspectionGroup" data-inspection-group="overview">
+        <h3>概览 <span class="statusPill">${escapeHtml(model.overview.statusLabel)}</span></h3>
+        <div class="metricGrid">
+          ${model.overview.metrics.map(renderMetric).join("")}
+        </div>
+      </article>
+      <article class="inspectionGroup" data-inspection-group="spec">
+        <h3>规范检查 <span class="statusPill">${escapeHtml(model.spec.statusLabel)}</span></h3>
+        <p>${escapeHtml(model.spec.summary)}</p>
+        ${renderFindings(model.spec.findings)}
+      </article>
+      <article class="inspectionGroup" data-inspection-group="audit">
+        <h3>动效诊断 <span class="statusPill">${escapeHtml(model.audit.statusLabel)}</span></h3>
+        <p>${escapeHtml(model.audit.summary)}</p>
+        ${renderFindings(model.audit.findings)}
+      </article>
+      <details class="calibrationDetails" data-calibration-default-collapsed>
+        <summary>产品校准说明</summary>
+        <p>${escapeHtml(model.calibration.summary)}</p>
+      </details>
+      <details class="technicalDetails" data-technical-default-collapsed>
+        <summary>技术详情</summary>
+        ${renderAvatarFrameInspectionReport(report, "success")}
+      </details>
+    </section>
+  `;
+}
+
+function createInspectionPresentation(report) {
+  const asset = report?.asset ?? {};
+  const spec = report?.specReport ?? report?.spec ?? {};
+  const audit = report?.auditPresentation ?? report?.auditSummary ?? {};
+  const issues = Array.isArray(spec.issues) ? spec.issues : [];
+  const auditFindings = Array.isArray(audit.findingCards)
+    ? audit.findingCards
+    : Array.isArray(audit.primaryFindings)
+      ? audit.primaryFindings
+      : [];
+  const dimensions = asset.dimensions ?? asset.canvasSize ?? {};
+  const timing = asset.timing ?? {};
+  const parserStatus = report?.parseStatus ?? asset.parserStatus ?? "parsed";
+  const specPassed = spec.passed ?? report?.passed ?? issues.length === 0;
+  return {
+    overview: {
+      statusLabel: specPassed ? "可预览" : "需检查",
+      metrics: [
+        ["文件", asset.name ?? "当前 SVGA"],
+        ["画布", dimensions.width && dimensions.height ? `${dimensions.width} × ${dimensions.height}` : "未知"],
+        ["FPS", timing.fps ?? asset.fps ?? "未知"],
+        ["时长 / 帧数", formatDurationFrames(timing.durationMs, timing.frameCount ?? asset.frameCount)],
+        ["图层", asset.spriteCount ?? asset.layerCount ?? "未知"],
+        ["资源", asset.resourceCount ?? "未知"],
+        ["Parser", parserStatus]
+      ]
+    },
+    spec: {
+      statusLabel: specPassed ? "通过" : "有问题",
+      summary: specPassed ? "当前文件通过头像框生产目标的基础检查。" : `发现 ${issues.length} 个规范问题，需要复核。`,
+      findings: issues.map((issue) => ({
+        title: issue.code ?? issue.severity ?? "spec_issue",
+        description: issue.message ?? "规范检查问题",
+        severity: issue.severity ?? "warning"
+      }))
+    },
+    audit: {
+      statusLabel: audit.statusLabel ?? audit.auditStatus ?? "只读",
+      summary: audit.summaryDescription ?? audit.summaryTitle ?? "Motion Asset Audit 已生成，只读展示主要风险与建议。",
+      findings: auditFindings.slice(0, 4).map((finding) => ({
+        title: finding.title ?? finding.titleKey ?? finding.code ?? "audit_finding",
+        description: finding.description ?? finding.descriptionKey ?? "动效诊断发现",
+        severity: finding.severity ?? "advisory"
+      }))
+    },
+    calibration: {
+      summary: Array.isArray(report?.calibrationNotes)
+        ? report.calibrationNotes.join(" ")
+        : "文件体积、资源数量和透明空白阈值仍保留产品校准说明。"
+    }
+  };
+}
+
+function renderMetric([label, value]) {
+  return `<div class="metricItem"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+}
+
+function renderFindings(findings) {
+  if (!findings.length) return `<ul class="findingsList"><li>未发现需要立即处理的问题。</li></ul>`;
+  return `
+    <ul class="findingsList">
+      ${findings.map((finding) => `
+        <li><strong>${escapeHtml(finding.severity)} · ${escapeHtml(finding.title)}</strong><br>${escapeHtml(finding.description)}</li>
+      `).join("")}
+    </ul>
+  `;
+}
+
+function formatDurationFrames(durationMs, frameCount) {
+  const duration = typeof durationMs === "number" ? `${(durationMs / 1000).toFixed(2)}s` : "未知时长";
+  const frames = typeof frameCount === "number" ? `${frameCount} 帧` : "未知帧数";
+  return `${duration} / ${frames}`;
 }
 
 function canvasHasVisiblePixels(target, region) {
@@ -524,10 +612,6 @@ function delay(durationMs) {
 
 function reportSmoke(result) {
   return window.autoSvgaPrototype?.reportSmokeResult(result) ?? Promise.resolve();
-}
-
-function reportNormalProof(result) {
-  return window.autoSvgaPrototype?.reportNormalProofResult?.(result) ?? Promise.resolve();
 }
 
 function captureArtifact(scenario) {

@@ -37,8 +37,11 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     assert.equal(unauthorized.status, 401);
     const page = await fetch(`${server.origin}/`).then((response) => response.text());
     assert.match(page, /Auto SVGA — Desktop Preview/);
-    assert.match(page, /内部原型 · 非生产版本 · 仅供内部测试/);
+    assert.match(page, /brandMark/);
+    assert.match(page, /prototypeBadge/);
     assert.doesNotMatch(page, /cdn\.jsdelivr|(?<!wasm-)unsafe-eval/);
+    const sharedTokens = await fetch(`${server.origin}/tools/shared/product-tokens.css`);
+    assert.equal(sharedTokens.status, 200);
     const missingAuditSample = await fetch(`${server.origin}/audit-samples/missing.svga`);
     assert.equal(missingAuditSample.status, 404);
     const legacyVendor = await fetch(`${server.origin}/legacy-vendor/pako-2.1.0.min.js`);
@@ -65,7 +68,8 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /normal-runtime-proof\.json/);
   assert.match(main, /desktop-loaded/);
   assert.match(main, /actual-normal-loaded/);
-  assert.match(main, /entryCommand: "npm run desktop:dev"/);
+  assert.match(main, /actualLaunchCommand/);
+  assert.match(main, /driveCanonicalNormalProof/);
   assert.match(main, /setPermissionRequestHandler/);
   assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/);
   assert.match(main, /will-navigate/);
@@ -79,12 +83,29 @@ test("main process keeps sandboxed Electron security settings", async () => {
 
 test("renderer supports local file input, drag-drop, controls, and invalid file states without host filesystem access", async () => {
   const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const styles = await readFile(path.join(experimentRoot, "web/styles.css"), "utf8");
   const legacyPage = await readFile(path.join(experimentRoot, "../../web/index.html"), "utf8");
   assert.match(page, /<title>Auto SVGA — Desktop Preview<\/title>/);
-  assert.match(page, /<h1>Auto SVGA<\/h1>/);
-  assert.match(page, /SVGA 预览/);
+  assert.match(page, /brandMark/);
+  assert.match(page, /Auto SVGA/);
+  assert.match(page, /prototypeBadge/);
+  assert.match(page, /\/tools\/shared\/product-tokens\.css/);
+  assert.match(page, /SVGA 本地预览/);
   assert.match(page, /检查报告/);
+  assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) clamp\(360px, 29vw, 440px\)/);
+  assert.match(styles, /\.prototypeBadge/);
+  assert.match(styles, /\.playerBar/);
+  assert.match(renderer, /renderDesktopInspectionPresentation/);
+  assert.match(renderer, /createInspectionPresentation/);
+  assert.match(renderer, /data-inspection-group="overview"/);
+  assert.match(renderer, /data-inspection-group="spec"/);
+  assert.match(renderer, /data-inspection-group="audit"/);
+  assert.match(renderer, /data-calibration-default-collapsed/);
+  assert.match(renderer, /data-technical-default-collapsed/);
+  assert.match(renderer, /data-inspection-empty/);
+  assert.match(renderer, /isLoading/);
   assert.match(renderer, /fileInput\.addEventListener\("change"/);
   assert.match(renderer, /dropZone\.addEventListener\("drop"/);
   assert.match(renderer, /playButton\.addEventListener\("click"/);
@@ -96,7 +117,7 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   assert.match(renderer, /captureArtifact\("desktop-loaded"\)/);
   assert.match(renderer, /captureArtifact\("desktop-inspection"\)/);
   assert.match(renderer, /captureArtifact\("desktop-invalid"\)/);
-  assert.match(renderer, /captureArtifact\("actual-normal-loaded"\)/);
+  assert.match(main, /captureProductArtifact\(window, "actual-normal-loaded"\)/);
   assert.match(renderer, /captureArtifact\("smoke-loaded"\)/);
   assert.match(renderer, /File\(\[bytes\], "file-input-smoke\.svga"/);
   assert.match(renderer, /File\(\[bytes\], "drag-drop-smoke\.svga"/);
@@ -122,12 +143,32 @@ test("root package exposes explicit desktop entrypoints without changing default
   const legacyPackage = JSON.parse(await readFile(path.join(experimentRoot, "../../package.json"), "utf8"));
   assert.equal(rootPackage.scripts["desktop:dev"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev");
   assert.equal(rootPackage.scripts["desktop:smoke"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke");
+  assert.match(rootPackage.scripts["desktop:p2:normal-proof"], /desktop:p2:normal-proof/);
   assert.equal(rootPackage.scripts.test, "npm run test:all");
   assert.equal(rootPackage.scripts["local:preview"], "node tools/launch-local-preview.mjs");
   assert.match(experimentPackage.scripts["desktop:dev"], /electron \.$/);
   assert.match(experimentPackage.scripts["desktop:smoke"], /--smoke --product-smoke/);
+  assert.match(experimentPackage.scripts["desktop:p2:normal-proof"], /run-canonical-normal-proof\.mjs/);
+  assert.doesNotMatch(experimentPackage.scripts["desktop:p2:normal-proof"], /--p2-normal-proof/);
   assert.notEqual(rootPackage.scripts["desktop:dev"], legacyPackage.scripts["spike:electron:smoke"]);
   assert.doesNotMatch(rootPackage.scripts["desktop:dev"], /tools\/electron-prototype run/);
+});
+
+test("P2 parity report generator is deterministic and not unconditional pass", async () => {
+  const source = await readFile(path.join(experimentRoot, "scripts/build-p2-parity-report.mjs"), "utf8");
+  assert.match(source, /function check\(/);
+  assert.match(source, /function category\(/);
+  assert.match(source, /unresolvedDifferences/);
+  assert.match(source, /missingArtifacts/);
+  assert.match(source, /desktop_brand_mark/);
+  assert.match(source, /player_column_primary/);
+  assert.match(source, /structured_groups_exist/);
+  assert.match(source, /calibration_collapsed/);
+  assert.match(source, /shared_token_file_exists/);
+  assert.match(source, /matched-web-desktop-loaded-comparison\.png/);
+  assert.match(source, /normalRuntimeEvidence/);
+  assert.doesNotMatch(source, /productIdentity:\s*\{\s*status:\s*"pass"/);
+  assert.doesNotMatch(source, /unresolvedDifferences:\s*\[\]/);
 });
 
 test("real sample audit harness stores aliases and avoids absolute paths in report output", async () => {
