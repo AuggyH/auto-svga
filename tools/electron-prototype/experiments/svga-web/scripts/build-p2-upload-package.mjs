@@ -228,6 +228,7 @@ async function main() {
     "- REVIEW_PACKET.md is included in the ZIP and also copied here for quick reading.",
     ""
   ].join("\n"));
+  await sanitizeTextFiles(visibleRoot, headShort);
   console.log(`P2_UPLOAD_PACKAGE=${JSON.stringify(summary)}`);
 }
 
