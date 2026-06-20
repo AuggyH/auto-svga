@@ -6,7 +6,7 @@ Date: 2026-06-20
 
 - milestoneId: P1
 - Milestone: P1 Electron Desktop Mainline Baseline: Local SVGA Open, Playback And Inspection
-- State: human_required
+- State: terminal_human_required
 - Next Action: external_review
 - repairRound: 0
 - consecutiveNoProgressRounds: 0
@@ -23,7 +23,8 @@ Date: 2026-06-20
 - Agent Loop infrastructure is frozen.
 - P1 product milestone contract is frozen.
 - P1 implementation is complete at `98f04c16f2efa43228ce4901bd250b887665ada6`.
-- Machine validation passed twice on final implementation HEAD.
+- P1 terminal loop-state normalization is complete at `80fd95a816f516e229c0bab4f61bc1cf43329b39`.
+- Machine validation passed twice on final terminal HEAD.
 - P1 visual artifacts were generated under `.artifacts/product/P1/`.
 - Human visual acceptance is required before marking P1 as PASS.
 
