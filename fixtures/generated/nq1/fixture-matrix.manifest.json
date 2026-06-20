@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "matrixId": "NQ1-synthetic-svga-editor-fixture-matrix",
+  "sourceGeneratorVersion": "nq1-fixture-generator-v1",
+  "resourceCounts": [1, 2, 3, 5, 10, 25],
+  "features": [
+    "shared_resource",
+    "unused_resource",
+    "multiple_resource_keys",
+    "unicode_resource_key",
+    "long_resource_key",
+    "same_dimensions_different_images",
+    "different_dimensions_png",
+    "transparent_edge_png",
+    "opaque_png",
+    "matte_key_reference",
+    "multi_sprite_positions",
+    "static_resource",
+    "multi_frame_sprite",
+    "unsupported_unknown_field_boundary"
+  ],
+  "cases": [
+    {
+      "fixtureId": "nq1-r1-static",
+      "seed": 101,
+      "resourceCount": 1,
+      "expectedSupported": true,
+      "expectedUnsupportedReason": null
+    },
+    {
+      "fixtureId": "nq1-r2-shared",
+      "seed": 202,
+      "resourceCount": 2,
+      "expectedSupported": true,
+      "expectedUnsupportedReason": null
+    },
+    {
+      "fixtureId": "nq1-r3-unused",
+      "seed": 303,
+      "resourceCount": 3,
+      "expectedSupported": true,
+      "expectedUnsupportedReason": null
+    },
+    {
+      "fixtureId": "nq1-r5-varied",
+      "seed": 505,
+      "resourceCount": 5,
+      "expectedSupported": true,
+      "expectedUnsupportedReason": null
+    },
+    {
+      "fixtureId": "nq1-r10-sequence",
+      "seed": 1010,
+      "resourceCount": 10,
+      "expectedSupported": true,
+      "expectedUnsupportedReason": null
+    },
+    {
+      "fixtureId": "nq1-r25-stress",
+      "seed": 2525,
+      "resourceCount": 25,
+      "expectedSupported": true,
+      "expectedUnsupportedReason": null
+    },
+    {
+      "fixtureId": "nq1-unsupported-unknown-field",
+      "seed": 909,
+      "resourceCount": 3,
+      "expectedSupported": false,
+      "expectedUnsupportedReason": "unsupported_unknown_protobuf_field"
+    }
+  ]
+}

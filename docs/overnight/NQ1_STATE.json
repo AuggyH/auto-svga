@@ -8,14 +8,14 @@
   "p4FinalMachineHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
   "branch": "agent/codex/nq1-overnight-hardening",
   "startHead": "fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4",
-  "currentWorkPackage": "NQ1-WP02",
+  "currentWorkPackage": "NQ1-WP03",
   "completedWorkPackages": [
-    "NQ1-WP01"
+    "NQ1-WP01",
+    "NQ1-WP02"
   ],
   "blockedWorkPackages": [],
   "partialWorkPackages": [],
   "remainingWorkPackages": [
-    "NQ1-WP02",
     "NQ1-WP03",
     "NQ1-WP04",
     "NQ1-WP05",
@@ -93,15 +93,58 @@
     {
       "id": "NQ1-WP02",
       "title": "Synthetic multi-resource fixture matrix",
-      "status": "pending",
-      "startedAt": null,
-      "finishedAt": null,
-      "startCommit": null,
+      "status": "complete",
+      "startedAt": "2026-06-20T20:44:09.619Z",
+      "finishedAt": "2026-06-20T20:46:21.797Z",
+      "startCommit": "c97682a1718bdba79e26925f6306d0496321a243",
       "endCommit": null,
-      "filesChanged": [],
-      "commands": [],
-      "testResults": [],
-      "findings": [],
+      "filesChanged": [
+        "fixtures/generated/nq1/.gitignore",
+        "fixtures/generated/nq1/fixture-matrix.manifest.json",
+        "src/tests/helpers/nq1-svga-fixture.ts",
+        "src/tests/nq1-fixture-matrix.test.ts",
+        "tools/nq1/generate-fixture-matrix.mjs",
+        "package.json",
+        "docs/overnight/NQ1_STATE.json",
+        "docs/overnight/NQ1_HISTORY.jsonl"
+      ],
+      "commands": [
+        {
+          "command": "npm run build && node --test dist/tests/nq1-fixture-matrix.test.js",
+          "status": "pass"
+        },
+        {
+          "command": "npm run nq1:fixture-matrix",
+          "status": "pass"
+        },
+        {
+          "command": "node --test dist/tests/svga-image-resource-editor.test.js",
+          "status": "pass"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "nq1-fixture-matrix-targeted",
+          "status": "pass",
+          "summary": "5 pass / 0 fail"
+        },
+        {
+          "id": "svga-image-resource-editor-regression",
+          "status": "pass",
+          "summary": "9 pass / 0 fail"
+        },
+        {
+          "id": "fixture-matrix-artifact",
+          "status": "pass",
+          "summary": "7 fixtures generated, 6 supported, 1 unsupported boundary, resource counts 1/2/3/5/10/25, no absolute path in report"
+        }
+      ],
+      "findings": [
+        "Approved synthetic fixture matrix is deterministic and does not use real user assets.",
+        "Supported fixtures inflate, decode, and expose expected editor resources.",
+        "Unsupported unknown-field boundary fixture fails closed in the editor.",
+        "Generated NQ1 fixture matrix report is under ignored `.artifacts/product/NQ1/fixture-matrix.json`."
+      ],
       "deferredItems": []
     },
     {
