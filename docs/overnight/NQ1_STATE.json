@@ -97,7 +97,7 @@
       "startedAt": "2026-06-20T20:44:09.619Z",
       "finishedAt": "2026-06-20T20:46:21.797Z",
       "startCommit": "c97682a1718bdba79e26925f6306d0496321a243",
-      "endCommit": null,
+      "endCommit": "c30fe909dc985ae412d2f05995fce623bd535e2b",
       "filesChanged": [
         "fixtures/generated/nq1/.gitignore",
         "fixtures/generated/nq1/fixture-matrix.manifest.json",
@@ -154,7 +154,7 @@
       "startedAt": "2026-06-20T20:47:28.863Z",
       "finishedAt": "2026-06-20T20:51:16.717Z",
       "startCommit": "c30fe909dc985ae412d2f05995fce623bd535e2b",
-      "endCommit": null,
+      "endCommit": "3d8498f24fe7d4cf1208034897eefcd03721bba8",
       "filesChanged": [
         "src/tests/helpers/nq1-history-model.ts",
         "src/tests/nq1-history-model.test.ts",
@@ -297,6 +297,35 @@
       "testResults": [],
       "findings": [],
       "deferredItems": []
+    }
+  ],
+  "checkpointValidations": [
+    {
+      "id": "after-wp03-loop-validate",
+      "status": "pass",
+      "command": "npm run loop:validate",
+      "startedAt": "2026-06-20T20:52:56.412Z",
+      "finishedAt": "2026-06-20T20:53:57.497Z",
+      "durationMs": 61085,
+      "headCommitAtStart": "3d8498f24fe7d4cf1208034897eefcd03721bba8",
+      "headCommitAtFinish": "3d8498f24fe7d4cf1208034897eefcd03721bba8",
+      "sourceWorkspaceCleanAtStart": true,
+      "sourceWorkspaceCleanAtFinish": true,
+      "summary": {
+        "handoffTests": "54 pass / 0 fail",
+        "rootTests": "176 pass / 0 fail",
+        "launcherTests": "3 pass / 0 fail",
+        "webInspectionTests": "13 pass / 0 fail",
+        "electronPrototypeTests": "3 pass / 0 fail",
+        "svgaWebPrototypeTests": "14 pass / 0 fail"
+      },
+      "knownGaps": {
+        "lint": "not_available",
+        "format": "not_available",
+        "performanceBenchmark": "not_available",
+        "visualQuality": "manual_review",
+        "svgaWebRenderSmoke": "optional_heavy_check"
+      }
     }
   ]
 }
