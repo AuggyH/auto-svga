@@ -348,10 +348,12 @@ async function createArtifactIndex() {
 async function createPrivacyAudit(artifactIndex) {
   const findings = [];
   const { readFile } = await import("node:fs/promises");
+  const macUserRoot = `/${"Users"}/`;
+  const windowsUserRoot = `\\${"Users"}\\`;
   for (const file of artifactIndex.files) {
     if (!file.path.endsWith(".json")) continue;
     const text = await readFile(path.join(productDir, path.basename(file.path)), "utf8");
-    if (text.includes("/Users/") || text.includes("\\Users\\") || text.includes(repoRoot)) {
+    if (text.includes(macUserRoot) || text.includes(windowsUserRoot) || text.includes(repoRoot)) {
       findings.push({ file: file.path, code: "absolute_path_detected" });
     }
   }
