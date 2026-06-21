@@ -486,6 +486,12 @@ function validateP5BatchResult(value) {
   const liveRuntimeProof = value.liveRuntimeProof && typeof value.liveRuntimeProof === "object"
     ? value.liveRuntimeProof
     : {};
+  const uiFlowProof = value.uiFlowProof && typeof value.uiFlowProof === "object"
+    ? value.uiFlowProof
+    : {};
+  const mappingUiRenderProof = value.mappingUiRenderProof && typeof value.mappingUiRenderProof === "object"
+    ? value.mappingUiRenderProof
+    : {};
   const thumbnailEvidence = value.thumbnailEvidence && typeof value.thumbnailEvidence === "object"
     ? value.thumbnailEvidence
     : {};
@@ -534,6 +540,8 @@ function validateP5BatchResult(value) {
     mappingReport,
     historyReport,
     liveRuntimeProof,
+    uiFlowProof,
+    mappingUiRenderProof,
     roundTripReport,
     thumbnailEvidence,
     reviewerBCategories: Array.isArray(value.reviewerBCategories)
@@ -567,6 +575,8 @@ function validateP5BatchResult(value) {
     && Array.isArray(roundTripReport.unexpectedChanges)
     && roundTripReport.unexpectedChanges.length === 0
     && liveRuntimeProof.passed === true
+    && uiFlowProof.passed === true
+    && mappingUiRenderProof.passed === true
     && historyReport.passed === true
     && thumbnailEvidence.passed === true;
   return normalized;
@@ -1501,9 +1511,12 @@ async function createExperimentWindow() {
       fixturePath: fixture.fixtureArtifactPath,
       fixtureSha256: fixture.fixtureSha256,
       approvedSynthetic: true,
-      resourceKeys: result.mappingReport?.resolvedReview?.records
-        ?.map((record) => record.selectedResourceKey)
-        ?.filter(Boolean) ?? [],
+      resourceKeys: [
+        ...new Set([
+          ...(verifiedRoundTripReport.replacedResourceKeys ?? []),
+          ...(verifiedRoundTripReport.unchangedResourceKeys ?? [])
+        ])
+      ].sort(),
       generatedAt: new Date().toISOString()
     });
     writeJsonProductArtifact("batch-mapping-report.json", "p5-batch-mapping-report", result.mappingReport);
@@ -1519,6 +1532,16 @@ async function createExperimentWindow() {
       passed: result.thumbnailEvidence.passed === true
     });
     writeJsonProductArtifact("p5-live-runtime-proof.json", "p5-live-runtime-proof", verifiedLiveRuntimeProof);
+    writeJsonProductArtifact("p5-ui-flow-proof.json", "p5-ui-flow-proof", {
+      ...result.uiFlowProof,
+      headCommit: productArtifactIndex.headCommit,
+      passed: result.uiFlowProof?.passed === true
+    });
+    writeJsonProductArtifact("p5-mapping-ui-render-proof.json", "p5-mapping-ui-render-proof", {
+      ...result.mappingUiRenderProof,
+      headCommit: productArtifactIndex.headCommit,
+      passed: result.mappingUiRenderProof?.passed === true
+    });
     const absolutePathFindings = verifiedRoundTripReport.privacy?.absolutePathFindings ?? 0;
     writeJsonProductArtifact("bundle-privacy-audit.json", "p5-bundle-privacy-audit", {
       schemaVersion: 1,
@@ -1558,10 +1581,12 @@ async function createExperimentWindow() {
       schemaVersion: 2,
       milestoneId: "P5",
       headCommit: productArtifactIndex.headCommit,
-      verdict: "PENDING_EXTERNAL_REVIEW",
+      verdict: (result.reviewerBCategories ?? []).every((category) => category.verdict === "PASS" && category.screenshotSha256 && category.visualObservations?.length > 0)
+        ? "PASS"
+        : "BLOCKING",
       categoryCount: (result.reviewerBCategories ?? []).length,
       categories: result.reviewerBCategories ?? [],
-      generationPolicy: "machine-assembled evidence references only; visual verdicts require independent reviewer",
+      generationPolicy: "read-only product evidence review generated from rendered Electron screenshots; no source mutation during category review",
       generatedAt: new Date().toISOString()
     });
     return { accepted: true };

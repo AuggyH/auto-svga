@@ -663,6 +663,10 @@ summary:focus-visible {
   gap: var(--space-2);
 }
 
+.editActionsTop {
+  justify-content: flex-start;
+}
+
 .editActions button {
   flex: 1 1 100px;
 }
@@ -687,7 +691,7 @@ summary:focus-visible {
   display: grid;
   gap: var(--space-2);
   min-width: 0;
-  max-height: 320px;
+  max-height: 220px;
   overflow: auto;
 }
 
@@ -699,6 +703,11 @@ summary:focus-visible {
   border: 1px solid var(--hairline);
   border-radius: var(--radius-small);
   padding: var(--space-2);
+}
+
+.batchMappingRecord.isEvidenceFocus {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .batchMappingRecord select {
@@ -737,6 +746,16 @@ summary:focus-visible {
 .batchMappingMain small {
   color: var(--textTertiary);
   font-size: var(--font-meta);
+}
+
+.technicalDetails {
+  color: var(--textTertiary);
+  font-size: var(--font-meta);
+}
+
+.technicalDetails code {
+  display: inline-block;
+  margin-inline-end: var(--space-2);
 }
 
 .p3ComparisonPanel {

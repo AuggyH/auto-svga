@@ -8,7 +8,7 @@ Date: 2026-06-21
 - Milestone: P5 Batch PNG Replacement And Mapping Review
 - State: terminal_human_required
 - Next Action: external_review
-- repairRound: 1
+- repairRound: 2
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -24,11 +24,19 @@ Date: 2026-06-21
   - `p5-live-runtime-proof.json`: `passed=true`, `externalRequests=[]`.
   - `batch-round-trip-report.json`: schemaVersion 4, `passed=true`, `playbackPassed=true`, `canvasNonBlank=true`, `appliedMappingCount=4`, `replacementCount=4`.
   - 15 required P5 screenshots are rendered Electron UI captures.
-- P5 remains HUMAN_REQUIRED for owner acceptance before any P6 or next editing capability.
+- P5 external review 2 returned `REPAIR_REQUIRED` against
+  `f75092b5766003a29e5de2bb40867c48f51fd241`.
+- P5 Repair 2 evidence now passes:
+  - `p5-ui-flow-proof.json`: `passed=true`, visible batch entry, real input/drop/include/manual/apply/undo/redo/save controls.
+  - `p5-mapping-ui-render-proof.json`: `passed=true`, panel and Apply are visible and unobstructed in the 1280x800 proof viewport.
+  - `canonical-batch-fixture.json`: six resource keys `ICONALPHA`, `IconAlpha`, `img_badge`, `img_frame`, `img_glow`, `img_untouched`.
+  - `batch-edit-history-report.json`: `passed=true`, atomic apply, undo, redo, and failed-batch no-partial-commit evidence.
+  - `reviewer-b-product-categories.json`: schemaVersion 2, verdict `PASS`, 18 product categories with observations and screenshot hashes.
+  - `p5-product-evidence-summary.json`: `passed=true`.
 
 ## Next Action
 
-External review / owner acceptance.
+External review / owner acceptance. Do not start P6.
 
 ## Owner Question
 

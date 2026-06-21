@@ -199,6 +199,14 @@ test("P5 batch PNG mapping review stays isolated in the desktop prototype", asyn
   assert.match(renderer, /批量 PNG 映射复核/);
   assert.match(renderer, /批量替换 PNG/);
   assert.match(renderer, /应用批量替换/);
+  assert.match(renderer, /当前视图：精确和规范化匹配/);
+  assert.match(renderer, /技术详情/);
+  assert.match(renderer, /collectP5UiFlowProof/);
+  assert.match(renderer, /collectBatchMappingPanelRenderProof/);
+  assert.match(renderer, /dispatchBatchInputFiles/);
+  assert.match(renderer, /dispatchBatchDropFiles/);
+  assert.match(renderer, /setBatchIncludeViaControl/);
+  assert.match(renderer, /setBatchManualTargetViaControl/);
   assert.match(renderer, /data-batch-mapping-state/);
   assert.match(renderer, /data-batch-action="manual-target"/);
   assert.match(renderer, /data-batch-action="include"/);
@@ -210,6 +218,9 @@ test("P5 batch PNG mapping review stays isolated in the desktop prototype", asyn
   assert.match(server, /path\.basename\(String\(file\?\.fileLabel/);
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   assert.match(main, /categoryCount: \(result\.reviewerBCategories \?\? \[\]\)\.length/);
+  assert.match(main, /p5-ui-flow-proof\.json/);
+  assert.match(main, /p5-mapping-ui-render-proof\.json/);
+  assert.match(main, /verdict: \(result\.reviewerBCategories/);
   assert.match(styles, /\.batchMappingPanel/);
   assert.match(styles, /\.batchMappingRecord/);
   assert.doesNotMatch(renderer, /fuzzy|substring|editDistance|visualSimilarity|\/Users\//i);
