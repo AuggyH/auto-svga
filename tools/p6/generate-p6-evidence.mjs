@@ -26,6 +26,7 @@ const docsProductRoot = path.join(repoRoot, "docs/product");
 const contractPath = path.join(docsProductRoot, "P6_WEB_PARITY_CONTRACT.json");
 const paritySnapshotPath = path.join(docsProductRoot, "P6_PARITY_REPORT_SNAPSHOT.json");
 const evidenceIndexPath = path.join(docsProductRoot, "P6_EVIDENCE_INDEX.md");
+const sourceTrackedSnapshotHead = "source-tracked-runtime-snapshot";
 const electronBin = path.join(repoRoot, "tools/electron-prototype/node_modules/.bin/electron");
 const experimentRoot = path.join(repoRoot, "tools/electron-prototype/experiments/svga-web");
 const fixturePath = path.join(repoRoot, "examples/avatar_frame_basic/output/avatar_frame_basic.svga");
@@ -320,7 +321,8 @@ async function buildArtifactIndex() {
 
 async function buildParityReport() {
   const contract = await readJson(contractPath);
-  const headCommit = git(["rev-parse", "HEAD"]);
+  const runtimeHeadCommit = git(["rev-parse", "HEAD"]);
+  const headCommit = skipTrackedSnapshots ? runtimeHeadCommit : sourceTrackedSnapshotHead;
   const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]);
   const artifactBindings = await buildArtifactIndex();
   const artifactIds = {
@@ -521,16 +523,27 @@ async function writeEvidenceIndex(report) {
   const lines = [
     "# P6 Evidence Index",
     "",
-    `Generated at: ${report.generatedAt}`,
-    `Head commit: \`${report.source.headCommit}\``,
+    ...(skipTrackedSnapshots
+      ? [
+        `Generated at: ${report.generatedAt}`,
+        `Head commit: \`${report.source.headCommit}\``
+      ]
+      : [
+        "Generated at: source-tracked runtime snapshot",
+        `Head commit: \`${sourceTrackedSnapshotHead}\``,
+        "",
+        "This source-tracked file is intentionally commit-neutral. Final head-bound",
+        "P6 evidence is generated into `.artifacts/product/P6/` and mirrored into",
+        "`review/P6-latest/` during handoff."
+      ]),
     `Branch: \`${report.source.branch}\``,
     "",
     "## Status",
     "",
     "- Web baseline artifacts: generated under `.artifacts/product/P6/web-baseline/`.",
-    "- P6 parity report: generated as `.artifacts/product/P6/p6-parity-report.json` and tracked snapshot `docs/product/P6_PARITY_REPORT_SNAPSHOT.json`.",
+    "- P6 parity report: generated as `.artifacts/product/P6/p6-parity-report.json`; `docs/product/P6_PARITY_REPORT_SNAPSHOT.json` is a source-tracked runtime snapshot.",
     "- Packaged app runtime proof: generated as `.artifacts/product/P6/packaged-app-runtime-proof.json`.",
-    "- This index is source-tracked so the review packet can bind generated evidence by path and SHA-256.",
+    "- Final review packets bind generated evidence by path and SHA-256 from `.artifacts/product/P6/` and the visible `review/P6-latest/` mirror.",
     "",
     "## Section Summary",
     "",
@@ -570,8 +583,9 @@ async function main() {
   let report = await buildParityReport();
   await writeEvidenceIndex(report);
   report = await buildParityReport();
-  await validateParityReport(report);
   await writeEvidenceIndex(report);
+  report = await buildParityReport();
+  await validateParityReport(report);
 
   console.log(JSON.stringify({
     milestoneId,

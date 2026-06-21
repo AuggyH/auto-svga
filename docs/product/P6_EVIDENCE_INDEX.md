@@ -1,15 +1,19 @@
 # P6 Evidence Index
 
-Generated at: 2026-06-21T19:44:31.012Z
-Head commit: `0609a71e4b0bc4a1f48d0adbb342bbe3945e9aa8`
+Generated at: source-tracked runtime snapshot
+Head commit: `source-tracked-runtime-snapshot`
+
+This source-tracked file is intentionally commit-neutral. Final head-bound
+P6 evidence is generated into `.artifacts/product/P6/` and mirrored into
+`review/P6-latest/` during handoff.
 Branch: `agent/codex/p6-integration`
 
 ## Status
 
 - Web baseline artifacts: generated under `.artifacts/product/P6/web-baseline/`.
-- P6 parity report: generated as `.artifacts/product/P6/p6-parity-report.json` and tracked snapshot `docs/product/P6_PARITY_REPORT_SNAPSHOT.json`.
+- P6 parity report: generated as `.artifacts/product/P6/p6-parity-report.json`; `docs/product/P6_PARITY_REPORT_SNAPSHOT.json` is a source-tracked runtime snapshot.
 - Packaged app runtime proof: generated as `.artifacts/product/P6/packaged-app-runtime-proof.json`.
-- This index is source-tracked so the review packet can bind generated evidence by path and SHA-256.
+- Final review packets bind generated evidence by path and SHA-256 from `.artifacts/product/P6/` and the visible `review/P6-latest/` mirror.
 
 ## Section Summary
 
@@ -28,22 +32,22 @@ Branch: `agent/codex/p6-integration`
 
 | Role | Path | Size | SHA-256 |
 | --- | --- | ---: | --- |
-| p6_evidence | `.artifacts/product/P6/internal-trial-manifest.json` | 2374 | `8dea522ca8e2b48a58b47072ba9cbeae565cb9f03c36608dcee2ec10c2cf57f4` |
-| packaged_app_runtime | `.artifacts/product/P6/packaged-app-runtime-proof.json` | 1592 | `a220ff6c43c250f5bbe63f98df153f7da9d4a35882beb5e16674181997f1955a` |
+| p6_evidence | `.artifacts/product/P6/internal-trial-manifest.json` | 2374 | `a47c8557f725eeb36785188eb0d4ec88759a902627a3ccc9052768fd3a959005` |
+| packaged_app_runtime | `.artifacts/product/P6/packaged-app-runtime-proof.json` | 1592 | `a0538c1bf7da69a0332ca15ec8091463ea519c9cb55bc357c31558bda53b80c9` |
 | web_baseline | `.artifacts/product/P6/web-baseline/computed-styles-manifest.json` | 10096 | `17cd15be49bf4cc49c1ebcd576aa9c373e7bebaf80b73cfedc0a7c9aeec1603f` |
-| web_baseline | `.artifacts/product/P6/web-baseline/dom-manifest.json` | 309779 | `b41b7f95f2f67a7f21f96582d38fe0a7aa8acb4fabfe57f97ec2cf0edff6b48e` |
-| web_baseline | `.artifacts/product/P6/web-baseline/interaction-trace.json` | 1473 | `63a1082efd8fd293fbd3a2169739034dc254cd9fe2331c6c3b7887cebaa93065` |
+| web_baseline | `.artifacts/product/P6/web-baseline/dom-manifest.json` | 309779 | `d0a02fae4186d0560531961fdd30a41f41550b49dadb9eea1ae9e2b13e9173d8` |
+| web_baseline | `.artifacts/product/P6/web-baseline/interaction-trace.json` | 1473 | `f8f33e7acccda26da60f3ca6f89d9d09dcf8d185e239415041da8a29ee7d2957` |
 | web_baseline | `.artifacts/product/P6/web-baseline/motion-manifest.json` | 9818 | `3c25e7728ff214230d44e1a675332837277071926cc34bcb87036fb21dac05f7` |
-| web_baseline | `.artifacts/product/P6/web-baseline/request-audit.json` | 439 | `bafd222a7943c57279d064d74cebbaabe465edf87a75310e00afa177cffd8d0c` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png` | 426780 | `5b5ccb7d2b30634d3acbf1e22097a11176de73d8b5c37ac14df53fd14956e263` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png` | 318253 | `e3f4be903efba9f65d20edf1f3de6a50dd6a30a2e83c5931c2ff6a5ea8cbb8fb` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-assets-1440x900.png` | 470741 | `aa9e8c575f8ea96058739274d56eaab5a64ca8f56a6dff1f4aa3eab552aaddfa` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-overview-1440x900.png` | 532988 | `301b4abae277fc8857d2285e86ae2a8925c9ac89113661dbe1f8bbe67d1073a7` |
+| web_baseline | `.artifacts/product/P6/web-baseline/request-audit.json` | 439 | `4bd215fcd3ac42346792a27ef23544154ec4a1d71811856cc58c99a71d9f18a2` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png` | 425190 | `ddc0bda371f11a2b6f77b250fe208de175732d1eb85a0ee4a69fc1e13df346a1` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png` | 318919 | `4873b5fedd0f54f3d828a7a29d4bd6ff93f6c87aea23440e8be73eae143a58af` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-assets-1440x900.png` | 470518 | `a02e627f12f8aade5c77a22d1ca7d4bf5b54330ecfa927efae772f0c55e72f11` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-overview-1440x900.png` | 531191 | `4e4d397b96ac0c2aa6fb364044b5360b07684cc4914e2b7d2ebb160947f0454e` |
 | web_baseline | `.artifacts/product/P6/web-baseline/screenshot-invalid-1440x900.png` | 224823 | `08abd0504dcc5ffb7205cf0d35deb060755b64003316b1e5b334e340a0d1d40f` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-empty-1440x900.png` | 437810 | `c85b5076f34f7d325b6d371608356397de468fd3e6d576348e9e8e031f5f7dbd` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-empty-1440x900.png` | 220597 | `cee0ffdbf7bae3baeb0a7519646591a22b3b9b5275e8e81b4beaa5b75d568621` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-logs-1440x900.png` | 477913 | `886c6d72a29a48119a8cd61753d70b7f3497b3bd9cde3a5131d5e2ddc0dfa58f` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-1440x900.png` | 418761 | `2ba003c4210f4680a16f076a1f8a6c06626d36aa77a7ac470685b8733f2dbc8e` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-empty-1440x900.png` | 437794 | `c4a0605d7d65c833bfbe00f65dd830f4bc3b67762535e372d3593aaee0d06e9b` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-empty-1440x900.png` | 220550 | `d19929b176d8436f01c367b2c218bd5ca2b8d7312653d103fdba2a46a3d18023` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-logs-1440x900.png` | 476995 | `921115d8d6c4dabb99a90820f14c8af773f0426bc9e62975c7777800fad17ebb` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-1440x900.png` | 418878 | `939ec104fa8fec85fba17abd40c0c790d1f581e165d2db9f17992bc23cc1e77e` |
 
 ## Protected Flows
 
