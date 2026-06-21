@@ -80,6 +80,7 @@ export interface SvgaBatchPngMappingReport {
   issues: readonly SvgaBatchPngIssue[];
   readyToApply: boolean;
   applicableReplacements: readonly {
+    inputIndex: number;
     fileLabel: string;
     resourceKey: string;
     sha256: string;
@@ -141,6 +142,7 @@ export function createSvgaBatchPngMappingReport(
       height: number;
     } => Boolean(record.selectedResourceKey && record.width && record.height))
     .map((record) => ({
+      inputIndex: record.inputIndex,
       fileLabel: record.fileLabel,
       resourceKey: record.selectedResourceKey,
       sha256: record.sha256,
@@ -180,13 +182,16 @@ export function createSvgaBatchReplacementInputs(
     return [];
   }
   return report.applicableReplacements.map((replacement) => {
-    const input = inputs.find((candidate) => (
-      candidate.fileLabel === replacement.fileLabel
-      && sha256(candidate.pngBytes) === replacement.sha256
-    ));
+    const input = inputs[replacement.inputIndex];
+    if (!input
+      || sanitizeFileLabel(input.fileLabel) !== replacement.fileLabel
+      || sha256(input.pngBytes) !== replacement.sha256
+    ) {
+      throw new Error(`P5 batch replacement input mismatch for ${replacement.fileLabel}.`);
+    }
     return {
       resourceKey: replacement.resourceKey,
-      pngBytes: input?.pngBytes.slice() ?? new Uint8Array()
+      pngBytes: input.pngBytes.slice()
     };
   });
 }

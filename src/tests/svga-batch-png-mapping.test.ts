@@ -115,6 +115,38 @@ test("P5 batch replacement inputs are returned only for ready reports", () => {
   assert.deepEqual(createSvgaBatchReplacementInputs(notReady, []), []);
 });
 
+test("P5 batch replacement inputs bind duplicate basenames by input index and hash", () => {
+  const glow = png(80, 80, [0, 255, 0, 255]);
+  const frame = png(300, 300, [255, 0, 0, 255]);
+  const duplicateNameInputs = [
+    input("replacement.png", glow, { manualResourceKey: "img_glow" }),
+    input("replacement.png", frame, { manualResourceKey: "img_frame" })
+  ];
+  const report = createSvgaBatchPngMappingReport(resources, duplicateNameInputs);
+  assert.equal(report.readyToApply, true);
+  assert.deepEqual(report.applicableReplacements.map(({ inputIndex, fileLabel, resourceKey, sha256 }) => ({
+    inputIndex,
+    fileLabel,
+    resourceKey,
+    sha256
+  })), [
+    { inputIndex: 0, fileLabel: "replacement.png", resourceKey: "img_glow", sha256: sha256(glow) },
+    { inputIndex: 1, fileLabel: "replacement.png", resourceKey: "img_frame", sha256: sha256(frame) }
+  ]);
+
+  assert.deepEqual(createSvgaBatchReplacementInputs(report, duplicateNameInputs).map(({ resourceKey, pngBytes }) => ({
+    resourceKey,
+    sha256: sha256(pngBytes)
+  })).sort((left, right) => left.resourceKey.localeCompare(right.resourceKey)), [
+    { resourceKey: "img_frame", sha256: sha256(frame) },
+    { resourceKey: "img_glow", sha256: sha256(glow) }
+  ]);
+  assert.throws(
+    () => createSvgaBatchReplacementInputs(report, [...duplicateNameInputs].reverse()),
+    /input mismatch/
+  );
+});
+
 function input(
   fileLabel: string,
   pngBytes: Uint8Array,

@@ -71,9 +71,9 @@ Generated under `.artifacts/product/P5`:
 - `bundle-privacy-audit.json`
 - `artifact-index.json`
 - `batch-edited-output.svga`
-- 15 PNG state evidence files for batch entry, mapping review, manual
-  resolution, apply, undo, redo, export, reopen, corrupt PNG, dimension warning,
-  and original/edited comparison states.
+- 15 deterministic PNG state-marker files for batch entry, mapping review,
+  manual resolution, apply, undo, redo, export, reopen, corrupt PNG, dimension
+  warning, and original/edited comparison states.
 
 Key evidence:
 
@@ -94,8 +94,9 @@ Not touched:
 
 ## Risks
 
-- Product state PNGs are deterministic local state evidence, not a full manual
-  visual acceptance substitute.
+- Product state PNGs are deterministic local state markers. They are not
+  screenshots and do not independently prove rendered UI state or replace owner
+  visual acceptance.
 - P5 final owner acceptance is still required before planning the next editing
   capability.
 - Production desktop security boundary remains governed by ADR-010 and ADR-011;

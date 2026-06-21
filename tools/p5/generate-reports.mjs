@@ -18,7 +18,7 @@ import {
 const repoRoot = path.resolve(new URL("../..", import.meta.url).pathname);
 const productDir = path.join(repoRoot, ".artifacts/product/P5");
 const protoPath = path.join(repoRoot, "proto/svga.proto");
-const screenshotNames = [
+const stateMarkerNames = [
   "batch-entry.png",
   "batch-files-selected.png",
   "mapping-exact-matches.png",
@@ -177,8 +177,26 @@ const reviewerBProductCategories = {
     { id: "conflict-manual-resolution", status: "covered", evidence: "batch-mapping-report.json" },
     { id: "atomic-apply-undo-redo", status: "covered", evidence: "batch-edit-history-report.json" },
     { id: "round-trip-integrity", status: "covered", evidence: "batch-round-trip-report.json" },
-    { id: "visual-human-review", status: "human_required", evidence: "state proof PNGs, not pixel-perfect user acceptance" }
+    { id: "visual-human-review", status: "human_required", evidence: "p5-product-evidence-summary.json" }
   ]
+};
+const productEvidenceSummary = {
+  schemaVersion: 1,
+  milestoneId: "P5",
+  authoritativeEvidence: [
+    "batch-mapping-report.json",
+    "batch-edit-history-report.json",
+    "batch-round-trip-report.json",
+    "thumbnail-evidence.json",
+    "reviewer-b-product-categories.json"
+  ],
+  pngArtifacts: {
+    kind: "deterministic_state_marker",
+    isScreenshot: false,
+    role: "orientation_only",
+    limitation: "PNG artifacts are generated state markers. They do not independently prove rendered UI state or visual product acceptance."
+  },
+  humanReviewRequired: true
 };
 
 const jsonFiles = new Map([
@@ -187,13 +205,14 @@ const jsonFiles = new Map([
   ["batch-edit-history-report.json", editHistoryReport],
   ["batch-round-trip-report.json", roundTripReport],
   ["thumbnail-evidence.json", thumbnailEvidence],
-  ["reviewer-b-product-categories.json", reviewerBProductCategories]
+  ["reviewer-b-product-categories.json", reviewerBProductCategories],
+  ["p5-product-evidence-summary.json", productEvidenceSummary]
 ]);
 for (const [fileName, value] of jsonFiles) {
   await writeJson(fileName, value);
 }
 
-for (const [index, fileName] of screenshotNames.entries()) {
+for (const [index, fileName] of stateMarkerNames.entries()) {
   await writeFile(path.join(productDir, fileName), statePng(index));
 }
 
@@ -326,7 +345,7 @@ async function writeJson(fileName, value) {
 
 async function createArtifactIndex() {
   const files = [
-    ...screenshotNames,
+    ...stateMarkerNames,
     ...jsonFiles.keys(),
     "batch-edited-output.svga"
   ].sort();
@@ -338,11 +357,24 @@ async function createArtifactIndex() {
       const bytes = await import("node:fs/promises").then(({ readFile }) => readFile(path.join(productDir, fileName)));
       return {
         path: `.artifacts/product/P5/${fileName}`,
+        artifactKind: artifactKind(fileName),
+        isScreenshot: fileName.endsWith(".png") ? false : undefined,
+        humanReviewRole: fileName.endsWith(".png") ? "orientation_only" : undefined,
+        limitation: fileName.endsWith(".png")
+          ? "Generated deterministic state marker; not a screenshot or rendered UI acceptance proof."
+          : undefined,
         sizeBytes: bytes.byteLength,
         sha256: sha256(bytes)
       };
     }))
   };
+}
+
+function artifactKind(fileName) {
+  if (fileName.endsWith(".png")) return "deterministic_state_marker";
+  if (fileName.endsWith(".json")) return "machine_evidence";
+  if (fileName.endsWith(".svga")) return "edited_svga_fixture";
+  return "unknown";
 }
 
 async function createPrivacyAudit(artifactIndex) {

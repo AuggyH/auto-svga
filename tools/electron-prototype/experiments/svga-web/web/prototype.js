@@ -569,6 +569,7 @@ async function loadBatchPngFiles(files) {
     batchInputItems.push({
       fileLabel: file.name,
       pngBytes,
+      pngSha256: await sha256Hex(pngBytes),
       include: true,
       manualResourceKey: ""
     });
@@ -613,11 +614,16 @@ async function applyBatchMapping() {
   if (!batchMappingReport?.readyToApply) return false;
   const nextInputs = cloneReplacementInputs(replacementInputs);
   for (const replacement of batchMappingReport.applicableReplacements ?? []) {
-    const item = batchInputItems.find((candidate) => (
-      candidate.fileLabel === replacement.fileLabel
-      && candidate.include !== false
-    ));
-    if (!item) continue;
+    const item = batchInputItems[replacement.inputIndex];
+    if (!item
+      || item.fileLabel !== replacement.fileLabel
+      || item.pngSha256 !== replacement.sha256
+      || item.include === false
+    ) {
+      batchMappingError = `批量替换输入已变化，请重新复核：${replacement.fileLabel}`;
+      renderCurrentReportEditOnly();
+      return false;
+    }
     nextInputs.set(
       replacement.resourceKey,
       await createReplacementInput(replacement.resourceKey, item.pngBytes, item.fileLabel)
@@ -643,7 +649,7 @@ async function applyReplacementInputs(nextInputs, options = {}) {
     editExportState = "idle";
   }
   try {
-    await rebuildEditedPreview(operationSequence);
+    await rebuildEditedPreview(operationSequence, options);
     if (operationSequence !== editOperationSequence) return false;
     if (options.recordHistory !== false) pushEditHistorySnapshot(replacementInputs);
     return true;
@@ -657,7 +663,7 @@ async function applyReplacementInputs(nextInputs, options = {}) {
   }
 }
 
-async function rebuildEditedPreview(operationSequence = ++editOperationSequence) {
+async function rebuildEditedPreview(operationSequence = ++editOperationSequence, options = {}) {
   if (!sourceSvgaBytes) return;
   const pendingInputs = cloneReplacementInputs(replacementInputs);
   if (pendingInputs.size === 0) {
@@ -680,28 +686,83 @@ async function rebuildEditedPreview(operationSequence = ++editOperationSequence)
       "content-type": "application/json",
       "x-auto-svga-prototype-token": window.autoSvgaPrototype.reportToken
     },
-    body: JSON.stringify({
-      name: sourceSvgaName,
-      milestoneId: productMilestoneId === "P3" ? "P3" : "P4",
-      svgaBase64: bytesToBase64(sourceSvgaBytes),
-      replacements: [...pendingInputs.values()].map((replacement) => ({
-        resourceKey: replacement.resourceKey,
-        pngBase64: bytesToBase64(replacement.pngBytes)
-      }))
-    })
-  }).then(readJsonResponse);
+      body: JSON.stringify({
+        name: sourceSvgaName,
+        milestoneId: replacementRequestMilestoneId(options),
+        svgaBase64: bytesToBase64(sourceSvgaBytes),
+        replacements: [...pendingInputs.values()].map((replacement) => ({
+          resourceKey: replacement.resourceKey,
+          pngBase64: bytesToBase64(replacement.pngBytes)
+        })),
+        ...batchReplacementRequestOptions(options, operationSequence)
+      })
+    }).then(readJsonResponse);
 
   if (operationSequence !== editOperationSequence) return;
   editedSvgaBytes = base64ToBytes(response.editedSvgaBase64);
   editSession = response.session;
   lastRoundTripReport = response.roundTripReport;
   editExportState = "idle";
-  await loadSvgaBytes(editedSvgaBytes.slice(0), `${sourceSvgaName} · 修改预览`, {
+  const previewResult = await loadSvgaBytes(editedSvgaBytes.slice(0), `${sourceSvgaName} · 修改预览`, {
     sizeBytes: editedSvgaBytes.byteLength,
     preserveEditState: true,
     source: "edited-preview",
     operationSequence
   });
+  if (operationSequence !== editOperationSequence || previewResult?.stale) return;
+  lastRoundTripReport = bindPreviewEvidenceToRoundTripReport(response.roundTripReport, previewResult);
+  renderCurrentReportEditOnly();
+}
+
+function replacementRequestMilestoneId(options = {}) {
+  if (productMilestoneId === "P3") return "P3";
+  if (productMilestoneId === "P5" && options.transactionType === "batch_replace_resources") return "P5";
+  return "P4";
+}
+
+function batchReplacementRequestOptions(options = {}, operationSequence = 0) {
+  if (replacementRequestMilestoneId(options) !== "P5") return {};
+  const mappings = options.batchMappingReport?.applicableReplacements ?? [];
+  return {
+    batchTransactionId: `p5-batch-${operationSequence}`,
+    batchMappings: mappings.map((replacement) => ({
+      inputFileLabel: replacement.fileLabel,
+      inputSha256: replacement.sha256,
+      mappingRuleId: replacement.ruleId,
+      mappingStatus: replacement.status,
+      resourceKey: replacement.resourceKey
+    }))
+  };
+}
+
+function bindPreviewEvidenceToRoundTripReport(report, previewResult) {
+  if (report?.schemaVersion !== 4 || report?.milestoneId !== "P5") return report;
+  const playbackPassed = previewResult?.playback === true;
+  const canvasNonBlank = previewResult?.canvasNonBlank === true;
+  const invariantChecks = (report.invariantChecks ?? []).map((check) => {
+    if (check.code === "p5_playback_smoke") {
+      return { ...check, actual: playbackPassed, passed: playbackPassed };
+    }
+    if (check.code === "p5_canvas_nonblank") {
+      return { ...check, actual: canvasNonBlank, passed: canvasNonBlank };
+    }
+    return check;
+  });
+  const unexpectedChanges = invariantChecks
+    .filter((check) => check.passed !== true)
+    .map((check) => check.code);
+  return {
+    ...report,
+    invariantChecks,
+    unexpectedChanges,
+    playbackPassed,
+    canvasNonBlank,
+    passed: unexpectedChanges.length === 0
+      && report.appliedMappingCount >= 3
+      && (report.appliedMappings ?? []).every((mapping) => mapping.passed === true)
+      && playbackPassed
+      && canvasNonBlank
+  };
 }
 
 function renderCurrentReportEditOnly() {
@@ -1064,11 +1125,13 @@ function hasCurrentSaveValidation() {
       && lastRoundTripReport.replacements.every((replacement) => replacement.passed === true);
   }
   if (productMilestoneId === "P5") {
-    return lastRoundTripReport.schemaVersion === 3
-      && lastRoundTripReport.milestoneId === "P4"
-      && Array.isArray(lastRoundTripReport.replacements)
-      && lastRoundTripReport.replacements.length >= 3
-      && lastRoundTripReport.replacements.every((replacement) => replacement.passed === true);
+    return lastRoundTripReport.schemaVersion === 4
+      && lastRoundTripReport.milestoneId === "P5"
+      && lastRoundTripReport.appliedMappingCount >= 3
+      && lastRoundTripReport.playbackPassed === true
+      && lastRoundTripReport.canvasNonBlank === true
+      && Array.isArray(lastRoundTripReport.appliedMappings)
+      && lastRoundTripReport.appliedMappings.every((mapping) => mapping.passed === true);
   }
   return lastRoundTripReport.schemaVersion === 2;
 }

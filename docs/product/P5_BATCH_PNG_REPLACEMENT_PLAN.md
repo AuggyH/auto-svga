@@ -31,8 +31,8 @@ The workflow remains local, deterministic, reviewable, and reversible.
    - Do not expose raw protobuf JSON or absolute paths.
 
 5. Product evidence
-   - Generate synthetic fixture, screenshots, JSON reports, edited SVGA, review
-     packet, and privacy-clean upload ZIP.
+   - Generate synthetic fixture, deterministic state markers, JSON reports,
+     edited SVGA, review packet, and privacy-clean upload ZIP.
 
 ## Explicit Non-goals
 

@@ -99,6 +99,23 @@ function encodeBase64(bytes) {
   return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("base64");
 }
 
+function normalizeBatchMappings(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((mapping) => ({
+    inputFileLabel: path.basename(String(mapping?.inputFileLabel ?? "")),
+    inputSha256: String(mapping?.inputSha256 ?? ""),
+    mappingRuleId: String(mapping?.mappingRuleId ?? ""),
+    mappingStatus: String(mapping?.mappingStatus ?? ""),
+    resourceKey: String(mapping?.resourceKey ?? "")
+  })).filter((mapping) => (
+    mapping.inputFileLabel
+    && mapping.inputSha256
+    && mapping.mappingRuleId
+    && mapping.mappingStatus
+    && mapping.resourceKey
+  ));
+}
+
 async function attachSessionThumbnails(session, svgaBytes, inspector) {
   const inspection = await inspector.inspect(svgaBytes);
   const imageBytesByKey = new Map(inspection.images.map((image) => [image.imageKey, image.bytes]));
@@ -275,7 +292,11 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
         const input = await readRequestJson(request);
         const bytes = decodeBase64Field(input?.svgaBase64, "svgaBase64");
         const name = path.basename(typeof input?.name === "string" ? input.name : "untitled.svga");
-        const milestoneId = input?.milestoneId === "P3" ? "P3" : "P4";
+        const milestoneId = input?.milestoneId === "P3"
+          ? "P3"
+          : input?.milestoneId === "P5"
+            ? "P5"
+            : "P4";
         const replacements = Array.isArray(input?.replacements) ? input.replacements : [];
         if (replacements.length === 0) {
           throw Object.assign(new Error("At least one replacement is required"), { statusCode: 400 });
@@ -287,7 +308,17 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
         editorPromise ??= import(editorModuleUrl).then(({ SvgaImageResourceEditor }) => new SvgaImageResourceEditor());
         inspectorPromise ??= import(inspectorModuleUrl).then(({ NodeProtobufSvgaInspector }) => new NodeProtobufSvgaInspector());
         const [editor, inspector] = await Promise.all([editorPromise, inspectorPromise]);
-        const result = await editor.replaceImages(bytes, decodedReplacements, name, { milestoneId });
+        const result = await editor.replaceImages(bytes, decodedReplacements, name, {
+          milestoneId,
+          ...(milestoneId === "P5"
+            ? {
+              batchTransactionId: typeof input?.batchTransactionId === "string" ? input.batchTransactionId : undefined,
+              batchMappings: normalizeBatchMappings(input?.batchMappings),
+              playbackPassed: false,
+              canvasNonBlank: false
+            }
+            : {})
+        });
         return sendJson(response, 200, {
           editedSvgaBase64: encodeBase64(result.editedBytes),
           session: await attachSessionThumbnails(result.session, result.editedBytes, inspector),
