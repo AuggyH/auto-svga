@@ -35,6 +35,31 @@ test("validates a complete partial report without claiming parity pass", () => {
   assert.equal(parseP6ParityReportV1(JSON.stringify(report)).source.branch, "agent/codex/p6-a4-parity-tests");
 });
 
+test("validates a complete pass report with artifact-bound final evidence", () => {
+  const report = fixtureReport("pass");
+  const sectionNames = [
+    "featureParity",
+    "visualParity",
+    "interactionParity",
+    "stateParity",
+    "motionParity",
+    "browserRegression",
+    "desktopRuntimeProof",
+    "securityAudit",
+    "accessibilityReport",
+    "artifactIndex"
+  ] as const;
+
+  for (const sectionName of sectionNames) {
+    assert.equal(report.sections[sectionName].status, "pass");
+    assert.ok(report.sections[sectionName].evidence.every((evidence) => evidence.status === "pass"));
+    assert.ok(report.sections[sectionName].evidence.every((evidence) => evidence.artifactIds.length > 0));
+  }
+
+  assert.deepEqual(validateP6ParityReportV1(report), { valid: true, errors: [] });
+  assert.equal(parseP6ParityReportV1(JSON.stringify(report)).sections.desktopRuntimeProof.status, "pass");
+});
+
 test("rejects missing sections and mismatched section identities", () => {
   const report = fixtureReport() as unknown as Record<string, unknown>;
   const sections = report.sections as Record<string, unknown>;
@@ -128,7 +153,7 @@ test("rejects evidence in any parity section that references missing artifacts",
   ));
 });
 
-function fixtureReport(): P6ParityReportV1 {
+function fixtureReport(status: "partial" | "pass" = "partial"): P6ParityReportV1 {
   const artifact = createP6ParityArtifactBinding({
     id: "feature-inventory",
     path: "artifacts/p6/feature-inventory.json",
@@ -145,33 +170,36 @@ function fixtureReport(): P6ParityReportV1 {
       branch: "agent/codex/p6-a4-parity-tests"
     },
     sections: {
-      featureParity: section("feature_parity", ["feature-checklist"]),
-      visualParity: section("visual_parity", ["pixel-reference"]),
-      interactionParity: section("interaction_parity", ["keyboard-flow"]),
-      stateParity: section("state_parity", ["state-persistence"]),
-      motionParity: section("motion_parity", ["frame-timing"]),
-      browserRegression: section("browser_regression", ["viewport-matrix"]),
-      desktopRuntimeProof: section("desktop_runtime_proof", ["electron-smoke"]),
-      securityAudit: section("security_audit", ["csp-review"]),
-      accessibilityReport: section("accessibility_report", ["axe-keyboard"]),
-      artifactIndex: artifactIndex([artifact], ["feature-inventory"])
+      featureParity: section("feature_parity", ["feature-checklist"], status),
+      visualParity: section("visual_parity", ["pixel-reference"], status),
+      interactionParity: section("interaction_parity", ["keyboard-flow"], status),
+      stateParity: section("state_parity", ["state-persistence"], status),
+      motionParity: section("motion_parity", ["frame-timing"], status),
+      browserRegression: section("browser_regression", ["viewport-matrix"], status),
+      desktopRuntimeProof: section("desktop_runtime_proof", ["electron-smoke"], status),
+      securityAudit: section("security_audit", ["csp-review"], status),
+      accessibilityReport: section("accessibility_report", ["axe-keyboard"], status),
+      artifactIndex: artifactIndex([artifact], ["feature-inventory"], status)
     }
   };
 }
 
 function section<TId extends Exclude<P6ParitySectionId, "artifact_index">>(
   id: TId,
-  itemIds: readonly string[]
+  itemIds: readonly string[],
+  status: "partial" | "pass" = "partial"
 ): P6ParitySectionBase<TId> {
   return {
     id,
-    status: "partial",
+    status,
     requiredEvidenceCount: 1,
     evidence: [{
       id: `${id}-evidence`,
-      status: "partial",
-      artifactIds: [],
-      summary: `${id} framework placeholder for final integration evidence.`
+      status,
+      artifactIds: status === "pass" ? ["feature-inventory"] : [],
+      summary: status === "pass"
+        ? `${id} final integration evidence is hash-bound.`
+        : `${id} framework placeholder for final integration evidence.`
     }],
     inventory: {
       itemCount: itemIds.length,
@@ -182,17 +210,20 @@ function section<TId extends Exclude<P6ParitySectionId, "artifact_index">>(
 
 function artifactIndex(
   artifacts: P6ArtifactIndexReport["artifacts"],
-  manifestArtifactIds: readonly string[]
+  manifestArtifactIds: readonly string[],
+  status: "partial" | "pass" = "partial"
 ): P6ArtifactIndexReport {
   return {
     id: "artifact_index",
-    status: "partial",
+    status,
     requiredEvidenceCount: 1,
     evidence: [{
       id: "artifact-index-evidence",
-      status: "partial",
+      status,
       artifactIds: manifestArtifactIds,
-      summary: "Artifact inventory is hash-bound for final integration evidence."
+      summary: status === "pass"
+        ? "Artifact inventory is hash-bound for final integration evidence."
+        : "Artifact inventory is hash-bound for final integration evidence."
     }],
     inventory: {
       itemCount: artifacts.length,

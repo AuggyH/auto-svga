@@ -8,7 +8,7 @@ Date: 2026-06-22
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
 - State: terminal_human_required
 - Next Action: external_review
-- repairRound: 0
+- repairRound: 1
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -31,6 +31,10 @@ Date: 2026-06-22
 - `npm run desktop:smoke` passed serially with playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, invalid file, lifecycle, and cleanup all true.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` produced the ignored macOS internal prototype package proof.
 - `npm run loop:validate` passed on clean source head `38dcd6a1cc6ef55e21b0744d12c5c6ede4bd2fc7`.
+- P6 repair-1 generated Web baseline artifacts under `.artifacts/product/P6/web-baseline/`.
+- P6 repair-1 generated `docs/product/P6_PARITY_REPORT_SNAPSHOT.json` with PASS evidence for 12 features, 14 regions, 10 interactions, 12 states, 9 motions, browser regression, desktop runtime proof, security, accessibility, and 42 artifact bindings.
+- P6 repair-1 generated packaged `.app` runtime proof at `.artifacts/product/P6/packaged-app-runtime-proof.json`.
+- P6 repair-1 evidence index is tracked at `docs/product/P6_EVIDENCE_INDEX.md`.
 
 ## Next Action
 
