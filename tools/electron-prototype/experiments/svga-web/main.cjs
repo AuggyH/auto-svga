@@ -1559,6 +1559,7 @@ async function createExperimentWindow() {
       milestoneId: "P5",
       headCommit: productArtifactIndex.headCommit,
       verdict: "PENDING_EXTERNAL_REVIEW",
+      categoryCount: (result.reviewerBCategories ?? []).length,
       categories: result.reviewerBCategories ?? [],
       generationPolicy: "machine-assembled evidence references only; visual verdicts require independent reviewer",
       generatedAt: new Date().toISOString()

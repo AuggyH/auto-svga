@@ -208,6 +208,8 @@ test("P5 batch PNG mapping review stays isolated in the desktop prototype", asyn
   assert.match(server, /input\?\.milestoneId === "P5"/);
   assert.match(server, /normalizeBatchMappings/);
   assert.match(server, /path\.basename\(String\(file\?\.fileLabel/);
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  assert.match(main, /categoryCount: \(result\.reviewerBCategories \?\? \[\]\)\.length/);
   assert.match(styles, /\.batchMappingPanel/);
   assert.match(styles, /\.batchMappingRecord/);
   assert.doesNotMatch(renderer, /fuzzy|substring|editDistance|visualSimilarity|\/Users\//i);
