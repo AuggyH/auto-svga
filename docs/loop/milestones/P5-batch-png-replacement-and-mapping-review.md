@@ -85,7 +85,7 @@ Ignored artifacts under `.artifacts/product/P5/`:
 - `artifact-index.json`
 - `batch-edited-output.svga`
 
-PNG artifacts are deterministic state markers, not screenshots. Playback and
+PNG artifacts are deterministic state markers for orientation only. Playback and
 nonblank canvas evidence must be bound by live preview or Save As validation,
 not by offline product report generation.
 

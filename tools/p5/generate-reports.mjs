@@ -192,7 +192,7 @@ const productEvidenceSummary = {
   ],
   pngArtifacts: {
     kind: "deterministic_state_marker",
-    isScreenshot: false,
+    isRenderedUiCapture: false,
     role: "orientation_only",
     limitation: "PNG artifacts are generated state markers. They do not independently prove rendered UI state or visual product acceptance."
   },
@@ -362,10 +362,10 @@ async function createArtifactIndex() {
       return {
         path: `.artifacts/product/P5/${fileName}`,
         artifactKind: artifactKind(fileName),
-        isScreenshot: fileName.endsWith(".png") ? false : undefined,
+        isRenderedUiCapture: fileName.endsWith(".png") ? false : undefined,
         humanReviewRole: fileName.endsWith(".png") ? "orientation_only" : undefined,
         limitation: fileName.endsWith(".png")
-          ? "Generated deterministic state marker; not a screenshot or rendered UI acceptance proof."
+          ? "Generated deterministic state marker; not rendered UI acceptance proof."
           : undefined,
         sizeBytes: bytes.byteLength,
         sha256: sha256(bytes)

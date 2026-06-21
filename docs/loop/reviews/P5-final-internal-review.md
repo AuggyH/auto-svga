@@ -97,8 +97,8 @@ Not touched:
 
 ## Risks
 
-- Product state PNGs are deterministic local state markers. They are not
-  screenshots and do not independently prove rendered UI state or replace owner
+- Product state PNGs are deterministic local state markers for orientation only.
+  They do not independently prove rendered UI state or replace owner
   visual acceptance.
 - P5 final owner acceptance is still required before planning the next editing
   capability.
