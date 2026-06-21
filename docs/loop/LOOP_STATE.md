@@ -26,4 +26,4 @@ Date: 2026-06-21
 
 ## Next Action
 
-External review of the NQ1-R1 sealed Review Packet.
+Await external reviewer decision.
