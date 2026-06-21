@@ -5,6 +5,12 @@ const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
+const {
+  IPC_CHANNELS,
+  createSecureWebPreferences,
+  isAllowedHostUrl,
+  isExpectedSenderUrl
+} = require("./host-adapter-contract.cjs");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -64,8 +70,7 @@ app.setPath("userData", path.join(sessionRoot, "user-data"));
 app.setPath("sessionData", path.join(sessionRoot, "session-data"));
 
 function isExpectedSender(event) {
-  return typeof event.senderFrame?.url === "string"
-    && event.senderFrame.url.startsWith(`${expectedOrigin}/`);
+  return isExpectedSenderUrl(event.senderFrame?.url, expectedOrigin);
 }
 
 function validateSmokeResult(value) {
@@ -1252,29 +1257,23 @@ async function createExperimentWindow() {
     width: 1280,
     height: 800,
     show: !(smokeMode || auditMode),
-    webPreferences: {
-      preload: path.join(appRoot, "preload.cjs"),
-      additionalArguments: [
-        `--prototype-report-token=${reportToken}`,
-        `--prototype-product-milestone=${productMilestoneId}`
-      ],
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      spellcheck: false
-    }
+    webPreferences: createSecureWebPreferences({
+      preloadPath: path.join(appRoot, "preload.cjs"),
+      reportToken,
+      productMilestoneId
+    })
   });
 
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
     callback(false);
   });
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
-    const allowed = details.url.startsWith(`${expectedOrigin}/`)
-      || details.url.startsWith(`blob:${expectedOrigin}/`)
-      || details.url.startsWith("devtools://");
-    callback({ cancel: !allowed });
+    callback({
+      cancel: !isAllowedHostUrl(details.url, expectedOrigin, {
+        allowBlob: true,
+        allowDevtools: true
+      })
+    });
   });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("console-message", (event, ...legacyArguments) => {
@@ -1288,10 +1287,10 @@ async function createExperimentWindow() {
     console.log(`AUTO_SVGA_WEB_RENDERER ${redactLogMessage(message)}`);
   });
   window.webContents.on("will-navigate", (event, url) => {
-    if (!url.startsWith(`${expectedOrigin}/`)) event.preventDefault();
+    if (!isAllowedHostUrl(url, expectedOrigin)) event.preventDefault();
   });
 
-  ipcMain.handle("svga-web-experiment:smoke-result", async (event, input) => {
+  ipcMain.handle(IPC_CHANNELS.smokeResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     const result = validateSmokeResult(input);
     if (!result) throw new Error("Invalid smoke result");
@@ -1299,7 +1298,7 @@ async function createExperimentWindow() {
     return { accepted: true };
   });
 
-  ipcMain.handle("svga-web-experiment:capture-artifact", async (event, input) => {
+  ipcMain.handle(IPC_CHANNELS.captureArtifact, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     if (!productSmokeMode && !normalProofMode) throw new Error("Product artifact capture is only available in product capture mode");
     const scenario = validateArtifactScenario(input);
@@ -1307,7 +1306,7 @@ async function createExperimentWindow() {
     return captureProductArtifact(window, scenario);
   });
 
-  ipcMain.handle("svga-web-experiment:audit-result", async (event, input) => {
+  ipcMain.handle(IPC_CHANNELS.auditResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     const result = validateAuditResult(input);
     if (!result) throw new Error("Invalid audit result");
@@ -1315,7 +1314,7 @@ async function createExperimentWindow() {
     return { accepted: true };
   });
 
-  ipcMain.handle("svga-web-experiment:normal-proof-result", async (event, input) => {
+  ipcMain.handle(IPC_CHANNELS.normalProofResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     const result = validateNormalProofResult(input);
     if (!result) throw new Error("Invalid normal proof result");
@@ -1323,17 +1322,17 @@ async function createExperimentWindow() {
     return { accepted: true };
   });
 
-  ipcMain.handle("svga-web-experiment:save-edited-svga", async (event, input) => {
+  ipcMain.handle(IPC_CHANNELS.saveEditedSvga, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return saveEditedSvga(input);
   });
 
-  ipcMain.handle("svga-web-experiment:open-svga-file", async (event) => {
+  ipcMain.handle(IPC_CHANNELS.openSvgaFile, async (event) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return openSvgaFile();
   });
 
-  ipcMain.handle("svga-web-experiment:p3-edit-result", async (event, input) => {
+  ipcMain.handle(IPC_CHANNELS.p3EditResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     if (productMilestoneId !== "P3") throw new Error("P3 edit result is only accepted in P3 artifact mode");
     const result = validateP3EditResult(input);
@@ -1368,7 +1367,7 @@ async function createExperimentWindow() {
     return { accepted: true };
   });
 
-  ipcMain.handle("svga-web-experiment:p4-edit-result", async (event, input) => {
+  ipcMain.handle(IPC_CHANNELS.p4EditResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     if (productMilestoneId !== "P4") throw new Error("P4 edit result is only accepted in P4 artifact mode");
     const result = validateP4EditResult(input);
@@ -1436,7 +1435,7 @@ async function createExperimentWindow() {
     return { accepted: true };
   });
 
-  ipcMain.handle("svga-web-experiment:p5-batch-result", async (event, input) => {
+  ipcMain.handle(IPC_CHANNELS.p5BatchResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     if (productMilestoneId !== "P5") throw new Error("P5 batch result is only accepted in P5 artifact mode");
     const result = validateP5BatchResult(input);

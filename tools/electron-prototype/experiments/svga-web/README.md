@@ -25,5 +25,13 @@ npm run internal:trial:package:mac
 - no production dependency or default runtime change
 - internal trial artifacts are written to ignored `.artifacts/internal-trial/`
 - internal trial package is unsigned, not notarized, and not production-approved
+- `host-adapter-contract.cjs` is the Electron host boundary for later shared
+  frontend adoption. It owns the secure BrowserWindow defaults, allowed IPC
+  channel names, and local-only URL checks. The sandboxed preload mirrors that
+  narrow bridge without importing local modules, so `sandbox: true` remains
+  active.
+- New shared frontend code should prefer `window.autoSvgaElectronHost`. The
+  existing `window.autoSvgaPrototype` bridge remains as a compatibility alias
+  for this isolated experiment.
 
 Remove this experiment by deleting `tools/electron-prototype/experiments/svga-web/`.

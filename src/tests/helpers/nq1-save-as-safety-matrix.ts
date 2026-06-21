@@ -58,8 +58,8 @@ export function buildNq1SaveAsSafetyMatrix(input: {
 function buildSourceChecks(input: { mainSource: string; preloadSource: string }): Nq1SaveAsSourceCheck[] {
   const { mainSource, preloadSource } = input;
   return [
-    check("save_ipc_sender_validated", /svga-web-experiment:save-edited-svga[\s\S]*isExpectedSender/.test(mainSource)),
-    check("open_ipc_sender_validated", /svga-web-experiment:open-svga-file[\s\S]*isExpectedSender/.test(mainSource)),
+    check("save_ipc_sender_validated", /(?:svga-web-experiment:save-edited-svga|IPC_CHANNELS\.saveEditedSvga)[\s\S]*isExpectedSender/.test(mainSource)),
+    check("open_ipc_sender_validated", /(?:svga-web-experiment:open-svga-file|IPC_CHANNELS\.openSvgaFile)[\s\S]*isExpectedSender/.test(mainSource)),
     check("save_payload_validated_before_write", /const value = validateEditedSvgaSaveInput\(input\)/.test(mainSource)),
     check("save_requires_picker_source_outside_automation", /Save As requires the source SVGA to be opened through the desktop file picker/.test(mainSource)),
     check("same_source_target_rejected", /path\.resolve\(targetPath\) === path\.resolve\(originalPath\)/.test(mainSource)),
@@ -69,7 +69,7 @@ function buildSourceChecks(input: { mainSource: string; preloadSource: string })
     check("saved_response_redacts_target_path", /targetPathRedacted: sanitizeRuntimeArgument\(targetPath\)/.test(mainSource)),
     check("source_ids_are_random_not_paths", /randomBytes\(12\)\.toString\("hex"\)/.test(mainSource) && /sourceFilePaths = new Map/.test(mainSource)),
     check("source_id_cache_is_bounded", /sourceFilePaths\.size > 20/.test(mainSource)),
-    check("preload_exposes_no_filesystem_module", !/require\("node:fs"\)|require\("fs"\)|dialog|shell/.test(preloadSource)),
+    check("preload_exposes_no_filesystem_module", !/require\("node:fs"\)|require\("fs"\)|\bdialog\s*[\s,:})]|shell\./.test(preloadSource)),
     check(
       "absolute_paths_are_redacted_in_logs",
       /function redactLogMessage\(value\)/.test(mainSource)

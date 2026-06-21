@@ -1,0 +1,112 @@
+"use strict";
+
+const ELECTRON_HOST_ADAPTER_VERSION = 1;
+const ELECTRON_HOST_BRIDGE_NAME = "autoSvgaElectronHost";
+const LEGACY_PROTOTYPE_BRIDGE_NAME = "autoSvgaPrototype";
+
+const IPC_CHANNELS = Object.freeze({
+  smokeResult: "svga-web-experiment:smoke-result",
+  normalProofResult: "svga-web-experiment:normal-proof-result",
+  auditResult: "svga-web-experiment:audit-result",
+  captureArtifact: "svga-web-experiment:capture-artifact",
+  openSvgaFile: "svga-web-experiment:open-svga-file",
+  saveEditedSvga: "svga-web-experiment:save-edited-svga",
+  p3EditResult: "svga-web-experiment:p3-edit-result",
+  p4EditResult: "svga-web-experiment:p4-edit-result",
+  p5BatchResult: "svga-web-experiment:p5-batch-result"
+});
+
+const DOCUMENT_TYPES = Object.freeze(["svga"]);
+
+function createSecureWebPreferences({ preloadPath, reportToken, productMilestoneId }) {
+  return {
+    preload: preloadPath,
+    additionalArguments: [
+      `--prototype-report-token=${reportToken}`,
+      `--prototype-product-milestone=${productMilestoneId}`
+    ],
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true,
+    webSecurity: true,
+    allowRunningInsecureContent: false,
+    spellcheck: false
+  };
+}
+
+function isAllowedHostUrl(url, expectedOrigin, options = {}) {
+  if (typeof url !== "string" || typeof expectedOrigin !== "string" || expectedOrigin.length === 0) {
+    return false;
+  }
+  if (options.allowDevtools && url.startsWith("devtools://")) return true;
+  if (options.allowBlob && url.startsWith(`blob:${expectedOrigin}/`)) return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.origin === expectedOrigin && (url === expectedOrigin || url.startsWith(`${expectedOrigin}/`));
+  } catch {
+    return false;
+  }
+}
+
+function isExpectedSenderUrl(url, expectedOrigin) {
+  return isAllowedHostUrl(url, expectedOrigin);
+}
+
+function createPreloadApi(invoke, { reportToken, productMilestoneId }) {
+  return Object.freeze({
+    hostAdapterVersion: ELECTRON_HOST_ADAPTER_VERSION,
+    productMilestoneId,
+    reportToken,
+    localOnly: true,
+    telemetry: "disabled",
+    capabilities: Object.freeze({
+      documentTypes: DOCUMENT_TYPES,
+      fileOpen: "host-dialog-svga-only",
+      dragDrop: "renderer-file-api-no-path-authority",
+      saveAs: "host-dialog-svga-only",
+      arbitraryFileSystemAccess: false,
+      shellAccess: false,
+      remoteNavigation: false,
+      newWindows: false
+    }),
+    reportSmokeResult(result) {
+      return invoke(IPC_CHANNELS.smokeResult, result);
+    },
+    reportNormalProofResult(result) {
+      return invoke(IPC_CHANNELS.normalProofResult, result);
+    },
+    reportAuditResult(result) {
+      return invoke(IPC_CHANNELS.auditResult, result);
+    },
+    captureArtifact(scenario) {
+      return invoke(IPC_CHANNELS.captureArtifact, scenario);
+    },
+    openSvgaFile() {
+      return invoke(IPC_CHANNELS.openSvgaFile);
+    },
+    saveEditedSvga(input) {
+      return invoke(IPC_CHANNELS.saveEditedSvga, input);
+    },
+    reportP3EditResult(result) {
+      return invoke(IPC_CHANNELS.p3EditResult, result);
+    },
+    reportP4EditResult(result) {
+      return invoke(IPC_CHANNELS.p4EditResult, result);
+    },
+    reportP5BatchResult(result) {
+      return invoke(IPC_CHANNELS.p5BatchResult, result);
+    }
+  });
+}
+
+module.exports = {
+  DOCUMENT_TYPES,
+  ELECTRON_HOST_ADAPTER_VERSION,
+  ELECTRON_HOST_BRIDGE_NAME,
+  IPC_CHANNELS,
+  LEGACY_PROTOTYPE_BRIDGE_NAME,
+  createPreloadApi,
+  createSecureWebPreferences,
+  isAllowedHostUrl,
+  isExpectedSenderUrl
+};

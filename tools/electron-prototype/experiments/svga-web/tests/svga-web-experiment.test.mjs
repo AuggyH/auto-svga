@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { legacyBrowserBaselineAuditCsp, strictCsp, startSvgaWebExperimentServer } from "../server.mjs";
 
+const require = createRequire(import.meta.url);
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
 const vendorPath = path.join(experimentRoot, "vendor/svga-web-2.4.4.js");
+const hostContract = require("../host-adapter-contract.cjs");
 
 test("vendored svga-web asset is pinned and strict-CSP compatible", async () => {
   const source = await readFile(vendorPath, "utf8");
@@ -54,9 +57,45 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
 test("main process keeps sandboxed Electron security settings", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
-  assert.match(main, /contextIsolation:\s*true/);
-  assert.match(main, /nodeIntegration:\s*false/);
-  assert.match(main, /sandbox:\s*true/);
+  const securePreferences = hostContract.createSecureWebPreferences({
+    preloadPath: "/tmp/preload.cjs",
+    reportToken: "test-token",
+    productMilestoneId: "P6"
+  });
+  assert.equal(securePreferences.contextIsolation, true);
+  assert.equal(securePreferences.nodeIntegration, false);
+  assert.equal(securePreferences.sandbox, true);
+  assert.equal(securePreferences.webSecurity, true);
+  assert.equal(securePreferences.allowRunningInsecureContent, false);
+  assert.equal(securePreferences.spellcheck, false);
+  assert.deepEqual(securePreferences.additionalArguments, [
+    "--prototype-report-token=test-token",
+    "--prototype-product-milestone=P6"
+  ]);
+  assert.equal(hostContract.isAllowedHostUrl("http://127.0.0.1:1234/", "http://127.0.0.1:1234"), true);
+  assert.equal(hostContract.isAllowedHostUrl("blob:http://127.0.0.1:1234/id", "http://127.0.0.1:1234", { allowBlob: true }), true);
+  assert.equal(hostContract.isAllowedHostUrl("devtools://devtools/bundled/inspector.html", "http://127.0.0.1:1234", { allowDevtools: true }), true);
+  assert.equal(hostContract.isAllowedHostUrl("https://example.com/", "http://127.0.0.1:1234"), false);
+  assert.equal(hostContract.isAllowedHostUrl("file:///tmp/test.svga", "http://127.0.0.1:1234"), false);
+  assert.equal(hostContract.isAllowedHostUrl("devtools://devtools/bundled/inspector.html", "http://127.0.0.1:1234"), false);
+  assert.equal(hostContract.isExpectedSenderUrl("http://127.0.0.1:1234/index.html", "http://127.0.0.1:1234"), true);
+  assert.equal(hostContract.isExpectedSenderUrl("http://127.0.0.1:4321/index.html", "http://127.0.0.1:1234"), false);
+  const invocations = [];
+  const preloadApi = hostContract.createPreloadApi((channel, input) => {
+    invocations.push({ channel, input });
+    return { channel, input };
+  }, { reportToken: "test-token", productMilestoneId: "P6" });
+  assert.equal(preloadApi.hostAdapterVersion, 1);
+  assert.equal(preloadApi.telemetry, "disabled");
+  assert.equal(preloadApi.capabilities.arbitraryFileSystemAccess, false);
+  assert.equal(preloadApi.capabilities.shellAccess, false);
+  assert.deepEqual(preloadApi.capabilities.documentTypes, ["svga"]);
+  assert.equal(preloadApi.openSvgaFile().channel, hostContract.IPC_CHANNELS.openSvgaFile);
+  assert.equal(preloadApi.saveEditedSvga({ bytesBase64: "AA==" }).channel, hostContract.IPC_CHANNELS.saveEditedSvga);
+  assert.equal(invocations.length, 2);
+  assert.match(main, /createSecureWebPreferences/);
+  assert.match(main, /isAllowedHostUrl/);
+  assert.match(main, /isExpectedSenderUrl/);
   assert.match(main, /productSmokeMode/);
   assert.match(main, /captureProductArtifact/);
   assert.match(main, /validateArtifactScenario/);
@@ -68,9 +107,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /normal-runtime-proof\.json/);
   assert.match(main, /desktop-loaded/);
   assert.match(main, /actual-normal-loaded/);
-  assert.match(main, /open-svga-file/);
-  assert.match(main, /save-edited-svga/);
-  assert.match(main, /p3-edit-result/);
+  assert.match(main, /IPC_CHANNELS\.openSvgaFile/);
+  assert.match(main, /IPC_CHANNELS\.saveEditedSvga/);
+  assert.match(main, /IPC_CHANNELS\.p3EditResult/);
   assert.match(main, /sourceFilePaths/);
   assert.match(main, /fsyncSync/);
   assert.match(main, /actualLaunchCommand/);
@@ -82,13 +121,12 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/);
   assert.match(main, /will-navigate/);
   assert.match(main, /webRequest\.onBeforeRequest/);
-  assert.match(preload, /reportSmokeResult/);
-  assert.match(preload, /reportAuditResult/);
-  assert.match(preload, /captureArtifact/);
-  assert.match(preload, /openSvgaFile/);
-  assert.match(preload, /saveEditedSvga/);
-  assert.match(preload, /reportP3EditResult/);
-  assert.doesNotMatch(preload, /dialog|shell|openPath|readFile/);
+  assert.match(preload, /ELECTRON_HOST_BRIDGE_NAME/);
+  assert.match(preload, /LEGACY_PROTOTYPE_BRIDGE_NAME/);
+  assert.match(preload, /hostAdapterVersion:\s*1/);
+  assert.match(preload, /arbitraryFileSystemAccess:\s*false/);
+  assert.doesNotMatch(preload, /require\(["']\.\/host-adapter-contract\.cjs["']\)/);
+  assert.doesNotMatch(preload, /\bdialog\s*[\s,:})]|shell\.|openPath|readFile/);
   assert.doesNotMatch(preload, /require\("node:fs"\)|require\("fs"\)/);
 });
 
@@ -228,10 +266,13 @@ test("P5 batch PNG mapping review stays isolated in the desktop prototype", asyn
 
 test("P3 image replacement prototype stays isolated and records verified Save As evidence", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
-  const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
   const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const server = await readFile(path.join(experimentRoot, "server.mjs"), "utf8");
   const runtimePrep = await readFile(path.join(experimentRoot, "../../scripts/prepare-runtime.mjs"), "utf8");
+  const preloadApi = hostContract.createPreloadApi(() => undefined, {
+    reportToken: "test-token",
+    productMilestoneId: "P3"
+  });
   assert.match(main, /Basic Image Resource Replacement And Save As/);
   assert.match(main, /Save As target must be different from the original SVGA/);
   assert.match(main, /Save As requires the source SVGA to be opened through the desktop file picker/);
@@ -244,9 +285,9 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   assert.match(main, /schemaVersion:\s*2/);
   assert.match(main, /"p3-resource-list"/);
   assert.match(main, /"p3-original-edited-comparison": "original-edited-comparison\.png"/);
-  assert.match(preload, /openSvgaFile/);
-  assert.match(preload, /saveEditedSvga/);
-  assert.match(preload, /reportP3EditResult/);
+  assert.equal(typeof preloadApi.openSvgaFile, "function");
+  assert.equal(typeof preloadApi.saveEditedSvga, "function");
+  assert.equal(typeof preloadApi.reportP3EditResult, "function");
   assert.match(renderer, /renderEditPanel/);
   assert.match(renderer, /替换 PNG/);
   assert.match(renderer, /重置此资源/);
@@ -278,9 +319,12 @@ test("P3 image replacement prototype stays isolated and records verified Save As
 
 test("P4 multi-resource editing keeps history and export integrity boundaries isolated", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
-  const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
   const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const server = await readFile(path.join(experimentRoot, "server.mjs"), "utf8");
+  const preloadApi = hostContract.createPreloadApi(() => undefined, {
+    reportToken: "test-token",
+    productMilestoneId: "P4"
+  });
   assert.match(renderer, /editHistorySnapshots/);
   assert.match(renderer, /savedReplacementDigest/);
   assert.match(renderer, /editOperationSequence/);
@@ -311,14 +355,14 @@ test("P4 multi-resource editing keeps history and export integrity boundaries is
   assert.match(main, /value\.appliedMappingCount < 3/);
   assert.match(main, /editedBytesSha256/);
   assert.match(main, /value\.replacementCount < 2/);
-  assert.match(preload, /reportP4EditResult/);
+  assert.equal(typeof preloadApi.reportP4EditResult, "function");
   assert.match(renderer, /replacementRequestMilestoneId/);
   assert.match(server, /input\?\.milestoneId === "P3"/);
   assert.match(server, /replaceImages\(bytes, decodedReplacements, name, \{/);
   assert.match(server, /milestoneId,/);
   assert.match(main, /const savedSourceId = rememberSourceFile\(targetPath\)/);
   assert.match(main, /sourceId: savedSourceId/);
-  assert.match(main, /p4-edit-result/);
+  assert.match(main, /IPC_CHANNELS\.p4EditResult/);
   assert.match(main, /validateP4EditResult/);
   assert.match(main, /multi-resource-round-trip-report\.json/);
   assert.match(main, /edit-history-report\.json/);
