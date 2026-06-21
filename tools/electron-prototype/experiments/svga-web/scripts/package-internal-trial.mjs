@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +26,7 @@ const appDirectory = path.join(artifactsRoot, `${appName}-darwin-arm64`);
 const appBundle = path.join(appDirectory, `${appName}.app`);
 const archivePath = path.join(artifactsRoot, `${appName}-darwin-arm64.zip`);
 const manifestPath = path.join(artifactsRoot, "internal-trial-manifest.json");
+const localElectronVersionPath = path.join(experimentRoot, "../../node_modules/electron/dist/version");
 
 function run(command, args, options = {}) {
   execFileSync(command, args, {
@@ -48,6 +50,31 @@ async function sha256(filePath) {
   return createHash("sha256").update(await readFile(filePath)).digest("hex");
 }
 
+async function findCachedElectronZip() {
+  if (!existsSync(localElectronVersionPath)) return undefined;
+  const electronVersion = (await readFile(localElectronVersionPath, "utf8")).trim();
+  const zipName = `electron-v${electronVersion}-darwin-arm64.zip`;
+  const cacheRoots = [
+    process.env.ELECTRON_CACHE,
+    process.env.npm_config_electron_mirror ? undefined : process.env.ELECTRON_CUSTOM_DIR,
+    process.env.HOME ? path.join(process.env.HOME, "Library/Caches/electron") : undefined,
+    process.env.XDG_CACHE_HOME ? path.join(process.env.XDG_CACHE_HOME, "electron") : undefined
+  ].filter(Boolean);
+
+  for (const cacheRoot of cacheRoots) {
+    if (!existsSync(cacheRoot)) continue;
+    for (const entry of await readdir(cacheRoot, { withFileTypes: true })) {
+      const candidate = entry.isDirectory()
+        ? path.join(cacheRoot, entry.name, zipName)
+        : path.join(cacheRoot, entry.name);
+      if (path.basename(candidate) === zipName && existsSync(candidate)) {
+        return path.dirname(candidate);
+      }
+    }
+  }
+  return undefined;
+}
+
 async function main() {
   const buildCommit = execFileSync("git", ["rev-parse", "HEAD"], {
     cwd: repoRoot,
@@ -58,7 +85,11 @@ async function main() {
   await mkdir(artifactsRoot, { recursive: true });
 
   run("npm", ["run", "spike:svga-web:prepare"]);
-  run("../../node_modules/.bin/electron-packager", macosPackagerArgs(artifactsRoot));
+  const cachedElectronZipDir = await findCachedElectronZip();
+  const packagerArgs = cachedElectronZipDir
+    ? [...macosPackagerArgs(artifactsRoot), `--electron-zip-dir=${cachedElectronZipDir}`]
+    : macosPackagerArgs(artifactsRoot);
+  run("../../node_modules/.bin/electron-packager", packagerArgs);
   run("/usr/bin/ditto", [
     "-c",
     "-k",
