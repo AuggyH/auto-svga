@@ -513,8 +513,10 @@ test("accept command writes acceptance.json and updates report.json", async () =
 });
 
 test("Web job loader uses validated repository-relative job paths", async () => {
-  const source = await readFile(path.resolve("tools/svga-player-preview/main.js"), "utf8");
+  const webEntry = await readFile(path.resolve("tools/svga-player-preview/main.js"), "utf8");
+  const source = await readFile(path.resolve("tools/shared/product-frontend/product-app.mjs"), "utf8");
   const html = await readFile(path.resolve("tools/svga-player-preview/index.html"), "utf8");
+  assert.match(webEntry, /shared\/product-frontend\/product-app\.mjs/);
   assert.match(source, /new URLSearchParams\(window\.location\.search\)\.get\("job"\)/);
   assert.match(source, /\^jobs\\\/\[a-zA-Z0-9\._-\]\+\$/);
   assert.match(source, /previewOutputs\?\.webm/);
