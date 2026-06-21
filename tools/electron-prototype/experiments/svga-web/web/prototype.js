@@ -1653,7 +1653,7 @@ async function maybeRunP5BatchSmoke(originalBytes) {
     if (resourceKeys.length < 6) {
       throw new Error("P5 fixture must expose at least six image resources.");
     }
-    await captureArtifact("p5-batch-entry");
+    const entryArtifact = await captureArtifact("p5-batch-entry");
     const batchEntry = Boolean(reportRoot.querySelector('[data-edit-action="batch-replace"]'));
     const originalSourceSha256 = await sha256Hex(originalBytes);
     const originalCanvasHash = await canvasHash(canvas);
@@ -1891,6 +1891,7 @@ async function maybeRunP5BatchSmoke(originalBytes) {
         && externalRequestUrls().length === 0
     };
     const reviewerBCategories = buildP5ReviewerBCategories({
+      entryArtifact,
       filesSelectedArtifact,
       conflictArtifact,
       manualArtifact,
@@ -2043,7 +2044,7 @@ function renderP5ComparisonArtifact(originalDataUrl, editedDataUrl, metadata) {
 function buildP5ReviewerBCategories(artifacts) {
   const sha = (artifact) => artifact?.sha256 ?? "";
   return [
-    ["batchEntry", "batch-entry.png", ""],
+    ["batchEntry", "batch-entry.png", sha(artifacts.entryArtifact)],
     ["multiFileSelection", "batch-files-selected.png", sha(artifacts.filesSelectedArtifact)],
     ["deterministicMapping", "mapping-exact-matches.png", sha(artifacts.filesSelectedArtifact)],
     ["conflictAndUnmatched", "mapping-unmatched-conflict.png", sha(artifacts.conflictArtifact)],

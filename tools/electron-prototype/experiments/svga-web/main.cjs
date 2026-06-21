@@ -1519,6 +1519,20 @@ async function createExperimentWindow() {
       passed: result.thumbnailEvidence.passed === true
     });
     writeJsonProductArtifact("p5-live-runtime-proof.json", "p5-live-runtime-proof", verifiedLiveRuntimeProof);
+    const absolutePathFindings = verifiedRoundTripReport.privacy?.absolutePathFindings ?? 0;
+    writeJsonProductArtifact("bundle-privacy-audit.json", "p5-bundle-privacy-audit", {
+      schemaVersion: 1,
+      milestoneId: "P5",
+      headCommit: productArtifactIndex.headCommit,
+      passed: verifiedLiveRuntimeProof.externalRequests.length === 0
+        && absolutePathFindings === 0,
+      externalRequests: verifiedLiveRuntimeProof.externalRequests,
+      absolutePathFindings,
+      assetPolicy: "synthetic-only; no user SVGA or PNG assets are committed or bundled",
+      telemetry: "disabled",
+      network: "local-only",
+      generatedAt: new Date().toISOString()
+    });
     writeJsonProductArtifact("p5-product-evidence-summary.json", "p5-product-evidence-summary", {
       schemaVersion: 1,
       milestoneId: "P5",
@@ -1528,7 +1542,8 @@ async function createExperimentWindow() {
         "batch-mapping-report.json",
         "batch-edit-history-report.json",
         "batch-round-trip-report.json",
-        "thumbnail-evidence.json"
+        "thumbnail-evidence.json",
+        "bundle-privacy-audit.json"
       ],
       pngArtifacts: {
         kind: "rendered_electron_ui_capture",
