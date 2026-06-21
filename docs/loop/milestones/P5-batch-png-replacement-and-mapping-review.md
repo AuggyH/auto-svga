@@ -59,30 +59,35 @@ heuristic matching is allowed.
 
 Ignored artifacts under `.artifacts/product/P5/`:
 
-- `screenshots/batch-entry.png`
-- `screenshots/batch-files-selected.png`
-- `screenshots/mapping-exact-matches.png`
-- `screenshots/mapping-unmatched-conflict.png`
-- `screenshots/mapping-manual-resolution.png`
-- `screenshots/mapping-ready-to-apply.png`
-- `screenshots/batch-preview.png`
-- `screenshots/batch-dirty-state.png`
-- `screenshots/batch-undo.png`
-- `screenshots/batch-redo.png`
-- `screenshots/batch-export-success.png`
-- `screenshots/batch-reopened-export.png`
-- `screenshots/corrupt-png-state.png`
-- `screenshots/dimension-warning.png`
-- `screenshots/batch-original-edited-comparison.png`
+- `batch-entry.png`
+- `batch-files-selected.png`
+- `mapping-exact-matches.png`
+- `mapping-unmatched-conflict.png`
+- `mapping-manual-resolution.png`
+- `mapping-ready-to-apply.png`
+- `batch-preview.png`
+- `batch-dirty-state.png`
+- `batch-undo.png`
+- `batch-redo.png`
+- `batch-export-success.png`
+- `batch-reopened-export.png`
+- `corrupt-png-state.png`
+- `dimension-warning.png`
+- `batch-original-edited-comparison.png`
 - `canonical-batch-fixture.json`
 - `batch-mapping-report.json`
 - `batch-edit-history-report.json`
 - `batch-round-trip-report.json`
+- `p5-product-evidence-summary.json`
 - `thumbnail-evidence.json`
 - `reviewer-b-product-categories.json`
 - `bundle-privacy-audit.json`
 - `artifact-index.json`
 - `batch-edited-output.svga`
+
+PNG artifacts are deterministic state markers, not screenshots. Playback and
+nonblank canvas evidence must be bound by live preview or Save As validation,
+not by offline product report generation.
 
 ## Terminal Gate
 

@@ -1151,6 +1151,9 @@ async function createSaveRevisionValidation() {
     reportMilestoneId: lastRoundTripReport.milestoneId,
     reportPassed: lastRoundTripReport.passed === true,
     replacementCount: Array.isArray(lastRoundTripReport.replacements) ? lastRoundTripReport.replacements.length : 1,
+    appliedMappingCount: Number.isInteger(lastRoundTripReport.appliedMappingCount)
+      ? lastRoundTripReport.appliedMappingCount
+      : undefined,
     unexpectedChangesEmpty: Array.isArray(lastRoundTripReport.unexpectedChanges)
       && lastRoundTripReport.unexpectedChanges.length === 0
   };

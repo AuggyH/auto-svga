@@ -480,7 +480,12 @@ export class SvgaImageResourceEditor {
     const onlyP4MinimumReplacementGateFailed = options.milestoneId === "P4"
       && report.unexpectedChanges.length === 1
       && report.unexpectedChanges[0] === "p4_minimum_replacement_count";
-    if (!report.passed && !onlyP4MinimumReplacementGateFailed) {
+    const onlyP5DeferredPlaybackGateFailed = options.milestoneId === "P5"
+      && report.unexpectedChanges.length > 0
+      && report.unexpectedChanges.every((code) => (
+        code === "p5_playback_smoke" || code === "p5_canvas_nonblank"
+      ));
+    if (!report.passed && !onlyP4MinimumReplacementGateFailed && !onlyP5DeferredPlaybackGateFailed) {
       throw new SvgaImageEditError("unsupported_round_trip_file", "Edited SVGA failed round-trip invariant checks.", {
         unexpectedChanges: report.unexpectedChanges
       });

@@ -1,7 +1,7 @@
 # P5 Final Internal Review
 
 Milestone: P5 — Batch PNG Replacement And Mapping Review
-Reviewed implementation commit: `66faf364d857dae437d345b1f7d877749cfc5402`
+Reviewed implementation commit: `7f9d2d245474ee550e70cd01a04172712a9f4e59`
 Outcome: HUMAN_REQUIRED
 
 ## Summary
@@ -51,7 +51,7 @@ capability.
 
 ## Validation
 
-- `npm test`: PASS, 198/198.
+- `npm test`: PASS, 199/199.
 - `npm run p5:reports`: PASS.
 - `node --check tools/electron-prototype/experiments/svga-web/web/prototype.js`: PASS.
 - `node --check tools/electron-prototype/experiments/svga-web/server.mjs`: PASS.
@@ -77,7 +77,10 @@ Generated under `.artifacts/product/P5`:
 
 Key evidence:
 
-- P5 round-trip report: schemaVersion 4, `passed: true`.
+- P5 round-trip report: schemaVersion 4 generated with structural batch
+  mapping evidence. Playback and nonblank canvas are bound by live preview
+  before Save As; offline product report generation does not assert those
+  fields.
 - Applied mapping count: 4.
 - Privacy findings: 0.
 - Edited output SHA-256: `43ccc6ec737e2eb188cac59c10afee41e2defd267678476bd593486e04b520e3`.

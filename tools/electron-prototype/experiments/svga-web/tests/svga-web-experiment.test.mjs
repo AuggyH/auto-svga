@@ -193,6 +193,7 @@ test("P5 batch PNG mapping review stays isolated in the desktop prototype", asyn
   assert.match(renderer, /schemaVersion !== 4/);
   assert.match(renderer, /milestoneId !== "P5"/);
   assert.match(renderer, /appliedMappingCount >= 3/);
+  assert.match(renderer, /appliedMappingCount: Number\.isInteger\(lastRoundTripReport\.appliedMappingCount\)/);
   assert.match(renderer, /playbackPassed/);
   assert.match(renderer, /canvasNonBlank/);
   assert.match(renderer, /批量 PNG 映射复核/);
@@ -292,6 +293,9 @@ test("P4 multi-resource editing keeps history and export integrity boundaries is
   assert.match(renderer, /saveOperationSequence !== editOperationSequence/);
   assert.match(renderer, /reopenedResult\.playback/);
   assert.match(main, /validateSaveRevisionBinding/);
+  assert.match(main, /value\.milestoneId === "P5"/);
+  assert.match(main, /value\.reportSchemaVersion !== 4 \|\| value\.reportMilestoneId !== "P5"/);
+  assert.match(main, /value\.appliedMappingCount < 3/);
   assert.match(main, /editedBytesSha256/);
   assert.match(main, /value\.replacementCount < 2/);
   assert.match(preload, /reportP4EditResult/);

@@ -365,6 +365,42 @@ test("SVGA image editor reports P5 batch mapping integrity for three replacement
   ]);
 });
 
+test("SVGA image editor allows P5 playback evidence to be bound by host preview", async () => {
+  const editor = new SvgaImageResourceEditor();
+  const bytes = await createSvgaFixture();
+  const replacements = [
+    { resourceKey: "img_frame", pngBytes: createColoredPng(300, 300, [255, 0, 0, 255]), inputFileLabel: "img_frame.png" },
+    { resourceKey: "img_sweep", pngBytes: createColoredPng(48, 96, [0, 255, 0, 255]), inputFileLabel: "img_sweep.png" },
+    { resourceKey: "img_unused", pngBytes: createColoredPng(12, 12, [0, 0, 255, 255]), inputFileLabel: "img_unused.png" }
+  ];
+
+  const result = await editor.replaceImages(bytes, replacements.map(({ resourceKey, pngBytes }) => ({
+    resourceKey,
+    pngBytes
+  })), "fixture.svga", {
+    milestoneId: "P5",
+    batchTransactionId: "batch-preview-pending",
+    batchMappings: replacements.map(({ resourceKey, pngBytes, inputFileLabel }) => ({
+      inputFileLabel,
+      inputSha256: sha256(pngBytes),
+      mappingRuleId: "resource_key_exact",
+      mappingStatus: "exact_match",
+      resourceKey
+    })),
+    playbackPassed: false,
+    canvasNonBlank: false
+  });
+
+  assert.equal(result.roundTripReport.schemaVersion, 4);
+  assert.equal(result.roundTripReport.milestoneId, "P5");
+  assert.equal(result.roundTripReport.passed, false);
+  assert.deepEqual(result.roundTripReport.unexpectedChanges, [
+    "p5_playback_smoke",
+    "p5_canvas_nonblank"
+  ]);
+  assert.equal(result.roundTripReport.appliedMappings.every((mapping) => mapping.passed), true);
+});
+
 test("SVGA image editor rejects duplicate replacements for the same resource", async () => {
   const editor = new SvgaImageResourceEditor();
   const bytes = await createSvgaFixture();

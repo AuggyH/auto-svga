@@ -146,7 +146,13 @@ function validateEditedSvgaSaveInput(value) {
 
 function validateSaveRevisionBinding(value, bytes) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-  const milestoneId = value.milestoneId === "P3" ? "P3" : value.milestoneId === "P4" ? "P4" : "";
+  const milestoneId = value.milestoneId === "P3"
+    ? "P3"
+    : value.milestoneId === "P4"
+      ? "P4"
+      : value.milestoneId === "P5"
+        ? "P5"
+        : "";
   if (!milestoneId || milestoneId !== productMilestoneId) return undefined;
   if (value.schemaVersion !== 1) return undefined;
   if (!Number.isInteger(value.operationSequence) || value.operationSequence < 0) return undefined;
@@ -158,6 +164,9 @@ function validateSaveRevisionBinding(value, bytes) {
   if (milestoneId === "P4") {
     if (value.reportSchemaVersion !== 3 || value.reportMilestoneId !== "P4") return undefined;
     if (!Number.isInteger(value.replacementCount) || value.replacementCount < 2) return undefined;
+  } else if (milestoneId === "P5") {
+    if (value.reportSchemaVersion !== 4 || value.reportMilestoneId !== "P5") return undefined;
+    if (!Number.isInteger(value.appliedMappingCount) || value.appliedMappingCount < 3) return undefined;
   } else if (value.reportSchemaVersion !== 2) {
     return undefined;
   }
@@ -168,7 +177,8 @@ function validateSaveRevisionBinding(value, bytes) {
     roundTripReportDigest: value.roundTripReportDigest,
     editedBytesSha256: value.editedBytesSha256,
     reportSchemaVersion: value.reportSchemaVersion,
-    replacementCount: value.replacementCount
+    replacementCount: value.replacementCount,
+    appliedMappingCount: value.appliedMappingCount
   };
 }
 

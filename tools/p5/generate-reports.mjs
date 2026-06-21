@@ -69,8 +69,8 @@ const result = await editor.replaceImages(sourceSvga, replacements, "p5-canonica
     mappingStatus: replacement.status,
     resourceKey: replacement.resourceKey
   })),
-  playbackPassed: true,
-  canvasNonBlank: true
+  playbackPassed: false,
+  canvasNonBlank: false
 });
 await writeFile(path.join(productDir, "batch-edited-output.svga"), result.editedBytes);
 
@@ -195,6 +195,10 @@ const productEvidenceSummary = {
     isScreenshot: false,
     role: "orientation_only",
     limitation: "PNG artifacts are generated state markers. They do not independently prove rendered UI state or visual product acceptance."
+  },
+  playbackEvidence: {
+    status: "live_preview_required",
+    limitation: "Offline product report generation does not assert playbackPassed or canvasNonBlank. The isolated prototype binds those fields only after real preview playback and nonblank canvas checks."
   },
   humanReviewRequired: true
 };
