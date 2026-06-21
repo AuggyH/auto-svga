@@ -18,8 +18,8 @@ Date: 2026-06-21
 
 - P4 is accepted by product owner review at head `fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4`.
 - NQ1-R1 reached PASS at head `84eb825784580a467fb8d103a0dd9eefef93b34a`.
-- P5 implementation through commit `7f9d2d245474ee550e70cd01a04172712a9f4e59` adds deterministic batch PNG mapping, review, atomic apply metadata, schemaVersion 4 round-trip report, isolated desktop prototype UI, and product evidence generation.
-- P5 validation passed: `npm test` 199/199, `npm run p5:reports`, Web prototype test 15/15, syntax checks, and `git diff --check`.
+- P5 implementation through commit `d99efd6be52a2f01c3fbb413a405702017a926f2` adds deterministic batch PNG mapping, review, atomic apply metadata, schemaVersion 4 round-trip report, isolated desktop prototype UI, and product evidence generation.
+- P5 validation passed: `npm test` 200/200, `npm run p5:reports`, Web prototype test 15/15, syntax checks, and `git diff --check`.
 - P5 product evidence was generated under `.artifacts/product/P5`; visible owner review material must be published under `review/P5-latest`.
 - P5 stops at HUMAN_REQUIRED for owner acceptance before any next milestone.
 
