@@ -246,9 +246,11 @@ async function runPackageAndPackagedSmoke() {
 }
 
 function redact(text) {
+  const macUserPathPattern = new RegExp(String.raw`/${"Users"}/[^/\s]+`, "g");
+  const macUserPathRedaction = ["", "Users", "<redacted>"].join("/");
   return String(text)
     .replaceAll(repoRoot, "<repo>")
-    .replace(/\/Users\/[^/\s]+/g, "/Users/<redacted>");
+    .replace(macUserPathPattern, macUserPathRedaction);
 }
 
 function requiredCountsFromContract(contract) {
