@@ -6,22 +6,34 @@ Status: frozen
 milestoneStartCommit: `84eb825784580a467fb8d103a0dd9eefef93b34a`
 Branch: `agent/codex/p5-batch-png-mapping`
 Previous milestone: `NQ1-R1`
-Contract source: `docs/loop/milestones/P5-batch-png-replacement-and-mapping-review.md`
 
 maxRepairRounds: 4
 maxConsecutiveNoProgressRounds: 2
 
 ## Objective
 
-Extend the current SVGA image resource editor with deterministic multi-PNG
-mapping, review, atomic batch apply, undo/redo, preview, Save As, reopened
-export verification, product evidence, and a final owner gate.
+Extend the existing SVGA image resource editor so a user can import multiple
+PNG files, review deterministic resource mappings, resolve conflicts manually,
+apply the selected mappings as one atomic edit-history transaction, preview the
+result, Save As, reopen the export, and verify per-resource hashes.
 
 ## Product Boundary
 
-P5 is batch PNG replacement only. It must not add crop, resize, resample, text,
-timeline, transform, effects, format conversion, export workbench, cloud,
-account, telemetry, AI, or new format parser scope.
+P5 extends current image replacement only. It must not implement text editing,
+timeline editing, transform editing, effects, crop/resize/resample, cloud,
+accounts, AI, format conversion, export workbench, or new format parsers.
+
+## Mapping Policy
+
+Automatic mapping order is fixed:
+
+1. PNG basename exactly equals `resourceKey`.
+2. PNG basename exactly equals a unique display name.
+3. Unicode NFC plus case-fold basename equals a unique `resourceKey`.
+4. Unicode NFC plus case-fold basename equals a unique display name.
+
+No fuzzy, substring, edit-distance, AI semantic, visual-similarity, or hidden
+heuristic matching is allowed.
 
 ## Acceptance Criteria
 
@@ -43,7 +55,40 @@ account, telemetry, AI, or new format parser scope.
 - `P5-AC-16`: Independent Review — Reviewer A and read-only Reviewer B produce schemaVersion 2 verdicts bound to the final candidate digest and hashes.
 - `P5-AC-17`: Scope Discipline — P5 stops at HUMAN_REQUIRED and does not start P6 or any new asset/editor scope.
 
+## Required Product Evidence
+
+Ignored artifacts under `.artifacts/product/P5/`:
+
+- `screenshots/batch-entry.png`
+- `screenshots/batch-files-selected.png`
+- `screenshots/mapping-exact-matches.png`
+- `screenshots/mapping-unmatched-conflict.png`
+- `screenshots/mapping-manual-resolution.png`
+- `screenshots/mapping-ready-to-apply.png`
+- `screenshots/batch-preview.png`
+- `screenshots/batch-dirty-state.png`
+- `screenshots/batch-undo.png`
+- `screenshots/batch-redo.png`
+- `screenshots/batch-export-success.png`
+- `screenshots/batch-reopened-export.png`
+- `screenshots/corrupt-png-state.png`
+- `screenshots/dimension-warning.png`
+- `screenshots/batch-original-edited-comparison.png`
+- `canonical-batch-fixture.json`
+- `batch-mapping-report.json`
+- `batch-edit-history-report.json`
+- `batch-round-trip-report.json`
+- `thumbnail-evidence.json`
+- `reviewer-b-product-categories.json`
+- `bundle-privacy-audit.json`
+- `artifact-index.json`
+- `batch-edited-output.svga`
+
 ## Terminal Gate
 
-P5 must end as `HUMAN_REQUIRED` and ask only whether the owner accepts P5 and
-allows planning the next editing capability.
+P5 must end as `HUMAN_REQUIRED` with one owner question:
+
+是否接受 P5 多 PNG 批量导入、映射复核、冲突处理、原子应用和批量导出闭环，并允许规划下一项编辑能力？
+
+Safe default: `B` — do not accept; point out the highest-priority batch
+replacement or mapping experience issue.
