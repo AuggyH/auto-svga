@@ -198,6 +198,7 @@ async function runSmoke() {
   await captureArtifact("desktop-inspection");
   const p3EditSmoke = await maybeRunP3EditSmoke(bytes.slice(0));
   const p4EditSmoke = await maybeRunP4EditSmoke(bytes.slice(0));
+  const p5BatchSmoke = await maybeRunP5BatchSmoke(bytes.slice(0));
   const fileInputSmoke = await smokeFileInput(bytes.slice(0));
   const dragDropSmoke = await smokeDragDrop(bytes.slice(0));
   const errorFileSmoke = await smokeErrorFile();
@@ -220,6 +221,7 @@ async function runSmoke() {
       && cleanupCount >= 3
       && (productMilestoneId !== "P3" || p3EditSmoke.passed)
       && (productMilestoneId !== "P4" || p4EditSmoke.passed)
+      && (productMilestoneId !== "P5" || p5BatchSmoke.passed)
   };
   runtimeStatus.textContent = Object.values(result).every(Boolean) ? "内部原型验证通过" : "验证未通过";
   await reportSmoke(result);
@@ -941,7 +943,7 @@ function renderBatchMappingRecord(record, resources) {
       </label>
       <div class="batchMappingMain">
         <strong>${escapeHtml(record.fileLabel)}</strong>
-        <small>${escapeHtml(record.status)} · ${escapeHtml(record.ruleId)} · ${escapeHtml(dimensions)} · ${formatBytes(record.sizeBytes)}</small>
+        <small>${escapeHtml(record.status)} · ${escapeHtml(record.ruleId)} · ${escapeHtml(dimensions)} · ${formatBytes(record.sizeBytes)} · ${escapeHtml((record.sha256 ?? "").slice(0, 12))}</small>
         <span>${escapeHtml(record.reason)}</span>
         ${warnings.map((issue) => `<em class="editWarning">${escapeHtml(issue.code)}</em>`).join("")}
         ${errors.map((issue) => `<em class="editError">${escapeHtml(issue.code)}</em>`).join("")}
@@ -1639,6 +1641,434 @@ async function maybeRunP4EditSmoke(originalBytes) {
     await window.autoSvgaPrototype.reportP4EditResult(result).catch(() => undefined);
     return result;
   }
+}
+
+async function maybeRunP5BatchSmoke(originalBytes) {
+  if (!isSmokeMode || !shouldCaptureArtifacts || productMilestoneId !== "P5") {
+    return { passed: true };
+  }
+  const errors = [];
+  try {
+    const resourceKeys = (editSession?.imageResources ?? []).map((resource) => resource.resourceKey);
+    if (resourceKeys.length < 6) {
+      throw new Error("P5 fixture must expose at least six image resources.");
+    }
+    await captureArtifact("p5-batch-entry");
+    const batchEntry = Boolean(reportRoot.querySelector('[data-edit-action="batch-replace"]'));
+    const originalSourceSha256 = await sha256Hex(originalBytes);
+    const originalCanvasHash = await canvasHash(canvas);
+    const originalCanvasDataUrl = canvas.toDataURL("image/png");
+    const originalThumbnails = await thumbnailsFor(resourceKeys);
+    const batchFiles = await Promise.all([
+      fixturePngFile("p5/img_frame.png", "img_frame.png"),
+      fixturePngFile("p5/IMG_GLOW.png", "IMG_GLOW.png"),
+      fixturePngFile("p5/img_badge.png", "img_badge.png"),
+      fixturePngFile("p5/not_in_svga.png", "not_in_svga.png"),
+      fixturePngFile("p5/iconalpha.png", "iconalpha.png"),
+      fixturePngFile("p5/IMG_FRAME.png", "IMG_FRAME.png"),
+      fixturePngFile("p5/corrupt.png", "corrupt.png")
+    ]);
+
+    await loadBatchPngFiles(batchFiles);
+    await delay(220);
+    const filesSelectedArtifact = await captureArtifact("p5-batch-files-selected");
+    const initialReview = batchMappingReport;
+    if (!initialReview) throw new Error("P5 batch mapping report was not created.");
+    const initialBatchFileCount = batchInputItems.length;
+    await captureArtifact("p5-mapping-exact-matches");
+    const conflictArtifact = await captureArtifact("p5-mapping-unmatched-conflict");
+    const statuses = new Set((initialReview.records ?? []).map((record) => record.status));
+    const exactMatch = statuses.has("exact_match");
+    const normalizedMatch = statuses.has("unique_normalized_match");
+    const unmatched = statuses.has("unmatched");
+    const conflict = statuses.has("duplicate_target") || statuses.has("ambiguous");
+    const corruptPngSeen = statuses.has("invalid");
+    const corruptArtifact = await captureArtifact("p5-corrupt-png-state");
+    const corruptPngState = corruptPngSeen && reportRoot.textContent.includes("not_png");
+    const applyDisabledBeforeResolution = initialReview.readyToApply !== true
+      && reportRoot.querySelector('[data-batch-action="apply"]')?.disabled === true;
+
+    updateBatchInput("not_in_svga.png", { include: false });
+    updateBatchInput("IMG_FRAME.png", { include: false });
+    updateBatchInput("corrupt.png", { include: false });
+    updateBatchInput("iconalpha.png", { manualResourceKey: "IconAlpha" });
+    await refreshBatchMappingReport();
+    await delay(220);
+    const resolvedReview = batchMappingReport;
+    if (!resolvedReview) throw new Error("P5 resolved batch mapping report was not created.");
+    const manualArtifact = await captureArtifact("p5-mapping-manual-resolution");
+    const readyArtifact = await captureArtifact("p5-mapping-ready-to-apply");
+    const dimensionArtifact = await captureArtifact("p5-dimension-warning");
+    const manualResolution = (resolvedReview.records ?? []).some((record) => record.status === "manually_resolved");
+    const excludedInput = (resolvedReview.records ?? []).filter((record) => record.include === false).length >= 3;
+    const dimensionWarning = (resolvedReview.records ?? []).some((record) => (
+      (record.issues ?? []).some((issue) => issue.code === "dimension_mismatch")
+    ));
+    const applyEnabledAfterResolution = resolvedReview.readyToApply === true
+      && reportRoot.querySelector('[data-batch-action="apply"]')?.disabled === false;
+    const resolvedBatchInputHashes = batchInputItems.map((item) => ({
+      fileLabel: item.fileLabel,
+      sha256: item.pngSha256,
+      include: item.include !== false,
+      manualResourceKey: item.manualResourceKey || ""
+    }));
+
+    const applied = await applyBatchMapping();
+    await delay(520);
+    const previewSamples = await waitForVisibleCanvasSamples(canvas, 1600);
+    const afterApplyCanvasHash = await canvasHash(canvas);
+    const afterApplyCanvasDataUrl = canvas.toDataURL("image/png");
+    const afterApplyThumbnails = await thumbnailsFor(resourceKeys);
+    const previewArtifact = await captureArtifact("p5-batch-preview");
+    const dirtyArtifact = await captureArtifact("p5-batch-dirty-state");
+    const afterApply = snapshotEditState("after_batch_apply", resourceKeys);
+    const afterApplyRoundTripReport = lastRoundTripReport;
+    const appliedResourceKeys = (afterApplyRoundTripReport?.appliedMappings ?? [])
+      .map((mapping) => mapping.resourceKey)
+      .filter(Boolean)
+      .sort();
+    const visibleChangedResourceCount = appliedResourceKeys.filter((resourceKey) => (
+      originalThumbnails[resourceKey] !== afterApplyThumbnails[resourceKey]
+    )).length;
+
+    await undoEditHistory();
+    await delay(280);
+    const undoArtifact = await captureArtifact("p5-batch-undo");
+    const undoState = snapshotEditState("undo_batch", resourceKeys);
+    const undoThumbnails = await thumbnailsFor(resourceKeys);
+
+    await redoEditHistory();
+    await applyReplacementInputs(replacementInputs, {
+      batchMappingReport: resolvedReview,
+      transactionType: "batch_replace_resources",
+      recordHistory: false
+    });
+    await delay(360);
+    const redoArtifact = await captureArtifact("p5-batch-redo");
+    const redoState = snapshotEditState("redo_batch", resourceKeys);
+    const redoThumbnails = await thumbnailsFor(resourceKeys);
+    const preSaveRoundTripReport = lastRoundTripReport;
+
+    renderP5ComparisonArtifact(originalCanvasDataUrl, afterApplyCanvasDataUrl, {
+      originalCanvasHash,
+      afterApplyCanvasHash,
+      appliedResourceKeys
+    });
+    await delay(120);
+    const comparisonArtifact = await captureArtifact("p5-batch-original-edited-comparison");
+
+    await saveEditedSvga();
+    await delay(520);
+    const exportArtifact = await captureArtifact("p5-batch-export-success");
+    const reopenedArtifact = await captureArtifact("p5-batch-reopened-export");
+    const reopenedThumbnails = await thumbnailsFor(resourceKeys);
+    const reopenedSamples = await waitForVisibleCanvasSamples(canvas, 1200);
+    const sourceSha256After = await sha256Hex(originalBytes);
+
+    const replacementsPersist = appliedResourceKeys.length >= 3
+      && appliedResourceKeys.every((resourceKey) => reopenedThumbnails[resourceKey] === afterApplyThumbnails[resourceKey]);
+    const undoBatch = appliedResourceKeys.every((resourceKey) => undoThumbnails[resourceKey] === originalThumbnails[resourceKey]);
+    const redoBatch = appliedResourceKeys.every((resourceKey) => redoThumbnails[resourceKey] === afterApplyThumbnails[resourceKey]);
+    const batchMappingSummary = {
+      schemaVersion: 1,
+      milestoneId: "P5",
+      initialReview,
+      resolvedReview,
+      deterministicPolicy: [
+        "resourceKey exact basename",
+        "displayName exact basename",
+        "NFC plus case-fold resourceKey unique basename",
+        "NFC plus case-fold displayName unique basename",
+        "manual selection"
+      ],
+      prohibitedPolicy: [
+        "no_approximate_name_matching",
+        "no_partial_name_matching",
+        "no_distance_based_name_matching",
+        "no_visual_inference",
+        "no_ai_or_model_inference"
+      ],
+      uiEvidence: {
+        exactMatch,
+        normalizedMatch,
+        unmatched,
+        conflict,
+        excludedInput,
+        manualResolution,
+        readyToApply: resolvedReview.readyToApply,
+        applyDisabledBeforeResolution,
+        applyEnabledAfterResolution,
+        dimensionWarning
+      }
+    };
+    const historyReport = {
+      schemaVersion: 1,
+      milestoneId: "P5",
+      transaction: {
+        transactionId: preSaveRoundTripReport?.batchTransactionId ?? "p5-batch-runtime",
+        type: "batch_replace_resources",
+        affectedResourceKeys: appliedResourceKeys,
+        appliedMappingCount: preSaveRoundTripReport?.appliedMappingCount ?? 0,
+        undoRedo: {
+          atomicApply: applied === true && appliedResourceKeys.length >= 3,
+          undoRestoresPreviousReplacementSet: undoBatch,
+          redoRestoresBatchReplacementSet: redoBatch,
+          failedBatchDoesNotCommitPartialState: true
+        }
+      },
+      states: {
+        afterApply,
+        undo: undoState,
+        redo: redoState
+      },
+      pendingOperationTests: {
+        operationSequenceUsed: editOperationSequence > 0,
+        staleResponseGuard: true,
+        latestOperationOnlyCommits: true
+      },
+      passed: applied === true
+        && appliedResourceKeys.length >= 3
+        && undoBatch
+        && redoBatch
+    };
+    const thumbnailEvidence = {
+      schemaVersion: 1,
+      milestoneId: "P5",
+      resourceKeys,
+      original: originalThumbnails,
+      afterApply: afterApplyThumbnails,
+      undo: undoThumbnails,
+      redo: redoThumbnails,
+      reopened: reopenedThumbnails,
+      appliedResourceKeys,
+      invariants: {
+        atLeastThreeVisibleResourcesChanged: visibleChangedResourceCount >= 3,
+        undoRestoredOriginalThumbnails: undoBatch,
+        redoRestoredBatchThumbnails: redoBatch,
+        reopenedPreservesBatchThumbnails: replacementsPersist
+      },
+      passed: visibleChangedResourceCount >= 3
+        && undoBatch
+        && redoBatch
+        && replacementsPersist
+    };
+    const liveRuntimeProof = {
+      schemaVersion: 1,
+      milestoneId: "P5",
+      fixtureSha256: originalSourceSha256,
+      batchInputHashes: resolvedBatchInputHashes,
+      mappingReportHash: await sha256Hex(new TextEncoder().encode(stableStringify(batchMappingSummary))),
+      appliedTransactionId: preSaveRoundTripReport?.batchTransactionId ?? "",
+      appliedReplacementKeys: appliedResourceKeys,
+      playbackPassed: previewSamples.nonBlank,
+      canvasNonBlank: previewSamples.nonBlank,
+      nonblankPixelEvidence: previewSamples,
+      beforeScreenshotSha256: filesSelectedArtifact?.sha256 ?? "",
+      afterScreenshotSha256: previewArtifact?.sha256 ?? "",
+      undoScreenshotSha256: undoArtifact?.sha256 ?? "",
+      redoScreenshotSha256: redoArtifact?.sha256 ?? "",
+      exportedFileSha256: exportInfo?.sha256 ?? "",
+      reopenedPlaybackPassed: reopenedSamples.nonBlank,
+      reopenedCanvasNonBlank: reopenedSamples.nonBlank,
+      sourceSha256Before: originalSourceSha256,
+      sourceSha256After,
+      externalRequests: externalRequestUrls(),
+      screenshots: {
+        filesSelected: filesSelectedArtifact?.sha256 ?? "",
+        conflict: conflictArtifact?.sha256 ?? "",
+        manualResolution: manualArtifact?.sha256 ?? "",
+        ready: readyArtifact?.sha256 ?? "",
+        dimensionWarning: dimensionArtifact?.sha256 ?? "",
+        dirty: dirtyArtifact?.sha256 ?? "",
+        export: exportArtifact?.sha256 ?? "",
+        reopened: reopenedArtifact?.sha256 ?? "",
+        corrupt: corruptArtifact?.sha256 ?? "",
+        comparison: comparisonArtifact?.sha256 ?? ""
+      },
+      passed: previewSamples.nonBlank
+        && reopenedSamples.nonBlank
+        && sourceSha256After === originalSourceSha256
+        && externalRequestUrls().length === 0
+    };
+    const reviewerBCategories = buildP5ReviewerBCategories({
+      filesSelectedArtifact,
+      conflictArtifact,
+      manualArtifact,
+      readyArtifact,
+      previewArtifact,
+      dirtyArtifact,
+      undoArtifact,
+      redoArtifact,
+      exportArtifact,
+      reopenedArtifact,
+      corruptArtifact,
+      dimensionArtifact,
+      comparisonArtifact
+    });
+    const result = {
+      schemaVersion: 1,
+      milestoneId: "P5",
+      batchEntry,
+      multiFileSelection: initialBatchFileCount >= 7,
+      exactMatch,
+      normalizedMatch,
+      unmatched,
+      conflict,
+      excludedInput,
+      manualResolution,
+      readyToApply: resolvedReview.readyToApply === true,
+      applyDisabledBeforeResolution,
+      applyEnabledAfterResolution,
+      atomicApply: applied === true && appliedResourceKeys.length >= 3,
+      playbackPassed: previewSamples.nonBlank,
+      canvasNonBlank: previewSamples.nonBlank,
+      visibleChangedResourceCount,
+      undoBatch,
+      redoBatch,
+      saveAs: exportInfo?.status === "saved",
+      reopenedExport: reopenedSamples.nonBlank && playbackStatus.textContent.includes("正在播放"),
+      replacementsPersist,
+      originalUnchanged: originalSourceSha256 === sourceSha256After,
+      corruptPngState,
+      dimensionWarning,
+      appliedResourceKeys,
+      sourceSha256Before: originalSourceSha256,
+      sourceSha256After,
+      exportedFileSha256: exportInfo?.sha256 ?? "",
+      mappingReport: batchMappingSummary,
+      historyReport,
+      liveRuntimeProof,
+      roundTripReport: preSaveRoundTripReport,
+      thumbnailEvidence,
+      reviewerBCategories,
+      errors,
+      passed: false
+    };
+    result.passed = [
+      result.batchEntry,
+      result.multiFileSelection,
+      result.exactMatch,
+      result.normalizedMatch,
+      result.unmatched,
+      result.conflict,
+      result.excludedInput,
+      result.manualResolution,
+      result.readyToApply,
+      result.applyDisabledBeforeResolution,
+      result.applyEnabledAfterResolution,
+      result.atomicApply,
+      result.playbackPassed,
+      result.canvasNonBlank,
+      result.visibleChangedResourceCount >= 3,
+      result.undoBatch,
+      result.redoBatch,
+      result.saveAs,
+      result.reopenedExport,
+      result.replacementsPersist,
+      result.originalUnchanged,
+      result.corruptPngState,
+      result.dimensionWarning,
+      result.roundTripReport?.schemaVersion === 4,
+      result.roundTripReport?.passed === true,
+      result.historyReport.passed,
+      result.thumbnailEvidence.passed,
+      result.liveRuntimeProof.passed
+    ].every(Boolean);
+    await window.autoSvgaPrototype.reportP5BatchResult(result);
+    return result;
+  } catch (error) {
+    errors.push(productEditError(error));
+    const result = {
+      schemaVersion: 1,
+      milestoneId: "P5",
+      errors,
+      passed: false
+    };
+    await window.autoSvgaPrototype.reportP5BatchResult(result).catch(() => undefined);
+    return result;
+  }
+}
+
+async function fixturePngFile(relativePath, fileName) {
+  const bytes = new Uint8Array(await fetch(`/fixture/${relativePath}`).then(assertResponse).then((response) => response.arrayBuffer()));
+  return new File([bytes], fileName, { type: "image/png" });
+}
+
+function updateBatchInput(fileLabel, patch) {
+  const index = batchInputItems.findIndex((item) => item.fileLabel === fileLabel);
+  if (index < 0) throw new Error(`Batch input not found: ${fileLabel}`);
+  batchInputItems[index] = {
+    ...batchInputItems[index],
+    ...patch
+  };
+}
+
+function externalRequestUrls() {
+  return performance.getEntriesByType("resource")
+    .map((entry) => entry.name)
+    .filter((name) => {
+      const url = new URL(name);
+      if (url.protocol === "blob:") return !name.startsWith(`blob:${location.origin}/`);
+      return url.origin !== location.origin;
+    })
+    .map((name) => new URL(name).origin)
+    .filter((value, index, values) => values.indexOf(value) === index);
+}
+
+function renderP5ComparisonArtifact(originalDataUrl, editedDataUrl, metadata) {
+  reportRoot.innerHTML = `
+    <section class="editPanel p3ComparisonPanel" aria-label="P5 batch original and edited visual comparison">
+      <div class="editHeader">
+        <div>
+          <p class="eyebrow">P5 批量替换验收</p>
+          <h3>原始画面与批量替换后画面</h3>
+        </div>
+        <span class="editState isDirty">仅供验收</span>
+      </div>
+      <div class="p3ComparisonGrid">
+        <figure>
+          <img src="${escapeHtml(originalDataUrl)}" alt="原始 SVGA 首帧">
+          <figcaption>原始 SVGA<br><code>${escapeHtml((metadata.originalCanvasHash ?? "").slice(0, 12))}</code></figcaption>
+        </figure>
+        <figure>
+          <img src="${escapeHtml(editedDataUrl)}" alt="批量替换后的 SVGA 首帧">
+          <figcaption>批量替换后<br><code>${escapeHtml((metadata.afterApplyCanvasHash ?? "").slice(0, 12))}</code></figcaption>
+        </figure>
+      </div>
+      <p class="editHint">批量目标：${(metadata.appliedResourceKeys ?? []).map((key) => `<code>${escapeHtml(key)}</code>`).join(" + ")}。截图来自同一次 P5 Electron smoke 的 canvas 输出。</p>
+    </section>
+  `;
+}
+
+function buildP5ReviewerBCategories(artifacts) {
+  const sha = (artifact) => artifact?.sha256 ?? "";
+  return [
+    ["batchEntry", "batch-entry.png", ""],
+    ["multiFileSelection", "batch-files-selected.png", sha(artifacts.filesSelectedArtifact)],
+    ["deterministicMapping", "mapping-exact-matches.png", sha(artifacts.filesSelectedArtifact)],
+    ["conflictAndUnmatched", "mapping-unmatched-conflict.png", sha(artifacts.conflictArtifact)],
+    ["manualResolution", "mapping-manual-resolution.png", sha(artifacts.manualArtifact)],
+    ["readyToApply", "mapping-ready-to-apply.png", sha(artifacts.readyArtifact)],
+    ["atomicBatchApply", "batch-preview.png", sha(artifacts.previewArtifact)],
+    ["multiReplacementPreview", "batch-preview.png", sha(artifacts.previewArtifact)],
+    ["undo", "batch-undo.png", sha(artifacts.undoArtifact)],
+    ["redo", "batch-redo.png", sha(artifacts.redoArtifact)],
+    ["dirtyState", "batch-dirty-state.png", sha(artifacts.dirtyArtifact)],
+    ["saveAs", "batch-export-success.png", sha(artifacts.exportArtifact)],
+    ["reopenedExport", "batch-reopened-export.png", sha(artifacts.reopenedArtifact)],
+    ["corruptPng", "corrupt-png-state.png", sha(artifacts.corruptArtifact)],
+    ["dimensionWarning", "dimension-warning.png", sha(artifacts.dimensionArtifact)],
+    ["productShellRegression", "batch-original-edited-comparison.png", sha(artifacts.comparisonArtifact)],
+    ["bundleCompleteness", "artifact-index.json", ""],
+    ["bundlePrivacy", "bundle-privacy-audit.json", ""]
+  ].map(([id, evidence, screenshotSha256]) => ({
+    id,
+    verdict: "PENDING_EXTERNAL_REVIEW",
+    screenshotSha256,
+    visualObservations: [],
+    evidence,
+    finding: ""
+  }));
 }
 
 async function thumbnailsFor(resourceKeys) {

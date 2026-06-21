@@ -26,7 +26,8 @@ const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "P2";
 const productMilestoneTitle = {
   P2: "Desktop Product Shell And Web Preview Parity",
   P3: "Basic Image Resource Replacement And Save As",
-  P4: "Multi-Resource Editing, Undo/Redo And Export Integrity"
+  P4: "Multi-Resource Editing, Undo/Redo And Export Integrity",
+  P5: "Batch PNG Mapping And Live Product Evidence"
 }[productMilestoneId] ?? "Auto SVGA Product Milestone";
 const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
   ? path.resolve(process.env.AUTO_SVGA_PRODUCT_ARTIFACTS)
@@ -51,7 +52,11 @@ const productArtifactIndex = {
   humanReviewRequired: true,
   artifacts: []
 };
-mergeExistingProductArtifactIndex();
+if (productSmokeMode && productMilestoneId === "P5") {
+  rmSync(productArtifactRoot, { recursive: true, force: true });
+} else {
+  mergeExistingProductArtifactIndex();
+}
 
 mkdirSync(sessionRoot, { recursive: true });
 if (productSmokeMode || normalProofMode) mkdirSync(productArtifactRoot, { recursive: true });
@@ -120,7 +125,22 @@ function validateArtifactScenario(value) {
     "p4-post-save-new-edit",
     "p4-reopened-multi-resource-export",
     "p4-invalid-second-png",
-    "p4-multi-resource-comparison"
+    "p4-multi-resource-comparison",
+    "p5-batch-entry",
+    "p5-batch-files-selected",
+    "p5-mapping-exact-matches",
+    "p5-mapping-unmatched-conflict",
+    "p5-mapping-manual-resolution",
+    "p5-mapping-ready-to-apply",
+    "p5-batch-preview",
+    "p5-batch-dirty-state",
+    "p5-batch-undo",
+    "p5-batch-redo",
+    "p5-batch-export-success",
+    "p5-batch-reopened-export",
+    "p5-corrupt-png-state",
+    "p5-dimension-warning",
+    "p5-batch-original-edited-comparison"
   ]);
   return allowed.has(value) ? value : undefined;
 }
@@ -422,6 +442,131 @@ function validateP4EditResult(value) {
     && replacementCount >= 2
     && Array.isArray(roundTripReport.unexpectedChanges)
     && roundTripReport.unexpectedChanges.length === 0
+    && historyReport.passed === true
+    && thumbnailEvidence.passed === true;
+  return normalized;
+}
+
+function validateP5BatchResult(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const requiredBooleans = [
+    "batchEntry",
+    "multiFileSelection",
+    "exactMatch",
+    "normalizedMatch",
+    "unmatched",
+    "conflict",
+    "excludedInput",
+    "manualResolution",
+    "readyToApply",
+    "applyDisabledBeforeResolution",
+    "applyEnabledAfterResolution",
+    "atomicApply",
+    "playbackPassed",
+    "canvasNonBlank",
+    "undoBatch",
+    "redoBatch",
+    "saveAs",
+    "reopenedExport",
+    "replacementsPersist",
+    "originalUnchanged",
+    "corruptPngState",
+    "dimensionWarning"
+  ];
+  if (!requiredBooleans.every((key) => typeof value[key] === "boolean")) return undefined;
+  const roundTripReport = value.roundTripReport && typeof value.roundTripReport === "object"
+    ? value.roundTripReport
+    : {};
+  const mappingReport = value.mappingReport && typeof value.mappingReport === "object"
+    ? value.mappingReport
+    : {};
+  const historyReport = value.historyReport && typeof value.historyReport === "object"
+    ? value.historyReport
+    : {};
+  const liveRuntimeProof = value.liveRuntimeProof && typeof value.liveRuntimeProof === "object"
+    ? value.liveRuntimeProof
+    : {};
+  const thumbnailEvidence = value.thumbnailEvidence && typeof value.thumbnailEvidence === "object"
+    ? value.thumbnailEvidence
+    : {};
+  const appliedMappingCount = Number.isInteger(roundTripReport.appliedMappingCount)
+    ? roundTripReport.appliedMappingCount
+    : 0;
+  const replacementCount = Array.isArray(roundTripReport.replacements)
+    ? roundTripReport.replacements.length
+    : 0;
+  const visibleChangedResourceCount = Number.isInteger(value.visibleChangedResourceCount)
+    ? value.visibleChangedResourceCount
+    : 0;
+  const normalized = {
+    schemaVersion: 1,
+    milestoneId: "P5",
+    headCommit: productArtifactIndex.headCommit,
+    batchEntry: value.batchEntry,
+    multiFileSelection: value.multiFileSelection,
+    exactMatch: value.exactMatch,
+    normalizedMatch: value.normalizedMatch,
+    unmatched: value.unmatched,
+    conflict: value.conflict,
+    excludedInput: value.excludedInput,
+    manualResolution: value.manualResolution,
+    readyToApply: value.readyToApply,
+    applyDisabledBeforeResolution: value.applyDisabledBeforeResolution,
+    applyEnabledAfterResolution: value.applyEnabledAfterResolution,
+    atomicApply: value.atomicApply,
+    playbackPassed: value.playbackPassed,
+    canvasNonBlank: value.canvasNonBlank,
+    visibleChangedResourceCount,
+    undoBatch: value.undoBatch,
+    redoBatch: value.redoBatch,
+    saveAs: value.saveAs,
+    reopenedExport: value.reopenedExport,
+    replacementsPersist: value.replacementsPersist,
+    originalUnchanged: value.originalUnchanged,
+    corruptPngState: value.corruptPngState,
+    dimensionWarning: value.dimensionWarning,
+    appliedResourceKeys: Array.isArray(value.appliedResourceKeys)
+      ? value.appliedResourceKeys.filter((key) => typeof key === "string").map((key) => key.slice(0, 160))
+      : [],
+    sourceSha256Before: typeof value.sourceSha256Before === "string" ? value.sourceSha256Before.slice(0, 80) : "",
+    sourceSha256After: typeof value.sourceSha256After === "string" ? value.sourceSha256After.slice(0, 80) : "",
+    exportedFileSha256: typeof value.exportedFileSha256 === "string" ? value.exportedFileSha256.slice(0, 80) : "",
+    mappingReport,
+    historyReport,
+    liveRuntimeProof,
+    roundTripReport,
+    thumbnailEvidence,
+    reviewerBCategories: Array.isArray(value.reviewerBCategories)
+      ? value.reviewerBCategories.map((category) => (
+        category && typeof category === "object" && !Array.isArray(category)
+          ? {
+            id: typeof category.id === "string" ? category.id.slice(0, 120) : "",
+            verdict: typeof category.verdict === "string" ? category.verdict.slice(0, 80) : "PENDING_EXTERNAL_REVIEW",
+            screenshotSha256: typeof category.screenshotSha256 === "string" ? category.screenshotSha256.slice(0, 80) : "",
+            visualObservations: Array.isArray(category.visualObservations)
+              ? category.visualObservations.filter((item) => typeof item === "string").map((item) => item.slice(0, 240))
+              : [],
+            evidence: typeof category.evidence === "string" ? category.evidence.slice(0, 160) : "",
+            finding: typeof category.finding === "string" ? redactLogMessage(category.finding).slice(0, 240) : ""
+          }
+          : undefined
+      )).filter(Boolean)
+      : [],
+    errors: Array.isArray(value.errors)
+      ? value.errors.filter((error) => typeof error === "string").map((error) => redactLogMessage(error).slice(0, 240))
+      : [],
+    generatedAt: new Date().toISOString()
+  };
+  normalized.passed = requiredBooleans.every((key) => value[key] === true)
+    && visibleChangedResourceCount >= 3
+    && roundTripReport.schemaVersion === 4
+    && roundTripReport.milestoneId === "P5"
+    && roundTripReport.passed === true
+    && appliedMappingCount >= 3
+    && replacementCount >= 3
+    && Array.isArray(roundTripReport.unexpectedChanges)
+    && roundTripReport.unexpectedChanges.length === 0
+    && liveRuntimeProof.passed === true
     && historyReport.passed === true
     && thumbnailEvidence.passed === true;
   return normalized;
@@ -889,7 +1034,22 @@ function artifactFileNameForScenario(scenario) {
     "p4-post-save-new-edit": "post-save-new-edit.png",
     "p4-reopened-multi-resource-export": "reopened-multi-resource-export.png",
     "p4-invalid-second-png": "invalid-second-png.png",
-    "p4-multi-resource-comparison": "multi-resource-comparison.png"
+    "p4-multi-resource-comparison": "multi-resource-comparison.png",
+    "p5-batch-entry": "batch-entry.png",
+    "p5-batch-files-selected": "batch-files-selected.png",
+    "p5-mapping-exact-matches": "mapping-exact-matches.png",
+    "p5-mapping-unmatched-conflict": "mapping-unmatched-conflict.png",
+    "p5-mapping-manual-resolution": "mapping-manual-resolution.png",
+    "p5-mapping-ready-to-apply": "mapping-ready-to-apply.png",
+    "p5-batch-preview": "batch-preview.png",
+    "p5-batch-dirty-state": "batch-dirty-state.png",
+    "p5-batch-undo": "batch-undo.png",
+    "p5-batch-redo": "batch-redo.png",
+    "p5-batch-export-success": "batch-export-success.png",
+    "p5-batch-reopened-export": "batch-reopened-export.png",
+    "p5-corrupt-png-state": "corrupt-png-state.png",
+    "p5-dimension-warning": "dimension-warning.png",
+    "p5-batch-original-edited-comparison": "batch-original-edited-comparison.png"
   }[scenario] ?? `${scenario}.png`;
 }
 
@@ -949,7 +1109,8 @@ async function saveEditedSvga(input) {
   if (!value) throw new Error("Invalid Save As payload");
   const p3SmokeSaveAs = productMilestoneId === "P3" && (smokeMode || productSmokeMode || normalProofMode);
   const p4SmokeSaveAs = productMilestoneId === "P4" && (smokeMode || productSmokeMode || normalProofMode);
-  const automatedProductSaveAs = p3SmokeSaveAs || p4SmokeSaveAs;
+  const p5SmokeSaveAs = productMilestoneId === "P5" && (smokeMode || productSmokeMode || normalProofMode);
+  const automatedProductSaveAs = p3SmokeSaveAs || p4SmokeSaveAs || p5SmokeSaveAs;
   const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
   if (!automatedProductSaveAs && !originalPath) {
     throw new Error("Save As requires the source SVGA to be opened through the desktop file picker.");
@@ -957,7 +1118,12 @@ async function saveEditedSvga(input) {
   let targetPath;
   if (automatedProductSaveAs) {
     mkdirSync(productArtifactRoot, { recursive: true });
-    targetPath = path.join(productArtifactRoot, p4SmokeSaveAs ? "multi-resource-edited-output.svga" : "edited-output.svga");
+    targetPath = path.join(productArtifactRoot,
+      p5SmokeSaveAs
+        ? "batch-edited-output.svga"
+        : p4SmokeSaveAs
+          ? "multi-resource-edited-output.svga"
+          : "edited-output.svga");
   } else {
     const result = await dialog.showSaveDialog({
       title: "另存为 SVGA",
@@ -999,18 +1165,31 @@ async function saveEditedSvga(input) {
     throw error;
   }
   if (automatedProductSaveAs) {
-    const scenario = p4SmokeSaveAs ? "p4-multi-resource-edited-output-svga" : "p3-edited-output-svga";
+    const scenario = p5SmokeSaveAs
+      ? "p5-batch-edited-output-svga"
+      : p4SmokeSaveAs
+        ? "p4-multi-resource-edited-output-svga"
+        : "p3-edited-output-svga";
+    const editedOutputFileName = p5SmokeSaveAs
+      ? "batch-edited-output.svga"
+      : p4SmokeSaveAs
+        ? "multi-resource-edited-output.svga"
+        : "edited-output.svga";
     addProductArtifactRecord({
       scenario,
       mode: "smoke",
       source: "desktop",
       viewport: { width: null, height: null },
-      path: `.artifacts/product/${productMilestoneId}/${p4SmokeSaveAs ? "multi-resource-edited-output.svga" : "edited-output.svga"}`,
+      path: `.artifacts/product/${productMilestoneId}/${editedOutputFileName}`,
       mime: "application/x-svga",
       sizeBytes: value.bytes.byteLength,
       sha256: createHash("sha256").update(value.bytes).digest("hex"),
       fixture: "synthetic-avatar-frame.svga",
-      inputKind: p4SmokeSaveAs ? "p4-multi-resource-edited-output" : "p3-edited-output",
+      inputKind: p5SmokeSaveAs
+        ? "p5-batch-edited-output"
+        : p4SmokeSaveAs
+          ? "p4-multi-resource-edited-output"
+          : "p3-edited-output",
       ...canonicalFixtureMetadata(),
       headCommit: productArtifactIndex.headCommit,
       rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
@@ -1247,6 +1426,131 @@ async function createExperimentWindow() {
     return { accepted: true };
   });
 
+  ipcMain.handle("svga-web-experiment:p5-batch-result", async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    if (productMilestoneId !== "P5") throw new Error("P5 batch result is only accepted in P5 artifact mode");
+    const result = validateP5BatchResult(input);
+    if (!result) throw new Error("Invalid P5 batch result");
+    const verifiedRoundTripReport = {
+      ...result.roundTripReport,
+      schemaVersion: 4,
+      milestoneId: "P5",
+      headCommit: productArtifactIndex.headCommit,
+      playbackPassed: result.playbackPassed,
+      canvasNonBlank: result.canvasNonBlank,
+      reopenedPlaybackPassed: result.reopenedExport,
+      reopenedCanvasNonBlank: result.reopenedExport,
+      originalSourceUnchanged: result.originalUnchanged,
+      passed: result.roundTripReport.passed === true
+        && result.roundTripReport.schemaVersion === 4
+        && result.playbackPassed
+        && result.canvasNonBlank
+        && result.reopenedExport
+        && result.originalUnchanged
+        && Array.isArray(result.roundTripReport.appliedMappings)
+        && result.roundTripReport.appliedMappings.length >= 3
+        && result.roundTripReport.appliedMappings.every((mapping) => mapping.passed === true)
+        && Array.isArray(result.roundTripReport.replacements)
+        && result.roundTripReport.replacements.length >= 3
+        && result.roundTripReport.replacements.every((replacement) => replacement.passed === true)
+        && Array.isArray(result.roundTripReport.unexpectedChanges)
+        && result.roundTripReport.unexpectedChanges.length === 0
+    };
+    const verifiedLiveRuntimeProof = {
+      ...result.liveRuntimeProof,
+      schemaVersion: 1,
+      milestoneId: "P5",
+      headCommit: productArtifactIndex.headCommit,
+      runtimeInstanceId,
+      pid: process.pid,
+      launchCommand: sanitizeRuntimeArgument(process.argv.join(" ")),
+      mainSha256: sha256RelativeFile(mainEntry),
+      preloadSha256: sha256RelativeFile(preloadEntry),
+      rendererSha256: sha256RelativeFile(rendererEntry),
+      playbackPassed: result.playbackPassed,
+      canvasNonBlank: result.canvasNonBlank,
+      reopenedPlaybackPassed: result.reopenedExport,
+      reopenedCanvasNonBlank: result.reopenedExport,
+      sourceSha256Before: result.sourceSha256Before,
+      sourceSha256After: result.sourceSha256After,
+      externalRequests: Array.isArray(result.liveRuntimeProof.externalRequests)
+        ? result.liveRuntimeProof.externalRequests
+        : [],
+      processExitCode: 0,
+      passed: result.liveRuntimeProof.passed === true
+        && result.playbackPassed
+        && result.canvasNonBlank
+        && result.reopenedExport
+        && result.originalUnchanged
+        && Array.isArray(result.liveRuntimeProof.externalRequests)
+        && result.liveRuntimeProof.externalRequests.length === 0
+    };
+    const verifiedResult = {
+      ...result,
+      roundTripReport: verifiedRoundTripReport,
+      liveRuntimeProof: verifiedLiveRuntimeProof,
+      passed: result.passed === true
+        && verifiedRoundTripReport.passed === true
+        && verifiedLiveRuntimeProof.passed === true
+    };
+    const fixture = canonicalFixtureMetadata();
+    writeJsonProductArtifact("canonical-batch-fixture.json", "p5-canonical-batch-fixture", {
+      schemaVersion: 1,
+      milestoneId: "P5",
+      headCommit: productArtifactIndex.headCommit,
+      fixturePath: fixture.fixtureArtifactPath,
+      fixtureSha256: fixture.fixtureSha256,
+      approvedSynthetic: true,
+      resourceKeys: result.mappingReport?.resolvedReview?.records
+        ?.map((record) => record.selectedResourceKey)
+        ?.filter(Boolean) ?? [],
+      generatedAt: new Date().toISOString()
+    });
+    writeJsonProductArtifact("batch-mapping-report.json", "p5-batch-mapping-report", result.mappingReport);
+    writeJsonProductArtifact("batch-edit-history-report.json", "p5-batch-edit-history-report", {
+      ...result.historyReport,
+      headCommit: productArtifactIndex.headCommit,
+      passed: result.historyReport.passed === true
+    });
+    writeJsonProductArtifact("batch-round-trip-report.json", "p5-batch-round-trip-report", verifiedRoundTripReport);
+    writeJsonProductArtifact("thumbnail-evidence.json", "p5-thumbnail-evidence", {
+      ...result.thumbnailEvidence,
+      headCommit: productArtifactIndex.headCommit,
+      passed: result.thumbnailEvidence.passed === true
+    });
+    writeJsonProductArtifact("p5-live-runtime-proof.json", "p5-live-runtime-proof", verifiedLiveRuntimeProof);
+    writeJsonProductArtifact("p5-product-evidence-summary.json", "p5-product-evidence-summary", {
+      schemaVersion: 1,
+      milestoneId: "P5",
+      headCommit: productArtifactIndex.headCommit,
+      authoritativeEvidence: [
+        "p5-live-runtime-proof.json",
+        "batch-mapping-report.json",
+        "batch-edit-history-report.json",
+        "batch-round-trip-report.json",
+        "thumbnail-evidence.json"
+      ],
+      pngArtifacts: {
+        kind: "rendered_electron_ui_capture",
+        isRenderedUiCapture: true,
+        ownerReviewRole: "product_acceptance_evidence"
+      },
+      humanReviewRequired: true,
+      passed: verifiedResult.passed === true,
+      generatedAt: new Date().toISOString()
+    });
+    writeJsonProductArtifact("reviewer-b-product-categories.json", "p5-reviewer-b-product-categories", {
+      schemaVersion: 2,
+      milestoneId: "P5",
+      headCommit: productArtifactIndex.headCommit,
+      verdict: "PENDING_EXTERNAL_REVIEW",
+      categories: result.reviewerBCategories ?? [],
+      generationPolicy: "machine-assembled evidence references only; visual verdicts require independent reviewer",
+      generatedAt: new Date().toISOString()
+    });
+    return { accepted: true };
+  });
+
   if (smokeMode) {
     setTimeout(() => {
       if (!smokeFinished) finishSmoke(window, {
@@ -1264,7 +1568,7 @@ async function createExperimentWindow() {
         playerLifecycle: false,
         cleanup: false
       });
-    }, 20_000).unref();
+    }, productMilestoneId === "P5" ? 80_000 : 20_000).unref();
   }
 
   if (auditMode) {

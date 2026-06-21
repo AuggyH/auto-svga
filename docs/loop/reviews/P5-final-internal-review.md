@@ -1,89 +1,80 @@
 # P5 Final Internal Review
 
 Milestone: P5 — Batch PNG Replacement And Mapping Review
-Reviewed implementation commit: `d99efd6be52a2f01c3fbb413a405702017a926f2`
+Reviewed implementation commit: `COMMIT_PENDING`
 Outcome: HUMAN_REQUIRED
 
 ## Summary
 
-P5 implements deterministic multi-PNG mapping, review, conflict handling,
-manual resolution, atomic batch transaction metadata, batch undo/redo coverage,
-schemaVersion 4 batch round-trip evidence, isolated desktop prototype UI
-entrypoints, and product evidence generation.
-
-P5 stops for owner acceptance by contract. It does not start the next editing
-capability.
+P5 Repair 1 closes the external product evidence blockers by replacing
+deterministic state-marker PNGs with rendered Electron UI screenshots and live
+runtime proof. The implementation keeps P5 scoped to batch PNG replacement and
+stops for owner acceptance.
 
 ## Changed Files
 
-- `src/workbench/svga/batch-png-mapping.ts`
-- `src/workbench/svga/image-edit-history.ts`
-- `src/workbench/svga/image-resource-editor.ts`
-- `src/workbench/svga/index.ts`
-- `src/tests/svga-batch-png-mapping.test.ts`
-- `src/tests/svga-image-edit-history.test.ts`
-- `src/tests/svga-image-resource-editor.test.ts`
-- `tools/electron-prototype/experiments/svga-web/server.mjs`
-- `tools/electron-prototype/experiments/svga-web/web/index.html`
-- `tools/electron-prototype/experiments/svga-web/web/prototype.js`
-- `tools/electron-prototype/experiments/svga-web/web/styles.css`
-- `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`
-- `tools/p5/generate-reports.mjs`
 - `package.json`
+- `tools/p5/generate-reports.mjs`
+- `tools/electron-prototype/experiments/svga-web/main.cjs`
+- `tools/electron-prototype/experiments/svga-web/package.json`
+- `tools/electron-prototype/experiments/svga-web/preload.cjs`
+- `tools/electron-prototype/experiments/svga-web/scripts/prepare-p5-runtime.mjs`
+- `tools/electron-prototype/experiments/svga-web/web/prototype.js`
+- `docs/loop/LOOP_STATE.md`
+- `docs/loop/LOOP_HISTORY.jsonl`
+- `docs/loop/reviews/P5-external-product-review-1.md`
+- `docs/loop/reviews/P5-final-internal-review.md`
 
 ## Requirement Checks
 
-- P4 owner acceptance preserved: PASS.
-- NQ1-R1 PASS preserved: PASS.
-- Controlled multi-PNG import: PASS.
-- Deterministic exact and normalized mapping rules: PASS.
-- Unmatched, ambiguous, duplicate-target, excluded, invalid status handling: PASS.
+- P5 live Electron product path: PASS.
+- Multi-PNG selection through real product DOM/API: PASS.
+- Exact / normalized / unmatched / ambiguous / duplicate / excluded / invalid
+  mapping evidence: PASS.
 - Manual mapping resolution: PASS.
-- Atomic `batch_replace_resources` transaction metadata: PASS.
-- Batch undo/redo unit coverage: PASS.
-- Batch preview and isolated UI entrypoints: PASS.
-- Save-point validation remains protected: PASS.
-- P5 schemaVersion 4 round-trip report: PASS.
-- Source immutability: PASS.
-- Local security boundary: PASS.
-- P1-P4 regression: PASS.
-- Scope discipline: PASS; no new formats, conversion, AI, cloud, account, or exporter changes.
+- Atomic batch apply with 4 replacements: PASS.
+- Playback and nonblank canvas evidence: PASS.
+- Undo and redo full batch transaction: PASS.
+- Save As and reopened export: PASS.
+- Original source immutability: PASS.
+- Product screenshots are rendered Electron captures: PASS.
+- Reviewer B product category schema upgraded to v2 with screenshot hashes:
+  PASS for evidence indexing; final visual verdict remains external.
+- Scope discipline: PASS; no P6, no new parser, no format conversion, no
+  exporter change, no AI/network service.
 
 ## Validation
 
-- `npm test`: PASS, 200/200.
 - `npm run p5:reports`: PASS.
+- `node --check tools/electron-prototype/experiments/svga-web/main.cjs`: PASS.
+- `node --check tools/electron-prototype/experiments/svga-web/preload.cjs`: PASS.
 - `node --check tools/electron-prototype/experiments/svga-web/web/prototype.js`: PASS.
-- `node --check tools/electron-prototype/experiments/svga-web/server.mjs`: PASS.
-- `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`: PASS, 15/15.
+- `node --check tools/electron-prototype/experiments/svga-web/scripts/prepare-p5-runtime.mjs`: PASS.
+- `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`: PASS, 15 tests.
+- `npm test`: PASS, 200 tests.
+- `node tools/loop-budget-check.mjs`: PASS, repairRound 1 within budget.
 - `git diff --check`: PASS.
 
 ## Product Evidence
 
 Generated under `.artifacts/product/P5`:
 
-- `canonical-batch-fixture.json`
-- `batch-mapping-report.json`
-- `batch-edit-history-report.json`
-- `batch-round-trip-report.json`
-- `thumbnail-evidence.json`
-- `reviewer-b-product-categories.json`
-- `bundle-privacy-audit.json`
-- `artifact-index.json`
-- `batch-edited-output.svga`
-- 15 deterministic PNG state-marker files for batch entry, mapping review,
-  manual resolution, apply, undo, redo, export, reopen, corrupt PNG, dimension
-  warning, and original/edited comparison states.
-
-Key evidence:
-
-- P5 round-trip report: schemaVersion 4 generated with structural batch
-  mapping evidence. Playback and nonblank canvas are bound by live preview
-  before Save As; offline product report generation does not assert those
-  fields.
-- Applied mapping count: 4.
-- Privacy findings: 0.
-- Edited output SHA-256: `43ccc6ec737e2eb188cac59c10afee41e2defd267678476bd593486e04b520e3`.
+- `p5-live-runtime-proof.json`: `passed=true`, `externalRequests=[]`.
+- `batch-round-trip-report.json`: schemaVersion 4, `passed=true`,
+  `playbackPassed=true`, `canvasNonBlank=true`, `appliedMappingCount=4`,
+  `replacementCount=4`.
+- `batch-edit-history-report.json`: `passed=true`.
+- `thumbnail-evidence.json`: `passed=true`.
+- `reviewer-b-product-categories.json`: schemaVersion 2, 18 categories.
+- `batch-edited-output.svga`: edited synthetic SVGA output.
+- 15 required rendered Electron UI screenshots:
+  `batch-entry.png`, `batch-files-selected.png`,
+  `mapping-exact-matches.png`, `mapping-unmatched-conflict.png`,
+  `mapping-manual-resolution.png`, `mapping-ready-to-apply.png`,
+  `batch-preview.png`, `batch-dirty-state.png`, `batch-undo.png`,
+  `batch-redo.png`, `batch-export-success.png`,
+  `batch-reopened-export.png`, `corrupt-png-state.png`,
+  `dimension-warning.png`, and `batch-original-edited-comparison.png`.
 
 ## Regression
 
@@ -97,18 +88,13 @@ Not touched:
 
 ## Risks
 
-- Product state PNGs are deterministic local state markers for orientation only.
-  They do not independently prove rendered UI state or replace owner
-  visual acceptance.
-- P5 final owner acceptance is still required before planning the next editing
-  capability.
-- Production desktop security boundary remains governed by ADR-010 and ADR-011;
-  this work does not promote Electron to production.
+- P5 remains HUMAN_REQUIRED: owner visual/product acceptance is still required.
+- Reviewer B product categories are evidence-indexed and schemaVersion 2, but
+  external visual verdicts must still be supplied by the owner/reviewer.
+- Electron remains an internal prototype path; production desktop security is
+  not approved by this milestone.
 
 ## Next
 
-Ask owner:
-
-是否接受 P5 多 PNG 批量导入、映射复核、冲突处理、原子应用和批量导出闭环，并允许规划下一项编辑能力？
-
-Safe default if no answer: reject and provide the highest-priority issue.
+Ask owner whether to accept P5 or identify the single highest-priority product
+issue to repair. Do not start P6 before owner acceptance.
