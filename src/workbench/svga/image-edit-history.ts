@@ -1,4 +1,8 @@
-export type SvgaImageEditTransactionType = "replace_resource" | "reset_resource" | "reset_all";
+export type SvgaImageEditTransactionType =
+  | "replace_resource"
+  | "batch_replace_resources"
+  | "reset_resource"
+  | "reset_all";
 export type SvgaImageEditExportState = "idle" | "exporting" | "exported" | "failed";
 
 export interface SvgaImageEditResourceIdentity {
@@ -26,7 +30,27 @@ export interface SvgaImageEditTransactionInput {
   resourceKey?: string;
   affectedResourceKeys?: readonly string[];
   replacement?: SvgaImageEditReplacementState;
+  replacements?: readonly SvgaImageEditReplacementState[];
+  replacementSetDigest?: string;
+  sourceFileIdentities?: readonly SvgaImageEditSourceFileIdentity[];
+  mappings?: readonly SvgaImageEditBatchMappingRecord[];
   source?: string;
+}
+
+export interface SvgaImageEditSourceFileIdentity {
+  fileLabel: string;
+  sha256: string;
+  sizeBytes?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface SvgaImageEditBatchMappingRecord {
+  fileLabel: string;
+  resourceKey: string;
+  ruleId: string;
+  status: string;
+  sha256: string;
 }
 
 export interface SvgaImageEditTransactionRecord {
@@ -39,6 +63,9 @@ export interface SvgaImageEditTransactionRecord {
   order: number;
   revision: number;
   source: string;
+  replacementSetDigest?: string;
+  sourceFileIdentities?: readonly SvgaImageEditSourceFileIdentity[];
+  mappings?: readonly SvgaImageEditBatchMappingRecord[];
   discardedRedoBranch: boolean;
 }
 
@@ -111,6 +138,23 @@ export function applySvgaImageEditTransaction(
     nextReplacements[input.resourceKey] = cloneReplacement(input.replacement);
   }
 
+  if (input.type === "batch_replace_resources") {
+    if (!input.replacements || input.replacements.length === 0) {
+      return withValidationError(state, "batch_replacements_required");
+    }
+    const seen = new Set<string>();
+    for (const replacement of input.replacements) {
+      if (!resourceKeys.has(replacement.resourceKey)) {
+        return withValidationError(state, "resource_not_found");
+      }
+      if (seen.has(replacement.resourceKey)) {
+        return withValidationError(state, "duplicate_resource_replacement");
+      }
+      seen.add(replacement.resourceKey);
+      nextReplacements[replacement.resourceKey] = cloneReplacement(replacement);
+    }
+  }
+
   if (input.type === "reset_resource") {
     if (!input.resourceKey || !resourceKeys.has(input.resourceKey)) {
       return withValidationError(state, "resource_not_found");
@@ -149,6 +193,9 @@ export function applySvgaImageEditTransaction(
     order: state.transactions.length + 1,
     revision,
     source: input.source ?? "unknown",
+    replacementSetDigest: input.replacementSetDigest,
+    sourceFileIdentities: input.sourceFileIdentities?.map((identity) => ({ ...identity })),
+    mappings: input.mappings?.map((mapping) => ({ ...mapping })),
     discardedRedoBranch
   };
   return normalizeState({

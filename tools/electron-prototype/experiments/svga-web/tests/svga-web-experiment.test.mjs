@@ -173,6 +173,33 @@ test("renderer supports local file input, drag-drop, controls, and invalid file 
   assert.doesNotMatch(renderer, /require\(|ipcRenderer|node:fs|\/Users\//);
 });
 
+test("P5 batch PNG mapping review stays isolated in the desktop prototype", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
+  const server = await readFile(path.join(experimentRoot, "server.mjs"), "utf8");
+  const styles = await readFile(path.join(experimentRoot, "web/styles.css"), "utf8");
+
+  assert.match(page, /id="batchPngInput"/);
+  assert.match(page, /multiple hidden/);
+  assert.match(renderer, /loadBatchPngFiles/);
+  assert.match(renderer, /refreshBatchMappingReport/);
+  assert.match(renderer, /applyBatchMapping/);
+  assert.match(renderer, /\/api\/svga-batch-png-map/);
+  assert.match(renderer, /批量 PNG 映射复核/);
+  assert.match(renderer, /批量替换 PNG/);
+  assert.match(renderer, /应用批量替换/);
+  assert.match(renderer, /data-batch-mapping-state/);
+  assert.match(renderer, /data-batch-action="manual-target"/);
+  assert.match(renderer, /data-batch-action="include"/);
+  assert.match(renderer, /batch_replace_resources/);
+  assert.match(server, /\/api\/svga-batch-png-map/);
+  assert.match(server, /createSvgaBatchPngMappingReport/);
+  assert.match(server, /path\.basename\(String\(file\?\.fileLabel/);
+  assert.match(styles, /\.batchMappingPanel/);
+  assert.match(styles, /\.batchMappingRecord/);
+  assert.doesNotMatch(renderer, /fuzzy|substring|editDistance|visualSimilarity|\/Users\//i);
+});
+
 test("P3 image replacement prototype stays isolated and records verified Save As evidence", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");

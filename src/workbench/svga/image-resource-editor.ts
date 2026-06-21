@@ -180,11 +180,52 @@ export interface SvgaRoundTripReportV3 {
   passed: boolean;
 }
 
-export type SvgaRoundTripReport = SvgaRoundTripReportV2 | SvgaRoundTripReportV3;
+export interface SvgaRoundTripAppliedMappingCheck {
+  inputFileLabel: string;
+  inputSha256: string;
+  mappingRuleId: string;
+  mappingStatus: string;
+  resourceKey: string;
+  originalResourceSha256: string;
+  replacementSha256: string;
+  exportedSha256: string;
+  originalWidth?: number;
+  originalHeight?: number;
+  replacementWidth: number;
+  replacementHeight: number;
+  usageCount: number;
+  sameSpriteReferences: boolean;
+  passed: boolean;
+}
+
+export interface SvgaRoundTripReportV4 extends Omit<SvgaRoundTripReportV3, "schemaVersion" | "milestoneId"> {
+  schemaVersion: 4;
+  milestoneId: "P5";
+  batchTransactionId: string;
+  appliedMappingCount: number;
+  appliedMappings: readonly SvgaRoundTripAppliedMappingCheck[];
+  batchReplacementSetDigest: string;
+  originalSourceUnchanged: boolean;
+}
+
+export type SvgaRoundTripReport = SvgaRoundTripReportV2 | SvgaRoundTripReportV3 | SvgaRoundTripReportV4;
+
+export interface SvgaRoundTripBatchMappingInput {
+  inputFileLabel: string;
+  inputSha256: string;
+  mappingRuleId: string;
+  mappingStatus: string;
+  resourceKey: string;
+}
 
 export interface SvgaRoundTripReportOptions {
-  milestoneId?: "P3" | "P4";
+  milestoneId?: "P3" | "P4" | "P5";
   headCommit?: string;
+  batchTransactionId?: string;
+  batchReplacementSetDigest?: string;
+  batchMappings?: readonly SvgaRoundTripBatchMappingInput[];
+  playbackPassed?: boolean;
+  canvasNonBlank?: boolean;
 }
 
 export interface SvgaImageEditExportResult {
@@ -563,6 +604,9 @@ function buildRoundTripReport(input: {
   replacements: ReadonlyMap<string, SvgaPngValidationResult>;
   options?: SvgaRoundTripReportOptions;
 }): SvgaRoundTripReport {
+  if (input.options?.milestoneId === "P5") {
+    return buildRoundTripReportV4(input);
+  }
   if (input.options?.milestoneId !== "P3") {
     return buildRoundTripReportV3(input);
   }
@@ -751,6 +795,72 @@ function buildRoundTripReportV3(input: {
     passed: unexpectedChanges.length === 0
       && replacedResources.length >= 2
       && replacedResources.every((resource) => resource.passed)
+  };
+}
+
+function buildRoundTripReportV4(input: {
+  sourceBytes: Uint8Array;
+  editedBytes: Uint8Array;
+  originalInvariants: NormalizedMovieInvariants;
+  exportedInvariants: NormalizedMovieInvariants;
+  replacements: ReadonlyMap<string, SvgaPngValidationResult>;
+  options?: SvgaRoundTripReportOptions;
+}): SvgaRoundTripReportV4 {
+  const base = buildRoundTripReportV3({
+    ...input,
+    options: { ...input.options, milestoneId: "P4" }
+  });
+  const mappingByResource = new Map((input.options?.batchMappings ?? []).map((mapping) => [
+    mapping.resourceKey,
+    mapping
+  ]));
+  const appliedMappings = base.replacedResources.map((resource) => {
+    const mapping = mappingByResource.get(resource.resourceKey);
+    return {
+      inputFileLabel: mapping?.inputFileLabel ?? `${resource.resourceKey}.png`,
+      inputSha256: mapping?.inputSha256 ?? resource.replacementSha256,
+      mappingRuleId: mapping?.mappingRuleId ?? "unknown",
+      mappingStatus: mapping?.mappingStatus ?? "unknown",
+      resourceKey: resource.resourceKey,
+      originalResourceSha256: resource.originalResourceSha256,
+      replacementSha256: resource.replacementSha256,
+      exportedSha256: resource.exportedSha256,
+      originalWidth: resource.originalWidth,
+      originalHeight: resource.originalHeight,
+      replacementWidth: resource.replacementWidth,
+      replacementHeight: resource.replacementHeight,
+      usageCount: resource.usageCount,
+      sameSpriteReferences: resource.referencedBySameSprites,
+      passed: resource.passed
+        && (mapping?.inputSha256 ?? resource.replacementSha256) === resource.replacementSha256
+    };
+  });
+  const p5Checks: SvgaInvariantCheck[] = [
+    checkEqual("p5_minimum_applied_mapping_count", true, appliedMappings.length >= 3, "P5 batch acceptance requires at least three applied mappings."),
+    checkEqual("p5_applied_mapping_hashes", true, appliedMappings.every((mapping) => mapping.passed), "Every applied mapping must export the exact replacement PNG bytes."),
+    checkEqual("p5_playback_smoke", true, input.options?.playbackPassed === true, "P5 report must be bound to an explicit playback smoke result."),
+    checkEqual("p5_canvas_nonblank", true, input.options?.canvasNonBlank === true, "P5 report must be bound to an explicit nonblank canvas smoke result.")
+  ];
+  const invariantChecks = [...base.invariantChecks, ...p5Checks];
+  const unexpectedChanges = invariantChecks
+    .filter((check) => !check.passed)
+    .map((check) => check.code);
+  return {
+    ...base,
+    schemaVersion: 4,
+    milestoneId: "P5",
+    batchTransactionId: input.options?.batchTransactionId ?? "",
+    appliedMappingCount: appliedMappings.length,
+    appliedMappings,
+    batchReplacementSetDigest: input.options?.batchReplacementSetDigest ?? digest(appliedMappings),
+    originalSourceUnchanged: base.sourceSha256 === base.sourceSha256AfterEditing,
+    invariantChecks,
+    unexpectedChanges,
+    playbackPassed: input.options?.playbackPassed === true,
+    canvasNonBlank: input.options?.canvasNonBlank === true,
+    passed: unexpectedChanges.length === 0
+      && appliedMappings.length >= 3
+      && appliedMappings.every((mapping) => mapping.passed)
   };
 }
 

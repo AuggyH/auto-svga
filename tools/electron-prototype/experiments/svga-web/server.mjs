@@ -161,11 +161,15 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
   const editorModuleUrl = pathToFileURL(
     path.join(appRoot, ".runtime/dist/workbench/svga/image-resource-editor.js")
   ).href;
+  const batchMappingModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/workbench/svga/batch-png-mapping.js")
+  ).href;
   const inspectorModuleUrl = pathToFileURL(
     path.join(appRoot, ".runtime/dist/workbench/svga/node-protobuf-inspector.js")
   ).href;
   let reportServicePromise;
   let editorPromise;
+  let batchMappingPromise;
   let inspectorPromise;
 
   const server = createServer(async (request, response) => {
@@ -229,6 +233,36 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
         return sendJson(response, error?.statusCode ?? 422, {
           error: error instanceof Error ? error.message : String(error),
           code: error?.code
+        });
+      }
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/svga-batch-png-map") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const input = await readRequestJson(request);
+        const bytes = decodeBase64Field(input?.svgaBase64, "svgaBase64");
+        const name = path.basename(typeof input?.name === "string" ? input.name : "untitled.svga");
+        const files = Array.isArray(input?.files) ? input.files : [];
+        editorPromise ??= import(editorModuleUrl).then(({ SvgaImageResourceEditor }) => new SvgaImageResourceEditor());
+        batchMappingPromise ??= import(batchMappingModuleUrl);
+        const [editor, batchMapping] = await Promise.all([editorPromise, batchMappingPromise]);
+        const session = await editor.createSession(bytes, name);
+        const pngInputs = files.map((file) => ({
+          fileLabel: path.basename(String(file?.fileLabel ?? "untitled.png")),
+          pngBytes: decodeBase64Field(file?.pngBase64, "pngBase64", 10 * 1024 * 1024),
+          include: file?.include !== false,
+          manualResourceKey: typeof file?.manualResourceKey === "string" ? file.manualResourceKey : undefined
+        }));
+        const report = batchMapping.createSvgaBatchPngMappingReport(session.imageResources, pngInputs);
+        return sendJson(response, 200, { report });
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error),
+          code: error?.code,
+          details: error?.details
         });
       }
     }

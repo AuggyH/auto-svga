@@ -313,6 +313,58 @@ test("SVGA image editor does not mark P4 report passed with only one replacement
   assert.equal(result.roundTripReport.passed, false);
 });
 
+test("SVGA image editor reports P5 batch mapping integrity for three replacements", async () => {
+  const bytes = await createSvgaFixture();
+  const editor = new SvgaImageResourceEditor();
+  const replacements = [
+    { resourceKey: "img_frame", pngBytes: createColoredPng(300, 300, [255, 0, 0, 255]), inputFileLabel: "img_frame.png" },
+    { resourceKey: "img_sweep", pngBytes: createColoredPng(48, 96, [0, 255, 0, 255]), inputFileLabel: "img_sweep.png" },
+    { resourceKey: "img_unused", pngBytes: createColoredPng(12, 12, [0, 0, 255, 255]), inputFileLabel: "img_unused.png" }
+  ];
+
+  const result = await editor.replaceImages(bytes, replacements.map(({ resourceKey, pngBytes }) => ({
+    resourceKey,
+    pngBytes
+  })), "fixture.svga", {
+    milestoneId: "P5",
+    headCommit: "p5-test-head",
+    batchTransactionId: "batch-test-1",
+    batchReplacementSetDigest: "p5-batch-digest",
+    batchMappings: replacements.map(({ resourceKey, pngBytes, inputFileLabel }) => ({
+      inputFileLabel,
+      inputSha256: sha256(pngBytes),
+      mappingRuleId: "resource_key_exact",
+      mappingStatus: "exact_match",
+      resourceKey
+    })),
+    playbackPassed: true,
+    canvasNonBlank: true
+  });
+
+  assert.equal(result.roundTripReport.schemaVersion, 4);
+  assert.equal(result.roundTripReport.milestoneId, "P5");
+  assert.equal(result.roundTripReport.headCommit, "p5-test-head");
+  assert.equal(result.roundTripReport.batchTransactionId, "batch-test-1");
+  assert.equal(result.roundTripReport.batchReplacementSetDigest, "p5-batch-digest");
+  assert.equal(result.roundTripReport.appliedMappingCount, 3);
+  assert.equal(result.roundTripReport.originalSourceUnchanged, true);
+  assert.equal(result.roundTripReport.playbackPassed, true);
+  assert.equal(result.roundTripReport.canvasNonBlank, true);
+  assert.equal(result.roundTripReport.passed, true);
+  assert.deepEqual(result.roundTripReport.unexpectedChanges, []);
+  assert.deepEqual(result.roundTripReport.appliedMappings.map((mapping) => ({
+    inputFileLabel: mapping.inputFileLabel,
+    resourceKey: mapping.resourceKey,
+    mappingRuleId: mapping.mappingRuleId,
+    mappingStatus: mapping.mappingStatus,
+    passed: mapping.passed
+  })), [
+    { inputFileLabel: "img_frame.png", resourceKey: "img_frame", mappingRuleId: "resource_key_exact", mappingStatus: "exact_match", passed: true },
+    { inputFileLabel: "img_sweep.png", resourceKey: "img_sweep", mappingRuleId: "resource_key_exact", mappingStatus: "exact_match", passed: true },
+    { inputFileLabel: "img_unused.png", resourceKey: "img_unused", mappingRuleId: "resource_key_exact", mappingStatus: "exact_match", passed: true }
+  ]);
+});
+
 test("SVGA image editor rejects duplicate replacements for the same resource", async () => {
   const editor = new SvgaImageResourceEditor();
   const bytes = await createSvgaFixture();

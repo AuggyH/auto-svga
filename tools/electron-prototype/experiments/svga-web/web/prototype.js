@@ -8,6 +8,7 @@ const emptySelectButton = document.querySelector("#emptySelectButton");
 const hostOpenButton = document.querySelector("#hostOpenButton");
 const fileInput = document.querySelector("#fileInput");
 const pngInput = document.querySelector("#pngInput");
+const batchPngInput = document.querySelector("#batchPngInput");
 const reportRoot = document.querySelector("#reportRoot");
 const playbackStatus = document.querySelector("#playbackStatus");
 const runtimeStatus = document.querySelector("#runtimeStatus");
@@ -36,6 +37,9 @@ let sourceFileId = "";
 let editSession;
 let selectedResourceKey = "";
 let replacementInputs = new Map();
+let batchInputItems = [];
+let batchMappingReport;
+let batchMappingError = "";
 let editHistorySnapshots = [new Map()];
 let editHistoryIndex = 0;
 let savedReplacementDigest = replacementInputDigest(new Map());
@@ -73,6 +77,16 @@ pngInput?.addEventListener("change", async () => {
   await replaceSelectedResource(file);
 });
 
+batchPngInput?.addEventListener("change", async () => {
+  const files = [...(batchPngInput.files ?? [])];
+  batchPngInput.value = "";
+  if (files.length === 0) {
+    batchMappingError = "";
+    return;
+  }
+  await loadBatchPngFiles(files);
+});
+
 dropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
   dropZone.classList.add("isDragOver");
@@ -85,7 +99,12 @@ dropZone.addEventListener("dragleave", () => {
 dropZone.addEventListener("drop", async (event) => {
   event.preventDefault();
   dropZone.classList.remove("isDragOver");
-  const file = event.dataTransfer?.files?.[0];
+  const files = [...(event.dataTransfer?.files ?? [])];
+  if (files.length > 0 && files.every((file) => file.name.toLowerCase().endsWith(".png")) && sourceSvgaBytes) {
+    await loadBatchPngFiles(files);
+    return;
+  }
+  const file = files[0];
   if (!file) return;
   if (!confirmDiscardUnsavedEdits()) return;
   sourceFileId = "";
@@ -244,6 +263,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
   if (isStaleEditOperation(metadata)) return staleLoadResult();
   if (!metadata.preserveEditState) {
     sourceFileId = typeof metadata.sourceId === "string" ? metadata.sourceId : "";
+    resetBatchMappingState();
   } else if (typeof metadata.sourceId === "string") {
     sourceFileId = metadata.sourceId;
   }
@@ -534,6 +554,85 @@ async function replaceSelectedResource(file) {
   await applyReplacementInputs(nextInputs);
 }
 
+async function loadBatchPngFiles(files) {
+  if (!sourceSvgaBytes) return;
+  batchMappingError = "";
+  batchInputItems = [];
+  batchMappingReport = undefined;
+  const pngFiles = files.filter((file) => file.name.toLowerCase().endsWith(".png"));
+  const rejectedCount = files.length - pngFiles.length;
+  if (rejectedCount > 0) {
+    batchMappingError = "批量替换只接受 PNG 文件，非 PNG 文件已忽略。";
+  }
+  for (const file of pngFiles) {
+    const pngBytes = new Uint8Array(await file.arrayBuffer());
+    batchInputItems.push({
+      fileLabel: file.name,
+      pngBytes,
+      include: true,
+      manualResourceKey: ""
+    });
+  }
+  await refreshBatchMappingReport();
+}
+
+async function refreshBatchMappingReport() {
+  if (!sourceSvgaBytes || batchInputItems.length === 0) {
+    batchMappingReport = undefined;
+    renderCurrentReportEditOnly();
+    return;
+  }
+  try {
+    const response = await fetch("/api/svga-batch-png-map", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-auto-svga-prototype-token": window.autoSvgaPrototype.reportToken
+      },
+      body: JSON.stringify({
+        name: sourceSvgaName,
+        svgaBase64: bytesToBase64(sourceSvgaBytes),
+        files: batchInputItems.map((item) => ({
+          fileLabel: item.fileLabel,
+          pngBase64: bytesToBase64(item.pngBytes),
+          include: item.include,
+          manualResourceKey: item.manualResourceKey || undefined
+        }))
+      })
+    }).then(readJsonResponse);
+    batchMappingReport = response.report;
+    batchMappingError = "";
+  } catch (error) {
+    batchMappingReport = undefined;
+    batchMappingError = productEditError(error);
+  }
+  renderCurrentReportEditOnly();
+}
+
+async function applyBatchMapping() {
+  if (!batchMappingReport?.readyToApply) return false;
+  const nextInputs = cloneReplacementInputs(replacementInputs);
+  for (const replacement of batchMappingReport.applicableReplacements ?? []) {
+    const item = batchInputItems.find((candidate) => (
+      candidate.fileLabel === replacement.fileLabel
+      && candidate.include !== false
+    ));
+    if (!item) continue;
+    nextInputs.set(
+      replacement.resourceKey,
+      await createReplacementInput(replacement.resourceKey, item.pngBytes, item.fileLabel)
+    );
+  }
+  const applied = await applyReplacementInputs(nextInputs, {
+    batchMappingReport,
+    transactionType: "batch_replace_resources"
+  });
+  if (applied) {
+    batchMappingError = "";
+  }
+  return applied;
+}
+
 async function applyReplacementInputs(nextInputs, options = {}) {
   const previousInputs = cloneReplacementInputs(replacementInputs);
   const operationSequence = ++editOperationSequence;
@@ -670,6 +769,7 @@ function renderEditPanel() {
         </div>
         <div class="resourceDetail">
           ${selected ? renderResourceDetail(selected) : "<p>请选择一个图像资源。</p>"}
+          ${renderBatchMappingPanel(resources)}
         </div>
       </div>
     </article>
@@ -716,11 +816,78 @@ function renderResourceDetail(resource) {
     ${replacement?.dimensionWarning ? "<p class=\"editWarning\">替换 PNG 尺寸与原资源不同，将按原 SVGA 布局播放。</p>" : ""}
     <div class="editActions">
       <button type="button" data-edit-action="replace">替换 PNG</button>
+      <button type="button" data-edit-action="batch-replace">批量替换 PNG</button>
       <button type="button" data-edit-action="undo" ${canUndoEditHistory() ? "" : "disabled"}>撤销</button>
       <button type="button" data-edit-action="redo" ${canRedoEditHistory() ? "" : "disabled"}>重做</button>
       <button type="button" data-edit-action="reset-selected" ${resource.replacementStatus === "replaced" ? "" : "disabled"}>重置此资源</button>
       <button type="button" data-edit-action="reset-all" ${replacementInputs.size > 0 ? "" : "disabled"}>重置全部</button>
       <button type="button" data-edit-action="save-as" ${canSaveEditedSvga() ? "" : "disabled"}>另存为</button>
+    </div>
+  `;
+}
+
+function renderBatchMappingPanel(resources) {
+  const records = batchMappingReport?.records ?? [];
+  if (records.length === 0 && !batchMappingError) {
+    return `
+      <section class="batchMappingPanel" data-batch-mapping-state="empty">
+        <h4>批量 PNG 映射复核</h4>
+        <p>选择多个 PNG 后，会按 resourceKey / displayName 的确定性规则生成映射建议。</p>
+      </section>
+    `;
+  }
+  return `
+    <section
+      class="batchMappingPanel"
+      data-batch-mapping-state="${batchMappingReport?.readyToApply ? "ready" : "needs-review"}"
+      data-batch-ready="${batchMappingReport?.readyToApply ? "true" : "false"}"
+      data-batch-record-count="${records.length}"
+    >
+      <h4>批量 PNG 映射复核</h4>
+      ${batchMappingError ? `<p class="editError">${escapeHtml(batchMappingError)}</p>` : ""}
+      ${batchMappingReport ? `
+        <div class="editSummary">
+          <span>文件 ${batchMappingReport.fileCount}</span>
+          <span>纳入 ${batchMappingReport.includedFileCount}</span>
+          <span>可应用 ${batchMappingReport.applicableReplacements?.length ?? 0}</span>
+          <span>${batchMappingReport.readyToApply ? "可应用" : "需要复核"}</span>
+        </div>
+      ` : ""}
+      <div class="batchMappingList">
+        ${records.map((record) => renderBatchMappingRecord(record, resources)).join("")}
+      </div>
+      <div class="editActions">
+        <button type="button" data-batch-action="apply" ${batchMappingReport?.readyToApply ? "" : "disabled"}>应用批量替换</button>
+        <button type="button" data-batch-action="clear" ${records.length > 0 ? "" : "disabled"}>取消批量</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderBatchMappingRecord(record, resources) {
+  const targetOptions = [
+    `<option value="">未选择</option>`,
+    ...resources.map((resource) => `<option value="${escapeHtml(resource.resourceKey)}" ${record.selectedResourceKey === resource.resourceKey ? "selected" : ""}>${escapeHtml(resource.displayName ?? resource.resourceKey)} · ${escapeHtml(resource.resourceKey)}</option>`)
+  ].join("");
+  const dimensions = record.width && record.height ? `${record.width} × ${record.height}` : "未知";
+  const warnings = (record.issues ?? []).filter((issue) => issue.severity !== "error");
+  const errors = (record.issues ?? []).filter((issue) => issue.severity === "error");
+  return `
+    <div class="batchMappingRecord" data-batch-status="${escapeHtml(record.status)}" data-batch-index="${record.inputIndex}">
+      <label class="batchInclude">
+        <input type="checkbox" data-batch-action="include" data-batch-index="${record.inputIndex}" ${record.include ? "checked" : ""}>
+        纳入
+      </label>
+      <div class="batchMappingMain">
+        <strong>${escapeHtml(record.fileLabel)}</strong>
+        <small>${escapeHtml(record.status)} · ${escapeHtml(record.ruleId)} · ${escapeHtml(dimensions)} · ${formatBytes(record.sizeBytes)}</small>
+        <span>${escapeHtml(record.reason)}</span>
+        ${warnings.map((issue) => `<em class="editWarning">${escapeHtml(issue.code)}</em>`).join("")}
+        ${errors.map((issue) => `<em class="editError">${escapeHtml(issue.code)}</em>`).join("")}
+      </div>
+      <select data-batch-action="manual-target" data-batch-index="${record.inputIndex}" aria-label="手动选择目标资源">
+        ${targetOptions}
+      </select>
     </div>
   `;
 }
@@ -733,6 +900,7 @@ function bindEditPanel() {
     });
   });
   reportRoot.querySelector('[data-edit-action="replace"]')?.addEventListener("click", () => pngInput?.click());
+  reportRoot.querySelector('[data-edit-action="batch-replace"]')?.addEventListener("click", () => batchPngInput?.click());
   reportRoot.querySelector('[data-edit-action="reset-selected"]')?.addEventListener("click", async () => {
     if (!selectedResourceKey) return;
     const nextInputs = cloneReplacementInputs(replacementInputs);
@@ -745,6 +913,33 @@ function bindEditPanel() {
   reportRoot.querySelector('[data-edit-action="undo"]')?.addEventListener("click", undoEditHistory);
   reportRoot.querySelector('[data-edit-action="redo"]')?.addEventListener("click", redoEditHistory);
   reportRoot.querySelector('[data-edit-action="save-as"]')?.addEventListener("click", saveEditedSvga);
+  reportRoot.querySelector('[data-batch-action="apply"]')?.addEventListener("click", applyBatchMapping);
+  reportRoot.querySelector('[data-batch-action="clear"]')?.addEventListener("click", () => {
+    resetBatchMappingState();
+    renderCurrentReportEditOnly();
+  });
+  reportRoot.querySelectorAll('[data-batch-action="include"]').forEach((control) => {
+    control.addEventListener("change", async () => {
+      const index = Number(control.dataset.batchIndex);
+      if (!Number.isInteger(index) || !batchInputItems[index]) return;
+      batchInputItems[index] = {
+        ...batchInputItems[index],
+        include: control.checked
+      };
+      await refreshBatchMappingReport();
+    });
+  });
+  reportRoot.querySelectorAll('[data-batch-action="manual-target"]').forEach((control) => {
+    control.addEventListener("change", async () => {
+      const index = Number(control.dataset.batchIndex);
+      if (!Number.isInteger(index) || !batchInputItems[index]) return;
+      batchInputItems[index] = {
+        ...batchInputItems[index],
+        manualResourceKey: control.value
+      };
+      await refreshBatchMappingReport();
+    });
+  });
 }
 
 async function saveEditedSvga() {
@@ -868,6 +1063,13 @@ function hasCurrentSaveValidation() {
       && lastRoundTripReport.replacements.length >= 2
       && lastRoundTripReport.replacements.every((replacement) => replacement.passed === true);
   }
+  if (productMilestoneId === "P5") {
+    return lastRoundTripReport.schemaVersion === 3
+      && lastRoundTripReport.milestoneId === "P4"
+      && Array.isArray(lastRoundTripReport.replacements)
+      && lastRoundTripReport.replacements.length >= 3
+      && lastRoundTripReport.replacements.every((replacement) => replacement.passed === true);
+  }
   return lastRoundTripReport.schemaVersion === 2;
 }
 
@@ -897,6 +1099,12 @@ function resetEditHistoryToCurrent() {
   editHistoryIndex = 0;
   savedReplacementDigest = replacementInputDigest(replacementInputs);
   editOperationSequence += 1;
+}
+
+function resetBatchMappingState() {
+  batchInputItems = [];
+  batchMappingReport = undefined;
+  batchMappingError = "";
 }
 
 function pushEditHistorySnapshot(inputs) {

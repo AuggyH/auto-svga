@@ -1,5 +1,9 @@
 export { SvgaFormatAdapter } from "./format-adapter.js";
 export {
+  createSvgaBatchPngMappingReport,
+  createSvgaBatchReplacementInputs
+} from "./batch-png-mapping.js";
+export {
   applySvgaImageEditTransaction,
   createSvgaImageEditHistory,
   markSvgaImageEditSaved,
@@ -15,15 +19,27 @@ export { readEmbeddedImageMetadata } from "./image-metadata.js";
 export type { EmbeddedImageMetadata } from "./image-metadata.js";
 export type {
   CreateSvgaImageEditHistoryOptions,
+  SvgaImageEditBatchMappingRecord,
   SvgaImageEditExportState,
   SvgaImageEditReplacementState,
   SvgaImageEditResourceIdentity,
   SvgaImageEditRevisionSnapshot,
+  SvgaImageEditSourceFileIdentity,
   SvgaImageEditTransactionInput,
   SvgaImageEditTransactionRecord,
   SvgaImageEditTransactionType,
   SvgaImageEditHistoryState
 } from "./image-edit-history.js";
+export type {
+  SvgaBatchPngConfidenceClass,
+  SvgaBatchPngImportLimits,
+  SvgaBatchPngInput,
+  SvgaBatchPngIssue,
+  SvgaBatchPngMappingRecord,
+  SvgaBatchPngMappingReport,
+  SvgaBatchPngMappingRuleId,
+  SvgaBatchPngMappingStatus
+} from "./batch-png-mapping.js";
 export type {
   SvgaEditableImageResource,
   SvgaImageEditExportResult,
@@ -36,7 +52,10 @@ export type {
   SvgaPngValidationLimits,
   SvgaPngValidationResult,
   SvgaReplacementSummary,
-  SvgaRoundTripReport
+  SvgaRoundTripAppliedMappingCheck,
+  SvgaRoundTripBatchMappingInput,
+  SvgaRoundTripReport,
+  SvgaRoundTripReportV4
 } from "./image-resource-editor.js";
 export type {
   SvgaBinaryInspector,

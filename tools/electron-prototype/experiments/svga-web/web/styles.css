@@ -667,6 +667,78 @@ summary:focus-visible {
   flex: 1 1 100px;
 }
 
+.batchMappingPanel {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--floatingSurface) 40%, transparent);
+}
+
+.batchMappingPanel h4 {
+  margin: 0;
+  color: var(--textPrimary);
+  font-size: 13px;
+}
+
+.batchMappingList {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.batchMappingRecord {
+  display: grid;
+  grid-template-columns: minmax(56px, auto) minmax(0, 1fr);
+  gap: var(--space-2);
+  min-width: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-small);
+  padding: var(--space-2);
+}
+
+.batchMappingRecord select {
+  grid-column: 1 / -1;
+  min-width: 0;
+  min-height: 32px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  color: var(--textPrimary);
+  background: var(--surfaceElevated);
+}
+
+.batchInclude {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--textSecondary);
+  font-size: var(--font-meta);
+  white-space: nowrap;
+}
+
+.batchMappingMain {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.batchMappingMain strong,
+.batchMappingMain small,
+.batchMappingMain span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.batchMappingMain small {
+  color: var(--textTertiary);
+  font-size: var(--font-meta);
+}
+
 .p3ComparisonPanel {
   margin-block-start: 0;
 }

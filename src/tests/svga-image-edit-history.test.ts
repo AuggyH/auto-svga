@@ -62,6 +62,67 @@ test("SVGA image edit history tracks multi-resource replace, undo, redo, and dir
   assert.equal(state.dirty, true);
 });
 
+test("SVGA image edit history applies a P5 batch replacement as one atomic transaction", () => {
+  let state = createSvgaImageEditHistory({
+    sourceIdentity: "fixture-source",
+    originalResources: resources
+  });
+
+  state = applySvgaImageEditTransaction(state, {
+    transactionId: "batch-1",
+    type: "batch_replace_resources",
+    replacements: [
+      replacement("img_frame_left", "replacement-a"),
+      replacement("img_frame_right", "replacement-b")
+    ],
+    replacementSetDigest: "batch-digest",
+    sourceFileIdentities: [
+      { fileLabel: "left.png", sha256: "replacement-a", sizeBytes: 12, width: 6, height: 2 },
+      { fileLabel: "right.png", sha256: "replacement-b", sizeBytes: 12, width: 6, height: 2 }
+    ],
+    mappings: [
+      { fileLabel: "left.png", resourceKey: "img_frame_left", ruleId: "resource_key_exact", status: "exact_match", sha256: "replacement-a" },
+      { fileLabel: "right.png", resourceKey: "img_frame_right", ruleId: "resource_key_exact", status: "exact_match", sha256: "replacement-b" }
+    ],
+    source: "p5-batch"
+  });
+
+  assert.equal(state.currentRevision, 1);
+  assert.equal(state.transactions.length, 1);
+  assert.equal(state.transactions[0].type, "batch_replace_resources");
+  assert.equal(state.transactions[0].replacementSetDigest, "batch-digest");
+  assert.deepEqual(state.transactions[0].affectedResourceKeys, ["img_frame_left", "img_frame_right"]);
+  assert.deepEqual(Object.keys(state.currentReplacements).sort(), ["img_frame_left", "img_frame_right"]);
+
+  state = undoSvgaImageEditHistory(state);
+  assert.equal(state.currentRevision, 0);
+  assert.deepEqual(Object.keys(state.currentReplacements), []);
+
+  state = redoSvgaImageEditHistory(state);
+  assert.equal(state.currentRevision, 1);
+  assert.deepEqual(Object.keys(state.currentReplacements).sort(), ["img_frame_left", "img_frame_right"]);
+});
+
+test("SVGA image edit history rejects duplicate resources inside a P5 batch transaction", () => {
+  let state = createSvgaImageEditHistory({
+    sourceIdentity: "fixture-source",
+    originalResources: resources
+  });
+
+  state = applySvgaImageEditTransaction(state, {
+    transactionId: "batch-invalid",
+    type: "batch_replace_resources",
+    replacements: [
+      replacement("img_frame_left", "replacement-a"),
+      replacement("img_frame_left", "replacement-b")
+    ]
+  });
+
+  assert.equal(state.currentRevision, 0);
+  assert.deepEqual(state.currentReplacements, {});
+  assert.deepEqual(state.validationErrors, ["duplicate_resource_replacement"]);
+});
+
 test("SVGA image edit history truncates redo branch after a new edit", () => {
   let state = createSvgaImageEditHistory({
     sourceIdentity: "fixture-source",
