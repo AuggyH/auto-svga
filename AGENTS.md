@@ -4,6 +4,17 @@
 
 This repository is an MVP for automating SVGA-like animation project generation for avatar frame assets.
 
+Auto-SVGA product mainline is Web Preview parity first.
+
+The running Web Preview at the frozen parity baseline is the source of truth
+for functionality, UI, UX, state behavior, and motion.
+
+Do not add new editor features to the default Desktop product until complete
+Web parity and the macOS internal app are accepted.
+
+Desktop-specific host behavior may differ only for native window, file dialogs,
+menus, shortcuts, file association, Save As, and security boundaries.
+
 Current scope is intentionally narrow:
 - only avatar_frame asset type
 - CLI first
