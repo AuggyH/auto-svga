@@ -4,26 +4,24 @@ Date: 2026-06-21
 
 ## Current Milestone
 
-- milestoneId: NQ1
-- Milestone: NQ1 Overnight Reliability, Compatibility And Evidence Hardening
-- State: terminal_pass
-- Next Action: external_review
+- milestoneId: NQ1-R1
+- Milestone: NQ1-R1 Overnight Hardening Completion And Portable Evidence Repair
+- State: frozen
+- Next Action: implementation
 - repairRound: 0
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
-- Milestone start commit: `fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4`
+- Milestone start commit: `396100329c3fef9762ec28611981db049ae154d9`
 
 ## Current Evidence
 
-- NQ1 ran as engineering hardening only and did not auto-accept P4.
-- `NQ1_STATE.json` records all ten work packages complete.
-- `NQ1_HISTORY.jsonl` records work-package start/completion events and checkpoints.
-- Checkpoints after WP03, WP06, and WP09 each ran `npm run loop:validate` successfully on clean source HEADs.
-- WP10 flake stability report records 10 static checks, 11 repeated runs, 0 failures, and 0 advisories.
-- Root tests passed with the NQ1 tests included.
-- P4 remains a separate product/human review concern; NQ1 PASS is not P4 product acceptance.
+- P4 is accepted by product owner review at head `fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4`.
+- NQ1 reached terminal PASS source state at head `c745f1a67880bc5aabc2bc74265cdbf00cfac2ff`.
+- NQ1 external review returned `REPAIR_REQUIRED`.
+- NQ1-R1 is frozen to repair hardening coverage and portable handoff defects.
+- Existing NQ1 work and history must be preserved.
 
 ## Next Action
 
-External review of the NQ1 Review Packet. Do not treat NQ1 PASS as P4 product acceptance.
+Implement NQ1-R1 targeted hardening repairs and portable evidence repair.

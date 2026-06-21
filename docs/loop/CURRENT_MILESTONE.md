@@ -1,44 +1,44 @@
-# NQ1: Overnight Reliability, Compatibility And Evidence Hardening
+# NQ1-R1: Overnight Hardening Completion And Portable Evidence Repair
 
-Milestone ID: NQ1
-Title: Overnight Reliability, Compatibility And Evidence Hardening
+Milestone ID: NQ1-R1
+Title: Overnight Hardening Completion And Portable Evidence Repair
 Status: frozen
-milestoneStartCommit: `fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4`
-Branch: `agent/codex/nq1-overnight-hardening`
-Previous milestone: `docs/loop/milestones/P4-multi-resource-editing-undo-redo-export-integrity.md`
-Previous final review: `docs/loop/reviews/P4-final-internal-review.md`
-P4 final machine HEAD: `fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4`
+milestoneStartCommit: `396100329c3fef9762ec28611981db049ae154d9`
+Branch: `agent/codex/nq1-r1-hardening-completion`
+Previous milestone: `docs/loop/milestones/NQ1-overnight-reliability-hardening.md`
+Previous final review: `docs/loop/reviews/NQ1-external-review.md`
+Reviewed NQ1 HEAD: `c745f1a67880bc5aabc2bc74265cdbf00cfac2ff`
 
-maxRepairRounds: 6
-maxConsecutiveNoProgressRounds: 2
+maxRepairRounds: 3
+maxConsecutiveNoProgressRounds: 1
 
 ## Objective
 
-Complete engineering hardening for the existing Auto SVGA P1-P4 work without
-accepting P4 product results, starting P5, adding product scope, or using real
-user assets. The milestone improves deterministic fixtures, editor regressions,
-async safety, round-trip evidence, path safety, cleanup, performance baseline,
-accessibility semantics, flake repeatability, and developer handoff material.
+Repair the NQ1 external review findings while preserving all existing NQ1 work.
+NQ1-R1 must complete stronger deterministic overnight hardening evidence and
+produce a portable, privacy-clean upload bundle bound to the final NQ1-R1 HEAD.
 
 ## Product Boundary
 
-NQ1 is an engineering reliability milestone. It does not change the accepted
-product direction. It does not imply P4 product acceptance. P4 remains a
-separate human product review gate.
+NQ1-R1 is engineering reliability and handoff hardening only. P4 is accepted by
+product owner review, but NQ1-R1 must not start P5 functionality unless all
+NQ1-R1 acceptance criteria pass.
 
 ## Allowed Changes
 
-1. Synthetic fixtures and ignored generated evidence.
-2. Deterministic tests and local helper scripts.
-3. Reliability, safety, cleanup, performance, accessibility, and flake reports.
-4. Documentation for editor validation, troubleshooting, and supported editing
-   boundaries.
-5. Loop state, history, final report, review packet, visible review folder, and
+1. Synthetic fixtures, deterministic tests, local helper scripts, and ignored
+   generated evidence.
+2. NQ1-R1 reports under `.artifacts/product/NQ1-R1/`.
+3. Reliability, cleanup, performance, accessibility, safety, flake, and portable
+   handoff repair documents.
+4. Loop state, history, final report, review packet, visible review folder, and
    upload packaging.
+5. Test-only or helper-only changes required to produce truthful NQ1-R1
+   evidence.
 
 ## Prohibited Scope
 
-1. P5 product functionality.
+1. P5 product functionality before NQ1-R1 passes.
 2. Text, timeline, transform, crop, resize, effect, conversion, export
    workbench, auto-fix, cloud, account, telemetry, or AI features.
 3. New third-party dependencies, public network, credentials, production
@@ -46,42 +46,68 @@ separate human product review gate.
 4. Real user SVGA, PNG, screenshots, recordings, or labels in Git.
 5. Changes to existing SVGA exporter semantics, CLI default flow, browser
    import, drag-drop, comparison, or product direction.
+6. Resetting, deleting, rewriting, or hiding existing NQ1 work/history.
+7. Loosening unsupported unknown-field boundaries.
 
 ## Acceptance Criteria
 
-- `NQ1-AC-01`: Baseline and Resumable Queue - NQ1 queue, state, history, blocker log, final report placeholder, and resume instructions exist and initial loop validation passes on a clean source workspace.
-- `NQ1-AC-02`: Synthetic Fixture Matrix - Approved synthetic SVGA fixtures cover resource counts 1, 2, 3, 5, 10, 25 plus one unsupported unknown-field boundary without real user assets.
-- `NQ1-AC-03`: Model-driven Edit History - Deterministic model tests cover undo, redo, reset, save-point, invalid input, failed preview, open-new-file, and history-cap behavior.
-- `NQ1-AC-04`: Async Race and Failure Injection - Synthetic race tests prove stale success, stale failure, latest failure rollback, file switch, reset, and save rejection do not overwrite newer valid state.
-- `NQ1-AC-05`: Multi-resource Round-trip Matrix - Synthetic round-trip matrix validates P3 single-resource and P4 multi-resource replacement invariants across supported fixtures and keeps unsupported fixtures fail-closed.
-- `NQ1-AC-06`: Save As Safety - Cross-platform path and Save As checks cover source identity, same-source rejection, sibling target allowance, IPC boundary, log redaction, and deferred Windows case-variant risk.
-- `NQ1-AC-07`: Cleanup Stress - Cleanup validation covers runtime, server, player, parser, session, object URL, and repeated lifecycle cleanup without active resource leaks.
-- `NQ1-AC-08`: Performance Baseline - Bounded local performance baseline records deterministic hardening primitive timings with a broad hang guard and no formal cross-machine benchmark claim.
-- `NQ1-AC-09`: Accessibility and Error Semantics - Source-level audit covers keyboard, labels, focus, disabled states, error details, retry behavior, and retains manual-review advisories for axe and screen-reader coverage.
-- `NQ1-AC-10`: Flake Stability and Developer Docs - Repeat stability runs core targeted tests 5 times, Electron smoke 3 times, round-trip subset 3 times, and commits editor test matrix, troubleshooting, and supported editable SVGA boundary docs.
-- `NQ1-AC-11`: Terminal Handoff - Final loop validation passes on the terminal NQ1 HEAD, Review Packet generation succeeds, a visible review folder and upload ZIP are produced, and the source workspace is clean.
+- `NQ1-R1-AC-01`: Preserve existing NQ1 work, reports, history, and commits.
+- `NQ1-R1-AC-02`: Add 100 or more deterministic async schedules covering
+  stale success, stale failure, latest failure rollback, file switch, reset,
+  save rejection, reordered completion, duplicate operation IDs, invalid file,
+  and concurrent open/replace/save interleavings. Every failure must include a
+  seed and schedule ID.
+- `NQ1-R1-AC-03`: Add at least 12 round-trip configuration cases. Supported
+  cases must include at least two replacements except the P3 single-resource
+  baseline, one untouched resource, and two Save As/reopen paths. Mutation cases
+  must cover second replacement omission, untouched mutation, sprite order,
+  frame alpha, transform, imageKey, and saved revision mismatch.
+- `NQ1-R1-AC-04`: Add 30 actual or semi-real lifecycle cycles for open, replace
+  A, replace B, undo, redo, reset, Save As, reopen, and close. Record RSS,
+  heapUsed, external memory, active player/parser/objectURL/listener/timer,
+  pending operation, temp, and Electron child counts every 5 cycles.
+- `NQ1-R1-AC-05`: Add operation performance matrix for resource counts 1, 3,
+  10, and 25 across open, decode, discovery, preview, replace, undo, redo, Save
+  As, reopen, and round-trip. Use five samples each and record min, max, median,
+  p95, sample values, warm/cold state, output size, peak RSS, Node, Electron,
+  OS, arch, fixture hash, and final HEAD.
+- `NQ1-R1-AC-06`: Correct flake evidence names and run actual repeats for
+  desktop product smoke 3 times, Electron prototype/product tests 3 times,
+  round-trip subset 3 times, and core targeted tests 5 times.
+- `NQ1-R1-AC-07`: Execute Reserve A-E evidence: 1000 seeds x 100 operations
+  model history, lifecycle up to 100 cycles with at least 30 blocking cycles,
+  a 50-resource fixture, mutation validation, and an Electron editor threat
+  model document.
+- `NQ1-R1-AC-08`: Keep Windows risk honest with pure function and `path.win32`
+  checks only. Do not claim actual Windows runtime coverage.
+- `NQ1-R1-AC-09`: Produce required NQ1-R1 reports under
+  `.artifacts/product/NQ1-R1/` with no empty placeholders.
+- `NQ1-R1-AC-10`: Produce a portable bundle named
+  `NQ1-R1-<final-head-short-sha>-upload.zip` with accurate upload manifest and
+  no old `3c2a8f` references, username, absolute repo root, or local temp paths.
+- `NQ1-R1-AC-11`: Include `bundle-privacy-audit.json` scanning every upload ZIP
+  entry with findingCount 0, blocking 0, and no `allowedUploadPointer`
+  exception.
+- `NQ1-R1-AC-12`: Bind final evidence to the final NQ1-R1 HEAD, final ZIP name,
+  validation HEAD, candidate digest, reviewer hashes, and terminal handoff.
 
 ## Required Validation Before Terminal State
 
-1. All ten NQ1 work packages are complete, partial, or blocked with evidence.
-2. Every three completed work packages have a recorded `npm run loop:validate`
-   checkpoint.
-3. `npm run nq1:flake-stability` passes.
-4. `npm test` passes with the NQ1 tests included.
-5. Final `npm run loop:validate` passes on terminal NQ1 HEAD.
-6. Review Packet and visible review upload package are generated.
-7. Source workspace is clean.
-8. Final response is exactly `.artifacts/loop-handoff/latest/FINAL_RESPONSE.txt`.
+1. NQ1-R1 targeted tests pass.
+2. `npm test` passes.
+3. `npm run loop:validate` passes on terminal NQ1-R1 HEAD.
+4. Reviewer A and independent read-only Reviewer B complete.
+5. Portable upload ZIP privacy audit passes.
+6. Source workspace is clean before terminal packet generation.
+7. Final response is exactly `.artifacts/loop-handoff/latest/FINAL_RESPONSE.txt`.
 
 ## Remaining Manual Gaps
 
-- P4 product visual acceptance remains human-owned.
+- Real Windows runtime behavior remains deferred.
 - Pixel-perfect visual parity and screen-reader output remain manual review.
-- Real Windows runtime path behavior remains deferred.
-- Long-running renderer memory pressure remains outside the bounded NQ1 checks.
+- NQ1-R1 must not become P5 product acceptance.
 
 ## Recommended Next Milestone
 
-After external review of NQ1, either proceed to the next approved product
-milestone or repair any review packet / validation blocker first. Do not infer
-P4 product acceptance from NQ1 PASS.
+If NQ1-R1 passes, create P5 from the final NQ1-R1 HEAD. P5 remains a separate
+product milestone and must stop at `HUMAN_REQUIRED`.

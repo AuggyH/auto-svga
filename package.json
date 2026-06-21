@@ -44,7 +44,8 @@
     "nq1:cleanup-stress": "npm run build && node tools/nq1/generate-cleanup-stress-report.mjs",
     "nq1:performance-baseline": "npm run build && node tools/nq1/generate-performance-baseline-report.mjs",
     "nq1:accessibility-audit": "npm run build && node tools/nq1/generate-accessibility-audit-report.mjs",
-    "nq1:flake-stability": "npm run build && node tools/nq1/generate-flake-stability-report.mjs"
+    "nq1:flake-stability": "npm run build && node tools/nq1/generate-flake-stability-report.mjs",
+    "nq1-r1:reports": "npm run build && node tools/nq1-r1/generate-reports.mjs"
   },
   "dependencies": {
     "fast-png": "8.0.0",
