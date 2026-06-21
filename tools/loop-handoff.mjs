@@ -1379,6 +1379,9 @@ function finalResponse({ status, packetRoot, companionRequired, visualArtifacts,
     uploadLines.push(`${nextIndex}. ${artifact.path ?? artifact}`);
     nextIndex += 1;
   }
+  const visibleReviewRoot = typeof humanDecision?.visibleReviewRoot === "string"
+    ? humanDecision.visibleReviewRoot
+    : null;
 
   if (status === "PASS") {
     return [
@@ -1391,6 +1394,9 @@ function finalResponse({ status, packetRoot, companionRequired, visualArtifacts,
       "",
       "OPTIONAL_REFERENCE:",
       optionalReference ? `- ${optionalReference}` : "- none",
+      "",
+      "VISIBLE_REVIEW_FOLDER:",
+      visibleReviewRoot ? `- ${visibleReviewRoot}` : "- none",
       "",
       "Do not upload:",
       "- MANIFEST.json",
@@ -1413,6 +1419,9 @@ function finalResponse({ status, packetRoot, companionRequired, visualArtifacts,
     "",
     "OPTIONAL_REFERENCE:",
     optionalReference ? `- ${optionalReference}` : "- none",
+    "",
+    "VISIBLE_REVIEW_FOLDER:",
+    visibleReviewRoot ? `- ${visibleReviewRoot}` : "- none",
     "",
     "Question:",
     humanDecision?.question ?? "not_available",
@@ -1825,7 +1834,7 @@ export async function generateHandoffPacket(options) {
     "",
     acceptanceEvidenceMarkdown(input.acceptanceEvidence),
     options.candidate
-      ? "\nCandidate phase note: reviewer JSON, seal metadata, FINAL_RESPONSE.txt, latest pointer verification, and post-seal verifier evidence are intentionally pending until the seal phase. The candidate digest covers the pre-seal evidence reviewers must bind to."
+      ? "\nCandidate phase note: reviewer JSON, seal metadata, latest pointer verification, and post-seal verifier evidence are intentionally pending until the seal phase. Candidate FINAL_RESPONSE.txt is a preview only; the final sealed packet will regenerate it. The candidate digest covers the pre-seal evidence reviewers must bind to."
       : "",
     options.retrospective
       ? "\nRetrospective evidence authority: acceptance entries are derived from the frozen M1 contract and explicitly mark historical validation/reviewer evidence availability. Narrative loop history is not original evidence."
