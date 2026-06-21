@@ -20,6 +20,7 @@
     "desktop:p4:upload-package": "node scripts/build-p4-upload-package.mjs",
     "desktop:p5:live-smoke": "npm run spike:svga-web:prepare && node scripts/prepare-p5-runtime.mjs && AUTO_SVGA_PRODUCT_MILESTONE=P5 ../../node_modules/.bin/electron . --smoke --product-smoke",
     "internal:trial:parity": "node scripts/run-real-sample-parity-audit.mjs",
+    "internal:trial:proof:mac": "node scripts/macos-package-proof.mjs",
     "spike:svga-web:package:mac": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=darwin --arch=arm64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
     "spike:svga-web:package:win": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=win32 --arch=x64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
     "internal:trial:package:mac": "node scripts/package-internal-trial.mjs"

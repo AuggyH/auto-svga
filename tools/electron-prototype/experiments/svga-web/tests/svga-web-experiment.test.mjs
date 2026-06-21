@@ -6,12 +6,64 @@ import { test } from "node:test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { legacyBrowserBaselineAuditCsp, strictCsp, startSvgaWebExperimentServer } from "../server.mjs";
+import {
+  appName,
+  buildMacosPackageProof,
+  bundleIdentifier,
+  finalAcceptanceOwner,
+  macosPackagerArgs
+} from "../scripts/macos-package-proof.mjs";
 
 const require = createRequire(import.meta.url);
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
 const vendorPath = path.join(experimentRoot, "vendor/svga-web-2.4.4.js");
 const hostContract = require("../host-adapter-contract.cjs");
+
+test("macOS internal package scaffold declares bounded unsigned .svga bundle metadata", async () => {
+  const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
+  assert.match(plist, /AutoSVGAInternalUseOnly/);
+  assert.match(plist, /AutoSVGASigned/);
+  assert.match(plist, /AutoSVGANotarized/);
+  assert.match(plist, /AutoSVGAProductionApproved/);
+  assert.match(plist, new RegExp(bundleIdentifier));
+  assert.match(plist, /CFBundleDocumentTypes/);
+  assert.match(plist, /CFBundleTypeRole[\s\S]*Viewer/);
+  assert.match(plist, /LSHandlerRank[\s\S]*Alternate/);
+  assert.match(plist, /UTExportedTypeDeclarations/);
+  assert.match(plist, /com\.auto-svga\.svga/);
+  assert.match(plist, /public\.filename-extension[\s\S]*svga/);
+
+  const packagerArgs = macosPackagerArgs(".artifacts/internal-trial");
+  assert.equal(packagerArgs[1], appName);
+  assert.ok(packagerArgs.includes("--platform=darwin"));
+  assert.ok(packagerArgs.includes("--arch=arm64"));
+  assert.ok(packagerArgs.includes(`--app-bundle-id=${bundleIdentifier}`));
+  assert.ok(packagerArgs.includes("--app-version=0.0.0-internal"));
+  assert.ok(packagerArgs.includes("--build-version=0.0.0-internal"));
+  assert.ok(packagerArgs.some((arg) => arg === "--extend-info=packaging/macos/Info.plist"));
+});
+
+test("macOS package proof manifest records audit boundaries without final App acceptance", async () => {
+  const proof = await buildMacosPackageProof({
+    appBundle: path.join(experimentRoot, ".artifacts/internal-trial/AutoSVGAInternalPrototype-darwin-arm64/AutoSVGAInternalPrototype.app"),
+    archivePath: path.join(experimentRoot, ".artifacts/internal-trial/AutoSVGAInternalPrototype-darwin-arm64.zip")
+  });
+  assert.equal(proof.schemaVersion, 1);
+  assert.equal(proof.platform, "darwin");
+  assert.equal(proof.architecture, "arm64");
+  assert.equal(proof.distribution.internalUseOnly, true);
+  assert.equal(proof.distribution.unsigned, true);
+  assert.equal(proof.distribution.notarized, false);
+  assert.equal(proof.distribution.productionApproved, false);
+  assert.equal(proof.distribution.finalPackagedAppAcceptanceOwner, finalAcceptanceOwner);
+  assert.equal(proof.documentTypes[0].extension, "svga");
+  assert.equal(proof.documentTypes[0].role, "Viewer");
+  assert.equal(proof.privacyAudit.passed, true);
+  assert.deepEqual(proof.privacyAudit.findings, []);
+  assert.match(proof.packagingScaffold.extendInfoPath, /packaging\/macos\/Info\.plist$/);
+  assert.match(proof.requestedIntegrationChanges[0], /root package script/);
+});
 
 test("vendored svga-web asset is pinned and strict-CSP compatible", async () => {
   const source = await readFile(vendorPath, "utf8");

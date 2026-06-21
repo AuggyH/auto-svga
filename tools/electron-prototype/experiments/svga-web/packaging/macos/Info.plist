@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>AutoSVGAFinalPackagedAppAcceptanceOwner</key>
+  <string>Integration Coordinator</string>
+  <key>AutoSVGAInternalUseOnly</key>
+  <true/>
+  <key>AutoSVGANotarized</key>
+  <false/>
+  <key>AutoSVGAProductionApproved</key>
+  <false/>
+  <key>AutoSVGASigned</key>
+  <false/>
+  <key>CFBundleDisplayName</key>
+  <string>Auto SVGA Internal Prototype</string>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>svga</string>
+      </array>
+      <key>CFBundleTypeName</key>
+      <string>SVGA animation</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>com.auto-svga.svga</string>
+      </array>
+    </dict>
+  </array>
+  <key>CFBundleIdentifier</key>
+  <string>local.auto-svga.internal-prototype</string>
+  <key>CFBundleName</key>
+  <string>AutoSVGAInternalPrototype</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.0.0-internal</string>
+  <key>CFBundleVersion</key>
+  <string>0.0.0-internal</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.developer-tools</string>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.data</string>
+      </array>
+      <key>UTTypeDescription</key>
+      <string>SVGA animation</string>
+      <key>UTTypeIdentifier</key>
+      <string>com.auto-svga.svga</string>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>svga</string>
+        </array>
+        <key>public.mime-type</key>
+        <string>application/octet-stream</string>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>

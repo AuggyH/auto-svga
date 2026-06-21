@@ -5,11 +5,22 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { internalTrialCsp } from "../server.mjs";
+import {
+  appName,
+  architecture,
+  bundleDisplayName,
+  bundleIdentifier,
+  bundleShortVersion,
+  bundleVersion,
+  finalAcceptanceOwner,
+  macosPackagerArgs,
+  platform,
+  writeMacosPackageProof
+} from "./macos-package-proof.mjs";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
 const artifactsRoot = path.join(experimentRoot, ".artifacts/internal-trial");
-const appName = "AutoSVGAInternalPrototype";
 const appDirectory = path.join(artifactsRoot, `${appName}-darwin-arm64`);
 const appBundle = path.join(appDirectory, `${appName}.app`);
 const archivePath = path.join(artifactsRoot, `${appName}-darwin-arm64.zip`);
@@ -47,17 +58,7 @@ async function main() {
   await mkdir(artifactsRoot, { recursive: true });
 
   run("npm", ["run", "spike:svga-web:prepare"]);
-  run("../../node_modules/.bin/electron-packager", [
-    ".",
-    appName,
-    "--platform=darwin",
-    "--arch=arm64",
-    `--out=${artifactsRoot}`,
-    "--overwrite",
-    "--prune=true",
-    "--asar",
-    "--ignore=^/(tests|scripts|\\.artifacts)($|/)"
-  ]);
+  run("../../node_modules/.bin/electron-packager", macosPackagerArgs(artifactsRoot));
   run("/usr/bin/ditto", [
     "-c",
     "-k",
@@ -70,16 +71,22 @@ async function main() {
   const packageSizeBytes = await directorySizeBytes(appBundle);
   const archiveSizeBytes = (await stat(archivePath)).size;
   const archiveSha256 = await sha256(archivePath);
+  const proof = await writeMacosPackageProof({ appBundle, archivePath });
   const manifest = {
     appName,
+    bundleDisplayName,
+    bundleIdentifier,
     prototypeLabel: "内部原型，非生产版本，仅供内部测试",
-    version: "0.0.0-internal",
+    version: bundleShortVersion,
+    bundleVersion,
     buildCommit,
-    platform: "darwin",
-    architecture: "arm64",
+    platform,
+    architecture,
     playerPackage: "svga-web",
     playerVersion: "2.4.4",
     CSP: internalTrialCsp,
+    documentTypes: proof.documentTypes,
+    distribution: proof.distribution,
     securityFlags: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -100,9 +107,11 @@ async function main() {
       "Requires wasm-unsafe-eval for svga-web WebAssembly fast path.",
       "Unsigned and not notarized.",
       "Internal testing only; not approved for production distribution.",
+      `Final packaged App acceptance is owned by ${finalAcceptanceOwner}.`,
       "Windows runtime is not verified."
     ],
     rollbackCommand: "npm run local:preview",
+    proofManifestPath: path.relative(repoRoot, path.join(artifactsRoot, "macos-package-proof.json")),
     productionApproved: false
   };
 

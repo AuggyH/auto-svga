@@ -11,6 +11,7 @@ npm run spike:svga-web:test
 npm run spike:svga-web:smoke
 npm run spike:svga-web:package:mac
 npm run spike:svga-web:package:win
+npm run internal:trial:proof:mac
 npm run internal:trial:package:mac
 ```
 
@@ -33,5 +34,8 @@ npm run internal:trial:package:mac
 - New shared frontend code should prefer `window.autoSvgaElectronHost`. The
   existing `window.autoSvgaPrototype` bridge remains as a compatibility alias
   for this isolated experiment.
+- macOS bundle metadata is extended from `packaging/macos/Info.plist`
+- `.svga` is declared as an alternate Viewer document type for internal testing
+- final packaged App acceptance remains owned by Integration Coordinator
 
 Remove this experiment by deleting `tools/electron-prototype/experiments/svga-web/`.

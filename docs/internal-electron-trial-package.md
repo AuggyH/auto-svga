@@ -7,6 +7,7 @@ an installer, and not approved for external distribution.
 
 ```bash
 cd tools/electron-prototype/experiments/svga-web
+npm run internal:trial:proof:mac
 npm run internal:trial:package:mac
 ```
 
@@ -20,6 +21,7 @@ Expected files:
 
 - `AutoSVGAInternalPrototype-darwin-arm64/AutoSVGAInternalPrototype.app`
 - `AutoSVGAInternalPrototype-darwin-arm64.zip`
+- `macos-package-proof.json`
 - `internal-trial-manifest.json`
 
 The manifest records:
@@ -29,8 +31,11 @@ The manifest records:
 - player package and version
 - final CSP
 - security flags
+- `.svga` document type metadata
+- privacy audit result
 - package and archive sizes
 - archive SHA-256
+- proof manifest path
 - known risks
 - rollback command
 - `productionApproved: false`
@@ -64,6 +69,8 @@ Not supported:
 The internal trial follows ADR-011:
 
 - local vendored assets only
+- macOS bundle metadata from
+  `tools/electron-prototype/experiments/svga-web/packaging/macos/Info.plist`
 - no remote scripts
 - no remote navigation or new windows
 - `contextIsolation: true`
@@ -113,6 +120,7 @@ rm -rf tools/electron-prototype/experiments/svga-web
 
 - macOS arm64 only.
 - Unsigned and not notarized.
+- Final packaged App acceptance is owned by Integration Coordinator.
 - Windows runtime not verified.
 - `wasm-unsafe-eval` remains an internal prototype exception only.
 - Playback parity is smoke-level, not full corpus parity.
