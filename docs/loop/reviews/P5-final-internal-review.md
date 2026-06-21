@@ -1,7 +1,7 @@
 # P5 Final Internal Review
 
 Milestone: P5 — Batch PNG Replacement And Mapping Review
-Reviewed implementation commit: `COMMIT_PENDING`
+Reviewed implementation commit: `78074eb55f2a796f99394c542ed723f06628ffcd`
 Outcome: HUMAN_REQUIRED
 
 ## Summary

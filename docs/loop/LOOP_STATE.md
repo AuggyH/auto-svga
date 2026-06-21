@@ -19,7 +19,7 @@ Date: 2026-06-21
 - P4 is accepted by product owner review at head `fc5e953f6f96a4eb49776af6c5166bd2c2c4f4c4`.
 - NQ1-R1 reached PASS at head `28d40a043193a9a8b5736e77df2796d6a4181909`; corrected visible upload is under `review/NQ1-R1-repair-latest`.
 - P5 external review 1 returned REPAIR_REQUIRED against `21ce7ba92434b684f7cb8c8806e00c450b0ab739` because product evidence used state markers and round-trip playback/canvas evidence was false.
-- P5 Repair 1 implementation commit: `COMMIT_PENDING`.
+- P5 Repair 1 implementation commit: `78074eb55f2a796f99394c542ed723f06628ffcd`.
 - P5 live Electron evidence now passes:
   - `p5-live-runtime-proof.json`: `passed=true`, `externalRequests=[]`.
   - `batch-round-trip-report.json`: schemaVersion 4, `passed=true`, `playbackPassed=true`, `canvasNonBlank=true`, `appliedMappingCount=4`, `replacementCount=4`.

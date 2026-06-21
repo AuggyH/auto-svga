@@ -4,7 +4,7 @@ Milestone: P5 — Batch PNG Replacement And Mapping Review
 External outcome: REPAIR_REQUIRED
 Reviewed head commit: `21ce7ba92434b684f7cb8c8806e00c450b0ab739`
 Repair branch: `agent/codex/p5-r1-live-batch-evidence`
-Repair implementation commit: `COMMIT_PENDING`
+Repair implementation commit: `78074eb55f2a796f99394c542ed723f06628ffcd`
 
 ## Functional Outcome
 
