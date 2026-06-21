@@ -75,6 +75,6 @@ Notes:
 - Keep `window.autoSvgaPrototype` only as the isolated experiment compatibility alias.
 
 ## 9. Commit
-- Commit: pending
+- Implementation commit: `d7933b2`
 - Branch: `agent/codex/p6-a3-electron-host`
 - Tag: none
