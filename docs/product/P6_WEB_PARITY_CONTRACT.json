@@ -1,0 +1,692 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "P6",
+  "baselineCommit": "d16fb380c0ff82b9aca3af58b0335708e0b0ef73",
+  "webEntry": "tools/svga-player-preview/index.html",
+  "baselineArtifactsRoot": ".artifacts/product/P6/web-baseline",
+  "fixture": {
+    "path": "examples/avatar_frame_basic/output/avatar_frame_basic.svga",
+    "sha256": "ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c",
+    "sizeBytes": 107034
+  },
+  "approvedDesktopDifferences": [
+    "native_window",
+    "macos_menu",
+    "finder_file_choose",
+    "file_drag_into_window",
+    "file_open_menu",
+    "local_save_as",
+    "macos_shortcuts",
+    "svga_file_association",
+    "electron_security_boundary",
+    "no_browser_address_bar",
+    "no_manual_server_start"
+  ],
+  "regions": [
+    {
+      "id": "shell",
+      "label": "Main product shell",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/styles.css"
+      ],
+      "selector": ".shell",
+      "visibleStates": [
+        "local-empty",
+        "export-review-loaded"
+      ],
+      "required": true
+    },
+    {
+      "id": "toolbar",
+      "label": "Toolbar",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/styles.css"
+      ],
+      "selector": ".toolbar",
+      "visibleStates": [
+        "all"
+      ],
+      "required": true
+    },
+    {
+      "id": "brand",
+      "label": "Product identity",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html"
+      ],
+      "selector": ".brand",
+      "visibleStates": [
+        "all"
+      ],
+      "required": true
+    },
+    {
+      "id": "mode-control",
+      "label": "Mode control",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selector": ".modeControl",
+      "visibleStates": [
+        "local-empty",
+        "mode-menu-open",
+        "export-review-loaded"
+      ],
+      "required": true
+    },
+    {
+      "id": "action-row",
+      "label": "Toolbar actions",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html"
+      ],
+      "selector": ".actionRow",
+      "visibleStates": [
+        "all"
+      ],
+      "required": true
+    },
+    {
+      "id": "workspace",
+      "label": "Preview workspace",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/styles.css"
+      ],
+      "selector": "#workspace",
+      "visibleStates": [
+        "local-empty",
+        "export-review-loaded",
+        "local-compare-empty"
+      ],
+      "required": true
+    },
+    {
+      "id": "svga-panel-a",
+      "label": "Primary SVGA card",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selector": "#svgaPanelA",
+      "visibleStates": [
+        "local-empty",
+        "export-review-loaded"
+      ],
+      "required": true
+    },
+    {
+      "id": "svga-panel-b",
+      "label": "Secondary SVGA comparison card",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selector": "#svgaPanelB",
+      "visibleStates": [
+        "local-compare-empty"
+      ],
+      "required": true
+    },
+    {
+      "id": "reference-panel",
+      "label": "Reference media card",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selector": "#referencePanel",
+      "visibleStates": [
+        "export-review-loaded"
+      ],
+      "required": true
+    },
+    {
+      "id": "info-panel",
+      "label": "Inspection side panel",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/inspection-report-view.mjs"
+      ],
+      "selector": "#infoPanel",
+      "visibleStates": [
+        "info-overview-open",
+        "info-assets-open"
+      ],
+      "required": true
+    },
+    {
+      "id": "logs-panel",
+      "label": "Runtime logs side panel",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selector": "#logsPanel",
+      "visibleStates": [
+        "logs-open"
+      ],
+      "required": true
+    },
+    {
+      "id": "settings-modal",
+      "label": "Settings modal",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selector": "#settingsModal",
+      "visibleStates": [
+        "settings-open"
+      ],
+      "required": true
+    },
+    {
+      "id": "sync-bar",
+      "label": "Synchronized review controls",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selector": "#syncBar",
+      "visibleStates": [
+        "export-review-loaded",
+        "space-sync-toggle"
+      ],
+      "required": true
+    },
+    {
+      "id": "error-box",
+      "label": "Error surface",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selector": "#errorBox",
+      "visibleStates": [
+        "invalid"
+      ],
+      "required": true
+    }
+  ],
+  "features": [
+    {
+      "id": "local-svga-select",
+      "label": "Select primary SVGA",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#svgaFileInput",
+        "#primaryFileButton",
+        "#primaryEmptyFileButton"
+      ],
+      "userOutcome": "Primary SVGA file can be selected and loaded.",
+      "required": true,
+      "testIds": [
+        "web-local-smoke"
+      ]
+    },
+    {
+      "id": "local-svga-drag-drop",
+      "label": "Drag primary SVGA",
+      "sourceFiles": [
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#svgaPanelA"
+      ],
+      "userOutcome": "Primary SVGA can be dropped onto the card.",
+      "required": true,
+      "testIds": [
+        "future-desktop-parity"
+      ]
+    },
+    {
+      "id": "comparison-toggle",
+      "label": "Enable comparison",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#compareToggle"
+      ],
+      "userOutcome": "Secondary SVGA card appears for comparison.",
+      "required": true,
+      "testIds": [
+        "interaction-trace"
+      ]
+    },
+    {
+      "id": "reference-media",
+      "label": "Reference media preview",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#referencePanel",
+        "#referenceVideo",
+        "#referenceImage"
+      ],
+      "userOutcome": "Reference GIF/video can be shown in export review.",
+      "required": true,
+      "testIds": [
+        "interaction-trace"
+      ]
+    },
+    {
+      "id": "mode-switch",
+      "label": "Local/export mode switch",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#modeDropdownTrigger",
+        "#modeDropdownMenu"
+      ],
+      "userOutcome": "User can switch between local preview and export review.",
+      "required": true,
+      "testIds": [
+        "interaction-trace"
+      ]
+    },
+    {
+      "id": "playback-controls",
+      "label": "Playback controls",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#localPlayPauseButton",
+        "#localReplayButton",
+        "#localProgress",
+        "#localLoopToggle"
+      ],
+      "userOutcome": "User can play, pause, replay, seek, and loop.",
+      "required": true,
+      "testIds": [
+        "future-desktop-parity"
+      ]
+    },
+    {
+      "id": "fit-menu",
+      "label": "Fit menu",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#localFitButton",
+        "[data-fit-menu='a']"
+      ],
+      "userOutcome": "User can choose contain, original size, or fit width.",
+      "required": true,
+      "testIds": [
+        "computed-styles-manifest"
+      ]
+    },
+    {
+      "id": "inspection-report",
+      "label": "Inspection report",
+      "sourceFiles": [
+        "tools/svga-player-preview/inspection-report-view.mjs",
+        "tools/svga-player-preview/server.mjs"
+      ],
+      "selectors": [
+        "#infoPanel",
+        "#reportGrid"
+      ],
+      "userOutcome": "User can inspect SVGA metadata and production spec report.",
+      "required": true,
+      "testIds": [
+        "web-inspection-tests"
+      ]
+    },
+    {
+      "id": "motion-asset-audit",
+      "label": "Motion Asset Audit panel",
+      "sourceFiles": [
+        "tools/svga-player-preview/inspection-report-view.mjs"
+      ],
+      "selectors": [
+        "#reportGrid"
+      ],
+      "userOutcome": "User can read audit summary and review-only opportunities.",
+      "required": true,
+      "testIds": [
+        "web-inspection-tests"
+      ]
+    },
+    {
+      "id": "runtime-logs",
+      "label": "Runtime logs",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#logsPanel",
+        "#fullLogsContent"
+      ],
+      "userOutcome": "User can view, copy, and clear runtime logs.",
+      "required": true,
+      "testIds": [
+        "interaction-trace"
+      ]
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#settingsModal",
+        "#reduceMotionToggle",
+        "#reduceBlurToggle"
+      ],
+      "userOutcome": "User can configure reduced motion and reduced blur.",
+      "required": true,
+      "testIds": [
+        "interaction-trace"
+      ]
+    },
+    {
+      "id": "theme-toggle",
+      "label": "Theme toggle",
+      "sourceFiles": [
+        "tools/svga-player-preview/index.html",
+        "tools/svga-player-preview/main.js"
+      ],
+      "selectors": [
+        "#themeToggleButton"
+      ],
+      "userOutcome": "User can toggle theme.",
+      "required": true,
+      "testIds": [
+        "future-desktop-parity"
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "id": "mode-menu-open",
+      "trigger": "click",
+      "selector": "#modeDropdownTrigger",
+      "initialState": "local-empty",
+      "expectedState": "mode-menu-open",
+      "keyboardEquivalent": "Tab + Enter",
+      "required": true
+    },
+    {
+      "id": "select-export-review",
+      "trigger": "click",
+      "selector": "[data-value='exportReview']",
+      "initialState": "mode-menu-open",
+      "expectedState": "export-review-loaded",
+      "keyboardEquivalent": "ArrowDown + Enter",
+      "required": true
+    },
+    {
+      "id": "open-info-overview",
+      "trigger": "click",
+      "selector": "#infoPanelButton",
+      "initialState": "export-review-loaded",
+      "expectedState": "info-overview-open",
+      "keyboardEquivalent": "Tab + Enter",
+      "required": true
+    },
+    {
+      "id": "open-info-assets",
+      "trigger": "click",
+      "selector": ".tabButton[data-tab='assets']",
+      "initialState": "info-overview-open",
+      "expectedState": "info-assets-open",
+      "keyboardEquivalent": "Tab + Enter",
+      "required": true
+    },
+    {
+      "id": "open-logs",
+      "trigger": "click",
+      "selector": "#logsButton",
+      "initialState": "info-assets-open",
+      "expectedState": "logs-open",
+      "keyboardEquivalent": "Tab + Enter",
+      "required": true
+    },
+    {
+      "id": "open-settings",
+      "trigger": "click",
+      "selector": "#settingsButton",
+      "initialState": "logs-open",
+      "expectedState": "settings-open",
+      "keyboardEquivalent": "Tab + Enter",
+      "required": true
+    },
+    {
+      "id": "toggle-accessibility-settings",
+      "trigger": "click",
+      "selector": "#reduceMotionToggle, #reduceBlurToggle",
+      "initialState": "settings-open",
+      "expectedState": "accessibility-toggles-on",
+      "keyboardEquivalent": "Space",
+      "required": true
+    },
+    {
+      "id": "escape-settings",
+      "trigger": "keyboard",
+      "selector": "body",
+      "initialState": "settings-open",
+      "expectedState": "settings-closed-by-escape",
+      "keyboardEquivalent": "Escape",
+      "required": true
+    },
+    {
+      "id": "space-sync-toggle",
+      "trigger": "keyboard",
+      "selector": "body",
+      "initialState": "export-review-loaded",
+      "expectedState": "space-sync-toggle",
+      "keyboardEquivalent": "Space",
+      "required": true
+    },
+    {
+      "id": "enable-local-compare",
+      "trigger": "click",
+      "selector": "#compareToggle",
+      "initialState": "local-empty",
+      "expectedState": "local-compare-empty",
+      "keyboardEquivalent": "Space",
+      "required": true
+    }
+  ],
+  "states": [
+    {
+      "id": "local-empty",
+      "label": "Local preview empty",
+      "required": true
+    },
+    {
+      "id": "mode-menu-open",
+      "label": "Mode dropdown open",
+      "required": true
+    },
+    {
+      "id": "export-review-loaded",
+      "label": "Export review loaded with approved fixture",
+      "required": true
+    },
+    {
+      "id": "info-overview-open",
+      "label": "Inspection overview side panel open",
+      "required": true
+    },
+    {
+      "id": "info-assets-open",
+      "label": "Assets side panel open",
+      "required": true
+    },
+    {
+      "id": "logs-open",
+      "label": "Runtime logs panel open",
+      "required": true
+    },
+    {
+      "id": "settings-open",
+      "label": "Settings modal open",
+      "required": true
+    },
+    {
+      "id": "accessibility-toggles-on",
+      "label": "Reduced motion and blur toggles enabled",
+      "required": true
+    },
+    {
+      "id": "settings-closed-by-escape",
+      "label": "Settings closed by Escape",
+      "required": true
+    },
+    {
+      "id": "space-sync-toggle",
+      "label": "Synchronized playback toggled by Space",
+      "required": true
+    },
+    {
+      "id": "local-compare-empty",
+      "label": "Local comparison empty state",
+      "required": true
+    },
+    {
+      "id": "responsive-export-review-900x720",
+      "label": "Responsive export review at 900 x 720",
+      "required": true
+    }
+  ],
+  "motions": [
+    {
+      "id": "card-enter",
+      "selector": ".previewCard",
+      "trigger": "card enters",
+      "animationName": "cardEnter",
+      "transitionProperties": [],
+      "durationMs": null,
+      "delayMs": null,
+      "easing": null,
+      "reducedMotionBehavior": "disabled or reduced by prefers-reduced-motion CSS",
+      "required": true
+    },
+    {
+      "id": "empty-icon-float",
+      "selector": ".uploadMockIcon",
+      "trigger": "empty state visible",
+      "animationName": "emptyIconFloat",
+      "transitionProperties": [],
+      "durationMs": null,
+      "delayMs": null,
+      "easing": null,
+      "reducedMotionBehavior": "disabled or reduced by prefers-reduced-motion CSS",
+      "required": true
+    },
+    {
+      "id": "fit-menu-in",
+      "selector": ".fitMenu",
+      "trigger": "fit menu opens",
+      "animationName": "fitMenuIn",
+      "transitionProperties": [],
+      "durationMs": null,
+      "delayMs": null,
+      "easing": null,
+      "reducedMotionBehavior": "disabled or reduced by prefers-reduced-motion CSS",
+      "required": true
+    },
+    {
+      "id": "side-panel-enter",
+      "selector": ".sidePanel",
+      "trigger": "side panel opens",
+      "animationName": "sidePanelEnter",
+      "transitionProperties": [],
+      "durationMs": null,
+      "delayMs": null,
+      "easing": null,
+      "reducedMotionBehavior": "disabled or reduced by prefers-reduced-motion CSS",
+      "required": true
+    },
+    {
+      "id": "tab-in",
+      "selector": ".tabPanel",
+      "trigger": "tab switches",
+      "animationName": "tabIn",
+      "transitionProperties": [],
+      "durationMs": null,
+      "delayMs": null,
+      "easing": null,
+      "reducedMotionBehavior": "disabled or reduced by prefers-reduced-motion CSS",
+      "required": true
+    },
+    {
+      "id": "overlay-in",
+      "selector": ".overlay",
+      "trigger": "overlay opens",
+      "animationName": "overlayIn",
+      "transitionProperties": [],
+      "durationMs": null,
+      "delayMs": null,
+      "easing": null,
+      "reducedMotionBehavior": "disabled or reduced by prefers-reduced-motion CSS",
+      "required": true
+    },
+    {
+      "id": "modal-in",
+      "selector": ".modal",
+      "trigger": "modal opens",
+      "animationName": "modalIn",
+      "transitionProperties": [],
+      "durationMs": null,
+      "delayMs": null,
+      "easing": null,
+      "reducedMotionBehavior": "disabled or reduced by prefers-reduced-motion CSS",
+      "required": true
+    },
+    {
+      "id": "drawer-in",
+      "selector": ".drawer",
+      "trigger": "drawer opens",
+      "animationName": "drawerIn",
+      "transitionProperties": [],
+      "durationMs": null,
+      "delayMs": null,
+      "easing": null,
+      "reducedMotionBehavior": "disabled or reduced by prefers-reduced-motion CSS",
+      "required": true
+    },
+    {
+      "id": "dropdown-in",
+      "selector": ".dropdownMenu",
+      "trigger": "dropdown opens",
+      "animationName": "dropdownIn",
+      "transitionProperties": [],
+      "durationMs": null,
+      "delayMs": null,
+      "easing": null,
+      "reducedMotionBehavior": "disabled or reduced by prefers-reduced-motion CSS",
+      "required": true
+    }
+  ],
+  "requiredCounts": {
+    "regions": 14,
+    "features": 12,
+    "interactions": 10,
+    "states": 12,
+    "motions": 9
+  },
+  "contractSha256": "bddc0ee28f991237d1786e5cd0225a984d3bd4ce197d13aec5d1ee217da220ec"
+}
