@@ -6,7 +6,7 @@ Date: 2026-06-21
 
 - milestoneId: P5
 - Milestone: P5 Batch PNG Replacement And Mapping Review
-- State: HUMAN_REQUIRED
+- State: terminal_human_required
 - Next Action: external_review
 - repairRound: 0
 - consecutiveNoProgressRounds: 0
