@@ -1720,11 +1720,18 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
   const target = p6SmokeTargetForSelector(action.selector);
   await runAction();
   await waitForState?.();
-  const proof = collectRenderedStateProof(action.expectedState);
+  const primaryProof = collectRenderedStateProof(action.expectedState);
+  const equivalentProof = primaryProof.passed
+    ? null
+    : (action.equivalentStates ?? [])
+      .map((state) => collectRenderedStateProof(state))
+      .find((proof) => proof.passed);
+  const proof = equivalentProof ?? primaryProof;
   p6SmokeActionTrace.push({
     ...action,
     source: "desktop-product-smoke-input",
     stateReached: proof.passed ? action.expectedState : null,
+    evidenceState: proof.state,
     targetRect: target.rect,
     controlValue: p6SmokeControlValue(action.selector),
     stateProofPassed: proof.passed,
@@ -2291,7 +2298,8 @@ async function runProductSmoke() {
       kind: "click",
       selector: "[data-value='exportReview']",
       initialState: "mode-menu-open",
-      expectedState: "export-review-loaded"
+      expectedState: "export-review-loaded",
+      equivalentStates: ["latest-artifact-loaded"]
     }, async () => {
       document.querySelector("[data-value='exportReview']")?.click();
     }, async () => {

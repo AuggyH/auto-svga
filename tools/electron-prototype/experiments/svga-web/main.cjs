@@ -1732,8 +1732,8 @@ async function createExperimentWindow() {
 
   const window = new BrowserWindow({
     title: productIdentity,
-    width: 1280,
-    height: 800,
+    width: 1440,
+    height: 900,
     show: !(smokeMode || auditMode || normalProofMode),
     webPreferences: createSecureWebPreferences({
       preloadPath: path.join(appRoot, "preload.cjs"),

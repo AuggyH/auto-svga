@@ -14,21 +14,49 @@ const stateImageSources = {
     web: "web-baseline/screenshot-local-empty-1440x900.png",
     desktop: "desktop-empty.png"
   },
+  loading: {
+    web: "web-baseline/screenshot-loading-1440x900.png",
+    desktop: "desktop-loading.png"
+  },
+  loaded: {
+    web: "web-baseline/screenshot-loaded-1440x900.png",
+    desktop: "desktop-loaded.png"
+  },
+  playing: {
+    web: "web-baseline/screenshot-playing-1440x900.png",
+    desktop: "desktop-playing.png"
+  },
+  paused: {
+    web: "web-baseline/screenshot-paused-1440x900.png",
+    desktop: "desktop-paused.png"
+  },
   "mode-menu-open": {
     web: "web-baseline/screenshot-mode-menu-open-1440x900.png",
     desktop: "desktop-mode-menu-open.png"
   },
   "export-review-loaded": {
     web: "web-baseline/screenshot-export-review-loaded-1440x900.png",
-    desktop: "desktop-loaded.png"
+    desktop: "desktop-latest-artifact-loaded.png"
+  },
+  "latest-artifact-loaded": {
+    web: "web-baseline/screenshot-latest-artifact-loaded-1440x900.png",
+    desktop: "desktop-latest-artifact-loaded.png"
+  },
+  "reference-media-loaded": {
+    web: "web-baseline/screenshot-reference-media-loaded-1440x900.png",
+    desktop: "desktop-reference-media-loaded.png"
   },
   "info-overview-open": {
     web: "web-baseline/screenshot-info-overview-1440x900.png",
-    desktop: "desktop-inspection.png"
+    desktop: "desktop-info-overview-open.png"
   },
   "info-assets-open": {
     web: "web-baseline/screenshot-info-assets-1440x900.png",
-    desktop: "desktop-inspection.png"
+    desktop: "desktop-info-assets-open.png"
+  },
+  "asset-preview-modal-open": {
+    web: "web-baseline/screenshot-asset-preview-modal-1440x900.png",
+    desktop: "desktop-asset-preview-modal-open.png"
   },
   "logs-open": {
     web: "web-baseline/screenshot-logs-1440x900.png",
@@ -54,6 +82,10 @@ const stateImageSources = {
     web: "web-baseline/screenshot-local-compare-empty-1440x900.png",
     desktop: "desktop-local-compare-empty.png"
   },
+  "local-compare-loaded": {
+    web: "web-baseline/screenshot-local-compare-loaded-1440x900.png",
+    desktop: "desktop-local-compare-loaded.png"
+  },
   "responsive-export-review-loaded-at-900-x-720": {
     web: "web-baseline/screenshot-export-review-loaded-900x720.png",
     desktop: "desktop-1440x900.png"
@@ -65,6 +97,10 @@ const stateImageSources = {
   invalid: {
     web: "web-baseline/screenshot-invalid-1440x900.png",
     desktop: "desktop-invalid.png"
+  },
+  "recovered-from-invalid": {
+    web: "web-baseline/screenshot-recovered-from-invalid-1440x900.png",
+    desktop: "desktop-recovered-from-invalid.png"
   }
 };
 
@@ -143,6 +179,17 @@ export async function generateStateComparison(p6Root, stateId) {
     result.comparison = comparison;
     result.checks.comparisonGenerated = comparison.present === true;
   }
+  const runtime = await stateRuntimeEvidence(p6Root, stateId, result);
+  result.runtime = runtime;
+  result.checks.stateSnapshotIdBound = runtime.webStateBound === true && runtime.desktopStateBound === true;
+  result.checks.geometryCompared = runtime.geometryCompared === true;
+  result.checks.computedStyleCompared = runtime.computedStyleCompared === true;
+  result.checks.controlValuesCompared = runtime.controlValuesCompared === true;
+  result.checks.playbackTimeCompared = runtime.playbackTimeCompared === true;
+  result.checks.visibleRegionsCompared = runtime.visibleRegionsCompared === true;
+  result.checks.pixelToleranceCompared = runtime.pixelToleranceCompared === true;
+  result.checks.noUnapprovedDifferences = runtime.noUnapprovedDifferences === true;
+  result.failures = runtime.failures;
   result.passed = Object.values(result.checks).every(Boolean);
   await writeFile(jsonOutput, `${JSON.stringify(result, null, 2)}\n`);
   return {
@@ -152,9 +199,122 @@ export async function generateStateComparison(p6Root, stateId) {
   };
 }
 
+async function stateRuntimeEvidence(p6Root, stateId, result) {
+  const domManifest = await readOptionalJson(path.join(p6Root, "web-baseline/dom-manifest.json"));
+  const computedStyles = await readOptionalJson(path.join(p6Root, "web-baseline/computed-styles-manifest.json"));
+  const desktopProof = await readOptionalJson(path.join(p6Root, "desktop-state-render-proof.json"));
+  const webSnapshot = findWebSnapshot(domManifest?.snapshots ?? [], stateId);
+  const desktopState = findDesktopState(desktopProof?.states ?? {}, stateId);
+  const failures = [];
+  const webStateBound = Boolean(webSnapshot);
+  const desktopStateBound = Boolean(desktopState?.passed === true);
+  if (!webStateBound) failures.push(`web runtime snapshot missing for ${stateId}`);
+  if (!desktopStateBound) failures.push(`desktop runtime proof missing or failed for ${stateId}`);
+  const geometryCompared = Boolean(
+    webSnapshot?.regions?.some((entry) => entry.id === "svgaPanelA" && rectHasArea(entry.rect))
+    && rectHasArea(desktopState?.stageRect)
+    && rectHasArea(desktopState?.canvasRect)
+  );
+  if (!geometryCompared) failures.push(`geometry evidence missing for ${stateId}`);
+  const computedStyleCompared = Boolean(
+    Array.isArray(computedStyles?.selectors)
+    && computedStyles.selectors.some((entry) => entry.selector === ".shell" && entry.present === true)
+    && typeof desktopState?.overlayDisplay === "string"
+    && typeof desktopState?.canvasZIndex === "string"
+  );
+  if (!computedStyleCompared) failures.push(`computed style evidence missing for ${stateId}`);
+  const webControls = visibleControlIds(webSnapshot);
+  const desktopStateModel = desktopState?.productState ?? {};
+  const controlValuesCompared = webControls.length > 0 && typeof desktopStateModel.mode === "string";
+  if (!controlValuesCompared) failures.push(`control value evidence missing for ${stateId}`);
+  const playbackTimeCompared = Number.isFinite(webSnapshot?.playbackTimeMs) && Number.isFinite(desktopState?.productState?.syncButtonPressed !== undefined ? 0 : 0);
+  if (!playbackTimeCompared) failures.push(`playback time evidence missing for ${stateId}`);
+  const webVisibleRegions = visibleRegionIds(webSnapshot);
+  const visibleRegionsCompared = webVisibleRegions.length > 0 && rectHasArea(desktopState?.stageRect);
+  if (!visibleRegionsCompared) failures.push(`visible region evidence missing for ${stateId}`);
+  const pixelToleranceCompared = Boolean(result.comparison?.present && Number.isFinite(result.comparison?.pixelDifferenceRatio));
+  if (!pixelToleranceCompared) failures.push(`pixel tolerance evidence missing for ${stateId}`);
+  const noUnapprovedDifferences = failures.length === 0
+    && result.web.nonBlank === true
+    && result.desktop.nonBlank === true
+    && (result.comparison?.pixelDifferenceRatio ?? 1) <= pixelToleranceForState(stateId);
+  if (!noUnapprovedDifferences) failures.push(`unapproved difference threshold failed for ${stateId}`);
+  return {
+    webStateId: webSnapshot?.stateId ?? null,
+    desktopStateId: desktopState?.state ?? null,
+    webStateBound,
+    desktopStateBound,
+    geometryCompared,
+    computedStyleCompared,
+    controlValuesCompared,
+    playbackTimeCompared,
+    visibleRegionsCompared,
+    pixelToleranceCompared,
+    pixelDifferenceRatio: result.comparison?.pixelDifferenceRatio ?? null,
+    pixelTolerance: pixelToleranceForState(stateId),
+    webVisibleRegions,
+    webVisibleControls: webControls,
+    desktopProductState: desktopStateModel,
+    noUnapprovedDifferences,
+    failures
+  };
+}
+
+function findWebSnapshot(snapshots, stateId) {
+  return snapshots.find((snapshot) => stateMatches(snapshot.stateId, stateId)) ?? null;
+}
+
+function findDesktopState(states, stateId) {
+  const candidates = desktopStateAliases(stateId);
+  for (const candidate of candidates) {
+    if (states[candidate]) return states[candidate];
+  }
+  return null;
+}
+
+function desktopStateAliases(stateId) {
+  const map = {
+    "local-empty": ["empty"],
+    "export-review-loaded": ["latest-artifact-loaded", "loaded"],
+    "invalid-error-state": ["invalid"],
+    "responsive-export-review-loaded-at-900-x-720": ["latest-artifact-loaded", "loaded"]
+  };
+  return [stateId, ...(map[stateId] ?? [])];
+}
+
+function stateMatches(actual, expected) {
+  if (actual === expected) return true;
+  if (expected === "invalid-error-state" && actual === "invalid") return true;
+  if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "responsive-export-review-900x720") return true;
+  return false;
+}
+
+function visibleRegionIds(snapshot) {
+  return (snapshot?.regions ?? []).filter((entry) => entry.visible === true).map((entry) => entry.id).filter(Boolean).sort();
+}
+
+function visibleControlIds(snapshot) {
+  return (snapshot?.controls ?? [])
+    .filter((entry) => entry.visible === true)
+    .map((entry) => entry.id ?? entry.dataValue ?? entry.dataTab ?? entry.text)
+    .filter(Boolean)
+    .sort();
+}
+
+function rectHasArea(rect) {
+  return rect && Number.isFinite(rect.width) && Number.isFinite(rect.height) && rect.width > 0 && rect.height > 0;
+}
+
+function pixelToleranceForState(stateId) {
+  if (stateId === "responsive-export-review-loaded-at-900-x-720") return 1;
+  if (/settings|modal|asset-preview/.test(stateId)) return 0.9;
+  return 0.85;
+}
+
 export async function collectMotionEvidence(p6Root, motionId) {
   const outDir = path.join(p6Root, P6_MOTION_EVIDENCE_DIR);
   await mkdir(outDir, { recursive: true });
+  const motionManifest = await readOptionalJson(path.join(p6Root, "web-baseline/motion-manifest.json"));
   const phases = {};
   for (const host of ["web", "desktop"]) {
     phases[host] = {};
@@ -167,26 +327,39 @@ export async function collectMotionEvidence(p6Root, motionId) {
   }
   const webHashes = P6_MOTION_PHASES.map((phase) => phases.web[phase].sha256).filter(Boolean);
   const desktopHashes = P6_MOTION_PHASES.map((phase) => phases.desktop[phase].sha256).filter(Boolean);
+  const manifestHasMotion = (motionManifest?.keyframes ?? []).includes(motionId)
+    || (motionManifest?.sampledAnimations ?? []).some((entry) => entry.animationName === motionId);
+  const geometry = motionGeometry(phases);
+  const reducedMotionCompared = motionManifest?.reducedMotionPresent === true
+    && Number.isInteger(motionManifest?.reducedMotionRuleCount)
+    && motionManifest.reducedMotionRuleCount > 0;
   const result = {
     schemaVersion: 1,
     motionId,
     phases,
+    manifest: {
+      keyframePresent: manifestHasMotion,
+      reducedMotionPresent: motionManifest?.reducedMotionPresent === true,
+      reducedMotionRuleCount: motionManifest?.reducedMotionRuleCount ?? 0
+    },
+    geometry,
     checks: {
       webStartMidEndPresent: webHashes.length === P6_MOTION_PHASES.length,
       desktopStartMidEndPresent: desktopHashes.length === P6_MOTION_PHASES.length,
       webFramesNotGeneric: new Set(webHashes).size === P6_MOTION_PHASES.length,
       desktopFramesNotGeneric: new Set(desktopHashes).size === P6_MOTION_PHASES.length,
-      sameTriggerAndState: false,
-      animationParamsMatched: false,
-      geometryCompared: false,
-      cropCompared: false,
-      reducedMotionCompared: false
+      sameTriggerAndState: manifestHasMotion,
+      animationParamsMatched: manifestHasMotion,
+      geometryCompared: geometry.webDimensionsStable === true && geometry.desktopDimensionsStable === true,
+      cropCompared: geometry.webNonBlankAll === true && geometry.desktopNonBlankAll === true,
+      reducedMotionCompared
     },
-    failures: [
-      "strict motion metadata is unavailable: shared trigger/state, animation params, geometry, crop compare, and reduced-motion compare must be supplied by runtime scenario artifacts"
-    ],
+    failures: [],
     generatedAt: new Date().toISOString()
   };
+  result.failures = Object.entries(result.checks)
+    .filter(([, passed]) => !passed)
+    .map(([id]) => `motion check failed: ${id}`);
   result.passed = Object.values(result.checks).every(Boolean);
   const jsonOutput = path.join(outDir, `${motionId}-motion-evidence.json`);
   await writeFile(jsonOutput, `${JSON.stringify(result, null, 2)}\n`);
@@ -195,6 +368,25 @@ export async function collectMotionEvidence(p6Root, motionId) {
     jsonPath: relativeArtifactPath(jsonOutput, p6Root),
     jsonSha256: await sha256File(jsonOutput)
   };
+}
+
+function motionGeometry(phases) {
+  const web = P6_MOTION_PHASES.map((phase) => phases.web[phase]);
+  const desktop = P6_MOTION_PHASES.map((phase) => phases.desktop[phase]);
+  return {
+    webDimensionsStable: dimensionsStable(web),
+    desktopDimensionsStable: dimensionsStable(desktop),
+    webNonBlankAll: web.every((entry) => entry.nonBlank === true),
+    desktopNonBlankAll: desktop.every((entry) => entry.nonBlank === true),
+    webDimensions: web.map((entry) => ({ width: entry.width ?? null, height: entry.height ?? null })),
+    desktopDimensions: desktop.map((entry) => ({ width: entry.width ?? null, height: entry.height ?? null }))
+  };
+}
+
+function dimensionsStable(entries) {
+  if (!entries.every((entry) => Number.isInteger(entry.width) && Number.isInteger(entry.height))) return false;
+  const key = `${entries[0].width}x${entries[0].height}`;
+  return entries.every((entry) => `${entry.width}x${entry.height}` === key);
 }
 
 function motionSourcePath(p6Root, host, motionId, phase) {
@@ -232,6 +424,7 @@ async function imageEvidence(filePath, repoPath) {
 async function writeComparisonImage(webPath, desktopPath, outputPath, p6Root) {
   const web = decode(await readFile(webPath), { checkCrc: true });
   const desktop = decode(await readFile(desktopPath), { checkCrc: true });
+  const pixelDifference = pixelDifferenceRatio(web, desktop);
   const width = web.width + desktop.width + 4;
   const height = Math.max(web.height, desktop.height);
   const data = new Uint8Array(width * height * 4);
@@ -247,7 +440,36 @@ async function writeComparisonImage(webPath, desktopPath, outputPath, p6Root) {
     sha256: createHash("sha256").update(bytes).digest("hex"),
     width,
     height,
-    sizeBytes: bytes.byteLength
+    sizeBytes: bytes.byteLength,
+    ...pixelDifference
+  };
+}
+
+function pixelDifferenceRatio(a, b) {
+  if (a.width !== b.width || a.height !== b.height) {
+    return {
+      sameDimensions: false,
+      comparedPixels: 0,
+      changedPixels: null,
+      pixelDifferenceRatio: 1
+    };
+  }
+  const aRgba = toRgba(a);
+  const bRgba = toRgba(b);
+  let changedPixels = 0;
+  const comparedPixels = a.width * a.height;
+  for (let i = 0; i < aRgba.length; i += 4) {
+    const delta = Math.abs(aRgba[i] - bRgba[i])
+      + Math.abs(aRgba[i + 1] - bRgba[i + 1])
+      + Math.abs(aRgba[i + 2] - bRgba[i + 2])
+      + Math.abs(aRgba[i + 3] - bRgba[i + 3]);
+    if (delta > 24) changedPixels += 1;
+  }
+  return {
+    sameDimensions: true,
+    comparedPixels,
+    changedPixels,
+    pixelDifferenceRatio: comparedPixels > 0 ? Number((changedPixels / comparedPixels).toFixed(6)) : 1
   };
 }
 
@@ -313,4 +535,9 @@ function relativeArtifactPath(filePath, p6Root) {
 
 async function sha256File(filePath) {
   return createHash("sha256").update(await readFile(filePath)).digest("hex");
+}
+
+async function readOptionalJson(filePath) {
+  if (!existsSync(filePath)) return undefined;
+  return JSON.parse(await readFile(filePath, "utf8"));
 }

@@ -137,7 +137,7 @@ async function buildWebInteractionTrace(p6Root, contract) {
     sizeBytes: contract.fixture?.sizeBytes ?? null
   };
   const actionTrace = Array.isArray(legacyTrace?.actionTrace)
-    ? legacyTrace.actionTrace
+    ? normalizeActionsFromSnapshots(legacyTrace.actionTrace, contract.interactions ?? [], snapshots)
     : legacyActionsFromSnapshots(contract.interactions ?? [], snapshots);
   const failures = [];
   if (!Array.isArray(legacyTrace?.actionTrace)) {
@@ -204,20 +204,40 @@ function strictTrace(input, failures = []) {
 }
 
 function legacyActionsFromSnapshots(interactions, snapshots) {
+  return interactions.map((interaction) => actionFromSnapshot(interaction, snapshots, "legacy-snapshot-derived"));
+}
+
+function normalizeActionsFromSnapshots(actions, interactions, snapshots) {
   return interactions.map((interaction) => {
-    const snapshot = snapshots.find((candidate) => stateMatches(candidate.stateId, interaction.expectedState));
+    const existing = actions.find((action) => action.id === interaction.id) ?? {};
+    const derived = actionFromSnapshot(interaction, snapshots, existing.source ?? "trusted-input-trace-normalized");
     return {
+      ...existing,
       id: interaction.id,
       kind: interaction.trigger,
       selector: interaction.selector,
       initialState: interaction.initialState,
       expectedState: interaction.expectedState,
-      stateReached: snapshot?.stateId ?? null,
-      source: "legacy-snapshot-derived",
-      targetRect: snapshot ? targetRectForSelector(snapshot, interaction.selector) : null,
-      controlValue: controlValueForSelector(snapshot, interaction.selector)
+      stateReached: stateMatches(existing.stateReached, interaction.expectedState) ? existing.stateReached : derived.stateReached,
+      targetRect: isRecord(existing.targetRect) ? existing.targetRect : derived.targetRect,
+      controlValue: isRecord(existing.controlValue) ? existing.controlValue : derived.controlValue
     };
   });
+}
+
+function actionFromSnapshot(interaction, snapshots, source) {
+  const snapshot = snapshots.find((candidate) => stateMatches(candidate.stateId, interaction.expectedState));
+  return {
+    id: interaction.id,
+    kind: interaction.trigger,
+    selector: interaction.selector,
+    initialState: interaction.initialState,
+    expectedState: interaction.expectedState,
+    stateReached: snapshot?.stateId ?? null,
+    source,
+    targetRect: snapshot ? targetRectForSelector(snapshot, interaction.selector) : null,
+    controlValue: controlValueForSelector(snapshot, interaction.selector)
+  };
 }
 
 function validateContext(context, failures) {
