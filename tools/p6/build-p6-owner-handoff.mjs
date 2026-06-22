@@ -25,7 +25,7 @@ const sealedFiles = [
   "post-seal-verification.json"
 ];
 
-const textExtensions = new Set([".json", ".md", ".txt", ".html", ".js", ".mjs", ".cjs", ".css", ".patch"]);
+const textExtensions = new Set([".json", ".md", ".txt", ".html", ".js", ".mjs", ".cjs", ".css", ".patch", ".plist", ".xml"]);
 
 function git(args) {
   return execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" }).trim();
@@ -129,7 +129,157 @@ function zipEntries(zipPath) {
   return result.stdout.split("\n").filter(Boolean).sort();
 }
 
-async function buildPrivacyAudit({ stagingRoot, appZipPath }) {
+function zipEntryBytes(zipPath, entry) {
+  const result = spawnSync("unzip", ["-p", zipPath, entry], {
+    encoding: "buffer",
+    maxBuffer: 100 * 1024 * 1024
+  });
+  if (result.status !== 0) throw new Error(`unable to extract ZIP entry: ${entry}`);
+  return result.stdout;
+}
+
+function looksText(bytes) {
+  if (bytes.includes(0)) return false;
+  const sample = bytes.subarray(0, Math.min(bytes.length, 4096));
+  if (sample.length === 0) return true;
+  let printable = 0;
+  for (const byte of sample) {
+    if (byte === 9 || byte === 10 || byte === 13 || (byte >= 32 && byte <= 126) || byte >= 128) printable += 1;
+  }
+  return printable / sample.length > 0.9;
+}
+
+function extractAsciiStrings(bytes, minLength = 8) {
+  const strings = [];
+  let current = "";
+  for (const byte of bytes) {
+    if (byte >= 32 && byte <= 126) {
+      current += String.fromCharCode(byte);
+    } else {
+      if (current.length >= minLength) strings.push(current);
+      current = "";
+    }
+  }
+  if (current.length >= minLength) strings.push(current);
+  return strings;
+}
+
+function extractUtf16LeStrings(bytes, minLength = 8) {
+  const strings = [];
+  let current = "";
+  for (let index = 0; index + 1 < bytes.length; index += 2) {
+    const code = bytes[index] + bytes[index + 1] * 256;
+    if (code >= 32 && code <= 126) {
+      current += String.fromCharCode(code);
+    } else {
+      if (current.length >= minLength) strings.push(current);
+      current = "";
+    }
+  }
+  if (current.length >= minLength) strings.push(current);
+  return strings;
+}
+
+function pngMetadataStrings(bytes) {
+  const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (bytes.length < pngSignature.length || !bytes.subarray(0, pngSignature.length).equals(pngSignature)) return [];
+  const metadata = [];
+  let offset = pngSignature.length;
+  while (offset + 12 <= bytes.length) {
+    const length = bytes.readUInt32BE(offset);
+    const type = bytes.subarray(offset + 4, offset + 8).toString("ascii");
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    if (dataEnd + 4 > bytes.length) break;
+    if (["tEXt", "iTXt", "zTXt"].includes(type)) {
+      metadata.push(bytes.subarray(dataStart, dataEnd).toString("latin1"));
+    }
+    offset = dataEnd + 4;
+  }
+  return metadata;
+}
+
+function scanEntryBytes({ bytes, entry, ext }) {
+  const findings = [];
+  if (textExtensions.has(ext) || looksText(bytes)) {
+    findings.push(...findPrivacyMatches(bytes.toString("utf8"), `zip-text:${entry}`));
+    return { kind: "text", findings };
+  }
+  const extractable = [
+    ...extractAsciiStrings(bytes),
+    ...extractUtf16LeStrings(bytes),
+    ...pngMetadataStrings(bytes)
+  ].join("\n");
+  if (extractable) findings.push(...findPrivacyMatches(extractable, `zip-binary-strings:${entry}`));
+  return { kind: "binary", findings };
+}
+
+export function buildZipPrivacyAudit({ reviewZipPath, appZipPath, selfReferentialEntryNames = ["bundle-privacy-audit.json"] }) {
+  const findings = [];
+  const selfReferentialExclusions = [];
+  const zipAudits = [];
+  let scannedEntryCount = 0;
+  let scannedTextEntryCount = 0;
+  let scannedBinaryEntryCount = 0;
+  const selfReferentialSet = new Set(selfReferentialEntryNames);
+
+  for (const [zipRole, zipPath] of [["review", reviewZipPath], ["app", appZipPath]]) {
+    const entries = zipEntries(zipPath);
+    const zipAudit = {
+      zipRole,
+      fileName: path.basename(zipPath),
+      actualZipEntryCount: entries.length,
+      scannedEntryCount: 0,
+      scannedTextEntryCount: 0,
+      scannedBinaryEntryCount: 0
+    };
+    for (const entry of entries) {
+      scannedEntryCount += 1;
+      zipAudit.scannedEntryCount += 1;
+      findings.push(...findPrivacyMatches(entry, `zip-entry:${zipRole}:${entry}`));
+      if (entry.includes("__MACOSX") || path.basename(entry) === ".DS_Store") {
+        findings.push({ ruleId: "FORBIDDEN_ZIP_METADATA", entry: `${zipRole}:${entry}` });
+      }
+      if (entry.endsWith("/")) continue;
+      if (selfReferentialSet.has(path.basename(entry))) {
+        selfReferentialExclusions.push({
+          zipRole,
+          entry,
+          reason: "self-referential audit content is regenerated after ZIP assembly"
+        });
+        continue;
+      }
+      const bytes = zipEntryBytes(zipPath, entry);
+      const scan = scanEntryBytes({ bytes, entry: `${zipRole}:${entry}`, ext: path.extname(entry).toLowerCase() });
+      findings.push(...scan.findings);
+      if (scan.kind === "text") {
+        scannedTextEntryCount += 1;
+        zipAudit.scannedTextEntryCount += 1;
+      } else {
+        scannedBinaryEntryCount += 1;
+        zipAudit.scannedBinaryEntryCount += 1;
+      }
+    }
+    zipAudits.push(zipAudit);
+  }
+
+  const actualZipEntryCount = zipAudits.reduce((total, audit) => total + audit.actualZipEntryCount, 0);
+  return {
+    schemaVersion: 2,
+    milestoneId,
+    passed: findings.length === 0,
+    actualZipEntryCount,
+    scannedEntryCount,
+    scannedTextEntryCount,
+    scannedBinaryEntryCount,
+    selfReferentialExclusions,
+    zipAudits,
+    findings
+  };
+}
+
+async function buildPrivacyAudit({ stagingRoot, appZipPath, reviewZipPath }) {
+  const zipAudit = buildZipPrivacyAudit({ reviewZipPath, appZipPath });
   const findings = [];
   const scannedEntries = [];
   for (const filePath of await listFiles(stagingRoot)) {
@@ -140,18 +290,18 @@ async function buildPrivacyAudit({ stagingRoot, appZipPath }) {
     scannedEntries.push(bundlePath);
     findings.push(...findPrivacyMatches(await readFile(filePath, "utf8"), bundlePath));
   }
-  for (const entry of zipEntries(appZipPath)) {
-    findings.push(...findPrivacyMatches(entry, `app-zip-entry:${entry}`));
-    if (entry.includes("__MACOSX") || path.basename(entry) === ".DS_Store") {
-      findings.push({ ruleId: "FORBIDDEN_ZIP_METADATA", entry });
-    }
-  }
+  findings.push(...zipAudit.findings);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     milestoneId,
     passed: findings.length === 0,
+    actualZipEntryCount: zipAudit.actualZipEntryCount,
+    scannedEntryCount: zipAudit.scannedEntryCount,
+    scannedTextEntryCount: zipAudit.scannedTextEntryCount,
+    scannedBinaryEntryCount: zipAudit.scannedBinaryEntryCount,
+    selfReferentialExclusions: zipAudit.selfReferentialExclusions,
+    zipAudits: zipAudit.zipAudits,
     scannedTextEntries: scannedEntries.sort(),
-    scannedAppZipEntries: zipEntries(appZipPath).length,
     findingCount: findings.length,
     findings
   };
@@ -281,6 +431,7 @@ async function main() {
 
   createCleanAppZip({ appBundle: trialApp, zipPath: appZipPath });
   const appZipIdentity = await fileIdentity(appZipPath);
+  const appZipEntries = zipEntries(appZipPath);
   const relativeFinalResponse = finalResponseText({
     headShort,
     visibleRootAbs: visibleRoot,
@@ -307,13 +458,6 @@ async function main() {
     ""
   ].join("\n"), "utf8");
 
-  const privacyAudit = await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath });
-  if (!privacyAudit.passed) {
-    throw new Error(`P6 owner handoff privacy audit failed: ${privacyAudit.findings.map((finding) => `${finding.ruleId}:${finding.entry}`).join("; ")}`);
-  }
-  await writeFile(path.join(uploadStagingRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
-  await writeFile(path.join(visibleRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
-
   const manifestExtra = {
     reviewedHeadCommit: headCommit,
     companionRequired: canonicalManifest.companionRequired === true,
@@ -321,24 +465,76 @@ async function main() {
     macosAppZip: {
       fileName: appZipName,
       sizeBytes: appZipIdentity.sizeBytes,
-      sha256: appZipIdentity.sha256
+      sha256: appZipIdentity.sha256,
+      entryCount: appZipEntries.length
     },
     visibleHandoff: {
       canonicalPacketRoot: path.relative(visibleRoot, packetRoot).split(path.sep).join("/")
-    },
-    privacyAudit: {
-      passed: privacyAudit.passed,
-      findingCount: privacyAudit.findingCount
     }
   };
 
-  await writeFile(path.join(uploadStagingRoot, "MANIFEST.json"), `${JSON.stringify(await buildManifest(uploadStagingRoot, manifestExtra), null, 2)}\n`);
-  const uploadEntries = (await listFiles(uploadStagingRoot)).map((filePath) => toBundlePath(uploadStagingRoot, filePath)).sort();
+  let privacyAudit = {
+    passed: false,
+    findingCount: -1,
+    actualZipEntryCount: 0,
+    scannedEntryCount: 0,
+    scannedTextEntryCount: 0,
+    scannedBinaryEntryCount: 0,
+    selfReferentialExclusions: []
+  };
+  for (const phase of ["pre-audit", "final-audit"]) {
+    await writeFile(path.join(uploadStagingRoot, "MANIFEST.json"), `${JSON.stringify(await buildManifest(uploadStagingRoot, {
+      ...manifestExtra,
+      privacyAudit: {
+        passed: privacyAudit.passed,
+        findingCount: privacyAudit.findingCount,
+        actualZipEntryCount: privacyAudit.actualZipEntryCount,
+        scannedEntryCount: privacyAudit.scannedEntryCount,
+        scannedTextEntryCount: privacyAudit.scannedTextEntryCount,
+        scannedBinaryEntryCount: privacyAudit.scannedBinaryEntryCount,
+        selfReferentialExclusionCount: privacyAudit.selfReferentialExclusions.length
+      }
+    }), null, 2)}\n`);
+    const uploadEntries = (await listFiles(uploadStagingRoot)).map((filePath) => toBundlePath(uploadStagingRoot, filePath)).sort();
+    await rm(reviewZipPath, { force: true });
+    runZip({ cwd: uploadStagingRoot, zipPath: reviewZipPath, entries: uploadEntries });
+    const reviewZipEntries = zipEntries(reviewZipPath);
+    if (JSON.stringify(reviewZipEntries) !== JSON.stringify(uploadEntries)) {
+      throw new Error("P6 owner review ZIP entries do not match staging files.");
+    }
+    privacyAudit = await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath });
+    if (!privacyAudit.passed) {
+      throw new Error(`P6 owner handoff privacy audit failed during ${phase}: ${privacyAudit.findings.map((finding) => `${finding.ruleId}:${finding.entry}`).join("; ")}`);
+    }
+    await writeFile(path.join(uploadStagingRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
+    await writeFile(path.join(visibleRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
+  }
+  await writeFile(path.join(uploadStagingRoot, "MANIFEST.json"), `${JSON.stringify(await buildManifest(uploadStagingRoot, {
+    ...manifestExtra,
+    privacyAudit: {
+      passed: privacyAudit.passed,
+      findingCount: privacyAudit.findingCount,
+      actualZipEntryCount: privacyAudit.actualZipEntryCount,
+      scannedEntryCount: privacyAudit.scannedEntryCount,
+      scannedTextEntryCount: privacyAudit.scannedTextEntryCount,
+      scannedBinaryEntryCount: privacyAudit.scannedBinaryEntryCount,
+      selfReferentialExclusionCount: privacyAudit.selfReferentialExclusions.length
+    }
+  }), null, 2)}\n`);
+  let uploadEntries = (await listFiles(uploadStagingRoot)).map((filePath) => toBundlePath(uploadStagingRoot, filePath)).sort();
+  await rm(reviewZipPath, { force: true });
+  runZip({ cwd: uploadStagingRoot, zipPath: reviewZipPath, entries: uploadEntries });
+  const verificationPrivacyAudit = await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath });
+  if (!verificationPrivacyAudit.passed) {
+    throw new Error(`P6 owner handoff final privacy audit failed: ${verificationPrivacyAudit.findings.map((finding) => `${finding.ruleId}:${finding.entry}`).join("; ")}`);
+  }
+  privacyAudit = verificationPrivacyAudit;
+  await writeFile(path.join(uploadStagingRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
+  await writeFile(path.join(visibleRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
+  uploadEntries = (await listFiles(uploadStagingRoot)).map((filePath) => toBundlePath(uploadStagingRoot, filePath)).sort();
+  await rm(reviewZipPath, { force: true });
   runZip({ cwd: uploadStagingRoot, zipPath: reviewZipPath, entries: uploadEntries });
   const reviewZipEntries = zipEntries(reviewZipPath);
-  if (JSON.stringify(reviewZipEntries) !== JSON.stringify(uploadEntries)) {
-    throw new Error("P6 owner review ZIP entries do not match staging files.");
-  }
   const reviewZipIdentity = await fileIdentity(reviewZipPath);
 
   await writeFile(path.join(visibleRoot, "README.md"), [
@@ -387,7 +583,12 @@ async function main() {
   console.log(`AUTO_SVGA_P6_OWNER_HANDOFF_RESULT=${JSON.stringify(summary)}`);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
-  process.exitCode = 1;
-});
+const isDirectRun = process.argv[1]
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectRun) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+    process.exitCode = 1;
+  });
+}

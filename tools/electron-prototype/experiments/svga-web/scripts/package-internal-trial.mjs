@@ -50,6 +50,13 @@ async function sha256(filePath) {
   return createHash("sha256").update(await readFile(filePath)).digest("hex");
 }
 
+function zipEntries(zipPath) {
+  return execFileSync("unzip", ["-Z1", zipPath], {
+    cwd: repoRoot,
+    encoding: "utf8"
+  }).split("\n").filter(Boolean).sort();
+}
+
 async function findCachedElectronZip() {
   if (!existsSync(localElectronVersionPath)) return undefined;
   const electronVersion = (await readFile(localElectronVersionPath, "utf8")).trim();
@@ -102,6 +109,7 @@ async function main() {
   const packageSizeBytes = await directorySizeBytes(appBundle);
   const archiveSizeBytes = (await stat(archivePath)).size;
   const archiveSha256 = await sha256(archivePath);
+  const archiveEntryCount = zipEntries(archivePath).length;
   const proof = await writeMacosPackageProof({ appBundle, archivePath });
   const manifest = {
     appName,
@@ -133,6 +141,7 @@ async function main() {
     archivePath: path.relative(repoRoot, archivePath),
     packageSizeBytes,
     archiveSizeBytes,
+    archiveEntryCount,
     sha256: archiveSha256,
     knownRisks: [
       "Requires wasm-unsafe-eval for svga-web WebAssembly fast path.",

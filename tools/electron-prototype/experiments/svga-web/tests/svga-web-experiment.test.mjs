@@ -55,6 +55,7 @@ test("macOS package proof manifest records audit boundaries without final App ac
     appBundle: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app"),
     archivePath: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip")
   });
+  const packageScript = await readFile(path.join(experimentRoot, "scripts/package-internal-trial.mjs"), "utf8");
   assert.equal(proof.schemaVersion, 1);
   assert.equal(proof.appName, "Auto SVGA");
   assert.equal(proof.bundleDisplayName, "Auto SVGA");
@@ -73,6 +74,8 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(proof.packagingScaffold.appBundlePath, /Auto SVGA-darwin-arm64\/Auto SVGA\.app$/);
   assert.doesNotMatch(JSON.stringify(proof), /AutoSVGAInternalPrototype|Auto SVGA Internal Prototype/);
   assert.match(proof.requestedIntegrationChanges[0], /root package script/);
+  assert.match(packageScript, /archiveEntryCount/);
+  assert.match(packageScript, /zipEntries\(archivePath\)\.length/);
 });
 
 test("vendored svga-web asset is pinned and strict-CSP compatible", async () => {
