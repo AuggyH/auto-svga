@@ -78,7 +78,7 @@ test("shared product shell keeps loading distinct and editor incubation hidden b
   assert.doesNotMatch(shellHtml, /batchPngInput|loadBatchPngFiles|svga-image-edit-session/);
 });
 
-test("shared product app exposes Repair 5 product states and invalid cleanup evidence", async () => {
+test("shared product app exposes Repair 6 product states and invalid cleanup evidence", async () => {
   const [shellHtml, productApp, productStyles] = await Promise.all([
     readRepoFile("tools/shared/product-frontend/product-shell.html"),
     readRepoFile("tools/shared/product-frontend/product-app.mjs"),
@@ -86,10 +86,16 @@ test("shared product app exposes Repair 5 product states and invalid cleanup evi
   ]);
 
   for (const stateId of [
+    "loading",
+    "loaded",
+    "playing",
+    "paused",
     "mode-menu-open",
     "local-compare-empty",
     "local-compare-loaded",
     "export-review-loaded",
+    "latest-artifact-loaded",
+    "reference-media-loaded",
     "info-overview-open",
     "info-assets-open",
     "logs-open",
@@ -98,9 +104,23 @@ test("shared product app exposes Repair 5 product states and invalid cleanup evi
     "settings-closed-by-escape",
     "synchronized-playback-toggled-by-space",
     "asset-preview-modal-open",
+    "recovered-from-invalid",
     "responsive-export-review-loaded-at-900-x-720"
   ]) {
     assert.match(productApp, new RegExp(stateId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+
+  for (const smokeScenario of [
+    "desktop-loading",
+    "desktop-playing",
+    "desktop-paused",
+    "desktop-latest-artifact-loaded",
+    "desktop-reference-media-loaded",
+    "desktop-local-compare-loaded",
+    "desktop-invalid",
+    "desktop-recovered-from-invalid"
+  ]) {
+    assert.match(productApp, new RegExp(smokeScenario));
   }
 
   for (const cleanupEvidence of [
@@ -114,6 +134,16 @@ test("shared product app exposes Repair 5 product states and invalid cleanup evi
     assert.match(productApp, new RegExp(cleanupEvidence));
   }
 
+  for (const loadingEvidence of [
+    "loadingActivePhases",
+    "loadingSourceLabel",
+    "primaryHeaderActionVisible",
+    "loading empty CTA should be hidden",
+    "loading header choose button should be hidden"
+  ]) {
+    assert.match(productApp, new RegExp(loadingEvidence));
+  }
+
   for (const productEvidence of [
     "modeMenuVisible",
     "infoPanelVisible",
@@ -123,7 +153,10 @@ test("shared product app exposes Repair 5 product states and invalid cleanup evi
     "comparePanelVisible",
     "referencePanelVisible",
     "syncBarVisible",
-    "statusAnnouncementText"
+    "statusAnnouncementText",
+    "latestArtifactLoaded",
+    "referenceMediaLoaded",
+    "recoveredFromInvalid"
   ]) {
     assert.match(productApp, new RegExp(productEvidence));
   }

@@ -123,6 +123,7 @@ const errorBox = document.querySelector("#errorBox");
 const svgaFileInput = document.querySelector("#svgaFileInput");
 const secondaryFileInput = document.querySelector("#secondaryFileInput");
 const referenceFileInput = document.querySelector("#referenceFileInput");
+const primaryFileButton = document.querySelector("#primaryFileButton");
 const primaryEmptyFileButton = document.querySelector("#primaryEmptyFileButton");
 const secondaryEmptyFileButton = document.querySelector("#secondaryEmptyFileButton");
 const referenceEmptyFileButton = document.querySelector("#referenceEmptyFileButton");
@@ -276,6 +277,12 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   if (slot.slotName === "A") {
     svgaFilePillA.hidden = true;
     svgaFilePillA.textContent = "";
+    selectedLayerKey = undefined;
+    selectedImageKey = undefined;
+    selectedAssetKey = undefined;
+    previewImageKey = undefined;
+    expandedSequenceGroups.clear();
+    if (!assetPreviewModal.hidden) closeAssetPreview();
     applyPrimaryEmptyCopy();
     localProgress.value = "0";
     updateRangeProgress(localProgress, 0);
@@ -1661,6 +1668,7 @@ function collectRenderedStateProof(state) {
   const overlayStyle = overlay ? getComputedStyle(overlay) : {};
   const canvasStyle = getComputedStyle(players.a.canvas);
   const primaryActionRect = rectFor(button);
+  const primaryHeaderActionRect = rectFor(primaryFileButton);
   const centerX = overlayRect ? overlayRect.left + overlayRect.width / 2 : 0;
   const centerY = overlayRect ? overlayRect.top + overlayRect.height / 2 : 0;
   const topElement = overlayRect ? document.elementFromPoint(centerX, centerY) : null;
@@ -1686,6 +1694,8 @@ function collectRenderedStateProof(state) {
   }));
   const loadingPhaseList = players.a.panel?.querySelector(".loadingPhaseList");
   const loadingPhaseStyle = loadingPhaseList ? getComputedStyle(loadingPhaseList) : {};
+  const loadingActivePhases = loadingPhaseItems.filter((item) => item.active).map((item) => item.phase);
+  const loadingSourceLabel = compactText(svgaEmptySubtitleA);
   const reportText = reportGrid.textContent?.replace(/\s+/g, " ").trim() ?? "";
   const filePillText = svgaFilePillA.textContent?.replace(/\s+/g, " ").trim() ?? "";
   const overviewText = compactText(document.querySelector("#tab-overview"));
@@ -1713,6 +1723,11 @@ function collectRenderedStateProof(state) {
     && getComputedStyle(button).display !== "none"
     && getComputedStyle(button).visibility !== "hidden"
     && Number(getComputedStyle(button).opacity) > 0.01;
+  const primaryHeaderActionVisible = Boolean(primaryFileButton)
+    && isRectVisible(primaryHeaderActionRect)
+    && getComputedStyle(primaryFileButton).display !== "none"
+    && getComputedStyle(primaryFileButton).visibility !== "hidden"
+    && Number(getComputedStyle(primaryFileButton).opacity) > 0.01;
   const renderedText = overlay?.textContent?.replace(/\s+/g, " ").trim() ?? "";
   const failures = [];
   if (normalizedState === "empty" || normalizedState === "local-empty") {
@@ -1726,13 +1741,40 @@ function collectRenderedStateProof(state) {
     if (!players.a.panel.classList.contains("isLoading")) failures.push("loading card class missing");
     if (!renderedText.includes("正在加载 SVGA 文件")) failures.push("loading text is not distinct from empty");
     if (loadingPhaseStyle.display === "none") failures.push("loading phase list is hidden");
+    if (!loadingActivePhases.length) failures.push("loading phase has no active step");
+    if (!loadingSourceLabel || loadingSourceLabel === "或选择本地文件") failures.push("loading source label missing");
+    if (primaryActionVisible) failures.push("loading empty CTA should be hidden");
+    if (primaryHeaderActionVisible) failures.push("loading header choose button should be hidden");
     if (!["file", "read", "parse", "check"].every((phase) => loadingPhaseItems.some((item) => item.phase === phase))) {
       failures.push("loading phases missing");
     }
   }
+  if (normalizedState === "playing") {
+    if (!players.a.videoItem) failures.push("playing SVGA is not loaded");
+    if (!players.a.isPlaying) failures.push("primary playback is not playing");
+    if (!canvasIsNonBlank(players.a)) failures.push("playing canvas is blank");
+  }
+  if (normalizedState === "paused") {
+    if (!players.a.videoItem) failures.push("paused SVGA is not loaded");
+    if (players.a.isPlaying) failures.push("primary playback is still playing");
+    if (!canvasIsNonBlank(players.a)) failures.push("paused canvas is blank");
+  }
   if (normalizedState === "loaded" || normalizedState === "export-review-loaded") {
     if (overlayVisible) failures.push("loaded overlay should be hidden");
     if (!canvasIsNonBlank(players.a)) failures.push("loaded canvas is blank");
+  }
+  if (normalizedState === "latest-artifact-loaded") {
+    if (!latestArtifactGroup) failures.push("latest artifact group is not recorded");
+    if (modeSelect.value !== "exportReview") failures.push("latest artifact did not enter export review mode");
+    if (!players.a.videoItem) failures.push("latest artifact SVGA is not loaded");
+    if (!canvasIsNonBlank(players.a)) failures.push("latest artifact canvas is blank");
+  }
+  if (normalizedState === "reference-media-loaded") {
+    if (modeSelect.value !== "exportReview") failures.push("reference media did not enter export review mode");
+    if (!referencePanelVisible) failures.push("reference panel is not visible");
+    if (!referenceState.metrics) failures.push("reference media metrics are missing");
+    if (!referenceState.panel.classList.contains("hasMedia")) failures.push("reference media is not marked loaded");
+    if (!referencePlayerBarVisible) failures.push("reference player bar is not visible");
   }
   if (normalizedState === "invalid") {
     if (!overlayVisible) failures.push("invalid error box is not visible");
@@ -1746,6 +1788,15 @@ function collectRenderedStateProof(state) {
     if (staleReportPattern.test(reportText)) failures.push("invalid report still visible");
     if (staleFieldPattern.test(overviewText)) failures.push("invalid overview metadata still visible");
     if (document.querySelector("#tab-overview .status-ready")) failures.push("invalid ready badge still visible");
+  }
+  if (normalizedState === "recovered-from-invalid") {
+    if (!errorBox.hidden || compactText(errorBox)) failures.push("recovery left invalid error visible");
+    if (!players.a.videoItem) failures.push("recovered SVGA is not loaded");
+    if (!players.a.metrics) failures.push("recovered metadata is missing");
+    if (!players.a.inspectionReport) failures.push("recovered inspection is missing");
+    if (!canvasIsNonBlank(players.a)) failures.push("recovered canvas is blank");
+    if (staleReportPattern.test(reportText) && !players.a.report) failures.push("recovery report state is inconsistent");
+    if (document.querySelector("#tab-overview .status-error")) failures.push("recovery still shows an error badge");
   }
   if (normalizedState === "mode-menu-open") {
     if (!modeMenuVisible) failures.push("mode menu is not visible");
@@ -1831,11 +1882,17 @@ function collectRenderedStateProof(state) {
     renderedText,
     loadingPhaseDisplay: loadingPhaseStyle.display ?? "unknown",
     loadingPhases: loadingPhaseItems,
+    loadingActivePhases,
+    loadingSourceLabel,
     primaryActionText: button?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     primaryActionRect,
     primaryActionVisible,
     primaryActionEnabled: button ? !button.disabled : false,
-    loadedCanvasNonBlank: ["loaded", "export-review-loaded"].includes(normalizedState) ? canvasIsNonBlank(players.a) : false,
+    primaryHeaderActionVisible,
+    loadedCanvasNonBlank: ["loaded", "playing", "paused", "export-review-loaded", "latest-artifact-loaded", "recovered-from-invalid"].includes(normalizedState) ? canvasIsNonBlank(players.a) : false,
+    recoveredFromInvalid: normalizedState === "recovered-from-invalid" ? errorBox.hidden && Boolean(players.a.videoItem && players.a.metrics) : null,
+    latestArtifactLoaded: normalizedState === "latest-artifact-loaded" ? Boolean(latestArtifactGroup && players.a.videoItem) : null,
+    referenceMediaLoaded: normalizedState === "reference-media-loaded" ? Boolean(referenceState.metrics && referenceState.panel.classList.contains("hasMedia")) : null,
     staleMetadataCleared: normalizedState === "invalid" ? !players.a.metrics && !staleFieldPattern.test(overviewText) : null,
     staleInspectionCleared: normalizedState === "invalid" ? !players.a.inspectionReport : null,
     staleCanvasCleared: normalizedState === "invalid" ? players.a.canvas.children.length === 0 : null,
@@ -2011,7 +2068,21 @@ async function runProductSmoke() {
     await waitFor(() => canvasIsNonBlank(players.a));
     const canvasNonBlank = canvasIsNonBlank(players.a);
     const inspectionReport = await waitForInspectionStatus(players.a);
+    await captureArtifact("desktop-playing");
+    pauseSlot(players.a);
+    await delay(180);
+    await captureArtifact("desktop-paused");
+    playSlot(players.a);
+    await loadArtifactGroup({
+      jobId: "synthetic-latest-artifact",
+      svgaPath: fixtureUrl,
+      reportPath: paths.report
+    }, { force: true });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    await captureArtifact("desktop-latest-artifact-loaded");
     await loadP6SmokeReferenceGif();
+    await captureArtifact("desktop-reference-media-loaded");
     ensureP6SmokeInfoPanel("overview");
     await delay(220);
     const auditPanel = Boolean(document.querySelector(".auditReportSection, .specReportSection"));
@@ -2067,10 +2138,23 @@ async function runProductSmoke() {
     if (!compareToggle.checked) compareToggle.click();
     await delay(260);
     await captureArtifact("desktop-local-compare-empty");
+    handleDroppedFile(new File([bytes.slice(0)], "synthetic-avatar-frame-b.svga", { type: "application/octet-stream" }), "svga", "b");
+    await waitFor(() => Boolean(players.b.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.b));
+    await captureArtifact("desktop-local-compare-loaded");
     const fileInput = await smokeFileInput(bytes.slice(0));
     const dragDrop = await smokeDragDrop(bytes.slice(0));
     const errorFile = await smokeErrorFile();
     await captureArtifact("desktop-invalid");
+    await loadSvga("a", fixtureUrl, {
+      fileName: "synthetic-avatar-frame-recovered.svga",
+      fileSizeBytes: bytes.byteLength,
+      loadingHoldMs: 120
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    await waitForInspectionStatus(players.a);
+    await captureArtifact("desktop-recovered-from-invalid");
     await electronBridge.reportSmokeResult({
       localPage: location.hostname === "127.0.0.1",
       localOnly: resourcesAreLocal(),
