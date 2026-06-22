@@ -8,7 +8,7 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 
 - Integration branch: `agent/codex/p6-integration`
 - Current integration head after Repair 4 actual parity evidence generation:
-  `dbefb170687681de2989aa2d2018e1be5cc83e86`
+  `e3213c0b3fe25cf7208fc944c57cec91aca88cfa`
 - Current loop state: P6 Repair 4 is `terminal_human_required`.
 - Terminal parity status: `HUMAN_REQUIRED`; browser regression, desktop runtime
   proof, security audit, accessibility report, and artifact index pass, while

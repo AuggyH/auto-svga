@@ -97,8 +97,12 @@ Date: 2026-06-22
   Web baseline capture, recorded explicit Electron security identity fields,
   copied the macOS internal App ZIP into P6 evidence, generated normal/smoke
   parity evidence, and stopped treating non-pass parity as a generator failure.
+- P6 repair-4 launcher probe repair commit
+  `e3213c0b3fe25cf7208fc944c57cec91aca88cfa` fixed local preview service
+  detection so launcher validation no longer misclassifies the real preview
+  page because of case-sensitive `SVGA` text matching.
 - Final ignored P6 evidence was regenerated under `.artifacts/product/P6` and
-  bound to head `dbefb170687681de2989aa2d2018e1be5cc83e86`.
+  bound to head `e3213c0b3fe25cf7208fc944c57cec91aca88cfa`.
 - Final P6 parity report is `HUMAN_REQUIRED`: browser regression, desktop
   runtime proof, security audit, accessibility report, and artifact index pass;
   visual, feature, interaction, state, and motion parity still contain
