@@ -4,7 +4,7 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
-  "lastIntegratedWorkerCommit": "c7c0f1f8beccfbd492a4e850c96641ad83a06f6e",
+  "lastIntegratedWorkerCommit": "01f6d9584359aa59611b97e2f84fb977046f78f4",
   "currentRepairRound": 6,
   "lifecycleStatus": "repair_6_in_progress",
   "finalHeadBinding": {
@@ -15,10 +15,10 @@
   },
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T13:38:00Z",
-  "registryRefreshedAt": "2026-06-22T17:39:30Z",
+  "registryRefreshedAt": "2026-06-22T17:46:58Z",
   "registryValidation": {
     "status": "pass",
-    "checkedAt": "2026-06-22T17:39:30Z",
+    "checkedAt": "2026-06-22T17:46:58Z",
     "errors": []
   },
   "rules": {
@@ -696,19 +696,28 @@
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r6-a2-product-behavior",
       "baseCommit": "1d5cc416d5793b58748aae2ef5a9b54314eda19d",
-      "headCommit": null,
-      "status": "running",
-      "lastVerifiedAt": "2026-06-22T17:39:30Z",
+      "headCommit": "01f6d9584359aa59611b97e2f84fb977046f78f4",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T17:46:58Z",
       "ownedPaths": [
         "tools/shared/product-frontend/",
         "tools/svga-player-preview shared product entry points",
         "shared frontend tests"
       ],
-      "dependencies": [],
+      "dependencies": [
+        "A1"
+      ],
       "requestedIntegrationChanges": [],
-      "integrationCommit": null,
-      "lifecycleStatus": "running",
-      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A2-R6.md"
+      "integrationCommit": "63f79c9fa99c571640812e1eca61f86deee08445",
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A2-R6.md",
+      "tests": [
+        "node --test tools/shared/product-frontend/source-sharing.test.mjs",
+        "node --check tools/shared/product-frontend/product-app.mjs",
+        "node --test tools/svga-player-preview/inspection-report-view.test.mjs tools/svga-player-preview/server-inspection-report.test.mjs",
+        "npm run build && node --test dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD"
+      ]
     },
     {
       "workerId": "A3",
@@ -720,16 +729,14 @@
       "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
       "headCommit": null,
       "status": "pending",
-      "lastVerifiedAt": "2026-06-22T17:39:30Z",
+      "lastVerifiedAt": "2026-06-22T17:46:58Z",
       "ownedPaths": [
         "tools/electron-prototype/experiments/svga-web/main.cjs",
         "tools/electron-prototype/experiments/svga-web/preload.cjs",
         "tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
         "Electron host proof and normal App scripts/tests"
       ],
-      "dependencies": [
-        "A2"
-      ],
+      "dependencies": [],
       "requestedIntegrationChanges": [],
       "integrationCommit": null,
       "lifecycleStatus": "planned",
@@ -745,7 +752,7 @@
       "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
       "headCommit": null,
       "status": "pending",
-      "lastVerifiedAt": "2026-06-22T17:39:30Z",
+      "lastVerifiedAt": "2026-06-22T17:46:58Z",
       "ownedPaths": [
         "tools/p6/generate-p6-evidence.mjs",
         "tools/p6/parity-runner.mjs",
@@ -754,7 +761,6 @@
         "P6 parity contract tests"
       ],
       "dependencies": [
-        "A2",
         "A3"
       ],
       "requestedIntegrationChanges": [],
@@ -772,14 +778,13 @@
       "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
       "headCommit": null,
       "status": "pending",
-      "lastVerifiedAt": "2026-06-22T17:39:30Z",
+      "lastVerifiedAt": "2026-06-22T17:46:58Z",
       "ownedPaths": [
         "tools/p6/build-p6-owner-handoff.mjs",
         "tools/electron-prototype/experiments/svga-web packaging scripts",
         "P6 owner handoff tests and package/privacy checks"
       ],
       "dependencies": [
-        "A2",
         "A3",
         "A4"
       ],

@@ -8,11 +8,11 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 
 - Integration branch: `agent/codex/p6-integration`
 - Current Repair 6 integration head:
-  `78bdcf0c1a04c795e4594d1fc33ccfdb3149e1eb`
+  `63f79c9fa99c571640812e1eca61f86deee08445`
 - Current loop state: P6 Repair 6 is the final allowed frozen-budget repair
-  round. A1 has been integrated and verified on the integration branch. A2 may
-  now resume formal implementation from the A1-integrated head. Phase 2 remains
-  `NOT_STARTED`; Repair 7 must not be created.
+  round. A1 and A2 have been integrated and verified on the integration branch.
+  A3 is the next dependency layer. Phase 2 remains `NOT_STARTED`; Repair 7 must
+  not be created.
 - Repair 5 terminal evidence is historical and rejected by external review for
   owner acceptance. Do not use Repair 5 screenshots, Reviewer JSON, App proof,
   or sealed packets as terminal Repair 6 acceptance evidence.
@@ -25,7 +25,7 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 | Worker | Visible thread id | Thread type | Current branch |
 | --- | --- | --- | --- |
 | A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | visible project Worktree thread | integrated from `agent/codex/p6-r6-a1-required-inventory` |
-| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | resume formal work from A1-integrated head on `agent/codex/p6-r6-a2-product-behavior` |
+| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | integrated from `agent/codex/p6-r6-a2-product-behavior` |
 | A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | visible project Worktree thread | reuse for `agent/codex/p6-r6-a3-visible-normal-app` |
 | A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | reuse for `agent/codex/p6-r6-a4-strict-parity-motion` |
 | A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | visible project Worktree thread | reuse for `agent/codex/p6-r6-a5-final-package-handoff` |
