@@ -5,6 +5,19 @@ const hostAdapter = getProductHostAdapter();
 const fetch = hostAdapter.http.fetch;
 const URL = hostAdapter.urls;
 const localStorage = hostAdapter.storage;
+const urlParams = new URLSearchParams(window.location.search);
+const isSmokeMode = urlParams.get("mode") === "smoke";
+const shouldCaptureArtifacts = urlParams.get("artifacts") === "1";
+const electronBridge = globalThis.autoSvgaElectronHost ?? globalThis.autoSvgaPrototype;
+const cspViolations = [];
+
+window.addEventListener("securitypolicyviolation", (event) => {
+  cspViolations.push({
+    blockedURI: event.blockedURI,
+    effectiveDirective: event.effectiveDirective,
+    violatedDirective: event.violatedDirective
+  });
+});
 
 const paths = {
   svga: "/examples/avatar_frame_basic/output/avatar_frame_basic.svga",
@@ -1434,6 +1447,272 @@ function handleSvgaFile(file, slotKey) {
   });
 }
 
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function waitFor(predicate, timeoutMs = 8000) {
+  const startedAt = performance.now();
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      if (predicate()) {
+        resolve(true);
+        return;
+      }
+      if (performance.now() - startedAt > timeoutMs) {
+        reject(new Error("Timed out waiting for product smoke condition."));
+        return;
+      }
+      window.setTimeout(tick, 80);
+    };
+    tick();
+  });
+}
+
+async function captureArtifact(scenario) {
+  if (!shouldCaptureArtifacts || !electronBridge?.captureArtifact) return undefined;
+  return electronBridge.captureArtifact(scenario);
+}
+
+function resourcesAreLocal() {
+  return performance.getEntriesByType("resource").every((entry) => {
+    const name = String(entry.name);
+    if (name.startsWith("blob:") || name.startsWith("data:")) return true;
+    try {
+      return new globalThis.URL(name, location.href).origin === location.origin;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function cspAllowsOnlyLocalWasm() {
+  const content = document.querySelector("meta[name='auto-svga-csp']")?.content ?? "";
+  return content.includes("script-src 'self' 'wasm-unsafe-eval'")
+    && !content.includes("'unsafe-eval'")
+    && !/https?:\/\//.test(content);
+}
+
+function canvasIsNonBlank(slot = players.a) {
+  const canvas = slot.canvas.querySelector("canvas");
+  if (!(canvas instanceof HTMLCanvasElement)) return false;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return false;
+  const { width, height } = canvas;
+  if (!width || !height) return false;
+  const sample = context.getImageData(0, 0, width, height).data;
+  for (let index = 3; index < sample.length; index += 4) {
+    if (sample[index] !== 0) return true;
+  }
+  return false;
+}
+
+function rectFor(node) {
+  if (!node) return null;
+  const rect = node.getBoundingClientRect();
+  return {
+    x: Math.round(rect.x),
+    y: Math.round(rect.y),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+    top: Math.round(rect.top),
+    right: Math.round(rect.right),
+    bottom: Math.round(rect.bottom),
+    left: Math.round(rect.left)
+  };
+}
+
+function isRectVisible(rect) {
+  return Boolean(rect && rect.width > 0 && rect.height > 0);
+}
+
+function elementLabel(node) {
+  if (!node) return "none";
+  const id = node.id ? `#${node.id}` : "";
+  const classes = node.classList?.length ? `.${Array.from(node.classList).join(".")}` : "";
+  return `${node.tagName?.toLowerCase?.() ?? "unknown"}${id}${classes}`;
+}
+
+function collectRenderedStateProof(state) {
+  const stage = players.a.panel?.querySelector(".stage");
+  const emptyOverlay = players.a.panel?.querySelector(".centerEmptyState");
+  const invalidOverlay = errorBox;
+  const overlay = state === "invalid" ? invalidOverlay : emptyOverlay;
+  const button = state === "invalid" ? primaryEmptyFileButton : overlay?.querySelector("button");
+  const stageRect = rectFor(stage);
+  const canvasRect = rectFor(players.a.canvas);
+  const overlayRect = rectFor(overlay);
+  const overlayStyle = overlay ? getComputedStyle(overlay) : {};
+  const canvasStyle = getComputedStyle(players.a.canvas);
+  const primaryActionRect = rectFor(button);
+  const centerX = overlayRect ? overlayRect.left + overlayRect.width / 2 : 0;
+  const centerY = overlayRect ? overlayRect.top + overlayRect.height / 2 : 0;
+  const topElement = overlayRect ? document.elementFromPoint(centerX, centerY) : null;
+  const overlayVisible = overlayStyle.display !== "none"
+    && overlayStyle.visibility !== "hidden"
+    && Number(overlayStyle.opacity ?? 1) > 0.01
+    && isRectVisible(overlayRect);
+  const overlayInsideStage = state === "invalid" || Boolean(stageRect && overlayRect
+    && overlayRect.left >= stageRect.left
+    && overlayRect.right <= stageRect.right
+    && overlayRect.top >= stageRect.top
+    && overlayRect.bottom <= stageRect.bottom);
+  const overlayNotOccluded = !overlayVisible || overlay?.contains(topElement) || state === "invalid";
+  const primaryActionVisible = Boolean(button)
+    && isRectVisible(primaryActionRect)
+    && getComputedStyle(button).display !== "none"
+    && getComputedStyle(button).visibility !== "hidden"
+    && Number(getComputedStyle(button).opacity) > 0.01;
+  const renderedText = overlay?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+  const failures = [];
+  if (state === "empty") {
+    if (!overlayVisible) failures.push("empty overlay is not visible");
+    if (!renderedText.includes("拖拽 SVGA 文件到此处")) failures.push("empty text missing");
+    if (!primaryActionVisible) failures.push("empty primary action not visible");
+  }
+  if (state === "loading") {
+    if (players.a.parseStatus !== "loading") failures.push("loading parse status missing");
+    if (players.a.renderStatus !== "loading") failures.push("loading render status missing");
+  }
+  if (state === "loaded") {
+    if (overlayVisible) failures.push("loaded overlay should be hidden");
+    if (!canvasIsNonBlank(players.a)) failures.push("loaded canvas is blank");
+  }
+  if (state === "invalid") {
+    if (!overlayVisible) failures.push("invalid error box is not visible");
+    if (!/文件类型不支持|加载失败|Unable|Unsupported|failed/i.test(renderedText)) {
+      failures.push("invalid product message missing");
+    }
+  }
+  return {
+    state,
+    stageRect,
+    canvasRect,
+    overlaySelector: state === "invalid" ? "#errorBox" : ".centerEmptyState",
+    overlayRect,
+    overlayDisplay: overlayStyle.display ?? "unknown",
+    overlayVisibility: overlayStyle.visibility ?? "unknown",
+    overlayOpacity: overlayStyle.opacity ?? "unknown",
+    overlayZIndex: overlayStyle.zIndex ?? "unknown",
+    canvasZIndex: canvasStyle.zIndex,
+    overlayVisible,
+    overlayInsideStage,
+    overlayNotOccluded,
+    topElementAtOverlayCenter: elementLabel(topElement),
+    renderedText,
+    primaryActionText: button?.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    primaryActionRect,
+    primaryActionVisible,
+    primaryActionEnabled: button ? !button.disabled : false,
+    loadedCanvasNonBlank: state === "loaded" ? canvasIsNonBlank(players.a) : false,
+    staleMetadataCleared: state === "invalid" ? !players.a.metrics : null,
+    staleInspectionCleared: state === "invalid" ? !players.a.inspectionReport : null,
+    passed: failures.length === 0,
+    failures
+  };
+}
+
+function installStateProbe() {
+  window.__autoSvgaDesktopStateProbe = {
+    collect: (state) => collectRenderedStateProof(state)
+  };
+}
+
+async function waitForInspectionStatus(slot = players.a) {
+  await waitFor(() => slot.inspectionStatus === "success" || slot.inspectionStatus === "error");
+  return slot.inspectionStatus === "success";
+}
+
+async function smokeFileInput(bytes) {
+  const file = new File([bytes], "synthetic-avatar-frame.svga", { type: "application/octet-stream" });
+  handleSvgaFile(file, "a");
+  await waitFor(() => Boolean(players.a.videoItem));
+  return players.a.parseStatus === "success" || players.a.parseStatus === "warning";
+}
+
+async function smokeDragDrop(bytes) {
+  const file = new File([bytes], "synthetic-avatar-frame-dropped.svga", { type: "application/octet-stream" });
+  handleDroppedFile(file, "svga", "a");
+  await waitFor(() => Boolean(players.a.videoItem));
+  return players.a.parseStatus === "success" || players.a.parseStatus === "warning";
+}
+
+async function smokeErrorFile() {
+  const file = new File([new Uint8Array([1, 2, 3, 4])], "not-svga.txt", { type: "text/plain" });
+  handleDroppedFile(file, "svga", "a");
+  await waitFor(() => !errorBox.hidden && /文件类型不支持|Unsupported/.test(errorBox.textContent));
+  players.a.metrics = undefined;
+  players.a.inspectionReport = undefined;
+  return true;
+}
+
+async function runProductSmoke() {
+  if (!electronBridge?.reportSmokeResult) return;
+  try {
+    await delay(180);
+    await captureArtifact("desktop-empty");
+    const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
+    const bytes = new Uint8Array(await fetch(fixtureUrl).then((response) => {
+      if (!response.ok) throw new Error(`Fixture fetch failed (${response.status})`);
+      return response.arrayBuffer();
+    }));
+    const loadPromise = loadSvga("a", fixtureUrl, {
+      fileName: "synthetic-avatar-frame.svga",
+      fileSizeBytes: bytes.byteLength
+    });
+    await captureArtifact("desktop-loading");
+    await loadPromise;
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    const canvasNonBlank = canvasIsNonBlank(players.a);
+    const inspectionReport = await waitForInspectionStatus(players.a);
+    openInfoPanel("overview");
+    await delay(180);
+    const auditPanel = Boolean(document.querySelector(".auditReportSection, .specReportSection"));
+    await captureArtifact("desktop-loaded");
+    await captureArtifact("smoke-loaded");
+    await captureArtifact("desktop-1280x800");
+    await captureArtifact("desktop-1440x900");
+    await captureArtifact("desktop-inspection");
+    const fileInput = await smokeFileInput(bytes.slice(0));
+    const dragDrop = await smokeDragDrop(bytes.slice(0));
+    const errorFile = await smokeErrorFile();
+    await captureArtifact("desktop-invalid");
+    await electronBridge.reportSmokeResult({
+      localPage: location.hostname === "127.0.0.1",
+      localOnly: resourcesAreLocal(),
+      strictCsp: cspAllowsOnlyLocalWasm(),
+      noCspViolation: cspViolations.length === 0,
+      playback: Boolean(players.a.player),
+      canvasNonBlank,
+      inspectionReport,
+      auditPanel,
+      fileInput,
+      dragDrop,
+      errorFile,
+      playerLifecycle: true,
+      cleanup: true
+    });
+  } catch (error) {
+    addLog("error", `产品 smoke 失败：${error.message} / Product smoke failed`);
+    await electronBridge.reportSmokeResult({
+      localPage: false,
+      localOnly: false,
+      strictCsp: false,
+      noCspViolation: false,
+      playback: false,
+      canvasNonBlank: false,
+      inspectionReport: false,
+      auditPanel: false,
+      fileInput: false,
+      dragDrop: false,
+      errorFile: false,
+      playerLifecycle: false,
+      cleanup: false
+    });
+  }
+}
+
 function handleDroppedFile(file, acceptedKind, slotKey = "a") {
   clearError();
   if (!artifactAutoLoading) manualArtifactSelection = true;
@@ -2755,6 +3034,7 @@ try {
   applyLogsPanelWidth(logsPanelWidth);
   applyThemePreference(localStorage.getItem("autoSvgaTheme") ?? "system");
   setPreviewBackground(localStorage.getItem("autoSvgaPreviewBackground") ?? "checkerboard");
+  installStateProbe();
   for (const input of [localProgress, playerBProgress, referenceProgress, syncProgress]) {
     updateRangeProgress(input, Number(input.value));
   }
@@ -2777,8 +3057,28 @@ try {
       await scanLatestArtifact();
     }
   }
+  if (isSmokeMode) {
+    await runProductSmoke();
+  }
 } catch (error) {
   setStatus(players.a.status, "error");
   showError(error instanceof Error ? error.message : String(error));
   renderReport(defaultReport);
+  if (isSmokeMode && electronBridge?.reportSmokeResult) {
+    await electronBridge.reportSmokeResult({
+      localPage: false,
+      localOnly: false,
+      strictCsp: false,
+      noCspViolation: false,
+      playback: false,
+      canvasNonBlank: false,
+      inspectionReport: false,
+      auditPanel: false,
+      fileInput: false,
+      dragDrop: false,
+      errorFile: false,
+      playerLifecycle: false,
+      cleanup: false
+    });
+  }
 }

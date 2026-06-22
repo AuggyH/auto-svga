@@ -33,6 +33,11 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /const fetch = hostAdapter\.http\.fetch/);
   assert.match(productApp, /const URL = hostAdapter\.urls/);
   assert.match(productApp, /const localStorage = hostAdapter\.storage/);
+  assert.match(productApp, /runProductSmoke/);
+  assert.match(productApp, /electronBridge\.reportSmokeResult/);
+  assert.match(productApp, /if \(isSmokeMode\)/);
+  assert.match(productApp, /installStateProbe/);
+  assert.match(productApp, /__autoSvgaDesktopStateProbe/);
   assert.match(webAdapter, /hostKind: "web"/);
   assert.match(webAdapter, /editorIncubationDefaultVisible: false/);
 });

@@ -111,6 +111,7 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     assert.equal(missingAuditSample.status, 404);
     const legacyVendor = await fetch(`${server.origin}/legacy-vendor/pako-2.1.0.min.js`);
     assert.equal(legacyVendor.status, 200);
+    assert.match(legacyVendor.headers.get("content-type") ?? "", /text\/javascript/);
   } finally {
     await server.close();
   }
@@ -213,6 +214,10 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(runner, /AUTO_SVGA_P2_NORMAL_PROOF/);
   assert.match(runner, /npm", \["run", "desktop:dev"\]/);
   assert.doesNotMatch(runner, /--smoke|--product-smoke|--p2-normal-proof|\?mode=smoke/);
+  assert.match(main, /show:\s*!\(smokeMode \|\| auditMode \|\| normalProofMode\)/);
+  assert.match(main, /windowShown:\s*false/);
+  assert.match(main, /const width = context\.canvas\.width/);
+  assert.doesNotMatch(main, /Math\.min\(300, context\.canvas\.width\)/);
   assert.match(main, /normalProofMode\s*\?\s*""/);
   assert.match(main, /rendererQuery: location\.search/);
   assert.match(main, /window\.autoSvgaElectronHost\?\.openSvgaFile/);
@@ -224,6 +229,10 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(p6Evidence, /Auto SVGA-darwin-arm64\/Auto SVGA\.app\/Contents\/MacOS\/Auto SVGA/);
   assert.match(p6Evidence, /AUTO_SVGA_DESKTOP_NORMAL_PROOF/);
   assert.match(p6Evidence, /packaged Auto SVGA\.app/);
+  assert.match(p6Evidence, /function itemSpecificArtifactIds/);
+  assert.match(p6Evidence, /webFragmentsForItem/);
+  assert.match(p6Evidence, /desktopFragmentsForItem/);
+  assert.doesNotMatch(p6Evidence, /webDesktopIds/);
   assert.doesNotMatch(p6Evidence, /AutoSVGAInternalPrototype|--product-smoke"\]|--smoke", "--product-smoke"/);
 });
 

@@ -137,6 +137,7 @@ function resolveStaticPath(appRoot, pathname) {
   const runtimeRoot = path.join(appRoot, ".runtime");
   const mappings = [
     ["/vendor/", path.join(appRoot, "vendor")],
+    ["/legacy-vendor/", path.join(runtimeRoot, "legacy-vendor")],
     ["/legacy-vendor/", path.resolve(appRoot, "../..", "vendor")],
     ["/dist/", path.join(runtimeRoot, "dist")],
     ["/tools/svga-player-preview/", path.join(runtimeRoot, "tools/svga-player-preview")],

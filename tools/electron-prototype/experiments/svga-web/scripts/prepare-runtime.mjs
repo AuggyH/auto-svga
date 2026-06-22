@@ -14,14 +14,22 @@ const webBaselineFixturePath = path.join(repoRoot, "examples/avatar_frame_basic/
 const expectedVendorHashes = new Map([
   ["svga-web-2.4.4.js", "6235bc9802e76dd517343123ec730d25e02c4d476b66b81ef26befe7881f3c50"]
 ]);
+const expectedLegacyVendorHashes = new Map([
+  ["pako-2.1.0.min.js", "ede2693a4a6a5126b9d35669062b358ecab6ae7b9b86a1cf302feb45a8514907"]
+]);
 
 await verifyVendorAssets();
+await verifyLegacyVendorAssets();
 await rm(runtimeRoot, { recursive: true, force: true });
 await mkdir(runtimeRoot, { recursive: true });
 await cp(path.join(prototypeRoot, ".runtime/dist"), path.join(runtimeRoot, "dist"), { recursive: true });
 await cp(path.join(prototypeRoot, ".runtime/tools"), path.join(runtimeRoot, "tools"), { recursive: true });
 await cp(path.join(prototypeRoot, ".runtime/fixture"), path.join(runtimeRoot, "fixture"), { recursive: true });
 await cp(path.join(prototypeRoot, ".runtime/proto"), path.join(runtimeRoot, "proto"), { recursive: true });
+await mkdir(path.join(runtimeRoot, "legacy-vendor"), { recursive: true });
+for (const name of expectedLegacyVendorHashes.keys()) {
+  await cp(path.join(prototypeRoot, "vendor", name), path.join(runtimeRoot, "legacy-vendor", name));
+}
 await ensureWebBaselineFixture();
 await cp(webBaselineFixturePath, path.join(runtimeRoot, "fixture/avatar-frame-smoke.svga"));
 await writeFile(path.join(runtimeRoot, "manifest.json"), JSON.stringify({
@@ -43,6 +51,14 @@ async function verifyVendorAssets() {
     if (source.includes("eval(") || source.includes("Function(")) {
       throw new Error(`Vendor is not strict-CSP compatible: ${name}`);
     }
+  }
+}
+
+async function verifyLegacyVendorAssets() {
+  for (const [name, expectedHash] of expectedLegacyVendorHashes) {
+    const bytes = await readFile(path.join(prototypeRoot, "vendor", name));
+    const actualHash = createHash("sha256").update(bytes).digest("hex");
+    if (actualHash !== expectedHash) throw new Error(`Legacy vendor checksum mismatch: ${name}`);
   }
 }
 

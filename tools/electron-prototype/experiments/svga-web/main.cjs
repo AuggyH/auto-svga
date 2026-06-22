@@ -885,7 +885,7 @@ async function finishNormalProof(window, result) {
     rendererQuery: "",
     processId: normalIdentity.processId,
     runtimeInstanceId: normalIdentity.runtimeInstanceId,
-    windowShown: true,
+    windowShown: false,
     automationMechanism: "host bridge button click in canonical renderer",
     fileOpenMechanism: "window.autoSvgaElectronHost.openSvgaFile validated IPC",
     fixture: canonicalFixtureMetadata().fixtureLabel,
@@ -1264,7 +1264,7 @@ async function createExperimentWindow() {
     title: productIdentity,
     width: 1280,
     height: 800,
-    show: !(smokeMode || auditMode),
+    show: !(smokeMode || auditMode || normalProofMode),
     webPreferences: createSecureWebPreferences({
       preloadPath: path.join(appRoot, "preload.cjs"),
       reportToken,
@@ -1694,8 +1694,8 @@ async function driveCanonicalNormalProof(window) {
       const context = document.querySelector("#svgaCanvasA canvas")?.getContext("2d");
       let canvasNonBlank = false;
       if (context) {
-        const width = Math.min(300, context.canvas.width);
-        const height = Math.min(300, context.canvas.height);
+        const width = context.canvas.width;
+        const height = context.canvas.height;
         const pixels = context.getImageData(0, 0, width, height).data;
         for (let i = 3; i < pixels.length; i += 4) {
           if (pixels[i] > 0) { canvasNonBlank = true; break; }

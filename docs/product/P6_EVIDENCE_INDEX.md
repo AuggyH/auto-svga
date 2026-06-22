@@ -17,8 +17,8 @@ Branch: `agent/codex/p6-integration`
 
 ## Section Summary
 
-- featureParity: pass, evidence 12/12, inventory 12
-- visualParity: pass, evidence 14/14, inventory 14
+- featureParity: pass, evidence 33/33, inventory 33
+- visualParity: pass, evidence 20/20, inventory 20
 - interactionParity: pass, evidence 10/10, inventory 10
 - stateParity: pass, evidence 12/12, inventory 12
 - motionParity: pass, evidence 9/9, inventory 9
@@ -26,28 +26,28 @@ Branch: `agent/codex/p6-integration`
 - desktopRuntimeProof: pass, evidence 3/3, inventory 3
 - securityAudit: pass, evidence 3/3, inventory 3
 - accessibilityReport: pass, evidence 2/2, inventory 2
-- artifactIndex: pass, evidence 1/1, inventory 42
+- artifactIndex: pass, evidence 1/1, inventory 32
 
 ## Key Artifact Hashes
 
 | Role | Path | Size | SHA-256 |
 | --- | --- | ---: | --- |
-| p6_evidence | `.artifacts/product/P6/internal-trial-manifest.json` | 2374 | `a47c8557f725eeb36785188eb0d4ec88759a902627a3ccc9052768fd3a959005` |
-| packaged_app_runtime | `.artifacts/product/P6/packaged-app-runtime-proof.json` | 1592 | `a0538c1bf7da69a0332ca15ec8091463ea519c9cb55bc357c31558bda53b80c9` |
-| web_baseline | `.artifacts/product/P6/web-baseline/computed-styles-manifest.json` | 10096 | `17cd15be49bf4cc49c1ebcd576aa9c373e7bebaf80b73cfedc0a7c9aeec1603f` |
-| web_baseline | `.artifacts/product/P6/web-baseline/dom-manifest.json` | 309779 | `d0a02fae4186d0560531961fdd30a41f41550b49dadb9eea1ae9e2b13e9173d8` |
-| web_baseline | `.artifacts/product/P6/web-baseline/interaction-trace.json` | 1473 | `f8f33e7acccda26da60f3ca6f89d9d09dcf8d185e239415041da8a29ee7d2957` |
+| p6_evidence | `.artifacts/product/P6/internal-trial-manifest.json` | 2297 | `8955a9ad81be74a8fad1fa2ca7604d3442b5cf6aad0155c3e10de1db30ece538` |
+| packaged_app_runtime | `.artifacts/product/P6/packaged-app-runtime-proof.json` | 1240 | `bbb48e38c4aac17ca00b5bea2da4894d45a59e7e5786c6aaf2247a36526141f5` |
+| web_baseline | `.artifacts/product/P6/web-baseline/computed-styles-manifest.json` | 10096 | `99073f30d3ab7b4c9ed9f58777a2c377e2384fc0a36fc9b01d97423bdb0b8811` |
+| web_baseline | `.artifacts/product/P6/web-baseline/dom-manifest.json` | 336687 | `afd0ee09c0fd2df9a46ceaa4f4695cb2e7a32d312b5780ba89c9cd504a823a76` |
+| web_baseline | `.artifacts/product/P6/web-baseline/interaction-trace.json` | 1474 | `9d414d59cd696ab90486d1f6564779a917580c7d148552fc90cf882cf5597eb8` |
 | web_baseline | `.artifacts/product/P6/web-baseline/motion-manifest.json` | 9818 | `3c25e7728ff214230d44e1a675332837277071926cc34bcb87036fb21dac05f7` |
-| web_baseline | `.artifacts/product/P6/web-baseline/request-audit.json` | 439 | `4bd215fcd3ac42346792a27ef23544154ec4a1d71811856cc58c99a71d9f18a2` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png` | 425190 | `ddc0bda371f11a2b6f77b250fe208de175732d1eb85a0ee4a69fc1e13df346a1` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png` | 318919 | `4873b5fedd0f54f3d828a7a29d4bd6ff93f6c87aea23440e8be73eae143a58af` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-assets-1440x900.png` | 470518 | `a02e627f12f8aade5c77a22d1ca7d4bf5b54330ecfa927efae772f0c55e72f11` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-overview-1440x900.png` | 531191 | `4e4d397b96ac0c2aa6fb364044b5360b07684cc4914e2b7d2ebb160947f0454e` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-invalid-1440x900.png` | 224823 | `08abd0504dcc5ffb7205cf0d35deb060755b64003316b1e5b334e340a0d1d40f` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-empty-1440x900.png` | 437794 | `c4a0605d7d65c833bfbe00f65dd830f4bc3b67762535e372d3593aaee0d06e9b` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-empty-1440x900.png` | 220550 | `d19929b176d8436f01c367b2c218bd5ca2b8d7312653d103fdba2a46a3d18023` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-logs-1440x900.png` | 476995 | `921115d8d6c4dabb99a90820f14c8af773f0426bc9e62975c7777800fad17ebb` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-1440x900.png` | 418878 | `939ec104fa8fec85fba17abd40c0c790d1f581e165d2db9f17992bc23cc1e77e` |
+| web_baseline | `.artifacts/product/P6/web-baseline/request-audit.json` | 439 | `d236e43cdd7c3a18b10d4bcf1c3975069db6a780fd0118ea4aa57c71d9629d77` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png` | 132567 | `aed8398dce3b484ba22ea688e4dabeb2996feb27b146482e2ccf605ec19f8817` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png` | 111014 | `a03b9db4b94de1ee1b03e886866415855c2497c365b0360ddb730deedebe962f` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-assets-1440x900.png` | 164364 | `7b02fdb6236e2cc855753ee21a469d9fecb65ce59fd85b5ce9384cfcb3b789dd` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-overview-1440x900.png` | 192005 | `5cbeb6c8cb94689357321cdf494f78c98fe3a259911789604225a544c819ed5a` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-invalid-1440x900.png` | 73777 | `eaa8e5dc81f5e8c292af8c0da04e6c24127132d567743aa7110665c4b0554289` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-empty-1440x900.png` | 137683 | `a03510a4650467010627f4b59f586d2b83223b6d5cf139bb5ac87741b86144f7` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-empty-1440x900.png` | 45987 | `3ab6f16ced0fc3b0f4d55f754b3bc30be92853969f27ab16e9f5aeb2b54c35f6` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-logs-1440x900.png` | 168247 | `266f26ac95a2b3ac9b8e2ed751f8aaff33d1681859ea3eecd7e317cb4cff2cb6` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-1440x900.png` | 178508 | `bb67a978e9a7f2c800559c913ad2ca25fddb3a22715dd9935ed223855fedc76e` |
 
 ## Protected Flows
 

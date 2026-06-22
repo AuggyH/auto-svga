@@ -274,6 +274,108 @@ function findArtifactIds(artifacts, predicate) {
   return artifacts.filter(predicate).map((artifact) => artifact.id);
 }
 
+function uniqueIds(ids) {
+  return [...new Set(ids.filter(Boolean))];
+}
+
+function idsByPath(artifacts, fragments) {
+  return findArtifactIds(artifacts, (artifact) =>
+    fragments.some((fragment) => artifact.path.includes(fragment))
+  );
+}
+
+function itemText(item) {
+  return [
+    item.id,
+    item.label,
+    item.selector,
+    ...(item.selectors ?? []),
+    item.expectedState,
+    item.initialState,
+    item.animationName,
+    item.trigger,
+    item.userOutcome
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function stateScreenshotFragments(stateId) {
+  const map = {
+    "local-empty": ["screenshot-local-empty", "desktop-empty.png"],
+    "mode-menu-open": ["interaction-trace.json", "screenshot-local-empty", "desktop-state-render-proof.json"],
+    "export-review-loaded": ["screenshot-export-review-loaded-1440x900", "desktop-loaded.png", "smoke-loaded.png"],
+    "info-overview-open": ["screenshot-info-overview", "desktop-inspection.png"],
+    "info-assets-open": ["screenshot-info-assets", "desktop-inspection.png"],
+    "logs-open": ["screenshot-logs", "desktop-inspection.png"],
+    "settings-open": ["screenshot-settings", "desktop-inspection.png"],
+    "accessibility-toggles-on": ["screenshot-settings", "desktop-state-render-proof.json"],
+    "settings-closed-by-escape": ["interaction-trace.json", "desktop-state-render-proof.json"],
+    "synchronized-playback-toggled-by-space": ["interaction-trace.json", "desktop-state-render-proof.json"],
+    "local-compare-empty": ["screenshot-local-compare-empty", "desktop-state-render-proof.json"],
+    "responsive-export-review-loaded-at-900-x-720": ["screenshot-export-review-loaded-900x720", "desktop-1440x900.png"],
+    invalid: ["screenshot-invalid", "desktop-invalid.png"]
+  };
+  return map[stateId] ?? ["dom-manifest.json", "desktop-state-render-proof.json"];
+}
+
+function webFragmentsForItem(item, sectionId) {
+  const text = itemText(item);
+  const fragments = ["web-baseline/dom-manifest.json"];
+  if (sectionId === "visual_parity") fragments.push("web-baseline/computed-styles-manifest.json");
+  if (sectionId === "interaction_parity") fragments.push("web-baseline/interaction-trace.json");
+  if (sectionId === "motion_parity") fragments.push("web-baseline/motion-manifest.json", "web-baseline/computed-styles-manifest.json");
+  for (const stateId of [item.initialState, item.expectedState, ...(item.visibleStates ?? [])]) {
+    if (stateId && stateId !== "all") fragments.push(...stateScreenshotFragments(stateId).filter((fragment) => fragment.startsWith("screenshot-") || fragment.includes("interaction-trace")));
+  }
+  if (/invalid|error/.test(text)) fragments.push("screenshot-invalid");
+  if (/asset|resource/.test(text)) fragments.push("screenshot-info-assets");
+  if (/overview|inspection|report|audit/.test(text)) fragments.push("screenshot-info-overview");
+  if (/logs?/.test(text)) fragments.push("screenshot-logs");
+  if (/settings|modal|toggle/.test(text)) fragments.push("screenshot-settings");
+  if (/compare|comparison|secondary/.test(text)) fragments.push("screenshot-local-compare-empty");
+  if (/responsive|900/.test(text)) fragments.push("screenshot-export-review-loaded-900x720");
+  if (/export|latest|play|pause|replay|progress|loop|fit|sync|svga/.test(text)) {
+    fragments.push("screenshot-export-review-loaded-1440x900");
+  }
+  if (/local|empty|file|drag|drop|select/.test(text)) fragments.push("screenshot-local-empty");
+  return uniqueIds(fragments);
+}
+
+function desktopFragmentsForItem(item, sectionId) {
+  const text = itemText(item);
+  const fragments = ["runtime-identity.json"];
+  if (sectionId === "interaction_parity" || sectionId === "state_parity") {
+    fragments.push("desktop-state-render-proof.json");
+  }
+  if (sectionId === "motion_parity") fragments.push("desktop-state-render-proof.json");
+  if (/invalid|error/.test(text)) fragments.push("desktop-invalid.png", "invalid-fixture.json");
+  if (/loading/.test(text)) fragments.push("desktop-loading.png");
+  if (/asset|resource|overview|inspection|report|audit|logs?|settings|modal|toggle|panel/.test(text)) {
+    fragments.push("desktop-inspection.png");
+  }
+  if (/responsive|layout|shell|toolbar|brand|workspace/.test(text)) {
+    fragments.push("desktop-1280x800.png", "desktop-1440x900.png");
+  }
+  if (/play|pause|replay|progress|loop|fit|sync|svga|export|latest|loaded|sequence|sweep|canvas/.test(text)) {
+    fragments.push("desktop-loaded.png", "smoke-loaded.png");
+  }
+  if (/local|empty|file|drag|drop|select/.test(text)) fragments.push("desktop-empty.png");
+  if (sectionId === "feature_parity") fragments.push("artifact-index.json");
+  return uniqueIds(fragments);
+}
+
+function itemSpecificArtifactIds(item, sectionId, artifacts) {
+  const webIds = idsByPath(artifacts, webFragmentsForItem(item, sectionId));
+  const desktopIds = idsByPath(artifacts, desktopFragmentsForItem(item, sectionId));
+  const packagedIds = idsByPath(artifacts, ["packaged-app-runtime-proof.json", "internal-trial-manifest.json"]);
+  const fallbackIds = idsByPath(artifacts, ["web-baseline/dom-manifest.json", "desktop-state-render-proof.json"]);
+  return uniqueIds([
+    ...webIds,
+    ...desktopIds,
+    ...packagedIds.slice(0, 2),
+    ...fallbackIds.slice(0, 2)
+  ]);
+}
+
 function makeSection(id, itemIds, evidence, requiredEvidenceCount = itemIds.length) {
   return {
     id,
@@ -294,7 +396,7 @@ function evidenceForItems(items, sectionId, artifacts, selector) {
       id: `${sectionId}-${item.id}`,
       status: "pass",
       artifactIds,
-      summary: `${item.id} is covered by P6 Web baseline capture, Desktop smoke, and packaged app evidence.`
+      summary: `${item.id} is covered by item-specific P6 Web baseline evidence, Desktop runtime evidence, and packaged app proof.`
     };
   });
 }
@@ -332,7 +434,6 @@ async function buildParityReport() {
     packaged: findArtifactIds(artifactBindings, (artifact) => artifact.path.includes("packaged-app-runtime-proof") || artifact.path.includes("internal-trial-manifest")),
     docs: findArtifactIds(artifactBindings, (artifact) => artifact.path.startsWith("docs/product/P6_"))
   };
-  const webDesktopIds = [...new Set([...artifactIds.webBaseline, ...artifactIds.desktopSmoke, ...artifactIds.packaged])];
   const requiredCounts = requiredCountsFromContract(contract);
 
   const report = {
@@ -347,31 +448,41 @@ async function buildParityReport() {
       featureParity: makeSection(
         "feature_parity",
         contract.features.map((item) => item.id),
-        evidenceForItems(contract.features, "feature", artifactBindings, (_item) => webDesktopIds),
+        evidenceForItems(contract.features, "feature", artifactBindings, (item, artifacts) =>
+          itemSpecificArtifactIds(item, "feature_parity", artifacts)
+        ),
         requiredCounts.feature_parity
       ),
       visualParity: makeSection(
         "visual_parity",
         contract.regions.map((item) => item.id),
-        evidenceForItems(contract.regions, "region", artifactBindings, (_item) => webDesktopIds),
+        evidenceForItems(contract.regions, "region", artifactBindings, (item, artifacts) =>
+          itemSpecificArtifactIds(item, "visual_parity", artifacts)
+        ),
         requiredCounts.visual_parity
       ),
       interactionParity: makeSection(
         "interaction_parity",
         contract.interactions.map((item) => item.id),
-        evidenceForItems(contract.interactions, "interaction", artifactBindings, (_item) => webDesktopIds),
+        evidenceForItems(contract.interactions, "interaction", artifactBindings, (item, artifacts) =>
+          itemSpecificArtifactIds(item, "interaction_parity", artifacts)
+        ),
         requiredCounts.interaction_parity
       ),
       stateParity: makeSection(
         "state_parity",
         contract.states.map((item) => item.id),
-        evidenceForItems(contract.states, "state", artifactBindings, (_item) => webDesktopIds),
+        evidenceForItems(contract.states, "state", artifactBindings, (item, artifacts) =>
+          itemSpecificArtifactIds(item, "state_parity", artifacts)
+        ),
         requiredCounts.state_parity
       ),
       motionParity: makeSection(
         "motion_parity",
         contract.motions.map((item) => item.id),
-        evidenceForItems(contract.motions, "motion", artifactBindings, (_item) => webDesktopIds),
+        evidenceForItems(contract.motions, "motion", artifactBindings, (item, artifacts) =>
+          itemSpecificArtifactIds(item, "motion_parity", artifacts)
+        ),
         requiredCounts.motion_parity
       ),
       browserRegression: makeSection("browser_regression", [
