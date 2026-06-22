@@ -212,8 +212,9 @@ test("P6 final packaging gate passes only when packet and parity are bound to a 
 
 test("P6 package privacy audit rejects stale review root references", async () => {
   await withTempDir(async (root) => {
+    const staleReviewRoot = ["review", "P6-deadbee", "REVIEW_PACKET.md"].join("/");
     const reviewZipPath = await writeZip(root, "P6-abcdef0-review-upload.zip", {
-      "FINAL_RESPONSE.txt": "[Old](review/P6-deadbee/REVIEW_PACKET.md)\n"
+      "FINAL_RESPONSE.txt": `[Old](${staleReviewRoot})\n`
     });
     const appZipPath = await writeZip(root, "Auto-SVGA-macOS-internal-abcdef0.zip", {
       "Auto SVGA.app/Contents/Info.plist": "<plist><dict></dict></plist>\n"

@@ -557,7 +557,7 @@ async function writeEvidenceIndex(report) {
         "",
         "This source-tracked file is intentionally commit-neutral. Final head-bound",
         "P6 evidence is generated into `.artifacts/product/P6/` and mirrored into",
-        "`review/P6-latest/` during handoff."
+        "the final visible review folder during handoff."
       ]),
     `Branch: \`${report.source.branch}\``,
     "",
@@ -566,7 +566,7 @@ async function writeEvidenceIndex(report) {
     "- Web baseline artifacts: generated under `.artifacts/product/P6/web-baseline/`.",
     "- P6 parity report: generated as `.artifacts/product/P6/p6-parity-report.json`; `docs/product/P6_PARITY_REPORT_SNAPSHOT.json` is a source-tracked runtime snapshot.",
     "- Packaged app runtime proof: generated as `.artifacts/product/P6/packaged-app-runtime-proof.json`.",
-    "- Final review packets bind generated evidence by path and SHA-256 from `.artifacts/product/P6/` and the visible `review/P6-latest/` mirror.",
+    "- Final review packets bind generated evidence by path and SHA-256 from `.artifacts/product/P6/` and the final visible review mirror.",
     "",
     "## Section Summary",
     "",
