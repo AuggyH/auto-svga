@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "P6",
+  "integrationCoordinator": "A0",
+  "integrationBranch": "agent/codex/p6-integration",
+  "integrationHeadCommit": "d347cd4802ffe47cf2291f69fbebac6c0ec29457",
+  "lastUpdatedAt": "2026-06-22T05:08:01Z",
+  "rules": {
+    "formalWorkersMustBeVisibleProjectWorktreeThreads": true,
+    "subagentsLimitedToReadOnlyAuditAndReview": true,
+    "reuseExistingThreadsBeforeCreatingWorkers": true,
+    "workerPassDoesNotImplyMilestonePass": true,
+    "heavyElectronValidationRunsSerially": true,
+    "appDebuggingShouldAvoidForegroundWindows": true
+  },
+  "workers": [
+    {
+      "workerId": "A1",
+      "role": "Web Baseline",
+      "visibleThreadId": "019eeb7d-c4a6-70e3-8d04-756807461f7f",
+      "threadType": "project_worktree",
+      "threadStatus": "notLoaded",
+      "cwd": "/Users/huangtengxin/.codex/worktrees/7795/auto-svga",
+      "branch": "agent/codex/p6-a1-web-baseline",
+      "baseCommit": "d16fb380c0ff82b9aca3af58b0335708e0b0ef73",
+      "headCommit": "1b64e739ee013b34089151913d7c7db7a322efd8",
+      "status": "existing_visible_thread; original worker stopped without committed baseline; A0 later repaired/integrated baseline",
+      "ownedPaths": [
+        "docs/product/P6_WEB_PRODUCT_BASELINE.md",
+        "docs/product/P6_WEB_FEATURE_INVENTORY.md",
+        "docs/product/P6_WEB_PARITY_CONTRACT.json",
+        ".artifacts/product/P6/web-baseline/"
+      ],
+      "dependencies": [],
+      "requestedIntegrationChanges": [],
+      "lastUpdatedAt": "2026-06-22T05:08:01Z"
+    },
+    {
+      "workerId": "A2",
+      "role": "Shared Frontend",
+      "visibleThreadId": "019eeb8a-3dbe-7123-b696-e1334ab9ab60",
+      "threadType": "project_worktree",
+      "threadStatus": "notLoaded",
+      "cwd": "/Users/huangtengxin/.codex/worktrees/4bd8/auto-svga",
+      "branch": "agent/codex/p6-a2-shared-frontend",
+      "baseCommit": "437b21f1ce35bd89545d10275f619c29325f7809",
+      "headCommit": "23ee8ef1c715f4229d0f551e47ee8d13402a35da",
+      "status": "existing_visible_thread; completed worker handoff; later reconciled by A0 integration repair",
+      "ownedPaths": [
+        "tools/shared/product-frontend/",
+        "tools/svga-player-preview/main.js",
+        "tools/svga-player-preview/styles.css",
+        "tools/svga-player-preview/inspection-report-view.mjs",
+        "src/tests/helpers/nq1-accessibility-audit.ts",
+        "src/tests/nq1-accessibility-audit.test.ts"
+      ],
+      "dependencies": [
+        "A1"
+      ],
+      "requestedIntegrationChanges": [],
+      "lastUpdatedAt": "2026-06-22T05:08:01Z"
+    },
+    {
+      "workerId": "A3",
+      "role": "Electron Host",
+      "visibleThreadId": "019eeb7e-072c-7382-afe5-330eb92b9d2f",
+      "threadType": "project_worktree",
+      "threadStatus": "notLoaded",
+      "cwd": "/Users/huangtengxin/.codex/worktrees/befc/auto-svga",
+      "branch": "agent/codex/p6-r2-a3-electron-host",
+      "baseCommit": "2397477d64b2715be4bb40100e9faae39f8cb931",
+      "headCommit": "dfe78be2c7b7a62186ff1a8b3d462a9ddf1f0b65",
+      "status": "existing_visible_thread; Repair 2 branch exists after branch-confusion cleanup; A0 must verify before reuse",
+      "ownedPaths": [
+        "tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
+        "tools/electron-prototype/experiments/svga-web/main.cjs",
+        "tools/electron-prototype/experiments/svga-web/preload.cjs",
+        "tools/electron-prototype/experiments/svga-web/web/",
+        "tools/electron-prototype/experiments/svga-web/tests/",
+        "tools/p6/generate-p6-evidence.mjs"
+      ],
+      "dependencies": [
+        "A2"
+      ],
+      "requestedIntegrationChanges": [
+        "Future IPC channel changes must update the host contract and sandboxed preload together.",
+        "Keep legacy autoSvgaPrototype as compatibility alias only."
+      ],
+      "lastUpdatedAt": "2026-06-22T05:08:01Z"
+    },
+    {
+      "workerId": "A4",
+      "role": "Parity Test Framework",
+      "visibleThreadId": "019eeb7e-071e-7991-ab4f-075c56dbade1",
+      "threadType": "project_worktree",
+      "threadStatus": "notLoaded",
+      "cwd": "/Users/huangtengxin/.codex/worktrees/40ab/auto-svga",
+      "branch": "agent/codex/p6-a4-parity-tests",
+      "baseCommit": "d16fb380c0ff82b9aca3af58b0335708e0b0ef73",
+      "headCommit": "31caf46094f4c75c61dff49a2b93bac98e144321",
+      "status": "existing_visible_thread; completed worker handoff; later reconciled by A0 integration repair",
+      "ownedPaths": [
+        "src/workbench/p6-parity-report-contract.ts",
+        "src/tests/p6-parity-report-contract.test.ts",
+        "docs/reviews/2026-06-22-codex-p6-a4-parity-tests.md"
+      ],
+      "dependencies": [
+        "A1",
+        "A2",
+        "A3"
+      ],
+      "requestedIntegrationChanges": [
+        "Optional: A0 may add a dedicated root runner only if needed; workers must not edit root package.json."
+      ],
+      "lastUpdatedAt": "2026-06-22T05:08:01Z"
+    },
+    {
+      "workerId": "A5",
+      "role": "macOS Packaging",
+      "visibleThreadId": "019eeb7e-0731-76c0-92e3-d9494b272e14",
+      "threadType": "project_worktree",
+      "threadStatus": "notLoaded",
+      "cwd": "/Users/huangtengxin/.codex/worktrees/44d0/auto-svga",
+      "branch": "agent/codex/p6-a5-macos-package",
+      "baseCommit": "d16fb380c0ff82b9aca3af58b0335708e0b0ef73",
+      "headCommit": "a61ecef1a379e3a203073c23fef54d926fde35f1",
+      "status": "existing_visible_thread; completed worker handoff; later reconciled by A0 integration repair",
+      "ownedPaths": [
+        "docs/internal-electron-trial-package.md",
+        "tools/electron-prototype/experiments/svga-web/package.json",
+        "tools/electron-prototype/experiments/svga-web/packaging/macos/",
+        "tools/electron-prototype/experiments/svga-web/scripts/macos-package-proof.mjs",
+        "tools/electron-prototype/experiments/svga-web/scripts/package-internal-trial.mjs",
+        "tools/electron-prototype/experiments/svga-web/tests/"
+      ],
+      "dependencies": [
+        "A2",
+        "A3",
+        "A4"
+      ],
+      "requestedIntegrationChanges": [
+        "A0 owns final packaged App smoke and acceptance.",
+        "A0 may add a root packaging script only if required."
+      ],
+      "lastUpdatedAt": "2026-06-22T05:08:01Z"
+    }
+  ]
+}

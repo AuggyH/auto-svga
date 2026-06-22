@@ -223,6 +223,15 @@ binding, loop budget evidence, structured reviewer JSON v2, and terminal
 Loop budget counts must be derived from `LOOP_HISTORY.jsonl`, and
 `HUMAN_REQUIRED` snapshots must never include high-confidence secret content.
 
+## Multi-Worker Coordination
+
+- Formal implementation workers must be visible project Worktree threads.
+- Subagents are limited to short-lived read-only audit and review.
+- List and reuse existing project threads before creating workers.
+- A0 is the only integration coordinator and global lifecycle writer.
+- Worker PASS does not imply milestone PASS.
+- Heavy Electron and packaged-App validation runs serially.
+
 ## Token-saving Skills
 
 Repository-local reusable skills live under `codex-skills/`:
