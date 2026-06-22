@@ -37,9 +37,20 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(webAdapter, /editorIncubationDefaultVisible: false/);
 });
 
-test("future Electron work must not default to the legacy editor incubation surface", async () => {
-  const prototypeHtml = await readRepoFile("tools/electron-prototype/web/index.html");
+test("Electron default renderer uses shared product source and hides editor incubation", async () => {
+  const [electronHtml, electronStyles, electronEntry, prototypeSource] = await Promise.all([
+    readRepoFile("tools/electron-prototype/experiments/svga-web/web/index.html"),
+    readRepoFile("tools/electron-prototype/experiments/svga-web/web/styles.css"),
+    readRepoFile("tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs"),
+    readRepoFile("tools/electron-prototype/experiments/svga-web/web/prototype.js")
+  ]);
 
-  assert.match(prototypeHtml, /Legacy Electron Spike/);
-  assert.doesNotMatch(prototypeHtml, /product-app\.mjs/);
+  assert.match(electronHtml, /class="shell"/);
+  assert.match(electronHtml, /src="\/desktop-product-entry\.mjs"/);
+  assert.doesNotMatch(electronHtml, /prototype\.js/);
+  assert.equal(electronStyles.trim(), '@import url("/tools/shared/product-frontend/product-styles.css");');
+  assert.match(electronEntry, /autoSvgaHostAdapter/);
+  assert.match(electronEntry, /\/tools\/shared\/product-frontend\/product-app\.mjs/);
+  assert.match(electronEntry, /installSvgaWebCompatibility/);
+  assert.match(prototypeSource, /loadBatchPngFiles/);
 });

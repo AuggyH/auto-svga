@@ -26,6 +26,7 @@ const sourceAuditFiles = [
   "preload.cjs",
   "server.mjs",
   "web/index.html",
+  "web/desktop-product-entry.mjs",
   "web/prototype.js",
   "web/styles.css",
   "package.json",

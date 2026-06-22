@@ -24,7 +24,7 @@ const productIdentity = "Auto SVGA";
 const mainEntry = "main.cjs";
 const preloadEntry = "preload.cjs";
 const rendererHtmlEntry = "web/index.html";
-const rendererEntry = "web/prototype.js";
+const rendererEntry = "web/desktop-product-entry.mjs";
 const stylesEntry = "web/styles.css";
 const playerIdentity = "svga-web@2.4.4";
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
@@ -1669,20 +1669,22 @@ async function driveCanonicalNormalProof(window) {
       const file = new File([bytes], "synthetic-avatar-frame.svga", { type: "application/octet-stream" });
       const transfer = new DataTransfer();
       transfer.items.add(file);
-      const input = document.querySelector("#fileInput");
+      const input = document.querySelector("#svgaFileInput");
       Object.defineProperty(input, "files", { value: transfer.files, configurable: true });
       input.dispatchEvent(new Event("change", { bubbles: true }));
       const startedAt = performance.now();
       while (performance.now() - startedAt < 8000) {
-        const reportReady = Boolean(document.querySelector('[data-inspection-group="audit"]'));
-        const playing = document.querySelector("#playbackStatus")?.textContent?.includes("正在播放");
+        const reportReady = Boolean(document.querySelector(".auditReportSection"));
+        const playing = document.querySelector("#svgaStatusA")?.textContent?.includes("播放中");
         if (reportReady && playing) break;
         await new Promise((resolve) => setTimeout(resolve, 120));
       }
-      const context = document.querySelector("#player")?.getContext("2d");
+      const context = document.querySelector("#svgaCanvasA canvas")?.getContext("2d");
       let canvasNonBlank = false;
       if (context) {
-        const pixels = context.getImageData(0, 0, 300, 300).data;
+        const width = Math.min(300, context.canvas.width);
+        const height = Math.min(300, context.canvas.height);
+        const pixels = context.getImageData(0, 0, width, height).data;
         for (let i = 3; i < pixels.length; i += 4) {
           if (pixels[i] > 0) { canvasNonBlank = true; break; }
         }
@@ -1690,10 +1692,10 @@ async function driveCanonicalNormalProof(window) {
       return {
         normalMode: true,
         rendererQuery: location.search,
-        playback: document.querySelector("#playbackStatus")?.textContent?.includes("正在播放") ?? false,
+        playback: document.querySelector("#svgaStatusA")?.textContent?.includes("播放中") ?? false,
         canvasNonBlank,
-        inspectionReport: Boolean(document.querySelector('[data-inspection-group="spec"]')),
-        auditPanel: Boolean(document.querySelector('[data-inspection-group="audit"]')),
+        inspectionReport: Boolean(document.querySelector(".specReportSection")),
+        auditPanel: Boolean(document.querySelector(".auditReportSection")),
         localOnly: performance.getEntriesByType("resource").every((entry) => new URL(entry.name).origin === location.origin || entry.name.startsWith("blob:" + location.origin + "/")),
         cspAccepted: Boolean(document.querySelector("meta[name='auto-svga-csp']")?.content.includes("wasm-unsafe-eval")),
         noCspViolation: true
