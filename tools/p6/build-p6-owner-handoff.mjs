@@ -15,6 +15,7 @@ const packetRoot = path.join(repoRoot, ".artifacts/loop-handoff/latest");
 const trialRoot = path.join(repoRoot, "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial");
 const trialApp = path.join(trialRoot, "Auto SVGA-darwin-arm64/Auto SVGA.app");
 const uploadStagingRoot = path.join(repoRoot, ".artifacts/product/P6-owner-review-upload");
+const parityReportPath = path.join(productRoot, "p6-parity-report.json");
 
 const sealedFiles = [
   "REVIEW_PACKET.md",
@@ -220,6 +221,85 @@ function shouldSkipVendorBinaryContentScan(entry) {
 
 function zipRoleForBundlePath(bundlePath) {
   return `staging:${bundlePath.replace(/[^A-Za-z0-9._-]+/g, "_")}`;
+}
+
+function headFromCanonicalManifest(manifest) {
+  return manifest.reviewedHeadCommit
+    ?? manifest.sourceHeadCommit
+    ?? manifest.headCommit
+    ?? manifest.source?.headCommit
+    ?? manifest.repositoryHeadCommitAtFinish
+    ?? null;
+}
+
+export function collectP6ParityNonPass(report) {
+  const nonPass = [];
+  for (const [sectionKey, section] of Object.entries(report?.sections ?? {})) {
+    const sectionStatus = section?.status ?? "missing";
+    if (sectionStatus !== "pass") nonPass.push(`${sectionKey}:${sectionStatus}`);
+    for (const evidence of section?.evidence ?? []) {
+      if (evidence.status !== "pass") nonPass.push(`${sectionKey}.${evidence.id}:${evidence.status}`);
+    }
+    for (const item of section?.items ?? []) {
+      if (item.required === false) continue;
+      if (item.status !== "pass") {
+        const failures = Array.isArray(item.failures) ? item.failures.join("|") : "";
+        nonPass.push(`${sectionKey}.${item.id}:${item.status}:${failures}`);
+      }
+    }
+  }
+  return nonPass;
+}
+
+export function validateFinalPackagingGate({ headCommit, canonicalManifest, parityReport }) {
+  const errors = [];
+  const packetHead = headFromCanonicalManifest(canonicalManifest);
+  const parityHead = parityReport?.source?.headCommit ?? parityReport?.headCommit ?? null;
+  const nonPassEvidence = collectP6ParityNonPass(parityReport);
+
+  if (!packetHead) {
+    errors.push("sealed packet MANIFEST.json does not record a reviewed head commit");
+  } else if (packetHead !== headCommit) {
+    errors.push(`sealed packet reviewed head ${packetHead} does not match current head ${headCommit}`);
+  }
+
+  if (!parityHead) {
+    errors.push("P6 parity report does not record a source head commit");
+  } else if (parityHead !== headCommit) {
+    errors.push(`P6 parity report head ${parityHead} does not match current head ${headCommit}`);
+  }
+
+  if (nonPassEvidence.length > 0) {
+    errors.push(`P6 required parity failures remain: ${nonPassEvidence.slice(0, 40).join("; ")}`);
+  }
+
+  return {
+    passed: errors.length === 0,
+    headCommit,
+    packetHeadCommit: packetHead,
+    parityReportHeadCommit: parityHead,
+    nonPassEvidenceCount: nonPassEvidence.length,
+    nonPassEvidence,
+    errors
+  };
+}
+
+async function assertFinalPackagingGate({ headCommit, canonicalManifest }) {
+  if (!existsSync(parityReportPath)) {
+    throw new Error(`P6 final packaging gate blocked: missing parity report ${parityReportPath}`);
+  }
+  const parityReport = JSON.parse(await readFile(parityReportPath, "utf8"));
+  const gate = validateFinalPackagingGate({ headCommit, canonicalManifest, parityReport });
+  if (!gate.passed) {
+    throw new Error(`P6 final packaging gate blocked: ${gate.errors.join("; ")}`);
+  }
+  return {
+    passed: true,
+    packetHeadCommit: gate.packetHeadCommit,
+    parityReportHeadCommit: gate.parityReportHeadCommit,
+    nonPassEvidenceCount: gate.nonPassEvidenceCount,
+    parityReportPath: path.relative(repoRoot, parityReportPath).split(path.sep).join("/")
+  };
 }
 
 export function buildZipPrivacyAudit({
@@ -435,6 +515,7 @@ async function main() {
   if (!existsSync(trialApp)) {
     throw new Error(`macOS trial app missing: ${trialApp}`);
   }
+  const finalPackagingGate = await assertFinalPackagingGate({ headCommit, canonicalManifest });
 
   await rm(uploadStagingRoot, { recursive: true, force: true });
   await rm(visibleRoot, { recursive: true, force: true });
@@ -499,12 +580,19 @@ async function main() {
   const manifestExtra = {
     reviewedHeadCommit: headCommit,
     companionRequired: canonicalManifest.companionRequired === true,
+    finalPackagingGate,
     ownerReviewZip: reviewZipName,
     macosAppZip: {
       fileName: appZipName,
       sizeBytes: appZipIdentity.sizeBytes,
       sha256: appZipIdentity.sha256,
-      entryCount: appZipEntries.length
+      entryCount: appZipEntries.length,
+      distribution: {
+        unsigned: true,
+        notarized: false,
+        productionApproved: false,
+        internalOnly: true
+      }
     },
     visibleHandoff: {
       canonicalPacketRoot: path.relative(visibleRoot, packetRoot).split(path.sep).join("/")
@@ -610,9 +698,11 @@ async function main() {
     macosAppZip: {
       fileName: appZipName,
       sizeBytes: appZipIdentity.sizeBytes,
-      sha256: appZipIdentity.sha256
+      sha256: appZipIdentity.sha256,
+      productionApproved: false
     },
     companionRequired: canonicalManifest.companionRequired === true,
+    finalPackagingGate,
     privacyAudit: {
       passed: privacyAudit.passed,
       findingCount: privacyAudit.findingCount

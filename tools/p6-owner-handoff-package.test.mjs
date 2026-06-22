@@ -5,7 +5,11 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
-import { buildZipPrivacyAudit } from "./p6/build-p6-owner-handoff.mjs";
+import {
+  buildZipPrivacyAudit,
+  collectP6ParityNonPass,
+  validateFinalPackagingGate
+} from "./p6/build-p6-owner-handoff.mjs";
 
 async function withTempDir(callback) {
   const directory = await mkdtemp(join(tmpdir(), "auto-svga-p6-package-"));
@@ -117,13 +121,86 @@ test("P6 package privacy audit rejects forbidden ZIP metadata and local path con
 test("P6 owner handoff builder records App ZIP manifest hash and entry counts", async () => {
   const source = await readFile(new URL("./p6/build-p6-owner-handoff.mjs", import.meta.url), "utf8");
 
+  assert.match(source, /assertFinalPackagingGate\(\{ headCommit, canonicalManifest \}\)/);
+  assert.match(source, /finalPackagingGate/);
   assert.match(source, /macosAppZip:\s*\{/);
   assert.match(source, /sha256:\s*appZipIdentity\.sha256/);
   assert.match(source, /entryCount:\s*appZipEntries\.length/);
+  assert.match(source, /productionApproved:\s*false/);
   assert.match(source, /actualZipEntryCount/);
   assert.match(source, /scannedEntryCount/);
   assert.match(source, /scannedTextEntryCount/);
   assert.match(source, /scannedBinaryEntryCount/);
   assert.match(source, /selfReferentialExclusions/);
   assert.match(source, /buildPrivacyAudit\(\{ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath \}\)/);
+});
+
+test("P6 final packaging gate blocks stale packet or parity report heads", () => {
+  const headCommit = "a".repeat(40);
+  const parityReport = {
+    source: { headCommit: "b".repeat(40) },
+    sections: {}
+  };
+  const gate = validateFinalPackagingGate({
+    headCommit,
+    canonicalManifest: { reviewedHeadCommit: headCommit },
+    parityReport
+  });
+
+  assert.equal(gate.passed, false);
+  assert.equal(gate.errors.some((error) => error.includes("P6 parity report head")), true);
+});
+
+test("P6 final packaging gate blocks non-passing required parity evidence", () => {
+  const report = {
+    source: { headCommit: "a".repeat(40) },
+    sections: {
+      visual: {
+        status: "partial",
+        evidence: [{ id: "screenshot", status: "pass" }],
+        items: [
+          { id: "motion", status: "fail", failures: ["drift"] },
+          { id: "optional-note", status: "not_run", required: false, failures: ["ignored"] }
+        ]
+      },
+      archive: {
+        status: "pass",
+        evidence: [{ id: "zip", status: "pass" }],
+        items: []
+      }
+    }
+  };
+  const nonPass = collectP6ParityNonPass(report);
+  const gate = validateFinalPackagingGate({
+    headCommit: "a".repeat(40),
+    canonicalManifest: { reviewedHeadCommit: "a".repeat(40) },
+    parityReport: report
+  });
+
+  assert.deepEqual(nonPass, ["visual:partial", "visual.motion:fail:drift"]);
+  assert.equal(gate.passed, false);
+  assert.equal(gate.nonPassEvidenceCount, 2);
+  assert.equal(gate.errors.some((error) => error.includes("required parity failures remain")), true);
+});
+
+test("P6 final packaging gate passes only when packet and parity are bound to a clean passing head", () => {
+  const headCommit = "a".repeat(40);
+  const gate = validateFinalPackagingGate({
+    headCommit,
+    canonicalManifest: { reviewedHeadCommit: headCommit },
+    parityReport: {
+      source: { headCommit },
+      sections: {
+        visual: {
+          status: "pass",
+          evidence: [{ id: "screenshot", status: "pass" }],
+          items: [{ id: "motion", status: "pass", failures: [] }]
+        }
+      }
+    }
+  });
+
+  assert.equal(gate.passed, true);
+  assert.equal(gate.nonPassEvidenceCount, 0);
+  assert.deepEqual(gate.errors, []);
 });
