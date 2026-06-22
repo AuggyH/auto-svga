@@ -152,6 +152,14 @@ Date: 2026-06-23
 - Final ignored P6 evidence generated `parityStatus=pass` with
   `nonPassEvidenceCount=0` under `.artifacts/product/P6` for source head
   `5a311d4ddd89266ef270a747c7d2e4afded0f68b`.
+- P6 repair-6 validation repair commit
+  `6e7bc144cd6bb3b2ef6315e3446fae780395868e` aligned the NQ1 cleanup
+  source-check helper with the guarded Electron server close implementation.
+  This changed validation recognition only; Web preview, Desktop runtime,
+  exporter, CLI, import, drag-drop, and comparison behavior were not changed.
+- Ignored P6 evidence regenerated `parityStatus=pass` with
+  `nonPassEvidenceCount=0` under `.artifacts/product/P6` for source head
+  `6e7bc144cd6bb3b2ef6315e3446fae780395868e`.
 - P6 remains `HUMAN_REQUIRED` only for owner acceptance. Phase 2 remains
   `NOT_STARTED`; the macOS App remains unsigned, unnotarized, internal-only,
   and `productionApproved=false`.
