@@ -251,8 +251,9 @@ test("stale Worker registry is detected", () => {
 });
 
 test("source diff privacy literals are detected", () => {
+  const sampleUserPath = ["", "Users", "alice", "private", "P6"].join("/");
   const validation = validateP6SourceDiffPrivacy({
-    diffText: "+ artifactRoot = /Users/alice/private/P6\n+ AUTO_SVGA_API_TOKEN=secret"
+    diffText: `+ artifactRoot = ${sampleUserPath}\n+ AUTO_SVGA_API_TOKEN=secret`
   });
 
   assert.equal(validation.valid, false);

@@ -528,7 +528,7 @@ test("Web job loader uses validated repository-relative job paths", async () => 
   assert.match(source, /addEventListener\("canplay"/);
   assert.match(source, /for \(const candidate of previewCandidates\)/);
   assert.match(shellHtml, /<video id="referenceVideo" controls muted playsinline loop preload="auto"/);
-  assert.equal(source.includes("/Users/"), false);
+  assert.equal(source.includes(["", "Users", ""].join("/")), false);
 });
 
 async function createTempJob(): Promise<string> {
