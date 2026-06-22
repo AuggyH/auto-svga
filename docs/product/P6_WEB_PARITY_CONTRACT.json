@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "milestoneId": "P6",
-  "baselineCommit": "d16fb380c0ff82b9aca3af58b0335708e0b0ef73",
+  "baselineCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
   "webEntry": "tools/svga-player-preview/index.html",
-  "baselineArtifactsRoot": ".artifacts/product/P6/web-baseline",
+  "baselineArtifactsRoot": ".artifacts/product/P6/web-baseline-r4",
   "fixture": {
     "path": "examples/avatar_frame_basic/output/avatar_frame_basic.svga",
     "sha256": "ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c",
@@ -1155,5 +1155,5 @@
     "states": 12,
     "motions": 9
   },
-  "contractSha256": "99bf9d777a5c0d303a30bd4992929d4e9dc553ada195daf69ee819ce402d1fc4"
+  "contractSha256": "4856ca809fdcea6e0c356edf042ce6670dbea4d68d3bc824adb3ac8002183379"
 }

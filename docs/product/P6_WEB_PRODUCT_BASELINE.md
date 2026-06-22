@@ -1,9 +1,9 @@
 # P6 Web Product Baseline
 
 Date: 2026-06-22
-Baseline commit: `d16fb380c0ff82b9aca3af58b0335708e0b0ef73`
-Source: running Web Preview on local preview server, captured with Chrome CDP
-Route: `http://127.0.0.1:4187/tools/svga-player-preview/`
+Baseline commit: `dbab38fc7fc3cad09f6305775467422ded63318c`
+Source: running Web Preview on local preview server, captured with hidden Electron runtime
+Route: `http://127.0.0.1:4190/tools/svga-player-preview/`
 
 ## Fixture
 
@@ -13,7 +13,7 @@ Approved synthetic fixture:
 - SVGA SHA-256: `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`
 - SVGA size: `107034` bytes
 - Report: `examples/avatar_frame_basic/output/report.json`
-- Report SHA-256: `06bf6338b6e3952c646854fc5ec8d7ce0d637f0155840b2415606769f06619d8`
+- Report SHA-256: `e0de3a8f4aaa04a3074051749f6f77dcef0e0515d09f74ac3d6bbe57f1e879b6`
 - Reference fallback: `examples/avatar_frame_basic/output/preview.gif`
 - Reference GIF SHA-256: `40ba71d4f7cf95f8230bd3ce3a31a94c81159206c001f6a2c253e622b7bad905`
 
@@ -21,7 +21,7 @@ The generated example has `preview.gif` as reference fallback. No `preview.webm`
 
 ## Captured States
 
-Baseline artifacts live under `.artifacts/product/P6/web-baseline/`.
+Baseline artifacts live under `.artifacts/product/P6/web-baseline-r4/`.
 
 Tracked contract files reference these generated artifacts but do not commit the binary screenshots.
 
@@ -47,18 +47,21 @@ Machine-readable artifacts:
 
 ## Baseline Coverage
 
-- DOM snapshots: 13
-- UI regions per snapshot: 24
-- Controls observed: 77 empty/local controls, 81 loaded/export-review controls
-- Computed style selectors: 28
-- Interaction trace steps: 10
+- DOM snapshots: 12
+- UI regions per snapshot: 20
+- Controls observed: 11 local-empty controls, 20 export-review-loaded controls, 43 max visible controls
+- Computed style selectors: 19
+- Interaction trace steps: 12
 - CSS keyframes: 9
 - Reduced-motion CSS present: yes
+- Artifact index entries: 14
+- External request audit: 2 CDN script requests for the current browser Web player baseline
 
 ## Baseline Notes
 
-- Web baseline was captured on a fallback port because the default preview port was occupied.
+- Web baseline was captured on a fallback port to avoid disturbing any existing local preview session.
 - The capture used the real Web Preview server and page, not static README content.
+- The browser Web Preview still requests CDN copies of `pako@2.1.0` and `svgaplayerweb@2.3.1`; this is recorded as current Web baseline behavior, not approved Electron production behavior.
 - Playback visual success is not asserted automatically by this baseline. It remains a later parity/human-acceptance concern.
 - P3-P5 editor incubation is not part of the required Web parity surface.
 

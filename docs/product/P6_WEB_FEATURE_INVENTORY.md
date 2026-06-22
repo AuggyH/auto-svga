@@ -1,7 +1,7 @@
 # P6 Web Feature Inventory
 
 Date: 2026-06-22
-Baseline commit: `d16fb380c0ff82b9aca3af58b0335708e0b0ef73`
+Baseline commit: `dbab38fc7fc3cad09f6305775467422ded63318c`
 
 This inventory is the required Web surface for P6 Desktop parity. Desktop may differ only in approved host behavior.
 

@@ -10,6 +10,9 @@ interface P6ContractItem {
 }
 
 interface P6WebParityContract {
+  baselineCommit: string;
+  baselineArtifactsRoot: string;
+  contractSha256: string;
   regions: P6ContractItem[];
   features: P6ContractItem[];
   interactions: P6ContractItem[];
@@ -25,6 +28,7 @@ const contract = JSON.parse(
   readFileSync("docs/product/P6_WEB_PARITY_CONTRACT.json", "utf8")
 ) as P6WebParityContract;
 const previewHtml = readFileSync("tools/svga-player-preview/index.html", "utf8");
+const baselineCaptureScript = readFileSync("tools/p6/p6-web-baseline-capture.cjs", "utf8");
 
 const sectionHeadings: Record<InventorySection, string> = {
   regions: "Required Regions",
@@ -64,6 +68,16 @@ test("P6 web inventory contract keeps required flags and count floors", () => {
       `${section} requiredCounts must match the required inventory length`
     );
   }
+});
+
+test("P6 web inventory contract is bound to Repair 4 runtime capture outputs", () => {
+  assert.equal(contract.baselineCommit, "dbab38fc7fc3cad09f6305775467422ded63318c");
+  assert.equal(contract.baselineArtifactsRoot, ".artifacts/product/P6/web-baseline-r4");
+  assert.notEqual(contract.contractSha256, "99bf9d777a5c0d303a30bd4992929d4e9dc553ada195daf69ee819ce402d1fc4");
+  assert.ok(baselineCaptureScript.includes("artifact-index.json"));
+  assert.ok(baselineCaptureScript.includes("request-audit.json"));
+  assert.ok(baselineCaptureScript.includes("@import\\\\s+url"), "capture must parse imported CSS");
+  assert.ok(baselineCaptureScript.includes("@keyframes\\\\s+"), "capture must parse keyframes from CSS text");
 });
 
 test("P6 web inventory contract lists reachable baseline controls", () => {

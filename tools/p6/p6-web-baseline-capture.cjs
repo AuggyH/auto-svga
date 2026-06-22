@@ -1,4 +1,5 @@
-const { mkdirSync, readFileSync, writeFileSync } = require("node:fs");
+const { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } = require("node:fs");
+const { createHash } = require("node:crypto");
 const path = require("node:path");
 const { app, BrowserWindow, session } = require("electron");
 
@@ -127,17 +128,41 @@ async function collectStyles(window) {
 
 async function collectMotion(window) {
   return window.webContents.executeJavaScript(`
-    (() => {
+    (async () => {
       const sheets = [...document.styleSheets];
       const keyframes = [];
       const reducedMotionRules = [];
+      const visitRules = (rules) => {
+        for (const rule of rules) {
+          if (rule.type === CSSRule.KEYFRAMES_RULE || rule.cssText?.trim().startsWith("@keyframes")) {
+            keyframes.push(rule.name);
+          }
+          if (rule.cssText?.includes("prefers-reduced-motion")) reducedMotionRules.push(rule.cssText.slice(0, 300));
+          if (rule.cssRules) {
+            try { visitRules([...rule.cssRules]); } catch {}
+          }
+        }
+      };
       for (const sheet of sheets) {
         let rules;
         try { rules = [...sheet.cssRules]; } catch { continue; }
-        for (const rule of rules) {
-          if (rule.type === CSSRule.KEYFRAMES_RULE) keyframes.push(rule.name);
-          if (rule.cssText?.includes("prefers-reduced-motion")) reducedMotionRules.push(rule.cssText.slice(0, 300));
-        }
+        visitRules(rules);
+      }
+      const cssHrefs = [...document.querySelectorAll('link[rel="stylesheet"]')]
+        .map((node) => node.href)
+        .filter(Boolean);
+      for (const href of cssHrefs) {
+        try {
+          const cssText = await fetch(href).then((response) => response.text());
+          for (const match of cssText.matchAll(/@import\\s+url\\(["']?([^"')]+)["']?\\)/g)) {
+            const importedUrl = new URL(match[1], href).href;
+            const importedText = await fetch(importedUrl).then((response) => response.text());
+            for (const keyframe of importedText.matchAll(/@keyframes\\s+([a-zA-Z0-9_-]+)/g)) keyframes.push(keyframe[1]);
+            if (importedText.includes("prefers-reduced-motion")) reducedMotionRules.push("prefers-reduced-motion");
+          }
+          for (const keyframe of cssText.matchAll(/@keyframes\\s+([a-zA-Z0-9_-]+)/g)) keyframes.push(keyframe[1]);
+          if (cssText.includes("prefers-reduced-motion")) reducedMotionRules.push("prefers-reduced-motion");
+        } catch {}
       }
       return {
         schemaVersion: 1,
@@ -158,6 +183,34 @@ async function collectMotion(window) {
       };
     })()
   `);
+}
+
+function sha256File(filePath) {
+  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
+function writeArtifactIndex() {
+  const entries = readdirSync(outRoot)
+    .filter((name) => !name.startsWith(".") && name !== "artifact-index.json")
+    .sort()
+    .map((name) => {
+      const filePath = path.join(outRoot, name);
+      const stats = statSync(filePath);
+      return {
+        name,
+        bytes: stats.size,
+        sha256: sha256File(filePath)
+      };
+    });
+
+  writeFileSync(path.join(outRoot, "artifact-index.json"), JSON.stringify({
+    schemaVersion: 1,
+    source: "running Web Preview",
+    route: url,
+    fixtureUrl,
+    generatedAt: new Date().toISOString(),
+    entries
+  }, null, 2) + "\n");
 }
 
 async function setMode(window, value) {
@@ -342,6 +395,7 @@ async function main() {
     generatedAt: new Date().toISOString()
   }, null, 2) + "\n");
   writeFileSync(path.join(outRoot, "request-audit.json"), JSON.stringify(requestAudit, null, 2) + "\n");
+  writeArtifactIndex();
   console.log(`P6_WEB_BASELINE_CAPTURED ${JSON.stringify({ snapshotCount: snapshots.length, externalRequests: requestAudit.externalRequests.length })}`);
   window.destroy();
   app.exit(0);
