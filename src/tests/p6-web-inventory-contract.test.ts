@@ -28,6 +28,8 @@ const contract = JSON.parse(
   readFileSync("docs/product/P6_WEB_PARITY_CONTRACT.json", "utf8")
 ) as P6WebParityContract;
 const previewHtml = readFileSync("tools/svga-player-preview/index.html", "utf8");
+const productShellHtml = readFileSync("tools/shared/product-frontend/product-shell.html", "utf8");
+const previewProductHtml = `${previewHtml}\n${productShellHtml}`;
 const baselineCaptureScript = readFileSync("tools/p6/p6-web-baseline-capture.cjs", "utf8");
 
 const sectionHeadings: Record<InventorySection, string> = {
@@ -186,18 +188,18 @@ function selectorPartExists(selector: string): boolean {
 }
 
 function hasId(id: string): boolean {
-  return previewHtml.includes(`id="${id}"`);
+  return previewProductHtml.includes(`id="${id}"`);
 }
 
 function hasClass(className: string): boolean {
-  for (const match of previewHtml.matchAll(/class="([^"]+)"/g)) {
+  for (const match of previewProductHtml.matchAll(/class="([^"]+)"/g)) {
     if (match[1].split(/\s+/).includes(className)) return true;
   }
   return false;
 }
 
 function hasAttributeValue(name: string, value: string): boolean {
-  return new RegExp(`${escapeRegExp(name)}="${escapeRegExp(value)}"`).test(previewHtml);
+  return new RegExp(`${escapeRegExp(name)}="${escapeRegExp(value)}"`).test(previewProductHtml);
 }
 
 function escapeRegExp(value: string): string {

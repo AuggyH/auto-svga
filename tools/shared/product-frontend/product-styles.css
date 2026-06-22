@@ -690,6 +690,58 @@ label.isDisabled {
   line-height: var(--line-meta);
 }
 
+.loadingPhaseList {
+  display: none;
+  grid-template-columns: repeat(4, minmax(44px, 1fr));
+  gap: 5px;
+  width: min(280px, 72vw);
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.loadingPhaseList li {
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surfaceElevated) 82%, transparent);
+  color: var(--textTertiary);
+  font-size: 10px;
+  line-height: var(--line-meta);
+  white-space: nowrap;
+}
+
+.loadingPhaseList li.isActive {
+  border-color: color-mix(in srgb, var(--blue) 45%, var(--hairline));
+  color: var(--blue);
+}
+
+.loadingPhaseList li.isDone {
+  border-color: color-mix(in srgb, var(--green) 35%, var(--hairline));
+  color: var(--green);
+}
+
+.loadingPhaseList li.isError {
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--hairline));
+  color: var(--danger);
+}
+
+.previewCard.isLoading .centerEmptyState {
+  opacity: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.previewCard.isLoading .uploadMockIcon,
+.previewCard.isLoading .emptyFileButton {
+  display: none;
+}
+
+.previewCard.isLoading .loadingPhaseList {
+  display: grid;
+}
+
 .previewCard:not(.hasMedia) .cardHeader .cardFileButton {
   display: none;
 }

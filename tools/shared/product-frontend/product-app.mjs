@@ -210,6 +210,7 @@ function createPlayerSlot(slotName) {
     inspectionReport: undefined,
     inspectionStatus: "idle",
     inspectionRequestId: 0,
+    loadingPhases: Array.from(document.querySelectorAll(`#svgaPanel${suffix} [data-loading-phase]`)),
     source: undefined,
     parseStatus: "empty",
     renderStatus: "empty",
@@ -243,8 +244,87 @@ function clearError() {
   errorBox.textContent = "";
 }
 
+function setSlotLoadingPhase(slot, activePhase, phaseStates = {}) {
+  for (const item of slot.loadingPhases ?? []) {
+    const phase = item.dataset.loadingPhase;
+    item.classList.toggle("isActive", phase === activePhase);
+    item.classList.toggle("isDone", phaseStates[phase] === "done");
+    item.classList.toggle("isError", phaseStates[phase] === "error");
+  }
+}
+
+function clearSlotLoadingPhase(slot) {
+  setSlotLoadingPhase(slot, undefined, {});
+}
+
+function resetSlotMediaState(slot, { clearReport = false } = {}) {
+  slot.videoItem = undefined;
+  slot.metrics = undefined;
+  slot.isPlaying = false;
+  slot.inspectionReport = undefined;
+  slot.inspectionStatus = "idle";
+  slot.parseStatus = "empty";
+  slot.renderStatus = "empty";
+  slot.panel.classList.remove("hasMedia", "isLoading");
+  slot.canvas.innerHTML = "";
+  slot.frame.style.removeProperty("width");
+  slot.frame.style.removeProperty("height");
+  slot.info.innerHTML = "";
+  clearSlotLoadingPhase(slot);
+  slot.player?.clear?.();
+  if (slot.slotName === "A") {
+    svgaFilePillA.hidden = true;
+    svgaFilePillA.textContent = "";
+    applyPrimaryEmptyCopy();
+    localProgress.value = "0";
+    updateRangeProgress(localProgress, 0);
+    localTime.textContent = "0:00 / 0:00";
+    if (clearReport) {
+      slot.report = undefined;
+      renderReport(undefined);
+    }
+  }
+}
+
+function setSlotInvalidState(slot, message) {
+  slot.inspectionRequestId += 1;
+  resetSlotMediaState(slot, { clearReport: slot.slotName === "A" });
+  slot.source = undefined;
+  slot.parseStatus = "error";
+  slot.renderStatus = "error";
+  slot.inspectionStatus = "error";
+  setStatus(slot.status, "error");
+  setSlotLoadingPhase(slot, undefined, {
+    file: "done",
+    read: "done",
+    parse: "error",
+    check: "error"
+  });
+  showError(message);
+  updateButtons();
+  renderInfoPanel();
+  refreshLayout();
+}
+
 function setStatus(element, value) {
   element.textContent = statusText[value] ?? value;
+}
+
+function applyPrimaryEmptyCopy() {
+  if (modeSelect.value === "localPreview") {
+    primaryEmptyFileButton.textContent = compareEnabled ? "选择 SVGA A" : "选择 SVGA 文件";
+    svgaEmptyTitleA.textContent = compareEnabled ? "拖拽第一个 SVGA 文件到此处" : "拖拽 SVGA 文件到此处";
+    svgaEmptySubtitleA.textContent = "或选择本地文件";
+  } else {
+    primaryEmptyFileButton.textContent = "选择导出 SVGA";
+    svgaEmptyTitleA.textContent = "拖拽导出的 SVGA 文件到此处";
+    svgaEmptySubtitleA.textContent = "或选择本地文件";
+  }
+}
+
+function applyPrimaryLoadingCopy(fileName) {
+  svgaEmptyTitleA.textContent = "正在加载 SVGA 文件";
+  svgaEmptySubtitleA.textContent = fileName ? `正在处理 ${fileName}` : "正在读取、解析并生成检查结果";
 }
 
 function ensureSvgaLibrary() {
@@ -1231,19 +1311,18 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
   ensureSvgaLibrary();
   const slot = players[slotKey];
   clearError();
+  resetSlotMediaState(slot);
   slot.source = source;
-  slot.videoItem = undefined;
-  slot.metrics = undefined;
-  slot.isPlaying = false;
-  slot.panel.classList.remove("hasMedia");
-  slot.canvas.innerHTML = "";
   slot.report = options.report;
-  slot.inspectionReport = undefined;
   slot.inspectionStatus = "loading";
   const inspectionRequestId = ++slot.inspectionRequestId;
   slot.parseStatus = "loading";
   slot.renderStatus = "loading";
+  slot.panel.classList.add("isLoading");
   setStatus(slot.status, "loading");
+  const phaseState = { file: "done" };
+  setSlotLoadingPhase(slot, "read", phaseState);
+  if (slot.slotName === "A") applyPrimaryLoadingCopy(options.fileName);
   updateButtons();
   renderInfoPanel();
   addLog("info", `开始解析 SVGA：${options.fileName ?? source} / Parsing SVGA`);
@@ -1253,18 +1332,23 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       if (slot.inspectionRequestId !== inspectionRequestId) return;
       slot.inspectionReport = report;
       slot.inspectionStatus = "success";
+      phaseState.check = "done";
+      setSlotLoadingPhase(slot, slot.parseStatus === "loading" ? "parse" : undefined, phaseState);
       renderInfoPanel();
       addLog("success", `生产规范检查完成：${report.passed ? "通过" : "未通过"} / Spec check completed`);
     })
     .catch((error) => {
       if (slot.inspectionRequestId !== inspectionRequestId) return;
       slot.inspectionStatus = "error";
+      phaseState.check = "error";
+      setSlotLoadingPhase(slot, slot.parseStatus === "loading" ? "parse" : undefined, phaseState);
       renderInfoPanel();
       addLog("warning", `生产规范检查暂不可用，不影响播放。/ Spec check unavailable: ${error.message}`);
     });
 
   const decodedInfoPromise = decodeSvgaInfo(source).catch((error) => {
-    slot.parseStatus = "error";
+    phaseState.read = "done";
+    setSlotLoadingPhase(slot, "parse", phaseState);
     addLog("error", `SVGA 元数据解析失败 / Metadata parse failed: ${error.message}`);
     return undefined;
   });
@@ -1277,6 +1361,9 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
         const decodedInfo = await decodedInfoPromise;
         const playerSize = extractSizeFromVideoItem(loadedVideoItem);
         const reportMetrics = extractReportMetrics(slot.report);
+        phaseState.read = "done";
+        phaseState.parse = "done";
+        setSlotLoadingPhase(slot, slot.inspectionStatus === "loading" ? "check" : undefined, phaseState);
         slot.videoItem = loadedVideoItem;
         slot.parseStatus = decodedInfo ? "success" : "warning";
         slot.metrics = {
@@ -1299,6 +1386,9 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
         refreshLayout();
         rebuildPlayer(slot);
         replaySlot(slot, false);
+        slot.panel.classList.remove("isLoading");
+        clearSlotLoadingPhase(slot);
+        if (slot.slotName === "A") applyPrimaryEmptyCopy();
         refreshLayout();
         updateButtons();
         addLog("success", `SVGA 加载完成：${slot.metrics.fileName} / SVGA loaded`);
@@ -1306,13 +1396,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       },
       (error) => {
         const loadError = new Error(`SVGA 文件加载失败：${error?.message ?? error}`);
-        setStatus(slot.status, "error");
-        slot.videoItem = undefined;
-        slot.parseStatus = "error";
-        slot.renderStatus = "error";
-        showError(`${loadError.message} / Unable to load SVGA file`);
-        updateButtons();
-        renderInfoPanel();
+        setSlotInvalidState(slot, `${loadError.message} / Unable to load SVGA file`);
         reject(loadError);
       }
     );
@@ -1558,6 +1642,17 @@ function collectRenderedStateProof(state) {
     && overlayRect.top >= stageRect.top
     && overlayRect.bottom <= stageRect.bottom);
   const overlayNotOccluded = !overlayVisible || overlay?.contains(topElement) || state === "invalid";
+  const loadingPhaseItems = Array.from(players.a.loadingPhases ?? []).map((item) => ({
+    phase: item.dataset.loadingPhase,
+    text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    active: item.classList.contains("isActive"),
+    done: item.classList.contains("isDone"),
+    error: item.classList.contains("isError")
+  }));
+  const loadingPhaseList = players.a.panel?.querySelector(".loadingPhaseList");
+  const loadingPhaseStyle = loadingPhaseList ? getComputedStyle(loadingPhaseList) : {};
+  const reportText = reportGrid.textContent?.replace(/\s+/g, " ").trim() ?? "";
+  const filePillText = svgaFilePillA.textContent?.replace(/\s+/g, " ").trim() ?? "";
   const primaryActionVisible = Boolean(button)
     && isRectVisible(primaryActionRect)
     && getComputedStyle(button).display !== "none"
@@ -1573,6 +1668,12 @@ function collectRenderedStateProof(state) {
   if (state === "loading") {
     if (players.a.parseStatus !== "loading") failures.push("loading parse status missing");
     if (players.a.renderStatus !== "loading") failures.push("loading render status missing");
+    if (!players.a.panel.classList.contains("isLoading")) failures.push("loading card class missing");
+    if (!renderedText.includes("正在加载 SVGA 文件")) failures.push("loading text is not distinct from empty");
+    if (loadingPhaseStyle.display === "none") failures.push("loading phase list is hidden");
+    if (!["file", "read", "parse", "check"].every((phase) => loadingPhaseItems.some((item) => item.phase === phase))) {
+      failures.push("loading phases missing");
+    }
   }
   if (state === "loaded") {
     if (overlayVisible) failures.push("loaded overlay should be hidden");
@@ -1583,6 +1684,11 @@ function collectRenderedStateProof(state) {
     if (!/文件类型不支持|加载失败|Unable|Unsupported|failed/i.test(renderedText)) {
       failures.push("invalid product message missing");
     }
+    if (players.a.metrics) failures.push("invalid metadata still present");
+    if (players.a.inspectionReport) failures.push("invalid inspection still present");
+    if (players.a.canvas.children.length > 0) failures.push("invalid canvas children still present");
+    if (!svgaFilePillA.hidden || filePillText) failures.push("invalid file badge still visible");
+    if (/Motion Asset Audit|动效诊断|specReportSection|auditReportSection/.test(reportText)) failures.push("invalid report still visible");
   }
   return {
     state,
@@ -1600,6 +1706,8 @@ function collectRenderedStateProof(state) {
     overlayNotOccluded,
     topElementAtOverlayCenter: elementLabel(topElement),
     renderedText,
+    loadingPhaseDisplay: loadingPhaseStyle.display ?? "unknown",
+    loadingPhases: loadingPhaseItems,
     primaryActionText: button?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     primaryActionRect,
     primaryActionVisible,
@@ -1607,6 +1715,11 @@ function collectRenderedStateProof(state) {
     loadedCanvasNonBlank: state === "loaded" ? canvasIsNonBlank(players.a) : false,
     staleMetadataCleared: state === "invalid" ? !players.a.metrics : null,
     staleInspectionCleared: state === "invalid" ? !players.a.inspectionReport : null,
+    staleCanvasCleared: state === "invalid" ? players.a.canvas.children.length === 0 : null,
+    staleFileBadgeCleared: state === "invalid" ? svgaFilePillA.hidden && !filePillText : null,
+    staleReportCleared: state === "invalid" ? !/Motion Asset Audit|动效诊断|specReportSection|auditReportSection/.test(reportText) : null,
+    parserStatus: players.a.parseStatus,
+    renderStatus: players.a.renderStatus,
     passed: failures.length === 0,
     failures
   };
@@ -1718,14 +1831,22 @@ function handleDroppedFile(file, acceptedKind, slotKey = "a") {
   if (!artifactAutoLoading) manualArtifactSelection = true;
   const kind = fileKind(file);
   if (!kind) {
-    showError(`文件类型不支持：${file.name}。/ Unsupported file type.`);
+    if (acceptedKind === "svga" || acceptedKind === "auto") {
+      setSlotInvalidState(players[slotKey] ?? players.a, `文件类型不支持：${file.name}。/ Unsupported file type.`);
+    } else {
+      showError(`文件类型不支持：${file.name}。/ Unsupported file type.`);
+    }
     return;
   }
   if (acceptedKind !== "auto" && acceptedKind !== kind && !(acceptedKind === "reference" && ["mp4", "webm", "gif"].includes(kind))) {
     const message = acceptedKind === "svga"
       ? "文件类型不支持，请拖入 .svga 文件。/ Unsupported file type. Please drop a .svga file."
       : "文件类型不支持，请拖入 .mp4、.webm 或 .gif 文件。/ Unsupported file type. Please drop a video or GIF.";
-    showError(message);
+    if (acceptedKind === "svga") {
+      setSlotInvalidState(players[slotKey] ?? players.a, message);
+    } else {
+      showError(message);
+    }
     return;
   }
 

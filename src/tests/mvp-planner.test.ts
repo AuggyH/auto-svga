@@ -516,7 +516,10 @@ test("Web job loader uses validated repository-relative job paths", async () => 
   const webEntry = await readFile(path.resolve("tools/svga-player-preview/main.js"), "utf8");
   const source = await readFile(path.resolve("tools/shared/product-frontend/product-app.mjs"), "utf8");
   const html = await readFile(path.resolve("tools/svga-player-preview/index.html"), "utf8");
+  const shellHtml = await readFile(path.resolve("tools/shared/product-frontend/product-shell.html"), "utf8");
   assert.match(webEntry, /shared\/product-frontend\/product-app\.mjs/);
+  assert.match(webEntry, /product-shell-loader\.mjs/);
+  assert.match(html, /data-product-shell-src="\.\.\/shared\/product-frontend\/product-shell\.html"/);
   assert.match(source, /new URLSearchParams\(window\.location\.search\)\.get\("job"\)/);
   assert.match(source, /\^jobs\\\/\[a-zA-Z0-9\._-\]\+\$/);
   assert.match(source, /previewOutputs\?\.webm/);
@@ -524,7 +527,7 @@ test("Web job loader uses validated repository-relative job paths", async () => 
   assert.match(source, /referenceState\.video\.load\(\)/);
   assert.match(source, /addEventListener\("canplay"/);
   assert.match(source, /for \(const candidate of previewCandidates\)/);
-  assert.match(html, /<video id="referenceVideo" controls muted playsinline loop preload="auto"/);
+  assert.match(shellHtml, /<video id="referenceVideo" controls muted playsinline loop preload="auto"/);
   assert.equal(source.includes("/Users/"), false);
 });
 
