@@ -4,7 +4,7 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "7b4a9af380b3c6c7810aca15b2b81c51bf757420",
+  "currentIntegrationHeadCommit": "a345d9b53b08c2d942c0014809569863626f1d65",
   "currentRepairRound": 5,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
@@ -180,8 +180,8 @@
       "branch": "agent/codex/p6-r5-a3-host-app-runtime",
       "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
       "headCommit": "1c4d40d9999cd893953659ad5bcfbf79de346fc6",
-      "status": "running",
-      "lastVerifiedAt": "2026-06-22T14:18:00Z",
+      "status": "completed",
+      "lastVerifiedAt": "2026-06-22T14:23:54Z",
       "ownedPaths": [
         "Electron main process",
         "Electron preload",
@@ -192,7 +192,16 @@
       "dependencies": [
         "A2"
       ],
-      "requestedIntegrationChanges": []
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "a345d9b53b08c2d942c0014809569863626f1d65",
+      "tests": [
+        "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/preload.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs",
+        "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+        "git diff --check HEAD~1..HEAD"
+      ]
     },
     {
       "workerId": "A4",
