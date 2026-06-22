@@ -41,6 +41,11 @@ const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
   : path.join(repoRoot, ".artifacts/product", productMilestoneId);
 const canonicalFixtureRuntimePath = path.join(appRoot, ".runtime/fixture/avatar-frame-smoke.svga");
 const canonicalFixtureSourcePath = "examples/avatar_frame_basic/output/avatar_frame_basic.svga";
+const referenceMediaTypes = new Map([
+  [".gif", { kind: "gif", mediaType: "image/gif" }],
+  [".mp4", { kind: "mp4", mediaType: "video/mp4" }],
+  [".webm", { kind: "webm", mediaType: "video/webm" }]
+]);
 const desktopArtifacts = createDesktopArtifactCatalog({
   groupedRoots: [
     { rootPath: path.join(repoRoot, "jobs"), kind: "job" },
@@ -62,6 +67,7 @@ let auditFinished = false;
 let cspViolationSeen = false;
 let cleanedUp = false;
 const sourceFilePaths = new Map();
+const referenceFileIds = new Set();
 const productArtifactIndex = {
   milestoneId: productMilestoneId,
   title: productMilestoneTitle,
@@ -810,6 +816,13 @@ function runtimeIdentity(mode, rendererUrl) {
       arbitraryFileServing: false,
       persistedAbsolutePaths: false
     },
+    hostRuntime: {
+      normalVisibleStartup: !(smokeMode || auditMode || normalProofMode),
+      fileOpenTargets: ["primary-svga", "secondary-svga", "reference-media"],
+      menuActions: ["load-latest-export-artifact", "toggle-logs", "open-settings", "quit"],
+      sessionRootRedacted: sanitizeRuntimeArgument(sessionRoot),
+      tempCleanupOnExit: true
+    },
     ...canonicalFixtureMetadata(),
     indexHtmlSha256: sha256RelativeFile(rendererHtmlEntry),
     rendererJsSha256: sha256RelativeFile(rendererEntry),
@@ -1136,6 +1149,39 @@ function openSvgaFileBytes(filePath) {
     sourceId,
     basename: path.basename(filePath),
     hash: createHash("sha256").update(bytes).digest("hex"),
+    mediaType: "application/octet-stream",
+    kind: "svga",
+    bytes: new Uint8Array(bytes)
+  };
+}
+
+function rememberReferenceFile(filePath) {
+  const sourceId = createHash("sha256").update(`reference:${filePath}`).digest("hex").slice(0, 16);
+  referenceFileIds.add(sourceId);
+  while (referenceFileIds.size > 20) {
+    const firstKey = referenceFileIds.values().next().value;
+    referenceFileIds.delete(firstKey);
+  }
+  return sourceId;
+}
+
+function openReferenceMediaFileBytes(filePath) {
+  const media = referenceMediaTypes.get(path.extname(filePath).toLowerCase());
+  if (!media) {
+    throw new Error("Only .mp4, .webm, or .gif reference media can be opened.");
+  }
+  const bytes = readFileSync(filePath);
+  if (bytes.byteLength <= 0 || bytes.byteLength > 100 * 1024 * 1024) {
+    throw new Error("Reference media size is outside the supported internal prototype limit.");
+  }
+  const sourceId = rememberReferenceFile(filePath);
+  return {
+    status: "opened",
+    sourceId,
+    basename: path.basename(filePath),
+    hash: createHash("sha256").update(bytes).digest("hex"),
+    mediaType: media.mediaType,
+    kind: media.kind,
     bytes: new Uint8Array(bytes)
   };
 }
@@ -1153,21 +1199,44 @@ async function openSvgaFile() {
   return openSvgaFileBytes(result.filePaths[0]);
 }
 
-async function openSvgaFromHostMenu(window) {
+async function openReferenceMediaFile() {
+  const result = await dialog.showOpenDialog({
+    title: "打开参考视频",
+    filters: [{ name: "Reference Media", extensions: ["mp4", "webm", "gif"] }],
+    properties: ["openFile"]
+  });
+  if (result.canceled || !result.filePaths?.[0]) {
+    return { status: "cancelled" };
+  }
+  return openReferenceMediaFileBytes(result.filePaths[0]);
+}
+
+async function openSvgaFromHostMenu(window, selector = "#svgaFileInput") {
   const opened = await openSvgaFile();
   if (!opened || opened.status !== "opened") return;
+  await injectOpenedFile(window, selector, opened);
+}
+
+async function openReferenceFromHostMenu(window) {
+  const opened = await openReferenceMediaFile();
+  if (!opened || opened.status !== "opened") return;
+  await injectOpenedFile(window, "#referenceFileInput", opened);
+}
+
+async function injectOpenedFile(window, selector, opened) {
   const payload = {
     basename: opened.basename,
     sourceId: opened.sourceId,
     hash: opened.hash,
+    mediaType: opened.mediaType,
     bytes: Array.from(opened.bytes)
   };
   await window.webContents.executeJavaScript(`
     (() => {
       const opened = ${JSON.stringify(payload)};
-      const input = document.querySelector("#svgaFileInput");
-      if (!input) throw new Error("SVGA file input unavailable");
-      const file = new File([new Uint8Array(opened.bytes)], opened.basename, { type: "application/octet-stream" });
+      const input = document.querySelector(${JSON.stringify(selector)});
+      if (!input) throw new Error("Host file input unavailable");
+      const file = new File([new Uint8Array(opened.bytes)], opened.basename, { type: opened.mediaType });
       const transfer = new DataTransfer();
       transfer.items.add(file);
       Object.defineProperty(input, "files", { value: transfer.files, configurable: true });
@@ -1177,6 +1246,11 @@ async function openSvgaFromHostMenu(window) {
 }
 
 function installApplicationMenu(window) {
+  const runRendererMenuAction = (label, code) => {
+    window.webContents.executeJavaScript(code).catch((error) => {
+      console.error(`AUTO_SVGA_MENU_ACTION_ERROR ${label} ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+    });
+  };
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {
       label: "File",
@@ -1189,6 +1263,57 @@ function installApplicationMenu(window) {
               console.error(`AUTO_SVGA_FILE_OPEN_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
             });
           }
+        },
+        {
+          label: "Open Secondary SVGA...",
+          click: () => {
+            openSvgaFromHostMenu(window, "#secondaryFileInput").catch((error) => {
+              console.error(`AUTO_SVGA_FILE_OPEN_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+            });
+          }
+        },
+        {
+          label: "Open Reference Media...",
+          click: () => {
+            openReferenceFromHostMenu(window).catch((error) => {
+              console.error(`AUTO_SVGA_REFERENCE_OPEN_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+            });
+          }
+        },
+        { type: "separator" },
+        {
+          label: "Load Latest Export Artifact",
+          click: () => runRendererMenuAction("latest-artifact", `
+            (() => {
+              const mode = document.querySelector("#modeSelect");
+              if (mode) {
+                mode.value = "exportReview";
+                mode.dispatchEvent(new Event("change", { bubbles: true }));
+              }
+              window.setTimeout(() => document.querySelector("#rescanButton")?.click(), 0);
+            })()
+          `)
+        },
+        { type: "separator" },
+        {
+          label: "Quit Auto SVGA",
+          accelerator: "CommandOrControl+Q",
+          click: () => app.quit()
+        }
+      ]
+    },
+    {
+      label: "View",
+      submenu: [
+        {
+          label: "Toggle Logs",
+          accelerator: "CommandOrControl+L",
+          click: () => runRendererMenuAction("logs", `document.querySelector("#logsButton")?.click()`)
+        },
+        {
+          label: "Open Settings",
+          accelerator: "CommandOrControl+,",
+          click: () => runRendererMenuAction("settings", `document.querySelector("#settingsButton")?.click()`)
         }
       ]
     }
@@ -1317,8 +1442,14 @@ async function finishAudit(window, result) {
 async function cleanupRuntime() {
   if (cleanedUp) return;
   cleanedUp = true;
+  const serverClosed = Boolean(experimentServer);
   if (experimentServer) await experimentServer.close();
   rmSync(sessionRoot, { recursive: true, force: true });
+  console.log(`AUTO_SVGA_RUNTIME_CLEANUP ${JSON.stringify({
+    serverClosed,
+    sessionRoot: sanitizeRuntimeArgument(sessionRoot),
+    tempRemoved: true
+  })}`);
 }
 
 async function createExperimentWindow() {
@@ -1412,6 +1543,11 @@ async function createExperimentWindow() {
   ipcMain.handle(IPC_CHANNELS.openSvgaFile, async (event) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return openSvgaFile();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.openReferenceMediaFile, async (event) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return openReferenceMediaFile();
   });
 
   ipcMain.handle(IPC_CHANNELS.p3EditResult, async (event, input) => {

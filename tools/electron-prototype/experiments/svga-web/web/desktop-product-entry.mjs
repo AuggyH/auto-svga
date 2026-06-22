@@ -22,6 +22,7 @@ function createElectronProductHostAdapter(environment = globalThis) {
       browserObjectUrl: true,
       browserDownload: false,
       electronFileDialog: Boolean(bridge?.openSvgaFile),
+      electronReferenceMediaDialog: Boolean(bridge?.openReferenceMediaFile),
       nativeSaveAs: Boolean(bridge?.saveEditedSvga),
       editorIncubationDefaultVisible: false
     }),
