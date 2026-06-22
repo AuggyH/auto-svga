@@ -86,6 +86,7 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
   assert.match(strictCsp, /wasm-unsafe-eval/);
   assert.doesNotMatch(strictCsp, /(?<!wasm-)unsafe-eval/);
   assert.match(strictCsp, /worker-src 'self' blob:/);
+  assert.match(strictCsp, /connect-src 'self' blob:/);
   assert.match(legacyBrowserBaselineAuditCsp, /unsafe-eval/);
   const reportToken = "test-token";
   const server = await startSvgaWebExperimentServer({ appRoot: experimentRoot, reportToken });
@@ -251,6 +252,10 @@ test("default Electron renderer shares the Web product page and keeps editor inc
   assert.match(desktopEntry, /editorIncubationDefaultVisible: false/);
   assert.match(desktopEntry, /class CompatibleSvgaPlayer/);
   assert.match(desktopEntry, /class CompatibleSvgaParser/);
+  assert.ok(
+    desktopEntry.indexOf("class CompatibleSvgaParser") < desktopEntry.indexOf("installSvgaWebCompatibility();"),
+    "svga-web compatibility classes must be defined before installation"
+  );
   assert.match(main, /document\.querySelector\("#svgaFileInput"\)/);
   assert.match(main, /document\.querySelector\("#svgaCanvasA canvas"\)/);
   assert.match(main, /document\.querySelector\("\.auditReportSection"\)/);

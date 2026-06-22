@@ -27,7 +27,7 @@ const rendererHtmlEntry = "web/index.html";
 const rendererEntry = "web/desktop-product-entry.mjs";
 const stylesEntry = "web/styles.css";
 const playerIdentity = "svga-web@2.4.4";
-const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
+const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "P2";
 const productMilestoneTitle = {
   P2: "Desktop Product Shell And Web Preview Parity",

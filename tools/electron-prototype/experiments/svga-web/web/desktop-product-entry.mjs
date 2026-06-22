@@ -1,10 +1,5 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
 
-installSvgaWebCompatibility();
-globalThis.autoSvgaHostAdapter = createElectronProductHostAdapter();
-
-await import("/tools/shared/product-frontend/product-app.mjs");
-
 function createElectronProductHostAdapter(environment = globalThis) {
   const bridge = environment.autoSvgaElectronHost;
   const reportToken = bridge?.reportToken ?? "";
@@ -184,3 +179,8 @@ function createMemoryStorage() {
     }
   };
 }
+
+installSvgaWebCompatibility();
+globalThis.autoSvgaHostAdapter = createElectronProductHostAdapter();
+
+await import("/tools/shared/product-frontend/product-app.mjs");
