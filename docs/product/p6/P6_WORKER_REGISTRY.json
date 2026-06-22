@@ -4,13 +4,13 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "13cf35703ba8e5fe38b225ee067c4d577b99026b",
+  "currentIntegrationHeadCommit": "dbefb170687681de2989aa2d2018e1be5cc83e86",
   "currentRepairRound": 4,
-  "terminalHandoffReady": false,
-  "expectedFinalHeadCommit": null,
+  "terminalHandoffReady": true,
+  "expectedFinalHeadCommit": "dbefb170687681de2989aa2d2018e1be5cc83e86",
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T09:38:22Z",
-  "registryRefreshedAt": "2026-06-22T10:42:22Z",
+  "registryRefreshedAt": "2026-06-22T11:01:54Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -29,6 +29,26 @@
     "reviewedHeadCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
     "externalOutcome": "REPAIR_REQUIRED",
     "productOutcome": "LOCAL_PREVIEW_VISUAL_DIRECTION_ACCEPTED_BUT_FULL_PARITY_NOT_PROVEN"
+  },
+  "repair4TerminalEvidence": {
+    "a0RepairCommit": "dbefb170687681de2989aa2d2018e1be5cc83e86",
+    "parityReportPath": ".artifacts/product/P6/p6-parity-report.json",
+    "parityStatus": "HUMAN_REQUIRED",
+    "passingSections": [
+      "browserRegression",
+      "desktopRuntimeProof",
+      "securityAudit",
+      "accessibilityReport",
+      "artifactIndex"
+    ],
+    "nonPassingSections": [
+      "visualParity",
+      "featureParity",
+      "interactionParity",
+      "stateParity",
+      "motionParity"
+    ],
+    "phase2Status": "NOT_STARTED"
   },
   "acceptanceCriteria": [
     {

@@ -6,8 +6,8 @@ Date: 2026-06-22
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: implementation_in_progress
-- Next Action: repair
+- State: terminal_human_required
+- Next Action: external_review
 - repairRound: 4
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
@@ -92,9 +92,19 @@ Date: 2026-06-22
   `nextRepairAllowed=true`, `nextRepairRound=4`, `budgetStatus=within_budget`.
 - Existing visible project Worktree threads A1 through A5 were found and must
   be reused for Repair 4 rather than recreated.
+- P6 repair-4 actual parity evidence generation commit
+  `dbefb170687681de2989aa2d2018e1be5cc83e86` removed CDN runtime loading from
+  Web baseline capture, recorded explicit Electron security identity fields,
+  copied the macOS internal App ZIP into P6 evidence, generated normal/smoke
+  parity evidence, and stopped treating non-pass parity as a generator failure.
+- Final ignored P6 evidence was regenerated under `.artifacts/product/P6` and
+  bound to head `dbefb170687681de2989aa2d2018e1be5cc83e86`.
+- Final P6 parity report is `HUMAN_REQUIRED`: browser regression, desktop
+  runtime proof, security audit, accessibility report, and artifact index pass;
+  visual, feature, interaction, state, and motion parity still contain
+  item-specific non-pass Web runtime evidence.
 
 ## Next Action
 
-Continue Repair 4 Wave 0 mechanism repair, then immediately resume visible
-Worker product implementation. Safe default: keep Phase 2 as NOT_STARTED until
-P6 reaches a new owner `HUMAN_REQUIRED` gate and the owner explicitly accepts.
+External review. Safe default: keep Phase 2 as NOT_STARTED until the owner
+explicitly accepts or redirects the P6 parity gaps.
