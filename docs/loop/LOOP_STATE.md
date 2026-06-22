@@ -6,8 +6,8 @@ Date: 2026-06-23
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: implementation_in_progress
-- Next Action: repair
+- State: terminal_human_required
+- Next Action: external_review
 - repairRound: 6
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
@@ -146,9 +146,18 @@ Date: 2026-06-23
 - Repair 6 is the final frozen-budget repair round. If completion gates still
   fail, P6 must end as `HUMAN_REQUIRED` with
   `gateType: TECHNICAL_REVIEW_REQUIRED`; Repair 7 must not be created.
+- P6 repair-6 A0 integration repair commit
+  `5a311d4ddd89266ef270a747c7d2e4afded0f68b` repaired the final invalid-state
+  browser regression alias without changing product runtime behavior.
+- Final ignored P6 evidence generated `parityStatus=pass` with
+  `nonPassEvidenceCount=0` under `.artifacts/product/P6` for source head
+  `5a311d4ddd89266ef270a747c7d2e4afded0f68b`.
+- P6 remains `HUMAN_REQUIRED` only for owner acceptance. Phase 2 remains
+  `NOT_STARTED`; the macOS App remains unsigned, unnotarized, internal-only,
+  and `productionApproved=false`.
 
 ## Next Action
 
-Continue Repair 6. Safe default: keep Phase 2 as NOT_STARTED until P6
-completion gates pass and the owner explicitly accepts Web/Desktop parity and
-the current unsigned, unnotarized macOS internal App.
+External review only. Safe default: keep Phase 2 as NOT_STARTED until the
+owner explicitly accepts Web/Desktop parity and the current unsigned,
+unnotarized macOS internal App.

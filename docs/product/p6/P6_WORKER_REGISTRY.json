@@ -6,7 +6,7 @@
   "integrationBaseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
   "lastIntegratedWorkerCommit": "46076eb3ee3cf9e960e38fd7c97912c20ff1b216",
   "currentRepairRound": 6,
-  "lifecycleStatus": "repair_6_in_progress",
+  "lifecycleStatus": "terminal_human_required_pending_owner_review",
   "finalHeadBinding": {
     "source": "ignored_generated_artifact",
     "path": ".artifacts/product/P6/worker-registry-final.json",
