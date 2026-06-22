@@ -45,6 +45,12 @@ Date: 2026-06-22
   cherry-pick of `31caf46094f4c75c61dff49a2b93bac98e144321` was empty
   because the report contract and tests had already been incorporated and
   extended. Targeted parity contract and inventory tests passed 11/11.
+- P6 repair-2 A5 macOS package proof integrated as
+  `530edd58691490be545056e9554f6e4781ffe700`; cleanup
+  `30dc0cfe0c4a347e698d80bfd0202d3b31bdcf0e` removed duplicate packaging
+  assertions. The internal package proof passed and generated an unsigned,
+  unnotarized, productionApproved=false macOS arm64 archive with SHA-256
+  `cd601694ae693c311a295081b06614f788d25222b194f663c633a36407837335`.
 - Root `npm test` passed with 207 tests on P6 integration head.
 - `npm run desktop:smoke` passed serially with playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, invalid file, lifecycle, and cleanup all true.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` produced the ignored macOS internal prototype package proof.
@@ -52,7 +58,7 @@ Date: 2026-06-22
 
 ## Next Action
 
-Continue P6 repair-2 with A5 packaging proof, integration repair, and a
-privacy-clean HUMAN_REQUIRED handoff. Electron debug and proof runs should be
-quiet/background whenever possible; visible App windows are reserved for final
-owner-facing evidence only.
+Continue P6 repair-2 with integration repair, final validation, independent
+review, and a privacy-clean HUMAN_REQUIRED handoff. Electron debug and proof
+runs should be quiet/background whenever possible; visible App windows are
+reserved for final owner-facing evidence only.
