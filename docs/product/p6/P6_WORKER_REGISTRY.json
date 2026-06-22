@@ -4,13 +4,13 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "dc2783aaf579ffa0a23015e5de8c4048a12f59c9",
+  "currentIntegrationHeadCommit": "5c495bb01e42e26faf1c37ec9a196ec7476fcbe3",
   "currentRepairRound": 4,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T09:38:22Z",
-  "registryRefreshedAt": "2026-06-22T10:26:59Z",
+  "registryRefreshedAt": "2026-06-22T10:34:13Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -304,12 +304,12 @@
       "role": "Parity Runtime",
       "visibleThreadId": "019eeb7e-071e-7991-ab4f-075c56dbade1",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "running",
+      "lifecycleStatus": "integrated",
       "branch": "agent/codex/p6-r4-a4-parity-runtime",
       "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
       "headCommit": "d1731875db641600afffec30735585c0b577960e",
-      "integrationCommit": null,
-      "workerHandoffFolder": null,
+      "integrationCommit": "9f7ec1aff405f39085ea599da8499eb8e5572150",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A4-R4.md",
       "contextPacketPath": "docs/product/p6/worker-context/A4.md",
       "ownedPaths": [
         "tools/p6/generate-p6-evidence.mjs",
@@ -331,8 +331,10 @@
         "A2",
         "A3"
       ],
-      "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:26:59Z",
+      "requestedIntegrationChanges": [
+        "A0 repaired NQ1 shared-shell accessibility audit at 5c495bb01e42e26faf1c37ec9a196ec7476fcbe3."
+      ],
+      "lastVerifiedAt": "2026-06-22T10:34:13Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a4-parity-tests",
@@ -370,7 +372,7 @@
         "A4"
       ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:26:59Z",
+      "lastVerifiedAt": "2026-06-22T10:34:13Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a5-macos-package",
