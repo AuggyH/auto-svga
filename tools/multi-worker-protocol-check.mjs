@@ -15,6 +15,8 @@ const legalLifecycleStatuses = new Set([
   "retired"
 ]);
 
+const supportedRegistrySchemaVersions = new Set([2, 3]);
+
 const globalLifecyclePaths = new Set([
   "docs/loop/CURRENT_MILESTONE.md",
   "docs/loop/LOOP_STATE.md",
@@ -62,13 +64,16 @@ function currentWorkerWaveId(registry) {
   return Number.isInteger(round) && round > 0 ? `P6-R${round}` : null;
 }
 
+function repairWaveWorkers(registry) {
+  return Object.entries(registry ?? {})
+    .filter(([key, value]) => /^repair\d+Workers$/.test(key) && Array.isArray(value))
+    .flatMap(([, value]) => value.map(normalizeLifecycleWorker));
+}
+
 function currentWaveWorkers(registry, workers) {
   const waveId = currentWorkerWaveId(registry);
   if (!waveId) return [];
-  const repairWorkers = Array.isArray(registry?.repair5Workers)
-    ? registry.repair5Workers.map(normalizeLifecycleWorker)
-    : [];
-  return [...workers, ...repairWorkers].filter((worker) => worker.waveId === waveId);
+  return [...workers, ...repairWaveWorkers(registry)].filter((worker) => worker.waveId === waveId);
 }
 
 function addUniqueError(errors, message) {
@@ -160,7 +165,9 @@ export function validateMultiWorkerProtocol({
   const errors = [];
   const warnings = [];
 
-  if (registry?.schemaVersion !== 2) errors.push("registry schemaVersion must be 2.");
+  if (!supportedRegistrySchemaVersions.has(registry?.schemaVersion)) {
+    errors.push("registry schemaVersion must be 2 or 3.");
+  }
   if (registry?.integrationCoordinator !== "A0") errors.push("integrationCoordinator must be A0.");
   if (!Number.isInteger(registry?.currentRepairRound) || registry.currentRepairRound < 1) {
     errors.push("currentRepairRound must be a positive integer.");
@@ -174,10 +181,7 @@ export function validateMultiWorkerProtocol({
   if (localPathPattern.test(coordinationText)) errors.push("coordination doc must not contain local absolute paths.");
 
   const historicalWorkers = Array.isArray(registry?.workers) ? registry.workers.map(normalizeLifecycleWorker) : [];
-  const repairWorkers = Array.isArray(registry?.repair5Workers)
-    ? registry.repair5Workers.map(normalizeLifecycleWorker)
-    : [];
-  const workers = [...historicalWorkers, ...repairWorkers];
+  const workers = [...historicalWorkers, ...repairWaveWorkers(registry)];
   if (!workers.length) errors.push("registry must include workers.");
   const activeWorkers = workers.filter(isActiveWorker);
 
@@ -255,6 +259,23 @@ export function validateMultiWorkerProtocol({
       if (worker.lifecycleStatus === "integrated" && !worker.workerHandoffFolder) {
         errors.push(`${worker.workerId} Repair ${registry?.currentRepairRound ?? "unknown"} terminal worker missing handoff folder.`);
       }
+    }
+  }
+  if (registry?.schemaVersion >= 3) {
+    if (registry?.currentIntegrationHeadCommit) {
+      errors.push("schemaVersion 3 tracked registry must not claim currentIntegrationHeadCommit.");
+    }
+    if (registry?.expectedFinalHeadCommit) {
+      errors.push("schemaVersion 3 tracked registry must not claim expectedFinalHeadCommit.");
+    }
+    if (registry?.terminalHandoffReady === true) {
+      errors.push("schemaVersion 3 tracked registry must not claim terminalHandoffReady.");
+    }
+    if (registry?.finalHeadBinding?.source !== "ignored_generated_artifact") {
+      errors.push("schemaVersion 3 registry requires ignored generated finalHeadBinding.");
+    }
+    if (!registry?.finalHeadBinding?.path) {
+      errors.push("schemaVersion 3 registry finalHeadBinding.path is required.");
     }
   }
   if (coordinationText.includes("Current integration head")

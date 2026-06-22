@@ -1,14 +1,14 @@
 # Auto SVGA Loop State
 
-Date: 2026-06-22
+Date: 2026-06-23
 
 ## Current Milestone
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: terminal_human_required
-- Next Action: external_review
-- repairRound: 5
+- State: implementation_in_progress
+- Next Action: repair
+- repairRound: 6
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -136,9 +136,19 @@ Date: 2026-06-22
 - P6 remains `HUMAN_REQUIRED` only for owner acceptance. Phase 2 remains
   `NOT_STARTED`; the macOS App remains unsigned, unnotarized, internal-only,
   and `productionApproved=false`.
+- External product review 5 requires P6 repair-6 because product surface
+  advanced, but parity evidence and normal App proof were invalid at reviewed
+  head `f1ecd57320fc82b83119bd822653057904158b6a`.
+- Repair 6 legal entry is allowed by `node tools/loop-budget-check.mjs`:
+  `nextRepairAllowed=true`, `nextRepairRound=6`, `budgetStatus=within_budget`.
+- Existing visible project Worktree threads A1 through A5 were found and must
+  be reused for Repair 6 rather than recreated.
+- Repair 6 is the final frozen-budget repair round. If completion gates still
+  fail, P6 must end as `HUMAN_REQUIRED` with
+  `gateType: TECHNICAL_REVIEW_REQUIRED`; Repair 7 must not be created.
 
 ## Next Action
 
-Await owner external review. Safe default: keep Phase 2 as NOT_STARTED until
-the owner explicitly accepts P6 Web/Desktop parity and the current unsigned,
-unnotarized macOS internal App.
+Continue Repair 6. Safe default: keep Phase 2 as NOT_STARTED until P6
+completion gates pass and the owner explicitly accepts Web/Desktop parity and
+the current unsigned, unnotarized macOS internal App.

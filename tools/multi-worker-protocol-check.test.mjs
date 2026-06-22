@@ -179,6 +179,80 @@ test("valid Repair 5 registry can reuse historical Repair 4 worker ids", () => {
   assert.deepEqual(result.errors, []);
 });
 
+test("valid Repair 6 registry uses generated final head binding instead of tracked self-reference", () => {
+  const historicalWorkers = baseRegistry().workers.map((worker) => ({
+    ...worker,
+    lifecycleStatus: "integrated",
+    integrationCommit: "integrated",
+    workerHandoffFolder: `docs/product/p6/worker-handoffs/${worker.workerId}-R4.md`
+  }));
+  const repair6Workers = baseRegistry().workers.map((worker) => ({
+    workerId: worker.workerId,
+    waveId: "P6-R6",
+    role: worker.role,
+    visibleThreadId: worker.visibleThreadId,
+    threadType: "visible_project_worktree",
+    status: "planned",
+    lifecycleStatus: "planned",
+    branch: worker.branch.replace("p6-r4", "p6-r6"),
+    baseCommit: "repair6-base",
+    headCommit: null,
+    integrationCommit: null,
+    ownedPaths: worker.ownedPaths,
+    dependencies: worker.dependencies,
+    lastVerifiedAt: "2026-06-22T06:00:00Z"
+  }));
+  const registry = baseRegistry({
+    schemaVersion: 3,
+    currentRepairRound: 6,
+    registryRefreshedAt: "2026-06-22T06:00:00Z",
+    integrationBaseCommit: "repair6-base",
+    currentIntegrationHeadCommit: undefined,
+    expectedFinalHeadCommit: undefined,
+    terminalHandoffReady: undefined,
+    finalHeadBinding: {
+      source: "ignored_generated_artifact",
+      path: ".artifacts/product/P6/worker-registry-final.json",
+      trackedRegistryDoesNotClaimFinalHead: true,
+      actualFinalHeadCommitMustEqualGitHead: true
+    },
+    workers: historicalWorkers,
+    repair6Workers
+  });
+
+  const result = validateMultiWorkerProtocol({
+    registry,
+    registryText: JSON.stringify(registry),
+    coordinationText: "Current integration head is generated after final source commit.\n"
+  });
+
+  assert.equal(result.status, "pass");
+  assert.deepEqual(result.errors, []);
+});
+
+test("Repair 6 registry rejects tracked final head claims", () => {
+  const registry = baseRegistry({
+    schemaVersion: 3,
+    currentRepairRound: 6,
+    terminalHandoffReady: true,
+    expectedFinalHeadCommit: "abc",
+    finalHeadBinding: {
+      source: "ignored_generated_artifact",
+      path: ".artifacts/product/P6/worker-registry-final.json"
+    }
+  });
+
+  const result = validateMultiWorkerProtocol({
+    registry,
+    registryText: JSON.stringify(registry),
+    coordinationText: "Current integration head: abc\n"
+  });
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.errors.some((error) => error.includes("must not claim currentIntegrationHeadCommit")), true);
+  assert.equal(result.errors.some((error) => error.includes("must not claim terminalHandoffReady")), true);
+});
+
 test("terminal Repair 5 registry rejects active workers", () => {
   const repair5Workers = baseRegistry().workers.map((worker) => ({
     workerId: worker.workerId,
