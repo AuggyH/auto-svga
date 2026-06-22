@@ -53,7 +53,7 @@ function buildSourceChecks(input: {
   return [
     check("document_language_is_chinese", htmlSource.includes('<html lang="zh-CN"')),
     check("viewport_meta_present", htmlSource.includes('name="viewport"')),
-    check("shared_product_shell_visible", htmlSource.includes('<main class="shell">')),
+    check("shared_product_shell_visible", /<main[^>]+class="shell"[^>]+data-product-shell="canonical"/.test(htmlSource)),
     check("main_workspace_has_accessible_name", htmlSource.includes('id="workspace"') && htmlSource.includes('aria-label="Preview workspace"')),
     check("info_panel_has_accessible_name", htmlSource.includes('id="infoPanel"') && htmlSource.includes('aria-label="SVGA info panel"')),
     check("logs_panel_has_accessible_name", htmlSource.includes('id="logsPanel"') && htmlSource.includes('aria-label="Runtime logs panel"')),

@@ -6,6 +6,7 @@ import { buildNq1AccessibilityAuditReport } from "./helpers/nq1-accessibility-au
 
 test("NQ1 accessibility audit records keyboard and error semantics without claiming full manual coverage", async () => {
   const htmlSource = await readFile(path.resolve("tools/electron-prototype/experiments/svga-web/web/index.html"), "utf8");
+  const sharedShellSource = await readFile(path.resolve("tools/shared/product-frontend/product-shell.html"), "utf8");
   const rendererSource = [
     await readFile(path.resolve("tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs"), "utf8"),
     await readFile(path.resolve("tools/shared/product-frontend/product-app.mjs"), "utf8")
@@ -13,7 +14,7 @@ test("NQ1 accessibility audit records keyboard and error semantics without claim
   const cssSource = await readFile(path.resolve("tools/electron-prototype/experiments/svga-web/web/styles.css"), "utf8");
   const sharedCssSource = await readFile(path.resolve("tools/shared/product-frontend/product-styles.css"), "utf8");
   const report = buildNq1AccessibilityAuditReport({
-    htmlSource,
+    htmlSource: `${htmlSource}\n${sharedShellSource}`,
     rendererSource,
     cssSource: `${cssSource}\n${sharedCssSource}`
   });
