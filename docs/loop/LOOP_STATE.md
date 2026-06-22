@@ -42,9 +42,13 @@ Date: 2026-06-22
 - P6 repair-2 A1 inventory completeness integrated as
   `437b21ffbd5da66f9158ef64fe55524bd12f0fec`; parity contract now records
   20 regions, 33 features, 10 interactions, 12 states, and 9 motions.
+- P6 repair-2 A2 true shared frontend integrated as
+  `91aa41dc9eb14fc549dcc1f84a85e11d3869642c`; Electron default renderer now
+  uses the shared Web product frontend entry instead of the legacy prototype
+  surface.
 
 ## Next Action
 
-Repair P6 by restoring complete Web inventory, switching Electron to the true
-shared product frontend, generating item-specific parity evidence, proving
-normal macOS App launch, and producing a privacy-clean HUMAN_REQUIRED handoff.
+Continue P6 repair-2 with A3 normal Electron host proof, then A4 item-specific
+parity evidence, A5 packaging proof, integration repair, and a privacy-clean
+HUMAN_REQUIRED handoff.
