@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
@@ -17,6 +18,22 @@ async function withTempDir(callback) {
 
 async function writeJson(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function writeZip(folder, name, entries = { "README.txt": "ok\n" }) {
+  const source = join(folder, `${name}-source`);
+  await mkdir(source, { recursive: true });
+  for (const [entryName, content] of Object.entries(entries)) {
+    const filePath = join(source, entryName);
+    await mkdir(dirname(filePath), { recursive: true });
+    await writeFile(filePath, content, "utf8");
+  }
+  const zipPath = join(folder, name);
+  execFileSync("zip", ["-q", "-X", zipPath, "-r", "."], {
+    cwd: source,
+    env: { ...process.env, COPYFILE_DISABLE: "1" }
+  });
+  return zipPath;
 }
 
 async function createWorkerFolder(root) {
@@ -62,13 +79,17 @@ async function createTerminalFolder(root, { companionRequired = false, mismatch 
       "HUMAN_REQUIRED",
       "",
       "[Review Packet](REVIEW_PACKET.md)",
-      "[Owner ZIP](P6-review.zip)",
+      "[Owner ZIP](P6-abcdef0-review-upload.zip)",
+      "[App ZIP](Auto-SVGA-macOS-internal-abcdef0.zip)",
       ...(companionRequired ? ["[Companion Patch](changes.patch)"] : []),
       ""
     ].join("\n"),
     "utf8"
   );
-  await writeFile(join(visible, "P6-review.zip"), "zip placeholder\n", "utf8");
+  await writeZip(visible, "P6-abcdef0-review-upload.zip");
+  await writeZip(visible, "Auto-SVGA-macOS-internal-abcdef0.zip");
+  await rm(join(visible, "P6-abcdef0-review-upload.zip-source"), { recursive: true, force: true });
+  await rm(join(visible, "Auto-SVGA-macOS-internal-abcdef0.zip-source"), { recursive: true, force: true });
   await writeJson(join(visible, "MANIFEST.json"), {
     companionRequired,
     visibleHandoff: {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { lstat, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
@@ -10,6 +11,7 @@ const repoRoot = path.resolve(scriptDir, "..");
 
 const localPathPattern = /(?:^|[^A-Za-z0-9_.-])(?:\/Users\/|\/private\/|\/var\/folders\/|\/tmp\/|[A-Za-z]:\\|\\\\)/;
 const markdownLinkPattern = /\[[^\]]+\]\(([^)]+)\)/g;
+const zipNamePattern = /\.zip$/i;
 
 const sealedFileNames = [
   "REVIEW_PACKET.md",
@@ -73,11 +75,55 @@ function isForbiddenZipEntryName(filePath) {
 async function validateNoLocalPaths(folder, errors) {
   for (const filePath of await walkFiles(folder)) {
     if (!/\.(md|json|txt|patch|html|js|mjs|cjs|css)$/i.test(filePath)) continue;
+    if (path.basename(filePath) === "FINAL_RESPONSE.txt") continue;
     const text = await readTextIfExists(filePath);
     if (localPathPattern.test(text)) {
       addError(errors, `visible handoff file contains a local absolute path: ${path.relative(folder, filePath)}`);
     }
   }
+}
+
+function zipEntries(zipPath) {
+  const result = spawnSync("unzip", ["-Z1", zipPath], { encoding: "utf8" });
+  if (result.status !== 0) return { status: "fail", entries: [], error: result.stderr || result.stdout };
+  return { status: "pass", entries: result.stdout.split("\n").filter(Boolean).sort() };
+}
+
+function resolveVisibleLink(folder, link) {
+  if (/^[a-z]+:/i.test(link)) return null;
+  const cleanLink = link.split("#")[0].split("?")[0];
+  const resolved = path.isAbsolute(cleanLink)
+    ? path.resolve(cleanLink)
+    : path.resolve(folder, cleanLink);
+  const relative = path.relative(folder, resolved);
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) return null;
+  return resolved;
+}
+
+async function validateMarkdownLinkTargets(folder, finalResponse, errors) {
+  for (const link of parseMarkdownLinks(finalResponse)) {
+    const target = resolveVisibleLink(folder, link);
+    if (!target || !existsSync(target)) {
+      addError(errors, `FINAL_RESPONSE.txt link target is missing or outside visible folder: ${link}`);
+    }
+  }
+}
+
+async function validateZipPrivacy(zipPath, errors) {
+  const result = zipEntries(zipPath);
+  if (result.status !== "pass") {
+    addError(errors, `unable to inspect ZIP entries: ${path.basename(zipPath)}`);
+    return [];
+  }
+  for (const entry of result.entries) {
+    if (entry.includes("__MACOSX") || path.basename(entry) === ".DS_Store") {
+      addError(errors, `ZIP contains forbidden archive metadata: ${path.basename(zipPath)}:${entry}`);
+    }
+    if (/\/Users\/|\/private\/|\/var\/folders\/|\/tmp\/|[A-Za-z]:\\|\\\\/.test(entry)) {
+      addError(errors, `ZIP entry contains local absolute path text: ${path.basename(zipPath)}:${entry}`);
+    }
+  }
+  return result.entries;
 }
 
 async function validateWorkerFolder(folder, errors) {
@@ -137,10 +183,20 @@ async function validateTerminalFolder(folder, errors) {
 
   const files = await walkFiles(folder);
   if (!hasZip(files)) addError(errors, "terminal folder must include an owner review ZIP.");
+  const zipFiles = files.filter((filePath) => zipNamePattern.test(filePath));
+  if (!zipFiles.some((filePath) => /^P6-[a-f0-9]+-review-upload\.zip$/i.test(path.basename(filePath)))) {
+    addError(errors, "terminal folder must include a P6 owner review ZIP.");
+  }
+  if (!zipFiles.some((filePath) => /^Auto-SVGA-macOS-internal-[a-f0-9]+\.zip$/i.test(path.basename(filePath)))) {
+    addError(errors, "terminal folder must include the macOS App ZIP.");
+  }
   for (const filePath of files) {
     if (isForbiddenZipEntryName(filePath)) {
       addError(errors, `terminal folder contains forbidden archive metadata: ${path.relative(folder, filePath)}`);
     }
+  }
+  for (const zipPath of zipFiles) {
+    await validateZipPrivacy(zipPath, errors);
   }
 
   let manifest = {};
@@ -169,6 +225,7 @@ async function validateTerminalFolder(folder, errors) {
   if (finalResponse.includes(".artifacts/loop-handoff")) {
     addError(errors, "FINAL_RESPONSE.txt must not rely on hidden .artifacts/loop-handoff paths.");
   }
+  await validateMarkdownLinkTargets(folder, finalResponse, errors);
 
   const canonicalFolder = manifest?.visibleHandoff?.canonicalPacketRoot;
   if (canonicalFolder) {
