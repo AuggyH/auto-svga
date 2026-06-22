@@ -39,6 +39,9 @@ Date: 2026-06-22
   parity was not achieved at reviewed head `0fda2a601307506f84cc5f87deb1646081bc1889`.
 - P6-PF1 head `c832f12bfe521442b037c36346e8408ad07ef1cc` is
   `SUPERSEDED_BY_P6_REPAIR` and is historical evidence only.
+- P6 repair-2 A1 inventory completeness integrated as
+  `437b21ffbd5da66f9158ef64fe55524bd12f0fec`; parity contract now records
+  20 regions, 33 features, 10 interactions, 12 states, and 9 motions.
 
 ## Next Action
 
