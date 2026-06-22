@@ -16,7 +16,7 @@ Open:
 http://localhost:4173/tools/svga-player-preview/
 ```
 
-This page uses the public `svgaplayerweb@2.3.1` prebuilt browser bundle from jsDelivr. The SVGA parser loads `.svga` through HTTP, so use the local dev server instead of opening `index.html` through `file://`.
+This page uses the local vendored `pako@2.1.0` and `svgaplayerweb@2.3.1` browser bundles. The SVGA parser loads `.svga` through HTTP, so use the local dev server instead of opening `index.html` through `file://`.
 
 ## Preview modes
 

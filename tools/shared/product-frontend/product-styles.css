@@ -641,6 +641,7 @@ label.isDisabled {
   position: absolute;
   left: 50%;
   top: 50%;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;

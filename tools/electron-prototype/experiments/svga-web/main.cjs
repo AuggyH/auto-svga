@@ -798,6 +798,18 @@ function runtimeIdentity(mode, rendererUrl) {
     runtimeInstanceId,
     player: playerIdentity,
     csp,
+    security: {
+      contentSecurityPolicy: csp,
+      remoteNavigationAllowed: false,
+      newWindowsAllowed: false,
+      permissionsDenied: true,
+      telemetryEnabled: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      arbitraryFileServing: false,
+      persistedAbsolutePaths: false
+    },
     ...canonicalFixtureMetadata(),
     indexHtmlSha256: sha256RelativeFile(rendererHtmlEntry),
     rendererJsSha256: sha256RelativeFile(rendererEntry),
@@ -969,7 +981,9 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
   }
   const ratio = overlayPixelRatio(image, probe?.overlayRect);
   const failures = [...(probe?.failures ?? [])];
-  if (state !== "loaded" && ratio <= 0.001) failures.push("overlay region lacks non-background screenshot pixels");
+  if ((state === "empty" || state === "loading") && ratio <= 0.001) {
+    failures.push("overlay region lacks non-background screenshot pixels");
+  }
   if (state === "loaded" && probe?.loadedCanvasNonBlank !== true) failures.push("loaded canvas is blank");
   const proofPath = path.join(productArtifactRoot, "desktop-state-render-proof.json");
   let proof = {

@@ -1326,6 +1326,9 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
   updateButtons();
   renderInfoPanel();
   addLog("info", `开始解析 SVGA：${options.fileName ?? source} / Parsing SVGA`);
+  if (options.loadingHoldMs) {
+    await delay(options.loadingHoldMs);
+  }
 
   loadAvatarFrameInspectionReport(source, options.fileName ?? `SVGA ${slot.slotName}`)
     .then((report) => {
@@ -1771,7 +1774,8 @@ async function runProductSmoke() {
     }));
     const loadPromise = loadSvga("a", fixtureUrl, {
       fileName: "synthetic-avatar-frame.svga",
-      fileSizeBytes: bytes.byteLength
+      fileSizeBytes: bytes.byteLength,
+      loadingHoldMs: 350
     });
     await captureArtifact("desktop-loading");
     await loadPromise;

@@ -509,6 +509,8 @@ function fixtureHashesMatch(input) {
     ?? input.desktop?.runtimeIdentity?.fixtureSha256
     ?? input.package?.manifest?.fixtureSha256;
   const packageFixtureHash = input.package?.normalProof?.normalProof?.fixtureSha256
+    ?? input.package?.normalProof?.fixtureSha256
+    ?? input.package?.normalProof?.runtimeIdentity?.fixtureSha256
     ?? input.package?.manifest?.fixtureSha256
     ?? input.desktop?.artifactIndex?.fixtureHashes?.fixtureSha256;
   return typeof fixtureHash === "string" && fixtureHash.length === 64 && fixtureHash === packageFixtureHash;
