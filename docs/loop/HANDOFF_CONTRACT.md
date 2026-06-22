@@ -39,7 +39,7 @@ The packet root contains:
 
 - `REVIEW_PACKET.md`
 - `MANIFEST.json`
-- `changes.patch`
+- `changes.patch` only when `companionRequired=true`
 - `validation.json`
 - `budget-check.json`
 - `reviewer-a.json` when sealed
@@ -63,13 +63,20 @@ The visible folder must include at minimum:
 
 - `REVIEW_PACKET.md`
 - `README.md`
-- `changes.patch` when required
+- `FINAL_RESPONSE.txt`
+- `MANIFEST.json`
+- `changes.patch` only when `companionRequired=true`
 - the owner upload ZIP
 - curated product evidence when the milestone requires visual or runtime proof
 
 The final response must include clickable Markdown links to the visible folder,
-`REVIEW_PACKET.md`, upload ZIP, and required companions. Do not rely only on
-hidden `.artifacts` paths.
+`REVIEW_PACKET.md`, owner upload ZIP, App ZIP or equivalent product artifact
+when present, and required companions. Do not rely only on hidden `.artifacts`
+paths.
+
+Visible files copied from `.artifacts/loop-handoff` must be byte-identical to
+the sealed canonical files. Do not sanitize, normalize, redact, format, or
+rewrite sealed files after seal.
 
 ## Required v4 Metadata
 
@@ -244,14 +251,19 @@ git --literal-pathspecs diff --check
 git --literal-pathspecs diff --cached --check
 ```
 
-`PASS` writes `changes.patch` from:
+When `companionRequired=true`, terminal handoff writes `changes.patch` from:
 
 ```bash
 git --literal-pathspecs diff --binary --no-ext-diff --no-textconv <baseCommit>..<headCommit> -- <safe literal paths>
 ```
 
+When `companionRequired=false`, terminal handoff must not create visible or ZIP
+`changes.patch`. The Review Packet embeds the exact Full Diff when required.
+Do not create an empty patch. If there is no source diff, record that fact in
+`REVIEW_PACKET.md`.
+
 No generic redaction, rewriting, normalization, or source substitution is
-allowed in a `PASS` packet. High-confidence secret content fails closed before
+allowed in a sealed packet. High-confidence secret content fails closed before
 packet generation. `HUMAN_REQUIRED` may use `diffFidelity:
 PARTIAL_REDACTED` only when sensitive paths or high-confidence sensitive
 content must be kept out of the packet.

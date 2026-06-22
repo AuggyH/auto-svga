@@ -44,6 +44,12 @@ export function createLoopValidationSteps() {
       run: { cmd: process.execPath, args: ["tools/loop-budget-check.mjs"] }
     },
     {
+      id: "multi-worker-protocol-check",
+      command: "node tools/multi-worker-protocol-check.mjs",
+      required: true,
+      run: { cmd: process.execPath, args: ["tools/multi-worker-protocol-check.mjs"] }
+    },
+    {
       id: "build",
       command: "npm run build",
       required: true,

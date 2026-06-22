@@ -227,10 +227,13 @@ Loop budget counts must be derived from `LOOP_HISTORY.jsonl`, and
 
 - Formal implementation workers must be visible project Worktree threads.
 - Subagents are limited to short-lived read-only audit and review.
+- Before coordinating or resuming a multi-worker milestone, A0 must read the
+  protocol, coordination doc, and registry; list visible project threads;
+  refresh the registry; and validate it.
 - List and reuse existing project threads before creating workers.
 - A0 is the only integration coordinator and global lifecycle writer.
 - Worker PASS does not imply milestone PASS.
-- Heavy Electron and packaged-App validation runs serially.
+- Heavy Electron, Web server, and packaged-App validation runs serially.
 
 ## Token-saving Skills
 
@@ -262,10 +265,12 @@ explicit action.
 5. Every completed task must also expose owner-visible review material under
    `review/<task-or-milestone>-<head-short-sha>/`.
 6. The final response must include clickable Markdown links to the visible
-   review folder, `REVIEW_PACKET.md`, the upload ZIP, and required companions
-   such as `changes.patch`.
+   review folder, `REVIEW_PACKET.md`, the upload ZIP, product artifacts such as
+   an App ZIP when present, and required companions such as `changes.patch`.
 7. Hidden `.artifacts` paths alone are not an acceptable owner handoff. See
    `docs/engineering/REVIEW_PACKET_VISIBILITY_PROTOCOL.md`.
+8. `changes.patch` is not a default attachment. Terminal handoff includes it
+   only when `companionRequired=true`; do not create an empty patch.
 
 ## Current Template List
 

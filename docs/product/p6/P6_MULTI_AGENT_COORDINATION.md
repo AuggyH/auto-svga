@@ -7,19 +7,21 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 ## Current Integration State
 
 - Integration branch: `agent/codex/p6-integration`
-- Current integration head when this protocol was recorded: `d347cd4802ffe47cf2291f69fbebac6c0ec29457`
-- Current terminal state: P6 remains `HUMAN_REQUIRED` pending owner acceptance.
+- Current integration head for Repair 3 mechanism hardening: `ba4b178d12d6e8179e4844e7557cc9ec27949875`
+- Current loop state: P6 Repair 3 is `implementation_in_progress`.
 - Existing P6 workers must be reused; do not recreate them.
+- Worktree paths are runtime thread metadata and must not be committed to this
+  coordination document or to `P6_WORKER_REGISTRY.json`.
 
 ## Existing Visible Workers
 
-| Worker | Visible thread id | Worktree cwd | Current branch |
+| Worker | Visible thread id | Thread type | Current branch |
 | --- | --- | --- | --- |
-| A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | `/Users/huangtengxin/.codex/worktrees/7795/auto-svga` | `agent/codex/p6-a1-web-baseline` |
-| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | `/Users/huangtengxin/.codex/worktrees/4bd8/auto-svga` | `agent/codex/p6-a2-shared-frontend` |
-| A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | `/Users/huangtengxin/.codex/worktrees/befc/auto-svga` | `agent/codex/p6-r2-a3-electron-host` |
-| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | `/Users/huangtengxin/.codex/worktrees/40ab/auto-svga` | `agent/codex/p6-a4-parity-tests` |
-| A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | `/Users/huangtengxin/.codex/worktrees/44d0/auto-svga` | `agent/codex/p6-a5-macos-package` |
+| A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | visible project Worktree thread | `agent/codex/p6-a1-web-baseline` |
+| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | `agent/codex/p6-a2-shared-frontend` |
+| A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | visible project Worktree thread | `agent/codex/p6-r2-a3-electron-host` |
+| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | `agent/codex/p6-a4-parity-tests` |
+| A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | visible project Worktree thread | `agent/codex/p6-a5-macos-package` |
 
 ## Worker Lifecycle
 
@@ -28,10 +30,12 @@ Before A0 starts or resumes a worker:
 1. List project threads.
 2. Match by worker id and role.
 3. Reuse the existing visible thread if present.
-4. Verify worktree cwd and branch.
+4. Verify Worktree mode and branch from runtime thread metadata.
 5. Send the full context packet.
 6. Require hidden/background App debugging when possible.
 7. Require the standard handoff fields.
+8. Update `P6_WORKER_REGISTRY.json` with thread id, branch, fixed commits,
+   lifecycle status, dependencies, and requested integration changes.
 
 Worker completion does not change milestone status. A0 must integrate fixed commits and revalidate on `agent/codex/p6-integration`.
 
@@ -68,6 +72,68 @@ Workers must not modify:
 - final handoff inputs
 
 Only A0 may modify these files.
+
+## Owned Path Boundaries
+
+A1 owns only Web baseline inventory and parity contract sources:
+
+- `docs/product/P6_WEB_PRODUCT_BASELINE.md`
+- `docs/product/P6_WEB_FEATURE_INVENTORY.md`
+- `docs/product/P6_WEB_PARITY_CONTRACT.json`
+- dedicated Web inventory scripts and tests
+
+A2 owns shared frontend product code:
+
+- `tools/shared/product-frontend/`
+- shared product shell
+- shared core CSS
+- shared state machine
+- shared motion definitions
+
+A3 owns Electron host boundaries:
+
+- Electron main process
+- Electron preload
+- `ElectronHostAdapter`
+- host-only IPC tests
+- Desktop latest-artifact adapter
+- file, menu, and drop host integration
+
+A4 owns parity and protocol evidence:
+
+- `tools/p6/generate-p6-evidence.mjs`
+- runtime scenario runner
+- parity generator
+- screenshot and motion capture helpers
+- parity mutation tests
+- multi-worker protocol checker
+- visible-review protocol checker
+
+A5 owns macOS package and owner-visible product artifacts:
+
+- macOS package scripts
+- plist and bundle templates
+- normal packaged-App proof
+- App ZIP
+- P6 portable review ZIP
+- root manifest
+- bundle privacy audit
+- visible review mirror
+
+A0 owns global lifecycle and terminal state:
+
+- `docs/loop/CURRENT_MILESTONE.md`
+- `docs/loop/LOOP_STATE.md`
+- `docs/loop/LOOP_HISTORY.jsonl`
+- `AGENTS.md`
+- root `package.json`
+- terminal handoff inputs
+- final Review Packet state
+- Worker registry integration fields
+
+Workers must not own broad parent paths that overlap another Worker. Examples:
+A3 must not own the whole Web frontend directory or `tools/p6/generate-p6-evidence.mjs`;
+A3 and A5 must not both own the whole Electron test tree.
 
 ## Acceptance Ownership
 
