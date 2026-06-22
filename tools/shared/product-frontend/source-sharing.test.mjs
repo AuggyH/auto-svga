@@ -78,6 +78,67 @@ test("shared product shell keeps loading distinct and editor incubation hidden b
   assert.doesNotMatch(shellHtml, /batchPngInput|loadBatchPngFiles|svga-image-edit-session/);
 });
 
+test("shared product app exposes Repair 5 product states and invalid cleanup evidence", async () => {
+  const [shellHtml, productApp, productStyles] = await Promise.all([
+    readRepoFile("tools/shared/product-frontend/product-shell.html"),
+    readRepoFile("tools/shared/product-frontend/product-app.mjs"),
+    readRepoFile("tools/shared/product-frontend/product-styles.css")
+  ]);
+
+  for (const stateId of [
+    "mode-menu-open",
+    "local-compare-empty",
+    "local-compare-loaded",
+    "export-review-loaded",
+    "info-overview-open",
+    "info-assets-open",
+    "logs-open",
+    "settings-open",
+    "accessibility-toggles-on",
+    "settings-closed-by-escape",
+    "synchronized-playback-toggled-by-space",
+    "asset-preview-modal-open",
+    "responsive-export-review-loaded-at-900-x-720"
+  ]) {
+    assert.match(productApp, new RegExp(stateId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+
+  for (const cleanupEvidence of [
+    "staleMetadataCleared",
+    "staleInspectionCleared",
+    "staleCanvasCleared",
+    "staleFileBadgeCleared",
+    "staleReportCleared",
+    "staleReadyBadgeCleared"
+  ]) {
+    assert.match(productApp, new RegExp(cleanupEvidence));
+  }
+
+  for (const productEvidence of [
+    "modeMenuVisible",
+    "infoPanelVisible",
+    "logsPanelVisible",
+    "settingsVisible",
+    "assetPreviewVisible",
+    "comparePanelVisible",
+    "referencePanelVisible",
+    "syncBarVisible",
+    "statusAnnouncementText"
+  ]) {
+    assert.match(productApp, new RegExp(productEvidence));
+  }
+
+  assert.match(productApp, /announce\(errorBox\.textContent\)/);
+  assert.match(productApp, /announce\(message\)/);
+  assert.match(productApp, /announce\("同步播放已开始"\)/);
+  assert.match(productApp, /announce\("已开启本地对比"\)/);
+  assert.match(shellHtml, /id="statusAnnouncer" class="srOnly" aria-live="polite"/);
+  assert.doesNotMatch(shellHtml, /batchPngInput|loadBatchPngFiles|svga-image-edit-session/);
+  for (const keyframe of ["fitMenuIn", "sidePanelEnter", "tabIn", "overlayIn", "modalIn", "drawerIn", "dropdownIn"]) {
+    assert.match(productStyles, new RegExp(`@keyframes\\s+${keyframe}`));
+  }
+});
+
 test("Electron default renderer uses shared product source and hides editor incubation", async () => {
   const [electronHtml, electronStyles, electronEntry, prototypeSource, shellHtml] = await Promise.all([
     readRepoFile("tools/electron-prototype/experiments/svga-web/web/index.html"),

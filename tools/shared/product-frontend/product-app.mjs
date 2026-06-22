@@ -232,6 +232,7 @@ function addLog(level, message) {
 function showError(message) {
   errorBox.hidden = false;
   errorBox.textContent = String(message).split(" / ")[0];
+  announce(errorBox.textContent);
   addLog("error", message);
 }
 
@@ -533,8 +534,12 @@ function updateButtons() {
 
 function setAppMode(nextMode = modeSelect.value) {
   if (nextMode === "localCompare") nextMode = "localPreview";
+  const previousMode = modeSelect.value;
   modeSelect.value = nextMode;
   modeDropdownLabel.textContent = nextMode === "exportReview" ? "导出验收" : "本地预览";
+  if (previousMode !== nextMode) {
+    announce(nextMode === "exportReview" ? "已切换到导出验收" : "已切换到本地预览");
+  }
   syncDropdownSelection(modeDropdownMenu, nextMode);
   workspace.className = `workspace mode-${nextMode}${compareEnabled && nextMode === "localPreview" ? " withCompare" : ""}${activeSidePanel ? " withSidePanel" : ""}`;
   players.b.panel.classList.toggle("isHidden", !isCompareActive());
@@ -609,6 +614,7 @@ function closeModal(layer, { restoreFocus = true } = {}) {
 function showSettingsToast(message = "设置已更新") {
   window.clearTimeout(toastTimer);
   settingsToast.textContent = message;
+  announce(message);
   settingsToast.hidden = false;
   settingsToast.classList.remove("isClosing");
   window.requestAnimationFrame(() => settingsToast.classList.add("isOpen"));
@@ -893,6 +899,7 @@ function syncPlay() {
     playReference();
   }
   syncIsPlaying = true;
+  announce("同步播放已开始");
   updateSyncPlaybackButton();
   startSyncTicker();
 }
@@ -903,6 +910,7 @@ function syncPause() {
   referenceState.video.pause();
   stopReferenceTicker();
   syncIsPlaying = false;
+  announce("同步播放已暂停");
   updateSyncPlaybackButton();
   stopSyncTicker();
 }
@@ -1613,6 +1621,20 @@ function isRectVisible(rect) {
   return Boolean(rect && rect.width > 0 && rect.height > 0);
 }
 
+function isElementVisible(node) {
+  if (!node || node.hidden) return false;
+  const rect = rectFor(node);
+  const style = getComputedStyle(node);
+  return isRectVisible(rect)
+    && style.display !== "none"
+    && style.visibility !== "hidden"
+    && Number(style.opacity ?? 1) > 0.01;
+}
+
+function compactText(node) {
+  return node?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+}
+
 function elementLabel(node) {
   if (!node) return "none";
   const id = node.id ? `#${node.id}` : "";
@@ -1621,11 +1643,18 @@ function elementLabel(node) {
 }
 
 function collectRenderedStateProof(state) {
+  const normalizedState = {
+    "invalid-error-state": "invalid",
+    "local-compare-loaded": "local-compare-loaded",
+    "space-sync-toggle": "synchronized-playback-toggled-by-space",
+    "responsive-export-review-900x720": "responsive-export-review-loaded-at-900-x-720"
+  }[state] ?? state;
   const stage = players.a.panel?.querySelector(".stage");
-  const emptyOverlay = players.a.panel?.querySelector(".centerEmptyState");
+  const primaryEmptyOverlay = players.a.panel?.querySelector(".centerEmptyState");
+  const secondaryEmptyOverlay = players.b.panel?.querySelector(".centerEmptyState");
   const invalidOverlay = errorBox;
-  const overlay = state === "invalid" ? invalidOverlay : emptyOverlay;
-  const button = state === "invalid" ? primaryEmptyFileButton : overlay?.querySelector("button");
+  const overlay = normalizedState === "invalid" ? invalidOverlay : primaryEmptyOverlay;
+  const button = normalizedState === "invalid" ? primaryEmptyFileButton : overlay?.querySelector("button");
   const stageRect = rectFor(stage);
   const canvasRect = rectFor(players.a.canvas);
   const overlayRect = rectFor(overlay);
@@ -1639,12 +1668,12 @@ function collectRenderedStateProof(state) {
     && overlayStyle.visibility !== "hidden"
     && Number(overlayStyle.opacity ?? 1) > 0.01
     && isRectVisible(overlayRect);
-  const overlayInsideStage = state === "invalid" || Boolean(stageRect && overlayRect
+  const overlayInsideStage = normalizedState === "invalid" || Boolean(stageRect && overlayRect
     && overlayRect.left >= stageRect.left
     && overlayRect.right <= stageRect.right
     && overlayRect.top >= stageRect.top
     && overlayRect.bottom <= stageRect.bottom);
-  const overlayNotOccluded = !overlayVisible || overlay?.contains(topElement) || state === "invalid";
+  const overlayNotOccluded = !overlayVisible || overlay?.contains(topElement) || normalizedState === "invalid";
   const loadingPhaseItems = Array.from(players.a.loadingPhases ?? []).map((item) => ({
     phase: item.dataset.loadingPhase,
     text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -1656,6 +1685,26 @@ function collectRenderedStateProof(state) {
   const loadingPhaseStyle = loadingPhaseList ? getComputedStyle(loadingPhaseList) : {};
   const reportText = reportGrid.textContent?.replace(/\s+/g, " ").trim() ?? "";
   const filePillText = svgaFilePillA.textContent?.replace(/\s+/g, " ").trim() ?? "";
+  const overviewText = compactText(document.querySelector("#tab-overview"));
+  const assetText = compactText(document.querySelector("#tab-assets"));
+  const syncButtonPressed = syncPlayControl.getAttribute("aria-pressed") === "true";
+  const modeMenuVisible = isElementVisible(modeDropdownMenu) && !modeDropdownMenu.hidden;
+  const infoPanelVisible = isElementVisible(infoPanel) && !infoPanel.classList.contains("isHidden");
+  const logsPanelVisible = isElementVisible(logsPanel) && !logsPanel.classList.contains("isHidden");
+  const settingsVisible = isElementVisible(settingsModal) && !settingsModal.hidden;
+  const assetPreviewVisible = isElementVisible(assetPreviewModal) && !assetPreviewModal.hidden;
+  const comparePanelVisible = isElementVisible(players.b.panel) && !players.b.panel.classList.contains("isHidden");
+  const referencePanelVisible = isElementVisible(referenceState.panel) && !referenceState.panel.classList.contains("isHidden");
+  const syncBarVisible = isElementVisible(syncBar) && !syncBar.classList.contains("isHidden");
+  const secondaryEmptyVisible = isElementVisible(secondaryEmptyOverlay);
+  const playerBarBVisible = isElementVisible(players.b.panel?.querySelector(".playerBar"));
+  const referencePlayerBarVisible = isElementVisible(referenceState.panel?.querySelector(".playerBar"));
+  const overviewPanelVisible = isElementVisible(document.querySelector("#tab-overview")) && !document.querySelector("#tab-overview")?.classList.contains("isHidden");
+  const assetsPanelVisible = isElementVisible(document.querySelector("#tab-assets")) && !document.querySelector("#tab-assets")?.classList.contains("isHidden");
+  const reportOverviewVisible = isElementVisible(document.querySelector("#tab-overview .overviewGrid, #reportGrid"));
+  const statusAnnouncementText = compactText(statusAnnouncer);
+  const staleFieldPattern = /文件体积|fileSizeBytes|内存占用|memoryUsage|画布尺寸|canvasSize|播放时长|duration|帧率|fps|图层数量|spriteCount|图片资源|imageCount|文件名|fileName/;
+  const staleReportPattern = /Motion Asset Audit|动效诊断|specReportSection|auditReportSection|fileSizeBytes|imageCount|spriteCount|canvasSize|durationSeconds|fps/;
   const primaryActionVisible = Boolean(button)
     && isRectVisible(primaryActionRect)
     && getComputedStyle(button).display !== "none"
@@ -1663,12 +1712,12 @@ function collectRenderedStateProof(state) {
     && Number(getComputedStyle(button).opacity) > 0.01;
   const renderedText = overlay?.textContent?.replace(/\s+/g, " ").trim() ?? "";
   const failures = [];
-  if (state === "empty") {
+  if (normalizedState === "empty" || normalizedState === "local-empty") {
     if (!overlayVisible) failures.push("empty overlay is not visible");
     if (!renderedText.includes("拖拽 SVGA 文件到此处")) failures.push("empty text missing");
     if (!primaryActionVisible) failures.push("empty primary action not visible");
   }
-  if (state === "loading") {
+  if (normalizedState === "loading") {
     if (players.a.parseStatus !== "loading") failures.push("loading parse status missing");
     if (players.a.renderStatus !== "loading") failures.push("loading render status missing");
     if (!players.a.panel.classList.contains("isLoading")) failures.push("loading card class missing");
@@ -1678,11 +1727,11 @@ function collectRenderedStateProof(state) {
       failures.push("loading phases missing");
     }
   }
-  if (state === "loaded") {
+  if (normalizedState === "loaded" || normalizedState === "export-review-loaded") {
     if (overlayVisible) failures.push("loaded overlay should be hidden");
     if (!canvasIsNonBlank(players.a)) failures.push("loaded canvas is blank");
   }
-  if (state === "invalid") {
+  if (normalizedState === "invalid") {
     if (!overlayVisible) failures.push("invalid error box is not visible");
     if (!/文件类型不支持|加载失败|Unable|Unsupported|failed/i.test(renderedText)) {
       failures.push("invalid product message missing");
@@ -1691,13 +1740,81 @@ function collectRenderedStateProof(state) {
     if (players.a.inspectionReport) failures.push("invalid inspection still present");
     if (players.a.canvas.children.length > 0) failures.push("invalid canvas children still present");
     if (!svgaFilePillA.hidden || filePillText) failures.push("invalid file badge still visible");
-    if (/Motion Asset Audit|动效诊断|specReportSection|auditReportSection/.test(reportText)) failures.push("invalid report still visible");
+    if (staleReportPattern.test(reportText)) failures.push("invalid report still visible");
+    if (staleFieldPattern.test(overviewText)) failures.push("invalid overview metadata still visible");
+    if (document.querySelector("#tab-overview .status-ready")) failures.push("invalid ready badge still visible");
+  }
+  if (normalizedState === "mode-menu-open") {
+    if (!modeMenuVisible) failures.push("mode menu is not visible");
+    if (modeDropdownTrigger.getAttribute("aria-expanded") !== "true") failures.push("mode trigger is not expanded");
+    if (!floatingRoot.contains(modeDropdownMenu)) failures.push("mode menu is not mounted in floating root");
+  }
+  if (normalizedState === "local-compare-empty") {
+    if (!isCompareActive()) failures.push("compare mode is not active");
+    if (!comparePanelVisible) failures.push("secondary panel is not visible");
+    if (!secondaryEmptyVisible) failures.push("secondary empty state is not visible");
+    if (!isElementVisible(secondaryInputWrap) || !isElementVisible(secondaryEmptyFileButton)) failures.push("secondary file controls are not reachable");
+    if (!syncBarVisible) failures.push("sync bar is not visible for local compare");
+  }
+  if (normalizedState === "local-compare-loaded") {
+    if (!isCompareActive()) failures.push("compare mode is not active");
+    if (!comparePanelVisible) failures.push("secondary panel is not visible");
+    if (!players.b.videoItem) failures.push("secondary SVGA is not loaded");
+    if (!canvasIsNonBlank(players.b)) failures.push("secondary canvas is blank");
+    if (!playerBarBVisible) failures.push("secondary player bar is not visible");
+  }
+  if (normalizedState === "export-review-loaded") {
+    if (modeSelect.value !== "exportReview") failures.push("export review mode is not active");
+    if (!referencePanelVisible) failures.push("reference panel is not visible");
+    if (!referencePlayerBarVisible) failures.push("reference player bar is not visible");
+    if (!syncBarVisible) failures.push("sync bar is not visible");
+  }
+  if (normalizedState === "info-overview-open") {
+    if (!infoPanelVisible) failures.push("info panel is not visible");
+    if (!overviewPanelVisible) failures.push("overview tab is not visible");
+    if (!reportOverviewVisible) failures.push("report overview grid is not visible");
+  }
+  if (normalizedState === "info-assets-open") {
+    if (!infoPanelVisible) failures.push("info panel is not visible");
+    if (!assetsPanelVisible) failures.push("assets tab is not visible");
+    if (!/资源|Assets|全部|图片|序列帧/.test(assetText)) failures.push("assets content is not reachable");
+  }
+  if (normalizedState === "logs-open") {
+    if (!logsPanelVisible) failures.push("logs panel is not visible");
+    if (!isElementVisible(fullLogsContent)) failures.push("logs content is not visible");
+  }
+  if (normalizedState === "settings-open") {
+    if (!settingsVisible) failures.push("settings modal is not visible");
+    if (!isElementVisible(settingsCloseButton)) failures.push("settings close control is not visible");
+  }
+  if (normalizedState === "accessibility-toggles-on") {
+    if (!reduceMotionToggle.checked || !document.documentElement.classList.contains("reduceMotion")) failures.push("reduce motion is not enabled");
+    if (!reduceBlurToggle.checked || !document.documentElement.classList.contains("reduceBlur")) failures.push("reduce blur is not enabled");
+  }
+  if (normalizedState === "settings-closed-by-escape") {
+    if (!settingsModal.hidden) failures.push("settings modal is still open");
+    if (activeSidePanel && !logsPanelVisible && !infoPanelVisible) failures.push("side panel state is inconsistent after Escape");
+  }
+  if (normalizedState === "synchronized-playback-toggled-by-space") {
+    if (!syncBarVisible) failures.push("sync bar is not visible");
+    if (!syncIsPlaying || !syncButtonPressed) failures.push("synchronized playback is not active");
+  }
+  if (normalizedState === "asset-preview-modal-open") {
+    if (!assetPreviewVisible) failures.push("asset preview modal is not visible");
+    if (!assetPreviewImage.getAttribute("src")) failures.push("asset preview image is missing");
+    if (!compactText(assetPreviewDetails)) failures.push("asset preview details are missing");
+  }
+  if (normalizedState === "responsive-export-review-loaded-at-900-x-720") {
+    if (modeSelect.value !== "exportReview") failures.push("responsive state is not in export review mode");
+    if (!isElementVisible(workspace)) failures.push("workspace is not visible");
+    if (!syncBarVisible) failures.push("sync controls are not reachable");
   }
   return {
-    state,
+    state: normalizedState,
+    requestedState: state,
     stageRect,
     canvasRect,
-    overlaySelector: state === "invalid" ? "#errorBox" : ".centerEmptyState",
+    overlaySelector: normalizedState === "invalid" ? "#errorBox" : ".centerEmptyState",
     overlayRect,
     overlayDisplay: overlayStyle.display ?? "unknown",
     overlayVisibility: overlayStyle.visibility ?? "unknown",
@@ -1715,14 +1832,34 @@ function collectRenderedStateProof(state) {
     primaryActionRect,
     primaryActionVisible,
     primaryActionEnabled: button ? !button.disabled : false,
-    loadedCanvasNonBlank: state === "loaded" ? canvasIsNonBlank(players.a) : false,
-    staleMetadataCleared: state === "invalid" ? !players.a.metrics : null,
-    staleInspectionCleared: state === "invalid" ? !players.a.inspectionReport : null,
-    staleCanvasCleared: state === "invalid" ? players.a.canvas.children.length === 0 : null,
-    staleFileBadgeCleared: state === "invalid" ? svgaFilePillA.hidden && !filePillText : null,
-    staleReportCleared: state === "invalid" ? !/Motion Asset Audit|动效诊断|specReportSection|auditReportSection/.test(reportText) : null,
+    loadedCanvasNonBlank: ["loaded", "export-review-loaded"].includes(normalizedState) ? canvasIsNonBlank(players.a) : false,
+    staleMetadataCleared: normalizedState === "invalid" ? !players.a.metrics && !staleFieldPattern.test(overviewText) : null,
+    staleInspectionCleared: normalizedState === "invalid" ? !players.a.inspectionReport : null,
+    staleCanvasCleared: normalizedState === "invalid" ? players.a.canvas.children.length === 0 : null,
+    staleFileBadgeCleared: normalizedState === "invalid" ? svgaFilePillA.hidden && !filePillText : null,
+    staleReportCleared: normalizedState === "invalid" ? !staleReportPattern.test(reportText) : null,
+    staleReadyBadgeCleared: normalizedState === "invalid" ? !document.querySelector("#tab-overview .status-ready") : null,
     parserStatus: players.a.parseStatus,
     renderStatus: players.a.renderStatus,
+    productState: {
+      mode: modeSelect.value,
+      compareActive: isCompareActive(),
+      activeSidePanel,
+      activeModal: activeModal?.id ?? null,
+      modeMenuVisible,
+      infoPanelVisible,
+      logsPanelVisible,
+      settingsVisible,
+      assetPreviewVisible,
+      comparePanelVisible,
+      referencePanelVisible,
+      syncBarVisible,
+      syncIsPlaying,
+      syncButtonPressed,
+      reduceMotion: reduceMotionToggle.checked,
+      reduceBlur: reduceBlurToggle.checked,
+      statusAnnouncementText
+    },
     passed: failures.length === 0,
     failures
   };
@@ -2789,6 +2926,9 @@ compareToggle.addEventListener("change", () => {
   compareEnabled = compareToggle.checked;
   if (compareEnabled) {
     addLog("info", "已开启对比，可拖入第二个 SVGA。/ Compare enabled; drop a second SVGA.");
+    announce("已开启本地对比");
+  } else {
+    announce("已关闭本地对比");
   }
   setAppMode("localPreview");
 });
