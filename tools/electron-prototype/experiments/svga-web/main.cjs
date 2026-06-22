@@ -1691,15 +1691,23 @@ async function driveCanonicalNormalProof(window) {
         if (reportReady && playing) break;
         await new Promise((resolve) => setTimeout(resolve, 120));
       }
-      const context = document.querySelector("#svgaCanvasA canvas")?.getContext("2d");
-      let canvasNonBlank = false;
-      if (context) {
+      const isCanvasNonBlank = () => {
+        const context = document.querySelector("#svgaCanvasA canvas")?.getContext("2d");
+        if (!context) return false;
         const width = context.canvas.width;
         const height = context.canvas.height;
         const pixels = context.getImageData(0, 0, width, height).data;
         for (let i = 3; i < pixels.length; i += 4) {
-          if (pixels[i] > 0) { canvasNonBlank = true; break; }
+          if (pixels[i] > 0) return true;
         }
+        return false;
+      };
+      let canvasNonBlank = false;
+      const canvasStartedAt = performance.now();
+      while (performance.now() - canvasStartedAt < 6000) {
+        canvasNonBlank = isCanvasNonBlank();
+        if (canvasNonBlank) break;
+        await new Promise((resolve) => setTimeout(resolve, 160));
       }
       return {
         normalMode: true,
