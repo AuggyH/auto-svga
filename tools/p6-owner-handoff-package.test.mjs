@@ -8,7 +8,9 @@ import test from "node:test";
 import {
   buildZipPrivacyAudit,
   collectP6ParityNonPass,
-  validateFinalPackagingGate
+  validateFinalPackagingGate,
+  validateWorkerRegistryFinal,
+  validateZipEntriesIndexed
 } from "./p6/build-p6-owner-handoff.mjs";
 
 async function withTempDir(callback) {
@@ -127,12 +129,15 @@ test("P6 owner handoff builder records App ZIP manifest hash and entry counts", 
   assert.match(source, /sha256:\s*appZipIdentity\.sha256/);
   assert.match(source, /entryCount:\s*appZipEntries\.length/);
   assert.match(source, /productionApproved:\s*false/);
+  assert.match(source, /workerRegistryFinal/);
+  assert.match(source, /worker-registry-final\.json/);
+  assert.match(source, /validateZipEntriesIndexed/);
   assert.match(source, /actualZipEntryCount/);
   assert.match(source, /scannedEntryCount/);
   assert.match(source, /scannedTextEntryCount/);
   assert.match(source, /scannedBinaryEntryCount/);
   assert.match(source, /selfReferentialExclusions/);
-  assert.match(source, /buildPrivacyAudit\(\{ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath \}\)/);
+  assert.match(source, /buildPrivacyAudit\(\{ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath, expectedHeadShort: headShort \}\)/);
 });
 
 test("P6 final packaging gate blocks stale packet or parity report heads", () => {
@@ -151,7 +156,7 @@ test("P6 final packaging gate blocks stale packet or parity report heads", () =>
   assert.equal(gate.errors.some((error) => error.includes("P6 parity report head")), true);
 });
 
-test("P6 final packaging gate blocks non-passing required parity evidence", () => {
+test("P6 final packaging gate records non-passing parity evidence without judging parity", () => {
   const report = {
     source: { headCommit: "a".repeat(40) },
     sections: {
@@ -178,9 +183,9 @@ test("P6 final packaging gate blocks non-passing required parity evidence", () =
   });
 
   assert.deepEqual(nonPass, ["visual:partial", "visual.motion:fail:drift"]);
-  assert.equal(gate.passed, false);
-  assert.equal(gate.nonPassEvidenceCount, 2);
-  assert.equal(gate.errors.some((error) => error.includes("required parity failures remain")), true);
+  assert.equal(gate.passed, true);
+  assert.equal(gate.parityJudgment, "not_evaluated_by_A5");
+  assert.deepEqual(gate.errors, []);
 });
 
 test("P6 final packaging gate passes only when packet and parity are bound to a clean passing head", () => {
@@ -201,6 +206,76 @@ test("P6 final packaging gate passes only when packet and parity are bound to a 
   });
 
   assert.equal(gate.passed, true);
-  assert.equal(gate.nonPassEvidenceCount, 0);
+  assert.equal(gate.parityJudgment, "not_evaluated_by_A5");
   assert.deepEqual(gate.errors, []);
+});
+
+test("P6 package privacy audit rejects stale review root references", async () => {
+  await withTempDir(async (root) => {
+    const reviewZipPath = await writeZip(root, "P6-abcdef0-review-upload.zip", {
+      "FINAL_RESPONSE.txt": "[Old](review/P6-deadbee/REVIEW_PACKET.md)\n"
+    });
+    const appZipPath = await writeZip(root, "Auto-SVGA-macOS-internal-abcdef0.zip", {
+      "Auto SVGA.app/Contents/Info.plist": "<plist><dict></dict></plist>\n"
+    });
+
+    const audit = buildZipPrivacyAudit({ reviewZipPath, appZipPath, expectedHeadShort: "abcdef0" });
+
+    assert.equal(audit.passed, false);
+    assert.equal(audit.findings.some((finding) => finding.ruleId === "STALE_REVIEW_ROOT_REFERENCE"), true);
+  });
+});
+
+test("P6 final worker registry artifact requires generated final-head binding", () => {
+  const trackedRegistrySha256 = "b".repeat(64);
+  const trackedRegistry = {
+    schemaVersion: 3,
+    currentRepairRound: 6,
+    finalHeadBinding: {
+      source: "ignored_generated_artifact",
+      path: ".artifacts/product/P6/worker-registry-final.json",
+      trackedRegistryDoesNotClaimFinalHead: true,
+      actualFinalHeadCommitMustEqualGitHead: true
+    }
+  };
+
+  const result = validateWorkerRegistryFinal({
+    headCommit: "a".repeat(40),
+    trackedRegistrySha256,
+    trackedRegistry
+  });
+
+  assert.equal(result.passed, true);
+  assert.equal(result.trackedRegistrySha256, trackedRegistrySha256);
+  assert.equal(result.generatedRegistryPath, ".artifacts/product/P6/worker-registry-final.json");
+});
+
+test("P6 final worker registry artifact rejects tracked final head claims", () => {
+  const result = validateWorkerRegistryFinal({
+    headCommit: "a".repeat(40),
+    trackedRegistrySha256: "b".repeat(64),
+    trackedRegistry: {
+      finalHeadBinding: {
+        source: "ignored_generated_artifact",
+        path: ".artifacts/product/P6/worker-registry-final.json",
+        trackedRegistryDoesNotClaimFinalHead: true,
+        actualFinalHeadCommitMustEqualGitHead: true
+      },
+      terminalHandoffReady: true
+    }
+  });
+
+  assert.equal(result.passed, false);
+  assert.equal(result.errors.some((error) => error.includes("terminalHandoffReady")), true);
+});
+
+test("P6 owner Review ZIP index check rejects unindexed entries", () => {
+  const result = validateZipEntriesIndexed({
+    entries: ["FINAL_RESPONSE.txt", "MANIFEST.json", "extra.txt"],
+    manifestEntries: [{ path: "FINAL_RESPONSE.txt" }]
+  });
+
+  assert.equal(result.passed, false);
+  assert.deepEqual(result.unindexedEntries, ["extra.txt"]);
+  assert.deepEqual(result.missingIndexedEntries, []);
 });

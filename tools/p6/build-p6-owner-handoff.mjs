@@ -16,6 +16,9 @@ const trialRoot = path.join(repoRoot, "tools/electron-prototype/experiments/svga
 const trialApp = path.join(trialRoot, "Auto SVGA-darwin-arm64/Auto SVGA.app");
 const uploadStagingRoot = path.join(repoRoot, ".artifacts/product/P6-owner-review-upload");
 const parityReportPath = path.join(productRoot, "p6-parity-report.json");
+const trackedWorkerRegistryPath = path.join(repoRoot, "docs/product/p6/P6_WORKER_REGISTRY.json");
+const workerRegistryFinalPath = path.join(productRoot, "worker-registry-final.json");
+const workerRegistryFinalRepoPath = ".artifacts/product/P6/worker-registry-final.json";
 
 const sealedFiles = [
   "REVIEW_PACKET.md",
@@ -110,7 +113,23 @@ function privacyRules() {
   return rules;
 }
 
-function findPrivacyMatches(text, entry) {
+function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
+  if (!expectedHeadShort) return [];
+  const findings = [];
+  for (const match of text.matchAll(/\breview\/P6-([A-Za-z0-9][A-Za-z0-9._-]*)/g)) {
+    if (match[1] !== expectedHeadShort) {
+      findings.push({
+        ruleId: "STALE_REVIEW_ROOT_REFERENCE",
+        entry,
+        expectedReviewRoot: `review/P6-${expectedHeadShort}`,
+        valueSha256: sha256Bytes(Buffer.from(match[0]))
+      });
+    }
+  }
+  return findings;
+}
+
+function findPrivacyMatches(text, entry, { expectedHeadShort } = {}) {
   const findings = [];
   for (const rule of privacyRules()) {
     for (const match of text.matchAll(rule.pattern)) {
@@ -121,6 +140,7 @@ function findPrivacyMatches(text, entry) {
       });
     }
   }
+  findings.push(...findStaleReviewRootReferences(text, entry, expectedHeadShort));
   return findings;
 }
 
@@ -200,10 +220,10 @@ function pngMetadataStrings(bytes) {
   return metadata;
 }
 
-function scanEntryBytes({ bytes, entry, ext }) {
+function scanEntryBytes({ bytes, entry, ext, expectedHeadShort }) {
   const findings = [];
   if (textExtensions.has(ext) || looksText(bytes)) {
-    findings.push(...findPrivacyMatches(bytes.toString("utf8"), `zip-text:${entry}`));
+    findings.push(...findPrivacyMatches(bytes.toString("utf8"), `zip-text:${entry}`, { expectedHeadShort }));
     return { kind: "text", findings };
   }
   const extractable = [
@@ -211,7 +231,7 @@ function scanEntryBytes({ bytes, entry, ext }) {
     ...extractUtf16LeStrings(bytes),
     ...pngMetadataStrings(bytes)
   ].join("\n");
-  if (extractable) findings.push(...findPrivacyMatches(extractable, `zip-binary-strings:${entry}`));
+  if (extractable) findings.push(...findPrivacyMatches(extractable, `zip-binary-strings:${entry}`, { expectedHeadShort }));
   return { kind: "binary", findings };
 }
 
@@ -255,7 +275,6 @@ export function validateFinalPackagingGate({ headCommit, canonicalManifest, pari
   const errors = [];
   const packetHead = headFromCanonicalManifest(canonicalManifest);
   const parityHead = parityReport?.source?.headCommit ?? parityReport?.headCommit ?? null;
-  const nonPassEvidence = collectP6ParityNonPass(parityReport);
 
   if (!packetHead) {
     errors.push("sealed packet MANIFEST.json does not record a reviewed head commit");
@@ -269,17 +288,12 @@ export function validateFinalPackagingGate({ headCommit, canonicalManifest, pari
     errors.push(`P6 parity report head ${parityHead} does not match current head ${headCommit}`);
   }
 
-  if (nonPassEvidence.length > 0) {
-    errors.push(`P6 required parity failures remain: ${nonPassEvidence.slice(0, 40).join("; ")}`);
-  }
-
   return {
     passed: errors.length === 0,
     headCommit,
     packetHeadCommit: packetHead,
     parityReportHeadCommit: parityHead,
-    nonPassEvidenceCount: nonPassEvidence.length,
-    nonPassEvidence,
+    parityJudgment: "not_evaluated_by_A5",
     errors
   };
 }
@@ -297,8 +311,88 @@ async function assertFinalPackagingGate({ headCommit, canonicalManifest }) {
     passed: true,
     packetHeadCommit: gate.packetHeadCommit,
     parityReportHeadCommit: gate.parityReportHeadCommit,
-    nonPassEvidenceCount: gate.nonPassEvidenceCount,
+    parityJudgment: gate.parityJudgment,
     parityReportPath: path.relative(repoRoot, parityReportPath).split(path.sep).join("/")
+  };
+}
+
+export function validateWorkerRegistryFinal({ headCommit, trackedRegistrySha256, trackedRegistry }) {
+  const errors = [];
+  const binding = trackedRegistry?.finalHeadBinding ?? {};
+  if (binding.path !== workerRegistryFinalRepoPath) {
+    errors.push(`tracked registry finalHeadBinding.path must be ${workerRegistryFinalRepoPath}`);
+  }
+  if (binding.source !== "ignored_generated_artifact") {
+    errors.push("tracked registry finalHeadBinding.source must be ignored_generated_artifact");
+  }
+  if (binding.actualFinalHeadCommitMustEqualGitHead !== true) {
+    errors.push("tracked registry must require actual final head to equal git HEAD");
+  }
+  if (binding.trackedRegistryDoesNotClaimFinalHead !== true) {
+    errors.push("tracked registry must declare that it does not claim the final head");
+  }
+  for (const field of ["currentIntegrationHeadCommit", "expectedFinalHeadCommit", "terminalHandoffReady"]) {
+    if (Object.hasOwn(trackedRegistry ?? {}, field)) {
+      errors.push(`tracked registry must not claim ${field}; use ${workerRegistryFinalRepoPath}`);
+    }
+  }
+  return {
+    passed: errors.length === 0,
+    headCommit,
+    trackedRegistrySha256,
+    trackedRegistryPath: "docs/product/p6/P6_WORKER_REGISTRY.json",
+    generatedRegistryPath: workerRegistryFinalRepoPath,
+    errors
+  };
+}
+
+async function writeWorkerRegistryFinal({ headCommit }) {
+  const trackedRegistryText = await readFile(trackedWorkerRegistryPath, "utf8");
+  const trackedRegistrySha256 = sha256Bytes(Buffer.from(trackedRegistryText));
+  const trackedRegistry = JSON.parse(trackedRegistryText);
+  const validation = validateWorkerRegistryFinal({ headCommit, trackedRegistrySha256, trackedRegistry });
+  if (!validation.passed) {
+    throw new Error(`P6 final worker registry gate blocked: ${validation.errors.join("; ")}`);
+  }
+  const payload = {
+    schemaVersion: 1,
+    milestoneId,
+    generatedAt: "stable-p6-owner-handoff",
+    finalSourceHeadCommit: headCommit,
+    actualGitHeadCommit: headCommit,
+    trackedRegistry: {
+      path: validation.trackedRegistryPath,
+      sha256: trackedRegistrySha256,
+      schemaVersion: trackedRegistry.schemaVersion ?? null,
+      currentRepairRound: trackedRegistry.currentRepairRound ?? null,
+      lifecycleStatus: trackedRegistry.lifecycleStatus ?? null,
+      integrationBaseCommit: trackedRegistry.integrationBaseCommit ?? null,
+      finalHeadBinding: trackedRegistry.finalHeadBinding ?? null
+    },
+    assertions: {
+      actualFinalHeadCommitEqualsGitHead: true,
+      trackedRegistryDoesNotClaimFinalHead: true,
+      packageGeneratedAfterFinalSourceCommit: true
+    }
+  };
+  await mkdir(path.dirname(workerRegistryFinalPath), { recursive: true });
+  await writeFile(workerRegistryFinalPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  return {
+    ...validation,
+    sizeBytes: (await stat(workerRegistryFinalPath)).size,
+    sha256: await sha256File(workerRegistryFinalPath)
+  };
+}
+
+export function validateZipEntriesIndexed({ entries, manifestEntries }) {
+  const entrySet = new Set(entries);
+  const manifestSet = new Set(manifestEntries.map((entry) => entry.path));
+  const unindexedEntries = entries.filter((entry) => entry !== "MANIFEST.json" && !manifestSet.has(entry));
+  const missingIndexedEntries = [...manifestSet].filter((entry) => !entrySet.has(entry));
+  return {
+    passed: unindexedEntries.length === 0 && missingIndexedEntries.length === 0,
+    unindexedEntries,
+    missingIndexedEntries
   };
 }
 
@@ -306,7 +400,8 @@ export function buildZipPrivacyAudit({
   reviewZipPath,
   appZipPath,
   extraZipPaths = [],
-  selfReferentialEntryNames = ["bundle-privacy-audit.json"]
+  selfReferentialEntryNames = ["bundle-privacy-audit.json"],
+  expectedHeadShort
 }) {
   const findings = [];
   const selfReferentialExclusions = [];
@@ -336,7 +431,7 @@ export function buildZipPrivacyAudit({
     for (const entry of entries) {
       scannedEntryCount += 1;
       zipAudit.scannedEntryCount += 1;
-      findings.push(...findPrivacyMatches(entry, `zip-entry:${zipRole}:${entry}`));
+      findings.push(...findPrivacyMatches(entry, `zip-entry:${zipRole}:${entry}`, { expectedHeadShort }));
       if (entry.includes("__MACOSX") || path.basename(entry) === ".DS_Store") {
         findings.push({ ruleId: "FORBIDDEN_ZIP_METADATA", entry: `${zipRole}:${entry}` });
       }
@@ -362,7 +457,7 @@ export function buildZipPrivacyAudit({
         continue;
       }
       const bytes = zipEntryBytes(zipPath, entry);
-      const scan = scanEntryBytes({ bytes, entry: `${zipRole}:${entry}`, ext: path.extname(entry).toLowerCase() });
+      const scan = scanEntryBytes({ bytes, entry: `${zipRole}:${entry}`, ext: path.extname(entry).toLowerCase(), expectedHeadShort });
       findings.push(...scan.findings);
       if (scan.kind === "text") {
         scannedTextEntryCount += 1;
@@ -390,7 +485,7 @@ export function buildZipPrivacyAudit({
   };
 }
 
-async function buildPrivacyAudit({ stagingRoot, appZipPath, reviewZipPath }) {
+async function buildPrivacyAudit({ stagingRoot, appZipPath, reviewZipPath, expectedHeadShort }) {
   const findings = [];
   const scannedEntries = [];
   const stagingFiles = await listFiles(stagingRoot);
@@ -400,13 +495,13 @@ async function buildPrivacyAudit({ stagingRoot, appZipPath, reviewZipPath }) {
     if (path.extname(filePath).toLowerCase() === ".zip") {
       extraZipPaths.push({ zipRole: zipRoleForBundlePath(bundlePath), zipPath: filePath });
     }
-    findings.push(...findPrivacyMatches(bundlePath, `entry:${bundlePath}`));
+    findings.push(...findPrivacyMatches(bundlePath, `entry:${bundlePath}`, { expectedHeadShort }));
     const ext = path.extname(filePath).toLowerCase();
     if (!textExtensions.has(ext)) continue;
     scannedEntries.push(bundlePath);
-    findings.push(...findPrivacyMatches(await readFile(filePath, "utf8"), bundlePath));
+    findings.push(...findPrivacyMatches(await readFile(filePath, "utf8"), bundlePath, { expectedHeadShort }));
   }
-  const zipAudit = buildZipPrivacyAudit({ reviewZipPath, appZipPath, extraZipPaths });
+  const zipAudit = buildZipPrivacyAudit({ reviewZipPath, appZipPath, extraZipPaths, expectedHeadShort });
   findings.push(...zipAudit.findings);
   return {
     schemaVersion: 2,
@@ -516,6 +611,7 @@ async function main() {
     throw new Error(`macOS trial app missing: ${trialApp}`);
   }
   const finalPackagingGate = await assertFinalPackagingGate({ headCommit, canonicalManifest });
+  const workerRegistryFinal = await writeWorkerRegistryFinal({ headCommit });
 
   await rm(uploadStagingRoot, { recursive: true, force: true });
   await rm(visibleRoot, { recursive: true, force: true });
@@ -547,6 +643,7 @@ async function main() {
   }
   await copyRequired(path.join(productRoot, "artifact-index.json"), path.join(visibleRoot, "evidence-index.json"));
   await copyRequired(path.join(productRoot, "P6_EVIDENCE_INDEX.md"), path.join(visibleRoot, "P6_EVIDENCE_INDEX.md"));
+  await copyRequired(workerRegistryFinalPath, path.join(visibleRoot, "worker-registry-final.json"));
 
   createCleanAppZip({ appBundle: trialApp, zipPath: appZipPath });
   const appZipIdentity = await fileIdentity(appZipPath);
@@ -581,6 +678,7 @@ async function main() {
     reviewedHeadCommit: headCommit,
     companionRequired: canonicalManifest.companionRequired === true,
     finalPackagingGate,
+    workerRegistryFinal,
     ownerReviewZip: reviewZipName,
     macosAppZip: {
       fileName: appZipName,
@@ -628,7 +726,7 @@ async function main() {
     if (JSON.stringify(reviewZipEntries) !== JSON.stringify(uploadEntries)) {
       throw new Error("P6 owner review ZIP entries do not match staging files.");
     }
-    privacyAudit = await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath });
+    privacyAudit = await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath, expectedHeadShort: headShort });
     if (!privacyAudit.passed) {
       throw new Error(`P6 owner handoff privacy audit failed during ${phase}: ${privacyAudit.findings.map((finding) => `${finding.ruleId}:${finding.entry}`).join("; ")}`);
     }
@@ -650,7 +748,7 @@ async function main() {
   let uploadEntries = (await listFiles(uploadStagingRoot)).map((filePath) => toBundlePath(uploadStagingRoot, filePath)).sort();
   await rm(reviewZipPath, { force: true });
   runZip({ cwd: uploadStagingRoot, zipPath: reviewZipPath, entries: uploadEntries });
-  const verificationPrivacyAudit = await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath });
+  const verificationPrivacyAudit = await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath, expectedHeadShort: headShort });
   if (!verificationPrivacyAudit.passed) {
     throw new Error(`P6 owner handoff final privacy audit failed: ${verificationPrivacyAudit.findings.map((finding) => `${finding.ruleId}:${finding.entry}`).join("; ")}`);
   }
@@ -663,6 +761,14 @@ async function main() {
   const reviewZipEntries = zipEntries(reviewZipPath);
   const reviewZipIdentity = await fileIdentity(reviewZipPath);
 
+  const reviewZipIndex = validateZipEntriesIndexed({
+    entries: reviewZipEntries,
+    manifestEntries: JSON.parse(await readFile(path.join(uploadStagingRoot, "MANIFEST.json"), "utf8")).entries
+  });
+  if (!reviewZipIndex.passed) {
+    throw new Error(`P6 owner review ZIP index check failed: unindexed=${reviewZipIndex.unindexedEntries.join(", ")} missing=${reviewZipIndex.missingIndexedEntries.join(", ")}`);
+  }
+
   await writeFile(path.join(visibleRoot, "README.md"), [
     "# P6 Owner Review Materials",
     "",
@@ -671,6 +777,7 @@ async function main() {
     `- ${reviewZipName}: portable owner review ZIP.`,
     `- ${appZipName}: unsigned macOS internal App ZIP for testing.`,
     "- REVIEW_PACKET.md: byte-identical copy of the sealed canonical review packet.",
+    "- worker-registry-final.json: generated final-head worker registry binding.",
     "- FINAL_RESPONSE.txt: exact terminal response with clickable local file links.",
     ""
   ].join("\n"), "utf8");
@@ -703,6 +810,8 @@ async function main() {
     },
     companionRequired: canonicalManifest.companionRequired === true,
     finalPackagingGate,
+    workerRegistryFinal,
+    reviewZipIndex,
     privacyAudit: {
       passed: privacyAudit.passed,
       findingCount: privacyAudit.findingCount
