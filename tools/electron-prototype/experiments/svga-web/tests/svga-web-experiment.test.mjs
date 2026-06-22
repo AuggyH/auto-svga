@@ -348,6 +348,16 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /rendererQuery: location\.search/);
   assert.match(main, /window\.autoSvgaElectronHost\?\.openSvgaFile/);
   assert.match(main, /document\.querySelector\("#svgaFileInput"\)/);
+  for (const scenario of [
+    "desktop-playing",
+    "desktop-paused",
+    "desktop-latest-artifact-loaded",
+    "desktop-reference-media-loaded",
+    "desktop-local-compare-loaded",
+    "desktop-recovered-from-invalid"
+  ]) {
+    assert.match(main, new RegExp(scenario));
+  }
   assert.match(prepareRuntime, /examples\/avatar_frame_basic\/output\/avatar_frame_basic\.svga/);
   assert.match(prepareRuntime, /"node", \["dist\/cli\.js", "export", "examples\/avatar_frame_basic"\]/);
   assert.match(p2Fixture, /repository-avatar-frame-basic\.svga/);

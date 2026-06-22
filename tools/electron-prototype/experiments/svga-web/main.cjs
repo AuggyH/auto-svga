@@ -122,6 +122,12 @@ function validateArtifactScenario(value) {
     "desktop-loaded",
     "desktop-inspection",
     "desktop-invalid",
+    "desktop-playing",
+    "desktop-paused",
+    "desktop-latest-artifact-loaded",
+    "desktop-reference-media-loaded",
+    "desktop-local-compare-loaded",
+    "desktop-recovered-from-invalid",
     "actual-normal-loaded",
     "smoke-loaded",
     "desktop-1280x800",
@@ -1067,6 +1073,10 @@ function stateForScenario(scenario) {
     "desktop-empty": "empty",
     "desktop-loading": "loading",
     "desktop-loaded": "loaded",
+    "desktop-playing": "playing",
+    "desktop-paused": "paused",
+    "desktop-latest-artifact-loaded": "latest-artifact-loaded",
+    "desktop-reference-media-loaded": "reference-media-loaded",
     "desktop-invalid": "invalid",
     "desktop-mode-menu-open": "mode-menu-open",
     "desktop-info-overview-open": "info-overview-open",
@@ -1077,6 +1087,8 @@ function stateForScenario(scenario) {
     "desktop-settings-closed-by-escape": "settings-closed-by-escape",
     "desktop-synchronized-playback-toggled-by-space": "synchronized-playback-toggled-by-space",
     "desktop-local-compare-empty": "local-compare-empty",
+    "desktop-local-compare-loaded": "local-compare-loaded",
+    "desktop-recovered-from-invalid": "recovered-from-invalid",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open"
   }[scenario];
 }
@@ -1148,7 +1160,12 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     "empty",
     "loading",
     "loaded",
+    "playing",
+    "paused",
+    "latest-artifact-loaded",
+    "reference-media-loaded",
     "invalid",
+    "recovered-from-invalid",
     "mode-menu-open",
     "info-overview-open",
     "info-assets-open",
@@ -1158,6 +1175,7 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     "settings-closed-by-escape",
     "synchronized-playback-toggled-by-space",
     "local-compare-empty",
+    "local-compare-loaded",
     "asset-preview-modal-open"
   ].every((key) => proof.states[key]?.passed === true);
   proof.generatedAt = new Date().toISOString();
