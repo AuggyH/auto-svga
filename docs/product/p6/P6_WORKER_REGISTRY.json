@@ -4,13 +4,13 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+  "currentIntegrationHeadCommit": "748c599800d0d5e79c89afaeb366ef387fe20840",
   "currentRepairRound": 5,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T13:38:00Z",
-  "registryRefreshedAt": "2026-06-22T13:55:00Z",
+  "registryRefreshedAt": "2026-06-22T14:18:00Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -119,10 +119,10 @@
       "visibleThreadId": "019eeb7d-c4a6-70e3-8d04-756807461f7f",
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r5-a1-runtime-inventory",
-      "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
-      "headCommit": null,
-      "status": "running",
-      "lastVerifiedAt": "2026-06-22T13:55:00Z",
+      "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
+      "headCommit": "dfb8e7c290135637eb91e7a2eda17189733c5f26",
+      "status": "completed",
+      "lastVerifiedAt": "2026-06-22T14:18:00Z",
       "ownedPaths": [
         "docs/product/P6_WEB_PRODUCT_BASELINE.md",
         "docs/product/P6_WEB_FEATURE_INVENTORY.md",
@@ -130,7 +130,15 @@
         "dedicated Web inventory scripts and tests"
       ],
       "dependencies": [],
-      "requestedIntegrationChanges": []
+      "requestedIntegrationChanges": [
+        "A2 may resume formal product-state implementation from A1-integrated head 748c599800d0d5e79c89afaeb366ef387fe20840."
+      ],
+      "integrationCommit": "748c599800d0d5e79c89afaeb366ef387fe20840",
+      "tests": [
+        "npm run build && node --test dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD",
+        "node tools/multi-worker-protocol-check.mjs"
+      ]
     },
     {
       "workerId": "A2",
@@ -139,10 +147,10 @@
       "visibleThreadId": "019eeb8a-3dbe-7123-b696-e1334ab9ab60",
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r5-a2-product-states",
-      "baseCommit": null,
+      "baseCommit": "748c599800d0d5e79c89afaeb366ef387fe20840",
       "headCommit": null,
-      "status": "blocked",
-      "lastVerifiedAt": "2026-06-22T13:55:00Z",
+      "status": "running",
+      "lastVerifiedAt": "2026-06-22T14:18:00Z",
       "ownedPaths": [
         "tools/shared/product-frontend/",
         "shared product shell/state/motion tests"
@@ -159,10 +167,10 @@
       "visibleThreadId": "019eeb7e-072c-7382-afe5-330eb92b9d2f",
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r5-a3-host-app-runtime",
-      "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
-      "headCommit": null,
+      "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
+      "headCommit": "1c4d40d9999cd893953659ad5bcfbf79de346fc6",
       "status": "running",
-      "lastVerifiedAt": "2026-06-22T13:55:00Z",
+      "lastVerifiedAt": "2026-06-22T14:18:00Z",
       "ownedPaths": [
         "Electron main process",
         "Electron preload",
@@ -182,10 +190,10 @@
       "visibleThreadId": "019eeb7e-071e-7991-ab4f-075c56dbade1",
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r5-a4-scenarios-motion-parity",
-      "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
-      "headCommit": null,
+      "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
+      "headCommit": "ffc8a616e4ab3ead0132154f0ef3d9c09468775b",
       "status": "running",
-      "lastVerifiedAt": "2026-06-22T13:55:00Z",
+      "lastVerifiedAt": "2026-06-22T14:18:00Z",
       "ownedPaths": [
         "tools/p6/generate-p6-evidence.mjs",
         "runtime scenario runner",
@@ -209,10 +217,10 @@
       "visibleThreadId": "019eeb7e-0731-76c0-92e3-d9494b272e14",
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r5-a5-final-packaging",
-      "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
-      "headCommit": null,
+      "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
+      "headCommit": "0ead09b2537b761bb7d5d62e9aaf54d80dbfa756",
       "status": "running",
-      "lastVerifiedAt": "2026-06-22T13:55:00Z",
+      "lastVerifiedAt": "2026-06-22T14:18:00Z",
       "ownedPaths": [
         "macOS package scripts",
         "plist and bundle templates",
