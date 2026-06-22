@@ -15,7 +15,25 @@ export const P6_RUNTIME_SCENARIOS = [
       "web-baseline/screenshot-export-review-loaded-1440x900.png",
       "web-baseline/screenshot-local-empty-1440x900.png",
       "web-baseline/screenshot-mode-menu-open-1440x900.png",
-      "web-baseline/screenshot-invalid-1440x900.png"
+      "web-baseline/screenshot-loading-1440x900.png",
+      "web-baseline/screenshot-loaded-1440x900.png",
+      "web-baseline/screenshot-playing-1440x900.png",
+      "web-baseline/screenshot-paused-1440x900.png",
+      "web-baseline/screenshot-latest-artifact-loaded-1440x900.png",
+      "web-baseline/screenshot-reference-media-loaded-1440x900.png",
+      "web-baseline/screenshot-info-overview-1440x900.png",
+      "web-baseline/screenshot-info-assets-1440x900.png",
+      "web-baseline/screenshot-asset-preview-modal-1440x900.png",
+      "web-baseline/screenshot-logs-1440x900.png",
+      "web-baseline/screenshot-settings-1440x900.png",
+      "web-baseline/screenshot-accessibility-toggles-on-1440x900.png",
+      "web-baseline/screenshot-settings-closed-by-escape-1440x900.png",
+      "web-baseline/screenshot-synchronized-playback-toggled-by-space-1440x900.png",
+      "web-baseline/screenshot-local-compare-empty-1440x900.png",
+      "web-baseline/screenshot-local-compare-loaded-1440x900.png",
+      "web-baseline/screenshot-export-review-loaded-900x720.png",
+      "web-baseline/screenshot-invalid-1440x900.png",
+      "web-baseline/screenshot-recovered-from-invalid-1440x900.png"
     ]
   },
   {

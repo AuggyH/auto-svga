@@ -33,6 +33,7 @@ const productShellHtml = readFileSync("tools/shared/product-frontend/product-she
 const productAppSource = readFileSync("tools/shared/product-frontend/product-app.mjs", "utf8");
 const previewProductHtml = `${previewHtml}\n${productShellHtml}\n${productAppSource}`;
 const baselineCaptureScript = readFileSync("tools/p6/p6-web-baseline-capture.cjs", "utf8");
+const runtimeScenarioContractSource = readFileSync("tools/p6/runtime-scenarios/contract.mjs", "utf8");
 
 const sectionHeadings: Record<InventorySection, string> = {
   regions: "Required Regions",
@@ -46,9 +47,22 @@ const lowerBounds: Record<InventorySection, number> = {
   regions: 20,
   features: 33,
   interactions: 10,
-  states: 12,
+  states: 22,
   motions: 9
 };
+
+const repair6RequiredStateIds = [
+  "loading",
+  "loaded",
+  "playing",
+  "paused",
+  "invalid-error-state",
+  "recovered-from-invalid",
+  "local-compare-loaded",
+  "reference-media-loaded",
+  "latest-artifact-loaded",
+  "asset-preview-modal-open"
+];
 
 test("P6 web inventory contract matches Markdown required item sets", () => {
   for (const section of Object.keys(sectionHeadings) as InventorySection[]) {
@@ -129,7 +143,7 @@ test("P6 web inventory contract lists reachable baseline controls", () => {
   }
 });
 
-test("P6 web inventory contract keeps Repair 5 runtime-visible states reachable", () => {
+test("P6 web inventory contract keeps Repair 5 runtime-visible regions reachable", () => {
   const regionsById = byId(contract.regions);
 
   const requiredRegionStates: Record<string, readonly string[]> = {
@@ -148,7 +162,7 @@ test("P6 web inventory contract keeps Repair 5 runtime-visible states reachable"
     }
   }
 
-  assert.ok(contract.requiredCounts.states >= 12, "Repair 5 must not shrink required state coverage");
+  assert.ok(contract.requiredCounts.states >= 22, "Repair 6 must not shrink required state coverage");
 });
 
 test("P6 web baseline capture records item-specific runtime evidence for Repair 5 false negatives", () => {
@@ -178,6 +192,27 @@ test("P6 web baseline capture records item-specific runtime evidence for Repair 
   assert.ok(baselineCaptureScript.includes("visible: isVisible(node)"), "runtime snapshots must record computed visibility");
   assert.ok(baselineCaptureScript.includes("screenshot-asset-preview-modal-1440x900.png"));
   assert.ok(baselineCaptureScript.includes("screenshot-local-compare-loaded-1440x900.png"));
+});
+
+test("P6 web inventory contract appends Repair 6 required states", () => {
+  const contractStateIds = contract.states.map(({ id }) => id);
+
+  for (const stateId of repair6RequiredStateIds) {
+    assert.ok(contractStateIds.includes(stateId), `contract must require ${stateId}`);
+  }
+});
+
+test("P6 web runtime scenario capture and required state contract stay in union", () => {
+  const contractStateIds = contract.states.map(({ id }) => id).sort();
+  const capturedStateIds = [...baselineCaptureScript.matchAll(/collectSnapshot\(window, "([^"]+)"\)/g)]
+    .map((match) => match[1])
+    .sort();
+
+  assert.deepEqual(capturedStateIds, contractStateIds, "Web reachable capture states and required contract states must match exactly");
+
+  for (const stateId of contractStateIds) {
+    assert.ok(runtimeScenarioContractSource.includes(screenshotNameForState(stateId)), `${stateId} must have scenario artifact coverage`);
+  }
 });
 
 function markdownIdsFor(section: InventorySection): string[] {
@@ -257,4 +292,15 @@ function hasAttributeValue(name: string, value: string): boolean {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function screenshotNameForState(stateId: string): string {
+  if (stateId === "invalid-error-state") return "screenshot-invalid-1440x900.png";
+  if (stateId === "asset-preview-modal-open") return "screenshot-asset-preview-modal-1440x900.png";
+  if (stateId === "info-overview-open") return "screenshot-info-overview-1440x900.png";
+  if (stateId === "info-assets-open") return "screenshot-info-assets-1440x900.png";
+  if (stateId === "logs-open") return "screenshot-logs-1440x900.png";
+  if (stateId === "settings-open") return "screenshot-settings-1440x900.png";
+  if (stateId === "responsive-export-review-loaded-at-900-x-720") return "screenshot-export-review-loaded-900x720.png";
+  return `screenshot-${stateId}-1440x900.png`;
 }

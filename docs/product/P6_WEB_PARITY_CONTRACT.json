@@ -982,6 +982,26 @@
       "required": true
     },
     {
+      "id": "loading",
+      "label": "SVGA loading",
+      "required": true
+    },
+    {
+      "id": "loaded",
+      "label": "SVGA loaded",
+      "required": true
+    },
+    {
+      "id": "playing",
+      "label": "SVGA playing",
+      "required": true
+    },
+    {
+      "id": "paused",
+      "label": "SVGA paused",
+      "required": true
+    },
+    {
       "id": "mode-menu-open",
       "label": "Mode dropdown open",
       "required": true
@@ -992,6 +1012,16 @@
       "required": true
     },
     {
+      "id": "latest-artifact-loaded",
+      "label": "Latest artifact loaded",
+      "required": true
+    },
+    {
+      "id": "reference-media-loaded",
+      "label": "Reference media loaded",
+      "required": true
+    },
+    {
       "id": "info-overview-open",
       "label": "Inspection overview side panel open",
       "required": true
@@ -999,6 +1029,11 @@
     {
       "id": "info-assets-open",
       "label": "Assets side panel open",
+      "required": true
+    },
+    {
+      "id": "asset-preview-modal-open",
+      "label": "Asset preview modal open",
       "required": true
     },
     {
@@ -1029,6 +1064,21 @@
     {
       "id": "local-compare-empty",
       "label": "Local comparison empty state",
+      "required": true
+    },
+    {
+      "id": "local-compare-loaded",
+      "label": "Local comparison with secondary SVGA loaded",
+      "required": true
+    },
+    {
+      "id": "invalid-error-state",
+      "label": "Invalid or error state",
+      "required": true
+    },
+    {
+      "id": "recovered-from-invalid",
+      "label": "Recovered from invalid state",
       "required": true
     },
     {
@@ -1151,8 +1201,8 @@
     "regions": 20,
     "features": 33,
     "interactions": 10,
-    "states": 12,
+    "states": 22,
     "motions": 9
   },
-  "contractSha256": "cd17e1dbce24781f20992401e71121415880f25e857b7a0bbb90c51543116460"
+  "contractSha256": "d36d728f8f7e8b0d82800592f02ebdc0c4c75ec7a5f4afc3cc13802c22d38b99"
 }

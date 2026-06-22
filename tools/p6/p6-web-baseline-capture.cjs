@@ -275,9 +275,8 @@ async function loadReferenceGif(window) {
   `, 12_000);
 }
 
-async function loadFixture(window, options = {}) {
+async function dispatchFixtureLoad(window, options = {}) {
   const inputSelector = options.inputSelector ?? "#svgaFileInput";
-  const canvasSelector = options.canvasSelector ?? "#svgaCanvasA canvas";
   const fileName = options.fileName ?? "p6-web-baseline-fixture.svga";
   await window.webContents.executeJavaScript(`
     (async () => {
@@ -292,6 +291,10 @@ async function loadFixture(window, options = {}) {
       return bytes.byteLength;
     })()
   `);
+}
+
+async function waitForFixtureLoaded(window, options = {}) {
+  const canvasSelector = options.canvasSelector ?? "#svgaCanvasA canvas";
   await waitFor(window, `
     (() => {
       const hasInspection = Boolean(document.querySelector(".specReportSection") || document.querySelector(".auditReportSection"));
@@ -309,6 +312,11 @@ async function loadFixture(window, options = {}) {
       return hasInspection && canvasNonBlank;
     })()
   `, 18_000);
+}
+
+async function loadFixture(window, options = {}) {
+  await dispatchFixtureLoad(window, options);
+  await waitForFixtureLoaded(window, options);
 }
 
 async function invalidLoad(window) {
@@ -370,12 +378,33 @@ async function main() {
   await delay(180);
 
   console.log("P6_WEB_BASELINE_PHASE load-fixture");
-  await loadFixture(window);
+  await dispatchFixtureLoad(window);
+  await waitFor(window, `(() => {
+    const panel = document.querySelector("#svgaPanelA");
+    const status = document.querySelector("#svgaStatusA")?.textContent ?? "";
+    return Boolean(panel?.classList.contains("isLoading") || /加载中|loading/i.test(status));
+  })()`, 6_000);
+  snapshots.push(await collectSnapshot(window, "loading"));
+  await capture(window, "screenshot-loading-1440x900.png");
+  await waitForFixtureLoaded(window);
+  snapshots.push(await collectSnapshot(window, "loaded"));
+  await capture(window, "screenshot-loaded-1440x900.png");
+  snapshots.push(await collectSnapshot(window, "playing"));
+  await capture(window, "screenshot-playing-1440x900.png");
+  await window.webContents.executeJavaScript(`document.querySelector("#localPlayPauseButton")?.click(); true;`);
+  await waitFor(window, `document.querySelector("#localPlayPauseButton")?.getAttribute("aria-pressed") === "false"`);
+  snapshots.push(await collectSnapshot(window, "paused"));
+  await capture(window, "screenshot-paused-1440x900.png");
+
   console.log("P6_WEB_BASELINE_PHASE export-review");
   await setMode(window, "exportReview");
   await loadReferenceGif(window);
   snapshots.push(await collectSnapshot(window, "export-review-loaded"));
   await capture(window, "screenshot-export-review-loaded-1440x900.png");
+  snapshots.push(await collectSnapshot(window, "latest-artifact-loaded"));
+  await capture(window, "screenshot-latest-artifact-loaded-1440x900.png");
+  snapshots.push(await collectSnapshot(window, "reference-media-loaded"));
+  await capture(window, "screenshot-reference-media-loaded-1440x900.png");
   await captureMotionFrames(window);
 
   console.log("P6_WEB_BASELINE_PHASE info-overview");
@@ -430,18 +459,21 @@ async function main() {
   `);
   await delay(180);
   snapshots.push(await collectSnapshot(window, "accessibility-toggles-on"));
+  await capture(window, "screenshot-accessibility-toggles-on-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE escape-settings");
   await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
   await window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
   await delay(280);
   snapshots.push(await collectSnapshot(window, "settings-closed-by-escape"));
+  await capture(window, "screenshot-settings-closed-by-escape-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE space-toggle");
   await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Space" });
   await window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Space" });
   await delay(220);
-  snapshots.push(await collectSnapshot(window, "space-sync-toggle"));
+  snapshots.push(await collectSnapshot(window, "synchronized-playback-toggled-by-space"));
+  await capture(window, "screenshot-synchronized-playback-toggled-by-space-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE local-compare");
   await setMode(window, "localPreview");
@@ -463,13 +495,20 @@ async function main() {
   await setMode(window, "exportReview");
   window.setSize(900, 720);
   await delay(450);
-  snapshots.push(await collectSnapshot(window, "responsive-export-review-900x720"));
+  snapshots.push(await collectSnapshot(window, "responsive-export-review-loaded-at-900-x-720"));
   await capture(window, "screenshot-export-review-loaded-900x720.png");
 
   console.log("P6_WEB_BASELINE_PHASE invalid");
   await invalidLoad(window);
-  snapshots.push(await collectSnapshot(window, "invalid"));
+  snapshots.push(await collectSnapshot(window, "invalid-error-state"));
   await capture(window, "screenshot-invalid-1440x900.png");
+
+  console.log("P6_WEB_BASELINE_PHASE recovered-from-invalid");
+  window.setSize(1440, 900);
+  await delay(220);
+  await loadFixture(window, { fileName: "p6-web-baseline-recovered-fixture.svga" });
+  snapshots.push(await collectSnapshot(window, "recovered-from-invalid"));
+  await capture(window, "screenshot-recovered-from-invalid-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE manifests");
   writeFileSync(path.join(outRoot, "dom-manifest.json"), JSON.stringify({

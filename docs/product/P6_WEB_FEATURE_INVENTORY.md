@@ -80,16 +80,26 @@ This inventory is the required Web surface for P6 Desktop parity. Desktop may di
 ## Required States
 
 - local empty
+- loading
+- loaded
+- playing
+- paused
 - mode menu open
 - export review loaded
+- latest artifact loaded
+- reference media loaded
 - info overview open
 - info assets open
+- asset preview modal open
 - logs open
 - settings open
 - accessibility toggles on
 - settings closed by Escape
 - synchronized playback toggled by Space
 - local compare empty
+- local compare loaded
+- invalid/error state
+- recovered from invalid
 - responsive export review loaded at `900 x 720`
 
 ## Required Motion

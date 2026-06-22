@@ -29,16 +29,26 @@ Captured state screenshots:
 
 - `screenshot-local-empty-1440x900.png`
 - `screenshot-mode-menu-open-1440x900.png`
+- `screenshot-loading-1440x900.png`
+- `screenshot-loaded-1440x900.png`
+- `screenshot-playing-1440x900.png`
+- `screenshot-paused-1440x900.png`
 - `screenshot-export-review-loaded-1440x900.png`
+- `screenshot-latest-artifact-loaded-1440x900.png`
+- `screenshot-reference-media-loaded-1440x900.png`
 - `screenshot-info-overview-1440x900.png`
 - `screenshot-info-assets-1440x900.png`
 - `screenshot-asset-preview-modal-1440x900.png`
 - `screenshot-logs-1440x900.png`
 - `screenshot-settings-1440x900.png`
+- `screenshot-accessibility-toggles-on-1440x900.png`
+- `screenshot-settings-closed-by-escape-1440x900.png`
+- `screenshot-synchronized-playback-toggled-by-space-1440x900.png`
 - `screenshot-local-compare-empty-1440x900.png`
 - `screenshot-local-compare-loaded-1440x900.png`
 - `screenshot-export-review-loaded-900x720.png`
 - `screenshot-invalid-1440x900.png`
+- `screenshot-recovered-from-invalid-1440x900.png`
 
 Machine-readable artifacts:
 
@@ -50,14 +60,14 @@ Machine-readable artifacts:
 
 ## Baseline Coverage
 
-- DOM snapshots: 15
+- DOM snapshots: 22
 - UI regions per snapshot: 20
 - Controls observed: capture records buttons, inputs, labels, menu items, and live status regions; counts are stored per state in `interaction-trace.json`.
 - Computed style selectors: 19
-- Interaction trace steps: 15
+- Interaction trace steps: 22
 - CSS keyframes: 9
 - Reduced-motion CSS present: yes
-- Artifact index entries: 14
+- Artifact index entries: 54
 - External request audit: 2 CDN script requests for the current browser Web player baseline
 
 ## Baseline Notes
