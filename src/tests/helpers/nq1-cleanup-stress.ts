@@ -66,7 +66,7 @@ function buildSourceChecks(input: { mainSource: string; rendererSource: string }
     check("user_data_scoped_to_session_root", mainSource.includes('app.setPath("userData", path.join(sessionRoot')),
     check("session_data_scoped_to_session_root", mainSource.includes('app.setPath("sessionData", path.join(sessionRoot')),
     check("cleanup_runtime_is_idempotent", mainSource.includes("if (cleanedUp) return")),
-    check("cleanup_runtime_closes_server", mainSource.includes("if (experimentServer) await experimentServer.close()")),
+    check("cleanup_runtime_closes_server", /async function cleanupRuntime[\s\S]*if \(experimentServer\)[\s\S]*experimentServer\.close\(\)/.test(mainSource)),
     check("cleanup_runtime_removes_session_root", mainSource.includes("rmSync(sessionRoot, { recursive: true, force: true })")),
     check("finish_smoke_cleans_before_exit", /async function finishSmoke[\s\S]*await cleanupRuntime\(\)[\s\S]*app\.exit/.test(mainSource)),
     check("finish_audit_cleans_before_exit", /async function finishAudit[\s\S]*await cleanupRuntime\(\)[\s\S]*app\.exit/.test(mainSource)),
