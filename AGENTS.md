@@ -259,6 +259,13 @@ explicit action.
 2. Review must include: summary, git state, changed files, requirement checks, verification, risks, next steps.
 3. Do NOT include: full diffs, full logs, project background repetition.
 4. Review is for the next agent — write only what they need to continue.
+5. Every completed task must also expose owner-visible review material under
+   `review/<task-or-milestone>-<head-short-sha>/`.
+6. The final response must include clickable Markdown links to the visible
+   review folder, `REVIEW_PACKET.md`, the upload ZIP, and required companions
+   such as `changes.patch`.
+7. Hidden `.artifacts` paths alone are not an acceptable owner handoff. See
+   `docs/engineering/REVIEW_PACKET_VISIBILITY_PROTOCOL.md`.
 
 ## Current Template List
 

@@ -49,6 +49,28 @@ The packet root contains:
 - `files/`
 - `decisions/`
 
+## Visible Owner Handoff
+
+The sealed `.artifacts/loop-handoff` packet is the canonical machine packet, but
+it is not sufficient as the owner-facing handoff. Each terminal loop handoff
+must also expose a visible folder under:
+
+```text
+review/<milestone-id>-<head-short-sha>/
+```
+
+The visible folder must include at minimum:
+
+- `REVIEW_PACKET.md`
+- `README.md`
+- `changes.patch` when required
+- the owner upload ZIP
+- curated product evidence when the milestone requires visual or runtime proof
+
+The final response must include clickable Markdown links to the visible folder,
+`REVIEW_PACKET.md`, upload ZIP, and required companions. Do not rely only on
+hidden `.artifacts` paths.
+
 ## Required v4 Metadata
 
 `REVIEW_PACKET.md` and `MANIFEST.json` must include:
