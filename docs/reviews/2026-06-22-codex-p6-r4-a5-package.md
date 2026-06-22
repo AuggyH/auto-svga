@@ -4,7 +4,7 @@
 
 Prepared Repair 4 packaging/privacy handoff code for final A0 packaging. The
 owner handoff builder can create actual visible Review ZIP and macOS App ZIP
-files under `review/P6-<final-head-short-sha>/` when A0 runs it on the final
+files under the current-head P6 review folder when A0 runs it on the final
 integrated head.
 
 This worker does not claim production release, signing, notarization,

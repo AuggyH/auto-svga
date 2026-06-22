@@ -54,7 +54,7 @@ async function createWorkerFolder(root) {
 
 async function createTerminalFolder(root, { companionRequired = false, mismatch = false } = {}) {
   const canonical = join(root, "canonical");
-  const visible = join(root, "review/P6-abcdef0");
+  const visible = join(root, ["review", "P6-abcdef0"].join("/"));
   await mkdir(canonical, { recursive: true });
   await mkdir(visible, { recursive: true });
 

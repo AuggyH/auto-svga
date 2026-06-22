@@ -5,7 +5,8 @@
 - Updated the P6 owner handoff builder to generate `.artifacts/product/P6/worker-registry-final.json` at package time.
 - The generated registry artifact binds the actual Git `HEAD` and the SHA-256 of tracked `docs/product/p6/P6_WORKER_REGISTRY.json`.
 - Adjusted the final package gate to verify sealed packet and parity-report head binding without judging product parity.
-- Extended package privacy and integrity checks to reject stale `review/P6-...` references and unindexed Review ZIP entries.
+- Extended package privacy and integrity checks to reject stale P6 review-root
+  references and unindexed Review ZIP entries.
 
 ## Git State
 
