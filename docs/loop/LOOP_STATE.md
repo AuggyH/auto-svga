@@ -6,9 +6,9 @@ Date: 2026-06-22
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: terminal_human_required
-- Next Action: external_review
-- repairRound: 1
+- State: implementation_in_progress
+- Next Action: repair
+- repairRound: 2
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -35,7 +35,13 @@ Date: 2026-06-22
 - P6 repair-1 generated `docs/product/P6_PARITY_REPORT_SNAPSHOT.json` with PASS evidence for 12 features, 14 regions, 10 interactions, 12 states, 9 motions, browser regression, desktop runtime proof, security, accessibility, and 42 artifact bindings.
 - P6 repair-1 generated packaged `.app` runtime proof at `.artifacts/product/P6/packaged-app-runtime-proof.json`.
 - P6 repair-1 evidence index is tracked at `docs/product/P6_EVIDENCE_INDEX.md`.
+- External product review 1 requires P6 repair-2 because true Web/Desktop full
+  parity was not achieved at reviewed head `0fda2a601307506f84cc5f87deb1646081bc1889`.
+- P6-PF1 head `c832f12bfe521442b037c36346e8408ad07ef1cc` is
+  `SUPERSEDED_BY_P6_REPAIR` and is historical evidence only.
 
 ## Next Action
 
-External owner review must decide whether to accept P6 Web Preview full Desktop parity and the current macOS internal `.app` evidence so the next product phase can start. Safe default while waiting is reject and identify the highest-priority parity or App issue.
+Repair P6 by restoring complete Web inventory, switching Electron to the true
+shared product frontend, generating item-specific parity evidence, proving
+normal macOS App launch, and producing a privacy-clean HUMAN_REQUIRED handoff.
