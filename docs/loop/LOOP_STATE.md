@@ -41,6 +41,10 @@ Date: 2026-06-22
   `01150831c09d8d28fe6e327ec2d67d71fa99638f`; integration repair
   `140fcb6b3cbdc5eff6fc2993e796615b4a5ecc54` fixed the shared renderer
   initialization order and local blob CSP needed for real normal App playback.
+- P6 repair-2 A4 parity framework is present in the current integration head;
+  cherry-pick of `31caf46094f4c75c61dff49a2b93bac98e144321` was empty
+  because the report contract and tests had already been incorporated and
+  extended. Targeted parity contract and inventory tests passed 11/11.
 - Root `npm test` passed with 207 tests on P6 integration head.
 - `npm run desktop:smoke` passed serially with playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, invalid file, lifecycle, and cleanup all true.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` produced the ignored macOS internal prototype package proof.
@@ -48,7 +52,7 @@ Date: 2026-06-22
 
 ## Next Action
 
-Continue P6 repair-2 with A4 item-specific parity evidence, A5 packaging proof,
-integration repair, and a privacy-clean HUMAN_REQUIRED handoff. Electron debug
-and proof runs should be quiet/background whenever possible; visible App windows
-are reserved for final owner-facing evidence only.
+Continue P6 repair-2 with A5 packaging proof, integration repair, and a
+privacy-clean HUMAN_REQUIRED handoff. Electron debug and proof runs should be
+quiet/background whenever possible; visible App windows are reserved for final
+owner-facing evidence only.
