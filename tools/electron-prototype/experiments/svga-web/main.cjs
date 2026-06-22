@@ -166,7 +166,12 @@ function validateArtifactScenario(value) {
     "p5-dimension-warning",
     "p5-batch-original-edited-comparison"
   ]);
-  return allowed.has(value) ? value : undefined;
+  if (allowed.has(value)) return value;
+  if (/^desktop-(mode-menu-open|info-overview-open|info-assets-open|logs-open|settings-open|accessibility-toggles-on|settings-closed-by-escape|synchronized-playback-toggled-by-space|local-compare-empty|asset-preview-modal-open)$/.test(value)) {
+    return value;
+  }
+  if (/^desktop-motion-[a-zA-Z0-9_-]+-(start|mid|end)$/.test(value)) return value;
+  return undefined;
 }
 
 function validateEditedSvgaSaveInput(value) {
@@ -957,25 +962,37 @@ function stateForScenario(scenario) {
     "desktop-empty": "empty",
     "desktop-loading": "loading",
     "desktop-loaded": "loaded",
-    "desktop-invalid": "invalid"
+    "desktop-invalid": "invalid",
+    "desktop-mode-menu-open": "mode-menu-open",
+    "desktop-info-overview-open": "info-overview-open",
+    "desktop-info-assets-open": "info-assets-open",
+    "desktop-logs-open": "logs-open",
+    "desktop-settings-open": "settings-open",
+    "desktop-accessibility-toggles-on": "accessibility-toggles-on",
+    "desktop-settings-closed-by-escape": "settings-closed-by-escape",
+    "desktop-synchronized-playback-toggled-by-space": "synchronized-playback-toggled-by-space",
+    "desktop-local-compare-empty": "local-compare-empty",
+    "desktop-asset-preview-modal-open": "asset-preview-modal-open"
   }[scenario];
 }
 
-function overlayPixelRatio(image, rect) {
+function overlayPixelRatio(image, rect, viewport) {
   if (!rect || rect.width <= 0 || rect.height <= 0) return 0;
   const size = image.getSize();
   const bitmap = image.toBitmap();
-  const left = Math.max(0, Math.floor(rect.left ?? rect.x ?? 0));
-  const top = Math.max(0, Math.floor(rect.top ?? rect.y ?? 0));
-  const right = Math.min(size.width, Math.ceil(left + rect.width));
-  const bottom = Math.min(size.height, Math.ceil(top + rect.height));
+  const scaleX = viewport?.[0] ? size.width / viewport[0] : 1;
+  const scaleY = viewport?.[1] ? size.height / viewport[1] : 1;
+  const left = Math.max(0, Math.floor((rect.left ?? rect.x ?? 0) * scaleX));
+  const top = Math.max(0, Math.floor((rect.top ?? rect.y ?? 0) * scaleY));
+  const right = Math.min(size.width, Math.ceil(left + rect.width * scaleX));
+  const bottom = Math.min(size.height, Math.ceil(top + rect.height * scaleY));
   if (right <= left || bottom <= top) return 0;
   const buckets = new Map();
   let total = 0;
   for (let y = top; y < bottom; y += 1) {
     for (let x = left; x < right; x += 1) {
       const offset = (y * size.width + x) * 4;
-      const key = `${bitmap[offset] >> 4},${bitmap[offset + 1] >> 4},${bitmap[offset + 2] >> 4}`;
+      const key = `${bitmap[offset]},${bitmap[offset + 1]},${bitmap[offset + 2]}`;
       buckets.set(key, (buckets.get(key) ?? 0) + 1);
       total += 1;
     }
@@ -992,7 +1009,7 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
   } catch (error) {
     probe = { state, passed: false, failures: [`state probe failed: ${redactLogMessage(error.message ?? error)}`] };
   }
-  const ratio = overlayPixelRatio(image, probe?.overlayRect);
+  const ratio = overlayPixelRatio(image, probe?.overlayRect, window.getSize());
   const failures = [...(probe?.failures ?? [])];
   if ((state === "empty" || state === "loading") && ratio <= 0.001) {
     failures.push("overlay region lacks non-background screenshot pixels");
@@ -1022,7 +1039,22 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     passed: failures.length === 0,
     failures
   };
-  proof.passed = ["empty", "loading", "loaded", "invalid"].every((key) => proof.states[key]?.passed === true);
+  proof.passed = [
+    "empty",
+    "loading",
+    "loaded",
+    "invalid",
+    "mode-menu-open",
+    "info-overview-open",
+    "info-assets-open",
+    "logs-open",
+    "settings-open",
+    "accessibility-toggles-on",
+    "settings-closed-by-escape",
+    "synchronized-playback-toggled-by-space",
+    "local-compare-empty",
+    "asset-preview-modal-open"
+  ].every((key) => proof.states[key]?.passed === true);
   proof.generatedAt = new Date().toISOString();
   writeFileSync(proofPath, `${JSON.stringify(proof, null, 2)}\n`);
 }

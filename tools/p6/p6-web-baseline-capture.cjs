@@ -23,6 +23,8 @@ const requestAudit = {
   generatedAt: new Date().toISOString()
 };
 
+const onePixelGifBase64 = "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -84,7 +86,7 @@ async function collectSnapshot(window, stateId) {
           } : null
         };
       });
-      const controls = [...document.querySelectorAll("button,input,label,select,textarea,[role=button],[role=menuitemradio],[role=status],[aria-live]")]
+      const controls = [...document.querySelectorAll("button,input,label,select,textarea,[role=button],[role=menuitemradio],[role=status],[aria-live],[data-value],[data-tab],[data-preview-image-key]")]
         .map((node) => {
           const rect = node.getBoundingClientRect();
           return {
@@ -92,6 +94,10 @@ async function collectSnapshot(window, stateId) {
             id: node.id || null,
             role: node.getAttribute("role"),
             type: node.getAttribute("type"),
+            dataValue: node.dataset?.value ?? null,
+            dataTab: node.dataset?.tab ?? null,
+            dataPreviewImageKey: node.dataset?.previewImageKey ?? null,
+            ariaExpanded: node.getAttribute("aria-expanded"),
             text: (node.innerText || node.getAttribute("aria-label") || node.getAttribute("title") || "").replace(/\\s+/g, " ").trim().slice(0, 120),
             present: true,
             visible: isVisible(node),
@@ -246,6 +252,29 @@ async function setMode(window, value) {
   await delay(600);
 }
 
+async function loadReferenceGif(window) {
+  await window.webContents.executeJavaScript(`
+    (async () => {
+      const bytes = Uint8Array.from(atob(${JSON.stringify(onePixelGifBase64)}), (char) => char.charCodeAt(0));
+      const file = new File([bytes], "p6-reference.gif", { type: "image/gif" });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      const input = document.querySelector("#referenceFileInput");
+      Object.defineProperty(input, "files", { value: transfer.files, configurable: true });
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return bytes.byteLength;
+    })()
+  `);
+  await waitFor(window, `
+    (() => {
+      const panel = document.querySelector("#referencePanel");
+      const playerBar = panel?.querySelector(".playerBar");
+      const rect = playerBar?.getBoundingClientRect();
+      return Boolean(panel && panel.classList.contains("hasMedia") && rect && rect.width > 0 && rect.height > 0);
+    })()
+  `, 12_000);
+}
+
 async function loadFixture(window, options = {}) {
   const inputSelector = options.inputSelector ?? "#svgaFileInput";
   const canvasSelector = options.canvasSelector ?? "#svgaCanvasA canvas";
@@ -344,6 +373,7 @@ async function main() {
   await loadFixture(window);
   console.log("P6_WEB_BASELINE_PHASE export-review");
   await setMode(window, "exportReview");
+  await loadReferenceGif(window);
   snapshots.push(await collectSnapshot(window, "export-review-loaded"));
   await capture(window, "screenshot-export-review-loaded-1440x900.png");
   await captureMotionFrames(window);
@@ -372,8 +402,9 @@ async function main() {
   await waitFor(window, `(() => {
     const modal = document.querySelector("#assetPreviewModal");
     const rect = modal?.getBoundingClientRect();
-    return Boolean(modal && !modal.hidden && rect && rect.width > 0 && rect.height > 0);
+    return Boolean(modal && !modal.hidden && modal.classList.contains("isOpen") && rect && rect.width > 0 && rect.height > 0);
   })()`);
+  await delay(320);
   snapshots.push(await collectSnapshot(window, "asset-preview-modal-open"));
   await capture(window, "screenshot-asset-preview-modal-1440x900.png");
   await window.webContents.executeJavaScript(`document.querySelector("#assetPreviewClose")?.click(); true;`);

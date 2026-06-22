@@ -369,6 +369,7 @@ function goodFacts() {
           empty: { passed: true, renderedText: "Empty" },
           loading: { passed: true, renderedText: "Loading" },
           loaded: { passed: true, renderedText: "Loaded" },
+          "settings-open": { passed: true, renderedText: "Settings" },
           "local-compare-empty": { passed: true, renderedText: "Compare Empty" },
           invalid: { passed: true, staleMetadataCleared: true, staleInspectionCleared: true, renderedText: "Invalid" }
         }

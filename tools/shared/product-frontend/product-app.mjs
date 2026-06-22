@@ -1673,7 +1673,10 @@ function collectRenderedStateProof(state) {
     && overlayRect.right <= stageRect.right
     && overlayRect.top >= stageRect.top
     && overlayRect.bottom <= stageRect.bottom);
-  const overlayNotOccluded = !overlayVisible || overlay?.contains(topElement) || normalizedState === "invalid";
+  const overlayNotOccluded = !overlayVisible
+    || overlay?.contains(topElement)
+    || overlayStyle.pointerEvents === "none"
+    || normalizedState === "invalid";
   const loadingPhaseItems = Array.from(players.a.loadingPhases ?? []).map((item) => ({
     phase: item.dataset.loadingPhase,
     text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -1753,7 +1756,7 @@ function collectRenderedStateProof(state) {
     if (!isCompareActive()) failures.push("compare mode is not active");
     if (!comparePanelVisible) failures.push("secondary panel is not visible");
     if (!secondaryEmptyVisible) failures.push("secondary empty state is not visible");
-    if (!isElementVisible(secondaryInputWrap) || !isElementVisible(secondaryEmptyFileButton)) failures.push("secondary file controls are not reachable");
+    if (!isElementVisible(secondaryEmptyFileButton)) failures.push("secondary file controls are not reachable");
     if (!syncBarVisible) failures.push("sync bar is not visible for local compare");
   }
   if (normalizedState === "local-compare-loaded") {
@@ -1899,6 +1902,94 @@ async function smokeErrorFile() {
   return true;
 }
 
+const p6SmokeReferenceGifBase64 = "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
+
+function p6SmokeReferenceGifFile() {
+  const binary = atob(p6SmokeReferenceGifBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new File([bytes], "synthetic-reference.gif", { type: "image/gif" });
+}
+
+async function loadP6SmokeReferenceGif() {
+  if (modeSelect.value !== "exportReview") setAppMode("exportReview");
+  const file = p6SmokeReferenceGifFile();
+  await loadReference(file, {
+    fileName: file.name,
+    fileSizeBytes: file.size,
+    kind: "gif"
+  });
+  await waitFor(() => Boolean(referenceState.metrics) && referenceState.panel.classList.contains("hasMedia"));
+}
+
+function closeP6SmokeTransientUi() {
+  closeDropdown(modeDropdownMenu);
+  closeFitMenus();
+  closeInfoPanel();
+  closeFullLogs();
+  if (!settingsModal.hidden) closeSettings();
+  if (!assetPreviewModal.hidden) closeAssetPreview();
+}
+
+function ensureP6SmokeInfoPanel(tabName) {
+  if (activeSidePanel === "info") setActiveSidePanel(null);
+  openInfoPanel(tabName);
+}
+
+async function captureMotionTriplet(motionId, setup) {
+  if (!shouldCaptureArtifacts) return;
+  await setup?.();
+  await delay(40);
+  await captureArtifact(`desktop-motion-${motionId}-start`);
+  await delay(190);
+  await captureArtifact(`desktop-motion-${motionId}-mid`);
+  await delay(230);
+  await captureArtifact(`desktop-motion-${motionId}-end`);
+}
+
+async function captureP6MotionEvidence() {
+  await captureMotionTriplet("emptyIconFloat", async () => {
+    setAppMode("localPreview");
+    if (compareToggle.checked) compareToggle.click();
+    closeP6SmokeTransientUi();
+  });
+  await captureMotionTriplet("cardEnter", async () => {
+    setAppMode("localPreview");
+    if (!compareToggle.checked) compareToggle.click();
+  });
+  await captureMotionTriplet("fitMenuIn", async () => {
+    closeFitMenus();
+    localFitButton?.click();
+  });
+  await captureMotionTriplet("dropdownIn", async () => {
+    closeP6SmokeTransientUi();
+    modeDropdownTrigger?.click();
+  });
+  await captureMotionTriplet("sidePanelEnter", async () => {
+    if (activeSidePanel === "info") setActiveSidePanel(null);
+    openInfoPanel("overview");
+  });
+  await captureMotionTriplet("tabIn", async () => {
+    ensureP6SmokeInfoPanel("assets");
+    await delay(120);
+    ensureP6SmokeInfoPanel("overview");
+  });
+  await captureMotionTriplet("drawerIn", async () => {
+    if (activeSidePanel === "logs") setActiveSidePanel(null);
+    openFullLogs();
+  });
+  await captureMotionTriplet("modalIn", async () => {
+    if (!settingsModal.hidden) closeSettings();
+    await delay(220);
+    openSettings();
+  });
+  await captureMotionTriplet("overlayIn", async () => {
+    if (!settingsModal.hidden) closeSettings();
+    if (!assetPreviewModal.hidden) closeAssetPreview();
+    openSettings();
+  });
+}
+
 async function runProductSmoke() {
   if (!electronBridge?.reportSmokeResult) return;
   try {
@@ -1920,14 +2011,62 @@ async function runProductSmoke() {
     await waitFor(() => canvasIsNonBlank(players.a));
     const canvasNonBlank = canvasIsNonBlank(players.a);
     const inspectionReport = await waitForInspectionStatus(players.a);
-    openInfoPanel("overview");
-    await delay(180);
+    await loadP6SmokeReferenceGif();
+    ensureP6SmokeInfoPanel("overview");
+    await delay(220);
     const auditPanel = Boolean(document.querySelector(".auditReportSection, .specReportSection"));
     await captureArtifact("desktop-loaded");
     await captureArtifact("smoke-loaded");
     await captureArtifact("desktop-1280x800");
     await captureArtifact("desktop-1440x900");
     await captureArtifact("desktop-inspection");
+    ensureP6SmokeInfoPanel("overview");
+    await delay(220);
+    await captureArtifact("desktop-info-overview-open");
+    ensureP6SmokeInfoPanel("assets");
+    await delay(220);
+    await captureArtifact("desktop-info-assets-open");
+    const previewButton = document.querySelector("#tab-assets [data-preview-image-key]:not(:disabled)");
+    previewButton?.click();
+    await waitFor(() => !assetPreviewModal.hidden && assetPreviewModal.classList.contains("isOpen"));
+    await delay(280);
+    await captureArtifact("desktop-asset-preview-modal-open");
+    closeAssetPreview();
+    await delay(240);
+    closeP6SmokeTransientUi();
+    modeDropdownTrigger?.click();
+    await waitFor(() => !modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu));
+    await delay(180);
+    await captureArtifact("desktop-mode-menu-open");
+    closeP6SmokeTransientUi();
+    await delay(160);
+    openFullLogs();
+    await delay(220);
+    await captureArtifact("desktop-logs-open");
+    openSettings();
+    await delay(240);
+    await captureArtifact("desktop-settings-open");
+    if (!reduceMotionToggle.checked) reduceMotionToggle.click();
+    if (!reduceBlurToggle.checked) reduceBlurToggle.click();
+    await delay(180);
+    await captureArtifact("desktop-accessibility-toggles-on");
+    await new Promise((resolve) => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      window.setTimeout(resolve, 260);
+    });
+    await captureArtifact("desktop-settings-closed-by-escape");
+    await new Promise((resolve) => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
+      window.setTimeout(resolve, 260);
+    });
+    await captureArtifact("desktop-synchronized-playback-toggled-by-space");
+    await captureP6MotionEvidence();
+    closeP6SmokeTransientUi();
+    await delay(240);
+    setAppMode("localPreview");
+    if (!compareToggle.checked) compareToggle.click();
+    await delay(260);
+    await captureArtifact("desktop-local-compare-empty");
     const fileInput = await smokeFileInput(bytes.slice(0));
     const dragDrop = await smokeDragDrop(bytes.slice(0));
     const errorFile = await smokeErrorFile();

@@ -40,15 +40,15 @@ const stateImageSources = {
   },
   "accessibility-toggles-on": {
     web: "web-baseline/screenshot-settings-1440x900.png",
-    desktop: "desktop-settings-open.png"
+    desktop: "desktop-accessibility-toggles-on.png"
   },
   "settings-closed-by-escape": {
     web: "web-baseline/screenshot-export-review-loaded-1440x900.png",
-    desktop: "desktop-loaded.png"
+    desktop: "desktop-settings-closed-by-escape.png"
   },
   "synchronized-playback-toggled-by-space": {
     web: "web-baseline/screenshot-export-review-loaded-1440x900.png",
-    desktop: "desktop-loaded.png"
+    desktop: "desktop-synchronized-playback-toggled-by-space.png"
   },
   "local-compare-empty": {
     web: "web-baseline/screenshot-local-compare-empty-1440x900.png",

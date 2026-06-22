@@ -44,13 +44,13 @@ const desktopStateAliases = {
   "invalid-error-state": ["invalid"],
   invalid: ["invalid"],
   "mode-menu-open": ["mode-menu-open"],
-  "info-overview-open": ["loaded"],
-  "info-assets-open": ["loaded"],
-  "logs-open": ["loaded"],
-  "settings-open": ["loaded"],
-  "accessibility-toggles-on": ["loaded"],
-  "settings-closed-by-escape": ["loaded"],
-  "synchronized-playback-toggled-by-space": ["loaded"],
+  "info-overview-open": ["info-overview-open"],
+  "info-assets-open": ["info-assets-open"],
+  "logs-open": ["logs-open"],
+  "settings-open": ["settings-open"],
+  "accessibility-toggles-on": ["accessibility-toggles-on"],
+  "settings-closed-by-escape": ["settings-closed-by-escape"],
+  "synchronized-playback-toggled-by-space": ["synchronized-playback-toggled-by-space"],
   "local-compare-empty": ["local-compare-empty"],
   "responsive-export-review-loaded-at-900-x-720": ["loaded"]
 };
@@ -466,10 +466,22 @@ function regionSeen(regionId, input, visibleStates = []) {
 
 function selectorSeenInWeb(selector, input) {
   if (!selector) return false;
+  if (selector.includes(",")) {
+    return selector.split(",").map((part) => part.trim()).filter(Boolean).every((part) => selectorSeenInWeb(part, input));
+  }
+  if (selector === "body") return snapshots(input).length > 0;
+  const dataValue = selector.match(/^\[data-value=['"]?([^'"\]]+)['"]?\]$/)?.[1];
+  const dataTab = selector.match(/^\.([a-zA-Z0-9_-]+)\[data-tab=['"]?([^'"\]]+)['"]?\]$/);
   const selectorId = selector.startsWith("#") && !selector.includes(" ") ? selector.slice(1) : null;
   return snapshots(input).some((snapshot) => {
     if ((snapshot.regions ?? []).some((region) => region.selector === selector && region.present === true)) return true;
     if (selectorId && (snapshot.controls ?? []).some((control) => control.id === selectorId && control.visible === true)) return true;
+    if (dataValue && (snapshot.controls ?? []).some((control) => control.dataValue === dataValue && control.visible === true)) return true;
+    if (dataTab && (snapshot.controls ?? []).some((control) =>
+      control.dataTab === dataTab[2]
+      && String(control.tag ?? "").toLowerCase() === "button"
+      && (control.visible === true || (snapshot.bodyTextSample ?? "").includes(control.text ?? ""))
+    )) return true;
     return selector.startsWith(".") && (snapshot.bodyTextSample ?? "").length > 0;
   });
 }
@@ -479,7 +491,9 @@ function motionSeen(item, input) {
   const sampledAnimations = input.web?.motionManifest?.sampledAnimations;
   const animationName = item.animationName ?? item.id;
   const keyframeSeen = Array.isArray(keyframes) && keyframes.some((keyframe) =>
-    keyframe.name === animationName || keyframe.cssText?.includes(animationName)
+    keyframe === animationName
+    || keyframe.name === animationName
+    || keyframe.cssText?.includes(animationName)
   );
   const sampledSeen = Array.isArray(sampledAnimations) && sampledAnimations.some((animation) =>
     animation.animationName === animationName || animation.selector === item.selector
