@@ -10,7 +10,7 @@
   "expectedFinalHeadCommit": null,
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T13:38:00Z",
-  "registryRefreshedAt": "2026-06-22T13:38:00Z",
+  "registryRefreshedAt": "2026-06-22T13:55:00Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -121,8 +121,8 @@
       "branch": "agent/codex/p6-r5-a1-runtime-inventory",
       "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
       "headCommit": null,
-      "status": "planned",
-      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "status": "running",
+      "lastVerifiedAt": "2026-06-22T13:55:00Z",
       "ownedPaths": [
         "docs/product/P6_WEB_PRODUCT_BASELINE.md",
         "docs/product/P6_WEB_FEATURE_INVENTORY.md",
@@ -142,7 +142,7 @@
       "baseCommit": null,
       "headCommit": null,
       "status": "blocked",
-      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "lastVerifiedAt": "2026-06-22T13:55:00Z",
       "ownedPaths": [
         "tools/shared/product-frontend/",
         "shared product shell/state/motion tests"
@@ -161,8 +161,8 @@
       "branch": "agent/codex/p6-r5-a3-host-app-runtime",
       "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
       "headCommit": null,
-      "status": "planned",
-      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "status": "running",
+      "lastVerifiedAt": "2026-06-22T13:55:00Z",
       "ownedPaths": [
         "Electron main process",
         "Electron preload",
@@ -184,8 +184,8 @@
       "branch": "agent/codex/p6-r5-a4-scenarios-motion-parity",
       "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
       "headCommit": null,
-      "status": "planned",
-      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "status": "running",
+      "lastVerifiedAt": "2026-06-22T13:55:00Z",
       "ownedPaths": [
         "tools/p6/generate-p6-evidence.mjs",
         "runtime scenario runner",
@@ -211,8 +211,8 @@
       "branch": "agent/codex/p6-r5-a5-final-packaging",
       "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
       "headCommit": null,
-      "status": "planned",
-      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "status": "running",
+      "lastVerifiedAt": "2026-06-22T13:55:00Z",
       "ownedPaths": [
         "macOS package scripts",
         "plist and bundle templates",
