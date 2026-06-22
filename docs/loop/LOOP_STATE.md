@@ -6,7 +6,7 @@ Date: 2026-06-22
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: HUMAN_REQUIRED
+- State: terminal_human_required
 - Next Action: external_review
 - repairRound: 2
 - consecutiveNoProgressRounds: 0
