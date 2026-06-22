@@ -4,13 +4,14 @@ const { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmS
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, session } = require("electron");
 const {
   IPC_CHANNELS,
   createSecureWebPreferences,
   isAllowedHostUrl,
   isExpectedSenderUrl
 } = require("./host-adapter-contract.cjs");
+const { createDesktopArtifactCatalog } = require("./desktop-artifact-catalog.cjs");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -40,6 +41,17 @@ const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
   : path.join(repoRoot, ".artifacts/product", productMilestoneId);
 const canonicalFixtureRuntimePath = path.join(appRoot, ".runtime/fixture/avatar-frame-smoke.svga");
 const canonicalFixtureSourcePath = "examples/avatar_frame_basic/output/avatar_frame_basic.svga";
+const desktopArtifacts = createDesktopArtifactCatalog({
+  groupedRoots: [
+    { rootPath: path.join(repoRoot, "jobs"), kind: "job" },
+    { rootPath: path.join(repoRoot, "examples"), kind: "example" }
+  ],
+  standaloneRoots: [
+    { rootPath: path.join(repoRoot, "exports"), jobId: "exports" },
+    { rootPath: path.join(repoRoot, "preview"), jobId: "preview" },
+    { rootPath: productArtifactRoot, jobId: `product:${productMilestoneId}`, outputLabel: `.artifacts/product/${productMilestoneId}` }
+  ]
+});
 const sessionRoot = path.join(os.tmpdir(), `auto-svga-desktop-baseline-${process.pid}`);
 const reportToken = randomBytes(24).toString("hex");
 const runtimeInstanceId = randomBytes(12).toString("hex");
@@ -1127,6 +1139,48 @@ async function openSvgaFile() {
   return openSvgaFileBytes(result.filePaths[0]);
 }
 
+async function openSvgaFromHostMenu(window) {
+  const opened = await openSvgaFile();
+  if (!opened || opened.status !== "opened") return;
+  const payload = {
+    basename: opened.basename,
+    sourceId: opened.sourceId,
+    hash: opened.hash,
+    bytes: Array.from(opened.bytes)
+  };
+  await window.webContents.executeJavaScript(`
+    (() => {
+      const opened = ${JSON.stringify(payload)};
+      const input = document.querySelector("#svgaFileInput");
+      if (!input) throw new Error("SVGA file input unavailable");
+      const file = new File([new Uint8Array(opened.bytes)], opened.basename, { type: "application/octet-stream" });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      Object.defineProperty(input, "files", { value: transfer.files, configurable: true });
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    })()
+  `);
+}
+
+function installApplicationMenu(window) {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: "File",
+      submenu: [
+        {
+          label: "Open SVGA...",
+          accelerator: "CommandOrControl+O",
+          click: () => {
+            openSvgaFromHostMenu(window).catch((error) => {
+              console.error(`AUTO_SVGA_FILE_OPEN_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+            });
+          }
+        }
+      ]
+    }
+  ]));
+}
+
 async function saveEditedSvga(input) {
   const value = validateEditedSvgaSaveInput(input);
   if (!value) throw new Error("Invalid Save As payload");
@@ -1257,7 +1311,7 @@ async function createExperimentWindow() {
   const { startSvgaWebExperimentServer } = await import(
     pathToFileURL(path.join(appRoot, "server.mjs")).href
   );
-  experimentServer = await startSvgaWebExperimentServer({ appRoot, reportToken });
+  experimentServer = await startSvgaWebExperimentServer({ appRoot, reportToken, desktopArtifacts });
   expectedOrigin = experimentServer.origin;
 
   const window = new BrowserWindow({
@@ -1271,6 +1325,7 @@ async function createExperimentWindow() {
       productMilestoneId
     })
   });
+  installApplicationMenu(window);
 
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
     callback(false);
@@ -1312,6 +1367,11 @@ async function createExperimentWindow() {
     const scenario = validateArtifactScenario(input);
     if (!scenario) throw new Error("Invalid product artifact scenario");
     return captureProductArtifact(window, scenario);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.scanLatestArtifacts, async (event) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return desktopArtifacts.scan();
   });
 
   ipcMain.handle(IPC_CHANNELS.auditResult, async (event, input) => {

@@ -172,7 +172,7 @@ async function sendStaticFile(request, response, filePath) {
   }
 }
 
-export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
+export async function startSvgaWebExperimentServer({ appRoot, reportToken, desktopArtifacts }) {
   const reportModuleUrl = pathToFileURL(
     path.join(appRoot, ".runtime/dist/hosts/avatar-frame-inspection.js")
   ).href;
@@ -200,6 +200,22 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken }) {
         runtime: "auto-svga-desktop-preview",
         prototypeLabel: "Auto SVGA Desktop Preview; internal prototype, not production"
       });
+    }
+
+    if ((request.method === "GET" || request.method === "HEAD") && requestUrl.pathname.startsWith("/desktop-artifact/")) {
+      try {
+        const artifact = await desktopArtifacts?.readArtifact(requestUrl.pathname);
+        if (!artifact) return sendText(response, 404, "Not found");
+        response.writeHead(200, {
+          ...securityHeadersForRequest(request),
+          "content-type": artifact.mimeType,
+          "content-length": artifact.sizeBytes
+        });
+        if (request.method === "HEAD") return response.end();
+        return response.end(artifact.bytes);
+      } catch {
+        return sendText(response, 404, "Not found");
+      }
     }
 
     if (request.method === "POST" && requestUrl.pathname === "/api/avatar-frame-inspection-report") {

@@ -17,7 +17,7 @@ function createElectronProductHostAdapter(environment = globalThis) {
     capabilities: Object.freeze({
       browserFileInput: true,
       browserDragDrop: true,
-      latestArtifactHttpApi: false,
+      latestArtifactHttpApi: Boolean(bridge?.scanLatestArtifacts),
       browserObjectUrl: true,
       browserDownload: false,
       electronFileDialog: Boolean(bridge?.openSvgaFile),
@@ -33,12 +33,14 @@ function createElectronProductHostAdapter(environment = globalThis) {
       fetch(input, init = {}) {
         const requestUrl = new URL(typeof input === "string" ? input : input.url, environment.location.origin);
         if (requestUrl.pathname === "/api/latest-artifact") {
-          return Promise.resolve(jsonResponse({
-            latestWithSvga: null,
-            latestAny: null,
-            artifacts: [],
-            warnings: ["Electron 默认产品页不自动扫描 Web Preview 产物。"]
-          }));
+          return bridge?.scanLatestArtifacts?.()
+            .then((result) => jsonResponse(result))
+            .catch((error) => jsonResponse({
+              latestWithSvga: null,
+              latestAny: null,
+              artifacts: [],
+              warnings: [`Electron 产物扫描失败：${error instanceof Error ? error.message : String(error)}`]
+            }, 500));
         }
         if (requestUrl.pathname !== "/api/avatar-frame-inspection-report" || !reportToken) {
           return fetchApi(input, init);
@@ -158,9 +160,9 @@ function drawFrame(player, videoItem, frame) {
   player.renderer.drawFrame(videoItem.images, videoItem.sprites, videoItem.dynamicElements, safeFrame);
 }
 
-function jsonResponse(payload) {
+function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
-    status: 200,
+    status,
     headers: { "content-type": "application/json; charset=utf-8" }
   });
 }

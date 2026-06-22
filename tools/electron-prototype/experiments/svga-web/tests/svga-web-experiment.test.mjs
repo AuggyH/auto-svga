@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import os from "node:os";
 import { test } from "node:test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +20,7 @@ const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(experimentRoot, "../../../..");
 const vendorPath = path.join(experimentRoot, "vendor/svga-web-2.4.4.js");
 const hostContract = require("../host-adapter-contract.cjs");
+const { createDesktopArtifactCatalog } = require("../desktop-artifact-catalog.cjs");
 
 test("macOS internal package scaffold declares bounded unsigned .svga bundle metadata", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
@@ -89,7 +91,21 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
   assert.match(strictCsp, /connect-src 'self' blob:/);
   assert.match(legacyBrowserBaselineAuditCsp, /unsafe-eval/);
   const reportToken = "test-token";
-  const server = await startSvgaWebExperimentServer({ appRoot: experimentRoot, reportToken });
+  const desktopArtifactBytes = new Uint8Array([83, 86, 71, 65]);
+  const server = await startSvgaWebExperimentServer({
+    appRoot: experimentRoot,
+    reportToken,
+    desktopArtifacts: {
+      readArtifact(publicPath) {
+        if (publicPath !== "/desktop-artifact/0123456789abcdef01234567/fixture.svga") return undefined;
+        return {
+          bytes: desktopArtifactBytes,
+          mimeType: "application/octet-stream",
+          sizeBytes: desktopArtifactBytes.byteLength
+        };
+      }
+    }
+  });
   try {
     const health = await fetch(`${server.origin}/health`).then((response) => response.json());
     assert.deepEqual(health, {
@@ -109,6 +125,12 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     assert.equal(sharedTokens.status, 200);
     const missingAuditSample = await fetch(`${server.origin}/audit-samples/missing.svga`);
     assert.equal(missingAuditSample.status, 404);
+    const desktopArtifact = await fetch(`${server.origin}/desktop-artifact/0123456789abcdef01234567/fixture.svga`);
+    assert.equal(desktopArtifact.status, 200);
+    assert.equal(desktopArtifact.headers.get("content-type"), "application/octet-stream");
+    assert.equal(await desktopArtifact.text(), "SVGA");
+    const missingDesktopArtifact = await fetch(`${server.origin}/desktop-artifact/0123456789abcdef01234567/missing.svga`);
+    assert.equal(missingDesktopArtifact.status, 404);
     const legacyVendor = await fetch(`${server.origin}/legacy-vendor/pako-2.1.0.min.js`);
     assert.equal(legacyVendor.status, 200);
     assert.match(legacyVendor.headers.get("content-type") ?? "", /text\/javascript/);
@@ -156,8 +178,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(preloadApi.capabilities.shellAccess, false);
   assert.deepEqual(preloadApi.capabilities.documentTypes, ["svga"]);
   assert.equal(preloadApi.openSvgaFile().channel, hostContract.IPC_CHANNELS.openSvgaFile);
+  assert.equal(preloadApi.scanLatestArtifacts().channel, hostContract.IPC_CHANNELS.scanLatestArtifacts);
   assert.equal(preloadApi.saveEditedSvga({ bytesBase64: "AA==" }).channel, hostContract.IPC_CHANNELS.saveEditedSvga);
-  assert.equal(invocations.length, 2);
+  assert.equal(invocations.length, 3);
   assert.equal(hostContract.ELECTRON_HOST_BRIDGE_NAME, "autoSvgaElectronHost");
   assert.equal(hostContract.LEGACY_PROTOTYPE_BRIDGE_NAME, "autoSvgaPrototype");
   const hostOpenReturn = main.match(/function openSvgaFileBytes[\s\S]*?\n}\n\nasync function openSvgaFile/)?.[0] ?? "";
@@ -176,6 +199,12 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /desktop-loaded/);
   assert.match(main, /actual-normal-loaded/);
   assert.match(main, /IPC_CHANNELS\.openSvgaFile/);
+  assert.match(main, /IPC_CHANNELS\.scanLatestArtifacts/);
+  assert.match(main, /desktopArtifacts\.scan\(\)/);
+  assert.match(main, /createDesktopArtifactCatalog/);
+  assert.match(main, /installApplicationMenu/);
+  assert.match(main, /Open SVGA\.\.\./);
+  assert.match(main, /openSvgaFromHostMenu/);
   assert.match(hostOpenReturn, /openSvgaFileBytes/);
   assert.match(hostOpenReturn, /basename: path\.basename\(filePath\)/);
   assert.match(hostOpenReturn, /hash: createHash\("sha256"\)/);
@@ -199,11 +228,53 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /webRequest\.onBeforeRequest/);
   assert.match(preload, /ELECTRON_HOST_BRIDGE_NAME/);
   assert.match(preload, /LEGACY_PROTOTYPE_BRIDGE_NAME/);
+  assert.match(preload, /scanLatestArtifacts/);
   assert.match(preload, /hostAdapterVersion:\s*1/);
   assert.match(preload, /arbitraryFileSystemAccess:\s*false/);
   assert.doesNotMatch(preload, /require\(["']\.\/host-adapter-contract\.cjs["']\)/);
   assert.doesNotMatch(preload, /\bdialog\s*[\s,:})]|shell\.|openPath|readFile/);
   assert.doesNotMatch(preload, /require\("node:fs"\)|require\("fs"\)/);
+});
+
+test("desktop latest-artifact catalog returns Web-shaped non-empty and safe-empty results without path leaks", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "auto-svga-desktop-artifacts-"));
+  try {
+    const output = path.join(root, "examples/avatar_frame_basic/output");
+    await mkdir(output, { recursive: true });
+    const svgaBytes = Uint8Array.from([120, 156, 3, 0]);
+    await writeFile(path.join(output, "avatar_frame_basic.svga"), svgaBytes);
+    await writeFile(path.join(output, "report.json"), JSON.stringify({ ok: true }));
+    await writeFile(path.join(output, "preview.webm"), Uint8Array.from([1, 2, 3]));
+    const catalog = createDesktopArtifactCatalog({
+      groupedRoots: [{ rootPath: path.join(root, "examples"), kind: "example" }],
+      standaloneRoots: [{ rootPath: path.join(root, "exports"), jobId: "exports" }]
+    });
+    const result = await catalog.scan();
+    assert.equal(result.latestWithSvga?.jobId, "example:avatar_frame_basic");
+    assert.match(result.latestWithSvga.svgaPath, /^\/desktop-artifact\/[a-f0-9]{24}\/avatar_frame_basic\.svga$/);
+    assert.match(result.latestWithSvga.reportPath, /^\/desktop-artifact\/[a-f0-9]{24}\/report\.json$/);
+    assert.match(result.latestWithSvga.webmPath, /^\/desktop-artifact\/[a-f0-9]{24}\/preview\.webm$/);
+    assert.doesNotMatch(JSON.stringify(result), new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    const artifact = await catalog.readArtifact(result.latestWithSvga.svgaPath);
+    assert.equal(Buffer.compare(Buffer.from(artifact.bytes), Buffer.from(svgaBytes)), 0);
+    assert.equal(artifact.mimeType, "application/octet-stream");
+    assert.equal(
+      await catalog.readArtifact(result.latestWithSvga.svgaPath.replace("avatar_frame_basic.svga", "renamed.svga")),
+      undefined
+    );
+
+    const emptyCatalog = createDesktopArtifactCatalog({
+      groupedRoots: [{ rootPath: path.join(root, "missing"), kind: "example" }]
+    });
+    const empty = await emptyCatalog.scan();
+    assert.equal(empty.latestWithSvga, null);
+    assert.equal(empty.latestAny, null);
+    assert.deepEqual(empty.artifacts, []);
+    assert.match(empty.warnings.join(" "), /未扫描到可用的本地产物/);
+    assert.equal(await emptyCatalog.readArtifact("/desktop-artifact/000000000000000000000000/test.svga"), undefined);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("P6 normal App proof launches without smoke query mode and uses Web baseline fixture bytes", async () => {
@@ -262,6 +333,10 @@ test("default Electron renderer shares the Web product page and keeps editor inc
   assert.match(desktopEntry, /installSvgaWebCompatibility/);
   assert.match(desktopEntry, /\/tools\/shared\/product-frontend\/product-app\.mjs/);
   assert.match(desktopEntry, /x-auto-svga-prototype-token/);
+  assert.match(desktopEntry, /latestArtifactHttpApi: Boolean\(bridge\?\.scanLatestArtifacts\)/);
+  assert.match(desktopEntry, /scanLatestArtifacts\?\.\(\)/);
+  assert.doesNotMatch(desktopEntry, /latestArtifactHttpApi:\s*false/);
+  assert.doesNotMatch(desktopEntry, /Electron 默认产品页不自动扫描/);
   assert.match(desktopEntry, /editorIncubationDefaultVisible: false/);
   assert.match(desktopEntry, /class CompatibleSvgaPlayer/);
   assert.match(desktopEntry, /class CompatibleSvgaParser/);
