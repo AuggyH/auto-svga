@@ -201,17 +201,22 @@ function createCleanAppZip({ appBundle, zipPath }) {
   if (badEntries.length) throw new Error(`clean App ZIP contains forbidden metadata: ${badEntries.slice(0, 5).join(", ")}`);
 }
 
-function finalResponseText({ headShort, visibleRootAbs, reviewZipName, appZipName, absoluteLinks }) {
+function finalResponseText({ headShort, visibleRootAbs, reviewZipName, appZipName, companionRequired, absoluteLinks }) {
   const link = (label, fileName) => {
     const target = absoluteLinks ? path.join(visibleRootAbs, fileName) : fileName;
     return `[${label}](${target})`;
   };
-  return [
+  const lines = [
     "P6_MACHINE_EXECUTION_COMPLETE",
     "",
     "VISIBLE_REVIEW:",
     `- ${link("P6 Review Packet", "REVIEW_PACKET.md")}`,
     `- ${link("P6 Review ZIP", reviewZipName)}`,
+  ];
+  if (companionRequired) {
+    lines.push(`- ${link("P6 Companion Patch", "changes.patch")}`);
+  }
+  lines.push(
     "",
     "MACOS_APP_TO_TEST:",
     `- ${link("Auto SVGA macOS App ZIP", appZipName)}`,
@@ -223,7 +228,8 @@ function finalResponseText({ headShort, visibleRootAbs, reviewZipName, appZipNam
     "- P6: HUMAN_REQUIRED",
     "- PHASE_2: NOT_STARTED",
     ""
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
 
 async function main() {
@@ -280,6 +286,7 @@ async function main() {
     visibleRootAbs: visibleRoot,
     reviewZipName,
     appZipName,
+    companionRequired: canonicalManifest.companionRequired === true,
     absoluteLinks: false
   });
   const clickableFinalResponse = finalResponseText({
@@ -287,6 +294,7 @@ async function main() {
     visibleRootAbs: visibleRoot,
     reviewZipName,
     appZipName,
+    companionRequired: canonicalManifest.companionRequired === true,
     absoluteLinks: true
   });
   await writeFile(path.join(uploadStagingRoot, "FINAL_RESPONSE.txt"), relativeFinalResponse, "utf8");
