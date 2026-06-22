@@ -4,7 +4,7 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "cf634adf9a4933524a59051ea281638e5d3d543d",
+  "currentIntegrationHeadCommit": "023c12be89138bea8f85fca00dfc6dd2244ca31d",
   "currentRepairRound": 5,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
@@ -250,8 +250,8 @@
       "branch": "agent/codex/p6-r5-a5-final-packaging",
       "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
       "headCommit": "0ead09b2537b761bb7d5d62e9aaf54d80dbfa756",
-      "status": "running",
-      "lastVerifiedAt": "2026-06-22T14:18:00Z",
+      "status": "completed",
+      "lastVerifiedAt": "2026-06-22T14:27:53Z",
       "ownedPaths": [
         "macOS package scripts",
         "plist and bundle templates",
@@ -267,7 +267,14 @@
         "A3",
         "A4"
       ],
-      "requestedIntegrationChanges": []
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "023c12be89138bea8f85fca00dfc6dd2244ca31d",
+      "tests": [
+        "node --check tools/p6/build-p6-owner-handoff.mjs",
+        "node --test tools/p6-owner-handoff-package.test.mjs",
+        "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+        "git diff --check HEAD~1..HEAD"
+      ]
     }
   ],
   "acceptanceCriteria": [
