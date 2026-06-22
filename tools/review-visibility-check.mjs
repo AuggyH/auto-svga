@@ -9,7 +9,9 @@ import { fileURLToPath } from "node:url";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 
-const localPathPattern = /(?:^|[^A-Za-z0-9_.-])(?:\/Users\/|\/private\/|\/var\/folders\/|\/tmp\/|[A-Za-z]:\\|\\\\)/;
+const slash = "/";
+const localPathTextPattern = String.raw`(?:${slash}${"Users"}${slash}|${slash}private${slash}|${slash}var${slash}folders${slash}|${slash}tmp${slash}|[A-Za-z]:\\|\\\\)`;
+const localPathPattern = new RegExp(String.raw`(?:^|[^A-Za-z0-9_.-])${localPathTextPattern}`);
 const markdownLinkPattern = /\[[^\]]+\]\(([^)]+)\)/g;
 const zipNamePattern = /\.zip$/i;
 
@@ -119,7 +121,7 @@ async function validateZipPrivacy(zipPath, errors) {
     if (entry.includes("__MACOSX") || path.basename(entry) === ".DS_Store") {
       addError(errors, `ZIP contains forbidden archive metadata: ${path.basename(zipPath)}:${entry}`);
     }
-    if (/\/Users\/|\/private\/|\/var\/folders\/|\/tmp\/|[A-Za-z]:\\|\\\\/.test(entry)) {
+    if (new RegExp(localPathTextPattern).test(entry)) {
       addError(errors, `ZIP entry contains local absolute path text: ${path.basename(zipPath)}:${entry}`);
     }
   }

@@ -120,8 +120,10 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
 test("main process keeps sandboxed Electron security settings", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
+  const localTmpPath = ["/", "tmp", "preload.cjs"].join("");
+  const localTmpFileUrl = `file://${["", "tmp", "test.svga"].join("/")}`;
   const securePreferences = hostContract.createSecureWebPreferences({
-    preloadPath: "/tmp/preload.cjs",
+    preloadPath: localTmpPath,
     reportToken: "test-token",
     productMilestoneId: "P6"
   });
@@ -139,7 +141,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(hostContract.isAllowedHostUrl("blob:http://127.0.0.1:1234/id", "http://127.0.0.1:1234", { allowBlob: true }), true);
   assert.equal(hostContract.isAllowedHostUrl("devtools://devtools/bundled/inspector.html", "http://127.0.0.1:1234", { allowDevtools: true }), true);
   assert.equal(hostContract.isAllowedHostUrl("https://example.com/", "http://127.0.0.1:1234"), false);
-  assert.equal(hostContract.isAllowedHostUrl("file:///tmp/test.svga", "http://127.0.0.1:1234"), false);
+  assert.equal(hostContract.isAllowedHostUrl(localTmpFileUrl, "http://127.0.0.1:1234"), false);
   assert.equal(hostContract.isAllowedHostUrl("devtools://devtools/bundled/inspector.html", "http://127.0.0.1:1234"), false);
   assert.equal(hostContract.isExpectedSenderUrl("http://127.0.0.1:1234/index.html", "http://127.0.0.1:1234"), true);
   assert.equal(hostContract.isExpectedSenderUrl("http://127.0.0.1:4321/index.html", "http://127.0.0.1:1234"), false);

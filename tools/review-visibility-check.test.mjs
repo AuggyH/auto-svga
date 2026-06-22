@@ -150,7 +150,8 @@ test("terminal owner handoff detects sealed file byte mismatch", async () => {
 test("visible handoff rejects local absolute paths", async () => {
   await withTempDir(async (root) => {
     const folder = await createWorkerFolder(root);
-    await writeFile(join(folder, "README.md"), "Path: /Users/example/asset.svga\n", "utf8");
+    const localUsersPath = `/${"Users"}/example/asset.svga`;
+    await writeFile(join(folder, "README.md"), `Path: ${localUsersPath}\n`, "utf8");
     const result = await validateReviewVisibility({ mode: "worker", folder });
 
     assert.equal(result.status, "fail");

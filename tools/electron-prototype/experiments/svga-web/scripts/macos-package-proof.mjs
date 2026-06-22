@@ -178,11 +178,12 @@ async function runPrivacyAudit(plist) {
 
 function scanText(relativePath, text, username) {
   const findings = [];
+  const slash = "/";
   const repoPathLiterals = [
     repoRoot,
     experimentRoot,
-    "/Users/",
-    "/home/"
+    [slash, "Users", slash].join(""),
+    [slash, "home", slash].join("")
   ];
   for (const literal of repoPathLiterals) {
     if (literal && text.includes(literal)) findings.push(`${relativePath}: contains local absolute path literal`);

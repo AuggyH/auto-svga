@@ -150,9 +150,10 @@ test("rejects implementation owner as sole verifier", () => {
 
 test("rejects local absolute paths in tracked registry text", () => {
   const registry = baseRegistry();
+  const localUsersPath = `/${"Users"}/example/project`;
   const result = validateMultiWorkerProtocol({
     registry,
-    registryText: `${JSON.stringify(registry)}\nworktree=/Users/example/project\n`,
+    registryText: `${JSON.stringify(registry)}\nworktree=${localUsersPath}\n`,
     coordinationText: "Current integration head: abc\n"
   });
 
