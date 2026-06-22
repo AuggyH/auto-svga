@@ -7,9 +7,9 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 ## Current Integration State
 
 - Integration branch: `agent/codex/p6-integration`
-- Current integration head after A1 Repair 5 integration:
-  `748c599800d0d5e79c89afaeb366ef387fe20840`
-- Current loop state: P6 Repair 5 is `implementation_in_progress`; A1 is integrated and A2 is unblocked.
+- Current integration head after A2 Repair 5 integration:
+  `7b4a9af380b3c6c7810aca15b2b81c51bf757420`
+- Current loop state: P6 Repair 5 is `implementation_in_progress`; A1 and A2 are integrated and A3 is next.
 - Repair 4 terminal parity status was `HUMAN_REQUIRED`; browser regression,
   security audit, and artifact index passed, but visual, feature, interaction,
   state, motion, Desktop proof, and Desktop rendered-state evidence still

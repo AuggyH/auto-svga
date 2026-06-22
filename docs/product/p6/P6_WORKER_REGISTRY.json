@@ -4,7 +4,7 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "748c599800d0d5e79c89afaeb366ef387fe20840",
+  "currentIntegrationHeadCommit": "7b4a9af380b3c6c7810aca15b2b81c51bf757420",
   "currentRepairRound": 5,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
@@ -148,9 +148,9 @@
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r5-a2-product-states",
       "baseCommit": "748c599800d0d5e79c89afaeb366ef387fe20840",
-      "headCommit": null,
-      "status": "running",
-      "lastVerifiedAt": "2026-06-22T14:18:00Z",
+      "headCommit": "beb9dd19c0c1988e6599dc36b4d09b972f85fdda",
+      "status": "completed",
+      "lastVerifiedAt": "2026-06-22T14:22:27Z",
       "ownedPaths": [
         "tools/shared/product-frontend/",
         "shared product shell/state/motion tests"
@@ -158,7 +158,18 @@
       "dependencies": [
         "A1"
       ],
-      "requestedIntegrationChanges": []
+      "requestedIntegrationChanges": [
+        "A4 and A0 should consume expanded __autoSvgaDesktopStateProbe fields for Repair 5 rendered-state evidence.",
+        "Remaining Electron host/runtime proof gaps stay with A3 and A0."
+      ],
+      "integrationCommit": "7b4a9af380b3c6c7810aca15b2b81c51bf757420",
+      "tests": [
+        "node --test tools/shared/product-frontend/source-sharing.test.mjs",
+        "node --check tools/shared/product-frontend/product-app.mjs",
+        "node --test tools/svga-player-preview/inspection-report-view.test.mjs tools/svga-player-preview/server-inspection-report.test.mjs",
+        "npm run build && node --test dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD"
+      ]
     },
     {
       "workerId": "A3",
