@@ -290,6 +290,7 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
   const p2Fixture = await readFile(path.join(experimentRoot, "scripts/p2-fixture.mjs"), "utf8");
   const p6Evidence = await readFile(path.join(repoRoot, "tools/p6/generate-p6-evidence.mjs"), "utf8");
+  const p6ParityRunner = await readFile(path.join(repoRoot, "tools/p6/parity-runner.mjs"), "utf8");
 
   assert.match(runner, /AUTO_SVGA_P2_NORMAL_PROOF/);
   assert.match(runner, /npm", \["run", "desktop:dev"\]/);
@@ -311,10 +312,12 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(p6Evidence, /Auto SVGA-darwin-arm64\/Auto SVGA\.app\/Contents\/MacOS\/Auto SVGA/);
   assert.match(p6Evidence, /AUTO_SVGA_DESKTOP_NORMAL_PROOF/);
   assert.match(p6Evidence, /packaged Auto SVGA\.app/);
-  assert.match(p6Evidence, /function itemSpecificArtifactIds/);
-  assert.match(p6Evidence, /webFragmentsForItem/);
-  assert.match(p6Evidence, /desktopFragmentsForItem/);
+  assert.match(p6Evidence, /buildP6ParityReportFromRuntimeFacts/);
+  assert.match(p6ParityRunner, /function webFragmentsForItem/);
+  assert.match(p6ParityRunner, /function desktopFragmentsForItem/);
+  assert.match(p6ParityRunner, /function comparisonFragmentsForItem/);
   assert.doesNotMatch(p6Evidence, /webDesktopIds/);
+  assert.doesNotMatch(p6ParityRunner, /webDesktopIds/);
   assert.doesNotMatch(p6Evidence, /AutoSVGAInternalPrototype|--product-smoke"\]|--smoke", "--product-smoke"/);
 });
 
