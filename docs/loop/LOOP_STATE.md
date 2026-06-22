@@ -6,8 +6,8 @@ Date: 2026-06-22
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: implementation_in_progress
-- Next Action: repair
+- State: terminal_human_required
+- Next Action: external_review
 - repairRound: 5
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
@@ -123,8 +123,23 @@ Date: 2026-06-22
   `nextRepairAllowed=true`, `nextRepairRound=5`, `budgetStatus=within_budget`.
 - Existing visible project Worktree threads A1 through A5 were found and must
   be reused for Repair 5 rather than recreated.
+- P6 repair-5 Worker integrations were merged in order A1 -> A2 -> A3 -> A4
+  -> A5, with A0 integration checks after each layer.
+- P6 repair-5 A0 integration repair commit
+  `8247a7297cb0a0199411bc1635b2640890070470` closed all required parity
+  non-pass entries in the generated P6 parity report.
+- Final ignored P6 evidence generated before terminal state recorded
+  `parityStatus=pass` with `nonPassEvidenceCount=0` under
+  `.artifacts/product/P6` for source head
+  `8247a7297cb0a0199411bc1635b2640890070470`.
+- Root `npm test` passed with 216 tests on
+  `8247a7297cb0a0199411bc1635b2640890070470`.
+- Two preliminary `npm run loop:validate` runs passed on
+  `8247a7297cb0a0199411bc1635b2640890070470` with clean source workspace at
+  start and finish.
 
 ## Next Action
 
-Repair. Safe default: keep Phase 2 as NOT_STARTED and continue machine repair
-until required P6 parity gates pass or a strict blocker is reached.
+Await owner external review. Safe default: keep Phase 2 as NOT_STARTED until
+the owner explicitly accepts P6 Web/Desktop parity and the current unsigned,
+unnotarized macOS internal App.
