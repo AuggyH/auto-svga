@@ -32,22 +32,22 @@ Branch: `agent/codex/p6-integration`
 
 | Role | Path | Size | SHA-256 |
 | --- | --- | ---: | --- |
-| p6_evidence | `.artifacts/product/P6/internal-trial-manifest.json` | 2297 | `8955a9ad81be74a8fad1fa2ca7604d3442b5cf6aad0155c3e10de1db30ece538` |
-| packaged_app_runtime | `.artifacts/product/P6/packaged-app-runtime-proof.json` | 1240 | `bbb48e38c4aac17ca00b5bea2da4894d45a59e7e5786c6aaf2247a36526141f5` |
+| p6_evidence | `.artifacts/product/P6/internal-trial-manifest.json` | 2297 | `464b10d6989e93c04af660e558721371694a95f77887f03a7b555cdbb1a4500b` |
+| packaged_app_runtime | `.artifacts/product/P6/packaged-app-runtime-proof.json` | 1482 | `2862a771f9872ddf951dd3207adc7f772d126b9c6739999ed28948a4749fd30e` |
 | web_baseline | `.artifacts/product/P6/web-baseline/computed-styles-manifest.json` | 10096 | `99073f30d3ab7b4c9ed9f58777a2c377e2384fc0a36fc9b01d97423bdb0b8811` |
-| web_baseline | `.artifacts/product/P6/web-baseline/dom-manifest.json` | 336687 | `afd0ee09c0fd2df9a46ceaa4f4695cb2e7a32d312b5780ba89c9cd504a823a76` |
-| web_baseline | `.artifacts/product/P6/web-baseline/interaction-trace.json` | 1474 | `9d414d59cd696ab90486d1f6564779a917580c7d148552fc90cf882cf5597eb8` |
+| web_baseline | `.artifacts/product/P6/web-baseline/dom-manifest.json` | 336687 | `13f1a99fab1a98b9dd5bcf4fbc290399579439354990713c0c8c9bc75084bc92` |
+| web_baseline | `.artifacts/product/P6/web-baseline/interaction-trace.json` | 1474 | `ae691f9e13dc80fc6ff2220b6c8498c9a3f0bbcc40d0b9d7ecbdec94a72dbe42` |
 | web_baseline | `.artifacts/product/P6/web-baseline/motion-manifest.json` | 9818 | `3c25e7728ff214230d44e1a675332837277071926cc34bcb87036fb21dac05f7` |
-| web_baseline | `.artifacts/product/P6/web-baseline/request-audit.json` | 439 | `d236e43cdd7c3a18b10d4bcf1c3975069db6a780fd0118ea4aa57c71d9629d77` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png` | 132567 | `aed8398dce3b484ba22ea688e4dabeb2996feb27b146482e2ccf605ec19f8817` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png` | 111014 | `a03b9db4b94de1ee1b03e886866415855c2497c365b0360ddb730deedebe962f` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-assets-1440x900.png` | 164364 | `7b02fdb6236e2cc855753ee21a469d9fecb65ce59fd85b5ce9384cfcb3b789dd` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-overview-1440x900.png` | 192005 | `5cbeb6c8cb94689357321cdf494f78c98fe3a259911789604225a544c819ed5a` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-invalid-1440x900.png` | 73777 | `eaa8e5dc81f5e8c292af8c0da04e6c24127132d567743aa7110665c4b0554289` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-empty-1440x900.png` | 137683 | `a03510a4650467010627f4b59f586d2b83223b6d5cf139bb5ac87741b86144f7` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-empty-1440x900.png` | 45987 | `3ab6f16ced0fc3b0f4d55f754b3bc30be92853969f27ab16e9f5aeb2b54c35f6` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-logs-1440x900.png` | 168247 | `266f26ac95a2b3ac9b8e2ed751f8aaff33d1681859ea3eecd7e317cb4cff2cb6` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-1440x900.png` | 178508 | `bb67a978e9a7f2c800559c913ad2ca25fddb3a22715dd9935ed223855fedc76e` |
+| web_baseline | `.artifacts/product/P6/web-baseline/request-audit.json` | 439 | `3994bb4363bfc633eafd6ae58e97659b143849ddafdb078437bc65d087f614ac` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png` | 132826 | `a2fde689de5f20c93220fcebf4ad8d5428cfc4295095876474ce61f98d9be924` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png` | 110719 | `cbc0516d09ef92328cff95080ea6b95f61c8b46e7c9eea03e5ee7a496bcf352b` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-assets-1440x900.png` | 163647 | `b9853d38e775a042745c07ca53670b9c3bc7bce472087eafca7640e9e1816bbd` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-overview-1440x900.png` | 193037 | `a62622a9ce247e822f46ad74f04027cf16b97d8b962a2c54be3ab1005ba85cfe` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-invalid-1440x900.png` | 73774 | `7e93924666b0ddd859a666efa0e7e09975c01a63a5c826b097ce1eeab253988e` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-empty-1440x900.png` | 137655 | `a3d069465602ad4b1e56a6a6b2422ceb5b51bc4a03e07f26dcc9aa034de70f3b` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-empty-1440x900.png` | 45978 | `2ba7aa2690190ed7c985f2fe1f7ac134389b203fe850e891ab5355ea6316ff09` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-logs-1440x900.png` | 168574 | `a9e5574bb6ab4b1191c0e79ad04e0ccbca411c3b9b2091783c2966b759b24e69` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-1440x900.png` | 178262 | `121ca64cb3bb976f6c8560081cb3563bdd14c620bbfa8782a03c2a9ab9407983` |
 
 ## Protected Flows
 
