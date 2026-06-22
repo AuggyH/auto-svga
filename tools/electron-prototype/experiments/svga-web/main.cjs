@@ -19,6 +19,7 @@ const normalProofMode = process.argv.includes("--p2-normal-proof") || process.en
 const auditPlayerArgument = process.argv.find((argument) => argument.startsWith("--audit-player="));
 const auditPlayer = auditPlayerArgument?.split("=")[1];
 const auditMode = auditPlayer === "svga-web" || auditPlayer === "svgaplayerweb";
+const normalVisibleStartupMode = !(smokeMode || auditMode || normalProofMode);
 const appRoot = app.getAppPath();
 const repoRoot = path.resolve(appRoot, "../../../..");
 const productIdentity = "Auto SVGA";
@@ -66,6 +67,7 @@ let smokeFinished = false;
 let auditFinished = false;
 let cspViolationSeen = false;
 let cleanedUp = false;
+const blockedExternalRequests = [];
 const sourceFilePaths = new Map();
 const referenceFileIds = new Set();
 const productArtifactIndex = {
@@ -84,7 +86,7 @@ if (productSmokeMode && productMilestoneId === "P5") {
 }
 
 mkdirSync(sessionRoot, { recursive: true });
-if (productSmokeMode || normalProofMode) mkdirSync(productArtifactRoot, { recursive: true });
+if (productSmokeMode || normalProofMode || normalVisibleStartupMode) mkdirSync(productArtifactRoot, { recursive: true });
 app.setPath("userData", path.join(sessionRoot, "user-data"));
 app.setPath("sessionData", path.join(sessionRoot, "session-data"));
 
@@ -747,7 +749,7 @@ function scenarioFixtureMetadata(scenario) {
       ...canonicalFixtureMetadata()
     };
   }
-  if (scenario === "desktop-empty") {
+  if (scenario === "desktop-empty" || scenario === "normal-visible-startup") {
     return {
       fixture: null,
       inputKind: "none",
@@ -787,17 +789,27 @@ function sanitizedRuntimeArgv() {
   return process.argv.map((argument) => sanitizeRuntimeArgument(argument));
 }
 
+function launchEnvironmentOverrides() {
+  return normalProofMode ? { AUTO_SVGA_P2_NORMAL_PROOF: "1" } : {};
+}
+
+function defaultActualLaunchCommand() {
+  if (normalProofMode) return "npm run desktop:dev";
+  if (normalVisibleStartupMode) return "open -n <Auto SVGA.app>";
+  return "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev";
+}
+
 function runtimeIdentity(mode, rendererUrl) {
   return {
     schemaVersion: 1,
     milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
     entryCommand: "npm run desktop:dev",
-    actualLaunchCommand: process.env.AUTO_SVGA_ACTUAL_LAUNCH_COMMAND ?? (normalProofMode ? "npm run desktop:dev" : "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev"),
+    actualLaunchCommand: process.env.AUTO_SVGA_ACTUAL_LAUNCH_COMMAND ?? defaultActualLaunchCommand(),
     actualArgvSanitized: sanitizedRuntimeArgv(),
     executableBasename: path.basename(process.argv[0] ?? ""),
     pathRedactionsApplied: true,
-    environmentOverrides: normalProofMode ? { AUTO_SVGA_P2_NORMAL_PROOF: "1" } : {},
+    environmentOverrides: launchEnvironmentOverrides(),
     mainEntry: `tools/electron-prototype/experiments/svga-web/${mainEntry}`,
     preloadEntry: `tools/electron-prototype/experiments/svga-web/${preloadEntry}`,
     rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
@@ -823,7 +835,8 @@ function runtimeIdentity(mode, rendererUrl) {
       persistedAbsolutePaths: false
     },
     hostRuntime: {
-      normalVisibleStartup: !(smokeMode || auditMode || normalProofMode),
+      normalVisibleStartup: normalVisibleStartupMode,
+      finderEquivalentLaunchCompatible: true,
       fileOpenTargets: ["primary-svga", "secondary-svga", "reference-media"],
       menuActions: ["load-latest-export-artifact", "toggle-logs", "open-settings", "quit"],
       sessionRootRedacted: sanitizeRuntimeArgument(sessionRoot),
@@ -837,7 +850,7 @@ function runtimeIdentity(mode, rendererUrl) {
     mainSha256: sha256RelativeFile(mainEntry),
     loadingPipelineIdentity: "loadSvgaFile -> loadSvgaBytes -> Parser.do -> Player.mount -> inspection report",
     cleanupPipelineIdentity: "cleanupPlayer -> clearCanvas -> reset active player/parser/video/status",
-    externalRequests: [],
+    externalRequests: blockedExternalRequests.slice(),
     generatedAt: new Date().toISOString()
   };
 }
@@ -951,6 +964,97 @@ async function finishNormalProof(window, result) {
   await cleanupRuntime();
   window.destroy();
   app.exit(passed ? 0 : 1);
+}
+
+async function writeVisibleNormalStartupProof(window, rendererUrl) {
+  if (!normalVisibleStartupMode) return;
+  let rendererProbe = {
+    rendererQuery: "",
+    primaryBridge: false,
+    localOnly: false,
+    externalRequests: ["renderer probe unavailable"]
+  };
+  try {
+    rendererProbe = await window.webContents.executeJavaScript(`
+      (() => {
+        const bridge = window.autoSvgaElectronHost;
+        const resources = performance.getEntriesByType("resource").map((entry) => entry.name);
+        return {
+          rendererQuery: location.search,
+          primaryBridge: Boolean(bridge && bridge.localOnly === true && bridge.capabilities?.arbitraryFileSystemAccess === false),
+          localOnly: resources.every((value) => {
+            try {
+              const url = new URL(value, location.href);
+              return url.origin === location.origin || value.startsWith("blob:" + location.origin + "/");
+            } catch {
+              return false;
+            }
+          }),
+          externalRequests: resources.filter((value) => {
+            try {
+              const url = new URL(value, location.href);
+              return url.origin !== location.origin && !value.startsWith("blob:" + location.origin + "/");
+            } catch {
+              return true;
+            }
+          }).map((value) => value.replace(/\\/Users\\/[^/\\s]+/g, "<home>"))
+        };
+      })()
+    `);
+  } catch (error) {
+    rendererProbe.externalRequests = [`renderer probe failed: ${redactLogMessage(error instanceof Error ? error.message : error)}`];
+  }
+  const normalIdentity = runtimeIdentity("normal-visible", rendererUrl);
+  const noProofArguments = !JSON.stringify(normalIdentity.actualArgvSanitized).includes("--p2-normal-proof")
+    && !JSON.stringify(normalIdentity.actualArgvSanitized).includes("--smoke");
+  const value = {
+    schemaVersion: 1,
+    milestoneId: productMilestoneId,
+    headCommit: productArtifactIndex.headCommit,
+    runtimeIdentity: normalIdentity,
+    actualLaunchCommand: normalIdentity.actualLaunchCommand,
+    actualArgvSanitized: normalIdentity.actualArgvSanitized,
+    executableBasename: normalIdentity.executableBasename,
+    pathRedactionsApplied: true,
+    environmentOverrides: {},
+    rendererUrl,
+    rendererQuery: rendererProbe.rendererQuery,
+    processId: process.pid,
+    runtimeInstanceId,
+    windowShown: window.isVisible(),
+    normalVisibleStartup: true,
+    finderEquivalentLaunchCompatible: true,
+    noProofMode: true,
+    noSmokeMode: true,
+    noProofArguments,
+    bridgeLocalOnly: rendererProbe.primaryBridge === true,
+    localOnly: rendererProbe.localOnly === true && blockedExternalRequests.length === 0,
+    externalRequests: [...new Set([...blockedExternalRequests, ...(rendererProbe.externalRequests ?? [])])],
+    hostOpenTargets: ["primary-svga", "secondary-svga", "reference-media"],
+    hostMenuActions: ["load-latest-export-artifact", "toggle-logs", "open-settings", "quit"],
+    processLifecycle: {
+      windowAllClosedCleanup: true,
+      quitMenuInstalled: true,
+      expectedExit: "window-all-closed -> cleanupRuntime -> app.quit",
+      orphanProcessPolicy: "no background child processes are spawned by the normal visible app"
+    },
+    tempCleanup: {
+      sessionRoot: sanitizeRuntimeArgument(sessionRoot),
+      cleanupRuntimeInstalled: true,
+      tempRemovedOnExit: true
+    }
+  };
+  value.passed = value.windowShown === true
+    && value.normalVisibleStartup === true
+    && value.rendererQuery === ""
+    && Object.keys(value.environmentOverrides).length === 0
+    && value.noProofMode === true
+    && value.noSmokeMode === true
+    && value.noProofArguments === true
+    && value.bridgeLocalOnly === true
+    && value.localOnly === true
+    && value.externalRequests.length === 0;
+  writeJsonProductArtifact("normal-visible-startup.json", "normal-visible-startup", value, "normal");
 }
 
 function writeProductArtifactIndex() {
@@ -1509,11 +1613,13 @@ async function createExperimentWindow() {
     callback(false);
   });
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
+    const allowed = isAllowedHostUrl(details.url, expectedOrigin, {
+      allowBlob: true,
+      allowDevtools: true
+    });
+    if (!allowed) blockedExternalRequests.push(sanitizeRuntimeArgument(details.url));
     callback({
-      cancel: !isAllowedHostUrl(details.url, expectedOrigin, {
-        allowBlob: true,
-        allowDevtools: true
-      })
+      cancel: !allowed
     });
   });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -1884,6 +1990,7 @@ async function createExperimentWindow() {
     writeJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
   }
   await window.loadURL(rendererUrl);
+  if (normalVisibleStartupMode) await writeVisibleNormalStartupProof(window, rendererUrl);
   if (normalProofMode) await driveCanonicalNormalProof(window);
 }
 
