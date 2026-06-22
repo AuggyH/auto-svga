@@ -353,7 +353,11 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(p2Fixture, /repository-avatar-frame-basic\.svga/);
   assert.doesNotMatch(p2Fixture, /synthetic-avatar-frame\.svga/);
   assert.match(p6Evidence, /Auto SVGA-darwin-arm64\/Auto SVGA\.app\/Contents\/MacOS\/Auto SVGA/);
-  assert.match(p6Evidence, /AUTO_SVGA_DESKTOP_NORMAL_PROOF/);
+  assert.match(p6Evidence, /normal-visible-startup\.json/);
+  assert.match(p6Evidence, /normalVisibleStartup/);
+  assert.match(p6Evidence, /delete normalLaunchEnv\.AUTO_SVGA_P2_NORMAL_PROOF/);
+  assert.doesNotMatch(p6Evidence, /AUTO_SVGA_P2_NORMAL_PROOF:\s*"1"/);
+  assert.doesNotMatch(p6Evidence, /AUTO_SVGA_DESKTOP_NORMAL_PROOF/);
   assert.match(p6Evidence, /packaged Auto SVGA\.app/);
   assert.match(p6Evidence, /buildP6ParityReportFromRuntimeFacts/);
   assert.match(p6ParityRunner, /function webFragmentsForItem/);

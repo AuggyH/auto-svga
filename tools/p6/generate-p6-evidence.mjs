@@ -92,6 +92,42 @@ function runAsync(command, args, options = {}) {
   });
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForJsonFile(filePath, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  const pollMs = options.pollMs ?? 250;
+  const startedAt = Date.now();
+  let lastError;
+  while (Date.now() - startedAt < timeoutMs) {
+    if (existsSync(filePath)) {
+      try {
+        return await readJson(filePath);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    await sleep(pollMs);
+  }
+  throw new Error(`Timed out waiting for ${toRepoPath(filePath)}${lastError ? `: ${lastError.message}` : ""}`);
+}
+
+async function stopChildProcess(child) {
+  if (child.exitCode !== null || child.signalCode) return;
+  const exited = new Promise((resolve) => child.once("exit", resolve));
+  child.kill("SIGTERM");
+  const stopped = await Promise.race([
+    exited.then(() => true),
+    sleep(5_000).then(() => false)
+  ]);
+  if (!stopped && child.exitCode === null && !child.signalCode) {
+    child.kill("SIGKILL");
+    await Promise.race([exited, sleep(2_000)]);
+  }
+}
+
 function git(args) {
   return execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" }).trim();
 }
@@ -213,39 +249,68 @@ async function runPackageAndPackagedNormalProof() {
     stdio: "inherit"
   });
   await mkdir(packagedRuntimeRoot, { recursive: true });
+  const visibleStartupPath = path.join(packagedRuntimeRoot, "normal-visible-startup.json");
+  await rm(visibleStartupPath, { force: true });
   const startedAt = new Date().toISOString();
-  const result = run(packagedBinary, [], {
+  const normalLaunchEnv = { ...process.env };
+  delete normalLaunchEnv.AUTO_SVGA_P2_NORMAL_PROOF;
+  delete normalLaunchEnv.AUTO_SVGA_PRODUCT_SMOKE;
+  delete normalLaunchEnv.AUTO_SVGA_SMOKE;
+  const child = spawn(packagedBinary, [], {
     cwd: repoRoot,
     env: {
-      AUTO_SVGA_P2_NORMAL_PROOF: "1",
+      ...normalLaunchEnv,
       AUTO_SVGA_PRODUCT_MILESTONE: milestoneId,
       AUTO_SVGA_PRODUCT_ARTIFACTS: packagedRuntimeRoot,
       AUTO_SVGA_ACTUAL_LAUNCH_COMMAND: "packaged Auto SVGA.app"
-    }
+    },
+    stdio: "pipe"
   });
-  const stdout = result.stdout ?? "";
-  const match = stdout.match(/AUTO_SVGA_DESKTOP_NORMAL_PROOF (\{[^\n]+\})/);
-  if (!match) throw new Error("Packaged app normal proof did not emit AUTO_SVGA_DESKTOP_NORMAL_PROOF.");
-  const normalProof = JSON.parse(match[1]);
-  const detailedNormalProofPath = path.join(packagedRuntimeRoot, "normal-runtime-proof.json");
-  const detailedNormalProof = existsSync(detailedNormalProofPath)
-    ? await readJson(detailedNormalProofPath)
-    : null;
+  let stdout = "";
+  let stderr = "";
+  child.stdout?.on("data", (chunk) => {
+    stdout += chunk.toString("utf8");
+  });
+  child.stderr?.on("data", (chunk) => {
+    stderr += chunk.toString("utf8");
+  });
+  const exitPromise = new Promise((resolve) => {
+    child.once("exit", (code, signal) => resolve({ code, signal }));
+  });
+  let visibleStartup;
+  let exitResult = null;
+  try {
+    visibleStartup = await Promise.race([
+      waitForJsonFile(visibleStartupPath, { timeoutMs: 45_000 }),
+      exitPromise.then((result) => {
+        exitResult = result;
+        throw new Error(`Packaged app exited before normal visible startup proof was written: ${JSON.stringify(result)}`);
+      })
+    ]);
+  } finally {
+    await stopChildProcess(child);
+    exitResult ??= await Promise.race([
+      exitPromise,
+      sleep(100).then(() => ({ code: child.exitCode, signal: child.signalCode }))
+    ]);
+  }
   const proof = {
     schemaVersion: 1,
     milestoneId,
-    launchTarget: "packaged .app executable without smoke flags",
+    launchTarget: "packaged .app executable normal visible startup without smoke or proof flags",
     executablePath: toRepoPath(packagedBinary),
     startedAt,
-    exitCode: result.status ?? 0,
-    normalProof,
-    fixtureSha256: detailedNormalProof?.fixtureSha256
-      ?? detailedNormalProof?.runtimeIdentity?.fixtureSha256
+    exitCode: exitResult?.code ?? null,
+    exitSignal: exitResult?.signal ?? null,
+    terminatedAfterVisibleStartupCapture: true,
+    normalVisibleStartup: visibleStartup,
+    fixtureSha256: visibleStartup?.fixtureSha256
+      ?? visibleStartup?.runtimeIdentity?.fixtureSha256
       ?? null,
-    runtimeIdentity: detailedNormalProof?.runtimeIdentity ?? null,
-    passed: normalProof.passed === true,
+    runtimeIdentity: visibleStartup?.runtimeIdentity ?? null,
+    passed: visibleStartup?.passed === true,
     stdoutTail: redact(stdout).split("\n").slice(-20),
-    stderrTail: redact(result.stderr ?? "").split("\n").slice(-20),
+    stderrTail: redact(stderr).split("\n").slice(-20),
     generatedAt: new Date().toISOString()
   };
   await writeJson(path.join(p6Root, "packaged-app-runtime-proof.json"), proof);
@@ -261,7 +326,7 @@ async function runPackageAndPackagedNormalProof() {
 }
 
 async function writeNormalSmokeParityProof() {
-  const normalProofPath = path.join(packagedRuntimeRoot, "normal-runtime-proof.json");
+  const normalProofPath = path.join(packagedRuntimeRoot, "normal-visible-startup.json");
   const smokeIdentityPath = path.join(p6Root, "runtime-identity.json");
   if (!existsSync(normalProofPath) || !existsSync(smokeIdentityPath)) return;
   const normalProof = await readJson(normalProofPath);

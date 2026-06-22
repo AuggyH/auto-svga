@@ -596,14 +596,28 @@ function containsReviewerVerdict(value) {
 
 function normalAppProofFlags(input) {
   const proof = input.package?.normalProof;
-  const normalProof = proof?.normalProof ?? {};
-  const environmentOverrides = proof?.environmentOverrides ?? proof?.runtimeIdentity?.environmentOverrides ?? {};
-  const argv = JSON.stringify(proof?.actualArgvSanitized ?? proof?.runtimeIdentity?.actualArgvSanitized ?? []);
+  const visibleStartup = proof?.normalVisibleStartup ?? {};
+  const environmentOverrides = visibleStartup?.environmentOverrides
+    ?? proof?.environmentOverrides
+    ?? proof?.runtimeIdentity?.environmentOverrides
+    ?? {};
+  const argv = JSON.stringify(
+    visibleStartup?.actualArgvSanitized
+      ?? proof?.actualArgvSanitized
+      ?? proof?.runtimeIdentity?.actualArgvSanitized
+      ?? []
+  );
   return proof?.passed === true
-    && normalProof.normalMode === true
+    && visibleStartup.normalVisibleStartup === true
+    && visibleStartup.windowShown === true
+    && visibleStartup.noProofMode === true
+    && visibleStartup.noSmokeMode === true
+    && visibleStartup.noProofArguments === true
+    && visibleStartup.rendererQuery === ""
     && !("AUTO_SVGA_PRODUCT_SMOKE" in environmentOverrides)
     && !("AUTO_SVGA_SMOKE" in environmentOverrides)
-    && !/--smoke|mode=smoke|AUTO_SVGA_PRODUCT_SMOKE/.test(argv);
+    && !("AUTO_SVGA_P2_NORMAL_PROOF" in environmentOverrides)
+    && !/--smoke|mode=smoke|AUTO_SVGA_PRODUCT_SMOKE|AUTO_SVGA_P2_NORMAL_PROOF|--p2-normal-proof/.test(argv);
 }
 
 function noEditorControlsLeakage(input) {
@@ -615,7 +629,9 @@ function fixtureHashesMatch(input) {
   const fixtureHash = input.desktop?.artifactIndex?.fixtureHashes?.fixtureSha256
     ?? input.desktop?.runtimeIdentity?.fixtureSha256
     ?? input.package?.manifest?.fixtureSha256;
-  const packageFixtureHash = input.package?.normalProof?.normalProof?.fixtureSha256
+  const packageFixtureHash = input.package?.normalProof?.normalVisibleStartup?.fixtureSha256
+    ?? input.package?.normalProof?.normalVisibleStartup?.runtimeIdentity?.fixtureSha256
+    ?? input.package?.normalProof?.normalProof?.fixtureSha256
     ?? input.package?.normalProof?.fixtureSha256
     ?? input.package?.normalProof?.runtimeIdentity?.fixtureSha256
     ?? input.package?.manifest?.fixtureSha256

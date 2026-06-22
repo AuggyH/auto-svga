@@ -154,7 +154,7 @@ test("Loading equals Empty and Invalid retains metadata fail accessibility check
 
 test("fixture hash mismatch fails packaged fixture flow", () => {
   const facts = goodFacts();
-  facts.package.normalProof.normalProof.fixtureSha256 = "b".repeat(64);
+  facts.package.normalProof.normalVisibleStartup.runtimeIdentity.fixtureSha256 = "b".repeat(64);
 
   const report = buildP6ParityReportFromRuntimeFacts(facts);
   assertItemFailed(report, "desktopRuntimeProof", "packaged-app-fixture-flow", "fixture-hash-match");
@@ -214,8 +214,8 @@ test("reviewer category gaps fail Desktop runtime proof", () => {
 
 test("normal App proof flags fail when proof is smoke flavored", () => {
   const facts = goodFacts();
-  facts.package.normalProof.normalProof.normalMode = false;
-  facts.package.normalProof.environmentOverrides = { AUTO_SVGA_PRODUCT_SMOKE: "1" };
+  facts.package.normalProof.normalVisibleStartup.noSmokeMode = false;
+  facts.package.normalProof.normalVisibleStartup.environmentOverrides = { AUTO_SVGA_PRODUCT_SMOKE: "1" };
 
   const report = buildP6ParityReportFromRuntimeFacts(facts);
   assertItemFailed(report, "desktopRuntimeProof", "packaged-app-launch", "normal-app-proof-flags");
@@ -499,9 +499,18 @@ function goodFacts() {
     package: {
       normalProof: {
         passed: true,
-        environmentOverrides: {},
-        actualArgvSanitized: ["Auto SVGA"],
-        normalProof: { fixtureSha256, normalMode: true }
+        normalVisibleStartup: {
+          normalVisibleStartup: true,
+          windowShown: true,
+          noProofMode: true,
+          noSmokeMode: true,
+          noProofArguments: true,
+          rendererQuery: "",
+          environmentOverrides: {},
+          actualArgvSanitized: ["Auto SVGA"],
+          runtimeIdentity: { fixtureSha256 }
+        },
+        runtimeIdentity: { fixtureSha256 }
       },
       manifest: { fixtureSha256 }
     },
