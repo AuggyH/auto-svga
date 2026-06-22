@@ -22,15 +22,6 @@ Date: 2026-06-22
 - P5 is not PASS, not failed, and not abandoned.
 - NQ1-R1 deferred debt is recorded separately and does not block P6.
 - P6 bootstrap commit: `d16fb380c0ff82b9aca3af58b0335708e0b0ef73`.
-- A1 Web baseline integrated as `66e6b5848dabaffcf89f78385cd5c90fc5a69ba2`.
-- A2 shared frontend integrated as `3ee42146d515ca01f82212f7119c5ea53331ec4a`.
-- A3 Electron host integrated as `79b1c9f6d76398ceb4ec2c995302c1e3724cdb2d` and `41eb1ac3ed462f21f7366d9f6491dc9f25a3c4ba`.
-- A4 parity framework integrated as `055c29cb6f1ef9906b50b3322e74311994e794ae`.
-- A5 macOS package proof integrated as `38dcd6a1cc6ef55e21b0744d12c5c6ede4bd2fc7`.
-- Root `npm test` passed with 207 tests on P6 integration head.
-- `npm run desktop:smoke` passed serially with playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, invalid file, lifecycle, and cleanup all true.
-- `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` produced the ignored macOS internal prototype package proof.
-- `npm run loop:validate` passed on clean source head `38dcd6a1cc6ef55e21b0744d12c5c6ede4bd2fc7`.
 - P6 repair-1 generated Web baseline artifacts under `.artifacts/product/P6/web-baseline/`.
 - P6 repair-1 generated `docs/product/P6_PARITY_REPORT_SNAPSHOT.json` with PASS evidence for 12 features, 14 regions, 10 interactions, 12 states, 9 motions, browser regression, desktop runtime proof, security, accessibility, and 42 artifact bindings.
 - P6 repair-1 generated packaged `.app` runtime proof at `.artifacts/product/P6/packaged-app-runtime-proof.json`.
@@ -40,15 +31,24 @@ Date: 2026-06-22
 - P6-PF1 head `c832f12bfe521442b037c36346e8408ad07ef1cc` is
   `SUPERSEDED_BY_P6_REPAIR` and is historical evidence only.
 - P6 repair-2 A1 inventory completeness integrated as
-  `437b21ffbd5da66f9158ef64fe55524bd12f0fec`; parity contract now records
+  `437b21f1ce35bd89545d10275f619c29325f7809`; parity contract now records
   20 regions, 33 features, 10 interactions, 12 states, and 9 motions.
 - P6 repair-2 A2 true shared frontend integrated as
   `91aa41dc9eb14fc549dcc1f84a85e11d3869642c`; Electron default renderer now
   uses the shared Web product frontend entry instead of the legacy prototype
   surface.
+- P6 repair-2 A3 normal Electron host proof integrated as
+  `01150831c09d8d28fe6e327ec2d67d71fa99638f`; integration repair
+  `140fcb6b3cbdc5eff6fc2993e796615b4a5ecc54` fixed the shared renderer
+  initialization order and local blob CSP needed for real normal App playback.
+- Root `npm test` passed with 207 tests on P6 integration head.
+- `npm run desktop:smoke` passed serially with playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, invalid file, lifecycle, and cleanup all true.
+- `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` produced the ignored macOS internal prototype package proof.
+- `npm run loop:validate` passed on clean source head `38dcd6a1cc6ef55e21b0744d12c5c6ede4bd2fc7`.
 
 ## Next Action
 
-Continue P6 repair-2 with A3 normal Electron host proof, then A4 item-specific
-parity evidence, A5 packaging proof, integration repair, and a privacy-clean
-HUMAN_REQUIRED handoff.
+Continue P6 repair-2 with A4 item-specific parity evidence, A5 packaging proof,
+integration repair, and a privacy-clean HUMAN_REQUIRED handoff. Electron debug
+and proof runs should be quiet/background whenever possible; visible App windows
+are reserved for final owner-facing evidence only.
