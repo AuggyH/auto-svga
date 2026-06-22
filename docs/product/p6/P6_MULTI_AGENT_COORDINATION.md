@@ -7,51 +7,49 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 ## Current Integration State
 
 - Integration branch: `agent/codex/p6-integration`
-- Current Repair 5 terminal candidate head:
-  `14285c289aafa8124881e2066844552b2d2929bf`
-- Current loop state: P6 Repair 5 has integrated A1 through A5, completed A0
-  integration repair, and generated head-bound parity evidence with
-  `nonPassEvidenceCount=0`. P6 remains `HUMAN_REQUIRED` only for owner
-  acceptance; Phase 2 is `NOT_STARTED`.
-- Repair 4 terminal parity status was `HUMAN_REQUIRED`; browser regression,
-  security audit, and artifact index passed, but visual, feature, interaction,
-  state, motion, Desktop proof, and Desktop rendered-state evidence still
-  contained required non-pass items.
+- Current Repair 6 integration head:
+  `78bdcf0c1a04c795e4594d1fc33ccfdb3149e1eb`
+- Current loop state: P6 Repair 6 is the final allowed frozen-budget repair
+  round. A1 has been integrated and verified on the integration branch. A2 may
+  now resume formal implementation from the A1-integrated head. Phase 2 remains
+  `NOT_STARTED`; Repair 7 must not be created.
+- Repair 5 terminal evidence is historical and rejected by external review for
+  owner acceptance. Do not use Repair 5 screenshots, Reviewer JSON, App proof,
+  or sealed packets as terminal Repair 6 acceptance evidence.
 - Existing P6 workers must be reused; do not recreate them.
 - Worktree paths are runtime thread metadata and must not be committed to this
   coordination document or to `P6_WORKER_REGISTRY.json`.
-- Repair 4 terminal evidence is historical and rejected by external review for
-  owner acceptance. Do not use the Repair 4 reviewed parity report, old
-  screenshots, old reviewer JSON, old App proof, or old sealed packets as
-  terminal Repair 5 acceptance evidence.
 
 ## Existing Visible Workers
 
 | Worker | Visible thread id | Thread type | Current branch |
 | --- | --- | --- | --- |
-| A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a1-runtime-inventory` |
-| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a2-product-states` after A1 integration |
-| A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a3-host-app-runtime` |
-| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a4-scenarios-motion-parity` |
-| A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a5-final-packaging` |
+| A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | visible project Worktree thread | integrated from `agent/codex/p6-r6-a1-required-inventory` |
+| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | resume formal work from A1-integrated head on `agent/codex/p6-r6-a2-product-behavior` |
+| A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | visible project Worktree thread | reuse for `agent/codex/p6-r6-a3-visible-normal-app` |
+| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | reuse for `agent/codex/p6-r6-a4-strict-parity-motion` |
+| A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | visible project Worktree thread | reuse for `agent/codex/p6-r6-a5-final-package-handoff` |
 
-## Repair 5 Product Findings
+## Repair 6 Product Findings
 
-External review rejected Repair 4 owner acceptance because the report honestly
-showed required gaps instead of completing parity. Repair 5 must close every
-remaining required failure with item-specific runtime evidence:
+External review rejected Repair 5 owner acceptance because product surface
+advanced, but parity evidence and normal App proof were invalid. Repair 6 must
+close every remaining required failure with item-specific runtime evidence:
 
-- visual: `playerBarB`, `referencePlayerBar`, `assetPreviewModal`, `reportGrid`
-- feature: optional comparison, secondary SVGA select/drop, status announcements
-- interaction: mode menu, export review select, accessibility toggles, Escape,
-  Space synchronized playback, local compare switch
-- state: local empty, mode menu open, local compare empty
-- motion: `fitMenuIn`, `sidePanelEnter`, `tabIn`, `overlayIn`, `modalIn`,
-  `drawerIn`, `dropdownIn`
-- runtime: normal Electron source proof and Desktop rendered-state proof
-- protocol: registry final HEAD, terminal readiness, base-range diff,
-  privacy scan, Reviewer A/B, Review ZIP, and App ZIP must all bind to the
-  final source head
+- visual: Web/Desktop screenshots must be the same fixture, viewport, state,
+  media status, mode, panel, modal, and controls.
+- feature and interaction: required product paths need real action traces, not
+  item IDs or artifact existence.
+- state: Loading, invalid/recovery, second SVGA, reference media, latest
+  artifact, asset modal, compare, info tabs, logs, settings, and controls need
+  state-specific proof.
+- motion: start/mid/end evidence must use the same trigger and state, including
+  reduced-motion comparison.
+- runtime: normal visible App proof must use no proof/smoke flags, no query,
+  and no hidden window.
+- protocol: Reviewer B must be independent category evidence, not an A0 verdict
+  placeholder; registry final HEAD and terminal readiness must bind to the
+  actual final source head.
 
 ## Worker Lifecycle
 
@@ -203,16 +201,16 @@ Implementation owners do not serve as final acceptance verifiers for their own c
 
 A0 must run targeted integration checks after each dependency layer.
 
-## Repair 5 Completion Discipline
+## Repair 6 Completion Discipline
 
 At terminal handoff, the registry must record:
 
 - `currentIntegrationHeadCommit` equal to the actual final source HEAD
-- all completed Repair 5 Workers either integrated or retired
+- all completed Repair 6 Workers either integrated or retired
 - integrated Workers with `headCommit`, `integrationCommit`, and
   `workerHandoffFolder`
 - no stale `lastVerifiedAt`
-- no Repair 5 Worker missing contribution metadata
+- no Repair 6 Worker missing contribution metadata
 - `terminalHandoffReady=true` only after required parity failures are zero,
   loop validation passes twice, Reviewer A/B pass, App proof passes, bundle
   checks pass, and visible owner artifacts are regenerated from final HEAD
