@@ -19,6 +19,38 @@ async function close(server) {
   await once(server, "close");
 }
 
+async function reserveFreePort() {
+  const server = createServer((_request, response) => {
+    response.writeHead(204);
+    response.end();
+  });
+  const port = await listen(server);
+  await close(server);
+  return port;
+}
+
+async function launchPreviewOnFreePort(options = {}) {
+  let lastError;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const port = await reserveFreePort();
+    try {
+      return {
+        port,
+        result: await launchLocalPreview({
+          port,
+          openBrowser: false,
+          stdio: "ignore",
+          ...options
+        })
+      };
+    } catch (error) {
+      lastError = error;
+      if (!/已被占用/.test(error instanceof Error ? error.message : String(error))) throw error;
+    }
+  }
+  throw lastError ?? new Error("Unable to reserve a free preview port.");
+}
+
 function createMockPreviewServer() {
   return createServer((request, response) => {
     if (request.url === "/api/latest-artifact") {
@@ -73,18 +105,7 @@ test("launcher safely fails when the port is occupied by an unknown service", as
 });
 
 test("launcher starts the existing preview server when offline and can clean it up", async () => {
-  const probeServer = createServer((_request, response) => {
-    response.writeHead(204);
-    response.end();
-  });
-  const port = await listen(probeServer);
-  await close(probeServer);
-
-  const result = await launchLocalPreview({
-    port,
-    openBrowser: false,
-    stdio: "ignore"
-  });
+  const { port, result } = await launchPreviewOnFreePort();
 
   try {
     assert.equal(result.status, "started");

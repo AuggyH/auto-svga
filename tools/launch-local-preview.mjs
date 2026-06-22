@@ -65,7 +65,8 @@ function isLatestArtifactShape(value) {
 }
 
 function isPreviewPage(text) {
-  return text.includes("auto-svga") && text.includes("SVGA");
+  const normalized = text.toLowerCase();
+  return normalized.includes("auto-svga") && normalized.includes("svga");
 }
 
 export async function probeAutoSvgaPreview({
@@ -98,19 +99,23 @@ export async function probeAutoSvgaPreview({
 export async function waitForAutoSvgaPreview(options = {}) {
   const {
     timeoutMs = 12000,
-    intervalMs = 250
+    intervalMs = 250,
+    failOnOccupied = true
   } = options;
   const startedAt = Date.now();
+  let occupiedReason;
 
   while (Date.now() - startedAt < timeoutMs) {
     const probe = await probeAutoSvgaPreview(options);
     if (probe.status === "auto-svga") return probe;
     if (probe.status === "occupied") {
-      throw new Error(probe.reason);
+      occupiedReason = probe.reason;
+      if (failOnOccupied) throw new Error(probe.reason);
     }
     await sleep(intervalMs);
   }
 
+  if (occupiedReason) throw new Error(occupiedReason);
   throw new Error(`Auto SVGA preview 服务启动超时：${buildPreviewUrl(options)}`);
 }
 
@@ -184,7 +189,7 @@ export async function launchLocalPreview({
       }
     });
 
-    await waitForAutoSvgaPreview({ host, port, previewPath });
+    await waitForAutoSvgaPreview({ host, port, previewPath, failOnOccupied: false });
     if (openBrowser) openDefaultBrowser(url).unref();
 
     if (keepAlive) {
