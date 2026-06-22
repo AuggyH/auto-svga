@@ -51,6 +51,12 @@ Date: 2026-06-22
   assertions. The internal package proof passed and generated an unsigned,
   unnotarized, productionApproved=false macOS arm64 archive with SHA-256
   `cd601694ae693c311a295081b06614f788d25222b194f663c633a36407837335`.
+- P6 repair-2 integration repair `bd00e394da97e3e35d3427538eacfe5ce05bb2e8`
+  repaired shared Electron smoke execution, item-specific parity evidence
+  binding, hidden/background normal proof windows, packaged legacy vendor
+  loading, and full-canvas nonblank proof.
+- `npm test` passed with 211 tests on repair-2 integration head
+  `bd00e394da97e3e35d3427538eacfe5ce05bb2e8`.
 - Root `npm test` passed with 207 tests on P6 integration head.
 - `npm run desktop:smoke` passed serially with playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, invalid file, lifecycle, and cleanup all true.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` produced the ignored macOS internal prototype package proof.
@@ -58,7 +64,7 @@ Date: 2026-06-22
 
 ## Next Action
 
-Continue P6 repair-2 with integration repair, final validation, independent
-review, and a privacy-clean HUMAN_REQUIRED handoff. Electron debug and proof
-runs should be quiet/background whenever possible; visible App windows are
-reserved for final owner-facing evidence only.
+Continue P6 repair-2 with final loop validation, independent review, and a
+privacy-clean HUMAN_REQUIRED handoff. Electron debug and proof runs should be
+quiet/background whenever possible; visible App windows are reserved for final
+owner-facing evidence only.
