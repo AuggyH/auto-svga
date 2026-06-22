@@ -31,6 +31,32 @@ export interface P6ParityEvidenceRef {
   summary: string;
 }
 
+export interface P6ParityEvidenceSet {
+  artifactIds: readonly string[];
+  summary: string;
+}
+
+export interface P6ParityItemCheck {
+  id: string;
+  passed: boolean;
+  artifactIds: readonly string[];
+  summary: string;
+  expected?: string;
+  actual?: string;
+}
+
+export interface P6ParityRuntimeItemEvidence {
+  id: string;
+  required: boolean;
+  status: P6ParityEvidenceStatus;
+  checks: readonly P6ParityItemCheck[];
+  webEvidence: P6ParityEvidenceSet;
+  desktopEvidence: P6ParityEvidenceSet;
+  comparisonEvidence: P6ParityEvidenceSet;
+  sharedSourceEvidence: P6ParityEvidenceSet;
+  failures: readonly string[];
+}
+
 export interface P6ParityInventory {
   itemCount: number;
   itemIds: readonly string[];
@@ -40,6 +66,7 @@ export interface P6ParitySectionBase<TId extends P6ParitySectionId> {
   id: TId;
   status: P6ParityEvidenceStatus;
   requiredEvidenceCount: number;
+  items: readonly P6ParityRuntimeItemEvidence[];
   evidence: readonly P6ParityEvidenceRef[];
   inventory: P6ParityInventory;
 }
@@ -187,6 +214,7 @@ export function validateP6ParityReportV1(
     validateSection(value.sections[key], key, sectionId, requiredCounts[sectionId], errors);
   }
   validateArtifactIndex(value.sections.artifactIndex, errors);
+  validateDerivedSectionStatuses(value.sections, errors);
   validateSectionArtifactRefs(value.sections, errors);
   validateNoSilentInventoryShrink(value, options.previousReport, errors);
 
@@ -259,6 +287,13 @@ function validateSection(
       validateEvidence(evidence, `sections.${key}.evidence[${index}]`, errors)
     );
   }
+  if (!Array.isArray(value.items)) {
+    errors.push(`sections.${key}.items must be an array`);
+  } else {
+    value.items.forEach((item, index) =>
+      validateRuntimeItemEvidence(item, `sections.${key}.items[${index}]`, errors)
+    );
+  }
   validateInventory(value.inventory, `sections.${key}.inventory`, errors);
 }
 
@@ -269,6 +304,87 @@ function validateEvidence(value: unknown, path: string, errors: string[]): void 
   }
   if (typeof value.id !== "string" || value.id.length === 0) errors.push(`${path}.id must be a non-empty string`);
   if (!isEvidenceStatus(value.status)) errors.push(`${path}.status is invalid`);
+  if (!Array.isArray(value.artifactIds)) {
+    errors.push(`${path}.artifactIds must be an array`);
+  } else if (!value.artifactIds.every((artifactId) => typeof artifactId === "string" && artifactId.length > 0)) {
+    errors.push(`${path}.artifactIds must contain only non-empty strings`);
+  }
+  if (typeof value.summary !== "string" || value.summary.length === 0) {
+    errors.push(`${path}.summary must be a non-empty string`);
+  }
+}
+
+function validateRuntimeItemEvidence(value: unknown, path: string, errors: string[]): void {
+  if (!isRecord(value)) {
+    errors.push(`${path} must be an object`);
+    return;
+  }
+  if (typeof value.id !== "string" || value.id.length === 0) errors.push(`${path}.id must be a non-empty string`);
+  if (typeof value.required !== "boolean") errors.push(`${path}.required must be a boolean`);
+  if (!isEvidenceStatus(value.status)) errors.push(`${path}.status is invalid`);
+  if (!Array.isArray(value.checks)) {
+    errors.push(`${path}.checks must be an array`);
+  } else {
+    if (value.checks.length === 0) errors.push(`${path}.checks must not be empty`);
+    value.checks.forEach((check, index) => validateRuntimeCheck(check, `${path}.checks[${index}]`, errors));
+    if (isEvidenceStatus(value.status) && value.status !== statusFromChecks(value.checks)) {
+      errors.push(`${path}.status must be derived from checks.every(check => check.passed)`);
+    }
+  }
+  for (const evidenceKey of [
+    "webEvidence",
+    "desktopEvidence",
+    "comparisonEvidence",
+    "sharedSourceEvidence"
+  ] as const) {
+    validateEvidenceSet(value[evidenceKey], `${path}.${evidenceKey}`, errors);
+  }
+  if (!Array.isArray(value.failures)) {
+    errors.push(`${path}.failures must be an array`);
+  } else if (!value.failures.every((failure) => typeof failure === "string" && failure.length > 0)) {
+    errors.push(`${path}.failures must contain only non-empty strings`);
+  } else if (Array.isArray(value.checks)) {
+    const failedChecks = value.checks
+      .filter((check) => isRecord(check) && check.passed === false)
+      .map((check) => check.id);
+    if (failedChecks.length === 0 && value.failures.length > 0) {
+      errors.push(`${path}.failures must be empty when all checks pass`);
+    }
+    for (const failedCheckId of failedChecks) {
+      if (!value.failures.includes(failedCheckId)) {
+        errors.push(`${path}.failures must include failed check ${failedCheckId}`);
+      }
+    }
+  }
+}
+
+function validateRuntimeCheck(value: unknown, path: string, errors: string[]): void {
+  if (!isRecord(value)) {
+    errors.push(`${path} must be an object`);
+    return;
+  }
+  if (typeof value.id !== "string" || value.id.length === 0) errors.push(`${path}.id must be a non-empty string`);
+  if (typeof value.passed !== "boolean") errors.push(`${path}.passed must be a boolean`);
+  if (!Array.isArray(value.artifactIds)) {
+    errors.push(`${path}.artifactIds must be an array`);
+  } else if (!value.artifactIds.every((artifactId) => typeof artifactId === "string" && artifactId.length > 0)) {
+    errors.push(`${path}.artifactIds must contain only non-empty strings`);
+  }
+  if (typeof value.summary !== "string" || value.summary.length === 0) {
+    errors.push(`${path}.summary must be a non-empty string`);
+  }
+  for (const optionalKey of ["expected", "actual"] as const) {
+    if (value[optionalKey] !== undefined && typeof value[optionalKey] !== "string") {
+      errors.push(`${path}.${optionalKey} must be a string when present`);
+    }
+  }
+}
+
+function validateEvidenceSet(value: unknown, path: string, errors: string[]): void {
+  if (!isRecord(value)) {
+    errors.push(`${path} must be an object`);
+    return;
+  }
   if (!Array.isArray(value.artifactIds)) {
     errors.push(`${path}.artifactIds must be an array`);
   } else if (!value.artifactIds.every((artifactId) => typeof artifactId === "string" && artifactId.length > 0)) {
@@ -356,6 +472,7 @@ function validateSectionArtifactRefs(
   errors: string[]
 ): void {
   const artifactIds = collectArtifactIds(sections.artifactIndex);
+  const artifactIdCount = artifactIds.size;
   for (const [key] of SECTION_KEYS) {
     const section = sections[key];
     if (!isRecord(section) || !Array.isArray(section.evidence)) continue;
@@ -367,7 +484,75 @@ function validateSectionArtifactRefs(
         }
       });
     });
+    if (Array.isArray(section.items)) {
+      section.items.forEach((item, itemIndex) => {
+        if (!isRecord(item)) return;
+        for (const evidenceKey of [
+          "webEvidence",
+          "desktopEvidence",
+          "comparisonEvidence",
+          "sharedSourceEvidence"
+        ] as const) {
+          validateEvidenceArtifactRefs(
+            item[evidenceKey],
+            `sections.${key}.items[${itemIndex}].${evidenceKey}`,
+            artifactIds,
+            artifactIdCount,
+            errors
+          );
+        }
+        if (Array.isArray(item.checks)) {
+          item.checks.forEach((check, checkIndex) => {
+            validateEvidenceArtifactRefs(
+              check,
+              `sections.${key}.items[${itemIndex}].checks[${checkIndex}]`,
+              artifactIds,
+              artifactIdCount,
+              errors
+            );
+          });
+        }
+      });
+    }
   }
+}
+
+function validateEvidenceArtifactRefs(
+  value: unknown,
+  path: string,
+  artifactIds: ReadonlySet<string>,
+  artifactIdCount: number,
+  errors: string[]
+): void {
+  if (!isRecord(value) || !Array.isArray(value.artifactIds)) return;
+  if (artifactIdCount > 1 && value.artifactIds.length === artifactIdCount) {
+    errors.push(`${path}.artifactIds must not bind every artifact generically`);
+  }
+  value.artifactIds.forEach((artifactId) => {
+    if (typeof artifactId === "string" && !artifactIds.has(artifactId)) {
+      errors.push(`${path}.artifactIds references unknown artifact ${artifactId}`);
+    }
+  });
+}
+
+function validateDerivedSectionStatuses(
+  sections: Record<string, unknown>,
+  errors: string[]
+): void {
+  for (const [key] of SECTION_KEYS) {
+    const section = sections[key];
+    if (!isRecord(section) || !Array.isArray(section.items) || !isEvidenceStatus(section.status)) continue;
+    const derivedStatus = section.items.every((item) => isRecord(item) && item.status === "pass")
+      ? "pass"
+      : "fail";
+    if (section.status !== derivedStatus) {
+      errors.push(`sections.${key}.status must be derived from item statuses`);
+    }
+  }
+}
+
+function statusFromChecks(checks: readonly unknown[]): P6ParityEvidenceStatus {
+  return checks.every((check) => isRecord(check) && check.passed === true) ? "pass" : "fail";
 }
 
 function collectArtifactIds(artifactIndex: unknown): ReadonlySet<string> {

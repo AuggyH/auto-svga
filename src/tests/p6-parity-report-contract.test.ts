@@ -6,6 +6,7 @@ import {
   parseP6ParityReportV1,
   validateP6ParityReportV1,
   type P6ArtifactIndexReport,
+  type P6ParityRuntimeItemEvidence,
   type P6ParityReportV1,
   type P6ParitySectionBase,
   type P6ParitySectionId
@@ -26,17 +27,17 @@ test("P6 parity contract enumerates every required report schema", () => {
   ]);
 });
 
-test("validates a complete partial report without claiming parity pass", () => {
+test("validates a complete fail report without claiming parity pass", () => {
   const report = fixtureReport();
   const validation = validateP6ParityReportV1(report);
 
   assert.deepEqual(validation, { valid: true, errors: [] });
-  assert.equal(report.sections.featureParity.status, "partial");
+  assert.equal(report.sections.featureParity.status, "fail");
   assert.equal(parseP6ParityReportV1(JSON.stringify(report)).source.branch, "agent/codex/p6-a4-parity-tests");
 });
 
 test("validates a complete pass report with artifact-bound final evidence", () => {
-  const report = fixtureReport("pass");
+  const report = fixtureReport(true);
   const sectionNames = [
     "featureParity",
     "visualParity",
@@ -54,6 +55,7 @@ test("validates a complete pass report with artifact-bound final evidence", () =
     assert.equal(report.sections[sectionName].status, "pass");
     assert.ok(report.sections[sectionName].evidence.every((evidence) => evidence.status === "pass"));
     assert.ok(report.sections[sectionName].evidence.every((evidence) => evidence.artifactIds.length > 0));
+    assert.ok(report.sections[sectionName].items.every((item) => item.status === "pass"));
   }
 
   assert.deepEqual(validateP6ParityReportV1(report), { valid: true, errors: [] });
@@ -153,7 +155,53 @@ test("rejects evidence in any parity section that references missing artifacts",
   ));
 });
 
-function fixtureReport(status: "partial" | "pass" = "partial"): P6ParityReportV1 {
+test("rejects item status that is not derived from checks", () => {
+  const report = fixtureReport(true);
+  report.sections.featureParity.items = [{
+    ...report.sections.featureParity.items[0],
+    status: "pass",
+    checks: [{ ...report.sections.featureParity.items[0].checks[0], passed: false }],
+    failures: ["runtime-check"]
+  }];
+
+  const validation = validateP6ParityReportV1(report);
+
+  assert.equal(validation.valid, false);
+  assert.ok(validation.errors.includes(
+    "sections.featureParity.items[0].status must be derived from checks.every(check => check.passed)"
+  ));
+});
+
+test("rejects generic artifact blanket binding on item evidence", () => {
+  const report = fixtureReport(true);
+  const extraArtifact = createP6ParityArtifactBinding({
+    id: "desktop-proof",
+    path: "artifacts/p6/desktop-proof.json",
+    role: "desktop_runtime_proof",
+    bytes: new TextEncoder().encode("desktop proof")
+  });
+  report.sections.artifactIndex = artifactIndex([
+    ...report.sections.artifactIndex.artifacts,
+    extraArtifact
+  ], ["feature-inventory"], true);
+  const allArtifactIds = report.sections.artifactIndex.artifacts.map((artifact) => artifact.id);
+  report.sections.featureParity.items = [{
+    ...report.sections.featureParity.items[0],
+    webEvidence: {
+      ...report.sections.featureParity.items[0].webEvidence,
+      artifactIds: allArtifactIds
+    }
+  }];
+
+  const validation = validateP6ParityReportV1(report);
+
+  assert.equal(validation.valid, false);
+  assert.ok(validation.errors.includes(
+    "sections.featureParity.items[0].webEvidence.artifactIds must not bind every artifact generically"
+  ));
+});
+
+function fixtureReport(pass = false): P6ParityReportV1 {
   const artifact = createP6ParityArtifactBinding({
     id: "feature-inventory",
     path: "artifacts/p6/feature-inventory.json",
@@ -170,16 +218,16 @@ function fixtureReport(status: "partial" | "pass" = "partial"): P6ParityReportV1
       branch: "agent/codex/p6-a4-parity-tests"
     },
     sections: {
-      featureParity: section("feature_parity", ["feature-checklist"], status),
-      visualParity: section("visual_parity", ["pixel-reference"], status),
-      interactionParity: section("interaction_parity", ["keyboard-flow"], status),
-      stateParity: section("state_parity", ["state-persistence"], status),
-      motionParity: section("motion_parity", ["frame-timing"], status),
-      browserRegression: section("browser_regression", ["viewport-matrix"], status),
-      desktopRuntimeProof: section("desktop_runtime_proof", ["electron-smoke"], status),
-      securityAudit: section("security_audit", ["csp-review"], status),
-      accessibilityReport: section("accessibility_report", ["axe-keyboard"], status),
-      artifactIndex: artifactIndex([artifact], ["feature-inventory"], status)
+      featureParity: section("feature_parity", ["feature-checklist"], pass),
+      visualParity: section("visual_parity", ["pixel-reference"], pass),
+      interactionParity: section("interaction_parity", ["keyboard-flow"], pass),
+      stateParity: section("state_parity", ["state-persistence"], pass),
+      motionParity: section("motion_parity", ["frame-timing"], pass),
+      browserRegression: section("browser_regression", ["viewport-matrix"], pass),
+      desktopRuntimeProof: section("desktop_runtime_proof", ["electron-smoke"], pass),
+      securityAudit: section("security_audit", ["csp-review"], pass),
+      accessibilityReport: section("accessibility_report", ["axe-keyboard"], pass),
+      artifactIndex: artifactIndex([artifact], ["feature-inventory"], pass)
     }
   };
 }
@@ -187,19 +235,22 @@ function fixtureReport(status: "partial" | "pass" = "partial"): P6ParityReportV1
 function section<TId extends Exclude<P6ParitySectionId, "artifact_index">>(
   id: TId,
   itemIds: readonly string[],
-  status: "partial" | "pass" = "partial"
+  pass = false
 ): P6ParitySectionBase<TId> {
+  const items = itemIds.map((itemId) => runtimeItem(itemId, pass));
+  const status = pass ? "pass" : "fail";
   return {
     id,
     status,
     requiredEvidenceCount: 1,
+    items,
     evidence: [{
       id: `${id}-evidence`,
       status,
-      artifactIds: status === "pass" ? ["feature-inventory"] : [],
-      summary: status === "pass"
+      artifactIds: pass ? ["feature-inventory"] : [],
+      summary: pass
         ? `${id} final integration evidence is hash-bound.`
-        : `${id} framework placeholder for final integration evidence.`
+        : `${id} fails closed until runtime evidence passes.`
     }],
     inventory: {
       itemCount: itemIds.length,
@@ -211,12 +262,15 @@ function section<TId extends Exclude<P6ParitySectionId, "artifact_index">>(
 function artifactIndex(
   artifacts: P6ArtifactIndexReport["artifacts"],
   manifestArtifactIds: readonly string[],
-  status: "partial" | "pass" = "partial"
+  pass = false
 ): P6ArtifactIndexReport {
+  const status = pass ? "pass" : "fail";
+  const items = artifacts.map((artifact) => runtimeItem(artifact.id, pass, [artifact.id]));
   return {
     id: "artifact_index",
     status,
     requiredEvidenceCount: 1,
+    items,
     evidence: [{
       id: "artifact-index-evidence",
       status,
@@ -235,5 +289,40 @@ function artifactIndex(
       artifactIds: manifestArtifactIds,
       sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }]
+  };
+}
+
+function runtimeItem(
+  id: string,
+  pass: boolean,
+  artifactIds: readonly string[] = pass ? ["feature-inventory"] : []
+): P6ParityRuntimeItemEvidence {
+  return {
+    id,
+    required: true,
+    status: pass ? "pass" : "fail",
+    checks: [{
+      id: "runtime-check",
+      passed: pass,
+      artifactIds,
+      summary: "Runtime item check is derived from evidence."
+    }],
+    webEvidence: {
+      artifactIds,
+      summary: "Web evidence is item-specific."
+    },
+    desktopEvidence: {
+      artifactIds,
+      summary: "Desktop evidence is item-specific."
+    },
+    comparisonEvidence: {
+      artifactIds,
+      summary: "Comparison evidence is item-specific."
+    },
+    sharedSourceEvidence: {
+      artifactIds: [],
+      summary: "Shared source evidence is hash-checked."
+    },
+    failures: pass ? [] : ["runtime-check"]
   };
 }
