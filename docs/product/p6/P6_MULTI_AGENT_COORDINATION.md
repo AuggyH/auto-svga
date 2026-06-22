@@ -7,8 +7,8 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 ## Current Integration State
 
 - Integration branch: `agent/codex/p6-integration`
-- Current integration head after A2 Repair 4 integration:
-  `184dda7b351b78d49125ed0a006a4a2d70d4b234`
+- Current integration head after A3 Repair 4 integration and A0 shared-shell repair:
+  `dc2783aaf579ffa0a23015e5de8c4048a12f59c9`
 - Current loop state: P6 Repair 4 is `implementation_in_progress`.
 - Existing P6 workers must be reused; do not recreate them.
 - Worktree paths are runtime thread metadata and must not be committed to this

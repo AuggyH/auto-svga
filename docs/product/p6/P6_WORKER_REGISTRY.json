@@ -4,13 +4,13 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "184dda7b351b78d49125ed0a006a4a2d70d4b234",
+  "currentIntegrationHeadCommit": "dc2783aaf579ffa0a23015e5de8c4048a12f59c9",
   "currentRepairRound": 4,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T09:38:22Z",
-  "registryRefreshedAt": "2026-06-22T10:22:37Z",
+  "registryRefreshedAt": "2026-06-22T10:26:59Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -267,12 +267,12 @@
       "role": "Electron Host",
       "visibleThreadId": "019eeb7e-072c-7382-afe5-330eb92b9d2f",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "running",
+      "lifecycleStatus": "integrated",
       "branch": "agent/codex/p6-r4-a3-electron-host",
       "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
       "headCommit": "7ff38b111a2232641917e358670e919dd3688537",
-      "integrationCommit": null,
-      "workerHandoffFolder": null,
+      "integrationCommit": "240fe9826658c6bcb549079eb03883b0ddaab2cb",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A3-R4.md",
       "contextPacketPath": "docs/product/p6/worker-context/A3.md",
       "ownedPaths": [
         "tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
@@ -288,8 +288,10 @@
       "dependencies": [
         "A2"
       ],
-      "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:22:37Z",
+      "requestedIntegrationChanges": [
+        "A0 applied integration repair dc2783aaf579ffa0a23015e5de8c4048a12f59c9 so the Electron default wrapper mounts the canonical shared product shell."
+      ],
+      "lastVerifiedAt": "2026-06-22T10:26:59Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-r2-a3-electron-host",
@@ -330,7 +332,7 @@
         "A3"
       ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:22:37Z",
+      "lastVerifiedAt": "2026-06-22T10:26:59Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a4-parity-tests",
@@ -368,7 +370,7 @@
         "A4"
       ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:22:37Z",
+      "lastVerifiedAt": "2026-06-22T10:26:59Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a5-macos-package",
