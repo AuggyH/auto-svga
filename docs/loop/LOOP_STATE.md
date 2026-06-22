@@ -6,8 +6,8 @@ Date: 2026-06-22
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: implementation_in_progress
-- Next Action: repair
+- State: terminal_human_required
+- Next Action: external_review
 - repairRound: 3
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
@@ -70,11 +70,22 @@ Date: 2026-06-22
 - `npm run desktop:smoke` passed serially with playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, invalid file, lifecycle, and cleanup all true.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` produced the ignored macOS internal prototype package proof.
 - `npm run loop:validate` passed on clean source head `38dcd6a1cc6ef55e21b0744d12c5c6ede4bd2fc7`.
+- P6 repair-3 legal entry commit `ba4b178d12d6e8179e4844e7557cc9ec27949875`
+  recorded external review 2 and entered repair round 3 within budget.
+- P6 repair-3 multi-worker and visible handoff protocol commit
+  `24a338e8ea7d4c76742cf013a7857af18d482eba` upgraded the registry to
+  schemaVersion 2, reused existing visible Worktree Worker threads, added
+  Worker Context Packets, and added protocol/visibility validators.
+- P6 repair-3 evidence refresh commit
+  `92f917e4c0aa82f77bb433675f38b4e1cd092140` regenerated tracked
+  source-neutral P6 parity snapshots after protocol hardening.
+- P6 repair-3 owner handoff builder commit
+  `c92a1f7344864fa37d21be33a6bd100784e839df` added terminal visible
+  owner handoff packaging and stricter review visibility checks.
 
 ## Next Action
 
-Execute P6 Repair 3 from `docs/loop/reviews/P6-external-product-review-2.md`.
-Do not start Phase 2, do not accept P6 automatically, and do not reset or
-discard completed P6 work. First repair the multi-worker and visible handoff
-mechanisms, then continue evidence-driven Web/Desktop parity and macOS internal
-App proof work under the frozen P6 contract.
+Generate final head-bound ignored P6 evidence, run final validation twice,
+seal the HUMAN_REQUIRED packet, create the owner-visible review folder and ZIPs,
+then wait for external owner review. Do not start Phase 2, do not accept P6
+automatically, and do not release, push, merge, sign, notarize, or deploy.
