@@ -105,12 +105,6 @@ Date: 2026-06-22
   `bf1d71be6141946fde9908b4479be41bf5a14355` pruned compiled tests from
   Electron prototype runtimes and repaired owner handoff privacy scanning for
   nested ZIPs and known Electron vendor binaries.
-- Final ignored P6 evidence was regenerated under `.artifacts/product/P6` and
-  bound to head `bf1d71be6141946fde9908b4479be41bf5a14355`.
-- Final P6 parity report is `HUMAN_REQUIRED`: browser regression, desktop
-  runtime proof, security audit, accessibility report, and artifact index pass;
-  visual, feature, interaction, state, and motion parity still contain
-  59 item-specific non-pass Web runtime evidence entries.
 - P6 repair-4 final owner-visible handoff commit
   `290272e056653dadd0d9a89d0a7a432335187bca` is
   `REJECTED_BY_EXTERNAL_REVIEW` for owner acceptance because required
@@ -128,15 +122,20 @@ Date: 2026-06-22
 - P6 repair-5 A0 integration repair commit
   `8247a7297cb0a0199411bc1635b2640890070470` closed all required parity
   non-pass entries in the generated P6 parity report.
-- Final ignored P6 evidence generated before terminal state recorded
+- P6 repair-5 terminal source-state commit
+  `14285c289aafa8124881e2066844552b2d2929bf` keeps the Repair 4 failure
+  matrix as historical rejected context only; it is not current P6 acceptance
+  evidence.
+- Final ignored P6 evidence for Repair 5 generated
   `parityStatus=pass` with `nonPassEvidenceCount=0` under
   `.artifacts/product/P6` for source head
-  `8247a7297cb0a0199411bc1635b2640890070470`.
-- Root `npm test` passed with 216 tests on
-  `8247a7297cb0a0199411bc1635b2640890070470`.
-- Two preliminary `npm run loop:validate` runs passed on
-  `8247a7297cb0a0199411bc1635b2640890070470` with clean source workspace at
+  `14285c289aafa8124881e2066844552b2d2929bf`.
+- Two final `npm run loop:validate` runs passed on
+  `14285c289aafa8124881e2066844552b2d2929bf` with clean source workspace at
   start and finish.
+- P6 remains `HUMAN_REQUIRED` only for owner acceptance. Phase 2 remains
+  `NOT_STARTED`; the macOS App remains unsigned, unnotarized, internal-only,
+  and `productionApproved=false`.
 
 ## Next Action
 

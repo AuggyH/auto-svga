@@ -779,6 +779,7 @@ function sanitizeRuntimeArgument(value) {
     .replaceAll(repoRoot, "<repo-root>")
     .replace(/\/Users\/[^/\s]+/g, "<home>")
     .replace(/\/private\/var\/folders\/[^\s"]+/g, "<temp>")
+    .replace(/\/var\/folders\/[^\s"]+/g, "<temp>")
     .replace(/[A-Za-z]:\\Users\\[^\\\s]+/g, "<home>");
 }
 
@@ -1479,7 +1480,7 @@ async function cleanupRuntime() {
   rmSync(sessionRoot, { recursive: true, force: true });
   console.log(`AUTO_SVGA_RUNTIME_CLEANUP ${JSON.stringify({
     serverClosed,
-    sessionRoot: sanitizeRuntimeArgument(sessionRoot),
+    sessionRootRedacted: sanitizeRuntimeArgument(sessionRoot),
     tempRemoved: true
   })}`);
 }

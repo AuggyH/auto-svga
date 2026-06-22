@@ -20,10 +20,11 @@ Web/Desktop parity remains incomplete.
 
 Historical packet:
 
-- `review/P6-290272e/REVIEW_PACKET.md`
-- `review/P6-290272e/P6-290272e-review-upload.zip`
-- `review/P6-290272e/Auto-SVGA-macOS-internal-290272e.zip`
+- Repair 4 owner-visible packet
 - `.artifacts/product/P6/p6-parity-report.json`
+
+The historical packet is not a current handoff target and must not be used for
+Repair 5 owner review.
 
 Status: `REJECTED_BY_EXTERNAL_REVIEW`
 

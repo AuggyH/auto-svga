@@ -128,7 +128,7 @@ export async function generateStateComparison(p6Root, stateId) {
     result.web.sha256 && result.desktop.sha256 && result.web.sha256 !== result.desktop.sha256
   );
   if (result.web.present && result.desktop.present) {
-    const comparison = await writeComparisonImage(webSource, desktopSource, comparisonOutput);
+    const comparison = await writeComparisonImage(webSource, desktopSource, comparisonOutput, p6Root);
     result.comparison = comparison;
     result.checks.comparisonGenerated = comparison.present === true;
   }
@@ -210,7 +210,7 @@ async function imageEvidence(filePath, repoPath) {
   }
 }
 
-async function writeComparisonImage(webPath, desktopPath, outputPath) {
+async function writeComparisonImage(webPath, desktopPath, outputPath, p6Root) {
   const web = decode(await readFile(webPath), { checkCrc: true });
   const desktop = decode(await readFile(desktopPath), { checkCrc: true });
   const width = web.width + desktop.width + 4;
@@ -224,7 +224,7 @@ async function writeComparisonImage(webPath, desktopPath, outputPath) {
   await writeFile(outputPath, bytes);
   return {
     present: true,
-    path: outputPath,
+    path: relativeArtifactPath(outputPath, p6Root),
     sha256: createHash("sha256").update(bytes).digest("hex"),
     width,
     height,

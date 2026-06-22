@@ -243,7 +243,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /fileOpenTargets: \["primary-svga", "secondary-svga", "reference-media"\]/);
   assert.match(main, /menuActions: \["load-latest-export-artifact", "toggle-logs", "open-settings", "quit"\]/);
   assert.match(main, /AUTO_SVGA_RUNTIME_CLEANUP/);
-  assert.match(main, /sessionRoot: sanitizeRuntimeArgument\(sessionRoot\)/);
+  assert.match(main, /sessionRootRedacted: sanitizeRuntimeArgument\(sessionRoot\)/);
   assert.match(main, /tempRemoved: true/);
   assert.doesNotMatch(main, /actualArgv:\s*process\.argv/);
   assert.match(main, /driveCanonicalNormalProof/);

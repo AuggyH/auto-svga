@@ -7,9 +7,12 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 ## Current Integration State
 
 - Integration branch: `agent/codex/p6-integration`
-- Current integration head after A5 Repair 5 integration:
-  `023c12be89138bea8f85fca00dfc6dd2244ca31d`
-- Current loop state: P6 Repair 5 is `implementation_in_progress`; A1 through A5 are integrated and A0 integration repair is next.
+- Current Repair 5 terminal candidate head:
+  `14285c289aafa8124881e2066844552b2d2929bf`
+- Current loop state: P6 Repair 5 has integrated A1 through A5, completed A0
+  integration repair, and generated head-bound parity evidence with
+  `nonPassEvidenceCount=0`. P6 remains `HUMAN_REQUIRED` only for owner
+  acceptance; Phase 2 is `NOT_STARTED`.
 - Repair 4 terminal parity status was `HUMAN_REQUIRED`; browser regression,
   security audit, and artifact index passed, but visual, feature, interaction,
   state, motion, Desktop proof, and Desktop rendered-state evidence still
@@ -18,9 +21,9 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 - Worktree paths are runtime thread metadata and must not be committed to this
   coordination document or to `P6_WORKER_REGISTRY.json`.
 - Repair 4 terminal evidence is historical and rejected by external review for
-  owner acceptance. Do not use `review/P6-290272e/`, the reviewed
-  `p6-parity-report.json`, old screenshots, old reviewer JSON, old App proof,
-  or old sealed packets as terminal Repair 5 acceptance evidence.
+  owner acceptance. Do not use the Repair 4 reviewed parity report, old
+  screenshots, old reviewer JSON, old App proof, or old sealed packets as
+  terminal Repair 5 acceptance evidence.
 
 ## Existing Visible Workers
 
