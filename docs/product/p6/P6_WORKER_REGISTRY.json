@@ -4,13 +4,13 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "e3213c0b3fe25cf7208fc944c57cec91aca88cfa",
+  "currentIntegrationHeadCommit": "bf1d71be6141946fde9908b4479be41bf5a14355",
   "currentRepairRound": 4,
   "terminalHandoffReady": true,
-  "expectedFinalHeadCommit": "e3213c0b3fe25cf7208fc944c57cec91aca88cfa",
+  "expectedFinalHeadCommit": "bf1d71be6141946fde9908b4479be41bf5a14355",
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T09:38:22Z",
-  "registryRefreshedAt": "2026-06-22T11:01:54Z",
+  "registryRefreshedAt": "2026-06-22T12:28:26Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -31,7 +31,7 @@
     "productOutcome": "LOCAL_PREVIEW_VISUAL_DIRECTION_ACCEPTED_BUT_FULL_PARITY_NOT_PROVEN"
   },
   "repair4TerminalEvidence": {
-    "a0RepairCommit": "e3213c0b3fe25cf7208fc944c57cec91aca88cfa",
+    "a0RepairCommit": "bf1d71be6141946fde9908b4479be41bf5a14355",
     "parityReportPath": ".artifacts/product/P6/p6-parity-report.json",
     "parityStatus": "HUMAN_REQUIRED",
     "passingSections": [

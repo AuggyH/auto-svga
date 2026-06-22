@@ -8,12 +8,12 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 
 - Integration branch: `agent/codex/p6-integration`
 - Current integration head after Repair 4 actual parity evidence generation:
-  `e3213c0b3fe25cf7208fc944c57cec91aca88cfa`
+  `bf1d71be6141946fde9908b4479be41bf5a14355`
 - Current loop state: P6 Repair 4 is `terminal_human_required`.
 - Terminal parity status: `HUMAN_REQUIRED`; browser regression, desktop runtime
   proof, security audit, accessibility report, and artifact index pass, while
   visual, feature, interaction, state, and motion parity still contain
-  item-specific non-pass runtime evidence.
+  59 item-specific non-pass runtime evidence entries.
 - Existing P6 workers must be reused; do not recreate them.
 - Worktree paths are runtime thread metadata and must not be committed to this
   coordination document or to `P6_WORKER_REGISTRY.json`.

@@ -101,12 +101,16 @@ Date: 2026-06-22
   `e3213c0b3fe25cf7208fc944c57cec91aca88cfa` fixed local preview service
   detection so launcher validation no longer misclassifies the real preview
   page because of case-sensitive `SVGA` text matching.
+- P6 repair-4 package proof source audit commit
+  `bf1d71be6141946fde9908b4479be41bf5a14355` pruned compiled tests from
+  Electron prototype runtimes and repaired owner handoff privacy scanning for
+  nested ZIPs and known Electron vendor binaries.
 - Final ignored P6 evidence was regenerated under `.artifacts/product/P6` and
-  bound to head `e3213c0b3fe25cf7208fc944c57cec91aca88cfa`.
+  bound to head `bf1d71be6141946fde9908b4479be41bf5a14355`.
 - Final P6 parity report is `HUMAN_REQUIRED`: browser regression, desktop
   runtime proof, security audit, accessibility report, and artifact index pass;
   visual, feature, interaction, state, and motion parity still contain
-  item-specific non-pass Web runtime evidence.
+  59 item-specific non-pass Web runtime evidence entries.
 
 ## Next Action
 
