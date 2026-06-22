@@ -11,7 +11,7 @@ const repoRoot = path.resolve(scriptDir, "..");
 
 const slash = "/";
 const windowsDrivePathTextPattern = "[A-Za-z]:\\\\+(?:Users\\\\+)?[^\\\\\\s\"'`]+";
-const uncPathTextPattern = "\\\\{2,}[A-Za-z0-9_.-]+\\\\+[A-Za-z0-9_.-]+";
+const uncPathTextPattern = "\\\\{2,}[A-Za-z0-9_.-]{2,}\\\\+[A-Za-z0-9_.-]{2,}";
 const localPathTextPattern = String.raw`(?:${slash}${"Users"}${slash}|${slash}private${slash}|${slash}var${slash}folders${slash}|${slash}tmp${slash}|${windowsDrivePathTextPattern}|${uncPathTextPattern})`;
 const localPathPattern = new RegExp(String.raw`(?:^|[^A-Za-z0-9_.-])${localPathTextPattern}`);
 const markdownLinkPattern = /\[[^\]]+\]\(([^)]+)\)/g;

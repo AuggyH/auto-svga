@@ -184,7 +184,10 @@ test("visible handoff allows escaped regex and ignore patterns in patch files", 
 test("visible handoff rejects Windows drive and UNC absolute paths", async () => {
   await withTempDir(async (root) => {
     const folder = await createWorkerFolder(root);
-    await writeFile(join(folder, "README.md"), "Paths: C:\\\\Users\\\\example\\\\asset.svga and \\\\server\\\\share\n", "utf8");
+    const separator = "\\";
+    const drivePath = ["C:", separator, "Users", separator, "example", separator, "asset.svga"].join("");
+    const uncPath = [separator, separator, "server", separator, "share"].join("");
+    await writeFile(join(folder, "README.md"), `Paths: ${drivePath} and ${uncPath}\n`, "utf8");
     const result = await validateReviewVisibility({ mode: "worker", folder });
 
     assert.equal(result.status, "fail");
