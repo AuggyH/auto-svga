@@ -4,7 +4,7 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
-  "lastIntegratedWorkerCommit": "01f6d9584359aa59611b97e2f84fb977046f78f4",
+  "lastIntegratedWorkerCommit": "3e56733a9f5bdc3c246ad58cc1afecc765ac6bd1",
   "currentRepairRound": 6,
   "lifecycleStatus": "repair_6_in_progress",
   "finalHeadBinding": {
@@ -15,10 +15,10 @@
   },
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T13:38:00Z",
-  "registryRefreshedAt": "2026-06-22T17:46:58Z",
+  "registryRefreshedAt": "2026-06-22T17:49:54Z",
   "registryValidation": {
     "status": "pass",
-    "checkedAt": "2026-06-22T17:46:58Z",
+    "checkedAt": "2026-06-22T17:49:54Z",
     "errors": []
   },
   "rules": {
@@ -727,9 +727,9 @@
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r6-a3-visible-normal-app",
       "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
-      "headCommit": null,
-      "status": "pending",
-      "lastVerifiedAt": "2026-06-22T17:46:58Z",
+      "headCommit": "3e56733a9f5bdc3c246ad58cc1afecc765ac6bd1",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T17:49:54Z",
       "ownedPaths": [
         "tools/electron-prototype/experiments/svga-web/main.cjs",
         "tools/electron-prototype/experiments/svga-web/preload.cjs",
@@ -738,9 +738,17 @@
       ],
       "dependencies": [],
       "requestedIntegrationChanges": [],
-      "integrationCommit": null,
-      "lifecycleStatus": "planned",
-      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A3-R6.md"
+      "integrationCommit": "6851d352df312dc4ae97f381429a1a79102e4612",
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A3-R6.md",
+      "tests": [
+        "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/preload.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
+        "node --check tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs",
+        "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+        "git diff --check HEAD~1..HEAD"
+      ]
     },
     {
       "workerId": "A4",
@@ -752,7 +760,7 @@
       "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
       "headCommit": null,
       "status": "pending",
-      "lastVerifiedAt": "2026-06-22T17:46:58Z",
+      "lastVerifiedAt": "2026-06-22T17:49:54Z",
       "ownedPaths": [
         "tools/p6/generate-p6-evidence.mjs",
         "tools/p6/parity-runner.mjs",
@@ -760,9 +768,7 @@
         "tools/p6/parity-mutation-tests.mjs",
         "P6 parity contract tests"
       ],
-      "dependencies": [
-        "A3"
-      ],
+      "dependencies": [],
       "requestedIntegrationChanges": [],
       "integrationCommit": null,
       "lifecycleStatus": "planned",
@@ -778,14 +784,13 @@
       "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
       "headCommit": null,
       "status": "pending",
-      "lastVerifiedAt": "2026-06-22T17:46:58Z",
+      "lastVerifiedAt": "2026-06-22T17:49:54Z",
       "ownedPaths": [
         "tools/p6/build-p6-owner-handoff.mjs",
         "tools/electron-prototype/experiments/svga-web packaging scripts",
         "P6 owner handoff tests and package/privacy checks"
       ],
       "dependencies": [
-        "A3",
         "A4"
       ],
       "requestedIntegrationChanges": [],
