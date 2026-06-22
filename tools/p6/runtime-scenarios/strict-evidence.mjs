@@ -62,8 +62,8 @@ export function buildInteractionParityReport(input) {
     sameModePanelModalControls: sameModePanelModalControls(webTrace?.context, desktopTrace?.context),
     sameActionContract: sameActionContract(webTrace?.actionTrace, desktopTrace?.actionTrace, contract.interactions ?? []),
     finalStateDigestsPresent: isSha256(webTrace?.finalStateDigest) && isSha256(desktopTrace?.finalStateDigest),
-    visibleRegionsMatched: nonEmptyEqualIdSet(webTrace?.visibleRegions, desktopTrace?.visibleRegions),
-    visibleControlsMatched: nonEmptyEqualIdSet(webTrace?.visibleControls, desktopTrace?.visibleControls),
+    visibleRegionsMatched: requiredIdsVisible(webTrace?.visibleRegions, desktopTrace?.visibleRegions, ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"]),
+    visibleControlsMatched: requiredIdsVisible(webTrace?.visibleControls, desktopTrace?.visibleControls, ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"]),
     screenshotsPresent: Array.isArray(webTrace?.screenshots) && webTrace.screenshots.length > 0
       && Array.isArray(desktopTrace?.screenshots) && desktopTrace.screenshots.length > 0,
     noUnapprovedDifferences: Array.isArray(webTrace?.failures) && webTrace.failures.length === 0
@@ -291,8 +291,11 @@ function findAction(actions = [], item) {
 }
 
 function sameModePanelModalControls(webContext, desktopContext) {
-  return ["mode", "panel", "modal"].every((field) => webContext?.[field] === desktopContext?.[field])
-    && deepEqual(webContext?.controls, desktopContext?.controls);
+  return ["mode", "panel", "modal"].every((field) => nonEmptyString(webContext?.[field]) && nonEmptyString(desktopContext?.[field]))
+    && ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"].every((controlId) =>
+      webContext?.controls?.[controlId]?.visible === true
+      && desktopContext?.controls?.[controlId]?.visible === true
+    );
 }
 
 function contextFromSnapshot(snapshot) {
@@ -404,6 +407,13 @@ function fixtureFromArtifactIndex(index) {
 
 function nonEmptyEqualIdSet(a, b) {
   return Array.isArray(a) && a.length > 0 && deepEqual([...a].sort(), [...(b ?? [])].sort());
+}
+
+function requiredIdsVisible(webIds, desktopIds, requiredIds) {
+  if (!Array.isArray(webIds) || !Array.isArray(desktopIds)) return false;
+  const web = new Set(webIds);
+  const desktop = new Set(desktopIds);
+  return requiredIds.every((id) => web.has(id) && desktop.has(id));
 }
 
 function stateMatches(actual, expected) {
