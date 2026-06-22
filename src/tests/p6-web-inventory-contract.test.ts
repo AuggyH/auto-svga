@@ -7,6 +7,7 @@ interface P6ContractItem {
   required?: boolean;
   selector?: string;
   selectors?: readonly string[];
+  visibleStates?: readonly string[];
 }
 
 interface P6WebParityContract {
@@ -29,7 +30,8 @@ const contract = JSON.parse(
 ) as P6WebParityContract;
 const previewHtml = readFileSync("tools/svga-player-preview/index.html", "utf8");
 const productShellHtml = readFileSync("tools/shared/product-frontend/product-shell.html", "utf8");
-const previewProductHtml = `${previewHtml}\n${productShellHtml}`;
+const productAppSource = readFileSync("tools/shared/product-frontend/product-app.mjs", "utf8");
+const previewProductHtml = `${previewHtml}\n${productShellHtml}\n${productAppSource}`;
 const baselineCaptureScript = readFileSync("tools/p6/p6-web-baseline-capture.cjs", "utf8");
 
 const sectionHeadings: Record<InventorySection, string> = {
@@ -106,7 +108,7 @@ test("P6 web inventory contract lists reachable baseline controls", () => {
     playerBarB: "#svgaPanelB .playerBar",
     referencePlayerBar: "#referencePanel .playerBar",
     assetPreviewModal: "#assetPreviewModal",
-    reportGrid: "#reportGrid",
+    reportGrid: "#tab-overview .overviewGrid, #reportGrid",
     floatingRoot: "#floatingRoot"
   };
 
@@ -125,6 +127,57 @@ test("P6 web inventory contract lists reachable baseline controls", () => {
     assert.equal(region.selector, selector);
     assert.ok(selectorExists(selector), `${selector} must exist in the Web preview HTML`);
   }
+});
+
+test("P6 web inventory contract keeps Repair 5 runtime-visible states reachable", () => {
+  const regionsById = byId(contract.regions);
+
+  const requiredRegionStates: Record<string, readonly string[]> = {
+    playerBarB: ["local-compare-loaded"],
+    referencePlayerBar: ["export-review-loaded"],
+    assetPreviewModal: ["asset-preview-modal-open"],
+    reportGrid: ["info-overview-open"]
+  };
+
+  for (const [regionId, visibleStates] of Object.entries(requiredRegionStates)) {
+    const region = regionsById.get(regionId);
+    assert.ok(region, `${regionId} must be present in contract regions`);
+    assert.deepEqual(region.visibleStates, visibleStates, `${regionId} must use an item-specific reachable visible state`);
+    for (const stateId of visibleStates) {
+      assert.ok(baselineCaptureScript.includes(stateId), `${regionId} visible state ${stateId} must be captured`);
+    }
+  }
+
+  assert.ok(contract.requiredCounts.states >= 12, "Repair 5 must not shrink required state coverage");
+});
+
+test("P6 web baseline capture records item-specific runtime evidence for Repair 5 false negatives", () => {
+  for (const stateId of [
+    "mode-menu-open",
+    "asset-preview-modal-open",
+    "local-compare-empty",
+    "local-compare-loaded"
+  ]) {
+    assert.ok(baselineCaptureScript.includes(stateId), `capture must collect ${stateId}`);
+  }
+
+  for (const selector of [
+    "#modeDropdownMenu",
+    "#tab-assets [data-preview-image-key]:not(:disabled)",
+    "#assetPreviewModal",
+    "#secondaryFileInput",
+    "#svgaCanvasB canvas",
+    "[role=status]",
+    "[aria-live]"
+  ]) {
+    assert.ok(baselineCaptureScript.includes(selector), `capture must exercise ${selector}`);
+  }
+
+  assert.ok(baselineCaptureScript.includes("stateId:"), "runtime snapshots must keep stateId for parity checks");
+  assert.ok(baselineCaptureScript.includes("present: Boolean(node)"), "runtime snapshots must record selector presence");
+  assert.ok(baselineCaptureScript.includes("visible: isVisible(node)"), "runtime snapshots must record computed visibility");
+  assert.ok(baselineCaptureScript.includes("screenshot-asset-preview-modal-1440x900.png"));
+  assert.ok(baselineCaptureScript.includes("screenshot-local-compare-loaded-1440x900.png"));
 });
 
 function markdownIdsFor(section: InventorySection): string[] {

@@ -46,6 +46,16 @@ async function capture(window, fileName) {
 async function collectSnapshot(window, stateId) {
   return window.webContents.executeJavaScript(`
     (() => {
+      const isVisible = (node) => {
+        if (!node) return false;
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return rect.width > 0
+          && rect.height > 0
+          && style.display !== "none"
+          && style.visibility !== "hidden"
+          && Number(style.opacity || 1) > 0;
+      };
       const regions = ${JSON.stringify(contract.regions)}.map((region) => {
         const node = document.querySelector(region.selector);
         const rect = node?.getBoundingClientRect();
@@ -53,7 +63,7 @@ async function collectSnapshot(window, stateId) {
           id: region.id,
           selector: region.selector,
           present: Boolean(node),
-          visible: Boolean(node && rect && rect.width > 0 && rect.height > 0),
+          visible: isVisible(node),
           textSample: (node?.innerText ?? "").replace(/\\s+/g, " ").trim().slice(0, 160),
           rect: rect ? {
             x: Math.round(rect.x),
@@ -63,7 +73,7 @@ async function collectSnapshot(window, stateId) {
           } : null
         };
       });
-      const controls = [...document.querySelectorAll("button,input,select,textarea,[role=button],[role=menuitemradio]")]
+      const controls = [...document.querySelectorAll("button,input,label,select,textarea,[role=button],[role=menuitemradio],[role=status],[aria-live]")]
         .map((node) => {
           const rect = node.getBoundingClientRect();
           return {
@@ -72,13 +82,16 @@ async function collectSnapshot(window, stateId) {
             role: node.getAttribute("role"),
             type: node.getAttribute("type"),
             text: (node.innerText || node.getAttribute("aria-label") || node.getAttribute("title") || "").replace(/\\s+/g, " ").trim().slice(0, 120),
-            visible: rect.width > 0 && rect.height > 0,
+            present: true,
+            visible: isVisible(node),
+            hidden: Boolean(node.hidden),
             disabled: Boolean(node.disabled),
             checked: Boolean(node.checked)
           };
         });
       return {
         stateId: ${JSON.stringify(stateId)},
+        label: ${JSON.stringify(stateId)},
         title: document.title,
         url: location.href,
         viewport: { width: innerWidth, height: innerHeight },
@@ -222,15 +235,18 @@ async function setMode(window, value) {
   await delay(600);
 }
 
-async function loadFixture(window) {
+async function loadFixture(window, options = {}) {
+  const inputSelector = options.inputSelector ?? "#svgaFileInput";
+  const canvasSelector = options.canvasSelector ?? "#svgaCanvasA canvas";
+  const fileName = options.fileName ?? "p6-web-baseline-fixture.svga";
   await window.webContents.executeJavaScript(`
     (async () => {
       const response = await fetch(${JSON.stringify(fixtureUrl)});
       const bytes = new Uint8Array(await response.arrayBuffer());
-      const file = new File([bytes], "p6-web-baseline-fixture.svga", { type: "application/octet-stream" });
+      const file = new File([bytes], ${JSON.stringify(fileName)}, { type: "application/octet-stream" });
       const transfer = new DataTransfer();
       transfer.items.add(file);
-      const input = document.querySelector("#svgaFileInput");
+      const input = document.querySelector(${JSON.stringify(inputSelector)});
       Object.defineProperty(input, "files", { value: transfer.files, configurable: true });
       input.dispatchEvent(new Event("change", { bubbles: true }));
       return bytes.byteLength;
@@ -239,7 +255,7 @@ async function loadFixture(window) {
   await waitFor(window, `
     (() => {
       const hasInspection = Boolean(document.querySelector(".specReportSection") || document.querySelector(".auditReportSection"));
-      const canvas = document.querySelector("#svgaCanvasA canvas");
+      const canvas = document.querySelector(${JSON.stringify(canvasSelector)});
       let canvasNonBlank = false;
       if (canvas) {
         const ctx = canvas.getContext("2d");
@@ -301,6 +317,17 @@ async function main() {
   snapshots.push(await collectSnapshot(window, "local-empty"));
   await capture(window, "screenshot-local-empty-1440x900.png");
 
+  console.log("P6_WEB_BASELINE_PHASE mode-menu-open");
+  await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
+  await waitFor(window, `(() => {
+    const menu = document.querySelector("#modeDropdownMenu");
+    return Boolean(menu && !menu.hidden);
+  })()`);
+  snapshots.push(await collectSnapshot(window, "mode-menu-open"));
+  await capture(window, "screenshot-mode-menu-open-1440x900.png");
+  await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
+  await delay(220);
+
   console.log("P6_WEB_BASELINE_PHASE load-fixture");
   await loadFixture(window);
   console.log("P6_WEB_BASELINE_PHASE export-review");
@@ -322,6 +349,22 @@ async function main() {
   await delay(350);
   snapshots.push(await collectSnapshot(window, "info-assets-open"));
   await capture(window, "screenshot-info-assets-1440x900.png");
+
+  console.log("P6_WEB_BASELINE_PHASE asset-preview-modal");
+  await waitFor(window, `Boolean(document.querySelector("#tab-assets [data-preview-image-key]:not(:disabled)"))`);
+  await window.webContents.executeJavaScript(`
+    document.querySelector("#tab-assets [data-preview-image-key]:not(:disabled)")?.click();
+    true;
+  `);
+  await waitFor(window, `(() => {
+    const modal = document.querySelector("#assetPreviewModal");
+    const rect = modal?.getBoundingClientRect();
+    return Boolean(modal && !modal.hidden && rect && rect.width > 0 && rect.height > 0);
+  })()`);
+  snapshots.push(await collectSnapshot(window, "asset-preview-modal-open"));
+  await capture(window, "screenshot-asset-preview-modal-1440x900.png");
+  await window.webContents.executeJavaScript(`document.querySelector("#assetPreviewClose")?.click(); true;`);
+  await delay(240);
 
   console.log("P6_WEB_BASELINE_PHASE logs");
   await window.webContents.executeJavaScript(`document.querySelector("#logsButton")?.click(); true;`);
@@ -362,6 +405,15 @@ async function main() {
   await delay(350);
   snapshots.push(await collectSnapshot(window, "local-compare-empty"));
   await capture(window, "screenshot-local-compare-empty-1440x900.png");
+
+  console.log("P6_WEB_BASELINE_PHASE local-compare-loaded");
+  await loadFixture(window, {
+    inputSelector: "#secondaryFileInput",
+    canvasSelector: "#svgaCanvasB canvas",
+    fileName: "p6-web-baseline-secondary-fixture.svga"
+  });
+  snapshots.push(await collectSnapshot(window, "local-compare-loaded"));
+  await capture(window, "screenshot-local-compare-loaded-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE responsive-export");
   await setMode(window, "exportReview");

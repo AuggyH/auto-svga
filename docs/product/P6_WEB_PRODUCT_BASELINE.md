@@ -28,14 +28,17 @@ Tracked contract files reference these generated artifacts but do not commit the
 Captured state screenshots:
 
 - `screenshot-local-empty-1440x900.png`
+- `screenshot-mode-menu-open-1440x900.png`
 - `screenshot-export-review-loaded-1440x900.png`
 - `screenshot-info-overview-1440x900.png`
 - `screenshot-info-assets-1440x900.png`
+- `screenshot-asset-preview-modal-1440x900.png`
 - `screenshot-logs-1440x900.png`
 - `screenshot-settings-1440x900.png`
 - `screenshot-local-compare-empty-1440x900.png`
+- `screenshot-local-compare-loaded-1440x900.png`
 - `screenshot-export-review-loaded-900x720.png`
-- `screenshot-export-review-loaded-1440x900.png`
+- `screenshot-invalid-1440x900.png`
 
 Machine-readable artifacts:
 
@@ -47,11 +50,11 @@ Machine-readable artifacts:
 
 ## Baseline Coverage
 
-- DOM snapshots: 12
+- DOM snapshots: 15
 - UI regions per snapshot: 20
-- Controls observed: 11 local-empty controls, 20 export-review-loaded controls, 43 max visible controls
+- Controls observed: capture records buttons, inputs, labels, menu items, and live status regions; counts are stored per state in `interaction-trace.json`.
 - Computed style selectors: 19
-- Interaction trace steps: 12
+- Interaction trace steps: 15
 - CSS keyframes: 9
 - Reduced-motion CSS present: yes
 - Artifact index entries: 14

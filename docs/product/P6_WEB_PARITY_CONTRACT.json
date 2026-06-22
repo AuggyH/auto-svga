@@ -169,7 +169,7 @@
       ],
       "selector": "#svgaPanelB .playerBar",
       "visibleStates": [
-        "local-compare-empty"
+        "local-compare-loaded"
       ],
       "required": true
     },
@@ -252,7 +252,7 @@
       ],
       "selector": "#assetPreviewModal",
       "visibleStates": [
-        "info-assets-open"
+        "asset-preview-modal-open"
       ],
       "required": true
     },
@@ -264,9 +264,8 @@
         "tools/svga-player-preview/inspection-report-view.mjs",
         "tools/svga-player-preview/server.mjs"
       ],
-      "selector": "#reportGrid",
+      "selector": "#tab-overview .overviewGrid, #reportGrid",
       "visibleStates": [
-        "export-review-loaded",
         "info-overview-open"
       ],
       "required": true
@@ -1155,5 +1154,5 @@
     "states": 12,
     "motions": 9
   },
-  "contractSha256": "4856ca809fdcea6e0c356edf042ce6670dbea4d68d3bc824adb3ac8002183379"
+  "contractSha256": "cd17e1dbce24781f20992401e71121415880f25e857b7a0bbb90c51543116460"
 }
