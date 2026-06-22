@@ -4,13 +4,13 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "5c495bb01e42e26faf1c37ec9a196ec7476fcbe3",
+  "currentIntegrationHeadCommit": "13cf35703ba8e5fe38b225ee067c4d577b99026b",
   "currentRepairRound": 4,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T09:38:22Z",
-  "registryRefreshedAt": "2026-06-22T10:34:13Z",
+  "registryRefreshedAt": "2026-06-22T10:42:22Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -347,12 +347,12 @@
       "role": "Packaging And Portable Handoff",
       "visibleThreadId": "019eeb7e-0731-76c0-92e3-d9494b272e14",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "running",
+      "lifecycleStatus": "integrated",
       "branch": "agent/codex/p6-r4-a5-package",
       "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
       "headCommit": "cd4940f421f8944bde70671f844657f74e69a8d7",
-      "integrationCommit": null,
-      "workerHandoffFolder": null,
+      "integrationCommit": "784047245635efdc505820d75dd1bcbbff6e1231",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A5-R4.md",
       "contextPacketPath": "docs/product/p6/worker-context/A5.md",
       "ownedPaths": [
         "tools/electron-prototype/experiments/svga-web/packaging/macos/",
@@ -371,8 +371,10 @@
         "A3",
         "A4"
       ],
-      "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:34:13Z",
+      "requestedIntegrationChanges": [
+        "A0 repaired the package proof source audit at 13cf35703ba8e5fe38b225ee067c4d577b99026b so it checks the current parity-runner item-specific evidence helpers."
+      ],
+      "lastVerifiedAt": "2026-06-22T10:42:22Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a5-macos-package",
