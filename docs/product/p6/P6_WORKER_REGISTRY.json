@@ -4,13 +4,13 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+  "currentIntegrationHeadCommit": "d09a4721de347cd17baf470c51753cb6ff279179",
   "currentRepairRound": 4,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T09:38:22Z",
-  "registryRefreshedAt": "2026-06-22T09:38:22Z",
+  "registryRefreshedAt": "2026-06-22T10:00:00Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -35,109 +35,155 @@
       "criterionId": "P6-AC-01",
       "implementationOwner": "A0",
       "evidenceOwner": "A0",
-      "integrationVerifier": ["Reviewer A", "Reviewer B", "A0"]
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-02",
       "implementationOwner": "A1",
       "evidenceOwner": "A1",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-03",
       "implementationOwner": "A2",
       "evidenceOwner": "A4",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-04",
       "implementationOwner": "A2",
       "evidenceOwner": "A4",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-05",
       "implementationOwner": "A2",
       "evidenceOwner": "A4",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-06",
       "implementationOwner": "A2",
       "evidenceOwner": "A4",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-07",
       "implementationOwner": "A3",
       "evidenceOwner": "A4",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-08",
       "implementationOwner": "A2",
       "evidenceOwner": "A4",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-09",
       "implementationOwner": "A0",
       "evidenceOwner": "A4",
-      "integrationVerifier": ["Reviewer A", "Reviewer B", "A0"]
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-10",
       "implementationOwner": "A2",
       "evidenceOwner": "A0",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-11",
       "implementationOwner": "A3",
       "evidenceOwner": "A3",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-12",
       "implementationOwner": "A3",
       "evidenceOwner": "A5",
-      "integrationVerifier": ["Reviewer A", "Reviewer B", "A0"]
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-13",
       "implementationOwner": "A3",
       "evidenceOwner": "A0",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-14",
       "implementationOwner": "A5",
       "evidenceOwner": "A5",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-15",
       "implementationOwner": "A0",
       "evidenceOwner": "A0",
-      "integrationVerifier": ["Reviewer A", "Reviewer B", "A0"]
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-16",
       "implementationOwner": "A2",
       "evidenceOwner": "A0",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-17",
       "implementationOwner": "Reviewer A/B",
       "evidenceOwner": "A0",
-      "integrationVerifier": ["A0"]
+      "integrationVerifier": [
+        "A0"
+      ]
     },
     {
       "criterionId": "P6-AC-18",
       "implementationOwner": "All workers",
       "evidenceOwner": "A0",
-      "integrationVerifier": ["Reviewer A", "Reviewer B", "A0"]
+      "integrationVerifier": [
+        "Reviewer A",
+        "Reviewer B",
+        "A0"
+      ]
     }
   ],
   "workers": [
@@ -147,12 +193,12 @@
       "role": "Web Inventory And Contract",
       "visibleThreadId": "019eeb7d-c4a6-70e3-8d04-756807461f7f",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "planned",
+      "lifecycleStatus": "integrated",
       "branch": "agent/codex/p6-r4-a1-inventory",
-      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-      "headCommit": null,
-      "integrationCommit": null,
-      "workerHandoffFolder": null,
+      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
+      "headCommit": "d09a4721de347cd17baf470c51753cb6ff279179",
+      "integrationCommit": "d09a4721de347cd17baf470c51753cb6ff279179",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A1-R4.md",
       "contextPacketPath": "docs/product/p6/worker-context/A1.md",
       "ownedPaths": [
         "docs/product/P6_WEB_PRODUCT_BASELINE.md",
@@ -167,8 +213,10 @@
         "docs/loop/CURRENT_MILESTONE.md"
       ],
       "dependencies": [],
-      "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "requestedIntegrationChanges": [
+        "Resume A2 from A1-integrated head d09a4721de347cd17baf470c51753cb6ff279179."
+      ],
+      "lastVerifiedAt": "2026-06-22T09:58:00Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a1-web-baseline",
@@ -181,9 +229,9 @@
       "role": "Shared Product Shell",
       "visibleThreadId": "019eeb8a-3dbe-7123-b696-e1334ab9ab60",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "planned",
+      "lifecycleStatus": "blocked",
       "branch": "agent/codex/p6-r4-a2-shared-shell",
-      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
       "headCommit": null,
       "integrationCommit": null,
       "workerHandoffFolder": null,
@@ -199,9 +247,11 @@
         "docs/product/P6_WEB_PARITY_CONTRACT.json",
         "tools/electron-prototype/experiments/svga-web/"
       ],
-      "dependencies": ["A1"],
+      "dependencies": [
+        "A1"
+      ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "lastVerifiedAt": "2026-06-22T10:00:00Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a2-shared-frontend",
@@ -214,9 +264,9 @@
       "role": "Electron Host",
       "visibleThreadId": "019eeb7e-072c-7382-afe5-330eb92b9d2f",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "planned",
+      "lifecycleStatus": "running",
       "branch": "agent/codex/p6-r4-a3-electron-host",
-      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
       "headCommit": null,
       "integrationCommit": null,
       "workerHandoffFolder": null,
@@ -232,9 +282,11 @@
         "tools/shared/product-frontend/",
         "tools/electron-prototype/experiments/svga-web/web/"
       ],
-      "dependencies": ["A2"],
+      "dependencies": [
+        "A2"
+      ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "lastVerifiedAt": "2026-06-22T10:00:00Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-r2-a3-electron-host",
@@ -247,9 +299,9 @@
       "role": "Parity Runtime",
       "visibleThreadId": "019eeb7e-071e-7991-ab4f-075c56dbade1",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "planned",
+      "lifecycleStatus": "running",
       "branch": "agent/codex/p6-r4-a4-parity-runtime",
-      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
       "headCommit": null,
       "integrationCommit": null,
       "workerHandoffFolder": null,
@@ -269,9 +321,13 @@
         "tools/shared/product-frontend/",
         "tools/electron-prototype/experiments/svga-web/"
       ],
-      "dependencies": ["A1", "A2", "A3"],
+      "dependencies": [
+        "A1",
+        "A2",
+        "A3"
+      ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "lastVerifiedAt": "2026-06-22T10:00:00Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a4-parity-tests",
@@ -284,9 +340,9 @@
       "role": "Packaging And Portable Handoff",
       "visibleThreadId": "019eeb7e-0731-76c0-92e3-d9494b272e14",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "planned",
+      "lifecycleStatus": "running",
       "branch": "agent/codex/p6-r4-a5-package",
-      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
       "headCommit": null,
       "integrationCommit": null,
       "workerHandoffFolder": null,
@@ -303,9 +359,13 @@
         "tools/electron-prototype/experiments/svga-web/preload.cjs",
         "tools/shared/product-frontend/"
       ],
-      "dependencies": ["A2", "A3", "A4"],
+      "dependencies": [
+        "A2",
+        "A3",
+        "A4"
+      ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "lastVerifiedAt": "2026-06-22T10:00:00Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a5-macos-package",
