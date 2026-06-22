@@ -20,6 +20,7 @@ import {
   loadP6RuntimeFacts,
   validateP6RuntimeScenarioContract
 } from "./parity-runner.mjs";
+import { generateP6StateAndMotionEvidence } from "./runtime-scenarios/state-evidence.mjs";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptRoot, "../..");
@@ -533,6 +534,10 @@ async function main() {
   await captureWebBaseline();
   await runDesktopSmoke();
   await runPackageAndPackagedNormalProof();
+  await generateP6StateAndMotionEvidence({
+    p6Root,
+    contract: await readJson(contractPath)
+  });
 
   let report = await buildParityReport();
   await writeEvidenceIndex(report);

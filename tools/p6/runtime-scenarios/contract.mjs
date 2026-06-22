@@ -14,6 +14,7 @@ export const P6_RUNTIME_SCENARIOS = [
       "web-baseline/request-audit.json",
       "web-baseline/screenshot-export-review-loaded-1440x900.png",
       "web-baseline/screenshot-local-empty-1440x900.png",
+      "web-baseline/screenshot-mode-menu-open-1440x900.png",
       "web-baseline/screenshot-invalid-1440x900.png"
     ]
   },

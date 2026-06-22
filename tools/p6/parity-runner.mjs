@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { P6_RUNTIME_SCENARIOS } from "./runtime-scenarios/contract.mjs";
@@ -43,7 +43,7 @@ const desktopStateAliases = {
   "export-review-loaded": ["loaded"],
   "invalid-error-state": ["invalid"],
   invalid: ["invalid"],
-  "mode-menu-open": ["empty"],
+  "mode-menu-open": ["mode-menu-open"],
   "info-overview-open": ["loaded"],
   "info-assets-open": ["loaded"],
   "logs-open": ["loaded"],
@@ -51,7 +51,7 @@ const desktopStateAliases = {
   "accessibility-toggles-on": ["loaded"],
   "settings-closed-by-escape": ["loaded"],
   "synchronized-playback-toggled-by-space": ["loaded"],
-  "local-compare-empty": ["empty"],
+  "local-compare-empty": ["local-compare-empty"],
   "responsive-export-review-loaded-at-900-x-720": ["loaded"]
 };
 
@@ -92,6 +92,8 @@ export async function loadP6RuntimeFacts(input) {
       artifactIndex: await readJsonFromRoot("artifact-index.json"),
       reviewerB: await readJsonFromRoot("reviewer-b-product-categories.json")
     },
+    stateComparisons: await readJsonMap(path.join(p6Root, "state-comparisons"), /-comparison\.json$/, (value) => value.stateId),
+    motionEvidence: await readJsonMap(path.join(p6Root, "motion-evidence"), /-motion-evidence\.json$/, (value) => value.motionId),
     package: {
       normalProof: await readJsonFromRoot("packaged-app-runtime-proof.json"),
       manifest: await readJsonFromRoot("internal-trial-manifest.json")
@@ -138,11 +140,13 @@ export function buildP6ParityReportFromRuntimeFacts(input) {
       artifactCheck(input, "desktop-state-proof", ["desktop-state-render-proof.json"], "Desktop state proof exists."),
       factCheck("desktop-state-proof-passed", input.desktop?.stateRenderProof?.passed === true, "Desktop state proof passed."),
       factCheck("shell-app-css-hash-parity", shellAppCssHashesStable(input), "Shell, app, preload, and CSS hashes are stable across normal and smoke launches."),
-      factCheck("reviewer-observations-present", reviewerObservationsPresent(input), "Independent reviewer observations are non-empty.")
+      factCheck("reviewer-observations-present", reviewerObservationsPresent(input), "Independent reviewer observations are non-empty."),
+      factCheck("reviewer-categories-complete", reviewerCategoriesComplete(input), "Reviewer category evidence covers required product categories.")
     ], input),
     buildSyntheticItemEvidence("packaged-app-launch", true, [
       artifactCheck(input, "packaged-proof", ["packaged-app-runtime-proof.json"], "Packaged app runtime proof exists."),
-      factCheck("packaged-proof-passed", input.package?.normalProof?.passed === true, "Packaged app launched normally.")
+      factCheck("packaged-proof-passed", input.package?.normalProof?.passed === true, "Packaged app launched normally."),
+      factCheck("normal-app-proof-flags", normalAppProofFlags(input), "Normal App proof is not generated from smoke-only flags.")
     ], input),
     buildSyntheticItemEvidence("packaged-app-fixture-flow", true, [
       artifactCheck(input, "fixture-hash-match", fixtureHashesMatch(input), "Packaged and Desktop fixture hashes match."),
@@ -227,6 +231,22 @@ export function validateP6BaseRangeDiff(input) {
     if (!input.allowedPaths.some((allowedPath) => changedFile === allowedPath || changedFile.startsWith(`${allowedPath}/`))) {
       failures.push(`changed file outside A4 ownership: ${changedFile}`);
     }
+  }
+  return { valid: failures.length === 0, failures };
+}
+
+export function validateP6SourceDiffPrivacy(input) {
+  const diffText = String(input.diffText ?? "");
+  const failures = [];
+  const forbidden = [
+    /\/Users\/[^/\s]+/,
+    /\/private\/var\/folders\/[^\s"]+/,
+    /[A-Za-z]:\\Users\\[^\\\s]+/,
+    /AUTO_SVGA_[A-Z0-9_]*TOKEN\s*=/,
+    /BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY/
+  ];
+  for (const pattern of forbidden) {
+    if (pattern.test(diffText)) failures.push(`source diff contains privacy literal: ${pattern.source}`);
   }
   return { valid: failures.length === 0, failures };
 }
@@ -381,7 +401,7 @@ function artifactCheckFromIds(id, artifactIds, summary, passed = artifactIds.len
 }
 
 function webItemPresent(item, sectionId, input) {
-  if (sectionId === "state_parity") return hasWebState(input, item.id);
+  if (sectionId === "state_parity") return hasWebState(input, item.id) && stateComparisonPassed(input, item.id);
   if (sectionId === "interaction_parity") {
     return hasInteractionStep(input, item.expectedState) && selectorSeenInWeb(item.selector, input);
   }
@@ -392,8 +412,8 @@ function webItemPresent(item, sectionId, input) {
 }
 
 function desktopItemPresent(item, sectionId, input) {
-  if (sectionId === "state_parity") return hasDesktopState(input, item.id);
-  if (sectionId === "motion_parity") return hasDesktopState(input, "export-review-loaded");
+  if (sectionId === "state_parity") return hasDesktopState(input, item.id) && stateComparisonPassed(input, item.id);
+  if (sectionId === "motion_parity") return hasDesktopState(input, "export-review-loaded") && motionEvidencePassed(input, item.id);
   if (sectionId === "interaction_parity") return hasDesktopState(input, item.expectedState);
   if (sectionId === "feature_parity") return desktopFeaturePresent(item, input);
   return (desktopFragmentsForItem(item, sectionId).length > 0 && idsByPath(input.artifactBindings, desktopFragmentsForItem(item, sectionId)).length > 0);
@@ -464,7 +484,7 @@ function motionSeen(item, input) {
   const sampledSeen = Array.isArray(sampledAnimations) && sampledAnimations.some((animation) =>
     animation.animationName === animationName || animation.selector === item.selector
   );
-  return keyframeSeen || sampledSeen;
+  return (keyframeSeen || sampledSeen) && motionEvidencePassed(input, item.id);
 }
 
 function noExternalRequests(input) {
@@ -497,6 +517,35 @@ function reviewerObservationsPresent(input) {
   return categories.every((category) =>
     Array.isArray(category.visualObservations) && category.visualObservations.length > 0
   );
+}
+
+function reviewerCategoriesComplete(input) {
+  const categories = input.desktop?.reviewerB?.categories;
+  if (!Array.isArray(categories)) return false;
+  const present = new Set(categories.map((category) => category.category ?? category.id));
+  return [
+    "comparison",
+    "referenceMedia",
+    "interactionParity",
+    "motionParity",
+    "emptyState",
+    "loadingState",
+    "invalidState",
+    "normalMacApp",
+    "bundleCompleteness"
+  ].every((category) => present.has(category));
+}
+
+function normalAppProofFlags(input) {
+  const proof = input.package?.normalProof;
+  const normalProof = proof?.normalProof ?? {};
+  const environmentOverrides = proof?.environmentOverrides ?? proof?.runtimeIdentity?.environmentOverrides ?? {};
+  const argv = JSON.stringify(proof?.actualArgvSanitized ?? proof?.runtimeIdentity?.actualArgvSanitized ?? []);
+  return proof?.passed === true
+    && normalProof.normalMode === true
+    && !("AUTO_SVGA_PRODUCT_SMOKE" in environmentOverrides)
+    && !("AUTO_SVGA_SMOKE" in environmentOverrides)
+    && !/--smoke|mode=smoke|AUTO_SVGA_PRODUCT_SMOKE/.test(argv);
 }
 
 function noEditorControlsLeakage(input) {
@@ -538,7 +587,17 @@ function desktopInvalidClearsMetadata(input) {
   const invalid = input.desktop?.stateRenderProof?.states?.invalid;
   return invalid?.passed === true
     && invalid.staleMetadataCleared === true
-    && invalid.staleInspectionCleared === true;
+    && invalid.staleInspectionCleared === true
+    && invalid.staleCanvasCleared !== false
+    && invalid.staleFileNameCleared !== false;
+}
+
+function stateComparisonPassed(input, stateId) {
+  return input.stateComparisons?.[stateId]?.passed === true;
+}
+
+function motionEvidencePassed(input, motionId) {
+  return input.motionEvidence?.[motionId]?.passed === true;
 }
 
 function itemText(item) {
@@ -569,6 +628,13 @@ function webFragmentsForItem(item, sectionId) {
   if (sectionId === "visual_parity") fragments.push("web-baseline/computed-styles-manifest.json");
   if (sectionId === "interaction_parity") fragments.push("web-baseline/interaction-trace.json");
   if (sectionId === "motion_parity") fragments.push("web-baseline/motion-manifest.json", "web-baseline/computed-styles-manifest.json");
+  if (sectionId === "motion_parity") fragments.push(`motion-evidence/${item.id}-motion-evidence.json`);
+  if (sectionId === "state_parity") {
+    fragments.push(
+      `state-comparisons/web-${item.id}.png`,
+      `state-comparisons/${item.id}-comparison.json`
+    );
+  }
   for (const stateId of [item.initialState, item.expectedState, ...(item.visibleStates ?? [])]) {
     if (stateId && stateId !== "all") fragments.push(...stateScreenshotFragments(stateId).filter((fragment) => fragment.startsWith("screenshot-") || fragment.includes("interaction-trace")));
   }
@@ -591,6 +657,21 @@ function desktopFragmentsForItem(item, sectionId) {
   const fragments = ["runtime-identity.json"];
   if (sectionId === "interaction_parity" || sectionId === "state_parity") fragments.push("desktop-state-render-proof.json");
   if (sectionId === "motion_parity") fragments.push("desktop-state-render-proof.json");
+  if (sectionId === "motion_parity") {
+    fragments.push(
+      `motion-evidence/desktop-motion-${item.id}-start.png`,
+      `motion-evidence/desktop-motion-${item.id}-mid.png`,
+      `motion-evidence/desktop-motion-${item.id}-end.png`,
+      `motion-evidence/${item.id}-motion-evidence.json`
+    );
+  }
+  if (sectionId === "state_parity") {
+    fragments.push(
+      `state-comparisons/desktop-${item.id}.png`,
+      `state-comparisons/web-desktop-${item.id}-comparison.png`,
+      `state-comparisons/${item.id}-comparison.json`
+    );
+  }
   if (/invalid|error/.test(text)) fragments.push("desktop-invalid.png", "invalid-fixture.json", "desktop-state-render-proof.json");
   if (/loading/.test(text)) fragments.push("desktop-loading.png", "desktop-state-render-proof.json");
   if (/asset|resource|overview|inspection|report|audit|logs?|settings|modal|toggle|panel/.test(text)) {
@@ -615,6 +696,9 @@ function comparisonFragmentsForItem(item, sectionId) {
     "runtime-identity.json",
     "packaged-app-runtime-proof.json",
     sectionId === "motion_parity" ? "motion-manifest.json" : "",
+    sectionId === "motion_parity" ? `motion-evidence/${item.id}-motion-evidence.json` : "",
+    sectionId === "state_parity" ? `state-comparisons/${item.id}-comparison.json` : "",
+    sectionId === "state_parity" ? `state-comparisons/web-desktop-${item.id}-comparison.png` : "",
     sectionId === "interaction_parity" ? "interaction-trace.json" : "",
     ...stateScreenshotFragments(item.id),
     ...stateScreenshotFragments(item.expectedState)
@@ -624,7 +708,7 @@ function comparisonFragmentsForItem(item, sectionId) {
 function stateScreenshotFragments(stateId) {
   const map = {
     "local-empty": ["screenshot-local-empty", "desktop-empty.png"],
-    "mode-menu-open": ["interaction-trace.json", "screenshot-local-empty", "desktop-state-render-proof.json"],
+    "mode-menu-open": ["interaction-trace.json", "screenshot-mode-menu-open", "desktop-mode-menu-open.png", "desktop-state-render-proof.json"],
     "export-review-loaded": ["screenshot-export-review-loaded-1440x900", "desktop-loaded.png", "smoke-loaded.png"],
     "info-overview-open": ["screenshot-info-overview", "desktop-inspection.png"],
     "info-assets-open": ["screenshot-info-assets", "desktop-inspection.png"],
@@ -663,6 +747,18 @@ function isSha256(value) {
 async function readOptionalJson(filePath) {
   if (!existsSync(filePath)) return undefined;
   return JSON.parse(await readFile(filePath, "utf8"));
+}
+
+async function readJsonMap(directory, pattern, keyForValue) {
+  const out = {};
+  if (!existsSync(directory)) return out;
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (!entry.isFile() || !pattern.test(entry.name)) continue;
+    const value = JSON.parse(await readFile(path.join(directory, entry.name), "utf8"));
+    const key = keyForValue(value);
+    if (typeof key === "string" && key.length > 0) out[key] = value;
+  }
+  return out;
 }
 
 async function sha256File(filePath) {

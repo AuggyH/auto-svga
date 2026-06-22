@@ -1,13 +1,19 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
+
+import { encode } from "fast-png";
 
 import {
   buildP6ParityReportFromRuntimeFacts,
   validateP6BaseRangeDiff,
   validateP6RuntimeScenarioContract,
+  validateP6SourceDiffPrivacy,
   validateP6WorkerRegistryFreshness
 } from "./parity-runner.mjs";
+import { generateStateComparison } from "./runtime-scenarios/state-evidence.mjs";
 import { validateP6ParityReportV1 } from "../../dist/workbench/p6-parity-report-contract.js";
 
 test("runtime fixture produces item-derived pass statuses", () => {
@@ -20,6 +26,25 @@ test("runtime fixture produces item-derived pass statuses", () => {
       assert.equal(item.status, item.checks.every((check) => check.passed) ? "pass" : "fail");
       assert.deepEqual(item.failures, []);
     }
+  }
+});
+
+test("state evidence helper writes Web/Desktop/comparison triple and JSON", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "p6-state-evidence-"));
+  try {
+    await writePng(path.join(root, "web-baseline/screenshot-local-empty-1440x900.png"), [255, 0, 0, 255]);
+    await writePng(path.join(root, "desktop-empty.png"), [0, 0, 255, 255]);
+
+    const result = await generateStateComparison(root, "local-empty");
+
+    assert.equal(result.passed, true);
+    await readFile(path.join(root, "state-comparisons/web-local-empty.png"));
+    await readFile(path.join(root, "state-comparisons/desktop-local-empty.png"));
+    await readFile(path.join(root, "state-comparisons/web-desktop-local-empty-comparison.png"));
+    const json = JSON.parse(await readFile(path.join(root, "state-comparisons/local-empty-comparison.json"), "utf8"));
+    assert.equal(json.checks.notSameSourceHash, true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
 
@@ -92,6 +117,17 @@ test("missing interaction traces, screenshots, and motion frames fail targeted i
   noMotion.web.motionManifest.keyframes = [];
   noMotion.web.motionManifest.sampledAnimations = [];
   assertItemFailed(buildP6ParityReportFromRuntimeFacts(noMotion), "motionParity", "cardEnter", "web-item-runtime");
+
+  const noDesktopMotionFrame = goodFacts();
+  noDesktopMotionFrame.artifactBindings = noDesktopMotionFrame.artifactBindings.filter((artifact) =>
+    !artifact.path.includes("desktop-motion-cardEnter-mid.png")
+  );
+  assertItemFailed(
+    buildP6ParityReportFromRuntimeFacts(noDesktopMotionFrame),
+    "motionParity",
+    "cardEnter",
+    "desktop-item-artifacts"
+  );
 });
 
 test("Loading equals Empty and Invalid retains metadata fail accessibility checks", () => {
@@ -122,6 +158,16 @@ test("fixture hash mismatch fails packaged fixture flow", () => {
   assertItemFailed(report, "desktopRuntimeProof", "packaged-app-fixture-flow", "fixture-hash-match");
 });
 
+test("fake PASS status is rejected when checks fail", () => {
+  const report = buildP6ParityReportFromRuntimeFacts(goodFacts());
+  report.sections.stateParity.items[0].checks[0].passed = false;
+
+  const validation = validateP6ParityReportV1(report);
+
+  assert.equal(validation.valid, false);
+  assert.ok(validation.errors.some((error) => error.includes("status must be derived from checks.every")));
+});
+
 test("generic artifacts bound to every item are rejected by the report validator", () => {
   const report = buildP6ParityReportFromRuntimeFacts(goodFacts());
   const allArtifactIds = report.sections.artifactIndex.artifacts.map((artifact) => artifact.id);
@@ -133,12 +179,44 @@ test("generic artifacts bound to every item are rejected by the report validator
   assert.ok(validation.errors.some((error) => error.includes("must not bind every artifact generically")));
 });
 
+test("generic screenshots and Web-only evidence fail state triples", () => {
+  const generic = goodFacts();
+  generic.stateComparisons["local-empty"].checks.notSameSourceHash = false;
+  generic.stateComparisons["local-empty"].passed = false;
+  assertItemFailed(buildP6ParityReportFromRuntimeFacts(generic), "stateParity", "local-empty", "web-item-runtime");
+
+  const webOnly = goodFacts();
+  delete webOnly.stateComparisons["local-empty"];
+  webOnly.artifactBindings = webOnly.artifactBindings.filter((artifact) =>
+    !artifact.path.includes("state-comparisons/desktop-local-empty.png")
+      && !artifact.path.includes("state-comparisons/web-desktop-local-empty-comparison.png")
+  );
+  assertItemFailed(buildP6ParityReportFromRuntimeFacts(webOnly), "stateParity", "local-empty", "web-item-runtime");
+});
+
 test("empty reviewer observations fail Desktop runtime proof", () => {
   const facts = goodFacts();
   facts.desktop.reviewerB.categories[0].visualObservations = [];
 
   const report = buildP6ParityReportFromRuntimeFacts(facts);
   assertItemFailed(report, "desktopRuntimeProof", "source-electron-smoke", "reviewer-observations-present");
+});
+
+test("reviewer category gaps fail Desktop runtime proof", () => {
+  const facts = goodFacts();
+  facts.desktop.reviewerB.categories = facts.desktop.reviewerB.categories.filter((category) => category.category !== "motionParity");
+
+  const report = buildP6ParityReportFromRuntimeFacts(facts);
+  assertItemFailed(report, "desktopRuntimeProof", "source-electron-smoke", "reviewer-categories-complete");
+});
+
+test("normal App proof flags fail when proof is smoke flavored", () => {
+  const facts = goodFacts();
+  facts.package.normalProof.normalProof.normalMode = false;
+  facts.package.normalProof.environmentOverrides = { AUTO_SVGA_PRODUCT_SMOKE: "1" };
+
+  const report = buildP6ParityReportFromRuntimeFacts(facts);
+  assertItemFailed(report, "desktopRuntimeProof", "packaged-app-launch", "normal-app-proof-flags");
 });
 
 test("base-range diff failure is detected", () => {
@@ -170,6 +248,15 @@ test("stale Worker registry is detected", () => {
   assert.ok(validation.failures.includes("registry currentRepairRound 3 does not equal 4"));
   assert.ok(validation.failures.includes("registry currentIntegrationHeadCommit is stale"));
   assert.ok(validation.failures.includes("registry worker A4 branch is stale"));
+});
+
+test("source diff privacy literals are detected", () => {
+  const validation = validateP6SourceDiffPrivacy({
+    diffText: "+ artifactRoot = /Users/alice/private/P6\n+ AUTO_SVGA_API_TOKEN=secret"
+  });
+
+  assert.equal(validation.valid, false);
+  assert.ok(validation.failures.some((failure) => failure.includes("privacy literal")));
 });
 
 test("missing App ZIP is detected by report and scenario contract", () => {
@@ -282,6 +369,7 @@ function goodFacts() {
           empty: { passed: true, renderedText: "Empty" },
           loading: { passed: true, renderedText: "Loading" },
           loaded: { passed: true, renderedText: "Loaded" },
+          "local-compare-empty": { passed: true, renderedText: "Compare Empty" },
           invalid: { passed: true, staleMetadataCleared: true, staleInspectionCleared: true, renderedText: "Invalid" }
         }
       },
@@ -289,15 +377,35 @@ function goodFacts() {
         fixtureHashes: { fixtureSha256 }
       },
       reviewerB: {
-        categories: [{ id: "shell", visualObservations: ["Shell is visible."] }]
+        categories: [
+          "comparison",
+          "referenceMedia",
+          "interactionParity",
+          "motionParity",
+          "emptyState",
+          "loadingState",
+          "invalidState",
+          "normalMacApp",
+          "bundleCompleteness"
+        ].map((category) => ({ category, visualObservations: [`${category} is covered.`] }))
       }
     },
     package: {
       normalProof: {
         passed: true,
-        normalProof: { fixtureSha256 }
+        environmentOverrides: {},
+        actualArgvSanitized: ["Auto SVGA"],
+        normalProof: { fixtureSha256, normalMode: true }
       },
       manifest: { fixtureSha256 }
+    },
+    stateComparisons: {
+      "local-empty": stateComparison("local-empty"),
+      "export-review-loaded": stateComparison("export-review-loaded"),
+      "invalid-error-state": stateComparison("invalid-error-state")
+    },
+    motionEvidence: {
+      cardEnter: motionEvidence("cardEnter")
     }
   };
 }
@@ -312,10 +420,30 @@ function artifactBindings() {
     ".artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png",
     ".artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png",
     ".artifacts/product/P6/web-baseline/screenshot-local-empty-1440x900.png",
+    ".artifacts/product/P6/web-baseline/screenshot-mode-menu-open-1440x900.png",
     ".artifacts/product/P6/web-baseline/screenshot-local-compare-empty-1440x900.png",
     ".artifacts/product/P6/web-baseline/screenshot-invalid-1440x900.png",
     ".artifacts/product/P6/web-baseline/screenshot-settings-1440x900.png",
     ".artifacts/product/P6/web-baseline/screenshot-logs-1440x900.png",
+    ".artifacts/product/P6/state-comparisons/web-local-empty.png",
+    ".artifacts/product/P6/state-comparisons/desktop-local-empty.png",
+    ".artifacts/product/P6/state-comparisons/web-desktop-local-empty-comparison.png",
+    ".artifacts/product/P6/state-comparisons/local-empty-comparison.json",
+    ".artifacts/product/P6/state-comparisons/web-export-review-loaded.png",
+    ".artifacts/product/P6/state-comparisons/desktop-export-review-loaded.png",
+    ".artifacts/product/P6/state-comparisons/web-desktop-export-review-loaded-comparison.png",
+    ".artifacts/product/P6/state-comparisons/export-review-loaded-comparison.json",
+    ".artifacts/product/P6/state-comparisons/web-invalid-error-state.png",
+    ".artifacts/product/P6/state-comparisons/desktop-invalid-error-state.png",
+    ".artifacts/product/P6/state-comparisons/web-desktop-invalid-error-state-comparison.png",
+    ".artifacts/product/P6/state-comparisons/invalid-error-state-comparison.json",
+    ".artifacts/product/P6/motion-evidence/web-motion-cardEnter-start.png",
+    ".artifacts/product/P6/motion-evidence/web-motion-cardEnter-mid.png",
+    ".artifacts/product/P6/motion-evidence/web-motion-cardEnter-end.png",
+    ".artifacts/product/P6/motion-evidence/desktop-motion-cardEnter-start.png",
+    ".artifacts/product/P6/motion-evidence/desktop-motion-cardEnter-mid.png",
+    ".artifacts/product/P6/motion-evidence/desktop-motion-cardEnter-end.png",
+    ".artifacts/product/P6/motion-evidence/cardEnter-motion-evidence.json",
     ".artifacts/product/P6/runtime-identity.json",
     ".artifacts/product/P6/normal-smoke-parity.json",
     ".artifacts/product/P6/desktop-state-render-proof.json",
@@ -343,6 +471,33 @@ function artifactBindings() {
   }));
 }
 
+function stateComparison(stateId) {
+  return {
+    stateId,
+    passed: true,
+    checks: {
+      webPresent: true,
+      desktopPresent: true,
+      bothNonBlank: true,
+      notSameSourceHash: true,
+      comparisonGenerated: true
+    }
+  };
+}
+
+function motionEvidence(motionId) {
+  return {
+    motionId,
+    passed: true,
+    checks: {
+      webStartMidEndPresent: true,
+      desktopStartMidEndPresent: true,
+      webFramesNotGeneric: true,
+      desktopFramesNotGeneric: true
+    }
+  };
+}
+
 function snapshot(stateId, regionIds, controlIds) {
   return {
     stateId,
@@ -359,4 +514,14 @@ function snapshot(stateId, regionIds, controlIds) {
       disabled: false
     }))
   };
+}
+
+async function writePng(filePath, rgba) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, encode({
+    width: 1,
+    height: 1,
+    data: Uint8Array.from(rgba),
+    channels: 4
+  }));
 }

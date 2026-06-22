@@ -43,6 +43,17 @@ async function capture(window, fileName) {
   writeFileSync(path.join(outRoot, fileName), png);
 }
 
+async function captureMotionFrames(window) {
+  for (const motion of contract.motions ?? []) {
+    await delay(80);
+    await capture(window, `web-motion-${motion.id}-start.png`);
+    await delay(220);
+    await capture(window, `web-motion-${motion.id}-mid.png`);
+    await delay(220);
+    await capture(window, `web-motion-${motion.id}-end.png`);
+  }
+}
+
 async function collectSnapshot(window, stateId) {
   return window.webContents.executeJavaScript(`
     (() => {
@@ -325,8 +336,9 @@ async function main() {
   })()`);
   snapshots.push(await collectSnapshot(window, "mode-menu-open"));
   await capture(window, "screenshot-mode-menu-open-1440x900.png");
-  await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
-  await delay(220);
+  await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
+  await window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
+  await delay(180);
 
   console.log("P6_WEB_BASELINE_PHASE load-fixture");
   await loadFixture(window);
@@ -334,6 +346,7 @@ async function main() {
   await setMode(window, "exportReview");
   snapshots.push(await collectSnapshot(window, "export-review-loaded"));
   await capture(window, "screenshot-export-review-loaded-1440x900.png");
+  await captureMotionFrames(window);
 
   console.log("P6_WEB_BASELINE_PHASE info-overview");
   await window.webContents.executeJavaScript(`document.querySelector("#infoPanelButton")?.click(); true;`);
