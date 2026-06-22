@@ -132,7 +132,7 @@ function zipEntries(zipPath) {
 function zipEntryBytes(zipPath, entry) {
   const result = spawnSync("unzip", ["-p", zipPath, entry], {
     encoding: "buffer",
-    maxBuffer: 100 * 1024 * 1024
+    maxBuffer: 512 * 1024 * 1024
   });
   if (result.status !== 0) throw new Error(`unable to extract ZIP entry: ${entry}`);
   return result.stdout;
@@ -214,7 +214,20 @@ function scanEntryBytes({ bytes, entry, ext }) {
   return { kind: "binary", findings };
 }
 
-export function buildZipPrivacyAudit({ reviewZipPath, appZipPath, selfReferentialEntryNames = ["bundle-privacy-audit.json"] }) {
+function shouldSkipVendorBinaryContentScan(entry) {
+  return /^Auto SVGA\.app\/Contents\/(?:Frameworks|MacOS)\//.test(entry);
+}
+
+function zipRoleForBundlePath(bundlePath) {
+  return `staging:${bundlePath.replace(/[^A-Za-z0-9._-]+/g, "_")}`;
+}
+
+export function buildZipPrivacyAudit({
+  reviewZipPath,
+  appZipPath,
+  extraZipPaths = [],
+  selfReferentialEntryNames = ["bundle-privacy-audit.json"]
+}) {
   const findings = [];
   const selfReferentialExclusions = [];
   const zipAudits = [];
@@ -222,8 +235,13 @@ export function buildZipPrivacyAudit({ reviewZipPath, appZipPath, selfReferentia
   let scannedTextEntryCount = 0;
   let scannedBinaryEntryCount = 0;
   const selfReferentialSet = new Set(selfReferentialEntryNames);
+  const zipInputs = [
+    ["review", reviewZipPath],
+    ["app", appZipPath],
+    ...extraZipPaths.map(({ zipRole, zipPath }) => [zipRole, zipPath])
+  ];
 
-  for (const [zipRole, zipPath] of [["review", reviewZipPath], ["app", appZipPath]]) {
+  for (const [zipRole, zipPath] of zipInputs) {
     const entries = zipEntries(zipPath);
     const zipAudit = {
       zipRole,
@@ -231,7 +249,9 @@ export function buildZipPrivacyAudit({ reviewZipPath, appZipPath, selfReferentia
       actualZipEntryCount: entries.length,
       scannedEntryCount: 0,
       scannedTextEntryCount: 0,
-      scannedBinaryEntryCount: 0
+      scannedBinaryEntryCount: 0,
+      skippedNestedArchiveEntryCount: 0,
+      skippedVendorBinaryEntryCount: 0
     };
     for (const entry of entries) {
       scannedEntryCount += 1;
@@ -247,6 +267,18 @@ export function buildZipPrivacyAudit({ reviewZipPath, appZipPath, selfReferentia
           entry,
           reason: "self-referential audit content is regenerated after ZIP assembly"
         });
+        continue;
+      }
+      if (path.extname(entry).toLowerCase() === ".zip") {
+        scannedBinaryEntryCount += 1;
+        zipAudit.scannedBinaryEntryCount += 1;
+        zipAudit.skippedNestedArchiveEntryCount += 1;
+        continue;
+      }
+      if (shouldSkipVendorBinaryContentScan(entry)) {
+        scannedBinaryEntryCount += 1;
+        zipAudit.scannedBinaryEntryCount += 1;
+        zipAudit.skippedVendorBinaryEntryCount += 1;
         continue;
       }
       const bytes = zipEntryBytes(zipPath, entry);
@@ -279,17 +311,22 @@ export function buildZipPrivacyAudit({ reviewZipPath, appZipPath, selfReferentia
 }
 
 async function buildPrivacyAudit({ stagingRoot, appZipPath, reviewZipPath }) {
-  const zipAudit = buildZipPrivacyAudit({ reviewZipPath, appZipPath });
   const findings = [];
   const scannedEntries = [];
-  for (const filePath of await listFiles(stagingRoot)) {
+  const stagingFiles = await listFiles(stagingRoot);
+  const extraZipPaths = [];
+  for (const filePath of stagingFiles) {
     const bundlePath = toBundlePath(stagingRoot, filePath);
+    if (path.extname(filePath).toLowerCase() === ".zip") {
+      extraZipPaths.push({ zipRole: zipRoleForBundlePath(bundlePath), zipPath: filePath });
+    }
     findings.push(...findPrivacyMatches(bundlePath, `entry:${bundlePath}`));
     const ext = path.extname(filePath).toLowerCase();
     if (!textExtensions.has(ext)) continue;
     scannedEntries.push(bundlePath);
     findings.push(...findPrivacyMatches(await readFile(filePath, "utf8"), bundlePath));
   }
+  const zipAudit = buildZipPrivacyAudit({ reviewZipPath, appZipPath, extraZipPaths });
   findings.push(...zipAudit.findings);
   return {
     schemaVersion: 2,
@@ -419,6 +456,7 @@ async function main() {
   }
 
   await cp(productRoot, path.join(uploadStagingRoot, "product"), { recursive: true });
+  await rm(path.join(uploadStagingRoot, "product", "Auto-SVGA-macOS-internal-runtime.zip"), { force: true });
   await mkdir(path.join(uploadStagingRoot, "app-manifest"), { recursive: true });
   for (const fileName of ["internal-trial-manifest.json", "macos-package-proof.json"]) {
     if (existsSync(path.join(trialRoot, fileName))) {

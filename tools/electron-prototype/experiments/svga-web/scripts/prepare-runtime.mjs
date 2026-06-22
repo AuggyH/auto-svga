@@ -23,6 +23,7 @@ await verifyLegacyVendorAssets();
 await rm(runtimeRoot, { recursive: true, force: true });
 await mkdir(runtimeRoot, { recursive: true });
 await cp(path.join(prototypeRoot, ".runtime/dist"), path.join(runtimeRoot, "dist"), { recursive: true });
+await pruneRuntimeDist(path.join(runtimeRoot, "dist"));
 await cp(path.join(prototypeRoot, ".runtime/tools"), path.join(runtimeRoot, "tools"), { recursive: true });
 await cp(path.join(prototypeRoot, ".runtime/fixture"), path.join(runtimeRoot, "fixture"), { recursive: true });
 await cp(path.join(prototypeRoot, ".runtime/proto"), path.join(runtimeRoot, "proto"), { recursive: true });
@@ -52,6 +53,11 @@ async function verifyVendorAssets() {
       throw new Error(`Vendor is not strict-CSP compatible: ${name}`);
     }
   }
+}
+
+async function pruneRuntimeDist(distRoot) {
+  await rm(path.join(distRoot, "tests"), { recursive: true, force: true });
+  await rm(path.join(distRoot, ".DS_Store"), { force: true });
 }
 
 async function verifyLegacyVendorAssets() {

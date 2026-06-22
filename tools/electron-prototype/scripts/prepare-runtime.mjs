@@ -16,6 +16,7 @@ const expectedVendorHashes = {
 await verifyVendorAssets();
 await rm(runtimeRoot, { recursive: true, force: true });
 await cp(path.join(repoRoot, "dist"), path.join(runtimeRoot, "dist"), { recursive: true });
+await pruneRuntimeDist(path.join(runtimeRoot, "dist"));
 await mkdir(path.join(runtimeRoot, "proto"), { recursive: true });
 await cp(path.join(repoRoot, "proto/svga.proto"), path.join(runtimeRoot, "proto/svga.proto"));
 await mkdir(path.join(runtimeRoot, "tools/svga-player-preview"), { recursive: true });
@@ -56,6 +57,11 @@ async function verifyVendorAssets() {
     const bytes = await readFile(path.join(prototypeRoot, "vendor", name));
     if (sha256(bytes) !== expectedHash) throw new Error(`Vendor checksum mismatch: ${name}`);
   }
+}
+
+async function pruneRuntimeDist(distRoot) {
+  await rm(path.join(distRoot, "tests"), { recursive: true, force: true });
+  await rm(path.join(distRoot, ".DS_Store"), { force: true });
 }
 
 async function createSyntheticFixture() {
