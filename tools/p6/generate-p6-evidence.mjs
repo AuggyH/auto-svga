@@ -21,6 +21,7 @@ import {
   validateP6RuntimeScenarioContract
 } from "./parity-runner.mjs";
 import { generateP6StateAndMotionEvidence } from "./runtime-scenarios/state-evidence.mjs";
+import { generateP6StrictRuntimeEvidence } from "./runtime-scenarios/strict-evidence.mjs";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptRoot, "../..");
@@ -256,7 +257,7 @@ async function runPackageAndPackagedNormalProof() {
     await cp(packageArchivePath, path.join(p6Root, "Auto-SVGA-macOS-internal-runtime.zip"));
   }
   await writeNormalSmokeParityProof();
-  await writeReviewerBProductCategoryEvidence();
+  await writeReviewerBEvidenceRequest();
 }
 
 async function writeNormalSmokeParityProof() {
@@ -316,53 +317,55 @@ async function artifactEvidence(repoPath) {
   };
 }
 
-async function writeReviewerBProductCategoryEvidence() {
+async function writeReviewerBEvidenceRequest() {
   const categories = [
-    ["productIdentity", "Product identity and internal prototype labels are visible in the Electron runtime evidence.", "desktop-loaded.png"],
-    ["toolbarAndModes", "Toolbar and mode controls are captured in the loaded desktop state for human review.", "desktop-loaded.png"],
-    ["localPreview", "Local SVGA preview is rendered from the repository fixture in Electron.", "desktop-loaded.png"],
-    ["exportReview", "Export review remains a browser baseline concern; desktop evidence keeps this category for owner review.", "web-baseline/screenshot-export-review-loaded-1440x900.png"],
-    ["comparison", "Comparison mode is represented by Web baseline evidence and remains pending independent visual review.", "web-baseline/screenshot-local-compare-empty-1440x900.png"],
-    ["referenceMedia", "Reference media parity remains bound to the Web baseline artifact set.", "web-baseline/screenshot-info-assets-1440x900.png"],
-    ["playbackControls", "Playback controls are visible with loaded SVGA evidence in the desktop runtime.", "desktop-loaded.png"],
-    ["fitControls", "Fit controls are visible with loaded SVGA evidence in the desktop runtime.", "desktop-loaded.png"],
-    ["synchronizedPlayback", "Synchronized playback is retained as a parity category for human confirmation.", "web-baseline/interaction-trace.json"],
-    ["inspectionOverview", "Inspection overview is present in the captured Web baseline.", "web-baseline/screenshot-info-overview-1440x900.png"],
-    ["assetDetails", "Asset detail evidence is present in the captured Web baseline.", "web-baseline/screenshot-info-assets-1440x900.png"],
-    ["motionAssetAudit", "Motion Asset Audit read-only panel is included in desktop and Web evidence.", "desktop-inspection.png"],
-    ["runtimeLogs", "Runtime log panel is represented in Web baseline evidence.", "web-baseline/screenshot-logs-1440x900.png"],
-    ["settings", "Settings panel is represented in Web baseline evidence.", "web-baseline/screenshot-settings-1440x900.png"],
-    ["theme", "Theme state is represented in computed style and screenshot evidence.", "web-baseline/computed-styles-manifest.json"],
-    ["accessibilitySettings", "Accessibility settings require owner review against captured settings evidence.", "web-baseline/screenshot-settings-1440x900.png"],
-    ["emptyState", "Desktop empty state is captured as rendered product evidence.", "desktop-empty.png"],
-    ["loadingState", "Desktop loading state is captured as rendered product evidence.", "desktop-loading.png"],
-    ["invalidState", "Desktop invalid state is captured as rendered product evidence.", "desktop-invalid.png"],
-    ["responsiveLayout", "Responsive Web baseline is captured at 900px width.", "web-baseline/screenshot-export-review-loaded-900x720.png"],
-    ["interactionParity", "Interaction trace exists and is bound for follow-up review.", "web-baseline/interaction-trace.json"],
-    ["motionParity", "Motion manifest exists and is bound for follow-up review.", "web-baseline/motion-manifest.json"],
-    ["normalMacApp", "Packaged macOS app normal runtime proof exists and passed smoke validation.", "packaged-app-runtime-proof.json"],
-    ["bundleCompleteness", "Internal trial manifest and App ZIP are present in P6 evidence.", "internal-trial-manifest.json"],
-    ["bundlePrivacy", "Request audit and runtime identity evidence show local-only, no telemetry behavior.", "web-baseline/request-audit.json"]
+    ["productIdentity", "Confirm product identity and internal prototype labels using concrete Desktop runtime evidence.", "desktop-loaded.png"],
+    ["toolbarAndModes", "Confirm toolbar and mode controls against loaded Desktop state geometry and controls.", "desktop-loaded.png"],
+    ["localPreview", "Confirm local SVGA preview renders from the repository fixture in Electron.", "desktop-loaded.png"],
+    ["exportReview", "Confirm export-review parity with Web and Desktop state evidence.", "web-baseline/screenshot-export-review-loaded-1440x900.png"],
+    ["comparison", "Confirm comparison mode with strict interaction and state evidence.", "interaction-parity-report.json"],
+    ["referenceMedia", "Confirm reference media selection and player controls.", "web-baseline/screenshot-info-assets-1440x900.png"],
+    ["playbackControls", "Confirm playback controls and timeline values.", "desktop-loaded.png"],
+    ["fitControls", "Confirm fit controls and rendered geometry.", "desktop-loaded.png"],
+    ["synchronizedPlayback", "Confirm synchronized playback from real keyboard/click traces.", "interaction-parity-report.json"],
+    ["inspectionOverview", "Confirm inspection overview side panel content and geometry.", "web-baseline/screenshot-info-overview-1440x900.png"],
+    ["assetDetails", "Confirm asset detail evidence and resource panels.", "web-baseline/screenshot-info-assets-1440x900.png"],
+    ["motionAssetAudit", "Confirm Motion Asset Audit read-only panel in Desktop and Web evidence.", "desktop-inspection.png"],
+    ["runtimeLogs", "Confirm runtime log panel content and controls.", "web-baseline/screenshot-logs-1440x900.png"],
+    ["settings", "Confirm settings panel geometry, values, and close behavior.", "web-baseline/screenshot-settings-1440x900.png"],
+    ["theme", "Confirm theme state through computed style and screenshot evidence.", "web-baseline/computed-styles-manifest.json"],
+    ["accessibilitySettings", "Confirm reduced motion and blur settings with control values.", "interaction-parity-report.json"],
+    ["emptyState", "Confirm Desktop empty state differs from loading.", "desktop-empty.png"],
+    ["loadingState", "Confirm loading DOM, rect, overlay, and full screenshot share one stateSnapshotId.", "desktop-loading.png"],
+    ["invalidState", "Confirm invalid state clears stale canvas, filename, and metadata.", "desktop-invalid.png"],
+    ["responsiveLayout", "Confirm responsive Web/Desktop geometry at the required viewport.", "web-baseline/screenshot-export-review-loaded-900x720.png"],
+    ["interactionParity", "Confirm Web and Desktop strict interaction traces are host-neutral and matching.", "interaction-parity-report.json"],
+    ["motionParity", "Confirm motion start/mid/end, crop, geometry, params, and reduced-motion comparison.", "web-baseline/motion-manifest.json"],
+    ["normalMacApp", "Confirm packaged macOS app proof uses normal runtime flags.", "packaged-app-runtime-proof.json"],
+    ["bundleCompleteness", "Confirm internal trial manifest and App ZIP are present.", "internal-trial-manifest.json"],
+    ["bundlePrivacy", "Confirm request audit and runtime identity evidence show local-only behavior.", "web-baseline/request-audit.json"]
   ];
   const categoryRecords = [];
-  for (const [category, observation, fragment] of categories) {
+  for (const [category, request, fragment] of categories) {
     const repoPath = `.artifacts/product/P6/${fragment}`;
     categoryRecords.push({
       category,
-      verdict: "HUMAN_REQUIRED",
-      visualObservations: [observation],
-      evidence: [await artifactEvidence(repoPath)],
-      finding: "Pending independent Reviewer B confirmation; this file stages concrete runtime evidence categories only."
+      request,
+      evidenceNeeded: [await artifactEvidence(repoPath)],
+      reviewerMustProvide: [
+        "visualObservation",
+        "runtimeBehaviorObservation",
+        "approvedDifferenceAssessment"
+      ]
     });
   }
-  await writeJson(path.join(p6Root, "reviewer-b-product-categories.json"), {
+  await writeJson(path.join(p6Root, "reviewer-b-evidence-request.json"), {
     schemaVersion: 2,
     milestoneId,
     headCommit: git(["rev-parse", "HEAD"]),
-    verdict: "HUMAN_REQUIRED",
     categoryCount: categoryRecords.length,
     categories: categoryRecords,
-    generationPolicy: "A0 runtime evidence category staging from actual Web/Desktop artifacts; not an independent Reviewer B PASS.",
+    generationPolicy: "A4 request-only evidence checklist. This file is not a Reviewer B verdict and cannot mark parity PASS.",
     generatedAt: new Date().toISOString()
   });
 }
@@ -535,6 +538,10 @@ async function main() {
   await runDesktopSmoke();
   await runPackageAndPackagedNormalProof();
   await generateP6StateAndMotionEvidence({
+    p6Root,
+    contract: await readJson(contractPath)
+  });
+  await generateP6StrictRuntimeEvidence({
     p6Root,
     contract: await readJson(contractPath)
   });

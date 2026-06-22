@@ -108,8 +108,19 @@ export async function generateStateComparison(p6Root, stateId) {
       desktopPresent: false,
       bothNonBlank: false,
       notSameSourceHash: false,
-      comparisonGenerated: false
+      comparisonGenerated: false,
+      stateSnapshotIdBound: false,
+      geometryCompared: false,
+      computedStyleCompared: false,
+      controlValuesCompared: false,
+      playbackTimeCompared: false,
+      visibleRegionsCompared: false,
+      pixelToleranceCompared: false,
+      noUnapprovedDifferences: false
     },
+    failures: [
+      "strict state metadata is unavailable: stateSnapshotId, geometry, computed style, control values, playback time, visible regions, and pixel tolerance must be supplied by runtime scenario artifacts"
+    ],
     passed: false,
     generatedAt: new Date().toISOString()
   };
@@ -164,8 +175,16 @@ export async function collectMotionEvidence(p6Root, motionId) {
       webStartMidEndPresent: webHashes.length === P6_MOTION_PHASES.length,
       desktopStartMidEndPresent: desktopHashes.length === P6_MOTION_PHASES.length,
       webFramesNotGeneric: new Set(webHashes).size === P6_MOTION_PHASES.length,
-      desktopFramesNotGeneric: new Set(desktopHashes).size === P6_MOTION_PHASES.length
+      desktopFramesNotGeneric: new Set(desktopHashes).size === P6_MOTION_PHASES.length,
+      sameTriggerAndState: false,
+      animationParamsMatched: false,
+      geometryCompared: false,
+      cropCompared: false,
+      reducedMotionCompared: false
     },
+    failures: [
+      "strict motion metadata is unavailable: shared trigger/state, animation params, geometry, crop compare, and reduced-motion compare must be supplied by runtime scenario artifacts"
+    ],
     generatedAt: new Date().toISOString()
   };
   result.passed = Object.values(result.checks).every(Boolean);

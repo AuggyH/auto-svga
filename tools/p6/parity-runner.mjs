@@ -4,6 +4,11 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { P6_RUNTIME_SCENARIOS } from "./runtime-scenarios/contract.mjs";
+import {
+  strictInteractionPassed,
+  strictMotionEvidencePassed,
+  strictStateComparisonPassed
+} from "./runtime-scenarios/strict-evidence.mjs";
 
 const PASS = "pass";
 const FAIL = "fail";
@@ -90,8 +95,11 @@ export async function loadP6RuntimeFacts(input) {
       normalSmokeParity: await readJsonFromRoot("normal-smoke-parity.json"),
       stateRenderProof: await readJsonFromRoot("desktop-state-render-proof.json"),
       artifactIndex: await readJsonFromRoot("artifact-index.json"),
-      reviewerB: await readJsonFromRoot("reviewer-b-product-categories.json")
+      reviewerBEvidenceRequest: await readJsonFromRoot("reviewer-b-evidence-request.json")
     },
+    webInteractionTrace: await readJsonFromRoot("web-interaction-trace.json"),
+    desktopInteractionTrace: await readJsonFromRoot("desktop-interaction-trace.json"),
+    interactionParityReport: await readJsonFromRoot("interaction-parity-report.json"),
     stateComparisons: await readJsonMap(path.join(p6Root, "state-comparisons"), /-comparison\.json$/, (value) => value.stateId),
     motionEvidence: await readJsonMap(path.join(p6Root, "motion-evidence"), /-motion-evidence\.json$/, (value) => value.motionId),
     package: {
@@ -140,8 +148,8 @@ export function buildP6ParityReportFromRuntimeFacts(input) {
       artifactCheck(input, "desktop-state-proof", ["desktop-state-render-proof.json"], "Desktop state proof exists."),
       factCheck("desktop-state-proof-passed", input.desktop?.stateRenderProof?.passed === true, "Desktop state proof passed."),
       factCheck("shell-app-css-hash-parity", shellAppCssHashesStable(input), "Shell, app, preload, and CSS hashes are stable across normal and smoke launches."),
-      factCheck("reviewer-observations-present", reviewerObservationsPresent(input), "Independent reviewer observations are non-empty."),
-      factCheck("reviewer-categories-complete", reviewerCategoriesComplete(input), "Reviewer category evidence covers required product categories.")
+      factCheck("reviewer-evidence-request-present", reviewerEvidenceRequestPresent(input), "Reviewer B evidence request is concrete and contains no Reviewer verdict."),
+      factCheck("reviewer-categories-complete", reviewerCategoriesComplete(input), "Reviewer B evidence request covers required product categories.")
     ], input),
     buildSyntheticItemEvidence("packaged-app-launch", true, [
       artifactCheck(input, "packaged-proof", ["packaged-app-runtime-proof.json"], "Packaged app runtime proof exists."),
@@ -268,6 +276,30 @@ function buildContractItemEvidence(item, sectionId, input) {
     artifactCheckFromIds("comparison-item-artifacts", comparisonIds, "Comparison evidence artifacts are item-specific.", fragmentsCovered(input.artifactBindings, comparisonFragments)),
     factCheck("shared-source-files", sharedSourceFilesPresent(item, input), "Shared source files referenced by the contract exist.")
   ];
+  if (sectionId === "interaction_parity") {
+    checks.push(factCheck(
+      "strict-interaction-parity",
+      strictInteractionPassed(input, item),
+      "Web and Desktop action traces share fixture, viewport, controls, final digest, and real input action contract.",
+      idsByPath(input.artifactBindings, ["web-interaction-trace.json", "desktop-interaction-trace.json", "interaction-parity-report.json"])
+    ));
+  }
+  if (sectionId === "state_parity") {
+    checks.push(factCheck(
+      "strict-state-parity",
+      stateComparisonPassed(input, item.id),
+      "State comparison includes bound snapshot ID, geometry, computed style, control value, playback time, visible region, pixel tolerance, and unapproved-difference gates.",
+      idsByPath(input.artifactBindings, [`state-comparisons/${item.id}-comparison.json`])
+    ));
+  }
+  if (sectionId === "motion_parity") {
+    checks.push(factCheck(
+      "strict-motion-parity",
+      motionEvidencePassed(input, item.id, item),
+      "Motion evidence shares trigger/state and includes start/mid/end, animation params, geometry, crop, and reduced-motion comparison.",
+      idsByPath(input.artifactBindings, [`motion-evidence/${item.id}-motion-evidence.json`])
+    ));
+  }
   return itemResult({
     id: item.id,
     required: item.required === true,
@@ -403,7 +435,7 @@ function artifactCheckFromIds(id, artifactIds, summary, passed = artifactIds.len
 function webItemPresent(item, sectionId, input) {
   if (sectionId === "state_parity") return hasWebState(input, item.id) && stateComparisonPassed(input, item.id);
   if (sectionId === "interaction_parity") {
-    return hasInteractionStep(input, item.expectedState) && selectorSeenInWeb(item.selector, input);
+    return hasInteractionStep(input, item.expectedState) && selectorSeenInWeb(item.selector, input) && strictInteractionPassed(input, item);
   }
   if (sectionId === "motion_parity") return motionSeen(item, input);
   const selectors = item.selectors ?? [item.selector].filter(Boolean);
@@ -413,8 +445,8 @@ function webItemPresent(item, sectionId, input) {
 
 function desktopItemPresent(item, sectionId, input) {
   if (sectionId === "state_parity") return hasDesktopState(input, item.id) && stateComparisonPassed(input, item.id);
-  if (sectionId === "motion_parity") return hasDesktopState(input, "export-review-loaded") && motionEvidencePassed(input, item.id);
-  if (sectionId === "interaction_parity") return hasDesktopState(input, item.expectedState);
+  if (sectionId === "motion_parity") return hasDesktopState(input, "export-review-loaded") && motionEvidencePassed(input, item.id, item);
+  if (sectionId === "interaction_parity") return hasDesktopState(input, item.expectedState) && strictInteractionPassed(input, item);
   if (sectionId === "feature_parity") return desktopFeaturePresent(item, input);
   return (desktopFragmentsForItem(item, sectionId).length > 0 && idsByPath(input.artifactBindings, desktopFragmentsForItem(item, sectionId)).length > 0);
 }
@@ -525,16 +557,21 @@ function shellAppCssHashesStable(input) {
   return !failedHashCheck && requiredRuntimePieces.every((piece) => hashBlob.includes(piece));
 }
 
-function reviewerObservationsPresent(input) {
-  const categories = input.desktop?.reviewerB?.categories;
+function reviewerEvidenceRequestPresent(input) {
+  const request = input.desktop?.reviewerBEvidenceRequest;
+  const categories = request?.categories;
+  if (containsReviewerVerdict(request)) return false;
   if (!Array.isArray(categories) || categories.length === 0) return false;
   return categories.every((category) =>
-    Array.isArray(category.visualObservations) && category.visualObservations.length > 0
+    typeof category.category === "string"
+    && typeof category.request === "string"
+    && Array.isArray(category.evidenceNeeded)
+    && category.evidenceNeeded.length > 0
   );
 }
 
 function reviewerCategoriesComplete(input) {
-  const categories = input.desktop?.reviewerB?.categories;
+  const categories = input.desktop?.reviewerBEvidenceRequest?.categories;
   if (!Array.isArray(categories)) return false;
   const present = new Set(categories.map((category) => category.category ?? category.id));
   return [
@@ -548,6 +585,13 @@ function reviewerCategoriesComplete(input) {
     "normalMacApp",
     "bundleCompleteness"
   ].every((category) => present.has(category));
+}
+
+function containsReviewerVerdict(value) {
+  if (Array.isArray(value)) return value.some((entry) => containsReviewerVerdict(entry));
+  if (!value || typeof value !== "object") return false;
+  if ("verdict" in value || "finding" in value || "visualObservations" in value) return true;
+  return Object.values(value).some((entry) => containsReviewerVerdict(entry));
 }
 
 function normalAppProofFlags(input) {
@@ -607,11 +651,11 @@ function desktopInvalidClearsMetadata(input) {
 }
 
 function stateComparisonPassed(input, stateId) {
-  return input.stateComparisons?.[stateId]?.passed === true;
+  return strictStateComparisonPassed(input.stateComparisons?.[stateId], stateId);
 }
 
-function motionEvidencePassed(input, motionId) {
-  return input.motionEvidence?.[motionId]?.passed === true;
+function motionEvidencePassed(input, motionId, item = { id: motionId }) {
+  return strictMotionEvidencePassed(input.motionEvidence?.[motionId], item);
 }
 
 function itemText(item) {
@@ -641,6 +685,7 @@ function webFragmentsForItem(item, sectionId) {
   const fragments = ["web-baseline/dom-manifest.json"];
   if (sectionId === "visual_parity") fragments.push("web-baseline/computed-styles-manifest.json");
   if (sectionId === "interaction_parity") fragments.push("web-baseline/interaction-trace.json");
+  if (sectionId === "interaction_parity") fragments.push("web-interaction-trace.json", "interaction-parity-report.json");
   if (sectionId === "motion_parity") fragments.push("web-baseline/motion-manifest.json", "web-baseline/computed-styles-manifest.json");
   if (sectionId === "motion_parity") fragments.push(`motion-evidence/${item.id}-motion-evidence.json`);
   if (sectionId === "state_parity") {
@@ -670,6 +715,7 @@ function desktopFragmentsForItem(item, sectionId) {
   const text = itemText(item);
   const fragments = ["runtime-identity.json"];
   if (sectionId === "interaction_parity" || sectionId === "state_parity") fragments.push("desktop-state-render-proof.json");
+  if (sectionId === "interaction_parity") fragments.push("desktop-interaction-trace.json", "interaction-parity-report.json");
   if (sectionId === "motion_parity") fragments.push("desktop-state-render-proof.json");
   if (sectionId === "motion_parity") {
     fragments.push(
@@ -714,6 +760,9 @@ function comparisonFragmentsForItem(item, sectionId) {
     sectionId === "state_parity" ? `state-comparisons/${item.id}-comparison.json` : "",
     sectionId === "state_parity" ? `state-comparisons/web-desktop-${item.id}-comparison.png` : "",
     sectionId === "interaction_parity" ? "interaction-trace.json" : "",
+    sectionId === "interaction_parity" ? "web-interaction-trace.json" : "",
+    sectionId === "interaction_parity" ? "desktop-interaction-trace.json" : "",
+    sectionId === "interaction_parity" ? "interaction-parity-report.json" : "",
     ...stateScreenshotFragments(item.id),
     ...stateScreenshotFragments(item.expectedState)
   ]);

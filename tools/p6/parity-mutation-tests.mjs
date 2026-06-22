@@ -13,6 +13,7 @@ import {
   validateP6SourceDiffPrivacy,
   validateP6WorkerRegistryFreshness
 } from "./parity-runner.mjs";
+import { buildInteractionParityReport } from "./runtime-scenarios/strict-evidence.mjs";
 import { generateStateComparison } from "./runtime-scenarios/state-evidence.mjs";
 import { validateP6ParityReportV1 } from "../../dist/workbench/p6-parity-report-contract.js";
 
@@ -37,12 +38,13 @@ test("state evidence helper writes Web/Desktop/comparison triple and JSON", asyn
 
     const result = await generateStateComparison(root, "local-empty");
 
-    assert.equal(result.passed, true);
+    assert.equal(result.passed, false);
     await readFile(path.join(root, "state-comparisons/web-local-empty.png"));
     await readFile(path.join(root, "state-comparisons/desktop-local-empty.png"));
     await readFile(path.join(root, "state-comparisons/web-desktop-local-empty-comparison.png"));
     const json = JSON.parse(await readFile(path.join(root, "state-comparisons/local-empty-comparison.json"), "utf8"));
     assert.equal(json.checks.notSameSourceHash, true);
+    assert.equal(json.checks.geometryCompared, false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -194,17 +196,17 @@ test("generic screenshots and Web-only evidence fail state triples", () => {
   assertItemFailed(buildP6ParityReportFromRuntimeFacts(webOnly), "stateParity", "local-empty", "web-item-runtime");
 });
 
-test("empty reviewer observations fail Desktop runtime proof", () => {
+test("reviewer verdict-shaped evidence fails Desktop runtime proof", () => {
   const facts = goodFacts();
-  facts.desktop.reviewerB.categories[0].visualObservations = [];
+  facts.desktop.reviewerBEvidenceRequest.categories[0].verdict = "PASS";
 
   const report = buildP6ParityReportFromRuntimeFacts(facts);
-  assertItemFailed(report, "desktopRuntimeProof", "source-electron-smoke", "reviewer-observations-present");
+  assertItemFailed(report, "desktopRuntimeProof", "source-electron-smoke", "reviewer-evidence-request-present");
 });
 
 test("reviewer category gaps fail Desktop runtime proof", () => {
   const facts = goodFacts();
-  facts.desktop.reviewerB.categories = facts.desktop.reviewerB.categories.filter((category) => category.category !== "motionParity");
+  facts.desktop.reviewerBEvidenceRequest.categories = facts.desktop.reviewerBEvidenceRequest.categories.filter((category) => category.category !== "motionParity");
 
   const report = buildP6ParityReportFromRuntimeFacts(facts);
   assertItemFailed(report, "desktopRuntimeProof", "source-electron-smoke", "reviewer-categories-complete");
@@ -272,10 +274,83 @@ test("missing App ZIP is detected by report and scenario contract", () => {
   assert.ok(scenarioValidation.failures.includes("packaged-runtime missing App ZIP"));
 });
 
+test("Repair 6 strict interaction gates reject synthetic, Web-only, and mismatched context evidence", () => {
+  const synthetic = goodFacts();
+  synthetic.webInteractionTrace.actionTrace[0].kind = "script";
+  synthetic.interactionParityReport = buildInteractionParityReport({
+    contract: synthetic.contract,
+    webTrace: synthetic.webInteractionTrace,
+    desktopTrace: synthetic.desktopInteractionTrace
+  });
+  assertItemFailed(
+    buildP6ParityReportFromRuntimeFacts(synthetic),
+    "interactionParity",
+    "open-settings-modal",
+    "web-item-runtime"
+  );
+
+  const webOnly = goodFacts();
+  webOnly.desktopInteractionTrace.actionTrace = [];
+  webOnly.interactionParityReport = buildInteractionParityReport({
+    contract: webOnly.contract,
+    webTrace: webOnly.webInteractionTrace,
+    desktopTrace: webOnly.desktopInteractionTrace
+  });
+  assertItemFailed(
+    buildP6ParityReportFromRuntimeFacts(webOnly),
+    "interactionParity",
+    "open-settings-modal",
+    "strict-interaction-parity"
+  );
+
+  const mismatchedContext = goodFacts();
+  mismatchedContext.desktopInteractionTrace.context.viewportCss.width = 900;
+  mismatchedContext.interactionParityReport = buildInteractionParityReport({
+    contract: mismatchedContext.contract,
+    webTrace: mismatchedContext.webInteractionTrace,
+    desktopTrace: mismatchedContext.desktopInteractionTrace
+  });
+  assert.equal(mismatchedContext.interactionParityReport.falseNegativeCount, 0);
+  assertItemFailed(
+    buildP6ParityReportFromRuntimeFacts(mismatchedContext),
+    "interactionParity",
+    "open-settings-modal",
+    "strict-interaction-parity"
+  );
+});
+
+test("Repair 6 strict state gates reject hash-only, stale invalid, and split loading snapshots", () => {
+  const hashOnly = goodFacts();
+  hashOnly.stateComparisons["local-empty"].checks.geometryCompared = false;
+  hashOnly.stateComparisons["local-empty"].passed = false;
+  assertItemFailed(buildP6ParityReportFromRuntimeFacts(hashOnly), "stateParity", "local-empty", "web-item-runtime");
+
+  const staleInvalid = goodFacts();
+  staleInvalid.stateComparisons["invalid-error-state"].checks.controlValuesCompared = false;
+  staleInvalid.stateComparisons["invalid-error-state"].passed = false;
+  assertItemFailed(buildP6ParityReportFromRuntimeFacts(staleInvalid), "stateParity", "invalid-error-state", "web-item-runtime");
+
+  const splitLoading = goodFacts();
+  splitLoading.stateComparisons["export-review-loaded"].checks.stateSnapshotIdBound = false;
+  splitLoading.stateComparisons["export-review-loaded"].passed = false;
+  assertItemFailed(buildP6ParityReportFromRuntimeFacts(splitLoading), "stateParity", "export-review-loaded", "web-item-runtime");
+});
+
+test("Repair 6 strict motion gates reject missing trigger, crop, and reduced-motion evidence", () => {
+  for (const checkId of ["sameTriggerAndState", "cropCompared", "reducedMotionCompared"]) {
+    const facts = goodFacts();
+    facts.motionEvidence.cardEnter.checks[checkId] = false;
+    facts.motionEvidence.cardEnter.passed = false;
+    assertItemFailed(buildP6ParityReportFromRuntimeFacts(facts), "motionParity", "cardEnter", "web-item-runtime");
+  }
+});
+
 test("generator source does not use hard-coded status pass object fields", async () => {
   const source = await readFile(new URL("./generate-p6-evidence.mjs", import.meta.url), "utf8");
 
   assert.equal(source.includes('status: "pass"'), false);
+  assert.equal(source.includes("reviewer-b-product-categories.json"), false);
+  assert.equal(source.includes("verdict:"), false);
 });
 
 function assertItemFailed(report, sectionKey, itemId, checkId) {
@@ -306,7 +381,7 @@ function goodFacts() {
         { id: "latest-artifact-scan-and-load", selectors: ["#rescanButton"], required: true, sourceFiles: ["tools/svga-player-preview/server.mjs"] }
       ],
       interactions: [
-        { id: "open-settings-modal", selector: "#settingsButton", initialState: "logs-open", expectedState: "settings-open", required: true }
+        { id: "open-settings-modal", trigger: "click", selector: "#settingsButton", initialState: "logs-open", expectedState: "settings-open", required: true }
       ],
       states: [
         { id: "local-empty", required: true },
@@ -348,6 +423,31 @@ function goodFacts() {
       },
       requestAudit: { externalRequests: [] }
     },
+    webInteractionTrace: strictTrace("web", fixtureSha256),
+    desktopInteractionTrace: strictTrace("desktop", fixtureSha256),
+    interactionParityReport: {
+      schemaVersion: 1,
+      reportId: "interaction-parity-report",
+      passed: true,
+      falseNegativeCount: 0,
+      checks: {
+        webTraceValid: true,
+        desktopTraceValid: true,
+        sameFixtureBytes: true,
+        sameFixtureDisplayName: true,
+        sameViewportCss: true,
+        sameDevicePixelRatio: true,
+        samePlaybackTime: true,
+        sameModePanelModalControls: true,
+        sameActionContract: true,
+        finalStateDigestsPresent: true,
+        visibleRegionsMatched: true,
+        visibleControlsMatched: true,
+        screenshotsPresent: true,
+        noUnapprovedDifferences: true
+      },
+      failures: []
+    },
     desktop: {
       runtimeIdentity: {
         rendererJsSha256: fixtureSha256,
@@ -378,7 +478,7 @@ function goodFacts() {
       artifactIndex: {
         fixtureHashes: { fixtureSha256 }
       },
-      reviewerB: {
+      reviewerBEvidenceRequest: {
         categories: [
           "comparison",
           "referenceMedia",
@@ -389,7 +489,11 @@ function goodFacts() {
           "invalidState",
           "normalMacApp",
           "bundleCompleteness"
-        ].map((category) => ({ category, visualObservations: [`${category} is covered.`] }))
+        ].map((category) => ({
+          category,
+          request: `${category} evidence requested.`,
+          evidenceNeeded: [{ path: `.artifacts/product/P6/${category}.json`, present: true }]
+        }))
       }
     },
     package: {
@@ -418,6 +522,9 @@ function artifactBindings() {
     ".artifacts/product/P6/web-baseline/computed-styles-manifest.json",
     ".artifacts/product/P6/web-baseline/motion-manifest.json",
     ".artifacts/product/P6/web-baseline/interaction-trace.json",
+    ".artifacts/product/P6/web-interaction-trace.json",
+    ".artifacts/product/P6/desktop-interaction-trace.json",
+    ".artifacts/product/P6/interaction-parity-report.json",
     ".artifacts/product/P6/web-baseline/request-audit.json",
     ".artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png",
     ".artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png",
@@ -450,7 +557,7 @@ function artifactBindings() {
     ".artifacts/product/P6/normal-smoke-parity.json",
     ".artifacts/product/P6/desktop-state-render-proof.json",
     ".artifacts/product/P6/artifact-index.json",
-    ".artifacts/product/P6/reviewer-b-product-categories.json",
+    ".artifacts/product/P6/reviewer-b-evidence-request.json",
     ".artifacts/product/P6/desktop-inspection.png",
     ".artifacts/product/P6/desktop-1280x800.png",
     ".artifacts/product/P6/desktop-1440x900.png",
@@ -477,12 +584,21 @@ function stateComparison(stateId) {
   return {
     stateId,
     passed: true,
+    stateSnapshotId: `snapshot-${stateId}`,
     checks: {
       webPresent: true,
       desktopPresent: true,
       bothNonBlank: true,
       notSameSourceHash: true,
-      comparisonGenerated: true
+      comparisonGenerated: true,
+      stateSnapshotIdBound: true,
+      geometryCompared: true,
+      computedStyleCompared: true,
+      controlValuesCompared: true,
+      playbackTimeCompared: true,
+      visibleRegionsCompared: true,
+      pixelToleranceCompared: true,
+      noUnapprovedDifferences: true
     }
   };
 }
@@ -495,8 +611,52 @@ function motionEvidence(motionId) {
       webStartMidEndPresent: true,
       desktopStartMidEndPresent: true,
       webFramesNotGeneric: true,
-      desktopFramesNotGeneric: true
+      desktopFramesNotGeneric: true,
+      sameTriggerAndState: true,
+      animationParamsMatched: true,
+      geometryCompared: true,
+      cropCompared: true,
+      reducedMotionCompared: true
     }
+  };
+}
+
+function strictTrace(host, fixtureSha256) {
+  return {
+    schemaVersion: 1,
+    host,
+    fixture: {
+      sha256: fixtureSha256,
+      displayName: "avatar_frame_basic.svga",
+      sizeBytes: 107034
+    },
+    context: {
+      viewportCss: { width: 1440, height: 900 },
+      devicePixelRatio: 1,
+      playbackTimeMs: 1200,
+      mode: "exportReview",
+      panel: "logs",
+      modal: "settings",
+      controls: {
+        settingsButton: { visible: true, disabled: false, checked: false }
+      }
+    },
+    actionTrace: [{
+      id: "open-settings-modal",
+      kind: "click",
+      selector: "#settingsButton",
+      initialState: "logs-open",
+      expectedState: "settings-open",
+      stateReached: "settings-open",
+      source: host === "web" ? "browser-click" : "native-click",
+      targetRect: { x: 10, y: 10, width: 44, height: 32 },
+      controlValue: { visible: true, disabled: false, checked: false }
+    }],
+    finalStateDigest: fixtureSha256,
+    visibleRegions: ["shell"],
+    visibleControls: ["settingsButton"],
+    screenshots: [{ stateId: "settings-open", path: `${host}-settings-open.png`, sha256: fixtureSha256 }],
+    failures: []
   };
 }
 

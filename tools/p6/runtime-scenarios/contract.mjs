@@ -11,6 +11,8 @@ export const P6_RUNTIME_SCENARIOS = [
       "web-baseline/computed-styles-manifest.json",
       "web-baseline/motion-manifest.json",
       "web-baseline/interaction-trace.json",
+      "web-interaction-trace.json",
+      "interaction-parity-report.json",
       "web-baseline/request-audit.json",
       "web-baseline/screenshot-export-review-loaded-1440x900.png",
       "web-baseline/screenshot-local-empty-1440x900.png",
@@ -43,8 +45,10 @@ export const P6_RUNTIME_SCENARIOS = [
       "runtime-identity.json",
       "normal-smoke-parity.json",
       "desktop-state-render-proof.json",
+      "desktop-interaction-trace.json",
+      "interaction-parity-report.json",
       "artifact-index.json",
-      "reviewer-b-product-categories.json"
+      "reviewer-b-evidence-request.json"
     ]
   },
   {

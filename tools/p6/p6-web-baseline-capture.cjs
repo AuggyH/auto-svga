@@ -103,15 +103,31 @@ async function collectSnapshot(window, stateId) {
             visible: isVisible(node),
             hidden: Boolean(node.hidden),
             disabled: Boolean(node.disabled),
-            checked: Boolean(node.checked)
+            checked: Boolean(node.checked),
+            rect: {
+              x: Math.round(rect.x),
+              y: Math.round(rect.y),
+              width: Math.round(rect.width),
+              height: Math.round(rect.height)
+            }
           };
         });
+      const activeMode = document.querySelector("#modeDropdownTrigger")?.textContent?.replace(/\\s+/g, " ").trim() ?? "unknown";
+      const panel = document.querySelector("#infoPanel:not([hidden])") ? "info"
+        : document.querySelector("#logsPanel:not([hidden])") ? "logs"
+          : "none";
+      const modal = document.querySelector("#settingsModal:not([hidden]), #assetPreviewModal:not([hidden])")?.id ?? "none";
       return {
         stateId: ${JSON.stringify(stateId)},
         label: ${JSON.stringify(stateId)},
         title: document.title,
         url: location.href,
         viewport: { width: innerWidth, height: innerHeight },
+        devicePixelRatio,
+        playbackTimeMs: Math.round((document.querySelector("#svgaPanelA .timeDisplay")?.textContent?.match(/[0-9.]+/)?.[0] ?? 0) * 1000),
+        mode: activeMode,
+        panel,
+        modal,
         bodyTextSample: document.body.innerText.replace(/\\s+/g, " ").trim().slice(0, 600),
         regions,
         controls
@@ -522,6 +538,34 @@ async function main() {
   writeFileSync(path.join(outRoot, "motion-manifest.json"), JSON.stringify(await collectMotion(window), null, 2) + "\n");
   writeFileSync(path.join(outRoot, "interaction-trace.json"), JSON.stringify({
     schemaVersion: 1,
+    actionTrace: (contract.interactions ?? []).map((interaction) => {
+      const snapshot = snapshots.find((candidate) => (
+        candidate.stateId === interaction.expectedState
+        || (interaction.expectedState === "synchronized-playback-toggled-by-space" && candidate.stateId === "space-sync-toggle")
+      ));
+      const selectorId = interaction.selector?.startsWith("#") ? interaction.selector.slice(1) : null;
+      const dataValue = interaction.selector?.match(/^\\[data-value=['"]?([^'"]+)['"]?\\]$/)?.[1] ?? null;
+      const dataTab = interaction.selector?.match(/data-tab=['"]?([^'"]+)['"]?/)?.[1] ?? null;
+      const target = snapshot?.controls.find((control) => control.id === selectorId)
+        ?? snapshot?.controls.find((control) => dataValue && control.dataValue === dataValue)
+        ?? snapshot?.controls.find((control) => dataTab && control.dataTab === dataTab)
+        ?? snapshot?.regions.find((region) => region.selector === interaction.selector);
+      return {
+        id: interaction.id,
+        kind: interaction.trigger,
+        selector: interaction.selector,
+        initialState: interaction.initialState,
+        expectedState: interaction.expectedState,
+        stateReached: snapshot?.stateId ?? null,
+        source: "web-baseline-input",
+        targetRect: target?.rect ?? null,
+        controlValue: target ? {
+          visible: target.visible === true,
+          disabled: target.disabled === true,
+          checked: target.checked === true
+        } : null
+      };
+    }),
     steps: snapshots.map((snapshot) => ({
       stateId: snapshot.stateId,
       regionVisibleCount: snapshot.regions.filter((region) => region.visible).length,
