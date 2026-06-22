@@ -57,6 +57,10 @@ Date: 2026-06-22
   loading, and full-canvas nonblank proof.
 - `npm test` passed with 211 tests on repair-2 integration head
   `bd00e394da97e3e35d3427538eacfe5ce05bb2e8`.
+- P6 proof stability repair `ef2cc45649c6e54ad719f8274b8a115f35a0f5bf`
+  made normal App proof wait for nonblank canvas output instead of relying on
+  a single early sample; targeted Electron tests and `desktop:p2:normal-proof`
+  passed after the repair.
 - Final `AUTO_SVGA_SKIP_TRACKED_SNAPSHOTS=1 node tools/p6/generate-p6-evidence.mjs`
   regenerated ignored P6 product evidence under `.artifacts/product/P6` and
   bound it to head `6dd0e3c758c5edf3bf3f8a104b34ee35a2884077`.
