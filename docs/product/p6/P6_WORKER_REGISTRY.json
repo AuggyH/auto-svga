@@ -4,7 +4,7 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "a345d9b53b08c2d942c0014809569863626f1d65",
+  "currentIntegrationHeadCommit": "cf634adf9a4933524a59051ea281638e5d3d543d",
   "currentRepairRound": 5,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
@@ -212,8 +212,8 @@
       "branch": "agent/codex/p6-r5-a4-scenarios-motion-parity",
       "baseCommit": "44ece1454c1139c00a09eca1c4f20153696ce63e",
       "headCommit": "ffc8a616e4ab3ead0132154f0ef3d9c09468775b",
-      "status": "running",
-      "lastVerifiedAt": "2026-06-22T14:18:00Z",
+      "status": "completed",
+      "lastVerifiedAt": "2026-06-22T14:26:11Z",
       "ownedPaths": [
         "tools/p6/generate-p6-evidence.mjs",
         "runtime scenario runner",
@@ -228,7 +228,18 @@
         "A2",
         "A3"
       ],
-      "requestedIntegrationChanges": []
+      "requestedIntegrationChanges": [],
+      "integrationCommit": "cf634adf9a4933524a59051ea281638e5d3d543d",
+      "tests": [
+        "node --check tools/p6/generate-p6-evidence.mjs",
+        "node --check tools/p6/parity-runner.mjs",
+        "node --check tools/p6/runtime-scenarios/contract.mjs",
+        "node --check tools/p6/runtime-scenarios/state-evidence.mjs",
+        "node --check tools/p6/p6-web-baseline-capture.cjs",
+        "node --test tools/p6/parity-mutation-tests.mjs",
+        "npm run build && node --test dist/tests/p6-parity-report-contract.test.js dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD"
+      ]
     },
     {
       "workerId": "A5",
