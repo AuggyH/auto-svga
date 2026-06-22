@@ -4,13 +4,13 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "d09a4721de347cd17baf470c51753cb6ff279179",
+  "currentIntegrationHeadCommit": "184dda7b351b78d49125ed0a006a4a2d70d4b234",
   "currentRepairRound": 4,
   "terminalHandoffReady": false,
   "expectedFinalHeadCommit": null,
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T09:38:22Z",
-  "registryRefreshedAt": "2026-06-22T10:00:00Z",
+  "registryRefreshedAt": "2026-06-22T10:22:37Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -229,12 +229,12 @@
       "role": "Shared Product Shell",
       "visibleThreadId": "019eeb8a-3dbe-7123-b696-e1334ab9ab60",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "blocked",
+      "lifecycleStatus": "integrated",
       "branch": "agent/codex/p6-r4-a2-shared-shell",
-      "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
-      "headCommit": null,
-      "integrationCommit": null,
-      "workerHandoffFolder": null,
+      "baseCommit": "238874ff7ab14fc4ef91fce0ed180e65516e7511",
+      "headCommit": "720091557736ed275b00e00ba1597b336af5a0dc",
+      "integrationCommit": "184dda7b351b78d49125ed0a006a4a2d70d4b234",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A2-R4.md",
       "contextPacketPath": "docs/product/p6/worker-context/A2.md",
       "ownedPaths": [
         "tools/shared/product-frontend/",
@@ -250,8 +250,11 @@
       "dependencies": [
         "A1"
       ],
-      "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:00:00Z",
+      "requestedIntegrationChanges": [
+        "A3/A0 should update the Electron default wrapper to mount tools/shared/product-frontend/product-shell.html through the shared loader instead of keeping a copied full DOM.",
+        "A4/A0 parity evidence can use the expanded state probe fields for loading phases and invalid stale-state clearing."
+      ],
+      "lastVerifiedAt": "2026-06-22T10:22:37Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a2-shared-frontend",
@@ -267,7 +270,7 @@
       "lifecycleStatus": "running",
       "branch": "agent/codex/p6-r4-a3-electron-host",
       "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
-      "headCommit": null,
+      "headCommit": "7ff38b111a2232641917e358670e919dd3688537",
       "integrationCommit": null,
       "workerHandoffFolder": null,
       "contextPacketPath": "docs/product/p6/worker-context/A3.md",
@@ -286,7 +289,7 @@
         "A2"
       ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:00:00Z",
+      "lastVerifiedAt": "2026-06-22T10:22:37Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-r2-a3-electron-host",
@@ -302,7 +305,7 @@
       "lifecycleStatus": "running",
       "branch": "agent/codex/p6-r4-a4-parity-runtime",
       "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
-      "headCommit": null,
+      "headCommit": "d1731875db641600afffec30735585c0b577960e",
       "integrationCommit": null,
       "workerHandoffFolder": null,
       "contextPacketPath": "docs/product/p6/worker-context/A4.md",
@@ -327,7 +330,7 @@
         "A3"
       ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:00:00Z",
+      "lastVerifiedAt": "2026-06-22T10:22:37Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a4-parity-tests",
@@ -343,7 +346,7 @@
       "lifecycleStatus": "running",
       "branch": "agent/codex/p6-r4-a5-package",
       "baseCommit": "dbab38fc7fc3cad09f6305775467422ded63318c",
-      "headCommit": null,
+      "headCommit": "cd4940f421f8944bde70671f844657f74e69a8d7",
       "integrationCommit": null,
       "workerHandoffFolder": null,
       "contextPacketPath": "docs/product/p6/worker-context/A5.md",
@@ -365,7 +368,7 @@
         "A4"
       ],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T10:00:00Z",
+      "lastVerifiedAt": "2026-06-22T10:22:37Z",
       "previousContribution": {
         "waveId": "P6-R2",
         "branch": "agent/codex/p6-a5-macos-package",
