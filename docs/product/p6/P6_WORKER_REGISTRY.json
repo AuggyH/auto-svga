@@ -3,15 +3,17 @@
   "milestoneId": "P6",
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
-  "integrationBaseCommit": "ba4b178d12d6e8179e4844e7557cc9ec27949875",
-  "currentIntegrationHeadCommit": "ba4b178d12d6e8179e4844e7557cc9ec27949875",
-  "currentRepairRound": 3,
-  "protocolLoadedAt": "2026-06-22T05:44:44Z",
-  "threadListRefreshedAt": "2026-06-22T05:44:44Z",
-  "registryRefreshedAt": "2026-06-22T05:44:44Z",
+  "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+  "currentIntegrationHeadCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+  "currentRepairRound": 4,
+  "terminalHandoffReady": false,
+  "expectedFinalHeadCommit": null,
+  "protocolLoadedAt": "2026-06-22T09:38:22Z",
+  "threadListRefreshedAt": "2026-06-22T09:38:22Z",
+  "registryRefreshedAt": "2026-06-22T09:38:22Z",
   "registryValidation": {
     "status": "pass",
-    "checkedAt": "2026-06-22T05:44:44Z",
+    "checkedAt": "2026-06-22T09:38:22Z",
     "errors": []
   },
   "rules": {
@@ -22,6 +24,11 @@
     "workerPassDoesNotImplyMilestonePass": true,
     "heavyValidationRunsSerially": true,
     "appDebuggingShouldAvoidForegroundWindows": true
+  },
+  "repair4ExternalReview": {
+    "reviewedHeadCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+    "externalOutcome": "REPAIR_REQUIRED",
+    "productOutcome": "LOCAL_PREVIEW_VISUAL_DIRECTION_ACCEPTED_BUT_FULL_PARITY_NOT_PROVEN"
   },
   "acceptanceCriteria": [
     {
@@ -136,15 +143,16 @@
   "workers": [
     {
       "workerId": "A1",
-      "waveId": "P6-R3",
-      "role": "Web Baseline",
+      "waveId": "P6-R4",
+      "role": "Web Inventory And Contract",
       "visibleThreadId": "019eeb7d-c4a6-70e3-8d04-756807461f7f",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "completed",
-      "branch": "agent/codex/p6-a1-web-baseline",
-      "baseCommit": "d16fb380c0ff82b9aca3af58b0335708e0b0ef73",
-      "headCommit": "1b64e739ee013b34089151913d7c7db7a322efd8",
+      "lifecycleStatus": "planned",
+      "branch": "agent/codex/p6-r4-a1-inventory",
+      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "headCommit": null,
       "integrationCommit": null,
+      "workerHandoffFolder": null,
       "contextPacketPath": "docs/product/p6/worker-context/A1.md",
       "ownedPaths": [
         "docs/product/P6_WEB_PRODUCT_BASELINE.md",
@@ -155,80 +163,100 @@
       ],
       "readOnlyPaths": [
         "tools/svga-player-preview/",
+        "tools/shared/product-frontend/",
         "docs/loop/CURRENT_MILESTONE.md"
       ],
       "dependencies": [],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T05:44:44Z"
+      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-a1-web-baseline",
+        "headCommit": "1b64e739ee013b34089151913d7c7db7a322efd8"
+      }
     },
     {
       "workerId": "A2",
-      "waveId": "P6-R3",
-      "role": "Shared Frontend",
+      "waveId": "P6-R4",
+      "role": "Shared Product Shell",
       "visibleThreadId": "019eeb8a-3dbe-7123-b696-e1334ab9ab60",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "completed",
-      "branch": "agent/codex/p6-a2-shared-frontend",
-      "baseCommit": "437b21f1ce35bd89545d10275f619c29325f7809",
-      "headCommit": "23ee8ef1c715f4229d0f551e47ee8d13402a35da",
+      "lifecycleStatus": "planned",
+      "branch": "agent/codex/p6-r4-a2-shared-shell",
+      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "headCommit": null,
       "integrationCommit": null,
+      "workerHandoffFolder": null,
       "contextPacketPath": "docs/product/p6/worker-context/A2.md",
       "ownedPaths": [
         "tools/shared/product-frontend/",
-        "src/tests/p6-shared-frontend.test.ts"
+        "tools/svga-player-preview/main.js",
+        "tools/svga-player-preview/styles.css",
+        "tools/svga-player-preview/inspection-report-view.mjs",
+        "tools/shared/product-frontend/source-sharing.test.mjs"
       ],
       "readOnlyPaths": [
-        "tools/svga-player-preview/",
-        "docs/product/P6_WEB_PARITY_CONTRACT.json"
+        "docs/product/P6_WEB_PARITY_CONTRACT.json",
+        "tools/electron-prototype/experiments/svga-web/"
       ],
       "dependencies": ["A1"],
       "requestedIntegrationChanges": [],
-      "lastVerifiedAt": "2026-06-22T05:44:44Z"
+      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-a2-shared-frontend",
+        "headCommit": "23ee8ef1c715f4229d0f551e47ee8d13402a35da"
+      }
     },
     {
       "workerId": "A3",
-      "waveId": "P6-R3",
+      "waveId": "P6-R4",
       "role": "Electron Host",
       "visibleThreadId": "019eeb7e-072c-7382-afe5-330eb92b9d2f",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "completed",
-      "branch": "agent/codex/p6-r2-a3-electron-host",
-      "baseCommit": "2397477d64b2715be4bb40100e9faae39f8cb931",
-      "headCommit": "dfe78be2c7b7a62186ff1a8b3d462a9ddf1f0b65",
+      "lifecycleStatus": "planned",
+      "branch": "agent/codex/p6-r4-a3-electron-host",
+      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "headCommit": null,
       "integrationCommit": null,
+      "workerHandoffFolder": null,
       "contextPacketPath": "docs/product/p6/worker-context/A3.md",
       "ownedPaths": [
         "tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
         "tools/electron-prototype/experiments/svga-web/main.cjs",
         "tools/electron-prototype/experiments/svga-web/preload.cjs",
-        "tools/electron-prototype/experiments/svga-web/host/",
-        "tools/electron-prototype/experiments/svga-web/tests/host/"
+        "tools/electron-prototype/experiments/svga-web/server.mjs",
+        "tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs"
       ],
       "readOnlyPaths": [
         "tools/shared/product-frontend/",
         "tools/electron-prototype/experiments/svga-web/web/"
       ],
       "dependencies": ["A2"],
-      "requestedIntegrationChanges": [
-        "Future IPC channel changes must update the host contract and sandboxed preload together.",
-        "Keep legacy autoSvgaPrototype as compatibility alias only."
-      ],
-      "lastVerifiedAt": "2026-06-22T05:44:44Z"
+      "requestedIntegrationChanges": [],
+      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-r2-a3-electron-host",
+        "headCommit": "dfe78be2c7b7a62186ff1a8b3d462a9ddf1f0b65"
+      }
     },
     {
       "workerId": "A4",
-      "waveId": "P6-R3",
-      "role": "Parity Test Framework",
+      "waveId": "P6-R4",
+      "role": "Parity Runtime",
       "visibleThreadId": "019eeb7e-071e-7991-ab4f-075c56dbade1",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "completed",
-      "branch": "agent/codex/p6-a4-parity-tests",
-      "baseCommit": "d16fb380c0ff82b9aca3af58b0335708e0b0ef73",
-      "headCommit": "31caf46094f4c75c61dff49a2b93bac98e144321",
+      "lifecycleStatus": "planned",
+      "branch": "agent/codex/p6-r4-a4-parity-runtime",
+      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "headCommit": null,
       "integrationCommit": null,
+      "workerHandoffFolder": null,
       "contextPacketPath": "docs/product/p6/worker-context/A4.md",
       "ownedPaths": [
         "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/runtime-scenarios/",
         "tools/p6/parity-runner.mjs",
         "tools/p6/parity-mutation-tests.mjs",
         "tools/multi-worker-protocol-check.mjs",
@@ -242,28 +270,32 @@
         "tools/electron-prototype/experiments/svga-web/"
       ],
       "dependencies": ["A1", "A2", "A3"],
-      "requestedIntegrationChanges": [
-        "A0 may add root validation hooks for protocol checks.",
-        "A0 owns final evidence generation and sealed packet validation."
-      ],
-      "lastVerifiedAt": "2026-06-22T05:44:44Z"
+      "requestedIntegrationChanges": [],
+      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-a4-parity-tests",
+        "headCommit": "31caf46094f4c75c61dff49a2b93bac98e144321"
+      }
     },
     {
       "workerId": "A5",
-      "waveId": "P6-R3",
-      "role": "macOS Packaging",
+      "waveId": "P6-R4",
+      "role": "Packaging And Portable Handoff",
       "visibleThreadId": "019eeb7e-0731-76c0-92e3-d9494b272e14",
       "workerType": "visible_project_worktree",
-      "lifecycleStatus": "completed",
-      "branch": "agent/codex/p6-a5-macos-package",
-      "baseCommit": "d16fb380c0ff82b9aca3af58b0335708e0b0ef73",
-      "headCommit": "a61ecef1a379e3a203073c23fef54d926fde35f1",
+      "lifecycleStatus": "planned",
+      "branch": "agent/codex/p6-r4-a5-package",
+      "baseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "headCommit": null,
       "integrationCommit": null,
+      "workerHandoffFolder": null,
       "contextPacketPath": "docs/product/p6/worker-context/A5.md",
       "ownedPaths": [
         "tools/electron-prototype/experiments/svga-web/packaging/macos/",
         "tools/electron-prototype/experiments/svga-web/scripts/package-internal-trial.mjs",
         "tools/electron-prototype/experiments/svga-web/scripts/macos-package-proof.mjs",
+        "tools/p6/build-p6-owner-handoff.mjs",
         "docs/internal-electron-trial-package.md"
       ],
       "readOnlyPaths": [
@@ -272,11 +304,13 @@
         "tools/shared/product-frontend/"
       ],
       "dependencies": ["A2", "A3", "A4"],
-      "requestedIntegrationChanges": [
-        "A0 owns final packaged App smoke and acceptance.",
-        "A0 owns visible review mirror and portable review ZIP."
-      ],
-      "lastVerifiedAt": "2026-06-22T05:44:44Z"
+      "requestedIntegrationChanges": [],
+      "lastVerifiedAt": "2026-06-22T09:38:22Z",
+      "previousContribution": {
+        "waveId": "P6-R2",
+        "branch": "agent/codex/p6-a5-macos-package",
+        "headCommit": "a61ecef1a379e3a203073c23fef54d926fde35f1"
+      }
     }
   ]
 }

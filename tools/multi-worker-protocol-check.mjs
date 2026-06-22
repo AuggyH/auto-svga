@@ -45,6 +45,14 @@ function isActiveWorker(worker) {
   return worker.lifecycleStatus !== "integrated" && worker.lifecycleStatus !== "retired";
 }
 
+function isCompletedButNotIntegrated(worker) {
+  return worker.lifecycleStatus === "completed" && !worker.integrationCommit;
+}
+
+function isRepair4Worker(worker) {
+  return worker.waveId === "P6-R4";
+}
+
 function addUniqueError(errors, message) {
   if (!errors.includes(message)) errors.push(message);
 }
@@ -136,7 +144,7 @@ export function validateMultiWorkerProtocol({
 
   if (registry?.schemaVersion !== 2) errors.push("registry schemaVersion must be 2.");
   if (registry?.integrationCoordinator !== "A0") errors.push("integrationCoordinator must be A0.");
-  if (registry?.currentRepairRound !== 3) errors.push("currentRepairRound must be 3 for P6 Repair 3.");
+  if (registry?.currentRepairRound !== 4) errors.push("currentRepairRound must be 4 for P6 Repair 4.");
   if (!registry?.threadListRefreshedAt) errors.push("threadListRefreshedAt is required.");
   if (!registry?.registryRefreshedAt) errors.push("registryRefreshedAt is required.");
   if (registry?.registryValidation?.status !== "pass") errors.push("registryValidation.status must be pass.");
@@ -158,13 +166,23 @@ export function validateMultiWorkerProtocol({
     if (!legalLifecycleStatuses.has(worker.lifecycleStatus)) {
       errors.push(`${worker.workerId ?? "unknown"} lifecycleStatus is not legal: ${worker.lifecycleStatus}`);
     }
+    if (isCompletedButNotIntegrated(worker)) {
+      errors.push(`${worker.workerId} is completed but missing integrationCommit.`);
+    }
     if (isActiveWorker(worker)) {
       if (worker.workerType !== "visible_project_worktree") {
         errors.push(`${worker.workerId} active formal worker must be visible_project_worktree.`);
       }
       if (!worker.visibleThreadId) errors.push(`${worker.workerId} active worker missing visibleThreadId.`);
       if (!worker.lastVerifiedAt) errors.push(`${worker.workerId} active worker missing lastVerifiedAt.`);
+      if (registry?.registryRefreshedAt && worker.lastVerifiedAt && worker.lastVerifiedAt < registry.registryRefreshedAt) {
+        errors.push(`${worker.workerId} lastVerifiedAt is stale.`);
+      }
       if (worker.workerType === "subagent") errors.push(`${worker.workerId} active formal worker cannot be a subagent.`);
+    }
+    if (worker.lifecycleStatus === "integrated") {
+      if (!worker.integrationCommit) errors.push(`${worker.workerId} integrated worker missing integrationCommit.`);
+      if (!worker.workerHandoffFolder) errors.push(`${worker.workerId} integrated worker missing worker handoff folder.`);
     }
     if (localPathPattern.test(JSON.stringify(worker))) {
       errors.push(`${worker.workerId ?? "unknown"} must not record local absolute paths.`);
@@ -174,8 +192,14 @@ export function validateMultiWorkerProtocol({
   validateOwnedPathBoundaries(workers, errors);
   validateDependencies(workers, errors);
 
-  if (!workers.some((worker) => worker.waveId === "P6-R3")) {
-    errors.push("current Repair 3 Worker wave is not registered.");
+  const repair4Workers = workers.filter(isRepair4Worker);
+  if (repair4Workers.length < 5) {
+    errors.push("current Repair 4 Worker wave is not fully registered.");
+  }
+  for (const workerId of ["A1", "A2", "A3", "A4", "A5"]) {
+    if (!repair4Workers.some((worker) => worker.workerId === workerId)) {
+      errors.push(`Repair 4 required Worker missing: ${workerId}.`);
+    }
   }
 
   const criteria = Array.isArray(registry?.acceptanceCriteria) ? registry.acceptanceCriteria : [];
@@ -193,6 +217,21 @@ export function validateMultiWorkerProtocol({
   if (registry?.integrationBaseCommit && registry?.currentIntegrationHeadCommit
     && registry.integrationBaseCommit !== registry.currentIntegrationHeadCommit) {
     warnings.push("integrationBaseCommit and currentIntegrationHeadCommit differ; verify stale-head wording.");
+  }
+  if (registry?.terminalHandoffReady === true) {
+    if (!registry?.expectedFinalHeadCommit) errors.push("terminal registry requires expectedFinalHeadCommit.");
+    if (registry?.expectedFinalHeadCommit && registry?.currentIntegrationHeadCommit !== registry.expectedFinalHeadCommit) {
+      errors.push("terminal registry currentIntegrationHeadCommit must equal expectedFinalHeadCommit.");
+    }
+    for (const worker of repair4Workers) {
+      if (!worker.headCommit) errors.push(`${worker.workerId} Repair 4 terminal worker missing headCommit.`);
+      if (worker.lifecycleStatus !== "integrated" && worker.lifecycleStatus !== "retired") {
+        errors.push(`${worker.workerId} Repair 4 terminal worker must be integrated or retired.`);
+      }
+      if (worker.lifecycleStatus === "integrated" && !worker.workerHandoffFolder) {
+        errors.push(`${worker.workerId} Repair 4 terminal worker missing handoff folder.`);
+      }
+    }
   }
   if (coordinationText.includes("Current integration head")
     && registry?.currentIntegrationHeadCommit

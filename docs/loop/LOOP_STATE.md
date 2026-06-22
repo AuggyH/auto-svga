@@ -6,9 +6,9 @@ Date: 2026-06-22
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: terminal_human_required
-- Next Action: external_review
-- repairRound: 3
+- State: implementation_in_progress
+- Next Action: repair
+- repairRound: 4
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -82,18 +82,19 @@ Date: 2026-06-22
 - P6 repair-3 owner handoff builder commit
   `c92a1f7344864fa37d21be33a6bd100784e839df` added terminal visible
   owner handoff packaging and stricter review visibility checks.
-- P6 repair-3 owner handoff final link repair commit
-  `e564453c646bdd7b74a1e607c7fbbcc9053f848b` keeps `changes.patch`
-  visible and linked when the sealed packet requires a companion patch.
-- Final ignored P6 evidence was regenerated for head
-  `e564453c646bdd7b74a1e607c7fbbcc9053f848b`.
-- Final `npm run loop:validate` passed twice on clean source head
-  `e564453c646bdd7b74a1e607c7fbbcc9053f848b`.
+- P6 repair-3 final visible owner handoff at reviewed head
+  `92c36b4af1dae15d226ab3848115a5e9537779d7` is
+  `REJECTED_BY_EXTERNAL_REVIEW` for Repair 4 terminal proof.
+- External product review 3 requires P6 repair-4 because full parity was not
+  proven by actual runtime item checks, normal App proof, independent product
+  review, or real Worker product contributions.
+- Repair 4 legal entry is allowed by `node tools/loop-budget-check.mjs`:
+  `nextRepairAllowed=true`, `nextRepairRound=4`, `budgetStatus=within_budget`.
+- Existing visible project Worktree threads A1 through A5 were found and must
+  be reused for Repair 4 rather than recreated.
 
 ## Next Action
 
-Await the owner's external decision on the visible P6 packet. Safe default:
-keep P6 as HUMAN_REQUIRED and keep Phase 2 as NOT_STARTED.
-
-No additional machine work is authorized until the owner sends a new explicit
-instruction.
+Continue Repair 4 Wave 0 mechanism repair, then immediately resume visible
+Worker product implementation. Safe default: keep Phase 2 as NOT_STARTED until
+P6 reaches a new owner `HUMAN_REQUIRED` gate and the owner explicitly accepts.

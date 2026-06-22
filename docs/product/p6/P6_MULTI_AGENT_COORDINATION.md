@@ -7,21 +7,42 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 ## Current Integration State
 
 - Integration branch: `agent/codex/p6-integration`
-- Current integration head for Repair 3 mechanism hardening: `ba4b178d12d6e8179e4844e7557cc9ec27949875`
-- Current loop state: P6 Repair 3 is `implementation_in_progress`.
+- Current integration head for Repair 4 worker bootstrap:
+  `92c36b4af1dae15d226ab3848115a5e9537779d7`
+- Current loop state: P6 Repair 4 is `implementation_in_progress`.
 - Existing P6 workers must be reused; do not recreate them.
 - Worktree paths are runtime thread metadata and must not be committed to this
   coordination document or to `P6_WORKER_REGISTRY.json`.
+- Repair 3 terminal evidence is historical and rejected by external review for
+  Repair 4 terminal proof. Do not use `review/P6-92c36b4/`,
+  `p6-parity-report.json`, old desktop screenshots, old reviewer JSON, old App
+  proof, or old sealed packets as terminal Repair 4 acceptance evidence.
 
 ## Existing Visible Workers
 
 | Worker | Visible thread id | Thread type | Current branch |
 | --- | --- | --- | --- |
-| A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | visible project Worktree thread | `agent/codex/p6-a1-web-baseline` |
-| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | `agent/codex/p6-a2-shared-frontend` |
-| A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | visible project Worktree thread | `agent/codex/p6-r2-a3-electron-host` |
-| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | `agent/codex/p6-a4-parity-tests` |
-| A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | visible project Worktree thread | `agent/codex/p6-a5-macos-package` |
+| A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | visible project Worktree thread | `agent/codex/p6-r4-a1-inventory` |
+| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | `agent/codex/p6-r4-a2-shared-shell` |
+| A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | visible project Worktree thread | `agent/codex/p6-r4-a3-electron-host` |
+| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | `agent/codex/p6-r4-a4-parity-runtime` |
+| A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | visible project Worktree thread | `agent/codex/p6-r4-a5-package` |
+
+## Repair 4 Product Findings
+
+External review rejected the Repair 3 terminal proof because it did not prove
+actual full Web/Desktop parity. Repair 4 must replace synthetic or generic
+PASS evidence with item-specific runtime evidence:
+
+- no unconditional `status=pass` in parity generation
+- no generic artifact blanket binding
+- same fixture, viewport, playback time, and state per Web/Desktop comparison
+- real Loading and Invalid states, with no stale ready metadata
+- real Desktop latest-artifact adapter instead of fixed empty results
+- one canonical Product Shell shared by Web, Electron dev, and packaged App
+- normal macOS App launch without proof or smoke query mode
+- independent product review evidence rather than A0-generated empty PASS JSON
+- committed-range diff check must pass before candidate, review, seal, or ZIP
 
 ## Worker Lifecycle
 
@@ -89,6 +110,7 @@ A2 owns shared frontend product code:
 - shared core CSS
 - shared state machine
 - shared motion definitions
+- thin Web wrapper entry points needed to mount the shared shell
 
 A3 owns Electron host boundaries:
 
@@ -171,6 +193,19 @@ Implementation owners do not serve as final acceptance verifiers for their own c
 7. A0 heavy validation and seal
 
 A0 must run targeted integration checks after each dependency layer.
+
+## Repair 4 Completion Discipline
+
+At terminal handoff, the registry must record:
+
+- `currentIntegrationHeadCommit` equal to the actual final source HEAD
+- all completed Repair 4 Workers either integrated or retired
+- integrated Workers with `headCommit`, `integrationCommit`, and
+  `workerHandoffFolder`
+- no stale `lastVerifiedAt`
+- no Repair 4 Worker missing contribution metadata
+
+A0 must not mark P6 terminal from A0-only documentation or handoff commits.
 
 ## A0 Verification Duties
 

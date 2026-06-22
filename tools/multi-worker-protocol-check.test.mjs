@@ -17,9 +17,11 @@ function baseRegistry(overrides = {}) {
     integrationBranch: "agent/codex/p6-integration",
     integrationBaseCommit: "abc",
     currentIntegrationHeadCommit: "abc",
-    currentRepairRound: 3,
+    currentRepairRound: 4,
     threadListRefreshedAt: "2026-06-22T00:00:00Z",
     registryRefreshedAt: "2026-06-22T00:00:00Z",
+    terminalHandoffReady: false,
+    expectedFinalHeadCommit: null,
     registryValidation: {
       status: "pass",
       checkedAt: "2026-06-22T00:00:00Z",
@@ -36,26 +38,77 @@ function baseRegistry(overrides = {}) {
     workers: [
       {
         workerId: "A1",
-        waveId: "P6-R3",
+        waveId: "P6-R4",
         role: "Web Baseline",
         visibleThreadId: "thread-a1",
         workerType: "visible_project_worktree",
-        lifecycleStatus: "completed",
-        branch: "agent/codex/p6-a1",
+        lifecycleStatus: "running",
+        branch: "agent/codex/p6-r4-a1",
+        baseCommit: "abc",
+        headCommit: null,
+        integrationCommit: null,
         ownedPaths: ["docs/product/P6_WEB_PRODUCT_BASELINE.md"],
         dependencies: [],
         lastVerifiedAt: "2026-06-22T00:00:00Z"
       },
       {
         workerId: "A2",
-        waveId: "P6-R3",
+        waveId: "P6-R4",
         role: "Shared Frontend",
         visibleThreadId: "thread-a2",
         workerType: "visible_project_worktree",
         lifecycleStatus: "running",
-        branch: "agent/codex/p6-a2",
+        branch: "agent/codex/p6-r4-a2",
+        baseCommit: "abc",
+        headCommit: null,
+        integrationCommit: null,
         ownedPaths: ["tools/shared/product-frontend/"],
         dependencies: ["A1"],
+        lastVerifiedAt: "2026-06-22T00:00:00Z"
+      },
+      {
+        workerId: "A3",
+        waveId: "P6-R4",
+        role: "Electron Host",
+        visibleThreadId: "thread-a3",
+        workerType: "visible_project_worktree",
+        lifecycleStatus: "planned",
+        branch: "agent/codex/p6-r4-a3",
+        baseCommit: "abc",
+        headCommit: null,
+        integrationCommit: null,
+        ownedPaths: ["tools/electron-prototype/experiments/svga-web/host/"],
+        dependencies: ["A2"],
+        lastVerifiedAt: "2026-06-22T00:00:00Z"
+      },
+      {
+        workerId: "A4",
+        waveId: "P6-R4",
+        role: "Parity Runtime",
+        visibleThreadId: "thread-a4",
+        workerType: "visible_project_worktree",
+        lifecycleStatus: "planned",
+        branch: "agent/codex/p6-r4-a4",
+        baseCommit: "abc",
+        headCommit: null,
+        integrationCommit: null,
+        ownedPaths: ["tools/p6/runtime-scenarios/"],
+        dependencies: ["A1", "A2", "A3"],
+        lastVerifiedAt: "2026-06-22T00:00:00Z"
+      },
+      {
+        workerId: "A5",
+        waveId: "P6-R4",
+        role: "Packaging",
+        visibleThreadId: "thread-a5",
+        workerType: "visible_project_worktree",
+        lifecycleStatus: "planned",
+        branch: "agent/codex/p6-r4-a5",
+        baseCommit: "abc",
+        headCommit: null,
+        integrationCommit: null,
+        ownedPaths: ["tools/electron-prototype/experiments/svga-web/packaging/macos/"],
+        dependencies: ["A2", "A3", "A4"],
         lastVerifiedAt: "2026-06-22T00:00:00Z"
       }
     ],
@@ -91,7 +144,7 @@ test("rejects duplicate active worker branches", () => {
   const registry = baseRegistry({
     workers: [
       baseRegistry().workers[0],
-      { ...baseRegistry().workers[1], branch: "agent/codex/p6-a1" }
+      { ...baseRegistry().workers[1], branch: baseRegistry().workers[0].branch }
     ]
   });
 
@@ -159,6 +212,57 @@ test("rejects local absolute paths in tracked registry text", () => {
 
   assert.equal(result.status, "fail");
   assert.equal(result.errors.includes("registry must not contain local absolute paths."), true);
+});
+
+test("rejects completed Repair 4 workers without integration commit", () => {
+  const registry = baseRegistry({
+    workers: [
+      { ...baseRegistry().workers[0], lifecycleStatus: "completed", headCommit: "def" },
+      ...baseRegistry().workers.slice(1)
+    ]
+  });
+
+  const result = validateMultiWorkerProtocol({
+    registry,
+    registryText: JSON.stringify(registry),
+    coordinationText: "Current integration head: abc\n"
+  });
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.errors.some((error) => error.includes("completed but missing integrationCommit")), true);
+});
+
+test("rejects stale worker verification timestamps", () => {
+  const registry = baseRegistry({
+    registryRefreshedAt: "2026-06-22T01:00:00Z"
+  });
+
+  const result = validateMultiWorkerProtocol({
+    registry,
+    registryText: JSON.stringify(registry),
+    coordinationText: "Current integration head: abc\n"
+  });
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.errors.some((error) => error.includes("lastVerifiedAt is stale")), true);
+});
+
+test("terminal registry requires final head and integrated or retired workers", () => {
+  const registry = baseRegistry({
+    terminalHandoffReady: true,
+    expectedFinalHeadCommit: "final",
+    currentIntegrationHeadCommit: "abc"
+  });
+
+  const result = validateMultiWorkerProtocol({
+    registry,
+    registryText: JSON.stringify(registry),
+    coordinationText: "Current integration head: abc\n"
+  });
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.errors.includes("terminal registry currentIntegrationHeadCommit must equal expectedFinalHeadCommit."), true);
+  assert.equal(result.errors.some((error) => error.includes("Repair 4 terminal worker must be integrated or retired")), true);
 });
 
 test("CLI runner reads registry and coordination files", async () => {
