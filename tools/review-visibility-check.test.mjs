@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -152,6 +152,39 @@ test("visible handoff rejects local absolute paths", async () => {
     const folder = await createWorkerFolder(root);
     const localUsersPath = `/${"Users"}/example/asset.svga`;
     await writeFile(join(folder, "README.md"), `Path: ${localUsersPath}\n`, "utf8");
+    const result = await validateReviewVisibility({ mode: "worker", folder });
+
+    assert.equal(result.status, "fail");
+    assert.equal(result.errors.some((error) => error.includes("local absolute path")), true);
+  });
+});
+
+test("visible handoff allows escaped regex and ignore patterns in patch files", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createTerminalFolder(root, { companionRequired: true });
+    await writeFile(
+      join(folder, "changes.patch"),
+      [
+        "diff --git a/test.js b/test.js",
+        "+const pattern = /jobs\\\\/[a-zA-Z0-9._-]+$/;",
+        "+const ignore = \"--ignore=^/(tests|scripts|\\\\.artifacts)($|/)\";",
+        "+return value.replace(/[.*+?^${}()|[\\\\]\\\\]/g, \"\\\\$&\");",
+        ""
+      ].join("\n"),
+      "utf8"
+    );
+    await writeFile(join(root, "canonical", "changes.patch"), await readFile(join(folder, "changes.patch"), "utf8"), "utf8");
+
+    const result = await validateReviewVisibility({ mode: "terminal", folder });
+
+    assert.equal(result.status, "pass");
+  });
+});
+
+test("visible handoff rejects Windows drive and UNC absolute paths", async () => {
+  await withTempDir(async (root) => {
+    const folder = await createWorkerFolder(root);
+    await writeFile(join(folder, "README.md"), "Paths: C:\\\\Users\\\\example\\\\asset.svga and \\\\server\\\\share\n", "utf8");
     const result = await validateReviewVisibility({ mode: "worker", folder });
 
     assert.equal(result.status, "fail");
