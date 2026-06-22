@@ -1,4 +1,5 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
+import { mountProductShell } from "/tools/shared/product-frontend/product-shell-loader.mjs";
 
 function createElectronProductHostAdapter(environment = globalThis) {
   const bridge = environment.autoSvgaElectronHost;
@@ -185,4 +186,5 @@ function createMemoryStorage() {
 installSvgaWebCompatibility();
 globalThis.autoSvgaHostAdapter = createElectronProductHostAdapter();
 
+await mountProductShell();
 await import("/tools/shared/product-frontend/product-app.mjs");

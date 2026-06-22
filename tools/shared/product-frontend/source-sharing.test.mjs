@@ -79,17 +79,24 @@ test("shared product shell keeps loading distinct and editor incubation hidden b
 });
 
 test("Electron default renderer uses shared product source and hides editor incubation", async () => {
-  const [electronHtml, electronStyles, electronEntry, prototypeSource] = await Promise.all([
+  const [electronHtml, electronStyles, electronEntry, prototypeSource, shellHtml] = await Promise.all([
     readRepoFile("tools/electron-prototype/experiments/svga-web/web/index.html"),
     readRepoFile("tools/electron-prototype/experiments/svga-web/web/styles.css"),
     readRepoFile("tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs"),
-    readRepoFile("tools/electron-prototype/experiments/svga-web/web/prototype.js")
+    readRepoFile("tools/electron-prototype/experiments/svga-web/web/prototype.js"),
+    readRepoFile("tools/shared/product-frontend/product-shell.html")
   ]);
+  const shellHash = createHash("sha256").update(shellHtml).digest("hex");
 
-  assert.match(electronHtml, /class="shell"/);
+  assert.match(electronHtml, /id="productShellMount"/);
+  assert.match(electronHtml, /data-product-shell-src="\/tools\/shared\/product-frontend\/product-shell\.html"/);
+  assert.match(electronHtml, new RegExp(`data-product-shell-sha256="${shellHash}"`));
+  assert.doesNotMatch(electronHtml, /<main class="shell"/);
   assert.match(electronHtml, /src="\/desktop-product-entry\.mjs"/);
   assert.doesNotMatch(electronHtml, /prototype\.js/);
   assert.equal(electronStyles.trim(), '@import url("/tools/shared/product-frontend/product-styles.css");');
+  assert.match(electronEntry, /mountProductShell/);
+  assert.match(electronEntry, /product-shell-loader\.mjs/);
   assert.match(electronEntry, /autoSvgaHostAdapter/);
   assert.match(electronEntry, /\/tools\/shared\/product-frontend\/product-app\.mjs/);
   assert.match(electronEntry, /installSvgaWebCompatibility/);
