@@ -32,7 +32,7 @@ const experimentRoot = path.join(repoRoot, "tools/electron-prototype/experiments
 const fixturePath = path.join(repoRoot, "examples/avatar_frame_basic/output/avatar_frame_basic.svga");
 const packagedBinary = path.join(
   experimentRoot,
-  ".artifacts/internal-trial/AutoSVGAInternalPrototype-darwin-arm64/AutoSVGAInternalPrototype.app/Contents/MacOS/AutoSVGAInternalPrototype"
+  ".artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app/Contents/MacOS/Auto SVGA"
 );
 const packageManifestPath = path.join(experimentRoot, ".artifacts/internal-trial/internal-trial-manifest.json");
 const skipTrackedSnapshots = process.env.AUTO_SVGA_SKIP_TRACKED_SNAPSHOTS === "1";
@@ -208,39 +208,40 @@ async function runDesktopSmoke() {
   });
 }
 
-async function runPackageAndPackagedSmoke() {
+async function runPackageAndPackagedNormalProof() {
   run("npm", ["--prefix", "tools/electron-prototype/experiments/svga-web", "run", "internal:trial:package:mac"], {
     stdio: "inherit"
   });
   await mkdir(packagedRuntimeRoot, { recursive: true });
   const startedAt = new Date().toISOString();
-  const result = run(packagedBinary, ["--smoke", "--product-smoke"], {
+  const result = run(packagedBinary, [], {
     cwd: repoRoot,
     env: {
+      AUTO_SVGA_P2_NORMAL_PROOF: "1",
       AUTO_SVGA_PRODUCT_MILESTONE: milestoneId,
       AUTO_SVGA_PRODUCT_ARTIFACTS: packagedRuntimeRoot,
-      AUTO_SVGA_ACTUAL_LAUNCH_COMMAND: "packaged AutoSVGAInternalPrototype.app --smoke --product-smoke"
+      AUTO_SVGA_ACTUAL_LAUNCH_COMMAND: "packaged Auto SVGA.app"
     }
   });
   const stdout = result.stdout ?? "";
-  const match = stdout.match(/AUTO_SVGA_WEB_EXPERIMENT_SMOKE (\{[^\n]+\})/);
-  if (!match) throw new Error("Packaged app smoke did not emit AUTO_SVGA_WEB_EXPERIMENT_SMOKE.");
-  const smoke = JSON.parse(match[1]);
+  const match = stdout.match(/AUTO_SVGA_DESKTOP_NORMAL_PROOF (\{[^\n]+\})/);
+  if (!match) throw new Error("Packaged app normal proof did not emit AUTO_SVGA_DESKTOP_NORMAL_PROOF.");
+  const normalProof = JSON.parse(match[1]);
   const proof = {
     schemaVersion: 1,
     milestoneId,
-    launchTarget: "packaged .app executable",
+    launchTarget: "packaged .app executable without smoke flags",
     executablePath: toRepoPath(packagedBinary),
     startedAt,
     exitCode: result.status ?? 0,
-    smoke,
-    passed: smoke.passed === true,
+    normalProof,
+    passed: normalProof.passed === true,
     stdoutTail: redact(stdout).split("\n").slice(-20),
     stderrTail: redact(result.stderr ?? "").split("\n").slice(-20),
     generatedAt: new Date().toISOString()
   };
   await writeJson(path.join(p6Root, "packaged-app-runtime-proof.json"), proof);
-  if (!proof.passed) throw new Error("Packaged app smoke failed.");
+  if (!proof.passed) throw new Error("Packaged app normal proof failed.");
   if (existsSync(packageManifestPath)) {
     await cp(packageManifestPath, path.join(p6Root, "internal-trial-manifest.json"));
   }
@@ -578,7 +579,7 @@ async function main() {
   run("npm", ["run", "build"], { stdio: "inherit" });
   await captureWebBaseline();
   await runDesktopSmoke();
-  await runPackageAndPackagedSmoke();
+  await runPackageAndPackagedNormalProof();
 
   let report = await buildParityReport();
   await writeEvidenceIndex(report);

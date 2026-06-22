@@ -39,6 +39,7 @@ const productArtifactRoot = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS
   ? path.resolve(process.env.AUTO_SVGA_PRODUCT_ARTIFACTS)
   : path.join(repoRoot, ".artifacts/product", productMilestoneId);
 const canonicalFixtureRuntimePath = path.join(appRoot, ".runtime/fixture/avatar-frame-smoke.svga");
+const canonicalFixtureSourcePath = "examples/avatar_frame_basic/output/avatar_frame_basic.svga";
 const sessionRoot = path.join(os.tmpdir(), `auto-svga-desktop-baseline-${process.pid}`);
 const reportToken = randomBytes(24).toString("hex");
 const runtimeInstanceId = randomBytes(12).toString("hex");
@@ -226,6 +227,8 @@ function validateNormalProofResult(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const keys = [
     "normalMode",
+    "hostOpen",
+    "primaryBridge",
     "playback",
     "canvasNonBlank",
     "inspectionReport",
@@ -237,6 +240,8 @@ function validateNormalProofResult(value) {
   if (!keys.every((key) => typeof value[key] === "boolean")) return undefined;
   return {
     normalMode: value.normalMode,
+    hostOpen: value.hostOpen,
+    primaryBridge: value.primaryBridge,
     rendererQuery: typeof value.rendererQuery === "string" ? value.rendererQuery.slice(0, 120) : "",
     playback: value.playback,
     canvasNonBlank: value.canvasNonBlank,
@@ -667,10 +672,10 @@ function canonicalFixtureMetadata() {
   } catch {
     const bytes = readFileSync(canonicalFixtureRuntimePath);
     return {
-      fixtureLabel: "synthetic-avatar-frame.svga",
+      fixtureLabel: "repository-avatar-frame-basic.svga",
       fixtureSha256: createHash("sha256").update(bytes).digest("hex"),
       fixtureSizeBytes: bytes.byteLength,
-      fixtureSourcePath: "tools/electron-prototype/experiments/svga-web/.runtime/fixture/avatar-frame-smoke.svga",
+      fixtureSourcePath: canonicalFixtureSourcePath,
       fixtureArtifactPath: "tools/electron-prototype/experiments/svga-web/.runtime/fixture/avatar-frame-smoke.svga"
     };
   }
@@ -881,8 +886,8 @@ async function finishNormalProof(window, result) {
     processId: normalIdentity.processId,
     runtimeInstanceId: normalIdentity.runtimeInstanceId,
     windowShown: true,
-    automationMechanism: "host-driven file input event in canonical renderer",
-    fileOpenMechanism: "ordinary file input change event",
+    automationMechanism: "host bridge button click in canonical renderer",
+    fileOpenMechanism: "window.autoSvgaElectronHost.openSvgaFile validated IPC",
     fixture: canonicalFixtureMetadata().fixtureLabel,
     ...canonicalFixtureMetadata(),
     screenshotHash: productArtifactIndex.artifacts.find((artifact) => artifact.scenario === "actual-normal-loaded")?.sha256 ?? null,
@@ -1091,16 +1096,7 @@ function writeJsonProductArtifact(fileName, scenario, value, mode = "smoke") {
   writeProductArtifactIndex();
 }
 
-async function openSvgaFile() {
-  const result = await dialog.showOpenDialog({
-    title: "打开 SVGA",
-    filters: [{ name: "SVGA", extensions: ["svga"] }],
-    properties: ["openFile"]
-  });
-  if (result.canceled || !result.filePaths?.[0]) {
-    return { status: "cancelled" };
-  }
-  const filePath = result.filePaths[0];
+function openSvgaFileBytes(filePath) {
   if (!filePath.toLowerCase().endsWith(".svga")) {
     throw new Error("Only .svga files can be opened.");
   }
@@ -1112,11 +1108,23 @@ async function openSvgaFile() {
   return {
     status: "opened",
     sourceId,
-    fileName: path.basename(filePath),
-    sizeBytes: bytes.byteLength,
-    sha256: createHash("sha256").update(bytes).digest("hex"),
-    bytesBase64: bytes.toString("base64")
+    basename: path.basename(filePath),
+    hash: createHash("sha256").update(bytes).digest("hex"),
+    bytes: new Uint8Array(bytes)
   };
+}
+
+async function openSvgaFile() {
+  if (normalProofMode) return openSvgaFileBytes(canonicalFixtureRuntimePath);
+  const result = await dialog.showOpenDialog({
+    title: "打开 SVGA",
+    filters: [{ name: "SVGA", extensions: ["svga"] }],
+    properties: ["openFile"]
+  });
+  if (result.canceled || !result.filePaths?.[0]) {
+    return { status: "cancelled" };
+  }
+  return openSvgaFileBytes(result.filePaths[0]);
 }
 
 async function saveEditedSvga(input) {
@@ -1650,6 +1658,8 @@ async function driveCanonicalNormalProof(window) {
   setTimeout(() => {
     if (!smokeFinished) finishNormalProof(window, {
       normalMode: true,
+      hostOpen: false,
+      primaryBridge: false,
       rendererQuery: "",
       playback: false,
       canvasNonBlank: false,
@@ -1663,10 +1673,12 @@ async function driveCanonicalNormalProof(window) {
   await new Promise((resolve) => setTimeout(resolve, 260));
   const result = await window.webContents.executeJavaScript(`
     (async () => {
-      const response = await fetch("/fixture/avatar-frame-smoke.svga");
-      if (!response.ok) throw new Error("fixture load failed");
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      const file = new File([bytes], "synthetic-avatar-frame.svga", { type: "application/octet-stream" });
+      const opened = await window.autoSvgaElectronHost?.openSvgaFile?.();
+      if (!opened || opened.status !== "opened" || !opened.sourceId || !opened.hash || !opened.bytes) {
+        throw new Error("primary host bridge open failed");
+      }
+      const bytes = new Uint8Array(opened.bytes);
+      const file = new File([bytes], opened.basename ?? "repository-avatar-frame-basic.svga", { type: "application/octet-stream" });
       const transfer = new DataTransfer();
       transfer.items.add(file);
       const input = document.querySelector("#svgaFileInput");
@@ -1691,6 +1703,8 @@ async function driveCanonicalNormalProof(window) {
       }
       return {
         normalMode: true,
+        hostOpen: true,
+        primaryBridge: true,
         rendererQuery: location.search,
         playback: document.querySelector("#svgaStatusA")?.textContent?.includes("播放中") ?? false,
         canvasNonBlank,
@@ -1705,6 +1719,8 @@ async function driveCanonicalNormalProof(window) {
   await captureProductArtifact(window, "actual-normal-loaded");
   await finishNormalProof(window, validateNormalProofResult(result) ?? {
     normalMode: true,
+    hostOpen: false,
+    primaryBridge: false,
     rendererQuery: "",
     playback: false,
     canvasNonBlank: false,

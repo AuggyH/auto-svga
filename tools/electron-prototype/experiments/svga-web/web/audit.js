@@ -7,6 +7,7 @@ const legacyPlayerRoot = document.querySelector("#legacyPlayer");
 const reportRoot = document.querySelector("#reportRoot");
 const playbackStatus = document.querySelector("#playbackStatus");
 const runtimeStatus = document.querySelector("#runtimeStatus");
+const hostBridge = window.autoSvgaElectronHost ?? window.autoSvgaPrototype;
 const cspViolations = [];
 
 let activePlayer;
@@ -92,7 +93,7 @@ async function inspectBytes(bytes, name) {
     method: "POST",
     headers: {
       "content-type": "application/octet-stream",
-      "x-auto-svga-prototype-token": window.autoSvgaPrototype.reportToken
+      "x-auto-svga-prototype-token": hostBridge.reportToken
     },
     body: bytes.slice(0).buffer
   }).then(assertResponse).then((response) => response.json());
@@ -221,5 +222,5 @@ function safeDisplayName(name) {
 }
 
 function reportAudit(result) {
-  return window.autoSvgaPrototype?.reportAuditResult(result) ?? Promise.resolve();
+  return hostBridge?.reportAuditResult(result) ?? Promise.resolve();
 }

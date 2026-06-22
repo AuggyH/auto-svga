@@ -6,9 +6,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { internalTrialCsp } from "../server.mjs";
 
-export const appName = "AutoSVGAInternalPrototype";
+export const appName = "Auto SVGA";
 export const bundleIdentifier = "local.auto-svga.internal-prototype";
-export const bundleDisplayName = "Auto SVGA Internal Prototype";
+export const bundleDisplayName = "Auto SVGA";
 export const bundleShortVersion = "0.0.0-internal";
 export const bundleVersion = bundleShortVersion;
 export const platform = "darwin";

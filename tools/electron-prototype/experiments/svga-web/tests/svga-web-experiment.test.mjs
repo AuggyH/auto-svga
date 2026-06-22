@@ -22,6 +22,10 @@ const hostContract = require("../host-adapter-contract.cjs");
 
 test("macOS internal package scaffold declares bounded unsigned .svga bundle metadata", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
+  assert.equal(appName, "Auto SVGA");
+  assert.match(plist, /CFBundleDisplayName[\s\S]*<string>Auto SVGA<\/string>/);
+  assert.match(plist, /CFBundleName[\s\S]*<string>Auto SVGA<\/string>/);
+  assert.doesNotMatch(plist, /AutoSVGAInternalPrototype|Auto SVGA Internal Prototype/);
   assert.match(plist, /AutoSVGAInternalUseOnly/);
   assert.match(plist, /AutoSVGASigned/);
   assert.match(plist, /AutoSVGANotarized/);
@@ -46,10 +50,12 @@ test("macOS internal package scaffold declares bounded unsigned .svga bundle met
 
 test("macOS package proof manifest records audit boundaries without final App acceptance", async () => {
   const proof = await buildMacosPackageProof({
-    appBundle: path.join(experimentRoot, ".artifacts/internal-trial/AutoSVGAInternalPrototype-darwin-arm64/AutoSVGAInternalPrototype.app"),
-    archivePath: path.join(experimentRoot, ".artifacts/internal-trial/AutoSVGAInternalPrototype-darwin-arm64.zip")
+    appBundle: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app"),
+    archivePath: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip")
   });
   assert.equal(proof.schemaVersion, 1);
+  assert.equal(proof.appName, "Auto SVGA");
+  assert.equal(proof.bundleDisplayName, "Auto SVGA");
   assert.equal(proof.platform, "darwin");
   assert.equal(proof.architecture, "arm64");
   assert.equal(proof.distribution.internalUseOnly, true);
@@ -62,6 +68,8 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.equal(proof.privacyAudit.passed, true);
   assert.deepEqual(proof.privacyAudit.findings, []);
   assert.match(proof.packagingScaffold.extendInfoPath, /packaging\/macos\/Info\.plist$/);
+  assert.match(proof.packagingScaffold.appBundlePath, /Auto SVGA-darwin-arm64\/Auto SVGA\.app$/);
+  assert.doesNotMatch(JSON.stringify(proof), /AutoSVGAInternalPrototype|Auto SVGA Internal Prototype/);
   assert.match(proof.requestedIntegrationChanges[0], /root package script/);
 });
 
@@ -146,6 +154,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(preloadApi.openSvgaFile().channel, hostContract.IPC_CHANNELS.openSvgaFile);
   assert.equal(preloadApi.saveEditedSvga({ bytesBase64: "AA==" }).channel, hostContract.IPC_CHANNELS.saveEditedSvga);
   assert.equal(invocations.length, 2);
+  assert.equal(hostContract.ELECTRON_HOST_BRIDGE_NAME, "autoSvgaElectronHost");
+  assert.equal(hostContract.LEGACY_PROTOTYPE_BRIDGE_NAME, "autoSvgaPrototype");
+  const hostOpenReturn = main.match(/function openSvgaFileBytes[\s\S]*?\n}\n\nasync function openSvgaFile/)?.[0] ?? "";
   assert.match(main, /createSecureWebPreferences/);
   assert.match(main, /isAllowedHostUrl/);
   assert.match(main, /isExpectedSenderUrl/);
@@ -161,6 +172,11 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /desktop-loaded/);
   assert.match(main, /actual-normal-loaded/);
   assert.match(main, /IPC_CHANNELS\.openSvgaFile/);
+  assert.match(hostOpenReturn, /openSvgaFileBytes/);
+  assert.match(hostOpenReturn, /basename: path\.basename\(filePath\)/);
+  assert.match(hostOpenReturn, /hash: createHash\("sha256"\)/);
+  assert.match(hostOpenReturn, /bytes: new Uint8Array\(bytes\)/);
+  assert.doesNotMatch(hostOpenReturn, /fileName|sizeBytes|targetPath|targetPathRedacted|absolutePath|sha256:|bytesBase64/);
   assert.match(main, /IPC_CHANNELS\.saveEditedSvga/);
   assert.match(main, /IPC_CHANNELS\.p3EditResult/);
   assert.match(main, /sourceFilePaths/);
@@ -170,6 +186,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /pathRedactionsApplied/);
   assert.doesNotMatch(main, /actualArgv:\s*process\.argv/);
   assert.match(main, /driveCanonicalNormalProof/);
+  assert.match(main, /window\.autoSvgaElectronHost\?\.openSvgaFile/);
+  assert.match(main, /#svgaFileInput/);
+  assert.doesNotMatch(main, /fetch\("\/fixture\/avatar-frame-smoke\.svga"\)/);
   assert.match(main, /setPermissionRequestHandler/);
   assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/);
   assert.match(main, /will-navigate/);
@@ -181,6 +200,30 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.doesNotMatch(preload, /require\(["']\.\/host-adapter-contract\.cjs["']\)/);
   assert.doesNotMatch(preload, /\bdialog\s*[\s,:})]|shell\.|openPath|readFile/);
   assert.doesNotMatch(preload, /require\("node:fs"\)|require\("fs"\)/);
+});
+
+test("P6 normal App proof launches without smoke query mode and uses Web baseline fixture bytes", async () => {
+  const runner = await readFile(path.join(experimentRoot, "scripts/run-canonical-normal-proof.mjs"), "utf8");
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
+  const p2Fixture = await readFile(path.join(experimentRoot, "scripts/p2-fixture.mjs"), "utf8");
+  const p6Evidence = await readFile(path.join(repoRoot, "tools/p6/generate-p6-evidence.mjs"), "utf8");
+
+  assert.match(runner, /AUTO_SVGA_P2_NORMAL_PROOF/);
+  assert.match(runner, /npm", \["run", "desktop:dev"\]/);
+  assert.doesNotMatch(runner, /--smoke|--product-smoke|--p2-normal-proof|\?mode=smoke/);
+  assert.match(main, /normalProofMode\s*\?\s*""/);
+  assert.match(main, /rendererQuery: location\.search/);
+  assert.match(main, /window\.autoSvgaElectronHost\?\.openSvgaFile/);
+  assert.match(main, /document\.querySelector\("#svgaFileInput"\)/);
+  assert.match(prepareRuntime, /examples\/avatar_frame_basic\/output\/avatar_frame_basic\.svga/);
+  assert.match(prepareRuntime, /"node", \["dist\/cli\.js", "export", "examples\/avatar_frame_basic"\]/);
+  assert.match(p2Fixture, /repository-avatar-frame-basic\.svga/);
+  assert.doesNotMatch(p2Fixture, /synthetic-avatar-frame\.svga/);
+  assert.match(p6Evidence, /Auto SVGA-darwin-arm64\/Auto SVGA\.app\/Contents\/MacOS\/Auto SVGA/);
+  assert.match(p6Evidence, /AUTO_SVGA_DESKTOP_NORMAL_PROOF/);
+  assert.match(p6Evidence, /packaged Auto SVGA\.app/);
+  assert.doesNotMatch(p6Evidence, /AutoSVGAInternalPrototype|--product-smoke"\]|--smoke", "--product-smoke"/);
 });
 
 test("default Electron renderer shares the Web product page and keeps editor incubation hidden", async () => {
@@ -233,13 +276,23 @@ test("legacy editor prototype remains isolated from the default product surface"
   assert.match(renderer, /选择 SVGA 文件/);
   assert.match(renderer, /无法打开此 SVGA 文件/);
   assert.match(renderer, /不支持的文件类型/);
+  assert.match(renderer, /cleanupPlayer\(\);\n\s+rejectedName = name;\n\s+showError\("无法打开此 SVGA 文件/);
+  assert.match(renderer, /SVGA 播放输出为空/);
+  assert.match(renderer, /waitForVisibleCanvasSamples/);
+  assert.match(renderer, /visibleCanvas\.sampleCount >= 3/);
+  assert.match(renderer, /clearCanvas/);
+  assert.match(renderer, /summary\.dimensions/);
+  assert.match(renderer, /timing\.durationMs/);
+  assert.match(renderer, /const hostBridge = window\.autoSvgaElectronHost \?\? window\.autoSvgaPrototype/);
   assert.match(renderer, /openHostSvgaFile/);
-  assert.match(renderer, /openSvgaFile/);
+  assert.match(renderer, /hostBridge\.openSvgaFile/);
   assert.match(renderer, /saveEditedSvga/);
   assert.match(renderer, /\/api\/svga-image-edit-session/);
   assert.match(renderer, /\/api\/svga-image-replace/);
   assert.match(renderer, /renderP3ComparisonArtifact/);
+  assert.match(renderer, /p3-original-edited-comparison/);
   assert.doesNotMatch(page, /id="pngInput"|id="batchPngInput"|id="hostOpenButton"/);
+  assert.doesNotMatch(renderer, /window\.autoSvgaPrototype\./);
   assert.doesNotMatch(renderer, /require\(|ipcRenderer|node:fs|\/Users\//);
 });
 

@@ -364,7 +364,7 @@ async function main() {
     normalRuntimeEvidence: category([
       check("canonical_command", normalProof.actualLaunchCommand === "npm run desktop:dev", normalProof.actualLaunchCommand, "npm run desktop:dev", ["normal-runtime-proof.json"]),
       check("no_renderer_query", normalProof.rendererQuery === "" && !String(normalProof.rendererUrl ?? "").includes("?"), normalProof.rendererUrl ?? "", "no query", ["normal-runtime-proof.json"]),
-      check("ordinary_file_input", normalProof.fileOpenMechanism === "ordinary file input change event", normalProof.fileOpenMechanism, "ordinary file input change event", ["normal-runtime-proof.json"]),
+      check("host_open_ipc", normalProof.fileOpenMechanism === "window.autoSvgaElectronHost.openSvgaFile validated IPC", normalProof.fileOpenMechanism, "window.autoSvgaElectronHost.openSvgaFile validated IPC", ["normal-runtime-proof.json"]),
       check("normal_smoke_separate", smokeParity.checks?.separateProcessId === true && smokeParity.checks?.separateRuntimeInstanceId === true, "separate", "separate", ["normal-smoke-parity.json"]),
       check("normal_script_launches_canonical", JSON.parse(packageJson).scripts["desktop:p2:normal-proof"].includes("run-canonical-normal-proof.mjs") && JSON.parse(rootPackageJson).scripts["desktop:dev"].includes("svga-web"), "canonical harness", "canonical harness")
     ], ["normal-runtime-proof.json", "normal-smoke-parity.json"])

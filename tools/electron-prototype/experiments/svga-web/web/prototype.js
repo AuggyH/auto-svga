@@ -19,7 +19,8 @@ const fileInfo = document.querySelector("#fileInfo");
 const urlParams = new URLSearchParams(location.search);
 const isSmokeMode = urlParams.get("mode") === "smoke";
 const shouldCaptureArtifacts = urlParams.get("artifacts") === "1";
-const productMilestoneId = window.autoSvgaPrototype?.productMilestoneId ?? "P2";
+const hostBridge = window.autoSvgaElectronHost ?? window.autoSvgaPrototype;
+const productMilestoneId = hostBridge?.productMilestoneId ?? "P2";
 const cspViolations = [];
 let activePlayer;
 let activeParser;
@@ -254,19 +255,18 @@ async function loadSvgaFile(file, source) {
 }
 
 async function openHostSvgaFile() {
-  if (!window.autoSvgaPrototype?.openSvgaFile) {
+  if (!hostBridge?.openSvgaFile) {
     if (!confirmDiscardUnsavedEdits()) return;
     fileInput.click();
     return;
   }
   if (!confirmDiscardUnsavedEdits()) return;
   try {
-    const result = await window.autoSvgaPrototype.openSvgaFile();
+    const result = await hostBridge.openSvgaFile();
     if (!result || result.status === "cancelled") return;
     sourceFileId = result.sourceId ?? "";
-    const bytes = base64ToBytes(result.bytesBase64);
-    await loadSvgaBytes(bytes, result.fileName, {
-      sizeBytes: result.sizeBytes,
+    const bytes = bytesFromHostOpenResult(result);
+    await loadSvgaBytes(bytes, result.basename ?? result.fileName ?? "opened.svga", {
       source: "host-file-picker",
       sourceId: sourceFileId
     });
@@ -299,7 +299,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
       method: "POST",
       headers: {
         "content-type": "application/octet-stream",
-        "x-auto-svga-prototype-token": window.autoSvgaPrototype.reportToken
+        "x-auto-svga-prototype-token": hostBridge.reportToken
       },
       body: bytes.slice(0).buffer
     }).then(assertResponse).then((response) => response.json());
@@ -537,7 +537,7 @@ async function loadEditSession(bytes, name) {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-auto-svga-prototype-token": window.autoSvgaPrototype.reportToken
+        "x-auto-svga-prototype-token": hostBridge.reportToken
       },
       body: JSON.stringify({
         name,
@@ -604,7 +604,7 @@ async function refreshBatchMappingReport() {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-auto-svga-prototype-token": window.autoSvgaPrototype.reportToken
+        "x-auto-svga-prototype-token": hostBridge.reportToken
       },
       body: JSON.stringify({
         name: sourceSvgaName,
@@ -703,7 +703,7 @@ async function rebuildEditedPreview(operationSequence = ++editOperationSequence,
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-auto-svga-prototype-token": window.autoSvgaPrototype.reportToken
+      "x-auto-svga-prototype-token": hostBridge.reportToken
     },
       body: JSON.stringify({
         name: sourceSvgaName,
@@ -1153,7 +1153,7 @@ async function saveEditedSvga() {
   editExportState = "exporting";
   renderCurrentReportEditOnly();
   try {
-    const result = await window.autoSvgaPrototype.saveEditedSvga({
+    const result = await hostBridge.saveEditedSvga({
       suggestedName: editedFileName(sourceSvgaName),
       bytesBase64: bytesToBase64(editedSvgaBytes),
       originalSha256: sourceSvgaSha256,
@@ -1511,7 +1511,7 @@ async function maybeRunP3EditSmoke(originalBytes) {
       result.thumbnailEvidence?.invariants?.invalidPngRetainsLastValidThumbnail === true,
       result.roundTripReport?.passed === true
     ].every(Boolean);
-    await window.autoSvgaPrototype.reportP3EditResult(result);
+    await hostBridge.reportP3EditResult(result);
     return result;
   } catch (error) {
     errors.push(productEditError(error));
@@ -1530,7 +1530,7 @@ async function maybeRunP3EditSmoke(originalBytes) {
       roundTripReport: {},
       passed: false
     };
-    await window.autoSvgaPrototype.reportP3EditResult(result).catch(() => undefined);
+    await hostBridge.reportP3EditResult(result).catch(() => undefined);
     return result;
   }
 }
@@ -1770,7 +1770,7 @@ async function maybeRunP4EditSmoke(originalBytes) {
       result.historyReport.passed,
       result.thumbnailEvidence.passed
     ].every(Boolean);
-    await window.autoSvgaPrototype.reportP4EditResult(result);
+    await hostBridge.reportP4EditResult(result);
     return result;
   } catch (error) {
     errors.push(productEditError(error));
@@ -1780,7 +1780,7 @@ async function maybeRunP4EditSmoke(originalBytes) {
       errors,
       passed: false
     };
-    await window.autoSvgaPrototype.reportP4EditResult(result).catch(() => undefined);
+    await hostBridge.reportP4EditResult(result).catch(() => undefined);
     return result;
   }
 }
@@ -2172,7 +2172,7 @@ async function maybeRunP5BatchSmoke(originalBytes) {
       result.uiFlowProof.passed,
       result.mappingUiRenderProof.passed
     ].every(Boolean);
-    await window.autoSvgaPrototype.reportP5BatchResult(result);
+    await hostBridge.reportP5BatchResult(result);
     return result;
   } catch (error) {
     errors.push(productEditError(error));
@@ -2182,7 +2182,7 @@ async function maybeRunP5BatchSmoke(originalBytes) {
       errors,
       passed: false
     };
-    await window.autoSvgaPrototype.reportP5BatchResult(result).catch(() => undefined);
+    await hostBridge.reportP5BatchResult(result).catch(() => undefined);
     return result;
   }
 }
@@ -2966,6 +2966,13 @@ function base64ToBytes(value) {
   return bytes;
 }
 
+function bytesFromHostOpenResult(result) {
+  if (result?.bytes instanceof Uint8Array) return result.bytes;
+  if (Array.isArray(result?.bytes)) return new Uint8Array(result.bytes);
+  if (typeof result?.bytesBase64 === "string") return base64ToBytes(result.bytesBase64);
+  return new Uint8Array();
+}
+
 async function sha256Hex(bytes) {
   const digest = await crypto.subtle.digest("SHA-256", toArrayBuffer(bytes));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -3024,10 +3031,10 @@ function delay(durationMs) {
 }
 
 function reportSmoke(result) {
-  return window.autoSvgaPrototype?.reportSmokeResult(result) ?? Promise.resolve();
+  return hostBridge?.reportSmokeResult(result) ?? Promise.resolve();
 }
 
 function captureArtifact(scenario) {
   if (!shouldCaptureArtifacts) return Promise.resolve();
-  return window.autoSvgaPrototype?.captureArtifact?.(scenario) ?? Promise.resolve();
+  return hostBridge?.captureArtifact?.(scenario) ?? Promise.resolve();
 }
