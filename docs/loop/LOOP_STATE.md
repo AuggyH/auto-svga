@@ -6,9 +6,9 @@ Date: 2026-06-22
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: terminal_human_required
-- Next Action: external_review
-- repairRound: 2
+- State: implementation_in_progress
+- Next Action: repair
+- repairRound: 3
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -73,8 +73,8 @@ Date: 2026-06-22
 
 ## Next Action
 
-Await external owner review of P6 Web Preview full Desktop parity and the
-current macOS internal `.app`. Safe default is to reject P6 and identify the
-highest-priority parity or App issue before starting any next product phase.
-Electron debug and proof runs should be quiet/background whenever possible;
-visible App windows are reserved for final owner-facing evidence only.
+Execute P6 Repair 3 from `docs/loop/reviews/P6-external-product-review-2.md`.
+Do not start Phase 2, do not accept P6 automatically, and do not reset or
+discard completed P6 work. First repair the multi-worker and visible handoff
+mechanisms, then continue evidence-driven Web/Desktop parity and macOS internal
+App proof work under the frozen P6 contract.
