@@ -35,6 +35,7 @@ const sectionIds = {
 };
 
 const webStateAliases = {
+  invalid: ["invalid", "invalid-error-state"],
   "invalid-error-state": ["invalid", "invalid-error-state"],
   "synchronized-playback-toggled-by-space": ["synchronized-playback-toggled-by-space", "space-sync-toggle"],
   "responsive-export-review-loaded-at-900-x-720": [
