@@ -6,8 +6,8 @@ Date: 2026-06-22
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: implementation_in_progress
-- Next Action: repair
+- State: HUMAN_REQUIRED
+- Next Action: external_review
 - repairRound: 2
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
@@ -57,6 +57,11 @@ Date: 2026-06-22
   loading, and full-canvas nonblank proof.
 - `npm test` passed with 211 tests on repair-2 integration head
   `bd00e394da97e3e35d3427538eacfe5ce05bb2e8`.
+- Final `AUTO_SVGA_SKIP_TRACKED_SNAPSHOTS=1 node tools/p6/generate-p6-evidence.mjs`
+  regenerated ignored P6 product evidence under `.artifacts/product/P6` and
+  bound it to head `6dd0e3c758c5edf3bf3f8a104b34ee35a2884077`.
+- Final `npm run loop:validate` passed on clean source head
+  `6dd0e3c758c5edf3bf3f8a104b34ee35a2884077`.
 - Root `npm test` passed with 207 tests on P6 integration head.
 - `npm run desktop:smoke` passed serially with playback, nonblank canvas, inspection report, Audit panel, file input, drag/drop, invalid file, lifecycle, and cleanup all true.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` produced the ignored macOS internal prototype package proof.
@@ -64,7 +69,8 @@ Date: 2026-06-22
 
 ## Next Action
 
-Continue P6 repair-2 with final loop validation, independent review, and a
-privacy-clean HUMAN_REQUIRED handoff. Electron debug and proof runs should be
-quiet/background whenever possible; visible App windows are reserved for final
-owner-facing evidence only.
+Await external owner review of P6 Web Preview full Desktop parity and the
+current macOS internal `.app`. Safe default is to reject P6 and identify the
+highest-priority parity or App issue before starting any next product phase.
+Electron debug and proof runs should be quiet/background whenever possible;
+visible App windows are reserved for final owner-facing evidence only.
