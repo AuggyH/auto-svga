@@ -77,4 +77,3 @@ Reasons:
 6. Replace unconditional parity PASS generation with computed checks.
 7. Prove normal Finder-equivalent macOS App launch.
 8. Produce privacy-clean portable review and App ZIP artifacts.
-
