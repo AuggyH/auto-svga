@@ -4,7 +4,7 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
-  "lastIntegratedWorkerCommit": "52ed98df94f869a811aac2a4a120a7b8bcadb67f",
+  "lastIntegratedWorkerCommit": "46076eb3ee3cf9e960e38fd7c97912c20ff1b216",
   "currentRepairRound": 6,
   "lifecycleStatus": "repair_6_in_progress",
   "finalHeadBinding": {
@@ -15,10 +15,10 @@
   },
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T13:38:00Z",
-  "registryRefreshedAt": "2026-06-22T17:51:41Z",
+  "registryRefreshedAt": "2026-06-22T17:53:29Z",
   "registryValidation": {
     "status": "pass",
-    "checkedAt": "2026-06-22T17:51:41Z",
+    "checkedAt": "2026-06-22T17:53:29Z",
     "errors": []
   },
   "rules": {
@@ -793,9 +793,9 @@
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r6-a5-final-package-handoff",
       "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
-      "headCommit": null,
-      "status": "pending",
-      "lastVerifiedAt": "2026-06-22T17:51:41Z",
+      "headCommit": "46076eb3ee3cf9e960e38fd7c97912c20ff1b216",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T17:53:29Z",
       "ownedPaths": [
         "tools/p6/build-p6-owner-handoff.mjs",
         "tools/electron-prototype/experiments/svga-web packaging scripts",
@@ -803,9 +803,16 @@
       ],
       "dependencies": [],
       "requestedIntegrationChanges": [],
-      "integrationCommit": null,
-      "lifecycleStatus": "planned",
-      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A5-R6.md"
+      "integrationCommit": "7deb84e8d8d3e45487c4daafdf56aa23f96fe617",
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A5-R6.md",
+      "tests": [
+        "node --check tools/p6/build-p6-owner-handoff.mjs",
+        "node --check tools/electron-prototype/experiments/svga-web/scripts/package-internal-trial.mjs",
+        "node --test tools/p6-owner-handoff-package.test.mjs",
+        "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+        "git diff --check HEAD~1..HEAD"
+      ]
     }
   ]
 }
