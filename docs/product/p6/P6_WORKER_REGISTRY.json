@@ -4,7 +4,7 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
-  "lastIntegratedWorkerCommit": "3e56733a9f5bdc3c246ad58cc1afecc765ac6bd1",
+  "lastIntegratedWorkerCommit": "52ed98df94f869a811aac2a4a120a7b8bcadb67f",
   "currentRepairRound": 6,
   "lifecycleStatus": "repair_6_in_progress",
   "finalHeadBinding": {
@@ -15,10 +15,10 @@
   },
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
   "threadListRefreshedAt": "2026-06-22T13:38:00Z",
-  "registryRefreshedAt": "2026-06-22T17:49:54Z",
+  "registryRefreshedAt": "2026-06-22T17:51:41Z",
   "registryValidation": {
     "status": "pass",
-    "checkedAt": "2026-06-22T17:49:54Z",
+    "checkedAt": "2026-06-22T17:51:41Z",
     "errors": []
   },
   "rules": {
@@ -758,9 +758,9 @@
       "threadType": "visible_project_worktree",
       "branch": "agent/codex/p6-r6-a4-strict-parity-motion",
       "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
-      "headCommit": null,
-      "status": "pending",
-      "lastVerifiedAt": "2026-06-22T17:49:54Z",
+      "headCommit": "52ed98df94f869a811aac2a4a120a7b8bcadb67f",
+      "status": "integrated",
+      "lastVerifiedAt": "2026-06-22T17:51:41Z",
       "ownedPaths": [
         "tools/p6/generate-p6-evidence.mjs",
         "tools/p6/parity-runner.mjs",
@@ -770,9 +770,20 @@
       ],
       "dependencies": [],
       "requestedIntegrationChanges": [],
-      "integrationCommit": null,
-      "lifecycleStatus": "planned",
-      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A4-R6.md"
+      "integrationCommit": "156df0f67b7b309dc30b6c7cda6d5ba566ea4754",
+      "lifecycleStatus": "integrated",
+      "workerHandoffFolder": "docs/product/p6/worker-handoffs/A4-R6.md",
+      "tests": [
+        "node --check tools/p6/generate-p6-evidence.mjs",
+        "node --check tools/p6/p6-web-baseline-capture.cjs",
+        "node --check tools/p6/parity-runner.mjs",
+        "node --check tools/p6/runtime-scenarios/contract.mjs",
+        "node --check tools/p6/runtime-scenarios/state-evidence.mjs",
+        "node --check tools/p6/runtime-scenarios/strict-evidence.mjs",
+        "node --test tools/p6/parity-mutation-tests.mjs",
+        "npm run build && node --test dist/tests/p6-parity-report-contract.test.js dist/tests/p6-web-inventory-contract.test.js",
+        "git diff --check HEAD~1..HEAD"
+      ]
     },
     {
       "workerId": "A5",
@@ -784,15 +795,13 @@
       "baseCommit": "85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61",
       "headCommit": null,
       "status": "pending",
-      "lastVerifiedAt": "2026-06-22T17:49:54Z",
+      "lastVerifiedAt": "2026-06-22T17:51:41Z",
       "ownedPaths": [
         "tools/p6/build-p6-owner-handoff.mjs",
         "tools/electron-prototype/experiments/svga-web packaging scripts",
         "P6 owner handoff tests and package/privacy checks"
       ],
-      "dependencies": [
-        "A4"
-      ],
+      "dependencies": [],
       "requestedIntegrationChanges": [],
       "integrationCommit": null,
       "lifecycleStatus": "planned",

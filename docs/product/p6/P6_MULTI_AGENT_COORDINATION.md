@@ -8,11 +8,11 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 
 - Integration branch: `agent/codex/p6-integration`
 - Current Repair 6 integration head:
-  `6851d352df312dc4ae97f381429a1a79102e4612`
+  `156df0f67b7b309dc30b6c7cda6d5ba566ea4754`
 - Current loop state: P6 Repair 6 is the final allowed frozen-budget repair
-  round. A1, A2, and A3 have been integrated and verified on the integration
-  branch. A4 is the next dependency layer. Phase 2 remains `NOT_STARTED`;
-  Repair 7 must not be created.
+  round. A1, A2, A3, and A4 have been integrated and verified on the
+  integration branch. A5 is the next dependency layer. Phase 2 remains
+  `NOT_STARTED`; Repair 7 must not be created.
 - Repair 5 terminal evidence is historical and rejected by external review for
   owner acceptance. Do not use Repair 5 screenshots, Reviewer JSON, App proof,
   or sealed packets as terminal Repair 6 acceptance evidence.
@@ -27,7 +27,7 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 | A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | visible project Worktree thread | integrated from `agent/codex/p6-r6-a1-required-inventory` |
 | A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | integrated from `agent/codex/p6-r6-a2-product-behavior` |
 | A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | visible project Worktree thread | integrated from `agent/codex/p6-r6-a3-visible-normal-app` |
-| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | reuse for `agent/codex/p6-r6-a4-strict-parity-motion` |
+| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | integrated from `agent/codex/p6-r6-a4-strict-parity-motion` |
 | A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | visible project Worktree thread | reuse for `agent/codex/p6-r6-a5-final-package-handoff` |
 
 ## Repair 6 Product Findings
