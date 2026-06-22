@@ -1714,10 +1714,20 @@ async function cleanupRuntime() {
   if (cleanedUp) return;
   cleanedUp = true;
   const serverClosed = Boolean(experimentServer);
-  if (experimentServer) await experimentServer.close();
+  let serverCloseTimedOut = false;
+  if (experimentServer) {
+    await Promise.race([
+      experimentServer.close(),
+      new Promise((resolve) => setTimeout(() => {
+        serverCloseTimedOut = true;
+        resolve();
+      }, 2500))
+    ]);
+  }
   rmSync(sessionRoot, { recursive: true, force: true });
   console.log(`AUTO_SVGA_RUNTIME_CLEANUP ${JSON.stringify({
     serverClosed,
+    serverCloseTimedOut,
     sessionRootRedacted: sanitizeRuntimeArgument(sessionRoot),
     tempRemoved: true
   })}`);
