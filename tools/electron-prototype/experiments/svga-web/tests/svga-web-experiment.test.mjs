@@ -200,6 +200,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /productSmokeMode/);
   assert.match(main, /captureProductArtifact/);
   assert.match(main, /validateArtifactScenario/);
+  assert.match(main, /validateP6InteractionTrace/);
+  assert.match(main, /desktop-interaction-trace\.source\.json/);
+  assert.match(main, /p6InteractionTrace: Boolean\(p6InteractionTrace\)/);
   assert.match(main, /const productIdentity = "Auto SVGA"/);
   assert.match(main, /runtimeIdentity/);
   assert.match(main, /normalSmokeParity/);

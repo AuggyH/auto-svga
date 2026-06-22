@@ -298,25 +298,61 @@ function contextFromSnapshot(snapshot) {
 
 function targetRectForSelector(snapshot, selector) {
   if (!snapshot) return null;
-  const selectorId = selector?.startsWith("#") ? selector.slice(1) : null;
-  const region = (snapshot.regions ?? []).find((entry) => entry.selector === selector || entry.id === selectorId);
-  const control = (snapshot.controls ?? []).find((entry) => entry.id === selectorId || entry.dataValue === dataValue(selector));
-  return region?.rect ?? control?.rect ?? null;
+  for (const selectorPart of splitSelectors(selector)) {
+    if (selectorPart === "body" && isRecord(snapshot.viewport)) {
+      return { x: 0, y: 0, width: snapshot.viewport.width, height: snapshot.viewport.height };
+    }
+    const selectorId = selectorPart?.startsWith("#") ? selectorPart.slice(1) : null;
+    const region = (snapshot.regions ?? []).find((entry) => entry.selector === selectorPart || entry.id === selectorId);
+    const control = (snapshot.controls ?? []).find((entry) =>
+      entry.id === selectorId
+      || entry.dataValue === dataValue(selectorPart)
+      || entry.dataTab === dataTab(selectorPart)
+      || entry.dataPreviewImageKey === dataPreviewImageKey(selectorPart)
+    );
+    if (region?.rect ?? control?.rect) return region?.rect ?? control?.rect;
+  }
+  return null;
 }
 
 function controlValueForSelector(snapshot, selector) {
-  const selectorId = selector?.startsWith("#") ? selector.slice(1) : null;
-  const control = (snapshot?.controls ?? []).find((entry) => entry.id === selectorId || entry.dataValue === dataValue(selector));
-  if (!control) return null;
-  return {
-    checked: control.checked === true,
-    disabled: control.disabled === true,
-    visible: control.visible === true
-  };
+  if (selector === "body") return { checked: false, disabled: false, visible: true };
+  for (const selectorPart of splitSelectors(selector)) {
+    const selectorId = selectorPart?.startsWith("#") ? selectorPart.slice(1) : null;
+    const control = (snapshot?.controls ?? []).find((entry) =>
+      entry.id === selectorId
+      || entry.dataValue === dataValue(selectorPart)
+      || entry.dataTab === dataTab(selectorPart)
+      || entry.dataPreviewImageKey === dataPreviewImageKey(selectorPart)
+    );
+    if (control) {
+      return {
+        checked: control.checked === true,
+        disabled: control.disabled === true,
+        visible: control.visible === true
+      };
+    }
+  }
+  return null;
+}
+
+function splitSelectors(selector) {
+  return String(selector ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
 function dataValue(selector) {
-  return selector?.match(/^\[data-value=['"]?([^'"\]]+)['"]?\]$/)?.[1] ?? null;
+  return selector?.match(/\[data-value=['"]?([^'"\]]+)['"]?\]/)?.[1] ?? null;
+}
+
+function dataTab(selector) {
+  return selector?.match(/\[data-tab=['"]?([^'"\]]+)['"]?\]/)?.[1] ?? null;
+}
+
+function dataPreviewImageKey(selector) {
+  return selector?.match(/\[data-preview-image-key=['"]?([^'"\]]+)['"]?\]/)?.[1] ?? null;
 }
 
 function visibleIds(entries = []) {

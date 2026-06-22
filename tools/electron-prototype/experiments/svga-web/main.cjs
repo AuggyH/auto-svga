@@ -112,7 +112,114 @@ function validateSmokeResult(value) {
     "cleanup"
   ];
   if (!keys.every((key) => typeof value[key] === "boolean")) return undefined;
-  return Object.fromEntries(keys.map((key) => [key, key === "noCspViolation" ? value[key] && !cspViolationSeen : value[key]]));
+  const result = Object.fromEntries(keys.map((key) => [key, key === "noCspViolation" ? value[key] && !cspViolationSeen : value[key]]));
+  if (value.p6InteractionTrace !== undefined) {
+    const trace = validateP6InteractionTrace(value.p6InteractionTrace);
+    if (!trace) return undefined;
+    result.p6InteractionTrace = trace;
+  }
+  return result;
+}
+
+function validateP6InteractionTrace(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (JSON.stringify(value).length > 220_000) return undefined;
+  if (value.schemaVersion !== 1 || value.host !== "desktop") return undefined;
+  if (!isP6Fixture(value.fixture) || !isP6Context(value.context)) return undefined;
+  if (!Array.isArray(value.actionTrace) || value.actionTrace.length === 0 || value.actionTrace.length > 40) return undefined;
+  if (!value.actionTrace.every(isP6ActionTraceEntry)) return undefined;
+  if (!isSha256(value.finalStateDigest)) return undefined;
+  if (!isStringArray(value.visibleRegions, 80) || value.visibleRegions.length === 0) return undefined;
+  if (!isStringArray(value.visibleControls, 160) || value.visibleControls.length === 0) return undefined;
+  if (!Array.isArray(value.screenshots) || value.screenshots.length === 0 || value.screenshots.length > 40) return undefined;
+  if (!value.screenshots.every((entry) =>
+    entry && typeof entry === "object" && !Array.isArray(entry)
+    && isBoundedString(entry.stateId, 120)
+    && isBoundedString(entry.path, 260)
+    && !entry.path.includes("..")
+  )) return undefined;
+  if (!isStringArray(value.failures, 80)) return undefined;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function isP6Fixture(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && isSha256(value.sha256)
+    && isBoundedString(value.displayName, 160)
+    && Number.isInteger(value.sizeBytes)
+    && value.sizeBytes > 0
+    && value.sizeBytes <= 25 * 1024 * 1024;
+}
+
+function isP6Context(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && isP6Viewport(value.viewportCss)
+    && Number.isFinite(value.devicePixelRatio)
+    && Number.isFinite(value.playbackTimeMs)
+    && isBoundedString(value.mode, 120)
+    && isBoundedString(value.panel, 120)
+    && isBoundedString(value.modal, 120)
+    && value.controls
+    && typeof value.controls === "object"
+    && !Array.isArray(value.controls)
+    && Object.keys(value.controls).length <= 220
+    && Object.entries(value.controls).every(([key, control]) =>
+      isBoundedString(key, 180)
+      && control
+      && typeof control === "object"
+      && !Array.isArray(control)
+      && typeof control.visible === "boolean"
+      && typeof control.disabled === "boolean"
+      && typeof control.checked === "boolean"
+    );
+}
+
+function isP6ActionTraceEntry(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && isBoundedString(value.id, 160)
+    && isBoundedString(value.kind, 40)
+    && isBoundedString(value.selector, 220)
+    && isBoundedString(value.initialState, 160)
+    && isBoundedString(value.expectedState, 160)
+    && (value.stateReached === null || isBoundedString(value.stateReached, 160))
+    && isP6Rect(value.targetRect)
+    && (value.controlValue === null || isP6ControlValue(value.controlValue))
+    && typeof value.stateProofPassed === "boolean"
+    && isStringArray(value.stateProofFailures, 80);
+}
+
+function isP6Viewport(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && Number.isFinite(value.width)
+    && Number.isFinite(value.height)
+    && value.width > 0
+    && value.height > 0;
+}
+
+function isP6Rect(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && ["x", "y", "width", "height"].every((field) => Number.isFinite(value[field]));
+}
+
+function isP6ControlValue(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && typeof value.visible === "boolean"
+    && typeof value.disabled === "boolean"
+    && typeof value.checked === "boolean";
+}
+
+function isStringArray(value, maxLength) {
+  return Array.isArray(value)
+    && value.length <= maxLength
+    && value.every((item) => isBoundedString(item, 260));
+}
+
+function isBoundedString(value, maxLength) {
+  return typeof value === "string" && value.length > 0 && value.length <= maxLength;
+}
+
+function isSha256(value) {
+  return typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 }
 
 function validateArtifactScenario(value) {
@@ -920,9 +1027,18 @@ function mergeExistingProductArtifactIndex() {
 async function finishSmoke(window, result) {
   if (smokeFinished) return;
   smokeFinished = true;
+  if (productSmokeMode && result.p6InteractionTrace) {
+    writeJsonProductArtifact(
+      "desktop-interaction-trace.source.json",
+      "desktop-interaction-trace-source",
+      result.p6InteractionTrace,
+      "smoke"
+    );
+  }
   if (productSmokeMode) writeProductArtifactIndex();
-  const passed = Object.values(result).every(Boolean);
-  console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify({ ...result, passed })}`);
+  const { p6InteractionTrace, ...summary } = result;
+  const passed = Object.values(summary).every(Boolean);
+  console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify({ ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace) })}`);
   await cleanupRuntime();
   window.destroy();
   app.exit(passed ? 0 : 1);

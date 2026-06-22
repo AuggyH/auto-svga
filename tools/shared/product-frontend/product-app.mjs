@@ -1576,6 +1576,202 @@ async function captureArtifact(scenario) {
   return electronBridge.captureArtifact(scenario);
 }
 
+const p6SmokeActionTrace = [];
+let p6SmokeFixture = null;
+
+const p6SmokeRegionContract = [
+  ["shell", ".shell"],
+  ["toolbar", ".toolbar"],
+  ["brand", ".brand"],
+  ["modeControl", ".modeControl"],
+  ["actionRow", ".actionRow"],
+  ["workspace", "#workspace"],
+  ["svgaPanelA", "#svgaPanelA"],
+  ["svgaPanelB", "#svgaPanelB"],
+  ["referencePanel", "#referencePanel"],
+  ["playerBarA", "#svgaPanelA .playerBar"],
+  ["playerBarB", "#svgaPanelB .playerBar"],
+  ["referencePlayerBar", "#referencePanel .playerBar"],
+  ["syncBar", "#syncBar"],
+  ["infoPanel", "#infoPanel"],
+  ["logsPanel", "#logsPanel"],
+  ["settingsModal", "#settingsModal"],
+  ["assetPreviewModal", "#assetPreviewModal"],
+  ["reportGrid", "#tab-overview .overviewGrid, #reportGrid"],
+  ["errorBox", "#errorBox"],
+  ["floatingRoot", "#floatingRoot"]
+];
+
+function p6SmokeControlValue(selector) {
+  const target = p6SmokeTargetForSelector(selector);
+  return {
+    visible: target.visible,
+    disabled: Boolean(target.node?.disabled),
+    checked: Boolean(target.node?.checked)
+  };
+}
+
+function p6SmokeTargetForSelector(selector) {
+  if (selector === "body") {
+    return {
+      node: document.body,
+      visible: true,
+      rect: { x: 0, y: 0, width: innerWidth, height: innerHeight }
+    };
+  }
+  const nodes = selector.split(",")
+    .map((part) => document.querySelector(part.trim()))
+    .filter(Boolean);
+  const visibleNode = nodes.find((node) => isElementVisible(node)) ?? nodes[0] ?? null;
+  const rect = visibleNode?.getBoundingClientRect();
+  return {
+    node: visibleNode,
+    visible: isElementVisible(visibleNode),
+    rect: rect ? {
+      x: Math.round(rect.x),
+      y: Math.round(rect.y),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height)
+    } : null
+  };
+}
+
+async function p6Sha256Text(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function p6Sha256Bytes(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function collectP6SmokeSnapshot(stateId) {
+  const regions = p6SmokeRegionContract.map(([id, selector]) => {
+    const node = document.querySelector(selector);
+    const rect = node?.getBoundingClientRect();
+    return {
+      id,
+      selector,
+      present: Boolean(node),
+      visible: isElementVisible(node),
+      textSample: (node?.innerText ?? "").replace(/\s+/g, " ").trim().slice(0, 160),
+      rect: rect ? {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      } : null
+    };
+  });
+  const controls = [...document.querySelectorAll("button,input,label,select,textarea,[role=button],[role=menuitemradio],[role=status],[aria-live],[data-value],[data-tab],[data-preview-image-key]")]
+    .map((node) => {
+      const rect = node.getBoundingClientRect();
+      return {
+        tag: node.tagName.toLowerCase(),
+        id: node.id || null,
+        role: node.getAttribute("role"),
+        type: node.getAttribute("type"),
+        dataValue: node.dataset?.value ?? null,
+        dataTab: node.dataset?.tab ?? null,
+        dataPreviewImageKey: node.dataset?.previewImageKey ?? null,
+        ariaExpanded: node.getAttribute("aria-expanded"),
+        text: (node.innerText || node.getAttribute("aria-label") || node.getAttribute("title") || "").replace(/\s+/g, " ").trim().slice(0, 120),
+        present: true,
+        visible: isElementVisible(node),
+        hidden: Boolean(node.hidden),
+        disabled: Boolean(node.disabled),
+        checked: Boolean(node.checked),
+        rect: {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        }
+      };
+    });
+  const activeMode = modeDropdownTrigger?.textContent?.replace(/\s+/g, " ").trim() ?? "unknown";
+  const panel = !infoPanel.hidden ? "info" : !logsPanel.hidden ? "logs" : "none";
+  const modal = !settingsModal.hidden ? "settingsModal" : !assetPreviewModal.hidden ? "assetPreviewModal" : "none";
+  return {
+    stateId,
+    viewport: { width: innerWidth, height: innerHeight },
+    devicePixelRatio,
+    playbackTimeMs: Math.round((players.a.timeDisplay?.textContent?.match(/[0-9.]+/)?.[0] ?? 0) * 1000),
+    mode: activeMode,
+    panel,
+    modal,
+    bodyTextSample: document.body.innerText.replace(/\s+/g, " ").trim().slice(0, 600),
+    regions,
+    controls
+  };
+}
+
+function p6VisibleIds(entries = []) {
+  return entries
+    .filter((entry) => entry.visible === true)
+    .map((entry) => entry.id ?? entry.selector ?? entry.text)
+    .filter(Boolean)
+    .sort();
+}
+
+async function recordP6SmokeAction(action, runAction, waitForState) {
+  const target = p6SmokeTargetForSelector(action.selector);
+  await runAction();
+  await waitForState?.();
+  const proof = collectRenderedStateProof(action.expectedState);
+  p6SmokeActionTrace.push({
+    ...action,
+    source: "desktop-product-smoke-input",
+    stateReached: proof.passed ? action.expectedState : null,
+    targetRect: target.rect,
+    controlValue: p6SmokeControlValue(action.selector),
+    stateProofPassed: proof.passed,
+    stateProofFailures: proof.failures
+  });
+}
+
+async function buildP6SmokeInteractionTrace() {
+  const finalSnapshot = collectP6SmokeSnapshot("recovered-from-invalid");
+  return {
+    schemaVersion: 1,
+    host: "desktop",
+    fixture: p6SmokeFixture,
+    context: {
+      viewportCss: finalSnapshot.viewport,
+      devicePixelRatio: finalSnapshot.devicePixelRatio,
+      playbackTimeMs: finalSnapshot.playbackTimeMs,
+      mode: finalSnapshot.mode,
+      panel: finalSnapshot.panel,
+      modal: finalSnapshot.modal,
+      controls: Object.fromEntries(finalSnapshot.controls.map((control) => [
+        control.id ?? control.dataValue ?? control.dataTab ?? control.text,
+        {
+          visible: control.visible === true,
+          disabled: control.disabled === true,
+          checked: control.checked === true
+        }
+      ]).filter(([key]) => key))
+    },
+    actionTrace: p6SmokeActionTrace,
+    finalStateDigest: await p6Sha256Text(JSON.stringify({
+      host: "desktop",
+      stateId: finalSnapshot.stateId,
+      regions: p6VisibleIds(finalSnapshot.regions),
+      controls: p6VisibleIds(finalSnapshot.controls),
+      text: finalSnapshot.bodyTextSample
+    })),
+    visibleRegions: p6VisibleIds(finalSnapshot.regions),
+    visibleControls: p6VisibleIds(finalSnapshot.controls),
+    screenshots: [
+      { stateId: "recovered-from-invalid", path: ".artifacts/product/P6/desktop-recovered-from-invalid.png" }
+    ],
+    failures: [],
+    generatedAt: new Date().toISOString()
+  };
+}
+
 function resourcesAreLocal() {
   return performance.getEntriesByType("resource").every((entry) => {
     const name = String(entry.name);
@@ -2057,6 +2253,12 @@ async function runProductSmoke() {
       if (!response.ok) throw new Error(`Fixture fetch failed (${response.status})`);
       return response.arrayBuffer();
     }));
+    p6SmokeActionTrace.length = 0;
+    p6SmokeFixture = {
+      sha256: await p6Sha256Bytes(bytes),
+      displayName: "avatar_frame_basic.svga",
+      sizeBytes: bytes.byteLength
+    };
     const loadPromise = loadSvga("a", fixtureUrl, {
       fileName: "synthetic-avatar-frame.svga",
       fileSizeBytes: bytes.byteLength,
@@ -2073,29 +2275,65 @@ async function runProductSmoke() {
     await delay(180);
     await captureArtifact("desktop-paused");
     playSlot(players.a);
-    await loadArtifactGroup({
-      jobId: "synthetic-latest-artifact",
-      svgaPath: fixtureUrl,
-      reportPath: paths.report
-    }, { force: true });
-    await waitFor(() => Boolean(players.a.videoItem));
-    await waitFor(() => canvasIsNonBlank(players.a));
+    await recordP6SmokeAction({
+      id: "click-mode-dropdown-trigger-menu-opens",
+      kind: "click",
+      selector: "#modeDropdownTrigger",
+      initialState: "local-empty",
+      expectedState: "mode-menu-open"
+    }, async () => {
+      closeP6SmokeTransientUi();
+      modeDropdownTrigger?.click();
+    }, () => waitFor(() => !modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu)));
+    await captureArtifact("desktop-mode-menu-open");
+    await recordP6SmokeAction({
+      id: "select-export-review-mode-latest-artifact-loads",
+      kind: "click",
+      selector: "[data-value='exportReview']",
+      initialState: "mode-menu-open",
+      expectedState: "export-review-loaded"
+    }, async () => {
+      document.querySelector("[data-value='exportReview']")?.click();
+    }, async () => {
+      await waitFor(() => Boolean(latestArtifactGroup && players.a.videoItem));
+      await waitFor(() => canvasIsNonBlank(players.a));
+    });
     await captureArtifact("desktop-latest-artifact-loaded");
     await loadP6SmokeReferenceGif();
     await captureArtifact("desktop-reference-media-loaded");
-    ensureP6SmokeInfoPanel("overview");
-    await delay(220);
+    await recordP6SmokeAction({
+      id: "open-info-panel-overview-visible",
+      kind: "click",
+      selector: "#infoPanelButton",
+      initialState: "export-review-loaded",
+      expectedState: "info-overview-open"
+    }, async () => {
+      if (activeSidePanel === "info") setActiveSidePanel(null);
+      infoPanelButton?.click();
+    }, async () => {
+      await waitFor(() => activeSidePanel === "info");
+      ensureP6SmokeInfoPanel("overview");
+      await delay(120);
+    });
     const auditPanel = Boolean(document.querySelector(".auditReportSection, .specReportSection"));
     await captureArtifact("desktop-loaded");
     await captureArtifact("smoke-loaded");
     await captureArtifact("desktop-1280x800");
     await captureArtifact("desktop-1440x900");
     await captureArtifact("desktop-inspection");
-    ensureP6SmokeInfoPanel("overview");
-    await delay(220);
     await captureArtifact("desktop-info-overview-open");
-    ensureP6SmokeInfoPanel("assets");
-    await delay(220);
+    await recordP6SmokeAction({
+      id: "switch-info-panel-tab-assets-visible",
+      kind: "click",
+      selector: ".tabButton[data-tab='assets']",
+      initialState: "info-overview-open",
+      expectedState: "info-assets-open"
+    }, async () => {
+      document.querySelector(".tabButton[data-tab='assets']")?.click();
+    }, async () => {
+      await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
+      await delay(120);
+    });
     await captureArtifact("desktop-info-assets-open");
     const previewButton = document.querySelector("#tab-assets [data-preview-image-key]:not(:disabled)");
     previewButton?.click();
@@ -2105,38 +2343,89 @@ async function runProductSmoke() {
     closeAssetPreview();
     await delay(240);
     closeP6SmokeTransientUi();
-    modeDropdownTrigger?.click();
-    await waitFor(() => !modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu));
-    await delay(180);
-    await captureArtifact("desktop-mode-menu-open");
-    closeP6SmokeTransientUi();
     await delay(160);
-    openFullLogs();
-    await delay(220);
+    await recordP6SmokeAction({
+      id: "switch-diagnostics-to-runtime-logs",
+      kind: "click",
+      selector: "#logsButton",
+      initialState: "info-assets-open",
+      expectedState: "logs-open"
+    }, async () => {
+      logsButton?.click();
+    }, async () => {
+      await waitFor(() => activeSidePanel === "logs");
+      await delay(120);
+    });
     await captureArtifact("desktop-logs-open");
-    openSettings();
-    await delay(240);
+    await recordP6SmokeAction({
+      id: "open-settings-modal",
+      kind: "click",
+      selector: "#settingsButton",
+      initialState: "logs-open",
+      expectedState: "settings-open"
+    }, async () => {
+      settingsButton?.click();
+    }, async () => {
+      await waitFor(() => !settingsModal.hidden);
+      await delay(120);
+    });
     await captureArtifact("desktop-settings-open");
-    if (!reduceMotionToggle.checked) reduceMotionToggle.click();
-    if (!reduceBlurToggle.checked) reduceBlurToggle.click();
-    await delay(180);
+    await recordP6SmokeAction({
+      id: "enable-reduce-motion-and-reduce-blur-toggles",
+      kind: "click",
+      selector: "#reduceMotionToggle, #reduceBlurToggle",
+      initialState: "settings-open",
+      expectedState: "accessibility-toggles-on"
+    }, async () => {
+      if (!reduceMotionToggle.checked) reduceMotionToggle.click();
+      if (!reduceBlurToggle.checked) reduceBlurToggle.click();
+    }, async () => {
+      await waitFor(() => reduceMotionToggle.checked && reduceBlurToggle.checked);
+      await delay(120);
+    });
     await captureArtifact("desktop-accessibility-toggles-on");
-    await new Promise((resolve) => {
+    await recordP6SmokeAction({
+      id: "escape-closes-settings-before-side-panel",
+      kind: "keyboard",
+      selector: "body",
+      initialState: "settings-open",
+      expectedState: "settings-closed-by-escape"
+    }, () => new Promise((resolve) => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       window.setTimeout(resolve, 260);
+    }), async () => {
+      await waitFor(() => settingsModal.hidden);
     });
     await captureArtifact("desktop-settings-closed-by-escape");
-    await new Promise((resolve) => {
+    await recordP6SmokeAction({
+      id: "space-toggles-synchronized-playback-in-export-review",
+      kind: "keyboard",
+      selector: "body",
+      initialState: "export-review-loaded",
+      expectedState: "synchronized-playback-toggled-by-space"
+    }, () => new Promise((resolve) => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
       window.setTimeout(resolve, 260);
+    }), async () => {
+      await waitFor(() => syncPlayControl.getAttribute("aria-pressed") === "true");
     });
     await captureArtifact("desktop-synchronized-playback-toggled-by-space");
     await captureP6MotionEvidence();
     closeP6SmokeTransientUi();
     await delay(240);
     setAppMode("localPreview");
-    if (!compareToggle.checked) compareToggle.click();
-    await delay(260);
+    await recordP6SmokeAction({
+      id: "enable-local-compare-switch",
+      kind: "click",
+      selector: "#compareToggle",
+      initialState: "local-empty",
+      expectedState: "local-compare-empty"
+    }, async () => {
+      if (!compareToggle.checked) compareToggle.click();
+    }, async () => {
+      await waitFor(() => isCompareActive());
+      await delay(120);
+    });
     await captureArtifact("desktop-local-compare-empty");
     handleDroppedFile(new File([bytes.slice(0)], "synthetic-avatar-frame-b.svga", { type: "application/octet-stream" }), "svga", "b");
     await waitFor(() => Boolean(players.b.videoItem));
@@ -2168,7 +2457,8 @@ async function runProductSmoke() {
       dragDrop,
       errorFile,
       playerLifecycle: true,
-      cleanup: true
+      cleanup: true,
+      p6InteractionTrace: await buildP6SmokeInteractionTrace()
     });
   } catch (error) {
     addLog("error", `产品 smoke 失败：${error.message} / Product smoke failed`);
