@@ -82,10 +82,18 @@ Date: 2026-06-22
 - P6 repair-3 owner handoff builder commit
   `c92a1f7344864fa37d21be33a6bd100784e839df` added terminal visible
   owner handoff packaging and stricter review visibility checks.
+- P6 repair-3 owner handoff final link repair commit
+  `e564453c646bdd7b74a1e607c7fbbcc9053f848b` keeps `changes.patch`
+  visible and linked when the sealed packet requires a companion patch.
+- Final ignored P6 evidence was regenerated for head
+  `e564453c646bdd7b74a1e607c7fbbcc9053f848b`.
+- Final `npm run loop:validate` passed twice on clean source head
+  `e564453c646bdd7b74a1e607c7fbbcc9053f848b`.
 
 ## Next Action
 
-Generate final head-bound ignored P6 evidence, run final validation twice,
-seal the HUMAN_REQUIRED packet, create the owner-visible review folder and ZIPs,
-then wait for external owner review. Do not start Phase 2, do not accept P6
-automatically, and do not release, push, merge, sign, notarize, or deploy.
+Await the owner's external decision on the visible P6 packet. Safe default:
+keep P6 as HUMAN_REQUIRED and keep Phase 2 as NOT_STARTED.
+
+No additional machine work is authorized until the owner sends a new explicit
+instruction.
