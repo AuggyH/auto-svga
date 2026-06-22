@@ -17,7 +17,7 @@ nextRepairRound: `4`
 The following Repair 3 terminal artifacts are historical only and must not be
 used as Repair 4 terminal proof:
 
-- `review/P6-1714c9d/REVIEW_PACKET.md`
+- the rejected Repair 3 visible review packet named for `reviewedHeadCommit`
 - `candidateDigest`
 - `reviewer-a.json`
 - `reviewer-b.json`
