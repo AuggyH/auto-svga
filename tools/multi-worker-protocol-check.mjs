@@ -49,8 +49,26 @@ function isCompletedButNotIntegrated(worker) {
   return worker.lifecycleStatus === "completed" && !worker.integrationCommit;
 }
 
-function isRepair4Worker(worker) {
-  return worker.waveId === "P6-R4";
+function normalizeLifecycleWorker(worker) {
+  return {
+    ...worker,
+    workerType: worker.workerType ?? worker.threadType,
+    lifecycleStatus: worker.lifecycleStatus ?? worker.status
+  };
+}
+
+function currentWorkerWaveId(registry) {
+  const round = registry?.currentRepairRound;
+  return Number.isInteger(round) && round > 0 ? `P6-R${round}` : null;
+}
+
+function currentWaveWorkers(registry, workers) {
+  const waveId = currentWorkerWaveId(registry);
+  if (!waveId) return [];
+  const repairWorkers = Array.isArray(registry?.repair5Workers)
+    ? registry.repair5Workers.map(normalizeLifecycleWorker)
+    : [];
+  return [...workers, ...repairWorkers].filter((worker) => worker.waveId === waveId);
 }
 
 function addUniqueError(errors, message) {
@@ -144,7 +162,9 @@ export function validateMultiWorkerProtocol({
 
   if (registry?.schemaVersion !== 2) errors.push("registry schemaVersion must be 2.");
   if (registry?.integrationCoordinator !== "A0") errors.push("integrationCoordinator must be A0.");
-  if (registry?.currentRepairRound !== 4) errors.push("currentRepairRound must be 4 for P6 Repair 4.");
+  if (!Number.isInteger(registry?.currentRepairRound) || registry.currentRepairRound < 1) {
+    errors.push("currentRepairRound must be a positive integer.");
+  }
   if (!registry?.threadListRefreshedAt) errors.push("threadListRefreshedAt is required.");
   if (!registry?.registryRefreshedAt) errors.push("registryRefreshedAt is required.");
   if (registry?.registryValidation?.status !== "pass") errors.push("registryValidation.status must be pass.");
@@ -153,11 +173,15 @@ export function validateMultiWorkerProtocol({
   if (localPathPattern.test(registryText)) errors.push("registry must not contain local absolute paths.");
   if (localPathPattern.test(coordinationText)) errors.push("coordination doc must not contain local absolute paths.");
 
-  const workers = Array.isArray(registry?.workers) ? registry.workers : [];
+  const historicalWorkers = Array.isArray(registry?.workers) ? registry.workers.map(normalizeLifecycleWorker) : [];
+  const repairWorkers = Array.isArray(registry?.repair5Workers)
+    ? registry.repair5Workers.map(normalizeLifecycleWorker)
+    : [];
+  const workers = [...historicalWorkers, ...repairWorkers];
   if (!workers.length) errors.push("registry must include workers.");
   const activeWorkers = workers.filter(isActiveWorker);
 
-  validateUnique(workers.map((worker) => ({ workerId: worker.workerId, value: worker.workerId })), "workerId", errors);
+  validateUnique(activeWorkers.map((worker) => ({ workerId: worker.workerId, value: worker.workerId })), "active workerId", errors);
   validateUnique(activeWorkers.map((worker) => ({ workerId: worker.workerId, value: worker.visibleThreadId })), "visibleThreadId", errors);
   validateUnique(activeWorkers.map((worker) => ({ workerId: worker.workerId, value: worker.branch })), "active branch", errors);
 
@@ -189,16 +213,16 @@ export function validateMultiWorkerProtocol({
     }
   }
 
-  validateOwnedPathBoundaries(workers, errors);
-  validateDependencies(workers, errors);
+  validateOwnedPathBoundaries(activeWorkers, errors);
+  validateDependencies(activeWorkers, errors);
 
-  const repair4Workers = workers.filter(isRepair4Worker);
-  if (repair4Workers.length < 5) {
-    errors.push("current Repair 4 Worker wave is not fully registered.");
+  const currentWorkers = currentWaveWorkers(registry, historicalWorkers);
+  if (currentWorkers.length < 5) {
+    errors.push(`current Repair ${registry?.currentRepairRound ?? "unknown"} Worker wave is not fully registered.`);
   }
   for (const workerId of ["A1", "A2", "A3", "A4", "A5"]) {
-    if (!repair4Workers.some((worker) => worker.workerId === workerId)) {
-      errors.push(`Repair 4 required Worker missing: ${workerId}.`);
+    if (!currentWorkers.some((worker) => worker.workerId === workerId)) {
+      errors.push(`Repair ${registry?.currentRepairRound ?? "unknown"} required Worker missing: ${workerId}.`);
     }
   }
 
@@ -223,13 +247,13 @@ export function validateMultiWorkerProtocol({
     if (registry?.expectedFinalHeadCommit && registry?.currentIntegrationHeadCommit !== registry.expectedFinalHeadCommit) {
       errors.push("terminal registry currentIntegrationHeadCommit must equal expectedFinalHeadCommit.");
     }
-    for (const worker of repair4Workers) {
-      if (!worker.headCommit) errors.push(`${worker.workerId} Repair 4 terminal worker missing headCommit.`);
+    for (const worker of currentWorkers) {
+      if (!worker.headCommit) errors.push(`${worker.workerId} Repair ${registry?.currentRepairRound ?? "unknown"} terminal worker missing headCommit.`);
       if (worker.lifecycleStatus !== "integrated" && worker.lifecycleStatus !== "retired") {
-        errors.push(`${worker.workerId} Repair 4 terminal worker must be integrated or retired.`);
+        errors.push(`${worker.workerId} Repair ${registry?.currentRepairRound ?? "unknown"} terminal worker must be integrated or retired.`);
       }
       if (worker.lifecycleStatus === "integrated" && !worker.workerHandoffFolder) {
-        errors.push(`${worker.workerId} Repair 4 terminal worker missing handoff folder.`);
+        errors.push(`${worker.workerId} Repair ${registry?.currentRepairRound ?? "unknown"} terminal worker missing handoff folder.`);
       }
     }
   }

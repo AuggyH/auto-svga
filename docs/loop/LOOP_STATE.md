@@ -6,9 +6,9 @@ Date: 2026-06-22
 
 - milestoneId: P6
 - Milestone: Web Preview Full Parity, Shared Frontend And macOS Internal App
-- State: terminal_human_required
-- Next Action: external_review
-- repairRound: 4
+- State: implementation_in_progress
+- Next Action: repair
+- repairRound: 5
 - consecutiveNoProgressRounds: 0
 - budgetStatus: within_budget
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
@@ -111,8 +111,20 @@ Date: 2026-06-22
   runtime proof, security audit, accessibility report, and artifact index pass;
   visual, feature, interaction, state, and motion parity still contain
   59 item-specific non-pass Web runtime evidence entries.
+- P6 repair-4 final owner-visible handoff commit
+  `290272e056653dadd0d9a89d0a7a432335187bca` is
+  `REJECTED_BY_EXTERNAL_REVIEW` for owner acceptance because required
+  Web/Desktop parity remains incomplete.
+- External product review 4 requires P6 repair-5. The honest Repair 4 parity
+  report is preserved as historical evidence, but Repair 5 must close all
+  remaining required visual, feature, interaction, state, motion, Desktop proof,
+  registry, and packaging gates before another owner Human Gate is allowed.
+- Repair 5 legal entry is allowed by `node tools/loop-budget-check.mjs`:
+  `nextRepairAllowed=true`, `nextRepairRound=5`, `budgetStatus=within_budget`.
+- Existing visible project Worktree threads A1 through A5 were found and must
+  be reused for Repair 5 rather than recreated.
 
 ## Next Action
 
-External review. Safe default: keep Phase 2 as NOT_STARTED until the owner
-explicitly accepts or redirects the P6 parity gaps.
+Repair. Safe default: keep Phase 2 as NOT_STARTED and continue machine repair
+until required P6 parity gates pass or a strict blocker is reached.

@@ -7,46 +7,48 @@ P6 uses A0 as the only Integration Coordinator. Formal implementation workers ar
 ## Current Integration State
 
 - Integration branch: `agent/codex/p6-integration`
-- Current integration head after Repair 4 actual parity evidence generation:
-  `bf1d71be6141946fde9908b4479be41bf5a14355`
-- Current loop state: P6 Repair 4 is `terminal_human_required`.
-- Terminal parity status: `HUMAN_REQUIRED`; browser regression, desktop runtime
-  proof, security audit, accessibility report, and artifact index pass, while
-  visual, feature, interaction, state, and motion parity still contain
-  59 item-specific non-pass runtime evidence entries.
+- Current integration head at Repair 5 entry:
+  `290272e056653dadd0d9a89d0a7a432335187bca`
+- Current loop state: P6 Repair 5 is `implementation_in_progress`.
+- Repair 4 terminal parity status was `HUMAN_REQUIRED`; browser regression,
+  security audit, and artifact index passed, but visual, feature, interaction,
+  state, motion, Desktop proof, and Desktop rendered-state evidence still
+  contained required non-pass items.
 - Existing P6 workers must be reused; do not recreate them.
 - Worktree paths are runtime thread metadata and must not be committed to this
   coordination document or to `P6_WORKER_REGISTRY.json`.
-- Repair 3 terminal evidence is historical and rejected by external review for
-  Repair 4 terminal proof. Do not use `review/P6-92c36b4/`,
-  `p6-parity-report.json`, old desktop screenshots, old reviewer JSON, old App
-  proof, or old sealed packets as terminal Repair 4 acceptance evidence.
+- Repair 4 terminal evidence is historical and rejected by external review for
+  owner acceptance. Do not use `review/P6-290272e/`, the reviewed
+  `p6-parity-report.json`, old screenshots, old reviewer JSON, old App proof,
+  or old sealed packets as terminal Repair 5 acceptance evidence.
 
 ## Existing Visible Workers
 
 | Worker | Visible thread id | Thread type | Current branch |
 | --- | --- | --- | --- |
-| A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | visible project Worktree thread | `agent/codex/p6-r4-a1-inventory` |
-| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | `agent/codex/p6-r4-a2-shared-shell` |
-| A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | visible project Worktree thread | `agent/codex/p6-r4-a3-electron-host` |
-| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | `agent/codex/p6-r4-a4-parity-runtime` |
-| A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | visible project Worktree thread | `agent/codex/p6-r4-a5-package` |
+| A1 Web Baseline | `019eeb7d-c4a6-70e3-8d04-756807461f7f` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a1-runtime-inventory` |
+| A2 Shared Frontend | `019eeb8a-3dbe-7123-b696-e1334ab9ab60` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a2-product-states` after A1 integration |
+| A3 Electron Host | `019eeb7e-072c-7382-afe5-330eb92b9d2f` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a3-host-app-runtime` |
+| A4 Parity Test Framework | `019eeb7e-071e-7991-ab4f-075c56dbade1` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a4-scenarios-motion-parity` |
+| A5 macOS Packaging | `019eeb7e-0731-76c0-92e3-d9494b272e14` | visible project Worktree thread | reuse for `agent/codex/p6-r5-a5-final-packaging` |
 
-## Repair 4 Product Findings
+## Repair 5 Product Findings
 
-External review rejected the Repair 3 terminal proof because it did not prove
-actual full Web/Desktop parity. Repair 4 must replace synthetic or generic
-PASS evidence with item-specific runtime evidence:
+External review rejected Repair 4 owner acceptance because the report honestly
+showed required gaps instead of completing parity. Repair 5 must close every
+remaining required failure with item-specific runtime evidence:
 
-- no unconditional `status=pass` in parity generation
-- no generic artifact blanket binding
-- same fixture, viewport, playback time, and state per Web/Desktop comparison
-- real Loading and Invalid states, with no stale ready metadata
-- real Desktop latest-artifact adapter instead of fixed empty results
-- one canonical Product Shell shared by Web, Electron dev, and packaged App
-- normal macOS App launch without proof or smoke query mode
-- independent product review evidence rather than A0-generated empty PASS JSON
-- committed-range diff check must pass before candidate, review, seal, or ZIP
+- visual: `playerBarB`, `referencePlayerBar`, `assetPreviewModal`, `reportGrid`
+- feature: optional comparison, secondary SVGA select/drop, status announcements
+- interaction: mode menu, export review select, accessibility toggles, Escape,
+  Space synchronized playback, local compare switch
+- state: local empty, mode menu open, local compare empty
+- motion: `fitMenuIn`, `sidePanelEnter`, `tabIn`, `overlayIn`, `modalIn`,
+  `drawerIn`, `dropdownIn`
+- runtime: normal Electron source proof and Desktop rendered-state proof
+- protocol: registry final HEAD, terminal readiness, base-range diff,
+  privacy scan, Reviewer A/B, Review ZIP, and App ZIP must all bind to the
+  final source head
 
 ## Worker Lifecycle
 
@@ -198,16 +200,19 @@ Implementation owners do not serve as final acceptance verifiers for their own c
 
 A0 must run targeted integration checks after each dependency layer.
 
-## Repair 4 Completion Discipline
+## Repair 5 Completion Discipline
 
 At terminal handoff, the registry must record:
 
 - `currentIntegrationHeadCommit` equal to the actual final source HEAD
-- all completed Repair 4 Workers either integrated or retired
+- all completed Repair 5 Workers either integrated or retired
 - integrated Workers with `headCommit`, `integrationCommit`, and
   `workerHandoffFolder`
 - no stale `lastVerifiedAt`
-- no Repair 4 Worker missing contribution metadata
+- no Repair 5 Worker missing contribution metadata
+- `terminalHandoffReady=true` only after required parity failures are zero,
+  loop validation passes twice, Reviewer A/B pass, App proof passes, bundle
+  checks pass, and visible owner artifacts are regenerated from final HEAD
 
 A0 must not mark P6 terminal from A0-only documentation or handoff commits.
 

@@ -4,13 +4,13 @@
   "integrationCoordinator": "A0",
   "integrationBranch": "agent/codex/p6-integration",
   "integrationBaseCommit": "92c36b4af1dae15d226ab3848115a5e9537779d7",
-  "currentIntegrationHeadCommit": "bf1d71be6141946fde9908b4479be41bf5a14355",
-  "currentRepairRound": 4,
-  "terminalHandoffReady": true,
-  "expectedFinalHeadCommit": "bf1d71be6141946fde9908b4479be41bf5a14355",
+  "currentIntegrationHeadCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+  "currentRepairRound": 5,
+  "terminalHandoffReady": false,
+  "expectedFinalHeadCommit": null,
   "protocolLoadedAt": "2026-06-22T09:38:22Z",
-  "threadListRefreshedAt": "2026-06-22T09:38:22Z",
-  "registryRefreshedAt": "2026-06-22T12:28:26Z",
+  "threadListRefreshedAt": "2026-06-22T13:38:00Z",
+  "registryRefreshedAt": "2026-06-22T13:38:00Z",
   "registryValidation": {
     "status": "pass",
     "checkedAt": "2026-06-22T09:38:22Z",
@@ -50,6 +50,187 @@
     ],
     "phase2Status": "NOT_STARTED"
   },
+  "repair5ExternalReview": {
+    "reviewedHeadCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+    "externalOutcome": "REPAIR_REQUIRED",
+    "productOutcome": "HONEST_PARITY_REPORT_AVAILABLE_BUT_FULL_PARITY_INCOMPLETE"
+  },
+  "repair5Entry": {
+    "enteredAt": "2026-06-22T13:38:00Z",
+    "startHeadCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+    "budgetCheck": {
+      "status": "pass",
+      "nextRepairAllowed": true,
+      "nextRepairRound": 5,
+      "budgetStatus": "within_budget"
+    },
+    "phase2Status": "NOT_STARTED",
+    "terminalHandoffReadyReason": "false until all required parity items pass, all Worker contributions are integrated or retired, final validation passes twice, Reviewer A/B pass, bundle gates pass, and final handoff artifacts are regenerated from the final source head"
+  },
+  "repair5BlockingMatrix": {
+    "reviewedReportPath": ".artifacts/product/P6/p6-parity-report.json",
+    "reviewedReportHeadCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+    "requiredFailures": {
+      "visualParity": [
+        "playerBarB",
+        "referencePlayerBar",
+        "assetPreviewModal",
+        "reportGrid"
+      ],
+      "featureParity": [
+        "optional-svga-comparison",
+        "secondary-svga-file-select",
+        "secondary-svga-drag-drop",
+        "status-announcements"
+      ],
+      "interactionParity": [
+        "click-mode-dropdown-trigger-menu-opens",
+        "select-export-review-mode-latest-artifact-loads",
+        "enable-reduce-motion-and-reduce-blur-toggles",
+        "escape-closes-settings-before-side-panel",
+        "space-toggles-synchronized-playback-in-export-review",
+        "enable-local-compare-switch"
+      ],
+      "stateParity": [
+        "local-empty",
+        "mode-menu-open",
+        "local-compare-empty"
+      ],
+      "motionParity": [
+        "fitMenuIn",
+        "sidePanelEnter",
+        "tabIn",
+        "overlayIn",
+        "modalIn",
+        "drawerIn",
+        "dropdownIn"
+      ],
+      "runtimeAndAccessibility": [
+        "source-electron-smoke",
+        "desktop-rendered-states"
+      ]
+    }
+  },
+  "repair5Workers": [
+    {
+      "workerId": "A1",
+      "waveId": "P6-R5",
+      "role": "Runtime Inventory Accuracy",
+      "visibleThreadId": "019eeb7d-c4a6-70e3-8d04-756807461f7f",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a1-runtime-inventory",
+      "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+      "headCommit": null,
+      "status": "planned",
+      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "ownedPaths": [
+        "docs/product/P6_WEB_PRODUCT_BASELINE.md",
+        "docs/product/P6_WEB_FEATURE_INVENTORY.md",
+        "docs/product/P6_WEB_PARITY_CONTRACT.json",
+        "dedicated Web inventory scripts and tests"
+      ],
+      "dependencies": [],
+      "requestedIntegrationChanges": []
+    },
+    {
+      "workerId": "A2",
+      "waveId": "P6-R5",
+      "role": "Shared Product States And Parity Behavior",
+      "visibleThreadId": "019eeb8a-3dbe-7123-b696-e1334ab9ab60",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a2-product-states",
+      "baseCommit": null,
+      "headCommit": null,
+      "status": "blocked",
+      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "ownedPaths": [
+        "tools/shared/product-frontend/",
+        "shared product shell/state/motion tests"
+      ],
+      "dependencies": [
+        "A1"
+      ],
+      "requestedIntegrationChanges": []
+    },
+    {
+      "workerId": "A3",
+      "waveId": "P6-R5",
+      "role": "Electron Host And Normal App Runtime",
+      "visibleThreadId": "019eeb7e-072c-7382-afe5-330eb92b9d2f",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a3-host-app-runtime",
+      "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+      "headCommit": null,
+      "status": "planned",
+      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "ownedPaths": [
+        "Electron main process",
+        "Electron preload",
+        "ElectronHostAdapter",
+        "host-only IPC tests",
+        "Desktop latest-artifact, file, menu, and drop host integration"
+      ],
+      "dependencies": [
+        "A2"
+      ],
+      "requestedIntegrationChanges": []
+    },
+    {
+      "workerId": "A4",
+      "waveId": "P6-R5",
+      "role": "Runtime Scenarios Motion And Parity Evidence",
+      "visibleThreadId": "019eeb7e-071e-7991-ab4f-075c56dbade1",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a4-scenarios-motion-parity",
+      "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+      "headCommit": null,
+      "status": "planned",
+      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "ownedPaths": [
+        "tools/p6/generate-p6-evidence.mjs",
+        "runtime scenario runner",
+        "parity generator",
+        "screenshot and motion capture helpers",
+        "parity mutation tests",
+        "multi-worker protocol checker",
+        "visible-review protocol checker"
+      ],
+      "dependencies": [
+        "A1",
+        "A2",
+        "A3"
+      ],
+      "requestedIntegrationChanges": []
+    },
+    {
+      "workerId": "A5",
+      "waveId": "P6-R5",
+      "role": "Final App And Portable Owner Handoff",
+      "visibleThreadId": "019eeb7e-0731-76c0-92e3-d9494b272e14",
+      "threadType": "visible_project_worktree",
+      "branch": "agent/codex/p6-r5-a5-final-packaging",
+      "baseCommit": "290272e056653dadd0d9a89d0a7a432335187bca",
+      "headCommit": null,
+      "status": "planned",
+      "lastVerifiedAt": "2026-06-22T13:38:00Z",
+      "ownedPaths": [
+        "macOS package scripts",
+        "plist and bundle templates",
+        "normal packaged-App proof",
+        "App ZIP generation",
+        "P6 portable review ZIP generation",
+        "root manifest generation",
+        "bundle privacy audit",
+        "visible review mirror generation"
+      ],
+      "dependencies": [
+        "A2",
+        "A3",
+        "A4"
+      ],
+      "requestedIntegrationChanges": []
+    }
+  ],
   "acceptanceCriteria": [
     {
       "criterionId": "P6-AC-01",

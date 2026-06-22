@@ -140,6 +140,79 @@ test("valid registry passes protocol validation", () => {
   assert.deepEqual(result.errors, []);
 });
 
+test("valid Repair 5 registry can reuse historical Repair 4 worker ids", () => {
+  const historicalWorkers = baseRegistry().workers.map((worker) => ({
+    ...worker,
+    lifecycleStatus: "integrated",
+    integrationCommit: "integrated",
+    workerHandoffFolder: `docs/product/p6/worker-handoffs/${worker.workerId}-R4.md`
+  }));
+  const repair5Workers = baseRegistry().workers.map((worker) => ({
+    workerId: worker.workerId,
+    waveId: "P6-R5",
+    role: worker.role,
+    visibleThreadId: worker.visibleThreadId,
+    threadType: "visible_project_worktree",
+    status: "planned",
+    branch: worker.branch.replace("p6-r4", "p6-r5"),
+    baseCommit: "repair5-base",
+    headCommit: null,
+    ownedPaths: worker.ownedPaths,
+    dependencies: worker.dependencies,
+    lastVerifiedAt: "2026-06-22T02:00:00Z"
+  }));
+  const registry = baseRegistry({
+    currentRepairRound: 5,
+    registryRefreshedAt: "2026-06-22T02:00:00Z",
+    currentIntegrationHeadCommit: "repair5-base",
+    workers: historicalWorkers,
+    repair5Workers
+  });
+
+  const result = validateMultiWorkerProtocol({
+    registry,
+    registryText: JSON.stringify(registry),
+    coordinationText: "Current integration head: repair5-base\n"
+  });
+
+  assert.equal(result.status, "pass");
+  assert.deepEqual(result.errors, []);
+});
+
+test("terminal Repair 5 registry rejects active workers", () => {
+  const repair5Workers = baseRegistry().workers.map((worker) => ({
+    workerId: worker.workerId,
+    waveId: "P6-R5",
+    role: worker.role,
+    visibleThreadId: worker.visibleThreadId,
+    threadType: "visible_project_worktree",
+    status: "planned",
+    branch: worker.branch.replace("p6-r4", "p6-r5"),
+    baseCommit: "repair5-base",
+    headCommit: null,
+    ownedPaths: worker.ownedPaths,
+    dependencies: worker.dependencies,
+    lastVerifiedAt: "2026-06-22T02:00:00Z"
+  }));
+  const registry = baseRegistry({
+    currentRepairRound: 5,
+    registryRefreshedAt: "2026-06-22T02:00:00Z",
+    currentIntegrationHeadCommit: "repair5-base",
+    expectedFinalHeadCommit: "repair5-base",
+    terminalHandoffReady: true,
+    repair5Workers
+  });
+
+  const result = validateMultiWorkerProtocol({
+    registry,
+    registryText: JSON.stringify(registry),
+    coordinationText: "Current integration head: repair5-base\n"
+  });
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.errors.some((error) => error.includes("Repair 5 terminal worker must be integrated or retired")), true);
+});
+
 test("rejects duplicate active worker branches", () => {
   const registry = baseRegistry({
     workers: [
