@@ -1,6 +1,16 @@
 # P6-R1 Recovery Proposal
 
-This is a proposal only. P6-R1 is not frozen or started.
+Status: proposal only. P6-R1 is not frozen or started.
+
+## Correct Freeze Order
+
+1. Owner approves this repaired postmortem and recovery proposal.
+2. A P6-R1 contract is created and frozen.
+3. P6-R1 starts with WP0 Recovery Gate Bootstrap.
+4. WP0 must pass before WP1 begins.
+
+No validation tooling or product runtime changes should happen before the
+P6-R1 contract is frozen.
 
 ## Options
 
@@ -12,8 +22,7 @@ and A5 Packaging.
 Pros:
 
 - Existing workers and branch boundaries already exist.
-- Technical ownership is clear.
-- Parallelism is easy to schedule.
+- Technical ownership is easy to parallelize.
 
 Cons:
 
@@ -24,22 +33,22 @@ Cons:
 
 ### Option B: Split By End-to-End Vertical Flow
 
-Use smaller vertical packages with their own failing tests, product changes,
-evidence, integration verification, and human gate.
+Use smaller vertical work packages with one lead implementation owner, a
+separate evidence owner, and an A0 or independent integration verifier.
 
 Pros:
 
 - Each package maps to a user-visible outcome.
 - Machine gates can fail before handoff packaging starts.
 - A0 can integrate and verify after each package.
-- Better separation between implementation owner, evidence owner, and final
-  verifier.
+- Implementation, evidence, and final verification are separated.
 
 Cons:
 
 - Less parallel implementation.
-- Requires more up-front test and evidence design.
-- Some host and product files may need carefully sequenced ownership.
+- Requires more up-front contract and gate design.
+- Some host and product changes must move through requested integration
+  changes instead of shared ownership.
 
 ## Recommendation
 
@@ -49,110 +58,141 @@ P6 failed to reach acceptance because technical-layer completion did not equal
 vertical product parity. P6-R1 should optimize for confidence, not worker
 throughput.
 
-## Work Packages
+## Work Package Ownership
 
-### WP1 - State Correctness
+Each work package has exactly one Lead Implementation Owner. Other required
+changes move through `requestedIntegrationChange` and A0 sequencing.
 
-- Objective: Empty, Loading, Loaded, Invalid, and Recovery are visibly and
-  semantically correct in Web and Desktop.
-- Inputs: current P6 product shell, state probes, external review findings.
-- Implementation owner: shared frontend worker.
-- Evidence owner: evidence worker.
-- Integration verifier: A0.
-- Machine entry gate: failing tests for Loading hiding Empty CTA and Invalid
-  clearing stale state.
-- Machine exit gate: same fixture/viewport state evidence; stale fields clear.
-- Human gate: compare state contact sheet for obvious state confusion.
-- Dependencies: none.
-- Prohibited shortcuts: no alias-only state pass; no screenshot-existence pass.
-- Required failing test before implementation: invalid-after-loaded stale state
-  test and loading-vs-empty visual text/geometry test.
+| Work Package | findingIds | Lead Implementation Owner | Evidence Owner | Integration Verifier |
+| --- | --- | --- | --- | --- |
+| WP0 - Recovery Gate Bootstrap | `P6-F010`, `P6-F012` | A0 Contract Coordinator | Evidence Worker | Independent Reviewer |
+| WP1 - State Correctness | `P6-F001`, `P6-F002` | Shared Frontend Worker | Parity Evidence Worker | A0 |
+| WP2 - Multi-source Acceptance Flow | none primary; supports state, interaction, app findings | Shared Frontend Worker | Parity Evidence Worker | A0 |
+| WP3 - Interaction Evidence | `P6-F003`, `P6-F005` | Parity Evidence Worker | Independent Trace Reviewer | A0 |
+| WP4 - Visual And Motion Review | `P6-F004`, `P6-F006`, `P6-F008` | Visual Evidence Worker | Independent Visual Reviewer | A0 + Owner |
+| WP5 - macOS App Delivery | `P6-F007`, `P6-F009`, `P6-F011` | Electron Host / Packaging Worker | Parity Evidence Worker | A0 + Owner |
 
-### WP2 - Multi-source Acceptance Flow
+Finding primary closure is unique. WP2 is still required because it provides
+the multi-source user flow that later findings depend on, but no current
+Finding Ledger item has WP2 as its primary owner.
 
-- Objective: second SVGA, reference media, latest artifact, and synchronized
-  playback all load and play where supported.
-- Inputs: WP1 stable state machine.
-- Implementation owner: shared frontend + host worker.
-- Evidence owner: evidence worker.
-- Integration verifier: A0.
-- Machine entry gate: failing test for second SVGA loaded/playback proof.
-- Machine exit gate: file bytes, playback, source labels, and sync controls
-  proven for Web/Desktop.
-- Human gate: owner sees multi-source flow contact sheet.
-- Dependencies: WP1.
-- Prohibited shortcuts: no item-id-only proof; no generic state proof.
-- Required failing test before implementation: reference media and second SVGA
-  proof missing should fail parity.
+## Gate A - Runtime State Correctness
 
-### WP3 - Interaction Evidence
+Packages: WP0, WP1.
 
-- Objective: actual Web and Desktop traces prove before/action/after for
-  required controls.
-- Inputs: WP1/WP2 stable flows.
-- Implementation owner: product/host worker as needed.
-- Evidence owner: evidence worker.
-- Integration verifier: A0.
-- Machine entry gate: mutation test where action is skipped but artifact exists.
-- Machine exit gate: before/after digest, screenshot, and context equality per
-  action.
-- Human gate: reviewer spot-checks trace screenshots.
-- Dependencies: WP1, WP2.
-- Prohibited shortcuts: no final-state-only trace; no context mismatch.
-- Required failing test before implementation: skipped click must fail.
+Finding IDs: `P6-F001`, `P6-F002`, `P6-F010`, `P6-F012`.
 
-### WP4 - Visual And Motion Review
+Machine entry gate:
 
-- Objective: same state/viewport/fixture visual and motion evidence, with clear
-  human review boundary.
-- Inputs: stable state and interaction flows.
-- Implementation owner: product worker for fixes only.
-- Evidence owner: evidence worker + read-only visual reviewer.
-- Integration verifier: A0 + owner.
-- Machine entry gate: identical Web motion frames in normal-motion mode fail.
-- Machine exit gate: normal motion deltas, reduced-motion check, same state and
-  viewport.
-- Human gate: independent visual reviewer and owner visual gate.
-- Dependencies: WP1-WP3.
-- Prohibited shortcuts: no pixel-perfect PASS claim; no frame-existence-only
-  motion pass.
-- Required failing test before implementation: all-identical normal motion
-  frames fail.
+- P6-R1 contract is frozen.
+- WP0 defines failure-first gate taxonomy.
+- Finding Ledger update format is defined.
+- Final-head binding rule is defined.
+- Reviewer product schema is defined.
+- Minimal negative tests are specified before product fixes.
 
-### WP5 - macOS App Delivery
+Machine exit gate:
 
-- Objective: normal App open, File > Open, real workflow, package, privacy, and
-  user manual test package.
-- Inputs: WP1-WP4 accepted machine gates.
-- Implementation owner: host/package worker.
-- Evidence owner: A0.
-- Integration verifier: A0 + owner.
-- Machine entry gate: packaged launch without proof/smoke flags.
-- Machine exit gate: App starts, loads fixture, plays, inspects, exits, cleans
-  temp, logs redact paths.
-- Human gate: owner double-click/manual import.
-- Dependencies: WP1-WP4.
-- Prohibited shortcuts: no hidden window proof; no proof env; no unsigned app
-  described as production.
-- Required failing test before implementation: proof/smoke flag launch rejected
-  as normal App proof.
+- Loading and Empty are visibly and semantically distinct.
+- Invalid clears stale canvas, metadata, ready state, parser state, and report.
+- Recovery after invalid file is proven.
+- Failure-first state tests pass.
+- Finding Ledger is updated with before/after evidence and closure state.
 
-## Pre-R1 Required Validation Facilities
+Integration checkpoint:
 
-Before freezing P6-R1:
+- A0 verifies WP0 and WP1 on the integration head.
 
-1. Finding ledger update command.
-2. Final-head binding gate across Git, LOOP_STATE, LOOP_HISTORY, evidence,
-   manifest, packet, validation, and parity report.
-3. State/motion/interaction negative tests listed above.
-4. Reviewer product-observation schema separate from packet-integrity review.
-5. Gate taxonomy replacing overloaded PASS language.
+Stop condition:
 
-## Stop Conditions
+- If Gate A fails, WP2-WP5 must not start.
 
-- Same finding appears in two consecutive rounds: stop and do root-cause review.
-- Same finding appears in three rounds: stop implementation and run
-  retrospective.
-- Any machine gate fails: do not generate owner acceptance packet.
-- If repair budget exhausts: do not create a new implementation prompt before
-  postmortem.
+## Gate B - Multi-source And Interaction Correctness
+
+Packages: WP2, WP3.
+
+Finding IDs: `P6-F003`, `P6-F005`; supports future closure evidence for
+`P6-F001`, `P6-F002`, and `P6-F007`.
+
+Machine entry gate:
+
+- Gate A passed on the integration head.
+- Second SVGA, reference media, latest artifact, and interaction scenarios have
+  failure-first tests.
+
+Machine exit gate:
+
+- Second SVGA loads and plays with real evidence.
+- Reference media loads and plays with real evidence.
+- Latest artifact scan, select, and load are proven.
+- Web/Desktop interaction traces contain `stateBefore`, `action`, `stateAfter`,
+  and `result`.
+- Mutation tests fail when an action is skipped or context differs.
+
+Integration checkpoint:
+
+- A0 verifies multi-source and interaction evidence on the integration head.
+
+Stop condition:
+
+- If Gate B fails, WP4-WP5 must not start.
+
+## Gate C - Visual, Motion And App Delivery
+
+Packages: WP4, WP5.
+
+Finding IDs: `P6-F004`, `P6-F006`, `P6-F007`, `P6-F008`, `P6-F009`,
+`P6-F011`.
+
+Machine entry gate:
+
+- Gate B passed on the integration head.
+- Same state, viewport, fixture, motion trigger, and media context are required
+  before visual or motion comparison is generated.
+
+Machine exit gate:
+
+- Same-state, same-viewport, same-fixture evidence is present.
+- Responsive comparison cannot PASS with `comparedPixels=0`.
+- Normal-motion frames prove real deltas where motion is expected.
+- Independent product visual Reviewer returns category verdicts that cannot be
+  contradicted by a generic PASS.
+- Normal macOS App starts visibly without proof/smoke path.
+- Owner App ZIP is bound to final head and visible review package.
+
+Integration checkpoint:
+
+- A0 verifies package, privacy, head binding, and App proof on the integration
+  head; owner performs final product gate only after machine gates pass.
+
+Stop condition:
+
+- If any required machine gate fails, no owner-acceptance Human Gate is
+  generated.
+
+## Finding Closure Rules
+
+A finding can close only when all are true:
+
+1. Real runtime evidence exists.
+2. A corresponding regression or mutation test exists.
+3. A later independent external review does not reproduce the issue.
+
+`partially_closed` is allowed only when the ledger lists exact closed
+sub-issues and still-open sub-issues.
+
+## Process Rules For The P6-R1 Contract
+
+These are recommendations for the future contract. Do not persist them to
+`AGENTS.md` until the owner approves this repaired postmortem.
+
+1. Same finding appears two rounds: mandatory root-cause review.
+2. Same finding appears three rounds: pause implementation and run
+   retrospective.
+3. Repair budget exhausted: postmortem before successor repair milestone.
+4. Every external review updates the Finding Ledger.
+5. New repair contract must include root-cause hypothesis, why prior fix
+   failed, failing test, success stop condition, and failure stop condition.
+6. Required machine gate failure means no owner-acceptance Human Gate.
+7. One Lead Implementation Owner per vertical package.
+8. Implementer, Evidence Owner, and Integration Verifier must be separated.

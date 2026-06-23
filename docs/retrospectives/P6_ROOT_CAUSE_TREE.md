@@ -32,6 +32,11 @@ P6 did not reach product acceptance after 6/6 repairs
    └─ Motion evidence measured frames before trigger/state equivalence
 ```
 
+R6 external review confirmed the failure after the repair budget was exhausted:
+P6 is `NOT_ACCEPTED`, the engineering outcome is
+`REPAIR_BUDGET_EXHAUSTED`, and successor work requires owner review of this
+postmortem plus a new frozen contract.
+
 ## 5 Whys
 
 ### Why did P6 consume all repairs without product acceptance?

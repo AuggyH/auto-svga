@@ -26,11 +26,18 @@ remained unproven.
 - `docs/loop/CURRENT_MILESTONE.md`
 - `docs/loop/LOOP_STATE.md`
 - `docs/loop/LOOP_HISTORY.jsonl`
+- `docs/retrospectives/P6_REVIEW_SOURCE_AVAILABILITY.md`
 - `docs/loop/reviews/P6-external-product-review-1.md`
 - `docs/loop/reviews/P6-external-product-review-2.md`
 - `docs/loop/reviews/P6-external-product-review-3.md`
 - `docs/loop/reviews/P6-external-product-review-4.md`
 - `docs/loop/reviews/P6-external-product-review-5.md`
+- `docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md`
+- R6 owner-provided external review conclusions from the P6 postmortem repair
+  directive.
+- Exact Review Packets were located for R3, R4, R5, and R6. R1 and R2 exact
+  Review Packets for the reviewed heads were unavailable, so the retrospective
+  used external reviews and nearby visible P6 packet context instead.
 - `review/P6-1228343/REVIEW_PACKET.md`
 - `review/P6-1977cbc/REVIEW_PACKET.md`
 - `review/P6-1977cbc/validation.json`
@@ -90,6 +97,8 @@ R2 found current R6 machine-gate risks:
 - final loop ledger does not record final current head `1977cbc`.
 
 These findings mean machine PASS should not be read as owner acceptance.
+The R6 external review therefore records `TECHNICAL_REVIEW_REQUIRED`, not P6
+acceptance.
 
 ### R3 Worker/process
 
@@ -144,14 +153,19 @@ Detailed plan: `P6_R1_RECOVERY_PROPOSAL.md`.
 
 Recommended path: Option B, vertical end-to-end work packages:
 
-1. WP1 State Correctness.
-2. WP2 Multi-source Acceptance Flow.
-3. WP3 Interaction Evidence.
-4. WP4 Visual And Motion Review.
-5. WP5 macOS App Delivery.
+1. WP0 Recovery Gate Bootstrap.
+2. WP1 State Correctness.
+3. WP2 Multi-source Acceptance Flow.
+4. WP3 Interaction Evidence.
+5. WP4 Visual And Motion Review.
+6. WP5 macOS App Delivery.
 
-Do not freeze P6-R1 until the required validation facilities listed in the
-proposal exist.
+The correct order is:
+
+1. Owner reviews and approves the postmortem and recovery proposal.
+2. A P6-R1 contract is created and frozen.
+3. P6-R1 starts with WP0 Recovery Gate Bootstrap.
+4. WP0 must pass before WP1 begins.
 
 ## Minimal Future Process Rules
 
@@ -161,17 +175,24 @@ retrospective:
 1. Same finding appears two rounds: mandatory root-cause review.
 2. Same finding appears three rounds: pause implementation and run
    retrospective.
-3. Repair budget exhausted: no new implementation prompt before postmortem.
+3. Repair budget exhausted: postmortem before successor repair milestone.
 4. External review updates Finding Ledger every round.
-5. New repair prompt must include root-cause hypothesis, why prior fix failed,
-   disproving test, success stop condition, and failure stop condition.
-6. Machine gate failure cannot enter owner-acceptance HUMAN_REQUIRED.
-7. Implementer cannot be sole evidence generator and final verifier.
-8. Protocol and packaging repairs cannot consume product repair budget without
-   explicit owner approval.
+5. New repair contract must include root-cause hypothesis, why prior fix
+   failed, failing test, success stop condition, and failure stop condition.
+6. Required machine gate failure means no owner-acceptance Human Gate.
+7. One Lead Implementation Owner per vertical package.
+8. Implementer, Evidence Owner, and Integration Verifier must be separated.
+
+These rules should be persisted only after owner approval of this repaired
+postmortem.
 
 ## Final Position
 
-P6 should remain not accepted until owner and technical review decide whether
-the R6 evidence risks are acceptable. P6-R1 should not begin from the old A1-A5
-technical-layer plan.
+- P6 productOutcome: `NOT_ACCEPTED`
+- P6 engineeringOutcome: `REPAIR_BUDGET_EXHAUSTED`
+- P6 nextAction:
+  `OWNER_REVIEW_OF_POSTMORTEM_AND_P6_R1_RECOVERY_PLAN`
+
+R6 external review already determined the current risk is unacceptable for P6
+PASS. P6-R1 must not begin from the old A1-A5 technical-layer plan, and it must
+not begin before owner approval and a frozen P6-R1 contract.
