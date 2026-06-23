@@ -223,6 +223,24 @@ binding, loop budget evidence, structured reviewer JSON v2, and terminal
 Loop budget counts must be derived from `LOOP_HISTORY.jsonl`, and
 `HUMAN_REQUIRED` snapshots must never include high-confidence secret content.
 
+## Repair Health Rules
+
+- Every external review must update the active Finding Ledger.
+- The same finding in two consecutive review rounds requires a root-cause
+  review before another repair.
+- The same finding in three review rounds pauses implementation and requires a
+  retrospective.
+- Exhausted repair budget requires a postmortem before a successor repair
+  milestone.
+- A required machine-gate failure forbids an owner-acceptance Human Gate.
+- Every vertical work package has one Lead Implementation Owner, a separate
+  Evidence Owner, and an A0 or independent Integration Verifier.
+- A repair contract must state its root-cause hypothesis, why the prior fix
+  failed, a failure-first test, success stop condition, and failure stop
+  condition.
+
+See `docs/engineering/REPAIR_HEALTH_PROTOCOL.md`.
+
 ## Multi-Worker Coordination
 
 - Formal implementation workers must be visible project Worktree threads.

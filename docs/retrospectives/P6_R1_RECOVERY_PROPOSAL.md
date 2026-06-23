@@ -34,7 +34,8 @@ Cons:
 ### Option B: Split By End-to-End Vertical Flow
 
 Use smaller vertical work packages with one lead implementation owner, a
-separate evidence owner, and an A0 or independent integration verifier.
+separate evidence owner, an A0 or independent machine/code integration
+verifier, and a separate Product Owner human gate when applicable.
 
 Pros:
 
@@ -61,20 +62,19 @@ throughput.
 ## Work Package Ownership
 
 Each work package has exactly one Lead Implementation Owner. Other required
-changes move through `requestedIntegrationChange` and A0 sequencing.
+layer changes move through `requestedIntegrationChange` and A0 sequencing.
 
-| Work Package | findingIds | Lead Implementation Owner | Evidence Owner | Integration Verifier |
-| --- | --- | --- | --- | --- |
-| WP0 - Recovery Gate Bootstrap | `P6-F010`, `P6-F012` | A0 Contract Coordinator | Evidence Worker | Independent Reviewer |
-| WP1 - State Correctness | `P6-F001`, `P6-F002` | Shared Frontend Worker | Parity Evidence Worker | A0 |
-| WP2 - Multi-source Acceptance Flow | none primary; supports state, interaction, app findings | Shared Frontend Worker | Parity Evidence Worker | A0 |
-| WP3 - Interaction Evidence | `P6-F003`, `P6-F005` | Parity Evidence Worker | Independent Trace Reviewer | A0 |
-| WP4 - Visual And Motion Review | `P6-F004`, `P6-F006`, `P6-F008` | Visual Evidence Worker | Independent Visual Reviewer | A0 + Owner |
-| WP5 - macOS App Delivery | `P6-F007`, `P6-F009`, `P6-F011` | Electron Host / Packaging Worker | Parity Evidence Worker | A0 + Owner |
+| Work Package | findingIds | Lead Implementation Owner | Evidence Owner | Integration Verifier | Human Gate Owner |
+| --- | --- | --- | --- | --- | --- |
+| WP0 - Recovery Gate Bootstrap | `P6-F010`, `P6-F012` | P6R1 Recovery Gate Lead | P6R1 Evidence Lead | Independent Contract Reviewer | none |
+| WP1 - State Correctness | `P6-F001`, `P6-F002` | P6R1 State Correctness Lead | P6R1 Evidence Lead | A0 | none |
+| WP2 - Multi-source Acceptance Flow | `P6-F013` | P6R1 Multi-source Flow Lead | P6R1 Evidence Lead | A0 | none |
+| WP3 - Interaction Evidence | `P6-F003`, `P6-F005` | P6R1 Interaction Evidence Lead | Independent Trace Evidence Reviewer | A0 | none |
+| WP4 - Visual And Motion Review | `P6-F004`, `P6-F006`, `P6-F008` | P6R1 Visual And Motion Lead | P6R1 Evidence Lead | Independent Visual/Code Reviewer | Product Owner |
+| WP5 - macOS App Delivery | `P6-F007`, `P6-F009`, `P6-F011` | P6R1 macOS Delivery Lead | P6R1 Evidence Lead | A0 | Product Owner |
 
-Finding primary closure is unique. WP2 is still required because it provides
-the multi-source user flow that later findings depend on, but no current
-Finding Ledger item has WP2 as its primary owner.
+Finding primary closure is unique. Other packages may list a finding only under
+`supportingFindingIds`; they must not become the primary closure owner.
 
 ## Gate A - Runtime State Correctness
 
@@ -111,8 +111,8 @@ Stop condition:
 
 Packages: WP2, WP3.
 
-Finding IDs: `P6-F003`, `P6-F005`; supports future closure evidence for
-`P6-F001`, `P6-F002`, and `P6-F007`.
+Finding IDs: `P6-F013`, `P6-F003`, `P6-F005`; supports future closure
+evidence for `P6-F001`, `P6-F002`, and `P6-F007`.
 
 Machine entry gate:
 

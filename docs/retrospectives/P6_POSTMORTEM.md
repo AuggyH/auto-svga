@@ -75,6 +75,9 @@ findings are:
    budget.
 7. Multi-worker technical slicing produced worker PASS without end-to-end
    vertical flow closure.
+8. Multi-source acceptance flows existed as controls or panels but were not
+   proven end to end for second SVGA, reference media, latest artifact,
+   synchronization, and cleanup.
 
 ## R1/R2/R3 Subreview Synthesis
 
@@ -159,6 +162,9 @@ Recommended path: Option B, vertical end-to-end work packages:
 4. WP3 Interaction Evidence.
 5. WP4 Visual And Motion Review.
 6. WP5 macOS App Delivery.
+
+Finding ownership is unique: `P6-F013` is the primary finding for WP2, while
+other work packages may only reference it as supporting evidence.
 
 The correct order is:
 

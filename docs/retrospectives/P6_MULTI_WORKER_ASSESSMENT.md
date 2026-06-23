@@ -44,16 +44,18 @@ This is a retrospective only. It does not start P6-R1.
 
 Use vertical work packages instead of technical layers:
 
-| Work package | Implementation owner | Evidence owner | Integration verifier |
-| --- | --- | --- | --- |
-| WP1 State Correctness | Shared frontend worker | Evidence worker | A0 + reviewer |
-| WP2 Multi-source Acceptance Flow | Shared frontend + host worker | Evidence worker | A0 |
-| WP3 Interaction Evidence | Shared frontend/host worker | Evidence worker | A0 + reviewer |
-| WP4 Visual And Motion Review | Product worker for fixes only | Evidence worker + visual reviewer | A0 + owner |
-| WP5 macOS App Delivery | Host/package worker | A0 evidence | A0 + owner |
+| Work package | Lead implementation owner | Evidence owner | Integration verifier | Human gate owner |
+| --- | --- | --- | --- | --- |
+| WP0 Recovery Gate Bootstrap | P6R1 Recovery Gate Lead | P6R1 Evidence Lead | Independent Contract Reviewer | none |
+| WP1 State Correctness | P6R1 State Correctness Lead | P6R1 Evidence Lead | A0 | none |
+| WP2 Multi-source Acceptance Flow | P6R1 Multi-source Flow Lead | P6R1 Evidence Lead | A0 | none |
+| WP3 Interaction Evidence | P6R1 Interaction Evidence Lead | Independent Trace Evidence Reviewer | A0 | none |
+| WP4 Visual And Motion Review | P6R1 Visual And Motion Lead | P6R1 Evidence Lead | Independent Visual/Code Reviewer | Product Owner |
+| WP5 macOS App Delivery | P6R1 macOS Delivery Lead | P6R1 Evidence Lead | A0 | Product Owner |
 
-Implementation owner must not be final acceptance verifier for the same
-criterion.
+Implementation owner must not be the only evidence owner or the integration
+verifier for the same package. Product Owner owns only human visual/App
+acceptance gates, not machine integration verification.
 
 ## Parallelism Limit
 

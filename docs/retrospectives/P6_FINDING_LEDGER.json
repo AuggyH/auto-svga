@@ -77,11 +77,12 @@
         "regression test that fails if Empty CTA remains visible during Loading",
         "external review round that does not reproduce the issue"
       ],
-      "recoveryWorkPackage": "WP1",
       "currentOpenSubIssues": [
         "Loading and Empty remain not obviously distinguishable to the user."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP1",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F002",
@@ -118,11 +119,12 @@
         "explicit stale-field assertions",
         "external review round that does not reproduce stale state"
       ],
-      "recoveryWorkPackage": "WP1",
       "currentOpenSubIssues": [
         "Invalid still keeps old canvas, player, or stale loaded state."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP1",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F003",
@@ -160,11 +162,12 @@
         "negative tests for every critical parity section",
         "external reviewer reproduces no artifact-existence false pass"
       ],
-      "recoveryWorkPackage": "WP3",
       "currentOpenSubIssues": [
         "Machine PASS cannot be treated as product acceptance while known technical gates remain unresolved."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP3",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F004",
@@ -199,11 +202,12 @@
         "mismatch mutation test",
         "external review confirmation"
       ],
-      "recoveryWorkPackage": "WP4",
       "currentOpenSubIssues": [
         "Responsive comparison can use inconsistent viewport and has a comparedPixels=0 PASS risk."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP4",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F005",
@@ -237,11 +241,12 @@
         "event failure mutation test",
         "external product review"
       ],
-      "recoveryWorkPackage": "WP3",
       "currentOpenSubIssues": [
         "Interaction trace still lacks real stateBefore, stateAfter, and result."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP3",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F006",
@@ -281,11 +286,12 @@
         "independent human motion review",
         "owner visual gate"
       ],
-      "recoveryWorkPackage": "WP4",
       "currentOpenSubIssues": [
         "Multiple Web motion start/mid/end frames are effectively identical."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP4",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F007",
@@ -323,11 +329,12 @@
         "no proof/smoke flag assertion",
         "manual double-click acceptance"
       ],
-      "recoveryWorkPackage": "WP5",
       "currentOpenSubIssues": [
         "Normal App lacks complete ordinary-startup product visual proof."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP5",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F008",
@@ -362,11 +369,12 @@
         "category/generic verdict consistency check",
         "owner review"
       ],
-      "recoveryWorkPackage": "WP4",
       "currentOpenSubIssues": [
         "Reviewer B lacks a truly independent product classification verdict."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP4",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F009",
@@ -404,11 +412,12 @@
         "external review acceptance",
         "no stale handoff roots"
       ],
-      "recoveryWorkPackage": "WP5",
       "currentOpenSubIssues": [
         "Final-head, registry, and loop-ledger binding still need successor-contract gates before acceptance can be trusted."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP5",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F010",
@@ -442,11 +451,12 @@
         "handoff negative test",
         "owner-visible wording check"
       ],
-      "recoveryWorkPackage": "WP0",
       "currentOpenSubIssues": [
         "Machine PASS is still not owner acceptance; technical review remains required."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP0",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F011",
@@ -487,11 +497,12 @@
         "owner-visible review folder",
         "external review does not find path or visibility issue"
       ],
-      "recoveryWorkPackage": "WP5",
       "currentOpenSubIssues": [
         "Portable handoff and privacy rules require repaired manifest/privacy proof for the revised postmortem packet."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP5",
+      "supportingFindingIds": []
     },
     {
       "findingId": "P6-F012",
@@ -529,11 +540,58 @@
         "entry and exit gates per vertical slice",
         "owner-approved recovery plan"
       ],
-      "recoveryWorkPackage": "WP0",
       "currentOpenSubIssues": [
         "Technical-layer worker completion still did not close the end-to-end product flow."
       ],
-      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue."
+      "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
+      "primaryRecoveryWorkPackage": "WP0",
+      "supportingFindingIds": []
+    },
+    {
+      "findingId": "P6-F013",
+      "title": "Multi-source acceptance flows were not proven end to end",
+      "category": "host_integration",
+      "severity": "major",
+      "firstSeenRound": "R1",
+      "seenInRounds": [
+        "R1",
+        "R3",
+        "R4",
+        "R5",
+        "R6"
+      ],
+      "occurrenceCount": 5,
+      "lastEvidence": "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+      "symptom": "Second SVGA, reference media and latest artifact controls or panels existed, but complete select/drop/scan, decode, playback, synchronization and cleanup flows were not independently proven.",
+      "userImpact": "The Desktop could appear to contain the Web comparison workflow while failing the user's real multi-source acceptance path.",
+      "rootCauseHypothesis": "The flow crossed shared UI, Electron Host and evidence boundaries without one vertical implementation owner.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R1 established broad Web/Desktop inventory and parity goals.",
+        "R3/R4 improved runtime evidence and visible packet mechanics.",
+        "R5/R6 added stricter source and interaction evidence, but external review still found the multi-source path unproven end to end."
+      ],
+      "fixCommits": [],
+      "whyPreviousFixesDidNotCloseIt": "Prior fixes proved controls, panels, or partial artifacts rather than the full second SVGA, reference media, latest artifact, synchronized playback, and cleanup journey under one vertical owner.",
+      "requiredRegressionTest": "An end-to-end failure-first scenario for second SVGA, reference media and latest artifact, including real input, load, playback, synchronization and cleanup.",
+      "responsibleLayer": "multi-source vertical flow",
+      "currentStatus": "open",
+      "currentOpenSubIssues": [
+        "Second SVGA load and playback proof is incomplete.",
+        "Reference media load and playback proof is incomplete.",
+        "Latest artifact scan, select, load, synchronization, and cleanup are not proven as one flow."
+      ],
+      "primaryRecoveryWorkPackage": "WP2",
+      "supportingFindingIds": [],
+      "closureRule": "May become closed only after real runtime evidence, corresponding regression tests and a later independent external review that does not reproduce the finding.",
+      "closureEvidenceRequired": [
+        "second SVGA select/drop/load/playback evidence",
+        "reference media select/drop/load/playback evidence",
+        "latest artifact scan/select/load evidence",
+        "synchronized playback and cleanup evidence",
+        "independent external review confirmation"
+      ]
     }
-  ]
+  ],
+  "findingCount": 13
 }
