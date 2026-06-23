@@ -1,0 +1,382 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "P6",
+  "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
+  "scope": "Postmortem only. No P6-R1 implementation started.",
+  "reviewedRounds": [
+    {
+      "round": "R1",
+      "reviewedHead": "0fda2a601307506f84cc5f87deb1646081bc1889",
+      "externalReview": "docs/loop/reviews/P6-external-product-review-1.md",
+      "outcome": "REPAIR_REQUIRED"
+    },
+    {
+      "round": "R2",
+      "reviewedHead": "d347cd4802ffe47cf2291f69fbebac6c0ec29457",
+      "externalReview": "docs/loop/reviews/P6-external-product-review-2.md",
+      "outcome": "REPAIR_REQUIRED"
+    },
+    {
+      "round": "R3",
+      "reviewedHead": "92c36b4af1dae15d226ab3848115a5e9537779d7",
+      "externalReview": "docs/loop/reviews/P6-external-product-review-3.md",
+      "outcome": "REPAIR_REQUIRED"
+    },
+    {
+      "round": "R4",
+      "reviewedHead": "290272e056653dadd0d9a89d0a7a432335187bca",
+      "externalReview": "docs/loop/reviews/P6-external-product-review-4.md",
+      "outcome": "REPAIR_REQUIRED"
+    },
+    {
+      "round": "R5",
+      "reviewedHead": "f1ecd57320fc82b83119bd822653057904158b6a",
+      "externalReview": "docs/loop/reviews/P6-external-product-review-5.md",
+      "outcome": "REPAIR_REQUIRED"
+    },
+    {
+      "round": "R6",
+      "reviewedHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
+      "externalReview": "not yet run after budget exhausted",
+      "outcome": "POSTMORTEM_REQUIRED"
+    }
+  ],
+  "findings": [
+    {
+      "findingId": "P6-F001",
+      "title": "Loading state visually indistinguishable from Empty",
+      "category": "state_correctness",
+      "severity": "major",
+      "firstSeenRound": "R3",
+      "seenInRounds": ["R3", "R5"],
+      "occurrenceCount": 2,
+      "lastEvidence": "docs/loop/reviews/P6-external-product-review-5.md#blocking-findings-1-2",
+      "symptom": "Desktop Loading screenshot still showed Empty UI, while DOM proof claimed loading.",
+      "userImpact": "A user cannot tell whether the app is waiting, idle, or failing to load.",
+      "rootCauseHypothesis": "State evidence was allowed to compare presence, hash, and labels without a visual state contract that hides Empty CTA while Loading is active.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R3 tried to make loading evidence distinct.",
+        "R6 added stricter required inventory and state evidence."
+      ],
+      "fixCommits": ["c7c0f1f8beccfbd492a4e850c96641ad83a06f6e", "01f6d9584359aa59611b97e2f84fb977046f78f4", "52ed98df94f869a811aac2a4a120a7b8bcadb67f"],
+      "whyPreviousFixesDidNotCloseIt": "Earlier fixes validated metadata or screenshot existence, not the user-visible distinction and CTA hiding rule.",
+      "requiredRegressionTest": "A failing state test that captures Empty and Loading in the same viewport and asserts Loading hides the empty CTA, shows active loading phases, and has different visible text/geometry.",
+      "responsibleLayer": "shared product state machine + parity state evidence",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "actual runtime screenshot comparison",
+        "regression test that fails if Empty CTA remains visible during Loading",
+        "external review round that does not reproduce the issue"
+      ]
+    },
+    {
+      "findingId": "P6-F002",
+      "title": "Invalid state retained stale canvas, metadata, or ready status",
+      "category": "state_correctness",
+      "severity": "major",
+      "firstSeenRound": "R3",
+      "seenInRounds": ["R3", "R5", "R6"],
+      "occurrenceCount": 3,
+      "lastEvidence": "docs/loop/LOOP_STATE.md records R6 invalid-state alias repair at 5a311d4",
+      "symptom": "Invalid/error state evidence either retained old loaded state or required an alias repair to recognize the true runtime state.",
+      "userImpact": "After a bad file, users may trust stale preview/report data.",
+      "rootCauseHypothesis": "Error-state cleanup and evidence semantics were not owned by a single vertical flow; machine gates accepted aliases and broad state hashes late in the milestone.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R3 attempted valid/invalid phase isolation.",
+        "R5 added product-state behavior evidence.",
+        "R6 added invalid-state alias recognition."
+      ],
+      "fixCommits": ["01f6d9584359aa59611b97e2f84fb977046f78f4", "5a311d4ddd89266ef270a747c7d2e4afded0f68b"],
+      "whyPreviousFixesDidNotCloseIt": "The tests accepted state labels and aliases after the fact instead of first defining required cleared fields for canvas, metadata, file badge, report, parser status, and ready badge.",
+      "requiredRegressionTest": "Failure-first invalid-file test after a loaded file that asserts stale canvas, file badge, metadata, report, and ready state are cleared in both Web and Desktop.",
+      "responsibleLayer": "shared product state machine + host file-loading flow + parity runner",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "before/after invalid trace",
+        "explicit stale-field assertions",
+        "external review round that does not reproduce stale state"
+      ]
+    },
+    {
+      "findingId": "P6-F003",
+      "title": "Parity engine treated artifact existence as product behavior",
+      "category": "evidence_system",
+      "severity": "blocking",
+      "firstSeenRound": "R1",
+      "seenInRounds": ["R1", "R3", "R5"],
+      "occurrenceCount": 3,
+      "lastEvidence": "docs/loop/reviews/P6-external-product-review-5.md#blocking-findings-3-5",
+      "symptom": "Parity reports passed based on item IDs, artifact existence, generic states, or broad artifact sets.",
+      "userImpact": "Owner handoff could claim parity while product behavior remained unproven.",
+      "rootCauseHypothesis": "Evidence architecture was self-referential: generators produced PASS and reviewers checked packet integrity more than product semantics.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R4 replaced unconditional PASS with real runtime evidence.",
+        "R5 closed all non-pass entries.",
+        "R6 added stricter parity evidence gates and mutation tests."
+      ],
+      "fixCommits": ["9f7ec1aff405f39085ea599da8499eb8e5572150", "8247a7297cb0a0199411bc1635b2640890070470", "52ed98df94f869a811aac2a4a120a7b8bcadb67f"],
+      "whyPreviousFixesDidNotCloseIt": "The system improved report shape faster than it improved independent failure-first product assertions.",
+      "requiredRegressionTest": "Mutation tests that remove a behavior while leaving artifacts present, and require parity to fail.",
+      "responsibleLayer": "parity generator + mutation tests + reviewer scope",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "negative tests for every critical parity section",
+        "external reviewer reproduces no artifact-existence false pass"
+      ]
+    },
+    {
+      "findingId": "P6-F004",
+      "title": "State comparison used mismatched state, viewport, fixture, or media context",
+      "category": "evidence_system",
+      "severity": "major",
+      "firstSeenRound": "R1",
+      "seenInRounds": ["R1", "R5"],
+      "occurrenceCount": 2,
+      "lastEvidence": "docs/loop/reviews/P6-external-product-review-5.md#blocking-finding-4",
+      "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
+      "userImpact": "Visual parity evidence was not comparable.",
+      "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R2/R3 moved toward a shared fixture.",
+        "R6 required same fixture, viewport, DPR, playback time, mode, panel, modal, and controls."
+      ],
+      "fixCommits": ["52ed98df94f869a811aac2a4a120a7b8bcadb67f"],
+      "whyPreviousFixesDidNotCloseIt": "The contract did not fail before artifact generation; mismatches were found by external review after handoff.",
+      "requiredRegressionTest": "A test that intentionally changes viewport/state/media context and verifies parity generation fails.",
+      "responsibleLayer": "runtime scenario contract + capture harness",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "same-fixture/state/viewport proof",
+        "mismatch mutation test",
+        "external review confirmation"
+      ]
+    },
+    {
+      "findingId": "P6-F005",
+      "title": "Interaction trace did not prove real before/after user action",
+      "category": "interaction",
+      "severity": "major",
+      "firstSeenRound": "R5",
+      "seenInRounds": ["R5"],
+      "occurrenceCount": 1,
+      "lastEvidence": "docs/loop/reviews/P6-external-product-review-5.md#blocking-finding-6",
+      "symptom": "No Desktop per-interaction action trace existed.",
+      "userImpact": "Buttons and menus could appear present without proving they work.",
+      "rootCauseHypothesis": "Interaction evidence was assigned to the parity layer, but product behavior and host event triggering were split across workers.",
+      "rootCauseConfidence": "medium",
+      "attemptedFixes": [
+        "R6 added desktop interaction trace source and strict parity checks."
+      ],
+      "fixCommits": ["2320ee6", "52ed98df94f869a811aac2a4a120a7b8bcadb67f"],
+      "whyPreviousFixesDidNotCloseIt": "Prior checks were too close to final packaging and did not start from failing interaction tests.",
+      "requiredRegressionTest": "For each required interaction, capture before state, user event, after state, and fail when any state transition is simulated or missing.",
+      "responsibleLayer": "interaction scenario runner + host adapter",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "real before/after traces",
+        "event failure mutation test",
+        "external product review"
+      ]
+    },
+    {
+      "findingId": "P6-F006",
+      "title": "Motion evidence did not prove real motion trigger and state",
+      "category": "motion",
+      "severity": "major",
+      "firstSeenRound": "R1",
+      "seenInRounds": ["R1", "R3", "R4", "R5"],
+      "occurrenceCount": 4,
+      "lastEvidence": "docs/loop/reviews/P6-external-product-review-5.md#blocking-findings-10-11",
+      "symptom": "Motion checks accepted frame existence or mismatched modal state rather than triggered Web/Desktop motion parity.",
+      "userImpact": "Desktop could feel visibly different even with passing evidence.",
+      "rootCauseHypothesis": "The milestone tried to machine-grade UI motion without a stable trigger/state contract and without an owner-approved visual-motion threshold.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R4 added motion evidence checks.",
+        "R5 added scenario motion parity gates.",
+        "R6 added strict motion gates."
+      ],
+      "fixCommits": ["d1731875db641600afffec30735585c0b577960e", "ffc8a616e4ab3ead0132154f0ef3d9c09468775b", "52ed98df94f869a811aac2a4a120a7b8bcadb67f"],
+      "whyPreviousFixesDidNotCloseIt": "The gate measured generated frames more than semantic trigger equality; visual quality still needs human judgment.",
+      "requiredRegressionTest": "A motion capture test that verifies same trigger, same state, start/mid/end geometry deltas, and reduced-motion behavior.",
+      "responsibleLayer": "motion evidence runner + human visual gate",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "machine trigger/geometry gate",
+        "independent human motion review",
+        "owner visual gate"
+      ]
+    },
+    {
+      "findingId": "P6-F007",
+      "title": "Normal App proof used proof/smoke path instead of actual App workflow",
+      "category": "host_integration",
+      "severity": "blocking",
+      "firstSeenRound": "R1",
+      "seenInRounds": ["R1", "R3", "R5"],
+      "occurrenceCount": 3,
+      "lastEvidence": "docs/loop/reviews/P6-external-product-review-5.md#blocking-findings-12-14",
+      "symptom": "Normal App proof used AUTO_SVGA_P2_NORMAL_PROOF or reported hidden/non-visible window.",
+      "userImpact": "Internal app acceptance could be based on a testing path that users never run.",
+      "rootCauseHypothesis": "Packaging proof and runtime smoke were conflated; normal user launch was not a first-class vertical slice.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R2 repaired normal proof runtime.",
+        "R6 added visible normal startup proof."
+      ],
+      "fixCommits": ["01150831c09d8d28fe6e327ec2d67d71fa99638f", "140fcb6b3cbdc5eff6fc2993e796615b4a5ecc54", "3e56733a9f5bdc3c246ad58cc1afecc765ac6bd1"],
+      "whyPreviousFixesDidNotCloseIt": "Proof-mode affordances remained available and were not forbidden by an entry gate until late.",
+      "requiredRegressionTest": "Launch packaged app without proof/smoke flags/env/query, verify window visible, file flow works, and process exits cleanly.",
+      "responsibleLayer": "Electron host + packaging proof",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "normal visible app proof",
+        "no proof/smoke flag assertion",
+        "manual double-click acceptance"
+      ]
+    },
+    {
+      "findingId": "P6-F008",
+      "title": "Reviewer B did not act as independent product visual review",
+      "category": "reviewer",
+      "severity": "major",
+      "firstSeenRound": "R1",
+      "seenInRounds": ["R1", "R3", "R5"],
+      "occurrenceCount": 3,
+      "lastEvidence": "docs/loop/reviews/P6-external-product-review-5.md#blocking-findings-15-16",
+      "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
+      "userImpact": "A human-facing product gap could pass internal review.",
+      "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R5/R6 expanded reviewer evidence request categories."
+      ],
+      "fixCommits": ["46076eb3ee3cf9e960e38fd7c97912c20ff1b216"],
+      "whyPreviousFixesDidNotCloseIt": "Reviewer independence was defined structurally but not tied to product screenshots/contact sheets and rejectable visual criteria.",
+      "requiredRegressionTest": "Reviewer B packet must fail if category verdicts are HUMAN_REQUIRED while generic verdict is PASS.",
+      "responsibleLayer": "reviewer contract + final handoff builder",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "independent product visual checklist",
+        "category/generic verdict consistency check",
+        "owner review"
+      ]
+    },
+    {
+      "findingId": "P6-F009",
+      "title": "Registry, final HEAD, and handoff state drifted",
+      "category": "worker_coordination",
+      "severity": "major",
+      "firstSeenRound": "R3",
+      "seenInRounds": ["R3", "R4", "R5"],
+      "occurrenceCount": 3,
+      "lastEvidence": "docs/loop/reviews/P6-external-product-review-5.md#blocking-findings-17-18",
+      "symptom": "Registry final HEAD pointed at intermediate commits and terminalHandoffReady was set too early.",
+      "userImpact": "The owner could review artifacts not bound to the actual source state.",
+      "rootCauseHypothesis": "Handoff state was generated in parallel with implementation and packaging rather than after final A0 integration verification.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R3 hardened worker and review handoff protocols.",
+        "R4/R5/R6 added final owner handoff gates."
+      ],
+      "fixCommits": ["24a338e8ea7d4c76742cf013a7857af18d482eba", "46076eb3ee3cf9e960e38fd7c97912c20ff1b216", "1977cbce7ffc53d215391468aeb5b20daf816f77"],
+      "whyPreviousFixesDidNotCloseIt": "The protocol was repaired while product evidence was still changing; final-head binding became a late hygiene task.",
+      "requiredRegressionTest": "Terminal handoff build must fail unless registry, packet, parity report, app proof, upload zip, and git HEAD all match.",
+      "responsibleLayer": "A0 lifecycle + handoff builder",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "fixed HEAD binding check",
+        "external review acceptance",
+        "no stale handoff roots"
+      ]
+    },
+    {
+      "findingId": "P6-F010",
+      "title": "Machine gate failures still led to HUMAN_REQUIRED terminal state",
+      "category": "contract_design",
+      "severity": "blocking",
+      "firstSeenRound": "R4",
+      "seenInRounds": ["R4", "R5"],
+      "occurrenceCount": 2,
+      "lastEvidence": "docs/loop/reviews/P6-external-product-review-4.md#blocking-finding-9",
+      "symptom": "Known required parity failures existed while terminalHandoffReady or HUMAN_REQUIRED owner handoff was prepared.",
+      "userImpact": "Owner review was asked to decide before engineering gates were closed.",
+      "rootCauseHypothesis": "The protocol treated HUMAN_REQUIRED as an acceptable terminal state for both product acceptance and technical uncertainty.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R6 stated that if gates fail, terminal state must use TECHNICAL_REVIEW_REQUIRED."
+      ],
+      "fixCommits": ["85c1ae0dea9ea8e6349a6616eed3b1e9714cdc61"],
+      "whyPreviousFixesDidNotCloseIt": "The terminal gate language still let owner acceptance and technical review share similar handoff mechanics.",
+      "requiredRegressionTest": "If any required machine gate fails, owner acceptance packet generation must fail or mark gateType TECHNICAL_REVIEW_REQUIRED.",
+      "responsibleLayer": "loop protocol + handoff builder",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "explicit gateType",
+        "handoff negative test",
+        "owner-visible wording check"
+      ]
+    },
+    {
+      "findingId": "P6-F011",
+      "title": "Privacy and portable handoff issues repeated",
+      "category": "packaging",
+      "severity": "major",
+      "firstSeenRound": "R1",
+      "seenInRounds": ["R1", "R3", "R4", "R5", "R6"],
+      "occurrenceCount": 5,
+      "lastEvidence": "review/P6-1977cbc/bundle-privacy-audit.json",
+      "symptom": "Local paths, hidden .artifacts-only handoffs, or stale review-root literals repeatedly needed repair.",
+      "userImpact": "Owner could not reliably access review materials, or private local paths could leak.",
+      "rootCauseHypothesis": "Handoff packaging was retrofitted after product work started and consumed repair budget repeatedly.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "Visible review protocol added.",
+        "Owner handoff builder added.",
+        "Privacy scanning repaired for nested zips and stale roots."
+      ],
+      "fixCommits": ["416a9db637d2b92389d7a018c2105bf971774e7c", "c92a1f7344864fa37d21be33a6bd100784e839df", "bf1d71be6141946fde9908b4479be41bf5a14355", "1977cbce7ffc53d215391468aeb5b20daf816f77"],
+      "whyPreviousFixesDidNotCloseIt": "Packaging and visibility were not stable prerequisites before P6 started.",
+      "requiredRegressionTest": "Portable bundle audit that fails on hidden-only handoff, absolute paths, stale review roots, missing ZIP, or missing clickable packet.",
+      "responsibleLayer": "handoff builder + privacy audit",
+      "currentStatus": "partially_closed",
+      "closureEvidenceRequired": [
+        "portable bundle audit",
+        "owner-visible review folder",
+        "external review does not find path or visibility issue"
+      ]
+    },
+    {
+      "findingId": "P6-F012",
+      "title": "Multi-worker implementation completed slices but not end-to-end user flow",
+      "category": "worker_coordination",
+      "severity": "blocking",
+      "firstSeenRound": "R1",
+      "seenInRounds": ["R1", "R3", "R4", "R5", "R6"],
+      "occurrenceCount": 5,
+      "lastEvidence": "docs/product/p6/P6_MULTI_AGENT_COORDINATION.md and P6 external reviews",
+      "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
+      "userImpact": "Large apparent progress did not translate into accepted product parity.",
+      "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
+      "rootCauseConfidence": "high",
+      "attemptedFixes": [
+        "R3 introduced visible Worktree workers and registry.",
+        "R4-R6 reused A1-A5 and ran integration checks after layers."
+      ],
+      "fixCommits": ["175c68450d6b1b99bb95fa93ec9b04ea73e802ff", "24a338e8ea7d4c76742cf013a7857af18d482eba"],
+      "whyPreviousFixesDidNotCloseIt": "The Worker model improved coordination mechanics but not ownership of complete user journeys like State Correctness, Multi-source Acceptance, Interaction, Motion, and App Delivery.",
+      "requiredRegressionTest": "Each vertical workflow package must have a failing end-to-end test before implementation and an A0 integration verifier different from implementation owner.",
+      "responsibleLayer": "milestone decomposition + A0 orchestration",
+      "currentStatus": "open",
+      "closureEvidenceRequired": [
+        "P6-R1 vertical package plan",
+        "entry and exit gates per vertical slice",
+        "owner-approved recovery plan"
+      ]
+    }
+  ]
+}
