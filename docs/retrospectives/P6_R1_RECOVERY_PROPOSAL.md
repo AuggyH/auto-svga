@@ -1,16 +1,18 @@
 # P6-R1 Recovery Proposal
 
-Status: proposal only. P6-R1 is not frozen or started.
+Status: approved recovery basis; P6-R1 contract revision 1 is frozen for
+external contract review; implementation and WP0 are not started.
 
 ## Correct Freeze Order
 
-1. Owner approves this repaired postmortem and recovery proposal.
-2. A P6-R1 contract is created and frozen.
-3. P6-R1 starts with WP0 Recovery Gate Bootstrap.
+1. Owner approved this repaired postmortem and recovery proposal.
+2. P6-R1 contract revision 1 is frozen for external contract review.
+3. P6-R1 starts with WP0 Recovery Gate Bootstrap only after contract review
+   passes and the owner authorizes WP0.
 4. WP0 must pass before WP1 begins.
 
 No validation tooling or product runtime changes should happen before the
-P6-R1 contract is frozen.
+P6-R1 contract review passes and WP0 is explicitly authorized.
 
 ## Options
 
@@ -34,8 +36,8 @@ Cons:
 ### Option B: Split By End-to-End Vertical Flow
 
 Use smaller vertical work packages with one lead implementation owner, a
-separate evidence owner, an A0 or independent machine/code integration
-verifier, and a separate Product Owner human gate when applicable.
+separate evidence owner, a defined machine/code integration verifier, and one
+final Product Owner human gate after all machine gates pass.
 
 Pros:
 
@@ -66,15 +68,18 @@ layer changes move through `requestedIntegrationChange` and A0 sequencing.
 
 | Work Package | findingIds | Lead Implementation Owner | Evidence Owner | Integration Verifier | Human Gate Owner |
 | --- | --- | --- | --- | --- | --- |
-| WP0 - Recovery Gate Bootstrap | `P6-F010`, `P6-F012` | P6R1 Recovery Gate Lead | P6R1 Evidence Lead | Independent Contract Reviewer | none |
+| WP0 - Recovery Gate Bootstrap | `P6-F010`, `P6-F012` | A0 Recovery Gate Lead | Independent Read-only Gate Evidence Reviewer | Independent Contract And Code Reviewer | none |
 | WP1 - State Correctness | `P6-F001`, `P6-F002` | P6R1 State Correctness Lead | P6R1 Evidence Lead | A0 | none |
 | WP2 - Multi-source Acceptance Flow | `P6-F013` | P6R1 Multi-source Flow Lead | P6R1 Evidence Lead | A0 | none |
 | WP3 - Interaction Evidence | `P6-F003`, `P6-F005` | P6R1 Interaction Evidence Lead | Independent Trace Evidence Reviewer | A0 | none |
-| WP4 - Visual And Motion Review | `P6-F004`, `P6-F006`, `P6-F008` | P6R1 Visual And Motion Lead | P6R1 Evidence Lead | Independent Visual/Code Reviewer | Product Owner |
-| WP5 - macOS App Delivery | `P6-F007`, `P6-F009`, `P6-F011` | P6R1 macOS Delivery Lead | P6R1 Evidence Lead | A0 | Product Owner |
+| WP4 - Visual And Motion Review | `P6-F004`, `P6-F006`, `P6-F008` | P6R1 Visual And Motion Lead | P6R1 Evidence Lead | A0 | none |
+| WP5 - macOS App Delivery | `P6-F007`, `P6-F009`, `P6-F011` | P6R1 macOS Delivery Lead | P6R1 Evidence Lead | A0 | none |
 
 Finding primary closure is unique. Other packages may list a finding only under
 `supportingFindingIds`; they must not become the primary closure owner.
+
+Gate C has the only final Product Owner human gate. WP4 and WP5 do not create
+separate owner gates.
 
 ## Gate A - Runtime State Correctness
 
@@ -84,7 +89,7 @@ Finding IDs: `P6-F001`, `P6-F002`, `P6-F010`, `P6-F012`.
 
 Machine entry gate:
 
-- P6-R1 contract is frozen.
+- P6-R1 contract revision 1 passed external contract review.
 - WP0 defines failure-first gate taxonomy.
 - Finding Ledger update format is defined.
 - Final-head binding rule is defined.
@@ -178,8 +183,9 @@ A finding can close only when all are true:
 2. A corresponding regression or mutation test exists.
 3. A later independent external review does not reproduce the issue.
 
-`partially_closed` is allowed only when the ledger lists exact closed
-sub-issues and still-open sub-issues.
+Internal machine exits use `integrated_resolved_pending_external_review`.
+Findings are not `externally_confirmed_closed` until later independent external
+review confirms the issue is not reproduced.
 
 ## Process Rules For The P6-R1 Contract
 

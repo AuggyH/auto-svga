@@ -1,6 +1,7 @@
 # P6 Postmortem
 
-Status: retrospective only. P6-R1 is not started.
+Status: historical retrospective snapshot. P6-R1 contract revision 1 is now
+frozen for external contract review, and implementation remains not started.
 
 Source branch: `agent/codex/p6-postmortem`
 

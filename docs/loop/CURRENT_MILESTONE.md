@@ -4,6 +4,10 @@ Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 Status: frozen
 
+contractRevision: 1
+supersedesContractRevision: 0
+contractRevisionReason: external_contract_review_1
+
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract`
 Previous milestone: `docs/loop/milestones/P6-web-preview-full-parity.md`
@@ -26,6 +30,53 @@ or starting Phase 2 functionality.
 P6-R1 must complete trustworthy Web/Desktop function, state, interaction,
 motion, and macOS App evidence for the accepted P6 recovery plan.
 
+## Immutable P6 Recovery Baseline
+
+- P6 terminal reviewed head: `1977cbce7ffc53d215391468aeb5b20daf816f77`
+- accepted postmortem head: `d430c1937a6deeab3fc358151e24b4699e45f506`
+- P6-R1 milestone start commit: `d430c1937a6deeab3fc358151e24b4699e45f506`
+- Web source-of-truth commit:
+  `dbab38fc7fc3cad09f6305775467422ded63318c`
+- Web Preview source-of-truth files:
+  - `tools/svga-player-preview/index.html`
+  - `tools/svga-player-preview/styles.css`
+  - `tools/svga-player-preview/main.js`
+  - `tools/svga-player-preview/inspection-report-view.mjs`
+  - `tools/svga-player-preview/server.mjs`
+  - `tools/shared/product-tokens.css`
+- parity inventory Markdown path:
+  `docs/product/P6_WEB_FEATURE_INVENTORY.md`
+- parity contract JSON path:
+  `docs/product/P6_WEB_PARITY_CONTRACT.json`
+- shared Product Shell path:
+  `tools/shared/product-frontend/product-shell.html`
+- shared Product App path:
+  `tools/shared/product-frontend/product-app.mjs`
+- shared core CSS path:
+  `tools/shared/product-frontend/product-styles.css`
+- state-machine path:
+  `tools/p6/runtime-scenarios/state-evidence.mjs`
+- motion-definition path:
+  `docs/product/P6_WEB_PARITY_CONTRACT.json`
+- frozen baseline snapshot:
+  `docs/loop/contracts/P6-R1_BASELINE.json`
+- archived revision 0 contract:
+  `docs/loop/contracts/P6-R1-contract-v0.md`
+
+Baseline item counts from `docs/product/P6_WEB_PARITY_CONTRACT.json` are
+immutable minimums for P6-R1:
+
+| item set | required count |
+| --- | ---: |
+| regions | 20 |
+| features | 33 |
+| interactions | 10 |
+| states | 22 |
+| motions | 9 |
+
+P6-R1 may add true omissions discovered later. It must not delete, shrink,
+make optional, or make unreachable any baseline item.
+
 ## Primary Root Cause
 
 P6 was implemented and verified by technical layers rather than vertical user
@@ -41,7 +92,7 @@ complete user journey.
 ## Success Stop Condition
 
 All findings assigned to the current Gate have real runtime evidence,
-regression or mutation tests, and an independent integration review.
+regression or mutation tests, and independent integration review.
 
 ## Failure Stop Condition
 
@@ -79,6 +130,59 @@ Prohibited:
 - entering owner product acceptance while a required machine Gate is failed or
   untrusted.
 
+## Formal Acceptance Criteria
+
+The following IDs are frozen for P6-R1. They must not be renamed, removed,
+softened, or treated as optional during implementation.
+
+| ID | criterion | required evidence |
+| --- | --- | --- |
+| P6-R1-AC-01 | Contract Lineage And P6 Archive | P6 terminal head, accepted postmortem head, revision lineage, v0 archive, and revision 1 package are present and hash-bound. |
+| P6-R1-AC-02 | Immutable Web Source Of Truth | Required Web parity inventory, item IDs, counts, source files, and source hashes are preserved or increased only by true omissions. |
+| P6-R1-AC-03 | Finding Ledger Integrity | P6-F001 through P6-F013 have primary owners, resolution stage, evidence refs, and no silent closure. |
+| P6-R1-AC-04 | Recovery Gate Bootstrap | WP0 defines failure-first gates, machine/human split, final-head binding, and negative-test contracts before product changes. |
+| P6-R1-AC-05 | Runtime State Correctness | Empty, Loading, Loaded, Invalid, and Recovery states are visibly and semantically distinct with stale state cleared. |
+| P6-R1-AC-06 | Multi-source Acceptance | Second SVGA, reference media, latest artifact, synchronization, and cleanup work end to end. |
+| P6-R1-AC-07 | Real Interaction Evidence | Interactions include before state, real DOM/native action, after state, focus/result, and mutation protection. |
+| P6-R1-AC-08 | Comparable Visual Machine Evidence | Visual comparison uses same state, viewport, fixture, and context; impossible or zero-pixel comparisons fail. |
+| P6-R1-AC-09 | Genuine Motion Evidence | Motion evidence proves trigger, start/mid/end, geometry/style delta, and reduced-motion behavior where applicable. |
+| P6-R1-AC-10 | Independent Product Review | Product visual/motion review is independent from implementation and cannot be replaced by generic packet PASS. |
+| P6-R1-AC-11 | Visible Normal macOS App | Normal macOS App launch and representative workflows are proven outside proof-only paths. |
+| P6-R1-AC-12 | Full P6 Regression | Complete P6 required inventory regression passes on the final integration head. |
+| P6-R1-AC-13 | Final-head, Privacy And Portable Handoff | Review ZIP, App ZIP when present, manifest, privacy audit, and owner-visible paths bind to the same final head. |
+| P6-R1-AC-14 | Independent Validation And Seal | Two loop validations, Reviewer A, Reviewer B, post-seal verifier, and source workspace clean state are recorded. |
+| P6-R1-AC-15 | Scope Discipline | No Phase 2, editor expansion, format conversion, export workbench, dependency expansion, or production release work starts. |
+
+## Work Package Order
+
+P6-R1 executes strictly in this order:
+
+1. WP0
+2. WP0 Integration Checkpoint
+3. WP1
+4. Gate A
+5. WP2
+6. WP2 Integration Checkpoint
+7. WP3
+8. Gate B
+9. WP4
+10. WP4 Integration Checkpoint
+11. WP5
+12. Gate C
+13. Final Validation
+14. Reviewer A
+15. Reviewer B
+16. Owner Human Gate
+
+Rules:
+
+1. The previous work package must pass before the next lead package starts.
+2. At most one Lead Implementation Worker may run at a time.
+3. One independent Evidence Worker or read-only Reviewer may run in parallel.
+4. Web server, Electron, App, screenshot, motion, loop validation, and seal
+   runs are A0-serial.
+5. P6-R1 must not be re-sliced by technical layer for throughput.
+
 ## Work Packages
 
 Each work package has one Lead Implementation Owner. Other layers may be
@@ -87,12 +191,14 @@ co-leads. Product Owner is never the machine Integration Verifier.
 
 | Work Package | findingIds | Lead Implementation Owner | Evidence Owner | Integration Verifier | Human Gate Owner |
 | --- | --- | --- | --- | --- | --- |
-| WP0 - Recovery Gate Bootstrap | `P6-F010`, `P6-F012` | P6R1 Recovery Gate Lead | P6R1 Evidence Lead | Independent Contract Reviewer | none |
+| WP0 - Recovery Gate Bootstrap | `P6-F010`, `P6-F012` | A0 Recovery Gate Lead | Independent Read-only Gate Evidence Reviewer | Independent Contract And Code Reviewer | none |
 | WP1 - State Correctness | `P6-F001`, `P6-F002` | P6R1 State Correctness Lead | P6R1 Evidence Lead | A0 | none |
 | WP2 - Multi-source Acceptance Flow | `P6-F013` | P6R1 Multi-source Flow Lead | P6R1 Evidence Lead | A0 | none |
 | WP3 - Interaction Evidence | `P6-F003`, `P6-F005` | P6R1 Interaction Evidence Lead | Independent Trace Evidence Reviewer | A0 | none |
-| WP4 - Visual And Motion Review | `P6-F004`, `P6-F006`, `P6-F008` | P6R1 Visual And Motion Lead | P6R1 Evidence Lead | Independent Visual/Code Reviewer | Product Owner |
-| WP5 - macOS App Delivery | `P6-F007`, `P6-F009`, `P6-F011` | P6R1 macOS Delivery Lead | P6R1 Evidence Lead | A0 | Product Owner |
+| WP4 - Visual And Motion Review | `P6-F004`, `P6-F006`, `P6-F008` | P6R1 Visual And Motion Lead | P6R1 Evidence Lead | A0 | none |
+| WP5 - macOS App Delivery | `P6-F007`, `P6-F009`, `P6-F011` | P6R1 macOS Delivery Lead | P6R1 Evidence Lead | A0 | none |
+
+Gate C has the only final Human Gate Owner: Product Owner.
 
 ## WP0 - Recovery Gate Bootstrap
 
@@ -114,8 +220,11 @@ Prohibited:
 
 - product runtime changes;
 - Web or Electron UI changes;
-- worker creation;
+- formal Worker creation or restoration;
 - product evidence generation beyond contract checks.
+
+WP0 is A0-serial. A0 may produce the WP0 implementation but must not approve
+its own evidence. WP0 must pass before WP1 Worker creation or restoration.
 
 ## WP1 - State Correctness
 
@@ -169,7 +278,8 @@ Scope:
 - geometry and computed-style machine proof
 - real motion trigger
 - independent product visual Reviewer
-- Owner visual gate
+
+WP4 does not create a separate Product Owner gate.
 
 ## WP5 - macOS App Delivery
 
@@ -189,6 +299,8 @@ Scope:
 - privacy
 - owner-visible handoff
 
+WP5 does not create a separate Product Owner gate.
+
 ## Gate A - Runtime State Correctness
 
 Packages:
@@ -205,7 +317,7 @@ Finding IDs:
 
 machineEntryGate:
 
-- P6-R1 contract review passed.
+- P6-R1 contract revision 1 external review passed.
 - WP0 is authorized to start.
 - Finding Ledger update format is defined.
 - Machine vs human gate taxonomy is defined.
@@ -219,18 +331,18 @@ requiredFailureFirstTests:
   status, or parser state remains visible.
 - Gate taxonomy fails when machine failure enters owner-acceptance Human Gate.
 
-machineExitGate:
+terminalCheck:
 
-- Loading and Empty are visibly and semantically distinct.
-- Invalid clears stale state.
-- Recovery after invalid file is proven.
-- Failure-first tests pass.
-- Finding Ledger records current evidence and status.
+- WP0 failure-first validation passes.
+- WP1 failure-first baseline fails first, then passes after repair.
+- State runtime evidence passes.
+- Independent integration review passes.
+- Finding Ledger records current evidence and resolution stage.
 
 evidenceOwner: P6R1 Evidence Lead
 integrationVerifier: A0
 stopCondition: Gate A failure blocks WP2-WP5.
-allowedNextPackages: WP2, WP3 only after Gate A passes.
+allowedNextPackages: WP2 only after Gate A passes.
 
 ## Gate B - Multi-source And Interaction Correctness
 
@@ -257,21 +369,22 @@ requiredFailureFirstTests:
 - Reference media proof fails when load, playback, sync, or cleanup is missing.
 - Latest artifact proof fails when scan, select, load, playback, or cleanup is
   missing.
-- Interaction trace fails when `stateBefore`, real action, `stateAfter`, or
-  visible result is missing.
+- Interaction trace fails when `stateBefore`, real action, `stateAfter`, focus,
+  or visible result is missing.
 
-machineExitGate:
+terminalCheck:
 
-- Second SVGA works end to end.
-- Reference media works end to end.
-- Latest artifact works end to end.
-- Web/Desktop interaction trace is complete.
-- Mutation tests catch skipped action or mismatched context.
+- Gate A passed.
+- WP2/WP3 failure-first baselines fail first.
+- Second/reference/latest real runtime flows pass.
+- Interaction traces include real before/action/after/focus/result.
+- Mutation tests pass.
+- Independent integration review passes.
 
 evidenceOwner: P6R1 Evidence Lead
 integrationVerifier: A0
 stopCondition: Gate B failure blocks WP4-WP5.
-allowedNextPackages: WP4, WP5 only after Gate B passes.
+allowedNextPackages: WP4 only after Gate B passes.
 
 ## Gate C - Visual, Motion And App Delivery
 
@@ -304,18 +417,97 @@ requiredFailureFirstTests:
 - Handoff fails when final head, App ZIP, manifest, privacy audit, and review
   packet do not bind to the same source head.
 
-machineExitGate:
+terminalCheck:
 
-- Same-state, same-viewport, same-fixture visual evidence exists.
-- Motion evidence proves trigger and geometry/style deltas where expected.
-- Independent visual/product Reviewer returns non-contradictory verdicts.
-- Normal macOS App starts visibly and completes representative workflow.
-- App ZIP and owner-visible handoff are final-head bound and privacy clean.
+- Gate B passed.
+- Visual/motion failure-first baseline fails first.
+- Comparable visual machine evidence passes.
+- Genuine motion evidence passes.
+- Normal App evidence passes.
+- Required Independent Evidence Reviewers pass:
+  - Independent Visual Product Reviewer
+  - Independent Code/Security Reviewer
+- Owner materials are complete.
 
 evidenceOwner: P6R1 Evidence Lead
-integrationVerifier: A0 or Independent Visual/Code Reviewer as assigned
+integrationVerifier: A0
 stopCondition: Gate C failure blocks owner-acceptance packet generation.
 allowedNextPackages: none
+
+## P6-R1 Final Validation
+
+1. All `P6-R1-AC-01` through `P6-R1-AC-15` have explicit evidence mapping.
+2. Gate A, Gate B, and Gate C machine checks pass.
+3. Complete P6 required inventory regression passes.
+4. `git --literal-pathspecs diff --check <base>..<final-head>` passes.
+5. `npm run loop:validate` passes twice at final head.
+6. Reviewer A independently returns PASS.
+7. Reviewer B product categories all return PASS.
+8. Post-seal verifier passes.
+9. Review ZIP and App ZIP pass manifest and privacy verification.
+10. Source workspace is clean.
+11. Only then may the final Owner Human Gate be requested.
+
+## Completion Gates
+
+P6-R1 is not complete until all are true:
+
+- contractRevision 1 passed external contract review.
+- WP0, WP1, WP2, WP3, WP4, and WP5 completed in order.
+- Gate A, Gate B, and Gate C all passed.
+- `P6-F001` through `P6-F013` all reached
+  `integrated_resolved_pending_external_review` or, after final external
+  review, `externally_confirmed_closed`.
+- P6 baseline required items have not decreased.
+- All machine ACs pass.
+- Reviewer A and Reviewer B pass.
+- Normal App proof passes.
+- Final-head binding passes.
+- Privacy and manifest checks pass.
+- Owner Review ZIP and App ZIP actually exist when App ZIP is in scope.
+- Phase 2 is not started.
+- Final packet is `HUMAN_REQUIRED`, waiting for the single Product Owner Gate.
+
+## Finding Resolution Stages
+
+Finding formal closure still requires:
+
+1. real runtime evidence;
+2. regression or mutation test;
+3. later independent external review that does not reproduce the issue.
+
+`resolutionStage` values:
+
+- `unresolved`
+- `implementing`
+- `machine_resolved_pending_integration`
+- `integrated_resolved_pending_external_review`
+- `externally_confirmed_closed`
+- `regressed`
+
+Rules:
+
+1. `currentStatus` may remain `open` before external confirmation.
+2. Gate machine exit uses `integrated_resolved_pending_external_review`.
+3. Internal Reviewers must not mark findings `closed`.
+4. Final P6-R1 packet must distinguish machine resolved, pending external
+   confirmation, and externally closed.
+5. Owner final acceptance and external review must both pass before
+   `externally_confirmed_closed` is written.
+6. WP0 must define and validate these fields in the Finding Ledger.
+
+## Repair Budget Semantics
+
+- Gate-internal Implement / Validate / Review / Repair loops do not increment
+  `repairRound`.
+- Gate-local loops use `gateCycle` or `workPackageCycle`.
+- Only a P6-R1 terminal packet that receives formal external review result
+  `REPAIR_REQUIRED` may create `repair-1`, `repair-2`, and so on.
+- `maxRepairRounds=4` is unchanged.
+- Protocol, packaging, or internal test failures must not consume external
+  repair budget.
+- Required Gate failures continue inside the current Gate or stop at the
+  stopCondition. They do not enter Owner Human Gate.
 
 ## Failure-first Rules
 
@@ -356,7 +548,7 @@ Machine must not claim:
 - motion taste;
 - overall product acceptance.
 
-Product Owner judges only:
+Product Owner judges only, once at Gate C final Owner Human Gate:
 
 - Web/Desktop overall visual and use experience;
 - motion feel;
@@ -372,5 +564,5 @@ Current state: `contract_frozen`.
 Next action: `external_contract_review`.
 
 WP0 is not started. No formal implementation Worker is running. Phase 2 is not
-started. P6-R1 implementation may start only after this frozen contract passes
+started. P6-R1 implementation may start only after contract revision 1 passes
 external contract review and the owner authorizes WP0.

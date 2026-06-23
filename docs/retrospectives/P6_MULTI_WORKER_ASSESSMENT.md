@@ -46,20 +46,22 @@ Use vertical work packages instead of technical layers:
 
 | Work package | Lead implementation owner | Evidence owner | Integration verifier | Human gate owner |
 | --- | --- | --- | --- | --- |
-| WP0 Recovery Gate Bootstrap | P6R1 Recovery Gate Lead | P6R1 Evidence Lead | Independent Contract Reviewer | none |
+| WP0 Recovery Gate Bootstrap | A0 Recovery Gate Lead | Independent Read-only Gate Evidence Reviewer | Independent Contract And Code Reviewer | none |
 | WP1 State Correctness | P6R1 State Correctness Lead | P6R1 Evidence Lead | A0 | none |
 | WP2 Multi-source Acceptance Flow | P6R1 Multi-source Flow Lead | P6R1 Evidence Lead | A0 | none |
 | WP3 Interaction Evidence | P6R1 Interaction Evidence Lead | Independent Trace Evidence Reviewer | A0 | none |
-| WP4 Visual And Motion Review | P6R1 Visual And Motion Lead | P6R1 Evidence Lead | Independent Visual/Code Reviewer | Product Owner |
-| WP5 macOS App Delivery | P6R1 macOS Delivery Lead | P6R1 Evidence Lead | A0 | Product Owner |
+| WP4 Visual And Motion Review | P6R1 Visual And Motion Lead | P6R1 Evidence Lead | A0 | none |
+| WP5 macOS App Delivery | P6R1 macOS Delivery Lead | P6R1 Evidence Lead | A0 | none |
 
 Implementation owner must not be the only evidence owner or the integration
-verifier for the same package. Product Owner owns only human visual/App
-acceptance gates, not machine integration verification.
+verifier for the same package. Gate C has one final Product Owner human gate
+after all machine gates pass; Product Owner does not perform machine
+integration verification.
 
 ## Parallelism Limit
 
-- At most two formal implementation Worktree workers at once for P6-R1.
+- At most one lead implementation Worktree worker at once for P6-R1.
+- One independent Evidence Worker or read-only Reviewer may run in parallel.
 - A0 may run read-only subagents in parallel for review/audit.
 - Heavy Electron, Web server, packaged App, screenshots, motion capture,
   `loop:validate`, Reviewer A/B, and seal remain serial.
