@@ -4,12 +4,12 @@ Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 Status: frozen
 
-contractRevision: 2
-supersedesContractRevision: 1
-contractRevisionReason: execution_blocker_delta_repair
+contractRevision: 1
+supersedesContractRevision: 0
+contractRevisionReason: external_contract_review_1
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
-Branch: `agent/codex/p6-r1-contract-r2`
+Branch: `agent/codex/p6-r1-contract`
 Previous milestone: `docs/loop/milestones/P6-web-preview-full-parity.md`
 Previous milestone outcome: `NOT_ACCEPTED`
 Previous engineering outcome: `REPAIR_BUDGET_EXHAUSTED`
@@ -60,8 +60,6 @@ motion, and macOS App evidence for the accepted P6 recovery plan.
   `docs/product/P6_WEB_PARITY_CONTRACT.json`
 - frozen baseline snapshot:
   `docs/loop/contracts/P6-R1_BASELINE.json`
-- archived revision 1 contract:
-  `docs/loop/contracts/P6-R1-contract-v1.md`
 - archived revision 0 contract:
   `docs/loop/contracts/P6-R1-contract-v0.md`
 
@@ -75,15 +73,6 @@ immutable minimums for P6-R1:
 | interactions | 10 |
 | states | 22 |
 | motions | 9 |
-
-`docs/loop/contracts/P6-R1_BASELINE.json` uses schema version 2. Its hashes
-are split by execution policy:
-
-- `webSourceOfTruthHashes` must remain unchanged during P6-R1 unless the owner
-  explicitly approves a new Web source-of-truth revision.
-- `milestoneStartReferenceHashes` record Desktop/shared/reference files at the
-  milestone start only. They may change inside authorized work packages when
-  the change is evidence-bound and final-head-bound.
 
 P6-R1 may add true omissions discovered later. It must not delete, shrink,
 make optional, or make unreachable any baseline item.
@@ -148,7 +137,7 @@ softened, or treated as optional during implementation.
 
 | ID | criterion | required evidence |
 | --- | --- | --- |
-| P6-R1-AC-01 | Contract Lineage And P6 Archive | P6 terminal head, accepted postmortem head, revision lineage, v0/v1 archives, and revision 2 package are present and hash-bound. |
+| P6-R1-AC-01 | Contract Lineage And P6 Archive | P6 terminal head, accepted postmortem head, revision lineage, v0 archive, and revision 1 package are present and hash-bound. |
 | P6-R1-AC-02 | Immutable Web Source Of Truth | Required Web parity inventory, item IDs, counts, source files, and source hashes are preserved or increased only by true omissions. |
 | P6-R1-AC-03 | Finding Ledger Integrity | P6-F001 through P6-F013 have primary owners, resolution stage, evidence refs, and no silent closure. |
 | P6-R1-AC-04 | Recovery Gate Bootstrap | WP0 defines failure-first gates, machine/human split, final-head binding, and negative-test contracts before product changes. |
@@ -164,12 +153,9 @@ softened, or treated as optional during implementation.
 | P6-R1-AC-14 | Independent Validation And Seal | Two loop validations, Reviewer A, Reviewer B, post-seal verifier, and source workspace clean state are recorded. |
 | P6-R1-AC-15 | Scope Discipline | No Phase 2, editor expansion, format conversion, export workbench, dependency expansion, or production release work starts. |
 
-## Work Package And Gate Order
+## Work Package Order
 
-P6-R1 executes strictly in this order. Work packages produce implementation and
-evidence. Gates are checkpoints after their listed work packages are complete;
-work packages are not simultaneously "inside" a Gate and "before" the same
-Gate.
+P6-R1 executes strictly in this order:
 
 1. WP0
 2. WP0 Integration Checkpoint
@@ -191,14 +177,11 @@ Gate.
 Rules:
 
 1. The previous work package must pass before the next lead package starts.
-2. Gate A validates completed WP0 and WP1.
-3. Gate B validates completed WP2 and WP3.
-4. Gate C validates completed WP4 and WP5.
-5. At most one Lead Implementation Worker may run at a time.
-6. One independent Evidence Worker or read-only Reviewer may run in parallel.
-7. Web server, Electron, App, screenshot, motion, loop validation, and seal
+2. At most one Lead Implementation Worker may run at a time.
+3. One independent Evidence Worker or read-only Reviewer may run in parallel.
+4. Web server, Electron, App, screenshot, motion, loop validation, and seal
    runs are A0-serial.
-8. P6-R1 must not be re-sliced by technical layer for throughput.
+5. P6-R1 must not be re-sliced by technical layer for throughput.
 
 ## Work Packages
 
@@ -320,7 +303,7 @@ WP5 does not create a separate Product Owner gate.
 
 ## Gate A - Runtime State Correctness
 
-Validates completed work packages:
+Packages:
 
 - WP0
 - WP1
@@ -334,7 +317,7 @@ Finding IDs:
 
 machineEntryGate:
 
-- P6-R1 contract revision 2 external review passed.
+- P6-R1 contract revision 1 external review passed.
 - WP0 is authorized to start.
 - Finding Ledger update format is defined.
 - Machine vs human gate taxonomy is defined.
@@ -363,7 +346,7 @@ allowedNextPackages: WP2 only after Gate A passes.
 
 ## Gate B - Multi-source And Interaction Correctness
 
-Validates completed work packages:
+Packages:
 
 - WP2
 - WP3
@@ -405,7 +388,7 @@ allowedNextPackages: WP4 only after Gate B passes.
 
 ## Gate C - Visual, Motion And App Delivery
 
-Validates completed work packages:
+Packages:
 
 - WP4
 - WP5
@@ -453,36 +436,23 @@ allowedNextPackages: none
 
 ## P6-R1 Final Validation
 
-Final Validation is the A0 machine validation step after Gate C and before
-independent review. It must not depend on Reviewer A, Reviewer B, final seal,
-or post-seal verification.
-
-Final Validation requires:
-
 1. All `P6-R1-AC-01` through `P6-R1-AC-15` have explicit evidence mapping.
 2. Gate A, Gate B, and Gate C machine checks pass.
 3. Complete P6 required inventory regression passes.
 4. `git --literal-pathspecs diff --check <base>..<final-head>` passes.
 5. `npm run loop:validate` passes twice at final head.
-6. Source workspace is clean.
-
-After Final Validation passes, the only executable terminal sequence is:
-
-1. Reviewer A independent technical review.
-2. Reviewer B independent product evidence review.
-3. Final seal creates the owner-visible review ZIP and App ZIP when in scope.
-4. Post-seal verification checks the sealed artifacts, manifest, privacy, and
-   final-head binding.
-5. Terminal packet is emitted as `HUMAN_REQUIRED`.
-6. The single Product Owner Human Gate is requested.
-
-No step may require evidence from a later step.
+6. Reviewer A independently returns PASS.
+7. Reviewer B product categories all return PASS.
+8. Post-seal verifier passes.
+9. Review ZIP and App ZIP pass manifest and privacy verification.
+10. Source workspace is clean.
+11. Only then may the final Owner Human Gate be requested.
 
 ## Completion Gates
 
 P6-R1 is not complete until all are true:
 
-- contractRevision 2 passed delta-only external contract review.
+- contractRevision 1 passed external contract review.
 - WP0, WP1, WP2, WP3, WP4, and WP5 completed in order.
 - Gate A, Gate B, and Gate C all passed.
 - `P6-F001` through `P6-F013` all reached
@@ -490,11 +460,10 @@ P6-R1 is not complete until all are true:
   review, `externally_confirmed_closed`.
 - P6 baseline required items have not decreased.
 - All machine ACs pass.
-- Final Validation passes.
-- Reviewer A and Reviewer B pass after Final Validation.
+- Reviewer A and Reviewer B pass.
 - Normal App proof passes.
-- Final seal completes.
-- Post-seal final-head binding, privacy, and manifest checks pass.
+- Final-head binding passes.
+- Privacy and manifest checks pass.
 - Owner Review ZIP and App ZIP actually exist when App ZIP is in scope.
 - Phase 2 is not started.
 - Final packet is `HUMAN_REQUIRED`, waiting for the single Product Owner Gate.
@@ -527,29 +496,18 @@ Rules:
    `externally_confirmed_closed` is written.
 6. WP0 must define and validate these fields in the Finding Ledger.
 
-## Minimal Review And Repair Semantics
+## Repair Budget Semantics
 
-P6-R1 uses the smallest repair state model needed to execute:
-
-1. Contract review repair:
-   - increments `contractRevision`;
-   - does not increment `repairRound`;
-   - keeps `wp0Started=false`;
-   - keeps `phase2Started=false`.
-2. Gate or work-package machine failure:
-   - returns to the affected work package or Gate;
-   - does not increment `repairRound`;
-   - must not enter Owner Human Gate.
-3. Product Owner Human Gate rejection:
-   - returns to the affected Gate with the rejection reason;
-   - does not increment `repairRound`;
-   - cannot start Phase 2.
-4. Final independent product external review result `REPAIR_REQUIRED`:
-   - increments `repairRound`;
-   - may create `repair-1`, `repair-2`, and so on;
-   - remains limited by `maxRepairRounds=4`.
-
-No additional global status system is introduced by this contract revision.
+- Gate-internal Implement / Validate / Review / Repair loops do not increment
+  `repairRound`.
+- Gate-local loops use `gateCycle` or `workPackageCycle`.
+- Only a P6-R1 terminal packet that receives formal external review result
+  `REPAIR_REQUIRED` may create `repair-1`, `repair-2`, and so on.
+- `maxRepairRounds=4` is unchanged.
+- Protocol, packaging, or internal test failures must not consume external
+  repair budget.
+- Required Gate failures continue inside the current Gate or stop at the
+  stopCondition. They do not enter Owner Human Gate.
 
 ## Failure-first Rules
 
@@ -606,5 +564,5 @@ Current state: `contract_frozen`.
 Next action: `external_contract_review`.
 
 WP0 is not started. No formal implementation Worker is running. Phase 2 is not
-started. P6-R1 implementation may start only after contract revision 2 passes
-delta-only external contract review and the owner authorizes WP0.
+started. P6-R1 implementation may start only after contract revision 1 passes
+external contract review and the owner authorizes WP0.

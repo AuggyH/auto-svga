@@ -8,15 +8,15 @@ Date: 2026-06-23
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 - State: contract_frozen
 - Next Action: external_contract_review
-- contractRevision: 1
-- supersedesContractRevision: 0
-- contractRevisionReason: external_contract_review_1
+- contractRevision: 2
+- supersedesContractRevision: 1
+- contractRevisionReason: execution_blocker_delta_repair
 - repairRound: 0
 - consecutiveNoProgressRounds: 0
 - budgetStatus: not_started
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
 - Milestone start commit: `d430c1937a6deeab3fc358151e24b4699e45f506`
-- Branch: `agent/codex/p6-r1-contract`
+- Branch: `agent/codex/p6-r1-contract-r2`
 
 ## Previous Milestone
 
@@ -33,11 +33,15 @@ Date: 2026-06-23
 
 ## Current Evidence
 
-- P6-R1 contract revision 1 is frozen for external contract review only.
+- P6-R1 contract revision 2 is frozen for delta-only external contract review
+  only.
+- Contract revision 1 is archived at
+  `docs/loop/contracts/P6-R1-contract-v1.md`.
 - Contract revision 0 is archived at
   `docs/loop/contracts/P6-R1-contract-v0.md`.
 - Immutable baseline snapshot is recorded at
   `docs/loop/contracts/P6-R1_BASELINE.json`.
+- Contract review repair did not increment `repairRound`.
 - WP0 is not started.
 - No formal implementation Worker is running for P6-R1.
 - No product runtime, Web UI, Electron UI, test, dependency, package, parity,
@@ -47,6 +51,6 @@ Date: 2026-06-23
 
 ## Next Action
 
-External contract review only. Safe default: do not start WP0 until the
-P6-R1 contract revision 1 review passes and the owner explicitly authorizes
+Delta-only external contract review only. Safe default: do not start WP0 until
+P6-R1 contract revision 2 review passes and the owner explicitly authorizes
 WP0.

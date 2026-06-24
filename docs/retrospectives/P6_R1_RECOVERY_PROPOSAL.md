@@ -1,12 +1,13 @@
 # P6-R1 Recovery Proposal
 
-Status: approved recovery basis; P6-R1 contract revision 1 is frozen for
-external contract review; implementation and WP0 are not started.
+Status: approved recovery basis; P6-R1 contract revision 2 is frozen for
+delta-only external contract review; implementation and WP0 are not started.
 
 ## Correct Freeze Order
 
 1. Owner approved this repaired postmortem and recovery proposal.
-2. P6-R1 contract revision 1 is frozen for external contract review.
+2. P6-R1 contract revision 2 is frozen for delta-only external contract
+   review.
 3. P6-R1 starts with WP0 Recovery Gate Bootstrap only after contract review
    passes and the owner authorizes WP0.
 4. WP0 must pass before WP1 begins.
@@ -83,13 +84,13 @@ separate owner gates.
 
 ## Gate A - Runtime State Correctness
 
-Packages: WP0, WP1.
+Validates completed work packages: WP0, WP1.
 
 Finding IDs: `P6-F001`, `P6-F002`, `P6-F010`, `P6-F012`.
 
 Machine entry gate:
 
-- P6-R1 contract revision 1 passed external contract review.
+- P6-R1 contract revision 2 passed delta-only external contract review.
 - WP0 defines failure-first gate taxonomy.
 - Finding Ledger update format is defined.
 - Final-head binding rule is defined.
@@ -114,7 +115,7 @@ Stop condition:
 
 ## Gate B - Multi-source And Interaction Correctness
 
-Packages: WP2, WP3.
+Validates completed work packages: WP2, WP3.
 
 Finding IDs: `P6-F013`, `P6-F003`, `P6-F005`; supports future closure
 evidence for `P6-F001`, `P6-F002`, and `P6-F007`.
@@ -144,7 +145,7 @@ Stop condition:
 
 ## Gate C - Visual, Motion And App Delivery
 
-Packages: WP4, WP5.
+Validates completed work packages: WP4, WP5.
 
 Finding IDs: `P6-F004`, `P6-F006`, `P6-F007`, `P6-F008`, `P6-F009`,
 `P6-F011`.
