@@ -1,16 +1,24 @@
 # Auto SVGA Loop State
 
-Date: 2026-06-23
+Date: 2026-06-24
 
 ## Current Milestone
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: contract_frozen
-- Next Action: external_contract_review
+- State: wp0_authorized_not_started
+- Next Action: execute_wp0_recovery_gate_bootstrap
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
+- contractReviewOutcome: CONTRACT_PASS
+- contractReviewedHeadCommit: `9b01108c03a5e70e2f67100eeac384810afee4e4`
+- contractReviewRecord: `docs/loop/reviews/P6-R1-contract-external-review-3.md`
+- ownerDecision: AUTHORIZE_WP0
+- authorizedScope: WP0_RECOVERY_GATE_BOOTSTRAP_ONLY
+- wp0Authorized: true
+- wp0Started: false
+- phase2Started: false
 - repairRound: 0
 - consecutiveNoProgressRounds: 0
 - budgetStatus: not_started
@@ -33,8 +41,9 @@ Date: 2026-06-23
 
 ## Current Evidence
 
-- P6-R1 contract revision 3 is frozen for micro-delta external contract review
-  only.
+- P6-R1 contract revision 3 passed micro-delta external contract review at
+  `9b01108c03a5e70e2f67100eeac384810afee4e4`.
+- Product Owner authorized only `WP0_RECOVERY_GATE_BOOTSTRAP_ONLY`.
 - Contract revision 2 is archived at
   `docs/loop/contracts/P6-R1-contract-v2.md`.
 - Contract revision 1 is archived at
@@ -44,7 +53,7 @@ Date: 2026-06-23
 - Immutable baseline snapshot is recorded at
   `docs/loop/contracts/P6-R1_BASELINE.json`.
 - Contract review repair did not increment `repairRound`.
-- WP0 is not started.
+- WP0 is authorized but not started.
 - No formal implementation Worker is running for P6-R1.
 - No product runtime, Web UI, Electron UI, test, dependency, package, parity,
   scenario, motion, App, or packaging implementation has been changed for
@@ -53,6 +62,6 @@ Date: 2026-06-23
 
 ## Next Action
 
-Micro-delta external contract review only. Safe default: do not start WP0 until
-P6-R1 contract revision 3 review passes and the owner explicitly authorizes
-WP0.
+Execute WP0 recovery gate bootstrap only. Do not start WP1, Phase 2, product
+runtime changes, Web/Electron UI changes, tests/tools/dependency changes, or
+packaging implementation until the applicable contract step authorizes them.
