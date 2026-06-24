@@ -4,12 +4,12 @@ Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 Status: frozen
 
-contractRevision: 3
-supersedesContractRevision: 2
-contractRevisionReason: residual_execution_blocker_hotfix
+contractRevision: 2
+supersedesContractRevision: 1
+contractRevisionReason: execution_blocker_delta_repair
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
-Branch: `agent/codex/p6-r1-contract-r3`
+Branch: `agent/codex/p6-r1-contract-r2`
 Previous milestone: `docs/loop/milestones/P6-web-preview-full-parity.md`
 Previous milestone outcome: `NOT_ACCEPTED`
 Previous engineering outcome: `REPAIR_BUDGET_EXHAUSTED`
@@ -60,8 +60,6 @@ motion, and macOS App evidence for the accepted P6 recovery plan.
   `docs/product/P6_WEB_PARITY_CONTRACT.json`
 - frozen baseline snapshot:
   `docs/loop/contracts/P6-R1_BASELINE.json`
-- archived revision 2 contract:
-  `docs/loop/contracts/P6-R1-contract-v2.md`
 - archived revision 1 contract:
   `docs/loop/contracts/P6-R1-contract-v1.md`
 - archived revision 0 contract:
@@ -122,10 +120,10 @@ Allowed:
 - Reviewer product schema.
 - Final-head binding rules.
 - Minimal negative-test contracts.
-- WP1 runtime state repair only after WP0 and the WP0 Integration Checkpoint
-  pass; Gate A validates completed WP0 and WP1.
-- WP2 and WP3 only after Gate A passes; Gate B validates completed WP2 and WP3.
-- WP4 and WP5 only after Gate B passes; Gate C validates completed WP4 and WP5.
+- Runtime state correctness repair after Gate A begins.
+- Multi-source acceptance repair after Gate B begins.
+- Interaction, visual, motion, and macOS App delivery repair only after their
+  dependent Gates allow them.
 
 Prohibited:
 
@@ -188,12 +186,7 @@ Gate.
 13. Final Validation
 14. Reviewer A
 15. Reviewer B
-16. Final Seal
-17. Post-seal Verification
-18. HUMAN_REQUIRED
-19. Product Owner Human Gate
-20. Final Independent Product External Review
-21. Finding Ledger closure and P6-R1 completion
+16. Owner Human Gate
 
 Rules:
 
@@ -222,9 +215,7 @@ co-leads. Product Owner is never the machine Integration Verifier.
 | WP4 - Visual And Motion Review | `P6-F004`, `P6-F006`, `P6-F008` | P6R1 Visual And Motion Lead | P6R1 Evidence Lead | A0 | none |
 | WP5 - macOS App Delivery | `P6-F007`, `P6-F009`, `P6-F011` | P6R1 macOS Delivery Lead | P6R1 Evidence Lead | A0 | none |
 
-Gate C is a machine checkpoint, not an Owner Human Gate. Product Owner review
-is requested only after Final Seal, Post-seal Verification, and
-`HUMAN_REQUIRED` materials are ready.
+Gate C has the only final Human Gate Owner: Product Owner.
 
 ## WP0 - Recovery Gate Bootstrap
 
@@ -343,7 +334,7 @@ Finding IDs:
 
 machineEntryGate:
 
-- P6-R1 contract revision 3 micro-delta external review passed.
+- P6-R1 contract revision 2 external review passed.
 - WP0 is authorized to start.
 - Finding Ledger update format is defined.
 - Machine vs human gate taxonomy is defined.
@@ -477,36 +468,21 @@ Final Validation requires:
 
 After Final Validation passes, the only executable terminal sequence is:
 
-1. Final Machine Validation.
-2. Reviewer A independent technical review.
-3. Reviewer B independent product evidence review.
-4. Final Seal creates the owner-visible review ZIP and App ZIP when in scope.
-5. Post-seal Verification checks the sealed artifacts, manifest, privacy, and
+1. Reviewer A independent technical review.
+2. Reviewer B independent product evidence review.
+3. Final seal creates the owner-visible review ZIP and App ZIP when in scope.
+4. Post-seal verification checks the sealed artifacts, manifest, privacy, and
    final-head binding.
-6. Terminal packet is emitted as `HUMAN_REQUIRED`.
-7. Product Owner Human Gate is requested.
-8. Final Independent Product External Review runs on the same sealed head after
-   Product Owner acceptance.
-9. Finding Ledger closure writes `P6-F001` through `P6-F013` as
-   `externally_confirmed_closed`, and P6-R1 completes.
+5. Terminal packet is emitted as `HUMAN_REQUIRED`.
+6. The single Product Owner Human Gate is requested.
 
 No step may require evidence from a later step.
-
-Gate C is a machine checkpoint, not an Owner Human Gate. `HUMAN_REQUIRED` means
-only that Owner materials are ready; it does not mean P6-R1 is complete.
-Product Owner rejection returns to the earliest affected Gate, invalidates all
-downstream results, reruns downstream work, and does not increment
-`repairRound`. Product Owner acceptance still requires Final Independent
-Product External Review on the same sealed head. External review PASS closes the
-Finding Ledger and completes P6-R1. External review result `REPAIR_REQUIRED`
-increments `repairRound`, returns to the earliest affected Gate, and reruns all
-downstream results.
 
 ## Completion Gates
 
 P6-R1 is not complete until all are true:
 
-- contractRevision 3 passed micro-delta external contract review.
+- contractRevision 2 passed delta-only external contract review.
 - WP0, WP1, WP2, WP3, WP4, and WP5 completed in order.
 - Gate A, Gate B, and Gate C all passed.
 - `P6-F001` through `P6-F013` all reached
@@ -521,11 +497,7 @@ P6-R1 is not complete until all are true:
 - Post-seal final-head binding, privacy, and manifest checks pass.
 - Owner Review ZIP and App ZIP actually exist when App ZIP is in scope.
 - Phase 2 is not started.
-- Terminal packet reached `HUMAN_REQUIRED` with Owner materials ready.
-- Product Owner Human Gate accepted the same sealed head.
-- Final Independent Product External Review passed on the same sealed head.
-- `P6-F001` through `P6-F013` are written as
-  `externally_confirmed_closed`.
+- Final packet is `HUMAN_REQUIRED`, waiting for the single Product Owner Gate.
 
 ## Finding Resolution Stages
 
@@ -551,8 +523,7 @@ Rules:
 3. Internal Reviewers must not mark findings `closed`.
 4. Final P6-R1 packet must distinguish machine resolved, pending external
    confirmation, and externally closed.
-5. Product Owner acceptance on the same sealed head and Final Independent
-   Product External Review PASS must both happen before
+5. Owner final acceptance and external review must both pass before
    `externally_confirmed_closed` is written.
 6. WP0 must define and validate these fields in the Finding Ledger.
 
@@ -570,15 +541,11 @@ P6-R1 uses the smallest repair state model needed to execute:
    - does not increment `repairRound`;
    - must not enter Owner Human Gate.
 3. Product Owner Human Gate rejection:
-   - returns to the earliest affected Gate with the rejection reason;
-   - invalidates all downstream results;
-   - reruns downstream work and checks;
+   - returns to the affected Gate with the rejection reason;
    - does not increment `repairRound`;
    - cannot start Phase 2.
 4. Final independent product external review result `REPAIR_REQUIRED`:
    - increments `repairRound`;
-   - returns to the earliest affected Gate;
-   - reruns downstream work and checks;
    - may create `repair-1`, `repair-2`, and so on;
    - remains limited by `maxRepairRounds=4`.
 
@@ -623,9 +590,7 @@ Machine must not claim:
 - motion taste;
 - overall product acceptance.
 
-Product Owner judges only after Gate C, Final Machine Validation, Reviewer A,
-Reviewer B, Final Seal, Post-seal Verification, and `HUMAN_REQUIRED` materials
-are ready:
+Product Owner judges only, once at Gate C final Owner Human Gate:
 
 - Web/Desktop overall visual and use experience;
 - motion feel;
@@ -641,5 +606,5 @@ Current state: `contract_frozen`.
 Next action: `external_contract_review`.
 
 WP0 is not started. No formal implementation Worker is running. Phase 2 is not
-started. P6-R1 implementation may start only after contract revision 3 passes
-micro-delta external contract review and the owner explicitly authorizes WP0.
+started. P6-R1 implementation may start only after contract revision 2 passes
+delta-only external contract review and the owner authorizes WP0.

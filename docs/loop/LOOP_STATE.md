@@ -8,15 +8,15 @@ Date: 2026-06-23
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 - State: contract_frozen
 - Next Action: external_contract_review
-- contractRevision: 2
-- supersedesContractRevision: 1
-- contractRevisionReason: execution_blocker_delta_repair
+- contractRevision: 3
+- supersedesContractRevision: 2
+- contractRevisionReason: residual_execution_blocker_hotfix
 - repairRound: 0
 - consecutiveNoProgressRounds: 0
 - budgetStatus: not_started
 - Contract: `docs/loop/CURRENT_MILESTONE.md`
 - Milestone start commit: `d430c1937a6deeab3fc358151e24b4699e45f506`
-- Branch: `agent/codex/p6-r1-contract-r2`
+- Branch: `agent/codex/p6-r1-contract-r3`
 
 ## Previous Milestone
 
@@ -33,8 +33,10 @@ Date: 2026-06-23
 
 ## Current Evidence
 
-- P6-R1 contract revision 2 is frozen for delta-only external contract review
+- P6-R1 contract revision 3 is frozen for micro-delta external contract review
   only.
+- Contract revision 2 is archived at
+  `docs/loop/contracts/P6-R1-contract-v2.md`.
 - Contract revision 1 is archived at
   `docs/loop/contracts/P6-R1-contract-v1.md`.
 - Contract revision 0 is archived at
@@ -51,6 +53,6 @@ Date: 2026-06-23
 
 ## Next Action
 
-Delta-only external contract review only. Safe default: do not start WP0 until
-P6-R1 contract revision 2 review passes and the owner explicitly authorizes
+Micro-delta external contract review only. Safe default: do not start WP0 until
+P6-R1 contract revision 3 review passes and the owner explicitly authorizes
 WP0.

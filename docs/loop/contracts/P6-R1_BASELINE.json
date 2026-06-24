@@ -144,5 +144,15 @@
     "states": 22,
     "motions": 9
   },
-  "snapshotSha256": "a96ce9e215af67a042431f1f5e46a970ad5806b1a4c44efbf135cae053b6b9eb"
+  "snapshotSha256": "c2c3b2e7f82ab88b7aafe604b83b24591b1474e78614f0b7326ff6c3ca4edf8c",
+  "snapshotSha256Algorithm": {
+    "name": "top_level_snapshotSha256_omitted_recursive_key_sorted_compact_json_sha256",
+    "version": 1,
+    "omittedTopLevelField": "snapshotSha256",
+    "objectKeyOrder": "recursive_lexicographic",
+    "arrayOrder": "preserve",
+    "encoding": "utf8",
+    "jsonEncoding": "compact_no_trailing_newline",
+    "digest": "sha256_lowercase_hex"
+  }
 }

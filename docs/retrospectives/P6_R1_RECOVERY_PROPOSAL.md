@@ -1,12 +1,12 @@
 # P6-R1 Recovery Proposal
 
-Status: approved recovery basis; P6-R1 contract revision 2 is frozen for
-delta-only external contract review; implementation and WP0 are not started.
+Status: approved recovery basis; P6-R1 contract revision 3 is frozen for
+micro-delta external contract review; implementation and WP0 are not started.
 
 ## Correct Freeze Order
 
 1. Owner approved this repaired postmortem and recovery proposal.
-2. P6-R1 contract revision 2 is frozen for delta-only external contract
+2. P6-R1 contract revision 3 is frozen for micro-delta external contract
    review.
 3. P6-R1 starts with WP0 Recovery Gate Bootstrap only after contract review
    passes and the owner authorizes WP0.
@@ -38,7 +38,8 @@ Cons:
 
 Use smaller vertical work packages with one lead implementation owner, a
 separate evidence owner, a defined machine/code integration verifier, and one
-final Product Owner human gate after all machine gates pass.
+final Product Owner human gate after Final Seal, Post-seal Verification, and
+`HUMAN_REQUIRED` materials are ready.
 
 Pros:
 
@@ -79,8 +80,8 @@ layer changes move through `requestedIntegrationChange` and A0 sequencing.
 Finding primary closure is unique. Other packages may list a finding only under
 `supportingFindingIds`; they must not become the primary closure owner.
 
-Gate C has the only final Product Owner human gate. WP4 and WP5 do not create
-separate owner gates.
+Gate C is a machine checkpoint, not the final Product Owner human gate. WP4 and
+WP5 do not create separate owner gates.
 
 ## Gate A - Runtime State Correctness
 
@@ -90,7 +91,7 @@ Finding IDs: `P6-F001`, `P6-F002`, `P6-F010`, `P6-F012`.
 
 Machine entry gate:
 
-- P6-R1 contract revision 2 passed delta-only external contract review.
+- P6-R1 contract revision 3 passed micro-delta external contract review.
 - WP0 defines failure-first gate taxonomy.
 - Finding Ledger update format is defined.
 - Final-head binding rule is defined.
@@ -169,7 +170,8 @@ Machine exit gate:
 Integration checkpoint:
 
 - A0 verifies package, privacy, head binding, and App proof on the integration
-  head; owner performs final product gate only after machine gates pass.
+  head; owner performs final product gate only after Final Seal, Post-seal
+  Verification, and `HUMAN_REQUIRED` materials are ready.
 
 Stop condition:
 
@@ -190,8 +192,9 @@ review confirms the issue is not reproduced.
 
 ## Process Rules For The P6-R1 Contract
 
-These are recommendations for the future contract. Do not persist them to
-`AGENTS.md` until the owner approves this repaired postmortem.
+These are approved current process rules for P6-R1. If this proposal conflicts
+with `docs/loop/CURRENT_MILESTONE.md`, `docs/loop/CURRENT_MILESTONE.md` is the
+highest authority.
 
 1. Same finding appears two rounds: mandatory root-cause review.
 2. Same finding appears three rounds: pause implementation and run
