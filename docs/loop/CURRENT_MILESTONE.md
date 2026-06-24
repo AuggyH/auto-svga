@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: wp0_authorized_not_started
+Status: wp0_complete_pending_wp1_owner_confirmation
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -13,7 +13,7 @@ contractReviewRecord: `docs/loop/reviews/P6-R1-contract-external-review-3.md`
 ownerDecision: AUTHORIZE_WP0
 authorizedScope: WP0_RECOVERY_GATE_BOOTSTRAP_ONLY
 wp0Authorized: true
-executionStatus: wp0_authorized_not_started
+executionStatus: wp0_complete_pending_wp1_owner_confirmation
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -26,7 +26,7 @@ maxConsecutiveNoProgressRounds: 1
 
 repairRound: 0
 phase2Started: false
-wp0Started: false
+wp0Started: true
 
 ## Objective
 
@@ -643,16 +643,16 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `wp0_authorized_not_started`.
+Current state: `wp0_complete_pending_wp1_owner_confirmation`.
 
-Next action: `execute_wp0_recovery_gate_bootstrap`.
+Next action: `owner_confirm_wp1`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`, and the Product Owner authorized
 only `WP0_RECOVERY_GATE_BOOTSTRAP_ONLY`.
 
-WP0 is authorized but not started. No formal implementation Worker is running.
-Phase 2 is not started. WP0 must remain limited to recovery gate bootstrap
-work; WP1, Phase 2, product runtime, Web/Electron UI, tests, tools,
-dependencies, and packaging implementation remain prohibited until the
-applicable contract step authorizes them.
+WP0 recovery gate bootstrap is complete pending Product Owner confirmation for
+WP1. No formal implementation Worker is running. Phase 2 is not started. WP1,
+Phase 2, product runtime, Web/Electron UI, tests, tools, dependencies, and
+packaging implementation remain prohibited until the applicable contract step
+authorizes them.

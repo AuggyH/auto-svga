@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "Postmortem only. No P6-R1 implementation started.",
+  "scope": "P6-R1 WP0 Recovery Gate Bootstrap rules are initialized. Product runtime implementation has not started.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -82,7 +82,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F002",
@@ -124,7 +128,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F003",
@@ -167,7 +175,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F004",
@@ -207,7 +219,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F005",
@@ -246,7 +262,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F006",
@@ -291,7 +311,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F007",
@@ -334,7 +358,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F008",
@@ -374,7 +402,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F009",
@@ -417,7 +449,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F010",
@@ -456,7 +492,13 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "machine_resolved_pending_integration",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
+        "docs/loop/LOOP_HISTORY.jsonl"
+      ]
     },
     {
       "findingId": "P6-F011",
@@ -502,7 +544,11 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+      ]
     },
     {
       "findingId": "P6-F012",
@@ -545,7 +591,13 @@
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
-      "supportingFindingIds": []
+      "supportingFindingIds": [],
+      "resolutionStage": "machine_resolved_pending_integration",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
+        "docs/loop/LOOP_HISTORY.jsonl"
+      ]
     },
     {
       "findingId": "P6-F013",
@@ -590,8 +642,13 @@
         "latest artifact scan/select/load evidence",
         "synchronized playback and cleanup evidence",
         "independent external review confirmation"
+      ],
+      "resolutionStage": "unresolved",
+      "evidenceRefs": [
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
       ]
     }
   ],
-  "findingCount": 13
+  "findingCount": 13,
+  "resolutionStagePolicyRef": "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json"
 }
