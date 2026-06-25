@@ -399,6 +399,7 @@ function validateArtifactScenario(value) {
     "smoke-loaded",
     "desktop-1280x800",
     "desktop-1440x900",
+    "desktop-responsive-export-review-loaded-at-900-x-720",
     "p3-original-loaded",
     "p3-resource-list",
     "p3-replacement-selected",
@@ -1366,6 +1367,7 @@ function stateForScenario(scenario) {
     "desktop-synchronized-playback-toggled-by-space": "synchronized-playback-toggled-by-space",
     "desktop-local-compare-empty": "local-compare-empty",
     "desktop-local-compare-loaded": "local-compare-loaded",
+    "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open"
   }[scenario];
@@ -1464,20 +1466,21 @@ async function captureProductArtifact(window, scenario) {
   const originalSize = window.getSize();
   if (scenario === "desktop-1280x800") window.setSize(1280, 800);
   if (scenario === "desktop-1440x900") window.setSize(1440, 900);
-  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
+  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setSize(900, 720);
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
   const image = await window.webContents.capturePage();
   const png = image.toPNG();
   const pngHash = createHash("sha256").update(png).digest("hex");
   const capturedSize = window.getSize();
-  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
-    window.setSize(originalSize[0], originalSize[1]);
-  }
   const fileName = artifactFileNameForScenario(scenario);
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
   await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName);
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720") {
+    window.setSize(originalSize[0], originalSize[1]);
+  }
   const fixture = scenarioFixtureMetadata(scenario);
   addProductArtifactRecord({
     scenario,

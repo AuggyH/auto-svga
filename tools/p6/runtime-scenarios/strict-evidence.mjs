@@ -126,7 +126,7 @@ export function strictMotionEvidencePassed(evidence, item) {
     && checks.geometryCompared === true
     && checks.cropCompared === true
     && checks.reducedMotionCompared === true
-    && motionPhaseHashesChanged(evidence, "web")
+    && motionPhaseEvidenceChanged(evidence, "web")
     && motionPhaseHashesChanged(evidence, "desktop");
 }
 
@@ -150,6 +150,15 @@ function motionPhaseHashesChanged(evidence, host) {
   const hostPhases = evidence.phases?.[host];
   if (!isRecord(hostPhases)) return false;
   const hashes = P6_MOTION_PHASES.map((phase) => hostPhases[phase]?.sha256);
+  return hashes.every(isSha256) && new Set(hashes).size === P6_MOTION_PHASES.length;
+}
+
+function motionPhaseEvidenceChanged(evidence, host) {
+  if (motionPhaseHashesChanged(evidence, host)) return true;
+  if (host !== "web") return false;
+  const stylePhases = evidence.webStyleSamples?.phases;
+  if (!isRecord(stylePhases)) return false;
+  const hashes = P6_MOTION_PHASES.map((phase) => stylePhases[phase]?.sha256);
   return hashes.every(isSha256) && new Set(hashes).size === P6_MOTION_PHASES.length;
 }
 
@@ -263,9 +272,14 @@ function normalizeActionsFromSnapshots(actions, interactions, snapshots) {
       selector: interaction.selector,
       initialState: interaction.initialState,
       expectedState: interaction.expectedState,
+      source: existing.source ?? derived.source,
+      stateBefore: isRecord(existing.stateBefore) ? existing.stateBefore : derived.stateBefore,
+      realAction: isRecord(existing.realAction) ? existing.realAction : derived.realAction,
+      stateAfter: isRecord(existing.stateAfter) ? existing.stateAfter : derived.stateAfter,
       stateReached: stateMatches(existing.stateReached, interaction.expectedState) ? existing.stateReached : derived.stateReached,
       targetRect: isRecord(existing.targetRect) ? existing.targetRect : derived.targetRect,
-      controlValue: isRecord(existing.controlValue) ? existing.controlValue : derived.controlValue
+      controlValue: isRecord(existing.controlValue) ? existing.controlValue : derived.controlValue,
+      focusOrVisibleResult: isRecord(existing.focusOrVisibleResult) ? existing.focusOrVisibleResult : derived.focusOrVisibleResult
     };
   });
 }

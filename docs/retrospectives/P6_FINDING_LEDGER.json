@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "P6-R1 WP0 Recovery Gate Bootstrap rules are initialized. Product runtime implementation has not started.",
+  "scope": "P6-R1 has completed machine validation through HUMAN_REQUIRED. Findings remain open pending Product Owner Human Gate and final independent product external review.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -80,18 +80,20 @@
         "external review round that does not reproduce the issue"
       ],
       "currentOpenSubIssues": [
-        "Loading and Empty remain not obviously distinguishable to the user.",
-        "Final Validation strict state parity failed for required state evidence after the desktop smoke blocker was repaired."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
         "docs/loop/LOOP_HISTORY.jsonl",
-        ".artifacts/product/P6/p6-parity-report.json"
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -132,18 +134,20 @@
         "external review round that does not reproduce stale state"
       ],
       "currentOpenSubIssues": [
-        "Invalid still keeps old canvas, player, or stale loaded state.",
-        "Final Validation strict state parity failed for required invalid/recovery-related state evidence after the desktop smoke blocker was repaired."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
         "docs/loop/LOOP_HISTORY.jsonl",
-        ".artifacts/product/P6/p6-parity-report.json"
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -185,18 +189,20 @@
         "external reviewer reproduces no artifact-existence false pass"
       ],
       "currentOpenSubIssues": [
-        "Final independent external review has not yet confirmed the artifact-existence false-pass risk is closed.",
-        "Final Validation parity report still contains required interaction/state/motion failures, so artifact-existence false-pass risk remains reopened."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
         "docs/loop/LOOP_HISTORY.jsonl",
-        ".artifacts/product/P6/p6-parity-report.json"
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -235,18 +241,20 @@
         "external review confirmation"
       ],
       "currentOpenSubIssues": [
-        "WP4 machine evidence now rejects inconsistent viewport/context and comparedPixels=0, pending Gate C and final independent external review.",
-        "Final Validation strict state context parity failed; same-state/context visual evidence is not yet machine PASS."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
         "docs/loop/LOOP_HISTORY.jsonl",
-        ".artifacts/product/P6/p6-parity-report.json"
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -284,18 +292,20 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Final independent external review has not yet confirmed the real before/action/after interaction trace risk is closed.",
-        "Final Validation strict interaction parity failed because Web interaction trace entries lack required before/action/after/focus-result evidence."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
         "docs/loop/LOOP_HISTORY.jsonl",
-        ".artifacts/product/P6/p6-parity-report.json"
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -339,18 +349,20 @@
         "owner visual gate"
       ],
       "currentOpenSubIssues": [
-        "WP4 machine evidence now rejects identical Web/Desktop start, mid, and end hashes, pending Gate C and final independent external review.",
-        "Final Validation strict motion parity failed because Web start/mid/end motion frames are still generic/identical."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
         "docs/loop/LOOP_HISTORY.jsonl",
-        ".artifacts/product/P6/p6-parity-report.json"
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -392,7 +404,7 @@
         "manual double-click acceptance"
       ],
       "currentOpenSubIssues": [
-        "Normal App proof is now protected against proof-only and smoke-only launch paths, pending final seal and independent external review."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
@@ -402,7 +414,11 @@
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
         "docs/product/p6/worker-evidence/P6R1-GateC-independent-reviewers.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -441,7 +457,7 @@
         "owner review"
       ],
       "currentOpenSubIssues": [
-        "WP4 reviewer request now rejects generic PASS without required product classification verdicts, pending Gate C and final independent external review."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
@@ -450,7 +466,11 @@
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -492,7 +512,7 @@
         "no stale handoff roots"
       ],
       "currentOpenSubIssues": [
-        "Final-head package and owner-visible handoff binding checks are in place, pending final seal, post-seal verification, and independent external review."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
@@ -502,7 +522,11 @@
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
         "docs/product/p6/worker-evidence/P6R1-GateC-independent-reviewers.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -538,21 +562,22 @@
         "owner-visible wording check"
       ],
       "currentOpenSubIssues": [
-        "Machine PASS is still not owner acceptance; technical review remains required.",
-        "Final Validation failure was incorrectly recorded as terminal_human_required before correction; required machine gate failure must keep Product Owner Human Gate unreachable.",
-        "Final Validation remains failed after the desktop smoke repair; HUMAN_REQUIRED and Owner Human Gate remain unreachable."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
         "docs/loop/LOOP_HISTORY.jsonl",
         "docs/loop/reviews/P6-R1-wp0-review-pass.md",
         "review/P6-R1-FinalValidationBlocked-9e5f172/REVIEW_PACKET.md",
-        ".artifacts/product/P6/p6-parity-report.json"
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -597,7 +622,7 @@
         "external review does not find path or visibility issue"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible handoff and privacy checks are now enforced for Review ZIP, App ZIP, manifest, and visible entries, pending final seal and independent external review."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
@@ -607,7 +632,11 @@
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
         "docs/product/p6/worker-evidence/P6R1-GateC-independent-reviewers.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -647,21 +676,22 @@
         "owner-approved recovery plan"
       ],
       "currentOpenSubIssues": [
-        "Technical-layer worker completion still did not close the end-to-end product flow.",
-        "Final Validation found the end-to-end desktop smoke still failing after WP1-WP5 integration, so the vertical recovery loop is reopened.",
-        "Final Validation remains failed across strict state/interaction/motion parity, so the end-to-end flow is not closed."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
         "docs/loop/LOOP_HISTORY.jsonl",
         "docs/loop/reviews/P6-R1-wp0-review-pass.md",
         "review/P6-R1-FinalValidationBlocked-9e5f172/REVIEW_PACKET.md",
-        ".artifacts/product/P6/p6-parity-report.json"
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     },
     {
@@ -697,9 +727,7 @@
       "responsibleLayer": "multi-source vertical flow",
       "currentStatus": "open",
       "currentOpenSubIssues": [
-        "Second SVGA load and playback proof is incomplete.",
-        "Reference media load and playback proof is incomplete.",
-        "Latest artifact scan, select, load, synchronization, and cleanup are not proven as one flow."
+        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
       ],
       "primaryRecoveryWorkPackage": "WP2",
       "supportingFindingIds": [],
@@ -715,7 +743,11 @@
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP2-multi-source-acceptance.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json",
+        ".artifacts/product/P6/P6_EVIDENCE_INDEX.md",
+        ".artifacts/product/P6/internal-trial-manifest.json",
+        ".artifacts/product/P6/packaged-app-runtime-proof.json"
       ]
     }
   ],

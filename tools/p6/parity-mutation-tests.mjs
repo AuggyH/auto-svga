@@ -13,7 +13,11 @@ import {
   validateP6SourceDiffPrivacy,
   validateP6WorkerRegistryFreshness
 } from "./parity-runner.mjs";
-import { buildInteractionParityReport } from "./runtime-scenarios/strict-evidence.mjs";
+import {
+  buildInteractionParityReport,
+  generateP6StrictRuntimeEvidence,
+  strictStateComparisonPassed
+} from "./runtime-scenarios/strict-evidence.mjs";
 import { generateStateComparison } from "./runtime-scenarios/state-evidence.mjs";
 import { validateP6ParityReportV1 } from "../../dist/workbench/p6-parity-report-contract.js";
 
@@ -45,6 +49,97 @@ test("state evidence helper writes Web/Desktop/comparison triple and JSON", asyn
     const json = JSON.parse(await readFile(path.join(root, "state-comparisons/local-empty-comparison.json"), "utf8"));
     assert.equal(json.checks.notSameSourceHash, true);
     assert.equal(json.checks.geometryCompared, false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("strict Web interaction evidence normalizes legacy baseline trace into required before/action/after/result fields", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "p6-strict-interaction-"));
+  try {
+    const fixtureSha256 = "a".repeat(64);
+    const contract = {
+      baselineCommit: "c".repeat(40),
+      interactions: [{
+        id: "open-settings-modal",
+        trigger: "click",
+        selector: "#settingsButton",
+        initialState: "logs-open",
+        expectedState: "settings-open"
+      }]
+    };
+    await mkdir(path.join(root, "web-baseline"), { recursive: true });
+    await writeFile(path.join(root, "web-baseline/dom-manifest.json"), JSON.stringify({
+      snapshots: [
+        strictWebSnapshot("logs-open", "exportReview", "logs", "none"),
+        strictWebSnapshot("settings-open", "exportReview", "logs", "settings")
+      ]
+    }, null, 2));
+    await writeFile(path.join(root, "web-baseline/interaction-trace.json"), JSON.stringify({
+      schemaVersion: 1,
+      actionTrace: [{
+        id: "open-settings-modal",
+        kind: "click",
+        selector: "#settingsButton",
+        initialState: "logs-open",
+        expectedState: "settings-open",
+        stateReached: "settings-open",
+        source: "web-baseline-input"
+      }]
+    }, null, 2));
+    await writeFile(path.join(root, "web-baseline/artifact-index.json"), JSON.stringify({
+      fixture: { sha256: fixtureSha256, displayName: "avatar_frame_basic.svga", sizeBytes: 10 }
+    }, null, 2));
+    await writeFile(path.join(root, "desktop-interaction-trace.source.json"), JSON.stringify(strictTrace("desktop", fixtureSha256), null, 2));
+
+    const result = await generateP6StrictRuntimeEvidence({ p6Root: root, contract });
+
+    assert.equal(result.report.passed, true, result.report.failures.join("; "));
+    const webAction = result.webTrace.actionTrace[0];
+    assert.equal(webAction.stateBefore.stateId, "logs-open");
+    assert.equal(webAction.realAction.inputKind, "click");
+    assert.equal(webAction.stateAfter.stateId, "settings-open");
+    assert.equal(webAction.focusOrVisibleResult.visibleResultPassed, true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("strict state comparison accepts canonicalized Web/Desktop runtime context with equivalent visible state", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "p6-state-context-"));
+  try {
+    await writePng(path.join(root, "web-baseline/screenshot-local-empty-1440x900.png"), [255, 0, 0, 255]);
+    await writePng(path.join(root, "desktop-empty.png"), [250, 0, 0, 255]);
+    await writeFile(path.join(root, "web-baseline/dom-manifest.json"), JSON.stringify({
+      snapshots: [strictWebSnapshot("local-empty", "本地预览", "info", "none")]
+    }, null, 2));
+    await writeFile(path.join(root, "web-baseline/computed-styles-manifest.json"), JSON.stringify({
+      selectors: [{ selector: ".shell", present: true }]
+    }, null, 2));
+    await writeFile(path.join(root, "desktop-state-render-proof.json"), JSON.stringify({
+      states: {
+        empty: {
+          state: "empty",
+          passed: true,
+          viewportCss: { width: 1440, height: 900 },
+          devicePixelRatio: 1,
+          stageRect: { x: 0, y: 0, width: 100, height: 100 },
+          overlayRect: { x: 10, y: 10, width: 40, height: 40 },
+          overlayDisplay: "flex",
+          canvasZIndex: "auto",
+          productState: {
+            mode: "localPreview",
+            activeSidePanel: "info",
+            activeModal: null
+          }
+        }
+      }
+    }, null, 2));
+
+    const result = await generateStateComparison(root, "local-empty");
+
+    assert.equal(result.passed, true, result.failures.join("; "));
+    assert.equal(strictStateComparisonPassed(result, "local-empty"), true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -763,6 +858,9 @@ function strictTrace(host, fixtureSha256) {
       panel: "logs",
       modal: "settings",
       controls: {
+        modeDropdownTrigger: { visible: true, disabled: false, checked: false },
+        infoPanelButton: { visible: true, disabled: false, checked: false },
+        logsButton: { visible: true, disabled: false, checked: false },
         settingsButton: { visible: true, disabled: false, checked: false }
       }
     },
@@ -822,6 +920,33 @@ function snapshot(stateId, regionIds, controlIds) {
       id,
       visible: true,
       disabled: false
+    }))
+  };
+}
+
+function strictWebSnapshot(stateId, mode, panel, modal) {
+  return {
+    stateId,
+    viewport: { width: 1440, height: 900 },
+    devicePixelRatio: 1,
+    playbackTimeMs: 1200,
+    mode,
+    panel,
+    modal,
+    bodyTextSample: `${stateId} visible`,
+    regions: ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"].map((id) => ({
+      id,
+      selector: id === "shell" ? ".shell" : `#${id}`,
+      present: true,
+      visible: true,
+      rect: { x: 10, y: 10, width: 100, height: 100 }
+    })),
+    controls: ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"].map((id, index) => ({
+      id,
+      visible: true,
+      disabled: false,
+      checked: false,
+      rect: { x: 10 + index * 40, y: 10, width: 32, height: 32 }
     }))
   };
 }

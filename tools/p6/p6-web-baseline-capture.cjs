@@ -14,6 +14,7 @@ if (!url || !fixtureUrl || !outRoot || !contractPath) {
 }
 
 const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+const motionStyleSamples = {};
 const requestAudit = {
   schemaVersion: 1,
   mode: "p6-web-baseline",
@@ -45,15 +46,164 @@ async function capture(window, fileName) {
   writeFileSync(path.join(outRoot, fileName), png);
 }
 
-async function captureMotionFrames(window) {
-  for (const motion of contract.motions ?? []) {
-    await delay(80);
-    await capture(window, `web-motion-${motion.id}-start.png`);
-    await delay(220);
-    await capture(window, `web-motion-${motion.id}-mid.png`);
-    await delay(220);
-    await capture(window, `web-motion-${motion.id}-end.png`);
+async function execute(window, source) {
+  return window.webContents.executeJavaScript(`(() => { ${source} })()`);
+}
+
+async function collectMotionStyle(window, motionId, phase) {
+  const sample = await execute(window, `
+    const selectorMap = {
+      emptyIconFloat: [".uploadMockIcon"],
+      cardEnter: ["#svgaPanelB", ".previewCard"],
+      fitMenuIn: ["#localFitMenu"],
+      dropdownIn: ["#modeDropdownMenu"],
+      sidePanelEnter: ["#infoPanel"],
+      tabIn: ["#tab-overview", "#tab-assets"],
+      drawerIn: ["#logsPanel"],
+      modalIn: ["#settingsModal", "#settingsModal .settingsModal"],
+      overlayIn: ["#settingsModal", "#settingsModal .settingsModal"]
+    };
+    const selectors = selectorMap[${JSON.stringify(motionId)}] ?? [];
+    return {
+      motionId: ${JSON.stringify(motionId)},
+      phase: ${JSON.stringify(phase)},
+      selectors: selectors.map((selector) => {
+        const node = document.querySelector(selector);
+        const rect = node?.getBoundingClientRect();
+        const style = node ? getComputedStyle(node) : null;
+        return {
+          selector,
+          present: Boolean(node),
+          hidden: Boolean(node?.hidden),
+          opacity: style?.opacity ?? null,
+          transform: style?.transform ?? null,
+          transitionDuration: style?.transitionDuration ?? null,
+          transitionProperty: style?.transitionProperty ?? null,
+          animationName: style?.animationName ?? null,
+          rect: rect ? {
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          } : null
+        };
+      })
+    };
+  `);
+  motionStyleSamples[motionId] ??= {};
+  motionStyleSamples[motionId][phase] = sample;
+}
+
+async function closeTransientUi(window) {
+  await execute(window, `
+    (() => {
+      document.querySelector("#assetPreviewClose")?.click();
+      document.querySelector("#settingsCloseButton")?.click();
+      const menu = document.querySelector("#modeDropdownMenu");
+      if (menu && !menu.hidden) document.querySelector("#modeDropdownTrigger")?.click();
+      return true;
+    })()
+  `);
+  await delay(240);
+}
+
+async function ensureLocalPreview(window) {
+  await setMode(window, "localPreview");
+  await closeTransientUi(window);
+}
+
+async function ensureExportReview(window) {
+  await setMode(window, "exportReview");
+  await closeTransientUi(window);
+}
+
+async function captureMotionTriplet(window, motionId, setup, timing = {}) {
+  const prepareDelayMs = timing.prepareDelayMs ?? 40;
+  const midDelayMs = timing.midDelayMs ?? 70;
+  const endDelayMs = timing.endDelayMs ?? 300;
+  console.log(`P6_WEB_BASELINE_PHASE motion-${motionId}`);
+  try {
+    await setup?.("prepare");
+  } catch (error) {
+    throw new Error(`motion prepare failed for ${motionId}: ${error instanceof Error ? error.message : String(error)}`);
   }
+  await delay(prepareDelayMs);
+  await collectMotionStyle(window, motionId, "start");
+  await capture(window, `web-motion-${motionId}-start.png`);
+  try {
+    await setup?.("trigger");
+  } catch (error) {
+    throw new Error(`motion trigger failed for ${motionId}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (midDelayMs > 0) await delay(midDelayMs);
+  await collectMotionStyle(window, motionId, "mid");
+  await capture(window, `web-motion-${motionId}-mid.png`);
+  await delay(endDelayMs);
+  await collectMotionStyle(window, motionId, "end");
+  await capture(window, `web-motion-${motionId}-end.png`);
+}
+
+async function captureMotionFrames(window) {
+  await captureMotionTriplet(window, "cardEnter", async (phase) => {
+    await ensureLocalPreview(window);
+    await execute(window, `
+      const toggle = document.querySelector("#compareToggle");
+      if (${JSON.stringify(phase)} === "prepare" && toggle?.checked) toggle.click();
+      if (${JSON.stringify(phase)} === "trigger" && toggle && !toggle.checked) toggle.click();
+      true;
+    `);
+  });
+  await captureMotionTriplet(window, "fitMenuIn", async (phase) => {
+    await closeTransientUi(window);
+    if (phase === "trigger") await execute(window, `document.querySelector("#localFitButton")?.click(); true;`);
+  });
+  await captureMotionTriplet(window, "dropdownIn", async (phase) => {
+    await closeTransientUi(window);
+    if (phase === "trigger") await execute(window, `document.querySelector("#modeDropdownTrigger")?.click(); true;`);
+  });
+  await captureMotionTriplet(window, "sidePanelEnter", async (phase) => {
+    await ensureExportReview(window);
+    await execute(window, `
+      const button = document.querySelector("#infoPanelButton");
+      if (button?.getAttribute("aria-pressed") === "true") button.click();
+      if (${JSON.stringify(phase)} === "trigger") button?.click();
+      true;
+    `);
+  });
+  await captureMotionTriplet(window, "tabIn", async (phase) => {
+    await execute(window, `
+      document.querySelector("#infoPanelButton")?.click();
+      document.querySelector(".tabButton[data-tab='assets']")?.click();
+      if (${JSON.stringify(phase)} === "trigger") {
+        document.querySelector(".tabButton[data-tab='overview']")?.click();
+      }
+      true;
+    `);
+  });
+  await captureMotionTriplet(window, "drawerIn", async (phase) => {
+    await closeTransientUi(window);
+    await execute(window, `
+      const button = document.querySelector("#logsButton");
+      if (button?.getAttribute("aria-pressed") === "true") button.click();
+      if (${JSON.stringify(phase)} === "trigger") button?.click();
+      true;
+    `);
+  });
+  await captureMotionTriplet(window, "modalIn", async (phase) => {
+    await closeTransientUi(window);
+    if (phase === "trigger") await execute(window, `
+      document.querySelector("#settingsButton")?.click();
+      true;
+    `);
+  }, { midDelayMs: 48, endDelayMs: 260 });
+  await captureMotionTriplet(window, "overlayIn", async (phase) => {
+    await closeTransientUi(window);
+    if (phase === "trigger") await execute(window, `
+      document.querySelector("#settingsButton")?.click();
+      true;
+    `);
+  }, { midDelayMs: 48, endDelayMs: 260 });
+  await closeTransientUi(window);
 }
 
 async function collectSnapshot(window, stateId) {
@@ -113,10 +263,17 @@ async function collectSnapshot(window, stateId) {
           };
         });
       const activeMode = document.querySelector("#modeDropdownTrigger")?.textContent?.replace(/\\s+/g, " ").trim() ?? "unknown";
-      const panel = document.querySelector("#infoPanel:not([hidden])") ? "info"
-        : document.querySelector("#logsPanel:not([hidden])") ? "logs"
+      const infoPanel = document.querySelector("#infoPanel");
+      const logsPanel = document.querySelector("#logsPanel");
+      const settingsModal = document.querySelector("#settingsModal");
+      const assetPreviewModal = document.querySelector("#assetPreviewModal");
+      const panel = isVisible(infoPanel) && !infoPanel.classList.contains("isHidden") ? "info"
+        : isVisible(logsPanel) && !logsPanel.classList.contains("isHidden") ? "logs"
           : "none";
-      const modal = document.querySelector("#settingsModal:not([hidden]), #assetPreviewModal:not([hidden])")?.id ?? "none";
+      const visibleModal = [settingsModal, assetPreviewModal].find((node) =>
+        node && !node.hidden && node.classList.contains("isOpen") && isVisible(node)
+      );
+      const modal = visibleModal?.id ?? "none";
       return {
         stateId: ${JSON.stringify(stateId)},
         label: ${JSON.stringify(stateId)},
@@ -362,14 +519,19 @@ async function main() {
   const window = new BrowserWindow({
     width: 1440,
     height: 900,
-    show: false,
+    show: true,
+    focusable: false,
+    skipTaskbar: true,
     webPreferences: {
+      backgroundThrottling: false,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
       webSecurity: true
     }
   });
+  window.setIgnoreMouseEvents(true);
+  window.setOpacity(0);
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   console.log("P6_WEB_BASELINE_PHASE load-url");
   await window.loadURL(url);
@@ -380,6 +542,9 @@ async function main() {
   const snapshots = [];
   snapshots.push(await collectSnapshot(window, "local-empty"));
   await capture(window, "screenshot-local-empty-1440x900.png");
+  await captureMotionTriplet(window, "emptyIconFloat", async () => {
+    await closeTransientUi(window);
+  }, { endDelayMs: 1300 });
 
   console.log("P6_WEB_BASELINE_PHASE mode-menu-open");
   await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
@@ -493,7 +658,7 @@ async function main() {
 
   console.log("P6_WEB_BASELINE_PHASE local-compare");
   await setMode(window, "localPreview");
-  await window.webContents.executeJavaScript(`const toggle = document.querySelector("#compareToggle"); if (toggle && !toggle.checked) toggle.click(); true;`);
+  await window.webContents.executeJavaScript(`(() => { const toggle = document.querySelector("#compareToggle"); if (toggle && !toggle.checked) toggle.click(); return true; })()`);
   await delay(350);
   snapshots.push(await collectSnapshot(window, "local-compare-empty"));
   await capture(window, "screenshot-local-compare-empty-1440x900.png");
@@ -515,12 +680,16 @@ async function main() {
   await capture(window, "screenshot-export-review-loaded-900x720.png");
 
   console.log("P6_WEB_BASELINE_PHASE invalid");
+  window.setSize(1440, 900);
+  await delay(220);
+  await setMode(window, "localPreview");
+  await window.webContents.executeJavaScript(`const toggle = document.querySelector("#compareToggle"); if (toggle && !toggle.checked) toggle.click(); true;`);
+  await delay(240);
   await invalidLoad(window);
   snapshots.push(await collectSnapshot(window, "invalid-error-state"));
   await capture(window, "screenshot-invalid-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE recovered-from-invalid");
-  window.setSize(1440, 900);
   await delay(220);
   await loadFixture(window, { fileName: "p6-web-baseline-recovered-fixture.svga" });
   snapshots.push(await collectSnapshot(window, "recovered-from-invalid"));
@@ -536,6 +705,11 @@ async function main() {
   }, null, 2) + "\n");
   writeFileSync(path.join(outRoot, "computed-styles-manifest.json"), JSON.stringify(await collectStyles(window), null, 2) + "\n");
   writeFileSync(path.join(outRoot, "motion-manifest.json"), JSON.stringify(await collectMotion(window), null, 2) + "\n");
+  writeFileSync(path.join(outRoot, "motion-style-samples.json"), JSON.stringify({
+    schemaVersion: 1,
+    source: "running Web Preview computed styles",
+    samples: motionStyleSamples
+  }, null, 2) + "\n");
   writeFileSync(path.join(outRoot, "interaction-trace.json"), JSON.stringify({
     schemaVersion: 1,
     actionTrace: (contract.interactions ?? []).map((interaction) => {

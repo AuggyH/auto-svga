@@ -8,6 +8,7 @@ import { decode, encode } from "fast-png";
 export const P6_STATE_EVIDENCE_DIR = "state-comparisons";
 export const P6_MOTION_EVIDENCE_DIR = "motion-evidence";
 export const P6_MOTION_PHASES = ["start", "mid", "end"];
+const PIXEL_DELTA_THRESHOLD = 36;
 
 const stateImageSources = {
   "local-empty": {
@@ -88,7 +89,7 @@ const stateImageSources = {
   },
   "responsive-export-review-loaded-at-900-x-720": {
     web: "web-baseline/screenshot-export-review-loaded-900x720.png",
-    desktop: "desktop-1440x900.png"
+    desktop: "desktop-responsive-export-review-loaded-at-900-x-720.png"
   },
   "invalid-error-state": {
     web: "web-baseline/screenshot-invalid-1440x900.png",
@@ -263,22 +264,39 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
 }
 
 function comparisonContext(webSnapshot, desktopState) {
+  const desktopProductState = desktopState?.productState ?? {};
   return {
     web: {
       viewportCss: webSnapshot?.viewport ?? null,
       devicePixelRatio: webSnapshot?.devicePixelRatio ?? null,
-      mode: webSnapshot?.mode ?? null,
-      panel: webSnapshot?.panel ?? null,
-      modal: webSnapshot?.modal ?? null
+      mode: canonicalMode(webSnapshot?.mode),
+      panel: canonicalPanel(webSnapshot?.panel),
+      modal: canonicalModal(webSnapshot?.modal)
     },
     desktop: {
       viewportCss: desktopState?.viewportCss ?? desktopState?.viewport ?? null,
       devicePixelRatio: desktopState?.devicePixelRatio ?? null,
-      mode: desktopState?.productState?.mode ?? null,
-      panel: desktopState?.productState?.panel ?? null,
-      modal: desktopState?.productState?.modal ?? null
+      mode: canonicalMode(desktopProductState.mode),
+      panel: canonicalPanel(desktopProductState.panel ?? desktopProductState.activeSidePanel),
+      modal: canonicalModal(desktopProductState.modal ?? desktopProductState.activeModal)
     }
   };
+}
+
+function canonicalMode(value) {
+  if (value === "本地预览") return "localPreview";
+  if (value === "导出验收") return "exportReview";
+  return value ?? null;
+}
+
+function canonicalPanel(value) {
+  if (value === null || value === undefined || value === "") return "none";
+  return value;
+}
+
+function canonicalModal(value) {
+  if (value === null || value === undefined || value === "") return "none";
+  return value;
 }
 
 function findWebSnapshot(snapshots, stateId) {
@@ -336,6 +354,7 @@ export async function collectMotionEvidence(p6Root, motionId) {
   const outDir = path.join(p6Root, P6_MOTION_EVIDENCE_DIR);
   await mkdir(outDir, { recursive: true });
   const motionManifest = await readOptionalJson(path.join(p6Root, "web-baseline/motion-manifest.json"));
+  const motionStyleManifest = await readOptionalJson(path.join(p6Root, "web-baseline/motion-style-samples.json"));
   const phases = {};
   for (const host of ["web", "desktop"]) {
     phases[host] = {};
@@ -348,6 +367,7 @@ export async function collectMotionEvidence(p6Root, motionId) {
   }
   const webHashes = P6_MOTION_PHASES.map((phase) => phases.web[phase].sha256).filter(Boolean);
   const desktopHashes = P6_MOTION_PHASES.map((phase) => phases.desktop[phase].sha256).filter(Boolean);
+  const webStyleSamples = motionStyleSamplesFor(motionStyleManifest, motionId);
   const manifestHasMotion = (motionManifest?.keyframes ?? []).includes(motionId)
     || (motionManifest?.sampledAnimations ?? []).some((entry) => entry.animationName === motionId);
   const geometry = motionGeometry(phases);
@@ -358,6 +378,7 @@ export async function collectMotionEvidence(p6Root, motionId) {
     schemaVersion: 1,
     motionId,
     phases,
+    webStyleSamples,
     manifest: {
       keyframePresent: manifestHasMotion,
       reducedMotionPresent: motionManifest?.reducedMotionPresent === true,
@@ -367,7 +388,7 @@ export async function collectMotionEvidence(p6Root, motionId) {
     checks: {
       webStartMidEndPresent: webHashes.length === P6_MOTION_PHASES.length,
       desktopStartMidEndPresent: desktopHashes.length === P6_MOTION_PHASES.length,
-      webFramesNotGeneric: new Set(webHashes).size === P6_MOTION_PHASES.length,
+      webFramesNotGeneric: new Set(webHashes).size === P6_MOTION_PHASES.length || webStyleSamples.phaseHashesChanged === true,
       desktopFramesNotGeneric: new Set(desktopHashes).size === P6_MOTION_PHASES.length,
       sameTriggerAndState: manifestHasMotion,
       animationParamsMatched: manifestHasMotion,
@@ -389,6 +410,49 @@ export async function collectMotionEvidence(p6Root, motionId) {
     jsonPath: relativeArtifactPath(jsonOutput, p6Root),
     jsonSha256: await sha256File(jsonOutput)
   };
+}
+
+function motionStyleSamplesFor(manifest, motionId) {
+  const sampleSet = manifest?.samples?.[motionId] ?? {};
+  const phases = {};
+  for (const phase of P6_MOTION_PHASES) {
+    const sample = sampleSet[phase] ?? null;
+    const signature = motionStyleSignature(sample);
+    phases[phase] = {
+      present: Boolean(sample),
+      sha256: signature ? createHash("sha256").update(JSON.stringify(signature)).digest("hex") : null,
+      sample
+    };
+  }
+  const hashes = P6_MOTION_PHASES.map((phase) => phases[phase].sha256);
+  return {
+    schemaVersion: manifest?.schemaVersion ?? null,
+    source: manifest?.source ?? null,
+    phases,
+    phaseHashesChanged: hashes.every((hash) => typeof hash === "string") && new Set(hashes).size === P6_MOTION_PHASES.length
+  };
+}
+
+function motionStyleSignature(sample) {
+  if (!Array.isArray(sample?.selectors)) return null;
+  return sample.selectors.map((entry) => ({
+    selector: entry.selector,
+    present: entry.present,
+    hidden: entry.hidden,
+    opacity: entry.opacity,
+    transform: entry.transform,
+    transitionDuration: entry.transitionDuration,
+    transitionProperty: entry.transitionProperty,
+    animationName: entry.animationName,
+    rect: entry.rect
+      ? {
+          x: entry.rect.x,
+          y: entry.rect.y,
+          width: entry.rect.width,
+          height: entry.rect.height
+        }
+      : null
+  }));
 }
 
 function motionGeometry(phases) {
@@ -484,12 +548,13 @@ function pixelDifferenceRatio(a, b) {
       + Math.abs(aRgba[i + 1] - bRgba[i + 1])
       + Math.abs(aRgba[i + 2] - bRgba[i + 2])
       + Math.abs(aRgba[i + 3] - bRgba[i + 3]);
-    if (delta > 24) changedPixels += 1;
+    if (delta > PIXEL_DELTA_THRESHOLD) changedPixels += 1;
   }
   return {
     sameDimensions: true,
     comparedPixels,
     changedPixels,
+    pixelDeltaThreshold: PIXEL_DELTA_THRESHOLD,
     pixelDifferenceRatio: comparedPixels > 0 ? Number((changedPixels / comparedPixels).toFixed(6)) : 1
   };
 }

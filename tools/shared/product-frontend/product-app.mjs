@@ -604,6 +604,7 @@ function openModal(layer, trigger) {
   modalReturnFocus = trigger ?? document.activeElement;
   layer.hidden = false;
   layer.classList.remove("isClosing");
+  layer.getBoundingClientRect();
   window.requestAnimationFrame(() => layer.classList.add("isOpen"));
 }
 
@@ -2152,6 +2153,9 @@ function collectRenderedStateProof(state) {
   return {
     state: normalizedState,
     requestedState: state,
+    viewportCss: { width: innerWidth, height: innerHeight },
+    devicePixelRatio,
+    playbackTimeMs: Math.round((players.a.timeDisplay?.textContent?.match(/[0-9.]+/)?.[0] ?? 0) * 1000),
     stageRect,
     canvasRect,
     overlaySelector: normalizedState === "invalid" ? "#errorBox" : ".centerEmptyState",
@@ -2189,6 +2193,8 @@ function collectRenderedStateProof(state) {
     renderStatus: players.a.renderStatus,
     productState: {
       mode: modeSelect.value,
+      panel: activeSidePanel ?? "none",
+      modal: activeModal?.id ?? "none",
       compareActive: isCompareActive(),
       activeSidePanel,
       activeModal: activeModal?.id ?? null,
@@ -2573,6 +2579,8 @@ async function runProductSmoke() {
     await waitFor(() => canvasIsNonBlank(players.a));
     const canvasNonBlank = canvasIsNonBlank(players.a);
     const inspectionReport = await waitForInspectionStatus(players.a);
+    await delay(320);
+    await captureArtifact("desktop-loaded");
     await captureArtifact("desktop-playing");
     pauseSlot(players.a);
     await delay(180);
@@ -2599,7 +2607,9 @@ async function runProductSmoke() {
     }, async () => {
       document.querySelector("[data-value='exportReview']")?.click();
     }, async () => {
-      await waitFor(() => Boolean(latestArtifactGroup && players.a.videoItem));
+      await waitFor(() => Boolean(latestArtifactGroup && players.a.videoItem)
+        && players.a.parseStatus !== "loading"
+        && players.a.renderStatus === "ready");
       await waitFor(() => canvasIsNonBlank(players.a));
     });
     await captureArtifact("desktop-latest-artifact-loaded");
@@ -2620,10 +2630,16 @@ async function runProductSmoke() {
       await delay(120);
     });
     const auditPanel = Boolean(document.querySelector(".auditReportSection, .specReportSection"));
-    await captureArtifact("desktop-loaded");
     await captureArtifact("smoke-loaded");
     await captureArtifact("desktop-1280x800");
     await captureArtifact("desktop-1440x900");
+    if (activeSidePanel === "info") {
+      setActiveSidePanel(null);
+      await delay(160);
+    }
+    await captureArtifact("desktop-responsive-export-review-loaded-at-900-x-720");
+    openInfoPanel("overview");
+    await delay(160);
     await captureArtifact("desktop-inspection");
     await captureArtifact("desktop-info-overview-open");
     await recordP6SmokeAction({

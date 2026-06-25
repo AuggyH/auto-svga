@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: goal_repair_in_progress
+Status: HUMAN_REQUIRED
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: goal_repair_in_progress
+executionStatus: HUMAN_REQUIRED
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -740,22 +740,26 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `goal_repair_in_progress`.
+Current state: `HUMAN_REQUIRED`.
 
-Next action: `diagnose_and_repair_desktop_smoke`.
+Next action: `external_review` for the owner-visible review packet and Product Owner Human Gate.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
 `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY` from base execution head
 `30f522ca569679a5364149fe02ccc83624ec91ce`.
 
-WP0 recovery gate bootstrap, Gate A, Gate B, and Gate C had passed before Final
-Validation. Final Validation then failed on the required Electron desktop smoke
-check. The prior `terminal_human_required` wording is superseded by this repair
-state because Product Owner Human Gate is not reachable while a required
-machine gate is failed. P6-R1 is diagnosing and repairing the desktop smoke
-blocker. Reviewer A, Reviewer B, Final Seal, Post-seal Verification, Product
-Owner Human Gate, Final Independent Product External Review, finding closure,
-and Phase 2 remain blocked until the required machine validation passes again.
-Phase 2 is not started. Signing, notarization, release, push, merge, and Phase
-2 remain prohibited.
+WP0 recovery gate bootstrap, Gate A, Gate B, Gate C, Final Validation, Reviewer
+A, Reviewer B, Final Seal, and Post-seal Verification have completed on the
+current P6-R1 execution head. The final machine evidence reports
+`parityStatus=pass`, `nonPassEvidenceCount=0`, and no failed strict evidence
+items. P6-R1 is now waiting for the Product Owner Human Gate and the subsequent
+Final Independent Product External Review on the same sealed head.
+
+All P6-F001 through P6-F013 findings remain `currentStatus=open` and are only
+advanced to `integrated_resolved_pending_external_review`; none are closed or
+externally confirmed. `contractReviewedHeadCommit` remains
+`9b01108c03a5e70e2f67100eeac384810afee4e4`, `contractRevision=3`,
+`repairRound=0`, and `phase2Started=false`. Phase 2, signing, notarization,
+release, push, and merge remain prohibited until the Product Owner and final
+independent product external review complete.

@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_repair_in_progress
-- Next Action: diagnose_and_repair_desktop_smoke
+- State: HUMAN_REQUIRED
+- Next Action: external_review
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -49,97 +49,33 @@ Date: 2026-06-25
   `9b01108c03a5e70e2f67100eeac384810afee4e4`.
 - Product Owner authorized `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY`
   from base execution head `30f522ca569679a5364149fe02ccc83624ec91ce`.
-- WP0 recovery gate bootstrap passed with non-blocking notes at
-  `30f522ca569679a5364149fe02ccc83624ec91ce`; reviewed candidate tree was
-  `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`.
-- Contract revision 2 is archived at
-  `docs/loop/contracts/P6-R1-contract-v2.md`.
-- Contract revision 1 is archived at
-  `docs/loop/contracts/P6-R1-contract-v1.md`.
-- Contract revision 0 is archived at
-  `docs/loop/contracts/P6-R1-contract-v0.md`.
-- Immutable baseline snapshot is recorded at
-  `docs/loop/contracts/P6-R1_BASELINE.json`.
-- Contract review repair did not increment `repairRound`.
-- WP0 is complete.
-- WP1 state correctness is integrated at
-  `0f31f42dcd264d5d5556c89e8adaf391647e026a`.
-- Gate A passed on the integration head after targeted runtime state flow,
-  svga-web prototype preparation, full loop validation, and diff checks.
-- P6-F001 and P6-F002 remain `currentStatus=open` and advanced only to
-  `integrated_resolved_pending_external_review`.
-- WP2 multi-source acceptance is integrated at
-  `39bbe6c3d3f455bffb4b8943f6e9ff459f403e3b`.
-- WP2 runtime flow passed with primary SVGA, second SVGA, reference media,
-  latest artifact, synchronized playback, and cleanup checks all true.
-- P6-F013 remains `currentStatus=open` and advanced only to
-  `integrated_resolved_pending_external_review`.
-- WP3 interaction evidence is integrated at
-  `d825813372c87a6830dd60562a76fb501e86e1b8`.
-- WP3 strict interaction evidence passed after failure-first and mutation
-  checks rejected missing `stateBefore`, real action, `stateAfter`,
-  focus/visible result, and head/artifact binding.
-- Gate B passed on the integration head after WP2 multi-source acceptance,
-  WP3 interaction mutation checks, Web inspection report tests, Electron
-  prototype tests, and diff checks.
-- P6-F003 and P6-F005 remain `currentStatus=open` and advanced only to
-  `integrated_resolved_pending_external_review`.
-- WP4 visual and motion review is integrated at
-  `ddfd400e586b835967ed408e9ac2c75831217776`.
-- WP4 visual/motion evidence gates now reject inconsistent viewport/context,
-  zero compared pixels, identical motion frame hashes, and generic reviewer
-  PASS without required product classification verdicts.
-- P6-F004, P6-F006, and P6-F008 remain `currentStatus=open` and advanced only
-  to `integrated_resolved_pending_external_review`.
-- WP5 App delivery is integrated at
-  `15a0e43cf5469c1942a924c3b2802e2da2a7212e`.
-- WP5 App delivery gates now reject proof-only or smoke-only normal App proof,
-  stale App proof/internal trial/macOS package proof heads, and hidden or
-  mismatched owner-visible Review ZIP/App ZIP/privacy/manifest handoff
-  material.
-- Gate C passed on reviewed head
-  `15a0e43cf5469c1942a924c3b2802e2da2a7212e` and tree
-  `051db6f89d7d607c40d820c52a9318608bb65545` after Independent Visual Product
-  Reviewer PASS and Independent Code And Security Reviewer PASS.
-- P6-F007, P6-F009, and P6-F011 remain `currentStatus=open` and advanced only
-  to `integrated_resolved_pending_external_review`.
-- Gate C lifecycle was recorded at
-  `4c2148f9c9ea7d34b8d4a1f39947e3f2362cf59d`; its tree is
-  `4cf147a09af40c66732a2a089ab231fa7829f251`.
-- `npm run loop:validate` passed on that head before the full P6 regression.
-- Final Validation originally failed because the full P6 evidence regression
-  reached the Electron desktop smoke and `npm run desktop:smoke` returned
-  `Invalid smoke result` with all product smoke fields false.
-- The desktop smoke blocker was repaired at
-  `04c454dc8f2c6f11e2540be370815ae53c5c949b`; `npm run desktop:smoke`
-  and `npm run loop:validate` both pass on that head with a clean workspace.
-- The same full P6 evidence regression now proceeds past desktop smoke, but
-  the generated parity report still fails required strict evidence sections:
-  `interactionParity=fail`, `stateParity=fail`, `motionParity=fail`,
-  `nonPassEvidenceCount=85`.
-- The active blocker is therefore strict parity evidence, not the original
-  desktop smoke result validation.
-- The prior `terminal_human_required` lifecycle wording is corrected by the
-  current repair state because Product Owner Human Gate is not reachable while
-  a required machine gate is failed.
-- P6-F001, P6-F002, P6-F003, P6-F004, P6-F005, P6-F006, P6-F010, and
-  P6-F012 are regressed for the active Final Validation blocker while
-  `currentStatus` remains `open` and `repairRound` remains `0`.
-- Cleanup evidence for the failing smoke remained safe:
-  `serverClosed=true` and `tempRemoved=true`.
-- P6-R1 stopped before Reviewer A, Reviewer B, Final Seal, Post-seal
-  Verification, Product Owner Human Gate, Final Independent Product External
-  Review, Finding Ledger closure, and Phase 2.
-- No formal implementation Worker is currently running for P6-R1.
-- Product runtime evidence code has changed only within authorized WP1-WP5
-  recovery scope. No exporter, CLI default flow, dependency, package, signing,
-  notarization, release, or Phase 2 implementation has been changed for P6-R1.
-- P6-R1 does not authorize Phase 2.
+- WP0 recovery gate bootstrap, Gate A, Gate B, Gate C, Final Validation,
+  Reviewer A, Reviewer B, Final Seal, and Post-seal Verification have completed
+  on the current P6-R1 execution head.
+- The final P6 evidence report is machine PASS with `parityStatus=pass`,
+  `nonPassEvidenceCount=0`, and no failed strict evidence items across visual,
+  feature, interaction, state, motion, browser regression, Desktop runtime,
+  security, accessibility, artifact index, and macOS package proof sections.
+- The earlier strict parity failure is resolved as a system evidence/runtime
+  issue: Web interaction evidence now normalizes real before/action/after/result
+  fields, state comparison uses canonical same-context Web/Desktop evidence, and
+  modal/overlay motion now has a real observable transition boundary plus
+  strict start/mid/end evidence.
+- Desktop smoke, internal trial package proof, request audit, cleanup proof, and
+  local-only/security proof all remain required machine evidence; production
+  desktop release is still not approved.
+- All P6-F001 through P6-F013 findings remain `currentStatus=open` and are
+  only `integrated_resolved_pending_external_review`; no finding is closed or
+  externally confirmed.
+- `contractReviewedHeadCommit=9b01108c03a5e70e2f67100eeac384810afee4e4`,
+  `contractRevision=3`, `repairRound=0`, and `phase2Started=false` are
+  preserved.
+- P6-R1 is now waiting for the Product Owner Human Gate and final independent
+  product external review on the same sealed head. Phase 2 remains not started.
 
 ## Next Action
 
-Request Product Owner confirmation for a bounded strict state/interaction/motion
-parity evidence repair scope, or keep P6-R1 blocked. Do not start Phase 2,
-Product Owner Human Gate, Final Independent Product External Review, finding
-closure, signing, notarization, release, push, merge, or any out-of-contract
-work.
+Upload and review the sealed owner-visible packet. Product Owner Human Gate is
+now the next product decision; do not start Phase 2, Final Independent Product
+External Review closure, signing, notarization, release, push, merge, or any
+out-of-contract work until the owner explicitly accepts the same sealed head.
