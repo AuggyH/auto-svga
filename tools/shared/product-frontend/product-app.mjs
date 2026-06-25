@@ -1713,19 +1713,21 @@ function collectP6SmokeSnapshot(stateId) {
       };
     });
   const activeMode = modeDropdownTrigger?.textContent?.replace(/\s+/g, " ").trim() ?? "unknown";
-  const panel = !infoPanel.hidden ? "info" : !logsPanel.hidden ? "logs" : "none";
+  const panel = isElementVisible(infoPanel) && !infoPanel.classList.contains("isHidden") ? "info"
+    : isElementVisible(logsPanel) && !logsPanel.classList.contains("isHidden") ? "logs"
+      : "none";
   const modal = !settingsModal.hidden ? "settingsModal" : !assetPreviewModal.hidden ? "assetPreviewModal" : "none";
   const observedStateId = (() => {
     if (!modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu)) return "mode-menu-open";
-    if (modal === "settingsModal") return "settings-open";
     if (modal === "assetPreviewModal") return "asset-preview-modal-open";
     if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
     if (reduceMotionToggle.checked && reduceBlurToggle.checked && modal === "none") return "settings-closed-by-escape";
     if (reduceMotionToggle.checked && reduceBlurToggle.checked) return "accessibility-toggles-on";
+    if (modal === "settingsModal") return "settings-open";
     if (panel === "logs") return "logs-open";
     if (panel === "info" && !document.querySelector("#tab-assets")?.hidden && isElementVisible(document.querySelector("#tab-assets"))) return "info-assets-open";
     if (panel === "info" && !document.querySelector("#tab-overview")?.hidden && isElementVisible(document.querySelector("#tab-overview"))) return "info-overview-open";
-    if (activeMode.includes("导出复核") && players.a.videoItem) return "export-review-loaded";
+    if (/导出验收|导出复核|Export review/i.test(activeMode) && players.a.videoItem) return "export-review-loaded";
     if (isCompareActive()) return players.b.videoItem ? "local-compare-loaded" : "local-compare-empty";
     if (players.a.parseStatus === "loading") return "loading";
     if (players.a.videoItem) return "loaded";
@@ -1772,10 +1774,12 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
     ? targetNode === document || targetNode === window || targetNode === document.body || document.body.contains(targetNode)
     : selectorParts.some((part) => targetNode?.matches?.(part) || targetNode?.closest?.(part));
   const receiptHandler = (event) => {
+    const targetMatches = matchesTarget(event.target);
+    if (!targetMatches) return;
     receipts.push({
       type: event.type,
       selector: action.selector,
-      targetMatches: matchesTarget(event.target),
+      targetMatches,
       isTrusted: event.isTrusted === true,
       timestampMs: Date.now(),
       performanceTimeMs: Math.round(performance.now()),
@@ -2657,6 +2661,9 @@ async function runProductSmoke() {
     await delay(180);
     await captureArtifact("desktop-paused");
     playSlot(players.a);
+    resetSlotMediaState(players.a, { clearReport: true });
+    setAppMode("localPreview");
+    await delay(160);
     await recordP6SmokeAction({
       id: "click-mode-dropdown-trigger-menu-opens",
       kind: "click",
@@ -2788,6 +2795,11 @@ async function runProductSmoke() {
       await waitFor(() => settingsModal.hidden);
     });
     await captureArtifact("desktop-settings-closed-by-escape");
+    localStorage.setItem("autoSvgaReduceMotion", "false");
+    localStorage.setItem("autoSvgaReduceBlur", "false");
+    reduceMotionToggle.checked = false;
+    reduceBlurToggle.checked = false;
+    document.documentElement.classList.remove("reduceMotion", "reduceBlur");
     closeP6SmokeTransientUi();
     await delay(160);
     await recordP6SmokeAction({
@@ -2807,6 +2819,7 @@ async function runProductSmoke() {
     closeP6SmokeTransientUi();
     await delay(240);
     setAppMode("localPreview");
+    if (syncPlayControl.getAttribute("aria-pressed") === "true") syncPlayControl.click();
     if (compareToggle.checked) compareToggle.click();
     await waitFor(() => !isCompareActive());
     await recordP6SmokeAction({

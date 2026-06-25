@@ -305,15 +305,15 @@ async function collectSnapshot(window, stateId) {
       const loadedA = Boolean(panelA?.classList.contains("hasLoaded") || document.querySelector("#svgaCanvasA canvas"));
       const observedStateId = (() => {
         if (modeMenu && !modeMenu.hidden && isVisible(modeMenu)) return "mode-menu-open";
-        if (modal === "settingsModal") return "settings-open";
         if (modal === "assetPreviewModal") return "asset-preview-modal-open";
         if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
         if (reduceMotionToggle?.checked && reduceBlurToggle?.checked && modal === "none") return "settings-closed-by-escape";
         if (reduceMotionToggle?.checked && reduceBlurToggle?.checked) return "accessibility-toggles-on";
+        if (modal === "settingsModal") return "settings-open";
         if (panel === "logs") return "logs-open";
         if (panel === "info" && tabAssets && !tabAssets.hidden && isVisible(tabAssets)) return "info-assets-open";
         if (panel === "info" && tabOverview && !tabOverview.hidden && isVisible(tabOverview)) return "info-overview-open";
-        if (/导出复核|Export review/i.test(activeMode) && loadedA) return "export-review-loaded";
+        if (/导出验收|导出复核|Export review/i.test(activeMode) && loadedA) return "export-review-loaded";
         if (compareToggle?.checked && /本地预览|Local preview/i.test(activeMode)) return loadedA ? "local-compare-loaded" : "local-compare-empty";
         if (/加载中|loading/i.test(statusA) || panelA?.classList.contains("isLoading")) return "loading";
         if (loadedA) return "loaded";
@@ -492,6 +492,7 @@ async function installInteractionReceiptProbe(window, selector) {
       const receipts = [];
       const handler = (event) => {
         const targetMatches = matchesTarget(event.target);
+        if (!targetMatches) return;
         receipts.push({
           type: event.type,
           selector,
@@ -1008,6 +1009,13 @@ async function main() {
     if (logsButton?.getAttribute("aria-pressed") === "true") logsButton.click();
     const infoButton = document.querySelector("#infoPanelButton");
     if (infoButton?.getAttribute("aria-pressed") === "true") infoButton.click();
+    const reduceMotionToggle = document.querySelector("#reduceMotionToggle");
+    const reduceBlurToggle = document.querySelector("#reduceBlurToggle");
+    if (reduceMotionToggle) reduceMotionToggle.checked = false;
+    if (reduceBlurToggle) reduceBlurToggle.checked = false;
+    localStorage.setItem("autoSvgaReduceMotion", "false");
+    localStorage.setItem("autoSvgaReduceBlur", "false");
+    document.documentElement.classList.remove("reduceMotion", "reduceBlur");
     true;
   `);
   await delay(160);
@@ -1019,6 +1027,14 @@ async function main() {
 
   console.log("P6_WEB_BASELINE_PHASE local-compare");
   await setMode(window, "localPreview");
+  await execute(window, `
+    const syncPlayControl = document.querySelector("#syncPlayControl");
+    if (syncPlayControl?.getAttribute("aria-pressed") === "true") syncPlayControl.click();
+    const compareToggle = document.querySelector("#compareToggle");
+    if (compareToggle?.checked) compareToggle.click();
+    true;
+  `);
+  await delay(160);
   await recordWebInteraction(window, "enable-local-compare-switch", async () => {
     await browserPointClick(window, "#compareToggle");
   }, { trustedPath: "web-baseline-real-click", delayMs: 350 });
