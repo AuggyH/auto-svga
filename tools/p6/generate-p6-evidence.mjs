@@ -548,22 +548,10 @@ async function writeEvidenceIndex(report) {
       || artifact.path.includes("internal-trial-manifest")
     ))
     .slice(0, 40);
-  const lines = [
+  const buildLines = (headerLines) => [
     "# P6 Evidence Index",
     "",
-    ...(skipTrackedSnapshots
-      ? [
-        `Generated at: ${report.generatedAt}`,
-        `Head commit: \`${report.source.headCommit}\``
-      ]
-      : [
-        "Generated at: source-tracked runtime snapshot",
-        `Head commit: \`${sourceTrackedSnapshotHead}\``,
-        "",
-        "This source-tracked file is intentionally commit-neutral. Final head-bound",
-        "P6 evidence is generated into `.artifacts/product/P6/` and mirrored into",
-        "the final visible review folder during handoff."
-      ]),
+    ...headerLines,
     `Branch: \`${report.source.branch}\``,
     "",
     "## Status",
@@ -593,10 +581,22 @@ async function writeEvidenceIndex(report) {
     "- Browser import, drag-drop, and comparison logic: not modified.",
     ""
   ];
-  const outputPath = skipTrackedSnapshots
-    ? path.join(p6Root, "P6_EVIDENCE_INDEX.md")
-    : evidenceIndexPath;
-  await writeFile(outputPath, `${lines.join("\n")}`);
+  const artifactLines = buildLines([
+    `Generated at: ${report.generatedAt}`,
+    `Head commit: \`${report.source.headCommit}\``
+  ]);
+  await writeFile(path.join(p6Root, "P6_EVIDENCE_INDEX.md"), `${artifactLines.join("\n")}`);
+  if (!skipTrackedSnapshots) {
+    const trackedLines = buildLines([
+      "Generated at: source-tracked runtime snapshot",
+      `Head commit: \`${sourceTrackedSnapshotHead}\``,
+      "",
+      "This source-tracked file is intentionally commit-neutral. Final head-bound",
+      "P6 evidence is generated into `.artifacts/product/P6/` and mirrored into",
+      "the final visible review folder during handoff."
+    ]);
+    await writeFile(evidenceIndexPath, `${trackedLines.join("\n")}`);
+  }
 }
 
 async function main() {
