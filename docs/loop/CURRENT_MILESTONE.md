@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: wp0_complete_pending_wp1_owner_confirmation
+Status: goal_active_execute_wp1_state_correctness
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -10,10 +10,16 @@ contractRevisionReason: residual_execution_blocker_hotfix
 contractReviewOutcome: CONTRACT_PASS
 contractReviewedHeadCommit: `9b01108c03a5e70e2f67100eeac384810afee4e4`
 contractReviewRecord: `docs/loop/reviews/P6-R1-contract-external-review-3.md`
-ownerDecision: AUTHORIZE_WP0
-authorizedScope: WP0_RECOVERY_GATE_BOOTSTRAP_ONLY
+ownerDecision: AUTHORIZE_P6_R1_GOAL_EXECUTION
+authorizedScope: P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY
+baseExecutionHead: `30f522ca569679a5364149fe02ccc83624ec91ce`
+wp0ReviewOutcome: WP0_REVIEW_PASS_WITH_NON_BLOCKING_NOTES
+wp0FinalHead: `30f522ca569679a5364149fe02ccc83624ec91ce`
+wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
+finalReviewPacketPrivacyRequired: true
+reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: wp0_complete_pending_wp1_owner_confirmation
+executionStatus: goal_active_execute_wp1_state_correctness
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -643,16 +649,17 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `wp0_complete_pending_wp1_owner_confirmation`.
+Current state: `goal_active_execute_wp1_state_correctness`.
 
-Next action: `owner_confirm_wp1`.
+Next action: `execute_wp1_state_correctness`.
 
 Contract revision 3 passed micro-delta external contract review at
-`9b01108c03a5e70e2f67100eeac384810afee4e4`, and the Product Owner authorized
-only `WP0_RECOVERY_GATE_BOOTSTRAP_ONLY`.
+`9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
+`P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY` from base execution head
+`30f522ca569679a5364149fe02ccc83624ec91ce`.
 
-WP0 recovery gate bootstrap is complete pending Product Owner confirmation for
-WP1. No formal implementation Worker is running. Phase 2 is not started. WP1,
-Phase 2, product runtime, Web/Electron UI, tests, tools, dependencies, and
-packaging implementation remain prohibited until the applicable contract step
-authorizes them.
+WP0 recovery gate bootstrap passed with non-blocking notes. P6-R1 execution is
+active for the ordered path through `HUMAN_REQUIRED`; WP1 is the current step.
+Phase 2 is not started. Product Owner Human Gate, Final Independent Product
+External Review, finding closure, signing, notarization, release, push, merge,
+and Phase 2 remain prohibited.

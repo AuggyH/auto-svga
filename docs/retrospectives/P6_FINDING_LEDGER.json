@@ -493,11 +493,12 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "machine_resolved_pending_integration",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        "docs/loop/reviews/P6-R1-wp0-review-pass.md"
       ]
     },
     {
@@ -592,11 +593,12 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "machine_resolved_pending_integration",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        "docs/loop/reviews/P6-R1-wp0-review-pass.md"
       ]
     },
     {

@@ -6,16 +6,20 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: wp0_complete_pending_wp1_owner_confirmation
-- Next Action: owner_confirm_wp1
+- State: goal_active_execute_wp1_state_correctness
+- Next Action: execute_wp1_state_correctness
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
 - contractReviewOutcome: CONTRACT_PASS
 - contractReviewedHeadCommit: `9b01108c03a5e70e2f67100eeac384810afee4e4`
 - contractReviewRecord: `docs/loop/reviews/P6-R1-contract-external-review-3.md`
-- ownerDecision: AUTHORIZE_WP0
-- authorizedScope: WP0_RECOVERY_GATE_BOOTSTRAP_ONLY
+- ownerDecision: AUTHORIZE_P6_R1_GOAL_EXECUTION
+- authorizedScope: P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY
+- baseExecutionHead: `30f522ca569679a5364149fe02ccc83624ec91ce`
+- wp0ReviewOutcome: WP0_REVIEW_PASS_WITH_NON_BLOCKING_NOTES
+- wp0FinalHead: `30f522ca569679a5364149fe02ccc83624ec91ce`
+- wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 - wp0Authorized: true
 - wp0Started: true
 - phase2Started: false
@@ -43,9 +47,11 @@ Date: 2026-06-25
 
 - P6-R1 contract revision 3 passed micro-delta external contract review at
   `9b01108c03a5e70e2f67100eeac384810afee4e4`.
-- Product Owner authorized only `WP0_RECOVERY_GATE_BOOTSTRAP_ONLY`.
-- WP0 recovery gate bootstrap is complete and waits for Product Owner
-  confirmation before WP1 may start.
+- Product Owner authorized `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY`
+  from base execution head `30f522ca569679a5364149fe02ccc83624ec91ce`.
+- WP0 recovery gate bootstrap passed with non-blocking notes at
+  `30f522ca569679a5364149fe02ccc83624ec91ce`; reviewed candidate tree was
+  `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`.
 - Contract revision 2 is archived at
   `docs/loop/contracts/P6-R1-contract-v2.md`.
 - Contract revision 1 is archived at
@@ -55,7 +61,7 @@ Date: 2026-06-25
 - Immutable baseline snapshot is recorded at
   `docs/loop/contracts/P6-R1_BASELINE.json`.
 - Contract review repair did not increment `repairRound`.
-- WP0 is complete pending WP1 owner confirmation.
+- WP0 is complete. P6-R1 execution is active and currently enters WP1.
 - No formal implementation Worker is running for P6-R1.
 - No product runtime, Web UI, Electron UI, test, dependency, package, parity,
   scenario, motion, App, or packaging implementation has been changed for
@@ -64,7 +70,6 @@ Date: 2026-06-25
 
 ## Next Action
 
-Request Product Owner confirmation for WP1. Do not start WP1, Phase 2, product
-runtime changes, Web/Electron UI changes, tests/tools/dependency changes, or
-packaging implementation until the Product Owner explicitly authorizes the next
-contract step.
+Execute WP1 state correctness. Do not start Phase 2, Product Owner Human Gate,
+Final Independent Product External Review, finding closure, signing,
+notarization, release, push, merge, or any out-of-contract work.
