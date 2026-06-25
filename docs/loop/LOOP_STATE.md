@@ -75,7 +75,8 @@ Date: 2026-06-25
 
 ## Next Action
 
-Upload and review the sealed owner-visible packet. Product Owner Human Gate is
-now the next product decision; do not start Phase 2, Final Independent Product
-External Review closure, signing, notarization, release, push, merge, or any
-out-of-contract work until the owner explicitly accepts the same sealed head.
+The sealed owner-visible packet is ready for external review. Product Owner
+Human Gate is now the next product decision; do not start Phase 2, Final
+Independent Product External Review closure, signing, notarization, release,
+push, merge, or any out-of-contract work until the owner explicitly accepts the
+same sealed head.
