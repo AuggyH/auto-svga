@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: terminal_human_required
-- Next Action: external_review
+- State: goal_repair_in_progress
+- Next Action: diagnose_and_repair_desktop_smoke
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -110,6 +110,11 @@ Date: 2026-06-25
 - Final Validation failed because the full P6 evidence regression reached the
   Electron desktop smoke and `npm run desktop:smoke` returned
   `Invalid smoke result` with all product smoke fields false.
+- The prior `terminal_human_required` lifecycle wording is corrected by the
+  current repair state because Product Owner Human Gate is not reachable while
+  a required machine gate is failed.
+- P6-F010 and P6-F012 are regressed for this lifecycle/gate blocker while
+  `currentStatus` remains `open` and `repairRound` remains `0`.
 - Cleanup evidence for the failing smoke remained safe:
   `serverClosed=true` and `tempRemoved=true`.
 - P6-R1 stopped before Reviewer A, Reviewer B, Final Seal, Post-seal
@@ -123,8 +128,7 @@ Date: 2026-06-25
 
 ## Next Action
 
-Run external review on the final-validation blocker and request Product Owner
-authorization for the smallest allowed repair scope if P6-R1 should continue.
-Do not start Phase 2, Product Owner Human Gate, Final Independent Product
-External Review, finding closure, signing, notarization, release, push, merge,
-or any out-of-contract work.
+Diagnose and repair the desktop smoke blocker under the already authorized
+P6-R1 scope. Do not start Phase 2, Product Owner Human Gate, Final Independent
+Product External Review, finding closure, signing, notarization, release, push,
+merge, or any out-of-contract work.

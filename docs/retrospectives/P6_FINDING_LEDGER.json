@@ -526,17 +526,19 @@
         "owner-visible wording check"
       ],
       "currentOpenSubIssues": [
-        "Machine PASS is still not owner acceptance; technical review remains required."
+        "Machine PASS is still not owner acceptance; technical review remains required.",
+        "Final Validation failure was incorrectly recorded as terminal_human_required before correction; required machine gate failure must keep Product Owner Human Gate unreachable."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
         "docs/loop/LOOP_HISTORY.jsonl",
-        "docs/loop/reviews/P6-R1-wp0-review-pass.md"
+        "docs/loop/reviews/P6-R1-wp0-review-pass.md",
+        "review/P6-R1-FinalValidationBlocked-9e5f172/REVIEW_PACKET.md"
       ]
     },
     {
@@ -631,17 +633,19 @@
         "owner-approved recovery plan"
       ],
       "currentOpenSubIssues": [
-        "Technical-layer worker completion still did not close the end-to-end product flow."
+        "Technical-layer worker completion still did not close the end-to-end product flow.",
+        "Final Validation found the end-to-end desktop smoke still failing after WP1-WP5 integration, so the vertical recovery loop is reopened."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
         "docs/loop/LOOP_HISTORY.jsonl",
-        "docs/loop/reviews/P6-R1-wp0-review-pass.md"
+        "docs/loop/reviews/P6-R1-wp0-review-pass.md",
+        "review/P6-R1-FinalValidationBlocked-9e5f172/REVIEW_PACKET.md"
       ]
     },
     {

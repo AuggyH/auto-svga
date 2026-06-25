@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: terminal_human_required
+Status: goal_repair_in_progress
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: terminal_human_required_final_validation_blocked
+executionStatus: goal_repair_in_progress
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -566,7 +566,10 @@ Final Validation execution record:
   `Phase 2`
 - requiredOwnerDecision:
   `authorize a minimal runtime/smoke repair scope or keep P6-R1 blocked`
-- nextActionAfterFinalValidationFailure: `external_review`
+- lifecycleCorrection:
+  `previous terminal_human_required/HUMAN_REQUIRED wording was invalid because a required machine gate failed`
+- productOwnerHumanGateReachable: `false`
+- nextActionAfterFinalValidationFailure: `diagnose_and_repair_desktop_smoke`
 
 After Final Validation passes, the only executable terminal sequence is:
 
@@ -729,19 +732,22 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `terminal_human_required_final_validation_blocked`.
+Current state: `goal_repair_in_progress`.
 
-Next action: `external_review`.
+Next action: `diagnose_and_repair_desktop_smoke`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
 `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY` from base execution head
 `30f522ca569679a5364149fe02ccc83624ec91ce`.
 
-WP0 recovery gate bootstrap, Gate A, Gate B, and Gate C have passed. Final
-Validation then failed on the required Electron desktop smoke check, so P6-R1
-has stopped before Reviewer A, Reviewer B, Final Seal, Post-seal Verification,
-Product Owner Human Gate, Final Independent Product External Review, finding
-closure, and Phase 2. Phase 2 is not started. Product Owner Human Gate, Final
-Independent Product External Review, finding closure, signing, notarization,
-release, push, merge, and Phase 2 remain prohibited.
+WP0 recovery gate bootstrap, Gate A, Gate B, and Gate C had passed before Final
+Validation. Final Validation then failed on the required Electron desktop smoke
+check. The prior `terminal_human_required` wording is superseded by this repair
+state because Product Owner Human Gate is not reachable while a required
+machine gate is failed. P6-R1 is diagnosing and repairing the desktop smoke
+blocker. Reviewer A, Reviewer B, Final Seal, Post-seal Verification, Product
+Owner Human Gate, Final Independent Product External Review, finding closure,
+and Phase 2 remain blocked until the required machine validation passes again.
+Phase 2 is not started. Signing, notarization, release, push, merge, and Phase
+2 remain prohibited.
