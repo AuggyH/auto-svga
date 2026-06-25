@@ -6,7 +6,7 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: HUMAN_REQUIRED
+- State: terminal_human_required
 - Next Action: external_review
 - contractRevision: 3
 - supersedesContractRevision: 2
