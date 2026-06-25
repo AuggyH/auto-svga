@@ -633,7 +633,10 @@
         "R3/R4 improved runtime evidence and visible packet mechanics.",
         "R5/R6 added stricter source and interaction evidence, but external review still found the multi-source path unproven end to end."
       ],
-      "fixCommits": [],
+      "fixCommits": [
+        "4fd43a1d820b17d728ef991329e080d6d4e4151f",
+        "39bbe6c3d3f455bffb4b8943f6e9ff459f403e3b"
+      ],
       "whyPreviousFixesDidNotCloseIt": "Prior fixes proved controls, panels, or partial artifacts rather than the full second SVGA, reference media, latest artifact, synchronized playback, and cleanup journey under one vertical owner.",
       "requiredRegressionTest": "An end-to-end failure-first scenario for second SVGA, reference media and latest artifact, including real input, load, playback, synchronization and cleanup.",
       "responsibleLayer": "multi-source vertical flow",
@@ -653,9 +656,11 @@
         "synchronized playback and cleanup evidence",
         "independent external review confirmation"
       ],
-      "resolutionStage": "unresolved",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
-        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/product/p6/worker-evidence/P6R1-WP2-multi-source-acceptance.md",
+        "docs/loop/LOOP_HISTORY.jsonl"
       ]
     }
   ],

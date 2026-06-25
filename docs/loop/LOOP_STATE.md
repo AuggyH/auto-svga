@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: gate_a_passed_execute_wp2_multi_source_acceptance_flow
-- Next Action: execute_wp2_multi_source_acceptance_flow
+- State: wp2_integration_checkpoint_passed_execute_wp3_interaction_evidence
+- Next Action: execute_wp3_interaction_evidence
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -68,6 +68,12 @@ Date: 2026-06-25
   svga-web prototype preparation, full loop validation, and diff checks.
 - P6-F001 and P6-F002 remain `currentStatus=open` and advanced only to
   `integrated_resolved_pending_external_review`.
+- WP2 multi-source acceptance is integrated at
+  `39bbe6c3d3f455bffb4b8943f6e9ff459f403e3b`.
+- WP2 runtime flow passed with primary SVGA, second SVGA, reference media,
+  latest artifact, synchronized playback, and cleanup checks all true.
+- P6-F013 remains `currentStatus=open` and advanced only to
+  `integrated_resolved_pending_external_review`.
 - No formal implementation Worker is currently running for P6-R1.
 - No product runtime, Web UI, Electron UI, test, dependency, package, parity,
   scenario, motion, App, or packaging implementation has been changed for
@@ -76,6 +82,6 @@ Date: 2026-06-25
 
 ## Next Action
 
-Execute WP2 multi-source acceptance flow. Do not start Phase 2, Product Owner
+Execute WP3 interaction evidence. Do not start Phase 2, Product Owner
 Human Gate, Final Independent Product External Review, finding closure,
 signing, notarization, release, push, merge, or any out-of-contract work.

@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: gate_a_passed_execute_wp2_multi_source_acceptance_flow
+Status: wp2_integration_checkpoint_passed_execute_wp3_interaction_evidence
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: gate_a_passed_execute_wp2_multi_source_acceptance_flow
+executionStatus: wp2_integration_checkpoint_passed_execute_wp3_interaction_evidence
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -289,6 +289,16 @@ User flow:
 - latest artifact
 - synchronized playback
 - cleanup
+
+WP2 Integration Checkpoint execution record:
+
+- wp2WorkerThread: `019efcda-8727-7a20-a404-f7958b2bb1ba`
+- wp2WorkerHead: `4fd43a1d820b17d728ef991329e080d6d4e4151f`
+- integrationHead: `39bbe6c3d3f455bffb4b8943f6e9ff459f403e3b`
+- wp2Status: `passed`
+- nextAction: `execute_wp3_interaction_evidence`
+- P6-F013 remains `currentStatus=open` and is not closed before final
+  independent external review.
 
 ## WP3 - Interaction Evidence
 
