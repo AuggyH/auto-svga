@@ -2741,8 +2741,6 @@ async function runProductSmoke() {
     await captureArtifact("desktop-asset-preview-modal-open");
     closeAssetPreview();
     await delay(240);
-    closeP6SmokeTransientUi();
-    await delay(160);
     await recordP6SmokeAction({
       id: "switch-diagnostics-to-runtime-logs",
       kind: "click",

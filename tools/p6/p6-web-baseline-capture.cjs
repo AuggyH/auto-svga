@@ -784,6 +784,7 @@ async function dispatchFixtureLoad(window, options = {}) {
 
 async function waitForFixtureLoaded(window, options = {}) {
   const canvasSelector = options.canvasSelector ?? "#svgaCanvasA canvas";
+  const requireInspection = options.requireInspection !== false;
   await waitFor(window, `
     (() => {
       const hasInspection = Boolean(document.querySelector(".specReportSection") || document.querySelector(".auditReportSection"));
@@ -798,7 +799,7 @@ async function waitForFixtureLoaded(window, options = {}) {
           }
         }
       }
-      return hasInspection && canvasNonBlank;
+      return ${JSON.stringify(requireInspection)} ? hasInspection && canvasNonBlank : canvasNonBlank;
     })()
   `, 18_000);
 }
@@ -943,7 +944,8 @@ async function main() {
   await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
   await waitFor(window, `(() => {
     const menu = document.querySelector("#modeDropdownMenu");
-    return Boolean(menu && !menu.hidden);
+    const rect = menu?.getBoundingClientRect();
+    return Boolean(menu && !menu.hidden && rect && rect.width > 0 && rect.height > 0);
   })()`);
   await recordWebInteraction(window, "select-export-review-mode-latest-artifact-loads", async () => {
     await browserPointClick(window, "[data-value='exportReview']");
@@ -1090,7 +1092,8 @@ async function main() {
   await loadFixture(window, {
     inputSelector: "#secondaryFileInput",
     canvasSelector: "#svgaCanvasB canvas",
-    fileName: "p6-web-baseline-secondary-fixture.svga"
+    fileName: "p6-web-baseline-secondary-fixture.svga",
+    requireInspection: false
   });
   snapshots.push(await collectSnapshot(window, "local-compare-loaded"));
   await capture(window, "screenshot-local-compare-loaded-1440x900.png");
