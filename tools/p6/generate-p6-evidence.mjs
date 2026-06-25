@@ -482,7 +482,6 @@ async function buildArtifactIndex() {
 async function buildParityReport() {
   const contract = await readJson(contractPath);
   const runtimeHeadCommit = git(["rev-parse", "HEAD"]);
-  const headCommit = skipTrackedSnapshots ? runtimeHeadCommit : sourceTrackedSnapshotHead;
   const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]);
   const artifactBindings = await buildArtifactIndex();
   const requiredCounts = requiredCountsFromContract(contract);
@@ -501,13 +500,19 @@ async function buildParityReport() {
     requiredCounts,
     source: {
       baseCommit: contract.baselineCommit,
-      headCommit,
+      headCommit: runtimeHeadCommit,
       branch
     }
   });
   await writeJson(path.join(p6Root, "p6-parity-report.json"), report);
   if (!skipTrackedSnapshots) {
-    await writeJson(paritySnapshotPath, report);
+    await writeJson(paritySnapshotPath, {
+      ...report,
+      source: {
+        ...report.source,
+        headCommit: sourceTrackedSnapshotHead
+      }
+    });
   }
   return report;
 }
