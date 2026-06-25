@@ -966,6 +966,15 @@ async function main() {
   ].join("\n"), "utf8");
   const visibleManifest = await buildManifest(visibleRoot, {
     ...manifestExtra,
+    privacyAudit: {
+      passed: privacyAudit.passed,
+      findingCount: privacyAudit.findingCount,
+      actualZipEntryCount: privacyAudit.actualZipEntryCount,
+      scannedEntryCount: privacyAudit.scannedEntryCount,
+      scannedTextEntryCount: privacyAudit.scannedTextEntryCount,
+      scannedBinaryEntryCount: privacyAudit.scannedBinaryEntryCount,
+      selfReferentialExclusionCount: privacyAudit.selfReferentialExclusions.length
+    },
     ownerReviewZip: {
       fileName: reviewZipName,
       sizeBytes: reviewZipIdentity.sizeBytes,
