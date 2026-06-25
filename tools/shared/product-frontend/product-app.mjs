@@ -1623,14 +1623,24 @@ function p6SmokeTargetForSelector(selector) {
     return {
       node: document.body,
       visible: true,
-      rect: { x: 0, y: 0, width: innerWidth, height: innerHeight }
+      rect: { x: 0, y: 0, width: innerWidth, height: innerHeight },
+      actionablePoint: { x: Math.round(innerWidth / 2), y: Math.round(innerHeight / 2) },
+      viewportIntersected: true,
+      occlusionPassed: true
     };
   }
-  const nodes = selector.split(",")
+  const parts = selector.split(",").map((part) => part.trim()).filter(Boolean);
+  const nodes = parts
     .map((part) => document.querySelector(part.trim()))
     .filter(Boolean);
   const visibleNode = nodes.find((node) => isElementVisible(node)) ?? nodes[0] ?? null;
   const rect = visibleNode?.getBoundingClientRect();
+  const actionablePoint = rect ? {
+    x: Math.round(Math.min(Math.max(rect.left + rect.width / 2, 0), Math.max(innerWidth - 1, 0))),
+    y: Math.round(Math.min(Math.max(rect.top + rect.height / 2, 0), Math.max(innerHeight - 1, 0)))
+  } : null;
+  const top = actionablePoint ? document.elementFromPoint(actionablePoint.x, actionablePoint.y) : null;
+  const occlusionPassed = Boolean(top && parts.some((part) => top.matches?.(part) || top.closest?.(part)));
   return {
     node: visibleNode,
     visible: isElementVisible(visibleNode),
@@ -1639,7 +1649,10 @@ function p6SmokeTargetForSelector(selector) {
       y: Math.round(rect.y),
       width: Math.round(rect.width),
       height: Math.round(rect.height)
-    } : null
+    } : null,
+    actionablePoint,
+    viewportIntersected: rect ? rect.bottom >= 0 && rect.right >= 0 && rect.top <= innerHeight && rect.left <= innerWidth : false,
+    occlusionPassed
   };
 }
 
@@ -1701,8 +1714,26 @@ function collectP6SmokeSnapshot(stateId) {
   const activeMode = modeDropdownTrigger?.textContent?.replace(/\s+/g, " ").trim() ?? "unknown";
   const panel = !infoPanel.hidden ? "info" : !logsPanel.hidden ? "logs" : "none";
   const modal = !settingsModal.hidden ? "settingsModal" : !assetPreviewModal.hidden ? "assetPreviewModal" : "none";
+  const observedStateId = (() => {
+    if (!modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu)) return "mode-menu-open";
+    if (modal === "settingsModal") return "settings-open";
+    if (modal === "assetPreviewModal") return "asset-preview-modal-open";
+    if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
+    if (reduceMotionToggle.checked && reduceBlurToggle.checked && modal === "none") return "settings-closed-by-escape";
+    if (reduceMotionToggle.checked && reduceBlurToggle.checked) return "accessibility-toggles-on";
+    if (panel === "logs") return "logs-open";
+    if (panel === "info" && !document.querySelector("#tab-assets")?.hidden && isElementVisible(document.querySelector("#tab-assets"))) return "info-assets-open";
+    if (panel === "info" && !document.querySelector("#tab-overview")?.hidden && isElementVisible(document.querySelector("#tab-overview"))) return "info-overview-open";
+    if (activeMode.includes("导出复核") && players.a.videoItem) return "export-review-loaded";
+    if (isCompareActive()) return players.b.videoItem ? "local-compare-loaded" : "local-compare-empty";
+    if (players.a.parseStatus === "loading") return "loading";
+    if (players.a.videoItem) return "loaded";
+    if (activeMode.includes("本地预览")) return "local-empty";
+    return "unknown";
+  })();
   return {
     stateId,
+    observedStateId,
     viewport: { width: innerWidth, height: innerHeight },
     devicePixelRatio,
     playbackTimeMs: Math.round((players.a.timeDisplay?.textContent?.match(/[0-9.]+/)?.[0] ?? 0) * 1000),
@@ -1734,8 +1765,37 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
   p6SmokeCurrentActionId = action.id;
   const target = p6SmokeTargetForSelector(action.selector);
   const stateBefore = await collectP6SmokeActionState(`${action.initialState}:before`);
-  await runAction();
-  await waitForState?.();
+  const receipts = [];
+  const selectorParts = action.selector.split(",").map((part) => part.trim()).filter(Boolean);
+  const matchesTarget = (targetNode) => selectorParts.includes("body")
+    ? targetNode === document.body || document.body.contains(targetNode)
+    : selectorParts.some((part) => targetNode?.matches?.(part) || targetNode?.closest?.(part));
+  const receiptHandler = (event) => {
+    receipts.push({
+      type: event.type,
+      selector: action.selector,
+      targetMatches: matchesTarget(event.target),
+      isTrusted: event.isTrusted === true,
+      timestampMs: Date.now(),
+      performanceTimeMs: Math.round(performance.now()),
+      clientX: Number.isFinite(event.clientX) ? Math.round(event.clientX) : null,
+      clientY: Number.isFinite(event.clientY) ? Math.round(event.clientY) : null,
+      key: event.key ?? null,
+      code: event.code ?? null,
+      targetId: event.target?.id || null,
+      targetText: (event.target?.innerText || event.target?.getAttribute?.("aria-label") || event.target?.getAttribute?.("title") || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120)
+    });
+  };
+  for (const type of ["click", "change", "input", "keydown"]) document.addEventListener(type, receiptHandler, true);
+  try {
+    await runAction();
+    await waitForState?.();
+  } finally {
+    for (const type of ["click", "change", "input", "keydown"]) document.removeEventListener(type, receiptHandler, true);
+  }
   const stateAfter = await collectP6SmokeActionState(`${action.expectedState}:after`);
   const primaryProof = collectRenderedStateProof(action.expectedState);
   const equivalentProof = primaryProof.passed
@@ -1751,8 +1811,7 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 120),
-    visibleResultState: proof.passed === true ? action.expectedState : proof.state,
-    visibleResultPassed: proof.passed === true,
+    observedState: stateAfter.stateId,
     visibleResultText: p6BoundedSmokeText(proof.renderedText)
   };
   p6SmokeActionTrace.push({
@@ -1764,15 +1823,18 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
       selector: action.selector,
       trustedPath: "desktop-smoke-dom-event",
       targetVisible: target.visible === true,
-      targetRect: target.rect
+      targetRect: target.rect,
+      actionablePoint: target.actionablePoint,
+      viewportIntersected: target.viewportIntersected === true,
+      occlusionPassed: target.occlusionPassed === true,
+      eventTimestampMs: receipts.at(-1)?.timestampMs ?? Date.now(),
+      eventReceipts: receipts
     },
     stateAfter,
-    stateReached: proof.passed ? action.expectedState : null,
     evidenceState: proof.state,
     targetRect: target.rect,
     controlValue: p6SmokeControlValue(action.selector),
     focusOrVisibleResult,
-    stateProofPassed: proof.passed,
     stateProofFailures: proof.failures
   });
   p6SmokeCurrentActionId = null;
@@ -1781,14 +1843,15 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
 async function collectP6SmokeActionState(stateId) {
   const snapshot = collectP6SmokeSnapshot(stateId);
   return {
-    stateId,
+    stateId: snapshot.observedStateId ?? stateId,
+    requestedStateId: stateId,
     mode: snapshot.mode,
     panel: snapshot.panel,
     modal: snapshot.modal,
     visibleRegions: p6VisibleIds(snapshot.regions),
     visibleControls: p6VisibleIds(snapshot.controls),
     digest: await p6Sha256Text(JSON.stringify({
-      stateId,
+      stateId: snapshot.observedStateId ?? stateId,
       mode: snapshot.mode,
       panel: snapshot.panel,
       modal: snapshot.modal,

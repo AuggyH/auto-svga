@@ -293,8 +293,36 @@ async function collectSnapshot(window, stateId) {
         node && !node.hidden && node.classList.contains("isOpen") && isVisible(node)
       );
       const modal = visibleModal?.id ?? "none";
+      const modeMenu = document.querySelector("#modeDropdownMenu");
+      const syncPlayControl = document.querySelector("#syncPlayControl");
+      const compareToggle = document.querySelector("#compareToggle");
+      const reduceMotionToggle = document.querySelector("#reduceMotionToggle");
+      const reduceBlurToggle = document.querySelector("#reduceBlurToggle");
+      const tabAssets = document.querySelector("#tab-assets");
+      const tabOverview = document.querySelector("#tab-overview");
+      const panelA = document.querySelector("#svgaPanelA");
+      const statusA = document.querySelector("#svgaStatusA")?.textContent ?? "";
+      const loadedA = Boolean(panelA?.classList.contains("hasLoaded") || document.querySelector("#svgaCanvasA canvas"));
+      const observedStateId = (() => {
+        if (modeMenu && !modeMenu.hidden && isVisible(modeMenu)) return "mode-menu-open";
+        if (modal === "settingsModal") return "settings-open";
+        if (modal === "assetPreviewModal") return "asset-preview-modal-open";
+        if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
+        if (reduceMotionToggle?.checked && reduceBlurToggle?.checked && modal === "none") return "settings-closed-by-escape";
+        if (reduceMotionToggle?.checked && reduceBlurToggle?.checked) return "accessibility-toggles-on";
+        if (panel === "logs") return "logs-open";
+        if (panel === "info" && tabAssets && !tabAssets.hidden && isVisible(tabAssets)) return "info-assets-open";
+        if (panel === "info" && tabOverview && !tabOverview.hidden && isVisible(tabOverview)) return "info-overview-open";
+        if (/导出复核|Export review/i.test(activeMode) && loadedA) return "export-review-loaded";
+        if (compareToggle?.checked && /本地预览|Local preview/i.test(activeMode)) return loadedA ? "local-compare-loaded" : "local-compare-empty";
+        if (/加载中|loading/i.test(statusA) || panelA?.classList.contains("isLoading")) return "loading";
+        if (loadedA) return "loaded";
+        if (/本地预览|Local preview/i.test(activeMode)) return "local-empty";
+        return "unknown";
+      })();
       return {
         stateId: ${JSON.stringify(stateId)},
+        observedStateId,
         label: ${JSON.stringify(stateId)},
         title: document.title,
         url: location.href,
@@ -362,7 +390,8 @@ function actionStateFromSnapshot(snapshot) {
     .map((control) => control.id ?? control.dataValue ?? control.dataTab ?? control.text)
     .filter(Boolean);
   return {
-    stateId: snapshot.stateId,
+    stateId: snapshot.observedStateId ?? snapshot.stateId,
+    requestedStateId: snapshot.stateId,
     mode: snapshot.mode,
     panel: snapshot.panel,
     modal: snapshot.modal,
@@ -370,7 +399,8 @@ function actionStateFromSnapshot(snapshot) {
     visibleRegions,
     visibleControls,
     digest: stableDigest({
-      stateId: snapshot.stateId,
+      stateId: snapshot.observedStateId ?? snapshot.stateId,
+      observedStateId: snapshot.observedStateId ?? snapshot.stateId,
       mode: snapshot.mode,
       panel: snapshot.panel,
       modal: snapshot.modal,
@@ -403,18 +433,145 @@ async function activeElementSnapshot(window) {
   `);
 }
 
+async function prepareRuntimeTarget(window, selector) {
+  return window.webContents.executeJavaScript(`
+    (() => {
+      const selector = ${JSON.stringify(selector)};
+      const parts = selector.split(",").map((part) => part.trim()).filter(Boolean);
+      const node = parts.includes("body")
+        ? document.body
+        : parts.map((part) => document.querySelector(part)).find(Boolean);
+      if (!node) {
+        return { selector, present: false, targetVisible: false, viewportIntersected: false, occlusionPassed: false };
+      }
+      node.scrollIntoView?.({ block: "center", inline: "center" });
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      const actionablePoint = {
+        x: Math.round(Math.min(Math.max(rect.left + rect.width / 2, 0), Math.max(innerWidth - 1, 0))),
+        y: Math.round(Math.min(Math.max(rect.top + rect.height / 2, 0), Math.max(innerHeight - 1, 0)))
+      };
+      const top = document.elementFromPoint(actionablePoint.x, actionablePoint.y);
+      const targetMatches = parts.includes("body")
+        ? top === document.body || document.body.contains(top)
+        : parts.some((part) => top?.matches?.(part) || Boolean(top?.closest?.(part)));
+      return {
+        selector,
+        matchedSelector: parts.find((part) => part === "body" || node.matches?.(part)) ?? selector,
+        present: true,
+        targetVisible: rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0,
+        targetRect: {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        },
+        actionablePoint,
+        viewportIntersected: rect.bottom >= 0 && rect.right >= 0 && rect.top <= innerHeight && rect.left <= innerWidth,
+        occlusionPassed: targetMatches,
+        occludingElement: targetMatches ? null : {
+          tag: top?.tagName?.toLowerCase?.() ?? null,
+          id: top?.id || null,
+          text: (top?.innerText || top?.getAttribute?.("aria-label") || "").replace(/\\s+/g, " ").trim().slice(0, 80)
+        }
+      };
+    })()
+  `);
+}
+
+async function installInteractionReceiptProbe(window, selector) {
+  const token = `p6-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  await window.webContents.executeJavaScript(`
+    (() => {
+      const token = ${JSON.stringify(token)};
+      const selector = ${JSON.stringify(selector)};
+      const parts = selector.split(",").map((part) => part.trim()).filter(Boolean);
+      const matchesTarget = (target) => parts.includes("body")
+        ? target === document.body || document.body.contains(target)
+        : parts.some((part) => target?.matches?.(part) || Boolean(target?.closest?.(part)));
+      const receipts = [];
+      const handler = (event) => {
+        const targetMatches = matchesTarget(event.target);
+        receipts.push({
+          type: event.type,
+          selector,
+          targetMatches,
+          isTrusted: event.isTrusted === true,
+          timestampMs: Date.now(),
+          performanceTimeMs: Math.round(performance.now()),
+          clientX: Number.isFinite(event.clientX) ? Math.round(event.clientX) : null,
+          clientY: Number.isFinite(event.clientY) ? Math.round(event.clientY) : null,
+          key: event.key ?? null,
+          code: event.code ?? null,
+          targetId: event.target?.id || null,
+          targetText: (event.target?.innerText || event.target?.getAttribute?.("aria-label") || event.target?.getAttribute?.("title") || "").replace(/\\s+/g, " ").trim().slice(0, 120)
+        });
+      };
+      window.__p6InteractionReceipts ??= {};
+      window.__p6InteractionReceipts[token] = { selector, receipts, handler };
+      for (const type of ["click", "change", "input", "keydown"]) {
+        document.addEventListener(type, handler, true);
+      }
+      return true;
+    })()
+  `);
+  return token;
+}
+
+async function takeInteractionReceipts(window, token) {
+  return window.webContents.executeJavaScript(`
+    (() => {
+      const token = ${JSON.stringify(token)};
+      const entry = window.__p6InteractionReceipts?.[token];
+      if (!entry) return [];
+      for (const type of ["click", "change", "input", "keydown"]) {
+        document.removeEventListener(type, entry.handler, true);
+      }
+      delete window.__p6InteractionReceipts[token];
+      return entry.receipts;
+    })()
+  `);
+}
+
+async function browserPointClick(window, selector) {
+  const target = await prepareRuntimeTarget(window, selector);
+  if (!target.targetVisible || !target.viewportIntersected || !target.occlusionPassed) {
+    throw new Error(`Target is not actionable for ${selector}: ${JSON.stringify(target)}`);
+  }
+  await window.webContents.sendInputEvent({ type: "mouseMove", x: target.actionablePoint.x, y: target.actionablePoint.y });
+  await window.webContents.sendInputEvent({ type: "mouseDown", x: target.actionablePoint.x, y: target.actionablePoint.y, button: "left", clickCount: 1 });
+  await window.webContents.sendInputEvent({ type: "mouseUp", x: target.actionablePoint.x, y: target.actionablePoint.y, button: "left", clickCount: 1 });
+  return target;
+}
+
+async function browserKey(window, keyCode) {
+  await window.webContents.sendInputEvent({ type: "keyDown", keyCode });
+  await window.webContents.sendInputEvent({ type: "keyUp", keyCode });
+  return { keyCode };
+}
+
 async function recordWebInteraction(window, interactionId, runAction, options = {}) {
   const interaction = contract.interactions.find((candidate) => candidate.id === interactionId);
   if (!interaction) throw new Error(`Missing P6 interaction contract for ${interactionId}`);
   const before = await collectSnapshot(window, `${interaction.initialState}:before`);
-  const beforeTarget = targetFromSnapshot(before, interaction.selector);
-  await runAction();
-  if (options.waitForResult) await options.waitForResult();
-  else await delay(options.delayMs ?? 320);
+  const beforeTarget = await prepareRuntimeTarget(window, interaction.selector);
+  const probeToken = await installInteractionReceiptProbe(window, interaction.selector);
+  let actionResult;
+  let actionError = null;
+  try {
+    actionResult = await runAction({ target: beforeTarget });
+    if (options.waitForResult) await options.waitForResult();
+    else await delay(options.delayMs ?? 320);
+  } catch (error) {
+    actionError = error;
+  }
+  const eventReceipts = await takeInteractionReceipts(window, probeToken);
+  if (actionError) throw actionError;
   const after = await collectSnapshot(window, `${interaction.expectedState}:after`);
   const afterTarget = targetFromSnapshot(after, interaction.selector) ?? beforeTarget;
   const activeElement = await activeElementSnapshot(window);
-  const targetRect = beforeTarget?.rect ?? afterTarget?.rect ?? null;
+  const targetRect = beforeTarget?.targetRect ?? beforeTarget?.rect ?? afterTarget?.rect ?? null;
+  const afterState = actionStateFromSnapshot(after);
   const action = {
     id: interaction.id,
     kind: interaction.trigger,
@@ -426,22 +583,23 @@ async function recordWebInteraction(window, interactionId, runAction, options = 
       inputKind: interaction.trigger,
       selector: interaction.selector,
       trustedPath: options.trustedPath ?? "web-baseline-real-input",
-      targetVisible: beforeTarget?.visible === true || afterTarget?.visible === true,
+      targetVisible: beforeTarget?.targetVisible === true || beforeTarget?.visible === true || afterTarget?.visible === true,
       targetRect,
-      eventTimestampMs: Date.now()
+      actionablePoint: beforeTarget?.actionablePoint ?? actionResult?.actionablePoint ?? null,
+      viewportIntersected: beforeTarget?.viewportIntersected === true,
+      occlusionPassed: beforeTarget?.occlusionPassed === true,
+      eventTimestampMs: eventReceipts.at(-1)?.timestampMs ?? Date.now(),
+      eventReceipts
     },
-    stateAfter: actionStateFromSnapshot(after),
-    stateReached: interaction.expectedState,
+    stateAfter: afterState,
     source: "web-baseline-real-input",
     targetRect,
     controlValue: controlValueFromTarget(afterTarget ?? beforeTarget),
     focusOrVisibleResult: {
       ...activeElement,
-      visibleResultState: interaction.expectedState,
-      visibleResultPassed: true,
+      observedState: afterState.stateId,
       visibleResultText: after.bodyTextSample.slice(0, 240)
     },
-    stateProofPassed: true,
     stateProofFailures: []
   };
   webActionTrace.push(action);
@@ -721,7 +879,7 @@ async function main() {
 
   console.log("P6_WEB_BASELINE_PHASE mode-menu-open");
   await recordWebInteraction(window, "click-mode-dropdown-trigger-menu-opens", async () => {
-    await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
+    await browserPointClick(window, "#modeDropdownTrigger");
   }, {
     trustedPath: "web-baseline-real-click",
     waitForResult: async () => waitFor(window, `(() => {
@@ -761,7 +919,7 @@ async function main() {
     return Boolean(menu && !menu.hidden);
   })()`);
   await recordWebInteraction(window, "select-export-review-mode-latest-artifact-loads", async () => {
-    await window.webContents.executeJavaScript(`document.querySelector("[data-value='exportReview']")?.click(); true;`);
+    await browserPointClick(window, "[data-value='exportReview']");
   }, {
     trustedPath: "web-baseline-real-click",
     waitForResult: async () => {
@@ -779,16 +937,15 @@ async function main() {
 
   console.log("P6_WEB_BASELINE_PHASE info-overview");
   await recordWebInteraction(window, "open-info-panel-overview-visible", async () => {
-    await window.webContents.executeJavaScript(`document.querySelector("#infoPanelButton")?.click(); true;`);
+    await browserPointClick(window, "#infoPanelButton");
   }, { trustedPath: "web-baseline-real-click", delayMs: 500 });
   snapshots.push(await collectSnapshot(window, "info-overview-open"));
   await capture(window, "screenshot-info-overview-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE info-assets");
-  await recordWebInteraction(window, "switch-info-panel-tab-assets-visible", async () => execute(window, `
-    [...document.querySelectorAll("button")].find((button) => /资产|资源|Assets/i.test(button.textContent || button.title || ""))?.click();
-    true;
-  `), { trustedPath: "web-baseline-real-click", delayMs: 350 });
+  await recordWebInteraction(window, "switch-info-panel-tab-assets-visible", async () => {
+    await browserPointClick(window, ".tabButton[data-tab='assets']");
+  }, { trustedPath: "web-baseline-real-click", delayMs: 350 });
   snapshots.push(await collectSnapshot(window, "info-assets-open"));
   await capture(window, "screenshot-info-assets-1440x900.png");
 
@@ -811,31 +968,29 @@ async function main() {
 
   console.log("P6_WEB_BASELINE_PHASE logs");
   await recordWebInteraction(window, "switch-diagnostics-to-runtime-logs", async () => {
-    await window.webContents.executeJavaScript(`document.querySelector("#logsButton")?.click(); true;`);
+    await browserPointClick(window, "#logsButton");
   }, { trustedPath: "web-baseline-real-click", delayMs: 350 });
   snapshots.push(await collectSnapshot(window, "logs-open"));
   await capture(window, "screenshot-logs-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE settings");
   await recordWebInteraction(window, "open-settings-modal", async () => {
-    await window.webContents.executeJavaScript(`document.querySelector("#settingsButton")?.click(); true;`);
+    await browserPointClick(window, "#settingsButton");
   }, { trustedPath: "web-baseline-real-click", delayMs: 350 });
   snapshots.push(await collectSnapshot(window, "settings-open"));
   await capture(window, "screenshot-settings-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE accessibility-toggles");
-  await recordWebInteraction(window, "enable-reduce-motion-and-reduce-blur-toggles", async () => execute(window, `
-    document.querySelector("#reduceMotionToggle")?.click();
-    document.querySelector("#reduceBlurToggle")?.click();
-    true;
-  `), { trustedPath: "web-baseline-real-click", delayMs: 180 });
+  await recordWebInteraction(window, "enable-reduce-motion-and-reduce-blur-toggles", async () => {
+    await browserPointClick(window, "#reduceMotionToggle");
+    await browserPointClick(window, "#reduceBlurToggle");
+  }, { trustedPath: "web-baseline-real-click", delayMs: 180 });
   snapshots.push(await collectSnapshot(window, "accessibility-toggles-on"));
   await capture(window, "screenshot-accessibility-toggles-on-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE escape-settings");
   await recordWebInteraction(window, "escape-closes-settings-before-side-panel", async () => {
-    await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
-    await window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
+    await browserKey(window, "Escape");
   }, { trustedPath: "web-baseline-real-keyboard", delayMs: 280 });
   snapshots.push(await collectSnapshot(window, "settings-closed-by-escape"));
   await capture(window, "screenshot-settings-closed-by-escape-1440x900.png");
@@ -850,8 +1005,7 @@ async function main() {
   `);
   await delay(160);
   await recordWebInteraction(window, "space-toggles-synchronized-playback-in-export-review", async () => {
-    await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Space" });
-    await window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Space" });
+    await browserKey(window, "Space");
   }, { trustedPath: "web-baseline-real-keyboard", delayMs: 220 });
   snapshots.push(await collectSnapshot(window, "synchronized-playback-toggled-by-space"));
   await capture(window, "screenshot-synchronized-playback-toggled-by-space-1440x900.png");
@@ -859,7 +1013,7 @@ async function main() {
   console.log("P6_WEB_BASELINE_PHASE local-compare");
   await setMode(window, "localPreview");
   await recordWebInteraction(window, "enable-local-compare-switch", async () => {
-    await window.webContents.executeJavaScript(`(() => { const toggle = document.querySelector("#compareToggle"); if (toggle && !toggle.checked) toggle.click(); return true; })()`);
+    await browserPointClick(window, "#compareToggle");
   }, { trustedPath: "web-baseline-real-click", delayMs: 350 });
   snapshots.push(await collectSnapshot(window, "local-compare-empty"));
   await capture(window, "screenshot-local-compare-empty-1440x900.png");

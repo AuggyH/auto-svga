@@ -138,7 +138,7 @@ test("strict Web interaction evidence accepts direct runtime before/action/after
     assert.equal(webAction.stateBefore.stateId, "logs-open");
     assert.equal(webAction.realAction.inputKind, "click");
     assert.equal(webAction.stateAfter.stateId, "settings-open");
-    assert.equal(webAction.focusOrVisibleResult.visibleResultPassed, true);
+    assert.equal(webAction.focusOrVisibleResult.observedState, "settings-open");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -472,10 +472,21 @@ test("WP3 strict interaction gates reject missing before/action/after/result/bin
     ["missing_artifact_binding", (facts) => delete facts.webInteractionTrace.mutationProtection.artifactCatalogDigest],
     ["fake_target_state", (facts) => {
       facts.webInteractionTrace.actionTrace[0].stateAfter.stateId = "settings-open-forged";
-      facts.webInteractionTrace.actionTrace[0].focusOrVisibleResult.visibleResultState = "settings-open-forged";
+      facts.webInteractionTrace.actionTrace[0].focusOrVisibleResult.observedState = "settings-open-forged";
+    }],
+    ["caller_injected_expected_labels", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].stateReached = "settings-open";
+      facts.webInteractionTrace.actionTrace[0].stateProofPassed = true;
+      facts.webInteractionTrace.actionTrace[0].focusOrVisibleResult.visibleResultState = "settings-open";
+      facts.webInteractionTrace.actionTrace[0].focusOrVisibleResult.visibleResultPassed = true;
     }],
     ["unexecuted_action_path", (facts) => {
       facts.webInteractionTrace.actionTrace[0].realAction.trustedPath = "legacy-snapshot-derived";
+    }],
+    ["no_op_unrelated_background_changes", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].stateAfter.stateId = facts.webInteractionTrace.actionTrace[0].stateBefore.stateId;
+      facts.webInteractionTrace.actionTrace[0].stateAfter.digest = "d".repeat(64);
+      facts.webInteractionTrace.actionTrace[0].focusOrVisibleResult.observedState = facts.webInteractionTrace.actionTrace[0].stateBefore.stateId;
     }],
     ["unchanged_before_after_digest", (facts) => {
       facts.webInteractionTrace.actionTrace[0].stateAfter.digest = facts.webInteractionTrace.actionTrace[0].stateBefore.digest;
@@ -483,6 +494,21 @@ test("WP3 strict interaction gates reject missing before/action/after/result/bin
     ["wrong_target_rect", (facts) => {
       facts.webInteractionTrace.actionTrace[0].realAction.targetRect = { x: 10, y: 10, width: 0, height: 32 };
       facts.webInteractionTrace.actionTrace[0].targetRect = { x: 10, y: 10, width: 0, height: 32 };
+    }],
+    ["offscreen_or_occluded_target", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].realAction.viewportIntersected = false;
+      facts.webInteractionTrace.actionTrace[0].realAction.occlusionPassed = false;
+    }],
+    ["wrong_target_receives_event", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].realAction.eventReceipts[0].selector = "#otherButton";
+      facts.webInteractionTrace.actionTrace[0].realAction.eventReceipts[0].targetMatches = false;
+    }],
+    ["missing_event_receipt", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].realAction.eventReceipts = [];
+    }],
+    ["missing_event_timestamp", (facts) => {
+      delete facts.webInteractionTrace.actionTrace[0].realAction.eventTimestampMs;
+      delete facts.webInteractionTrace.actionTrace[0].realAction.eventReceipts[0].timestampMs;
     }],
     ["wrong_head_binding", (facts) => {
       facts.webInteractionTrace.mutationProtection.headCommit = "0".repeat(40);
@@ -941,21 +967,36 @@ function strictTrace(host, fixtureSha256) {
         selector: "#settingsButton",
         trustedPath: host === "web" ? "browser-click" : "native-click",
         targetVisible: true,
-        targetRect: { x: 10, y: 10, width: 44, height: 32 }
+        targetRect: { x: 10, y: 10, width: 44, height: 32 },
+        actionablePoint: { x: 32, y: 26 },
+        viewportIntersected: true,
+        occlusionPassed: true,
+        eventTimestampMs: 123456,
+        eventReceipts: [{
+          type: "click",
+          selector: "#settingsButton",
+          targetMatches: true,
+          isTrusted: host === "web",
+          timestampMs: 123456,
+          performanceTimeMs: 120,
+          clientX: 32,
+          clientY: 26,
+          key: null,
+          code: null,
+          targetId: "settingsButton",
+          targetText: "Settings"
+        }]
       },
       stateAfter: actionState("settings-open"),
-      stateReached: "settings-open",
       source: host === "web" ? "browser-click" : "native-click",
       targetRect: { x: 10, y: 10, width: 44, height: 32 },
       controlValue: { visible: true, disabled: false, checked: false },
       focusOrVisibleResult: {
         activeElementId: "settingsButton",
         activeElementText: "Settings",
-        visibleResultState: "settings-open",
-        visibleResultPassed: true,
+        observedState: "settings-open",
         visibleResultText: "Settings"
       },
-      stateProofPassed: true,
       stateProofFailures: []
     }],
     finalStateDigest: fixtureSha256,

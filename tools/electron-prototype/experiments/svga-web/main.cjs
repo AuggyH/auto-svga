@@ -186,11 +186,11 @@ function describeP6ActionTraceEntryValidationFailure(value) {
   if (!isP6ActionState(value.stateBefore)) return "stateBefore";
   if (!isP6RealAction(value.realAction)) return "realAction";
   if (!isP6ActionState(value.stateAfter)) return "stateAfter";
-  if (!(value.stateReached === null || isBoundedString(value.stateReached, 160))) return "stateReached";
+  if ("stateReached" in value) return "deprecatedStateReached";
   if (!isP6Rect(value.targetRect)) return "targetRect";
   if (!(value.controlValue === null || isP6ControlValue(value.controlValue))) return "controlValue";
   if (!isP6FocusOrVisibleResult(value.focusOrVisibleResult)) return "focusOrVisibleResult";
-  if (typeof value.stateProofPassed !== "boolean") return "stateProofPassed";
+  if ("stateProofPassed" in value) return "deprecatedStateProofPassed";
   if (!isStringArray(value.stateProofFailures, 80)) return "stateProofFailures";
   return "unknown";
 }
@@ -299,11 +299,11 @@ function isP6ActionTraceEntry(value) {
     && isP6ActionState(value.stateBefore)
     && isP6RealAction(value.realAction)
     && isP6ActionState(value.stateAfter)
-    && (value.stateReached === null || isBoundedString(value.stateReached, 160))
+    && !("stateReached" in value)
     && isP6Rect(value.targetRect)
     && (value.controlValue === null || isP6ControlValue(value.controlValue))
     && isP6FocusOrVisibleResult(value.focusOrVisibleResult)
-    && typeof value.stateProofPassed === "boolean"
+    && !("stateProofPassed" in value)
     && isStringArray(value.stateProofFailures, 80);
 }
 
@@ -324,15 +324,36 @@ function isP6RealAction(value) {
     && isBoundedString(value.selector, 220)
     && isBoundedString(value.trustedPath, 120)
     && typeof value.targetVisible === "boolean"
-    && isP6Rect(value.targetRect);
+    && isP6Rect(value.targetRect)
+    && value.actionablePoint
+    && typeof value.actionablePoint === "object"
+    && Number.isFinite(value.actionablePoint.x)
+    && Number.isFinite(value.actionablePoint.y)
+    && value.viewportIntersected === true
+    && value.occlusionPassed === true
+    && Number.isFinite(value.eventTimestampMs)
+    && Array.isArray(value.eventReceipts)
+    && value.eventReceipts.length > 0
+    && value.eventReceipts.length <= 12
+    && value.eventReceipts.every((receipt) =>
+      receipt
+      && typeof receipt === "object"
+      && !Array.isArray(receipt)
+      && isBoundedString(receipt.type, 40)
+      && isBoundedString(receipt.selector, 220)
+      && receipt.selector === value.selector
+      && receipt.targetMatches === true
+      && Number.isFinite(receipt.timestampMs)
+    );
 }
 
 function isP6FocusOrVisibleResult(value) {
   return value && typeof value === "object" && !Array.isArray(value)
     && (value.activeElementId === null || isBoundedString(value.activeElementId, 160))
     && (value.activeElementText === null || typeof value.activeElementText === "string")
-    && isBoundedString(value.visibleResultState, 160)
-    && typeof value.visibleResultPassed === "boolean"
+    && !("visibleResultState" in value)
+    && !("visibleResultPassed" in value)
+    && isBoundedString(value.observedState, 160)
     && typeof value.visibleResultText === "string";
 }
 

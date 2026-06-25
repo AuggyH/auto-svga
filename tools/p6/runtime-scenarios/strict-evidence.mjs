@@ -278,7 +278,8 @@ function validateAction(action, index, contract, failures) {
   if (!expected) failures.push(`actionTrace[${index}] unknown interaction ${action.id}`);
   if (expected && action.kind !== expected.trigger) failures.push(`actionTrace[${index}] trigger mismatch`);
   if (expected && action.selector !== expected.selector) failures.push(`actionTrace[${index}] selector mismatch`);
-  if (expected && !stateMatches(action.stateReached, expected.expectedState)) failures.push(`actionTrace[${index}] expected state not reached`);
+  if ("stateReached" in action) failures.push(`actionTrace[${index}].stateReached is deprecated; derive state from stateAfter`);
+  if ("stateProofPassed" in action) failures.push(`actionTrace[${index}].stateProofPassed is deprecated; derive proof from observable state`);
   if (expected && !stateLabelMatches(action.stateBefore?.stateId, expected.initialState)) failures.push(`actionTrace[${index}] stateBefore does not bind initialState`);
   if (expected && !stateLabelMatches(action.stateAfter?.stateId, expected.expectedState)) failures.push(`actionTrace[${index}] stateAfter does not bind expectedState`);
   validateActionState(action.stateBefore, `actionTrace[${index}].stateBefore`, failures);
@@ -289,7 +290,7 @@ function validateAction(action, index, contract, failures) {
   }
   if (!isRecord(action.targetRect)) failures.push(`actionTrace[${index}].targetRect missing`);
   validateFocusOrVisibleResult(action.focusOrVisibleResult, `actionTrace[${index}].focusOrVisibleResult`, failures);
-  if (expected && !stateMatches(action.focusOrVisibleResult?.visibleResultState, expected.expectedState)) {
+  if (expected && !stateMatches(action.focusOrVisibleResult?.observedState, expected.expectedState)) {
     failures.push(`actionTrace[${index}] focusOrVisibleResult does not bind expectedState`);
   }
 }
@@ -341,6 +342,19 @@ function validateRealAction(value, label, failures) {
   }
   if (value.targetVisible !== true) failures.push(`${label}.targetVisible must be true`);
   if (!isRecord(value.targetRect) || !rectHasArea(value.targetRect)) failures.push(`${label}.targetRect missing`);
+  if (!isRecord(value.actionablePoint) || !finiteNumber(value.actionablePoint.x) || !finiteNumber(value.actionablePoint.y)) {
+    failures.push(`${label}.actionablePoint missing`);
+  }
+  if (value.viewportIntersected !== true) failures.push(`${label}.viewportIntersected must be true`);
+  if (value.occlusionPassed !== true) failures.push(`${label}.occlusionPassed must be true`);
+  if (!Number.isFinite(value.eventTimestampMs)) failures.push(`${label}.eventTimestampMs missing`);
+  if (!Array.isArray(value.eventReceipts) || value.eventReceipts.length === 0) {
+    failures.push(`${label}.eventReceipts missing`);
+  } else {
+    for (const [index, receipt] of value.eventReceipts.entries()) {
+      validateEventReceipt(receipt, `${label}.eventReceipts[${index}]`, value.selector, failures);
+    }
+  }
 }
 
 function validateFocusOrVisibleResult(value, label, failures) {
@@ -350,9 +364,22 @@ function validateFocusOrVisibleResult(value, label, failures) {
   }
   if (!("activeElementId" in value)) failures.push(`${label}.activeElementId missing`);
   if (!("activeElementText" in value)) failures.push(`${label}.activeElementText missing`);
-  if (!nonEmptyString(value.visibleResultState)) failures.push(`${label}.visibleResultState missing`);
-  if (value.visibleResultPassed !== true) failures.push(`${label}.visibleResultPassed must be true`);
+  if ("visibleResultState" in value) failures.push(`${label}.visibleResultState is deprecated; use observedState`);
+  if ("visibleResultPassed" in value) failures.push(`${label}.visibleResultPassed is deprecated; derive result in validator`);
+  if (!nonEmptyString(value.observedState)) failures.push(`${label}.observedState missing`);
   if (typeof value.visibleResultText !== "string") failures.push(`${label}.visibleResultText missing`);
+}
+
+function validateEventReceipt(value, label, expectedSelector, failures) {
+  if (!isRecord(value)) {
+    failures.push(`${label} missing`);
+    return;
+  }
+  if (!nonEmptyString(value.type)) failures.push(`${label}.type missing`);
+  if (!Number.isFinite(value.timestampMs)) failures.push(`${label}.timestampMs missing`);
+  if (!nonEmptyString(value.selector)) failures.push(`${label}.selector missing`);
+  if (value.selector !== expectedSelector) failures.push(`${label}.selector mismatch`);
+  if (value.targetMatches !== true) failures.push(`${label}.targetMatches must be true`);
 }
 
 function validateMutationProtection(value, failures) {
@@ -380,7 +407,8 @@ function findAction(actions = [], item) {
     action.id === item.id
     && action.kind === item.trigger
     && action.selector === item.selector
-    && stateMatches(action.stateReached, item.expectedState)
+    && stateMatches(action.stateAfter?.stateId, item.expectedState)
+    && stateMatches(action.focusOrVisibleResult?.observedState, item.expectedState)
   );
 }
 
