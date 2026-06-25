@@ -54,7 +54,7 @@ test("state evidence helper writes Web/Desktop/comparison triple and JSON", asyn
   }
 });
 
-test("strict Web interaction evidence normalizes legacy baseline trace into required before/action/after/result fields", async () => {
+test("strict Web interaction evidence rejects legacy baseline trace without direct before/action/after/result fields", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "p6-strict-interaction-"));
   try {
     const fixtureSha256 = "a".repeat(64);
@@ -89,6 +89,45 @@ test("strict Web interaction evidence normalizes legacy baseline trace into requ
     }, null, 2));
     await writeFile(path.join(root, "web-baseline/artifact-index.json"), JSON.stringify({
       fixture: { sha256: fixtureSha256, displayName: "avatar_frame_basic.svga", sizeBytes: 10 }
+    }, null, 2));
+    await writeFile(path.join(root, "desktop-interaction-trace.source.json"), JSON.stringify(strictTrace("desktop", fixtureSha256), null, 2));
+
+    const result = await generateP6StrictRuntimeEvidence({ p6Root: root, contract });
+
+    assert.equal(result.report.passed, false, "legacy trace must not be normalized into a pass");
+    const webAction = result.webTrace.actionTrace[0];
+    assert.equal(webAction.stateBefore, undefined);
+    assert.ok(result.report.failures.some((failure) => failure.includes("stateBefore") || failure.includes("realAction")));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("strict Web interaction evidence accepts direct runtime before/action/after/result fields", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "p6-strict-interaction-direct-"));
+  try {
+    const fixtureSha256 = "a".repeat(64);
+    const contract = {
+      baselineCommit: "c".repeat(40),
+      interactions: [{
+        id: "open-settings-modal",
+        trigger: "click",
+        selector: "#settingsButton",
+        initialState: "logs-open",
+        expectedState: "settings-open"
+      }]
+    };
+    await mkdir(path.join(root, "web-baseline"), { recursive: true });
+    await writeFile(path.join(root, "web-baseline/dom-manifest.json"), JSON.stringify({
+      snapshots: [
+        strictWebSnapshot("logs-open", "exportReview", "logs", "none"),
+        strictWebSnapshot("settings-open", "exportReview", "logs", "settings")
+      ]
+    }, null, 2));
+    await writeFile(path.join(root, "web-baseline/interaction-trace.json"), JSON.stringify(strictTrace("web", fixtureSha256), null, 2));
+    await writeFile(path.join(root, "web-baseline/artifact-index.json"), JSON.stringify({
+      fixture: { sha256: fixtureSha256, displayName: "avatar_frame_basic.svga", sizeBytes: 10 },
+      headCommit: "c".repeat(40)
     }, null, 2));
     await writeFile(path.join(root, "desktop-interaction-trace.source.json"), JSON.stringify(strictTrace("desktop", fixtureSha256), null, 2));
 
@@ -430,7 +469,30 @@ test("WP3 strict interaction gates reject missing before/action/after/result/bin
     ["missing_state_after", (facts) => delete facts.webInteractionTrace.actionTrace[0].stateAfter],
     ["missing_focus_or_visible_result", (facts) => delete facts.webInteractionTrace.actionTrace[0].focusOrVisibleResult],
     ["missing_head_binding", (facts) => delete facts.webInteractionTrace.mutationProtection.headCommit],
-    ["missing_artifact_binding", (facts) => delete facts.webInteractionTrace.mutationProtection.artifactCatalogDigest]
+    ["missing_artifact_binding", (facts) => delete facts.webInteractionTrace.mutationProtection.artifactCatalogDigest],
+    ["fake_target_state", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].stateAfter.stateId = "settings-open-forged";
+      facts.webInteractionTrace.actionTrace[0].focusOrVisibleResult.visibleResultState = "settings-open-forged";
+    }],
+    ["unexecuted_action_path", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].realAction.trustedPath = "legacy-snapshot-derived";
+    }],
+    ["unchanged_before_after_digest", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].stateAfter.digest = facts.webInteractionTrace.actionTrace[0].stateBefore.digest;
+    }],
+    ["wrong_target_rect", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].realAction.targetRect = { x: 10, y: 10, width: 0, height: 32 };
+      facts.webInteractionTrace.actionTrace[0].targetRect = { x: 10, y: 10, width: 0, height: 32 };
+    }],
+    ["wrong_head_binding", (facts) => {
+      facts.webInteractionTrace.mutationProtection.headCommit = "0".repeat(40);
+    }],
+    ["reused_screenshot_path", (facts) => {
+      facts.webInteractionTrace.screenshots.push({
+        ...facts.webInteractionTrace.screenshots[0],
+        stateId: "settings-open-reused"
+      });
+    }]
   ]) {
     const facts = goodFacts();
     mutate(facts);
@@ -499,6 +561,9 @@ test("WP4 motion evidence rejects identical normal-motion start/mid/end frames",
   for (const phase of ["start", "mid", "end"]) {
     facts.motionEvidence.cardEnter.phases.web[phase].sha256 = sameFrameHash;
   }
+  facts.motionEvidence.cardEnter.styleSamples = {
+    web: { phaseHashesChanged: true }
+  };
 
   assertItemFailed(buildP6ParityReportFromRuntimeFacts(facts), "motionParity", "cardEnter", "web-item-runtime");
 });
@@ -840,7 +905,7 @@ function strictTrace(host, fixtureSha256) {
     modal: stateId.includes("settings") ? "settings" : "none",
     visibleRegions: ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"],
     visibleControls: ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"],
-    digest: fixtureSha256
+    digest: stateId.includes("logs") ? "b".repeat(64) : "c".repeat(64)
   });
   return {
     schemaVersion: 1,

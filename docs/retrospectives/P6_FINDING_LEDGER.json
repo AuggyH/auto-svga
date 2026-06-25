@@ -80,12 +80,12 @@
         "external review round that does not reproduce the issue"
       ],
       "currentOpenSubIssues": [
-        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
+        "Independent review revoked the prior HUMAN_REQUIRED, Reviewer B, Final Seal, and Post-seal usability; WP3 real interaction evidence is under repair."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -134,12 +134,12 @@
         "external review round that does not reproduce stale state"
       ],
       "currentOpenSubIssues": [
-        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
+        "Independent review revoked the prior HUMAN_REQUIRED, Reviewer B, Final Seal, and Post-seal usability; WP3 real interaction evidence is under repair."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -189,12 +189,12 @@
         "external reviewer reproduces no artifact-existence false pass"
       ],
       "currentOpenSubIssues": [
-        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
+        "Independent review revoked the prior HUMAN_REQUIRED, Reviewer B, Final Seal, and Post-seal usability; WP3 real interaction evidence is under repair."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -241,12 +241,12 @@
         "external review confirmation"
       ],
       "currentOpenSubIssues": [
-        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
+        "Independent review revoked the prior HUMAN_REQUIRED, Reviewer B, Final Seal, and Post-seal usability; owner handoff is unreachable until required machine gates and post-seal upload verification are trustworthy."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -292,12 +292,12 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
+        "Independent review revoked the prior HUMAN_REQUIRED, Reviewer B, Final Seal, and Post-seal usability; WP3 real interaction evidence is under repair."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -457,12 +457,12 @@
         "owner review"
       ],
       "currentOpenSubIssues": [
-        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
+        "Independent review revoked the prior HUMAN_REQUIRED, Reviewer B, Final Seal, and Post-seal usability; Reviewer B product category evidence is under repair."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -562,12 +562,12 @@
         "owner-visible wording check"
       ],
       "currentOpenSubIssues": [
-        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
+        "Independent review revoked the prior HUMAN_REQUIRED, Reviewer B, Final Seal, and Post-seal usability; owner handoff is unreachable until required machine gates and post-seal upload verification are trustworthy."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -622,12 +622,12 @@
         "external review does not find path or visibility issue"
       ],
       "currentOpenSubIssues": [
-        "Machine validation is resolved on the current final P6-R1 head, but closure still requires Product Owner Human Gate acceptance and final independent product external review on the same sealed head."
+        "Independent review found owner-visible upload binding and privacy/manifest evidence incomplete; owner handoff packaging is under repair."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",

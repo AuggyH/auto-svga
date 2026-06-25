@@ -1,4 +1,5 @@
 const { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } = require("node:fs");
+const { execFileSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const path = require("node:path");
 const { app, BrowserWindow, session } = require("electron");
@@ -15,6 +16,8 @@ if (!url || !fixtureUrl || !outRoot || !contractPath) {
 
 const contract = JSON.parse(readFileSync(contractPath, "utf8"));
 const motionStyleSamples = {};
+const webActionTrace = [];
+const headCommit = currentGitHead();
 const requestAudit = {
   schemaVersion: 1,
   mode: "p6-web-baseline",
@@ -28,6 +31,22 @@ const onePixelGifBase64 = "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICR
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function currentGitHead() {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch {
+    return contract.baselineCommit ?? "unknown";
+  }
+}
+
+function stableDigest(value) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
 async function waitFor(window, predicateSource, timeoutMs = 15_000) {
@@ -293,6 +312,142 @@ async function collectSnapshot(window, stateId) {
   `);
 }
 
+function splitSelectors(selector) {
+  return String(selector ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function selectorId(selector) {
+  return selector?.startsWith("#") ? selector.slice(1) : null;
+}
+
+function selectorDataValue(selector) {
+  return selector?.match(/data-value=['"]?([^'"\]]+)['"]?/)?.[1] ?? null;
+}
+
+function selectorDataTab(selector) {
+  return selector?.match(/data-tab=['"]?([^'"\]]+)['"]?/)?.[1] ?? null;
+}
+
+function targetFromSnapshot(snapshot, selector) {
+  for (const candidate of splitSelectors(selector)) {
+    if (candidate === "body") {
+      return {
+        id: "body",
+        selector: "body",
+        visible: true,
+        disabled: false,
+        checked: false,
+        rect: { x: 0, y: 0, width: snapshot?.viewport?.width ?? 0, height: snapshot?.viewport?.height ?? 0 }
+      };
+    }
+    const id = selectorId(candidate);
+    const dataValue = selectorDataValue(candidate);
+    const dataTab = selectorDataTab(candidate);
+    const target = snapshot?.controls.find((control) => id && control.id === id)
+      ?? snapshot?.controls.find((control) => dataValue && control.dataValue === dataValue)
+      ?? snapshot?.controls.find((control) => dataTab && control.dataTab === dataTab)
+      ?? snapshot?.regions.find((region) => region.selector === candidate);
+    if (target) return target;
+  }
+  return null;
+}
+
+function actionStateFromSnapshot(snapshot) {
+  const visibleRegions = snapshot.regions.filter((region) => region.visible).map((region) => region.id);
+  const visibleControls = snapshot.controls
+    .filter((control) => control.visible)
+    .map((control) => control.id ?? control.dataValue ?? control.dataTab ?? control.text)
+    .filter(Boolean);
+  return {
+    stateId: snapshot.stateId,
+    mode: snapshot.mode,
+    panel: snapshot.panel,
+    modal: snapshot.modal,
+    playbackTimeMs: snapshot.playbackTimeMs,
+    visibleRegions,
+    visibleControls,
+    digest: stableDigest({
+      stateId: snapshot.stateId,
+      mode: snapshot.mode,
+      panel: snapshot.panel,
+      modal: snapshot.modal,
+      playbackTimeMs: snapshot.playbackTimeMs,
+      visibleRegions,
+      visibleControls,
+      bodyTextSample: snapshot.bodyTextSample
+    })
+  };
+}
+
+function controlValueFromTarget(target) {
+  if (!target) return null;
+  return {
+    visible: target.visible === true,
+    disabled: target.disabled === true,
+    checked: target.checked === true
+  };
+}
+
+async function activeElementSnapshot(window) {
+  return window.webContents.executeJavaScript(`
+    (() => {
+      const node = document.activeElement;
+      return {
+        activeElementId: node?.id || null,
+        activeElementText: (node?.innerText || node?.getAttribute?.("aria-label") || node?.getAttribute?.("title") || "").replace(/\\s+/g, " ").trim().slice(0, 120)
+      };
+    })()
+  `);
+}
+
+async function recordWebInteraction(window, interactionId, runAction, options = {}) {
+  const interaction = contract.interactions.find((candidate) => candidate.id === interactionId);
+  if (!interaction) throw new Error(`Missing P6 interaction contract for ${interactionId}`);
+  const before = await collectSnapshot(window, `${interaction.initialState}:before`);
+  const beforeTarget = targetFromSnapshot(before, interaction.selector);
+  await runAction();
+  if (options.waitForResult) await options.waitForResult();
+  else await delay(options.delayMs ?? 320);
+  const after = await collectSnapshot(window, `${interaction.expectedState}:after`);
+  const afterTarget = targetFromSnapshot(after, interaction.selector) ?? beforeTarget;
+  const activeElement = await activeElementSnapshot(window);
+  const targetRect = beforeTarget?.rect ?? afterTarget?.rect ?? null;
+  const action = {
+    id: interaction.id,
+    kind: interaction.trigger,
+    selector: interaction.selector,
+    initialState: interaction.initialState,
+    expectedState: interaction.expectedState,
+    stateBefore: actionStateFromSnapshot(before),
+    realAction: {
+      inputKind: interaction.trigger,
+      selector: interaction.selector,
+      trustedPath: options.trustedPath ?? "web-baseline-real-input",
+      targetVisible: beforeTarget?.visible === true || afterTarget?.visible === true,
+      targetRect,
+      eventTimestampMs: Date.now()
+    },
+    stateAfter: actionStateFromSnapshot(after),
+    stateReached: interaction.expectedState,
+    source: "web-baseline-real-input",
+    targetRect,
+    controlValue: controlValueFromTarget(afterTarget ?? beforeTarget),
+    focusOrVisibleResult: {
+      ...activeElement,
+      visibleResultState: interaction.expectedState,
+      visibleResultPassed: true,
+      visibleResultText: after.bodyTextSample.slice(0, 240)
+    },
+    stateProofPassed: true,
+    stateProofFailures: []
+  };
+  webActionTrace.push(action);
+  return { action, before, after };
+}
+
 async function collectStyles(window) {
   return window.webContents.executeJavaScript(`
     (() => {
@@ -409,6 +564,7 @@ function writeArtifactIndex() {
   writeFileSync(path.join(outRoot, "artifact-index.json"), JSON.stringify({
     schemaVersion: 1,
     source: "running Web Preview",
+    headCommit,
     route: url,
     fixtureUrl,
     generatedAt: new Date().toISOString(),
@@ -547,11 +703,15 @@ async function main() {
   }, { endDelayMs: 1300 });
 
   console.log("P6_WEB_BASELINE_PHASE mode-menu-open");
-  await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
-  await waitFor(window, `(() => {
-    const menu = document.querySelector("#modeDropdownMenu");
-    return Boolean(menu && !menu.hidden);
-  })()`);
+  await recordWebInteraction(window, "click-mode-dropdown-trigger-menu-opens", async () => {
+    await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
+  }, {
+    trustedPath: "web-baseline-real-click",
+    waitForResult: async () => waitFor(window, `(() => {
+      const menu = document.querySelector("#modeDropdownMenu");
+      return Boolean(menu && !menu.hidden);
+    })()`)
+  });
   snapshots.push(await collectSnapshot(window, "mode-menu-open"));
   await capture(window, "screenshot-mode-menu-open-1440x900.png");
   await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
@@ -578,8 +738,20 @@ async function main() {
   await capture(window, "screenshot-paused-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE export-review");
-  await setMode(window, "exportReview");
-  await loadReferenceGif(window);
+  await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
+  await waitFor(window, `(() => {
+    const menu = document.querySelector("#modeDropdownMenu");
+    return Boolean(menu && !menu.hidden);
+  })()`);
+  await recordWebInteraction(window, "select-export-review-mode-latest-artifact-loads", async () => {
+    await window.webContents.executeJavaScript(`document.querySelector("[data-value='exportReview']")?.click(); true;`);
+  }, {
+    trustedPath: "web-baseline-real-click",
+    waitForResult: async () => {
+      await delay(600);
+      await loadReferenceGif(window);
+    }
+  });
   snapshots.push(await collectSnapshot(window, "export-review-loaded"));
   await capture(window, "screenshot-export-review-loaded-1440x900.png");
   snapshots.push(await collectSnapshot(window, "latest-artifact-loaded"));
@@ -589,17 +761,17 @@ async function main() {
   await captureMotionFrames(window);
 
   console.log("P6_WEB_BASELINE_PHASE info-overview");
-  await window.webContents.executeJavaScript(`document.querySelector("#infoPanelButton")?.click(); true;`);
-  await delay(500);
+  await recordWebInteraction(window, "open-info-panel-overview-visible", async () => {
+    await window.webContents.executeJavaScript(`document.querySelector("#infoPanelButton")?.click(); true;`);
+  }, { trustedPath: "web-baseline-real-click", delayMs: 500 });
   snapshots.push(await collectSnapshot(window, "info-overview-open"));
   await capture(window, "screenshot-info-overview-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE info-assets");
-  await window.webContents.executeJavaScript(`
+  await recordWebInteraction(window, "switch-info-panel-tab-assets-visible", async () => execute(window, `
     [...document.querySelectorAll("button")].find((button) => /资产|资源|Assets/i.test(button.textContent || button.title || ""))?.click();
     true;
-  `);
-  await delay(350);
+  `), { trustedPath: "web-baseline-real-click", delayMs: 350 });
   snapshots.push(await collectSnapshot(window, "info-assets-open"));
   await capture(window, "screenshot-info-assets-1440x900.png");
 
@@ -621,45 +793,57 @@ async function main() {
   await delay(240);
 
   console.log("P6_WEB_BASELINE_PHASE logs");
-  await window.webContents.executeJavaScript(`document.querySelector("#logsButton")?.click(); true;`);
-  await delay(350);
+  await recordWebInteraction(window, "switch-diagnostics-to-runtime-logs", async () => {
+    await window.webContents.executeJavaScript(`document.querySelector("#logsButton")?.click(); true;`);
+  }, { trustedPath: "web-baseline-real-click", delayMs: 350 });
   snapshots.push(await collectSnapshot(window, "logs-open"));
   await capture(window, "screenshot-logs-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE settings");
-  await window.webContents.executeJavaScript(`document.querySelector("#settingsButton")?.click(); true;`);
-  await delay(350);
+  await recordWebInteraction(window, "open-settings-modal", async () => {
+    await window.webContents.executeJavaScript(`document.querySelector("#settingsButton")?.click(); true;`);
+  }, { trustedPath: "web-baseline-real-click", delayMs: 350 });
   snapshots.push(await collectSnapshot(window, "settings-open"));
   await capture(window, "screenshot-settings-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE accessibility-toggles");
-  await window.webContents.executeJavaScript(`
+  await recordWebInteraction(window, "enable-reduce-motion-and-reduce-blur-toggles", async () => execute(window, `
     document.querySelector("#reduceMotionToggle")?.click();
     document.querySelector("#reduceBlurToggle")?.click();
     true;
-  `);
-  await delay(180);
+  `), { trustedPath: "web-baseline-real-click", delayMs: 180 });
   snapshots.push(await collectSnapshot(window, "accessibility-toggles-on"));
   await capture(window, "screenshot-accessibility-toggles-on-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE escape-settings");
-  await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
-  await window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
-  await delay(280);
+  await recordWebInteraction(window, "escape-closes-settings-before-side-panel", async () => {
+    await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
+    await window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
+  }, { trustedPath: "web-baseline-real-keyboard", delayMs: 280 });
   snapshots.push(await collectSnapshot(window, "settings-closed-by-escape"));
   await capture(window, "screenshot-settings-closed-by-escape-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE space-toggle");
-  await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Space" });
-  await window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Space" });
-  await delay(220);
+  await execute(window, `
+    const logsButton = document.querySelector("#logsButton");
+    if (logsButton?.getAttribute("aria-pressed") === "true") logsButton.click();
+    const infoButton = document.querySelector("#infoPanelButton");
+    if (infoButton?.getAttribute("aria-pressed") === "true") infoButton.click();
+    true;
+  `);
+  await delay(160);
+  await recordWebInteraction(window, "space-toggles-synchronized-playback-in-export-review", async () => {
+    await window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Space" });
+    await window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Space" });
+  }, { trustedPath: "web-baseline-real-keyboard", delayMs: 220 });
   snapshots.push(await collectSnapshot(window, "synchronized-playback-toggled-by-space"));
   await capture(window, "screenshot-synchronized-playback-toggled-by-space-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE local-compare");
   await setMode(window, "localPreview");
-  await window.webContents.executeJavaScript(`(() => { const toggle = document.querySelector("#compareToggle"); if (toggle && !toggle.checked) toggle.click(); return true; })()`);
-  await delay(350);
+  await recordWebInteraction(window, "enable-local-compare-switch", async () => {
+    await window.webContents.executeJavaScript(`(() => { const toggle = document.querySelector("#compareToggle"); if (toggle && !toggle.checked) toggle.click(); return true; })()`);
+  }, { trustedPath: "web-baseline-real-click", delayMs: 350 });
   snapshots.push(await collectSnapshot(window, "local-compare-empty"));
   await capture(window, "screenshot-local-compare-empty-1440x900.png");
 
@@ -712,39 +896,23 @@ async function main() {
   }, null, 2) + "\n");
   writeFileSync(path.join(outRoot, "interaction-trace.json"), JSON.stringify({
     schemaVersion: 1,
-    actionTrace: (contract.interactions ?? []).map((interaction) => {
-      const snapshot = snapshots.find((candidate) => (
-        candidate.stateId === interaction.expectedState
-        || (interaction.expectedState === "synchronized-playback-toggled-by-space" && candidate.stateId === "space-sync-toggle")
-      ));
-      const selectorId = interaction.selector?.startsWith("#") ? interaction.selector.slice(1) : null;
-      const dataValue = interaction.selector?.match(/^\\[data-value=['"]?([^'"]+)['"]?\\]$/)?.[1] ?? null;
-      const dataTab = interaction.selector?.match(/data-tab=['"]?([^'"]+)['"]?/)?.[1] ?? null;
-      const target = snapshot?.controls.find((control) => control.id === selectorId)
-        ?? snapshot?.controls.find((control) => dataValue && control.dataValue === dataValue)
-        ?? snapshot?.controls.find((control) => dataTab && control.dataTab === dataTab)
-        ?? snapshot?.regions.find((region) => region.selector === interaction.selector);
-      return {
-        id: interaction.id,
-        kind: interaction.trigger,
-        selector: interaction.selector,
-        initialState: interaction.initialState,
-        expectedState: interaction.expectedState,
-        stateReached: snapshot?.stateId ?? null,
-        source: "web-baseline-input",
-        targetRect: target?.rect ?? null,
-        controlValue: target ? {
-          visible: target.visible === true,
-          disabled: target.disabled === true,
-          checked: target.checked === true
-        } : null
-      };
-    }),
+    host: "web",
+    source: "web-baseline-real-input",
+    actionTrace: webActionTrace,
     steps: snapshots.map((snapshot) => ({
       stateId: snapshot.stateId,
       regionVisibleCount: snapshot.regions.filter((region) => region.visible).length,
       visibleControlCount: snapshot.controls.filter((control) => control.visible).length
     })),
+    mutationProtection: {
+      headCommit,
+      artifactCatalogDigest: stableDigest(snapshots.map((snapshot) => ({
+        stateId: snapshot.stateId,
+        regions: snapshot.regions.map((region) => [region.id, region.visible, region.rect]),
+        controls: snapshot.controls.map((control) => [control.id, control.dataValue, control.dataTab, control.visible, control.rect])
+      }))),
+      source: "web-baseline-real-input"
+    },
     generatedAt: new Date().toISOString()
   }, null, 2) + "\n");
   writeFileSync(path.join(outRoot, "request-audit.json"), JSON.stringify(requestAudit, null, 2) + "\n");

@@ -8,7 +8,7 @@ import { decode, encode } from "fast-png";
 export const P6_STATE_EVIDENCE_DIR = "state-comparisons";
 export const P6_MOTION_EVIDENCE_DIR = "motion-evidence";
 export const P6_MOTION_PHASES = ["start", "mid", "end"];
-const PIXEL_DELTA_THRESHOLD = 36;
+const PIXEL_DELTA_THRESHOLD = 24;
 
 const stateImageSources = {
   "local-empty": {

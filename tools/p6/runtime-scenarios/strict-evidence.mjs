@@ -40,7 +40,12 @@ export function validateStrictInteractionTrace(trace, contract) {
   if (!isSha256(trace.finalStateDigest)) failures.push("finalStateDigest missing");
   if (!Array.isArray(trace.visibleRegions) || trace.visibleRegions.length === 0) failures.push("visibleRegions missing");
   if (!Array.isArray(trace.visibleControls) || trace.visibleControls.length === 0) failures.push("visibleControls missing");
-  if (!Array.isArray(trace.screenshots) || trace.screenshots.length === 0) failures.push("screenshots missing");
+  if (!Array.isArray(trace.screenshots) || trace.screenshots.length === 0) {
+    failures.push("screenshots missing");
+  } else {
+    const screenshotPaths = trace.screenshots.map((entry) => entry?.path).filter(Boolean);
+    if (screenshotPaths.length !== new Set(screenshotPaths).size) failures.push("screenshots must not reuse paths");
+  }
   if (!Array.isArray(trace.failures)) failures.push("failures must be an array");
   if (Array.isArray(trace.failures) && trace.failures.length > 0) failures.push(...trace.failures.map((failure) => `trace failure: ${failure}`));
   return { valid: failures.length === 0, failures };
@@ -126,7 +131,7 @@ export function strictMotionEvidencePassed(evidence, item) {
     && checks.geometryCompared === true
     && checks.cropCompared === true
     && checks.reducedMotionCompared === true
-    && motionPhaseEvidenceChanged(evidence, "web")
+    && motionPhaseHashesChanged(evidence, "web")
     && motionPhaseHashesChanged(evidence, "desktop");
 }
 
@@ -153,15 +158,6 @@ function motionPhaseHashesChanged(evidence, host) {
   return hashes.every(isSha256) && new Set(hashes).size === P6_MOTION_PHASES.length;
 }
 
-function motionPhaseEvidenceChanged(evidence, host) {
-  if (motionPhaseHashesChanged(evidence, host)) return true;
-  if (host !== "web") return false;
-  const stylePhases = evidence.webStyleSamples?.phases;
-  if (!isRecord(stylePhases)) return false;
-  const hashes = P6_MOTION_PHASES.map((phase) => stylePhases[phase]?.sha256);
-  return hashes.every(isSha256) && new Set(hashes).size === P6_MOTION_PHASES.length;
-}
-
 function optionalEqual(left, right) {
   return left === undefined || right === undefined || left === right;
 }
@@ -177,12 +173,10 @@ async function buildWebInteractionTrace(p6Root, contract) {
     displayName: path.basename(contract.fixture?.path ?? "p6-web-baseline-fixture.svga"),
     sizeBytes: contract.fixture?.sizeBytes ?? null
   };
-  const actionTrace = Array.isArray(legacyTrace?.actionTrace)
-    ? normalizeActionsFromSnapshots(legacyTrace.actionTrace, contract.interactions ?? [], snapshots)
-    : legacyActionsFromSnapshots(contract.interactions ?? [], snapshots);
+  const actionTrace = Array.isArray(legacyTrace?.actionTrace) ? legacyTrace.actionTrace : [];
   const failures = [];
   if (!Array.isArray(legacyTrace?.actionTrace)) {
-    failures.push("web interaction trace was derived from legacy snapshots, not direct trusted input events");
+    failures.push("web interaction trace is missing direct trusted input events");
   }
   return strictTrace({
     host: "web",
@@ -257,69 +251,6 @@ function strictTrace(input, failures = []) {
   };
 }
 
-function legacyActionsFromSnapshots(interactions, snapshots) {
-  return interactions.map((interaction) => actionFromSnapshot(interaction, snapshots, "legacy-snapshot-derived"));
-}
-
-function normalizeActionsFromSnapshots(actions, interactions, snapshots) {
-  return interactions.map((interaction) => {
-    const existing = actions.find((action) => action.id === interaction.id) ?? {};
-    const derived = actionFromSnapshot(interaction, snapshots, existing.source ?? "trusted-input-trace-normalized");
-    return {
-      ...existing,
-      id: interaction.id,
-      kind: interaction.trigger,
-      selector: interaction.selector,
-      initialState: interaction.initialState,
-      expectedState: interaction.expectedState,
-      source: existing.source ?? derived.source,
-      stateBefore: isRecord(existing.stateBefore) ? existing.stateBefore : derived.stateBefore,
-      realAction: isRecord(existing.realAction) ? existing.realAction : derived.realAction,
-      stateAfter: isRecord(existing.stateAfter) ? existing.stateAfter : derived.stateAfter,
-      stateReached: stateMatches(existing.stateReached, interaction.expectedState) ? existing.stateReached : derived.stateReached,
-      targetRect: isRecord(existing.targetRect) ? existing.targetRect : derived.targetRect,
-      controlValue: isRecord(existing.controlValue) ? existing.controlValue : derived.controlValue,
-      focusOrVisibleResult: isRecord(existing.focusOrVisibleResult) ? existing.focusOrVisibleResult : derived.focusOrVisibleResult
-    };
-  });
-}
-
-function actionFromSnapshot(interaction, snapshots, source) {
-  const snapshot = snapshots.find((candidate) => stateMatches(candidate.stateId, interaction.expectedState));
-  const before = snapshots.find((candidate) => stateMatches(candidate.stateId, interaction.initialState));
-  const stateBefore = actionStateFromSnapshot(before, `${interaction.initialState}:before`);
-  const stateAfter = actionStateFromSnapshot(snapshot, `${interaction.expectedState}:after`);
-  const targetRect = snapshot ? targetRectForSelector(snapshot, interaction.selector) : null;
-  const controlValue = controlValueForSelector(snapshot, interaction.selector);
-  return {
-    id: interaction.id,
-    kind: interaction.trigger,
-    selector: interaction.selector,
-    initialState: interaction.initialState,
-    expectedState: interaction.expectedState,
-    stateReached: snapshot?.stateId ?? null,
-    source,
-    stateBefore,
-    realAction: {
-      inputKind: interaction.trigger,
-      selector: interaction.selector,
-      trustedPath: source,
-      targetVisible: Boolean(targetRect),
-      targetRect
-    },
-    stateAfter,
-    targetRect,
-    controlValue,
-    focusOrVisibleResult: {
-      activeElementId: null,
-      activeElementText: "",
-      visibleResultState: snapshot?.stateId ?? interaction.expectedState,
-      visibleResultPassed: Boolean(snapshot),
-      visibleResultText: snapshot?.bodyTextSample ?? ""
-    }
-  };
-}
-
 function validateContext(context, failures) {
   if (!isRecord(context)) {
     failures.push("context missing");
@@ -348,11 +279,19 @@ function validateAction(action, index, contract, failures) {
   if (expected && action.kind !== expected.trigger) failures.push(`actionTrace[${index}] trigger mismatch`);
   if (expected && action.selector !== expected.selector) failures.push(`actionTrace[${index}] selector mismatch`);
   if (expected && !stateMatches(action.stateReached, expected.expectedState)) failures.push(`actionTrace[${index}] expected state not reached`);
+  if (expected && !stateLabelMatches(action.stateBefore?.stateId, expected.initialState)) failures.push(`actionTrace[${index}] stateBefore does not bind initialState`);
+  if (expected && !stateLabelMatches(action.stateAfter?.stateId, expected.expectedState)) failures.push(`actionTrace[${index}] stateAfter does not bind expectedState`);
   validateActionState(action.stateBefore, `actionTrace[${index}].stateBefore`, failures);
   validateRealAction(action.realAction, `actionTrace[${index}].realAction`, failures);
   validateActionState(action.stateAfter, `actionTrace[${index}].stateAfter`, failures);
+  if (isRecord(action.stateBefore) && isRecord(action.stateAfter) && action.stateBefore.digest === action.stateAfter.digest) {
+    failures.push(`actionTrace[${index}] before and after digests must differ`);
+  }
   if (!isRecord(action.targetRect)) failures.push(`actionTrace[${index}].targetRect missing`);
   validateFocusOrVisibleResult(action.focusOrVisibleResult, `actionTrace[${index}].focusOrVisibleResult`, failures);
+  if (expected && !stateMatches(action.focusOrVisibleResult?.visibleResultState, expected.expectedState)) {
+    failures.push(`actionTrace[${index}] focusOrVisibleResult does not bind expectedState`);
+  }
 }
 
 function actionStateFromSnapshot(snapshot, fallbackStateId) {
@@ -397,8 +336,11 @@ function validateRealAction(value, label, failures) {
   if (!P6_ALLOWED_ACTION_KINDS.has(value.inputKind)) failures.push(`${label}.inputKind must be a real input kind`);
   if (!nonEmptyString(value.selector)) failures.push(`${label}.selector missing`);
   if (!nonEmptyString(value.trustedPath)) failures.push(`${label}.trustedPath missing`);
+  if (typeof value.trustedPath === "string" && /legacy|snapshot|derived|normalized|contract|static/i.test(value.trustedPath)) {
+    failures.push(`${label}.trustedPath must come from direct runtime input`);
+  }
   if (value.targetVisible !== true) failures.push(`${label}.targetVisible must be true`);
-  if (!isRecord(value.targetRect)) failures.push(`${label}.targetRect missing`);
+  if (!isRecord(value.targetRect) || !rectHasArea(value.targetRect)) failures.push(`${label}.targetRect missing`);
 }
 
 function validateFocusOrVisibleResult(value, label, failures) {
@@ -574,6 +516,14 @@ function stateMatches(actual, expected) {
   if (expected === "synchronized-playback-toggled-by-space" && actual === "space-sync-toggle") return true;
   if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "responsive-export-review-900x720") return true;
   return false;
+}
+
+function stateLabelMatches(actual, expected) {
+  return stateMatches(actual, expected) || (typeof actual === "string" && actual.startsWith(`${expected}:`));
+}
+
+function rectHasArea(rect) {
+  return rect && Number.isFinite(rect.width) && Number.isFinite(rect.height) && rect.width > 0 && rect.height > 0;
 }
 
 function digest(value) {

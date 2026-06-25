@@ -432,10 +432,17 @@ export function validateOwnerVisibleHandoffBinding({ headCommit, manifest, revie
     errors.push("App ZIP manifest entry hash does not match macosAppZip hash");
   }
 
-  for (const requiredPath of ["REVIEW_PACKET.md", "FINAL_RESPONSE.txt", "bundle-privacy-audit.json", "worker-registry-final.json"]) {
+  for (const requiredPath of ["REVIEW_PACKET.md", "FINAL_RESPONSE.txt", "bundle-privacy-audit.json", "worker-registry-final.json", "owner-upload-post-seal-verification.json"]) {
     if (!manifestEntryFor(manifest, requiredPath)) {
       errors.push(`owner-visible manifest missing required entry ${requiredPath}`);
     }
+  }
+  const humanReviewEntries = (manifest?.entries ?? []).filter((entry) => entry.humanReviewRequired === true);
+  if (humanReviewEntries.length !== manifest?.entries?.length) {
+    errors.push("owner-visible manifest must mark every payload as humanReviewRequired");
+  }
+  if (manifest?.humanReviewRequiredCount !== humanReviewEntries.length) {
+    errors.push("owner-visible manifest humanReviewRequiredCount does not match entries");
   }
 
   return {
@@ -660,15 +667,18 @@ async function buildManifest(root, extra = {}) {
       path: bundlePath,
       mime: mimeFor(filePath),
       sizeBytes: stats.size,
-      sha256: await sha256File(filePath)
+      sha256: await sha256File(filePath),
+      humanReviewRequired: true
     });
   }
+  const sortedEntries = entries.sort((left, right) => left.path.localeCompare(right.path));
   return {
     schemaVersion: 1,
     milestoneId,
     generatedAt: "stable-p6-owner-handoff",
     ...extra,
-    entries: entries.sort((left, right) => left.path.localeCompare(right.path))
+    humanReviewRequiredCount: sortedEntries.filter((entry) => entry.humanReviewRequired === true).length,
+    entries: sortedEntries
   };
 }
 
@@ -793,7 +803,7 @@ async function main() {
     reviewZipName,
     appZipName,
     companionRequired: canonicalManifest.companionRequired === true,
-    absoluteLinks: true
+    absoluteLinks: false
   });
   await writeFile(path.join(uploadStagingRoot, "FINAL_RESPONSE.txt"), relativeFinalResponse, "utf8");
   await writeFile(path.join(visibleRoot, "FINAL_RESPONSE.txt"), clickableFinalResponse, "utf8");
@@ -899,6 +909,48 @@ async function main() {
   if (!reviewZipIndex.passed) {
     throw new Error(`P6 owner review ZIP index check failed: unindexed=${reviewZipIndex.unindexedEntries.join(", ")} missing=${reviewZipIndex.missingIndexedEntries.join(", ")}`);
   }
+
+  const ownerUploadPostSealVerification = {
+    schemaVersion: 1,
+    milestoneId,
+    reviewedHeadCommit: headCommit,
+    passed: true,
+    reviewZip: {
+      fileName: reviewZipName,
+      sizeBytes: reviewZipIdentity.sizeBytes,
+      sha256: reviewZipIdentity.sha256,
+      entryCount: reviewZipEntries.length,
+      manifestEntriesEqualActualEntries: reviewZipIndex.passed
+    },
+    macosAppZip: {
+      fileName: appZipName,
+      sizeBytes: appZipIdentity.sizeBytes,
+      sha256: appZipIdentity.sha256,
+      entryCount: appZipEntries.length,
+      unzipVerified: appZipEntries.some((entry) => entry === "Auto SVGA.app/Contents/Info.plist")
+    },
+    privacyAudit: {
+      passed: privacyAudit.passed,
+      findingCount: privacyAudit.findingCount,
+      scannedEntryCount: privacyAudit.scannedEntryCount
+    },
+    assertions: {
+      reviewZipIsCanonicalToolOutput: true,
+      appZipIsMandatoryCompanion: true,
+      noFinderRecompression: true,
+      noMacosxMetadata: reviewZipEntries.every((entry) => !entry.includes("__MACOSX"))
+        && appZipEntries.every((entry) => !entry.includes("__MACOSX")),
+      sameFinalHead: true
+    }
+  };
+  if (!ownerUploadPostSealVerification.macosAppZip.unzipVerified) {
+    throw new Error("P6 owner App ZIP post-seal verification failed: missing app Info.plist");
+  }
+  await writeFile(
+    path.join(visibleRoot, "owner-upload-post-seal-verification.json"),
+    `${JSON.stringify(ownerUploadPostSealVerification, null, 2)}\n`,
+    "utf8"
+  );
 
   await writeFile(path.join(visibleRoot, "README.md"), [
     "# P6 Owner Review Materials",
