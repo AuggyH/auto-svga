@@ -852,8 +852,15 @@ async function main() {
   await waitFor(window, `document.readyState === "complete" && Boolean(document.querySelector("#svgaFileInput"))`);
   await execute(window, `
     localStorage.setItem("autoSvgaTheme", "dark");
+    localStorage.setItem("autoSvgaReduceMotion", "false");
+    localStorage.setItem("autoSvgaReduceBlur", "false");
     document.documentElement.dataset.theme = "dark";
+    document.documentElement.classList.remove("reduceMotion", "reduceBlur");
     for (const input of document.querySelectorAll('input[name="theme"]')) input.checked = input.value === "dark";
+    const reduceMotionToggle = document.querySelector("#reduceMotionToggle");
+    const reduceBlurToggle = document.querySelector("#reduceBlurToggle");
+    if (reduceMotionToggle) reduceMotionToggle.checked = false;
+    if (reduceBlurToggle) reduceBlurToggle.checked = false;
     true;
   `);
   await delay(800);

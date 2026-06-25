@@ -2620,6 +2620,11 @@ async function runProductSmoke() {
   try {
     await delay(180);
     setThemePreference("dark");
+    localStorage.setItem("autoSvgaReduceMotion", "false");
+    localStorage.setItem("autoSvgaReduceBlur", "false");
+    reduceMotionToggle.checked = false;
+    reduceBlurToggle.checked = false;
+    document.documentElement.classList.remove("reduceMotion", "reduceBlur");
     await delay(80);
     await captureArtifact("desktop-empty");
     const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
