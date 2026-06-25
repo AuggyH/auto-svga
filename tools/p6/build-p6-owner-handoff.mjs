@@ -119,6 +119,10 @@ function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
   if (!expectedHeadShort) return [];
   const findings = [];
   for (const match of text.matchAll(/\breview\/(P6-R1|P6)-([A-Za-z0-9][A-Za-z0-9._-]*)/g)) {
+    const trailingTemplateContext = text.slice(match.index + match[0].length, match.index + match[0].length + 32);
+    if (match[0] === "review/P6-R1-" && trailingTemplateContext.startsWith("${headShort}")) {
+      continue;
+    }
     if (match[1] !== milestoneId || match[2] !== expectedHeadShort) {
       findings.push({
         ruleId: "STALE_REVIEW_ROOT_REFERENCE",

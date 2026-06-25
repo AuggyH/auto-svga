@@ -340,6 +340,28 @@ test("P6 package privacy audit rejects stale review root references", async () =
   });
 });
 
+test("P6 package privacy audit allows source-template review roots inside REVIEW_PACKET patch text", async () => {
+  await withTempDir(async (root) => {
+    const reviewZipPath = await writeZip(root, "P6-R1-abcdef0-review-upload.zip", {
+      "REVIEW_PACKET.md": [
+        "```diff",
+        "+    `- review/P6-R1-${headShort}/`,",
+        "+  const visibleRoot = path.join(repoRoot, `review/P6-R1-${headShort}`);",
+        "```",
+        ""
+      ].join("\n"),
+      "FINAL_RESPONSE.txt": "[Current](review/P6-R1-abcdef0/REVIEW_PACKET.md)\n"
+    });
+    const appZipPath = await writeZip(root, "Auto-SVGA-macOS-internal-abcdef0.zip", {
+      "Auto SVGA.app/Contents/Info.plist": "<plist><dict></dict></plist>\n"
+    });
+
+    const audit = buildZipPrivacyAudit({ reviewZipPath, appZipPath, expectedHeadShort: "abcdef0" });
+
+    assert.equal(audit.passed, true, JSON.stringify(audit.findings));
+  });
+});
+
 test("P6 final worker registry artifact requires generated final-head binding", () => {
   const trackedRegistrySha256 = "b".repeat(64);
   const trackedRegistry = {
