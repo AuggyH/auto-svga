@@ -2717,6 +2717,8 @@ async function runProductSmoke() {
       await waitFor(() => settingsModal.hidden);
     });
     await captureArtifact("desktop-settings-closed-by-escape");
+    closeP6SmokeTransientUi();
+    await delay(160);
     await recordP6SmokeAction({
       id: "space-toggles-synchronized-playback-in-export-review",
       kind: "keyboard",
