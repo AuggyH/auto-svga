@@ -362,6 +362,24 @@ test("Repair 6 strict state gates reject hash-only, stale invalid, and split loa
   assertItemFailed(buildP6ParityReportFromRuntimeFacts(splitLoading), "stateParity", "export-review-loaded", "web-item-runtime");
 });
 
+test("WP4 visual evidence rejects inconsistent viewport and zero-pixel comparison coverage", () => {
+  const facts = goodFacts();
+  facts.stateComparisons["export-review-loaded"].context.desktop.viewportCss = { width: 900, height: 720 };
+  facts.stateComparisons["export-review-loaded"].comparison = {
+    sameDimensions: false,
+    comparedPixels: 0,
+    changedPixels: null,
+    pixelDifferenceRatio: 0
+  };
+
+  assertItemFailed(
+    buildP6ParityReportFromRuntimeFacts(facts),
+    "stateParity",
+    "export-review-loaded",
+    "web-item-runtime"
+  );
+});
+
 test("Repair 6 strict motion gates reject missing trigger, crop, and reduced-motion evidence", () => {
   for (const checkId of ["sameTriggerAndState", "cropCompared", "reducedMotionCompared"]) {
     const facts = goodFacts();
@@ -369,6 +387,26 @@ test("Repair 6 strict motion gates reject missing trigger, crop, and reduced-mot
     facts.motionEvidence.cardEnter.passed = false;
     assertItemFailed(buildP6ParityReportFromRuntimeFacts(facts), "motionParity", "cardEnter", "web-item-runtime");
   }
+});
+
+test("WP4 motion evidence rejects identical normal-motion start/mid/end frames", () => {
+  const facts = goodFacts();
+  const sameFrameHash = "a".repeat(64);
+  for (const phase of ["start", "mid", "end"]) {
+    facts.motionEvidence.cardEnter.phases.web[phase].sha256 = sameFrameHash;
+  }
+
+  assertItemFailed(buildP6ParityReportFromRuntimeFacts(facts), "motionParity", "cardEnter", "web-item-runtime");
+});
+
+test("WP4 reviewer support rejects generic PASS over category review-required verdicts", () => {
+  const facts = goodFacts();
+  facts.desktop.reviewerBEvidenceRequest.verdict = "PASS";
+  facts.desktop.reviewerBEvidenceRequest.categories[0].requiredVerdict = "HUMAN_REQUIRED";
+
+  const report = buildP6ParityReportFromRuntimeFacts(facts);
+
+  assertItemFailed(report, "desktopRuntimeProof", "source-electron-smoke", "reviewer-generic-pass-consistent");
 });
 
 test("generator source does not use hard-coded status pass object fields", async () => {
@@ -620,6 +658,28 @@ function stateComparison(stateId) {
     stateId,
     passed: true,
     stateSnapshotId: `snapshot-${stateId}`,
+    context: {
+      web: {
+        viewportCss: { width: 1440, height: 900 },
+        devicePixelRatio: 1,
+        mode: "exportReview",
+        panel: "none",
+        modal: "none"
+      },
+      desktop: {
+        viewportCss: { width: 1440, height: 900 },
+        devicePixelRatio: 1,
+        mode: "exportReview",
+        panel: "none",
+        modal: "none"
+      }
+    },
+    comparison: {
+      sameDimensions: true,
+      comparedPixels: 100,
+      changedPixels: 10,
+      pixelDifferenceRatio: 0.1
+    },
     checks: {
       webPresent: true,
       desktopPresent: true,
@@ -642,6 +702,18 @@ function motionEvidence(motionId) {
   return {
     motionId,
     passed: true,
+    phases: {
+      web: {
+        start: { sha256: "a".repeat(64) },
+        mid: { sha256: "b".repeat(64) },
+        end: { sha256: "c".repeat(64) }
+      },
+      desktop: {
+        start: { sha256: "d".repeat(64) },
+        mid: { sha256: "e".repeat(64) },
+        end: { sha256: "f".repeat(64) }
+      }
+    },
     checks: {
       webStartMidEndPresent: true,
       desktopStartMidEndPresent: true,

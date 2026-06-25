@@ -181,6 +181,7 @@ export async function generateStateComparison(p6Root, stateId) {
   }
   const runtime = await stateRuntimeEvidence(p6Root, stateId, result);
   result.runtime = runtime;
+  result.context = runtime.context;
   result.checks.stateSnapshotIdBound = runtime.webStateBound === true && runtime.desktopStateBound === true;
   result.checks.geometryCompared = runtime.geometryCompared === true;
   result.checks.computedStyleCompared = runtime.computedStyleCompared === true;
@@ -255,8 +256,28 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
     webVisibleRegions,
     webVisibleControls: webControls,
     desktopProductState: desktopStateModel,
+    context: comparisonContext(webSnapshot, desktopState),
     noUnapprovedDifferences,
     failures
+  };
+}
+
+function comparisonContext(webSnapshot, desktopState) {
+  return {
+    web: {
+      viewportCss: webSnapshot?.viewport ?? null,
+      devicePixelRatio: webSnapshot?.devicePixelRatio ?? null,
+      mode: webSnapshot?.mode ?? null,
+      panel: webSnapshot?.panel ?? null,
+      modal: webSnapshot?.modal ?? null
+    },
+    desktop: {
+      viewportCss: desktopState?.viewportCss ?? desktopState?.viewport ?? null,
+      devicePixelRatio: desktopState?.devicePixelRatio ?? null,
+      mode: desktopState?.productState?.mode ?? null,
+      panel: desktopState?.productState?.panel ?? null,
+      modal: desktopState?.productState?.modal ?? null
+    }
   };
 }
 
@@ -346,7 +367,7 @@ export async function collectMotionEvidence(p6Root, motionId) {
     checks: {
       webStartMidEndPresent: webHashes.length === P6_MOTION_PHASES.length,
       desktopStartMidEndPresent: desktopHashes.length === P6_MOTION_PHASES.length,
-      webFramesNotGeneric: new Set(webHashes).size === P6_MOTION_PHASES.length || reducedMotionCompared,
+      webFramesNotGeneric: new Set(webHashes).size === P6_MOTION_PHASES.length,
       desktopFramesNotGeneric: new Set(desktopHashes).size === P6_MOTION_PHASES.length,
       sameTriggerAndState: manifestHasMotion,
       animationParamsMatched: manifestHasMotion,

@@ -150,6 +150,7 @@ export function buildP6ParityReportFromRuntimeFacts(input) {
       factCheck("desktop-state-proof-passed", input.desktop?.stateRenderProof?.passed === true, "Desktop state proof passed."),
       factCheck("shell-app-css-hash-parity", shellAppCssHashesStable(input), "Shell, app, preload, and CSS hashes are stable across normal and smoke launches."),
       factCheck("reviewer-evidence-request-present", reviewerEvidenceRequestPresent(input), "Reviewer B evidence request is concrete and contains no Reviewer verdict."),
+      factCheck("reviewer-generic-pass-consistent", reviewerGenericPassConsistent(input), "Reviewer support cannot use a generic PASS while category verdicts still require product review."),
       factCheck("reviewer-categories-complete", reviewerCategoriesComplete(input), "Reviewer B evidence request covers required product categories.")
     ], input),
     buildSyntheticItemEvidence("packaged-app-launch", true, [
@@ -586,6 +587,19 @@ function reviewerCategoriesComplete(input) {
     "normalMacApp",
     "bundleCompleteness"
   ].every((category) => present.has(category));
+}
+
+function reviewerGenericPassConsistent(input) {
+  const request = input.desktop?.reviewerBEvidenceRequest;
+  if (!request || typeof request !== "object") return false;
+  const genericVerdict = request.verdict ?? request.genericVerdict ?? request.overallVerdict;
+  if (genericVerdict !== "PASS") return true;
+  const categories = request.categories;
+  if (!Array.isArray(categories) || categories.length === 0) return false;
+  return categories.every((category) => {
+    const categoryVerdict = category.verdict ?? category.requiredVerdict ?? category.status ?? category.reviewStatus;
+    return categoryVerdict === undefined || categoryVerdict === "PASS";
+  });
 }
 
 function containsReviewerVerdict(value) {

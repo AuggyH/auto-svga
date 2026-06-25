@@ -108,7 +108,9 @@ export function strictStateComparisonPassed(comparison, stateId) {
     && checks.playbackTimeCompared === true
     && checks.visibleRegionsCompared === true
     && checks.pixelToleranceCompared === true
-    && checks.noUnapprovedDifferences === true;
+    && checks.noUnapprovedDifferences === true
+    && comparedPixelsCovered(comparison)
+    && comparisonContextMatched(comparison);
 }
 
 export function strictMotionEvidencePassed(evidence, item) {
@@ -123,7 +125,36 @@ export function strictMotionEvidencePassed(evidence, item) {
     && checks.animationParamsMatched === true
     && checks.geometryCompared === true
     && checks.cropCompared === true
-    && checks.reducedMotionCompared === true;
+    && checks.reducedMotionCompared === true
+    && motionPhaseHashesChanged(evidence, "web")
+    && motionPhaseHashesChanged(evidence, "desktop");
+}
+
+function comparedPixelsCovered(comparison) {
+  const comparedPixels = comparison.comparison?.comparedPixels;
+  return Number.isInteger(comparedPixels) && comparedPixels > 0;
+}
+
+function comparisonContextMatched(comparison) {
+  const context = comparison.context;
+  if (context === undefined) return true;
+  if (!isRecord(context) || !isRecord(context.web) || !isRecord(context.desktop)) return false;
+  return deepEqual(context.web.viewportCss, context.desktop.viewportCss)
+    && context.web.devicePixelRatio === context.desktop.devicePixelRatio
+    && optionalEqual(context.web.mode, context.desktop.mode)
+    && optionalEqual(context.web.panel, context.desktop.panel)
+    && optionalEqual(context.web.modal, context.desktop.modal);
+}
+
+function motionPhaseHashesChanged(evidence, host) {
+  const hostPhases = evidence.phases?.[host];
+  if (!isRecord(hostPhases)) return false;
+  const hashes = P6_MOTION_PHASES.map((phase) => hostPhases[phase]?.sha256);
+  return hashes.every(isSha256) && new Set(hashes).size === P6_MOTION_PHASES.length;
+}
+
+function optionalEqual(left, right) {
+  return left === undefined || right === undefined || left === right;
 }
 
 async function buildWebInteractionTrace(p6Root, contract) {
