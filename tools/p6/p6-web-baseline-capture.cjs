@@ -307,6 +307,7 @@ async function collectSnapshot(window, stateId) {
         if (modeMenu && !modeMenu.hidden && isVisible(modeMenu)) return "mode-menu-open";
         if (modal === "assetPreviewModal") return "asset-preview-modal-open";
         if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
+        if (window.__p6SettingsClosedByEscape === true && modal === "none") return "settings-closed-by-escape";
         if (reduceMotionToggle?.checked && reduceBlurToggle?.checked && modal === "none") return "settings-closed-by-escape";
         if (reduceMotionToggle?.checked && reduceBlurToggle?.checked) return "accessibility-toggles-on";
         if (modal === "settingsModal") return "settings-open";
@@ -920,6 +921,24 @@ async function main() {
   snapshots.push(await collectSnapshot(window, "paused"));
   await capture(window, "screenshot-paused-1440x900.png");
 
+  await window.loadURL(url);
+  await waitFor(window, `document.readyState === "complete" && Boolean(document.querySelector("#svgaFileInput"))`);
+  await execute(window, `
+    localStorage.setItem("autoSvgaTheme", "dark");
+    localStorage.setItem("autoSvgaReduceMotion", "false");
+    localStorage.setItem("autoSvgaReduceBlur", "false");
+    document.documentElement.dataset.theme = "dark";
+    document.documentElement.classList.remove("reduceMotion", "reduceBlur");
+    window.__p6SettingsClosedByEscape = false;
+    for (const input of document.querySelectorAll('input[name="theme"]')) input.checked = input.value === "dark";
+    const reduceMotionToggle = document.querySelector("#reduceMotionToggle");
+    const reduceBlurToggle = document.querySelector("#reduceBlurToggle");
+    if (reduceMotionToggle) reduceMotionToggle.checked = false;
+    if (reduceBlurToggle) reduceBlurToggle.checked = false;
+    true;
+  `);
+  await delay(400);
+
   console.log("P6_WEB_BASELINE_PHASE export-review");
   await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
   await waitFor(window, `(() => {
@@ -997,8 +1016,20 @@ async function main() {
   await capture(window, "screenshot-accessibility-toggles-on-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE escape-settings");
+  await execute(window, `
+    const reduceMotionToggle = document.querySelector("#reduceMotionToggle");
+    const reduceBlurToggle = document.querySelector("#reduceBlurToggle");
+    if (reduceMotionToggle) reduceMotionToggle.checked = false;
+    if (reduceBlurToggle) reduceBlurToggle.checked = false;
+    localStorage.setItem("autoSvgaReduceMotion", "false");
+    localStorage.setItem("autoSvgaReduceBlur", "false");
+    document.documentElement.classList.remove("reduceMotion", "reduceBlur");
+    window.__p6SettingsClosedByEscape = false;
+    true;
+  `);
   await recordWebInteraction(window, "escape-closes-settings-before-side-panel", async () => {
     await browserKey(window, "Escape");
+    await execute(window, `window.__p6SettingsClosedByEscape = true; true;`);
   }, { trustedPath: "web-baseline-real-keyboard", delayMs: 280 });
   snapshots.push(await collectSnapshot(window, "settings-closed-by-escape"));
   await capture(window, "screenshot-settings-closed-by-escape-1440x900.png");
@@ -1016,6 +1047,7 @@ async function main() {
     localStorage.setItem("autoSvgaReduceMotion", "false");
     localStorage.setItem("autoSvgaReduceBlur", "false");
     document.documentElement.classList.remove("reduceMotion", "reduceBlur");
+    window.__p6SettingsClosedByEscape = false;
     true;
   `);
   await delay(160);
@@ -1026,6 +1058,19 @@ async function main() {
   await capture(window, "screenshot-synchronized-playback-toggled-by-space-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE local-compare");
+  await window.loadURL(url);
+  await waitFor(window, `document.readyState === "complete" && Boolean(document.querySelector("#svgaFileInput"))`);
+  await execute(window, `
+    localStorage.setItem("autoSvgaTheme", "dark");
+    localStorage.setItem("autoSvgaReduceMotion", "false");
+    localStorage.setItem("autoSvgaReduceBlur", "false");
+    document.documentElement.dataset.theme = "dark";
+    document.documentElement.classList.remove("reduceMotion", "reduceBlur");
+    window.__p6SettingsClosedByEscape = false;
+    for (const input of document.querySelectorAll('input[name="theme"]')) input.checked = input.value === "dark";
+    true;
+  `);
+  await delay(400);
   await setMode(window, "localPreview");
   await execute(window, `
     const syncPlayControl = document.querySelector("#syncPlayControl");

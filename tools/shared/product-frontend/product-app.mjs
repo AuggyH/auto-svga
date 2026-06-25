@@ -1721,6 +1721,7 @@ function collectP6SmokeSnapshot(stateId) {
     if (!modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu)) return "mode-menu-open";
     if (modal === "assetPreviewModal") return "asset-preview-modal-open";
     if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
+    if (window.__p6SettingsClosedByEscape === true && modal === "none") return "settings-closed-by-escape";
     if (reduceMotionToggle.checked && reduceBlurToggle.checked && modal === "none") return "settings-closed-by-escape";
     if (reduceMotionToggle.checked && reduceBlurToggle.checked) return "accessibility-toggles-on";
     if (modal === "settingsModal") return "settings-open";
@@ -2782,6 +2783,12 @@ async function runProductSmoke() {
       await delay(120);
     });
     await captureArtifact("desktop-accessibility-toggles-on");
+    localStorage.setItem("autoSvgaReduceMotion", "false");
+    localStorage.setItem("autoSvgaReduceBlur", "false");
+    reduceMotionToggle.checked = false;
+    reduceBlurToggle.checked = false;
+    document.documentElement.classList.remove("reduceMotion", "reduceBlur");
+    window.__p6SettingsClosedByEscape = false;
     await recordP6SmokeAction({
       id: "escape-closes-settings-before-side-panel",
       kind: "keyboard",
@@ -2790,6 +2797,7 @@ async function runProductSmoke() {
       expectedState: "settings-closed-by-escape"
     }, () => new Promise((resolve) => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      window.__p6SettingsClosedByEscape = true;
       window.setTimeout(resolve, 260);
     }), async () => {
       await waitFor(() => settingsModal.hidden);
@@ -2800,6 +2808,7 @@ async function runProductSmoke() {
     reduceMotionToggle.checked = false;
     reduceBlurToggle.checked = false;
     document.documentElement.classList.remove("reduceMotion", "reduceBlur");
+    window.__p6SettingsClosedByEscape = false;
     closeP6SmokeTransientUi();
     await delay(160);
     await recordP6SmokeAction({
@@ -2820,6 +2829,7 @@ async function runProductSmoke() {
     await delay(240);
     setAppMode("localPreview");
     if (syncPlayControl.getAttribute("aria-pressed") === "true") syncPlayControl.click();
+    resetSlotMediaState(players.a, { clearReport: true });
     if (compareToggle.checked) compareToggle.click();
     await waitFor(() => !isCompareActive());
     await recordP6SmokeAction({
