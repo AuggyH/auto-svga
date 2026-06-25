@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   buildZipPrivacyAudit,
   collectP6ParityNonPass,
+  validateOwnerVisibleHandoffBinding,
   validateFinalPackagingGate,
   validateWorkerRegistryFinal,
   validateZipEntriesIndexed
@@ -156,6 +157,29 @@ test("P6 final packaging gate blocks stale packet or parity report heads", () =>
   assert.equal(gate.errors.some((error) => error.includes("P6 parity report head")), true);
 });
 
+test("WP5 final packaging gate blocks stale App proof and package manifests", () => {
+  const headCommit = "a".repeat(40);
+  const staleHead = "b".repeat(40);
+  const gate = validateFinalPackagingGate({
+    headCommit,
+    canonicalManifest: { reviewedHeadCommit: headCommit },
+    parityReport: { source: { headCommit }, sections: {} },
+    appProof: {
+      normalVisibleStartup: {
+        headCommit: staleHead,
+        runtimeIdentity: { headCommit: staleHead }
+      }
+    },
+    internalTrialManifest: { buildCommit: staleHead },
+    macosPackageProof: { buildCommit: staleHead }
+  });
+
+  assert.equal(gate.passed, false);
+  assert.equal(gate.errors.some((error) => error.includes("normal App proof")), true);
+  assert.equal(gate.errors.some((error) => error.includes("internal trial manifest")), true);
+  assert.equal(gate.errors.some((error) => error.includes("macOS package proof")), true);
+});
+
 test("P6 final packaging gate records non-passing parity evidence without judging parity", () => {
   const report = {
     source: { headCommit: "a".repeat(40) },
@@ -186,6 +210,35 @@ test("P6 final packaging gate records non-passing parity evidence without judgin
   assert.equal(gate.passed, true);
   assert.equal(gate.parityJudgment, "not_evaluated_by_A5");
   assert.deepEqual(gate.errors, []);
+});
+
+test("WP5 owner-visible manifest requires same-head review and App material binding", () => {
+  const headCommit = "a".repeat(40);
+  const result = validateOwnerVisibleHandoffBinding({
+    headCommit,
+    reviewZipName: "P6-aaaaaaa-review-upload.zip",
+    appZipName: "Auto-SVGA-macOS-internal-aaaaaaa.zip",
+    manifest: {
+      reviewedHeadCommit: "b".repeat(40),
+      ownerReviewZip: {
+        fileName: "P6-stale-review-upload.zip",
+        sha256: "c".repeat(64)
+      },
+      macosAppZip: {
+        fileName: "Auto-SVGA-macOS-internal-aaaaaaa.zip",
+        sha256: "d".repeat(64)
+      },
+      privacyAudit: { passed: true, findingCount: 0 },
+      entries: [
+        { path: "REVIEW_PACKET.md", sha256: "e".repeat(64) }
+      ]
+    }
+  });
+
+  assert.equal(result.passed, false);
+  assert.equal(result.errors.some((error) => error.includes("reviewed head")), true);
+  assert.equal(result.errors.some((error) => error.includes("owner review ZIP")), true);
+  assert.equal(result.errors.some((error) => error.includes("App ZIP entry")), true);
 });
 
 test("P6 final packaging gate passes only when packet and parity are bound to a clean passing head", () => {

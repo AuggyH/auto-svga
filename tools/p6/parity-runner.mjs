@@ -622,6 +622,14 @@ function normalAppProofFlags(input) {
       ?? proof?.runtimeIdentity?.actualArgvSanitized
       ?? []
   );
+  const launchText = JSON.stringify([
+    proof?.launchTarget,
+    proof?.actualLaunchCommand,
+    proof?.runtimeIdentity?.actualLaunchCommand,
+    visibleStartup?.actualLaunchCommand,
+    visibleStartup?.runtimeIdentity?.actualLaunchCommand
+  ].filter(Boolean));
+  const proofOnlyPattern = /proof\/smoke|proof-only|smoke-only|AUTO_SVGA_P2_NORMAL_PROOF|AUTO_SVGA_PRODUCT_SMOKE|--p2-normal-proof|--smoke|mode=smoke|npm run desktop:dev/i;
   return proof?.passed === true
     && visibleStartup.normalVisibleStartup === true
     && visibleStartup.windowShown === true
@@ -632,7 +640,8 @@ function normalAppProofFlags(input) {
     && !("AUTO_SVGA_PRODUCT_SMOKE" in environmentOverrides)
     && !("AUTO_SVGA_SMOKE" in environmentOverrides)
     && !("AUTO_SVGA_P2_NORMAL_PROOF" in environmentOverrides)
-    && !/--smoke|mode=smoke|AUTO_SVGA_PRODUCT_SMOKE|AUTO_SVGA_P2_NORMAL_PROOF|--p2-normal-proof/.test(argv);
+    && !proofOnlyPattern.test(argv)
+    && !proofOnlyPattern.test(launchText);
 }
 
 function noEditorControlsLeakage(input) {

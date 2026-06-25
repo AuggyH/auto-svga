@@ -271,7 +271,32 @@ export function collectP6ParityNonPass(report) {
   return nonPass;
 }
 
-export function validateFinalPackagingGate({ headCommit, canonicalManifest, parityReport }) {
+function presentHeadValues(entries) {
+  return entries.filter((entry) => typeof entry.value === "string" && entry.value.length > 0);
+}
+
+function validateHeadValues({ errors, headCommit, label, entries }) {
+  const present = presentHeadValues(entries);
+  if (present.length === 0) {
+    errors.push(`${label} does not record a source head commit`);
+    return null;
+  }
+  for (const entry of present) {
+    if (entry.value !== headCommit) {
+      errors.push(`${label} ${entry.name} ${entry.value} does not match current head ${headCommit}`);
+    }
+  }
+  return present[0]?.value ?? null;
+}
+
+export function validateFinalPackagingGate({
+  headCommit,
+  canonicalManifest,
+  parityReport,
+  appProof,
+  internalTrialManifest,
+  macosPackageProof
+}) {
   const errors = [];
   const packetHead = headFromCanonicalManifest(canonicalManifest);
   const parityHead = parityReport?.source?.headCommit ?? parityReport?.headCommit ?? null;
@@ -287,12 +312,44 @@ export function validateFinalPackagingGate({ headCommit, canonicalManifest, pari
   } else if (parityHead !== headCommit) {
     errors.push(`P6 parity report head ${parityHead} does not match current head ${headCommit}`);
   }
+  const appProofHead = appProof === undefined ? null : validateHeadValues({
+    errors,
+    headCommit,
+    label: "normal App proof",
+    entries: [
+      { name: "headCommit", value: appProof?.headCommit },
+      { name: "normalVisibleStartup.headCommit", value: appProof?.normalVisibleStartup?.headCommit },
+      { name: "normalVisibleStartup.runtimeIdentity.headCommit", value: appProof?.normalVisibleStartup?.runtimeIdentity?.headCommit },
+      { name: "runtimeIdentity.headCommit", value: appProof?.runtimeIdentity?.headCommit }
+    ]
+  });
+  const internalTrialHead = internalTrialManifest === undefined ? null : validateHeadValues({
+    errors,
+    headCommit,
+    label: "internal trial manifest",
+    entries: [
+      { name: "buildCommit", value: internalTrialManifest?.buildCommit },
+      { name: "headCommit", value: internalTrialManifest?.headCommit }
+    ]
+  });
+  const macosPackageProofHead = macosPackageProof === undefined ? null : validateHeadValues({
+    errors,
+    headCommit,
+    label: "macOS package proof",
+    entries: [
+      { name: "buildCommit", value: macosPackageProof?.buildCommit },
+      { name: "headCommit", value: macosPackageProof?.headCommit }
+    ]
+  });
 
   return {
     passed: errors.length === 0,
     headCommit,
     packetHeadCommit: packetHead,
     parityReportHeadCommit: parityHead,
+    appProofHeadCommit: appProofHead,
+    internalTrialManifestHeadCommit: internalTrialHead,
+    macosPackageProofHeadCommit: macosPackageProofHead,
     parityJudgment: "not_evaluated_by_A5",
     errors
   };
@@ -303,7 +360,24 @@ async function assertFinalPackagingGate({ headCommit, canonicalManifest }) {
     throw new Error(`P6 final packaging gate blocked: missing parity report ${parityReportPath}`);
   }
   const parityReport = JSON.parse(await readFile(parityReportPath, "utf8"));
-  const gate = validateFinalPackagingGate({ headCommit, canonicalManifest, parityReport });
+  const requiredAppFiles = [
+    ["normal App proof", path.join(productRoot, "packaged-app-runtime-proof.json")],
+    ["internal trial manifest", path.join(productRoot, "internal-trial-manifest.json")],
+    ["macOS package proof", path.join(trialRoot, "macos-package-proof.json")]
+  ];
+  for (const [label, filePath] of requiredAppFiles) {
+    if (!existsSync(filePath)) {
+      throw new Error(`P6 final packaging gate blocked: missing ${label} ${filePath}`);
+    }
+  }
+  const gate = validateFinalPackagingGate({
+    headCommit,
+    canonicalManifest,
+    parityReport,
+    appProof: JSON.parse(await readFile(path.join(productRoot, "packaged-app-runtime-proof.json"), "utf8")),
+    internalTrialManifest: JSON.parse(await readFile(path.join(productRoot, "internal-trial-manifest.json"), "utf8")),
+    macosPackageProof: JSON.parse(await readFile(path.join(trialRoot, "macos-package-proof.json"), "utf8"))
+  });
   if (!gate.passed) {
     throw new Error(`P6 final packaging gate blocked: ${gate.errors.join("; ")}`);
   }
@@ -311,8 +385,65 @@ async function assertFinalPackagingGate({ headCommit, canonicalManifest }) {
     passed: true,
     packetHeadCommit: gate.packetHeadCommit,
     parityReportHeadCommit: gate.parityReportHeadCommit,
+    appProofHeadCommit: gate.appProofHeadCommit,
+    internalTrialManifestHeadCommit: gate.internalTrialManifestHeadCommit,
+    macosPackageProofHeadCommit: gate.macosPackageProofHeadCommit,
     parityJudgment: gate.parityJudgment,
     parityReportPath: path.relative(repoRoot, parityReportPath).split(path.sep).join("/")
+  };
+}
+
+function manifestEntryFor(manifest, fileName) {
+  return (manifest?.entries ?? []).find((entry) => entry.path === fileName) ?? null;
+}
+
+function validSha256(value) {
+  return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
+}
+
+export function validateOwnerVisibleHandoffBinding({ headCommit, manifest, reviewZipName, appZipName }) {
+  const errors = [];
+  if (manifest?.reviewedHeadCommit !== headCommit) {
+    errors.push(`owner-visible manifest reviewed head ${manifest?.reviewedHeadCommit ?? "missing"} does not match current head ${headCommit}`);
+  }
+  if (manifest?.privacyAudit?.passed !== true || manifest?.privacyAudit?.findingCount !== 0) {
+    errors.push("owner-visible manifest privacy audit must pass with zero findings");
+  }
+
+  const reviewEntry = manifestEntryFor(manifest, reviewZipName);
+  const reviewZip = manifest?.ownerReviewZip;
+  if (reviewZip?.fileName !== reviewZipName) {
+    errors.push(`owner review ZIP fileName ${reviewZip?.fileName ?? "missing"} does not match ${reviewZipName}`);
+  }
+  if (!reviewEntry) {
+    errors.push(`owner review ZIP entry ${reviewZipName} is missing from owner-visible manifest entries`);
+  } else if (validSha256(reviewZip?.sha256) && reviewEntry.sha256 !== reviewZip.sha256) {
+    errors.push("owner review ZIP manifest entry hash does not match ownerReviewZip hash");
+  }
+
+  const appEntry = manifestEntryFor(manifest, appZipName);
+  const appZip = manifest?.macosAppZip;
+  if (appZip?.fileName !== appZipName) {
+    errors.push(`App ZIP fileName ${appZip?.fileName ?? "missing"} does not match ${appZipName}`);
+  }
+  if (!appEntry) {
+    errors.push(`App ZIP entry ${appZipName} is missing from owner-visible manifest entries`);
+  } else if (validSha256(appZip?.sha256) && appEntry.sha256 !== appZip.sha256) {
+    errors.push("App ZIP manifest entry hash does not match macosAppZip hash");
+  }
+
+  for (const requiredPath of ["REVIEW_PACKET.md", "FINAL_RESPONSE.txt", "bundle-privacy-audit.json", "worker-registry-final.json"]) {
+    if (!manifestEntryFor(manifest, requiredPath)) {
+      errors.push(`owner-visible manifest missing required entry ${requiredPath}`);
+    }
+  }
+
+  return {
+    passed: errors.length === 0,
+    headCommit,
+    reviewZipName,
+    appZipName,
+    errors
   };
 }
 
@@ -781,7 +912,7 @@ async function main() {
     "- FINAL_RESPONSE.txt: exact terminal response with clickable local file links.",
     ""
   ].join("\n"), "utf8");
-  await writeFile(path.join(visibleRoot, "MANIFEST.json"), `${JSON.stringify(await buildManifest(visibleRoot, {
+  const visibleManifest = await buildManifest(visibleRoot, {
     ...manifestExtra,
     ownerReviewZip: {
       fileName: reviewZipName,
@@ -789,7 +920,17 @@ async function main() {
       sha256: reviewZipIdentity.sha256,
       entryCount: reviewZipEntries.length
     }
-  }), null, 2)}\n`);
+  });
+  const visibleBinding = validateOwnerVisibleHandoffBinding({
+    headCommit,
+    manifest: visibleManifest,
+    reviewZipName,
+    appZipName
+  });
+  if (!visibleBinding.passed) {
+    throw new Error(`P6 owner-visible handoff binding failed: ${visibleBinding.errors.join("; ")}`);
+  }
+  await writeFile(path.join(visibleRoot, "MANIFEST.json"), `${JSON.stringify(visibleManifest, null, 2)}\n`);
 
   const summary = {
     schemaVersion: 1,

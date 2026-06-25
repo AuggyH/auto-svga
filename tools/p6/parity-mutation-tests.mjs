@@ -221,6 +221,15 @@ test("normal App proof flags fail when proof is smoke flavored", () => {
   assertItemFailed(report, "desktopRuntimeProof", "packaged-app-launch", "normal-app-proof-flags");
 });
 
+test("WP5 normal App proof rejects proof-only launch targets", () => {
+  const facts = goodFacts();
+  facts.package.normalProof.launchTarget = "proof/smoke packaged path";
+  facts.package.normalProof.normalVisibleStartup.actualLaunchCommand = "npm run desktop:dev -- --p2-normal-proof";
+
+  const report = buildP6ParityReportFromRuntimeFacts(facts);
+  assertItemFailed(report, "desktopRuntimeProof", "packaged-app-launch", "normal-app-proof-flags");
+});
+
 test("base-range diff failure is detected", () => {
   const validation = validateP6BaseRangeDiff({
     baseCommit: "a".repeat(40),
