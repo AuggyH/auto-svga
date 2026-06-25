@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: wp4_integration_checkpoint_passed_execute_wp5_app_delivery
+Status: gate_c_passed_execute_final_validation
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: wp4_integration_checkpoint_passed_execute_wp5_app_delivery
+executionStatus: gate_c_passed_execute_final_validation
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -513,6 +513,24 @@ integrationVerifier: A0
 stopCondition: Gate C failure blocks owner-acceptance packet generation.
 allowedNextPackages: none
 
+Gate C execution record:
+
+- wp4WorkerThread: `019efd12-26fd-7061-a2aa-4401a0a62a6d`
+- wp4WorkerHead: `f155580c979951b36bf1722eb201f278dc4a5d78`
+- wp4IntegrationHead: `ddfd400e586b835967ed408e9ac2c75831217776`
+- wp5WorkerThread: `019efd2a-b398-7b31-9d74-36009bad7076`
+- wp5WorkerHead: `7f6ae4ef5220d7824c4ddc3cb924db12f96e4f7b`
+- wp5IntegrationHead: `15a0e43cf5469c1942a924c3b2802e2da2a7212e`
+- gateCReviewedHead: `15a0e43cf5469c1942a924c3b2802e2da2a7212e`
+- gateCReviewedTree: `051db6f89d7d607c40d820c52a9318608bb65545`
+- independentVisualProductReviewer: `PASS`
+- independentCodeSecurityReviewer: `PASS`
+- gateCStatus: `passed`
+- nextActionAfterGateC: `execute_final_validation`
+- P6-F004, P6-F006, P6-F007, P6-F008, P6-F009, and P6-F011 remain
+  `currentStatus=open` and are not closed before final independent external
+  review.
+
 ## P6-R1 Final Validation
 
 Final Validation is the A0 machine validation step after Gate C and before
@@ -689,17 +707,17 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `goal_active_execute_wp1_state_correctness`.
+Current state: `gate_c_passed_execute_final_validation`.
 
-Next action: `execute_wp1_state_correctness`.
+Next action: `execute_final_validation`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
 `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY` from base execution head
 `30f522ca569679a5364149fe02ccc83624ec91ce`.
 
-WP0 recovery gate bootstrap passed with non-blocking notes. P6-R1 execution is
-active for the ordered path through `HUMAN_REQUIRED`; WP1 is the current step.
-Phase 2 is not started. Product Owner Human Gate, Final Independent Product
-External Review, finding closure, signing, notarization, release, push, merge,
-and Phase 2 remain prohibited.
+WP0 recovery gate bootstrap, Gate A, Gate B, and Gate C have passed. P6-R1
+execution is active for the ordered path through `HUMAN_REQUIRED`; Final
+Validation is the current step. Phase 2 is not started. Product Owner Human
+Gate, Final Independent Product External Review, finding closure, signing,
+notarization, release, push, merge, and Phase 2 remain prohibited.

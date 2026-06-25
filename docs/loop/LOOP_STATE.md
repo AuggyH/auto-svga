@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: wp4_integration_checkpoint_passed_execute_wp5_app_delivery
-- Next Action: execute_wp5_app_delivery
+- State: gate_c_passed_execute_final_validation
+- Next Action: execute_final_validation
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -91,14 +91,26 @@ Date: 2026-06-25
   PASS without required product classification verdicts.
 - P6-F004, P6-F006, and P6-F008 remain `currentStatus=open` and advanced only
   to `integrated_resolved_pending_external_review`.
+- WP5 App delivery is integrated at
+  `15a0e43cf5469c1942a924c3b2802e2da2a7212e`.
+- WP5 App delivery gates now reject proof-only or smoke-only normal App proof,
+  stale App proof/internal trial/macOS package proof heads, and hidden or
+  mismatched owner-visible Review ZIP/App ZIP/privacy/manifest handoff
+  material.
+- Gate C passed on reviewed head
+  `15a0e43cf5469c1942a924c3b2802e2da2a7212e` and tree
+  `051db6f89d7d607c40d820c52a9318608bb65545` after Independent Visual Product
+  Reviewer PASS and Independent Code And Security Reviewer PASS.
+- P6-F007, P6-F009, and P6-F011 remain `currentStatus=open` and advanced only
+  to `integrated_resolved_pending_external_review`.
 - No formal implementation Worker is currently running for P6-R1.
-- Product runtime evidence code has changed only within authorized WP1-WP4
+- Product runtime evidence code has changed only within authorized WP1-WP5
   recovery scope. No exporter, CLI default flow, dependency, package, signing,
   notarization, release, or Phase 2 implementation has been changed for P6-R1.
 - P6-R1 does not authorize Phase 2.
 
 ## Next Action
 
-Execute WP5 App delivery. Do not start Phase 2, Product Owner
-Human Gate, Final Independent Product External Review, finding closure,
-signing, notarization, release, push, merge, or any out-of-contract work.
+Execute Final Validation. Do not start Phase 2, Product Owner Human Gate,
+Final Independent Product External Review, finding closure, signing,
+notarization, release, push, merge, or any out-of-contract work.

@@ -366,7 +366,9 @@
       "fixCommits": [
         "01150831c09d8d28fe6e327ec2d67d71fa99638f",
         "140fcb6b3cbdc5eff6fc2993e796615b4a5ecc54",
-        "3e56733a9f5bdc3c246ad58cc1afecc765ac6bd1"
+        "3e56733a9f5bdc3c246ad58cc1afecc765ac6bd1",
+        "7f6ae4ef5220d7824c4ddc3cb924db12f96e4f7b",
+        "15a0e43cf5469c1942a924c3b2802e2da2a7212e"
       ],
       "whyPreviousFixesDidNotCloseIt": "Proof-mode affordances remained available and were not forbidden by an entry gate until late. R6 external review still found this finding or its acceptance risk unresolved, so previous fixes did not satisfy closure criteria.",
       "requiredRegressionTest": "Launch packaged app without proof/smoke flags/env/query, verify window visible, file flow works, and process exits cleanly.",
@@ -378,14 +380,17 @@
         "manual double-click acceptance"
       ],
       "currentOpenSubIssues": [
-        "Normal App lacks complete ordinary-startup product visual proof."
+        "Normal App proof is now protected against proof-only and smoke-only launch paths, pending final seal and independent external review."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "unresolved",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
-        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
+        "docs/product/p6/worker-evidence/P6R1-GateC-independent-reviewers.md",
+        "docs/loop/LOOP_HISTORY.jsonl"
       ]
     },
     {
@@ -461,7 +466,9 @@
       "fixCommits": [
         "24a338e8ea7d4c76742cf013a7857af18d482eba",
         "46076eb3ee3cf9e960e38fd7c97912c20ff1b216",
-        "1977cbce7ffc53d215391468aeb5b20daf816f77"
+        "1977cbce7ffc53d215391468aeb5b20daf816f77",
+        "7f6ae4ef5220d7824c4ddc3cb924db12f96e4f7b",
+        "15a0e43cf5469c1942a924c3b2802e2da2a7212e"
       ],
       "whyPreviousFixesDidNotCloseIt": "The protocol was repaired while product evidence was still changing; final-head binding became a late hygiene task. R6 external review still found this finding or its acceptance risk unresolved, so previous fixes did not satisfy closure criteria.",
       "requiredRegressionTest": "Terminal handoff build must fail unless registry, packet, parity report, app proof, upload zip, and git HEAD all match.",
@@ -473,14 +480,17 @@
         "no stale handoff roots"
       ],
       "currentOpenSubIssues": [
-        "Final-head, registry, and loop-ledger binding still need successor-contract gates before acceptance can be trusted."
+        "Final-head package and owner-visible handoff binding checks are in place, pending final seal, post-seal verification, and independent external review."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "unresolved",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
-        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
+        "docs/product/p6/worker-evidence/P6R1-GateC-independent-reviewers.md",
+        "docs/loop/LOOP_HISTORY.jsonl"
       ]
     },
     {
@@ -557,7 +567,9 @@
         "416a9db637d2b92389d7a018c2105bf971774e7c",
         "c92a1f7344864fa37d21be33a6bd100784e839df",
         "bf1d71be6141946fde9908b4479be41bf5a14355",
-        "1977cbce7ffc53d215391468aeb5b20daf816f77"
+        "1977cbce7ffc53d215391468aeb5b20daf816f77",
+        "7f6ae4ef5220d7824c4ddc3cb924db12f96e4f7b",
+        "15a0e43cf5469c1942a924c3b2802e2da2a7212e"
       ],
       "whyPreviousFixesDidNotCloseIt": "Packaging and visibility were not stable prerequisites before P6 started. R6 external review still found this finding or its acceptance risk unresolved, so previous fixes did not satisfy closure criteria.",
       "requiredRegressionTest": "Portable bundle audit that fails on hidden-only handoff, absolute paths, stale review roots, missing ZIP, or missing clickable packet.",
@@ -569,14 +581,17 @@
         "external review does not find path or visibility issue"
       ],
       "currentOpenSubIssues": [
-        "Portable handoff and privacy rules require repaired manifest/privacy proof for the revised postmortem packet."
+        "Owner-visible handoff and privacy checks are now enforced for Review ZIP, App ZIP, manifest, and visible entries, pending final seal and independent external review."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "unresolved",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
-        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
+        "docs/product/p6/worker-evidence/P6R1-GateC-independent-reviewers.md",
+        "docs/loop/LOOP_HISTORY.jsonl"
       ]
     },
     {
