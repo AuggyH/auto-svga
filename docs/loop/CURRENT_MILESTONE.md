@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: wp2_integration_checkpoint_passed_execute_wp3_interaction_evidence
+Status: gate_b_passed_execute_wp4_visual_motion_review
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: wp2_integration_checkpoint_passed_execute_wp3_interaction_evidence
+executionStatus: gate_b_passed_execute_wp4_visual_motion_review
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -444,6 +444,19 @@ evidenceOwner: P6R1 Evidence Lead
 integrationVerifier: A0
 stopCondition: Gate B failure blocks WP4-WP5.
 allowedNextPackages: WP4 only after Gate B passes.
+
+Gate B execution record:
+
+- wp2WorkerThread: `019efcda-8727-7a20-a404-f7958b2bb1ba`
+- wp2WorkerHead: `4fd43a1d820b17d728ef991329e080d6d4e4151f`
+- wp2IntegrationHead: `39bbe6c3d3f455bffb4b8943f6e9ff459f403e3b`
+- wp3WorkerThread: `019efcf8-45e4-77c3-a32e-52ff2afbb456`
+- wp3WorkerHead: `102182c634a4f486181d62481b218af3af80fc51`
+- wp3IntegrationHead: `d825813372c87a6830dd60562a76fb501e86e1b8`
+- gateBStatus: `passed`
+- nextAction: `execute_wp4_visual_motion_review`
+- P6-F003, P6-F005, and P6-F013 remain `currentStatus=open` and are not
+  closed before final independent external review.
 
 ## Gate C - Visual, Motion And App Delivery
 

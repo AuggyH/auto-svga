@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: wp2_integration_checkpoint_passed_execute_wp3_interaction_evidence
-- Next Action: execute_wp3_interaction_evidence
+- State: gate_b_passed_execute_wp4_visual_motion_review
+- Next Action: execute_wp4_visual_motion_review
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -74,14 +74,24 @@ Date: 2026-06-25
   latest artifact, synchronized playback, and cleanup checks all true.
 - P6-F013 remains `currentStatus=open` and advanced only to
   `integrated_resolved_pending_external_review`.
+- WP3 interaction evidence is integrated at
+  `d825813372c87a6830dd60562a76fb501e86e1b8`.
+- WP3 strict interaction evidence passed after failure-first and mutation
+  checks rejected missing `stateBefore`, real action, `stateAfter`,
+  focus/visible result, and head/artifact binding.
+- Gate B passed on the integration head after WP2 multi-source acceptance,
+  WP3 interaction mutation checks, Web inspection report tests, Electron
+  prototype tests, and diff checks.
+- P6-F003 and P6-F005 remain `currentStatus=open` and advanced only to
+  `integrated_resolved_pending_external_review`.
 - No formal implementation Worker is currently running for P6-R1.
-- No product runtime, Web UI, Electron UI, test, dependency, package, parity,
-  scenario, motion, App, or packaging implementation has been changed for
-  P6-R1.
+- Product runtime evidence code has changed only within authorized WP1-WP3
+  recovery scope. No exporter, CLI default flow, dependency, package, signing,
+  notarization, release, or Phase 2 implementation has been changed for P6-R1.
 - P6-R1 does not authorize Phase 2.
 
 ## Next Action
 
-Execute WP3 interaction evidence. Do not start Phase 2, Product Owner
+Execute WP4 visual and motion review. Do not start Phase 2, Product Owner
 Human Gate, Final Independent Product External Review, finding closure,
 signing, notarization, release, push, merge, or any out-of-contract work.

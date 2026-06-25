@@ -168,7 +168,9 @@
       "fixCommits": [
         "9f7ec1aff405f39085ea599da8499eb8e5572150",
         "8247a7297cb0a0199411bc1635b2640890070470",
-        "52ed98df94f869a811aac2a4a120a7b8bcadb67f"
+        "52ed98df94f869a811aac2a4a120a7b8bcadb67f",
+        "102182c634a4f486181d62481b218af3af80fc51",
+        "d825813372c87a6830dd60562a76fb501e86e1b8"
       ],
       "whyPreviousFixesDidNotCloseIt": "The system improved report shape faster than it improved independent failure-first product assertions. R6 external review still found this finding or its acceptance risk unresolved, so previous fixes did not satisfy closure criteria.",
       "requiredRegressionTest": "Mutation tests that remove a behavior while leaving artifacts present, and require parity to fail.",
@@ -179,14 +181,16 @@
         "external reviewer reproduces no artifact-existence false pass"
       ],
       "currentOpenSubIssues": [
-        "Machine PASS cannot be treated as product acceptance while known technical gates remain unresolved."
+        "Final independent external review has not yet confirmed the artifact-existence false-pass risk is closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "unresolved",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
-        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
+        "docs/loop/LOOP_HISTORY.jsonl"
       ]
     },
     {
@@ -254,7 +258,9 @@
       ],
       "fixCommits": [
         "2320ee6",
-        "52ed98df94f869a811aac2a4a120a7b8bcadb67f"
+        "52ed98df94f869a811aac2a4a120a7b8bcadb67f",
+        "102182c634a4f486181d62481b218af3af80fc51",
+        "d825813372c87a6830dd60562a76fb501e86e1b8"
       ],
       "whyPreviousFixesDidNotCloseIt": "Prior checks were too close to final packaging and did not start from failing interaction tests. R6 external review still found this finding or its acceptance risk unresolved, so previous fixes did not satisfy closure criteria.",
       "requiredRegressionTest": "For each required interaction, capture before state, user event, after state, and fail when any state transition is simulated or missing.",
@@ -266,14 +272,16 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Interaction trace still lacks real stateBefore, stateAfter, and result."
+        "Final independent external review has not yet confirmed the real before/action/after interaction trace risk is closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "unresolved",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
-        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
+        "docs/loop/LOOP_HISTORY.jsonl"
       ]
     },
     {
