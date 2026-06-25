@@ -1,13 +1,13 @@
 # Auto SVGA Loop State
 
-Date: 2026-06-25
+Date: 2026-06-26
 
 ## Current Milestone
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: terminal_human_required
-- Next Action: product_owner_human_gate
+- State: goal_repair_in_progress
+- Next Action: repair_wp1_state_correctness_and_evidence
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -49,17 +49,13 @@ Date: 2026-06-25
   `9b01108c03a5e70e2f67100eeac384810afee4e4`.
 - Product Owner authorized `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY`
   from base execution head `30f522ca569679a5364149fe02ccc83624ec91ce`.
-- WP3 real interaction evidence and owner handoff repair completed on the
-  current execution head after the revoked prior `HUMAN_REQUIRED`, Reviewer B,
-  Final Seal, and Post-seal usability findings were treated as failure
-  evidence.
-- Strict Web/Desktop interaction evidence now records before, real action,
-  after, focus or visible result, target, timing, and final-head binding in the
-  same runtime flow. Legacy or synthetic trace completion is rejected.
-- Motion evidence now requires real Web and Desktop start/mid/end frame hash
-  changes. Computed-style samples remain supplemental only.
-- Final P6 evidence reports `parityStatus=pass` and
-  `nonPassEvidenceCount=0`; Desktop smoke has passed twice consecutively.
+- Independent review revoked the current `HUMAN_REQUIRED`, Reviewer B PASS,
+  Final Seal, and Post-seal Verification because required state, comparable
+  context, real interaction, product-review, and owner-handoff gates
+  false-passed.
+- P6-R1 has returned to WP1/Gate A. Prior downstream evidence, Reviewer
+  verdicts, seal, and handoff materials are not reusable until WP1/Gate A and
+  every affected downstream stage rerun on one new final head.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are only
   advanced to `integrated_resolved_pending_external_review`; no Finding is
   closed or externally confirmed before Product Owner Human Gate and final
@@ -67,13 +63,11 @@ Date: 2026-06-25
 - `contractReviewedHeadCommit=9b01108c03a5e70e2f67100eeac384810afee4e4`,
   `contractRevision=3`, `repairRound=0`, and `phase2Started=false` are
   preserved.
-- Gate B, WP4/Gate C, Final Validation, Reviewer A, Reviewer B, Final Seal,
-  and Post-seal Verification have been rerun on the current execution head.
-  Phase 2 remains not started.
+- P6-F001, P6-F002, P6-F004, P6-F005, P6-F008, P6-F010, P6-F011, and P6-F012
+  are regressed with `currentStatus=open`. Phase 2 remains not started.
 
 ## Next Action
 
-Product Owner Human Gate: review the canonical P6-R1 owner handoff materials
-for the current final head. Do not start Final Independent Product External
-Review closure, Phase 2, signing, notarization, release, push, merge, or any
-out-of-contract work.
+Repair WP1 state correctness and evidence first. Do not start Product Owner
+Human Gate, Final Independent Product External Review, closure, Phase 2,
+signing, notarization, release, push, merge, or any out-of-contract work.
