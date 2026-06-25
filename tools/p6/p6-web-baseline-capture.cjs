@@ -487,7 +487,7 @@ async function installInteractionReceiptProbe(window, selector) {
       const selector = ${JSON.stringify(selector)};
       const parts = selector.split(",").map((part) => part.trim()).filter(Boolean);
       const matchesTarget = (target) => parts.includes("body")
-        ? target === document.body || document.body.contains(target)
+        ? target === document || target === window || target === document.body || document.body.contains(target)
         : parts.some((part) => target?.matches?.(part) || Boolean(target?.closest?.(part)));
       const receipts = [];
       const handler = (event) => {

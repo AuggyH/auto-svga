@@ -1768,7 +1768,7 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
   const receipts = [];
   const selectorParts = action.selector.split(",").map((part) => part.trim()).filter(Boolean);
   const matchesTarget = (targetNode) => selectorParts.includes("body")
-    ? targetNode === document.body || document.body.contains(targetNode)
+    ? targetNode === document || targetNode === window || targetNode === document.body || document.body.contains(targetNode)
     : selectorParts.some((part) => targetNode?.matches?.(part) || targetNode?.closest?.(part));
   const receiptHandler = (event) => {
     receipts.push({
