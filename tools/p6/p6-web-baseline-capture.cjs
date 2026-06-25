@@ -988,7 +988,7 @@ async function main() {
         true;
       `);
     }
-  }, { prepareDelayMs: 50, midDelayMs: 750, endDelayMs: 750 });
+  }, { prepareDelayMs: 50, midDelayMs: 500, endDelayMs: 500 });
 
   console.log("P6_WEB_BASELINE_PHASE mode-menu-open");
   await recordWebInteraction(window, "click-mode-dropdown-trigger-menu-opens", async () => {
