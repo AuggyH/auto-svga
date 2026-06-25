@@ -266,6 +266,11 @@ function clearSlotLoadingPhase(slot) {
   setSlotLoadingPhase(slot, undefined, {});
 }
 
+function setSlotEmptyStateHidden(slot, hidden) {
+  const emptyState = slot.panel?.querySelector(".centerEmptyState");
+  if (emptyState) emptyState.hidden = hidden === true;
+}
+
 function resetSlotMediaState(slot, { clearReport = false } = {}) {
   slot.videoItem = undefined;
   slot.metrics = undefined;
@@ -276,6 +281,7 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   slot.renderStatus = "empty";
   slot.sourceIdentity = undefined;
   slot.panel.classList.remove("hasMedia", "isLoading");
+  setSlotEmptyStateHidden(slot, false);
   slot.canvas.innerHTML = "";
   slot.frame.style.removeProperty("width");
   slot.frame.style.removeProperty("height");
@@ -807,6 +813,7 @@ function replaySlot(slot, shouldShowError = true) {
   slot.isPlaying = true;
   setStatus(slot.status, "playing");
   slot.panel.classList.add("hasMedia");
+  setSlotEmptyStateHidden(slot, true);
   if (slot.slotName === "A") {
     svgaFilePillA.hidden = false;
     svgaFilePillA.textContent = slot.metrics?.fileName ?? "SVGA";
