@@ -1984,6 +1984,8 @@ function collectRenderedStateProof(state) {
     if (!/文件类型不支持|加载失败|Unable|Unsupported|failed/i.test(renderedText)) {
       failures.push("invalid product message missing");
     }
+    if (players.a.parseStatus !== "error") failures.push("invalid parser status is not error");
+    if (players.a.renderStatus !== "error") failures.push("invalid render status is not error");
     if (players.a.metrics) failures.push("invalid metadata still present");
     if (players.a.inspectionReport) failures.push("invalid inspection still present");
     if (players.a.canvas.children.length > 0) failures.push("invalid canvas children still present");
@@ -2130,7 +2132,8 @@ function collectRenderedStateProof(state) {
 
 function installStateProbe() {
   window.__autoSvgaDesktopStateProbe = {
-    collect: (state) => collectRenderedStateProof(state)
+    collect: (state) => collectRenderedStateProof(state),
+    runWp1StateCorrectnessFlow
   };
 }
 
@@ -2160,6 +2163,77 @@ async function smokeErrorFile() {
   players.a.metrics = undefined;
   players.a.inspectionReport = undefined;
   return true;
+}
+
+async function loadValidSvgaForStateProbe(source, options = {}) {
+  return loadSvga("a", source, {
+    fileName: options.fileName ?? "avatar_frame_basic.svga",
+    fileSizeBytes: options.fileSizeBytes,
+    loadingHoldMs: options.loadingHoldMs
+  });
+}
+
+async function loadInvalidSvgaForStateProbe(bytes = new Uint8Array([1, 2, 3, 4])) {
+  const file = new File([bytes], "invalid-state-probe.svga", { type: "application/octet-stream" });
+  if (players.a.objectUrl) URL.revokeObjectURL(players.a.objectUrl);
+  players.a.objectUrl = URL.createObjectURL(file);
+  try {
+    await loadSvga("a", players.a.objectUrl, {
+      fileName: file.name,
+      fileSizeBytes: file.size
+    });
+  } catch {
+    // The invalid state is asserted through the rendered state probe below.
+  }
+  await waitFor(() => players.a.parseStatus === "error" && players.a.renderStatus === "error" && !errorBox.hidden);
+}
+
+async function runWp1StateCorrectnessFlow(options = {}) {
+  const validSource = options.validSource ?? paths.svga;
+  const validFileName = options.validFileName ?? "avatar_frame_basic.svga";
+  const loadingHoldMs = Number.isFinite(Number(options.loadingHoldMs)) ? Number(options.loadingHoldMs) : 350;
+  setAppMode("localPreview");
+  if (compareToggle.checked) compareToggle.click();
+  closeP6SmokeTransientUi();
+
+  const empty = collectRenderedStateProof("local-empty");
+  const loadingPromise = loadValidSvgaForStateProbe(validSource, {
+    fileName: validFileName,
+    loadingHoldMs
+  });
+  await waitFor(() => players.a.parseStatus === "loading" && players.a.renderStatus === "loading" && players.a.panel.classList.contains("isLoading"));
+  const loading = collectRenderedStateProof("loading");
+  await loadingPromise;
+  await waitFor(() => Boolean(players.a.videoItem) && canvasIsNonBlank(players.a));
+  await waitForInspectionStatus(players.a);
+  await waitFor(() => collectRenderedStateProof("loaded").passed === true);
+  const loaded = collectRenderedStateProof("loaded");
+
+  await loadInvalidSvgaForStateProbe();
+  const invalid = collectRenderedStateProof("invalid");
+
+  await loadValidSvgaForStateProbe(validSource, {
+    fileName: `recovered-${validFileName}`,
+    loadingHoldMs: Math.min(loadingHoldMs, 120)
+  });
+  await waitFor(() => Boolean(players.a.videoItem) && canvasIsNonBlank(players.a));
+  await waitForInspectionStatus(players.a);
+  await waitFor(() => collectRenderedStateProof("recovered-from-invalid").passed === true);
+  const recovered = collectRenderedStateProof("recovered-from-invalid");
+
+  const states = { empty, loading, loaded, invalid, recovered };
+  const failures = Object.entries(states)
+    .filter(([, proof]) => proof.passed !== true)
+    .flatMap(([state, proof]) => (proof.failures ?? ["state proof failed"]).map((failure) => `${state}: ${failure}`));
+  return {
+    schemaVersion: 1,
+    flow: "Empty -> Loading -> Loaded -> Invalid -> Recovery",
+    usedRuntimeLoadPath: true,
+    directStateInjection: false,
+    states,
+    passed: failures.length === 0,
+    failures
+  };
 }
 
 const p6SmokeReferenceGifBase64 = "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";

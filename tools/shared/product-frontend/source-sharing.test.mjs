@@ -134,6 +134,18 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     assert.match(productApp, new RegExp(cleanupEvidence));
   }
 
+  for (const runtimeFlowEvidence of [
+    "runWp1StateCorrectnessFlow",
+    "loadValidSvgaForStateProbe",
+    "loadInvalidSvgaForStateProbe",
+    "usedRuntimeLoadPath",
+    "directStateInjection: false",
+    "invalid parser status is not error",
+    "invalid render status is not error"
+  ]) {
+    assert.match(productApp, new RegExp(runtimeFlowEvidence));
+  }
+
   for (const loadingEvidence of [
     "loadingActivePhases",
     "loadingSourceLabel",
