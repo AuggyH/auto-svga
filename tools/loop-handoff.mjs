@@ -823,13 +823,26 @@ function parseMilestoneContract(contractText) {
   const idMatch = contractText.match(/^Milestone ID:\s*([A-Za-z0-9-]+)/m);
   const milestoneId = idMatch?.[1];
   const criteria = [];
+  const seenCriteria = new Set();
   const criterionPattern = /^-\s+`([^`]+)`:\s+(.+)$/gm;
   let match;
   while ((match = criterionPattern.exec(contractText)) !== null) {
+    seenCriteria.add(match[1]);
     criteria.push({
       id: match[1],
       requirement: match[2].trim(),
       requirementHash: createHash("sha256").update(match[2].trim()).digest("hex")
+    });
+  }
+  const tableCriterionPattern = /^\|\s*([A-Za-z0-9][A-Za-z0-9._-]+-AC-\d{2})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/gm;
+  while ((match = tableCriterionPattern.exec(contractText)) !== null) {
+    if (seenCriteria.has(match[1])) continue;
+    const requirement = `${match[2].trim()}: ${match[3].trim()}`;
+    seenCriteria.add(match[1]);
+    criteria.push({
+      id: match[1],
+      requirement,
+      requirementHash: createHash("sha256").update(requirement).digest("hex")
     });
   }
   return { milestoneId, criteria };

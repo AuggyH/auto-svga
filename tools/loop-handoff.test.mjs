@@ -108,6 +108,30 @@ function contractText({ milestoneId = "M2-R2" } = {}) {
   ].join("\n");
 }
 
+function tableCriteria(milestoneId = "P6-R1") {
+  return criteria(milestoneId).map((criterion) => ({
+    id: criterion.id,
+    criterion: criterion.requirement,
+    evidence: `${criterion.requirement} evidence`,
+    requirement: `${criterion.requirement}: ${criterion.requirement} evidence`
+  }));
+}
+
+function tableContractText({ milestoneId = "P6-R1" } = {}) {
+  return [
+    "# P6-R1 Fixture",
+    "",
+    `Milestone ID: ${milestoneId}`,
+    "",
+    "## Formal Acceptance Criteria",
+    "",
+    "| ID | criterion | required evidence |",
+    "| --- | --- | --- |",
+    ...tableCriteria(milestoneId).map((criterion) => `| ${criterion.id} | ${criterion.criterion} | ${criterion.evidence} |`),
+    ""
+  ].join("\n");
+}
+
 function acceptanceEvidence({ omit, extra, badHash, milestoneId = "M2-R2" } = {}) {
   const items = criteria(milestoneId)
     .filter((criterion) => criterion.id !== omit)
@@ -138,6 +162,22 @@ function acceptanceEvidence({ omit, extra, badHash, milestoneId = "M2-R2" } = {}
     });
   }
   return items;
+}
+
+function tableAcceptanceEvidence({ milestoneId = "P6-R1" } = {}) {
+  return tableCriteria(milestoneId).map((criterion) => ({
+    criterionId: criterion.id,
+    milestoneId,
+    requirement: criterion.requirement,
+    requirementHash: hashText(criterion.requirement),
+    historicalEvidenceStatus: "PASS",
+    retrospectiveEvidenceStatus: "NOT_APPLICABLE",
+    evidenceSource: "validation.json, reviewer-a.json, reviewer-b.json, REVIEW_PACKET.md",
+    commands: ["node --test tools/loop-handoff.test.mjs"],
+    exitCodes: [0],
+    evidenceRefs: ["validation.json"],
+    limitation: "none"
+  }));
 }
 
 function baseInput({ base, head, changedFilePurposes, humanDecision = null, milestoneId = "M2-R2" } = {}) {
@@ -1354,6 +1394,24 @@ test("contract ID in prose does not satisfy exact milestone ID", async () => {
       generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true }),
       /does not match/
     );
+  });
+});
+
+test("markdown table acceptance criteria bind to handoff input", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeText(join(repo, "docs/loop/CURRENT_MILESTONE.md"), tableContractText({ milestoneId: "M2-R2" }));
+    head = await commitFixture(repo, "table contract");
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "docs/loop/CURRENT_MILESTONE.md": "Records a Markdown table acceptance contract used by the fixture."
+    }, {
+      acceptanceEvidence: tableAcceptanceEvidence({ milestoneId: "M2-R2" })
+    });
+    const result = await generateHandoffPacket({ ...defaultOptions(repo, base, head), candidate: true });
+    const manifest = await readJson(join(result.packetRoot, "MANIFEST.json"));
+    const packet = await readFile(join(result.packetRoot, "REVIEW_PACKET.md"), "utf8");
+    assert.equal(manifest.milestoneOutcome, "PASS");
+    assert.match(packet, /M2-R2 fixture acceptance criterion 1: M2-R2 fixture acceptance criterion 1 evidence/);
   });
 });
 
