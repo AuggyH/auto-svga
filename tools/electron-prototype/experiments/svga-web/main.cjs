@@ -1930,7 +1930,7 @@ async function createExperimentWindow() {
     title: productIdentity,
     width: 1440,
     height: 900,
-    show: !(smokeMode || auditMode || normalProofMode),
+    show: false,
     webPreferences: createSecureWebPreferences({
       preloadPath: path.join(appRoot, "preload.cjs"),
       reportToken,
@@ -2323,7 +2323,10 @@ async function createExperimentWindow() {
     writeJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
   }
   await window.loadURL(rendererUrl);
-  if (normalVisibleStartupMode) await writeVisibleNormalStartupProof(window, rendererUrl);
+  if (normalVisibleStartupMode) {
+    window.showInactive();
+    await writeVisibleNormalStartupProof(window, rendererUrl);
+  }
   if (normalProofMode) await driveCanonicalNormalProof(window);
 }
 

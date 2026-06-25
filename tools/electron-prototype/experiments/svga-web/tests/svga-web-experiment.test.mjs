@@ -349,7 +349,8 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(runner, /AUTO_SVGA_P2_NORMAL_PROOF/);
   assert.match(runner, /npm", \["run", "desktop:dev"\]/);
   assert.doesNotMatch(runner, /--smoke|--product-smoke|--p2-normal-proof|\?mode=smoke/);
-  assert.match(main, /show:\s*!\(smokeMode \|\| auditMode \|\| normalProofMode\)/);
+  assert.match(main, /show:\s*false/);
+  assert.match(main, /window\.showInactive\(\)/);
   assert.match(main, /writeVisibleNormalStartupProof\(window, rendererUrl\)/);
   assert.match(main, /runtimeIdentity\("normal-visible", rendererUrl\)/);
   assert.match(main, /actualLaunchCommand: normalIdentity\.actualLaunchCommand/);
