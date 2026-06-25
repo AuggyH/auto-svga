@@ -1718,7 +1718,7 @@ function collectP6SmokeSnapshot(stateId) {
       : "none";
   const modal = !settingsModal.hidden ? "settingsModal" : !assetPreviewModal.hidden ? "assetPreviewModal" : "none";
   const observedStateId = (() => {
-    if (!modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu)) return "mode-menu-open";
+    if (modeDropdownTrigger?.getAttribute("aria-expanded") === "true" || (!modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu))) return "mode-menu-open";
     if (modal === "assetPreviewModal") return "asset-preview-modal-open";
     if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
     if (window.__p6SettingsClosedByEscape === true && modal === "none") return "settings-closed-by-escape";

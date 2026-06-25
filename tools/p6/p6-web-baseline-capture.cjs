@@ -294,6 +294,7 @@ async function collectSnapshot(window, stateId) {
       );
       const modal = visibleModal?.id ?? "none";
       const modeMenu = document.querySelector("#modeDropdownMenu");
+      const modeDropdownTrigger = document.querySelector("#modeDropdownTrigger");
       const syncPlayControl = document.querySelector("#syncPlayControl");
       const compareToggle = document.querySelector("#compareToggle");
       const reduceMotionToggle = document.querySelector("#reduceMotionToggle");
@@ -304,7 +305,7 @@ async function collectSnapshot(window, stateId) {
       const statusA = document.querySelector("#svgaStatusA")?.textContent ?? "";
       const loadedA = Boolean(panelA?.classList.contains("hasLoaded") || document.querySelector("#svgaCanvasA canvas"));
       const observedStateId = (() => {
-        if (modeMenu && !modeMenu.hidden && isVisible(modeMenu)) return "mode-menu-open";
+        if (modeDropdownTrigger?.getAttribute("aria-expanded") === "true" || (modeMenu && !modeMenu.hidden && isVisible(modeMenu))) return "mode-menu-open";
         if (modal === "assetPreviewModal") return "asset-preview-modal-open";
         if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
         if (window.__p6SettingsClosedByEscape === true && modal === "none") return "settings-closed-by-escape";
