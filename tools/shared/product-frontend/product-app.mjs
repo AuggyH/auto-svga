@@ -2556,6 +2556,8 @@ async function runProductSmoke() {
   if (!electronBridge?.reportSmokeResult) return;
   try {
     await delay(180);
+    setThemePreference("dark");
+    await delay(80);
     await captureArtifact("desktop-empty");
     const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
     const bytes = new Uint8Array(await fetch(fixtureUrl).then((response) => {

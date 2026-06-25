@@ -675,7 +675,7 @@ async function main() {
   const window = new BrowserWindow({
     width: 1440,
     height: 900,
-    show: true,
+    show: false,
     focusable: false,
     skipTaskbar: true,
     webPreferences: {
@@ -693,9 +693,9 @@ async function main() {
   await window.loadURL(url);
   await waitFor(window, `document.readyState === "complete" && Boolean(document.querySelector("#svgaFileInput"))`);
   await execute(window, `
-    localStorage.setItem("autoSvgaTheme", "light");
-    document.documentElement.dataset.theme = "light";
-    for (const input of document.querySelectorAll('input[name="theme"]')) input.checked = input.value === "light";
+    localStorage.setItem("autoSvgaTheme", "dark");
+    document.documentElement.dataset.theme = "dark";
+    for (const input of document.querySelectorAll('input[name="theme"]')) input.checked = input.value === "dark";
     true;
   `);
   await delay(800);
