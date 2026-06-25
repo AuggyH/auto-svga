@@ -322,7 +322,6 @@ async function runPackageAndPackagedNormalProof() {
     await cp(packageArchivePath, path.join(p6Root, "Auto-SVGA-macOS-internal-runtime.zip"));
   }
   await writeNormalSmokeParityProof();
-  await writeReviewerBEvidenceRequest();
 }
 
 async function writeNormalSmokeParityProof() {
@@ -413,10 +412,14 @@ async function writeReviewerBEvidenceRequest() {
   const categoryRecords = [];
   for (const [category, request, fragment] of categories) {
     const repoPath = `.artifacts/product/P6/${fragment}`;
+    const evidence = await artifactEvidence(repoPath);
+    if (!evidence.present) {
+      throw new Error(`Reviewer B evidence request missing required artifact: ${repoPath}`);
+    }
     categoryRecords.push({
       category,
       request,
-      evidenceNeeded: [await artifactEvidence(repoPath)],
+      evidenceNeeded: [evidence],
       reviewerMustProvide: [
         "visualObservation",
         "runtimeBehaviorObservation",
@@ -615,6 +618,7 @@ async function main() {
     p6Root,
     contract: await readJson(contractPath)
   });
+  await writeReviewerBEvidenceRequest();
 
   let report = await buildParityReport();
   await writeEvidenceIndex(report);
