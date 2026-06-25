@@ -692,6 +692,12 @@ async function main() {
   console.log("P6_WEB_BASELINE_PHASE load-url");
   await window.loadURL(url);
   await waitFor(window, `document.readyState === "complete" && Boolean(document.querySelector("#svgaFileInput"))`);
+  await execute(window, `
+    localStorage.setItem("autoSvgaTheme", "light");
+    document.documentElement.dataset.theme = "light";
+    for (const input of document.querySelectorAll('input[name="theme"]')) input.checked = input.value === "light";
+    true;
+  `);
   await delay(800);
 
   console.log("P6_WEB_BASELINE_PHASE local-empty");
