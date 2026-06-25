@@ -9,16 +9,18 @@ import { fileURLToPath } from "node:url";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptRoot, "../..");
-const milestoneId = "P6";
+const milestoneId = "P6-R1";
+const productEvidenceMilestoneId = "P6";
 const productRoot = path.join(repoRoot, ".artifacts/product/P6");
 const packetRoot = path.join(repoRoot, ".artifacts/loop-handoff/latest");
 const trialRoot = path.join(repoRoot, "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial");
 const trialApp = path.join(trialRoot, "Auto SVGA-darwin-arm64/Auto SVGA.app");
-const uploadStagingRoot = path.join(repoRoot, ".artifacts/product/P6-owner-review-upload");
+const uploadStagingRoot = path.join(repoRoot, ".artifacts/product/P6-R1-owner-review-upload");
 const parityReportPath = path.join(productRoot, "p6-parity-report.json");
 const trackedWorkerRegistryPath = path.join(repoRoot, "docs/product/p6/P6_WORKER_REGISTRY.json");
 const workerRegistryFinalPath = path.join(productRoot, "worker-registry-final.json");
 const workerRegistryFinalRepoPath = ".artifacts/product/P6/worker-registry-final.json";
+const sidecarNamePrefix = "P6-R1-owner-upload-sidecar";
 
 const sealedFiles = [
   "REVIEW_PACKET.md",
@@ -116,12 +118,12 @@ function privacyRules() {
 function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
   if (!expectedHeadShort) return [];
   const findings = [];
-  for (const match of text.matchAll(/\breview\/P6-([A-Za-z0-9][A-Za-z0-9._-]*)/g)) {
-    if (match[1] !== expectedHeadShort) {
+  for (const match of text.matchAll(/\breview\/(P6-R1|P6)-([A-Za-z0-9][A-Za-z0-9._-]*)/g)) {
+    if (match[1] !== milestoneId || match[2] !== expectedHeadShort) {
       findings.push({
         ruleId: "STALE_REVIEW_ROOT_REFERENCE",
         entry,
-        expectedReviewRoot: `review/P6-${expectedHeadShort}`,
+        expectedReviewRoot: `review/${milestoneId}-${expectedHeadShort}`,
         valueSha256: sha256Bytes(Buffer.from(match[0]))
       });
     }
@@ -401,10 +403,23 @@ function validSha256(value) {
   return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
 }
 
-export function validateOwnerVisibleHandoffBinding({ headCommit, manifest, reviewZipName, appZipName }) {
+export function validateOwnerVisibleHandoffBinding({ headCommit, manifest, reviewZipName, appZipName, sidecarName }) {
   const errors = [];
   if (manifest?.reviewedHeadCommit !== headCommit) {
     errors.push(`owner-visible manifest reviewed head ${manifest?.reviewedHeadCommit ?? "missing"} does not match current head ${headCommit}`);
+  }
+  if (manifest?.milestoneId !== milestoneId) {
+    errors.push(`owner-visible manifest milestoneId ${manifest?.milestoneId ?? "missing"} must be ${milestoneId}`);
+  }
+  if (manifest?.companionRequired !== true) {
+    errors.push("owner-visible manifest must require App ZIP and sidecar companions");
+  }
+  const companions = new Set(manifest?.mandatoryCompanions ?? []);
+  if (!companions.has(appZipName)) {
+    errors.push(`owner-visible manifest mandatoryCompanions missing ${appZipName}`);
+  }
+  if (!companions.has(sidecarName)) {
+    errors.push(`owner-visible manifest mandatoryCompanions missing ${sidecarName}`);
   }
   if (manifest?.privacyAudit?.passed !== true || manifest?.privacyAudit?.findingCount !== 0) {
     errors.push("owner-visible manifest privacy audit must pass with zero findings");
@@ -432,6 +447,17 @@ export function validateOwnerVisibleHandoffBinding({ headCommit, manifest, revie
     errors.push("App ZIP manifest entry hash does not match macosAppZip hash");
   }
 
+  const sidecarEntry = manifestEntryFor(manifest, sidecarName);
+  const sidecar = manifest?.ownerUploadSidecar;
+  if (sidecar?.fileName !== sidecarName) {
+    errors.push(`owner upload sidecar fileName ${sidecar?.fileName ?? "missing"} does not match ${sidecarName}`);
+  }
+  if (!sidecarEntry) {
+    errors.push(`owner upload sidecar entry ${sidecarName} is missing from owner-visible manifest entries`);
+  } else if (validSha256(sidecar?.sha256) && sidecarEntry.sha256 !== sidecar.sha256) {
+    errors.push("owner upload sidecar manifest entry hash does not match ownerUploadSidecar hash");
+  }
+
   for (const requiredPath of ["REVIEW_PACKET.md", "FINAL_RESPONSE.txt", "bundle-privacy-audit.json", "worker-registry-final.json", "owner-upload-post-seal-verification.json"]) {
     if (!manifestEntryFor(manifest, requiredPath)) {
       errors.push(`owner-visible manifest missing required entry ${requiredPath}`);
@@ -450,6 +476,7 @@ export function validateOwnerVisibleHandoffBinding({ headCommit, manifest, revie
     headCommit,
     reviewZipName,
     appZipName,
+    sidecarName,
     errors
   };
 }
@@ -531,6 +558,28 @@ export function validateZipEntriesIndexed({ entries, manifestEntries }) {
     passed: unindexedEntries.length === 0 && missingIndexedEntries.length === 0,
     unindexedEntries,
     missingIndexedEntries
+  };
+}
+
+export async function validateManifestPayloadHashes({ root, manifest }) {
+  const errors = [];
+  for (const entry of manifest.entries ?? []) {
+    const filePath = path.join(root, entry.path);
+    if (!existsSync(filePath)) {
+      errors.push(`${entry.path} missing on disk`);
+      continue;
+    }
+    const identity = await fileIdentity(filePath);
+    if (identity.sizeBytes !== entry.sizeBytes) {
+      errors.push(`${entry.path} size mismatch`);
+    }
+    if (identity.sha256 !== entry.sha256) {
+      errors.push(`${entry.path} sha256 mismatch`);
+    }
+  }
+  return {
+    passed: errors.length === 0,
+    errors
   };
 }
 
@@ -682,6 +731,34 @@ async function buildManifest(root, extra = {}) {
   };
 }
 
+async function writeUploadArtifactIndex(root, extra = {}) {
+  const entries = [];
+  for (const filePath of await listFiles(root)) {
+    const bundlePath = toBundlePath(root, filePath);
+    if (bundlePath === "MANIFEST.json" || bundlePath === "artifact-index.json") continue;
+    const stats = await stat(filePath);
+    entries.push({
+      path: bundlePath,
+      mime: mimeFor(filePath),
+      sizeBytes: stats.size,
+      sha256: await sha256File(filePath),
+      includedInPacket: true,
+      humanReviewRequired: true
+    });
+  }
+  const artifactIndex = {
+    schemaVersion: 1,
+    milestoneId,
+    productEvidenceMilestoneId,
+    generatedAt: "stable-p6-r1-owner-handoff",
+    ...extra,
+    includedInPacketCount: entries.length,
+    entries: entries.sort((left, right) => left.path.localeCompare(right.path))
+  };
+  await writeFile(path.join(root, "artifact-index.json"), `${JSON.stringify(artifactIndex, null, 2)}\n`, "utf8");
+  return artifactIndex;
+}
+
 function runZip({ cwd, zipPath, entries }) {
   const result = spawnSync("zip", ["-q", "-X", zipPath, "-@"], {
     cwd,
@@ -704,7 +781,15 @@ function createCleanAppZip({ appBundle, zipPath }) {
   if (badEntries.length) throw new Error(`clean App ZIP contains forbidden metadata: ${badEntries.slice(0, 5).join(", ")}`);
 }
 
-function finalResponseText({ headShort, visibleRootAbs, reviewZipName, appZipName, companionRequired, absoluteLinks }) {
+function finalResponseText({
+  headShort,
+  visibleRootAbs,
+  reviewZipName,
+  appZipName,
+  sidecarName,
+  patchCompanionRequired,
+  absoluteLinks
+}) {
   const link = (label, fileName) => {
     const target = absoluteLinks ? path.join(visibleRootAbs, fileName) : fileName;
     return `[${label}](${target})`;
@@ -713,11 +798,12 @@ function finalResponseText({ headShort, visibleRootAbs, reviewZipName, appZipNam
     "P6_MACHINE_EXECUTION_COMPLETE",
     "",
     "VISIBLE_REVIEW:",
-    `- ${link("P6 Review Packet", "REVIEW_PACKET.md")}`,
-    `- ${link("P6 Review ZIP", reviewZipName)}`,
+    `- ${link("P6-R1 Review Packet", "REVIEW_PACKET.md")}`,
+    `- ${link("P6-R1 Review ZIP", reviewZipName)}`,
+    `- ${link("P6-R1 Owner Upload Sidecar", sidecarName)}`,
   ];
-  if (companionRequired) {
-    lines.push(`- ${link("P6 Companion Patch", "changes.patch")}`);
+  if (patchCompanionRequired) {
+    lines.push(`- ${link("P6-R1 Companion Patch", "changes.patch")}`);
   }
   lines.push(
     "",
@@ -725,10 +811,10 @@ function finalResponseText({ headShort, visibleRootAbs, reviewZipName, appZipNam
     `- ${link("Auto SVGA macOS App ZIP", appZipName)}`,
     "",
     "VISIBLE_FOLDER:",
-    `- review/P6-${headShort}/`,
+    `- review/P6-R1-${headShort}/`,
     "",
     "STATUS:",
-    "- P6: HUMAN_REQUIRED",
+    "- P6-R1: HUMAN_REQUIRED",
     "- PHASE_2: NOT_STARTED",
     ""
   );
@@ -738,11 +824,13 @@ function finalResponseText({ headShort, visibleRootAbs, reviewZipName, appZipNam
 async function main() {
   const headCommit = git(["rev-parse", "HEAD"]);
   const headShort = git(["rev-parse", "--short", headCommit]);
-  const visibleRoot = path.join(repoRoot, `review/P6-${headShort}`);
-  const reviewZipName = `P6-${headShort}-review-upload.zip`;
+  const visibleRoot = path.join(repoRoot, `review/P6-R1-${headShort}`);
+  const reviewZipName = `P6-R1-${headShort}-review-upload.zip`;
   const appZipName = `Auto-SVGA-macOS-internal-${headShort}.zip`;
+  const sidecarName = `${sidecarNamePrefix}-${headShort}.json`;
   const reviewZipPath = path.join(visibleRoot, reviewZipName);
   const appZipPath = path.join(visibleRoot, appZipName);
+  const sidecarPath = path.join(visibleRoot, sidecarName);
   const canonicalManifest = JSON.parse(await readFile(path.join(packetRoot, "MANIFEST.json"), "utf8"));
 
   if (canonicalManifest.milestoneOutcome !== "HUMAN_REQUIRED") {
@@ -753,6 +841,7 @@ async function main() {
   }
   const finalPackagingGate = await assertFinalPackagingGate({ headCommit, canonicalManifest });
   const workerRegistryFinal = await writeWorkerRegistryFinal({ headCommit });
+  const patchCompanionRequired = canonicalManifest.companionRequired === true;
 
   await rm(uploadStagingRoot, { recursive: true, force: true });
   await rm(visibleRoot, { recursive: true, force: true });
@@ -763,7 +852,7 @@ async function main() {
     await copyRequired(path.join(packetRoot, fileName), path.join(uploadStagingRoot, fileName));
     await copyRequired(path.join(packetRoot, fileName), path.join(visibleRoot, fileName));
   }
-  if (canonicalManifest.companionRequired === true) {
+  if (patchCompanionRequired) {
     await copyRequired(path.join(packetRoot, "changes.patch"), path.join(uploadStagingRoot, "changes.patch"));
     await copyRequired(path.join(packetRoot, "changes.patch"), path.join(visibleRoot, "changes.patch"));
   }
@@ -794,7 +883,8 @@ async function main() {
     visibleRootAbs: visibleRoot,
     reviewZipName,
     appZipName,
-    companionRequired: canonicalManifest.companionRequired === true,
+    sidecarName,
+    patchCompanionRequired,
     absoluteLinks: false
   });
   const clickableFinalResponse = finalResponseText({
@@ -802,7 +892,8 @@ async function main() {
     visibleRootAbs: visibleRoot,
     reviewZipName,
     appZipName,
-    companionRequired: canonicalManifest.companionRequired === true,
+    sidecarName,
+    patchCompanionRequired,
     absoluteLinks: false
   });
   await writeFile(path.join(uploadStagingRoot, "FINAL_RESPONSE.txt"), relativeFinalResponse, "utf8");
@@ -817,10 +908,20 @@ async function main() {
 
   const manifestExtra = {
     reviewedHeadCommit: headCommit,
-    companionRequired: canonicalManifest.companionRequired === true,
+    companionRequired: true,
+    mandatoryCompanions: [appZipName, sidecarName],
+    patchCompanionRequired,
+    patchCompanions: patchCompanionRequired ? ["changes.patch"] : [],
     finalPackagingGate,
     workerRegistryFinal,
-    ownerReviewZip: reviewZipName,
+    ownerReviewZip: {
+      fileName: reviewZipName,
+      role: "canonical_review_zip"
+    },
+    ownerUploadSidecar: {
+      fileName: sidecarName,
+      role: "outer_manifest_and_post_seal_binding"
+    },
     macosAppZip: {
       fileName: appZipName,
       sizeBytes: appZipIdentity.sizeBytes,
@@ -848,6 +949,12 @@ async function main() {
     selfReferentialExclusions: []
   };
   for (const phase of ["pre-audit", "final-audit"]) {
+    await writeUploadArtifactIndex(uploadStagingRoot, {
+      reviewedHeadCommit: headCommit,
+      reviewZipName,
+      appZipName,
+      sidecarName
+    });
     await writeFile(path.join(uploadStagingRoot, "MANIFEST.json"), `${JSON.stringify(await buildManifest(uploadStagingRoot, {
       ...manifestExtra,
       privacyAudit: {
@@ -874,6 +981,12 @@ async function main() {
     await writeFile(path.join(uploadStagingRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
     await writeFile(path.join(visibleRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
   }
+  await writeUploadArtifactIndex(uploadStagingRoot, {
+    reviewedHeadCommit: headCommit,
+    reviewZipName,
+    appZipName,
+    sidecarName
+  });
   await writeFile(path.join(uploadStagingRoot, "MANIFEST.json"), `${JSON.stringify(await buildManifest(uploadStagingRoot, {
     ...manifestExtra,
     privacyAudit: {
@@ -896,6 +1009,32 @@ async function main() {
   privacyAudit = verificationPrivacyAudit;
   await writeFile(path.join(uploadStagingRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
   await writeFile(path.join(visibleRoot, "bundle-privacy-audit.json"), `${JSON.stringify(privacyAudit, null, 2)}\n`);
+  await writeUploadArtifactIndex(uploadStagingRoot, {
+    reviewedHeadCommit: headCommit,
+    reviewZipName,
+    appZipName,
+    sidecarName
+  });
+  const finalReviewManifest = await buildManifest(uploadStagingRoot, {
+    ...manifestExtra,
+    privacyAudit: {
+      passed: privacyAudit.passed,
+      findingCount: privacyAudit.findingCount,
+      actualZipEntryCount: privacyAudit.actualZipEntryCount,
+      scannedEntryCount: privacyAudit.scannedEntryCount,
+      scannedTextEntryCount: privacyAudit.scannedTextEntryCount,
+      scannedBinaryEntryCount: privacyAudit.scannedBinaryEntryCount,
+      selfReferentialExclusionCount: privacyAudit.selfReferentialExclusions.length
+    }
+  });
+  await writeFile(path.join(uploadStagingRoot, "MANIFEST.json"), `${JSON.stringify(finalReviewManifest, null, 2)}\n`);
+  const reviewManifestHashCheck = await validateManifestPayloadHashes({
+    root: uploadStagingRoot,
+    manifest: finalReviewManifest
+  });
+  if (!reviewManifestHashCheck.passed) {
+    throw new Error(`P6 owner review manifest hash check failed: ${reviewManifestHashCheck.errors.join("; ")}`);
+  }
   uploadEntries = (await listFiles(uploadStagingRoot)).map((filePath) => toBundlePath(uploadStagingRoot, filePath)).sort();
   await rm(reviewZipPath, { force: true });
   runZip({ cwd: uploadStagingRoot, zipPath: reviewZipPath, entries: uploadEntries });
@@ -904,7 +1043,7 @@ async function main() {
 
   const reviewZipIndex = validateZipEntriesIndexed({
     entries: reviewZipEntries,
-    manifestEntries: JSON.parse(await readFile(path.join(uploadStagingRoot, "MANIFEST.json"), "utf8")).entries
+    manifestEntries: finalReviewManifest.entries
   });
   if (!reviewZipIndex.passed) {
     throw new Error(`P6 owner review ZIP index check failed: unindexed=${reviewZipIndex.unindexedEntries.join(", ")} missing=${reviewZipIndex.missingIndexedEntries.join(", ")}`);
@@ -951,14 +1090,38 @@ async function main() {
     `${JSON.stringify(ownerUploadPostSealVerification, null, 2)}\n`,
     "utf8"
   );
+  const ownerUploadSidecar = {
+    schemaVersion: 1,
+    milestoneId,
+    productEvidenceMilestoneId,
+    reviewedHeadCommit: headCommit,
+    generatedAt: "stable-p6-r1-owner-handoff-sidecar",
+    productionApproved: false,
+    phase2Started: false,
+    companionRequired: true,
+    mandatoryCompanions: [appZipName, sidecarName],
+    ownerReviewZip: ownerUploadPostSealVerification.reviewZip,
+    macosAppZip: ownerUploadPostSealVerification.macosAppZip,
+    postSealVerification: {
+      passed: ownerUploadPostSealVerification.passed,
+      assertions: ownerUploadPostSealVerification.assertions
+    },
+    privacyAudit: ownerUploadPostSealVerification.privacyAudit,
+    rollback: {
+      browserWorkflow: "npm run local:preview"
+    }
+  };
+  await writeFile(sidecarPath, `${JSON.stringify(ownerUploadSidecar, null, 2)}\n`, "utf8");
+  const sidecarIdentity = await fileIdentity(sidecarPath);
 
   await writeFile(path.join(visibleRoot, "README.md"), [
-    "# P6 Owner Review Materials",
+    "# P6-R1 Owner Review Materials",
     "",
     "Open or upload the files in this visible folder. Hidden `.artifacts` paths are internal build outputs.",
     "",
     `- ${reviewZipName}: portable owner review ZIP.`,
     `- ${appZipName}: unsigned macOS internal App ZIP for testing.`,
+    `- ${sidecarName}: post-seal sidecar binding the Review ZIP and App ZIP.`,
     "- REVIEW_PACKET.md: byte-identical copy of the sealed canonical review packet.",
     "- worker-registry-final.json: generated final-head worker registry binding.",
     "- FINAL_RESPONSE.txt: exact terminal response with clickable local file links.",
@@ -980,13 +1143,20 @@ async function main() {
       sizeBytes: reviewZipIdentity.sizeBytes,
       sha256: reviewZipIdentity.sha256,
       entryCount: reviewZipEntries.length
+    },
+    ownerUploadSidecar: {
+      fileName: sidecarName,
+      sizeBytes: sidecarIdentity.sizeBytes,
+      sha256: sidecarIdentity.sha256,
+      role: "outer_manifest_and_post_seal_binding"
     }
   });
   const visibleBinding = validateOwnerVisibleHandoffBinding({
     headCommit,
     manifest: visibleManifest,
     reviewZipName,
-    appZipName
+    appZipName,
+    sidecarName
   });
   if (!visibleBinding.passed) {
     throw new Error(`P6 owner-visible handoff binding failed: ${visibleBinding.errors.join("; ")}`);
@@ -1010,7 +1180,14 @@ async function main() {
       sha256: appZipIdentity.sha256,
       productionApproved: false
     },
-    companionRequired: canonicalManifest.companionRequired === true,
+    ownerUploadSidecar: {
+      fileName: sidecarName,
+      sizeBytes: sidecarIdentity.sizeBytes,
+      sha256: sidecarIdentity.sha256
+    },
+    companionRequired: true,
+    mandatoryCompanions: [appZipName, sidecarName],
+    patchCompanionRequired,
     finalPackagingGate,
     workerRegistryFinal,
     reviewZipIndex,
@@ -1019,7 +1196,7 @@ async function main() {
       findingCount: privacyAudit.findingCount
     }
   };
-  console.log(`AUTO_SVGA_P6_OWNER_HANDOFF_RESULT=${JSON.stringify(summary)}`);
+  console.log(`AUTO_SVGA_P6_R1_OWNER_HANDOFF_RESULT=${JSON.stringify(summary)}`);
 }
 
 const isDirectRun = process.argv[1]

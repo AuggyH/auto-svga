@@ -10,6 +10,7 @@ import {
   collectP6ParityNonPass,
   validateOwnerVisibleHandoffBinding,
   validateFinalPackagingGate,
+  validateManifestPayloadHashes,
   validateWorkerRegistryFinal,
   validateZipEntriesIndexed
 } from "./p6/build-p6-owner-handoff.mjs";
@@ -124,6 +125,10 @@ test("P6 package privacy audit rejects forbidden ZIP metadata and local path con
 test("P6 owner handoff builder records App ZIP manifest hash and entry counts", async () => {
   const source = await readFile(new URL("./p6/build-p6-owner-handoff.mjs", import.meta.url), "utf8");
 
+  assert.match(source, /const milestoneId = "P6-R1"/);
+  assert.match(source, /review\/P6-R1-\$\{headShort\}/);
+  assert.match(source, /P6-R1-\$\{headShort\}-review-upload\.zip/);
+  assert.match(source, /sidecarName/);
   assert.match(source, /assertFinalPackagingGate\(\{ headCommit, canonicalManifest \}\)/);
   assert.match(source, /finalPackagingGate/);
   assert.match(source, /macosAppZip:\s*\{/);
@@ -132,7 +137,11 @@ test("P6 owner handoff builder records App ZIP manifest hash and entry counts", 
   assert.match(source, /productionApproved:\s*false/);
   assert.match(source, /workerRegistryFinal/);
   assert.match(source, /worker-registry-final\.json/);
+  assert.match(source, /writeUploadArtifactIndex/);
+  assert.match(source, /includedInPacket:\s*true/);
+  assert.match(source, /validateManifestPayloadHashes/);
   assert.match(source, /validateZipEntriesIndexed/);
+  assert.match(source, /mandatoryCompanions:\s*\[appZipName, sidecarName\]/);
   assert.match(source, /actualZipEntryCount/);
   assert.match(source, /scannedEntryCount/);
   assert.match(source, /scannedTextEntryCount/);
@@ -216,10 +225,14 @@ test("WP5 owner-visible manifest requires same-head review and App material bind
   const headCommit = "a".repeat(40);
   const result = validateOwnerVisibleHandoffBinding({
     headCommit,
-    reviewZipName: "P6-aaaaaaa-review-upload.zip",
+    reviewZipName: "P6-R1-aaaaaaa-review-upload.zip",
     appZipName: "Auto-SVGA-macOS-internal-aaaaaaa.zip",
+    sidecarName: "P6-R1-owner-upload-sidecar-aaaaaaa.json",
     manifest: {
+      milestoneId: "P6-R1",
       reviewedHeadCommit: "b".repeat(40),
+      companionRequired: true,
+      mandatoryCompanions: ["Auto-SVGA-macOS-internal-aaaaaaa.zip"],
       ownerReviewZip: {
         fileName: "P6-stale-review-upload.zip",
         sha256: "c".repeat(64)
@@ -239,6 +252,7 @@ test("WP5 owner-visible manifest requires same-head review and App material bind
   assert.equal(result.errors.some((error) => error.includes("reviewed head")), true);
   assert.equal(result.errors.some((error) => error.includes("owner review ZIP")), true);
   assert.equal(result.errors.some((error) => error.includes("App ZIP entry")), true);
+  assert.equal(result.errors.some((error) => error.includes("sidecar")), true);
 });
 
 test("P6 final packaging gate passes only when packet and parity are bound to a clean passing head", () => {
@@ -263,11 +277,57 @@ test("P6 final packaging gate passes only when packet and parity are bound to a 
   assert.deepEqual(gate.errors, []);
 });
 
+test("P6-R1 owner-visible manifest accepts Review ZIP, App ZIP, and sidecar companions only when all are indexed", () => {
+  const headCommit = "a".repeat(40);
+  const reviewZipName = "P6-R1-aaaaaaa-review-upload.zip";
+  const appZipName = "Auto-SVGA-macOS-internal-aaaaaaa.zip";
+  const sidecarName = "P6-R1-owner-upload-sidecar-aaaaaaa.json";
+  const result = validateOwnerVisibleHandoffBinding({
+    headCommit,
+    reviewZipName,
+    appZipName,
+    sidecarName,
+    manifest: {
+      milestoneId: "P6-R1",
+      reviewedHeadCommit: headCommit,
+      companionRequired: true,
+      mandatoryCompanions: [appZipName, sidecarName],
+      ownerReviewZip: {
+        fileName: reviewZipName,
+        sha256: "b".repeat(64)
+      },
+      macosAppZip: {
+        fileName: appZipName,
+        sha256: "c".repeat(64)
+      },
+      ownerUploadSidecar: {
+        fileName: sidecarName,
+        sha256: "d".repeat(64)
+      },
+      privacyAudit: { passed: true, findingCount: 0 },
+      humanReviewRequiredCount: 8,
+      entries: [
+        { path: reviewZipName, sha256: "b".repeat(64), humanReviewRequired: true },
+        { path: appZipName, sha256: "c".repeat(64), humanReviewRequired: true },
+        { path: sidecarName, sha256: "d".repeat(64), humanReviewRequired: true },
+        { path: "REVIEW_PACKET.md", sha256: "e".repeat(64), humanReviewRequired: true },
+        { path: "FINAL_RESPONSE.txt", sha256: "f".repeat(64), humanReviewRequired: true },
+        { path: "bundle-privacy-audit.json", sha256: "1".repeat(64), humanReviewRequired: true },
+        { path: "worker-registry-final.json", sha256: "2".repeat(64), humanReviewRequired: true },
+        { path: "owner-upload-post-seal-verification.json", sha256: "3".repeat(64), humanReviewRequired: true }
+      ]
+    }
+  });
+
+  assert.equal(result.passed, true, result.errors.join("; "));
+});
+
 test("P6 package privacy audit rejects stale review root references", async () => {
   await withTempDir(async (root) => {
-    const staleReviewRoot = ["review", "P6-deadbee", "REVIEW_PACKET.md"].join("/");
+    const staleLegacyReviewRoot = ["review", "P6-deadbee", "REVIEW_PACKET.md"].join("/");
+    const staleP6R1ReviewRoot = ["review", "P6-R1-deadbee", "REVIEW_PACKET.md"].join("/");
     const reviewZipPath = await writeZip(root, "P6-abcdef0-review-upload.zip", {
-      "FINAL_RESPONSE.txt": `[Old](${staleReviewRoot})\n`
+      "FINAL_RESPONSE.txt": `[Old](${staleLegacyReviewRoot})\n[Wrong head](${staleP6R1ReviewRoot})\n`
     });
     const appZipPath = await writeZip(root, "Auto-SVGA-macOS-internal-abcdef0.zip", {
       "Auto SVGA.app/Contents/Info.plist": "<plist><dict></dict></plist>\n"
@@ -276,7 +336,7 @@ test("P6 package privacy audit rejects stale review root references", async () =
     const audit = buildZipPrivacyAudit({ reviewZipPath, appZipPath, expectedHeadShort: "abcdef0" });
 
     assert.equal(audit.passed, false);
-    assert.equal(audit.findings.some((finding) => finding.ruleId === "STALE_REVIEW_ROOT_REFERENCE"), true);
+    assert.equal(audit.findings.filter((finding) => finding.ruleId === "STALE_REVIEW_ROOT_REFERENCE").length, 2);
   });
 });
 
@@ -332,4 +392,24 @@ test("P6 owner Review ZIP index check rejects unindexed entries", () => {
   assert.equal(result.passed, false);
   assert.deepEqual(result.unindexedEntries, ["extra.txt"]);
   assert.deepEqual(result.missingIndexedEntries, []);
+});
+
+test("P6-R1 manifest payload hash check rejects stale file hashes", async () => {
+  await withTempDir(async (root) => {
+    await writeFile(join(root, "REVIEW_PACKET.md"), "current packet\n");
+    const result = await validateManifestPayloadHashes({
+      root,
+      manifest: {
+        entries: [{
+          path: "REVIEW_PACKET.md",
+          sizeBytes: 1,
+          sha256: "0".repeat(64)
+        }]
+      }
+    });
+
+    assert.equal(result.passed, false);
+    assert.equal(result.errors.some((error) => error.includes("size mismatch")), true);
+    assert.equal(result.errors.some((error) => error.includes("sha256 mismatch")), true);
+  });
 });
