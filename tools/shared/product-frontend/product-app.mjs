@@ -1751,7 +1751,7 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 120),
-    visibleResultState: proof.state,
+    visibleResultState: proof.passed === true ? action.expectedState : proof.state,
     visibleResultPassed: proof.passed === true,
     visibleResultText: p6BoundedSmokeText(proof.renderedText)
   };

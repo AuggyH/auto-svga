@@ -388,7 +388,7 @@ export async function collectMotionEvidence(p6Root, motionId) {
     checks: {
       webStartMidEndPresent: webHashes.length === P6_MOTION_PHASES.length,
       desktopStartMidEndPresent: desktopHashes.length === P6_MOTION_PHASES.length,
-      webFramesNotGeneric: new Set(webHashes).size === P6_MOTION_PHASES.length || webStyleSamples.phaseHashesChanged === true,
+      webFramesNotGeneric: new Set(webHashes).size === P6_MOTION_PHASES.length,
       desktopFramesNotGeneric: new Set(desktopHashes).size === P6_MOTION_PHASES.length,
       sameTriggerAndState: manifestHasMotion,
       animationParamsMatched: manifestHasMotion,

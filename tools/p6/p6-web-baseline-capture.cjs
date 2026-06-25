@@ -706,7 +706,7 @@ async function main() {
   await capture(window, "screenshot-local-empty-1440x900.png");
   await captureMotionTriplet(window, "emptyIconFloat", async () => {
     await closeTransientUi(window);
-  }, { endDelayMs: 1300 });
+  }, { midDelayMs: 850, endDelayMs: 850 });
 
   console.log("P6_WEB_BASELINE_PHASE mode-menu-open");
   await recordWebInteraction(window, "click-mode-dropdown-trigger-menu-opens", async () => {
