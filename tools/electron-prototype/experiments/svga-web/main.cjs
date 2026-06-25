@@ -114,11 +114,31 @@ function validateSmokeResult(value) {
   if (!keys.every((key) => typeof value[key] === "boolean")) return undefined;
   const result = Object.fromEntries(keys.map((key) => [key, key === "noCspViolation" ? value[key] && !cspViolationSeen : value[key]]));
   if (value.p6InteractionTrace !== undefined) {
-    const trace = validateP6InteractionTrace(value.p6InteractionTrace);
+    const trace = validateP6InteractionTrace(bindP6InteractionTrace(value.p6InteractionTrace));
     if (!trace) return undefined;
     result.p6InteractionTrace = trace;
   }
   return result;
+}
+
+function bindP6InteractionTrace(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  return {
+    ...value,
+    mutationProtection: {
+      headCommit: productArtifactIndex.headCommit,
+      artifactCatalogDigest: sha256Text(JSON.stringify({
+        headCommit: productArtifactIndex.headCommit,
+        artifacts: productArtifactIndex.artifacts.map((artifact) => ({
+          id: artifact.id,
+          path: artifact.path,
+          sha256: artifact.sha256,
+          scenario: artifact.scenario
+        }))
+      })),
+      source: "electron-main-product-artifact-index"
+    }
+  };
 }
 
 function validateP6InteractionTrace(value) {
@@ -138,6 +158,7 @@ function validateP6InteractionTrace(value) {
     && isBoundedString(entry.path, 260)
     && !entry.path.includes("..")
   )) return undefined;
+  if (!isP6MutationProtection(value.mutationProtection)) return undefined;
   if (!isStringArray(value.failures, 80)) return undefined;
   return JSON.parse(JSON.stringify(value));
 }
@@ -181,11 +202,52 @@ function isP6ActionTraceEntry(value) {
     && isBoundedString(value.selector, 220)
     && isBoundedString(value.initialState, 160)
     && isBoundedString(value.expectedState, 160)
+    && isP6ActionState(value.stateBefore)
+    && isP6RealAction(value.realAction)
+    && isP6ActionState(value.stateAfter)
     && (value.stateReached === null || isBoundedString(value.stateReached, 160))
     && isP6Rect(value.targetRect)
     && (value.controlValue === null || isP6ControlValue(value.controlValue))
+    && isP6FocusOrVisibleResult(value.focusOrVisibleResult)
     && typeof value.stateProofPassed === "boolean"
     && isStringArray(value.stateProofFailures, 80);
+}
+
+function isP6ActionState(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && isBoundedString(value.stateId, 180)
+    && isBoundedString(value.mode, 160)
+    && isBoundedString(value.panel, 160)
+    && isBoundedString(value.modal, 160)
+    && isStringArray(value.visibleRegions, 80)
+    && isStringArray(value.visibleControls, 180)
+    && isSha256(value.digest);
+}
+
+function isP6RealAction(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && ["click", "input", "change", "drop", "keyboard", "native-menu"].includes(value.inputKind)
+    && isBoundedString(value.selector, 220)
+    && isBoundedString(value.trustedPath, 120)
+    && typeof value.targetVisible === "boolean"
+    && isP6Rect(value.targetRect);
+}
+
+function isP6FocusOrVisibleResult(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && (value.activeElementId === null || isBoundedString(value.activeElementId, 160))
+    && (value.activeElementText === null || typeof value.activeElementText === "string")
+    && isBoundedString(value.visibleResultState, 160)
+    && typeof value.visibleResultPassed === "boolean"
+    && typeof value.visibleResultText === "string";
+}
+
+function isP6MutationProtection(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    && isSha256(value.artifactCatalogDigest)
+    && /^[a-f0-9]{40}$/.test(value.headCommit)
+    && value.headCommit !== "0".repeat(40)
+    && isBoundedString(value.source, 160);
 }
 
 function isP6Viewport(value) {
@@ -220,6 +282,10 @@ function isBoundedString(value, maxLength) {
 
 function isSha256(value) {
   return typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+}
+
+function sha256Text(value) {
+  return createHash("sha256").update(String(value)).digest("hex");
 }
 
 function validateArtifactScenario(value) {

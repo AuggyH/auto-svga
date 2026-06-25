@@ -150,7 +150,11 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "latestArtifactRuntimeLoaded",
     "secondaryClearedAfterExport",
     "referenceClearedAfterManualSource",
-    "latestArtifactClearedAfterManualSource"
+    "latestArtifactClearedAfterManualSource",
+    "stateBefore",
+    "realAction",
+    "stateAfter",
+    "focusOrVisibleResult"
   ]) {
     assert.match(productApp, new RegExp(runtimeFlowEvidence));
   }

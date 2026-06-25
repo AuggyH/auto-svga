@@ -319,6 +319,32 @@ test("Repair 6 strict interaction gates reject synthetic, Web-only, and mismatch
   );
 });
 
+test("WP3 strict interaction gates reject missing before/action/after/result/binding evidence", () => {
+  for (const [caseId, mutate] of [
+    ["missing_state_before", (facts) => delete facts.webInteractionTrace.actionTrace[0].stateBefore],
+    ["missing_real_action", (facts) => delete facts.webInteractionTrace.actionTrace[0].realAction],
+    ["missing_state_after", (facts) => delete facts.webInteractionTrace.actionTrace[0].stateAfter],
+    ["missing_focus_or_visible_result", (facts) => delete facts.webInteractionTrace.actionTrace[0].focusOrVisibleResult],
+    ["missing_head_binding", (facts) => delete facts.webInteractionTrace.mutationProtection.headCommit],
+    ["missing_artifact_binding", (facts) => delete facts.webInteractionTrace.mutationProtection.artifactCatalogDigest]
+  ]) {
+    const facts = goodFacts();
+    mutate(facts);
+    facts.interactionParityReport = buildInteractionParityReport({
+      contract: facts.contract,
+      webTrace: facts.webInteractionTrace,
+      desktopTrace: facts.desktopInteractionTrace
+    });
+    assertItemFailed(
+      buildP6ParityReportFromRuntimeFacts(facts),
+      "interactionParity",
+      "open-settings-modal",
+      "strict-interaction-parity"
+    );
+    assert.equal(facts.interactionParityReport.passed, false, `${caseId} must fail the strict report`);
+  }
+});
+
 test("Repair 6 strict state gates reject hash-only, stale invalid, and split loading snapshots", () => {
   const hashOnly = goodFacts();
   hashOnly.stateComparisons["local-empty"].checks.geometryCompared = false;
@@ -631,6 +657,15 @@ function motionEvidence(motionId) {
 }
 
 function strictTrace(host, fixtureSha256) {
+  const actionState = (stateId) => ({
+    stateId,
+    mode: "exportReview",
+    panel: stateId.includes("logs") ? "logs" : "none",
+    modal: stateId.includes("settings") ? "settings" : "none",
+    visibleRegions: ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"],
+    visibleControls: ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"],
+    digest: fixtureSha256
+  });
   return {
     schemaVersion: 1,
     host,
@@ -656,15 +691,38 @@ function strictTrace(host, fixtureSha256) {
       selector: "#settingsButton",
       initialState: "logs-open",
       expectedState: "settings-open",
+      stateBefore: actionState("logs-open"),
+      realAction: {
+        inputKind: "click",
+        selector: "#settingsButton",
+        trustedPath: host === "web" ? "browser-click" : "native-click",
+        targetVisible: true,
+        targetRect: { x: 10, y: 10, width: 44, height: 32 }
+      },
+      stateAfter: actionState("settings-open"),
       stateReached: "settings-open",
       source: host === "web" ? "browser-click" : "native-click",
       targetRect: { x: 10, y: 10, width: 44, height: 32 },
-      controlValue: { visible: true, disabled: false, checked: false }
+      controlValue: { visible: true, disabled: false, checked: false },
+      focusOrVisibleResult: {
+        activeElementId: "settingsButton",
+        activeElementText: "Settings",
+        visibleResultState: "settings-open",
+        visibleResultPassed: true,
+        visibleResultText: "Settings"
+      },
+      stateProofPassed: true,
+      stateProofFailures: []
     }],
     finalStateDigest: fixtureSha256,
-    visibleRegions: ["shell"],
-    visibleControls: ["settingsButton"],
+    visibleRegions: ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"],
+    visibleControls: ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"],
     screenshots: [{ stateId: "settings-open", path: `${host}-settings-open.png`, sha256: fixtureSha256 }],
+    mutationProtection: {
+      headCommit: "c".repeat(40),
+      artifactCatalogDigest: fixtureSha256,
+      source: `${host}-strict-interaction-fixture`
+    },
     failures: []
   };
 }

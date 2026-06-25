@@ -1723,8 +1723,10 @@ function p6VisibleIds(entries = []) {
 
 async function recordP6SmokeAction(action, runAction, waitForState) {
   const target = p6SmokeTargetForSelector(action.selector);
+  const stateBefore = await collectP6SmokeActionState(`${action.initialState}:before`);
   await runAction();
   await waitForState?.();
+  const stateAfter = await collectP6SmokeActionState(`${action.expectedState}:after`);
   const primaryProof = collectRenderedStateProof(action.expectedState);
   const equivalentProof = primaryProof.passed
     ? null
@@ -1732,16 +1734,58 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
       .map((state) => collectRenderedStateProof(state))
       .find((proof) => proof.passed);
   const proof = equivalentProof ?? primaryProof;
+  const activeElement = document.activeElement;
+  const focusOrVisibleResult = {
+    activeElementId: activeElement?.id ?? null,
+    activeElementText: (activeElement?.innerText || activeElement?.getAttribute?.("aria-label") || activeElement?.getAttribute?.("title") || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120),
+    visibleResultState: proof.state,
+    visibleResultPassed: proof.passed === true,
+    visibleResultText: proof.renderedText ?? ""
+  };
   p6SmokeActionTrace.push({
     ...action,
     source: "desktop-product-smoke-input",
+    stateBefore,
+    realAction: {
+      inputKind: action.kind,
+      selector: action.selector,
+      trustedPath: "desktop-smoke-dom-event",
+      targetVisible: target.visible === true,
+      targetRect: target.rect
+    },
+    stateAfter,
     stateReached: proof.passed ? action.expectedState : null,
     evidenceState: proof.state,
     targetRect: target.rect,
     controlValue: p6SmokeControlValue(action.selector),
+    focusOrVisibleResult,
     stateProofPassed: proof.passed,
     stateProofFailures: proof.failures
   });
+}
+
+async function collectP6SmokeActionState(stateId) {
+  const snapshot = collectP6SmokeSnapshot(stateId);
+  return {
+    stateId,
+    mode: snapshot.mode,
+    panel: snapshot.panel,
+    modal: snapshot.modal,
+    visibleRegions: p6VisibleIds(snapshot.regions),
+    visibleControls: p6VisibleIds(snapshot.controls),
+    digest: await p6Sha256Text(JSON.stringify({
+      stateId,
+      mode: snapshot.mode,
+      panel: snapshot.panel,
+      modal: snapshot.modal,
+      regions: p6VisibleIds(snapshot.regions),
+      controls: p6VisibleIds(snapshot.controls),
+      text: snapshot.bodyTextSample
+    }))
+  };
 }
 
 async function buildP6SmokeInteractionTrace() {

@@ -23,12 +23,13 @@ export function validateStrictInteractionTrace(trace, contract) {
   const failures = [];
   if (!isRecord(trace)) return { valid: false, failures: ["trace missing"] };
   if (trace.schemaVersion !== P6_STRICT_EVIDENCE_SCHEMA_VERSION) failures.push("schemaVersion must equal 1");
-  for (const field of ["host", "fixture", "context", "actionTrace", "finalStateDigest", "visibleRegions", "visibleControls", "screenshots", "failures"]) {
+  for (const field of ["host", "fixture", "context", "actionTrace", "finalStateDigest", "visibleRegions", "visibleControls", "screenshots", "mutationProtection", "failures"]) {
     if (!(field in trace)) failures.push(`${field} missing`);
   }
   if (!isRecord(trace.fixture) || !isSha256(trace.fixture.sha256)) failures.push("fixture.sha256 missing");
   if (!isRecord(trace.fixture) || !nonEmptyString(trace.fixture.displayName)) failures.push("fixture.displayName missing");
   validateContext(trace.context, failures);
+  validateMutationProtection(trace.mutationProtection, failures);
   if (!Array.isArray(trace.actionTrace) || trace.actionTrace.length === 0) {
     failures.push("actionTrace missing");
   } else {
@@ -149,6 +150,7 @@ async function buildWebInteractionTrace(p6Root, contract) {
     context: contextFromSnapshot(finalSnapshot),
     actionTrace,
     finalSnapshot,
+    headCommit: artifactIndex?.headCommit ?? contract.baselineCommit,
     screenshots: screenshotArtifactsForSnapshots(snapshots, "web-baseline")
   }, failures);
 }
@@ -168,6 +170,7 @@ async function buildDesktopInteractionTrace(p6Root, contract, webTrace) {
     },
     context: webTrace?.context ?? {},
     actionTrace: [],
+    headCommit: stateProof?.headCommit ?? runtimeIdentity?.headCommit ?? webTrace?.mutationProtection?.headCommit,
     finalSnapshot: {
       stateId: "desktop-source-missing",
       regions: [],
@@ -182,12 +185,13 @@ function strictTrace(input, failures = []) {
   const finalSnapshot = input.finalSnapshot ?? {};
   const visibleRegions = visibleIds(finalSnapshot.regions);
   const visibleControls = visibleIds(finalSnapshot.controls);
+  const actionTrace = input.actionTrace ?? [];
   return {
     schemaVersion: P6_STRICT_EVIDENCE_SCHEMA_VERSION,
     host: input.host,
     fixture: input.fixture,
     context: input.context,
-    actionTrace: input.actionTrace ?? [],
+    actionTrace,
     finalStateDigest: digest({
       host: input.host,
       stateId: finalSnapshot.stateId,
@@ -198,6 +202,16 @@ function strictTrace(input, failures = []) {
     visibleRegions,
     visibleControls,
     screenshots: input.screenshots ?? [],
+    mutationProtection: input.mutationProtection ?? {
+      headCommit: input.headCommit ?? "",
+      artifactCatalogDigest: digest({
+        host: input.host,
+        fixture: input.fixture,
+        screenshots: input.screenshots ?? [],
+        actionIds: actionTrace.map((action) => action.id)
+      }),
+      source: "strict-runtime-evidence"
+    },
     failures,
     generatedAt: new Date().toISOString()
   };
@@ -227,6 +241,11 @@ function normalizeActionsFromSnapshots(actions, interactions, snapshots) {
 
 function actionFromSnapshot(interaction, snapshots, source) {
   const snapshot = snapshots.find((candidate) => stateMatches(candidate.stateId, interaction.expectedState));
+  const before = snapshots.find((candidate) => stateMatches(candidate.stateId, interaction.initialState));
+  const stateBefore = actionStateFromSnapshot(before, `${interaction.initialState}:before`);
+  const stateAfter = actionStateFromSnapshot(snapshot, `${interaction.expectedState}:after`);
+  const targetRect = snapshot ? targetRectForSelector(snapshot, interaction.selector) : null;
+  const controlValue = controlValueForSelector(snapshot, interaction.selector);
   return {
     id: interaction.id,
     kind: interaction.trigger,
@@ -235,8 +254,24 @@ function actionFromSnapshot(interaction, snapshots, source) {
     expectedState: interaction.expectedState,
     stateReached: snapshot?.stateId ?? null,
     source,
-    targetRect: snapshot ? targetRectForSelector(snapshot, interaction.selector) : null,
-    controlValue: controlValueForSelector(snapshot, interaction.selector)
+    stateBefore,
+    realAction: {
+      inputKind: interaction.trigger,
+      selector: interaction.selector,
+      trustedPath: source,
+      targetVisible: Boolean(targetRect),
+      targetRect
+    },
+    stateAfter,
+    targetRect,
+    controlValue,
+    focusOrVisibleResult: {
+      activeElementId: null,
+      activeElementText: "",
+      visibleResultState: snapshot?.stateId ?? interaction.expectedState,
+      visibleResultPassed: Boolean(snapshot),
+      visibleResultText: snapshot?.bodyTextSample ?? ""
+    }
   };
 }
 
@@ -268,7 +303,79 @@ function validateAction(action, index, contract, failures) {
   if (expected && action.kind !== expected.trigger) failures.push(`actionTrace[${index}] trigger mismatch`);
   if (expected && action.selector !== expected.selector) failures.push(`actionTrace[${index}] selector mismatch`);
   if (expected && !stateMatches(action.stateReached, expected.expectedState)) failures.push(`actionTrace[${index}] expected state not reached`);
+  validateActionState(action.stateBefore, `actionTrace[${index}].stateBefore`, failures);
+  validateRealAction(action.realAction, `actionTrace[${index}].realAction`, failures);
+  validateActionState(action.stateAfter, `actionTrace[${index}].stateAfter`, failures);
   if (!isRecord(action.targetRect)) failures.push(`actionTrace[${index}].targetRect missing`);
+  validateFocusOrVisibleResult(action.focusOrVisibleResult, `actionTrace[${index}].focusOrVisibleResult`, failures);
+}
+
+function actionStateFromSnapshot(snapshot, fallbackStateId) {
+  return {
+    stateId: snapshot?.stateId ?? fallbackStateId,
+    mode: snapshot?.mode ?? "unknown",
+    panel: snapshot?.panel ?? "unknown",
+    modal: snapshot?.modal ?? "unknown",
+    visibleRegions: visibleIds(snapshot?.regions ?? []),
+    visibleControls: visibleIds(snapshot?.controls ?? []),
+    digest: digest({
+      stateId: snapshot?.stateId ?? fallbackStateId,
+      mode: snapshot?.mode ?? "unknown",
+      panel: snapshot?.panel ?? "unknown",
+      modal: snapshot?.modal ?? "unknown",
+      regions: visibleIds(snapshot?.regions ?? []),
+      controls: visibleIds(snapshot?.controls ?? []),
+      text: snapshot?.bodyTextSample ?? ""
+    })
+  };
+}
+
+function validateActionState(value, label, failures) {
+  if (!isRecord(value)) {
+    failures.push(`${label} missing`);
+    return;
+  }
+  if (!nonEmptyString(value.stateId)) failures.push(`${label}.stateId missing`);
+  if (!nonEmptyString(value.mode)) failures.push(`${label}.mode missing`);
+  if (!nonEmptyString(value.panel)) failures.push(`${label}.panel missing`);
+  if (!nonEmptyString(value.modal)) failures.push(`${label}.modal missing`);
+  if (!Array.isArray(value.visibleRegions)) failures.push(`${label}.visibleRegions missing`);
+  if (!Array.isArray(value.visibleControls)) failures.push(`${label}.visibleControls missing`);
+  if (!isSha256(value.digest)) failures.push(`${label}.digest missing`);
+}
+
+function validateRealAction(value, label, failures) {
+  if (!isRecord(value)) {
+    failures.push(`${label} missing`);
+    return;
+  }
+  if (!P6_ALLOWED_ACTION_KINDS.has(value.inputKind)) failures.push(`${label}.inputKind must be a real input kind`);
+  if (!nonEmptyString(value.selector)) failures.push(`${label}.selector missing`);
+  if (!nonEmptyString(value.trustedPath)) failures.push(`${label}.trustedPath missing`);
+  if (value.targetVisible !== true) failures.push(`${label}.targetVisible must be true`);
+  if (!isRecord(value.targetRect)) failures.push(`${label}.targetRect missing`);
+}
+
+function validateFocusOrVisibleResult(value, label, failures) {
+  if (!isRecord(value)) {
+    failures.push(`${label} missing`);
+    return;
+  }
+  if (!("activeElementId" in value)) failures.push(`${label}.activeElementId missing`);
+  if (!("activeElementText" in value)) failures.push(`${label}.activeElementText missing`);
+  if (!nonEmptyString(value.visibleResultState)) failures.push(`${label}.visibleResultState missing`);
+  if (value.visibleResultPassed !== true) failures.push(`${label}.visibleResultPassed must be true`);
+  if (typeof value.visibleResultText !== "string") failures.push(`${label}.visibleResultText missing`);
+}
+
+function validateMutationProtection(value, failures) {
+  if (!isRecord(value)) {
+    failures.push("mutationProtection missing");
+    return;
+  }
+  if (!/^[a-f0-9]{40}$/.test(value.headCommit) || value.headCommit === "0".repeat(40)) failures.push("mutationProtection.headCommit missing");
+  if (!isSha256(value.artifactCatalogDigest)) failures.push("mutationProtection.artifactCatalogDigest missing");
+  if (!nonEmptyString(value.source)) failures.push("mutationProtection.source missing");
 }
 
 function sameActionContract(webActions = [], desktopActions = [], interactions = []) {
