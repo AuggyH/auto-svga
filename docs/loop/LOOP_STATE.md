@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: gate_b_passed_execute_wp4_visual_motion_review
-- Next Action: execute_wp4_visual_motion_review
+- State: wp4_integration_checkpoint_passed_execute_wp5_app_delivery
+- Next Action: execute_wp5_app_delivery
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -84,14 +84,21 @@ Date: 2026-06-25
   prototype tests, and diff checks.
 - P6-F003 and P6-F005 remain `currentStatus=open` and advanced only to
   `integrated_resolved_pending_external_review`.
+- WP4 visual and motion review is integrated at
+  `ddfd400e586b835967ed408e9ac2c75831217776`.
+- WP4 visual/motion evidence gates now reject inconsistent viewport/context,
+  zero compared pixels, identical motion frame hashes, and generic reviewer
+  PASS without required product classification verdicts.
+- P6-F004, P6-F006, and P6-F008 remain `currentStatus=open` and advanced only
+  to `integrated_resolved_pending_external_review`.
 - No formal implementation Worker is currently running for P6-R1.
-- Product runtime evidence code has changed only within authorized WP1-WP3
+- Product runtime evidence code has changed only within authorized WP1-WP4
   recovery scope. No exporter, CLI default flow, dependency, package, signing,
   notarization, release, or Phase 2 implementation has been changed for P6-R1.
 - P6-R1 does not authorize Phase 2.
 
 ## Next Action
 
-Execute WP4 visual and motion review. Do not start Phase 2, Product Owner
+Execute WP5 App delivery. Do not start Phase 2, Product Owner
 Human Gate, Final Independent Product External Review, finding closure,
 signing, notarization, release, push, merge, or any out-of-contract work.
