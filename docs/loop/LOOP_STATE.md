@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: gate_c_passed_execute_final_validation
-- Next Action: execute_final_validation
+- State: terminal_human_required
+- Next Action: external_review
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -103,6 +103,18 @@ Date: 2026-06-25
   Reviewer PASS and Independent Code And Security Reviewer PASS.
 - P6-F007, P6-F009, and P6-F011 remain `currentStatus=open` and advanced only
   to `integrated_resolved_pending_external_review`.
+- Gate C lifecycle was recorded at
+  `4c2148f9c9ea7d34b8d4a1f39947e3f2362cf59d`; its tree is
+  `4cf147a09af40c66732a2a089ab231fa7829f251`.
+- `npm run loop:validate` passed on that head before the full P6 regression.
+- Final Validation failed because the full P6 evidence regression reached the
+  Electron desktop smoke and `npm run desktop:smoke` returned
+  `Invalid smoke result` with all product smoke fields false.
+- Cleanup evidence for the failing smoke remained safe:
+  `serverClosed=true` and `tempRemoved=true`.
+- P6-R1 stopped before Reviewer A, Reviewer B, Final Seal, Post-seal
+  Verification, Product Owner Human Gate, Final Independent Product External
+  Review, Finding Ledger closure, and Phase 2.
 - No formal implementation Worker is currently running for P6-R1.
 - Product runtime evidence code has changed only within authorized WP1-WP5
   recovery scope. No exporter, CLI default flow, dependency, package, signing,
@@ -111,6 +123,8 @@ Date: 2026-06-25
 
 ## Next Action
 
-Execute Final Validation. Do not start Phase 2, Product Owner Human Gate,
-Final Independent Product External Review, finding closure, signing,
-notarization, release, push, merge, or any out-of-contract work.
+Run external review on the final-validation blocker and request Product Owner
+authorization for the smallest allowed repair scope if P6-R1 should continue.
+Do not start Phase 2, Product Owner Human Gate, Final Independent Product
+External Review, finding closure, signing, notarization, release, push, merge,
+or any out-of-contract work.

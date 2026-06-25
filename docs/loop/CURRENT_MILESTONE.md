@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: gate_c_passed_execute_final_validation
+Status: terminal_human_required
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: gate_c_passed_execute_final_validation
+executionStatus: terminal_human_required_final_validation_blocked
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -546,6 +546,28 @@ Final Validation requires:
 5. `npm run loop:validate` passes twice at final head.
 6. Source workspace is clean.
 
+Final Validation execution record:
+
+- finalValidationHead: `4c2148f9c9ea7d34b8d4a1f39947e3f2362cf59d`
+- finalValidationTree: `4cf147a09af40c66732a2a089ab231fa7829f251`
+- gateCStatusBeforeFinalValidation: `passed`
+- loopValidateBeforeFullRegression: `passed`
+- fullP6Regression: `failed`
+- failedCommand:
+  `AUTO_SVGA_SKIP_TRACKED_SNAPSHOTS=1 node tools/p6/generate-p6-evidence.mjs`
+- isolatedFailureCommand: `npm run desktop:smoke`
+- failureSummary:
+  `Electron desktop smoke returned Invalid smoke result with all product smoke fields false.`
+- cleanupEvidence: `serverClosed=true`, `tempRemoved=true`
+- stopReason: `required Final Validation machine gate failed`
+- blockedBefore: `Reviewer A`, `Reviewer B`, `Final Seal`,
+  `Post-seal Verification`, `Product Owner Human Gate`,
+  `Final Independent Product External Review`, `Finding Ledger closure`,
+  `Phase 2`
+- requiredOwnerDecision:
+  `authorize a minimal runtime/smoke repair scope or keep P6-R1 blocked`
+- nextActionAfterFinalValidationFailure: `external_review`
+
 After Final Validation passes, the only executable terminal sequence is:
 
 1. Final Machine Validation.
@@ -707,17 +729,19 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `gate_c_passed_execute_final_validation`.
+Current state: `terminal_human_required_final_validation_blocked`.
 
-Next action: `execute_final_validation`.
+Next action: `external_review`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
 `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY` from base execution head
 `30f522ca569679a5364149fe02ccc83624ec91ce`.
 
-WP0 recovery gate bootstrap, Gate A, Gate B, and Gate C have passed. P6-R1
-execution is active for the ordered path through `HUMAN_REQUIRED`; Final
-Validation is the current step. Phase 2 is not started. Product Owner Human
-Gate, Final Independent Product External Review, finding closure, signing,
-notarization, release, push, merge, and Phase 2 remain prohibited.
+WP0 recovery gate bootstrap, Gate A, Gate B, and Gate C have passed. Final
+Validation then failed on the required Electron desktop smoke check, so P6-R1
+has stopped before Reviewer A, Reviewer B, Final Seal, Post-seal Verification,
+Product Owner Human Gate, Final Independent Product External Review, finding
+closure, and Phase 2. Phase 2 is not started. Product Owner Human Gate, Final
+Independent Product External Review, finding closure, signing, notarization,
+release, push, merge, and Phase 2 remain prohibited.
