@@ -4273,7 +4273,8 @@ try {
       dragDrop: false,
       errorFile: false,
       playerLifecycle: false,
-      cleanup: false
+      cleanup: false,
+      diagnostics: createP6SmokeFailureDiagnostics(error)
     });
   }
 }
