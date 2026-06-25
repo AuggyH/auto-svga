@@ -347,6 +347,8 @@ test("P6 package privacy audit allows source-template review roots inside REVIEW
         "```diff",
         "+    `- review/P6-R1-${headShort}/`,",
         "+  const visibleRoot = path.join(repoRoot, `review/P6-R1-${headShort}`);",
+        "+    const staleP6R1ReviewRoot = [\"review\", \"P6-R1-deadbee\", \"REVIEW_PACKET.md\"].join(\"/\");",
+        "+      \"FINAL_RESPONSE.txt\": \"[Current](review/P6-R1-abcdef0/REVIEW_PACKET.md)\\n\"",
         "```",
         ""
       ].join("\n"),

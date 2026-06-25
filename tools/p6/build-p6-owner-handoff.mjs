@@ -119,6 +119,9 @@ function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
   if (!expectedHeadShort) return [];
   const findings = [];
   for (const match of text.matchAll(/\breview\/(P6-R1|P6)-([A-Za-z0-9][A-Za-z0-9._-]*)/g)) {
+    if (entry.endsWith("REVIEW_PACKET.md") && isInsideFencedDiffBlock(text, match.index)) {
+      continue;
+    }
     const trailingTemplateContext = text.slice(match.index + match[0].length, match.index + match[0].length + 32);
     if (match[0] === "review/P6-R1-" && trailingTemplateContext.startsWith("${headShort}")) {
       continue;
@@ -133,6 +136,16 @@ function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
     }
   }
   return findings;
+}
+
+function isInsideFencedDiffBlock(text, index) {
+  const before = text.slice(0, index);
+  const fenceMatches = [...before.matchAll(/^```([A-Za-z0-9_-]*)[^\n]*$/gm)];
+  if (fenceMatches.length === 0) return false;
+  const lastFence = fenceMatches[fenceMatches.length - 1];
+  if (!lastFence) return false;
+  const fenceLanguage = (lastFence[1] ?? "").toLowerCase();
+  return fenceLanguage === "diff";
 }
 
 function findPrivacyMatches(text, entry, { expectedHeadShort } = {}) {
