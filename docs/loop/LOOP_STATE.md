@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_repair_in_progress
-- Next Action: repair_wp3_real_interaction_evidence_and_owner_handoff
+- State: terminal_human_required
+- Next Action: external_review
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -49,32 +49,29 @@ Date: 2026-06-25
   `9b01108c03a5e70e2f67100eeac384810afee4e4`.
 - Product Owner authorized `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY`
   from base execution head `30f522ca569679a5364149fe02ccc83624ec91ce`.
-- Independent review revoked the prior `HUMAN_REQUIRED`, Reviewer B, Final Seal,
-  and Post-seal usability because required interaction evidence and owner
-  handoff materials were not trustworthy enough for Product Owner review.
-- The current repair returns to WP3/Gate B real interaction evidence and owner
-  handoff packaging without changing contract revision, repairRound, or Phase 2
-  state.
-- The old strict parity claim is no longer trusted: legacy Web interaction trace
-  normalization, weak motion frame changes, generic Reviewer B output, and
-  incomplete owner upload binding are treated as failure evidence in this goal.
-- Desktop smoke, internal trial package proof, request audit, cleanup proof, and
-  local-only/security proof all remain required machine evidence; production
-  desktop release is still not approved.
-- `P6-F003`, `P6-F005`, `P6-F008`, `P6-F010`, and `P6-F011` are regressed and
-  remain `currentStatus=open` pending repaired machine validation, independent
-  categorized review, final seal, post-seal verification, Product Owner Human
-  Gate, and final independent product external review.
+- WP3 real interaction evidence and owner handoff repair completed on the
+  current execution head after the revoked prior `HUMAN_REQUIRED`, Reviewer B,
+  Final Seal, and Post-seal usability findings were treated as failure
+  evidence.
+- Strict Web/Desktop interaction evidence now records before, real action,
+  after, focus or visible result, target, timing, and final-head binding in the
+  same runtime flow. Legacy or synthetic trace completion is rejected.
+- Motion evidence now requires real Web and Desktop start/mid/end frame hash
+  changes. Computed-style samples remain supplemental only.
+- Final P6 evidence reports `parityStatus=pass` and
+  `nonPassEvidenceCount=0`; Desktop smoke has passed twice consecutively.
+- All `P6-F001` through `P6-F013` remain `currentStatus=open` and are only
+  advanced to `integrated_resolved_pending_external_review`; no Finding is
+  closed or externally confirmed before Product Owner Human Gate and final
+  independent product external review.
 - `contractReviewedHeadCommit=9b01108c03a5e70e2f67100eeac384810afee4e4`,
   `contractRevision=3`, `repairRound=0`, and `phase2Started=false` are
   preserved.
-- P6-R1 is not waiting for Product Owner acceptance yet. Phase 2 remains not
-  started.
+- P6-R1 is now waiting for owner-visible review packet handling and Product
+  Owner Human Gate. Phase 2 remains not started.
 
 ## Next Action
 
-Repair WP3 real interaction evidence and owner handoff. Do not start Phase 2,
-Product Owner Human Gate, Final Independent Product External Review closure,
-signing, notarization, release, push, merge, or any out-of-contract work until
-new same-head machine validation, categorized Reviewer A/B, Final Seal, and
-Post-seal Verification succeed.
+External review packet handling and Product Owner Human Gate only. Do not
+start Phase 2, Final Independent Product External Review closure, signing,
+notarization, release, push, merge, or any out-of-contract work.
