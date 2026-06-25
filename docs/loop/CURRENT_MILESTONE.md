@@ -548,28 +548,36 @@ Final Validation requires:
 
 Final Validation execution record:
 
-- finalValidationHead: `4c2148f9c9ea7d34b8d4a1f39947e3f2362cf59d`
-- finalValidationTree: `4cf147a09af40c66732a2a089ab231fa7829f251`
+- finalValidationHead: `04c454dc8f2c6f11e2540be370815ae53c5c949b`
+- finalValidationTree: `a78a8380b920073b60fa5f59b5ebc2283f516245`
 - gateCStatusBeforeFinalValidation: `passed`
 - loopValidateBeforeFullRegression: `passed`
+- desktopSmokeBlockerRepairCommit:
+  `04c454dc8f2c6f11e2540be370815ae53c5c949b`
+- desktopSmokeAfterRepair: `passed`
+- loopValidateAfterRepair: `passed`
 - fullP6Regression: `failed`
 - failedCommand:
   `AUTO_SVGA_SKIP_TRACKED_SNAPSHOTS=1 node tools/p6/generate-p6-evidence.mjs`
 - isolatedFailureCommand: `npm run desktop:smoke`
 - failureSummary:
-  `Electron desktop smoke returned Invalid smoke result with all product smoke fields false.`
-- cleanupEvidence: `serverClosed=true`, `tempRemoved=true`
+  `The original Electron desktop smoke blocker is repaired, but the generated P6 parity report still contains required strict parity failures: interactionParity=fail, stateParity=fail, motionParity=fail, nonPassEvidenceCount=85.`
+- parityReport:
+  `.artifacts/product/P6/p6-parity-report.json`
+- cleanupEvidence:
+  `desktop smoke serverClosed=true`, `tempRemoved=true`
 - stopReason: `required Final Validation machine gate failed`
 - blockedBefore: `Reviewer A`, `Reviewer B`, `Final Seal`,
   `Post-seal Verification`, `Product Owner Human Gate`,
   `Final Independent Product External Review`, `Finding Ledger closure`,
   `Phase 2`
 - requiredOwnerDecision:
-  `authorize a minimal runtime/smoke repair scope or keep P6-R1 blocked`
+  `authorize a strict state/interaction/motion parity evidence repair scope or keep P6-R1 blocked`
 - lifecycleCorrection:
   `previous terminal_human_required/HUMAN_REQUIRED wording was invalid because a required machine gate failed`
 - productOwnerHumanGateReachable: `false`
-- nextActionAfterFinalValidationFailure: `diagnose_and_repair_desktop_smoke`
+- nextActionAfterFinalValidationFailure:
+  `owner_confirm_strict_parity_repair_scope`
 
 After Final Validation passes, the only executable terminal sequence is:
 

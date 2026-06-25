@@ -80,16 +80,18 @@
         "external review round that does not reproduce the issue"
       ],
       "currentOpenSubIssues": [
-        "Loading and Empty remain not obviously distinguishable to the user."
+        "Loading and Empty remain not obviously distinguishable to the user.",
+        "Final Validation strict state parity failed for required state evidence after the desktop smoke blocker was repaired."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json"
       ]
     },
     {
@@ -130,16 +132,18 @@
         "external review round that does not reproduce stale state"
       ],
       "currentOpenSubIssues": [
-        "Invalid still keeps old canvas, player, or stale loaded state."
+        "Invalid still keeps old canvas, player, or stale loaded state.",
+        "Final Validation strict state parity failed for required invalid/recovery-related state evidence after the desktop smoke blocker was repaired."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json"
       ]
     },
     {
@@ -181,16 +185,18 @@
         "external reviewer reproduces no artifact-existence false pass"
       ],
       "currentOpenSubIssues": [
-        "Final independent external review has not yet confirmed the artifact-existence false-pass risk is closed."
+        "Final independent external review has not yet confirmed the artifact-existence false-pass risk is closed.",
+        "Final Validation parity report still contains required interaction/state/motion failures, so artifact-existence false-pass risk remains reopened."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json"
       ]
     },
     {
@@ -229,16 +235,18 @@
         "external review confirmation"
       ],
       "currentOpenSubIssues": [
-        "WP4 machine evidence now rejects inconsistent viewport/context and comparedPixels=0, pending Gate C and final independent external review."
+        "WP4 machine evidence now rejects inconsistent viewport/context and comparedPixels=0, pending Gate C and final independent external review.",
+        "Final Validation strict state context parity failed; same-state/context visual evidence is not yet machine PASS."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json"
       ]
     },
     {
@@ -276,16 +284,18 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Final independent external review has not yet confirmed the real before/action/after interaction trace risk is closed."
+        "Final independent external review has not yet confirmed the real before/action/after interaction trace risk is closed.",
+        "Final Validation strict interaction parity failed because Web interaction trace entries lack required before/action/after/focus-result evidence."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json"
       ]
     },
     {
@@ -329,16 +339,18 @@
         "owner visual gate"
       ],
       "currentOpenSubIssues": [
-        "WP4 machine evidence now rejects identical Web/Desktop start, mid, and end hashes, pending Gate C and final independent external review."
+        "WP4 machine evidence now rejects identical Web/Desktop start, mid, and end hashes, pending Gate C and final independent external review.",
+        "Final Validation strict motion parity failed because Web start/mid/end motion frames are still generic/identical."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
-        "docs/loop/LOOP_HISTORY.jsonl"
+        "docs/loop/LOOP_HISTORY.jsonl",
+        ".artifacts/product/P6/p6-parity-report.json"
       ]
     },
     {
@@ -527,7 +539,8 @@
       ],
       "currentOpenSubIssues": [
         "Machine PASS is still not owner acceptance; technical review remains required.",
-        "Final Validation failure was incorrectly recorded as terminal_human_required before correction; required machine gate failure must keep Product Owner Human Gate unreachable."
+        "Final Validation failure was incorrectly recorded as terminal_human_required before correction; required machine gate failure must keep Product Owner Human Gate unreachable.",
+        "Final Validation remains failed after the desktop smoke repair; HUMAN_REQUIRED and Owner Human Gate remain unreachable."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
@@ -538,7 +551,8 @@
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
         "docs/loop/LOOP_HISTORY.jsonl",
         "docs/loop/reviews/P6-R1-wp0-review-pass.md",
-        "review/P6-R1-FinalValidationBlocked-9e5f172/REVIEW_PACKET.md"
+        "review/P6-R1-FinalValidationBlocked-9e5f172/REVIEW_PACKET.md",
+        ".artifacts/product/P6/p6-parity-report.json"
       ]
     },
     {
@@ -634,7 +648,8 @@
       ],
       "currentOpenSubIssues": [
         "Technical-layer worker completion still did not close the end-to-end product flow.",
-        "Final Validation found the end-to-end desktop smoke still failing after WP1-WP5 integration, so the vertical recovery loop is reopened."
+        "Final Validation found the end-to-end desktop smoke still failing after WP1-WP5 integration, so the vertical recovery loop is reopened.",
+        "Final Validation remains failed across strict state/interaction/motion parity, so the end-to-end flow is not closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
@@ -645,7 +660,8 @@
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
         "docs/loop/LOOP_HISTORY.jsonl",
         "docs/loop/reviews/P6-R1-wp0-review-pass.md",
-        "review/P6-R1-FinalValidationBlocked-9e5f172/REVIEW_PACKET.md"
+        "review/P6-R1-FinalValidationBlocked-9e5f172/REVIEW_PACKET.md",
+        ".artifacts/product/P6/p6-parity-report.json"
       ]
     },
     {

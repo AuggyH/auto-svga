@@ -107,13 +107,23 @@ Date: 2026-06-25
   `4c2148f9c9ea7d34b8d4a1f39947e3f2362cf59d`; its tree is
   `4cf147a09af40c66732a2a089ab231fa7829f251`.
 - `npm run loop:validate` passed on that head before the full P6 regression.
-- Final Validation failed because the full P6 evidence regression reached the
-  Electron desktop smoke and `npm run desktop:smoke` returned
+- Final Validation originally failed because the full P6 evidence regression
+  reached the Electron desktop smoke and `npm run desktop:smoke` returned
   `Invalid smoke result` with all product smoke fields false.
+- The desktop smoke blocker was repaired at
+  `04c454dc8f2c6f11e2540be370815ae53c5c949b`; `npm run desktop:smoke`
+  and `npm run loop:validate` both pass on that head with a clean workspace.
+- The same full P6 evidence regression now proceeds past desktop smoke, but
+  the generated parity report still fails required strict evidence sections:
+  `interactionParity=fail`, `stateParity=fail`, `motionParity=fail`,
+  `nonPassEvidenceCount=85`.
+- The active blocker is therefore strict parity evidence, not the original
+  desktop smoke result validation.
 - The prior `terminal_human_required` lifecycle wording is corrected by the
   current repair state because Product Owner Human Gate is not reachable while
   a required machine gate is failed.
-- P6-F010 and P6-F012 are regressed for this lifecycle/gate blocker while
+- P6-F001, P6-F002, P6-F003, P6-F004, P6-F005, P6-F006, P6-F010, and
+  P6-F012 are regressed for the active Final Validation blocker while
   `currentStatus` remains `open` and `repairRound` remains `0`.
 - Cleanup evidence for the failing smoke remained safe:
   `serverClosed=true` and `tempRemoved=true`.
@@ -128,7 +138,8 @@ Date: 2026-06-25
 
 ## Next Action
 
-Diagnose and repair the desktop smoke blocker under the already authorized
-P6-R1 scope. Do not start Phase 2, Product Owner Human Gate, Final Independent
-Product External Review, finding closure, signing, notarization, release, push,
-merge, or any out-of-contract work.
+Request Product Owner confirmation for a bounded strict state/interaction/motion
+parity evidence repair scope, or keep P6-R1 blocked. Do not start Phase 2,
+Product Owner Human Gate, Final Independent Product External Review, finding
+closure, signing, notarization, release, push, merge, or any out-of-contract
+work.
