@@ -704,9 +704,20 @@ async function main() {
   const snapshots = [];
   snapshots.push(await collectSnapshot(window, "local-empty"));
   await capture(window, "screenshot-local-empty-1440x900.png");
-  await captureMotionTriplet(window, "emptyIconFloat", async () => {
+  await captureMotionTriplet(window, "emptyIconFloat", async (phase) => {
     await closeTransientUi(window);
-  }, { midDelayMs: 850, endDelayMs: 850 });
+    if (phase === "prepare") {
+      await execute(window, `
+        const icon = document.querySelector(".uploadMockIcon");
+        if (icon) {
+          icon.style.animation = "none";
+          void icon.offsetHeight;
+          icon.style.animation = "";
+        }
+        true;
+      `);
+    }
+  }, { prepareDelayMs: 50, midDelayMs: 750, endDelayMs: 750 });
 
   console.log("P6_WEB_BASELINE_PHASE mode-menu-open");
   await recordWebInteraction(window, "click-mode-dropdown-trigger-menu-opens", async () => {
