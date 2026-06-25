@@ -569,6 +569,7 @@ function setAppMode(nextMode = modeSelect.value) {
   } else {
     compareEnabled = false;
     compareToggle.checked = false;
+    resetSlotMediaState(players.b);
     primaryInputLabel.textContent = "选择导出 SVGA";
     primaryEmptyFileButton.textContent = "选择导出 SVGA";
     svgaBadgeA.textContent = "SVGA";
@@ -1540,6 +1541,10 @@ function handleSvgaFile(file, slotKey) {
   if (slot.objectUrl) {
     URL.revokeObjectURL(slot.objectUrl);
   }
+  if (!artifactAutoLoading) {
+    latestArtifactGroup = undefined;
+    clearReference();
+  }
   slot.objectUrl = URL.createObjectURL(file);
   addLog("info", "本地文件模式下浏览器不能自动读取同目录 report.json。/ Browser cannot auto-read sibling report.json for local files.");
   loadSvga(slotKey, slot.objectUrl, {
@@ -2133,7 +2138,8 @@ function collectRenderedStateProof(state) {
 function installStateProbe() {
   window.__autoSvgaDesktopStateProbe = {
     collect: (state) => collectRenderedStateProof(state),
-    runWp1StateCorrectnessFlow
+    runWp1StateCorrectnessFlow,
+    runWp2MultiSourceAcceptanceFlow
   };
 }
 
@@ -2254,6 +2260,146 @@ async function loadP6SmokeReferenceGif() {
     kind: "gif"
   });
   await waitFor(() => Boolean(referenceState.metrics) && referenceState.panel.classList.contains("hasMedia"));
+}
+
+async function fetchWp2SvgaBytes(source) {
+  const response = await fetch(source);
+  if (!response.ok) throw new Error(`WP2 SVGA fixture fetch failed (${response.status}).`);
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+async function loadWp2DroppedSvga(slotKey, bytes, fileName) {
+  const file = new File([bytes.slice(0)], fileName, { type: "application/octet-stream" });
+  handleDroppedFile(file, "svga", slotKey);
+  const slot = players[slotKey];
+  await waitFor(() => Boolean(slot.videoItem) && canvasIsNonBlank(slot));
+  await waitForInspectionStatus(slot);
+  return collectWp2MultiSourceSnapshot(`${slotKey}-dropped-svga-loaded`);
+}
+
+function collectWp2MultiSourceSnapshot(step) {
+  return {
+    step,
+    mode: modeSelect.value,
+    compareActive: isCompareActive(),
+    latestArtifactJobId: latestArtifactGroup?.jobId ?? null,
+    primary: collectWp2SlotSnapshot(players.a),
+    secondary: collectWp2SlotSnapshot(players.b),
+    reference: {
+      loaded: Boolean(referenceState.metrics && referenceState.panel.classList.contains("hasMedia")),
+      kind: referenceState.kind ?? null,
+      fileName: referenceState.metrics?.fileName ?? null,
+      status: referenceState.status?.textContent ?? "",
+      panelVisible: isElementVisible(referenceState.panel) && !referenceState.panel.classList.contains("isHidden")
+    },
+    sync: {
+      visible: isElementVisible(syncBar) && !syncBar.classList.contains("isHidden"),
+      playing: syncIsPlaying,
+      pressed: syncPlayControl.getAttribute("aria-pressed") === "true",
+      disabled: syncPlayControl.disabled,
+      progress: Number(syncProgress.value)
+    }
+  };
+}
+
+function collectWp2SlotSnapshot(slot) {
+  return {
+    loaded: Boolean(slot.videoItem),
+    canvasNonBlank: canvasIsNonBlank(slot),
+    fileName: slot.metrics?.fileName ?? null,
+    parseStatus: slot.parseStatus,
+    renderStatus: slot.renderStatus,
+    inspectionStatus: slot.inspectionStatus
+  };
+}
+
+async function runWp2MultiSourceAcceptanceFlow(options = {}) {
+  const validSource = options.validSource ?? paths.svga;
+  const bytes = await fetchWp2SvgaBytes(validSource);
+  const stages = {};
+
+  closeP6SmokeTransientUi();
+  syncPause();
+  setAppMode("localPreview");
+  if (compareToggle.checked) compareToggle.click();
+  resetSlotMediaState(players.b);
+  clearReference();
+  latestArtifactGroup = undefined;
+  manualArtifactSelection = false;
+
+  stages.primary = await loadWp2DroppedSvga("a", bytes, "wp2-primary-source.svga");
+  if (!compareToggle.checked) compareToggle.click();
+  await waitFor(() => isCompareActive());
+  stages.secondSvga = await loadWp2DroppedSvga("b", bytes, "wp2-second-source.svga");
+  stages.secondSvgaState = collectRenderedStateProof("local-compare-loaded");
+
+  syncReplay();
+  await waitFor(() => syncPlayControl.getAttribute("aria-pressed") === "true");
+  stages.secondSvgaSync = collectWp2MultiSourceSnapshot("second-svga-synchronized-playback");
+  syncPause();
+
+  setAppMode("exportReview");
+  await waitFor(() => !isCompareActive());
+  stages.cleanupAfterSecondSvga = collectWp2MultiSourceSnapshot("cleanup-after-second-svga");
+
+  await loadP6SmokeReferenceGif();
+  setAppMode("exportReview");
+  await waitFor(() => collectRenderedStateProof("reference-media-loaded").passed === true);
+  stages.referenceMedia = collectRenderedStateProof("reference-media-loaded");
+  syncReplay();
+  await waitFor(() => syncPlayControl.getAttribute("aria-pressed") === "true");
+  stages.referenceSync = collectWp2MultiSourceSnapshot("reference-synchronized-playback");
+  syncPause();
+
+  manualArtifactSelection = false;
+  await scanLatestArtifact({ force: true });
+  await waitFor(() => Boolean(latestArtifactGroup && players.a.videoItem && canvasIsNonBlank(players.a)));
+  stages.latestArtifact = collectRenderedStateProof("latest-artifact-loaded");
+  stages.latestArtifactRuntime = collectWp2MultiSourceSnapshot("latest-artifact-runtime-loaded");
+
+  setAppMode("localPreview");
+  stages.manualAfterLatest = await loadWp2DroppedSvga("a", bytes, "wp2-manual-after-latest.svga");
+  stages.cleanupAfterLatest = collectWp2MultiSourceSnapshot("cleanup-after-latest-artifact");
+
+  const cleanup = {
+    secondaryClearedAfterExport: stages.cleanupAfterSecondSvga.secondary.loaded === false
+      && stages.cleanupAfterSecondSvga.compareActive === false,
+    referenceClearedAfterManualSource: stages.cleanupAfterLatest.reference.loaded === false,
+    latestArtifactClearedAfterManualSource: stages.cleanupAfterLatest.latestArtifactJobId === null
+  };
+  const checks = {
+    primarySvgaLoaded: stages.primary.primary.loaded && stages.primary.primary.canvasNonBlank,
+    secondSvgaLoaded: stages.secondSvga.secondary.loaded && stages.secondSvga.secondary.canvasNonBlank,
+    secondSvgaStatePassed: stages.secondSvgaState.passed === true,
+    secondSvgaSyncActive: stages.secondSvgaSync.sync.playing && stages.secondSvgaSync.sync.pressed,
+    referenceMediaLoaded: stages.referenceMedia.passed === true,
+    referenceSyncActive: stages.referenceSync.sync.playing && stages.referenceSync.sync.pressed,
+    latestArtifactLoaded: stages.latestArtifact.passed === true,
+    latestArtifactRuntimeLoaded: Boolean(stages.latestArtifactRuntime.latestArtifactJobId)
+      && stages.latestArtifactRuntime.primary.loaded
+      && stages.latestArtifactRuntime.primary.canvasNonBlank,
+    ...cleanup
+  };
+  const failures = Object.entries(checks)
+    .filter(([, passed]) => passed !== true)
+    .map(([name]) => `${name} failed`);
+  return {
+    schemaVersion: 1,
+    flow: "Primary SVGA -> Second SVGA -> Reference Media -> Latest Artifact -> Manual Cleanup",
+    usedRuntimeLoadPath: true,
+    directStateInjection: false,
+    inputs: {
+      primarySvga: "File drop path",
+      secondSvga: "File drop path",
+      referenceMedia: "File reference path",
+      latestArtifact: "/api/latest-artifact scan path"
+    },
+    checks,
+    cleanup,
+    stages,
+    passed: failures.length === 0,
+    failures
+  };
 }
 
 function closeP6SmokeTransientUi() {

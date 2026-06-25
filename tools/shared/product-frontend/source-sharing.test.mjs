@@ -138,10 +138,19 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "runWp1StateCorrectnessFlow",
     "loadValidSvgaForStateProbe",
     "loadInvalidSvgaForStateProbe",
+    "runWp2MultiSourceAcceptanceFlow",
+    "loadWp2DroppedSvga",
+    "collectWp2MultiSourceSnapshot",
     "usedRuntimeLoadPath",
     "directStateInjection: false",
     "invalid parser status is not error",
-    "invalid render status is not error"
+    "invalid render status is not error",
+    "secondSvgaLoaded",
+    "referenceMediaLoaded",
+    "latestArtifactRuntimeLoaded",
+    "secondaryClearedAfterExport",
+    "referenceClearedAfterManualSource",
+    "latestArtifactClearedAfterManualSource"
   ]) {
     assert.match(productApp, new RegExp(runtimeFlowEvidence));
   }
