@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: terminal_human_required
+Status: goal_repair_in_progress
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: terminal_human_required
+executionStatus: goal_repair_in_progress
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -740,21 +740,21 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `HUMAN_REQUIRED`.
+Current state: `goal_repair_in_progress`.
 
-Next action: `external_review` for the owner-visible review packet and Product Owner Human Gate.
+Next action: `repair_wp3_runtime_derived_interaction_and_owner_handoff`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
 `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY` from base execution head
 `30f522ca569679a5364149fe02ccc83624ec91ce`.
 
-WP0 recovery gate bootstrap, Gate A, Gate B, Gate C, Final Validation, Reviewer
-A, Reviewer B, Final Seal, and Post-seal Verification have completed on the
-current P6-R1 execution head. The final machine evidence reports
-`parityStatus=pass`, `nonPassEvidenceCount=0`, and no failed strict evidence
-items. P6-R1 is now waiting for the Product Owner Human Gate and the subsequent
-Final Independent Product External Review on the same sealed head.
+The previous `HUMAN_REQUIRED`, Reviewer B, Final Seal, and Post-seal
+Verification are revoked by independent review findings. P6-R1 is returned to
+WP3/Gate B for runtime-derived interaction evidence and owner handoff repair.
+Downstream Gate B, WP4, WP5, Gate C, Final Validation, Reviewer A, Reviewer B,
+Final Seal, Post-seal Verification, and Product Owner Human Gate must be rerun
+on a new final head before `HUMAN_REQUIRED` may be restored.
 
 All P6-F001 through P6-F013 findings remain `currentStatus=open` and are only
 advanced to `integrated_resolved_pending_external_review`; none are closed or

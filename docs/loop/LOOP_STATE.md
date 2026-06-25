@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: terminal_human_required
-- Next Action: external_review
+- State: goal_repair_in_progress
+- Next Action: repair_wp3_runtime_derived_interaction_and_owner_handoff
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -67,11 +67,12 @@ Date: 2026-06-25
 - `contractReviewedHeadCommit=9b01108c03a5e70e2f67100eeac384810afee4e4`,
   `contractRevision=3`, `repairRound=0`, and `phase2Started=false` are
   preserved.
-- P6-R1 is now waiting for owner-visible review packet handling and Product
-  Owner Human Gate. Phase 2 remains not started.
+- P6-R1 is repairing WP3/Gate B runtime-derived interaction evidence and owner
+  handoff identity. Phase 2 remains not started.
 
 ## Next Action
 
-External review packet handling and Product Owner Human Gate only. Do not
-start Phase 2, Final Independent Product External Review closure, signing,
-notarization, release, push, merge, or any out-of-contract work.
+Repair WP3 runtime-derived interaction evidence and owner handoff identity. Do
+not start Phase 2, Product Owner Human Gate, Final Independent Product External
+Review closure, signing, notarization, release, push, merge, or any
+out-of-contract work.

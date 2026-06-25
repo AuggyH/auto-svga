@@ -191,12 +191,13 @@
         "external reviewer reproduces no artifact-existence false pass"
       ],
       "currentOpenSubIssues": [
-        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending."
+        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending.",
+        "Independent review revoked the prior HUMAN_REQUIRED/Reviewer B/Final Seal/Post-seal usability state; this finding is returned to WP3/Gate B repair scope until runtime-derived interaction evidence, owner handoff identity, and downstream gates are rerun on a new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -296,12 +297,13 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending."
+        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending.",
+        "Independent review revoked the prior HUMAN_REQUIRED/Reviewer B/Final Seal/Post-seal usability state; this finding is returned to WP3/Gate B repair scope until runtime-derived interaction evidence, owner handoff identity, and downstream gates are rerun on a new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -464,12 +466,13 @@
         "owner review"
       ],
       "currentOpenSubIssues": [
-        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending."
+        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending.",
+        "Independent review revoked the prior HUMAN_REQUIRED/Reviewer B/Final Seal/Post-seal usability state; this finding is returned to WP3/Gate B repair scope until runtime-derived interaction evidence, owner handoff identity, and downstream gates are rerun on a new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -571,12 +574,13 @@
         "owner-visible wording check"
       ],
       "currentOpenSubIssues": [
-        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending."
+        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending.",
+        "Independent review revoked the prior HUMAN_REQUIRED/Reviewer B/Final Seal/Post-seal usability state; this finding is returned to WP3/Gate B repair scope until runtime-derived interaction evidence, owner handoff identity, and downstream gates are rerun on a new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -632,12 +636,13 @@
         "external review does not find path or visibility issue"
       ],
       "currentOpenSubIssues": [
-        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending."
+        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending.",
+        "Independent review revoked the prior HUMAN_REQUIRED/Reviewer B/Final Seal/Post-seal usability state; this finding is returned to WP3/Gate B repair scope until runtime-derived interaction evidence, owner handoff identity, and downstream gates are rerun on a new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
@@ -687,12 +692,13 @@
         "owner-approved recovery plan"
       ],
       "currentOpenSubIssues": [
-        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending."
+        "Machine validation reached HUMAN_REQUIRED with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review are still pending.",
+        "Independent review revoked the prior HUMAN_REQUIRED/Reviewer B/Final Seal/Post-seal usability state; this finding is returned to WP3/Gate B repair scope until runtime-derived interaction evidence, owner handoff identity, and downstream gates are rerun on a new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
