@@ -149,6 +149,7 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
 test("main process keeps sandboxed Electron security settings", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
+  const productApp = await readFile(path.join(repoRoot, "tools/shared/product-frontend/product-app.mjs"), "utf8");
   const localTmpPath = ["/", "tmp", "preload.cjs"].join("");
   const localTmpFileUrl = `file://${["", "tmp", "test.svga"].join("/")}`;
   const securePreferences = hostContract.createSecureWebPreferences({
@@ -201,6 +202,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /captureProductArtifact/);
   assert.match(main, /validateArtifactScenario/);
   assert.match(main, /validateP6InteractionTrace/);
+  assert.match(main, /function validateSmokeDiagnostics/);
+  assert.match(main, /diagnostics = validateSmokeDiagnostics\(value\.diagnostics\)/);
+  assert.match(main, /logPayload\.diagnostics = diagnostics/);
   assert.match(main, /desktop-interaction-trace\.source\.json/);
   assert.match(main, /p6InteractionTrace: Boolean\(p6InteractionTrace\)/);
   assert.match(main, /const productIdentity = "Auto SVGA"/);
@@ -258,6 +262,8 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /noProofArguments/);
   assert.match(main, /orphanProcessPolicy/);
   assert.match(main, /AUTO_SVGA_RUNTIME_CLEANUP/);
+  assert.match(main, /AUTO_SVGA_SMOKE_RESULT_REJECTED/);
+  assert.match(main, /describeP6InteractionTraceValidationFailure/);
   assert.match(main, /sessionRootRedacted: sanitizeRuntimeArgument\(sessionRoot\)/);
   assert.match(main, /tempRemoved: true/);
   assert.doesNotMatch(main, /actualArgv:\s*process\.argv/);
@@ -279,6 +285,13 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.doesNotMatch(preload, /require\(["']\.\/host-adapter-contract\.cjs["']\)/);
   assert.doesNotMatch(preload, /\bdialog\s*[\s,:})]|shell\.|openPath|readFile/);
   assert.doesNotMatch(preload, /require\("node:fs"\)|require\("fs"\)/);
+  assert.match(productApp, /function createP6SmokeFailureDiagnostics/);
+  assert.match(productApp, /diagnostics: createP6SmokeFailureDiagnostics\(error\)/);
+  assert.match(productApp, /currentActionId: p6SmokeCurrentActionId/);
+  assert.match(productApp, /sanitizeP6SmokeDiagnostic/);
+  assert.match(productApp, /function p6BoundedSmokeText/);
+  assert.match(productApp, /visibleResultText: p6BoundedSmokeText\(proof\.renderedText\)/);
+  assert.doesNotMatch(productApp, /stack: error\.stack|error\.stack/);
 });
 
 test("desktop latest-artifact catalog returns Web-shaped non-empty and safe-empty results without path leaks", async () => {
@@ -290,6 +303,9 @@ test("desktop latest-artifact catalog returns Web-shaped non-empty and safe-empt
     await writeFile(path.join(output, "avatar_frame_basic.svga"), svgaBytes);
     await writeFile(path.join(output, "report.json"), JSON.stringify({ ok: true }));
     await writeFile(path.join(output, "preview.webm"), Uint8Array.from([1, 2, 3]));
+    const exports = path.join(root, "exports");
+    await mkdir(exports, { recursive: true });
+    await writeFile(path.join(exports, "invalid-fixture.svga"), Uint8Array.from([0, 1, 2, 3]));
     const catalog = createDesktopArtifactCatalog({
       groupedRoots: [{ rootPath: path.join(root, "examples"), kind: "example" }],
       standaloneRoots: [{ rootPath: path.join(root, "exports"), jobId: "exports" }]

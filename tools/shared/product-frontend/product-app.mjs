@@ -1583,6 +1583,7 @@ async function captureArtifact(scenario) {
 
 const p6SmokeActionTrace = [];
 let p6SmokeFixture = null;
+let p6SmokeCurrentActionId = null;
 
 const p6SmokeRegionContract = [
   ["shell", ".shell"],
@@ -1721,7 +1722,15 @@ function p6VisibleIds(entries = []) {
     .sort();
 }
 
+function p6BoundedSmokeText(value, maxLength = 240) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
 async function recordP6SmokeAction(action, runAction, waitForState) {
+  p6SmokeCurrentActionId = action.id;
   const target = p6SmokeTargetForSelector(action.selector);
   const stateBefore = await collectP6SmokeActionState(`${action.initialState}:before`);
   await runAction();
@@ -1736,14 +1745,14 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
   const proof = equivalentProof ?? primaryProof;
   const activeElement = document.activeElement;
   const focusOrVisibleResult = {
-    activeElementId: activeElement?.id ?? null,
+    activeElementId: activeElement?.id || null,
     activeElementText: (activeElement?.innerText || activeElement?.getAttribute?.("aria-label") || activeElement?.getAttribute?.("title") || "")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 120),
     visibleResultState: proof.state,
     visibleResultPassed: proof.passed === true,
-    visibleResultText: proof.renderedText ?? ""
+    visibleResultText: p6BoundedSmokeText(proof.renderedText)
   };
   p6SmokeActionTrace.push({
     ...action,
@@ -1765,6 +1774,7 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
     stateProofPassed: proof.passed,
     stateProofFailures: proof.failures
   });
+  p6SmokeCurrentActionId = null;
 }
 
 async function collectP6SmokeActionState(stateId) {
@@ -1826,6 +1836,28 @@ async function buildP6SmokeInteractionTrace() {
     failures: [],
     generatedAt: new Date().toISOString()
   };
+}
+
+function createP6SmokeFailureDiagnostics(error) {
+  const lastAction = p6SmokeActionTrace[p6SmokeActionTrace.length - 1];
+  return {
+    schemaVersion: 1,
+    phase: "runProductSmoke",
+    errorName: sanitizeP6SmokeDiagnostic(error?.name || "Error", 80),
+    errorMessage: sanitizeP6SmokeDiagnostic(error?.message || String(error || "Unknown product smoke failure"), 260),
+    actionCount: p6SmokeActionTrace.length,
+    currentActionId: p6SmokeCurrentActionId,
+    lastActionId: lastAction?.id ?? null
+  };
+}
+
+function sanitizeP6SmokeDiagnostic(value, maxLength) {
+  return String(value)
+    .replace(/\/Users\/[^\s"'<>]+/g, "<path>")
+    .replace(/[A-Za-z]:\\[^\s"'<>]+/g, "<path>")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength) || "Unknown";
 }
 
 function resourcesAreLocal() {
@@ -2747,7 +2779,8 @@ async function runProductSmoke() {
       dragDrop: false,
       errorFile: false,
       playerLifecycle: false,
-      cleanup: false
+      cleanup: false,
+      diagnostics: createP6SmokeFailureDiagnostics(error)
     });
   }
 }

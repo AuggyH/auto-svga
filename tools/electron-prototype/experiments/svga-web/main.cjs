@@ -118,7 +118,101 @@ function validateSmokeResult(value) {
     if (!trace) return undefined;
     result.p6InteractionTrace = trace;
   }
+  if (value.diagnostics !== undefined) {
+    const diagnostics = validateSmokeDiagnostics(value.diagnostics);
+    if (!diagnostics) return undefined;
+    result.diagnostics = diagnostics;
+  }
   return result;
+}
+
+function describeSmokeResultValidationFailure(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "root_shape";
+  const keys = [
+    "localPage",
+    "localOnly",
+    "strictCsp",
+    "noCspViolation",
+    "playback",
+    "canvasNonBlank",
+    "inspectionReport",
+    "auditPanel",
+    "fileInput",
+    "dragDrop",
+    "errorFile",
+    "playerLifecycle",
+    "cleanup"
+  ];
+  const missingBoolean = keys.find((key) => typeof value[key] !== "boolean");
+  if (missingBoolean) return `boolean:${missingBoolean}`;
+  if (value.p6InteractionTrace !== undefined && !validateP6InteractionTrace(bindP6InteractionTrace(value.p6InteractionTrace))) {
+    return describeP6InteractionTraceValidationFailure(bindP6InteractionTrace(value.p6InteractionTrace));
+  }
+  if (value.diagnostics !== undefined && !validateSmokeDiagnostics(value.diagnostics)) return "diagnostics";
+  return "unknown";
+}
+
+function describeP6InteractionTraceValidationFailure(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "p6Trace:shape";
+  if (JSON.stringify(value).length > 220_000) return "p6Trace:size";
+  if (value.schemaVersion !== 1 || value.host !== "desktop") return "p6Trace:identity";
+  if (!isP6Fixture(value.fixture)) return "p6Trace:fixture";
+  if (!isP6Context(value.context)) return "p6Trace:context";
+  if (!Array.isArray(value.actionTrace) || value.actionTrace.length === 0 || value.actionTrace.length > 40) return "p6Trace:actionTraceCount";
+  const badActionIndex = value.actionTrace.findIndex((entry) => !isP6ActionTraceEntry(entry));
+  if (badActionIndex >= 0) return `p6Trace:actionTrace:${badActionIndex}:${describeP6ActionTraceEntryValidationFailure(value.actionTrace[badActionIndex])}`;
+  if (!isSha256(value.finalStateDigest)) return "p6Trace:finalStateDigest";
+  if (!isStringArray(value.visibleRegions, 80) || value.visibleRegions.length === 0) return "p6Trace:visibleRegions";
+  if (!isStringArray(value.visibleControls, 160) || value.visibleControls.length === 0) return "p6Trace:visibleControls";
+  if (!Array.isArray(value.screenshots) || value.screenshots.length === 0 || value.screenshots.length > 40) return "p6Trace:screenshots";
+  if (!value.screenshots.every((entry) =>
+    entry && typeof entry === "object" && !Array.isArray(entry)
+    && isBoundedString(entry.stateId, 120)
+    && isBoundedString(entry.path, 260)
+    && !entry.path.includes("..")
+  )) return "p6Trace:screenshotEntry";
+  if (!isP6MutationProtection(value.mutationProtection)) return "p6Trace:mutationProtection";
+  if (!isStringArray(value.failures, 80)) return "p6Trace:failures";
+  return "p6Trace:unknown";
+}
+
+function describeP6ActionTraceEntryValidationFailure(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
+  if (!isBoundedString(value.id, 160)) return "id";
+  if (!isBoundedString(value.kind, 40)) return "kind";
+  if (!isBoundedString(value.selector, 220)) return "selector";
+  if (!isBoundedString(value.initialState, 160)) return "initialState";
+  if (!isBoundedString(value.expectedState, 160)) return "expectedState";
+  if (!isP6ActionState(value.stateBefore)) return "stateBefore";
+  if (!isP6RealAction(value.realAction)) return "realAction";
+  if (!isP6ActionState(value.stateAfter)) return "stateAfter";
+  if (!(value.stateReached === null || isBoundedString(value.stateReached, 160))) return "stateReached";
+  if (!isP6Rect(value.targetRect)) return "targetRect";
+  if (!(value.controlValue === null || isP6ControlValue(value.controlValue))) return "controlValue";
+  if (!isP6FocusOrVisibleResult(value.focusOrVisibleResult)) return "focusOrVisibleResult";
+  if (typeof value.stateProofPassed !== "boolean") return "stateProofPassed";
+  if (!isStringArray(value.stateProofFailures, 80)) return "stateProofFailures";
+  return "unknown";
+}
+
+function validateSmokeDiagnostics(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1) return undefined;
+  if (!isBoundedString(value.phase, 80)) return undefined;
+  if (!isBoundedString(value.errorName, 80)) return undefined;
+  if (!isBoundedString(value.errorMessage, 260)) return undefined;
+  if (!Number.isInteger(value.actionCount) || value.actionCount < 0 || value.actionCount > 60) return undefined;
+  if (value.currentActionId !== null && !isBoundedString(value.currentActionId, 180)) return undefined;
+  if (value.lastActionId !== null && !isBoundedString(value.lastActionId, 180)) return undefined;
+  return {
+    schemaVersion: 1,
+    phase: value.phase,
+    errorName: value.errorName,
+    errorMessage: value.errorMessage,
+    actionCount: value.actionCount,
+    currentActionId: value.currentActionId,
+    lastActionId: value.lastActionId
+  };
 }
 
 function bindP6InteractionTrace(value) {
@@ -1102,9 +1196,11 @@ async function finishSmoke(window, result) {
     );
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify({ ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace) })}`);
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace) };
+  if (diagnostics) logPayload.diagnostics = diagnostics;
+  console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();
   window.destroy();
   app.exit(passed ? 0 : 1);
@@ -1850,7 +1946,10 @@ async function createExperimentWindow() {
   ipcMain.handle(IPC_CHANNELS.smokeResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     const result = validateSmokeResult(input);
-    if (!result) throw new Error("Invalid smoke result");
+    if (!result) {
+      console.log(`AUTO_SVGA_SMOKE_RESULT_REJECTED ${JSON.stringify({ reason: describeSmokeResultValidationFailure(input) })}`);
+      throw new Error("Invalid smoke result");
+    }
     if (smokeMode) await finishSmoke(window, result);
     return { accepted: true };
   });

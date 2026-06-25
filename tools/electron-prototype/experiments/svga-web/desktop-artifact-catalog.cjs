@@ -46,7 +46,9 @@ function createDesktopArtifactCatalog({ groupedRoots = [], standaloneRoots = [],
       if (group) groups.push(group);
     }
     groups.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-    const latestWithSvga = groups.find((group) => group.svgaPath) ?? null;
+    const latestWithSvga = groups.find(isCompleteSvgaGroup)
+      ?? groups.find((group) => group.svgaPath)
+      ?? null;
     const latestAny = groups[0] ?? null;
     const warnings = [];
     if (!latestWithSvga && latestAny) warnings.push("未找到包含 SVGA 的产物组，将仅提供最新参考文件。");
@@ -126,6 +128,14 @@ async function inspectArtifactDirectory({ directoryPath, extraDirectories = [], 
     ...(report ? { reportPath: registerFile(report.absolutePath, files, routePrefix) } : {}),
     warnings
   };
+}
+
+function isCompleteSvgaGroup(group) {
+  return Boolean(
+    group.svgaPath
+    && group.reportPath
+    && (group.gifPath || group.mp4Path || group.webmPath)
+  );
 }
 
 function registerFile(filePath, files, routePrefix) {
