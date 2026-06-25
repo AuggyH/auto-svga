@@ -1634,6 +1634,7 @@ function p6SmokeTargetForSelector(selector) {
     .map((part) => document.querySelector(part.trim()))
     .filter(Boolean);
   const visibleNode = nodes.find((node) => isElementVisible(node)) ?? nodes[0] ?? null;
+  visibleNode?.scrollIntoView?.({ block: "center", inline: "center" });
   const rect = visibleNode?.getBoundingClientRect();
   const actionablePoint = rect ? {
     x: Math.round(Math.min(Math.max(rect.left + rect.width / 2, 0), Math.max(innerWidth - 1, 0))),
@@ -2806,6 +2807,8 @@ async function runProductSmoke() {
     closeP6SmokeTransientUi();
     await delay(240);
     setAppMode("localPreview");
+    if (compareToggle.checked) compareToggle.click();
+    await waitFor(() => !isCompareActive());
     await recordP6SmokeAction({
       id: "enable-local-compare-switch",
       kind: "click",

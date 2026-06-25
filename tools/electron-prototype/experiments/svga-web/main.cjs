@@ -184,7 +184,7 @@ function describeP6ActionTraceEntryValidationFailure(value) {
   if (!isBoundedString(value.initialState, 160)) return "initialState";
   if (!isBoundedString(value.expectedState, 160)) return "expectedState";
   if (!isP6ActionState(value.stateBefore)) return "stateBefore";
-  if (!isP6RealAction(value.realAction)) return "realAction";
+  if (!isP6RealAction(value.realAction)) return `realAction:${describeP6RealActionValidationFailure(value.realAction)}`;
   if (!isP6ActionState(value.stateAfter)) return "stateAfter";
   if ("stateReached" in value) return "deprecatedStateReached";
   if (!isP6Rect(value.targetRect)) return "targetRect";
@@ -345,6 +345,43 @@ function isP6RealAction(value) {
       && receipt.targetMatches === true
       && Number.isFinite(receipt.timestampMs)
     );
+}
+
+function describeP6RealActionValidationFailure(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
+  if (!["click", "input", "change", "drop", "keyboard", "native-menu"].includes(value.inputKind)) return "inputKind";
+  if (!isBoundedString(value.selector, 220)) return "selector";
+  if (!isBoundedString(value.trustedPath, 120)) return "trustedPath";
+  if (typeof value.targetVisible !== "boolean") return "targetVisibleType";
+  if (!isP6Rect(value.targetRect)) return "targetRect";
+  if (!value.actionablePoint || typeof value.actionablePoint !== "object") return "actionablePoint";
+  if (!Number.isFinite(value.actionablePoint.x) || !Number.isFinite(value.actionablePoint.y)) return "actionablePointCoordinates";
+  if (value.viewportIntersected !== true) return "viewportIntersected";
+  if (value.occlusionPassed !== true) return "occlusionPassed";
+  if (!Number.isFinite(value.eventTimestampMs)) return "eventTimestampMs";
+  if (!Array.isArray(value.eventReceipts)) return "eventReceiptsType";
+  if (value.eventReceipts.length === 0) return "eventReceiptsEmpty";
+  if (value.eventReceipts.length > 12) return "eventReceiptsTooMany";
+  const badReceiptIndex = value.eventReceipts.findIndex((receipt) =>
+    !receipt
+    || typeof receipt !== "object"
+    || Array.isArray(receipt)
+    || !isBoundedString(receipt.type, 40)
+    || !isBoundedString(receipt.selector, 220)
+    || receipt.selector !== value.selector
+    || receipt.targetMatches !== true
+    || !Number.isFinite(receipt.timestampMs)
+  );
+  if (badReceiptIndex >= 0) {
+    const receipt = value.eventReceipts[badReceiptIndex];
+    if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) return `eventReceipt:${badReceiptIndex}:shape`;
+    if (!isBoundedString(receipt.type, 40)) return `eventReceipt:${badReceiptIndex}:type`;
+    if (!isBoundedString(receipt.selector, 220)) return `eventReceipt:${badReceiptIndex}:selector`;
+    if (receipt.selector !== value.selector) return `eventReceipt:${badReceiptIndex}:selectorMismatch`;
+    if (receipt.targetMatches !== true) return `eventReceipt:${badReceiptIndex}:targetMatches`;
+    if (!Number.isFinite(receipt.timestampMs)) return `eventReceipt:${badReceiptIndex}:timestampMs`;
+  }
+  return "unknown";
 }
 
 function isP6FocusOrVisibleResult(value) {
