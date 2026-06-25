@@ -236,7 +236,7 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
   const desktopSemantic = semanticFromSnapshot(desktopState);
   const semanticStatePredicatesMatched = semanticStatePassed(stateId, webSemantic)
     && semanticStatePassed(stateId, desktopSemantic)
-    && sameSemanticContext(webSemantic, desktopSemantic);
+    && sameSemanticContext(webSemantic, desktopSemantic, stateId);
   if (!semanticStatePredicatesMatched) failures.push(`semantic runtime state predicates failed for ${stateId}`);
   const geometryCompared = Boolean(
     webSnapshot?.regions?.some((entry) => entry.id === "svgaPanelA" && rectHasArea(entry.rect))
@@ -410,12 +410,40 @@ function semanticFromSnapshot(snapshot) {
     staleMetadataCleared: semantic.staleMetadataCleared === true,
     staleInspectionCleared: semantic.staleInspectionCleared === true,
     staleCanvasCleared: semantic.staleCanvasCleared === true,
-    staleFileBadgeCleared: semantic.staleFileBadgeCleared === true
+    staleFileBadgeCleared: semantic.staleFileBadgeCleared === true,
+    primaryIsPlaying: semantic.primaryIsPlaying === true,
+    primaryPlaybackEvidenceState: typeof semantic.primaryPlaybackEvidenceState === "string" ? semantic.primaryPlaybackEvidenceState : null,
+    latestArtifactLoaded: semantic.latestArtifactLoaded === true,
+    referenceMediaLoaded: semantic.referenceMediaLoaded === true
   };
 }
 
 function semanticStatePassed(stateId, semantic) {
   if (!semantic || !observedStateMatches(semantic.observedStateId, stateId)) return false;
+  if (stateId === "playing") {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryIsPlaying === true
+      && semantic.primaryPlaybackEvidenceState === "playing";
+  }
+  if (stateId === "paused") {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryIsPlaying === false
+      && semantic.primaryPlaybackEvidenceState === "paused";
+  }
+  if (stateId === "latest-artifact-loaded") {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryOverlayVisible === false
+      && semantic.latestArtifactLoaded === true;
+  }
+  if (stateId === "reference-media-loaded") {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryOverlayVisible === false
+      && semantic.referenceMediaLoaded === true;
+  }
   if (loadedState(stateId)) {
     return semantic.primaryOccupied === true
       && semantic.loadedCanvasNonBlank === true
@@ -451,11 +479,22 @@ function semanticStatePassed(stateId, semantic) {
   return true;
 }
 
-function sameSemanticContext(webSemantic, desktopSemantic) {
-  return webSemantic.primaryOccupied === desktopSemantic.primaryOccupied
-    && webSemantic.loadedCanvasNonBlank === desktopSemantic.loadedCanvasNonBlank
-    && webSemantic.primaryOverlayVisible === desktopSemantic.primaryOverlayVisible
-    && webSemantic.errorVisible === desktopSemantic.errorVisible;
+function sameSemanticContext(webSemantic, desktopSemantic, stateId) {
+  if (webSemantic.primaryOccupied !== desktopSemantic.primaryOccupied
+    || webSemantic.loadedCanvasNonBlank !== desktopSemantic.loadedCanvasNonBlank
+    || webSemantic.primaryOverlayVisible !== desktopSemantic.primaryOverlayVisible
+    || webSemantic.errorVisible !== desktopSemantic.errorVisible
+    || webSemantic.primaryIsPlaying !== desktopSemantic.primaryIsPlaying
+    || webSemantic.primaryPlaybackEvidenceState !== desktopSemantic.primaryPlaybackEvidenceState) {
+    return false;
+  }
+  if (stateId === "latest-artifact-loaded" && webSemantic.latestArtifactLoaded !== desktopSemantic.latestArtifactLoaded) {
+    return false;
+  }
+  if (stateId === "reference-media-loaded" && webSemantic.referenceMediaLoaded !== desktopSemantic.referenceMediaLoaded) {
+    return false;
+  }
+  return true;
 }
 
 function loadedState(stateId) {
@@ -488,7 +527,9 @@ function canonicalModal(value) {
 }
 
 function findWebSnapshot(snapshots, stateId) {
-  return snapshots.find((snapshot) => stateMatches(snapshot.stateId, stateId)) ?? null;
+  return snapshots.find((snapshot) => snapshot.stateId === stateId)
+    ?? snapshots.find((snapshot) => stateMatches(snapshot.stateId, stateId))
+    ?? null;
 }
 
 function findDesktopState(states, stateId) {
@@ -513,6 +554,8 @@ function stateMatches(actual, expected) {
   if (actual === expected) return true;
   if (expected === "local-empty" && actual === "empty") return true;
   if (expected === "invalid-error-state" && actual === "invalid") return true;
+  if (expected === "latest-artifact-loaded" && actual === "export-review-loaded") return true;
+  if (expected === "reference-media-loaded" && actual === "export-review-loaded") return true;
   if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "export-review-loaded") return true;
   if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "responsive-export-review-900x720") return true;
   return false;

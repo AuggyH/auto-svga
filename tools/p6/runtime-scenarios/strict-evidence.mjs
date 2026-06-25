@@ -153,7 +153,7 @@ function runtimeStateFactsMatched(comparison) {
     && runtime.sourceSlotContextMatched === true
     && runtime.semanticStatePredicatesMatched === true
     && sameObservedState(runtime.webObservedStateId, runtime.desktopObservedStateId, comparison.stateId)
-    && sameStateSemantics(runtime.webSemantic, runtime.desktopSemantic)
+    && sameStateSemantics(runtime.webSemantic, runtime.desktopSemantic, comparison.stateId)
     && semanticStateValid(comparison.stateId, runtime.webSemantic)
     && semanticStateValid(comparison.stateId, runtime.desktopSemantic);
 }
@@ -170,12 +170,36 @@ function comparisonContextMatched(comparison) {
     && sameObservedState(context.web.observedStateId, context.desktop.observedStateId, comparison.stateId)
     && sameFixtureContext(context.web.fixture, context.desktop.fixture)
     && sameSourceSlots(context.web.sourceSlots, context.desktop.sourceSlots)
-    && sameStateSemantics(context.web.stateSemantics, context.desktop.stateSemantics);
+    && sameStateSemantics(context.web.stateSemantics, context.desktop.stateSemantics, comparison.stateId);
 }
 
 function semanticStateValid(stateId, semantic) {
   if (!isRecord(semantic)) return false;
   if (!sameObservedState(semantic.observedStateId, semantic.observedStateId, stateId)) return false;
+  if (stateId === "playing") {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryIsPlaying === true
+      && semantic.primaryPlaybackEvidenceState === "playing";
+  }
+  if (stateId === "paused") {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryIsPlaying === false
+      && semantic.primaryPlaybackEvidenceState === "paused";
+  }
+  if (stateId === "latest-artifact-loaded") {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryOverlayVisible === false
+      && semantic.latestArtifactLoaded === true;
+  }
+  if (stateId === "reference-media-loaded") {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryOverlayVisible === false
+      && semantic.referenceMediaLoaded === true;
+  }
   if (loadedState(stateId)) {
     return semantic.primaryOccupied === true
       && semantic.loadedCanvasNonBlank === true
@@ -232,6 +256,8 @@ function sameObservedState(webObserved, desktopObserved, expected) {
 function canonicalObservedState(actual, expected) {
   if (expected === "local-empty" && actual === "empty") return expected;
   if (expected === "invalid-error-state" && actual === "invalid") return expected;
+  if (expected === "latest-artifact-loaded" && actual === "export-review-loaded") return expected;
+  if (expected === "reference-media-loaded" && actual === "export-review-loaded") return expected;
   if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "export-review-loaded") return expected;
   if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "responsive-export-review-900x720") return expected;
   return actual;
@@ -259,12 +285,23 @@ function sameSourceSlots(webSlots, desktopSlots) {
   });
 }
 
-function sameStateSemantics(webSemantic, desktopSemantic) {
+function sameStateSemantics(webSemantic, desktopSemantic, stateId) {
   if (!isRecord(webSemantic) || !isRecord(desktopSemantic)) return false;
-  return webSemantic.primaryOccupied === desktopSemantic.primaryOccupied
+  if (!(webSemantic.primaryOccupied === desktopSemantic.primaryOccupied
     && webSemantic.loadedCanvasNonBlank === desktopSemantic.loadedCanvasNonBlank
     && webSemantic.primaryOverlayVisible === desktopSemantic.primaryOverlayVisible
-    && webSemantic.errorVisible === desktopSemantic.errorVisible;
+    && webSemantic.errorVisible === desktopSemantic.errorVisible
+    && webSemantic.primaryIsPlaying === desktopSemantic.primaryIsPlaying
+    && webSemantic.primaryPlaybackEvidenceState === desktopSemantic.primaryPlaybackEvidenceState)) {
+    return false;
+  }
+  if (stateId === "latest-artifact-loaded" && webSemantic.latestArtifactLoaded !== desktopSemantic.latestArtifactLoaded) {
+    return false;
+  }
+  if (stateId === "reference-media-loaded" && webSemantic.referenceMediaLoaded !== desktopSemantic.referenceMediaLoaded) {
+    return false;
+  }
+  return true;
 }
 
 function motionPhaseHashesChanged(evidence, host) {
@@ -660,6 +697,8 @@ function requiredIdsVisible(webIds, desktopIds, requiredIds) {
 function stateMatches(actual, expected) {
   if (actual === expected) return true;
   if (expected === "invalid-error-state" && actual === "invalid") return true;
+  if (expected === "latest-artifact-loaded" && actual === "export-review-loaded") return true;
+  if (expected === "reference-media-loaded" && actual === "export-review-loaded") return true;
   if (expected === "synchronized-playback-toggled-by-space" && actual === "space-sync-toggle") return true;
   if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "responsive-export-review-900x720") return true;
   return false;

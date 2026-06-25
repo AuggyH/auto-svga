@@ -281,6 +281,17 @@ async function collectSnapshot(window, stateId) {
             }
           };
         });
+      const productSnapshot = window.__autoSvgaDesktopStateProbe?.snapshot?.(${JSON.stringify(stateId)});
+      if (productSnapshot && typeof productSnapshot === "object") {
+        return {
+          ...productSnapshot,
+          label: ${JSON.stringify(stateId)},
+          title: document.title,
+          url: location.href,
+          regions: Array.isArray(productSnapshot.regions) && productSnapshot.regions.length ? productSnapshot.regions : regions,
+          controls: Array.isArray(productSnapshot.controls) && productSnapshot.controls.length ? productSnapshot.controls : controls
+        };
+      }
       const activeMode = document.querySelector("#modeDropdownTrigger")?.textContent?.replace(/\\s+/g, " ").trim() ?? "unknown";
       const infoPanel = document.querySelector("#infoPanel");
       const logsPanel = document.querySelector("#logsPanel");
@@ -832,6 +843,23 @@ async function loadReferenceGif(window) {
   `, 12_000);
 }
 
+async function installFixtureMarker(window, fileName = "avatar_frame_basic.svga") {
+  await window.webContents.executeJavaScript(`
+    (async () => {
+      const response = await fetch(${JSON.stringify(fixtureUrl)});
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      const sha256 = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      window.__autoSvgaP6Fixture = {
+        sha256,
+        displayName: ${JSON.stringify(fileName)},
+        sizeBytes: bytes.byteLength
+      };
+      return true;
+    })()
+  `);
+}
+
 async function dispatchFixtureLoad(window, options = {}) {
   const inputSelector = options.inputSelector ?? "#svgaFileInput";
   const fileName = options.fileName ?? "p6-web-baseline-fixture.svga";
@@ -990,6 +1018,10 @@ async function main() {
   await waitForFixtureLoaded(window);
   snapshots.push(await collectSnapshot(window, "loaded"));
   await capture(window, "screenshot-loaded-1440x900.png");
+  await window.webContents.executeJavaScript(`window.__autoSvgaDesktopStateProbe?.collect?.("loaded"); document.querySelector("#localPlayPauseButton")?.click(); true;`);
+  await waitFor(window, `document.querySelector("#localPlayPauseButton")?.getAttribute("aria-pressed") === "false"`);
+  await window.webContents.executeJavaScript(`document.querySelector("#localPlayPauseButton")?.click(); true;`);
+  await waitFor(window, `document.querySelector("#localPlayPauseButton")?.getAttribute("aria-pressed") === "true"`);
   snapshots.push(await collectSnapshot(window, "playing"));
   await capture(window, "screenshot-playing-1440x900.png");
   await window.webContents.executeJavaScript(`document.querySelector("#localPlayPauseButton")?.click(); true;`);
@@ -1016,6 +1048,7 @@ async function main() {
   await delay(400);
 
   console.log("P6_WEB_BASELINE_PHASE export-review");
+  await installFixtureMarker(window);
   await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
   await waitFor(window, `(() => {
     const menu = document.querySelector("#modeDropdownMenu");
@@ -1174,8 +1207,29 @@ async function main() {
   await capture(window, "screenshot-local-compare-loaded-1440x900.png");
 
   console.log("P6_WEB_BASELINE_PHASE responsive-export");
-  await setMode(window, "exportReview");
+  await installFixtureMarker(window);
+  await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
+  await waitFor(window, `(() => {
+    const menu = document.querySelector("#modeDropdownMenu");
+    const rect = menu?.getBoundingClientRect();
+    return Boolean(menu && !menu.hidden && rect && rect.width > 0 && rect.height > 0);
+  })()`);
+  await browserPointClick(window, "[data-value='exportReview']");
+  await delay(700);
+  await loadFixture(window, { fileName: "avatar_frame_basic.svga" });
+  await loadReferenceGif(window);
   window.setSize(900, 720);
+  window.setContentSize(900, 720);
+  await waitFor(window, `innerWidth <= 920 && innerHeight <= 740`, 6_000);
+  await waitFor(window, `(() => {
+    const snapshot = window.__autoSvgaDesktopStateProbe?.snapshot?.("responsive-export-review-loaded-at-900-x-720");
+    return Boolean(
+      snapshot?.observedStateId === "export-review-loaded"
+      && snapshot?.sourceSlots?.primary?.occupied === true
+      && snapshot?.sourceSlots?.reference?.occupied === true
+      && snapshot?.stateSemantics?.loadedCanvasNonBlank === true
+    );
+  })()`, 6_000);
   await delay(450);
   snapshots.push(await collectSnapshot(window, "responsive-export-review-loaded-at-900-x-720"));
   await capture(window, "screenshot-export-review-loaded-900x720.png");
@@ -1183,8 +1237,9 @@ async function main() {
   console.log("P6_WEB_BASELINE_PHASE invalid");
   window.setSize(1440, 900);
   await delay(220);
+  await execute(window, `window.__autoSvgaDesktopStateProbe?.clearTransientSources?.(); true;`);
   await setMode(window, "localPreview");
-  await window.webContents.executeJavaScript(`const toggle = document.querySelector("#compareToggle"); if (toggle && !toggle.checked) toggle.click(); true;`);
+  await window.webContents.executeJavaScript(`const toggle = document.querySelector("#compareToggle"); if (toggle?.checked) toggle.click(); true;`);
   await delay(240);
   await invalidLoad(window);
   snapshots.push(await collectSnapshot(window, "invalid-error-state"));

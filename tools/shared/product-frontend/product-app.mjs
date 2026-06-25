@@ -223,6 +223,7 @@ function createPlayerSlot(slotName) {
     parseStatus: "empty",
     renderStatus: "empty",
     isPlaying: false,
+    p6PlaybackEvidenceState: undefined,
     loop: true
   };
 }
@@ -280,6 +281,7 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   slot.parseStatus = "empty";
   slot.renderStatus = "empty";
   slot.sourceIdentity = undefined;
+  slot.p6PlaybackEvidenceState = undefined;
   slot.panel.classList.remove("hasMedia", "isLoading");
   setSlotEmptyStateHidden(slot, false);
   slot.canvas.innerHTML = "";
@@ -811,6 +813,7 @@ function replaySlot(slot, shouldShowError = true) {
   slot.player.startAnimation();
   slot.renderStatus = "ready";
   slot.isPlaying = true;
+  slot.p6PlaybackEvidenceState = "playing";
   setStatus(slot.status, "playing");
   slot.panel.classList.add("hasMedia");
   setSlotEmptyStateHidden(slot, true);
@@ -829,6 +832,7 @@ function pauseSlot(slot) {
     slot.player.pauseAnimation();
   }
   slot.isPlaying = false;
+  slot.p6PlaybackEvidenceState = "paused";
   if (slot.slotName === "A") {
     stopLocalTicker();
   } else {
@@ -846,6 +850,7 @@ function playSlot(slot) {
     }
     slot.player.startAnimation();
     slot.isPlaying = true;
+    slot.p6PlaybackEvidenceState = "playing";
     setStatus(slot.status, "playing");
     if (slot.slotName === "A") {
       startLocalTicker(false);
@@ -1343,6 +1348,7 @@ function buildImageWarnings(image) {
 async function loadSvga(slotKey, source = paths.svga, options = {}) {
   ensureSvgaLibrary();
   const slot = players[slotKey];
+  const p6Fixture = p6SmokeFixture ?? window.__autoSvgaP6Fixture ?? null;
   const wasPrimaryInvalid = slot.slotName === "A"
     && (slot.parseStatus === "error"
       || slot.renderStatus === "error"
@@ -1355,8 +1361,8 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
     sourceKind: typeof source === "string" && source.startsWith("blob:") ? "local_blob" : "url",
     fileName: options.fileName ?? (typeof source === "string" ? source.split("/").at(-1) : `SVGA ${slot.slotName}`),
     fileSizeBytes: options.fileSizeBytes ?? null,
-    fixtureSha256: options.fixtureSha256 ?? p6SmokeFixture?.sha256 ?? null,
-    displayName: options.fileName ?? p6SmokeFixture?.displayName ?? null
+    fixtureSha256: options.fixtureSha256 ?? p6Fixture?.sha256 ?? null,
+    displayName: options.fileName ?? p6Fixture?.displayName ?? null
   };
   slot.report = options.report;
   slot.inspectionStatus = "loading";
@@ -1435,6 +1441,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
         refreshLayout();
         rebuildPlayer(slot);
         replaySlot(slot, false);
+        slot.p6PlaybackEvidenceState = "loaded";
         slot.panel.classList.remove("isLoading");
         clearSlotLoadingPhase(slot);
         if (slot.slotName === "A") applyPrimaryEmptyCopy();
@@ -1703,6 +1710,7 @@ async function p6Sha256Bytes(bytes) {
 }
 
 function collectP6SmokeSnapshot(stateId) {
+  const p6Fixture = p6SmokeFixture ?? window.__autoSvgaP6Fixture ?? null;
   const regions = p6SmokeRegionContract.map(([id, selector]) => {
     const node = document.querySelector(selector);
     const rect = node?.getBoundingClientRect();
@@ -1756,7 +1764,7 @@ function collectP6SmokeSnapshot(stateId) {
     if (p6PrimaryRecoveredFromInvalid && players.a.videoItem && players.a.parseStatus !== "loading" && players.a.renderStatus === "ready") return "recovered-from-invalid";
     if (modeDropdownTrigger?.getAttribute("aria-expanded") === "true" || (!modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu))) return "mode-menu-open";
     if (modal === "assetPreviewModal") return "asset-preview-modal-open";
-    if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
+    if (/导出验收|导出复核|Export review/i.test(activeMode) && syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
     if (window.__p6SettingsClosedByEscape === true && modal === "none") return "settings-closed-by-escape";
     if (reduceMotionToggle.checked && reduceBlurToggle.checked && modal === "none") return "settings-closed-by-escape";
     if (reduceMotionToggle.checked && reduceBlurToggle.checked) return "accessibility-toggles-on";
@@ -1767,6 +1775,8 @@ function collectP6SmokeSnapshot(stateId) {
     if (/导出验收|导出复核|Export review/i.test(activeMode) && players.a.videoItem) return "export-review-loaded";
     if (isCompareActive()) return players.b.videoItem ? "local-compare-loaded" : "local-compare-empty";
     if (players.a.parseStatus === "loading") return "loading";
+    if (players.a.videoItem && players.a.p6PlaybackEvidenceState === "playing") return "playing";
+    if (players.a.videoItem && players.a.p6PlaybackEvidenceState === "paused") return "paused";
     if (players.a.videoItem) return "loaded";
     if (activeMode.includes("本地预览")) return "local-empty";
     return "unknown";
@@ -1780,7 +1790,7 @@ function collectP6SmokeSnapshot(stateId) {
     mode: activeMode,
     panel,
     modal,
-    fixture: p6SmokeFixture ? { ...p6SmokeFixture } : null,
+    fixture: p6Fixture ? { ...p6Fixture } : null,
     sourceSlots: p6SourceSlotsSummary(),
     stateSemantics: p6StateSemantics(stateId, {
       observedStateId,
@@ -1851,7 +1861,11 @@ function p6StateSemantics(state, details = {}) {
     staleMetadataCleared: !players.a.metrics,
     staleInspectionCleared: !players.a.inspectionReport,
     staleCanvasCleared: players.a.canvas.children.length === 0,
-    staleFileBadgeCleared: svgaFilePillA.hidden && !compactText(svgaFilePillA)
+    staleFileBadgeCleared: svgaFilePillA.hidden && !compactText(svgaFilePillA),
+    primaryIsPlaying: players.a.isPlaying === true,
+    primaryPlaybackEvidenceState: players.a.p6PlaybackEvidenceState ?? null,
+    latestArtifactLoaded: Boolean(latestArtifactGroup && players.a.videoItem && canvasIsNonBlank(players.a)),
+    referenceMediaLoaded: Boolean(referenceState.metrics && referenceState.panel.classList.contains("hasMedia"))
   };
 }
 
@@ -2393,7 +2407,16 @@ function collectRenderedStateProof(state) {
 
 function installStateProbe() {
   window.__autoSvgaDesktopStateProbe = {
+    snapshot: (state) => collectP6SmokeSnapshot(state),
     collect: (state) => collectRenderedStateProof(state),
+    clearTransientSources: () => {
+      resetSlotMediaState(players.b);
+      clearReference();
+      latestArtifactGroup = undefined;
+      if (compareToggle.checked) compareToggle.click();
+      setAppMode("localPreview");
+      return true;
+    },
     runWp1StateCorrectnessFlow,
     runWp2MultiSourceAcceptanceFlow
   };
@@ -2762,6 +2785,8 @@ async function runProductSmoke() {
     const inspectionReport = await waitForInspectionStatus(players.a);
     await delay(320);
     await captureArtifact("desktop-loaded");
+    playSlot(players.a);
+    await delay(160);
     await captureArtifact("desktop-playing");
     pauseSlot(players.a);
     await delay(180);
@@ -2937,6 +2962,9 @@ async function runProductSmoke() {
     setAppMode("localPreview");
     if (syncPlayControl.getAttribute("aria-pressed") === "true") syncPlayControl.click();
     resetSlotMediaState(players.a, { clearReport: true });
+    resetSlotMediaState(players.b);
+    clearReference();
+    latestArtifactGroup = undefined;
     if (compareToggle.checked) compareToggle.click();
     await waitFor(() => !isCompareActive());
     await recordP6SmokeAction({
@@ -2959,6 +2987,11 @@ async function runProductSmoke() {
     await captureArtifact("desktop-local-compare-loaded");
     const fileInput = await smokeFileInput(bytes.slice(0));
     const dragDrop = await smokeDragDrop(bytes.slice(0));
+    if (compareToggle.checked) compareToggle.click();
+    resetSlotMediaState(players.b);
+    clearReference();
+    latestArtifactGroup = undefined;
+    await waitFor(() => !isCompareActive());
     const errorFile = await smokeErrorFile();
     await captureArtifact("desktop-invalid");
     await loadSvga("a", fixtureUrl, {

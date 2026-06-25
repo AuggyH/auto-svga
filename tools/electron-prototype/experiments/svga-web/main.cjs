@@ -1613,9 +1613,10 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
 
 async function captureProductArtifact(window, scenario) {
   const originalSize = window.getSize();
+  const originalContentSize = window.getContentSize();
   if (scenario === "desktop-1280x800") window.setSize(1280, 800);
   if (scenario === "desktop-1440x900") window.setSize(1440, 900);
-  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setSize(900, 720);
+  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(900, 720);
   if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
@@ -1627,7 +1628,9 @@ async function captureProductArtifact(window, scenario) {
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
   await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName);
-  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720") {
+  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") {
+    window.setContentSize(originalContentSize[0], originalContentSize[1]);
+  } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
     window.setSize(originalSize[0], originalSize[1]);
   }
   const fixture = scenarioFixtureMetadata(scenario);

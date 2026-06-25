@@ -54,6 +54,66 @@ test("state evidence helper writes Web/Desktop/comparison triple and JSON", asyn
   }
 });
 
+test("state evidence helper prefers exact responsive snapshot before export-review aliases", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "p6-responsive-state-evidence-"));
+  try {
+    await writePng(path.join(root, "web-baseline/screenshot-export-review-loaded-900x720.png"), [255, 0, 0, 255]);
+    await writePng(path.join(root, "desktop-responsive-export-review-loaded-at-900-x-720.png"), [250, 0, 0, 255]);
+    const responsiveState = "responsive-export-review-loaded-at-900-x-720";
+    const exportSnapshot = strictWebSnapshot("export-review-loaded", "exportReview", "none", "none");
+    exportSnapshot.viewport = { width: 1440, height: 900 };
+    const responsiveSnapshot = strictWebSnapshot(responsiveState, "exportReview", "none", "none");
+    responsiveSnapshot.observedStateId = "export-review-loaded";
+    responsiveSnapshot.viewport = { width: 900, height: 720 };
+    responsiveSnapshot.sourceSlots = stateSourceSlots(true);
+    responsiveSnapshot.stateSemantics = {
+      ...stateSemanticFixture(responsiveState),
+      observedStateId: "export-review-loaded",
+      latestArtifactLoaded: true,
+      referenceMediaLoaded: true
+    };
+    await mkdir(path.join(root, "web-baseline"), { recursive: true });
+    await writeFile(path.join(root, "web-baseline/dom-manifest.json"), JSON.stringify({
+      snapshots: [exportSnapshot, responsiveSnapshot]
+    }, null, 2));
+    await writeFile(path.join(root, "web-baseline/computed-styles-manifest.json"), JSON.stringify({
+      selectors: [{ selector: ".shell", present: true }]
+    }, null, 2));
+    await writeFile(path.join(root, "desktop-state-render-proof.json"), JSON.stringify({
+      states: {
+        [responsiveState]: {
+          state: responsiveState,
+          observedStateId: "export-review-loaded",
+          passed: true,
+          viewportCss: { width: 900, height: 720 },
+          devicePixelRatio: 1,
+          stageRect: { x: 0, y: 0, width: 100, height: 100 },
+          canvasRect: { x: 0, y: 0, width: 100, height: 100 },
+          overlayRect: { x: 0, y: 0, width: 0, height: 0 },
+          overlayDisplay: "none",
+          canvasZIndex: "auto",
+          productState: { mode: "exportReview", panel: "none", modal: "none" },
+          sourceSlots: stateSourceSlots(true),
+          stateSemantics: {
+            ...stateSemanticFixture(responsiveState),
+            observedStateId: "export-review-loaded",
+            latestArtifactLoaded: true,
+            referenceMediaLoaded: true
+          }
+        }
+      }
+    }, null, 2));
+
+    const result = await generateStateComparison(root, responsiveState);
+
+    assert.equal(result.passed, true, result.failures.join("; "));
+    assert.equal(result.context.web.viewportCss.width, 900);
+    assert.equal(result.runtime.webStateId, responsiveState);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("strict Web interaction evidence rejects legacy baseline trace without direct before/action/after/result fields", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "p6-strict-interaction-"));
   try {
@@ -585,6 +645,42 @@ test("WP1 strict state gates reject requested-label and semantic context false p
       facts.stateComparisons["invalid-error-state"].runtime.desktopSemantic.staleMetadataCleared = false;
       facts.stateComparisons["invalid-error-state"].runtime.desktopSemantic.staleCanvasCleared = false;
     }],
+    ["latest_artifact_shell_without_semantic", "latest-artifact-loaded", (facts) => {
+      facts.contract.states.push({ id: "latest-artifact-loaded", required: true });
+      facts.stateComparisons["latest-artifact-loaded"] = stateComparison("latest-artifact-loaded");
+      facts.stateComparisons["latest-artifact-loaded"].runtime.webSemantic.latestArtifactLoaded = false;
+      facts.stateComparisons["latest-artifact-loaded"].runtime.desktopSemantic.latestArtifactLoaded = false;
+      facts.stateComparisons["latest-artifact-loaded"].context.web.stateSemantics.latestArtifactLoaded = false;
+      facts.stateComparisons["latest-artifact-loaded"].context.desktop.stateSemantics.latestArtifactLoaded = false;
+    }],
+    ["reference_media_shell_without_semantic", "reference-media-loaded", (facts) => {
+      facts.contract.states.push({ id: "reference-media-loaded", required: true });
+      facts.stateComparisons["reference-media-loaded"] = stateComparison("reference-media-loaded");
+      facts.stateComparisons["reference-media-loaded"].runtime.webSemantic.referenceMediaLoaded = false;
+      facts.stateComparisons["reference-media-loaded"].runtime.desktopSemantic.referenceMediaLoaded = false;
+      facts.stateComparisons["reference-media-loaded"].context.web.stateSemantics.referenceMediaLoaded = false;
+      facts.stateComparisons["reference-media-loaded"].context.desktop.stateSemantics.referenceMediaLoaded = false;
+    }],
+    ["playing_loaded_shell_without_playback_semantic", "playing", (facts) => {
+      facts.contract.states.push({ id: "playing", required: true });
+      facts.stateComparisons.playing = stateComparison("playing");
+      facts.stateComparisons.playing.runtime.webObservedStateId = "loaded";
+      facts.stateComparisons.playing.runtime.desktopObservedStateId = "loaded";
+      facts.stateComparisons.playing.runtime.webSemantic.primaryIsPlaying = false;
+      facts.stateComparisons.playing.runtime.desktopSemantic.primaryIsPlaying = false;
+      facts.stateComparisons.playing.context.web.observedStateId = "loaded";
+      facts.stateComparisons.playing.context.desktop.observedStateId = "loaded";
+    }],
+    ["paused_loaded_shell_without_playback_semantic", "paused", (facts) => {
+      facts.contract.states.push({ id: "paused", required: true });
+      facts.stateComparisons.paused = stateComparison("paused");
+      facts.stateComparisons.paused.runtime.webObservedStateId = "loaded";
+      facts.stateComparisons.paused.runtime.desktopObservedStateId = "loaded";
+      facts.stateComparisons.paused.runtime.webSemantic.primaryPlaybackEvidenceState = "loaded";
+      facts.stateComparisons.paused.runtime.desktopSemantic.primaryPlaybackEvidenceState = "loaded";
+      facts.stateComparisons.paused.context.web.observedStateId = "loaded";
+      facts.stateComparisons.paused.context.desktop.observedStateId = "loaded";
+    }],
     ["desired_state_label_only", "export-review-loaded", (facts) => {
       delete facts.stateComparisons["export-review-loaded"].runtime;
       delete facts.stateComparisons["export-review-loaded"].context.web.fixture;
@@ -898,9 +994,18 @@ function artifactBindings() {
 }
 
 function stateComparison(stateId) {
-  const loaded = ["export-review-loaded", "loaded", "responsive-export-review-loaded-at-900-x-720"].includes(stateId);
+  const loaded = [
+    "export-review-loaded",
+    "latest-artifact-loaded",
+    "reference-media-loaded",
+    "loaded",
+    "playing",
+    "paused",
+    "responsive-export-review-loaded-at-900-x-720"
+  ].includes(stateId);
   const invalid = stateId === "invalid-error-state" || stateId === "invalid";
   const observedStateId = stateId === "invalid-error-state" ? "invalid"
+    : ["latest-artifact-loaded", "reference-media-loaded"].includes(stateId) ? "export-review-loaded"
     : stateId === "responsive-export-review-loaded-at-900-x-720" ? "export-review-loaded"
       : stateId;
   const sourceSlots = {
@@ -922,7 +1027,12 @@ function stateComparison(stateId) {
       canvasChildCount: 0
     },
     reference: {
-      occupied: stateId === "export-review-loaded" || stateId === "responsive-export-review-loaded-at-900-x-720",
+      occupied: [
+        "export-review-loaded",
+        "latest-artifact-loaded",
+        "reference-media-loaded",
+        "responsive-export-review-loaded-at-900-x-720"
+      ].includes(stateId),
       fixtureSha256: null,
       canvasNonBlank: false
     }
@@ -940,7 +1050,11 @@ function stateComparison(stateId) {
     staleMetadataCleared: !loaded,
     staleInspectionCleared: !loaded,
     staleCanvasCleared: !loaded,
-    staleFileBadgeCleared: !loaded
+    staleFileBadgeCleared: !loaded,
+    primaryIsPlaying: stateId === "playing",
+    primaryPlaybackEvidenceState: stateId === "playing" ? "playing" : stateId === "paused" ? "paused" : loaded ? "loaded" : null,
+    latestArtifactLoaded: stateId === "latest-artifact-loaded",
+    referenceMediaLoaded: stateId === "reference-media-loaded"
   };
   const hostContext = {
     viewportCss: stateId === "responsive-export-review-loaded-at-900-x-720"
@@ -1154,7 +1268,15 @@ function stateSourceSlots(loaded) {
 }
 
 function stateSemanticFixture(stateId) {
-  const loaded = ["loaded", "export-review-loaded", "responsive-export-review-loaded-at-900-x-720"].includes(stateId);
+  const loaded = [
+    "loaded",
+    "playing",
+    "paused",
+    "export-review-loaded",
+    "latest-artifact-loaded",
+    "reference-media-loaded",
+    "responsive-export-review-loaded-at-900-x-720"
+  ].includes(stateId);
   const invalid = stateId === "invalid" || stateId === "invalid-error-state";
   return {
     observedStateId: stateId,
@@ -1169,7 +1291,11 @@ function stateSemanticFixture(stateId) {
     staleMetadataCleared: !loaded,
     staleInspectionCleared: !loaded,
     staleCanvasCleared: !loaded,
-    staleFileBadgeCleared: !loaded
+    staleFileBadgeCleared: !loaded,
+    primaryIsPlaying: stateId === "playing",
+    primaryPlaybackEvidenceState: stateId === "playing" ? "playing" : stateId === "paused" ? "paused" : loaded ? "loaded" : null,
+    latestArtifactLoaded: stateId === "latest-artifact-loaded",
+    referenceMediaLoaded: stateId === "reference-media-loaded"
   };
 }
 
