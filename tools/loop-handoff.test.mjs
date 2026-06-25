@@ -906,6 +906,71 @@ test("terminal state allows await external review with negative action guidance"
   }
 });
 
+test("terminal HUMAN_REQUIRED state allows product owner human gate next action", async () => {
+  await withRepo(async ({ repo, base, head }) => {
+    await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
+      "# Auto SVGA Loop State",
+      "",
+      "- milestoneId: M2-R2",
+      "- Milestone: M2-R2 Terminal Handoff Trust Hardening",
+      "- State: terminal_human_required",
+      "- Next Action: product_owner_human_gate",
+      "",
+      "## Next Action",
+      "",
+      "Product Owner Human Gate: review the canonical owner handoff materials.",
+      ""
+    ].join("\n"));
+    await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({
+      milestoneId: "M2-R2",
+      iteration: "terminal",
+      result: "HUMAN_REQUIRED",
+      progress: true,
+      nextAction: "product_owner_human_gate"
+    })}\n`);
+    head = await commitFixture(repo, "terminal product owner gate");
+    await writeJson(join(repo, ".artifacts/loop-decision.json"), {
+      schemaVersion: 1,
+      question: "Should the Product Owner accept this HUMAN_REQUIRED milestone?",
+      recommendation: "review_handoff",
+      options: [
+        {
+          id: "review_handoff",
+          label: "Review handoff",
+          impact: "Keeps the milestone in HUMAN_REQUIRED until the Product Owner reviews the packet."
+        },
+        {
+          id: "request_changes",
+          label: "Request changes",
+          impact: "Returns the milestone to repair with explicit Product Owner findings."
+        }
+      ],
+      evidence: [
+        "LOOP_STATE.md terminal product_owner_human_gate",
+        "LOOP_HISTORY.jsonl terminal HUMAN_REQUIRED entry"
+      ],
+      safeDefaultWhileWaiting: "Keep the milestone in HUMAN_REQUIRED."
+    });
+    await refreshValidationAndInput(repo, base, head, {
+      "src/example.txt": "Adds a fixture implementation file used to verify schema v4 handoff behavior.",
+      "docs/loop/LOOP_STATE.md": "Records terminal Product Owner Human Gate guidance for regression coverage.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records terminal Product Owner Human Gate history for regression coverage."
+    }, {
+      milestoneOutcome: "HUMAN_REQUIRED",
+      historicalReviewerEvidence: "PASS"
+    });
+
+    const result = await generateHandoffPacket({
+      ...defaultOptions(repo, base, head),
+      status: "HUMAN_REQUIRED",
+      decisionFile: ".artifacts/loop-decision.json",
+      candidate: true
+    });
+    assert.equal(result.manifest.packetStatus, "INCOMPLETE");
+    assert.equal(result.manifest.milestoneOutcome, "HUMAN_REQUIRED");
+  });
+});
+
 test("terminal history final result must match PASS", async () => {
   await withRepo(async ({ repo, base, head }) => {
     await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({ milestoneId: "M2-R2", iteration: "terminal", result: "IN_PROGRESS", progress: false, nextAction: "repair" })}\n`);

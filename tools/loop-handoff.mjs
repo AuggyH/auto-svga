@@ -1007,12 +1007,15 @@ function validateHumanNextActionSection(text) {
 async function validateTerminalState({ repoRoot, milestoneId, status }) {
   const stateText = await readOptionalFile(path.join(repoRoot, "docs/loop/LOOP_STATE.md"), "");
   const expectedState = status === "PASS" ? "terminal_pass" : "terminal_human_required";
+  const expectedNextActions = status === "HUMAN_REQUIRED"
+    ? ["external_review", "product_owner_human_gate"]
+    : ["external_review"];
   const fields = parseUniqueLoopStateFields(stateText);
   if (fields.milestoneId !== milestoneId || fields.State !== expectedState) {
     throw new Error(`LOOP_STATE.md must mark ${milestoneId} as ${expectedState}.`);
   }
-  if (fields["Next Action"] !== "external_review") {
-    throw new Error("LOOP_STATE.md terminal next action must be external_review.");
+  if (!expectedNextActions.includes(fields["Next Action"])) {
+    throw new Error(`LOOP_STATE.md terminal next action must be one of ${expectedNextActions.join(", ")}.`);
   }
   validateHumanNextActionSection(stateText);
   const entries = await readLoopHistoryEntries(repoRoot, milestoneId);
@@ -1029,10 +1032,10 @@ async function validateTerminalState({ repoRoot, milestoneId, status }) {
   if (last.progress !== true) {
     throw new Error("Terminal LOOP_HISTORY entry must record progress=true.");
   }
-  if (last.nextAction !== "external_review") {
-    throw new Error("Terminal LOOP_HISTORY nextAction must be external_review.");
+  if (!expectedNextActions.includes(last.nextAction)) {
+    throw new Error(`Terminal LOOP_HISTORY nextAction must be one of ${expectedNextActions.join(", ")}.`);
   }
-  return { state: expectedState, nextAction: "external_review", lastHistory: last };
+  return { state: expectedState, nextAction: last.nextAction, lastHistory: last };
 }
 
 async function readLoopHistoryForMilestone(repoRoot, milestoneId) {

@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: goal_repair_in_progress
+Status: HUMAN_REQUIRED
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: goal_repair_in_progress
+executionStatus: human_required_pending_product_owner_gate
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -740,9 +740,9 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `goal_repair_in_progress`.
+Current state: `HUMAN_REQUIRED`.
 
-Next action: `repair_wp3_runtime_derived_interaction_and_owner_handoff`.
+Next action: `product_owner_human_gate`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
@@ -750,16 +750,16 @@ Contract revision 3 passed micro-delta external contract review at
 `30f522ca569679a5364149fe02ccc83624ec91ce`.
 
 The previous `HUMAN_REQUIRED`, Reviewer B, Final Seal, and Post-seal
-Verification are revoked by independent review findings. P6-R1 is returned to
-WP3/Gate B for runtime-derived interaction evidence and owner handoff repair.
-Downstream Gate B, WP4, WP5, Gate C, Final Validation, Reviewer A, Reviewer B,
-Final Seal, Post-seal Verification, and Product Owner Human Gate must be rerun
-on a new final head before `HUMAN_REQUIRED` may be restored.
+Verification were revoked by independent review findings. P6-R1 reran WP3/Gate
+B runtime-derived interaction evidence, WP4/Gate C visual and motion evidence,
+Final Validation, Reviewer A, Reviewer B, Final Seal, and Post-seal
+Verification on the current final head before restoring `HUMAN_REQUIRED`.
 
 All P6-F001 through P6-F013 findings remain `currentStatus=open` and are only
 advanced to `integrated_resolved_pending_external_review`; none are closed or
 externally confirmed. `contractReviewedHeadCommit` remains
 `9b01108c03a5e70e2f67100eeac384810afee4e4`, `contractRevision=3`,
 `repairRound=0`, and `phase2Started=false`. Phase 2, signing, notarization,
-release, push, and merge remain prohibited until the Product Owner and final
-independent product external review complete.
+release, push, and merge remain prohibited. Product Owner Human Gate is the
+next required action; final independent product external review, Finding
+closure, and P6-R1 completion remain pending.
