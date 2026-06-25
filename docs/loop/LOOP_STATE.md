@@ -6,8 +6,8 @@ Date: 2026-06-25
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_active_execute_wp1_state_correctness
-- Next Action: execute_wp1_state_correctness
+- State: gate_a_passed_execute_wp2_multi_source_acceptance_flow
+- Next Action: execute_wp2_multi_source_acceptance_flow
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -61,8 +61,14 @@ Date: 2026-06-25
 - Immutable baseline snapshot is recorded at
   `docs/loop/contracts/P6-R1_BASELINE.json`.
 - Contract review repair did not increment `repairRound`.
-- WP0 is complete. P6-R1 execution is active and currently enters WP1.
-- No formal implementation Worker is running for P6-R1.
+- WP0 is complete.
+- WP1 state correctness is integrated at
+  `0f31f42dcd264d5d5556c89e8adaf391647e026a`.
+- Gate A passed on the integration head after targeted runtime state flow,
+  svga-web prototype preparation, full loop validation, and diff checks.
+- P6-F001 and P6-F002 remain `currentStatus=open` and advanced only to
+  `integrated_resolved_pending_external_review`.
+- No formal implementation Worker is currently running for P6-R1.
 - No product runtime, Web UI, Electron UI, test, dependency, package, parity,
   scenario, motion, App, or packaging implementation has been changed for
   P6-R1.
@@ -70,6 +76,6 @@ Date: 2026-06-25
 
 ## Next Action
 
-Execute WP1 state correctness. Do not start Phase 2, Product Owner Human Gate,
-Final Independent Product External Review, finding closure, signing,
-notarization, release, push, merge, or any out-of-contract work.
+Execute WP2 multi-source acceptance flow. Do not start Phase 2, Product Owner
+Human Gate, Final Independent Product External Review, finding closure,
+signing, notarization, release, push, merge, or any out-of-contract work.

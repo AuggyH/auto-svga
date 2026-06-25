@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: goal_active_execute_wp1_state_correctness
+Status: gate_a_passed_execute_wp2_multi_source_acceptance_flow
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: goal_active_execute_wp1_state_correctness
+executionStatus: gate_a_passed_execute_wp2_multi_source_acceptance_flow
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -382,6 +382,16 @@ evidenceOwner: P6R1 Evidence Lead
 integrationVerifier: A0
 stopCondition: Gate A failure blocks WP2-WP5.
 allowedNextPackages: WP2 only after Gate A passes.
+
+Gate A execution record:
+
+- wp1WorkerThread: `019efcb7-c434-7f13-9255-ac0751d5432d`
+- wp1WorkerHead: `618b356e546d1f71c9a83909e1f40de26e52d6eb`
+- integrationHead: `0f31f42dcd264d5d5556c89e8adaf391647e026a`
+- gateAStatus: `passed`
+- nextAction: `execute_wp2_multi_source_acceptance_flow`
+- P6-F001/P6-F002 remain `currentStatus=open` and are not closed before
+  final independent external review.
 
 ## Gate B - Multi-source And Interaction Correctness
 

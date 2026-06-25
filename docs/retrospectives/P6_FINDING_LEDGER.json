@@ -66,7 +66,9 @@
       "fixCommits": [
         "c7c0f1f8beccfbd492a4e850c96641ad83a06f6e",
         "01f6d9584359aa59611b97e2f84fb977046f78f4",
-        "52ed98df94f869a811aac2a4a120a7b8bcadb67f"
+        "52ed98df94f869a811aac2a4a120a7b8bcadb67f",
+        "618b356e546d1f71c9a83909e1f40de26e52d6eb",
+        "0f31f42dcd264d5d5556c89e8adaf391647e026a"
       ],
       "whyPreviousFixesDidNotCloseIt": "Earlier fixes validated metadata or screenshot existence, not the user-visible distinction and CTA hiding rule. R6 external review still found this finding or its acceptance risk unresolved, so previous fixes did not satisfy closure criteria.",
       "requiredRegressionTest": "A failing state test that captures Empty and Loading in the same viewport and asserts Loading hides the empty CTA, shows active loading phases, and has different visible text/geometry.",
@@ -83,9 +85,11 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "unresolved",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
-        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
+        "docs/loop/LOOP_HISTORY.jsonl"
       ]
     },
     {
@@ -112,7 +116,9 @@
       ],
       "fixCommits": [
         "01f6d9584359aa59611b97e2f84fb977046f78f4",
-        "5a311d4ddd89266ef270a747c7d2e4afded0f68b"
+        "5a311d4ddd89266ef270a747c7d2e4afded0f68b",
+        "618b356e546d1f71c9a83909e1f40de26e52d6eb",
+        "0f31f42dcd264d5d5556c89e8adaf391647e026a"
       ],
       "whyPreviousFixesDidNotCloseIt": "The tests accepted state labels and aliases after the fact instead of first defining required cleared fields for canvas, metadata, file badge, report, parser status, and ready badge. R6 external review still found this finding or its acceptance risk unresolved, so previous fixes did not satisfy closure criteria.",
       "requiredRegressionTest": "Failure-first invalid-file test after a loaded file that asserts stale canvas, file badge, metadata, report, and ready state are cleared in both Web and Desktop.",
@@ -129,9 +135,11 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "unresolved",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
-        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md"
+        "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+        "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
+        "docs/loop/LOOP_HISTORY.jsonl"
       ]
     },
     {
