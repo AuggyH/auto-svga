@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: GOAL_REPAIR_IN_PROGRESS
+Status: HUMAN_REQUIRED
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,7 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: goal_repair_in_progress
+executionStatus: human_required_pending_product_owner_human_gate
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -740,20 +740,20 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `goal_repair_in_progress`.
+Current state: `HUMAN_REQUIRED`.
 
-Next action: `repair_wp1_state_correctness_and_evidence`.
+Next action: `product_owner_human_gate`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
 `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY` from base execution head
 `30f522ca569679a5364149fe02ccc83624ec91ce`.
 
-The current `HUMAN_REQUIRED`, Reviewer B PASS, Final Seal, and Post-seal
-Verification are revoked by independent review findings. P6-R1 returns first
-to WP1/Gate A state correctness and evidence repair. Prior downstream evidence,
-Reviewer verdicts, seal, and handoff materials are not reusable until WP1/Gate
-A and every affected downstream stage rerun on one new final head.
+The revoked `HUMAN_REQUIRED`, Reviewer B PASS, Final Seal, and Post-seal
+Verification were rerun after WP1/Gate A, WP3/Gate B, visual/motion, and owner
+handoff repair. Final machine evidence now reports `parityStatus=pass` and
+`nonPassEvidenceCount=0` for the current execution head, with the canonical
+owner handoff still pending final seal and Product Owner review.
 
 All P6-F001 through P6-F013 findings remain `currentStatus=open` and are only
 advanced to `integrated_resolved_pending_external_review`; none are closed or
