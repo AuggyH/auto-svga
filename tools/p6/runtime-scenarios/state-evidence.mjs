@@ -147,6 +147,10 @@ export async function generateStateComparison(p6Root, stateId) {
       notSameSourceHash: false,
       comparisonGenerated: false,
       stateSnapshotIdBound: false,
+      observedStateMatched: false,
+      fixtureContextMatched: false,
+      sourceSlotContextMatched: false,
+      semanticStatePredicatesMatched: false,
       geometryCompared: false,
       computedStyleCompared: false,
       controlValuesCompared: false,
@@ -184,6 +188,10 @@ export async function generateStateComparison(p6Root, stateId) {
   result.runtime = runtime;
   result.context = runtime.context;
   result.checks.stateSnapshotIdBound = runtime.webStateBound === true && runtime.desktopStateBound === true;
+  result.checks.observedStateMatched = runtime.observedStateMatched === true;
+  result.checks.fixtureContextMatched = runtime.fixtureContextMatched === true;
+  result.checks.sourceSlotContextMatched = runtime.sourceSlotContextMatched === true;
+  result.checks.semanticStatePredicatesMatched = runtime.semanticStatePredicatesMatched === true;
   result.checks.geometryCompared = runtime.geometryCompared === true;
   result.checks.computedStyleCompared = runtime.computedStyleCompared === true;
   result.checks.controlValuesCompared = runtime.controlValuesCompared === true;
@@ -212,6 +220,24 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
   const desktopStateBound = Boolean(desktopState?.passed === true);
   if (!webStateBound) failures.push(`web runtime snapshot missing for ${stateId}`);
   if (!desktopStateBound) failures.push(`desktop runtime proof missing or failed for ${stateId}`);
+  const webObservedStateId = webSnapshot?.observedStateId ?? webSnapshot?.stateId ?? null;
+  const desktopObservedStateId = desktopState?.observedStateId ?? desktopState?.state ?? desktopState?.stateId ?? null;
+  const observedStateMatched = observedStateMatches(webObservedStateId, stateId)
+    && observedStateMatches(desktopObservedStateId, stateId)
+    && equivalentObservedStates(webObservedStateId, desktopObservedStateId, stateId);
+  if (!observedStateMatched) {
+    failures.push(`observed runtime state mismatch for ${stateId}: web=${webObservedStateId ?? "missing"} desktop=${desktopObservedStateId ?? "missing"}`);
+  }
+  const fixtureContextMatched = sameFixtureContext(webSnapshot, desktopState);
+  if (!fixtureContextMatched) failures.push(`fixture context mismatch for ${stateId}`);
+  const sourceSlotContextMatched = sameSourceSlotContext(webSnapshot, desktopState);
+  if (!sourceSlotContextMatched) failures.push(`source slot context mismatch for ${stateId}`);
+  const webSemantic = semanticFromSnapshot(webSnapshot);
+  const desktopSemantic = semanticFromSnapshot(desktopState);
+  const semanticStatePredicatesMatched = semanticStatePassed(stateId, webSemantic)
+    && semanticStatePassed(stateId, desktopSemantic)
+    && sameSemanticContext(webSemantic, desktopSemantic);
+  if (!semanticStatePredicatesMatched) failures.push(`semantic runtime state predicates failed for ${stateId}`);
   const geometryCompared = Boolean(
     webSnapshot?.regions?.some((entry) => entry.id === "svgaPanelA" && rectHasArea(entry.rect))
     && rectHasArea(desktopState?.stageRect)
@@ -244,8 +270,16 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
   return {
     webStateId: webSnapshot?.stateId ?? null,
     desktopStateId: desktopState?.state ?? null,
+    webObservedStateId,
+    desktopObservedStateId,
     webStateBound,
     desktopStateBound,
+    observedStateMatched,
+    fixtureContextMatched,
+    sourceSlotContextMatched,
+    semanticStatePredicatesMatched,
+    webSemantic,
+    desktopSemantic,
     geometryCompared,
     computedStyleCompared,
     controlValuesCompared,
@@ -265,22 +299,176 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
 
 function comparisonContext(webSnapshot, desktopState) {
   const desktopProductState = desktopState?.productState ?? {};
+  const webSlots = sourceSlotsFromSnapshot(webSnapshot);
+  const desktopSlots = sourceSlotsFromSnapshot(desktopState);
   return {
     web: {
       viewportCss: webSnapshot?.viewport ?? null,
       devicePixelRatio: webSnapshot?.devicePixelRatio ?? null,
       mode: canonicalMode(webSnapshot?.mode),
       panel: canonicalPanel(webSnapshot?.panel),
-      modal: canonicalModal(webSnapshot?.modal)
+      modal: canonicalModal(webSnapshot?.modal),
+      observedStateId: webSnapshot?.observedStateId ?? webSnapshot?.stateId ?? null,
+      fixture: fixtureContextFromSlots(webSlots),
+      sourceSlots: webSlots,
+      stateSemantics: semanticFromSnapshot(webSnapshot)
     },
     desktop: {
       viewportCss: desktopState?.viewportCss ?? desktopState?.viewport ?? null,
       devicePixelRatio: desktopState?.devicePixelRatio ?? null,
       mode: canonicalMode(desktopProductState.mode),
       panel: canonicalPanel(desktopProductState.panel ?? desktopProductState.activeSidePanel),
-      modal: canonicalModal(desktopProductState.modal ?? desktopProductState.activeModal)
+      modal: canonicalModal(desktopProductState.modal ?? desktopProductState.activeModal),
+      observedStateId: desktopState?.observedStateId ?? desktopState?.state ?? desktopState?.stateId ?? null,
+      fixture: fixtureContextFromSlots(desktopSlots),
+      sourceSlots: desktopSlots,
+      stateSemantics: semanticFromSnapshot(desktopState)
     }
   };
+}
+
+function observedStateMatches(actual, expected) {
+  if (!actual || actual === "unknown") return false;
+  return stateMatches(actual, expected);
+}
+
+function equivalentObservedStates(webObserved, desktopObserved, expected) {
+  if (!observedStateMatches(webObserved, expected) || !observedStateMatches(desktopObserved, expected)) return false;
+  return canonicalObservedState(webObserved, expected) === canonicalObservedState(desktopObserved, expected);
+}
+
+function canonicalObservedState(actual, expected) {
+  if (expected === "local-empty" && actual === "empty") return expected;
+  if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "export-review-loaded") return expected;
+  if (expected === "invalid-error-state" && actual === "invalid") return expected;
+  return actual;
+}
+
+function sourceSlotsFromSnapshot(snapshot) {
+  const slots = snapshot?.sourceSlots ?? {};
+  return {
+    primary: normalizeSourceSlot(slots.primary),
+    secondary: normalizeSourceSlot(slots.secondary),
+    reference: normalizeSourceSlot(slots.reference)
+  };
+}
+
+function normalizeSourceSlot(slot) {
+  return {
+    occupied: slot?.occupied === true,
+    fixtureSha256: typeof slot?.fixtureSha256 === "string" ? slot.fixtureSha256 : null,
+    fileName: typeof slot?.fileName === "string" ? slot.fileName : null,
+    canvasNonBlank: slot?.canvasNonBlank === true,
+    parseStatus: typeof slot?.parseStatus === "string" ? slot.parseStatus : null,
+    renderStatus: typeof slot?.renderStatus === "string" ? slot.renderStatus : null,
+    canvasChildCount: Number.isInteger(slot?.canvasChildCount) ? slot.canvasChildCount : null
+  };
+}
+
+function fixtureContextFromSlots(slots) {
+  const primary = slots?.primary ?? {};
+  return {
+    occupied: primary.occupied === true,
+    sha256: primary.fixtureSha256 ?? null,
+    fileName: primary.fileName ?? null
+  };
+}
+
+function sameFixtureContext(webSnapshot, desktopState) {
+  const web = fixtureContextFromSlots(sourceSlotsFromSnapshot(webSnapshot));
+  const desktop = fixtureContextFromSlots(sourceSlotsFromSnapshot(desktopState));
+  if (web.occupied !== desktop.occupied) return false;
+  if (!web.occupied && !desktop.occupied) return true;
+  return Boolean(web.sha256 && desktop.sha256 && web.sha256 === desktop.sha256);
+}
+
+function sameSourceSlotContext(webSnapshot, desktopState) {
+  const web = sourceSlotsFromSnapshot(webSnapshot);
+  const desktop = sourceSlotsFromSnapshot(desktopState);
+  for (const key of ["primary", "secondary", "reference"]) {
+    if (web[key].occupied !== desktop[key].occupied) return false;
+    if (web[key].canvasNonBlank !== desktop[key].canvasNonBlank) return false;
+    if (web[key].occupied && web[key].fixtureSha256 && desktop[key].fixtureSha256 && web[key].fixtureSha256 !== desktop[key].fixtureSha256) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function semanticFromSnapshot(snapshot) {
+  const semantic = snapshot?.stateSemantics ?? {};
+  return {
+    observedStateId: semantic.observedStateId ?? snapshot?.observedStateId ?? snapshot?.state ?? snapshot?.stateId ?? null,
+    primaryOverlayVisible: semantic.primaryOverlayVisible === true,
+    loadingVisible: semantic.loadingVisible === true,
+    errorVisible: semantic.errorVisible === true,
+    loadedCanvasNonBlank: semantic.loadedCanvasNonBlank === true,
+    primaryOccupied: semantic.primaryOccupied === true,
+    primaryParserStatus: typeof semantic.primaryParserStatus === "string" ? semantic.primaryParserStatus : null,
+    primaryRenderStatus: typeof semantic.primaryRenderStatus === "string" ? semantic.primaryRenderStatus : null,
+    primaryCanvasChildCount: Number.isInteger(semantic.primaryCanvasChildCount) ? semantic.primaryCanvasChildCount : null,
+    staleMetadataCleared: semantic.staleMetadataCleared === true,
+    staleInspectionCleared: semantic.staleInspectionCleared === true,
+    staleCanvasCleared: semantic.staleCanvasCleared === true,
+    staleFileBadgeCleared: semantic.staleFileBadgeCleared === true
+  };
+}
+
+function semanticStatePassed(stateId, semantic) {
+  if (!semantic || !observedStateMatches(semantic.observedStateId, stateId)) return false;
+  if (loadedState(stateId)) {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryOverlayVisible === false
+      && semantic.errorVisible === false
+      && !["loading", "error"].includes(semantic.primaryParserStatus)
+      && !["loading", "error"].includes(semantic.primaryRenderStatus);
+  }
+  if (stateId === "local-empty") {
+    return semantic.primaryOccupied === false
+      && semantic.loadedCanvasNonBlank === false
+      && semantic.primaryOverlayVisible === true
+      && semantic.errorVisible === false;
+  }
+  if (stateId === "loading") {
+    return semantic.loadingVisible === true
+      && semantic.primaryOverlayVisible === true
+      && semantic.errorVisible === false
+      && semantic.primaryParserStatus === "loading"
+      && semantic.primaryRenderStatus === "loading";
+  }
+  if (stateId === "invalid-error-state" || stateId === "invalid") {
+    return semantic.primaryOccupied === false
+      && semantic.loadedCanvasNonBlank === false
+      && semantic.errorVisible === true
+      && semantic.primaryParserStatus === "error"
+      && semantic.primaryRenderStatus === "error"
+      && semantic.staleMetadataCleared === true
+      && semantic.staleInspectionCleared === true
+      && semantic.staleCanvasCleared === true
+      && semantic.staleFileBadgeCleared === true;
+  }
+  return true;
+}
+
+function sameSemanticContext(webSemantic, desktopSemantic) {
+  return webSemantic.primaryOccupied === desktopSemantic.primaryOccupied
+    && webSemantic.loadedCanvasNonBlank === desktopSemantic.loadedCanvasNonBlank
+    && webSemantic.primaryOverlayVisible === desktopSemantic.primaryOverlayVisible
+    && webSemantic.errorVisible === desktopSemantic.errorVisible;
+}
+
+function loadedState(stateId) {
+  return [
+    "loaded",
+    "playing",
+    "paused",
+    "export-review-loaded",
+    "latest-artifact-loaded",
+    "reference-media-loaded",
+    "responsive-export-review-loaded-at-900-x-720",
+    "recovered-from-invalid"
+  ].includes(stateId);
 }
 
 function canonicalMode(value) {
@@ -323,7 +511,9 @@ function desktopStateAliases(stateId) {
 
 function stateMatches(actual, expected) {
   if (actual === expected) return true;
+  if (expected === "local-empty" && actual === "empty") return true;
   if (expected === "invalid-error-state" && actual === "invalid") return true;
+  if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "export-review-loaded") return true;
   if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "responsive-export-review-900x720") return true;
   return false;
 }

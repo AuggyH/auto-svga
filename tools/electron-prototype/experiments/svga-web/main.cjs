@@ -47,6 +47,18 @@ const referenceMediaTypes = new Map([
   [".mp4", { kind: "mp4", mediaType: "video/mp4" }],
   [".webm", { kind: "webm", mediaType: "video/webm" }]
 ]);
+const p6AllowedSmokeInputSelectors = new Set([
+  "body",
+  "#modeDropdownTrigger",
+  "[data-value='exportReview']",
+  "#infoPanelButton",
+  ".tabButton[data-tab='assets']",
+  "#logsButton",
+  "#settingsButton",
+  "#reduceMotionToggle",
+  "#reduceBlurToggle",
+  "#compareToggle"
+]);
 const desktopArtifacts = createDesktopArtifactCatalog({
   groupedRoots: [
     { rootPath: path.join(repoRoot, "jobs"), kind: "job" },
@@ -438,6 +450,85 @@ function isSha256(value) {
 
 function sha256Text(value) {
   return createHash("sha256").update(String(value)).digest("hex");
+}
+
+function validateP6SmokeInput(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.kind !== "click" && value.kind !== "keyboard") return undefined;
+  if (!p6AllowedSmokeInputSelectors.has(value.selector)) return undefined;
+  if (value.kind === "keyboard" && !["Escape", "Space"].includes(value.key)) return undefined;
+  return {
+    kind: value.kind,
+    selector: value.selector,
+    key: value.key ?? null
+  };
+}
+
+async function performP6SmokeInput(webContents, value) {
+  const input = validateP6SmokeInput(value);
+  if (!input) throw new Error("Invalid product smoke input");
+  const timestampMs = Date.now();
+  if (input.kind === "keyboard") {
+    const keyCode = input.key === "Space" ? "Space" : "Escape";
+    webContents.sendInputEvent({ type: "keyDown", keyCode });
+    webContents.sendInputEvent({ type: "keyUp", keyCode });
+    return {
+      inputKind: "keyboard",
+      selector: input.selector,
+      trustedPath: "electron-main-sendInputEvent-keyboard",
+      nativeCommandId: `key:${keyCode}`,
+      targetVisible: true,
+      targetRect: null,
+      actionablePoint: null,
+      viewportIntersected: true,
+      occlusionPassed: true,
+      eventTimestampMs: timestampMs
+    };
+  }
+  const target = await webContents.executeJavaScript(`
+    (() => {
+      const selector = ${JSON.stringify(input.selector)};
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      const x = Math.round(rect.left + rect.width / 2);
+      const y = Math.round(rect.top + rect.height / 2);
+      const top = document.elementFromPoint(x, y);
+      return {
+        selector,
+        targetVisible: rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01,
+        targetRect: {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        },
+        actionablePoint: { x, y },
+        viewportIntersected: x >= 0 && y >= 0 && x <= innerWidth && y <= innerHeight,
+        occlusionPassed: top === node || node.contains(top),
+        topElement: top?.id || top?.tagName?.toLowerCase?.() || null
+      };
+    })()
+  `);
+  if (!target || target.targetVisible !== true || target.viewportIntersected !== true || target.occlusionPassed !== true) {
+    throw new Error("Product smoke input target is not actionable");
+  }
+  webContents.sendInputEvent({ type: "mouseMove", x: target.actionablePoint.x, y: target.actionablePoint.y });
+  webContents.sendInputEvent({ type: "mouseDown", button: "left", clickCount: 1, x: target.actionablePoint.x, y: target.actionablePoint.y });
+  webContents.sendInputEvent({ type: "mouseUp", button: "left", clickCount: 1, x: target.actionablePoint.x, y: target.actionablePoint.y });
+  return {
+    inputKind: "click",
+    selector: input.selector,
+    trustedPath: "electron-main-sendInputEvent-pointer",
+    nativeCommandId: `click:${input.selector}`,
+    targetVisible: true,
+    targetRect: target.targetRect,
+    actionablePoint: target.actionablePoint,
+    viewportIntersected: true,
+    occlusionPassed: true,
+    eventTimestampMs: timestampMs
+  };
 }
 
 function validateArtifactScenario(value) {
@@ -2021,6 +2112,12 @@ async function createExperimentWindow() {
     const scenario = validateArtifactScenario(input);
     if (!scenario) throw new Error("Invalid product artifact scenario");
     return captureProductArtifact(window, scenario);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.performSmokeInput, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    if (!productSmokeMode) throw new Error("Product smoke input is only available in product smoke mode");
+    return performP6SmokeInput(event.sender, input);
   });
 
   ipcMain.handle(IPC_CHANNELS.scanLatestArtifacts, async (event) => {

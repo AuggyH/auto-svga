@@ -9,6 +9,7 @@ const IPC_CHANNELS = Object.freeze({
   normalProofResult: "svga-web-experiment:normal-proof-result",
   auditResult: "svga-web-experiment:audit-result",
   captureArtifact: "svga-web-experiment:capture-artifact",
+  performSmokeInput: "svga-web-experiment:perform-smoke-input",
   scanLatestArtifacts: "svga-web-experiment:scan-latest-artifacts",
   openSvgaFile: "svga-web-experiment:open-svga-file",
   openReferenceMediaFile: "svga-web-experiment:open-reference-media-file",
@@ -83,6 +84,9 @@ function createPreloadApi(invoke, { reportToken, productMilestoneId }) {
     },
     captureArtifact(scenario) {
       return invoke(IPC_CHANNELS.captureArtifact, scenario);
+    },
+    performSmokeInput(input) {
+      return invoke(IPC_CHANNELS.performSmokeInput, input);
     },
     scanLatestArtifacts() {
       return invoke(IPC_CHANNELS.scanLatestArtifacts);

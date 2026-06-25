@@ -193,6 +193,12 @@ let artifactAutoLoading = false;
 let activeModal = null;
 let modalReturnFocus = null;
 let toastTimer;
+let p6PrimaryRecoveredFromInvalid = false;
+
+function setP6PrimaryRecoveredFromInvalid(value) {
+  p6PrimaryRecoveredFromInvalid = value === true;
+  window.__autoSvgaP6RecoveredFromInvalid = p6PrimaryRecoveredFromInvalid;
+}
 
 function createPlayerSlot(slotName) {
   const suffix = slotName.toUpperCase();
@@ -213,6 +219,7 @@ function createPlayerSlot(slotName) {
     inspectionRequestId: 0,
     loadingPhases: Array.from(document.querySelectorAll(`#svgaPanel${suffix} [data-loading-phase]`)),
     source: undefined,
+    sourceIdentity: undefined,
     parseStatus: "empty",
     renderStatus: "empty",
     isPlaying: false,
@@ -267,6 +274,7 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   slot.inspectionStatus = "idle";
   slot.parseStatus = "empty";
   slot.renderStatus = "empty";
+  slot.sourceIdentity = undefined;
   slot.panel.classList.remove("hasMedia", "isLoading");
   slot.canvas.innerHTML = "";
   slot.frame.style.removeProperty("width");
@@ -275,6 +283,7 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   clearSlotLoadingPhase(slot);
   slot.player?.clear?.();
   if (slot.slotName === "A") {
+    setP6PrimaryRecoveredFromInvalid(false);
     svgaFilePillA.hidden = true;
     svgaFilePillA.textContent = "";
     selectedLayerKey = undefined;
@@ -1327,9 +1336,21 @@ function buildImageWarnings(image) {
 async function loadSvga(slotKey, source = paths.svga, options = {}) {
   ensureSvgaLibrary();
   const slot = players[slotKey];
+  const wasPrimaryInvalid = slot.slotName === "A"
+    && (slot.parseStatus === "error"
+      || slot.renderStatus === "error"
+      || (!errorBox.hidden && compactText(errorBox).length > 0));
   clearError();
   resetSlotMediaState(slot);
   slot.source = source;
+  slot.sourceIdentity = {
+    slot: slot.slotName.toLowerCase(),
+    sourceKind: typeof source === "string" && source.startsWith("blob:") ? "local_blob" : "url",
+    fileName: options.fileName ?? (typeof source === "string" ? source.split("/").at(-1) : `SVGA ${slot.slotName}`),
+    fileSizeBytes: options.fileSizeBytes ?? null,
+    fixtureSha256: options.fixtureSha256 ?? p6SmokeFixture?.sha256 ?? null,
+    displayName: options.fileName ?? p6SmokeFixture?.displayName ?? null
+  };
   slot.report = options.report;
   slot.inspectionStatus = "loading";
   const inspectionRequestId = ++slot.inspectionRequestId;
@@ -1385,6 +1406,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
         phaseState.parse = "done";
         setSlotLoadingPhase(slot, slot.inspectionStatus === "loading" ? "check" : undefined, phaseState);
         slot.videoItem = loadedVideoItem;
+        if (slot.slotName === "A") setP6PrimaryRecoveredFromInvalid(wasPrimaryInvalid);
         slot.parseStatus = decodedInfo ? "success" : "warning";
         slot.metrics = {
           ...decodedInfo,
@@ -1582,6 +1604,11 @@ async function captureArtifact(scenario) {
   return electronBridge.captureArtifact(scenario);
 }
 
+async function performP6SmokeInput(input) {
+  if (!electronBridge?.performSmokeInput) throw new Error("Electron host smoke input bridge is unavailable.");
+  return electronBridge.performSmokeInput(input);
+}
+
 const p6SmokeActionTrace = [];
 let p6SmokeFixture = null;
 let p6SmokeCurrentActionId = null;
@@ -1718,6 +1745,8 @@ function collectP6SmokeSnapshot(stateId) {
       : "none";
   const modal = !settingsModal.hidden ? "settingsModal" : !assetPreviewModal.hidden ? "assetPreviewModal" : "none";
   const observedStateId = (() => {
+    if ((!errorBox.hidden && compactText(errorBox).length > 0) || players.a.parseStatus === "error" || players.a.renderStatus === "error") return "invalid";
+    if (p6PrimaryRecoveredFromInvalid && players.a.videoItem && players.a.parseStatus !== "loading" && players.a.renderStatus === "ready") return "recovered-from-invalid";
     if (modeDropdownTrigger?.getAttribute("aria-expanded") === "true" || (!modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu))) return "mode-menu-open";
     if (modal === "assetPreviewModal") return "asset-preview-modal-open";
     if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
@@ -1744,6 +1773,12 @@ function collectP6SmokeSnapshot(stateId) {
     mode: activeMode,
     panel,
     modal,
+    fixture: p6SmokeFixture ? { ...p6SmokeFixture } : null,
+    sourceSlots: p6SourceSlotsSummary(),
+    stateSemantics: p6StateSemantics(stateId, {
+      observedStateId,
+      primaryOverlayVisible: isElementVisible(players.a.panel?.querySelector(".centerEmptyState"))
+    }),
     bodyTextSample: document.body.innerText.replace(/\s+/g, " ").trim().slice(0, 600),
     regions,
     controls
@@ -1758,6 +1793,61 @@ function p6VisibleIds(entries = []) {
     .sort();
 }
 
+function p6SlotSummary(slot) {
+  const canvasNonBlank = canvasIsNonBlank(slot);
+  return {
+    slot: slot.slotName.toLowerCase(),
+    occupied: Boolean(slot.videoItem),
+    sourceKind: slot.sourceIdentity?.sourceKind ?? null,
+    fileName: slot.sourceIdentity?.fileName ?? slot.metrics?.fileName ?? null,
+    fileSizeBytes: slot.sourceIdentity?.fileSizeBytes ?? slot.metrics?.fileSizeBytes ?? null,
+    fixtureSha256: slot.sourceIdentity?.fixtureSha256 ?? null,
+    displayName: slot.sourceIdentity?.displayName ?? slot.metrics?.fileName ?? null,
+    parseStatus: slot.parseStatus,
+    renderStatus: slot.renderStatus,
+    inspectionStatus: slot.inspectionStatus,
+    canvasChildCount: slot.canvas.children.length,
+    canvasNonBlank,
+    hasMetrics: Boolean(slot.metrics),
+    hasInspectionReport: Boolean(slot.inspectionReport)
+  };
+}
+
+function p6SourceSlotsSummary() {
+  return {
+    primary: p6SlotSummary(players.a),
+    secondary: p6SlotSummary(players.b),
+    reference: {
+      slot: "reference",
+      occupied: Boolean(referenceState.metrics && referenceState.panel.classList.contains("hasMedia")),
+      fileName: referenceState.metrics?.fileName ?? null,
+      fileSizeBytes: referenceState.metrics?.fileSizeBytes ?? null,
+      kind: referenceState.kind ?? null,
+      hasMetrics: Boolean(referenceState.metrics)
+    }
+  };
+}
+
+function p6StateSemantics(state, details = {}) {
+  return {
+    requestedStateId: state,
+    observedStateId: details.observedStateId ?? null,
+    primaryOverlayVisible: details.primaryOverlayVisible === true,
+    loadingVisible: players.a.panel.classList.contains("isLoading"),
+    errorVisible: !errorBox.hidden && compactText(errorBox).length > 0,
+    loadedCanvasNonBlank: canvasIsNonBlank(players.a),
+    primaryOccupied: Boolean(players.a.videoItem),
+    primaryParserStatus: players.a.parseStatus,
+    primaryRenderStatus: players.a.renderStatus,
+    primaryInspectionStatus: players.a.inspectionStatus,
+    primaryCanvasChildCount: players.a.canvas.children.length,
+    staleMetadataCleared: !players.a.metrics,
+    staleInspectionCleared: !players.a.inspectionReport,
+    staleCanvasCleared: players.a.canvas.children.length === 0,
+    staleFileBadgeCleared: svgaFilePillA.hidden && !compactText(svgaFilePillA)
+  };
+}
+
 function p6BoundedSmokeText(value, maxLength = 240) {
   return String(value ?? "")
     .replace(/\s+/g, " ")
@@ -1770,6 +1860,7 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
   const target = p6SmokeTargetForSelector(action.selector);
   const stateBefore = await collectP6SmokeActionState(`${action.initialState}:before`);
   const receipts = [];
+  let nativeInputProof;
   const selectorParts = action.selector.split(",").map((part) => part.trim()).filter(Boolean);
   const matchesTarget = (targetNode) => selectorParts.includes("body")
     ? targetNode === document || targetNode === window || targetNode === document.body || document.body.contains(targetNode)
@@ -1797,7 +1888,8 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
   };
   for (const type of ["click", "change", "input", "keydown"]) document.addEventListener(type, receiptHandler, true);
   try {
-    await runAction();
+    const proof = await runAction();
+    nativeInputProof = Array.isArray(proof) ? proof.at(-1) : proof;
     await waitForState?.();
   } finally {
     for (const type of ["click", "change", "input", "keydown"]) document.removeEventListener(type, receiptHandler, true);
@@ -1825,15 +1917,16 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
     source: "desktop-product-smoke-input",
     stateBefore,
     realAction: {
-      inputKind: action.kind,
+      inputKind: nativeInputProof?.inputKind ?? action.kind,
       selector: action.selector,
-      trustedPath: "desktop-smoke-dom-event",
-      targetVisible: target.visible === true,
-      targetRect: target.rect,
-      actionablePoint: target.actionablePoint,
-      viewportIntersected: target.viewportIntersected === true,
-      occlusionPassed: target.occlusionPassed === true,
-      eventTimestampMs: receipts.at(-1)?.timestampMs ?? Date.now(),
+      trustedPath: nativeInputProof?.trustedPath ?? "desktop-smoke-dom-event",
+      nativeCommandId: nativeInputProof?.nativeCommandId ?? null,
+      targetVisible: nativeInputProof?.targetVisible ?? target.visible === true,
+      targetRect: nativeInputProof?.targetRect ?? target.rect,
+      actionablePoint: nativeInputProof?.actionablePoint ?? target.actionablePoint,
+      viewportIntersected: nativeInputProof?.viewportIntersected ?? target.viewportIntersected === true,
+      occlusionPassed: nativeInputProof?.occlusionPassed ?? target.occlusionPassed === true,
+      eventTimestampMs: nativeInputProof?.eventTimestampMs ?? receipts.at(-1)?.timestampMs ?? Date.now(),
       eventReceipts: receipts
     },
     stateAfter,
@@ -2219,9 +2312,14 @@ function collectRenderedStateProof(state) {
     if (!isElementVisible(workspace)) failures.push("workspace is not visible");
     if (!syncBarVisible) failures.push("sync controls are not reachable");
   }
+  const observedSnapshot = collectP6SmokeSnapshot(state);
   return {
     state: normalizedState,
     requestedState: state,
+    observedStateId: observedSnapshot.observedStateId,
+    fixture: observedSnapshot.fixture,
+    sourceSlots: observedSnapshot.sourceSlots,
+    stateSemantics: observedSnapshot.stateSemantics,
     viewportCss: { width: innerWidth, height: innerHeight },
     devicePixelRatio,
     playbackTimeMs: Math.round((players.a.timeDisplay?.textContent?.match(/[0-9.]+/)?.[0] ?? 0) * 1000),
@@ -2673,7 +2771,7 @@ async function runProductSmoke() {
       expectedState: "mode-menu-open"
     }, async () => {
       closeP6SmokeTransientUi();
-      modeDropdownTrigger?.click();
+      return performP6SmokeInput({ kind: "click", selector: "#modeDropdownTrigger" });
     }, () => waitFor(() => !modeDropdownMenu.hidden && isElementVisible(modeDropdownMenu)));
     await captureArtifact("desktop-mode-menu-open");
     await recordP6SmokeAction({
@@ -2684,7 +2782,7 @@ async function runProductSmoke() {
       expectedState: "export-review-loaded",
       equivalentStates: ["latest-artifact-loaded"]
     }, async () => {
-      document.querySelector("[data-value='exportReview']")?.click();
+      return performP6SmokeInput({ kind: "click", selector: "[data-value='exportReview']" });
     }, async () => {
       await waitFor(() => Boolean(latestArtifactGroup && players.a.videoItem)
         && players.a.parseStatus !== "loading"
@@ -2702,7 +2800,7 @@ async function runProductSmoke() {
       expectedState: "info-overview-open"
     }, async () => {
       if (activeSidePanel === "info") setActiveSidePanel(null);
-      infoPanelButton?.click();
+      return performP6SmokeInput({ kind: "click", selector: "#infoPanelButton" });
     }, async () => {
       await waitFor(() => activeSidePanel === "info");
       ensureP6SmokeInfoPanel("overview");
@@ -2728,7 +2826,7 @@ async function runProductSmoke() {
       initialState: "info-overview-open",
       expectedState: "info-assets-open"
     }, async () => {
-      document.querySelector(".tabButton[data-tab='assets']")?.click();
+      return performP6SmokeInput({ kind: "click", selector: ".tabButton[data-tab='assets']" });
     }, async () => {
       await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
       await delay(120);
@@ -2748,7 +2846,7 @@ async function runProductSmoke() {
       initialState: "info-assets-open",
       expectedState: "logs-open"
     }, async () => {
-      logsButton?.click();
+      return performP6SmokeInput({ kind: "click", selector: "#logsButton" });
     }, async () => {
       await waitFor(() => activeSidePanel === "logs");
       await delay(120);
@@ -2761,7 +2859,7 @@ async function runProductSmoke() {
       initialState: "logs-open",
       expectedState: "settings-open"
     }, async () => {
-      settingsButton?.click();
+      return performP6SmokeInput({ kind: "click", selector: "#settingsButton" });
     }, async () => {
       await waitFor(() => !settingsModal.hidden);
       await delay(120);
@@ -2774,8 +2872,10 @@ async function runProductSmoke() {
       initialState: "settings-open",
       expectedState: "accessibility-toggles-on"
     }, async () => {
-      if (!reduceMotionToggle.checked) reduceMotionToggle.click();
-      if (!reduceBlurToggle.checked) reduceBlurToggle.click();
+      const proofs = [];
+      if (!reduceMotionToggle.checked) proofs.push(await performP6SmokeInput({ kind: "click", selector: "#reduceMotionToggle" }));
+      if (!reduceBlurToggle.checked) proofs.push(await performP6SmokeInput({ kind: "click", selector: "#reduceBlurToggle" }));
+      return proofs;
     }, async () => {
       await waitFor(() => reduceMotionToggle.checked && reduceBlurToggle.checked);
       await delay(120);
@@ -2793,11 +2893,12 @@ async function runProductSmoke() {
       selector: "body",
       initialState: "settings-open",
       expectedState: "settings-closed-by-escape"
-    }, () => new Promise((resolve) => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    }, async () => {
+      const proof = await performP6SmokeInput({ kind: "keyboard", selector: "body", key: "Escape" });
       window.__p6SettingsClosedByEscape = true;
-      window.setTimeout(resolve, 260);
-    }), async () => {
+      await delay(260);
+      return proof;
+    }, async () => {
       await waitFor(() => settingsModal.hidden);
     });
     await captureArtifact("desktop-settings-closed-by-escape");
@@ -2815,10 +2916,11 @@ async function runProductSmoke() {
       selector: "body",
       initialState: "export-review-loaded",
       expectedState: "synchronized-playback-toggled-by-space"
-    }, () => new Promise((resolve) => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
-      window.setTimeout(resolve, 260);
-    }), async () => {
+    }, async () => {
+      const proof = await performP6SmokeInput({ kind: "keyboard", selector: "body", key: "Space" });
+      await delay(260);
+      return proof;
+    }, async () => {
       await waitFor(() => syncPlayControl.getAttribute("aria-pressed") === "true");
     });
     await captureArtifact("desktop-synchronized-playback-toggled-by-space");
@@ -2837,7 +2939,8 @@ async function runProductSmoke() {
       initialState: "local-empty",
       expectedState: "local-compare-empty"
     }, async () => {
-      if (!compareToggle.checked) compareToggle.click();
+      if (!compareToggle.checked) return performP6SmokeInput({ kind: "click", selector: "#compareToggle" });
+      return undefined;
     }, async () => {
       await waitFor(() => isCompareActive());
       await delay(120);

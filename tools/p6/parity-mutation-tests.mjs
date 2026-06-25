@@ -159,6 +159,7 @@ test("strict state comparison accepts canonicalized Web/Desktop runtime context 
       states: {
         empty: {
           state: "empty",
+          observedStateId: "empty",
           passed: true,
           viewportCss: { width: 1440, height: 900 },
           devicePixelRatio: 1,
@@ -170,7 +171,9 @@ test("strict state comparison accepts canonicalized Web/Desktop runtime context 
             mode: "localPreview",
             activeSidePanel: "info",
             activeModal: null
-          }
+          },
+          sourceSlots: stateSourceSlots(false),
+          stateSemantics: stateSemanticFixture("empty")
         }
       }
     }, null, 2));
@@ -503,6 +506,9 @@ test("WP3 strict interaction gates reject missing before/action/after/result/bin
       facts.webInteractionTrace.actionTrace[0].realAction.eventReceipts[0].selector = "#otherButton";
       facts.webInteractionTrace.actionTrace[0].realAction.eventReceipts[0].targetMatches = false;
     }],
+    ["untrusted_dom_receipt", (facts) => {
+      facts.webInteractionTrace.actionTrace[0].realAction.eventReceipts[0].isTrusted = false;
+    }],
     ["missing_event_receipt", (facts) => {
       facts.webInteractionTrace.actionTrace[0].realAction.eventReceipts = [];
     }],
@@ -552,6 +558,49 @@ test("Repair 6 strict state gates reject hash-only, stale invalid, and split loa
   splitLoading.stateComparisons["export-review-loaded"].checks.stateSnapshotIdBound = false;
   splitLoading.stateComparisons["export-review-loaded"].passed = false;
   assertItemFailed(buildP6ParityReportFromRuntimeFacts(splitLoading), "stateParity", "export-review-loaded", "web-item-runtime");
+});
+
+test("WP1 strict state gates reject requested-label and semantic context false positives", () => {
+  for (const [caseId, itemId, mutate] of [
+    ["loaded_canvas_empty_overlay_visible", "export-review-loaded", (facts) => {
+      facts.stateComparisons["export-review-loaded"].runtime.webSemantic.primaryOverlayVisible = true;
+    }],
+    ["requested_loaded_observed_unknown", "export-review-loaded", (facts) => {
+      facts.stateComparisons["export-review-loaded"].runtime.webObservedStateId = "unknown";
+    }],
+    ["different_fixture_context", "export-review-loaded", (facts) => {
+      facts.stateComparisons["export-review-loaded"].context.desktop.fixture.sha256 = "b".repeat(64);
+    }],
+    ["different_source_slot_context", "export-review-loaded", (facts) => {
+      facts.stateComparisons["export-review-loaded"].context.desktop.sourceSlots.primary.occupied = false;
+    }],
+    ["responsive_empty_mislabeled_loaded", "responsive-export-review-loaded-at-900-x-720", (facts) => {
+      facts.stateComparisons["responsive-export-review-loaded-at-900-x-720"] = stateComparison("responsive-export-review-loaded-at-900-x-720");
+      facts.stateComparisons["responsive-export-review-loaded-at-900-x-720"].runtime.webObservedStateId = "local-empty";
+      facts.stateComparisons["responsive-export-review-loaded-at-900-x-720"].runtime.webSemantic.loadedCanvasNonBlank = false;
+      facts.stateComparisons["responsive-export-review-loaded-at-900-x-720"].runtime.webSemantic.primaryOverlayVisible = true;
+      facts.contract.states.push({ id: "responsive-export-review-loaded-at-900-x-720", required: true });
+    }],
+    ["stale_invalid_metadata_canvas", "invalid-error-state", (facts) => {
+      facts.stateComparisons["invalid-error-state"].runtime.desktopSemantic.staleMetadataCleared = false;
+      facts.stateComparisons["invalid-error-state"].runtime.desktopSemantic.staleCanvasCleared = false;
+    }],
+    ["desired_state_label_only", "export-review-loaded", (facts) => {
+      delete facts.stateComparisons["export-review-loaded"].runtime;
+      delete facts.stateComparisons["export-review-loaded"].context.web.fixture;
+      delete facts.stateComparisons["export-review-loaded"].context.desktop.fixture;
+      facts.stateComparisons["export-review-loaded"].stateSnapshotId = "caller-supplied-export-review-loaded";
+    }]
+  ]) {
+    const facts = goodFacts();
+    mutate(facts);
+    assertItemFailed(
+      buildP6ParityReportFromRuntimeFacts(facts),
+      "stateParity",
+      itemId,
+      "web-item-runtime"
+    );
+  }
 });
 
 test("WP4 visual evidence rejects inconsistent viewport and zero-pixel comparison coverage", () => {
@@ -849,25 +898,86 @@ function artifactBindings() {
 }
 
 function stateComparison(stateId) {
+  const loaded = ["export-review-loaded", "loaded", "responsive-export-review-loaded-at-900-x-720"].includes(stateId);
+  const invalid = stateId === "invalid-error-state" || stateId === "invalid";
+  const observedStateId = stateId === "invalid-error-state" ? "invalid"
+    : stateId === "responsive-export-review-loaded-at-900-x-720" ? "export-review-loaded"
+      : stateId;
+  const sourceSlots = {
+    primary: {
+      occupied: loaded,
+      fixtureSha256: loaded ? "a".repeat(64) : null,
+      fileName: loaded ? "avatar_frame_basic.svga" : null,
+      canvasNonBlank: loaded,
+      parseStatus: invalid ? "error" : loaded ? "success" : "empty",
+      renderStatus: invalid ? "error" : loaded ? "success" : "empty",
+      canvasChildCount: loaded ? 1 : 0
+    },
+    secondary: {
+      occupied: false,
+      fixtureSha256: null,
+      canvasNonBlank: false,
+      parseStatus: "empty",
+      renderStatus: "empty",
+      canvasChildCount: 0
+    },
+    reference: {
+      occupied: stateId === "export-review-loaded" || stateId === "responsive-export-review-loaded-at-900-x-720",
+      fixtureSha256: null,
+      canvasNonBlank: false
+    }
+  };
+  const stateSemantics = {
+    observedStateId,
+    primaryOverlayVisible: !loaded && !invalid,
+    loadingVisible: false,
+    errorVisible: invalid,
+    loadedCanvasNonBlank: loaded,
+    primaryOccupied: loaded,
+    primaryParserStatus: invalid ? "error" : loaded ? "success" : "empty",
+    primaryRenderStatus: invalid ? "error" : loaded ? "success" : "empty",
+    primaryCanvasChildCount: loaded ? 1 : 0,
+    staleMetadataCleared: !loaded,
+    staleInspectionCleared: !loaded,
+    staleCanvasCleared: !loaded,
+    staleFileBadgeCleared: !loaded
+  };
+  const hostContext = {
+    viewportCss: stateId === "responsive-export-review-loaded-at-900-x-720"
+      ? { width: 900, height: 720 }
+      : { width: 1440, height: 900 },
+    devicePixelRatio: 1,
+    mode: loaded ? "exportReview" : "localPreview",
+    panel: "none",
+    modal: "none",
+    observedStateId,
+    fixture: {
+      occupied: loaded,
+      sha256: loaded ? "a".repeat(64) : null,
+      fileName: loaded ? "avatar_frame_basic.svga" : null
+    },
+    sourceSlots,
+    stateSemantics
+  };
   return {
     stateId,
     passed: true,
     stateSnapshotId: `snapshot-${stateId}`,
     context: {
-      web: {
-        viewportCss: { width: 1440, height: 900 },
-        devicePixelRatio: 1,
-        mode: "exportReview",
-        panel: "none",
-        modal: "none"
-      },
-      desktop: {
-        viewportCss: { width: 1440, height: 900 },
-        devicePixelRatio: 1,
-        mode: "exportReview",
-        panel: "none",
-        modal: "none"
-      }
+      web: structuredClone(hostContext),
+      desktop: structuredClone(hostContext)
+    },
+    runtime: {
+      webStateId: stateId,
+      desktopStateId: stateId,
+      webObservedStateId: observedStateId,
+      desktopObservedStateId: observedStateId,
+      webSemantic: structuredClone(stateSemantics),
+      desktopSemantic: structuredClone(stateSemantics),
+      observedStateMatched: true,
+      fixtureContextMatched: true,
+      sourceSlotContextMatched: true,
+      semanticStatePredicatesMatched: true
     },
     comparison: {
       sameDimensions: true,
@@ -882,6 +992,10 @@ function stateComparison(stateId) {
       notSameSourceHash: true,
       comparisonGenerated: true,
       stateSnapshotIdBound: true,
+      observedStateMatched: true,
+      fixtureContextMatched: true,
+      sourceSlotContextMatched: true,
+      semanticStatePredicatesMatched: true,
       geometryCompared: true,
       computedStyleCompared: true,
       controlValuesCompared: true,
@@ -976,7 +1090,7 @@ function strictTrace(host, fixtureSha256) {
           type: "click",
           selector: "#settingsButton",
           targetMatches: true,
-          isTrusted: host === "web",
+          isTrusted: true,
           timestampMs: 123456,
           performanceTimeMs: 120,
           clientX: 32,
@@ -1012,6 +1126,53 @@ function strictTrace(host, fixtureSha256) {
   };
 }
 
+function stateSourceSlots(loaded) {
+  return {
+    primary: {
+      occupied: loaded,
+      fixtureSha256: loaded ? "a".repeat(64) : null,
+      fileName: loaded ? "avatar_frame_basic.svga" : null,
+      canvasNonBlank: loaded,
+      parseStatus: loaded ? "success" : "empty",
+      renderStatus: loaded ? "success" : "empty",
+      canvasChildCount: loaded ? 1 : 0
+    },
+    secondary: {
+      occupied: false,
+      fixtureSha256: null,
+      canvasNonBlank: false,
+      parseStatus: "empty",
+      renderStatus: "empty",
+      canvasChildCount: 0
+    },
+    reference: {
+      occupied: false,
+      fixtureSha256: null,
+      canvasNonBlank: false
+    }
+  };
+}
+
+function stateSemanticFixture(stateId) {
+  const loaded = ["loaded", "export-review-loaded", "responsive-export-review-loaded-at-900-x-720"].includes(stateId);
+  const invalid = stateId === "invalid" || stateId === "invalid-error-state";
+  return {
+    observedStateId: stateId,
+    primaryOverlayVisible: !loaded && !invalid,
+    loadingVisible: stateId === "loading",
+    errorVisible: invalid,
+    loadedCanvasNonBlank: loaded,
+    primaryOccupied: loaded,
+    primaryParserStatus: invalid ? "error" : loaded ? "success" : stateId === "loading" ? "loading" : "empty",
+    primaryRenderStatus: invalid ? "error" : loaded ? "success" : stateId === "loading" ? "loading" : "empty",
+    primaryCanvasChildCount: loaded ? 1 : 0,
+    staleMetadataCleared: !loaded,
+    staleInspectionCleared: !loaded,
+    staleCanvasCleared: !loaded,
+    staleFileBadgeCleared: !loaded
+  };
+}
+
 function snapshot(stateId, regionIds, controlIds) {
   return {
     stateId,
@@ -1033,12 +1194,16 @@ function snapshot(stateId, regionIds, controlIds) {
 function strictWebSnapshot(stateId, mode, panel, modal) {
   return {
     stateId,
+    observedStateId: stateId,
     viewport: { width: 1440, height: 900 },
     devicePixelRatio: 1,
     playbackTimeMs: 1200,
     mode,
     panel,
     modal,
+    fixture: null,
+    sourceSlots: stateSourceSlots(false),
+    stateSemantics: stateSemanticFixture(stateId),
     bodyTextSample: `${stateId} visible`,
     regions: ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"].map((id) => ({
       id,

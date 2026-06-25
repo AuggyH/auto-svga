@@ -107,6 +107,10 @@ export function strictStateComparisonPassed(comparison, stateId) {
     && checks.desktopPresent === true
     && checks.comparisonGenerated === true
     && checks.stateSnapshotIdBound === true
+    && checks.observedStateMatched === true
+    && checks.fixtureContextMatched === true
+    && checks.sourceSlotContextMatched === true
+    && checks.semanticStatePredicatesMatched === true
     && checks.geometryCompared === true
     && checks.computedStyleCompared === true
     && checks.controlValuesCompared === true
@@ -115,6 +119,7 @@ export function strictStateComparisonPassed(comparison, stateId) {
     && checks.pixelToleranceCompared === true
     && checks.noUnapprovedDifferences === true
     && comparedPixelsCovered(comparison)
+    && runtimeStateFactsMatched(comparison)
     && comparisonContextMatched(comparison);
 }
 
@@ -140,6 +145,19 @@ function comparedPixelsCovered(comparison) {
   return Number.isInteger(comparedPixels) && comparedPixels > 0;
 }
 
+function runtimeStateFactsMatched(comparison) {
+  const runtime = comparison.runtime;
+  if (!isRecord(runtime)) return false;
+  return runtime.observedStateMatched === true
+    && runtime.fixtureContextMatched === true
+    && runtime.sourceSlotContextMatched === true
+    && runtime.semanticStatePredicatesMatched === true
+    && sameObservedState(runtime.webObservedStateId, runtime.desktopObservedStateId, comparison.stateId)
+    && sameStateSemantics(runtime.webSemantic, runtime.desktopSemantic)
+    && semanticStateValid(comparison.stateId, runtime.webSemantic)
+    && semanticStateValid(comparison.stateId, runtime.desktopSemantic);
+}
+
 function comparisonContextMatched(comparison) {
   const context = comparison.context;
   if (context === undefined) return true;
@@ -148,7 +166,105 @@ function comparisonContextMatched(comparison) {
     && context.web.devicePixelRatio === context.desktop.devicePixelRatio
     && optionalEqual(context.web.mode, context.desktop.mode)
     && optionalEqual(context.web.panel, context.desktop.panel)
-    && optionalEqual(context.web.modal, context.desktop.modal);
+    && optionalEqual(context.web.modal, context.desktop.modal)
+    && sameObservedState(context.web.observedStateId, context.desktop.observedStateId, comparison.stateId)
+    && sameFixtureContext(context.web.fixture, context.desktop.fixture)
+    && sameSourceSlots(context.web.sourceSlots, context.desktop.sourceSlots)
+    && sameStateSemantics(context.web.stateSemantics, context.desktop.stateSemantics);
+}
+
+function semanticStateValid(stateId, semantic) {
+  if (!isRecord(semantic)) return false;
+  if (!sameObservedState(semantic.observedStateId, semantic.observedStateId, stateId)) return false;
+  if (loadedState(stateId)) {
+    return semantic.primaryOccupied === true
+      && semantic.loadedCanvasNonBlank === true
+      && semantic.primaryOverlayVisible === false
+      && semantic.errorVisible === false
+      && !["loading", "error"].includes(semantic.primaryParserStatus)
+      && !["loading", "error"].includes(semantic.primaryRenderStatus);
+  }
+  if (stateId === "local-empty") {
+    return semantic.primaryOccupied === false
+      && semantic.loadedCanvasNonBlank === false
+      && semantic.primaryOverlayVisible === true
+      && semantic.errorVisible === false;
+  }
+  if (stateId === "loading") {
+    return semantic.loadingVisible === true
+      && semantic.primaryOverlayVisible === true
+      && semantic.errorVisible === false
+      && semantic.primaryParserStatus === "loading"
+      && semantic.primaryRenderStatus === "loading";
+  }
+  if (stateId === "invalid-error-state" || stateId === "invalid") {
+    return semantic.primaryOccupied === false
+      && semantic.loadedCanvasNonBlank === false
+      && semantic.errorVisible === true
+      && semantic.primaryParserStatus === "error"
+      && semantic.primaryRenderStatus === "error"
+      && semantic.staleMetadataCleared === true
+      && semantic.staleInspectionCleared === true
+      && semantic.staleCanvasCleared === true
+      && semantic.staleFileBadgeCleared === true;
+  }
+  return true;
+}
+
+function loadedState(stateId) {
+  return [
+    "loaded",
+    "playing",
+    "paused",
+    "export-review-loaded",
+    "latest-artifact-loaded",
+    "reference-media-loaded",
+    "responsive-export-review-loaded-at-900-x-720",
+    "recovered-from-invalid"
+  ].includes(stateId);
+}
+
+function sameObservedState(webObserved, desktopObserved, expected) {
+  if (!nonEmptyString(webObserved) || !nonEmptyString(desktopObserved)) return false;
+  return canonicalObservedState(webObserved, expected) === canonicalObservedState(desktopObserved, expected);
+}
+
+function canonicalObservedState(actual, expected) {
+  if (expected === "local-empty" && actual === "empty") return expected;
+  if (expected === "invalid-error-state" && actual === "invalid") return expected;
+  if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "export-review-loaded") return expected;
+  if (expected === "responsive-export-review-loaded-at-900-x-720" && actual === "responsive-export-review-900x720") return expected;
+  return actual;
+}
+
+function sameFixtureContext(webFixture, desktopFixture) {
+  if (!isRecord(webFixture) || !isRecord(desktopFixture)) return false;
+  if (webFixture.occupied !== desktopFixture.occupied) return false;
+  if (webFixture.occupied !== true) return true;
+  return isSha256(webFixture.sha256) && webFixture.sha256 === desktopFixture.sha256;
+}
+
+function sameSourceSlots(webSlots, desktopSlots) {
+  if (!isRecord(webSlots) || !isRecord(desktopSlots)) return false;
+  return ["primary", "secondary", "reference"].every((slot) => {
+    const web = webSlots[slot];
+    const desktop = desktopSlots[slot];
+    if (!isRecord(web) || !isRecord(desktop)) return false;
+    if (web.occupied !== desktop.occupied) return false;
+    if (web.canvasNonBlank !== desktop.canvasNonBlank) return false;
+    if (web.occupied === true && isSha256(web.fixtureSha256) && isSha256(desktop.fixtureSha256)) {
+      return web.fixtureSha256 === desktop.fixtureSha256;
+    }
+    return true;
+  });
+}
+
+function sameStateSemantics(webSemantic, desktopSemantic) {
+  if (!isRecord(webSemantic) || !isRecord(desktopSemantic)) return false;
+  return webSemantic.primaryOccupied === desktopSemantic.primaryOccupied
+    && webSemantic.loadedCanvasNonBlank === desktopSemantic.loadedCanvasNonBlank
+    && webSemantic.primaryOverlayVisible === desktopSemantic.primaryOverlayVisible
+    && webSemantic.errorVisible === desktopSemantic.errorVisible;
 }
 
 function motionPhaseHashesChanged(evidence, host) {
@@ -352,7 +468,7 @@ function validateRealAction(value, label, failures) {
     failures.push(`${label}.eventReceipts missing`);
   } else {
     for (const [index, receipt] of value.eventReceipts.entries()) {
-      validateEventReceipt(receipt, `${label}.eventReceipts[${index}]`, value.selector, failures);
+      validateEventReceipt(receipt, `${label}.eventReceipts[${index}]`, value.selector, value.trustedPath, failures);
     }
   }
 }
@@ -370,7 +486,7 @@ function validateFocusOrVisibleResult(value, label, failures) {
   if (typeof value.visibleResultText !== "string") failures.push(`${label}.visibleResultText missing`);
 }
 
-function validateEventReceipt(value, label, expectedSelector, failures) {
+function validateEventReceipt(value, label, expectedSelector, trustedPath, failures) {
   if (!isRecord(value)) {
     failures.push(`${label} missing`);
     return;
@@ -380,6 +496,9 @@ function validateEventReceipt(value, label, expectedSelector, failures) {
   if (!nonEmptyString(value.selector)) failures.push(`${label}.selector missing`);
   if (value.selector !== expectedSelector) failures.push(`${label}.selector mismatch`);
   if (value.targetMatches !== true) failures.push(`${label}.targetMatches must be true`);
+  if (!/native-command/i.test(String(trustedPath ?? "")) && value.isTrusted !== true) {
+    failures.push(`${label}.isTrusted must be true for DOM input receipts`);
+  }
 }
 
 function validateMutationProtection(value, failures) {

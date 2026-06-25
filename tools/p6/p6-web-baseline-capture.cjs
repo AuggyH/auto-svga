@@ -303,8 +303,27 @@ async function collectSnapshot(window, stateId) {
       const tabOverview = document.querySelector("#tab-overview");
       const panelA = document.querySelector("#svgaPanelA");
       const statusA = document.querySelector("#svgaStatusA")?.textContent ?? "";
+      const canvasNonBlank = (selector) => {
+        const canvas = document.querySelector(selector);
+        if (!(canvas instanceof HTMLCanvasElement)) return false;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context || !canvas.width || !canvas.height) return false;
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let index = 3; index < pixels.length; index += 4) {
+          if (pixels[index] > 0) return true;
+        }
+        return false;
+      };
       const loadedA = Boolean(panelA?.classList.contains("hasLoaded") || document.querySelector("#svgaCanvasA canvas"));
+      const loadedB = Boolean(document.querySelector("#svgaCanvasB canvas"));
+      const primaryOverlay = panelA?.querySelector(".centerEmptyState");
+      const errorBox = document.querySelector("#errorBox");
+      const filePillA = document.querySelector("#svgaFilePillA");
+      const errorVisible = isVisible(errorBox) && Boolean(errorBox?.textContent?.trim());
+      const recoveredFromInvalid = window.__autoSvgaP6RecoveredFromInvalid === true;
       const observedStateId = (() => {
+        if (errorVisible || /错误|error/i.test(statusA)) return "invalid";
+        if (recoveredFromInvalid && loadedA && !/加载中|loading/i.test(statusA)) return "recovered-from-invalid";
         if (modeDropdownTrigger?.getAttribute("aria-expanded") === "true" || (modeMenu && !modeMenu.hidden && isVisible(modeMenu))) return "mode-menu-open";
         if (modal === "assetPreviewModal") return "asset-preview-modal-open";
         if (syncPlayControl?.getAttribute("aria-pressed") === "true") return "synchronized-playback-toggled-by-space";
@@ -322,6 +341,51 @@ async function collectSnapshot(window, stateId) {
         if (/本地预览|Local preview/i.test(activeMode)) return "local-empty";
         return "unknown";
       })();
+      const fixture = window.__autoSvgaP6Fixture ?? null;
+      const sourceSlots = {
+        primary: {
+          slot: "a",
+          occupied: loadedA,
+          sourceKind: loadedA ? "file_input" : null,
+          fileName: loadedA ? fixture?.displayName ?? filePillA?.textContent?.replace(/\\s+/g, " ").trim() ?? null : null,
+          fileSizeBytes: loadedA ? fixture?.sizeBytes ?? null : null,
+          fixtureSha256: loadedA ? fixture?.sha256 ?? null : null,
+          displayName: loadedA ? fixture?.displayName ?? null : null,
+          parseStatus: /错误|error/i.test(statusA) ? "error" : loadedA ? "success" : /加载中|loading/i.test(statusA) ? "loading" : "empty",
+          renderStatus: /错误|error/i.test(statusA) ? "error" : loadedA ? "success" : /加载中|loading/i.test(statusA) ? "loading" : "empty",
+          canvasChildCount: document.querySelector("#svgaCanvasA")?.children.length ?? 0,
+          canvasNonBlank: canvasNonBlank("#svgaCanvasA canvas")
+        },
+        secondary: {
+          slot: "b",
+          occupied: loadedB,
+          sourceKind: loadedB ? "file_input" : null,
+          fixtureSha256: loadedB ? fixture?.sha256 ?? null : null,
+          canvasChildCount: document.querySelector("#svgaCanvasB")?.children.length ?? 0,
+          canvasNonBlank: canvasNonBlank("#svgaCanvasB canvas")
+        },
+        reference: {
+          slot: "reference",
+          occupied: Boolean(document.querySelector("#referencePanel")?.classList.contains("hasMedia")),
+          hasMetrics: Boolean(document.querySelector("#referencePanel")?.classList.contains("hasMedia"))
+        }
+      };
+      const stateSemantics = {
+        requestedStateId: ${JSON.stringify(stateId)},
+        observedStateId,
+        primaryOverlayVisible: isVisible(primaryOverlay),
+        loadingVisible: panelA?.classList.contains("isLoading") === true,
+        errorVisible,
+        loadedCanvasNonBlank: sourceSlots.primary.canvasNonBlank,
+        primaryOccupied: sourceSlots.primary.occupied,
+        primaryParserStatus: sourceSlots.primary.parseStatus,
+        primaryRenderStatus: sourceSlots.primary.renderStatus,
+        primaryCanvasChildCount: sourceSlots.primary.canvasChildCount,
+        staleMetadataCleared: !document.querySelector("#tab-overview .status-ready"),
+        staleInspectionCleared: !document.querySelector(".specReportSection, .auditReportSection"),
+        staleCanvasCleared: sourceSlots.primary.canvasChildCount === 0,
+        staleFileBadgeCleared: Boolean(filePillA?.hidden) && !filePillA?.textContent?.trim()
+      };
       return {
         stateId: ${JSON.stringify(stateId)},
         observedStateId,
@@ -334,6 +398,9 @@ async function collectSnapshot(window, stateId) {
         mode: activeMode,
         panel,
         modal,
+        fixture,
+        sourceSlots,
+        stateSemantics,
         bodyTextSample: document.body.innerText.replace(/\\s+/g, " ").trim().slice(0, 600),
         regions,
         controls
@@ -772,6 +839,13 @@ async function dispatchFixtureLoad(window, options = {}) {
     (async () => {
       const response = await fetch(${JSON.stringify(fixtureUrl)});
       const bytes = new Uint8Array(await response.arrayBuffer());
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      const sha256 = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      window.__autoSvgaP6Fixture = {
+        sha256,
+        displayName: ${JSON.stringify(fileName)},
+        sizeBytes: bytes.byteLength
+      };
       const file = new File([bytes], ${JSON.stringify(fileName)}, { type: "application/octet-stream" });
       const transfer = new DataTransfer();
       transfer.items.add(file);
