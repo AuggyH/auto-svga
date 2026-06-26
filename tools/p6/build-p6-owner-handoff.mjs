@@ -160,10 +160,17 @@ function isInsideOwnerHandoffPrivacyTestPatch(text, index, entry) {
 
 function isInsideReviewRootTemplatePatch(text, index, entry) {
   if (!entry.endsWith("changes.patch")) return false;
+  const filePath = patchFilePathAt(text, index);
   const lineStart = text.lastIndexOf("\n", index) + 1;
   const lineEndIndex = text.indexOf("\n", index);
   const lineEnd = lineEndIndex === -1 ? text.length : lineEndIndex;
   const line = text.slice(lineStart, lineEnd);
+  if (filePath === "tools/p6/build-p6-owner-handoff.mjs" && /^[+-]/.test(line) && (
+    line.includes('line.includes("review/P6-R1-abcdef0")')
+    || line.includes('line.includes("review/P6-R1-deadbee")')
+  )) {
+    return true;
+  }
   return /^[+-]/.test(line) && (
     line.includes("${headShort}")
     || line.includes("${expectedHeadShort}")
