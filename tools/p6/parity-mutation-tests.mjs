@@ -774,6 +774,10 @@ test("WP1 strict state gates reject requested-label and semantic context false p
       facts.stateComparisons["export-review-loaded"].context.desktop.visibleRegions =
         facts.stateComparisons["export-review-loaded"].context.desktop.visibleRegions.filter((id) => id !== "svgaPanelA");
     }],
+    ["visible_controls_diverge_without_machine_approval", "export-review-loaded", (facts) => {
+      facts.stateComparisons["export-review-loaded"].runtime.desktopVisibleControls.push("desktop-only-toast");
+      facts.stateComparisons["export-review-loaded"].context.desktop.visibleControls.push("desktop-only-toast");
+    }],
     ["responsive_empty_mislabeled_loaded", "responsive-export-review-loaded-at-900-x-720", (facts) => {
       facts.stateComparisons["responsive-export-review-loaded-at-900-x-720"] = stateComparison("responsive-export-review-loaded-at-900-x-720");
       facts.stateComparisons["responsive-export-review-loaded-at-900-x-720"].runtime.webObservedStateId = "local-empty";
@@ -796,6 +800,16 @@ test("WP1 strict state gates reject requested-label and semantic context false p
       facts.stateComparisons["invalid-error-state"].runtime.desktopProductState.compareActive = true;
       facts.stateComparisons["invalid-error-state"].context.desktop.sourceSlots.secondary.occupied = true;
       facts.stateComparisons["invalid-error-state"].context.desktop.sourceSlots.secondary.canvasNonBlank = true;
+    }],
+    ["invalid_error_text_diff_without_machine_approval", "invalid-error-state", (facts) => {
+      facts.stateComparisons["invalid-error-state"].runtime.webSemantic.statusAnnouncementText = "SVGA 文件加载失败：incorrect header check";
+      facts.stateComparisons["invalid-error-state"].runtime.desktopSemantic.statusAnnouncementText = "文件类型不支持：not-svga.txt。/ Unsupported file type.";
+      facts.stateComparisons["invalid-error-state"].runtime.webTopLevel.statusAnnouncementText = "SVGA 文件加载失败：incorrect header check";
+      facts.stateComparisons["invalid-error-state"].runtime.desktopTopLevel.statusAnnouncementText = "文件类型不支持：not-svga.txt。/ Unsupported file type.";
+      facts.stateComparisons["invalid-error-state"].context.web.stateSemantics.statusAnnouncementText = "SVGA 文件加载失败：incorrect header check";
+      facts.stateComparisons["invalid-error-state"].context.desktop.stateSemantics.statusAnnouncementText = "文件类型不支持：not-svga.txt。/ Unsupported file type.";
+      facts.stateComparisons["invalid-error-state"].context.web.topLevelRuntime.statusAnnouncementText = "SVGA 文件加载失败：incorrect header check";
+      facts.stateComparisons["invalid-error-state"].context.desktop.topLevelRuntime.statusAnnouncementText = "文件类型不支持：not-svga.txt。/ Unsupported file type.";
     }],
     ["latest_artifact_shell_without_semantic", "latest-artifact-loaded", (facts) => {
       facts.contract.states.push({ id: "latest-artifact-loaded", required: true });
@@ -879,6 +893,35 @@ test("WP1 strict state gates reject requested-label and semantic context false p
       "web-item-runtime"
     );
   }
+});
+
+test("WP1 strict state gates accept only machine-approved host differences", () => {
+  const facts = goodFacts();
+  const comparison = facts.stateComparisons["invalid-error-state"];
+  comparison.runtime.webSemantic.statusAnnouncementText = "SVGA 文件加载失败：incorrect header check";
+  comparison.runtime.desktopSemantic.statusAnnouncementText = "文件类型不支持：not-svga.txt。/ Unsupported file type.";
+  comparison.runtime.webTopLevel.statusAnnouncementText = "SVGA 文件加载失败：incorrect header check";
+  comparison.runtime.desktopTopLevel.statusAnnouncementText = "文件类型不支持：not-svga.txt。/ Unsupported file type.";
+  comparison.context.web.stateSemantics.statusAnnouncementText = "SVGA 文件加载失败：incorrect header check";
+  comparison.context.desktop.stateSemantics.statusAnnouncementText = "文件类型不支持：not-svga.txt。/ Unsupported file type.";
+  comparison.context.web.topLevelRuntime.statusAnnouncementText = "SVGA 文件加载失败：incorrect header check";
+  comparison.context.desktop.topLevelRuntime.statusAnnouncementText = "文件类型不支持：not-svga.txt。/ Unsupported file type.";
+  comparison.hostDifferenceReview = {
+    schemaVersion: 1,
+    passed: true,
+    approvedDifferences: [
+      {
+        approved: true,
+        category: "invalid_error_text",
+        reasonCode: "different_invalid_fixture_cause",
+        basis: "Both hosts prove local invalid state with stale data cleared."
+      }
+    ],
+    unapprovedDifferences: []
+  };
+  comparison.runtime.hostDifferenceReview = comparison.hostDifferenceReview;
+
+  assert.equal(strictStateComparisonPassed(comparison, "invalid-error-state"), true);
 });
 
 test("WP4 visual evidence rejects inconsistent viewport and zero-pixel comparison coverage", () => {

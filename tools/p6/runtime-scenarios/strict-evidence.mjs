@@ -182,6 +182,7 @@ function runtimeStateFactsMatched(comparison) {
       runtime.webVisibleControls,
       runtime.desktopVisibleControls
     )
+    && hostDifferencesApproved(comparison)
     && invalidRuntimeContextValid(comparison);
 }
 
@@ -205,7 +206,8 @@ function comparisonContextMatched(comparison) {
       context.desktop.visibleRegions,
       context.web.visibleControls,
       context.desktop.visibleControls
-    );
+    )
+    && hostDifferencesApproved(comparison);
 }
 
 function visibleEvidenceMatched(stateId, webRegions, desktopRegions, webControls, desktopControls) {
@@ -215,6 +217,41 @@ function visibleEvidenceMatched(stateId, webRegions, desktopRegions, webControls
     return requiredIdsVisible(webRegions, desktopRegions, ["errorBox"]);
   }
   return true;
+}
+
+function hostDifferencesApproved(comparison) {
+  const requiredCategories = requiredHostDifferenceCategories(comparison);
+  if (requiredCategories.length === 0) return true;
+  const review = comparison.hostDifferenceReview ?? comparison.runtime?.hostDifferenceReview;
+  if (!isRecord(review) || review.passed !== true) return false;
+  if (Array.isArray(review.unapprovedDifferences) && review.unapprovedDifferences.length > 0) return false;
+  if (!Array.isArray(review.approvedDifferences)) return false;
+  for (const category of requiredCategories) {
+    const approval = review.approvedDifferences.find((entry) => entry?.category === category);
+    if (!isRecord(approval) || approval.approved !== true) return false;
+    if (!nonEmptyString(approval.reasonCode) || !nonEmptyString(approval.basis)) return false;
+  }
+  return true;
+}
+
+function requiredHostDifferenceCategories(comparison) {
+  const categories = new Set();
+  const runtime = comparison.runtime ?? {};
+  const context = comparison.context ?? {};
+  const webControls = runtime.webVisibleControls ?? context.web?.visibleControls;
+  const desktopControls = runtime.desktopVisibleControls ?? context.desktop?.visibleControls;
+  const webRegions = runtime.webVisibleRegions ?? context.web?.visibleRegions;
+  const desktopRegions = runtime.desktopVisibleRegions ?? context.desktop?.visibleRegions;
+  if (!nonEmptyEqualIdSet(webRegions, desktopRegions)) categories.add("visible_region_set");
+  if (!nonEmptyEqualIdSet(webControls, desktopControls)) categories.add("visible_control_identity_label");
+  const webStatus = runtime.webSemantic?.statusAnnouncementText ?? context.web?.stateSemantics?.statusAnnouncementText;
+  const desktopStatus = runtime.desktopSemantic?.statusAnnouncementText ?? context.desktop?.stateSemantics?.statusAnnouncementText;
+  if (typeof webStatus === "string" && typeof desktopStatus === "string" && webStatus !== desktopStatus) {
+    categories.add(comparison.stateId === "invalid-error-state" || comparison.stateId === "invalid"
+      ? "invalid_error_text"
+      : "status_announcement_text");
+  }
+  return [...categories];
 }
 
 function invalidRuntimeContextValid(comparison) {

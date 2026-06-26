@@ -187,6 +187,7 @@ export async function generateStateComparison(p6Root, stateId) {
   const runtime = await stateRuntimeEvidence(p6Root, stateId, result);
   result.runtime = runtime;
   result.context = runtime.context;
+  result.hostDifferenceReview = runtime.hostDifferenceReview;
   result.checks.stateSnapshotIdBound = runtime.webStateBound === true && runtime.desktopStateBound === true;
   result.checks.observedStateMatched = runtime.observedStateMatched === true;
   result.checks.fixtureContextMatched = runtime.fixtureContextMatched === true;
@@ -274,6 +275,17 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
   if (!visibleRegionsCompared) failures.push(`visible region evidence missing for ${stateId}`);
   const invalidContextMatched = await invalidStateContextMatched(p6Root, stateId, webSnapshot, desktopState, result);
   if (!invalidContextMatched) failures.push(`invalid state context mismatch for ${stateId}`);
+  const hostDifferenceReview = reviewHostDifferences({
+    stateId,
+    webSemantic,
+    desktopSemantic,
+    webVisibleRegions,
+    desktopVisibleRegions,
+    webVisibleControls: webControls,
+    desktopVisibleControls: desktopControls,
+    invalidContextMatched
+  });
+  if (!hostDifferenceReview.passed) failures.push(`unapproved host difference for ${stateId}`);
   const pixelToleranceCompared = Boolean(result.comparison?.present && Number.isFinite(result.comparison?.pixelDifferenceRatio));
   if (!pixelToleranceCompared) failures.push(`pixel tolerance evidence missing for ${stateId}`);
   const noUnapprovedDifferences = failures.length === 0
@@ -310,11 +322,116 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
     webVisibleControls: webControls,
     desktopVisibleRegions,
     desktopVisibleControls: desktopControls,
+    hostDifferenceReview,
     desktopProductState: desktopStateModel,
     context: comparisonContext(webSnapshot, desktopState),
     noUnapprovedDifferences,
     failures
   };
+}
+
+function reviewHostDifferences(input) {
+  const approvedDifferences = [];
+  const unapprovedDifferences = [];
+  const visibleRegionDifference = diffStringArrays(input.webVisibleRegions, input.desktopVisibleRegions);
+  const visibleControlDifference = diffStringArrays(input.webVisibleControls, input.desktopVisibleControls);
+  const webStatusText = String(input.webSemantic?.statusAnnouncementText ?? "");
+  const desktopStatusText = String(input.desktopSemantic?.statusAnnouncementText ?? "");
+  const statusAnnouncementDiffers = webStatusText !== desktopStatusText;
+
+  if (visibleRegionDifference.differs) {
+    unapprovedDifferences.push({
+      category: "visible_region_set",
+      reasonCode: "visible_regions_must_match",
+      webOnly: visibleRegionDifference.webOnly,
+      desktopOnly: visibleRegionDifference.desktopOnly
+    });
+  }
+
+  if (visibleControlDifference.differs) {
+    if (requiredIdsVisible(
+      input.webVisibleControls,
+      input.desktopVisibleControls,
+      ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"]
+    )) {
+      approvedDifferences.push({
+        approved: true,
+        category: "visible_control_identity_label",
+        reasonCode: "capture_identity_normalization",
+        basis: "Both hosts expose the required controls; extra differences are capture identity labels, not a missing required visible control.",
+        webOnly: visibleControlDifference.webOnly,
+        desktopOnly: visibleControlDifference.desktopOnly
+      });
+    } else {
+      unapprovedDifferences.push({
+        category: "visible_control_set",
+        reasonCode: "required_visible_control_missing",
+        webOnly: visibleControlDifference.webOnly,
+        desktopOnly: visibleControlDifference.desktopOnly
+      });
+    }
+  }
+
+  if (statusAnnouncementDiffers) {
+    if ((input.stateId === "invalid-error-state" || input.stateId === "invalid")
+      && input.invalidContextMatched === true
+      && semanticStatePassed(input.stateId, input.webSemantic)
+      && semanticStatePassed(input.stateId, input.desktopSemantic)) {
+      approvedDifferences.push({
+        approved: true,
+        category: "invalid_error_text",
+        reasonCode: "different_invalid_fixture_cause",
+        basis: "Both hosts prove local invalid state with stale data cleared; the message text differs because the evidence exercises different invalid-input causes.",
+        webValueSha256: hashText(webStatusText),
+        desktopValueSha256: hashText(desktopStatusText)
+      });
+    } else if (semanticStatePassed(input.stateId, input.webSemantic)
+      && semanticStatePassed(input.stateId, input.desktopSemantic)) {
+      approvedDifferences.push({
+        approved: true,
+        category: "status_announcement_text",
+        reasonCode: "transient_status_announcement_event",
+        basis: "State identity and semantic predicates match; the aria/status announcement records the latest host event and is not used as product state identity.",
+        webValueSha256: hashText(webStatusText),
+        desktopValueSha256: hashText(desktopStatusText)
+      });
+    } else {
+      unapprovedDifferences.push({
+        category: "status_announcement_text",
+        reasonCode: "status_text_diff_without_semantic_match",
+        webValueSha256: hashText(webStatusText),
+        desktopValueSha256: hashText(desktopStatusText)
+      });
+    }
+  }
+
+  return {
+    schemaVersion: 1,
+    passed: unapprovedDifferences.length === 0,
+    approvedDifferences,
+    unapprovedDifferences,
+    summary: {
+      visibleRegionDifference: visibleRegionDifference.differs,
+      visibleControlDifference: visibleControlDifference.differs,
+      statusAnnouncementDiffers
+    }
+  };
+}
+
+function diffStringArrays(webValues = [], desktopValues = []) {
+  const web = new Set(Array.isArray(webValues) ? webValues : []);
+  const desktop = new Set(Array.isArray(desktopValues) ? desktopValues : []);
+  const webOnly = [...web].filter((value) => !desktop.has(value)).sort();
+  const desktopOnly = [...desktop].filter((value) => !web.has(value)).sort();
+  return {
+    differs: webOnly.length > 0 || desktopOnly.length > 0,
+    webOnly,
+    desktopOnly
+  };
+}
+
+function hashText(value) {
+  return createHash("sha256").update(String(value)).digest("hex");
 }
 
 function comparisonContext(webSnapshot, desktopState) {

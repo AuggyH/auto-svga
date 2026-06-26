@@ -21,6 +21,16 @@ const trackedWorkerRegistryPath = path.join(repoRoot, "docs/product/p6/P6_WORKER
 const workerRegistryFinalPath = path.join(productRoot, "worker-registry-final.json");
 const workerRegistryFinalRepoPath = ".artifacts/product/P6/worker-registry-final.json";
 const sidecarNamePrefix = "P6-R1-owner-upload-sidecar";
+const loopValidationRoot = path.join(repoRoot, ".artifacts/loop-validation");
+const finalLoopValidationEvidenceFiles = [
+  ["final-loop-validation/run-1.json", path.join(loopValidationRoot, "p6-r1-final-run-1.json")],
+  ["final-loop-validation/run-2.json", path.join(loopValidationRoot, "p6-r1-final-run-2.json")]
+];
+const appBundleBindingEntries = [
+  "Auto SVGA.app/Contents/Info.plist",
+  "Auto SVGA.app/Contents/MacOS/Auto SVGA",
+  "Auto SVGA.app/Contents/Resources/app.asar"
+];
 
 const sealedEvidenceFiles = [
   "validation.json",
@@ -223,6 +233,10 @@ function zipEntryBytes(zipPath, entry) {
   });
   if (result.status !== 0) throw new Error(`unable to extract ZIP entry: ${entry}`);
   return result.stdout;
+}
+
+function relativeRepoPath(filePath) {
+  return path.relative(repoRoot, filePath).split(path.sep).join("/");
 }
 
 function looksText(bytes) {
@@ -459,6 +473,45 @@ async function assertFinalPackagingGate({ headCommit, canonicalManifest }) {
   };
 }
 
+async function assertFinalLoopValidationEvidence({ headCommit }) {
+  const runs = [];
+  const errors = [];
+  for (const [bundlePath, filePath] of finalLoopValidationEvidenceFiles) {
+    if (!existsSync(filePath)) {
+      errors.push(`missing final loop validation artifact ${relativeRepoPath(filePath)}`);
+      continue;
+    }
+    const payload = JSON.parse(await readFile(filePath, "utf8"));
+    const identity = await fileIdentity(filePath);
+    const run = {
+      bundlePath,
+      sourcePath: relativeRepoPath(filePath),
+      status: payload.status ?? null,
+      repositoryHeadCommitAtStart: payload.repositoryHeadCommitAtStart ?? null,
+      repositoryHeadCommitAtFinish: payload.repositoryHeadCommitAtFinish ?? null,
+      sourceWorkspaceCleanAtStart: payload.sourceWorkspaceCleanAtStart === true,
+      sourceWorkspaceCleanAtFinish: payload.sourceWorkspaceCleanAtFinish === true,
+      sizeBytes: identity.sizeBytes,
+      sha256: identity.sha256
+    };
+    if (run.status !== "pass") errors.push(`${bundlePath} status must be pass`);
+    if (run.repositoryHeadCommitAtStart !== headCommit || run.repositoryHeadCommitAtFinish !== headCommit) {
+      errors.push(`${bundlePath} must bind start and finish to ${headCommit}`);
+    }
+    if (run.sourceWorkspaceCleanAtStart !== true || run.sourceWorkspaceCleanAtFinish !== true) {
+      errors.push(`${bundlePath} must record clean source workspace at start and finish`);
+    }
+    runs.push(run);
+  }
+  return {
+    passed: errors.length === 0 && runs.length === finalLoopValidationEvidenceFiles.length,
+    requiredRunCount: finalLoopValidationEvidenceFiles.length,
+    command: "npm run loop:validate",
+    runs,
+    errors
+  };
+}
+
 function manifestEntryFor(manifest, fileName) {
   return (manifest?.entries ?? []).find((entry) => entry.path === fileName) ?? null;
 }
@@ -536,6 +589,12 @@ export function validateOwnerVisibleHandoffBinding({
   }
   if (manifest?.privacyAudit?.passed !== true || manifest?.privacyAudit?.findingCount !== 0) {
     errors.push("owner-visible manifest privacy audit must pass with zero findings");
+  }
+  if (manifest?.finalLoopValidation?.passed !== true || manifest.finalLoopValidation.requiredRunCount !== 2) {
+    errors.push("owner-visible manifest must include two final loop validation runs");
+  }
+  if (manifest?.appBundleBinding?.passed !== true) {
+    errors.push("owner-visible manifest must bind App ZIP to internal package proof");
   }
 
   const reviewEntry = manifestEntryFor(manifest, reviewZipName);
@@ -623,6 +682,18 @@ export function validateOwnerVisibleHandoffBinding({
     if (sidecar?.macosAppZip?.fileName !== appZipName) errors.push("owner sidecar App ZIP fileName mismatch");
     validateSameFileIdentity(errors, "owner sidecar review ZIP", sidecar.ownerReviewZip, reviewZip);
     validateSameFileIdentity(errors, "owner sidecar App ZIP", sidecar.macosAppZip, appZip);
+    if (sidecar?.ownerUploadSet?.companionRequired !== true) errors.push("owner sidecar upload set must require companions");
+    const sidecarUploadSet = new Set(sidecar?.ownerUploadSet?.exactFileNames ?? []);
+    for (const requiredName of [reviewZipName, appZipName, sidecarName]) {
+      if (!sidecarUploadSet.has(requiredName)) errors.push(`owner sidecar upload set missing ${requiredName}`);
+    }
+    if (!validSha256(sidecar?.ownerReviewZip?.manifestSha256) || sidecar.ownerReviewZip.manifestSha256 !== sidecar?.ownerUploadSet?.reviewZipManifestSha256) {
+      errors.push("owner sidecar review ZIP manifest hash mismatch");
+    }
+    if (sidecar?.appBundleBinding?.passed !== true) errors.push("owner sidecar App ZIP must be bound to internal package proof");
+    if (sidecar?.finalLoopValidation?.passed !== true || sidecar.finalLoopValidation.requiredRunCount !== 2) {
+      errors.push("owner sidecar must include two final loop validations");
+    }
     if (sidecar?.privacyAudit?.passed !== true || sidecar?.privacyAudit?.findingCount !== 0) {
       errors.push("owner sidecar privacy audit must pass with zero findings");
     }
@@ -635,6 +706,20 @@ export function validateOwnerVisibleHandoffBinding({
     if (postSealVerification?.ownerUploadSidecar?.fileName !== sidecarName) errors.push("owner post-seal sidecar fileName mismatch");
     if (postSealVerification?.assertions?.noMacosxMetadata !== true) errors.push("owner post-seal must verify no forbidden macOS metadata");
     if (postSealVerification?.assertions?.sameFinalHead !== true) errors.push("owner post-seal must verify same final head");
+    if (postSealVerification?.assertions?.appZipBoundToInternalPackageProof !== true) {
+      errors.push("owner post-seal must verify App ZIP is bound to internal package proof");
+    }
+    if (postSealVerification?.assertions?.finalLoopValidationIncluded !== true) {
+      errors.push("owner post-seal must verify two final loop validations are included");
+    }
+    if (postSealVerification?.appBundleBinding?.passed !== true) errors.push("owner post-seal App ZIP package-proof binding must pass");
+    if (postSealVerification?.finalLoopValidation?.passed !== true || postSealVerification.finalLoopValidation.requiredRunCount !== 2) {
+      errors.push("owner post-seal final loop validation evidence must pass twice");
+    }
+    const postSealUploadSet = new Set(postSealVerification?.ownerUploadSet?.exactFileNames ?? []);
+    for (const requiredName of [reviewZipName, appZipName, sidecarName]) {
+      if (!postSealUploadSet.has(requiredName)) errors.push(`owner post-seal upload set missing ${requiredName}`);
+    }
     validateSameFileIdentity(errors, "owner post-seal review ZIP", postSealVerification.reviewZip, reviewZip);
     validateSameFileIdentity(errors, "owner post-seal App ZIP", postSealVerification.macosAppZip, appZip);
     validateSameFileIdentity(errors, "owner post-seal sidecar", postSealVerification.ownerUploadSidecar, sidecarManifest);
@@ -963,6 +1048,65 @@ function createCleanAppZip({ appBundle, zipPath }) {
   if (badEntries.length) throw new Error(`clean App ZIP contains forbidden metadata: ${badEntries.slice(0, 5).join(", ")}`);
 }
 
+async function buildAppBundleBinding({ appZipPath, internalTrialManifest, macosPackageProof }) {
+  const sourceAppBundlePath = relativeRepoPath(trialApp);
+  const internalManifestPackagePath = internalTrialManifest?.packagePath ?? null;
+  const packageProofAppBundlePath = macosPackageProof?.packagingScaffold?.appBundlePath ?? null;
+  const errors = [];
+  if (internalTrialManifest?.buildCommit !== git(["rev-parse", "HEAD"])) {
+    errors.push("internal trial manifest buildCommit does not match HEAD");
+  }
+  if (macosPackageProof?.buildCommit !== git(["rev-parse", "HEAD"])) {
+    errors.push("macOS package proof buildCommit does not match HEAD");
+  }
+  if (internalManifestPackagePath !== sourceAppBundlePath) {
+    errors.push("internal trial manifest packagePath does not match clean App ZIP source bundle");
+  }
+  if (packageProofAppBundlePath !== sourceAppBundlePath) {
+    errors.push("macOS package proof appBundlePath does not match clean App ZIP source bundle");
+  }
+  const checkedEntries = [];
+  for (const entry of appBundleBindingEntries) {
+    const relativeInsideBundle = entry.replace(/^Auto SVGA\.app\//, "");
+    const sourcePath = path.join(trialApp, relativeInsideBundle);
+    if (!existsSync(sourcePath)) {
+      errors.push(`source app bundle entry missing: ${entry}`);
+      continue;
+    }
+    let archiveBytes;
+    try {
+      archiveBytes = zipEntryBytes(appZipPath, entry);
+    } catch {
+      errors.push(`App ZIP entry missing: ${entry}`);
+      continue;
+    }
+    const sourceIdentity = await fileIdentity(sourcePath);
+    const archiveIdentity = {
+      sizeBytes: archiveBytes.byteLength,
+      sha256: sha256Bytes(archiveBytes)
+    };
+    if (sourceIdentity.sizeBytes !== archiveIdentity.sizeBytes || sourceIdentity.sha256 !== archiveIdentity.sha256) {
+      errors.push(`App ZIP entry does not match source app bundle: ${entry}`);
+    }
+    checkedEntries.push({
+      path: entry,
+      sourceSizeBytes: sourceIdentity.sizeBytes,
+      sourceSha256: sourceIdentity.sha256,
+      zipEntrySizeBytes: archiveIdentity.sizeBytes,
+      zipEntrySha256: archiveIdentity.sha256,
+      matched: sourceIdentity.sizeBytes === archiveIdentity.sizeBytes && sourceIdentity.sha256 === archiveIdentity.sha256
+    });
+  }
+  return {
+    passed: errors.length === 0,
+    sourceAppBundlePath,
+    internalManifestPackagePath,
+    packageProofAppBundlePath,
+    checkedEntries,
+    errors
+  };
+}
+
 function finalResponseText({
   headShort,
   visibleRootAbs,
@@ -989,6 +1133,12 @@ function finalResponseText({
   }
   lines.push(
     "",
+    "OWNER_UPLOAD_SET:",
+    "- Upload or hand off all three files together. The Review ZIP alone is not a valid owner handoff.",
+    `- ${reviewZipName}`,
+    `- ${appZipName}`,
+    `- ${sidecarName}`,
+    "",
     "MACOS_APP_TO_TEST:",
     `- ${link("Auto SVGA macOS App ZIP", appZipName)}`,
     "",
@@ -1010,7 +1160,8 @@ function ownerReviewPacketText({
   appZipName,
   sidecarName,
   patchCompanionRequired,
-  finalPackagingGate
+  finalPackagingGate,
+  finalLoopValidation
 }) {
   return [
     "# P6-R1 Owner Review Packet",
@@ -1039,6 +1190,7 @@ function ownerReviewPacketText({
     "- Final Seal: passed",
     "- Post-seal Verification: passed for Review ZIP, App ZIP, and sidecar",
     `- Final Packaging Gate: ${finalPackagingGate?.passed === true ? "passed" : "failed"}`,
+    `- Final Loop Validation: ${finalLoopValidation?.passed === true ? "passed twice" : "failed"}`,
     "",
     "Historical Note:",
     "- Older Final Validation failure records in LOOP_HISTORY and archived loop packets are historical only.",
@@ -1055,6 +1207,7 @@ function ownerReviewPacketText({
 
 async function main() {
   const headCommit = git(["rev-parse", "HEAD"]);
+  const headTree = git(["rev-parse", "HEAD^{tree}"]);
   const headShort = git(["rev-parse", "--short", headCommit]);
   const visibleRoot = path.join(repoRoot, `review/P6-R1-${headShort}`);
   const reviewZipName = `P6-R1-${headShort}-review-upload.zip`;
@@ -1064,6 +1217,8 @@ async function main() {
   const appZipPath = path.join(visibleRoot, appZipName);
   const sidecarPath = path.join(visibleRoot, sidecarName);
   const canonicalManifest = JSON.parse(await readFile(path.join(packetRoot, "MANIFEST.json"), "utf8"));
+  const internalTrialManifest = JSON.parse(await readFile(path.join(trialRoot, "internal-trial-manifest.json"), "utf8"));
+  const macosPackageProof = JSON.parse(await readFile(path.join(trialRoot, "macos-package-proof.json"), "utf8"));
 
   if (canonicalManifest.milestoneOutcome !== "HUMAN_REQUIRED") {
     throw new Error("P6 owner handoff requires a HUMAN_REQUIRED sealed packet.");
@@ -1072,6 +1227,10 @@ async function main() {
     throw new Error(`macOS trial app missing: ${trialApp}`);
   }
   const finalPackagingGate = await assertFinalPackagingGate({ headCommit, canonicalManifest });
+  const finalLoopValidation = await assertFinalLoopValidationEvidence({ headCommit });
+  if (!finalLoopValidation.passed) {
+    throw new Error(`P6 owner handoff requires two final loop validations: ${finalLoopValidation.errors.join("; ")}`);
+  }
   const workerRegistryFinal = await writeWorkerRegistryFinal({ headCommit });
   const patchCompanionRequired = canonicalManifest.companionRequired === true;
 
@@ -1084,9 +1243,9 @@ async function main() {
     await copyRequired(path.join(packetRoot, fileName), path.join(uploadStagingRoot, fileName));
     await copyRequired(path.join(packetRoot, fileName), path.join(visibleRoot, fileName));
   }
-  if (existsSync(path.join(packetRoot, "post-seal-verification.json"))) {
-    await copyRequired(path.join(packetRoot, "post-seal-verification.json"), path.join(uploadStagingRoot, "historical-loop-post-seal-verification.json"));
-    await copyRequired(path.join(packetRoot, "post-seal-verification.json"), path.join(visibleRoot, "historical-loop-post-seal-verification.json"));
+  for (const [bundlePath, sourcePath] of finalLoopValidationEvidenceFiles) {
+    await copyRequired(sourcePath, path.join(uploadStagingRoot, bundlePath));
+    await copyRequired(sourcePath, path.join(visibleRoot, bundlePath));
   }
   if (patchCompanionRequired) {
     await copyRequired(path.join(packetRoot, "changes.patch"), path.join(uploadStagingRoot, "changes.patch"));
@@ -1114,6 +1273,10 @@ async function main() {
   createCleanAppZip({ appBundle: trialApp, zipPath: appZipPath });
   const appZipIdentity = await fileIdentity(appZipPath);
   const appZipEntries = zipEntries(appZipPath);
+  const appBundleBinding = await buildAppBundleBinding({ appZipPath, internalTrialManifest, macosPackageProof });
+  if (!appBundleBinding.passed) {
+    throw new Error(`P6 owner App ZIP binding failed: ${appBundleBinding.errors.join("; ")}`);
+  }
   const relativeFinalResponse = finalResponseText({
     headShort,
     visibleRootAbs: visibleRoot,
@@ -1135,20 +1298,25 @@ async function main() {
   await writeFile(path.join(uploadStagingRoot, "FINAL_RESPONSE.txt"), relativeFinalResponse, "utf8");
   await writeFile(path.join(visibleRoot, "FINAL_RESPONSE.txt"), clickableFinalResponse, "utf8");
   await writeFile(path.join(uploadStagingRoot, "README.md"), [
-    "# P6 Owner Review Upload",
+    "# P6-R1 Owner Review Upload",
     "",
     "Status: HUMAN_REQUIRED.",
+    "Upload set requirement: provide the Review ZIP, macOS App ZIP, and sidecar together.",
+    "The product evidence namespace `product/P6` is inherited from the recovered P6 evidence run.",
     "This ZIP is portable and uses relative paths only.",
     ""
   ].join("\n"), "utf8");
 
   const manifestExtra = {
     reviewedHeadCommit: headCommit,
+    reviewedHeadTree: headTree,
     companionRequired: true,
     mandatoryCompanions: [appZipName, sidecarName],
     patchCompanionRequired,
     patchCompanions: patchCompanionRequired ? ["changes.patch"] : [],
     finalPackagingGate,
+    finalLoopValidation,
+    appBundleBinding,
     workerRegistryFinal,
     ownerReviewZip: {
       fileName: reviewZipName,
@@ -1181,7 +1349,8 @@ async function main() {
     appZipName,
     sidecarName,
     patchCompanionRequired,
-    finalPackagingGate
+    finalPackagingGate,
+    finalLoopValidation
   });
   await writeFile(path.join(uploadStagingRoot, "REVIEW_PACKET.md"), ownerPacketText, "utf8");
   await writeFile(path.join(visibleRoot, "REVIEW_PACKET.md"), ownerPacketText, "utf8");
@@ -1287,6 +1456,7 @@ async function main() {
   runZip({ cwd: uploadStagingRoot, zipPath: reviewZipPath, entries: uploadEntries });
   const reviewZipEntries = zipEntries(reviewZipPath);
   const reviewZipIdentity = await fileIdentity(reviewZipPath);
+  const reviewZipManifestSha256 = sha256Bytes(zipEntryBytes(reviewZipPath, "MANIFEST.json"));
 
   const reviewZipIndex = validateZipEntriesIndexed({
     entries: reviewZipEntries,
@@ -1311,19 +1481,29 @@ async function main() {
     milestoneId,
     productEvidenceMilestoneId,
     reviewedHeadCommit: headCommit,
+    reviewedHeadTree: headTree,
     generatedAt: "stable-p6-r1-owner-handoff-sidecar",
     productionApproved: false,
     phase2Started: false,
     companionRequired: true,
     mandatoryCompanions: [appZipName, sidecarName],
+    ownerUploadSet: {
+      exactFileNames: [reviewZipName, appZipName, sidecarName],
+      companionRequired: true,
+      reviewZipManifestSha256,
+      productionApproved: false
+    },
     ownerReviewZip: {
       fileName: reviewZipName,
       sizeBytes: reviewZipIdentity.sizeBytes,
       sha256: reviewZipIdentity.sha256,
       entryCount: reviewZipEntries.length,
-      manifestEntriesEqualActualEntries: reviewZipIndex.passed
+      manifestEntriesEqualActualEntries: reviewZipIndex.passed,
+      manifestSha256: reviewZipManifestSha256
     },
     macosAppZip: appZipRecord,
+    appBundleBinding,
+    finalLoopValidation,
     privacyAudit: {
       passed: privacyAudit.passed,
       findingCount: privacyAudit.findingCount,
@@ -1339,7 +1519,9 @@ async function main() {
     schemaVersion: 2,
     milestoneId,
     reviewedHeadCommit: headCommit,
+    reviewedHeadTree: headTree,
     passed: true,
+    ownerUploadSet: ownerUploadSidecar.ownerUploadSet,
     reviewZip: ownerUploadSidecar.ownerReviewZip,
     macosAppZip: ownerUploadSidecar.macosAppZip,
     ownerUploadSidecar: {
@@ -1347,11 +1529,15 @@ async function main() {
       sizeBytes: sidecarIdentity.sizeBytes,
       sha256: sidecarIdentity.sha256
     },
+    appBundleBinding,
+    finalLoopValidation,
     privacyAudit: ownerUploadSidecar.privacyAudit,
     assertions: {
       reviewZipIsCanonicalToolOutput: true,
       appZipIsMandatoryCompanion: true,
       sidecarIsMandatoryCompanion: true,
+      appZipBoundToInternalPackageProof: appBundleBinding.passed === true,
+      finalLoopValidationIncluded: finalLoopValidation.passed === true,
       noFinderRecompression: true,
       noMacosxMetadata: reviewZipEntries.every((entry) => !entry.includes("__MACOSX"))
         && appZipEntries.every((entry) => !entry.includes("__MACOSX")),
@@ -1397,7 +1583,8 @@ async function main() {
       fileName: reviewZipName,
       sizeBytes: reviewZipIdentity.sizeBytes,
       sha256: reviewZipIdentity.sha256,
-      entryCount: reviewZipEntries.length
+      entryCount: reviewZipEntries.length,
+      manifestSha256: reviewZipManifestSha256
     },
     ownerUploadSidecar: {
       fileName: sidecarName,
@@ -1448,6 +1635,8 @@ async function main() {
     mandatoryCompanions: [appZipName, sidecarName],
     patchCompanionRequired,
     finalPackagingGate,
+    finalLoopValidation,
+    appBundleBinding,
     workerRegistryFinal,
     reviewZipIndex,
     privacyAudit: {

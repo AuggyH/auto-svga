@@ -40,6 +40,32 @@ async function writeZip(folder, name, entries) {
   return zipPath;
 }
 
+function passingFinalLoopValidation() {
+  return {
+    passed: true,
+    requiredRunCount: 2,
+    command: "npm run loop:validate",
+    runs: [
+      { bundlePath: "final-loop-validation/run-1.json", status: "pass", sha256: "4".repeat(64), sizeBytes: 10 },
+      { bundlePath: "final-loop-validation/run-2.json", status: "pass", sha256: "5".repeat(64), sizeBytes: 10 }
+    ],
+    errors: []
+  };
+}
+
+function passingAppBundleBinding() {
+  return {
+    passed: true,
+    sourceAppBundlePath: "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app",
+    internalManifestPackagePath: "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app",
+    packageProofAppBundlePath: "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app",
+    checkedEntries: [
+      { path: "Auto SVGA.app/Contents/Info.plist", matched: true }
+    ],
+    errors: []
+  };
+}
+
 function pngWithText(keyword, value) {
   const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   const chunk = (type, data = Buffer.alloc(0)) => Buffer.concat([
@@ -308,6 +334,8 @@ test("P6-R1 owner-visible manifest accepts Review ZIP, App ZIP, and sidecar comp
         sha256: "d".repeat(64)
       },
       privacyAudit: { passed: true, findingCount: 0 },
+      finalLoopValidation: passingFinalLoopValidation(),
+      appBundleBinding: passingAppBundleBinding(),
       humanReviewRequiredCount: 8,
       entries: [
         { path: reviewZipName, sizeBytes: 101, sha256: "b".repeat(64), humanReviewRequired: true },
@@ -339,6 +367,8 @@ test("P6-R1 owner-visible handoff rejects contradictory packet and incomplete up
     macosAppZip: { fileName: appZipName, sha256: "c".repeat(64) },
     ownerUploadSidecar: { fileName: sidecarName, sha256: "d".repeat(64) },
     privacyAudit: { passed: true, findingCount: 0 },
+    finalLoopValidation: passingFinalLoopValidation(),
+    appBundleBinding: passingAppBundleBinding(),
     humanReviewRequiredCount: 8,
     entries: [
       { path: reviewZipName, sha256: "b".repeat(64), humanReviewRequired: true },
@@ -401,6 +431,8 @@ test("P6-R1 owner-visible handoff rejects App ZIP identity mismatch across manif
     macosAppZip: { fileName: appZipName, sizeBytes: 202, sha256: "c".repeat(64) },
     ownerUploadSidecar: { fileName: sidecarName, sizeBytes: 303, sha256: "d".repeat(64) },
     privacyAudit: { passed: true, findingCount: 0 },
+    finalLoopValidation: passingFinalLoopValidation(),
+    appBundleBinding: passingAppBundleBinding(),
     humanReviewRequiredCount: 8,
     entries: [
       { path: reviewZipName, sizeBytes: 101, sha256: "b".repeat(64), humanReviewRequired: true },
@@ -425,8 +457,15 @@ test("P6-R1 owner-visible handoff rejects App ZIP identity mismatch across manif
       reviewedHeadCommit: headCommit,
       companionRequired: true,
       mandatoryCompanions: [appZipName, sidecarName],
+      ownerUploadSet: {
+        exactFileNames: [reviewZipName, appZipName, sidecarName],
+        companionRequired: true,
+        reviewZipManifestSha256: "6".repeat(64)
+      },
       ownerReviewZip: { fileName: reviewZipName, sizeBytes: 101, sha256: "b".repeat(64) },
       macosAppZip: { fileName: appZipName, sizeBytes: 202, sha256: "9".repeat(64) },
+      appBundleBinding: passingAppBundleBinding(),
+      finalLoopValidation: passingFinalLoopValidation(),
       privacyAudit: { passed: true, findingCount: 0 }
     },
     postSealVerification: {
@@ -435,9 +474,18 @@ test("P6-R1 owner-visible handoff rejects App ZIP identity mismatch across manif
       reviewZip: { fileName: reviewZipName, sizeBytes: 101, sha256: "b".repeat(64) },
       macosAppZip: { fileName: appZipName, sizeBytes: 202, sha256: "8".repeat(64) },
       ownerUploadSidecar: { fileName: sidecarName, sizeBytes: 303, sha256: "d".repeat(64) },
+      ownerUploadSet: {
+        exactFileNames: [reviewZipName, appZipName, sidecarName],
+        companionRequired: true,
+        reviewZipManifestSha256: "6".repeat(64)
+      },
+      appBundleBinding: passingAppBundleBinding(),
+      finalLoopValidation: passingFinalLoopValidation(),
       assertions: {
         noMacosxMetadata: true,
-        sameFinalHead: true
+        sameFinalHead: true,
+        appZipBoundToInternalPackageProof: true,
+        finalLoopValidationIncluded: true
       }
     }
   });
