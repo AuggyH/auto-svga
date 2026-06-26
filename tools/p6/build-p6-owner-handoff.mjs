@@ -1147,6 +1147,7 @@ function finalResponseText({
     "",
     "STATUS:",
     "- P6-R1: HUMAN_REQUIRED",
+    "- PRODUCTION_APPROVED: false",
     "- PHASE_2: NOT_STARTED",
     ""
   );
@@ -1312,6 +1313,8 @@ async function main() {
     reviewedHeadTree: headTree,
     companionRequired: true,
     mandatoryCompanions: [appZipName, sidecarName],
+    productionApproved: false,
+    phase2Started: false,
     patchCompanionRequired,
     patchCompanions: patchCompanionRequired ? ["changes.patch"] : [],
     finalPackagingGate,
@@ -1357,6 +1360,8 @@ async function main() {
 
   let privacyAudit = {
     passed: false,
+    productionApproved: false,
+    phase2Started: false,
     findingCount: -1,
     actualZipEntryCount: 0,
     scannedEntryCount: 0,
@@ -1390,7 +1395,11 @@ async function main() {
     if (JSON.stringify(reviewZipEntries) !== JSON.stringify(uploadEntries)) {
       throw new Error("P6 owner review ZIP entries do not match staging files.");
     }
-    privacyAudit = await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath, expectedHeadShort: headShort });
+    privacyAudit = {
+      ...await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath, expectedHeadShort: headShort }),
+      productionApproved: false,
+      phase2Started: false
+    };
     if (!privacyAudit.passed) {
       throw new Error(`P6 owner handoff privacy audit failed during ${phase}: ${privacyAudit.findings.map((finding) => `${finding.ruleId}:${finding.entry}`).join("; ")}`);
     }
@@ -1418,7 +1427,11 @@ async function main() {
   let uploadEntries = (await listFiles(uploadStagingRoot)).map((filePath) => toBundlePath(uploadStagingRoot, filePath)).sort();
   await rm(reviewZipPath, { force: true });
   runZip({ cwd: uploadStagingRoot, zipPath: reviewZipPath, entries: uploadEntries });
-  const verificationPrivacyAudit = await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath, expectedHeadShort: headShort });
+  const verificationPrivacyAudit = {
+    ...await buildPrivacyAudit({ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath, expectedHeadShort: headShort }),
+    productionApproved: false,
+    phase2Started: false
+  };
   if (!verificationPrivacyAudit.passed) {
     throw new Error(`P6 owner handoff final privacy audit failed: ${verificationPrivacyAudit.findings.map((finding) => `${finding.ruleId}:${finding.entry}`).join("; ")}`);
   }

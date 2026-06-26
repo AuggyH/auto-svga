@@ -161,6 +161,9 @@ test("P6 owner handoff builder records App ZIP manifest hash and entry counts", 
   assert.match(source, /sha256:\s*appZipIdentity\.sha256/);
   assert.match(source, /entryCount:\s*appZipEntries\.length/);
   assert.match(source, /productionApproved:\s*false/);
+  assert.match(source, /PRODUCTION_APPROVED:\s*false/);
+  assert.match(source, /companionRequired:\s*true,\s*\n\s*mandatoryCompanions:\s*\[appZipName, sidecarName\],\s*\n\s*productionApproved:\s*false/);
+  assert.match(source, /privacyAudit = \{\s*\n\s*\.\.\.await buildPrivacyAudit\(\{ stagingRoot: uploadStagingRoot, appZipPath, reviewZipPath, expectedHeadShort: headShort \}\),\s*\n\s*productionApproved:\s*false/);
   assert.match(source, /workerRegistryFinal/);
   assert.match(source, /worker-registry-final\.json/);
   assert.match(source, /writeUploadArtifactIndex/);
