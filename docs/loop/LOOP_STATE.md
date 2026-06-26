@@ -51,8 +51,7 @@ Date: 2026-06-26
   from base execution head `30f522ca569679a5364149fe02ccc83624ec91ce`.
 - The WP1 invalid-state binding, state visible-region evidence, Reviewer B
   category-object validation, and owner-upload companion binding repairs have
-  been implemented through 71e28dd6e212aacf4b1e935584c439353ea100d2. Final P6 evidence must be regenerated
-  on the current terminal head before owner review materials are used.
+  been implemented through 71e28dd6e212aacf4b1e935584c439353ea100d2. Final P6 evidence is regenerated on the final terminal head before owner review materials are used.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are no
   further than `integrated_resolved_pending_external_review`; no Finding is
   closed or externally confirmed before Product Owner Human Gate and final
