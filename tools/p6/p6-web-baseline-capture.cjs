@@ -559,18 +559,20 @@ async function prepareRuntimeTarget(window, selector) {
   `);
 }
 
-async function installInteractionReceiptProbe(window, selector) {
+async function installInteractionReceiptProbe(window, selector, inputKind) {
   const token = `p6-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   await window.webContents.executeJavaScript(`
     (() => {
       const token = ${JSON.stringify(token)};
       const selector = ${JSON.stringify(selector)};
+      const inputKind = ${JSON.stringify(inputKind)};
       const parts = selector.split(",").map((part) => part.trim()).filter(Boolean);
       const matchesTarget = (target) => parts.includes("body")
         ? target === document || target === window || target === document.body || document.body.contains(target)
         : parts.some((part) => target?.matches?.(part) || Boolean(target?.closest?.(part)));
       const receipts = [];
       const handler = (event) => {
+        if (inputKind === "keyboard" && event.type !== "keydown") return;
         const targetMatches = matchesTarget(event.target);
         if (!targetMatches) return;
         receipts.push({
@@ -636,7 +638,7 @@ async function recordWebInteraction(window, interactionId, runAction, options = 
   if (!interaction) throw new Error(`Missing P6 interaction contract for ${interactionId}`);
   const before = await collectSnapshot(window, `${interaction.initialState}:before`);
   const beforeTarget = await prepareRuntimeTarget(window, interaction.selector);
-  const probeToken = await installInteractionReceiptProbe(window, interaction.selector);
+  const probeToken = await installInteractionReceiptProbe(window, interaction.selector, interaction.trigger);
   let actionResult;
   let actionError = null;
   try {

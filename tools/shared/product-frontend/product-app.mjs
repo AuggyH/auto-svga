@@ -2054,6 +2054,7 @@ async function recordP6SmokeAction(action, runAction, waitForState) {
     ? targetNode === document || targetNode === window || targetNode === document.body || document.body.contains(targetNode)
     : selectorParts.some((part) => targetNode?.matches?.(part) || targetNode?.closest?.(part));
   const receiptHandler = (event) => {
+    if (action.kind === "keyboard" && event.type !== "keydown") return;
     const targetMatches = matchesTarget(event.target);
     if (!targetMatches) return;
     receipts.push({
