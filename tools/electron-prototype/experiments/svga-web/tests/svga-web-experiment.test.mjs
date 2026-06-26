@@ -22,7 +22,7 @@ const vendorPath = path.join(experimentRoot, "vendor/svga-web-2.4.4.js");
 const hostContract = require("../host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("../desktop-artifact-catalog.cjs");
 
-test("macOS internal package scaffold declares bounded unsigned .svga bundle metadata", async () => {
+test("macOS internal package scaffold avoids unsupported Finder .svga document association", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
   assert.equal(appName, "Auto SVGA");
   assert.match(plist, /CFBundleDisplayName[\s\S]*<string>Auto SVGA<\/string>/);
@@ -33,12 +33,12 @@ test("macOS internal package scaffold declares bounded unsigned .svga bundle met
   assert.match(plist, /AutoSVGANotarized/);
   assert.match(plist, /AutoSVGAProductionApproved/);
   assert.match(plist, new RegExp(bundleIdentifier));
-  assert.match(plist, /CFBundleDocumentTypes/);
-  assert.match(plist, /CFBundleTypeRole[\s\S]*Viewer/);
-  assert.match(plist, /LSHandlerRank[\s\S]*Alternate/);
-  assert.match(plist, /UTExportedTypeDeclarations/);
-  assert.match(plist, /com\.auto-svga\.svga/);
-  assert.match(plist, /public\.filename-extension[\s\S]*svga/);
+  assert.doesNotMatch(plist, /CFBundleDocumentTypes/);
+  assert.doesNotMatch(plist, /CFBundleTypeRole[\s\S]*Viewer/);
+  assert.doesNotMatch(plist, /LSHandlerRank[\s\S]*Alternate/);
+  assert.doesNotMatch(plist, /UTExportedTypeDeclarations/);
+  assert.doesNotMatch(plist, /com\.auto-svga\.svga/);
+  assert.doesNotMatch(plist, /public\.filename-extension[\s\S]*svga/);
 
   const packagerArgs = macosPackagerArgs(".artifacts/internal-trial");
   assert.equal(packagerArgs[1], appName);
@@ -66,8 +66,10 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.equal(proof.distribution.notarized, false);
   assert.equal(proof.distribution.productionApproved, false);
   assert.equal(proof.distribution.finalPackagedAppAcceptanceOwner, finalAcceptanceOwner);
-  assert.equal(proof.documentTypes[0].extension, "svga");
-  assert.equal(proof.documentTypes[0].role, "Viewer");
+  assert.deepEqual(proof.documentTypes, []);
+  assert.equal(proof.documentAssociationPolicy.svgaFinderOpen, "not-declared");
+  assert.match(proof.documentAssociationPolicy.reason, /in-app file picker and drag\/drop only/);
+  assert.match(proof.knownRisks.join(" "), /Finder double-click/);
   assert.equal(proof.privacyAudit.passed, true);
   assert.deepEqual(proof.privacyAudit.findings, []);
   assert.match(proof.packagingScaffold.extendInfoPath, /packaging\/macos\/Info\.plist$/);
@@ -127,7 +129,7 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     assert.doesNotMatch(page, /cdn\.jsdelivr|(?<!wasm-)unsafe-eval/);
     const sharedShell = await fetch(`${server.origin}/tools/shared/product-frontend/product-shell.html`).then((response) => response.text());
     assert.match(sharedShell, /brandMark/);
-    assert.match(sharedShell, /SVGA 本地预览/);
+    assert.match(sharedShell, /本地预览/);
     const sharedTokens = await fetch(`${server.origin}/tools/shared/product-tokens.css`);
     assert.equal(sharedTokens.status, 200);
     const missingAuditSample = await fetch(`${server.origin}/audit-samples/missing.svga`);
@@ -185,12 +187,15 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(preloadApi.capabilities.arbitraryFileSystemAccess, false);
   assert.equal(preloadApi.capabilities.shellAccess, false);
   assert.equal(preloadApi.capabilities.referenceMediaOpen, "host-dialog-mp4-webm-gif-only");
+  assert.equal(preloadApi.capabilities.clipboardWrite, "host-clipboard-write-text-only");
+  assert.equal(preloadApi.capabilities.finderDocumentAssociation, "not-declared");
   assert.deepEqual(preloadApi.capabilities.documentTypes, ["svga"]);
   assert.equal(preloadApi.openSvgaFile().channel, hostContract.IPC_CHANNELS.openSvgaFile);
   assert.equal(preloadApi.openReferenceMediaFile().channel, hostContract.IPC_CHANNELS.openReferenceMediaFile);
   assert.equal(preloadApi.scanLatestArtifacts().channel, hostContract.IPC_CHANNELS.scanLatestArtifacts);
+  assert.equal(preloadApi.writeClipboardText("logs").channel, hostContract.IPC_CHANNELS.writeClipboardText);
   assert.equal(preloadApi.saveEditedSvga({ bytesBase64: "AA==" }).channel, hostContract.IPC_CHANNELS.saveEditedSvga);
-  assert.equal(invocations.length, 4);
+  assert.equal(invocations.length, 5);
   assert.equal(hostContract.ELECTRON_HOST_BRIDGE_NAME, "autoSvgaElectronHost");
   assert.equal(hostContract.LEGACY_PROTOTYPE_BRIDGE_NAME, "autoSvgaPrototype");
   const hostOpenReturn = main.match(/function openSvgaFileBytes[\s\S]*?\n}\n\nasync function openSvgaFile/)?.[0] ?? "";
@@ -202,12 +207,19 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /captureProductArtifact/);
   assert.match(main, /validateArtifactScenario/);
   assert.match(main, /validateP6InteractionTrace/);
+  assert.match(main, /\["Escape", "Space", "Enter", "Tab"\]/);
+  assert.match(main, /node\.focus\?\.\(\{ preventScroll: true \}\)/);
+  assert.match(main, /Product smoke keyboard target is not actionable/);
   assert.match(main, /function validateSmokeDiagnostics/);
+  assert.match(main, /function validateOwnerUsabilityResult/);
+  assert.match(main, /owner-usability-smoke\.json/);
+  assert.match(main, /finderDocumentAssociationNotClaimed/);
   assert.match(main, /diagnostics = validateSmokeDiagnostics\(value\.diagnostics\)/);
+  assert.match(main, /ownerUsability = validateOwnerUsabilityResult\(value\.ownerUsability\)/);
   assert.match(main, /logPayload\.diagnostics = diagnostics/);
   assert.match(main, /desktop-interaction-trace\.source\.json/);
   assert.match(main, /p6InteractionTrace: Boolean\(p6InteractionTrace\)/);
-  assert.match(main, /const productIdentity = "Auto SVGA"/);
+  assert.match(main, /const productIdentity = "auto-svga"/);
   assert.match(main, /runtimeIdentity/);
   assert.match(main, /normalSmokeParity/);
   assert.match(main, /runtime-identity\.json/);
@@ -218,6 +230,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /IPC_CHANNELS\.openSvgaFile/);
   assert.match(main, /IPC_CHANNELS\.openReferenceMediaFile/);
   assert.match(main, /IPC_CHANNELS\.scanLatestArtifacts/);
+  assert.match(main, /IPC_CHANNELS\.writeClipboardText/);
+  assert.match(main, /clipboard\.writeText/);
+  assert.match(main, /Invalid clipboard text payload/);
   assert.match(main, /desktopArtifacts\.scan\(\)/);
   assert.match(main, /createDesktopArtifactCatalog/);
   assert.match(main, /installApplicationMenu/);
@@ -416,7 +431,7 @@ test("default Electron renderer shares the Web product page and keeps editor inc
   assert.doesNotMatch(page, /class="shell"/);
   assert.doesNotMatch(page, /brandMark/);
   assert.match(sharedShell, /class="shell"/);
-  assert.match(sharedShell, /SVGA 本地预览/);
+  assert.match(sharedShell, /本地预览/);
   assert.match(sharedShell, /SVGA 信息/);
   assert.match(sharedShell, /运行日志/);
   assert.match(sharedShell, /设置/);

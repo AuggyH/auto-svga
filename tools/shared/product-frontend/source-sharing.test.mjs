@@ -54,6 +54,9 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /__autoSvgaDesktopStateProbe/);
   assert.match(productApp, /resetSlotMediaState/);
   assert.match(productApp, /setSlotInvalidState/);
+  assert.match(productApp, /function writeClipboardText/);
+  assert.match(productApp, /electronBridge\?\.writeClipboardText/);
+  assert.match(productApp, /function setSlotErrorFeedback/);
   assert.match(webAdapter, /hostKind: "web"/);
   assert.match(webAdapter, /editorIncubationDefaultVisible: false/);
 });
@@ -75,6 +78,7 @@ test("shared product shell keeps loading distinct and editor incubation hidden b
   assert.match(productApp, /staleFileBadgeCleared/);
   assert.match(productApp, /staleReportCleared/);
   assert.match(productStyles, /\.previewCard\.isLoading \.loadingPhaseList/);
+  assert.match(productStyles, /\.previewCard\.hasSlotError/);
   assert.doesNotMatch(shellHtml, /batchPngInput|loadBatchPngFiles|svga-image-edit-session/);
 });
 
@@ -188,6 +192,26 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "recoveredFromInvalid"
   ]) {
     assert.match(productApp, new RegExp(productEvidence));
+  }
+
+  for (const ownerGateUsabilityEvidence of [
+    "invalid slot-local error missing",
+    "invalid error state is outside preview card",
+    "invalid error state is occluded",
+    "function focusTrapRoot",
+    "function trapFocusEvent",
+    "function runOwnerUsabilitySmoke",
+    "ownerUsability",
+    "sidePanelReturnFocus",
+    "SVGA A invalid drop rendered slot-local unsupported-file feedback",
+    "SVGA B invalid drop rendered slot-local unsupported-file feedback",
+    "Enter opened settings dialog and moved focus inside it",
+    "Tab stayed inside settings dialog while it was active",
+    "finderDocumentAssociationNotClaimed",
+    "日志已复制",
+    "暂无日志可复制"
+  ]) {
+    assert.match(productApp, new RegExp(ownerGateUsabilityEvidence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
 
   assert.match(productApp, /announce\(errorBox\.textContent\)/);

@@ -643,6 +643,7 @@ label.isDisabled {
   top: 50%;
   z-index: 2;
   display: flex;
+  width: min(320px, 82%);
   flex-direction: column;
   align-items: center;
   gap: 5px;
@@ -1009,6 +1010,38 @@ label.isDisabled {
 
 .previewCard.isDragReject .dropFeedbackText::before {
   content: "不支持的文件类型：";
+}
+
+.previewCard.hasSlotError {
+  border-color: color-mix(in srgb, var(--danger) 62%, var(--panel-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent), var(--shadow-panel);
+}
+
+.previewCard.hasSlotError .stage {
+  background: color-mix(in srgb, var(--danger) 8%, var(--surfaceSubtle));
+}
+
+.previewCard.hasSlotError .centerEmptyState {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+
+.previewCard.hasSlotError .centerEmptyState strong,
+.previewCard.hasSlotError .centerEmptyState span,
+.previewCard.hasSlotError .dropFeedbackText,
+.previewCard.hasSlotError .uploadMockIcon {
+  color: var(--danger);
+}
+
+.previewCard.hasSlotError .dropFeedbackText {
+  display: block;
+}
+
+.previewCard.hasSlotError .emptyFileButton {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--control-border));
+  background: color-mix(in srgb, var(--danger) 10%, var(--surfaceElevated));
+  color: var(--danger);
 }
 
 .playerBar {
@@ -4451,7 +4484,8 @@ body {
   display: none;
   position: fixed;
   left: 50%;
-  bottom: 8px;
+  top: 66px;
+  bottom: auto;
   z-index: 60;
   padding: 5px 9px;
   border: 1px solid var(--hairline);

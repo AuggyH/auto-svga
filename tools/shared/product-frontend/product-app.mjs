@@ -27,29 +27,29 @@ const paths = {
 };
 
 const reportLabels = {
-  jobName: "任务名称 / jobName",
-  assetType: "资产类型 / assetType",
-  canvasSize: "画布尺寸 / canvasSize",
-  frames: "帧数 / frames",
-  durationMs: "时长毫秒 / durationMs",
-  svgaExported: "SVGA 已导出 / svgaExported",
-  previewSizeBytes: "GIF 大小 / preview.sizeBytes",
-  svgaSizeBytes: "SVGA 大小 / svga.sizeBytes",
-  primaryReviewTarget: "主验收对象 / primaryReviewTarget",
-  gifPreviewDeprecated: "GIF 已降级 / gifPreviewDeprecated",
-  warnings: "警告 / warnings",
-  fileSizeBytes: "文件大小 / fileSizeBytes",
-  imageCount: "图像数量 / imageCount",
-  spriteCount: "精灵数量 / spriteCount",
-  frameCount: "帧数 / frameCount",
-  fps: "帧率 / fps",
-  durationSeconds: "时长秒 / durationSeconds",
-  exporterReady: "导出准备状态 / exporterReady",
-  "svgaExport.success": "SVGA 导出成功 / svgaExport.success",
-  bakedSweepFrameStride: "扫光采样步长 / bakedSweepFrameStride",
-  sampledFrameCount: "采样帧数量 / sampledFrameCount",
-  bakedSweepUniqueAssetCount: "烘焙扫光唯一资源数 / bakedSweepUniqueAssetCount",
-  bakedSweepTransparentFrameCount: "透明帧数量 / bakedSweepTransparentFrameCount"
+  jobName: "任务名称",
+  assetType: "资产类型",
+  canvasSize: "画布尺寸",
+  frames: "帧数",
+  durationMs: "时长毫秒",
+  svgaExported: "SVGA 已导出",
+  previewSizeBytes: "GIF 大小",
+  svgaSizeBytes: "SVGA 大小",
+  primaryReviewTarget: "主验收对象",
+  gifPreviewDeprecated: "GIF 已降级",
+  warnings: "警告",
+  fileSizeBytes: "文件大小",
+  imageCount: "图像数量",
+  spriteCount: "图层数量",
+  frameCount: "帧数",
+  fps: "帧率",
+  durationSeconds: "时长秒",
+  exporterReady: "导出准备状态",
+  "svgaExport.success": "SVGA 导出成功",
+  bakedSweepFrameStride: "扫光采样步长",
+  sampledFrameCount: "采样帧数量",
+  bakedSweepUniqueAssetCount: "烘焙扫光唯一资源数",
+  bakedSweepTransparentFrameCount: "透明帧数量"
 };
 
 const statusText = {
@@ -100,6 +100,7 @@ const syncRightInfo = document.querySelector("#syncRightInfo");
 const syncWarnings = document.querySelector("#syncWarnings");
 const svgaBadgeA = document.querySelector("#svgaBadgeA");
 const svgaTitleA = document.querySelector("#svgaTitleA");
+const svgaTitleB = document.querySelector("#svgaTitleB");
 const svgaEmptyTitleA = document.querySelector("#svgaEmptyTitleA");
 const svgaEmptySubtitleA = document.querySelector("#svgaEmptySubtitleA");
 const localReplayButton = document.querySelector("#localReplayButton");
@@ -139,6 +140,7 @@ const toolbar = document.querySelector(".toolbar");
 const infoStatus = document.querySelector("#infoStatus");
 const tabButtons = Array.from(document.querySelectorAll(".tabButton"));
 const svgaFilePillA = document.querySelector("#svgaFilePillA");
+const svgaFilePillB = document.querySelector("#svgaFilePillB");
 const assetPreviewModal = document.querySelector("#assetPreviewModal");
 const assetPreviewClose = document.querySelector("#assetPreviewClose");
 const assetPreviewImage = document.querySelector("#assetPreviewImage");
@@ -185,6 +187,7 @@ const expandedSequenceGroups = new Set();
 let previewImageKey;
 let effectiveTheme = "light";
 let activeSidePanel = null;
+let sidePanelReturnFocus = null;
 let compareEnabled = false;
 let syncIsPlaying = false;
 let infoPanelWidth = Number(localStorage.getItem("autoSvgaInfoPanelWidth")) || 420;
@@ -219,6 +222,7 @@ function createPlayerSlot(slotName) {
     inspectionReport: undefined,
     inspectionStatus: "idle",
     inspectionRequestId: 0,
+    slotErrorMessage: undefined,
     loadingPhases: Array.from(document.querySelectorAll(`#svgaPanel${suffix} [data-loading-phase]`)),
     source: undefined,
     sourceIdentity: undefined,
@@ -278,6 +282,77 @@ function setSlotEmptyStateHidden(slot, hidden) {
   if (emptyState) emptyState.hidden = hidden === true;
 }
 
+function getSlotEmptyElements(slot) {
+  const emptyState = slot.panel?.querySelector(".centerEmptyState");
+  return {
+    emptyState,
+    title: slot.slotName === "A" ? svgaEmptyTitleA : emptyState?.querySelector("strong"),
+    subtitle: slot.slotName === "A" ? svgaEmptySubtitleA : emptyState?.querySelector("span:not(.uploadMockIcon)"),
+    feedback: emptyState?.querySelector(".dropFeedbackText"),
+    actionButton: slot.slotName === "A" ? primaryEmptyFileButton : secondaryEmptyFileButton,
+    filePill: slot.slotName === "A" ? svgaFilePillA : svgaFilePillB,
+    titleNode: slot.slotName === "A" ? svgaTitleA : svgaTitleB
+  };
+}
+
+function slotBaseLabel(slot) {
+  if (slot.slotName === "B") return "SVGA B";
+  if (modeSelect.value === "exportReview") return "导出 SVGA";
+  if (compareEnabled) return "SVGA A";
+  return "本地预览";
+}
+
+function slotFileName(slot) {
+  return slot.metrics?.fileName ?? slot.sourceIdentity?.fileName ?? "";
+}
+
+function clearSlotErrorFeedback(slot) {
+  slot.slotErrorMessage = undefined;
+  slot.panel?.classList.remove("hasSlotError");
+  const { feedback } = getSlotEmptyElements(slot);
+  if (feedback) feedback.textContent = "可加载此文件";
+}
+
+function renderSlotErrorFeedback(slot) {
+  slot.panel?.classList.add("hasSlotError");
+  setSlotEmptyStateHidden(slot, false);
+  const { title, subtitle, feedback, actionButton } = getSlotEmptyElements(slot);
+  if (title) title.textContent = "无法打开此 SVGA 文件";
+  if (subtitle) subtitle.textContent = slot.slotErrorMessage;
+  if (feedback) feedback.textContent = "请拖入 .svga 文件";
+  if (actionButton) actionButton.textContent = slot.slotName === "B" ? "重新选择 SVGA B" : "重新选择文件";
+}
+
+function setSlotErrorFeedback(slot, message) {
+  slot.slotErrorMessage = String(message).split(" / ")[0];
+  renderSlotErrorFeedback(slot);
+}
+
+function updatePreviewCardHeader(slot) {
+  const { filePill, titleNode } = getSlotEmptyElements(slot);
+  const fileName = slotFileName(slot);
+  if (titleNode) {
+    titleNode.textContent = fileName || slotBaseLabel(slot);
+    titleNode.title = fileName || "";
+  }
+  if (filePill) {
+    filePill.hidden = !fileName;
+    filePill.textContent = fileName;
+    filePill.title = fileName;
+  }
+  if (slot.slotName === "A") {
+    svgaBadgeA.hidden = !compareEnabled;
+    svgaBadgeA.textContent = compareEnabled ? "SVGA A" : "SVGA";
+    primaryInputLabel.textContent = fileName
+      ? "重新选择文件"
+      : modeSelect.value === "exportReview"
+        ? "选择导出 SVGA"
+        : compareEnabled ? "选择 SVGA A" : "选择文件";
+  } else {
+    secondaryInputLabel.textContent = fileName ? "重新选择 SVGA B" : "选择 SVGA B";
+  }
+}
+
 function resetSlotMediaState(slot, { clearReport = false } = {}) {
   slot.videoItem = undefined;
   slot.metrics = undefined;
@@ -288,6 +363,7 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   slot.renderStatus = "empty";
   slot.sourceIdentity = undefined;
   slot.p6PlaybackEvidenceState = undefined;
+  clearSlotErrorFeedback(slot);
   slot.panel.classList.remove("hasMedia", "isLoading");
   setSlotEmptyStateHidden(slot, false);
   slot.canvas.innerHTML = "";
@@ -315,6 +391,7 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
       renderReport(undefined);
     }
   }
+  updatePreviewCardHeader(slot);
 }
 
 function setSlotInvalidState(slot, message) {
@@ -324,6 +401,7 @@ function setSlotInvalidState(slot, message) {
   slot.parseStatus = "error";
   slot.renderStatus = "error";
   slot.inspectionStatus = "error";
+  setSlotErrorFeedback(slot, message);
   setStatus(slot.status, "error");
   setSlotLoadingPhase(slot, undefined, {
     file: "done",
@@ -342,15 +420,21 @@ function setStatus(element, value) {
 }
 
 function applyPrimaryEmptyCopy() {
+  if (players.a.slotErrorMessage) {
+    renderSlotErrorFeedback(players.a);
+    updatePreviewCardHeader(players.a);
+    return;
+  }
   if (modeSelect.value === "localPreview") {
-    primaryEmptyFileButton.textContent = compareEnabled ? "选择 SVGA A" : "选择 SVGA 文件";
-    svgaEmptyTitleA.textContent = compareEnabled ? "拖拽第一个 SVGA 文件到此处" : "拖拽 SVGA 文件到此处";
-    svgaEmptySubtitleA.textContent = "或选择本地文件";
+    primaryEmptyFileButton.textContent = compareEnabled ? "选择 SVGA A" : "选择文件";
+    svgaEmptyTitleA.textContent = compareEnabled ? "拖入第一个 SVGA 文件" : "拖入 SVGA 文件";
+    svgaEmptySubtitleA.textContent = "选择或拖拽本地 .svga";
   } else {
     primaryEmptyFileButton.textContent = "选择导出 SVGA";
-    svgaEmptyTitleA.textContent = "拖拽导出的 SVGA 文件到此处";
-    svgaEmptySubtitleA.textContent = "或选择本地文件";
+    svgaEmptyTitleA.textContent = "拖入导出的 SVGA 文件";
+    svgaEmptySubtitleA.textContent = "选择或拖拽本地 .svga";
   }
+  updatePreviewCardHeader(players.a);
 }
 
 function applyPrimaryLoadingCopy(fileName) {
@@ -360,27 +444,27 @@ function applyPrimaryLoadingCopy(fileName) {
 
 function ensureSvgaLibrary() {
   if (!window.SVGA?.Player || !window.SVGA?.Parser) {
-    throw new Error("SVGA Web Player 库加载失败，请检查网络或本地依赖。/ SVGA Web Player library failed to load.");
+    throw new Error("SVGA Web Player 库加载失败，请检查网络或本地依赖。");
   }
 }
 
 function ensurePakoLibrary() {
   if (!window.pako?.inflate) {
-    throw new Error("pako 加载失败，无法解析 SVGA。/ pako failed to load; SVGA metadata cannot be decoded.");
+    throw new Error("pako 加载失败，无法解析 SVGA。");
   }
 }
 
 async function loadReport(url) {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`无法加载 report.json。/ Unable to load report.json (${response.status})`);
+    throw new Error(`无法加载 report.json（${response.status}）。`);
   }
   return response.json();
 }
 
 function renderReport(report) {
   if (!report) {
-    reportGrid.innerHTML = `<div><dt>状态 / status</dt><dd>暂无报告 / No report loaded</dd></div>`;
+    reportGrid.innerHTML = `<div><dt>状态</dt><dd>暂无报告</dd></div>`;
     return;
   }
 
@@ -497,14 +581,14 @@ function renderSvgaInfo(slot) {
   }
 
   const rows = [
-    ["文件 / file", metrics.fileName],
-    ["体积 / size", formatBytes(metrics.fileSizeBytes)],
-    ["画布 / canvas", formatSize(metrics.sourceWidth, metrics.sourceHeight)],
-    ["时长 / duration", formatDuration(metrics)],
+    ["文件", metrics.fileName],
+    ["体积", formatBytes(metrics.fileSizeBytes)],
+    ["画布", formatSize(metrics.sourceWidth, metrics.sourceHeight)],
+    ["时长", formatDuration(metrics)],
     ["FPS", metrics.fps],
-    ["图层 / layers", metrics.spriteCount],
-    ["图片 / images", metrics.imageCount],
-    ["显示 / displayed", formatSize(metrics.displayedWidth, metrics.displayedHeight)]
+    ["图层", metrics.spriteCount],
+    ["图片", metrics.imageCount],
+    ["显示", formatSize(metrics.displayedWidth, metrics.displayedHeight)]
   ];
 
   slot.info.innerHTML = rows.map(([label, value]) => (
@@ -519,11 +603,11 @@ function renderReferenceInfo() {
     return;
   }
   const rows = [
-    ["文件 / file", metrics.fileName],
-    ["体积 / size", formatBytes(metrics.fileSizeBytes)],
-    ["尺寸 / size", formatSize(metrics.sourceWidth, metrics.sourceHeight)],
-    ["时长 / duration", metrics.durationSeconds ? `${metrics.durationSeconds.toFixed(2)}s` : "n/a"],
-    ["显示 / displayed", formatSize(metrics.displayedWidth, metrics.displayedHeight)]
+    ["文件", metrics.fileName],
+    ["体积", formatBytes(metrics.fileSizeBytes)],
+    ["尺寸", formatSize(metrics.sourceWidth, metrics.sourceHeight)],
+    ["时长", metrics.durationSeconds ? `${metrics.durationSeconds.toFixed(2)}s` : "n/a"],
+    ["显示", formatSize(metrics.displayedWidth, metrics.displayedHeight)]
   ];
   referenceState.info.innerHTML = rows.map(([label, value]) => (
     `<div><dt>${label}</dt><dd>${escapeHtml(value ?? "n/a")}</dd></div>`
@@ -580,28 +664,27 @@ function setAppMode(nextMode = modeSelect.value) {
   referenceFileInput.value = "";
 
   if (nextMode === "localPreview") {
-    primaryInputLabel.textContent = compareEnabled ? "选择 SVGA A" : "选择 SVGA";
-    primaryEmptyFileButton.textContent = compareEnabled ? "选择 SVGA A" : "选择 SVGA 文件";
+    primaryInputLabel.textContent = players.a.metrics ? "重新选择文件" : (compareEnabled ? "选择 SVGA A" : "选择文件");
+    primaryEmptyFileButton.textContent = compareEnabled ? "选择 SVGA A" : "选择文件";
     secondaryInputLabel.textContent = "选择 SVGA B";
     secondaryFileInput.accept = ".svga,application/octet-stream";
-    svgaBadgeA.textContent = compareEnabled ? "SVGA A" : "SVGA";
-    svgaTitleA.textContent = compareEnabled ? "SVGA A" : "SVGA 本地预览";
     svgaTitleA.removeAttribute("data-subtitle");
-    svgaEmptyTitleA.textContent = compareEnabled ? "拖拽第一个 SVGA 文件到此处" : "拖拽 SVGA 文件到此处";
-    svgaEmptySubtitleA.textContent = "或选择本地文件";
+    svgaEmptyTitleA.textContent = compareEnabled ? "拖入第一个 SVGA 文件" : "拖入 SVGA 文件";
+    svgaEmptySubtitleA.textContent = "选择或拖拽本地 .svga";
+    if (players.a.slotErrorMessage) renderSlotErrorFeedback(players.a);
   } else {
     compareEnabled = false;
     compareToggle.checked = false;
     resetSlotMediaState(players.b);
     primaryInputLabel.textContent = "选择导出 SVGA";
     primaryEmptyFileButton.textContent = "选择导出 SVGA";
-    svgaBadgeA.textContent = "SVGA";
-    svgaTitleA.textContent = "导出 SVGA";
     svgaTitleA.removeAttribute("data-subtitle");
-    svgaEmptyTitleA.textContent = "拖拽导出的 SVGA 文件到此处";
-    svgaEmptySubtitleA.textContent = "或选择本地文件";
+    svgaEmptyTitleA.textContent = "拖入导出的 SVGA 文件";
+    svgaEmptySubtitleA.textContent = "选择或拖拽本地 .svga";
   }
 
+  updatePreviewCardHeader(players.a);
+  updatePreviewCardHeader(players.b);
   updateButtons();
   refreshLayout();
 }
@@ -610,14 +693,79 @@ function isCompareActive() {
   return modeSelect.value === "localPreview" && compareEnabled;
 }
 
-function setActiveSidePanel(nextPanel) {
-  activeSidePanel = nextPanel === activeSidePanel ? null : nextPanel;
+function focusableElements(root) {
+  if (!root) return [];
+  return [...root.querySelectorAll([
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "a[href]",
+    "[tabindex]:not([tabindex='-1'])"
+  ].join(","))].filter((node) => isElementVisible(node));
+}
+
+function focusFirstWithin(root) {
+  const target = focusableElements(root)[0] ?? root;
+  target?.focus?.({ preventScroll: true });
+}
+
+function focusTrapRoot() {
+  if (!settingsModal.hidden) return settingsModal.querySelector("[role='dialog']") ?? settingsModal;
+  if (!assetPreviewModal.hidden) return assetPreviewModal.querySelector("[role='dialog']") ?? assetPreviewModal;
+  if (activeSidePanel === "info") return infoPanel;
+  if (activeSidePanel === "logs") return logsPanel;
+  return null;
+}
+
+function trapFocusEvent(event, root) {
+  const focusable = focusableElements(root);
+  if (!focusable.length) {
+    event.preventDefault();
+    root?.focus?.({ preventScroll: true });
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  if (!root.contains(document.activeElement)) {
+    event.preventDefault();
+    first.focus({ preventScroll: true });
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus({ preventScroll: true });
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus({ preventScroll: true });
+  }
+}
+
+function activateButtonOnKeyboard(button) {
+  button?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
+    event.preventDefault();
+    button.click();
+  });
+}
+
+function setActiveSidePanel(nextPanel, options = {}) {
+  const requestedPanel = nextPanel === activeSidePanel ? null : nextPanel;
+  if (requestedPanel) {
+    sidePanelReturnFocus = options.trigger ?? document.activeElement;
+  }
+  activeSidePanel = requestedPanel;
   infoPanel.classList.toggle("isHidden", activeSidePanel !== "info");
   logsPanel.classList.toggle("isHidden", activeSidePanel !== "logs");
   workspace.classList.toggle("withSidePanel", Boolean(activeSidePanel));
   updateButtons();
   if (activeSidePanel === "info") renderInfoPanel();
   if (activeSidePanel === "logs") renderLogsPanel();
+  if (activeSidePanel) {
+    const panel = activeSidePanel === "info" ? infoPanel : logsPanel;
+    window.requestAnimationFrame(() => focusFirstWithin(panel));
+  } else if (options.restoreFocus !== false) {
+    sidePanelReturnFocus?.focus?.({ preventScroll: true });
+    sidePanelReturnFocus = null;
+  }
   window.requestAnimationFrame(refreshLayout);
 }
 
@@ -628,7 +776,10 @@ function openModal(layer, trigger) {
   layer.hidden = false;
   layer.classList.remove("isClosing");
   layer.getBoundingClientRect();
-  window.requestAnimationFrame(() => layer.classList.add("isOpen"));
+  window.requestAnimationFrame(() => {
+    layer.classList.add("isOpen");
+    focusFirstWithin(layer.querySelector("[role='dialog']") ?? layer);
+  });
 }
 
 function closeModal(layer, { restoreFocus = true } = {}) {
@@ -660,12 +811,12 @@ function showSettingsToast(message = "设置已更新") {
   }, 1700);
 }
 
-function openInfoPanel(tabName = "overview") {
+function openInfoPanel(tabName = "overview", trigger = infoPanelButton) {
   const target = tabButtons.find((button) => button.dataset.tab === tabName) ?? tabButtons[0];
   for (const item of tabButtons) item.classList.toggle("isActive", item === target);
   for (const panel of document.querySelectorAll(".tabPanel")) panel.classList.add("isHidden");
   document.querySelector(`#tab-${target.dataset.tab}`).classList.remove("isHidden");
-  setActiveSidePanel("info");
+  setActiveSidePanel("info", { trigger });
 }
 
 function applyInfoPanelWidth(width) {
@@ -725,7 +876,7 @@ function loadReference(fileOrSource, options = {}) {
         if (loadToken !== referenceState.loadToken) return;
         setStatus(referenceState.status, "error");
         updateButtons();
-        reject(new Error(`参考 GIF 加载失败：${fileName} / Unable to load reference GIF`));
+        reject(new Error(`参考 GIF 加载失败：${fileName}`));
       }, { once: true });
     });
   }
@@ -753,13 +904,13 @@ function loadReference(fileOrSource, options = {}) {
       referenceState.panel.classList.add("hasMedia");
       refreshLayout();
       updateButtons();
-      addLog("info", `参考视频元数据已加载：${fileName} / Reference metadata loaded`);
+      addLog("info", `参考视频元数据已加载：${fileName}`);
     }, { once: true });
     referenceState.video.addEventListener("canplay", () => {
       if (loadToken !== referenceState.loadToken) return;
       setStatus(referenceState.status, "loaded");
       updateButtons();
-      addLog("success", `参考视频可以播放：${fileName} / Reference video can play`);
+      addLog("success", `参考视频可以播放：${fileName}`);
       resolve();
     }, { once: true });
     referenceState.video.addEventListener("error", () => {
@@ -767,7 +918,7 @@ function loadReference(fileOrSource, options = {}) {
       setStatus(referenceState.status, "error");
       updateButtons();
       const mediaError = referenceState.video.error;
-      reject(new Error(`参考视频加载失败：${fileName}（code ${mediaError?.code ?? "unknown"}）/ Unsupported video source`));
+      reject(new Error(`参考视频加载失败：${fileName}（code ${mediaError?.code ?? "unknown"}）`));
     }, { once: true });
   });
 }
@@ -823,9 +974,8 @@ function replaySlot(slot, shouldShowError = true) {
   setStatus(slot.status, "playing");
   slot.panel.classList.add("hasMedia");
   setSlotEmptyStateHidden(slot, true);
+  updatePreviewCardHeader(slot);
   if (slot.slotName === "A") {
-    svgaFilePillA.hidden = false;
-    svgaFilePillA.textContent = slot.metrics?.fileName ?? "SVGA";
     startLocalTicker(true);
   } else {
     startPlayerBTicker(true);
@@ -1017,7 +1167,7 @@ function seekSynchronized(percent) {
 function playReference() {
   if (referenceState.kind === "video" || referenceState.kind === "mp4" || referenceState.kind === "webm") {
     referenceState.video.play().catch((error) => {
-      addLog("warning", `参考视频需要用户手动播放。/ Reference autoplay was blocked: ${error.message}`);
+      addLog("warning", `参考视频需要用户手动播放：${error.message}`);
       updateSyncPlaybackState();
     });
   }
@@ -1192,7 +1342,7 @@ async function decodeSvgaInfo(source) {
   ensurePakoLibrary();
   const response = await fetch(source);
   if (!response.ok) {
-    throw new Error(`无法读取 SVGA 文件。/ Unable to fetch SVGA (${response.status})`);
+    throw new Error(`无法读取 SVGA 文件（${response.status}）。`);
   }
 
   const compressedBytes = new Uint8Array(await response.arrayBuffer());
@@ -1242,7 +1392,7 @@ async function decodeSvgaInfo(source) {
         byteSize: image?.byteSize,
         previewUrl: image?.previewUrl,
         hasImage: Boolean(image),
-        warnings: image ? image.warnings : ["资源缺失 / missing resource"]
+        warnings: image ? image.warnings : ["资源缺失"]
       };
     });
 
@@ -1290,7 +1440,7 @@ function parseMessage(bytes) {
       fields.push({ number: fieldNumber, wireType, bytes: bytes.slice(offset, offset + 4) });
       offset += 4;
     } else {
-      throw new Error(`不支持的 protobuf wire type。/ Unsupported protobuf wire type: ${wireType}`);
+      throw new Error(`不支持的 protobuf wire type：${wireType}`);
     }
   }
   return fields;
@@ -1340,13 +1490,13 @@ function readImageDimensions(bytes) {
 function buildImageWarnings(image) {
   const warnings = [];
   if ((image.width ?? 0) > 1024 || (image.height ?? 0) > 1024) {
-    warnings.push("尺寸过大 / large dimensions");
+    warnings.push("尺寸偏大");
   }
   if ((image.byteSize ?? 0) > 512 * 1024) {
-    warnings.push("体积过大 / large file");
+    warnings.push("体积偏大");
   }
   if (image.width && image.height && image.byteSize > image.width * image.height * 3) {
-    warnings.push("疑似未压缩 / possibly uncompressed");
+    warnings.push("体积效率需复核");
   }
   return warnings;
 }
@@ -1382,7 +1532,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
   if (slot.slotName === "A") applyPrimaryLoadingCopy(options.fileName);
   updateButtons();
   renderInfoPanel();
-  addLog("info", `开始解析 SVGA：${options.fileName ?? source} / Parsing SVGA`);
+  addLog("info", `开始解析 SVGA：${options.fileName ?? source}`);
   if (options.loadingHoldMs) {
     await delay(options.loadingHoldMs);
   }
@@ -1395,7 +1545,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       phaseState.check = "done";
       setSlotLoadingPhase(slot, slot.parseStatus === "loading" ? "parse" : undefined, phaseState);
       renderInfoPanel();
-      addLog("success", `生产规范检查完成：${report.passed ? "通过" : "未通过"} / Spec check completed`);
+      addLog("success", `生产规范检查完成：${report.passed ? "通过" : "未通过"}`);
     })
     .catch((error) => {
       if (slot.inspectionRequestId !== inspectionRequestId) return;
@@ -1409,7 +1559,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
   const decodedInfoPromise = decodeSvgaInfo(source).catch((error) => {
     phaseState.read = "done";
     setSlotLoadingPhase(slot, "parse", phaseState);
-    addLog("error", `SVGA 元数据解析失败 / Metadata parse failed: ${error.message}`);
+    addLog("error", `SVGA 元数据解析失败：${error.message}`);
     return undefined;
   });
   const parser = new window.SVGA.Parser(`#${slot.canvas.id}`);
@@ -1441,7 +1591,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
 
         if (!slot.metrics.sourceWidth || !slot.metrics.sourceHeight) {
           setStatus(slot.status, "loaded");
-          showError(`SVGA 已加载，但无法读取 viewBox 尺寸。/ SVGA loaded, but viewBox size could not be read for player ${slot.slotName}.`);
+          showError(`SVGA 已加载，但无法读取播放器 ${slot.slotName} 的 viewBox 尺寸。`);
         }
 
         refreshLayout();
@@ -1454,12 +1604,12 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
         refreshLayout();
         updateButtons();
         announce(`SVGA 加载完成：${slot.metrics.fileName}`);
-        addLog("success", `SVGA 加载完成：${slot.metrics.fileName} / SVGA loaded`);
+        addLog("success", `SVGA 加载完成：${slot.metrics.fileName}`);
         resolve(slot);
       },
       (error) => {
         const loadError = new Error(`SVGA 文件加载失败：${error?.message ?? error}`);
-        setSlotInvalidState(slot, `${loadError.message} / Unable to load SVGA file`);
+        setSlotInvalidState(slot, loadError.message);
         reject(loadError);
       }
     );
@@ -1511,10 +1661,10 @@ async function loadJobOutput(jobValue) {
     const response = await fetch(`${basePath}/output/svga-map.json`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     defaultSvgaMap = await response.json();
-    addLog("success", `已加载映射：${defaultSvgaMap.layers?.length ?? 0} 个图层 / SVGA map loaded`);
+    addLog("success", `已加载映射：${defaultSvgaMap.layers?.length ?? 0} 个图层`);
   } catch (error) {
     missing.push("output/svga-map.json");
-    addLog("warning", `无法加载 svga-map.json。/ Unable to load svga-map.json: ${error.message}`);
+    addLog("warning", `无法加载 svga-map.json：${error.message}`);
   }
 
   setAppMode("exportReview");
@@ -1530,7 +1680,7 @@ async function loadJobOutput(jobValue) {
     });
   } catch (error) {
     missing.push(svgaRelativePath);
-    addLog("error", `无法加载导出 SVGA。/ Unable to load exported SVGA: ${error.message}`);
+    addLog("error", `无法加载导出 SVGA：${error.message}`);
   }
 
   const previewCandidates = [
@@ -1562,7 +1712,7 @@ async function loadJobOutput(jobValue) {
       if (candidate.kind === "gif") {
         addLog("warning", "当前使用 GIF fallback；最终视觉验收请以真实 SVGA 播放为准。/ GIF fallback loaded.");
       } else {
-        addLog("success", `已加载辅助预览：${candidate.path} / Auxiliary preview loaded`);
+        addLog("success", `已加载辅助预览：${candidate.path}`);
       }
       break;
     } catch (error) {
@@ -1576,7 +1726,7 @@ async function loadJobOutput(jobValue) {
   if (missing.length > 0) {
     showError(`Job 输出不完整：${missing.join("、")}。/ Job output is incomplete.`);
   } else {
-    addLog("success", `Job 验收资源加载完成：${jobName} / Job review output loaded`);
+    addLog("success", `Job 验收资源加载完成：${jobName}`);
   }
 }
 
@@ -1595,7 +1745,7 @@ function handleSvgaFile(file, slotKey) {
     fileName: file.name,
     fileSizeBytes: file.size,
     isDefault: false
-  });
+  }).catch(() => undefined);
 }
 
 function delay(ms) {
@@ -1633,6 +1783,7 @@ async function performP6SmokeInput(input) {
 const p6SmokeActionTrace = [];
 let p6SmokeFixture = null;
 let p6SmokeCurrentActionId = null;
+let p6SmokeCurrentPhase = "idle";
 
 const p6SmokeRegionContract = [
   ["shell", ".shell"],
@@ -2040,14 +2191,30 @@ async function buildP6SmokeInteractionTrace() {
 
 function createP6SmokeFailureDiagnostics(error) {
   const lastAction = p6SmokeActionTrace[p6SmokeActionTrace.length - 1];
+  const invalidProof = collectRenderedStateProof("invalid");
   return {
     schemaVersion: 1,
-    phase: "runProductSmoke",
+    phase: p6SmokeCurrentPhase,
     errorName: sanitizeP6SmokeDiagnostic(error?.name || "Error", 80),
     errorMessage: sanitizeP6SmokeDiagnostic(error?.message || String(error || "Unknown product smoke failure"), 260),
     actionCount: p6SmokeActionTrace.length,
     currentActionId: p6SmokeCurrentActionId,
-    lastActionId: lastAction?.id ?? null
+    lastActionId: lastAction?.id ?? null,
+    renderedStateProof: {
+      state: invalidProof.state,
+      passed: invalidProof.passed,
+      failures: invalidProof.failures.slice(0, 16),
+      renderedText: sanitizeP6SmokeDiagnostic(invalidProof.renderedText ?? "", 260)
+    },
+    primaryStatus: {
+      parseStatus: players.a.parseStatus,
+      renderStatus: players.a.renderStatus,
+      inspectionStatus: players.a.inspectionStatus,
+      hasSlotError: players.a.panel?.classList.contains("hasSlotError") === true,
+      hasMetrics: Boolean(players.a.metrics),
+      hasInspectionReport: Boolean(players.a.inspectionReport),
+      canvasChildCount: players.a.canvas.children.length
+    }
   };
 }
 
@@ -2143,7 +2310,7 @@ function collectRenderedStateProof(state) {
   const stage = players.a.panel?.querySelector(".stage");
   const primaryEmptyOverlay = players.a.panel?.querySelector(".centerEmptyState");
   const secondaryEmptyOverlay = players.b.panel?.querySelector(".centerEmptyState");
-  const invalidOverlay = errorBox;
+  const invalidOverlay = players.a.panel?.classList.contains("hasSlotError") ? primaryEmptyOverlay : errorBox;
   const overlay = normalizedState === "invalid" ? invalidOverlay : primaryEmptyOverlay;
   const button = normalizedState === "invalid" ? primaryEmptyFileButton : overlay?.querySelector("button");
   const stageRect = rectFor(stage);
@@ -2160,15 +2327,14 @@ function collectRenderedStateProof(state) {
     && overlayStyle.visibility !== "hidden"
     && Number(overlayStyle.opacity ?? 1) > 0.01
     && isRectVisible(overlayRect);
-  const overlayInsideStage = normalizedState === "invalid" || Boolean(stageRect && overlayRect
+  const overlayInsideStage = Boolean(stageRect && overlayRect
     && overlayRect.left >= stageRect.left
     && overlayRect.right <= stageRect.right
     && overlayRect.top >= stageRect.top
     && overlayRect.bottom <= stageRect.bottom);
   const overlayNotOccluded = !overlayVisible
     || overlay?.contains(topElement)
-    || overlayStyle.pointerEvents === "none"
-    || normalizedState === "invalid";
+    || overlayStyle.pointerEvents === "none";
   const loadingPhaseItems = Array.from(players.a.loadingPhases ?? []).map((item) => ({
     phase: item.dataset.loadingPhase,
     text: item.textContent?.replace(/\s+/g, " ").trim() ?? "",
@@ -2216,7 +2382,7 @@ function collectRenderedStateProof(state) {
   const failures = [];
   if (normalizedState === "empty" || normalizedState === "local-empty") {
     if (!overlayVisible) failures.push("empty overlay is not visible");
-    if (!renderedText.includes("拖拽 SVGA 文件到此处")) failures.push("empty text missing");
+    if (!renderedText.includes("拖入 SVGA 文件")) failures.push("empty text missing");
     if (!primaryActionVisible) failures.push("empty primary action not visible");
   }
   if (normalizedState === "loading") {
@@ -2264,8 +2430,11 @@ function collectRenderedStateProof(state) {
     if (modeSelect.value !== "localPreview") failures.push("invalid state is not in local preview mode");
     if (isCompareActive()) failures.push("invalid state is still in compare mode");
     if (players.b.videoItem) failures.push("invalid state still has secondary SVGA loaded");
-    if (!overlayVisible) failures.push("invalid error box is not visible");
-    if (!/文件类型不支持|加载失败|Unable|Unsupported|failed/i.test(renderedText)) {
+    if (!players.a.panel?.classList.contains("hasSlotError")) failures.push("invalid slot-local error missing");
+    if (!overlayVisible) failures.push("invalid error state is not visible");
+    if (!overlayInsideStage) failures.push("invalid error state is outside preview card");
+    if (!overlayNotOccluded) failures.push("invalid error state is occluded");
+    if (!/无法打开此 SVGA 文件|文件类型不支持|加载失败|Unable|Unsupported|failed/i.test(renderedText)) {
       failures.push("invalid product message missing");
     }
     if (players.a.parseStatus !== "error") failures.push("invalid parser status is not error");
@@ -2469,7 +2638,7 @@ async function smokeDragDrop(bytes) {
 async function smokeErrorFile() {
   const file = new File([new Uint8Array([1, 2, 3, 4])], "not-svga.txt", { type: "text/plain" });
   handleDroppedFile(file, "svga", "a");
-  await waitFor(() => !errorBox.hidden && /文件类型不支持|Unsupported/.test(errorBox.textContent));
+  await waitFor(() => !errorBox.hidden && /文件类型不支持|无法打开此 SVGA 文件/.test(errorBox.textContent));
   players.a.metrics = undefined;
   players.a.inspectionReport = undefined;
   return true;
@@ -2774,9 +2943,168 @@ async function captureP6MotionEvidence() {
   });
 }
 
+function slotHasLocalError(slot, expectedText) {
+  const overlay = slot.panel?.querySelector(".centerEmptyState");
+  return Boolean(slot.panel?.classList.contains("hasSlotError")
+    && isElementVisible(overlay)
+    && compactText(overlay).includes(expectedText)
+    && !slot.metrics
+    && !slot.inspectionReport
+    && slot.canvas.children.length === 0);
+}
+
+function slotRecoveredCleanly(slot) {
+  const overlay = slot.panel?.querySelector(".centerEmptyState");
+  return Boolean(!slot.panel?.classList.contains("hasSlotError")
+    && !isElementVisible(overlay)
+    && slot.videoItem
+    && slot.metrics
+    && slot.renderStatus === "ready"
+    && canvasIsNonBlank(slot));
+}
+
+async function ownerEnterOpensPanel(selector, expectedRoot, waitForOpen) {
+  closeP6SmokeTransientUi();
+  await delay(120);
+  await performP6SmokeInput({ kind: "keyboard", selector, key: "Enter" });
+  await waitForOpen();
+  await delay(120);
+  return expectedRoot.contains(document.activeElement);
+}
+
+async function runOwnerUsabilitySmoke(bytes) {
+  const evidence = [];
+  const checks = {};
+  let previewCardHeaderConsistency = false;
+
+  closeP6SmokeTransientUi();
+  setAppMode("localPreview");
+  if (syncPlayControl.getAttribute("aria-pressed") === "true") syncPlayControl.click();
+  if (compareToggle.checked) compareToggle.click();
+  resetSlotMediaState(players.a, { clearReport: true });
+  resetSlotMediaState(players.b);
+  clearReference();
+  latestArtifactGroup = undefined;
+  await delay(160);
+
+  p6SmokeCurrentPhase = "owner-usability-a-invalid-drop";
+  handleDroppedFile(new File([new Uint8Array([1, 2, 3])], "owner-invalid-a.txt", { type: "text/plain" }), "svga", "a");
+  await waitFor(() => slotHasLocalError(players.a, "文件类型不支持"));
+  checks.svgaAInvalidLocalFeedback = slotHasLocalError(players.a, "文件类型不支持");
+  evidence.push("SVGA A invalid drop rendered slot-local unsupported-file feedback");
+
+  p6SmokeCurrentPhase = "owner-usability-a-recovery";
+  handleDroppedFile(new File([bytes.slice(0)], "owner-recovery-a.svga", { type: "application/octet-stream" }), "svga", "a");
+  await waitFor(() => slotRecoveredCleanly(players.a));
+  checks.svgaARecoveryClearsError = slotRecoveredCleanly(players.a)
+    && errorBox.hidden
+    && !staleInvalidStatusText(compactText(statusAnnouncer))
+    && !document.querySelector("#tab-overview .status-error");
+  evidence.push("SVGA A valid recovery cleared slot error, global error, stale metadata, and ready/error badge drift");
+
+  p6SmokeCurrentPhase = "owner-usability-enable-compare";
+  if (!compareToggle.checked) compareToggle.click();
+  await waitFor(() => isCompareActive());
+  p6SmokeCurrentPhase = "owner-usability-b-invalid-drop";
+  handleDroppedFile(new File([new Uint8Array([4, 5, 6])], "owner-invalid-b.txt", { type: "text/plain" }), "svga", "b");
+  await waitFor(() => slotHasLocalError(players.b, "文件类型不支持"));
+  checks.svgaBInvalidLocalFeedback = slotHasLocalError(players.b, "文件类型不支持");
+  evidence.push("SVGA B invalid drop rendered slot-local unsupported-file feedback");
+
+  p6SmokeCurrentPhase = "owner-usability-b-recovery";
+  handleDroppedFile(new File([bytes.slice(0)], "owner-recovery-b.svga", { type: "application/octet-stream" }), "svga", "b");
+  await waitFor(() => slotRecoveredCleanly(players.b));
+  checks.svgaBRecoveryClearsError = slotRecoveredCleanly(players.b);
+  previewCardHeaderConsistency = Boolean(svgaTitleA.textContent && svgaTitleB.textContent
+    && svgaTitleA.textContent !== "SVGA 本地预览"
+    && svgaTitleB.textContent !== "SVGA B"
+    && !svgaFilePillA.hidden
+    && !svgaFilePillB.hidden);
+  evidence.push("SVGA B valid recovery cleared slot error and loaded the secondary preview");
+
+  p6SmokeCurrentPhase = "owner-usability-export-review";
+  setAppMode("exportReview");
+  await waitFor(() => Boolean(players.a.videoItem));
+  p6SmokeCurrentPhase = "owner-usability-enter-info";
+  checks.enterOpensInfoAndFocusesPanel = await ownerEnterOpensPanel("#infoPanelButton", infoPanel, async () => {
+    await waitFor(() => activeSidePanel === "info");
+  });
+  evidence.push("Enter opened info panel and moved focus inside it");
+
+  p6SmokeCurrentPhase = "owner-usability-enter-logs";
+  checks.enterOpensLogsAndFocusesPanel = await ownerEnterOpensPanel("#logsButton", logsPanel, async () => {
+    await waitFor(() => activeSidePanel === "logs");
+  });
+  evidence.push("Enter opened log panel and moved focus inside it");
+
+  p6SmokeCurrentPhase = "owner-usability-enter-settings";
+  checks.enterOpensSettingsAndFocusesDialog = await ownerEnterOpensPanel("#settingsButton", settingsModal, async () => {
+    await waitFor(() => !settingsModal.hidden);
+  });
+  evidence.push("Enter opened settings dialog and moved focus inside it");
+
+  p6SmokeCurrentPhase = "owner-usability-tab-trap";
+  await performP6SmokeInput({ kind: "keyboard", selector: "#settingsCloseButton", key: "Tab" });
+  await delay(120);
+  checks.tabStaysInsideSettings = settingsModal.contains(document.activeElement);
+  evidence.push("Tab stayed inside settings dialog while it was active");
+
+  p6SmokeCurrentPhase = "owner-usability-escape-close-settings";
+  await performP6SmokeInput({ kind: "keyboard", selector: "body", key: "Escape" });
+  await waitFor(() => settingsModal.hidden);
+  await delay(120);
+  checks.escapeClosesSettingsAndRestoresFocus = document.activeElement === settingsButton;
+  evidence.push("Escape closed settings and restored focus to the invoker");
+
+  p6SmokeCurrentPhase = "owner-usability-empty-log-copy";
+  appLogs.length = 0;
+  renderInfoPanel();
+  renderLogsPanel();
+  await copyFullLogsToClipboard();
+  await waitFor(() => compactText(logsActionFeedback) === "暂无日志可复制");
+  checks.emptyLogsCopyMessage = compactText(logsActionFeedback) === "暂无日志可复制";
+  evidence.push("Empty log copy produced the specific empty-state message");
+
+  p6SmokeCurrentPhase = "owner-usability-non-empty-log-copy";
+  addLog("info", "日志复制验证");
+  const originalClipboardTextWriter = clipboardTextWriter;
+  try {
+    await copyFullLogsToClipboard();
+    await waitFor(() => compactText(logsActionFeedback) === "日志已复制");
+    checks.nonEmptyLogsCopyViaElectronClipboard = compactText(logsActionFeedback) === "日志已复制"
+      && lastClipboardWritePath === "electron";
+    evidence.push("Non-empty log copy used the Electron clipboard bridge and produced success feedback");
+
+    p6SmokeCurrentPhase = "owner-usability-clipboard-failure";
+    clipboardTextWriter = () => {
+      lastClipboardWritePath = "forced-rejection";
+      return Promise.reject(new Error("forced clipboard failure"));
+    };
+    await copyFullLogsToClipboard().catch(() => undefined);
+    await waitFor(() => compactText(logsActionFeedback) === "复制失败");
+    checks.clipboardFailureMessage = compactText(logsActionFeedback) === "复制失败";
+    evidence.push("Rejected clipboard write produced the distinct failure message");
+  } finally {
+    clipboardTextWriter = originalClipboardTextWriter;
+  }
+
+  p6SmokeCurrentPhase = "owner-usability-final-checks";
+  checks.finderDocumentAssociationNotClaimed = electronBridge?.capabilities?.finderDocumentAssociation === "not-declared";
+  checks.previewCardHeaderConsistency = previewCardHeaderConsistency;
+  evidence.push("Preview card headers carry file names/status consistently and Finder document association is not claimed");
+
+  return {
+    schemaVersion: 1,
+    finderDocumentAssociation: electronBridge?.capabilities?.finderDocumentAssociation ?? "unknown",
+    checks,
+    evidence
+  };
+}
+
 async function runProductSmoke() {
   if (!electronBridge?.reportSmokeResult) return;
   try {
+    p6SmokeCurrentPhase = "startup";
     await delay(180);
     setThemePreference("dark");
     localStorage.setItem("autoSvgaReduceMotion", "false");
@@ -2785,8 +3113,10 @@ async function runProductSmoke() {
     reduceBlurToggle.checked = false;
     document.documentElement.classList.remove("reduceMotion", "reduceBlur");
     await delay(80);
+    p6SmokeCurrentPhase = "capture-empty";
     await captureArtifact("desktop-empty");
     const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
+    p6SmokeCurrentPhase = "fetch-fixture";
     const bytes = new Uint8Array(await fetch(fixtureUrl).then((response) => {
       if (!response.ok) throw new Error(`Fixture fetch failed (${response.status})`);
       return response.arrayBuffer();
@@ -2797,25 +3127,35 @@ async function runProductSmoke() {
       displayName: p6BaselineFixtureDisplayName,
       sizeBytes: bytes.byteLength
     };
+    p6SmokeCurrentPhase = "load-primary-fixture";
     const loadPromise = loadSvga("a", fixtureUrl, {
       fileName: p6BaselineFixtureDisplayName,
       fileSizeBytes: bytes.byteLength,
       loadingHoldMs: 350
     });
+    p6SmokeCurrentPhase = "capture-loading";
     await captureArtifact("desktop-loading");
+    p6SmokeCurrentPhase = "await-primary-load";
     await loadPromise;
+    p6SmokeCurrentPhase = "await-primary-video-item";
     await waitFor(() => Boolean(players.a.videoItem));
+    p6SmokeCurrentPhase = "await-primary-canvas-nonblank";
     await waitFor(() => canvasIsNonBlank(players.a));
     const canvasNonBlank = canvasIsNonBlank(players.a);
+    p6SmokeCurrentPhase = "await-primary-inspection-report";
     const inspectionReport = await waitForInspectionStatus(players.a);
     await delay(320);
+    p6SmokeCurrentPhase = "capture-loaded";
     await captureArtifact("desktop-loaded");
     playSlot(players.a);
     await delay(160);
+    p6SmokeCurrentPhase = "capture-playing";
     await captureArtifact("desktop-playing");
     pauseSlot(players.a);
     await delay(180);
+    p6SmokeCurrentPhase = "capture-paused";
     await captureArtifact("desktop-paused");
+    p6SmokeCurrentPhase = "error-file-smoke";
     const errorFile = await smokeErrorFile();
     setAppMode("localPreview");
     if (compareToggle.checked) compareToggle.click();
@@ -2823,23 +3163,31 @@ async function runProductSmoke() {
     clearReference();
     latestArtifactGroup = undefined;
     closeP6SmokeTransientUi();
+    p6SmokeCurrentPhase = "await-invalid-state-proof";
     await waitFor(() => !isCompareActive() && collectRenderedStateProof("invalid").passed === true);
     await delay(240);
+    p6SmokeCurrentPhase = "capture-invalid";
     await captureArtifact("desktop-invalid");
+    p6SmokeCurrentPhase = "load-recovered-fixture";
     await loadSvga("a", fixtureUrl, {
       fileName: p6RecoveredFixtureDisplayName,
       fileSizeBytes: bytes.byteLength,
       loadingHoldMs: 120
     });
+    p6SmokeCurrentPhase = "await-recovered-video-item";
     await waitFor(() => Boolean(players.a.videoItem));
+    p6SmokeCurrentPhase = "await-recovered-canvas-nonblank";
     await waitFor(() => canvasIsNonBlank(players.a));
+    p6SmokeCurrentPhase = "await-recovered-inspection-report";
     await waitForInspectionStatus(players.a);
+    p6SmokeCurrentPhase = "capture-recovered";
     await captureArtifact("desktop-recovered-from-invalid");
     playSlot(players.a);
     resetSlotMediaState(players.a, { clearReport: true });
     setAppMode("localPreview");
     manualArtifactSelection = false;
     await delay(160);
+    p6SmokeCurrentPhase = "interaction-trace";
     await recordP6SmokeAction({
       id: "click-mode-dropdown-trigger-menu-opens",
       kind: "click",
@@ -3032,6 +3380,9 @@ async function runProductSmoke() {
     await captureArtifact("desktop-local-compare-loaded");
     const fileInput = await smokeFileInput(bytes.slice(0));
     const dragDrop = await smokeDragDrop(bytes.slice(0));
+    p6SmokeCurrentPhase = "owner-usability-smoke";
+    const ownerUsability = await runOwnerUsabilitySmoke(bytes.slice(0));
+    p6SmokeCurrentPhase = "report-smoke-result";
     await electronBridge.reportSmokeResult({
       localPage: location.hostname === "127.0.0.1",
       localOnly: resourcesAreLocal(),
@@ -3046,10 +3397,11 @@ async function runProductSmoke() {
       errorFile,
       playerLifecycle: true,
       cleanup: true,
-      p6InteractionTrace: await buildP6SmokeInteractionTrace()
+      p6InteractionTrace: await buildP6SmokeInteractionTrace(),
+      ownerUsability
     });
   } catch (error) {
-    addLog("error", `产品 smoke 失败：${error.message} / Product smoke failed`);
+    addLog("error", `产品 smoke 失败：${error.message}`);
     await electronBridge.reportSmokeResult({
       localPage: false,
       localOnly: false,
@@ -3075,16 +3427,16 @@ function handleDroppedFile(file, acceptedKind, slotKey = "a") {
   const kind = fileKind(file);
   if (!kind) {
     if (acceptedKind === "svga" || acceptedKind === "auto") {
-      setSlotInvalidState(players[slotKey] ?? players.a, `文件类型不支持：${file.name}。/ Unsupported file type.`);
+      setSlotInvalidState(players[slotKey] ?? players.a, `文件类型不支持：${file.name}。`);
     } else {
-      showError(`文件类型不支持：${file.name}。/ Unsupported file type.`);
+      showError(`文件类型不支持：${file.name}。`);
     }
     return;
   }
   if (acceptedKind !== "auto" && acceptedKind !== kind && !(acceptedKind === "reference" && ["mp4", "webm", "gif"].includes(kind))) {
     const message = acceptedKind === "svga"
-      ? "文件类型不支持，请拖入 .svga 文件。/ Unsupported file type. Please drop a .svga file."
-      : "文件类型不支持，请拖入 .mp4、.webm 或 .gif 文件。/ Unsupported file type. Please drop a video or GIF.";
+      ? "文件类型不支持，请拖入 .svga 文件。"
+      : "文件类型不支持，请拖入 .mp4、.webm 或 .gif 文件。";
     if (acceptedKind === "svga") {
       setSlotInvalidState(players[slotKey] ?? players.a, message);
     } else {
@@ -3100,7 +3452,7 @@ function handleDroppedFile(file, acceptedKind, slotKey = "a") {
   }
 
   if (modeSelect.value !== "exportReview") {
-    showError("参考视频只在导出验收模式显示。/ Reference video is only shown in Export Review Mode.");
+    showError("参考视频只在导出验收模式显示。");
     return;
   }
   loadReference(file, { fileName: file.name, fileSizeBytes: file.size, kind })
@@ -3162,7 +3514,7 @@ async function loadArtifactGroup(group, { force = false } = {}) {
         defaultReport = await loadReport(group.reportPath);
         renderReport(defaultReport);
       } catch (error) {
-        addLog("warning", `同组报告加载失败：${error.message} / Group report failed`);
+        addLog("warning", `同组报告加载失败：${error.message}`);
       }
     } else {
       renderReport(undefined);
@@ -3177,7 +3529,7 @@ async function loadArtifactGroup(group, { force = false } = {}) {
         });
         svgaLoaded = true;
       } catch (error) {
-        addLog("error", `主验收 SVGA 加载失败：${error.message} / Primary SVGA failed`);
+        addLog("error", `主验收 SVGA 加载失败：${error.message}`);
         showError(`主验收 SVGA 加载失败：${error.message}`);
       }
     } else {
@@ -3196,17 +3548,17 @@ async function loadArtifactGroup(group, { force = false } = {}) {
           kind: referencePath.split(".").at(-1).toLowerCase()
         });
       } catch (error) {
-        addLog("warning", `同组参考文件加载失败：${error.message} / Group reference failed`);
+        addLog("warning", `同组参考文件加载失败：${error.message}`);
       }
     } else {
       clearReference();
     }
 
-    for (const warning of group.warnings ?? []) addLog("warning", `${warning} / Artifact warning`);
+    for (const warning of group.warnings ?? []) addLog("warning", warning);
     if (!svgaLoaded && referencePath) {
-      addLog("error", "参考文件可用，但不能替代真实 SVGA 验收。/ Reference cannot replace SVGA validation.");
+      addLog("error", "参考文件可用，但不能替代真实 SVGA 验收。");
     }
-    addLog(svgaLoaded ? "success" : "warning", `已加载产物组：${group.jobId} / Artifact group loaded`);
+    addLog(svgaLoaded ? "success" : "warning", `已加载产物组：${group.jobId}`);
     return svgaLoaded;
   } finally {
     artifactAutoLoading = false;
@@ -3217,13 +3569,13 @@ async function loadArtifactGroup(group, { force = false } = {}) {
 async function scanLatestArtifact({ force = false } = {}) {
   if (manualArtifactSelection && !force) return;
   setRescanState("scanning", "正在扫描本地导出产物");
-  addLog("info", "正在扫描本地最新导出产物… / Scanning local artifacts");
+  addLog("info", "正在扫描本地最新导出产物…");
   try {
     const response = await fetch("/api/latest-artifact");
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     const target = data.latestWithSvga ?? data.latestAny;
-    for (const warning of data.warnings ?? []) addLog("warning", `${warning} / Scan warning`);
+    for (const warning of data.warnings ?? []) addLog("warning", warning);
     if (!target) {
       setRescanState("error", "未找到可用产物");
       showSettingsToast("未找到可用产物");
@@ -3239,7 +3591,7 @@ async function scanLatestArtifact({ force = false } = {}) {
   } catch (error) {
     setRescanState("error", `扫描失败：${error.message}`);
     showSettingsToast("扫描失败，请查看运行日志");
-    addLog("error", `产物扫描失败：${error.message} / Artifact scan failed`);
+    addLog("error", `产物扫描失败：${error.message}`);
   }
 }
 
@@ -3285,7 +3637,7 @@ function renderInfoPanel() {
 
 function renderOverview(metrics, slot) {
   if (!metrics) {
-    return renderBilingualEmpty("暂无文件信息。选择或拖入 SVGA 文件后查看详情。", "No SVGA loaded.");
+    return renderBilingualEmpty("暂无文件信息。选择或拖入 SVGA 文件后查看详情。", "");
   }
   const rows = [
     ["文件名", "fileName", metrics.fileName, "mono"],
@@ -3306,14 +3658,14 @@ function renderOverview(metrics, slot) {
       <dl class="overviewGrid">
       ${rows.map(([label, key, value, tone]) => `
         <div class="overviewRow">
-          <dt><span>${escapeHtml(label)}</span><small>${escapeHtml(key)}</small></dt>
+          <dt><span>${escapeHtml(label)}</span></dt>
           <dd class="${tone === "mono" ? "monoValue" : ""} ${key === "fileName" ? "fileNameValue" : ""}" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
         </div>
       `).join("")}
       <div class="overviewStatusBlock">
         ${statusRows.map(([label, key, value]) => `
           <div class="overviewStatusRow">
-            <dt><span>${escapeHtml(label)}</span><small>${escapeHtml(key)}</small></dt>
+            <dt><span>${escapeHtml(label)}</span></dt>
             ${renderStatusBadge(value)}
           </div>
         `).join("")}
@@ -3346,7 +3698,7 @@ function renderBilingualEmpty(primary, secondary) {
   return `
     <div class="emptyPanel bilingualEmpty">
       <span>${escapeHtml(primary)}</span>
-      <small>${escapeHtml(secondary)}</small>
+      ${secondary ? `<small>${escapeHtml(secondary)}</small>` : ""}
     </div>
   `;
 }
@@ -3364,7 +3716,7 @@ function renderAssets(metrics) {
     </div>
   `;
   if (!metrics?.sprites?.length && !metrics?.images?.length) {
-    return `${filterBar}${renderBilingualEmpty("暂无资源信息", "No asset data")}`;
+    return `${filterBar}${renderBilingualEmpty("暂无资源信息", "")}`;
   }
   const assets = buildAssetEntries(metrics);
   const filtered = assets.filter((asset) => {
@@ -3375,7 +3727,7 @@ function renderAssets(metrics) {
   return `
     ${filterBar}
     <div class="assetUnifiedList">
-      ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "No assets match this filter")}
+      ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
     </div>
   `;
 }
@@ -3391,7 +3743,7 @@ function buildAssetEntries(metrics) {
     key: `sprite:${sprite.name || index}`,
     name: sprite.name || `sprite_${index}`,
     imageKey: sprite.imageKey,
-    typeLabel: "精灵",
+    typeLabel: "图层",
     width: sprite.width,
     height: sprite.height,
     byteSize: sprite.byteSize,
@@ -3543,11 +3895,11 @@ function renderAssetEntry(asset) {
 
 function renderLayerList(sprites = []) {
   if (!sprites.length) {
-    return `<div class="emptyPanel">暂无图层信息 / No layer data</div>`;
+    return `<div class="emptyPanel">暂无图层信息</div>`;
   }
   return `<div class="layerList">${sprites.map((sprite, index) => `
     <article class="layerRow ${sprite.warnings?.length ? "hasWarning" : ""} ${selectedLayerKey === sprite.name ? "isSelected" : ""}" data-layer-key="${escapeHtml(sprite.name)}" title="${escapeHtml(sprite.name || `sprite_${index}`)}">
-      <button class="layerTypeIcon ${sprite.previewUrl ? "hasPreview" : ""}" type="button" data-preview-image-key="${escapeHtml(sprite.imageKey ?? "")}" ${sprite.previewUrl ? "" : "disabled"} aria-label="查看图层资源 / View layer asset">
+      <button class="layerTypeIcon ${sprite.previewUrl ? "hasPreview" : ""}" type="button" data-preview-image-key="${escapeHtml(sprite.imageKey ?? "")}" ${sprite.previewUrl ? "" : "disabled"} aria-label="查看图层资源">
         ${sprite.previewUrl ? `<img src="${escapeHtml(sprite.previewUrl)}" alt="">` : `<span></span>`}
       </button>
       <div class="layerMain">
@@ -3563,12 +3915,12 @@ function renderLayerList(sprites = []) {
 
 function renderImageList(images = []) {
   if (!images.length) {
-    return `<div class="emptyPanel">暂无图片资源信息 / No image resource data</div>`;
+    return `<div class="emptyPanel">暂无图片资源信息</div>`;
   }
   return `<div class="imageList">${images.map((image) => `
     <article class="imageRow ${image.warnings?.length ? "hasWarning" : ""} ${selectedImageKey === image.key ? "isSelected" : ""}" data-image-key="${escapeHtml(image.key)}" title="${escapeHtml(image.key)}">
       <div class="imageRowTop">
-        <button class="imageThumb checkerboard" type="button" data-preview-image-key="${escapeHtml(image.key)}" aria-label="查看图片资源 / View image asset">
+        <button class="imageThumb checkerboard" type="button" data-preview-image-key="${escapeHtml(image.key)}" aria-label="查看图片资源">
           ${image.previewUrl ? `<img src="${escapeHtml(image.previewUrl)}" alt="">` : `<span></span>`}
         </button>
         <strong>${escapeHtml(image.name ?? image.key)}</strong>
@@ -3585,7 +3937,7 @@ function renderImageList(images = []) {
 
 function shortWarningLabel(warning) {
   if (warning.includes("体积")) return "图片体积偏大";
-  if (warning.includes("未压缩")) return "疑似未压缩";
+  if (warning.includes("效率")) return "体积效率需复核";
   if (warning.includes("尺寸")) return "图片尺寸偏大";
   return warning.split(" / ")[0] || warning;
 }
@@ -3594,8 +3946,8 @@ function renderLogsPanel() {
   if (!fullLogsContent) return;
   const logs = appLogs.length
     ? appLogs.slice().reverse()
-    : [{ level: "info", message: "暂无日志 / No logs", time: "--:--:--" }];
-  fullLogsSubtitle.innerHTML = `<span>运行日志 · ${appLogs.length} 条</span><small>Runtime Logs</small>`;
+    : [{ level: "info", message: "暂无日志", time: "--:--:--" }];
+  fullLogsSubtitle.innerHTML = `<span>运行日志 · ${appLogs.length} 条</span>`;
   fullLogsContent.innerHTML = logs.map(renderFullLogRow).join("");
 }
 
@@ -3804,16 +4156,16 @@ function setPreviewBackground(value) {
   }
 }
 
-function openSettings() {
-  openModal(settingsModal, settingsButton);
+function openSettings(trigger = settingsButton) {
+  openModal(settingsModal, trigger);
 }
 
 function closeSettings() {
   closeModal(settingsModal);
 }
 
-function openFullLogs() {
-  setActiveSidePanel("logs");
+function openFullLogs(trigger = logsButton) {
+  setActiveSidePanel("logs", { trigger });
 }
 
 function closeFullLogs() {
@@ -3997,7 +4349,18 @@ function renderFullLogRow(log) {
 function serializeLogs() {
   return appLogs.length
     ? appLogs.map((log) => `${log.time} ${logLevelLabel(log.level)} ${log.message}`).join("\n")
-    : "暂无日志 / No logs";
+    : "";
+}
+
+let lastClipboardWritePath = null;
+let clipboardTextWriter = (text) => {
+  if (electronBridge?.writeClipboardText) return electronBridge.writeClipboardText(text);
+  return navigator.clipboard?.writeText(text) ?? Promise.reject(new Error("Clipboard API unavailable"));
+};
+
+function writeClipboardText(text) {
+  lastClipboardWritePath = electronBridge?.writeClipboardText ? "electron" : "browser";
+  return clipboardTextWriter(text);
 }
 
 let feedbackTimer;
@@ -4037,18 +4400,21 @@ compareToggle.addEventListener("change", () => {
 infoPanelButton.addEventListener("click", () => {
   const panel = document.querySelector("#infoPanel");
   if (panel.classList.contains("isHidden")) {
-    openInfoPanel("overview");
+    openInfoPanel("overview", infoPanelButton);
   } else {
     closeInfoPanel();
   }
 });
 logsButton.addEventListener("click", () => {
-  if (logsPanel.classList.contains("isHidden")) openFullLogs();
+  if (logsPanel.classList.contains("isHidden")) openFullLogs(logsButton);
   else closeFullLogs();
 });
 settingsButton.addEventListener("click", () => {
-  openSettings();
+  openSettings(settingsButton);
 });
+for (const button of [infoPanelButton, logsButton, settingsButton]) {
+  activateButtonOnKeyboard(button);
+}
 themeToggleButton.addEventListener("click", () => {
   setThemePreference(effectiveTheme === "light" ? "dark" : "light");
 });
@@ -4204,17 +4570,32 @@ assetPreviewModal.addEventListener("click", (event) => {
 });
 copyImageKeyButton.addEventListener("click", () => {
   if (previewImageKey) {
-    navigator.clipboard?.writeText(previewImageKey).catch(() => undefined);
+    writeClipboardText(previewImageKey).catch(() => undefined);
   }
 });
 settingsCloseButton.addEventListener("click", closeSettings);
 settingsModal.addEventListener("click", (event) => {
   if (event.target === settingsModal) closeSettings();
 });
+function copyFullLogsToClipboard() {
+  const serializedLogs = serializeLogs();
+  if (!serializedLogs) {
+    showActionFeedback(logsActionFeedback, { text: "暂无日志可复制" });
+    return Promise.resolve({ status: "empty" });
+  }
+  return writeClipboardText(serializedLogs)
+    .then((result) => {
+      showActionFeedback(logsActionFeedback, { type: "success", text: "日志已复制" });
+      return result ?? { status: "written" };
+    })
+    .catch((error) => {
+      showActionFeedback(logsActionFeedback, { type: "error", text: "复制失败" });
+      throw error;
+    });
+}
+
 copyFullLogsButton.addEventListener("click", () => {
-  navigator.clipboard?.writeText(serializeLogs())
-    .then(() => showActionFeedback(logsActionFeedback, { type: "success", text: "已复制" }))
-    .catch(() => showActionFeedback(logsActionFeedback, { type: "error", text: "复制失败" }));
+  copyFullLogsToClipboard().catch(() => undefined);
 });
 clearFullLogsButton.addEventListener("click", () => {
   if (!appLogs.length) {
@@ -4356,10 +4737,15 @@ document.addEventListener("click", (event) => {
   if (eventPath.includes(activePanel) || eventPath.includes(activeTrigger)) return;
   if (eventPath.includes(toolbar) || eventPath.includes(rescanButton)) return;
   if (event.target.closest(".toolbar, #rescanButton, .dropdownMenu, .fitMenu, .resizeHandle")) return;
-  setActiveSidePanel(null);
+  setActiveSidePanel(null, { restoreFocus: false });
 });
 
 document.addEventListener("keydown", (event) => {
+  const trapRoot = focusTrapRoot();
+  if (event.key === "Tab" && trapRoot) {
+    trapFocusEvent(event, trapRoot);
+    return;
+  }
   if (event.key === "Escape") {
     if (!assetPreviewModal.hidden) {
       event.preventDefault();

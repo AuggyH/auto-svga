@@ -269,7 +269,7 @@ async function main() {
     productIdentity: category([
       check("desktop_brand_mark", desktopHtml.includes("brandMark"), "brandMark present", "brandMark present", ["desktop-loaded.png"]),
       check("web_brand_mark", webHtml.includes("brandMark"), "brandMark present", "brandMark present", ["web-reference-loaded.png"]),
-      check("product_name", desktopHtml.includes("Auto SVGA") && mainSource.includes('const productIdentity = "Auto SVGA"'), "Auto SVGA", "Auto SVGA", ["runtime-identity.json"]),
+      check("product_name", desktopHtml.includes("auto-svga") && mainSource.includes('const productIdentity = "auto-svga"'), "auto-svga", "auto-svga", ["runtime-identity.json"]),
       check("internal_status_low_weight", desktopHtml.includes("prototypeBadge") && desktopCss.includes(".prototypeBadge") && !desktopHtml.includes("<h1>内部原型"), "low-weight badge", "not first visual hierarchy", ["desktop-loaded.png"])
     ], ["desktop-loaded.png", "web-reference-loaded.png"]),
     fixtureParity: category([
@@ -321,9 +321,9 @@ async function main() {
     ], ["desktop-inspection.png", "web-reference-inspection.png"]),
     emptyState: category([
       check("desktop_empty_artifact", await fileExists("desktop-empty.png"), "present", "present"),
-      check("central_dropzone_text", desktopJs.includes("拖拽 SVGA 文件到此处") && desktopJs.includes("选择 SVGA 文件"), "central dropzone", "central dropzone"),
+      check("central_dropzone_text", desktopJs.includes("拖入 SVGA 文件") && desktopJs.includes("选择文件"), "central dropzone", "central dropzone"),
       check("empty_rendered_overlay_visible", desktopStateProof.states?.empty?.overlayVisible === true, desktopStateProof.states?.empty?.overlayVisible, "true", ["desktop-state-render-proof.json", "desktop-empty.png"]),
-      check("empty_rendered_text", String(desktopStateProof.states?.empty?.renderedText ?? "").includes("拖拽 SVGA 文件到此处"), desktopStateProof.states?.empty?.renderedText ?? "", "contains empty prompt", ["desktop-state-render-proof.json"]),
+      check("empty_rendered_text", String(desktopStateProof.states?.empty?.renderedText ?? "").includes("拖入 SVGA 文件"), desktopStateProof.states?.empty?.renderedText ?? "", "contains empty prompt", ["desktop-state-render-proof.json"]),
       check("empty_overlay_not_occluded", desktopStateProof.states?.empty?.overlayNotOccluded === true, desktopStateProof.states?.empty?.overlayNotOccluded, "true", ["desktop-state-render-proof.json"]),
       check("empty_primary_action_visible", desktopStateProof.states?.empty?.primaryActionVisible === true && desktopStateProof.states?.empty?.primaryActionEnabled === true, `${desktopStateProof.states?.empty?.primaryActionVisible}/${desktopStateProof.states?.empty?.primaryActionEnabled}`, "true/true", ["desktop-state-render-proof.json"]),
       check("empty_state_proof_passed", desktopStateProof.states?.empty?.passed === true, desktopStateProof.states?.empty?.failures?.join(",") ?? "", "true", ["desktop-state-render-proof.json"]),
@@ -341,7 +341,7 @@ async function main() {
     ], ["desktop-loading.png"]),
     invalidState: category([
       check("desktop_invalid_artifact", await fileExists("desktop-invalid.png"), "present", "present"),
-      check("invalid_retry_entry", desktopJs.includes("重新选择 SVGA 文件"), "retry entry", "retry entry"),
+      check("invalid_retry_entry", desktopJs.includes("重新选择文件"), "retry entry", "retry entry"),
       check("invalid_clears_report", desktopJs.includes("未生成检查报告") && desktopJs.includes("updateFileInfo();"), "clears stale state", "clears stale state"),
       check("invalid_rendered_overlay_visible", desktopStateProof.states?.invalid?.overlayVisible === true, desktopStateProof.states?.invalid?.overlayVisible, "true", ["desktop-state-render-proof.json", "desktop-invalid.png"]),
       check("invalid_rendered_text", String(desktopStateProof.states?.invalid?.renderedText ?? "").includes("无法打开此 SVGA 文件"), desktopStateProof.states?.invalid?.renderedText ?? "", "contains invalid copy", ["desktop-state-render-proof.json"]),

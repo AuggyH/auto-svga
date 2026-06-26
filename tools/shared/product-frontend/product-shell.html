@@ -22,7 +22,7 @@
       </button>
       <div id="modeDropdownMenu" class="dropdownMenu isToolbarMenu" role="menu" hidden>
         <button class="dropdownMenuItem isSelected" type="button" role="menuitemradio" aria-checked="true" data-value="localPreview">
-          <span class="dropdownMenuItemText"><strong>本地预览</strong><small>检查本地 SVGA 或开启对比</small></span>
+          <span class="dropdownMenuItemText"><strong>本地预览</strong><small>预览或验收 SVGA</small></span>
           <span class="dropdownMenuCheck" aria-hidden="true"></span>
         </button>
         <button class="dropdownMenuItem" type="button" role="menuitemradio" aria-checked="false" data-value="exportReview">
@@ -55,13 +55,13 @@
     <article id="svgaPanelA" class="previewCard isPrimary" data-drop-kind="svga" data-player-slot="a">
       <div class="cardHeader">
         <div class="cardTitleGroup">
-          <span id="svgaBadgeA" class="badge">SVGA A</span>
-          <h2 id="svgaTitleA">SVGA 本地预览</h2>
+          <span id="svgaBadgeA" class="badge" hidden>SVGA</span>
+          <h2 id="svgaTitleA">本地预览</h2>
           <label id="compareToggleWrap" class="compareToggle"><input id="compareToggle" type="checkbox"><span>开启对比</span></label>
         </div>
         <div class="cardActions">
           <span id="svgaFilePillA" class="filePill" hidden></span>
-          <label class="cardFileButton" id="primaryFileButton" title="选择 SVGA 文件" aria-label="选择 SVGA 文件">
+          <label class="cardFileButton" id="primaryFileButton" title="选择文件" aria-label="选择文件">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
             <span id="primaryInputLabel" class="responsiveButtonLabel">选择 SVGA</span>
             <input id="svgaFileInput" type="file" accept=".svga,application/octet-stream">
@@ -76,16 +76,16 @@
             <span class="uploadMockIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
             </span>
-          <strong id="svgaEmptyTitleA">拖拽 SVGA 文件到此处</strong>
-          <span id="svgaEmptySubtitleA">或选择本地文件</span>
-          <ol class="loadingPhaseList" aria-label="加载阶段 / Loading phases">
-            <li data-loading-phase="file">文件 / File</li>
-            <li data-loading-phase="read">读取 / Read</li>
-            <li data-loading-phase="parse">解析 / Parse</li>
-            <li data-loading-phase="check">检查 / Check</li>
+          <strong id="svgaEmptyTitleA">拖入 SVGA 文件</strong>
+          <span id="svgaEmptySubtitleA">选择或拖拽本地 .svga</span>
+          <ol class="loadingPhaseList" aria-label="加载阶段">
+            <li data-loading-phase="file">文件</li>
+            <li data-loading-phase="read">读取</li>
+            <li data-loading-phase="parse">解析</li>
+            <li data-loading-phase="check">检查</li>
           </ol>
           <em class="dropFeedbackText">可加载此文件</em>
-          <button id="primaryEmptyFileButton" class="emptyFileButton" type="button">选择 SVGA 文件</button>
+          <button id="primaryEmptyFileButton" class="emptyFileButton" type="button">选择文件</button>
         </div>
       </div>
       <div class="playerBar">
@@ -121,11 +121,12 @@
 
     <article id="svgaPanelB" class="previewCard isHidden" data-drop-kind="svga" data-player-slot="b">
       <div class="cardHeader">
-        <div>
+        <div class="cardTitleGroup">
           <span class="badge badgePurple">SVGA B</span>
-          <h2>SVGA B</h2>
+          <h2 id="svgaTitleB">SVGA B</h2>
         </div>
         <div class="cardActions">
+          <span id="svgaFilePillB" class="filePill" hidden></span>
           <span id="svgaStatusB" class="statusPill">空</span>
           <label class="cardFileButton" id="secondaryInputWrap" title="选择 SVGA B" aria-label="选择 SVGA B">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
@@ -142,8 +143,8 @@
           <span class="uploadMockIcon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
           </span>
-          <strong>拖拽第二个 SVGA 文件到此处</strong>
-          <span>或选择本地文件</span>
+          <strong>拖入第二个 SVGA 文件</strong>
+          <span>选择或拖拽本地 .svga</span>
           <em class="dropFeedbackText">可加载此文件</em>
           <button id="secondaryEmptyFileButton" class="emptyFileButton" type="button">选择 SVGA B</button>
         </div>
@@ -243,34 +244,34 @@
       <dl id="referenceInfo" class="quickInfo"></dl>
     </article>
 
-    <aside id="infoPanel" class="infoPanel isHidden" aria-label="SVGA info panel">
-      <button id="infoPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整信息面板宽度 / Resize info panel"></button>
+    <aside id="infoPanel" class="infoPanel isHidden" aria-label="SVGA 信息面板" tabindex="-1">
+      <button id="infoPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整信息面板宽度"></button>
       <div class="infoHeader">
         <div>
-          <h2 class="bilingualHeading"><span>SVGA 信息</span><small>SVGA Info</small></h2>
-          <p class="bilingualCopy"><span>解析、资源和渲染状态</span><small>Parse, assets and render status</small></p>
+          <h2 class="bilingualHeading"><span>SVGA 信息</span></h2>
+          <p class="bilingualCopy"><span>解析、资源和渲染状态</span></p>
         </div>
         <span id="infoStatus" class="statusPill">加载中</span>
       </div>
-      <nav class="tabs" aria-label="Info tabs">
-        <button class="tabButton isActive" type="button" data-tab="overview"><span>概览</span><small>Overview</small></button>
-        <button class="tabButton" type="button" data-tab="assets"><span>资源</span><small>Assets</small></button>
+      <nav class="tabs" aria-label="信息面板标签">
+        <button class="tabButton isActive" type="button" data-tab="overview"><span>概览</span></button>
+        <button class="tabButton" type="button" data-tab="assets"><span>资源</span></button>
       </nav>
       <div id="tab-overview" class="tabPanel"></div>
       <div id="tab-assets" class="tabPanel isHidden"></div>
     </aside>
 
-    <aside id="logsPanel" class="logsPanel isHidden" aria-label="Runtime logs panel">
+    <aside id="logsPanel" class="logsPanel isHidden" aria-label="运行日志面板" tabindex="-1">
       <button id="logsPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整日志面板宽度"></button>
       <div class="infoHeader">
         <div>
-          <h2 class="bilingualHeading"><span>运行日志</span><small>Runtime Logs</small></h2>
-          <p id="fullLogsSubtitle" class="bilingualCopy"><span>加载、解析和渲染事件</span><small>Load, parse and render events</small></p>
+          <h2 class="bilingualHeading"><span>运行日志</span></h2>
+          <p id="fullLogsSubtitle" class="bilingualCopy"><span>加载、解析和渲染事件</span></p>
         </div>
         <div class="panelActionGroup">
           <span id="logsActionFeedback" class="panelActionFeedback" aria-live="polite"></span>
-          <button id="copyFullLogsButton" class="iconButton" type="button" title="复制日志 / Copy logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8z" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></svg></button>
-          <button id="clearFullLogsButton" class="iconButton" type="button" title="清空日志 / Clear logs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 15h10l1-15" /></svg></button>
+          <button id="copyFullLogsButton" class="iconButton" type="button" title="复制日志"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8z" /><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></svg></button>
+          <button id="clearFullLogsButton" class="iconButton" type="button" title="清空日志"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 15h10l1-15" /></svg></button>
         </div>
       </div>
       <div id="fullLogsContent" class="logsPanelList"></div>
@@ -296,20 +297,20 @@
   </section>
 
   <section class="details" aria-label="Report summary">
-    <h2>导出报告 / Report</h2>
+    <h2>导出报告</h2>
     <dl id="reportGrid"></dl>
   </section>
 
   <section id="errorBox" class="errorBox" hidden aria-live="polite"></section>
 
   <div id="assetPreviewModal" class="modalOverlay" hidden>
-    <section class="assetModal" role="dialog" aria-modal="true" aria-labelledby="assetPreviewTitle">
+    <section class="assetModal" role="dialog" aria-modal="true" aria-labelledby="assetPreviewTitle" tabindex="-1">
       <header>
         <div>
-          <h2 id="assetPreviewTitle" class="bilingualHeading"><span>资源预览</span><small>Asset Preview</small></h2>
+          <h2 id="assetPreviewTitle" class="bilingualHeading"><span>资源预览</span></h2>
           <p id="assetPreviewMeta">imageKey</p>
         </div>
-        <button id="assetPreviewClose" class="iconButton" type="button" title="关闭 / Close">
+        <button id="assetPreviewClose" class="iconButton" type="button" title="关闭">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
         </button>
       </header>
@@ -324,7 +325,7 @@
   </div>
 
   <div id="settingsModal" class="modalOverlay" hidden>
-    <section class="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <section class="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" tabindex="-1">
       <header>
         <div class="modalTitle">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.05.05a2 2 0 0 1-2.83 2.83l-.05-.05a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.08a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.08a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.05-.05A2 2 0 1 1 7.04 4.3l.05.05A1.65 1.65 0 0 0 8.91 4a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.08a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.65 1.65 0 0 0 19.4 9c.14.46.5.82.96.96H21a2 2 0 0 1 0 4h-.08a1.65 1.65 0 0 0-1.52 1Z" /></svg>
@@ -355,7 +356,7 @@
               <strong>外观</strong>
               <small>选择应用界面的颜色主题</small>
             </div>
-            <div class="settingsOptionChoices themeChoiceGroup" aria-label="外观 / Appearance">
+            <div class="settingsOptionChoices themeChoiceGroup" aria-label="外观">
               <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="system"><span class="themeSwatch themeSystem"></span><strong>跟随系统</strong></label>
               <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="light"><span class="themeSwatch themeLight"></span><strong>浅色</strong></label>
               <label class="settingsOptionChoice themeChoice"><input type="radio" name="theme" value="dark"><span class="themeSwatch themeDark"></span><strong>深色</strong></label>
@@ -373,7 +374,7 @@
         <section class="settingsSection">
           <h3>调试与可访问性</h3>
           <div class="settingsCard">
-            <label class="settingsToggleRow"><span><strong>显示调试信息</strong><small>保留中英文 key 和解析数据</small></span><input type="checkbox"></label>
+            <label class="settingsToggleRow"><span><strong>显示调试信息</strong><small>保留调试 key 和解析数据</small></span><input type="checkbox"></label>
             <label class="settingsToggleRow"><span><strong>减少动态效果</strong><small>停用非必要的位移与缩放动画</small></span><input id="reduceMotionToggle" type="checkbox"></label>
             <label class="settingsToggleRow"><span><strong>减少模糊效果</strong><small>使用更实的浮层背景，提升文字可读性</small></span><input id="reduceBlurToggle" type="checkbox"></label>
           </div>

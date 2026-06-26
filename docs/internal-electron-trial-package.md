@@ -31,7 +31,7 @@ The manifest records:
 - player package and version
 - final CSP
 - security flags
-- `.svga` document type metadata
+- document-association policy (`.svga` Finder association is not claimed until robust open-file support is approved)
 - privacy audit result
 - package and archive sizes
 - archive SHA-256

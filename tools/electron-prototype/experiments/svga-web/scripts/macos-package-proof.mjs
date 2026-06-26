@@ -79,15 +79,11 @@ export async function buildMacosPackageProof(options = {}) {
       productionApproved: false,
       finalPackagedAppAcceptanceOwner: finalAcceptanceOwner
     },
-    documentTypes: [
-      {
-        extension: "svga",
-        role: "Viewer",
-        handlerRank: "Alternate",
-        uti: "com.auto-svga.svga",
-        mimeType: "application/octet-stream"
-      }
-    ],
+    documentTypes: [],
+    documentAssociationPolicy: {
+      svgaFinderOpen: "not-declared",
+      reason: "Phase-one internal package supports in-app file picker and drag/drop only; Finder document association is disabled until robust open-file support is approved."
+    },
     player: {
       package: "svga-web",
       version: "2.4.4"
@@ -116,7 +112,8 @@ export async function buildMacosPackageProof(options = {}) {
       "Unsigned and not notarized.",
       "Internal testing only; not approved for production distribution.",
       "Final packaged App acceptance is owned by Integration Coordinator.",
-      "Windows runtime is not verified."
+      "Windows runtime is not verified.",
+      "Finder double-click .svga open is intentionally not claimed in this internal package."
     ],
     requestedIntegrationChanges: [
       "Add a root package script only if Integration Coordinator wants a top-level packaging entrypoint."
@@ -141,8 +138,8 @@ export function validateProof(plist, proof) {
     ["unsigned", proof.distribution.unsigned === true && plist.includes("<key>AutoSVGASigned</key>")],
     ["unnotarized", proof.distribution.notarized === false && plist.includes("<key>AutoSVGANotarized</key>")],
     ["productionApprovedFalse", proof.distribution.productionApproved === false && plist.includes("<key>AutoSVGAProductionApproved</key>")],
-    ["svgaDocumentType", plist.includes("<key>CFBundleDocumentTypes</key>") && plist.includes("<string>svga</string>")],
-    ["utiDeclaration", plist.includes("<key>UTExportedTypeDeclarations</key>") && plist.includes("<string>com.auto-svga.svga</string>")],
+    ["noSvgaDocumentType", !plist.includes("<key>CFBundleDocumentTypes</key>") && !plist.includes("<string>svga</string>")],
+    ["noUtiDeclaration", !plist.includes("<key>UTExportedTypeDeclarations</key>") && !plist.includes("<string>com.auto-svga.svga</string>")],
     ["extendInfoArg", proof.packagingScaffold.electronPackagerArgs.some((arg) => arg.startsWith("--extend-info="))],
     ["privacyAuditPassed", proof.privacyAudit.passed === true],
     ["acceptanceOwner", proof.distribution.finalPackagedAppAcceptanceOwner === finalAcceptanceOwner]

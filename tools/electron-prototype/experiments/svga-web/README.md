@@ -35,7 +35,7 @@ npm run internal:trial:package:mac
   existing `window.autoSvgaPrototype` bridge remains as a compatibility alias
   for this isolated experiment.
 - macOS bundle metadata is extended from `packaging/macos/Info.plist`
-- `.svga` is declared as an alternate Viewer document type for internal testing
+- `.svga` Finder document association is not declared in the phase-one internal package; use in-app file selection or drag/drop
 - final packaged App acceptance remains owned by Integration Coordinator
 
 Remove this experiment by deleting `tools/electron-prototype/experiments/svga-web/`.

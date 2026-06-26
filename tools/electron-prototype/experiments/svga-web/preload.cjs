@@ -11,6 +11,7 @@ const IPC_CHANNELS = Object.freeze({
   scanLatestArtifacts: "svga-web-experiment:scan-latest-artifacts",
   openSvgaFile: "svga-web-experiment:open-svga-file",
   openReferenceMediaFile: "svga-web-experiment:open-reference-media-file",
+  writeClipboardText: "svga-web-experiment:write-clipboard-text",
   saveEditedSvga: "svga-web-experiment:save-edited-svga",
   p3EditResult: "svga-web-experiment:p3-edit-result",
   p4EditResult: "svga-web-experiment:p4-edit-result",
@@ -37,6 +38,8 @@ const hostApi = Object.freeze({
     fileOpen: "host-dialog-svga-only",
     dragDrop: "renderer-file-api-no-path-authority",
     referenceMediaOpen: "host-dialog-mp4-webm-gif-only",
+    clipboardWrite: "host-clipboard-write-text-only",
+    finderDocumentAssociation: "not-declared",
     saveAs: "host-dialog-svga-only",
     arbitraryFileSystemAccess: false,
     shellAccess: false,
@@ -66,6 +69,9 @@ const hostApi = Object.freeze({
   },
   openReferenceMediaFile() {
     return invoke(IPC_CHANNELS.openReferenceMediaFile);
+  },
+  writeClipboardText(text) {
+    return invoke(IPC_CHANNELS.writeClipboardText, text);
   },
   saveEditedSvga(input) {
     return invoke(IPC_CHANNELS.saveEditedSvga, input);

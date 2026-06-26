@@ -4,7 +4,7 @@ const { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmS
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { app, BrowserWindow, Menu, dialog, ipcMain, session } = require("electron");
+const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, session } = require("electron");
 const {
   IPC_CHANNELS,
   createSecureWebPreferences,
@@ -22,7 +22,7 @@ const auditMode = auditPlayer === "svga-web" || auditPlayer === "svgaplayerweb";
 const normalVisibleStartupMode = !(smokeMode || auditMode || normalProofMode);
 const appRoot = app.getAppPath();
 const repoRoot = path.resolve(appRoot, "../../../..");
-const productIdentity = "Auto SVGA";
+const productIdentity = "auto-svga";
 const mainEntry = "main.cjs";
 const preloadEntry = "preload.cjs";
 const rendererHtmlEntry = "web/index.html";
@@ -55,6 +55,7 @@ const p6AllowedSmokeInputSelectors = new Set([
   ".tabButton[data-tab='assets']",
   "#logsButton",
   "#settingsButton",
+  "#settingsCloseButton",
   "#reduceMotionToggle",
   "#reduceBlurToggle",
   "#compareToggle"
@@ -135,6 +136,11 @@ function validateSmokeResult(value) {
     if (!diagnostics) return undefined;
     result.diagnostics = diagnostics;
   }
+  if (value.ownerUsability !== undefined) {
+    const ownerUsability = validateOwnerUsabilityResult(value.ownerUsability);
+    if (!ownerUsability) return undefined;
+    result.ownerUsability = ownerUsability;
+  }
   return result;
 }
 
@@ -161,6 +167,9 @@ function describeSmokeResultValidationFailure(value) {
     return describeP6InteractionTraceValidationFailure(bindP6InteractionTrace(value.p6InteractionTrace));
   }
   if (value.diagnostics !== undefined && !validateSmokeDiagnostics(value.diagnostics)) return "diagnostics";
+  if (value.ownerUsability !== undefined && !validateOwnerUsabilityResult(value.ownerUsability)) {
+    return `ownerUsability:${describeOwnerUsabilityValidationFailure(value.ownerUsability)}`;
+  }
   return "unknown";
 }
 
@@ -216,7 +225,7 @@ function validateSmokeDiagnostics(value) {
   if (!Number.isInteger(value.actionCount) || value.actionCount < 0 || value.actionCount > 60) return undefined;
   if (value.currentActionId !== null && !isBoundedString(value.currentActionId, 180)) return undefined;
   if (value.lastActionId !== null && !isBoundedString(value.lastActionId, 180)) return undefined;
-  return {
+  const diagnostics = {
     schemaVersion: 1,
     phase: value.phase,
     errorName: value.errorName,
@@ -225,6 +234,98 @@ function validateSmokeDiagnostics(value) {
     currentActionId: value.currentActionId,
     lastActionId: value.lastActionId
   };
+  if (value.renderedStateProof !== undefined) {
+    if (!value.renderedStateProof || typeof value.renderedStateProof !== "object" || Array.isArray(value.renderedStateProof)) return undefined;
+    if (!isBoundedString(value.renderedStateProof.state, 80)) return undefined;
+    if (typeof value.renderedStateProof.passed !== "boolean") return undefined;
+    if (!isStringArray(value.renderedStateProof.failures, 24)) return undefined;
+    if (!isBoundedString(value.renderedStateProof.renderedText ?? "", 300)) return undefined;
+    diagnostics.renderedStateProof = {
+      state: value.renderedStateProof.state,
+      passed: value.renderedStateProof.passed,
+      failures: value.renderedStateProof.failures,
+      renderedText: value.renderedStateProof.renderedText ?? ""
+    };
+  }
+  if (value.primaryStatus !== undefined) {
+    if (!value.primaryStatus || typeof value.primaryStatus !== "object" || Array.isArray(value.primaryStatus)) return undefined;
+    for (const key of ["parseStatus", "renderStatus", "inspectionStatus"]) {
+      if (!isBoundedString(value.primaryStatus[key], 80)) return undefined;
+    }
+    for (const key of ["hasSlotError", "hasMetrics", "hasInspectionReport"]) {
+      if (typeof value.primaryStatus[key] !== "boolean") return undefined;
+    }
+    if (!Number.isInteger(value.primaryStatus.canvasChildCount) || value.primaryStatus.canvasChildCount < 0 || value.primaryStatus.canvasChildCount > 40) {
+      return undefined;
+    }
+    diagnostics.primaryStatus = {
+      parseStatus: value.primaryStatus.parseStatus,
+      renderStatus: value.primaryStatus.renderStatus,
+      inspectionStatus: value.primaryStatus.inspectionStatus,
+      hasSlotError: value.primaryStatus.hasSlotError,
+      hasMetrics: value.primaryStatus.hasMetrics,
+      hasInspectionReport: value.primaryStatus.hasInspectionReport,
+      canvasChildCount: value.primaryStatus.canvasChildCount
+    };
+  }
+  return diagnostics;
+}
+
+function validateOwnerUsabilityResult(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1) return undefined;
+  if (!isBoundedString(value.finderDocumentAssociation, 80)) return undefined;
+  if (value.finderDocumentAssociation !== "not-declared") return undefined;
+  const requiredChecks = [
+    "svgaAInvalidLocalFeedback",
+    "svgaBInvalidLocalFeedback",
+    "svgaARecoveryClearsError",
+    "svgaBRecoveryClearsError",
+    "enterOpensInfoAndFocusesPanel",
+    "enterOpensLogsAndFocusesPanel",
+    "enterOpensSettingsAndFocusesDialog",
+    "tabStaysInsideSettings",
+    "escapeClosesSettingsAndRestoresFocus",
+    "emptyLogsCopyMessage",
+    "nonEmptyLogsCopyViaElectronClipboard",
+    "clipboardFailureMessage",
+    "finderDocumentAssociationNotClaimed",
+    "previewCardHeaderConsistency"
+  ];
+  if (!value.checks || typeof value.checks !== "object" || Array.isArray(value.checks)) return undefined;
+  if (!requiredChecks.every((key) => value.checks[key] === true)) return undefined;
+  if (!isStringArray(value.evidence, 80)) return undefined;
+  return {
+    schemaVersion: 1,
+    finderDocumentAssociation: value.finderDocumentAssociation,
+    checks: Object.fromEntries(requiredChecks.map((key) => [key, true])),
+    evidence: value.evidence
+  };
+}
+
+function describeOwnerUsabilityValidationFailure(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
+  if (value.schemaVersion !== 1) return "schemaVersion";
+  if (!isBoundedString(value.finderDocumentAssociation, 80)) return "finderDocumentAssociation";
+  if (value.finderDocumentAssociation !== "not-declared") return "finderDocumentAssociationValue";
+  const requiredChecks = [
+    "svgaAInvalidLocalFeedback",
+    "svgaBInvalidLocalFeedback",
+    "svgaARecoveryClearsError",
+    "svgaBRecoveryClearsError",
+    "enterOpensInfoAndFocusesPanel",
+    "enterOpensLogsAndFocusesPanel",
+    "enterOpensSettingsAndFocusesDialog",
+    "tabStaysInsideSettings",
+    "escapeClosesSettingsAndRestoresFocus",
+    "emptyLogsCopyMessage",
+    "nonEmptyLogsCopyViaElectronClipboard",
+    "clipboardFailureMessage",
+    "finderDocumentAssociationNotClaimed",
+    "previewCardHeaderConsistency"
+  ];
+  if (!value.checks || typeof value.checks !== "object" || Array.isArray(value.checks)) return "checks";
+  return requiredChecks.find((key) => value.checks[key] !== true) ?? "evidence";
 }
 
 function bindP6InteractionTrace(value) {
@@ -456,11 +557,13 @@ function validateP6SmokeInput(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   if (value.kind !== "click" && value.kind !== "keyboard") return undefined;
   if (!p6AllowedSmokeInputSelectors.has(value.selector)) return undefined;
-  if (value.kind === "keyboard" && !["Escape", "Space"].includes(value.key)) return undefined;
+  if (value.kind === "keyboard" && !["Escape", "Space", "Enter", "Tab"].includes(value.key)) return undefined;
+  if (value.shiftKey !== undefined && typeof value.shiftKey !== "boolean") return undefined;
   return {
     kind: value.kind,
     selector: value.selector,
-    key: value.key ?? null
+    key: value.key ?? null,
+    shiftKey: value.shiftKey === true
   };
 }
 
@@ -469,20 +572,53 @@ async function performP6SmokeInput(webContents, value) {
   if (!input) throw new Error("Invalid product smoke input");
   const timestampMs = Date.now();
   if (input.kind === "keyboard") {
-    const keyCode = input.key === "Space" ? "Space" : "Escape";
-    webContents.sendInputEvent({ type: "keyDown", keyCode });
-    webContents.sendInputEvent({ type: "keyUp", keyCode });
+    const target = await webContents.executeJavaScript(`
+      (() => {
+        const selector = ${JSON.stringify(input.selector)};
+        const node = selector === "body" ? document.body : document.querySelector(selector);
+        if (!node) return null;
+        node.focus?.({ preventScroll: true });
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        const x = Math.round(rect.left + rect.width / 2);
+        const y = Math.round(rect.top + rect.height / 2);
+        const top = document.elementFromPoint(x, y);
+        return {
+          selector,
+          targetVisible: rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01,
+          targetRect: {
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          },
+          actionablePoint: { x, y },
+          viewportIntersected: x >= 0 && y >= 0 && x <= innerWidth && y <= innerHeight,
+          occlusionPassed: selector === "body" || top === node || node.contains(top),
+          activeElementId: document.activeElement?.id || null
+        };
+      })()
+    `);
+    if (!target || target.targetVisible !== true || target.viewportIntersected !== true || target.occlusionPassed !== true) {
+      throw new Error("Product smoke keyboard target is not actionable");
+    }
+    const keyCode = input.key === "Space" ? "Space" : input.key;
+    const event = { keyCode, modifiers: input.shiftKey ? ["shift"] : [] };
+    webContents.sendInputEvent({ type: "keyDown", ...event });
+    webContents.sendInputEvent({ type: "keyUp", ...event });
     return {
       inputKind: "keyboard",
       selector: input.selector,
       trustedPath: "electron-main-sendInputEvent-keyboard",
       nativeCommandId: `key:${keyCode}`,
       targetVisible: true,
-      targetRect: null,
-      actionablePoint: null,
+      targetRect: target.targetRect,
+      actionablePoint: target.actionablePoint,
       viewportIntersected: true,
       occlusionPassed: true,
-      eventTimestampMs: timestampMs
+      eventTimestampMs: timestampMs,
+      shiftKey: input.shiftKey === true,
+      focusedElementId: target.activeElementId
     };
   }
   const target = await webContents.executeJavaScript(`
@@ -1345,10 +1481,18 @@ async function finishSmoke(window, result) {
       "smoke"
     );
   }
+  if (productSmokeMode && result.ownerUsability) {
+    writeJsonProductArtifact(
+      "owner-usability-smoke.json",
+      "owner-usability-smoke",
+      result.ownerUsability,
+      "smoke"
+    );
+  }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();
@@ -1822,6 +1966,14 @@ async function openReferenceMediaFile() {
   return openReferenceMediaFileBytes(result.filePaths[0]);
 }
 
+function writeClipboardText(value) {
+  if (typeof value !== "string" || value.length === 0 || value.length > 200_000) {
+    throw new Error("Invalid clipboard text payload.");
+  }
+  clipboard.writeText(value);
+  return { status: "written", length: value.length };
+}
+
 async function openSvgaFromHostMenu(window, selector = "#svgaFileInput") {
   const opened = await openSvgaFile();
   if (!opened || opened.status !== "opened") return;
@@ -2184,6 +2336,11 @@ async function createExperimentWindow() {
   ipcMain.handle(IPC_CHANNELS.openReferenceMediaFile, async (event) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return openReferenceMediaFile();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.writeClipboardText, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return writeClipboardText(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.p3EditResult, async (event, input) => {
