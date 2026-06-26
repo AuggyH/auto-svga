@@ -1050,16 +1050,33 @@ function goodFacts() {
         fixtureHashes: { fixtureSha256 }
       },
       reviewerBEvidenceRequest: {
+        categoryCount: 25,
         categories: [
+          "productIdentity",
+          "toolbarAndModes",
+          "localPreview",
+          "exportReview",
           "comparison",
           "referenceMedia",
+          "playbackControls",
+          "fitControls",
+          "synchronizedPlayback",
+          "inspectionOverview",
+          "assetDetails",
+          "motionAssetAudit",
+          "runtimeLogs",
+          "settings",
+          "theme",
+          "accessibilitySettings",
           "interactionParity",
           "motionParity",
           "emptyState",
           "loadingState",
           "invalidState",
+          "responsiveLayout",
           "normalMacApp",
-          "bundleCompleteness"
+          "bundleCompleteness",
+          "bundlePrivacy"
         ].map((category) => ({
           category,
           request: `${category} evidence requested.`,

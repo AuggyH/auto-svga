@@ -60,6 +60,33 @@ const desktopStateAliases = {
   "local-compare-empty": ["local-compare-empty"],
   "responsive-export-review-loaded-at-900-x-720": ["loaded"]
 };
+const reviewerBRequiredCategories = [
+  "productIdentity",
+  "toolbarAndModes",
+  "localPreview",
+  "exportReview",
+  "comparison",
+  "referenceMedia",
+  "playbackControls",
+  "fitControls",
+  "synchronizedPlayback",
+  "inspectionOverview",
+  "assetDetails",
+  "motionAssetAudit",
+  "runtimeLogs",
+  "settings",
+  "theme",
+  "accessibilitySettings",
+  "emptyState",
+  "loadingState",
+  "invalidState",
+  "responsiveLayout",
+  "interactionParity",
+  "motionParity",
+  "normalMacApp",
+  "bundleCompleteness",
+  "bundlePrivacy"
+];
 
 export async function loadP6RuntimeFacts(input) {
   const repoRoot = input.repoRoot;
@@ -573,20 +600,13 @@ function reviewerEvidenceRequestPresent(input) {
 }
 
 function reviewerCategoriesComplete(input) {
-  const categories = input.desktop?.reviewerBEvidenceRequest?.categories;
+  const request = input.desktop?.reviewerBEvidenceRequest;
+  const categories = request?.categories;
   if (!Array.isArray(categories)) return false;
   const present = new Set(categories.map((category) => category.category ?? category.id));
-  return [
-    "comparison",
-    "referenceMedia",
-    "interactionParity",
-    "motionParity",
-    "emptyState",
-    "loadingState",
-    "invalidState",
-    "normalMacApp",
-    "bundleCompleteness"
-  ].every((category) => present.has(category));
+  if (request.categoryCount !== undefined && request.categoryCount !== categories.length) return false;
+  return categories.length === reviewerBRequiredCategories.length
+    && reviewerBRequiredCategories.every((category) => present.has(category));
 }
 
 function reviewerGenericPassConsistent(input) {

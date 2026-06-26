@@ -48,6 +48,33 @@ const requiredSections = [
   "Human Decision",
   "Recommended Next Milestone"
 ];
+const p6R1ReviewerBRequiredCategories = [
+  "productIdentity",
+  "toolbarAndModes",
+  "localPreview",
+  "exportReview",
+  "comparison",
+  "referenceMedia",
+  "playbackControls",
+  "fitControls",
+  "synchronizedPlayback",
+  "inspectionOverview",
+  "assetDetails",
+  "motionAssetAudit",
+  "runtimeLogs",
+  "settings",
+  "theme",
+  "accessibilitySettings",
+  "emptyState",
+  "loadingState",
+  "invalidState",
+  "responsiveLayout",
+  "interactionParity",
+  "motionParity",
+  "normalMacApp",
+  "bundleCompleteness",
+  "bundlePrivacy"
+];
 
 function parseArgs(argv) {
   const args = {
@@ -643,7 +670,68 @@ function validationStatusFromFile(validation, validationExists) {
   return validation.status === "pass" ? "PASS" : "FAIL";
 }
 
-async function readReviewerVerdict(filePath, { reviewerId, headCommit, candidateDigest }) {
+function isConcreteObservation(value) {
+  return typeof value === "string" && value.trim().length > 8 && !/^\s*pass\s*$/i.test(value);
+}
+
+function validateP6R1ReviewerBProductCategories(verdict, { headCommit }) {
+  const categories = verdict.categories ?? verdict.productCategories;
+  if (!Array.isArray(categories)) {
+    throw new Error("Reviewer B P6-R1 verdict requires categories array.");
+  }
+  if (categories.length !== p6R1ReviewerBRequiredCategories.length) {
+    throw new Error(`Reviewer B P6-R1 verdict requires ${p6R1ReviewerBRequiredCategories.length} categories.`);
+  }
+  const byCategory = new Map();
+  for (const category of categories) {
+    if (!category || typeof category !== "object" || Array.isArray(category)) {
+      throw new Error("Reviewer B P6-R1 categories must be structured objects.");
+    }
+    if (typeof category.category !== "string" || category.category.length === 0) {
+      throw new Error("Reviewer B P6-R1 category is missing category id.");
+    }
+    if (byCategory.has(category.category)) {
+      throw new Error(`Reviewer B P6-R1 duplicate category ${category.category}.`);
+    }
+    byCategory.set(category.category, category);
+  }
+  for (const categoryId of p6R1ReviewerBRequiredCategories) {
+    if (!byCategory.has(categoryId)) {
+      throw new Error(`Reviewer B P6-R1 missing category ${categoryId}.`);
+    }
+  }
+  for (const [categoryId, category] of byCategory.entries()) {
+    if (category.verdict !== "PASS") {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} verdict must be PASS.`);
+    }
+    for (const field of ["visualObservation", "runtimeBehaviorObservation", "approvedDifferenceAssessment"]) {
+      if (!isConcreteObservation(category[field])) {
+        throw new Error(`Reviewer B P6-R1 category ${categoryId} missing concrete ${field}.`);
+      }
+    }
+    const evidenceRefs = category.evidenceRefs;
+    if (!Array.isArray(evidenceRefs) || evidenceRefs.length === 0) {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} requires evidenceRefs.`);
+    }
+    for (const [index, evidenceRef] of evidenceRefs.entries()) {
+      if (!evidenceRef || typeof evidenceRef !== "object" || Array.isArray(evidenceRef)) {
+        throw new Error(`Reviewer B P6-R1 category ${categoryId} evidenceRefs[${index}] must be an object.`);
+      }
+      if (typeof evidenceRef.path !== "string" || evidenceRef.path.length === 0) {
+        throw new Error(`Reviewer B P6-R1 category ${categoryId} evidenceRefs[${index}] missing path.`);
+      }
+      if (evidenceRef.present === false || evidenceRef.humanReviewRequired === false) {
+        throw new Error(`Reviewer B P6-R1 category ${categoryId} evidenceRefs[${index}] is not present for review.`);
+      }
+      const evidenceHead = evidenceRef.headCommit ?? evidenceRef.reviewedHeadCommit ?? evidenceRef.finalHeadCommit;
+      if (evidenceHead !== headCommit) {
+        throw new Error(`Reviewer B P6-R1 category ${categoryId} evidenceRefs[${index}] head mismatch.`);
+      }
+    }
+  }
+}
+
+async function readReviewerVerdict(filePath, { reviewerId, headCommit, candidateDigest, milestoneId }) {
   if (!filePath) {
     throw new Error(`Reviewer ${reviewerId} JSON verdict is missing.`);
   }
@@ -668,6 +756,9 @@ async function readReviewerVerdict(filePath, { reviewerId, headCommit, candidate
   }
   if (reviewerId === "B" && !verdict.packetDiffSha256) {
     throw new Error("Reviewer B verdict requires packetDiffSha256.");
+  }
+  if (milestoneId === "P6-R1" && reviewerId === "B") {
+    validateP6R1ReviewerBProductCategories(verdict, { headCommit });
   }
   if (verdict.verdict === "PASS") {
     if (Array.isArray(verdict.conditions) && verdict.conditions.length > 0) {
@@ -1708,15 +1799,15 @@ export async function generateHandoffPacket(options) {
   let reviewerAVerdict = null;
   let reviewerBVerdict = null;
   const reviewerVerdictsProvided = Boolean(reviewerAPath || reviewerBPath);
-  const reviewerVerdictsRequired = status === "PASS";
+  const reviewerVerdictsRequired = status === "PASS" || (milestoneId === "P6-R1" && status === "HUMAN_REQUIRED");
   if ((reviewerVerdictsRequired || reviewerVerdictsProvided) && !options.retrospective && !options.candidate) {
     reviewerAVerdict = await readReviewerVerdict(
       reviewerAPath ? resolveRepoPath(repoRoot, reviewerAPath) : undefined,
-      { reviewerId: "A", headCommit, candidateDigest }
+      { reviewerId: "A", headCommit, candidateDigest, milestoneId }
     );
     reviewerBVerdict = await readReviewerVerdict(
       reviewerBPath ? resolveRepoPath(repoRoot, reviewerBPath) : undefined,
-      { reviewerId: "B", headCommit, candidateDigest }
+      { reviewerId: "B", headCommit, candidateDigest, milestoneId }
     );
     if (reviewerAVerdict.sourceDiffSha256 !== sourceDiffSha256) {
       throw new Error("Reviewer A sourceDiffSha256 mismatch.");

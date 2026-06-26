@@ -467,6 +467,45 @@ function validSha256(value) {
   return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
 }
 
+function validSize(value) {
+  return Number.isInteger(value) && value > 0;
+}
+
+function validateManifestIdentity(errors, label, entry, record) {
+  if (!entry) return;
+  if (!validSize(entry.sizeBytes)) {
+    errors.push(`${label} manifest entry sizeBytes missing`);
+  }
+  if (!validSha256(entry.sha256)) {
+    errors.push(`${label} manifest entry sha256 missing`);
+  }
+  if (record !== undefined) {
+    if (!validSize(record?.sizeBytes)) {
+      errors.push(`${label} record sizeBytes missing`);
+    } else if (validSize(entry.sizeBytes) && entry.sizeBytes !== record.sizeBytes) {
+      errors.push(`${label} record sizeBytes does not match manifest entry`);
+    }
+    if (!validSha256(record?.sha256)) {
+      errors.push(`${label} record sha256 missing`);
+    } else if (validSha256(entry.sha256) && entry.sha256 !== record.sha256) {
+      errors.push(`${label} record sha256 does not match manifest entry`);
+    }
+  }
+}
+
+function validateSameFileIdentity(errors, label, left, right) {
+  if (left === undefined || right === undefined) return;
+  if (left?.fileName !== undefined && right?.fileName !== undefined && left.fileName !== right.fileName) {
+    errors.push(`${label} fileName mismatch`);
+  }
+  if (validSize(left?.sizeBytes) && validSize(right?.sizeBytes) && left.sizeBytes !== right.sizeBytes) {
+    errors.push(`${label} sizeBytes mismatch`);
+  }
+  if (validSha256(left?.sha256) && validSha256(right?.sha256) && left.sha256 !== right.sha256) {
+    errors.push(`${label} sha256 mismatch`);
+  }
+}
+
 export function validateOwnerVisibleHandoffBinding({
   headCommit,
   manifest,
@@ -509,6 +548,7 @@ export function validateOwnerVisibleHandoffBinding({
   } else if (validSha256(reviewZip?.sha256) && reviewEntry.sha256 !== reviewZip.sha256) {
     errors.push("owner review ZIP manifest entry hash does not match ownerReviewZip hash");
   }
+  validateManifestIdentity(errors, "owner review ZIP", reviewEntry, reviewZip);
 
   const appEntry = manifestEntryFor(manifest, appZipName);
   const appZip = manifest?.macosAppZip;
@@ -520,6 +560,7 @@ export function validateOwnerVisibleHandoffBinding({
   } else if (validSha256(appZip?.sha256) && appEntry.sha256 !== appZip.sha256) {
     errors.push("App ZIP manifest entry hash does not match macosAppZip hash");
   }
+  validateManifestIdentity(errors, "App ZIP", appEntry, appZip);
 
   const sidecarEntry = manifestEntryFor(manifest, sidecarName);
   const sidecarManifest = manifest?.ownerUploadSidecar;
@@ -531,6 +572,7 @@ export function validateOwnerVisibleHandoffBinding({
   } else if (validSha256(sidecarManifest?.sha256) && sidecarEntry.sha256 !== sidecarManifest.sha256) {
     errors.push("owner upload sidecar manifest entry hash does not match ownerUploadSidecar hash");
   }
+  validateManifestIdentity(errors, "owner upload sidecar", sidecarEntry, sidecarManifest);
 
   for (const requiredPath of ["REVIEW_PACKET.md", "FINAL_RESPONSE.txt", "bundle-privacy-audit.json", "worker-registry-final.json", "owner-upload-post-seal-verification.json"]) {
     if (!manifestEntryFor(manifest, requiredPath)) {
@@ -571,6 +613,7 @@ export function validateOwnerVisibleHandoffBinding({
     }
   }
   if (sidecar !== undefined) {
+    if (sidecar?.reviewedHeadCommit !== headCommit) errors.push("owner sidecar reviewed head mismatch");
     if (sidecar?.companionRequired !== true) errors.push("owner sidecar must require App ZIP and sidecar companions");
     const sidecarCompanions = new Set(sidecar?.mandatoryCompanions ?? []);
     if (!sidecarCompanions.has(appZipName) || !sidecarCompanions.has(sidecarName)) {
@@ -578,6 +621,11 @@ export function validateOwnerVisibleHandoffBinding({
     }
     if (sidecar?.ownerReviewZip?.fileName !== reviewZipName) errors.push("owner sidecar review ZIP fileName mismatch");
     if (sidecar?.macosAppZip?.fileName !== appZipName) errors.push("owner sidecar App ZIP fileName mismatch");
+    validateSameFileIdentity(errors, "owner sidecar review ZIP", sidecar.ownerReviewZip, reviewZip);
+    validateSameFileIdentity(errors, "owner sidecar App ZIP", sidecar.macosAppZip, appZip);
+    if (sidecar?.privacyAudit?.passed !== true || sidecar?.privacyAudit?.findingCount !== 0) {
+      errors.push("owner sidecar privacy audit must pass with zero findings");
+    }
   }
   if (postSealVerification !== undefined) {
     if (postSealVerification?.reviewedHeadCommit !== headCommit) errors.push("owner post-seal reviewed head mismatch");
@@ -585,6 +633,15 @@ export function validateOwnerVisibleHandoffBinding({
     if (postSealVerification?.reviewZip?.fileName !== reviewZipName) errors.push("owner post-seal review ZIP fileName mismatch");
     if (postSealVerification?.macosAppZip?.fileName !== appZipName) errors.push("owner post-seal App ZIP fileName mismatch");
     if (postSealVerification?.ownerUploadSidecar?.fileName !== sidecarName) errors.push("owner post-seal sidecar fileName mismatch");
+    if (postSealVerification?.assertions?.noMacosxMetadata !== true) errors.push("owner post-seal must verify no forbidden macOS metadata");
+    if (postSealVerification?.assertions?.sameFinalHead !== true) errors.push("owner post-seal must verify same final head");
+    validateSameFileIdentity(errors, "owner post-seal review ZIP", postSealVerification.reviewZip, reviewZip);
+    validateSameFileIdentity(errors, "owner post-seal App ZIP", postSealVerification.macosAppZip, appZip);
+    validateSameFileIdentity(errors, "owner post-seal sidecar", postSealVerification.ownerUploadSidecar, sidecarManifest);
+    if (sidecar !== undefined) {
+      validateSameFileIdentity(errors, "owner post-seal sidecar review ZIP", postSealVerification.reviewZip, sidecar.ownerReviewZip);
+      validateSameFileIdentity(errors, "owner post-seal sidecar App ZIP", postSealVerification.macosAppZip, sidecar.macosAppZip);
+    }
     for (const section of ["reviewZip", "macosAppZip", "ownerUploadSidecar"]) {
       const record = postSealVerification?.[section];
       if (!validSha256(record?.sha256)) {

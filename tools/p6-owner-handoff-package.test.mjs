@@ -294,27 +294,30 @@ test("P6-R1 owner-visible manifest accepts Review ZIP, App ZIP, and sidecar comp
       mandatoryCompanions: [appZipName, sidecarName],
       ownerReviewZip: {
         fileName: reviewZipName,
+        sizeBytes: 101,
         sha256: "b".repeat(64)
       },
       macosAppZip: {
         fileName: appZipName,
+        sizeBytes: 202,
         sha256: "c".repeat(64)
       },
       ownerUploadSidecar: {
         fileName: sidecarName,
+        sizeBytes: 303,
         sha256: "d".repeat(64)
       },
       privacyAudit: { passed: true, findingCount: 0 },
       humanReviewRequiredCount: 8,
       entries: [
-        { path: reviewZipName, sha256: "b".repeat(64), humanReviewRequired: true },
-        { path: appZipName, sha256: "c".repeat(64), humanReviewRequired: true },
-        { path: sidecarName, sha256: "d".repeat(64), humanReviewRequired: true },
-        { path: "REVIEW_PACKET.md", sha256: "e".repeat(64), humanReviewRequired: true },
-        { path: "FINAL_RESPONSE.txt", sha256: "f".repeat(64), humanReviewRequired: true },
-        { path: "bundle-privacy-audit.json", sha256: "1".repeat(64), humanReviewRequired: true },
-        { path: "worker-registry-final.json", sha256: "2".repeat(64), humanReviewRequired: true },
-        { path: "owner-upload-post-seal-verification.json", sha256: "3".repeat(64), humanReviewRequired: true }
+        { path: reviewZipName, sizeBytes: 101, sha256: "b".repeat(64), humanReviewRequired: true },
+        { path: appZipName, sizeBytes: 202, sha256: "c".repeat(64), humanReviewRequired: true },
+        { path: sidecarName, sizeBytes: 303, sha256: "d".repeat(64), humanReviewRequired: true },
+        { path: "REVIEW_PACKET.md", sizeBytes: 1, sha256: "e".repeat(64), humanReviewRequired: true },
+        { path: "FINAL_RESPONSE.txt", sizeBytes: 1, sha256: "f".repeat(64), humanReviewRequired: true },
+        { path: "bundle-privacy-audit.json", sizeBytes: 1, sha256: "1".repeat(64), humanReviewRequired: true },
+        { path: "worker-registry-final.json", sizeBytes: 1, sha256: "2".repeat(64), humanReviewRequired: true },
+        { path: "owner-upload-post-seal-verification.json", sizeBytes: 1, sha256: "3".repeat(64), humanReviewRequired: true }
       ]
     }
   });
@@ -382,6 +385,66 @@ test("P6-R1 owner-visible handoff rejects contradictory packet and incomplete up
   assert.equal(result.errors.some((error) => error.includes("Product Owner Human Gate")), true);
   assert.equal(result.errors.some((error) => error.includes("FINAL_RESPONSE.txt missing upload artifact")), true);
   assert.equal(result.errors.some((error) => error.includes("owner post-seal sidecar fileName mismatch")), true);
+});
+
+test("P6-R1 owner-visible handoff rejects App ZIP identity mismatch across manifest sidecar and post-seal", () => {
+  const headCommit = "a".repeat(40);
+  const reviewZipName = "P6-R1-aaaaaaa-review-upload.zip";
+  const appZipName = "Auto-SVGA-macOS-internal-aaaaaaa.zip";
+  const sidecarName = "P6-R1-owner-upload-sidecar-aaaaaaa.json";
+  const manifest = {
+    milestoneId: "P6-R1",
+    reviewedHeadCommit: headCommit,
+    companionRequired: true,
+    mandatoryCompanions: [appZipName, sidecarName],
+    ownerReviewZip: { fileName: reviewZipName, sizeBytes: 101, sha256: "b".repeat(64) },
+    macosAppZip: { fileName: appZipName, sizeBytes: 202, sha256: "c".repeat(64) },
+    ownerUploadSidecar: { fileName: sidecarName, sizeBytes: 303, sha256: "d".repeat(64) },
+    privacyAudit: { passed: true, findingCount: 0 },
+    humanReviewRequiredCount: 8,
+    entries: [
+      { path: reviewZipName, sizeBytes: 101, sha256: "b".repeat(64), humanReviewRequired: true },
+      { path: appZipName, sizeBytes: 202, sha256: "c".repeat(64), humanReviewRequired: true },
+      { path: sidecarName, sizeBytes: 303, sha256: "d".repeat(64), humanReviewRequired: true },
+      { path: "REVIEW_PACKET.md", sizeBytes: 1, sha256: "e".repeat(64), humanReviewRequired: true },
+      { path: "FINAL_RESPONSE.txt", sizeBytes: 1, sha256: "f".repeat(64), humanReviewRequired: true },
+      { path: "bundle-privacy-audit.json", sizeBytes: 1, sha256: "1".repeat(64), humanReviewRequired: true },
+      { path: "worker-registry-final.json", sizeBytes: 1, sha256: "2".repeat(64), humanReviewRequired: true },
+      { path: "owner-upload-post-seal-verification.json", sizeBytes: 1, sha256: "3".repeat(64), humanReviewRequired: true }
+    ]
+  };
+  const result = validateOwnerVisibleHandoffBinding({
+    headCommit,
+    reviewZipName,
+    appZipName,
+    sidecarName,
+    manifest,
+    reviewPacketText: `Owner Upload Set:\n- ${reviewZipName}\n- ${appZipName}\n- ${sidecarName}\ncompanionRequired: true\n`,
+    finalResponseText: `[Review](${reviewZipName})\n[App](${appZipName})\n[Sidecar](${sidecarName})\n`,
+    sidecar: {
+      reviewedHeadCommit: headCommit,
+      companionRequired: true,
+      mandatoryCompanions: [appZipName, sidecarName],
+      ownerReviewZip: { fileName: reviewZipName, sizeBytes: 101, sha256: "b".repeat(64) },
+      macosAppZip: { fileName: appZipName, sizeBytes: 202, sha256: "9".repeat(64) },
+      privacyAudit: { passed: true, findingCount: 0 }
+    },
+    postSealVerification: {
+      reviewedHeadCommit: headCommit,
+      passed: true,
+      reviewZip: { fileName: reviewZipName, sizeBytes: 101, sha256: "b".repeat(64) },
+      macosAppZip: { fileName: appZipName, sizeBytes: 202, sha256: "8".repeat(64) },
+      ownerUploadSidecar: { fileName: sidecarName, sizeBytes: 303, sha256: "d".repeat(64) },
+      assertions: {
+        noMacosxMetadata: true,
+        sameFinalHead: true
+      }
+    }
+  });
+
+  assert.equal(result.passed, false);
+  assert.equal(result.errors.some((error) => error.includes("owner sidecar App ZIP sha256 mismatch")), true);
+  assert.equal(result.errors.some((error) => error.includes("owner post-seal App ZIP sha256 mismatch")), true);
 });
 
 test("P6 package privacy audit rejects stale review root references", async () => {

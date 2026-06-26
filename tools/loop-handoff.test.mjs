@@ -293,6 +293,107 @@ function defaultOptions(repo, base, head) {
   };
 }
 
+function p6R1Options(repo, base, head) {
+  return {
+    ...defaultOptions(repo, base, head),
+    milestone: "P6-R1",
+    title: "Terminal Handoff Trust Hardening",
+    input: ".artifacts/loop-handoff-input/P6-R1.json"
+  };
+}
+
+async function prepareP6R1Repo(repo, base) {
+  await writeText(join(repo, "docs/loop/CURRENT_MILESTONE.md"), tableContractText({ milestoneId: "P6-R1" }));
+  await writeText(join(repo, "docs/loop/LOOP_STATE.md"), [
+    "# Auto SVGA Loop State",
+    "",
+    "- milestoneId: P6-R1",
+    "- Milestone: P6-R1 Runtime Parity Repair",
+    "- State: terminal_pass",
+    "- Next Action: external_review",
+    ""
+  ].join("\n"));
+  await writeText(join(repo, "docs/loop/LOOP_HISTORY.jsonl"), `${JSON.stringify({
+    milestoneId: "P6-R1",
+    iteration: "terminal",
+    result: "PASS",
+    progress: true,
+    nextAction: "external_review"
+  })}\n`);
+  const head = await commitFixture(repo, "p6 r1 fixture");
+  await writeJson(join(repo, ".artifacts/loop-validation/latest.json"), {
+    schemaVersion: 2,
+    repositoryHeadCommitAtStart: head,
+    repositoryHeadCommitAtFinish: head,
+    sourceWorkspaceCleanAtStart: true,
+    sourceWorkspaceCleanAtFinish: true,
+    status: "pass",
+    startedAt: "2026-06-20T00:00:00.000Z",
+    finishedAt: "2026-06-20T00:01:00.000Z",
+    steps: requiredValidationSteps(),
+    knownGaps: {}
+  });
+  await writeJson(join(repo, ".artifacts/loop-budget-check/latest.json"), budgetSummary({ milestoneId: "P6-R1" }));
+  const input = baseInput({
+    base,
+    head,
+    milestoneId: "P6-R1",
+    changedFilePurposes: {
+      "src/example.txt": "Adds a fixture implementation file used to verify P6-R1 handoff behavior.",
+      "docs/loop/CURRENT_MILESTONE.md": "Records the P6-R1 fixture contract.",
+      "docs/loop/LOOP_STATE.md": "Records the P6-R1 fixture terminal state.",
+      "docs/loop/LOOP_HISTORY.jsonl": "Records the P6-R1 fixture terminal history."
+    }
+  });
+  input.acceptanceEvidence = tableAcceptanceEvidence({ milestoneId: "P6-R1" });
+  await writeJson(join(repo, ".artifacts/loop-handoff-input/P6-R1.json"), input);
+  return head;
+}
+
+const p6R1ReviewerBCategoryIds = [
+  "productIdentity",
+  "toolbarAndModes",
+  "localPreview",
+  "exportReview",
+  "comparison",
+  "referenceMedia",
+  "playbackControls",
+  "fitControls",
+  "synchronizedPlayback",
+  "inspectionOverview",
+  "assetDetails",
+  "motionAssetAudit",
+  "runtimeLogs",
+  "settings",
+  "theme",
+  "accessibilitySettings",
+  "emptyState",
+  "loadingState",
+  "invalidState",
+  "responsiveLayout",
+  "interactionParity",
+  "motionParity",
+  "normalMacApp",
+  "bundleCompleteness",
+  "bundlePrivacy"
+];
+
+function p6R1ReviewerBCategories(head, mutate = (category) => category) {
+  return p6R1ReviewerBCategoryIds.map((categoryId) => mutate({
+    category: categoryId,
+    verdict: "PASS",
+    visualObservation: `${categoryId} visual evidence was reviewed against the owner-visible material.`,
+    runtimeBehaviorObservation: `${categoryId} runtime behavior was reviewed against bound Desktop and Web evidence.`,
+    approvedDifferenceAssessment: `${categoryId} differences were checked and no unapproved product difference remains.`,
+    evidenceRefs: [{
+      path: `.artifacts/product/P6/${categoryId}.json`,
+      headCommit: head,
+      present: true,
+      humanReviewRequired: true
+    }]
+  }, categoryId));
+}
+
 async function writeReviewerVerdicts(repo, head, candidate, overrides = {}) {
   const candidateDigest = typeof candidate === "string" ? candidate : candidate.candidateDigest;
   const sourceDiffSha256 = typeof candidate === "string" ? overrides.A?.sourceDiffSha256 : candidate.sourceDiffSha256;
@@ -1026,6 +1127,109 @@ test("reviewer B packetDiffSha256 mismatch is rejected", async () => {
     await assert.rejects(
       generateHandoffPacket({ ...defaultOptions(repo, base, head), reviewerA: ".artifacts/loop-review/reviewer-a.json", reviewerB: ".artifacts/loop-review/reviewer-b.json" }),
       /packetDiffSha256 mismatch/
+    );
+  });
+});
+
+test("P6-R1 Reviewer B requires 25 structured product category observations", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const head = await prepareP6R1Repo(repo, base);
+    const options = p6R1Options(repo, base, head);
+    const candidate = await generateHandoffPacket({ ...options, candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, {
+      B: { categories: p6R1ReviewerBCategories(head) }
+    });
+
+    const result = await generateHandoffPacket({
+      ...options,
+      reviewerA: ".artifacts/loop-review/reviewer-a.json",
+      reviewerB: ".artifacts/loop-review/reviewer-b.json"
+    });
+
+    assert.equal(result.manifest.reviewers.reviewerB.status, "PASS");
+  });
+});
+
+test("P6-R1 Reviewer B rejects bare string category PASS", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const head = await prepareP6R1Repo(repo, base);
+    const options = p6R1Options(repo, base, head);
+    const candidate = await generateHandoffPacket({ ...options, candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, {
+      B: { categories: p6R1ReviewerBCategoryIds.map(() => "PASS") }
+    });
+
+    await assert.rejects(
+      generateHandoffPacket({
+        ...options,
+        reviewerA: ".artifacts/loop-review/reviewer-a.json",
+        reviewerB: ".artifacts/loop-review/reviewer-b.json"
+      }),
+      /categories must be structured objects/
+    );
+  });
+});
+
+test("P6-R1 Reviewer B rejects missing category", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const head = await prepareP6R1Repo(repo, base);
+    const options = p6R1Options(repo, base, head);
+    const candidate = await generateHandoffPacket({ ...options, candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, {
+      B: { categories: p6R1ReviewerBCategories(head).filter((category) => category.category !== "bundlePrivacy") }
+    });
+
+    await assert.rejects(
+      generateHandoffPacket({
+        ...options,
+        reviewerA: ".artifacts/loop-review/reviewer-a.json",
+        reviewerB: ".artifacts/loop-review/reviewer-b.json"
+      }),
+      /requires 25 categories/
+    );
+  });
+});
+
+test("P6-R1 Reviewer B rejects absent or wrong-head evidence refs", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const head = await prepareP6R1Repo(repo, base);
+    const options = p6R1Options(repo, base, head);
+    const candidate = await generateHandoffPacket({ ...options, candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, {
+      B: {
+        categories: p6R1ReviewerBCategories(head, (category, categoryId) => (
+          categoryId === "invalidState"
+            ? { ...category, evidenceRefs: [{ ...category.evidenceRefs[0], present: false }] }
+            : category
+        ))
+      }
+    });
+
+    await assert.rejects(
+      generateHandoffPacket({
+        ...options,
+        reviewerA: ".artifacts/loop-review/reviewer-a.json",
+        reviewerB: ".artifacts/loop-review/reviewer-b.json"
+      }),
+      /is not present for review/
+    );
+
+    await writeReviewerVerdicts(repo, head, candidate.manifest, {
+      B: {
+        categories: p6R1ReviewerBCategories(head, (category, categoryId) => (
+          categoryId === "invalidState"
+            ? { ...category, evidenceRefs: [{ ...category.evidenceRefs[0], headCommit: base }] }
+            : category
+        ))
+      }
+    });
+    await assert.rejects(
+      generateHandoffPacket({
+        ...options,
+        reviewerA: ".artifacts/loop-review/reviewer-a.json",
+        reviewerB: ".artifacts/loop-review/reviewer-b.json"
+      }),
+      /head mismatch/
     );
   });
 });
