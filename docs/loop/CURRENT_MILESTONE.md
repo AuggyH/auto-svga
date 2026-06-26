@@ -776,8 +776,4 @@ usability evidence regenerated with `parityStatus=pass` and
 `phase2Started=false`. Phase 2, signing, notarization, release, push, and merge
 remain prohibited.
 
-Product Owner Human Gate is reachable after the affected Gate A/B/C checks and
-all downstream Final Validation, Reviewer A, Reviewer B, Final Seal, Post-seal
-Verification, privacy checks, and owner handoff packaging are regenerated on the
-final head. Final independent product external review and Finding closure still
-remain downstream.
+Await Product Owner Human Gate for this P6-R1 owner review set. Product Owner acceptance, final independent product external review, Finding closure, Phase 2, signing, notarization, release, push, and merge remain prohibited until explicit next authorization.
