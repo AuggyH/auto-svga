@@ -6,8 +6,8 @@ Date: 2026-06-26
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_repair_in_progress
-- Next Action: repair_final_handoff_post_seal_and_state_difference_binding
+- State: terminal_human_required
+- Next Action: product_owner_human_gate
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -49,11 +49,10 @@ Date: 2026-06-26
   `9b01108c03a5e70e2f67100eeac384810afee4e4`.
 - Product Owner authorized `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY`
   from base execution head `30f522ca569679a5364149fe02ccc83624ec91ce`.
-- Independent review of the `4443f2d8e10d2d429ad99a3e72ce7ef32aa178ea`
-  handoff revoked Product Owner Human Gate availability because the exact
-  owner upload set, post-seal binding, two final loop-validation records, App
-  ZIP package-proof binding, and state-difference approvals were not yet
-  mechanically trustworthy.
+- Final handoff, post-seal upload-set binding, two final loop-validation
+  records, App ZIP package-proof binding, and state-difference approvals must
+  be regenerated and verified on the same terminal head before Product Owner
+  review materials are used.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are no
   further than `integrated_resolved_pending_external_review`; no Finding is
   closed or externally confirmed before Product Owner Human Gate and final
@@ -64,8 +63,8 @@ Date: 2026-06-26
 
 ## Next Action
 
-Repair final owner handoff, post-seal verification, loop-validation evidence,
-App ZIP binding, and machine-readable state-difference approval before
-regenerating final-head-bound owner materials. Final independent product
+Product Owner Human Gate may review the final-head-bound owner materials after
+Final Validation, Reviewer A, Reviewer B, Final Seal, Post-seal Verification,
+and privacy checks pass on the same terminal head. Final independent product
 external review, Finding closure, Phase 2, signing, notarization, release,
 push, and merge remain prohibited.

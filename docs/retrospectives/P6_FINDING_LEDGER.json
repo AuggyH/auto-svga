@@ -81,7 +81,8 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
@@ -146,7 +147,8 @@
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
-        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
@@ -216,12 +218,13 @@
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted."
+        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -283,12 +286,13 @@
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted."
+        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -348,12 +352,13 @@
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted."
+        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -415,7 +420,8 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
@@ -480,7 +486,8 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
@@ -545,12 +552,13 @@
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted."
+        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -613,7 +621,8 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
@@ -675,12 +684,13 @@
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted."
+        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -750,12 +760,13 @@
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted."
+        "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
@@ -818,7 +829,8 @@
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
-        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
@@ -882,7 +894,8 @@
       "currentStatus": "open",
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "primaryRecoveryWorkPackage": "WP2",
       "supportingFindingIds": [],
