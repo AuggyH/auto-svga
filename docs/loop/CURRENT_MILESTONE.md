@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: HUMAN_REQUIRED
+Status: GOAL_REPAIR_IN_PROGRESS
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,7 +19,8 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: human_required_pending_product_owner_human_gate
+executionStatus: goal_repair_in_progress
+nextAction: repair_wp1_state_semantics_and_owner_handoff
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -531,7 +532,10 @@ Gate C execution record:
   `currentStatus=open` and are not closed before final independent external
   review.
 
-## P6-R1 Final Validation
+## Historical Superseded P6-R1 Final Validation Failure Record
+
+This record is historical. It documents an older blocked execution path and is
+not the current execution status for the active P6-R1 owner handoff repair.
 
 Final Validation is the A0 machine validation step after Gate C and before
 independent review. It must not depend on Reviewer A, Reviewer B, final seal,
@@ -556,7 +560,7 @@ Final Validation execution record:
   `04c454dc8f2c6f11e2540be370815ae53c5c949b`
 - desktopSmokeAfterRepair: `passed`
 - loopValidateAfterRepair: `passed`
-- fullP6Regression: `failed`
+- historicalFullP6RegressionResult: `failed`
 - failedCommand:
   `AUTO_SVGA_SKIP_TRACKED_SNAPSHOTS=1 node tools/p6/generate-p6-evidence.mjs`
 - isolatedFailureCommand: `npm run desktop:smoke`
@@ -575,7 +579,7 @@ Final Validation execution record:
   `authorize a strict state/interaction/motion parity evidence repair scope or keep P6-R1 blocked`
 - lifecycleCorrection:
   `previous terminal_human_required/HUMAN_REQUIRED wording was invalid because a required machine gate failed`
-- productOwnerHumanGateReachable: `false`
+- historicalProductOwnerHumanGateReachability: `false`
 - nextActionAfterFinalValidationFailure:
   `owner_confirm_strict_parity_repair_scope`
 
@@ -740,26 +744,28 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `HUMAN_REQUIRED`.
+Current state: `goal_repair_in_progress`.
 
-Next action: `product_owner_human_gate`.
+Next action: `repair_wp1_state_semantics_and_owner_handoff`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
 `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY` from base execution head
 `30f522ca569679a5364149fe02ccc83624ec91ce`.
 
-The revoked `HUMAN_REQUIRED`, Reviewer B PASS, Final Seal, and Post-seal
-Verification were rerun after WP1/Gate A, WP3/Gate B, visual/motion, and owner
-handoff repair. Final machine evidence now reports `parityStatus=pass` and
-`nonPassEvidenceCount=0` for the current execution head, with the canonical
-owner handoff still pending final seal and Product Owner review.
+The latest `HUMAN_REQUIRED`, Reviewer B usability, Final Seal usability, and
+Post-seal usability were revoked by owner-handoff review because the App ZIP
+companion, packet metadata, post-seal upload-set binding, recovered invalid
+state, and state evidence consistency were not trustworthy enough for Product
+Owner Human Gate.
 
-All P6-F001 through P6-F013 findings remain `currentStatus=open` and are only
-advanced to `integrated_resolved_pending_external_review`; none are closed or
-externally confirmed. `contractReviewedHeadCommit` remains
+All P6-F001 through P6-F013 findings remain `currentStatus=open`; affected
+state, gate-integrity, handoff, and integration findings return to `regressed`
+until regenerated gates pass. None are closed or externally confirmed.
+`contractReviewedHeadCommit` remains
 `9b01108c03a5e70e2f67100eeac384810afee4e4`, `contractRevision=3`,
 `repairRound=0`, and `phase2Started=false`. Phase 2, signing, notarization,
-release, push, and merge remain prohibited. Product Owner Human Gate is the
-next required action; final independent product external review, Finding
-closure, and P6-R1 completion remain pending.
+release, push, and merge remain prohibited. Product Owner Human Gate is not
+reachable again until WP1 state repair, owner handoff repair, affected gates,
+Final Machine Validation, Reviewer A, Reviewer B, Final Seal, and Post-seal
+Verification pass on the same new final head.

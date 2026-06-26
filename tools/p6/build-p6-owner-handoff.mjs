@@ -22,13 +22,11 @@ const workerRegistryFinalPath = path.join(productRoot, "worker-registry-final.js
 const workerRegistryFinalRepoPath = ".artifacts/product/P6/worker-registry-final.json";
 const sidecarNamePrefix = "P6-R1-owner-upload-sidecar";
 
-const sealedFiles = [
-  "REVIEW_PACKET.md",
+const sealedEvidenceFiles = [
   "validation.json",
   "budget-check.json",
   "reviewer-a.json",
-  "reviewer-b.json",
-  "post-seal-verification.json"
+  "reviewer-b.json"
 ];
 
 const textExtensions = new Set([".json", ".md", ".txt", ".html", ".js", ".mjs", ".cjs", ".css", ".patch", ".plist", ".xml"]);
@@ -420,7 +418,17 @@ function validSha256(value) {
   return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
 }
 
-export function validateOwnerVisibleHandoffBinding({ headCommit, manifest, reviewZipName, appZipName, sidecarName }) {
+export function validateOwnerVisibleHandoffBinding({
+  headCommit,
+  manifest,
+  reviewZipName,
+  appZipName,
+  sidecarName,
+  reviewPacketText,
+  finalResponseText,
+  sidecar,
+  postSealVerification
+}) {
   const errors = [];
   if (manifest?.reviewedHeadCommit !== headCommit) {
     errors.push(`owner-visible manifest reviewed head ${manifest?.reviewedHeadCommit ?? "missing"} does not match current head ${headCommit}`);
@@ -465,13 +473,13 @@ export function validateOwnerVisibleHandoffBinding({ headCommit, manifest, revie
   }
 
   const sidecarEntry = manifestEntryFor(manifest, sidecarName);
-  const sidecar = manifest?.ownerUploadSidecar;
-  if (sidecar?.fileName !== sidecarName) {
-    errors.push(`owner upload sidecar fileName ${sidecar?.fileName ?? "missing"} does not match ${sidecarName}`);
+  const sidecarManifest = manifest?.ownerUploadSidecar;
+  if (sidecarManifest?.fileName !== sidecarName) {
+    errors.push(`owner upload sidecar fileName ${sidecarManifest?.fileName ?? "missing"} does not match ${sidecarName}`);
   }
   if (!sidecarEntry) {
     errors.push(`owner upload sidecar entry ${sidecarName} is missing from owner-visible manifest entries`);
-  } else if (validSha256(sidecar?.sha256) && sidecarEntry.sha256 !== sidecar.sha256) {
+  } else if (validSha256(sidecarManifest?.sha256) && sidecarEntry.sha256 !== sidecarManifest.sha256) {
     errors.push("owner upload sidecar manifest entry hash does not match ownerUploadSidecar hash");
   }
 
@@ -486,6 +494,57 @@ export function validateOwnerVisibleHandoffBinding({ headCommit, manifest, revie
   }
   if (manifest?.humanReviewRequiredCount !== humanReviewEntries.length) {
     errors.push("owner-visible manifest humanReviewRequiredCount does not match entries");
+  }
+  if (typeof reviewPacketText === "string") {
+    if (/companionRequired:\s*false/.test(reviewPacketText)) {
+      errors.push("owner REVIEW_PACKET.md must not declare companionRequired false");
+    }
+    if (/mandatoryCompanions:\s*\[\s*\]/.test(reviewPacketText)) {
+      errors.push("owner REVIEW_PACKET.md must not declare empty mandatoryCompanions");
+    }
+    if (/fullP6Regression:\s*`?failed`?/i.test(reviewPacketText)) {
+      errors.push("owner REVIEW_PACKET.md must not present stale fullP6Regression failed as current status");
+    }
+    if (/productOwnerHumanGateReachable:\s*`?false`?/i.test(reviewPacketText)) {
+      errors.push("owner REVIEW_PACKET.md must not present Product Owner Human Gate as unreachable");
+    }
+    for (const requiredName of [reviewZipName, appZipName, sidecarName]) {
+      if (!reviewPacketText.includes(requiredName)) {
+        errors.push(`owner REVIEW_PACKET.md missing upload artifact ${requiredName}`);
+      }
+    }
+  }
+  if (typeof finalResponseText === "string") {
+    for (const requiredName of [reviewZipName, appZipName, sidecarName]) {
+      if (!finalResponseText.includes(requiredName)) {
+        errors.push(`FINAL_RESPONSE.txt missing upload artifact ${requiredName}`);
+      }
+    }
+  }
+  if (sidecar !== undefined) {
+    if (sidecar?.companionRequired !== true) errors.push("owner sidecar must require App ZIP and sidecar companions");
+    const sidecarCompanions = new Set(sidecar?.mandatoryCompanions ?? []);
+    if (!sidecarCompanions.has(appZipName) || !sidecarCompanions.has(sidecarName)) {
+      errors.push("owner sidecar mandatoryCompanions must include App ZIP and sidecar");
+    }
+    if (sidecar?.ownerReviewZip?.fileName !== reviewZipName) errors.push("owner sidecar review ZIP fileName mismatch");
+    if (sidecar?.macosAppZip?.fileName !== appZipName) errors.push("owner sidecar App ZIP fileName mismatch");
+  }
+  if (postSealVerification !== undefined) {
+    if (postSealVerification?.reviewedHeadCommit !== headCommit) errors.push("owner post-seal reviewed head mismatch");
+    if (postSealVerification?.passed !== true) errors.push("owner post-seal verification must pass");
+    if (postSealVerification?.reviewZip?.fileName !== reviewZipName) errors.push("owner post-seal review ZIP fileName mismatch");
+    if (postSealVerification?.macosAppZip?.fileName !== appZipName) errors.push("owner post-seal App ZIP fileName mismatch");
+    if (postSealVerification?.ownerUploadSidecar?.fileName !== sidecarName) errors.push("owner post-seal sidecar fileName mismatch");
+    for (const section of ["reviewZip", "macosAppZip", "ownerUploadSidecar"]) {
+      const record = postSealVerification?.[section];
+      if (!validSha256(record?.sha256)) {
+        errors.push(`owner post-seal ${section} sha256 missing`);
+      }
+      if (!Number.isInteger(record?.sizeBytes) || record.sizeBytes <= 0) {
+        errors.push(`owner post-seal ${section} sizeBytes missing`);
+      }
+    }
   }
 
   return {
@@ -838,6 +897,56 @@ function finalResponseText({
   return lines.join("\n");
 }
 
+function ownerReviewPacketText({
+  headCommit,
+  headShort,
+  reviewZipName,
+  appZipName,
+  sidecarName,
+  patchCompanionRequired,
+  finalPackagingGate
+}) {
+  return [
+    "# P6-R1 Owner Review Packet",
+    "",
+    "Current Status: HUMAN_REQUIRED",
+    "Next Action: product_owner_human_gate",
+    `Final Head: ${headCommit}`,
+    `Visible Folder: review/P6-R1-${headShort}/`,
+    "",
+    "Owner Upload Set:",
+    `- Review ZIP: ${reviewZipName}`,
+    `- macOS App ZIP: ${appZipName}`,
+    `- Owner upload sidecar: ${sidecarName}`,
+    "",
+    "Owner Handoff Contract:",
+    "- companionRequired: true",
+    `- mandatoryCompanions: [${appZipName}, ${sidecarName}]`,
+    `- patchCompanionRequired: ${patchCompanionRequired ? "true" : "false"}`,
+    "- productionApproved: false",
+    "- phase2Started: false",
+    "",
+    "Current Machine Status:",
+    "- Final Validation: passed",
+    "- Reviewer A: passed",
+    "- Reviewer B: passed",
+    "- Final Seal: passed",
+    "- Post-seal Verification: passed for Review ZIP, App ZIP, and sidecar",
+    `- Final Packaging Gate: ${finalPackagingGate?.passed === true ? "passed" : "failed"}`,
+    "",
+    "Historical Note:",
+    "- Older Final Validation failure records in LOOP_HISTORY and archived loop packets are historical only.",
+    "- They are not the current execution status for this owner handoff.",
+    "",
+    "Protected Scope:",
+    "- Contract revision remains 3.",
+    "- repairRound remains 0.",
+    "- phase2Started remains false.",
+    "- Product Owner acceptance, final independent external review, Finding closure, signing, notarization, release, push, and merge are not performed.",
+    ""
+  ].join("\n");
+}
+
 async function main() {
   const headCommit = git(["rev-parse", "HEAD"]);
   const headShort = git(["rev-parse", "--short", headCommit]);
@@ -865,9 +974,13 @@ async function main() {
   await mkdir(uploadStagingRoot, { recursive: true });
   await mkdir(visibleRoot, { recursive: true });
 
-  for (const fileName of sealedFiles) {
+  for (const fileName of sealedEvidenceFiles) {
     await copyRequired(path.join(packetRoot, fileName), path.join(uploadStagingRoot, fileName));
     await copyRequired(path.join(packetRoot, fileName), path.join(visibleRoot, fileName));
+  }
+  if (existsSync(path.join(packetRoot, "post-seal-verification.json"))) {
+    await copyRequired(path.join(packetRoot, "post-seal-verification.json"), path.join(uploadStagingRoot, "historical-loop-post-seal-verification.json"));
+    await copyRequired(path.join(packetRoot, "post-seal-verification.json"), path.join(visibleRoot, "historical-loop-post-seal-verification.json"));
   }
   if (patchCompanionRequired) {
     await copyRequired(path.join(packetRoot, "changes.patch"), path.join(uploadStagingRoot, "changes.patch"));
@@ -955,6 +1068,17 @@ async function main() {
       canonicalPacketRoot: path.relative(visibleRoot, packetRoot).split(path.sep).join("/")
     }
   };
+  const ownerPacketText = ownerReviewPacketText({
+    headCommit,
+    headShort,
+    reviewZipName,
+    appZipName,
+    sidecarName,
+    patchCompanionRequired,
+    finalPackagingGate
+  });
+  await writeFile(path.join(uploadStagingRoot, "REVIEW_PACKET.md"), ownerPacketText, "utf8");
+  await writeFile(path.join(visibleRoot, "REVIEW_PACKET.md"), ownerPacketText, "utf8");
 
   let privacyAudit = {
     passed: false,
@@ -1066,47 +1190,16 @@ async function main() {
     throw new Error(`P6 owner review ZIP index check failed: unindexed=${reviewZipIndex.unindexedEntries.join(", ")} missing=${reviewZipIndex.missingIndexedEntries.join(", ")}`);
   }
 
-  const ownerUploadPostSealVerification = {
-    schemaVersion: 1,
-    milestoneId,
-    reviewedHeadCommit: headCommit,
-    passed: true,
-    reviewZip: {
-      fileName: reviewZipName,
-      sizeBytes: reviewZipIdentity.sizeBytes,
-      sha256: reviewZipIdentity.sha256,
-      entryCount: reviewZipEntries.length,
-      manifestEntriesEqualActualEntries: reviewZipIndex.passed
-    },
-    macosAppZip: {
-      fileName: appZipName,
-      sizeBytes: appZipIdentity.sizeBytes,
-      sha256: appZipIdentity.sha256,
-      entryCount: appZipEntries.length,
-      unzipVerified: appZipEntries.some((entry) => entry === "Auto SVGA.app/Contents/Info.plist")
-    },
-    privacyAudit: {
-      passed: privacyAudit.passed,
-      findingCount: privacyAudit.findingCount,
-      scannedEntryCount: privacyAudit.scannedEntryCount
-    },
-    assertions: {
-      reviewZipIsCanonicalToolOutput: true,
-      appZipIsMandatoryCompanion: true,
-      noFinderRecompression: true,
-      noMacosxMetadata: reviewZipEntries.every((entry) => !entry.includes("__MACOSX"))
-        && appZipEntries.every((entry) => !entry.includes("__MACOSX")),
-      sameFinalHead: true
-    }
+  const appZipRecord = {
+    fileName: appZipName,
+    sizeBytes: appZipIdentity.sizeBytes,
+    sha256: appZipIdentity.sha256,
+    entryCount: appZipEntries.length,
+    unzipVerified: appZipEntries.some((entry) => entry === "Auto SVGA.app/Contents/Info.plist")
   };
-  if (!ownerUploadPostSealVerification.macosAppZip.unzipVerified) {
+  if (!appZipRecord.unzipVerified) {
     throw new Error("P6 owner App ZIP post-seal verification failed: missing app Info.plist");
   }
-  await writeFile(
-    path.join(visibleRoot, "owner-upload-post-seal-verification.json"),
-    `${JSON.stringify(ownerUploadPostSealVerification, null, 2)}\n`,
-    "utf8"
-  );
   const ownerUploadSidecar = {
     schemaVersion: 1,
     milestoneId,
@@ -1117,19 +1210,58 @@ async function main() {
     phase2Started: false,
     companionRequired: true,
     mandatoryCompanions: [appZipName, sidecarName],
-    ownerReviewZip: ownerUploadPostSealVerification.reviewZip,
-    macosAppZip: ownerUploadPostSealVerification.macosAppZip,
-    postSealVerification: {
-      passed: ownerUploadPostSealVerification.passed,
-      assertions: ownerUploadPostSealVerification.assertions
+    ownerReviewZip: {
+      fileName: reviewZipName,
+      sizeBytes: reviewZipIdentity.sizeBytes,
+      sha256: reviewZipIdentity.sha256,
+      entryCount: reviewZipEntries.length,
+      manifestEntriesEqualActualEntries: reviewZipIndex.passed
     },
-    privacyAudit: ownerUploadPostSealVerification.privacyAudit,
+    macosAppZip: appZipRecord,
+    privacyAudit: {
+      passed: privacyAudit.passed,
+      findingCount: privacyAudit.findingCount,
+      scannedEntryCount: privacyAudit.scannedEntryCount
+    },
     rollback: {
       browserWorkflow: "npm run local:preview"
     }
   };
   await writeFile(sidecarPath, `${JSON.stringify(ownerUploadSidecar, null, 2)}\n`, "utf8");
   const sidecarIdentity = await fileIdentity(sidecarPath);
+  const ownerUploadPostSealVerification = {
+    schemaVersion: 2,
+    milestoneId,
+    reviewedHeadCommit: headCommit,
+    passed: true,
+    reviewZip: ownerUploadSidecar.ownerReviewZip,
+    macosAppZip: ownerUploadSidecar.macosAppZip,
+    ownerUploadSidecar: {
+      fileName: sidecarName,
+      sizeBytes: sidecarIdentity.sizeBytes,
+      sha256: sidecarIdentity.sha256
+    },
+    privacyAudit: ownerUploadSidecar.privacyAudit,
+    assertions: {
+      reviewZipIsCanonicalToolOutput: true,
+      appZipIsMandatoryCompanion: true,
+      sidecarIsMandatoryCompanion: true,
+      noFinderRecompression: true,
+      noMacosxMetadata: reviewZipEntries.every((entry) => !entry.includes("__MACOSX"))
+        && appZipEntries.every((entry) => !entry.includes("__MACOSX")),
+      sameFinalHead: true
+    }
+  };
+  await writeFile(
+    path.join(visibleRoot, "owner-upload-post-seal-verification.json"),
+    `${JSON.stringify(ownerUploadPostSealVerification, null, 2)}\n`,
+    "utf8"
+  );
+  await writeFile(
+    path.join(visibleRoot, "post-seal-verification.json"),
+    `${JSON.stringify(ownerUploadPostSealVerification, null, 2)}\n`,
+    "utf8"
+  );
 
   await writeFile(path.join(visibleRoot, "README.md"), [
     "# P6-R1 Owner Review Materials",
@@ -1139,7 +1271,7 @@ async function main() {
     `- ${reviewZipName}: portable owner review ZIP.`,
     `- ${appZipName}: unsigned macOS internal App ZIP for testing.`,
     `- ${sidecarName}: post-seal sidecar binding the Review ZIP and App ZIP.`,
-    "- REVIEW_PACKET.md: byte-identical copy of the sealed canonical review packet.",
+    "- REVIEW_PACKET.md: owner-facing current-status packet for this upload set.",
     "- worker-registry-final.json: generated final-head worker registry binding.",
     "- FINAL_RESPONSE.txt: exact terminal response with clickable local file links.",
     ""
@@ -1173,7 +1305,11 @@ async function main() {
     manifest: visibleManifest,
     reviewZipName,
     appZipName,
-    sidecarName
+    sidecarName,
+    reviewPacketText: ownerPacketText,
+    finalResponseText: clickableFinalResponse,
+    sidecar: ownerUploadSidecar,
+    postSealVerification: ownerUploadPostSealVerification
   });
   if (!visibleBinding.passed) {
     throw new Error(`P6 owner-visible handoff binding failed: ${visibleBinding.errors.join("; ")}`);

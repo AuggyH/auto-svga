@@ -119,6 +119,7 @@ export function strictStateComparisonPassed(comparison, stateId) {
     && checks.pixelToleranceCompared === true
     && checks.noUnapprovedDifferences === true
     && comparedPixelsCovered(comparison)
+    && statePixelThresholdPassed(comparison, stateId)
     && runtimeStateFactsMatched(comparison)
     && comparisonContextMatched(comparison);
 }
@@ -145,6 +146,17 @@ function comparedPixelsCovered(comparison) {
   return Number.isInteger(comparedPixels) && comparedPixels > 0;
 }
 
+function statePixelThresholdPassed(comparison, stateId) {
+  const ratio = comparison.comparison?.pixelDifferenceRatio;
+  return Number.isFinite(ratio) && ratio <= pixelToleranceForState(stateId);
+}
+
+function pixelToleranceForState(stateId) {
+  if (stateId === "accessibility-toggles-on") return 0.24;
+  if (/settings|modal|asset-preview/.test(stateId)) return 0.18;
+  return 0.16;
+}
+
 function runtimeStateFactsMatched(comparison) {
   const runtime = comparison.runtime;
   if (!isRecord(runtime)) return false;
@@ -154,6 +166,13 @@ function runtimeStateFactsMatched(comparison) {
     && runtime.semanticStatePredicatesMatched === true
     && sameObservedState(runtime.webObservedStateId, runtime.desktopObservedStateId, comparison.stateId)
     && sameStateSemantics(runtime.webSemantic, runtime.desktopSemantic, comparison.stateId)
+    && sameTopLevelRuntime(
+      runtime.webTopLevelRuntime ?? runtime.webTopLevel,
+      runtime.desktopTopLevelRuntime ?? runtime.desktopTopLevel,
+      runtime.webSemantic,
+      runtime.desktopSemantic,
+      comparison.stateId
+    )
     && semanticStateValid(comparison.stateId, runtime.webSemantic)
     && semanticStateValid(comparison.stateId, runtime.desktopSemantic);
 }
@@ -170,6 +189,7 @@ function comparisonContextMatched(comparison) {
     && sameObservedState(context.web.observedStateId, context.desktop.observedStateId, comparison.stateId)
     && sameFixtureContext(context.web.fixture, context.desktop.fixture)
     && sameSourceSlots(context.web.sourceSlots, context.desktop.sourceSlots)
+    && sameTopLevelContext(context.web.topLevelRuntime, context.desktop.topLevelRuntime, context.web.stateSemantics, context.desktop.stateSemantics, comparison.stateId)
     && sameStateSemantics(context.web.stateSemantics, context.desktop.stateSemantics, comparison.stateId);
 }
 
@@ -206,7 +226,8 @@ function semanticStateValid(stateId, semantic) {
       && semantic.primaryOverlayVisible === false
       && semantic.errorVisible === false
       && !["loading", "error"].includes(semantic.primaryParserStatus)
-      && !["loading", "error"].includes(semantic.primaryRenderStatus);
+      && !["loading", "error"].includes(semantic.primaryRenderStatus)
+      && (stateId !== "recovered-from-invalid" || !staleInvalidStatusText(semantic.statusAnnouncementText));
   }
   if (stateId === "local-empty") {
     return semantic.primaryOccupied === false
@@ -300,6 +321,37 @@ function sameStateSemantics(webSemantic, desktopSemantic, stateId) {
   }
   if (stateId === "reference-media-loaded" && webSemantic.referenceMediaLoaded !== desktopSemantic.referenceMediaLoaded) {
     return false;
+  }
+  if (stateId === "recovered-from-invalid" && (staleInvalidStatusText(webSemantic.statusAnnouncementText) || staleInvalidStatusText(desktopSemantic.statusAnnouncementText))) {
+    return false;
+  }
+  return true;
+}
+
+function staleInvalidStatusText(value) {
+  return /文件类型不支持|Unsupported file type|invalid-state-probe|not-svga|加载失败|Unable|failed/i.test(String(value ?? ""));
+}
+
+function sameTopLevelRuntime(webTopLevel, desktopTopLevel, webSemantic, desktopSemantic, stateId) {
+  return sameTopLevelContext(webTopLevel, desktopTopLevel, webSemantic, desktopSemantic, stateId);
+}
+
+function sameTopLevelContext(webTopLevel, desktopTopLevel, webSemantic, desktopSemantic, stateId) {
+  if (!isRecord(webTopLevel) || !isRecord(desktopTopLevel)) return false;
+  if (webTopLevel.loadedCanvasNonBlank !== desktopTopLevel.loadedCanvasNonBlank) return false;
+  if (webTopLevel.loadedCanvasNonBlank !== webSemantic?.loadedCanvasNonBlank) return false;
+  if (desktopTopLevel.loadedCanvasNonBlank !== desktopSemantic?.loadedCanvasNonBlank) return false;
+  if (webTopLevel.parserStatus !== webSemantic?.primaryParserStatus) return false;
+  if (desktopTopLevel.parserStatus !== desktopSemantic?.primaryParserStatus) return false;
+  if (webTopLevel.renderStatus !== webSemantic?.primaryRenderStatus) return false;
+  if (desktopTopLevel.renderStatus !== desktopSemantic?.primaryRenderStatus) return false;
+  if (webTopLevel.errorVisible !== webSemantic?.errorVisible) return false;
+  if (desktopTopLevel.errorVisible !== desktopSemantic?.errorVisible) return false;
+  if (webTopLevel.overlayVisible !== webSemantic?.primaryOverlayVisible) return false;
+  if (desktopTopLevel.overlayVisible !== desktopSemantic?.primaryOverlayVisible) return false;
+  if (stateId === "recovered-from-invalid") {
+    return !staleInvalidStatusText(webTopLevel.statusAnnouncementText)
+      && !staleInvalidStatusText(desktopTopLevel.statusAnnouncementText);
   }
   return true;
 }

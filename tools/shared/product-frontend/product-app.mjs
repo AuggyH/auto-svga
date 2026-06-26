@@ -254,6 +254,10 @@ function clearError() {
   errorBox.textContent = "";
 }
 
+function staleInvalidStatusText(value) {
+  return /文件类型不支持|Unsupported file type|invalid-state-probe|not-svga|加载失败|Unable|failed/i.test(String(value ?? ""));
+}
+
 function setSlotLoadingPhase(slot, activePhase, phaseStates = {}) {
   for (const item of slot.loadingPhases ?? []) {
     const phase = item.dataset.loadingPhase;
@@ -1447,6 +1451,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
         if (slot.slotName === "A") applyPrimaryEmptyCopy();
         refreshLayout();
         updateButtons();
+        announce(`SVGA 加载完成：${slot.metrics.fileName}`);
         addLog("success", `SVGA 加载完成：${slot.metrics.fileName} / SVGA loaded`);
         resolve(slot);
       },
@@ -1792,6 +1797,14 @@ function collectP6SmokeSnapshot(stateId) {
     modal,
     fixture: p6Fixture ? { ...p6Fixture } : null,
     sourceSlots: p6SourceSlotsSummary(),
+    topLevelRuntime: {
+      loadedCanvasNonBlank: canvasIsNonBlank(players.a),
+      overlayVisible: isElementVisible(players.a.panel?.querySelector(".centerEmptyState")),
+      errorVisible: !errorBox.hidden && compactText(errorBox).length > 0,
+      parserStatus: players.a.parseStatus,
+      renderStatus: players.a.renderStatus,
+      statusAnnouncementText: compactText(statusAnnouncer)
+    },
     stateSemantics: p6StateSemantics(stateId, {
       observedStateId,
       primaryOverlayVisible: isElementVisible(players.a.panel?.querySelector(".centerEmptyState"))
@@ -1858,6 +1871,7 @@ function p6StateSemantics(state, details = {}) {
     primaryRenderStatus: players.a.renderStatus,
     primaryInspectionStatus: players.a.inspectionStatus,
     primaryCanvasChildCount: players.a.canvas.children.length,
+    statusAnnouncementText: compactText(statusAnnouncer),
     staleMetadataCleared: !players.a.metrics,
     staleInspectionCleared: !players.a.inspectionReport,
     staleCanvasCleared: players.a.canvas.children.length === 0,
@@ -2261,6 +2275,7 @@ function collectRenderedStateProof(state) {
   }
   if (normalizedState === "recovered-from-invalid") {
     if (!errorBox.hidden || compactText(errorBox)) failures.push("recovery left invalid error visible");
+    if (staleInvalidStatusText(statusAnnouncementText)) failures.push("recovery left stale invalid status announcement");
     if (!players.a.videoItem) failures.push("recovered SVGA is not loaded");
     if (!players.a.metrics) failures.push("recovered metadata is missing");
     if (!players.a.inspectionReport) failures.push("recovered inspection is missing");

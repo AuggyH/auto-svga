@@ -57,8 +57,12 @@ test("state evidence helper writes Web/Desktop/comparison triple and JSON", asyn
 test("state evidence helper prefers exact responsive snapshot before export-review aliases", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "p6-responsive-state-evidence-"));
   try {
-    await writePng(path.join(root, "web-baseline/screenshot-export-review-loaded-900x720.png"), [255, 0, 0, 255]);
-    await writePng(path.join(root, "desktop-responsive-export-review-loaded-at-900-x-720.png"), [250, 0, 0, 255]);
+    await writePng(path.join(root, "web-baseline/screenshot-export-review-loaded-900x720.png"), [255, 0, 0, 255], { width: 10, height: 10 });
+    await writePng(path.join(root, "desktop-responsive-export-review-loaded-at-900-x-720.png"), [255, 0, 0, 255], {
+      width: 10,
+      height: 10,
+      changedPixel: [254, 0, 0, 255]
+    });
     const responsiveState = "responsive-export-review-loaded-at-900-x-720";
     const exportSnapshot = strictWebSnapshot("export-review-loaded", "exportReview", "none", "none");
     exportSnapshot.viewport = { width: 1440, height: 900 };
@@ -66,12 +70,21 @@ test("state evidence helper prefers exact responsive snapshot before export-revi
     responsiveSnapshot.observedStateId = "export-review-loaded";
     responsiveSnapshot.viewport = { width: 900, height: 720 };
     responsiveSnapshot.sourceSlots = stateSourceSlots(true);
-    responsiveSnapshot.stateSemantics = {
-      ...stateSemanticFixture(responsiveState),
-      observedStateId: "export-review-loaded",
-      latestArtifactLoaded: true,
-      referenceMediaLoaded: true
-    };
+	    responsiveSnapshot.stateSemantics = {
+	      ...stateSemanticFixture(responsiveState),
+	      observedStateId: "export-review-loaded",
+	      latestArtifactLoaded: true,
+	      referenceMediaLoaded: true
+	    };
+	    responsiveSnapshot.topLevelRuntime = {
+	      ...responsiveSnapshot.topLevelRuntime,
+	      loadedCanvasNonBlank: true,
+	      overlayVisible: false,
+	      errorVisible: false,
+	      parserStatus: "success",
+	      renderStatus: "success",
+	      statusAnnouncementText: "SVGA 加载完成：avatar_frame_basic.svga"
+	    };
     await mkdir(path.join(root, "web-baseline"), { recursive: true });
     await writeFile(path.join(root, "web-baseline/dom-manifest.json"), JSON.stringify({
       snapshots: [exportSnapshot, responsiveSnapshot]
@@ -92,9 +105,17 @@ test("state evidence helper prefers exact responsive snapshot before export-revi
           overlayRect: { x: 0, y: 0, width: 0, height: 0 },
           overlayDisplay: "none",
           canvasZIndex: "auto",
-          productState: { mode: "exportReview", panel: "none", modal: "none" },
-          sourceSlots: stateSourceSlots(true),
-          stateSemantics: {
+	          productState: { mode: "exportReview", panel: "none", modal: "none" },
+	          sourceSlots: stateSourceSlots(true),
+	          topLevelRuntime: {
+	            loadedCanvasNonBlank: true,
+	            overlayVisible: false,
+	            errorVisible: false,
+	            parserStatus: "success",
+	            renderStatus: "success",
+	            statusAnnouncementText: "SVGA 加载完成：avatar_frame_basic.svga"
+	          },
+	          stateSemantics: {
             ...stateSemanticFixture(responsiveState),
             observedStateId: "export-review-loaded",
             latestArtifactLoaded: true,
@@ -207,8 +228,12 @@ test("strict Web interaction evidence accepts direct runtime before/action/after
 test("strict state comparison accepts canonicalized Web/Desktop runtime context with equivalent visible state", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "p6-state-context-"));
   try {
-    await writePng(path.join(root, "web-baseline/screenshot-local-empty-1440x900.png"), [255, 0, 0, 255]);
-    await writePng(path.join(root, "desktop-empty.png"), [250, 0, 0, 255]);
+    await writePng(path.join(root, "web-baseline/screenshot-local-empty-1440x900.png"), [255, 0, 0, 255], { width: 10, height: 10 });
+    await writePng(path.join(root, "desktop-empty.png"), [255, 0, 0, 255], {
+      width: 10,
+      height: 10,
+      changedPixel: [254, 0, 0, 255]
+    });
     await writeFile(path.join(root, "web-baseline/dom-manifest.json"), JSON.stringify({
       snapshots: [strictWebSnapshot("local-empty", "本地预览", "info", "none")]
     }, null, 2));
@@ -231,9 +256,17 @@ test("strict state comparison accepts canonicalized Web/Desktop runtime context 
             mode: "localPreview",
             activeSidePanel: "info",
             activeModal: null
-          },
-          sourceSlots: stateSourceSlots(false),
-          stateSemantics: stateSemanticFixture("empty")
+	          },
+	          sourceSlots: stateSourceSlots(false),
+	          topLevelRuntime: {
+	            loadedCanvasNonBlank: false,
+	            overlayVisible: true,
+	            errorVisible: false,
+	            parserStatus: "empty",
+	            renderStatus: "empty",
+	            statusAnnouncementText: ""
+	          },
+	          stateSemantics: stateSemanticFixture("empty")
         }
       }
     }, null, 2));
@@ -681,13 +714,43 @@ test("WP1 strict state gates reject requested-label and semantic context false p
       facts.stateComparisons.paused.context.web.observedStateId = "loaded";
       facts.stateComparisons.paused.context.desktop.observedStateId = "loaded";
     }],
-    ["desired_state_label_only", "export-review-loaded", (facts) => {
-      delete facts.stateComparisons["export-review-loaded"].runtime;
-      delete facts.stateComparisons["export-review-loaded"].context.web.fixture;
-      delete facts.stateComparisons["export-review-loaded"].context.desktop.fixture;
-      facts.stateComparisons["export-review-loaded"].stateSnapshotId = "caller-supplied-export-review-loaded";
-    }]
-  ]) {
+	    ["desired_state_label_only", "export-review-loaded", (facts) => {
+	      delete facts.stateComparisons["export-review-loaded"].runtime;
+	      delete facts.stateComparisons["export-review-loaded"].context.web.fixture;
+	      delete facts.stateComparisons["export-review-loaded"].context.desktop.fixture;
+	      facts.stateComparisons["export-review-loaded"].stateSnapshotId = "caller-supplied-export-review-loaded";
+	    }],
+	    ["recovered_stale_status_announcement", "recovered-from-invalid", (facts) => {
+	      facts.contract.states.push({ id: "recovered-from-invalid", required: true });
+	      facts.stateComparisons["recovered-from-invalid"] = stateComparison("recovered-from-invalid");
+	      const staleText = "文件类型不支持：not-svga.txt。/ Unsupported file type.";
+	      facts.stateComparisons["recovered-from-invalid"].runtime.webSemantic.statusAnnouncementText = staleText;
+	      facts.stateComparisons["recovered-from-invalid"].runtime.desktopSemantic.statusAnnouncementText = staleText;
+	      facts.stateComparisons["recovered-from-invalid"].runtime.webTopLevel.statusAnnouncementText = staleText;
+	      facts.stateComparisons["recovered-from-invalid"].runtime.desktopTopLevel.statusAnnouncementText = staleText;
+	      facts.stateComparisons["recovered-from-invalid"].context.web.stateSemantics.statusAnnouncementText = staleText;
+	      facts.stateComparisons["recovered-from-invalid"].context.desktop.stateSemantics.statusAnnouncementText = staleText;
+	      facts.stateComparisons["recovered-from-invalid"].context.web.topLevelRuntime.statusAnnouncementText = staleText;
+	      facts.stateComparisons["recovered-from-invalid"].context.desktop.topLevelRuntime.statusAnnouncementText = staleText;
+	    }],
+	    ["loaded_top_level_canvas_false", "export-review-loaded", (facts) => {
+	      facts.stateComparisons["export-review-loaded"].runtime.webTopLevel.loadedCanvasNonBlank = false;
+	      facts.stateComparisons["export-review-loaded"].context.web.topLevelRuntime.loadedCanvasNonBlank = false;
+	    }],
+	    ["observed_state_mismatch_hidden_by_requested_label", "export-review-loaded", (facts) => {
+	      facts.stateComparisons["export-review-loaded"].context.web.topLevelRuntime.parserStatus = "empty";
+	      facts.stateComparisons["export-review-loaded"].context.web.observedStateId = "local-empty";
+	    }],
+	    ["pixel_tolerance_only_with_context_mismatch", "export-review-loaded", (facts) => {
+	      facts.stateComparisons["export-review-loaded"].comparison.pixelDifferenceRatio = 0.15;
+	      facts.stateComparisons["export-review-loaded"].checks.noUnapprovedDifferences = true;
+	      facts.stateComparisons["export-review-loaded"].context.desktop.topLevelRuntime.renderStatus = "empty";
+	    }],
+	    ["high_pixel_tolerance_cannot_force_pass", "export-review-loaded", (facts) => {
+	      facts.stateComparisons["export-review-loaded"].comparison.pixelDifferenceRatio = 0.84;
+	      facts.stateComparisons["export-review-loaded"].checks.noUnapprovedDifferences = true;
+	    }]
+	  ]) {
     const facts = goodFacts();
     mutate(facts);
     assertItemFailed(
@@ -998,11 +1061,12 @@ function stateComparison(stateId) {
     "export-review-loaded",
     "latest-artifact-loaded",
     "reference-media-loaded",
-    "loaded",
-    "playing",
-    "paused",
-    "responsive-export-review-loaded-at-900-x-720"
-  ].includes(stateId);
+	    "loaded",
+	    "playing",
+	    "paused",
+	    "responsive-export-review-loaded-at-900-x-720",
+	    "recovered-from-invalid"
+	  ].includes(stateId);
   const invalid = stateId === "invalid-error-state" || stateId === "invalid";
   const observedStateId = stateId === "invalid-error-state" ? "invalid"
     : ["latest-artifact-loaded", "reference-media-loaded"].includes(stateId) ? "export-review-loaded"
@@ -1054,7 +1118,16 @@ function stateComparison(stateId) {
     primaryIsPlaying: stateId === "playing",
     primaryPlaybackEvidenceState: stateId === "playing" ? "playing" : stateId === "paused" ? "paused" : loaded ? "loaded" : null,
     latestArtifactLoaded: stateId === "latest-artifact-loaded",
-    referenceMediaLoaded: stateId === "reference-media-loaded"
+    referenceMediaLoaded: stateId === "reference-media-loaded",
+    statusAnnouncementText: loaded ? "SVGA 加载完成：avatar_frame_basic.svga" : ""
+  };
+  const topLevelRuntime = {
+    loadedCanvasNonBlank: loaded,
+    overlayVisible: !loaded && !invalid,
+    errorVisible: invalid,
+    parserStatus: stateSemantics.primaryParserStatus,
+    renderStatus: stateSemantics.primaryRenderStatus,
+    statusAnnouncementText: stateSemantics.statusAnnouncementText
   };
   const hostContext = {
     viewportCss: stateId === "responsive-export-review-loaded-at-900-x-720"
@@ -1071,6 +1144,7 @@ function stateComparison(stateId) {
       fileName: loaded ? "avatar_frame_basic.svga" : null
     },
     sourceSlots,
+    topLevelRuntime,
     stateSemantics
   };
   return {
@@ -1088,6 +1162,8 @@ function stateComparison(stateId) {
       desktopObservedStateId: observedStateId,
       webSemantic: structuredClone(stateSemantics),
       desktopSemantic: structuredClone(stateSemantics),
+      webTopLevel: structuredClone(topLevelRuntime),
+      desktopTopLevel: structuredClone(topLevelRuntime),
       observedStateMatched: true,
       fixtureContextMatched: true,
       sourceSlotContextMatched: true,
@@ -1272,11 +1348,12 @@ function stateSemanticFixture(stateId) {
     "loaded",
     "playing",
     "paused",
-    "export-review-loaded",
-    "latest-artifact-loaded",
-    "reference-media-loaded",
-    "responsive-export-review-loaded-at-900-x-720"
-  ].includes(stateId);
+	    "export-review-loaded",
+	    "latest-artifact-loaded",
+	    "reference-media-loaded",
+	    "responsive-export-review-loaded-at-900-x-720",
+	    "recovered-from-invalid"
+	  ].includes(stateId);
   const invalid = stateId === "invalid" || stateId === "invalid-error-state";
   return {
     observedStateId: stateId,
@@ -1292,12 +1369,13 @@ function stateSemanticFixture(stateId) {
     staleInspectionCleared: !loaded,
     staleCanvasCleared: !loaded,
     staleFileBadgeCleared: !loaded,
-    primaryIsPlaying: stateId === "playing",
-    primaryPlaybackEvidenceState: stateId === "playing" ? "playing" : stateId === "paused" ? "paused" : loaded ? "loaded" : null,
-    latestArtifactLoaded: stateId === "latest-artifact-loaded",
-    referenceMediaLoaded: stateId === "reference-media-loaded"
-  };
-}
+	    primaryIsPlaying: stateId === "playing",
+	    primaryPlaybackEvidenceState: stateId === "playing" ? "playing" : stateId === "paused" ? "paused" : loaded ? "loaded" : null,
+	    latestArtifactLoaded: stateId === "latest-artifact-loaded",
+	    referenceMediaLoaded: stateId === "reference-media-loaded",
+	    statusAnnouncementText: loaded ? "SVGA 加载完成：avatar_frame_basic.svga" : ""
+	  };
+	}
 
 function snapshot(stateId, regionIds, controlIds) {
   return {
@@ -1318,6 +1396,7 @@ function snapshot(stateId, regionIds, controlIds) {
 }
 
 function strictWebSnapshot(stateId, mode, panel, modal) {
+  const stateSemantics = stateSemanticFixture(stateId);
   return {
     stateId,
     observedStateId: stateId,
@@ -1328,8 +1407,16 @@ function strictWebSnapshot(stateId, mode, panel, modal) {
     panel,
     modal,
     fixture: null,
-    sourceSlots: stateSourceSlots(false),
-    stateSemantics: stateSemanticFixture(stateId),
+    sourceSlots: stateSourceSlots(stateSemantics.primaryOccupied === true),
+    topLevelRuntime: {
+      loadedCanvasNonBlank: stateSemantics.loadedCanvasNonBlank,
+      overlayVisible: stateSemantics.primaryOverlayVisible,
+      errorVisible: stateSemantics.errorVisible,
+      parserStatus: stateSemantics.primaryParserStatus,
+      renderStatus: stateSemantics.primaryRenderStatus,
+      statusAnnouncementText: stateSemantics.statusAnnouncementText
+    },
+    stateSemantics,
     bodyTextSample: `${stateId} visible`,
     regions: ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"].map((id) => ({
       id,
@@ -1348,12 +1435,20 @@ function strictWebSnapshot(stateId, mode, panel, modal) {
   };
 }
 
-async function writePng(filePath, rgba) {
+async function writePng(filePath, rgba, options = {}) {
+  const width = options.width ?? 1;
+  const height = options.height ?? 1;
+  const pixelCount = width * height;
+  const data = new Uint8Array(pixelCount * 4);
+  for (let index = 0; index < pixelCount; index += 1) {
+    data.set(rgba, index * 4);
+  }
+  if (options.changedPixel) data.set(options.changedPixel, 0);
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, encode({
-    width: 1,
-    height: 1,
-    data: Uint8Array.from(rgba),
+    width,
+    height,
+    data,
     channels: 4
   }));
 }

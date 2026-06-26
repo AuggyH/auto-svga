@@ -234,6 +234,10 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
   if (!sourceSlotContextMatched) failures.push(`source slot context mismatch for ${stateId}`);
   const webSemantic = semanticFromSnapshot(webSnapshot);
   const desktopSemantic = semanticFromSnapshot(desktopState);
+  const webTopLevelRuntime = topLevelRuntimeFromSnapshot(webSnapshot);
+  const desktopTopLevelRuntime = topLevelRuntimeFromSnapshot(desktopState);
+  const topLevelRuntimeMatched = sameTopLevelRuntime(webTopLevelRuntime, desktopTopLevelRuntime, webSemantic, desktopSemantic, stateId);
+  if (!topLevelRuntimeMatched) failures.push(`top-level runtime facts mismatch for ${stateId}`);
   const semanticStatePredicatesMatched = semanticStatePassed(stateId, webSemantic)
     && semanticStatePassed(stateId, desktopSemantic)
     && sameSemanticContext(webSemantic, desktopSemantic, stateId);
@@ -277,9 +281,12 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
     observedStateMatched,
     fixtureContextMatched,
     sourceSlotContextMatched,
+    topLevelRuntimeMatched,
     semanticStatePredicatesMatched,
     webSemantic,
     desktopSemantic,
+    webTopLevelRuntime,
+    desktopTopLevelRuntime,
     geometryCompared,
     computedStyleCompared,
     controlValuesCompared,
@@ -311,6 +318,7 @@ function comparisonContext(webSnapshot, desktopState) {
       observedStateId: webSnapshot?.observedStateId ?? webSnapshot?.stateId ?? null,
       fixture: fixtureContextFromSlots(webSlots),
       sourceSlots: webSlots,
+      topLevelRuntime: topLevelRuntimeFromSnapshot(webSnapshot),
       stateSemantics: semanticFromSnapshot(webSnapshot)
     },
     desktop: {
@@ -322,6 +330,7 @@ function comparisonContext(webSnapshot, desktopState) {
       observedStateId: desktopState?.observedStateId ?? desktopState?.state ?? desktopState?.stateId ?? null,
       fixture: fixtureContextFromSlots(desktopSlots),
       sourceSlots: desktopSlots,
+      topLevelRuntime: topLevelRuntimeFromSnapshot(desktopState),
       stateSemantics: semanticFromSnapshot(desktopState)
     }
   };
@@ -407,6 +416,13 @@ function semanticFromSnapshot(snapshot) {
     primaryParserStatus: typeof semantic.primaryParserStatus === "string" ? semantic.primaryParserStatus : null,
     primaryRenderStatus: typeof semantic.primaryRenderStatus === "string" ? semantic.primaryRenderStatus : null,
     primaryCanvasChildCount: Number.isInteger(semantic.primaryCanvasChildCount) ? semantic.primaryCanvasChildCount : null,
+    statusAnnouncementText: typeof semantic.statusAnnouncementText === "string"
+      ? semantic.statusAnnouncementText
+      : typeof snapshot?.productState?.statusAnnouncementText === "string"
+        ? snapshot.productState.statusAnnouncementText
+        : typeof snapshot?.topLevelRuntime?.statusAnnouncementText === "string"
+          ? snapshot.topLevelRuntime.statusAnnouncementText
+          : "",
     staleMetadataCleared: semantic.staleMetadataCleared === true,
     staleInspectionCleared: semantic.staleInspectionCleared === true,
     staleCanvasCleared: semantic.staleCanvasCleared === true,
@@ -450,7 +466,8 @@ function semanticStatePassed(stateId, semantic) {
       && semantic.primaryOverlayVisible === false
       && semantic.errorVisible === false
       && !["loading", "error"].includes(semantic.primaryParserStatus)
-      && !["loading", "error"].includes(semantic.primaryRenderStatus);
+      && !["loading", "error"].includes(semantic.primaryRenderStatus)
+      && (stateId !== "recovered-from-invalid" || !staleInvalidStatusText(semantic.statusAnnouncementText));
   }
   if (stateId === "local-empty") {
     return semantic.primaryOccupied === false
@@ -494,7 +511,63 @@ function sameSemanticContext(webSemantic, desktopSemantic, stateId) {
   if (stateId === "reference-media-loaded" && webSemantic.referenceMediaLoaded !== desktopSemantic.referenceMediaLoaded) {
     return false;
   }
+  if (stateId === "recovered-from-invalid" && (staleInvalidStatusText(webSemantic.statusAnnouncementText) || staleInvalidStatusText(desktopSemantic.statusAnnouncementText))) {
+    return false;
+  }
   return true;
+}
+
+function topLevelRuntimeFromSnapshot(snapshot) {
+  const topLevel = snapshot?.topLevelRuntime ?? {};
+  return {
+    loadedCanvasNonBlank: typeof topLevel.loadedCanvasNonBlank === "boolean"
+      ? topLevel.loadedCanvasNonBlank
+      : snapshot?.loadedCanvasNonBlank === true,
+    overlayVisible: typeof topLevel.overlayVisible === "boolean"
+      ? topLevel.overlayVisible
+      : snapshot?.overlayVisible === true,
+    errorVisible: typeof topLevel.errorVisible === "boolean"
+      ? topLevel.errorVisible
+      : snapshot?.errorVisible === true,
+    parserStatus: typeof topLevel.parserStatus === "string"
+      ? topLevel.parserStatus
+      : typeof snapshot?.parserStatus === "string"
+        ? snapshot.parserStatus
+        : null,
+    renderStatus: typeof topLevel.renderStatus === "string"
+      ? topLevel.renderStatus
+      : typeof snapshot?.renderStatus === "string"
+        ? snapshot.renderStatus
+        : null,
+    statusAnnouncementText: typeof topLevel.statusAnnouncementText === "string"
+      ? topLevel.statusAnnouncementText
+      : typeof snapshot?.productState?.statusAnnouncementText === "string"
+        ? snapshot.productState.statusAnnouncementText
+        : ""
+  };
+}
+
+function sameTopLevelRuntime(webTopLevel, desktopTopLevel, webSemantic, desktopSemantic, stateId) {
+  if (webTopLevel.loadedCanvasNonBlank !== desktopTopLevel.loadedCanvasNonBlank) return false;
+  if (webTopLevel.loadedCanvasNonBlank !== webSemantic.loadedCanvasNonBlank) return false;
+  if (desktopTopLevel.loadedCanvasNonBlank !== desktopSemantic.loadedCanvasNonBlank) return false;
+  if (webTopLevel.overlayVisible !== webSemantic.primaryOverlayVisible) return false;
+  if (desktopTopLevel.overlayVisible !== desktopSemantic.primaryOverlayVisible) return false;
+  if (webTopLevel.errorVisible !== webSemantic.errorVisible) return false;
+  if (desktopTopLevel.errorVisible !== desktopSemantic.errorVisible) return false;
+  if (webTopLevel.parserStatus !== webSemantic.primaryParserStatus) return false;
+  if (desktopTopLevel.parserStatus !== desktopSemantic.primaryParserStatus) return false;
+  if (webTopLevel.renderStatus !== webSemantic.primaryRenderStatus) return false;
+  if (desktopTopLevel.renderStatus !== desktopSemantic.primaryRenderStatus) return false;
+  if (stateId === "recovered-from-invalid") {
+    return !staleInvalidStatusText(webTopLevel.statusAnnouncementText)
+      && !staleInvalidStatusText(desktopTopLevel.statusAnnouncementText);
+  }
+  return true;
+}
+
+function staleInvalidStatusText(value) {
+  return /文件类型不支持|Unsupported file type|invalid-state-probe|not-svga|加载失败|Unable|failed/i.test(String(value ?? ""));
 }
 
 function loadedState(stateId) {
@@ -578,9 +651,9 @@ function rectHasArea(rect) {
 }
 
 function pixelToleranceForState(stateId) {
-  if (stateId === "responsive-export-review-loaded-at-900-x-720" || stateId === "invalid-error-state") return 1;
-  if (/settings|modal|asset-preview/.test(stateId)) return 0.9;
-  return 0.85;
+  if (stateId === "accessibility-toggles-on") return 0.24;
+  if (/settings|modal|asset-preview/.test(stateId)) return 0.18;
+  return 0.16;
 }
 
 export async function collectMotionEvidence(p6Root, motionId) {
