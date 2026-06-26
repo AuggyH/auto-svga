@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "P6-R1 final machine validation, categorized reviewer/seal flow, and owner-visible handoff have been regenerated after repair. Current state is HUMAN_REQUIRED pending Product Owner Human Gate and final independent product external review; findings remain currentStatus=open and must not close before external confirmation.",
+  "scope": "P6-R1 final machine validation, categorized reviewer/seal flow, and owner-visible handoff are prepared for regeneration on the terminal head. Current state is HUMAN_REQUIRED pending Product Owner Human Gate and final independent product external review; findings remain currentStatus=open and must not close before external confirmation.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -80,7 +80,8 @@
         "external review round that does not reproduce the issue"
       ],
       "currentOpenSubIssues": [
-        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
@@ -99,7 +100,10 @@
         "tools/p6/parity-mutation-tests.mjs",
         "tools/p6/build-p6-owner-handoff.mjs",
         "docs/loop/CURRENT_MILESTONE.md",
-        "docs/loop/LOOP_STATE.md"
+        "docs/loop/LOOP_STATE.md",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -141,12 +145,13 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate."
+        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -163,7 +168,10 @@
         "docs/loop/LOOP_STATE.md",
         "review/P6-R1-8bb5d50/REVIEW_PACKET.md",
         ".artifacts/product/P6/state-comparisons/invalid-error-state-comparison.json",
-        "review/P6-R1-8bb5d50/reviewer-b.json"
+        "review/P6-R1-8bb5d50/reviewer-b.json",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -206,12 +214,13 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate."
+        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -228,7 +237,10 @@
         "docs/loop/LOOP_STATE.md",
         "review/P6-R1-8bb5d50/REVIEW_PACKET.md",
         ".artifacts/product/P6/state-comparisons/invalid-error-state-comparison.json",
-        "review/P6-R1-8bb5d50/reviewer-b.json"
+        "review/P6-R1-8bb5d50/reviewer-b.json",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -268,12 +280,13 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate."
+        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -290,7 +303,10 @@
         "docs/loop/LOOP_STATE.md",
         "review/P6-R1-8bb5d50/REVIEW_PACKET.md",
         ".artifacts/product/P6/state-comparisons/invalid-error-state-comparison.json",
-        "review/P6-R1-8bb5d50/reviewer-b.json"
+        "review/P6-R1-8bb5d50/reviewer-b.json",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -328,7 +344,8 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
@@ -347,7 +364,10 @@
         "tools/p6/parity-mutation-tests.mjs",
         "tools/p6/build-p6-owner-handoff.mjs",
         "docs/loop/CURRENT_MILESTONE.md",
-        "docs/loop/LOOP_STATE.md"
+        "docs/loop/LOOP_STATE.md",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -391,7 +411,8 @@
         "owner visual gate"
       ],
       "currentOpenSubIssues": [
-        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
@@ -410,7 +431,10 @@
         "tools/p6/parity-mutation-tests.mjs",
         "tools/p6/build-p6-owner-handoff.mjs",
         "docs/loop/CURRENT_MILESTONE.md",
-        "docs/loop/LOOP_STATE.md"
+        "docs/loop/LOOP_STATE.md",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -452,7 +476,8 @@
         "manual double-click acceptance"
       ],
       "currentOpenSubIssues": [
-        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
@@ -472,7 +497,10 @@
         "tools/p6/parity-mutation-tests.mjs",
         "tools/p6/build-p6-owner-handoff.mjs",
         "docs/loop/CURRENT_MILESTONE.md",
-        "docs/loop/LOOP_STATE.md"
+        "docs/loop/LOOP_STATE.md",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -512,12 +540,13 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate."
+        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -534,7 +563,10 @@
         "docs/loop/LOOP_STATE.md",
         "review/P6-R1-8bb5d50/REVIEW_PACKET.md",
         ".artifacts/product/P6/state-comparisons/invalid-error-state-comparison.json",
-        "review/P6-R1-8bb5d50/reviewer-b.json"
+        "review/P6-R1-8bb5d50/reviewer-b.json",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -576,7 +608,8 @@
         "no stale handoff roots"
       ],
       "currentOpenSubIssues": [
-        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
@@ -596,7 +629,10 @@
         "tools/p6/parity-mutation-tests.mjs",
         "tools/p6/build-p6-owner-handoff.mjs",
         "docs/loop/CURRENT_MILESTONE.md",
-        "docs/loop/LOOP_STATE.md"
+        "docs/loop/LOOP_STATE.md",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -633,12 +669,13 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate."
+        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -657,7 +694,10 @@
         "docs/loop/LOOP_STATE.md",
         "review/P6-R1-8bb5d50/REVIEW_PACKET.md",
         ".artifacts/product/P6/state-comparisons/invalid-error-state-comparison.json",
-        "review/P6-R1-8bb5d50/reviewer-b.json"
+        "review/P6-R1-8bb5d50/reviewer-b.json",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -703,12 +743,13 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate."
+        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
@@ -726,7 +767,10 @@
         "docs/loop/LOOP_STATE.md",
         "review/P6-R1-8bb5d50/REVIEW_PACKET.md",
         ".artifacts/product/P6/state-comparisons/invalid-error-state-comparison.json",
-        "review/P6-R1-8bb5d50/reviewer-b.json"
+        "review/P6-R1-8bb5d50/reviewer-b.json",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -767,12 +811,13 @@
       ],
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate."
+        "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -791,7 +836,10 @@
         "docs/loop/LOOP_STATE.md",
         "review/P6-R1-8bb5d50/REVIEW_PACKET.md",
         ".artifacts/product/P6/state-comparisons/invalid-error-state-comparison.json",
-        "review/P6-R1-8bb5d50/reviewer-b.json"
+        "review/P6-R1-8bb5d50/reviewer-b.json",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     },
     {
@@ -827,7 +875,8 @@
       "responsibleLayer": "multi-source vertical flow",
       "currentStatus": "open",
       "currentOpenSubIssues": [
-        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
       ],
       "primaryRecoveryWorkPackage": "WP2",
       "supportingFindingIds": [],
@@ -853,7 +902,10 @@
         "tools/p6/parity-mutation-tests.mjs",
         "tools/p6/build-p6-owner-handoff.mjs",
         "docs/loop/CURRENT_MILESTONE.md",
-        "docs/loop/LOOP_STATE.md"
+        "docs/loop/LOOP_STATE.md",
+        "tools/loop-handoff.mjs",
+        "tools/p6/parity-runner.mjs",
+        "tools/p6-owner-handoff-package.test.mjs"
       ]
     }
   ],
