@@ -1620,6 +1620,11 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
+  if (scenario === "desktop-invalid") {
+    await forceRendererRepaint(window);
+  } else if (stateForScenario(scenario)) {
+    await waitForRendererPaint(window);
+  }
   const image = await window.webContents.capturePage();
   const png = image.toPNG();
   const pngHash = createHash("sha256").update(png).digest("hex");
@@ -1652,6 +1657,24 @@ async function captureProductArtifact(window, scenario) {
   });
   writeProductArtifactIndex();
   return { path: `.artifacts/product/${productMilestoneId}/${fileName}`, sizeBytes: png.byteLength, sha256: pngHash };
+}
+
+async function waitForRendererPaint(window) {
+  await window.webContents.executeJavaScript(
+    "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => { document.body.getBoundingClientRect(); resolve(true); })))"
+  );
+  if (typeof window.webContents.invalidate === "function") window.webContents.invalidate();
+  await new Promise((resolve) => setTimeout(resolve, 120));
+}
+
+async function forceRendererRepaint(window) {
+  const [width, height] = window.getContentSize();
+  if (width > 0 && height > 2) {
+    window.setContentSize(width, height - 1);
+    await waitForRendererPaint(window);
+    window.setContentSize(width, height);
+  }
+  await waitForRendererPaint(window);
 }
 
 function artifactFileNameForScenario(scenario) {
@@ -2059,14 +2082,18 @@ async function createExperimentWindow() {
 
   const window = new BrowserWindow({
     title: productIdentity,
+    ...(smokeMode ? { x: -20000, y: -20000 } : {}),
     width: 1440,
     height: 900,
     show: false,
-    webPreferences: createSecureWebPreferences({
-      preloadPath: path.join(appRoot, "preload.cjs"),
-      reportToken,
-      productMilestoneId
-    })
+    paintWhenInitiallyHidden: true,
+    webPreferences: {
+      ...createSecureWebPreferences({
+        preloadPath: path.join(appRoot, "preload.cjs"),
+        reportToken,
+        productMilestoneId
+      })
+    }
   });
   installApplicationMenu(window);
 
@@ -2435,7 +2462,7 @@ async function createExperimentWindow() {
         playerLifecycle: false,
         cleanup: false
       });
-    }, productMilestoneId === "P5" ? 80_000 : 20_000).unref();
+    }, productSmokeMode ? 80_000 : 20_000).unref();
   }
 
   if (auditMode) {

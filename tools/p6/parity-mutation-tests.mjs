@@ -54,6 +54,79 @@ test("state evidence helper writes Web/Desktop/comparison triple and JSON", asyn
   }
 });
 
+test("state evidence rejects invalid semantic JSON paired with visually compare-like screenshot", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "p6-invalid-compare-screenshot-"));
+  try {
+    const blue = [0, 0, 255, 255];
+    const red = [255, 0, 0, 255];
+    const green = [0, 255, 0, 255];
+    await writePng(path.join(root, "web-baseline/screenshot-invalid-1440x900.png"), blue, {
+      width: 10,
+      height: 10,
+      changedPixels: Array.from({ length: 12 }, (_, index) => ({ index, rgba: red }))
+    });
+    await writePng(path.join(root, "desktop-invalid.png"), blue, {
+      width: 10,
+      height: 10,
+      changedPixels: [{ index: 0, rgba: green }]
+    });
+    await writePng(path.join(root, "desktop-local-compare-loaded.png"), blue, { width: 10, height: 10 });
+    await writePng(path.join(root, "desktop-local-compare-empty.png"), [32, 32, 32, 255], { width: 10, height: 10 });
+    const invalidSnapshot = strictWebSnapshot("invalid", "localPreview", "none", "none");
+    invalidSnapshot.regions.push({
+      id: "errorBox",
+      selector: "#errorBox",
+      present: true,
+      visible: true,
+      rect: { x: 10, y: 10, width: 100, height: 40 }
+    });
+    await mkdir(path.join(root, "web-baseline"), { recursive: true });
+    await writeFile(path.join(root, "web-baseline/dom-manifest.json"), JSON.stringify({
+      snapshots: [invalidSnapshot]
+    }, null, 2));
+    await writeFile(path.join(root, "web-baseline/computed-styles-manifest.json"), JSON.stringify({
+      selectors: [{ selector: ".shell", present: true }]
+    }, null, 2));
+    await writeFile(path.join(root, "desktop-state-render-proof.json"), JSON.stringify({
+      states: {
+        invalid: {
+          state: "invalid",
+          observedStateId: "invalid",
+          passed: true,
+          viewportCss: { width: 1440, height: 900 },
+          devicePixelRatio: 1,
+          stageRect: { x: 0, y: 0, width: 100, height: 100 },
+          canvasRect: { x: 0, y: 0, width: 0, height: 0 },
+          overlayRect: { x: 10, y: 10, width: 100, height: 40 },
+          overlayDisplay: "block",
+          canvasZIndex: "auto",
+          visibleRegions: visibleRegionsForState("invalid"),
+          visibleControls: visibleControlsForState(),
+          productState: { mode: "localPreview", panel: "none", modal: "none", compareActive: false },
+          sourceSlots: stateSourceSlots(false),
+          topLevelRuntime: {
+            loadedCanvasNonBlank: false,
+            overlayVisible: false,
+            errorVisible: true,
+            parserStatus: "error",
+            renderStatus: "error",
+            statusAnnouncementText: "文件类型不支持：not-svga.txt。/ Unsupported file type."
+          },
+          stateSemantics: stateSemanticFixture("invalid")
+        }
+      }
+    }, null, 2));
+
+    const result = await generateStateComparison(root, "invalid-error-state");
+
+    assert.equal(result.runtime.invalidContextMatched, false);
+    assert.equal(result.passed, false);
+    assert.ok(result.failures.some((failure) => failure.includes("invalid state context mismatch")));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("state evidence helper prefers exact responsive snapshot before export-review aliases", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "p6-responsive-state-evidence-"));
   try {
@@ -103,10 +176,12 @@ test("state evidence helper prefers exact responsive snapshot before export-revi
           stageRect: { x: 0, y: 0, width: 100, height: 100 },
           canvasRect: { x: 0, y: 0, width: 100, height: 100 },
           overlayRect: { x: 0, y: 0, width: 0, height: 0 },
-          overlayDisplay: "none",
-          canvasZIndex: "auto",
-	          productState: { mode: "exportReview", panel: "none", modal: "none" },
-	          sourceSlots: stateSourceSlots(true),
+	          overlayDisplay: "none",
+	          canvasZIndex: "auto",
+		          visibleRegions: visibleRegionsForState(responsiveState),
+		          visibleControls: visibleControlsForState(),
+		          productState: { mode: "exportReview", panel: "none", modal: "none", compareActive: false },
+		          sourceSlots: stateSourceSlots(true),
 	          topLevelRuntime: {
 	            loadedCanvasNonBlank: true,
 	            overlayVisible: false,
@@ -250,12 +325,15 @@ test("strict state comparison accepts canonicalized Web/Desktop runtime context 
           devicePixelRatio: 1,
           stageRect: { x: 0, y: 0, width: 100, height: 100 },
           overlayRect: { x: 10, y: 10, width: 40, height: 40 },
-          overlayDisplay: "flex",
-          canvasZIndex: "auto",
-          productState: {
-            mode: "localPreview",
-            activeSidePanel: "info",
-            activeModal: null
+	          overlayDisplay: "flex",
+	          canvasZIndex: "auto",
+	          visibleRegions: visibleRegionsForState("local-empty"),
+	          visibleControls: visibleControlsForState(),
+	          productState: {
+	            mode: "localPreview",
+	            activeSidePanel: "info",
+	            activeModal: null,
+	            compareActive: false
 	          },
 	          sourceSlots: stateSourceSlots(false),
 	          topLevelRuntime: {
@@ -667,6 +745,20 @@ test("WP1 strict state gates reject requested-label and semantic context false p
     ["different_source_slot_context", "export-review-loaded", (facts) => {
       facts.stateComparisons["export-review-loaded"].context.desktop.sourceSlots.primary.occupied = false;
     }],
+    ["missing_desktop_visible_regions", "export-review-loaded", (facts) => {
+      delete facts.stateComparisons["export-review-loaded"].runtime.desktopVisibleRegions;
+      delete facts.stateComparisons["export-review-loaded"].context.desktop.visibleRegions;
+    }],
+    ["missing_desktop_visible_controls", "export-review-loaded", (facts) => {
+      delete facts.stateComparisons["export-review-loaded"].runtime.desktopVisibleControls;
+      delete facts.stateComparisons["export-review-loaded"].context.desktop.visibleControls;
+    }],
+    ["visible_regions_diverge_without_approval", "export-review-loaded", (facts) => {
+      facts.stateComparisons["export-review-loaded"].runtime.desktopVisibleRegions =
+        facts.stateComparisons["export-review-loaded"].runtime.desktopVisibleRegions.filter((id) => id !== "svgaPanelA");
+      facts.stateComparisons["export-review-loaded"].context.desktop.visibleRegions =
+        facts.stateComparisons["export-review-loaded"].context.desktop.visibleRegions.filter((id) => id !== "svgaPanelA");
+    }],
     ["responsive_empty_mislabeled_loaded", "responsive-export-review-loaded-at-900-x-720", (facts) => {
       facts.stateComparisons["responsive-export-review-loaded-at-900-x-720"] = stateComparison("responsive-export-review-loaded-at-900-x-720");
       facts.stateComparisons["responsive-export-review-loaded-at-900-x-720"].runtime.webObservedStateId = "local-empty";
@@ -677,6 +769,18 @@ test("WP1 strict state gates reject requested-label and semantic context false p
     ["stale_invalid_metadata_canvas", "invalid-error-state", (facts) => {
       facts.stateComparisons["invalid-error-state"].runtime.desktopSemantic.staleMetadataCleared = false;
       facts.stateComparisons["invalid-error-state"].runtime.desktopSemantic.staleCanvasCleared = false;
+    }],
+    ["invalid_missing_visible_error_region", "invalid-error-state", (facts) => {
+      facts.stateComparisons["invalid-error-state"].runtime.desktopVisibleRegions =
+        facts.stateComparisons["invalid-error-state"].runtime.desktopVisibleRegions.filter((id) => id !== "errorBox");
+      facts.stateComparisons["invalid-error-state"].context.desktop.visibleRegions =
+        facts.stateComparisons["invalid-error-state"].context.desktop.visibleRegions.filter((id) => id !== "errorBox");
+    }],
+    ["invalid_compare_mode_runtime", "invalid-error-state", (facts) => {
+      facts.stateComparisons["invalid-error-state"].runtime.invalidContextMatched = false;
+      facts.stateComparisons["invalid-error-state"].runtime.desktopProductState.compareActive = true;
+      facts.stateComparisons["invalid-error-state"].context.desktop.sourceSlots.secondary.occupied = true;
+      facts.stateComparisons["invalid-error-state"].context.desktop.sourceSlots.secondary.canvasNonBlank = true;
     }],
     ["latest_artifact_shell_without_semantic", "latest-artifact-loaded", (facts) => {
       facts.contract.states.push({ id: "latest-artifact-loaded", required: true });
@@ -1129,7 +1233,7 @@ function stateComparison(stateId) {
     renderStatus: stateSemantics.primaryRenderStatus,
     statusAnnouncementText: stateSemantics.statusAnnouncementText
   };
-  const hostContext = {
+	  const hostContext = {
     viewportCss: stateId === "responsive-export-review-loaded-at-900-x-720"
       ? { width: 900, height: 720 }
       : { width: 1440, height: 900 },
@@ -1137,8 +1241,10 @@ function stateComparison(stateId) {
     mode: loaded ? "exportReview" : "localPreview",
     panel: "none",
     modal: "none",
-    observedStateId,
-    fixture: {
+	    observedStateId,
+	    visibleRegions: visibleRegionsForState(stateId),
+	    visibleControls: visibleControlsForState(),
+	    fixture: {
       occupied: loaded,
       sha256: loaded ? "a".repeat(64) : null,
       fileName: loaded ? "avatar_frame_basic.svga" : null
@@ -1155,20 +1261,31 @@ function stateComparison(stateId) {
       web: structuredClone(hostContext),
       desktop: structuredClone(hostContext)
     },
-    runtime: {
+	    runtime: {
       webStateId: stateId,
       desktopStateId: stateId,
       webObservedStateId: observedStateId,
       desktopObservedStateId: observedStateId,
-      webSemantic: structuredClone(stateSemantics),
-      desktopSemantic: structuredClone(stateSemantics),
-      webTopLevel: structuredClone(topLevelRuntime),
-      desktopTopLevel: structuredClone(topLevelRuntime),
-      observedStateMatched: true,
-      fixtureContextMatched: true,
-      sourceSlotContextMatched: true,
-      semanticStatePredicatesMatched: true
-    },
+	      webSemantic: structuredClone(stateSemantics),
+	      desktopSemantic: structuredClone(stateSemantics),
+	      webTopLevel: structuredClone(topLevelRuntime),
+	      desktopTopLevel: structuredClone(topLevelRuntime),
+	      webVisibleRegions: visibleRegionsForState(stateId),
+	      desktopVisibleRegions: visibleRegionsForState(stateId),
+	      webVisibleControls: visibleControlsForState(),
+	      desktopVisibleControls: visibleControlsForState(),
+	      desktopProductState: {
+	        mode: loaded ? "exportReview" : "localPreview",
+	        panel: "none",
+	        modal: "none",
+	        compareActive: false
+	      },
+	      observedStateMatched: true,
+	      fixtureContextMatched: true,
+	      sourceSlotContextMatched: true,
+	      semanticStatePredicatesMatched: true,
+	      invalidContextMatched: invalid ? true : null
+	    },
     comparison: {
       sameDimensions: true,
       comparedPixels: 100,
@@ -1194,7 +1311,17 @@ function stateComparison(stateId) {
       pixelToleranceCompared: true,
       noUnapprovedDifferences: true
     }
-  };
+	  };
+	}
+
+function visibleRegionsForState(stateId) {
+  const regions = ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"];
+  if (stateId === "invalid-error-state" || stateId === "invalid") regions.push("errorBox");
+  return regions;
+}
+
+function visibleControlsForState() {
+  return ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"];
 }
 
 function motionEvidence(motionId) {
@@ -1444,6 +1571,13 @@ async function writePng(filePath, rgba, options = {}) {
     data.set(rgba, index * 4);
   }
   if (options.changedPixel) data.set(options.changedPixel, 0);
+  if (Array.isArray(options.changedPixels)) {
+    for (const change of options.changedPixels) {
+      if (!change || !Array.isArray(change.rgba) || !Number.isInteger(change.index)) continue;
+      if (change.index < 0 || change.index >= pixelCount) continue;
+      data.set(change.rgba, change.index * 4);
+    }
+  }
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, encode({
     width,

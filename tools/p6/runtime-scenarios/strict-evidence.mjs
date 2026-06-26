@@ -174,12 +174,20 @@ function runtimeStateFactsMatched(comparison) {
       comparison.stateId
     )
     && semanticStateValid(comparison.stateId, runtime.webSemantic)
-    && semanticStateValid(comparison.stateId, runtime.desktopSemantic);
+    && semanticStateValid(comparison.stateId, runtime.desktopSemantic)
+    && visibleEvidenceMatched(
+      comparison.stateId,
+      runtime.webVisibleRegions,
+      runtime.desktopVisibleRegions,
+      runtime.webVisibleControls,
+      runtime.desktopVisibleControls
+    )
+    && invalidRuntimeContextValid(comparison);
 }
 
 function comparisonContextMatched(comparison) {
   const context = comparison.context;
-  if (context === undefined) return true;
+  if (context === undefined) return false;
   if (!isRecord(context) || !isRecord(context.web) || !isRecord(context.desktop)) return false;
   return deepEqual(context.web.viewportCss, context.desktop.viewportCss)
     && context.web.devicePixelRatio === context.desktop.devicePixelRatio
@@ -190,7 +198,40 @@ function comparisonContextMatched(comparison) {
     && sameFixtureContext(context.web.fixture, context.desktop.fixture)
     && sameSourceSlots(context.web.sourceSlots, context.desktop.sourceSlots)
     && sameTopLevelContext(context.web.topLevelRuntime, context.desktop.topLevelRuntime, context.web.stateSemantics, context.desktop.stateSemantics, comparison.stateId)
-    && sameStateSemantics(context.web.stateSemantics, context.desktop.stateSemantics, comparison.stateId);
+    && sameStateSemantics(context.web.stateSemantics, context.desktop.stateSemantics, comparison.stateId)
+    && visibleEvidenceMatched(
+      comparison.stateId,
+      context.web.visibleRegions,
+      context.desktop.visibleRegions,
+      context.web.visibleControls,
+      context.desktop.visibleControls
+    );
+}
+
+function visibleEvidenceMatched(stateId, webRegions, desktopRegions, webControls, desktopControls) {
+  if (!requiredIdsVisible(webRegions, desktopRegions, ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"])) return false;
+  if (!requiredIdsVisible(webControls, desktopControls, ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"])) return false;
+  if (stateId === "invalid-error-state" || stateId === "invalid") {
+    return requiredIdsVisible(webRegions, desktopRegions, ["errorBox"]);
+  }
+  return true;
+}
+
+function invalidRuntimeContextValid(comparison) {
+  if (comparison.stateId !== "invalid-error-state" && comparison.stateId !== "invalid") return true;
+  const context = comparison.context;
+  const runtime = comparison.runtime;
+  const desktopProductState = runtime?.desktopProductState ?? {};
+  const webSlots = context?.web?.sourceSlots ?? {};
+  const desktopSlots = context?.desktop?.sourceSlots ?? {};
+  return runtime?.invalidContextMatched === true
+    && context?.web?.mode === "localPreview"
+    && context?.desktop?.mode === "localPreview"
+    && desktopProductState.compareActive === false
+    && webSlots.secondary?.occupied === false
+    && desktopSlots.secondary?.occupied === false
+    && webSlots.secondary?.canvasNonBlank === false
+    && desktopSlots.secondary?.canvasNonBlank === false;
 }
 
 function semanticStateValid(stateId, semantic) {

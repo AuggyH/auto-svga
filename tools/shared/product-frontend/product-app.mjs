@@ -2259,6 +2259,9 @@ function collectRenderedStateProof(state) {
     if (!referencePlayerBarVisible) failures.push("reference player bar is not visible");
   }
   if (normalizedState === "invalid") {
+    if (modeSelect.value !== "localPreview") failures.push("invalid state is not in local preview mode");
+    if (isCompareActive()) failures.push("invalid state is still in compare mode");
+    if (players.b.videoItem) failures.push("invalid state still has secondary SVGA loaded");
     if (!overlayVisible) failures.push("invalid error box is not visible");
     if (!/文件类型不支持|加载失败|Unable|Unsupported|failed/i.test(renderedText)) {
       failures.push("invalid product message missing");
@@ -2349,6 +2352,8 @@ function collectRenderedStateProof(state) {
     if (!syncBarVisible) failures.push("sync controls are not reachable");
   }
   const observedSnapshot = collectP6SmokeSnapshot(state);
+  const visibleRegions = p6VisibleIds(observedSnapshot.regions);
+  const visibleControls = p6VisibleIds(observedSnapshot.controls);
   return {
     state: normalizedState,
     requestedState: state,
@@ -2356,6 +2361,8 @@ function collectRenderedStateProof(state) {
     fixture: observedSnapshot.fixture,
     sourceSlots: observedSnapshot.sourceSlots,
     stateSemantics: observedSnapshot.stateSemantics,
+    visibleRegions,
+    visibleControls,
     viewportCss: { width: innerWidth, height: innerHeight },
     devicePixelRatio,
     playbackTimeMs: Math.round((players.a.timeDisplay?.textContent?.match(/[0-9.]+/)?.[0] ?? 0) * 1000),
@@ -2807,9 +2814,29 @@ async function runProductSmoke() {
     pauseSlot(players.a);
     await delay(180);
     await captureArtifact("desktop-paused");
+    const errorFile = await smokeErrorFile();
+    setAppMode("localPreview");
+    if (compareToggle.checked) compareToggle.click();
+    resetSlotMediaState(players.b);
+    clearReference();
+    latestArtifactGroup = undefined;
+    closeP6SmokeTransientUi();
+    await waitFor(() => !isCompareActive() && collectRenderedStateProof("invalid").passed === true);
+    await delay(240);
+    await captureArtifact("desktop-invalid");
+    await loadSvga("a", fixtureUrl, {
+      fileName: "synthetic-avatar-frame-recovered.svga",
+      fileSizeBytes: bytes.byteLength,
+      loadingHoldMs: 120
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    await waitForInspectionStatus(players.a);
+    await captureArtifact("desktop-recovered-from-invalid");
     playSlot(players.a);
     resetSlotMediaState(players.a, { clearReport: true });
     setAppMode("localPreview");
+    manualArtifactSelection = false;
     await delay(160);
     await recordP6SmokeAction({
       id: "click-mode-dropdown-trigger-menu-opens",
@@ -3003,22 +3030,6 @@ async function runProductSmoke() {
     await captureArtifact("desktop-local-compare-loaded");
     const fileInput = await smokeFileInput(bytes.slice(0));
     const dragDrop = await smokeDragDrop(bytes.slice(0));
-    if (compareToggle.checked) compareToggle.click();
-    resetSlotMediaState(players.b);
-    clearReference();
-    latestArtifactGroup = undefined;
-    await waitFor(() => !isCompareActive());
-    const errorFile = await smokeErrorFile();
-    await captureArtifact("desktop-invalid");
-    await loadSvga("a", fixtureUrl, {
-      fileName: "synthetic-avatar-frame-recovered.svga",
-      fileSizeBytes: bytes.byteLength,
-      loadingHoldMs: 120
-    });
-    await waitFor(() => Boolean(players.a.videoItem));
-    await waitFor(() => canvasIsNonBlank(players.a));
-    await waitForInspectionStatus(players.a);
-    await captureArtifact("desktop-recovered-from-invalid");
     await electronBridge.reportSmokeResult({
       localPage: location.hostname === "127.0.0.1",
       localOnly: resourcesAreLocal(),

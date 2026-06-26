@@ -256,14 +256,24 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
   );
   if (!computedStyleCompared) failures.push(`computed style evidence missing for ${stateId}`);
   const webControls = visibleControlIds(webSnapshot);
+  const desktopControls = visibleControlIds(desktopState);
   const desktopStateModel = desktopState?.productState ?? {};
-  const controlValuesCompared = webControls.length > 0 && typeof desktopStateModel.mode === "string";
+  const controlValuesCompared = webControls.length > 0 && desktopControls.length > 0 && typeof desktopStateModel.mode === "string";
   if (!controlValuesCompared) failures.push(`control value evidence missing for ${stateId}`);
   const playbackTimeCompared = Number.isFinite(webSnapshot?.playbackTimeMs) && Number.isFinite(desktopState?.productState?.syncButtonPressed !== undefined ? 0 : 0);
   if (!playbackTimeCompared) failures.push(`playback time evidence missing for ${stateId}`);
   const webVisibleRegions = visibleRegionIds(webSnapshot);
-  const visibleRegionsCompared = webVisibleRegions.length > 0 && rectHasArea(desktopState?.stageRect);
+  const desktopVisibleRegions = visibleRegionIds(desktopState);
+  const visibleRegionsCompared = visibleEvidenceMatched({
+    stateId,
+    webVisibleRegions,
+    desktopVisibleRegions,
+    webVisibleControls: webControls,
+    desktopVisibleControls: desktopControls
+  });
   if (!visibleRegionsCompared) failures.push(`visible region evidence missing for ${stateId}`);
+  const invalidContextMatched = await invalidStateContextMatched(p6Root, stateId, webSnapshot, desktopState, result);
+  if (!invalidContextMatched) failures.push(`invalid state context mismatch for ${stateId}`);
   const pixelToleranceCompared = Boolean(result.comparison?.present && Number.isFinite(result.comparison?.pixelDifferenceRatio));
   if (!pixelToleranceCompared) failures.push(`pixel tolerance evidence missing for ${stateId}`);
   const noUnapprovedDifferences = failures.length === 0
@@ -292,11 +302,14 @@ async function stateRuntimeEvidence(p6Root, stateId, result) {
     controlValuesCompared,
     playbackTimeCompared,
     visibleRegionsCompared,
+    invalidContextMatched,
     pixelToleranceCompared,
     pixelDifferenceRatio: result.comparison?.pixelDifferenceRatio ?? null,
     pixelTolerance: pixelToleranceForState(stateId),
     webVisibleRegions,
     webVisibleControls: webControls,
+    desktopVisibleRegions,
+    desktopVisibleControls: desktopControls,
     desktopProductState: desktopStateModel,
     context: comparisonContext(webSnapshot, desktopState),
     noUnapprovedDifferences,
@@ -316,6 +329,8 @@ function comparisonContext(webSnapshot, desktopState) {
       panel: canonicalPanel(webSnapshot?.panel),
       modal: canonicalModal(webSnapshot?.modal),
       observedStateId: webSnapshot?.observedStateId ?? webSnapshot?.stateId ?? null,
+      visibleRegions: visibleRegionIds(webSnapshot),
+      visibleControls: visibleControlIds(webSnapshot),
       fixture: fixtureContextFromSlots(webSlots),
       sourceSlots: webSlots,
       topLevelRuntime: topLevelRuntimeFromSnapshot(webSnapshot),
@@ -328,6 +343,8 @@ function comparisonContext(webSnapshot, desktopState) {
       panel: canonicalPanel(desktopProductState.panel ?? desktopProductState.activeSidePanel),
       modal: canonicalModal(desktopProductState.modal ?? desktopProductState.activeModal),
       observedStateId: desktopState?.observedStateId ?? desktopState?.state ?? desktopState?.stateId ?? null,
+      visibleRegions: visibleRegionIds(desktopState),
+      visibleControls: visibleControlIds(desktopState),
       fixture: fixtureContextFromSlots(desktopSlots),
       sourceSlots: desktopSlots,
       topLevelRuntime: topLevelRuntimeFromSnapshot(desktopState),
@@ -402,6 +419,82 @@ function sameSourceSlotContext(webSnapshot, desktopState) {
     }
   }
   return true;
+}
+
+function visibleEvidenceMatched(input) {
+  const requiredRegions = ["shell", "toolbar", "modeControl", "workspace", "svgaPanelA"];
+  const requiredControls = ["modeDropdownTrigger", "infoPanelButton", "logsButton", "settingsButton"];
+  if (!requiredIdsVisible(input.webVisibleRegions, input.desktopVisibleRegions, requiredRegions)) return false;
+  if (!requiredIdsVisible(input.webVisibleControls, input.desktopVisibleControls, requiredControls)) return false;
+  if (input.stateId === "invalid-error-state" || input.stateId === "invalid") {
+    return requiredIdsVisible(input.webVisibleRegions, input.desktopVisibleRegions, ["errorBox"]);
+  }
+  return true;
+}
+
+async function invalidStateContextMatched(p6Root, stateId, webSnapshot, desktopState, result) {
+  if (stateId !== "invalid-error-state" && stateId !== "invalid") return true;
+  const webSlots = sourceSlotsFromSnapshot(webSnapshot);
+  const desktopSlots = sourceSlotsFromSnapshot(desktopState);
+  const desktopProductState = desktopState?.productState ?? {};
+  const webLocalPreview = canonicalMode(webSnapshot?.mode) === "localPreview";
+  const desktopLocalPreview = canonicalMode(desktopProductState.mode) === "localPreview";
+  const noCompareRuntime = desktopProductState.compareActive === false
+    && desktopSlots.secondary.occupied === false
+    && desktopSlots.secondary.canvasNonBlank === false
+    && webSlots.secondary.occupied === false
+    && webSlots.secondary.canvasNonBlank === false;
+  return webLocalPreview
+    && desktopLocalPreview
+    && noCompareRuntime
+    && await desktopImageDoesNotMatchForbiddenCompareState(p6Root, result.desktop?.sha256)
+    && await desktopImageIsCloserToInvalidThanCompare(p6Root, result);
+}
+
+async function desktopImageDoesNotMatchForbiddenCompareState(p6Root, desktopSha256) {
+  if (typeof desktopSha256 !== "string") return false;
+  const forbiddenSources = ["desktop-local-compare-loaded.png", "desktop-local-compare-empty.png"];
+  for (const source of forbiddenSources) {
+    const filePath = path.join(p6Root, source);
+    if (existsSync(filePath) && await sha256File(filePath) === desktopSha256) return false;
+  }
+  return true;
+}
+
+async function desktopImageIsCloserToInvalidThanCompare(p6Root, result) {
+  const desktopPath = artifactPathForResult(p6Root, result?.desktop?.path);
+  const webPath = artifactPathForResult(p6Root, result?.web?.path);
+  if (!desktopPath || !webPath || !existsSync(desktopPath) || !existsSync(webPath)) return false;
+  let desktop;
+  let web;
+  try {
+    desktop = decode(await readFile(desktopPath), { checkCrc: true });
+    web = decode(await readFile(webPath), { checkCrc: true });
+  } catch {
+    return false;
+  }
+  const invalidDistance = pixelDifferenceRatio(desktop, web).pixelDifferenceRatio;
+  if (!Number.isFinite(invalidDistance)) return false;
+  const forbiddenSources = ["desktop-local-compare-loaded.png", "desktop-local-compare-empty.png"];
+  for (const source of forbiddenSources) {
+    const forbiddenPath = path.join(p6Root, source);
+    if (!existsSync(forbiddenPath)) continue;
+    try {
+      const forbiddenDistance = pixelDifferenceRatio(desktop, decode(await readFile(forbiddenPath), { checkCrc: true })).pixelDifferenceRatio;
+      if (Number.isFinite(forbiddenDistance) && forbiddenDistance < invalidDistance) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+function artifactPathForResult(p6Root, value) {
+  if (typeof value !== "string" || value.length === 0 || value.includes("..")) return undefined;
+  const normalized = value.startsWith(".artifacts/product/P6/")
+    ? value.slice(".artifacts/product/P6/".length)
+    : value;
+  return path.join(p6Root, normalized);
 }
 
 function semanticFromSnapshot(snapshot) {
@@ -635,15 +728,28 @@ function stateMatches(actual, expected) {
 }
 
 function visibleRegionIds(snapshot) {
+  if (Array.isArray(snapshot?.visibleRegions)) return normalizeVisibleIds(snapshot.visibleRegions);
   return (snapshot?.regions ?? []).filter((entry) => entry.visible === true).map((entry) => entry.id).filter(Boolean).sort();
 }
 
 function visibleControlIds(snapshot) {
+  if (Array.isArray(snapshot?.visibleControls)) return normalizeVisibleIds(snapshot.visibleControls);
   return (snapshot?.controls ?? [])
     .filter((entry) => entry.visible === true)
     .map((entry) => entry.id ?? entry.dataValue ?? entry.dataTab ?? entry.text)
     .filter(Boolean)
     .sort();
+}
+
+function normalizeVisibleIds(values) {
+  return values.filter((value) => typeof value === "string" && value.length > 0).sort();
+}
+
+function requiredIdsVisible(webIds, desktopIds, requiredIds) {
+  if (!Array.isArray(webIds) || !Array.isArray(desktopIds)) return false;
+  const web = new Set(webIds);
+  const desktop = new Set(desktopIds);
+  return requiredIds.every((id) => web.has(id) && desktop.has(id));
 }
 
 function rectHasArea(rect) {

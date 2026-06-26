@@ -33,6 +33,7 @@ function createSecureWebPreferences({ preloadPath, reportToken, productMilestone
     sandbox: true,
     webSecurity: true,
     allowRunningInsecureContent: false,
+    backgroundThrottling: false,
     spellcheck: false
   };
 }
