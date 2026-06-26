@@ -9,6 +9,8 @@ const urlParams = new URLSearchParams(window.location.search);
 const isSmokeMode = urlParams.get("mode") === "smoke";
 const shouldCaptureArtifacts = urlParams.get("artifacts") === "1";
 const electronBridge = globalThis.autoSvgaElectronHost ?? globalThis.autoSvgaPrototype;
+const p6BaselineFixtureDisplayName = "p6-web-baseline-fixture.svga";
+const p6RecoveredFixtureDisplayName = "p6-web-baseline-recovered-fixture.svga";
 const cspViolations = [];
 
 window.addEventListener("securitypolicyviolation", (event) => {
@@ -2792,11 +2794,11 @@ async function runProductSmoke() {
     p6SmokeActionTrace.length = 0;
     p6SmokeFixture = {
       sha256: await p6Sha256Bytes(bytes),
-      displayName: "avatar_frame_basic.svga",
+      displayName: p6BaselineFixtureDisplayName,
       sizeBytes: bytes.byteLength
     };
     const loadPromise = loadSvga("a", fixtureUrl, {
-      fileName: "synthetic-avatar-frame.svga",
+      fileName: p6BaselineFixtureDisplayName,
       fileSizeBytes: bytes.byteLength,
       loadingHoldMs: 350
     });
@@ -2825,7 +2827,7 @@ async function runProductSmoke() {
     await delay(240);
     await captureArtifact("desktop-invalid");
     await loadSvga("a", fixtureUrl, {
-      fileName: "synthetic-avatar-frame-recovered.svga",
+      fileName: p6RecoveredFixtureDisplayName,
       fileSizeBytes: bytes.byteLength,
       loadingHoldMs: 120
     });

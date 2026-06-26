@@ -158,6 +158,10 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
   ]) {
     assert.match(productApp, new RegExp(runtimeFlowEvidence));
   }
+  assert.match(productApp, /p6BaselineFixtureDisplayName = "p6-web-baseline-fixture\.svga"/);
+  assert.match(productApp, /p6RecoveredFixtureDisplayName = "p6-web-baseline-recovered-fixture\.svga"/);
+  assert.match(productApp, /displayName: p6BaselineFixtureDisplayName/);
+  assert.match(productApp, /fileName: p6BaselineFixtureDisplayName/);
 
   for (const loadingEvidence of [
     "loadingActivePhases",
