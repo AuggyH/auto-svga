@@ -6,8 +6,8 @@ Date: 2026-06-26
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: terminal_human_required
-- Next Action: product_owner_human_gate
+- State: goal_repair_in_progress
+- Next Action: repair_wp1_state_screenshot_binding_and_owner_handoff
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -49,23 +49,23 @@ Date: 2026-06-26
   `9b01108c03a5e70e2f67100eeac384810afee4e4`.
 - Product Owner authorized `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY`
   from base execution head `30f522ca569679a5364149fe02ccc83624ec91ce`.
-- The revoked `HUMAN_REQUIRED`, Reviewer B usability, Final Seal usability, and
-  Post-seal usability have been repaired for WP1 state semantics and owner
-  handoff binding. Final evidence must be regenerated on this same final head
-  before Product Owner review material is used.
-- All `P6-F001` through `P6-F013` remain `currentStatus=open` and are only
-  advanced to `integrated_resolved_pending_external_review`; no Finding is
-  closed or externally confirmed before Product Owner Human Gate and final
-  independent product external review.
+- The latest independent review revoked `HUMAN_REQUIRED`, Reviewer B usability,
+  Final Seal usability, and Post-seal usability because WP1 invalid-state
+  screenshot binding, state visible-region evidence, Reviewer B category
+  objects, and owner-upload companion binding are not yet trustworthy.
+- All `P6-F001` through `P6-F013` remain `currentStatus=open`. Confirmed
+  state/evidence-binding, Reviewer B, handoff, machine-gate integrity, and
+  integration findings are marked `regressed` until regenerated gates pass; no
+  Finding is closed or externally confirmed before Product Owner Human Gate and
+  final independent product external review.
 - `contractReviewedHeadCommit=9b01108c03a5e70e2f67100eeac384810afee4e4`,
   `contractRevision=3`, `repairRound=0`, and `phase2Started=false` are
   preserved.
-- P6-F001 through P6-F013 are `integrated_resolved_pending_external_review`
-  with `currentStatus=open`. Phase 2 remains not started.
+- Phase 2 remains not started.
 
 ## Next Action
 
-Product Owner Human Gate is the next action after final evidence regeneration
-on this same head. Do not start Final Independent Product External Review,
-closure, Phase 2, signing, notarization, release, push, merge, or any
-out-of-contract work.
+Repair WP1 state screenshot binding and owner handoff, then rerun affected
+downstream gates on one fixed head. Product Owner Human Gate is not reachable
+until final evidence, Reviewer A/B, Final Seal, and Post-seal Verification are
+regenerated and pass.

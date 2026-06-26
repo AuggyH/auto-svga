@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: HUMAN_REQUIRED
+Status: GOAL_REPAIR_IN_PROGRESS
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,8 +19,8 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: human_required_pending_product_owner_human_gate
-nextAction: product_owner_human_gate
+executionStatus: goal_repair_in_progress
+nextAction: repair_wp1_state_screenshot_binding_and_owner_handoff
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -744,25 +744,26 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `HUMAN_REQUIRED`.
+Current state: `goal_repair_in_progress`.
 
-Next action: `product_owner_human_gate`.
+Next action: `repair_wp1_state_screenshot_binding_and_owner_handoff`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
 `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY` from base execution head
 `30f522ca569679a5364149fe02ccc83624ec91ce`.
 
-The revoked `HUMAN_REQUIRED`, Reviewer B usability, Final Seal usability, and
-Post-seal usability have been repaired for WP1 state semantics and owner
-handoff binding. Final evidence must be regenerated on this same final head
-before Product Owner review material is used.
+The latest independent review revoked `HUMAN_REQUIRED`, Reviewer B usability,
+Final Seal usability, and Post-seal usability because WP1 invalid-state
+screenshot binding, state visible-region evidence, Reviewer B category objects,
+and owner-upload companion binding are not yet trustworthy. P6-R1 returns to
+WP1/Gate A repair before any Product Owner material may be used.
 
-All P6-F001 through P6-F013 findings remain `currentStatus=open` and are only
-advanced to `integrated_resolved_pending_external_review`; none are closed or
-externally confirmed. `contractReviewedHeadCommit` remains
+All P6-F001 through P6-F013 findings remain `currentStatus=open`. Confirmed
+state/evidence-binding, Reviewer B, handoff, machine-gate integrity, and
+integration findings are marked `regressed` until regenerated gates pass; none
+are closed or externally confirmed. `contractReviewedHeadCommit` remains
 `9b01108c03a5e70e2f67100eeac384810afee4e4`, `contractRevision=3`,
 `repairRound=0`, and `phase2Started=false`. Phase 2, signing, notarization,
-release, push, and merge remain prohibited. Product Owner Human Gate is the
-next required action; final independent product external review, Finding
-closure, and P6-R1 completion remain pending.
+release, push, and merge remain prohibited. Product Owner Human Gate is not
+reachable until this repair regenerates final evidence on one fixed head.
