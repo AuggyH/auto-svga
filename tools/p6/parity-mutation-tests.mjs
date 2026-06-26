@@ -634,6 +634,21 @@ test("Repair 6 strict interaction gates reject synthetic, Web-only, and mismatch
     "open-settings-modal",
     "strict-interaction-parity"
   );
+
+  const mismatchedFixtureLabel = goodFacts();
+  mismatchedFixtureLabel.desktopInteractionTrace.fixture.displayName = "other-fixture.svga";
+  mismatchedFixtureLabel.interactionParityReport = buildInteractionParityReport({
+    contract: mismatchedFixtureLabel.contract,
+    webTrace: mismatchedFixtureLabel.webInteractionTrace,
+    desktopTrace: mismatchedFixtureLabel.desktopInteractionTrace
+  });
+  assert.ok(mismatchedFixtureLabel.interactionParityReport.failures.includes("check failed: sameFixtureDisplayName"));
+  assertItemFailed(
+    buildP6ParityReportFromRuntimeFacts(mismatchedFixtureLabel),
+    "interactionParity",
+    "open-settings-modal",
+    "strict-interaction-parity"
+  );
 });
 
 test("WP3 strict interaction gates reject missing before/action/after/result/binding evidence", () => {

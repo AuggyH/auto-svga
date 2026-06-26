@@ -414,7 +414,7 @@ async function buildWebInteractionTrace(p6Root, contract) {
   const artifactIndex = await readOptionalJson(path.join(p6Root, "web-baseline/artifact-index.json"));
   const snapshots = domManifest?.snapshots ?? [];
   const finalSnapshot = snapshots.at(-1);
-  const fixture = fixtureFromArtifactIndex(artifactIndex) ?? {
+  const fixture = fixtureFromSnapshots(snapshots) ?? fixtureFromArtifactIndex(artifactIndex) ?? {
     sha256: contract.fixture?.sha256 ?? null,
     displayName: path.basename(contract.fixture?.path ?? "p6-web-baseline-fixture.svga"),
     sizeBytes: contract.fixture?.sizeBytes ?? null
@@ -774,6 +774,28 @@ function fixtureFromArtifactIndex(index) {
     displayName: entry.name,
     sizeBytes: entry.bytes
   };
+}
+
+function fixtureFromSnapshots(snapshots = []) {
+  for (const snapshot of snapshots) {
+    const fixture = snapshot?.fixture;
+    if (isSha256(fixture?.sha256) && nonEmptyString(fixture?.displayName) && Number.isFinite(fixture?.sizeBytes)) {
+      return {
+        sha256: fixture.sha256,
+        displayName: fixture.displayName,
+        sizeBytes: fixture.sizeBytes
+      };
+    }
+    const primary = snapshot?.sourceSlots?.primary;
+    if (isSha256(primary?.fixtureSha256) && nonEmptyString(primary?.displayName ?? primary?.fileName) && Number.isFinite(primary?.fileSizeBytes)) {
+      return {
+        sha256: primary.fixtureSha256,
+        displayName: primary.displayName ?? primary.fileName,
+        sizeBytes: primary.fileSizeBytes
+      };
+    }
+  }
+  return null;
 }
 
 function nonEmptyEqualIdSet(a, b) {
