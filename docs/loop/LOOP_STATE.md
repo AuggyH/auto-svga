@@ -6,8 +6,8 @@ Date: 2026-06-27
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_repair_in_progress
-- Next Action: repair_owner_gate_local_preview_usability
+- State: terminal_human_required
+- Next Action: product_owner_human_gate
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -56,19 +56,16 @@ Date: 2026-06-27
 - The b3bc9f8 handoff set, App ZIP binding, post-seal, privacy, and two final
   loop-validation passes remain the accepted baseline unless affected by this
   repair.
-- All `P6-F001` through `P6-F013` remain `currentStatus=open` and are no
+- All `P6-F001` through `P6-F013` remain `currentStatus=open` and are not
   closed or externally confirmed before Product Owner Human Gate and final
-  independent product external review. Affected state, interaction, responsive
-  visual, App workflow, reviewer, and integration Findings are temporarily
-  regressed for this repair.
+  independent product external review. They are now staged as
+  `integrated_resolved_pending_external_review` after local preview owner-gate
+  usability evidence regenerated with `parityStatus=pass` and
+  `nonPassEvidenceCount=0`.
 - `contractReviewedHeadCommit=9b01108c03a5e70e2f67100eeac384810afee4e4`, `contractRevision=3`,
   `repairRound=0`, and `phase2Started=false` are preserved.
 - Phase 2 remains not started.
 
 ## Next Action
 
-Repair local preview owner-gate usability, then rerun the affected Gate A/B/C
-checks and downstream Final Validation, Reviewer A, Reviewer B, Final Seal,
-Post-seal Verification, privacy checks, and owner handoff packaging on one new
-final head. Final independent product external review, Finding closure, Phase 2,
-signing, notarization, release, push, and merge remain prohibited.
+Product Owner Human Gate is ready on the final P6-R1 repair head after affected Gate A/B/C checks, Final Validation, Reviewer A, Reviewer B, Final Seal, Post-seal Verification, privacy checks, and owner handoff packaging were regenerated. Product Owner acceptance, final independent product external review, Finding closure, Phase 2, signing, notarization, release, push, and merge remain prohibited until explicit next authorization.
