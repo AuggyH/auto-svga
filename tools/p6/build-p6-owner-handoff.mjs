@@ -123,6 +123,9 @@ function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
     if (isInsideOwnerHandoffPrivacyTestPatch(text, match.index, entry)) {
       continue;
     }
+    if (isInsideReviewRootTemplatePatch(text, match.index, entry)) {
+      continue;
+    }
     const trailingTemplateContext = text.slice(match.index + match[0].length, match.index + match[0].length + 32);
     if (match[0] === "review/P6-R1-" && trailingTemplateContext.startsWith("${headShort}")) {
       continue;
@@ -151,6 +154,19 @@ function isInsideOwnerHandoffPrivacyTestPatch(text, index, entry) {
     line.includes("staleP6R1ReviewRoot")
     || line.includes("staleLegacyReviewRoot")
     || line.includes("review/P6-R1-abcdef0")
+    || line.includes("review/P6-R1-deadbee")
+  );
+}
+
+function isInsideReviewRootTemplatePatch(text, index, entry) {
+  if (!entry.endsWith("changes.patch")) return false;
+  const lineStart = text.lastIndexOf("\n", index) + 1;
+  const lineEndIndex = text.indexOf("\n", index);
+  const lineEnd = lineEndIndex === -1 ? text.length : lineEndIndex;
+  const line = text.slice(lineStart, lineEnd);
+  return /^[+-]/.test(line) && (
+    line.includes("${headShort}")
+    || line.includes("${expectedHeadShort}")
   );
 }
 
