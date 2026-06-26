@@ -21,6 +21,7 @@ const isSmokeMode = urlParams.get("mode") === "smoke";
 const shouldCaptureArtifacts = urlParams.get("artifacts") === "1";
 const hostBridge = window.autoSvgaElectronHost ?? window.autoSvgaPrototype;
 const productMilestoneId = hostBridge?.productMilestoneId ?? "P2";
+const p6BaselineFixtureDisplayName = "p6-web-baseline-fixture.svga";
 const cspViolations = [];
 let activePlayer;
 let activeParser;
@@ -203,7 +204,7 @@ async function runSmoke() {
   await captureArtifact("desktop-empty");
   const fixtureUrl = "/fixture/avatar-frame-smoke.svga";
   const bytes = new Uint8Array(await fetch(fixtureUrl).then(assertResponse).then((response) => response.arrayBuffer()));
-  const smoke = await loadSvgaBytes(bytes.slice(0), "synthetic-avatar-frame.svga", { sizeBytes: bytes.byteLength });
+  const smoke = await loadSvgaBytes(bytes.slice(0), p6BaselineFixtureDisplayName, { sizeBytes: bytes.byteLength });
   await captureArtifact("desktop-loaded");
   await captureArtifact("smoke-loaded");
   await captureArtifact("desktop-1280x800");
@@ -288,7 +289,7 @@ async function loadSvgaBytes(bytes, name, metadata = {}) {
   rejectedName = "";
   setLoadingState(name);
   await delay(180);
-  if (!desktopLoadingCaptured && name === "synthetic-avatar-frame.svga") {
+  if (!desktopLoadingCaptured && name === p6BaselineFixtureDisplayName) {
     await captureArtifact("desktop-loading");
     desktopLoadingCaptured = true;
   }

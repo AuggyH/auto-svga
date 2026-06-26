@@ -341,6 +341,7 @@ test("desktop latest-artifact catalog returns Web-shaped non-empty and safe-empt
 test("P6 normal App proof launches without smoke query mode and uses Web baseline fixture bytes", async () => {
   const runner = await readFile(path.join(experimentRoot, "scripts/run-canonical-normal-proof.mjs"), "utf8");
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const prototype = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
   const p2Fixture = await readFile(path.join(experimentRoot, "scripts/p2-fixture.mjs"), "utf8");
   const p6Evidence = await readFile(path.join(repoRoot, "tools/p6/generate-p6-evidence.mjs"), "utf8");
@@ -368,6 +369,9 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /rendererQuery: location\.search/);
   assert.match(main, /window\.autoSvgaElectronHost\?\.openSvgaFile/);
   assert.match(main, /document\.querySelector\("#svgaFileInput"\)/);
+  assert.match(prototype, /p6BaselineFixtureDisplayName = "p6-web-baseline-fixture\.svga"/);
+  assert.match(prototype, /loadSvgaBytes\(bytes\.slice\(0\), p6BaselineFixtureDisplayName/);
+  assert.match(prototype, /name === p6BaselineFixtureDisplayName/);
   for (const scenario of [
     "desktop-playing",
     "desktop-paused",
