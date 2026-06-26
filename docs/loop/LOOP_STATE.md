@@ -1,13 +1,13 @@
 # Auto SVGA Loop State
 
-Date: 2026-06-26
+Date: 2026-06-27
 
 ## Current Milestone
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: terminal_human_required
-- Next Action: product_owner_human_gate
+- State: goal_repair_in_progress
+- Next Action: repair_owner_gate_local_preview_usability
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -49,22 +49,26 @@ Date: 2026-06-26
   `9b01108c03a5e70e2f67100eeac384810afee4e4`.
 - Product Owner authorized `P6_R1_EXECUTION_THROUGH_HUMAN_REQUIRED_ONLY`
   from base execution head `30f522ca569679a5364149fe02ccc83624ec91ce`.
-- Final handoff, post-seal upload-set binding, two final loop-validation
-  records, App ZIP package-proof binding, and state-difference approvals must
-  be regenerated and verified on the same terminal head before Product Owner
-  review materials are used.
+- Product Owner returned `OWNER_REPAIR_REQUIRED` on reviewed head
+  `b3bc9f8302a7adb98a6d74632e7655d199f3e4a7` for local preview owner-gate
+  usability. This is handled within the existing P6-R1 goal and does not create
+  contract revision 4, increment `repairRound`, or start Phase 2.
+- The b3bc9f8 handoff set, App ZIP binding, post-seal, privacy, and two final
+  loop-validation passes remain the accepted baseline unless affected by this
+  repair.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are no
-  further than `integrated_resolved_pending_external_review`; no Finding is
   closed or externally confirmed before Product Owner Human Gate and final
-  independent product external review.
+  independent product external review. Affected state, interaction, responsive
+  visual, App workflow, reviewer, and integration Findings are temporarily
+  regressed for this repair.
 - `contractReviewedHeadCommit=9b01108c03a5e70e2f67100eeac384810afee4e4`, `contractRevision=3`,
   `repairRound=0`, and `phase2Started=false` are preserved.
 - Phase 2 remains not started.
 
 ## Next Action
 
-Product Owner Human Gate may review the final-head-bound owner materials after
-Final Validation, Reviewer A, Reviewer B, Final Seal, Post-seal Verification,
-and privacy checks pass on the same terminal head. Final independent product
-external review, Finding closure, Phase 2, signing, notarization, release,
-push, and merge remain prohibited.
+Repair local preview owner-gate usability, then rerun the affected Gate A/B/C
+checks and downstream Final Validation, Reviewer A, Reviewer B, Final Seal,
+Post-seal Verification, privacy checks, and owner handoff packaging on one new
+final head. Final independent product external review, Finding closure, Phase 2,
+signing, notarization, release, push, and merge remain prohibited.

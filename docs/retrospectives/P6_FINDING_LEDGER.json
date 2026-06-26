@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "P6-R1 final machine validation, categorized reviewer/seal flow, and owner-visible handoff are prepared for regeneration on the terminal head. Current state is HUMAN_REQUIRED pending Product Owner Human Gate and final independent product external review; findings remain currentStatus=open and must not close before external confirmation.",
+  "scope": "P6-R1 Product Owner returned OWNER_REPAIR_REQUIRED within the current goal for local preview owner-gate usability. Findings remain currentStatus=open; only affected state, interaction, responsive visual, App workflow, reviewer, and integration findings are regressed for repair. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -51,10 +51,11 @@
       "seenInRounds": [
         "R3",
         "R5",
-        "R6"
+        "R6",
+        "owner-gate-local-preview-usability-r1"
       ],
-      "occurrenceCount": 3,
-      "lastEvidence": "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+      "occurrenceCount": 4,
+      "lastEvidence": "Product Owner walkthrough on b3bc9f8 returned OWNER_REPAIR_REQUIRED within the current goal for local-preview usability: slot-local invalid feedback, keyboard focus, responsive layout, log copy, Finder open-file behavior, preview-card consistency, and information/log panel clarity. This is not contract revision 4, not final external review repair, and not an evidence-system failure.",
       "symptom": "Desktop Loading screenshot still showed Empty UI, while DOM proof claimed loading.",
       "userImpact": "A user cannot tell whether the app is waiting, idle, or failing to load.",
       "rootCauseHypothesis": "State evidence was allowed to compare presence, hash, and labels without a visual state contract that hides Empty CTA while Loading is active.",
@@ -82,12 +83,16 @@
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "owner_gate_local_preview_invalid_slot_feedback",
+        "owner_gate_local_preview_keyboard_focus",
+        "owner_gate_local_preview_responsive_layout",
+        "owner_gate_local_preview_app_workflow"
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -104,7 +109,9 @@
         "docs/loop/LOOP_STATE.md",
         "tools/loop-handoff.mjs",
         "tools/p6/parity-runner.mjs",
-        "tools/p6-owner-handoff-package.test.mjs"
+        "tools/p6-owner-handoff-package.test.mjs",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
+        "REPAIR_SCOPE: local_preview_owner_gate_usability_repair"
       ]
     },
     {
@@ -116,10 +123,11 @@
       "seenInRounds": [
         "R3",
         "R5",
-        "R6"
+        "R6",
+        "owner-gate-local-preview-usability-r1"
       ],
-      "occurrenceCount": 3,
-      "lastEvidence": "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+      "occurrenceCount": 4,
+      "lastEvidence": "Product Owner walkthrough on b3bc9f8 returned OWNER_REPAIR_REQUIRED within the current goal for local-preview usability: slot-local invalid feedback, keyboard focus, responsive layout, log copy, Finder open-file behavior, preview-card consistency, and information/log panel clarity. This is not contract revision 4, not final external review repair, and not an evidence-system failure.",
       "symptom": "Invalid/error state evidence either retained old loaded state or required an alias repair to recognize the true runtime state.",
       "userImpact": "After a bad file, users may trust stale preview/report data.",
       "rootCauseHypothesis": "Error-state cleanup and evidence semantics were not owned by a single vertical flow; machine gates accepted aliases and broad state hashes late in the milestone.",
@@ -148,12 +156,16 @@
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "owner_gate_local_preview_invalid_slot_feedback",
+        "owner_gate_local_preview_keyboard_focus",
+        "owner_gate_local_preview_responsive_layout",
+        "owner_gate_local_preview_app_workflow"
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -173,7 +185,9 @@
         "review/P6-R1-8bb5d50/reviewer-b.json",
         "tools/loop-handoff.mjs",
         "tools/p6/parity-runner.mjs",
-        "tools/p6-owner-handoff-package.test.mjs"
+        "tools/p6-owner-handoff-package.test.mjs",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
+        "REPAIR_SCOPE: local_preview_owner_gate_usability_repair"
       ]
     },
     {
@@ -256,10 +270,11 @@
       "seenInRounds": [
         "R1",
         "R5",
-        "R6"
+        "R6",
+        "owner-gate-local-preview-usability-r1"
       ],
-      "occurrenceCount": 3,
-      "lastEvidence": "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+      "occurrenceCount": 4,
+      "lastEvidence": "Product Owner walkthrough on b3bc9f8 returned OWNER_REPAIR_REQUIRED within the current goal for local-preview usability: slot-local invalid feedback, keyboard focus, responsive layout, log copy, Finder open-file behavior, preview-card consistency, and information/log panel clarity. This is not contract revision 4, not final external review repair, and not an evidence-system failure.",
       "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
       "userImpact": "Visual parity evidence was not comparable.",
       "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
@@ -287,12 +302,16 @@
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted.",
-        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "owner_gate_local_preview_invalid_slot_feedback",
+        "owner_gate_local_preview_keyboard_focus",
+        "owner_gate_local_preview_responsive_layout",
+        "owner_gate_local_preview_app_workflow"
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -312,7 +331,9 @@
         "review/P6-R1-8bb5d50/reviewer-b.json",
         "tools/loop-handoff.mjs",
         "tools/p6/parity-runner.mjs",
-        "tools/p6-owner-handoff-package.test.mjs"
+        "tools/p6-owner-handoff-package.test.mjs",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
+        "REPAIR_SCOPE: local_preview_owner_gate_usability_repair"
       ]
     },
     {
@@ -323,10 +344,11 @@
       "firstSeenRound": "R5",
       "seenInRounds": [
         "R5",
-        "R6"
+        "R6",
+        "owner-gate-local-preview-usability-r1"
       ],
-      "occurrenceCount": 2,
-      "lastEvidence": "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+      "occurrenceCount": 3,
+      "lastEvidence": "Product Owner walkthrough on b3bc9f8 returned OWNER_REPAIR_REQUIRED within the current goal for local-preview usability: slot-local invalid feedback, keyboard focus, responsive layout, log copy, Finder open-file behavior, preview-card consistency, and information/log panel clarity. This is not contract revision 4, not final external review repair, and not an evidence-system failure.",
       "symptom": "No Desktop per-interaction action trace existed.",
       "userImpact": "Buttons and menus could appear present without proving they work.",
       "rootCauseHypothesis": "Interaction evidence was assigned to the parity layer, but product behavior and host event triggering were split across workers.",
@@ -353,12 +375,16 @@
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted.",
-        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "owner_gate_local_preview_invalid_slot_feedback",
+        "owner_gate_local_preview_keyboard_focus",
+        "owner_gate_local_preview_responsive_layout",
+        "owner_gate_local_preview_app_workflow"
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -375,7 +401,9 @@
         "docs/loop/LOOP_STATE.md",
         "tools/loop-handoff.mjs",
         "tools/p6/parity-runner.mjs",
-        "tools/p6-owner-handoff-package.test.mjs"
+        "tools/p6-owner-handoff-package.test.mjs",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
+        "REPAIR_SCOPE: local_preview_owner_gate_usability_repair"
       ]
     },
     {
@@ -456,10 +484,11 @@
         "R1",
         "R3",
         "R5",
-        "R6"
+        "R6",
+        "owner-gate-local-preview-usability-r1"
       ],
-      "occurrenceCount": 4,
-      "lastEvidence": "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+      "occurrenceCount": 5,
+      "lastEvidence": "Product Owner walkthrough on b3bc9f8 returned OWNER_REPAIR_REQUIRED within the current goal for local-preview usability: slot-local invalid feedback, keyboard focus, responsive layout, log copy, Finder open-file behavior, preview-card consistency, and information/log panel clarity. This is not contract revision 4, not final external review repair, and not an evidence-system failure.",
       "symptom": "Normal App proof used AUTO_SVGA_P2_NORMAL_PROOF or reported hidden/non-visible window.",
       "userImpact": "Internal app acceptance could be based on a testing path that users never run.",
       "rootCauseHypothesis": "Packaging proof and runtime smoke were conflated; normal user launch was not a first-class vertical slice.",
@@ -487,12 +516,16 @@
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "owner_gate_local_preview_invalid_slot_feedback",
+        "owner_gate_local_preview_keyboard_focus",
+        "owner_gate_local_preview_responsive_layout",
+        "owner_gate_local_preview_app_workflow"
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
@@ -510,7 +543,9 @@
         "docs/loop/LOOP_STATE.md",
         "tools/loop-handoff.mjs",
         "tools/p6/parity-runner.mjs",
-        "tools/p6-owner-handoff-package.test.mjs"
+        "tools/p6-owner-handoff-package.test.mjs",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
+        "REPAIR_SCOPE: local_preview_owner_gate_usability_repair"
       ]
     },
     {
@@ -523,10 +558,11 @@
         "R1",
         "R3",
         "R5",
-        "R6"
+        "R6",
+        "owner-gate-local-preview-usability-r1"
       ],
-      "occurrenceCount": 4,
-      "lastEvidence": "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+      "occurrenceCount": 5,
+      "lastEvidence": "Product Owner walkthrough on b3bc9f8 returned OWNER_REPAIR_REQUIRED within the current goal for local-preview usability: slot-local invalid feedback, keyboard focus, responsive layout, log copy, Finder open-file behavior, preview-card consistency, and information/log panel clarity. This is not contract revision 4, not final external review repair, and not an evidence-system failure.",
       "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
       "userImpact": "A human-facing product gap could pass internal review.",
       "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
@@ -553,12 +589,16 @@
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 4443f2d found Product Owner Human Gate unavailable: exact owner upload companions, post-seal upload-set binding, two final loop-validation records, App ZIP package-proof binding, and machine-readable state-difference approval must be repaired before HUMAN_REQUIRED can be trusted.",
-        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "owner_gate_local_preview_invalid_slot_feedback",
+        "owner_gate_local_preview_keyboard_focus",
+        "owner_gate_local_preview_responsive_layout",
+        "owner_gate_local_preview_app_workflow"
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -578,7 +618,9 @@
         "review/P6-R1-8bb5d50/reviewer-b.json",
         "tools/loop-handoff.mjs",
         "tools/p6/parity-runner.mjs",
-        "tools/p6-owner-handoff-package.test.mjs"
+        "tools/p6-owner-handoff-package.test.mjs",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
+        "REPAIR_SCOPE: local_preview_owner_gate_usability_repair"
       ]
     },
     {
@@ -801,10 +843,11 @@
         "R3",
         "R4",
         "R5",
-        "R6"
+        "R6",
+        "owner-gate-local-preview-usability-r1"
       ],
-      "occurrenceCount": 5,
-      "lastEvidence": "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+      "occurrenceCount": 6,
+      "lastEvidence": "Product Owner walkthrough on b3bc9f8 returned OWNER_REPAIR_REQUIRED within the current goal for local-preview usability: slot-local invalid feedback, keyboard focus, responsive layout, log copy, Finder open-file behavior, preview-card consistency, and information/log panel clarity. This is not contract revision 4, not final external review repair, and not an evidence-system failure.",
       "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
       "userImpact": "Large apparent progress did not translate into accepted product parity.",
       "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
@@ -830,12 +873,16 @@
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Independent review of 8bb5d50 found the prior HUMAN_REQUIRED owner handoff untrusted: invalid-state screenshots, visible-region evidence, Reviewer B category objects, owner-upload companions, and post-seal binding must be repaired and regenerated before Product Owner Human Gate.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "owner_gate_local_preview_invalid_slot_feedback",
+        "owner_gate_local_preview_keyboard_focus",
+        "owner_gate_local_preview_responsive_layout",
+        "owner_gate_local_preview_app_workflow"
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -857,7 +904,9 @@
         "review/P6-R1-8bb5d50/reviewer-b.json",
         "tools/loop-handoff.mjs",
         "tools/p6/parity-runner.mjs",
-        "tools/p6-owner-handoff-package.test.mjs"
+        "tools/p6-owner-handoff-package.test.mjs",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
+        "REPAIR_SCOPE: local_preview_owner_gate_usability_repair"
       ]
     },
     {
@@ -871,10 +920,11 @@
         "R3",
         "R4",
         "R5",
-        "R6"
+        "R6",
+        "owner-gate-local-preview-usability-r1"
       ],
-      "occurrenceCount": 5,
-      "lastEvidence": "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
+      "occurrenceCount": 6,
+      "lastEvidence": "Product Owner walkthrough on b3bc9f8 returned OWNER_REPAIR_REQUIRED within the current goal for local-preview usability: slot-local invalid feedback, keyboard focus, responsive layout, log copy, Finder open-file behavior, preview-card consistency, and information/log panel clarity. This is not contract revision 4, not final external review repair, and not an evidence-system failure.",
       "symptom": "Second SVGA, reference media and latest artifact controls or panels existed, but complete select/drop/scan, decode, playback, synchronization and cleanup flows were not independently proven.",
       "userImpact": "The Desktop could appear to contain the Web comparison workflow while failing the user's real multi-source acceptance path.",
       "rootCauseHypothesis": "The flow crossed shared UI, Electron Host and evidence boundaries without one vertical implementation owner.",
@@ -895,7 +945,11 @@
       "currentOpenSubIssues": [
         "Final machine validation has regenerated passing evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Terminal evidence is being regenerated on the final head with strict invalid-state binding, visible-region evidence, Reviewer B category objects, owner-upload companion binding, and post-seal upload-set verification; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Final handoff, post-seal upload-set binding, two final loop validations, App ZIP package-proof binding, and machine-readable host-difference approvals are being regenerated on the terminal head; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "owner_gate_local_preview_invalid_slot_feedback",
+        "owner_gate_local_preview_keyboard_focus",
+        "owner_gate_local_preview_responsive_layout",
+        "owner_gate_local_preview_app_workflow"
       ],
       "primaryRecoveryWorkPackage": "WP2",
       "supportingFindingIds": [],
@@ -907,7 +961,7 @@
         "synchronized playback and cleanup evidence",
         "independent external review confirmation"
       ],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP2-multi-source-acceptance.md",
@@ -924,7 +978,9 @@
         "docs/loop/LOOP_STATE.md",
         "tools/loop-handoff.mjs",
         "tools/p6/parity-runner.mjs",
-        "tools/p6-owner-handoff-package.test.mjs"
+        "tools/p6-owner-handoff-package.test.mjs",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
+        "REPAIR_SCOPE: local_preview_owner_gate_usability_repair"
       ]
     }
   ],
