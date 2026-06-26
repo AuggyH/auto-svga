@@ -426,6 +426,55 @@ test("P6 package privacy audit allows source-template review roots inside REVIEW
   });
 });
 
+test("P6 package privacy audit allows owner-handoff privacy test fixtures inside changes.patch", async () => {
+  await withTempDir(async (root) => {
+    const reviewZipPath = await writeZip(root, "P6-R1-abcdef0-review-upload.zip", {
+      "changes.patch": [
+        "diff --git a/tools/p6-owner-handoff-package.test.mjs b/tools/p6-owner-handoff-package.test.mjs",
+        "--- a/tools/p6-owner-handoff-package.test.mjs",
+        "+++ b/tools/p6-owner-handoff-package.test.mjs",
+        "@@",
+        "+    const staleLegacyReviewRoot = [\"review\", \"P6-deadbee\", \"REVIEW_PACKET.md\"].join(\"/\");",
+        "+    const staleP6R1ReviewRoot = [\"review\", \"P6-R1-deadbee\", \"REVIEW_PACKET.md\"].join(\"/\");",
+        "+      \"FINAL_RESPONSE.txt\": \"[Current](review/P6-R1-abcdef0/REVIEW_PACKET.md)\\n\"",
+        ""
+      ].join("\n"),
+      "FINAL_RESPONSE.txt": "[Current](review/P6-R1-abcdef0/REVIEW_PACKET.md)\n"
+    });
+    const appZipPath = await writeZip(root, "Auto-SVGA-macOS-internal-abcdef0.zip", {
+      "Auto SVGA.app/Contents/Info.plist": "<plist><dict></dict></plist>\n"
+    });
+
+    const audit = buildZipPrivacyAudit({ reviewZipPath, appZipPath, expectedHeadShort: "abcdef0" });
+
+    assert.equal(audit.passed, true, JSON.stringify(audit.findings));
+  });
+});
+
+test("P6 package privacy audit still rejects stale review roots in non-test patch files", async () => {
+  await withTempDir(async (root) => {
+    const reviewZipPath = await writeZip(root, "P6-R1-abcdef0-review-upload.zip", {
+      "changes.patch": [
+        "diff --git a/docs/example.md b/docs/example.md",
+        "--- a/docs/example.md",
+        "+++ b/docs/example.md",
+        "@@",
+        "+See review/P6-R1-deadbee/REVIEW_PACKET.md",
+        ""
+      ].join("\n"),
+      "FINAL_RESPONSE.txt": "[Current](review/P6-R1-abcdef0/REVIEW_PACKET.md)\n"
+    });
+    const appZipPath = await writeZip(root, "Auto-SVGA-macOS-internal-abcdef0.zip", {
+      "Auto SVGA.app/Contents/Info.plist": "<plist><dict></dict></plist>\n"
+    });
+
+    const audit = buildZipPrivacyAudit({ reviewZipPath, appZipPath, expectedHeadShort: "abcdef0" });
+
+    assert.equal(audit.passed, false);
+    assert.equal(audit.findings.some((finding) => finding.ruleId === "STALE_REVIEW_ROOT_REFERENCE"), true);
+  });
+});
+
 test("P6 final worker registry artifact requires generated final-head binding", () => {
   const trackedRegistrySha256 = "b".repeat(64);
   const trackedRegistry = {

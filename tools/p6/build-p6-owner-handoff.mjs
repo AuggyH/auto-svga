@@ -120,6 +120,9 @@ function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
     if (entry.endsWith("REVIEW_PACKET.md") && isInsideFencedDiffBlock(text, match.index)) {
       continue;
     }
+    if (isInsideOwnerHandoffPrivacyTestPatch(text, match.index, entry)) {
+      continue;
+    }
     const trailingTemplateContext = text.slice(match.index + match[0].length, match.index + match[0].length + 32);
     if (match[0] === "review/P6-R1-" && trailingTemplateContext.startsWith("${headShort}")) {
       continue;
@@ -134,6 +137,29 @@ function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
     }
   }
   return findings;
+}
+
+function isInsideOwnerHandoffPrivacyTestPatch(text, index, entry) {
+  if (!entry.endsWith("changes.patch")) return false;
+  const filePath = patchFilePathAt(text, index);
+  if (filePath !== "tools/p6-owner-handoff-package.test.mjs") return false;
+  const lineStart = text.lastIndexOf("\n", index) + 1;
+  const lineEndIndex = text.indexOf("\n", index);
+  const lineEnd = lineEndIndex === -1 ? text.length : lineEndIndex;
+  const line = text.slice(lineStart, lineEnd);
+  return /^[+-]/.test(line) && (
+    line.includes("staleP6R1ReviewRoot")
+    || line.includes("staleLegacyReviewRoot")
+    || line.includes("review/P6-R1-abcdef0")
+  );
+}
+
+function patchFilePathAt(text, index) {
+  const before = text.slice(0, index);
+  const matches = [...before.matchAll(/^diff --git a\/(.+?) b\/(.+?)$/gm)];
+  if (matches.length === 0) return null;
+  const last = matches[matches.length - 1];
+  return last?.[2] ?? null;
 }
 
 function isInsideFencedDiffBlock(text, index) {
