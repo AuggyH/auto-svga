@@ -194,14 +194,18 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     assert.match(productApp, new RegExp(productEvidence));
   }
 
-  for (const ownerGateUsabilityEvidence of [
-    "invalid slot-local error missing",
-    "invalid error state is outside preview card",
-    "invalid error state is occluded",
-    "function focusTrapRoot",
-    "function trapFocusEvent",
-    "function runOwnerUsabilitySmoke",
-    "ownerUsability",
+	  for (const ownerGateUsabilityEvidence of [
+	    "invalid slot-local error missing",
+	    "invalid error state is outside preview card",
+	    "invalid error state is occluded",
+	    "function clearCurrentFile",
+	    "clearCurrentFileAction",
+	    "previewCardBothLoadedConsistency",
+	    "collectPreviewCardConsistencyProof",
+	    "function focusTrapRoot",
+	    "function trapFocusEvent",
+	    "function runOwnerUsabilitySmoke",
+	    "ownerUsability",
     "sidePanelReturnFocus",
     "SVGA A invalid drop rendered slot-local unsupported-file feedback",
     "SVGA B invalid drop rendered slot-local unsupported-file feedback",
@@ -215,14 +219,19 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
   }
 
   assert.match(productApp, /announce\(errorBox\.textContent\)/);
-  assert.match(productApp, /announce\(message\)/);
-  assert.match(productApp, /announce\("同步播放已开始"\)/);
-  assert.match(productApp, /announce\("已开启本地对比"\)/);
-  assert.match(shellHtml, /id="statusAnnouncer" class="srOnly" aria-live="polite"/);
-  assert.doesNotMatch(shellHtml, /batchPngInput|loadBatchPngFiles|svga-image-edit-session/);
-  for (const keyframe of ["fitMenuIn", "sidePanelEnter", "tabIn", "overlayIn", "modalIn", "drawerIn", "dropdownIn"]) {
-    assert.match(productStyles, new RegExp(`@keyframes\\s+${keyframe}`));
-  }
+	  assert.match(productApp, /announce\(message\)/);
+	  assert.match(productApp, /announce\("同步播放已开始"\)/);
+	  assert.match(productApp, /announce\("已开启本地对比"\)/);
+	  assert.match(shellHtml, /id="statusAnnouncer" class="srOnly" aria-live="polite"/);
+	  assert.match(shellHtml, /id="svgaStatusA" class="statusPill"/);
+	  assert.match(shellHtml, /id="clearCurrentFileButton"/);
+	  assert.match(productStyles, /\.narrowWindowHint\s*\{[\s\S]*?display: none;/);
+	  assert.doesNotMatch(productApp, /\["sprite", "精灵"\]/);
+	  assert.doesNotMatch(productApp, /return "SUCC"|return "INFO"/);
+	  assert.doesNotMatch(shellHtml, /batchPngInput|loadBatchPngFiles|svga-image-edit-session/);
+	  for (const keyframe of ["fitMenuIn", "sidePanelEnter", "tabIn", "overlayIn", "modalIn", "drawerIn", "dropdownIn"]) {
+	    assert.match(productStyles, new RegExp(`@keyframes\\s+${keyframe}`));
+	  }
 });
 
 test("Electron default renderer uses shared product source and hides editor incubation", async () => {

@@ -127,6 +127,7 @@ const svgaFileInput = document.querySelector("#svgaFileInput");
 const secondaryFileInput = document.querySelector("#secondaryFileInput");
 const referenceFileInput = document.querySelector("#referenceFileInput");
 const primaryFileButton = document.querySelector("#primaryFileButton");
+const clearCurrentFileButton = document.querySelector("#clearCurrentFileButton");
 const primaryEmptyFileButton = document.querySelector("#primaryEmptyFileButton");
 const secondaryEmptyFileButton = document.querySelector("#secondaryEmptyFileButton");
 const referenceEmptyFileButton = document.querySelector("#referenceEmptyFileButton");
@@ -354,6 +355,7 @@ function updatePreviewCardHeader(slot) {
 }
 
 function resetSlotMediaState(slot, { clearReport = false } = {}) {
+  slot.inspectionRequestId += 1;
   slot.videoItem = undefined;
   slot.metrics = undefined;
   slot.isPlaying = false;
@@ -391,7 +393,49 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
       renderReport(undefined);
     }
   }
+  setStatus(slot.status, "empty");
   updatePreviewCardHeader(slot);
+}
+
+function hasCurrentPrimaryFileState() {
+  return Boolean(players.a.videoItem
+    || players.a.metrics
+    || players.a.source
+    || players.a.slotErrorMessage
+    || players.a.inspectionReport
+    || players.a.parseStatus !== "empty"
+    || players.a.renderStatus !== "empty"
+    || players.a.inspectionStatus !== "idle");
+}
+
+function clearCurrentFile(source = "button") {
+  if (syncPlayControl.getAttribute("aria-pressed") === "true") syncPlayControl.click();
+  clearError();
+  players.a.source = undefined;
+  players.a.report = undefined;
+  resetSlotMediaState(players.a, { clearReport: true });
+  svgaFileInput.value = "";
+  latestArtifactGroup = undefined;
+  manualArtifactSelection = false;
+  setP6PrimaryRecoveredFromInvalid(false);
+  renderInfoPanel();
+  updateButtons();
+  refreshLayout();
+  addLog("info", source === "shortcut" ? "已通过快捷键清除当前文件。" : "已清除当前文件。");
+  announce("已清除当前文件");
+  return {
+    source,
+    currentFileCleared: !hasCurrentPrimaryFileState(),
+    primaryStatus: {
+      parseStatus: players.a.parseStatus,
+      renderStatus: players.a.renderStatus,
+      inspectionStatus: players.a.inspectionStatus,
+      hasMetrics: Boolean(players.a.metrics),
+      hasInspectionReport: Boolean(players.a.inspectionReport),
+      canvasChildCount: players.a.canvas.children.length,
+      statusText: players.a.status.textContent
+    }
+  };
 }
 
 function setSlotInvalidState(slot, message) {
@@ -631,6 +675,7 @@ function updateButtons() {
   const hasB = Boolean(players.b.videoItem);
   const hasReference = Boolean(referenceState.metrics);
   localReplayButton.disabled = !hasA;
+  clearCurrentFileButton.disabled = !hasCurrentPrimaryFileState();
   compareToggleWrap.hidden = mode !== "localPreview";
   infoPanelButton.hidden = false;
   logsButton.hidden = false;
@@ -960,7 +1005,7 @@ function rebuildPlayer(slot) {
 function replaySlot(slot, shouldShowError = true) {
   if (!slot.player || !slot.videoItem) {
     if (shouldShowError) {
-      showError(`当前没有可播放的 SVGA。/ No SVGA loaded in player ${slot.slotName}.`);
+      showError(`播放器 ${slot.slotName} 当前没有可播放的 SVGA。`);
     }
     updateButtons();
     return;
@@ -1553,7 +1598,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       phaseState.check = "error";
       setSlotLoadingPhase(slot, slot.parseStatus === "loading" ? "parse" : undefined, phaseState);
       renderInfoPanel();
-      addLog("warning", `生产规范检查暂不可用，不影响播放。/ Spec check unavailable: ${error.message}`);
+      addLog("warning", `生产规范检查暂不可用，不影响播放：${error.message}`);
     });
 
   const decodedInfoPromise = decodeSvgaInfo(source).catch((error) => {
@@ -2964,6 +3009,56 @@ function slotRecoveredCleanly(slot) {
     && canvasIsNonBlank(slot));
 }
 
+function previewCardZoneSnapshot(slot) {
+  const idSuffix = slot.slotName === "A" ? "A" : "B";
+  const replaceButton = slot.slotName === "A" ? primaryFileButton : secondaryInputWrap;
+  const playerBar = slot.panel?.querySelector(".playerBar");
+  const title = document.querySelector(`#svgaTitle${idSuffix}`);
+  const filePill = document.querySelector(`#svgaFilePill${idSuffix}`);
+  const status = document.querySelector(`#svgaStatus${idSuffix}`);
+  const metadata = document.querySelector(`#svgaSizeInfo${idSuffix}`);
+  return {
+    slot: slot.slotName,
+    loaded: Boolean(slot.videoItem && slot.metrics && canvasIsNonBlank(slot)),
+    titleVisible: isElementVisible(title) && compactText(title).length > 0,
+    filePillVisible: isElementVisible(filePill) && compactText(filePill).endsWith(".svga"),
+    statusVisible: isElementVisible(status) && compactText(status).length > 0,
+    replaceActionVisible: isElementVisible(replaceButton),
+    metadataVisible: isElementVisible(metadata) && compactText(metadata).length > 0,
+    playbackControlsVisible: isElementVisible(playerBar),
+    fileName: compactText(filePill),
+    statusText: compactText(status)
+  };
+}
+
+function collectPreviewCardConsistencyProof() {
+  const primary = previewCardZoneSnapshot(players.a);
+  const secondary = previewCardZoneSnapshot(players.b);
+  const sharedZoneKeys = [
+    "loaded",
+    "titleVisible",
+    "filePillVisible",
+    "statusVisible",
+    "replaceActionVisible",
+    "metadataVisible",
+    "playbackControlsVisible"
+  ];
+  const missing = [];
+  for (const [label, snapshot] of [["primary", primary], ["secondary", secondary]]) {
+    for (const key of sharedZoneKeys) {
+      if (snapshot[key] !== true) missing.push(`${label}.${key}`);
+    }
+  }
+  return {
+    primary,
+    secondary,
+    compareEnabled: isCompareActive(),
+    syncControlsVisible: isElementVisible(syncBar) && !syncBar.classList.contains("isHidden"),
+    passed: missing.length === 0 && isCompareActive(),
+    missing
+  };
+}
+
 async function ownerEnterOpensPanel(selector, expectedRoot, waitForOpen) {
   closeP6SmokeTransientUi();
   await delay(120);
@@ -3003,6 +3098,23 @@ async function runOwnerUsabilitySmoke(bytes) {
     && !document.querySelector("#tab-overview .status-error");
   evidence.push("SVGA A valid recovery cleared slot error, global error, stale metadata, and ready/error badge drift");
 
+  p6SmokeCurrentPhase = "owner-usability-clear-current-file";
+  const clearResult = clearCurrentFile("owner-smoke-button");
+  await waitFor(() => !hasCurrentPrimaryFileState());
+  checks.clearCurrentFileAction = clearResult.currentFileCleared
+    && clearCurrentFileButton.disabled
+    && players.a.canvas.children.length === 0
+    && !players.a.metrics
+    && !players.a.inspectionReport
+    && players.a.parseStatus === "empty"
+    && players.a.renderStatus === "empty";
+  evidence.push("Visible clear-current-file action reset primary canvas, file, report, metadata, error, and ready state");
+
+  p6SmokeCurrentPhase = "owner-usability-a-reload-after-clear";
+  handleDroppedFile(new File([bytes.slice(0)], "owner-reloaded-a.svga", { type: "application/octet-stream" }), "svga", "a");
+  await waitFor(() => slotRecoveredCleanly(players.a));
+  evidence.push("SVGA A reloaded cleanly after clear-current-file");
+
   p6SmokeCurrentPhase = "owner-usability-enable-compare";
   if (!compareToggle.checked) compareToggle.click();
   await waitFor(() => isCompareActive());
@@ -3016,11 +3128,9 @@ async function runOwnerUsabilitySmoke(bytes) {
   handleDroppedFile(new File([bytes.slice(0)], "owner-recovery-b.svga", { type: "application/octet-stream" }), "svga", "b");
   await waitFor(() => slotRecoveredCleanly(players.b));
   checks.svgaBRecoveryClearsError = slotRecoveredCleanly(players.b);
-  previewCardHeaderConsistency = Boolean(svgaTitleA.textContent && svgaTitleB.textContent
-    && svgaTitleA.textContent !== "SVGA 本地预览"
-    && svgaTitleB.textContent !== "SVGA B"
-    && !svgaFilePillA.hidden
-    && !svgaFilePillB.hidden);
+  const previewCardConsistency = collectPreviewCardConsistencyProof();
+  previewCardHeaderConsistency = previewCardConsistency.passed;
+  checks.previewCardBothLoadedConsistency = previewCardConsistency.passed;
   evidence.push("SVGA B valid recovery cleared slot error and loaded the secondary preview");
 
   p6SmokeCurrentPhase = "owner-usability-export-review";
@@ -3098,6 +3208,7 @@ async function runOwnerUsabilitySmoke(bytes) {
     schemaVersion: 1,
     finderDocumentAssociation: electronBridge?.capabilities?.finderDocumentAssociation ?? "unknown",
     checks,
+    previewCardConsistency: collectPreviewCardConsistencyProof(),
     evidence
   };
 }
@@ -3375,6 +3486,9 @@ async function runProductSmoke() {
       await delay(120);
     });
     await captureArtifact("desktop-local-compare-empty");
+    handleDroppedFile(new File([bytes.slice(0)], "synthetic-avatar-frame-a.svga", { type: "application/octet-stream" }), "svga", "a");
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
     handleDroppedFile(new File([bytes.slice(0)], "synthetic-avatar-frame-b.svga", { type: "application/octet-stream" }), "svga", "b");
     await waitFor(() => Boolean(players.b.videoItem));
     await waitFor(() => canvasIsNonBlank(players.b));
@@ -3705,11 +3819,11 @@ function renderBilingualEmpty(primary, secondary) {
 }
 
 function renderAssets(metrics) {
+  if (assetFilter === "sprite") assetFilter = "all";
   const filterBar = `
     <div class="assetFilters">
       ${[
         ["all", "全部"],
-        ["sprite", "精灵"],
         ["image", "图片"],
         ["sequence", "序列帧"],
         ["warning", "异常"]
@@ -3953,10 +4067,10 @@ function renderLogsPanel() {
 }
 
 function logLevelLabel(level) {
-  if (level === "success") return "SUCC";
-  if (level === "error") return "ERR";
-  if (level === "warning" || level === "warn") return "WARN";
-  return "INFO";
+  if (level === "success") return "成功";
+  if (level === "error") return "错误";
+  if (level === "warning" || level === "warn") return "警告";
+  return "信息";
 }
 
 function renderSyncBar() {
@@ -4391,7 +4505,7 @@ localLoopToggle.addEventListener("change", () => {
 compareToggle.addEventListener("change", () => {
   compareEnabled = compareToggle.checked;
   if (compareEnabled) {
-    addLog("info", "已开启对比，可拖入第二个 SVGA。/ Compare enabled; drop a second SVGA.");
+    addLog("info", "已开启对比，可拖入第二个 SVGA。");
     announce("已开启本地对比");
   } else {
     announce("已关闭本地对比");
@@ -4418,6 +4532,9 @@ for (const button of [infoPanelButton, logsButton, settingsButton]) {
 }
 themeToggleButton.addEventListener("click", () => {
   setThemePreference(effectiveTheme === "light" ? "dark" : "light");
+});
+clearCurrentFileButton.addEventListener("click", () => {
+  clearCurrentFile("button");
 });
 syncPlayControl.addEventListener("click", toggleSyncPlayback);
 syncReplayControl.addEventListener("click", syncReplay);
@@ -4769,6 +4886,15 @@ document.addEventListener("keydown", (event) => {
       setActiveSidePanel(null);
       return;
     }
+  }
+  if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "r") {
+    const target = event.target;
+    const tagName = target?.tagName?.toLowerCase();
+    if (!["input", "select", "textarea"].includes(tagName) && !target?.isContentEditable && hasCurrentPrimaryFileState()) {
+      event.preventDefault();
+      clearCurrentFile("shortcut");
+    }
+    return;
   }
   if (event.code !== "Space" || event.repeat) return;
   const target = event.target;

@@ -281,6 +281,7 @@ function validateOwnerUsabilityResult(value) {
     "svgaBInvalidLocalFeedback",
     "svgaARecoveryClearsError",
     "svgaBRecoveryClearsError",
+    "clearCurrentFileAction",
     "enterOpensInfoAndFocusesPanel",
     "enterOpensLogsAndFocusesPanel",
     "enterOpensSettingsAndFocusesDialog",
@@ -290,16 +291,71 @@ function validateOwnerUsabilityResult(value) {
     "nonEmptyLogsCopyViaElectronClipboard",
     "clipboardFailureMessage",
     "finderDocumentAssociationNotClaimed",
-    "previewCardHeaderConsistency"
+    "previewCardHeaderConsistency",
+    "previewCardBothLoadedConsistency"
   ];
   if (!value.checks || typeof value.checks !== "object" || Array.isArray(value.checks)) return undefined;
   if (!requiredChecks.every((key) => value.checks[key] === true)) return undefined;
   if (!isStringArray(value.evidence, 80)) return undefined;
+  let previewCardConsistency;
+  if (value.previewCardConsistency !== undefined) {
+    previewCardConsistency = validatePreviewCardConsistency(value.previewCardConsistency);
+    if (!previewCardConsistency) return undefined;
+  }
   return {
     schemaVersion: 1,
     finderDocumentAssociation: value.finderDocumentAssociation,
     checks: Object.fromEntries(requiredChecks.map((key) => [key, true])),
+    ...(previewCardConsistency ? { previewCardConsistency } : {}),
     evidence: value.evidence
+  };
+}
+
+function validatePreviewCardConsistency(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.passed !== true) return undefined;
+  if (value.compareEnabled !== true) return undefined;
+  if (value.syncControlsVisible !== true) return undefined;
+  if (!isStringArray(value.missing, 24) || value.missing.length !== 0) return undefined;
+  const primary = validatePreviewCardZoneSnapshot(value.primary, "A");
+  const secondary = validatePreviewCardZoneSnapshot(value.secondary, "B");
+  if (!primary || !secondary) return undefined;
+  return {
+    passed: true,
+    compareEnabled: true,
+    syncControlsVisible: true,
+    primary,
+    secondary,
+    missing: []
+  };
+}
+
+function validatePreviewCardZoneSnapshot(value, expectedSlot) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.slot !== expectedSlot) return undefined;
+  const requiredBooleans = [
+    "loaded",
+    "titleVisible",
+    "filePillVisible",
+    "statusVisible",
+    "replaceActionVisible",
+    "metadataVisible",
+    "playbackControlsVisible"
+  ];
+  if (!requiredBooleans.every((key) => value[key] === true)) return undefined;
+  if (!isBoundedString(value.fileName, 180) || !value.fileName.endsWith(".svga")) return undefined;
+  if (!isBoundedString(value.statusText, 80)) return undefined;
+  return {
+    slot: expectedSlot,
+    loaded: true,
+    titleVisible: true,
+    filePillVisible: true,
+    statusVisible: true,
+    replaceActionVisible: true,
+    metadataVisible: true,
+    playbackControlsVisible: true,
+    fileName: value.fileName,
+    statusText: value.statusText
   };
 }
 
@@ -313,6 +369,7 @@ function describeOwnerUsabilityValidationFailure(value) {
     "svgaBInvalidLocalFeedback",
     "svgaARecoveryClearsError",
     "svgaBRecoveryClearsError",
+    "clearCurrentFileAction",
     "enterOpensInfoAndFocusesPanel",
     "enterOpensLogsAndFocusesPanel",
     "enterOpensSettingsAndFocusesDialog",
@@ -322,10 +379,14 @@ function describeOwnerUsabilityValidationFailure(value) {
     "nonEmptyLogsCopyViaElectronClipboard",
     "clipboardFailureMessage",
     "finderDocumentAssociationNotClaimed",
-    "previewCardHeaderConsistency"
+    "previewCardHeaderConsistency",
+    "previewCardBothLoadedConsistency"
   ];
   if (!value.checks || typeof value.checks !== "object" || Array.isArray(value.checks)) return "checks";
-  return requiredChecks.find((key) => value.checks[key] !== true) ?? "evidence";
+  const failedCheck = requiredChecks.find((key) => value.checks[key] !== true);
+  if (failedCheck) return failedCheck;
+  if (value.previewCardConsistency !== undefined && !validatePreviewCardConsistency(value.previewCardConsistency)) return "previewCardConsistency";
+  return "evidence";
 }
 
 function bindP6InteractionTrace(value) {
@@ -2237,6 +2298,8 @@ async function createExperimentWindow() {
     ...(smokeMode ? { x: -20000, y: -20000 } : {}),
     width: 1440,
     height: 900,
+    minWidth: 900,
+    minHeight: 720,
     show: false,
     paintWhenInitiallyHidden: true,
     webPreferences: {

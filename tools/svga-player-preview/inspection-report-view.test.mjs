@@ -41,14 +41,17 @@ function report(overrides = {}) {
 test("renders passing report, asset summary, and calibration notes", () => {
   const html = renderAvatarFrameInspectionReport(report(), "success");
 
-  assert.match(html, /通过/);
-  assert.match(html, /avatar-frame-production/);
-  assert.match(html, /Avatar Frame Production Target/);
-  assert.match(html, /production_target/);
-  assert.match(html, /Gate new avatar-frame deliveries/);
-  assert.match(html, /300 × 300/);
-  assert.match(html, /24 fps/);
-  assert.match(html, /待产品校准/);
+	assert.match(html, /通过/);
+	assert.match(html, /avatar-frame-production/);
+	assert.match(html, /头像框生产目标/);
+	assert.match(html, /生产目标/);
+	assert.match(html, /用于检查新的头像框交付是否符合当前生产目标/);
+	assert.doesNotMatch(html, /Avatar Frame Production Target/);
+	assert.doesNotMatch(html, /production_target/);
+	assert.doesNotMatch(html, /Gate new avatar-frame deliveries/);
+	assert.match(html, /300 × 300/);
+	assert.match(html, /24 fps/);
+	assert.match(html, /待产品校准/);
   assert.match(html, /当前为有限样本建议值/);
   assert.match(html, /maxFileSizeBytes/);
   assert.match(html, /maxResourceCount/);
@@ -168,10 +171,11 @@ test("rejects unsupported report versions without rendering audit content", () =
     auditPresentation: auditPresentation()
   }), "success");
 
-  assert.match(html, /报告版本/);
-  assert.match(html, /不支持/);
-  assert.match(html, /contractVersion/);
-  assert.doesNotMatch(html, /动效资产诊断/);
+	assert.match(html, /报告版本/);
+	assert.match(html, /不支持/);
+	assert.match(html, /contractVersion/);
+	assert.doesNotMatch(html, /Report Contract/);
+	assert.doesNotMatch(html, /动效资产诊断/);
 });
 
 test("omits evidence labels when presentation cards have no evidence refs", () => {
@@ -181,8 +185,9 @@ test("omits evidence labels when presentation cards have no evidence refs", () =
 
   const html = renderAvatarFrameInspectionReport(report({ auditPresentation: presentation }), "success");
 
-  assert.match(html, /动效资产诊断/);
-  assert.doesNotMatch(html, /Evidence ×/);
+	assert.match(html, /动效资产诊断/);
+	assert.doesNotMatch(html, /Evidence ×/);
+	assert.doesNotMatch(html, /Motion Asset Audit/);
 });
 
 function auditPresentation() {

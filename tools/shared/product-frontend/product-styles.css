@@ -4585,7 +4585,7 @@ body {
   }
 
   .narrowWindowHint {
-    display: block;
+    display: none;
   }
 }
 

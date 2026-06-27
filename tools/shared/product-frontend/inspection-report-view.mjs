@@ -33,6 +33,30 @@ function severityLabel(severity) {
   return severity === "error" ? "错误" : severity === "warning" ? "警告" : "提示";
 }
 
+function profileDisplayLabel(report) {
+  if (report?.profileId === "production_target" || report?.profileLabel === "Avatar Frame Production Target") {
+    return "头像框生产目标";
+  }
+  if (report?.profileId === "legacy_compatibility") return "历史兼容参考";
+  return report?.profileLabel ?? "n/a";
+}
+
+function profileDisplayId(profileId) {
+  if (profileId === "production_target") return "生产目标";
+  if (profileId === "legacy_compatibility") return "历史兼容";
+  return profileId ?? "n/a";
+}
+
+function profileDisplayPurpose(report) {
+  if (report?.profileId === "production_target") {
+    return "用于检查新的头像框交付是否符合当前生产目标。";
+  }
+  if (report?.profileId === "legacy_compatibility") {
+    return "用于历史素材兼容观察，不代表新的生产交付标准。";
+  }
+  return report?.profilePurpose ?? "";
+}
+
 function issueMessage(issue) {
   const messages = {
     unsupported_motion_format: "当前规范检查不支持此动效格式。",
@@ -68,7 +92,7 @@ function auditSeverityClass(value) {
 function renderAuditEvidence(evidenceRefs) {
   const refs = Array.isArray(evidenceRefs) ? evidenceRefs : [];
   return refs.length > 0
-    ? `<small class="auditEvidence">证据 ${refs.length} 项 / Evidence ×${refs.length}</small>`
+    ? `<small class="auditEvidence">证据 ${refs.length} 项</small>`
     : "";
 }
 
@@ -87,7 +111,7 @@ function renderMotionAssetAudit(presentation) {
       <div class="specReportHeader auditReportHeader">
         <div>
           <strong id="motion-audit-title">动效资产诊断</strong>
-          <small>Motion Asset Audit</small>
+          <small>只读摘要</small>
         </div>
         <span class="specReportBadge auditStatusBadge severity-${severity}">${escapeHtml(auditLabel(
           presentation.statusLabel,
@@ -100,7 +124,7 @@ function renderMotionAssetAudit(presentation) {
       </div>
       ${findings.length > 0 ? `
         <div class="specReportGroup auditCardGroup">
-          <h3>主要发现 <small>Findings</small></h3>
+          <h3>主要发现</h3>
           <ul class="auditCardList">
             ${findings.map((card) => `
               <li class="auditCard severity-${auditSeverityClass(card.severity)}">
@@ -118,7 +142,7 @@ function renderMotionAssetAudit(presentation) {
       ` : ""}
       ${opportunities.length > 0 ? `
         <div class="specReportGroup auditCardGroup">
-          <h3>建议评估 <small>Opportunities</small></h3>
+          <h3>建议评估</h3>
           <ul class="auditCardList">
             ${opportunities.map((card) => `
               <li class="auditCard isOpportunity">
@@ -136,7 +160,7 @@ function renderMotionAssetAudit(presentation) {
       ` : ""}
       ${uncertaintyNotes.length > 0 ? `
         <div class="auditUncertainty">
-          <strong>不确定性 <small>Uncertainty</small></strong>
+          <strong>不确定性</strong>
           <ul>${uncertaintyNotes.map((note) => `<li>${escapeHtml(auditLabel(note, note))}</li>`).join("")}</ul>
         </div>
       ` : ""}
@@ -149,7 +173,7 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
     return `
       <section class="specReportSection isLoading" aria-live="polite">
         <div class="specReportHeader">
-          <div><strong>生产规范</strong><small>Spec Check</small></div>
+          <div><strong>生产规范</strong><small>检查中</small></div>
           <span class="specReportBadge isPending">检查中</span>
         </div>
       </section>
@@ -160,7 +184,7 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
     return `
       <section class="specReportSection isError" aria-live="polite">
         <div class="specReportHeader">
-          <div><strong>生产规范</strong><small>Spec Check</small></div>
+          <div><strong>生产规范</strong><small>暂不可用</small></div>
           <span class="specReportBadge isError">暂不可用</span>
         </div>
         <p class="specReportHint">规范检查暂不可用，不影响当前播放。</p>
@@ -174,7 +198,7 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
     return `
       <section class="specReportSection isError" aria-live="polite">
         <div class="specReportHeader">
-          <div><strong>报告版本</strong><small>Report Contract</small></div>
+          <div><strong>报告版本</strong><small>结构校验</small></div>
           <span class="specReportBadge isError">不支持</span>
         </div>
         <div class="specReportId">
@@ -202,16 +226,16 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
   return `
     <section class="specReportSection ${report.passed ? "isPassed" : "isFailed"}" aria-live="polite">
       <div class="specReportHeader">
-        <div><strong>生产规范</strong><small>Spec Check</small></div>
+        <div><strong>生产规范</strong><small>检查结果</small></div>
         <span class="specReportBadge ${report.passed ? "isPassed" : "isFailed"}">${report.passed ? "通过" : "未通过"}</span>
       </div>
       <div class="specReportId"><span>规范</span><code>${escapeHtml(report.specId ?? "n/a")}</code></div>
       <div class="specReportId">
         <span>检查档案</span>
-        <code>${escapeHtml(report.profileLabel ?? "n/a")}</code>
-        <small>${escapeHtml(report.profileId ?? "n/a")}</small>
+        <code>${escapeHtml(profileDisplayLabel(report))}</code>
+        <small>${escapeHtml(profileDisplayId(report.profileId))}</small>
       </div>
-      <p class="specReportHint">${escapeHtml(report.profilePurpose ?? "")}</p>
+      <p class="specReportHint">${escapeHtml(profileDisplayPurpose(report))}</p>
       <dl class="specAssetSummary">
         ${summary.map(([label, value]) => `
           <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>
@@ -219,7 +243,7 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
       </dl>
       ${issues.length > 0 ? `
         <div class="specReportGroup">
-          <h3>检查问题 <small>Issues</small></h3>
+          <h3>检查问题</h3>
           <ul class="specIssueList">
             ${issues.map((issue) => `
               <li class="severity-${escapeHtml(issue.severity)}">
@@ -232,7 +256,7 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
       ` : `<p class="specReportHint">未发现超出当前规范的项目。</p>`}
       ${calibrationNotes.length > 0 ? `
         <div class="specReportGroup calibrationGroup">
-          <h3>待产品校准 <small>Calibration</small></h3>
+          <h3>待产品校准</h3>
           <ul class="calibrationList">
             ${calibrationNotes.map((note) => `
               <li>

@@ -61,6 +61,11 @@
         </div>
         <div class="cardActions">
           <span id="svgaFilePillA" class="filePill" hidden></span>
+          <span id="svgaStatusA" class="statusPill">空</span>
+          <button id="clearCurrentFileButton" class="cardUtilityButton" type="button" title="清除当前文件（⌘/Ctrl+R）" aria-label="清除当前文件" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16" /><path d="M9 7V5h6v2" /><path d="M6 7l1 13h10l1-13" /><path d="M10 11v5" /><path d="M14 11v5" /></svg>
+            <span class="responsiveButtonLabel">清除</span>
+          </button>
           <label class="cardFileButton" id="primaryFileButton" title="选择文件" aria-label="选择文件">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5" /><path d="M12 4v12" /><path d="m8 8 4-4 4 4" /></svg>
             <span id="primaryInputLabel" class="responsiveButtonLabel">选择 SVGA</span>
@@ -115,7 +120,6 @@
           </select>
         </div>
       </div>
-      <span id="svgaStatusA" class="srOnly">空</span>
       <dl id="svgaSizeInfoA" class="quickInfo" hidden></dl>
     </article>
 
