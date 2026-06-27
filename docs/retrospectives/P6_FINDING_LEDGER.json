@@ -317,7 +317,7 @@
         "owner-visible-inspector-visual-system-polish-r4"
       ],
       "occurrenceCount": 7,
-      "lastEvidence": "Owner-visible inspector and visual-system polish repair is implemented. Final P6 evidence, Reviewer A/B, Final Seal, Post-seal Verification, privacy audit, Owner feedback closure map, and one-upload complete review-directory package must bind to the terminal head before Product Owner Human Gate materials are used.",
+      "lastEvidence": "Owner repair required on 8792cd854e22b3d6e838da4aa122771c555cf07e: final owner-visible UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding must be repaired on a new final head.",
       "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
       "userImpact": "Visual parity evidence was not comparable.",
       "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
@@ -351,7 +351,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -394,6 +394,10 @@
         ".artifacts/product/P6/visual-system-audit.json",
         ".artifacts/product/P6/desktop-local-info-overview-open.png",
         ".artifacts/product/P6/desktop-local-info-assets-open.png"
+      ],
+      "lastUpdatedAt": "2026-06-27T14:04:15.171Z",
+      "notes": [
+        "Owner repair required: keep currentStatus=open and return affected visual/product-review/handoff findings to regressed until repaired on a new final head."
       ]
     },
     {
@@ -662,7 +666,7 @@
         "owner-visible-inspector-visual-system-polish-r4"
       ],
       "occurrenceCount": 8,
-      "lastEvidence": "Owner-visible inspector and visual-system polish repair is implemented. Final P6 evidence, Reviewer A/B, Final Seal, Post-seal Verification, privacy audit, Owner feedback closure map, and one-upload complete review-directory package must bind to the terminal head before Product Owner Human Gate materials are used.",
+      "lastEvidence": "Owner repair required on 8792cd854e22b3d6e838da4aa122771c555cf07e: final owner-visible UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding must be repaired on a new final head.",
       "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
       "userImpact": "A human-facing product gap could pass internal review.",
       "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
@@ -695,7 +699,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -738,6 +742,10 @@
         ".artifacts/product/P6/visual-system-audit.json",
         ".artifacts/product/P6/desktop-local-info-overview-open.png",
         ".artifacts/product/P6/desktop-local-info-assets-open.png"
+      ],
+      "lastUpdatedAt": "2026-06-27T14:04:15.171Z",
+      "notes": [
+        "Owner repair required: keep currentStatus=open and return affected visual/product-review/handoff findings to regressed until repaired on a new final head."
       ]
     },
     {
@@ -917,7 +925,7 @@
         "owner-visible-inspector-visual-system-polish-r4"
       ],
       "occurrenceCount": 6,
-      "lastEvidence": "Owner-visible inspector and visual-system polish repair is implemented. Final P6 evidence, Reviewer A/B, Final Seal, Post-seal Verification, privacy audit, Owner feedback closure map, and one-upload complete review-directory package must bind to the terminal head before Product Owner Human Gate materials are used.",
+      "lastEvidence": "Owner repair required on 8792cd854e22b3d6e838da4aa122771c555cf07e: final owner-visible UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding must be repaired on a new final head.",
       "symptom": "Local paths, hidden .artifacts-only handoffs, or stale review-root literals repeatedly needed repair.",
       "userImpact": "Owner could not reliably access review materials, or private local paths could leak.",
       "rootCauseHypothesis": "Handoff packaging was retrofitted after product work started and consumed repair budget repeatedly.",
@@ -954,7 +962,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
@@ -996,6 +1004,10 @@
         ".artifacts/product/P6/visual-system-audit.json",
         ".artifacts/product/P6/desktop-local-info-overview-open.png",
         ".artifacts/product/P6/desktop-local-info-assets-open.png"
+      ],
+      "lastUpdatedAt": "2026-06-27T14:04:15.171Z",
+      "notes": [
+        "Owner repair required: keep currentStatus=open and return affected visual/product-review/handoff findings to regressed until repaired on a new final head."
       ]
     },
     {
@@ -1016,7 +1028,7 @@
         "owner-visible-inspector-visual-system-polish-r4"
       ],
       "occurrenceCount": 9,
-      "lastEvidence": "Owner-visible inspector and visual-system polish repair is implemented. Final P6 evidence, Reviewer A/B, Final Seal, Post-seal Verification, privacy audit, Owner feedback closure map, and one-upload complete review-directory package must bind to the terminal head before Product Owner Human Gate materials are used.",
+      "lastEvidence": "Owner repair required on 8792cd854e22b3d6e838da4aa122771c555cf07e: final owner-visible UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding must be repaired on a new final head.",
       "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
       "userImpact": "Large apparent progress did not translate into accepted product parity.",
       "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
@@ -1049,7 +1061,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -1094,6 +1106,10 @@
         ".artifacts/product/P6/visual-system-audit.json",
         ".artifacts/product/P6/desktop-local-info-overview-open.png",
         ".artifacts/product/P6/desktop-local-info-assets-open.png"
+      ],
+      "lastUpdatedAt": "2026-06-27T14:04:15.171Z",
+      "notes": [
+        "Owner repair required: keep currentStatus=open and return affected visual/product-review/handoff findings to regressed until repaired on a new final head."
       ]
     },
     {
