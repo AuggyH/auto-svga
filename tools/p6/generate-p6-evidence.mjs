@@ -148,6 +148,14 @@ async function writeJson(filePath, value) {
 async function writeVisualSystemAudit() {
   const result = run("node", ["tools/p6/visual-system-audit.mjs"]);
   await writeJson(path.join(p6Root, "visual-system-audit.json"), JSON.parse(result.stdout));
+  await writeJson(
+    path.join(p6Root, "macos-workbench-foundation-contract.json"),
+    await readJson(path.join(repoRoot, "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json"))
+  );
+  await writeJson(
+    path.join(p6Root, "roadmap-ui-capacity-map.json"),
+    await readJson(path.join(repoRoot, "docs/product/ROADMAP_UI_CAPACITY_MAP.json"))
+  );
 }
 
 function toRepoPath(filePath) {
@@ -416,6 +424,8 @@ async function writeReviewerBEvidenceRequest() {
     ["runtimeLogs", "Confirm runtime log panel content and controls in the local preview owner flow.", "desktop-local-logs-open.png"],
     ["settings", "Confirm settings panel geometry, values, and close behavior in the local preview owner flow.", "desktop-local-settings-open.png"],
     ["macosVisualSystem", "Confirm macOS-aligned visual system, quiet chrome, hierarchy, typography, spacing, PreviewCard consistency, panel behavior, resources IA, logs UX, settings scope, and phase-one local preview focus.", "visual-system-audit.json"],
+    ["macOSAppFoundation", "Confirm the macOS SVGA Workbench six-region foundation supports source/document, preview stage, inspector, resources, action/workflow, and activity/history without exposing inactive future features.", "workbench-region-map.json"],
+    ["RoadmapCapacity", "Confirm Phase 2/3/4, mid-term multi-format, and long-term Agent/ComfyUI capacity are mapped to stable regions without becoming visible P6-R1 product features.", "roadmap-ui-capacity-map.json"],
     ["theme", "Confirm theme state through computed style and screenshot evidence.", "web-baseline/computed-styles-manifest.json"],
     ["accessibilitySettings", "Confirm reduced motion and blur settings with control values.", "interaction-parity-report.json"],
     ["emptyState", "Confirm Desktop empty state differs from loading.", "desktop-empty.png"],
@@ -470,11 +480,16 @@ async function writeOwnerFeedbackClosureMap() {
   const requiredArtifacts = [
     ".artifacts/product/P6/desktop-local-info-overview-open.png",
     ".artifacts/product/P6/desktop-local-info-assets-open.png",
+    ".artifacts/product/P6/desktop-local-info-diagnostics-open.png",
     ".artifacts/product/P6/desktop-local-logs-open.png",
     ".artifacts/product/P6/desktop-local-settings-open.png",
     ".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png",
+    ".artifacts/product/P6/desktop-responsive-local-compare-at-900-x-720.png",
     ".artifacts/product/P6/desktop-local-compare-loaded.png",
-    ".artifacts/product/P6/visual-system-audit.json"
+    ".artifacts/product/P6/visual-system-audit.json",
+    ".artifacts/product/P6/workbench-region-map.json",
+    ".artifacts/product/P6/roadmap-ui-capacity-map.json",
+    ".artifacts/product/P6/macos-workbench-foundation-contract.json"
   ];
   const evidenceByPath = {};
   for (const repoPath of requiredArtifacts) {
@@ -577,6 +592,32 @@ async function writeOwnerFeedbackClosureMap() {
       beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
       afterEvidence: [{ type: "self", path: ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json" }],
       reviewerBCategory: "ownerFeedbackClosure",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-macos-workbench-foundation-risk",
+      ownerFinding: "macOS UI/UX foundation may not support the approved future product roadmap.",
+      status: "fixed",
+      component: "macOS SVGA Workbench foundation",
+      changedFiles: [
+        "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json",
+        "tools/shared/product-frontend/product-shell.html",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css",
+        "tools/p6/visual-system-audit.mjs",
+        "tools/p6/generate-p6-evidence.mjs"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED final macOS workbench foundation pass" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/workbench-region-map.json"],
+        evidenceByPath[".artifacts/product/P6/roadmap-ui-capacity-map.json"],
+        evidenceByPath[".artifacts/product/P6/macos-workbench-foundation-contract.json"],
+        evidenceByPath[".artifacts/product/P6/visual-system-audit.json"],
+        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-compare-at-900-x-720.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-info-diagnostics-open.png"]
+      ],
+      reviewerBCategory: "RoadmapCapacity",
       backlogReason: null
     }
   ];

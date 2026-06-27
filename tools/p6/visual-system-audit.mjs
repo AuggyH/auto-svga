@@ -13,6 +13,10 @@ async function readText(relativePath) {
   return readFile(path.join(repoRoot, relativePath), "utf8");
 }
 
+async function readJson(relativePath) {
+  return JSON.parse(await readText(relativePath));
+}
+
 function countMatches(source, pattern) {
   return [...source.matchAll(pattern)].length;
 }
@@ -36,6 +40,8 @@ function assertCondition(errors, condition, message) {
 }
 
 const target = JSON.parse(await readFile(targetPath, "utf8"));
+const foundationContract = await readJson("docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json");
+const roadmapCapacityMap = await readJson("docs/product/ROADMAP_UI_CAPACITY_MAP.json");
 const [tokens, styles, shell, app] = await Promise.all([
   readText("tools/shared/product-tokens.css"),
   readText("tools/shared/product-frontend/product-styles.css"),
@@ -46,6 +52,7 @@ const inspection = await readText("tools/shared/product-frontend/inspection-repo
 
 const errors = [];
 const evidenceResults = [];
+const componentResults = [];
 for (const token of target.requiredTokens) {
   assertCondition(errors, tokens.includes(`${token}:`), `missing visual token ${token}`);
   assertCondition(errors, styles.includes(`var(${token}`) || styles.includes(`${token}:`), `visual token not consumed by product styles ${token}`);
@@ -53,7 +60,9 @@ for (const token of target.requiredTokens) {
 
 const componentSources = `${styles}\n${shell}\n${app}`;
 for (const className of target.requiredComponentClasses) {
-  assertCondition(errors, includesClass(componentSources, className), `missing visual component class ${className}`);
+  const present = includesClass(componentSources, className);
+  componentResults.push({ className, present });
+  assertCondition(errors, present, `missing visual component class ${className}`);
 }
 
 for (const banned of target.ownerVisibleCopyBans) {
@@ -78,6 +87,22 @@ assertCondition(errors, /overviewFileRow/.test(app) && /overviewFileRow/.test(st
 assertCondition(errors, /assetUsageLabel/.test(app) && /assetUsageLabel/.test(styles), "Resources tab must avoid exposing raw imageKey as primary row text");
 assertCondition(errors, /specDiagnosticDetails/.test(inspection), "Inspection report must collapse raw diagnostic details by default");
 assertCondition(errors, !inspection.includes("<code>${escapeHtml(issue.code)}</code></div>"), "Inspection report must not expose raw issue codes in default rows");
+assertCondition(errors, foundationContract.contractId === "MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT", "missing macOS workbench foundation contract id");
+assertCondition(errors, foundationContract.phase2Started === false, "foundation contract must not start Phase 2");
+assertCondition(errors, Array.isArray(foundationContract.regions) && foundationContract.regions.length >= 6, "foundation contract must define workbench regions");
+const requiredRegions = target.auditRules.requiredWorkbenchRegions ?? [];
+const foundationRegionIds = new Set((foundationContract.regions ?? []).map((region) => region.id));
+for (const regionId of requiredRegions) {
+  assertCondition(errors, foundationRegionIds.has(regionId), `foundation contract missing region ${regionId}`);
+  assertCondition(errors, shell.includes(`data-workbench-region="${regionId.replace(/_/g, "-")}"`) || app.includes(regionId), `product shell/app missing workbench region ${regionId}`);
+}
+assertCondition(errors, roadmapCapacityMap.mapId === "ROADMAP_UI_CAPACITY_MAP", "missing roadmap UI capacity map id");
+assertCondition(errors, roadmapCapacityMap.phase2Started === false, "roadmap capacity map must not start Phase 2");
+const roadmapStatuses = new Set((roadmapCapacityMap.capabilities ?? []).map((item) => item.status));
+for (const status of target.auditRules.requiredFutureStatuses ?? []) {
+  assertCondition(errors, roadmapStatuses.has(status), `roadmap capacity map missing status ${status}`);
+}
+assertCondition(errors, !/\b(imageKey|Undo|Redo|一键优化|自动修复|格式转换|导出工作台|ComfyUI|Agent API)\b/.test(shell), "P6-R1 shell exposes future feature controls");
 
 if (!sourceOnly) {
   const ownerTargets = Array.isArray(target.primaryOwnerEvidenceTargets) ? target.primaryOwnerEvidenceTargets : [];
@@ -116,12 +141,64 @@ if (!sourceOnly) {
   }
   const decodedPngCount = evidenceResults.filter((record) => record.kind === "png" && record.width > 0 && record.height > 0).length;
   assertCondition(errors, decodedPngCount >= 5, `visual-system audit decoded only ${decodedPngCount} owner PNG targets`);
+  const regionMapRecord = evidenceResults.find((record) => record.path.endsWith("workbench-region-map.json"));
+  if (regionMapRecord) {
+    const regionMap = await readJson(regionMapRecord.path);
+    const regionIds = new Set((regionMap.regions ?? []).map((region) => region.id));
+    for (const regionId of requiredRegions) {
+      assertCondition(errors, regionIds.has(regionId), `workbench region map missing ${regionId}`);
+    }
+    assertCondition(errors, regionMap.passed === true, "workbench region map did not pass");
+  }
+  try {
+    const renderProof = await readJson(".artifacts/product/P6/desktop-state-render-proof.json");
+    assertCondition(errors, renderProof.passed === true, "desktop state render proof did not pass");
+    assertCondition(errors, renderProof.states?.["responsive-local-compare-at-900-x-720"]?.passed === true, "responsive local compare proof missing or failed");
+    assertCondition(errors, renderProof.states?.["info-diagnostics-open"]?.passed === true, "diagnostics panel proof missing or failed");
+  } catch (error) {
+    errors.push(`desktop state render proof unreadable: ${error.message}`);
+  }
 }
+
+const tokenAudit = {
+  passed: colorCount <= target.auditRules.hardcodedOwnerVisibleColorCountMax
+    && radiusCount <= target.auditRules.hardcodedOwnerVisibleRadiusCountMax
+    && fontSizeCount <= target.auditRules.hardcodedOwnerVisibleFontSizeCountMax
+    && tokenReferenceCount >= target.auditRules.requiredTokenReferenceMinimum,
+  policy: "Owner-visible style primitives must be token-backed or stay under the approved legacy threshold.",
+  colorCount,
+  radiusCount,
+  fontSizeCount,
+  tokenReferenceCount
+};
+
+const componentAudit = {
+  passed: componentResults.every((record) => record.present),
+  requiredComponentClassCount: componentResults.length,
+  missing: componentResults.filter((record) => !record.present).map((record) => record.className)
+};
+
+const screenshotAudit = {
+  passed: sourceOnly ? null : errors.filter((message) => /owner evidence|desktop state render proof|responsive local compare|diagnostics panel proof/.test(message)).length === 0,
+  targetCount: Array.isArray(target.primaryOwnerEvidenceTargets) ? target.primaryOwnerEvidenceTargets.length : 0,
+  decodedPngCount: evidenceResults.filter((record) => record.kind === "png" && record.width > 0 && record.height > 0).length
+};
+
+const foundationAudit = {
+  passed: errors.filter((message) => /foundation contract|roadmap capacity|workbench region|future feature|Phase 2/.test(message)).length === 0,
+  regionCount: foundationContract.regions?.length ?? 0,
+  roadmapCapabilityCount: roadmapCapacityMap.capabilities?.length ?? 0,
+  deferredStatuses: [...roadmapStatuses].filter((status) => status !== "implemented")
+};
 
 const summary = {
   passed: errors.length === 0,
   target: target.target,
   sourceOnly,
+  tokenAudit,
+  componentAudit,
+  screenshotAudit,
+  foundationAudit,
   metrics: {
     colorCount,
     radiusCount,

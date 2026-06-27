@@ -366,6 +366,8 @@ const p6R1ReviewerBCategoryIds = [
   "runtimeLogs",
   "settings",
   "macosVisualSystem",
+  "macOSAppFoundation",
+  "RoadmapCapacity",
   "theme",
   "accessibilitySettings",
   "emptyState",
@@ -411,6 +413,43 @@ function p6R1ReviewerBCategories(head, mutate = (category) => category) {
         observation: `${key} is supported by the final macOS screenshot set with concrete visible layout, spacing, and control evidence.`,
         evidenceRefs: [{
           path: `.artifacts/product/P6/macos-visual-system/${key}.png`,
+          headCommit: head,
+          present: true,
+          humanReviewRequired: true
+        }]
+      }]));
+    }
+    if (categoryId === "macOSAppFoundation") {
+      category.foundationRegionObservations = Object.fromEntries([
+        "sourceDocument",
+        "previewStage",
+        "inspector",
+        "resources",
+        "actionWorkflow",
+        "activityHistory"
+      ].map((key) => [key, {
+        observation: `${key} is backed by a concrete workbench region in the final head with visible host geometry and bounded current scope.`,
+        evidenceRefs: [{
+          path: ".artifacts/product/P6/workbench-region-map.json",
+          headCommit: head,
+          present: true,
+          humanReviewRequired: true
+        }]
+      }]));
+    }
+    if (categoryId === "RoadmapCapacity") {
+      category.roadmapCapacityJudgments = Object.fromEntries([
+        "phase2DiagnosticsOptimization",
+        "phase3ReplaceableEditing",
+        "phase4SequenceOptimization",
+        "midTermMultiFormat",
+        "longTermAgentComfyUI",
+        "noClutterDashboard"
+      ].map((key) => [key, {
+        judgment: `${key} is reserved in the capacity map with a specific host region and does not appear as an active P6-R1 control.`,
+        futureFeatureExposed: false,
+        evidenceRefs: [{
+          path: ".artifacts/product/P6/roadmap-ui-capacity-map.json",
           headCommit: head,
           present: true,
           humanReviewRequired: true
@@ -1158,7 +1197,7 @@ test("reviewer B packetDiffSha256 mismatch is rejected", async () => {
   });
 });
 
-test("P6-R1 Reviewer B requires 26 structured product category observations", async () => {
+test("P6-R1 Reviewer B requires 28 structured product category observations", async () => {
   await withRepo(async ({ repo, base }) => {
     const head = await prepareP6R1Repo(repo, base);
     const options = p6R1Options(repo, base, head);
@@ -1212,7 +1251,33 @@ test("P6-R1 Reviewer B rejects missing category", async () => {
         reviewerA: ".artifacts/loop-review/reviewer-a.json",
         reviewerB: ".artifacts/loop-review/reviewer-b.json"
       }),
-      /requires 26 categories/
+      /requires 28 categories/
+    );
+  });
+});
+
+test("P6-R1 Reviewer B rejects missing roadmap capacity judgments", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const head = await prepareP6R1Repo(repo, base);
+    const options = p6R1Options(repo, base, head);
+    const candidate = await generateHandoffPacket({ ...options, candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, {
+      B: {
+        categories: p6R1ReviewerBCategories(head, (category, categoryId) => (
+          categoryId === "RoadmapCapacity"
+            ? { ...category, roadmapCapacityJudgments: undefined }
+            : category
+        ))
+      }
+    });
+
+    await assert.rejects(
+      generateHandoffPacket({
+        ...options,
+        reviewerA: ".artifacts/loop-review/reviewer-a.json",
+        reviewerB: ".artifacts/loop-review/reviewer-b.json"
+      }),
+      /RoadmapCapacity requires roadmapCapacityJudgments/
     );
   });
 });

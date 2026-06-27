@@ -1876,7 +1876,10 @@ const p6SmokeRegionContract = [
   ["brand", ".brand"],
   ["modeControl", ".modeControl"],
   ["actionRow", ".actionRow"],
+  ["sourceDocument", "[data-workbench-region='source-document']"],
+  ["actionWorkflow", "[data-workbench-region='action-workflow']"],
   ["workspace", "#workspace"],
+  ["previewStage", "[data-workbench-region='preview-stage']"],
   ["svgaPanelA", "#svgaPanelA"],
   ["svgaPanelB", "#svgaPanelB"],
   ["referencePanel", "#referencePanel"],
@@ -1885,7 +1888,10 @@ const p6SmokeRegionContract = [
   ["referencePlayerBar", "#referencePanel .playerBar"],
   ["syncBar", "#syncBar"],
   ["infoPanel", "#infoPanel"],
+  ["inspector", "[data-workbench-region='inspector']"],
+  ["resources", "[data-workbench-region='resources']"],
   ["logsPanel", "#logsPanel"],
+  ["activityHistory", "[data-workbench-region='activity-history']"],
   ["settingsModal", "#settingsModal"],
   ["assetPreviewModal", "#assetPreviewModal"],
   ["reportGrid", "#tab-overview .overviewGrid, #reportGrid"],
@@ -2013,6 +2019,7 @@ function collectP6SmokeSnapshot(stateId) {
     if (reduceMotionToggle.checked && reduceBlurToggle.checked) return "accessibility-toggles-on";
     if (modal === "settingsModal") return "settings-open";
     if (panel === "logs") return "logs-open";
+    if (panel === "info" && !document.querySelector("#tab-diagnostics")?.hidden && isElementVisible(document.querySelector("#tab-diagnostics"))) return "info-diagnostics-open";
     if (panel === "info" && !document.querySelector("#tab-assets")?.hidden && isElementVisible(document.querySelector("#tab-assets"))) return "info-assets-open";
     if (panel === "info" && !document.querySelector("#tab-overview")?.hidden && isElementVisible(document.querySelector("#tab-overview"))) return "info-overview-open";
     if (/导出验收|导出复核|Export review/i.test(activeMode) && players.a.videoItem) return "export-review-loaded";
@@ -2386,6 +2393,50 @@ function elementLabel(node) {
   return `${node.tagName?.toLowerCase?.() ?? "unknown"}${id}${classes}`;
 }
 
+function collectWorkbenchRegionMap() {
+  const regions = [
+    ["source_document", "[data-workbench-region='source-document']", "Source / Document", "implemented"],
+    ["preview_stage", "[data-workbench-region='preview-stage']", "Preview Stage", "implemented"],
+    ["inspector", "[data-workbench-region='inspector']", "Inspector", "implemented"],
+    ["resources", "[data-workbench-region='resources']", "Resources", "foundation_ready"],
+    ["action_workflow", "[data-workbench-region='action-workflow']", "Action / Workflow", "implemented"],
+    ["activity_history", "[data-workbench-region='activity-history']", "Activity / History", "implemented"]
+  ].map(([id, selector, label, status]) => {
+    const node = document.querySelector(selector);
+    const rect = rectFor(node);
+    return {
+      id,
+      selector,
+      label,
+      status,
+      present: Boolean(node),
+      visible: isElementVisible(node),
+      rect: rect ? {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      } : null,
+      textSample: (compactText(node) || label).slice(0, 180)
+    };
+  });
+  const coreRegionIds = new Set(["source_document", "preview_stage", "action_workflow"]);
+  const allRegionsBound = regions.every((region) => region.present && region.rect);
+  const coreRegionsVisible = regions
+    .filter((region) => coreRegionIds.has(region.id))
+    .every((region) => region.visible && region.rect.width > 0 && region.rect.height > 0);
+  return {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    generatedFrom: "electron-product-smoke",
+    viewportCss: { width: innerWidth, height: innerHeight },
+    mode: modeSelect.value,
+    regions,
+    futureCapabilityPolicy: "Future capabilities are mapped to reserved regions but are not exposed as clickable Phase 2/3/4 features in P6-R1.",
+    passed: allRegionsBound && coreRegionsVisible
+  };
+}
+
 function collectRenderedStateProof(state) {
   const normalizedState = {
     "invalid-error-state": "invalid",
@@ -2450,6 +2501,7 @@ function collectRenderedStateProof(state) {
   const referencePlayerBarVisible = isElementVisible(referenceState.panel?.querySelector(".playerBar"));
   const overviewPanelVisible = isElementVisible(document.querySelector("#tab-overview")) && !document.querySelector("#tab-overview")?.classList.contains("isHidden");
   const assetsPanelVisible = isElementVisible(document.querySelector("#tab-assets")) && !document.querySelector("#tab-assets")?.classList.contains("isHidden");
+  const diagnosticsPanelVisible = isElementVisible(document.querySelector("#tab-diagnostics")) && !document.querySelector("#tab-diagnostics")?.classList.contains("isHidden");
   const reportOverviewVisible = isElementVisible(document.querySelector("#tab-overview .overviewGrid, #reportGrid"));
   const statusAnnouncementText = compactText(statusAnnouncer);
   const staleFieldPattern = /文件体积|fileSizeBytes|内存占用|memoryUsage|画布尺寸|canvasSize|播放时长|duration|帧率|fps|图层数量|spriteCount|图片资源|imageCount|文件名|fileName/;
@@ -2578,6 +2630,11 @@ function collectRenderedStateProof(state) {
     if (!assetsPanelVisible) failures.push("assets tab is not visible");
     if (!/资源|Assets|全部|图片|序列帧/.test(assetText)) failures.push("assets content is not reachable");
   }
+  if (normalizedState === "info-diagnostics-open") {
+    if (!infoPanelVisible) failures.push("info panel is not visible");
+    if (!diagnosticsPanelVisible) failures.push("diagnostics tab is not visible");
+    if (!/诊断|检查报告|检查结果/.test(compactText(document.querySelector("#tab-diagnostics")))) failures.push("diagnostics content is not reachable");
+  }
   if (normalizedState === "logs-open") {
     if (!logsPanelVisible) failures.push("logs panel is not visible");
     if (!isElementVisible(fullLogsContent)) failures.push("logs content is not visible");
@@ -2607,6 +2664,11 @@ function collectRenderedStateProof(state) {
     if (modeSelect.value !== "exportReview") failures.push("responsive state is not in export review mode");
     if (!isElementVisible(workspace)) failures.push("workspace is not visible");
     if (!syncBarVisible) failures.push("sync controls are not reachable");
+  }
+  if (normalizedState === "responsive-local-compare-at-900-x-720") {
+    if (!isCompareActive()) failures.push("responsive local compare is not active");
+    if (!comparePanelVisible) failures.push("responsive secondary preview is not visible");
+    if (!syncBarVisible) failures.push("responsive local compare sync controls are not reachable");
   }
   const observedSnapshot = collectP6SmokeSnapshot(state);
   const visibleRegions = p6VisibleIds(observedSnapshot.regions);
@@ -2671,6 +2733,7 @@ function collectRenderedStateProof(state) {
       logsPanelVisible,
       settingsVisible,
       assetPreviewVisible,
+      diagnosticsPanelVisible,
       comparePanelVisible,
       referencePanelVisible,
       syncBarVisible,
@@ -3419,6 +3482,13 @@ async function runProductSmoke() {
       await delay(120);
     });
     await captureArtifact("desktop-info-assets-open");
+    document.querySelector(".tabButton[data-tab='diagnostics']")?.click();
+    await waitFor(() => isElementVisible(document.querySelector("#tab-diagnostics")));
+    await delay(120);
+    await captureArtifact("desktop-info-diagnostics-open");
+    document.querySelector(".tabButton[data-tab='assets']")?.click();
+    await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
+    await delay(120);
     const previewButton = document.querySelector("#tab-assets [data-preview-image-key]:not(:disabled)");
     previewButton?.click();
     await waitFor(() => !assetPreviewModal.hidden && assetPreviewModal.classList.contains("isOpen"));
@@ -3543,6 +3613,7 @@ async function runProductSmoke() {
     await waitFor(() => Boolean(players.b.videoItem));
     await waitFor(() => canvasIsNonBlank(players.b));
     await captureArtifact("desktop-local-compare-loaded");
+    await captureArtifact("desktop-responsive-local-compare-at-900-x-720");
     if (compareToggle.checked) compareToggle.click();
     await waitFor(() => !isCompareActive());
     await delay(140);
@@ -3554,6 +3625,13 @@ async function runProductSmoke() {
     await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
     await delay(120);
     await captureArtifact("desktop-local-info-assets-open");
+    document.querySelector(".tabButton[data-tab='diagnostics']")?.click();
+    await waitFor(() => isElementVisible(document.querySelector("#tab-diagnostics")));
+    await delay(120);
+    await captureArtifact("desktop-local-info-diagnostics-open");
+    document.querySelector(".tabButton[data-tab='assets']")?.click();
+    await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
+    await delay(80);
     openFullLogs();
     await waitFor(() => activeSidePanel === "logs");
     await delay(120);
@@ -3583,7 +3661,8 @@ async function runProductSmoke() {
       playerLifecycle: true,
       cleanup: true,
       p6InteractionTrace: await buildP6SmokeInteractionTrace(),
-      ownerUsability
+      ownerUsability,
+      workbenchRegionMap: collectWorkbenchRegionMap()
     });
   } catch (error) {
     addLog("error", `产品 smoke 失败：${error.message}`);
@@ -3818,6 +3897,7 @@ function renderInfoPanel() {
   setStatus(infoStatus, players.a.parseStatus === "success" ? "ready" : players.a.parseStatus === "error" ? "error" : players.a.parseStatus === "empty" ? "empty" : "loading");
   document.querySelector("#tab-overview").innerHTML = renderOverview(metrics, players.a);
   document.querySelector("#tab-assets").innerHTML = renderAssets(metrics);
+  document.querySelector("#tab-diagnostics").innerHTML = renderDiagnostics(metrics, players.a);
 }
 
 function renderOverview(metrics, slot) {
@@ -3838,21 +3918,21 @@ function renderOverview(metrics, slot) {
     ["渲染状态", "renderStatus", slot.renderStatus]
   ];
   return `
-    <div class="overviewContent">
+    <div class="overviewContent inspectorSection">
       <div class="overviewFileRow">
         <span>当前文件</span>
         <strong class="overviewFileName" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</strong>
       </div>
       <dl class="overviewGrid overviewMetricList">
       ${rows.map(({ label, value, tone }) => `
-        <div class="overviewRow overviewMetricRow">
+        <div class="overviewRow overviewMetricRow metricRow">
           <dt><span>${escapeHtml(label)}</span></dt>
           <dd class="${tone === "mono" ? "monoValue" : ""}" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
         </div>
       `).join("")}
       <div class="overviewStatusBlock runtimeStatusBlock">
         ${statusRows.map(([label, key, value]) => `
-          <div class="overviewStatusRow">
+        <div class="overviewStatusRow metricRow">
             <dt><span>${escapeHtml(label)}</span></dt>
             ${renderStatusBadge(value)}
           </div>
@@ -3883,7 +3963,7 @@ function inspectionIssueSummary(report, status) {
 function renderOverviewDiagnostics(slot) {
   const summary = inspectionIssueSummary(slot.inspectionReport, slot.inspectionStatus);
   return `
-    <section class="overviewDiagnosticsPanel">
+    <section class="overviewDiagnosticsPanel diagnosticSummary inspectorSection">
       <details>
         <summary>
           <span>诊断</span>
@@ -3892,6 +3972,40 @@ function renderOverviewDiagnostics(slot) {
         ${renderAvatarFrameInspectionReport(slot.inspectionReport, slot.inspectionStatus)}
       </details>
     </section>
+  `;
+}
+
+function renderDiagnostics(metrics, slot) {
+  const summary = inspectionIssueSummary(slot.inspectionReport, slot.inspectionStatus);
+  if (!metrics) {
+    return renderBilingualEmpty("暂无诊断信息。加载 SVGA 后会显示检查结果。", "");
+  }
+  const diagnostics = [
+    { label: "检查结果", value: summary },
+    { label: "资源规模", value: `${metrics.imageCount ?? 0} 张图片 · ${formatBytes(metrics.memoryBytes)}` },
+    { label: "播放参数", value: `${metrics.fps ? `${metrics.fps} FPS` : "n/a"} · ${formatDuration(metrics)}` }
+  ];
+  return `
+    <div class="diagnosticsContent inspectorSection">
+      <section class="diagnosticSummary">
+        <header>
+          <span>诊断摘要</span>
+          <strong>${escapeHtml(summary)}</strong>
+        </header>
+        <dl>
+          ${diagnostics.map((item) => `
+            <div class="metricRow">
+              <dt>${escapeHtml(item.label)}</dt>
+              <dd>${escapeHtml(item.value)}</dd>
+            </div>
+          `).join("")}
+        </dl>
+      </section>
+      <details class="diagnosticDetails" open>
+        <summary>检查报告</summary>
+        ${renderAvatarFrameInspectionReport(slot.inspectionReport, slot.inspectionStatus)}
+      </details>
+    </div>
   `;
 }
 
@@ -3915,7 +4029,7 @@ function renderStatusBadge(value) {
 
 function renderBilingualEmpty(primary, secondary) {
   return `
-    <div class="emptyPanel bilingualEmpty">
+    <div class="emptyPanel emptyState bilingualEmpty">
       <span>${escapeHtml(primary)}</span>
       ${secondary ? `<small>${escapeHtml(secondary)}</small>` : ""}
     </div>
@@ -3951,7 +4065,7 @@ function renderAssets(metrics) {
     return `
     ${filterBar}
     <div class="assetSummaryLine">${escapeHtml(summary)}</div>
-    <div class="assetUnifiedList">
+    <div class="assetUnifiedList inspectorSection">
       ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
     </div>
   `;
@@ -4578,7 +4692,7 @@ function renderFullLogRow(log) {
   const message = userFacingLogMessage(log);
   const hasDiagnosticDetail = message !== log.message;
   return `
-    <div class="fullLogRow logRow ${escapeHtml(log.level)}">
+    <div class="fullLogRow logRow activityRow ${escapeHtml(log.level)}">
       <time>${escapeHtml(log.time)}</time>
       <strong>${escapeHtml(logLevelLabel(log.level))}</strong>
       <span class="logPrimaryMessage">${escapeHtml(message)}</span>

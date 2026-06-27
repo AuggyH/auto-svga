@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: TERMINAL_HUMAN_REQUIRED
+Status: HUMAN_REQUIRED
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -22,7 +22,9 @@ wp0Authorized: true
 executionStatus: terminal_human_required
 nextAction: product_owner_human_gate
 
-Owner repair completed: final UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding are ready for Product Owner Human Gate.
+The final macOS SVGA Workbench foundation pass is ready for Product Owner
+Human Gate after regenerated P6 evidence reported zero non-pass strict items.
+This remains contract revision 3, repairRound 0, and Phase 2 not started.
 
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`

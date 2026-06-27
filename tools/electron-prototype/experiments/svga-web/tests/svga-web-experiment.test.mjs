@@ -402,6 +402,8 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
     "desktop-latest-artifact-loaded",
     "desktop-reference-media-loaded",
     "desktop-local-compare-loaded",
+    "desktop-responsive-local-compare-at-900-x-720",
+    "desktop-local-info-diagnostics-open",
     "desktop-recovered-from-invalid"
   ]) {
     assert.match(main, new RegExp(scenario));
@@ -443,7 +445,7 @@ test("default Electron renderer shares the Web product page and keeps editor inc
   assert.match(sharedShell, /本地预览/);
   assert.match(sharedShell, /检查器/);
   assert.doesNotMatch(sharedShell, /SVGA 信息/);
-  assert.match(sharedShell, /运行日志/);
+  assert.match(sharedShell, /活动记录/);
   assert.match(sharedShell, /设置/);
   assert.match(sharedShell, /floatingRoot/);
   assert.match(page, /src="\/desktop-product-entry\.mjs"/);

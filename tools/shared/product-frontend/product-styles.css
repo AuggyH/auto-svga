@@ -221,7 +221,7 @@ svg {
   left: 26px;
   top: 11px;
   color: var(--textPrimary);
-  font-size: 12px;
+  font-size: var(--visual-font-meta);
   font-weight: 600;
   line-height: 18px;
   letter-spacing: -0.1px;
@@ -3927,7 +3927,7 @@ html.reduceMotion *::after {
   background: color-mix(in srgb, var(--surfaceElevated) 98%, var(--background));
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
   color: var(--textPrimary);
-  font-size: 12px;
+  font-size: var(--font-meta);
   font-weight: 600;
   opacity: 0;
   pointer-events: none;
@@ -4038,6 +4038,134 @@ button:disabled {
 
   .modeControl {
     width: 138px;
+  }
+}
+
+/* P6-R1 final workbench foundation guard: region semantics, progressive diagnostics, and compact review viewports. */
+.actionGroup {
+  align-items: center;
+}
+
+.tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.inspectorSection {
+  display: grid;
+  gap: var(--visual-space-body);
+  min-width: 0;
+}
+
+.metricRow {
+  min-width: 0;
+}
+
+.metricRow dd,
+.metricRow strong {
+  min-width: 0;
+}
+
+.diagnosticSummary {
+  display: grid;
+  gap: var(--visual-space-tight);
+  padding: var(--visual-space-body);
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--metric-card-surface);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.diagnosticSummary header,
+.diagnosticSummary summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--visual-space-body);
+  color: var(--visual-text-secondary);
+}
+
+.diagnosticSummary strong {
+  color: var(--visual-text-primary);
+  font-size: var(--visual-font-body);
+  line-height: var(--visual-line-body);
+  text-align: right;
+}
+
+.diagnosticSummary dl {
+  display: grid;
+  gap: var(--visual-space-tight);
+  margin: 0;
+}
+
+.diagnosticSummary .metricRow {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.42fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--visual-space-body);
+}
+
+.diagnosticSummary dt,
+.diagnosticSummary dd {
+  margin: 0;
+}
+
+.diagnosticSummary dd {
+  overflow-wrap: anywhere;
+  color: var(--visual-text-primary);
+  font-weight: 600;
+}
+
+.diagnosticDetails {
+  min-width: 0;
+}
+
+.diagnosticDetails summary,
+.settingsAdvancedDisclosure summary {
+  cursor: pointer;
+  color: var(--visual-text-secondary);
+}
+
+.settingsAdvancedDisclosure {
+  border-top: 1px solid var(--visual-hairline);
+}
+
+.settingsAdvancedDisclosure summary {
+  padding: 14px 16px;
+}
+
+.settingsAdvancedDisclosure .settingsToggleRow {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.activityRow {
+  background: var(--log-row-surface);
+}
+
+.emptyState {
+  min-width: 0;
+}
+
+[data-workbench-region] {
+  scroll-margin: 18px;
+}
+
+@media (max-width: 900px) {
+  .tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tabButton {
+    min-width: 0;
+  }
+
+  .diagnosticSummary .metricRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace.mode-localPreview.withCompare {
+    gap: 12px;
   }
 }
 
@@ -4612,7 +4740,7 @@ body {
 }
 
 .fitMenuButtonLabel {
-  font-size: 11px;
+  font-size: var(--font-badge);
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -4794,7 +4922,7 @@ body {
   border: 0;
   border-radius: 7px;
   background: transparent;
-  font-size: 12px;
+  font-size: var(--font-meta);
 }
 
 .assetFilters button.isActive {
@@ -4836,21 +4964,21 @@ body {
 }
 
 .assetPrimaryLine strong {
-  font-size: 12px;
+  font-size: var(--font-meta);
   line-height: 16px;
 }
 
 .assetTypeTag,
 .assetWarningTags span {
   padding: 2px 5px;
-  font-size: 9px;
+  font-size: var(--visual-font-meta);
 }
 
 .assetSecondaryLine {
   flex-wrap: nowrap;
   gap: 6px;
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--visual-font-meta);
   line-height: 14px;
   white-space: nowrap;
 }
@@ -4882,7 +5010,7 @@ body {
   position: absolute;
   right: 8px;
   top: 31px;
-  font-size: 10px;
+  font-size: var(--visual-font-meta);
 }
 
 .sequenceChildren {
@@ -4903,7 +5031,7 @@ body {
   border-radius: 999px;
   background: color-mix(in srgb, var(--surfaceElevated) 92%, transparent);
   color: var(--textSecondary);
-  font-size: 10px;
+  font-size: var(--visual-font-meta);
   pointer-events: none;
   transform: translateX(-50%);
 }
@@ -6050,8 +6178,8 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 
 .emptyPanel.bilingualEmpty span {
   color: var(--textSecondary);
-  font-size: 12px;
-  line-height: 17px;
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
 }
 
 .logsPanelList {

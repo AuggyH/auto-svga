@@ -141,6 +141,11 @@ function validateSmokeResult(value) {
     if (!ownerUsability) return undefined;
     result.ownerUsability = ownerUsability;
   }
+  if (value.workbenchRegionMap !== undefined) {
+    const workbenchRegionMap = validateWorkbenchRegionMap(value.workbenchRegionMap);
+    if (!workbenchRegionMap) return undefined;
+    result.workbenchRegionMap = workbenchRegionMap;
+  }
   return result;
 }
 
@@ -170,6 +175,41 @@ function describeSmokeResultValidationFailure(value) {
   if (value.ownerUsability !== undefined && !validateOwnerUsabilityResult(value.ownerUsability)) {
     return `ownerUsability:${describeOwnerUsabilityValidationFailure(value.ownerUsability)}`;
   }
+  if (value.workbenchRegionMap !== undefined && !validateWorkbenchRegionMap(value.workbenchRegionMap)) {
+    return `workbenchRegionMap:${describeWorkbenchRegionMapValidationFailure(value.workbenchRegionMap)}`;
+  }
+  return "unknown";
+}
+
+function describeWorkbenchRegionMapValidationFailure(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
+  if (value.schemaVersion !== 1 || value.milestoneId !== "P6-R1" || value.generatedFrom !== "electron-product-smoke") return "identity";
+  if (!value.viewportCss || !Number.isFinite(value.viewportCss.width) || !Number.isFinite(value.viewportCss.height)) return "viewport";
+  if (!isBoundedString(value.mode, 80)) return "mode";
+  if (value.passed !== true) return "not-passed";
+  const requiredIds = [
+    "source_document",
+    "preview_stage",
+    "inspector",
+    "resources",
+    "action_workflow",
+    "activity_history"
+  ];
+  if (!Array.isArray(value.regions) || value.regions.length !== requiredIds.length) return "regions-count";
+  const seen = new Set();
+  for (const region of value.regions) {
+    if (!region || typeof region !== "object" || Array.isArray(region)) return "region-shape";
+    if (!isBoundedString(region.id, 80) || seen.has(region.id)) return `region-id:${String(region.id)}`;
+    seen.add(region.id);
+    if (!isBoundedString(region.selector, 140)) return `region-selector:${region.id}`;
+    if (!isBoundedString(region.label, 120)) return `region-label:${region.id}`;
+    if (!isBoundedString(region.status, 80)) return `region-status:${region.id}`;
+    if (region.present !== true || typeof region.visible !== "boolean") return `region-presence:${region.id}`;
+    if (!isP6Rect(region.rect)) return `region-rect:${region.id}`;
+    if (!isBoundedString(region.textSample ?? "", 220)) return `region-text:${region.id}`;
+  }
+  const missing = requiredIds.find((id) => !seen.has(id));
+  if (missing) return `missing:${missing}`;
   return "unknown";
 }
 
@@ -308,6 +348,53 @@ function validateOwnerUsabilityResult(value) {
     checks: Object.fromEntries(requiredChecks.map((key) => [key, true])),
     ...(previewCardConsistency ? { previewCardConsistency } : {}),
     evidence: value.evidence
+  };
+}
+
+function validateWorkbenchRegionMap(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.milestoneId !== "P6-R1" || value.generatedFrom !== "electron-product-smoke") return undefined;
+  if (!value.viewportCss || !Number.isFinite(value.viewportCss.width) || !Number.isFinite(value.viewportCss.height)) return undefined;
+  if (!isBoundedString(value.mode, 80)) return undefined;
+  if (value.passed !== true) return undefined;
+  const requiredIds = [
+    "source_document",
+    "preview_stage",
+    "inspector",
+    "resources",
+    "action_workflow",
+    "activity_history"
+  ];
+  if (!Array.isArray(value.regions) || value.regions.length !== requiredIds.length) return undefined;
+  const byId = new Map();
+  for (const region of value.regions) {
+    if (!region || typeof region !== "object" || Array.isArray(region)) return undefined;
+    if (!isBoundedString(region.id, 80) || byId.has(region.id)) return undefined;
+    if (!isBoundedString(region.selector, 140) || !isBoundedString(region.label, 120) || !isBoundedString(region.status, 80)) return undefined;
+    if (region.present !== true || typeof region.visible !== "boolean") return undefined;
+    if (!isP6Rect(region.rect)) return undefined;
+    if (!isBoundedString(region.textSample ?? "", 220)) return undefined;
+    byId.set(region.id, {
+      id: region.id,
+      selector: region.selector,
+      label: region.label,
+      status: region.status,
+      present: true,
+      visible: region.visible,
+      rect: region.rect,
+      textSample: region.textSample ?? ""
+    });
+  }
+  if (!requiredIds.every((id) => byId.has(id))) return undefined;
+  return {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    generatedFrom: "electron-product-smoke",
+    viewportCss: value.viewportCss,
+    mode: value.mode,
+    regions: requiredIds.map((id) => byId.get(id)),
+    futureCapabilityPolicy: isBoundedString(value.futureCapabilityPolicy, 240) ? value.futureCapabilityPolicy : "",
+    passed: true
   };
 }
 
@@ -790,9 +877,12 @@ function validateArtifactScenario(value) {
     "desktop-latest-artifact-loaded",
     "desktop-reference-media-loaded",
     "desktop-local-compare-loaded",
+    "desktop-responsive-local-compare-at-900-x-720",
     "desktop-responsive-local-preview-at-900-x-720",
     "desktop-local-info-overview-open",
     "desktop-local-info-assets-open",
+    "desktop-info-diagnostics-open",
+    "desktop-local-info-diagnostics-open",
     "desktop-local-logs-open",
     "desktop-local-settings-open",
     "desktop-recovered-from-invalid",
@@ -1605,10 +1695,18 @@ async function finishSmoke(window, result) {
       "smoke"
     );
   }
+  if (productSmokeMode && result.workbenchRegionMap) {
+    writeJsonProductArtifact(
+      "workbench-region-map.json",
+      "workbench-region-map",
+      result.workbenchRegionMap,
+      "smoke"
+    );
+  }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();
@@ -1776,9 +1874,12 @@ function stateForScenario(scenario) {
     "desktop-synchronized-playback-toggled-by-space": "synchronized-playback-toggled-by-space",
     "desktop-local-compare-empty": "local-compare-empty",
     "desktop-local-compare-loaded": "local-compare-loaded",
+    "desktop-responsive-local-compare-at-900-x-720": "responsive-local-compare-at-900-x-720",
     "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
-    "desktop-asset-preview-modal-open": "asset-preview-modal-open"
+    "desktop-asset-preview-modal-open": "asset-preview-modal-open",
+    "desktop-info-diagnostics-open": "info-diagnostics-open",
+    "desktop-local-info-diagnostics-open": "info-diagnostics-open"
   }[scenario];
 }
 
@@ -1858,6 +1959,7 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     "mode-menu-open",
     "info-overview-open",
     "info-assets-open",
+    "info-diagnostics-open",
     "logs-open",
     "settings-open",
     "accessibility-toggles-on",
@@ -1865,6 +1967,7 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     "synchronized-playback-toggled-by-space",
     "local-compare-empty",
     "local-compare-loaded",
+    "responsive-local-compare-at-900-x-720",
     "asset-preview-modal-open"
   ].every((key) => proof.states[key]?.passed === true);
   proof.generatedAt = new Date().toISOString();
@@ -1878,7 +1981,8 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-1440x900") window.setSize(1440, 900);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(900, 720);
   if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(900, 720);
-  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720") {
+  if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(900, 720);
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
   if (scenario === "desktop-invalid") {
@@ -1894,7 +1998,7 @@ async function captureProductArtifact(window, scenario) {
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
   await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName);
-  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720") {
+  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
   } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
     window.setSize(originalSize[0], originalSize[1]);

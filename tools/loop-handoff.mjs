@@ -64,6 +64,8 @@ const p6R1ReviewerBRequiredCategories = [
   "runtimeLogs",
   "settings",
   "macosVisualSystem",
+  "macOSAppFoundation",
+  "RoadmapCapacity",
   "theme",
   "accessibilitySettings",
   "emptyState",
@@ -689,6 +691,24 @@ const p6R1MacosVisualSystemObservationKeys = [
   "macosFit"
 ];
 
+const p6R1MacosAppFoundationObservationKeys = [
+  "sourceDocument",
+  "previewStage",
+  "inspector",
+  "resources",
+  "actionWorkflow",
+  "activityHistory"
+];
+
+const p6R1RoadmapCapacityJudgmentKeys = [
+  "phase2DiagnosticsOptimization",
+  "phase3ReplaceableEditing",
+  "phase4SequenceOptimization",
+  "midTermMultiFormat",
+  "longTermAgentComfyUI",
+  "noClutterDashboard"
+];
+
 const genericMacosVisualSystemObservationPattern = /\b(owner-visible evidence was reviewed|evidence was reviewed|runtime behavior is supported|runtime behavior was reviewed|reviewed against|differences were checked|no unapproved product difference remains|visual artifacts where applicable)\b/i;
 
 function validateReviewerBEvidenceRefs({ categoryId, evidenceRefs, headCommit, fieldName = "evidenceRefs" }) {
@@ -730,6 +750,53 @@ function validateMacosVisualSystemObservations(category, { headCommit }) {
       evidenceRefs: item.evidenceRefs,
       headCommit,
       fieldName: `macosVisualSystemObservations.${key}.evidenceRefs`
+    });
+  }
+}
+
+function validateMacosAppFoundationObservations(category, { headCommit }) {
+  const observations = category.foundationRegionObservations;
+  if (!observations || typeof observations !== "object" || Array.isArray(observations)) {
+    throw new Error("Reviewer B P6-R1 category macOSAppFoundation requires foundationRegionObservations.");
+  }
+  for (const key of p6R1MacosAppFoundationObservationKeys) {
+    const item = observations[key];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`Reviewer B P6-R1 category macOSAppFoundation missing concrete ${key} observation.`);
+    }
+    if (!isConcreteObservation(item.observation) || genericMacosVisualSystemObservationPattern.test(item.observation)) {
+      throw new Error(`Reviewer B P6-R1 category macOSAppFoundation ${key} observation is generic.`);
+    }
+    validateReviewerBEvidenceRefs({
+      categoryId: "macOSAppFoundation",
+      evidenceRefs: item.evidenceRefs,
+      headCommit,
+      fieldName: `foundationRegionObservations.${key}.evidenceRefs`
+    });
+  }
+}
+
+function validateRoadmapCapacityJudgments(category, { headCommit }) {
+  const judgments = category.roadmapCapacityJudgments;
+  if (!judgments || typeof judgments !== "object" || Array.isArray(judgments)) {
+    throw new Error("Reviewer B P6-R1 category RoadmapCapacity requires roadmapCapacityJudgments.");
+  }
+  for (const key of p6R1RoadmapCapacityJudgmentKeys) {
+    const item = judgments[key];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`Reviewer B P6-R1 category RoadmapCapacity missing concrete ${key} judgment.`);
+    }
+    if (!isConcreteObservation(item.judgment) || genericMacosVisualSystemObservationPattern.test(item.judgment)) {
+      throw new Error(`Reviewer B P6-R1 category RoadmapCapacity ${key} judgment is generic.`);
+    }
+    if (item.futureFeatureExposed !== false) {
+      throw new Error(`Reviewer B P6-R1 category RoadmapCapacity ${key} must confirm futureFeatureExposed=false.`);
+    }
+    validateReviewerBEvidenceRefs({
+      categoryId: "RoadmapCapacity",
+      evidenceRefs: item.evidenceRefs,
+      headCommit,
+      fieldName: `roadmapCapacityJudgments.${key}.evidenceRefs`
     });
   }
 }
@@ -776,6 +843,12 @@ function validateP6R1ReviewerBProductCategories(verdict, { headCommit }) {
     });
     if (categoryId === "macosVisualSystem") {
       validateMacosVisualSystemObservations(category, { headCommit });
+    }
+    if (categoryId === "macOSAppFoundation") {
+      validateMacosAppFoundationObservations(category, { headCommit });
+    }
+    if (categoryId === "RoadmapCapacity") {
+      validateRoadmapCapacityJudgments(category, { headCommit });
     }
   }
 }

@@ -1,6 +1,6 @@
 # Auto SVGA Loop State
 
-Date: 2026-06-27
+Date: 2026-06-28
 
 ## Current Milestone
 
@@ -8,7 +8,9 @@ Date: 2026-06-27
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 - State: terminal_human_required
 - Next Action: product_owner_human_gate
-- P6-R1 owner repair completed: final UI polish, Reviewer B specificity, post-seal reviewer hash binding, and one-upload owner package are ready for human gate review.
+- The final macOS SVGA Workbench foundation pass is ready for Product Owner
+  Human Gate after regenerated P6 evidence reported zero non-pass strict items.
+  This remains contract revision 3, repairRound 0, and Phase 2 not started.
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -97,9 +99,6 @@ Date: 2026-06-27
 
 ## Next Action
 
-Product Owner Human Gate is ready after bounded Web source-of-truth revision
-authorization, post-authorization evidence regeneration, Reviewer A/B, final
-seal, post-seal verification, privacy checks, and one-upload complete review
-directory generation on one final head. Do not perform Product Owner
-acceptance, final independent product external review, Finding closure, Phase
-2, signing, notarization, release, push, or merge.
+Product Owner Human Gate. Do not perform Product Owner acceptance, final
+independent product external review, Finding closure, Phase 2, signing,
+notarization, release, push, or merge.

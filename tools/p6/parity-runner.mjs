@@ -76,6 +76,8 @@ const reviewerBRequiredCategories = [
   "runtimeLogs",
   "settings",
   "macosVisualSystem",
+  "macOSAppFoundation",
+  "RoadmapCapacity",
   "theme",
   "accessibilitySettings",
   "emptyState",

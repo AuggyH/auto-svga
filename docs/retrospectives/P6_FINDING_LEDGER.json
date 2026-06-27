@@ -317,7 +317,7 @@
         "owner-visible-inspector-visual-system-polish-r4"
       ],
       "occurrenceCount": 7,
-      "lastEvidence": "Owner repair completed after 8792cd854e22b3d6e838da4aa122771c555cf07e: final owner-visible UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding are ready for Product Owner Human Gate on the new final head.",
+      "lastEvidence": "Final macOS SVGA Workbench foundation pass regenerated P6 evidence with parityStatus=pass and nonPassEvidenceCount=0. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
       "userImpact": "Visual parity evidence was not comparable.",
       "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
@@ -346,7 +346,8 @@
       ],
       "currentOpenSubIssues": [
         "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
-        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
@@ -393,7 +394,10 @@
         ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json",
         ".artifacts/product/P6/visual-system-audit.json",
         ".artifacts/product/P6/desktop-local-info-overview-open.png",
-        ".artifacts/product/P6/desktop-local-info-assets-open.png"
+        ".artifacts/product/P6/desktop-local-info-assets-open.png",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
+        "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
       ],
       "lastUpdatedAt": "2026-06-27T14:18:37.021Z",
       "notes": [
@@ -415,7 +419,7 @@
         "owner-visible-ui-ux-polish-r3"
       ],
       "occurrenceCount": 5,
-      "lastEvidence": "Owner-visible UI/UX polish repair completed on 81e4e9314a02923f5b75c4ee249b0999327a4c43; final P6 evidence, desktop smoke, loop validation, Reviewer A/B, seal, post-seal, and one-upload review directory must bind to the terminal head before Product Owner Human Gate.",
+      "lastEvidence": "Final macOS SVGA Workbench foundation pass regenerated P6 evidence with parityStatus=pass and nonPassEvidenceCount=0. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "No Desktop per-interaction action trace existed.",
       "userImpact": "Buttons and menus could appear present without proving they work.",
       "rootCauseHypothesis": "Interaction evidence was assigned to the parity layer, but product behavior and host event triggering were split across workers.",
@@ -443,7 +447,8 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
@@ -481,7 +486,10 @@
         ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
         ".artifacts/product/P6/desktop-local-compare-loaded.png",
         "tools/p6/p6-web-baseline-capture.cjs",
-        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
+        "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
       ]
     },
     {
@@ -667,7 +675,7 @@
         "owner-visible-inspector-visual-system-polish-r4"
       ],
       "occurrenceCount": 8,
-      "lastEvidence": "Owner repair completed after 8792cd854e22b3d6e838da4aa122771c555cf07e: final owner-visible UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding are ready for Product Owner Human Gate on the new final head.",
+      "lastEvidence": "Final macOS SVGA Workbench foundation pass regenerated P6 evidence with parityStatus=pass and nonPassEvidenceCount=0. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
       "userImpact": "A human-facing product gap could pass internal review.",
       "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
@@ -695,7 +703,8 @@
       ],
       "currentOpenSubIssues": [
         "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
-        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
@@ -742,7 +751,10 @@
         ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json",
         ".artifacts/product/P6/visual-system-audit.json",
         ".artifacts/product/P6/desktop-local-info-overview-open.png",
-        ".artifacts/product/P6/desktop-local-info-assets-open.png"
+        ".artifacts/product/P6/desktop-local-info-assets-open.png",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
+        "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
       ],
       "lastUpdatedAt": "2026-06-27T14:18:37.021Z",
       "notes": [
@@ -927,7 +939,7 @@
         "owner-visible-inspector-visual-system-polish-r4"
       ],
       "occurrenceCount": 6,
-      "lastEvidence": "Owner repair completed after 8792cd854e22b3d6e838da4aa122771c555cf07e: final owner-visible UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding are ready for Product Owner Human Gate on the new final head.",
+      "lastEvidence": "Final macOS SVGA Workbench foundation pass regenerated P6 evidence with parityStatus=pass and nonPassEvidenceCount=0. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Local paths, hidden .artifacts-only handoffs, or stale review-root literals repeatedly needed repair.",
       "userImpact": "Owner could not reliably access review materials, or private local paths could leak.",
       "rootCauseHypothesis": "Handoff packaging was retrofitted after product work started and consumed repair budget repeatedly.",
@@ -959,7 +971,8 @@
       ],
       "currentOpenSubIssues": [
         "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
-        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
@@ -1005,7 +1018,10 @@
         ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json",
         ".artifacts/product/P6/visual-system-audit.json",
         ".artifacts/product/P6/desktop-local-info-overview-open.png",
-        ".artifacts/product/P6/desktop-local-info-assets-open.png"
+        ".artifacts/product/P6/desktop-local-info-assets-open.png",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
+        "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
       ],
       "lastUpdatedAt": "2026-06-27T14:18:37.021Z",
       "notes": [
@@ -1031,7 +1047,7 @@
         "owner-visible-inspector-visual-system-polish-r4"
       ],
       "occurrenceCount": 9,
-      "lastEvidence": "Owner repair completed after 8792cd854e22b3d6e838da4aa122771c555cf07e: final owner-visible UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding are ready for Product Owner Human Gate on the new final head.",
+      "lastEvidence": "Final macOS SVGA Workbench foundation pass regenerated P6 evidence with parityStatus=pass and nonPassEvidenceCount=0. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
       "userImpact": "Large apparent progress did not translate into accepted product parity.",
       "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
@@ -1059,7 +1075,8 @@
       ],
       "currentOpenSubIssues": [
         "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
-        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
@@ -1108,7 +1125,10 @@
         ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json",
         ".artifacts/product/P6/visual-system-audit.json",
         ".artifacts/product/P6/desktop-local-info-overview-open.png",
-        ".artifacts/product/P6/desktop-local-info-assets-open.png"
+        ".artifacts/product/P6/desktop-local-info-assets-open.png",
+        "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
+        "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
       ],
       "lastUpdatedAt": "2026-06-27T14:18:37.021Z",
       "notes": [

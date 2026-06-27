@@ -8,7 +8,9 @@
     "tools/shared/product-frontend/product-styles.css",
     "tools/shared/product-frontend/product-shell.html",
     "tools/shared/product-frontend/product-app.mjs",
-    "tools/shared/product-frontend/inspection-report-view.mjs"
+    "tools/shared/product-frontend/inspection-report-view.mjs",
+    "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+    "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
   ],
   "requiredTokens": [
     "--visual-window-background",
@@ -61,11 +63,17 @@
     "segmentedControl",
     "metricCard",
     "resourceRow",
+    "diagnosticSummary",
+    "actionGroup",
+    "activityRow",
     "logRow",
+    "metricRow",
     "iconButton",
     "statusBadge",
     "emptyPanel",
+    "emptyState",
     "inlineFeedback",
+    "inspectorSection",
     "compactToolbar"
   ],
   "ownerVisibleCopyBans": [
@@ -90,11 +98,14 @@
     "recovered_state",
     "info_overview",
     "resources",
+    "diagnostics",
     "logs",
     "settings",
     "local_preview_900x720",
     "compare_compact_900x720",
-    "both_loaded_ab"
+    "both_loaded_ab",
+    "workbench_region_map",
+    "roadmap_capacity_map"
   ],
   "primaryOwnerEvidenceTargets": [
     {
@@ -108,6 +119,13 @@
       "id": "desktop_local_info_assets",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-info-assets-open.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_info_diagnostics",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-info-diagnostics-open.png",
       "minimumWidth": 900,
       "minimumHeight": 720
     },
@@ -133,9 +151,31 @@
       "minimumHeight": 720
     },
     {
+      "id": "desktop_local_compare_responsive",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-responsive-local-compare-at-900-x-720.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "workbench_region_map",
+      "kind": "json",
+      "path": ".artifacts/product/P6/workbench-region-map.json"
+    },
+    {
       "id": "visual_system_audit_target",
       "kind": "json",
       "path": "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json"
+    },
+    {
+      "id": "workbench_foundation_contract",
+      "kind": "json",
+      "path": "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json"
+    },
+    {
+      "id": "roadmap_capacity_map",
+      "kind": "json",
+      "path": "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
     }
   ],
   "auditRules": {
@@ -144,7 +184,22 @@
     "hardcodedOwnerVisibleFontSizeCountMax": 140,
     "requiredTokenReferenceMinimum": 42,
     "forbidScreenshotExistenceOnly": true,
-    "forbidSourceOnlyFinalEvidence": true
+    "forbidSourceOnlyFinalEvidence": true,
+    "requiredWorkbenchRegions": [
+      "source_document",
+      "preview_stage",
+      "inspector",
+      "resources",
+      "action_workflow",
+      "activity_history"
+    ],
+    "requiredFutureStatuses": [
+      "deferred_phase2_foundation_ready",
+      "deferred_phase3_foundation_ready",
+      "deferred_phase4_foundation_ready",
+      "mid_term_adapter_foundation",
+      "long_term_agent_engine"
+    ]
   },
   "phase1PostAcceptanceBacklog": [
     "Full A/B information comparison details",

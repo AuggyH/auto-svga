@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "P6-R1",
+  "contractId": "MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT",
+  "purpose": "Define the permanent macOS SVGA Workbench information architecture without starting Phase 2 or later product capabilities.",
+  "productPrinciple": "Auto-SVGA is a local SVGA acceptance and refinement workbench, not a mini After Effects, not a Figma SVGA Editor clone, and not a full animation creation MVP.",
+  "regions": [
+    {
+      "id": "source_document",
+      "label": "Source / Document",
+      "hostSelector": "[data-workbench-region='source-document']",
+      "status": "implemented",
+      "currentScope": "Local file and mode context only."
+    },
+    {
+      "id": "preview_stage",
+      "label": "Preview Stage",
+      "hostSelector": "[data-workbench-region='preview-stage']",
+      "status": "implemented",
+      "currentScope": "Local SVGA playback, A/B preview, export-review reference preview."
+    },
+    {
+      "id": "inspector",
+      "label": "Inspector",
+      "hostSelector": "[data-workbench-region='inspector']",
+      "status": "implemented",
+      "currentScope": "Readable overview, current file facts, and report-backed diagnostics."
+    },
+    {
+      "id": "resources",
+      "label": "Resources",
+      "hostSelector": "[data-workbench-region='resources']",
+      "status": "foundation_ready",
+      "currentScope": "Designer-readable resource rows and sequence grouping surface; no editing or optimization actions."
+    },
+    {
+      "id": "action_workflow",
+      "label": "Action / Workflow",
+      "hostSelector": "[data-workbench-region='action-workflow']",
+      "status": "implemented",
+      "currentScope": "Preview, inspector, activity, theme, and settings controls."
+    },
+    {
+      "id": "activity_history",
+      "label": "Activity / History",
+      "hostSelector": "[data-workbench-region='activity-history']",
+      "status": "implemented",
+      "currentScope": "User-readable local activity and bounded diagnostic details."
+    }
+  ],
+  "deferredFeaturePolicy": {
+    "phase2": "Reserve diagnostic capacity only; do not expose inactive optimization controls.",
+    "phase3": "Reserve replaceable-element editing capacity only; do not expose inactive imageKey or text editing controls.",
+    "phase4": "Reserve sequence-review capacity only; do not expose anti-flicker or scheduling controls.",
+    "midTerm": "Adapters may attach to the same regions later, but no multi-format parser or converter starts in P6-R1.",
+    "longTerm": "Agent, Motion Plan, ComfyUI, and generation modules remain isolated future work requiring separate approval."
+  },
+  "ownerVisibleRules": [
+    "Preview Stage remains the visual anchor.",
+    "Inspector is secondary and context-aware.",
+    "Resources must be designer-readable and ready for grouping.",
+    "Diagnostics are progressive disclosure, not the default user face.",
+    "Activity is user-readable and may reveal details only on demand.",
+    "Settings defaults to local preview; export/latest-artifact/debug options stay advanced."
+  ],
+  "productionApproved": false,
+  "phase2Started": false
+}
