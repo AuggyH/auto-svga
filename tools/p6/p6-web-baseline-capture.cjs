@@ -1122,8 +1122,10 @@ async function main() {
   console.log("P6_WEB_BASELINE_PHASE accessibility-toggles");
   await recordWebInteraction(window, "enable-reduce-motion-and-reduce-blur-toggles", async () => {
     await browserPointClick(window, "#reduceMotionToggle");
+    await waitFor(window, `document.querySelector("#reduceMotionToggle")?.checked === true`, 2_000);
     await browserPointClick(window, "#reduceBlurToggle");
-  }, { trustedPath: "web-baseline-real-click", delayMs: 180 });
+    await waitFor(window, `document.querySelector("#reduceMotionToggle")?.checked === true && document.querySelector("#reduceBlurToggle")?.checked === true`, 2_000);
+  }, { trustedPath: "web-baseline-real-click", delayMs: 240 });
   snapshots.push(await collectSnapshot(window, "accessibility-toggles-on"));
   await capture(window, "screenshot-accessibility-toggles-on-1440x900.png");
 

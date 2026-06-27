@@ -75,6 +75,7 @@ const reviewerBRequiredCategories = [
   "motionAssetAudit",
   "runtimeLogs",
   "settings",
+  "macosVisualSystem",
   "theme",
   "accessibilitySettings",
   "emptyState",

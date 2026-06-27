@@ -214,6 +214,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /function validateOwnerUsabilityResult/);
 	  assert.match(main, /function validatePreviewCardConsistency/);
 	  assert.match(main, /function validatePreviewCardZoneSnapshot/);
+	  assert.match(main, /fileNameInTitle/);
+	  assert.match(main, /duplicateFilePillHidden/);
+	  assert.doesNotMatch(main, /filePillVisible/);
 	  assert.match(main, /owner-usability-smoke\.json/);
 	  assert.match(main, /finderDocumentAssociationNotClaimed/);
 	  assert.match(main, /clearCurrentFileAction/);
@@ -438,7 +441,8 @@ test("default Electron renderer shares the Web product page and keeps editor inc
   assert.doesNotMatch(page, /brandMark/);
   assert.match(sharedShell, /class="shell"/);
   assert.match(sharedShell, /本地预览/);
-  assert.match(sharedShell, /SVGA 信息/);
+  assert.match(sharedShell, /检查器/);
+  assert.doesNotMatch(sharedShell, /SVGA 信息/);
   assert.match(sharedShell, /运行日志/);
   assert.match(sharedShell, /设置/);
   assert.match(sharedShell, /floatingRoot/);

@@ -63,10 +63,12 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
 });
 
 test("shared product shell keeps loading distinct and editor incubation hidden by default", async () => {
-  const [shellHtml, productApp, productStyles] = await Promise.all([
+  const [shellHtml, productApp, productStyles, p6Capture, stateEvidence] = await Promise.all([
     readRepoFile("tools/shared/product-frontend/product-shell.html"),
     readRepoFile("tools/shared/product-frontend/product-app.mjs"),
-    readRepoFile("tools/shared/product-frontend/product-styles.css")
+    readRepoFile("tools/shared/product-frontend/product-styles.css"),
+    readRepoFile("tools/p6/p6-web-baseline-capture.cjs"),
+    readRepoFile("tools/p6/runtime-scenarios/state-evidence.mjs")
   ]);
 
   assert.match(shellHtml, /class="loadingPhaseList"/);
@@ -84,10 +86,12 @@ test("shared product shell keeps loading distinct and editor incubation hidden b
 });
 
 test("shared product app exposes Repair 6 product states and invalid cleanup evidence", async () => {
-  const [shellHtml, productApp, productStyles] = await Promise.all([
+  const [shellHtml, productApp, productStyles, p6Capture, stateEvidence] = await Promise.all([
     readRepoFile("tools/shared/product-frontend/product-shell.html"),
     readRepoFile("tools/shared/product-frontend/product-app.mjs"),
-    readRepoFile("tools/shared/product-frontend/product-styles.css")
+    readRepoFile("tools/shared/product-frontend/product-styles.css"),
+    readRepoFile("tools/p6/p6-web-baseline-capture.cjs"),
+    readRepoFile("tools/p6/runtime-scenarios/state-evidence.mjs")
   ]);
 
   for (const stateId of [
@@ -222,8 +226,12 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
   assert.match(productApp, /announce\(errorBox\.textContent\)/);
 	  assert.match(productApp, /announce\(message\)/);
 	  assert.match(productApp, /announce\("同步播放已开始"\)/);
-	  assert.match(productApp, /announce\("已开启本地对比"\)/);
-	  assert.match(shellHtml, /id="statusAnnouncer" class="srOnly" aria-live="polite"/);
+  assert.match(productApp, /announce\("已开启本地对比"\)/);
+  assert.match(p6Capture, /browserPointClick\(window, "#reduceMotionToggle"\)/);
+  assert.match(p6Capture, /browserPointClick\(window, "#reduceBlurToggle"\)/);
+  assert.match(p6Capture, /reduceMotionToggle"\)\?\.checked === true && document\.querySelector\("#reduceBlurToggle"\)\?\.checked === true/);
+  assert.match(stateEvidence, /screenshot-accessibility-toggles-on-1440x900\.png/);
+  assert.match(shellHtml, /id="statusAnnouncer" class="srOnly" aria-live="polite"/);
 	  assert.match(shellHtml, /id="svgaStatusA" class="statusPill"/);
 	  assert.match(shellHtml, /id="clearCurrentFileButton"/);
 	  assert.match(productStyles, /\.narrowWindowHint\s*\{[\s\S]*?display: none;/);
@@ -247,6 +255,16 @@ test("P6-R1 owner-visible visual system target is token-driven and auditable", a
   assert.equal(summary.sourceOnly, true);
   assert.ok(summary.metrics.requiredTokenCount >= 40);
   assert.ok(summary.metrics.requiredComponentClassCount >= 10);
+});
+
+test("P6-R1 Reviewer B category request and parity runner include macOS visual-system review", async () => {
+  const [p6EvidenceGenerator, parityRunner] = await Promise.all([
+    readRepoFile("tools/p6/generate-p6-evidence.mjs"),
+    readRepoFile("tools/p6/parity-runner.mjs")
+  ]);
+
+  assert.match(p6EvidenceGenerator, /"macosVisualSystem"/);
+  assert.match(parityRunner, /"macosVisualSystem"/);
 });
 
 test("Electron default renderer uses shared product source and hides editor incubation", async () => {

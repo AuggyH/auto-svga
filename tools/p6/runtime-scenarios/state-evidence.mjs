@@ -68,7 +68,7 @@ const stateImageSources = {
     desktop: "desktop-settings-open.png"
   },
   "accessibility-toggles-on": {
-    web: "web-baseline/screenshot-settings-1440x900.png",
+    web: "web-baseline/screenshot-accessibility-toggles-on-1440x900.png",
     desktop: "desktop-accessibility-toggles-on.png"
   },
   "settings-closed-by-escape": {
