@@ -6,8 +6,8 @@ Date: 2026-06-27
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_repair_in_progress
-- Next Action: repair_owner_visible_ui_polish_for_human_gate
+- State: terminal_human_required
+- Next Action: product_owner_human_gate
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -76,9 +76,4 @@ Date: 2026-06-27
 
 ## Next Action
 
-Repair owner-visible UI polish and evidence gaps, then rerun affected Gate
-checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and
-regenerate the one-upload complete review-directory ZIP. Product Owner
-acceptance, final independent product external review, Finding closure, Phase
-2, signing, notarization, release, push, and merge remain prohibited until
-explicit next authorization.
+Product Owner Human Gate is ready after owner-visible polish and evidence repair. Final evidence, Reviewer A/B, Final Seal, Post-seal Verification, and the one-upload complete review-directory ZIP must bind to this final head. Product Owner acceptance, final independent product external review, Finding closure, Phase 2, signing, notarization, release, push, and merge remain prohibited until explicit next authorization.

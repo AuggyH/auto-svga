@@ -90,7 +90,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -119,7 +119,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
         "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
-        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -170,7 +174,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -202,7 +206,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
         "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
-        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -282,7 +290,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
         "REPAIR_SCOPE: local_preview_owner_gate_usability_repair",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -331,7 +343,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -363,7 +375,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
         "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
-        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -411,7 +427,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -440,7 +456,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
         "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
-        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -519,7 +539,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
         "REPAIR_SCOPE: local_preview_owner_gate_usability_repair",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -598,7 +622,11 @@
         "review/P6-R1-<final-head>/MANIFEST.json",
         "review/P6-R1-<final-head>/owner-upload-post-seal-verification.json",
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -647,7 +675,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -679,7 +707,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
         "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
-        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -757,7 +789,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
         "REPAIR_SCOPE: local_preview_owner_gate_usability_repair",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -833,7 +869,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
         "REPAIR_SCOPE: local_preview_owner_gate_usability_repair",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -917,7 +957,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED",
         "REPAIR_SCOPE: local_preview_owner_gate_usability_repair",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -967,7 +1011,7 @@
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -1001,7 +1045,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
         "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
-        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     },
     {
@@ -1054,7 +1102,7 @@
         "synchronized playback and cleanup evidence",
         "independent external review confirmation"
       ],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP2-multi-source-acceptance.md",
@@ -1083,7 +1131,11 @@
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
         "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
         "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
-        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip",
+        ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
+        ".artifacts/product/P6/desktop-local-compare-loaded.png",
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
       ]
     }
   ],
