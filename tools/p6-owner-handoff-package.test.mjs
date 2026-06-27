@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   buildZipPrivacyAudit,
   collectP6ParityNonPass,
+  validateCompleteReviewDirectoryBinding,
   validateOwnerVisibleHandoffBinding,
   validateFinalPackagingGate,
   validateManifestPayloadHashes,
@@ -661,4 +662,117 @@ test("P6-R1 manifest payload hash check rejects stale file hashes", async () => 
     assert.equal(result.errors.some((error) => error.includes("size mismatch")), true);
     assert.equal(result.errors.some((error) => error.includes("sha256 mismatch")), true);
   });
+});
+
+test("P6-R1 complete review directory binding preserves one-file transfer wrapper and canonical inner set", () => {
+  const finalHead = "a".repeat(40);
+  const finalTree = "b".repeat(40);
+  const completeZipName = "P6-R1-aaaaaaa-complete-review-directory.zip";
+  const reviewZipName = "P6-R1-aaaaaaa-review-upload.zip";
+  const appZipName = "Auto-SVGA-macOS-internal-aaaaaaa.zip";
+  const sidecarName = "P6-R1-owner-upload-sidecar-aaaaaaa.json";
+  const uploadIndex = {
+    files: [
+      {
+        role: "transfer_wrapper",
+        required: true,
+        fileName: completeZipName,
+        relativePath: completeZipName,
+        sizeBytes: null,
+        sha256: null,
+        finalHead,
+        finalTree,
+        milestoneId: "P6-R1",
+        contractRevision: 3,
+        repairRound: 0,
+        phase2Started: false,
+        productionApproved: false
+      },
+      ...[
+        ["canonical_review_zip", reviewZipName, 101, "1".repeat(64)],
+        ["canonical_macos_app_zip", appZipName, 202, "2".repeat(64)],
+        ["canonical_owner_sidecar", sidecarName, 303, "3".repeat(64)],
+        ["complete_directory_privacy_audit", "bundle-privacy-audit.json", 404, "4".repeat(64)],
+        ["complete_directory_post_seal", "post-seal-verification.json", 505, "5".repeat(64)],
+        ["complete_directory_hash_list", "hashes/sha256sums.txt", null, null, true],
+        ["review_zip_entry_list", "extracted-index/review-zip-entry-list.json", 606, "6".repeat(64)],
+        ["app_zip_entry_list", "extracted-index/app-zip-entry-list.json", 707, "7".repeat(64)],
+        ["complete_directory_readme", "README.md", 808, "8".repeat(64)],
+        ["complete_directory_upload_index", "UPLOAD_INDEX.json", null, null, true],
+        ["complete_directory_manifest", "MANIFEST.json", null, null, true]
+      ].map(([role, relativePath, sizeBytes, sha256, selfReferential = false]) => ({
+        role,
+        required: true,
+        fileName: relativePath.split("/").pop(),
+        relativePath,
+        sizeBytes,
+        sha256,
+        finalHead,
+        finalTree,
+        milestoneId: "P6-R1",
+        contractRevision: 3,
+        repairRound: 0,
+        phase2Started: false,
+        productionApproved: false,
+        ...(selfReferential ? { selfReferential: true } : {})
+      }))
+    ]
+  };
+  const manifest = {
+    entries: [
+      ["README.md", 808, "8".repeat(64)],
+      ["UPLOAD_INDEX.json", 909, "9".repeat(64)],
+      ["bundle-privacy-audit.json", 404, "4".repeat(64)],
+      ["post-seal-verification.json", 505, "5".repeat(64)],
+      [sidecarName, 303, "3".repeat(64)],
+      [reviewZipName, 101, "1".repeat(64)],
+      [appZipName, 202, "2".repeat(64)],
+      ["hashes/sha256sums.txt", 1001, "a".repeat(64)],
+      ["extracted-index/review-zip-entry-list.json", 606, "6".repeat(64)],
+      ["extracted-index/app-zip-entry-list.json", 707, "7".repeat(64)]
+    ].map(([path, sizeBytes, sha256]) => ({ path, sizeBytes, sha256 }))
+  };
+  const result = validateCompleteReviewDirectoryBinding({
+    finalHead,
+    finalTree,
+    completeZipName,
+    reviewZipName,
+    appZipName,
+    sidecarName,
+    uploadIndex,
+    manifest,
+    postSealVerification: {
+      passed: true,
+      finalHead,
+      finalTree,
+      completeDirectoryZip: { fileName: completeZipName },
+      reviewZip: { fileName: reviewZipName },
+      macosAppZip: { fileName: appZipName },
+      ownerUploadSidecar: { fileName: sidecarName }
+    },
+    privacyAudit: { passed: true, findingCount: 0 }
+  });
+
+  assert.equal(result.passed, true, result.errors.join("; "));
+});
+
+test("P6-R1 complete review directory binding rejects missing App ZIP canonical record", () => {
+  const finalHead = "a".repeat(40);
+  const finalTree = "b".repeat(40);
+  const result = validateCompleteReviewDirectoryBinding({
+    finalHead,
+    finalTree,
+    completeZipName: "P6-R1-aaaaaaa-complete-review-directory.zip",
+    reviewZipName: "P6-R1-aaaaaaa-review-upload.zip",
+    appZipName: "Auto-SVGA-macOS-internal-aaaaaaa.zip",
+    sidecarName: "P6-R1-owner-upload-sidecar-aaaaaaa.json",
+    uploadIndex: { files: [] },
+    manifest: { entries: [] },
+    postSealVerification: { passed: false },
+    privacyAudit: { passed: false, findingCount: 1 }
+  });
+
+  assert.equal(result.passed, false);
+  assert.equal(result.errors.some((error) => error.includes("canonical_macos_app_zip")), true);
+  assert.equal(result.errors.some((error) => error.includes("privacy audit")), true);
 });

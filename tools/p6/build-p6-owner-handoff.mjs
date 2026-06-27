@@ -16,6 +16,7 @@ const packetRoot = path.join(repoRoot, ".artifacts/loop-handoff/latest");
 const trialRoot = path.join(repoRoot, "tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial");
 const trialApp = path.join(trialRoot, "Auto SVGA-darwin-arm64/Auto SVGA.app");
 const uploadStagingRoot = path.join(repoRoot, ".artifacts/product/P6-R1-owner-review-upload");
+const completeDirectoryStagingRoot = path.join(repoRoot, ".artifacts/product/P6-R1-complete-review-directory");
 const parityReportPath = path.join(productRoot, "p6-parity-report.json");
 const trackedWorkerRegistryPath = path.join(repoRoot, "docs/product/p6/P6_WORKER_REGISTRY.json");
 const workerRegistryFinalPath = path.join(productRoot, "worker-registry-final.json");
@@ -31,6 +32,9 @@ const appBundleBindingEntries = [
   "Auto SVGA.app/Contents/MacOS/Auto SVGA",
   "Auto SVGA.app/Contents/Resources/app.asar"
 ];
+const contractRevision = 3;
+const repairRound = 0;
+const phase2Started = false;
 
 const sealedEvidenceFiles = [
   "validation.json",
@@ -939,14 +943,15 @@ export function buildZipPrivacyAudit({
   };
 }
 
-async function buildPrivacyAudit({ stagingRoot, appZipPath, reviewZipPath, expectedHeadShort }) {
+async function buildPrivacyAudit({ stagingRoot, appZipPath, reviewZipPath, expectedHeadShort, skipZipPaths = [] }) {
   const findings = [];
   const scannedEntries = [];
   const stagingFiles = await listFiles(stagingRoot);
   const extraZipPaths = [];
+  const skipZipPathSet = new Set(skipZipPaths.map((filePath) => path.resolve(filePath)));
   for (const filePath of stagingFiles) {
     const bundlePath = toBundlePath(stagingRoot, filePath);
-    if (path.extname(filePath).toLowerCase() === ".zip") {
+    if (path.extname(filePath).toLowerCase() === ".zip" && !skipZipPathSet.has(path.resolve(filePath))) {
       extraZipPaths.push({ zipRole: zipRoleForBundlePath(bundlePath), zipPath: filePath });
     }
     findings.push(...findPrivacyMatches(bundlePath, `entry:${bundlePath}`, { expectedHeadShort }));
@@ -995,6 +1000,229 @@ async function buildManifest(root, extra = {}) {
     ...extra,
     humanReviewRequiredCount: sortedEntries.filter((entry) => entry.humanReviewRequired === true).length,
     entries: sortedEntries
+  };
+}
+
+function assertNoForbiddenZipMetadata(zipPath, label) {
+  const badEntries = zipEntries(zipPath).filter((entry) => entry.includes("__MACOSX") || path.basename(entry) === ".DS_Store");
+  if (badEntries.length) {
+    throw new Error(`${label} contains forbidden archive metadata: ${badEntries.slice(0, 5).join(", ")}`);
+  }
+}
+
+function zipEntryListReport(zipPath) {
+  const entries = zipEntries(zipPath);
+  const files = [];
+  for (const entry of entries) {
+    const directory = entry.endsWith("/");
+    let sizeBytes = null;
+    let sha256 = null;
+    if (!directory) {
+      const bytes = zipEntryBytes(zipPath, entry);
+      sizeBytes = bytes.byteLength;
+      sha256 = sha256Bytes(bytes);
+    }
+    files.push({
+      path: entry,
+      directory,
+      sizeBytes,
+      sha256
+    });
+  }
+  return {
+    schemaVersion: 1,
+    milestoneId,
+    entryCount: entries.length,
+    noMacosxMetadata: entries.every((entry) => !entry.includes("__MACOSX")),
+    noDsStore: entries.every((entry) => path.basename(entry) !== ".DS_Store"),
+    entries: files
+  };
+}
+
+async function writeJsonFile(filePath, payload) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+}
+
+function uploadRecord({
+  role,
+  required,
+  fileName,
+  relativePath,
+  sizeBytes,
+  sha256,
+  entryCount,
+  finalHead,
+  finalTree,
+  productionApproved = false,
+  notes
+}) {
+  return {
+    role,
+    required,
+    fileName,
+    relativePath,
+    sizeBytes,
+    sha256,
+    entryCount,
+    finalHead,
+    finalTree,
+    milestoneId,
+    contractRevision,
+    repairRound,
+    phase2Started,
+    productionApproved,
+    ...(notes ? { notes } : {})
+  };
+}
+
+async function fileUploadRecord({ role, required = true, root, relativePath, finalHead, finalTree, entryCount = null, notes }) {
+  const filePath = path.join(root, relativePath);
+  const identity = await fileIdentity(filePath);
+  return uploadRecord({
+    role,
+    required,
+    fileName: path.basename(relativePath),
+    relativePath,
+    sizeBytes: identity.sizeBytes,
+    sha256: identity.sha256,
+    entryCount,
+    finalHead,
+    finalTree,
+    notes
+  });
+}
+
+async function writeSha256Sums({ root, excluded = [] }) {
+  const excludedSet = new Set(excluded);
+  const rows = [];
+  for (const filePath of await listFiles(root)) {
+    const bundlePath = toBundlePath(root, filePath);
+    if (excludedSet.has(bundlePath)) continue;
+    rows.push(`${await sha256File(filePath)}  ${bundlePath}`);
+  }
+  rows.sort();
+  await mkdir(path.join(root, "hashes"), { recursive: true });
+  await writeFile(path.join(root, "hashes/sha256sums.txt"), `${rows.join("\n")}\n`, "utf8");
+}
+
+function completeDirectoryReadme({ completeZipName, reviewZipName, appZipName, sidecarName }) {
+  return [
+    "# P6-R1 Complete Review Directory",
+    "",
+    `Upload only \`${completeZipName}\` to the review assistant.`,
+    "",
+    "Do not manually re-compress this folder in Finder. This archive is generated by Auto-SVGA tooling with deterministic ZIP settings and privacy checks.",
+    "",
+    "Canonical inner handoff files included for review awareness:",
+    `- ${reviewZipName}`,
+    `- ${appZipName}`,
+    `- ${sidecarName}`,
+    "",
+    "The complete-directory ZIP is a transfer wrapper, not the product App and not a replacement for the canonical Review ZIP payload.",
+    ""
+  ].join("\n");
+}
+
+export function validateCompleteReviewDirectoryBinding({
+  finalHead,
+  finalTree,
+  completeZipName,
+  reviewZipName,
+  appZipName,
+  sidecarName,
+  uploadIndex,
+  manifest,
+  postSealVerification,
+  privacyAudit
+}) {
+  const errors = [];
+  const records = uploadIndex?.files ?? uploadIndex?.records ?? [];
+  const byRole = new Map(records.map((record) => [record.role, record]));
+  const byPath = new Map(records.map((record) => [record.relativePath, record]));
+  const requiredRoles = [
+    "transfer_wrapper",
+    "canonical_review_zip",
+    "canonical_macos_app_zip",
+    "canonical_owner_sidecar",
+    "complete_directory_manifest",
+    "complete_directory_privacy_audit",
+    "complete_directory_post_seal",
+    "complete_directory_hash_list",
+    "review_zip_entry_list",
+    "app_zip_entry_list"
+  ];
+  for (const role of requiredRoles) {
+    if (!byRole.has(role)) errors.push(`upload index missing role ${role}`);
+  }
+  if (byRole.get("transfer_wrapper")?.fileName !== completeZipName) errors.push("upload index transfer wrapper fileName mismatch");
+  if (byRole.get("canonical_review_zip")?.fileName !== reviewZipName) errors.push("upload index review ZIP fileName mismatch");
+  if (byRole.get("canonical_macos_app_zip")?.fileName !== appZipName) errors.push("upload index App ZIP fileName mismatch");
+  if (byRole.get("canonical_owner_sidecar")?.fileName !== sidecarName) errors.push("upload index sidecar fileName mismatch");
+  for (const record of records) {
+    if (record.finalHead !== finalHead) errors.push(`upload index ${record.role} finalHead mismatch`);
+    if (record.finalTree !== finalTree) errors.push(`upload index ${record.role} finalTree mismatch`);
+    if (record.milestoneId !== milestoneId) errors.push(`upload index ${record.role} milestone mismatch`);
+    if (record.contractRevision !== contractRevision) errors.push(`upload index ${record.role} contractRevision mismatch`);
+    if (record.repairRound !== repairRound) errors.push(`upload index ${record.role} repairRound mismatch`);
+    if (record.phase2Started !== phase2Started) errors.push(`upload index ${record.role} phase2Started mismatch`);
+    if (record.productionApproved !== false) errors.push(`upload index ${record.role} productionApproved must be false`);
+    if (record.role !== "transfer_wrapper" && record.selfReferential !== true) {
+      if (!validSize(record.sizeBytes)) errors.push(`upload index ${record.role} sizeBytes missing`);
+      if (!validSha256(record.sha256)) errors.push(`upload index ${record.role} sha256 missing`);
+    }
+  }
+  const manifestEntries = new Map((manifest?.entries ?? []).map((entry) => [entry.path, entry]));
+  for (const [relativePath, record] of byPath.entries()) {
+    if (relativePath === completeZipName || relativePath === "MANIFEST.json") continue;
+    const entry = manifestEntries.get(relativePath);
+    if (!entry) {
+      errors.push(`manifest missing upload index file ${relativePath}`);
+      continue;
+    }
+    if (validSize(record.sizeBytes) && entry.sizeBytes !== record.sizeBytes) {
+      errors.push(`manifest size mismatch for ${relativePath}`);
+    }
+    if (validSha256(record.sha256) && entry.sha256 !== record.sha256) {
+      errors.push(`manifest sha256 mismatch for ${relativePath}`);
+    }
+  }
+  const requiredManifestPaths = [
+    "README.md",
+    "UPLOAD_INDEX.json",
+    "bundle-privacy-audit.json",
+    "post-seal-verification.json",
+    sidecarName,
+    reviewZipName,
+    appZipName,
+    "hashes/sha256sums.txt",
+    "extracted-index/review-zip-entry-list.json",
+    "extracted-index/app-zip-entry-list.json"
+  ];
+  for (const requiredPath of requiredManifestPaths) {
+    if (!manifestEntries.has(requiredPath)) errors.push(`manifest missing ${requiredPath}`);
+  }
+  if (manifestEntries.has("MANIFEST.json")) errors.push("manifest must not include itself");
+  if (privacyAudit?.passed !== true || privacyAudit?.findingCount !== 0) errors.push("complete directory privacy audit must pass with zero findings");
+  if (postSealVerification?.passed !== true) errors.push("complete directory post-seal must pass");
+  if (postSealVerification?.finalHead !== finalHead || postSealVerification?.finalTree !== finalTree) {
+    errors.push("complete directory post-seal final head/tree mismatch");
+  }
+  if (postSealVerification?.completeDirectoryZip?.fileName !== completeZipName) {
+    errors.push("complete directory post-seal transfer wrapper fileName mismatch");
+  }
+  for (const [section, fileName] of [
+    ["reviewZip", reviewZipName],
+    ["macosAppZip", appZipName],
+    ["ownerUploadSidecar", sidecarName]
+  ]) {
+    if (postSealVerification?.[section]?.fileName !== fileName) {
+      errors.push(`complete directory post-seal ${section} fileName mismatch`);
+    }
+  }
+  return {
+    passed: errors.length === 0,
+    errors
   };
 }
 
@@ -1113,6 +1341,7 @@ function finalResponseText({
   reviewZipName,
   appZipName,
   sidecarName,
+  completeZipName,
   patchCompanionRequired,
   absoluteLinks
 }) {
@@ -1123,10 +1352,14 @@ function finalResponseText({
   const lines = [
     "P6_MACHINE_EXECUTION_COMPLETE",
     "",
+    "PRIMARY_OWNER_UPLOAD:",
+    `- ${completeZipName ? link("P6-R1 Complete Review Directory ZIP", completeZipName) : "Generated after final packaging."}`,
+    "- Upload only the complete review directory ZIP to the review assistant.",
+    "",
     "VISIBLE_REVIEW:",
     `- ${link("P6-R1 Review Packet", "REVIEW_PACKET.md")}`,
-    `- ${link("P6-R1 Review ZIP", reviewZipName)}`,
-    `- ${link("P6-R1 Owner Upload Sidecar", sidecarName)}`,
+    `- ${link("P6-R1 Review ZIP inside complete directory", reviewZipName)}`,
+    `- ${link("P6-R1 Owner Upload Sidecar inside complete directory", sidecarName)}`,
   ];
   if (patchCompanionRequired) {
     lines.push(`- ${link("P6-R1 Companion Patch", "changes.patch")}`);
@@ -1134,7 +1367,7 @@ function finalResponseText({
   lines.push(
     "",
     "OWNER_UPLOAD_SET:",
-    "- Upload or hand off all three files together. The Review ZIP alone is not a valid owner handoff.",
+    "- The canonical inner handoff set remains three files, but Product Owner should upload the complete review directory ZIP only.",
     `- ${reviewZipName}`,
     `- ${appZipName}`,
     `- ${sidecarName}`,
@@ -1206,6 +1439,398 @@ function ownerReviewPacketText({
   ].join("\n");
 }
 
+async function writeCompleteReviewDirectoryPackage({
+  visibleRoot,
+  headCommit,
+  headTree,
+  headShort,
+  reviewZipName,
+  appZipName,
+  sidecarName,
+  reviewZipIdentity,
+  appZipIdentity,
+  sidecarIdentity,
+  reviewZipEntries,
+  appZipEntries,
+  reviewZipManifestSha256,
+  ownerUploadPostSealVerification,
+  appBundleBinding,
+  finalLoopValidation,
+  privacyAudit,
+  workerRegistryFinal,
+  patchCompanionRequired
+}) {
+  const completeZipName = `${milestoneId}-${headShort}-complete-review-directory.zip`;
+  const completeDirectoryName = `${milestoneId}-${headShort}-complete-review-directory`;
+  const completeStageParent = completeDirectoryStagingRoot;
+  const completeRoot = path.join(completeStageParent, completeDirectoryName);
+  const completeZipPath = path.join(visibleRoot, completeZipName);
+
+  await rm(completeStageParent, { recursive: true, force: true });
+  await rm(completeZipPath, { force: true });
+  await mkdir(completeRoot, { recursive: true });
+  await mkdir(path.join(completeRoot, "hashes"), { recursive: true });
+  await mkdir(path.join(completeRoot, "extracted-index"), { recursive: true });
+
+  await copyRequired(path.join(visibleRoot, reviewZipName), path.join(completeRoot, reviewZipName));
+  await copyRequired(path.join(visibleRoot, appZipName), path.join(completeRoot, appZipName));
+  await copyRequired(path.join(visibleRoot, sidecarName), path.join(completeRoot, sidecarName));
+
+  const reviewZipEntryList = {
+    ...zipEntryListReport(path.join(completeRoot, reviewZipName)),
+    zipRole: "canonical_review_zip",
+    fileName: reviewZipName
+  };
+  const appZipEntryList = {
+    ...zipEntryListReport(path.join(completeRoot, appZipName)),
+    zipRole: "canonical_macos_app_zip",
+    fileName: appZipName
+  };
+  if (!reviewZipEntryList.noMacosxMetadata || !reviewZipEntryList.noDsStore) {
+    throw new Error("complete review directory blocked: Review ZIP contains forbidden metadata");
+  }
+  if (!appZipEntryList.noMacosxMetadata || !appZipEntryList.noDsStore) {
+    throw new Error("complete review directory blocked: App ZIP contains forbidden metadata");
+  }
+  await writeJsonFile(path.join(completeRoot, "extracted-index/review-zip-entry-list.json"), reviewZipEntryList);
+  await writeJsonFile(path.join(completeRoot, "extracted-index/app-zip-entry-list.json"), appZipEntryList);
+
+  await writeFile(path.join(completeRoot, "README.md"), completeDirectoryReadme({
+    completeZipName,
+    reviewZipName,
+    appZipName,
+    sidecarName
+  }), "utf8");
+
+  const innerPostSeal = ownerUploadPostSealVerification;
+  const completePostSeal = {
+    schemaVersion: 1,
+    milestoneId,
+    finalHead: headCommit,
+    finalTree: headTree,
+    contractRevision,
+    repairRound,
+    phase2Started,
+    productionApproved: false,
+    passed: true,
+    sealIdentifier: innerPostSeal.sealIdentifier ?? `P6-R1-${headShort}`,
+    completeDirectoryZip: {
+      fileName: completeZipName,
+      role: "transfer_wrapper",
+      identityRecordedExternally: true
+    },
+    reviewZip: {
+      fileName: reviewZipName,
+      sizeBytes: reviewZipIdentity.sizeBytes,
+      sha256: reviewZipIdentity.sha256,
+      entryCount: reviewZipEntries.length,
+      manifestSha256: reviewZipManifestSha256
+    },
+    macosAppZip: {
+      fileName: appZipName,
+      sizeBytes: appZipIdentity.sizeBytes,
+      sha256: appZipIdentity.sha256,
+      entryCount: appZipEntries.length
+    },
+    ownerUploadSidecar: {
+      fileName: sidecarName,
+      sizeBytes: sidecarIdentity.sizeBytes,
+      sha256: sidecarIdentity.sha256
+    },
+    reviewerVerdicts: {
+      reviewerA: {
+        fileName: "reviewer-a.json",
+        sha256: ownerUploadPostSealVerification.reviewerVerdicts?.reviewerA?.sha256 ?? null
+      },
+      reviewerB: {
+        fileName: "reviewer-b.json",
+        sha256: ownerUploadPostSealVerification.reviewerVerdicts?.reviewerB?.sha256 ?? null
+      }
+    },
+    finalLoopValidation,
+    appBundleBinding,
+    innerPostSeal: {
+      passed: innerPostSeal.passed === true,
+      reviewedHeadCommit: innerPostSeal.reviewedHeadCommit,
+      reviewedHeadTree: innerPostSeal.reviewedHeadTree,
+      ownerUploadSet: innerPostSeal.ownerUploadSet
+    },
+    assertions: {
+      exactCanonicalSetCopied: true,
+      reviewZipHashMatchesInnerPostSeal: innerPostSeal.reviewZip?.sha256 === reviewZipIdentity.sha256,
+      appZipHashMatchesInnerPostSeal: innerPostSeal.macosAppZip?.sha256 === appZipIdentity.sha256,
+      sidecarHashMatchesInnerPostSeal: innerPostSeal.ownerUploadSidecar?.sha256 === sidecarIdentity.sha256,
+      appZipUnzipVerified: appZipEntryList.entryCount === appZipEntries.length && appZipEntryList.entryCount > 0,
+      noMacosxMetadata: reviewZipEntryList.noMacosxMetadata && appZipEntryList.noMacosxMetadata,
+      noDsStore: reviewZipEntryList.noDsStore && appZipEntryList.noDsStore,
+      manifestCoversDirectoryPayloadsExceptItself: true,
+      privacyAuditRequired: true,
+      finalLoopValidationIncluded: finalLoopValidation.passed === true,
+      productionApprovedFalse: true,
+      phase2StartedFalse: true
+    }
+  };
+  if (!completePostSeal.assertions.reviewZipHashMatchesInnerPostSeal
+    || !completePostSeal.assertions.appZipHashMatchesInnerPostSeal
+    || !completePostSeal.assertions.sidecarHashMatchesInnerPostSeal) {
+    throw new Error("complete review directory blocked: inner post-seal identity mismatch");
+  }
+  await writeJsonFile(path.join(completeRoot, "post-seal-verification.json"), completePostSeal);
+
+  let completePrivacyAudit = {
+    ...await buildPrivacyAudit({
+      stagingRoot: completeRoot,
+      appZipPath: path.join(completeRoot, appZipName),
+      reviewZipPath: path.join(completeRoot, reviewZipName),
+      expectedHeadShort: headShort,
+      skipZipPaths: [
+        path.join(completeRoot, reviewZipName),
+        path.join(completeRoot, appZipName)
+      ]
+    }),
+    productionApproved: false,
+    phase2Started: false
+  };
+  if (!completePrivacyAudit.passed) {
+    throw new Error(`complete review directory privacy audit failed: ${completePrivacyAudit.findings.map((finding) => `${finding.ruleId}:${finding.entry}`).join("; ")}`);
+  }
+  await writeJsonFile(path.join(completeRoot, "bundle-privacy-audit.json"), completePrivacyAudit);
+
+  const baseUploadRecords = [
+    uploadRecord({
+      role: "transfer_wrapper",
+      required: true,
+      fileName: completeZipName,
+      relativePath: completeZipName,
+      sizeBytes: null,
+      sha256: null,
+      entryCount: null,
+      finalHead: headCommit,
+      finalTree: headTree,
+      notes: "Self-referential ZIP identity is reported by the generator output and Product Owner final response."
+    }),
+    uploadRecord({
+      role: "canonical_review_zip",
+      required: true,
+      fileName: reviewZipName,
+      relativePath: reviewZipName,
+      sizeBytes: reviewZipIdentity.sizeBytes,
+      sha256: reviewZipIdentity.sha256,
+      entryCount: reviewZipEntries.length,
+      finalHead: headCommit,
+      finalTree: headTree
+    }),
+    uploadRecord({
+      role: "canonical_macos_app_zip",
+      required: true,
+      fileName: appZipName,
+      relativePath: appZipName,
+      sizeBytes: appZipIdentity.sizeBytes,
+      sha256: appZipIdentity.sha256,
+      entryCount: appZipEntries.length,
+      finalHead: headCommit,
+      finalTree: headTree
+    }),
+    uploadRecord({
+      role: "canonical_owner_sidecar",
+      required: true,
+      fileName: sidecarName,
+      relativePath: sidecarName,
+      sizeBytes: sidecarIdentity.sizeBytes,
+      sha256: sidecarIdentity.sha256,
+      entryCount: null,
+      finalHead: headCommit,
+      finalTree: headTree
+    }),
+    await fileUploadRecord({ role: "complete_directory_readme", root: completeRoot, relativePath: "README.md", finalHead: headCommit, finalTree: headTree }),
+    await fileUploadRecord({ role: "complete_directory_post_seal", root: completeRoot, relativePath: "post-seal-verification.json", finalHead: headCommit, finalTree: headTree }),
+    await fileUploadRecord({ role: "complete_directory_privacy_audit", root: completeRoot, relativePath: "bundle-privacy-audit.json", finalHead: headCommit, finalTree: headTree }),
+    await fileUploadRecord({ role: "review_zip_entry_list", root: completeRoot, relativePath: "extracted-index/review-zip-entry-list.json", finalHead: headCommit, finalTree: headTree, entryCount: reviewZipEntryList.entryCount }),
+    await fileUploadRecord({ role: "app_zip_entry_list", root: completeRoot, relativePath: "extracted-index/app-zip-entry-list.json", finalHead: headCommit, finalTree: headTree, entryCount: appZipEntryList.entryCount }),
+    {
+      ...uploadRecord({
+        role: "complete_directory_upload_index",
+        required: true,
+        fileName: "UPLOAD_INDEX.json",
+        relativePath: "UPLOAD_INDEX.json",
+        sizeBytes: null,
+        sha256: null,
+        entryCount: null,
+        finalHead: headCommit,
+        finalTree: headTree,
+        notes: "Self-referential metadata file; exact bytes are covered by MANIFEST.json."
+      }),
+      selfReferential: true
+    },
+    {
+      ...uploadRecord({
+        role: "complete_directory_manifest",
+        required: true,
+        fileName: "MANIFEST.json",
+        relativePath: "MANIFEST.json",
+        sizeBytes: null,
+        sha256: null,
+        entryCount: null,
+        finalHead: headCommit,
+        finalTree: headTree,
+        notes: "MANIFEST.json covers every other complete-directory file and therefore excludes itself."
+      }),
+      selfReferential: true
+    },
+    {
+      ...uploadRecord({
+        role: "complete_directory_hash_list",
+        required: true,
+        fileName: "sha256sums.txt",
+        relativePath: "hashes/sha256sums.txt",
+        sizeBytes: null,
+        sha256: null,
+        entryCount: null,
+        finalHead: headCommit,
+        finalTree: headTree,
+        notes: "Hash list excludes itself and MANIFEST.json to avoid impossible self-referential hashes."
+      }),
+      selfReferential: true
+    }
+  ];
+  const uploadIndex = {
+    schemaVersion: 1,
+    milestoneId,
+    finalHead: headCommit,
+    finalTree: headTree,
+    contractRevision,
+    repairRound,
+    phase2Started,
+    productionApproved: false,
+    transferWrapper: {
+      fileName: completeZipName,
+      role: "transfer_wrapper",
+      productApp: false,
+      reviewPayload: false,
+      identityRecordedExternally: true
+    },
+    canonicalHandoffSet: {
+      companionRequired: true,
+      exactFileNames: [reviewZipName, appZipName, sidecarName],
+      reviewZip: reviewZipName,
+      macosAppZip: appZipName,
+      sidecar: sidecarName
+    },
+    files: baseUploadRecords
+  };
+  await writeJsonFile(path.join(completeRoot, "UPLOAD_INDEX.json"), uploadIndex);
+  await writeSha256Sums({
+    root: completeRoot,
+    excluded: ["MANIFEST.json", "hashes/sha256sums.txt"]
+  });
+
+  const completeManifest = await buildManifest(completeRoot, {
+    reviewedHeadCommit: headCommit,
+    reviewedHeadTree: headTree,
+    finalHead: headCommit,
+    finalTree: headTree,
+    contractRevision,
+    repairRound,
+    phase2Started,
+    productionApproved: false,
+    companionRequired: true,
+    transferWrapper: {
+      fileName: completeZipName,
+      role: "complete_review_directory_zip",
+      identityRecordedExternally: true
+    },
+    canonicalHandoffSet: uploadIndex.canonicalHandoffSet,
+    privacyAudit: {
+      passed: completePrivacyAudit.passed,
+      findingCount: completePrivacyAudit.findingCount,
+      scannedEntryCount: completePrivacyAudit.scannedEntryCount
+    },
+    postSealVerification: {
+      passed: completePostSeal.passed,
+      finalHead: completePostSeal.finalHead,
+      finalTree: completePostSeal.finalTree
+    }
+  });
+  await writeJsonFile(path.join(completeRoot, "MANIFEST.json"), completeManifest);
+  const completeManifestHashCheck = await validateManifestPayloadHashes({
+    root: completeRoot,
+    manifest: completeManifest
+  });
+  if (!completeManifestHashCheck.passed) {
+    throw new Error(`complete review directory manifest hash check failed: ${completeManifestHashCheck.errors.join("; ")}`);
+  }
+
+  const completeBinding = validateCompleteReviewDirectoryBinding({
+    finalHead: headCommit,
+    finalTree: headTree,
+    completeZipName,
+    reviewZipName,
+    appZipName,
+    sidecarName,
+    uploadIndex,
+    manifest: completeManifest,
+    postSealVerification: completePostSeal,
+    privacyAudit: completePrivacyAudit
+  });
+  if (!completeBinding.passed) {
+    throw new Error(`complete review directory binding failed: ${completeBinding.errors.join("; ")}`);
+  }
+
+  const entries = (await listFiles(completeStageParent)).map((filePath) => toBundlePath(completeStageParent, filePath)).sort();
+  await rm(completeZipPath, { force: true });
+  runZip({ cwd: completeStageParent, zipPath: completeZipPath, entries });
+  assertNoForbiddenZipMetadata(completeZipPath, "complete review directory ZIP");
+  const completeZipEntries = zipEntries(completeZipPath);
+  const completeZipIdentity = await fileIdentity(completeZipPath);
+  const finalOuterPrivacyAudit = buildZipPrivacyAudit({
+    reviewZipPath: path.join(completeRoot, reviewZipName),
+    appZipPath: path.join(completeRoot, appZipName),
+    extraZipPaths: [{ zipRole: "complete_directory_wrapper", zipPath: completeZipPath }],
+    expectedHeadShort: headShort
+  });
+  if (!finalOuterPrivacyAudit.passed) {
+    throw new Error(`complete review directory ZIP privacy audit failed: ${finalOuterPrivacyAudit.findings.map((finding) => `${finding.ruleId}:${finding.entry}`).join("; ")}`);
+  }
+  await writeJsonFile(path.join(visibleRoot, "complete-review-directory-summary.json"), {
+    schemaVersion: 1,
+    milestoneId,
+    finalHead: headCommit,
+    finalTree: headTree,
+    contractRevision,
+    repairRound,
+    phase2Started,
+    productionApproved: false,
+    completeReviewDirectoryZip: {
+      fileName: completeZipName,
+      sizeBytes: completeZipIdentity.sizeBytes,
+      sha256: completeZipIdentity.sha256,
+      entryCount: completeZipEntries.length,
+      role: "transfer_wrapper"
+    },
+    canonicalHandoffSet: uploadIndex.canonicalHandoffSet,
+    privacyAudit: {
+      passed: finalOuterPrivacyAudit.passed,
+      findingCount: finalOuterPrivacyAudit.findings.length
+    },
+    workerRegistryFinal,
+    patchCompanionRequired
+  });
+  return {
+    fileName: completeZipName,
+    path: completeZipPath,
+    sizeBytes: completeZipIdentity.sizeBytes,
+    sha256: completeZipIdentity.sha256,
+    entryCount: completeZipEntries.length,
+    stagingDirectory: path.relative(repoRoot, completeRoot).split(path.sep).join("/"),
+    uploadIndex,
+    manifest: completeManifest,
+    privacyAudit: {
+      passed: finalOuterPrivacyAudit.passed,
+      findingCount: finalOuterPrivacyAudit.findings.length
+    }
+  };
+}
+
 async function main() {
   const headCommit = git(["rev-parse", "HEAD"]);
   const headTree = git(["rev-parse", "HEAD^{tree}"]);
@@ -1214,6 +1839,7 @@ async function main() {
   const reviewZipName = `P6-R1-${headShort}-review-upload.zip`;
   const appZipName = `Auto-SVGA-macOS-internal-${headShort}.zip`;
   const sidecarName = `${sidecarNamePrefix}-${headShort}.json`;
+  const completeZipName = `P6-R1-${headShort}-complete-review-directory.zip`;
   const reviewZipPath = path.join(visibleRoot, reviewZipName);
   const appZipPath = path.join(visibleRoot, appZipName);
   const sidecarPath = path.join(visibleRoot, sidecarName);
@@ -1284,6 +1910,7 @@ async function main() {
     reviewZipName,
     appZipName,
     sidecarName,
+    completeZipName,
     patchCompanionRequired,
     absoluteLinks: false
   });
@@ -1293,6 +1920,7 @@ async function main() {
     reviewZipName,
     appZipName,
     sidecarName,
+    completeZipName,
     patchCompanionRequired,
     absoluteLinks: false
   });
@@ -1571,8 +2199,11 @@ async function main() {
   await writeFile(path.join(visibleRoot, "README.md"), [
     "# P6-R1 Owner Review Materials",
     "",
-    "Open or upload the files in this visible folder. Hidden `.artifacts` paths are internal build outputs.",
+    `Upload only \`${completeZipName}\` to the review assistant.`,
     "",
+    "Do not manually re-compress Finder folders. Hidden `.artifacts` paths are internal build outputs.",
+    "",
+    `- ${completeZipName}: complete review directory transfer wrapper.`,
     `- ${reviewZipName}: portable owner review ZIP.`,
     `- ${appZipName}: unsigned macOS internal App ZIP for testing.`,
     `- ${sidecarName}: post-seal sidecar binding the Review ZIP and App ZIP.`,
@@ -1622,6 +2253,28 @@ async function main() {
   }
   await writeFile(path.join(visibleRoot, "MANIFEST.json"), `${JSON.stringify(visibleManifest, null, 2)}\n`);
 
+  const completeReviewDirectory = await writeCompleteReviewDirectoryPackage({
+    visibleRoot,
+    headCommit,
+    headTree,
+    headShort,
+    reviewZipName,
+    appZipName,
+    sidecarName,
+    reviewZipIdentity,
+    appZipIdentity,
+    sidecarIdentity,
+    reviewZipEntries,
+    appZipEntries,
+    reviewZipManifestSha256,
+    ownerUploadPostSealVerification,
+    appBundleBinding,
+    finalLoopValidation,
+    privacyAudit,
+    workerRegistryFinal,
+    patchCompanionRequired
+  });
+
   const summary = {
     schemaVersion: 1,
     milestoneId,
@@ -1644,8 +2297,16 @@ async function main() {
       sizeBytes: sidecarIdentity.sizeBytes,
       sha256: sidecarIdentity.sha256
     },
+    completeReviewDirectoryZip: {
+      fileName: completeReviewDirectory.fileName,
+      sizeBytes: completeReviewDirectory.sizeBytes,
+      sha256: completeReviewDirectory.sha256,
+      entryCount: completeReviewDirectory.entryCount,
+      role: "transfer_wrapper"
+    },
     companionRequired: true,
     mandatoryCompanions: [appZipName, sidecarName],
+    primaryOwnerUpload: completeReviewDirectory.fileName,
     patchCompanionRequired,
     finalPackagingGate,
     finalLoopValidation,
