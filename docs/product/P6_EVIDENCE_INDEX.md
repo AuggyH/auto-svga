@@ -26,52 +26,52 @@ Branch: `agent/codex/p6-r1-contract-r3`
 - desktopRuntimeProof: pass, evidence 3/3, inventory 3
 - securityAudit: pass, evidence 3/3, inventory 3
 - accessibilityReport: pass, evidence 2/2, inventory 2
-- artifactIndex: pass, evidence 1/1, inventory 277
+- artifactIndex: pass, evidence 1/1, inventory 290
 
 ## Key Artifact Hashes
 
 | Role | Path | Size | SHA-256 |
 | --- | --- | ---: | --- |
-| p6_evidence | `.artifacts/product/P6/internal-trial-manifest.json` | 2146 | `63407a22647216651eb299b26c98b86a55b15dbd98026d82467fa074433910a8` |
-| packaged_app_runtime | `.artifacts/product/P6/packaged-app-runtime-proof.json` | 9226 | `40b26bee13592b5dfc284b1e305090fd792b4554d5d70373cf8b206a0f7a8f68` |
-| web_baseline | `.artifacts/product/P6/web-baseline/artifact-index.json` | 9667 | `4ac500d5d0fc3d59dc2d54bc453e06c1439dd63a6958607a42c9b25d1a371ec6` |
-| web_baseline | `.artifacts/product/P6/web-baseline/computed-styles-manifest.json` | 10453 | `cebd8585e8d425a06fb9b04cc586d729f2e0bb7a2590fc5f5f55d47a02e1da96` |
-| web_baseline | `.artifacts/product/P6/web-baseline/dom-manifest.json` | 1518895 | `82451e6d255259e438a8c2a932fcc1410d1338503cde4e1962c84a32e3ebb84c` |
-| web_baseline | `.artifacts/product/P6/web-baseline/interaction-trace.json` | 59117 | `6d99a52ba42efa51833d22339a65a4b4a3f98c721fe0388f0c4bf62c1b76315e` |
-| web_baseline | `.artifacts/product/P6/web-baseline/motion-manifest.json` | 11642 | `df7a3ca81319823144da1b7feb1e0413940641678452e2daffebea294f976a80` |
-| web_baseline | `.artifacts/product/P6/web-baseline/motion-style-samples.json` | 22031 | `ceab7777fc06b1efa9f367956c3cecc901311d9463d72158f2c225b4856ce036` |
-| web_baseline | `.artifacts/product/P6/web-baseline/request-audit.json` | 193 | `0dde10b231074097438aa4ebfb0f628eb80f107a075d403d0eceb12faa8f765f` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-accessibility-toggles-on-1440x900.png` | 546852 | `77ccdf3b9ec5dbbdb205987cb610153210620dc19a25fa34e0fb434135bc54bc` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-asset-preview-modal-1440x900.png` | 406833 | `8ed5d6920d75b341efdd9e8253090e2b7567f2a8be5096a0c102ab0aecf734a1` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png` | 371693 | `9c16e9ebfa416781b0df2025f43bbce6e4196637476e63527e0d41ec129d43d7` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png` | 275023 | `5d6cb442759a2e59f5c3fe7c88d37c457ccf519019a83919fe7a46c3c6f227ee` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-assets-1440x900.png` | 432460 | `fc639c4ede2b82405decc0bbf235f2fbfa4a4775d2adacb1284dddc81dc87287` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-overview-1440x900.png` | 492408 | `513c15861a4ddd77489349fbb01cf422ef095dfc8aec551ccae4a0c34f31e7fa` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-invalid-1440x900.png` | 229739 | `a02ef6a1b76dc8352c3baa6b26bb84dc0a1e4963025737780d5ec1c7329716f1` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-latest-artifact-loaded-1440x900.png` | 373405 | `b64dd82d63ecb9fd62f84cfcc898bead16af5ed237fc149d3239acc00b3fb81d` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-loaded-1440x900.png` | 288189 | `ae8a9ac765c17915fe266ee7b0ffb39b7145b4851a7047335c4d27af8e30d665` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-loading-1440x900.png` | 125997 | `6029db7193f7b7cf4e0d62b6c37caa45c11e3e2ce5b16a5d7c7f3948d9186121` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-empty-1440x900.png` | 199237 | `a635eb968834dc4e03a7c83259601f506f621d1e5c824298831810237a1b6c1e` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-loaded-1440x900.png` | 434619 | `1d7abc67e61a14052c794e364416e26c12def6bcab60ed7b779152527f9929a5` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-empty-1440x900.png` | 122496 | `7ebc9b26905e82510af4df9d12044b75c4d403ad53009734d90389ff9076ed8c` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-logs-1440x900.png` | 433898 | `a0d0197e642f3dd1f54eee88be08de954a18f19ebc2331bf89fb3b39ca64e0ec` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-mode-menu-open-1440x900.png` | 148293 | `bc52ce4a1a9a4984092ab287e583d7bca57b393b8d05b0277ff4a9f6ac2ec1c5` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-paused-1440x900.png` | 264394 | `ddd15ceeb86e20e89af47e13f1f85a170ae8f4ee879b741826419faeb729b4c0` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-playing-1440x900.png` | 263041 | `04cbd97d3185f07548209a99efbe30fe1215e67e47763d1a22d3f6b83d572075` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-recovered-from-invalid-1440x900.png` | 268563 | `1d1b052047359da90ed7fdf389d943e1d3e591d44bc0e0d9c8b4041022427fcf` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-reference-media-loaded-1440x900.png` | 373541 | `7302012db83ea72e0ca7cc5a985122bb449b118a2fe61d4458cbc199adb578f4` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-1440x900.png` | 430084 | `f045b0bcfa93f78f6da7d05c40263c53b28db480ddf27d2e777a756061022a60` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-closed-by-escape-1440x900.png` | 461941 | `6ff76bd332b81267aca959594bb11db052c18e653240b6af0e48c61d7e069357` |
-| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-synchronized-playback-toggled-by-space-1440x900.png` | 435023 | `54bef6ff5547803a3824b61b81a6f7d45a9fe09663a6f4104d94f1d0e73de4db` |
-| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-cardEnter-end.png` | 362451 | `c481f750e69f615e750a20869f528efb53955d6a090d67fa2f8d0dc0f200a60c` |
-| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-cardEnter-mid.png` | 398741 | `0e0a1ff9c0b7e9a70adb81c60c3096472449cb09fadc21826ad8f655dd8a5437` |
-| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-cardEnter-start.png` | 281354 | `4516c492af5acd03cbf3b706bb185efb7bcbef17d387f395e08536b5f82b72b3` |
-| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-drawerIn-end.png` | 450662 | `f8f84e9527406a649ffd1352c3ae380959eab709cd1c414b1149322b8b6f5381` |
-| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-drawerIn-mid.png` | 448472 | `65c62ec1ce7e625589729f0b283cde443c111ad8c5b75a9bafd85d2f84f3fe5b` |
-| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-drawerIn-start.png` | 355594 | `ebe10b09eb6c2974625d4ff09a8cdde50b9cb51fee3a485254c0a51948a5f13a` |
-| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-dropdownIn-end.png` | 370276 | `0cda8dcd000939852e00fddf524e0c28a8edc19135dc6f617c5558f3ec6e7046` |
-| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-dropdownIn-mid.png` | 392270 | `70b996a821c5c24faeba79bf266dd4b868629dec68dd6e9f77dd6899a45a7005` |
-| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-dropdownIn-start.png` | 373368 | `bded837312bb6aa3dbe39562439015c7e7cc8ae58d66bddd630653e872d73d2c` |
+| p6_evidence | `.artifacts/product/P6/internal-trial-manifest.json` | 2146 | `42005aea04e9c2eb7e0c18ae3ca490eaf27f468e671133d5162118f9cb757553` |
+| packaged_app_runtime | `.artifacts/product/P6/packaged-app-runtime-proof.json` | 9222 | `452dc8096a01631771d47f88ccb0687f60126e1372f70dadd646f5483833cb86` |
+| web_baseline | `.artifacts/product/P6/web-baseline/artifact-index.json` | 10732 | `8ae50b753a1ab97a66fd314e9c080d6993a35094942289b71c9f5b10879bb2c1` |
+| web_baseline | `.artifacts/product/P6/web-baseline/computed-styles-manifest.json` | 10431 | `bdb4317b1d02fb210c7d4e116d219c9f2da11e67d375bb5ee9191d4d6ddaae77` |
+| web_baseline | `.artifacts/product/P6/web-baseline/dom-manifest.json` | 1517912 | `fe2a8ab6b2ffe3bce68ef7cf85ac120b27e2b9937dae6494ac51c6166ecf9eda` |
+| web_baseline | `.artifacts/product/P6/web-baseline/interaction-trace.json` | 58693 | `ce84eaf679f386d91e81d0339489e4271e314eb361c2c0cf4dada307f68b172a` |
+| web_baseline | `.artifacts/product/P6/web-baseline/motion-manifest.json` | 11710 | `62f92105573e9fab0624dcfcc1ac1e3da561f3116e327c91b8ac41be2cba93d4` |
+| web_baseline | `.artifacts/product/P6/web-baseline/motion-style-samples.json` | 22020 | `4bf53b392d08166185f927fc4abe621488d413e280fa36b30c02f3b01a5a3bf9` |
+| web_baseline | `.artifacts/product/P6/web-baseline/request-audit.json` | 193 | `eea43558f1eb6f5cd7b88d8db0059b6b5972ee318846d0fedca57e443a3a37d5` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-accessibility-toggles-on-1440x900.png` | 566228 | `646f7d665699f1a2afa477116eea084cc8b0d10f9fc36837b8015b918afd5a00` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-asset-preview-modal-1440x900.png` | 390723 | `ea61e13cf423e8bc55bfa8eae56c7fb774ca79f368399964bae2fe807fc15085` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-1440x900.png` | 402407 | `896ba491e0b637520108b776fb215fb7c3498c56511efe74c1a97de9ec569843` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-export-review-loaded-900x720.png` | 277047 | `f9861bc89a86990b1fc6ec61c6ba0f162472e54ca5b0c667050abb824c3700d2` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-assets-1440x900.png` | 464995 | `00309acea9b5be2f4a8e021d5cf13c44dd2bd434032092e2b8a23e0f245f9cc3` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-info-overview-1440x900.png` | 486935 | `e2c3eb89b37a759a920dbcbdfd22fb0a97de5b9012059553d29d9da8cbd09dba` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-invalid-1440x900.png` | 223446 | `24bf4cabf5f7b63a2f1ca820e77078aeee103f3970128b2f4196c843b658c060` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-latest-artifact-loaded-1440x900.png` | 403413 | `39c63200a72278efec2eab8fbc133360e96a89d7a03346d5294131337146398e` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-loaded-1440x900.png` | 279173 | `5f43242746fd6ab7a7ac30b146f44d520cd1df15fde6091bcf040b575f5a17a3` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-loading-1440x900.png` | 194002 | `b98cdf9962e0c2db31cc993043f81a49842b6e41e33f231cae1083eb8881a84b` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-empty-1440x900.png` | 273386 | `5cb2970d829d6d0df37c93a426a773497fcd87b709dc1f7e81edf54177649f9a` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-compare-loaded-1440x900.png` | 464918 | `9a5189848a11830d16d95fadf55b72417c8675beccb09894d801b976327e4ec2` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-empty-1440x900.png` | 190465 | `48009924002bf476da75684ba5612d741ff5fe4b8e1f81cc2577fb338732b783` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-info-assets-1440x900.png` | 367580 | `63393f4c3409aca9f203b32ff8ae8ca07bdfacf2eb6677658a97e79fe0fa2f7b` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-info-overview-1440x900.png` | 373701 | `684fbd4fbf848312115afd18bbceec598400d97f3ba7638c3d3d3edcc8decb81` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-logs-1440x900.png` | 454078 | `1961accbcadc9e7c04c6fe30d89932a27e3c5777836d3bbaff118fef4c8a5a95` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-preview-loaded-1440x900.png` | 285323 | `2015491723c7f6d8de5cd1f6049c59f4cded00bb0d99aa8d3f9497c744423211` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-preview-loaded-900x720.png` | 325954 | `d73a07220b46e0bac7765c47efec83c0ecf5a7d4675f11185a4aac34a62fb550` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-local-settings-1440x900.png` | 252246 | `76a764e2f432af34b5c8eef4d1e62aa13122e8ce401268e4f9251f16d3d98c16` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-logs-1440x900.png` | 469761 | `42d1c09d197a300a60a865be5a622e3629df5579352f3bc58424677476e44d91` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-mode-menu-open-1440x900.png` | 215449 | `8a2fb9b6633f4269421474fd4f872c98163ceffda6ea8223c48dd2f6367d3148` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-paused-1440x900.png` | 277052 | `6fd5059aaf344d8f98ab0a0d59db1d4a26567ffdd8dfa92a92a7e6450f8a1519` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-playing-1440x900.png` | 280239 | `569d0135a692c3adde710294f3be781cb4ea799fdc47df594afbacde49af8666` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-recovered-from-invalid-1440x900.png` | 281574 | `e35808c026b3a34c220bc917008dd7f039d9e72a090ee97e3c33354065bcf7a9` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-reference-media-loaded-1440x900.png` | 404505 | `1836997df5084fb7970201934cb9c236482ebc89df069a8d14077bad266636b1` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-1440x900.png` | 405291 | `c5baaadbf4c4f97ba1df3dd6dd327854efcce3de16e1998a49fdea98ff5ba0bb` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-settings-closed-by-escape-1440x900.png` | 496626 | `f1b0beda96a44d705b53fca0b74b84dd3bf07ad4adf0d30895b8cd5b52a2e554` |
+| web_baseline | `.artifacts/product/P6/web-baseline/screenshot-synchronized-playback-toggled-by-space-1440x900.png` | 473032 | `68e2459b72a3e8470ef100be56a43d2fcade4b2ec9a33e675a9c7435882e7301` |
+| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-cardEnter-end.png` | 409404 | `3f52dd08933762bc0c7869ad1ce450d106977ae24adaff6e92b3011d6ec8dd2c` |
+| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-cardEnter-mid.png` | 459421 | `55b10d8444615948cd8ef3f102cfa24d00b91b8f42988aeb34a45e557d732392` |
+| web_baseline | `.artifacts/product/P6/web-baseline/web-motion-cardEnter-start.png` | 293774 | `5f0c19ed6508579e51cf484aa4100feba6d0bfa9f2d7c0e2200ec48f43e34798` |
 
 ## Protected Flows
 
