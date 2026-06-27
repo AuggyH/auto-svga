@@ -1251,16 +1251,11 @@ async function main() {
   window.setContentSize(1440, 900);
   await delay(220);
 
-  console.log("P6_WEB_BASELINE_PHASE responsive-export");
-  await installFixtureMarker(window);
-  await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);
-  await waitFor(window, `(() => {
-    const menu = document.querySelector("#modeDropdownMenu");
-    const rect = menu?.getBoundingClientRect();
-    return Boolean(menu && !menu.hidden && rect && rect.width > 0 && rect.height > 0);
-  })()`);
-  await browserPointClick(window, "[data-value='exportReview']");
-  await delay(700);
+	  console.log("P6_WEB_BASELINE_PHASE responsive-export");
+	  await installFixtureMarker(window);
+	  await closeTransientUi(window);
+	  await setMode(window, "exportReview");
+	  await delay(700);
   await loadFixture(window, { fileName: "avatar_frame_basic.svga" });
   await loadReferenceGif(window);
   window.setSize(900, 720);
