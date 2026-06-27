@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: HUMAN_REQUIRED
+Status: GOAL_REPAIR_IN_PROGRESS
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,8 +19,8 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: terminal_human_required
-nextAction: product_owner_human_gate
+executionStatus: goal_repair_in_progress
+nextAction: repair_owner_visible_inspector_and_visual_system_polish
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -744,9 +744,9 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `terminal_human_required`.
+Current state: `goal_repair_in_progress`.
 
-Next action: `product_owner_human_gate`.
+Next action: `repair_owner_visible_inspector_and_visual_system_polish`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
@@ -791,10 +791,17 @@ the visible result. It is not contract revision 4, not Phase 2, not new product
 scope, not signing/notarization/release, and not final independent external
 review.
 
-The owner-visible UI/UX polish repair has been implemented through the terminal
-lifecycle head. Final evidence, Reviewer A/B, Final Seal, Post-seal
-Verification, and the one-upload complete review-directory ZIP must be
-regenerated on this same final head before Product Owner review materials are
-used. Product Owner acceptance, final independent product external review,
-Finding closure, Phase 2, signing, notarization, release, push, and merge remain
-prohibited until explicit next authorization.
+Product Owner returned `OWNER_REPAIR_REQUIRED` on the current `16a51cd`
+candidate. The complete review-directory ZIP, App ZIP delivery, Review ZIP
+Manifest, sidecar, post-seal, final loop validation, privacy, invalid/recovery,
+keyboard focus, log copy, clear-current-file, A/B both-loaded evidence, and
+one-upload handoff structure remain mechanically valid unless affected by this
+repair.
+
+The current repair scope is limited to owner-visible inspector and visual-system
+polish: Info Overview metric readability, Resources tab vertical layout,
+local-preview-first owner screenshots, default diagnostic/log copy, stronger
+visual-system audit, and a first-class Owner feedback closure map. Product Owner
+acceptance, final independent product external review, Finding closure, Phase 2,
+signing, notarization, release, push, and merge remain prohibited until explicit
+next authorization.

@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "P6-R1 Product Owner returned OWNER_REPAIR_REQUIRED on current 0f7739c candidate for owner-visible macOS UI/UX polish. Packaging, App ZIP binding, post-seal, privacy, final loop validation, invalid/recovery correctness, trusted interactions, basic App startup, App ZIP delivery, and one-upload review directory remain acceptable baselines. Findings remain currentStatus=open; only affected state cleanup, interaction, responsive visual, product-review, UI-copy/resources IA, preview-card consistency, and owner-gate usability findings are regressed for this repair. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
+  "scope": "P6-R1 Product Owner returned OWNER_REPAIR_REQUIRED on current 16a51cd candidate for owner-visible inspector and visual-system polish. Prior complete review-directory packaging, App ZIP delivery, Review ZIP Manifest, sidecar, post-seal, final loop validation, privacy, invalid/recovery, keyboard focus, log copy, clear-current-file, A/B both-loaded evidence, and one-upload structure remain mechanically valid unless affected by this repair. Findings remain currentStatus=open; only affected visual evidence, product-review, owner handoff closure-map, and end-to-end owner usability findings are regressed. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -313,10 +313,11 @@
         "R6",
         "owner-gate-local-preview-usability-r1",
         "owner-visible-ui-polish-r2",
-        "owner-visible-ui-ux-polish-r3"
+        "owner-visible-ui-ux-polish-r3",
+        "owner-visible-inspector-visual-system-polish-r4"
       ],
-      "occurrenceCount": 6,
-      "lastEvidence": "Owner-visible UI/UX polish repair completed on 81e4e9314a02923f5b75c4ee249b0999327a4c43; final P6 evidence, desktop smoke, loop validation, Reviewer A/B, seal, post-seal, and one-upload review directory must bind to the terminal head before Product Owner Human Gate.",
+      "occurrenceCount": 7,
+      "lastEvidence": "Product Owner returned OWNER_REPAIR_REQUIRED on 16a51cd for owner-visible inspector and visual-system polish; mechanically valid packaging and interaction baselines remain accepted unless affected by this repair.",
       "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
       "userImpact": "Visual parity evidence was not comparable.",
       "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
@@ -344,12 +345,13 @@
         "external review confirmation"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
+        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -385,7 +387,9 @@
         ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
         ".artifacts/product/P6/desktop-local-compare-loaded.png",
         "tools/p6/p6-web-baseline-capture.cjs",
-        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete",
+        "REPAIR_SCOPE: owner_visible_inspector_and_visual_system_polish",
+        "resumeHead:16a51cd1e23feb99d498b47684128265fa7ff108"
       ]
     },
     {
@@ -650,10 +654,11 @@
         "R6",
         "owner-gate-local-preview-usability-r1",
         "owner-visible-ui-polish-r2",
-        "owner-visible-ui-ux-polish-r3"
+        "owner-visible-ui-ux-polish-r3",
+        "owner-visible-inspector-visual-system-polish-r4"
       ],
-      "occurrenceCount": 7,
-      "lastEvidence": "Owner-visible UI/UX polish repair completed on 81e4e9314a02923f5b75c4ee249b0999327a4c43; final P6 evidence, desktop smoke, loop validation, Reviewer A/B, seal, post-seal, and one-upload review directory must bind to the terminal head before Product Owner Human Gate.",
+      "occurrenceCount": 8,
+      "lastEvidence": "Product Owner returned OWNER_REPAIR_REQUIRED on 16a51cd for owner-visible inspector and visual-system polish; mechanically valid packaging and interaction baselines remain accepted unless affected by this repair.",
       "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
       "userImpact": "A human-facing product gap could pass internal review.",
       "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
@@ -680,12 +685,13 @@
         "owner review"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
+        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -721,7 +727,9 @@
         ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
         ".artifacts/product/P6/desktop-local-compare-loaded.png",
         "tools/p6/p6-web-baseline-capture.cjs",
-        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete",
+        "REPAIR_SCOPE: owner_visible_inspector_and_visual_system_polish",
+        "resumeHead:16a51cd1e23feb99d498b47684128265fa7ff108"
       ]
     },
     {
@@ -897,10 +905,11 @@
         "R3",
         "R4",
         "R5",
-        "R6"
+        "R6",
+        "owner-visible-inspector-visual-system-polish-r4"
       ],
-      "occurrenceCount": 5,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 6,
+      "lastEvidence": "Product Owner returned OWNER_REPAIR_REQUIRED on 16a51cd for owner-visible inspector and visual-system polish; mechanically valid packaging and interaction baselines remain accepted unless affected by this repair.",
       "symptom": "Local paths, hidden .artifacts-only handoffs, or stale review-root literals repeatedly needed repair.",
       "userImpact": "Owner could not reliably access review materials, or private local paths could leak.",
       "rootCauseHypothesis": "Handoff packaging was retrofitted after product work started and consumed repair budget repeatedly.",
@@ -931,12 +940,13 @@
         "external review does not find path or visibility issue"
       ],
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
@@ -971,7 +981,9 @@
         ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
         ".artifacts/product/P6/desktop-local-compare-loaded.png",
         "tools/p6/p6-web-baseline-capture.cjs",
-        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete",
+        "REPAIR_SCOPE: owner_visible_inspector_and_visual_system_polish",
+        "resumeHead:16a51cd1e23feb99d498b47684128265fa7ff108"
       ]
     },
     {
@@ -988,10 +1000,11 @@
         "R6",
         "owner-gate-local-preview-usability-r1",
         "owner-visible-ui-polish-r2",
-        "owner-visible-ui-ux-polish-r3"
+        "owner-visible-ui-ux-polish-r3",
+        "owner-visible-inspector-visual-system-polish-r4"
       ],
-      "occurrenceCount": 8,
-      "lastEvidence": "Owner-visible UI/UX polish repair completed on 81e4e9314a02923f5b75c4ee249b0999327a4c43; final P6 evidence, desktop smoke, loop validation, Reviewer A/B, seal, post-seal, and one-upload review directory must bind to the terminal head before Product Owner Human Gate.",
+      "occurrenceCount": 9,
+      "lastEvidence": "Product Owner returned OWNER_REPAIR_REQUIRED on 16a51cd for owner-visible inspector and visual-system polish; mechanically valid packaging and interaction baselines remain accepted unless affected by this repair.",
       "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
       "userImpact": "Large apparent progress did not translate into accepted product parity.",
       "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
@@ -1018,12 +1031,13 @@
         "owner-approved recovery plan"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
+        "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -1061,7 +1075,9 @@
         ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
         ".artifacts/product/P6/desktop-local-compare-loaded.png",
         "tools/p6/p6-web-baseline-capture.cjs",
-        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete",
+        "REPAIR_SCOPE: owner_visible_inspector_and_visual_system_polish",
+        "resumeHead:16a51cd1e23feb99d498b47684128265fa7ff108"
       ]
     },
     {
