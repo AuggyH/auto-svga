@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "P6-R1 Product Owner returned OWNER_REPAIR_REQUIRED within the current goal for local preview owner-gate usability. Findings remain currentStatus=open; only affected state, interaction, responsive visual, App workflow, reviewer, and integration findings are regressed for repair. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
+  "scope": "P6-R1 Product Owner returned OWNER_REPAIR_REQUIRED within the current goal for owner-visible UI polish and evidence gaps after complete review-directory packaging succeeded. Findings remain currentStatus=open; only affected state cleanup, interaction, responsive visual, UI-copy/resources IA, preview-card consistency, and owner-gate usability findings are regressed for repair. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -52,10 +52,11 @@
         "R3",
         "R5",
         "R6",
-        "owner-gate-local-preview-usability-r1"
+        "owner-gate-local-preview-usability-r1",
+        "owner-visible-ui-polish-r2"
       ],
-      "occurrenceCount": 4,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 5,
+      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
       "symptom": "Desktop Loading screenshot still showed Empty UI, while DOM proof claimed loading.",
       "userImpact": "A user cannot tell whether the app is waiting, idle, or failing to load.",
       "rootCauseHypothesis": "State evidence was allowed to compare presence, hash, and labels without a visual state contract that hides Empty CTA while Loading is active.",
@@ -84,12 +85,12 @@
         "external review round that does not reproduce the issue"
       ],
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -116,7 +117,9 @@
         "review/P6-R1-<final-head>/MANIFEST.json",
         "review/P6-R1-<final-head>/owner-upload-post-seal-verification.json",
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
       ]
     },
     {
@@ -129,10 +132,11 @@
         "R3",
         "R5",
         "R6",
-        "owner-gate-local-preview-usability-r1"
+        "owner-gate-local-preview-usability-r1",
+        "owner-visible-ui-polish-r2"
       ],
-      "occurrenceCount": 4,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 5,
+      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
       "symptom": "Invalid/error state evidence either retained old loaded state or required an alias repair to recognize the true runtime state.",
       "userImpact": "After a bad file, users may trust stale preview/report data.",
       "rootCauseHypothesis": "Error-state cleanup and evidence semantics were not owned by a single vertical flow; machine gates accepted aliases and broad state hashes late in the milestone.",
@@ -161,12 +165,12 @@
         "external review round that does not reproduce stale state"
       ],
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -196,7 +200,9 @@
         "review/P6-R1-<final-head>/MANIFEST.json",
         "review/P6-R1-<final-head>/owner-upload-post-seal-verification.json",
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
       ]
     },
     {
@@ -289,10 +295,11 @@
         "R1",
         "R5",
         "R6",
-        "owner-gate-local-preview-usability-r1"
+        "owner-gate-local-preview-usability-r1",
+        "owner-visible-ui-polish-r2"
       ],
-      "occurrenceCount": 4,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 5,
+      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
       "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
       "userImpact": "Visual parity evidence was not comparable.",
       "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
@@ -319,12 +326,12 @@
         "external review confirmation"
       ],
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -354,7 +361,9 @@
         "review/P6-R1-<final-head>/MANIFEST.json",
         "review/P6-R1-<final-head>/owner-upload-post-seal-verification.json",
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
       ]
     },
     {
@@ -366,10 +375,11 @@
       "seenInRounds": [
         "R5",
         "R6",
-        "owner-gate-local-preview-usability-r1"
+        "owner-gate-local-preview-usability-r1",
+        "owner-visible-ui-polish-r2"
       ],
-      "occurrenceCount": 3,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 4,
+      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
       "symptom": "No Desktop per-interaction action trace existed.",
       "userImpact": "Buttons and menus could appear present without proving they work.",
       "rootCauseHypothesis": "Interaction evidence was assigned to the parity layer, but product behavior and host event triggering were split across workers.",
@@ -396,12 +406,12 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -428,7 +438,9 @@
         "review/P6-R1-<final-head>/MANIFEST.json",
         "review/P6-R1-<final-head>/owner-upload-post-seal-verification.json",
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
       ]
     },
     {
@@ -600,10 +612,11 @@
         "R3",
         "R5",
         "R6",
-        "owner-gate-local-preview-usability-r1"
+        "owner-gate-local-preview-usability-r1",
+        "owner-visible-ui-polish-r2"
       ],
-      "occurrenceCount": 5,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 6,
+      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
       "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
       "userImpact": "A human-facing product gap could pass internal review.",
       "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
@@ -629,12 +642,12 @@
         "owner review"
       ],
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -664,7 +677,9 @@
         "review/P6-R1-<final-head>/MANIFEST.json",
         "review/P6-R1-<final-head>/owner-upload-post-seal-verification.json",
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
       ]
     },
     {
@@ -917,10 +932,11 @@
         "R4",
         "R5",
         "R6",
-        "owner-gate-local-preview-usability-r1"
+        "owner-gate-local-preview-usability-r1",
+        "owner-visible-ui-polish-r2"
       ],
-      "occurrenceCount": 6,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 7,
+      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
       "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
       "userImpact": "Large apparent progress did not translate into accepted product parity.",
       "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
@@ -946,12 +962,12 @@
         "owner-approved recovery plan"
       ],
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -983,7 +999,9 @@
         "review/P6-R1-<final-head>/MANIFEST.json",
         "review/P6-R1-<final-head>/owner-upload-post-seal-verification.json",
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
       ]
     },
     {
@@ -998,10 +1016,11 @@
         "R4",
         "R5",
         "R6",
-        "owner-gate-local-preview-usability-r1"
+        "owner-gate-local-preview-usability-r1",
+        "owner-visible-ui-polish-r2"
       ],
-      "occurrenceCount": 6,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 7,
+      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
       "symptom": "Second SVGA, reference media and latest artifact controls or panels existed, but complete select/drop/scan, decode, playback, synchronization and cleanup flows were not independently proven.",
       "userImpact": "The Desktop could appear to contain the Web comparison workflow while failing the user's real multi-source acceptance path.",
       "rootCauseHypothesis": "The flow crossed shared UI, Electron Host and evidence boundaries without one vertical implementation owner.",
@@ -1023,7 +1042,7 @@
       "responsibleLayer": "multi-source vertical flow",
       "currentStatus": "open",
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "primaryRecoveryWorkPackage": "WP2",
       "supportingFindingIds": [],
@@ -1035,7 +1054,7 @@
         "synchronized playback and cleanup evidence",
         "independent external review confirmation"
       ],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP2-multi-source-acceptance.md",
@@ -1062,7 +1081,9 @@
         "review/P6-R1-<final-head>/MANIFEST.json",
         "review/P6-R1-<final-head>/owner-upload-post-seal-verification.json",
         "review/P6-R1-<final-head>/bundle-privacy-audit.json",
-        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03"
+        "repairCommit:e0557c00db9807cba618b1a9ff308711aef10d03",
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair",
+        "review/P6-R1-38d35b7/P6-R1-38d35b7-complete-review-directory.zip"
       ]
     }
   ],

@@ -6,8 +6,8 @@ Date: 2026-06-27
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: terminal_human_required
-- Next Action: product_owner_human_gate
+- State: goal_repair_in_progress
+- Next Action: repair_owner_visible_ui_polish_for_human_gate
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -56,16 +56,29 @@ Date: 2026-06-27
 - The b3bc9f8 handoff set, App ZIP binding, post-seal, privacy, and two final
   loop-validation passes remain the accepted baseline unless affected by this
   repair.
+- Product Owner returned `OWNER_REPAIR_REQUIRED` after the
+  `P6-R1-38d35b7-complete-review-directory.zip` packaging convention passed.
+  The complete-directory packaging remains accepted and is not redesigned in
+  this repair.
+- The remaining blockers are owner-visible product polish and evidence gaps:
+  900×720 narrow-window advisory overlap, technical English/status copy,
+  Resources primary sprite tab, missing clear-current-file decision, and missing
+  both-loaded A/B PreviewCard consistency proof.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are not
   closed or externally confirmed before Product Owner Human Gate and final
-  independent product external review. They are now staged as
-  `integrated_resolved_pending_external_review` after local preview owner-gate
-  usability evidence regenerated with `parityStatus=pass` and
-  `nonPassEvidenceCount=0`.
+  independent product external review. `P6-F001`, `P6-F002`, `P6-F004`,
+  `P6-F005`, `P6-F008`, `P6-F012`, and `P6-F013` are regressed for this
+  focused owner-visible repair; the remaining Findings keep their current
+  stage unless real evidence reproduces them.
 - `contractReviewedHeadCommit=9b01108c03a5e70e2f67100eeac384810afee4e4`, `contractRevision=3`,
   `repairRound=0`, and `phase2Started=false` are preserved.
 - Phase 2 remains not started.
 
 ## Next Action
 
-Await Product Owner Human Gate for this P6-R1 owner review set. Product Owner acceptance, final independent product external review, Finding closure, Phase 2, signing, notarization, release, push, and merge remain prohibited until explicit next authorization.
+Repair owner-visible UI polish and evidence gaps, then rerun affected Gate
+checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and
+regenerate the one-upload complete review-directory ZIP. Product Owner
+acceptance, final independent product external review, Finding closure, Phase
+2, signing, notarization, release, push, and merge remain prohibited until
+explicit next authorization.

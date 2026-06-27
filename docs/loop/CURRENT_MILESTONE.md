@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: HUMAN_REQUIRED
+Status: GOAL_REPAIR_IN_PROGRESS
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,8 +19,8 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: terminal_human_required
-nextAction: product_owner_human_gate
+executionStatus: goal_repair_in_progress
+nextAction: repair_owner_visible_ui_polish_for_human_gate
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
