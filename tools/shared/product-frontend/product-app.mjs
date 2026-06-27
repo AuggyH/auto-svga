@@ -372,6 +372,7 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   slot.frame.style.removeProperty("width");
   slot.frame.style.removeProperty("height");
   slot.info.innerHTML = "";
+  slot.info.hidden = true;
   clearSlotLoadingPhase(slot);
   slot.player?.clear?.();
   if (slot.slotName === "A") {
@@ -621,6 +622,7 @@ function renderSvgaInfo(slot) {
   const metrics = slot.metrics;
   if (!metrics) {
     slot.info.innerHTML = "";
+    slot.info.hidden = true;
     return;
   }
 
@@ -638,6 +640,7 @@ function renderSvgaInfo(slot) {
   slot.info.innerHTML = rows.map(([label, value]) => (
     `<div><dt>${label}</dt><dd>${escapeHtml(value ?? "n/a")}</dd></div>`
   )).join("");
+  slot.info.hidden = false;
 }
 
 function renderReferenceInfo() {
