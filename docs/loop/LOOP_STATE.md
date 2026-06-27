@@ -6,9 +6,9 @@ Date: 2026-06-27
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_repair_in_progress
-- Next Action: repair_final_owner_ui_polish_and_reviewer_b_specificity
-- P6-R1 owner repair required: narrow final owner-visible UI polish, Reviewer B macOS visual-system specificity, and post-seal reviewer hash binding.
+- State: terminal_human_required
+- Next Action: product_owner_human_gate
+- P6-R1 owner repair completed: final UI polish, Reviewer B specificity, post-seal reviewer hash binding, and one-upload owner package are ready for human gate review.
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
