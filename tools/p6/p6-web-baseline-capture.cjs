@@ -1200,6 +1200,12 @@ async function main() {
 
   console.log("P6_WEB_BASELINE_PHASE local-compare-loaded");
   await loadFixture(window, {
+    inputSelector: "#svgaFileInput",
+    canvasSelector: "#svgaCanvasA canvas",
+    fileName: "p6-web-baseline-primary-fixture.svga",
+    requireInspection: false
+  });
+  await loadFixture(window, {
     inputSelector: "#secondaryFileInput",
     canvasSelector: "#svgaCanvasB canvas",
     fileName: "p6-web-baseline-secondary-fixture.svga",
