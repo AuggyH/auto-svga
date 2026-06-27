@@ -6,8 +6,8 @@ Date: 2026-06-27
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_repair_in_progress
-- Next Action: regenerate_post_authorization_evidence_and_owner_handoff
+- State: terminal_human_required
+- Next Action: product_owner_human_gate
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -96,8 +96,9 @@ Date: 2026-06-27
 
 ## Next Action
 
-Regenerate post-authorization product evidence, Reviewer A/B, final seal,
-post-seal verification, privacy checks, and the one-upload complete review
-directory on one final head. Do not perform Product Owner acceptance, final
-independent product external review, Finding closure, Phase 2, signing,
-notarization, release, push, or merge.
+Product Owner Human Gate is ready after bounded Web source-of-truth revision
+authorization, post-authorization evidence regeneration, Reviewer A/B, final
+seal, post-seal verification, privacy checks, and one-upload complete review
+directory generation on one final head. Do not perform Product Owner
+acceptance, final independent product external review, Finding closure, Phase
+2, signing, notarization, release, push, or merge.
