@@ -1,5 +1,5 @@
 <main class="shell" data-product-shell="canonical">
-  <header class="toolbar" data-drop-kind="auto">
+  <header class="toolbar compactToolbar" data-drop-kind="auto">
     <div class="brand">
       <span class="brandMark" aria-hidden="true">
         <svg viewBox="0 0 24 24" role="img">
@@ -11,10 +11,10 @@
       </span>
       <span class="brandCopy">
         <strong>auto-svga</strong>
-        <span>SVGA 播放与导出验收</span>
+        <span>本地 SVGA 预览</span>
       </span>
     </div>
-    <div class="modeControl dropdown" data-dropdown="mode">
+    <div class="modeControl segmentedControl dropdown" data-dropdown="mode">
       <span class="modeDot" aria-hidden="true"></span>
       <button id="modeDropdownTrigger" class="dropdownTrigger" type="button" aria-haspopup="menu" aria-expanded="false">
         <span id="modeDropdownLabel">本地预览</span>
@@ -36,7 +36,7 @@
       </select>
     </div>
     <div class="actionRow">
-      <button id="infoPanelButton" class="iconButton" type="button" title="SVGA 信息">
+      <button id="infoPanelButton" class="iconButton" type="button" title="检查器">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" /><path d="M14 3v6h6" /><path d="M8 13h8" /><path d="M8 17h5" /></svg>
       </button>
       <button id="logsButton" class="iconButton" type="button" title="运行日志">
@@ -53,7 +53,7 @@
 
   <section id="workspace" class="workspace mode-localPreview" aria-label="Preview workspace">
     <article id="svgaPanelA" class="previewCard isPrimary" data-drop-kind="svga" data-player-slot="a">
-      <div class="cardHeader">
+      <div class="cardHeader panelHeader previewCardHeader">
         <div class="cardTitleGroup">
           <span id="svgaBadgeA" class="badge" hidden>SVGA</span>
           <h2 id="svgaTitleA">本地预览</h2>
@@ -62,7 +62,7 @@
         <div class="cardActions">
           <span id="svgaFilePillA" class="filePill" hidden></span>
           <span id="svgaStatusA" class="statusPill">空</span>
-          <button id="clearCurrentFileButton" class="cardUtilityButton" type="button" title="清除当前文件（⌘/Ctrl+R）" aria-label="清除当前文件" disabled>
+          <button id="clearCurrentFileButton" class="cardUtilityButton" type="button" title="清除当前文件" aria-label="清除当前文件" disabled>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16" /><path d="M9 7V5h6v2" /><path d="M6 7l1 13h10l1-13" /><path d="M10 11v5" /><path d="M14 11v5" /></svg>
             <span class="responsiveButtonLabel">清除</span>
           </button>
@@ -124,7 +124,7 @@
     </article>
 
     <article id="svgaPanelB" class="previewCard isHidden" data-drop-kind="svga" data-player-slot="b">
-      <div class="cardHeader">
+      <div class="cardHeader panelHeader previewCardHeader">
         <div class="cardTitleGroup">
           <span class="badge badgePurple">SVGA B</span>
           <h2 id="svgaTitleB">SVGA B</h2>
@@ -184,7 +184,7 @@
     </article>
 
     <article id="referencePanel" class="previewCard isHidden" data-drop-kind="reference">
-      <div class="cardHeader">
+      <div class="cardHeader panelHeader previewCardHeader">
         <div>
           <span class="badge badgeGreen">MP4</span>
           <h2>参考视频</h2>
@@ -248,12 +248,12 @@
       <dl id="referenceInfo" class="quickInfo"></dl>
     </article>
 
-    <aside id="infoPanel" class="infoPanel isHidden" aria-label="SVGA info panel" tabindex="-1">
+    <aside id="infoPanel" class="infoPanel isHidden" aria-label="检查器" tabindex="-1">
       <button id="infoPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整信息面板宽度"></button>
-      <div class="infoHeader">
+      <div class="infoHeader panelHeader">
         <div>
-          <h2 class="bilingualHeading"><span>SVGA 信息</span></h2>
-          <p class="bilingualCopy"><span>解析、资源和渲染状态</span></p>
+          <h2 class="bilingualHeading"><span>检查器</span></h2>
+          <p class="bilingualCopy"><span>文件、播放与诊断</span></p>
         </div>
         <span id="infoStatus" class="statusPill">加载中</span>
       </div>
@@ -265,12 +265,12 @@
       <div id="tab-assets" class="tabPanel isHidden"></div>
     </aside>
 
-    <aside id="logsPanel" class="logsPanel isHidden" aria-label="Runtime logs panel" tabindex="-1">
+    <aside id="logsPanel" class="logsPanel isHidden" aria-label="运行日志" tabindex="-1">
       <button id="logsPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整日志面板宽度"></button>
-      <div class="infoHeader">
+      <div class="infoHeader panelHeader">
         <div>
           <h2 class="bilingualHeading"><span>运行日志</span></h2>
-          <p id="fullLogsSubtitle" class="bilingualCopy"><span>加载、解析和渲染事件</span></p>
+          <p id="fullLogsSubtitle" class="bilingualCopy"><span>最近操作与加载记录</span></p>
         </div>
         <div class="panelActionGroup">
           <span id="logsActionFeedback" class="panelActionFeedback" aria-live="polite"></span>
@@ -312,7 +312,7 @@
       <header>
         <div>
           <h2 id="assetPreviewTitle" class="bilingualHeading"><span>资源预览</span></h2>
-          <p id="assetPreviewMeta">imageKey</p>
+          <p id="assetPreviewMeta">图片资源</p>
         </div>
         <button id="assetPreviewClose" class="iconButton" type="button" title="关闭">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
@@ -322,7 +322,7 @@
         <img id="assetPreviewImage" alt="Asset preview">
       </div>
       <footer>
-        <button id="copyImageKeyButton" class="toolButton" type="button">复制 imageKey</button>
+        <button id="copyImageKeyButton" class="toolButton" type="button">复制资源名</button>
         <span id="assetPreviewDetails"></span>
       </footer>
     </section>
@@ -368,19 +368,20 @@
           </div>
         </section>
         <section class="settingsSection">
-          <h3>播放与验收</h3>
+          <h3>播放</h3>
           <div class="settingsCard">
             <label class="settingsToggleRow"><span><strong>循环播放</strong><small>播放结束后自动从头开始</small></span><input id="globalLoopToggle" type="checkbox" checked></label>
-            <label class="settingsToggleRow"><span><strong>自动加载最新产物</strong><small>进入导出验收时自动加载最新含 SVGA 的产物组</small></span><input id="autoLoadLatestToggle" type="checkbox" checked></label>
-            <label class="settingsToggleRow"><span><strong>导出后进入验收模式</strong><small>导出完成后自动打开对比视图</small></span><input type="checkbox"></label>
           </div>
         </section>
         <section class="settingsSection">
-          <h3>调试与可访问性</h3>
+          <h3>辅助与高级</h3>
           <div class="settingsCard">
-            <label class="settingsToggleRow"><span><strong>显示调试信息</strong><small>保留调试 key 和解析数据</small></span><input type="checkbox"></label>
             <label class="settingsToggleRow"><span><strong>减少动态效果</strong><small>停用非必要的位移与缩放动画</small></span><input id="reduceMotionToggle" type="checkbox"></label>
             <label class="settingsToggleRow"><span><strong>减少模糊效果</strong><small>使用更实的浮层背景，提升文字可读性</small></span><input id="reduceBlurToggle" type="checkbox"></label>
+            <div class="settingsDivider"></div>
+            <label class="settingsToggleRow advancedSetting"><span><strong>自动加载最新产物</strong><small>进入导出验收时自动加载最新含 SVGA 的产物组</small></span><input id="autoLoadLatestToggle" type="checkbox" checked></label>
+            <label class="settingsToggleRow advancedSetting"><span><strong>导出后进入验收模式</strong><small>导出完成后自动打开对比视图</small></span><input type="checkbox"></label>
+            <label class="settingsToggleRow advancedSetting"><span><strong>显示高级诊断</strong><small>保留调试 key 和解析数据</small></span><input type="checkbox"></label>
           </div>
         </section>
       </div>

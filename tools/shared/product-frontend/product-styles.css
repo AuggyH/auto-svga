@@ -14,13 +14,13 @@
 }
 
 body {
-  min-width: 900px;
+  min-width: 680px;
   height: 100vh;
   height: 100dvh;
   margin: 0;
   overflow: hidden;
   background: var(--background);
-  font-size: 13px;
+  font-size: var(--visual-font-title);
 }
 
 h1,
@@ -4038,6 +4038,286 @@ button:disabled {
 
   .modeControl {
     width: 138px;
+  }
+}
+
+/* P6-R1 owner-visible visual system: token-driven overrides for local preview. */
+.shell {
+  background: var(--visual-window-background);
+  border-radius: var(--visual-radius-window);
+}
+
+.compactToolbar {
+  height: var(--compact-toolbar-height);
+  gap: var(--compact-toolbar-gap);
+  border-color: var(--visual-hairline);
+  background: var(--visual-toolbar-background);
+}
+
+.previewCard {
+  border-color: var(--preview-card-border);
+  border-radius: var(--preview-card-radius);
+  background: var(--preview-card-surface);
+  box-shadow: var(--visual-shadow-panel);
+}
+
+.previewCard.isPrimary {
+  border-color: var(--visual-border-strong);
+}
+
+.panelHeader,
+.cardHeader {
+  gap: var(--visual-space-body);
+  padding: var(--panel-header-padding);
+  border-color: var(--visual-hairline);
+}
+
+.previewCardHeader {
+  min-height: 60px;
+}
+
+.cardTitleGroup h2,
+.infoHeader h2 {
+  color: var(--visual-text-primary);
+  font-size: var(--visual-font-title);
+  line-height: var(--visual-line-title);
+  letter-spacing: 0;
+}
+
+.brand strong {
+  letter-spacing: 0;
+}
+
+.brandCopy span,
+.infoHeader p,
+.bilingualCopy {
+  color: var(--visual-text-secondary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.segmentedControl,
+.toolButton,
+.iconButton,
+.cardFileButton,
+.cardUtilityButton,
+.emptyFileButton,
+.smallIconButton,
+.smallPlayButton {
+  border-color: var(--visual-border);
+  border-radius: var(--visual-radius-control);
+  background: var(--visual-control-surface);
+  box-shadow: var(--visual-shadow-control);
+}
+
+.segmentedControl:hover,
+.toolButton:hover,
+.iconButton:hover,
+.cardFileButton:hover,
+.cardUtilityButton:hover,
+.emptyFileButton:hover,
+.smallIconButton:hover,
+.smallPlayButton:hover {
+  border-color: color-mix(in srgb, var(--visual-accent) 32%, var(--visual-border));
+  background: var(--visual-card-surface-elevated);
+}
+
+.toolButton:focus-visible,
+.iconButton:focus-visible,
+.cardFileButton:focus-visible,
+.cardUtilityButton:focus-visible,
+.emptyFileButton:focus-visible,
+.smallIconButton:focus-visible,
+.smallPlayButton:focus-visible,
+.dropdownTrigger:focus-visible {
+  box-shadow: var(--visual-focus-ring);
+}
+
+.statusBadge,
+.statusPill,
+.badge,
+.syncStatusPill,
+.assetTypeTag,
+.assetWarningTags span {
+  border-radius: var(--status-badge-radius);
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--visual-space-tight);
+}
+
+.metricCard,
+.runtimeStatusBlock,
+.resourceRow,
+.logRow,
+.emptyPanel,
+.settingsCard,
+.inlineFeedback {
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--visual-inline-surface);
+}
+
+.metricCard {
+  background: var(--metric-card-surface);
+}
+
+.inlineFeedback {
+  background: var(--inline-feedback-surface);
+}
+
+.metricCard {
+  min-height: 54px;
+  padding: var(--space-3);
+}
+
+.metricCard dt {
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+}
+
+.metricCard dd {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--visual-text-primary);
+  font-size: var(--visual-font-body);
+  line-height: var(--visual-line-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtimeStatusBlock {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--visual-space-tight);
+  padding: var(--space-3);
+}
+
+.assetSummaryLine {
+  padding: 0 var(--space-4) var(--space-2);
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.resourceRow {
+  background: var(--resource-row-surface);
+}
+
+.resourceRow .assetPrimaryLine strong,
+.resourceRow .assetImageKey,
+.resourceRow .assetFullKey {
+  letter-spacing: 0;
+}
+
+.resourceRow .assetImageKey,
+.resourceRow .assetFullKey {
+  color: var(--visual-text-tertiary);
+}
+
+.logRow {
+  border-bottom: 0;
+  background: var(--log-row-surface);
+}
+
+.logsPanelList {
+  display: grid;
+  gap: var(--visual-space-tight);
+}
+
+.logsPanelList .fullLogRow {
+  padding: var(--space-3);
+  border-bottom: 0;
+}
+
+.settingsModal,
+.assetModal,
+.infoPanel,
+.logsPanel {
+  border-color: var(--visual-border);
+  border-radius: var(--visual-radius-panel);
+  background: var(--visual-panel-surface);
+}
+
+.assetModal {
+  border-radius: var(--visual-radius-card);
+}
+
+.settingsBody {
+  gap: var(--visual-space-section);
+}
+
+.status-ready,
+.success .statusBadge {
+  color: var(--visual-success);
+}
+
+.status-warning,
+.warning .statusBadge {
+  color: var(--visual-warning);
+}
+
+.status-error,
+.error .statusBadge {
+  color: var(--visual-danger);
+}
+
+.settingsSection h3 {
+  color: var(--visual-text-secondary);
+  letter-spacing: 0;
+}
+
+.advancedSetting {
+  color: var(--visual-text-secondary);
+}
+
+.narrowWindowHint {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .workspace.withCompare,
+  .workspace.mode-exportReview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace.withCompare .previewCard,
+  .workspace.mode-exportReview .previewCard {
+    min-height: min(46vh, 360px);
+  }
+
+  .syncBar {
+    height: auto;
+    min-height: 52px;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    padding-block: var(--space-2);
+  }
+
+  .syncFileInfo {
+    display: none;
+  }
+
+  .syncControls {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    grid-template-columns: minmax(42px, 1fr) minmax(136px, 160px) minmax(118px, 1fr);
+    gap: var(--space-3);
+    padding-inline: var(--space-3);
+  }
+
+  .actionRow {
+    gap: var(--space-2);
+  }
+
+  .metricGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

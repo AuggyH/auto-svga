@@ -63,6 +63,7 @@ const p6R1ReviewerBRequiredCategories = [
   "motionAssetAudit",
   "runtimeLogs",
   "settings",
+  "macosVisualSystem",
   "theme",
   "accessibilitySettings",
   "emptyState",

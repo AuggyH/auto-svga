@@ -145,6 +145,11 @@ async function writeJson(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+async function writeVisualSystemAudit() {
+  const result = run("node", ["tools/p6/visual-system-audit.mjs", "--source-only"]);
+  await writeJson(path.join(p6Root, "visual-system-audit.json"), JSON.parse(result.stdout));
+}
+
 function toRepoPath(filePath) {
   return path.relative(repoRoot, filePath).split(path.sep).join("/");
 }
@@ -397,6 +402,7 @@ async function writeReviewerBEvidenceRequest() {
     ["motionAssetAudit", "Confirm Motion Asset Audit read-only panel in Desktop and Web evidence.", "desktop-inspection.png"],
     ["runtimeLogs", "Confirm runtime log panel content and controls.", "web-baseline/screenshot-logs-1440x900.png"],
     ["settings", "Confirm settings panel geometry, values, and close behavior.", "web-baseline/screenshot-settings-1440x900.png"],
+    ["macosVisualSystem", "Confirm macOS-aligned visual system, quiet chrome, hierarchy, typography, spacing, PreviewCard consistency, panel behavior, resources IA, logs UX, settings scope, and phase-one local preview focus.", "visual-system-audit.json"],
     ["theme", "Confirm theme state through computed style and screenshot evidence.", "web-baseline/computed-styles-manifest.json"],
     ["accessibilitySettings", "Confirm reduced motion and blur settings with control values.", "interaction-parity-report.json"],
     ["emptyState", "Confirm Desktop empty state differs from loading.", "desktop-empty.png"],
@@ -618,6 +624,7 @@ async function main() {
     p6Root,
     contract: await readJson(contractPath)
   });
+  await writeVisualSystemAudit();
   await writeReviewerBEvidenceRequest();
 
   let report = await buildParityReport();

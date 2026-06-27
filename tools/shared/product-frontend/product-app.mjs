@@ -337,8 +337,8 @@ function updatePreviewCardHeader(slot) {
     titleNode.title = fileName || "";
   }
   if (filePill) {
-    filePill.hidden = !fileName;
-    filePill.textContent = fileName;
+    filePill.hidden = true;
+    filePill.textContent = "";
     filePill.title = fileName;
   }
   if (slot.slotName === "A") {
@@ -427,6 +427,43 @@ function clearCurrentFile(source = "button") {
   return {
     source,
     currentFileCleared: !hasCurrentPrimaryFileState(),
+    primaryStatus: {
+      parseStatus: players.a.parseStatus,
+      renderStatus: players.a.renderStatus,
+      inspectionStatus: players.a.inspectionStatus,
+      hasMetrics: Boolean(players.a.metrics),
+      hasInspectionReport: Boolean(players.a.inspectionReport),
+      canvasChildCount: players.a.canvas.children.length,
+      statusText: players.a.status.textContent
+    }
+  };
+}
+
+async function reloadCurrentFile(source = "shortcut") {
+  const reloadSource = players.a.objectUrl ?? players.a.source;
+  const fileName = players.a.sourceIdentity?.fileName ?? players.a.metrics?.fileName;
+  const fileSizeBytes = players.a.sourceIdentity?.fileSizeBytes ?? players.a.metrics?.fileSizeBytes;
+  if (!reloadSource || !fileName) {
+    announce("没有可重新载入的文件");
+    addLog("warning", "没有可重新载入的文件。");
+    return {
+      source,
+      reloaded: false,
+      reason: "missing-current-file"
+    };
+  }
+  addLog("info", source === "shortcut" ? "已通过快捷键重新载入当前文件。" : "正在重新载入当前文件。");
+  await loadSvga("a", reloadSource, {
+    fileName,
+    fileSizeBytes,
+    isDefault: false
+  }).catch(() => undefined);
+  const reloaded = Boolean(players.a.videoItem && players.a.metrics && canvasIsNonBlank(players.a));
+  if (reloaded) announce(`已重新载入：${fileName}`);
+  return {
+    source,
+    reloaded,
+    fileName,
     primaryStatus: {
       parseStatus: players.a.parseStatus,
       renderStatus: players.a.renderStatus,
@@ -1788,7 +1825,7 @@ function handleSvgaFile(file, slotKey) {
     clearReference();
   }
   slot.objectUrl = URL.createObjectURL(file);
-  addLog("info", "本地文件模式下浏览器不能自动读取同目录 report.json。/ Browser cannot auto-read sibling report.json for local files.");
+  addLog("info", "本地文件模式下不会自动读取同目录 report.json。");
   loadSvga(slotKey, slot.objectUrl, {
     fileName: file.name,
     fileSizeBytes: file.size,
@@ -3027,12 +3064,13 @@ function previewCardZoneSnapshot(slot) {
     slot: slot.slotName,
     loaded: Boolean(slot.videoItem && slot.metrics && canvasIsNonBlank(slot)),
     titleVisible: isElementVisible(title) && compactText(title).length > 0,
-    filePillVisible: isElementVisible(filePill) && compactText(filePill).endsWith(".svga"),
+    fileNameInTitle: compactText(title).endsWith(".svga"),
+    duplicateFilePillHidden: !isElementVisible(filePill),
     statusVisible: isElementVisible(status) && compactText(status).length > 0,
     replaceActionVisible: isElementVisible(replaceButton),
     metadataVisible,
     playbackControlsVisible: isElementVisible(playerBar),
-    fileName: compactText(filePill),
+    fileName: compactText(title),
     statusText: compactText(status)
   };
 }
@@ -3043,7 +3081,8 @@ function collectPreviewCardConsistencyProof() {
   const sharedZoneKeys = [
     "loaded",
     "titleVisible",
-    "filePillVisible",
+    "fileNameInTitle",
+    "duplicateFilePillHidden",
     "statusVisible",
     "replaceActionVisible",
     "metadataVisible",
@@ -3771,8 +3810,7 @@ function renderOverview(metrics, slot) {
     ["内存占用", "memoryUsage", formatBytes(metrics.memoryBytes)],
     ["画布尺寸", "canvasSize", formatSize(metrics.sourceWidth, metrics.sourceHeight), "mono"],
     ["播放时长", "duration", formatDuration(metrics)],
-    ["帧率", "fps", metrics.fps ? `${metrics.fps} fps` : "n/a", "mono"],
-    ["图层数量", "spriteCount", metrics.spriteCount ? `${metrics.spriteCount} 个` : "n/a"],
+    ["帧率", "fps", metrics.fps ? `${metrics.fps} FPS` : "n/a", "mono"],
     ["图片资源", "imageCount", metrics.imageCount ? `${metrics.imageCount} 个` : "n/a"]
   ];
   const statusRows = [
@@ -3781,14 +3819,14 @@ function renderOverview(metrics, slot) {
   ];
   return `
     <div class="overviewContent">
-      <dl class="overviewGrid">
+      <dl class="overviewGrid metricGrid">
       ${rows.map(([label, key, value, tone]) => `
-        <div class="overviewRow">
+        <div class="overviewRow metricCard">
           <dt><span>${escapeHtml(label)}</span></dt>
           <dd class="${tone === "mono" ? "monoValue" : ""} ${key === "fileName" ? "fileNameValue" : ""}" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
         </div>
       `).join("")}
-      <div class="overviewStatusBlock">
+      <div class="overviewStatusBlock runtimeStatusBlock">
         ${statusRows.map(([label, key, value]) => `
           <div class="overviewStatusRow">
             <dt><span>${escapeHtml(label)}</span></dt>
@@ -3850,8 +3888,9 @@ function renderAssets(metrics) {
     if (assetFilter === "warning") return asset.warnings?.length;
     return asset.kind === assetFilter;
   });
-  return `
+    return `
     ${filterBar}
+    <div class="assetSummaryLine">资源按用途分组显示，异常筛选只作为检查入口。</div>
     <div class="assetUnifiedList">
       ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
     </div>
@@ -3975,7 +4014,7 @@ function renderAssetEntry(asset) {
     : "";
   const sequenceExpanded = asset.kind === "sequence" && expandedSequenceGroups.has(asset.key);
   return `
-    <article class="assetUnifiedRow ${asset.warnings?.length ? "hasWarning" : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}">
+    <article class="assetUnifiedRow resourceRow ${asset.warnings?.length ? "hasWarning" : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}">
       <button class="assetUnifiedThumb checkerboard ${asset.kind === "sequence" ? "isSequence" : ""}" type="button" data-preview-image-key="${escapeHtml(asset.items?.[0]?.key ?? asset.imageKey ?? "")}" ${asset.previewUrl ? "" : "disabled"}>
         ${asset.kind === "sequence"
           ? (asset.previewItems ?? []).map((item) => item.previewUrl ? `<img src="${escapeHtml(item.previewUrl)}" alt="">` : `<span></span>`).join("")
@@ -3993,11 +4032,11 @@ function renderAssetEntry(asset) {
             ${asset.frameCount ? `<span>${escapeHtml(asset.frameCount)} 帧</span>` : ""}
           </div>
           <div>
-            <span class="assetImageKey" title="${escapeHtml(asset.imageKey ?? "n/a")}">${escapeHtml(asset.imageKey ?? "n/a")}</span>
+            <span class="assetImageKey" title="${escapeHtml(asset.imageKey ?? "n/a")}">资源 ${escapeHtml(asset.imageKey ?? "n/a")}</span>
             <span>引用 ×${escapeHtml(asset.referenceCount ?? 0)}</span>
           </div>
         </div>
-        <div class="assetFullKey" title="${escapeHtml(asset.fullKey ?? "")}">${escapeHtml(asset.fullKey ?? "")}</div>
+        <div class="assetFullKey" title="${escapeHtml(asset.fullKey ?? "")}">完整资源名：${escapeHtml(asset.fullKey ?? "")}</div>
         ${warningHtml}
         ${asset.kind === "sequence" ? `<button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧" : "展开序列帧"}</button>` : ""}
       </div>
@@ -4073,7 +4112,7 @@ function renderLogsPanel() {
   const logs = appLogs.length
     ? appLogs.slice().reverse()
     : [{ level: "info", message: "暂无日志", time: "--:--:--" }];
-  fullLogsSubtitle.innerHTML = `<span>运行日志 · ${appLogs.length} 条</span>`;
+  fullLogsSubtitle.innerHTML = `<span>最近操作 · ${appLogs.length} 条</span>`;
   fullLogsContent.innerHTML = logs.map(renderFullLogRow).join("");
 }
 
@@ -4243,7 +4282,7 @@ function openAssetPreview(imageKey) {
   if (!image?.previewUrl) return;
   previewImageKey = image.key;
   assetPreviewTitle.textContent = image.name ?? image.key;
-  assetPreviewMeta.textContent = `imageKey: ${image.key}`;
+  assetPreviewMeta.textContent = `图片资源：${image.key}`;
   assetPreviewImage.src = image.previewUrl;
   assetPreviewDetails.textContent = `${formatSize(image.width, image.height)} · ${formatBytes(image.byteSize)}`;
   openModal(assetPreviewModal, document.activeElement);
@@ -4464,7 +4503,7 @@ function setupDropdownMenus() {
 
 function renderFullLogRow(log) {
   return `
-    <div class="fullLogRow ${escapeHtml(log.level)}">
+    <div class="fullLogRow logRow ${escapeHtml(log.level)}">
       <time>${escapeHtml(log.time)}</time>
       <strong>${escapeHtml(logLevelLabel(log.level))}</strong>
       <span>${escapeHtml(log.message)}</span>
@@ -4903,7 +4942,7 @@ document.addEventListener("keydown", (event) => {
     const tagName = target?.tagName?.toLowerCase();
     if (!["input", "select", "textarea"].includes(tagName) && !target?.isContentEditable && hasCurrentPrimaryFileState()) {
       event.preventDefault();
-      clearCurrentFile("shortcut");
+      reloadCurrentFile("shortcut");
     }
     return;
   }

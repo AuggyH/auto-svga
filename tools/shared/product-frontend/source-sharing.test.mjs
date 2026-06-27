@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -232,6 +233,20 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
 	  for (const keyframe of ["fitMenuIn", "sidePanelEnter", "tabIn", "overlayIn", "modalIn", "drawerIn", "dropdownIn"]) {
 	    assert.match(productStyles, new RegExp(`@keyframes\\s+${keyframe}`));
 	  }
+});
+
+test("P6-R1 owner-visible visual system target is token-driven and auditable", async () => {
+  const result = spawnSync(process.execPath, ["tools/p6/visual-system-audit.mjs", "--source-only"], {
+    cwd: repoRoot,
+    encoding: "utf8"
+  });
+  assert.equal(result.status, 0, result.stdout || result.stderr);
+  const summary = JSON.parse(result.stdout);
+  assert.equal(summary.passed, true);
+  assert.equal(summary.target, "owner_visible_macos_local_preview_workbench");
+  assert.equal(summary.sourceOnly, true);
+  assert.ok(summary.metrics.requiredTokenCount >= 40);
+  assert.ok(summary.metrics.requiredComponentClassCount >= 10);
 });
 
 test("Electron default renderer uses shared product source and hides editor incubation", async () => {
