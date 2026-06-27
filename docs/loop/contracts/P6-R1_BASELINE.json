@@ -145,7 +145,7 @@
     "states": 22,
     "motions": 9
   },
-  "snapshotSha256": "efedeca73420b63544ee9db3ff14e1ac4ca5e4eccaa5fe9771d86ef4c0d34de7",
+  "snapshotSha256": "64fc27964ef48af6aac8750b08194a3c7cf9711b75195a522b77893f5655f5b3",
   "snapshotSha256Algorithm": {
     "name": "top_level_snapshotSha256_omitted_recursive_key_sorted_compact_json_sha256",
     "version": 1,
@@ -163,7 +163,7 @@
       "authorization": "AUTHORIZE_BOUNDED_WEB_SOURCE_OF_TRUTH_REVISION_FOR_OWNER_VISIBLE_UI_UX_POLISH",
       "reason": "owner_visible_ui_ux_polish_visual_system_revision",
       "scope": "bounded_to_current_owner_visible_ui_ux_polish_only",
-      "sourceReviewPacket": "review/P6-R1-blocked-399b170-review.zip",
+      "sourceReviewPacketLabel": "P6-R1 blocked 399b170 review package; retained as owner-provided source context without a local review path",
       "sourceBlockingHead": "399b170e1556a2926f87c85510bbe21d6f2eb4b8",
       "approvedFiles": [
         {
