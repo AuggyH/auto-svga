@@ -222,18 +222,18 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
     ["图层", Number.isFinite(Number(asset.layerCount)) ? `${asset.layerCount}` : "n/a"],
     ["资源", Number.isFinite(Number(asset.resourceCount)) ? `${asset.resourceCount}` : "n/a"]
   ];
+  const diagnosticRows = [
+    ["报告结构", `v${report.contractVersion ?? "n/a"}`],
+    ["检查目标", profileDisplayLabel(report)],
+    ["目标类型", profileDisplayId(report.profileId)],
+    ["规范编号", report.specId ?? "n/a"]
+  ];
 
   return `
     <section class="specReportSection ${report.passed ? "isPassed" : "isFailed"}" aria-live="polite">
       <div class="specReportHeader">
         <div><strong>生产规范</strong><small>检查结果</small></div>
         <span class="specReportBadge ${report.passed ? "isPassed" : "isFailed"}">${report.passed ? "通过" : "未通过"}</span>
-      </div>
-      <div class="specReportId"><span>规范</span><code>${escapeHtml(report.specId ?? "n/a")}</code></div>
-      <div class="specReportId">
-        <span>检查档案</span>
-        <code>${escapeHtml(profileDisplayLabel(report))}</code>
-        <small>${escapeHtml(profileDisplayId(report.profileId))}</small>
       </div>
       <p class="specReportHint">${escapeHtml(profileDisplayPurpose(report))}</p>
       <dl class="specAssetSummary">
@@ -247,13 +247,26 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
           <ul class="specIssueList">
             ${issues.map((issue) => `
               <li class="severity-${escapeHtml(issue.severity)}">
-                <div><span>${severityLabel(issue.severity)}</span><code>${escapeHtml(issue.code)}</code></div>
-                <p>${escapeHtml(issueMessage(issue))}<small>${escapeHtml(issue.message)}</small></p>
+                <div><span>${severityLabel(issue.severity)}</span></div>
+                <p>${escapeHtml(issueMessage(issue))}</p>
+                <details class="specDiagnosticDetails">
+                  <summary>查看诊断细节</summary>
+                  <small>${escapeHtml(issue.message)}</small>
+                  <code>${escapeHtml(issue.code)}</code>
+                </details>
               </li>
             `).join("")}
           </ul>
         </div>
       ` : `<p class="specReportHint">未发现超出当前规范的项目。</p>`}
+      <details class="specDiagnosticDetails specProfileDetails">
+        <summary>高级诊断</summary>
+        <dl>
+          ${diagnosticRows.map(([label, value]) => `
+            <div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>
+          `).join("")}
+        </dl>
+      </details>
       ${calibrationNotes.length > 0 ? `
         <div class="specReportGroup calibrationGroup">
           <h3>待产品校准</h3>

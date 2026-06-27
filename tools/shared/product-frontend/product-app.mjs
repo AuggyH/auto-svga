@@ -3543,6 +3543,26 @@ async function runProductSmoke() {
     await waitFor(() => Boolean(players.b.videoItem));
     await waitFor(() => canvasIsNonBlank(players.b));
     await captureArtifact("desktop-local-compare-loaded");
+    if (compareToggle.checked) compareToggle.click();
+    await waitFor(() => !isCompareActive());
+    await delay(140);
+    await captureArtifact("desktop-responsive-local-preview-at-900-x-720");
+    openInfoPanel("overview");
+    await delay(160);
+    await captureArtifact("desktop-local-info-overview-open");
+    document.querySelector(".tabButton[data-tab='assets']")?.click();
+    await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
+    await delay(120);
+    await captureArtifact("desktop-local-info-assets-open");
+    openFullLogs();
+    await waitFor(() => activeSidePanel === "logs");
+    await delay(120);
+    await captureArtifact("desktop-local-logs-open");
+    openSettings();
+    await waitFor(() => !settingsModal.hidden);
+    await delay(120);
+    await captureArtifact("desktop-local-settings-open");
+    closeP6SmokeTransientUi();
     const fileInput = await smokeFileInput(bytes.slice(0));
     const dragDrop = await smokeDragDrop(bytes.slice(0));
     p6SmokeCurrentPhase = "owner-usability-smoke";
@@ -3804,14 +3824,14 @@ function renderOverview(metrics, slot) {
   if (!metrics) {
     return renderBilingualEmpty("暂无文件信息。选择或拖入 SVGA 文件后查看详情。", "");
   }
+  const fileName = metrics.fileName ?? "n/a";
   const rows = [
-    ["文件名", "fileName", metrics.fileName, "mono"],
     ["文件体积", "fileSizeBytes", formatBytes(metrics.fileSizeBytes)],
-    ["内存占用", "memoryUsage", formatBytes(metrics.memoryBytes)],
+    ["估算内存", "memoryUsage", formatBytes(metrics.memoryBytes)],
     ["画布尺寸", "canvasSize", formatSize(metrics.sourceWidth, metrics.sourceHeight), "mono"],
     ["播放时长", "duration", formatDuration(metrics)],
     ["帧率", "fps", metrics.fps ? `${metrics.fps} FPS` : "n/a", "mono"],
-    ["图片资源", "imageCount", metrics.imageCount ? `${metrics.imageCount} 个` : "n/a"]
+    ["资源数量", "imageCount", metrics.imageCount ? `${metrics.imageCount} 个` : "n/a"]
   ];
   const statusRows = [
     ["解析状态", "parseStatus", slot.parseStatus],
@@ -3819,11 +3839,15 @@ function renderOverview(metrics, slot) {
   ];
   return `
     <div class="overviewContent">
+      <div class="overviewFileRow">
+        <span>当前文件</span>
+        <strong title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</strong>
+      </div>
       <dl class="overviewGrid metricGrid">
       ${rows.map(([label, key, value, tone]) => `
         <div class="overviewRow metricCard">
           <dt><span>${escapeHtml(label)}</span></dt>
-          <dd class="${tone === "mono" ? "monoValue" : ""} ${key === "fileName" ? "fileNameValue" : ""}" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
+          <dd class="${tone === "mono" ? "monoValue" : ""}" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
         </div>
       `).join("")}
       <div class="overviewStatusBlock runtimeStatusBlock">
@@ -3888,9 +3912,14 @@ function renderAssets(metrics) {
     if (assetFilter === "warning") return asset.warnings?.length;
     return asset.kind === assetFilter;
   });
+  const summary = [
+    `${metrics.images?.length ?? 0} 张图片`,
+    `${assets.filter((asset) => asset.kind === "sequence").length} 组序列`,
+    `${assets.filter((asset) => asset.warnings?.length).length} 项需复核`
+  ].join(" · ");
     return `
     ${filterBar}
-    <div class="assetSummaryLine">资源按用途分组显示，异常筛选只作为检查入口。</div>
+    <div class="assetSummaryLine">${escapeHtml(summary)}</div>
     <div class="assetUnifiedList">
       ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
     </div>
@@ -4032,8 +4061,7 @@ function renderAssetEntry(asset) {
             ${asset.frameCount ? `<span>${escapeHtml(asset.frameCount)} 帧</span>` : ""}
           </div>
           <div>
-            <span class="assetImageKey" title="${escapeHtml(asset.imageKey ?? "n/a")}">资源 ${escapeHtml(asset.imageKey ?? "n/a")}</span>
-            <span>引用 ×${escapeHtml(asset.referenceCount ?? 0)}</span>
+            <span class="assetUsageLabel" title="${escapeHtml(asset.imageKey ?? "n/a")}">使用 ${escapeHtml(asset.referenceCount ?? 0)} 次</span>
           </div>
         </div>
         <div class="assetFullKey" title="${escapeHtml(asset.fullKey ?? "")}">完整资源名：${escapeHtml(asset.fullKey ?? "")}</div>

@@ -22,6 +22,7 @@ const trackedWorkerRegistryPath = path.join(repoRoot, "docs/product/p6/P6_WORKER
 const workerRegistryFinalPath = path.join(productRoot, "worker-registry-final.json");
 const workerRegistryFinalRepoPath = ".artifacts/product/P6/worker-registry-final.json";
 const sidecarNamePrefix = "P6-R1-owner-upload-sidecar";
+const ownerFeedbackClosureMapName = "OWNER_FEEDBACK_CLOSURE_MAP.json";
 const loopValidationRoot = path.join(repoRoot, ".artifacts/loop-validation");
 const finalLoopValidationEvidenceFiles = [
   ["final-loop-validation/run-1.json", path.join(loopValidationRoot, "p6-r1-final-run-1.json")],
@@ -1160,6 +1161,7 @@ export function validateCompleteReviewDirectoryBinding({
     "complete_directory_manifest",
     "complete_directory_privacy_audit",
     "complete_directory_post_seal",
+    "owner_feedback_closure_map",
     "complete_directory_hash_list",
     "review_zip_entry_list",
     "app_zip_entry_list"
@@ -1204,6 +1206,7 @@ export function validateCompleteReviewDirectoryBinding({
     "UPLOAD_INDEX.json",
     "bundle-privacy-audit.json",
     "post-seal-verification.json",
+    ownerFeedbackClosureMapName,
     sidecarName,
     reviewZipName,
     appZipName,
@@ -1487,6 +1490,7 @@ async function writeCompleteReviewDirectoryPackage({
   await copyRequired(path.join(visibleRoot, reviewZipName), path.join(completeRoot, reviewZipName));
   await copyRequired(path.join(visibleRoot, appZipName), path.join(completeRoot, appZipName));
   await copyRequired(path.join(visibleRoot, sidecarName), path.join(completeRoot, sidecarName));
+  await copyRequired(path.join(productRoot, ownerFeedbackClosureMapName), path.join(completeRoot, ownerFeedbackClosureMapName));
 
   const reviewZipEntryList = {
     ...zipEntryListReport(path.join(completeRoot, reviewZipName)),
@@ -1657,6 +1661,7 @@ async function writeCompleteReviewDirectoryPackage({
     await fileUploadRecord({ role: "complete_directory_readme", root: completeRoot, relativePath: "README.md", finalHead: headCommit, finalTree: headTree }),
     await fileUploadRecord({ role: "complete_directory_post_seal", root: completeRoot, relativePath: "post-seal-verification.json", finalHead: headCommit, finalTree: headTree }),
     await fileUploadRecord({ role: "complete_directory_privacy_audit", root: completeRoot, relativePath: "bundle-privacy-audit.json", finalHead: headCommit, finalTree: headTree }),
+    await fileUploadRecord({ role: "owner_feedback_closure_map", root: completeRoot, relativePath: ownerFeedbackClosureMapName, finalHead: headCommit, finalTree: headTree }),
     await fileUploadRecord({ role: "review_zip_entry_list", root: completeRoot, relativePath: "extracted-index/review-zip-entry-list.json", finalHead: headCommit, finalTree: headTree, entryCount: reviewZipEntryList.entryCount }),
     await fileUploadRecord({ role: "app_zip_entry_list", root: completeRoot, relativePath: "extracted-index/app-zip-entry-list.json", finalHead: headCommit, finalTree: headTree, entryCount: appZipEntryList.entryCount }),
     {

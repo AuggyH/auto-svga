@@ -1216,6 +1216,41 @@ async function main() {
   snapshots.push(await collectSnapshot(window, "local-compare-loaded"));
   await capture(window, "screenshot-local-compare-loaded-1440x900.png");
 
+  console.log("P6_WEB_BASELINE_PHASE local-preview-owner-panels");
+  await execute(window, `
+    const compareToggle = document.querySelector("#compareToggle");
+    if (compareToggle?.checked) compareToggle.click();
+    true;
+  `);
+  await waitFor(window, `(() => {
+    const panel = document.querySelector("#svgaPanelA");
+    return Boolean(panel?.classList.contains("hasLoaded") || document.querySelector("#svgaCanvasA canvas"));
+  })()`, 6_000);
+  await capture(window, "screenshot-local-preview-loaded-1440x900.png");
+  if (await execute(window, `return document.querySelector("#infoPanelButton")?.getAttribute("aria-pressed") !== "true";`)) {
+    await browserPointClick(window, "#infoPanelButton");
+  }
+  await delay(350);
+  await capture(window, "screenshot-local-info-overview-1440x900.png");
+  await browserPointClick(window, ".tabButton[data-tab='assets']");
+  await delay(280);
+  await capture(window, "screenshot-local-info-assets-1440x900.png");
+  await browserPointClick(window, "#logsButton");
+  await delay(280);
+  await capture(window, "screenshot-local-logs-1440x900.png");
+  await browserPointClick(window, "#settingsButton");
+  await delay(280);
+  await capture(window, "screenshot-local-settings-1440x900.png");
+  await closeTransientUi(window);
+  window.setSize(900, 720);
+  window.setContentSize(900, 720);
+  await waitFor(window, `innerWidth <= 920 && innerHeight <= 740`, 6_000);
+  await delay(320);
+  await capture(window, "screenshot-local-preview-loaded-900x720.png");
+  window.setSize(1440, 900);
+  window.setContentSize(1440, 900);
+  await delay(220);
+
   console.log("P6_WEB_BASELINE_PHASE responsive-export");
   await installFixtureMarker(window);
   await window.webContents.executeJavaScript(`document.querySelector("#modeDropdownTrigger")?.click(); true;`);

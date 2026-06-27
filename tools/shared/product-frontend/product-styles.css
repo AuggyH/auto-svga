@@ -4144,8 +4144,37 @@ button:disabled {
 
 .metricGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(168px, 1fr));
   gap: var(--visual-space-tight);
+}
+
+.overviewFileRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--visual-space-tight);
+  align-items: center;
+  padding: var(--space-3);
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--visual-inline-surface);
+}
+
+.overviewFileRow span {
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.overviewFileRow strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--visual-text-primary);
+  font-family: var(--mono);
+  font-size: var(--visual-font-body);
+  font-weight: 600;
+  line-height: var(--visual-line-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metricCard,
@@ -4180,12 +4209,11 @@ button:disabled {
 
 .metricCard dd {
   min-width: 0;
-  overflow: hidden;
   color: var(--visual-text-primary);
   font-size: var(--visual-font-body);
   line-height: var(--visual-line-body);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .runtimeStatusBlock {
@@ -4196,7 +4224,7 @@ button:disabled {
 }
 
 .assetSummaryLine {
-  padding: 0 var(--space-4) var(--space-2);
+  padding: var(--space-2) var(--space-4) 0;
   color: var(--visual-text-tertiary);
   font-size: var(--visual-font-meta);
   line-height: var(--visual-line-meta);
@@ -4207,12 +4235,12 @@ button:disabled {
 }
 
 .resourceRow .assetPrimaryLine strong,
-.resourceRow .assetImageKey,
+.resourceRow .assetUsageLabel,
 .resourceRow .assetFullKey {
   letter-spacing: 0;
 }
 
-.resourceRow .assetImageKey,
+.resourceRow .assetUsageLabel,
 .resourceRow .assetFullKey {
   color: var(--visual-text-tertiary);
 }
@@ -5633,6 +5661,54 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   line-height: 14px;
 }
 
+.specDiagnosticDetails {
+  margin-top: var(--visual-space-tight);
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.specDiagnosticDetails summary {
+  cursor: pointer;
+  color: var(--visual-text-secondary);
+}
+
+.specDiagnosticDetails small,
+.specDiagnosticDetails code {
+  display: block;
+  margin-top: var(--visual-space-tight);
+}
+
+.specProfileDetails {
+  padding: var(--space-3);
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--visual-inline-surface);
+}
+
+.specProfileDetails dl {
+  display: grid;
+  gap: var(--visual-space-tight);
+  margin: var(--visual-space-tight) 0 0;
+}
+
+.specProfileDetails div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--visual-space-tight);
+}
+
+.specProfileDetails dt,
+.specProfileDetails dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.specProfileDetails dd {
+  overflow-wrap: anywhere;
+  color: var(--visual-text-secondary);
+}
+
 .specReportHint {
   margin: 0;
 }
@@ -5774,7 +5850,8 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 
 #tab-assets {
   display: grid;
-  grid-template-rows: 44px minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: start;
   padding: 0;
   overflow: hidden;
 }
@@ -5797,6 +5874,7 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 
 #tab-assets .assetUnifiedList {
   min-height: 0;
+  margin-top: var(--visual-space-tight);
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-gutter: stable;
@@ -5840,9 +5918,9 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   gap: 6px;
   min-width: 0;
   overflow: hidden;
-  color: var(--textTertiary);
-  font-size: 10px;
-  line-height: 14px;
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
   white-space: nowrap;
 }
 
@@ -5850,7 +5928,7 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   flex: none;
 }
 
-.assetMetaLines .assetImageKey {
+.assetMetaLines .assetUsageLabel {
   flex: 1;
   min-width: 0;
   overflow: hidden;

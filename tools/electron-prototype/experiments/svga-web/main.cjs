@@ -790,6 +790,11 @@ function validateArtifactScenario(value) {
     "desktop-latest-artifact-loaded",
     "desktop-reference-media-loaded",
     "desktop-local-compare-loaded",
+    "desktop-responsive-local-preview-at-900-x-720",
+    "desktop-local-info-overview-open",
+    "desktop-local-info-assets-open",
+    "desktop-local-logs-open",
+    "desktop-local-settings-open",
     "desktop-recovered-from-invalid",
     "actual-normal-loaded",
     "smoke-loaded",
@@ -1771,6 +1776,10 @@ function stateForScenario(scenario) {
     "desktop-synchronized-playback-toggled-by-space": "synchronized-playback-toggled-by-space",
     "desktop-local-compare-empty": "local-compare-empty",
     "desktop-local-compare-loaded": "local-compare-loaded",
+    "desktop-local-info-overview-open": "info-overview-open",
+    "desktop-local-info-assets-open": "info-assets-open",
+    "desktop-local-logs-open": "logs-open",
+    "desktop-local-settings-open": "settings-open",
     "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open"
@@ -1872,7 +1881,8 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-1280x800") window.setSize(1280, 800);
   if (scenario === "desktop-1440x900") window.setSize(1440, 900);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(900, 720);
-  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720") {
+  if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(900, 720);
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
   if (scenario === "desktop-invalid") {
@@ -1888,7 +1898,7 @@ async function captureProductArtifact(window, scenario) {
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
   await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName);
-  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") {
+  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
   } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
     window.setSize(originalSize[0], originalSize[1]);

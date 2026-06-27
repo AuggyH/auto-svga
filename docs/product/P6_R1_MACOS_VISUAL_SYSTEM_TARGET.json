@@ -7,7 +7,8 @@
     "tools/shared/product-tokens.css",
     "tools/shared/product-frontend/product-styles.css",
     "tools/shared/product-frontend/product-shell.html",
-    "tools/shared/product-frontend/product-app.mjs"
+    "tools/shared/product-frontend/product-app.mjs",
+    "tools/shared/product-frontend/inspection-report-view.mjs"
   ],
   "requiredTokens": [
     "--visual-window-background",
@@ -95,12 +96,55 @@
     "compare_compact_900x720",
     "both_loaded_ab"
   ],
+  "primaryOwnerEvidenceTargets": [
+    {
+      "id": "desktop_local_info_overview",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-info-overview-open.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_info_assets",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-info-assets-open.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_logs",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-logs-open.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_settings",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-settings-open.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_preview_responsive",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "visual_system_audit_target",
+      "kind": "json",
+      "path": "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json"
+    }
+  ],
   "auditRules": {
     "hardcodedOwnerVisibleColorCountMax": 120,
     "hardcodedOwnerVisibleRadiusCountMax": 110,
     "hardcodedOwnerVisibleFontSizeCountMax": 140,
     "requiredTokenReferenceMinimum": 42,
-    "forbidScreenshotExistenceOnly": true
+    "forbidScreenshotExistenceOnly": true,
+    "forbidSourceOnlyFinalEvidence": true
   },
   "phase1PostAcceptanceBacklog": [
     "Full A/B information comparison details",

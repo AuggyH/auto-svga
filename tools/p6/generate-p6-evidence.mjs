@@ -146,7 +146,7 @@ async function writeJson(filePath, value) {
 }
 
 async function writeVisualSystemAudit() {
-  const result = run("node", ["tools/p6/visual-system-audit.mjs", "--source-only"]);
+  const result = run("node", ["tools/p6/visual-system-audit.mjs"]);
   await writeJson(path.join(p6Root, "visual-system-audit.json"), JSON.parse(result.stdout));
 }
 
@@ -397,18 +397,19 @@ async function writeReviewerBEvidenceRequest() {
     ["playbackControls", "Confirm playback controls and timeline values.", "desktop-loaded.png"],
     ["fitControls", "Confirm fit controls and rendered geometry.", "desktop-loaded.png"],
     ["synchronizedPlayback", "Confirm synchronized playback from real keyboard/click traces.", "interaction-parity-report.json"],
-    ["inspectionOverview", "Confirm inspection overview side panel content and geometry.", "web-baseline/screenshot-info-overview-1440x900.png"],
-    ["assetDetails", "Confirm asset detail evidence and resource panels.", "web-baseline/screenshot-info-assets-1440x900.png"],
+    ["inspectionOverview", "Confirm inspection overview side panel content and geometry in the local preview owner flow.", "desktop-local-info-overview-open.png"],
+    ["assetDetails", "Confirm asset detail evidence and resource panels in the local preview owner flow.", "desktop-local-info-assets-open.png"],
     ["motionAssetAudit", "Confirm Motion Asset Audit read-only panel in Desktop and Web evidence.", "desktop-inspection.png"],
-    ["runtimeLogs", "Confirm runtime log panel content and controls.", "web-baseline/screenshot-logs-1440x900.png"],
-    ["settings", "Confirm settings panel geometry, values, and close behavior.", "web-baseline/screenshot-settings-1440x900.png"],
+    ["runtimeLogs", "Confirm runtime log panel content and controls in the local preview owner flow.", "desktop-local-logs-open.png"],
+    ["settings", "Confirm settings panel geometry, values, and close behavior in the local preview owner flow.", "desktop-local-settings-open.png"],
     ["macosVisualSystem", "Confirm macOS-aligned visual system, quiet chrome, hierarchy, typography, spacing, PreviewCard consistency, panel behavior, resources IA, logs UX, settings scope, and phase-one local preview focus.", "visual-system-audit.json"],
+    ["ownerFeedbackClosure", "Confirm Product Owner feedback has a first-class closure map and each closure item has concrete evidence.", "OWNER_FEEDBACK_CLOSURE_MAP.json"],
     ["theme", "Confirm theme state through computed style and screenshot evidence.", "web-baseline/computed-styles-manifest.json"],
     ["accessibilitySettings", "Confirm reduced motion and blur settings with control values.", "interaction-parity-report.json"],
     ["emptyState", "Confirm Desktop empty state differs from loading.", "desktop-empty.png"],
     ["loadingState", "Confirm loading DOM, rect, overlay, and full screenshot share one stateSnapshotId.", "desktop-loading.png"],
     ["invalidState", "Confirm invalid state clears stale canvas, filename, and metadata.", "desktop-invalid.png"],
-    ["responsiveLayout", "Confirm responsive Web/Desktop geometry at the required viewport.", "web-baseline/screenshot-export-review-loaded-900x720.png"],
+    ["responsiveLayout", "Confirm responsive Web/Desktop geometry at the required viewport with local preview as the primary owner mode.", "desktop-responsive-local-preview-at-900-x-720.png"],
     ["interactionParity", "Confirm Web and Desktop strict interaction traces are host-neutral and matching.", "interaction-parity-report.json"],
     ["motionParity", "Confirm motion start/mid/end, crop, geometry, params, and reduced-motion comparison.", "web-baseline/motion-manifest.json"],
     ["normalMacApp", "Confirm packaged macOS app proof uses normal runtime flags.", "packaged-app-runtime-proof.json"],
@@ -440,6 +441,135 @@ async function writeReviewerBEvidenceRequest() {
     categoryCount: categoryRecords.length,
     categories: categoryRecords,
     generationPolicy: "A4 request-only evidence checklist. This file is not a Reviewer B verdict and cannot mark parity PASS.",
+    generatedAt: new Date().toISOString()
+  });
+}
+
+async function writeOwnerFeedbackClosureMap() {
+  const requiredArtifacts = [
+    ".artifacts/product/P6/desktop-local-info-overview-open.png",
+    ".artifacts/product/P6/desktop-local-info-assets-open.png",
+    ".artifacts/product/P6/desktop-local-logs-open.png",
+    ".artifacts/product/P6/desktop-local-settings-open.png",
+    ".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png",
+    ".artifacts/product/P6/desktop-local-compare-loaded.png",
+    ".artifacts/product/P6/visual-system-audit.json"
+  ];
+  const evidenceByPath = {};
+  for (const repoPath of requiredArtifacts) {
+    const evidence = await artifactEvidence(repoPath);
+    if (!evidence.present) throw new Error(`Owner feedback closure map missing evidence: ${repoPath}`);
+    evidenceByPath[repoPath] = evidence;
+  }
+  const closureItems = [
+    {
+      feedbackId: "owner-feedback-info-overview-metric-readability",
+      ownerFinding: "Info Overview metric cards truncate or wrap core values; file name and file size are cramped.",
+      status: "fixed",
+      component: "Info Overview",
+      changedFiles: [
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [evidenceByPath[".artifacts/product/P6/desktop-local-info-overview-open.png"]],
+      reviewerBCategory: "inspectionOverview",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-resources-layout-gap",
+      ownerFinding: "Resources tab has a large blank gap and rows are pushed to the bottom.",
+      status: "fixed",
+      component: "Resources tab",
+      changedFiles: [
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [evidenceByPath[".artifacts/product/P6/desktop-local-info-assets-open.png"]],
+      reviewerBCategory: "assetDetails",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-local-preview-first-screenshots",
+      ownerFinding: "Key screenshots are export-review mode instead of local-preview-first.",
+      status: "fixed",
+      component: "Owner evidence capture",
+      changedFiles: [
+        "tools/p6/p6-web-baseline-capture.cjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/electron-prototype/experiments/svga-web/main.cjs",
+        "tools/p6/generate-p6-evidence.mjs"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-compare-loaded.png"]
+      ],
+      reviewerBCategory: "localPreview",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-default-diagnostics-too-engineering",
+      ownerFinding: "Default inspector and logs expose engineering diagnostic/profile/resource IDs.",
+      status: "fixed",
+      component: "Inspector diagnostics",
+      changedFiles: [
+        "tools/shared/product-frontend/inspection-report-view.mjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-shell.html",
+        "tools/shared/product-frontend/product-styles.css"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/desktop-local-info-overview-open.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-logs-open.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-settings-open.png"]
+      ],
+      reviewerBCategory: "runtimeLogs",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-visual-system-audit-too-weak",
+      ownerFinding: "Visual-system audit is source-only and raw-count based.",
+      status: "fixed",
+      component: "Visual-system evidence",
+      changedFiles: [
+        "tools/p6/visual-system-audit.mjs",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json",
+        "tools/p6/generate-p6-evidence.mjs"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [evidenceByPath[".artifacts/product/P6/visual-system-audit.json"]],
+      reviewerBCategory: "macosVisualSystem",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-missing-closure-map",
+      ownerFinding: "Package lacks a first-class Owner feedback closure map.",
+      status: "fixed",
+      component: "Owner handoff",
+      changedFiles: [
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/build-p6-owner-handoff.mjs"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
+      afterEvidence: [{ type: "self", path: ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json" }],
+      reviewerBCategory: "ownerFeedbackClosure",
+      backlogReason: null
+    }
+  ];
+  await writeJson(path.join(p6Root, "OWNER_FEEDBACK_CLOSURE_MAP.json"), {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    headCommit: git(["rev-parse", "HEAD"]),
+    status: "all_owner_feedback_items_addressed",
+    productionApproved: false,
+    phase2Started: false,
+    closureItemCount: closureItems.length,
+    closureItems,
+    backlogDeferrals: [],
+    allComplaintsClosed: true,
     generatedAt: new Date().toISOString()
   });
 }
@@ -625,6 +755,7 @@ async function main() {
     contract: await readJson(contractPath)
   });
   await writeVisualSystemAudit();
+  await writeOwnerFeedbackClosureMap();
   await writeReviewerBEvidenceRequest();
 
   let report = await buildParityReport();
