@@ -6,8 +6,8 @@ Date: 2026-06-27
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: terminal_human_required
-- Next Action: product_owner_human_gate
+- State: goal_blocked_requires_product_owner_confirmation
+- Next Action: owner_confirm_required_scope_change
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -77,7 +77,13 @@ Date: 2026-06-27
   keyboard focus, log copy, clear-current-file, A/B both-loaded evidence, and
   one-upload handoff structure remain mechanically valid unless affected by
   this repair.
-- Owner-visible inspector and visual-system polish repair is implemented and ready for final regenerated owner handoff: Info Overview metric readability, Resources tab vertical layout, local-preview-first owner screenshots, default diagnostic/log copy, stronger visual-system audit, and first-class Owner feedback closure mapping.
+- Owner-visible inspector and visual-system polish repair is implemented, but
+  final handoff is blocked before `HUMAN_REQUIRED`: Independent Reviewer A found
+  frozen `webSourceOfTruthHashes` drift in
+  `tools/svga-player-preview/index.html` and
+  `tools/shared/product-tokens.css`. Continuing requires Product Owner approval
+  for a new Web source-of-truth revision or a narrower repair that preserves
+  every frozen hash.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are
   no further than `integrated_resolved_pending_external_review`; none are
   externally confirmed closed before Product Owner Human Gate and final independent
@@ -88,4 +94,7 @@ Date: 2026-06-27
 
 ## Next Action
 
-Product Owner Human Gate is ready after owner-visible inspector and visual-system polish repair, final evidence regeneration, Reviewer A/B, final seal, post-seal verification, privacy checks, and one-upload complete review-directory package generation on one final head. Do not perform Product Owner acceptance, final independent product external review, Finding closure, Phase 2, signing, notarization, release, push, or merge.
+Product Owner confirmation is required before continuing because the current
+owner-visible repair changes immutable Web source-of-truth hashes. Do not
+perform Product Owner acceptance, final independent product external review,
+Finding closure, Phase 2, signing, notarization, release, push, or merge.
