@@ -19,8 +19,8 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: goal_repair_in_progress
-nextAction: repair_owner_visible_inspector_and_visual_system_polish
+executionStatus: terminal_human_required
+nextAction: product_owner_human_gate
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -744,7 +744,7 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `goal_repair_in_progress`.
+Current state: `terminal_human_required`.
 
 Next action: `repair_owner_visible_inspector_and_visual_system_polish`.
 
@@ -798,10 +798,10 @@ keyboard focus, log copy, clear-current-file, A/B both-loaded evidence, and
 one-upload handoff structure remain mechanically valid unless affected by this
 repair.
 
-The current repair scope is limited to owner-visible inspector and visual-system
-polish: Info Overview metric readability, Resources tab vertical layout,
-local-preview-first owner screenshots, default diagnostic/log copy, stronger
-visual-system audit, and a first-class Owner feedback closure map. Product Owner
-acceptance, final independent product external review, Finding closure, Phase 2,
-signing, notarization, release, push, and merge remain prohibited until explicit
-next authorization.
+The owner-visible inspector and visual-system polish repair is implemented and
+ready for regenerated owner handoff: Info Overview metric readability, Resources
+tab vertical layout, local-preview-first owner screenshots, default diagnostic/log
+copy, stronger visual-system audit, and a first-class Owner feedback closure map.
+Product Owner acceptance, final independent product external review, Finding
+closure, Phase 2, signing, notarization, release, push, and merge remain
+prohibited until explicit next authorization.
