@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "P6-R1 Product Owner returned OWNER_REPAIR_REQUIRED within the current goal for owner-visible UI polish and evidence gaps after complete review-directory packaging succeeded. Findings remain currentStatus=open; only affected state cleanup, interaction, responsive visual, UI-copy/resources IA, preview-card consistency, and owner-gate usability findings are regressed for repair. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
+  "scope": "P6-R1 Product Owner returned OWNER_REPAIR_REQUIRED on current 0f7739c candidate for owner-visible macOS UI/UX polish. Packaging, App ZIP binding, post-seal, privacy, final loop validation, invalid/recovery correctness, trusted interactions, basic App startup, App ZIP delivery, and one-upload review directory remain acceptable baselines. Findings remain currentStatus=open; only affected state cleanup, interaction, responsive visual, product-review, UI-copy/resources IA, preview-card consistency, and owner-gate usability findings are regressed for this repair. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -53,10 +53,11 @@
         "R5",
         "R6",
         "owner-gate-local-preview-usability-r1",
-        "owner-visible-ui-polish-r2"
+        "owner-visible-ui-polish-r2",
+        "owner-visible-ui-ux-polish-r3"
       ],
-      "occurrenceCount": 5,
-      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
+      "occurrenceCount": 6,
+      "lastEvidence": "Product Owner review on current 0f7739c candidate found the app still feels like an engineering validation surface instead of a polished macOS local SVGA preview workbench; packaging and one-upload handoff remain accepted baselines, while owner-visible UI/UX polish requires repair.",
       "symptom": "Desktop Loading screenshot still showed Empty UI, while DOM proof claimed loading.",
       "userImpact": "A user cannot tell whether the app is waiting, idle, or failing to load.",
       "rootCauseHypothesis": "State evidence was allowed to compare presence, hash, and labels without a visual state contract that hides Empty CTA while Loading is active.",
@@ -85,12 +86,12 @@
         "external review round that does not reproduce the issue"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -137,10 +138,11 @@
         "R5",
         "R6",
         "owner-gate-local-preview-usability-r1",
-        "owner-visible-ui-polish-r2"
+        "owner-visible-ui-polish-r2",
+        "owner-visible-ui-ux-polish-r3"
       ],
-      "occurrenceCount": 5,
-      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
+      "occurrenceCount": 6,
+      "lastEvidence": "Product Owner review on current 0f7739c candidate found the app still feels like an engineering validation surface instead of a polished macOS local SVGA preview workbench; packaging and one-upload handoff remain accepted baselines, while owner-visible UI/UX polish requires repair.",
       "symptom": "Invalid/error state evidence either retained old loaded state or required an alias repair to recognize the true runtime state.",
       "userImpact": "After a bad file, users may trust stale preview/report data.",
       "rootCauseHypothesis": "Error-state cleanup and evidence semantics were not owned by a single vertical flow; machine gates accepted aliases and broad state hashes late in the milestone.",
@@ -169,12 +171,12 @@
         "external review round that does not reproduce stale state"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP1",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP1-state-correctness.md",
@@ -308,10 +310,11 @@
         "R5",
         "R6",
         "owner-gate-local-preview-usability-r1",
-        "owner-visible-ui-polish-r2"
+        "owner-visible-ui-polish-r2",
+        "owner-visible-ui-ux-polish-r3"
       ],
-      "occurrenceCount": 5,
-      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
+      "occurrenceCount": 6,
+      "lastEvidence": "Product Owner review on current 0f7739c candidate found the app still feels like an engineering validation surface instead of a polished macOS local SVGA preview workbench; packaging and one-upload handoff remain accepted baselines, while owner-visible UI/UX polish requires repair.",
       "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
       "userImpact": "Visual parity evidence was not comparable.",
       "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
@@ -338,12 +341,12 @@
         "external review confirmation"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -392,10 +395,11 @@
         "R5",
         "R6",
         "owner-gate-local-preview-usability-r1",
-        "owner-visible-ui-polish-r2"
+        "owner-visible-ui-polish-r2",
+        "owner-visible-ui-ux-polish-r3"
       ],
-      "occurrenceCount": 4,
-      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
+      "occurrenceCount": 5,
+      "lastEvidence": "Product Owner review on current 0f7739c candidate found the app still feels like an engineering validation surface instead of a polished macOS local SVGA preview workbench; packaging and one-upload handoff remain accepted baselines, while owner-visible UI/UX polish requires repair.",
       "symptom": "No Desktop per-interaction action trace existed.",
       "userImpact": "Buttons and menus could appear present without proving they work.",
       "rootCauseHypothesis": "Interaction evidence was assigned to the parity layer, but product behavior and host event triggering were split across workers.",
@@ -422,12 +426,12 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP3-interaction-evidence.md",
@@ -641,10 +645,11 @@
         "R5",
         "R6",
         "owner-gate-local-preview-usability-r1",
-        "owner-visible-ui-polish-r2"
+        "owner-visible-ui-polish-r2",
+        "owner-visible-ui-ux-polish-r3"
       ],
-      "occurrenceCount": 6,
-      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
+      "occurrenceCount": 7,
+      "lastEvidence": "Product Owner review on current 0f7739c candidate found the app still feels like an engineering validation surface instead of a polished macOS local SVGA preview workbench; packaging and one-upload handoff remain accepted baselines, while owner-visible UI/UX polish requires repair.",
       "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
       "userImpact": "A human-facing product gap could pass internal review.",
       "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
@@ -670,12 +675,12 @@
         "owner review"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -977,10 +982,11 @@
         "R5",
         "R6",
         "owner-gate-local-preview-usability-r1",
-        "owner-visible-ui-polish-r2"
+        "owner-visible-ui-polish-r2",
+        "owner-visible-ui-ux-polish-r3"
       ],
-      "occurrenceCount": 7,
-      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
+      "occurrenceCount": 8,
+      "lastEvidence": "Product Owner review on current 0f7739c candidate found the app still feels like an engineering validation surface instead of a polished macOS local SVGA preview workbench; packaging and one-upload handoff remain accepted baselines, while owner-visible UI/UX polish requires repair.",
       "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
       "userImpact": "Large apparent progress did not translate into accepted product parity.",
       "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
@@ -1006,12 +1012,12 @@
         "owner-approved recovery plan"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",
@@ -1065,10 +1071,11 @@
         "R5",
         "R6",
         "owner-gate-local-preview-usability-r1",
-        "owner-visible-ui-polish-r2"
+        "owner-visible-ui-polish-r2",
+        "owner-visible-ui-ux-polish-r3"
       ],
-      "occurrenceCount": 7,
-      "lastEvidence": "Product Owner review after complete-directory packaging found owner-visible polish/evidence blockers: 900x720 narrow-window advisory overlap, technical English/status copy, Resources primary sprite tab, missing clear-current-file decision, and missing both-loaded A/B PreviewCard consistency proof.",
+      "occurrenceCount": 8,
+      "lastEvidence": "Product Owner review on current 0f7739c candidate found the app still feels like an engineering validation surface instead of a polished macOS local SVGA preview workbench; packaging and one-upload handoff remain accepted baselines, while owner-visible UI/UX polish requires repair.",
       "symptom": "Second SVGA, reference media and latest artifact controls or panels existed, but complete select/drop/scan, decode, playback, synchronization and cleanup flows were not independently proven.",
       "userImpact": "The Desktop could appear to contain the Web comparison workflow while failing the user's real multi-source acceptance path.",
       "rootCauseHypothesis": "The flow crossed shared UI, Electron Host and evidence boundaries without one vertical implementation owner.",
@@ -1090,7 +1097,7 @@
       "responsibleLayer": "multi-source vertical flow",
       "currentStatus": "open",
       "currentOpenSubIssues": [
-        "Owner-visible UI polish and evidence repair is in progress. This finding remains open and regressed until affected Gate checks, Final Validation, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
+        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head."
       ],
       "primaryRecoveryWorkPackage": "WP2",
       "supportingFindingIds": [],
@@ -1102,7 +1109,7 @@
         "synchronized playback and cleanup evidence",
         "independent external review confirmation"
       ],
-      "resolutionStage": "integrated_resolved_pending_external_review",
+      "resolutionStage": "regressed",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP2-multi-source-acceptance.md",

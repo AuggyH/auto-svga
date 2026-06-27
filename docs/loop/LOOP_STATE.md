@@ -6,8 +6,8 @@ Date: 2026-06-27
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: terminal_human_required
-- Next Action: product_owner_human_gate
+- State: goal_repair_in_progress
+- Next Action: repair_owner_visible_ui_ux_polish
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -60,10 +60,17 @@ Date: 2026-06-27
   the final complete review-directory ZIP packaging convention passed.
   The complete-directory packaging remains accepted and is not redesigned in
   this repair.
-- The remaining blockers are owner-visible product polish and evidence gaps:
-  900×720 narrow-window advisory overlap, technical English/status copy,
-  Resources primary sprite tab, missing clear-current-file decision, and missing
-  both-loaded A/B PreviewCard consistency proof.
+- Product Owner returned a further `OWNER_REPAIR_REQUIRED` on the current
+  `0f7739c` candidate. Packaging, App ZIP binding, post-seal, privacy, final
+  loop validation, invalid/recovery correctness, trusted interactions, basic App
+  startup, App ZIP delivery, and one-upload review directory remain acceptable
+  baselines. The remaining blocker is owner-visible UI/UX: the app still feels
+  like an engineering validation surface instead of a polished macOS local SVGA
+  preview workbench.
+- This repair is focused on macOS-aligned owner-visible polish, shared visual
+  tokens/components, readable copy, PreviewCard consistency, inspector clarity,
+  resources/log/settings information architecture, responsive behavior, and
+  evidence that proves the visible result.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are not
   closed or externally confirmed before Product Owner Human Gate and final
   independent product external review. `P6-F001`, `P6-F002`, `P6-F004`,
@@ -76,4 +83,9 @@ Date: 2026-06-27
 
 ## Next Action
 
-Product Owner Human Gate is ready after owner-visible polish and evidence repair. Final evidence, Reviewer A/B, Final Seal, Post-seal Verification, and the one-upload complete review-directory ZIP must bind to this final head. Product Owner acceptance, final independent product external review, Finding closure, Phase 2, signing, notarization, release, push, and merge remain prohibited until explicit next authorization.
+Repair owner-visible UI/UX polish, regenerate affected visual/product evidence,
+rerun affected Gate checks, Final Validation, Reviewer A/B, Final Seal,
+Post-seal Verification, and the one-upload complete review-directory ZIP on one
+new final head. Product Owner acceptance, final independent product external
+review, Finding closure, Phase 2, signing, notarization, release, push, and
+merge remain prohibited until explicit next authorization.

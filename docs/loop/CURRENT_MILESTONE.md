@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: HUMAN_REQUIRED
+Status: GOAL_REPAIR_IN_PROGRESS
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,8 +19,8 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: terminal_human_required
-nextAction: product_owner_human_gate
+executionStatus: goal_repair_in_progress
+nextAction: repair_owner_visible_ui_ux_polish
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -744,9 +744,9 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `terminal_human_required`.
+Current state: `goal_repair_in_progress`.
 
-Next action: `product_owner_human_gate`.
+Next action: `repair_owner_visible_ui_ux_polish`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
@@ -776,4 +776,25 @@ usability evidence regenerated with `parityStatus=pass` and
 `phase2Started=false`. Phase 2, signing, notarization, release, push, and merge
 remain prohibited.
 
-Await Product Owner Human Gate for this P6-R1 owner review set. Product Owner acceptance, final independent product external review, Finding closure, Phase 2, signing, notarization, release, push, and merge remain prohibited until explicit next authorization.
+Product Owner returned `OWNER_REPAIR_REQUIRED` on the current `0f7739c`
+candidate for owner-visible UI/UX. Packaging, complete review-directory output,
+App ZIP binding, post-seal, privacy, final loop validation, invalid/recovery
+correctness, trusted interactions, basic App startup, App ZIP delivery, and
+one-upload review directory remain acceptable baselines unless affected by this
+repair.
+
+The current repair scope is focused owner-visible macOS local-preview workbench
+polish: visual-system tokens, reusable component hierarchy, readable copy,
+PreviewCard consistency, inspector clarity, Resources/Logs/Settings
+information architecture, responsive 900×720 behavior, and evidence that proves
+the visible result. It is not contract revision 4, not Phase 2, not new product
+scope, not signing/notarization/release, and not final independent external
+review.
+
+After the repair passes affected Gate checks, Final Validation, Reviewer A,
+Reviewer B, Final Seal, Post-seal Verification, and the one-upload complete
+review-directory ZIP on one final head, P6-R1 may return to
+`terminal_human_required` with Next Action `product_owner_human_gate`. Product
+Owner acceptance, final independent product external review, Finding closure,
+Phase 2, signing, notarization, release, push, and merge remain prohibited until
+explicit next authorization.
