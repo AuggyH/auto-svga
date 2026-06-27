@@ -6,8 +6,8 @@ Date: 2026-06-27
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_repair_in_progress
-- Next Action: repair_owner_visible_ui_ux_polish
+- State: terminal_human_required
+- Next Action: product_owner_human_gate
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -71,21 +71,17 @@ Date: 2026-06-27
   tokens/components, readable copy, PreviewCard consistency, inspector clarity,
   resources/log/settings information architecture, responsive behavior, and
   evidence that proves the visible result.
-- All `P6-F001` through `P6-F013` remain `currentStatus=open` and are not
-  closed or externally confirmed before Product Owner Human Gate and final
-  independent product external review. `P6-F001`, `P6-F002`, `P6-F004`,
-  `P6-F005`, `P6-F008`, `P6-F012`, and `P6-F013` are regressed for this
-  focused owner-visible repair; the remaining Findings keep their current
-  stage unless real evidence reproduces them.
+- Owner-visible UI/UX polish repair has been implemented through terminal head
+  `81e4e9314a02923f5b75c4ee249b0999327a4c43` (tree `cec2913d4b795f7da4f9dac895a51423e99c2130`). Final evidence and owner materials must be
+  regenerated on this same head.
+- All `P6-F001` through `P6-F013` remain `currentStatus=open` and are
+  no further than `integrated_resolved_pending_external_review`; none are
+  externally confirmed closed before Product Owner Human Gate and final independent
+  product external review.
 - `contractReviewedHeadCommit=9b01108c03a5e70e2f67100eeac384810afee4e4`, `contractRevision=3`,
   `repairRound=0`, and `phase2Started=false` are preserved.
 - Phase 2 remains not started.
 
 ## Next Action
 
-Repair owner-visible UI/UX polish, regenerate affected visual/product evidence,
-rerun affected Gate checks, Final Validation, Reviewer A/B, Final Seal,
-Post-seal Verification, and the one-upload complete review-directory ZIP on one
-new final head. Product Owner acceptance, final independent product external
-review, Finding closure, Phase 2, signing, notarization, release, push, and
-merge remain prohibited until explicit next authorization.
+Product Owner Human Gate: review the generated one-upload complete review-directory ZIP for the terminal head. Product Owner acceptance, final independent product external review, Finding closure, Phase 2, signing, notarization, release, push, and merge remain prohibited until explicit next authorization.
