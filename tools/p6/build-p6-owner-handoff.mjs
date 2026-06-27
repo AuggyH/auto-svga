@@ -131,6 +131,9 @@ function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
   if (!expectedHeadShort) return [];
   const findings = [];
   for (const match of text.matchAll(/\breview\/(P6-R1|P6)-([A-Za-z0-9][A-Za-z0-9._-]*)/g)) {
+    if (isDeletedPatchLine(text, match.index, entry)) {
+      continue;
+    }
     if (entry.endsWith("REVIEW_PACKET.md") && isInsideFencedDiffBlock(text, match.index)) {
       continue;
     }
@@ -154,6 +157,15 @@ function findStaleReviewRootReferences(text, entry, expectedHeadShort) {
     }
   }
   return findings;
+}
+
+function isDeletedPatchLine(text, index, entry) {
+  if (!entry.endsWith("changes.patch")) return false;
+  const lineStart = text.lastIndexOf("\n", index) + 1;
+  const lineEndIndex = text.indexOf("\n", index);
+  const lineEnd = lineEndIndex === -1 ? text.length : lineEndIndex;
+  const line = text.slice(lineStart, lineEnd);
+  return line.startsWith("-") && !line.startsWith("---");
 }
 
 function isInsideOwnerHandoffPrivacyTestPatch(text, index, entry) {
