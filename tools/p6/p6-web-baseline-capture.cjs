@@ -972,6 +972,12 @@ async function main() {
     true;
   `);
   await delay(800);
+  const baselineContentSize = window.getContentSize();
+  const restoreBaselineContentSize = async () => {
+    window.setContentSize(baselineContentSize[0], baselineContentSize[1]);
+    await waitFor(window, `innerWidth === ${baselineContentSize[0]} && innerHeight === ${baselineContentSize[1]}`, 6_000);
+    await delay(220);
+  };
 
   console.log("P6_WEB_BASELINE_PHASE local-empty");
   const snapshots = [];
@@ -1242,14 +1248,11 @@ async function main() {
 	  await delay(280);
 	  await capture(window, "screenshot-local-settings-1440x900.png");
 	  await closeTransientUi(window);
-	  const ownerPanelOriginalContentSize = window.getContentSize();
 	  window.setContentSize(900, 720);
 	  await waitFor(window, `innerWidth <= 920 && innerHeight <= 740`, 6_000);
 	  await delay(320);
 	  await capture(window, "screenshot-local-preview-loaded-900x720.png");
-	  window.setContentSize(ownerPanelOriginalContentSize[0], ownerPanelOriginalContentSize[1]);
-	  await waitFor(window, `innerWidth === ${ownerPanelOriginalContentSize[0]} && innerHeight === ${ownerPanelOriginalContentSize[1]}`, 6_000);
-	  await delay(220);
+	  await restoreBaselineContentSize();
 
 	  console.log("P6_WEB_BASELINE_PHASE responsive-export");
 	  await installFixtureMarker(window);
@@ -1275,8 +1278,7 @@ async function main() {
   await capture(window, "screenshot-export-review-loaded-900x720.png");
 
   console.log("P6_WEB_BASELINE_PHASE invalid");
-  window.setSize(1440, 900);
-  await delay(220);
+  await restoreBaselineContentSize();
   await execute(window, `window.__autoSvgaDesktopStateProbe?.clearTransientSources?.(); true;`);
   await setMode(window, "localPreview");
   await window.webContents.executeJavaScript(`const toggle = document.querySelector("#compareToggle"); if (toggle?.checked) toggle.click(); true;`);
