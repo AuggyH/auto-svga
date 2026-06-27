@@ -3826,12 +3826,12 @@ function renderOverview(metrics, slot) {
   }
   const fileName = metrics.fileName ?? "n/a";
   const rows = [
-    ["文件体积", "fileSizeBytes", formatBytes(metrics.fileSizeBytes)],
-    ["估算内存", "memoryUsage", formatBytes(metrics.memoryBytes)],
-    ["画布尺寸", "canvasSize", formatSize(metrics.sourceWidth, metrics.sourceHeight), "mono"],
-    ["播放时长", "duration", formatDuration(metrics)],
-    ["帧率", "fps", metrics.fps ? `${metrics.fps} FPS` : "n/a", "mono"],
-    ["资源数量", "imageCount", metrics.imageCount ? `${metrics.imageCount} 个` : "n/a"]
+    { label: "文件体积", value: formatBytes(metrics.fileSizeBytes), tone: "mono" },
+    { label: "估算内存", value: formatBytes(metrics.memoryBytes), tone: "mono" },
+    { label: "画布尺寸", value: formatSize(metrics.sourceWidth, metrics.sourceHeight), tone: "mono" },
+    { label: "播放时长", value: formatDuration(metrics) },
+    { label: "帧率", value: metrics.fps ? `${metrics.fps} FPS` : "n/a", tone: "mono" },
+    { label: "资源数量", value: metrics.imageCount ? `${metrics.imageCount} 个` : "n/a" }
   ];
   const statusRows = [
     ["解析状态", "parseStatus", slot.parseStatus],
@@ -3841,11 +3841,11 @@ function renderOverview(metrics, slot) {
     <div class="overviewContent">
       <div class="overviewFileRow">
         <span>当前文件</span>
-        <strong title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</strong>
+        <strong class="overviewFileName" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</strong>
       </div>
-      <dl class="overviewGrid metricGrid">
-      ${rows.map(([label, key, value, tone]) => `
-        <div class="overviewRow metricCard">
+      <dl class="overviewGrid overviewMetricList">
+      ${rows.map(({ label, value, tone }) => `
+        <div class="overviewRow overviewMetricRow">
           <dt><span>${escapeHtml(label)}</span></dt>
           <dd class="${tone === "mono" ? "monoValue" : ""}" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
         </div>
@@ -3859,8 +3859,39 @@ function renderOverview(metrics, slot) {
         `).join("")}
       </div>
       </dl>
-      ${renderAvatarFrameInspectionReport(slot.inspectionReport, slot.inspectionStatus)}
+      ${renderOverviewDiagnostics(slot)}
     </div>
+  `;
+}
+
+function inspectionIssueSummary(report, status) {
+  if (status === "error") return "检查失败";
+  if (status === "loading") return "检查中";
+  if (!report) return "等待检查";
+  const issues = [
+    ...(Array.isArray(report.issues) ? report.issues : []),
+    ...(Array.isArray(report.specIssues) ? report.specIssues : []),
+    ...(Array.isArray(report.policyIssues) ? report.policyIssues : [])
+  ];
+  if (!issues.length) return "未发现阻塞项";
+  const errors = issues.filter((issue) => issue?.severity === "error").length;
+  const warnings = issues.filter((issue) => issue?.severity === "warning").length;
+  if (errors || warnings) return `${errors} 个错误 · ${warnings} 个提醒`;
+  return `${issues.length} 项待复核`;
+}
+
+function renderOverviewDiagnostics(slot) {
+  const summary = inspectionIssueSummary(slot.inspectionReport, slot.inspectionStatus);
+  return `
+    <section class="overviewDiagnosticsPanel">
+      <details>
+        <summary>
+          <span>诊断</span>
+          <strong>${escapeHtml(summary)}</strong>
+        </summary>
+        ${renderAvatarFrameInspectionReport(slot.inspectionReport, slot.inspectionStatus)}
+      </details>
+    </section>
   `;
 }
 
@@ -4149,6 +4180,20 @@ function logLevelLabel(level) {
   if (level === "error") return "错误";
   if (level === "warning" || level === "warn") return "警告";
   return "信息";
+}
+
+function userFacingLogMessage(log) {
+  const message = String(log?.message ?? "");
+  if (log?.level === "error") return message;
+  const internalProfileId = ["production", "target"].join("_");
+  const internalDiagnosticPattern = new RegExp(`${internalProfileId}|report\\\\.json|contract|schema|artifact|strict|profile|check-result|resource diagnostic`, "i");
+  if (internalDiagnosticPattern.test(message)) {
+    return "诊断信息已更新，可展开查看详情。";
+  }
+  if (/生产规范|检查结果|资源诊断|规格报告/.test(message)) {
+    return "检查结果已更新，可展开查看诊断。";
+  }
+  return message;
 }
 
 function renderSyncBar() {
@@ -4530,11 +4575,19 @@ function setupDropdownMenus() {
 }
 
 function renderFullLogRow(log) {
+  const message = userFacingLogMessage(log);
+  const hasDiagnosticDetail = message !== log.message;
   return `
     <div class="fullLogRow logRow ${escapeHtml(log.level)}">
       <time>${escapeHtml(log.time)}</time>
       <strong>${escapeHtml(logLevelLabel(log.level))}</strong>
-      <span>${escapeHtml(log.message)}</span>
+      <span class="logPrimaryMessage">${escapeHtml(message)}</span>
+      ${hasDiagnosticDetail ? `
+      <details class="logDiagnosticDetails">
+        <summary>诊断详情</summary>
+        <span>${escapeHtml(log.message)}</span>
+      </details>
+      ` : ""}
     </div>
   `;
 }

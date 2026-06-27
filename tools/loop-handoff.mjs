@@ -675,6 +675,65 @@ function isConcreteObservation(value) {
   return typeof value === "string" && value.trim().length > 8 && !/^\s*pass\s*$/i.test(value);
 }
 
+const p6R1MacosVisualSystemObservationKeys = [
+  "quietChrome",
+  "visualHierarchy",
+  "typography",
+  "spacing",
+  "componentConsistency",
+  "toolbarGrouping",
+  "inspectorClarity",
+  "responsiveBehavior",
+  "copyTone",
+  "keyboardFocusVisualState",
+  "macosFit"
+];
+
+const genericMacosVisualSystemObservationPattern = /\b(owner-visible evidence was reviewed|evidence was reviewed|runtime behavior is supported|runtime behavior was reviewed|reviewed against|differences were checked|no unapproved product difference remains|visual artifacts where applicable)\b/i;
+
+function validateReviewerBEvidenceRefs({ categoryId, evidenceRefs, headCommit, fieldName = "evidenceRefs" }) {
+  if (!Array.isArray(evidenceRefs) || evidenceRefs.length === 0) {
+    throw new Error(`Reviewer B P6-R1 category ${categoryId} requires ${fieldName}.`);
+  }
+  for (const [index, evidenceRef] of evidenceRefs.entries()) {
+    if (!evidenceRef || typeof evidenceRef !== "object" || Array.isArray(evidenceRef)) {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} ${fieldName}[${index}] must be an object.`);
+    }
+    if (typeof evidenceRef.path !== "string" || evidenceRef.path.length === 0) {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} ${fieldName}[${index}] missing path.`);
+    }
+    if (evidenceRef.present === false || evidenceRef.humanReviewRequired === false) {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} ${fieldName}[${index}] is not present for review.`);
+    }
+    const evidenceHead = evidenceRef.headCommit ?? evidenceRef.reviewedHeadCommit ?? evidenceRef.finalHeadCommit;
+    if (evidenceHead !== headCommit) {
+      throw new Error(`Reviewer B P6-R1 category ${categoryId} ${fieldName}[${index}] head mismatch.`);
+    }
+  }
+}
+
+function validateMacosVisualSystemObservations(category, { headCommit }) {
+  const observations = category.macosVisualSystemObservations;
+  if (!observations || typeof observations !== "object" || Array.isArray(observations)) {
+    throw new Error("Reviewer B P6-R1 category macosVisualSystem requires macosVisualSystemObservations.");
+  }
+  for (const key of p6R1MacosVisualSystemObservationKeys) {
+    const item = observations[key];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`Reviewer B P6-R1 category macosVisualSystem missing concrete ${key} observation.`);
+    }
+    if (!isConcreteObservation(item.observation) || genericMacosVisualSystemObservationPattern.test(item.observation)) {
+      throw new Error(`Reviewer B P6-R1 category macosVisualSystem ${key} observation is generic.`);
+    }
+    validateReviewerBEvidenceRefs({
+      categoryId: "macosVisualSystem",
+      evidenceRefs: item.evidenceRefs,
+      headCommit,
+      fieldName: `macosVisualSystemObservations.${key}.evidenceRefs`
+    });
+  }
+}
+
 function validateP6R1ReviewerBProductCategories(verdict, { headCommit }) {
   const categories = verdict.categories ?? verdict.productCategories;
   if (!Array.isArray(categories)) {
@@ -710,24 +769,13 @@ function validateP6R1ReviewerBProductCategories(verdict, { headCommit }) {
         throw new Error(`Reviewer B P6-R1 category ${categoryId} missing concrete ${field}.`);
       }
     }
-    const evidenceRefs = category.evidenceRefs;
-    if (!Array.isArray(evidenceRefs) || evidenceRefs.length === 0) {
-      throw new Error(`Reviewer B P6-R1 category ${categoryId} requires evidenceRefs.`);
-    }
-    for (const [index, evidenceRef] of evidenceRefs.entries()) {
-      if (!evidenceRef || typeof evidenceRef !== "object" || Array.isArray(evidenceRef)) {
-        throw new Error(`Reviewer B P6-R1 category ${categoryId} evidenceRefs[${index}] must be an object.`);
-      }
-      if (typeof evidenceRef.path !== "string" || evidenceRef.path.length === 0) {
-        throw new Error(`Reviewer B P6-R1 category ${categoryId} evidenceRefs[${index}] missing path.`);
-      }
-      if (evidenceRef.present === false || evidenceRef.humanReviewRequired === false) {
-        throw new Error(`Reviewer B P6-R1 category ${categoryId} evidenceRefs[${index}] is not present for review.`);
-      }
-      const evidenceHead = evidenceRef.headCommit ?? evidenceRef.reviewedHeadCommit ?? evidenceRef.finalHeadCommit;
-      if (evidenceHead !== headCommit) {
-        throw new Error(`Reviewer B P6-R1 category ${categoryId} evidenceRefs[${index}] head mismatch.`);
-      }
+    validateReviewerBEvidenceRefs({
+      categoryId,
+      evidenceRefs: category.evidenceRefs,
+      headCommit
+    });
+    if (categoryId === "macosVisualSystem") {
+      validateMacosVisualSystemObservations(category, { headCommit });
     }
   }
 }

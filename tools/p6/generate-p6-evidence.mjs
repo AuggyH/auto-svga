@@ -387,6 +387,19 @@ async function artifactEvidence(repoPath) {
 }
 
 async function writeReviewerBEvidenceRequest() {
+  const macosVisualSystemRequiredObservations = [
+    "quietChrome",
+    "visualHierarchy",
+    "typography",
+    "spacing",
+    "componentConsistency",
+    "toolbarGrouping",
+    "inspectorClarity",
+    "responsiveBehavior",
+    "copyTone",
+    "keyboardFocusVisualState",
+    "macosFit"
+  ];
   const categories = [
     ["productIdentity", "Confirm product identity and internal prototype labels using concrete Desktop runtime evidence.", "desktop-loaded.png"],
     ["toolbarAndModes", "Confirm toolbar and mode controls against loaded Desktop state geometry and controls.", "desktop-loaded.png"],
@@ -430,7 +443,16 @@ async function writeReviewerBEvidenceRequest() {
         "visualObservation",
         "runtimeBehaviorObservation",
         "approvedDifferenceAssessment"
-      ]
+      ],
+      ...(category === "macosVisualSystem"
+        ? {
+            requiredConcreteObservations: macosVisualSystemRequiredObservations.map((key) => ({
+              key,
+              requiredFields: ["observation", "evidenceRefs"],
+              evidenceGuidance: "Reference final-head screenshots or visual-system evidence; generic PASS wording is invalid."
+            }))
+          }
+        : {})
     });
   }
   await writeJson(path.join(p6Root, "reviewer-b-evidence-request.json"), {

@@ -4148,11 +4148,15 @@ button:disabled {
   gap: var(--visual-space-tight);
 }
 
+.overviewMetricList {
+  display: grid;
+  gap: var(--visual-space-tight);
+}
+
 .overviewFileRow {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--visual-space-tight);
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
   padding: var(--space-3);
   border: 1px solid var(--visual-hairline);
   border-radius: var(--visual-radius-small);
@@ -4165,7 +4169,8 @@ button:disabled {
   line-height: var(--visual-line-meta);
 }
 
-.overviewFileRow strong {
+.overviewFileRow strong,
+.overviewFileName {
   min-width: 0;
   overflow: hidden;
   color: var(--visual-text-primary);
@@ -4173,6 +4178,31 @@ button:disabled {
   font-size: var(--visual-font-body);
   font-weight: 600;
   line-height: var(--visual-line-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overviewMetricRow {
+  display: grid;
+  grid-template-columns: minmax(74px, max-content) minmax(0, 1fr);
+  gap: var(--visual-space-tight);
+  align-items: center;
+  min-height: 34px;
+  padding: 7px var(--space-3);
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--metric-card-surface);
+}
+
+.overviewMetricRow dt {
+  min-width: 0;
+}
+
+.overviewMetricRow dd {
+  max-width: none;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4223,6 +4253,57 @@ button:disabled {
   padding: var(--space-3);
 }
 
+.overviewDiagnosticsPanel {
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--visual-inline-surface);
+}
+
+.overviewDiagnosticsPanel details {
+  margin: 0;
+}
+
+.overviewDiagnosticsPanel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--visual-space-tight);
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  color: var(--visual-text-secondary);
+  cursor: pointer;
+  font-size: var(--visual-font-body);
+  line-height: var(--visual-line-body);
+  list-style: none;
+}
+
+.overviewDiagnosticsPanel summary::-webkit-details-marker {
+  display: none;
+}
+
+.overviewDiagnosticsPanel summary::after {
+  content: "展开";
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+}
+
+.overviewDiagnosticsPanel details[open] summary::after {
+  content: "收起";
+}
+
+.overviewDiagnosticsPanel summary strong {
+  color: var(--visual-text-primary);
+  font-size: var(--visual-font-meta);
+  font-weight: 600;
+  line-height: var(--visual-line-meta);
+  text-align: right;
+}
+
+.overviewDiagnosticsPanel .inspectionReport {
+  border-top: 1px solid var(--visual-hairline);
+  border-radius: 0;
+}
+
 .assetSummaryLine {
   padding: var(--space-2) var(--space-4) 0;
   color: var(--visual-text-tertiary);
@@ -4258,6 +4339,28 @@ button:disabled {
 .logsPanelList .fullLogRow {
   padding: var(--space-3);
   border-bottom: 0;
+}
+
+.logPrimaryMessage {
+  min-width: 0;
+}
+
+.logDiagnosticDetails {
+  grid-column: 3 / -1;
+  min-width: 0;
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.logDiagnosticDetails summary {
+  cursor: pointer;
+}
+
+.logDiagnosticDetails span {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
 }
 
 .settingsModal,

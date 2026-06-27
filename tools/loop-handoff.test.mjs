@@ -380,7 +380,8 @@ const p6R1ReviewerBCategoryIds = [
 ];
 
 function p6R1ReviewerBCategories(head, mutate = (category) => category) {
-  return p6R1ReviewerBCategoryIds.map((categoryId) => mutate({
+  return p6R1ReviewerBCategoryIds.map((categoryId) => {
+    const category = {
     category: categoryId,
     verdict: "PASS",
     visualObservation: `${categoryId} visual evidence was reviewed against the owner-visible material.`,
@@ -392,7 +393,32 @@ function p6R1ReviewerBCategories(head, mutate = (category) => category) {
       present: true,
       humanReviewRequired: true
     }]
-  }, categoryId));
+    };
+    if (categoryId === "macosVisualSystem") {
+      category.macosVisualSystemObservations = Object.fromEntries([
+        "quietChrome",
+        "visualHierarchy",
+        "typography",
+        "spacing",
+        "componentConsistency",
+        "toolbarGrouping",
+        "inspectorClarity",
+        "responsiveBehavior",
+        "copyTone",
+        "keyboardFocusVisualState",
+        "macosFit"
+      ].map((key) => [key, {
+        observation: `${key} is supported by the final macOS screenshot set with concrete visible layout, spacing, and control evidence.`,
+        evidenceRefs: [{
+          path: `.artifacts/product/P6/macos-visual-system/${key}.png`,
+          headCommit: head,
+          present: true,
+          humanReviewRequired: true
+        }]
+      }]));
+    }
+    return mutate(category, categoryId);
+  });
 }
 
 async function writeReviewerVerdicts(repo, head, candidate, overrides = {}) {
@@ -1231,6 +1257,41 @@ test("P6-R1 Reviewer B rejects absent or wrong-head evidence refs", async () => 
         reviewerB: ".artifacts/loop-review/reviewer-b.json"
       }),
       /head mismatch/
+    );
+  });
+});
+
+test("P6-R1 Reviewer B rejects generic macOS visual-system observations", async () => {
+  await withRepo(async ({ repo, base }) => {
+    const head = await prepareP6R1Repo(repo, base);
+    const options = p6R1Options(repo, base, head);
+    const candidate = await generateHandoffPacket({ ...options, candidate: true });
+    await writeReviewerVerdicts(repo, head, candidate.manifest, {
+      B: {
+        categories: p6R1ReviewerBCategories(head, (category, categoryId) => (
+          categoryId === "macosVisualSystem"
+            ? {
+                ...category,
+                macosVisualSystemObservations: {
+                  ...category.macosVisualSystemObservations,
+                  quietChrome: {
+                    observation: "Owner-visible evidence was reviewed and PASS.",
+                    evidenceRefs: category.macosVisualSystemObservations.quietChrome.evidenceRefs
+                  }
+                }
+              }
+            : category
+        ))
+      }
+    });
+
+    await assert.rejects(
+      generateHandoffPacket({
+        ...options,
+        reviewerA: ".artifacts/loop-review/reviewer-a.json",
+        reviewerB: ".artifacts/loop-review/reviewer-b.json"
+      }),
+      /macosVisualSystem quietChrome observation is generic/
     );
   });
 });

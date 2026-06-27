@@ -753,6 +753,18 @@ export function validateOwnerVisibleHandoffBinding({
         errors.push(`owner post-seal ${section} sizeBytes missing`);
       }
     }
+    for (const [section, fileName] of [["reviewerA", "reviewer-a.json"], ["reviewerB", "reviewer-b.json"]]) {
+      const record = postSealVerification?.reviewerVerdicts?.[section];
+      if (record?.fileName !== fileName) {
+        errors.push(`owner post-seal ${section} fileName mismatch`);
+      }
+      if (!validSha256(record?.sha256)) {
+        errors.push(`owner post-seal ${section} sha256 missing`);
+      }
+      if (!Number.isInteger(record?.sizeBytes) || record.sizeBytes <= 0) {
+        errors.push(`owner post-seal ${section} sizeBytes missing`);
+      }
+    }
   }
 
   return {
@@ -1235,6 +1247,18 @@ export function validateCompleteReviewDirectoryBinding({
       errors.push(`complete directory post-seal ${section} fileName mismatch`);
     }
   }
+  for (const [section, fileName] of [["reviewerA", "reviewer-a.json"], ["reviewerB", "reviewer-b.json"]]) {
+    const record = postSealVerification?.reviewerVerdicts?.[section];
+    if (record?.fileName !== fileName) {
+      errors.push(`complete directory post-seal ${section} fileName mismatch`);
+    }
+    if (!validSha256(record?.sha256)) {
+      errors.push(`complete directory post-seal ${section} sha256 missing`);
+    }
+    if (!Number.isInteger(record?.sizeBytes) || record.sizeBytes <= 0) {
+      errors.push(`complete directory post-seal ${section} sizeBytes missing`);
+    }
+  }
   return {
     passed: errors.length === 0,
     errors
@@ -1556,10 +1580,12 @@ async function writeCompleteReviewDirectoryPackage({
     reviewerVerdicts: {
       reviewerA: {
         fileName: "reviewer-a.json",
+        sizeBytes: ownerUploadPostSealVerification.reviewerVerdicts?.reviewerA?.sizeBytes ?? null,
         sha256: ownerUploadPostSealVerification.reviewerVerdicts?.reviewerA?.sha256 ?? null
       },
       reviewerB: {
         fileName: "reviewer-b.json",
+        sizeBytes: ownerUploadPostSealVerification.reviewerVerdicts?.reviewerB?.sizeBytes ?? null,
         sha256: ownerUploadPostSealVerification.reviewerVerdicts?.reviewerB?.sha256 ?? null
       }
     },
@@ -2173,6 +2199,8 @@ async function main() {
   };
   await writeFile(sidecarPath, `${JSON.stringify(ownerUploadSidecar, null, 2)}\n`, "utf8");
   const sidecarIdentity = await fileIdentity(sidecarPath);
+  const reviewerAIdentity = await fileIdentity(path.join(visibleRoot, "reviewer-a.json"));
+  const reviewerBIdentity = await fileIdentity(path.join(visibleRoot, "reviewer-b.json"));
   const ownerUploadPostSealVerification = {
     schemaVersion: 2,
     milestoneId,
@@ -2186,6 +2214,18 @@ async function main() {
       fileName: sidecarName,
       sizeBytes: sidecarIdentity.sizeBytes,
       sha256: sidecarIdentity.sha256
+    },
+    reviewerVerdicts: {
+      reviewerA: {
+        fileName: "reviewer-a.json",
+        sizeBytes: reviewerAIdentity.sizeBytes,
+        sha256: reviewerAIdentity.sha256
+      },
+      reviewerB: {
+        fileName: "reviewer-b.json",
+        sizeBytes: reviewerBIdentity.sizeBytes,
+        sha256: reviewerBIdentity.sha256
+      }
     },
     appBundleBinding,
     finalLoopValidation,

@@ -750,12 +750,73 @@ test("P6-R1 complete review directory binding preserves one-file transfer wrappe
       completeDirectoryZip: { fileName: completeZipName },
       reviewZip: { fileName: reviewZipName },
       macosAppZip: { fileName: appZipName },
-      ownerUploadSidecar: { fileName: sidecarName }
+      ownerUploadSidecar: { fileName: sidecarName },
+      reviewerVerdicts: {
+        reviewerA: { fileName: "reviewer-a.json", sizeBytes: 111, sha256: "a".repeat(64) },
+        reviewerB: { fileName: "reviewer-b.json", sizeBytes: 222, sha256: "b".repeat(64) }
+      }
     },
     privacyAudit: { passed: true, findingCount: 0 }
   });
 
   assert.equal(result.passed, true, result.errors.join("; "));
+});
+
+test("P6-R1 complete review directory binding rejects missing reviewer verdict hashes", () => {
+  const finalHead = "a".repeat(40);
+  const finalTree = "b".repeat(40);
+  const completeZipName = "P6-R1-aaaaaaa-complete-review-directory.zip";
+  const reviewZipName = "P6-R1-aaaaaaa-review-upload.zip";
+  const appZipName = "Auto-SVGA-macOS-internal-aaaaaaa.zip";
+  const sidecarName = "P6-R1-owner-upload-sidecar-aaaaaaa.json";
+  const result = validateCompleteReviewDirectoryBinding({
+    finalHead,
+    finalTree,
+    completeZipName,
+    reviewZipName,
+    appZipName,
+    sidecarName,
+    uploadIndex: {
+      files: [
+        { role: "transfer_wrapper", relativePath: completeZipName, fileName: completeZipName, required: true, finalHead, finalTree },
+        { role: "canonical_review_zip", relativePath: reviewZipName, fileName: reviewZipName, required: true, finalHead, finalTree },
+        { role: "canonical_macos_app_zip", relativePath: appZipName, fileName: appZipName, required: true, finalHead, finalTree },
+        { role: "canonical_owner_sidecar", relativePath: sidecarName, fileName: sidecarName, required: true, finalHead, finalTree }
+      ]
+    },
+    manifest: {
+      entries: [
+        { path: "README.md", sizeBytes: 1, sha256: "1".repeat(64) },
+        { path: "UPLOAD_INDEX.json", sizeBytes: 1, sha256: "2".repeat(64) },
+        { path: "bundle-privacy-audit.json", sizeBytes: 1, sha256: "3".repeat(64) },
+        { path: "post-seal-verification.json", sizeBytes: 1, sha256: "4".repeat(64) },
+        { path: "OWNER_FEEDBACK_CLOSURE_MAP.json", sizeBytes: 1, sha256: "5".repeat(64) },
+        { path: sidecarName, sizeBytes: 1, sha256: "6".repeat(64) },
+        { path: reviewZipName, sizeBytes: 1, sha256: "7".repeat(64) },
+        { path: appZipName, sizeBytes: 1, sha256: "8".repeat(64) },
+        { path: "hashes/sha256sums.txt", sizeBytes: 1, sha256: "9".repeat(64) },
+        { path: "extracted-index/review-zip-entry-list.json", sizeBytes: 1, sha256: "a".repeat(64) },
+        { path: "extracted-index/app-zip-entry-list.json", sizeBytes: 1, sha256: "b".repeat(64) }
+      ]
+    },
+    postSealVerification: {
+      passed: true,
+      finalHead,
+      finalTree,
+      completeDirectoryZip: { fileName: completeZipName },
+      reviewZip: { fileName: reviewZipName },
+      macosAppZip: { fileName: appZipName },
+      ownerUploadSidecar: { fileName: sidecarName },
+      reviewerVerdicts: {
+        reviewerA: { fileName: "reviewer-a.json", sizeBytes: 111, sha256: null },
+        reviewerB: { fileName: "reviewer-b.json", sizeBytes: 222, sha256: "b".repeat(64) }
+      }
+    },
+    privacyAudit: { passed: true, findingCount: 0 }
+  });
+
+  assert.equal(result.passed, false);
+  assert.equal(result.errors.some((error) => error.includes("reviewerA sha256 missing")), true);
 });
 
 test("P6-R1 complete review directory binding rejects missing App ZIP canonical record", () => {
