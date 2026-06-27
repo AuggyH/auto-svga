@@ -57,7 +57,7 @@ Date: 2026-06-27
   loop-validation passes remain the accepted baseline unless affected by this
   repair.
 - Product Owner returned `OWNER_REPAIR_REQUIRED` after the
-  `P6-R1-<final-head>-complete-review-directory.zip` packaging convention passed.
+  the final complete review-directory ZIP packaging convention passed.
   The complete-directory packaging remains accepted and is not redesigned in
   this repair.
 - The remaining blockers are owner-visible product polish and evidence gaps:
