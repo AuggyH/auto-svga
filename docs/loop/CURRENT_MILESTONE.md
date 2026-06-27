@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: GOAL_BLOCKED_REQUIRES_PRODUCT_OWNER_CONFIRMATION
+Status: GOAL_REPAIR_IN_PROGRESS
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,8 +19,8 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: goal_blocked_requires_product_owner_confirmation
-nextAction: owner_confirm_required_scope_change
+executionStatus: goal_repair_in_progress
+nextAction: regenerate_post_authorization_evidence_and_owner_handoff
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
 Branch: `agent/codex/p6-r1-contract-r3`
@@ -744,9 +744,9 @@ Human Gate must not replace machine behavior checks.
 
 ## Contract Review Gate
 
-Current state: `goal_blocked_requires_product_owner_confirmation`.
+Current state: `goal_repair_in_progress`.
 
-Next action: `owner_confirm_required_scope_change`.
+Next action: `regenerate_post_authorization_evidence_and_owner_handoff`.
 
 Contract revision 3 passed micro-delta external contract review at
 `9b01108c03a5e70e2f67100eeac384810afee4e4`. Product Owner authorized
@@ -783,13 +783,15 @@ correctness, trusted interactions, basic App startup, App ZIP delivery, and
 one-upload review directory remain acceptable baselines unless affected by this
 repair.
 
-The current repair scope implemented owner-visible macOS local-preview workbench
-polish, but final handoff is blocked before `HUMAN_REQUIRED`: Independent
-Reviewer A found frozen `webSourceOfTruthHashes` drift in
+Product Owner authorized
+`AUTHORIZE_BOUNDED_WEB_SOURCE_OF_TRUTH_REVISION_FOR_OWNER_VISIBLE_UI_UX_POLISH`
+after the `399b170` blocker. The authorization is bounded to the current
+owner-visible UI/UX polish and the two previously blocked files:
 `tools/svga-player-preview/index.html` and `tools/shared/product-tokens.css`.
-Continuing requires Product Owner approval for a new Web source-of-truth
-revision or a narrower repair that preserves every frozen hash. It is not
-contract revision 4, not Phase 2, not new product
+`docs/loop/contracts/P6-R1_BASELINE.json` records the previous and approved
+new SHA-256 values under `webSourceOfTruthHashLineage`; all required item IDs,
+counts, AC-01 through AC-15, product scope, and `phase2Started=false` remain
+unchanged. It is not contract revision 4, not Phase 2, not new product
 scope, not signing/notarization/release, and not final independent external
 review.
 

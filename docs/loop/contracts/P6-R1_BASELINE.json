@@ -12,16 +12,17 @@
     "docs/product/P6_WEB_PARITY_CONTRACT.json"
   ],
   "hashPolicy": {
-    "webSourceOfTruthHashes": "mustRemainUnchangedDuringP6R1UnlessOwnerApprovesANewWebSourceOfTruthRevision",
-    "milestoneStartReferenceHashes": "recordOnlyMayChangeInsideAuthorizedWorkPackagesWithEvidenceAndFinalHeadBinding"
+    "webSourceOfTruthHashes": "mustRemainUnchangedDuringP6R1ExceptOwnerApprovedBoundedRevisionsRecordedInWebSourceOfTruthHashLineage",
+    "milestoneStartReferenceHashes": "recordOnlyMayChangeInsideAuthorizedWorkPackagesWithEvidenceAndFinalHeadBinding",
+    "ownerApprovedBoundedRevision": "onlyApprovedForOwnerVisibleUiUxPolish;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift"
   },
   "webSourceOfTruthHashes": {
-    "tools/svga-player-preview/index.html": "7f92915f7e2899692d53a68d31c98f8a78b536768db153cdf04c12a13ac2899c",
+    "tools/svga-player-preview/index.html": "a2d526a81595f1b5aa216dbf7967ba2e869e78bf01d3c27fe873ea190f198f11",
     "tools/svga-player-preview/styles.css": "06f2870b0f2c7644067e414dab9f596e6e898eb5e522de417f799304e0780f5d",
     "tools/svga-player-preview/main.js": "bf1246a3184e5be4c8c0a8bc82ed6198b9247827296eca9b394b4f5d03fb2d42",
     "tools/svga-player-preview/inspection-report-view.mjs": "909ef6cf8358cacf22d50da0cf127cc482532cd7ec31b926c48b9d2ea11afa75",
     "tools/svga-player-preview/server.mjs": "721ec56fb2f954af3e9d0189c89cd42a750d78cea708daa72df0a948422fc592",
-    "tools/shared/product-tokens.css": "4567c81242e31e7303e3e0de25bc5f8f00657e3c2322fdf81aec8e42bc4545ef",
+    "tools/shared/product-tokens.css": "8c847cd898ec9a466fb8f4e67f3f1ed088111bfa3c7d3535e12fad02db7f723c",
     "docs/product/P6_WEB_PARITY_CONTRACT.json": "b7cd8edaf65fa67a5d72d4da833cc8cd32ffc47fa9558f87157a17f726983b9a",
     "docs/product/P6_WEB_FEATURE_INVENTORY.md": "cdfa6f4441f98edbf8b42c18576bd6dbce6240b4e25d5d1eac5c36922a7bb726"
   },
@@ -144,7 +145,7 @@
     "states": 22,
     "motions": 9
   },
-  "snapshotSha256": "c2c3b2e7f82ab88b7aafe604b83b24591b1474e78614f0b7326ff6c3ca4edf8c",
+  "snapshotSha256": "efedeca73420b63544ee9db3ff14e1ac4ca5e4eccaa5fe9771d86ef4c0d34de7",
   "snapshotSha256Algorithm": {
     "name": "top_level_snapshotSha256_omitted_recursive_key_sorted_compact_json_sha256",
     "version": 1,
@@ -154,5 +155,30 @@
     "encoding": "utf8",
     "jsonEncoding": "compact_no_trailing_newline",
     "digest": "sha256_lowercase_hex"
-  }
+  },
+  "webSourceOfTruthHashLineage": [
+    {
+      "revisionId": "owner_visible_ui_ux_polish_visual_system_revision_2026_06_27",
+      "authorizedBy": "Product Owner",
+      "authorization": "AUTHORIZE_BOUNDED_WEB_SOURCE_OF_TRUTH_REVISION_FOR_OWNER_VISIBLE_UI_UX_POLISH",
+      "reason": "owner_visible_ui_ux_polish_visual_system_revision",
+      "scope": "bounded_to_current_owner_visible_ui_ux_polish_only",
+      "sourceReviewPacket": "review/P6-R1-blocked-399b170-review.zip",
+      "sourceBlockingHead": "399b170e1556a2926f87c85510bbe21d6f2eb4b8",
+      "approvedFiles": [
+        {
+          "path": "tools/svga-player-preview/index.html",
+          "previousSha256": "7f92915f7e2899692d53a68d31c98f8a78b536768db153cdf04c12a13ac2899c",
+          "approvedSha256": "a2d526a81595f1b5aa216dbf7967ba2e869e78bf01d3c27fe873ea190f198f11",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        },
+        {
+          "path": "tools/shared/product-tokens.css",
+          "previousSha256": "4567c81242e31e7303e3e0de25bc5f8f00657e3c2322fdf81aec8e42bc4545ef",
+          "approvedSha256": "8c847cd898ec9a466fb8f4e67f3f1ed088111bfa3c7d3535e12fad02db7f723c",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        }
+      ]
+    }
+  ]
 }
