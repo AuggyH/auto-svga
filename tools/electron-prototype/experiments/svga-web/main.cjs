@@ -359,6 +359,40 @@ function validatePreviewCardZoneSnapshot(value, expectedSlot) {
   };
 }
 
+function describePreviewCardConsistencyFailure(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
+  if (!isStringArray(value.missing, 24)) return "missing";
+  if (value.missing.length !== 0) return `missing:${value.missing.slice(0, 8).join(",")}`;
+  if (value.compareEnabled !== true) return "compareEnabled";
+  if (value.syncControlsVisible !== true) return "syncControlsVisible";
+  if (value.passed !== true) return "passed";
+  const primary = validatePreviewCardZoneSnapshot(value.primary, "A");
+  if (!primary) return `primary:${describePreviewCardZoneSnapshotFailure(value.primary, "A")}`;
+  const secondary = validatePreviewCardZoneSnapshot(value.secondary, "B");
+  if (!secondary) return `secondary:${describePreviewCardZoneSnapshotFailure(value.secondary, "B")}`;
+  return "unknown";
+}
+
+function describePreviewCardZoneSnapshotFailure(value, expectedSlot) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
+  if (value.slot !== expectedSlot) return "slot";
+  const requiredBooleans = [
+    "loaded",
+    "titleVisible",
+    "filePillVisible",
+    "statusVisible",
+    "replaceActionVisible",
+    "metadataVisible",
+    "playbackControlsVisible"
+  ];
+  const failedBoolean = requiredBooleans.find((key) => value[key] !== true);
+  if (failedBoolean) return failedBoolean;
+  if (!isBoundedString(value.fileName, 180)) return "fileName";
+  if (!value.fileName.endsWith(".svga")) return "fileNameExtension";
+  if (!isBoundedString(value.statusText, 80)) return "statusText";
+  return "unknown";
+}
+
 function describeOwnerUsabilityValidationFailure(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
   if (value.schemaVersion !== 1) return "schemaVersion";
@@ -384,8 +418,21 @@ function describeOwnerUsabilityValidationFailure(value) {
   ];
   if (!value.checks || typeof value.checks !== "object" || Array.isArray(value.checks)) return "checks";
   const failedCheck = requiredChecks.find((key) => value.checks[key] !== true);
-  if (failedCheck) return failedCheck;
-  if (value.previewCardConsistency !== undefined && !validatePreviewCardConsistency(value.previewCardConsistency)) return "previewCardConsistency";
+  if (failedCheck) {
+    if ((failedCheck === "previewCardHeaderConsistency" || failedCheck === "previewCardBothLoadedConsistency")
+      && value.previewCardConsistency
+      && typeof value.previewCardConsistency === "object"
+      && !Array.isArray(value.previewCardConsistency)) {
+      const missing = Array.isArray(value.previewCardConsistency.missing)
+        ? value.previewCardConsistency.missing.slice(0, 8).join(",")
+        : "unknown";
+      return `${failedCheck}:${missing}`;
+    }
+    return failedCheck;
+  }
+  if (value.previewCardConsistency !== undefined && !validatePreviewCardConsistency(value.previewCardConsistency)) {
+    return `previewCardConsistency:${describePreviewCardConsistencyFailure(value.previewCardConsistency)}`;
+  }
   return "evidence";
 }
 

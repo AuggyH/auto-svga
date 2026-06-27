@@ -3019,7 +3019,10 @@ function previewCardZoneSnapshot(slot) {
   const title = document.querySelector(`#svgaTitle${idSuffix}`);
   const filePill = document.querySelector(`#svgaFilePill${idSuffix}`);
   const status = document.querySelector(`#svgaStatus${idSuffix}`);
+  const syncMetadata = slot.slotName === "A" ? syncLeftInfo : syncRightInfo;
   const metadata = document.querySelector(`#svgaSizeInfo${idSuffix}`);
+  const metadataVisible = (isElementVisible(metadata) && compactText(metadata).length > 0)
+    || (isCompareActive() && isElementVisible(syncMetadata) && compactText(syncMetadata).includes(".svga"));
   return {
     slot: slot.slotName,
     loaded: Boolean(slot.videoItem && slot.metrics && canvasIsNonBlank(slot)),
@@ -3027,7 +3030,7 @@ function previewCardZoneSnapshot(slot) {
     filePillVisible: isElementVisible(filePill) && compactText(filePill).endsWith(".svga"),
     statusVisible: isElementVisible(status) && compactText(status).length > 0,
     replaceActionVisible: isElementVisible(replaceButton),
-    metadataVisible: isElementVisible(metadata) && compactText(metadata).length > 0,
+    metadataVisible,
     playbackControlsVisible: isElementVisible(playerBar),
     fileName: compactText(filePill),
     statusText: compactText(status)
@@ -3075,6 +3078,7 @@ async function runOwnerUsabilitySmoke(bytes) {
   const evidence = [];
   const checks = {};
   let previewCardHeaderConsistency = false;
+  let previewCardConsistencyProof;
 
   closeP6SmokeTransientUi();
   setAppMode("localPreview");
@@ -3130,10 +3134,14 @@ async function runOwnerUsabilitySmoke(bytes) {
   p6SmokeCurrentPhase = "owner-usability-b-recovery";
   handleDroppedFile(new File([bytes.slice(0)], "owner-recovery-b.svga", { type: "application/octet-stream" }), "svga", "b");
   await waitFor(() => slotRecoveredCleanly(players.b));
+  await waitFor(() => {
+    const proof = collectPreviewCardConsistencyProof();
+    return proof.passed === true && proof.syncControlsVisible === true;
+  });
   checks.svgaBRecoveryClearsError = slotRecoveredCleanly(players.b);
-  const previewCardConsistency = collectPreviewCardConsistencyProof();
-  previewCardHeaderConsistency = previewCardConsistency.passed;
-  checks.previewCardBothLoadedConsistency = previewCardConsistency.passed;
+  previewCardConsistencyProof = collectPreviewCardConsistencyProof();
+  previewCardHeaderConsistency = previewCardConsistencyProof.passed;
+  checks.previewCardBothLoadedConsistency = previewCardConsistencyProof.passed;
   evidence.push("SVGA B valid recovery cleared slot error and loaded the secondary preview");
 
   p6SmokeCurrentPhase = "owner-usability-export-review";
@@ -3211,7 +3219,7 @@ async function runOwnerUsabilitySmoke(bytes) {
     schemaVersion: 1,
     finderDocumentAssociation: electronBridge?.capabilities?.finderDocumentAssociation ?? "unknown",
     checks,
-    previewCardConsistency: collectPreviewCardConsistencyProof(),
+    previewCardConsistency: previewCardConsistencyProof ?? collectPreviewCardConsistencyProof(),
     evidence
   };
 }
