@@ -1776,10 +1776,6 @@ function stateForScenario(scenario) {
     "desktop-synchronized-playback-toggled-by-space": "synchronized-playback-toggled-by-space",
     "desktop-local-compare-empty": "local-compare-empty",
     "desktop-local-compare-loaded": "local-compare-loaded",
-    "desktop-local-info-overview-open": "info-overview-open",
-    "desktop-local-info-assets-open": "info-assets-open",
-    "desktop-local-logs-open": "logs-open",
-    "desktop-local-settings-open": "settings-open",
     "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open"

@@ -403,7 +403,6 @@ async function writeReviewerBEvidenceRequest() {
     ["runtimeLogs", "Confirm runtime log panel content and controls in the local preview owner flow.", "desktop-local-logs-open.png"],
     ["settings", "Confirm settings panel geometry, values, and close behavior in the local preview owner flow.", "desktop-local-settings-open.png"],
     ["macosVisualSystem", "Confirm macOS-aligned visual system, quiet chrome, hierarchy, typography, spacing, PreviewCard consistency, panel behavior, resources IA, logs UX, settings scope, and phase-one local preview focus.", "visual-system-audit.json"],
-    ["ownerFeedbackClosure", "Confirm Product Owner feedback has a first-class closure map and each closure item has concrete evidence.", "OWNER_FEEDBACK_CLOSURE_MAP.json"],
     ["theme", "Confirm theme state through computed style and screenshot evidence.", "web-baseline/computed-styles-manifest.json"],
     ["accessibilitySettings", "Confirm reduced motion and blur settings with control values.", "interaction-parity-report.json"],
     ["emptyState", "Confirm Desktop empty state differs from loading.", "desktop-empty.png"],

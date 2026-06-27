@@ -1245,11 +1245,11 @@ async function main() {
   window.setSize(900, 720);
   window.setContentSize(900, 720);
   await waitFor(window, `innerWidth <= 920 && innerHeight <= 740`, 6_000);
-  await delay(320);
-  await capture(window, "screenshot-local-preview-loaded-900x720.png");
-  window.setSize(1440, 900);
-  window.setContentSize(1440, 900);
-  await delay(220);
+	  await delay(320);
+	  await capture(window, "screenshot-local-preview-loaded-900x720.png");
+	  window.setSize(1440, 900);
+	  await waitFor(window, `innerWidth === 1440 && innerHeight === 844`, 6_000);
+	  await delay(220);
 
 	  console.log("P6_WEB_BASELINE_PHASE responsive-export");
 	  await installFixtureMarker(window);
