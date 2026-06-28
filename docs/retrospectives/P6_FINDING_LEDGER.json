@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "P6-R1 narrow owner repair completed for default Activity/Logs filtering, local-preview-first workbench-region evidence, and Owner feedback closure-map accuracy. Prior complete review-directory packaging, App ZIP delivery, sidecar, post-seal, privacy, final loop validation, Reviewer binding, App extraction, screenshots, roadmap artifacts, visual-system audit, and foundation artifacts remain mechanically valid unless affected by this repair. Findings remain currentStatus=open; affected evidence/reviewer/handoff/end-to-end foundation findings are restored only to integrated_resolved_pending_external_review. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
+  "scope": "P6-R1 narrow owner repair completed for real workbench layout engine, 900x720 minimum-size proof, source-document region mapping, resource row collision prevention, role-tab wrapping prevention, inspector summary readability, layout-integrity audit, and Owner feedback closure-map accuracy. Prior complete review-directory packaging, App ZIP delivery, sidecar, post-seal, privacy, final loop validation, Reviewer binding, App extraction, screenshots, roadmap artifacts, visual-system audit, and foundation artifacts remain mechanically valid unless affected by this repair. Findings remain currentStatus=open; affected interaction/visual/reviewer/machine-gate/handoff/end-to-end findings are restored only to integrated_resolved_pending_external_review. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -227,10 +227,11 @@
         "R1",
         "R3",
         "R5",
-        "R6"
+        "R6",
+        "owner-real-workbench-layout-r7"
       ],
-      "occurrenceCount": 4,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 5,
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Parity reports passed based on item IDs, artifact existence, generic states, or broad artifact sets.",
       "userImpact": "Owner handoff could claim parity while product behavior remained unproven.",
       "rootCauseHypothesis": "Evidence architecture was self-referential: generators produced PASS and reviewers checked packet integrity more than product semantics.",
@@ -259,7 +260,8 @@
         "external reviewer reproduces no artifact-existence false pass"
       ],
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
@@ -298,7 +300,16 @@
         ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
         ".artifacts/product/P6/desktop-local-compare-loaded.png",
         "tools/p6/p6-web-baseline-capture.cjs",
-        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete",
+        ".artifacts/product/P6/workbench-region-map.json",
+        ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json",
+        ".artifacts/product/P6/visual-system-audit.json",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json",
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/visual-system-audit.mjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
       ]
     },
     {
@@ -315,10 +326,11 @@
         "owner-visible-ui-polish-r2",
         "owner-visible-ui-ux-polish-r3",
         "owner-visible-inspector-visual-system-polish-r4",
-        "owner-activity-logs-local-foundation-r5"
+        "owner-activity-logs-local-foundation-r5",
+        "owner-real-workbench-layout-r7"
       ],
-      "occurrenceCount": 8,
-      "lastEvidence": "Narrow owner repair completed for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. The finding remains open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "occurrenceCount": 9,
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
       "userImpact": "Visual parity evidence was not comparable.",
       "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
@@ -346,11 +358,11 @@
         "external review confirmation"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
         "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
-        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate."
+        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate.",
+        "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
@@ -400,7 +412,14 @@
         ".artifacts/product/P6/desktop-local-info-assets-open.png",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
         "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
-        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json",
+        ".artifacts/product/P6/workbench-region-map.json",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json",
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/visual-system-audit.mjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
       ],
       "lastUpdatedAt": "2026-06-27T14:18:37.021Z",
       "notes": [
@@ -419,10 +438,11 @@
         "R6",
         "owner-gate-local-preview-usability-r1",
         "owner-visible-ui-polish-r2",
-        "owner-visible-ui-ux-polish-r3"
+        "owner-visible-ui-ux-polish-r3",
+        "owner-real-workbench-layout-r7"
       ],
-      "occurrenceCount": 5,
-      "lastEvidence": "Final macOS SVGA Workbench foundation pass regenerated P6 evidence with parityStatus=pass and nonPassEvidenceCount=0. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "occurrenceCount": 6,
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "No Desktop per-interaction action trace existed.",
       "userImpact": "Buttons and menus could appear present without proving they work.",
       "rootCauseHypothesis": "Interaction evidence was assigned to the parity layer, but product behavior and host event triggering were split across workers.",
@@ -450,8 +470,8 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
-        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head."
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
+        "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP3",
@@ -492,7 +512,16 @@
         "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
         "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
-        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json",
+        ".artifacts/product/P6/workbench-region-map.json",
+        ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json",
+        ".artifacts/product/P6/visual-system-audit.json",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json",
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/visual-system-audit.mjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
       ]
     },
     {
@@ -676,10 +705,11 @@
         "owner-visible-ui-polish-r2",
         "owner-visible-ui-ux-polish-r3",
         "owner-visible-inspector-visual-system-polish-r4",
-        "owner-activity-logs-local-foundation-r5"
+        "owner-activity-logs-local-foundation-r5",
+        "owner-real-workbench-layout-r7"
       ],
-      "occurrenceCount": 9,
-      "lastEvidence": "Narrow owner repair completed for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. The finding remains open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "occurrenceCount": 10,
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
       "userImpact": "A human-facing product gap could pass internal review.",
       "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
@@ -706,11 +736,11 @@
         "owner review"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
         "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
-        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate."
+        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate.",
+        "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
@@ -760,7 +790,14 @@
         ".artifacts/product/P6/desktop-local-info-assets-open.png",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
         "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
-        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json",
+        ".artifacts/product/P6/workbench-region-map.json",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json",
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/visual-system-audit.mjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
       ],
       "lastUpdatedAt": "2026-06-27T14:18:37.021Z",
       "notes": [
@@ -859,10 +896,11 @@
       "seenInRounds": [
         "R4",
         "R5",
-        "R6"
+        "R6",
+        "owner-real-workbench-layout-r7"
       ],
-      "occurrenceCount": 3,
-      "lastEvidence": "Local preview owner-gate usability repair regenerated passing machine evidence: invalid-file feedback is slot-local, keyboard/focus paths are actionable, responsive preview cards remain usable, logs can be copied through a bounded host bridge, Finder open-file claims are removed, and Web/Desktop interaction traces bind real keyboard input without synthetic receipts.",
+      "occurrenceCount": 4,
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Known required parity failures existed while terminalHandoffReady or HUMAN_REQUIRED owner handoff was prepared.",
       "userImpact": "Owner review was asked to decide before engineering gates were closed.",
       "rootCauseHypothesis": "The protocol treated HUMAN_REQUIRED as an acceptable terminal state for both product acceptance and technical uncertainty.",
@@ -886,7 +924,8 @@
         "owner-visible wording check"
       ],
       "currentOpenSubIssues": [
-        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed."
+        "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
+        "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
@@ -927,7 +966,16 @@
         ".artifacts/product/P6/desktop-responsive-export-review-loaded-at-900-x-720.png",
         ".artifacts/product/P6/desktop-local-compare-loaded.png",
         "tools/p6/p6-web-baseline-capture.cjs",
-        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete"
+        "REPAIR_SCOPE: owner_visible_ui_polish_and_evidence_repair_complete",
+        ".artifacts/product/P6/workbench-region-map.json",
+        ".artifacts/product/P6/OWNER_FEEDBACK_CLOSURE_MAP.json",
+        ".artifacts/product/P6/visual-system-audit.json",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json",
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/visual-system-audit.mjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
       ]
     },
     {
@@ -943,10 +991,11 @@
         "R5",
         "R6",
         "owner-visible-inspector-visual-system-polish-r4",
-        "owner-activity-logs-local-foundation-r5"
+        "owner-activity-logs-local-foundation-r5",
+        "owner-real-workbench-layout-r7"
       ],
-      "occurrenceCount": 7,
-      "lastEvidence": "Narrow owner repair completed for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. The finding remains open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "occurrenceCount": 8,
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Local paths, hidden .artifacts-only handoffs, or stale review-root literals repeatedly needed repair.",
       "userImpact": "Owner could not reliably access review materials, or private local paths could leak.",
       "rootCauseHypothesis": "Handoff packaging was retrofitted after product work started and consumed repair budget repeatedly.",
@@ -981,7 +1030,8 @@
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
         "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
-        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate."
+        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate.",
+        "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
@@ -1030,7 +1080,14 @@
         ".artifacts/product/P6/desktop-local-info-assets-open.png",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
         "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
-        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json",
+        ".artifacts/product/P6/workbench-region-map.json",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json",
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/visual-system-audit.mjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
       ],
       "lastUpdatedAt": "2026-06-27T14:18:37.021Z",
       "notes": [
@@ -1054,10 +1111,11 @@
         "owner-visible-ui-polish-r2",
         "owner-visible-ui-ux-polish-r3",
         "owner-visible-inspector-visual-system-polish-r4",
-        "owner-activity-logs-local-foundation-r5"
+        "owner-activity-logs-local-foundation-r5",
+        "owner-real-workbench-layout-r7"
       ],
-      "occurrenceCount": 10,
-      "lastEvidence": "Narrow owner repair completed for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. The finding remains open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "occurrenceCount": 11,
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
       "userImpact": "Large apparent progress did not translate into accepted product parity.",
       "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
@@ -1084,11 +1142,11 @@
         "owner-approved recovery plan"
       ],
       "currentOpenSubIssues": [
-        "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
         "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
-        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate."
+        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate.",
+        "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
@@ -1140,7 +1198,14 @@
         ".artifacts/product/P6/desktop-local-info-assets-open.png",
         "OWNER_DECISION: OWNER_REPAIR_REQUIRED final_macos_svga_workbench_foundation_pass",
         "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
-        "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
+        "docs/product/ROADMAP_UI_CAPACITY_MAP.json",
+        ".artifacts/product/P6/workbench-region-map.json",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json",
+        "tools/p6/generate-p6-evidence.mjs",
+        "tools/p6/visual-system-audit.mjs",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
       ],
       "lastUpdatedAt": "2026-06-27T14:18:37.021Z",
       "notes": [

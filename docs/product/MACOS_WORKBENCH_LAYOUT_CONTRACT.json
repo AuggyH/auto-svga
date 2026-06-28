@@ -6,9 +6,9 @@
   "productionApproved": false,
   "phase2Started": false,
   "minimumSupportedWindow": {
-    "width": 720,
-    "height": 640,
-    "policy": "Preview Stage keeps priority; side regions collapse before primary playback controls become unreadable."
+    "width": 900,
+    "height": 720,
+    "policy": "Preview Stage keeps priority; side regions collapse before primary playback controls become unreadable. This is the current Electron window minimum and must not be documented as 720x640 until the host minimum is lowered and re-proven."
   },
   "regions": [
     {
@@ -131,7 +131,7 @@
     },
     {
       "id": "minimum_supported",
-      "condition": "width >= 720 and height >= 640",
+      "condition": "width >= 900 and height >= 720",
       "layout": "source and inspector may collapse to strips",
       "required": ["no one-character status chips", "no hidden primary actions", "no overlapping controls"]
     }

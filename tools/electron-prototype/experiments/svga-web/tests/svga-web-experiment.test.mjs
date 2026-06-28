@@ -430,9 +430,18 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(p6Evidence, /packaged Auto SVGA\.app/);
   assert.match(p6Evidence, /buildP6ParityReportFromRuntimeFacts/);
   assert.match(p6Evidence, /assertLocalPreviewWorkbenchRegionMap/);
+  assert.match(p6Evidence, /layoutIntegrity/);
+  assert.match(main, /requiredLayoutChecks/);
+  assert.match(main, /sourceDocumentNotToolbar/);
+  assert.match(main, /noResourceActionCollision/);
+  assert.match(main, /noVerticalFilterWrapping/);
   assert.match(main, /mode-not-local-preview/);
   assert.match(main, /workflowPrimary !== "local_preview_first"/);
   assert.match(productApp, /workflowPrimary:\s*localPreviewPrimary \? "local_preview_first"/);
+  assert.match(productApp, /collectWorkbenchLayoutIntegrity/);
+  assert.match(productApp, /source_document_maps_toolbar_instead_of_left_panel/);
+  assert.match(productApp, /resource_action_collision/);
+  assert.match(productApp, /resource_filter_vertical_wrap/);
   assert.match(p6ParityRunner, /function webFragmentsForItem/);
   assert.match(p6ParityRunner, /function desktopFragmentsForItem/);
   assert.match(p6ParityRunner, /function comparisonFragmentsForItem/);

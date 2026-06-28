@@ -86,6 +86,11 @@ assertCondition(errors, /function reloadCurrentFile/.test(app), "Cmd/Ctrl+R relo
 assertCondition(errors, !/clearCurrentFile\("shortcut"\)/.test(app), "Cmd/Ctrl+R must not clear the current file");
 assertCondition(errors, /overviewFileRow/.test(app) && /overviewFileRow/.test(styles), "Info Overview must separate current file from compact metric cards");
 assertCondition(errors, /assetUsageLabel/.test(app) && /assetUsageLabel/.test(styles), "Resources tab must avoid exposing raw imageKey as primary row text");
+assertCondition(errors, /assetInlineActions/.test(app) && /assetInlineActions/.test(styles), "Resources sequence actions must live in normal row flow");
+assertCondition(errors, /\.sequenceToggle\s*\{[\s\S]*?position:\s*static/.test(styles), "sequence toggle must stay in normal resource row flow");
+assertCondition(errors, !/\.sequenceToggle\s*\{[^}]*position:\s*absolute/.test(styles), "sequence toggle must not be absolutely positioned over resource text");
+assertCondition(errors, /\.assetFilters\s*\{[\s\S]*?display:\s*flex/.test(styles), "resource filters must use non-wrapping overflow layout");
+assertCondition(errors, /\.assetFilters button\s*\{[\s\S]*?white-space:\s*nowrap/.test(styles), "resource filter buttons must not wrap vertically");
 assertCondition(errors, /specDiagnosticDetails/.test(inspection), "Inspection report must collapse raw diagnostic details by default");
 assertCondition(errors, !inspection.includes("<code>${escapeHtml(issue.code)}</code></div>"), "Inspection report must not expose raw issue codes in default rows");
 assertCondition(errors, foundationContract.contractId === "MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT", "missing macOS workbench foundation contract id");
@@ -176,6 +181,24 @@ if (!sourceOnly) {
       assertCondition(errors, regionIds.has(regionId), `workbench region map missing ${regionId}`);
     }
     assertCondition(errors, regionMap.passed === true, "workbench region map did not pass");
+    const sourceRegion = (regionMap.regions ?? []).find((region) => region.id === "source_document");
+    assertCondition(errors, sourceRegion?.selector === "aside[data-workbench-region='source-document']", "source_document region must bind the left source panel, not toolbar");
+    assertCondition(errors, Number(sourceRegion?.rect?.y) >= 56, "source_document region appears to map the top toolbar");
+    assertCondition(errors, regionMap.layoutIntegrity?.passed === true, "workbench layout integrity did not pass");
+    assertCondition(errors, Array.isArray(regionMap.layoutIntegrity?.failures) && regionMap.layoutIntegrity.failures.length === 0, "workbench layout integrity has failures");
+    const requiredIntegrityChecks = [
+      "noRegionOverlap",
+      "sourceDocumentNotToolbar",
+      "noResourceActionCollision",
+      "noVerticalFilterWrapping",
+      "noOneCharacterChips",
+      "inspectorTextReadable",
+      "compactSidePanelsCollapse",
+      "primaryActionVisible"
+    ];
+    for (const check of requiredIntegrityChecks) {
+      assertCondition(errors, regionMap.layoutIntegrity?.checks?.[check] === true, `workbench layout integrity missing ${check}`);
+    }
   }
   try {
     const renderProof = await readJson(".artifacts/product/P6/desktop-state-render-proof.json");
@@ -184,6 +207,18 @@ if (!sourceOnly) {
     assertCondition(errors, renderProof.states?.["info-diagnostics-open"]?.passed === true, "diagnostics panel proof missing or failed");
   } catch (error) {
     errors.push(`desktop state render proof unreadable: ${error.message}`);
+  }
+  try {
+    const artifactIndex = await readJson(".artifacts/product/P6/artifact-index.json");
+    const byScenario = new Map((artifactIndex.artifacts ?? []).map((artifact) => [artifact.scenario, artifact]));
+    const minimum = layoutContract.minimumSupportedWindow ?? {};
+    for (const scenario of ["desktop-local-minimum-size", "desktop-responsive-local-compare-at-minimum-size"]) {
+      const artifact = byScenario.get(scenario);
+      assertCondition(errors, Boolean(artifact), `minimum-size artifact missing ${scenario}`);
+      assertCondition(errors, artifact?.viewport?.width === minimum.width && artifact?.viewport?.height === minimum.height, `${scenario} viewport ${artifact?.viewport?.width}x${artifact?.viewport?.height} does not match declared minimum ${minimum.width}x${minimum.height}`);
+    }
+  } catch (error) {
+    errors.push(`artifact index viewport proof unreadable: ${error.message}`);
   }
 }
 
@@ -219,7 +254,7 @@ const foundationAudit = {
 };
 
 const layoutAudit = {
-  passed: errors.filter((message) => /layout contract|source document|preview stage|inspector|File Overview|Resources\/Layers|resource filter|duplicate file overview|Activity\/Logs|grid areas|sizing|truncation|collapse/.test(message)).length === 0,
+  passed: errors.filter((message) => /layout contract|source document|preview stage|inspector|File Overview|Resources\/Layers|resource filter|duplicate file overview|Activity\/Logs|grid areas|sizing|truncation|collapse|sequence toggle|resource filters|source_document|workbench layout|min(imum)?-size artifact|viewport/.test(message)).length === 0,
   layoutContractPath: "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
   regionCount: layoutContract.regions?.length ?? 0,
   componentCount: layoutContract.components?.length ?? 0,

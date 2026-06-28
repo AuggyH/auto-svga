@@ -4162,7 +4162,8 @@ button:disabled {
 .sourceTabs {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   min-height: calc(var(--visual-tab-height) + 16px);
-  grid-auto-rows: minmax(var(--visual-subtab-height), auto);
+  grid-auto-rows: var(--visual-subtab-height);
+  overflow: hidden;
 }
 
 .sourceTabPanel,
@@ -4334,17 +4335,22 @@ button:disabled {
 .diagnosticSummary header,
 .diagnosticSummary summary {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--visual-space-body);
   color: var(--visual-text-secondary);
 }
 
 .diagnosticSummary strong {
+  min-width: 0;
+  max-width: 100%;
   color: var(--visual-text-primary);
   font-size: var(--visual-font-body);
   line-height: var(--visual-line-body);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .diagnosticSummary dl {
@@ -4366,6 +4372,7 @@ button:disabled {
 }
 
 .diagnosticSummary dd {
+  min-width: 0;
   overflow-wrap: anywhere;
   color: var(--visual-text-primary);
   font-weight: 600;
@@ -5164,20 +5171,29 @@ body {
 }
 
 .assetFilters {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
   gap: 4px;
   padding: 7px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.assetFilters::-webkit-scrollbar {
+  display: none;
 }
 
 .assetFilters button {
+  flex: 0 0 auto;
   height: 30px;
-  min-width: 0;
-  padding: 0 5px;
+  min-width: 42px;
+  padding: 0 9px;
   border: 0;
   border-radius: 7px;
   background: transparent;
   font-size: var(--font-meta);
+  line-height: 30px;
+  white-space: nowrap;
 }
 
 .assetFilters button.isActive {
@@ -5200,6 +5216,7 @@ body {
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--hairline);
   transform: none;
+  align-items: start;
 }
 
 .assetUnifiedRow:hover {
@@ -5216,17 +5233,33 @@ body {
 .assetUnifiedMain {
   align-content: center;
   gap: 3px;
+  min-width: 0;
+}
+
+.assetPrimaryLine {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
 }
 
 .assetPrimaryLine strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
   font-size: var(--font-meta);
   line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assetTypeTag,
 .assetWarningTags span {
+  flex: 0 0 auto;
   padding: 2px 5px;
   font-size: var(--visual-font-meta);
+  line-height: 14px;
+  white-space: nowrap;
 }
 
 .assetSecondaryLine {
@@ -5252,20 +5285,37 @@ body {
 }
 
 .assetWarningTags {
-  position: absolute;
-  right: 8px;
-  bottom: 5px;
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
 }
 
 .assetUnifiedRow {
   position: relative;
 }
 
+.assetInlineActions {
+  display: flex;
+  min-width: 0;
+  margin-top: 2px;
+}
+
 .sequenceToggle {
-  position: absolute;
-  right: 8px;
-  top: 31px;
+  position: static;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--visual-accent) 20%, var(--visual-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--visual-accent) 10%, transparent);
+  color: var(--visual-accent);
   font-size: var(--visual-font-meta);
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sequenceChildren {
@@ -5548,12 +5598,35 @@ body,
     height: 100%;
     min-height: 0;
     padding: 9px 10px;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: var(--visual-collapse-strip-width) minmax(0, 1fr) var(--visual-collapse-strip-width) !important;
+    grid-template-areas: "source preview inspector";
   }
 
   .workspace.mode-localPreview.withCompare,
   .workspace.mode-exportReview {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: var(--visual-collapse-strip-width) minmax(0, 1fr) var(--visual-collapse-strip-width) !important;
+  }
+
+  .previewDeck,
+  .workspace.mode-localPreview.withCompare .previewDeck,
+  .workspace.mode-exportReview .previewDeck {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sourcePanel > :not(.sourceHeader),
+  .inspectorPanel > :not(.infoHeader) {
+    display: none !important;
+  }
+
+  .sourceHeader,
+  .inspectorPanel .infoHeader {
+    justify-content: center;
+    padding: var(--space-2);
+  }
+
+  .sourceHeader > div,
+  .inspectorPanel .infoHeader > div {
+    display: none;
   }
 
   .previewCard,

@@ -17,7 +17,7 @@
     "ownerApprovedBoundedRevision": "onlyApprovedForOwnerVisibleUiUxPolish;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift"
   },
   "webSourceOfTruthHashes": {
-    "tools/svga-player-preview/index.html": "3d9cac1de134116d273ef45d2b9e44f4db3b7a00542fddb9430582bf04480930",
+    "tools/svga-player-preview/index.html": "35c84c6f6f85b67c733e0d3d7cab6537aeb14d15c4f1083562a6e12051ba53ae",
     "tools/svga-player-preview/styles.css": "06f2870b0f2c7644067e414dab9f596e6e898eb5e522de417f799304e0780f5d",
     "tools/svga-player-preview/main.js": "bf1246a3184e5be4c8c0a8bc82ed6198b9247827296eca9b394b4f5d03fb2d42",
     "tools/svga-player-preview/inspection-report-view.mjs": "909ef6cf8358cacf22d50da0cf127cc482532cd7ec31b926c48b9d2ea11afa75",
@@ -27,9 +27,9 @@
     "docs/product/P6_WEB_FEATURE_INVENTORY.md": "cdfa6f4441f98edbf8b42c18576bd6dbce6240b4e25d5d1eac5c36922a7bb726"
   },
   "milestoneStartReferenceHashes": {
-    "tools/shared/product-frontend/product-shell.html": "527139c4fca684eda430111cbe0cff76e8e6c92fa34db2cd605f7e49315a877c",
-    "tools/shared/product-frontend/product-app.mjs": "07cafa23b261f92441369d3e7abaeb8242cb458877081d1ff95e367caf89c00b",
-    "tools/shared/product-frontend/product-styles.css": "1ee547a5ad39d59cb4926f6c50b07d902a8202660b5845a4bd454f0fcc1c5e8a",
+    "tools/shared/product-frontend/product-shell.html": "c31f2f82f2ad07c9ce529f3b33cb37205eb23e17bd9a8e35761c5c3a6ea0c7f8",
+    "tools/shared/product-frontend/product-app.mjs": "1a3e7955b8e3c28b8cbebd59360ed5b5a95d6800c0608341d31d046a773eb12e",
+    "tools/shared/product-frontend/product-styles.css": "2f3a253a8cb1b8249e9c4db6a3d4d60995f9f675e459142f5381720a2440a0bc",
     "tools/p6/runtime-scenarios/state-evidence.mjs": "35bc18c0abe912f6d19606a6728603cc4035639c9a9eb729f7f4605c6bb5781f"
   },
   "requiredItemIds": {
@@ -145,7 +145,7 @@
     "states": 22,
     "motions": 9
   },
-  "snapshotSha256": "4e9df6b3a6942d90e08856a21efc58f5346368ac1005771c946a9cd6495faed1",
+  "snapshotSha256": "410a590c4a240158fee464cf9b1d7d38a426b2ef6a107b30b529e750bcfc5323",
   "snapshotSha256Algorithm": {
     "name": "top_level_snapshotSha256_omitted_recursive_key_sorted_compact_json_sha256",
     "version": 1,
@@ -219,6 +219,29 @@
           "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
         }
       ]
+    },
+    {
+      "revisionId": "owner_visible_real_workbench_layout_repair_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "OWNER_REPAIR_REQUIRED real workbench layout engine and audit repair",
+      "reason": "owner_visible_real_workbench_layout_engine_revision",
+      "scope": "bounded_to_current_owner_visible_layout_repair;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift",
+      "sourceReviewPacketLabel": "Product Owner decision attached in Codex thread for 798bfa4 responsive layout failures",
+      "sourceBlockingHead": "798bfa45214a2c6734c27cfc94660177c9abbc88",
+      "approvedFiles": [
+        {
+          "path": "tools/svga-player-preview/index.html",
+          "previousSha256": "3d9cac1de134116d273ef45d2b9e44f4db3b7a00542fddb9430582bf04480930",
+          "approvedSha256": "35c84c6f6f85b67c733e0d3d7cab6537aeb14d15c4f1083562a6e12051ba53ae",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        },
+        {
+          "path": "tools/shared/product-tokens.css",
+          "previousSha256": "1966f150c47a2af07647532d43974e374142cd8cd56eebe0c792a638ea8ab4d1",
+          "approvedSha256": "1966f150c47a2af07647532d43974e374142cd8cd56eebe0c792a638ea8ab4d1",
+          "policy": "unchanged_in_this_repair"
+        }
+      ]
     }
   ],
   "milestoneStartReferenceHashLineage": [
@@ -268,6 +291,34 @@
           "path": "tools/shared/product-frontend/product-shell.html",
           "previousSha256": "7e3c046f70dd6e43c7606acfdbfec183062f967d0e1e5c7daa0cf56ce811f847",
           "approvedSha256": "527139c4fca684eda430111cbe0cff76e8e6c92fa34db2cd605f7e49315a877c",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        }
+      ]
+    },
+    {
+      "revisionId": "owner_visible_real_workbench_layout_reference_update_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "OWNER_REPAIR_REQUIRED real workbench layout engine and audit repair",
+      "reason": "shared_product_frontend_and_evidence_reference_update_for_real_workbench_layout_repair",
+      "scope": "bounded_to_current_owner_visible_layout_repair_and_validation_evidence_only",
+      "sourceBlockingHead": "798bfa45214a2c6734c27cfc94660177c9abbc88",
+      "approvedFiles": [
+        {
+          "path": "tools/shared/product-frontend/product-shell.html",
+          "previousSha256": "527139c4fca684eda430111cbe0cff76e8e6c92fa34db2cd605f7e49315a877c",
+          "approvedSha256": "c31f2f82f2ad07c9ce529f3b33cb37205eb23e17bd9a8e35761c5c3a6ea0c7f8",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/shared/product-frontend/product-app.mjs",
+          "previousSha256": "07cafa23b261f92441369d3e7abaeb8242cb458877081d1ff95e367caf89c00b",
+          "approvedSha256": "1a3e7955b8e3c28b8cbebd59360ed5b5a95d6800c0608341d31d046a773eb12e",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/shared/product-frontend/product-styles.css",
+          "previousSha256": "1ee547a5ad39d59cb4926f6c50b07d902a8202660b5845a4bd454f0fcc1c5e8a",
+          "approvedSha256": "2f3a253a8cb1b8249e9c4db6a3d4d60995f9f675e459142f5381720a2440a0bc",
           "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
         }
       ]

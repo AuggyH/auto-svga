@@ -230,6 +230,14 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     assert.match(productApp, new RegExp(ownerGateUsabilityEvidence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(p6Evidence, /assertLocalPreviewWorkbenchRegionMap/);
+  assert.match(productApp, /aside\[data-workbench-region='source-document'\]/);
+  assert.match(productApp, /collectWorkbenchLayoutIntegrity/);
+  assert.match(productApp, /source_document_maps_toolbar_instead_of_left_panel/);
+  assert.match(productApp, /resource_action_collision/);
+  assert.match(productApp, /resource_filter_vertical_wrap/);
+  assert.match(productStyles, /\.assetFilters\s*\{[\s\S]*display:\s*flex/);
+  assert.match(productStyles, /\.assetFilters button\s*\{[\s\S]*white-space:\s*nowrap/);
+  assert.match(productStyles, /\.sequenceToggle\s*\{[\s\S]*position:\s*static/);
   assert.match(p6Evidence, /owner_blocking_feedback_fixed_pending_product_owner_review/);
   assert.match(p6Evidence, /productOwnerHumanGateStillRequired/);
   assert.match(p6Evidence, /Default Activity\/Logs exposed internal workflow text/);

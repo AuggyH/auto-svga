@@ -237,8 +237,8 @@
       "id": "desktop_local_minimum_size",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-minimum-size.png",
-      "minimumWidth": 720,
-      "minimumHeight": 640
+      "minimumWidth": 900,
+      "minimumHeight": 720
     },
     {
       "id": "desktop_local_logs",
@@ -272,8 +272,8 @@
       "id": "desktop_local_compare_minimum_size",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png",
-      "minimumWidth": 720,
-      "minimumHeight": 640
+      "minimumWidth": 900,
+      "minimumHeight": 720
     },
     {
       "id": "workbench_region_map",

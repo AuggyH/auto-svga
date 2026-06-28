@@ -22,7 +22,7 @@ wp0Authorized: true
 executionStatus: terminal_human_required
 nextAction: product_owner_human_gate
 
-The macOS workbench foundation repair is ready for Product Owner Human Gate after regenerated P6 evidence, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
+The real workbench layout repair is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
 
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`

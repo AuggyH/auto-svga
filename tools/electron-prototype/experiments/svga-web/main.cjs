@@ -363,6 +363,24 @@ function validateWorkbenchRegionMap(value) {
   if (value.workflowPrimary !== "local_preview_first" || value.localPreviewPrimary !== true) return undefined;
   if (!Array.isArray(value.secondaryEvidenceAllowed) || !value.secondaryEvidenceAllowed.includes("exportReview")) return undefined;
   if (value.passed !== true) return undefined;
+  if (!value.layoutIntegrity || typeof value.layoutIntegrity !== "object" || Array.isArray(value.layoutIntegrity)) return undefined;
+  if (value.layoutIntegrity.passed !== true) return undefined;
+  if (!value.layoutIntegrity.viewportCss
+    || value.layoutIntegrity.viewportCss.width !== value.viewportCss.width
+    || value.layoutIntegrity.viewportCss.height !== value.viewportCss.height) return undefined;
+  const requiredLayoutChecks = [
+    "noRegionOverlap",
+    "sourceDocumentNotToolbar",
+    "noResourceActionCollision",
+    "noVerticalFilterWrapping",
+    "noOneCharacterChips",
+    "inspectorTextReadable",
+    "compactSidePanelsCollapse",
+    "primaryActionVisible"
+  ];
+  if (!value.layoutIntegrity.checks || typeof value.layoutIntegrity.checks !== "object" || Array.isArray(value.layoutIntegrity.checks)) return undefined;
+  if (!requiredLayoutChecks.every((key) => value.layoutIntegrity.checks[key] === true)) return undefined;
+  if (!Array.isArray(value.layoutIntegrity.failures) || value.layoutIntegrity.failures.length !== 0) return undefined;
   const requiredIds = [
     "source_document",
     "preview_stage",
@@ -402,6 +420,12 @@ function validateWorkbenchRegionMap(value) {
     localPreviewPrimary: true,
     secondaryEvidenceAllowed: ["exportReview"],
     regions: requiredIds.map((id) => byId.get(id)),
+    layoutIntegrity: {
+      passed: true,
+      viewportCss: value.layoutIntegrity.viewportCss,
+      checks: Object.fromEntries(requiredLayoutChecks.map((key) => [key, true])),
+      failures: []
+    },
     futureCapabilityPolicy: isBoundedString(value.futureCapabilityPolicy, 240) ? value.futureCapabilityPolicy : "",
     passed: true
   };
@@ -1925,7 +1949,7 @@ function overlayPixelRatio(image, rect, viewport) {
   return Number(((total - Math.max(...buckets.values())) / total).toFixed(4));
 }
 
-async function maybeRecordRenderedStateProof(window, scenario, image, screenshotSha256, fileName) {
+async function maybeRecordRenderedStateProof(window, scenario, image, screenshotSha256, fileName, viewportCss) {
   const state = stateForScenario(scenario);
   if (!state) return;
   let probe;
@@ -1934,7 +1958,7 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
   } catch (error) {
     probe = { state, passed: false, failures: [`state probe failed: ${redactLogMessage(error.message ?? error)}`] };
   }
-  const ratio = overlayPixelRatio(image, probe?.overlayRect, window.getSize());
+  const ratio = overlayPixelRatio(image, probe?.overlayRect, [viewportCss.width, viewportCss.height]);
   const failures = [...(probe?.failures ?? [])];
   if ((state === "empty" || state === "loading") && ratio <= 0.001) {
     failures.push("overlay region lacks non-background screenshot pixels");
@@ -1945,7 +1969,7 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     schemaVersion: 1,
     milestoneId: productMilestoneId,
     headCommit: productArtifactIndex.headCommit,
-    viewport: { width: 1280, height: 800 },
+    viewport: viewportCss,
     states: {},
     generatedAt: new Date().toISOString()
   };
@@ -1955,6 +1979,7 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     // Built incrementally as state screenshots are captured.
   }
   proof.headCommit = productArtifactIndex.headCommit;
+  proof.viewport = viewportCss;
   proof.states[state] = {
     ...probe,
     state,
@@ -2000,8 +2025,8 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(900, 720);
   if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(900, 720);
   if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(900, 720);
-  if (scenario === "desktop-local-minimum-size") window.setContentSize(720, 640);
-  if (scenario === "desktop-responsive-local-compare-at-minimum-size") window.setContentSize(720, 640);
+  if (scenario === "desktop-local-minimum-size") window.setContentSize(900, 720);
+  if (scenario === "desktop-responsive-local-compare-at-minimum-size") window.setContentSize(900, 720);
   if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
@@ -2013,11 +2038,13 @@ async function captureProductArtifact(window, scenario) {
   const image = await window.webContents.capturePage();
   const png = image.toPNG();
   const pngHash = createHash("sha256").update(png).digest("hex");
-  const capturedSize = window.getSize();
+  const viewportCss = await window.webContents.executeJavaScript(
+    "({ width: window.innerWidth, height: window.innerHeight })"
+  );
   const fileName = artifactFileNameForScenario(scenario);
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
-  await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName);
+  await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName, viewportCss);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
   } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
@@ -2028,7 +2055,7 @@ async function captureProductArtifact(window, scenario) {
     scenario,
     mode: scenario === "actual-normal-loaded" ? "normal" : "smoke",
     source: "desktop",
-    viewport: { width: capturedSize[0], height: capturedSize[1] },
+    viewport: viewportCss,
     path: `.artifacts/product/${productMilestoneId}/${fileName}`,
     mime: "image/png",
     sizeBytes: png.byteLength,

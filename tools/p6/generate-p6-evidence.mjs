@@ -462,6 +462,33 @@ async function assertLocalPreviewWorkbenchRegionMap(repoPath) {
   if (regionMap.passed !== true) {
     throw new Error("Workbench region map did not pass its local-preview foundation check");
   }
+  const requiredLayoutChecks = [
+    "noRegionOverlap",
+    "sourceDocumentNotToolbar",
+    "noResourceActionCollision",
+    "noVerticalFilterWrapping",
+    "noOneCharacterChips",
+    "inspectorTextReadable",
+    "compactSidePanelsCollapse",
+    "primaryActionVisible"
+  ];
+  if (regionMap.layoutIntegrity?.passed !== true) {
+    throw new Error("Workbench region map layoutIntegrity did not pass");
+  }
+  if (!Array.isArray(regionMap.layoutIntegrity.failures) || regionMap.layoutIntegrity.failures.length !== 0) {
+    throw new Error(`Workbench region map layoutIntegrity failures: ${(regionMap.layoutIntegrity?.failures ?? []).join(", ") || "missing"}`);
+  }
+  const failedChecks = requiredLayoutChecks.filter((key) => regionMap.layoutIntegrity?.checks?.[key] !== true);
+  if (failedChecks.length) {
+    throw new Error(`Workbench region map layoutIntegrity missing required checks: ${failedChecks.join(", ")}`);
+  }
+  const sourceRegion = (regionMap.regions ?? []).find((region) => region.id === "source_document");
+  if (sourceRegion?.selector !== "aside[data-workbench-region='source-document']") {
+    throw new Error("Workbench source_document must map to the left source panel");
+  }
+  if (Number(sourceRegion?.rect?.y) < 56) {
+    throw new Error("Workbench source_document appears to map the top toolbar");
+  }
   return regionMap;
 }
 
@@ -584,7 +611,13 @@ async function writeOwnerFeedbackClosureMap() {
     if (!evidence.present) throw new Error(`Owner feedback closure map missing evidence: ${repoPath}`);
     evidenceByPath[repoPath] = evidence;
   }
-  await assertLocalPreviewWorkbenchRegionMap(".artifacts/product/P6/workbench-region-map.json");
+  const regionMap = await assertLocalPreviewWorkbenchRegionMap(".artifacts/product/P6/workbench-region-map.json");
+  const visualAudit = await readJson(path.join(p6Root, "visual-system-audit.json"));
+  const layoutIntegrityPassed = regionMap.layoutIntegrity?.passed === true
+    && Array.isArray(regionMap.layoutIntegrity.failures)
+    && regionMap.layoutIntegrity.failures.length === 0
+    && visualAudit.layoutAudit?.passed === true
+    && visualAudit.screenshotAudit?.passed === true;
   const closureItems = [
     {
       feedbackId: "owner-feedback-info-overview-metric-readability",
@@ -771,11 +804,12 @@ async function writeOwnerFeedbackClosureMap() {
     }
   ];
   const allOwnerBlockingItemsFixed = closureItems.every((item) => ["fixed", "not_applicable"].includes(item.status));
+  const allComplaintsClosed = allOwnerBlockingItemsFixed && layoutIntegrityPassed;
   await writeJson(path.join(p6Root, "OWNER_FEEDBACK_CLOSURE_MAP.json"), {
     schemaVersion: 1,
     milestoneId: "P6-R1",
     headCommit: git(["rev-parse", "HEAD"]),
-    status: allOwnerBlockingItemsFixed
+    status: allComplaintsClosed
       ? "owner_blocking_feedback_fixed_pending_product_owner_review"
       : "owner_feedback_has_deferred_or_pending_items",
     productionApproved: false,
@@ -805,7 +839,16 @@ async function writeOwnerFeedbackClosureMap() {
       }
     ],
     allOwnerBlockingItemsFixed,
-    allComplaintsClosed: allOwnerBlockingItemsFixed,
+    layoutIntegrityPassed,
+    layoutIntegrity: {
+      passed: regionMap.layoutIntegrity?.passed === true,
+      failures: regionMap.layoutIntegrity?.failures ?? [],
+      checks: regionMap.layoutIntegrity?.checks ?? {},
+      sourceDocumentSelector: (regionMap.regions ?? []).find((region) => region.id === "source_document")?.selector ?? null,
+      minimumSupportedWindow: visualAudit.layoutAudit?.minimumSupportedWindow ?? null,
+      screenshotAuditPassed: visualAudit.screenshotAudit?.passed === true
+    },
+    allComplaintsClosed,
     productOwnerHumanGateStillRequired: true,
     closurePolicy: "Only fixed or not_applicable items count as closed. Deferred or requires_owner_decision items must keep allComplaintsClosed=false.",
     generatedAt: new Date().toISOString()

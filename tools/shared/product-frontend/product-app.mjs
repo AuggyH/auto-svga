@@ -2424,7 +2424,7 @@ function elementLabel(node) {
 
 function collectWorkbenchRegionMap() {
   const regions = [
-    ["source_document", "[data-workbench-region='source-document']", "Source / Document", "implemented"],
+    ["source_document", "aside[data-workbench-region='source-document']", "Source / Document", "implemented"],
     ["preview_stage", "[data-workbench-region='preview-stage']", "Preview Stage", "implemented"],
     ["inspector", "[data-workbench-region='inspector']", "Inspector", "implemented"],
     ["resources", "[data-workbench-region='resources']", "Resources", "foundation_ready"],
@@ -2449,7 +2449,7 @@ function collectWorkbenchRegionMap() {
       textSample: (compactText(node) || label).slice(0, 180)
     };
   });
-  const coreRegionIds = new Set(["source_document", "preview_stage", "inspector", "resources", "action_workflow"]);
+  const coreRegionIds = new Set(["source_document", "preview_stage", "inspector", "resources"]);
   const allRegionsBound = regions.every((region) => region.present && region.rect);
   const coreRegionsVisible = regions
     .filter((region) => coreRegionIds.has(region.id))
@@ -2457,6 +2457,7 @@ function collectWorkbenchRegionMap() {
   const localPreviewPrimary = modeSelect.value === "localPreview";
   const activityRegion = regions.find((region) => region.id === "activity_history");
   const logsHiddenByDefault = activeSidePanel !== "logs" && activityRegion?.present === true && activityRegion.visible === false;
+  const layoutIntegrity = collectWorkbenchLayoutIntegrity(regions);
   return {
     schemaVersion: 1,
     milestoneId: "P6-R1",
@@ -2486,6 +2487,7 @@ function collectWorkbenchRegionMap() {
       diagnosticsPresent: Boolean(document.querySelector("#tab-diagnostics")),
       actionWorkflowPresent: Boolean(document.querySelector("[data-workbench-region='action-workflow']"))
     },
+    layoutIntegrity,
     futureCapabilityPolicy: "Future capabilities are mapped to reserved regions but are not exposed as clickable Phase 2/3/4 features in P6-R1.",
     passed: localPreviewPrimary
       && allRegionsBound
@@ -2493,6 +2495,102 @@ function collectWorkbenchRegionMap() {
       && logsHiddenByDefault
       && !document.querySelector("[data-workbench-region='image-key']")
       && !infoPanel?.querySelector("#tab-overview, .fileOverviewCard")
+      && layoutIntegrity.passed
+  };
+}
+
+function rectsOverlap(a, b, tolerance = 1) {
+  if (!a || !b) return false;
+  return a.x < b.x + b.width - tolerance
+    && a.x + a.width > b.x + tolerance
+    && a.y < b.y + b.height - tolerance
+    && a.y + a.height > b.y + tolerance;
+}
+
+function visibleRectForSelector(selector) {
+  const node = document.querySelector(selector);
+  return isElementVisible(node) ? rectFor(node) : null;
+}
+
+function collectWorkbenchLayoutIntegrity(regions) {
+  const failures = [];
+  const viewport = { width: innerWidth, height: innerHeight };
+  const source = regions.find((region) => region.id === "source_document");
+  if (source?.rect && source.rect.y < 56) failures.push("source_document_maps_toolbar_instead_of_left_panel");
+
+  const majorPairs = [
+    ["source_document", "preview_stage"],
+    ["preview_stage", "inspector"],
+    ["source_document", "inspector"]
+  ];
+  for (const [leftId, rightId] of majorPairs) {
+    const left = regions.find((region) => region.id === leftId);
+    const right = regions.find((region) => region.id === rightId);
+    if (rectsOverlap(left?.rect, right?.rect, 2)) failures.push(`region_overlap:${leftId}:${rightId}`);
+  }
+
+  for (const button of document.querySelectorAll("#tab-assets .assetFilters button")) {
+    const rect = rectFor(button);
+    const style = getComputedStyle(button);
+    if (isElementVisible(button) && style.whiteSpace !== "nowrap") failures.push(`resource_filter_can_wrap:${compactText(button)}`);
+    if (isElementVisible(button) && rect.height > 36) failures.push(`resource_filter_vertical_wrap:${compactText(button)}`);
+    if (isElementVisible(button) && rect.width < 36) failures.push(`resource_filter_too_narrow:${compactText(button)}`);
+  }
+
+  for (const row of document.querySelectorAll(".assetUnifiedRow")) {
+    if (!isElementVisible(row)) continue;
+    const action = row.querySelector(".sequenceToggle");
+    if (!action || !isElementVisible(action)) continue;
+    for (const targetSelector of [".assetPrimaryLine", ".assetMetaLines", ".assetWarningTags"]) {
+      const target = row.querySelector(targetSelector);
+      if (isElementVisible(target) && rectsOverlap(rectFor(action), rectFor(target), 1)) {
+        failures.push(`resource_action_collision:${targetSelector}`);
+      }
+    }
+  }
+
+  for (const chip of document.querySelectorAll(".statusPill, .statusBadge, .assetTypeTag, .assetWarningTags span")) {
+    if (!isElementVisible(chip)) continue;
+    const text = compactText(chip);
+    const rect = rectFor(chip);
+    if (text.length > 1 && rect.width < 24) failures.push(`one_character_chip:${text.slice(0, 12)}`);
+    const style = getComputedStyle(chip);
+    if (style.whiteSpace !== "nowrap" && rect.height > 24) failures.push(`chip_vertical_wrap:${text.slice(0, 12)}`);
+  }
+
+  for (const selector of [".diagnosticSummary strong", ".diagnosticSummary dd", ".overviewDiagnosticsPanel summary strong"]) {
+    for (const node of document.querySelectorAll(selector)) {
+      if (!isElementVisible(node)) continue;
+      if (node.scrollWidth > node.clientWidth + 2 && getComputedStyle(node).textOverflow !== "ellipsis") {
+        failures.push(`inspector_text_clipped:${selector}`);
+      }
+    }
+  }
+
+  const primaryAction = visibleRectForSelector("#primaryFileButton") || visibleRectForSelector("#primaryEmptyFileButton");
+  if (!primaryAction) failures.push("primary_file_action_not_visible");
+
+  if (viewport.width <= 900) {
+    const sourceContentVisible = isElementVisible(document.querySelector("#tab-assets"))
+      || isElementVisible(document.querySelector("#tab-overview"));
+    const inspectorContentVisible = isElementVisible(document.querySelector("#tab-diagnostics"));
+    if (sourceContentVisible || inspectorContentVisible) failures.push("compact_view_keeps_full_side_panel_content");
+  }
+
+  return {
+    passed: failures.length === 0,
+    viewportCss: viewport,
+    checks: {
+      noRegionOverlap: !failures.some((failure) => failure.startsWith("region_overlap")),
+      sourceDocumentNotToolbar: !failures.includes("source_document_maps_toolbar_instead_of_left_panel"),
+      noResourceActionCollision: !failures.some((failure) => failure.startsWith("resource_action_collision")),
+      noVerticalFilterWrapping: !failures.some((failure) => failure.startsWith("resource_filter")),
+      noOneCharacterChips: !failures.some((failure) => failure.startsWith("one_character_chip")),
+      inspectorTextReadable: !failures.some((failure) => failure.startsWith("inspector_text_clipped")),
+      compactSidePanelsCollapse: !failures.includes("compact_view_keeps_full_side_panel_content"),
+      primaryActionVisible: !failures.includes("primary_file_action_not_visible")
+    },
+    failures
   };
 }
 
@@ -4318,7 +4416,7 @@ function renderAssetEntry(asset) {
         </div>
         <div class="assetFullKey" title="${escapeHtml(asset.fullKey ?? "")}">完整资源名：${escapeHtml(asset.fullKey ?? "")}</div>
         ${warningHtml}
-        ${asset.kind === "sequence" ? `<button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧" : "展开序列帧"}</button>` : ""}
+        ${asset.kind === "sequence" ? `<div class="assetInlineActions"><button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧" : "展开序列帧"}</button></div>` : ""}
       </div>
     </article>
     ${sequenceExpanded ? `<div class="sequenceChildren">${asset.items.map((item) => renderAssetEntry({

@@ -8,7 +8,7 @@ Date: 2026-06-28
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 - State: terminal_human_required
 - Next Action: product_owner_human_gate
-- The macOS workbench foundation repair is ready for Product Owner Human Gate after regenerated P6 evidence, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
+- The real workbench layout repair is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -98,6 +98,13 @@ Date: 2026-06-28
   shared product frontend reference files. Required item IDs, required counts,
   AC-01 through AC-15, product scope, `contractRevision=3`, `repairRound=0`,
   and `phase2Started=false` remain unchanged.
+- Product Owner returned `OWNER_REPAIR_REQUIRED` on the `798bfa4` candidate
+  for concrete owner-visible layout failures: resource-row action overlap,
+  vertical subtab wrapping, clipped inspector summaries, overclaimed 720x640
+  minimum behavior, and incorrect `source_document` toolbar mapping. The
+  current repair fixes the layout engine and audit rules directly, updates the
+  minimum supported proof to 900x720, and keeps all findings open pending
+  Product Owner Human Gate and final independent product external review.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are
   no further than `integrated_resolved_pending_external_review`; none are
   externally confirmed closed before Product Owner Human Gate and final independent
