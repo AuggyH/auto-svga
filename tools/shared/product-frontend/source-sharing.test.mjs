@@ -63,12 +63,13 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
 });
 
 test("shared product shell keeps loading distinct and editor incubation hidden by default", async () => {
-  const [shellHtml, productApp, productStyles, p6Capture, stateEvidence] = await Promise.all([
+  const [shellHtml, productApp, productStyles, p6Capture, stateEvidence, p6Evidence] = await Promise.all([
     readRepoFile("tools/shared/product-frontend/product-shell.html"),
     readRepoFile("tools/shared/product-frontend/product-app.mjs"),
     readRepoFile("tools/shared/product-frontend/product-styles.css"),
     readRepoFile("tools/p6/p6-web-baseline-capture.cjs"),
-    readRepoFile("tools/p6/runtime-scenarios/state-evidence.mjs")
+    readRepoFile("tools/p6/runtime-scenarios/state-evidence.mjs"),
+    readRepoFile("tools/p6/generate-p6-evidence.mjs")
   ]);
 
   assert.match(shellHtml, /class="loadingPhaseList"/);
@@ -86,12 +87,13 @@ test("shared product shell keeps loading distinct and editor incubation hidden b
 });
 
 test("shared product app exposes Repair 6 product states and invalid cleanup evidence", async () => {
-  const [shellHtml, productApp, productStyles, p6Capture, stateEvidence] = await Promise.all([
+  const [shellHtml, productApp, productStyles, p6Capture, stateEvidence, p6Evidence] = await Promise.all([
     readRepoFile("tools/shared/product-frontend/product-shell.html"),
     readRepoFile("tools/shared/product-frontend/product-app.mjs"),
     readRepoFile("tools/shared/product-frontend/product-styles.css"),
     readRepoFile("tools/p6/p6-web-baseline-capture.cjs"),
-    readRepoFile("tools/p6/runtime-scenarios/state-evidence.mjs")
+    readRepoFile("tools/p6/runtime-scenarios/state-evidence.mjs"),
+    readRepoFile("tools/p6/generate-p6-evidence.mjs")
   ]);
 
   for (const stateId of [
@@ -218,10 +220,19 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "Tab stayed inside settings dialog while it was active",
     "finderDocumentAssociationNotClaimed",
     "日志已复制",
-    "暂无日志可复制"
+    "暂无日志可复制",
+    "function isInternalDiagnosticLogMessage",
+    "高级诊断",
+    "userFacingLogMessage(log)",
+    "local_preview_first",
+    "localPreviewPrimary"
   ]) {
     assert.match(productApp, new RegExp(ownerGateUsabilityEvidence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+  assert.match(p6Evidence, /assertLocalPreviewWorkbenchRegionMap/);
+  assert.match(p6Evidence, /owner_blocking_feedback_fixed_pending_product_owner_review/);
+  assert.match(p6Evidence, /productOwnerHumanGateStillRequired/);
+  assert.match(p6Evidence, /Default Activity\/Logs exposed internal workflow text/);
 
   assert.match(productApp, /announce\(errorBox\.textContent\)/);
 	  assert.match(productApp, /announce\(message\)/);

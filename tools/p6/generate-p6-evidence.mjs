@@ -394,6 +394,30 @@ async function artifactEvidence(repoPath) {
   };
 }
 
+async function assertLocalPreviewWorkbenchRegionMap(repoPath) {
+  const regionMap = await readJson(path.join(repoRoot, repoPath));
+  const regionIds = new Set((regionMap.regions ?? []).map((region) => region.id));
+  const requiredRegions = [
+    "source_document",
+    "preview_stage",
+    "inspector",
+    "resources",
+    "action_workflow",
+    "activity_history"
+  ];
+  const missingRegions = requiredRegions.filter((id) => !regionIds.has(id));
+  if (regionMap.workflowPrimary !== "local_preview_first" || regionMap.localPreviewPrimary !== true || regionMap.mode !== "localPreview") {
+    throw new Error(`Workbench region map must be local-preview-first primary evidence: mode=${regionMap.mode ?? "missing"} workflowPrimary=${regionMap.workflowPrimary ?? "missing"}`);
+  }
+  if (missingRegions.length) {
+    throw new Error(`Workbench region map missing required regions: ${missingRegions.join(", ")}`);
+  }
+  if (regionMap.passed !== true) {
+    throw new Error("Workbench region map did not pass its local-preview foundation check");
+  }
+  return regionMap;
+}
+
 async function writeReviewerBEvidenceRequest() {
   const macosVisualSystemRequiredObservations = [
     "quietChrome",
@@ -497,6 +521,7 @@ async function writeOwnerFeedbackClosureMap() {
     if (!evidence.present) throw new Error(`Owner feedback closure map missing evidence: ${repoPath}`);
     evidenceByPath[repoPath] = evidence;
   }
+  await assertLocalPreviewWorkbenchRegionMap(".artifacts/product/P6/workbench-region-map.json");
   const closureItems = [
     {
       feedbackId: "owner-feedback-info-overview-metric-readability",
@@ -540,30 +565,30 @@ async function writeOwnerFeedbackClosureMap() {
       beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
       afterEvidence: [
         evidenceByPath[".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png"],
-        evidenceByPath[".artifacts/product/P6/desktop-local-compare-loaded.png"]
+        evidenceByPath[".artifacts/product/P6/desktop-local-compare-loaded.png"],
+        evidenceByPath[".artifacts/product/P6/workbench-region-map.json"]
       ],
       reviewerBCategory: "localPreview",
-      backlogReason: null
+      backlogReason: null,
+      verificationNotes: "Primary foundation proof must be generated from local-preview-first workbench mode; export-review evidence remains secondary."
     },
     {
       feedbackId: "owner-feedback-default-diagnostics-too-engineering",
-      ownerFinding: "Default inspector and logs expose engineering diagnostic/profile/resource IDs.",
+      ownerFinding: "Default Activity/Logs exposed internal workflow text such as report.json, latest-artifact scanning, and evidence-generation language.",
       status: "fixed",
-      component: "Inspector diagnostics",
+      component: "Activity / Logs",
       changedFiles: [
-        "tools/shared/product-frontend/inspection-report-view.mjs",
         "tools/shared/product-frontend/product-app.mjs",
-        "tools/shared/product-frontend/product-shell.html",
-        "tools/shared/product-frontend/product-styles.css"
+        "tools/p6/generate-p6-evidence.mjs"
       ],
       beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
       afterEvidence: [
-        evidenceByPath[".artifacts/product/P6/desktop-local-info-overview-open.png"],
         evidenceByPath[".artifacts/product/P6/desktop-local-logs-open.png"],
         evidenceByPath[".artifacts/product/P6/desktop-local-settings-open.png"]
       ],
       reviewerBCategory: "runtimeLogs",
-      backlogReason: null
+      backlogReason: null,
+      verificationNotes: "Default Activity/Logs display only user-readable phase-one events. Internal workflow text remains available only through 高级诊断 disclosure and is excluded from copied default logs."
     },
     {
       feedbackId: "owner-feedback-visual-system-audit-too-weak",
@@ -618,20 +643,27 @@ async function writeOwnerFeedbackClosureMap() {
         evidenceByPath[".artifacts/product/P6/desktop-local-info-diagnostics-open.png"]
       ],
       reviewerBCategory: "RoadmapCapacity",
-      backlogReason: null
+      backlogReason: null,
+      verificationNotes: "Foundation evidence remains P6-R1 local-preview workbench architecture only; Phase 2/3/4 features are not exposed as product capabilities."
     }
   ];
+  const allOwnerBlockingItemsFixed = closureItems.every((item) => ["fixed", "not_applicable"].includes(item.status));
   await writeJson(path.join(p6Root, "OWNER_FEEDBACK_CLOSURE_MAP.json"), {
     schemaVersion: 1,
     milestoneId: "P6-R1",
     headCommit: git(["rev-parse", "HEAD"]),
-    status: "all_owner_feedback_items_addressed",
+    status: allOwnerBlockingItemsFixed
+      ? "owner_blocking_feedback_fixed_pending_product_owner_review"
+      : "owner_feedback_has_deferred_or_pending_items",
     productionApproved: false,
     phase2Started: false,
     closureItemCount: closureItems.length,
     closureItems,
     backlogDeferrals: [],
-    allComplaintsClosed: true,
+    allOwnerBlockingItemsFixed,
+    allComplaintsClosed: allOwnerBlockingItemsFixed,
+    productOwnerHumanGateStillRequired: true,
+    closurePolicy: "Only fixed or not_applicable items count as closed. Deferred or requires_owner_decision items must keep allComplaintsClosed=false.",
     generatedAt: new Date().toISOString()
   });
 }

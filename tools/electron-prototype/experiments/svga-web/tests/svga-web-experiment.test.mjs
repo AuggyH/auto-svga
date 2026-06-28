@@ -368,6 +368,7 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   const prototype = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
   const p2Fixture = await readFile(path.join(experimentRoot, "scripts/p2-fixture.mjs"), "utf8");
+  const productApp = await readFile(path.join(repoRoot, "tools/shared/product-frontend/product-app.mjs"), "utf8");
   const p6Evidence = await readFile(path.join(repoRoot, "tools/p6/generate-p6-evidence.mjs"), "utf8");
   const p6ParityRunner = await readFile(path.join(repoRoot, "tools/p6/parity-runner.mjs"), "utf8");
 
@@ -420,6 +421,10 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.doesNotMatch(p6Evidence, /AUTO_SVGA_DESKTOP_NORMAL_PROOF/);
   assert.match(p6Evidence, /packaged Auto SVGA\.app/);
   assert.match(p6Evidence, /buildP6ParityReportFromRuntimeFacts/);
+  assert.match(p6Evidence, /assertLocalPreviewWorkbenchRegionMap/);
+  assert.match(main, /mode-not-local-preview/);
+  assert.match(main, /workflowPrimary !== "local_preview_first"/);
+  assert.match(productApp, /workflowPrimary:\s*localPreviewPrimary \? "local_preview_first"/);
   assert.match(p6ParityRunner, /function webFragmentsForItem/);
   assert.match(p6ParityRunner, /function desktopFragmentsForItem/);
   assert.match(p6ParityRunner, /function comparisonFragmentsForItem/);

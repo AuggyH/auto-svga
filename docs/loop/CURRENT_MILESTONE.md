@@ -2,7 +2,7 @@
 
 Milestone ID: P6-R1
 Title: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-Status: HUMAN_REQUIRED
+Status: GOAL_REPAIR_IN_PROGRESS
 
 contractRevision: 3
 supersedesContractRevision: 2
@@ -19,12 +19,10 @@ wp0ReviewedCandidateTree: `368fb06cde32846b89aeafef4dcfbe1a1cbc84d5`
 finalReviewPacketPrivacyRequired: true
 reviewerBindingFields: `baseHead`, `candidateTree`, `finalHead`
 wp0Authorized: true
-executionStatus: terminal_human_required
-nextAction: product_owner_human_gate
+executionStatus: goal_repair_in_progress
+nextAction: repair_activity_logs_and_local_foundation_evidence
 
-The final macOS SVGA Workbench foundation pass is ready for Product Owner
-Human Gate after regenerated P6 evidence reported zero non-pass strict items.
-This remains contract revision 3, repairRound 0, and Phase 2 not started.
+Product Owner returned OWNER_REPAIR_REQUIRED on the 4c39607 candidate for three narrow owner-gate blockers: default Activity/Logs exposed internal workflow text, workbench-region-map used exportReview instead of local-preview-first primary proof, and Owner feedback closure map overclaimed closure. This repair stays within contract revision 3, repairRound 0, and Phase 2 not started.
 
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`

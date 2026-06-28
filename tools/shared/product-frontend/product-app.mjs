@@ -2425,15 +2425,19 @@ function collectWorkbenchRegionMap() {
   const coreRegionsVisible = regions
     .filter((region) => coreRegionIds.has(region.id))
     .every((region) => region.visible && region.rect.width > 0 && region.rect.height > 0);
+  const localPreviewPrimary = modeSelect.value === "localPreview";
   return {
     schemaVersion: 1,
     milestoneId: "P6-R1",
     generatedFrom: "electron-product-smoke",
     viewportCss: { width: innerWidth, height: innerHeight },
     mode: modeSelect.value,
+    workflowPrimary: localPreviewPrimary ? "local_preview_first" : "not_local_preview_primary",
+    localPreviewPrimary,
+    secondaryEvidenceAllowed: ["exportReview"],
     regions,
     futureCapabilityPolicy: "Future capabilities are mapped to reserved regions but are not exposed as clickable Phase 2/3/4 features in P6-R1.",
-    passed: allRegionsBound && coreRegionsVisible
+    passed: localPreviewPrimary && allRegionsBound && coreRegionsVisible
   };
 }
 
@@ -3636,6 +3640,7 @@ async function runProductSmoke() {
     await waitFor(() => activeSidePanel === "logs");
     await delay(120);
     await captureArtifact("desktop-local-logs-open");
+    const localPreviewWorkbenchRegionMap = collectWorkbenchRegionMap();
     openSettings();
     await waitFor(() => !settingsModal.hidden);
     await delay(120);
@@ -3662,7 +3667,7 @@ async function runProductSmoke() {
       cleanup: true,
       p6InteractionTrace: await buildP6SmokeInteractionTrace(),
       ownerUsability,
-      workbenchRegionMap: collectWorkbenchRegionMap()
+      workbenchRegionMap: localPreviewWorkbenchRegionMap
     });
   } catch (error) {
     addLog("error", `产品 smoke 失败：${error.message}`);
@@ -4298,16 +4303,22 @@ function logLevelLabel(level) {
 
 function userFacingLogMessage(log) {
   const message = String(log?.message ?? "");
-  if (log?.level === "error") return message;
+  if (isInternalDiagnosticLogMessage(message)) {
+    return "诊断信息已更新，可展开查看高级诊断。";
+  }
   const internalProfileId = ["production", "target"].join("_");
-  const internalDiagnosticPattern = new RegExp(`${internalProfileId}|report\\\\.json|contract|schema|artifact|strict|profile|check-result|resource diagnostic`, "i");
+  const internalDiagnosticPattern = new RegExp(`${internalProfileId}|contract|schema|strict|profile|check-result|resource diagnostic`, "i");
   if (internalDiagnosticPattern.test(message)) {
-    return "诊断信息已更新，可展开查看详情。";
+    return "诊断信息已更新，可展开查看高级诊断。";
   }
   if (/生产规范|检查结果|资源诊断|规格报告/.test(message)) {
-    return "检查结果已更新，可展开查看诊断。";
+    return "检查结果已更新，可展开查看高级诊断。";
   }
   return message;
+}
+
+function isInternalDiagnosticLogMessage(message) {
+  return /report\.json|latest[- ]?artifact|最新导出产物|同组报告|产物组|产物扫描|source artifact|artifact discovery|evidence generation|proof path|debug identifier|pipeline/i.test(message);
 }
 
 function renderSyncBar() {
@@ -4698,7 +4709,7 @@ function renderFullLogRow(log) {
       <span class="logPrimaryMessage">${escapeHtml(message)}</span>
       ${hasDiagnosticDetail ? `
       <details class="logDiagnosticDetails">
-        <summary>诊断详情</summary>
+        <summary>高级诊断</summary>
         <span>${escapeHtml(log.message)}</span>
       </details>
       ` : ""}
@@ -4708,7 +4719,7 @@ function renderFullLogRow(log) {
 
 function serializeLogs() {
   return appLogs.length
-    ? appLogs.map((log) => `${log.time} ${logLevelLabel(log.level)} ${log.message}`).join("\n")
+    ? appLogs.map((log) => `${log.time} ${logLevelLabel(log.level)} ${userFacingLogMessage(log)}`).join("\n")
     : "";
 }
 

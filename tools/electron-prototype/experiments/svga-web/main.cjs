@@ -186,6 +186,9 @@ function describeWorkbenchRegionMapValidationFailure(value) {
   if (value.schemaVersion !== 1 || value.milestoneId !== "P6-R1" || value.generatedFrom !== "electron-product-smoke") return "identity";
   if (!value.viewportCss || !Number.isFinite(value.viewportCss.width) || !Number.isFinite(value.viewportCss.height)) return "viewport";
   if (!isBoundedString(value.mode, 80)) return "mode";
+  if (value.mode !== "localPreview") return "mode-not-local-preview";
+  if (value.workflowPrimary !== "local_preview_first" || value.localPreviewPrimary !== true) return "workflow-primary";
+  if (!Array.isArray(value.secondaryEvidenceAllowed) || !value.secondaryEvidenceAllowed.includes("exportReview")) return "secondary-evidence";
   if (value.passed !== true) return "not-passed";
   const requiredIds = [
     "source_document",
@@ -356,6 +359,9 @@ function validateWorkbenchRegionMap(value) {
   if (value.schemaVersion !== 1 || value.milestoneId !== "P6-R1" || value.generatedFrom !== "electron-product-smoke") return undefined;
   if (!value.viewportCss || !Number.isFinite(value.viewportCss.width) || !Number.isFinite(value.viewportCss.height)) return undefined;
   if (!isBoundedString(value.mode, 80)) return undefined;
+  if (value.mode !== "localPreview") return undefined;
+  if (value.workflowPrimary !== "local_preview_first" || value.localPreviewPrimary !== true) return undefined;
+  if (!Array.isArray(value.secondaryEvidenceAllowed) || !value.secondaryEvidenceAllowed.includes("exportReview")) return undefined;
   if (value.passed !== true) return undefined;
   const requiredIds = [
     "source_document",
@@ -392,6 +398,9 @@ function validateWorkbenchRegionMap(value) {
     generatedFrom: "electron-product-smoke",
     viewportCss: value.viewportCss,
     mode: value.mode,
+    workflowPrimary: "local_preview_first",
+    localPreviewPrimary: true,
+    secondaryEvidenceAllowed: ["exportReview"],
     regions: requiredIds.map((id) => byId.get(id)),
     futureCapabilityPolicy: isBoundedString(value.futureCapabilityPolicy, 240) ? value.futureCapabilityPolicy : "",
     passed: true
