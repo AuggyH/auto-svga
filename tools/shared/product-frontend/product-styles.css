@@ -567,7 +567,7 @@ label.isDisabled {
   background: color-mix(in srgb, var(--textPrimary) 6%, transparent);
   color: var(--textSecondary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
+  font-size: var(--visual-font-meta);
   font-weight: 400;
   line-height: 16.5px;
   text-overflow: ellipsis;
@@ -678,7 +678,7 @@ label.isDisabled {
   background: var(--surfaceElevated);
   color: var(--textPrimary);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--visual-font-meta);
   font-weight: 500;
   pointer-events: auto;
   transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
@@ -1240,7 +1240,7 @@ label.isDisabled {
   min-width: 64px;
   color: var(--textSecondary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
+  font-size: var(--visual-font-meta);
   line-height: 16.5px;
   text-align: right;
   white-space: nowrap;
@@ -1535,7 +1535,7 @@ body.isResizingInfoPanel .resizeHandle::after {
   margin: 0;
   padding: 2px 8px;
   border-radius: 10px;
-  font-size: 10px;
+  font-size: var(--font-meta);
   font-weight: 600;
   line-height: 15px;
 }
@@ -1632,7 +1632,7 @@ dd {
   border-radius: 6px;
   background: color-mix(in srgb, var(--warning) 14%, transparent);
   color: var(--warning);
-  font-size: 10px;
+  font-size: var(--font-badge);
   font-style: normal;
   font-weight: 700;
 }
@@ -4038,6 +4038,261 @@ button:disabled {
 
   .modeControl {
     width: 138px;
+  }
+}
+
+/* P6-R1 owner workbench IA: Source / Preview / Inspector foundation. */
+.workspace {
+  min-width: var(--visual-minimum-workbench-width);
+  grid-template-columns:
+    minmax(var(--visual-collapse-strip-width), var(--visual-sidebar-width))
+    minmax(360px, 1fr)
+    minmax(var(--visual-collapse-strip-width), var(--visual-inspector-width)) !important;
+  grid-template-areas: "source preview inspector";
+  gap: var(--visual-space-body);
+  padding: var(--visual-space-body);
+  background: var(--visual-surface-0);
+}
+
+.sourcePanel,
+.previewDeck,
+.inspectorPanel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.sourcePanel,
+.inspectorPanel {
+  position: relative !important;
+  inset: auto !important;
+  display: grid !important;
+  width: auto !important;
+  max-width: none !important;
+  height: 100% !important;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--visual-panel-border);
+  border-radius: var(--visual-radius-panel);
+  background: var(--visual-surface-1);
+  box-shadow: var(--visual-shadow-panel);
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: none !important;
+  visibility: visible !important;
+}
+
+.sourcePanel {
+  grid-area: source;
+}
+
+.previewDeck {
+  display: grid;
+  grid-area: preview;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--visual-space-body);
+  background: var(--visual-surface-0);
+  overflow: hidden;
+}
+
+.workspace.mode-localPreview.withCompare .previewDeck,
+.workspace.mode-exportReview .previewDeck {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inspectorPanel {
+  grid-area: inspector;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.sourceHeader,
+.inspectorPanel .infoHeader {
+  min-height: 56px;
+  padding: var(--panel-header-padding);
+}
+
+.panelCollapseButton {
+  width: var(--visual-icon-button-size);
+  height: var(--visual-icon-button-size);
+  flex: none;
+}
+
+.fileOverviewCard {
+  display: grid;
+  gap: var(--visual-space-tight);
+  padding: var(--visual-card-padding);
+  border-bottom: 1px solid var(--visual-hairline);
+  background: var(--visual-surface-2);
+}
+
+.fileOverviewContent {
+  display: grid;
+  gap: var(--visual-space-tight);
+  min-width: 0;
+}
+
+.fileOverviewEmpty {
+  display: grid;
+  gap: 4px;
+  padding: var(--visual-card-padding);
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--visual-surface-3);
+}
+
+.fileOverviewEmpty strong {
+  color: var(--visual-text-primary);
+  font-size: var(--visual-font-body);
+}
+
+.fileOverviewEmpty span {
+  color: var(--visual-text-secondary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.compactOverviewMetrics {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.compactOverviewMetrics .overviewMetricRow {
+  min-height: 30px;
+  padding: 5px var(--space-3);
+}
+
+.sourceTabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: calc(var(--visual-tab-height) + 16px);
+  grid-auto-rows: minmax(var(--visual-subtab-height), auto);
+}
+
+.sourceTabPanel,
+.inspectorTabPanel {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.inspectorTabPanel {
+  display: grid;
+  align-content: start;
+}
+
+.inspectorActionCard {
+  display: grid;
+  gap: var(--visual-space-tight);
+  padding: var(--visual-card-padding);
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--visual-surface-2);
+}
+
+.inspectorActionCard header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--visual-space-body);
+  color: var(--visual-text-secondary);
+  font-size: var(--visual-font-meta);
+}
+
+.inspectorActionCard strong {
+  color: var(--visual-text-primary);
+}
+
+.inspectorActionRows {
+  display: grid;
+  gap: var(--visual-space-tight);
+}
+
+.inspectorActionRow {
+  min-height: var(--visual-row-height);
+  padding: var(--visual-row-padding);
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--visual-surface-3);
+  color: var(--visual-text-secondary);
+  text-align: left;
+}
+
+.previewDeck .playerBar {
+  min-height: var(--visual-preview-control-height);
+}
+
+.inspectorActionCard p {
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.workspace.sourceCollapsed {
+  grid-template-columns:
+    var(--visual-collapse-strip-width)
+    minmax(380px, 1fr)
+    minmax(var(--visual-collapse-strip-width), var(--visual-inspector-width)) !important;
+}
+
+.workspace.inspectorCollapsed {
+  grid-template-columns:
+    minmax(var(--visual-collapse-strip-width), var(--visual-sidebar-width))
+    minmax(380px, 1fr)
+    var(--visual-collapse-strip-width) !important;
+}
+
+.workspace.sourceCollapsed.inspectorCollapsed {
+  grid-template-columns: var(--visual-collapse-strip-width) minmax(420px, 1fr) var(--visual-collapse-strip-width) !important;
+}
+
+.workspace.sourceCollapsed .sourcePanel > :not(.sourceHeader),
+.workspace.inspectorCollapsed .inspectorPanel > :not(.infoHeader) {
+  display: none !important;
+}
+
+.workspace.sourceCollapsed .sourceHeader,
+.workspace.inspectorCollapsed .inspectorPanel .infoHeader {
+  align-content: start;
+  justify-content: center;
+  padding: var(--space-3);
+}
+
+.workspace.sourceCollapsed .sourceHeader > div,
+.workspace.inspectorCollapsed .inspectorPanel .infoHeader > div {
+  display: none;
+}
+
+.logsPanel {
+  position: fixed !important;
+}
+
+.logsPanel.isHidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+@media (max-width: 980px) {
+  .workspace {
+    grid-template-columns: var(--visual-collapse-strip-width) minmax(360px, 1fr) minmax(236px, 28vw) !important;
+  }
+
+  .workspace:not(.sourceCollapsed) {
+    grid-template-columns: minmax(220px, 25vw) minmax(360px, 1fr) minmax(236px, 28vw) !important;
+  }
+
+  .workspace.mode-localPreview.withCompare .previewDeck,
+  .workspace.mode-exportReview .previewDeck {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace,
+  .workspace:not(.sourceCollapsed),
+  .workspace.inspectorCollapsed,
+  .workspace.sourceCollapsed.inspectorCollapsed {
+    grid-template-columns: var(--visual-collapse-strip-width) minmax(0, 1fr) var(--visual-collapse-strip-width) !important;
+  }
+
+  .sourcePanel > :not(.sourceHeader),
+  .inspectorPanel > :not(.infoHeader) {
+    display: none !important;
   }
 }
 

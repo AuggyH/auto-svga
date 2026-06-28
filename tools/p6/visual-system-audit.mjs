@@ -26,7 +26,7 @@ function countHardcodedColors(css) {
 }
 
 function countHardcodedDeclarations(css, property) {
-  return countMatches(css, new RegExp(`${property}\\s*:\\s*(?!var\\()[^;]+`, "g"));
+  return countMatches(css, new RegExp(`${property}\\s*:\\s*(?!\\s*var\\()[^;]+`, "g"));
 }
 
 function includesClass(source, className) {
@@ -41,6 +41,7 @@ function assertCondition(errors, condition, message) {
 
 const target = JSON.parse(await readFile(targetPath, "utf8"));
 const foundationContract = await readJson("docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json");
+const layoutContract = await readJson("docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json");
 const roadmapCapacityMap = await readJson("docs/product/ROADMAP_UI_CAPACITY_MAP.json");
 const [tokens, styles, shell, app] = await Promise.all([
   readText("tools/shared/product-tokens.css"),
@@ -90,6 +91,32 @@ assertCondition(errors, !inspection.includes("<code>${escapeHtml(issue.code)}</c
 assertCondition(errors, foundationContract.contractId === "MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT", "missing macOS workbench foundation contract id");
 assertCondition(errors, foundationContract.phase2Started === false, "foundation contract must not start Phase 2");
 assertCondition(errors, Array.isArray(foundationContract.regions) && foundationContract.regions.length >= 6, "foundation contract must define workbench regions");
+assertCondition(errors, layoutContract.contractId === "MACOS_WORKBENCH_LAYOUT_CONTRACT", "missing macOS workbench layout contract id");
+assertCondition(errors, layoutContract.phase2Started === false, "layout contract must not start Phase 2");
+assertCondition(errors, layoutContract.minimumSupportedWindow?.width >= 680, "layout contract must define a supported minimum width");
+assertCondition(errors, Array.isArray(layoutContract.regions) && layoutContract.regions.length >= 3, "layout contract must define major layout regions");
+for (const region of layoutContract.regions ?? []) {
+  assertCondition(errors, typeof region.direction === "string", `layout region ${region.id} missing direction`);
+  assertCondition(errors, region.minWidth !== undefined, `layout region ${region.id} missing minWidth`);
+  assertCondition(errors, region.collapsePriority !== undefined, `layout region ${region.id} missing collapsePriority`);
+  assertCondition(errors, typeof region.overflowRule === "string", `layout region ${region.id} missing overflowRule`);
+  assertCondition(errors, typeof region.parentResponseRule === "string", `layout region ${region.id} missing parentResponseRule`);
+}
+assertCondition(errors, shell.includes('data-workbench-region="source-document"'), "shell missing left source document region");
+assertCondition(errors, shell.includes('data-workbench-region="preview-stage"'), "shell missing center preview stage region");
+assertCondition(errors, shell.includes('data-workbench-region="inspector"'), "shell missing right inspector region");
+assertCondition(errors, shell.includes('id="tab-overview"') && shell.includes("fileOverviewCard"), "left source panel missing compact File Overview card");
+assertCondition(errors, shell.includes('data-source-tab="assets"') && shell.includes('data-source-tab="layers"'), "left source panel missing Resources/Layers tabs");
+for (const filterLabel of ["全部", "图片", "序列帧", "未引用", "异常"]) {
+  assertCondition(errors, app.includes(filterLabel), `resource filter missing ${filterLabel}`);
+}
+assertCondition(errors, !/id="infoPanel"[\s\S]*id="tab-overview"/.test(shell), "right inspector must not duplicate file overview");
+assertCondition(errors, /id="logsPanel"[\s\S]*class="[^"]*\bisHidden\b/.test(shell), "Activity/Logs panel must be hidden by default");
+assertCondition(errors, app.includes("renderInspectorActionPlaceholders"), "right inspector must render diagnostics/actions capacity");
+assertCondition(errors, /grid-template-areas:\s*"source preview inspector"/.test(styles), "workspace must use Source / Preview / Inspector grid areas");
+assertCondition(errors, /minmax\(/.test(styles) && /clamp\(/.test(tokens), "layout must use intrinsic minmax/clamp sizing");
+assertCondition(errors, /text-overflow:\s*ellipsis/.test(styles), "text-bearing components must define truncation rules");
+assertCondition(errors, /sourceCollapsed/.test(styles) && /inspectorCollapsed/.test(styles), "panel collapse rules must exist for both side regions");
 const requiredRegions = target.auditRules.requiredWorkbenchRegions ?? [];
 const foundationRegionIds = new Set((foundationContract.regions ?? []).map((region) => region.id));
 for (const regionId of requiredRegions) {
@@ -191,12 +218,22 @@ const foundationAudit = {
   deferredStatuses: [...roadmapStatuses].filter((status) => status !== "implemented")
 };
 
+const layoutAudit = {
+  passed: errors.filter((message) => /layout contract|source document|preview stage|inspector|File Overview|Resources\/Layers|resource filter|duplicate file overview|Activity\/Logs|grid areas|sizing|truncation|collapse/.test(message)).length === 0,
+  layoutContractPath: "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+  regionCount: layoutContract.regions?.length ?? 0,
+  componentCount: layoutContract.components?.length ?? 0,
+  responsiveRuleCount: layoutContract.responsiveRules?.length ?? 0,
+  minimumSupportedWindow: layoutContract.minimumSupportedWindow
+};
+
 const summary = {
   passed: errors.length === 0,
   target: target.target,
   sourceOnly,
   tokenAudit,
   componentAudit,
+  layoutAudit,
   screenshotAudit,
   foundationAudit,
   metrics: {

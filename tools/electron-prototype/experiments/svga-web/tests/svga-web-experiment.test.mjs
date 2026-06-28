@@ -404,7 +404,15 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
     "desktop-reference-media-loaded",
     "desktop-local-compare-loaded",
     "desktop-responsive-local-compare-at-900-x-720",
+    "desktop-responsive-local-compare-at-minimum-size",
     "desktop-local-info-diagnostics-open",
+    "desktop-local-source-resources-open",
+    "desktop-local-source-layers-open",
+    "desktop-local-inspector-actions-open",
+    "desktop-local-logs-hidden-default",
+    "desktop-local-source-collapsed",
+    "desktop-local-inspector-collapsed",
+    "desktop-local-minimum-size",
     "desktop-recovered-from-invalid"
   ]) {
     assert.match(main, new RegExp(scenario));

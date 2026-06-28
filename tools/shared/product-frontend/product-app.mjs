@@ -92,6 +92,9 @@ const infoPanelButton = document.querySelector("#infoPanelButton");
 const logsButton = document.querySelector("#logsButton");
 const themeToggleButton = document.querySelector("#themeToggleButton");
 const settingsButton = document.querySelector("#settingsButton");
+const sourcePanel = document.querySelector("#sourcePanel");
+const sourceCollapseButton = document.querySelector("#sourceCollapseButton");
+const inspectorCollapseButton = document.querySelector("#inspectorCollapseButton");
 const syncBar = document.querySelector("#syncBar");
 const syncProgress = document.querySelector("#syncProgress");
 const syncTime = document.querySelector("#syncTime");
@@ -139,7 +142,8 @@ const fitModeB = document.querySelector("#fitModeB");
 const fitModeReference = document.querySelector("#fitModeReference");
 const toolbar = document.querySelector(".toolbar");
 const infoStatus = document.querySelector("#infoStatus");
-const tabButtons = Array.from(document.querySelectorAll(".tabButton"));
+const sourceTabButtons = Array.from(document.querySelectorAll("[data-source-tab]"));
+const tabButtons = sourceTabButtons;
 const svgaFilePillA = document.querySelector("#svgaFilePillA");
 const svgaFilePillB = document.querySelector("#svgaFilePillB");
 const assetPreviewModal = document.querySelector("#assetPreviewModal");
@@ -838,7 +842,7 @@ function setActiveSidePanel(nextPanel, options = {}) {
     sidePanelReturnFocus = options.trigger ?? document.activeElement;
   }
   activeSidePanel = requestedPanel;
-  infoPanel.classList.toggle("isHidden", activeSidePanel !== "info");
+  infoPanel.classList.remove("isHidden");
   logsPanel.classList.toggle("isHidden", activeSidePanel !== "logs");
   workspace.classList.toggle("withSidePanel", Boolean(activeSidePanel));
   updateButtons();
@@ -897,11 +901,33 @@ function showSettingsToast(message = "设置已更新") {
 }
 
 function openInfoPanel(tabName = "overview", trigger = infoPanelButton) {
-  const target = tabButtons.find((button) => button.dataset.tab === tabName) ?? tabButtons[0];
-  for (const item of tabButtons) item.classList.toggle("isActive", item === target);
-  for (const panel of document.querySelectorAll(".tabPanel")) panel.classList.add("isHidden");
-  document.querySelector(`#tab-${target.dataset.tab}`).classList.remove("isHidden");
-  setActiveSidePanel("info", { trigger });
+  const panelMode = ["overview", "assets", "layers", "diagnostics"].includes(tabName) ? tabName : "overview";
+  infoPanel.dataset.activePanelMode = panelMode;
+  if (tabName === "assets" || tabName === "layers") {
+    switchSourceTab(tabName);
+  }
+  if (tabName === "diagnostics") {
+    document.querySelector("#tab-diagnostics")?.classList.remove("isHidden");
+  }
+  if (activeSidePanel !== "info") {
+    setActiveSidePanel("info", { trigger });
+  } else {
+    renderInfoPanel();
+    updateButtons();
+    window.requestAnimationFrame(() => {
+      focusFirstWithin(infoPanel);
+      refreshLayout();
+    });
+  }
+}
+
+function switchSourceTab(tabName = "assets") {
+  const targetName = tabName === "layers" ? "layers" : "assets";
+  sourcePanel.dataset.activeTab = targetName;
+  infoPanel.dataset.activePanelMode = targetName;
+  for (const item of sourceTabButtons) item.classList.toggle("isActive", item.dataset.sourceTab === targetName);
+  for (const panel of document.querySelectorAll(".sourceTabPanel")) panel.classList.add("isHidden");
+  document.querySelector(`#tab-${targetName}`)?.classList.remove("isHidden");
 }
 
 function applyInfoPanelWidth(width) {
@@ -2004,8 +2030,10 @@ function collectP6SmokeSnapshot(stateId) {
       };
     });
   const activeMode = modeDropdownTrigger?.textContent?.replace(/\s+/g, " ").trim() ?? "unknown";
-  const panel = isElementVisible(infoPanel) && !infoPanel.classList.contains("isHidden") ? "info"
-    : isElementVisible(logsPanel) && !logsPanel.classList.contains("isHidden") ? "logs"
+  const panel = activeSidePanel === "info"
+    ? "info"
+    : activeSidePanel === "logs"
+      ? "logs"
       : "none";
   const modal = !settingsModal.hidden ? "settingsModal" : !assetPreviewModal.hidden ? "assetPreviewModal" : "none";
   const observedStateId = (() => {
@@ -2019,9 +2047,10 @@ function collectP6SmokeSnapshot(stateId) {
     if (reduceMotionToggle.checked && reduceBlurToggle.checked) return "accessibility-toggles-on";
     if (modal === "settingsModal") return "settings-open";
     if (panel === "logs") return "logs-open";
-    if (panel === "info" && !document.querySelector("#tab-diagnostics")?.hidden && isElementVisible(document.querySelector("#tab-diagnostics"))) return "info-diagnostics-open";
-    if (panel === "info" && !document.querySelector("#tab-assets")?.hidden && isElementVisible(document.querySelector("#tab-assets"))) return "info-assets-open";
-    if (panel === "info" && !document.querySelector("#tab-overview")?.hidden && isElementVisible(document.querySelector("#tab-overview"))) return "info-overview-open";
+    if (panel === "info" && infoPanel?.dataset.activePanelMode === "diagnostics") return stateId === "info-diagnostics-open" ? "info-diagnostics-open" : "info-overview-open";
+    if (panel === "info" && infoPanel?.dataset.activePanelMode === "assets") return "info-assets-open";
+    if (panel === "info" && infoPanel?.dataset.activePanelMode === "layers") return "info-assets-open";
+    if (panel === "info" && isElementVisible(document.querySelector("#tab-overview"))) return "info-overview-open";
     if (/导出验收|导出复核|Export review/i.test(activeMode) && players.a.videoItem) return "export-review-loaded";
     if (isCompareActive()) return players.b.videoItem ? "local-compare-loaded" : "local-compare-empty";
     if (players.a.parseStatus === "loading") return "loading";
@@ -2420,12 +2449,14 @@ function collectWorkbenchRegionMap() {
       textSample: (compactText(node) || label).slice(0, 180)
     };
   });
-  const coreRegionIds = new Set(["source_document", "preview_stage", "action_workflow"]);
+  const coreRegionIds = new Set(["source_document", "preview_stage", "inspector", "resources", "action_workflow"]);
   const allRegionsBound = regions.every((region) => region.present && region.rect);
   const coreRegionsVisible = regions
     .filter((region) => coreRegionIds.has(region.id))
     .every((region) => region.visible && region.rect.width > 0 && region.rect.height > 0);
   const localPreviewPrimary = modeSelect.value === "localPreview";
+  const activityRegion = regions.find((region) => region.id === "activity_history");
+  const logsHiddenByDefault = activeSidePanel !== "logs" && activityRegion?.present === true && activityRegion.visible === false;
   return {
     schemaVersion: 1,
     milestoneId: "P6-R1",
@@ -2436,8 +2467,32 @@ function collectWorkbenchRegionMap() {
     localPreviewPrimary,
     secondaryEvidenceAllowed: ["exportReview"],
     regions,
+    defaultVisibility: {
+      activityLogsHidden: logsHiddenByDefault,
+      sourcePanelVisible: regions.find((region) => region.id === "source_document")?.visible === true,
+      previewStageVisible: regions.find((region) => region.id === "preview_stage")?.visible === true,
+      inspectorVisible: regions.find((region) => region.id === "inspector")?.visible === true
+    },
+    sourcePanel: {
+      activeTab: sourcePanel?.dataset.activeTab ?? "assets",
+      compactOverviewPresent: Boolean(document.querySelector("#tab-overview")),
+      resourcesTabPresent: Boolean(document.querySelector("#tab-assets")),
+      layersTabPresent: Boolean(document.querySelector("#tab-layers")),
+      imageKeyPrimaryGroupPresent: Boolean(document.querySelector("[data-workbench-region='image-key']"))
+    },
+    inspectorPanel: {
+      activePanelMode: infoPanel?.dataset.activePanelMode ?? "overview",
+      duplicatesFileOverview: Boolean(infoPanel?.querySelector("#tab-overview, .fileOverviewCard")),
+      diagnosticsPresent: Boolean(document.querySelector("#tab-diagnostics")),
+      actionWorkflowPresent: Boolean(document.querySelector("[data-workbench-region='action-workflow']"))
+    },
     futureCapabilityPolicy: "Future capabilities are mapped to reserved regions but are not exposed as clickable Phase 2/3/4 features in P6-R1.",
-    passed: localPreviewPrimary && allRegionsBound && coreRegionsVisible
+    passed: localPreviewPrimary
+      && allRegionsBound
+      && coreRegionsVisible
+      && logsHiddenByDefault
+      && !document.querySelector("[data-workbench-region='image-key']")
+      && !infoPanel?.querySelector("#tab-overview, .fileOverviewCard")
   };
 }
 
@@ -2506,6 +2561,7 @@ function collectRenderedStateProof(state) {
   const overviewPanelVisible = isElementVisible(document.querySelector("#tab-overview")) && !document.querySelector("#tab-overview")?.classList.contains("isHidden");
   const assetsPanelVisible = isElementVisible(document.querySelector("#tab-assets")) && !document.querySelector("#tab-assets")?.classList.contains("isHidden");
   const diagnosticsPanelVisible = isElementVisible(document.querySelector("#tab-diagnostics")) && !document.querySelector("#tab-diagnostics")?.classList.contains("isHidden");
+  const diagnosticsText = compactText(document.querySelector("#tab-diagnostics"));
   const reportOverviewVisible = isElementVisible(document.querySelector("#tab-overview .overviewGrid, #reportGrid"));
   const statusAnnouncementText = compactText(statusAnnouncer);
   const staleFieldPattern = /文件体积|fileSizeBytes|内存占用|memoryUsage|画布尺寸|canvasSize|播放时长|duration|帧率|fps|图层数量|spriteCount|图片资源|imageCount|文件名|fileName/;
@@ -2626,8 +2682,9 @@ function collectRenderedStateProof(state) {
   }
   if (normalizedState === "info-overview-open") {
     if (!infoPanelVisible) failures.push("info panel is not visible");
-    if (!overviewPanelVisible) failures.push("overview tab is not visible");
-    if (!reportOverviewVisible) failures.push("report overview grid is not visible");
+    if (!diagnosticsPanelVisible) failures.push("inspector diagnostics/actions panel is not visible");
+    if (!/诊断|检查报告|检查结果|当前可用动作/.test(diagnosticsText)) failures.push("inspector diagnostics/actions content is not reachable");
+    if (!overviewPanelVisible && !reportOverviewVisible) failures.push("file overview or report overview is not reachable");
   }
   if (normalizedState === "info-assets-open") {
     if (!infoPanelVisible) failures.push("info panel is not visible");
@@ -2637,7 +2694,7 @@ function collectRenderedStateProof(state) {
   if (normalizedState === "info-diagnostics-open") {
     if (!infoPanelVisible) failures.push("info panel is not visible");
     if (!diagnosticsPanelVisible) failures.push("diagnostics tab is not visible");
-    if (!/诊断|检查报告|检查结果/.test(compactText(document.querySelector("#tab-diagnostics")))) failures.push("diagnostics content is not reachable");
+    if (!/诊断|检查报告|检查结果/.test(diagnosticsText)) failures.push("diagnostics content is not reachable");
   }
   if (normalizedState === "logs-open") {
     if (!logsPanelVisible) failures.push("logs panel is not visible");
@@ -3473,6 +3530,9 @@ async function runProductSmoke() {
     await delay(160);
     await captureArtifact("desktop-inspection");
     await captureArtifact("desktop-info-overview-open");
+    switchSourceTab("layers");
+    infoPanel.dataset.activePanelMode = "diagnostics";
+    await delay(120);
     await recordP6SmokeAction({
       id: "switch-info-panel-tab-assets-visible",
       kind: "click",
@@ -3486,11 +3546,11 @@ async function runProductSmoke() {
       await delay(120);
     });
     await captureArtifact("desktop-info-assets-open");
-    document.querySelector(".tabButton[data-tab='diagnostics']")?.click();
+    openInfoPanel("diagnostics");
     await waitFor(() => isElementVisible(document.querySelector("#tab-diagnostics")));
     await delay(120);
     await captureArtifact("desktop-info-diagnostics-open");
-    document.querySelector(".tabButton[data-tab='assets']")?.click();
+    openInfoPanel("assets");
     await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
     await delay(120);
     const previewButton = document.querySelector("#tab-assets [data-preview-image-key]:not(:disabled)");
@@ -3618,6 +3678,7 @@ async function runProductSmoke() {
     await waitFor(() => canvasIsNonBlank(players.b));
     await captureArtifact("desktop-local-compare-loaded");
     await captureArtifact("desktop-responsive-local-compare-at-900-x-720");
+    await captureArtifact("desktop-responsive-local-compare-at-minimum-size");
     if (compareToggle.checked) compareToggle.click();
     await waitFor(() => !isCompareActive());
     await delay(140);
@@ -3625,22 +3686,39 @@ async function runProductSmoke() {
     openInfoPanel("overview");
     await delay(160);
     await captureArtifact("desktop-local-info-overview-open");
-    document.querySelector(".tabButton[data-tab='assets']")?.click();
+    openInfoPanel("assets");
     await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
     await delay(120);
+    await captureArtifact("desktop-local-source-resources-open");
     await captureArtifact("desktop-local-info-assets-open");
-    document.querySelector(".tabButton[data-tab='diagnostics']")?.click();
+    openInfoPanel("layers");
+    await waitFor(() => isElementVisible(document.querySelector("#tab-layers")));
+    await delay(120);
+    await captureArtifact("desktop-local-source-layers-open");
+    openInfoPanel("diagnostics");
     await waitFor(() => isElementVisible(document.querySelector("#tab-diagnostics")));
     await delay(120);
+    await captureArtifact("desktop-local-inspector-actions-open");
     await captureArtifact("desktop-local-info-diagnostics-open");
-    document.querySelector(".tabButton[data-tab='assets']")?.click();
+    openInfoPanel("assets");
     await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
     await delay(80);
+    await captureArtifact("desktop-local-logs-hidden-default");
+    const localPreviewWorkbenchRegionMap = collectWorkbenchRegionMap();
+    workspace.classList.add("sourceCollapsed");
+    await delay(120);
+    await captureArtifact("desktop-local-source-collapsed");
+    workspace.classList.remove("sourceCollapsed");
+    workspace.classList.add("inspectorCollapsed");
+    await delay(120);
+    await captureArtifact("desktop-local-inspector-collapsed");
+    workspace.classList.remove("inspectorCollapsed");
+    await delay(120);
+    await captureArtifact("desktop-local-minimum-size");
     openFullLogs();
     await waitFor(() => activeSidePanel === "logs");
     await delay(120);
     await captureArtifact("desktop-local-logs-open");
-    const localPreviewWorkbenchRegionMap = collectWorkbenchRegionMap();
     openSettings();
     await waitFor(() => !settingsModal.hidden);
     await delay(120);
@@ -3900,51 +3978,51 @@ function clearDropFeedback(element) {
 function renderInfoPanel() {
   const metrics = players.a.metrics;
   setStatus(infoStatus, players.a.parseStatus === "success" ? "ready" : players.a.parseStatus === "error" ? "error" : players.a.parseStatus === "empty" ? "empty" : "loading");
-  document.querySelector("#tab-overview").innerHTML = renderOverview(metrics, players.a);
-  document.querySelector("#tab-assets").innerHTML = renderAssets(metrics);
-  document.querySelector("#tab-diagnostics").innerHTML = renderDiagnostics(metrics, players.a);
+  const overviewPanel = document.querySelector("#tab-overview");
+  const assetsPanel = document.querySelector("#tab-assets");
+  const layersPanel = document.querySelector("#tab-layers");
+  const diagnosticsPanel = document.querySelector("#tab-diagnostics");
+  if (overviewPanel) overviewPanel.innerHTML = renderOverview(metrics, players.a);
+  if (assetsPanel) assetsPanel.innerHTML = renderAssets(metrics);
+  if (layersPanel) layersPanel.innerHTML = renderLayerList(metrics?.sprites ?? []);
+  if (diagnosticsPanel) diagnosticsPanel.innerHTML = renderDiagnostics(metrics, players.a);
 }
 
 function renderOverview(metrics, slot) {
   if (!metrics) {
-    return renderBilingualEmpty("暂无文件信息。选择或拖入 SVGA 文件后查看详情。", "");
+    return `
+      <div class="fileOverviewEmpty">
+        <strong>暂无文件</strong>
+        <span>选择或拖入本地 SVGA 后显示文件属性。</span>
+      </div>
+    `;
   }
   const fileName = metrics.fileName ?? "n/a";
+  const issueSummary = inspectionIssueSummary(slot.inspectionReport, slot.inspectionStatus);
+  const abnormalityCount = issueSummary.match(/\d+/)?.[0] ?? (issueSummary.includes("未发现") ? "0" : "待检查");
   const rows = [
+    { label: "状态", value: statusText[slot.renderStatus] ?? statusText[slot.parseStatus] ?? "等待" },
     { label: "文件体积", value: formatBytes(metrics.fileSizeBytes), tone: "mono" },
-    { label: "估算内存", value: formatBytes(metrics.memoryBytes), tone: "mono" },
     { label: "画布尺寸", value: formatSize(metrics.sourceWidth, metrics.sourceHeight), tone: "mono" },
     { label: "播放时长", value: formatDuration(metrics) },
     { label: "帧率", value: metrics.fps ? `${metrics.fps} FPS` : "n/a", tone: "mono" },
-    { label: "资源数量", value: metrics.imageCount ? `${metrics.imageCount} 个` : "n/a" }
-  ];
-  const statusRows = [
-    ["解析状态", "parseStatus", slot.parseStatus],
-    ["渲染状态", "renderStatus", slot.renderStatus]
+    { label: "资源数量", value: metrics.imageCount ? `${metrics.imageCount} 个` : "n/a" },
+    { label: "异常", value: `${abnormalityCount}` }
   ];
   return `
-    <div class="overviewContent inspectorSection">
+    <div class="overviewContent fileOverviewContent">
       <div class="overviewFileRow">
         <span>当前文件</span>
         <strong class="overviewFileName" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</strong>
       </div>
-      <dl class="overviewGrid overviewMetricList">
+      <dl class="overviewGrid overviewMetricList compactOverviewMetrics">
       ${rows.map(({ label, value, tone }) => `
         <div class="overviewRow overviewMetricRow metricRow">
           <dt><span>${escapeHtml(label)}</span></dt>
           <dd class="${tone === "mono" ? "monoValue" : ""}" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
         </div>
       `).join("")}
-      <div class="overviewStatusBlock runtimeStatusBlock">
-        ${statusRows.map(([label, key, value]) => `
-        <div class="overviewStatusRow metricRow">
-            <dt><span>${escapeHtml(label)}</span></dt>
-            ${renderStatusBadge(value)}
-          </div>
-        `).join("")}
-      </div>
       </dl>
-      ${renderOverviewDiagnostics(slot)}
     </div>
   `;
 }
@@ -3983,7 +4061,12 @@ function renderOverviewDiagnostics(slot) {
 function renderDiagnostics(metrics, slot) {
   const summary = inspectionIssueSummary(slot.inspectionReport, slot.inspectionStatus);
   if (!metrics) {
-    return renderBilingualEmpty("暂无诊断信息。加载 SVGA 后会显示检查结果。", "");
+    return `
+      <div class="diagnosticsContent inspectorSection">
+        ${renderBilingualEmpty("暂无诊断信息。加载 SVGA 后会显示检查结果。", "")}
+        ${renderInspectorActionPlaceholders()}
+      </div>
+    `;
   }
   const diagnostics = [
     { label: "检查结果", value: summary },
@@ -4010,7 +4093,24 @@ function renderDiagnostics(metrics, slot) {
         <summary>检查报告</summary>
         ${renderAvatarFrameInspectionReport(slot.inspectionReport, slot.inspectionStatus)}
       </details>
+      ${renderInspectorActionPlaceholders()}
     </div>
+  `;
+}
+
+function renderInspectorActionPlaceholders() {
+  return `
+    <section class="inspectorActionCard">
+      <header>
+        <span>当前可用动作</span>
+        <strong>只读检查</strong>
+      </header>
+      <div class="inspectorActionRows">
+        <button class="inspectorActionRow" type="button" disabled>查看诊断结果</button>
+        <button class="inspectorActionRow" type="button" disabled>复核资源异常</button>
+      </div>
+      <p>优化、替换、导出与生成能力已预留在此区域，但不会在 P6-R1 作为可点击功能出现。</p>
+    </section>
   `;
 }
 
@@ -4049,6 +4149,7 @@ function renderAssets(metrics) {
         ["all", "全部"],
         ["image", "图片"],
         ["sequence", "序列帧"],
+        ["unreferenced", "未引用"],
         ["warning", "异常"]
       ].map(([value, label]) => `<button type="button" class="${assetFilter === value ? "isActive" : ""}" data-asset-filter="${value}">${label}</button>`).join("")}
     </div>
@@ -4059,6 +4160,7 @@ function renderAssets(metrics) {
   const assets = buildAssetEntries(metrics);
   const filtered = assets.filter((asset) => {
     if (assetFilter === "all") return asset.kind !== "sprite";
+    if (assetFilter === "unreferenced") return asset.kind !== "sprite" && Number(asset.referenceCount ?? 0) === 0;
     if (assetFilter === "warning") return asset.warnings?.length;
     return asset.kind === assetFilter;
   });
@@ -4769,21 +4871,32 @@ compareToggle.addEventListener("change", () => {
   setAppMode("localPreview");
 });
 infoPanelButton.addEventListener("click", () => {
-  const panel = document.querySelector("#infoPanel");
-  if (panel.classList.contains("isHidden")) {
-    openInfoPanel("overview", infoPanelButton);
-  } else {
-    closeInfoPanel();
-  }
+  openInfoPanel("diagnostics", infoPanelButton);
 });
 logsButton.addEventListener("click", () => {
   if (logsPanel.classList.contains("isHidden")) openFullLogs(logsButton);
   else closeFullLogs();
 });
+sourceCollapseButton?.addEventListener("click", () => {
+  const collapsed = !workspace.classList.contains("sourceCollapsed");
+  workspace.classList.toggle("sourceCollapsed", collapsed);
+  sourceCollapseButton.setAttribute("aria-pressed", String(collapsed));
+  sourceCollapseButton.setAttribute("title", collapsed ? "展开左侧栏" : "收起左侧栏");
+  sourceCollapseButton.setAttribute("aria-label", collapsed ? "展开左侧栏" : "收起左侧栏");
+  window.requestAnimationFrame(refreshLayout);
+});
+inspectorCollapseButton?.addEventListener("click", () => {
+  const collapsed = !workspace.classList.contains("inspectorCollapsed");
+  workspace.classList.toggle("inspectorCollapsed", collapsed);
+  inspectorCollapseButton.setAttribute("aria-pressed", String(collapsed));
+  inspectorCollapseButton.setAttribute("title", collapsed ? "展开右侧栏" : "收起右侧栏");
+  inspectorCollapseButton.setAttribute("aria-label", collapsed ? "展开右侧栏" : "收起右侧栏");
+  window.requestAnimationFrame(refreshLayout);
+});
 settingsButton.addEventListener("click", () => {
   openSettings(settingsButton);
 });
-for (const button of [infoPanelButton, logsButton, settingsButton]) {
+for (const button of [infoPanelButton, logsButton, settingsButton, sourceCollapseButton, inspectorCollapseButton]) {
   activateButtonOnKeyboard(button);
 }
 themeToggleButton.addEventListener("click", () => {
@@ -4900,11 +5013,9 @@ referenceFileInput.addEventListener("change", () => {
   if (file) handleDroppedFile(file, "reference");
 });
 
-for (const button of tabButtons) {
+for (const button of sourceTabButtons) {
   button.addEventListener("click", () => {
-    for (const item of tabButtons) item.classList.toggle("isActive", item === button);
-    for (const panel of document.querySelectorAll(".tabPanel")) panel.classList.add("isHidden");
-    document.querySelector(`#tab-${button.dataset.tab}`).classList.remove("isHidden");
+    switchSourceTab(button.dataset.sourceTab);
   });
 }
 
@@ -5104,7 +5215,7 @@ setupPanelResize(logsPanelResizeHandle, {
 });
 
 document.addEventListener("click", (event) => {
-  if (!activeSidePanel || activeModal) return;
+  if (activeSidePanel !== "logs" || activeModal) return;
   const activePanel = activeSidePanel === "info" ? infoPanel : logsPanel;
   const activeTrigger = activeSidePanel === "info" ? infoPanelButton : logsButton;
   const eventPath = event.composedPath();

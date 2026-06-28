@@ -147,10 +147,57 @@ async function writeJson(filePath, value) {
 
 async function writeVisualSystemAudit() {
   const result = run("node", ["tools/p6/visual-system-audit.mjs"]);
-  await writeJson(path.join(p6Root, "visual-system-audit.json"), JSON.parse(result.stdout));
+  const visualAudit = JSON.parse(result.stdout);
+  await writeJson(path.join(p6Root, "visual-system-audit.json"), visualAudit);
+  await writeJson(path.join(p6Root, "layout-system-audit.json"), {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    headCommit: git(["rev-parse", "HEAD"]),
+    passed: visualAudit.layoutAudit?.passed === true
+      && visualAudit.componentAudit?.passed === true
+      && visualAudit.tokenAudit?.passed === true,
+    layoutAudit: visualAudit.layoutAudit,
+    componentAudit: visualAudit.componentAudit,
+    tokenAudit: visualAudit.tokenAudit,
+    policy: "Source / Preview / Inspector layout, token, and component rules are audited from source and final screenshot targets."
+  });
+  await writeJson(path.join(p6Root, "screenshot-matrix-audit.json"), {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    headCommit: git(["rev-parse", "HEAD"]),
+    passed: visualAudit.screenshotAudit?.passed === true,
+    targetCount: visualAudit.screenshotAudit?.targetCount ?? 0,
+    decodedPngCount: visualAudit.screenshotAudit?.decodedPngCount ?? 0,
+    matrix: (visualAudit.evidenceResults ?? [])
+      .filter((record) => record.kind === "png")
+      .map((record) => ({
+        id: record.id,
+        path: record.path,
+        width: record.width,
+        height: record.height,
+        sizeBytes: record.sizeBytes,
+        sha256: record.sha256
+      })),
+    coverage: {
+      localEmpty: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.id === "desktop_empty" || record.path?.includes("desktop-empty"))),
+      localLoaded: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-loaded"))),
+      localNormal900x720: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-responsive-local-preview-at-900-x-720"))),
+      minimumSize: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("minimum-size"))),
+      compareCompact: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("local-compare"))),
+      sourceResources: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("source-resources"))),
+      sourceLayers: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("source-layers"))),
+      inspectorActions: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("inspector-actions"))),
+      logsHiddenDefault: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("logs-hidden-default")))
+    },
+    policy: "A broad screenshot matrix must cover normal, 900x720, minimum-size, source, inspector, logs, settings, and compare states."
+  });
   await writeJson(
     path.join(p6Root, "macos-workbench-foundation-contract.json"),
     await readJson(path.join(repoRoot, "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json"))
+  );
+  await writeJson(
+    path.join(p6Root, "macos-workbench-layout-contract.json"),
+    await readJson(path.join(repoRoot, "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json"))
   );
   await writeJson(
     path.join(p6Root, "roadmap-ui-capacity-map.json"),
@@ -447,6 +494,11 @@ async function writeReviewerBEvidenceRequest() {
     ["motionAssetAudit", "Confirm Motion Asset Audit read-only panel in Desktop and Web evidence.", "desktop-inspection.png"],
     ["runtimeLogs", "Confirm runtime log panel content and controls in the local preview owner flow.", "desktop-local-logs-open.png"],
     ["settings", "Confirm settings panel geometry, values, and close behavior in the local preview owner flow.", "desktop-local-settings-open.png"],
+    ["macOSWorkbenchLayoutSystem", "Confirm Source / Preview / Inspector workbench layout uses reusable layout rules, panel/card/row semantics, and no one-breakpoint patching.", "layout-system-audit.json"],
+    ["LeftSourceResourcesIA", "Confirm left Source panel has compact File Overview plus Resources/Layers structure and imageKey only as an attribute.", "desktop-local-source-resources-open.png"],
+    ["RightInspectorActionsIA", "Confirm right panel is Diagnostics / Actions and does not duplicate the File Overview.", "desktop-local-inspector-actions-open.png"],
+    ["LocalPreviewPrimaryWorkflow", "Confirm local single-file SVGA preview is primary and compare/export-review remain secondary flows.", "workbench-region-map.json"],
+    ["ResponsiveRuleCoverage", "Confirm normal, 900x720, and minimum-size screenshots are covered by layout rules with no clipped primary controls.", "screenshot-matrix-audit.json"],
     ["macosVisualSystem", "Confirm macOS-aligned visual system, quiet chrome, hierarchy, typography, spacing, PreviewCard consistency, panel behavior, resources IA, logs UX, settings scope, and phase-one local preview focus.", "visual-system-audit.json"],
     ["macOSAppFoundation", "Confirm the macOS SVGA Workbench six-region foundation supports source/document, preview stage, inspector, resources, action/workflow, and activity/history without exposing inactive future features.", "workbench-region-map.json"],
     ["RoadmapCapacity", "Confirm Phase 2/3/4, mid-term multi-format, and long-term Agent/ComfyUI capacity are mapped to stable regions without becoming visible P6-R1 product features.", "roadmap-ui-capacity-map.json"],
@@ -505,15 +557,26 @@ async function writeOwnerFeedbackClosureMap() {
     ".artifacts/product/P6/desktop-local-info-overview-open.png",
     ".artifacts/product/P6/desktop-local-info-assets-open.png",
     ".artifacts/product/P6/desktop-local-info-diagnostics-open.png",
+    ".artifacts/product/P6/desktop-local-source-resources-open.png",
+    ".artifacts/product/P6/desktop-local-source-layers-open.png",
+    ".artifacts/product/P6/desktop-local-inspector-actions-open.png",
+    ".artifacts/product/P6/desktop-local-logs-hidden-default.png",
+    ".artifacts/product/P6/desktop-local-source-collapsed.png",
+    ".artifacts/product/P6/desktop-local-inspector-collapsed.png",
+    ".artifacts/product/P6/desktop-local-minimum-size.png",
+    ".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png",
     ".artifacts/product/P6/desktop-local-logs-open.png",
     ".artifacts/product/P6/desktop-local-settings-open.png",
     ".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png",
     ".artifacts/product/P6/desktop-responsive-local-compare-at-900-x-720.png",
     ".artifacts/product/P6/desktop-local-compare-loaded.png",
     ".artifacts/product/P6/visual-system-audit.json",
+    ".artifacts/product/P6/layout-system-audit.json",
+    ".artifacts/product/P6/screenshot-matrix-audit.json",
     ".artifacts/product/P6/workbench-region-map.json",
     ".artifacts/product/P6/roadmap-ui-capacity-map.json",
-    ".artifacts/product/P6/macos-workbench-foundation-contract.json"
+    ".artifacts/product/P6/macos-workbench-foundation-contract.json",
+    ".artifacts/product/P6/macos-workbench-layout-contract.json"
   ];
   const evidenceByPath = {};
   for (const repoPath of requiredArtifacts) {
@@ -549,6 +612,65 @@ async function writeOwnerFeedbackClosureMap() {
       beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
       afterEvidence: [evidenceByPath[".artifacts/product/P6/desktop-local-info-assets-open.png"]],
       reviewerBCategory: "assetDetails",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-left-source-resources-layers-ia",
+      ownerFinding: "Left side must be file properties plus resource/layer structure, not a long mixed list or imageKey primary group.",
+      status: "fixed",
+      component: "Left Source panel",
+      changedFiles: [
+        "tools/shared/product-frontend/product-shell.html",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED final macOS workbench foundation pass" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/desktop-local-source-resources-open.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-source-layers-open.png"],
+        evidenceByPath[".artifacts/product/P6/macos-workbench-layout-contract.json"]
+      ],
+      reviewerBCategory: "LeftSourceResourcesIA",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-right-inspector-actions-ia",
+      ownerFinding: "Right panel must be Diagnostics / Actions, stop duplicating file overview, and reserve future capacity without fake active controls.",
+      status: "fixed",
+      component: "Right Inspector / Actions",
+      changedFiles: [
+        "tools/shared/product-frontend/product-shell.html",
+        "tools/shared/product-frontend/product-app.mjs",
+        "tools/shared/product-frontend/product-styles.css"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED final macOS workbench foundation pass" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/desktop-local-inspector-actions-open.png"],
+        evidenceByPath[".artifacts/product/P6/workbench-region-map.json"]
+      ],
+      reviewerBCategory: "RightInspectorActionsIA",
+      backlogReason: null
+    },
+    {
+      feedbackId: "owner-feedback-layout-system-responsive-rules",
+      ownerFinding: "Prior 900x720 issue is a layout-system problem, not a single screenshot bug; normal, 900x720, and minimum sizes need reusable rules.",
+      status: "fixed",
+      component: "Workbench layout system",
+      changedFiles: [
+        "tools/shared/product-frontend/product-styles.css",
+        "tools/p6/visual-system-audit.mjs",
+        "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
+        "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json"
+      ],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "900x720 owner-visible layout issue generalized" }],
+      afterEvidence: [
+        evidenceByPath[".artifacts/product/P6/layout-system-audit.json"],
+        evidenceByPath[".artifacts/product/P6/screenshot-matrix-audit.json"],
+        evidenceByPath[".artifacts/product/P6/desktop-local-minimum-size.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png"]
+      ],
+      reviewerBCategory: "ResponsiveRuleCoverage",
       backlogReason: null
     },
     {
@@ -638,6 +760,7 @@ async function writeOwnerFeedbackClosureMap() {
         evidenceByPath[".artifacts/product/P6/workbench-region-map.json"],
         evidenceByPath[".artifacts/product/P6/roadmap-ui-capacity-map.json"],
         evidenceByPath[".artifacts/product/P6/macos-workbench-foundation-contract.json"],
+        evidenceByPath[".artifacts/product/P6/macos-workbench-layout-contract.json"],
         evidenceByPath[".artifacts/product/P6/visual-system-audit.json"],
         evidenceByPath[".artifacts/product/P6/desktop-responsive-local-compare-at-900-x-720.png"],
         evidenceByPath[".artifacts/product/P6/desktop-local-info-diagnostics-open.png"]
@@ -659,7 +782,28 @@ async function writeOwnerFeedbackClosureMap() {
     phase2Started: false,
     closureItemCount: closureItems.length,
     closureItems,
-    backlogDeferrals: [],
+    backlogDeferrals: [
+      {
+        id: "phase2-optimization-actions",
+        status: "deferred",
+        reason: "Phase 2 optimization, before/after, Save As, and re-validation are structurally reserved in Resources + Inspector Actions + Preview, but are not P6-R1 features."
+      },
+      {
+        id: "phase3-replaceable-element-editing",
+        status: "deferred",
+        reason: "imageKey/image/text/key editing is reserved for Layers/Resources + Inspector Properties + Preview and remains inactive in P6-R1."
+      },
+      {
+        id: "phase4-sequence-anti-flicker",
+        status: "deferred",
+        reason: "sequence-frame anti-flicker repair is reserved for future sequence groups + diagnostics + before/after preview and is not implemented in P6-R1."
+      },
+      {
+        id: "midterm-multiformat-agent-generation",
+        status: "deferred",
+        reason: "multi-format, ComfyUI, Agent API, Motion Plan, and generation flows remain roadmap capacity only and require separate approval."
+      }
+    ],
     allOwnerBlockingItemsFixed,
     allComplaintsClosed: allOwnerBlockingItemsFixed,
     productOwnerHumanGateStillRequired: true,

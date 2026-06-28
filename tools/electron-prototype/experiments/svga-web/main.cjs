@@ -887,9 +887,17 @@ function validateArtifactScenario(value) {
     "desktop-reference-media-loaded",
     "desktop-local-compare-loaded",
     "desktop-responsive-local-compare-at-900-x-720",
+    "desktop-responsive-local-compare-at-minimum-size",
     "desktop-responsive-local-preview-at-900-x-720",
     "desktop-local-info-overview-open",
     "desktop-local-info-assets-open",
+    "desktop-local-source-resources-open",
+    "desktop-local-source-layers-open",
+    "desktop-local-inspector-actions-open",
+    "desktop-local-logs-hidden-default",
+    "desktop-local-source-collapsed",
+    "desktop-local-inspector-collapsed",
+    "desktop-local-minimum-size",
     "desktop-info-diagnostics-open",
     "desktop-local-info-diagnostics-open",
     "desktop-local-logs-open",
@@ -1888,7 +1896,8 @@ function stateForScenario(scenario) {
     "desktop-recovered-from-invalid": "recovered-from-invalid",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open",
     "desktop-info-diagnostics-open": "info-diagnostics-open",
-    "desktop-local-info-diagnostics-open": "info-diagnostics-open"
+    "desktop-local-info-diagnostics-open": "info-diagnostics-open",
+    "desktop-local-inspector-actions-open": "info-diagnostics-open"
   }[scenario];
 }
 
@@ -1991,7 +2000,9 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(900, 720);
   if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(900, 720);
   if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(900, 720);
-  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720") {
+  if (scenario === "desktop-local-minimum-size") window.setContentSize(720, 640);
+  if (scenario === "desktop-responsive-local-compare-at-minimum-size") window.setContentSize(720, 640);
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
   if (scenario === "desktop-invalid") {
@@ -2007,7 +2018,7 @@ async function captureProductArtifact(window, scenario) {
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
   await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName);
-  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720") {
+  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
   } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
     window.setSize(originalSize[0], originalSize[1]);

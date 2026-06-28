@@ -8,7 +8,7 @@ Date: 2026-06-28
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 - State: terminal_human_required
 - Next Action: product_owner_human_gate
-- The narrow Activity/Logs and local foundation evidence repair is ready for Product Owner Human Gate after regenerated P6 evidence, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
+- The macOS workbench foundation repair is ready for Product Owner Human Gate after regenerated P6 evidence, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -87,6 +87,17 @@ Date: 2026-06-28
   records the previous and approved new SHA-256 values under
   `webSourceOfTruthHashLineage`; all required item IDs, counts, AC-01 through
   AC-15, product scope, and `phase2Started=false` remain unchanged.
+- Product Owner returned `OWNER_REPAIR_REQUIRED` for the macOS UI/UX
+  foundation after evaluating whether the prior candidate could support the
+  approved future product roadmap. The current repair rebuilds the owner-visible
+  shell around a left Source panel, center Preview Stage, and right
+  Diagnostics/Actions inspector while keeping Phase 2, editing, multi-format,
+  signing, notarization, release, and Windows scope not started.
+- `docs/loop/contracts/P6-R1_BASELINE.json` now records the owner-authorized
+  macOS workbench foundation hash lineage for Web source-of-truth files and
+  shared product frontend reference files. Required item IDs, required counts,
+  AC-01 through AC-15, product scope, `contractRevision=3`, `repairRound=0`,
+  and `phase2Started=false` remain unchanged.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are
   no further than `integrated_resolved_pending_external_review`; none are
   externally confirmed closed before Product Owner Human Gate and final independent

@@ -10,9 +10,14 @@
     "tools/shared/product-frontend/product-app.mjs",
     "tools/shared/product-frontend/inspection-report-view.mjs",
     "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json",
+    "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
     "docs/product/ROADMAP_UI_CAPACITY_MAP.json"
   ],
   "requiredTokens": [
+    "--visual-surface-0",
+    "--visual-surface-1",
+    "--visual-surface-2",
+    "--visual-surface-3",
     "--visual-window-background",
     "--visual-toolbar-background",
     "--visual-panel-surface",
@@ -48,6 +53,17 @@
     "--preview-card-surface",
     "--preview-card-border",
     "--preview-card-radius",
+    "--visual-sidebar-width",
+    "--visual-inspector-width",
+    "--visual-collapse-strip-width",
+    "--visual-minimum-workbench-width",
+    "--visual-row-height",
+    "--visual-row-padding",
+    "--visual-card-padding",
+    "--visual-tab-height",
+    "--visual-subtab-height",
+    "--visual-icon-button-size",
+    "--visual-preview-control-height",
     "--panel-header-padding",
     "--metric-card-surface",
     "--resource-row-surface",
@@ -74,7 +90,18 @@
     "emptyState",
     "inlineFeedback",
     "inspectorSection",
-    "compactToolbar"
+    "compactToolbar",
+    "workbenchPanel",
+    "sourcePanel",
+    "previewDeck",
+    "inspectorPanel",
+    "fileOverviewCard",
+    "sourceTabs",
+    "sourceTabPanel",
+    "inspectorTabPanel",
+    "inspectorActionCard",
+    "panelCollapseButton",
+    "layerRow"
   ],
   "ownerVisibleCopyBans": [
     "SVGA 播放与导出验收",
@@ -101,6 +128,13 @@
     "diagnostics",
     "logs",
     "settings",
+    "source_resources",
+    "source_layers",
+    "inspector_actions",
+    "logs_hidden_default",
+    "source_collapsed",
+    "inspector_collapsed",
+    "minimum_size",
     "local_preview_900x720",
     "compare_compact_900x720",
     "both_loaded_ab",
@@ -108,6 +142,34 @@
     "roadmap_capacity_map"
   ],
   "primaryOwnerEvidenceTargets": [
+    {
+      "id": "desktop_empty",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-empty.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_loaded",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-loaded.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_invalid",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-invalid.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_recovered",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-recovered-from-invalid.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
     {
       "id": "desktop_local_info_overview",
       "kind": "png",
@@ -123,11 +185,60 @@
       "minimumHeight": 720
     },
     {
+      "id": "desktop_local_source_resources",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-source-resources-open.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_source_layers",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-source-layers-open.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_inspector_actions",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-inspector-actions-open.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
       "id": "desktop_local_info_diagnostics",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-info-diagnostics-open.png",
       "minimumWidth": 900,
       "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_logs_hidden_default",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-logs-hidden-default.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_source_collapsed",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-source-collapsed.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_inspector_collapsed",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-inspector-collapsed.png",
+      "minimumWidth": 900,
+      "minimumHeight": 720
+    },
+    {
+      "id": "desktop_local_minimum_size",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-local-minimum-size.png",
+      "minimumWidth": 720,
+      "minimumHeight": 640
     },
     {
       "id": "desktop_local_logs",
@@ -158,6 +269,13 @@
       "minimumHeight": 720
     },
     {
+      "id": "desktop_local_compare_minimum_size",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png",
+      "minimumWidth": 720,
+      "minimumHeight": 640
+    },
+    {
       "id": "workbench_region_map",
       "kind": "json",
       "path": ".artifacts/product/P6/workbench-region-map.json"
@@ -171,6 +289,11 @@
       "id": "workbench_foundation_contract",
       "kind": "json",
       "path": "docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json"
+    },
+    {
+      "id": "workbench_layout_contract",
+      "kind": "json",
+      "path": "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json"
     },
     {
       "id": "roadmap_capacity_map",

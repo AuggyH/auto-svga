@@ -7,25 +7,25 @@
     {
       "capability": "current_svga_preview_playback_inspection",
       "phase": "P6-R1",
-      "hostRegions": ["preview_stage", "inspector", "activity_history"],
+      "hostRegions": ["source_document", "resources", "layers", "preview_stage", "inspector", "activity_history"],
       "status": "implemented"
     },
     {
       "capability": "asset_classification_sorting_abnormal_image_detection_memory_file_size_perf_safe_optimization_revalidate",
       "phase": "Phase 2",
-      "hostRegions": ["inspector", "resources", "activity_history"],
+      "hostRegions": ["resources", "inspector", "preview_stage", "activity_history"],
       "status": "deferred_phase2_foundation_ready"
     },
     {
       "capability": "imageKey_image_text_key_editing_replacement_validation",
       "phase": "Phase 3",
-      "hostRegions": ["resources", "preview_stage", "action_workflow"],
+      "hostRegions": ["layers", "resources", "inspector", "preview_stage", "action_workflow"],
       "status": "deferred_phase3_foundation_ready"
     },
     {
       "capability": "sequence_frame_group_detection_alpha_scheduling_before_after_anti_flicker",
       "phase": "Phase 4",
-      "hostRegions": ["resources", "preview_stage", "inspector"],
+      "hostRegions": ["resources", "inspector", "preview_stage", "activity_history"],
       "status": "deferred_phase4_foundation_ready"
     },
     {

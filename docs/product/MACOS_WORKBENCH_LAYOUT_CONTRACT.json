@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "P6-R1",
+  "contractId": "MACOS_WORKBENCH_LAYOUT_CONTRACT",
+  "purpose": "Define the owner-visible macOS workbench layout rules for Source / Preview / Inspector without starting Phase 2.",
+  "productionApproved": false,
+  "phase2Started": false,
+  "minimumSupportedWindow": {
+    "width": 720,
+    "height": 640,
+    "policy": "Preview Stage keeps priority; side regions collapse before primary playback controls become unreadable."
+  },
+  "regions": [
+    {
+      "id": "source_document",
+      "role": "left_panel",
+      "direction": "column",
+      "spacingToken": "--visual-space-body",
+      "paddingToken": "--visual-card-padding",
+      "widthToken": "--visual-sidebar-width",
+      "minWidth": 44,
+      "maxWidth": 340,
+      "hugContent": false,
+      "fillContainer": true,
+      "collapsePriority": 1,
+      "contentPriority": ["file_overview", "source_tabs", "resource_rows"],
+      "overflowRule": "panel scrolls vertically; file names truncate with title text",
+      "parentResponseRule": "collapse to semantic strip before Preview Stage shrinks below minimum"
+    },
+    {
+      "id": "preview_stage",
+      "role": "center_stage",
+      "direction": "column",
+      "spacingToken": "--visual-space-section",
+      "paddingToken": "--visual-card-padding",
+      "minWidth": 360,
+      "maxWidth": "fill",
+      "minHeight": 360,
+      "hugContent": false,
+      "fillContainer": true,
+      "collapsePriority": 99,
+      "contentPriority": ["loaded_canvas", "primary_action", "playback_controls", "metadata"],
+      "overflowRule": "preview canvas scales; playback controls stay readable; metadata collapses first",
+      "parentResponseRule": "keeps visual anchor at normal, 900x720, and minimum supported sizes"
+    },
+    {
+      "id": "inspector",
+      "role": "right_panel",
+      "direction": "column",
+      "spacingToken": "--visual-space-body",
+      "paddingToken": "--visual-card-padding",
+      "widthToken": "--visual-inspector-width",
+      "minWidth": 44,
+      "maxWidth": 360,
+      "hugContent": false,
+      "fillContainer": true,
+      "collapsePriority": 2,
+      "contentPriority": ["diagnostics", "review_only_actions", "future_properties"],
+      "overflowRule": "diagnostic copy wraps in detail surfaces; actions never masquerade as active future features",
+      "parentResponseRule": "collapse to semantic strip after source panel and before Preview Stage loses controls"
+    }
+  ],
+  "components": [
+    {
+      "id": "FileOverviewCard",
+      "hostRegion": "source_document",
+      "kind": "card",
+      "direction": "column",
+      "rowHeightToken": "--visual-row-height",
+      "wrapping": "labels stay one line; values truncate with accessible full text",
+      "forbidden": ["duplicate in inspector", "consume resource list height"]
+    },
+    {
+      "id": "ResourceRow",
+      "hostRegion": "source_document",
+      "kind": "row",
+      "direction": "row",
+      "rowHeightToken": "--visual-row-height",
+      "wrapping": "resource name truncates; badges never wrap vertically",
+      "forbidden": ["imageKey as primary sidebar group"]
+    },
+    {
+      "id": "LayerRow",
+      "hostRegion": "source_document",
+      "kind": "row",
+      "direction": "row",
+      "rowHeightToken": "--visual-row-height",
+      "wrapping": "layer name truncates; sprite attributes remain secondary"
+    },
+    {
+      "id": "PreviewCard",
+      "hostRegion": "preview_stage",
+      "kind": "card",
+      "direction": "column",
+      "wrapping": "file identity/status/action/metadata/playback share one template across local, compare, and export-review"
+    },
+    {
+      "id": "InspectorPanel",
+      "hostRegion": "inspector",
+      "kind": "panel",
+      "direction": "column",
+      "wrapping": "diagnostics wrap in cards; unavailable future actions stay review-only text"
+    },
+    {
+      "id": "ActivityRow",
+      "hostRegion": "activity_history",
+      "kind": "row",
+      "direction": "row",
+      "wrapping": "user-readable message first; internal diagnostics behind advanced disclosure"
+    },
+    {
+      "id": "StatusBadge",
+      "hostRegion": "all",
+      "kind": "badge",
+      "direction": "row",
+      "wrapping": "never vertical; truncate only at intentional compact icon threshold"
+    }
+  ],
+  "responsiveRules": [
+    {
+      "id": "normal",
+      "condition": "width >= 981",
+      "layout": "source preview inspector grid",
+      "required": ["source visible", "preview visible", "inspector visible"]
+    },
+    {
+      "id": "compact_900x720",
+      "condition": "width <= 980",
+      "layout": "narrow source and inspector, preview remains centered",
+      "required": ["compare/export cards stack when needed", "primary playback controls readable"]
+    },
+    {
+      "id": "minimum_supported",
+      "condition": "width >= 720 and height >= 640",
+      "layout": "source and inspector may collapse to strips",
+      "required": ["no one-character status chips", "no hidden primary actions", "no overlapping controls"]
+    }
+  ],
+  "futureCapacityRules": [
+    "Phase 2 optimization lives in Resources + Inspector Actions + Preview before/after; not visible as active P6-R1 buttons.",
+    "Phase 3 imageKey/text/key editing lives in Layers/Resources + Inspector Properties + Preview; not visible as active P6-R1 editing.",
+    "Phase 4 sequence repair lives in sequence resource groups + diagnostics + before/after preview; not implemented in P6-R1.",
+    "Multi-format and Agent/Motion Plan capacity must attach through adapters/jobs later, not through current clickable placeholders."
+  ]
+}

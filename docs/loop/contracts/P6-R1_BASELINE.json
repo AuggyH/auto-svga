@@ -17,20 +17,20 @@
     "ownerApprovedBoundedRevision": "onlyApprovedForOwnerVisibleUiUxPolish;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift"
   },
   "webSourceOfTruthHashes": {
-    "tools/svga-player-preview/index.html": "a2d526a81595f1b5aa216dbf7967ba2e869e78bf01d3c27fe873ea190f198f11",
+    "tools/svga-player-preview/index.html": "ccc4ee7da32c581d803a5be5eded75831868c5112ada2d0262c1e8c666052380",
     "tools/svga-player-preview/styles.css": "06f2870b0f2c7644067e414dab9f596e6e898eb5e522de417f799304e0780f5d",
     "tools/svga-player-preview/main.js": "bf1246a3184e5be4c8c0a8bc82ed6198b9247827296eca9b394b4f5d03fb2d42",
     "tools/svga-player-preview/inspection-report-view.mjs": "909ef6cf8358cacf22d50da0cf127cc482532cd7ec31b926c48b9d2ea11afa75",
     "tools/svga-player-preview/server.mjs": "721ec56fb2f954af3e9d0189c89cd42a750d78cea708daa72df0a948422fc592",
-    "tools/shared/product-tokens.css": "8c847cd898ec9a466fb8f4e67f3f1ed088111bfa3c7d3535e12fad02db7f723c",
+    "tools/shared/product-tokens.css": "1966f150c47a2af07647532d43974e374142cd8cd56eebe0c792a638ea8ab4d1",
     "docs/product/P6_WEB_PARITY_CONTRACT.json": "b7cd8edaf65fa67a5d72d4da833cc8cd32ffc47fa9558f87157a17f726983b9a",
     "docs/product/P6_WEB_FEATURE_INVENTORY.md": "cdfa6f4441f98edbf8b42c18576bd6dbce6240b4e25d5d1eac5c36922a7bb726"
   },
   "milestoneStartReferenceHashes": {
-    "tools/shared/product-frontend/product-shell.html": "ebea19a3e15f21e4125f94ecd2de44c5dfc73e30a28f38498995773c6f0c996d",
-    "tools/shared/product-frontend/product-app.mjs": "83c7e49db2c502b10de140fb794c822a0a1691c402508dc7cfc888d5d71bddc1",
-    "tools/shared/product-frontend/product-styles.css": "a29b62c2cba24b840816d2605468842b4b081c2275f91449928d175d48689677",
-    "tools/p6/runtime-scenarios/state-evidence.mjs": "0b616cd6c1ca7b7ee87ef61f14cb983ede76a181d546a366d01545f4b83d0812"
+    "tools/shared/product-frontend/product-shell.html": "7e3c046f70dd6e43c7606acfdbfec183062f967d0e1e5c7daa0cf56ce811f847",
+    "tools/shared/product-frontend/product-app.mjs": "07cafa23b261f92441369d3e7abaeb8242cb458877081d1ff95e367caf89c00b",
+    "tools/shared/product-frontend/product-styles.css": "1ee547a5ad39d59cb4926f6c50b07d902a8202660b5845a4bd454f0fcc1c5e8a",
+    "tools/p6/runtime-scenarios/state-evidence.mjs": "35bc18c0abe912f6d19606a6728603cc4035639c9a9eb729f7f4605c6bb5781f"
   },
   "requiredItemIds": {
     "regions": [
@@ -145,7 +145,7 @@
     "states": 22,
     "motions": 9
   },
-  "snapshotSha256": "64fc27964ef48af6aac8750b08194a3c7cf9711b75195a522b77893f5655f5b3",
+  "snapshotSha256": "294d1105e4d17cb163808feb5a3f3576a78ad38a612ec557b1dbf122d111cd59",
   "snapshotSha256Algorithm": {
     "name": "top_level_snapshotSha256_omitted_recursive_key_sorted_compact_json_sha256",
     "version": 1,
@@ -177,6 +177,65 @@
           "previousSha256": "4567c81242e31e7303e3e0de25bc5f8f00657e3c2322fdf81aec8e42bc4545ef",
           "approvedSha256": "8c847cd898ec9a466fb8f4e67f3f1ed088111bfa3c7d3535e12fad02db7f723c",
           "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        }
+      ]
+    },
+    {
+      "revisionId": "owner_visible_macos_workbench_foundation_revision_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "OWNER_REPAIR_REQUIRED macOS workbench UI foundation pass",
+      "reason": "owner_visible_macos_workbench_foundation_ia_layout_revision",
+      "scope": "bounded_to_current_owner_visible_macos_workbench_ui_foundation_only",
+      "sourceReviewPacketLabel": "Product Owner decision attached in Codex thread; Figma Make used as IA/design reference only",
+      "sourceBlockingHead": "5ce06e9ab628f59df7df89a8607bba4eb6d0baa1",
+      "approvedFiles": [
+        {
+          "path": "tools/svga-player-preview/index.html",
+          "previousSha256": "a2d526a81595f1b5aa216dbf7967ba2e869e78bf01d3c27fe873ea190f198f11",
+          "approvedSha256": "ccc4ee7da32c581d803a5be5eded75831868c5112ada2d0262c1e8c666052380",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        },
+        {
+          "path": "tools/shared/product-tokens.css",
+          "previousSha256": "8c847cd898ec9a466fb8f4e67f3f1ed088111bfa3c7d3535e12fad02db7f723c",
+          "approvedSha256": "1966f150c47a2af07647532d43974e374142cd8cd56eebe0c792a638ea8ab4d1",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        }
+      ]
+    }
+  ],
+  "milestoneStartReferenceHashLineage": [
+    {
+      "revisionId": "owner_visible_macos_workbench_foundation_reference_update_2026_06_28",
+      "authorizedBy": "Product Owner",
+      "authorization": "OWNER_REPAIR_REQUIRED macOS workbench UI foundation pass",
+      "reason": "shared_product_frontend_and_evidence_reference_update_for_owner_visible_macos_workbench_foundation",
+      "scope": "bounded_to_current_owner_visible_macos_workbench_ui_foundation_and_validation_evidence_only",
+      "sourceBlockingHead": "5ce06e9ab628f59df7df89a8607bba4eb6d0baa1",
+      "approvedFiles": [
+        {
+          "path": "tools/shared/product-frontend/product-shell.html",
+          "previousSha256": "ebea19a3e15f21e4125f94ecd2de44c5dfc73e30a28f38498995773c6f0c996d",
+          "approvedSha256": "7e3c046f70dd6e43c7606acfdbfec183062f967d0e1e5c7daa0cf56ce811f847",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/shared/product-frontend/product-app.mjs",
+          "previousSha256": "83c7e49db2c502b10de140fb794c822a0a1691c402508dc7cfc888d5d71bddc1",
+          "approvedSha256": "07cafa23b261f92441369d3e7abaeb8242cb458877081d1ff95e367caf89c00b",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/shared/product-frontend/product-styles.css",
+          "previousSha256": "a29b62c2cba24b840816d2605468842b4b081c2275f91449928d175d48689677",
+          "approvedSha256": "1ee547a5ad39d59cb4926f6c50b07d902a8202660b5845a4bd454f0fcc1c5e8a",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        },
+        {
+          "path": "tools/p6/runtime-scenarios/state-evidence.mjs",
+          "previousSha256": "0b616cd6c1ca7b7ee87ef61f14cb983ede76a181d546a366d01545f4b83d0812",
+          "approvedSha256": "35bc18c0abe912f6d19606a6728603cc4035639c9a9eb729f7f4605c6bb5781f",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
         }
       ]
     }

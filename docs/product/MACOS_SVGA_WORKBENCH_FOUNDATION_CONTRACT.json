@@ -10,7 +10,7 @@
       "label": "Source / Document",
       "hostSelector": "[data-workbench-region='source-document']",
       "status": "implemented",
-      "currentScope": "Local file and mode context only."
+      "currentScope": "Compact File Overview plus Resources/Layers source structure. File basics live here, not in the right Inspector."
     },
     {
       "id": "preview_stage",
@@ -24,14 +24,21 @@
       "label": "Inspector",
       "hostSelector": "[data-workbench-region='inspector']",
       "status": "implemented",
-      "currentScope": "Readable overview, current file facts, and report-backed diagnostics."
+      "currentScope": "Diagnostics, review-only actions, and future property/action capacity. It must not duplicate File Overview."
     },
     {
       "id": "resources",
       "label": "Resources",
       "hostSelector": "[data-workbench-region='resources']",
       "status": "foundation_ready",
-      "currentScope": "Designer-readable resource rows and sequence grouping surface; no editing or optimization actions."
+      "currentScope": "Designer-readable Resources tab with filters for all, images, sequence frames, unreferenced, and abnormal resources; no editing or optimization actions."
+    },
+    {
+      "id": "layers",
+      "label": "Layers",
+      "hostSelector": "[data-workbench-region='layers']",
+      "status": "foundation_ready",
+      "currentScope": "Layer/sprite structure as future editing support without making P6-R1 look like a mini animation editor."
     },
     {
       "id": "action_workflow",
@@ -45,7 +52,7 @@
       "label": "Activity / History",
       "hostSelector": "[data-workbench-region='activity-history']",
       "status": "implemented",
-      "currentScope": "User-readable local activity and bounded diagnostic details."
+      "currentScope": "Hidden by default. User-readable activity first; engineering diagnostics only behind advanced disclosure."
     }
   ],
   "deferredFeaturePolicy": {
@@ -57,10 +64,11 @@
   },
   "ownerVisibleRules": [
     "Preview Stage remains the visual anchor.",
-    "Inspector is secondary and context-aware.",
+    "Left Source panel owns file overview, resources, and layers.",
+    "Right Inspector owns diagnostics/actions only and must not duplicate file overview.",
     "Resources must be designer-readable and ready for grouping.",
     "Diagnostics are progressive disclosure, not the default user face.",
-    "Activity is user-readable and may reveal details only on demand.",
+    "Activity is hidden by default, user-readable when opened, and may reveal details only on demand.",
     "Settings defaults to local preview; export/latest-artifact/debug options stay advanced."
   ],
   "productionApproved": false,

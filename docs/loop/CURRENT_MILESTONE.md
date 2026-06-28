@@ -22,7 +22,7 @@ wp0Authorized: true
 executionStatus: terminal_human_required
 nextAction: product_owner_human_gate
 
-The narrow Activity/Logs and local foundation evidence repair is ready for Product Owner Human Gate after regenerated P6 evidence, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
+The macOS workbench foundation repair is ready for Product Owner Human Gate after regenerated P6 evidence, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
 
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
@@ -817,3 +817,19 @@ copy, stronger visual-system audit, and a first-class Owner feedback closure map
 Product Owner acceptance, final independent product external review, Finding
 closure, Phase 2, signing, notarization, release, push, and merge remain
 prohibited until explicit next authorization.
+
+Product Owner returned `OWNER_REPAIR_REQUIRED` for the macOS UI/UX foundation
+after evaluating whether the prior candidate could support the approved future
+product roadmap. The current repair rebuilds the owner-visible shell around a
+left Source panel with compact File Overview plus Resources/Layers, a center
+Preview Stage, and a right Diagnostics/Actions inspector. Compare/export-review
+remain secondary, Activity/Logs are hidden by default, `imageKey` is not a
+primary group, and Phase 2 optimization, Phase 3 editing, Phase 4 sequence-frame
+repair, multi-format workbench, signing, notarization, release, Windows scope,
+and new dependencies remain out of scope.
+
+`docs/loop/contracts/P6-R1_BASELINE.json` records the owner-authorized macOS
+workbench foundation hash lineage for Web source-of-truth files and shared
+product frontend reference files. Required item IDs, required counts, AC-01
+through AC-15, product scope, `contractRevision=3`, `repairRound=0`, and
+`phase2Started=false` remain unchanged.

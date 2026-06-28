@@ -365,6 +365,11 @@ const p6R1ReviewerBCategoryIds = [
   "motionAssetAudit",
   "runtimeLogs",
   "settings",
+  "macOSWorkbenchLayoutSystem",
+  "LeftSourceResourcesIA",
+  "RightInspectorActionsIA",
+  "LocalPreviewPrimaryWorkflow",
+  "ResponsiveRuleCoverage",
   "macosVisualSystem",
   "macOSAppFoundation",
   "RoadmapCapacity",
@@ -1197,7 +1202,7 @@ test("reviewer B packetDiffSha256 mismatch is rejected", async () => {
   });
 });
 
-test("P6-R1 Reviewer B requires 28 structured product category observations", async () => {
+test("P6-R1 Reviewer B requires 33 structured product category observations", async () => {
   await withRepo(async ({ repo, base }) => {
     const head = await prepareP6R1Repo(repo, base);
     const options = p6R1Options(repo, base, head);
@@ -1251,7 +1256,7 @@ test("P6-R1 Reviewer B rejects missing category", async () => {
         reviewerA: ".artifacts/loop-review/reviewer-a.json",
         reviewerB: ".artifacts/loop-review/reviewer-b.json"
       }),
-      /requires 28 categories/
+      /requires 33 categories/
     );
   });
 });

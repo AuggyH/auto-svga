@@ -51,7 +51,27 @@
     </div>
   </header>
 
-  <section id="workspace" class="workspace mode-localPreview" aria-label="Preview workspace">
+  <section id="workspace" class="workspace mode-localPreview" aria-label="SVGA workbench">
+    <aside id="sourcePanel" class="sourcePanel workbenchPanel" aria-label="文件与资源" data-workbench-region="source-document" data-active-tab="assets">
+      <div class="sourceHeader panelHeader">
+        <div>
+          <h2 class="bilingualHeading"><span>文件与资源</span></h2>
+          <p class="bilingualCopy"><span>本地文件、资源与图层</span></p>
+        </div>
+        <button id="sourceCollapseButton" class="iconButton panelCollapseButton" type="button" title="收起左侧栏" aria-label="收起左侧栏" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="M9 5v14" /><path d="m15 9-3 3 3 3" /></svg>
+        </button>
+      </div>
+      <section id="tab-overview" class="fileOverviewCard"></section>
+      <nav class="sourceTabs tabs" aria-label="资源结构标签">
+        <button class="tabButton isActive" type="button" data-source-tab="assets" data-tab="assets"><span>资源</span></button>
+        <button class="tabButton" type="button" data-source-tab="layers" data-tab="layers"><span>图层</span></button>
+      </nav>
+      <div id="tab-assets" class="tabPanel sourceTabPanel" data-workbench-region="resources"></div>
+      <div id="tab-layers" class="tabPanel sourceTabPanel isHidden" data-workbench-region="layers"></div>
+    </aside>
+
+    <section id="previewDeck" class="previewDeck" aria-label="预览舞台组">
     <article id="svgaPanelA" class="previewCard isPrimary" data-drop-kind="svga" data-player-slot="a" data-workbench-region="preview-stage">
       <div class="cardHeader panelHeader previewCardHeader">
         <div class="cardTitleGroup">
@@ -247,24 +267,23 @@
       </div>
       <dl id="referenceInfo" class="quickInfo"></dl>
     </article>
+    </section>
 
-    <aside id="infoPanel" class="infoPanel isHidden" aria-label="SVGA info panel" tabindex="-1" data-workbench-region="inspector">
+    <aside id="infoPanel" class="infoPanel inspectorPanel" aria-label="检查与操作" tabindex="-1" data-workbench-region="inspector" data-active-panel-mode="overview">
       <button id="infoPanelResizeHandle" class="resizeHandle" type="button" aria-label="调整信息面板宽度"></button>
       <div class="infoHeader panelHeader">
         <div>
-          <h2 class="bilingualHeading"><span>检查器</span></h2>
-          <p class="bilingualCopy"><span>概览、资源与诊断</span></p>
+          <h2 class="bilingualHeading"><span>检查与操作</span></h2>
+          <p class="bilingualCopy"><span>诊断、动作与后续属性入口</span></p>
         </div>
-        <span id="infoStatus" class="statusPill">加载中</span>
+        <div class="panelActionGroup">
+          <span id="infoStatus" class="statusPill">加载中</span>
+          <button id="inspectorCollapseButton" class="iconButton panelCollapseButton" type="button" title="收起右侧栏" aria-label="收起右侧栏" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="M15 5v14" /><path d="m9 9 3 3-3 3" /></svg>
+          </button>
+        </div>
       </div>
-      <nav class="tabs" aria-label="信息面板标签">
-        <button class="tabButton isActive" type="button" data-tab="overview"><span>概览</span></button>
-        <button class="tabButton" type="button" data-tab="assets"><span>资源</span></button>
-        <button class="tabButton" type="button" data-tab="diagnostics"><span>诊断</span></button>
-      </nav>
-      <div id="tab-overview" class="tabPanel"></div>
-      <div id="tab-assets" class="tabPanel isHidden" data-workbench-region="resources"></div>
-      <div id="tab-diagnostics" class="tabPanel isHidden"></div>
+      <div id="tab-diagnostics" class="tabPanel inspectorTabPanel"></div>
     </aside>
 
     <aside id="logsPanel" class="logsPanel isHidden" aria-label="Runtime logs panel" tabindex="-1" data-workbench-region="activity-history">
