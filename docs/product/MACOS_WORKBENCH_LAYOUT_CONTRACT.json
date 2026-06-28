@@ -38,6 +38,30 @@
     "height": 760,
     "policy": "Preview Stage keeps priority; right Inspector collapses before primary playback controls become unreadable. 900x720 is retained only as a legacy stress viewport, not as the supported minimum."
   },
+  "layoutModes": {
+    "fullWorkbench": {
+      "minWidth": 1280,
+      "layout": "LEFT | CENTER | RIGHT",
+      "policy": "Left source, center preview, and right inspector are all inline and readable."
+    },
+    "compactWorkbench": {
+      "minWidth": 1064,
+      "maxWidth": 1279,
+      "layout": "LEFT | CENTER + RIGHT drawer",
+      "policy": "Right inspector collapses first and may open as a drawer; left source remains inline."
+    },
+    "minimalWorkbench": {
+      "maxWidth": 1063,
+      "layout": "LEFT rail | CENTER full | RIGHT overlay",
+      "policy": "Left source collapses to a rail after the right inspector; center preview remains primary."
+    }
+  },
+  "layoutEngine": {
+    "source": "src/layout/layoutEngine.ts",
+    "tokens": "src/layout/layoutTokens.ts",
+    "runtimeImport": "tools/shared/product-frontend/workbench-layout-engine.mjs",
+    "policy": "Layout mode selection, panel widths, collapse priority, and transitions are resolved by the deterministic layout engine before CSS is applied."
+  },
   "regions": [
     {
       "id": "source_document",
@@ -46,11 +70,12 @@
       "spacingToken": "--visual-space-body",
       "paddingToken": "--visual-card-padding",
       "widthToken": "--visual-sidebar-width",
-      "minWidth": 44,
-      "maxWidth": 340,
+      "minWidth": 240,
+      "maxWidth": 320,
+      "collapsedWidth": 56,
       "hugContent": false,
       "fillContainer": true,
-      "collapsePriority": 1,
+      "collapsePriority": 2,
       "contentPriority": ["file_overview", "source_tabs", "resource_rows"],
       "overflowRule": "panel scrolls vertically; file names truncate with title text",
       "parentResponseRule": "collapse to semantic strip before Preview Stage shrinks below minimum"
@@ -61,7 +86,7 @@
       "direction": "column",
       "spacingToken": "--visual-space-section",
       "paddingToken": "--visual-card-padding",
-      "minWidth": 360,
+      "minWidth": 520,
       "maxWidth": "fill",
       "minHeight": 360,
       "hugContent": false,
@@ -78,11 +103,12 @@
       "spacingToken": "--visual-space-body",
       "paddingToken": "--visual-card-padding",
       "widthToken": "--visual-inspector-width",
-      "minWidth": 44,
+      "minWidth": 280,
       "maxWidth": 360,
+      "collapsedWidth": 56,
       "hugContent": false,
       "fillContainer": true,
-      "collapsePriority": 2,
+      "collapsePriority": 1,
       "contentPriority": ["diagnostics", "review_only_actions", "future_properties"],
       "overflowRule": "diagnostic copy wraps in detail surfaces; actions never masquerade as active future features",
       "parentResponseRule": "collapse to semantic strip after source panel and before Preview Stage loses controls"

@@ -1,5 +1,6 @@
 import { renderAvatarFrameInspectionReport } from "./inspection-report-view.mjs";
 import { getProductHostAdapter } from "./web-host-adapter.mjs";
+import { layoutEngine, layoutTokens } from "./workbench-layout-engine.mjs";
 
 const hostAdapter = getProductHostAdapter();
 const fetch = hostAdapter.http.fetch;
@@ -197,6 +198,11 @@ let compareEnabled = false;
 let syncIsPlaying = false;
 let infoPanelWidth = Number(localStorage.getItem("autoSvgaInfoPanelWidth")) || 420;
 let logsPanelWidth = Number(localStorage.getItem("autoSvgaLogsPanelWidth")) || 560;
+const layoutUserPreferences = {
+  leftCollapsed: localStorage.getItem("autoSvgaLeftPanelCollapsed") === "true",
+  rightCollapsed: localStorage.getItem("autoSvgaRightPanelCollapsed") === "true"
+};
+let currentLayoutState = layoutEngine.resolve(window.innerWidth, window.innerHeight, layoutUserPreferences);
 let manualArtifactSelection = false;
 let latestArtifactGroup;
 let artifactAutoLoading = false;
@@ -703,6 +709,7 @@ function renderReferenceInfo() {
 }
 
 function refreshLayout() {
+  applyWorkbenchLayout();
   applyMediaSize(players.a.frame, players.a.metrics, fitModeA.value);
   renderSvgaInfo(players.a);
   applyMediaSize(players.b.frame, players.b.metrics, fitModeB.value);
@@ -931,8 +938,8 @@ function switchSourceTab(tabName = "assets") {
 }
 
 function applyInfoPanelWidth(width) {
-  const viewportMaximum = Math.max(300, Math.min(440, Math.floor(window.innerWidth * 0.42)));
-  infoPanelWidth = Math.min(viewportMaximum, Math.max(320, Math.round(width)));
+  const viewportMaximum = layoutTokens.right.max;
+  infoPanelWidth = Math.min(viewportMaximum, Math.max(layoutTokens.right.min, Math.round(width)));
   document.documentElement.style.setProperty("--info-panel-width", `${infoPanelWidth}px`);
   infoPanelResizeHandle?.setAttribute("aria-valuenow", String(infoPanelWidth));
 }
@@ -942,6 +949,48 @@ function applyLogsPanelWidth(width) {
   logsPanelWidth = Math.min(viewportMaximum, Math.max(320, Math.round(width)));
   document.documentElement.style.setProperty("--logs-panel-width", `${logsPanelWidth}px`);
   logsPanelResizeHandle?.setAttribute("aria-valuenow", String(logsPanelWidth));
+}
+
+function updatePanelCollapseButton(button, collapsed, labels) {
+  if (!button) return;
+  button.setAttribute("aria-pressed", String(collapsed));
+  button.setAttribute("title", collapsed ? labels.expand : labels.collapse);
+  button.setAttribute("aria-label", collapsed ? labels.expand : labels.collapse);
+}
+
+function applyWorkbenchLayout() {
+  currentLayoutState = layoutEngine.resolve(window.innerWidth, window.innerHeight, {
+    ...layoutUserPreferences,
+    preferredRightWidth: infoPanelWidth
+  });
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty("--layout-gap", `${currentLayoutState.gap}px`);
+  rootStyle.setProperty("--layout-left-width", `${currentLayoutState.left.width}px`);
+  rootStyle.setProperty("--layout-center-min-width", `${currentLayoutState.center.minWidth}px`);
+  rootStyle.setProperty("--layout-right-width", `${currentLayoutState.right.width}px`);
+  rootStyle.setProperty("--layout-right-expanded-width", `${infoPanelWidth}px`);
+  rootStyle.setProperty("--layout-left-collapsed-width", `${layoutTokens.left.collapsed}px`);
+  rootStyle.setProperty("--layout-right-collapsed-width", `${layoutTokens.right.collapsed}px`);
+
+  workspace.dataset.layoutMode = currentLayoutState.mode;
+  workspace.dataset.rightPresentation = currentLayoutState.rightPresentation;
+  workspace.classList.toggle("sourceCollapsed", currentLayoutState.left.collapsed);
+  workspace.classList.toggle("inspectorCollapsed", currentLayoutState.right.collapsed);
+  workspace.classList.toggle("inspectorExpanded", activeSidePanel === "info");
+  workspace.classList.toggle("logsExpanded", activeSidePanel === "logs");
+  sourcePanel.dataset.collapsed = String(currentLayoutState.left.collapsed);
+  infoPanel.dataset.collapsed = String(currentLayoutState.right.collapsed);
+  infoPanel.dataset.presentation = currentLayoutState.rightPresentation;
+  document.documentElement.dataset.layoutMode = currentLayoutState.mode;
+
+  updatePanelCollapseButton(sourceCollapseButton, currentLayoutState.left.collapsed, {
+    expand: "展开左侧栏",
+    collapse: "收起左侧栏"
+  });
+  updatePanelCollapseButton(inspectorCollapseButton, currentLayoutState.right.collapsed, {
+    expand: "展开右侧栏",
+    collapse: "收起右侧栏"
+  });
 }
 
 function closeInfoPanel() {
@@ -3811,14 +3860,17 @@ async function runProductSmoke() {
     await delay(80);
     await captureArtifact("desktop-local-logs-hidden-default");
     const localPreviewWorkbenchRegionMap = collectWorkbenchRegionMap();
-    workspace.classList.add("sourceCollapsed");
+    layoutUserPreferences.leftCollapsed = true;
+    refreshLayout();
     await delay(120);
     await captureArtifact("desktop-local-source-collapsed");
-    workspace.classList.remove("sourceCollapsed");
-    workspace.classList.add("inspectorCollapsed");
+    layoutUserPreferences.leftCollapsed = false;
+    layoutUserPreferences.rightCollapsed = true;
+    refreshLayout();
     await delay(120);
     await captureArtifact("desktop-local-inspector-collapsed");
-    workspace.classList.remove("inspectorCollapsed");
+    layoutUserPreferences.rightCollapsed = false;
+    refreshLayout();
     await delay(120);
     await captureArtifact("desktop-local-minimum-size");
     openFullLogs();
@@ -4984,19 +5036,13 @@ logsButton.addEventListener("click", () => {
   else closeFullLogs();
 });
 sourceCollapseButton?.addEventListener("click", () => {
-  const collapsed = !workspace.classList.contains("sourceCollapsed");
-  workspace.classList.toggle("sourceCollapsed", collapsed);
-  sourceCollapseButton.setAttribute("aria-pressed", String(collapsed));
-  sourceCollapseButton.setAttribute("title", collapsed ? "展开左侧栏" : "收起左侧栏");
-  sourceCollapseButton.setAttribute("aria-label", collapsed ? "展开左侧栏" : "收起左侧栏");
+  layoutUserPreferences.leftCollapsed = !currentLayoutState.left.collapsed;
+  localStorage.setItem("autoSvgaLeftPanelCollapsed", String(layoutUserPreferences.leftCollapsed));
   window.requestAnimationFrame(refreshLayout);
 });
 inspectorCollapseButton?.addEventListener("click", () => {
-  const collapsed = !workspace.classList.contains("inspectorCollapsed");
-  workspace.classList.toggle("inspectorCollapsed", collapsed);
-  inspectorCollapseButton.setAttribute("aria-pressed", String(collapsed));
-  inspectorCollapseButton.setAttribute("title", collapsed ? "展开右侧栏" : "收起右侧栏");
-  inspectorCollapseButton.setAttribute("aria-label", collapsed ? "展开右侧栏" : "收起右侧栏");
+  layoutUserPreferences.rightCollapsed = !currentLayoutState.right.collapsed;
+  localStorage.setItem("autoSvgaRightPanelCollapsed", String(layoutUserPreferences.rightCollapsed));
   window.requestAnimationFrame(refreshLayout);
 });
 settingsButton.addEventListener("click", () => {
@@ -5088,6 +5134,7 @@ for (const select of [fitModeA, fitModeB, fitModeReference]) {
 
 window.addEventListener("resize", () => {
   closeFitMenus();
+  applyWorkbenchLayout();
   applyInfoPanelWidth(infoPanelWidth);
   applyLogsPanelWidth(logsPanelWidth);
   window.requestAnimationFrame(refreshLayout);
@@ -5383,6 +5430,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 try {
+  applyWorkbenchLayout();
   applyInfoPanelWidth(infoPanelWidth);
   applyLogsPanelWidth(logsPanelWidth);
   applyThemePreference(localStorage.getItem("autoSvgaTheme") ?? "system");

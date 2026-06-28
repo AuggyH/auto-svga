@@ -4,12 +4,27 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
 async function readRepoFile(filePath) {
   return readFile(path.join(repoRoot, filePath), "utf8");
+}
+
+function collectDisallowedWorkspaceGridRules(css) {
+  const rules = [];
+  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = match[1].trim();
+    const body = match[2];
+    if (!selector.includes(".workspace")) continue;
+    if (!/grid-template-columns\s*:/.test(body)) continue;
+    if (selector.includes(".previewDeck")) continue;
+    if (body.includes("--layout-left-width") && body.includes("--layout-center-min-width") && body.includes("--layout-right-width")) continue;
+    rules.push(selector.replace(/\s+/g, " "));
+  }
+  return rules;
 }
 
 test("Web preview uses the shared product app and styles as thin entries", async () => {
@@ -274,6 +289,48 @@ test("P6-R1 owner-visible visual system target is token-driven and auditable", a
   assert.equal(summary.sourceOnly, true);
   assert.ok(summary.metrics.requiredTokenCount >= 40);
   assert.ok(summary.metrics.requiredComponentClassCount >= 10);
+});
+
+test("shared product frontend consumes the deterministic workbench layout engine", async () => {
+  const [productApp, productStyles, layoutEngine, layoutTokens] = await Promise.all([
+    readRepoFile("tools/shared/product-frontend/product-app.mjs"),
+    readRepoFile("tools/shared/product-frontend/product-styles.css"),
+    readRepoFile("src/layout/layoutEngine.ts"),
+    readRepoFile("src/layout/layoutTokens.ts")
+  ]);
+
+  assert.match(productApp, /workbench-layout-engine\.mjs/);
+  assert.match(productApp, /layoutEngine\.resolve\(window\.innerWidth,\s*window\.innerHeight/);
+  assert.match(productApp, /workspace\.dataset\.layoutMode = currentLayoutState\.mode/);
+  assert.match(productApp, /workspace\.dataset\.rightPresentation = currentLayoutState\.rightPresentation/);
+  assert.match(productApp, /--layout-left-width/);
+  assert.match(productApp, /--layout-right-width/);
+  assert.match(productStyles, /\.workspace\s*\{[\s\S]*grid-template-columns:\s*[\s\S]*var\(--layout-left-width\)[\s\S]*var\(--layout-center-min-width\)[\s\S]*var\(--layout-right-width\)/);
+  assert.deepEqual(collectDisallowedWorkspaceGridRules(productStyles), []);
+  assert.match(productStyles, /\[data-layout-mode="MINIMAL_WORKBENCH"\] \.cardFileButton/);
+  const minimumMediaStart = productStyles.indexOf("@media (max-width: 1180px)");
+  const minimumMediaEnd = productStyles.indexOf("@media (max-width: 900px)", minimumMediaStart);
+  const minimumMediaBlock = minimumMediaStart >= 0 && minimumMediaEnd > minimumMediaStart
+    ? productStyles.slice(minimumMediaStart, minimumMediaEnd)
+    : "";
+  assert.doesNotMatch(minimumMediaBlock, /\.workspace/);
+  assert.doesNotMatch(productStyles, /@media\s*\(max-width:\s*1179px\)\s*\{[\s\S]{0,700}\.workspace/);
+  assert.match(layoutEngine, /resolve\(width: number, height: number/);
+  assert.match(layoutTokens, /fullWorkbenchMinWidth: 1280/);
+  assert.match(layoutTokens, /compactWorkbenchMinWidth: 1064/);
+});
+
+test("browser workbench layout adapter matches the TypeScript layout engine", async () => {
+  const [{ layoutEngine: sourceEngine }, { layoutEngine: browserEngine }] = await Promise.all([
+    import(pathToFileURL(path.join(repoRoot, "dist/layout/index.js")).href),
+    import(pathToFileURL(path.join(repoRoot, "tools/shared/product-frontend/workbench-layout-engine.mjs")).href)
+  ]);
+
+  for (const width of [1440, 1280, 1279, 1180, 1064, 1063, 900]) {
+    const source = sourceEngine.resolve(width, 800, { preferredRightWidth: 336 });
+    const browser = browserEngine.resolve(width, 800, { preferredRightWidth: 336 });
+    assert.deepEqual(browser, source);
+  }
 });
 
 test("P6-R1 Reviewer B category request and parity runner include macOS visual-system review", async () => {

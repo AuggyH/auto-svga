@@ -39,15 +39,31 @@ function assertCondition(errors, condition, message) {
   if (!condition) errors.push(message);
 }
 
+function collectDisallowedWorkspaceGridRules(css) {
+  const rules = [];
+  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = match[1].trim();
+    const body = match[2];
+    if (!selector.includes(".workspace")) continue;
+    if (!/grid-template-columns\s*:/.test(body)) continue;
+    if (selector.includes(".previewDeck")) continue;
+    if (body.includes("--layout-left-width") && body.includes("--layout-center-min-width") && body.includes("--layout-right-width")) continue;
+    rules.push(selector.replace(/\s+/g, " "));
+  }
+  return rules;
+}
+
 const target = JSON.parse(await readFile(targetPath, "utf8"));
 const foundationContract = await readJson("docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json");
 const layoutContract = await readJson("docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json");
 const roadmapCapacityMap = await readJson("docs/product/ROADMAP_UI_CAPACITY_MAP.json");
-const [tokens, styles, shell, app] = await Promise.all([
+const [tokens, styles, shell, app, layoutEngineSource, layoutTokensSource] = await Promise.all([
   readText("tools/shared/product-tokens.css"),
   readText("tools/shared/product-frontend/product-styles.css"),
   readText("tools/shared/product-frontend/product-shell.html"),
-  readText("tools/shared/product-frontend/product-app.mjs")
+  readText("tools/shared/product-frontend/product-app.mjs"),
+  readText("src/layout/layoutEngine.ts"),
+  readText("src/layout/layoutTokens.ts")
 ]);
 const inspection = await readText("tools/shared/product-frontend/inspection-report-view.mjs");
 
@@ -79,9 +95,14 @@ assertCondition(errors, colorCount <= target.auditRules.hardcodedOwnerVisibleCol
 assertCondition(errors, radiusCount <= target.auditRules.hardcodedOwnerVisibleRadiusCountMax, `hardcoded radius count ${radiusCount} exceeds ${target.auditRules.hardcodedOwnerVisibleRadiusCountMax}`);
 assertCondition(errors, fontSizeCount <= target.auditRules.hardcodedOwnerVisibleFontSizeCountMax, `hardcoded font-size count ${fontSizeCount} exceeds ${target.auditRules.hardcodedOwnerVisibleFontSizeCountMax}`);
 assertCondition(errors, tokenReferenceCount >= target.auditRules.requiredTokenReferenceMinimum, `visual token reference count ${tokenReferenceCount} below ${target.auditRules.requiredTokenReferenceMinimum}`);
-assertCondition(errors, /body\s*\{[\s\S]*?min-width:\s*var\(--visual-minimum-workbench-width\);/.test(styles), "body min-width must use the declared macOS workbench minimum token");
+assertCondition(errors, /body\s*\{[\s\S]*?min-width:\s*min\(100vw,\s*var\(--visual-minimum-workbench-width\)\);/.test(styles), "body min-width must use the declared macOS workbench minimum token without forcing horizontal clipping");
 assertCondition(errors, /--visual-minimum-workbench-width:\s*1180px;/.test(tokens), "visual minimum workbench width must be 1180px");
-assertCondition(errors, /@media\s*\(max-width:\s*1180px\)[\s\S]*?\.workspace\.mode-localPreview\.withCompare/.test(styles), "missing minimum-edge compact workbench compare workspace rule");
+assertCondition(errors, /workbench-layout-engine\.mjs/.test(app) && /layoutEngine\.resolve\(window\.innerWidth,\s*window\.innerHeight/.test(app), "product app must resolve workbench layout through the layout engine");
+assertCondition(errors, /fullWorkbenchMinWidth:\s*1280/.test(layoutTokensSource), "layout engine must define 1280 full workbench boundary");
+assertCondition(errors, /compactWorkbenchMinWidth:\s*1064/.test(layoutTokensSource), "layout engine must define 1064 compact workbench boundary");
+assertCondition(errors, /CENTER never collapses|centerVisible: true|center:\s*\{[\s\S]*collapsed:\s*false/.test(layoutEngineSource), "layout engine must keep the center preview region visible");
+const disallowedWorkspaceGridRules = collectDisallowedWorkspaceGridRules(styles);
+assertCondition(errors, disallowedWorkspaceGridRules.length === 0, `workspace grid columns must be layout-engine driven; disallowed selectors: ${disallowedWorkspaceGridRules.join(", ")}`);
 assertCondition(errors, /duplicateFilePillHidden/.test(app), "preview card audit must prove duplicated file pill is hidden");
 assertCondition(errors, /function reloadCurrentFile/.test(app), "Cmd/Ctrl+R reload path must be explicit");
 assertCondition(errors, !/clearCurrentFile\("shortcut"\)/.test(app), "Cmd/Ctrl+R must not clear the current file");
@@ -105,6 +126,9 @@ assertCondition(errors, layoutContract.windowSizingSystem?.defaultLaunchWindow?.
 assertCondition(errors, layoutContract.windowSizingSystem?.defaultLaunchWindow?.height === 900, "layout contract must define 1440x900 default launch height");
 assertCondition(errors, layoutContract.windowSizingSystem?.legacyStressViewport?.width === 900, "layout contract may keep 900x720 only as legacy stress width");
 assertCondition(errors, /not the default window/i.test(layoutContract.windowSizingSystem?.legacyStressViewport?.policy ?? ""), "legacy stress policy must forbid 900x720 as the default window");
+assertCondition(errors, layoutContract.layoutModes?.fullWorkbench?.minWidth === 1280, "layout contract must define full workbench mode boundary");
+assertCondition(errors, layoutContract.layoutModes?.compactWorkbench?.minWidth === 1064, "layout contract must define compact workbench mode boundary");
+assertCondition(errors, layoutContract.layoutModes?.minimalWorkbench?.maxWidth === 1063, "layout contract must define minimal workbench mode boundary");
 assertCondition(errors, Array.isArray(layoutContract.regions) && layoutContract.regions.length >= 3, "layout contract must define major layout regions");
 for (const region of layoutContract.regions ?? []) {
   assertCondition(errors, typeof region.direction === "string", `layout region ${region.id} missing direction`);
