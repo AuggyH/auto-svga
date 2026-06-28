@@ -4006,27 +4006,6 @@ button:disabled {
   display: none;
 }
 
-.workspace[data-layout-mode="COMPACT_WORKBENCH"] .inspectorPanel,
-.workspace[data-layout-mode="MINIMAL_WORKBENCH"] .inspectorPanel {
-  z-index: 6;
-}
-
-.workspace[data-layout-mode="COMPACT_WORKBENCH"].inspectorExpanded .inspectorPanel,
-.workspace[data-layout-mode="MINIMAL_WORKBENCH"].inspectorExpanded .inspectorPanel {
-  position: absolute !important;
-  top: var(--visual-space-body);
-  right: var(--visual-space-body);
-  bottom: var(--visual-space-body);
-  width: min(
-    var(--layout-right-expanded-width, 100%),
-    calc(100% - var(--layout-left-width, 0px) - var(--layout-center-min-width, 0px) - var(--layout-gap, 0px) * 2)
-  ) !important;
-}
-
-.workspace[data-layout-mode="MINIMAL_WORKBENCH"] {
-  padding: 12px;
-}
-
 .logsPanel {
   position: fixed !important;
 }
@@ -5924,18 +5903,4 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 .statusPill,
 .filePill {
   white-space: nowrap;
-}
-
-[data-layout-mode="MINIMAL_WORKBENCH"] .responsiveButtonLabel,
-[data-layout-mode="MINIMAL_WORKBENCH"] .cardFileButton .responsiveButtonLabel,
-[data-layout-mode="MINIMAL_WORKBENCH"] .cardUtilityButton .responsiveButtonLabel {
-  display: none;
-}
-
-[data-layout-mode="MINIMAL_WORKBENCH"] .cardFileButton,
-[data-layout-mode="MINIMAL_WORKBENCH"] .cardUtilityButton {
-  width: 30px;
-  min-width: 30px;
-  padding: 0;
-  justify-content: center;
 }

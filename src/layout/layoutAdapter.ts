@@ -3,8 +3,6 @@ import type { LayoutState } from "./layoutTypes.js";
 export interface WorkbenchLayoutProps {
   readonly cssVariables: Readonly<Record<string, string>>;
   readonly workspace: {
-    readonly layoutMode: LayoutState["mode"];
-    readonly rightPresentation: LayoutState["rightPresentation"];
     readonly sourceCollapsed: boolean;
     readonly inspectorCollapsed: boolean;
   };
@@ -13,7 +11,6 @@ export interface WorkbenchLayoutProps {
   };
   readonly inspector: {
     readonly collapsed: boolean;
-    readonly presentation: LayoutState["rightPresentation"];
   };
   readonly resize: {
     readonly infoPanel: {
@@ -45,8 +42,6 @@ export function toWorkbenchLayoutProps(state: LayoutState): WorkbenchLayoutProps
       "--layout-right-collapsed-width": `${state.right.collapsedWidth}px`
     },
     workspace: {
-      layoutMode: state.mode,
-      rightPresentation: state.rightPresentation,
       sourceCollapsed: state.left.collapsed,
       inspectorCollapsed: state.right.collapsed
     },
@@ -54,8 +49,7 @@ export function toWorkbenchLayoutProps(state: LayoutState): WorkbenchLayoutProps
       collapsed: state.left.collapsed
     },
     inspector: {
-      collapsed: state.right.collapsed,
-      presentation: state.rightPresentation
+      collapsed: state.right.collapsed
     },
     resize: {
       infoPanel: {

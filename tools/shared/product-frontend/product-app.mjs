@@ -970,16 +970,12 @@ function applyWorkbenchLayout() {
   rootStyle.setProperty("--info-panel-width", `${currentLayoutProps.resize.infoPanel.width}px`);
   rootStyle.setProperty("--logs-panel-width", `${currentLayoutProps.resize.logsPanel.width}px`);
 
-  workspace.dataset.layoutMode = currentLayoutProps.workspace.layoutMode;
-  workspace.dataset.rightPresentation = currentLayoutProps.workspace.rightPresentation;
   workspace.classList.toggle("sourceCollapsed", currentLayoutProps.workspace.sourceCollapsed);
   workspace.classList.toggle("inspectorCollapsed", currentLayoutProps.workspace.inspectorCollapsed);
   workspace.classList.toggle("inspectorExpanded", activeSidePanel === "info");
   workspace.classList.toggle("logsExpanded", activeSidePanel === "logs");
   sourcePanel.dataset.collapsed = String(currentLayoutProps.source.collapsed);
   infoPanel.dataset.collapsed = String(currentLayoutProps.inspector.collapsed);
-  infoPanel.dataset.presentation = currentLayoutProps.inspector.presentation;
-  document.documentElement.dataset.layoutMode = currentLayoutProps.workspace.layoutMode;
   infoPanelResizeHandle?.setAttribute("aria-valuemin", String(currentLayoutProps.resize.infoPanel.min));
   infoPanelResizeHandle?.setAttribute("aria-valuemax", String(currentLayoutProps.resize.infoPanel.max));
   infoPanelResizeHandle?.setAttribute("aria-valuenow", String(currentLayoutProps.resize.infoPanel.width));
@@ -2623,16 +2619,6 @@ function collectWorkbenchLayoutIntegrity(regions) {
   const primaryAction = visibleRectForSelector("#primaryFileButton") || visibleRectForSelector("#primaryEmptyFileButton");
   if (!primaryAction) failures.push("primary_file_action_not_visible");
 
-  if (currentLayoutProps.workspace.mode !== "FULL_WORKBENCH") {
-    const inspectorContentVisible = isElementVisible(document.querySelector("#tab-diagnostics"));
-    if (inspectorContentVisible) failures.push("compact_view_keeps_full_inspector_content");
-  }
-  if (currentLayoutProps.workspace.mode === "MINIMAL_WORKBENCH") {
-    const sourceContentVisible = isElementVisible(document.querySelector("#tab-assets"))
-      || isElementVisible(document.querySelector("#tab-overview"));
-    if (sourceContentVisible) failures.push("legacy_stress_view_keeps_full_source_content");
-  }
-
   return {
     passed: failures.length === 0,
     viewportCss: viewport,
@@ -2643,7 +2629,6 @@ function collectWorkbenchLayoutIntegrity(regions) {
       noVerticalFilterWrapping: !failures.some((failure) => failure.startsWith("resource_filter")),
       noOneCharacterChips: !failures.some((failure) => failure.startsWith("one_character_chip")),
       inspectorTextReadable: !failures.some((failure) => failure.startsWith("inspector_text_clipped")),
-      compactSidePanelsCollapse: !failures.includes("compact_view_keeps_full_side_panel_content"),
       primaryActionVisible: !failures.includes("primary_file_action_not_visible")
     },
     failures

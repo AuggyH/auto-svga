@@ -76,7 +76,6 @@ test("content invariants are explicit in every layout state", () => {
 test("layout adapter only maps engine output to UI props", () => {
   const state = layoutEngine.resolve(1180, 760, { preferredRightWidth: 999 });
   const props = toWorkbenchLayoutProps(state);
-  assert.equal(props.workspace.layoutMode, state.mode);
   assert.equal(props.workspace.sourceCollapsed, state.left.collapsed);
   assert.equal(props.workspace.inspectorCollapsed, state.right.collapsed);
   assert.equal(props.cssVariables["--layout-left-width"], `${state.left.width}px`);
