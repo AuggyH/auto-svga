@@ -1,6 +1,7 @@
 import { renderAvatarFrameInspectionReport } from "./inspection-report-view.mjs";
 import { getProductHostAdapter } from "./web-host-adapter.mjs";
-import { layoutEngine, layoutTokens } from "./workbench-layout-engine.mjs";
+import { toWorkbenchLayoutProps } from "../../../dist/layout/layoutAdapter.js";
+import { layoutEngine } from "../../../dist/layout/layoutEngine.js";
 
 const hostAdapter = getProductHostAdapter();
 const fetch = hostAdapter.http.fetch;
@@ -202,7 +203,7 @@ const layoutUserPreferences = {
   leftCollapsed: localStorage.getItem("autoSvgaLeftPanelCollapsed") === "true",
   rightCollapsed: localStorage.getItem("autoSvgaRightPanelCollapsed") === "true"
 };
-let currentLayoutState = layoutEngine.resolve(window.innerWidth, window.innerHeight, layoutUserPreferences);
+let currentLayoutProps = toWorkbenchLayoutProps(layoutEngine.resolve(window.innerWidth, window.innerHeight, layoutUserPreferences));
 let manualArtifactSelection = false;
 let latestArtifactGroup;
 let artifactAutoLoading = false;
@@ -938,17 +939,13 @@ function switchSourceTab(tabName = "assets") {
 }
 
 function applyInfoPanelWidth(width) {
-  const viewportMaximum = layoutTokens.right.max;
-  infoPanelWidth = Math.min(viewportMaximum, Math.max(layoutTokens.right.min, Math.round(width)));
-  document.documentElement.style.setProperty("--info-panel-width", `${infoPanelWidth}px`);
-  infoPanelResizeHandle?.setAttribute("aria-valuenow", String(infoPanelWidth));
+  infoPanelWidth = Math.round(width);
+  applyWorkbenchLayout();
 }
 
 function applyLogsPanelWidth(width) {
-  const viewportMaximum = Math.max(320, Math.min(480, Math.floor(window.innerWidth * 0.46)));
-  logsPanelWidth = Math.min(viewportMaximum, Math.max(320, Math.round(width)));
-  document.documentElement.style.setProperty("--logs-panel-width", `${logsPanelWidth}px`);
-  logsPanelResizeHandle?.setAttribute("aria-valuenow", String(logsPanelWidth));
+  logsPanelWidth = Math.round(width);
+  applyWorkbenchLayout();
 }
 
 function updatePanelCollapseButton(button, collapsed, labels) {
@@ -959,35 +956,42 @@ function updatePanelCollapseButton(button, collapsed, labels) {
 }
 
 function applyWorkbenchLayout() {
-  currentLayoutState = layoutEngine.resolve(window.innerWidth, window.innerHeight, {
+  currentLayoutProps = toWorkbenchLayoutProps(layoutEngine.resolve(window.innerWidth, window.innerHeight, {
     ...layoutUserPreferences,
-    preferredRightWidth: infoPanelWidth
-  });
+    preferredRightWidth: infoPanelWidth,
+    preferredLogsWidth: logsPanelWidth
+  }));
+  infoPanelWidth = currentLayoutProps.resize.infoPanel.width;
+  logsPanelWidth = currentLayoutProps.resize.logsPanel.width;
   const rootStyle = document.documentElement.style;
-  rootStyle.setProperty("--layout-gap", `${currentLayoutState.gap}px`);
-  rootStyle.setProperty("--layout-left-width", `${currentLayoutState.left.width}px`);
-  rootStyle.setProperty("--layout-center-min-width", `${currentLayoutState.center.minWidth}px`);
-  rootStyle.setProperty("--layout-right-width", `${currentLayoutState.right.width}px`);
-  rootStyle.setProperty("--layout-right-expanded-width", `${infoPanelWidth}px`);
-  rootStyle.setProperty("--layout-left-collapsed-width", `${layoutTokens.left.collapsed}px`);
-  rootStyle.setProperty("--layout-right-collapsed-width", `${layoutTokens.right.collapsed}px`);
+  for (const [name, value] of Object.entries(currentLayoutProps.cssVariables)) {
+    rootStyle.setProperty(name, value);
+  }
+  rootStyle.setProperty("--info-panel-width", `${currentLayoutProps.resize.infoPanel.width}px`);
+  rootStyle.setProperty("--logs-panel-width", `${currentLayoutProps.resize.logsPanel.width}px`);
 
-  workspace.dataset.layoutMode = currentLayoutState.mode;
-  workspace.dataset.rightPresentation = currentLayoutState.rightPresentation;
-  workspace.classList.toggle("sourceCollapsed", currentLayoutState.left.collapsed);
-  workspace.classList.toggle("inspectorCollapsed", currentLayoutState.right.collapsed);
+  workspace.dataset.layoutMode = currentLayoutProps.workspace.layoutMode;
+  workspace.dataset.rightPresentation = currentLayoutProps.workspace.rightPresentation;
+  workspace.classList.toggle("sourceCollapsed", currentLayoutProps.workspace.sourceCollapsed);
+  workspace.classList.toggle("inspectorCollapsed", currentLayoutProps.workspace.inspectorCollapsed);
   workspace.classList.toggle("inspectorExpanded", activeSidePanel === "info");
   workspace.classList.toggle("logsExpanded", activeSidePanel === "logs");
-  sourcePanel.dataset.collapsed = String(currentLayoutState.left.collapsed);
-  infoPanel.dataset.collapsed = String(currentLayoutState.right.collapsed);
-  infoPanel.dataset.presentation = currentLayoutState.rightPresentation;
-  document.documentElement.dataset.layoutMode = currentLayoutState.mode;
+  sourcePanel.dataset.collapsed = String(currentLayoutProps.source.collapsed);
+  infoPanel.dataset.collapsed = String(currentLayoutProps.inspector.collapsed);
+  infoPanel.dataset.presentation = currentLayoutProps.inspector.presentation;
+  document.documentElement.dataset.layoutMode = currentLayoutProps.workspace.layoutMode;
+  infoPanelResizeHandle?.setAttribute("aria-valuemin", String(currentLayoutProps.resize.infoPanel.min));
+  infoPanelResizeHandle?.setAttribute("aria-valuemax", String(currentLayoutProps.resize.infoPanel.max));
+  infoPanelResizeHandle?.setAttribute("aria-valuenow", String(currentLayoutProps.resize.infoPanel.width));
+  logsPanelResizeHandle?.setAttribute("aria-valuemin", String(currentLayoutProps.resize.logsPanel.min));
+  logsPanelResizeHandle?.setAttribute("aria-valuemax", String(currentLayoutProps.resize.logsPanel.max));
+  logsPanelResizeHandle?.setAttribute("aria-valuenow", String(currentLayoutProps.resize.logsPanel.width));
 
-  updatePanelCollapseButton(sourceCollapseButton, currentLayoutState.left.collapsed, {
+  updatePanelCollapseButton(sourceCollapseButton, currentLayoutProps.controls.sourceTogglePressed, {
     expand: "展开左侧栏",
     collapse: "收起左侧栏"
   });
-  updatePanelCollapseButton(inspectorCollapseButton, currentLayoutState.right.collapsed, {
+  updatePanelCollapseButton(inspectorCollapseButton, currentLayoutProps.controls.inspectorTogglePressed, {
     expand: "展开右侧栏",
     collapse: "收起右侧栏"
   });
@@ -2619,11 +2623,11 @@ function collectWorkbenchLayoutIntegrity(regions) {
   const primaryAction = visibleRectForSelector("#primaryFileButton") || visibleRectForSelector("#primaryEmptyFileButton");
   if (!primaryAction) failures.push("primary_file_action_not_visible");
 
-  if (viewport.width <= 1180) {
+  if (currentLayoutProps.workspace.mode !== "FULL_WORKBENCH") {
     const inspectorContentVisible = isElementVisible(document.querySelector("#tab-diagnostics"));
     if (inspectorContentVisible) failures.push("compact_view_keeps_full_inspector_content");
   }
-  if (viewport.width <= 900) {
+  if (currentLayoutProps.workspace.mode === "MINIMAL_WORKBENCH") {
     const sourceContentVisible = isElementVisible(document.querySelector("#tab-assets"))
       || isElementVisible(document.querySelector("#tab-overview"));
     if (sourceContentVisible) failures.push("legacy_stress_view_keeps_full_source_content");
@@ -5036,12 +5040,12 @@ logsButton.addEventListener("click", () => {
   else closeFullLogs();
 });
 sourceCollapseButton?.addEventListener("click", () => {
-  layoutUserPreferences.leftCollapsed = !currentLayoutState.left.collapsed;
+  layoutUserPreferences.leftCollapsed = !currentLayoutProps.workspace.sourceCollapsed;
   localStorage.setItem("autoSvgaLeftPanelCollapsed", String(layoutUserPreferences.leftCollapsed));
   window.requestAnimationFrame(refreshLayout);
 });
 inspectorCollapseButton?.addEventListener("click", () => {
-  layoutUserPreferences.rightCollapsed = !currentLayoutState.right.collapsed;
+  layoutUserPreferences.rightCollapsed = !currentLayoutProps.workspace.inspectorCollapsed;
   localStorage.setItem("autoSvgaRightPanelCollapsed", String(layoutUserPreferences.rightCollapsed));
   window.requestAnimationFrame(refreshLayout);
 });
@@ -5296,11 +5300,13 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () 
 function setupPanelResize(handle, options) {
   if (!handle) return;
   const { defaultWidth, storageKey, apply, getWidth, bodyClass } = options;
+  const readMinimum = () => typeof options.minimum === "function" ? options.minimum() : options.minimum;
+  const readMaximum = () => typeof options.maximum === "function" ? options.maximum() : options.maximum;
   const updateAria = () => {
     handle.setAttribute("role", "separator");
     handle.setAttribute("aria-orientation", "vertical");
-    handle.setAttribute("aria-valuemin", String(options.minimum));
-    handle.setAttribute("aria-valuemax", String(options.maximum()));
+    handle.setAttribute("aria-valuemin", String(readMinimum()));
+    handle.setAttribute("aria-valuemax", String(readMaximum()));
     handle.setAttribute("aria-valuenow", String(getWidth()));
   };
   handle.addEventListener("pointerdown", (event) => {
@@ -5326,9 +5332,9 @@ function setupPanelResize(handle, options) {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const next = event.key === "Home"
-      ? options.minimum
+      ? readMinimum()
       : event.key === "End"
-        ? options.maximum()
+        ? readMaximum()
         : getWidth() + (event.key === "ArrowLeft" ? -20 : 20);
     apply(next);
     localStorage.setItem(storageKey, String(getWidth()));
@@ -5350,8 +5356,8 @@ for (const slotKey of ["a", "b", "reference"]) restoreFitMode(slotKey);
 setupDropdownMenus();
 setupPanelResize(infoPanelResizeHandle, {
   defaultWidth: 420,
-  minimum: 320,
-  maximum: () => Math.max(320, Math.min(440, Math.floor(window.innerWidth * 0.42))),
+  minimum: () => currentLayoutProps.resize.infoPanel.min,
+  maximum: () => currentLayoutProps.resize.infoPanel.max,
   storageKey: "autoSvgaInfoPanelWidth",
   apply: applyInfoPanelWidth,
   getWidth: () => infoPanelWidth,
@@ -5359,8 +5365,8 @@ setupPanelResize(infoPanelResizeHandle, {
 });
 setupPanelResize(logsPanelResizeHandle, {
   defaultWidth: 440,
-  minimum: 320,
-  maximum: () => Math.max(320, Math.min(480, Math.floor(window.innerWidth * 0.46))),
+  minimum: () => currentLayoutProps.resize.logsPanel.min,
+  maximum: () => currentLayoutProps.resize.logsPanel.max,
   storageKey: "autoSvgaLogsPanelWidth",
   apply: applyLogsPanelWidth,
   getWidth: () => logsPanelWidth,

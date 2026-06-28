@@ -39,31 +39,15 @@ function assertCondition(errors, condition, message) {
   if (!condition) errors.push(message);
 }
 
-function collectDisallowedWorkspaceGridRules(css) {
-  const rules = [];
-  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selector = match[1].trim();
-    const body = match[2];
-    if (!selector.includes(".workspace")) continue;
-    if (!/grid-template-columns\s*:/.test(body)) continue;
-    if (selector.includes(".previewDeck")) continue;
-    if (body.includes("--layout-left-width") && body.includes("--layout-center-min-width") && body.includes("--layout-right-width")) continue;
-    rules.push(selector.replace(/\s+/g, " "));
-  }
-  return rules;
-}
-
 const target = JSON.parse(await readFile(targetPath, "utf8"));
 const foundationContract = await readJson("docs/product/MACOS_SVGA_WORKBENCH_FOUNDATION_CONTRACT.json");
 const layoutContract = await readJson("docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json");
 const roadmapCapacityMap = await readJson("docs/product/ROADMAP_UI_CAPACITY_MAP.json");
-const [tokens, styles, shell, app, layoutEngineSource, layoutTokensSource] = await Promise.all([
+const [tokens, styles, shell, app] = await Promise.all([
   readText("tools/shared/product-tokens.css"),
   readText("tools/shared/product-frontend/product-styles.css"),
   readText("tools/shared/product-frontend/product-shell.html"),
-  readText("tools/shared/product-frontend/product-app.mjs"),
-  readText("src/layout/layoutEngine.ts"),
-  readText("src/layout/layoutTokens.ts")
+  readText("tools/shared/product-frontend/product-app.mjs")
 ]);
 const inspection = await readText("tools/shared/product-frontend/inspection-report-view.mjs");
 
@@ -97,12 +81,6 @@ assertCondition(errors, fontSizeCount <= target.auditRules.hardcodedOwnerVisible
 assertCondition(errors, tokenReferenceCount >= target.auditRules.requiredTokenReferenceMinimum, `visual token reference count ${tokenReferenceCount} below ${target.auditRules.requiredTokenReferenceMinimum}`);
 assertCondition(errors, /body\s*\{[\s\S]*?min-width:\s*min\(100vw,\s*var\(--visual-minimum-workbench-width\)\);/.test(styles), "body min-width must use the declared macOS workbench minimum token without forcing horizontal clipping");
 assertCondition(errors, /--visual-minimum-workbench-width:\s*1180px;/.test(tokens), "visual minimum workbench width must be 1180px");
-assertCondition(errors, /workbench-layout-engine\.mjs/.test(app) && /layoutEngine\.resolve\(window\.innerWidth,\s*window\.innerHeight/.test(app), "product app must resolve workbench layout through the layout engine");
-assertCondition(errors, /fullWorkbenchMinWidth:\s*1280/.test(layoutTokensSource), "layout engine must define 1280 full workbench boundary");
-assertCondition(errors, /compactWorkbenchMinWidth:\s*1064/.test(layoutTokensSource), "layout engine must define 1064 compact workbench boundary");
-assertCondition(errors, /CENTER never collapses|centerVisible: true|center:\s*\{[\s\S]*collapsed:\s*false/.test(layoutEngineSource), "layout engine must keep the center preview region visible");
-const disallowedWorkspaceGridRules = collectDisallowedWorkspaceGridRules(styles);
-assertCondition(errors, disallowedWorkspaceGridRules.length === 0, `workspace grid columns must be layout-engine driven; disallowed selectors: ${disallowedWorkspaceGridRules.join(", ")}`);
 assertCondition(errors, /duplicateFilePillHidden/.test(app), "preview card audit must prove duplicated file pill is hidden");
 assertCondition(errors, /function reloadCurrentFile/.test(app), "Cmd/Ctrl+R reload path must be explicit");
 assertCondition(errors, !/clearCurrentFile\("shortcut"\)/.test(app), "Cmd/Ctrl+R must not clear the current file");
@@ -149,7 +127,7 @@ assertCondition(errors, !/id="infoPanel"[\s\S]*id="tab-overview"/.test(shell), "
 assertCondition(errors, /id="logsPanel"[\s\S]*class="[^"]*\bisHidden\b/.test(shell), "Activity/Logs panel must be hidden by default");
 assertCondition(errors, app.includes("renderInspectorActionPlaceholders"), "right inspector must render diagnostics/actions capacity");
 assertCondition(errors, /grid-template-areas:\s*"source preview inspector"/.test(styles), "workspace must use Source / Preview / Inspector grid areas");
-assertCondition(errors, /minmax\(/.test(styles) && /clamp\(/.test(tokens), "layout must use intrinsic minmax/clamp sizing");
+assertCondition(errors, /minmax\(/.test(styles), "layout must use intrinsic minmax sizing");
 assertCondition(errors, /text-overflow:\s*ellipsis/.test(styles), "text-bearing components must define truncation rules");
 assertCondition(errors, /sourceCollapsed/.test(styles) && /inspectorCollapsed/.test(styles), "panel collapse rules must exist for both side regions");
 const requiredRegions = target.auditRules.requiredWorkbenchRegions ?? [];

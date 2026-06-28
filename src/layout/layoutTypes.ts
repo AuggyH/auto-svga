@@ -7,7 +7,9 @@ export interface PanelLayout {
   readonly width: number;
   readonly collapsed: boolean;
   readonly minWidth: number;
-  readonly maxWidth?: number;
+  readonly maxWidth: number;
+  readonly collapsedWidth: number;
+  readonly expandedWidth: number;
 }
 
 export interface LayoutState {
@@ -20,6 +22,13 @@ export interface LayoutState {
   readonly right: PanelLayout;
   readonly minTotal: number;
   readonly rightPresentation: "inline" | "drawer" | "overlay";
+  readonly auxiliaryPanels: {
+    readonly logs: {
+      readonly width: number;
+      readonly minWidth: number;
+      readonly maxWidth: number;
+    };
+  };
   readonly contentRules: {
     readonly fileNamesSingleLine: boolean;
     readonly badgesNoWrap: boolean;
@@ -38,6 +47,7 @@ export interface LayoutUserPreferences {
   readonly rightCollapsed?: boolean;
   readonly preferredLeftWidth?: number;
   readonly preferredRightWidth?: number;
+  readonly preferredLogsWidth?: number;
 }
 
 export interface LayoutInput {

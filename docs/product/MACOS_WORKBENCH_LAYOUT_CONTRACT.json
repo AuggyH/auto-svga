@@ -58,8 +58,8 @@
   },
   "layoutEngine": {
     "source": "src/layout/layoutEngine.ts",
-    "tokens": "src/layout/layoutTokens.ts",
-    "runtimeImport": "tools/shared/product-frontend/workbench-layout-engine.mjs",
+    "adapter": "src/layout/layoutAdapter.ts",
+    "runtimeImport": "dist/layout/layoutAdapter.js",
     "policy": "Layout mode selection, panel widths, collapse priority, and transitions are resolved by the deterministic layout engine before CSS is applied."
   },
   "regions": [
@@ -69,7 +69,7 @@
       "direction": "column",
       "spacingToken": "--visual-space-body",
       "paddingToken": "--visual-card-padding",
-      "widthToken": "--visual-sidebar-width",
+      "widthSource": "layoutEngine",
       "minWidth": 240,
       "maxWidth": 320,
       "collapsedWidth": 56,
@@ -102,7 +102,7 @@
       "direction": "column",
       "spacingToken": "--visual-space-body",
       "paddingToken": "--visual-card-padding",
-      "widthToken": "--visual-inspector-width",
+      "widthSource": "layoutEngine",
       "minWidth": 280,
       "maxWidth": 360,
       "collapsedWidth": 56,

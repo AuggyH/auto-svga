@@ -5,15 +5,6 @@
     sans-serif;
   background: var(--background);
   color: var(--textPrimary);
-  --info-panel-width: 15vw;
-  --logs-panel-width: min(260px, 15vw);
-  --layout-gap: 16px;
-  --layout-left-width: var(--visual-sidebar-width);
-  --layout-center-min-width: 520px;
-  --layout-right-width: var(--visual-inspector-width);
-  --layout-right-expanded-width: var(--visual-inspector-width);
-  --layout-left-collapsed-width: var(--visual-collapse-strip-width);
-  --layout-right-collapsed-width: var(--visual-collapse-strip-width);
 }
 
 * {
@@ -3082,8 +3073,6 @@ dd {
 /* Rebuilt tool layout: readable panels, shared menus, and recoverable scrolling. */
 :root {
   --blue: #0066cc;
-  --info-panel-width: 420px;
-  --logs-panel-width: 560px;
   --font-title: 15px;
   --font-subtitle: 12px;
   --font-body: 14px;
@@ -3168,13 +3157,13 @@ body {
 }
 
 .infoPanel {
-  width: var(--info-panel-width);
+  width: var(--info-panel-width, 100%);
   min-width: 320px;
   max-width: min(560px, 42vw);
 }
 
 .logsPanel {
-  width: var(--logs-panel-width);
+  width: var(--logs-panel-width, 100%);
   min-width: 420px;
   max-width: min(720px, 50vw);
 }
@@ -3474,94 +3463,6 @@ html.reduceMotion *::after {
   transition-duration: 0.01ms !important;
 }
 
-@media (max-width: 1799px) {
-  .logsPanel {
-    position: fixed;
-    top: 68px;
-    right: 14px;
-    bottom: 14px;
-    z-index: 25;
-    height: auto;
-    min-height: 0;
-  }
-}
-
-@media (max-width: 1199px) {
-  .infoPanel {
-    position: fixed;
-    top: 68px;
-    right: 14px;
-    bottom: 14px;
-    z-index: 24;
-    height: auto;
-    min-height: 0;
-  }
-
-  .workspace.withInfoPanel.withLogsPanel .logsPanel {
-    z-index: 26;
-  }
-}
-
-@media (max-width: 900px) {
-  .toolbar {
-    position: relative;
-    grid-template-columns: minmax(0, 1fr) auto;
-    height: auto;
-    gap: 10px;
-  }
-
-  .modeControl {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-self: stretch;
-    width: 100%;
-  }
-
-  .actionRow {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .workspace,
-  .workspace.mode-localPreview.withCompare,
-  .workspace.mode-exportReview,
-  .workspace.mode-localPreview.withInfoPanel,
-  .workspace.mode-localPreview.withLogsPanel,
-  .workspace.mode-localPreview.withInfoPanel.withLogsPanel,
-  .workspace.mode-localPreview.withCompare.withInfoPanel,
-  .workspace.mode-localPreview.withCompare.withLogsPanel,
-  .workspace.mode-localPreview.withCompare.withInfoPanel.withLogsPanel,
-  .workspace.mode-exportReview.withInfoPanel,
-  .workspace.mode-exportReview.withLogsPanel,
-  .workspace.mode-exportReview.withInfoPanel.withLogsPanel {
-    min-height: 0;
-  }
-
-  .previewCard,
-  .mode-localPreview.withCompare .previewCard,
-  .mode-exportReview .previewCard {
-    height: min(620px, calc(100dvh - 150px));
-    min-height: 460px;
-  }
-
-  .infoPanel,
-  .logsPanel {
-    top: 112px;
-    right: 12px;
-    bottom: 12px;
-    width: min(calc(100vw - 24px), var(--info-panel-width));
-    max-width: calc(100vw - 24px);
-  }
-
-  .logsPanel {
-    width: min(calc(100vw - 24px), var(--logs-panel-width));
-  }
-
-  .syncBar {
-    margin: 0 12px 12px;
-  }
-}
-
 /* Final overlay guard: these rules intentionally win over legacy compatibility blocks. */
 .toolbar {
   z-index: var(--z-toolbar);
@@ -3640,19 +3541,6 @@ html.reduceMotion *::after {
 
 .settingsToast {
   z-index: var(--z-toast);
-}
-
-@media (max-width: 900px) {
-  .toolbar {
-    grid-template-columns: minmax(132px, 1fr) 160px minmax(132px, 1fr);
-  }
-
-  .modeControl {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: center;
-    width: 160px;
-  }
 }
 
 /* Overlay and responsive polish. Keep all floating surfaces on one explicit layer scale. */
@@ -3918,54 +3806,15 @@ button:disabled {
 }
 
 /* Legacy stress guard: keep the center mode control geometrically centered below the supported minimum. */
-@media (max-width: 900px) {
-  .toolbar {
-    grid-template-columns: minmax(132px, 1fr) auto minmax(132px, 1fr);
-  }
-
-  .brand {
-    grid-column: 1;
-    justify-self: start;
-    min-width: 0;
-  }
-
-  .modeControl {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: center;
-    width: 160px;
-  }
-
-  .actionRow {
-    grid-column: 3;
-    justify-self: end;
-    min-width: 0;
-  }
-}
-
-@media (max-width: 620px) {
-  .toolbar {
-    grid-template-columns: minmax(42px, 1fr) 138px minmax(132px, 1fr);
-  }
-
-  .brandCopy {
-    display: none;
-  }
-
-  .modeControl {
-    width: 138px;
-  }
-}
-
 /* P6-R1 owner workbench IA: Source / Preview / Inspector foundation. */
 .workspace {
   min-width: 0;
   grid-template-columns:
-    var(--layout-left-width)
-    minmax(var(--layout-center-min-width), 1fr)
-    var(--layout-right-width);
+    var(--layout-left-width, 0px)
+    minmax(var(--layout-center-min-width, 0px), 1fr)
+    var(--layout-right-width, 0px);
   grid-template-areas: "source preview inspector";
-  gap: var(--layout-gap);
+  gap: var(--layout-gap, 0px);
   padding: var(--visual-space-body);
   background: var(--visual-surface-0);
 }
@@ -4140,18 +3989,6 @@ button:disabled {
   line-height: var(--visual-line-meta);
 }
 
-.workspace.sourceCollapsed {
-  grid-template-columns: var(--layout-left-width) minmax(var(--layout-center-min-width), 1fr) var(--layout-right-width);
-}
-
-.workspace.inspectorCollapsed {
-  grid-template-columns: var(--layout-left-width) minmax(var(--layout-center-min-width), 1fr) var(--layout-right-width);
-}
-
-.workspace.sourceCollapsed.inspectorCollapsed {
-  grid-template-columns: var(--layout-left-width) minmax(var(--layout-center-min-width), 1fr) var(--layout-right-width);
-}
-
 .workspace.sourceCollapsed .sourcePanel > :not(.sourceHeader),
 .workspace.inspectorCollapsed:not(.inspectorExpanded) .inspectorPanel > :not(.infoHeader) {
   display: none !important;
@@ -4180,9 +4017,10 @@ button:disabled {
   top: var(--visual-space-body);
   right: var(--visual-space-body);
   bottom: var(--visual-space-body);
-  width: min(var(--layout-right-expanded-width), calc(100% - var(--layout-left-width) - var(--layout-center-min-width) - var(--layout-gap) * 2)) !important;
-  min-width: 280px;
-  max-width: 360px;
+  width: min(
+    var(--layout-right-expanded-width, 100%),
+    calc(100% - var(--layout-left-width, 0px) - var(--layout-center-min-width, 0px) - var(--layout-gap, 0px) * 2)
+  ) !important;
 }
 
 .workspace[data-layout-mode="MINIMAL_WORKBENCH"] {
@@ -4196,13 +4034,6 @@ button:disabled {
 .logsPanel.isHidden {
   visibility: hidden !important;
   pointer-events: none !important;
-}
-
-@media (max-width: 1279px) {
-  .workspace.mode-localPreview.withCompare .previewDeck,
-  .workspace.mode-exportReview .previewDeck {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* P6-R1 final workbench foundation guard: region semantics, progressive diagnostics, and compact review viewports. */
@@ -4319,24 +4150,6 @@ button:disabled {
 
 [data-workbench-region] {
   scroll-margin: 18px;
-}
-
-@media (max-width: 900px) {
-  .tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .tabButton {
-    min-width: 0;
-  }
-
-  .diagnosticSummary .metricRow {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .workspace.mode-localPreview.withCompare {
-    gap: 12px;
-  }
 }
 
 /* P6-R1 owner-visible visual system: token-driven overrides for local preview. */
@@ -4706,45 +4519,6 @@ button:disabled {
   display: none;
 }
 
-@media (max-width: 980px) {
-  .workspace.withCompare .previewCard,
-  .workspace.mode-exportReview .previewCard {
-    min-height: min(46vh, 360px);
-  }
-
-  .syncBar {
-    height: auto;
-    min-height: 52px;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
-    padding-block: var(--space-2);
-  }
-
-  .syncFileInfo {
-    display: none;
-  }
-
-  .syncControls {
-    min-width: 0;
-  }
-}
-
-@media (max-width: 720px) {
-  .toolbar {
-    grid-template-columns: minmax(42px, 1fr) minmax(136px, 160px) minmax(118px, 1fr);
-    gap: var(--space-3);
-    padding-inline: var(--space-3);
-  }
-
-  .actionRow {
-    gap: var(--space-2);
-  }
-
-  .metricGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 html.reduceMotion .modalOverlay .settingsModal,
 html.reduceMotion .modalOverlay .assetModal,
 html.reduceMotion .settingsToast,
@@ -4920,7 +4694,7 @@ body {
   bottom: 14px;
   z-index: 40;
   display: flex;
-  width: min(var(--info-panel-width), calc(100vw - 28px));
+  width: min(var(--info-panel-width, 100%), calc(100vw - 28px));
   min-width: min(320px, calc(100vw - 28px));
   max-width: min(440px, calc(100vw - 28px));
   height: auto;
@@ -4932,7 +4706,7 @@ body {
 }
 
 .logsPanel {
-  width: min(var(--logs-panel-width), calc(100vw - 28px));
+  width: min(var(--logs-panel-width, 100%), calc(100vw - 28px));
   max-width: min(480px, calc(100vw - 28px));
 }
 
@@ -5235,189 +5009,8 @@ body {
   transform: translateX(-50%);
 }
 
-@media (max-width: 900px) {
-  .toolbar {
-    grid-template-columns: minmax(110px, 1fr) 160px auto;
-    gap: 7px;
-    padding: 7px 10px;
-  }
-
-  .modeControl {
-    grid-column: 2;
-    grid-row: 1;
-    width: 160px;
-  }
-
-  .brandCopy span {
-    display: none;
-  }
-
-  .workspace,
-  .workspace.mode-localPreview,
-  .workspace.mode-localPreview.withCompare,
-  .workspace.mode-exportReview {
-    min-height: 0;
-    padding: 9px 10px;
-    gap: 9px;
-  }
-
-  .previewCard,
-  .mode-localPreview.withCompare .previewCard,
-  .mode-exportReview .previewCard {
-    height: 100%;
-    min-height: 0;
-  }
-
-  .cardHeader {
-    min-height: 48px;
-    padding: 7px 9px;
-  }
-
-  .cardHeader h2 {
-    font-size: 13px;
-  }
-
-  .badge,
-  .statusPill {
-    font-size: 9px;
-  }
-
-  .cardFileButton {
-    padding: 0 7px;
-  }
-
-  .cardFileButton span,
-  .loopToggle,
-  .fitMenuButtonLabel {
-    display: none;
-  }
-
-  .playerBar {
-    gap: 5px;
-    padding: 6px 7px;
-  }
-
-  .syncBar {
-    height: 58px;
-    min-height: 58px;
-    margin: 0 10px 9px;
-    grid-template-columns: 92px minmax(0, 1fr) 92px;
-  }
-
-  .syncFileInfo {
-    padding: 0 9px;
-  }
-
-  .infoPanel,
-  .logsPanel {
-    top: 64px;
-    right: 10px;
-    bottom: 10px;
-    width: min(420px, calc(100vw - 20px));
-    min-width: min(300px, calc(100vw - 20px));
-  }
-
-  .narrowWindowHint {
-    display: none;
-  }
-}
-
-@media (max-height: 680px) {
-  .workspace {
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
-
-  .cardHeader {
-    min-height: 44px;
-  }
-
-  .centerEmptyState {
-    gap: 7px;
-  }
-
-  .uploadMockIcon {
-    width: 42px;
-    height: 42px;
-  }
-
-  .syncBar {
-    height: 54px;
-    min-height: 54px;
-  }
-}
-
 .isHidden {
   display: none !important;
-}
-
-@media (max-width: 1180px) {
-  body {
-    min-width: 0;
-  }
-
-  .toolbar {
-    grid-template-columns: 222px minmax(120px, 1fr) auto;
-  }
-
-  .toolButton span {
-    max-width: 88px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
-@media (max-width: 900px) {
-  .toolbar {
-    height: auto;
-    grid-template-columns: 1fr;
-    padding: 12px;
-  }
-
-  .modeControl {
-    justify-self: start;
-  }
-
-  .workspace {
-    padding: 12px;
-  }
-
-  .syncBar {
-    grid-template-columns: 1fr;
-  }
-
-  .infoPanel,
-  .logsPanel {
-    max-height: 520px;
-  }
-
-  .mode-localPreview.withCompare .previewCard,
-  .mode-exportReview .previewCard {
-    height: 480px;
-  }
-}
-
-@media (max-width: 900px) {
-  .toolbar {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .modeControl {
-    grid-column: 1 / -1;
-    justify-self: stretch;
-  }
-
-  .infoPanel,
-  .logsPanel {
-    position: fixed;
-    max-height: none;
-  }
-
-  .mode-localPreview.withCompare .previewCard,
-  .mode-exportReview .previewCard {
-    height: min(620px, calc(100dvh - 150px));
-  }
 }
 
 /* Final responsive guard: earlier compatibility rules must not re-enable page scrolling or card wrapping. */
@@ -5446,62 +5039,6 @@ body,
   height: 100%;
   min-height: 0;
   grid-template-columns: minmax(0, 1fr);
-}
-
-@media (max-width: 900px) {
-  .toolbar {
-    height: 56px;
-    min-height: 56px;
-    grid-template-columns: minmax(110px, 1fr) 160px auto;
-    gap: 7px;
-    padding: 7px 10px;
-  }
-
-  .modeControl {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: center;
-    width: 160px;
-  }
-
-  .workspace,
-  .workspace.mode-localPreview,
-  .workspace.mode-localPreview.withCompare,
-  .workspace.mode-exportReview {
-    height: 100%;
-    min-height: 0;
-    padding: 9px 10px;
-    grid-template-areas: "source preview inspector";
-  }
-
-  .previewDeck,
-  .workspace.mode-localPreview.withCompare .previewDeck,
-  .workspace.mode-exportReview .previewDeck {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .sourcePanel > :not(.sourceHeader),
-  .inspectorPanel > :not(.infoHeader) {
-    display: none !important;
-  }
-
-  .sourceHeader,
-  .inspectorPanel .infoHeader {
-    justify-content: center;
-    padding: var(--space-2);
-  }
-
-  .sourceHeader > div,
-  .inspectorPanel .infoHeader > div {
-    display: none;
-  }
-
-  .previewCard,
-  .mode-localPreview.withCompare .previewCard,
-  .mode-exportReview .previewCard {
-    height: 100%;
-    min-height: 0;
-  }
 }
 
 /* Overlay precedence guard. */
@@ -5551,28 +5088,6 @@ body,
 #settingsModal { z-index: var(--z-settings-backdrop); }
 #assetPreviewModal { z-index: var(--z-asset-lightbox-backdrop); }
 .settingsToast { z-index: var(--z-toast); }
-
-@media (max-width: 900px) {
-  .toolbar {
-    grid-template-columns: minmax(132px, 1fr) 160px minmax(132px, 1fr);
-  }
-
-  .modeControl {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: center;
-    width: 160px;
-  }
-}
-
-@media (max-width: 620px) {
-  .toolbar {
-    grid-template-columns: minmax(42px, 1fr) 138px minmax(132px, 1fr);
-  }
-
-  .brandCopy { display: none; }
-  .modeControl { width: 138px; }
-}
 
 /* Component consistency pass: shared floating menus, preview stages and responsive controls. */
 :root {
@@ -6268,12 +5783,6 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   background: color-mix(in srgb, var(--warning) 7%, var(--surfaceElevated));
 }
 
-@media (max-width: 620px) {
-  .specAssetSummary {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 #tab-assets {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
@@ -6417,22 +5926,6 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   white-space: nowrap;
 }
 
-@media (max-width: 900px) {
-  .syncBar {
-    grid-template-columns: minmax(0, 1fr) minmax(180px, 0.82fr) minmax(0, 1fr);
-    gap: 9px;
-    padding: 0 10px;
-  }
-
-  .syncControls {
-    padding: 0 8px;
-  }
-
-  .syncOptionalMeta {
-    display: none;
-  }
-}
-
 [data-layout-mode="MINIMAL_WORKBENCH"] .responsiveButtonLabel,
 [data-layout-mode="MINIMAL_WORKBENCH"] .cardFileButton .responsiveButtonLabel,
 [data-layout-mode="MINIMAL_WORKBENCH"] .cardUtilityButton .responsiveButtonLabel {
@@ -6445,78 +5938,4 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   min-width: 30px;
   padding: 0;
   justify-content: center;
-}
-
-@media (max-width: 760px) {
-  .syncBar {
-    grid-template-columns: minmax(70px, 1fr) minmax(150px, 0.9fr) minmax(70px, 1fr);
-    gap: 7px;
-    padding: 0 8px;
-  }
-
-  .syncFileInfo {
-    overflow: hidden;
-  }
-
-  .syncFileInfo small {
-    display: none;
-  }
-
-  .syncControls {
-    padding: 0 6px;
-  }
-
-  .syncStatusPill {
-    max-width: 92px;
-  }
-
-  .cardTitleGroup,
-  .cardActions,
-  .playerBar {
-    min-width: 0;
-  }
-}
-
-@media (max-width: 620px) {
-  .syncBar {
-    grid-template-columns: minmax(58px, 1fr) minmax(132px, 0.9fr) minmax(58px, 1fr);
-    gap: 5px;
-    padding: 0 6px;
-  }
-
-  .syncFileName {
-    font-size: 9px;
-  }
-
-  .syncFileBadge {
-    height: 15px;
-    padding: 0 4px;
-    font-size: 8px;
-  }
-
-  .syncControls {
-    border-color: transparent;
-  }
-
-  .syncWarnings {
-    display: none;
-  }
-
-  .syncControls {
-    grid-template-rows: 30px;
-  }
-}
-
-@media (max-width: 620px) {
-  .toolbar {
-    grid-template-columns: minmax(42px, 1fr) 138px minmax(132px, 1fr);
-  }
-
-  .brandCopy {
-    display: none;
-  }
-
-  .modeControl {
-    width: 138px;
-  }
 }
