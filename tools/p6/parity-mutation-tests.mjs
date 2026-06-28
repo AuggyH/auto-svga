@@ -1108,7 +1108,7 @@ function goodFacts() {
         fixtureHashes: { fixtureSha256 }
       },
       reviewerBEvidenceRequest: {
-        categoryCount: 25,
+        categoryCount: 33,
         categories: [
           "productIdentity",
           "toolbarAndModes",
@@ -1124,6 +1124,14 @@ function goodFacts() {
           "motionAssetAudit",
           "runtimeLogs",
           "settings",
+          "macOSWorkbenchLayoutSystem",
+          "LeftSourceResourcesIA",
+          "RightInspectorActionsIA",
+          "LocalPreviewPrimaryWorkflow",
+          "ResponsiveRuleCoverage",
+          "macosVisualSystem",
+          "macOSAppFoundation",
+          "RoadmapCapacity",
           "theme",
           "accessibilitySettings",
           "interactionParity",

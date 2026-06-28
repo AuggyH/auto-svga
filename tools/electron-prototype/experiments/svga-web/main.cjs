@@ -4,7 +4,7 @@ const { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmS
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, session } = require("electron");
+const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, screen, session } = require("electron");
 const {
   IPC_CHANNELS,
   createSecureWebPreferences,
@@ -31,6 +31,15 @@ const stylesEntry = "web/styles.css";
 const playerIdentity = "svga-web@2.4.4";
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "P2";
+const macosWorkbenchWindowSizing = Object.freeze({
+  defaultLaunch: { width: 1440, height: 900 },
+  comfortable: { width: 1280, height: 800 },
+  compact: { width: 1180, height: 760 },
+  minimumSupported: { width: 1180, height: 760 },
+  legacyStressViewport: { width: 900, height: 720 },
+  availableScreenFitRatio: 0.86,
+  aspectRatio: 16 / 10
+});
 const productMilestoneTitle = {
   P2: "Desktop Product Shell And Web Preview Parity",
   P3: "Basic Image Resource Replacement And Save As",
@@ -102,6 +111,32 @@ mkdirSync(sessionRoot, { recursive: true });
 if (productSmokeMode || normalProofMode || normalVisibleStartupMode) mkdirSync(productArtifactRoot, { recursive: true });
 app.setPath("userData", path.join(sessionRoot, "user-data"));
 app.setPath("sessionData", path.join(sessionRoot, "session-data"));
+
+function chooseMacosWorkbenchWindowBounds() {
+  const display = screen.getPrimaryDisplay();
+  const workArea = display?.workArea ?? {
+    x: 0,
+    y: 0,
+    width: macosWorkbenchWindowSizing.defaultLaunch.width,
+    height: macosWorkbenchWindowSizing.defaultLaunch.height
+  };
+  const maxWidth = Math.floor(workArea.width * macosWorkbenchWindowSizing.availableScreenFitRatio);
+  const maxHeight = Math.floor(workArea.height * macosWorkbenchWindowSizing.availableScreenFitRatio);
+  let width = Math.min(macosWorkbenchWindowSizing.defaultLaunch.width, maxWidth);
+  let height = Math.round(width / macosWorkbenchWindowSizing.aspectRatio);
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = Math.round(height * macosWorkbenchWindowSizing.aspectRatio);
+  }
+  width = Math.max(width, Math.min(macosWorkbenchWindowSizing.minimumSupported.width, workArea.width));
+  height = Math.max(height, Math.min(macosWorkbenchWindowSizing.minimumSupported.height, workArea.height));
+  return {
+    width,
+    height,
+    x: Math.round(workArea.x + (workArea.width - width) / 2),
+    y: Math.round(workArea.y + (workArea.height - height) / 2)
+  };
+}
 
 function isExpectedSender(event) {
   return isExpectedSenderUrl(event.senderFrame?.url, expectedOrigin);
@@ -1916,6 +1951,8 @@ function stateForScenario(scenario) {
     "desktop-local-compare-empty": "local-compare-empty",
     "desktop-local-compare-loaded": "local-compare-loaded",
     "desktop-responsive-local-compare-at-900-x-720": "responsive-local-compare-at-900-x-720",
+    "desktop-responsive-local-compare-at-minimum-size": "responsive-local-compare-at-minimum-size",
+    "desktop-local-minimum-size": "local-minimum-size",
     "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open",
@@ -2010,7 +2047,9 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     "synchronized-playback-toggled-by-space",
     "local-compare-empty",
     "local-compare-loaded",
+    "local-minimum-size",
     "responsive-local-compare-at-900-x-720",
+    "responsive-local-compare-at-minimum-size",
     "asset-preview-modal-open"
   ].every((key) => proof.states[key]?.passed === true);
   proof.generatedAt = new Date().toISOString();
@@ -2020,13 +2059,13 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
 async function captureProductArtifact(window, scenario) {
   const originalSize = window.getSize();
   const originalContentSize = window.getContentSize();
-  if (scenario === "desktop-1280x800") window.setSize(1280, 800);
-  if (scenario === "desktop-1440x900") window.setSize(1440, 900);
-  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(900, 720);
-  if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(900, 720);
-  if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(900, 720);
-  if (scenario === "desktop-local-minimum-size") window.setContentSize(900, 720);
-  if (scenario === "desktop-responsive-local-compare-at-minimum-size") window.setContentSize(900, 720);
+  if (scenario === "desktop-1280x800") window.setSize(macosWorkbenchWindowSizing.comfortable.width, macosWorkbenchWindowSizing.comfortable.height);
+  if (scenario === "desktop-1440x900") window.setSize(macosWorkbenchWindowSizing.defaultLaunch.width, macosWorkbenchWindowSizing.defaultLaunch.height);
+  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
+  if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
+  if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
+  if (scenario === "desktop-local-minimum-size") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
+  if (scenario === "desktop-responsive-local-compare-at-minimum-size") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
   if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
@@ -2499,14 +2538,15 @@ async function createExperimentWindow() {
   );
   experimentServer = await startSvgaWebExperimentServer({ appRoot, reportToken, desktopArtifacts });
   expectedOrigin = experimentServer.origin;
+  const launchBounds = chooseMacosWorkbenchWindowBounds();
 
   const window = new BrowserWindow({
     title: productIdentity,
-    ...(smokeMode ? { x: -20000, y: -20000 } : {}),
-    width: 1440,
-    height: 900,
-    minWidth: 900,
-    minHeight: 720,
+    ...(smokeMode ? { x: -20000, y: -20000 } : { x: launchBounds.x, y: launchBounds.y }),
+    width: launchBounds.width,
+    height: launchBounds.height,
+    minWidth: macosWorkbenchWindowSizing.minimumSupported.width,
+    minHeight: macosWorkbenchWindowSizing.minimumSupported.height,
     show: false,
     paintWhenInitiallyHidden: true,
     webPreferences: {

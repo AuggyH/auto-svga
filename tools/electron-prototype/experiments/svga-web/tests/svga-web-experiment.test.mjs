@@ -277,8 +277,10 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /writeVisibleNormalStartupProof/);
   assert.match(main, /normal-visible-startup\.json/);
 	  assert.match(main, /windowShown: window\.isVisible\(\)/);
-	  assert.match(main, /minWidth:\s*900/);
-	  assert.match(main, /minHeight:\s*720/);
+	  assert.match(main, /minimumSupported:\s*\{\s*width:\s*1180,\s*height:\s*760\s*\}/);
+	  assert.match(main, /legacyStressViewport:\s*\{\s*width:\s*900,\s*height:\s*720\s*\}/);
+	  assert.match(main, /minWidth:\s*macosWorkbenchWindowSizing\.minimumSupported\.width/);
+	  assert.match(main, /minHeight:\s*macosWorkbenchWindowSizing\.minimumSupported\.height/);
 	  assert.match(main, /environmentOverrides: \{\}/);
   assert.match(main, /rendererQuery: rendererProbe\.rendererQuery/);
   assert.match(main, /noProofMode: true/);

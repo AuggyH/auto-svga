@@ -79,8 +79,9 @@ assertCondition(errors, colorCount <= target.auditRules.hardcodedOwnerVisibleCol
 assertCondition(errors, radiusCount <= target.auditRules.hardcodedOwnerVisibleRadiusCountMax, `hardcoded radius count ${radiusCount} exceeds ${target.auditRules.hardcodedOwnerVisibleRadiusCountMax}`);
 assertCondition(errors, fontSizeCount <= target.auditRules.hardcodedOwnerVisibleFontSizeCountMax, `hardcoded font-size count ${fontSizeCount} exceeds ${target.auditRules.hardcodedOwnerVisibleFontSizeCountMax}`);
 assertCondition(errors, tokenReferenceCount >= target.auditRules.requiredTokenReferenceMinimum, `visual token reference count ${tokenReferenceCount} below ${target.auditRules.requiredTokenReferenceMinimum}`);
-assertCondition(errors, /body\s*\{[\s\S]*?min-width:\s*680px;/.test(styles), "body min-width must support the 900x720 owner-review viewport");
-assertCondition(errors, /@media\s*\(max-width:\s*980px\)[\s\S]*?\.workspace\.withCompare/.test(styles), "missing 900px compact compare workspace rule");
+assertCondition(errors, /body\s*\{[\s\S]*?min-width:\s*var\(--visual-minimum-workbench-width\);/.test(styles), "body min-width must use the declared macOS workbench minimum token");
+assertCondition(errors, /--visual-minimum-workbench-width:\s*1180px;/.test(tokens), "visual minimum workbench width must be 1180px");
+assertCondition(errors, /@media\s*\(max-width:\s*1180px\)[\s\S]*?\.workspace\.mode-localPreview\.withCompare/.test(styles), "missing minimum-edge compact workbench compare workspace rule");
 assertCondition(errors, /duplicateFilePillHidden/.test(app), "preview card audit must prove duplicated file pill is hidden");
 assertCondition(errors, /function reloadCurrentFile/.test(app), "Cmd/Ctrl+R reload path must be explicit");
 assertCondition(errors, !/clearCurrentFile\("shortcut"\)/.test(app), "Cmd/Ctrl+R must not clear the current file");
@@ -98,7 +99,12 @@ assertCondition(errors, foundationContract.phase2Started === false, "foundation 
 assertCondition(errors, Array.isArray(foundationContract.regions) && foundationContract.regions.length >= 6, "foundation contract must define workbench regions");
 assertCondition(errors, layoutContract.contractId === "MACOS_WORKBENCH_LAYOUT_CONTRACT", "missing macOS workbench layout contract id");
 assertCondition(errors, layoutContract.phase2Started === false, "layout contract must not start Phase 2");
-assertCondition(errors, layoutContract.minimumSupportedWindow?.width >= 680, "layout contract must define a supported minimum width");
+assertCondition(errors, layoutContract.minimumSupportedWindow?.width >= 1180, "layout contract must define 1180px or wider supported minimum width");
+assertCondition(errors, layoutContract.minimumSupportedWindow?.height >= 760, "layout contract must define 760px or taller supported minimum height");
+assertCondition(errors, layoutContract.windowSizingSystem?.defaultLaunchWindow?.width === 1440, "layout contract must define 1440x900 default launch width");
+assertCondition(errors, layoutContract.windowSizingSystem?.defaultLaunchWindow?.height === 900, "layout contract must define 1440x900 default launch height");
+assertCondition(errors, layoutContract.windowSizingSystem?.legacyStressViewport?.width === 900, "layout contract may keep 900x720 only as legacy stress width");
+assertCondition(errors, /not the default window/i.test(layoutContract.windowSizingSystem?.legacyStressViewport?.policy ?? ""), "legacy stress policy must forbid 900x720 as the default window");
 assertCondition(errors, Array.isArray(layoutContract.regions) && layoutContract.regions.length >= 3, "layout contract must define major layout regions");
 for (const region of layoutContract.regions ?? []) {
   assertCondition(errors, typeof region.direction === "string", `layout region ${region.id} missing direction`);
@@ -203,7 +209,9 @@ if (!sourceOnly) {
   try {
     const renderProof = await readJson(".artifacts/product/P6/desktop-state-render-proof.json");
     assertCondition(errors, renderProof.passed === true, "desktop state render proof did not pass");
-    assertCondition(errors, renderProof.states?.["responsive-local-compare-at-900-x-720"]?.passed === true, "responsive local compare proof missing or failed");
+    assertCondition(errors, renderProof.states?.["local-minimum-size"]?.passed === true, "minimum supported local preview proof missing or failed");
+    assertCondition(errors, renderProof.states?.["responsive-local-compare-at-minimum-size"]?.passed === true, "minimum supported local compare proof missing or failed");
+    assertCondition(errors, renderProof.states?.["responsive-local-compare-at-900-x-720"]?.passed === true, "legacy stress local compare proof missing or failed");
     assertCondition(errors, renderProof.states?.["info-diagnostics-open"]?.passed === true, "diagnostics panel proof missing or failed");
   } catch (error) {
     errors.push(`desktop state render proof unreadable: ${error.message}`);

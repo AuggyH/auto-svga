@@ -114,8 +114,10 @@
     "复制 imageKey"
   ],
   "responsiveTargets": [
-    "local_preview_900x720",
-    "compare_compact_900x720",
+    "default_launch_1440x900",
+    "comfortable_workbench_1280x800",
+    "compact_minimum_1180x760",
+    "legacy_stress_900x720",
     "both_loaded_ab_aligned"
   ],
   "evidenceTargets": [
@@ -134,9 +136,11 @@
     "logs_hidden_default",
     "source_collapsed",
     "inspector_collapsed",
-    "minimum_size",
-    "local_preview_900x720",
-    "compare_compact_900x720",
+    "default_launch_1440x900",
+    "comfortable_workbench_1280x800",
+    "minimum_supported_1180x760",
+    "local_preview_legacy_stress_900x720",
+    "compare_legacy_stress_900x720",
     "both_loaded_ab",
     "workbench_region_map",
     "roadmap_capacity_map"
@@ -146,134 +150,154 @@
       "id": "desktop_empty",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-empty.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_loaded",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-loaded.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
+    },
+    {
+      "id": "desktop_default_launch_1440x900",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-1440x900.png",
+      "minimumWidth": 1440,
+      "minimumHeight": 900,
+      "sizeClass": "default_launch"
+    },
+    {
+      "id": "desktop_comfortable_1280x800",
+      "kind": "png",
+      "path": ".artifacts/product/P6/desktop-1280x800.png",
+      "minimumWidth": 1280,
+      "minimumHeight": 800,
+      "sizeClass": "comfortable"
     },
     {
       "id": "desktop_invalid",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-invalid.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_recovered",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-recovered-from-invalid.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_info_overview",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-info-overview-open.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_info_assets",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-info-assets-open.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_source_resources",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-source-resources-open.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_source_layers",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-source-layers-open.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_inspector_actions",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-inspector-actions-open.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_info_diagnostics",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-info-diagnostics-open.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_logs_hidden_default",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-logs-hidden-default.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_source_collapsed",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-source-collapsed.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_inspector_collapsed",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-inspector-collapsed.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_minimum_size",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-minimum-size.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760,
+      "sizeClass": "minimum_supported"
     },
     {
       "id": "desktop_local_logs",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-logs-open.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
       "id": "desktop_local_settings",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-settings-open.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760
     },
     {
-      "id": "desktop_local_preview_responsive",
+      "id": "desktop_local_preview_legacy_stress_900x720",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png",
       "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumHeight": 720,
+      "sizeClass": "legacy_stress"
     },
     {
-      "id": "desktop_local_compare_responsive",
+      "id": "desktop_local_compare_legacy_stress_900x720",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-responsive-local-compare-at-900-x-720.png",
       "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumHeight": 720,
+      "sizeClass": "legacy_stress"
     },
     {
       "id": "desktop_local_compare_minimum_size",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720
+      "minimumWidth": 1180,
+      "minimumHeight": 760,
+      "sizeClass": "minimum_supported"
     },
     {
       "id": "workbench_region_map",

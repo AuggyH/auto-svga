@@ -8,7 +8,7 @@ Date: 2026-06-28
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 - State: terminal_human_required
 - Next Action: product_owner_human_gate
-- The real workbench layout repair is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
+- The macOS window sizing correction is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. 900x720 is legacy stress only; the supported sizing system uses 1440x900 preferred default, 1280x800 comfortable, and 1180x760 minimum. This remains contract revision 3, repairRound 0, and Phase 2 not started.
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -102,9 +102,11 @@ Date: 2026-06-28
   for concrete owner-visible layout failures: resource-row action overlap,
   vertical subtab wrapping, clipped inspector summaries, overclaimed 720x640
   minimum behavior, and incorrect `source_document` toolbar mapping. The
-  current repair fixes the layout engine and audit rules directly, updates the
-  minimum supported proof to 900x720, and keeps all findings open pending
-  Product Owner Human Gate and final independent product external review.
+- Product Owner corrected the follow-up sizing policy: 900x720 is legacy stress
+  only, not the canonical design target. The current repair defines a macOS
+  window sizing system with 1440x900 default launch when display bounds allow,
+  1280x800 comfortable workbench, 1180x760 minimum supported size, and 900x720
+  legacy stress evidence only.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are
   no further than `integrated_resolved_pending_external_review`; none are
   externally confirmed closed before Product Owner Human Gate and final independent

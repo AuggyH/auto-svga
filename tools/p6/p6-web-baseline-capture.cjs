@@ -2,7 +2,7 @@ const { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } = requir
 const { execFileSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const path = require("node:path");
-const { app, BrowserWindow, session } = require("electron");
+const { app, BrowserWindow, screen, session } = require("electron");
 
 const url = process.env.AUTO_SVGA_WEB_BASELINE_URL;
 const fixtureUrl = process.env.AUTO_SVGA_WEB_BASELINE_FIXTURE_URL;
@@ -18,6 +18,15 @@ const contract = JSON.parse(readFileSync(contractPath, "utf8"));
 const motionStyleSamples = {};
 const webActionTrace = [];
 const headCommit = currentGitHead();
+const macosWorkbenchWindowSizing = Object.freeze({
+  defaultLaunch: { width: 1440, height: 900 },
+  comfortable: { width: 1280, height: 800 },
+  compact: { width: 1180, height: 760 },
+  minimumSupported: { width: 1180, height: 760 },
+  legacyStressViewport: { width: 900, height: 720 },
+  availableScreenFitRatio: 0.86,
+  aspectRatio: 16 / 10
+});
 const requestAudit = {
   schemaVersion: 1,
   mode: "p6-web-baseline",
@@ -47,6 +56,32 @@ function currentGitHead() {
 
 function stableDigest(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function chooseMacosWorkbenchWindowBounds() {
+  const display = screen.getPrimaryDisplay();
+  const workArea = display?.workArea ?? {
+    x: 0,
+    y: 0,
+    width: macosWorkbenchWindowSizing.defaultLaunch.width,
+    height: macosWorkbenchWindowSizing.defaultLaunch.height
+  };
+  const maxWidth = Math.floor(workArea.width * macosWorkbenchWindowSizing.availableScreenFitRatio);
+  const maxHeight = Math.floor(workArea.height * macosWorkbenchWindowSizing.availableScreenFitRatio);
+  let width = Math.min(macosWorkbenchWindowSizing.defaultLaunch.width, maxWidth);
+  let height = Math.round(width / macosWorkbenchWindowSizing.aspectRatio);
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = Math.round(height * macosWorkbenchWindowSizing.aspectRatio);
+  }
+  width = Math.max(width, Math.min(macosWorkbenchWindowSizing.minimumSupported.width, workArea.width));
+  height = Math.max(height, Math.min(macosWorkbenchWindowSizing.minimumSupported.height, workArea.height));
+  return {
+    width,
+    height,
+    x: Math.round(workArea.x + (workArea.width - width) / 2),
+    y: Math.round(workArea.y + (workArea.height - height) / 2)
+  };
 }
 
 async function waitFor(window, predicateSource, timeoutMs = 15_000) {
@@ -938,9 +973,10 @@ async function main() {
     if (!local) requestAudit.externalRequests.push({ url: details.url, resourceType: details.resourceType });
     callback({ cancel: false });
   });
+  const launchBounds = chooseMacosWorkbenchWindowBounds();
   const window = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    width: launchBounds.width,
+    height: launchBounds.height,
     show: false,
     focusable: false,
     skipTaskbar: true,

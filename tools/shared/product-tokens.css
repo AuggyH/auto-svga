@@ -86,7 +86,7 @@
   --visual-sidebar-width: clamp(248px, 22vw, 320px);
   --visual-inspector-width: clamp(260px, 24vw, 360px);
   --visual-collapse-strip-width: 48px;
-  --visual-minimum-workbench-width: 680px;
+  --visual-minimum-workbench-width: 1180px;
   --visual-row-height: 44px;
   --visual-row-padding: 8px 10px;
   --visual-card-padding: var(--space-4);

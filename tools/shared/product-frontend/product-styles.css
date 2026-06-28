@@ -14,7 +14,7 @@
 }
 
 body {
-  min-width: 680px;
+  min-width: var(--visual-minimum-workbench-width);
   height: 100vh;
   height: 100dvh;
   margin: 0;
@@ -4001,7 +4001,7 @@ button:disabled {
   color: var(--blue);
 }
 
-/* The center mode control stays geometrically centered around the 900px breakpoint. */
+/* Legacy stress guard: keep the center mode control geometrically centered below the supported minimum. */
 @media (max-width: 900px) {
   .toolbar {
     grid-template-columns: minmax(132px, 1fr) auto minmax(132px, 1fr);
@@ -4268,22 +4268,43 @@ button:disabled {
   pointer-events: none !important;
 }
 
-@media (max-width: 980px) {
-  .workspace {
-    grid-template-columns: var(--visual-collapse-strip-width) minmax(360px, 1fr) minmax(236px, 28vw) !important;
-  }
-
-  .workspace:not(.sourceCollapsed) {
-    grid-template-columns: minmax(220px, 25vw) minmax(360px, 1fr) minmax(236px, 28vw) !important;
-  }
-
+@media (max-width: 1279px) {
   .workspace.mode-localPreview.withCompare .previewDeck,
   .workspace.mode-exportReview .previewDeck {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1180px) {
+  .workspace {
+    grid-template-columns: minmax(220px, 25vw) minmax(420px, 1fr) var(--visual-collapse-strip-width) !important;
+  }
+
+  .workspace:not(.sourceCollapsed) {
+    grid-template-columns: minmax(220px, 25vw) minmax(420px, 1fr) var(--visual-collapse-strip-width) !important;
+  }
+
+  .workspace.mode-localPreview.withCompare .previewDeck,
+  .workspace.mode-exportReview .previewDeck {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inspectorPanel > :not(.infoHeader) {
+    display: none !important;
+  }
+
+  .inspectorPanel .infoHeader {
+    align-content: start;
+    justify-content: center;
+    padding: var(--space-3);
+  }
+
+  .inspectorPanel .infoHeader > div {
+    display: none;
+  }
+}
+
+@media (max-width: 1179px) {
   .workspace,
   .workspace:not(.sourceCollapsed),
   .workspace.inspectorCollapsed,

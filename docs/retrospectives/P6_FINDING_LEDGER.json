@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "P6-R1 narrow owner repair completed for real workbench layout engine, 900x720 minimum-size proof, source-document region mapping, resource row collision prevention, role-tab wrapping prevention, inspector summary readability, layout-integrity audit, and Owner feedback closure-map accuracy. Prior complete review-directory packaging, App ZIP delivery, sidecar, post-seal, privacy, final loop validation, Reviewer binding, App extraction, screenshots, roadmap artifacts, visual-system audit, and foundation artifacts remain mechanically valid unless affected by this repair. Findings remain currentStatus=open; affected interaction/visual/reviewer/machine-gate/handoff/end-to-end findings are restored only to integrated_resolved_pending_external_review. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
+  "scope": "P6-R1 narrow owner repair completed for macOS window sizing system, 1180x760 minimum-size proof, 900x720 legacy stress proof, source-document region mapping, resource row collision prevention, role-tab wrapping prevention, inspector summary readability, layout-integrity audit, and Owner feedback closure-map accuracy. Prior complete review-directory packaging, App ZIP delivery, sidecar, post-seal, privacy, final loop validation, Reviewer binding, App extraction, screenshots, roadmap artifacts, visual-system audit, and foundation artifacts remain mechanically valid unless affected by this repair. Findings remain currentStatus=open; affected interaction/visual/reviewer/machine-gate/handoff/end-to-end findings are restored only to integrated_resolved_pending_external_review. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -231,7 +231,7 @@
         "owner-real-workbench-layout-r7"
       ],
       "occurrenceCount": 5,
-      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, minimum 1180x760 screenshots preserve primary controls while 900x720 legacy stress screenshots remain non-canonical, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Parity reports passed based on item IDs, artifact existence, generic states, or broad artifact sets.",
       "userImpact": "Owner handoff could claim parity while product behavior remained unproven.",
       "rootCauseHypothesis": "Evidence architecture was self-referential: generators produced PASS and reviewers checked packet integrity more than product semantics.",
@@ -330,7 +330,7 @@
         "owner-real-workbench-layout-r7"
       ],
       "occurrenceCount": 9,
-      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, minimum 1180x760 screenshots preserve primary controls while 900x720 legacy stress screenshots remain non-canonical, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
       "userImpact": "Visual parity evidence was not comparable.",
       "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
@@ -359,7 +359,7 @@
       ],
       "currentOpenSubIssues": [
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
-        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, default, comfortable, minimum, and legacy stress layouts, Reviewer B foundation categories, and final owner handoff on one head.",
         "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
         "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate.",
         "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
@@ -442,7 +442,7 @@
         "owner-real-workbench-layout-r7"
       ],
       "occurrenceCount": 6,
-      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, minimum 1180x760 screenshots preserve primary controls while 900x720 legacy stress screenshots remain non-canonical, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "No Desktop per-interaction action trace existed.",
       "userImpact": "Buttons and menus could appear present without proving they work.",
       "rootCauseHypothesis": "Interaction evidence was assigned to the parity layer, but product behavior and host event triggering were split across workers.",
@@ -470,7 +470,7 @@
         "external product review"
       ],
       "currentOpenSubIssues": [
-        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, default, comfortable, minimum, and legacy stress layouts, Reviewer B foundation categories, and final owner handoff on one head.",
         "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
@@ -709,7 +709,7 @@
         "owner-real-workbench-layout-r7"
       ],
       "occurrenceCount": 10,
-      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, minimum 1180x760 screenshots preserve primary controls while 900x720 legacy stress screenshots remain non-canonical, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
       "userImpact": "A human-facing product gap could pass internal review.",
       "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
@@ -737,7 +737,7 @@
       ],
       "currentOpenSubIssues": [
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
-        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, default, comfortable, minimum, and legacy stress layouts, Reviewer B foundation categories, and final owner handoff on one head.",
         "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
         "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate.",
         "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
@@ -900,7 +900,7 @@
         "owner-real-workbench-layout-r7"
       ],
       "occurrenceCount": 4,
-      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, minimum 1180x760 screenshots preserve primary controls while 900x720 legacy stress screenshots remain non-canonical, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Known required parity failures existed while terminalHandoffReady or HUMAN_REQUIRED owner handoff was prepared.",
       "userImpact": "Owner review was asked to decide before engineering gates were closed.",
       "rootCauseHypothesis": "The protocol treated HUMAN_REQUIRED as an acceptable terminal state for both product acceptance and technical uncertainty.",
@@ -995,7 +995,7 @@
         "owner-real-workbench-layout-r7"
       ],
       "occurrenceCount": 8,
-      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, minimum 1180x760 screenshots preserve primary controls while 900x720 legacy stress screenshots remain non-canonical, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Local paths, hidden .artifacts-only handoffs, or stale review-root literals repeatedly needed repair.",
       "userImpact": "Owner could not reliably access review materials, or private local paths could leak.",
       "rootCauseHypothesis": "Handoff packaging was retrofitted after product work started and consumed repair budget repeatedly.",
@@ -1028,7 +1028,7 @@
       "currentOpenSubIssues": [
         "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
-        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, default, comfortable, minimum, and legacy stress layouts, Reviewer B foundation categories, and final owner handoff on one head.",
         "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
         "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate.",
         "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."
@@ -1115,7 +1115,7 @@
         "owner-real-workbench-layout-r7"
       ],
       "occurrenceCount": 11,
-      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, compact 900x720 screenshots collapse side regions before preview controls break, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
+      "lastEvidence": "Real workbench layout engine repair completed: source_document now maps to the left Source panel, sequence/resource actions no longer overlap row text, source subtabs remain horizontal, inspector summaries wrap/read, minimum 1180x760 screenshots preserve primary controls while 900x720 legacy stress screenshots remain non-canonical, layoutIntegrity passes, and Owner feedback closure map requires layout/audit/screenshot proof. The finding remains currentStatus=open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
       "userImpact": "Large apparent progress did not translate into accepted product parity.",
       "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
@@ -1143,7 +1143,7 @@
       ],
       "currentOpenSubIssues": [
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
-        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
+        "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, default, comfortable, minimum, and legacy stress layouts, Reviewer B foundation categories, and final owner handoff on one head.",
         "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
         "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate.",
         "Real workbench layout repair is complete for machine evidence and awaits Product Owner Human Gate plus final independent external review; no closure is claimed."

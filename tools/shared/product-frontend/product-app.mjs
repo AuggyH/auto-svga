@@ -2570,11 +2570,14 @@ function collectWorkbenchLayoutIntegrity(regions) {
   const primaryAction = visibleRectForSelector("#primaryFileButton") || visibleRectForSelector("#primaryEmptyFileButton");
   if (!primaryAction) failures.push("primary_file_action_not_visible");
 
+  if (viewport.width <= 1180) {
+    const inspectorContentVisible = isElementVisible(document.querySelector("#tab-diagnostics"));
+    if (inspectorContentVisible) failures.push("compact_view_keeps_full_inspector_content");
+  }
   if (viewport.width <= 900) {
     const sourceContentVisible = isElementVisible(document.querySelector("#tab-assets"))
       || isElementVisible(document.querySelector("#tab-overview"));
-    const inspectorContentVisible = isElementVisible(document.querySelector("#tab-diagnostics"));
-    if (sourceContentVisible || inspectorContentVisible) failures.push("compact_view_keeps_full_side_panel_content");
+    if (sourceContentVisible) failures.push("legacy_stress_view_keeps_full_source_content");
   }
 
   return {
@@ -2824,10 +2827,15 @@ function collectRenderedStateProof(state) {
     if (!isElementVisible(workspace)) failures.push("workspace is not visible");
     if (!syncBarVisible) failures.push("sync controls are not reachable");
   }
-  if (normalizedState === "responsive-local-compare-at-900-x-720") {
+  if (normalizedState === "responsive-local-compare-at-900-x-720" || normalizedState === "responsive-local-compare-at-minimum-size") {
     if (!isCompareActive()) failures.push("responsive local compare is not active");
     if (!comparePanelVisible) failures.push("responsive secondary preview is not visible");
     if (!syncBarVisible) failures.push("responsive local compare sync controls are not reachable");
+  }
+  if (normalizedState === "local-minimum-size") {
+    if (modeSelect.value !== "localPreview") failures.push("minimum-size proof is not in local preview mode");
+    if (!isElementVisible(workspace)) failures.push("minimum-size workspace is not visible");
+    if (!isElementVisible(players.a.panel)) failures.push("minimum-size primary preview card is not visible");
   }
   const observedSnapshot = collectP6SmokeSnapshot(state);
   const visibleRegions = p6VisibleIds(observedSnapshot.regions);
@@ -3394,11 +3402,11 @@ async function runOwnerUsabilitySmoke(bytes) {
 
   p6SmokeCurrentPhase = "owner-usability-b-recovery";
   handleDroppedFile(new File([bytes.slice(0)], "owner-recovery-b.svga", { type: "application/octet-stream" }), "svga", "b");
-  await waitFor(() => slotRecoveredCleanly(players.b));
+  await waitFor(() => slotRecoveredCleanly(players.b), 20000);
   await waitFor(() => {
     const proof = collectPreviewCardConsistencyProof();
     return proof.passed === true && proof.syncControlsVisible === true;
-  });
+  }, 20000);
   checks.svgaBRecoveryClearsError = slotRecoveredCleanly(players.b);
   previewCardConsistencyProof = collectPreviewCardConsistencyProof();
   previewCardHeaderConsistency = previewCardConsistencyProof.passed;

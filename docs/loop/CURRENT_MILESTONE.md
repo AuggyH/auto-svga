@@ -22,7 +22,7 @@ wp0Authorized: true
 executionStatus: terminal_human_required
 nextAction: product_owner_human_gate
 
-The real workbench layout repair is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
+The macOS window sizing correction is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. 900x720 is legacy stress only; the supported sizing system uses 1440x900 preferred default, 1280x800 comfortable, and 1180x760 minimum. This remains contract revision 3, repairRound 0, and Phase 2 not started.
 
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`

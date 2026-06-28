@@ -5,10 +5,38 @@
   "purpose": "Define the owner-visible macOS workbench layout rules for Source / Preview / Inspector without starting Phase 2.",
   "productionApproved": false,
   "phase2Started": false,
+  "windowSizingSystem": {
+    "defaultLaunchWindow": {
+      "width": 1440,
+      "height": 900,
+      "aspect": "16:10",
+      "policy": "Recommended balanced macOS workbench launch size when available display bounds allow it."
+    },
+    "displayFitPolicy": {
+      "availableScreenFitRatio": 0.86,
+      "policy": "On smaller displays, use the largest centered window that fits within roughly 86% of available screen bounds while preserving a similar 16:10 feel."
+    },
+    "comfortableWorkbenchWindow": {
+      "width": 1280,
+      "height": 800,
+      "policy": "Comfortable owner-review and daily-workbench size; Source, Preview, and Inspector should all remain readable."
+    },
+    "compactWorkbenchRange": {
+      "minWidth": 1180,
+      "minHeight": 760,
+      "maxWidth": 1279,
+      "policy": "Compact observation range. At the minimum edge, right Inspector collapses first; left Source remains available unless the window drops into legacy stress coverage."
+    },
+    "legacyStressViewport": {
+      "width": 900,
+      "height": 720,
+      "policy": "Legacy stress viewport only. It is not the default window, not the canonical macOS product size, not the main screenshot proof, and not the sole responsive acceptance criterion."
+    }
+  },
   "minimumSupportedWindow": {
-    "width": 900,
-    "height": 720,
-    "policy": "Preview Stage keeps priority; side regions collapse before primary playback controls become unreadable. This is the current Electron window minimum and must not be documented as 720x640 until the host minimum is lowered and re-proven."
+    "width": 1180,
+    "height": 760,
+    "policy": "Preview Stage keeps priority; right Inspector collapses before primary playback controls become unreadable. 900x720 is retained only as a legacy stress viewport, not as the supported minimum."
   },
   "regions": [
     {
@@ -41,7 +69,7 @@
       "collapsePriority": 99,
       "contentPriority": ["loaded_canvas", "primary_action", "playback_controls", "metadata"],
       "overflowRule": "preview canvas scales; playback controls stay readable; metadata collapses first",
-      "parentResponseRule": "keeps visual anchor at normal, 900x720, and minimum supported sizes"
+      "parentResponseRule": "keeps visual anchor at default launch, comfortable, compact, minimum supported, and legacy stress sizes"
     },
     {
       "id": "inspector",
@@ -118,22 +146,34 @@
   ],
   "responsiveRules": [
     {
-      "id": "normal",
-      "condition": "width >= 981",
+      "id": "default_launch_1440x900",
+      "condition": "width >= 1440 and height >= 900",
       "layout": "source preview inspector grid",
-      "required": ["source visible", "preview visible", "inspector visible"]
+      "required": ["source visible", "preview visible", "inspector visible", "preview primary"]
     },
     {
-      "id": "compact_900x720",
-      "condition": "width <= 980",
-      "layout": "narrow source and inspector, preview remains centered",
-      "required": ["compare/export cards stack when needed", "primary playback controls readable"]
+      "id": "comfortable_1280x800",
+      "condition": "width >= 1280 and height >= 800",
+      "layout": "source preview inspector grid",
+      "required": ["source visible", "preview visible", "inspector visible", "primary actions readable"]
     },
     {
-      "id": "minimum_supported",
-      "condition": "width >= 900 and height >= 720",
-      "layout": "source and inspector may collapse to strips",
-      "required": ["no one-character status chips", "no hidden primary actions", "no overlapping controls"]
+      "id": "compact_workbench",
+      "condition": "width >= 1180 and width < 1280 and height >= 760",
+      "layout": "source preview grid with inspector collapsed first",
+      "required": ["preview primary", "source readable", "inspector collapses before content breaks", "primary actions readable"]
+    },
+    {
+      "id": "minimum_supported_1180x760",
+      "condition": "width >= 1180 and height >= 760",
+      "layout": "right inspector collapsed; source and preview remain usable",
+      "required": ["no one-character status chips", "no hidden primary actions", "no overlapping controls", "file names truncate"]
+    },
+    {
+      "id": "legacy_stress_900x720",
+      "condition": "width == 900 and height == 720",
+      "layout": "legacy stress viewport with side regions collapsed as needed",
+      "required": ["stress-only evidence", "not default launch", "not minimum supported", "not sole responsive acceptance criterion"]
     }
   ],
   "futureCapacityRules": [

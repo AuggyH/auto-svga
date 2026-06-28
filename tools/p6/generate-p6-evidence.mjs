@@ -181,15 +181,17 @@ async function writeVisualSystemAudit() {
     coverage: {
       localEmpty: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.id === "desktop_empty" || record.path?.includes("desktop-empty"))),
       localLoaded: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-loaded"))),
-      localNormal900x720: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-responsive-local-preview-at-900-x-720"))),
+      defaultLaunch1440x900: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-1440x900"))),
+      comfortable1280x800: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-1280x800"))),
       minimumSize: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("minimum-size"))),
+      legacyStress900x720: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-responsive-local-preview-at-900-x-720"))),
       compareCompact: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("local-compare"))),
       sourceResources: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("source-resources"))),
       sourceLayers: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("source-layers"))),
       inspectorActions: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("inspector-actions"))),
       logsHiddenDefault: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("logs-hidden-default")))
     },
-    policy: "A broad screenshot matrix must cover normal, 900x720, minimum-size, source, inspector, logs, settings, and compare states."
+    policy: "A broad screenshot matrix must cover default 1440x900 launch, comfortable 1280x800, minimum 1180x760, source, inspector, logs, settings, compare states, and optional legacy 900x720 stress evidence."
   });
   await writeJson(
     path.join(p6Root, "macos-workbench-foundation-contract.json"),
@@ -525,7 +527,7 @@ async function writeReviewerBEvidenceRequest() {
     ["LeftSourceResourcesIA", "Confirm left Source panel has compact File Overview plus Resources/Layers structure and imageKey only as an attribute.", "desktop-local-source-resources-open.png"],
     ["RightInspectorActionsIA", "Confirm right panel is Diagnostics / Actions and does not duplicate the File Overview.", "desktop-local-inspector-actions-open.png"],
     ["LocalPreviewPrimaryWorkflow", "Confirm local single-file SVGA preview is primary and compare/export-review remain secondary flows.", "workbench-region-map.json"],
-    ["ResponsiveRuleCoverage", "Confirm normal, 900x720, and minimum-size screenshots are covered by layout rules with no clipped primary controls.", "screenshot-matrix-audit.json"],
+    ["ResponsiveRuleCoverage", "Confirm default launch, comfortable, compact/minimum, and legacy stress screenshots are covered by layout rules with no clipped primary controls.", "screenshot-matrix-audit.json"],
     ["macosVisualSystem", "Confirm macOS-aligned visual system, quiet chrome, hierarchy, typography, spacing, PreviewCard consistency, panel behavior, resources IA, logs UX, settings scope, and phase-one local preview focus.", "visual-system-audit.json"],
     ["macOSAppFoundation", "Confirm the macOS SVGA Workbench six-region foundation supports source/document, preview stage, inspector, resources, action/workflow, and activity/history without exposing inactive future features.", "workbench-region-map.json"],
     ["RoadmapCapacity", "Confirm Phase 2/3/4, mid-term multi-format, and long-term Agent/ComfyUI capacity are mapped to stable regions without becoming visible P6-R1 product features.", "roadmap-ui-capacity-map.json"],
@@ -534,7 +536,7 @@ async function writeReviewerBEvidenceRequest() {
     ["emptyState", "Confirm Desktop empty state differs from loading.", "desktop-empty.png"],
     ["loadingState", "Confirm loading DOM, rect, overlay, and full screenshot share one stateSnapshotId.", "desktop-loading.png"],
     ["invalidState", "Confirm invalid state clears stale canvas, filename, and metadata.", "desktop-invalid.png"],
-    ["responsiveLayout", "Confirm responsive Web/Desktop geometry at the required viewport with local preview as the primary owner mode.", "desktop-responsive-local-preview-at-900-x-720.png"],
+    ["responsiveLayout", "Confirm responsive Web/Desktop geometry at the declared minimum supported viewport with local preview as the primary owner mode.", "desktop-local-minimum-size.png"],
     ["interactionParity", "Confirm Web and Desktop strict interaction traces are host-neutral and matching.", "interaction-parity-report.json"],
     ["motionParity", "Confirm motion start/mid/end, crop, geometry, params, and reduced-motion comparison.", "web-baseline/motion-manifest.json"],
     ["normalMacApp", "Confirm packaged macOS app proof uses normal runtime flags.", "packaged-app-runtime-proof.json"],
@@ -590,6 +592,8 @@ async function writeOwnerFeedbackClosureMap() {
     ".artifacts/product/P6/desktop-local-logs-hidden-default.png",
     ".artifacts/product/P6/desktop-local-source-collapsed.png",
     ".artifacts/product/P6/desktop-local-inspector-collapsed.png",
+    ".artifacts/product/P6/desktop-1440x900.png",
+    ".artifacts/product/P6/desktop-1280x800.png",
     ".artifacts/product/P6/desktop-local-minimum-size.png",
     ".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png",
     ".artifacts/product/P6/desktop-local-logs-open.png",
@@ -687,7 +691,7 @@ async function writeOwnerFeedbackClosureMap() {
     },
     {
       feedbackId: "owner-feedback-layout-system-responsive-rules",
-      ownerFinding: "Prior 900x720 issue is a layout-system problem, not a single screenshot bug; normal, 900x720, and minimum sizes need reusable rules.",
+      ownerFinding: "The prior responsive issue is a layout-system problem, not a single screenshot bug; default launch, comfortable, compact/minimum, and legacy stress sizes need reusable rules.",
       status: "fixed",
       component: "Workbench layout system",
       changedFiles: [
@@ -696,10 +700,12 @@ async function writeOwnerFeedbackClosureMap() {
         "docs/product/MACOS_WORKBENCH_LAYOUT_CONTRACT.json",
         "docs/product/P6_R1_MACOS_VISUAL_SYSTEM_TARGET.json"
       ],
-      beforeEvidence: [{ type: "owner_review_finding", ref: "900x720 owner-visible layout issue generalized" }],
+      beforeEvidence: [{ type: "owner_review_finding", ref: "owner-visible layout issue generalized beyond the legacy 900x720 stress viewport" }],
       afterEvidence: [
         evidenceByPath[".artifacts/product/P6/layout-system-audit.json"],
         evidenceByPath[".artifacts/product/P6/screenshot-matrix-audit.json"],
+        evidenceByPath[".artifacts/product/P6/desktop-1440x900.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-1280x800.png"],
         evidenceByPath[".artifacts/product/P6/desktop-local-minimum-size.png"],
         evidenceByPath[".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png"]
       ],
