@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "milestoneId": "P6",
   "createdFromHead": "1977cbce7ffc53d215391468aeb5b20daf816f77",
-  "scope": "P6-R1 Product Owner returned OWNER_REPAIR_REQUIRED on current 4c39607 candidate for narrow foundation/closure issues: default Activity/Logs expose internal workflow text, workbench-region-map is exportReview instead of local-preview-first primary proof, and Owner feedback closure map overclaims closure. Prior complete review-directory packaging, App ZIP delivery, sidecar, post-seal, privacy, final loop validation, Reviewer binding, App extraction, screenshots, roadmap artifacts, visual-system audit, and foundation artifacts remain mechanically valid unless affected by this repair. Findings remain currentStatus=open; only affected evidence/reviewer/handoff/end-to-end foundation findings are regressed. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
+  "scope": "P6-R1 narrow owner repair completed for default Activity/Logs filtering, local-preview-first workbench-region evidence, and Owner feedback closure-map accuracy. Prior complete review-directory packaging, App ZIP delivery, sidecar, post-seal, privacy, final loop validation, Reviewer binding, App extraction, screenshots, roadmap artifacts, visual-system audit, and foundation artifacts remain mechanically valid unless affected by this repair. Findings remain currentStatus=open; affected evidence/reviewer/handoff/end-to-end foundation findings are restored only to integrated_resolved_pending_external_review. contractRevision=3, repairRound=0, phase2Started=false remain preserved.",
   "reviewedRounds": [
     {
       "round": "R1",
@@ -318,7 +318,7 @@
         "owner-activity-logs-local-foundation-r5"
       ],
       "occurrenceCount": 8,
-      "lastEvidence": "Owner narrow repair is in progress on 4c39607 for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. Final validation and owner handoff must be regenerated on a new head before Product Owner Human Gate.",
+      "lastEvidence": "Narrow owner repair completed for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. The finding remains open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Web/Desktop comparison was performed across different viewport, state, side panel, and media-loading context.",
       "userImpact": "Visual parity evidence was not comparable.",
       "rootCauseHypothesis": "A shared comparison context contract was added late and was not an entry gate for evidence generation.",
@@ -349,12 +349,13 @@
         "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
-        "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head."
+        "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
+        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -678,7 +679,7 @@
         "owner-activity-logs-local-foundation-r5"
       ],
       "occurrenceCount": 9,
-      "lastEvidence": "Owner narrow repair is in progress on 4c39607 for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. Final validation and owner handoff must be regenerated on a new head before Product Owner Human Gate.",
+      "lastEvidence": "Narrow owner repair completed for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. The finding remains open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Generic reviewer output returned PASS while category-level evidence was HUMAN_REQUIRED or review scope was packet integrity.",
       "userImpact": "A human-facing product gap could pass internal review.",
       "rootCauseHypothesis": "Reviewer roles were optimized for handoff integrity and not explicitly required to inspect product visuals against the frozen Web baseline.",
@@ -708,12 +709,13 @@
         "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
-        "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head."
+        "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
+        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP4",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP4-visual-motion-review.md",
@@ -944,7 +946,7 @@
         "owner-activity-logs-local-foundation-r5"
       ],
       "occurrenceCount": 7,
-      "lastEvidence": "Owner narrow repair is in progress on 4c39607 for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. Final validation and owner handoff must be regenerated on a new head before Product Owner Human Gate.",
+      "lastEvidence": "Narrow owner repair completed for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. The finding remains open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Local paths, hidden .artifacts-only handoffs, or stale review-root literals repeatedly needed repair.",
       "userImpact": "Owner could not reliably access review materials, or private local paths could leak.",
       "rootCauseHypothesis": "Handoff packaging was retrofitted after product work started and consumed repair budget repeatedly.",
@@ -978,12 +980,13 @@
         "Machine validation has regenerated passing local-preview owner-gate usability evidence with parityStatus=pass and nonPassEvidenceCount=0; Product Owner Human Gate and final independent product external review remain pending, so this finding remains open and is not externally confirmed closed.",
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
-        "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head."
+        "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
+        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP5",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/product/p6/worker-evidence/P6R1-WP5-app-delivery.md",
@@ -1054,7 +1057,7 @@
         "owner-activity-logs-local-foundation-r5"
       ],
       "occurrenceCount": 10,
-      "lastEvidence": "Owner narrow repair is in progress on 4c39607 for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. Final validation and owner handoff must be regenerated on a new head before Product Owner Human Gate.",
+      "lastEvidence": "Narrow owner repair completed for default Activity/Logs, local-preview-first workbench region map, and Owner feedback closure map accuracy. The finding remains open and is not externally confirmed closed before Product Owner Human Gate and final independent product external review.",
       "symptom": "Workers completed technical layers while cross-worker vertical flows still failed external review.",
       "userImpact": "Large apparent progress did not translate into accepted product parity.",
       "rootCauseHypothesis": "Work was split by technical layer instead of vertical user workflows; A0 final integration was too late to catch cross-layer failures before repair budgets were consumed.",
@@ -1084,12 +1087,13 @@
         "Owner-visible macOS UI/UX polish repair is in progress. This finding remains open and regressed until visual-system tokens/components, copy cleanup, responsive screenshots, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Owner-visible inspector and visual-system polish repair is in progress. This finding remains open and regressed until Info Overview readability, Resources layout, local-preview-first screenshots, diagnostic copy, strengthened visual-system audit, Owner feedback closure map, affected Gate checks, Reviewer A/B, Final Seal, Post-seal Verification, and regenerated owner package pass on the new final head.",
         "Final macOS SVGA Workbench foundation pass is in progress; verify Preview Stage, Inspector, Resources, Action/Workflow, Activity/History, roadmap capacity, 900x720 compact layouts, Reviewer B foundation categories, and final owner handoff on one head.",
-        "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head."
+        "Owner narrow repair in progress for default Activity/Logs filtering, local-preview-first workbench-region evidence, and accurate Owner feedback closure map. CurrentStatus remains open; Product Owner Human Gate is not reachable until regenerated evidence, Reviewer A/B, final seal, post-seal, and complete review directory pass on the new final head.",
+        "Narrow owner repair implemented: default Activity/Logs sanitize internal workflow text behind 高级诊断, workbench-region-map is local-preview-first primary evidence, and Owner feedback closure map no longer uses overclaiming status. Final validation, Reviewer A/B, final seal, post-seal, and complete review directory must bind to the terminal head before Product Owner Human Gate."
       ],
       "closureRule": "May become closed only after real runtime evidence, a corresponding regression test, and a later independent external review that does not reproduce the issue.",
       "primaryRecoveryWorkPackage": "WP0",
       "supportingFindingIds": [],
-      "resolutionStage": "regressed",
+      "resolutionStage": "integrated_resolved_pending_external_review",
       "evidenceRefs": [
         "docs/retrospectives/P6_R6_EXTERNAL_REVIEW_SUMMARY.md",
         "docs/config/P6_R1_WP0_RECOVERY_GATE_RULES.json",

@@ -6,9 +6,9 @@ Date: 2026-06-28
 
 - milestoneId: P6-R1
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
-- State: goal_repair_in_progress
-- Next Action: repair_activity_logs_and_local_foundation_evidence
-- Product Owner returned OWNER_REPAIR_REQUIRED on the 4c39607 candidate for three narrow owner-gate blockers: default Activity/Logs exposed internal workflow text, workbench-region-map used exportReview instead of local-preview-first primary proof, and Owner feedback closure map overclaimed closure. This repair stays within contract revision 3, repairRound 0, and Phase 2 not started.
+- State: terminal_human_required
+- Next Action: product_owner_human_gate
+- The narrow Activity/Logs and local foundation evidence repair is ready for Product Owner Human Gate after regenerated P6 evidence, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. This remains contract revision 3, repairRound 0, and Phase 2 not started.
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
