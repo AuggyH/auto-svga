@@ -17,7 +17,7 @@
     "ownerApprovedBoundedRevision": "onlyApprovedForOwnerVisibleUiUxPolish;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift"
   },
   "webSourceOfTruthHashes": {
-    "tools/svga-player-preview/index.html": "ccc4ee7da32c581d803a5be5eded75831868c5112ada2d0262c1e8c666052380",
+    "tools/svga-player-preview/index.html": "3d9cac1de134116d273ef45d2b9e44f4db3b7a00542fddb9430582bf04480930",
     "tools/svga-player-preview/styles.css": "06f2870b0f2c7644067e414dab9f596e6e898eb5e522de417f799304e0780f5d",
     "tools/svga-player-preview/main.js": "bf1246a3184e5be4c8c0a8bc82ed6198b9247827296eca9b394b4f5d03fb2d42",
     "tools/svga-player-preview/inspection-report-view.mjs": "909ef6cf8358cacf22d50da0cf127cc482532cd7ec31b926c48b9d2ea11afa75",
@@ -27,7 +27,7 @@
     "docs/product/P6_WEB_FEATURE_INVENTORY.md": "cdfa6f4441f98edbf8b42c18576bd6dbce6240b4e25d5d1eac5c36922a7bb726"
   },
   "milestoneStartReferenceHashes": {
-    "tools/shared/product-frontend/product-shell.html": "7e3c046f70dd6e43c7606acfdbfec183062f967d0e1e5c7daa0cf56ce811f847",
+    "tools/shared/product-frontend/product-shell.html": "527139c4fca684eda430111cbe0cff76e8e6c92fa34db2cd605f7e49315a877c",
     "tools/shared/product-frontend/product-app.mjs": "07cafa23b261f92441369d3e7abaeb8242cb458877081d1ff95e367caf89c00b",
     "tools/shared/product-frontend/product-styles.css": "1ee547a5ad39d59cb4926f6c50b07d902a8202660b5845a4bd454f0fcc1c5e8a",
     "tools/p6/runtime-scenarios/state-evidence.mjs": "35bc18c0abe912f6d19606a6728603cc4035639c9a9eb729f7f4605c6bb5781f"
@@ -145,7 +145,7 @@
     "states": 22,
     "motions": 9
   },
-  "snapshotSha256": "294d1105e4d17cb163808feb5a3f3576a78ad38a612ec557b1dbf122d111cd59",
+  "snapshotSha256": "4e9df6b3a6942d90e08856a21efc58f5346368ac1005771c946a9cd6495faed1",
   "snapshotSha256Algorithm": {
     "name": "top_level_snapshotSha256_omitted_recursive_key_sorted_compact_json_sha256",
     "version": 1,
@@ -202,6 +202,23 @@
           "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
         }
       ]
+    },
+    {
+      "revisionId": "nq1_accessibility_contract_label_repair_2026_06_28",
+      "authorizedBy": "A0 within Product Owner authorized macOS workbench foundation repair",
+      "authorization": "OWNER_REPAIR_REQUIRED macOS workbench UI foundation pass; NQ1 accessibility contract repair",
+      "reason": "restore_existing_accessibility_source_contract_labels_after_macos_workbench_foundation_layout_revision",
+      "scope": "bounded_to_shell_hash_reference_update_in_web_source_entry;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift",
+      "sourceReviewPacketLabel": "Final validation failure on NQ1 accessibility audit after ddadbe7d039d075261dd3e6f2d6df83b8cffbb92",
+      "sourceBlockingHead": "ddadbe7d039d075261dd3e6f2d6df83b8cffbb92",
+      "approvedFiles": [
+        {
+          "path": "tools/svga-player-preview/index.html",
+          "previousSha256": "ccc4ee7da32c581d803a5be5eded75831868c5112ada2d0262c1e8c666052380",
+          "approvedSha256": "3d9cac1de134116d273ef45d2b9e44f4db3b7a00542fddb9430582bf04480930",
+          "policy": "new_p6_r1_web_source_of_truth_for_this_goal"
+        }
+      ]
     }
   ],
   "milestoneStartReferenceHashLineage": [
@@ -235,6 +252,22 @@
           "path": "tools/p6/runtime-scenarios/state-evidence.mjs",
           "previousSha256": "0b616cd6c1ca7b7ee87ef61f14cb983ede76a181d546a366d01545f4b83d0812",
           "approvedSha256": "35bc18c0abe912f6d19606a6728603cc4035639c9a9eb729f7f4605c6bb5781f",
+          "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
+        }
+      ]
+    },
+    {
+      "revisionId": "nq1_accessibility_contract_label_repair_reference_update_2026_06_28",
+      "authorizedBy": "A0 within Product Owner authorized macOS workbench foundation repair",
+      "authorization": "OWNER_REPAIR_REQUIRED macOS workbench UI foundation pass; NQ1 accessibility contract repair",
+      "reason": "shared_product_shell_accessibility_label_restore_for_existing_nq1_contract",
+      "scope": "bounded_to_shared_shell_accessible_name_repair_only",
+      "sourceBlockingHead": "ddadbe7d039d075261dd3e6f2d6df83b8cffbb92",
+      "approvedFiles": [
+        {
+          "path": "tools/shared/product-frontend/product-shell.html",
+          "previousSha256": "7e3c046f70dd6e43c7606acfdbfec183062f967d0e1e5c7daa0cf56ce811f847",
+          "approvedSha256": "527139c4fca684eda430111cbe0cff76e8e6c92fa34db2cd605f7e49315a877c",
           "policy": "authorized_reference_hash_update_inside_p6_r1_goal"
         }
       ]
