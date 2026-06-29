@@ -181,6 +181,11 @@ function validateSmokeResult(value) {
     if (!workbenchRegionMap) return undefined;
     result.workbenchRegionMap = workbenchRegionMap;
   }
+  if (value.optimizedReopenProof !== undefined) {
+    const optimizedReopenProof = validateOptimizedReopenProof(value.optimizedReopenProof);
+    if (!optimizedReopenProof) return undefined;
+    result.optimizedReopenProof = optimizedReopenProof;
+  }
   return result;
 }
 
@@ -213,7 +218,54 @@ function describeSmokeResultValidationFailure(value) {
   if (value.workbenchRegionMap !== undefined && !validateWorkbenchRegionMap(value.workbenchRegionMap)) {
     return `workbenchRegionMap:${describeWorkbenchRegionMapValidationFailure(value.workbenchRegionMap)}`;
   }
+  if (value.optimizedReopenProof !== undefined && !validateOptimizedReopenProof(value.optimizedReopenProof)) {
+    return "optimizedReopenProof";
+  }
   return "unknown";
+}
+
+function validateOptimizedReopenProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "safe-svga-optimizer-reopen-proof") return undefined;
+  if (value.source !== "svga-image-optimize-api") return undefined;
+  if (typeof value.sourceSha256 !== "string" || !/^[a-f0-9]{64}$/.test(value.sourceSha256)) return undefined;
+  if (typeof value.optimizedSha256 !== "string" || !/^[a-f0-9]{64}$/.test(value.optimizedSha256)) return undefined;
+  if (
+    value.sourceUnchanged !== true
+    || value.optimizedHashBound !== true
+    || value.apiPassed !== true
+    || value.saveAsRequired !== true
+    || value.reopenedPlayback !== true
+    || value.reopenedCanvasNonBlank !== true
+    || value.reopenedInspectionReport !== true
+    || value.renderedProofPassed !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  if (!Number.isInteger(value.originalImageCount) || !Number.isInteger(value.optimizedImageCount)) return undefined;
+  if (value.optimizedImageCount >= value.originalImageCount) return undefined;
+  if (!Array.isArray(value.removedResourceKeys) || value.removedResourceKeys.length === 0) return undefined;
+  if (!value.removedResourceKeys.every((item) => isBoundedString(item, 120))) return undefined;
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    sourceUnchanged: true,
+    optimizedSha256: value.optimizedSha256,
+    optimizedHashBound: true,
+    originalImageCount: value.originalImageCount,
+    optimizedImageCount: value.optimizedImageCount,
+    removedResourceKeys: value.removedResourceKeys.slice(0, 20),
+    apiPassed: true,
+    saveAsRequired: true,
+    reopenedPlayback: true,
+    reopenedCanvasNonBlank: true,
+    reopenedInspectionReport: true,
+    renderedProofPassed: true,
+    passed: true
+  };
 }
 
 function describeWorkbenchRegionMapValidationFailure(value) {
@@ -988,6 +1040,7 @@ function validateArtifactScenario(value) {
     "desktop-local-logs-open",
     "desktop-local-settings-open",
     "desktop-recovered-from-invalid",
+    "desktop-optimized-reopen-proof",
     "actual-normal-loaded",
     "smoke-loaded",
     "desktop-1280x800",
@@ -2026,6 +2079,7 @@ function stateForScenario(scenario) {
     "desktop-local-minimum-size": "local-minimum-size",
     "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
+    "desktop-optimized-reopen-proof": "loaded",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open",
     "desktop-info-diagnostics-open": "info-diagnostics-open",
     "desktop-local-info-diagnostics-open": "info-diagnostics-open",

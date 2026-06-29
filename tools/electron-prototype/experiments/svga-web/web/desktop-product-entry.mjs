@@ -44,7 +44,11 @@ function createElectronProductHostAdapter(environment = globalThis) {
               warnings: [`Electron 产物扫描失败：${error instanceof Error ? error.message : String(error)}`]
             }, 500));
         }
-        if (requestUrl.pathname !== "/api/avatar-frame-inspection-report" || !reportToken) {
+        const tokenBoundApiPaths = new Set([
+          "/api/avatar-frame-inspection-report",
+          "/api/svga-image-optimize"
+        ]);
+        if (!tokenBoundApiPaths.has(requestUrl.pathname) || !reportToken) {
           return fetchApi(input, init);
         }
         const headers = new Headers(init.headers ?? (input instanceof Request ? input.headers : undefined));

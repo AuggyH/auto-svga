@@ -197,6 +197,8 @@ test("server exposes a token-bound safe SVGA image optimizer API", async () => {
 test("main process keeps sandboxed Electron security settings", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
+  const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
+  const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
   const productApp = await readFile(path.join(repoRoot, "tools/shared/product-frontend/product-app.mjs"), "utf8");
   const localTmpPath = ["/", "tmp", "preload.cjs"].join("");
   const localTmpFileUrl = `file://${["", "tmp", "test.svga"].join("/")}`;
@@ -255,8 +257,12 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /captureProductArtifact/);
   assert.match(main, /function validateOptimizedSvgaSaveInput/);
   assert.match(main, /function validateOptimizationReportBinding/);
+  assert.match(main, /function validateOptimizedReopenProof/);
   assert.match(main, /function saveOptimizedSvga/);
+  assert.match(main, /optimizedReopenProof/);
   assert.match(main, /Optimized Save As requires the source SVGA to be opened through the desktop file picker/);
+  assert.match(desktopEntry, /\/api\/svga-image-optimize/);
+  assert.match(prepareRuntime, /optimizer-reopen-smoke\.svga/);
   assert.match(main, /validateArtifactScenario/);
   assert.match(main, /validateP6InteractionTrace/);
   assert.match(main, /\["Escape", "Space", "Enter", "Tab"\]/);

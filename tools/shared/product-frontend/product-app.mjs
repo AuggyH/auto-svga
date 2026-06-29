@@ -13,6 +13,7 @@ const shouldCaptureArtifacts = urlParams.get("artifacts") === "1";
 const electronBridge = globalThis.autoSvgaElectronHost ?? globalThis.autoSvgaPrototype;
 const p6BaselineFixtureDisplayName = "p6-web-baseline-fixture.svga";
 const p6RecoveredFixtureDisplayName = "p6-web-baseline-recovered-fixture.svga";
+const optimizerReopenFixtureDisplayName = "optimizer-reopen-smoke.svga";
 const cspViolations = [];
 
 window.addEventListener("securitypolicyviolation", (event) => {
@@ -1808,6 +1809,91 @@ async function loadAvatarFrameInspectionReport(source, fileName) {
     throw new Error(payload.error ?? `HTTP ${response.status}`);
   }
   return payload;
+}
+
+async function optimizeSvgaImageResources(bytes, fileName) {
+  const response = await fetch("/api/svga-image-optimize", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: fileName,
+      svgaBase64: bytesToBase64(bytes)
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error ?? `HTTP ${response.status}`);
+  }
+  return payload;
+}
+
+async function runOptimizedReopenProof(sourceBytes) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const payload = await optimizeSvgaImageResources(sourceBytes, "optimized-reopen-source.svga");
+  const optimizedBytes = base64ToBytes(payload.optimizedSvgaBase64 ?? "");
+  const optimizedSha256 = await p6Sha256Bytes(optimizedBytes);
+  const report = payload.optimizationReport ?? {};
+  const optimizedUrl = URL.createObjectURL(new Blob([optimizedBytes], { type: "application/octet-stream" }));
+  try {
+    await loadSvga("a", optimizedUrl, {
+      fileName: optimizerReopenFixtureDisplayName,
+      fileSizeBytes: optimizedBytes.byteLength,
+      fixtureSha256: optimizedSha256,
+      loadingHoldMs: 80
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    const reopenedInspectionReport = await waitForInspectionStatus(players.a);
+    const renderedProof = collectRenderedStateProof("loaded");
+    return {
+      schemaVersion: 1,
+      proofId: "safe-svga-optimizer-reopen-proof",
+      source: "svga-image-optimize-api",
+      sourceSha256,
+      sourceUnchanged: report.sourceSha256 === sourceSha256
+        && report.sourceSha256AfterOptimization === sourceSha256,
+      optimizedSha256,
+      optimizedHashBound: report.optimizedSha256 === optimizedSha256,
+      originalImageCount: report.originalImageCount,
+      optimizedImageCount: report.optimizedImageCount,
+      removedResourceKeys: Array.isArray(report.removedResourceKeys) ? report.removedResourceKeys.slice(0, 20) : [],
+      apiPassed: report.passed === true,
+      saveAsRequired: report.saveAsRequired === true,
+      reopenedPlayback: Boolean(players.a.player),
+      reopenedCanvasNonBlank: canvasIsNonBlank(players.a),
+      reopenedInspectionReport,
+      renderedProofPassed: renderedProof.passed === true,
+      passed: report.passed === true
+        && report.sourceSha256 === sourceSha256
+        && report.sourceSha256AfterOptimization === sourceSha256
+        && report.optimizedSha256 === optimizedSha256
+        && report.saveAsRequired === true
+        && Boolean(players.a.player)
+        && canvasIsNonBlank(players.a)
+        && reopenedInspectionReport
+        && renderedProof.passed === true
+    };
+  } finally {
+    URL.revokeObjectURL(optimizedUrl);
+  }
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(value) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
 function normalizeJobPath(value) {
@@ -3693,6 +3779,14 @@ async function runProductSmoke() {
     await waitForInspectionStatus(players.a);
     p6SmokeCurrentPhase = "capture-recovered";
     await captureArtifact("desktop-recovered-from-invalid");
+    p6SmokeCurrentPhase = "optimized-reopen-proof";
+    const optimizerFixtureUrl = "/fixture/optimizer-reopen-smoke.svga";
+    const optimizerFixtureBytes = new Uint8Array(await fetch(optimizerFixtureUrl).then((response) => {
+      if (!response.ok) throw new Error(`Optimizer fixture fetch failed (${response.status})`);
+      return response.arrayBuffer();
+    }));
+    const optimizedReopenProof = await runOptimizedReopenProof(optimizerFixtureBytes);
+    await captureArtifact("desktop-optimized-reopen-proof");
     playSlot(players.a);
     resetSlotMediaState(players.a, { clearReport: true });
     setAppMode("localPreview");
@@ -3939,6 +4033,7 @@ async function runProductSmoke() {
       errorFile,
       playerLifecycle: true,
       cleanup: true,
+      optimizedReopenProof,
       p6InteractionTrace: await buildP6SmokeInteractionTrace(),
       ownerUsability,
       workbenchRegionMap: localPreviewWorkbenchRegionMap

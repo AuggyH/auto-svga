@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
+import { deflateSync } from "node:zlib";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import protobuf from "protobufjs";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const prototypeRoot = path.resolve(experimentRoot, "../..");
@@ -33,10 +35,14 @@ for (const name of expectedLegacyVendorHashes.keys()) {
 }
 await ensureWebBaselineFixture();
 await cp(webBaselineFixturePath, path.join(runtimeRoot, "fixture/avatar-frame-smoke.svga"));
+const optimizerReopenFixture = await createOptimizerReopenFixture();
+await writeFile(path.join(runtimeRoot, "fixture/optimizer-reopen-smoke.svga"), optimizerReopenFixture);
 await writeFile(path.join(runtimeRoot, "manifest.json"), JSON.stringify({
   runtime: "svga-web-strict-csp-spike",
   sourceRuntime: path.relative(experimentRoot, path.join(prototypeRoot, ".runtime")),
   fixtureSource: path.relative(repoRoot, webBaselineFixturePath),
+  optimizerReopenFixture: "fixture/optimizer-reopen-smoke.svga",
+  optimizerReopenFixtureSha256: createHash("sha256").update(optimizerReopenFixture).digest("hex"),
   vendor: "svga-web@2.4.4",
   strictCsp: true
 }, null, 2));
@@ -81,4 +87,55 @@ async function ensureWebBaselineFixture() {
   });
   const bytes = await readFile(webBaselineFixturePath);
   if (bytes.byteLength <= 0) throw new Error("Web baseline SVGA fixture is empty.");
+}
+
+async function createOptimizerReopenFixture() {
+  const root = await protobuf.load(path.join(runtimeRoot, "proto/svga.proto"));
+  const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
+  const baseImage = await createOptimizerFixtureImage([224, 60, 70, 255]);
+  const unusedImage = await createOptimizerFixtureImage([50, 130, 220, 255]);
+  const payload = {
+    version: "2.0",
+    params: { viewBoxWidth: 96, viewBoxHeight: 96, fps: 24, frames: 8 },
+    images: {
+      img_base: baseImage,
+      img_copy: baseImage,
+      img_unused: unusedImage
+    },
+    sprites: [
+      { imageKey: "img_base", frames: createOptimizerFixtureFrames(0) },
+      { imageKey: "img_copy", frames: createOptimizerFixtureFrames(20) }
+    ],
+    audios: []
+  };
+  const verificationError = MovieEntity.verify(payload);
+  if (verificationError) throw new Error(`Optimizer reopen fixture verification failed: ${verificationError}`);
+  return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+async function createOptimizerFixtureImage(rgba) {
+  const { createTransparentImage, encodeRgbaPng } = await import(
+    pathToFileURL(path.join(runtimeRoot, "dist/utils/png-writer.js")).href
+  );
+  const image = createTransparentImage(32, 32);
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      const offset = (y * image.width + x) * 4;
+      image.pixels[offset] = rgba[0];
+      image.pixels[offset + 1] = rgba[1];
+      image.pixels[offset + 2] = rgba[2];
+      image.pixels[offset + 3] = rgba[3];
+    }
+  }
+  return encodeRgbaPng(image);
+}
+
+function createOptimizerFixtureFrames(xOffset) {
+  return Array.from({ length: 8 }, (_unused, frame) => ({
+    alpha: 1,
+    layout: { x: 0, y: 0, width: 32, height: 32 },
+    transform: { a: 1, b: 0, c: 0, d: 1, tx: xOffset + frame, ty: 28 },
+    clipPath: "",
+    shapes: []
+  }));
 }

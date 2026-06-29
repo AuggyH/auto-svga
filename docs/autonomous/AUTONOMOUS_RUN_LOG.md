@@ -143,3 +143,38 @@
   `npm run desktop:smoke`
 - Result: pass; svga-web experiment suite passed 21 tests and desktop smoke
   passed.
+
+### Phase 2 Optimized Reopen Proof Slice
+
+- Files updated:
+  `tools/electron-prototype/experiments/svga-web/scripts/prepare-runtime.mjs`,
+  `tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs`,
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: optimized SVGA output now has a real product-path reopen proof in the
+  desktop smoke result.
+- Product behavior: the prepared runtime includes a dedicated optimizer-reopen
+  fixture with duplicate and unreferenced images. Product smoke calls the
+  token-bound optimizer API, receives optimized bytes, reopens those bytes
+  through the same `loadSvga` path used by normal product preview, waits for
+  playback, nonblank canvas, and inspection success, captures
+  `desktop-optimized-reopen-proof`, and reports a validated
+  `optimizedReopenProof` object to the main process.
+- Safe-action boundary: this is still proof-only. No owner-clickable
+  optimization action is exposed in the default product surface.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/scripts/prepare-runtime.mjs`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; svga-web experiment suite passed 21 tests and desktop smoke
+  reported `optimizedReopenProof.passed=true` with source hash unchanged,
+  optimized hash bound, original image count `3`, optimized image count `1`,
+  removed resource keys `img_copy` and `img_unused`, reopened playback,
+  reopened nonblank canvas, and reopened inspection success.

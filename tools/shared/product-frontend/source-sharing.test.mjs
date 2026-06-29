@@ -57,6 +57,9 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /setSlotInvalidState/);
   assert.match(productApp, /function writeClipboardText/);
   assert.match(productApp, /electronBridge\?\.writeClipboardText/);
+  assert.match(productApp, /function runOptimizedReopenProof/);
+  assert.match(productApp, /\/api\/svga-image-optimize/);
+  assert.match(productApp, /optimizedReopenProof/);
   assert.match(productApp, /function setSlotErrorFeedback/);
   assert.match(webAdapter, /hostKind: "web"/);
   assert.match(webAdapter, /editorIncubationDefaultVisible: false/);
@@ -128,7 +131,8 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "desktop-latest-artifact-loaded",
     "desktop-reference-media-loaded",
     "desktop-invalid",
-    "desktop-recovered-from-invalid"
+    "desktop-recovered-from-invalid",
+    "desktop-optimized-reopen-proof"
   ]) {
     assert.match(productApp, new RegExp(smokeScenario));
   }

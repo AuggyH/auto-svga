@@ -16,7 +16,7 @@ work in this dedicated autonomous branch.
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | Phase 1 stabilization baseline | Baseline pass, continue hardening only when gaps are found | `npm run desktop:smoke`; `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`; package proof privacy audit |
-| Phase 2 asset detection and optimization | Read-only Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, and report-bound optimized Save As IPC implemented; product UI execution not exposed | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
+| Phase 2 asset detection and optimization | Read-only Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, and optimized-output reopen proof implemented; product UI execution not exposed | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
 | Phase 3 imageKey / replacement editing | Incubation code exists; product reconnection not started | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md` |
 | Phase 4 sequence-frame anti-flicker | Detection primitives exist; repair productization not started | Existing sequence tests in root suite |
 | Production-client delivery | Internal unsigned macOS ZIP generated; signing/notarization blocked by credentials | internal trial manifest |
@@ -39,6 +39,7 @@ work in this dedicated autonomous branch.
 
 Continue Phase 2 with the next narrow Asset Intelligence product slice:
 
-1. reopen optimized bytes through the product inspection/playback path;
-2. record visible proof before exposing any owner-clickable optimization action;
-3. keep transparent padding and structural repairs suggestion-only until visual comparison is proven.
+1. decide whether to expose a guarded owner-clickable optimization action or
+   keep the capability behind diagnostics until a fuller UX review;
+2. keep transparent padding and structural repairs suggestion-only until visual comparison is proven;
+3. continue Phase 3 imageKey/replacement editing reconnection.
