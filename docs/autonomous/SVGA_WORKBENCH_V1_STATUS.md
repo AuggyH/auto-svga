@@ -29,10 +29,10 @@ work in this dedicated autonomous branch.
 - Internal macOS trial packaging passed and generated
   `tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64.zip`.
 - App ZIP SHA-256:
-  `2292198bc136a9f49b805bc3844fadb7d8c7d3e8e9c31f442675172e47bc71a3`.
-- App ZIP size: `118688049` bytes.
+  `ab8905dd76572291b642d04619f5e58a825b4ca849fc6cbf8f95ec91934d37b4`.
+- App ZIP size: `118715183` bytes.
 - Package manifest build commit:
-  `545252838311233cc03ce2e5f917e53d43207589`.
+  `ea7fa7790ae4c7e7577dd1b7ce79906b1810ba59`.
 - macOS package proof privacy audit passed.
 
 ## Immediate Next Slice

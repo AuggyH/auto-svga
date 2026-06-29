@@ -605,3 +605,26 @@
   `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, no
   edited bytes, no write attempt, product Save As disabled, apply disabled, no
   write action exposed, and `repairSuccessClaimed=false`.
+
+### Current-head Internal macOS Package Refresh
+
+- Files updated:
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: regenerated the unsigned internal macOS trial package on the current
+  autonomous branch head.
+- Commands:
+  `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:proof:mac`
+- Package evidence:
+  archive path
+  `tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64.zip`;
+  build commit `ea7fa7790ae4c7e7577dd1b7ce79906b1810ba59`;
+  archive SHA-256
+  `ab8905dd76572291b642d04619f5e58a825b4ca849fc6cbf8f95ec91934d37b4`;
+  archive size `118715183` bytes; archive entry count `1419`.
+- Proof result: `internal:trial:proof:mac` passed with
+  `privacyAuditPassed=true` and final packaged App acceptance still owned by
+  `Integration Coordinator`.
+- Safety boundary: package remains unsigned, not notarized, internal-use only,
+  not production approved, and Windows runtime is still not verified.
