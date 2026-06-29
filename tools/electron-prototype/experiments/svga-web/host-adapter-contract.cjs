@@ -15,6 +15,7 @@ const IPC_CHANNELS = Object.freeze({
   openReferenceMediaFile: "svga-web-experiment:open-reference-media-file",
   writeClipboardText: "svga-web-experiment:write-clipboard-text",
   saveEditedSvga: "svga-web-experiment:save-edited-svga",
+  saveOptimizedSvga: "svga-web-experiment:save-optimized-svga",
   p3EditResult: "svga-web-experiment:p3-edit-result",
   p4EditResult: "svga-web-experiment:p4-edit-result",
   p5BatchResult: "svga-web-experiment:p5-batch-result"
@@ -106,6 +107,9 @@ function createPreloadApi(invoke, { reportToken, productMilestoneId }) {
     },
     saveEditedSvga(input) {
       return invoke(IPC_CHANNELS.saveEditedSvga, input);
+    },
+    saveOptimizedSvga(input) {
+      return invoke(IPC_CHANNELS.saveOptimizedSvga, input);
     },
     reportP3EditResult(result) {
       return invoke(IPC_CHANNELS.p3EditResult, result);

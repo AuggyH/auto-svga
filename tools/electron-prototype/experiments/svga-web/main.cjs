@@ -1062,6 +1062,25 @@ function validateEditedSvgaSaveInput(value) {
   };
 }
 
+function validateOptimizedSvgaSaveInput(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (typeof value.bytesBase64 !== "string" || value.bytesBase64.length === 0) return undefined;
+  const bytes = Buffer.from(value.bytesBase64, "base64");
+  if (bytes.byteLength <= 0 || bytes.byteLength > 25 * 1024 * 1024) return undefined;
+  const validation = validateOptimizationReportBinding(value.optimizationReport, bytes);
+  if (!validation) return undefined;
+  const suggestedName = sanitizeSvgaFileName(
+    typeof value.suggestedName === "string" ? value.suggestedName : "optimized-output.svga"
+  );
+  const sourceId = typeof value.sourceId === "string" && /^[a-f0-9]{24}$/.test(value.sourceId) ? value.sourceId : "";
+  return {
+    bytes,
+    suggestedName,
+    sourceId,
+    validation
+  };
+}
+
 function validateSaveRevisionBinding(value, bytes) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const milestoneId = value.milestoneId === "P3"
@@ -1097,6 +1116,32 @@ function validateSaveRevisionBinding(value, bytes) {
     reportSchemaVersion: value.reportSchemaVersion,
     replacementCount: value.replacementCount,
     appliedMappingCount: value.appliedMappingCount
+  };
+}
+
+function validateOptimizationReportBinding(value, bytes) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.optimizationId !== "svga-safe-image-optimizer-v1") return undefined;
+  if (typeof value.sourceSha256 !== "string" || !/^[a-f0-9]{64}$/.test(value.sourceSha256)) return undefined;
+  if (value.sourceSha256AfterOptimization !== value.sourceSha256) return undefined;
+  const optimizedSha256 = createHash("sha256").update(bytes).digest("hex");
+  if (value.optimizedSha256 !== optimizedSha256) return undefined;
+  if (value.passed !== true || value.sourceUnchanged !== true || value.saveAsRequired !== true) return undefined;
+  if (!Number.isInteger(value.originalImageCount) || !Number.isInteger(value.optimizedImageCount)) return undefined;
+  if (value.optimizedImageCount >= value.originalImageCount) return undefined;
+  if (!Array.isArray(value.actions) || value.actions.length === 0) return undefined;
+  if (!Array.isArray(value.removedResourceKeys) || value.removedResourceKeys.length === 0) return undefined;
+  if (!Array.isArray(value.invariantChecks) || value.invariantChecks.length === 0) return undefined;
+  if (!value.invariantChecks.every((check) => check && typeof check === "object" && check.passed === true)) return undefined;
+  return {
+    schemaVersion: value.schemaVersion,
+    optimizationId: value.optimizationId,
+    sourceSha256: value.sourceSha256,
+    optimizedSha256,
+    originalImageCount: value.originalImageCount,
+    optimizedImageCount: value.optimizedImageCount,
+    actionCount: value.actions.length,
+    removedResourceKeys: value.removedResourceKeys.slice(0, 100)
   };
 }
 
@@ -2448,30 +2493,7 @@ async function saveEditedSvga(input) {
     throw new Error("Save As target must be different from the original SVGA.");
   }
 
-  const temporaryPath = `${targetPath}.tmp-${process.pid}-${randomBytes(6).toString("hex")}`;
-  let descriptor;
-  try {
-    descriptor = openSync(temporaryPath, "wx");
-    writeSync(descriptor, value.bytes, 0, value.bytes.byteLength, 0);
-    fsyncSync(descriptor);
-    closeSync(descriptor);
-    descriptor = undefined;
-    renameSync(temporaryPath, targetPath);
-  } catch (error) {
-    if (descriptor !== undefined) {
-      try {
-        closeSync(descriptor);
-      } catch {
-        // Best-effort close before temporary file cleanup.
-      }
-    }
-    try {
-      unlinkSync(temporaryPath);
-    } catch {
-      // Temporary cleanup is best-effort after a failed write or rename.
-    }
-    throw error;
-  }
+  writeSvgaBytesAtomically(targetPath, value.bytes);
   if (automatedProductSaveAs) {
     const scenario = p5SmokeSaveAs
       ? "p5-batch-edited-output-svga"
@@ -2518,6 +2540,68 @@ async function saveEditedSvga(input) {
     targetPathRedacted: sanitizeRuntimeArgument(targetPath),
     savedSvgaBase64: value.bytes.toString("base64")
   };
+}
+
+async function saveOptimizedSvga(input) {
+  const value = validateOptimizedSvgaSaveInput(input);
+  if (!value) throw new Error("Invalid optimized Save As payload");
+  const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
+  if (!originalPath) {
+    throw new Error("Optimized Save As requires the source SVGA to be opened through the desktop file picker.");
+  }
+  const result = await dialog.showSaveDialog({
+    title: "另存为优化 SVGA",
+    defaultPath: value.suggestedName,
+    filters: [{ name: "SVGA", extensions: ["svga"] }],
+    properties: ["createDirectory", "showOverwriteConfirmation"]
+  });
+  if (result.canceled || !result.filePath) {
+    return { status: "cancelled" };
+  }
+  const targetPath = result.filePath.toLowerCase().endsWith(".svga") ? result.filePath : `${result.filePath}.svga`;
+  if (path.resolve(targetPath) === path.resolve(originalPath)) {
+    throw new Error("Optimized Save As target must be different from the original SVGA.");
+  }
+
+  writeSvgaBytesAtomically(targetPath, value.bytes);
+  const savedSourceId = rememberSourceFile(targetPath);
+  return {
+    status: "saved",
+    sourceId: savedSourceId,
+    fileName: path.basename(targetPath),
+    sizeBytes: value.bytes.byteLength,
+    sha256: createHash("sha256").update(value.bytes).digest("hex"),
+    optimizationReportDigest: createHash("sha256").update(JSON.stringify(value.validation)).digest("hex"),
+    targetPathRedacted: sanitizeRuntimeArgument(targetPath),
+    savedSvgaBase64: value.bytes.toString("base64")
+  };
+}
+
+function writeSvgaBytesAtomically(targetPath, bytes) {
+  const temporaryPath = `${targetPath}.tmp-${process.pid}-${randomBytes(6).toString("hex")}`;
+  let descriptor;
+  try {
+    descriptor = openSync(temporaryPath, "wx");
+    writeSync(descriptor, bytes, 0, bytes.byteLength, 0);
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
+    renameSync(temporaryPath, targetPath);
+  } catch (error) {
+    if (descriptor !== undefined) {
+      try {
+        closeSync(descriptor);
+      } catch {
+        // Best-effort close before temporary file cleanup.
+      }
+    }
+    try {
+      unlinkSync(temporaryPath);
+    } catch {
+      // Temporary cleanup is best-effort after a failed write or rename.
+    }
+    throw error;
+  }
 }
 
 async function finishAudit(window, result) {
@@ -2658,6 +2742,11 @@ async function createExperimentWindow() {
   ipcMain.handle(IPC_CHANNELS.saveEditedSvga, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return saveEditedSvga(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.saveOptimizedSvga, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return saveOptimizedSvga(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.openSvgaFile, async (event) => {

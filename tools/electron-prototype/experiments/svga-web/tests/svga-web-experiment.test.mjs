@@ -241,7 +241,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(preloadApi.scanLatestArtifacts().channel, hostContract.IPC_CHANNELS.scanLatestArtifacts);
   assert.equal(preloadApi.writeClipboardText("logs").channel, hostContract.IPC_CHANNELS.writeClipboardText);
   assert.equal(preloadApi.saveEditedSvga({ bytesBase64: "AA==" }).channel, hostContract.IPC_CHANNELS.saveEditedSvga);
-  assert.equal(invocations.length, 5);
+  assert.equal(preloadApi.saveOptimizedSvga({ bytesBase64: "AA==" }).channel, hostContract.IPC_CHANNELS.saveOptimizedSvga);
+  assert.equal(hostContract.IPC_CHANNELS.saveOptimizedSvga, "svga-web-experiment:save-optimized-svga");
+  assert.equal(invocations.length, 6);
   assert.equal(hostContract.ELECTRON_HOST_BRIDGE_NAME, "autoSvgaElectronHost");
   assert.equal(hostContract.LEGACY_PROTOTYPE_BRIDGE_NAME, "autoSvgaPrototype");
   const hostOpenReturn = main.match(/function openSvgaFileBytes[\s\S]*?\n}\n\nasync function openSvgaFile/)?.[0] ?? "";
@@ -251,6 +253,10 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /isExpectedSenderUrl/);
   assert.match(main, /productSmokeMode/);
   assert.match(main, /captureProductArtifact/);
+  assert.match(main, /function validateOptimizedSvgaSaveInput/);
+  assert.match(main, /function validateOptimizationReportBinding/);
+  assert.match(main, /function saveOptimizedSvga/);
+  assert.match(main, /Optimized Save As requires the source SVGA to be opened through the desktop file picker/);
   assert.match(main, /validateArtifactScenario/);
   assert.match(main, /validateP6InteractionTrace/);
   assert.match(main, /\["Escape", "Space", "Enter", "Tab"\]/);

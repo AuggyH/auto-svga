@@ -116,3 +116,30 @@
 - Command:
   `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`
 - Result: pass; svga-web experiment suite passed 21 tests.
+
+### Phase 2 Optimized Save As Host Boundary Slice
+
+- Files updated:
+  `tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs`,
+  `tools/electron-prototype/experiments/svga-web/preload.cjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: report-bound optimized Save As IPC implemented; no product UI
+  execution path added.
+- Product behavior: `saveOptimizedSvga` requires an opened desktop source file,
+  rejects same-path overwrite, verifies the optimizer report schema and output
+  SHA-256 against the bytes to be saved, writes atomically through the system
+  Save As path, and returns a redacted saved-file identity.
+- Safe-action boundary: this only saves caller-provided optimized bytes after
+  report binding. It does not run optimization itself, reopen the saved file, or
+  claim playback acceptance.
+- Commands:
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/preload.cjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; svga-web experiment suite passed 21 tests and desktop smoke
+  passed.
