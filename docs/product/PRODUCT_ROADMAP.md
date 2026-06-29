@@ -5,9 +5,14 @@ Owner reset: P5 product acceptance is deferred. P6 becomes the active product ma
 
 ## Current Mainline
 
-Auto SVGA now prioritizes Web Preview parity in a macOS internal desktop app before adding more editing capability.
+Auto SVGA now prioritizes the P6-R1 owner-visible Workbench in a macOS internal
+desktop app before adding more editing capability.
 
-The running Web Preview at the frozen P6 baseline is the source of truth for:
+The frozen P6 Web Preview baseline remains historical lineage, required
+inventory, and rollback reference. It is not the active P6-R1 product ceiling:
+P6-R1 has already advanced the shared Product Workbench beyond that baseline.
+
+The active P6-R1 Workbench on the final head is the source of truth for:
 
 - product functionality
 - UI structure
@@ -21,9 +26,11 @@ The running Web Preview at the frozen P6 baseline is the source of truth for:
 
 Electron must reuse the shared product frontend rather than maintain an imitation page.
 
-## Phase 1: Web Preview Full Desktopization
+## Phase 1: P6-R1 Workbench Desktopization
 
-Goal: ship an unsigned, unnotarized macOS internal `.app` that opens directly from Finder and matches the current Web Preview product surface.
+Goal: ship an unsigned, unnotarized macOS internal `.app` that opens directly
+from Finder and presents the current P6-R1 shared Product Workbench. The old
+Web Preview baseline should not block owner-approved Workbench improvements.
 
 Scope:
 
@@ -34,7 +41,8 @@ Scope:
 - SVGA playback
 - inspection report
 - Motion Asset Audit read-only panel
-- parity evidence for features, regions, interactions, states, and motion
+- evidence for required features, regions, interactions, states, motion, and
+  owner-authorized Workbench revisions
 - browser workflow preserved as rollback
 
 Non-goals:

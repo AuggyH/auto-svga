@@ -1,11 +1,17 @@
-# Web Preview Product Source Of Truth
+# Web Preview Historical Product Baseline
 
 Date: 2026-06-22
 Applies to: P6 Web Preview Full Parity, Shared Frontend And macOS Internal App
 
 ## Rule
 
-The frozen Web Preview baseline is the product source of truth for P6.
+The frozen Web Preview baseline was the product source of truth for the original
+P6 parity attempt. For P6-R1 it is historical lineage, required inventory, and
+rollback reference only. It is not the active product ceiling after
+owner-authorized shared Workbench revisions.
+
+The current P6-R1 shared Product Workbench on the final head is the
+owner-visible source of truth for evidence, review, and handoff.
 
 Electron may differ only in host behavior:
 
@@ -21,7 +27,10 @@ Electron may differ only in host behavior:
 - no browser address bar
 - no manual server start
 
-Host differences must not remove product capability, UI regions, interactions, states, motion, or report content.
+Host differences must not remove required product capability, UI regions,
+interactions, states, motion, or report content. Owner-authorized Workbench
+improvements may advance the current product surface beyond this historical
+Web Preview baseline.
 
 ## Required Baseline Inventory
 
@@ -60,12 +69,12 @@ Every artifact must record:
 
 ## Blocking Conditions
 
-P6 cannot claim parity if:
+P6-R1 cannot claim owner-ready Workbench evidence if:
 
-- a required Web feature is missing on Desktop
-- a required UI region is missing on Desktop
-- a required interaction is missing on Desktop
-- a required state is missing on Desktop
-- a required motion is missing on Desktop
+- a required feature is missing on Web or Desktop
+- a required UI region is missing on Web or Desktop
+- a required interaction is missing on Web or Desktop
+- a required state is missing on Web or Desktop
+- a required motion is missing on Web or Desktop
 - an unapproved difference remains unresolved
 - Electron uses an imitation product page instead of the shared product frontend

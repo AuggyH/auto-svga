@@ -12,9 +12,11 @@
     "docs/product/P6_WEB_PARITY_CONTRACT.json"
   ],
   "hashPolicy": {
-    "webSourceOfTruthHashes": "mustRemainUnchangedDuringP6R1ExceptOwnerApprovedBoundedRevisionsRecordedInWebSourceOfTruthHashLineage",
+    "webSourceOfTruthHashes": "historicalLineageRequiredInventoryAndRollbackReferenceOnlyAfterOwnerApprovedP6R1WorkbenchRevisions",
     "milestoneStartReferenceHashes": "recordOnlyMayChangeInsideAuthorizedWorkPackagesWithEvidenceAndFinalHeadBinding",
-    "ownerApprovedBoundedRevision": "onlyApprovedForOwnerVisibleUiUxPolish;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift"
+    "ownerApprovedBoundedRevision": "onlyApprovedForOwnerVisibleUiUxPolish;doesNotReduceRequiredInventory;doesNotStartPhase2;doesNotApproveUnrelatedImmutableWebDrift",
+    "activeP6R1ProductSourceOfTruth": "currentSharedProductWorkbenchFinalHead",
+    "evidenceAndHandoffBinding": "mustBindToCurrentP6R1SharedProductWorkbenchFinalHeadNotOlderWebPreviewCeiling"
   },
   "webSourceOfTruthHashes": {
     "tools/svga-player-preview/index.html": "35c84c6f6f85b67c733e0d3d7cab6537aeb14d15c4f1083562a6e12051ba53ae",
@@ -150,7 +152,7 @@
     "states": 22,
     "motions": 9
   },
-  "snapshotSha256": "d0a813cd5b6f424c27729779c1b9debcc10508b0a2987e0a236c98955870e6a5",
+  "snapshotSha256": "e13d3a2e1fbba9709b0dc5039ee6fe3fd23bff814e476a96b2507af5370c837f",
   "snapshotSha256Algorithm": {
     "name": "top_level_snapshotSha256_omitted_recursive_key_sorted_compact_json_sha256",
     "version": 1,
@@ -409,5 +411,20 @@
         }
       ]
     }
-  ]
+  ],
+  "productSourceOfTruthPolicy": {
+    "activeProductSurface": "p6_r1_shared_product_workbench",
+    "activeEvidenceBinding": "final_head_shared_product_workbench",
+    "historicalWebPreviewBaselineRole": "lineage_required_inventory_and_rollback_reference_only",
+    "webPreviewBaselineIsActiveProductCeiling": false,
+    "ownerDecision": "Product Owner clarification: Web Preview is no longer the active P6/P6-R1 baseline because P6-R1 has advanced with owner-authorized improvements.",
+    "policy": "P6-R1 evidence and owner handoff bind to the current shared Product Workbench final head. Historical Web Preview baseline hashes preserve required inventory and approved lineage but must not reverse or block owner-authorized Workbench improvements.",
+    "preservedBoundaries": {
+      "requiredInventoryCountsUnchanged": true,
+      "contractRevision": 3,
+      "repairRound": 0,
+      "phase2Started": false,
+      "noPhase2Authorization": true
+    }
+  }
 }

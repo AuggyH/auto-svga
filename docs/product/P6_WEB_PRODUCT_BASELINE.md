@@ -5,6 +5,14 @@ Baseline commit: `dbab38fc7fc3cad09f6305775467422ded63318c`
 Source: running Web Preview on local preview server, captured with hidden Electron runtime
 Route: `http://127.0.0.1:4190/tools/svga-player-preview/`
 
+## Current P6-R1 Role
+
+This baseline is historical lineage, required inventory, and rollback reference
+for P6-R1. It is not the active P6-R1 product source of truth after
+owner-authorized Workbench revisions. Current evidence and owner handoff should
+bind to the shared Product Workbench on the final P6-R1 head while preserving
+the required inventory counts from this baseline.
+
 ## Fixture
 
 Approved synthetic fixture:

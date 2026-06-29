@@ -8,6 +8,11 @@ Web and Electron must render the same Auto SVGA product surface from shared sour
 
 Desktop parity must come from reuse, not screenshot imitation.
 
+For P6-R1, the shared Product Workbench is now the active owner-visible source
+of truth. The frozen Web Preview baseline remains a historical inventory and
+rollback reference, but it must not cap or reverse owner-authorized Workbench
+improvements.
+
 ## Required Shape
 
 ```text
@@ -61,6 +66,8 @@ Responsible for:
 - Do not duplicate inspection business logic in UI.
 - Do not duplicate report logic in Electron.
 - Do not keep an imitation Electron product page as the default surface.
+- Bind P6-R1 evidence and handoff to the current shared Product Workbench head,
+  not to an older Web Preview screenshot ceiling.
 
 ## P6 Dependency
 

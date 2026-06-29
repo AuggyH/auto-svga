@@ -4,13 +4,17 @@
 
 This repository is an MVP for automating SVGA-like animation project generation for avatar frame assets.
 
-Auto-SVGA product mainline is Web Preview parity first.
+Auto-SVGA product mainline is P6-R1 owner-visible Workbench parity and
+acceptance.
 
-The running Web Preview at the frozen parity baseline is the source of truth
-for functionality, UI, UX, state behavior, and motion.
+The frozen Web Preview parity baseline is historical lineage, required
+inventory, and rollback reference. It is no longer the active P6-R1 product
+ceiling after owner-authorized Workbench revisions. Current P6-R1 work must
+bind evidence and handoff to the owner-visible shared Product Workbench on the
+active final head.
 
-Do not add new editor features to the default Desktop product until complete
-Web parity and the macOS internal app are accepted.
+Do not add new editor features to the default Desktop product until the P6-R1
+Workbench and macOS internal app are accepted.
 
 Desktop-specific host behavior may differ only for native window, file dialogs,
 menus, shortcuts, file association, Save As, and security boundaries.

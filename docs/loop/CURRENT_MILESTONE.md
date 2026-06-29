@@ -22,7 +22,7 @@ wp0Authorized: true
 executionStatus: terminal_human_required
 nextAction: product_owner_human_gate
 
-The macOS window sizing correction is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. 900x720 is legacy stress only; the supported sizing system uses 1440x900 preferred default, 1280x800 comfortable, and 1180x760 minimum. This remains contract revision 3, repairRound 0, and Phase 2 not started.
+The macOS window sizing correction is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. 900x720 is legacy stress only; the supported sizing system uses 1440x900 preferred default, 1280x800 comfortable, and 1180x760 minimum. The frozen Web Preview baseline is now historical lineage, required inventory, and rollback reference only; the current owner-visible P6-R1 shared Product Workbench is the active source of truth for evidence and handoff. This remains contract revision 3, repairRound 0, and Phase 2 not started.
 
 
 milestoneStartCommit: `d430c1937a6deeab3fc358151e24b4699e45f506`
@@ -41,20 +41,21 @@ wp0Started: true
 ## Objective
 
 Close the legacy P6 findings through failure-first, vertical user-flow work
-without changing the Web Preview source of truth, reducing required inventory,
-or starting Phase 2 functionality.
+without reducing required inventory or starting Phase 2 functionality.
 
 P6-R1 must complete trustworthy Web/Desktop function, state, interaction,
-motion, and macOS App evidence for the accepted P6 recovery plan.
+motion, and macOS App evidence for the accepted P6 recovery plan. Evidence and
+handoff must bind to the current P6-R1 shared Product Workbench on the final
+head, not to the older Web Preview baseline as a product ceiling.
 
 ## Immutable P6 Recovery Baseline
 
 - P6 terminal reviewed head: `1977cbce7ffc53d215391468aeb5b20daf816f77`
 - accepted postmortem head: `d430c1937a6deeab3fc358151e24b4699e45f506`
 - P6-R1 milestone start commit: `d430c1937a6deeab3fc358151e24b4699e45f506`
-- Web source-of-truth commit:
+- historical Web Preview baseline commit:
   `dbab38fc7fc3cad09f6305775467422ded63318c`
-- Web Preview source-of-truth files:
+- historical Web Preview baseline files:
   - `tools/svga-player-preview/index.html`
   - `tools/svga-player-preview/styles.css`
   - `tools/svga-player-preview/main.js`
@@ -95,11 +96,13 @@ immutable minimums for P6-R1:
 | states | 22 |
 | motions | 9 |
 
-`docs/loop/contracts/P6-R1_BASELINE.json` uses schema version 2. Its hashes
-are split by execution policy:
+`docs/loop/contracts/P6-R1_BASELINE.json` uses schema version 2. Its hashes and
+source-of-truth policy are split by execution role:
 
-- `webSourceOfTruthHashes` must remain unchanged during P6-R1 unless the owner
-  explicitly approves a new Web source-of-truth revision.
+- `webSourceOfTruthHashes` record historical Web Preview baseline lineage and
+  owner-approved revisions. They are no longer the active P6-R1 product ceiling.
+- The current P6-R1 shared Product Workbench on the final head is the active
+  owner-visible source of truth for evidence and handoff.
 - `milestoneStartReferenceHashes` record Desktop/shared/reference files at the
   milestone start only. They may change inside authorized work packages when
   the change is evidence-bound and final-head-bound.

@@ -8,7 +8,7 @@ Date: 2026-06-28
 - Milestone: Genuine Runtime, Interaction, Visual And macOS App Parity Completion
 - State: terminal_human_required
 - Next Action: product_owner_human_gate
-- The macOS window sizing correction is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. 900x720 is legacy stress only; the supported sizing system uses 1440x900 preferred default, 1280x800 comfortable, and 1180x760 minimum. This remains contract revision 3, repairRound 0, and Phase 2 not started.
+- The macOS window sizing correction is ready for Product Owner Human Gate after regenerated P6 evidence, layout integrity audit, Reviewer A/B, final seal, post-seal, privacy, and complete review-directory packaging pass on the terminal head. 900x720 is legacy stress only; the supported sizing system uses 1440x900 preferred default, 1280x800 comfortable, and 1180x760 minimum. The frozen Web Preview baseline is historical lineage, required inventory, and rollback reference only; the current owner-visible P6-R1 shared Product Workbench is the active source of truth for evidence and handoff. This remains contract revision 3, repairRound 0, and Phase 2 not started.
 - contractRevision: 3
 - supersedesContractRevision: 2
 - contractRevisionReason: residual_execution_blocker_hotfix
@@ -107,6 +107,11 @@ Date: 2026-06-28
   window sizing system with 1440x900 default launch when display bounds allow,
   1280x800 comfortable workbench, 1180x760 minimum supported size, and 900x720
   legacy stress evidence only.
+- Product Owner clarified that the old frozen Web Preview is no longer the
+  active P6/P6-R1 product baseline because P6-R1 has advanced beyond it. The
+  Web Preview baseline remains historical lineage, required inventory, and
+  rollback reference; evidence and owner handoff now bind to the current
+  P6-R1 shared Product Workbench final head.
 - All `P6-F001` through `P6-F013` remain `currentStatus=open` and are
   no further than `integrated_resolved_pending_external_review`; none are
   externally confirmed closed before Product Owner Human Gate and final independent
