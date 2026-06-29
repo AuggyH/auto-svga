@@ -37,9 +37,7 @@ Removed duplicated workbench layout logic so `src/layout/layoutEngine.ts` is the
 
 ## Visible Review Material
 
-- `review/P6-R1-layout-cleanup-8c44a59/`
-- `review/P6-R1-layout-cleanup-8c44a59/REVIEW_PACKET.md`
-- `review/P6-R1-layout-cleanup-8c44a59/P6-R1-layout-cleanup-8c44a59-review-upload.zip`
+Visible review material was exposed under the matching owner-visible review directory for that task head.
 
 ## Risks
 
