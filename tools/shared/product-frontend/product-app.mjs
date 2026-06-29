@@ -4179,7 +4179,7 @@ function renderInfoPanel() {
   const layersPanel = document.querySelector("#tab-layers");
   const diagnosticsPanel = document.querySelector("#tab-diagnostics");
   if (overviewPanel) overviewPanel.innerHTML = renderOverview(metrics, players.a);
-  if (assetsPanel) assetsPanel.innerHTML = renderAssets(metrics);
+  if (assetsPanel) assetsPanel.innerHTML = renderAssets(metrics, players.a.inspectionReport);
   if (layersPanel) layersPanel.innerHTML = renderLayerList(metrics?.sprites ?? []);
   if (diagnosticsPanel) diagnosticsPanel.innerHTML = renderDiagnostics(metrics, players.a);
 }
@@ -4337,8 +4337,9 @@ function renderBilingualEmpty(primary, secondary) {
   `;
 }
 
-function renderAssets(metrics) {
+function renderAssets(metrics, inspectionReport) {
   if (assetFilter === "sprite") assetFilter = "all";
+  const intelligence = inspectionReport?.assetIntelligence;
   const filterBar = `
     <div class="assetFilters">
       ${[
@@ -4353,7 +4354,7 @@ function renderAssets(metrics) {
   if (!metrics?.sprites?.length && !metrics?.images?.length) {
     return `${filterBar}${renderBilingualEmpty("暂无资源信息", "")}`;
   }
-  const assets = buildAssetEntries(metrics);
+  const assets = buildAssetEntries(metrics, intelligence);
   const filtered = assets.filter((asset) => {
     if (assetFilter === "all") return asset.kind !== "sprite";
     if (assetFilter === "unreferenced") return asset.kind !== "sprite" && Number(asset.referenceCount ?? 0) === 0;
@@ -4363,19 +4364,42 @@ function renderAssets(metrics) {
   const summary = [
     `${metrics.images?.length ?? 0} 张图片`,
     `${assets.filter((asset) => asset.kind === "sequence").length} 组序列`,
-    `${assets.filter((asset) => asset.warnings?.length).length} 项需复核`
-  ].join(" · ");
-    return `
+    `${assets.filter((asset) => asset.warnings?.length).length} 项需复核`,
+    intelligence ? `${intelligence.summary.findingCount} 项资产智能发现` : "",
+    intelligence ? `${intelligence.summary.safeAutoOptimizeFindingCount} 项安全候选` : ""
+  ].filter(Boolean).join(" · ");
+  const safeSavings = intelligence?.summary.estimatedSafeFileSizeSavingsBytes;
+  const intelligenceSummary = intelligence ? `
+    <div class="assetIntelligenceSummary">
+      <strong>资产智能</strong>
+      <span>安全候选仅会通过另存为与重开验证执行。</span>
+      ${Number.isFinite(Number(safeSavings)) ? `<em>预计可节省 ${escapeHtml(formatBytes(safeSavings))}</em>` : ""}
+    </div>
+  ` : "";
+  return `
     ${filterBar}
     <div class="assetSummaryLine">${escapeHtml(summary)}</div>
+    ${intelligenceSummary}
     <div class="assetUnifiedList inspectorSection">
       ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
     </div>
   `;
 }
 
-function buildAssetEntries(metrics) {
-  const images = metrics.images ?? [];
+function buildAssetEntries(metrics, intelligence) {
+  const intelligenceById = new Map((intelligence?.resources ?? []).map((resource) => [resource.resourceId, resource]));
+  const enrichImage = (image) => {
+    const intelligenceNode = intelligenceById.get(image.key);
+    const intelligenceWarnings = intelligenceWarningLabels(intelligenceNode);
+    return {
+      ...image,
+      warnings: [...(image.warnings ?? []), ...intelligenceWarnings],
+      decodedMemoryBytes: intelligenceNode?.estimatedDecodedMemoryBytes,
+      abnormalityLevel: intelligenceNode?.abnormalityLevel ?? "none",
+      intelligenceFindingCodes: intelligenceNode?.findingCodes ?? []
+    };
+  };
+  const images = (metrics.images ?? []).map(enrichImage);
   const sprites = metrics.sprites ?? [];
   const imageByKey = new Map(images.map((image) => [image.key, image]));
   const sequenceGroups = buildSequenceGroups(images);
@@ -4389,9 +4413,11 @@ function buildAssetEntries(metrics) {
     width: sprite.width,
     height: sprite.height,
     byteSize: sprite.byteSize,
+    decodedMemoryBytes: imageByKey.get(sprite.imageKey)?.decodedMemoryBytes,
     referenceCount: sprite.imageKey ? imageByKey.get(sprite.imageKey)?.referenceCount ?? 1 : 0,
     previewUrl: sprite.previewUrl,
-    warnings: sprite.warnings ?? [],
+    warnings: [...(sprite.warnings ?? []), ...intelligenceWarningLabels(imageByKey.get(sprite.imageKey))],
+    abnormalityLevel: imageByKey.get(sprite.imageKey)?.abnormalityLevel ?? "none",
     fullKey: sprite.imageKey || sprite.name || `sprite_${index}`
   }));
   const imageEntries = images
@@ -4405,9 +4431,11 @@ function buildAssetEntries(metrics) {
       width: image.width,
       height: image.height,
       byteSize: image.byteSize,
+      decodedMemoryBytes: image.decodedMemoryBytes,
       referenceCount: image.referenceCount ?? 0,
       previewUrl: image.previewUrl,
       warnings: image.warnings ?? [],
+      abnormalityLevel: image.abnormalityLevel ?? "none",
       fullKey: image.key
     }));
   const sequenceEntries = sequenceGroups.map((group) => ({
@@ -4419,15 +4447,44 @@ function buildAssetEntries(metrics) {
     width: group.width,
     height: group.height,
     byteSize: group.byteSize,
+    decodedMemoryBytes: group.decodedMemoryBytes,
     referenceCount: group.items.reduce((sum, item) => sum + (item.referenceCount ?? 0), 0),
     previewUrl: group.items[0]?.previewUrl,
     previewItems: group.items.slice(0, 4),
     warnings: group.warnings,
+    abnormalityLevel: group.abnormalityLevel,
     fullKey: group.keyRange,
     frameCount: group.items.length,
     items: group.items
   }));
   return [...spriteEntries, ...sequenceEntries, ...imageEntries];
+}
+
+function intelligenceWarningLabels(resource) {
+  return [...new Set((resource?.findingCodes ?? []).map(assetIntelligenceFindingLabel))];
+}
+
+function assetIntelligenceFindingLabel(code) {
+  return {
+    unreferenced_image_resource: "未引用资源",
+    duplicate_encoded_image_resource: "重复资源",
+    fully_transparent_image_resource: "全透明资源",
+    excessive_transparent_padding: "透明留白需复核",
+    large_decoded_image_resource: "解码内存偏高",
+    sequence_frame_memory_concentration: "序列帧内存集中",
+    sequence_frame_analysis_incomplete: "证据不足"
+  }[code] ?? code;
+}
+
+function higherAbnormality(left = "none", right = "none") {
+  const order = { none: 0, low: 1, medium: 2, high: 3 };
+  return (order[right] ?? 0) > (order[left] ?? 0) ? right : left;
+}
+
+function sumKnownNumbers(values) {
+  return values.some((value) => !Number.isFinite(Number(value)))
+    ? undefined
+    : values.reduce((total, value) => total + Number(value), 0);
 }
 
 function buildSequenceGroups(images = []) {
@@ -4459,12 +4516,16 @@ function buildSequenceGroups(images = []) {
       const segment = segmentNumbers.flatMap((number) => itemsByNumber.get(number) ?? []);
       const byteSize = segment.reduce((sum, item) => sum + (item.byteSize ?? 0), 0);
       const warnings = [...new Set(segment.flatMap((item) => item.warnings ?? []))];
+      const decodedMemoryBytes = sumKnownNumbers(segment.map((item) => item.decodedMemoryBytes));
+      const abnormalityLevel = segment.reduce((level, item) => higherAbnormality(level, item.abnormalityLevel), "none");
       const first = segment[0];
       const last = segment.at(-1);
       groups.push({
         ...bucket,
         items: [...segment],
         byteSize,
+        decodedMemoryBytes,
+        abnormalityLevel,
         warnings,
         keyRange: `${first?.key ?? bucket.prefix} ... ${last?.key ?? bucket.prefix}`,
         startNumber: first?.sequenceNumber,
@@ -4490,8 +4551,11 @@ function renderAssetEntry(asset) {
     ? `<div class="assetWarningTags">${asset.warnings.map((warning) => `<span>${escapeHtml(shortWarningLabel(warning))}</span>`).join("")}</div>`
     : "";
   const sequenceExpanded = asset.kind === "sequence" && expandedSequenceGroups.has(asset.key);
+  const decodedMemory = Number.isFinite(Number(asset.decodedMemoryBytes))
+    ? `<span>解码 ${escapeHtml(formatBytes(asset.decodedMemoryBytes))}</span>`
+    : "";
   return `
-    <article class="assetUnifiedRow resourceRow ${asset.warnings?.length ? "hasWarning" : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}">
+    <article class="assetUnifiedRow resourceRow ${asset.warnings?.length ? "hasWarning" : ""} ${asset.abnormalityLevel && asset.abnormalityLevel !== "none" ? `abnormality-${escapeHtml(asset.abnormalityLevel)}` : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}">
       <button class="assetUnifiedThumb checkerboard ${asset.kind === "sequence" ? "isSequence" : ""}" type="button" data-preview-image-key="${escapeHtml(asset.items?.[0]?.key ?? asset.imageKey ?? "")}" ${asset.previewUrl ? "" : "disabled"}>
         ${asset.kind === "sequence"
           ? (asset.previewItems ?? []).map((item) => item.previewUrl ? `<img src="${escapeHtml(item.previewUrl)}" alt="">` : `<span></span>`).join("")
@@ -4506,6 +4570,7 @@ function renderAssetEntry(asset) {
           <div>
             <span>${escapeHtml(formatSize(asset.width, asset.height))}</span>
             <span>${escapeHtml(formatBytes(asset.byteSize))}</span>
+            ${decodedMemory}
             ${asset.frameCount ? `<span>${escapeHtml(asset.frameCount)} 帧</span>` : ""}
           </div>
           <div>
@@ -4526,9 +4591,11 @@ function renderAssetEntry(asset) {
       width: item.width,
       height: item.height,
       byteSize: item.byteSize,
+      decodedMemoryBytes: item.decodedMemoryBytes,
       referenceCount: item.referenceCount ?? 0,
       previewUrl: item.previewUrl,
       warnings: item.warnings ?? [],
+      abnormalityLevel: item.abnormalityLevel ?? "none",
       fullKey: item.key
     })).join("")}</div>` : ""}
   `;

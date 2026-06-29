@@ -4373,6 +4373,30 @@ button:disabled {
   line-height: var(--visual-line-meta);
 }
 
+.assetIntelligenceSummary {
+  display: grid;
+  gap: 3px;
+  margin: var(--space-2) var(--space-4) 0;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--warning) 24%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 7%, var(--surfaceElevated));
+}
+
+.assetIntelligenceSummary strong {
+  color: var(--textPrimary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.assetIntelligenceSummary span,
+.assetIntelligenceSummary em {
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  font-style: normal;
+  line-height: var(--visual-line-meta);
+}
+
 .resourceRow {
   background: var(--resource-row-surface);
 }
@@ -5733,7 +5757,7 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 
 #tab-assets {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   align-content: start;
   padding: 0;
   overflow: hidden;

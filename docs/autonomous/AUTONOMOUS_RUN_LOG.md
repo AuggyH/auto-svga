@@ -42,3 +42,31 @@
 - Evidence summary: branch and build commit bound to the autonomous branch;
   privacy audit passed; final packaged App acceptance remains outside this
   autonomous local proof.
+
+### Phase 2 Asset Intelligence Slice
+
+- Files added:
+  `src/workbench/asset-intelligence.ts`,
+  `src/tests/asset-intelligence.test.ts`
+- Files updated:
+  `src/workbench/avatar-frame-inspection-report.ts`,
+  `src/workbench/motion-asset-audit-report-contract.ts`,
+  `src/tests/avatar-frame-inspection-report.test.ts`,
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/shared/product-frontend/product-styles.css`
+- Result: first read-only product slice implemented.
+- Product behavior: avatar-frame inspection reports now include structured
+  Asset Intelligence resources, findings, safe-auto-optimize classification,
+  impact estimates, and supported resource table sort keys. The shared resource
+  panel surfaces the summary and resource-level finding tags without exposing
+  executable optimization buttons.
+- Safe-action boundary: unreferenced image resources and byte-identical encoded
+  duplicates are marked as safe candidates, but execution is deferred until a
+  Save As optimizer with reopen and round-trip validation exists.
+- Commands:
+  `npm run build`;
+  `node --test dist/tests/asset-intelligence.test.js dist/tests/avatar-frame-inspection-report.test.js dist/tests/motion-asset-audit-report-contract.test.js`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm test`;
+  `npm run desktop:smoke`
+- Result: pass; root suite passed 234 tests.

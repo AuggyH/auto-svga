@@ -183,7 +183,72 @@ export function validateMotionAssetAuditReportV1(
   validateCards(value, "findingCards", false, errors);
   validateCards(value, "opportunityCards", true, errors);
   validateLocalizationKeyArray(value, "uncertaintyNotes", errors);
+  validateOptionalAssetIntelligence(value, errors);
   return { valid: errors.length === 0, errors };
+}
+
+function validateOptionalAssetIntelligence(
+  report: Record<string, unknown>,
+  errors: string[]
+): void {
+  if (!("assetIntelligence" in report)) return;
+  const value = report.assetIntelligence;
+  if (!isRecord(value)) {
+    errors.push("assetIntelligence must be an object when present");
+    return;
+  }
+  if (value.schemaVersion !== 1) errors.push("assetIntelligence.schemaVersion must equal 1");
+  for (const path of ["resources", "findings", "supportedSortKeys"]) {
+    if (!Array.isArray(value[path])) errors.push(`assetIntelligence.${path} must be an array`);
+  }
+  if (!isRecord(value.summary)) errors.push("assetIntelligence.summary must be an object");
+  validateAssetIntelligenceResources(value, errors);
+  validateAssetIntelligenceFindings(value, errors);
+}
+
+function validateAssetIntelligenceResources(
+  value: Record<string, unknown>,
+  errors: string[]
+): void {
+  const resources = value.resources;
+  if (!Array.isArray(resources)) return;
+  resources.forEach((resource, index) => {
+    const parent = `assetIntelligence.resources[${index}]`;
+    if (!isRecord(resource)) {
+      errors.push(`${parent} must be an object`);
+      return;
+    }
+    for (const key of ["resourceId", "name", "kind", "role", "abnormalityLevel"]) {
+      if (typeof resource[key] !== "string") errors.push(`${parent}.${key} must be a string`);
+    }
+    if (!Array.isArray(resource.concepts)) errors.push(`${parent}.concepts must be an array`);
+    if (!Array.isArray(resource.usedByLayerIds)) errors.push(`${parent}.usedByLayerIds must be an array`);
+    if (!Array.isArray(resource.findingCodes)) errors.push(`${parent}.findingCodes must be an array`);
+    if (typeof resource.usageCount !== "number") errors.push(`${parent}.usageCount must be a number`);
+    if (typeof resource.replaceable !== "boolean") errors.push(`${parent}.replaceable must be a boolean`);
+  });
+}
+
+function validateAssetIntelligenceFindings(
+  value: Record<string, unknown>,
+  errors: string[]
+): void {
+  const findings = value.findings;
+  if (!Array.isArray(findings)) return;
+  findings.forEach((finding, index) => {
+    const parent = `assetIntelligence.findings[${index}]`;
+    if (!isRecord(finding)) {
+      errors.push(`${parent} must be an object`);
+      return;
+    }
+    for (const key of ["code", "title", "reason", "severity", "confidence", "optimizationDisposition"]) {
+      if (typeof finding[key] !== "string") errors.push(`${parent}.${key} must be a string`);
+    }
+    if (!Array.isArray(finding.evidenceRefs)) errors.push(`${parent}.evidenceRefs must be an array`);
+    if (!Array.isArray(finding.affectedResourceIds)) errors.push(`${parent}.affectedResourceIds must be an array`);
+    if (typeof finding.safeToAutoOptimize !== "boolean") errors.push(`${parent}.safeToAutoOptimize must be a boolean`);
+    if (typeof finding.roundTripRequired !== "boolean") errors.push(`${parent}.roundTripRequired must be a boolean`);
+  });
 }
 
 const MISSING = Symbol("missing");

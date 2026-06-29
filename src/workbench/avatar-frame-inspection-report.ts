@@ -17,6 +17,10 @@ import {
   type MotionAssetAuditPresentation
 } from "./motion-asset-audit-presentation.js";
 import {
+  createAssetIntelligenceReport,
+  type AssetIntelligenceReport
+} from "./asset-intelligence.js";
+import {
   createMotionAssetAuditSummary,
   type MotionAssetAuditSummary
 } from "./motion-asset-audit-summary.js";
@@ -56,6 +60,7 @@ export interface AvatarFrameInspectionReport {
   sequenceResidencyDiagnostics: SequenceResidencyDiagnostics;
   sequenceFrameEvidence: SequenceFrameEvidence;
   transparentPaddingPolicy?: RoleAwareTransparentPaddingPolicySummary;
+  assetIntelligence: AssetIntelligenceReport;
   auditSummary: MotionAssetAuditSummary;
   auditPresentation: MotionAssetAuditPresentation;
   specId: string;
@@ -109,6 +114,13 @@ export class AvatarFrameInspectionReportService {
       sequenceResidencyDiagnostics,
       sequenceFrameEvidence
     });
+    const assetIntelligence = createAssetIntelligenceReport({
+      asset,
+      issues: specReport.issues,
+      memoryEstimation,
+      sequenceResidencyDiagnostics,
+      sequenceFrameEvidence
+    });
     return {
       value: {
         contractVersion: MOTION_ASSET_AUDIT_REPORT_CONTRACT_VERSION,
@@ -118,6 +130,7 @@ export class AvatarFrameInspectionReportService {
         sequenceResidencyDiagnostics,
         sequenceFrameEvidence,
         transparentPaddingPolicy,
+        assetIntelligence,
         auditSummary,
         auditPresentation: createMotionAssetAuditPresentation(auditSummary),
         specId: specReport.specId,

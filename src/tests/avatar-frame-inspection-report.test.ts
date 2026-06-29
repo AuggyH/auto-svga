@@ -43,6 +43,10 @@ test("avatar-frame inspection command returns a passing structured report", asyn
   assert.equal(report.auditSummary.auditStatus, "pass");
   assert.equal(report.auditSummary.uncertainty, "low");
   assert.deepEqual(report.auditSummary.primaryFindings, []);
+  assert.equal(report.assetIntelligence.schemaVersion, 1);
+  assert.equal(report.assetIntelligence.summary.resourceCount, 1);
+  assert.deepEqual(report.assetIntelligence.findings, []);
+  assert.deepEqual(report.assetIntelligence.resources[0].concepts, ["图片资源", "图层"]);
   assert.equal(report.auditPresentation.statusLabel, "audit.status.pass");
   assert.equal(report.auditPresentation.severityLevel, "success");
   assert.deepEqual(report.auditPresentation.opportunityCards, []);
@@ -87,6 +91,8 @@ test("avatar-frame inspection command reports transparent padding from embedded 
     height: 100
   });
   assert.equal(report.auditSummary.auditStatus, "needs_review");
+  assert.equal(report.assetIntelligence.findings[0].code, "excessive_transparent_padding");
+  assert.equal(report.assetIntelligence.findings[0].optimizationDisposition, "requires_visual_confirmation");
   assert.equal(
     report.transparentPaddingPolicy?.diagnostics[0].policyCode,
     "static_image_padding_exceeds_threshold"
