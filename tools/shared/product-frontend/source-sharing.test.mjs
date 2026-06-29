@@ -58,8 +58,10 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /function writeClipboardText/);
   assert.match(productApp, /electronBridge\?\.writeClipboardText/);
   assert.match(productApp, /function runOptimizedReopenProof/);
+  assert.match(productApp, /function runSequenceReviewProof/);
   assert.match(productApp, /\/api\/svga-image-optimize/);
   assert.match(productApp, /optimizedReopenProof/);
+  assert.match(productApp, /sequenceReviewProof/);
   assert.match(productApp, /function runReplacementReadinessProof/);
   assert.match(productApp, /function runSingleReplacementPreviewProof/);
   assert.match(productApp, /function runReplacementUndoRedoProof/);
@@ -73,6 +75,8 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /replacementUndoRedoProof/);
   assert.match(productApp, /replacementSaveAsProof/);
   assert.match(productApp, /replacementMultiResourceProof/);
+  assert.match(productApp, /data-sequence-review-summary/);
+  assert.match(productApp, /序列帧复核/);
   assert.match(productApp, /data-undo-replacement-preview/);
   assert.match(productApp, /data-redo-replacement-preview/);
   assert.match(productApp, /可替换/);

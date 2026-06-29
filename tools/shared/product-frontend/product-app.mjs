@@ -2377,6 +2377,49 @@ async function runReplacementReadinessProof(sourceBytes, fileName) {
   return proof;
 }
 
+async function runSequenceReviewProof(sourceBytes, fileName) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const sourceUrl = URL.createObjectURL(new Blob([sourceBytes], { type: "application/octet-stream" }));
+  await loadSvga("a", sourceUrl, {
+    fileName,
+    fileSizeBytes: sourceBytes.byteLength,
+    fixtureSha256: sourceSha256,
+    loadingHoldMs: 80
+  });
+  await waitFor(() => Boolean(players.a.videoItem));
+  await waitFor(() => canvasIsNonBlank(players.a));
+  await waitForInspectionStatus(players.a);
+  openInfoPanel("assets");
+  renderInfoPanel();
+  const intelligence = players.a.inspectionReport?.assetIntelligence;
+  const assets = buildAssetEntries(players.a.metrics, intelligence, players.a.replacementReadiness);
+  const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
+  const sequenceFindings = (intelligence?.findings ?? []).filter(isSequenceReviewFinding);
+  await waitFor(() => isElementVisible(document.querySelector("[data-sequence-review-summary]")));
+  const summaryVisible = isElementVisible(document.querySelector("[data-sequence-review-summary]"));
+  const sourceSha256AfterReview = await p6Sha256Bytes(await readPrimarySourceBytes());
+  const repairActionExposed = Boolean(document.querySelector("[data-sequence-repair], [data-auto-sequence-fix], [data-sequence-rewrite]"));
+  const proof = {
+    schemaVersion: 1,
+    proofId: "svga-sequence-review-proof",
+    source: "workbench-asset-intelligence",
+    sourceSha256,
+    sourceSha256AfterReview,
+    sequenceGroupCount,
+    sequenceFindingCount: sequenceFindings.length,
+    affectedResourceCount: new Set(sequenceFindings.flatMap((finding) => finding.affectedResourceIds ?? [])).size,
+    summaryVisible,
+    mutationNotAttempted: sourceSha256AfterReview === sourceSha256,
+    repairActionExposed,
+    passed: sequenceGroupCount > 0
+      && summaryVisible
+      && sourceSha256AfterReview === sourceSha256
+      && repairActionExposed === false
+  };
+  window.__autoSvgaSequenceReviewProof = proof;
+  return proof;
+}
+
 async function runSingleReplacementPreviewProof(sourceBytes, resourceKey, fileName) {
   const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-a.png").then((response) => {
     if (!response.ok) throw new Error(`Replacement fixture fetch failed (${response.status})`);
@@ -4667,6 +4710,9 @@ async function runProductSmoke() {
     await waitForInspectionStatus(players.a);
     p6SmokeCurrentPhase = "capture-recovered";
     await captureArtifact("desktop-recovered-from-invalid");
+    p6SmokeCurrentPhase = "sequence-review-proof";
+    const sequenceReviewProof = await runSequenceReviewProof(bytes.slice(0), p6BaselineFixtureDisplayName);
+    await captureArtifact("desktop-sequence-review-proof");
     p6SmokeCurrentPhase = "replacement-readiness-proof";
     const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);
     p6SmokeCurrentPhase = "replacement-preview-proof";
@@ -4950,6 +4996,7 @@ async function runProductSmoke() {
       errorFile,
       playerLifecycle: true,
       cleanup: true,
+      sequenceReviewProof,
       replacementReadinessProof,
       replacementPreviewProof,
       replacementUndoRedoProof,
@@ -5394,6 +5441,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
       : replacementReadiness ? `${replacementReadiness.replaceableResourceCount} 项可替换资源` : "",
     primaryReplacementEdit ? "替换预览已应用" : canRedoReplacementPreview() ? "替换预览已还原" : ""
   ].filter(Boolean).join(" · ");
+  const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
   const safeSavings = intelligence?.summary.estimatedSafeFileSizeSavingsBytes;
   const intelligenceSummary = intelligence ? `
     <div class="assetIntelligenceSummary">
@@ -5420,6 +5468,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     ${filterBar}
     <div class="assetSummaryLine">${escapeHtml(summary)}</div>
     ${intelligenceSummary}
+    ${renderSequenceReviewSummary(intelligence, sequenceGroupCount)}
     ${replacementEditSummary}
     <div class="assetUnifiedList inspectorSection">
       ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
@@ -5520,6 +5569,26 @@ function assetIntelligenceFindingLabel(code) {
     sequence_frame_memory_concentration: "序列帧内存集中",
     sequence_frame_analysis_incomplete: "证据不足"
   }[code] ?? code;
+}
+
+function isSequenceReviewFinding(finding) {
+  return typeof finding?.code === "string" && finding.code.includes("sequence");
+}
+
+function renderSequenceReviewSummary(intelligence, sequenceGroupCount) {
+  if (!intelligence || sequenceGroupCount <= 0) return "";
+  const sequenceFindings = (intelligence.findings ?? []).filter(isSequenceReviewFinding);
+  const affectedResources = new Set(sequenceFindings.flatMap((finding) => finding.affectedResourceIds ?? []));
+  const severityLabels = sequenceFindings.length
+    ? sequenceFindings.map((finding) => assetIntelligenceFindingLabel(finding.code)).slice(0, 3).join(" · ")
+    : "暂无阻塞复核项";
+  return `
+    <div class="assetIntelligenceSummary" data-sequence-review-summary>
+      <strong>序列帧复核</strong>
+      <span>${escapeHtml(sequenceGroupCount)} 组序列 · ${escapeHtml(sequenceFindings.length)} 项发现 · ${escapeHtml(affectedResources.size)} 个资源</span>
+      <em>${escapeHtml(severityLabels)}</em>
+    </div>
+  `;
 }
 
 function higherAbnormality(left = "none", right = "none") {

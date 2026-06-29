@@ -363,3 +363,40 @@
   `replacementMultiResourceProof.passed=true` for `img_0` and `img_1`, with
   saved SHA-256
   `47975a2d2aae9faca37c746dbd69c2bbf3eb978b74cfef98074d6b34325f7821`.
+
+### Phase 4 Read-only Sequence Review Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: default Workbench now exposes read-only sequence-frame review
+  evidence in the Resources panel.
+- Product behavior: when parsed SVGA resources form sequence groups and
+  asset-intelligence sequence findings exist, the Resources panel shows a
+  `序列帧复核` summary with group count, finding count, affected resource count,
+  and finding labels. No sequence repair, rewrite, or auto-fix action is
+  exposed.
+- Smoke evidence: product smoke reports a main-process-validated
+  `sequenceReviewProof` that binds the source SHA-256 before and after review,
+  sequence group count, finding count, affected resource count, summary
+  visibility, and absence of repair actions.
+- Repair note: the first desktop smoke run failed closed because the proof kept
+  a stale DOM node reference after a panel rerender. The proof now re-queries the
+  current DOM node before recording `summaryVisible`.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment
+  suite passed 22 tests, and desktop smoke reported
+  `sequenceReviewProof.passed=true` with 1 sequence group, 1 sequence finding,
+  26 affected resources, unchanged source SHA-256
+  `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, and no
+  repair action exposed.

@@ -186,6 +186,11 @@ function validateSmokeResult(value) {
     if (!optimizedReopenProof) return undefined;
     result.optimizedReopenProof = optimizedReopenProof;
   }
+  if (value.sequenceReviewProof !== undefined) {
+    const sequenceReviewProof = validateSequenceReviewProof(value.sequenceReviewProof);
+    if (!sequenceReviewProof) return undefined;
+    result.sequenceReviewProof = sequenceReviewProof;
+  }
   if (value.replacementReadinessProof !== undefined) {
     const replacementReadinessProof = validateReplacementReadinessProof(value.replacementReadinessProof);
     if (!replacementReadinessProof) return undefined;
@@ -246,6 +251,9 @@ function describeSmokeResultValidationFailure(value) {
   if (value.optimizedReopenProof !== undefined && !validateOptimizedReopenProof(value.optimizedReopenProof)) {
     return "optimizedReopenProof";
   }
+  if (value.sequenceReviewProof !== undefined && !validateSequenceReviewProof(value.sequenceReviewProof)) {
+    return `sequenceReviewProof:${describeSequenceReviewProofValidationFailure(value.sequenceReviewProof)}`;
+  }
   if (value.replacementReadinessProof !== undefined && !validateReplacementReadinessProof(value.replacementReadinessProof)) {
     return "replacementReadinessProof";
   }
@@ -302,6 +310,55 @@ function validateReplacementSaveAsProof(value) {
     renderedProofPassed: true,
     passed: true
   };
+}
+
+function validateSequenceReviewProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "svga-sequence-review-proof") return undefined;
+  if (value.source !== "workbench-asset-intelligence") return undefined;
+  if (!isSha256(value.sourceSha256) || value.sourceSha256AfterReview !== value.sourceSha256) return undefined;
+  if (!Number.isInteger(value.sequenceGroupCount) || value.sequenceGroupCount <= 0) return undefined;
+  if (!Number.isInteger(value.sequenceFindingCount) || value.sequenceFindingCount < 0) return undefined;
+  if (!Number.isInteger(value.affectedResourceCount) || value.affectedResourceCount < 0) return undefined;
+  if (
+    value.summaryVisible !== true
+    || value.mutationNotAttempted !== true
+    || value.repairActionExposed !== false
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    sourceSha256AfterReview: value.sourceSha256AfterReview,
+    sequenceGroupCount: value.sequenceGroupCount,
+    sequenceFindingCount: value.sequenceFindingCount,
+    affectedResourceCount: value.affectedResourceCount,
+    summaryVisible: true,
+    mutationNotAttempted: true,
+    repairActionExposed: false,
+    passed: true
+  };
+}
+
+function describeSequenceReviewProofValidationFailure(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "root_shape";
+  if (value.schemaVersion !== 1) return "schemaVersion";
+  if (value.proofId !== "svga-sequence-review-proof") return "proofId";
+  if (value.source !== "workbench-asset-intelligence") return "source";
+  if (!isSha256(value.sourceSha256)) return "sourceSha256";
+  if (value.sourceSha256AfterReview !== value.sourceSha256) return "sourceSha256AfterReview";
+  if (!Number.isInteger(value.sequenceGroupCount) || value.sequenceGroupCount <= 0) return "sequenceGroupCount";
+  if (!Number.isInteger(value.sequenceFindingCount) || value.sequenceFindingCount < 0) return "sequenceFindingCount";
+  if (!Number.isInteger(value.affectedResourceCount) || value.affectedResourceCount < 0) return "affectedResourceCount";
+  if (value.summaryVisible !== true) return "summaryVisible";
+  if (value.mutationNotAttempted !== true) return "mutationNotAttempted";
+  if (value.repairActionExposed !== false) return "repairActionExposed";
+  if (value.passed !== true) return "passed";
+  return "unknown";
 }
 
 function validateReplacementUndoRedoProof(value) {
@@ -1340,6 +1397,7 @@ function validateArtifactScenario(value) {
     "desktop-local-logs-open",
     "desktop-local-settings-open",
     "desktop-recovered-from-invalid",
+    "desktop-sequence-review-proof",
     "desktop-replacement-preview-proof",
     "desktop-replacement-undo-redo-proof",
     "desktop-multi-replacement-proof",
@@ -2384,6 +2442,7 @@ function stateForScenario(scenario) {
     "desktop-local-minimum-size": "local-minimum-size",
     "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
+    "desktop-sequence-review-proof": "info-assets-open",
     "desktop-replacement-preview-proof": "loaded",
     "desktop-replacement-undo-redo-proof": "loaded",
     "desktop-multi-replacement-proof": "loaded",
@@ -2563,6 +2622,7 @@ function artifactFileNameForScenario(scenario) {
     "p3-resource-list": "resource-list.png",
     "p3-replacement-selected": "replacement-selected.png",
     "p3-replacement-preview": "replacement-preview.png",
+    "desktop-sequence-review-proof": "desktop-sequence-review-proof.png",
     "desktop-replacement-preview-proof": "desktop-replacement-preview-proof.png",
     "desktop-replacement-undo-redo-proof": "desktop-replacement-undo-redo-proof.png",
     "desktop-multi-replacement-proof": "desktop-multi-replacement-proof.png",
