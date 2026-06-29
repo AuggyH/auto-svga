@@ -2241,6 +2241,11 @@ dd {
   color: var(--purple);
 }
 
+.assetTypeTag.replaceable {
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+  color: var(--green);
+}
+
 .assetSecondaryLine {
   flex-wrap: wrap;
   color: var(--textTertiary);

@@ -60,6 +60,10 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /function runOptimizedReopenProof/);
   assert.match(productApp, /\/api\/svga-image-optimize/);
   assert.match(productApp, /optimizedReopenProof/);
+  assert.match(productApp, /function runReplacementReadinessProof/);
+  assert.match(productApp, /\/api\/svga-image-edit-session/);
+  assert.match(productApp, /replacementReadinessProof/);
+  assert.match(productApp, /可替换/);
   assert.match(productApp, /function setSlotErrorFeedback/);
   assert.match(webAdapter, /hostKind: "web"/);
   assert.match(webAdapter, /editorIncubationDefaultVisible: false/);

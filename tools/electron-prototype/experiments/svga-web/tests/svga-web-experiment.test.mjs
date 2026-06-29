@@ -194,6 +194,45 @@ test("server exposes a token-bound safe SVGA image optimizer API", async () => {
   }
 });
 
+test("server exposes a token-bound read-only SVGA image edit session API", async () => {
+  const reportToken = "edit-session-token";
+  const sourceBytes = await createOptimizerFixture();
+  const sourceSha256 = createHash("sha256").update(sourceBytes).digest("hex");
+  const server = await startSvgaWebExperimentServer({
+    appRoot: experimentRoot,
+    reportToken
+  });
+  try {
+    const unauthorized = await fetch(`${server.origin}/api/svga-image-edit-session`, { method: "POST" });
+    assert.equal(unauthorized.status, 401);
+
+    const response = await fetch(`${server.origin}/api/svga-image-edit-session`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-auto-svga-prototype-token": reportToken
+      },
+      body: JSON.stringify({
+        name: "../unsafe-name.svga",
+        svgaBase64: sourceBytes.toString("base64")
+      })
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.session.sourceFile.name, "unsafe-name.svga");
+    assert.equal(body.session.sourceFile.sha256, sourceSha256);
+    assert.equal(body.session.dirty, false);
+    assert.equal(body.session.exportState, "idle");
+    assert.deepEqual(
+      body.session.imageResources.map((resource) => resource.resourceKey),
+      ["img_base", "img_copy", "img_unused"]
+    );
+    assert.equal(body.session.imageResources.every((resource) => resource.replacementStatus === "original"), true);
+  } finally {
+    await server.close();
+  }
+});
+
 test("main process keeps sandboxed Electron security settings", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
@@ -258,10 +297,14 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /function validateOptimizedSvgaSaveInput/);
   assert.match(main, /function validateOptimizationReportBinding/);
   assert.match(main, /function validateOptimizedReopenProof/);
+  assert.match(main, /function validateReplacementReadinessProof/);
   assert.match(main, /function saveOptimizedSvga/);
   assert.match(main, /optimizedReopenProof/);
+  assert.match(main, /replacementReadinessProof/);
   assert.match(main, /Optimized Save As requires the source SVGA to be opened through the desktop file picker/);
   assert.match(desktopEntry, /\/api\/svga-image-optimize/);
+  assert.match(desktopEntry, /\/api\/svga-image-edit-session/);
+  assert.match(productApp, /runReplacementReadinessProof/);
   assert.match(prepareRuntime, /optimizer-reopen-smoke\.svga/);
   assert.match(main, /validateArtifactScenario/);
   assert.match(main, /validateP6InteractionTrace/);

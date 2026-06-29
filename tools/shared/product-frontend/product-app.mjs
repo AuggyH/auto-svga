@@ -240,6 +240,8 @@ function createPlayerSlot(slotName) {
     loadingPhases: Array.from(document.querySelectorAll(`#svgaPanel${suffix} [data-loading-phase]`)),
     source: undefined,
     sourceIdentity: undefined,
+    replacementReadiness: undefined,
+    replacementReadinessStatus: "idle",
     parseStatus: "empty",
     renderStatus: "empty",
     isPlaying: false,
@@ -374,6 +376,8 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   slot.isPlaying = false;
   slot.inspectionReport = undefined;
   slot.inspectionStatus = "idle";
+  slot.replacementReadiness = undefined;
+  slot.replacementReadinessStatus = "idle";
   slot.parseStatus = "empty";
   slot.renderStatus = "empty";
   slot.sourceIdentity = undefined;
@@ -1733,6 +1737,25 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       addLog("warning", `生产规范检查暂不可用，不影响播放：${error.message}`);
     });
 
+  if (slot.slotName === "A" && hostAdapter.hostKind === "electron") {
+    slot.replacementReadinessStatus = "loading";
+    loadSvgaReplacementReadiness(source, options.fileName ?? `SVGA ${slot.slotName}`)
+      .then((readiness) => {
+        if (slot.inspectionRequestId !== inspectionRequestId) return;
+        slot.replacementReadiness = readiness;
+        slot.replacementReadinessStatus = "success";
+        renderInfoPanel();
+        addLog("success", `可替换资源识别完成：${readiness.replaceableResourceCount} 个。`);
+      })
+      .catch((error) => {
+        if (slot.inspectionRequestId !== inspectionRequestId) return;
+        slot.replacementReadiness = undefined;
+        slot.replacementReadinessStatus = "error";
+        renderInfoPanel();
+        addLog("warning", `可替换资源识别暂不可用，不影响播放：${error.message}`);
+      });
+  }
+
   const decodedInfoPromise = decodeSvgaInfo(source).catch((error) => {
     phaseState.read = "done";
     setSlotLoadingPhase(slot, "parse", phaseState);
@@ -1811,6 +1834,71 @@ async function loadAvatarFrameInspectionReport(source, fileName) {
   return payload;
 }
 
+async function loadSvgaReplacementReadiness(source, fileName) {
+  const sourceResponse = await fetch(source);
+  if (!sourceResponse.ok) {
+    throw new Error(`无法读取 SVGA：HTTP ${sourceResponse.status}`);
+  }
+  const bytes = new Uint8Array(await sourceResponse.arrayBuffer());
+  const payload = await createSvgaImageEditSession(bytes, fileName);
+  return summarizeReplacementReadiness(payload.session, bytes);
+}
+
+async function createSvgaImageEditSession(bytes, fileName) {
+  const response = await fetch("/api/svga-image-edit-session", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: fileName,
+      svgaBase64: bytesToBase64(bytes)
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error ?? `HTTP ${response.status}`);
+  }
+  return payload;
+}
+
+async function summarizeReplacementReadiness(session, sourceBytes) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const imageResources = Array.isArray(session?.imageResources) ? session.imageResources : [];
+  const resources = imageResources.map((resource) => {
+    const usageCount = Number(resource?.usageCount ?? 0);
+    const replaceable = resource?.originalMime === "image/png"
+      && resource?.validationStatus === "valid"
+      && usageCount > 0;
+    return {
+      resourceKey: String(resource?.resourceKey ?? ""),
+      usageCount,
+      originalMime: String(resource?.originalMime ?? ""),
+      validationStatus: String(resource?.validationStatus ?? ""),
+      replaceable,
+      thumbnailAvailable: typeof resource?.thumbnailDataUrl === "string"
+        && resource.thumbnailDataUrl.startsWith("data:image/png;base64,")
+    };
+  }).filter((resource) => resource.resourceKey);
+  const replaceableResources = resources.filter((resource) => resource.replaceable);
+  return {
+    schemaVersion: 1,
+    sourceSha256,
+    sourceHashBound: session?.sourceFile?.sha256 === sourceSha256,
+    fileName: String(session?.sourceFile?.name ?? ""),
+    dirty: session?.dirty === true,
+    imageResourceCount: resources.length,
+    usedResourceCount: resources.filter((resource) => resource.usageCount > 0).length,
+    replaceableResourceCount: replaceableResources.length,
+    replaceableResourceKeys: replaceableResources.map((resource) => resource.resourceKey),
+    thumbnailCount: resources.filter((resource) => resource.thumbnailAvailable).length,
+    resources,
+    parsedMovie: {
+      imageCount: Number(session?.parsedMovie?.imageCount ?? 0),
+      spriteCount: Number(session?.parsedMovie?.spriteCount ?? 0),
+      frameCount: Number(session?.parsedMovie?.frames ?? 0)
+    }
+  };
+}
+
 async function optimizeSvgaImageResources(bytes, fileName) {
   const response = await fetch("/api/svga-image-optimize", {
     method: "POST",
@@ -1825,6 +1913,41 @@ async function optimizeSvgaImageResources(bytes, fileName) {
     throw new Error(payload.error ?? `HTTP ${response.status}`);
   }
   return payload;
+}
+
+async function runReplacementReadinessProof(sourceBytes, fileName) {
+  const payload = await createSvgaImageEditSession(sourceBytes, fileName);
+  const readiness = await summarizeReplacementReadiness(payload.session, sourceBytes);
+  const resourceKeys = readiness.resources.map((resource) => resource.resourceKey);
+  const uniqueResourceKeys = new Set(resourceKeys).size === resourceKeys.length;
+  const editorUiExposed = Boolean(document.querySelector("#batchPngInput, #replacementPngInput, [data-editor-incubation]"));
+  const proof = {
+    schemaVersion: 1,
+    proofId: "svga-replacement-readiness-proof",
+    source: "svga-image-edit-session-api",
+    sourceSha256: readiness.sourceSha256,
+    sourceHashBound: readiness.sourceHashBound,
+    fileName: readiness.fileName,
+    imageResourceCount: readiness.imageResourceCount,
+    usedResourceCount: readiness.usedResourceCount,
+    replaceableResourceCount: readiness.replaceableResourceCount,
+    replaceableResourceKeys: readiness.replaceableResourceKeys.slice(0, 20),
+    thumbnailCount: readiness.thumbnailCount,
+    parsedMovie: readiness.parsedMovie,
+    dirtyFalse: readiness.dirty === false,
+    saveAsNotAttempted: true,
+    editorUiExposed,
+    passed: readiness.sourceHashBound === true
+      && readiness.imageResourceCount > 0
+      && readiness.usedResourceCount > 0
+      && readiness.replaceableResourceCount > 0
+      && readiness.thumbnailCount > 0
+      && uniqueResourceKeys
+      && readiness.dirty === false
+      && editorUiExposed === false
+  };
+  window.__autoSvgaReplacementReadinessProof = proof;
+  return proof;
 }
 
 async function runOptimizedReopenProof(sourceBytes) {
@@ -3779,6 +3902,8 @@ async function runProductSmoke() {
     await waitForInspectionStatus(players.a);
     p6SmokeCurrentPhase = "capture-recovered";
     await captureArtifact("desktop-recovered-from-invalid");
+    p6SmokeCurrentPhase = "replacement-readiness-proof";
+    const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);
     p6SmokeCurrentPhase = "optimized-reopen-proof";
     const optimizerFixtureUrl = "/fixture/optimizer-reopen-smoke.svga";
     const optimizerFixtureBytes = new Uint8Array(await fetch(optimizerFixtureUrl).then((response) => {
@@ -4033,6 +4158,7 @@ async function runProductSmoke() {
       errorFile,
       playerLifecycle: true,
       cleanup: true,
+      replacementReadinessProof,
       optimizedReopenProof,
       p6InteractionTrace: await buildP6SmokeInteractionTrace(),
       ownerUsability,
@@ -4274,7 +4400,12 @@ function renderInfoPanel() {
   const layersPanel = document.querySelector("#tab-layers");
   const diagnosticsPanel = document.querySelector("#tab-diagnostics");
   if (overviewPanel) overviewPanel.innerHTML = renderOverview(metrics, players.a);
-  if (assetsPanel) assetsPanel.innerHTML = renderAssets(metrics, players.a.inspectionReport);
+  if (assetsPanel) assetsPanel.innerHTML = renderAssets(
+    metrics,
+    players.a.inspectionReport,
+    players.a.replacementReadiness,
+    players.a.replacementReadinessStatus
+  );
   if (layersPanel) layersPanel.innerHTML = renderLayerList(metrics?.sprites ?? []);
   if (diagnosticsPanel) diagnosticsPanel.innerHTML = renderDiagnostics(metrics, players.a);
 }
@@ -4432,7 +4563,7 @@ function renderBilingualEmpty(primary, secondary) {
   `;
 }
 
-function renderAssets(metrics, inspectionReport) {
+function renderAssets(metrics, inspectionReport, replacementReadiness, replacementReadinessStatus = "idle") {
   if (assetFilter === "sprite") assetFilter = "all";
   const intelligence = inspectionReport?.assetIntelligence;
   const filterBar = `
@@ -4449,7 +4580,7 @@ function renderAssets(metrics, inspectionReport) {
   if (!metrics?.sprites?.length && !metrics?.images?.length) {
     return `${filterBar}${renderBilingualEmpty("暂无资源信息", "")}`;
   }
-  const assets = buildAssetEntries(metrics, intelligence);
+  const assets = buildAssetEntries(metrics, intelligence, replacementReadiness);
   const filtered = assets.filter((asset) => {
     if (assetFilter === "all") return asset.kind !== "sprite";
     if (assetFilter === "unreferenced") return asset.kind !== "sprite" && Number(asset.referenceCount ?? 0) === 0;
@@ -4461,7 +4592,10 @@ function renderAssets(metrics, inspectionReport) {
     `${assets.filter((asset) => asset.kind === "sequence").length} 组序列`,
     `${assets.filter((asset) => asset.warnings?.length).length} 项需复核`,
     intelligence ? `${intelligence.summary.findingCount} 项资产智能发现` : "",
-    intelligence ? `${intelligence.summary.safeAutoOptimizeFindingCount} 项安全候选` : ""
+    intelligence ? `${intelligence.summary.safeAutoOptimizeFindingCount} 项安全候选` : "",
+    replacementReadinessStatus === "loading"
+      ? "替换识别中"
+      : replacementReadiness ? `${replacementReadiness.replaceableResourceCount} 项可替换资源` : ""
   ].filter(Boolean).join(" · ");
   const safeSavings = intelligence?.summary.estimatedSafeFileSizeSavingsBytes;
   const intelligenceSummary = intelligence ? `
@@ -4481,17 +4615,20 @@ function renderAssets(metrics, inspectionReport) {
   `;
 }
 
-function buildAssetEntries(metrics, intelligence) {
+function buildAssetEntries(metrics, intelligence, replacementReadiness) {
   const intelligenceById = new Map((intelligence?.resources ?? []).map((resource) => [resource.resourceId, resource]));
+  const replacementById = new Map((replacementReadiness?.resources ?? []).map((resource) => [resource.resourceKey, resource]));
   const enrichImage = (image) => {
     const intelligenceNode = intelligenceById.get(image.key);
+    const replacementNode = replacementById.get(image.key);
     const intelligenceWarnings = intelligenceWarningLabels(intelligenceNode);
     return {
       ...image,
       warnings: [...(image.warnings ?? []), ...intelligenceWarnings],
       decodedMemoryBytes: intelligenceNode?.estimatedDecodedMemoryBytes,
       abnormalityLevel: intelligenceNode?.abnormalityLevel ?? "none",
-      intelligenceFindingCodes: intelligenceNode?.findingCodes ?? []
+      intelligenceFindingCodes: intelligenceNode?.findingCodes ?? [],
+      replaceable: replacementNode?.replaceable === true
     };
   };
   const images = (metrics.images ?? []).map(enrichImage);
@@ -4513,6 +4650,7 @@ function buildAssetEntries(metrics, intelligence) {
     previewUrl: sprite.previewUrl,
     warnings: [...(sprite.warnings ?? []), ...intelligenceWarningLabels(imageByKey.get(sprite.imageKey))],
     abnormalityLevel: imageByKey.get(sprite.imageKey)?.abnormalityLevel ?? "none",
+    replaceable: imageByKey.get(sprite.imageKey)?.replaceable === true,
     fullKey: sprite.imageKey || sprite.name || `sprite_${index}`
   }));
   const imageEntries = images
@@ -4531,6 +4669,7 @@ function buildAssetEntries(metrics, intelligence) {
       previewUrl: image.previewUrl,
       warnings: image.warnings ?? [],
       abnormalityLevel: image.abnormalityLevel ?? "none",
+      replaceable: image.replaceable === true,
       fullKey: image.key
     }));
   const sequenceEntries = sequenceGroups.map((group) => ({
@@ -4660,6 +4799,7 @@ function renderAssetEntry(asset) {
         <div class="assetPrimaryLine">
           <strong title="${escapeHtml(asset.name)}">${escapeHtml(asset.name)}</strong>
           <span class="assetTypeTag ${asset.kind}">${escapeHtml(asset.typeLabel)}</span>
+          ${asset.replaceable ? `<span class="assetTypeTag replaceable">可替换</span>` : ""}
         </div>
         <div class="assetMetaLines">
           <div>
@@ -4691,6 +4831,7 @@ function renderAssetEntry(asset) {
       previewUrl: item.previewUrl,
       warnings: item.warnings ?? [],
       abnormalityLevel: item.abnormalityLevel ?? "none",
+      replaceable: item.replaceable === true,
       fullKey: item.key
     })).join("")}</div>` : ""}
   `;

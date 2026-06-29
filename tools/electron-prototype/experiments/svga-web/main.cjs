@@ -186,6 +186,11 @@ function validateSmokeResult(value) {
     if (!optimizedReopenProof) return undefined;
     result.optimizedReopenProof = optimizedReopenProof;
   }
+  if (value.replacementReadinessProof !== undefined) {
+    const replacementReadinessProof = validateReplacementReadinessProof(value.replacementReadinessProof);
+    if (!replacementReadinessProof) return undefined;
+    result.replacementReadinessProof = replacementReadinessProof;
+  }
   return result;
 }
 
@@ -221,7 +226,62 @@ function describeSmokeResultValidationFailure(value) {
   if (value.optimizedReopenProof !== undefined && !validateOptimizedReopenProof(value.optimizedReopenProof)) {
     return "optimizedReopenProof";
   }
+  if (value.replacementReadinessProof !== undefined && !validateReplacementReadinessProof(value.replacementReadinessProof)) {
+    return "replacementReadinessProof";
+  }
   return "unknown";
+}
+
+function validateReplacementReadinessProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "svga-replacement-readiness-proof") return undefined;
+  if (value.source !== "svga-image-edit-session-api") return undefined;
+  if (!isSha256(value.sourceSha256) || value.sourceHashBound !== true) return undefined;
+  if (!isBoundedString(value.fileName, 180) || !value.fileName.endsWith(".svga")) return undefined;
+  if (
+    value.dirtyFalse !== true
+    || value.saveAsNotAttempted !== true
+    || value.editorUiExposed !== false
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  if (!Number.isInteger(value.imageResourceCount) || value.imageResourceCount <= 0) return undefined;
+  if (!Number.isInteger(value.usedResourceCount) || value.usedResourceCount <= 0) return undefined;
+  if (!Number.isInteger(value.replaceableResourceCount) || value.replaceableResourceCount <= 0) return undefined;
+  if (value.usedResourceCount > value.imageResourceCount || value.replaceableResourceCount > value.imageResourceCount) return undefined;
+  if (!Number.isInteger(value.thumbnailCount) || value.thumbnailCount <= 0) return undefined;
+  if (!Array.isArray(value.replaceableResourceKeys) || value.replaceableResourceKeys.length === 0) return undefined;
+  if (value.replaceableResourceKeys.length > Math.min(value.replaceableResourceCount, 20)) return undefined;
+  if (!value.replaceableResourceKeys.every((item) => isBoundedString(item, 120))) return undefined;
+  if (new Set(value.replaceableResourceKeys).size !== value.replaceableResourceKeys.length) return undefined;
+  const parsedMovie = value.parsedMovie;
+  if (!parsedMovie || typeof parsedMovie !== "object" || Array.isArray(parsedMovie)) return undefined;
+  if (!Number.isInteger(parsedMovie.imageCount) || parsedMovie.imageCount !== value.imageResourceCount) return undefined;
+  if (!Number.isInteger(parsedMovie.spriteCount) || parsedMovie.spriteCount <= 0) return undefined;
+  if (!Number.isInteger(parsedMovie.frameCount) || parsedMovie.frameCount <= 0) return undefined;
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    sourceHashBound: true,
+    fileName: value.fileName,
+    imageResourceCount: value.imageResourceCount,
+    usedResourceCount: value.usedResourceCount,
+    replaceableResourceCount: value.replaceableResourceCount,
+    replaceableResourceKeys: value.replaceableResourceKeys.slice(0, 20),
+    thumbnailCount: value.thumbnailCount,
+    parsedMovie: {
+      imageCount: parsedMovie.imageCount,
+      spriteCount: parsedMovie.spriteCount,
+      frameCount: parsedMovie.frameCount
+    },
+    dirtyFalse: true,
+    saveAsNotAttempted: true,
+    editorUiExposed: false,
+    passed: true
+  };
 }
 
 function validateOptimizedReopenProof(value) {

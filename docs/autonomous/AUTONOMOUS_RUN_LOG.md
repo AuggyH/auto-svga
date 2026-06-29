@@ -178,3 +178,37 @@
   optimized hash bound, original image count `3`, optimized image count `1`,
   removed resource keys `img_copy` and `img_unused`, reopened playback,
   reopened nonblank canvas, and reopened inspection success.
+
+### Phase 3 Read-only Replacement Readiness Slice
+
+- Files updated:
+  `tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs`,
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/shared/product-frontend/product-styles.css`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: default Workbench now performs read-only replacement readiness
+  detection through the existing edit-session engine while keeping the old
+  P3-P5 editor UI hidden.
+- Product behavior: Electron product fetch now token-binds
+  `/api/svga-image-edit-session`; the primary asset panel marks mechanically
+  valid, used PNG resources with a read-only `可替换` tag; product smoke reports
+  a main-process-validated `replacementReadinessProof`.
+- Safety boundary: no replacement file input, URL import, Save As, or old editor
+  panel is exposed by this slice. The proof requires source SHA-256 binding,
+  `dirty=false`, `saveAsNotAttempted=true`, and `editorUiExposed=false`.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment
+  suite passed 22 tests, and desktop smoke reported
+  `replacementReadinessProof.passed=true` with 28 image resources, 28 used
+  resources, 28 replaceable resources, 28 thumbnails, hash binding, no Save As
+  attempt, and no editor UI exposure.

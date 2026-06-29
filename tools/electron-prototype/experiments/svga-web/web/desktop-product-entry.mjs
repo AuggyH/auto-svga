@@ -46,6 +46,7 @@ function createElectronProductHostAdapter(environment = globalThis) {
         }
         const tokenBoundApiPaths = new Set([
           "/api/avatar-frame-inspection-report",
+          "/api/svga-image-edit-session",
           "/api/svga-image-optimize"
         ]);
         if (!tokenBoundApiPaths.has(requestUrl.pathname) || !reportToken) {
