@@ -2651,6 +2651,68 @@ async function runSequencePrototypeRenderedBoundaryProof(sourceBytes) {
   return proof;
 }
 
+async function runSequenceNoopRoundTripProof(sourceBytes, fileName) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const sourceUrl = URL.createObjectURL(new Blob([sourceBytes], { type: "application/octet-stream" }));
+  await loadSvga("a", sourceUrl, {
+    fileName,
+    fileSizeBytes: sourceBytes.byteLength,
+    sourceSha256,
+    fixtureSha256: sourceSha256,
+    skipReplacementReadiness: true,
+    loadingHoldMs: 80
+  });
+  await waitFor(() => Boolean(players.a.videoItem));
+  await waitFor(() => canvasIsNonBlank(players.a));
+  const reopenedInspectionReport = await waitForInspectionStatus(players.a);
+  openInfoPanel("assets");
+  renderInfoPanel();
+  await waitFor(() => isElementVisible(document.querySelector("[data-sequence-bounded-repair-prototype]")));
+  const intelligence = players.a.inspectionReport?.assetIntelligence;
+  const assets = buildAssetEntries(players.a.metrics, intelligence, players.a.replacementReadiness);
+  const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
+  const plan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
+  const simulation = createSequenceNoWriteSimulation(plan);
+  const prototype = createBoundedSequenceRepairPrototype(plan, simulation);
+  const sourceSha256AfterRoundTrip = await p6Sha256Bytes(await readPrimarySourceBytes());
+  const writeActionExposed = Boolean(document.querySelector("[data-sequence-repair-apply], [data-sequence-repair-write], [data-sequence-repair-save], [data-save-sequence-repair], [data-auto-sequence-fix]"));
+  const renderedProof = collectRenderedStateProof("loaded");
+  const proof = {
+    schemaVersion: 1,
+    proofId: "svga-sequence-noop-round-trip-proof",
+    source: "workbench-sequence-noop-round-trip",
+    sourceSha256,
+    sourceSha256AfterRoundTrip,
+    prototypeId: prototype?.prototypeId ?? "",
+    resourceKeyCount: prototype?.resourceKeyCount ?? 0,
+    operationCount: prototype?.operationCount ?? 0,
+    roundTripMode: "no_op_source_reopen",
+    roundTripNoopOnly: true,
+    reopenedPlayback: Boolean(players.a.player),
+    reopenedCanvasNonBlank: canvasIsNonBlank(players.a),
+    reopenedInspectionReport,
+    renderedProofPassed: renderedProof.passed === true,
+    sourceUnchanged: sourceSha256AfterRoundTrip === sourceSha256,
+    editedBytesProduced: false,
+    writeAttempted: false,
+    productSaveAsEnabled: false,
+    applyActionEnabled: false,
+    writeActionExposed,
+    repairSuccessClaimed: false,
+    passed: prototype?.prototypeId === "svga-bounded-sequence-repair-prototype-v1"
+      && prototype.resourceKeyCount > 0
+      && prototype.operationCount > 0
+      && reopenedInspectionReport === true
+      && Boolean(players.a.player)
+      && canvasIsNonBlank(players.a)
+      && renderedProof.passed === true
+      && sourceSha256AfterRoundTrip === sourceSha256
+      && writeActionExposed === false
+  };
+  window.__autoSvgaSequenceNoopRoundTripProof = proof;
+  return proof;
+}
+
 async function runSingleReplacementPreviewProof(sourceBytes, resourceKey, fileName) {
   const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-a.png").then((response) => {
     if (!response.ok) throw new Error(`Replacement fixture fetch failed (${response.status})`);
@@ -4974,6 +5036,9 @@ async function runProductSmoke() {
     p6SmokeCurrentPhase = "sequence-prototype-rendered-boundary-proof";
     const sequencePrototypeRenderedBoundaryProof = await runSequencePrototypeRenderedBoundaryProof(bytes.slice(0));
     await captureArtifact("desktop-sequence-prototype-rendered-boundary-proof");
+    p6SmokeCurrentPhase = "sequence-noop-round-trip-proof";
+    const sequenceNoopRoundTripProof = await runSequenceNoopRoundTripProof(bytes.slice(0), p6BaselineFixtureDisplayName);
+    await captureArtifact("desktop-sequence-noop-round-trip-proof");
     p6SmokeCurrentPhase = "replacement-readiness-proof";
     const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);
     p6SmokeCurrentPhase = "replacement-preview-proof";
@@ -5262,6 +5327,7 @@ async function runProductSmoke() {
       sequenceNoWriteSimulationProof,
       sequenceBoundedRepairPrototypeProof,
       sequencePrototypeRenderedBoundaryProof,
+      sequenceNoopRoundTripProof,
       replacementReadinessProof,
       replacementPreviewProof,
       replacementUndoRedoProof,

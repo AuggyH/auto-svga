@@ -302,6 +302,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /function validateSequenceNoWriteSimulationProof/);
   assert.match(main, /function validateSequenceBoundedRepairPrototypeProof/);
   assert.match(main, /function validateSequencePrototypeRenderedBoundaryProof/);
+  assert.match(main, /function validateSequenceNoopRoundTripProof/);
   assert.match(main, /function validateReplacementReadinessProof/);
   assert.match(main, /function validateReplacementPreviewProof/);
   assert.match(main, /function validateReplacementUndoRedoProof/);
@@ -314,6 +315,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /sequenceNoWriteSimulationProof/);
   assert.match(main, /sequenceBoundedRepairPrototypeProof/);
   assert.match(main, /sequencePrototypeRenderedBoundaryProof/);
+  assert.match(main, /sequenceNoopRoundTripProof/);
   assert.match(main, /replacementReadinessProof/);
   assert.match(main, /replacementPreviewProof/);
   assert.match(main, /replacementUndoRedoProof/);
@@ -329,6 +331,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(productApp, /runSequenceNoWriteSimulationProof/);
   assert.match(productApp, /runSequenceBoundedRepairPrototypeProof/);
   assert.match(productApp, /runSequencePrototypeRenderedBoundaryProof/);
+  assert.match(productApp, /runSequenceNoopRoundTripProof/);
   assert.match(productApp, /runSingleReplacementPreviewProof/);
   assert.match(productApp, /runReplacementUndoRedoProof/);
   assert.match(productApp, /runMultiReplacementWorkbenchProof/);
@@ -338,6 +341,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /desktop-sequence-no-write-simulation-proof/);
   assert.match(main, /desktop-sequence-bounded-repair-prototype-proof/);
   assert.match(main, /desktop-sequence-prototype-rendered-boundary-proof/);
+  assert.match(main, /desktop-sequence-noop-round-trip-proof/);
   assert.match(main, /desktop-multi-replacement-proof/);
   assert.match(prepareRuntime, /optimizer-reopen-smoke\.svga/);
   assert.match(main, /validateArtifactScenario/);

@@ -565,3 +565,43 @@
   `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, no
   edited bytes, no write attempt, product Save As disabled, apply disabled, and
   no write action exposed.
+
+### Phase 4 No-op Sequence Round-trip Rehearsal Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: the bounded sequence repair prototype now has an explicit no-op
+  round-trip rehearsal proof in the default Workbench smoke path.
+- Product behavior: product smoke reloads the same source SVGA bytes through the
+  normal player and inspection path, then proves playback, nonblank rendering,
+  inspection success, rendered-state proof, unchanged source SHA-256, and the
+  absence of write/Save As/apply controls.
+- Smoke evidence: product smoke reports a main-process-validated
+  `sequenceNoopRoundTripProof` with round-trip mode `no_op_source_reopen`, 26
+  resource keys, 1 operation, reopened playback, reopened canvas nonblank,
+  reopened inspection, rendered proof passed, unchanged source SHA-256, no
+  edited bytes, no write attempt, product Save As disabled, apply disabled, and
+  `repairSuccessClaimed=false`.
+- Safety boundary: this proof is a mechanical rehearsal only. It does not claim
+  a sequence repair succeeded, does not produce edited bytes, does not write an
+  SVGA, and does not expose product Save As for sequence repair.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment suite
+  passed 22 tests, and desktop smoke reported
+  `sequenceNoopRoundTripProof.passed=true`,
+  `roundTripMode=no_op_source_reopen`, `roundTripNoopOnly=true`, reopened
+  playback/canvas/inspection/rendered proof all true, unchanged source SHA-256
+  `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, no
+  edited bytes, no write attempt, product Save As disabled, apply disabled, no
+  write action exposed, and `repairSuccessClaimed=false`.
