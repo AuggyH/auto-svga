@@ -298,13 +298,17 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /function validateOptimizationReportBinding/);
   assert.match(main, /function validateOptimizedReopenProof/);
   assert.match(main, /function validateReplacementReadinessProof/);
+  assert.match(main, /function validateReplacementPreviewProof/);
   assert.match(main, /function saveOptimizedSvga/);
   assert.match(main, /optimizedReopenProof/);
   assert.match(main, /replacementReadinessProof/);
+  assert.match(main, /replacementPreviewProof/);
   assert.match(main, /Optimized Save As requires the source SVGA to be opened through the desktop file picker/);
   assert.match(desktopEntry, /\/api\/svga-image-optimize/);
   assert.match(desktopEntry, /\/api\/svga-image-edit-session/);
+  assert.match(desktopEntry, /\/api\/svga-image-replace/);
   assert.match(productApp, /runReplacementReadinessProof/);
+  assert.match(productApp, /runSingleReplacementPreviewProof/);
   assert.match(prepareRuntime, /optimizer-reopen-smoke\.svga/);
   assert.match(main, /validateArtifactScenario/);
   assert.match(main, /validateP6InteractionTrace/);

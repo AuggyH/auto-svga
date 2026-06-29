@@ -191,6 +191,11 @@ function validateSmokeResult(value) {
     if (!replacementReadinessProof) return undefined;
     result.replacementReadinessProof = replacementReadinessProof;
   }
+  if (value.replacementPreviewProof !== undefined) {
+    const replacementPreviewProof = validateReplacementPreviewProof(value.replacementPreviewProof);
+    if (!replacementPreviewProof) return undefined;
+    result.replacementPreviewProof = replacementPreviewProof;
+  }
   return result;
 }
 
@@ -229,7 +234,50 @@ function describeSmokeResultValidationFailure(value) {
   if (value.replacementReadinessProof !== undefined && !validateReplacementReadinessProof(value.replacementReadinessProof)) {
     return "replacementReadinessProof";
   }
+  if (value.replacementPreviewProof !== undefined && !validateReplacementPreviewProof(value.replacementPreviewProof)) {
+    return "replacementPreviewProof";
+  }
   return "unknown";
+}
+
+function validateReplacementPreviewProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "svga-single-replacement-preview-proof") return undefined;
+  if (value.source !== "svga-image-replace-api") return undefined;
+  if (!isSha256(value.sourceSha256) || !isSha256(value.replacementSha256) || !isSha256(value.editedSha256)) return undefined;
+  if (value.editedSha256 === value.sourceSha256 || value.editedSha256 === value.replacementSha256) return undefined;
+  if (!isBoundedString(value.resourceKey, 120)) return undefined;
+  if (
+    value.sourceUnchanged !== true
+    || value.roundTripPassed !== true
+    || value.exportedMatchesReplacement !== true
+    || value.reopenedPlayback !== true
+    || value.reopenedCanvasNonBlank !== true
+    || value.reopenedInspectionReport !== true
+    || value.renderedProofPassed !== true
+    || value.saveAsNotAttempted !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    resourceKey: value.resourceKey,
+    replacementSha256: value.replacementSha256,
+    editedSha256: value.editedSha256,
+    sourceUnchanged: true,
+    roundTripPassed: true,
+    exportedMatchesReplacement: true,
+    reopenedPlayback: true,
+    reopenedCanvasNonBlank: true,
+    reopenedInspectionReport: true,
+    renderedProofPassed: true,
+    saveAsNotAttempted: true,
+    passed: true
+  };
 }
 
 function validateReplacementReadinessProof(value) {
@@ -1100,6 +1148,7 @@ function validateArtifactScenario(value) {
     "desktop-local-logs-open",
     "desktop-local-settings-open",
     "desktop-recovered-from-invalid",
+    "desktop-replacement-preview-proof",
     "desktop-optimized-reopen-proof",
     "actual-normal-loaded",
     "smoke-loaded",
@@ -2139,6 +2188,7 @@ function stateForScenario(scenario) {
     "desktop-local-minimum-size": "local-minimum-size",
     "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
+    "desktop-replacement-preview-proof": "loaded",
     "desktop-optimized-reopen-proof": "loaded",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open",
     "desktop-info-diagnostics-open": "info-diagnostics-open",
@@ -2315,6 +2365,7 @@ function artifactFileNameForScenario(scenario) {
     "p3-resource-list": "resource-list.png",
     "p3-replacement-selected": "replacement-selected.png",
     "p3-replacement-preview": "replacement-preview.png",
+    "desktop-replacement-preview-proof": "desktop-replacement-preview-proof.png",
     "p3-dirty-state": "dirty-state.png",
     "p3-reset-to-original": "reset-to-original.png",
     "p3-export-success": "export-success.png",
@@ -2488,6 +2539,8 @@ async function injectOpenedFile(window, selector, opened) {
       const input = document.querySelector(${JSON.stringify(selector)});
       if (!input) throw new Error("Host file input unavailable");
       const file = new File([new Uint8Array(opened.bytes)], opened.basename, { type: opened.mediaType });
+      Object.defineProperty(file, "autoSvgaSourceId", { value: opened.sourceId, configurable: true });
+      Object.defineProperty(file, "autoSvgaSourceHash", { value: opened.hash, configurable: true });
       const transfer = new DataTransfer();
       transfer.items.add(file);
       Object.defineProperty(input, "files", { value: transfer.files, configurable: true });

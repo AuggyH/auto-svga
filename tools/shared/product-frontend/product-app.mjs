@@ -14,6 +14,7 @@ const electronBridge = globalThis.autoSvgaElectronHost ?? globalThis.autoSvgaPro
 const p6BaselineFixtureDisplayName = "p6-web-baseline-fixture.svga";
 const p6RecoveredFixtureDisplayName = "p6-web-baseline-recovered-fixture.svga";
 const optimizerReopenFixtureDisplayName = "optimizer-reopen-smoke.svga";
+const replacementPreviewFixtureDisplayName = "replacement-preview-smoke.svga";
 const cspViolations = [];
 
 window.addEventListener("securitypolicyviolation", (event) => {
@@ -177,6 +178,12 @@ const reduceBlurToggle = document.querySelector("#reduceBlurToggle");
 const statusAnnouncer = document.querySelector("#statusAnnouncer");
 const floatingRoot = document.querySelector("#floatingRoot");
 const dropdownBindings = new Map();
+const replacementPngInput = document.createElement("input");
+replacementPngInput.type = "file";
+replacementPngInput.accept = "image/png,.png";
+replacementPngInput.hidden = true;
+replacementPngInput.setAttribute("aria-hidden", "true");
+document.body.append(replacementPngInput);
 
 let defaultReport;
 let defaultSvgaMap;
@@ -213,6 +220,9 @@ let activeModal = null;
 let modalReturnFocus = null;
 let toastTimer;
 let p6PrimaryRecoveredFromInvalid = false;
+let pendingReplacementResourceKey;
+let primaryReplacementEdit;
+let replacementOperationSequence = 0;
 
 function setP6PrimaryRecoveredFromInvalid(value) {
   p6PrimaryRecoveredFromInvalid = value === true;
@@ -394,6 +404,7 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   slot.player?.clear?.();
   if (slot.slotName === "A") {
     setP6PrimaryRecoveredFromInvalid(false);
+    primaryReplacementEdit = undefined;
     svgaFilePillA.hidden = true;
     svgaFilePillA.textContent = "";
     selectedLayerKey = undefined;
@@ -1698,6 +1709,8 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
     sourceKind: typeof source === "string" && source.startsWith("blob:") ? "local_blob" : "url",
     fileName: options.fileName ?? (typeof source === "string" ? source.split("/").at(-1) : `SVGA ${slot.slotName}`),
     fileSizeBytes: options.fileSizeBytes ?? null,
+    sourceId: options.sourceId ?? null,
+    sourceSha256: options.sourceSha256 ?? null,
     fixtureSha256: options.fixtureSha256 ?? p6Fixture?.sha256 ?? null,
     displayName: options.fileName ?? p6Fixture?.displayName ?? null
   };
@@ -1737,7 +1750,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       addLog("warning", `生产规范检查暂不可用，不影响播放：${error.message}`);
     });
 
-  if (slot.slotName === "A" && hostAdapter.hostKind === "electron") {
+  if (slot.slotName === "A" && hostAdapter.hostKind === "electron" && options.skipReplacementReadiness !== true) {
     slot.replacementReadinessStatus = "loading";
     loadSvgaReplacementReadiness(source, options.fileName ?? `SVGA ${slot.slotName}`)
       .then((readiness) => {
@@ -1860,6 +1873,27 @@ async function createSvgaImageEditSession(bytes, fileName) {
   return payload;
 }
 
+async function replaceSvgaImageResource(sourceBytes, resourceKey, pngBytes, fileName) {
+  const response = await fetch("/api/svga-image-replace", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      milestoneId: "P3",
+      name: fileName,
+      svgaBase64: bytesToBase64(sourceBytes),
+      replacements: [{
+        resourceKey,
+        pngBase64: bytesToBase64(pngBytes)
+      }]
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error ?? `HTTP ${response.status}`);
+  }
+  return payload;
+}
+
 async function summarizeReplacementReadiness(session, sourceBytes) {
   const sourceSha256 = await p6Sha256Bytes(sourceBytes);
   const imageResources = Array.isArray(session?.imageResources) ? session.imageResources : [];
@@ -1897,6 +1931,119 @@ async function summarizeReplacementReadiness(session, sourceBytes) {
       frameCount: Number(session?.parsedMovie?.frames ?? 0)
     }
   };
+}
+
+function replacementReadinessForResource(resourceKey) {
+  return primaryReplacementEdit?.readiness?.resources?.find((resource) => resource.resourceKey === resourceKey)
+    ?? players.a.replacementReadiness?.resources?.find((resource) => resource.resourceKey === resourceKey);
+}
+
+async function readPrimarySourceBytes() {
+  const source = players.a.source;
+  if (!source) throw new Error("当前没有可替换的 SVGA。");
+  const response = await fetch(source);
+  if (!response.ok) throw new Error(`无法读取当前 SVGA：HTTP ${response.status}`);
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+async function readReplacementPngFile(file) {
+  if (!file) throw new Error("请选择 PNG 图片。");
+  if (!file.name.toLowerCase().endsWith(".png") && file.type !== "image/png") {
+    throw new Error("仅支持 PNG 图片替换。");
+  }
+  if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
+    throw new Error("PNG 大小需要在 10 MB 以内。");
+  }
+  return new Uint8Array(await file.arrayBuffer());
+}
+
+function suggestedEditedFileName(fileName) {
+  const baseName = String(fileName || "edited-output.svga").replace(/\.svga$/i, "");
+  return `${baseName}-replaced.svga`;
+}
+
+async function replacePrimaryResource(resourceKey, file) {
+  const resource = replacementReadinessForResource(resourceKey);
+  if (!resource?.replaceable) {
+    showError("当前资源暂不支持安全替换。");
+    return undefined;
+  }
+  try {
+    clearError();
+    const sourceBytes = await readPrimarySourceBytes();
+    const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+    const pngBytes = await readReplacementPngFile(file);
+    const replacementSha256 = await p6Sha256Bytes(pngBytes);
+    const originalIdentity = { ...(players.a.sourceIdentity ?? {}) };
+    const fileName = originalIdentity.fileName ?? players.a.metrics?.fileName ?? "edited-output.svga";
+    addLog("info", `正在替换资源：${resourceKey}`);
+    const payload = await replaceSvgaImageResource(sourceBytes, resourceKey, pngBytes, fileName);
+    const editedBytes = base64ToBytes(payload.editedSvgaBase64 ?? "");
+    const editedSha256 = await p6Sha256Bytes(editedBytes);
+    const editedUrl = URL.createObjectURL(new Blob([editedBytes], { type: "application/octet-stream" }));
+    const roundTripReport = payload.roundTripReport ?? {};
+    const editSequence = replacementOperationSequence + 1;
+    await loadSvga("a", editedUrl, {
+      fileName: suggestedEditedFileName(fileName),
+      fileSizeBytes: editedBytes.byteLength,
+      sourceId: originalIdentity.sourceId ?? null,
+      sourceSha256,
+      fixtureSha256: editedSha256,
+      loadingHoldMs: 80
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    const reopenedInspectionReport = await waitForInspectionStatus(players.a);
+    replacementOperationSequence = editSequence;
+    primaryReplacementEdit = {
+      schemaVersion: 1,
+      operationSequence: replacementOperationSequence,
+      resourceKey,
+      replacementFileName: file.name,
+      replacementSha256,
+      sourceSha256,
+      editedSha256,
+      sourceBytes: sourceBytes.slice(0),
+      editedBytes,
+      editedUrl,
+      sourceIdentity: originalIdentity,
+      roundTripReport,
+      readiness: await summarizeReplacementReadiness(payload.session, editedBytes),
+      reopenedInspectionReport,
+      canvasNonBlank: canvasIsNonBlank(players.a),
+      passed: roundTripReport.passed === true
+        && roundTripReport.replacedResourceKey === resourceKey
+        && roundTripReport.replacementSha256 === replacementSha256
+        && roundTripReport.exportedResourceSha256 === replacementSha256
+        && canvasIsNonBlank(players.a)
+        && reopenedInspectionReport === true
+    };
+    renderInfoPanel();
+    addLog(primaryReplacementEdit.passed ? "success" : "warning", `替换预览已重开：${resourceKey}`);
+    return primaryReplacementEdit;
+  } catch (error) {
+    showError(`替换失败：${error.message}`);
+    addLog("error", `替换失败：${error.message}`);
+    return undefined;
+  }
+}
+
+async function resetReplacementPreview() {
+  if (!primaryReplacementEdit?.sourceBytes) return;
+  const original = primaryReplacementEdit;
+  const originalUrl = URL.createObjectURL(new Blob([original.sourceBytes], { type: "application/octet-stream" }));
+  primaryReplacementEdit = undefined;
+  replacementOperationSequence += 1;
+  await loadSvga("a", originalUrl, {
+    fileName: original.sourceIdentity?.fileName ?? p6BaselineFixtureDisplayName,
+    fileSizeBytes: original.sourceBytes.byteLength,
+    sourceId: original.sourceIdentity?.sourceId ?? null,
+    sourceSha256: original.sourceSha256,
+    fixtureSha256: original.sourceSha256,
+    loadingHoldMs: 80
+  }).catch((error) => showError(`还原失败：${error.message}`));
+  renderInfoPanel();
+  addLog("info", "已还原替换预览。");
 }
 
 async function optimizeSvgaImageResources(bytes, fileName) {
@@ -1950,6 +2097,63 @@ async function runReplacementReadinessProof(sourceBytes, fileName) {
   return proof;
 }
 
+async function runSingleReplacementPreviewProof(sourceBytes, resourceKey, fileName) {
+  const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-a.png").then((response) => {
+    if (!response.ok) throw new Error(`Replacement fixture fetch failed (${response.status})`);
+    return response.arrayBuffer();
+  }));
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const replacementSha256 = await p6Sha256Bytes(replacementBytes);
+  const payload = await replaceSvgaImageResource(sourceBytes, resourceKey, replacementBytes, fileName);
+  const editedBytes = base64ToBytes(payload.editedSvgaBase64 ?? "");
+  const editedSha256 = await p6Sha256Bytes(editedBytes);
+  const editedUrl = URL.createObjectURL(new Blob([editedBytes], { type: "application/octet-stream" }));
+  try {
+    await loadSvga("a", editedUrl, {
+      fileName: replacementPreviewFixtureDisplayName,
+      fileSizeBytes: editedBytes.byteLength,
+      fixtureSha256: editedSha256,
+      skipReplacementReadiness: true,
+      loadingHoldMs: 80
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    const reopenedInspectionReport = await waitForInspectionStatus(players.a);
+    const roundTripReport = payload.roundTripReport ?? {};
+    const renderedProof = collectRenderedStateProof("loaded");
+    return {
+      schemaVersion: 1,
+      proofId: "svga-single-replacement-preview-proof",
+      source: "svga-image-replace-api",
+      sourceSha256,
+      resourceKey,
+      replacementSha256,
+      editedSha256,
+      sourceUnchanged: roundTripReport.sourceSha256 === sourceSha256
+        && roundTripReport.sourceSha256AfterEditing === sourceSha256,
+      roundTripPassed: roundTripReport.passed === true,
+      exportedMatchesReplacement: roundTripReport.exportedResourceSha256 === replacementSha256,
+      reopenedPlayback: Boolean(players.a.player),
+      reopenedCanvasNonBlank: canvasIsNonBlank(players.a),
+      reopenedInspectionReport,
+      renderedProofPassed: renderedProof.passed === true,
+      saveAsNotAttempted: true,
+      passed: roundTripReport.passed === true
+        && roundTripReport.replacedResourceKey === resourceKey
+        && roundTripReport.replacementSha256 === replacementSha256
+        && roundTripReport.exportedResourceSha256 === replacementSha256
+        && roundTripReport.sourceSha256 === sourceSha256
+        && roundTripReport.sourceSha256AfterEditing === sourceSha256
+        && Boolean(players.a.player)
+        && canvasIsNonBlank(players.a)
+        && reopenedInspectionReport
+        && renderedProof.passed === true
+    };
+  } finally {
+    URL.revokeObjectURL(editedUrl);
+  }
+}
+
 async function runOptimizedReopenProof(sourceBytes) {
   const sourceSha256 = await p6Sha256Bytes(sourceBytes);
   const payload = await optimizeSvgaImageResources(sourceBytes, "optimized-reopen-source.svga");
@@ -1962,6 +2166,7 @@ async function runOptimizedReopenProof(sourceBytes) {
       fileName: optimizerReopenFixtureDisplayName,
       fileSizeBytes: optimizedBytes.byteLength,
       fixtureSha256: optimizedSha256,
+      skipReplacementReadiness: true,
       loadingHoldMs: 80
     });
     await waitFor(() => Boolean(players.a.videoItem));
@@ -3904,6 +4109,13 @@ async function runProductSmoke() {
     await captureArtifact("desktop-recovered-from-invalid");
     p6SmokeCurrentPhase = "replacement-readiness-proof";
     const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);
+    p6SmokeCurrentPhase = "replacement-preview-proof";
+    const replacementPreviewProof = await runSingleReplacementPreviewProof(
+      bytes.slice(0),
+      replacementReadinessProof.replaceableResourceKeys[0],
+      p6BaselineFixtureDisplayName
+    );
+    await captureArtifact("desktop-replacement-preview-proof");
     p6SmokeCurrentPhase = "optimized-reopen-proof";
     const optimizerFixtureUrl = "/fixture/optimizer-reopen-smoke.svga";
     const optimizerFixtureBytes = new Uint8Array(await fetch(optimizerFixtureUrl).then((response) => {
@@ -4159,6 +4371,7 @@ async function runProductSmoke() {
       playerLifecycle: true,
       cleanup: true,
       replacementReadinessProof,
+      replacementPreviewProof,
       optimizedReopenProof,
       p6InteractionTrace: await buildP6SmokeInteractionTrace(),
       ownerUsability,
@@ -4595,7 +4808,8 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     intelligence ? `${intelligence.summary.safeAutoOptimizeFindingCount} 项安全候选` : "",
     replacementReadinessStatus === "loading"
       ? "替换识别中"
-      : replacementReadiness ? `${replacementReadiness.replaceableResourceCount} 项可替换资源` : ""
+      : replacementReadiness ? `${replacementReadiness.replaceableResourceCount} 项可替换资源` : "",
+    primaryReplacementEdit ? "替换预览已应用" : ""
   ].filter(Boolean).join(" · ");
   const safeSavings = intelligence?.summary.estimatedSafeFileSizeSavingsBytes;
   const intelligenceSummary = intelligence ? `
@@ -4605,10 +4819,18 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
       ${Number.isFinite(Number(safeSavings)) ? `<em>预计可节省 ${escapeHtml(formatBytes(safeSavings))}</em>` : ""}
     </div>
   ` : "";
+  const replacementEditSummary = primaryReplacementEdit ? `
+    <div class="assetIntelligenceSummary">
+      <strong>替换预览</strong>
+      <span>${escapeHtml(primaryReplacementEdit.resourceKey)} 已使用 ${escapeHtml(primaryReplacementEdit.replacementFileName ?? "PNG")} 替换并重开。</span>
+      <button class="sequenceToggle" type="button" data-reset-replacement-preview>还原预览</button>
+    </div>
+  ` : "";
   return `
     ${filterBar}
     <div class="assetSummaryLine">${escapeHtml(summary)}</div>
     ${intelligenceSummary}
+    ${replacementEditSummary}
     <div class="assetUnifiedList inspectorSection">
       ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
     </div>
@@ -4788,6 +5010,14 @@ function renderAssetEntry(asset) {
   const decodedMemory = Number.isFinite(Number(asset.decodedMemoryBytes))
     ? `<span>解码 ${escapeHtml(formatBytes(asset.decodedMemoryBytes))}</span>`
     : "";
+  const actions = [
+    asset.kind === "image" && asset.replaceable
+      ? `<button class="sequenceToggle" type="button" data-replace-resource-key="${escapeHtml(asset.imageKey ?? "")}">替换图片</button>`
+      : "",
+    asset.kind === "sequence"
+      ? `<button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧" : "展开序列帧"}</button>`
+      : ""
+  ].filter(Boolean).join("");
   return `
     <article class="assetUnifiedRow resourceRow ${asset.warnings?.length ? "hasWarning" : ""} ${asset.abnormalityLevel && asset.abnormalityLevel !== "none" ? `abnormality-${escapeHtml(asset.abnormalityLevel)}` : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}">
       <button class="assetUnifiedThumb checkerboard ${asset.kind === "sequence" ? "isSequence" : ""}" type="button" data-preview-image-key="${escapeHtml(asset.items?.[0]?.key ?? asset.imageKey ?? "")}" ${asset.previewUrl ? "" : "disabled"}>
@@ -4814,7 +5044,7 @@ function renderAssetEntry(asset) {
         </div>
         <div class="assetFullKey" title="${escapeHtml(asset.fullKey ?? "")}">完整资源名：${escapeHtml(asset.fullKey ?? "")}</div>
         ${warningHtml}
-        ${asset.kind === "sequence" ? `<div class="assetInlineActions"><button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧" : "展开序列帧"}</button></div>` : ""}
+        ${actions ? `<div class="assetInlineActions">${actions}</div>` : ""}
       </div>
     </article>
     ${sequenceExpanded ? `<div class="sequenceChildren">${asset.items.map((item) => renderAssetEntry({
@@ -5526,6 +5756,18 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
     renderInfoPanel();
     return;
   }
+  const resetReplacementButton = event.target.closest("[data-reset-replacement-preview]");
+  if (resetReplacementButton) {
+    resetReplacementPreview().catch((error) => showError(`还原失败：${error.message}`));
+    return;
+  }
+  const replaceButton = event.target.closest("[data-replace-resource-key]");
+  if (replaceButton?.dataset.replaceResourceKey) {
+    pendingReplacementResourceKey = replaceButton.dataset.replaceResourceKey;
+    replacementPngInput.value = "";
+    replacementPngInput.click();
+    return;
+  }
   const previewButton = event.target.closest("[data-preview-image-key]");
   if (previewButton?.dataset.previewImageKey) {
     openAssetPreview(previewButton.dataset.previewImageKey);
@@ -5536,6 +5778,15 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
     selectedAssetKey = row.dataset.assetKey;
     renderInfoPanel();
   }
+});
+
+replacementPngInput.addEventListener("change", () => {
+  const file = replacementPngInput.files?.[0];
+  const resourceKey = pendingReplacementResourceKey;
+  pendingReplacementResourceKey = undefined;
+  replacementPngInput.value = "";
+  if (!file || !resourceKey) return;
+  replacePrimaryResource(resourceKey, file).catch((error) => showError(`替换失败：${error.message}`));
 });
 
 assetPreviewClose.addEventListener("click", closeAssetPreview);

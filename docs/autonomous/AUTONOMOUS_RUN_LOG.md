@@ -212,3 +212,44 @@
   `replacementReadinessProof.passed=true` with 28 image resources, 28 used
   resources, 28 replaceable resources, 28 thumbnails, hash binding, no Save As
   attempt, and no editor UI exposure.
+
+### Phase 3 Single-resource Replacement Preview Slice
+
+- Files updated:
+  `tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs`,
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: default Workbench now exposes a bounded single-resource replacement
+  preview action for resources already proven `可替换`.
+- Product behavior: resource rows show `替换图片` for replaceable PNG image
+  resources. Selecting a PNG calls the token-bound `/api/svga-image-replace`
+  endpoint, receives edited SVGA bytes, reopens the edited bytes through the
+  normal product `loadSvga` path, and shows a reset-to-original preview action.
+  Desktop-opened files carry a host source identity on the injected `File`, but
+  Save As remains a later slice.
+- Smoke evidence: product smoke replaces `img_0` with the local
+  `replacement-a.png` fixture and reports a main-process-validated
+  `replacementPreviewProof` with source immutability, round-trip pass, exported
+  resource hash matching the replacement PNG, reopened playback, nonblank
+  canvas, inspection success, and rendered loaded-state proof.
+- Safety boundary: original SVGA bytes are not written. This slice does not
+  expose URL import, text editing, key rename, multi-resource editing, or
+  edited Save As as accepted product behavior.
+- Repair note: the first desktop smoke run failed because
+  `desktop-replacement-preview-proof` was not listed in the product artifact
+  scenario whitelist. The whitelist, rendered-state mapping, and artifact file
+  name mapping were updated together; the follow-up smoke passed.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment
+  suite passed 22 tests, and desktop smoke reported
+  `replacementPreviewProof.passed=true` for `img_0`.
