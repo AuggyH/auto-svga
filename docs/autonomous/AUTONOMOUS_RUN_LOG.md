@@ -730,3 +730,18 @@
 - Commands:
   `git diff --check`
 - Result: pass.
+
+### Final Package Evidence Tracking Adjustment
+
+- Files updated:
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: removed stale hard-coded App ZIP hash, size, and package build commit
+  from the tracked status page.
+- Reason: final package evidence is generated after the final tracked commit so
+  the App ZIP can bind to the actual review head. The exact package hash, size,
+  build commit, and privacy proof now live in the current owner-visible
+  `review/` folder instead of being frozen in a tracked status file that would
+  immediately become stale after the documentation commit.
+- Commands:
+  `git diff --check`

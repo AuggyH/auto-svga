@@ -26,21 +26,21 @@ work in this dedicated autonomous branch.
 - Desktop smoke passed on the autonomous branch with playback, nonblank canvas,
   inspection report, audit panel, file input, drag/drop, invalid-file path,
   player lifecycle, owner usability, and workbench region map all accepted.
-- Internal macOS trial packaging passed and generated
-  `tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64.zip`.
-- App ZIP SHA-256:
-  `ab8905dd76572291b642d04619f5e58a825b4ca849fc6cbf8f95ec91934d37b4`.
-- App ZIP size: `118715183` bytes.
-- Package manifest build commit:
-  `ea7fa7790ae4c7e7577dd1b7ce79906b1810ba59`.
-- macOS package proof privacy audit passed.
+- Internal macOS trial packaging passes with
+  `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`.
+- macOS package proof and privacy audit pass with
+  `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:proof:mac`.
+- Exact App ZIP SHA-256, package size, and package build commit are recorded in
+  the current owner-visible review folder under `review/` because that folder is
+  generated after the final tracked commit and is not committed to git.
 
 ## Immediate Next Slice
 
 Continue with the next narrow Phase 4 sequence-frame product slice:
 
-1. refresh internal macOS package evidence on the latest autonomous head;
-2. prepare the final owner-visible autonomous review packet/folder after package
-   evidence is rebound to the final head;
+1. commit this status correction so the final head can stabilize before
+   packaging;
+2. regenerate internal macOS package evidence and the owner-visible autonomous
+   review folder on that final head;
 3. keep text editing, key rename, URL import, and structural/timeline edits
    unsupported until they have separate mechanical round-trip proof.
