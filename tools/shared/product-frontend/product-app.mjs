@@ -222,7 +222,10 @@ let toastTimer;
 let p6PrimaryRecoveredFromInvalid = false;
 let pendingReplacementResourceKey;
 let primaryReplacementEdit;
+let replacementUndoStack = [];
+let replacementRedoStack = [];
 let replacementOperationSequence = 0;
+const replacementHistoryLimit = 6;
 
 function setP6PrimaryRecoveredFromInvalid(value) {
   p6PrimaryRecoveredFromInvalid = value === true;
@@ -332,6 +335,44 @@ function slotFileName(slot) {
   return slot.metrics?.fileName ?? slot.sourceIdentity?.fileName ?? "";
 }
 
+function cloneReplacementPlainValue(value) {
+  if (value === undefined || value === null) return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function cloneReplacementEdit(edit) {
+  if (!edit) return undefined;
+  return {
+    ...edit,
+    sourceBytes: edit.sourceBytes ? edit.sourceBytes.slice(0) : undefined,
+    editedBytes: edit.editedBytes ? edit.editedBytes.slice(0) : undefined,
+    editedUrl: undefined,
+    sourceIdentity: cloneReplacementPlainValue(edit.sourceIdentity),
+    roundTripReport: cloneReplacementPlainValue(edit.roundTripReport),
+    readiness: cloneReplacementPlainValue(edit.readiness)
+  };
+}
+
+function clearReplacementPreviewState() {
+  pendingReplacementResourceKey = undefined;
+  primaryReplacementEdit = undefined;
+  replacementUndoStack = [];
+  replacementRedoStack = [];
+}
+
+function canUndoReplacementPreview() {
+  return replacementUndoStack.length > 0;
+}
+
+function canRedoReplacementPreview() {
+  return replacementRedoStack.length > 0;
+}
+
+function pushReplacementHistorySnapshot(stack, snapshot) {
+  stack.push(cloneReplacementEdit(snapshot));
+  while (stack.length > replacementHistoryLimit) stack.shift();
+}
+
 function clearSlotErrorFeedback(slot) {
   slot.slotErrorMessage = undefined;
   slot.panel?.classList.remove("hasSlotError");
@@ -379,7 +420,7 @@ function updatePreviewCardHeader(slot) {
   }
 }
 
-function resetSlotMediaState(slot, { clearReport = false } = {}) {
+function resetSlotMediaState(slot, { clearReport = false, preserveReplacementHistory = false } = {}) {
   slot.inspectionRequestId += 1;
   slot.videoItem = undefined;
   slot.metrics = undefined;
@@ -405,6 +446,7 @@ function resetSlotMediaState(slot, { clearReport = false } = {}) {
   if (slot.slotName === "A") {
     setP6PrimaryRecoveredFromInvalid(false);
     primaryReplacementEdit = undefined;
+    if (!preserveReplacementHistory) clearReplacementPreviewState();
     svgaFilePillA.hidden = true;
     svgaFilePillA.textContent = "";
     selectedLayerKey = undefined;
@@ -1702,7 +1744,7 @@ async function loadSvga(slotKey, source = paths.svga, options = {}) {
       || slot.renderStatus === "error"
       || (!errorBox.hidden && compactText(errorBox).length > 0));
   clearError();
-  resetSlotMediaState(slot);
+  resetSlotMediaState(slot, { preserveReplacementHistory: options.preserveReplacementHistory === true });
   slot.source = source;
   slot.sourceIdentity = {
     slot: slot.slotName.toLowerCase(),
@@ -2004,6 +2046,65 @@ function canSaveReplacementPreview() {
   );
 }
 
+async function applyReplacementPreviewSnapshot(snapshot, fallbackEdit, actionLabel) {
+  const edit = cloneReplacementEdit(snapshot);
+  const baseEdit = edit
+    ?? fallbackEdit
+    ?? primaryReplacementEdit
+    ?? replacementUndoStack.find(Boolean)
+    ?? replacementRedoStack.find(Boolean);
+  const bytes = edit?.editedBytes ?? baseEdit?.sourceBytes;
+  if (!bytes) throw new Error("没有可恢复的替换预览。");
+  const objectUrl = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
+  await loadSvga("a", objectUrl, {
+    fileName: edit
+      ? suggestedEditedFileName(edit.sourceIdentity?.fileName)
+      : baseEdit?.sourceIdentity?.fileName ?? p6BaselineFixtureDisplayName,
+    fileSizeBytes: bytes.byteLength,
+    sourceId: edit?.sourceIdentity?.sourceId ?? baseEdit?.sourceIdentity?.sourceId ?? null,
+    sourceSha256: edit?.sourceSha256 ?? baseEdit?.sourceSha256 ?? null,
+    fixtureSha256: edit?.editedSha256 ?? baseEdit?.sourceSha256 ?? null,
+    loadingHoldMs: 80,
+    preserveReplacementHistory: true
+  });
+  await waitFor(() => Boolean(players.a.videoItem));
+  await waitFor(() => canvasIsNonBlank(players.a));
+  const reopenedInspectionReport = await waitForInspectionStatus(players.a);
+  primaryReplacementEdit = edit ? {
+    ...edit,
+    operationSequence: replacementOperationSequence,
+    editedUrl: objectUrl,
+    reopenedInspectionReport,
+    canvasNonBlank: canvasIsNonBlank(players.a)
+  } : undefined;
+  renderInfoPanel();
+  addLog("info", actionLabel);
+}
+
+async function undoReplacementPreview() {
+  if (!canUndoReplacementPreview()) return undefined;
+  const currentSnapshot = cloneReplacementEdit(primaryReplacementEdit);
+  const targetSnapshot = replacementUndoStack.at(-1);
+  replacementOperationSequence += 1;
+  await applyReplacementPreviewSnapshot(targetSnapshot, currentSnapshot, "已撤销替换预览。");
+  replacementUndoStack.pop();
+  pushReplacementHistorySnapshot(replacementRedoStack, currentSnapshot);
+  renderInfoPanel();
+  return primaryReplacementEdit;
+}
+
+async function redoReplacementPreview() {
+  if (!canRedoReplacementPreview()) return undefined;
+  const currentSnapshot = cloneReplacementEdit(primaryReplacementEdit);
+  const targetSnapshot = replacementRedoStack.at(-1);
+  replacementOperationSequence += 1;
+  await applyReplacementPreviewSnapshot(targetSnapshot, currentSnapshot, "已重做替换预览。");
+  replacementRedoStack.pop();
+  pushReplacementHistorySnapshot(replacementUndoStack, currentSnapshot);
+  renderInfoPanel();
+  return primaryReplacementEdit;
+}
+
 async function saveReplacementPreview() {
   if (!primaryReplacementEdit?.passed || !primaryReplacementEdit.editedBytes) {
     showError("当前替换预览尚未通过重开验证。");
@@ -2051,6 +2152,11 @@ async function replacePrimaryResource(resourceKey, file) {
     showError("当前资源暂不支持安全替换。");
     return undefined;
   }
+  if (primaryReplacementEdit) {
+    showError("请先还原当前替换预览，再替换其他图片。");
+    return undefined;
+  }
+  const previousSnapshot = cloneReplacementEdit(primaryReplacementEdit);
   try {
     clearError();
     const sourceBytes = await readPrimarySourceBytes();
@@ -2072,12 +2178,15 @@ async function replacePrimaryResource(resourceKey, file) {
       sourceId: originalIdentity.sourceId ?? null,
       sourceSha256,
       fixtureSha256: editedSha256,
-      loadingHoldMs: 80
+      loadingHoldMs: 80,
+      preserveReplacementHistory: true
     });
     await waitFor(() => Boolean(players.a.videoItem));
     await waitFor(() => canvasIsNonBlank(players.a));
     const reopenedInspectionReport = await waitForInspectionStatus(players.a);
     replacementOperationSequence = editSequence;
+    pushReplacementHistorySnapshot(replacementUndoStack, previousSnapshot);
+    replacementRedoStack = [];
     primaryReplacementEdit = {
       schemaVersion: 1,
       operationSequence: replacementOperationSequence,
@@ -2113,9 +2222,9 @@ async function replacePrimaryResource(resourceKey, file) {
 
 async function resetReplacementPreview() {
   if (!primaryReplacementEdit?.sourceBytes) return;
+  const previousSnapshot = cloneReplacementEdit(primaryReplacementEdit);
   const original = primaryReplacementEdit;
   const originalUrl = URL.createObjectURL(new Blob([original.sourceBytes], { type: "application/octet-stream" }));
-  primaryReplacementEdit = undefined;
   replacementOperationSequence += 1;
   await loadSvga("a", originalUrl, {
     fileName: original.sourceIdentity?.fileName ?? p6BaselineFixtureDisplayName,
@@ -2123,8 +2232,12 @@ async function resetReplacementPreview() {
     sourceId: original.sourceIdentity?.sourceId ?? null,
     sourceSha256: original.sourceSha256,
     fixtureSha256: original.sourceSha256,
-    loadingHoldMs: 80
-  }).catch((error) => showError(`还原失败：${error.message}`));
+    loadingHoldMs: 80,
+    preserveReplacementHistory: true
+  });
+  primaryReplacementEdit = undefined;
+  pushReplacementHistorySnapshot(replacementUndoStack, previousSnapshot);
+  replacementRedoStack = [];
   renderInfoPanel();
   addLog("info", "已还原替换预览。");
 }
@@ -2306,6 +2419,98 @@ async function runReplacementSaveAsProof(sourceBytes, resourceKey, fileName) {
     };
   } finally {
     URL.revokeObjectURL(savedUrl);
+  }
+}
+
+async function runReplacementUndoRedoProof(sourceBytes, resourceKey, fileName) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const sourceUrl = URL.createObjectURL(new Blob([sourceBytes], { type: "application/octet-stream" }));
+  const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-a.png").then((response) => {
+    if (!response.ok) throw new Error(`Replacement fixture fetch failed (${response.status})`);
+    return response.arrayBuffer();
+  }));
+  const replacementSha256 = await p6Sha256Bytes(replacementBytes);
+  const replacementFile = typeof File === "function"
+    ? new File([replacementBytes], "replacement-a.png", { type: "image/png" })
+    : Object.assign(new Blob([replacementBytes], { type: "image/png" }), { name: "replacement-a.png" });
+  try {
+    await loadSvga("a", sourceUrl, {
+      fileName,
+      fileSizeBytes: sourceBytes.byteLength,
+      fixtureSha256: sourceSha256,
+      loadingHoldMs: 80
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    await waitForInspectionStatus(players.a);
+    await waitFor(() => replacementReadinessForResource(resourceKey)?.replaceable === true);
+    const edit = await replacePrimaryResource(resourceKey, replacementFile);
+    if (!edit?.passed) throw new Error("Replacement edit did not pass before undo/redo proof.");
+    const editedSha256 = edit.editedSha256;
+    const initialUndoAvailable = canUndoReplacementPreview();
+    const initialRedoAvailable = canRedoReplacementPreview();
+    const undoStackAfterApply = replacementUndoStack.length;
+    await undoReplacementPreview();
+    const undoSha256 = await p6Sha256Bytes(await readPrimarySourceBytes());
+    const undoRenderedProof = collectRenderedStateProof("loaded");
+    const editClearedAfterUndo = primaryReplacementEdit === undefined;
+    const redoAvailableAfterUndo = canRedoReplacementPreview();
+    const undoCanvasNonBlank = canvasIsNonBlank(players.a);
+    const undoInspectionReport = await waitForInspectionStatus(players.a);
+    await redoReplacementPreview();
+    const redoSha256 = await p6Sha256Bytes(await readPrimarySourceBytes());
+    const redoRenderedProof = collectRenderedStateProof("loaded");
+    const editRestoredAfterRedo = primaryReplacementEdit?.editedSha256 === editedSha256;
+    const redoCanvasNonBlank = canvasIsNonBlank(players.a);
+    const redoInspectionReport = await waitForInspectionStatus(players.a);
+    const historyBounded = replacementUndoStack.length <= replacementHistoryLimit
+      && replacementRedoStack.length <= replacementHistoryLimit;
+    return {
+      schemaVersion: 1,
+      proofId: "svga-replacement-undo-redo-proof",
+      source: "workbench-replacement-history-state",
+      sourceSha256,
+      resourceKey,
+      replacementSha256,
+      editedSha256,
+      historyLimit: replacementHistoryLimit,
+      undoStackAfterApply,
+      initialUndoAvailable,
+      initialRedoAvailable,
+      undoRestoredOriginal: undoSha256 === sourceSha256,
+      redoRestoredEdited: redoSha256 === editedSha256,
+      editClearedAfterUndo,
+      redoAvailableAfterUndo,
+      editRestoredAfterRedo,
+      historyBounded,
+      sourceUnchanged: edit.roundTripReport?.sourceSha256 === sourceSha256
+        && edit.roundTripReport?.sourceSha256AfterEditing === sourceSha256,
+      undoCanvasNonBlank,
+      redoCanvasNonBlank,
+      undoInspectionReport,
+      redoInspectionReport,
+      renderedProofPassed: undoRenderedProof.passed === true && redoRenderedProof.passed === true,
+      saveAsNotAttempted: true,
+      passed: initialUndoAvailable
+        && initialRedoAvailable === false
+        && undoStackAfterApply >= 1
+        && undoSha256 === sourceSha256
+        && redoSha256 === editedSha256
+        && editClearedAfterUndo
+        && redoAvailableAfterUndo
+        && editRestoredAfterRedo
+        && historyBounded
+        && edit.roundTripReport?.sourceSha256 === sourceSha256
+        && edit.roundTripReport?.sourceSha256AfterEditing === sourceSha256
+        && undoCanvasNonBlank
+        && redoCanvasNonBlank
+        && undoInspectionReport
+        && redoInspectionReport
+        && undoRenderedProof.passed === true
+        && redoRenderedProof.passed === true
+    };
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
   }
 }
 
@@ -4271,6 +4476,13 @@ async function runProductSmoke() {
       p6BaselineFixtureDisplayName
     );
     await captureArtifact("desktop-replacement-preview-proof");
+    p6SmokeCurrentPhase = "replacement-undo-redo-proof";
+    const replacementUndoRedoProof = await runReplacementUndoRedoProof(
+      bytes.slice(0),
+      replacementReadinessProof.replaceableResourceKeys[0],
+      p6BaselineFixtureDisplayName
+    );
+    await captureArtifact("desktop-replacement-undo-redo-proof");
     p6SmokeCurrentPhase = "replacement-save-as-proof";
     const replacementSaveAsProof = await runReplacementSaveAsProof(
       bytes.slice(0),
@@ -4533,6 +4745,7 @@ async function runProductSmoke() {
       cleanup: true,
       replacementReadinessProof,
       replacementPreviewProof,
+      replacementUndoRedoProof,
       replacementSaveAsProof,
       optimizedReopenProof,
       p6InteractionTrace: await buildP6SmokeInteractionTrace(),
@@ -4971,7 +5184,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     replacementReadinessStatus === "loading"
       ? "替换识别中"
       : replacementReadiness ? `${replacementReadiness.replaceableResourceCount} 项可替换资源` : "",
-    primaryReplacementEdit ? "替换预览已应用" : ""
+    primaryReplacementEdit ? "替换预览已应用" : canRedoReplacementPreview() ? "替换预览已还原" : ""
   ].filter(Boolean).join(" · ");
   const safeSavings = intelligence?.summary.estimatedSafeFileSizeSavingsBytes;
   const intelligenceSummary = intelligence ? `
@@ -4981,12 +5194,18 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
       ${Number.isFinite(Number(safeSavings)) ? `<em>预计可节省 ${escapeHtml(formatBytes(safeSavings))}</em>` : ""}
     </div>
   ` : "";
-  const replacementEditSummary = primaryReplacementEdit ? `
+  const replacementHistoryVisible = primaryReplacementEdit || canUndoReplacementPreview() || canRedoReplacementPreview();
+  const replacementEditSummary = replacementHistoryVisible ? `
     <div class="assetIntelligenceSummary">
       <strong>替换预览</strong>
-      <span>${escapeHtml(primaryReplacementEdit.resourceKey)} 已使用 ${escapeHtml(primaryReplacementEdit.replacementFileName ?? "PNG")} 替换并重开。</span>
-      <button class="sequenceToggle" type="button" data-save-replacement-preview ${canSaveReplacementPreview() ? "" : "disabled"}>另存为</button>
-      <button class="sequenceToggle" type="button" data-reset-replacement-preview>还原预览</button>
+      <span>${primaryReplacementEdit
+        ? `${escapeHtml(primaryReplacementEdit.resourceKey)} 已使用 ${escapeHtml(primaryReplacementEdit.replacementFileName ?? "PNG")} 替换并重开。`
+        : "已回到原图，可重做最近一次替换。"
+      }</span>
+      <button class="sequenceToggle" type="button" data-undo-replacement-preview ${canUndoReplacementPreview() ? "" : "disabled"}>撤销</button>
+      <button class="sequenceToggle" type="button" data-redo-replacement-preview ${canRedoReplacementPreview() ? "" : "disabled"}>重做</button>
+      ${primaryReplacementEdit ? `<button class="sequenceToggle" type="button" data-save-replacement-preview ${canSaveReplacementPreview() ? "" : "disabled"}>另存为</button>` : ""}
+      ${primaryReplacementEdit ? `<button class="sequenceToggle" type="button" data-reset-replacement-preview>还原预览</button>` : ""}
     </div>
   ` : "";
   return `
@@ -5175,7 +5394,7 @@ function renderAssetEntry(asset) {
     : "";
   const actions = [
     asset.kind === "image" && asset.replaceable
-      ? `<button class="sequenceToggle" type="button" data-replace-resource-key="${escapeHtml(asset.imageKey ?? "")}">替换图片</button>`
+      ? `<button class="sequenceToggle" type="button" data-replace-resource-key="${escapeHtml(asset.imageKey ?? "")}" ${primaryReplacementEdit ? "disabled" : ""}>替换图片</button>`
       : "",
     asset.kind === "sequence"
       ? `<button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧" : "展开序列帧"}</button>`
@@ -5922,6 +6141,16 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
   const resetReplacementButton = event.target.closest("[data-reset-replacement-preview]");
   if (resetReplacementButton) {
     resetReplacementPreview().catch((error) => showError(`还原失败：${error.message}`));
+    return;
+  }
+  const undoReplacementButton = event.target.closest("[data-undo-replacement-preview]");
+  if (undoReplacementButton) {
+    undoReplacementPreview().catch((error) => showError(`撤销失败：${error.message}`));
+    return;
+  }
+  const redoReplacementButton = event.target.closest("[data-redo-replacement-preview]");
+  if (redoReplacementButton) {
+    redoReplacementPreview().catch((error) => showError(`重做失败：${error.message}`));
     return;
   }
   const saveReplacementButton = event.target.closest("[data-save-replacement-preview]");

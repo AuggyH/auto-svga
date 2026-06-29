@@ -196,6 +196,11 @@ function validateSmokeResult(value) {
     if (!replacementPreviewProof) return undefined;
     result.replacementPreviewProof = replacementPreviewProof;
   }
+  if (value.replacementUndoRedoProof !== undefined) {
+    const replacementUndoRedoProof = validateReplacementUndoRedoProof(value.replacementUndoRedoProof);
+    if (!replacementUndoRedoProof) return undefined;
+    result.replacementUndoRedoProof = replacementUndoRedoProof;
+  }
   if (value.replacementSaveAsProof !== undefined) {
     const replacementSaveAsProof = validateReplacementSaveAsProof(value.replacementSaveAsProof);
     if (!replacementSaveAsProof) return undefined;
@@ -242,6 +247,9 @@ function describeSmokeResultValidationFailure(value) {
   if (value.replacementPreviewProof !== undefined && !validateReplacementPreviewProof(value.replacementPreviewProof)) {
     return "replacementPreviewProof";
   }
+  if (value.replacementUndoRedoProof !== undefined && !validateReplacementUndoRedoProof(value.replacementUndoRedoProof)) {
+    return "replacementUndoRedoProof";
+  }
   if (value.replacementSaveAsProof !== undefined && !validateReplacementSaveAsProof(value.replacementSaveAsProof)) {
     return "replacementSaveAsProof";
   }
@@ -284,6 +292,66 @@ function validateReplacementSaveAsProof(value) {
     reopenedCanvasNonBlank: true,
     reopenedInspectionReport: true,
     renderedProofPassed: true,
+    passed: true
+  };
+}
+
+function validateReplacementUndoRedoProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "svga-replacement-undo-redo-proof") return undefined;
+  if (value.source !== "workbench-replacement-history-state") return undefined;
+  if (!isSha256(value.sourceSha256) || !isSha256(value.replacementSha256) || !isSha256(value.editedSha256)) return undefined;
+  if (value.editedSha256 === value.sourceSha256 || value.editedSha256 === value.replacementSha256) return undefined;
+  if (!isBoundedString(value.resourceKey, 120)) return undefined;
+  if (!Number.isInteger(value.historyLimit) || value.historyLimit < 1 || value.historyLimit > 10) return undefined;
+  if (!Number.isInteger(value.undoStackAfterApply) || value.undoStackAfterApply < 1 || value.undoStackAfterApply > value.historyLimit) {
+    return undefined;
+  }
+  if (
+    value.initialUndoAvailable !== true
+    || value.initialRedoAvailable !== false
+    || value.undoRestoredOriginal !== true
+    || value.redoRestoredEdited !== true
+    || value.editClearedAfterUndo !== true
+    || value.redoAvailableAfterUndo !== true
+    || value.editRestoredAfterRedo !== true
+    || value.historyBounded !== true
+    || value.sourceUnchanged !== true
+    || value.undoCanvasNonBlank !== true
+    || value.redoCanvasNonBlank !== true
+    || value.undoInspectionReport !== true
+    || value.redoInspectionReport !== true
+    || value.renderedProofPassed !== true
+    || value.saveAsNotAttempted !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    resourceKey: value.resourceKey,
+    replacementSha256: value.replacementSha256,
+    editedSha256: value.editedSha256,
+    historyLimit: value.historyLimit,
+    undoStackAfterApply: value.undoStackAfterApply,
+    initialUndoAvailable: true,
+    initialRedoAvailable: false,
+    undoRestoredOriginal: true,
+    redoRestoredEdited: true,
+    editClearedAfterUndo: true,
+    redoAvailableAfterUndo: true,
+    editRestoredAfterRedo: true,
+    historyBounded: true,
+    sourceUnchanged: true,
+    undoCanvasNonBlank: true,
+    redoCanvasNonBlank: true,
+    undoInspectionReport: true,
+    redoInspectionReport: true,
+    renderedProofPassed: true,
+    saveAsNotAttempted: true,
     passed: true
   };
 }
@@ -1197,6 +1265,7 @@ function validateArtifactScenario(value) {
     "desktop-local-settings-open",
     "desktop-recovered-from-invalid",
     "desktop-replacement-preview-proof",
+    "desktop-replacement-undo-redo-proof",
     "desktop-optimized-reopen-proof",
     "actual-normal-loaded",
     "smoke-loaded",
@@ -2239,6 +2308,7 @@ function stateForScenario(scenario) {
     "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
     "desktop-replacement-preview-proof": "loaded",
+    "desktop-replacement-undo-redo-proof": "loaded",
     "desktop-optimized-reopen-proof": "loaded",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open",
     "desktop-info-diagnostics-open": "info-diagnostics-open",
@@ -2416,6 +2486,7 @@ function artifactFileNameForScenario(scenario) {
     "p3-replacement-selected": "replacement-selected.png",
     "p3-replacement-preview": "replacement-preview.png",
     "desktop-replacement-preview-proof": "desktop-replacement-preview-proof.png",
+    "desktop-replacement-undo-redo-proof": "desktop-replacement-undo-redo-proof.png",
     "p3-dirty-state": "dirty-state.png",
     "p3-reset-to-original": "reset-to-original.png",
     "p3-export-success": "export-success.png",

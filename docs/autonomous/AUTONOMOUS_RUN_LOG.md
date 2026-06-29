@@ -287,3 +287,41 @@
   suite passed 22 tests, and desktop smoke reported
   `replacementSaveAsProof.passed=true` with saved hash equal to the edited hash
   and reopened playback/canvas/inspection success.
+
+### Phase 3 Replacement Undo-redo Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: single-resource replacement preview now has bounded undo and redo
+  state in the default Workbench.
+- Product behavior: the replacement preview summary exposes `撤销` and `重做`
+  controls. Undo reloads the original SVGA bytes through the normal product
+  loader; redo reloads the edited SVGA bytes. The history stack is bounded to
+  six snapshots, and a second replacement is disabled while a replacement
+  preview is active so this slice does not become multi-resource editing.
+- Smoke evidence: product smoke drives the real Workbench state path and
+  reports a main-process-validated `replacementUndoRedoProof`. The proof binds
+  the source SHA-256, replacement PNG SHA-256, edited SVGA SHA-256, bounded
+  history state, undo-to-original hash, redo-to-edited hash, loaded-state render
+  proof, playback, nonblank canvas, and inspection success.
+- Safety boundary: no Save As is attempted by this undo-redo proof, no URL
+  import/text/key/timeline editing is exposed, and multi-resource replacement
+  remains a later product slice.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment
+  suite passed 22 tests, and desktop smoke reported
+  `replacementUndoRedoProof.passed=true` for `img_0`, with undo restoring
+  `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c` and
+  redo restoring
+  `e88cf1f4afa448863eacf6d9593a6cf68e82e1b1b0ba942d23526a2cb2f2608a`.
