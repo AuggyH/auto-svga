@@ -206,6 +206,11 @@ function validateSmokeResult(value) {
     if (!sequenceBoundedRepairPrototypeProof) return undefined;
     result.sequenceBoundedRepairPrototypeProof = sequenceBoundedRepairPrototypeProof;
   }
+  if (value.sequencePrototypeRenderedBoundaryProof !== undefined) {
+    const sequencePrototypeRenderedBoundaryProof = validateSequencePrototypeRenderedBoundaryProof(value.sequencePrototypeRenderedBoundaryProof);
+    if (!sequencePrototypeRenderedBoundaryProof) return undefined;
+    result.sequencePrototypeRenderedBoundaryProof = sequencePrototypeRenderedBoundaryProof;
+  }
   if (value.replacementReadinessProof !== undefined) {
     const replacementReadinessProof = validateReplacementReadinessProof(value.replacementReadinessProof);
     if (!replacementReadinessProof) return undefined;
@@ -277,6 +282,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.sequenceBoundedRepairPrototypeProof !== undefined && !validateSequenceBoundedRepairPrototypeProof(value.sequenceBoundedRepairPrototypeProof)) {
     return "sequenceBoundedRepairPrototypeProof";
+  }
+  if (value.sequencePrototypeRenderedBoundaryProof !== undefined && !validateSequencePrototypeRenderedBoundaryProof(value.sequencePrototypeRenderedBoundaryProof)) {
+    return "sequencePrototypeRenderedBoundaryProof";
   }
   if (value.replacementReadinessProof !== undefined && !validateReplacementReadinessProof(value.replacementReadinessProof)) {
     return "replacementReadinessProof";
@@ -526,6 +534,63 @@ function validateSequenceBoundedRepairPrototypeProof(value) {
     applyActionEnabled: false,
     prototypeVisible: true,
     sourceUnchanged: true,
+    writeActionExposed: false,
+    passed: true
+  };
+}
+
+function validateSequencePrototypeRenderedBoundaryProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "svga-sequence-prototype-rendered-boundary-proof") return undefined;
+  if (value.source !== "workbench-sequence-prototype-rendered-boundary") return undefined;
+  if (!isSha256(value.sourceSha256) || value.sourceSha256AfterBoundary !== value.sourceSha256) return undefined;
+  if (value.prototypeId !== "svga-bounded-sequence-repair-prototype-v1") return undefined;
+  if (!Number.isInteger(value.resourceKeyCount) || value.resourceKeyCount <= 0 || value.resourceKeyCount > 32) return undefined;
+  if (!Number.isInteger(value.operationCount) || value.operationCount <= 0) return undefined;
+  if (!isSha256(value.beforeCanvasSha256) || !isSha256(value.afterCanvasSha256)) return undefined;
+  if (!Number.isInteger(value.canvasWidth) || value.canvasWidth <= 0 || value.canvasWidth > 4096) return undefined;
+  if (!Number.isInteger(value.canvasHeight) || value.canvasHeight <= 0 || value.canvasHeight > 4096) return undefined;
+  if (
+    value.beforeCanvasNonBlank !== true
+    || value.afterCanvasNonBlank !== true
+    || value.canvasDimensionsStable !== true
+    || typeof value.pixelHashMatched !== "boolean"
+    || value.renderedStateStable !== true
+    || value.prototypeVisible !== true
+    || value.sourceUnchanged !== true
+    || value.editedBytesProduced !== false
+    || value.writeAttempted !== false
+    || value.productSaveAsEnabled !== false
+    || value.applyActionEnabled !== false
+    || value.writeActionExposed !== false
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    sourceSha256AfterBoundary: value.sourceSha256AfterBoundary,
+    prototypeId: value.prototypeId,
+    resourceKeyCount: value.resourceKeyCount,
+    operationCount: value.operationCount,
+    beforeCanvasSha256: value.beforeCanvasSha256,
+    afterCanvasSha256: value.afterCanvasSha256,
+    canvasWidth: value.canvasWidth,
+    canvasHeight: value.canvasHeight,
+    beforeCanvasNonBlank: true,
+    afterCanvasNonBlank: true,
+    canvasDimensionsStable: true,
+    pixelHashMatched: value.pixelHashMatched,
+    renderedStateStable: true,
+    prototypeVisible: true,
+    sourceUnchanged: true,
+    editedBytesProduced: false,
+    writeAttempted: false,
+    productSaveAsEnabled: false,
+    applyActionEnabled: false,
     writeActionExposed: false,
     passed: true
   };
@@ -1571,6 +1636,7 @@ function validateArtifactScenario(value) {
     "desktop-sequence-repair-preview-proof",
     "desktop-sequence-no-write-simulation-proof",
     "desktop-sequence-bounded-repair-prototype-proof",
+    "desktop-sequence-prototype-rendered-boundary-proof",
     "desktop-replacement-preview-proof",
     "desktop-replacement-undo-redo-proof",
     "desktop-multi-replacement-proof",
@@ -2619,6 +2685,7 @@ function stateForScenario(scenario) {
     "desktop-sequence-repair-preview-proof": "info-assets-open",
     "desktop-sequence-no-write-simulation-proof": "info-assets-open",
     "desktop-sequence-bounded-repair-prototype-proof": "info-assets-open",
+    "desktop-sequence-prototype-rendered-boundary-proof": "info-assets-open",
     "desktop-replacement-preview-proof": "loaded",
     "desktop-replacement-undo-redo-proof": "loaded",
     "desktop-multi-replacement-proof": "loaded",
@@ -2802,6 +2869,7 @@ function artifactFileNameForScenario(scenario) {
     "desktop-sequence-repair-preview-proof": "desktop-sequence-repair-preview-proof.png",
     "desktop-sequence-no-write-simulation-proof": "desktop-sequence-no-write-simulation-proof.png",
     "desktop-sequence-bounded-repair-prototype-proof": "desktop-sequence-bounded-repair-prototype-proof.png",
+    "desktop-sequence-prototype-rendered-boundary-proof": "desktop-sequence-prototype-rendered-boundary-proof.png",
     "desktop-replacement-preview-proof": "desktop-replacement-preview-proof.png",
     "desktop-replacement-undo-redo-proof": "desktop-replacement-undo-redo-proof.png",
     "desktop-multi-replacement-proof": "desktop-multi-replacement-proof.png",

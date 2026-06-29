@@ -2579,6 +2579,78 @@ async function runSequenceBoundedRepairPrototypeProof(sourceBytes) {
   return proof;
 }
 
+async function runSequencePrototypeRenderedBoundaryProof(sourceBytes) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  pauseSlot(players.a);
+  seekSlot(players.a, 0, false);
+  await delay(160);
+  const beforeRender = await collectCanvasRenderDigest(players.a);
+  openInfoPanel("assets");
+  renderInfoPanel();
+  await waitFor(() => isElementVisible(document.querySelector("[data-sequence-bounded-repair-prototype]")));
+  const intelligence = players.a.inspectionReport?.assetIntelligence;
+  const assets = buildAssetEntries(players.a.metrics, intelligence, players.a.replacementReadiness);
+  const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
+  const plan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
+  const simulation = createSequenceNoWriteSimulation(plan);
+  const prototype = createBoundedSequenceRepairPrototype(plan, simulation);
+  pauseSlot(players.a);
+  seekSlot(players.a, 0, false);
+  await delay(160);
+  const afterRender = await collectCanvasRenderDigest(players.a);
+  const sourceSha256AfterBoundary = await p6Sha256Bytes(await readPrimarySourceBytes());
+  const writeActionExposed = Boolean(document.querySelector("[data-sequence-repair-apply], [data-sequence-repair-write], [data-sequence-repair-save], [data-save-sequence-repair], [data-auto-sequence-fix]"));
+  const prototypeVisible = isElementVisible(document.querySelector("[data-sequence-bounded-repair-prototype]"));
+  const canvasDimensionsStable = beforeRender.width === afterRender.width
+    && beforeRender.height === afterRender.height
+    && beforeRender.width > 0
+    && beforeRender.height > 0;
+  const pixelHashMatched = beforeRender.sha256 === afterRender.sha256;
+  const proof = {
+    schemaVersion: 1,
+    proofId: "svga-sequence-prototype-rendered-boundary-proof",
+    source: "workbench-sequence-prototype-rendered-boundary",
+    sourceSha256,
+    sourceSha256AfterBoundary,
+    prototypeId: prototype?.prototypeId ?? "",
+    resourceKeyCount: prototype?.resourceKeyCount ?? 0,
+    operationCount: prototype?.operationCount ?? 0,
+    beforeCanvasSha256: beforeRender.sha256,
+    afterCanvasSha256: afterRender.sha256,
+    canvasWidth: beforeRender.width,
+    canvasHeight: beforeRender.height,
+    beforeCanvasNonBlank: beforeRender.nonBlank,
+    afterCanvasNonBlank: afterRender.nonBlank,
+    canvasDimensionsStable,
+    pixelHashMatched,
+    renderedStateStable: beforeRender.nonBlank === true
+      && afterRender.nonBlank === true
+      && canvasDimensionsStable,
+    prototypeVisible,
+    sourceUnchanged: sourceSha256AfterBoundary === sourceSha256,
+    editedBytesProduced: prototype?.editedBytesProduced === true,
+    writeAttempted: prototype?.writeAttempted === true,
+    productSaveAsEnabled: prototype?.productSaveAsEnabled === true,
+    applyActionEnabled: prototype?.applyActionEnabled === true,
+    writeActionExposed,
+    passed: prototype?.prototypeId === "svga-bounded-sequence-repair-prototype-v1"
+      && prototype.resourceKeyCount > 0
+      && prototype.operationCount > 0
+      && beforeRender.nonBlank === true
+      && afterRender.nonBlank === true
+      && canvasDimensionsStable
+      && prototypeVisible
+      && sourceSha256AfterBoundary === sourceSha256
+      && prototype.editedBytesProduced === false
+      && prototype.writeAttempted === false
+      && prototype.productSaveAsEnabled === false
+      && prototype.applyActionEnabled === false
+      && writeActionExposed === false
+  };
+  window.__autoSvgaSequencePrototypeRenderedBoundaryProof = proof;
+  return proof;
+}
+
 async function runSingleReplacementPreviewProof(sourceBytes, resourceKey, fileName) {
   const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-a.png").then((response) => {
     if (!response.ok) throw new Error(`Replacement fixture fetch failed (${response.status})`);
@@ -3621,6 +3693,24 @@ function canvasIsNonBlank(slot = players.a) {
     if (sample[index] !== 0) return true;
   }
   return false;
+}
+
+async function collectCanvasRenderDigest(slot = players.a) {
+  const canvas = slot.canvas.querySelector("canvas");
+  if (!(canvas instanceof HTMLCanvasElement)) {
+    return { width: 0, height: 0, sha256: "", nonBlank: false };
+  }
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context || !canvas.width || !canvas.height) {
+    return { width: canvas.width ?? 0, height: canvas.height ?? 0, sha256: "", nonBlank: false };
+  }
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  return {
+    width: canvas.width,
+    height: canvas.height,
+    sha256: await p6Sha256Bytes(imageData.data),
+    nonBlank: canvasIsNonBlank(slot)
+  };
 }
 
 function rectFor(node) {
@@ -4881,6 +4971,9 @@ async function runProductSmoke() {
     p6SmokeCurrentPhase = "sequence-bounded-repair-prototype-proof";
     const sequenceBoundedRepairPrototypeProof = await runSequenceBoundedRepairPrototypeProof(bytes.slice(0));
     await captureArtifact("desktop-sequence-bounded-repair-prototype-proof");
+    p6SmokeCurrentPhase = "sequence-prototype-rendered-boundary-proof";
+    const sequencePrototypeRenderedBoundaryProof = await runSequencePrototypeRenderedBoundaryProof(bytes.slice(0));
+    await captureArtifact("desktop-sequence-prototype-rendered-boundary-proof");
     p6SmokeCurrentPhase = "replacement-readiness-proof";
     const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);
     p6SmokeCurrentPhase = "replacement-preview-proof";
@@ -5168,6 +5261,7 @@ async function runProductSmoke() {
       sequenceRepairPreviewProof,
       sequenceNoWriteSimulationProof,
       sequenceBoundedRepairPrototypeProof,
+      sequencePrototypeRenderedBoundaryProof,
       replacementReadinessProof,
       replacementPreviewProof,
       replacementUndoRedoProof,

@@ -518,3 +518,50 @@
   SHA-256 `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`,
   no edited bytes, no write attempt, product Save As disabled, apply disabled,
   and no write action exposed.
+
+### Phase 4 Sequence Rendered Boundary Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: the bounded sequence repair prototype now has before/after rendered
+  boundary evidence in the default Workbench smoke path.
+- Product behavior: product smoke pauses and samples the current SVGA canvas
+  before showing the bounded prototype, then samples again after prototype
+  rendering. The proof records both canvas hashes, dimensions, nonblank state,
+  source SHA-256 before and after, and the disabled edit/write flags.
+- Smoke evidence: product smoke reports a main-process-validated
+  `sequencePrototypeRenderedBoundaryProof` that binds the bounded prototype id,
+  26 resource keys, 1 operation, canvas dimensions, before/after canvas hashes,
+  nonblank rendered state, unchanged source SHA-256, and absence of write/Save
+  As/apply controls.
+- Repair note: the first desktop smoke attempt rejected the proof because it
+  required exact before/after pixel-hash equality. That is too strict for a
+  dynamic SVGA canvas, so the final gate treats pixel hashes as recorded
+  evidence and requires stable dimensions plus nonblank before/after rendered
+  states instead.
+- Safety boundary: no edited bytes are produced, no SVGA is written, sequence
+  repair Save As remains unavailable, and the canvas proof does not claim visual
+  repair success.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass after the rendered-proof gate repair; shared frontend suite
+  passed 7 tests, svga-web experiment suite passed 22 tests, and desktop smoke
+  reported `sequencePrototypeRenderedBoundaryProof.passed=true`,
+  `canvasDimensionsStable=true`, `renderedStateStable=true`,
+  `pixelHashMatched=false`, canvas size `300x300`, before canvas hash
+  `8ce130f931cc53099ae2e7b4b756f4b4cc2b5146c2fcf131a2e2524199018ba5`, after
+  canvas hash `b4a483631ea9f359094b6d6afcfd1a1631628cd18515c7a72a921e07168638b4`,
+  unchanged source SHA-256
+  `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, no
+  edited bytes, no write attempt, product Save As disabled, apply disabled, and
+  no write action exposed.

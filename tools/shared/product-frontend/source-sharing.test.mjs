@@ -62,12 +62,15 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /function runSequenceRepairPreviewContractProof/);
   assert.match(productApp, /function runSequenceNoWriteSimulationProof/);
   assert.match(productApp, /function runSequenceBoundedRepairPrototypeProof/);
+  assert.match(productApp, /function runSequencePrototypeRenderedBoundaryProof/);
+  assert.match(productApp, /function collectCanvasRenderDigest/);
   assert.match(productApp, /\/api\/svga-image-optimize/);
   assert.match(productApp, /optimizedReopenProof/);
   assert.match(productApp, /sequenceReviewProof/);
   assert.match(productApp, /sequenceRepairPreviewProof/);
   assert.match(productApp, /sequenceNoWriteSimulationProof/);
   assert.match(productApp, /sequenceBoundedRepairPrototypeProof/);
+  assert.match(productApp, /sequencePrototypeRenderedBoundaryProof/);
   assert.match(productApp, /function runReplacementReadinessProof/);
   assert.match(productApp, /function runSingleReplacementPreviewProof/);
   assert.match(productApp, /function runReplacementUndoRedoProof/);
