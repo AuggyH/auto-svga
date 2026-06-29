@@ -18,7 +18,7 @@ work in this dedicated autonomous branch.
 | Phase 1 stabilization baseline | Baseline pass, continue hardening only when gaps are found | `npm run desktop:smoke`; `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`; package proof privacy audit |
 | Phase 2 asset detection and optimization | Read-only Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, and optimized-output reopen proof implemented; product UI execution not exposed | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
 | Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, multi-resource replacement, and edited Save As are smoke-validated; batch/folder mapping remains prototype-only | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementSaveAsProof`; `replacementMultiResourceProof`; desktop smoke |
-| Phase 4 sequence-frame anti-flicker | Read-only Workbench sequence review, repair-preview contract, no-write simulation, bounded repair prototype, rendered boundary proof, no-op round-trip rehearsal, and failure-first byte-repair proof validation are smoke/test-validated; byte-producing repair productization not started | `sequenceReviewProof`; `sequenceRepairPreviewProof`; `sequenceNoWriteSimulationProof`; `sequenceBoundedRepairPrototypeProof`; `sequencePrototypeRenderedBoundaryProof`; `sequenceNoopRoundTripProof`; `validateSequenceByteRepairProof`; existing sequence tests in root suite; desktop smoke |
+| Phase 4 sequence-frame anti-flicker | Read-only Workbench sequence review, repair-preview contract, no-write simulation, bounded repair prototype, rendered boundary proof, no-op round-trip rehearsal, failure-first byte-repair proof validation, and a smoke-only byte-producing sequence candidate are validated; product Save As and owner acceptance remain closed | `sequenceReviewProof`; `sequenceRepairPreviewProof`; `sequenceNoWriteSimulationProof`; `sequenceBoundedRepairPrototypeProof`; `sequencePrototypeRenderedBoundaryProof`; `sequenceNoopRoundTripProof`; `validateSequenceByteRepairProof`; `sequenceByteRepairProof`; existing sequence tests in root suite; desktop smoke |
 | Production-client delivery | Internal unsigned macOS ZIP generated; signing/notarization blocked by credentials | internal trial manifest |
 
 ## Current Baseline Evidence
@@ -39,9 +39,8 @@ work in this dedicated autonomous branch.
 
 Continue with the next narrow Phase 4 sequence-frame product slice:
 
-1. add a byte-producing sequence repair candidate only behind the new validator,
-   with source delta, resource-key diff, reopened playback, rendered proof, and
-   explicit no-product-Save-As gating;
+1. add a before/after owner-visible review artifact for the smoke-only sequence
+   byte candidate without enabling product Save As;
 2. keep the candidate out of product Save As until it has manual visual
    confirmation and a separate owner-visible acceptance path;
 3. keep text editing, key rename, URL import, and structural/timeline edits

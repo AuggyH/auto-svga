@@ -666,3 +666,49 @@
   passed 23 tests including `sequence byte repair proof rejects no-op and
   write-exposed evidence`, and desktop smoke passed with the existing sequence
   proof chain unchanged and no `sequenceByteRepairProof` emitted by default.
+
+### Phase 4 Smoke-only Sequence Byte Candidate Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: the default product smoke now exercises a byte-producing sequence
+  repair candidate behind `validateSequenceByteRepairProof`.
+- Product behavior: the smoke path selects the first bounded sequence prototype
+  resource key, generates edited SVGA bytes through the existing local image
+  replacement API, reopens the edited bytes, validates playback, nonblank canvas,
+  inspection, rendered proof, source immutability, resource-key diff, and keeps
+  sequence product Save As/write controls disabled.
+- Smoke evidence: product smoke reports a main-process-validated
+  `sequenceByteRepairProof` with `roundTripMode=edited_bytes_reopen`,
+  `sourceDeltaProduced=true`, `editedBytesProduced=true`, `roundTripPassed=true`,
+  reopened playback/canvas/inspection/rendered proof all true, and one bounded
+  resource diff.
+- Safety boundary: this is still a smoke-only candidate. It does not expose
+  product Save As, does not write an SVGA through the product sequence path,
+  does not claim visual repair success, and still requires manual visual
+  confirmation before any owner-visible acceptance path.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/sequence-repair-proof-contract.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment suite
+  passed 23 tests, and desktop smoke reported
+  `sequenceByteRepairProof.passed=true` for resource key `img_1`, source SHA-256
+  `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`,
+  edited SHA-256
+  `2b90f75c38fddc3d81eea01e071e74210b9f65e09f55661057abfb9f18a3e76e`,
+  before resource SHA-256
+  `ec4dc12646e2847781bbaff67af2b27a9034edd77067fef44ce5afd6dd71067b`, after
+  resource SHA-256
+  `9a46069864408a65010780a0fa08a7350029c060818f3560f5cf3381485d74a6`,
+  `writeAttempted=false`, `productSaveAsEnabled=false`,
+  `writeActionExposed=false`, `repairSuccessClaimed=false`, and
+  `manualVisualConfirmationRequired=true`.

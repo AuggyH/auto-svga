@@ -378,6 +378,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(productApp, /runSequenceBoundedRepairPrototypeProof/);
   assert.match(productApp, /runSequencePrototypeRenderedBoundaryProof/);
   assert.match(productApp, /runSequenceNoopRoundTripProof/);
+  assert.match(productApp, /runSequenceByteRepairCandidateProof/);
   assert.match(productApp, /runSingleReplacementPreviewProof/);
   assert.match(productApp, /runReplacementUndoRedoProof/);
   assert.match(productApp, /runMultiReplacementWorkbenchProof/);
