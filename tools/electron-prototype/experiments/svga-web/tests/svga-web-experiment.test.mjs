@@ -279,6 +279,8 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /windowShown: window\.isVisible\(\)/);
 	  assert.match(main, /minimumSupported:\s*\{\s*width:\s*1180,\s*height:\s*760\s*\}/);
 	  assert.match(main, /legacyStressViewport:\s*\{\s*width:\s*900,\s*height:\s*720\s*\}/);
+	  assert.match(main, /scenario === "desktop-1440x900"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultLaunch\.width, macosWorkbenchWindowSizing\.defaultLaunch\.height\)/);
+	  assert.match(main, /scenario === "desktop-1280x800"\) window\.setContentSize\(macosWorkbenchWindowSizing\.comfortable\.width, macosWorkbenchWindowSizing\.comfortable\.height\)/);
 	  assert.match(main, /minWidth:\s*macosWorkbenchWindowSizing\.minimumSupported\.width/);
 	  assert.match(main, /minHeight:\s*macosWorkbenchWindowSizing\.minimumSupported\.height/);
 	  assert.match(main, /environmentOverrides: \{\}/);

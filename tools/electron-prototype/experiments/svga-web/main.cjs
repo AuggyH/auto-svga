@@ -2059,8 +2059,8 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
 async function captureProductArtifact(window, scenario) {
   const originalSize = window.getSize();
   const originalContentSize = window.getContentSize();
-  if (scenario === "desktop-1280x800") window.setSize(macosWorkbenchWindowSizing.comfortable.width, macosWorkbenchWindowSizing.comfortable.height);
-  if (scenario === "desktop-1440x900") window.setSize(macosWorkbenchWindowSizing.defaultLaunch.width, macosWorkbenchWindowSizing.defaultLaunch.height);
+  if (scenario === "desktop-1280x800") window.setContentSize(macosWorkbenchWindowSizing.comfortable.width, macosWorkbenchWindowSizing.comfortable.height);
+  if (scenario === "desktop-1440x900") window.setContentSize(macosWorkbenchWindowSizing.defaultLaunch.width, macosWorkbenchWindowSizing.defaultLaunch.height);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
@@ -2087,7 +2087,7 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
   } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
-    window.setSize(originalSize[0], originalSize[1]);
+    window.setContentSize(originalContentSize[0], originalContentSize[1]);
   }
   const fixture = scenarioFixtureMetadata(scenario);
   addProductArtifactRecord({
