@@ -1962,6 +1962,89 @@ function suggestedEditedFileName(fileName) {
   return `${baseName}-replaced.svga`;
 }
 
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+async function sha256Json(value) {
+  return p6Sha256Bytes(new TextEncoder().encode(stableStringify(value)));
+}
+
+async function createReplacementSaveValidation(edit) {
+  const roundTripReport = edit.roundTripReport ?? {};
+  return {
+    schemaVersion: 1,
+    milestoneId: "P3",
+    operationSequence: edit.operationSequence ?? 0,
+    replacementDigest: JSON.stringify([{
+      resourceKey: edit.resourceKey,
+      replacementSha256: edit.replacementSha256,
+      editedSha256: edit.editedSha256
+    }]),
+    roundTripReportDigest: await sha256Json(roundTripReport),
+    editedBytesSha256: edit.editedSha256,
+    reportSchemaVersion: roundTripReport.schemaVersion,
+    reportMilestoneId: roundTripReport.milestoneId,
+    reportPassed: roundTripReport.passed === true,
+    replacementCount: 1,
+    unexpectedChangesEmpty: Array.isArray(roundTripReport.unexpectedChanges)
+      && roundTripReport.unexpectedChanges.length === 0
+  };
+}
+
+function canSaveReplacementPreview() {
+  return Boolean(
+    primaryReplacementEdit?.passed
+      && electronBridge?.saveEditedSvga
+      && primaryReplacementEdit.sourceIdentity?.sourceId
+  );
+}
+
+async function saveReplacementPreview() {
+  if (!primaryReplacementEdit?.passed || !primaryReplacementEdit.editedBytes) {
+    showError("当前替换预览尚未通过重开验证。");
+    return undefined;
+  }
+  const sourceId = primaryReplacementEdit.sourceIdentity?.sourceId;
+  if (!sourceId) {
+    showError("请先通过桌面 File > Open 打开源 SVGA，再另存替换结果。");
+    return undefined;
+  }
+  if (!electronBridge?.saveEditedSvga) {
+    showError("当前宿主不支持编辑结果另存为。");
+    return undefined;
+  }
+  const validation = await createReplacementSaveValidation(primaryReplacementEdit);
+  const result = await electronBridge.saveEditedSvga({
+    bytesBase64: bytesToBase64(primaryReplacementEdit.editedBytes),
+    suggestedName: suggestedEditedFileName(primaryReplacementEdit.sourceIdentity?.fileName),
+    sourceId,
+    validation
+  });
+  if (!result || result.status === "cancelled") {
+    addLog("info", "已取消替换结果另存为。");
+    return result;
+  }
+  const savedBytes = base64ToBytes(result.savedSvgaBase64 ?? "");
+  await loadSvga("a", URL.createObjectURL(new Blob([savedBytes], { type: "application/octet-stream" })), {
+    fileName: result.fileName,
+    fileSizeBytes: result.sizeBytes,
+    sourceId: result.sourceId ?? null,
+    sourceSha256: result.sha256,
+    fixtureSha256: result.sha256,
+    skipReplacementReadiness: true,
+    loadingHoldMs: 80
+  });
+  primaryReplacementEdit = undefined;
+  renderInfoPanel();
+  addLog("success", `替换结果已另存为：${result.fileName}`);
+  return result;
+}
+
 async function replacePrimaryResource(resourceKey, file) {
   const resource = replacementReadinessForResource(resourceKey);
   if (!resource?.replaceable) {
@@ -2151,6 +2234,78 @@ async function runSingleReplacementPreviewProof(sourceBytes, resourceKey, fileNa
     };
   } finally {
     URL.revokeObjectURL(editedUrl);
+  }
+}
+
+async function runReplacementSaveAsProof(sourceBytes, resourceKey, fileName) {
+  const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-a.png").then((response) => {
+    if (!response.ok) throw new Error(`Replacement fixture fetch failed (${response.status})`);
+    return response.arrayBuffer();
+  }));
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const replacementSha256 = await p6Sha256Bytes(replacementBytes);
+  const payload = await replaceSvgaImageResource(sourceBytes, resourceKey, replacementBytes, fileName);
+  const editedBytes = base64ToBytes(payload.editedSvgaBase64 ?? "");
+  const editedSha256 = await p6Sha256Bytes(editedBytes);
+  const edit = {
+    operationSequence: 0,
+    resourceKey,
+    replacementSha256,
+    editedSha256,
+    roundTripReport: payload.roundTripReport,
+    editedBytes
+  };
+  const validation = await createReplacementSaveValidation(edit);
+  const result = await electronBridge.saveEditedSvga({
+    bytesBase64: bytesToBase64(editedBytes),
+    suggestedName: suggestedEditedFileName(fileName),
+    sourceId: "",
+    validation
+  });
+  const savedBytes = base64ToBytes(result.savedSvgaBase64 ?? "");
+  const savedSha256 = await p6Sha256Bytes(savedBytes);
+  const savedUrl = URL.createObjectURL(new Blob([savedBytes], { type: "application/octet-stream" }));
+  try {
+    await loadSvga("a", savedUrl, {
+      fileName: result.fileName,
+      fileSizeBytes: result.sizeBytes,
+      sourceId: result.sourceId ?? null,
+      sourceSha256: result.sha256,
+      fixtureSha256: savedSha256,
+      skipReplacementReadiness: true,
+      loadingHoldMs: 80
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    const reopenedInspectionReport = await waitForInspectionStatus(players.a);
+    const renderedProof = collectRenderedStateProof("loaded");
+    return {
+      schemaVersion: 1,
+      proofId: "svga-replacement-save-as-proof",
+      source: "saveEditedSvga-ipc",
+      sourceSha256,
+      resourceKey,
+      editedSha256,
+      savedSha256,
+      savedFileName: result.fileName,
+      saveStatus: result.status,
+      roundTripPassed: payload.roundTripReport?.passed === true,
+      savedHashBound: savedSha256 === editedSha256 && result.sha256 === savedSha256,
+      reopenedPlayback: Boolean(players.a.player),
+      reopenedCanvasNonBlank: canvasIsNonBlank(players.a),
+      reopenedInspectionReport,
+      renderedProofPassed: renderedProof.passed === true,
+      passed: result.status === "saved"
+        && payload.roundTripReport?.passed === true
+        && savedSha256 === editedSha256
+        && result.sha256 === savedSha256
+        && Boolean(players.a.player)
+        && canvasIsNonBlank(players.a)
+        && reopenedInspectionReport
+        && renderedProof.passed === true
+    };
+  } finally {
+    URL.revokeObjectURL(savedUrl);
   }
 }
 
@@ -4116,6 +4271,12 @@ async function runProductSmoke() {
       p6BaselineFixtureDisplayName
     );
     await captureArtifact("desktop-replacement-preview-proof");
+    p6SmokeCurrentPhase = "replacement-save-as-proof";
+    const replacementSaveAsProof = await runReplacementSaveAsProof(
+      bytes.slice(0),
+      replacementReadinessProof.replaceableResourceKeys[0],
+      p6BaselineFixtureDisplayName
+    );
     p6SmokeCurrentPhase = "optimized-reopen-proof";
     const optimizerFixtureUrl = "/fixture/optimizer-reopen-smoke.svga";
     const optimizerFixtureBytes = new Uint8Array(await fetch(optimizerFixtureUrl).then((response) => {
@@ -4372,6 +4533,7 @@ async function runProductSmoke() {
       cleanup: true,
       replacementReadinessProof,
       replacementPreviewProof,
+      replacementSaveAsProof,
       optimizedReopenProof,
       p6InteractionTrace: await buildP6SmokeInteractionTrace(),
       ownerUsability,
@@ -4823,6 +4985,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     <div class="assetIntelligenceSummary">
       <strong>替换预览</strong>
       <span>${escapeHtml(primaryReplacementEdit.resourceKey)} 已使用 ${escapeHtml(primaryReplacementEdit.replacementFileName ?? "PNG")} 替换并重开。</span>
+      <button class="sequenceToggle" type="button" data-save-replacement-preview ${canSaveReplacementPreview() ? "" : "disabled"}>另存为</button>
       <button class="sequenceToggle" type="button" data-reset-replacement-preview>还原预览</button>
     </div>
   ` : "";
@@ -5759,6 +5922,11 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
   const resetReplacementButton = event.target.closest("[data-reset-replacement-preview]");
   if (resetReplacementButton) {
     resetReplacementPreview().catch((error) => showError(`还原失败：${error.message}`));
+    return;
+  }
+  const saveReplacementButton = event.target.closest("[data-save-replacement-preview]");
+  if (saveReplacementButton) {
+    saveReplacementPreview().catch((error) => showError(`另存失败：${error.message}`));
     return;
   }
   const replaceButton = event.target.closest("[data-replace-resource-key]");

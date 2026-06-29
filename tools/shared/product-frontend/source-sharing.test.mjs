@@ -62,10 +62,12 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /optimizedReopenProof/);
   assert.match(productApp, /function runReplacementReadinessProof/);
   assert.match(productApp, /function runSingleReplacementPreviewProof/);
+  assert.match(productApp, /function runReplacementSaveAsProof/);
   assert.match(productApp, /\/api\/svga-image-edit-session/);
   assert.match(productApp, /\/api\/svga-image-replace/);
   assert.match(productApp, /replacementReadinessProof/);
   assert.match(productApp, /replacementPreviewProof/);
+  assert.match(productApp, /replacementSaveAsProof/);
   assert.match(productApp, /可替换/);
   assert.match(productApp, /function setSlotErrorFeedback/);
   assert.match(webAdapter, /hostKind: "web"/);

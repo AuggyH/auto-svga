@@ -196,6 +196,11 @@ function validateSmokeResult(value) {
     if (!replacementPreviewProof) return undefined;
     result.replacementPreviewProof = replacementPreviewProof;
   }
+  if (value.replacementSaveAsProof !== undefined) {
+    const replacementSaveAsProof = validateReplacementSaveAsProof(value.replacementSaveAsProof);
+    if (!replacementSaveAsProof) return undefined;
+    result.replacementSaveAsProof = replacementSaveAsProof;
+  }
   return result;
 }
 
@@ -237,7 +242,50 @@ function describeSmokeResultValidationFailure(value) {
   if (value.replacementPreviewProof !== undefined && !validateReplacementPreviewProof(value.replacementPreviewProof)) {
     return "replacementPreviewProof";
   }
+  if (value.replacementSaveAsProof !== undefined && !validateReplacementSaveAsProof(value.replacementSaveAsProof)) {
+    return "replacementSaveAsProof";
+  }
   return "unknown";
+}
+
+function validateReplacementSaveAsProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "svga-replacement-save-as-proof") return undefined;
+  if (value.source !== "saveEditedSvga-ipc") return undefined;
+  if (!isSha256(value.sourceSha256) || !isSha256(value.editedSha256) || !isSha256(value.savedSha256)) return undefined;
+  if (value.editedSha256 === value.sourceSha256 || value.savedSha256 !== value.editedSha256) return undefined;
+  if (!isBoundedString(value.resourceKey, 120)) return undefined;
+  if (!isBoundedString(value.savedFileName, 180) || !value.savedFileName.endsWith(".svga")) return undefined;
+  if (
+    value.saveStatus !== "saved"
+    || value.roundTripPassed !== true
+    || value.savedHashBound !== true
+    || value.reopenedPlayback !== true
+    || value.reopenedCanvasNonBlank !== true
+    || value.reopenedInspectionReport !== true
+    || value.renderedProofPassed !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    resourceKey: value.resourceKey,
+    editedSha256: value.editedSha256,
+    savedSha256: value.savedSha256,
+    savedFileName: value.savedFileName,
+    saveStatus: "saved",
+    roundTripPassed: true,
+    savedHashBound: true,
+    reopenedPlayback: true,
+    reopenedCanvasNonBlank: true,
+    reopenedInspectionReport: true,
+    renderedProofPassed: true,
+    passed: true
+  };
 }
 
 function validateReplacementPreviewProof(value) {
@@ -1252,7 +1300,9 @@ function validateSaveRevisionBinding(value, bytes) {
       : value.milestoneId === "P5"
         ? "P5"
         : "";
-  if (!milestoneId || milestoneId !== productMilestoneId) return undefined;
+  const productWorkbenchAllowsP3Save = milestoneId === "P3"
+    && ["P2", "P6", "P6-R1"].includes(productMilestoneId);
+  if (!milestoneId || (milestoneId !== productMilestoneId && !productWorkbenchAllowsP3Save)) return undefined;
   if (value.schemaVersion !== 1) return undefined;
   if (!Number.isInteger(value.operationSequence) || value.operationSequence < 0) return undefined;
   if (typeof value.replacementDigest !== "string" || value.replacementDigest.length === 0 || value.replacementDigest.length > 20_000) return undefined;
@@ -2630,7 +2680,8 @@ async function saveEditedSvga(input) {
   const p3SmokeSaveAs = productMilestoneId === "P3" && (smokeMode || productSmokeMode || normalProofMode);
   const p4SmokeSaveAs = productMilestoneId === "P4" && (smokeMode || productSmokeMode || normalProofMode);
   const p5SmokeSaveAs = productMilestoneId === "P5" && (smokeMode || productSmokeMode || normalProofMode);
-  const automatedProductSaveAs = p3SmokeSaveAs || p4SmokeSaveAs || p5SmokeSaveAs;
+  const p3WorkbenchSmokeSaveAs = value.validation.milestoneId === "P3" && (smokeMode || productSmokeMode || normalProofMode);
+  const automatedProductSaveAs = p3SmokeSaveAs || p4SmokeSaveAs || p5SmokeSaveAs || p3WorkbenchSmokeSaveAs;
   const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
   if (!automatedProductSaveAs && !originalPath) {
     throw new Error("Save As requires the source SVGA to be opened through the desktop file picker.");

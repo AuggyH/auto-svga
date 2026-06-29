@@ -253,3 +253,37 @@
 - Result: pass; shared frontend suite passed 7 tests, svga-web experiment
   suite passed 22 tests, and desktop smoke reported
   `replacementPreviewProof.passed=true` for `img_0`.
+
+### Phase 3 Edited Save As Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: single-resource replacement output now has a report-bound edited
+  Save As path with smoke reopen proof.
+- Product behavior: the replacement preview summary exposes an `另存为` action
+  only when the edit preview passed and the source SVGA was opened through the
+  desktop host identity path. Save payloads include edited bytes, a P3
+  round-trip validation binding, edited SHA-256, replacement digest, and report
+  digest. In product smoke, `saveEditedSvga` writes the edited SVGA to the
+  controlled artifact path, returns saved bytes, and the renderer reopens them
+  through the normal product loader.
+- Safety boundary: browser-only file input replacement previews remain
+  preview-only until a desktop source identity exists. Same-path overwrite
+  protection remains host-side. This slice still does not implement undo-redo,
+  multi-resource product UI, URL import, text editing, key rename, or timeline
+  edits.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment
+  suite passed 22 tests, and desktop smoke reported
+  `replacementSaveAsProof.passed=true` with saved hash equal to the edited hash
+  and reopened playback/canvas/inspection success.
