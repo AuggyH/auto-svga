@@ -1,7 +1,7 @@
 import { renderAvatarFrameInspectionReport } from "./inspection-report-view.mjs";
 import { getProductHostAdapter } from "./web-host-adapter.mjs";
 import { toWorkbenchLayoutProps } from "../../../dist/layout/layoutAdapter.js";
-import { layoutEngine } from "../../../dist/layout/layoutEngine.js";
+import { layoutEngine, layoutRuntimeCheckpoints } from "../../../dist/layout/layoutEngine.js";
 
 const hostAdapter = getProductHostAdapter();
 const fetch = hostAdapter.http.fetch;
@@ -197,13 +197,14 @@ let activeSidePanel = null;
 let sidePanelReturnFocus = null;
 let compareEnabled = false;
 let syncIsPlaying = false;
-let infoPanelWidth = Number(localStorage.getItem("autoSvgaInfoPanelWidth")) || 420;
-let logsPanelWidth = Number(localStorage.getItem("autoSvgaLogsPanelWidth")) || 560;
 const layoutUserPreferences = {
   leftCollapsed: localStorage.getItem("autoSvgaLeftPanelCollapsed") === "true",
   rightCollapsed: localStorage.getItem("autoSvgaRightPanelCollapsed") === "true"
 };
-let currentLayoutProps = toWorkbenchLayoutProps(layoutEngine.resolve(window.innerWidth, window.innerHeight, layoutUserPreferences));
+const initialLayoutProps = toWorkbenchLayoutProps(layoutEngine.resolve(window.innerWidth, window.innerHeight, layoutUserPreferences));
+let infoPanelWidth = Number(localStorage.getItem("autoSvgaInfoPanelWidth")) || initialLayoutProps.resize.infoPanel.defaultWidth;
+let logsPanelWidth = Number(localStorage.getItem("autoSvgaLogsPanelWidth")) || initialLayoutProps.resize.logsPanel.defaultWidth;
+let currentLayoutProps = initialLayoutProps;
 let manualArtifactSelection = false;
 let latestArtifactGroup;
 let artifactAutoLoading = false;
@@ -967,8 +968,6 @@ function applyWorkbenchLayout() {
   for (const [name, value] of Object.entries(currentLayoutProps.cssVariables)) {
     rootStyle.setProperty(name, value);
   }
-  rootStyle.setProperty("--info-panel-width", `${currentLayoutProps.resize.infoPanel.width}px`);
-  rootStyle.setProperty("--logs-panel-width", `${currentLayoutProps.resize.logsPanel.width}px`);
 
   workspace.classList.toggle("sourceCollapsed", currentLayoutProps.workspace.sourceCollapsed);
   workspace.classList.toggle("inspectorCollapsed", currentLayoutProps.workspace.inspectorCollapsed);
@@ -2564,6 +2563,21 @@ function visibleRectForSelector(selector) {
 function collectWorkbenchLayoutIntegrity(regions) {
   const failures = [];
   const viewport = { width: innerWidth, height: innerHeight };
+  const compactState = layoutEngine.resolve(
+    layoutRuntimeCheckpoints.compact.width,
+    layoutRuntimeCheckpoints.compact.height
+  );
+  const minimalState = layoutEngine.resolve(
+    layoutRuntimeCheckpoints.minimal.width,
+    layoutRuntimeCheckpoints.minimal.height
+  );
+  const compactSidePanelsCollapse = compactState.left.collapsed === false
+    && compactState.right.collapsed === true
+    && minimalState.left.collapsed === true
+    && minimalState.right.collapsed === true
+    && compactState.center.width >= compactState.center.minWidth
+    && minimalState.center.width >= minimalState.center.minWidth;
+  if (!compactSidePanelsCollapse) failures.push("compact_side_panels_collapse_policy_failed");
   const source = regions.find((region) => region.id === "source_document");
   if (source?.rect && source.rect.y < 56) failures.push("source_document_maps_toolbar_instead_of_left_panel");
 
@@ -2629,6 +2643,7 @@ function collectWorkbenchLayoutIntegrity(regions) {
       noVerticalFilterWrapping: !failures.some((failure) => failure.startsWith("resource_filter")),
       noOneCharacterChips: !failures.some((failure) => failure.startsWith("one_character_chip")),
       inspectorTextReadable: !failures.some((failure) => failure.startsWith("inspector_text_clipped")),
+      compactSidePanelsCollapse,
       primaryActionVisible: !failures.includes("primary_file_action_not_visible")
     },
     failures
@@ -5123,9 +5138,6 @@ for (const select of [fitModeA, fitModeB, fitModeReference]) {
 
 window.addEventListener("resize", () => {
   closeFitMenus();
-  applyWorkbenchLayout();
-  applyInfoPanelWidth(infoPanelWidth);
-  applyLogsPanelWidth(logsPanelWidth);
   window.requestAnimationFrame(refreshLayout);
 });
 
@@ -5285,6 +5297,7 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () 
 function setupPanelResize(handle, options) {
   if (!handle) return;
   const { defaultWidth, storageKey, apply, getWidth, bodyClass } = options;
+  const readDefault = () => typeof defaultWidth === "function" ? defaultWidth() : defaultWidth;
   const readMinimum = () => typeof options.minimum === "function" ? options.minimum() : options.minimum;
   const readMaximum = () => typeof options.maximum === "function" ? options.maximum() : options.maximum;
   const updateAria = () => {
@@ -5326,8 +5339,9 @@ function setupPanelResize(handle, options) {
     refreshLayout();
   });
   handle.addEventListener("dblclick", () => {
-    apply(defaultWidth);
-    localStorage.setItem(storageKey, String(defaultWidth));
+    const next = readDefault();
+    apply(next);
+    localStorage.setItem(storageKey, String(next));
     refreshLayout();
   });
   updateAria();
@@ -5340,7 +5354,7 @@ setupDropZone(toolbar, "auto");
 for (const slotKey of ["a", "b", "reference"]) restoreFitMode(slotKey);
 setupDropdownMenus();
 setupPanelResize(infoPanelResizeHandle, {
-  defaultWidth: 420,
+  defaultWidth: () => currentLayoutProps.resize.infoPanel.defaultWidth,
   minimum: () => currentLayoutProps.resize.infoPanel.min,
   maximum: () => currentLayoutProps.resize.infoPanel.max,
   storageKey: "autoSvgaInfoPanelWidth",
@@ -5349,7 +5363,7 @@ setupPanelResize(infoPanelResizeHandle, {
   bodyClass: "isResizingInfoPanel"
 });
 setupPanelResize(logsPanelResizeHandle, {
-  defaultWidth: 440,
+  defaultWidth: () => currentLayoutProps.resize.logsPanel.defaultWidth,
   minimum: () => currentLayoutProps.resize.logsPanel.min,
   maximum: () => currentLayoutProps.resize.logsPanel.max,
   storageKey: "autoSvgaLogsPanelWidth",
@@ -5422,8 +5436,6 @@ document.addEventListener("keydown", (event) => {
 
 try {
   applyWorkbenchLayout();
-  applyInfoPanelWidth(infoPanelWidth);
-  applyLogsPanelWidth(logsPanelWidth);
   applyThemePreference(localStorage.getItem("autoSvgaTheme") ?? "system");
   setPreviewBackground(localStorage.getItem("autoSvgaPreviewBackground") ?? "checkerboard");
   installStateProbe();

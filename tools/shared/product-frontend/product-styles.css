@@ -336,9 +336,6 @@ label.isDisabled {
   flex: 1;
   height: 0;
   min-height: 0;
-  padding: 14px 18px 18px;
-  overflow: hidden;
-  transition: grid-template-columns var(--motion-panel), gap var(--motion-panel), padding var(--motion-fast);
 }
 
 .previewCard,
@@ -1230,11 +1227,11 @@ label.isDisabled {
 }
 
 .infoPanel {
-  max-width: 15vw;
+  max-width: none;
 }
 
 .logsPanel {
-  max-width: 15vw;
+  max-width: none;
 }
 
 .resizeHandle {
@@ -3127,14 +3124,6 @@ body {
   letter-spacing: 0;
 }
 
-.workspace {
-  flex: none;
-  height: auto;
-  min-height: calc(100dvh - 72px);
-  overflow: visible;
-  align-items: stretch;
-}
-
 .previewCard,
 .infoPanel,
 .logsPanel,
@@ -3157,15 +3146,15 @@ body {
 }
 
 .infoPanel {
-  width: var(--info-panel-width, 100%);
-  min-width: 320px;
-  max-width: min(560px, 42vw);
+  width: var(--layout-info-panel-width, 100%);
+  min-width: var(--layout-info-panel-min-width, 280px);
+  max-width: var(--layout-info-panel-max-width, none);
 }
 
 .logsPanel {
-  width: var(--logs-panel-width, 100%);
-  min-width: 420px;
-  max-width: min(720px, 50vw);
+  width: var(--layout-logs-panel-width, 100%);
+  min-width: var(--layout-logs-panel-min-width, 320px);
+  max-width: var(--layout-logs-panel-max-width, none);
 }
 
 .resizeHandle {
@@ -3809,13 +3798,7 @@ button:disabled {
 /* P6-R1 owner workbench IA: Source / Preview / Inspector foundation. */
 .workspace {
   min-width: 0;
-  grid-template-columns:
-    var(--layout-left-width, 0px)
-    minmax(var(--layout-center-min-width, 0px), 1fr)
-    var(--layout-right-width, 0px);
   grid-template-areas: "source preview inspector";
-  gap: var(--layout-gap, 0px);
-  padding: var(--visual-space-body);
   background: var(--visual-surface-0);
 }
 
@@ -4574,10 +4557,10 @@ body {
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 12px 14px;
+  padding: var(--layout-workspace-padding-block, 12px) var(--layout-workspace-padding-inline, 14px);
   overflow: hidden;
   align-items: stretch;
-  gap: 12px;
+  gap: var(--layout-gap, 12px);
 }
 
 .previewCard,
@@ -4673,9 +4656,9 @@ body {
   bottom: 14px;
   z-index: 40;
   display: flex;
-  width: min(var(--info-panel-width, 100%), calc(100vw - 28px));
-  min-width: min(320px, calc(100vw - 28px));
-  max-width: min(440px, calc(100vw - 28px));
+  width: min(var(--layout-info-panel-width, 100%), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
+  min-width: min(var(--layout-info-panel-min-width, 320px), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
+  max-width: min(var(--layout-info-panel-max-width, 440px), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
   height: auto;
   min-height: 0;
   opacity: 1;
@@ -4685,8 +4668,9 @@ body {
 }
 
 .logsPanel {
-  width: min(var(--logs-panel-width, 100%), calc(100vw - 28px));
-  max-width: min(480px, calc(100vw - 28px));
+  width: min(var(--layout-logs-panel-width, 100%), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
+  min-width: min(var(--layout-logs-panel-min-width, 320px), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
+  max-width: min(var(--layout-logs-panel-max-width, 480px), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
 }
 
 .infoPanel.isHidden,
@@ -5009,7 +4993,6 @@ body,
 .workspace {
   height: 100%;
   min-height: 0;
-  overflow: hidden;
 }
 
 .previewCard,
@@ -5903,4 +5886,57 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 .statusPill,
 .filePill {
   white-space: nowrap;
+}
+
+/* Runtime layout enforcement: all structural sizes are sourced from layoutEngine variables. */
+.workspace,
+.workspace.mode-localPreview,
+.workspace.mode-localPreview.withCompare,
+.workspace.mode-exportReview,
+.workspace.mode-localPreview.withSidePanel,
+.workspace.mode-localPreview.withCompare.withSidePanel,
+.workspace.mode-exportReview.withSidePanel {
+  display: grid !important;
+  grid-template-columns:
+    var(--layout-left-width, 0px)
+    var(--layout-center-width, minmax(0, 1fr))
+    var(--layout-right-width, 0px) !important;
+  grid-template-areas: "source preview inspector";
+  gap: var(--layout-gap, 0px) !important;
+  padding: var(--layout-workspace-padding-block, 12px) var(--layout-workspace-padding-inline, 14px) !important;
+}
+
+.sourcePanel,
+.previewDeck,
+.inspectorPanel {
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.sourcePanel,
+.inspectorPanel {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.previewDeck {
+  width: 100%;
+  overflow: hidden;
+}
+
+.workspace.inspectorCollapsed.inspectorExpanded .inspectorPanel {
+  position: fixed !important;
+  top: calc(56px + var(--layout-workspace-padding-block, 12px));
+  right: var(--layout-workspace-padding-inline, 14px);
+  bottom: var(--layout-workspace-padding-block, 12px);
+  width: var(--layout-info-panel-width, 100%) !important;
+  min-width: var(--layout-info-panel-min-width, 280px) !important;
+  max-width: var(--layout-info-panel-max-width, 360px) !important;
+  height: auto !important;
+}
+
+.logsPanel {
+  width: var(--layout-logs-panel-width, 100%) !important;
+  min-width: var(--layout-logs-panel-min-width, 320px) !important;
+  max-width: var(--layout-logs-panel-max-width, 480px) !important;
 }

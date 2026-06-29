@@ -17,11 +17,29 @@ export interface LayoutState {
   readonly height: number;
   readonly mode: LayoutMode;
   readonly gap: number;
+  readonly paddingInline: number;
+  readonly paddingBlock: number;
+  readonly contentWidth: number;
+  readonly contentHeight: number;
   readonly left: PanelLayout;
   readonly center: PanelLayout;
   readonly right: PanelLayout;
   readonly minTotal: number;
   readonly rightPresentation: "inline" | "drawer" | "overlay";
+  readonly floatingPanels: {
+    readonly info: {
+      readonly width: number;
+      readonly defaultWidth: number;
+      readonly minWidth: number;
+      readonly maxWidth: number;
+    };
+    readonly logs: {
+      readonly width: number;
+      readonly defaultWidth: number;
+      readonly minWidth: number;
+      readonly maxWidth: number;
+    };
+  };
   readonly auxiliaryPanels: {
     readonly logs: {
       readonly width: number;
