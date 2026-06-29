@@ -745,3 +745,42 @@
   immediately become stale after the documentation commit.
 - Commands:
   `git diff --check`
+
+### Phase 2 Safe Optimization Product Entry Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`,
+  `docs/autonomous/LESSONS_CANDIDATES.md`,
+  `docs/reviews/2026-06-30-codex-svga-workbench-safe-optimization-ui.md`
+- Result: exposed the existing safe SVGA image optimizer as a bounded desktop
+  `生成优化副本` action in the Asset Intelligence panel.
+- Product behavior: the button appears only when deterministic Asset
+  Intelligence reports safe auto-optimization candidates. It is enabled only in
+  the desktop host when the source SVGA carries the secure file identity from
+  File > Open, then invokes the token-bound optimizer, uses report-bound
+  optimized Save As IPC, reloads the saved SVGA, and verifies the saved hash
+  against the optimizer report.
+- Safety boundary: drag/drop files remain unable to Save As optimized output
+  because they do not carry host file-path authority. Original files are never
+  modified in place. Risky optimization classes remain suggestion-only.
+- Repair note: host-opened `File` objects already carried source identity in the
+  Electron menu injection path, but the shared frontend loader did not preserve
+  it in `sourceIdentity`. The loader now forwards `autoSvgaSourceId` and
+  `autoSvgaSourceHash`; the ordinary visible proof injection was aligned with
+  the same metadata behavior.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment suite
+  passed 23 tests, and desktop smoke passed with the existing optimized reopen,
+  replacement Save As, multi-resource replacement, and sequence proof chain
+  still accepted.

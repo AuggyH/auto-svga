@@ -3855,6 +3855,8 @@ async function driveCanonicalNormalProof(window) {
       }
       const bytes = new Uint8Array(opened.bytes);
       const file = new File([bytes], opened.basename ?? "repository-avatar-frame-basic.svga", { type: "application/octet-stream" });
+      Object.defineProperty(file, "autoSvgaSourceId", { value: opened.sourceId, configurable: true });
+      Object.defineProperty(file, "autoSvgaSourceHash", { value: opened.hash, configurable: true });
       const transfer = new DataTransfer();
       transfer.items.add(file);
       const input = document.querySelector("#svgaFileInput");

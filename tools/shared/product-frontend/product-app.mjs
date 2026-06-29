@@ -222,6 +222,7 @@ let toastTimer;
 let p6PrimaryRecoveredFromInvalid = false;
 let pendingReplacementResourceKey;
 let primaryReplacementEdit;
+let primaryOptimizationState = { status: "idle" };
 let replacementUndoStack = [];
 let replacementRedoStack = [];
 let replacementOperationSequence = 0;
@@ -454,6 +455,7 @@ function resetSlotMediaState(slot, { clearReport = false, preserveReplacementHis
   if (slot.slotName === "A") {
     setP6PrimaryRecoveredFromInvalid(false);
     primaryReplacementEdit = undefined;
+    primaryOptimizationState = { status: "idle" };
     if (!preserveReplacementHistory) clearReplacementPreviewState();
     svgaFilePillA.hidden = true;
     svgaFilePillA.textContent = "";
@@ -2016,6 +2018,11 @@ function suggestedEditedFileName(fileName) {
   return `${baseName}-replaced.svga`;
 }
 
+function suggestedOptimizedFileName(fileName) {
+  const baseName = String(fileName || "optimized-output.svga").replace(/\.svga$/i, "");
+  return `${baseName}-optimized.svga`;
+}
+
 function stableStringify(value) {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
   if (value && typeof value === "object") {
@@ -2109,6 +2116,91 @@ function canSaveReplacementPreview() {
       && electronBridge?.saveEditedSvga
       && primaryReplacementEdit.sourceIdentity?.sourceId
   );
+}
+
+function safeOptimizationCandidateCount() {
+  return Number(players.a.inspectionReport?.assetIntelligence?.summary?.safeAutoOptimizeFindingCount ?? 0);
+}
+
+function canSaveOptimizedPrimarySvga() {
+  return Boolean(
+    safeOptimizationCandidateCount() > 0
+      && primaryOptimizationState.status !== "saving"
+      && electronBridge?.saveOptimizedSvga
+      && players.a.sourceIdentity?.sourceId
+      && players.a.source
+      && players.a.parseStatus !== "error"
+      && players.a.renderStatus !== "error"
+  );
+}
+
+async function saveOptimizedPrimarySvga() {
+  if (safeOptimizationCandidateCount() <= 0) {
+    showError("当前 SVGA 没有可安全自动优化的资源。");
+    return undefined;
+  }
+  if (!electronBridge?.saveOptimizedSvga) {
+    showError("当前宿主不支持优化结果另存为。");
+    return undefined;
+  }
+  const sourceIdentity = players.a.sourceIdentity ?? {};
+  const sourceId = sourceIdentity.sourceId;
+  if (!sourceId) {
+    showError("请先通过桌面 File > Open 打开源 SVGA，再生成优化副本。");
+    return undefined;
+  }
+
+  try {
+    clearError();
+    primaryOptimizationState = { status: "saving", message: "正在生成优化副本" };
+    renderInfoPanel();
+    const sourceBytes = await readPrimarySourceBytes();
+    const sourceFileName = sourceIdentity.fileName ?? players.a.metrics?.fileName ?? "optimized-output.svga";
+    const payload = await optimizeSvgaImageResources(sourceBytes, sourceFileName);
+    const optimizedBytes = base64ToBytes(payload.optimizedSvgaBase64 ?? "");
+    const optimizationReport = payload.optimizationReport ?? {};
+    const result = await electronBridge.saveOptimizedSvga({
+      bytesBase64: bytesToBase64(optimizedBytes),
+      suggestedName: suggestedOptimizedFileName(sourceFileName),
+      sourceId,
+      optimizationReport
+    });
+    if (!result || result.status === "cancelled") {
+      primaryOptimizationState = { status: "idle", message: "已取消优化副本另存为" };
+      renderInfoPanel();
+      addLog("info", "已取消优化副本另存为。");
+      return result;
+    }
+    const savedBytes = base64ToBytes(result.savedSvgaBase64 ?? "");
+    const savedSha256 = await p6Sha256Bytes(savedBytes);
+    if (result.sha256 !== savedSha256 || optimizationReport.optimizedSha256 !== savedSha256) {
+      throw new Error("优化结果哈希校验失败。");
+    }
+    await loadSvga("a", URL.createObjectURL(new Blob([savedBytes], { type: "application/octet-stream" })), {
+      fileName: result.fileName,
+      fileSizeBytes: result.sizeBytes,
+      sourceId: result.sourceId ?? null,
+      sourceSha256: result.sha256,
+      fixtureSha256: savedSha256,
+      loadingHoldMs: 80
+    });
+    primaryOptimizationState = {
+      status: "saved",
+      message: `${result.fileName} 已另存并重开`,
+      originalImageCount: optimizationReport.originalImageCount,
+      optimizedImageCount: optimizationReport.optimizedImageCount,
+      removedResourceCount: Array.isArray(optimizationReport.removedResourceKeys) ? optimizationReport.removedResourceKeys.length : 0
+    };
+    renderInfoPanel();
+    addLog("success", `优化副本已另存并重开：${result.fileName}`);
+    return result;
+  } catch (error) {
+    primaryOptimizationState = { status: "error", message: error.message };
+    renderInfoPanel();
+    showError(`优化失败：${error.message}`);
+    addLog("error", `优化失败：${error.message}`);
+    return undefined;
+  }
 }
 
 async function applyReplacementPreviewSnapshot(snapshot, fallbackEdit, actionLabel) {
@@ -3314,6 +3406,9 @@ function handleSvgaFile(file, slotKey) {
   loadSvga(slotKey, slot.objectUrl, {
     fileName: file.name,
     fileSizeBytes: file.size,
+    sourceId: typeof file.autoSvgaSourceId === "string" ? file.autoSvgaSourceId : null,
+    sourceSha256: typeof file.autoSvgaSourceHash === "string" ? file.autoSvgaSourceHash : null,
+    fixtureSha256: typeof file.autoSvgaSourceHash === "string" ? file.autoSvgaSourceHash : undefined,
     isDefault: false
   }).catch(() => undefined);
 }
@@ -5862,11 +5957,25 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
   const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
   const sequenceRepairPreviewPlan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
   const safeSavings = intelligence?.summary.estimatedSafeFileSizeSavingsBytes;
+  const canSaveOptimized = canSaveOptimizedPrimarySvga();
+  const optimizationDisabledReason = safeOptimizationCandidateCount() <= 0
+    ? "当前没有安全候选"
+    : !electronBridge?.saveOptimizedSvga
+      ? "当前宿主不支持另存"
+      : !players.a.sourceIdentity?.sourceId
+        ? "请先通过 File > Open 打开源文件"
+        : primaryOptimizationState.status === "saving"
+          ? "正在生成优化副本"
+          : "";
+  const optimizationStateText = primaryOptimizationState.message
+    ? `<em>${escapeHtml(primaryOptimizationState.message)}</em>`
+    : Number.isFinite(Number(safeSavings)) ? `<em>预计可节省 ${escapeHtml(formatBytes(safeSavings))}</em>` : "";
   const intelligenceSummary = intelligence ? `
     <div class="assetIntelligenceSummary">
       <strong>资产智能</strong>
       <span>安全候选仅会通过另存为与重开验证执行。</span>
-      ${Number.isFinite(Number(safeSavings)) ? `<em>预计可节省 ${escapeHtml(formatBytes(safeSavings))}</em>` : ""}
+      ${optimizationStateText}
+      ${safeOptimizationCandidateCount() > 0 ? `<button class="sequenceToggle" type="button" data-save-optimized-svga ${canSaveOptimized ? "" : "disabled"} title="${escapeHtml(optimizationDisabledReason)}">生成优化副本</button>` : ""}
     </div>
   ` : "";
   const replacementHistoryVisible = primaryReplacementEdit || canUndoReplacementPreview() || canRedoReplacementPreview();
@@ -6982,6 +7091,11 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
   const saveReplacementButton = event.target.closest("[data-save-replacement-preview]");
   if (saveReplacementButton) {
     saveReplacementPreview().catch((error) => showError(`另存失败：${error.message}`));
+    return;
+  }
+  const saveOptimizedButton = event.target.closest("[data-save-optimized-svga]");
+  if (saveOptimizedButton) {
+    saveOptimizedPrimarySvga().catch((error) => showError(`优化失败：${error.message}`));
     return;
   }
   const replaceButton = event.target.closest("[data-replace-resource-key]");

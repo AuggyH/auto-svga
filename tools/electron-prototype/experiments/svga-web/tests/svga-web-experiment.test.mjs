@@ -383,6 +383,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(productApp, /runReplacementUndoRedoProof/);
   assert.match(productApp, /runMultiReplacementWorkbenchProof/);
   assert.match(productApp, /runReplacementSaveAsProof/);
+  assert.match(productApp, /data-save-optimized-svga/);
+  assert.match(productApp, /saveOptimizedPrimarySvga/);
+  assert.match(productApp, /autoSvgaSourceId/);
   assert.match(main, /desktop-sequence-review-proof/);
   assert.match(main, /desktop-sequence-repair-preview-proof/);
   assert.match(main, /desktop-sequence-no-write-simulation-proof/);

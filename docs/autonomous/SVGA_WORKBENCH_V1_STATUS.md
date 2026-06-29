@@ -16,7 +16,7 @@ work in this dedicated autonomous branch.
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | Phase 1 stabilization baseline | Baseline pass, continue hardening only when gaps are found | `npm run desktop:smoke`; `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`; package proof privacy audit |
-| Phase 2 asset detection and optimization | Read-only Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, and optimized-output reopen proof implemented; product UI execution not exposed | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
+| Phase 2 asset detection and optimization | Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, optimized-output reopen proof, and a bounded desktop `生成优化副本` Save As entry are implemented | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
 | Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, multi-resource replacement, and edited Save As are smoke-validated; batch/folder mapping remains prototype-only | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementSaveAsProof`; `replacementMultiResourceProof`; desktop smoke |
 | Phase 4 sequence-frame anti-flicker | Read-only Workbench sequence review, repair-preview contract, no-write simulation, bounded repair prototype, rendered boundary proof, no-op round-trip rehearsal, failure-first byte-repair proof validation, smoke-only byte-producing sequence candidate, and owner-visible candidate review are validated; product Save As and owner acceptance remain closed | `sequenceReviewProof`; `sequenceRepairPreviewProof`; `sequenceNoWriteSimulationProof`; `sequenceBoundedRepairPrototypeProof`; `sequencePrototypeRenderedBoundaryProof`; `sequenceNoopRoundTripProof`; `validateSequenceByteRepairProof`; `sequenceByteRepairProof`; `docs/reviews/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md`; existing sequence tests in root suite; desktop smoke |
 | Production-client delivery | Internal unsigned macOS ZIP generated; signing/notarization blocked by credentials | internal trial manifest |
@@ -34,13 +34,16 @@ work in this dedicated autonomous branch.
   the current owner-visible review folder under `review/` because that folder is
   generated after the final tracked commit and is not committed to git.
 
-## Immediate Next Slice
+## Current Stop State
 
-Continue with the next narrow Phase 4 sequence-frame product slice:
+Local autonomous work is owner-review ready with external boundaries recorded.
+The default desktop Workbench can preview local SVGA files, inspect assets,
+surface safe optimization candidates, generate an optimized copy through Save As
+when the source was opened through the desktop file picker, replace supported PNG
+resources with undo/redo and Save As, review sequence-frame risk, and run the
+current smoke-only sequence byte candidate without exposing sequence Save As.
 
-1. commit this status correction so the final head can stabilize before
-   packaging;
-2. regenerate internal macOS package evidence and the owner-visible autonomous
-   review folder on that final head;
-3. keep text editing, key rename, URL import, and structural/timeline edits
-   unsupported until they have separate mechanical round-trip proof.
+Keep text editing, key rename, URL import, structural/timeline edits, and
+sequence repair Save As unsupported until they have separate mechanical
+round-trip proof and owner-visible acceptance. Signing/notarization and Windows
+trusted distribution remain credential-bound external blockers.

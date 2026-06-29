@@ -67,6 +67,9 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /function runSequenceByteRepairCandidateProof/);
   assert.match(productApp, /function collectCanvasRenderDigest/);
   assert.match(productApp, /\/api\/svga-image-optimize/);
+  assert.match(productApp, /data-save-optimized-svga/);
+  assert.match(productApp, /saveOptimizedPrimarySvga/);
+  assert.match(productApp, /autoSvgaSourceId/);
   assert.match(productApp, /optimizedReopenProof/);
   assert.match(productApp, /sequenceReviewProof/);
   assert.match(productApp, /sequenceRepairPreviewProof/);
