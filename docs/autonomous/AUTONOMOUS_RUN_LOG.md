@@ -478,3 +478,43 @@
   `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, no
   edited bytes, no write attempt, automatic repair disabled, and no apply action
   exposed.
+
+### Phase 4 Bounded Sequence Repair Prototype Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: the no-write sequence simulation now feeds a bounded repair prototype
+  block in the default Workbench.
+- Product behavior: the Resources panel shows a `补丁原型` summary with
+  operation count, affected resource-key count, and the resource-key limit. The
+  prototype explicitly keeps sequence repair Save As blocked and does not expose
+  apply/write controls.
+- Smoke evidence: product smoke reports a main-process-validated
+  `sequenceBoundedRepairPrototypeProof` that binds source SHA-256 before and
+  after prototype rendering, prototype id, simulation id, resource-key limit,
+  resource-key count, operation count, blocked reason, required round-trip and
+  rendered before/after proof, manual visual confirmation, disabled edit/write
+  flags, summary visibility, and source immutability.
+- Safety boundary: this is still a prototype contract only. No edited bytes are
+  produced, no SVGA is written, no sequence repair Save As path is exposed, and
+  text/key/url/timeline editing remains unsupported.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment
+  suite passed 22 tests, and desktop smoke reported
+  `sequenceBoundedRepairPrototypeProof.passed=true` with resource-key limit 32,
+  26 bounded resource keys, 1 prototype operation, blocked reason
+  `requires_round_trip_and_rendered_before_after_proof`, unchanged source
+  SHA-256 `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`,
+  no edited bytes, no write attempt, product Save As disabled, apply disabled,
+  and no write action exposed.

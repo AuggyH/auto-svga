@@ -61,11 +61,13 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /function runSequenceReviewProof/);
   assert.match(productApp, /function runSequenceRepairPreviewContractProof/);
   assert.match(productApp, /function runSequenceNoWriteSimulationProof/);
+  assert.match(productApp, /function runSequenceBoundedRepairPrototypeProof/);
   assert.match(productApp, /\/api\/svga-image-optimize/);
   assert.match(productApp, /optimizedReopenProof/);
   assert.match(productApp, /sequenceReviewProof/);
   assert.match(productApp, /sequenceRepairPreviewProof/);
   assert.match(productApp, /sequenceNoWriteSimulationProof/);
+  assert.match(productApp, /sequenceBoundedRepairPrototypeProof/);
   assert.match(productApp, /function runReplacementReadinessProof/);
   assert.match(productApp, /function runSingleReplacementPreviewProof/);
   assert.match(productApp, /function runReplacementUndoRedoProof/);
@@ -82,9 +84,11 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /data-sequence-review-summary/);
   assert.match(productApp, /data-sequence-repair-preview-contract/);
   assert.match(productApp, /data-sequence-no-write-simulation/);
+  assert.match(productApp, /data-sequence-bounded-repair-prototype/);
   assert.match(productApp, /序列帧复核/);
   assert.match(productApp, /修复预览/);
   assert.match(productApp, /模拟结果/);
+  assert.match(productApp, /补丁原型/);
   assert.match(productApp, /data-undo-replacement-preview/);
   assert.match(productApp, /data-redo-replacement-preview/);
   assert.match(productApp, /可替换/);

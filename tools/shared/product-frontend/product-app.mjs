@@ -226,6 +226,7 @@ let replacementUndoStack = [];
 let replacementRedoStack = [];
 let replacementOperationSequence = 0;
 const replacementHistoryLimit = 6;
+const sequenceRepairPrototypeResourceKeyLimit = 32;
 
 function setP6PrimaryRecoveredFromInvalid(value) {
   p6PrimaryRecoveredFromInvalid = value === true;
@@ -2517,6 +2518,64 @@ async function runSequenceNoWriteSimulationProof(sourceBytes) {
       && applyActionExposed === false
   };
   window.__autoSvgaSequenceNoWriteSimulationProof = proof;
+  return proof;
+}
+
+async function runSequenceBoundedRepairPrototypeProof(sourceBytes) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  openInfoPanel("assets");
+  renderInfoPanel();
+  await waitFor(() => isElementVisible(document.querySelector("[data-sequence-bounded-repair-prototype]")));
+  const intelligence = players.a.inspectionReport?.assetIntelligence;
+  const assets = buildAssetEntries(players.a.metrics, intelligence, players.a.replacementReadiness);
+  const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
+  const plan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
+  const simulation = createSequenceNoWriteSimulation(plan);
+  const prototype = createBoundedSequenceRepairPrototype(plan, simulation);
+  const sourceSha256AfterPrototype = await p6Sha256Bytes(await readPrimarySourceBytes());
+  const writeActionExposed = Boolean(document.querySelector("[data-sequence-repair-apply], [data-sequence-repair-write], [data-sequence-repair-save], [data-save-sequence-repair], [data-auto-sequence-fix]"));
+  const prototypeVisible = isElementVisible(document.querySelector("[data-sequence-bounded-repair-prototype]"));
+  const proof = {
+    schemaVersion: 1,
+    proofId: "svga-sequence-bounded-repair-prototype-proof",
+    source: "workbench-sequence-bounded-repair-prototype",
+    sourceSha256,
+    sourceSha256AfterPrototype,
+    prototypeId: prototype?.prototypeId ?? "",
+    simulationId: prototype?.simulationId ?? "",
+    resourceKeyLimit: prototype?.resourceKeyLimit ?? 0,
+    resourceKeyCount: prototype?.resourceKeyCount ?? 0,
+    operationCount: prototype?.operationCount ?? 0,
+    blockedReason: prototype?.blockedReason ?? "",
+    roundTripProofRequired: prototype?.roundTripProofRequired === true,
+    renderedBeforeAfterProofRequired: prototype?.renderedBeforeAfterProofRequired === true,
+    manualVisualConfirmationRequired: prototype?.manualVisualConfirmationRequired === true,
+    editedBytesProduced: prototype?.editedBytesProduced === true,
+    writeAttempted: prototype?.writeAttempted === true,
+    productSaveAsEnabled: prototype?.productSaveAsEnabled === true,
+    applyActionEnabled: prototype?.applyActionEnabled === true,
+    prototypeVisible,
+    sourceUnchanged: sourceSha256AfterPrototype === sourceSha256,
+    writeActionExposed,
+    passed: prototype?.prototypeId === "svga-bounded-sequence-repair-prototype-v1"
+      && prototype.simulationId === "svga-sequence-no-write-simulation-v1"
+      && prototype.resourceKeyLimit === sequenceRepairPrototypeResourceKeyLimit
+      && prototype.resourceKeyCount > 0
+      && prototype.resourceKeyCount <= prototype.resourceKeyLimit
+      && prototype.operationCount > 0
+      && prototype.blockedReason === "requires_round_trip_and_rendered_before_after_proof"
+      && prototype.roundTripProofRequired === true
+      && prototype.renderedBeforeAfterProofRequired === true
+      && prototype.manualVisualConfirmationRequired === true
+      && prototype.editedBytesProduced === false
+      && prototype.writeAttempted === false
+      && prototype.productSaveAsEnabled === false
+      && prototype.applyActionEnabled === false
+      && prototypeVisible
+      && sourceSha256AfterPrototype === sourceSha256
+      && writeActionExposed === false
+  };
+  window.__autoSvgaSequenceBoundedRepairPrototypeProof = proof;
   return proof;
 }
 
@@ -4819,6 +4878,9 @@ async function runProductSmoke() {
     p6SmokeCurrentPhase = "sequence-no-write-simulation-proof";
     const sequenceNoWriteSimulationProof = await runSequenceNoWriteSimulationProof(bytes.slice(0));
     await captureArtifact("desktop-sequence-no-write-simulation-proof");
+    p6SmokeCurrentPhase = "sequence-bounded-repair-prototype-proof";
+    const sequenceBoundedRepairPrototypeProof = await runSequenceBoundedRepairPrototypeProof(bytes.slice(0));
+    await captureArtifact("desktop-sequence-bounded-repair-prototype-proof");
     p6SmokeCurrentPhase = "replacement-readiness-proof";
     const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);
     p6SmokeCurrentPhase = "replacement-preview-proof";
@@ -5105,6 +5167,7 @@ async function runProductSmoke() {
       sequenceReviewProof,
       sequenceRepairPreviewProof,
       sequenceNoWriteSimulationProof,
+      sequenceBoundedRepairPrototypeProof,
       replacementReadinessProof,
       replacementPreviewProof,
       replacementUndoRedoProof,
@@ -5766,9 +5829,46 @@ function createSequenceNoWriteSimulation(plan) {
   };
 }
 
+function createBoundedSequenceRepairPrototype(plan, simulation) {
+  if (!plan || !simulation || plan.proposedActions.length === 0) return undefined;
+  const affectedResourceKeys = plan.affectedResourceIds
+    .filter((id) => typeof id === "string" && id.trim())
+    .slice(0, sequenceRepairPrototypeResourceKeyLimit);
+  if (affectedResourceKeys.length === 0) return undefined;
+  const operations = plan.proposedActions.map((action) => ({
+    code: `prototype_${action.code}`,
+    sourceActionCode: action.code,
+    resourceKeyCount: affectedResourceKeys.length,
+    evidenceRefs: (action.evidenceRefs ?? []).slice(0, 4),
+    writeDisposition: "blocked_until_round_trip_and_rendered_proof"
+  }));
+  return {
+    schemaVersion: 1,
+    prototypeId: "svga-bounded-sequence-repair-prototype-v1",
+    source: "workbench-sequence-no-write-simulation",
+    simulationId: simulation.simulationId,
+    resourceKeyLimit: sequenceRepairPrototypeResourceKeyLimit,
+    resourceKeyCount: affectedResourceKeys.length,
+    affectedResourceKeys,
+    truncatedAffectedResources: plan.affectedResourceIds.length > affectedResourceKeys.length,
+    operationCount: operations.length,
+    operations,
+    blockedReason: "requires_round_trip_and_rendered_before_after_proof",
+    unsupportedEditModes: ["text", "key", "url", "timeline"],
+    roundTripProofRequired: true,
+    renderedBeforeAfterProofRequired: true,
+    manualVisualConfirmationRequired: true,
+    editedBytesProduced: false,
+    writeAttempted: false,
+    productSaveAsEnabled: false,
+    applyActionEnabled: false
+  };
+}
+
 function renderSequenceRepairPreviewPlan(plan) {
   if (!plan || plan.sequenceFindingCount <= 0) return "";
   const simulation = createSequenceNoWriteSimulation(plan);
+  const prototype = createBoundedSequenceRepairPrototype(plan, simulation);
   const labels = plan.proposedActions.map((action) => action.label).slice(0, 2).join(" · ");
   return `
     <div class="assetIntelligenceSummary" data-sequence-repair-preview-contract>
@@ -5781,6 +5881,13 @@ function renderSequenceRepairPreviewPlan(plan) {
         <strong>模拟结果</strong>
         <span>前：${escapeHtml(simulation.beforeReview.sequenceFindingCount)} 项发现 · 后：${escapeHtml(simulation.afterReview.proposedActionCount)} 项候选仍需验证</span>
         <em>未生成编辑字节 · 未写入 SVGA · 等待 round-trip 与人工视觉确认</em>
+      </div>
+    ` : ""}
+    ${prototype ? `
+      <div class="assetIntelligenceSummary" data-sequence-bounded-repair-prototype>
+        <strong>补丁原型</strong>
+        <span>${escapeHtml(prototype.operationCount)} 项原型 · ${escapeHtml(prototype.resourceKeyCount)} / ${escapeHtml(prototype.resourceKeyLimit)} 个资源键 · 另存为已阻断</span>
+        <em>仅记录候选范围；文本、键名、URL 与时间线编辑仍未开放</em>
       </div>
     ` : ""}
   `;
