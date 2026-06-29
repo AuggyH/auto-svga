@@ -23,6 +23,9 @@
     "internal:trial:proof:mac": "node scripts/macos-package-proof.mjs",
     "spike:svga-web:package:mac": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=darwin --arch=arm64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
     "spike:svga-web:package:win": "npm run spike:svga-web:prepare && ../../node_modules/.bin/electron-packager . AutoSVGASvgaWebSpike --platform=win32 --arch=x64 --out=.artifacts --overwrite --prune=true --asar --ignore='^/(tests|scripts|\\.artifacts)($|/)'",
-    "internal:trial:package:mac": "node scripts/package-internal-trial.mjs"
+    "internal:trial:package:mac": "node scripts/package-internal-trial.mjs",
+    "internal:trial:sign:mac": "node scripts/macos-signing-workflow.mjs sign",
+    "internal:trial:notarize:mac": "node scripts/macos-signing-workflow.mjs notarize",
+    "internal:trial:signing-plan:mac": "node scripts/macos-signing-workflow.mjs plan"
   }
 }

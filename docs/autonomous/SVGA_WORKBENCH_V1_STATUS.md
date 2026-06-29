@@ -19,7 +19,7 @@ work in this dedicated autonomous branch.
 | Phase 2 asset detection and optimization | Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, optimized-output reopen proof, and a bounded desktop `生成优化副本` Save As entry are implemented | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
 | Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, multi-resource replacement, and edited Save As are smoke-validated; batch/folder mapping remains prototype-only | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementSaveAsProof`; `replacementMultiResourceProof`; desktop smoke |
 | Phase 4 sequence-frame anti-flicker | Read-only Workbench sequence review, repair-preview contract, no-write simulation, bounded repair prototype, rendered boundary proof, no-op round-trip rehearsal, failure-first byte-repair proof validation, smoke-only byte-producing sequence candidate, and owner-visible candidate review are validated; product Save As and owner acceptance remain closed | `sequenceReviewProof`; `sequenceRepairPreviewProof`; `sequenceNoWriteSimulationProof`; `sequenceBoundedRepairPrototypeProof`; `sequencePrototypeRenderedBoundaryProof`; `sequenceNoopRoundTripProof`; `validateSequenceByteRepairProof`; `sequenceByteRepairProof`; `docs/reviews/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md`; existing sequence tests in root suite; desktop smoke |
-| Production-client delivery | Internal unsigned macOS ZIP generated; signing/notarization blocked by credentials | internal trial manifest |
+| Production-client delivery | Internal unsigned macOS ZIP generated; signing/notarization dry-run workflow and entitlements are present; completion blocked by credentials | internal trial manifest; macOS signing workflow dry-run; package proof privacy audit |
 
 ## Current Baseline Evidence
 
@@ -45,5 +45,6 @@ current smoke-only sequence byte candidate without exposing sequence Save As.
 
 Keep text editing, key rename, URL import, structural/timeline edits, and
 sequence repair Save As unsupported until they have separate mechanical
-round-trip proof and owner-visible acceptance. Signing/notarization and Windows
-trusted distribution remain credential-bound external blockers.
+round-trip proof and owner-visible acceptance. Signing/notarization scripts now
+exist in dry-run/explicit-execute form, but completion and Windows trusted
+distribution remain credential-bound external blockers.

@@ -27,6 +27,7 @@ const { validateSequenceByteRepairProof } = require("../sequence-repair-proof-co
 
 test("macOS internal package scaffold avoids unsupported Finder .svga document association", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
+  const entitlements = await readFile(path.join(experimentRoot, "packaging/macos/entitlements.plist"), "utf8");
   assert.equal(appName, "Auto SVGA");
   assert.match(plist, /CFBundleDisplayName[\s\S]*<string>Auto SVGA<\/string>/);
   assert.match(plist, /CFBundleName[\s\S]*<string>Auto SVGA<\/string>/);
@@ -51,6 +52,9 @@ test("macOS internal package scaffold avoids unsupported Finder .svga document a
   assert.ok(packagerArgs.includes("--app-version=0.0.0-internal"));
   assert.ok(packagerArgs.includes("--build-version=0.0.0-internal"));
   assert.ok(packagerArgs.some((arg) => arg === "--extend-info=packaging/macos/Info.plist"));
+  assert.match(entitlements, /com\.apple\.security\.cs\.allow-jit/);
+  assert.match(entitlements, /com\.apple\.security\.cs\.allow-unsigned-executable-memory/);
+  assert.match(entitlements, /com\.apple\.security\.cs\.disable-library-validation/);
 });
 
 test("macOS package proof manifest records audit boundaries without final App acceptance", async () => {
@@ -59,6 +63,8 @@ test("macOS package proof manifest records audit boundaries without final App ac
     archivePath: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip")
   });
   const packageScript = await readFile(path.join(experimentRoot, "scripts/package-internal-trial.mjs"), "utf8");
+  const signingWorkflow = await readFile(path.join(experimentRoot, "scripts/macos-signing-workflow.mjs"), "utf8");
+  const packageJson = JSON.parse(await readFile(path.join(experimentRoot, "package.json"), "utf8"));
   assert.equal(proof.schemaVersion, 1);
   assert.equal(proof.appName, "Auto SVGA");
   assert.equal(proof.bundleDisplayName, "Auto SVGA");
@@ -76,6 +82,16 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.equal(proof.privacyAudit.passed, true);
   assert.deepEqual(proof.privacyAudit.findings, []);
   assert.match(proof.packagingScaffold.extendInfoPath, /packaging\/macos\/Info\.plist$/);
+  assert.match(proof.packagingScaffold.entitlementsPath, /packaging\/macos\/entitlements\.plist$/);
+  assert.equal(proof.packagingScaffold.signScript, "internal:trial:sign:mac");
+  assert.equal(proof.packagingScaffold.notarizeScript, "internal:trial:notarize:mac");
+  assert.equal(packageJson.scripts["internal:trial:sign:mac"], "node scripts/macos-signing-workflow.mjs sign");
+  assert.equal(packageJson.scripts["internal:trial:notarize:mac"], "node scripts/macos-signing-workflow.mjs notarize");
+  assert.match(signingWorkflow, /SIGNING_BLOCKED_REQUIRES_CREDENTIALS/);
+  assert.match(signingWorkflow, /codesign/);
+  assert.match(signingWorkflow, /notarytool/);
+  assert.match(signingWorkflow, /stapler/);
+  assert.match(signingWorkflow, /READY_REQUIRES_EXPLICIT_EXECUTE/);
   assert.match(proof.packagingScaffold.appBundlePath, /Auto SVGA-darwin-arm64\/Auto SVGA\.app$/);
   assert.doesNotMatch(JSON.stringify(proof), /AutoSVGAInternalPrototype|Auto SVGA Internal Prototype/);
   assert.match(proof.requestedIntegrationChanges[0], /root package script/);

@@ -17,3 +17,19 @@ Do not copy raw chat history or unverified guesses here.
 - Validation: `node --test tools/shared/product-frontend/source-sharing.test.mjs`,
   `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`,
   and `npm run desktop:smoke` passed on 2026-06-30.
+
+## Distribution scripts should default to dry-run until credentials are present
+
+- Context: macOS signing and notarization require official Apple Developer ID
+  identity and notary credentials, but the autonomous run can still prepare the
+  workflow locally.
+- Problem: treating missing credentials as a generic package failure blurs the
+  line between local product readiness and external distribution approval.
+- Rule: signing/notarization scripts should print a redacted plan and report a
+  credential blocker by default; credential-bearing commands must require an
+  explicit execution flag.
+- Validation:
+  `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:signing-plan:mac`
+  reported `SIGNING_BLOCKED_REQUIRES_CREDENTIALS`, and
+  `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:proof:mac`
+  passed on 2026-06-30.

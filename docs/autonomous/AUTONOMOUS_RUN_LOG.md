@@ -784,3 +784,38 @@
   passed 23 tests, and desktop smoke passed with the existing optimized reopen,
   replacement Save As, multi-resource replacement, and sequence proof chain
   still accepted.
+
+### Production macOS Signing Workflow Slice
+
+- Files added:
+  `tools/electron-prototype/experiments/svga-web/packaging/macos/entitlements.plist`,
+  `tools/electron-prototype/experiments/svga-web/scripts/macos-signing-workflow.mjs`,
+  `docs/reviews/2026-06-30-codex-svga-workbench-signing-workflow.md`
+- Files updated:
+  `tools/electron-prototype/experiments/svga-web/package.json`,
+  `tools/electron-prototype/experiments/svga-web/scripts/macos-package-proof.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_BLOCKERS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: added a local macOS signing/notarization workflow without performing
+  signing, notarization, upload, stapling, or release by default.
+- Workflow behavior: `internal:trial:signing-plan:mac` prints a redacted command
+  plan and reports `SIGNING_BLOCKED_REQUIRES_CREDENTIALS` when the Apple
+  Developer ID signing identity or notary credentials are absent. `sign` and
+  `notarize` modes require explicit `--execute` before running `codesign`,
+  `notarytool`, `stapler`, `spctl`, or creating signed/notarized ZIPs.
+- Safety boundary: the workflow is local dry-run by default. It does not use
+  network notarization or credential-bearing commands unless the caller provides
+  credentials and explicitly opts in.
+- Commands:
+  `node --check tools/electron-prototype/experiments/svga-web/scripts/macos-signing-workflow.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/scripts/macos-package-proof.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:signing-plan:mac`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:proof:mac`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `git diff --check`
+- Result: pass; signing plan dry-run reported missing credentials as the
+  external blocker, package proof privacy audit passed, shared frontend suite
+  passed 7 tests, and svga-web experiment suite passed 23 tests.

@@ -21,16 +21,19 @@ const repoRoot = path.resolve(experimentRoot, "../../../..");
 const artifactsRoot = path.join(experimentRoot, ".artifacts/internal-trial");
 const proofPath = path.join(artifactsRoot, "macos-package-proof.json");
 const plistPath = path.join(experimentRoot, "packaging/macos/Info.plist");
+const entitlementsPath = path.join(experimentRoot, "packaging/macos/entitlements.plist");
 const sourceAuditFiles = [
   "main.cjs",
   "preload.cjs",
   "server.mjs",
+  "scripts/macos-signing-workflow.mjs",
   "web/index.html",
   "web/desktop-product-entry.mjs",
   "web/prototype.js",
   "web/styles.css",
   "package.json",
-  "packaging/macos/Info.plist"
+  "packaging/macos/Info.plist",
+  "packaging/macos/entitlements.plist"
 ];
 
 export function macosPackagerArgs(outputRoot = ".artifacts/internal-trial") {
@@ -102,9 +105,13 @@ export async function buildMacosPackageProof(options = {}) {
     },
     packagingScaffold: {
       packageScript: "internal:trial:package:mac",
+      signScript: "internal:trial:sign:mac",
+      notarizeScript: "internal:trial:notarize:mac",
+      signingPlanScript: "internal:trial:signing-plan:mac",
       appBundlePath: path.relative(repoRoot, appBundle),
       archivePath: path.relative(repoRoot, archivePath),
       extendInfoPath: path.relative(repoRoot, plistPath),
+      entitlementsPath: path.relative(repoRoot, entitlementsPath),
       electronPackagerArgs: macosPackagerArgs(path.relative(experimentRoot, artifactsRoot))
     },
     privacyAudit,
@@ -141,6 +148,8 @@ export function validateProof(plist, proof) {
     ["noSvgaDocumentType", !plist.includes("<key>CFBundleDocumentTypes</key>") && !plist.includes("<string>svga</string>")],
     ["noUtiDeclaration", !plist.includes("<key>UTExportedTypeDeclarations</key>") && !plist.includes("<string>com.auto-svga.svga</string>")],
     ["extendInfoArg", proof.packagingScaffold.electronPackagerArgs.some((arg) => arg.startsWith("--extend-info="))],
+    ["entitlementsPath", typeof proof.packagingScaffold.entitlementsPath === "string" && proof.packagingScaffold.entitlementsPath.endsWith("entitlements.plist")],
+    ["signingScripts", proof.packagingScaffold.signScript === "internal:trial:sign:mac" && proof.packagingScaffold.notarizeScript === "internal:trial:notarize:mac"],
     ["privacyAuditPassed", proof.privacyAudit.passed === true],
     ["acceptanceOwner", proof.distribution.finalPackagedAppAcceptanceOwner === finalAcceptanceOwner]
   ];
