@@ -298,6 +298,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /function validateOptimizationReportBinding/);
   assert.match(main, /function validateOptimizedReopenProof/);
   assert.match(main, /function validateSequenceReviewProof/);
+  assert.match(main, /function validateSequenceRepairPreviewProof/);
   assert.match(main, /function validateReplacementReadinessProof/);
   assert.match(main, /function validateReplacementPreviewProof/);
   assert.match(main, /function validateReplacementUndoRedoProof/);
@@ -306,6 +307,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /function saveOptimizedSvga/);
   assert.match(main, /optimizedReopenProof/);
   assert.match(main, /sequenceReviewProof/);
+  assert.match(main, /sequenceRepairPreviewProof/);
   assert.match(main, /replacementReadinessProof/);
   assert.match(main, /replacementPreviewProof/);
   assert.match(main, /replacementUndoRedoProof/);
@@ -317,11 +319,13 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(desktopEntry, /\/api\/svga-image-replace/);
   assert.match(productApp, /runReplacementReadinessProof/);
   assert.match(productApp, /runSequenceReviewProof/);
+  assert.match(productApp, /runSequenceRepairPreviewContractProof/);
   assert.match(productApp, /runSingleReplacementPreviewProof/);
   assert.match(productApp, /runReplacementUndoRedoProof/);
   assert.match(productApp, /runMultiReplacementWorkbenchProof/);
   assert.match(productApp, /runReplacementSaveAsProof/);
   assert.match(main, /desktop-sequence-review-proof/);
+  assert.match(main, /desktop-sequence-repair-preview-proof/);
   assert.match(main, /desktop-multi-replacement-proof/);
   assert.match(prepareRuntime, /optimizer-reopen-smoke\.svga/);
   assert.match(main, /validateArtifactScenario/);

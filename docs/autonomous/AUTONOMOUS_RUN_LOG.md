@@ -400,3 +400,41 @@
   26 affected resources, unchanged source SHA-256
   `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, and no
   repair action exposed.
+
+### Phase 4 Sequence Repair Preview Contract Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: default Workbench now shows a no-write `修复预览` contract for
+  sequence-frame findings.
+- Product behavior: sequence findings are converted into proposed review
+  actions with affected resource counts. The contract explicitly keeps write
+  and automatic repair disabled, requires round-trip proof before any future
+  write path, and requires manual visual confirmation.
+- Smoke evidence: product smoke reports a main-process-validated
+  `sequenceRepairPreviewProof` that binds the source SHA-256 before and after
+  preview, preview contract id, sequence group count, finding count, affected
+  resource count, proposed action count, disabled write/automatic-repair flags,
+  summary visibility, and absence of apply/write controls.
+- Repair note: the first desktop smoke attempt exposed a renderer scope error
+  after the contract variable was rendered outside its declaration scope. The
+  declaration was moved into `renderAssets`; the follow-up smoke passed.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment
+  suite passed 22 tests, and desktop smoke reported
+  `sequenceRepairPreviewProof.passed=true` with 1 proposed action, unchanged
+  source SHA-256
+  `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, write
+  disabled, automatic repair disabled, round-trip-before-write required, manual
+  visual confirmation required, and no apply action exposed.

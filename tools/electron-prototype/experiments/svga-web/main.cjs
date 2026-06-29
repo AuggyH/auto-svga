@@ -191,6 +191,11 @@ function validateSmokeResult(value) {
     if (!sequenceReviewProof) return undefined;
     result.sequenceReviewProof = sequenceReviewProof;
   }
+  if (value.sequenceRepairPreviewProof !== undefined) {
+    const sequenceRepairPreviewProof = validateSequenceRepairPreviewProof(value.sequenceRepairPreviewProof);
+    if (!sequenceRepairPreviewProof) return undefined;
+    result.sequenceRepairPreviewProof = sequenceRepairPreviewProof;
+  }
   if (value.replacementReadinessProof !== undefined) {
     const replacementReadinessProof = validateReplacementReadinessProof(value.replacementReadinessProof);
     if (!replacementReadinessProof) return undefined;
@@ -253,6 +258,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.sequenceReviewProof !== undefined && !validateSequenceReviewProof(value.sequenceReviewProof)) {
     return `sequenceReviewProof:${describeSequenceReviewProofValidationFailure(value.sequenceReviewProof)}`;
+  }
+  if (value.sequenceRepairPreviewProof !== undefined && !validateSequenceRepairPreviewProof(value.sequenceRepairPreviewProof)) {
+    return "sequenceRepairPreviewProof";
   }
   if (value.replacementReadinessProof !== undefined && !validateReplacementReadinessProof(value.replacementReadinessProof)) {
     return "replacementReadinessProof";
@@ -359,6 +367,50 @@ function describeSequenceReviewProofValidationFailure(value) {
   if (value.repairActionExposed !== false) return "repairActionExposed";
   if (value.passed !== true) return "passed";
   return "unknown";
+}
+
+function validateSequenceRepairPreviewProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "svga-sequence-repair-preview-contract-proof") return undefined;
+  if (value.source !== "workbench-sequence-repair-preview-contract") return undefined;
+  if (!isSha256(value.sourceSha256) || value.sourceSha256AfterPreview !== value.sourceSha256) return undefined;
+  if (value.previewId !== "svga-sequence-repair-preview-v1") return undefined;
+  if (!Number.isInteger(value.sequenceGroupCount) || value.sequenceGroupCount <= 0) return undefined;
+  if (!Number.isInteger(value.sequenceFindingCount) || value.sequenceFindingCount <= 0) return undefined;
+  if (!Number.isInteger(value.affectedResourceCount) || value.affectedResourceCount < 0) return undefined;
+  if (!Number.isInteger(value.proposedActionCount) || value.proposedActionCount <= 0) return undefined;
+  if (
+    value.writeEnabledFalse !== true
+    || value.automaticRepairDisabled !== true
+    || value.requiresRoundTripBeforeWrite !== true
+    || value.manualVisualConfirmationRequired !== true
+    || value.summaryVisible !== true
+    || value.sourceUnchanged !== true
+    || value.applyActionExposed !== false
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    sourceSha256AfterPreview: value.sourceSha256AfterPreview,
+    previewId: value.previewId,
+    sequenceGroupCount: value.sequenceGroupCount,
+    sequenceFindingCount: value.sequenceFindingCount,
+    affectedResourceCount: value.affectedResourceCount,
+    proposedActionCount: value.proposedActionCount,
+    writeEnabledFalse: true,
+    automaticRepairDisabled: true,
+    requiresRoundTripBeforeWrite: true,
+    manualVisualConfirmationRequired: true,
+    summaryVisible: true,
+    sourceUnchanged: true,
+    applyActionExposed: false,
+    passed: true
+  };
 }
 
 function validateReplacementUndoRedoProof(value) {
@@ -1398,6 +1450,7 @@ function validateArtifactScenario(value) {
     "desktop-local-settings-open",
     "desktop-recovered-from-invalid",
     "desktop-sequence-review-proof",
+    "desktop-sequence-repair-preview-proof",
     "desktop-replacement-preview-proof",
     "desktop-replacement-undo-redo-proof",
     "desktop-multi-replacement-proof",
@@ -2443,6 +2496,7 @@ function stateForScenario(scenario) {
     "desktop-responsive-export-review-loaded-at-900-x-720": "responsive-export-review-loaded-at-900-x-720",
     "desktop-recovered-from-invalid": "recovered-from-invalid",
     "desktop-sequence-review-proof": "info-assets-open",
+    "desktop-sequence-repair-preview-proof": "info-assets-open",
     "desktop-replacement-preview-proof": "loaded",
     "desktop-replacement-undo-redo-proof": "loaded",
     "desktop-multi-replacement-proof": "loaded",
@@ -2623,6 +2677,7 @@ function artifactFileNameForScenario(scenario) {
     "p3-replacement-selected": "replacement-selected.png",
     "p3-replacement-preview": "replacement-preview.png",
     "desktop-sequence-review-proof": "desktop-sequence-review-proof.png",
+    "desktop-sequence-repair-preview-proof": "desktop-sequence-repair-preview-proof.png",
     "desktop-replacement-preview-proof": "desktop-replacement-preview-proof.png",
     "desktop-replacement-undo-redo-proof": "desktop-replacement-undo-redo-proof.png",
     "desktop-multi-replacement-proof": "desktop-multi-replacement-proof.png",

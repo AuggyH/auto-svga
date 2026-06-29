@@ -2394,6 +2394,7 @@ async function runSequenceReviewProof(sourceBytes, fileName) {
   const intelligence = players.a.inspectionReport?.assetIntelligence;
   const assets = buildAssetEntries(players.a.metrics, intelligence, players.a.replacementReadiness);
   const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
+  const sequenceRepairPreviewPlan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
   const sequenceFindings = (intelligence?.findings ?? []).filter(isSequenceReviewFinding);
   await waitFor(() => isElementVisible(document.querySelector("[data-sequence-review-summary]")));
   const summaryVisible = isElementVisible(document.querySelector("[data-sequence-review-summary]"));
@@ -2417,6 +2418,52 @@ async function runSequenceReviewProof(sourceBytes, fileName) {
       && repairActionExposed === false
   };
   window.__autoSvgaSequenceReviewProof = proof;
+  return proof;
+}
+
+async function runSequenceRepairPreviewContractProof(sourceBytes) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  openInfoPanel("assets");
+  renderInfoPanel();
+  await waitFor(() => isElementVisible(document.querySelector("[data-sequence-repair-preview-contract]")));
+  const intelligence = players.a.inspectionReport?.assetIntelligence;
+  const assets = buildAssetEntries(players.a.metrics, intelligence, players.a.replacementReadiness);
+  const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
+  const plan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
+  const sourceSha256AfterPreview = await p6Sha256Bytes(await readPrimarySourceBytes());
+  const applyActionExposed = Boolean(document.querySelector("[data-sequence-repair-apply], [data-sequence-repair-write], [data-auto-sequence-fix]"));
+  const summaryVisible = isElementVisible(document.querySelector("[data-sequence-repair-preview-contract]"));
+  const proof = {
+    schemaVersion: 1,
+    proofId: "svga-sequence-repair-preview-contract-proof",
+    source: "workbench-sequence-repair-preview-contract",
+    sourceSha256,
+    sourceSha256AfterPreview,
+    previewId: plan?.previewId ?? "",
+    sequenceGroupCount: plan?.sequenceGroupCount ?? 0,
+    sequenceFindingCount: plan?.sequenceFindingCount ?? 0,
+    affectedResourceCount: plan?.affectedResourceIds?.length ?? 0,
+    proposedActionCount: plan?.proposedActions?.length ?? 0,
+    writeEnabledFalse: plan?.writeEnabled === false,
+    automaticRepairDisabled: plan?.automaticRepairEnabled === false,
+    requiresRoundTripBeforeWrite: plan?.requiresRoundTripBeforeWrite === true,
+    manualVisualConfirmationRequired: plan?.manualVisualConfirmationRequired === true,
+    summaryVisible,
+    sourceUnchanged: sourceSha256AfterPreview === sourceSha256,
+    applyActionExposed,
+    passed: plan?.previewId === "svga-sequence-repair-preview-v1"
+      && plan.sequenceGroupCount > 0
+      && plan.sequenceFindingCount > 0
+      && plan.proposedActions.length > 0
+      && plan.writeEnabled === false
+      && plan.automaticRepairEnabled === false
+      && plan.requiresRoundTripBeforeWrite === true
+      && plan.manualVisualConfirmationRequired === true
+      && summaryVisible
+      && sourceSha256AfterPreview === sourceSha256
+      && applyActionExposed === false
+  };
+  window.__autoSvgaSequenceRepairPreviewProof = proof;
   return proof;
 }
 
@@ -4713,6 +4760,9 @@ async function runProductSmoke() {
     p6SmokeCurrentPhase = "sequence-review-proof";
     const sequenceReviewProof = await runSequenceReviewProof(bytes.slice(0), p6BaselineFixtureDisplayName);
     await captureArtifact("desktop-sequence-review-proof");
+    p6SmokeCurrentPhase = "sequence-repair-preview-proof";
+    const sequenceRepairPreviewProof = await runSequenceRepairPreviewContractProof(bytes.slice(0));
+    await captureArtifact("desktop-sequence-repair-preview-proof");
     p6SmokeCurrentPhase = "replacement-readiness-proof";
     const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);
     p6SmokeCurrentPhase = "replacement-preview-proof";
@@ -4997,6 +5047,7 @@ async function runProductSmoke() {
       playerLifecycle: true,
       cleanup: true,
       sequenceReviewProof,
+      sequenceRepairPreviewProof,
       replacementReadinessProof,
       replacementPreviewProof,
       replacementUndoRedoProof,
@@ -5442,6 +5493,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     primaryReplacementEdit ? "替换预览已应用" : canRedoReplacementPreview() ? "替换预览已还原" : ""
   ].filter(Boolean).join(" · ");
   const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
+  const sequenceRepairPreviewPlan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
   const safeSavings = intelligence?.summary.estimatedSafeFileSizeSavingsBytes;
   const intelligenceSummary = intelligence ? `
     <div class="assetIntelligenceSummary">
@@ -5469,6 +5521,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     <div class="assetSummaryLine">${escapeHtml(summary)}</div>
     ${intelligenceSummary}
     ${renderSequenceReviewSummary(intelligence, sequenceGroupCount)}
+    ${renderSequenceRepairPreviewPlan(sequenceRepairPreviewPlan)}
     ${replacementEditSummary}
     <div class="assetUnifiedList inspectorSection">
       ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
@@ -5587,6 +5640,58 @@ function renderSequenceReviewSummary(intelligence, sequenceGroupCount) {
       <strong>序列帧复核</strong>
       <span>${escapeHtml(sequenceGroupCount)} 组序列 · ${escapeHtml(sequenceFindings.length)} 项发现 · ${escapeHtml(affectedResources.size)} 个资源</span>
       <em>${escapeHtml(severityLabels)}</em>
+    </div>
+  `;
+}
+
+function createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount) {
+  if (!intelligence || sequenceGroupCount <= 0) return undefined;
+  const sequenceFindings = (intelligence.findings ?? []).filter(isSequenceReviewFinding);
+  const affectedResourceIds = [...new Set(sequenceFindings.flatMap((finding) => finding.affectedResourceIds ?? []))];
+  const proposedActions = sequenceFindings.map((finding) => {
+    if (finding.code === "sequence_frame_memory_concentration") {
+      return {
+        code: "review_sequence_residency",
+        label: "复核序列帧驻留与合图收益",
+        evidenceRefs: finding.evidenceRefs ?? []
+      };
+    }
+    if (finding.code === "sequence_frame_analysis_incomplete") {
+      return {
+        code: "collect_sequence_frame_evidence",
+        label: "补齐序列帧哈希与透明边界证据",
+        evidenceRefs: finding.evidenceRefs ?? []
+      };
+    }
+    return {
+      code: "manual_sequence_review",
+      label: assetIntelligenceFindingLabel(finding.code),
+      evidenceRefs: finding.evidenceRefs ?? []
+    };
+  });
+  return {
+    schemaVersion: 1,
+    previewId: "svga-sequence-repair-preview-v1",
+    source: "workbench-asset-intelligence",
+    sequenceGroupCount,
+    sequenceFindingCount: sequenceFindings.length,
+    affectedResourceIds,
+    proposedActions,
+    writeEnabled: false,
+    automaticRepairEnabled: false,
+    requiresRoundTripBeforeWrite: true,
+    manualVisualConfirmationRequired: true
+  };
+}
+
+function renderSequenceRepairPreviewPlan(plan) {
+  if (!plan || plan.sequenceFindingCount <= 0) return "";
+  const labels = plan.proposedActions.map((action) => action.label).slice(0, 2).join(" · ");
+  return `
+    <div class="assetIntelligenceSummary" data-sequence-repair-preview-contract>
+      <strong>修复预览</strong>
+      <span>${escapeHtml(plan.proposedActions.length)} 项候选 · ${escapeHtml(plan.affectedResourceIds.length)} 个资源 · 暂不写入</span>
+      <em>${escapeHtml(labels)}</em>
     </div>
   `;
 }
