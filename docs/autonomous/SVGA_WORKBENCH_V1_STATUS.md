@@ -16,7 +16,7 @@ work in this dedicated autonomous branch.
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | Phase 1 stabilization baseline | Baseline pass, continue hardening only when gaps are found | `npm run desktop:smoke`; `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`; package proof privacy audit |
-| Phase 2 asset detection and optimization | Read-only Asset Intelligence plus host-neutral safe-image optimizer implemented; product UI execution not exposed | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; shared frontend source guard; `npm test`; desktop smoke |
+| Phase 2 asset detection and optimization | Read-only Asset Intelligence, host-neutral safe-image optimizer, and token-bound local optimizer API implemented; product UI execution not exposed | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
 | Phase 3 imageKey / replacement editing | Incubation code exists; product reconnection not started | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md` |
 | Phase 4 sequence-frame anti-flicker | Detection primitives exist; repair productization not started | Existing sequence tests in root suite |
 | Production-client delivery | Internal unsigned macOS ZIP generated; signing/notarization blocked by credentials | internal trial manifest |

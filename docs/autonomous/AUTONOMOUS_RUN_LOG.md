@@ -97,3 +97,22 @@
   `node --test dist/tests/svga-image-optimizer.test.js dist/tests/svga-image-resource-editor.test.js dist/tests/svga-format-adapter.test.js`;
   `npm test`
 - Result: pass; root suite passed 236 tests.
+
+### Phase 2 Local Optimizer API Slice
+
+- Files updated:
+  `tools/electron-prototype/experiments/svga-web/server.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: token-bound local optimizer endpoint implemented; no filesystem write
+  and no product UI execution path added.
+- Product behavior: `/api/svga-image-optimize` accepts in-memory SVGA bytes,
+  invokes the safe-image optimizer from the prepared runtime, and returns
+  optimized SVGA bytes plus the structured optimization report. Unauthorized
+  requests are rejected.
+- Safe-action boundary: this endpoint does not perform Save As, does not mutate
+  the opened source file, and does not claim visible playback acceptance.
+- Command:
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`
+- Result: pass; svga-web experiment suite passed 21 tests.

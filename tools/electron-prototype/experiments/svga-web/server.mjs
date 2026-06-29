@@ -179,6 +179,9 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken, deskt
   const editorModuleUrl = pathToFileURL(
     path.join(appRoot, ".runtime/dist/workbench/svga/image-resource-editor.js")
   ).href;
+  const optimizerModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/workbench/svga/asset-optimizer.js")
+  ).href;
   const batchMappingModuleUrl = pathToFileURL(
     path.join(appRoot, ".runtime/dist/workbench/svga/batch-png-mapping.js")
   ).href;
@@ -187,6 +190,7 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken, deskt
   ).href;
   let reportServicePromise;
   let editorPromise;
+  let optimizerPromise;
   let batchMappingPromise;
   let inspectorPromise;
 
@@ -340,6 +344,30 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken, deskt
           editedSvgaBase64: encodeBase64(result.editedBytes),
           session: await attachSessionThumbnails(result.session, result.editedBytes, inspector),
           roundTripReport: result.roundTripReport
+        });
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error),
+          code: error?.code,
+          details: error?.details
+        });
+      }
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/svga-image-optimize") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const input = await readRequestJson(request);
+        const bytes = decodeBase64Field(input?.svgaBase64, "svgaBase64");
+        const name = path.basename(typeof input?.name === "string" ? input.name : "untitled.svga");
+        optimizerPromise ??= import(optimizerModuleUrl);
+        const { optimizeSvgaImageResources } = await optimizerPromise;
+        const result = await optimizeSvgaImageResources(bytes, { sourceName: name });
+        return sendJson(response, 200, {
+          optimizedSvgaBase64: encodeBase64(result.optimizedBytes),
+          optimizationReport: result.report
         });
       } catch (error) {
         return sendJson(response, error?.statusCode ?? 422, {

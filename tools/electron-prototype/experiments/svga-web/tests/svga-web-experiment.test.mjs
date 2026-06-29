@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { deflateSync } from "node:zlib";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import { test } from "node:test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import protobuf from "protobufjs";
 import { legacyBrowserBaselineAuditCsp, strictCsp, startSvgaWebExperimentServer } from "../server.mjs";
 import {
   appName,
@@ -143,6 +145,50 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     const legacyVendor = await fetch(`${server.origin}/legacy-vendor/pako-2.1.0.min.js`);
     assert.equal(legacyVendor.status, 200);
     assert.match(legacyVendor.headers.get("content-type") ?? "", /text\/javascript/);
+  } finally {
+    await server.close();
+  }
+});
+
+test("server exposes a token-bound safe SVGA image optimizer API", async () => {
+  const reportToken = "optimizer-token";
+  const sourceBytes = await createOptimizerFixture();
+  const sourceSha256 = createHash("sha256").update(sourceBytes).digest("hex");
+  const server = await startSvgaWebExperimentServer({
+    appRoot: experimentRoot,
+    reportToken
+  });
+  try {
+    const unauthorized = await fetch(`${server.origin}/api/svga-image-optimize`, { method: "POST" });
+    assert.equal(unauthorized.status, 401);
+
+    const response = await fetch(`${server.origin}/api/svga-image-optimize`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-auto-svga-prototype-token": reportToken
+      },
+      body: JSON.stringify({
+        name: "avatar-frame-smoke.svga",
+        svgaBase64: sourceBytes.toString("base64")
+      })
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    const optimizedBytes = Buffer.from(body.optimizedSvgaBase64, "base64");
+
+    assert.equal(body.optimizationReport.schemaVersion, 1);
+    assert.equal(body.optimizationReport.optimizationId, "svga-safe-image-optimizer-v1");
+    assert.equal(body.optimizationReport.sourceSha256, sourceSha256);
+    assert.equal(body.optimizationReport.sourceSha256AfterOptimization, sourceSha256);
+    assert.equal(body.optimizationReport.optimizedSha256, createHash("sha256").update(optimizedBytes).digest("hex"));
+    assert.equal(body.optimizationReport.sourceUnchanged, true);
+    assert.equal(body.optimizationReport.saveAsRequired, true);
+    assert.equal(body.optimizationReport.passed, true);
+    assert.equal(body.optimizationReport.originalImageCount, 3);
+    assert.equal(body.optimizationReport.optimizedImageCount, 1);
+    assert.deepEqual(body.optimizationReport.removedResourceKeys, ["img_copy", "img_unused"]);
+    assert.equal(body.optimizationReport.invariantChecks.every(({ passed }) => passed), true);
   } finally {
     await server.close();
   }
@@ -866,6 +912,39 @@ test("P3 upload package contract includes sealed review evidence and redacted bu
   assert.equal(source.includes(posixPrivatePath), false);
   assert.equal(source.includes(windowsPrivatePath), false);
 });
+
+async function createOptimizerFixture() {
+  const root = await protobuf.load(path.join(repoRoot, "proto/svga.proto"));
+  const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
+  const sharedImage = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+  const payload = {
+    version: "2.0",
+    params: { viewBoxWidth: 64, viewBoxHeight: 64, fps: 24, frames: 4 },
+    images: {
+      img_base: sharedImage,
+      img_copy: sharedImage,
+      img_unused: Buffer.from([0x89, 0x50, 0x4e, 0x47, 9])
+    },
+    sprites: [
+      { imageKey: "img_base", frames: createOptimizerFrames() },
+      { imageKey: "img_copy", frames: createOptimizerFrames() }
+    ],
+    audios: []
+  };
+  const verificationError = MovieEntity.verify(payload);
+  assert.equal(verificationError, null);
+  return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+function createOptimizerFrames() {
+  return Array.from({ length: 4 }, (_unused, index) => ({
+    alpha: 1,
+    layout: { x: 0, y: 0, width: 10, height: 10 },
+    transform: { a: 1, b: 0, c: 0, d: 1, tx: index, ty: 0 },
+    clipPath: "",
+    shapes: []
+  }));
+}
 
 test("real sample audit harness stores aliases and avoids absolute paths in report output", async () => {
   const auditPage = await readFile(path.join(experimentRoot, "web/audit.js"), "utf8");
