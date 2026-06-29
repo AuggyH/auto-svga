@@ -628,3 +628,41 @@
   `Integration Coordinator`.
 - Safety boundary: package remains unsigned, not notarized, internal-use only,
   not production approved, and Windows runtime is still not verified.
+
+### Phase 4 Byte-producing Sequence Repair Validator Slice
+
+- Files updated:
+  `tools/electron-prototype/experiments/svga-web/sequence-repair-proof-contract.cjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: added a fail-closed validator for any future byte-producing sequence
+  repair proof before exposing a product repair/write path.
+- Contract behavior: `validateSequenceByteRepairProof` requires edited bytes to
+  differ from the source, source SHA-256 to remain bound, at least one bounded
+  resource-key diff with distinct before/after hashes, `edited_bytes_reopen`
+  round-trip mode, reopened playback, nonblank canvas, inspection success,
+  rendered proof, manual visual confirmation required, and product Save As/write
+  controls disabled.
+- Failure-first evidence: the svga-web test suite now feeds the validator fake
+  proofs that reuse the source hash, claim `no_op_source_reopen`, set
+  `roundTripNoopOnly=true`, omit source delta, provide unchanged resource diffs,
+  expose product Save As/write actions, or claim repair success. Each fake proof
+  must be rejected.
+- Product boundary: default shared frontend source is explicitly guarded against
+  emitting `sequenceByteRepairProof`; current product smoke still reports only
+  the non-writing review, simulation, prototype, rendered-boundary, and no-op
+  round-trip sequence proofs.
+- Commands:
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/sequence-repair-proof-contract.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment suite
+  passed 23 tests including `sequence byte repair proof rejects no-op and
+  write-exposed evidence`, and desktop smoke passed with the existing sequence
+  proof chain unchanged and no `sequenceByteRepairProof` emitted by default.

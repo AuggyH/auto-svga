@@ -12,6 +12,7 @@ const {
   isExpectedSenderUrl
 } = require("./host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("./desktop-artifact-catalog.cjs");
+const { validateSequenceByteRepairProof } = require("./sequence-repair-proof-contract.cjs");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -216,6 +217,11 @@ function validateSmokeResult(value) {
     if (!sequenceNoopRoundTripProof) return undefined;
     result.sequenceNoopRoundTripProof = sequenceNoopRoundTripProof;
   }
+  if (value.sequenceByteRepairProof !== undefined) {
+    const sequenceByteRepairProof = validateSequenceByteRepairProof(value.sequenceByteRepairProof);
+    if (!sequenceByteRepairProof) return undefined;
+    result.sequenceByteRepairProof = sequenceByteRepairProof;
+  }
   if (value.replacementReadinessProof !== undefined) {
     const replacementReadinessProof = validateReplacementReadinessProof(value.replacementReadinessProof);
     if (!replacementReadinessProof) return undefined;
@@ -293,6 +299,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.sequenceNoopRoundTripProof !== undefined && !validateSequenceNoopRoundTripProof(value.sequenceNoopRoundTripProof)) {
     return "sequenceNoopRoundTripProof";
+  }
+  if (value.sequenceByteRepairProof !== undefined && !validateSequenceByteRepairProof(value.sequenceByteRepairProof)) {
+    return "sequenceByteRepairProof";
   }
   if (value.replacementReadinessProof !== undefined && !validateReplacementReadinessProof(value.replacementReadinessProof)) {
     return "replacementReadinessProof";

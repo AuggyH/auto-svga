@@ -23,6 +23,7 @@ const repoRoot = path.resolve(experimentRoot, "../../../..");
 const vendorPath = path.join(experimentRoot, "vendor/svga-web-2.4.4.js");
 const hostContract = require("../host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("../desktop-artifact-catalog.cjs");
+const { validateSequenceByteRepairProof } = require("../sequence-repair-proof-contract.cjs");
 
 test("macOS internal package scaffold avoids unsupported Finder .svga document association", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
@@ -80,6 +81,49 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(proof.requestedIntegrationChanges[0], /root package script/);
   assert.match(packageScript, /archiveEntryCount/);
   assert.match(packageScript, /zipEntries\(archivePath\)\.length/);
+});
+
+test("sequence byte repair proof rejects no-op and write-exposed evidence", () => {
+  const sourceSha256 = "a".repeat(64);
+  const editedSha256 = "b".repeat(64);
+  const beforeSha256 = "c".repeat(64);
+  const afterSha256 = "d".repeat(64);
+  const validProof = {
+    schemaVersion: 1,
+    proofId: "svga-sequence-byte-repair-proof",
+    source: "workbench-sequence-byte-repair",
+    sourceSha256,
+    sourceSha256AfterRepair: sourceSha256,
+    editedSha256,
+    prototypeId: "svga-bounded-sequence-repair-prototype-v1",
+    resourceKeyCount: 1,
+    operationCount: 1,
+    resourceDiffs: [{ resourceKey: "seq_001", beforeSha256, afterSha256 }],
+    roundTripMode: "edited_bytes_reopen",
+    sourceDeltaProduced: true,
+    editedBytesProduced: true,
+    roundTripPassed: true,
+    reopenedPlayback: true,
+    reopenedCanvasNonBlank: true,
+    reopenedInspectionReport: true,
+    renderedProofPassed: true,
+    writeAttempted: false,
+    productSaveAsEnabled: false,
+    writeActionExposed: false,
+    repairSuccessClaimed: false,
+    manualVisualConfirmationRequired: true,
+    passed: true
+  };
+
+  assert.equal(validateSequenceByteRepairProof(validProof)?.editedSha256, editedSha256);
+  assert.equal(validateSequenceByteRepairProof({ ...validProof, editedSha256: sourceSha256 }), undefined);
+  assert.equal(validateSequenceByteRepairProof({ ...validProof, roundTripMode: "no_op_source_reopen" }), undefined);
+  assert.equal(validateSequenceByteRepairProof({ ...validProof, roundTripNoopOnly: true }), undefined);
+  assert.equal(validateSequenceByteRepairProof({ ...validProof, sourceDeltaProduced: false }), undefined);
+  assert.equal(validateSequenceByteRepairProof({ ...validProof, resourceDiffs: [{ resourceKey: "seq_001", beforeSha256, afterSha256: beforeSha256 }] }), undefined);
+  assert.equal(validateSequenceByteRepairProof({ ...validProof, productSaveAsEnabled: true }), undefined);
+  assert.equal(validateSequenceByteRepairProof({ ...validProof, writeActionExposed: true }), undefined);
+  assert.equal(validateSequenceByteRepairProof({ ...validProof, repairSuccessClaimed: true }), undefined);
 });
 
 test("vendored svga-web asset is pinned and strict-CSP compatible", async () => {
@@ -303,6 +347,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /function validateSequenceBoundedRepairPrototypeProof/);
   assert.match(main, /function validateSequencePrototypeRenderedBoundaryProof/);
   assert.match(main, /function validateSequenceNoopRoundTripProof/);
+  assert.match(main, /validateSequenceByteRepairProof/);
   assert.match(main, /function validateReplacementReadinessProof/);
   assert.match(main, /function validateReplacementPreviewProof/);
   assert.match(main, /function validateReplacementUndoRedoProof/);
@@ -316,6 +361,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /sequenceBoundedRepairPrototypeProof/);
   assert.match(main, /sequencePrototypeRenderedBoundaryProof/);
   assert.match(main, /sequenceNoopRoundTripProof/);
+  assert.match(main, /sequenceByteRepairProof/);
   assert.match(main, /replacementReadinessProof/);
   assert.match(main, /replacementPreviewProof/);
   assert.match(main, /replacementUndoRedoProof/);

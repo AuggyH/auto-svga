@@ -73,6 +73,7 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /sequenceBoundedRepairPrototypeProof/);
   assert.match(productApp, /sequencePrototypeRenderedBoundaryProof/);
   assert.match(productApp, /sequenceNoopRoundTripProof/);
+  assert.doesNotMatch(productApp, /sequenceByteRepairProof/);
   assert.match(productApp, /function runReplacementReadinessProof/);
   assert.match(productApp, /function runSingleReplacementPreviewProof/);
   assert.match(productApp, /function runReplacementUndoRedoProof/);
