@@ -1,7 +1,11 @@
 # Auto SVGA Product Roadmap
 
-Date: 2026-06-22
-Owner reset: P5 product acceptance is deferred. P6 becomes the active product mainline.
+Date: 2026-06-30
+Owner reset: P5 product acceptance is deferred. P6 became the active product mainline.
+Autonomous reset: Product Owner authorized SVGA Workbench v1 autonomous execution
+beyond the prior P6-R1 human-gate/UI-polish loop. The current autonomous branch
+may proceed through Phase 1, Phase 2, Phase 3, Phase 4, and production-client
+delivery work while preserving truthful validation and local-only safety.
 
 ## Current Mainline
 
@@ -73,7 +77,11 @@ Planned capabilities:
 - safe manual-confirm optimization paths
 - Save As and reopened validation
 
-This phase must not start until P6 is accepted.
+This phase was originally blocked until P6 acceptance. The 2026-06-30 Product
+Owner autonomous reset supersedes that blocker for the dedicated
+`agent/codex/svga-workbench-v1-autonomous` run. Existing P6/P6-R1 evidence
+remains useful historical lineage and regression input, not an acceptance
+blocker for new Workbench v1 product functions.
 
 ## Phase 3: imageKey And Replaceable Element Editing
 
@@ -89,7 +97,9 @@ Planned capabilities:
 - round-trip validation
 - multi-resource mapping and review
 
-P3-P5 work remains valuable technical reserve, but it is not part of the default P6 product surface.
+P3-P5 work remains valuable technical reserve. The autonomous Workbench v1 run
+may reconnect supported bounded editing into the product surface when the
+feature is discoverable, reversible, Save As based, and round-trip validated.
 
 ## Phase 4: Sequence-frame Anti-flicker Optimization
 
