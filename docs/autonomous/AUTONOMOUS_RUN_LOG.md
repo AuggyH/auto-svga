@@ -325,3 +325,41 @@
   `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c` and
   redo restoring
   `e88cf1f4afa448863eacf6d9593a6cf68e82e1b1b0ba942d23526a2cb2f2608a`.
+
+### Phase 3 Multi-resource Replacement Workbench Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: default Workbench replacement previews now support multiple embedded
+  PNG resource replacements with P4 round-trip validation and controlled Save
+  As.
+- Product behavior: adding another replacement reuses the original SVGA bytes
+  plus the full current replacement list, then regenerates edited bytes through
+  `/api/svga-image-replace` with a P4 milestone request. Already replaced
+  resources are disabled in the resource list, while other replaceable image
+  resources can be added to the current preview. Save validation switches from
+  P3 to P4 when the replacement count reaches two.
+- Smoke evidence: product smoke replaces `img_0` and `img_1` with
+  `replacement-a.png` and `replacement-b.png`, validates the P4 round-trip
+  report, writes a controlled `multi-resource-edited-output.svga`, reopens it,
+  and reports a main-process-validated `replacementMultiResourceProof`.
+- Safety boundary: batch/folder PNG mapping remains prototype-only. This slice
+  does not expose URL import, text editing, key rename, timeline editing, or
+  automatic sequence repair.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment
+  suite passed 22 tests, and desktop smoke reported
+  `replacementMultiResourceProof.passed=true` for `img_0` and `img_1`, with
+  saved SHA-256
+  `47975a2d2aae9faca37c746dbd69c2bbf3eb978b74cfef98074d6b34325f7821`.

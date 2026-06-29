@@ -300,6 +300,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /function validateReplacementReadinessProof/);
   assert.match(main, /function validateReplacementPreviewProof/);
   assert.match(main, /function validateReplacementUndoRedoProof/);
+  assert.match(main, /function validateReplacementMultiResourceProof/);
   assert.match(main, /function validateReplacementSaveAsProof/);
   assert.match(main, /function saveOptimizedSvga/);
   assert.match(main, /optimizedReopenProof/);
@@ -307,6 +308,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /replacementPreviewProof/);
   assert.match(main, /replacementUndoRedoProof/);
   assert.match(main, /replacementSaveAsProof/);
+  assert.match(main, /replacementMultiResourceProof/);
   assert.match(main, /Optimized Save As requires the source SVGA to be opened through the desktop file picker/);
   assert.match(desktopEntry, /\/api\/svga-image-optimize/);
   assert.match(desktopEntry, /\/api\/svga-image-edit-session/);
@@ -314,7 +316,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(productApp, /runReplacementReadinessProof/);
   assert.match(productApp, /runSingleReplacementPreviewProof/);
   assert.match(productApp, /runReplacementUndoRedoProof/);
+  assert.match(productApp, /runMultiReplacementWorkbenchProof/);
   assert.match(productApp, /runReplacementSaveAsProof/);
+  assert.match(main, /desktop-multi-replacement-proof/);
   assert.match(prepareRuntime, /optimizer-reopen-smoke\.svga/);
   assert.match(main, /validateArtifactScenario/);
   assert.match(main, /validateP6InteractionTrace/);

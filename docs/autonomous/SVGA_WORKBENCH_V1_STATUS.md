@@ -17,8 +17,8 @@ work in this dedicated autonomous branch.
 | --- | --- | --- |
 | Phase 1 stabilization baseline | Baseline pass, continue hardening only when gaps are found | `npm run desktop:smoke`; `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`; package proof privacy audit |
 | Phase 2 asset detection and optimization | Read-only Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, and optimized-output reopen proof implemented; product UI execution not exposed | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
-| Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, and edited Save As are smoke-validated; multi-resource productization still pending | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementSaveAsProof`; desktop smoke |
-| Phase 4 sequence-frame anti-flicker | Detection primitives exist; repair productization not started | Existing sequence tests in root suite |
+| Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, multi-resource replacement, and edited Save As are smoke-validated; batch/folder mapping remains prototype-only | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementSaveAsProof`; `replacementMultiResourceProof`; desktop smoke |
+| Phase 4 sequence-frame anti-flicker | Detection primitives exist; Workbench productization not started | Existing sequence tests in root suite |
 | Production-client delivery | Internal unsigned macOS ZIP generated; signing/notarization blocked by credentials | internal trial manifest |
 
 ## Current Baseline Evidence
@@ -37,11 +37,11 @@ work in this dedicated autonomous branch.
 
 ## Immediate Next Slice
 
-Continue Phase 3 with the next narrow replacement-editing product slice:
+Continue with the next narrow Phase 4 sequence-frame product slice:
 
-1. add multi-resource replacement productization only after preserving the
-   single-resource proof contract;
-2. keep sequence-frame anti-flicker work separate from replacement editing
-   until multi-resource replacement has a clean stop point;
+1. expose read-only sequence-frame anti-flicker findings in the default
+   Workbench without adding automatic repair yet;
+2. add a smoke proof that sequence findings are sourced from parsed SVGA
+   evidence and do not mutate bytes;
 3. keep text editing, key rename, URL import, and structural/timeline edits
    unsupported until they have separate mechanical round-trip proof.

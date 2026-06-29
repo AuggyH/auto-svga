@@ -346,6 +346,13 @@ function cloneReplacementEdit(edit) {
     ...edit,
     sourceBytes: edit.sourceBytes ? edit.sourceBytes.slice(0) : undefined,
     editedBytes: edit.editedBytes ? edit.editedBytes.slice(0) : undefined,
+    replacementPngBytes: edit.replacementPngBytes ? edit.replacementPngBytes.slice(0) : undefined,
+    replacements: Array.isArray(edit.replacements)
+      ? edit.replacements.map((replacement) => ({
+        ...replacement,
+        pngBytes: replacement.pngBytes ? replacement.pngBytes.slice(0) : undefined
+      }))
+      : undefined,
     editedUrl: undefined,
     sourceIdentity: cloneReplacementPlainValue(edit.sourceIdentity),
     roundTripReport: cloneReplacementPlainValue(edit.roundTripReport),
@@ -1915,18 +1922,18 @@ async function createSvgaImageEditSession(bytes, fileName) {
   return payload;
 }
 
-async function replaceSvgaImageResource(sourceBytes, resourceKey, pngBytes, fileName) {
+async function replaceSvgaImageResources(sourceBytes, replacements, fileName, options = {}) {
   const response = await fetch("/api/svga-image-replace", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      milestoneId: "P3",
+      milestoneId: options.milestoneId ?? (replacements.length > 1 ? "P4" : "P3"),
       name: fileName,
       svgaBase64: bytesToBase64(sourceBytes),
-      replacements: [{
-        resourceKey,
-        pngBase64: bytesToBase64(pngBytes)
-      }]
+      replacements: replacements.map((replacement) => ({
+        resourceKey: replacement.resourceKey,
+        pngBase64: bytesToBase64(replacement.pngBytes)
+      }))
     })
   });
   const payload = await response.json().catch(() => ({}));
@@ -1934,6 +1941,10 @@ async function replaceSvgaImageResource(sourceBytes, resourceKey, pngBytes, file
     throw new Error(payload.error ?? `HTTP ${response.status}`);
   }
   return payload;
+}
+
+async function replaceSvgaImageResource(sourceBytes, resourceKey, pngBytes, fileName) {
+  return replaceSvgaImageResources(sourceBytes, [{ resourceKey, pngBytes }], fileName, { milestoneId: "P3" });
 }
 
 async function summarizeReplacementReadiness(session, sourceBytes) {
@@ -2016,23 +2027,76 @@ async function sha256Json(value) {
   return p6Sha256Bytes(new TextEncoder().encode(stableStringify(value)));
 }
 
+function replacementRecordsForEdit(edit) {
+  if (Array.isArray(edit?.replacements) && edit.replacements.length > 0) {
+    return edit.replacements;
+  }
+  if (!edit?.resourceKey || !edit.replacementSha256) return [];
+  return [{
+    resourceKey: edit.resourceKey,
+    replacementFileName: edit.replacementFileName,
+    replacementSha256: edit.replacementSha256,
+    pngBytes: edit.replacementPngBytes
+  }];
+}
+
+function replacementDigestEntriesForEdit(edit) {
+  return replacementRecordsForEdit(edit).map((replacement) => ({
+    resourceKey: replacement.resourceKey,
+    replacementSha256: replacement.replacementSha256,
+    editedSha256: edit.editedSha256
+  }));
+}
+
+function replacementRoundTripMatches(roundTripReport, replacements) {
+  if (!roundTripReport || typeof roundTripReport !== "object") return false;
+  if (replacements.length === 1) {
+    const replacement = replacements[0];
+    return roundTripReport.passed === true
+      && roundTripReport.replacedResourceKey === replacement.resourceKey
+      && roundTripReport.replacementSha256 === replacement.replacementSha256
+      && roundTripReport.exportedResourceSha256 === replacement.replacementSha256;
+  }
+  const reportReplacements = Array.isArray(roundTripReport.replacements)
+    ? roundTripReport.replacements
+    : [];
+  return roundTripReport.passed === true
+    && roundTripReport.replacementCount === replacements.length
+    && replacements.every((replacement) => reportReplacements.some((entry) => (
+      entry.resourceKey === replacement.resourceKey
+        && entry.replacementSha256 === replacement.replacementSha256
+        && entry.exportedMatchesReplacement === true
+    )));
+}
+
+function isResourceAlreadyReplaced(resourceKey) {
+  return replacementRecordsForEdit(primaryReplacementEdit).some((replacement) => replacement.resourceKey === resourceKey);
+}
+
+function replacementEditSummaryText(edit) {
+  const replacements = replacementRecordsForEdit(edit);
+  if (replacements.length <= 1) {
+    return `${edit.resourceKey} 已使用 ${edit.replacementFileName ?? "PNG"} 替换并重开。`;
+  }
+  const keys = replacements.map((replacement) => replacement.resourceKey).join(", ");
+  return `${replacements.length} 项资源已替换并重开：${keys}`;
+}
+
 async function createReplacementSaveValidation(edit) {
   const roundTripReport = edit.roundTripReport ?? {};
+  const replacements = replacementDigestEntriesForEdit(edit);
+  const milestoneId = replacements.length > 1 ? "P4" : "P3";
   return {
     schemaVersion: 1,
-    milestoneId: "P3",
+    milestoneId,
     operationSequence: edit.operationSequence ?? 0,
-    replacementDigest: JSON.stringify([{
-      resourceKey: edit.resourceKey,
-      replacementSha256: edit.replacementSha256,
-      editedSha256: edit.editedSha256
-    }]),
+    replacementDigest: JSON.stringify(replacements),
     roundTripReportDigest: await sha256Json(roundTripReport),
     editedBytesSha256: edit.editedSha256,
     reportSchemaVersion: roundTripReport.schemaVersion,
     reportMilestoneId: roundTripReport.milestoneId,
     reportPassed: roundTripReport.passed === true,
-    replacementCount: 1,
+    replacementCount: replacements.length,
     unexpectedChangesEmpty: Array.isArray(roundTripReport.unexpectedChanges)
       && roundTripReport.unexpectedChanges.length === 0
   };
@@ -2152,21 +2216,40 @@ async function replacePrimaryResource(resourceKey, file) {
     showError("当前资源暂不支持安全替换。");
     return undefined;
   }
-  if (primaryReplacementEdit) {
-    showError("请先还原当前替换预览，再替换其他图片。");
+  if (isResourceAlreadyReplaced(resourceKey)) {
+    showError("该资源已经在当前预览中替换。");
     return undefined;
   }
   const previousSnapshot = cloneReplacementEdit(primaryReplacementEdit);
   try {
     clearError();
-    const sourceBytes = await readPrimarySourceBytes();
-    const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+    const sourceBytes = previousSnapshot?.sourceBytes ?? await readPrimarySourceBytes();
+    const sourceSha256 = previousSnapshot?.sourceSha256 ?? await p6Sha256Bytes(sourceBytes);
     const pngBytes = await readReplacementPngFile(file);
     const replacementSha256 = await p6Sha256Bytes(pngBytes);
-    const originalIdentity = { ...(players.a.sourceIdentity ?? {}) };
+    const originalIdentity = previousSnapshot?.sourceIdentity
+      ? { ...previousSnapshot.sourceIdentity }
+      : { ...(players.a.sourceIdentity ?? {}) };
     const fileName = originalIdentity.fileName ?? players.a.metrics?.fileName ?? "edited-output.svga";
+    const replacementRecord = {
+      resourceKey,
+      replacementFileName: file.name,
+      replacementSha256,
+      pngBytes: pngBytes.slice(0)
+    };
+    const replacements = [
+      ...replacementRecordsForEdit(previousSnapshot).map((replacement) => ({
+        ...replacement,
+        pngBytes: replacement.pngBytes ? replacement.pngBytes.slice(0) : undefined
+      })),
+      replacementRecord
+    ];
+    if (!replacements.every((replacement) => replacement.pngBytes instanceof Uint8Array)) {
+      throw new Error("当前替换历史缺少 PNG 字节，无法继续多资源替换。");
+    }
+    const milestoneId = replacements.length > 1 ? "P4" : "P3";
     addLog("info", `正在替换资源：${resourceKey}`);
-    const payload = await replaceSvgaImageResource(sourceBytes, resourceKey, pngBytes, fileName);
+    const payload = await replaceSvgaImageResources(sourceBytes, replacements, fileName, { milestoneId });
     const editedBytes = base64ToBytes(payload.editedSvgaBase64 ?? "");
     const editedSha256 = await p6Sha256Bytes(editedBytes);
     const editedUrl = URL.createObjectURL(new Blob([editedBytes], { type: "application/octet-stream" }));
@@ -2193,6 +2276,10 @@ async function replacePrimaryResource(resourceKey, file) {
       resourceKey,
       replacementFileName: file.name,
       replacementSha256,
+      replacementPngBytes: pngBytes.slice(0),
+      replacements,
+      replacementCount: replacements.length,
+      milestoneId,
       sourceSha256,
       editedSha256,
       sourceBytes: sourceBytes.slice(0),
@@ -2203,10 +2290,7 @@ async function replacePrimaryResource(resourceKey, file) {
       readiness: await summarizeReplacementReadiness(payload.session, editedBytes),
       reopenedInspectionReport,
       canvasNonBlank: canvasIsNonBlank(players.a),
-      passed: roundTripReport.passed === true
-        && roundTripReport.replacedResourceKey === resourceKey
-        && roundTripReport.replacementSha256 === replacementSha256
-        && roundTripReport.exportedResourceSha256 === replacementSha256
+      passed: replacementRoundTripMatches(roundTripReport, replacements)
         && canvasIsNonBlank(players.a)
         && reopenedInspectionReport === true
     };
@@ -2509,6 +2593,122 @@ async function runReplacementUndoRedoProof(sourceBytes, resourceKey, fileName) {
         && undoRenderedProof.passed === true
         && redoRenderedProof.passed === true
     };
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
+async function runMultiReplacementWorkbenchProof(sourceBytes, resourceKeys, fileName) {
+  const selectedKeys = [...new Set(resourceKeys.filter(Boolean))].slice(0, 2);
+  if (selectedKeys.length < 2) throw new Error("Multi-resource proof requires two replacement resources.");
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const sourceUrl = URL.createObjectURL(new Blob([sourceBytes], { type: "application/octet-stream" }));
+  const [replacementA, replacementB] = await Promise.all([
+    fetch("/fixture/replacement-a.png").then((response) => {
+      if (!response.ok) throw new Error(`Replacement fixture A fetch failed (${response.status})`);
+      return response.arrayBuffer();
+    }),
+    fetch("/fixture/replacement-b.png").then((response) => {
+      if (!response.ok) throw new Error(`Replacement fixture B fetch failed (${response.status})`);
+      return response.arrayBuffer();
+    })
+  ]);
+  const replacementFiles = [
+    typeof File === "function"
+      ? new File([replacementA], "replacement-a.png", { type: "image/png" })
+      : Object.assign(new Blob([replacementA], { type: "image/png" }), { name: "replacement-a.png" }),
+    typeof File === "function"
+      ? new File([replacementB], "replacement-b.png", { type: "image/png" })
+      : Object.assign(new Blob([replacementB], { type: "image/png" }), { name: "replacement-b.png" })
+  ];
+  try {
+    await loadSvga("a", sourceUrl, {
+      fileName,
+      fileSizeBytes: sourceBytes.byteLength,
+      fixtureSha256: sourceSha256,
+      loadingHoldMs: 80
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    await waitForInspectionStatus(players.a);
+    await waitFor(() => selectedKeys.every((key) => replacementReadinessForResource(key)?.replaceable === true));
+    await replacePrimaryResource(selectedKeys[0], replacementFiles[0]);
+    const firstEdit = cloneReplacementEdit(primaryReplacementEdit);
+    await replacePrimaryResource(selectedKeys[1], replacementFiles[1]);
+    const edit = cloneReplacementEdit(primaryReplacementEdit);
+    if (!edit?.passed) throw new Error("Multi-resource replacement edit did not pass.");
+    const replacements = replacementRecordsForEdit(edit);
+    const undoAvailableBeforeSave = canUndoReplacementPreview();
+    const redoClearedBeforeSave = !canRedoReplacementPreview();
+    const validation = await createReplacementSaveValidation(edit);
+    const result = await electronBridge.saveEditedSvga({
+      bytesBase64: bytesToBase64(edit.editedBytes),
+      suggestedName: suggestedEditedFileName(fileName),
+      sourceId: "",
+      validation
+    });
+    const savedBytes = base64ToBytes(result.savedSvgaBase64 ?? "");
+    const savedSha256 = await p6Sha256Bytes(savedBytes);
+    const savedUrl = URL.createObjectURL(new Blob([savedBytes], { type: "application/octet-stream" }));
+    try {
+      await loadSvga("a", savedUrl, {
+        fileName: result.fileName,
+        fileSizeBytes: result.sizeBytes,
+        sourceId: result.sourceId ?? null,
+        sourceSha256: result.sha256,
+        fixtureSha256: savedSha256,
+        skipReplacementReadiness: true,
+        loadingHoldMs: 80
+      });
+      await waitFor(() => Boolean(players.a.videoItem));
+      await waitFor(() => canvasIsNonBlank(players.a));
+      const reopenedInspectionReport = await waitForInspectionStatus(players.a);
+      const renderedProof = collectRenderedStateProof("loaded");
+      return {
+        schemaVersion: 1,
+        proofId: "svga-multi-replacement-workbench-proof",
+        source: "workbench-multi-replacement-state",
+        sourceSha256,
+        resourceKeys: replacements.map((replacement) => replacement.resourceKey),
+        replacementCount: replacements.length,
+        replacementASha256: replacements[0]?.replacementSha256 ?? "",
+        replacementBSha256: replacements[1]?.replacementSha256 ?? "",
+        firstEditSha256: firstEdit?.editedSha256 ?? "",
+        editedSha256: edit.editedSha256,
+        savedSha256,
+        savedFileName: result.fileName,
+        saveStatus: result.status,
+        validationMilestoneP4: validation.milestoneId === "P4",
+        roundTripPassed: edit.roundTripReport?.passed === true,
+        exportedMatchesReplacements: replacementRoundTripMatches(edit.roundTripReport, replacements),
+        sourceUnchanged: edit.roundTripReport?.sourceSha256 === sourceSha256
+          && edit.roundTripReport?.sourceSha256AfterEditing === sourceSha256,
+        undoAvailable: undoAvailableBeforeSave,
+        redoCleared: redoClearedBeforeSave,
+        savedHashBound: savedSha256 === edit.editedSha256 && result.sha256 === savedSha256,
+        reopenedPlayback: Boolean(players.a.player),
+        reopenedCanvasNonBlank: canvasIsNonBlank(players.a),
+        reopenedInspectionReport,
+        renderedProofPassed: renderedProof.passed === true,
+        passed: replacements.length >= 2
+          && validation.milestoneId === "P4"
+          && edit.roundTripReport?.passed === true
+          && replacementRoundTripMatches(edit.roundTripReport, replacements)
+          && edit.roundTripReport?.sourceSha256 === sourceSha256
+          && edit.roundTripReport?.sourceSha256AfterEditing === sourceSha256
+          && undoAvailableBeforeSave
+          && redoClearedBeforeSave
+          && result.status === "saved"
+          && savedSha256 === edit.editedSha256
+          && result.sha256 === savedSha256
+          && Boolean(players.a.player)
+          && canvasIsNonBlank(players.a)
+          && reopenedInspectionReport
+          && renderedProof.passed === true
+      };
+    } finally {
+      URL.revokeObjectURL(savedUrl);
+    }
   } finally {
     URL.revokeObjectURL(sourceUrl);
   }
@@ -4489,6 +4689,13 @@ async function runProductSmoke() {
       replacementReadinessProof.replaceableResourceKeys[0],
       p6BaselineFixtureDisplayName
     );
+    p6SmokeCurrentPhase = "multi-replacement-workbench-proof";
+    const replacementMultiResourceProof = await runMultiReplacementWorkbenchProof(
+      bytes.slice(0),
+      replacementReadinessProof.replaceableResourceKeys.slice(0, 2),
+      p6BaselineFixtureDisplayName
+    );
+    await captureArtifact("desktop-multi-replacement-proof");
     p6SmokeCurrentPhase = "optimized-reopen-proof";
     const optimizerFixtureUrl = "/fixture/optimizer-reopen-smoke.svga";
     const optimizerFixtureBytes = new Uint8Array(await fetch(optimizerFixtureUrl).then((response) => {
@@ -4747,6 +4954,7 @@ async function runProductSmoke() {
       replacementPreviewProof,
       replacementUndoRedoProof,
       replacementSaveAsProof,
+      replacementMultiResourceProof,
       optimizedReopenProof,
       p6InteractionTrace: await buildP6SmokeInteractionTrace(),
       ownerUsability,
@@ -5199,7 +5407,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     <div class="assetIntelligenceSummary">
       <strong>替换预览</strong>
       <span>${primaryReplacementEdit
-        ? `${escapeHtml(primaryReplacementEdit.resourceKey)} 已使用 ${escapeHtml(primaryReplacementEdit.replacementFileName ?? "PNG")} 替换并重开。`
+        ? escapeHtml(replacementEditSummaryText(primaryReplacementEdit))
         : "已回到原图，可重做最近一次替换。"
       }</span>
       <button class="sequenceToggle" type="button" data-undo-replacement-preview ${canUndoReplacementPreview() ? "" : "disabled"}>撤销</button>
@@ -5394,7 +5602,7 @@ function renderAssetEntry(asset) {
     : "";
   const actions = [
     asset.kind === "image" && asset.replaceable
-      ? `<button class="sequenceToggle" type="button" data-replace-resource-key="${escapeHtml(asset.imageKey ?? "")}" ${primaryReplacementEdit ? "disabled" : ""}>替换图片</button>`
+      ? `<button class="sequenceToggle" type="button" data-replace-resource-key="${escapeHtml(asset.imageKey ?? "")}" ${isResourceAlreadyReplaced(asset.imageKey) ? "disabled" : ""}>${isResourceAlreadyReplaced(asset.imageKey) ? "已替换" : "替换图片"}</button>`
       : "",
     asset.kind === "sequence"
       ? `<button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧" : "展开序列帧"}</button>`

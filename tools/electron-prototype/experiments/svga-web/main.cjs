@@ -206,6 +206,11 @@ function validateSmokeResult(value) {
     if (!replacementSaveAsProof) return undefined;
     result.replacementSaveAsProof = replacementSaveAsProof;
   }
+  if (value.replacementMultiResourceProof !== undefined) {
+    const replacementMultiResourceProof = validateReplacementMultiResourceProof(value.replacementMultiResourceProof);
+    if (!replacementMultiResourceProof) return undefined;
+    result.replacementMultiResourceProof = replacementMultiResourceProof;
+  }
   return result;
 }
 
@@ -252,6 +257,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.replacementSaveAsProof !== undefined && !validateReplacementSaveAsProof(value.replacementSaveAsProof)) {
     return "replacementSaveAsProof";
+  }
+  if (value.replacementMultiResourceProof !== undefined && !validateReplacementMultiResourceProof(value.replacementMultiResourceProof)) {
+    return "replacementMultiResourceProof";
   }
   return "unknown";
 }
@@ -352,6 +360,74 @@ function validateReplacementUndoRedoProof(value) {
     redoInspectionReport: true,
     renderedProofPassed: true,
     saveAsNotAttempted: true,
+    passed: true
+  };
+}
+
+function validateReplacementMultiResourceProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "svga-multi-replacement-workbench-proof") return undefined;
+  if (value.source !== "workbench-multi-replacement-state") return undefined;
+  const resourceKeys = Array.isArray(value.resourceKeys)
+    ? value.resourceKeys.filter((key) => isBoundedString(key, 120))
+    : [];
+  if (resourceKeys.length < 2 || new Set(resourceKeys).size !== resourceKeys.length) return undefined;
+  if (!Number.isInteger(value.replacementCount) || value.replacementCount !== resourceKeys.length) return undefined;
+  if (
+    !isSha256(value.sourceSha256)
+    || !isSha256(value.replacementASha256)
+    || !isSha256(value.replacementBSha256)
+    || !isSha256(value.firstEditSha256)
+    || !isSha256(value.editedSha256)
+    || !isSha256(value.savedSha256)
+  ) {
+    return undefined;
+  }
+  if (value.firstEditSha256 === value.sourceSha256 || value.editedSha256 === value.sourceSha256) return undefined;
+  if (value.firstEditSha256 === value.editedSha256 || value.savedSha256 !== value.editedSha256) return undefined;
+  if (!isBoundedString(value.savedFileName, 180) || !value.savedFileName.endsWith(".svga")) return undefined;
+  if (
+    value.saveStatus !== "saved"
+    || value.validationMilestoneP4 !== true
+    || value.roundTripPassed !== true
+    || value.exportedMatchesReplacements !== true
+    || value.sourceUnchanged !== true
+    || value.undoAvailable !== true
+    || value.redoCleared !== true
+    || value.savedHashBound !== true
+    || value.reopenedPlayback !== true
+    || value.reopenedCanvasNonBlank !== true
+    || value.reopenedInspectionReport !== true
+    || value.renderedProofPassed !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    resourceKeys,
+    replacementCount: resourceKeys.length,
+    replacementASha256: value.replacementASha256,
+    replacementBSha256: value.replacementBSha256,
+    firstEditSha256: value.firstEditSha256,
+    editedSha256: value.editedSha256,
+    savedSha256: value.savedSha256,
+    savedFileName: value.savedFileName,
+    saveStatus: "saved",
+    validationMilestoneP4: true,
+    roundTripPassed: true,
+    exportedMatchesReplacements: true,
+    sourceUnchanged: true,
+    undoAvailable: true,
+    redoCleared: true,
+    savedHashBound: true,
+    reopenedPlayback: true,
+    reopenedCanvasNonBlank: true,
+    reopenedInspectionReport: true,
+    renderedProofPassed: true,
     passed: true
   };
 }
@@ -1266,6 +1342,7 @@ function validateArtifactScenario(value) {
     "desktop-recovered-from-invalid",
     "desktop-replacement-preview-proof",
     "desktop-replacement-undo-redo-proof",
+    "desktop-multi-replacement-proof",
     "desktop-optimized-reopen-proof",
     "actual-normal-loaded",
     "smoke-loaded",
@@ -1369,9 +1446,9 @@ function validateSaveRevisionBinding(value, bytes) {
       : value.milestoneId === "P5"
         ? "P5"
         : "";
-  const productWorkbenchAllowsP3Save = milestoneId === "P3"
+  const productWorkbenchAllowsWorkbenchSave = ["P3", "P4"].includes(milestoneId)
     && ["P2", "P6", "P6-R1"].includes(productMilestoneId);
-  if (!milestoneId || (milestoneId !== productMilestoneId && !productWorkbenchAllowsP3Save)) return undefined;
+  if (!milestoneId || (milestoneId !== productMilestoneId && !productWorkbenchAllowsWorkbenchSave)) return undefined;
   if (value.schemaVersion !== 1) return undefined;
   if (!Number.isInteger(value.operationSequence) || value.operationSequence < 0) return undefined;
   if (typeof value.replacementDigest !== "string" || value.replacementDigest.length === 0 || value.replacementDigest.length > 20_000) return undefined;
@@ -2309,6 +2386,7 @@ function stateForScenario(scenario) {
     "desktop-recovered-from-invalid": "recovered-from-invalid",
     "desktop-replacement-preview-proof": "loaded",
     "desktop-replacement-undo-redo-proof": "loaded",
+    "desktop-multi-replacement-proof": "loaded",
     "desktop-optimized-reopen-proof": "loaded",
     "desktop-asset-preview-modal-open": "asset-preview-modal-open",
     "desktop-info-diagnostics-open": "info-diagnostics-open",
@@ -2487,6 +2565,7 @@ function artifactFileNameForScenario(scenario) {
     "p3-replacement-preview": "replacement-preview.png",
     "desktop-replacement-preview-proof": "desktop-replacement-preview-proof.png",
     "desktop-replacement-undo-redo-proof": "desktop-replacement-undo-redo-proof.png",
+    "desktop-multi-replacement-proof": "desktop-multi-replacement-proof.png",
     "p3-dirty-state": "dirty-state.png",
     "p3-reset-to-original": "reset-to-original.png",
     "p3-export-success": "export-success.png",
@@ -2752,7 +2831,8 @@ async function saveEditedSvga(input) {
   const p4SmokeSaveAs = productMilestoneId === "P4" && (smokeMode || productSmokeMode || normalProofMode);
   const p5SmokeSaveAs = productMilestoneId === "P5" && (smokeMode || productSmokeMode || normalProofMode);
   const p3WorkbenchSmokeSaveAs = value.validation.milestoneId === "P3" && (smokeMode || productSmokeMode || normalProofMode);
-  const automatedProductSaveAs = p3SmokeSaveAs || p4SmokeSaveAs || p5SmokeSaveAs || p3WorkbenchSmokeSaveAs;
+  const p4WorkbenchSmokeSaveAs = value.validation.milestoneId === "P4" && (smokeMode || productSmokeMode || normalProofMode);
+  const automatedProductSaveAs = p3SmokeSaveAs || p4SmokeSaveAs || p5SmokeSaveAs || p3WorkbenchSmokeSaveAs || p4WorkbenchSmokeSaveAs;
   const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
   if (!automatedProductSaveAs && !originalPath) {
     throw new Error("Save As requires the source SVGA to be opened through the desktop file picker.");
@@ -2763,7 +2843,7 @@ async function saveEditedSvga(input) {
     targetPath = path.join(productArtifactRoot,
       p5SmokeSaveAs
         ? "batch-edited-output.svga"
-        : p4SmokeSaveAs
+        : (p4SmokeSaveAs || p4WorkbenchSmokeSaveAs)
           ? "multi-resource-edited-output.svga"
           : "edited-output.svga");
   } else {
