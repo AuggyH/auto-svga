@@ -70,3 +70,30 @@
   `npm test`;
   `npm run desktop:smoke`
 - Result: pass; root suite passed 234 tests.
+
+### Phase 2 Safe Image Optimizer Slice
+
+- Files added:
+  `src/workbench/svga/asset-optimizer.ts`,
+  `src/tests/svga-image-optimizer.test.ts`
+- Files updated:
+  `src/workbench/svga/index.ts`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: host-neutral safe optimizer implemented as a library capability; no
+  owner-clickable optimization UI is exposed.
+- Product behavior: optimizer emits new SVGA bytes for Save As flows, removes
+  image resources only after references are absent, redirects byte-identical
+  sprite/matte references to a canonical image key, verifies remaining
+  references are closed, keeps all non-reference sprite fields stable, and
+  records source immutability plus a structured optimization report.
+- Safe-action boundary: transparent padding, structural repair, and playback
+  acceptance remain outside this engine. The source SVGA is treated as immutable
+  input; callers must save optimized bytes to a new file and reopen them for
+  visible proof.
+- Commands:
+  `npm run build`;
+  `node --test dist/tests/svga-image-optimizer.test.js`;
+  `node --test dist/tests/svga-image-optimizer.test.js dist/tests/svga-image-resource-editor.test.js dist/tests/svga-format-adapter.test.js`;
+  `npm test`
+- Result: pass; root suite passed 236 tests.

@@ -4,6 +4,10 @@ export {
   createSvgaBatchReplacementInputs
 } from "./batch-png-mapping.js";
 export {
+  optimizeSvgaImageResources,
+  SvgaImageOptimizationError
+} from "./asset-optimizer.js";
+export {
   applySvgaImageEditTransaction,
   createSvgaImageEditHistory,
   markSvgaImageEditSaved,
@@ -30,6 +34,14 @@ export type {
   SvgaImageEditTransactionType,
   SvgaImageEditHistoryState
 } from "./image-edit-history.js";
+export type {
+  SvgaImageOptimizationAction,
+  SvgaImageOptimizationActionType,
+  SvgaImageOptimizationInvariantCheck,
+  SvgaImageOptimizationRedirect,
+  SvgaImageOptimizationReport,
+  SvgaImageOptimizationResult
+} from "./asset-optimizer.js";
 export type {
   SvgaBatchPngConfidenceClass,
   SvgaBatchPngImportLimits,

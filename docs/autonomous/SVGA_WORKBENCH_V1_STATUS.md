@@ -16,7 +16,7 @@ work in this dedicated autonomous branch.
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | Phase 1 stabilization baseline | Baseline pass, continue hardening only when gaps are found | `npm run desktop:smoke`; `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`; package proof privacy audit |
-| Phase 2 asset detection and optimization | First read-only Asset Intelligence slice implemented; safe optimization execution not started | `asset-intelligence` unit tests; avatar-frame report contract tests; shared frontend source guard; `npm test`; desktop smoke |
+| Phase 2 asset detection and optimization | Read-only Asset Intelligence plus host-neutral safe-image optimizer implemented; product UI execution not exposed | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; shared frontend source guard; `npm test`; desktop smoke |
 | Phase 3 imageKey / replacement editing | Incubation code exists; product reconnection not started | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md` |
 | Phase 4 sequence-frame anti-flicker | Detection primitives exist; repair productization not started | Existing sequence tests in root suite |
 | Production-client delivery | Internal unsigned macOS ZIP generated; signing/notarization blocked by credentials | internal trial manifest |
@@ -39,7 +39,8 @@ work in this dedicated autonomous branch.
 
 Continue Phase 2 with the next narrow Asset Intelligence product slice:
 
-1. add a Save As optimization engine only for mechanically safe findings;
-2. remove truly unreferenced resources only after reference absence is proven;
-3. deduplicate byte-identical images with reference updates and round-trip validation;
+1. bind the safe-image optimizer to an explicit Save As host flow without
+   mutating the opened source file;
+2. reopen the optimized bytes through the product inspection/playback path;
+3. record visible proof before exposing any owner-clickable optimization action;
 4. keep transparent padding and structural repairs suggestion-only until visual comparison is proven.
