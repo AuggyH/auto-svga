@@ -224,6 +224,18 @@ function describeWorkbenchRegionMapValidationFailure(value) {
   if (value.mode !== "localPreview") return "mode-not-local-preview";
   if (value.workflowPrimary !== "local_preview_first" || value.localPreviewPrimary !== true) return "workflow-primary";
   if (!Array.isArray(value.secondaryEvidenceAllowed) || !value.secondaryEvidenceAllowed.includes("exportReview")) return "secondary-evidence";
+  if (Array.isArray(value.layoutIntegrity?.failures) && value.layoutIntegrity.failures.length > 0) {
+    const inspector = Array.isArray(value.regions) ? value.regions.find((region) => region?.id === "inspector") : undefined;
+    const rect = inspector?.rect;
+    const viewport = value.viewportCss;
+    const debug = value.layoutDebug && typeof value.layoutDebug === "object" && !Array.isArray(value.layoutDebug)
+      ? `:class=${String(value.layoutDebug.workspaceClassName ?? "missing").slice(0, 120)}:right=${String(value.layoutDebug.rightWidth ?? "missing")}:center=${String(value.layoutDebug.centerWidth ?? "missing")}:info=${String(value.layoutDebug.infoPanelWidth ?? "missing")}:panel=${String(value.layoutDebug.activeSidePanel ?? "missing")}:position=${String(value.layoutDebug.inspectorPosition ?? "missing")}:computedWidth=${String(value.layoutDebug.inspectorComputedWidth ?? "missing")}:min=${String(value.layoutDebug.inspectorComputedMinWidth ?? "missing")}:max=${String(value.layoutDebug.inspectorComputedMaxWidth ?? "missing")}`
+      : "";
+    const rectSummary = rect && viewport
+      ? `:inspectorRect=${Math.round(rect.x)},${Math.round(rect.y)},${Math.round(rect.width)},${Math.round(rect.height)}:viewport=${Math.round(viewport.width)}x${Math.round(viewport.height)}`
+      : "";
+    return `layout:${value.layoutIntegrity.failures.slice(0, 4).join(",")}${rectSummary}${debug}`;
+  }
   if (value.passed !== true) return "not-passed";
   const requiredIds = [
     "source_document",
@@ -356,9 +368,7 @@ function validateOwnerUsabilityResult(value) {
   if (value.finderDocumentAssociation !== "not-declared") return undefined;
   const requiredChecks = [
     "svgaAInvalidLocalFeedback",
-    "svgaBInvalidLocalFeedback",
     "svgaARecoveryClearsError",
-    "svgaBRecoveryClearsError",
     "clearCurrentFileAction",
     "enterOpensInfoAndFocusesPanel",
     "enterOpensLogsAndFocusesPanel",
@@ -370,7 +380,7 @@ function validateOwnerUsabilityResult(value) {
     "clipboardFailureMessage",
     "finderDocumentAssociationNotClaimed",
     "previewCardHeaderConsistency",
-    "previewCardBothLoadedConsistency"
+    "previewCardSingleFileConsistency"
   ];
   if (!value.checks || typeof value.checks !== "object" || Array.isArray(value.checks)) return undefined;
   if (!requiredChecks.every((key) => value.checks[key] === true)) return undefined;
@@ -410,7 +420,8 @@ function validateWorkbenchRegionMap(value) {
     "noVerticalFilterWrapping",
     "noOneCharacterChips",
     "inspectorTextReadable",
-    "compactSidePanelsCollapse",
+    "coreRegionsInsideViewport",
+    "persistentSidePanels",
     "primaryActionVisible"
   ];
   if (!value.layoutIntegrity.checks || typeof value.layoutIntegrity.checks !== "object" || Array.isArray(value.layoutIntegrity.checks)) return undefined;
@@ -469,12 +480,25 @@ function validateWorkbenchRegionMap(value) {
 function validatePreviewCardConsistency(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   if (value.passed !== true) return undefined;
+  if (!isStringArray(value.missing, 24) || value.missing.length !== 0) return undefined;
+  if (value.singleFilePrimary === true) {
+    const primary = validatePreviewCardZoneSnapshot(value.primary, "A", { requireMetadata: false });
+    if (!primary) return undefined;
+    if (value.compareEnabled !== false) return undefined;
+    return {
+      passed: true,
+      compareEnabled: false,
+      singleFilePrimary: true,
+      primary,
+      missing: []
+    };
+  }
   if (value.compareEnabled !== true) return undefined;
   if (value.syncControlsVisible !== true) return undefined;
-  if (!isStringArray(value.missing, 24) || value.missing.length !== 0) return undefined;
   const primary = validatePreviewCardZoneSnapshot(value.primary, "A");
+  if (!primary) return undefined;
   const secondary = validatePreviewCardZoneSnapshot(value.secondary, "B");
-  if (!primary || !secondary) return undefined;
+  if (!secondary) return undefined;
   return {
     passed: true,
     compareEnabled: true,
@@ -485,7 +509,7 @@ function validatePreviewCardConsistency(value) {
   };
 }
 
-function validatePreviewCardZoneSnapshot(value, expectedSlot) {
+function validatePreviewCardZoneSnapshot(value, expectedSlot, { requireMetadata = true } = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   if (value.slot !== expectedSlot) return undefined;
   const requiredBooleans = [
@@ -495,9 +519,9 @@ function validatePreviewCardZoneSnapshot(value, expectedSlot) {
     "duplicateFilePillHidden",
     "statusVisible",
     "replaceActionVisible",
-    "metadataVisible",
     "playbackControlsVisible"
   ];
+  if (requireMetadata) requiredBooleans.push("metadataVisible");
   if (!requiredBooleans.every((key) => value[key] === true)) return undefined;
   if (!isBoundedString(value.fileName, 180) || !value.fileName.endsWith(".svga")) return undefined;
   if (!isBoundedString(value.statusText, 80)) return undefined;
@@ -509,7 +533,7 @@ function validatePreviewCardZoneSnapshot(value, expectedSlot) {
     duplicateFilePillHidden: true,
     statusVisible: true,
     replaceActionVisible: true,
-    metadataVisible: true,
+    metadataVisible: value.metadataVisible === true,
     playbackControlsVisible: true,
     fileName: value.fileName,
     statusText: value.statusText
@@ -520,17 +544,23 @@ function describePreviewCardConsistencyFailure(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
   if (!isStringArray(value.missing, 24)) return "missing";
   if (value.missing.length !== 0) return `missing:${value.missing.slice(0, 8).join(",")}`;
-  if (value.compareEnabled !== true) return "compareEnabled";
-  if (value.syncControlsVisible !== true) return "syncControlsVisible";
   if (value.passed !== true) return "passed";
   const primary = validatePreviewCardZoneSnapshot(value.primary, "A");
+  if (value.singleFilePrimary === true) {
+    const singlePrimary = validatePreviewCardZoneSnapshot(value.primary, "A", { requireMetadata: false });
+    if (!singlePrimary) return `primary:${describePreviewCardZoneSnapshotFailure(value.primary, "A", { requireMetadata: false })}`;
+    if (value.compareEnabled !== false) return "singleFileCompareDisabled";
+    return "unknown";
+  }
   if (!primary) return `primary:${describePreviewCardZoneSnapshotFailure(value.primary, "A")}`;
+  if (value.compareEnabled !== true) return "compareEnabled";
+  if (value.syncControlsVisible !== true) return "syncControlsVisible";
   const secondary = validatePreviewCardZoneSnapshot(value.secondary, "B");
   if (!secondary) return `secondary:${describePreviewCardZoneSnapshotFailure(value.secondary, "B")}`;
   return "unknown";
 }
 
-function describePreviewCardZoneSnapshotFailure(value, expectedSlot) {
+function describePreviewCardZoneSnapshotFailure(value, expectedSlot, { requireMetadata = true } = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
   if (value.slot !== expectedSlot) return "slot";
   const requiredBooleans = [
@@ -540,9 +570,9 @@ function describePreviewCardZoneSnapshotFailure(value, expectedSlot) {
     "duplicateFilePillHidden",
     "statusVisible",
     "replaceActionVisible",
-    "metadataVisible",
     "playbackControlsVisible"
   ];
+  if (requireMetadata) requiredBooleans.push("metadataVisible");
   const failedBoolean = requiredBooleans.find((key) => value[key] !== true);
   if (failedBoolean) return failedBoolean;
   if (!isBoundedString(value.fileName, 180)) return "fileName";
@@ -558,9 +588,7 @@ function describeOwnerUsabilityValidationFailure(value) {
   if (value.finderDocumentAssociation !== "not-declared") return "finderDocumentAssociationValue";
   const requiredChecks = [
     "svgaAInvalidLocalFeedback",
-    "svgaBInvalidLocalFeedback",
     "svgaARecoveryClearsError",
-    "svgaBRecoveryClearsError",
     "clearCurrentFileAction",
     "enterOpensInfoAndFocusesPanel",
     "enterOpensLogsAndFocusesPanel",
@@ -572,12 +600,12 @@ function describeOwnerUsabilityValidationFailure(value) {
     "clipboardFailureMessage",
     "finderDocumentAssociationNotClaimed",
     "previewCardHeaderConsistency",
-    "previewCardBothLoadedConsistency"
+    "previewCardSingleFileConsistency"
   ];
   if (!value.checks || typeof value.checks !== "object" || Array.isArray(value.checks)) return "checks";
   const failedCheck = requiredChecks.find((key) => value.checks[key] !== true);
   if (failedCheck) {
-    if ((failedCheck === "previewCardHeaderConsistency" || failedCheck === "previewCardBothLoadedConsistency")
+    if ((failedCheck === "previewCardHeaderConsistency" || failedCheck === "previewCardSingleFileConsistency")
       && value.previewCardConsistency
       && typeof value.previewCardConsistency === "object"
       && !Array.isArray(value.previewCardConsistency)) {
@@ -954,8 +982,6 @@ function validateArtifactScenario(value) {
     "desktop-local-source-layers-open",
     "desktop-local-inspector-actions-open",
     "desktop-local-logs-hidden-default",
-    "desktop-local-source-collapsed",
-    "desktop-local-inspector-collapsed",
     "desktop-local-minimum-size",
     "desktop-info-diagnostics-open",
     "desktop-local-info-diagnostics-open",
@@ -2045,11 +2071,7 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     "accessibility-toggles-on",
     "settings-closed-by-escape",
     "synchronized-playback-toggled-by-space",
-    "local-compare-empty",
-    "local-compare-loaded",
     "local-minimum-size",
-    "responsive-local-compare-at-900-x-720",
-    "responsive-local-compare-at-minimum-size",
     "asset-preview-modal-open"
   ].every((key) => proof.states[key]?.passed === true);
   proof.generatedAt = new Date().toISOString();

@@ -131,14 +131,10 @@
     "source_layers",
     "inspector_actions",
     "logs_hidden_default",
-    "source_collapsed",
-    "inspector_collapsed",
     "default_launch_1440x900",
     "comfortable_workbench_1280x800",
     "minimum_supported_1180x760",
     "local_preview_legacy_stress_900x720",
-    "compare_legacy_stress_900x720",
-    "both_loaded_ab",
     "workbench_region_map",
     "roadmap_capacity_map"
   ],
@@ -237,20 +233,6 @@
       "minimumHeight": 760
     },
     {
-      "id": "desktop_local_source_collapsed",
-      "kind": "png",
-      "path": ".artifacts/product/P6/desktop-local-source-collapsed.png",
-      "minimumWidth": 1180,
-      "minimumHeight": 760
-    },
-    {
-      "id": "desktop_local_inspector_collapsed",
-      "kind": "png",
-      "path": ".artifacts/product/P6/desktop-local-inspector-collapsed.png",
-      "minimumWidth": 1180,
-      "minimumHeight": 760
-    },
-    {
       "id": "desktop_local_minimum_size",
       "kind": "png",
       "path": ".artifacts/product/P6/desktop-local-minimum-size.png",
@@ -279,22 +261,6 @@
       "minimumWidth": 900,
       "minimumHeight": 720,
       "sizeClass": "legacy_stress"
-    },
-    {
-      "id": "desktop_local_compare_legacy_stress_900x720",
-      "kind": "png",
-      "path": ".artifacts/product/P6/desktop-responsive-local-compare-at-900-x-720.png",
-      "minimumWidth": 900,
-      "minimumHeight": 720,
-      "sizeClass": "legacy_stress"
-    },
-    {
-      "id": "desktop_local_compare_minimum_size",
-      "kind": "png",
-      "path": ".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png",
-      "minimumWidth": 1180,
-      "minimumHeight": 760,
-      "sizeClass": "minimum_supported"
     },
     {
       "id": "workbench_region_map",

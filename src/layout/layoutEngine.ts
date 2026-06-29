@@ -17,11 +17,16 @@ const LOGS_MAX = 480;
 const LOGS_DEFAULT = 440;
 const DEFAULT_HEIGHT = 760;
 
-export const layoutMinTotal = LEFT_COLLAPSED + CENTER_MIN + RIGHT_COLLAPSED + GAP * 2 + WORKSPACE_PADDING_INLINE * 2;
+export const layoutMinTotal = LEFT_MIN + CENTER_MIN + RIGHT_MIN + GAP * 2 + WORKSPACE_PADDING_INLINE * 2;
 export const layoutRuntimeCheckpoints = Object.freeze({
   compact: Object.freeze({ width: 1180, height: 760 }),
-  minimal: Object.freeze({ width: 840, height: 720 })
+  minimal: Object.freeze({ width: 1100, height: 720 })
 });
+
+function normalizeWidth(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return layoutMinTotal;
+  return Math.max(layoutMinTotal, Math.round(value));
+}
 
 function normalizeDimension(value: number, fallback: number): number {
   if (!Number.isFinite(value) || value <= 0) return fallback;
@@ -32,66 +37,51 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, Math.round(value)));
 }
 
-function resolveLayoutMode(leftCollapsed: boolean, rightCollapsed: boolean): LayoutState["mode"] {
-  if (!leftCollapsed && !rightCollapsed) return "FULL_WORKBENCH";
-  if (!leftCollapsed && rightCollapsed) return "COMPACT_WORKBENCH";
-  return "MINIMAL_WORKBENCH";
-}
-
-function resolveRightPresentation(leftCollapsed: boolean, rightCollapsed: boolean): LayoutState["rightPresentation"] {
-  if (!rightCollapsed) return "inline";
-  if (!leftCollapsed) return "drawer";
-  return "overlay";
-}
-
 export const layoutEngine: LayoutEngine = Object.freeze({
   resolve(width: number, height: number, preferences: LayoutUserPreferences = {}): LayoutState {
-    const viewportWidth = normalizeDimension(width, layoutMinTotal);
+    const viewportWidth = normalizeWidth(width);
     const viewportHeight = normalizeDimension(height, DEFAULT_HEIGHT);
-    const contentWidth = Math.max(CENTER_MIN, viewportWidth - WORKSPACE_PADDING_INLINE * 2);
+    const contentWidth = viewportWidth - WORKSPACE_PADDING_INLINE * 2;
     const contentHeight = Math.max(1, viewportHeight - WORKSPACE_PADDING_BLOCK * 2);
-    const sidePanelBudget = Math.max(
-      LEFT_COLLAPSED + RIGHT_COLLAPSED,
-      contentWidth - CENTER_MIN - GAP * 2
-    );
-    const leftExpandedWidth = clamp(
+    const sidePanelBudget = contentWidth - CENTER_MIN - GAP * 2;
+    let leftExpandedWidth = clamp(
       preferences.preferredLeftWidth ?? LEFT_DEFAULT,
       LEFT_MIN,
-      Math.min(LEFT_MAX, Math.max(LEFT_MIN, sidePanelBudget - RIGHT_COLLAPSED))
+      LEFT_MAX
     );
-    const rightExpandedWidth = clamp(
+    let rightExpandedWidth = clamp(
       preferences.preferredRightWidth ?? RIGHT_DEFAULT,
       RIGHT_MIN,
-      Math.min(RIGHT_MAX, Math.max(RIGHT_MIN, sidePanelBudget - LEFT_COLLAPSED))
+      RIGHT_MAX
     );
+    const sideOverflow = leftExpandedWidth + rightExpandedWidth - sidePanelBudget;
+    if (sideOverflow > 0) {
+      const rightReduction = Math.min(sideOverflow, rightExpandedWidth - RIGHT_MIN);
+      rightExpandedWidth -= rightReduction;
+      const remainingOverflow = sideOverflow - rightReduction;
+      if (remainingOverflow > 0) {
+        leftExpandedWidth = Math.max(LEFT_MIN, leftExpandedWidth - remainingOverflow);
+      }
+    }
     const logsWidth = clamp(preferences.preferredLogsWidth ?? LOGS_DEFAULT, LOGS_MIN, LOGS_MAX);
-    let leftCollapsed = preferences.leftCollapsed === true;
-    let rightCollapsed = preferences.rightCollapsed === true;
-    if (!rightCollapsed && !leftCollapsed && leftExpandedWidth + rightExpandedWidth > sidePanelBudget) {
-      rightCollapsed = true;
-    }
-    if (!leftCollapsed && leftExpandedWidth + (rightCollapsed ? RIGHT_COLLAPSED : rightExpandedWidth) > sidePanelBudget) {
-      leftCollapsed = true;
-    }
-    if (!rightCollapsed && (leftCollapsed ? LEFT_COLLAPSED : leftExpandedWidth) + rightExpandedWidth > sidePanelBudget) {
-      rightCollapsed = true;
-    }
-    const mode = resolveLayoutMode(leftCollapsed, rightCollapsed);
+    const leftCollapsed = false;
+    const rightCollapsed = false;
+    const mode: LayoutState["mode"] = "FULL_WORKBENCH";
     const left = {
       region: "left" as const,
-      width: leftCollapsed ? LEFT_COLLAPSED : leftExpandedWidth,
+      width: leftExpandedWidth,
       collapsed: leftCollapsed,
-      minWidth: leftCollapsed ? LEFT_COLLAPSED : LEFT_MIN,
-      maxWidth: leftCollapsed ? LEFT_COLLAPSED : LEFT_MAX,
+      minWidth: LEFT_MIN,
+      maxWidth: LEFT_MAX,
       collapsedWidth: LEFT_COLLAPSED,
       expandedWidth: leftExpandedWidth
     };
     const right = {
       region: "right" as const,
-      width: rightCollapsed ? RIGHT_COLLAPSED : rightExpandedWidth,
+      width: rightExpandedWidth,
       collapsed: rightCollapsed,
-      minWidth: rightCollapsed ? RIGHT_COLLAPSED : RIGHT_MIN,
-      maxWidth: rightCollapsed ? RIGHT_COLLAPSED : RIGHT_MAX,
+      minWidth: RIGHT_MIN,
+      maxWidth: RIGHT_MAX,
       collapsedWidth: RIGHT_COLLAPSED,
       expandedWidth: rightExpandedWidth
     };
@@ -121,7 +111,7 @@ export const layoutEngine: LayoutEngine = Object.freeze({
       },
       right,
       minTotal: layoutMinTotal,
-      rightPresentation: resolveRightPresentation(leftCollapsed, rightCollapsed),
+      rightPresentation: "inline",
       floatingPanels: {
         info: {
           width: floatingInfoWidth,
@@ -147,7 +137,7 @@ export const layoutEngine: LayoutEngine = Object.freeze({
         fileNamesSingleLine: true,
         badgesNoWrap: true,
         metricsWrapOnlyInInspector: true,
-        iconOnlyControlsAllowed: left.collapsed || right.collapsed
+        iconOnlyControlsAllowed: false
       },
       invariants: {
         centerVisible: true,

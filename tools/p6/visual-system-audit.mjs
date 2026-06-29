@@ -104,9 +104,9 @@ assertCondition(errors, layoutContract.windowSizingSystem?.defaultLaunchWindow?.
 assertCondition(errors, layoutContract.windowSizingSystem?.defaultLaunchWindow?.height === 900, "layout contract must define 1440x900 default launch height");
 assertCondition(errors, layoutContract.windowSizingSystem?.legacyStressViewport?.width === 900, "layout contract may keep 900x720 only as legacy stress width");
 assertCondition(errors, /not the default window/i.test(layoutContract.windowSizingSystem?.legacyStressViewport?.policy ?? ""), "legacy stress policy must forbid 900x720 as the default window");
-assertCondition(errors, layoutContract.layoutModes?.fullWorkbench?.minWidth === 1280, "layout contract must define full workbench mode boundary");
-assertCondition(errors, layoutContract.layoutModes?.compactWorkbench?.minWidth === 1064, "layout contract must define compact workbench mode boundary");
-assertCondition(errors, layoutContract.layoutModes?.minimalWorkbench?.maxWidth === 1063, "layout contract must define minimal workbench mode boundary");
+assertCondition(errors, layoutContract.layoutModes?.fullWorkbench?.minWidth === 1180, "layout contract must define full workbench supported boundary");
+assertCondition(errors, layoutContract.layoutModes?.compactWorkbench?.minWidth === 1180, "layout contract must define compact persistent-sidebar boundary");
+assertCondition(errors, layoutContract.layoutModes?.minimalWorkbench?.maxWidth === 1179, "layout contract must keep sub-minimum sizes as legacy stress only");
 assertCondition(errors, Array.isArray(layoutContract.regions) && layoutContract.regions.length >= 3, "layout contract must define major layout regions");
 for (const region of layoutContract.regions ?? []) {
   assertCondition(errors, typeof region.direction === "string", `layout region ${region.id} missing direction`);
@@ -129,7 +129,7 @@ assertCondition(errors, app.includes("renderInspectorActionPlaceholders"), "righ
 assertCondition(errors, /grid-template-areas:\s*"source preview inspector"/.test(styles), "workspace must use Source / Preview / Inspector grid areas");
 assertCondition(errors, /minmax\(/.test(styles), "layout must use intrinsic minmax sizing");
 assertCondition(errors, /text-overflow:\s*ellipsis/.test(styles), "text-bearing components must define truncation rules");
-assertCondition(errors, /sourceCollapsed/.test(styles) && /inspectorCollapsed/.test(styles), "panel collapse rules must exist for both side regions");
+assertCondition(errors, /--layout-left-width/.test(styles) && /--layout-right-width/.test(styles), "side regions must be sized from layoutEngine variables");
 const requiredRegions = target.auditRules.requiredWorkbenchRegions ?? [];
 const foundationRegionIds = new Set((foundationContract.regions ?? []).map((region) => region.id));
 for (const regionId of requiredRegions) {
@@ -201,7 +201,8 @@ if (!sourceOnly) {
       "noVerticalFilterWrapping",
       "noOneCharacterChips",
       "inspectorTextReadable",
-      "compactSidePanelsCollapse",
+      "coreRegionsInsideViewport",
+      "persistentSidePanels",
       "primaryActionVisible"
     ];
     for (const check of requiredIntegrityChecks) {
@@ -212,8 +213,6 @@ if (!sourceOnly) {
     const renderProof = await readJson(".artifacts/product/P6/desktop-state-render-proof.json");
     assertCondition(errors, renderProof.passed === true, "desktop state render proof did not pass");
     assertCondition(errors, renderProof.states?.["local-minimum-size"]?.passed === true, "minimum supported local preview proof missing or failed");
-    assertCondition(errors, renderProof.states?.["responsive-local-compare-at-minimum-size"]?.passed === true, "minimum supported local compare proof missing or failed");
-    assertCondition(errors, renderProof.states?.["responsive-local-compare-at-900-x-720"]?.passed === true, "legacy stress local compare proof missing or failed");
     assertCondition(errors, renderProof.states?.["info-diagnostics-open"]?.passed === true, "diagnostics panel proof missing or failed");
   } catch (error) {
     errors.push(`desktop state render proof unreadable: ${error.message}`);
@@ -222,7 +221,7 @@ if (!sourceOnly) {
     const artifactIndex = await readJson(".artifacts/product/P6/artifact-index.json");
     const byScenario = new Map((artifactIndex.artifacts ?? []).map((artifact) => [artifact.scenario, artifact]));
     const minimum = layoutContract.minimumSupportedWindow ?? {};
-    for (const scenario of ["desktop-local-minimum-size", "desktop-responsive-local-compare-at-minimum-size"]) {
+    for (const scenario of ["desktop-local-minimum-size"]) {
       const artifact = byScenario.get(scenario);
       assertCondition(errors, Boolean(artifact), `minimum-size artifact missing ${scenario}`);
       assertCondition(errors, artifact?.viewport?.width === minimum.width && artifact?.viewport?.height === minimum.height, `${scenario} viewport ${artifact?.viewport?.width}x${artifact?.viewport?.height} does not match declared minimum ${minimum.width}x${minimum.height}`);

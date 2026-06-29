@@ -7,13 +7,14 @@ test("macOS workbench layout modes are constraint driven and deterministic", () 
   assert.equal(layoutEngine.resolve(1440, 900).mode, "FULL_WORKBENCH");
   assert.equal(layoutEngine.resolve(1280, 900).mode, "FULL_WORKBENCH");
   assert.equal(layoutEngine.resolve(1204, 900).mode, "FULL_WORKBENCH");
-  assert.equal(layoutEngine.resolve(1203, 900).mode, "COMPACT_WORKBENCH");
-  assert.equal(layoutEngine.resolve(876, 900).mode, "COMPACT_WORKBENCH");
-  assert.equal(layoutEngine.resolve(875, 900).mode, "MINIMAL_WORKBENCH");
+  assert.equal(layoutEngine.resolve(1203, 900).mode, "FULL_WORKBENCH");
+  assert.equal(layoutEngine.resolve(1180, 900).mode, "FULL_WORKBENCH");
+  assert.equal(layoutEngine.resolve(900, 900).mode, "FULL_WORKBENCH");
+  assert.equal(layoutEngine.resolve(840, 900).mode, "FULL_WORKBENCH");
 });
 
-test("layout min total uses collapsed rails, center, gaps, and padding", () => {
-  assert.equal(layoutMinTotal, 692);
+test("layout min total uses persistent sidebars, center, gaps, and padding", () => {
+  assert.equal(layoutMinTotal, 1100);
 });
 
 test("full workbench keeps left, center, and right visible", () => {
@@ -28,37 +29,38 @@ test("full workbench keeps left, center, and right visible", () => {
   assert.ok(state.center.width >= 520);
 });
 
-test("compact workbench collapses right panel before left panel", () => {
+test("minimum supported workbench keeps inspector visible without clipping", () => {
   const state = layoutEngine.resolve(1180, 760);
-  assert.equal(state.mode, "COMPACT_WORKBENCH");
+  assert.equal(state.mode, "FULL_WORKBENCH");
   assert.equal(state.left.collapsed, false);
-  assert.equal(state.right.collapsed, true);
-  assert.equal(state.right.width, 56);
-  assert.equal(state.rightPresentation, "drawer");
+  assert.equal(state.right.collapsed, false);
+  assert.equal(state.right.width, 312);
+  assert.equal(state.rightPresentation, "inline");
   assert.ok(state.center.width >= 520);
 });
 
-test("minimal workbench keeps center visible and collapses both side panels", () => {
+test("legacy narrow workbench normalizes to the minimum persistent three-column layout", () => {
   const state = layoutEngine.resolve(840, 720);
-  assert.equal(state.mode, "MINIMAL_WORKBENCH");
-  assert.equal(state.left.collapsed, true);
-  assert.equal(state.right.collapsed, true);
-  assert.equal(state.left.width, 56);
-  assert.equal(state.right.width, 56);
-  assert.equal(state.rightPresentation, "overlay");
+  assert.equal(state.mode, "FULL_WORKBENCH");
+  assert.equal(state.width, layoutMinTotal);
+  assert.equal(state.left.collapsed, false);
+  assert.equal(state.right.collapsed, false);
+  assert.equal(state.left.width, 240);
+  assert.equal(state.right.width, 280);
+  assert.equal(state.rightPresentation, "inline");
   assert.equal(state.invariants.centerVisible, true);
   assert.ok(state.center.width >= 520);
 });
 
-test("user collapse requests cannot collapse the center region", () => {
+test("user collapse requests are ignored because sidebars are persistent", () => {
   const state = layoutEngine.resolve(1440, 900, {
     leftCollapsed: true,
     rightCollapsed: true,
     preferredLeftWidth: 999,
     preferredRightWidth: 999
   });
-  assert.equal(state.left.collapsed, true);
-  assert.equal(state.right.collapsed, true);
+  assert.equal(state.left.collapsed, false);
+  assert.equal(state.right.collapsed, false);
   assert.equal(state.center.collapsed, false);
   assert.ok(state.center.width >= 520);
 });
@@ -88,22 +90,24 @@ test("layout columns, gap, and padding close over the resolved viewport", () => 
   }
 });
 
-test("right panel collapses before the left panel when space gets tight", () => {
+test("supported and legacy stress widths keep both sidebars visible", () => {
   const compact = layoutEngine.resolve(
     layoutRuntimeCheckpoints.compact.width,
     layoutRuntimeCheckpoints.compact.height
   );
   assert.equal(compact.left.collapsed, false);
-  assert.equal(compact.right.collapsed, true);
-  assert.equal(compact.mode, "COMPACT_WORKBENCH");
+  assert.equal(compact.right.collapsed, false);
+  assert.equal(compact.right.width, 312);
+  assert.equal(compact.mode, "FULL_WORKBENCH");
 
   const minimal = layoutEngine.resolve(
-    layoutRuntimeCheckpoints.minimal.width,
+    900,
     layoutRuntimeCheckpoints.minimal.height
   );
-  assert.equal(minimal.left.collapsed, true);
-  assert.equal(minimal.right.collapsed, true);
-  assert.equal(minimal.mode, "MINIMAL_WORKBENCH");
+  assert.equal(minimal.left.collapsed, false);
+  assert.equal(minimal.right.collapsed, false);
+  assert.equal(minimal.width, layoutMinTotal);
+  assert.equal(minimal.mode, "FULL_WORKBENCH");
 });
 
 test("runtime validation checkpoints stay owned by the layout engine", () => {
@@ -116,8 +120,13 @@ test("runtime validation checkpoints stay owned by the layout engine", () => {
     layoutRuntimeCheckpoints.minimal.width,
     layoutRuntimeCheckpoints.minimal.height
   );
-  assert.equal(compact.mode, "COMPACT_WORKBENCH");
-  assert.equal(minimal.mode, "MINIMAL_WORKBENCH");
+  assert.equal(compact.mode, "FULL_WORKBENCH");
+  assert.equal(compact.left.collapsed, false);
+  assert.equal(compact.right.collapsed, false);
+  assert.ok(compact.center.width >= compact.center.minWidth);
+  assert.equal(minimal.mode, "FULL_WORKBENCH");
+  assert.equal(minimal.left.collapsed, false);
+  assert.equal(minimal.right.collapsed, false);
 });
 
 test("preferred panel widths are clamped before they can squeeze the center", () => {
@@ -126,7 +135,8 @@ test("preferred panel widths are clamped before they can squeeze the center", ()
     preferredRightWidth: 999
   });
   assert.equal(state.left.collapsed, false);
-  assert.equal(state.right.collapsed, true);
+  assert.equal(state.right.collapsed, false);
+  assert.equal(state.right.width, 304);
   assert.ok(state.center.width >= state.center.minWidth);
 });
 

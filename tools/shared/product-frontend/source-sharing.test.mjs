@@ -127,7 +127,6 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "desktop-paused",
     "desktop-latest-artifact-loaded",
     "desktop-reference-media-loaded",
-    "desktop-local-compare-loaded",
     "desktop-invalid",
     "desktop-recovered-from-invalid"
   ]) {
@@ -207,7 +206,7 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
 	    "invalid error state is occluded",
 	    "function clearCurrentFile",
 	    "clearCurrentFileAction",
-	    "previewCardBothLoadedConsistency",
+	    "previewCardSingleFileConsistency",
 	    "collectPreviewCardConsistencyProof",
 	    "function focusTrapRoot",
 	    "function trapFocusEvent",
@@ -215,7 +214,7 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
 	    "ownerUsability",
     "sidePanelReturnFocus",
     "SVGA A invalid drop rendered slot-local unsupported-file feedback",
-    "SVGA B invalid drop rendered slot-local unsupported-file feedback",
+    "Single-file preview card carries file name, status, metadata, controls, and replacement action consistently",
     "Enter opened settings dialog and moved focus inside it",
     "Tab stayed inside settings dialog while it was active",
     "finderDocumentAssociationNotClaimed",

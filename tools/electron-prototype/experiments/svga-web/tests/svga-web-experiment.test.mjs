@@ -220,7 +220,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /owner-usability-smoke\.json/);
 	  assert.match(main, /finderDocumentAssociationNotClaimed/);
 	  assert.match(main, /clearCurrentFileAction/);
-	  assert.match(main, /previewCardBothLoadedConsistency/);
+	  assert.match(main, /previewCardSingleFileConsistency/);
 	  assert.match(main, /diagnostics = validateSmokeDiagnostics\(value\.diagnostics\)/);
 	  assert.match(main, /ownerUsability = validateOwnerUsabilityResult\(value\.ownerUsability\)/);
   assert.match(main, /logPayload\.diagnostics = diagnostics/);
@@ -406,16 +406,11 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
     "desktop-paused",
     "desktop-latest-artifact-loaded",
     "desktop-reference-media-loaded",
-    "desktop-local-compare-loaded",
-    "desktop-responsive-local-compare-at-900-x-720",
-    "desktop-responsive-local-compare-at-minimum-size",
     "desktop-local-info-diagnostics-open",
     "desktop-local-source-resources-open",
     "desktop-local-source-layers-open",
     "desktop-local-inspector-actions-open",
     "desktop-local-logs-hidden-default",
-    "desktop-local-source-collapsed",
-    "desktop-local-inspector-collapsed",
     "desktop-local-minimum-size",
     "desktop-recovered-from-invalid"
   ]) {
@@ -436,6 +431,7 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(p6Evidence, /assertLocalPreviewWorkbenchRegionMap/);
   assert.match(p6Evidence, /layoutIntegrity/);
   assert.match(main, /requiredLayoutChecks/);
+  assert.match(main, /coreRegionsInsideViewport/);
   assert.match(main, /sourceDocumentNotToolbar/);
   assert.match(main, /noResourceActionCollision/);
   assert.match(main, /noVerticalFilterWrapping/);
@@ -443,6 +439,8 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /workflowPrimary !== "local_preview_first"/);
   assert.match(productApp, /workflowPrimary:\s*localPreviewPrimary \? "local_preview_first"/);
   assert.match(productApp, /collectWorkbenchLayoutIntegrity/);
+  assert.match(productApp, /region_out_of_viewport/);
+  assert.match(productApp, /coreRegionsInsideViewport/);
   assert.match(productApp, /source_document_maps_toolbar_instead_of_left_panel/);
   assert.match(productApp, /resource_action_collision/);
   assert.match(productApp, /resource_filter_vertical_wrap/);

@@ -514,6 +514,7 @@ label.isDisabled {
 
 .statusPill,
 .filePill {
+  flex: 0 0 auto;
   max-width: 200px;
   height: 20.5px;
   padding: 1px 8px 0;
@@ -527,6 +528,11 @@ label.isDisabled {
   line-height: 16.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.statusPill {
+  min-width: 58px;
+  text-align: center;
 }
 
 .stage {
@@ -3146,9 +3152,9 @@ body {
 }
 
 .infoPanel {
-  width: var(--layout-info-panel-width, 100%);
-  min-width: var(--layout-info-panel-min-width, 280px);
-  max-width: var(--layout-info-panel-max-width, none);
+  width: var(--layout-right-width, 100%);
+  min-width: 0;
+  max-width: var(--layout-right-width, none);
 }
 
 .logsPanel {
@@ -3972,23 +3978,6 @@ button:disabled {
   line-height: var(--visual-line-meta);
 }
 
-.workspace.sourceCollapsed .sourcePanel > :not(.sourceHeader),
-.workspace.inspectorCollapsed:not(.inspectorExpanded) .inspectorPanel > :not(.infoHeader) {
-  display: none !important;
-}
-
-.workspace.sourceCollapsed .sourceHeader,
-.workspace.inspectorCollapsed:not(.inspectorExpanded) .inspectorPanel .infoHeader {
-  align-content: start;
-  justify-content: center;
-  padding: var(--space-3);
-}
-
-.workspace.sourceCollapsed .sourceHeader > div,
-.workspace.inspectorCollapsed:not(.inspectorExpanded) .inspectorPanel .infoHeader > div {
-  display: none;
-}
-
 .logsPanel {
   position: fixed !important;
 }
@@ -4648,7 +4637,6 @@ body {
   transform: rotate(-45deg);
 }
 
-.infoPanel,
 .logsPanel {
   position: fixed;
   top: 68px;
@@ -4656,9 +4644,9 @@ body {
   bottom: 14px;
   z-index: 40;
   display: flex;
-  width: min(var(--layout-info-panel-width, 100%), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
-  min-width: min(var(--layout-info-panel-min-width, 320px), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
-  max-width: min(var(--layout-info-panel-max-width, 440px), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
+  width: min(var(--layout-logs-panel-width, 100%), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
+  min-width: min(var(--layout-logs-panel-min-width, 320px), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
+  max-width: min(var(--layout-logs-panel-max-width, 480px), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
   height: auto;
   min-height: 0;
   opacity: 1;
@@ -4673,7 +4661,6 @@ body {
   max-width: min(var(--layout-logs-panel-max-width, 480px), calc(100vw - var(--layout-workspace-padding-inline, 14px) * 2));
 }
 
-.infoPanel.isHidden,
 .logsPanel.isHidden {
   display: flex !important;
   opacity: 0;
@@ -4683,7 +4670,6 @@ body {
   transition: opacity 160ms ease-out, transform 200ms ease-out, visibility 0s 200ms;
 }
 
-.infoPanel::before,
 .logsPanel::before {
   position: fixed;
   inset: 56px 0 0;
@@ -5922,17 +5908,6 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 .previewDeck {
   width: 100%;
   overflow: hidden;
-}
-
-.workspace.inspectorCollapsed.inspectorExpanded .inspectorPanel {
-  position: fixed !important;
-  top: calc(56px + var(--layout-workspace-padding-block, 12px));
-  right: var(--layout-workspace-padding-inline, 14px);
-  bottom: var(--layout-workspace-padding-block, 12px);
-  width: var(--layout-info-panel-width, 100%) !important;
-  min-width: var(--layout-info-panel-min-width, 280px) !important;
-  max-width: var(--layout-info-panel-max-width, 360px) !important;
-  height: auto !important;
 }
 
 .logsPanel {

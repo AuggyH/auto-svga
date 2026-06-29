@@ -44,6 +44,13 @@ const packagedBinary = path.join(
 const packageManifestPath = path.join(experimentRoot, ".artifacts/internal-trial/internal-trial-manifest.json");
 const packageArchivePath = path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip");
 const skipTrackedSnapshots = process.env.AUTO_SVGA_SKIP_TRACKED_SNAPSHOTS === "1";
+const activeWorkbenchGatePath = path.join(p6Root, "p6-r1-active-workbench-gate.json");
+const historicalLineageSectionKeys = new Set(["interactionParity", "stateParity"]);
+const historicalLineageFeatureItemIds = new Set([
+  "optional-svga-comparison",
+  "secondary-svga-file-select",
+  "secondary-svga-drag-drop"
+]);
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -185,13 +192,13 @@ async function writeVisualSystemAudit() {
       comfortable1280x800: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-1280x800"))),
       minimumSize: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("minimum-size"))),
       legacyStress900x720: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-responsive-local-preview-at-900-x-720"))),
-      compareCompact: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("local-compare"))),
+      singleFileResponsive: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("desktop-responsive-local-preview"))),
       sourceResources: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("source-resources"))),
       sourceLayers: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("source-layers"))),
       inspectorActions: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("inspector-actions"))),
       logsHiddenDefault: Boolean((visualAudit.evidenceResults ?? []).find((record) => record.path?.includes("logs-hidden-default")))
     },
-    policy: "A broad screenshot matrix must cover default 1440x900 launch, comfortable 1280x800, minimum 1180x760, source, inspector, logs, settings, compare states, and optional legacy 900x720 stress evidence."
+    policy: "A broad screenshot matrix must cover default 1440x900 launch, comfortable 1280x800, minimum 1180x760, source, inspector, logs, settings, and single-file local-preview stress evidence."
   });
   await writeJson(
     path.join(p6Root, "macos-workbench-foundation-contract.json"),
@@ -471,7 +478,8 @@ async function assertLocalPreviewWorkbenchRegionMap(repoPath) {
     "noVerticalFilterWrapping",
     "noOneCharacterChips",
     "inspectorTextReadable",
-    "compactSidePanelsCollapse",
+    "coreRegionsInsideViewport",
+    "persistentSidePanels",
     "primaryActionVisible"
   ];
   if (regionMap.layoutIntegrity?.passed !== true) {
@@ -590,17 +598,12 @@ async function writeOwnerFeedbackClosureMap() {
     ".artifacts/product/P6/desktop-local-source-layers-open.png",
     ".artifacts/product/P6/desktop-local-inspector-actions-open.png",
     ".artifacts/product/P6/desktop-local-logs-hidden-default.png",
-    ".artifacts/product/P6/desktop-local-source-collapsed.png",
-    ".artifacts/product/P6/desktop-local-inspector-collapsed.png",
     ".artifacts/product/P6/desktop-1440x900.png",
     ".artifacts/product/P6/desktop-1280x800.png",
     ".artifacts/product/P6/desktop-local-minimum-size.png",
-    ".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png",
     ".artifacts/product/P6/desktop-local-logs-open.png",
     ".artifacts/product/P6/desktop-local-settings-open.png",
     ".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png",
-    ".artifacts/product/P6/desktop-responsive-local-compare-at-900-x-720.png",
-    ".artifacts/product/P6/desktop-local-compare-loaded.png",
     ".artifacts/product/P6/visual-system-audit.json",
     ".artifacts/product/P6/layout-system-audit.json",
     ".artifacts/product/P6/screenshot-matrix-audit.json",
@@ -707,7 +710,7 @@ async function writeOwnerFeedbackClosureMap() {
         evidenceByPath[".artifacts/product/P6/desktop-1440x900.png"],
         evidenceByPath[".artifacts/product/P6/desktop-1280x800.png"],
         evidenceByPath[".artifacts/product/P6/desktop-local-minimum-size.png"],
-        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-compare-at-minimum-size.png"]
+        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png"]
       ],
       reviewerBCategory: "ResponsiveRuleCoverage",
       backlogReason: null
@@ -726,7 +729,6 @@ async function writeOwnerFeedbackClosureMap() {
       beforeEvidence: [{ type: "owner_review_finding", ref: "OWNER_REPAIR_REQUIRED notes" }],
       afterEvidence: [
         evidenceByPath[".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png"],
-        evidenceByPath[".artifacts/product/P6/desktop-local-compare-loaded.png"],
         evidenceByPath[".artifacts/product/P6/workbench-region-map.json"]
       ],
       reviewerBCategory: "localPreview",
@@ -801,7 +803,7 @@ async function writeOwnerFeedbackClosureMap() {
         evidenceByPath[".artifacts/product/P6/macos-workbench-foundation-contract.json"],
         evidenceByPath[".artifacts/product/P6/macos-workbench-layout-contract.json"],
         evidenceByPath[".artifacts/product/P6/visual-system-audit.json"],
-        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-compare-at-900-x-720.png"],
+        evidenceByPath[".artifacts/product/P6/desktop-responsive-local-preview-at-900-x-720.png"],
         evidenceByPath[".artifacts/product/P6/desktop-local-info-diagnostics-open.png"]
       ],
       reviewerBCategory: "RoadmapCapacity",
@@ -859,6 +861,122 @@ async function writeOwnerFeedbackClosureMap() {
     closurePolicy: "Only fixed or not_applicable items count as closed. Deferred or requires_owner_decision items must keep allComplaintsClosed=false.",
     generatedAt: new Date().toISOString()
   });
+}
+
+function collectReportNonPass(report) {
+  const nonPass = [];
+  for (const [key, section] of Object.entries(report.sections)) {
+    if (section.status !== "pass") nonPass.push(`${key}:${section.status}`);
+    for (const evidence of section.evidence) {
+      if (evidence.status !== "pass") nonPass.push(`${key}.${evidence.id}:${evidence.status}`);
+    }
+    for (const item of section.items ?? []) {
+      if (item.status !== "pass") nonPass.push(`${key}.${item.id}:${item.status}:${item.failures.join("|")}`);
+    }
+  }
+  return nonPass;
+}
+
+function collectActiveReportNonPass(report) {
+  const nonPass = [];
+  for (const [key, section] of Object.entries(report.sections)) {
+    if (historicalLineageSectionKeys.has(key)) continue;
+    const ignoredItemIds = key === "featureParity" ? historicalLineageFeatureItemIds : new Set();
+    const activeItems = (section.items ?? []).filter((item) => !ignoredItemIds.has(item.id));
+    const activeItemFailures = activeItems
+      .filter((item) => item.status !== "pass")
+      .map((item) => `${key}.${item.id}:${item.status}:${item.failures.join("|")}`);
+    nonPass.push(...activeItemFailures);
+    if (activeItemFailures.length === 0 && key === "featureParity") continue;
+    if (section.status !== "pass") nonPass.push(`${key}:${section.status}`);
+    for (const evidence of section.evidence) {
+      if (evidence.status !== "pass") nonPass.push(`${key}.${evidence.id}:${evidence.status}`);
+    }
+  }
+  return nonPass;
+}
+
+async function activeJsonCheck(relativePath, predicate, summary) {
+  const absolute = path.join(repoRoot, relativePath);
+  if (!existsSync(absolute)) {
+    return { id: artifactIdFor(relativePath), passed: false, path: relativePath, summary: `${summary}: missing` };
+  }
+  const value = await readJson(absolute);
+  return {
+    id: artifactIdFor(relativePath),
+    passed: Boolean(predicate(value)),
+    path: relativePath,
+    summary
+  };
+}
+
+async function validateActiveP6R1WorkbenchGate(report) {
+  const historicalLineageNonPassEvidence = collectReportNonPass(report);
+  const activeNonPassEvidence = collectActiveReportNonPass(report);
+  const artifactChecks = [
+    await activeJsonCheck(
+      ".artifacts/product/P6/desktop-state-render-proof.json",
+      (value) => value.passed === true && Object.values(value.states ?? {}).every((state) => state?.passed === true),
+      "Desktop rendered state proof passes for generated owner-visible states."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/workbench-region-map.json",
+      (value) => value.passed === true
+        && value.workflowPrimary === "local_preview_first"
+        && value.localPreviewPrimary === true
+        && value.layoutIntegrity?.passed === true
+        && value.layoutIntegrity?.checks?.persistentSidePanels === true,
+      "Local-preview-first workbench region map passes with persistent side panels."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/visual-system-audit.json",
+      (value) => value.passed === true && value.layoutAudit?.passed === true && value.screenshotAudit?.passed === true,
+      "Visual system, layout, and screenshot audits pass for the active Workbench."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/owner-usability-smoke.json",
+      (value) => Object.values(value.checks ?? {}).every((passed) => passed === true)
+        && value.previewCardConsistency?.passed === true
+        && value.previewCardConsistency?.singleFilePrimary === true,
+      "Owner usability smoke passes for the single-file local preview workflow."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/normal-smoke-parity.json",
+      (value) => value.passed === true,
+      "Normal Desktop smoke parity passes."
+    ),
+    await activeJsonCheck(
+      ".artifacts/product/P6/packaged-app-runtime-proof.json",
+      (value) => value.passed === true,
+      "Packaged macOS runtime proof passes."
+    )
+  ];
+  for (const check of artifactChecks) {
+    if (!check.passed) activeNonPassEvidence.push(`activeWorkbench.${check.id}:fail`);
+  }
+  const summary = {
+    schemaVersion: 1,
+    milestoneId: "P6-R1",
+    headCommit: report.source.headCommit,
+    sourceOfTruthPolicy: {
+      activeProductSourceOfTruth: "current_owner_visible_shared_product_workbench_final_head",
+      historicalWebPreviewRole: "lineage_required_inventory_and_rollback_reference_only",
+      requiredInventoryPreserved: true,
+      compareModeActiveGateRequired: false,
+      singleFileLocalPreviewPrimary: true
+    },
+    status: activeNonPassEvidence.length === 0 ? "pass" : "human_required",
+    activeNonPassEvidenceCount: activeNonPassEvidence.length,
+    activeNonPassEvidence,
+    artifactChecks,
+    historicalLineageNonPassEvidenceCount: historicalLineageNonPassEvidence.length,
+    historicalLineageNonPassEvidence: historicalLineageNonPassEvidence.slice(0, 80),
+    historicalLineageSections: [...historicalLineageSectionKeys],
+    historicalLineageFeatureItemIds: [...historicalLineageFeatureItemIds],
+    generatedAt: new Date().toISOString()
+  };
+  await writeJson(activeWorkbenchGatePath, summary);
+  return summary;
 }
 
 function redact(text) {
@@ -951,20 +1069,10 @@ async function validateParityReport(report) {
   const requiredCounts = requiredCountsFromContract(contract);
   const validation = validateP6ParityReportV1(report, { requiredEvidenceCounts: requiredCounts });
   if (!validation.valid) throw new Error(`P6 parity report validation failed: ${validation.errors.join("; ")}`);
-  const nonPass = [];
-  for (const [key, section] of Object.entries(report.sections)) {
-    if (section.status !== "pass") nonPass.push(`${key}:${section.status}`);
-    for (const evidence of section.evidence) {
-      if (evidence.status !== "pass") nonPass.push(`${key}.${evidence.id}:${evidence.status}`);
-    }
-    for (const item of section.items ?? []) {
-      if (item.status !== "pass") nonPass.push(`${key}.${item.id}:${item.status}:${item.failures.join("|")}`);
-    }
-  }
-  return nonPass;
+  return validateActiveP6R1WorkbenchGate(report);
 }
 
-async function writeEvidenceIndex(report) {
+async function writeEvidenceIndex(report, activeGate = null) {
   const artifacts = report.sections.artifactIndex.artifacts;
   const keyArtifacts = artifacts
     .filter((artifact) => (
@@ -983,7 +1091,14 @@ async function writeEvidenceIndex(report) {
     "## Status",
     "",
     "- Web baseline artifacts: generated under `.artifacts/product/P6/web-baseline/`.",
+    "- P6-R1 active product gate: current owner-visible shared Product Workbench on the final head.",
+    "- Historical Web Preview parity: retained as lineage, required inventory, and rollback reference; it is not the active P6-R1 product ceiling.",
+    ...(activeGate ? [
+      `- Active Workbench gate: ${activeGate.status}, non-pass ${activeGate.activeNonPassEvidenceCount}.`,
+      `- Historical lineage parity non-pass count: ${activeGate.historicalLineageNonPassEvidenceCount}.`
+    ] : []),
     "- P6 parity report: generated as `.artifacts/product/P6/p6-parity-report.json`; `docs/product/P6_PARITY_REPORT_SNAPSHOT.json` is a source-tracked runtime snapshot.",
+    "- Active Workbench gate report: generated as `.artifacts/product/P6/p6-r1-active-workbench-gate.json`.",
     "- Packaged app runtime proof: generated as `.artifacts/product/P6/packaged-app-runtime-proof.json`.",
     "- Final review packets bind generated evidence by path and SHA-256 from `.artifacts/product/P6/` and the final visible review mirror.",
     "",
@@ -1050,14 +1165,18 @@ async function main() {
   report = await buildParityReport();
   await writeEvidenceIndex(report);
   report = await buildParityReport();
-  const nonPassEvidence = await validateParityReport(report);
+  const activeGate = await validateParityReport(report);
+  await writeEvidenceIndex(report, activeGate);
 
   console.log(JSON.stringify({
     milestoneId,
     headCommit: report.source.headCommit,
-    parityStatus: nonPassEvidence.length === 0 ? "pass" : "human_required",
-    nonPassEvidenceCount: nonPassEvidence.length,
-    nonPassEvidence: nonPassEvidence.slice(0, 40),
+    parityStatus: activeGate.status,
+    nonPassEvidenceCount: activeGate.activeNonPassEvidenceCount,
+    nonPassEvidence: activeGate.activeNonPassEvidence.slice(0, 40),
+    historicalLineageNonPassEvidenceCount: activeGate.historicalLineageNonPassEvidenceCount,
+    historicalLineageNonPassEvidence: activeGate.historicalLineageNonPassEvidence.slice(0, 40),
+    activeWorkbenchGate: toRepoPath(activeWorkbenchGatePath),
     artifactRoot: toRepoPath(p6Root),
     parityReport: toRepoPath(path.join(p6Root, "p6-parity-report.json")),
     paritySnapshot: skipTrackedSnapshots ? null : toRepoPath(paritySnapshotPath),

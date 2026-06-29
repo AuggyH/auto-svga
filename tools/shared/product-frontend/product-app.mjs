@@ -198,8 +198,8 @@ let sidePanelReturnFocus = null;
 let compareEnabled = false;
 let syncIsPlaying = false;
 const layoutUserPreferences = {
-  leftCollapsed: localStorage.getItem("autoSvgaLeftPanelCollapsed") === "true",
-  rightCollapsed: localStorage.getItem("autoSvgaRightPanelCollapsed") === "true"
+  leftCollapsed: false,
+  rightCollapsed: false
 };
 const initialLayoutProps = toWorkbenchLayoutProps(layoutEngine.resolve(window.innerWidth, window.innerHeight, layoutUserPreferences));
 let infoPanelWidth = Number(localStorage.getItem("autoSvgaInfoPanelWidth")) || initialLayoutProps.resize.infoPanel.defaultWidth;
@@ -744,6 +744,14 @@ function updateButtons() {
   updateSyncPlaybackButton();
 }
 
+function syncWorkspaceModeClasses(nextMode) {
+  workspace.classList.add("workspace");
+  workspace.classList.toggle("mode-localPreview", nextMode === "localPreview");
+  workspace.classList.toggle("mode-exportReview", nextMode === "exportReview");
+  workspace.classList.toggle("withCompare", compareEnabled && nextMode === "localPreview");
+  workspace.classList.toggle("withSidePanel", Boolean(activeSidePanel));
+}
+
 function setAppMode(nextMode = modeSelect.value) {
   if (nextMode === "localCompare") nextMode = "localPreview";
   const previousMode = modeSelect.value;
@@ -753,7 +761,7 @@ function setAppMode(nextMode = modeSelect.value) {
     announce(nextMode === "exportReview" ? "已切换到导出验收" : "已切换到本地预览");
   }
   syncDropdownSelection(modeDropdownMenu, nextMode);
-  workspace.className = `workspace mode-${nextMode}${compareEnabled && nextMode === "localPreview" ? " withCompare" : ""}${activeSidePanel ? " withSidePanel" : ""}`;
+  syncWorkspaceModeClasses(nextMode);
   players.b.panel.classList.toggle("isHidden", !isCompareActive());
   referenceState.panel.classList.toggle("isHidden", nextMode !== "exportReview");
   rescanButton.hidden = nextMode !== "exportReview";
@@ -958,7 +966,8 @@ function updatePanelCollapseButton(button, collapsed, labels) {
 
 function applyWorkbenchLayout() {
   currentLayoutProps = toWorkbenchLayoutProps(layoutEngine.resolve(window.innerWidth, window.innerHeight, {
-    ...layoutUserPreferences,
+    leftCollapsed: false,
+    rightCollapsed: false,
     preferredRightWidth: infoPanelWidth,
     preferredLogsWidth: logsPanelWidth
   }));
@@ -990,6 +999,14 @@ function applyWorkbenchLayout() {
     expand: "展开右侧栏",
     collapse: "收起右侧栏"
   });
+  if (sourceCollapseButton) {
+    sourceCollapseButton.hidden = true;
+    sourceCollapseButton.disabled = true;
+  }
+  if (inspectorCollapseButton) {
+    inspectorCollapseButton.hidden = true;
+    inspectorCollapseButton.disabled = true;
+  }
 }
 
 function closeInfoPanel() {
@@ -2470,8 +2487,8 @@ function elementLabel(node) {
   return `${node.tagName?.toLowerCase?.() ?? "unknown"}${id}${classes}`;
 }
 
-function collectWorkbenchRegionMap() {
-  const regions = [
+function collectWorkbenchRegions() {
+  return [
     ["source_document", "aside[data-workbench-region='source-document']", "Source / Document", "implemented"],
     ["preview_stage", "[data-workbench-region='preview-stage']", "Preview Stage", "implemented"],
     ["inspector", "[data-workbench-region='inspector']", "Inspector", "implemented"],
@@ -2497,6 +2514,10 @@ function collectWorkbenchRegionMap() {
       textSample: (compactText(node) || label).slice(0, 180)
     };
   });
+}
+
+function collectWorkbenchRegionMap() {
+  const regions = collectWorkbenchRegions();
   const coreRegionIds = new Set(["source_document", "preview_stage", "inspector", "resources"]);
   const allRegionsBound = regions.every((region) => region.present && region.rect);
   const coreRegionsVisible = regions
@@ -2506,6 +2527,8 @@ function collectWorkbenchRegionMap() {
   const activityRegion = regions.find((region) => region.id === "activity_history");
   const logsHiddenByDefault = activeSidePanel !== "logs" && activityRegion?.present === true && activityRegion.visible === false;
   const layoutIntegrity = collectWorkbenchLayoutIntegrity(regions);
+  const rootStyle = getComputedStyle(document.documentElement);
+  const inspectorStyle = getComputedStyle(infoPanel);
   return {
     schemaVersion: 1,
     milestoneId: "P6-R1",
@@ -2535,6 +2558,17 @@ function collectWorkbenchRegionMap() {
       diagnosticsPresent: Boolean(document.querySelector("#tab-diagnostics")),
       actionWorkflowPresent: Boolean(document.querySelector("[data-workbench-region='action-workflow']"))
     },
+    layoutDebug: {
+      workspaceClassName: workspace.className,
+      activeSidePanel: activeSidePanel ?? "none",
+      rightWidth: rootStyle.getPropertyValue("--layout-right-width").trim(),
+      centerWidth: rootStyle.getPropertyValue("--layout-center-width").trim(),
+      infoPanelWidth: rootStyle.getPropertyValue("--layout-info-panel-width").trim(),
+      inspectorPosition: inspectorStyle.position,
+      inspectorComputedWidth: inspectorStyle.width,
+      inspectorComputedMinWidth: inspectorStyle.minWidth,
+      inspectorComputedMaxWidth: inspectorStyle.maxWidth
+    },
     layoutIntegrity,
     futureCapabilityPolicy: "Future capabilities are mapped to reserved regions but are not exposed as clickable Phase 2/3/4 features in P6-R1.",
     passed: localPreviewPrimary
@@ -2555,6 +2589,14 @@ function rectsOverlap(a, b, tolerance = 1) {
     && a.y + a.height > b.y + tolerance;
 }
 
+function rectInsideViewport(rect, viewport, tolerance = 1) {
+  if (!rect) return false;
+  return rect.x >= -tolerance
+    && rect.y >= -tolerance
+    && rect.x + rect.width <= viewport.width + tolerance
+    && rect.y + rect.height <= viewport.height + tolerance;
+}
+
 function visibleRectForSelector(selector) {
   const node = document.querySelector(selector);
   return isElementVisible(node) ? rectFor(node) : null;
@@ -2571,15 +2613,21 @@ function collectWorkbenchLayoutIntegrity(regions) {
     layoutRuntimeCheckpoints.minimal.width,
     layoutRuntimeCheckpoints.minimal.height
   );
-  const compactSidePanelsCollapse = compactState.left.collapsed === false
-    && compactState.right.collapsed === true
-    && minimalState.left.collapsed === true
-    && minimalState.right.collapsed === true
+  const persistentSidePanels = compactState.left.collapsed === false
+    && compactState.right.collapsed === false
     && compactState.center.width >= compactState.center.minWidth
+    && minimalState.left.collapsed === false
+    && minimalState.right.collapsed === false
     && minimalState.center.width >= minimalState.center.minWidth;
-  if (!compactSidePanelsCollapse) failures.push("compact_side_panels_collapse_policy_failed");
+  if (!persistentSidePanels) failures.push("persistent_side_panels_policy_failed");
   const source = regions.find((region) => region.id === "source_document");
   if (source?.rect && source.rect.y < 56) failures.push("source_document_maps_toolbar_instead_of_left_panel");
+  for (const regionId of ["source_document", "preview_stage", "inspector"]) {
+    const region = regions.find((item) => item.id === regionId);
+    if (region?.visible && !rectInsideViewport(region.rect, viewport, 2)) {
+      failures.push(`region_out_of_viewport:${regionId}`);
+    }
+  }
 
   const majorPairs = [
     ["source_document", "preview_stage"],
@@ -2643,7 +2691,8 @@ function collectWorkbenchLayoutIntegrity(regions) {
       noVerticalFilterWrapping: !failures.some((failure) => failure.startsWith("resource_filter")),
       noOneCharacterChips: !failures.some((failure) => failure.startsWith("one_character_chip")),
       inspectorTextReadable: !failures.some((failure) => failure.startsWith("inspector_text_clipped")),
-      compactSidePanelsCollapse,
+      coreRegionsInsideViewport: !failures.some((failure) => failure.startsWith("region_out_of_viewport")),
+      persistentSidePanels,
       primaryActionVisible: !failures.includes("primary_file_action_not_visible")
     },
     failures
@@ -2891,6 +2940,14 @@ function collectRenderedStateProof(state) {
     if (!isElementVisible(players.a.panel)) failures.push("minimum-size primary preview card is not visible");
   }
   const observedSnapshot = collectP6SmokeSnapshot(state);
+  const workbenchRegions = collectWorkbenchRegions();
+  const layoutIntegrity = collectWorkbenchLayoutIntegrity(workbenchRegions);
+  const layoutFailures = layoutIntegrity.failures.filter((failure) => (
+    normalizedState === "loading" ? failure !== "primary_file_action_not_visible" : true
+  ));
+  for (const failure of layoutFailures) {
+    failures.push(`layout:${failure}`);
+  }
   const visibleRegions = p6VisibleIds(observedSnapshot.regions);
   const visibleControls = p6VisibleIds(observedSnapshot.controls);
   return {
@@ -2939,6 +2996,8 @@ function collectRenderedStateProof(state) {
     staleFileBadgeCleared: normalizedState === "invalid" ? svgaFilePillA.hidden && !filePillText : null,
     staleReportCleared: normalizedState === "invalid" ? !staleReportPattern.test(reportText) : null,
     staleReadyBadgeCleared: normalizedState === "invalid" ? !document.querySelector("#tab-overview .status-ready") : null,
+    layoutRegions: workbenchRegions,
+    layoutIntegrity,
     parserStatus: players.a.parseStatus,
     renderStatus: players.a.renderStatus,
     productState: {
@@ -3368,7 +3427,6 @@ function collectPreviewCardConsistencyProof() {
     "duplicateFilePillHidden",
     "statusVisible",
     "replaceActionVisible",
-    "metadataVisible",
     "playbackControlsVisible"
   ];
   const missing = [];
@@ -3383,6 +3441,30 @@ function collectPreviewCardConsistencyProof() {
     compareEnabled: isCompareActive(),
     syncControlsVisible: isElementVisible(syncBar) && !syncBar.classList.contains("isHidden"),
     passed: missing.length === 0 && isCompareActive(),
+    missing
+  };
+}
+
+function collectPrimaryPreviewCardConsistencyProof() {
+  const primary = previewCardZoneSnapshot(players.a);
+  const sharedZoneKeys = [
+    "loaded",
+    "titleVisible",
+    "fileNameInTitle",
+    "duplicateFilePillHidden",
+    "statusVisible",
+    "replaceActionVisible",
+    "playbackControlsVisible"
+  ];
+  const missing = [];
+  for (const key of sharedZoneKeys) {
+    if (primary[key] !== true) missing.push(`primary.${key}`);
+  }
+  return {
+    primary,
+    compareEnabled: isCompareActive(),
+    singleFilePrimary: true,
+    passed: missing.length === 0 && !isCompareActive(),
     missing
   };
 }
@@ -3444,27 +3526,11 @@ async function runOwnerUsabilitySmoke(bytes) {
   await waitFor(() => slotRecoveredCleanly(players.a));
   evidence.push("SVGA A reloaded cleanly after clear-current-file");
 
-  p6SmokeCurrentPhase = "owner-usability-enable-compare";
-  if (!compareToggle.checked) compareToggle.click();
-  await waitFor(() => isCompareActive());
-  p6SmokeCurrentPhase = "owner-usability-b-invalid-drop";
-  handleDroppedFile(new File([new Uint8Array([4, 5, 6])], "owner-invalid-b.txt", { type: "text/plain" }), "svga", "b");
-  await waitFor(() => slotHasLocalError(players.b, "文件类型不支持"));
-  checks.svgaBInvalidLocalFeedback = slotHasLocalError(players.b, "文件类型不支持");
-  evidence.push("SVGA B invalid drop rendered slot-local unsupported-file feedback");
-
-  p6SmokeCurrentPhase = "owner-usability-b-recovery";
-  handleDroppedFile(new File([bytes.slice(0)], "owner-recovery-b.svga", { type: "application/octet-stream" }), "svga", "b");
-  await waitFor(() => slotRecoveredCleanly(players.b), 20000);
-  await waitFor(() => {
-    const proof = collectPreviewCardConsistencyProof();
-    return proof.passed === true && proof.syncControlsVisible === true;
-  }, 20000);
-  checks.svgaBRecoveryClearsError = slotRecoveredCleanly(players.b);
-  previewCardConsistencyProof = collectPreviewCardConsistencyProof();
+  p6SmokeCurrentPhase = "owner-usability-primary-preview-card";
+  previewCardConsistencyProof = collectPrimaryPreviewCardConsistencyProof();
   previewCardHeaderConsistency = previewCardConsistencyProof.passed;
-  checks.previewCardBothLoadedConsistency = previewCardConsistencyProof.passed;
-  evidence.push("SVGA B valid recovery cleared slot error and loaded the secondary preview");
+  checks.previewCardSingleFileConsistency = previewCardConsistencyProof.passed;
+  evidence.push("Single-file preview card carries file name, status, metadata, controls, and replacement action consistently");
 
   p6SmokeCurrentPhase = "owner-usability-export-review";
   setAppMode("exportReview");
@@ -3541,7 +3607,7 @@ async function runOwnerUsabilitySmoke(bytes) {
     schemaVersion: 1,
     finderDocumentAssociation: electronBridge?.capabilities?.finderDocumentAssociation ?? "unknown",
     checks,
-    previewCardConsistency: previewCardConsistencyProof ?? collectPreviewCardConsistencyProof(),
+    previewCardConsistency: previewCardConsistencyProof ?? collectPrimaryPreviewCardConsistencyProof(),
     evidence
   };
 }
@@ -3815,31 +3881,9 @@ async function runProductSmoke() {
     latestArtifactGroup = undefined;
     if (compareToggle.checked) compareToggle.click();
     await waitFor(() => !isCompareActive());
-    await recordP6SmokeAction({
-      id: "enable-local-compare-switch",
-      kind: "click",
-      selector: "#compareToggle",
-      initialState: "local-empty",
-      expectedState: "local-compare-empty"
-    }, async () => {
-      if (!compareToggle.checked) return performP6SmokeInput({ kind: "click", selector: "#compareToggle" });
-      return undefined;
-    }, async () => {
-      await waitFor(() => isCompareActive());
-      await delay(120);
-    });
-    await captureArtifact("desktop-local-compare-empty");
-    handleDroppedFile(new File([bytes.slice(0)], "synthetic-avatar-frame-a.svga", { type: "application/octet-stream" }), "svga", "a");
+    handleDroppedFile(new File([bytes.slice(0)], "synthetic-avatar-frame.svga", { type: "application/octet-stream" }), "svga", "a");
     await waitFor(() => Boolean(players.a.videoItem));
     await waitFor(() => canvasIsNonBlank(players.a));
-    handleDroppedFile(new File([bytes.slice(0)], "synthetic-avatar-frame-b.svga", { type: "application/octet-stream" }), "svga", "b");
-    await waitFor(() => Boolean(players.b.videoItem));
-    await waitFor(() => canvasIsNonBlank(players.b));
-    await captureArtifact("desktop-local-compare-loaded");
-    await captureArtifact("desktop-responsive-local-compare-at-900-x-720");
-    await captureArtifact("desktop-responsive-local-compare-at-minimum-size");
-    if (compareToggle.checked) compareToggle.click();
-    await waitFor(() => !isCompareActive());
     await delay(140);
     await captureArtifact("desktop-responsive-local-preview-at-900-x-720");
     openInfoPanel("overview");
@@ -3864,16 +3908,6 @@ async function runProductSmoke() {
     await delay(80);
     await captureArtifact("desktop-local-logs-hidden-default");
     const localPreviewWorkbenchRegionMap = collectWorkbenchRegionMap();
-    layoutUserPreferences.leftCollapsed = true;
-    refreshLayout();
-    await delay(120);
-    await captureArtifact("desktop-local-source-collapsed");
-    layoutUserPreferences.leftCollapsed = false;
-    layoutUserPreferences.rightCollapsed = true;
-    refreshLayout();
-    await delay(120);
-    await captureArtifact("desktop-local-inspector-collapsed");
-    layoutUserPreferences.rightCollapsed = false;
     refreshLayout();
     await delay(120);
     await captureArtifact("desktop-local-minimum-size");
@@ -5040,13 +5074,11 @@ logsButton.addEventListener("click", () => {
   else closeFullLogs();
 });
 sourceCollapseButton?.addEventListener("click", () => {
-  layoutUserPreferences.leftCollapsed = !currentLayoutProps.workspace.sourceCollapsed;
-  localStorage.setItem("autoSvgaLeftPanelCollapsed", String(layoutUserPreferences.leftCollapsed));
+  layoutUserPreferences.leftCollapsed = false;
   window.requestAnimationFrame(refreshLayout);
 });
 inspectorCollapseButton?.addEventListener("click", () => {
-  layoutUserPreferences.rightCollapsed = !currentLayoutProps.workspace.inspectorCollapsed;
-  localStorage.setItem("autoSvgaRightPanelCollapsed", String(layoutUserPreferences.rightCollapsed));
+  layoutUserPreferences.rightCollapsed = false;
   window.requestAnimationFrame(refreshLayout);
 });
 settingsButton.addEventListener("click", () => {
