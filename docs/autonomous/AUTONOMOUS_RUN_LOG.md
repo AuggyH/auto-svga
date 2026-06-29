@@ -438,3 +438,43 @@
   `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, write
   disabled, automatic repair disabled, round-trip-before-write required, manual
   visual confirmation required, and no apply action exposed.
+
+### Phase 4 No-write Sequence Simulation Slice
+
+- Files updated:
+  `tools/shared/product-frontend/product-app.mjs`,
+  `tools/electron-prototype/experiments/svga-web/main.cjs`,
+  `tools/shared/product-frontend/source-sharing.test.mjs`,
+  `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`,
+  `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
+- Result: the sequence repair-preview contract now includes a no-write
+  simulation state in the default Workbench.
+- Product behavior: the Resources panel shows a `模拟结果` block that compares
+  current sequence findings with proposed review actions. The simulation records
+  pending round-trip proof, pending rendered before/after proof, and pending
+  manual visual confirmation; it explicitly does not produce edited bytes or
+  write SVGA output.
+- Smoke evidence: product smoke reports a main-process-validated
+  `sequenceNoWriteSimulationProof` that binds source SHA-256 before and after
+  simulation, simulation id, before sequence group/finding counts, affected
+  resource count, proposed action count, pending evidence requirements, disabled
+  edit/write/automatic-repair/apply flags, summary visibility, and source
+  immutability.
+- Safety boundary: this is still a preview/simulation layer only. No repair is
+  applied, no edited SVGA is produced, no Save As path is opened for sequence
+  repair, and no URL/text/key/timeline editing is exposed.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `git diff --check`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test`;
+  `npm run desktop:smoke`
+- Result: pass; shared frontend suite passed 7 tests, svga-web experiment
+  suite passed 22 tests, and desktop smoke reported
+  `sequenceNoWriteSimulationProof.passed=true` with 1 sequence group, 1 sequence
+  finding, 26 affected resources, 1 proposed action, unchanged source SHA-256
+  `ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c`, no
+  edited bytes, no write attempt, automatic repair disabled, and no apply action
+  exposed.

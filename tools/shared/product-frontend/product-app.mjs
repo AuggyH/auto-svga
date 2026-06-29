@@ -2467,6 +2467,59 @@ async function runSequenceRepairPreviewContractProof(sourceBytes) {
   return proof;
 }
 
+async function runSequenceNoWriteSimulationProof(sourceBytes) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  openInfoPanel("assets");
+  renderInfoPanel();
+  await waitFor(() => isElementVisible(document.querySelector("[data-sequence-no-write-simulation]")));
+  const intelligence = players.a.inspectionReport?.assetIntelligence;
+  const assets = buildAssetEntries(players.a.metrics, intelligence, players.a.replacementReadiness);
+  const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
+  const plan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
+  const simulation = createSequenceNoWriteSimulation(plan);
+  const sourceSha256AfterSimulation = await p6Sha256Bytes(await readPrimarySourceBytes());
+  const applyActionExposed = Boolean(document.querySelector("[data-sequence-repair-apply], [data-sequence-repair-write], [data-auto-sequence-fix]"));
+  const summaryVisible = isElementVisible(document.querySelector("[data-sequence-no-write-simulation]"));
+  const proof = {
+    schemaVersion: 1,
+    proofId: "svga-sequence-no-write-simulation-proof",
+    source: "workbench-sequence-no-write-simulation",
+    sourceSha256,
+    sourceSha256AfterSimulation,
+    simulationId: simulation?.simulationId ?? "",
+    beforeSequenceGroupCount: simulation?.beforeReview?.sequenceGroupCount ?? 0,
+    beforeSequenceFindingCount: simulation?.beforeReview?.sequenceFindingCount ?? 0,
+    affectedResourceCount: simulation?.beforeReview?.affectedResourceCount ?? 0,
+    proposedActionCount: simulation?.afterReview?.proposedActionCount ?? 0,
+    pendingRoundTripProof: simulation?.afterReview?.pendingRoundTripProof === true,
+    pendingRenderedBeforeAfterProof: simulation?.afterReview?.pendingRenderedBeforeAfterProof === true,
+    pendingManualVisualConfirmation: simulation?.afterReview?.pendingManualVisualConfirmation === true,
+    editedBytesProduced: simulation?.editedBytesProduced === true,
+    writeAttempted: simulation?.writeAttempted === true,
+    automaticRepairEnabled: simulation?.automaticRepairEnabled === true,
+    applyActionEnabled: simulation?.applyActionEnabled === true,
+    summaryVisible,
+    sourceUnchanged: sourceSha256AfterSimulation === sourceSha256,
+    applyActionExposed,
+    passed: simulation?.simulationId === "svga-sequence-no-write-simulation-v1"
+      && simulation.beforeReview.sequenceGroupCount > 0
+      && simulation.beforeReview.sequenceFindingCount > 0
+      && simulation.afterReview.proposedActionCount > 0
+      && simulation.afterReview.pendingRoundTripProof === true
+      && simulation.afterReview.pendingRenderedBeforeAfterProof === true
+      && simulation.afterReview.pendingManualVisualConfirmation === true
+      && simulation.editedBytesProduced === false
+      && simulation.writeAttempted === false
+      && simulation.automaticRepairEnabled === false
+      && simulation.applyActionEnabled === false
+      && summaryVisible
+      && sourceSha256AfterSimulation === sourceSha256
+      && applyActionExposed === false
+  };
+  window.__autoSvgaSequenceNoWriteSimulationProof = proof;
+  return proof;
+}
+
 async function runSingleReplacementPreviewProof(sourceBytes, resourceKey, fileName) {
   const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-a.png").then((response) => {
     if (!response.ok) throw new Error(`Replacement fixture fetch failed (${response.status})`);
@@ -4763,6 +4816,9 @@ async function runProductSmoke() {
     p6SmokeCurrentPhase = "sequence-repair-preview-proof";
     const sequenceRepairPreviewProof = await runSequenceRepairPreviewContractProof(bytes.slice(0));
     await captureArtifact("desktop-sequence-repair-preview-proof");
+    p6SmokeCurrentPhase = "sequence-no-write-simulation-proof";
+    const sequenceNoWriteSimulationProof = await runSequenceNoWriteSimulationProof(bytes.slice(0));
+    await captureArtifact("desktop-sequence-no-write-simulation-proof");
     p6SmokeCurrentPhase = "replacement-readiness-proof";
     const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);
     p6SmokeCurrentPhase = "replacement-preview-proof";
@@ -5048,6 +5104,7 @@ async function runProductSmoke() {
       cleanup: true,
       sequenceReviewProof,
       sequenceRepairPreviewProof,
+      sequenceNoWriteSimulationProof,
       replacementReadinessProof,
       replacementPreviewProof,
       replacementUndoRedoProof,
@@ -5684,8 +5741,34 @@ function createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount) {
   };
 }
 
+function createSequenceNoWriteSimulation(plan) {
+  if (!plan || plan.proposedActions.length === 0) return undefined;
+  return {
+    schemaVersion: 1,
+    simulationId: "svga-sequence-no-write-simulation-v1",
+    source: "workbench-sequence-repair-preview-contract",
+    beforeReview: {
+      sequenceGroupCount: plan.sequenceGroupCount,
+      sequenceFindingCount: plan.sequenceFindingCount,
+      affectedResourceCount: plan.affectedResourceIds.length
+    },
+    afterReview: {
+      proposedActionCount: plan.proposedActions.length,
+      proposedActionCodes: plan.proposedActions.map((action) => action.code),
+      pendingRoundTripProof: true,
+      pendingRenderedBeforeAfterProof: true,
+      pendingManualVisualConfirmation: true
+    },
+    editedBytesProduced: false,
+    writeAttempted: false,
+    automaticRepairEnabled: false,
+    applyActionEnabled: false
+  };
+}
+
 function renderSequenceRepairPreviewPlan(plan) {
   if (!plan || plan.sequenceFindingCount <= 0) return "";
+  const simulation = createSequenceNoWriteSimulation(plan);
   const labels = plan.proposedActions.map((action) => action.label).slice(0, 2).join(" · ");
   return `
     <div class="assetIntelligenceSummary" data-sequence-repair-preview-contract>
@@ -5693,6 +5776,13 @@ function renderSequenceRepairPreviewPlan(plan) {
       <span>${escapeHtml(plan.proposedActions.length)} 项候选 · ${escapeHtml(plan.affectedResourceIds.length)} 个资源 · 暂不写入</span>
       <em>${escapeHtml(labels)}</em>
     </div>
+    ${simulation ? `
+      <div class="assetIntelligenceSummary" data-sequence-no-write-simulation>
+        <strong>模拟结果</strong>
+        <span>前：${escapeHtml(simulation.beforeReview.sequenceFindingCount)} 项发现 · 后：${escapeHtml(simulation.afterReview.proposedActionCount)} 项候选仍需验证</span>
+        <em>未生成编辑字节 · 未写入 SVGA · 等待 round-trip 与人工视觉确认</em>
+      </div>
+    ` : ""}
   `;
 }
 
