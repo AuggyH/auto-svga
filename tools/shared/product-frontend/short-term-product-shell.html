@@ -1,0 +1,218 @@
+<main class="asvShell" data-product-shell="canonical" data-product-shell-variant="short-term">
+  <nav class="asvMenuBar" aria-label="应用菜单" data-module="MenuBarCommandModel">
+    <button type="button" data-menu-name="Auto SVGA">Auto SVGA</button>
+    <button type="button" data-action="open">File</button>
+    <button type="button" data-action="rename">Edit</button>
+    <button type="button" data-action="compare">View</button>
+    <button type="button" data-action="toggle-play">Playback</button>
+    <button type="button" data-action="replace-image">Resource</button>
+    <button type="button" data-action="tab-optimization">Optimize</button>
+    <button type="button" data-menu-name="Window">Window</button>
+    <button type="button" data-menu-name="Help">Help</button>
+  </nav>
+
+  <header class="asvToolbar" aria-label="工具栏" data-component="WindowToolbar">
+    <div class="asvTrafficLights" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </div>
+    <button class="asvToolbarButton" type="button" data-action="open" data-prd="S1">打开 SVGA</button>
+    <button class="asvToolbarButton" type="button" data-action="compare" data-needs-file data-prd="S10">对比</button>
+    <div class="asvSegmented" role="group" aria-label="模式" data-component="SegmentedModeSwitch">
+      <button type="button" data-action="mode-preview" class="isSelected">预览</button>
+      <button type="button" data-action="mode-edit">编辑</button>
+    </div>
+    <p class="asvIdentity" id="asvIdentity">未打开文件</p>
+    <button class="asvToolbarButton" type="button" data-action="save-overwrite" data-save-action data-prd="S14">覆盖保存</button>
+    <button class="asvToolbarButton asvPrimary" type="button" data-action="save-as" data-save-action data-prd="S14">另存为</button>
+  </header>
+
+  <section class="asvSaveBanner" id="asvSaveBanner" hidden aria-live="polite" data-module="SaveStateModule"></section>
+
+  <section class="asvView isActive" id="asvViewLaunch" data-view="launch" data-page-state="Launch" data-module="LaunchModule">
+    <article class="asvLaunchCard" data-component="LaunchDropCard">
+      <div class="asvMockPreview" aria-hidden="true">
+        <div class="asvFrameArt"></div>
+      </div>
+      <div class="asvLaunchCopy">
+        <p class="asvEyebrow">Auto SVGA</p>
+        <h1>打开本地 SVGA 文件</h1>
+        <p>选择文件或拖入窗口后进入预览、资产信息、可替换元素和优化检查流程。</p>
+        <div class="asvActionRow">
+          <button class="asvPrimary" type="button" data-action="open" data-prd="S1">打开 SVGA...</button>
+          <button type="button" data-action="open-invalid" data-prd="S2">显示无效文件</button>
+        </div>
+        <p class="asvInlineStatus">本地处理。此实现入口暂使用样例状态，不读取真实文件。</p>
+      </div>
+    </article>
+  </section>
+
+  <section class="asvView" id="asvViewLoading" data-view="loading" data-page-state="Loading" data-module="LaunchModule" hidden>
+    <div class="asvWorkbenchGrid">
+      <section class="asvPanel asvPreviewPanel">
+        <div class="asvLoadingBlock" data-component="Spinner">
+          <span class="asvSpinner" aria-hidden="true"></span>
+          <h2>正在载入文件</h2>
+          <p>解析 SVGA、建立资源索引、准备预览状态。</p>
+        </div>
+      </section>
+      <aside class="asvPanel asvInspector">
+        <h2>载入状态</h2>
+        <ol class="asvStateList">
+          <li class="isDone">读取本地文件</li>
+          <li class="isActive">解析 SVGA</li>
+          <li>建立检查报告</li>
+        </ol>
+        <button type="button" data-action="fail-load">显示载入失败</button>
+      </aside>
+    </div>
+  </section>
+
+  <section class="asvView" id="asvViewLoadFailed" data-view="load-failed" data-page-state="Load failed" data-module="LaunchModule" hidden>
+    <div class="asvWorkbenchGrid">
+      <section class="asvPanel asvErrorPanel" data-component="ErrorRecoveryPanel">
+        <span class="asvBadge asvDanger">载入失败</span>
+        <h2>无法打开这个 SVGA</h2>
+        <p>文件结构不完整，预览未启动。源文件没有被修改。</p>
+        <button class="asvPrimary" type="button" data-action="open">打开另一个 SVGA...</button>
+      </section>
+      <aside class="asvPanel asvInspector">
+        <h2>恢复方式</h2>
+        <p>重新选择有效文件即可回到预览。</p>
+      </aside>
+    </div>
+  </section>
+
+  <section class="asvView" id="asvViewWorkbench" data-view="workbench" data-page-state="Preview ready" hidden>
+    <div class="asvWorkbenchGrid" data-mode-surface="preview">
+      <section class="asvPanel asvPreviewPanel" data-module="PreviewCanvasModule" data-component="PreviewStage">
+        <div class="asvPanelHeader">
+          <div>
+            <p class="asvEyebrow">Preview mode</p>
+            <h2>avatar_frame_basic.svga</h2>
+          </div>
+          <span class="asvBadge" id="asvPlaybackStatus">播放就绪</span>
+        </div>
+        <div class="asvStage" aria-label="SVGA 预览舞台">
+          <div class="asvFrameArt asvFrameLarge"></div>
+          <div class="asvRuntimeChip" id="asvRuntimeImage" hidden>替换预览</div>
+          <div class="asvRuntimeText" id="asvRuntimeText" hidden>SVGA VIP</div>
+        </div>
+        <div class="asvPlaybackControls" data-component="PlaybackControls">
+          <button type="button" data-action="toggle-play" id="asvPlayButton" data-prd="S2">播放</button>
+          <button type="button" data-action="replay" data-prd="S2">重播</button>
+          <button type="button" data-action="playback-error" data-prd="S2">模拟异常</button>
+          <span class="asvInlineStatus" id="asvPreviewNote">预览模式保持激活。</span>
+        </div>
+      </section>
+
+      <aside class="asvPanel asvInspector" data-component="RightTabPanel">
+        <div class="asvTabs" role="tablist" aria-label="检查面板">
+          <button type="button" role="tab" class="isSelected" data-tab="overview" data-prd="S3 S4 S5 S6 S15">总览</button>
+          <button type="button" role="tab" data-tab="optimization" data-prd="S8 S9">优化</button>
+          <button type="button" role="tab" data-tab="replaceable" data-prd="S7 S12 S13">可替换</button>
+        </div>
+
+        <section class="asvTabPanel isActive" id="asvTabOverview" data-tab-panel="overview" data-module="OverviewTabModule">
+          <h3>文件信息</h3>
+          <dl class="asvFactGrid">
+            <div><dt>文件大小</dt><dd>812 KB</dd></div>
+            <div><dt>估算内存</dt><dd>18.4 MB</dd></div>
+            <div><dt>画布</dt><dd>256 x 256</dd></div>
+            <div><dt>FPS</dt><dd>30</dd></div>
+            <div><dt>资源数</dt><dd>42</dd></div>
+            <div><dt>时长</dt><dd>72 frames</dd></div>
+          </dl>
+          <h3>生产规格</h3>
+          <div class="asvSpecList" data-component="ProductionSpecRow">
+            <p><strong>文件大小</strong><span>812 KB / &lt; 1 MB</span><em class="asvSuccess">通过</em></p>
+            <p><strong>内存</strong><span>18.4 MB / &lt; 24 MB</span><em class="asvSuccess">通过</em></p>
+            <p><strong>FPS</strong><span>30 / 24-30</span><em class="asvSuccess">通过</em></p>
+          </div>
+          <h3>资源信息</h3>
+          <article class="asvAssetRow" data-component="AssetRow"><span class="asvThumb"></span><strong>frame_shell</strong><small>PNG - 256 x 256</small></article>
+          <article class="asvAssetRow" data-component="SequenceThumbnail"><span class="asvThumb asvSequenceThumb"></span><strong>sparkle_sequence</strong><small>四帧缩略图</small></article>
+          <article class="asvAssetRow" data-component="AudioAssetRow"><span class="asvThumb asvAudioThumb">Audio</span><strong>音频资产</strong><small>当前文件暂无音频资产</small></article>
+        </section>
+
+        <section class="asvTabPanel" id="asvTabOptimization" data-tab-panel="optimization" data-module="OptimizationTabModule" hidden>
+          <h3>优化机会</h3>
+          <article class="asvFindingRow" data-component="OptimizationFindingRow">
+            <div><strong>透明边界裁剪</strong><p>3 个图片资源存在可裁剪透明边缘，预计减少 64 KB。</p></div>
+            <button class="asvPrimary" type="button" data-action="run-optimization" data-prd="S9 S10">运行优化</button>
+          </article>
+          <article class="asvFindingRow" data-component="OptimizationFindingRow">
+            <div><strong>序列帧处理</strong><p>检测到可优化空间，当前实现入口标记为需复核。</p></div>
+            <span class="asvBadge asvWarning">需复核</span>
+          </article>
+        </section>
+
+        <section class="asvTabPanel" id="asvTabReplaceable" data-tab-panel="replaceable" data-module="ReplaceableElementsTabModule" hidden>
+          <div id="asvReplaceableContent">
+            <h3>可替换图片</h3>
+            <article class="asvAssetRow" data-component="ReplaceableImageRow">
+              <span class="asvThumb asvAltThumb"></span>
+              <strong id="asvImageKey">profile_frame_highlight</strong>
+              <small id="asvImageStatus">自动命名资源已排除。</small>
+              <button type="button" data-action="rename" data-prd="S11">重命名</button>
+              <button type="button" data-action="replace-image" data-prd="S12">替换预览</button>
+            </article>
+            <h3>可替换文本</h3>
+            <article class="asvAssetRow" data-component="ReplaceableTextRow">
+              <span class="asvThumb asvTextThumb">Aa</span>
+              <strong>nickname_text</strong>
+              <small id="asvTextStatus">运行时动态文本预览，不写入 SVGA 字节。</small>
+              <button type="button" data-action="edit-text" data-prd="S13">编辑文本</button>
+            </article>
+          </div>
+          <div class="asvEmptyState" id="asvNoReplaceableContent" hidden>
+            <h3>没有可替换元素</h3>
+            <p>当前文件没有设计师命名的 imageKey 或文本 key。普通自动命名图片保留在总览资源中。</p>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </section>
+
+  <section class="asvView" id="asvViewOptimizationCompare" data-view="optimization-compare" data-page-state="Optimization comparing" data-module="OptimizationCompareModule" hidden>
+    <div class="asvCompareGrid">
+      <section class="asvPanel" data-component="ComparePreviewCard"><p class="asvEyebrow">Before</p><h2>原始预览</h2><div class="asvMiniStage"></div><p>812 KB / 18.4 MB</p></section>
+      <section class="asvPanel" data-component="ComparePreviewCard"><p class="asvEyebrow">After</p><h2>优化后预览</h2><div class="asvMiniStage asvSuccessStage"></div><p>736 KB / 16.9 MB</p></section>
+      <aside class="asvPanel" data-component="OptimizationResultCard">
+        <h2>优化结果</h2>
+        <p class="asvMetric">-76 KB</p>
+        <p>生成优化字节，等待明确保存。</p>
+        <button class="asvPrimary" type="button" data-action="save-as" data-prd="S14">另存为优化结果</button>
+        <button type="button" data-action="back-preview">返回预览</button>
+      </aside>
+    </div>
+  </section>
+
+  <section class="asvView" id="asvViewCompare" data-view="compare" data-page-state="General comparing" data-module="GeneralCompareModule" hidden>
+    <div class="asvCompareGrid asvCompareGridFour">
+      <aside class="asvPanel"><h2>A 文件</h2><p>812 KB / 42 assets</p></aside>
+      <section class="asvPanel" data-component="ComparePreviewCard"><h2>Preview A</h2><div class="asvMiniStage"></div></section>
+      <section class="asvPanel" data-component="ComparePreviewCard"><h2>Preview B</h2><div class="asvMiniStage asvCompareStage"></div></section>
+      <aside class="asvPanel"><h2>B 文件</h2><p>776 KB / 39 assets</p><button type="button" data-action="back-preview">退出对比</button></aside>
+    </div>
+  </section>
+
+  <section class="asvView" id="asvViewEdit" data-view="edit" data-page-state="Edit reserved" data-module="EditReservedModule" hidden>
+    <div class="asvEditGrid">
+      <aside class="asvPanel"><h2>图层</h2><p>frame_shell</p><p>profile_frame_highlight</p><p>nickname_text</p></aside>
+      <section class="asvPanel asvPreviewPanel"><h2>保留编辑结构</h2><div class="asvStage"><div class="asvFrameArt asvFrameLarge"></div></div></section>
+      <aside class="asvPanel" data-component="ReservedOperationPanel"><h2>操作面板</h2><p>短期版本不暴露时间线、变换、透明度、蒙版、音频或高级图层编辑控件。</p></aside>
+    </div>
+  </section>
+
+  <div class="asvModal" id="asvTextModal" hidden>
+    <section class="asvPanel asvModalPanel" role="dialog" aria-modal="true" aria-labelledby="asvTextModalTitle" data-component="TextReplacementSheet">
+      <h2 id="asvTextModalTitle">编辑运行时文本</h2>
+      <label>Text <input id="asvTextInput" value="SVGA VIP"></label>
+      <p class="asvInlineStatus">仅模拟运行时动态文本预览，源 SVGA 字节不修改。</p>
+      <div class="asvActionRow">
+        <button type="button" data-action="close-text">取消</button>
+        <button class="asvPrimary" type="button" data-action="apply-text">应用预览</button>
+      </div>
+    </section>
+  </div>
+</main>
