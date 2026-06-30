@@ -19,6 +19,8 @@ body {
   overflow: hidden;
   background: var(--background);
   font-size: var(--visual-font-title);
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 h1,
@@ -34,8 +36,16 @@ select {
 }
 
 button,
-label {
+label,
+[role="button"],
+.dropdownMenuItem,
+.modeControl,
+.fitMenuButton,
+.iconButton,
+.resizeHandle {
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 svg {

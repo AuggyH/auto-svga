@@ -7715,6 +7715,37 @@ function replaceResourceFromContextMenu() {
   replacementPngInput.click();
 }
 
+function getSelectedReplaceableResourceKey() {
+  const selectedRow = document.querySelector("[data-asset-row-select].isSelected[data-context-replaceable-resource-key]");
+  if (selectedRow?.dataset.contextReplaceableResourceKey) return selectedRow.dataset.contextReplaceableResourceKey;
+  if (!selectedAssetKey) return undefined;
+  return [...document.querySelectorAll("[data-asset-row-select][data-context-replaceable-resource-key]")]
+    .find((row) => row.dataset.assetKey === selectedAssetKey)
+    ?.dataset.contextReplaceableResourceKey;
+}
+
+function replaceSelectedResourceFromMenu() {
+  switchSourceTab("assets");
+  const resourceKey = getSelectedReplaceableResourceKey();
+  if (!resourceKey) {
+    showError("请先在资源列表中选中可替换的 PNG 图片资源。");
+    return { status: "unavailable", reason: "no-selected-replaceable-resource" };
+  }
+  pendingReplacementResourceKey = resourceKey;
+  replacementPngInput.value = "";
+  replacementPngInput.click();
+  return { status: "opened", resourceKey };
+}
+
+function copyCurrentResourceKey() {
+  const key = previewImageKey || getSelectedReplaceableResourceKey() || selectedAssetKey;
+  if (!key) {
+    showError("请先选择或预览一个资源。");
+    return Promise.resolve({ status: "unavailable", reason: "no-selected-resource" });
+  }
+  return writeClipboardText(key);
+}
+
 function runReplacementCommand(command) {
   if (command === "undo") return undoReplacementPreview();
   if (command === "redo") return redoReplacementPreview();
@@ -7723,11 +7754,77 @@ function runReplacementCommand(command) {
   return Promise.resolve(undefined);
 }
 
+function toggleLogsFromMenu() {
+  if (logsPanel.classList.contains("isHidden")) openFullLogs();
+  else closeFullLogs();
+}
+
+function setPrimaryLoopFromMenu() {
+  localLoopToggle.checked = !localLoopToggle.checked;
+  localLoopToggle.dispatchEvent(new Event("change", { bubbles: true }));
+  return { enabled: localLoopToggle.checked };
+}
+
+function setCompareFromMenu() {
+  compareToggle.checked = !compareToggle.checked;
+  compareToggle.dispatchEvent(new Event("change", { bubbles: true }));
+  return { enabled: compareToggle.checked };
+}
+
+function setGlobalLoopFromMenu() {
+  globalLoopToggle.checked = !globalLoopToggle.checked;
+  globalLoopToggle.dispatchEvent(new Event("change", { bubbles: true }));
+  return { enabled: globalLoopToggle.checked };
+}
+
+function setThemeFromMenu(value) {
+  setThemePreference(value);
+  showSettingsToast("外观设置已更新");
+}
+
+function setPreviewBackgroundFromMenu(value) {
+  setPreviewBackground(value);
+  showSettingsToast("预览背景已更新");
+}
+
+function setFitModeFromMenu(slotKey, value) {
+  applyFitMode(slotKey, value);
+  refreshLayout();
+}
+
 window.__autoSvgaWorkbenchActions = {
+  clearCurrentFile: () => clearCurrentFile("menu"),
+  copyCurrentResourceKey,
+  copyLogs: () => copyFullLogsToClipboard(),
+  clearLogs: () => clearFullLogs(),
+  loadLatestExportArtifact: () => {
+    setAppMode("exportReview");
+    return scanLatestArtifact({ force: true });
+  },
+  openDiagnostics: () => openInfoPanel("diagnostics"),
+  openSettings: () => openSettings(),
+  replayPrimary: () => replaySlot(players.a),
+  replaceSelectedResource: replaceSelectedResourceFromMenu,
   undoReplacement: () => runReplacementCommand("undo"),
   redoReplacement: () => runReplacementCommand("redo"),
   saveReplacement: () => runReplacementCommand("save"),
-  resetReplacement: () => runReplacementCommand("reset")
+  resetReplacement: () => runReplacementCommand("reset"),
+  saveOptimizedCopy: () => saveOptimizedPrimarySvga(),
+  saveSequenceRepairCopy: () => saveSequenceRepairPrimarySvga(),
+  setExportReviewMode: () => setAppMode("exportReview"),
+  setFitMode: setFitModeFromMenu,
+  setLocalPreviewMode: () => setAppMode("localPreview"),
+  setPreviewBackground: setPreviewBackgroundFromMenu,
+  setTheme: setThemeFromMenu,
+  showLayers: () => openInfoPanel("layers"),
+  showResources: () => openInfoPanel("assets"),
+  syncReplay: () => syncReplay(),
+  toggleCompare: setCompareFromMenu,
+  toggleGlobalLoop: setGlobalLoopFromMenu,
+  toggleLogs: toggleLogsFromMenu,
+  togglePrimaryLoop: setPrimaryLoopFromMenu,
+  togglePrimaryPlayback: () => toggleSlot(players.a),
+  toggleSyncPlayback: () => toggleSyncPlayback()
 };
 
 infoPanel.addEventListener("click", (event) => {
@@ -7856,18 +7953,23 @@ function copyFullLogsToClipboard() {
     });
 }
 
-copyFullLogsButton.addEventListener("click", () => {
-  copyFullLogsToClipboard().catch(() => undefined);
-});
-clearFullLogsButton.addEventListener("click", () => {
+function clearFullLogs() {
   if (!appLogs.length) {
     showActionFeedback(logsActionFeedback, { text: "暂无日志可清除" });
-    return;
+    return { status: "empty" };
   }
   appLogs.length = 0;
   renderInfoPanel();
   renderLogsPanel();
   showActionFeedback(logsActionFeedback, { type: "success", text: "已清除" });
+  return { status: "cleared" };
+}
+
+copyFullLogsButton.addEventListener("click", () => {
+  copyFullLogsToClipboard().catch(() => undefined);
+});
+clearFullLogsButton.addEventListener("click", () => {
+  clearFullLogs();
 });
 for (const input of document.querySelectorAll('input[name="theme"]')) {
   input.addEventListener("change", () => {

@@ -115,6 +115,11 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /resourceContextMenu/);
   assert.match(productApp, /data-context-replaceable-resource-key/);
   assert.match(productApp, /__autoSvgaWorkbenchActions/);
+  assert.match(productApp, /replaceSelectedResource/);
+  assert.match(productApp, /saveOptimizedCopy/);
+  assert.match(productApp, /saveSequenceRepairCopy/);
+  assert.match(productApp, /copyCurrentResourceKey/);
+  assert.match(productApp, /toggleLogs/);
   assert.doesNotMatch(productApp, /function showReplaceableResources/);
   assert.doesNotMatch(productApp, /data-show-replaceable-resources/);
   assert.doesNotMatch(productApp, /data-replace-resource-key/);
@@ -321,6 +326,8 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
   assert.match(productStyles, /\.assetFilters button\s*\{[\s\S]*white-space:\s*nowrap/);
   assert.match(productStyles, /\.sequenceToggle\s*\{[\s\S]*position:\s*static/);
   assert.match(productStyles, /\.toolbar \.iconButton\s*\{[\s\S]*min-height:\s*36px/);
+  assert.match(productStyles, /body\s*\{[\s\S]*user-select:\s*text/);
+  assert.match(productStyles, /button,\nlabel,[\s\S]*user-select:\s*none/);
   assert.match(productStyles, /\.assetUnifiedRow:focus-visible\s*\{/);
   assert.match(productStyles, /\.proofStatePill\s*\{/);
   assert.match(p6Evidence, /owner_blocking_feedback_fixed_pending_product_owner_review/);

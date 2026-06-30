@@ -29,6 +29,55 @@ const normalVisibleStartupMode = !(smokeMode || auditMode || normalProofMode);
 const appRoot = app.getAppPath();
 const repoRoot = path.resolve(appRoot, "../../../..");
 const productIdentity = "auto-svga";
+const hostMenuActions = Object.freeze([
+  "open-primary-svga",
+  "open-secondary-svga",
+  "open-reference-media",
+  "load-latest-export-artifact",
+  "clear-current-file",
+  "save-replacement-as",
+  "save-optimized-copy",
+  "save-sequence-repair-copy",
+  "undo-replacement-preview",
+  "redo-replacement-preview",
+  "reset-replacement-preview",
+  "cut",
+  "copy",
+  "paste",
+  "select-all",
+  "show-resources",
+  "show-layers",
+  "replace-selected-resource",
+  "copy-current-resource-key",
+  "local-preview-mode",
+  "export-review-mode",
+  "show-diagnostics",
+  "toggle-logs",
+  "open-settings",
+  "primary-play-pause",
+  "primary-replay",
+  "primary-loop-toggle",
+  "compare-toggle",
+  "sync-play-pause",
+  "sync-replay",
+  "theme-system",
+  "theme-light",
+  "theme-dark",
+  "preview-background-checkerboard",
+  "preview-background-light",
+  "preview-background-dark",
+  "preview-background-transparent",
+  "fit-primary-contain",
+  "fit-primary-original",
+  "fit-primary-width",
+  "fit-secondary-contain",
+  "fit-secondary-original",
+  "fit-secondary-width",
+  "fit-reference-contain",
+  "fit-reference-original",
+  "fit-reference-width",
+  "quit"
+]);
 const mainEntry = "main.cjs";
 const preloadEntry = "preload.cjs";
 const rendererHtmlEntry = "web/index.html";
@@ -2554,7 +2603,7 @@ function runtimeIdentity(mode, rendererUrl) {
       normalVisibleStartup: normalVisibleStartupMode,
       finderEquivalentLaunchCompatible: true,
       fileOpenTargets: ["primary-svga", "secondary-svga", "reference-media"],
-      menuActions: ["load-latest-export-artifact", "toggle-logs", "open-settings", "quit"],
+      menuActions: hostMenuActions,
       sessionRootRedacted: sanitizeRuntimeArgument(sessionRoot),
       tempCleanupOnExit: true
     },
@@ -2774,7 +2823,7 @@ async function writeVisibleNormalStartupProof(window, rendererUrl) {
     localOnly: rendererProbe.localOnly === true && blockedExternalRequests.length === 0,
     externalRequests: [...new Set([...blockedExternalRequests, ...(rendererProbe.externalRequests ?? [])])],
     hostOpenTargets: ["primary-svga", "secondary-svga", "reference-media"],
-    hostMenuActions: ["load-latest-export-artifact", "toggle-logs", "open-settings", "quit"],
+    hostMenuActions,
     processLifecycle: {
       windowAllClosedCleanup: true,
       quitMenuInstalled: true,
@@ -3224,12 +3273,31 @@ function installApplicationMenu(window) {
       console.error(`AUTO_SVGA_MENU_ACTION_ERROR ${label} ${redactLogMessage(error instanceof Error ? error.message : error)}`);
     });
   };
+  const invokeWorkbenchAction = (name, ...args) => runRendererMenuAction(
+    name,
+    `window.__autoSvgaWorkbenchActions?.[${JSON.stringify(name)}]?.(...${JSON.stringify(args)})`
+  );
+  const appMenu = process.platform === "darwin"
+    ? [{
+        label: "Auto SVGA",
+        submenu: [
+          { role: "about", label: "关于 Auto SVGA" },
+          { type: "separator" },
+          { role: "hide", label: "隐藏 Auto SVGA" },
+          { role: "hideOthers", label: "隐藏其他" },
+          { role: "unhide", label: "全部显示" },
+          { type: "separator" },
+          { role: "quit", label: "退出 Auto SVGA" }
+        ]
+      }]
+    : [];
   Menu.setApplicationMenu(Menu.buildFromTemplate([
+    ...appMenu,
     {
-      label: "File",
+      label: "文件",
       submenu: [
         {
-          label: "Open SVGA...",
+          label: "打开 SVGA...",
           accelerator: "CommandOrControl+O",
           click: () => {
             openSvgaFromHostMenu(window).catch((error) => {
@@ -3238,7 +3306,7 @@ function installApplicationMenu(window) {
           }
         },
         {
-          label: "Open Secondary SVGA...",
+          label: "打开对比 SVGA...",
           click: () => {
             openSvgaFromHostMenu(window, "#secondaryFileInput").catch((error) => {
               console.error(`AUTO_SVGA_FILE_OPEN_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
@@ -3246,7 +3314,7 @@ function installApplicationMenu(window) {
           }
         },
         {
-          label: "Open Reference Media...",
+          label: "打开参考媒体...",
           click: () => {
             openReferenceFromHostMenu(window).catch((error) => {
               console.error(`AUTO_SVGA_REFERENCE_OPEN_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
@@ -3255,75 +3323,218 @@ function installApplicationMenu(window) {
         },
         { type: "separator" },
         {
-          label: "Save Replacement As...",
+          label: "加载最新导出产物",
+          click: () => invokeWorkbenchAction("loadLatestExportArtifact")
+        },
+        {
+          label: "清空当前文件",
+          click: () => invokeWorkbenchAction("clearCurrentFile")
+        },
+        { type: "separator" },
+        {
+          label: "另存替换副本...",
           accelerator: "CommandOrControl+Shift+S",
-          click: () => runRendererMenuAction(
-            "save-replacement",
-            `window.__autoSvgaWorkbenchActions?.saveReplacement?.()`
-          )
+          click: () => invokeWorkbenchAction("saveReplacement")
         },
         { type: "separator" },
         {
-          label: "Load Latest Export Artifact",
-          click: () => runRendererMenuAction("latest-artifact", `
-            (() => {
-              const mode = document.querySelector("#modeSelect");
-              if (mode) {
-                mode.value = "exportReview";
-                mode.dispatchEvent(new Event("change", { bubbles: true }));
-              }
-              window.setTimeout(() => document.querySelector("#rescanButton")?.click(), 0);
-            })()
-          `)
-        },
-        { type: "separator" },
-        {
-          label: "Quit Auto SVGA",
+          label: "退出 Auto SVGA",
           accelerator: "CommandOrControl+Q",
           click: () => app.quit()
         }
       ]
     },
     {
-      label: "Edit",
+      label: "编辑",
       submenu: [
         {
-          label: "Undo Replacement Preview",
+          label: "撤销替换预览",
           accelerator: "CommandOrControl+Z",
-          click: () => runRendererMenuAction(
-            "undo-replacement",
-            `window.__autoSvgaWorkbenchActions?.undoReplacement?.()`
-          )
+          click: () => invokeWorkbenchAction("undoReplacement")
         },
         {
-          label: "Redo Replacement Preview",
+          label: "重做替换预览",
           accelerator: "CommandOrControl+Shift+Z",
-          click: () => runRendererMenuAction(
-            "redo-replacement",
-            `window.__autoSvgaWorkbenchActions?.redoReplacement?.()`
-          )
+          click: () => invokeWorkbenchAction("redoReplacement")
         },
         {
-          label: "Reset Replacement Preview",
-          click: () => runRendererMenuAction(
-            "reset-replacement",
-            `window.__autoSvgaWorkbenchActions?.resetReplacement?.()`
-          )
+          label: "重置替换预览",
+          click: () => invokeWorkbenchAction("resetReplacement")
+        },
+        { type: "separator" },
+        { label: "剪切", role: "cut" },
+        { label: "复制", role: "copy" },
+        { label: "粘贴", role: "paste" },
+        { label: "全选", role: "selectAll" }
+      ]
+    },
+    {
+      label: "资源",
+      submenu: [
+        {
+          label: "显示资源列表",
+          click: () => invokeWorkbenchAction("showResources")
+        },
+        {
+          label: "显示图层列表",
+          click: () => invokeWorkbenchAction("showLayers")
+        },
+        { type: "separator" },
+        {
+          label: "替换选中资源...",
+          click: () => invokeWorkbenchAction("replaceSelectedResource")
+        },
+        {
+          label: "复制当前资源 Key",
+          click: () => invokeWorkbenchAction("copyCurrentResourceKey")
         }
       ]
     },
     {
-      label: "View",
+      label: "优化",
       submenu: [
         {
-          label: "Toggle Logs",
-          accelerator: "CommandOrControl+L",
-          click: () => runRendererMenuAction("logs", `document.querySelector("#logsButton")?.click()`)
+          label: "生成优化副本...",
+          click: () => invokeWorkbenchAction("saveOptimizedCopy")
+        }
+      ]
+    },
+    {
+      label: "序列",
+      submenu: [
+        {
+          label: "修复闪帧并另存...",
+          click: () => invokeWorkbenchAction("saveSequenceRepairCopy")
+        }
+      ]
+    },
+    {
+      label: "播放",
+      submenu: [
+        {
+          label: "播放/暂停当前预览",
+          click: () => invokeWorkbenchAction("togglePrimaryPlayback")
         },
         {
-          label: "Open Settings",
+          label: "重新播放当前预览",
+          click: () => invokeWorkbenchAction("replayPrimary")
+        },
+        {
+          label: "切换当前预览循环",
+          click: () => invokeWorkbenchAction("togglePrimaryLoop")
+        },
+        {
+          label: "切换全局循环",
+          click: () => invokeWorkbenchAction("toggleGlobalLoop")
+        },
+        { type: "separator" },
+        {
+          label: "切换对比模式",
+          click: () => invokeWorkbenchAction("toggleCompare")
+        },
+        {
+          label: "同步播放/暂停",
+          click: () => invokeWorkbenchAction("toggleSyncPlayback")
+        },
+        {
+          label: "同步重新播放",
+          click: () => invokeWorkbenchAction("syncReplay")
+        }
+      ]
+    },
+    {
+      label: "视图",
+      submenu: [
+        {
+          label: "本地预览",
+          click: () => invokeWorkbenchAction("setLocalPreviewMode")
+        },
+        {
+          label: "导出验收",
+          click: () => invokeWorkbenchAction("setExportReviewMode")
+        },
+        {
+          label: "显示检查报告",
+          click: () => invokeWorkbenchAction("openDiagnostics")
+        },
+        { type: "separator" },
+        {
+          label: "活动记录",
+          accelerator: "CommandOrControl+L",
+          click: () => invokeWorkbenchAction("toggleLogs")
+        },
+        {
+          label: "设置",
           accelerator: "CommandOrControl+,",
-          click: () => runRendererMenuAction("settings", `document.querySelector("#settingsButton")?.click()`)
+          click: () => invokeWorkbenchAction("openSettings")
+        },
+        { type: "separator" },
+        {
+          label: "外观",
+          submenu: [
+            { label: "跟随系统", click: () => invokeWorkbenchAction("setTheme", "system") },
+            { label: "浅色", click: () => invokeWorkbenchAction("setTheme", "light") },
+            { label: "深色", click: () => invokeWorkbenchAction("setTheme", "dark") }
+          ]
+        },
+        {
+          label: "预览背景",
+          submenu: [
+            { label: "棋盘格", click: () => invokeWorkbenchAction("setPreviewBackground", "checkerboard") },
+            { label: "浅色", click: () => invokeWorkbenchAction("setPreviewBackground", "light") },
+            { label: "深色", click: () => invokeWorkbenchAction("setPreviewBackground", "dark") },
+            { label: "透明", click: () => invokeWorkbenchAction("setPreviewBackground", "transparent") }
+          ]
+        },
+        {
+          label: "主预览适配",
+          submenu: [
+            { label: "适应窗口", click: () => invokeWorkbenchAction("setFitMode", "a", "contain") },
+            { label: "原始尺寸", click: () => invokeWorkbenchAction("setFitMode", "a", "original") },
+            { label: "适应宽度", click: () => invokeWorkbenchAction("setFitMode", "a", "fitWidth") }
+          ]
+        },
+        {
+          label: "对比预览适配",
+          submenu: [
+            { label: "适应窗口", click: () => invokeWorkbenchAction("setFitMode", "b", "contain") },
+            { label: "原始尺寸", click: () => invokeWorkbenchAction("setFitMode", "b", "original") },
+            { label: "适应宽度", click: () => invokeWorkbenchAction("setFitMode", "b", "fitWidth") }
+          ]
+        },
+        {
+          label: "参考媒体适配",
+          submenu: [
+            { label: "适应窗口", click: () => invokeWorkbenchAction("setFitMode", "reference", "contain") },
+            { label: "原始尺寸", click: () => invokeWorkbenchAction("setFitMode", "reference", "original") },
+            { label: "适应宽度", click: () => invokeWorkbenchAction("setFitMode", "reference", "fitWidth") }
+          ]
+        }
+      ]
+    },
+    {
+      label: "窗口",
+      submenu: [
+        { role: "minimize", label: "最小化" },
+        { role: "zoom", label: "缩放" },
+        ...(process.platform === "darwin" ? [
+          { type: "separator" },
+          { role: "front", label: "全部置于最前" }
+        ] : [
+          { role: "close", label: "关闭窗口" }
+        ])
+      ]
+    },
+    {
+      label: "帮助",
+      submenu: [
+        {
+          label: "复制活动记录",
+          click: () => invokeWorkbenchAction("copyLogs")
+        },
+        {
+          label: "清除活动记录",
+          click: () => invokeWorkbenchAction("clearLogs")
         }
       ]
     }

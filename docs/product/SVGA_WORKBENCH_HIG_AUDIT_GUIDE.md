@@ -62,6 +62,13 @@ Use these rules for future SVGA Workbench implementation and review:
 18. Do not use a visible playback status pill when playback itself is visible and
     controllable. Reserve status copy for loading, failure, or non-obvious async
     work.
+19. Preserve standard text operations in the desktop app. Error messages, logs,
+    diagnostics, report text, resource metadata, and file facts must be
+    selectable and copyable unless they are inside an interactive control.
+20. Mirror every meaningful app action in the macOS application menu. Group menu
+    items by user task, such as File, Edit, Resource, Optimize, Sequence,
+    Playback, View, Window, and Help; do not dump unrelated actions into one
+    catch-all menu.
 
 ## Current UI Audit Findings
 
@@ -93,6 +100,10 @@ The 2026-06-30 audit is now part of the Workbench v1 repair package. It found:
   are removed; resource tabs are quiet page tabs; column surfaces are unified;
   diagnostics and production reports are reduced to human-readable findings by
   default.
+- 2026-06-30 owner follow-up repaired: Standard Copy/Paste/Select All menu
+  roles were added, Workbench text defaults to selectable, and macOS menu
+  actions are grouped by task instead of being hidden behind a small set of
+  window-level shortcuts.
 
 Remaining known UI/UX debt after the current repair:
 

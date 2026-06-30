@@ -50,6 +50,12 @@ replacement, or sequence Save As product boundaries.
   findings over raw rule codes and English report fields.
 - Left, preview, and right panel surfaces now share radius, border, background,
   and elevation.
+- Standard desktop text editing is restored through macOS menu roles for copy,
+  paste, cut, and select all; Workbench text defaults to selectable while
+  controls remain non-selectable.
+- macOS app menu entries now mirror Workbench operations and are grouped by task:
+  file loading/saving, editing, resource browsing/replacement, optimization,
+  sequence repair, playback, view/settings, window, and help/log actions.
 - Sequence proof cards distinguish readonly, partial, and blocked states.
 - Preview-card titles ellipsize inside the title region and redundant playback
   status pills are hidden in single-file preview.
@@ -72,6 +78,9 @@ scope:
 - product actions are split by task weight: optimizer and sequence repair remain
   in the right inspector, resource replacement starts from the selected resource
   context menu, and edit history/save commands use shortcuts plus the macOS menu;
+- follow-up desktop basics were added after Product Owner review: text content
+  can be selected/copied, and every meaningful Workbench action now has a
+  categorized macOS menu entry rather than relying on visible in-window buttons;
 - default action labels use product wording such as `优化副本`, `替换图片`, and
   `修复闪帧` instead of expecting reviewers to understand Phase labels;
 - dense diagnostics and technical proof details are reduced by default and no
@@ -105,6 +114,7 @@ The state proof records `loadingHeaderActionText: "更换文件"`,
 - `node --check tools/shared/product-frontend/inspection-report-view.mjs`
 - `node --check tools/p6/visual-system-audit.mjs`
 - `node --test tools/shared/product-frontend/source-sharing.test.mjs tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs tools/svga-player-preview/inspection-report-view.test.mjs`
+- `node --test tools/shared/product-frontend/source-sharing.test.mjs tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`
 - `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`
 - `npm run desktop:smoke`
 
