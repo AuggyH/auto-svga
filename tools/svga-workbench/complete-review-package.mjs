@@ -23,6 +23,7 @@ const trialRoot = path.join(experimentRoot, ".artifacts/internal-trial");
 const appBundle = path.join(trialRoot, "Auto SVGA-darwin-arm64/Auto SVGA.app");
 const internalTrialManifestPath = path.join(trialRoot, "internal-trial-manifest.json");
 const packagedRuntimeRoot = path.join(repoRoot, ".artifacts/svga-workbench-v1-packaged-runtime/latest");
+const realAssetsRoot = path.join(repoRoot, ".artifacts/product/SVGA-Workbench-v1/real-assets");
 const textExtensions = new Set([".json", ".md", ".txt", ".html", ".js", ".mjs", ".cjs", ".css", ".plist", ".xml", ".patch"]);
 const requiredValidationFiles = [
   "validation-summary.json",
@@ -737,6 +738,15 @@ async function copyPhaseEvidence(root, { headCommit, headTree }) {
   const optimizationReport = buildOptimizationReport({ headCommit, headTree, validationSummary, proofs });
   const replacementEditingReport = buildReplacementEditingReport({ headCommit, headTree, validationSummary, proofs });
   const sequenceRepairStatusReport = buildSequenceRepairStatusReport({ headCommit, headTree, validationSummary, proofs });
+  const realAssetMatrixPath = path.join(realAssetsRoot, "real-asset-validation-matrix.json");
+  const realAssetMatrixSummaryPath = path.join(realAssetsRoot, "real-asset-validation-matrix.md");
+  const realAssetMatrix = await readJson(realAssetMatrixPath);
+  if (realAssetMatrix.headCommit !== headCommit) {
+    throw new Error(`real-asset matrix head ${realAssetMatrix.headCommit} does not match final head ${headCommit}`);
+  }
+  if (realAssetMatrix.rawAssetsIncluded !== false) {
+    throw new Error("real-asset matrix must be redacted and exclude raw assets");
+  }
 
   await writeJson(path.join(root, "evidence/phase2/asset-intelligence-report.json"), assetIntelligenceReport);
   await writeJson(path.join(root, "evidence/phase2/optimization-report.json"), optimizationReport);
@@ -766,18 +776,32 @@ async function copyPhaseEvidence(root, { headCommit, headTree }) {
     currentAuthority: "evidence/phase4/sequence-product-repair-save-as-proof.json",
     ...proofs.sequencePrototypeRenderedBoundaryProof
   });
+  await copyRequired(realAssetMatrixPath, path.join(root, "evidence/real-assets/real-asset-validation-matrix.json"));
+  await copyRequired(realAssetMatrixSummaryPath, path.join(root, "evidence/real-assets/real-asset-validation-matrix.md"));
+  await writeJson(path.join(root, "evidence/real-assets/METADATA.json"), {
+    schemaVersion: 1,
+    evidenceRole: "redacted_real_asset_matrix",
+    rawAssetsIncluded: false,
+    blocksCurrentReview: false,
+    currentAuthority: [
+      "evidence/real-assets/real-asset-validation-matrix.json",
+      "evidence/real-assets/real-asset-validation-matrix.md"
+    ],
+    note: "Local production-like assets remain outside git and review packages. This evidence contains only redacted relative paths, hashes, sizes, parse results, capability classes, repaired-candidate hashes, and fail-closed diagnostics."
+  });
 
   const summary = phaseEvidenceSummary({
     assetIntelligenceReport,
     optimizationReport,
     replacementEditingReport,
-    sequenceRepairStatusReport
+    sequenceRepairStatusReport,
+    realAssetMatrix
   });
   await writeJson(path.join(root, "evidence/phase-evidence-summary.json"), summary);
   return summary;
 }
 
-function phaseEvidenceSummary({ assetIntelligenceReport, optimizationReport, replacementEditingReport, sequenceRepairStatusReport }) {
+function phaseEvidenceSummary({ assetIntelligenceReport, optimizationReport, replacementEditingReport, sequenceRepairStatusReport, realAssetMatrix }) {
   return {
     schemaVersion: 1,
     milestoneId,
@@ -811,7 +835,17 @@ function phaseEvidenceSummary({ assetIntelligenceReport, optimizationReport, rep
       manualVisualConfirmationRequired: sequenceRepairStatusReport.productExposure.manualVisualConfirmationRequired,
       savedOutput: sequenceRepairStatusReport.beforeAfterMechanicalEvidence.productRepair.savedFileName,
       playbackDeltaObserved: sequenceRepairStatusReport.beforeAfterMechanicalEvidence.productRepair.playbackDeltaObserved,
-      blocker: sequenceRepairStatusReport.preciseTechnicalBlocker?.id ?? null
+      blocker: sequenceRepairStatusReport.preciseTechnicalBlocker?.id ?? null,
+      realAssetMatrix: {
+        report: "evidence/real-assets/real-asset-validation-matrix.json",
+        summary: "evidence/real-assets/real-asset-validation-matrix.md",
+        rawAssetsIncluded: realAssetMatrix.rawAssetsIncluded,
+        svgaCount: realAssetMatrix.summary.svgaCount,
+        parsedCount: realAssetMatrix.summary.parsedCount,
+        sequenceRepairedCandidateCount: realAssetMatrix.summary.sequenceRepairedCandidateCount,
+        sequenceFailClosedOrUnsupportedCount: realAssetMatrix.summary.sequenceFailClosedOrUnsupportedCount,
+        sequenceRepairErrorSummary: realAssetMatrix.sequenceRepairErrorSummary
+      }
     }
   };
 }
@@ -894,14 +928,14 @@ async function writeGeneratedCurrentDocs(root, {
     "| Phase 1 stabilization | Validated baseline | `validation/desktop-smoke.json`, `validation/validation-summary.json`, `package-hygiene-proof.json` |",
     `| Phase 2 Asset Intelligence / safe optimization | ${phaseEvidence.phase2AssetIntelligence.status} | \`evidence/phase2/asset-intelligence-report.json\`, \`evidence/phase2/optimization-report.json\` |`,
     `| Phase 3 supported PNG replacement | ${phaseEvidence.phase3ReplacementEditing.status} | \`evidence/phase3/replacement-editing-report.json\` plus reset, Save As, reopen, and multi-resource proofs |`,
-    `| Phase 4 sequence-frame anti-flicker | ${phaseEvidence.phase4SequenceFrameRepair.status} | \`evidence/phase4/sequence-repair-status-report.json\`, \`evidence/phase4/sequence-product-repair-save-as-proof.json\` |`,
+    `| Phase 4 sequence-frame anti-flicker | ${phaseEvidence.phase4SequenceFrameRepair.status} | \`evidence/phase4/sequence-repair-status-report.json\`, \`evidence/phase4/sequence-product-repair-save-as-proof.json\`, \`evidence/real-assets/real-asset-validation-matrix.json\` |`,
     "| macOS internal package | Unsigned internal ZIP validated | `app/macos-package-proof.json`, `app/packaged-app-runtime-proof.json`, `evidence/packaged-app-runtime/normal-visible-startup.json` |",
     "| UI/HIG carry-forward | Included as evidence and implementation guidance | `ui-audit/`, `docs/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md` |",
     "",
     "## Current Evidence Boundary",
     "",
     "- Phase 2 and Phase 3 evidence in this directory is generated from the current final-head desktop smoke proof, not from historical incubation heads.",
-    "- Phase 4 now includes a product-safe repaired-copy Save As path, full affected-frame alpha proof, saved-output hash binding, reopen validation, and source immutability proof. Awaited exact-frame playback proof may record no canvas delta for the four-pixel target speck; alpha proof remains the exact repair authority.",
+    `- Phase 4 now includes a product-safe repaired-copy Save As path, full affected-frame alpha proof, saved-output hash binding, reopen validation, source immutability proof, playback-delta evidence, and a redacted real-asset matrix. The current product proof records playbackDeltaObserved=${phaseEvidence.phase4SequenceFrameRepair.playbackDeltaObserved}; alpha proof remains the exact repair authority.`,
     "- The packaged App normal visible startup proof launches the packaged `.app` executable without smoke or proof arguments and verifies local-only runtime behavior.",
     `- Validation passed with ${validationResultCount(validationSummary)} command records in \`validation/validation-summary.json\`.`,
     `- Packaged runtime proof passed: \`${packagedRuntimeProof.proofId}\` at head \`${headShort}\`.`,
@@ -939,7 +973,7 @@ async function writeGeneratedCurrentDocs(root, {
     "## Current Stop State",
     "",
     "- This package is a complete review-directory handoff candidate, not Product Owner acceptance.",
-    "- Phase 4 no longer has the prior product Save As/manual-confirmation blocker in this package; remaining risk is limited visual-delta observability for the four-pixel target speck. The awaited exact-frame canvas proof is auxiliary while alpha proof confirms removal.",
+    `- Phase 4 no longer has the prior product Save As/manual-confirmation blocker for the supported subset in this package; playbackDeltaObserved=${phaseEvidence.phase4SequenceFrameRepair.playbackDeltaObserved}, and alpha proof confirms the exact resource removal. The redacted real-asset matrix records the remaining fail-closed cases.`,
     "- Product Owner review is still required before external product acceptance.",
     ""
   ].join("\n"), "utf8");
@@ -984,6 +1018,7 @@ function roleForPath(relativePath) {
   if (relativePath.startsWith("ui-audit/")) return "ui_audit_evidence";
   if (relativePath.startsWith("evidence/lineage/")) return "historical_lineage_evidence";
   if (relativePath.startsWith("evidence/packaged-app-runtime/")) return "packaged_app_runtime_proof";
+  if (relativePath.startsWith("evidence/real-assets/")) return "redacted_real_asset_evidence";
   if (relativePath.startsWith("evidence/phase4/prototype-history/")) return "prototype_history_evidence";
   if (relativePath.startsWith("evidence/phase2/")) return "phase2_evidence";
   if (relativePath.startsWith("evidence/phase3/")) return "phase3_evidence";
@@ -1242,7 +1277,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     `- Complete review ZIP: \`${completeZipName}\``,
     `- macOS App ZIP: \`app/${appZipName}\``,
     "- Product acceptance: not claimed",
-    "- Phase 4 sequence repair: product repaired-copy Save As/reopen proof included; awaited exact-frame canvas proof is auxiliary and may show no delta for the four-pixel target while alpha proof is authoritative",
+    `- Phase 4 sequence repair: product repaired-copy Save As/reopen proof included; playbackDeltaObserved=${phaseEvidence.phase4SequenceFrameRepair.playbackDeltaObserved}; alpha proof is authoritative for the exact resource removal`,
     "- Review state: complete directory package regenerated at the current final head",
     "",
     "## Feature Completion Matrix",
@@ -1252,7 +1287,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "| Phase 1 stabilization | Passed baseline, repair package regenerated | Desktop smoke and package proof included in validation outputs |",
     "| Phase 2 Asset Intelligence / safe optimization | Implemented, Save As/reopen smoke validated | Safe candidates only; risky classes remain suggestion-only |",
     "| Phase 3 PNG replacement editing | Implemented for supported PNG resources | Undo/redo/reset/Save As/reopen evidence included |",
-    "| Phase 4 sequence repair | Product repaired-copy Save As/reopen validated | Full alpha proof included; exact-frame canvas delta is non-authoritative for the four-pixel speck target |",
+    "| Phase 4 sequence repair | Product repaired-copy Save As/reopen validated for supported subset | Full alpha proof included; redacted real-asset matrix records 3 repaired candidates and 50 fail-closed rows |",
     "| macOS package | Unsigned internal ZIP only | Clean App ZIP hygiene validated; signing/notarization blocked by credentials |",
     "| UI audit / HIG | Included as repair input | Findings are tracked; broad UI polish not completed in this package repair |",
     "",
@@ -1275,7 +1310,8 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "- `evidence/phase2/asset-intelligence-report.json` and `evidence/phase2/optimization-report.json`: final-head asset classification and safe optimization evidence.",
     "- `evidence/lineage/phase2/`: historical P2 artifact index retained as lineage only; current Phase 2 authority is the generated final-head reports.",
     "- `evidence/phase3/replacement-editing-report.json`: final-head supported PNG replacement, undo/redo/reset, Save As, reopen, and multi-resource evidence.",
-    "- `evidence/phase4/sequence-repair-status-report.json`, `sequence-product-repair-save-as-proof.json`, and `sequence-full-affected-frame-alpha-proof.json`: final-head product sequence repair, saved output, full alpha proof, before/after playback stability, reopen validation, and source immutability.",
+    "- `evidence/phase4/sequence-repair-status-report.json`, `sequence-product-repair-save-as-proof.json`, and `sequence-full-affected-frame-alpha-proof.json`: final-head product sequence repair, saved output, full alpha proof, before/after playback evidence, reopen validation, and source immutability.",
+    "- `evidence/real-assets/real-asset-validation-matrix.json` and `.md`: current-head redacted local real-asset matrix with parse coverage, Phase 2/3 capability classes, Phase 4 repaired candidates, and fail-closed diagnostics without raw assets.",
     "- `evidence/phase4/prototype-history/`: historical Phase 4 preview/no-write/prototype/byte-candidate evidence; files in this directory are not current product-complete authority.",
     "- `app/packaged-app-runtime-proof.json` plus `evidence/packaged-app-runtime/normal-visible-startup.json`: packaged App normal visible startup proof.",
     "- `ui-audit/`: HIG study digest, UI audit report, screenshot index, and contact sheets.",
@@ -1339,7 +1375,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     "## Required Human Decision",
     "",
-    "Recommended next human decision: review this complete directory as the Workbench v1 handoff candidate, decide whether the Phase 4 alpha-proofed repaired-copy path is acceptable with limited canvas-delta observability, and provide signing/notarization credentials only when trusted distribution is required.",
+    "Recommended next human decision: review this complete directory as the Workbench v1 handoff candidate, decide whether the Phase 4 alpha-proofed repaired-copy path and its documented fail-closed real-asset limits are acceptable for v1, and provide signing/notarization credentials only when trusted distribution is required.",
     ""
   ].join("\n"), "utf8");
   await writeFile(path.join(root, "FINAL_RESPONSE.txt"), [
@@ -1348,7 +1384,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     `macOS App ZIP: app/${appZipName}`,
     `Validation: ${validationResultCount(validationSummary)} commands passed in validation/validation-summary.json.`,
     "Package hygiene: App ZIP clean; manifest verified; privacy audit passed with zero findings.",
-    "Phase status: Phase 1/2/3 reviewable; Phase 4 sequence repaired-copy Save As/reopen validated with full alpha proof; exact-frame canvas delta remains an auxiliary nonblocking evidence note.",
+    "Phase status: Phase 1/2/3 reviewable; Phase 4 sequence repaired-copy Save As/reopen validated for the supported subset with full alpha proof, playback-delta evidence, and redacted real-asset fail-closed diagnostics.",
     "Blockers: Apple Developer ID/notary credentials and Windows signing credentials only for trusted distribution.",
     "Status: complete review package generated; Product Owner acceptance and production release are not claimed.",
     ""
