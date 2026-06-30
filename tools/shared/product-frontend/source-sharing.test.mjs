@@ -69,6 +69,12 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /\/api\/svga-image-optimize/);
   assert.match(productApp, /data-save-optimized-svga/);
   assert.match(productApp, /saveOptimizedPrimarySvga/);
+  assert.match(productApp, /data-optimization-result-summary/);
+  assert.match(productApp, /function renderOptimizationResultSummary/);
+  assert.match(productApp, /移除未引用资源/);
+  assert.match(productApp, /复用/);
+  assert.match(productApp, /原文件未改/);
+  assert.match(productApp, /未改帧率、时长、图层时间线与保留图片字节/);
   assert.match(productApp, /autoSvgaSourceId/);
   assert.match(productApp, /optimizedReopenProof/);
   assert.match(productApp, /sequenceReviewProof/);

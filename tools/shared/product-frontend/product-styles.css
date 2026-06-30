@@ -4043,6 +4043,51 @@ button:disabled {
   grid-column: 1 / -1;
 }
 
+.optimizationResultSummary {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 6px;
+  min-width: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--visual-hairline);
+}
+
+.optimizationResultSummary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 8px;
+  margin: 0;
+}
+
+.optimizationResultSummary div {
+  min-width: 0;
+}
+
+.optimizationResultSummary dt {
+  color: var(--visual-text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+}
+
+.optimizationResultSummary dd {
+  margin: 0;
+  color: var(--visual-text-secondary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+  overflow-wrap: anywhere;
+}
+
+.optimizationResultSummary ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 16px;
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
 .sequenceSafetyStrip span {
   min-height: 20px;
   padding: 2px 7px;

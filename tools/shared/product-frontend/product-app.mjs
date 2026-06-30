@@ -2191,6 +2191,71 @@ function canSaveOptimizedPrimarySvga() {
   );
 }
 
+function formatByteDelta(beforeBytes, afterBytes) {
+  const before = Number(beforeBytes);
+  const after = Number(afterBytes);
+  if (!Number.isFinite(before) || !Number.isFinite(after)) return "n/a";
+  const delta = before - after;
+  const percent = before > 0 ? ` · ${Math.abs((delta / before) * 100).toFixed(1)}%` : "";
+  if (delta > 0) return `减少 ${formatBytes(delta)}${percent}`;
+  if (delta < 0) return `增加 ${formatBytes(Math.abs(delta))}${percent}`;
+  return "无变化";
+}
+
+function optimizationActionLabel(action) {
+  if (!action) return "";
+  if (action.type === "remove_unreferenced_image") {
+    return `移除未引用资源 ${action.resourceKey}`;
+  }
+  if (action.type === "deduplicate_encoded_image") {
+    return `${action.resourceKey} 复用 ${action.canonicalResourceKey ?? "同图资源"}`;
+  }
+  return `处理 ${action.resourceKey ?? "资源"}`;
+}
+
+function renderOptimizationResultSummary(state) {
+  if (state?.status !== "saved" || !state.report) return "";
+  const report = state.report;
+  const actions = Array.isArray(report.actions) ? report.actions : [];
+  const redirects = Array.isArray(report.redirectedResourceReferences) ? report.redirectedResourceReferences : [];
+  const removedKeys = Array.isArray(report.removedResourceKeys) ? report.removedResourceKeys : [];
+  const visibleActions = actions.slice(0, 4).map(optimizationActionLabel).filter(Boolean);
+  const hiddenActionCount = Math.max(0, actions.length - visibleActions.length);
+  const sourceSafe = report.sourceUnchanged === true ? "原文件未改" : "原文件状态需复核";
+  const checksPassed = Array.isArray(report.invariantChecks)
+    ? report.invariantChecks.every((check) => check?.passed === true)
+    : report.passed === true;
+  const savedHash = state.savedSha256 ? `${String(state.savedSha256).slice(0, 12)}...` : "已校验";
+  return `
+    <div class="optimizationResultSummary" data-optimization-result-summary aria-label="优化结果">
+      <dl>
+        <div>
+          <dt>体积</dt>
+          <dd>${escapeHtml(formatBytes(state.sourceSizeBytes))} → ${escapeHtml(formatBytes(state.optimizedSizeBytes))} · ${escapeHtml(formatByteDelta(state.sourceSizeBytes, state.optimizedSizeBytes))}</dd>
+        </div>
+        <div>
+          <dt>图片</dt>
+          <dd>${escapeHtml(report.originalImageCount ?? "n/a")} → ${escapeHtml(report.optimizedImageCount ?? "n/a")} · 移除 ${escapeHtml(removedKeys.length)} 项</dd>
+        </div>
+        <div>
+          <dt>校验</dt>
+          <dd>${escapeHtml(sourceSafe)} · ${checksPassed ? "结构通过" : "结构需复核"} · 已重开</dd>
+        </div>
+        <div>
+          <dt>哈希</dt>
+          <dd>${escapeHtml(savedHash)}</dd>
+        </div>
+      </dl>
+      <ul>
+        ${visibleActions.map((label) => `<li>${escapeHtml(label)}</li>`).join("")}
+        ${redirects.length > 0 ? `<li>${escapeHtml(redirects.length)} 处图层引用改为同图资源</li>` : ""}
+        ${hiddenActionCount > 0 ? `<li>另有 ${escapeHtml(hiddenActionCount)} 项优化动作</li>` : ""}
+        <li>未改帧率、时长、图层时间线与保留图片字节</li>
+      </ul>
+    </div>
+  `;
+}
+
 function canSaveSequenceRepairPrimarySvga(sequenceGroupCount = 0) {
   return Boolean(
     sequenceGroupCount > 0
@@ -2266,6 +2331,11 @@ async function saveOptimizedPrimarySvga() {
     primaryOptimizationState = {
       status: "saved",
       message: `${result.fileName} 已另存并重开`,
+      report: optimizationReport,
+      sourceSizeBytes: sourceBytes.byteLength,
+      optimizedSizeBytes: savedBytes.byteLength,
+      savedFileName: result.fileName,
+      savedSha256,
       originalImageCount: optimizationReport.originalImageCount,
       optimizedImageCount: optimizationReport.optimizedImageCount,
       removedResourceCount: Array.isArray(optimizationReport.removedResourceKeys) ? optimizationReport.removedResourceKeys.length : 0
@@ -6448,6 +6518,7 @@ function renderInspectorActions(metrics, slot) {
             <span>${escapeHtml(optimizationState)}</span>
           </div>
           <button class="inspectorActionButton" type="button" data-save-optimized-svga ${canSaveOptimizedPrimarySvga() ? "" : "disabled"} title="${escapeHtml(optimizationDisabledReason || "生成优化副本")}">生成</button>
+          ${renderOptimizationResultSummary(primaryOptimizationState)}
         </article>
         <article class="inspectorActionItem">
           <div class="inspectorActionText">
