@@ -2030,6 +2030,11 @@ function suggestedOptimizedFileName(fileName) {
   return `${baseName}-optimized.svga`;
 }
 
+function suggestedSequenceRepairFileName(fileName) {
+  const baseName = String(fileName || "sequence-repaired-output.svga").replace(/\.svga$/i, "");
+  return `${baseName}-sequence-repaired.svga`;
+}
+
 function stableStringify(value) {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
   if (value && typeof value === "object") {
@@ -2428,6 +2433,22 @@ async function resetReplacementPreview() {
 
 async function optimizeSvgaImageResources(bytes, fileName) {
   const response = await fetch("/api/svga-image-optimize", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: fileName,
+      svgaBase64: bytesToBase64(bytes)
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error ?? `HTTP ${response.status}`);
+  }
+  return payload;
+}
+
+async function repairSvgaSequenceFrames(bytes, fileName) {
+  const response = await fetch("/api/svga-sequence-repair", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -2893,6 +2914,164 @@ async function runSequenceByteRepairCandidateProof(sourceBytes, fileName) {
     return proof;
   } finally {
     URL.revokeObjectURL(editedUrl);
+  }
+}
+
+async function collectSequencePlaybackFrame(slot, frameIndex) {
+  const frameCount = Math.max(Number(slot.metrics?.frameCount ?? 1), frameIndex + 1, 1);
+  const percent = frameCount > 1 ? (frameIndex / (frameCount - 1)) * 100 : 0;
+  pauseSlot(slot);
+  seekSlot(slot, percent, false);
+  await delay(180);
+  const digest = await collectCanvasRenderDigest(slot);
+  return {
+    frameIndex,
+    canvasSha256: digest.sha256,
+    canvasWidth: digest.width,
+    canvasHeight: digest.height,
+    canvasNonBlank: digest.nonBlank
+  };
+}
+
+async function runSequenceProductRepairSaveAsProof(sourceBytes, fileName) {
+  if (!electronBridge?.saveSequenceRepairSvga) {
+    throw new Error("Sequence repair Save As bridge is unavailable.");
+  }
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const payload = await repairSvgaSequenceFrames(sourceBytes, fileName);
+  const editedBytes = base64ToBytes(payload.editedSvgaBase64 ?? "");
+  const editedSha256 = await p6Sha256Bytes(editedBytes);
+  const sequenceRepairReport = payload.sequenceRepairReport ?? {};
+  const targetVisibleFrames = Array.isArray(sequenceRepairReport.sequenceGroup?.targetVisibleFrames)
+    ? [...new Set(sequenceRepairReport.sequenceGroup.targetVisibleFrames)].slice(0, 4)
+    : [];
+  if (targetVisibleFrames.length === 0) throw new Error("Sequence repair did not return target visible frames.");
+  const sourceUrl = URL.createObjectURL(new Blob([sourceBytes], { type: "application/octet-stream" }));
+  try {
+    await loadSvga("a", sourceUrl, {
+      fileName,
+      fileSizeBytes: sourceBytes.byteLength,
+      fixtureSha256: sourceSha256,
+      skipReplacementReadiness: true,
+      loadingHoldMs: 80
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    await waitForInspectionStatus(players.a);
+    const beforeFrames = [];
+    for (const frameIndex of targetVisibleFrames) {
+      beforeFrames.push(await collectSequencePlaybackFrame(players.a, frameIndex));
+    }
+    const result = await electronBridge.saveSequenceRepairSvga({
+      bytesBase64: bytesToBase64(editedBytes),
+      suggestedName: suggestedSequenceRepairFileName(fileName),
+      sourceId: players.a.sourceIdentity?.sourceId ?? "",
+      sequenceRepairReport
+    });
+    const savedBytes = base64ToBytes(result.savedSvgaBase64 ?? "");
+    const savedSha256 = await p6Sha256Bytes(savedBytes);
+    const savedUrl = URL.createObjectURL(new Blob([savedBytes], { type: "application/octet-stream" }));
+    try {
+      await loadSvga("a", savedUrl, {
+        fileName: result.fileName,
+        fileSizeBytes: result.sizeBytes,
+        sourceId: result.sourceId ?? null,
+        sourceSha256: result.sha256,
+        fixtureSha256: savedSha256,
+        skipReplacementReadiness: true,
+        loadingHoldMs: 80
+      });
+      await waitFor(() => Boolean(players.a.videoItem));
+      await waitFor(() => canvasIsNonBlank(players.a));
+      const reopenedInspectionReport = await waitForInspectionStatus(players.a);
+      const afterFrames = [];
+      for (const frameIndex of targetVisibleFrames) {
+        afterFrames.push(await collectSequencePlaybackFrame(players.a, frameIndex));
+      }
+      const beforeAfterPlaybackProof = beforeFrames.map((beforeFrame, index) => {
+        const afterFrame = afterFrames[index];
+        return {
+          frameIndex: beforeFrame.frameIndex,
+          beforeCanvasSha256: beforeFrame.canvasSha256,
+          afterCanvasSha256: afterFrame?.canvasSha256 ?? "",
+          canvasWidth: beforeFrame.canvasWidth,
+          canvasHeight: beforeFrame.canvasHeight,
+          canvasDimensionsStable: beforeFrame.canvasWidth === afterFrame?.canvasWidth
+            && beforeFrame.canvasHeight === afterFrame?.canvasHeight
+            && beforeFrame.canvasWidth > 0
+            && beforeFrame.canvasHeight > 0,
+          beforeCanvasNonBlank: beforeFrame.canvasNonBlank,
+          afterCanvasNonBlank: afterFrame?.canvasNonBlank === true,
+          canvasHashChanged: beforeFrame.canvasSha256 !== afterFrame?.canvasSha256
+        };
+      });
+      const alphaProof = sequenceRepairReport.sequenceGroup?.fullAffectedFrameVisibilityAlphaProof ?? [];
+      const changedProofs = Array.isArray(alphaProof) ? alphaProof.filter((entry) => entry?.changed === true) : [];
+      const playbackDeltaObserved = beforeAfterPlaybackProof.some((entry) => entry.canvasHashChanged === true);
+      const renderedProof = collectRenderedStateProof("loaded");
+      const proof = {
+        schemaVersion: 1,
+        proofId: "svga-sequence-product-repair-save-as-proof",
+        source: "workbench-sequence-product-repair-save-as",
+        sourceSha256,
+        editedSha256,
+        savedSha256,
+        savedFileName: result.fileName,
+        saveStatus: result.status,
+        repairedResourceKey: sequenceRepairReport.sequenceGroup?.repairedResourceKey ?? "",
+        groupResourceKeyCount: sequenceRepairReport.sequenceGroup?.resourceKeyCount ?? 0,
+        alphaProofResourceCount: Array.isArray(alphaProof) ? alphaProof.length : 0,
+        changedResourceCount: changedProofs.length,
+        fullAffectedFrameVisibilityAlphaProof: Array.isArray(alphaProof) ? alphaProof : [],
+        targetVisibleFrames,
+        beforeAfterPlaybackProof,
+        playbackDeltaObserved,
+        savedHashBound: result.sha256 === savedSha256 && savedSha256 === editedSha256,
+        sourceUnchanged: await p6Sha256Bytes(sourceBytes) === sourceSha256
+          && sequenceRepairReport.sourceSha256 === sourceSha256
+          && sequenceRepairReport.sourceSha256AfterRepair === sourceSha256,
+        fullAffectedFrameVisibilityAlphaProofPassed: Array.isArray(alphaProof)
+          && alphaProof.length === sequenceRepairReport.sequenceGroup?.resourceKeyCount
+          && alphaProof.every((entry) => entry?.passed === true),
+        repairedFrameTransparentAfter: sequenceRepairReport.selectedRepair?.afterNonTransparentPixelCount === 0,
+        productSaveAsEnabled: sequenceRepairReport.productSaveAsEnabled === true,
+        repairSuccessClaimed: sequenceRepairReport.repairSuccessClaimed === true,
+        manualVisualConfirmationRequired: false,
+        failureClosed: sequenceRepairReport.failureClosed === true,
+        reopenedPlayback: Boolean(players.a.player),
+        reopenedCanvasNonBlank: canvasIsNonBlank(players.a),
+        reopenedInspectionReport,
+        renderedProofPassed: renderedProof.passed === true,
+        passed: result.status === "saved"
+          && result.sha256 === savedSha256
+          && savedSha256 === editedSha256
+          && sequenceRepairReport.editedSha256 === editedSha256
+          && sequenceRepairReport.sourceSha256 === sourceSha256
+          && sequenceRepairReport.sourceSha256AfterRepair === sourceSha256
+          && sequenceRepairReport.productSaveAsEnabled === true
+          && sequenceRepairReport.repairSuccessClaimed === true
+          && sequenceRepairReport.manualVisualConfirmationRequired === false
+          && sequenceRepairReport.failureClosed === true
+          && Array.isArray(alphaProof)
+          && alphaProof.length === sequenceRepairReport.sequenceGroup?.resourceKeyCount
+          && alphaProof.every((entry) => entry?.passed === true)
+          && changedProofs.length === 1
+          && sequenceRepairReport.selectedRepair?.afterNonTransparentPixelCount === 0
+          && beforeAfterPlaybackProof.every((entry) => entry.beforeCanvasNonBlank === true
+            && entry.afterCanvasNonBlank === true
+            && entry.canvasDimensionsStable === true)
+          && Boolean(players.a.player)
+          && canvasIsNonBlank(players.a)
+          && reopenedInspectionReport
+          && renderedProof.passed === true
+      };
+      window.__autoSvgaSequenceProductRepairProof = proof;
+      return proof;
+    } finally {
+      URL.revokeObjectURL(savedUrl);
+    }
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
   }
 }
 
@@ -5355,6 +5534,9 @@ async function runProductSmoke() {
     await captureArtifact("desktop-sequence-noop-round-trip-proof");
     p6SmokeCurrentPhase = "sequence-byte-repair-candidate-proof";
     const sequenceByteRepairProof = await runSequenceByteRepairCandidateProof(bytes.slice(0), p6BaselineFixtureDisplayName);
+    p6SmokeCurrentPhase = "sequence-product-repair-save-as-proof";
+    const sequenceProductRepairProof = await runSequenceProductRepairSaveAsProof(bytes.slice(0), p6BaselineFixtureDisplayName);
+    await captureArtifact("desktop-sequence-product-repair-proof");
     p6SmokeCurrentPhase = "replacement-readiness-proof";
     const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);
     p6SmokeCurrentPhase = "replacement-preview-proof";
@@ -5651,6 +5833,7 @@ async function runProductSmoke() {
       sequencePrototypeRenderedBoundaryProof,
       sequenceNoopRoundTripProof,
       sequenceByteRepairProof,
+      sequenceProductRepairProof,
       replacementReadinessProof,
       replacementPreviewProof,
       replacementUndoRedoProof,

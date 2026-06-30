@@ -182,6 +182,9 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken, deskt
   const optimizerModuleUrl = pathToFileURL(
     path.join(appRoot, ".runtime/dist/workbench/svga/asset-optimizer.js")
   ).href;
+  const sequenceRepairModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/workbench/svga/sequence-frame-repair.js")
+  ).href;
   const batchMappingModuleUrl = pathToFileURL(
     path.join(appRoot, ".runtime/dist/workbench/svga/batch-png-mapping.js")
   ).href;
@@ -191,6 +194,7 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken, deskt
   let reportServicePromise;
   let editorPromise;
   let optimizerPromise;
+  let sequenceRepairPromise;
   let batchMappingPromise;
   let inspectorPromise;
 
@@ -368,6 +372,34 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken, deskt
         return sendJson(response, 200, {
           optimizedSvgaBase64: encodeBase64(result.optimizedBytes),
           optimizationReport: result.report
+        });
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error),
+          code: error?.code,
+          details: error?.details
+        });
+      }
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/svga-sequence-repair") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const input = await readRequestJson(request);
+        const bytes = decodeBase64Field(input?.svgaBase64, "svgaBase64");
+        const name = path.basename(typeof input?.name === "string" ? input.name : "untitled.svga");
+        sequenceRepairPromise ??= import(sequenceRepairModuleUrl);
+        const { repairSvgaSequenceFrameFlicker } = await sequenceRepairPromise;
+        const result = await repairSvgaSequenceFrameFlicker(bytes, {
+          sourceName: name,
+          headCommit: typeof input?.headCommit === "string" ? input.headCommit : ""
+        });
+        return sendJson(response, 200, {
+          editedSvgaBase64: encodeBase64(result.editedBytes),
+          transparentReplacementPngBase64: encodeBase64(result.transparentReplacementPng),
+          sequenceRepairReport: result.report
         });
       } catch (error) {
         return sendJson(response, error?.statusCode ?? 422, {

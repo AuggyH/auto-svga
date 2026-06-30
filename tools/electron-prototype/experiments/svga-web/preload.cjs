@@ -14,6 +14,7 @@ const IPC_CHANNELS = Object.freeze({
   writeClipboardText: "svga-web-experiment:write-clipboard-text",
   saveEditedSvga: "svga-web-experiment:save-edited-svga",
   saveOptimizedSvga: "svga-web-experiment:save-optimized-svga",
+  saveSequenceRepairSvga: "svga-web-experiment:save-sequence-repair-svga",
   p3EditResult: "svga-web-experiment:p3-edit-result",
   p4EditResult: "svga-web-experiment:p4-edit-result",
   p5BatchResult: "svga-web-experiment:p5-batch-result"
@@ -42,6 +43,7 @@ const hostApi = Object.freeze({
     clipboardWrite: "host-clipboard-write-text-only",
     finderDocumentAssociation: "not-declared",
     saveAs: "host-dialog-svga-only",
+    sequenceRepairSaveAs: "host-dialog-svga-only",
     arbitraryFileSystemAccess: false,
     shellAccess: false,
     remoteNavigation: false,
@@ -79,6 +81,9 @@ const hostApi = Object.freeze({
   },
   saveOptimizedSvga(input) {
     return invoke(IPC_CHANNELS.saveOptimizedSvga, input);
+  },
+  saveSequenceRepairSvga(input) {
+    return invoke(IPC_CHANNELS.saveSequenceRepairSvga, input);
   },
   reportP3EditResult(result) {
     return invoke(IPC_CHANNELS.p3EditResult, result);

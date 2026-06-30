@@ -118,3 +118,21 @@ Do not copy raw chat history or unverified guesses here.
   required desktop smoke proofs are missing, when `desktop-state-render-proof`
   is not bound to the final head, or when packaged normal runtime proof is not
   bound to the final head.
+
+## Sequence anti-flicker proof should separate alpha evidence from canvas delta
+
+- Context: the current supported sequence repair removes a four-pixel
+  near-empty speck resource from a 26-resource numeric sequence group.
+- Problem: a true byte/alpha repair can be too small or occluded for svga-web
+  canvas hashes to differ at the target frames, so a hard canvas-delta gate can
+  reject a mechanically safe repair.
+- Rule: product sequence repair proof should require full affected-resource
+  alpha proof, source immutability, Save As hash binding, reopen playback, and
+  fail-closed unsafe cases. Canvas before/after hashes should still be recorded,
+  but `playbackDeltaObserved=false` must be treated as a known evidence note
+  unless the product requirement explicitly demands a visible pixel-delta
+  threshold.
+- Validation: desktop smoke accepted `sequenceProductRepairProof` with
+  `productSaveAsEnabled=true`, `repairSuccessClaimed=true`,
+  `manualVisualConfirmationRequired=false`, `repairedResourceKey=img_14`,
+  `changedResourceCount=1`, and `playbackDeltaObserved=false`.

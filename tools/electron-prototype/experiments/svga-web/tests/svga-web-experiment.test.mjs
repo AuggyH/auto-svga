@@ -24,7 +24,11 @@ const repoRoot = path.resolve(experimentRoot, "../../../..");
 const vendorPath = path.join(experimentRoot, "vendor/svga-web-2.4.4.js");
 const hostContract = require("../host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("../desktop-artifact-catalog.cjs");
-const { validateSequenceByteRepairProof } = require("../sequence-repair-proof-contract.cjs");
+const {
+  validateSequenceByteRepairProof,
+  validateSequenceProductRepairProof,
+  validateSequenceRepairReportBinding
+} = require("../sequence-repair-proof-contract.cjs");
 
 test("macOS internal package scaffold avoids unsupported Finder .svga document association", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
@@ -180,6 +184,145 @@ test("sequence byte repair proof rejects no-op and write-exposed evidence", () =
   assert.equal(validateSequenceByteRepairProof({ ...validProof, productSaveAsEnabled: true }), undefined);
   assert.equal(validateSequenceByteRepairProof({ ...validProof, writeActionExposed: true }), undefined);
   assert.equal(validateSequenceByteRepairProof({ ...validProof, repairSuccessClaimed: true }), undefined);
+});
+
+test("sequence product repair report and Save As proof fail closed on unsafe evidence", () => {
+  const sourceSha256 = "a".repeat(64);
+  const editedBytes = Buffer.from("sequence-edited-svga");
+  const editedSha256 = createHash("sha256").update(editedBytes).digest("hex");
+  const beforeSha256 = "b".repeat(64);
+  const transparentSha256 = "c".repeat(64);
+  const unchangedSha256 = "d".repeat(64);
+  const alphaProof = Array.from({ length: 8 }, (_, index) => {
+    const changed = index === 3;
+    return {
+      resourceKey: `seq_${String(index + 1).padStart(3, "0")}`,
+      spriteIndex: index,
+      frameIndex: index + 1,
+      usageCount: 1,
+      width: 200,
+      height: 200,
+      beforeSha256: changed ? beforeSha256 : unchangedSha256,
+      afterSha256: changed ? transparentSha256 : unchangedSha256,
+      beforeNonTransparentPixelCount: changed ? 4 : 4000,
+      afterNonTransparentPixelCount: changed ? 0 : 4000,
+      beforeNonTransparentRatio: changed ? 0.0001 : 0.1,
+      afterNonTransparentRatio: changed ? 0 : 0.1,
+      beforeAlphaBounds: changed ? { x: 10, y: 10, width: 2, height: 2 } : { x: 0, y: 0, width: 200, height: 200 },
+      afterAlphaBounds: changed ? null : { x: 0, y: 0, width: 200, height: 200 },
+      visibleFrameIndices: [index * 2, index * 2 + 1],
+      maxTimelineAlpha: 1,
+      timelineAlphaDigest: "e".repeat(64),
+      changed,
+      changeReason: changed ? "near_empty_speck_to_transparent" : "unchanged",
+      passed: true
+    };
+  });
+  const validReport = {
+    schemaVersion: 1,
+    repairId: "svga-sequence-frame-anti-flicker-v1",
+    status: "repaired",
+    sourceSha256,
+    sourceSha256AfterRepair: sourceSha256,
+    editedSha256,
+    headCommit: "phase4-test",
+    sequenceGroup: {
+      groupId: "seq_:200x200",
+      detectionMethod: "continuous_numeric_resource_keys",
+      resourceKeys: alphaProof.map((entry) => entry.resourceKey),
+      resourceKeyCount: alphaProof.length,
+      repairedResourceKey: "seq_004",
+      targetVisibleFrames: [6, 7],
+      fullAffectedFrameVisibilityAlphaProof: alphaProof
+    },
+    selectedRepair: {
+      resourceKey: "seq_004",
+      reason: "near_empty_visible_speck_frame",
+      replacement: "same_dimensions_transparent_png",
+      beforeNonTransparentPixelCount: 4,
+      afterNonTransparentPixelCount: 0,
+      beforeNonTransparentRatio: 0.0001,
+      afterNonTransparentRatio: 0,
+      beforeSha256,
+      afterSha256: transparentSha256
+    },
+    roundTripReport: {
+      schemaVersion: 2,
+      milestoneId: "P3",
+      sourceSha256,
+      sourceSha256AfterEditing: sourceSha256,
+      exportedSha256: editedSha256,
+      replacedResourceKey: "seq_004",
+      exportedResourceSha256: transparentSha256,
+      passed: true
+    },
+    invariantSummary: {
+      sourceUnchanged: true,
+      roundTripPassed: true,
+      imageResourceKeySetStable: true,
+      spriteTimelineStable: true,
+      untouchedResourceHashesStable: true,
+      onlySelectedResourceChanged: true,
+      replacementDimensionsMatchOriginal: true
+    },
+    productSaveAsEnabled: true,
+    repairSuccessClaimed: true,
+    manualVisualConfirmationRequired: false,
+    failureClosed: true,
+    passed: true
+  };
+  const validProof = {
+    schemaVersion: 1,
+    proofId: "svga-sequence-product-repair-save-as-proof",
+    source: "workbench-sequence-product-repair-save-as",
+    sourceSha256,
+    editedSha256,
+    savedSha256: editedSha256,
+    savedFileName: "sequence-repaired-output.svga",
+    saveStatus: "saved",
+    repairedResourceKey: "seq_004",
+    groupResourceKeyCount: 8,
+    alphaProofResourceCount: 8,
+    changedResourceCount: 1,
+    fullAffectedFrameVisibilityAlphaProof: alphaProof,
+    targetVisibleFrames: [6, 7],
+    beforeAfterPlaybackProof: [{
+      frameIndex: 6,
+      beforeCanvasSha256: "f".repeat(64),
+      afterCanvasSha256: "1".repeat(64),
+      canvasWidth: 200,
+      canvasHeight: 200,
+      canvasDimensionsStable: true,
+      beforeCanvasNonBlank: true,
+      afterCanvasNonBlank: true,
+      canvasHashChanged: true
+    }],
+    playbackDeltaObserved: true,
+    savedHashBound: true,
+    sourceUnchanged: true,
+    fullAffectedFrameVisibilityAlphaProofPassed: true,
+    repairedFrameTransparentAfter: true,
+    productSaveAsEnabled: true,
+    repairSuccessClaimed: true,
+    manualVisualConfirmationRequired: false,
+    failureClosed: true,
+    reopenedPlayback: true,
+    reopenedCanvasNonBlank: true,
+    reopenedInspectionReport: true,
+    renderedProofPassed: true,
+    passed: true
+  };
+
+  assert.equal(validateSequenceRepairReportBinding(validReport, editedBytes)?.editedSha256, editedSha256);
+  assert.equal(validateSequenceRepairReportBinding({ ...validReport, manualVisualConfirmationRequired: true }, editedBytes), undefined);
+  assert.equal(validateSequenceRepairReportBinding({ ...validReport, productSaveAsEnabled: false }, editedBytes), undefined);
+  assert.equal(validateSequenceRepairReportBinding(validReport, Buffer.from("different")), undefined);
+  assert.equal(validateSequenceProductRepairProof(validProof)?.savedSha256, editedSha256);
+  assert.equal(validateSequenceProductRepairProof({ ...validProof, productSaveAsEnabled: false }), undefined);
+  assert.equal(validateSequenceProductRepairProof({ ...validProof, manualVisualConfirmationRequired: true }), undefined);
+  assert.equal(validateSequenceProductRepairProof({ ...validProof, playbackDeltaObserved: false })?.passed, true);
+  assert.equal(validateSequenceProductRepairProof({ ...validProof, beforeAfterPlaybackProof: [] }), undefined);
+  assert.equal(validateSequenceProductRepairProof({ ...validProof, savedSha256: sourceSha256 }), undefined);
 });
 
 test("vendored svga-web asset is pinned and strict-CSP compatible", async () => {

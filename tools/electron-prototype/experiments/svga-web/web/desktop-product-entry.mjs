@@ -48,7 +48,8 @@ function createElectronProductHostAdapter(environment = globalThis) {
           "/api/avatar-frame-inspection-report",
           "/api/svga-image-edit-session",
           "/api/svga-image-replace",
-          "/api/svga-image-optimize"
+          "/api/svga-image-optimize",
+          "/api/svga-sequence-repair"
         ]);
         if (!tokenBoundApiPaths.has(requestUrl.pathname) || !reportToken) {
           return fetchApi(input, init);

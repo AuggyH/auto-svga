@@ -991,3 +991,32 @@
   package or head as current.
 - Expected validation: the next full suite is 15 command records, adding
   `packaged-normal-runtime-proof` to the previous 14-command suite.
+
+### Phase 4 Sequence Repair Completion Slice
+
+- Trigger: continue from `02b48dba5a18a66e12af2cae3c01c256f3ae59c9` and focus
+  only on sequence-frame anti-flicker completion.
+- Implementation added: `repairSvgaSequenceFrameFlicker` detects a continuous
+  numeric PNG sequence group, selects exactly one near-empty visible speck frame,
+  replaces only that resource with a same-dimension transparent PNG, verifies
+  source immutability, sprite/timeline/resource invariants, full affected-frame
+  alpha proof, and fail-closed unsafe cases.
+- Product path added: token-bound `/api/svga-sequence-repair`, dedicated
+  `saveSequenceRepairSvga` IPC, report-bound atomic Save As to a new SVGA,
+  desktop smoke Save As/reopen proof, saved hash binding, and packaged review
+  evidence for `sequence-repaired-output.svga`.
+- Current fixture result: repaired `img_14`; target frames `[23, 24]`; the
+  selected image changed from 4 non-transparent pixels to 0; all other sequence
+  resources stayed hash-stable; source SHA-256 stayed unchanged.
+- Honest evidence note: svga-web canvas hashes for frames 23 and 24 remained
+  unchanged before/after, so `playbackDeltaObserved=false` is recorded. The
+  product proof still passes because the repair is alpha-proven, saved to a new
+  file, reopened, rendered nonblank, and no manual visual confirmation is
+  required for this narrow supported case.
+- Validation:
+  `npm run build`;
+  `node --test dist/tests/svga-sequence-frame-repair.test.js`;
+  `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `npm run desktop:smoke`.
+  Result: pass.

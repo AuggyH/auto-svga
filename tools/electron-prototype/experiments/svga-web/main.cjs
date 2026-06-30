@@ -12,7 +12,12 @@ const {
   isExpectedSenderUrl
 } = require("./host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("./desktop-artifact-catalog.cjs");
-const { validateSequenceByteRepairProof } = require("./sequence-repair-proof-contract.cjs");
+const {
+  describeSequenceProductRepairProofValidationFailure,
+  validateSequenceByteRepairProof,
+  validateSequenceProductRepairProof,
+  validateSequenceRepairReportBinding
+} = require("./sequence-repair-proof-contract.cjs");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -222,6 +227,11 @@ function validateSmokeResult(value) {
     if (!sequenceByteRepairProof) return undefined;
     result.sequenceByteRepairProof = sequenceByteRepairProof;
   }
+  if (value.sequenceProductRepairProof !== undefined) {
+    const sequenceProductRepairProof = validateSequenceProductRepairProof(value.sequenceProductRepairProof);
+    if (!sequenceProductRepairProof) return undefined;
+    result.sequenceProductRepairProof = sequenceProductRepairProof;
+  }
   if (value.replacementReadinessProof !== undefined) {
     const replacementReadinessProof = validateReplacementReadinessProof(value.replacementReadinessProof);
     if (!replacementReadinessProof) return undefined;
@@ -307,6 +317,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.sequenceByteRepairProof !== undefined && !validateSequenceByteRepairProof(value.sequenceByteRepairProof)) {
     return "sequenceByteRepairProof";
+  }
+  if (value.sequenceProductRepairProof !== undefined && !validateSequenceProductRepairProof(value.sequenceProductRepairProof)) {
+    return `sequenceProductRepairProof:${describeSequenceProductRepairProofValidationFailure(value.sequenceProductRepairProof)}`;
   }
   if (value.replacementReadinessProof !== undefined && !validateReplacementReadinessProof(value.replacementReadinessProof)) {
     return "replacementReadinessProof";
@@ -1760,6 +1773,7 @@ function validateArtifactScenario(value) {
     "desktop-sequence-bounded-repair-prototype-proof",
     "desktop-sequence-prototype-rendered-boundary-proof",
     "desktop-sequence-noop-round-trip-proof",
+    "desktop-sequence-product-repair-proof",
     "desktop-replacement-preview-proof",
     "desktop-replacement-undo-redo-proof",
     "desktop-multi-replacement-proof",
@@ -1847,6 +1861,25 @@ function validateOptimizedSvgaSaveInput(value) {
   if (!validation) return undefined;
   const suggestedName = sanitizeSvgaFileName(
     typeof value.suggestedName === "string" ? value.suggestedName : "optimized-output.svga"
+  );
+  const sourceId = typeof value.sourceId === "string" && /^[a-f0-9]{24}$/.test(value.sourceId) ? value.sourceId : "";
+  return {
+    bytes,
+    suggestedName,
+    sourceId,
+    validation
+  };
+}
+
+function validateSequenceRepairSvgaSaveInput(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (typeof value.bytesBase64 !== "string" || value.bytesBase64.length === 0) return undefined;
+  const bytes = Buffer.from(value.bytesBase64, "base64");
+  if (bytes.byteLength <= 0 || bytes.byteLength > 25 * 1024 * 1024) return undefined;
+  const validation = validateSequenceRepairReportBinding(value.sequenceRepairReport, bytes);
+  if (!validation) return undefined;
+  const suggestedName = sanitizeSvgaFileName(
+    typeof value.suggestedName === "string" ? value.suggestedName : "sequence-repaired-output.svga"
   );
   const sourceId = typeof value.sourceId === "string" && /^[a-f0-9]{24}$/.test(value.sourceId) ? value.sourceId : "";
   return {
@@ -2810,6 +2843,7 @@ function stateForScenario(scenario) {
     "desktop-sequence-bounded-repair-prototype-proof": "info-assets-open",
     "desktop-sequence-prototype-rendered-boundary-proof": "info-assets-open",
     "desktop-sequence-noop-round-trip-proof": "info-assets-open",
+    "desktop-sequence-product-repair-proof": "loaded",
     "desktop-replacement-preview-proof": "loaded",
     "desktop-replacement-undo-redo-proof": "loaded",
     "desktop-multi-replacement-proof": "loaded",
@@ -2995,6 +3029,7 @@ function artifactFileNameForScenario(scenario) {
     "desktop-sequence-bounded-repair-prototype-proof": "desktop-sequence-bounded-repair-prototype-proof.png",
     "desktop-sequence-prototype-rendered-boundary-proof": "desktop-sequence-prototype-rendered-boundary-proof.png",
     "desktop-sequence-noop-round-trip-proof": "desktop-sequence-noop-round-trip-proof.png",
+    "desktop-sequence-product-repair-proof": "desktop-sequence-product-repair-proof.png",
     "desktop-replacement-preview-proof": "desktop-replacement-preview-proof.png",
     "desktop-replacement-undo-redo-proof": "desktop-replacement-undo-redo-proof.png",
     "desktop-multi-replacement-proof": "desktop-multi-replacement-proof.png",
@@ -3378,6 +3413,72 @@ async function saveOptimizedSvga(input) {
   };
 }
 
+async function saveSequenceRepairSvga(input) {
+  const value = validateSequenceRepairSvgaSaveInput(input);
+  if (!value) throw new Error("Invalid sequence repair Save As payload");
+  const automatedProductSaveAs = smokeMode || productSmokeMode || normalProofMode;
+  const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
+  if (!automatedProductSaveAs && !originalPath) {
+    throw new Error("Sequence repair Save As requires the source SVGA to be opened through the desktop file picker.");
+  }
+  let targetPath;
+  if (automatedProductSaveAs) {
+    mkdirSync(productArtifactRoot, { recursive: true });
+    targetPath = path.join(productArtifactRoot, "sequence-repaired-output.svga");
+  } else {
+    const result = await dialog.showSaveDialog({
+      title: "另存为序列修复 SVGA",
+      defaultPath: value.suggestedName,
+      filters: [{ name: "SVGA", extensions: ["svga"] }],
+      properties: ["createDirectory", "showOverwriteConfirmation"]
+    });
+    if (result.canceled || !result.filePath) {
+      return { status: "cancelled" };
+    }
+    targetPath = result.filePath.toLowerCase().endsWith(".svga") ? result.filePath : `${result.filePath}.svga`;
+  }
+  if (originalPath && path.resolve(targetPath) === path.resolve(originalPath)) {
+    throw new Error("Sequence repair Save As target must be different from the original SVGA.");
+  }
+
+  writeSvgaBytesAtomically(targetPath, value.bytes);
+  const savedSha256 = createHash("sha256").update(value.bytes).digest("hex");
+  if (automatedProductSaveAs) {
+    addProductArtifactRecord({
+      scenario: "phase4-sequence-repaired-output-svga",
+      mode: "smoke",
+      source: "desktop",
+      viewport: { width: null, height: null },
+      path: `.artifacts/product/${productMilestoneId}/sequence-repaired-output.svga`,
+      mime: "application/x-svga",
+      sizeBytes: value.bytes.byteLength,
+      sha256: savedSha256,
+      fixture: "synthetic-avatar-frame.svga",
+      inputKind: "phase4-sequence-repaired-output",
+      sequenceRepairReportDigest: createHash("sha256").update(JSON.stringify(value.validation)).digest("hex"),
+      repairedResourceKey: value.validation.sequenceGroup.repairedResourceKey,
+      ...canonicalFixtureMetadata(),
+      headCommit: productArtifactIndex.headCommit,
+      rendererEntry: `tools/electron-prototype/experiments/svga-web/${rendererEntry}`,
+      rendererSha256: sha256RelativeFile(rendererEntry),
+      generatedAt: new Date().toISOString(),
+      humanReviewRequired: true
+    });
+    writeProductArtifactIndex();
+  }
+  const savedSourceId = rememberSourceFile(targetPath);
+  return {
+    status: "saved",
+    sourceId: savedSourceId,
+    fileName: path.basename(targetPath),
+    sizeBytes: value.bytes.byteLength,
+    sha256: savedSha256,
+    sequenceRepairReportDigest: createHash("sha256").update(JSON.stringify(value.validation)).digest("hex"),
+    targetPathRedacted: sanitizeRuntimeArgument(targetPath),
+    savedSvgaBase64: value.bytes.toString("base64")
+  };
+}
+
 function writeSvgaBytesAtomically(targetPath, bytes) {
   const temporaryPath = `${targetPath}.tmp-${process.pid}-${randomBytes(6).toString("hex")}`;
   let descriptor;
@@ -3548,6 +3649,11 @@ async function createExperimentWindow() {
   ipcMain.handle(IPC_CHANNELS.saveOptimizedSvga, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return saveOptimizedSvga(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.saveSequenceRepairSvga, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return saveSequenceRepairSvga(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.openSvgaFile, async (event) => {

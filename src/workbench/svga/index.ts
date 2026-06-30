@@ -8,6 +8,10 @@ export {
   SvgaImageOptimizationError
 } from "./asset-optimizer.js";
 export {
+  repairSvgaSequenceFrameFlicker,
+  SvgaSequenceFrameRepairError
+} from "./sequence-frame-repair.js";
+export {
   applySvgaImageEditTransaction,
   createSvgaImageEditHistory,
   markSvgaImageEditSaved,
@@ -42,6 +46,12 @@ export type {
   SvgaImageOptimizationReport,
   SvgaImageOptimizationResult
 } from "./asset-optimizer.js";
+export type {
+  SvgaSequenceFrameAlphaProof,
+  SvgaSequenceFrameRepairOptions,
+  SvgaSequenceFrameRepairReport,
+  SvgaSequenceFrameRepairResult
+} from "./sequence-frame-repair.js";
 export type {
   SvgaBatchPngConfidenceClass,
   SvgaBatchPngImportLimits,

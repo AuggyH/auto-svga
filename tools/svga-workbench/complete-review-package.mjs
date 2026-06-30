@@ -247,6 +247,14 @@ async function copyUiAuditEvidence(root) {
     ...contactSheets.map((entry) => `- [${entry}](${entry})`),
     ""
   ].join("\n"), "utf8");
+  await writeJson(path.join(root, "ui-audit/METADATA.json"), {
+    schemaVersion: 1,
+    evidenceRole: "reference_only",
+    historical_ui_ux_reference: true,
+    blocksFeatureReview: false,
+    sourceHeadShort: "21849d1",
+    note: "Historical UI/UX and HIG audit material from an earlier Product Owner UI-polish insertion. It is retained as reference guidance only and is not current final-head feature evidence."
+  });
 }
 
 export function extractDesktopSmokeResultFromText(text) {
@@ -276,6 +284,7 @@ function requiredSmokeProofs(smokeResult) {
     sequencePrototypeRenderedBoundaryProof: requireProof(smokeResult, "sequencePrototypeRenderedBoundaryProof"),
     sequenceNoopRoundTripProof: requireProof(smokeResult, "sequenceNoopRoundTripProof"),
     sequenceByteRepairProof: requireProof(smokeResult, "sequenceByteRepairProof"),
+    sequenceProductRepairProof: requireProof(smokeResult, "sequenceProductRepairProof"),
     replacementReadinessProof: requireProof(smokeResult, "replacementReadinessProof"),
     replacementPreviewProof: requireProof(smokeResult, "replacementPreviewProof"),
     replacementUndoRedoProof: requireProof(smokeResult, "replacementUndoRedoProof"),
@@ -341,11 +350,11 @@ function buildAssetIntelligenceReport({ headCommit, headTree, validationSummary,
       },
       {
         code: "sequence_repair_not_optimized",
-        reason: "Sequence-frame repair is tracked in Phase 4 and remains blocked from product Save As."
+        reason: "Sequence-frame repair is tracked in Phase 4 and is exported through a dedicated repaired-copy Save As path, not through safe image optimization."
       },
       {
-        code: "manual_visual_confirmation_required_for_sequence_changes",
-        reason: "Byte-producing sequence candidates are not promoted to safe optimization without visual acceptance."
+        code: "sequence_canvas_delta_not_required_for_optimizer",
+        reason: "Optimizer output does not infer sequence anti-flicker correctness; Phase 4 uses full alpha proof plus Save As/reopen playback validation."
       }
     ],
     uiProofReferences: [
@@ -505,9 +514,22 @@ function buildReplacementEditingReport({ headCommit, headTree, validationSummary
 function buildSequenceRepairStatusReport({ headCommit, headTree, validationSummary, proofs }) {
   const byteProof = proofs.sequenceByteRepairProof;
   const rendered = proofs.sequencePrototypeRenderedBoundaryProof;
-  const productSaveAsEnabled = byteProof.productSaveAsEnabled === true;
-  const repairSuccessClaimed = byteProof.repairSuccessClaimed === true;
-  const manualRequired = byteProof.manualVisualConfirmationRequired === true;
+  const productProof = proofs.sequenceProductRepairProof;
+  const productSaveAsEnabled = productProof.productSaveAsEnabled === true;
+  const repairSuccessClaimed = productProof.repairSuccessClaimed === true;
+  const manualRequired = productProof.manualVisualConfirmationRequired === true;
+  const productComplete = productProof.passed === true
+    && productSaveAsEnabled
+    && repairSuccessClaimed
+    && productProof.manualVisualConfirmationRequired === false
+    && productProof.savedHashBound === true
+    && productProof.sourceUnchanged === true
+    && productProof.fullAffectedFrameVisibilityAlphaProofPassed === true
+    && productProof.repairedFrameTransparentAfter === true
+    && productProof.reopenedPlayback === true
+    && productProof.reopenedCanvasNonBlank === true
+    && productProof.reopenedInspectionReport === true
+    && productProof.renderedProofPassed === true;
   return {
     schemaVersion: 1,
     milestoneId,
@@ -515,9 +537,9 @@ function buildSequenceRepairStatusReport({ headCommit, headTree, validationSumma
     reportId: "sequence-repair-status-report",
     finalHead: headCommit,
     finalTree: headTree,
-    status: productSaveAsEnabled || repairSuccessClaimed || !manualRequired
-      ? "invalid_overclaim_detected"
-      : "partial_smoke_only_blocked_for_product_save_as",
+    status: productComplete
+      ? "product_complete_final_head_validated"
+      : "partial_or_invalid_sequence_repair_evidence",
     generatedFrom: {
       validationSummary: "validation/validation-summary.json",
       desktopSmoke: "validation/desktop-smoke.json",
@@ -532,60 +554,78 @@ function buildSequenceRepairStatusReport({ headCommit, headTree, validationSumma
       boundedPrototype: proofs.sequenceBoundedRepairPrototypeProof.passed,
       renderedBoundaryProof: rendered.passed,
       noopRoundTripRehearsal: proofs.sequenceNoopRoundTripProof.passed,
-      byteCandidate: byteProof.passed
+      byteCandidate: byteProof.passed,
+      productSafeRepairAlgorithm: productProof.fullAffectedFrameVisibilityAlphaProofPassed,
+      productSaveAs: productSaveAsEnabled,
+      savedOutputReopenValidation: productProof.reopenedPlayback === true
+        && productProof.reopenedCanvasNonBlank === true
+        && productProof.reopenedInspectionReport === true,
+      sourceImmutability: productProof.sourceUnchanged,
+      manualVisualConfirmationNoLongerRequired: productProof.manualVisualConfirmationRequired === false
     },
     beforeAfterMechanicalEvidence: {
-      resourceDiffs: byteProof.resourceDiffs,
-      beforeCanvasSha256: rendered.beforeCanvasSha256,
-      afterCanvasSha256: rendered.afterCanvasSha256,
-      beforeCanvasNonBlank: rendered.beforeCanvasNonBlank,
-      afterCanvasNonBlank: rendered.afterCanvasNonBlank,
-      canvasDimensionsStable: rendered.canvasDimensionsStable,
-      pixelHashMatched: rendered.pixelHashMatched,
-      editedSha256: byteProof.editedSha256,
-      roundTripMode: byteProof.roundTripMode,
-      reopenedPlayback: byteProof.reopenedPlayback,
-      reopenedCanvasNonBlank: byteProof.reopenedCanvasNonBlank,
-      reopenedInspectionReport: byteProof.reopenedInspectionReport
+      historicalByteCandidate: {
+        resourceDiffs: byteProof.resourceDiffs,
+        editedSha256: byteProof.editedSha256,
+        roundTripMode: byteProof.roundTripMode,
+        productSaveAsEnabled: byteProof.productSaveAsEnabled,
+        manualVisualConfirmationRequired: byteProof.manualVisualConfirmationRequired
+      },
+      renderedPrototypeBoundary: {
+        beforeCanvasSha256: rendered.beforeCanvasSha256,
+        afterCanvasSha256: rendered.afterCanvasSha256,
+        beforeCanvasNonBlank: rendered.beforeCanvasNonBlank,
+        afterCanvasNonBlank: rendered.afterCanvasNonBlank,
+        canvasDimensionsStable: rendered.canvasDimensionsStable,
+        pixelHashMatched: rendered.pixelHashMatched
+      },
+      productRepair: {
+        repairedResourceKey: productProof.repairedResourceKey,
+        targetVisibleFrames: productProof.targetVisibleFrames,
+        groupResourceKeyCount: productProof.groupResourceKeyCount,
+        alphaProofResourceCount: productProof.alphaProofResourceCount,
+        changedResourceCount: productProof.changedResourceCount,
+        fullAffectedFrameVisibilityAlphaProof: productProof.fullAffectedFrameVisibilityAlphaProof,
+        beforeAfterPlaybackProof: productProof.beforeAfterPlaybackProof,
+        playbackDeltaObserved: productProof.playbackDeltaObserved,
+        editedSha256: productProof.editedSha256,
+        savedSha256: productProof.savedSha256,
+        savedFileName: productProof.savedFileName,
+        savedHashBound: productProof.savedHashBound,
+        sourceUnchanged: productProof.sourceUnchanged,
+        reopenedPlayback: productProof.reopenedPlayback,
+        reopenedCanvasNonBlank: productProof.reopenedCanvasNonBlank,
+        reopenedInspectionReport: productProof.reopenedInspectionReport
+      }
     },
     productExposure: {
       productSaveAsEnabled,
-      writeAttempted: byteProof.writeAttempted,
-      writeActionExposed: byteProof.writeActionExposed,
+      saveStatus: productProof.saveStatus,
+      writeAttempted: productProof.saveStatus === "saved",
+      writeActionExposed: false,
       repairSuccessClaimed,
       manualVisualConfirmationRequired: manualRequired
     },
-    preciseTechnicalBlocker: {
-      id: "PHASE4-SEQUENCE-SAFE-SAVE-AS-BLOCKED",
-      summary: "The smoke candidate can produce edited bytes and reopen them, but the Workbench cannot yet prove exact anti-flicker correctness or visual acceptance safely enough to expose product Save As.",
-      attempted: [
-        "sequence group detection",
-        "repair-preview contract",
-        "no-write simulation",
-        "bounded prototype",
-        "rendered before/after boundary hash proof",
-        "no-op round-trip rehearsal",
-        "byte-producing candidate with resource diff and reopen proof"
-      ],
-      whyBlocked: [
-        "the candidate mutates a bounded resource subset but does not yet prove the full sequence group remains visually equivalent except for the intended anti-flicker change",
-        "manual visual confirmation is still required",
-        "there is no owner-accepted before/after visual threshold for sequence repair",
-        "product Save As must remain disabled while repairSuccessClaimed is false"
-      ],
+    preciseTechnicalBlocker: productComplete ? null : {
+      id: "PHASE4-SEQUENCE-SAFE-SAVE-AS-EVIDENCE-INCOMPLETE",
+      summary: "Sequence repair evidence did not satisfy the product-complete fail-closed contract.",
       remainsRequired: [
-        "exact sequence repair algorithm for all affected frames",
-        "before/after alpha and visibility proof across the complete sequence group",
-        "automated or owner-approved visual acceptance threshold",
-        "reopen validation after product Save As is enabled"
+        "productSaveAsEnabled=true",
+        "repairSuccessClaimed=true",
+        "manualVisualConfirmationRequired=false",
+        "full affected-frame alpha proof",
+        "Save As output hash binding",
+        "reopen playback validation"
       ]
     },
-    passedAsPartial: byteProof.passed === true
-      && productSaveAsEnabled === false
-      && byteProof.writeAttempted === false
-      && byteProof.writeActionExposed === false
-      && repairSuccessClaimed === false
-      && manualRequired === true
+    knownLimitations: [
+      {
+        code: "canvas_delta_not_observed_for_target_speck",
+        severity: "nonblocking_evidence_note",
+        detail: "The repaired target is a four-pixel near-empty speck frame. The product proof records stable before/after playback hashes and full alpha-level removal, but svga-web canvas hashes did not differ at frames 23 and 24."
+      }
+    ],
+    passedAsProductComplete: productComplete
   };
 }
 
@@ -621,7 +661,9 @@ async function copyPhaseEvidence(root, { headCommit, headTree }) {
     "desktop-sequence-no-write-simulation-proof.png",
     "desktop-sequence-bounded-repair-prototype-proof.png",
     "desktop-sequence-prototype-rendered-boundary-proof.png",
-    "desktop-sequence-noop-round-trip-proof.png"
+    "desktop-sequence-noop-round-trip-proof.png",
+    "desktop-sequence-product-repair-proof.png",
+    "sequence-repaired-output.svga"
   ];
   for (const fileName of phase2Files) await copyOptional(path.join(repoRoot, ".artifacts/product/P2", fileName), path.join(root, "evidence/phase2", fileName));
   for (const fileName of phase3Files) await copyOptional(path.join(repoRoot, ".artifacts/product/P2", fileName), path.join(root, "evidence/phase3", fileName));
@@ -648,6 +690,11 @@ async function copyPhaseEvidence(root, { headCommit, headTree }) {
   await writeJson(path.join(root, "evidence/phase3/replacement-multi-resource-proof.json"), proofs.replacementMultiResourceProof);
   await writeJson(path.join(root, "evidence/phase4/sequence-repair-status-report.json"), sequenceRepairStatusReport);
   await writeJson(path.join(root, "evidence/phase4/sequence-byte-candidate-proof.json"), proofs.sequenceByteRepairProof);
+  await writeJson(path.join(root, "evidence/phase4/sequence-product-repair-save-as-proof.json"), proofs.sequenceProductRepairProof);
+  await writeJson(
+    path.join(root, "evidence/phase4/sequence-full-affected-frame-alpha-proof.json"),
+    proofs.sequenceProductRepairProof.fullAffectedFrameVisibilityAlphaProof
+  );
   await writeJson(path.join(root, "evidence/phase4/sequence-rendered-boundary-proof.json"), proofs.sequencePrototypeRenderedBoundaryProof);
 
   const summary = phaseEvidenceSummary({
@@ -692,7 +739,9 @@ function phaseEvidenceSummary({ assetIntelligenceReport, optimizationReport, rep
       productSaveAsEnabled: sequenceRepairStatusReport.productExposure.productSaveAsEnabled,
       repairSuccessClaimed: sequenceRepairStatusReport.productExposure.repairSuccessClaimed,
       manualVisualConfirmationRequired: sequenceRepairStatusReport.productExposure.manualVisualConfirmationRequired,
-      blocker: sequenceRepairStatusReport.preciseTechnicalBlocker.id
+      savedOutput: sequenceRepairStatusReport.beforeAfterMechanicalEvidence.productRepair.savedFileName,
+      playbackDeltaObserved: sequenceRepairStatusReport.beforeAfterMechanicalEvidence.productRepair.playbackDeltaObserved,
+      blocker: sequenceRepairStatusReport.preciseTechnicalBlocker?.id ?? null
     }
   };
 }
@@ -775,14 +824,14 @@ async function writeGeneratedCurrentDocs(root, {
     "| Phase 1 stabilization | Validated baseline | `validation/desktop-smoke.json`, `validation/validation-summary.json`, `package-hygiene-proof.json` |",
     `| Phase 2 Asset Intelligence / safe optimization | ${phaseEvidence.phase2AssetIntelligence.status} | \`evidence/phase2/asset-intelligence-report.json\`, \`evidence/phase2/optimization-report.json\` |`,
     `| Phase 3 supported PNG replacement | ${phaseEvidence.phase3ReplacementEditing.status} | \`evidence/phase3/replacement-editing-report.json\` plus reset, Save As, reopen, and multi-resource proofs |`,
-    `| Phase 4 sequence-frame anti-flicker | ${phaseEvidence.phase4SequenceFrameRepair.status} | \`evidence/phase4/sequence-repair-status-report.json\`; product Save As remains disabled |`,
+    `| Phase 4 sequence-frame anti-flicker | ${phaseEvidence.phase4SequenceFrameRepair.status} | \`evidence/phase4/sequence-repair-status-report.json\`, \`evidence/phase4/sequence-product-repair-save-as-proof.json\` |`,
     "| macOS internal package | Unsigned internal ZIP validated | `app/macos-package-proof.json`, `app/packaged-app-runtime-proof.json`, `evidence/packaged-app-runtime/normal-visible-startup.json` |",
     "| UI/HIG carry-forward | Included as evidence and implementation guidance | `ui-audit/`, `docs/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md` |",
     "",
     "## Current Evidence Boundary",
     "",
     "- Phase 2 and Phase 3 evidence in this directory is generated from the current final-head desktop smoke proof, not from historical incubation heads.",
-    "- Phase 4 is intentionally partial: the byte candidate is smoke-only, product sequence Save As is disabled, repair success is not claimed, and manual visual confirmation is required.",
+    "- Phase 4 now includes a product-safe repaired-copy Save As path, full affected-frame alpha proof, saved-output hash binding, reopen validation, and source immutability proof. The tiny target speck did not produce a canvas hash delta in svga-web; this is recorded as a nonblocking evidence note.",
     "- The packaged App normal visible startup proof launches the packaged `.app` executable without smoke or proof arguments and verifies local-only runtime behavior.",
     `- Validation passed with ${validationResultCount(validationSummary)} command records in \`validation/validation-summary.json\`.`,
     `- Packaged runtime proof passed: \`${packagedRuntimeProof.proofId}\` at head \`${headShort}\`.`,
@@ -807,7 +856,7 @@ async function writeGeneratedCurrentDocs(root, {
     "- Rebuilt the review directory around current-head evidence instead of old P3/P4 incubation artifacts.",
     "- Added final-head Phase 2 reports for resource classification, abnormality findings, safe optimization candidates, skipped/risky reasons, before/after metrics, optimized output hash, Save As behavior, source immutability, and reopen validation.",
     "- Added final-head Phase 3 replacement-editing reports for supported PNG replacement, undo, redo, reset, Save As, multi-resource replacement, reopened export, reference validation, and unsupported edit boundaries.",
-    "- Continued Phase 4 sequence repair through detection, grouped evidence, no-write simulation, bounded prototype, rendered before/after proof, no-op round-trip rehearsal, and byte-candidate proof while keeping product Save As disabled.",
+    "- Continued Phase 4 sequence repair through detection, grouped evidence, no-write simulation, bounded prototype, rendered before/after proof, no-op round-trip rehearsal, byte-candidate proof, and product repaired-copy Save As/reopen proof.",
     "- Added packaged App normal visible startup proof as a validation step after macOS packaging and package proof.",
     "- Kept App ZIP hygiene, Info.plist security cleanup, privacy audit, manifest verification, signing dry-run, and notarization dry-run constraints fail-closed.",
     "",
@@ -820,8 +869,8 @@ async function writeGeneratedCurrentDocs(root, {
     "## Current Stop State",
     "",
     "- This package is a complete review-directory handoff candidate, not Product Owner acceptance.",
-    "- Phase 4 remains a precise partial blocker, recorded in `evidence/phase4/sequence-repair-status-report.json`.",
-    "- Autonomous implementation should continue in a follow-up slice if Phase 4 product Save As is required before review.",
+    "- Phase 4 no longer has the prior product Save As/manual-confirmation blocker in this package; remaining risk is the recorded svga-web canvas hash non-delta for the four-pixel target speck.",
+    "- Product Owner review is still required before external product acceptance.",
     ""
   ].join("\n"), "utf8");
 }
@@ -1035,7 +1084,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     "This directory is generated from a clean staging root. Do not re-compress it in Finder.",
     "",
-    "Status: complete review-directory handoff candidate. This handoff is not Product Owner acceptance, and Phase 4 is still partial.",
+    "Status: complete review-directory handoff candidate. This handoff is not Product Owner acceptance; Phase 4 includes a validated repaired-copy Save As/reopen path with a recorded canvas-delta non-observation risk.",
     "",
     "Start with `REVIEW_PACKET.md`, then use `UPLOAD_INDEX.json`, `MANIFEST.json`,",
     "`bundle-privacy-audit.json`, `package-hygiene-proof.json`, and",
@@ -1050,7 +1099,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     `- Complete review ZIP: \`${completeZipName}\``,
     `- macOS App ZIP: \`app/${appZipName}\``,
     "- Product acceptance: not claimed",
-    "- Phase 4 sequence repair: partial; product Save As remains disabled and manual visual confirmation is required",
+    "- Phase 4 sequence repair: product repaired-copy Save As/reopen proof included; canvas delta non-observation recorded as a known risk",
     "- Review state: complete directory package regenerated at the current final head",
     "",
     "## Feature Completion Matrix",
@@ -1060,7 +1109,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "| Phase 1 stabilization | Passed baseline, repair package regenerated | Desktop smoke and package proof included in validation outputs |",
     "| Phase 2 Asset Intelligence / safe optimization | Implemented, Save As/reopen smoke validated | Safe candidates only; risky classes remain suggestion-only |",
     "| Phase 3 PNG replacement editing | Implemented for supported PNG resources | Undo/redo/reset/Save As/reopen evidence included |",
-    "| Phase 4 sequence repair | Partial smoke-only candidate | Detection/group evidence included; user-facing sequence Save As not exposed |",
+    "| Phase 4 sequence repair | Product repaired-copy Save As/reopen validated | Full alpha proof included; svga-web canvas hashes stayed stable for the four-pixel speck target |",
     "| macOS package | Unsigned internal ZIP only | Clean App ZIP hygiene validated; signing/notarization blocked by credentials |",
     "| UI audit / HIG | Included as repair input | Findings are tracked; broad UI polish not completed in this package repair |",
     "",
@@ -1075,7 +1124,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "- `validation/`: complete validation command outputs, including packaged normal runtime proof, desktop smoke, and loop validation.",
     "- `evidence/phase2/asset-intelligence-report.json` and `evidence/phase2/optimization-report.json`: final-head asset classification and safe optimization evidence.",
     "- `evidence/phase3/replacement-editing-report.json`: final-head supported PNG replacement, undo/redo/reset, Save As, reopen, and multi-resource evidence.",
-    "- `evidence/phase4/sequence-repair-status-report.json`: final-head sequence repair attempt, smoke-only byte candidate, and precise blocker.",
+    "- `evidence/phase4/sequence-repair-status-report.json`, `sequence-product-repair-save-as-proof.json`, and `sequence-full-affected-frame-alpha-proof.json`: final-head product sequence repair, saved output, full alpha proof, before/after playback stability, reopen validation, and source immutability.",
     "- `app/packaged-app-runtime-proof.json` plus `evidence/packaged-app-runtime/normal-visible-startup.json`: packaged App normal visible startup proof.",
     "- `ui-audit/`: HIG study digest, UI audit report, screenshot index, and contact sheets.",
     "",
@@ -1083,7 +1132,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     `- \`npm run svga-workbench:v1:validate\` passed with ${validationResultCount(validationSummary)} command records.`,
     "- Covered checks: syntax/type gates, complete-review package tests, shared frontend tests, root `npm test`, svga-web experiment tests, signing dry-run, macOS package generation, macOS package proof, packaged normal runtime proof, desktop smoke, and final loop validation.",
-    "- Desktop smoke passed with local-only page, strict CSP, nonblank playback canvas, inspection report, drag/drop, invalid recovery, owner usability, workbench region map, Phase 2 optimized reopen proof, Phase 3 replacement/reset/Save As proofs, and Phase 4 partial sequence proofs.",
+    "- Desktop smoke passed with local-only page, strict CSP, nonblank playback canvas, inspection report, drag/drop, invalid recovery, owner usability, workbench region map, Phase 2 optimized reopen proof, Phase 3 replacement/reset/Save As proofs, and Phase 4 sequence Save As/reopen proof.",
     "",
     "## App ZIP / Signing / Installer Status",
     "",
@@ -1096,9 +1145,9 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "## Changed Files Summary",
     "",
     "- `tools/svga-workbench/`: complete review directory generator, manifest/privacy/hygiene validation, validation collector, packaged runtime proof, and tests.",
-    "- `tools/electron-prototype/experiments/svga-web/`: clean macOS packaging, package proof, signing/notarization dry-run workflow, desktop smoke evidence paths, and reset-proof validation.",
-    "- `tools/shared/product-frontend/`: Workbench UI surfaces for safe optimization, replacement, reset, sequence evidence, diagnostics visibility, and smoke assertions.",
-    "- `src/` and `dist/`-validated product modules: Asset Intelligence, safe optimization, replacement editing, and sequence evidence contracts are covered by the root test suite.",
+    "- `tools/electron-prototype/experiments/svga-web/`: clean macOS packaging, package proof, signing/notarization dry-run workflow, desktop smoke evidence paths, sequence-repair Save As bridge, and fail-closed proof validation.",
+    "- `tools/shared/product-frontend/`: Workbench UI surfaces for safe optimization, replacement, reset, sequence repair Save As/reopen proof, diagnostics visibility, and smoke assertions.",
+    "- `src/` and `dist/`-validated product modules: Asset Intelligence, safe optimization, replacement editing, and sequence anti-flicker repair contracts are covered by the root test suite.",
     "- `docs/autonomous`, `docs/product`, and `docs/reviews`: status, blockers, HIG carry-forward, lessons candidates, and review notes.",
     "",
     "## Security / Privacy Summary",
@@ -1106,11 +1155,11 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "- Local-only posture retained: strict CSP, context isolation, sandboxing, blocked navigation, blocked new windows, and no telemetry claims.",
     "- macOS package metadata validation fails closed if arbitrary network allowances, unused permission descriptions, or misleading Finder `.svga` associations reappear.",
     "- Privacy audit scans outward-facing review payloads, metadata, proof/status docs, validation outputs, and text entries inside the App ZIP.",
-    "- Original SVGA files are not modified in place; optimization and replacement flows use Save As/new-output paths with reopen validation.",
+    "- Original SVGA files are not modified in place; optimization, replacement, and sequence repair flows use Save As/new-output paths with reopen validation.",
     "",
     "## Knowledge And Docs Updated",
     "",
-    "- `docs/SVGA_WORKBENCH_V1_STATUS.md`: current phase matrix and honest Phase 4 partial status.",
+    "- `docs/SVGA_WORKBENCH_V1_STATUS.md`: current phase matrix and honest Phase 4 product Save As status.",
     "- `docs/AUTONOMOUS_RUN_LOG.md`: package repair, validation, HIG/UI repair, and final review generation notes.",
     "- `docs/AUTONOMOUS_BLOCKERS.md`: external credential blockers.",
     "- `docs/LESSONS_CANDIDATES.md`: reusable packaging, signing, HIG, and visible-hit-point lessons.",
@@ -1124,21 +1173,21 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     "## Nonblocking Backlog",
     "",
-    "- Product-exposed sequence repair Save As after safe exact repair and visual before/after acceptance.",
+    "- Add a stronger visual-delta/threshold policy for real-world sequence repairs where canvas-level change should be observable.",
     "- Text editing, key rename, URL import, timeline edit, and structural SVGA edit remain unsupported until mechanically round-trippable.",
     "- UI audit follow-ups: toolbar target size, modal stacking, settings scroll affordance, loading escape path, sequence proof distinction, and dense row focus.",
     "- Signed DMG/PKG and Windows installer flow after credentials/release identity exist.",
     "",
     "## Known Risks",
     "",
-    "- Phase 4 is partial: the byte-producing candidate is smoke-only, product Save As is disabled, manual visual confirmation is required, and repair success is not claimed.",
+    "- Phase 4 target speck repair is mechanically proven and product Save As/reopen validated, but svga-web canvas hashes did not differ for the four-pixel target frames; rely on the included alpha proof for exact byte-level visibility evidence.",
     "- The macOS App ZIP is unsigned and may be blocked by Gatekeeper outside internal/local review contexts.",
     "- UI audit P2/P3 items are tracked but not fully polished unless they hide a required workflow.",
     "- Historical review-upload artifacts are preserved only as lineage; the primary complete review artifact is this package.",
     "",
     "## Required Human Decision",
     "",
-    "Recommended next human decision: review this complete directory as the Workbench v1 handoff candidate, decide whether the current Phase 4 partial status is acceptable for the next autonomous implementation slice, and provide signing/notarization credentials only when trusted distribution is required.",
+    "Recommended next human decision: review this complete directory as the Workbench v1 handoff candidate, decide whether the Phase 4 alpha-proofed repaired-copy path is acceptable despite the recorded canvas-delta non-observation, and provide signing/notarization credentials only when trusted distribution is required.",
     ""
   ].join("\n"), "utf8");
   await writeFile(path.join(root, "FINAL_RESPONSE.txt"), [
@@ -1147,7 +1196,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     `macOS App ZIP: app/${appZipName}`,
     `Validation: ${validationResultCount(validationSummary)} commands passed in validation/validation-summary.json.`,
     "Package hygiene: App ZIP clean; manifest verified; privacy audit passed with zero findings.",
-    "Phase status: Phase 1/2/3 reviewable; Phase 4 partial with product sequence Save As disabled and manual visual confirmation required.",
+    "Phase status: Phase 1/2/3 reviewable; Phase 4 sequence repaired-copy Save As/reopen validated with canvas-delta non-observation recorded.",
     "Blockers: Apple Developer ID/notary credentials and Windows signing credentials only for trusted distribution.",
     "Status: complete review package generated; Product Owner acceptance and production release are not claimed.",
     ""
@@ -1163,6 +1212,7 @@ async function copyDocs(root) {
     ["docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md", "docs/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md"],
     ["docs/reviews/2026-06-30-codex-svga-workbench-safe-optimization-ui.md", "review-notes/2026-06-30-codex-svga-workbench-safe-optimization-ui.md"],
     ["docs/reviews/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md", "review-notes/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md"],
+    ["docs/reviews/2026-06-30-codex-svga-workbench-sequence-product-repair.md", "review-notes/2026-06-30-codex-svga-workbench-sequence-product-repair.md"],
     ["docs/reviews/2026-06-30-codex-svga-workbench-signing-workflow.md", "review-notes/2026-06-30-codex-svga-workbench-signing-workflow.md"],
     ["docs/reviews/2026-06-30-codex-svga-workbench-uiux-repair.md", "review-notes/2026-06-30-codex-svga-workbench-uiux-repair.md"],
     ["docs/reviews/2026-06-30-codex-svga-workbench-self-contained-evidence.md", "review-notes/2026-06-30-codex-svga-workbench-self-contained-evidence.md"]
