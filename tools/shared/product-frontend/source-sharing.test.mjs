@@ -95,10 +95,13 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /data-sequence-repair-preview-contract/);
   assert.match(productApp, /data-sequence-no-write-simulation/);
   assert.match(productApp, /data-sequence-bounded-repair-prototype/);
-  assert.match(productApp, /序列帧复核/);
-  assert.match(productApp, /修复预览/);
-  assert.match(productApp, /模拟结果/);
-  assert.match(productApp, /补丁原型/);
+  assert.match(productApp, /优化副本/);
+  assert.match(productApp, /替换图片/);
+  assert.match(productApp, /修复闪帧/);
+  assert.match(productApp, /function showReplaceableResources/);
+  assert.match(productApp, /function handleWorkbenchOperationClick/);
+  assert.doesNotMatch(productApp, /function renderWorkbenchPhaseActions/);
+  assert.doesNotMatch(productApp, /class="phaseWorkflowPanel"/);
   assert.match(productApp, /data-undo-replacement-preview/);
   assert.match(productApp, /data-redo-replacement-preview/);
   assert.match(productApp, /可替换/);
@@ -275,7 +278,8 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "function elementHasVisibleHitPoint",
     "diagnosticIssueList",
     "诊断问题列表",
-    "diagnostic issue list first item is not visible",
+    "inspector actions are not visible",
+    "diagnostic details are not reachable",
     "local_preview_first",
     "localPreviewPrimary",
     "resourceRowsFocusable",

@@ -125,7 +125,7 @@ for (const filterLabel of ["全部", "图片", "序列帧", "未引用", "异常
 }
 assertCondition(errors, !/id="infoPanel"[\s\S]*id="tab-overview"/.test(shell), "right inspector must not duplicate file overview");
 assertCondition(errors, /id="logsPanel"[\s\S]*class="[^"]*\bisHidden\b/.test(shell), "Activity/Logs panel must be hidden by default");
-assertCondition(errors, app.includes("renderInspectorActionPlaceholders"), "right inspector must render diagnostics/actions capacity");
+assertCondition(errors, app.includes("renderInspectorActions"), "right inspector must render diagnostics/actions capacity");
 assertCondition(errors, /grid-template-areas:\s*"source preview inspector"/.test(styles), "workspace must use Source / Preview / Inspector grid areas");
 assertCondition(errors, /minmax\(/.test(styles), "layout must use intrinsic minmax sizing");
 assertCondition(errors, /text-overflow:\s*ellipsis/.test(styles), "text-bearing components must define truncation rules");

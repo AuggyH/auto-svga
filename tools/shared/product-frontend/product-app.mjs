@@ -892,6 +892,11 @@ function focusFirstWithin(root) {
   target?.focus?.({ preventScroll: true });
 }
 
+function focusPanelRoot(root) {
+  root?.focus?.({ preventScroll: true });
+  if (!root?.contains(document.activeElement)) focusFirstWithin(root);
+}
+
 function focusTrapRoot() {
   if (!settingsModal.hidden) return settingsModal.querySelector("[role='dialog']") ?? settingsModal;
   if (!assetPreviewModal.hidden) return assetPreviewModal.querySelector("[role='dialog']") ?? assetPreviewModal;
@@ -923,7 +928,18 @@ function trapFocusEvent(event, root) {
 
 function activateButtonOnKeyboard(button) {
   button?.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
+    const keyCode = event.keyCode || event.which;
+    const isEnter = event.key === "Enter"
+      || event.key === "Return"
+      || event.code === "Enter"
+      || event.code === "NumpadEnter"
+      || keyCode === 13;
+    const isSpace = event.key === " "
+      || event.key === "Space"
+      || event.key === "Spacebar"
+      || event.code === "Space"
+      || keyCode === 32;
+    if (!isEnter && !isSpace) return;
     event.preventDefault();
     button.click();
   });
@@ -943,7 +959,7 @@ function setActiveSidePanel(nextPanel, options = {}) {
   if (activeSidePanel === "logs") renderLogsPanel();
   if (activeSidePanel) {
     const panel = activeSidePanel === "info" ? infoPanel : logsPanel;
-    window.requestAnimationFrame(() => focusFirstWithin(panel));
+    window.requestAnimationFrame(() => focusPanelRoot(panel));
   } else if (options.restoreFocus !== false) {
     sidePanelReturnFocus?.focus?.({ preventScroll: true });
     sidePanelReturnFocus = null;
@@ -1008,7 +1024,7 @@ function openInfoPanel(tabName = "overview", trigger = infoPanelButton) {
     renderInfoPanel();
     updateButtons();
     window.requestAnimationFrame(() => {
-      focusFirstWithin(infoPanel);
+      focusPanelRoot(infoPanel);
       refreshLayout();
     });
   }
@@ -4670,6 +4686,8 @@ function collectRenderedStateProof(state) {
   const diagnosticsText = compactText(document.querySelector("#tab-diagnostics"));
   const diagnosticFirstIssue = document.querySelector("#tab-diagnostics .diagnosticIssueItem, #tab-diagnostics .diagnosticIssueList.isEmpty, #tab-diagnostics .diagnosticIssueList.isPending, #tab-diagnostics .diagnosticIssueList.isError");
   const diagnosticFirstIssueVisible = elementHasVisibleHitPoint(diagnosticFirstIssue);
+  const inspectorActionVisible = elementHasVisibleHitPoint(document.querySelector("#tab-diagnostics .inspectorActionItem"));
+  const diagnosticDetailsSummaryVisible = elementHasVisibleHitPoint(document.querySelector("#tab-diagnostics .diagnosticDetails summary"));
   const infoPanelGridRows = infoPanel ? getComputedStyle(infoPanel).gridTemplateRows.split(/\s+/).filter(Boolean) : [];
   const sequenceProofStates = [...document.querySelectorAll("[data-sequence-proof-state]")]
     .filter((node) => isElementVisible(node))
@@ -4802,7 +4820,7 @@ function collectRenderedStateProof(state) {
   if (normalizedState === "info-overview-open") {
     if (!infoPanelVisible) failures.push("info panel is not visible");
     if (!diagnosticsPanelVisible) failures.push("inspector diagnostics/actions panel is not visible");
-    if (!/诊断|检查报告|检查结果|当前可用动作/.test(diagnosticsText)) failures.push("inspector diagnostics/actions content is not reachable");
+    if (!/操作|诊断|检查报告|检查结果/.test(diagnosticsText)) failures.push("inspector diagnostics/actions content is not reachable");
     if (!overviewPanelVisible && !reportOverviewVisible) failures.push("file overview or report overview is not reachable");
   }
   if (normalizedState === "info-assets-open") {
@@ -4822,8 +4840,9 @@ function collectRenderedStateProof(state) {
   if (normalizedState === "info-diagnostics-open") {
     if (!infoPanelVisible) failures.push("info panel is not visible");
     if (!diagnosticsPanelVisible) failures.push("diagnostics tab is not visible");
-    if (!/诊断|检查报告|检查结果/.test(diagnosticsText)) failures.push("diagnostics content is not reachable");
-    if (!diagnosticFirstIssueVisible) failures.push("diagnostic issue list first item is not visible");
+    if (!/操作|诊断|检查报告|检查结果/.test(diagnosticsText)) failures.push("diagnostics content is not reachable");
+    if (!inspectorActionVisible) failures.push("inspector actions are not visible");
+    if (!diagnosticDetailsSummaryVisible && !diagnosticFirstIssueVisible) failures.push("diagnostic details are not reachable");
     if (infoPanelGridRows.length > 2 && !infoPanel?.querySelector(".tabs")) failures.push("info panel reserves a missing tab row");
   }
   if (normalizedState === "logs-open") {
@@ -5410,8 +5429,12 @@ async function ownerEnterOpensPanel(selector, expectedRoot, waitForOpen) {
   await delay(120);
   await performP6SmokeInput({ kind: "keyboard", selector, key: "Enter" });
   await waitForOpen();
-  await delay(120);
-  return expectedRoot.contains(document.activeElement);
+  try {
+    await waitFor(() => expectedRoot.contains(document.activeElement), 1600);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function runOwnerUsabilitySmoke(bytes) {
@@ -6321,7 +6344,7 @@ function renderDiagnostics(metrics, slot) {
     return `
       <div class="diagnosticsContent inspectorSection">
         ${renderBilingualEmpty("暂无诊断信息。加载 SVGA 后会显示检查结果。", "")}
-        ${renderInspectorActionPlaceholders()}
+        ${renderInspectorActions(undefined, slot)}
       </div>
     `;
   }
@@ -6332,6 +6355,7 @@ function renderDiagnostics(metrics, slot) {
   ];
   return `
     <div class="diagnosticsContent inspectorSection">
+      ${renderInspectorActions(metrics, slot)}
       <section class="diagnosticSummary">
         <header>
           <span>诊断摘要</span>
@@ -6345,30 +6369,105 @@ function renderDiagnostics(metrics, slot) {
             </div>
           `).join("")}
         </dl>
-        ${renderDiagnosticsIssueList(slot.inspectionReport, slot.inspectionStatus)}
       </section>
-      <details class="diagnosticDetails" open>
+      <details class="diagnosticDetails">
         <summary>检查报告</summary>
+        ${renderDiagnosticsIssueList(slot.inspectionReport, slot.inspectionStatus)}
         ${renderAvatarFrameInspectionReport(slot.inspectionReport, slot.inspectionStatus)}
       </details>
-      ${renderInspectorActionPlaceholders()}
     </div>
   `;
 }
 
-function renderInspectorActionPlaceholders() {
+function renderInspectorActions(metrics, slot) {
+  const intelligence = slot?.inspectionReport?.assetIntelligence;
+  const assets = metrics ? buildAssetEntries(metrics, intelligence, slot?.replacementReadiness) : [];
+  const replaceableResourceCount = assets.filter((asset) => asset.kind === "image" && asset.replaceable === true).length;
+  const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
+  const safeCandidateCount = metrics ? safeOptimizationCandidateCount() : 0;
+  const findingCount = Number(intelligence?.summary?.findingCount ?? 0);
+  const safeSavings = intelligence?.summary?.estimatedSafeFileSizeSavingsBytes;
+  const optimizationDisabledReason = !metrics
+    ? "加载文件后可用"
+    : safeCandidateCount <= 0
+      ? "当前没有可自动优化的图片"
+      : !electronBridge?.saveOptimizedSvga
+        ? "当前版本暂不支持另存"
+        : !players.a.sourceIdentity?.sourceId
+          ? "请先通过选择文件打开源 SVGA"
+          : primaryOptimizationState.status === "saving"
+            ? "正在生成副本"
+            : "";
+  const optimizationState = primaryOptimizationState.message
+    ?? (safeCandidateCount > 0
+      ? `${safeCandidateCount} 项可优化${Number.isFinite(Number(safeSavings)) ? ` · 预计 ${formatBytes(safeSavings)}` : ""}`
+      : findingCount > 0 ? "检查完成，暂无可自动优化项" : "加载文件后可用");
+  const replacementCount = primaryReplacementEdit ? replacementRecordsForEdit(primaryReplacementEdit).length : 0;
+  const replacementState = slot?.replacementReadinessStatus === "loading"
+    ? "正在识别可替换图片"
+    : primaryReplacementEdit
+      ? `${replacementCount || 1} 项替换预览已应用`
+      : replaceableResourceCount > 0
+        ? `${replaceableResourceCount} 张图片可替换`
+        : metrics ? "暂无可替换图片" : "加载文件后可用";
+  const sequenceRepairReason = metrics ? sequenceRepairDisabledReason(sequenceGroupCount) : "加载文件后可用";
+  const sequenceState = primarySequenceRepairState.message
+    ?? (sequenceGroupCount > 0 ? `${sequenceGroupCount} 组序列可检查` : metrics ? "未发现序列帧组" : "加载文件后可用");
+  const sequencePlan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
+  const sequenceSimulation = createSequenceNoWriteSimulation(sequencePlan);
+  const sequencePrototype = createBoundedSequenceRepairPrototype(sequencePlan, sequenceSimulation);
+  const replacementHistoryVisible = primaryReplacementEdit || canUndoReplacementPreview() || canRedoReplacementPreview();
   return `
-    <section class="inspectorActionCard">
+    <section class="inspectorActionCard inspectorActions" aria-label="当前文件操作">
       <header>
-        <span>当前可用动作</span>
-        <strong>只读检查</strong>
+        <span>操作</span>
+        <strong>${metrics ? "当前文件" : "未选择文件"}</strong>
       </header>
-      <div class="inspectorActionRows">
-        <button class="inspectorActionRow" type="button" disabled>诊断结果已展开</button>
-        <button class="inspectorActionRow" type="button" disabled>资源页提供 Phase 操作</button>
+      <div class="inspectorActionList">
+        <article class="inspectorActionItem">
+          <div class="inspectorActionText">
+            <strong>优化副本</strong>
+            <span>${escapeHtml(optimizationState)}</span>
+          </div>
+          <button class="inspectorActionButton" type="button" data-save-optimized-svga ${canSaveOptimizedPrimarySvga() ? "" : "disabled"} title="${escapeHtml(optimizationDisabledReason || "生成优化副本")}">生成</button>
+        </article>
+        <article class="inspectorActionItem">
+          <div class="inspectorActionText">
+            <strong>替换图片</strong>
+            <span>${escapeHtml(replacementState)}</span>
+          </div>
+          <button class="inspectorActionButton" type="button" data-show-replaceable-resources ${replaceableResourceCount > 0 ? "" : "disabled"} title="查看可替换图片">查看</button>
+        </article>
+        <article class="inspectorActionItem ${primarySequenceRepairState.status === "error" ? "hasError" : ""}">
+          <div class="inspectorActionText">
+            <strong>修复闪帧</strong>
+            <span>${escapeHtml(sequenceState)}</span>
+          </div>
+          <button class="inspectorActionButton" type="button" data-save-sequence-repair-svga ${canSaveSequenceRepairPrimarySvga(sequenceGroupCount) ? "" : "disabled"} title="${escapeHtml(sequenceRepairReason || "修复后另存副本")}">另存</button>
+          ${renderSequenceSafetyEvidence(sequenceGroupCount, sequencePlan, sequenceSimulation, sequencePrototype)}
+        </article>
       </div>
-      <p>Phase 2 优化、Phase 3 替换、Phase 4 序列修复位于左侧“资源”页顶部；另存类操作需要通过桌面文件选择打开源 SVGA。</p>
+      ${replacementHistoryVisible ? `
+        <div class="inspectorEditControls" aria-label="替换预览操作">
+          <button class="inspectorActionButton" type="button" data-undo-replacement-preview ${canUndoReplacementPreview() ? "" : "disabled"}>撤销</button>
+          <button class="inspectorActionButton" type="button" data-redo-replacement-preview ${canRedoReplacementPreview() ? "" : "disabled"}>重做</button>
+          ${primaryReplacementEdit ? `<button class="inspectorActionButton" type="button" data-save-replacement-preview ${canSaveReplacementPreview() ? "" : "disabled"}>另存</button>` : ""}
+          ${primaryReplacementEdit ? `<button class="inspectorActionButton" type="button" data-reset-replacement-preview>还原</button>` : ""}
+        </div>
+      ` : ""}
     </section>
+  `;
+}
+
+function renderSequenceSafetyEvidence(sequenceGroupCount, plan, simulation, prototype) {
+  if (sequenceGroupCount <= 0) return "";
+  return `
+    <div class="sequenceSafetyStrip" aria-label="闪帧修复状态">
+      <span data-sequence-review-summary data-sequence-proof-state="readonly">只检查</span>
+      ${plan && plan.sequenceFindingCount > 0 ? `<span data-sequence-repair-preview-contract data-sequence-proof-state="partial">先预览</span>` : ""}
+      ${simulation ? `<span data-sequence-no-write-simulation data-sequence-proof-state="blocked">保护原文件</span>` : ""}
+      ${prototype ? `<span data-sequence-bounded-repair-prototype data-sequence-proof-state="blocked">仅另存副本</span>` : ""}
+    </div>
   `;
 }
 
@@ -6399,56 +6498,6 @@ function renderBilingualEmpty(primary, secondary) {
   `;
 }
 
-function renderWorkbenchPhaseActions({
-  intelligence,
-  safeCandidateCount,
-  optimizationDisabledReason,
-  canSaveOptimized,
-  replaceableResourceCount,
-  sequenceGroupCount,
-  canSaveSequenceRepair,
-  sequenceRepairReason
-}) {
-  const findingCount = Number(intelligence?.summary?.findingCount ?? 0);
-  const phase2State = primaryOptimizationState.message
-    ?? (safeCandidateCount > 0 ? `${safeCandidateCount} 项安全候选` : `${findingCount} 项资产发现`);
-  const phase3State = primaryReplacementEdit
-    ? replacementEditSummaryText(primaryReplacementEdit)
-    : replaceableResourceCount > 0
-      ? `${replaceableResourceCount} 项可替换资源`
-      : "未发现可替换资源";
-  const phase4State = primarySequenceRepairState.message
-    ?? (sequenceGroupCount > 0 ? `${sequenceGroupCount} 组序列帧可检测` : "未发现序列帧组");
-  return `
-    <section class="phaseWorkflowPanel" aria-label="Phase 2 到 Phase 4 工作流">
-      <header>
-        <span>可用工作流</span>
-        <strong>Phase 2 / 3 / 4</strong>
-      </header>
-      <div class="phaseActionGrid">
-        <article class="phaseActionCard phaseActionCard-p2">
-          <span class="phaseBadge">Phase 2</span>
-          <strong>资产智能与安全优化</strong>
-          <p>${escapeHtml(phase2State)}</p>
-          <button class="sequenceToggle" type="button" data-save-optimized-svga ${canSaveOptimized ? "" : "disabled"} title="${escapeHtml(optimizationDisabledReason || "生成优化副本")}">生成优化副本</button>
-        </article>
-        <article class="phaseActionCard phaseActionCard-p3">
-          <span class="phaseBadge">Phase 3</span>
-          <strong>PNG 资源替换</strong>
-          <p>${escapeHtml(phase3State)}</p>
-          <button class="sequenceToggle" type="button" data-show-replaceable-resources ${replaceableResourceCount > 0 ? "" : "disabled"} title="筛选可替换资源后，在资源行点击替换图片">显示可替换资源</button>
-        </article>
-        <article class="phaseActionCard phaseActionCard-p4 ${primarySequenceRepairState.status === "error" ? "hasError" : ""}">
-          <span class="phaseBadge">Phase 4</span>
-          <strong>序列闪帧修复</strong>
-          <p>${escapeHtml(phase4State)}</p>
-          <button class="sequenceToggle" type="button" data-save-sequence-repair-svga ${canSaveSequenceRepair ? "" : "disabled"} title="${escapeHtml(sequenceRepairReason || "修复序列闪帧并另存")}">修复闪帧并另存</button>
-        </article>
-      </div>
-    </section>
-  `;
-}
-
 function renderAssets(metrics, inspectionReport, replacementReadiness, replacementReadinessStatus = "idle") {
   if (assetFilter === "sprite") assetFilter = "all";
   const intelligence = inspectionReport?.assetIntelligence;
@@ -6476,73 +6525,20 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     return asset.kind === assetFilter;
   });
   const replaceableResourceCount = assets.filter((asset) => asset.kind === "image" && asset.replaceable === true).length;
-  const summary = [
-    `${metrics.images?.length ?? 0} 张图片`,
-    `${assets.filter((asset) => asset.kind === "sequence").length} 组序列`,
-    `${assets.filter((asset) => asset.warnings?.length).length} 项需复核`,
-    intelligence ? `${intelligence.summary.findingCount} 项资产智能发现` : "",
-    intelligence ? `${intelligence.summary.safeAutoOptimizeFindingCount} 项安全候选` : "",
-    replacementReadinessStatus === "loading"
-      ? "替换识别中"
-      : replacementReadiness ? `${replacementReadiness.replaceableResourceCount} 项可替换资源` : "",
-    primaryReplacementEdit ? "替换预览已应用" : canRedoReplacementPreview() ? "替换预览已还原" : ""
-  ].filter(Boolean).join(" · ");
   const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
-  const sequenceRepairPreviewPlan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
-  const safeSavings = intelligence?.summary.estimatedSafeFileSizeSavingsBytes;
-  const canSaveOptimized = canSaveOptimizedPrimarySvga();
-  const optimizationDisabledReason = safeOptimizationCandidateCount() <= 0
-    ? "当前没有安全候选"
-    : !electronBridge?.saveOptimizedSvga
-      ? "当前宿主不支持另存"
-      : !players.a.sourceIdentity?.sourceId
-        ? "请先通过 File > Open 打开源文件"
-        : primaryOptimizationState.status === "saving"
-          ? "正在生成优化副本"
-          : "";
-  const optimizationStateText = primaryOptimizationState.message
-    ? `<em>${escapeHtml(primaryOptimizationState.message)}</em>`
-    : Number.isFinite(Number(safeSavings)) ? `<em>预计可节省 ${escapeHtml(formatBytes(safeSavings))}</em>` : "";
-  const intelligenceSummary = intelligence ? `
-    <div class="assetIntelligenceSummary">
-      <strong>资产智能</strong>
-      <span>安全候选仅会通过另存为与重开验证执行。</span>
-      ${optimizationStateText}
-    </div>
-  ` : "";
-  const sequenceRepairReason = sequenceRepairDisabledReason(sequenceGroupCount);
-  const phaseWorkflowActions = renderWorkbenchPhaseActions({
-    intelligence,
-    safeCandidateCount: safeOptimizationCandidateCount(),
-    optimizationDisabledReason,
-    canSaveOptimized,
-    replaceableResourceCount,
-    sequenceGroupCount,
-    canSaveSequenceRepair: canSaveSequenceRepairPrimarySvga(sequenceGroupCount),
-    sequenceRepairReason
-  });
-  const replacementHistoryVisible = primaryReplacementEdit || canUndoReplacementPreview() || canRedoReplacementPreview();
-  const replacementEditSummary = replacementHistoryVisible ? `
-    <div class="assetIntelligenceSummary">
-      <strong>替换预览</strong>
-      <span>${primaryReplacementEdit
-        ? escapeHtml(replacementEditSummaryText(primaryReplacementEdit))
-        : "已回到原图，可重做最近一次替换。"
-      }</span>
-      <button class="sequenceToggle" type="button" data-undo-replacement-preview ${canUndoReplacementPreview() ? "" : "disabled"}>撤销</button>
-      <button class="sequenceToggle" type="button" data-redo-replacement-preview ${canRedoReplacementPreview() ? "" : "disabled"}>重做</button>
-      ${primaryReplacementEdit ? `<button class="sequenceToggle" type="button" data-save-replacement-preview ${canSaveReplacementPreview() ? "" : "disabled"}>另存为</button>` : ""}
-      ${primaryReplacementEdit ? `<button class="sequenceToggle" type="button" data-reset-replacement-preview>还原预览</button>` : ""}
-    </div>
-  ` : "";
+  const warningCount = assets.filter((asset) => asset.kind !== "sprite" && asset.warnings?.length).length;
+  const summary = [
+    `${filtered.length}/${assets.filter((asset) => asset.kind !== "sprite").length} 项`,
+    `${metrics.images?.length ?? 0} 张图片`,
+    `${sequenceGroupCount} 组序列`,
+    warningCount > 0 ? `${warningCount} 项需复核` : "",
+    replacementReadinessStatus === "loading"
+      ? "识别中"
+      : replaceableResourceCount > 0 ? `${replaceableResourceCount} 张可替换` : ""
+  ].filter(Boolean).join(" · ");
   return `
     ${filterBar}
     <div class="assetSummaryLine">${escapeHtml(summary)}</div>
-    ${phaseWorkflowActions}
-    ${intelligenceSummary}
-    ${renderSequenceReviewSummary(intelligence, sequenceGroupCount)}
-    ${renderSequenceRepairPreviewPlan(sequenceRepairPreviewPlan)}
-    ${replacementEditSummary}
     <div class="assetUnifiedList inspectorSection" role="list" aria-label="资源列表">
       ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
     </div>
@@ -6648,22 +6644,6 @@ function isSequenceReviewFinding(finding) {
   return typeof finding?.code === "string" && finding.code.includes("sequence");
 }
 
-function renderSequenceReviewSummary(intelligence, sequenceGroupCount) {
-  if (!intelligence || sequenceGroupCount <= 0) return "";
-  const sequenceFindings = (intelligence.findings ?? []).filter(isSequenceReviewFinding);
-  const affectedResources = new Set(sequenceFindings.flatMap((finding) => finding.affectedResourceIds ?? []));
-  const severityLabels = sequenceFindings.length
-    ? sequenceFindings.map((finding) => assetIntelligenceFindingLabel(finding.code)).slice(0, 3).join(" · ")
-    : "暂无阻塞复核项";
-  return `
-    <div class="assetIntelligenceSummary proofSummary proof-readonly" data-sequence-review-summary data-sequence-proof-state="readonly">
-      <strong>序列帧复核 <span class="proofStatePill">只读</span></strong>
-      <span>${escapeHtml(sequenceGroupCount)} 组序列 · ${escapeHtml(sequenceFindings.length)} 项发现 · ${escapeHtml(affectedResources.size)} 个资源</span>
-      <em>${escapeHtml(severityLabels)}</em>
-    </div>
-  `;
-}
-
 function createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount) {
   if (!intelligence || sequenceGroupCount <= 0) return undefined;
   const sequenceFindings = (intelligence.findings ?? []).filter(isSequenceReviewFinding);
@@ -6763,34 +6743,6 @@ function createBoundedSequenceRepairPrototype(plan, simulation) {
     productSaveAsEnabled: false,
     applyActionEnabled: false
   };
-}
-
-function renderSequenceRepairPreviewPlan(plan) {
-  if (!plan || plan.sequenceFindingCount <= 0) return "";
-  const simulation = createSequenceNoWriteSimulation(plan);
-  const prototype = createBoundedSequenceRepairPrototype(plan, simulation);
-  const labels = plan.proposedActions.map((action) => action.label).slice(0, 2).join(" · ");
-  return `
-    <div class="assetIntelligenceSummary proofSummary proof-partial" data-sequence-repair-preview-contract data-sequence-proof-state="partial">
-      <strong>修复预览 <span class="proofStatePill">局部</span></strong>
-      <span>${escapeHtml(plan.proposedActions.length)} 项候选 · ${escapeHtml(plan.affectedResourceIds.length)} 个资源 · 暂不写入</span>
-      <em>${escapeHtml(labels)}</em>
-    </div>
-    ${simulation ? `
-      <div class="assetIntelligenceSummary proofSummary proof-blocked" data-sequence-no-write-simulation data-sequence-proof-state="blocked">
-        <strong>模拟结果 <span class="proofStatePill">保护</span></strong>
-        <span>前：${escapeHtml(simulation.beforeReview.sequenceFindingCount)} 项发现 · 后：${escapeHtml(simulation.afterReview.proposedActionCount)} 项候选需走安全副本</span>
-        <em>不会直接写源文件；支持的近空白闪帧请使用上方 Phase 4 另存副本</em>
-      </div>
-    ` : ""}
-    ${prototype ? `
-      <div class="assetIntelligenceSummary proofSummary proof-blocked" data-sequence-bounded-repair-prototype data-sequence-proof-state="blocked">
-        <strong>补丁原型 <span class="proofStatePill">边界</span></strong>
-        <span>${escapeHtml(prototype.operationCount)} 项原型 · ${escapeHtml(prototype.resourceKeyCount)} / ${escapeHtml(prototype.resourceKeyLimit)} 个资源键 · 源文件写入受保护</span>
-        <em>文本、键名、URL 与时间线编辑不开放；产品路径只允许通过 Save As 写出新 SVGA</em>
-      </div>
-    ` : ""}
-  `;
 }
 
 function higherAbnormality(left = "none", right = "none") {
@@ -7631,6 +7583,60 @@ for (const button of sourceTabButtons) {
   });
 }
 
+function showReplaceableResources() {
+  assetFilter = "replaceable";
+  switchSourceTab("assets");
+  renderInfoPanel();
+  window.requestAnimationFrame(() => {
+    const list = document.querySelector("#tab-assets .assetUnifiedList");
+    list?.scrollIntoView({ block: "nearest" });
+    document.querySelector("#tab-assets")?.scrollTo?.({ top: 0, behavior: "auto" });
+  });
+}
+
+function handleWorkbenchOperationClick(event) {
+  const showReplaceableButton = event.target.closest("[data-show-replaceable-resources]");
+  if (showReplaceableButton) {
+    showReplaceableResources();
+    return true;
+  }
+  const resetReplacementButton = event.target.closest("[data-reset-replacement-preview]");
+  if (resetReplacementButton) {
+    resetReplacementPreview().catch((error) => showError(`还原失败：${error.message}`));
+    return true;
+  }
+  const undoReplacementButton = event.target.closest("[data-undo-replacement-preview]");
+  if (undoReplacementButton) {
+    undoReplacementPreview().catch((error) => showError(`撤销失败：${error.message}`));
+    return true;
+  }
+  const redoReplacementButton = event.target.closest("[data-redo-replacement-preview]");
+  if (redoReplacementButton) {
+    redoReplacementPreview().catch((error) => showError(`重做失败：${error.message}`));
+    return true;
+  }
+  const saveReplacementButton = event.target.closest("[data-save-replacement-preview]");
+  if (saveReplacementButton) {
+    saveReplacementPreview().catch((error) => showError(`另存失败：${error.message}`));
+    return true;
+  }
+  const saveOptimizedButton = event.target.closest("[data-save-optimized-svga]");
+  if (saveOptimizedButton) {
+    saveOptimizedPrimarySvga().catch((error) => showError(`优化失败：${error.message}`));
+    return true;
+  }
+  const saveSequenceRepairButton = event.target.closest("[data-save-sequence-repair-svga]");
+  if (saveSequenceRepairButton) {
+    saveSequenceRepairPrimarySvga().catch((error) => showError(`序列修复失败：${error.message}`));
+    return true;
+  }
+  return false;
+}
+
+infoPanel.addEventListener("click", (event) => {
+  handleWorkbenchOperationClick(event);
+});
+
 document.querySelector("#tab-assets").addEventListener("click", (event) => {
   const filterButton = event.target.closest("[data-asset-filter]");
   if (filterButton) {
@@ -7638,15 +7644,7 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
     renderInfoPanel();
     return;
   }
-  const showReplaceableButton = event.target.closest("[data-show-replaceable-resources]");
-  if (showReplaceableButton) {
-    assetFilter = "replaceable";
-    renderInfoPanel();
-    window.requestAnimationFrame(() => {
-      document.querySelector("#tab-assets .assetUnifiedList")?.scrollIntoView({ block: "nearest" });
-    });
-    return;
-  }
+  if (handleWorkbenchOperationClick(event)) return;
   const toggleButton = event.target.closest("[data-sequence-toggle]");
   if (toggleButton) {
     const key = toggleButton.dataset.sequenceToggle;
@@ -7656,36 +7654,6 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
       expandedSequenceGroups.add(key);
     }
     renderInfoPanel();
-    return;
-  }
-  const resetReplacementButton = event.target.closest("[data-reset-replacement-preview]");
-  if (resetReplacementButton) {
-    resetReplacementPreview().catch((error) => showError(`还原失败：${error.message}`));
-    return;
-  }
-  const undoReplacementButton = event.target.closest("[data-undo-replacement-preview]");
-  if (undoReplacementButton) {
-    undoReplacementPreview().catch((error) => showError(`撤销失败：${error.message}`));
-    return;
-  }
-  const redoReplacementButton = event.target.closest("[data-redo-replacement-preview]");
-  if (redoReplacementButton) {
-    redoReplacementPreview().catch((error) => showError(`重做失败：${error.message}`));
-    return;
-  }
-  const saveReplacementButton = event.target.closest("[data-save-replacement-preview]");
-  if (saveReplacementButton) {
-    saveReplacementPreview().catch((error) => showError(`另存失败：${error.message}`));
-    return;
-  }
-  const saveOptimizedButton = event.target.closest("[data-save-optimized-svga]");
-  if (saveOptimizedButton) {
-    saveOptimizedPrimarySvga().catch((error) => showError(`优化失败：${error.message}`));
-    return;
-  }
-  const saveSequenceRepairButton = event.target.closest("[data-save-sequence-repair-svga]");
-  if (saveSequenceRepairButton) {
-    saveSequenceRepairPrimarySvga().catch((error) => showError(`序列修复失败：${error.message}`));
     return;
   }
   const replaceButton = event.target.closest("[data-replace-resource-key]");
