@@ -24,7 +24,7 @@ test("full workbench keeps left, center, and right visible", () => {
   assert.equal(state.right.collapsed, false);
   assert.equal(state.center.collapsed, false);
   assert.equal(state.rightPresentation, "inline");
-  assert.equal(state.left.width, 288);
+  assert.equal(state.left.width, 336);
   assert.equal(state.right.width, 336);
   assert.ok(state.center.width >= 520);
 });
@@ -34,7 +34,8 @@ test("minimum supported workbench keeps inspector visible without clipping", () 
   assert.equal(state.mode, "FULL_WORKBENCH");
   assert.equal(state.left.collapsed, false);
   assert.equal(state.right.collapsed, false);
-  assert.equal(state.right.width, 312);
+  assert.equal(state.left.width, 320);
+  assert.equal(state.right.width, 280);
   assert.equal(state.rightPresentation, "inline");
   assert.ok(state.center.width >= 520);
 });
@@ -97,7 +98,8 @@ test("supported and legacy stress widths keep both sidebars visible", () => {
   );
   assert.equal(compact.left.collapsed, false);
   assert.equal(compact.right.collapsed, false);
-  assert.equal(compact.right.width, 312);
+  assert.equal(compact.left.width, 320);
+  assert.equal(compact.right.width, 280);
   assert.equal(compact.mode, "FULL_WORKBENCH");
 
   const minimal = layoutEngine.resolve(
@@ -136,7 +138,8 @@ test("preferred panel widths are clamped before they can squeeze the center", ()
   });
   assert.equal(state.left.collapsed, false);
   assert.equal(state.right.collapsed, false);
-  assert.equal(state.right.width, 304);
+  assert.equal(state.left.width, 344);
+  assert.equal(state.right.width, 280);
   assert.ok(state.center.width >= state.center.minWidth);
 });
 
