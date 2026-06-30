@@ -3273,7 +3273,19 @@ function installApplicationMenu(window) {
       console.error(`AUTO_SVGA_MENU_ACTION_ERROR ${label} ${redactLogMessage(error instanceof Error ? error.message : error)}`);
     });
   };
+  const runRendererMenuActionAsync = async (label, code) => {
+    try {
+      return await window.webContents.executeJavaScript(code);
+    } catch (error) {
+      console.error(`AUTO_SVGA_MENU_ACTION_ERROR ${label} ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+      return undefined;
+    }
+  };
   const invokeWorkbenchAction = (name, ...args) => runRendererMenuAction(
+    name,
+    `window.__autoSvgaWorkbenchActions?.[${JSON.stringify(name)}]?.(...${JSON.stringify(args)})`
+  );
+  const invokeWorkbenchActionAsync = (name, ...args) => runRendererMenuActionAsync(
     name,
     `window.__autoSvgaWorkbenchActions?.[${JSON.stringify(name)}]?.(...${JSON.stringify(args)})`
   );
@@ -3307,7 +3319,8 @@ function installApplicationMenu(window) {
         },
         {
           label: "打开对比 SVGA...",
-          click: () => {
+          click: async () => {
+            await invokeWorkbenchActionAsync("prepareSecondaryOpen");
             openSvgaFromHostMenu(window, "#secondaryFileInput").catch((error) => {
               console.error(`AUTO_SVGA_FILE_OPEN_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
             });
@@ -3315,7 +3328,8 @@ function installApplicationMenu(window) {
         },
         {
           label: "打开参考媒体...",
-          click: () => {
+          click: async () => {
+            await invokeWorkbenchActionAsync("prepareReferenceOpen");
             openReferenceFromHostMenu(window).catch((error) => {
               console.error(`AUTO_SVGA_REFERENCE_OPEN_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
             });

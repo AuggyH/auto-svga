@@ -3,6 +3,34 @@
 Use this file only for verified, reusable observations from the autonomous run.
 Do not copy raw chat history or unverified guesses here.
 
+## Review packages are checkpoints, not progress meters
+
+- Context: a complete review directory can be mechanically valid while Product
+  Owner feedback still identifies missing real-asset coverage, weak product
+  walkthroughs, or unfinished workflow behavior.
+- Problem: regenerating a package after every small fix creates noise and can
+  make ordinary progress look like a completion claim.
+- Rule: only create the next complete review/upload package after a meaningful
+  product checkpoint. Between packages, keep run status, blockers, and redacted
+  validation artifacts current.
+- Validation: `docs/autonomous/AUTONOMOUS_EXECUTION_RULES.md` now records this
+  cadence and the post-`cdb101e` package is explicitly marked as a progress
+  checkpoint only.
+
+## Real assets should turn parser errors into product constraints
+
+- Context: the first real-asset sequence repair matrix found many failures as
+  `Unsupported PNG color type: 3`.
+- Problem: treating that as a terminal Phase 4 limitation hid the next product
+  problem behind a decoder gap.
+- Rule: fix deterministic parser support first when the format is common and
+  local, then rerun the same real-asset matrix to expose the true workflow
+  boundary.
+- Validation: indexed/palette PNG decoding now supports 1/2/4/8-bit
+  non-interlaced PLTE/tRNS images; the matrix advanced from color-type failures
+  to explicit sequence repair policy outcomes: no group, non-unique candidate,
+  or boundary-frame candidate.
+
 ## Host source identity must survive renderer file loading
 
 - Context: desktop Save As flows for edited or optimized SVGA bytes need a

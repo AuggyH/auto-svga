@@ -13,6 +13,8 @@ export function decodeRgbaPng(buffer: Buffer): RgbaImage {
   let height = 0;
   let bitDepth = 0;
   let colorType = 0;
+  const palette: Array<[number, number, number]> = [];
+  let indexedAlpha: number[] = [];
   const idatChunks: Buffer[] = [];
 
   while (offset < buffer.length) {
@@ -27,19 +29,29 @@ export function decodeRgbaPng(buffer: Buffer): RgbaImage {
       bitDepth = data.readUInt8(8);
       colorType = data.readUInt8(9);
       const interlace = data.readUInt8(12);
-      if (bitDepth !== 8 || interlace !== 0) {
-        throw new Error("Only 8-bit non-interlaced PNG files are supported.");
+      if (interlace !== 0 || !isSupportedBitDepth(colorType, bitDepth)) {
+        throw new Error("Only supported non-interlaced PNG files can be decoded.");
       }
     } else if (type === "IDAT") {
       idatChunks.push(data);
+    } else if (type === "PLTE") {
+      for (let index = 0; index + 2 < data.length; index += 3) {
+        palette.push([data[index], data[index + 1], data[index + 2]]);
+      }
+    } else if (type === "tRNS" && colorType === 3) {
+      indexedAlpha = [...data];
     } else if (type === "IEND") {
       break;
     }
   }
 
   const channels = channelsFor(colorType);
+  if (colorType === 3 && palette.length === 0) {
+    throw new Error("Indexed PNG is missing PLTE palette.");
+  }
   const inflated = inflateSync(Buffer.concat(idatChunks));
-  const stride = width * channels;
+  const stride = rowStride(width, colorType, bitDepth, channels);
+  const filterBytesPerPixel = filterByteWidth(colorType, bitDepth, channels);
   const rgba = new Uint8Array(width * height * 4);
   let readOffset = 0;
   let previous = Buffer.alloc(stride);
@@ -49,8 +61,8 @@ export function decodeRgbaPng(buffer: Buffer): RgbaImage {
     readOffset += 1;
     const scanline = Buffer.from(inflated.subarray(readOffset, readOffset + stride));
     readOffset += stride;
-    unfilter(scanline, previous, filter, channels);
-    writeRgbaRow(rgba, scanline, y, width, colorType, channels);
+    unfilter(scanline, previous, filter, filterBytesPerPixel);
+    writeRgbaRow(rgba, scanline, y, width, colorType, bitDepth, channels, palette, indexedAlpha);
     previous = scanline;
   }
 
@@ -70,7 +82,28 @@ function channelsFor(colorType: number): number {
   if (colorType === 0) {
     return 1;
   }
+  if (colorType === 3) {
+    return 1;
+  }
   throw new Error(`Unsupported PNG color type: ${colorType}`);
+}
+
+function isSupportedBitDepth(colorType: number, bitDepth: number): boolean {
+  if (colorType === 3) {
+    return bitDepth === 1 || bitDepth === 2 || bitDepth === 4 || bitDepth === 8;
+  }
+  return bitDepth === 8;
+}
+
+function rowStride(width: number, colorType: number, bitDepth: number, channels: number): number {
+  if (colorType === 3) {
+    return Math.ceil(width * bitDepth / 8);
+  }
+  return width * channels;
+}
+
+function filterByteWidth(colorType: number, bitDepth: number, channels: number): number {
+  return colorType === 3 && bitDepth < 8 ? 1 : channels;
 }
 
 function unfilter(scanline: Buffer, previous: Buffer, filter: number, bytesPerPixel: number): void {
@@ -99,7 +132,10 @@ function writeRgbaRow(
   y: number,
   width: number,
   colorType: number,
-  channels: number
+  bitDepth: number,
+  channels: number,
+  palette: ReadonlyArray<readonly [number, number, number]>,
+  indexedAlpha: readonly number[]
 ): void {
   for (let x = 0; x < width; x += 1) {
     const source = x * channels;
@@ -119,6 +155,16 @@ function writeRgbaRow(
       rgba[target + 1] = scanline[source + 1];
       rgba[target + 2] = scanline[source + 2];
       rgba[target + 3] = 255;
+    } else if (colorType === 3) {
+      const paletteIndex = readIndexedPaletteValue(scanline, x, bitDepth);
+      const entry = palette[paletteIndex];
+      if (!entry) {
+        throw new Error(`Indexed PNG palette entry missing: ${paletteIndex}`);
+      }
+      rgba[target] = entry[0];
+      rgba[target + 1] = entry[1];
+      rgba[target + 2] = entry[2];
+      rgba[target + 3] = indexedAlpha[paletteIndex] ?? 255;
     } else {
       rgba[target] = scanline[source];
       rgba[target + 1] = scanline[source];
@@ -126,6 +172,17 @@ function writeRgbaRow(
       rgba[target + 3] = 255;
     }
   }
+}
+
+function readIndexedPaletteValue(scanline: Buffer, x: number, bitDepth: number): number {
+  if (bitDepth === 8) {
+    return scanline[x];
+  }
+  const bitOffset = x * bitDepth;
+  const byte = scanline[Math.floor(bitOffset / 8)];
+  const shift = 8 - bitDepth - (bitOffset % 8);
+  const mask = (1 << bitDepth) - 1;
+  return (byte >> shift) & mask;
 }
 
 function paeth(left: number, up: number, upLeft: number): number {

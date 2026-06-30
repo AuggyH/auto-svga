@@ -7634,6 +7634,7 @@ for (const select of [fitModeA, fitModeB, fitModeReference]) {
 
 window.addEventListener("resize", () => {
   closeFitMenus();
+  closeResourceContextMenu();
   window.requestAnimationFrame(refreshLayout);
 });
 
@@ -7771,6 +7772,17 @@ function setCompareFromMenu() {
   return { enabled: compareToggle.checked };
 }
 
+function prepareSecondaryOpenFromMenu() {
+  compareToggle.checked = true;
+  compareToggle.dispatchEvent(new Event("change", { bubbles: true }));
+  return { mode: "localPreview", compareEnabled };
+}
+
+function prepareReferenceOpenFromMenu() {
+  setAppMode("exportReview");
+  return { mode: "exportReview" };
+}
+
 function setGlobalLoopFromMenu() {
   globalLoopToggle.checked = !globalLoopToggle.checked;
   globalLoopToggle.dispatchEvent(new Event("change", { bubbles: true }));
@@ -7803,6 +7815,8 @@ window.__autoSvgaWorkbenchActions = {
   },
   openDiagnostics: () => openInfoPanel("diagnostics"),
   openSettings: () => openSettings(),
+  prepareReferenceOpen: prepareReferenceOpenFromMenu,
+  prepareSecondaryOpen: prepareSecondaryOpenFromMenu,
   replayPrimary: () => replaySlot(players.a),
   replaceSelectedResource: replaceSelectedResourceFromMenu,
   undoReplacement: () => runReplacementCommand("undo"),
@@ -7835,6 +7849,14 @@ resourceContextMenu.addEventListener("click", (event) => {
   if (event.target.closest("[data-context-replace-resource]")) {
     replaceResourceFromContextMenu();
   }
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (resourceContextMenu.hidden) return;
+  const eventPath = event.composedPath();
+  if (eventPath.includes(resourceContextMenu)) return;
+  if (event.target.closest("#tab-assets [data-asset-row-select]")) return;
+  closeResourceContextMenu();
 });
 
 document.querySelector("#tab-assets").addEventListener("click", (event) => {

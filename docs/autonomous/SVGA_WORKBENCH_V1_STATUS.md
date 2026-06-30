@@ -3,7 +3,7 @@
 Date: 2026-06-30
 Branch: `agent/codex/svga-workbench-v1-autonomous`
 Baseline commit: `545252838311233cc03ce2e5f917e53d43207589`
-Current repair state: `PHASE4_SEQUENCE_REPAIR_PRODUCT_SAVE_AS_VALIDATED_PENDING_FINAL_PACKAGE_REGEN`
+Current repair state: `AUTONOMOUS_RUN_REOPENED_FOR_REAL_ASSET_FUNCTIONAL_COMPLETION`
 
 ## Authorization
 
@@ -11,6 +11,13 @@ Product Owner authorized autonomous SVGA Workbench v1 execution beyond the prior
 P6-R1 human-gate/UI-polish loop. The old P6-R1 loop state remains archived as a
 terminal human-gate record; it is not used as a blocker for Phase 2-4 product
 work in this dedicated autonomous branch.
+
+The post-`cdb101e` Product Owner correction supersedes any local wording that
+treated the latest complete review directory as basically complete. That
+package remains useful as an autonomous progress checkpoint only. The active run
+continues with product function validation, real-asset coverage, and targeted
+implementation repairs. The project-specific execution rules are recorded in
+`docs/autonomous/AUTONOMOUS_EXECUTION_RULES.md`.
 
 ## Phase Matrix
 
@@ -37,6 +44,10 @@ work in this dedicated autonomous branch.
   is generated after the final tracked commit and is not committed to git.
 
 ## Current Repair State
+
+The current run is not in Product Owner review and is not review-ready. Do not
+generate a new complete review/upload package until a meaningful product
+checkpoint is reached.
 
 The previous `21849d1` review upload was not accepted as a complete Workbench v1
 handoff. The `60bda97` package is treated as a mechanically valid package
@@ -80,6 +91,22 @@ states at the current head; narrow double-preview cards stack vertically to keep
 status chips readable; and the top-level state proof fails if any recorded state
 fails. Historical Phase 2 artifact index and Phase 4 prototype/byte-candidate
 files are labelled as lineage/prototype history rather than current authority.
+
+The post-`cdb101e` continuation adds the missing autonomous execution rules and
+starts a redacted `REAL_ASSET_VALIDATION_MATRIX` using the local production-like
+test material under Downloads. Raw assets stay external and are not committed or
+packaged; only relative paths, hashes, file sizes, parse results, resource
+counts, and capability classifications may enter evidence.
+
+Current real-asset matrix status: 53/53 local SVGA samples parse, 22 samples
+have safe optimization candidates, and 53 samples expose supported PNG
+replacement candidates. Indexed/palette PNG decoding for embedded resources is
+now supported in the shared PNG reader, removing the earlier
+`Unsupported PNG color type: 3` Phase 4 parser stop. Phase 4 still fails closed
+on all 53 real assets because the current algorithm is intentionally narrow:
+31 assets have no continuous numeric visible sequence group, 19 have non-unique
+near-empty candidates, and 3 place the near-empty candidate on a boundary frame.
+This is active product work, not an external blocker and not a completion claim.
 
 Keep text editing, key rename, URL import, and structural/timeline edits
 unsupported until they have separate mechanical round-trip proof and

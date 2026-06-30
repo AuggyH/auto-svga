@@ -6415,6 +6415,8 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 
 .assetUnifiedRow {
   min-height: 62px;
+  height: auto;
+  max-height: none;
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 8px;
   padding: 7px 8px;
@@ -6423,6 +6425,8 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 
 .sequenceChildren .assetUnifiedRow {
   min-height: 58px;
+  height: auto;
+  max-height: none;
 }
 
 .assetUnifiedThumb,

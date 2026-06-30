@@ -217,6 +217,11 @@ Create a frozen milestone contract before implementation, execute
 Implement -> Validate -> Review -> Repair, and do not push, merge, release, or
 deploy automatically.
 
+For the active SVGA Workbench v1 autonomous branch, also follow
+`docs/autonomous/AUTONOMOUS_EXECUTION_RULES.md`. In particular, do not convert
+small fixes into new review packages, do not stop for ordinary implementation
+gaps, and keep real-asset validation redacted.
+
 Before returning `PASS` or `HUMAN_REQUIRED`, run the repository handoff command
 successfully and return the generated `FINAL_RESPONSE.txt` verbatim. Never
 substitute a chat summary for the review packet.

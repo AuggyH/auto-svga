@@ -2,6 +2,49 @@
 
 ## 2026-06-30
 
+### Product Owner Correction After `cdb101e`
+
+- Input: Product Owner correction attached in the Codex thread.
+- Result: `SVGA-Workbench-v1-cdb101e-complete-review-directory.zip` is treated
+  as an autonomous progress checkpoint only, not a basically-complete handoff.
+- Action: added `docs/autonomous/AUTONOMOUS_EXECUTION_RULES.md` and linked it
+  from `AGENTS.md`.
+- Active direction: continue product function execution, real-asset validation,
+  targeted implementation repairs, and packaged-App walkthrough proof before
+  the next meaningful complete review package.
+- Package cadence: no new review/upload package is generated for this small
+  correction slice.
+
+### Targeted UI/UX Repair Intake After `cdb101e`
+
+- Finding: macOS menu entries for comparison and reference media could inject
+  files into hidden panels without first switching the product view.
+- Finding: the final resource-row style layer could still leave rich resource
+  rows constrained by older compact heights.
+- Finding: the resource context menu lacked a global outside-click close path.
+- Action: repair these as product interaction issues, then validate with
+  syntax/source guards and desktop smoke before any future package checkpoint.
+
+### Real Asset Matrix And PNG Decode Repair
+
+- Input: local production-like samples under Downloads, using the existing
+  Workbench test sample index.
+- Raw asset policy: no raw SVGA/PNG bytes committed or packaged; matrix stores
+  relative paths, sizes, SHA-256, counts, categories, and capability status.
+- Added: `tools/svga-workbench/real-asset-validation-matrix.mjs` and
+  `npm run svga-workbench:real-assets`.
+- Added: `decodeRgbaPng` support for indexed/palette PNG resources with
+  1/2/4/8-bit non-interlaced samples through PLTE/tRNS.
+- Command: `npm run svga-workbench:real-assets`
+- Result: pass. 53/53 SVGA samples parsed; 22 samples expose safe optimization
+  candidates; 53 samples expose supported PNG replacement candidates; synthetic
+  corrupt SVGA is rejected.
+- Phase 4 real-asset result: 0 repaired candidates and 53 fail-closed outcomes
+  after the palette decode fix. Remaining reasons: 31 no continuous numeric
+  visible sequence group, 19 non-unique near-empty candidates, 3 boundary-frame
+  candidates. This records a stronger product limitation and keeps the run
+  active.
+
 ### Run Start
 
 - Branch: `agent/codex/svga-workbench-v1-autonomous`

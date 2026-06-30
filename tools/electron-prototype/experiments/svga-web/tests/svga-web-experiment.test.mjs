@@ -666,6 +666,8 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /invokeWorkbenchAction\("saveOptimizedCopy"\)/);
   assert.match(main, /invokeWorkbenchAction\("saveSequenceRepairCopy"\)/);
   assert.match(main, /invokeWorkbenchAction\("toggleLogs"\)/);
+  assert.match(main, /invokeWorkbenchActionAsync\("prepareSecondaryOpen"\)/);
+  assert.match(main, /invokeWorkbenchActionAsync\("prepareReferenceOpen"\)/);
   assert.match(main, /openSvgaFromHostMenu/);
   assert.match(main, /openReferenceMediaFileBytes/);
   assert.match(main, /referenceMediaTypes/);

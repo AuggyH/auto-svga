@@ -116,6 +116,9 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /data-context-replaceable-resource-key/);
   assert.match(productApp, /__autoSvgaWorkbenchActions/);
   assert.match(productApp, /replaceSelectedResource/);
+  assert.match(productApp, /prepareSecondaryOpen/);
+  assert.match(productApp, /prepareReferenceOpen/);
+  assert.match(productApp, /document\.addEventListener\("pointerdown", \(event\) => \{/);
   assert.match(productApp, /saveOptimizedCopy/);
   assert.match(productApp, /saveSequenceRepairCopy/);
   assert.match(productApp, /copyCurrentResourceKey/);
