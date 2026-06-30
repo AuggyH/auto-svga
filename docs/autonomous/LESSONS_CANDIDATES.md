@@ -44,7 +44,9 @@ Do not copy raw chat history or unverified guesses here.
   prove visible tail continuity.
 - Validation: the real-asset matrix now repairs 3 duplicate rows through
   `terminal_tail_near_empty_speck`; 50 remaining rows fail closed under
-  documented group, visible-frame-overlap, or no-candidate limits.
+  documented group, visible-frame-overlap, or no-candidate limits. The same
+  matrix should include enough redacted diagnostics to explain each fail-closed
+  family without requiring raw assets in the review package.
 
 ## Host source identity must survive renderer file loading
 

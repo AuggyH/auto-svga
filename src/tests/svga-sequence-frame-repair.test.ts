@@ -56,6 +56,9 @@ test("sequence repair fails closed when no near-empty speck frame exists", async
     repairSvgaSequenceFrameFlicker(sourceBytes, { sourceName: "no-speck.svga" }),
     (error) => error instanceof SvgaSequenceFrameRepairError
       && error.code === "sequence_near_empty_candidate_not_found"
+      && error.details.resourceKeyCount === 12
+      && Number(error.details.smallestNonTransparentPixelCount) > 16
+      && Array.isArray(error.details.resourcePixelSamples)
   );
 });
 

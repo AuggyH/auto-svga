@@ -109,8 +109,11 @@ timeline frame, the leading boundary remains rejected, and two predecessor
 frames must prove visible tail continuity. The remaining 50 rows fail closed:
 31 have no continuous numeric visible sequence group, 11 have no near-empty
 speck candidate, and 8 have multi-resource visible-frame overlap with redacted
-frame/resource samples in the matrix. This is active product work, not an
-external blocker and not a completion claim.
+frame/resource samples in the matrix. The matrix now also records fail-closed
+diagnostics for no-group and no-candidate rows, including numeric resource
+counts, reference-mismatch counts, longest continuous segment length,
+near-empty thresholds, and smallest non-transparent pixel samples. This is
+active product work, not an external blocker and not a completion claim.
 
 Keep text editing, key rename, URL import, and structural/timeline edits
 unsupported until they have separate mechanical round-trip proof and

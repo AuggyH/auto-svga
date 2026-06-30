@@ -222,6 +222,10 @@ async function attemptSequenceRepair(modules, bytes, name) {
       repairedResourceKey: result.report.sequenceGroup.repairedResourceKey,
       selectionRule: result.report.selectedRepair.selectionRule ?? "unspecified",
       resourceKeyCount: result.report.sequenceGroup.resourceKeyCount,
+      targetVisibleFrames: result.report.sequenceGroup.targetVisibleFrames,
+      selectedBeforeNonTransparentPixelCount: result.report.selectedRepair.beforeNonTransparentPixelCount,
+      selectedAfterNonTransparentPixelCount: result.report.selectedRepair.afterNonTransparentPixelCount,
+      invariantSummary: result.report.invariantSummary,
       editedSha256: result.report.editedSha256,
       failureClosed: result.report.failureClosed,
       passed: result.report.passed
@@ -494,6 +498,7 @@ function renderMarkdown(report) {
     row.sequenceRepair.status,
     row.capabilityClasses.join(", ")
   ]);
+  const diagnosticRows = sequenceRepairDiagnosticRows(report);
   return `# Real Asset Validation Matrix
 
 - Report: ${report.reportId}
@@ -520,12 +525,66 @@ ${report.requiredCoverage.map((item) => `| ${escapeMarkdown(item.id)} | ${item.p
 | --- | ---: | --- |
 ${report.sequenceRepairErrorSummary.map((item) => `| ${escapeMarkdown(item.errorCode)} | ${item.count} | ${escapeMarkdown(item.message)} |`).join("\n")}
 
+## Sequence Repair Diagnostic Samples
+
+| outcome | sample | diagnostic |
+| --- | --- | --- |
+${diagnosticRows.map((row) => `| ${row.map(escapeMarkdown).join(" | ")} |`).join("\n")}
+
 ## SVGA Rows
 
 | sample | category | bytes | parsed | resources | optimize | replace | sequence | classes |
 | --- | --- | ---: | --- | ---: | ---: | ---: | --- | --- |
 ${rows.map((row) => `| ${row.map(escapeMarkdown).join(" | ")} |`).join("\n")}
 `;
+}
+
+function sequenceRepairDiagnosticRows(report) {
+  const rows = [];
+  for (const outcome of report.sequenceRepairErrorSummary) {
+    for (const row of report.rows.filter((item) => item.sequenceRepair.errorCode === outcome.errorCode).slice(0, 3)) {
+      rows.push([
+        outcome.errorCode,
+        row.sampleName,
+        summarizeSequenceRepairDetails(row.sequenceRepair.details)
+      ]);
+    }
+  }
+  for (const row of report.rows.filter((item) => item.sequenceRepair.status === "repaired_candidate").slice(0, 3)) {
+    rows.push([
+      "repaired_candidate",
+      row.sampleName,
+      `resource ${row.sequenceRepair.repairedResourceKey}; rule ${row.sequenceRepair.selectionRule}; frames ${(row.sequenceRepair.targetVisibleFrames ?? []).join(",")}; pixels ${row.sequenceRepair.selectedBeforeNonTransparentPixelCount}->${row.sequenceRepair.selectedAfterNonTransparentPixelCount}`
+    ]);
+  }
+  return rows;
+}
+
+function summarizeSequenceRepairDetails(details) {
+  if (!details) return "No additional details recorded.";
+  if (typeof details.longestContinuousSegmentLength === "number") {
+    return [
+      `numeric ${details.numericImageResourceCount ?? "unknown"}/${details.imageResourceCount ?? "unknown"}`,
+      `reference mismatches ${details.skippedReferenceMismatchCount ?? "unknown"}`,
+      `longest segment ${details.longestContinuousSegmentLength}/${details.minimumSequenceGroupSize ?? "unknown"}`,
+      `groups ${details.groupCandidateCount ?? "unknown"}`
+    ].join("; ");
+  }
+  if (typeof details.smallestNonTransparentPixelCount === "number") {
+    return [
+      `group ${details.groupId ?? "unknown"}`,
+      `resources ${details.resourceKeyCount ?? "unknown"}`,
+      `threshold <=${details.maxPixels ?? "unknown"} px / <=${details.maxRatio ?? "unknown"}`,
+      `smallest ${details.smallestNonTransparentPixelCount} px`
+    ].join("; ");
+  }
+  if (typeof details.overlapFrameCount === "number") {
+    const sample = Array.isArray(details.overlapFrameSamples) && details.overlapFrameSamples[0]
+      ? `first frame ${details.overlapFrameSamples[0].frameIndex}`
+      : "no sample";
+    return `group ${details.groupId ?? "unknown"}; overlap frames ${details.overlapFrameCount}; ${sample}`;
+  }
+  return "Details recorded in JSON report.";
 }
 
 function parseArgs(argv) {

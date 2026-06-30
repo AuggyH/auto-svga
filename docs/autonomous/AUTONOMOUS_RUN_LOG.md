@@ -74,6 +74,10 @@
   cycles is allowed when no two resources share the same visible frame. The real
   asset matrix now records redacted overlap-frame/resource samples for true
   multi-resource overlap failures.
+- Action: added fail-closed diagnostic details for no-group and no-candidate
+  sequence repair outcomes. The redacted matrix records why a group was not
+  accepted, including reference mismatches, longest continuous segment length,
+  near-empty thresholds, and smallest non-transparent pixel samples.
 - Action: split Phase 4 desktop smoke onto a dedicated
   `sequence-repair-smoke.svga` fixture with ordered non-overlapping sequence
   windows and a persistent background layer. The regular avatar-frame preview

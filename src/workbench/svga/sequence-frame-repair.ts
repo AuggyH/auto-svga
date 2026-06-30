@@ -152,6 +152,24 @@ interface SequenceVisibilityOverlapSummary {
   overlappingResourceKeys: string[];
 }
 
+interface SequenceGroupDetectionDetails extends Record<string, unknown> {
+  imageResourceCount: number;
+  numericImageResourceCount: number;
+  skippedNonNumericResourceCount: number;
+  skippedReferenceMismatchCount: number;
+  skippedMatteReferenceCount: number;
+  skippedNoVisibleFramesCount: number;
+  groupCandidateCount: number;
+  longestContinuousSegmentLength: number;
+  minimumSequenceGroupSize: number;
+  groupCandidateSamples: Array<{
+    groupId: string;
+    resourceKeyCount: number;
+    longestContinuousSegmentLength: number;
+    resourceKeySamples: string[];
+  }>;
+}
+
 type RepairSelectionRule = "interior_near_empty_speck" | "terminal_tail_near_empty_speck";
 
 interface RepairTarget extends ResourceProofInput {
@@ -292,14 +310,41 @@ function selectSequenceGroup(
 ) {
   const spriteRefs = spriteReferences(sprites);
   const groups = new Map<string, ResourceProofInput[]>();
+  const detectionDetails: SequenceGroupDetectionDetails = {
+    imageResourceCount: Object.keys(images).length,
+    numericImageResourceCount: 0,
+    skippedNonNumericResourceCount: 0,
+    skippedReferenceMismatchCount: 0,
+    skippedMatteReferenceCount: 0,
+    skippedNoVisibleFramesCount: 0,
+    groupCandidateCount: 0,
+    longestContinuousSegmentLength: 0,
+    minimumSequenceGroupSize,
+    groupCandidateSamples: []
+  };
   for (const [resourceKey, bytes] of Object.entries(images)) {
     const match = /^(.*?)(\d+)$/.exec(resourceKey);
     const refs = spriteRefs.get(resourceKey) ?? [];
-    if (!match || refs.length !== 1 || refs[0].imageKey !== resourceKey || refs[0].matteKey) continue;
+    if (!match) {
+      detectionDetails.skippedNonNumericResourceCount += 1;
+      continue;
+    }
+    detectionDetails.numericImageResourceCount += 1;
+    if (refs.length !== 1 || refs[0].imageKey !== resourceKey) {
+      detectionDetails.skippedReferenceMismatchCount += 1;
+      continue;
+    }
+    if (refs[0].matteKey) {
+      detectionDetails.skippedMatteReferenceCount += 1;
+      continue;
+    }
     const facts = imageFacts(bytes);
     const sprite = sprites[refs[0].spriteIndex];
     const visibleFrameIndices = visibleFrames(sprite?.frames ?? []);
-    if (visibleFrameIndices.length === 0) continue;
+    if (visibleFrameIndices.length === 0) {
+      detectionDetails.skippedNoVisibleFramesCount += 1;
+      continue;
+    }
     const groupId = `${match[1]}:${facts.width}x${facts.height}`;
     const group = groups.get(groupId) ?? [];
     group.push({
@@ -318,17 +363,40 @@ function selectSequenceGroup(
     });
     groups.set(groupId, group);
   }
-  const candidates = [...groups.entries()]
-    .map(([groupId, items]) => ({
+  const groupCandidates = [...groups.entries()]
+    .map(([groupId, items]) => {
+      const sortedItems = [...items].sort((left, right) => left.numericIndex - right.numericIndex);
+      return {
+        groupId,
+        sourceItems: sortedItems,
+        items: continuousSegment(sortedItems)
+      };
+    });
+  detectionDetails.groupCandidateCount = groupCandidates.length;
+  detectionDetails.longestContinuousSegmentLength = groupCandidates.reduce(
+    (longest, { items }) => Math.max(longest, items.length),
+    0
+  );
+  detectionDetails.groupCandidateSamples = groupCandidates
+    .map(({ groupId, sourceItems, items }) => ({
       groupId,
-      items: continuousSegment([...items].sort((left, right) => left.numericIndex - right.numericIndex))
+      resourceKeyCount: sourceItems.length,
+      longestContinuousSegmentLength: items.length,
+      resourceKeySamples: items.map(({ resourceKey }) => resourceKey).slice(0, 12)
     }))
+    .sort((left, right) => (
+      right.longestContinuousSegmentLength - left.longestContinuousSegmentLength
+      || right.resourceKeyCount - left.resourceKeyCount
+    ))
+    .slice(0, 8);
+  const candidates = groupCandidates
     .filter(({ items }) => items.length >= minimumSequenceGroupSize)
     .sort((left, right) => right.items.length - left.items.length);
   if (candidates.length === 0) {
     throw new SvgaSequenceFrameRepairError(
       "sequence_group_not_detected",
-      "No continuous numeric PNG sequence group with visible timeline frames was detected."
+      "No continuous numeric PNG sequence group with visible timeline frames was detected.",
+      detectionDetails
     );
   }
   return candidates[0];
@@ -350,11 +418,12 @@ function selectRepairTarget(
       { groupId: group.groupId, ...overlapSummary }
     );
   }
-  const candidates = group.items.map((item, index) => ({
+  const itemsWithFacts = group.items.map((item, index) => ({
     ...item,
     index,
     facts: imageFacts(item.beforeBytes)
-  })).filter(({ facts }) => (
+  }));
+  const candidates = itemsWithFacts.filter(({ facts }) => (
     facts.nonTransparentPixelCount > 0
     && facts.nonTransparentPixelCount <= maxPixels
     && facts.nonTransparentRatio <= maxRatio
@@ -363,7 +432,27 @@ function selectRepairTarget(
     throw new SvgaSequenceFrameRepairError(
       "sequence_near_empty_candidate_not_found",
       "No near-empty visible speck frame was detected in the sequence group.",
-      { maxPixels, maxRatio }
+      {
+        groupId: group.groupId,
+        resourceKeyCount: group.items.length,
+        maxPixels,
+        maxRatio,
+        smallestNonTransparentPixelCount: itemsWithFacts.reduce(
+          (smallest, { facts }) => Math.min(smallest, facts.nonTransparentPixelCount),
+          Number.POSITIVE_INFINITY
+        ),
+        resourcePixelSamples: itemsWithFacts
+          .map(({ resourceKey, facts }) => ({
+            resourceKey,
+            nonTransparentPixelCount: facts.nonTransparentPixelCount,
+            nonTransparentRatio: facts.nonTransparentRatio
+          }))
+          .sort((left, right) => (
+            left.nonTransparentPixelCount - right.nonTransparentPixelCount
+            || left.resourceKey.localeCompare(right.resourceKey)
+          ))
+          .slice(0, 12)
+      }
     );
   }
   if (candidates.length > 1) {
