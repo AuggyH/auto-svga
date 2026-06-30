@@ -802,6 +802,10 @@ async function copyPhaseEvidence(root, { headCommit, headTree }) {
 }
 
 function phaseEvidenceSummary({ assetIntelligenceReport, optimizationReport, replacementEditingReport, sequenceRepairStatusReport, realAssetMatrix }) {
+  const realAssetFailClosedCount = realAssetMatrix.summary.sequenceFailClosedOrUnsupportedCount;
+  const phase4Status = sequenceRepairStatusReport.status === "product_complete_final_head_validated" && realAssetFailClosedCount > 0
+    ? "supported_subset_final_head_validated_with_real_asset_fail_closed_limits"
+    : sequenceRepairStatusReport.status;
   return {
     schemaVersion: 1,
     milestoneId,
@@ -825,7 +829,8 @@ function phaseEvidenceSummary({ assetIntelligenceReport, optimizationReport, rep
       historicalIncubationEvidenceCopiedAsCurrent: false
     },
     phase4SequenceFrameRepair: {
-      status: sequenceRepairStatusReport.status,
+      status: phase4Status,
+      productProofStatus: sequenceRepairStatusReport.status,
       report: "evidence/phase4/sequence-repair-status-report.json",
       implemented: Object.entries(sequenceRepairStatusReport.implemented)
         .filter(([, value]) => value === true)
