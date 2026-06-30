@@ -5,8 +5,8 @@ Branch: `agent/codex/svga-workbench-v1-autonomous`
 
 ## Summary
 
-Continued the Workbench v1 autonomous run after the mechanically valid
-`60bda97` package. This slice repairs current-head evidence binding and package
+Continued the Workbench v1 autonomous run after the previous mechanically valid
+package baseline. This slice repairs current-head evidence binding and package
 status consistency without returning to broad UI polish or claiming Product
 Owner acceptance.
 
