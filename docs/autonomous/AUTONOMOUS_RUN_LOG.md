@@ -1008,15 +1008,45 @@
 - Current fixture result: repaired `img_14`; target frames `[23, 24]`; the
   selected image changed from 4 non-transparent pixels to 0; all other sequence
   resources stayed hash-stable; source SHA-256 stayed unchanged.
-- Honest evidence note: svga-web canvas hashes for frames 23 and 24 remained
-  unchanged before/after, so `playbackDeltaObserved=false` is recorded. The
-  product proof still passes because the repair is alpha-proven, saved to a new
-  file, reopened, rendered nonblank, and no manual visual confirmation is
-  required for this narrow supported case.
+- Honest evidence note: svga-web product proof records
+  `playbackDeltaObserved=true`: frame 23 changed at canvas level and frame 24
+  remained stable. The product proof passes because the repair is alpha-proven,
+  saved to a new file, reopened, rendered nonblank, and no manual visual
+  confirmation is required for this narrow supported case.
 - Validation:
   `npm run build`;
   `node --test dist/tests/svga-sequence-frame-repair.test.js`;
   `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`;
   `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
   `npm run desktop:smoke`.
+  Result: pass.
+
+### Review Package Proof Integrity Repair
+
+- Trigger: the `6720d3a` complete review directory was mechanically valid but
+  still had review-readiness problems: compare-mode state proof contained
+  failed recorded states under top-level PASS, Phase 4 wording overstated canvas
+  hash stability, and historical Phase 2/4 evidence was not clearly separated.
+- Implementation added: local compare smoke now reloads SVGA B and captures
+  normal, 900x720, and minimum-size compare states; `desktop-state-render-proof`
+  now requires those states and fails closed if any recorded state fails; narrow
+  compare/export double previews stack vertically so status chips and actions
+  stay readable; sequence playback proof samples frame midpoints and records
+  `samplePercent`.
+- Evidence policy: Phase 2 `artifact-index.json` is moved to
+  `evidence/lineage/phase2/`; Phase 4 preview/no-write/prototype/byte-candidate
+  files are moved under `evidence/phase4/prototype-history/` with
+  `evidenceRole=prototype_history`; current Phase 4 authority remains
+  `sequence-repair-status-report.json` plus
+  `sequence-product-repair-save-as-proof.json`.
+- Current verification: `desktop-state-render-proof.json` is bound to
+  `6720d3a`, top-level PASS, `failedStateIds=[]`, and the three compare states
+  pass. Phase 4 product proof records `playbackDeltaObserved=true`; frame 23
+  changed at canvas level and frame 24 stayed stable; alpha proof remains the
+  exact repair authority.
+- Validation:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `node --check tools/svga-workbench/complete-review-package.mjs`;
+  targeted Node tests; `npm run desktop:smoke`.
   Result: pass.

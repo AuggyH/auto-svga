@@ -1148,6 +1148,25 @@ test("P2 parity report generator is deterministic and not unconditional pass", a
   assert.doesNotMatch(source, /unresolvedDifferences:\s*\[\]/);
 });
 
+test("desktop state render proof aggregates every recorded failed state", async () => {
+  const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  assert.match(source, /proof\.failedStateIds = Object\.entries\(proof\.states \?\? \{\}\)/);
+  assert.match(source, /value\?\.passed === false/);
+  assert.match(source, /proof\.passed = proof\.requiredStateIds\.every/);
+  assert.match(source, /&& proof\.failedStateIds\.length === 0/);
+});
+
+test("desktop smoke captures local compare states as required proof", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const productApp = await readFile(path.join(repoRoot, "tools/shared/product-frontend/product-app.mjs"), "utf8");
+  assert.match(main, /"local-compare-loaded"/);
+  assert.match(main, /"responsive-local-compare-at-900-x-720"/);
+  assert.match(main, /"responsive-local-compare-at-minimum-size"/);
+  assert.match(productApp, /captureArtifact\("desktop-local-compare-loaded"\)/);
+  assert.match(productApp, /captureArtifact\("desktop-responsive-local-compare-at-900-x-720"\)/);
+  assert.match(productApp, /captureArtifact\("desktop-responsive-local-compare-at-minimum-size"\)/);
+});
+
 test("P2 web reference capture isolates valid and invalid SVGA phases", async () => {
   const source = await readFile(path.join(experimentRoot, "scripts/web-reference-capture.cjs"), "utf8");
   assert.match(source, /setPhase\("valid-load"\)/);

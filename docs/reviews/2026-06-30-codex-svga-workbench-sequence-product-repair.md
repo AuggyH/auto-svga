@@ -43,10 +43,11 @@ All listed checks passed during the Phase 4 completion slice.
 - Changed resource count: 1
 - Product proof flags: `productSaveAsEnabled=true`,
   `repairSuccessClaimed=true`, `manualVisualConfirmationRequired=false`
-- Known risk: svga-web canvas hashes stayed stable for target frames, so
-  `playbackDeltaObserved=false` is recorded. The review packet should treat
-  full alpha proof as the exact mechanical evidence and the canvas delta as a
-  nonblocking risk note for Product Owner review.
+- Known risk: svga-web canvas delta is partial for this tiny target:
+  `playbackDeltaObserved=true`, frame 23 changed, and frame 24 stayed stable.
+  The review packet should treat full alpha proof as the exact mechanical
+  evidence and the frame-level canvas delta as a nonblocking risk note for
+  Product Owner review.
 
 ## Next Review Focus
 

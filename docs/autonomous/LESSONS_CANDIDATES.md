@@ -119,20 +119,35 @@ Do not copy raw chat history or unverified guesses here.
   is not bound to the final head, or when packaged normal runtime proof is not
   bound to the final head.
 
+## Recorded UI state failures must fail the aggregate proof
+
+- Context: a complete review directory can contain secondary-workflow UI states
+  such as local compare normal/narrow/minimum screenshots.
+- Problem: if those states fail layout proof while the aggregate proof still
+  reports PASS, reviewers cannot tell whether the package is clean or carrying
+  deferred UI debt.
+- Rule: aggregate rendered-state proof must include every recorded failed state,
+  and secondary failures must either be fixed or explicitly downgraded in the
+  feature matrix before packaging.
+- Validation: local compare smoke now captures the three compare states as
+  required proof; narrow compare cards stack to keep `播放中` status chips
+  readable; `failedStateIds=[]` is required before complete review packaging.
+
 ## Sequence anti-flicker proof should separate alpha evidence from canvas delta
 
 - Context: the current supported sequence repair removes a four-pixel
   near-empty speck resource from a 26-resource numeric sequence group.
-- Problem: a true byte/alpha repair can be too small or occluded for svga-web
-  canvas hashes to differ at the target frames, so a hard canvas-delta gate can
-  reject a mechanically safe repair.
+- Problem: a true byte/alpha repair can be too small or occluded for every
+  target frame to show a svga-web canvas hash delta, so a hard all-frames
+  canvas-delta gate can reject a mechanically safe repair.
 - Rule: product sequence repair proof should require full affected-resource
   alpha proof, source immutability, Save As hash binding, reopen playback, and
-  fail-closed unsafe cases. Canvas before/after hashes should still be recorded,
-  but `playbackDeltaObserved=false` must be treated as a known evidence note
-  unless the product requirement explicitly demands a visible pixel-delta
-  threshold.
+  fail-closed unsafe cases. Canvas before/after hashes should still be recorded
+  frame by frame; partial canvas-delta observability should remain a known
+  evidence note unless the product requirement explicitly demands a visible
+  pixel-delta threshold on every target frame.
 - Validation: desktop smoke accepted `sequenceProductRepairProof` with
   `productSaveAsEnabled=true`, `repairSuccessClaimed=true`,
   `manualVisualConfirmationRequired=false`, `repairedResourceKey=img_14`,
-  `changedResourceCount=1`, and `playbackDeltaObserved=false`.
+  `changedResourceCount=1`, and `playbackDeltaObserved=true` with frame 23
+  changed and frame 24 stable.

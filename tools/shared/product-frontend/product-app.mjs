@@ -3050,13 +3050,14 @@ async function runSequenceByteRepairCandidateProof(sourceBytes, fileName) {
 
 async function collectSequencePlaybackFrame(slot, frameIndex) {
   const frameCount = Math.max(Number(slot.metrics?.frameCount ?? 1), frameIndex + 1, 1);
-  const percent = frameCount > 1 ? (frameIndex / (frameCount - 1)) * 100 : 0;
+  const percent = frameCount > 1 ? ((frameIndex + 0.5) / frameCount) * 100 : 0;
   pauseSlot(slot);
   seekSlot(slot, percent, false);
   await delay(180);
   const digest = await collectCanvasRenderDigest(slot);
   return {
     frameIndex,
+    samplePercent: Number(percent.toFixed(4)),
     canvasSha256: digest.sha256,
     canvasWidth: digest.width,
     canvasHeight: digest.height,
@@ -3123,6 +3124,7 @@ async function runSequenceProductRepairSaveAsProof(sourceBytes, fileName) {
         const afterFrame = afterFrames[index];
         return {
           frameIndex: beforeFrame.frameIndex,
+          samplePercent: beforeFrame.samplePercent,
           beforeCanvasSha256: beforeFrame.canvasSha256,
           afterCanvasSha256: afterFrame?.canvasSha256 ?? "",
           canvasWidth: beforeFrame.canvasWidth,
@@ -5911,6 +5913,18 @@ async function runProductSmoke() {
     await waitFor(() => canvasIsNonBlank(players.a));
     await delay(140);
     await captureArtifact("desktop-responsive-local-preview-at-900-x-720");
+    if (!compareToggle.checked) compareToggle.click();
+    await waitFor(() => isCompareActive());
+    handleDroppedFile(new File([bytes.slice(0)], "synthetic-avatar-frame-b.svga", { type: "application/octet-stream" }), "svga", "b");
+    await waitFor(() => Boolean(players.b.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.b));
+    await delay(180);
+    await captureArtifact("desktop-local-compare-loaded");
+    await captureArtifact("desktop-responsive-local-compare-at-900-x-720");
+    await captureArtifact("desktop-responsive-local-compare-at-minimum-size");
+    if (compareToggle.checked) compareToggle.click();
+    await waitFor(() => !isCompareActive());
+    await delay(120);
     openInfoPanel("overview");
     await delay(160);
     await captureArtifact("desktop-local-info-overview-open");

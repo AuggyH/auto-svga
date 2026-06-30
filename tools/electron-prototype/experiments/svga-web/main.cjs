@@ -2919,12 +2919,15 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     passed: failures.length === 0,
     failures
   };
-  proof.passed = [
+  proof.requiredStateIds = [
     "empty",
     "loading",
     "loaded",
     "playing",
     "paused",
+    "local-compare-loaded",
+    "responsive-local-compare-at-900-x-720",
+    "responsive-local-compare-at-minimum-size",
     "latest-artifact-loaded",
     "reference-media-loaded",
     "invalid",
@@ -2940,7 +2943,13 @@ async function maybeRecordRenderedStateProof(window, scenario, image, screenshot
     "synchronized-playback-toggled-by-space",
     "local-minimum-size",
     "asset-preview-modal-open"
-  ].every((key) => proof.states[key]?.passed === true);
+  ];
+  proof.failedStateIds = Object.entries(proof.states ?? {})
+    .filter(([, value]) => value?.passed === false)
+    .map(([key]) => key)
+    .sort();
+  proof.passed = proof.requiredStateIds.every((key) => proof.states[key]?.passed === true)
+    && proof.failedStateIds.length === 0;
   proof.generatedAt = new Date().toISOString();
   writeFileSync(proofPath, `${JSON.stringify(proof, null, 2)}\n`);
 }

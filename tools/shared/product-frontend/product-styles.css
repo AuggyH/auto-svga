@@ -6139,6 +6139,55 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   flex: 0 0 auto;
 }
 
+.workspace.mode-localPreview.withCompare .previewCardHeader {
+  display: grid;
+  min-height: 82px;
+  grid-template-rows: auto auto;
+  align-content: center;
+  align-items: center;
+  row-gap: 6px;
+}
+
+.workspace.mode-localPreview.withCompare .previewCardHeader .cardTitleGroup,
+.workspace.mode-localPreview.withCompare .previewCardHeader .cardActions {
+  width: 100%;
+  min-width: 0;
+}
+
+.workspace.mode-localPreview.withCompare .previewCardHeader .cardTitleGroup {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.workspace.mode-localPreview.withCompare .previewCardHeader .cardActions {
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.workspace.mode-localPreview.withCompare .previewCardHeader .statusPill {
+  min-width: 58px;
+}
+
+.workspace.mode-localPreview.withCompare .previewCardHeader .cardFileButton,
+.workspace.mode-localPreview.withCompare .previewCardHeader .cardUtilityButton {
+  width: 32px;
+  min-width: 32px;
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.workspace.mode-localPreview.withCompare .previewCardHeader .responsiveButtonLabel {
+  display: none;
+}
+
+@media (max-width: 1320px) {
+  .workspace.mode-localPreview.withCompare .previewDeck,
+  .workspace.mode-exportReview .previewDeck {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .settingsBody {
   scroll-padding-top: 14px;
 }
