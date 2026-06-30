@@ -1071,6 +1071,16 @@ async function writeUploadIndex(root, { headCommit, headTree, completeZipName, a
       identityRecordedAfterZip: true
     },
     macosAppZip: appZipName,
+    coverageBoundary: {
+      exhaustiveHashAuthority: "MANIFEST.json",
+      scope: "upload-facing core payload index; final integrity companions that are generated after this index are covered by MANIFEST.json and hashes/sha256sums.txt",
+      lateIntegrityCompanionsCoveredByManifest: [
+        "UPLOAD_INDEX.json",
+        "bundle-privacy-audit.json",
+        "hashes/sha256sums.txt",
+        "manifest-verification.json"
+      ]
+    },
     files: records
   };
   await writeJson(path.join(root, "UPLOAD_INDEX.json"), uploadIndex);
@@ -1180,8 +1190,8 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "## Self-Contained Evidence",
     "",
     "- `UPLOAD_CHANGELOG_SINCE_A4681D7.md`: commit-range and temporary Product Owner addition summary since the referenced baseline package.",
-    "- `UPLOAD_INDEX.json`: every required payload with role, size, SHA-256, head, and tree.",
-    "- `MANIFEST.json`: every payload except `MANIFEST.json` itself, with role, size, MIME, and SHA-256.",
+    "- `UPLOAD_INDEX.json`: upload-facing core payload index with role, size, SHA-256, head, tree, and an explicit coverage boundary for late integrity companions.",
+    "- `MANIFEST.json`: exhaustive payload hash authority; every payload except `MANIFEST.json` itself, with role, size, MIME, and SHA-256.",
     "- `manifest-verification.json`: hash verification result for the staged review directory.",
     "- `bundle-privacy-audit.json`: outward-facing payload and App ZIP privacy scan.",
     "- `package-hygiene-proof.json`: App ZIP entry hygiene proof.",
