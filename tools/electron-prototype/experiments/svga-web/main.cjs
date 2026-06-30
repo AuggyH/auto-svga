@@ -66,7 +66,6 @@ const p6AllowedSmokeInputSelectors = new Set([
   "body",
   "#modeDropdownTrigger",
   "[data-value='exportReview']",
-  "#infoPanelButton",
   ".tabButton[data-tab='assets']",
   "#logsButton",
   "#settingsButton",
@@ -754,7 +753,7 @@ function validateReplacementResetProof(value) {
   if (value.editedSha256 === value.sourceSha256 || value.editedSha256 === value.replacementSha256) return undefined;
   if (!isBoundedString(value.resourceKey, 120)) return undefined;
   if (
-    value.resetActionVisibleBeforeReset !== true
+    value.resetCommandAvailableBeforeReset !== true
     || value.resetRestoredOriginal !== true
     || value.editClearedAfterReset !== true
     || value.undoAvailableAfterReset !== true
@@ -776,7 +775,7 @@ function validateReplacementResetProof(value) {
     resourceKey: value.resourceKey,
     replacementSha256: value.replacementSha256,
     editedSha256: value.editedSha256,
-    resetActionVisibleBeforeReset: true,
+    resetCommandAvailableBeforeReset: true,
     resetRestoredOriginal: true,
     editClearedAfterReset: true,
     undoAvailableAfterReset: true,
@@ -1148,7 +1147,7 @@ function validateOwnerUsabilityResult(value) {
     "svgaAInvalidLocalFeedback",
     "svgaARecoveryClearsError",
     "clearCurrentFileAction",
-    "enterOpensInfoAndFocusesPanel",
+    "enterActivatesResourceTab",
     "enterOpensLogsAndFocusesPanel",
     "enterOpensSettingsAndFocusesDialog",
     "tabStaysInsideSettings",
@@ -1295,26 +1294,22 @@ function validatePreviewCardZoneSnapshot(value, expectedSlot, { requireMetadata 
     "titleVisible",
     "fileNameInTitle",
     "duplicateFilePillHidden",
-    "statusVisible",
     "replaceActionVisible",
     "playbackControlsVisible"
   ];
   if (requireMetadata) requiredBooleans.push("metadataVisible");
   if (!requiredBooleans.every((key) => value[key] === true)) return undefined;
   if (!isBoundedString(value.fileName, 180) || !value.fileName.endsWith(".svga")) return undefined;
-  if (!isBoundedString(value.statusText, 80)) return undefined;
   return {
     slot: expectedSlot,
     loaded: true,
     titleVisible: true,
     fileNameInTitle: true,
     duplicateFilePillHidden: true,
-    statusVisible: true,
     replaceActionVisible: true,
     metadataVisible: value.metadataVisible === true,
     playbackControlsVisible: true,
-    fileName: value.fileName,
-    statusText: value.statusText
+    fileName: value.fileName
   };
 }
 
@@ -1346,7 +1341,6 @@ function describePreviewCardZoneSnapshotFailure(value, expectedSlot, { requireMe
     "titleVisible",
     "fileNameInTitle",
     "duplicateFilePillHidden",
-    "statusVisible",
     "replaceActionVisible",
     "playbackControlsVisible"
   ];
@@ -1355,7 +1349,6 @@ function describePreviewCardZoneSnapshotFailure(value, expectedSlot, { requireMe
   if (failedBoolean) return failedBoolean;
   if (!isBoundedString(value.fileName, 180)) return "fileName";
   if (!value.fileName.endsWith(".svga")) return "fileNameExtension";
-  if (!isBoundedString(value.statusText, 80)) return "statusText";
   return "unknown";
 }
 
@@ -1368,7 +1361,7 @@ function describeOwnerUsabilityValidationFailure(value) {
     "svgaAInvalidLocalFeedback",
     "svgaARecoveryClearsError",
     "clearCurrentFileAction",
-    "enterOpensInfoAndFocusesPanel",
+    "enterActivatesResourceTab",
     "enterOpensLogsAndFocusesPanel",
     "enterOpensSettingsAndFocusesDialog",
     "tabStaysInsideSettings",
@@ -3262,6 +3255,15 @@ function installApplicationMenu(window) {
         },
         { type: "separator" },
         {
+          label: "Save Replacement As...",
+          accelerator: "CommandOrControl+Shift+S",
+          click: () => runRendererMenuAction(
+            "save-replacement",
+            `window.__autoSvgaWorkbenchActions?.saveReplacement?.()`
+          )
+        },
+        { type: "separator" },
+        {
           label: "Load Latest Export Artifact",
           click: () => runRendererMenuAction("latest-artifact", `
             (() => {
@@ -3279,6 +3281,34 @@ function installApplicationMenu(window) {
           label: "Quit Auto SVGA",
           accelerator: "CommandOrControl+Q",
           click: () => app.quit()
+        }
+      ]
+    },
+    {
+      label: "Edit",
+      submenu: [
+        {
+          label: "Undo Replacement Preview",
+          accelerator: "CommandOrControl+Z",
+          click: () => runRendererMenuAction(
+            "undo-replacement",
+            `window.__autoSvgaWorkbenchActions?.undoReplacement?.()`
+          )
+        },
+        {
+          label: "Redo Replacement Preview",
+          accelerator: "CommandOrControl+Shift+Z",
+          click: () => runRendererMenuAction(
+            "redo-replacement",
+            `window.__autoSvgaWorkbenchActions?.redoReplacement?.()`
+          )
+        },
+        {
+          label: "Reset Replacement Preview",
+          click: () => runRendererMenuAction(
+            "reset-replacement",
+            `window.__autoSvgaWorkbenchActions?.resetReplacement?.()`
+          )
         }
       ]
     },

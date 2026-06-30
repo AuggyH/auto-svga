@@ -178,6 +178,15 @@ const reduceBlurToggle = document.querySelector("#reduceBlurToggle");
 const statusAnnouncer = document.querySelector("#statusAnnouncer");
 const floatingRoot = document.querySelector("#floatingRoot");
 const dropdownBindings = new Map();
+const resourceContextMenu = document.createElement("div");
+resourceContextMenu.className = "resourceContextMenu dropdownMenu";
+resourceContextMenu.hidden = true;
+resourceContextMenu.innerHTML = `
+  <button class="dropdownMenuItem" type="button" data-context-replace-resource>
+    <span class="dropdownMenuItemText"><strong>替换图片</strong><small>选择 PNG 并预览替换</small></span>
+  </button>
+`;
+floatingRoot?.append(resourceContextMenu);
 const replacementPngInput = document.createElement("input");
 replacementPngInput.type = "file";
 replacementPngInput.accept = "image/png,.png";
@@ -221,6 +230,7 @@ let modalReturnFocus = null;
 let toastTimer;
 let p6PrimaryRecoveredFromInvalid = false;
 let pendingReplacementResourceKey;
+let contextReplacementResourceKey;
 let primaryReplacementEdit;
 let primaryOptimizationState = { status: "idle" };
 let primarySequenceRepairState = { status: "idle" };
@@ -806,15 +816,15 @@ function updateButtons() {
   localReplayButton.disabled = !hasA;
   clearCurrentFileButton.disabled = !hasCurrentPrimaryFileState();
   compareToggleWrap.hidden = mode !== "localPreview";
-  infoPanelButton.hidden = false;
+  if (infoPanelButton) infoPanelButton.hidden = false;
   logsButton.hidden = false;
   settingsButton.hidden = false;
   const syncDisabled = isCompareActive() ? (!hasA && !hasB) : (!hasA && !hasReference);
   syncPlayControl.disabled = syncDisabled;
   syncReplayControl.disabled = syncDisabled;
-  infoPanelButton.classList.toggle("isActive", activeSidePanel === "info");
+  infoPanelButton?.classList.toggle("isActive", activeSidePanel === "info");
   logsButton.classList.toggle("isActive", activeSidePanel === "logs");
-  infoPanelButton.setAttribute("aria-pressed", String(activeSidePanel === "info"));
+  infoPanelButton?.setAttribute("aria-pressed", String(activeSidePanel === "info"));
   logsButton.setAttribute("aria-pressed", String(activeSidePanel === "logs"));
   updatePlaybackButtons();
   updateSyncPlaybackButton();
@@ -3528,7 +3538,7 @@ async function runReplacementResetProof(sourceBytes, resourceKey, fileName) {
     const edit = await replacePrimaryResource(resourceKey, replacementFile);
     if (!edit?.passed) throw new Error("Replacement edit did not pass before reset proof.");
     const editedSha256 = edit.editedSha256;
-    const resetActionVisibleBeforeReset = Boolean(document.querySelector("[data-reset-replacement-preview]"));
+    const resetCommandAvailableBeforeReset = typeof window.__autoSvgaWorkbenchActions?.resetReplacement === "function";
     await resetReplacementPreview();
     await waitFor(() => Boolean(players.a.videoItem));
     await waitFor(() => canvasIsNonBlank(players.a));
@@ -3543,7 +3553,7 @@ async function runReplacementResetProof(sourceBytes, resourceKey, fileName) {
       resourceKey,
       replacementSha256,
       editedSha256,
-      resetActionVisibleBeforeReset,
+      resetCommandAvailableBeforeReset,
       resetRestoredOriginal: resetSha256 === sourceSha256,
       editClearedAfterReset: primaryReplacementEdit === undefined,
       undoAvailableAfterReset: canUndoReplacementPreview(),
@@ -3554,7 +3564,7 @@ async function runReplacementResetProof(sourceBytes, resourceKey, fileName) {
       resetInspectionReport,
       renderedProofPassed: renderedProof.passed === true,
       saveAsNotAttempted: true,
-      passed: resetActionVisibleBeforeReset
+      passed: resetCommandAvailableBeforeReset
         && resetSha256 === sourceSha256
         && primaryReplacementEdit === undefined
         && canUndoReplacementPreview()
@@ -5428,7 +5438,6 @@ function previewCardZoneSnapshot(slot) {
   const playerBar = slot.panel?.querySelector(".playerBar");
   const title = document.querySelector(`#svgaTitle${idSuffix}`);
   const filePill = document.querySelector(`#svgaFilePill${idSuffix}`);
-  const status = document.querySelector(`#svgaStatus${idSuffix}`);
   const syncMetadata = slot.slotName === "A" ? syncLeftInfo : syncRightInfo;
   const metadata = document.querySelector(`#svgaSizeInfo${idSuffix}`);
   const metadataVisible = (isElementVisible(metadata) && compactText(metadata).length > 0)
@@ -5439,12 +5448,10 @@ function previewCardZoneSnapshot(slot) {
     titleVisible: isElementVisible(title) && compactText(title).length > 0,
     fileNameInTitle: compactText(title).endsWith(".svga"),
     duplicateFilePillHidden: !isElementVisible(filePill),
-    statusVisible: isElementVisible(status) && compactText(status).length > 0,
     replaceActionVisible: isElementVisible(replaceButton),
     metadataVisible,
     playbackControlsVisible: isElementVisible(playerBar),
-    fileName: compactText(title),
-    statusText: compactText(status)
+    fileName: compactText(title)
   };
 }
 
@@ -5456,7 +5463,6 @@ function collectPreviewCardConsistencyProof() {
     "titleVisible",
     "fileNameInTitle",
     "duplicateFilePillHidden",
-    "statusVisible",
     "replaceActionVisible",
     "playbackControlsVisible"
   ];
@@ -5483,7 +5489,6 @@ function collectPrimaryPreviewCardConsistencyProof() {
     "titleVisible",
     "fileNameInTitle",
     "duplicateFilePillHidden",
-    "statusVisible",
     "replaceActionVisible",
     "playbackControlsVisible"
   ];
@@ -5565,16 +5570,17 @@ async function runOwnerUsabilitySmoke(bytes) {
   previewCardConsistencyProof = collectPrimaryPreviewCardConsistencyProof();
   previewCardHeaderConsistency = previewCardConsistencyProof.passed;
   checks.previewCardSingleFileConsistency = previewCardConsistencyProof.passed;
-  evidence.push("Single-file preview card carries file name, status, metadata, controls, and replacement action consistently");
+  evidence.push("Single-file preview card carries file name, metadata, and playback controls consistently without redundant status pills");
 
   p6SmokeCurrentPhase = "owner-usability-export-review";
   setAppMode("exportReview");
   await waitFor(() => Boolean(players.a.videoItem));
-  p6SmokeCurrentPhase = "owner-usability-enter-info";
-  checks.enterOpensInfoAndFocusesPanel = await ownerEnterOpensPanel("#infoPanelButton", infoPanel, async () => {
-    await waitFor(() => activeSidePanel === "info");
+  p6SmokeCurrentPhase = "owner-usability-enter-resource-tab";
+  switchSourceTab("layers");
+  checks.enterActivatesResourceTab = await ownerEnterOpensPanel(".tabButton[data-tab='assets']", sourcePanel, async () => {
+    await waitFor(() => sourcePanel.dataset.activeTab === "assets");
   });
-  evidence.push("Enter opened info panel and moved focus inside it");
+  evidence.push("Enter activates the lightweight resource tab and keeps focus inside the source panel");
 
   p6SmokeCurrentPhase = "owner-usability-enter-logs";
   checks.enterOpensLogsAndFocusesPanel = await ownerEnterOpensPanel("#logsButton", logsPanel, async () => {
@@ -5636,7 +5642,7 @@ async function runOwnerUsabilitySmoke(bytes) {
   p6SmokeCurrentPhase = "owner-usability-final-checks";
   checks.finderDocumentAssociationNotClaimed = electronBridge?.capabilities?.finderDocumentAssociation === "not-declared";
   checks.previewCardHeaderConsistency = previewCardHeaderConsistency;
-  evidence.push("Preview card headers carry file names/status consistently and Finder document association is not claimed");
+  evidence.push("Preview card headers avoid redundant playback status and Finder document association is not claimed");
 
   return {
     schemaVersion: 1,
@@ -5829,18 +5835,17 @@ async function runProductSmoke() {
     await captureArtifact("desktop-latest-artifact-loaded");
     await loadP6SmokeReferenceGif();
     await captureArtifact("desktop-reference-media-loaded");
+    switchSourceTab("layers");
     await recordP6SmokeAction({
-      id: "open-info-panel-overview-visible",
+      id: "open-resource-tab-visible",
       kind: "click",
-      selector: "#infoPanelButton",
+      selector: ".tabButton[data-tab='assets']",
       initialState: "export-review-loaded",
-      expectedState: "info-overview-open"
+      expectedState: "info-assets-open"
     }, async () => {
-      if (activeSidePanel === "info") setActiveSidePanel(null);
-      return performP6SmokeInput({ kind: "click", selector: "#infoPanelButton" });
+      return performP6SmokeInput({ kind: "click", selector: ".tabButton[data-tab='assets']" });
     }, async () => {
-      await waitFor(() => activeSidePanel === "info");
-      ensureP6SmokeInfoPanel("overview");
+      await waitFor(() => isElementVisible(document.querySelector("#tab-assets")));
       await delay(120);
     });
     const auditPanel = Boolean(document.querySelector(".auditReportSection, .specReportSection"));
@@ -6301,7 +6306,7 @@ function clearDropFeedback(element) {
 
 function renderInfoPanel() {
   const metrics = players.a.metrics;
-  setStatus(infoStatus, players.a.parseStatus === "success" ? "ready" : players.a.parseStatus === "error" ? "error" : players.a.parseStatus === "empty" ? "empty" : "loading");
+  if (infoStatus) setStatus(infoStatus, players.a.parseStatus === "success" ? "ready" : players.a.parseStatus === "error" ? "error" : players.a.parseStatus === "empty" ? "empty" : "loading");
   const overviewPanel = document.querySelector("#tab-overview");
   const assetsPanel = document.querySelector("#tab-assets");
   const layersPanel = document.querySelector("#tab-layers");
@@ -6326,29 +6331,22 @@ function renderOverview(metrics, slot) {
       </div>
     `;
   }
-  const fileName = metrics.fileName ?? "n/a";
-  const issueSummary = inspectionIssueSummary(slot.inspectionReport, slot.inspectionStatus);
-  const abnormalityCount = issueSummary.match(/\d+/)?.[0] ?? (issueSummary.includes("未发现") ? "0" : "待检查");
   const rows = [
-    { label: "状态", value: statusText[slot.renderStatus] ?? statusText[slot.parseStatus] ?? "等待" },
-    { label: "文件体积", value: formatBytes(metrics.fileSizeBytes), tone: "mono" },
-    { label: "画布尺寸", value: formatSize(metrics.sourceWidth, metrics.sourceHeight), tone: "mono" },
-    { label: "播放时长", value: formatDuration(metrics) },
-    { label: "帧率", value: metrics.fps ? `${metrics.fps} FPS` : "n/a", tone: "mono" },
-    { label: "资源数量", value: metrics.imageCount ? `${metrics.imageCount} 个` : "n/a" },
-    { label: "异常", value: `${abnormalityCount}` }
+    { label: "文件体积", value: formatBytes(metrics.fileSizeBytes), secondaryLabel: "内存占用", secondaryValue: formatBytes(metrics.memoryBytes) },
+    { label: "画布尺寸", value: formatSize(metrics.sourceWidth, metrics.sourceHeight), secondaryLabel: "帧率", secondaryValue: metrics.fps ? `${metrics.fps} FPS` : "n/a" },
+    { label: "资源数量", value: metrics.imageCount ? `${metrics.imageCount} 张图片` : "n/a" }
   ];
   return `
     <div class="overviewContent fileOverviewContent">
-      <div class="overviewFileRow">
-        <span>当前文件</span>
-        <strong class="overviewFileName" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</strong>
-      </div>
       <dl class="overviewGrid overviewMetricList compactOverviewMetrics">
-      ${rows.map(({ label, value, tone }) => `
-        <div class="overviewRow overviewMetricRow metricRow">
+      ${rows.map(({ label, value, secondaryLabel, secondaryValue }) => `
+        <div class="overviewRow overviewMetricRow metricRow ${secondaryLabel ? "" : "isSingle"}">
           <dt><span>${escapeHtml(label)}</span></dt>
-          <dd class="${tone === "mono" ? "monoValue" : ""}" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
+          <dd class="monoValue" title="${escapeHtml(value ?? "n/a")}">${escapeHtml(value ?? "n/a")}</dd>
+          ${secondaryLabel ? `
+            <dt><span>${escapeHtml(secondaryLabel)}</span></dt>
+            <dd class="monoValue" title="${escapeHtml(secondaryValue ?? "n/a")}">${escapeHtml(secondaryValue ?? "n/a")}</dd>
+          ` : ""}
         </div>
       `).join("")}
       </dl>
@@ -6395,19 +6393,52 @@ function renderDiagnosticsIssueList(report, status) {
     <ol class="diagnosticIssueList" aria-label="诊断问题列表">
       ${issues.slice(0, 6).map((issue, index) => {
         const severity = issue.severity === "error" ? "error" : issue.severity === "warning" ? "warning" : "info";
-        const code = issue.code ?? issue.ruleId ?? `issue_${index + 1}`;
-        const message = issue.message ?? issue.description ?? issue.summary ?? "需要人工复核";
+        const title = diagnosticIssueTitle(issue, index);
+        const message = diagnosticIssueMessage(issue, title);
         return `
           <li class="diagnosticIssueItem is-${escapeHtml(severity)}">
             <span>${escapeHtml(severity === "error" ? "错误" : severity === "warning" ? "提醒" : "复核")}</span>
-            <strong>${escapeHtml(code)}</strong>
-            <em>${escapeHtml(message)}</em>
+            <strong>${escapeHtml(title)}</strong>
+            ${message ? `<em>${escapeHtml(message)}</em>` : ""}
           </li>
         `;
       }).join("")}
     </ol>
-    ${issues.length > 6 ? `<p class="diagnosticIssueOverflow">另有 ${escapeHtml(issues.length - 6)} 项，请展开检查报告查看。</p>` : ""}
+    ${issues.length > 6 ? `<p class="diagnosticIssueOverflow">另有 ${escapeHtml(issues.length - 6)} 项，已收起到详细检查。</p>` : ""}
   `;
+}
+
+function diagnosticIssueTitle(issue, index) {
+  const code = issue?.code ?? issue?.ruleId ?? `issue_${index + 1}`;
+  const mapped = {
+    unsupported_motion_format: "格式暂不支持",
+    file_size_exceeds_limit: "文件体积偏大",
+    dimensions_exceed_limit: "画布尺寸偏大",
+    duration_exceeds_limit: "播放时长偏长",
+    fps_exceeds_limit: "帧率偏高",
+    resource_count_exceeds_limit: "资源数量偏多",
+    resource_dimensions_exceed_limit: "图片尺寸偏大",
+    resource_transparent_padding_exceeds_limit: "透明留白偏多",
+    resource_fully_transparent: "全透明图片",
+    resource_alpha_bounds_unavailable: "透明边界待复核",
+    unreferenced_image_resource: "未引用图片",
+    duplicate_encoded_image_resource: "重复图片",
+    fully_transparent_image_resource: "全透明图片",
+    excessive_transparent_padding: "透明留白偏多",
+    large_decoded_image_resource: "内存占用偏高",
+    sequence_frame_memory_concentration: "序列帧内存集中",
+    sequence_frame_analysis_incomplete: "序列帧证据不足"
+  }[code];
+  if (mapped) return mapped;
+  const fallback = issue?.title ?? issue?.summary ?? issue?.message ?? code;
+  return String(fallback).split(/[。.!]/)[0].slice(0, 36) || "需要复核";
+}
+
+function diagnosticIssueMessage(issue, title) {
+  const source = issue?.description ?? issue?.message ?? issue?.summary ?? "";
+  const normalized = String(source).replace(/\s+/g, " ").trim();
+  if (!normalized || normalized === title || normalized === issue?.code || normalized === issue?.ruleId) return "";
+  return normalized.length > 72 ? `${normalized.slice(0, 72)}...` : normalized;
 }
 
 function renderOverviewDiagnostics(slot) {
@@ -6437,18 +6468,13 @@ function renderDiagnostics(metrics, slot) {
     `;
   }
   const diagnostics = [
-    { label: "检查结果", value: summary },
-    { label: "资源规模", value: `${metrics.imageCount ?? 0} 张图片 · ${formatBytes(metrics.memoryBytes)}` },
-    { label: "播放参数", value: `${metrics.fps ? `${metrics.fps} FPS` : "n/a"} · ${formatDuration(metrics)}` }
+    { label: "问题", value: summary },
+    { label: "优化", value: safeOptimizationCandidateCount() > 0 ? `${safeOptimizationCandidateCount()} 项可自动处理` : "暂无自动优化项" }
   ];
   return `
     <div class="diagnosticsContent inspectorSection">
       ${renderInspectorActions(metrics, slot)}
       <section class="diagnosticSummary">
-        <header>
-          <span>诊断摘要</span>
-          <strong>${escapeHtml(summary)}</strong>
-        </header>
         <dl>
           ${diagnostics.map((item) => `
             <div class="metricRow">
@@ -6459,7 +6485,7 @@ function renderDiagnostics(metrics, slot) {
         </dl>
       </section>
       <details class="diagnosticDetails">
-        <summary>检查报告</summary>
+        <summary>详细检查</summary>
         ${renderDiagnosticsIssueList(slot.inspectionReport, slot.inspectionStatus)}
         ${renderAvatarFrameInspectionReport(slot.inspectionReport, slot.inspectionStatus)}
       </details>
@@ -6470,7 +6496,6 @@ function renderDiagnostics(metrics, slot) {
 function renderInspectorActions(metrics, slot) {
   const intelligence = slot?.inspectionReport?.assetIntelligence;
   const assets = metrics ? buildAssetEntries(metrics, intelligence, slot?.replacementReadiness) : [];
-  const replaceableResourceCount = assets.filter((asset) => asset.kind === "image" && asset.replaceable === true).length;
   const sequenceGroupCount = assets.filter((asset) => asset.kind === "sequence").length;
   const safeCandidateCount = metrics ? safeOptimizationCandidateCount() : 0;
   const findingCount = Number(intelligence?.summary?.findingCount ?? 0);
@@ -6490,27 +6515,14 @@ function renderInspectorActions(metrics, slot) {
     ?? (safeCandidateCount > 0
       ? `${safeCandidateCount} 项可优化${Number.isFinite(Number(safeSavings)) ? ` · 预计 ${formatBytes(safeSavings)}` : ""}`
       : findingCount > 0 ? "检查完成，暂无可自动优化项" : "加载文件后可用");
-  const replacementCount = primaryReplacementEdit ? replacementRecordsForEdit(primaryReplacementEdit).length : 0;
-  const replacementState = slot?.replacementReadinessStatus === "loading"
-    ? "正在识别可替换图片"
-    : primaryReplacementEdit
-      ? `${replacementCount || 1} 项替换预览已应用`
-      : replaceableResourceCount > 0
-        ? `${replaceableResourceCount} 张图片可替换`
-        : metrics ? "暂无可替换图片" : "加载文件后可用";
   const sequenceRepairReason = metrics ? sequenceRepairDisabledReason(sequenceGroupCount) : "加载文件后可用";
   const sequenceState = primarySequenceRepairState.message
     ?? (sequenceGroupCount > 0 ? `${sequenceGroupCount} 组序列可检查` : metrics ? "未发现序列帧组" : "加载文件后可用");
   const sequencePlan = createSequenceRepairPreviewPlan(intelligence, sequenceGroupCount);
   const sequenceSimulation = createSequenceNoWriteSimulation(sequencePlan);
   const sequencePrototype = createBoundedSequenceRepairPrototype(sequencePlan, sequenceSimulation);
-  const replacementHistoryVisible = primaryReplacementEdit || canUndoReplacementPreview() || canRedoReplacementPreview();
   return `
     <section class="inspectorActionCard inspectorActions" aria-label="当前文件操作">
-      <header>
-        <span>操作</span>
-        <strong>${metrics ? "当前文件" : "未选择文件"}</strong>
-      </header>
       <div class="inspectorActionList">
         <article class="inspectorActionItem">
           <div class="inspectorActionText">
@@ -6519,13 +6531,6 @@ function renderInspectorActions(metrics, slot) {
           </div>
           <button class="inspectorActionButton" type="button" data-save-optimized-svga ${canSaveOptimizedPrimarySvga() ? "" : "disabled"} title="${escapeHtml(optimizationDisabledReason || "生成优化副本")}">生成</button>
           ${renderOptimizationResultSummary(primaryOptimizationState)}
-        </article>
-        <article class="inspectorActionItem">
-          <div class="inspectorActionText">
-            <strong>替换图片</strong>
-            <span>${escapeHtml(replacementState)}</span>
-          </div>
-          <button class="inspectorActionButton" type="button" data-show-replaceable-resources ${replaceableResourceCount > 0 ? "" : "disabled"} title="查看可替换图片">查看</button>
         </article>
         <article class="inspectorActionItem ${primarySequenceRepairState.status === "error" ? "hasError" : ""}">
           <div class="inspectorActionText">
@@ -6536,14 +6541,6 @@ function renderInspectorActions(metrics, slot) {
           ${renderSequenceSafetyEvidence(sequenceGroupCount, sequencePlan, sequenceSimulation, sequencePrototype)}
         </article>
       </div>
-      ${replacementHistoryVisible ? `
-        <div class="inspectorEditControls" aria-label="替换预览操作">
-          <button class="inspectorActionButton" type="button" data-undo-replacement-preview ${canUndoReplacementPreview() ? "" : "disabled"}>撤销</button>
-          <button class="inspectorActionButton" type="button" data-redo-replacement-preview ${canRedoReplacementPreview() ? "" : "disabled"}>重做</button>
-          ${primaryReplacementEdit ? `<button class="inspectorActionButton" type="button" data-save-replacement-preview ${canSaveReplacementPreview() ? "" : "disabled"}>另存</button>` : ""}
-          ${primaryReplacementEdit ? `<button class="inspectorActionButton" type="button" data-reset-replacement-preview>还原</button>` : ""}
-        </div>
-      ` : ""}
     </section>
   `;
 }
@@ -6913,16 +6910,16 @@ function renderAssetEntry(asset) {
     ? `<span>解码 ${escapeHtml(formatBytes(asset.decodedMemoryBytes))}</span>`
     : "";
   const actions = [
-    asset.kind === "image" && asset.replaceable
-      ? `<button class="sequenceToggle" type="button" data-replace-resource-key="${escapeHtml(asset.imageKey ?? "")}" ${isResourceAlreadyReplaced(asset.imageKey) ? "disabled" : ""}>${isResourceAlreadyReplaced(asset.imageKey) ? "已替换" : "替换图片"}</button>`
-      : "",
     asset.kind === "sequence"
       ? `<button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧" : "展开序列帧"}</button>`
       : ""
   ].filter(Boolean).join("");
   const rowLabel = `资源：${asset.name}，类型：${asset.typeLabel}`;
+  const replacementKey = asset.kind === "image" && asset.replaceable && !isResourceAlreadyReplaced(asset.imageKey)
+    ? asset.imageKey
+    : "";
   return `
-    <article class="assetUnifiedRow resourceRow ${asset.warnings?.length ? "hasWarning" : ""} ${asset.abnormalityLevel && asset.abnormalityLevel !== "none" ? `abnormality-${escapeHtml(asset.abnormalityLevel)}` : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}" data-asset-row-select tabindex="0" role="listitem" aria-current="${isSelected ? "true" : "false"}" aria-label="${escapeHtml(rowLabel)}">
+    <article class="assetUnifiedRow resourceRow ${asset.warnings?.length ? "hasWarning" : ""} ${asset.abnormalityLevel && asset.abnormalityLevel !== "none" ? `abnormality-${escapeHtml(asset.abnormalityLevel)}` : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}" ${replacementKey ? `data-context-replaceable-resource-key="${escapeHtml(replacementKey)}"` : ""} data-asset-row-select tabindex="0" role="listitem" aria-current="${isSelected ? "true" : "false"}" aria-label="${escapeHtml(rowLabel)}">
       <button class="assetUnifiedThumb checkerboard ${asset.kind === "sequence" ? "isSequence" : ""}" type="button" data-preview-image-key="${escapeHtml(asset.items?.[0]?.key ?? asset.imageKey ?? "")}" ${asset.previewUrl ? "" : "disabled"}>
         ${asset.kind === "sequence"
           ? (asset.previewItems ?? []).map((item) => item.previewUrl ? `<img src="${escapeHtml(item.previewUrl)}" alt="">` : `<span></span>`).join("")
@@ -6945,7 +6942,7 @@ function renderAssetEntry(asset) {
             <span class="assetUsageLabel" title="${escapeHtml(asset.imageKey ?? "n/a")}">使用 ${escapeHtml(asset.referenceCount ?? 0)} 次</span>
           </div>
         </div>
-        <div class="assetFullKey" title="${escapeHtml(asset.fullKey ?? "")}">完整资源名：${escapeHtml(asset.fullKey ?? "")}</div>
+        <div class="assetFullKey" title="${escapeHtml(asset.fullKey ?? "")}">${escapeHtml(asset.fullKey ?? "")}</div>
         ${warningHtml}
         ${actions ? `<div class="assetInlineActions">${actions}</div>` : ""}
       </div>
@@ -7509,7 +7506,7 @@ compareToggle.addEventListener("change", () => {
   }
   setAppMode("localPreview");
 });
-infoPanelButton.addEventListener("click", () => {
+infoPanelButton?.addEventListener("click", () => {
   openInfoPanel("diagnostics", infoPanelButton);
 });
 logsButton.addEventListener("click", () => {
@@ -7667,48 +7664,13 @@ referenceFileInput.addEventListener("change", () => {
 });
 
 for (const button of sourceTabButtons) {
+  activateButtonOnKeyboard(button);
   button.addEventListener("click", () => {
     switchSourceTab(button.dataset.sourceTab);
   });
 }
 
-function showReplaceableResources() {
-  assetFilter = "replaceable";
-  switchSourceTab("assets");
-  renderInfoPanel();
-  window.requestAnimationFrame(() => {
-    const list = document.querySelector("#tab-assets .assetUnifiedList");
-    list?.scrollIntoView({ block: "nearest" });
-    document.querySelector("#tab-assets")?.scrollTo?.({ top: 0, behavior: "auto" });
-  });
-}
-
 function handleWorkbenchOperationClick(event) {
-  const showReplaceableButton = event.target.closest("[data-show-replaceable-resources]");
-  if (showReplaceableButton) {
-    showReplaceableResources();
-    return true;
-  }
-  const resetReplacementButton = event.target.closest("[data-reset-replacement-preview]");
-  if (resetReplacementButton) {
-    resetReplacementPreview().catch((error) => showError(`还原失败：${error.message}`));
-    return true;
-  }
-  const undoReplacementButton = event.target.closest("[data-undo-replacement-preview]");
-  if (undoReplacementButton) {
-    undoReplacementPreview().catch((error) => showError(`撤销失败：${error.message}`));
-    return true;
-  }
-  const redoReplacementButton = event.target.closest("[data-redo-replacement-preview]");
-  if (redoReplacementButton) {
-    redoReplacementPreview().catch((error) => showError(`重做失败：${error.message}`));
-    return true;
-  }
-  const saveReplacementButton = event.target.closest("[data-save-replacement-preview]");
-  if (saveReplacementButton) {
-    saveReplacementPreview().catch((error) => showError(`另存失败：${error.message}`));
-    return true;
-  }
   const saveOptimizedButton = event.target.closest("[data-save-optimized-svga]");
   if (saveOptimizedButton) {
     saveOptimizedPrimarySvga().catch((error) => showError(`优化失败：${error.message}`));
@@ -7722,11 +7684,64 @@ function handleWorkbenchOperationClick(event) {
   return false;
 }
 
+function closeResourceContextMenu() {
+  resourceContextMenu.hidden = true;
+  contextReplacementResourceKey = undefined;
+}
+
+function openResourceContextMenu(row, event) {
+  const resourceKey = row?.dataset.contextReplaceableResourceKey;
+  if (!resourceKey) {
+    closeResourceContextMenu();
+    return false;
+  }
+  contextReplacementResourceKey = resourceKey;
+  resourceContextMenu.hidden = false;
+  const x = event?.clientX ?? row.getBoundingClientRect().left + 16;
+  const y = event?.clientY ?? row.getBoundingClientRect().top + 16;
+  const menuRect = resourceContextMenu.getBoundingClientRect();
+  resourceContextMenu.style.left = `${Math.round(Math.min(x, window.innerWidth - menuRect.width - 12))}px`;
+  resourceContextMenu.style.top = `${Math.round(Math.min(y, window.innerHeight - menuRect.height - 12))}px`;
+  resourceContextMenu.querySelector("button")?.focus();
+  return true;
+}
+
+function replaceResourceFromContextMenu() {
+  const resourceKey = contextReplacementResourceKey;
+  closeResourceContextMenu();
+  if (!resourceKey) return;
+  pendingReplacementResourceKey = resourceKey;
+  replacementPngInput.value = "";
+  replacementPngInput.click();
+}
+
+function runReplacementCommand(command) {
+  if (command === "undo") return undoReplacementPreview();
+  if (command === "redo") return redoReplacementPreview();
+  if (command === "save") return saveReplacementPreview();
+  if (command === "reset") return resetReplacementPreview();
+  return Promise.resolve(undefined);
+}
+
+window.__autoSvgaWorkbenchActions = {
+  undoReplacement: () => runReplacementCommand("undo"),
+  redoReplacement: () => runReplacementCommand("redo"),
+  saveReplacement: () => runReplacementCommand("save"),
+  resetReplacement: () => runReplacementCommand("reset")
+};
+
 infoPanel.addEventListener("click", (event) => {
   handleWorkbenchOperationClick(event);
 });
 
+resourceContextMenu.addEventListener("click", (event) => {
+  if (event.target.closest("[data-context-replace-resource]")) {
+    replaceResourceFromContextMenu();
+  }
+});
+
 document.querySelector("#tab-assets").addEventListener("click", (event) => {
+  closeResourceContextMenu();
   const filterButton = event.target.closest("[data-asset-filter]");
   if (filterButton) {
     assetFilter = filterButton.dataset.assetFilter;
@@ -7745,13 +7760,6 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
     renderInfoPanel();
     return;
   }
-  const replaceButton = event.target.closest("[data-replace-resource-key]");
-  if (replaceButton?.dataset.replaceResourceKey) {
-    pendingReplacementResourceKey = replaceButton.dataset.replaceResourceKey;
-    replacementPngInput.value = "";
-    replacementPngInput.click();
-    return;
-  }
   const previewButton = event.target.closest("[data-preview-image-key]");
   if (previewButton?.dataset.previewImageKey) {
     openAssetPreview(previewButton.dataset.previewImageKey);
@@ -7764,7 +7772,24 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
   }
 });
 
+document.querySelector("#tab-assets").addEventListener("contextmenu", (event) => {
+  const row = event.target.closest("[data-asset-row-select]");
+  if (!row?.dataset.contextReplaceableResourceKey) return;
+  event.preventDefault();
+  selectedAssetKey = row.dataset.assetKey;
+  renderInfoPanel();
+  window.requestAnimationFrame(() => openResourceContextMenu(row, event));
+});
+
 document.querySelector("#tab-assets").addEventListener("keydown", (event) => {
+  if (event.key === "ContextMenu") {
+    const row = event.target.closest("[data-asset-row-select]");
+    if (row?.dataset.contextReplaceableResourceKey) {
+      event.preventDefault();
+      openResourceContextMenu(row, undefined);
+    }
+    return;
+  }
   if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
   if (event.target.closest("button,input,select,textarea,a")) return;
   const row = event.target.closest("[data-asset-row-select]");
@@ -7781,6 +7806,24 @@ replacementPngInput.addEventListener("change", () => {
   replacementPngInput.value = "";
   if (!file || !resourceKey) return;
   replacePrimaryResource(resourceKey, file).catch((error) => showError(`替换失败：${error.message}`));
+});
+
+document.addEventListener("keydown", (event) => {
+  const target = event.target;
+  if (target?.closest?.("input,textarea,[contenteditable='true']")) return;
+  const mod = event.metaKey || event.ctrlKey;
+  if (mod && event.key.toLowerCase() === "z" && !event.shiftKey) {
+    event.preventDefault();
+    runReplacementCommand("undo").catch((error) => showError(`撤销失败：${error.message}`));
+  } else if ((mod && event.key.toLowerCase() === "z" && event.shiftKey) || (mod && event.key.toLowerCase() === "y")) {
+    event.preventDefault();
+    runReplacementCommand("redo").catch((error) => showError(`重做失败：${error.message}`));
+  } else if (mod && event.key.toLowerCase() === "s" && event.shiftKey) {
+    event.preventDefault();
+    runReplacementCommand("save").catch((error) => showError(`另存失败：${error.message}`));
+  } else if (event.key === "Escape") {
+    closeResourceContextMenu();
+  }
 });
 
 assetPreviewClose.addEventListener("click", closeAssetPreview);
@@ -7957,7 +8000,7 @@ document.addEventListener("click", (event) => {
   const activePanel = activeSidePanel === "info" ? infoPanel : logsPanel;
   const activeTrigger = activeSidePanel === "info" ? infoPanelButton : logsButton;
   const eventPath = event.composedPath();
-  if (eventPath.includes(activePanel) || eventPath.includes(activeTrigger)) return;
+  if (eventPath.includes(activePanel) || (activeTrigger && eventPath.includes(activeTrigger))) return;
   if (eventPath.includes(toolbar) || eventPath.includes(rescanButton)) return;
   if (event.target.closest(".toolbar, #rescanButton, .dropdownMenu, .fitMenu, .resizeHandle")) return;
   setActiveSidePanel(null, { restoreFocus: false });

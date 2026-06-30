@@ -45,6 +45,23 @@ Use these rules for future SVGA Workbench implementation and review:
 12. Keep privacy and security metadata truthful. Do not add permission strings,
     arbitrary network allowances, telemetry claims, or Finder document
     associations unless the app actually implements and validates them.
+13. Treat the resource panel as browse-and-select first. Do not place primary
+    editing actions directly on every resource row; use contextual menus,
+    application menus, keyboard shortcuts, or a clearly separated inspector flow.
+14. Use lightweight tab styling for page switching. Tabs should not visually
+    compete with command buttons.
+15. Prefer data-first compact facts in the source panel. Keep labels secondary,
+    remove decorative readiness/status badges, and avoid file/status/error rows
+    that duplicate visible playback or diagnostics.
+16. Keep diagnostics decision-oriented. Show what can be fixed, what needs review,
+    and the first human-readable findings before raw report fields, rule codes,
+    or internal proof language.
+17. Keep column surfaces consistent. Left, preview, and inspector panels should
+    share the same radius, border, background, and elevation unless a specific
+    state requires a documented difference.
+18. Do not use a visible playback status pill when playback itself is visible and
+    controllable. Reserve status copy for loading, failure, or non-obvious async
+    work.
 
 ## Current UI Audit Findings
 
@@ -69,6 +86,13 @@ The 2026-06-30 audit is now part of the Workbench v1 repair package. It found:
   Enter/Space, and row/action hit-area proof is recorded in desktop smoke.
 - P3 repaired: Preview-card headers now reserve stable space for actions and
   ellipsize long file titles inside the title region.
+- 2026-06-30 owner follow-up repaired: Resource replacement moved out of inline
+  resource rows into a contextual menu; replacement undo/redo/reset/save moved
+  to shortcuts and the macOS application menu; the source overview is compacted
+  to data-first metrics; redundant Workbench titles/readiness/playback labels
+  are removed; resource tabs are quiet page tabs; column surfaces are unified;
+  diagnostics and production reports are reduced to human-readable findings by
+  default.
 
 Remaining known UI/UX debt after the current repair:
 

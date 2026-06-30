@@ -84,7 +84,8 @@ assertCondition(errors, /--visual-minimum-workbench-width:\s*1180px;/.test(token
 assertCondition(errors, /duplicateFilePillHidden/.test(app), "preview card audit must prove duplicated file pill is hidden");
 assertCondition(errors, /function reloadCurrentFile/.test(app), "Cmd/Ctrl+R reload path must be explicit");
 assertCondition(errors, !/clearCurrentFile\("shortcut"\)/.test(app), "Cmd/Ctrl+R must not clear the current file");
-assertCondition(errors, /overviewFileRow/.test(app) && /overviewFileRow/.test(styles), "Info Overview must separate current file from compact metric cards");
+assertCondition(errors, /compactOverviewMetrics/.test(app) && /compactOverviewMetrics/.test(styles), "Source overview must use compact data-first metric rows");
+assertCondition(errors, !/overviewFileRow/.test(app), "Source overview must not restore the old one-line-per-field file row");
 assertCondition(errors, /assetUsageLabel/.test(app) && /assetUsageLabel/.test(styles), "Resources tab must avoid exposing raw imageKey as primary row text");
 assertCondition(errors, /assetInlineActions/.test(app) && /assetInlineActions/.test(styles), "Resources sequence actions must live in normal row flow");
 assertCondition(errors, /\.sequenceToggle\s*\{[\s\S]*?position:\s*static/.test(styles), "sequence toggle must stay in normal resource row flow");

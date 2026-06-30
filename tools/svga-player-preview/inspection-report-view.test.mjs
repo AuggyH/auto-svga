@@ -42,7 +42,7 @@ test("renders passing report, asset summary, and calibration notes", () => {
   const html = renderAvatarFrameInspectionReport(report(), "success");
 
 	assert.match(html, /通过/);
-	assert.match(html, /avatar-frame-production/);
+	assert.doesNotMatch(html, /avatar-frame-production/);
 	assert.match(html, /头像框生产目标/);
 	assert.match(html, /生产目标/);
 	assert.match(html, /用于检查新的头像框交付是否符合当前生产目标/);
@@ -53,9 +53,12 @@ test("renders passing report, asset summary, and calibration notes", () => {
 	assert.match(html, /24 fps/);
 	assert.match(html, /待产品校准/);
   assert.match(html, /当前为有限样本建议值/);
-  assert.match(html, /maxFileSizeBytes/);
-  assert.match(html, /maxResourceCount/);
-  assert.match(html, /maxTransparentPaddingRatio/);
+  assert.match(html, /文件体积阈值/);
+  assert.match(html, /资源数量阈值/);
+  assert.match(html, /透明留白阈值/);
+  assert.doesNotMatch(html, /maxFileSizeBytes/);
+  assert.doesNotMatch(html, /maxResourceCount/);
+  assert.doesNotMatch(html, /maxTransparentPaddingRatio/);
 });
 
 test("renders failed issues with severity, code, and escaped message", () => {
@@ -70,9 +73,9 @@ test("renders failed issues with severity, code, and escaped message", () => {
 
   assert.match(html, /未通过/);
   assert.match(html, /错误/);
-  assert.match(html, /dimensions_exceed_limit/);
   assert.match(html, /画布尺寸超过 300 × 300 生产上限/);
-  assert.match(html, /Canvas &lt; 301 is invalid\./);
+  assert.doesNotMatch(html, /dimensions_exceed_limit/);
+  assert.doesNotMatch(html, /Canvas &lt; 301 is invalid\./);
   assert.doesNotMatch(html, /Canvas < 301/);
 });
 
@@ -161,7 +164,7 @@ test("keeps the existing spec report when auditPresentation is absent", () => {
   const html = renderAvatarFrameInspectionReport(report(), "success");
 
   assert.match(html, /生产规范/);
-  assert.match(html, /avatar-frame-production/);
+  assert.doesNotMatch(html, /avatar-frame-production/);
   assert.doesNotMatch(html, /auditReportSection/);
 });
 

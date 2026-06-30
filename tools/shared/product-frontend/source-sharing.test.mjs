@@ -109,12 +109,19 @@ test("shared product app keeps host-specific capabilities behind the Web adapter
   assert.match(productApp, /优化副本/);
   assert.match(productApp, /替换图片/);
   assert.match(productApp, /修复闪帧/);
-  assert.match(productApp, /function showReplaceableResources/);
   assert.match(productApp, /function handleWorkbenchOperationClick/);
   assert.doesNotMatch(productApp, /function renderWorkbenchPhaseActions/);
   assert.doesNotMatch(productApp, /class="phaseWorkflowPanel"/);
-  assert.match(productApp, /data-undo-replacement-preview/);
-  assert.match(productApp, /data-redo-replacement-preview/);
+  assert.match(productApp, /resourceContextMenu/);
+  assert.match(productApp, /data-context-replaceable-resource-key/);
+  assert.match(productApp, /__autoSvgaWorkbenchActions/);
+  assert.doesNotMatch(productApp, /function showReplaceableResources/);
+  assert.doesNotMatch(productApp, /data-show-replaceable-resources/);
+  assert.doesNotMatch(productApp, /data-replace-resource-key/);
+  assert.doesNotMatch(productApp, /data-undo-replacement-preview/);
+  assert.doesNotMatch(productApp, /data-redo-replacement-preview/);
+  assert.doesNotMatch(productApp, /data-save-replacement-preview/);
+  assert.doesNotMatch(productApp, /data-reset-replacement-preview/);
   assert.match(productApp, /可替换/);
   assert.match(productApp, /function setSlotErrorFeedback/);
   assert.match(webAdapter, /hostKind: "web"/);
@@ -275,7 +282,8 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
 	    "ownerUsability",
     "sidePanelReturnFocus",
     "SVGA A invalid drop rendered slot-local unsupported-file feedback",
-    "Single-file preview card carries file name, status, metadata, controls, and replacement action consistently",
+    "Single-file preview card carries file name, metadata, and playback controls consistently without redundant status pills",
+    "Enter activates the lightweight resource tab and keeps focus inside the source panel",
     "Enter opened settings dialog and moved focus inside it",
     "Tab stayed inside settings dialog while it was active",
     "finderDocumentAssociationNotClaimed",

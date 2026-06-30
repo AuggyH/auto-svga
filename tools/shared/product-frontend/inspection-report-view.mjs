@@ -76,6 +76,14 @@ function issueMessage(issue) {
   return messages[issue?.code] ?? "未通过当前生产规范检查。";
 }
 
+function calibrationFieldLabel(field) {
+  return {
+    maxFileSizeBytes: "文件体积阈值",
+    maxResourceCount: "资源数量阈值",
+    maxTransparentPaddingRatio: "透明留白阈值"
+  }[field] ?? "规范阈值";
+}
+
 function auditLabel(key, fallback) {
   return resolveAuditPresentationLabel(key ?? "n/a", {
     locale: "zh-CN",
@@ -223,10 +231,8 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
     ["资源", Number.isFinite(Number(asset.resourceCount)) ? `${asset.resourceCount}` : "n/a"]
   ];
   const diagnosticRows = [
-    ["报告结构", `v${report.contractVersion ?? "n/a"}`],
     ["检查目标", profileDisplayLabel(report)],
-    ["目标类型", profileDisplayId(report.profileId)],
-    ["规范编号", report.specId ?? "n/a"]
+    ["目标类型", profileDisplayId(report.profileId)]
   ];
 
   return `
@@ -249,11 +255,6 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
               <li class="severity-${escapeHtml(issue.severity)}">
                 <div><span>${severityLabel(issue.severity)}</span></div>
                 <p>${escapeHtml(issueMessage(issue))}</p>
-                <details class="specDiagnosticDetails">
-                  <summary>查看诊断细节</summary>
-                  <small>${escapeHtml(issue.message)}</small>
-                  <code>${escapeHtml(issue.code)}</code>
-                </details>
               </li>
             `).join("")}
           </ul>
@@ -273,9 +274,8 @@ export function renderAvatarFrameInspectionReport(report, status = "idle") {
           <ul class="calibrationList">
             ${calibrationNotes.map((note) => `
               <li>
-                <code>${escapeHtml(note.field)}</code>
+                <strong>${escapeHtml(calibrationFieldLabel(note.field))}</strong>
                 <span>当前为有限样本建议值，待产品确认。</span>
-                <small>${escapeHtml(note.message)}</small>
               </li>
             `).join("")}
           </ul>

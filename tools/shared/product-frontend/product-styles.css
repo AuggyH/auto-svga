@@ -6274,6 +6274,292 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   line-height: 28px;
 }
 
+/* Workbench IA repair: browse-first resources, quiet tabs, compact facts, unified columns. */
+.sourcePanel,
+.previewCard,
+.inspectorPanel {
+  border: 1px solid var(--visual-panel-border) !important;
+  border-radius: var(--visual-radius-panel) !important;
+  background: var(--visual-surface-1) !important;
+  box-shadow: var(--visual-shadow-panel) !important;
+}
+
+.sourcePanel {
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+}
+
+.inspectorPanel {
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.previewCardHeader .statusPill {
+  display: none !important;
+}
+
+.fileOverviewCard {
+  gap: 0;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--visual-hairline);
+  background: transparent;
+}
+
+.compactOverviewMetrics {
+  display: grid;
+  gap: 6px;
+}
+
+.compactOverviewMetrics .overviewMetricRow {
+  display: grid;
+  grid-template-columns: minmax(58px, auto) minmax(0, 1fr) minmax(58px, auto) minmax(0, 1fr);
+  align-items: baseline;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  column-gap: 6px;
+}
+
+.compactOverviewMetrics .overviewMetricRow.isSingle {
+  grid-template-columns: minmax(58px, auto) minmax(0, 1fr);
+}
+
+.compactOverviewMetrics .overviewMetricRow dt {
+  color: var(--visual-text-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.compactOverviewMetrics .overviewMetricRow dd {
+  margin: 0;
+  color: var(--visual-text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sourceTabs,
+#tab-assets .assetFilters {
+  display: flex;
+  min-height: 30px;
+  height: auto;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--visual-hairline);
+  gap: 14px;
+  overflow-x: auto;
+  background: transparent;
+  scrollbar-width: none;
+}
+
+.sourceTabs::-webkit-scrollbar,
+#tab-assets .assetFilters::-webkit-scrollbar {
+  display: none;
+}
+
+.sourceTabs .tabButton,
+#tab-assets .assetFilters button {
+  min-width: 36px;
+  min-height: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  font-weight: 600;
+  line-height: 30px;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.sourceTabs .tabButton.isActive,
+#tab-assets .assetFilters button.isActive {
+  color: var(--visual-text-primary);
+  box-shadow: inset 0 -2px 0 var(--visual-accent);
+}
+
+#tab-assets {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.assetSummaryLine {
+  padding: 6px 12px 2px;
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+#tab-assets .assetUnifiedList {
+  flex: 1 1 auto;
+  min-height: 320px;
+  margin: 0;
+  padding: 8px 8px 12px;
+}
+
+.assetUnifiedRow {
+  min-height: 62px;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+}
+
+.sequenceChildren .assetUnifiedRow {
+  min-height: 58px;
+}
+
+.assetUnifiedThumb,
+.assetUnifiedThumb.isSequence {
+  width: 42px;
+  height: 42px;
+  border-radius: 7px;
+}
+
+.assetUnifiedMain {
+  align-content: center;
+  gap: 3px;
+}
+
+.assetPrimaryLine {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.assetPrimaryLine strong {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.assetTypeTag {
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.assetTypeTag.replaceable {
+  background: color-mix(in srgb, var(--visual-text-primary) 7%, transparent);
+  color: var(--visual-text-secondary);
+}
+
+.assetMetaLines > div {
+  gap: 5px;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.assetWarningTags {
+  display: flex;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.assetWarningTags span {
+  max-width: 100%;
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 10px;
+  line-height: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assetFullKey {
+  display: none;
+}
+
+.assetInlineActions {
+  grid-column: 1 / -1;
+}
+
+.resourceContextMenu {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  min-width: 168px;
+}
+
+.diagnosticsContent {
+  gap: 10px;
+  padding: 10px;
+}
+
+.inspectorActionCard,
+.diagnosticSummary,
+.diagnosticDetails {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.inspectorActionCard {
+  padding: 0;
+}
+
+.inspectorActionList {
+  gap: 0;
+}
+
+.inspectorActionItem {
+  min-height: 64px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--visual-hairline);
+  border-radius: 0;
+  background: transparent;
+}
+
+.inspectorActionItem:last-child {
+  border-bottom: 0;
+}
+
+.inspectorActionButton {
+  background: var(--visual-surface-2);
+}
+
+.diagnosticSummary {
+  padding: 0;
+}
+
+.diagnosticSummary dl {
+  display: grid;
+  gap: 4px;
+}
+
+.diagnosticDetails {
+  padding-top: 4px;
+}
+
+.diagnosticDetails summary {
+  min-height: 28px;
+  padding: 0;
+  color: var(--visual-text-secondary);
+  font-size: var(--visual-font-meta);
+  font-weight: 600;
+}
+
+.diagnosticIssueItem {
+  padding: 8px 10px;
+  background: var(--visual-surface-2);
+}
+
+.diagnosticIssueItem span {
+  grid-row: span 1;
+}
+
+.diagnosticIssueItem em {
+  grid-column: 2;
+  color: var(--visual-text-tertiary);
+}
+
 .proofSummary {
   position: relative;
   border-left: 3px solid var(--visual-accent);

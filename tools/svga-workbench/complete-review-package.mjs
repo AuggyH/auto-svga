@@ -460,7 +460,7 @@ function buildReplacementEditingReport({ headCommit, headTree, validationSummary
       historyBounded: undoRedo.historyBounded
     },
     reset: {
-      resetActionVisibleBeforeReset: reset.resetActionVisibleBeforeReset,
+      resetCommandAvailableBeforeReset: reset.resetCommandAvailableBeforeReset,
       resetRestoredOriginal: reset.resetRestoredOriginal,
       editClearedAfterReset: reset.editClearedAfterReset,
       undoAvailableAfterReset: reset.undoAvailableAfterReset,

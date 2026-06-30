@@ -170,7 +170,7 @@ async function main() {
   await capture(window, "web-reference-loaded.png");
   setPhase("valid-inspection");
   await window.webContents.executeJavaScript(`
-    document.querySelector("#infoPanelButton")?.click();
+    document.querySelector(".tabButton[data-tab='assets']")?.click();
     (document.querySelector("#infoPanel")
       ?? document.querySelector("#reportRoot")
       ?? document.querySelector(".reportPanel")

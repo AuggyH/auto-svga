@@ -6,20 +6,27 @@ Branch: `agent/codex/svga-workbench-v1-autonomous`
 ## Summary
 
 Continued the HIG-driven UI audit repair for the single-file Workbench flow.
-This slice fixes targeted interaction and layout issues without changing parser,
-exporter, replacement, or sequence Save As product boundaries.
+This slice fixes targeted resource-panel IA, operation placement, diagnostics
+noise, and panel visual consistency without changing parser, exporter,
+replacement, or sequence Save As product boundaries.
 
 ## Changed Files
 
 - `tools/shared/product-frontend/product-app.mjs`
+- `tools/shared/product-frontend/product-shell.html`
 - `tools/shared/product-frontend/product-styles.css`
+- `tools/shared/product-frontend/inspection-report-view.mjs`
 - `tools/shared/product-frontend/source-sharing.test.mjs`
 - `tools/electron-prototype/experiments/svga-web/main.cjs`
-- `src/tests/helpers/nq1-accessibility-audit.ts`
+- `tools/electron-prototype/experiments/svga-web/web/index.html`
+- `tools/electron-prototype/experiments/svga-web/scripts/web-reference-capture.cjs`
+- `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`
+- `tools/svga-player-preview/index.html`
+- `tools/svga-player-preview/inspection-report-view.test.mjs`
+- `tools/svga-workbench/complete-review-package.mjs`
+- `tools/p6/visual-system-audit.mjs`
+- `src/layout/layoutEngine.ts`
 - `docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md`
-- `docs/autonomous/AUTONOMOUS_RUN_LOG.md`
-- `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md`
-- `docs/autonomous/LESSONS_CANDIDATES.md`
 
 ## Repairs
 
@@ -28,13 +35,24 @@ exporter, replacement, or sequence Save As product boundaries.
 - Settings closes the active diagnostics/log side panel before opening and
   resets its internal scroll to top.
 - Toolbar icon targets use a 36px practical hit area.
-- Resource rows are focusable, named, selectable with Enter/Space, and retain
-  separate preview/replace/expand button behavior.
-- Resource row actions have larger hit areas and wrap without colliding with
-  metadata.
+- Left source header and redundant status/error/file-name rows were removed;
+  source facts now show compact data-first metrics.
+- Resource and layer tabs plus resource filters now use lightweight page-tab
+  styling with validated 36px minimum hit widths.
+- Resource rows are focusable, named, selectable with Enter/Space, and keep
+  browsing/preview as the primary row purpose.
+- PNG replacement moved out of inline rows into a contextual resource menu;
+  reset/undo/redo/save replacement commands moved to shortcuts and macOS app
+  menu items.
+- Right inspector title/readiness chrome and the no-op replacement entry were
+  removed; action rows are flattened instead of nested cards.
+- Diagnostics and production-spec report rows now prefer Chinese human-readable
+  findings over raw rule codes and English report fields.
+- Left, preview, and right panel surfaces now share radius, border, background,
+  and elevation.
 - Sequence proof cards distinguish readonly, partial, and blocked states.
-- Preview-card titles ellipsize inside the title region instead of colliding
-  with status and file actions.
+- Preview-card titles ellipsize inside the title region and redundant playback
+  status pills are hidden in single-file preview.
 - Desktop keyboard smoke focuses `body` before global shortcut proof so Space
   evidence is stable after closing modals.
 - NQ1 accessibility source audit now accepts the current Space-key fallback
@@ -49,16 +67,21 @@ left resource panel. The follow-up repair treats this as temporary added review
 scope:
 
 - the left panel is resource inventory again, with filtering, scrolling, row
-  focus, and large-preview review kept as the primary purpose;
-- operation actions now live in the right `检查与操作` inspector area;
+  focus, context-menu replacement, and large-preview review kept as the primary
+  purpose;
+- product actions are split by task weight: optimizer and sequence repair remain
+  in the right inspector, resource replacement starts from the selected resource
+  context menu, and edit history/save commands use shortcuts plus the macOS menu;
 - default action labels use product wording such as `优化副本`, `替换图片`, and
   `修复闪帧` instead of expecting reviewers to understand Phase labels;
-- dense diagnostics and technical proof details remain available but are not
-  the first surface hiding resources or core actions.
+- dense diagnostics and technical proof details are reduced by default and no
+  longer compete with resources or core actions.
 
-The complete review upload package generated after this repair includes
+The next complete review upload package should include
 `UPLOAD_CHANGELOG_SINCE_A4681D7.md` so reviewers can separate these temporary
-UI/UX additions from the original Phase 4 sequence-repair blocker work.
+UI/UX additions from the original Phase 4 sequence-repair blocker work. This
+review file does not claim that a new complete review package was generated in
+this UI/UX repair slice.
 
 ## Evidence
 
@@ -79,15 +102,14 @@ The state proof records `loadingHeaderActionText: "更换文件"`,
 
 - `node --check tools/shared/product-frontend/product-app.mjs`
 - `node --check tools/electron-prototype/experiments/svga-web/main.cjs`
-- `node --test tools/shared/product-frontend/source-sharing.test.mjs`
+- `node --check tools/shared/product-frontend/inspection-report-view.mjs`
+- `node --check tools/p6/visual-system-audit.mjs`
+- `node --test tools/shared/product-frontend/source-sharing.test.mjs tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs tools/svga-player-preview/inspection-report-view.test.mjs`
 - `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`
 - `npm run desktop:smoke`
-- `npm run svga-workbench:v1:validate` passed 14/14 commands at
-  `2026-06-30T03:40:17.207Z`.
 
 ## Remaining UI Debt
 
-Dense repeated diagnostics, full settings scroll/keyboard review,
-screen-reader review, and refreshed full screenshot-audit contact sheets remain
-before Product Owner UI acceptance. This review does not claim broad UI polish
-completion.
+Dense repeated diagnostics may still need product-specific grouping, and a
+manual context-menu pass plus full screen-reader review remain before Product
+Owner UI acceptance. This review does not claim broad UI polish completion.
