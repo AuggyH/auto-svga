@@ -40,6 +40,26 @@ exporter, replacement, or sequence Save As product boundaries.
 - NQ1 accessibility source audit now accepts the current Space-key fallback
   contract while still requiring text-input exclusion and playback toggles.
 
+## Late Product Owner Addendum
+
+After the `SVGA-Workbench-v1-a4681d7-complete-review-directory.zip` baseline,
+Product Owner review found that implemented Phase 2/3/4 workflows were still too
+hard to discover and that an interim fix had placed operation buttons in the
+left resource panel. The follow-up repair treats this as temporary added review
+scope:
+
+- the left panel is resource inventory again, with filtering, scrolling, row
+  focus, and large-preview review kept as the primary purpose;
+- operation actions now live in the right `检查与操作` inspector area;
+- default action labels use product wording such as `优化副本`, `替换图片`, and
+  `修复闪帧` instead of expecting reviewers to understand Phase labels;
+- dense diagnostics and technical proof details remain available but are not
+  the first surface hiding resources or core actions.
+
+The complete review upload package generated after this repair includes
+`UPLOAD_CHANGELOG_SINCE_A4681D7.md` so reviewers can separate these temporary
+UI/UX additions from the original Phase 4 sequence-repair blocker work.
+
 ## Evidence
 
 - `.artifacts/product/P2/desktop-loading.png`

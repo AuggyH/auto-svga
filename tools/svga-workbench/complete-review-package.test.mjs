@@ -88,6 +88,7 @@ test("review packet template keeps complete handoff sections", async () => {
   const source = await readFile(new URL("./complete-review-package.mjs", import.meta.url), "utf8");
   for (const requiredSection of [
     "## Feature Completion Matrix",
+    "## Changes Since a4681d7",
     "## Self-Contained Evidence",
     "## Validation Summary",
     "## App ZIP / Signing / Installer Status",
@@ -99,6 +100,8 @@ test("review packet template keeps complete handoff sections", async () => {
     "## Known Risks",
     "## Required Human Decision",
     "Recommended next human decision",
+    "UPLOAD_CHANGELOG_SINCE_A4681D7.md",
+    "temporary Product Owner addition",
     "Product Owner acceptance and production release are not claimed",
     "asset-intelligence-report.json",
     "optimization-report.json",

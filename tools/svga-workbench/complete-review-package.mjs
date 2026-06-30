@@ -901,6 +901,7 @@ async function buildManifest(root, extra = {}) {
 }
 
 function roleForPath(relativePath) {
+  if (relativePath === "UPLOAD_CHANGELOG_SINCE_A4681D7.md") return "upload_changelog";
   if (relativePath === "UPLOAD_INDEX.json") return "upload_index";
   if (relativePath === "bundle-privacy-audit.json") return "privacy_audit";
   if (relativePath === "hashes/sha256sums.txt") return "hash_list";
@@ -1076,6 +1077,63 @@ async function writeUploadIndex(root, { headCommit, headTree, completeZipName, a
   return uploadIndex;
 }
 
+function gitLogSinceBaseline() {
+  try {
+    return git(["log", "--oneline", "--decorate", "a4681d7..HEAD", "--"]);
+  } catch {
+    return "Unable to read local git log for a4681d7..HEAD; use MANIFEST.json finalHead and package review notes as authority.";
+  }
+}
+
+async function writeUploadChangelog(root, { headCommit, headTree, completeZipName }) {
+  await writeFile(path.join(root, "UPLOAD_CHANGELOG_SINCE_A4681D7.md"), [
+    "# Upload Changelog Since a4681d7",
+    "",
+    "Baseline package: `review/SVGA-Workbench-v1-a4681d7-complete-review-directory.zip`.",
+    `Current package: \`${completeZipName}\`.`,
+    `Current HEAD: \`${headCommit}\`.`,
+    `Current tree: \`${headTree}\`.`,
+    "",
+    "## Commit Range",
+    "",
+    "```text",
+    gitLogSinceBaseline(),
+    "```",
+    "",
+    "## Why This Upload Was Regenerated",
+    "",
+    "The `a4681d7` package completed the Phase 4 sequence anti-flicker repaired-copy path. Later review uncovered owner-visible workflow problems: Phase 2/3/4 operations were hard to discover, one interim repair placed action buttons inside the left resource panel, the resource list was displaced, and the large-preview path became unclear.",
+    "",
+    "This package keeps the Phase 4 algorithm and evidence from `a4681d7`, then layers the owner-requested UI/UX repairs and regenerated upload evidence on top of the current final head.",
+    "",
+    "## Product-Bearing Changes After a4681d7",
+    "",
+    "- `5825f70` exposed the Phase 2/3/4 operation entry points in the Workbench so the implemented workflows were no longer hidden from the app.",
+    "- `eb159e2` corrected that first exposure: operation buttons moved out of the left resource information panel and into the right `检查与操作` inspector area; the left panel returned to resource inventory, filtering, scrolling, and large-preview review.",
+    "- The primary UI now uses product-language actions such as `优化副本`, `替换图片`, and `修复闪帧` instead of requiring reviewers to understand internal Phase labels.",
+    "- Diagnostics and technical evidence remain available, but they are no longer the first visual surface blocking the resource list or the action workflow.",
+    "- Keyboard activation and smoke assertions were updated so Enter/Space operation paths, panel focus, resource preview, and right-side action visibility are covered together.",
+    "",
+    "## Temporary Product Owner Additions",
+    "",
+    "These UI/UX repairs were added during the autonomous run after the Phase 4-only focus was already underway. They are intentionally documented as temporary Product Owner additions so reviewers can distinguish them from the original Phase 4 terminal blocker work.",
+    "",
+    "- Restore a recognizable three-zone layout: left side for file/resource information, center for preview, right side for inspection and actions.",
+    "- Keep resource rows reachable and scrollable when the SVGA contains many resources.",
+    "- Preserve the resource large-preview workflow from the resource list.",
+    "- Remove engineering-heavy Phase workflow copy from the default interaction surface.",
+    "- Keep implemented Phase 2/3/4 workflows reviewable through concise product actions.",
+    "",
+    "## Review Impact",
+    "",
+    "- Use this current package, not the `a4681d7` package, for owner-visible UI/UX review and packaged App testing.",
+    "- Use `a4681d7` only as lineage for the Phase 4 sequence repair implementation baseline.",
+    "- Historical UI audit material remains under `ui-audit/` with `evidenceRole=reference_only`; it is guidance, not current feature evidence.",
+    "- Current validation, manifest coverage, privacy audit, App ZIP hygiene, packaged runtime proof, and Phase 2/3/4 reports are all regenerated in this package.",
+    ""
+  ].join("\n"), "utf8");
+}
+
 async function writeReviewPacket(root, { headCommit, headTree, headShort, completeZipName, appZipName, validationSummary }) {
   await writeFile(path.join(root, "README.md"), [
     "# SVGA Workbench v1 Complete Review Directory",
@@ -1086,7 +1144,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     "Status: complete review-directory handoff candidate. This handoff is not Product Owner acceptance; Phase 4 includes a validated repaired-copy Save As/reopen path with a recorded canvas-delta non-observation risk.",
     "",
-    "Start with `REVIEW_PACKET.md`, then use `UPLOAD_INDEX.json`, `MANIFEST.json`,",
+    "Start with `REVIEW_PACKET.md` and `UPLOAD_CHANGELOG_SINCE_A4681D7.md`, then use `UPLOAD_INDEX.json`, `MANIFEST.json`,",
     "`bundle-privacy-audit.json`, `package-hygiene-proof.json`, and",
     "`validation/validation-summary.json` for machine-checkable evidence.",
     ""
@@ -1113,8 +1171,15 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "| macOS package | Unsigned internal ZIP only | Clean App ZIP hygiene validated; signing/notarization blocked by credentials |",
     "| UI audit / HIG | Included as repair input | Findings are tracked; broad UI polish not completed in this package repair |",
     "",
+    "## Changes Since a4681d7",
+    "",
+    "- See `UPLOAD_CHANGELOG_SINCE_A4681D7.md` for the commit range and owner-requested temporary UI/UX additions made after `SVGA-Workbench-v1-a4681d7-complete-review-directory.zip`.",
+    "- The main owner-visible delta is workflow placement: Phase 2/3/4 operations are now exposed as concise right-side product actions while the left side returns to resource inventory, scrolling, filtering, and large-preview review.",
+    "- These UI/UX changes were inserted after the Phase 4 sequence-repair focus and are included as review scope additions, not as a replacement for the Phase 4 evidence.",
+    "",
     "## Self-Contained Evidence",
     "",
+    "- `UPLOAD_CHANGELOG_SINCE_A4681D7.md`: commit-range and temporary Product Owner addition summary since the referenced baseline package.",
     "- `UPLOAD_INDEX.json`: every required payload with role, size, SHA-256, head, and tree.",
     "- `MANIFEST.json`: every payload except `MANIFEST.json` itself, with role, size, MIME, and SHA-256.",
     "- `manifest-verification.json`: hash verification result for the staged review directory.",
@@ -1265,6 +1330,7 @@ async function main() {
     phaseEvidence,
     packagedRuntimeProof
   });
+  await writeUploadChangelog(completeRoot, { headCommit, headTree, completeZipName });
 
   await mkdir(path.join(completeRoot, "extracted-index"), { recursive: true });
   await writeJson(path.join(completeRoot, "extracted-index/app-zip-entry-list.json"), await buildZipEntryList(appZipPath, "macos_app_zip"));
