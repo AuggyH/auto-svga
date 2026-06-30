@@ -104,13 +104,13 @@ replacement candidates. Indexed/palette PNG decoding for embedded resources is
 now supported in the shared PNG reader, removing the earlier
 `Unsupported PNG color type: 3` Phase 4 parser stop. Phase 4 now repairs 3
 real-asset rows using the terminal-tail near-empty-speck rule: the target must
-be the only near-empty candidate, adjacent sequence visibility windows must be
-ordered and non-overlapping, the leading boundary remains rejected, and two
-predecessor frames must prove visible tail continuity. The remaining 50 rows
-fail closed: 31 have no continuous numeric visible sequence group, 11 have
-overlapping or unordered sequence visibility windows, and 8 have no near-empty
-speck candidate. This is active product work, not an external blocker and not a
-completion claim.
+be the only near-empty candidate, sequence resources must not share any visible
+timeline frame, the leading boundary remains rejected, and two predecessor
+frames must prove visible tail continuity. The remaining 50 rows fail closed:
+31 have no continuous numeric visible sequence group, 11 have no near-empty
+speck candidate, and 8 have multi-resource visible-frame overlap with redacted
+frame/resource samples in the matrix. This is active product work, not an
+external blocker and not a completion claim.
 
 Keep text editing, key rename, URL import, and structural/timeline edits
 unsupported until they have separate mechanical round-trip proof and

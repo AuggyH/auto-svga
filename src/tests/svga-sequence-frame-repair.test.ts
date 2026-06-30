@@ -82,6 +82,36 @@ test("sequence repair supports a terminal-tail near-empty speck with proven prev
   assert.equal(result.report.invariantSummary.sequenceVisibilityWindowsDisjoint, true);
 });
 
+test("sequence repair allows repeated cycles when resources do not share visible frames", async () => {
+  const sourceBytes = await createSequenceFixture({
+    speckKeys: ["seq_006"],
+    repeatedCycleOffset: 24
+  });
+  const result = await repairSvgaSequenceFrameFlicker(sourceBytes, {
+    sourceName: "repeated-cycle-speck.svga"
+  });
+
+  assert.equal(result.report.passed, true);
+  assert.equal(result.report.sequenceGroup.repairedResourceKey, "seq_006");
+  assert.deepEqual(result.report.sequenceGroup.targetVisibleFrames, [11, 12, 35, 36]);
+  assert.equal(result.report.selectedRepair.selectionRule, "interior_near_empty_speck");
+  assert.equal(result.report.invariantSummary.sequenceVisibilityWindowsDisjoint, true);
+});
+
+test("sequence repair fails closed with overlap proof when repeated cycles share visible frames", async () => {
+  const sourceBytes = await createSequenceFixture({
+    speckKeys: ["seq_006"],
+    repeatedCycleOffset: 22
+  });
+  await assert.rejects(
+    repairSvgaSequenceFrameFlicker(sourceBytes, { sourceName: "overlapping-cycle-speck.svga" }),
+    (error) => error instanceof SvgaSequenceFrameRepairError
+      && error.code === "sequence_group_visibility_overlap_detected"
+      && Number(error.details.overlapFrameCount) > 0
+      && Array.isArray(error.details.overlapFrameSamples)
+  );
+});
+
 test("sequence repair still fails closed for a leading boundary speck", async () => {
   const sourceBytes = await createSequenceFixture({ speckKeys: ["seq_001"] });
   await assert.rejects(
@@ -91,7 +121,7 @@ test("sequence repair still fails closed for a leading boundary speck", async ()
   );
 });
 
-async function createSequenceFixture(options: { speckKeys: readonly string[] }): Promise<Uint8Array> {
+async function createSequenceFixture(options: { speckKeys: readonly string[]; repeatedCycleOffset?: number }): Promise<Uint8Array> {
   const root = await protobuf.load(protoPath);
   const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
   const imageKeys = Array.from({ length: 12 }, (_, index) => `seq_${String(index + 1).padStart(3, "0")}`);
@@ -106,19 +136,27 @@ async function createSequenceFixture(options: { speckKeys: readonly string[] }):
         255
       ])
   ]));
+  const timelineFrameCount = typeof options.repeatedCycleOffset === "number" ? 60 : 36;
   const payload = {
     version: "2.0",
     params: {
       viewBoxWidth: 200,
       viewBoxHeight: 200,
       fps: 24,
-      frames: 36
+      frames: timelineFrameCount
     },
     images,
-    sprites: imageKeys.map((imageKey, index) => ({
-      imageKey,
-      frames: createTimelineFrames(36, [index * 2 + 1, index * 2 + 2])
-    })),
+    sprites: imageKeys.map((imageKey, index) => {
+      const primaryFrames = [index * 2 + 1, index * 2 + 2];
+      const repeatedCycleOffset = options.repeatedCycleOffset;
+      const repeatedFrames = typeof repeatedCycleOffset === "number"
+        ? primaryFrames.map((frameIndex) => frameIndex + repeatedCycleOffset)
+        : [];
+      return {
+        imageKey,
+        frames: createTimelineFrames(timelineFrameCount, [...primaryFrames, ...repeatedFrames])
+      };
+    }),
     audios: []
   };
   const verificationError = MovieEntity.verify(payload);

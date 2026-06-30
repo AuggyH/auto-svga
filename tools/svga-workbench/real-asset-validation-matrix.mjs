@@ -232,9 +232,15 @@ async function attemptSequenceRepair(modules, bytes, name) {
       status: "fail_closed_or_unsupported",
       errorCode: error?.code ?? error?.name ?? "sequence_repair_failed",
       message: errorMessage(error),
+      details: redactedErrorDetails(error),
       failureClosed: true
     };
   }
+}
+
+function redactedErrorDetails(error) {
+  if (!error || typeof error !== "object" || !("details" in error)) return undefined;
+  return JSON.parse(JSON.stringify(error.details));
 }
 
 async function inspectSyntheticCorruptSvga(modules) {

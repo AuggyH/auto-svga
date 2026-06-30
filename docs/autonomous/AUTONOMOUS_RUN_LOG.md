@@ -67,10 +67,13 @@
   only near-empty candidate was the final frame of an otherwise ordered numeric
   sequence group.
 - Action: added a stricter terminal-tail repair rule. It keeps leading boundary
-  frames rejected, splits `not_found` from `not_unique`, rejects overlapping or
-  unordered adjacent visibility windows, and requires two visible predecessor
-  frames before replacing the terminal near-empty PNG with a same-size
-  transparent PNG.
+  frames rejected, splits `not_found` from `not_unique`, rejects resources that
+  share a visible timeline frame, and requires two visible predecessor frames
+  before replacing the terminal near-empty PNG with a same-size transparent PNG.
+- Action: refined repeated-cycle proof so a sequence used in multiple playback
+  cycles is allowed when no two resources share the same visible frame. The real
+  asset matrix now records redacted overlap-frame/resource samples for true
+  multi-resource overlap failures.
 - Action: split Phase 4 desktop smoke onto a dedicated
   `sequence-repair-smoke.svga` fixture with ordered non-overlapping sequence
   windows and a persistent background layer. The regular avatar-frame preview
@@ -80,10 +83,10 @@
   SVGA samples parsed, 22 safe optimization candidate assets, 53 PNG replacement
   candidate assets, 3 Phase 4 repaired candidates, and 50 fail-closed sequence
   attempts. Remaining Phase 4 reasons: 31 no continuous numeric visible
-  sequence group, 11 overlapping or unordered sequence visibility windows, and
-  8 no near-empty speck candidate.
+  sequence group, 11 no near-empty speck candidate, and 8 multi-resource
+  visible-frame overlap failures.
 - Validation: `node --test dist/tests/svga-sequence-frame-repair.test.js`
-  passed 5/5; `npm test` passed 243/243; svga-web experiment tests passed
+  passed 7/7; `npm test` passed 243/243; svga-web experiment tests passed
   28/28; `npm run desktop:smoke` passed with product Save As/reopen proof for
   `seq_012`.
 - Status: this is real product progress but not Phase 4 completion. The

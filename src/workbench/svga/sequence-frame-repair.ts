@@ -146,6 +146,12 @@ interface ImageFacts {
   alphaBounds: PixelBounds | null;
 }
 
+interface SequenceVisibilityOverlapSummary {
+  overlapFrameCount: number;
+  overlapFrameSamples: Array<{ frameIndex: number; resourceKeys: string[] }>;
+  overlappingResourceKeys: string[];
+}
+
 type RepairSelectionRule = "interior_near_empty_speck" | "terminal_tail_near_empty_speck";
 
 interface RepairTarget extends ResourceProofInput {
@@ -267,7 +273,7 @@ export async function repairSvgaSequenceFrameFlicker(
         "reject when no continuous numeric sequence group is detected",
         "reject when there is no near-empty visible speck frame",
         "reject when there is more than one near-empty visible speck frame",
-        "reject when adjacent sequence visibility windows overlap or cannot be ordered",
+        "reject when sequence resources share visible timeline frames",
         "reject when the target is the first frame in its sequence group",
         "reject when the target is the last frame unless it is a terminal-tail near-empty speck with two visible predecessor frames",
         "reject when neighboring frames do not have visible alpha content",
@@ -336,11 +342,12 @@ function selectRepairTarget(
   const maxRatio = options.maxNearEmptyRatio ?? defaultMaxNearEmptyRatio;
   const minNeighborRatio = options.minNeighborPixelRatio ?? defaultMinNeighborPixelRatio;
   const minTerminalPreviousRatio = options.minTerminalPreviousPixelRatio ?? defaultMinTerminalPreviousPixelRatio;
-  if (!sequenceVisibilityWindowsDisjoint(group.items)) {
+  const overlapSummary = sequenceVisibilityOverlapSummary(group.items);
+  if (overlapSummary) {
     throw new SvgaSequenceFrameRepairError(
       "sequence_group_visibility_overlap_detected",
-      "Sequence repair requires adjacent sequence frames to have ordered, non-overlapping visibility windows.",
-      { groupId: group.groupId }
+      "Sequence repair requires sequence resources to have non-overlapping visible timeline frames.",
+      { groupId: group.groupId, ...overlapSummary }
     );
   }
   const candidates = group.items.map((item, index) => ({
@@ -532,21 +539,37 @@ function visibleFrames(frames: readonly ({ alpha?: number } & Record<string, unk
 }
 
 function sequenceVisibilityWindowsDisjoint(items: readonly ResourceProofInput[]): boolean {
-  for (let index = 1; index < items.length; index += 1) {
-    const previous = visibilityWindow(items[index - 1].visibleFrameIndices);
-    const current = visibilityWindow(items[index].visibleFrameIndices);
-    if (!previous || !current || previous.end >= current.start) {
-      return false;
-    }
-  }
-  return true;
+  return !sequenceVisibilityOverlapSummary(items);
 }
 
-function visibilityWindow(indices: readonly number[]): { start: number; end: number } | null {
-  if (indices.length === 0) return null;
+function sequenceVisibilityOverlapSummary(items: readonly ResourceProofInput[]): SequenceVisibilityOverlapSummary | null {
+  const frameOwners = new Map<number, Set<string>>();
+  for (const item of items) {
+    if (item.visibleFrameIndices.length === 0) {
+      return {
+        overlapFrameCount: 1,
+        overlapFrameSamples: [{ frameIndex: -1, resourceKeys: [item.resourceKey] }],
+        overlappingResourceKeys: [item.resourceKey]
+      };
+    }
+    for (const frameIndex of item.visibleFrameIndices) {
+      const owners = frameOwners.get(frameIndex) ?? new Set<string>();
+      owners.add(item.resourceKey);
+      frameOwners.set(frameIndex, owners);
+    }
+  }
+  const overlapFrameSamples = [...frameOwners.entries()]
+    .filter(([, owners]) => owners.size > 1)
+    .sort(([left], [right]) => left - right)
+    .map(([frameIndex, owners]) => ({
+      frameIndex,
+      resourceKeys: [...owners].sort()
+    }));
+  if (overlapFrameSamples.length === 0) return null;
   return {
-    start: Math.min(...indices),
-    end: Math.max(...indices)
+    overlapFrameCount: overlapFrameSamples.length,
+    overlapFrameSamples: overlapFrameSamples.slice(0, 12),
+    overlappingResourceKeys: [...new Set(overlapFrameSamples.flatMap(({ resourceKeys }) => resourceKeys))].sort()
   };
 }
 
