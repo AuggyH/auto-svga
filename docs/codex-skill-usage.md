@@ -7,6 +7,14 @@ Use only the skills needed for the current Auto SVGA task.
 Load `auto-svga-core-guard` for every task. It defines the product mainline,
 priority, scope, validation, anti-drift rules, and report contract.
 
+For any product, UI, feature, release, planning, acceptance, or product-doc
+task, follow the core guard's Product Authority Check before implementation.
+That means checking `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` and the
+single project-level PRD authority, `docs/product/PRODUCT_ROADMAP.md`, then
+stating whether the task aligns with the relevant roadmap horizon. If the task
+conflicts with, duplicates, or revives scope outside the main PRD, stop and ask
+the Product Owner.
+
 ## Load by Task
 
 | Skill | Load when |

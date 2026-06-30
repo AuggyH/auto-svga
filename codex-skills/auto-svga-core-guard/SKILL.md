@@ -45,6 +45,27 @@ reversible post-export refinement over full motion authoring.
    AI-assisted workflows. Do not add direct source-project ingestion without a
    separate scope decision.
 
+## Product Authority Check
+
+Before implementation, classify whether the task affects product scope,
+feature behavior, UI, release planning, acceptance evidence, or product docs.
+
+If it does, read `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` and
+`docs/product/PRODUCT_ROADMAP.md` before proposing or editing. Treat
+`docs/product/PRODUCT_ROADMAP.md` as the single project-level PRD authority.
+Stage-specific PRDs, milestone contracts, review packets, roadmap snapshots,
+or status documents may refine execution, but they must not override the main
+PRD.
+
+If a request conflicts with the main PRD, is absent from the relevant horizon,
+or would revive hidden/deferred scope, stop and ask the Product Owner before
+implementation. Do not silently choose between conflicting sources.
+
+Do not create a new PRD, product plan, or scope document until repository search
+proves there is no suitable existing document. Prefer updating the authoritative
+or closest existing document, and add cross-references instead of duplicating
+requirements.
+
 ## Inspection Primitives First
 
 Build reusable parsing, normalized metadata, resource facts, spec profiles,
@@ -111,14 +132,16 @@ Proceed only after explicit user confirmation.
 Before implementation, state:
 
 1. Mainline and priority.
-2. Core goal served.
-3. Why the task is worth doing now.
-4. Effect on current SVGA preview.
-5. Allowed changes.
-6. Protected or prohibited changes.
-7. Explicit non-goals.
-8. Verification plan.
-9. Rollback plan.
+2. Product authority check: consulted PRD section, alignment, drift risk, or
+   why the task is not product-affecting.
+3. Core goal served.
+4. Why the task is worth doing now.
+5. Effect on current SVGA preview.
+6. Allowed changes.
+7. Protected or prohibited changes.
+8. Explicit non-goals.
+9. Verification plan.
+10. Rollback plan.
 
 ## Completion Report
 
@@ -133,7 +156,7 @@ Report:
 7. Self-check scope.
 8. Validation result.
 9. Regression check.
-10. Drift check.
+10. Product authority and drift check.
 11. Dependencies and licenses.
 12. Client-readiness assessment.
 13. Risks and gaps.

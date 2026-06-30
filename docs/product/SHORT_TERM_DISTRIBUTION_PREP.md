@@ -6,8 +6,8 @@ Status: prep started; release candidate not claimed
 
 ## Purpose
 
-Start release and distribution preparation in parallel with Phase 1, Phase 2,
-Phase 3, and Phase 4 product function completion.
+Start release and distribution preparation in parallel with the corrected
+short-term SVGA app scope in `docs/product/PRODUCT_ROADMAP.md`.
 
 This track prepares the first distributable Workbench version without changing
 the active product acceptance boundary. It must keep packaging readiness,
@@ -32,7 +32,7 @@ Distribution tiers:
 
 | Workstream | Owner boundary | Required output | Status |
 | --- | --- | --- | --- |
-| Release candidate gate | Integration/Product Owner | Current-head complete review directory, validation summary, App ZIP, and explicit acceptance decision | Not ready; Phase 1-4 review continues |
+| Release candidate gate | Integration/Product Owner | Current-head complete review directory, validation summary, App ZIP, and explicit acceptance decision | Not ready; corrected short-term scope review continues |
 | macOS package hygiene | Engineering | Clean App ZIP entries, Info.plist audit, privacy audit, normal packaged startup proof | Prepared for internal package |
 | macOS signing/notarization | Credential holder + Integration | Signed archive, notarization ticket, stapled app, `spctl` assessment | Workflow dry-run exists; credentials blocked |
 | Windows distribution | Future release owner | Windows packaging plan, signing certificate, runtime proof, installer/ZIP decision | Not started beyond blocker tracking |
@@ -43,8 +43,8 @@ Distribution tiers:
 
 A short-term release candidate can be produced only after all of these are true:
 
-1. Phase 1, Phase 2, Phase 3, and Phase 4 included capabilities have current-head
-   evidence or explicit nonblocking limitation records.
+1. All required short-term capabilities in `docs/product/PRODUCT_ROADMAP.md`
+   have current-head evidence or explicit nonblocking limitation records.
 2. `npm run svga-workbench:v1:validate` passes on the final source head.
 3. `npm run svga-workbench:v1:complete-review` is regenerated after the final
    tracked commit.
@@ -55,6 +55,27 @@ A short-term release candidate can be produced only after all of these are true:
    packages unless separately approved.
 6. Product Owner or Integration Coordinator explicitly marks the package as a
    release candidate.
+
+## Required Known Limitations Snapshot
+
+Every short-term review package or release-candidate handoff must include an
+owner-readable limitations snapshot. It must at least state:
+
+- whether the package is D0 unsigned internal, D1 signed/notarized macOS, or
+  another distribution tier
+- whether the Product Owner has accepted the package
+- audio parsing status; short-term no-audio or unsupported-audio states are not
+  blockers when shown truthfully
+- text replacement status; short-term text replacement is runtime preview and
+  is not persisted into SVGA bytes
+- which optimization methods are enabled as real output and which are
+  suggestion-only
+- whether image replacement is runtime preview only or also persisted as
+  byte-edited output in that build
+- active production-spec profile and any provisional thresholds
+- unsupported SVGA round-trip cases and fail-closed behavior
+- signing, notarization, Windows packaging, public release, auto-update, and
+  telemetry status
 
 Trusted macOS distribution additionally requires:
 
@@ -100,7 +121,9 @@ AUTO_SVGA_NOTARY_PROFILE="auto-svga-notary" \
   server work in this short-term prep track.
 - No Windows release claim until Windows runtime and signing are separately
   validated.
-- No new editor scope or broad UI polish.
+- No export acceptance UI, sequence-frame repair, advanced layer editing, broad
+  batch replacement, public release, or inactive feature placeholders in the
+  short-term app.
 
 ## Current Blockers
 
@@ -110,10 +133,8 @@ AUTO_SVGA_NOTARY_PROFILE="auto-svga-notary" \
   trusted Windows distribution.
 - Current Workbench v1 is still active product work and is not yet in Product
   Owner review.
-- Phase 4 real-asset sequence repair remains narrow: 3 duplicate real-asset
-  rows repair through the terminal-tail near-empty-speck rule, while the rest of
-  the current 53-sample redacted matrix still fails closed under documented
-  detection and safety limits.
+- Sequence-frame repair is deferred to the mid-term product plan and must not
+  be treated as a short-term release-candidate blocker.
 
 ## Exit Criteria For This Prep Track
 

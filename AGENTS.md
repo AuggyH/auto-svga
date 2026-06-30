@@ -47,7 +47,11 @@ Current scope is intentionally narrow:
 17. After generating a real .svga, prioritize validation in a real SVGA player
 18. Do not rely only on zlib inflate or protobuf decode to judge visual success
 19. Do not fabricate playback success; mark manual visual confirmation as required when automated playback verification is unavailable
-20. For product or UI work, read DESIGN.md and follow its mode, layout, language, and visual guidance
+20. For product or UI work, read `docs/product/PRODUCT_ROADMAP.md`,
+    `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md`,
+    `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md`, and
+    `DESIGN.md`; treat `DESIGN.md` as the current agent-readable design-system
+    manifest, not as product scope authority.
 21. Web preview artifact discovery must prefer the newest complete group containing a real SVGA; reference media must come from the same group
 22. Do not let a successful GIF/video reference hide a failed or missing SVGA
 23. Keep preview workspaces vertically reachable at narrow desktop widths; do not lock wrapped content behind hidden overflow
@@ -185,18 +189,24 @@ Confirm no real PNG, SVGA, GIF, job output, or design asset is staged.
 
 ## UI Design Rules
 
-Before modifying the Web preview page (`tools/svga-player-preview/`):
+Before modifying owner-visible UI:
 
-1. Read `DESIGN.md` first — it defines the color tokens, typography, spacing, motion, and accessibility rules.
-2. Read `docs/decisions/ADR-002-apple-design-translation.md` to understand which Apple patterns we adopt vs exclude.
-3. Do NOT copy Apple's marketing-page patterns (56px headlines, 80px padding, pure-black nav, product shadows).
-4. This is a production tool — information density and readability take priority over decorative effects.
-5. Use CSS custom properties from DESIGN.md — no hardcoded hex values.
-6. Test both light and dark modes.
-7. Verify `prefers-reduced-motion: reduce` behavior.
+1. Read the main PRD, short-term UI/UX design brief, redesign execution plan,
+   and `DESIGN.md`.
+2. Use `DESIGN.md` for agent-readable design-system identity, token
+   namespaces, component inventory, and implementation rules.
+3. Do NOT copy Apple's marketing-page patterns (56px headlines, 80px padding,
+   pure-black nav, product shadows).
+4. This is a production tool — information density and readability take
+   priority over decorative effects.
+5. Use design tokens and CSS custom properties — no hardcoded owner-visible
+   visual values.
+6. Test both light and dark modes when the touched surface supports them.
+7. Verify reduced-motion behavior when motion is touched.
 8. Ensure all interactive elements have visible `:focus-visible` outlines.
-9. Chinese labels primary, English secondary for debug traceability.
-10. Do NOT add multiple menu styles — use the unified `.dropdownMenu` / `.dropdownMenuItem` classes.
+9. Chinese labels are primary; English appears only for traceability where
+   useful.
+10. Do not create duplicate one-off menu, button, row, or panel systems.
 
 ## Agent Handoff
 
@@ -280,6 +290,13 @@ Load `auto-svga-core-guard` for every task, then load only the domain skills
 needed. See `docs/codex-skill-usage.md`. These files are source artifacts;
 installing them into a user's global Codex skill directory is a separate
 explicit action.
+
+For any product, UI, feature, release, planning, acceptance, or product-doc
+task, the agent must check `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` and
+the single project-level PRD authority, `docs/product/PRODUCT_ROADMAP.md`,
+before implementation. If the task conflicts with that authority or would
+revive hidden/deferred scope, ask the Product Owner instead of choosing
+silently.
 
 ## Review Process
 

@@ -1,5 +1,9 @@
 # Roadmap
 
+Status: historical roadmap lineage. Do not use this file as the project PRD or
+current product roadmap authority. The only project-level PRD authority is
+`docs/product/PRODUCT_ROADMAP.md`.
+
 ## Product Positioning
 
 Auto SVGA is a designer-facing SVGA export and acceptance workbench. It does

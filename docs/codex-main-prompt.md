@@ -7,8 +7,12 @@ For every task:
 1. Load `auto-svga-core-guard`.
 2. Load only the project skills required by the task type.
 3. Do not load unrelated skills or repeat the full project background.
-4. Before work, state the mainline, scope, verification, and rollback plan.
-5. After work, report validation, regression, drift, dependencies/licenses,
+4. Before product-affecting work, check
+   `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` and the single main PRD,
+   `docs/product/PRODUCT_ROADMAP.md`.
+5. Before work, state the mainline, PRD alignment, scope, verification, and
+   rollback plan.
+6. After work, report validation, regression, drift, dependencies/licenses,
    client readiness, risks, and one next mainline task.
 
 Keep the current SVGA workflow runnable and never claim unsupported capability.
