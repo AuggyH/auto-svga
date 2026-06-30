@@ -971,6 +971,7 @@ async function buildManifest(root, extra = {}) {
 }
 
 function roleForPath(relativePath) {
+  if (relativePath === "UPLOAD_CHANGELOG_SINCE_6AFA889.md") return "upload_changelog";
   if (relativePath === "UPLOAD_CHANGELOG_SINCE_A4681D7.md") return "upload_changelog";
   if (relativePath === "UPLOAD_INDEX.json") return "upload_index";
   if (relativePath === "bundle-privacy-audit.json") return "privacy_audit";
@@ -1161,17 +1162,17 @@ async function writeUploadIndex(root, { headCommit, headTree, completeZipName, a
 
 function gitLogSinceBaseline() {
   try {
-    return git(["log", "--oneline", "--decorate", "a4681d7..HEAD", "--"]);
+    return git(["log", "--oneline", "--decorate", "6afa889..HEAD", "--"]);
   } catch {
-    return "Unable to read local git log for a4681d7..HEAD; use MANIFEST.json finalHead and package review notes as authority.";
+    return "Unable to read local git log for 6afa889..HEAD; use MANIFEST.json finalHead and package review notes as authority.";
   }
 }
 
 async function writeUploadChangelog(root, { headCommit, headTree, completeZipName }) {
-  await writeFile(path.join(root, "UPLOAD_CHANGELOG_SINCE_A4681D7.md"), [
-    "# Upload Changelog Since a4681d7",
+  await writeFile(path.join(root, "UPLOAD_CHANGELOG_SINCE_6AFA889.md"), [
+    "# Upload Changelog Since 6afa889",
     "",
-    "Baseline package: `review/SVGA-Workbench-v1-a4681d7-complete-review-directory.zip`.",
+    "Baseline package: `review/SVGA-Workbench-v1-6afa889-complete-review-directory.zip`.",
     `Current package: \`${completeZipName}\`.`,
     `Current HEAD: \`${headCommit}\`.`,
     `Current tree: \`${headTree}\`.`,
@@ -1184,32 +1185,34 @@ async function writeUploadChangelog(root, { headCommit, headTree, completeZipNam
     "",
     "## Why This Upload Was Regenerated",
     "",
-    "The `a4681d7` package completed the Phase 4 sequence anti-flicker repaired-copy path. Later review uncovered owner-visible workflow problems: Phase 2/3/4 operations were hard to discover, one interim repair placed action buttons inside the left resource panel, the resource list was displaced, and the large-preview path became unclear.",
+    "The `6afa889` package was a valid complete-review directory after Phase 4 wording/proof alignment, but Product Owner follow-up review continued on the owner-visible Workbench UI and desktop menu behavior.",
     "",
-    "This package keeps the Phase 4 algorithm and evidence from `a4681d7`, then layers the owner-requested UI/UX repairs and regenerated upload evidence on top of the current final head.",
+    "This package keeps the Phase 1/2/3/4 evidence from `6afa889`, then layers the owner-requested UI/UX repairs, operation result feedback, macOS menu/text-editing fixes, and regenerated upload evidence on top of the current final head.",
     "",
-    "## Product-Bearing Changes After a4681d7",
+    "## Product-Bearing Changes After 6afa889",
     "",
-    "- `5825f70` exposed the Phase 2/3/4 operation entry points in the Workbench so the implemented workflows were no longer hidden from the app.",
-    "- `eb159e2` corrected that first exposure: operation buttons moved out of the left resource information panel and into the right `检查与操作` inspector area; the left panel returned to resource inventory, filtering, scrolling, and large-preview review.",
-    "- The primary UI now uses product-language actions such as `优化副本`, `替换图片`, and `修复闪帧` instead of requiring reviewers to understand internal Phase labels.",
-    "- Diagnostics and technical evidence remain available, but they are no longer the first visual surface blocking the resource list or the action workflow.",
-    "- Keyboard activation and smoke assertions were updated so Enter/Space operation paths, panel focus, resource preview, and right-side action visibility are covered together.",
+    "- `077d800` adds an owner-visible optimization result summary after `生成优化副本`, including what changed, before/after size, saved output, and reopen status.",
+    "- `0bcfae7` repairs the single-file Workbench layout: the left panel returns to file/resource browsing, resource replacement moves to a contextual resource menu, redundant readiness/playback labels are removed, tabs become lighter page tabs, diagnostics are reduced, and the three columns share consistent panel styling.",
+    "- `7bb6c13` restores standard desktop text operations and expands the macOS application menu. Copy, paste, cut, and select-all use system roles; Workbench actions are grouped under File, Edit, Resource, Optimize, Sequence, Playback, View, Window, and Help instead of being hidden in one catch-all menu.",
+    "- The right inspector no longer exposes the no-op replacement shortcut that only switched focus back to the resource tab.",
+    "- Resource rows remain browse/preview-first; replacement is contextual, while undo/redo/reset/save replacement are shortcuts and macOS menu commands.",
+    "- Desktop smoke and source-sharing tests were updated to cover the new menu/action contract and resource-panel interaction contract.",
     "",
     "## Temporary Product Owner Additions",
     "",
-    "These UI/UX repairs were added during the autonomous run after the Phase 4-only focus was already underway. They are intentionally documented as temporary Product Owner additions so reviewers can distinguish them from the original Phase 4 terminal blocker work.",
+    "These UI/UX and desktop usability repairs were added during the autonomous run after the `6afa889` review package. They are intentionally documented as temporary Product Owner additions so reviewers can distinguish them from the earlier Phase 4 proof/package repair work.",
     "",
-    "- Restore a recognizable three-zone layout: left side for file/resource information, center for preview, right side for inspection and actions.",
-    "- Keep resource rows reachable and scrollable when the SVGA contains many resources.",
-    "- Preserve the resource large-preview workflow from the resource list.",
-    "- Remove engineering-heavy Phase workflow copy from the default interaction surface.",
-    "- Keep implemented Phase 2/3/4 workflows reviewable through concise product actions.",
+    "- Restore a recognizable three-zone layout: left side for file/resource browsing, center for preview, right side for inspection and actions.",
+    "- Keep resource rows reachable and scrollable when the SVGA contains many resources, while preserving the large-preview workflow from the resource list.",
+    "- Remove engineering-heavy Phase workflow copy and decorative status tags from the default interaction surface.",
+    "- Keep implemented Phase 2/3/4 workflows reviewable through concise product actions and macOS menu entries.",
+    "- Add standard copy/select-all behavior so error messages, diagnostics, logs, and metadata can be copied during review.",
+    "- A local real-material classification index was generated outside this upload package for future Workbench testing. It is not bundled here because it points to real local assets under the reviewer machine, but the classification counts and sample use are recorded in the UI/UX review note.",
     "",
     "## Review Impact",
     "",
-    "- Use this current package, not the `a4681d7` package, for owner-visible UI/UX review and packaged App testing.",
-    "- Use `a4681d7` only as lineage for the Phase 4 sequence repair implementation baseline.",
+    "- Use this current package, not the `6afa889` package, for owner-visible UI/UX review, macOS menu/text-copy review, and packaged App testing.",
+    "- Use `6afa889` only as lineage for the previous complete review-directory baseline.",
     "- Historical UI audit material remains under `ui-audit/` with `evidenceRole=reference_only`; it is guidance, not current feature evidence.",
     "- Current validation, manifest coverage, privacy audit, App ZIP hygiene, packaged runtime proof, and Phase 2/3/4 reports are all regenerated in this package.",
     ""
@@ -1226,7 +1229,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     "Status: complete review-directory handoff candidate. This handoff is not Product Owner acceptance; Phase 4 includes a validated repaired-copy Save As/reopen path with limited canvas-delta observability recorded for the tiny target speck.",
     "",
-    "Start with `REVIEW_PACKET.md` and `UPLOAD_CHANGELOG_SINCE_A4681D7.md`, then use `UPLOAD_INDEX.json`, `MANIFEST.json`,",
+    "Start with `REVIEW_PACKET.md` and `UPLOAD_CHANGELOG_SINCE_6AFA889.md`, then use `UPLOAD_INDEX.json`, `MANIFEST.json`,",
     "`bundle-privacy-audit.json`, `package-hygiene-proof.json`, and",
     "`validation/validation-summary.json` for machine-checkable evidence.",
     ""
@@ -1253,15 +1256,15 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "| macOS package | Unsigned internal ZIP only | Clean App ZIP hygiene validated; signing/notarization blocked by credentials |",
     "| UI audit / HIG | Included as repair input | Findings are tracked; broad UI polish not completed in this package repair |",
     "",
-    "## Changes Since a4681d7",
+    "## Changes Since 6afa889",
     "",
-    "- See `UPLOAD_CHANGELOG_SINCE_A4681D7.md` for the commit range and owner-requested temporary UI/UX additions made after `SVGA-Workbench-v1-a4681d7-complete-review-directory.zip`.",
-    "- The main owner-visible delta is workflow placement: Phase 2/3/4 operations are now exposed as concise right-side product actions while the left side returns to resource inventory, scrolling, filtering, and large-preview review.",
-    "- These UI/UX changes were inserted after the Phase 4 sequence-repair focus and are included as review scope additions, not as a replacement for the Phase 4 evidence.",
+    "- See `UPLOAD_CHANGELOG_SINCE_6AFA889.md` for the commit range and owner-requested additions made after `SVGA-Workbench-v1-6afa889-complete-review-directory.zip`.",
+    "- The main owner-visible deltas are workflow feedback and placement: optimization now reports actual changes after Save As; the left side returns to resource browsing; replacement is contextual; and Phase 2/3/4 operations remain available through concise product actions and macOS menu entries.",
+    "- These UI/UX and desktop menu/text-copy changes were inserted after the `6afa889` review package and are included as review scope additions, not as a replacement for the Phase 1/2/3/4 evidence.",
     "",
     "## Self-Contained Evidence",
     "",
-    "- `UPLOAD_CHANGELOG_SINCE_A4681D7.md`: commit-range and temporary Product Owner addition summary since the referenced baseline package.",
+    "- `UPLOAD_CHANGELOG_SINCE_6AFA889.md`: commit-range and temporary Product Owner addition summary since the referenced baseline package.",
     "- `UPLOAD_INDEX.json`: upload-facing core payload index with role, size, SHA-256, head, tree, and an explicit coverage boundary for late integrity companions.",
     "- `MANIFEST.json`: exhaustive payload hash authority; every payload except `MANIFEST.json` itself, with role, size, MIME, and SHA-256.",
     "- `manifest-verification.json`: hash verification result for the staged review directory.",

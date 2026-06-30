@@ -87,10 +87,33 @@ scope:
   longer compete with resources or core actions.
 
 The next complete review upload package should include
-`UPLOAD_CHANGELOG_SINCE_A4681D7.md` so reviewers can separate these temporary
-UI/UX additions from the original Phase 4 sequence-repair blocker work. This
-review file does not claim that a new complete review package was generated in
-this UI/UX repair slice.
+`UPLOAD_CHANGELOG_SINCE_6AFA889.md` so reviewers can separate these temporary
+UI/UX additions from the last complete review-directory baseline. This review
+file does not claim that a new complete review package was generated in this
+UI/UX repair slice.
+
+## Addendum Since 6afa889
+
+After `SVGA-Workbench-v1-6afa889-complete-review-directory.zip`, Product Owner
+review added three concrete acceptance aids:
+
+- the optimization workflow now reports what changed after generating an
+  optimized copy, including removed resources, before/after size, saved output,
+  and reopen status;
+- resource browsing/replacement was repaired again so the left panel stays a
+  browse-first resource list, replacement starts from a contextual resource
+  menu, and history/save commands live in shortcuts plus the macOS menu;
+- standard desktop text operations and categorized macOS application menus were
+  added so logs, errors, diagnostics, and metadata can be copied and every
+  meaningful operation is reachable from the system menu.
+
+A local real-material classification index was also generated for future manual
+Workbench testing. It is intentionally not bundled into the upload package
+because it references real local assets. The index identified 47 uncategorized
+asset units: 11 avatar-frame SVGA, 10 CP/couple avatar-frame SVGA, 1 headwear
+SVGA, 3 vehicle/float VAP, 2 entrance/mount effects, 2 home/profile-card
+effects, 4 festival gift/greeting VAP, 1 wing effect, and 13 duplicate
+candidates.
 
 ## Evidence
 

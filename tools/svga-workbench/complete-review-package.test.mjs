@@ -88,7 +88,7 @@ test("review packet template keeps complete handoff sections", async () => {
   const source = await readFile(new URL("./complete-review-package.mjs", import.meta.url), "utf8");
   for (const requiredSection of [
     "## Feature Completion Matrix",
-    "## Changes Since a4681d7",
+    "## Changes Since 6afa889",
     "## Self-Contained Evidence",
     "## Validation Summary",
     "## App ZIP / Signing / Installer Status",
@@ -100,8 +100,10 @@ test("review packet template keeps complete handoff sections", async () => {
     "## Known Risks",
     "## Required Human Decision",
     "Recommended next human decision",
-    "UPLOAD_CHANGELOG_SINCE_A4681D7.md",
+    "UPLOAD_CHANGELOG_SINCE_6AFA889.md",
     "temporary Product Owner addition",
+    "macOS application menu",
+    "standard desktop text operations",
     "partial_canvas_delta_for_target_speck",
     "prototype-history",
     "historical_lineage",
