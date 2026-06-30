@@ -22,6 +22,7 @@ const experimentRoot = path.join(repoRoot, "tools/electron-prototype/experiments
 const trialRoot = path.join(experimentRoot, ".artifacts/internal-trial");
 const appBundle = path.join(trialRoot, "Auto SVGA-darwin-arm64/Auto SVGA.app");
 const internalTrialManifestPath = path.join(trialRoot, "internal-trial-manifest.json");
+const packagedRuntimeRoot = path.join(repoRoot, ".artifacts/svga-workbench-v1-packaged-runtime/latest");
 const textExtensions = new Set([".json", ".md", ".txt", ".html", ".js", ".mjs", ".cjs", ".css", ".plist", ".xml", ".patch"]);
 const requiredValidationFiles = [
   "validation-summary.json",
@@ -32,6 +33,7 @@ const requiredValidationFiles = [
   "macos-package-proof.json",
   "macos-package.json",
   "signing-plan.json",
+  "packaged-normal-runtime-proof.json",
   "loop-validate.json"
 ];
 
@@ -58,6 +60,10 @@ async function fileIdentity(filePath) {
 async function writeJson(filePath, payload) {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+}
+
+async function readJson(filePath) {
+  return JSON.parse(await readFile(filePath, "utf8"));
 }
 
 async function copyRequired(sourcePath, targetPath) {
@@ -243,15 +249,373 @@ async function copyUiAuditEvidence(root) {
   ].join("\n"), "utf8");
 }
 
-async function copyPhaseEvidence(root) {
+export function extractDesktopSmokeResultFromText(text) {
+  const prefix = "AUTO_SVGA_WEB_EXPERIMENT_SMOKE ";
+  const line = String(text ?? "").split(/\n/).find((item) => item.startsWith(prefix));
+  if (!line) throw new Error("desktop smoke result line missing");
+  return JSON.parse(line.slice(prefix.length));
+}
+
+async function readValidationJson(fileName) {
+  return await readJson(path.join(validationRoot, fileName));
+}
+
+function requireProof(smokeResult, key) {
+  const proof = smokeResult?.[key];
+  if (!proof || proof.passed !== true) throw new Error(`desktop smoke proof missing or failed: ${key}`);
+  return proof;
+}
+
+function requiredSmokeProofs(smokeResult) {
+  return {
+    optimizedReopenProof: requireProof(smokeResult, "optimizedReopenProof"),
+    sequenceReviewProof: requireProof(smokeResult, "sequenceReviewProof"),
+    sequenceRepairPreviewProof: requireProof(smokeResult, "sequenceRepairPreviewProof"),
+    sequenceNoWriteSimulationProof: requireProof(smokeResult, "sequenceNoWriteSimulationProof"),
+    sequenceBoundedRepairPrototypeProof: requireProof(smokeResult, "sequenceBoundedRepairPrototypeProof"),
+    sequencePrototypeRenderedBoundaryProof: requireProof(smokeResult, "sequencePrototypeRenderedBoundaryProof"),
+    sequenceNoopRoundTripProof: requireProof(smokeResult, "sequenceNoopRoundTripProof"),
+    sequenceByteRepairProof: requireProof(smokeResult, "sequenceByteRepairProof"),
+    replacementReadinessProof: requireProof(smokeResult, "replacementReadinessProof"),
+    replacementPreviewProof: requireProof(smokeResult, "replacementPreviewProof"),
+    replacementUndoRedoProof: requireProof(smokeResult, "replacementUndoRedoProof"),
+    replacementResetProof: requireProof(smokeResult, "replacementResetProof"),
+    replacementSaveAsProof: requireProof(smokeResult, "replacementSaveAsProof"),
+    replacementMultiResourceProof: requireProof(smokeResult, "replacementMultiResourceProof")
+  };
+}
+
+function buildAssetIntelligenceReport({ headCommit, headTree, validationSummary, stateProof, proofs }) {
+  const readiness = proofs.replacementReadinessProof;
+  const sequence = proofs.sequenceReviewProof;
+  const optimization = proofs.optimizedReopenProof;
+  return {
+    schemaVersion: 1,
+    milestoneId,
+    phase: "Phase 2",
+    reportId: "asset-intelligence-report",
+    finalHead: headCommit,
+    finalTree: headTree,
+    generatedFrom: {
+      validationSummary: "validation/validation-summary.json",
+      desktopSmoke: "validation/desktop-smoke.json",
+      stateRenderProof: "evidence/phase2/desktop-state-render-proof.json"
+    },
+    validationGeneratedAt: validationSummary.generatedAt,
+    resourceClassification: {
+      sourceSha256: readiness.sourceSha256,
+      fileName: readiness.fileName,
+      parsedMovie: readiness.parsedMovie,
+      imageResourceCount: readiness.imageResourceCount,
+      usedResourceCount: readiness.usedResourceCount,
+      replaceableResourceCount: readiness.replaceableResourceCount,
+      replaceableResourceSample: readiness.replaceableResourceKeys,
+      sequenceGroupCount: sequence.sequenceGroupCount,
+      sequenceAffectedResourceCount: sequence.affectedResourceCount
+    },
+    abnormalityFindings: [
+      {
+        code: "sequence_frame_memory_concentration",
+        severity: "review_required",
+        findingCount: sequence.sequenceFindingCount,
+        affectedResourceCount: sequence.affectedResourceCount,
+        evidenceRefs: ["sequenceReviewProof", "desktop-sequence-review-proof.png"]
+      },
+      {
+        code: "spec_transparent_padding_or_resource_abnormality_visible",
+        severity: "diagnostic_visible",
+        evidenceRefs: ["desktop-info-assets-open.png", "desktop-state-render-proof.json"],
+        visibleDiagnosticProof: stateProof.states?.["info-assets-open"]?.productState?.diagnosticFirstIssueVisible === true
+      }
+    ],
+    safeOptimizationCandidateList: optimization.removedResourceKeys.map((resourceKey) => ({
+      resourceKey,
+      candidateType: resourceKey.includes("unused") ? "unused_image_resource" : "duplicate_or_unreferenced_image_resource",
+      disposition: "safe_to_remove_in_optimized_copy",
+      evidenceRef: "optimizedReopenProof"
+    })),
+    riskyOrSkippedOptimizationReasons: [
+      {
+        code: "referenced_resources_not_removed",
+        reason: "Resources with sprite or frame references are retained unless the optimizer can prove they are duplicate or unused."
+      },
+      {
+        code: "sequence_repair_not_optimized",
+        reason: "Sequence-frame repair is tracked in Phase 4 and remains blocked from product Save As."
+      },
+      {
+        code: "manual_visual_confirmation_required_for_sequence_changes",
+        reason: "Byte-producing sequence candidates are not promoted to safe optimization without visual acceptance."
+      }
+    ],
+    uiProofReferences: [
+      "evidence/phase2/desktop-info-assets-open.png",
+      "evidence/phase2/desktop-optimized-reopen-proof.png",
+      "evidence/phase2/desktop-state-render-proof.json"
+    ],
+    passed: readiness.passed === true
+      && sequence.passed === true
+      && optimization.passed === true
+      && stateProof.passed === true
+  };
+}
+
+function buildOptimizationReport({ headCommit, headTree, validationSummary, proofs }) {
+  const proof = proofs.optimizedReopenProof;
+  return {
+    schemaVersion: 1,
+    milestoneId,
+    phase: "Phase 2",
+    reportId: "optimization-report",
+    finalHead: headCommit,
+    finalTree: headTree,
+    generatedFrom: {
+      validationSummary: "validation/validation-summary.json",
+      desktopSmoke: "validation/desktop-smoke.json",
+      optimizedReopenScreenshot: "evidence/phase2/desktop-optimized-reopen-proof.png"
+    },
+    validationGeneratedAt: validationSummary.generatedAt,
+    beforeMetrics: {
+      sourceSha256: proof.sourceSha256,
+      imageCount: proof.originalImageCount
+    },
+    afterMetrics: {
+      optimizedSha256: proof.optimizedSha256,
+      imageCount: proof.optimizedImageCount,
+      removedResourceKeys: proof.removedResourceKeys
+    },
+    saveAsBehavior: {
+      saveAsRequired: proof.saveAsRequired,
+      optimizedHashBound: proof.optimizedHashBound,
+      optimizedOutputHash: proof.optimizedSha256,
+      sourceUnchanged: proof.sourceUnchanged,
+      reopenedPlayback: proof.reopenedPlayback,
+      reopenedCanvasNonBlank: proof.reopenedCanvasNonBlank,
+      reopenedInspectionReport: proof.reopenedInspectionReport,
+      renderedProofPassed: proof.renderedProofPassed
+    },
+    riskyOrSkippedCandidates: [
+      "referenced image resources retained",
+      "sequence repair output excluded from safe optimizer",
+      "no in-place mutation; optimized output must be saved as a separate file"
+    ],
+    passed: proof.passed === true
+  };
+}
+
+function buildReplacementEditingReport({ headCommit, headTree, validationSummary, proofs }) {
+  const readiness = proofs.replacementReadinessProof;
+  const preview = proofs.replacementPreviewProof;
+  const undoRedo = proofs.replacementUndoRedoProof;
+  const reset = proofs.replacementResetProof;
+  const saveAs = proofs.replacementSaveAsProof;
+  const multi = proofs.replacementMultiResourceProof;
+  return {
+    schemaVersion: 1,
+    milestoneId,
+    phase: "Phase 3",
+    reportId: "replacement-editing-report",
+    finalHead: headCommit,
+    finalTree: headTree,
+    generatedFrom: {
+      validationSummary: "validation/validation-summary.json",
+      desktopSmoke: "validation/desktop-smoke.json"
+    },
+    validationGeneratedAt: validationSummary.generatedAt,
+    supportedBoundary: {
+      supported: ["PNG image resource replacement", "undo", "redo", "reset preview", "Save As", "multi-resource replacement"],
+      unsupported: ["text editing", "resource key rename", "URL import", "timeline edit", "structural SVGA edit", "sequence repair Save As"]
+    },
+    readiness: {
+      sourceSha256: readiness.sourceSha256,
+      imageResourceCount: readiness.imageResourceCount,
+      replaceableResourceCount: readiness.replaceableResourceCount,
+      replaceableResourceSample: readiness.replaceableResourceKeys,
+      editorUiExposed: readiness.editorUiExposed
+    },
+    singleReplacement: {
+      resourceKey: preview.resourceKey,
+      replacementSha256: preview.replacementSha256,
+      editedSha256: preview.editedSha256,
+      sourceUnchanged: preview.sourceUnchanged,
+      exportedMatchesReplacement: preview.exportedMatchesReplacement,
+      reopenedPlayback: preview.reopenedPlayback,
+      reopenedCanvasNonBlank: preview.reopenedCanvasNonBlank,
+      reopenedInspectionReport: preview.reopenedInspectionReport
+    },
+    undoRedo: {
+      undoRestoredOriginal: undoRedo.undoRestoredOriginal,
+      redoRestoredEdited: undoRedo.redoRestoredEdited,
+      editClearedAfterUndo: undoRedo.editClearedAfterUndo,
+      editRestoredAfterRedo: undoRedo.editRestoredAfterRedo,
+      historyBounded: undoRedo.historyBounded
+    },
+    reset: {
+      resetActionVisibleBeforeReset: reset.resetActionVisibleBeforeReset,
+      resetRestoredOriginal: reset.resetRestoredOriginal,
+      editClearedAfterReset: reset.editClearedAfterReset,
+      undoAvailableAfterReset: reset.undoAvailableAfterReset,
+      redoClearedAfterReset: reset.redoClearedAfterReset,
+      resetCanvasNonBlank: reset.resetCanvasNonBlank,
+      resetInspectionReport: reset.resetInspectionReport
+    },
+    saveAs: {
+      savedFileName: saveAs.savedFileName,
+      editedSha256: saveAs.editedSha256,
+      savedSha256: saveAs.savedSha256,
+      savedHashBound: saveAs.savedHashBound,
+      roundTripPassed: saveAs.roundTripPassed,
+      reopenedPlayback: saveAs.reopenedPlayback,
+      reopenedCanvasNonBlank: saveAs.reopenedCanvasNonBlank,
+      reopenedInspectionReport: saveAs.reopenedInspectionReport
+    },
+    multiResource: {
+      resourceKeys: multi.resourceKeys,
+      replacementCount: multi.replacementCount,
+      editedSha256: multi.editedSha256,
+      savedSha256: multi.savedSha256,
+      savedFileName: multi.savedFileName,
+      exportedMatchesReplacements: multi.exportedMatchesReplacements,
+      sourceUnchanged: multi.sourceUnchanged,
+      reopenedPlayback: multi.reopenedPlayback,
+      reopenedCanvasNonBlank: multi.reopenedCanvasNonBlank,
+      reopenedInspectionReport: multi.reopenedInspectionReport
+    },
+    historicalIncubationEvidencePolicy: {
+      currentEvidencePathUsesFinalHeadSmokeProofs: true,
+      oldP3P4DirectoriesCopiedAsCurrentEvidence: false,
+      note: "Historical P3/P4 incubation artifacts are preserved in local artifact history only; this report is generated from final-head Workbench smoke proofs."
+    },
+    uiProofReferences: [
+      "evidence/phase3/desktop-replacement-preview-proof.png",
+      "evidence/phase3/desktop-replacement-undo-redo-proof.png",
+      "evidence/phase3/desktop-multi-replacement-proof.png"
+    ],
+    passed: [
+      readiness,
+      preview,
+      undoRedo,
+      reset,
+      saveAs,
+      multi
+    ].every((proof) => proof.passed === true)
+  };
+}
+
+function buildSequenceRepairStatusReport({ headCommit, headTree, validationSummary, proofs }) {
+  const byteProof = proofs.sequenceByteRepairProof;
+  const rendered = proofs.sequencePrototypeRenderedBoundaryProof;
+  const productSaveAsEnabled = byteProof.productSaveAsEnabled === true;
+  const repairSuccessClaimed = byteProof.repairSuccessClaimed === true;
+  const manualRequired = byteProof.manualVisualConfirmationRequired === true;
+  return {
+    schemaVersion: 1,
+    milestoneId,
+    phase: "Phase 4",
+    reportId: "sequence-repair-status-report",
+    finalHead: headCommit,
+    finalTree: headTree,
+    status: productSaveAsEnabled || repairSuccessClaimed || !manualRequired
+      ? "invalid_overclaim_detected"
+      : "partial_smoke_only_blocked_for_product_save_as",
+    generatedFrom: {
+      validationSummary: "validation/validation-summary.json",
+      desktopSmoke: "validation/desktop-smoke.json",
+      sequenceScreenshots: "evidence/phase4/"
+    },
+    validationGeneratedAt: validationSummary.generatedAt,
+    implemented: {
+      sequenceGroupDetection: proofs.sequenceReviewProof.sequenceGroupCount > 0,
+      readOnlyReview: proofs.sequenceReviewProof.passed,
+      repairPreviewContract: proofs.sequenceRepairPreviewProof.passed,
+      noWriteSimulation: proofs.sequenceNoWriteSimulationProof.passed,
+      boundedPrototype: proofs.sequenceBoundedRepairPrototypeProof.passed,
+      renderedBoundaryProof: rendered.passed,
+      noopRoundTripRehearsal: proofs.sequenceNoopRoundTripProof.passed,
+      byteCandidate: byteProof.passed
+    },
+    beforeAfterMechanicalEvidence: {
+      resourceDiffs: byteProof.resourceDiffs,
+      beforeCanvasSha256: rendered.beforeCanvasSha256,
+      afterCanvasSha256: rendered.afterCanvasSha256,
+      beforeCanvasNonBlank: rendered.beforeCanvasNonBlank,
+      afterCanvasNonBlank: rendered.afterCanvasNonBlank,
+      canvasDimensionsStable: rendered.canvasDimensionsStable,
+      pixelHashMatched: rendered.pixelHashMatched,
+      editedSha256: byteProof.editedSha256,
+      roundTripMode: byteProof.roundTripMode,
+      reopenedPlayback: byteProof.reopenedPlayback,
+      reopenedCanvasNonBlank: byteProof.reopenedCanvasNonBlank,
+      reopenedInspectionReport: byteProof.reopenedInspectionReport
+    },
+    productExposure: {
+      productSaveAsEnabled,
+      writeAttempted: byteProof.writeAttempted,
+      writeActionExposed: byteProof.writeActionExposed,
+      repairSuccessClaimed,
+      manualVisualConfirmationRequired: manualRequired
+    },
+    preciseTechnicalBlocker: {
+      id: "PHASE4-SEQUENCE-SAFE-SAVE-AS-BLOCKED",
+      summary: "The smoke candidate can produce edited bytes and reopen them, but the Workbench cannot yet prove exact anti-flicker correctness or visual acceptance safely enough to expose product Save As.",
+      attempted: [
+        "sequence group detection",
+        "repair-preview contract",
+        "no-write simulation",
+        "bounded prototype",
+        "rendered before/after boundary hash proof",
+        "no-op round-trip rehearsal",
+        "byte-producing candidate with resource diff and reopen proof"
+      ],
+      whyBlocked: [
+        "the candidate mutates a bounded resource subset but does not yet prove the full sequence group remains visually equivalent except for the intended anti-flicker change",
+        "manual visual confirmation is still required",
+        "there is no owner-accepted before/after visual threshold for sequence repair",
+        "product Save As must remain disabled while repairSuccessClaimed is false"
+      ],
+      remainsRequired: [
+        "exact sequence repair algorithm for all affected frames",
+        "before/after alpha and visibility proof across the complete sequence group",
+        "automated or owner-approved visual acceptance threshold",
+        "reopen validation after product Save As is enabled"
+      ]
+    },
+    passedAsPartial: byteProof.passed === true
+      && productSaveAsEnabled === false
+      && byteProof.writeAttempted === false
+      && byteProof.writeActionExposed === false
+      && repairSuccessClaimed === false
+      && manualRequired === true
+  };
+}
+
+async function copyPhaseEvidence(root, { headCommit, headTree }) {
+  const validationSummary = await readValidationJson("validation-summary.json");
+  const desktopSmoke = await readValidationJson("desktop-smoke.json");
+  const smokeResult = extractDesktopSmokeResultFromText(desktopSmoke.stdout);
+  const proofs = requiredSmokeProofs(smokeResult);
+  const stateProofPath = path.join(repoRoot, ".artifacts/product/P2/desktop-state-render-proof.json");
+  const stateProof = await readJson(stateProofPath);
+  if (stateProof.headCommit !== headCommit) {
+    throw new Error(`desktop-state-render-proof head ${stateProof.headCommit} does not match final head ${headCommit}`);
+  }
+
   const phase2Files = [
     "artifact-index.json",
     "desktop-state-render-proof.json",
     "owner-usability-smoke.json",
     "runtime-identity.json",
     "desktop-info-assets-open.png",
-    "desktop-optimized-reopen-proof.png",
-    "desktop-local-info-assets-open.png",
+    "desktop-optimized-reopen-proof.png"
+  ];
+  const phase3Files = [
+    "desktop-replacement-preview-proof.png",
+    "desktop-replacement-undo-redo-proof.png",
+    "desktop-multi-replacement-proof.png",
+    "edited-output.svga",
+    "multi-resource-edited-output.svga"
+  ];
+  const phase4Files = [
     "desktop-sequence-review-proof.png",
     "desktop-sequence-repair-preview-proof.png",
     "desktop-sequence-no-write-simulation-proof.png",
@@ -259,96 +623,108 @@ async function copyPhaseEvidence(root) {
     "desktop-sequence-prototype-rendered-boundary-proof.png",
     "desktop-sequence-noop-round-trip-proof.png"
   ];
-  const phase3Files = [
-    "artifact-index.json",
-    "resource-edit-report.json",
-    "round-trip-report.json",
-    "thumbnail-evidence.json",
-    "replacement-selected.png",
-    "replacement-preview.png",
-    "reopened-export.png",
-    "reset-to-original.png",
-    "edited-output.svga"
-  ];
-  const phase3MultiFiles = [
-    "multi-resource-edit-report.json",
-    "multi-resource-round-trip-report.json",
-    "edit-history-report.json",
-    "two-replacements.png",
-    "undo-second-replacement.png",
-    "redo-second-replacement.png",
-    "reset-selected.png",
-    "reset-all.png",
-    "reopened-multi-resource-export.png",
-    "multi-resource-edited-output.svga"
-  ];
   for (const fileName of phase2Files) await copyOptional(path.join(repoRoot, ".artifacts/product/P2", fileName), path.join(root, "evidence/phase2", fileName));
-  for (const fileName of phase3Files) await copyOptional(path.join(repoRoot, ".artifacts/product/P3", fileName), path.join(root, "evidence/phase3", fileName));
-  for (const fileName of phase3MultiFiles) await copyOptional(path.join(repoRoot, ".artifacts/product/P4", fileName), path.join(root, "evidence/phase3/multi-resource", fileName));
-  for (const fileName of phase2Files.filter((name) => name.includes("sequence"))) {
-    await copyOptional(path.join(repoRoot, ".artifacts/product/P2", fileName), path.join(root, "evidence/phase4", fileName));
-  }
+  for (const fileName of phase3Files) await copyOptional(path.join(repoRoot, ".artifacts/product/P2", fileName), path.join(root, "evidence/phase3", fileName));
+  for (const fileName of phase4Files) await copyOptional(path.join(repoRoot, ".artifacts/product/P2", fileName), path.join(root, "evidence/phase4", fileName));
   await copyOptional(
     path.join(repoRoot, "docs/reviews/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md"),
     path.join(root, "evidence/phase4/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md")
   );
-  await writeJson(path.join(root, "evidence/phase-evidence-summary.json"), phaseEvidenceSummary());
+
+  const assetIntelligenceReport = buildAssetIntelligenceReport({ headCommit, headTree, validationSummary, stateProof, proofs });
+  const optimizationReport = buildOptimizationReport({ headCommit, headTree, validationSummary, proofs });
+  const replacementEditingReport = buildReplacementEditingReport({ headCommit, headTree, validationSummary, proofs });
+  const sequenceRepairStatusReport = buildSequenceRepairStatusReport({ headCommit, headTree, validationSummary, proofs });
+
+  await writeJson(path.join(root, "evidence/phase2/asset-intelligence-report.json"), assetIntelligenceReport);
+  await writeJson(path.join(root, "evidence/phase2/optimization-report.json"), optimizationReport);
+  await writeJson(path.join(root, "evidence/phase2/optimized-reopen-proof.json"), proofs.optimizedReopenProof);
+  await writeJson(path.join(root, "evidence/phase3/replacement-editing-report.json"), replacementEditingReport);
+  await writeJson(path.join(root, "evidence/phase3/replacement-readiness-proof.json"), proofs.replacementReadinessProof);
+  await writeJson(path.join(root, "evidence/phase3/replacement-preview-proof.json"), proofs.replacementPreviewProof);
+  await writeJson(path.join(root, "evidence/phase3/replacement-undo-redo-proof.json"), proofs.replacementUndoRedoProof);
+  await writeJson(path.join(root, "evidence/phase3/replacement-reset-proof.json"), proofs.replacementResetProof);
+  await writeJson(path.join(root, "evidence/phase3/replacement-save-as-proof.json"), proofs.replacementSaveAsProof);
+  await writeJson(path.join(root, "evidence/phase3/replacement-multi-resource-proof.json"), proofs.replacementMultiResourceProof);
+  await writeJson(path.join(root, "evidence/phase4/sequence-repair-status-report.json"), sequenceRepairStatusReport);
+  await writeJson(path.join(root, "evidence/phase4/sequence-byte-candidate-proof.json"), proofs.sequenceByteRepairProof);
+  await writeJson(path.join(root, "evidence/phase4/sequence-rendered-boundary-proof.json"), proofs.sequencePrototypeRenderedBoundaryProof);
+
+  const summary = phaseEvidenceSummary({
+    assetIntelligenceReport,
+    optimizationReport,
+    replacementEditingReport,
+    sequenceRepairStatusReport
+  });
+  await writeJson(path.join(root, "evidence/phase-evidence-summary.json"), summary);
+  return summary;
 }
 
-function phaseEvidenceSummary() {
+function phaseEvidenceSummary({ assetIntelligenceReport, optimizationReport, replacementEditingReport, sequenceRepairStatusReport }) {
   return {
     schemaVersion: 1,
     milestoneId,
     phase2AssetIntelligence: {
-      status: "implemented_and_smoke_validated",
-      includedEvidence: [
-        "evidence/phase2/artifact-index.json",
-        "evidence/phase2/desktop-state-render-proof.json",
-        "evidence/phase2/desktop-info-assets-open.png",
-        "evidence/phase2/desktop-optimized-reopen-proof.png"
+      status: assetIntelligenceReport.passed ? "implemented_and_final_head_validated" : "failed",
+      reports: [
+        "evidence/phase2/asset-intelligence-report.json",
+        "evidence/phase2/optimization-report.json"
       ],
       selfContainedReviewClaims: [
-        "resource classification is visible in Asset Intelligence and Resources panels",
+        "resource classification is generated from final-head desktop smoke proof",
         "safe optimization candidate flow is Save As only and source immutable",
-        "optimized output reopen proof is included through desktop smoke evidence"
-      ],
-      riskyOrSkippedReasons: [
-        "referenced image resources are not deleted",
-        "sequence repair output remains non-product-exposed",
-        "drag/drop sources without host file authority cannot perform optimized Save As"
+        "optimized output hash and reopen proof are included"
       ]
     },
     phase3ReplacementEditing: {
-      status: "implemented_and_smoke_validated_for_supported_png_resources",
-      includedEvidence: [
-        "evidence/phase3/resource-edit-report.json",
-        "evidence/phase3/round-trip-report.json",
-        "evidence/phase3/replacement-preview.png",
-        "evidence/phase3/reopened-export.png",
-        "evidence/phase3/multi-resource/multi-resource-round-trip-report.json"
-      ],
-      coveredOperations: ["supported PNG replacement", "undo", "redo", "reset", "Save As", "reopen", "reference validation"],
-      unsupportedOperations: ["text editing", "key rename", "URL import", "timeline edit", "structural SVGA edit"]
+      status: replacementEditingReport.passed ? "implemented_and_final_head_validated_for_supported_png_resources" : "failed",
+      report: "evidence/phase3/replacement-editing-report.json",
+      coveredOperations: ["supported PNG replacement", "undo", "redo", "reset", "Save As", "multi-resource replacement", "reopen", "reference validation"],
+      unsupportedOperations: replacementEditingReport.supportedBoundary.unsupported,
+      historicalIncubationEvidenceCopiedAsCurrent: false
     },
     phase4SequenceFrameRepair: {
-      status: "partial_smoke_only_candidate",
-      includedEvidence: [
-        "evidence/phase4/desktop-sequence-review-proof.png",
-        "evidence/phase4/desktop-sequence-repair-preview-proof.png",
-        "evidence/phase4/desktop-sequence-no-write-simulation-proof.png",
-        "evidence/phase4/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md"
-      ],
-      implemented: [
-        "sequence group detection",
-        "sequence review evidence",
-        "bounded repair-preview/no-write contracts",
-        "byte-producing smoke candidate behind fail-closed proof validation"
-      ],
-      smokeOnly: ["sequence byte candidate"],
-      notProductExposed: ["sequence repair Save As", "automatic sequence rewrite", "repair-success claim"],
-      blockedOrPending: ["manual visual confirmation", "owner-visible before/after acceptance", "safe exact sequence repair product path"]
+      status: sequenceRepairStatusReport.status,
+      report: "evidence/phase4/sequence-repair-status-report.json",
+      implemented: Object.entries(sequenceRepairStatusReport.implemented)
+        .filter(([, value]) => value === true)
+        .map(([key]) => key),
+      productSaveAsEnabled: sequenceRepairStatusReport.productExposure.productSaveAsEnabled,
+      repairSuccessClaimed: sequenceRepairStatusReport.productExposure.repairSuccessClaimed,
+      manualVisualConfirmationRequired: sequenceRepairStatusReport.productExposure.manualVisualConfirmationRequired,
+      blocker: sequenceRepairStatusReport.preciseTechnicalBlocker.id
     }
   };
+}
+
+async function copyPackagedRuntimeEvidence(root, { headCommit, headTree }) {
+  const proofPath = path.join(packagedRuntimeRoot, "packaged-app-runtime-proof.json");
+  const startupPath = path.join(packagedRuntimeRoot, "normal-visible-startup.json");
+  const indexPath = path.join(packagedRuntimeRoot, "artifact-index.json");
+  const proof = await readJson(proofPath);
+  const startup = await readJson(startupPath);
+  const errors = [];
+  if (proof.finalHead !== headCommit) errors.push(`proof finalHead ${proof.finalHead} does not match ${headCommit}`);
+  if (proof.finalTree !== headTree) errors.push(`proof finalTree ${proof.finalTree} does not match ${headTree}`);
+  if (proof.buildCommit !== headCommit) errors.push(`packaged buildCommit ${proof.buildCommit} does not match ${headCommit}`);
+  if (proof.buildCommitMatchesFinalHead !== true) errors.push("packaged buildCommitMatchesFinalHead is not true");
+  if (proof.passed !== true) errors.push("packaged runtime proof did not pass");
+  if (startup.headCommit !== headCommit) errors.push(`normal visible startup head ${startup.headCommit} does not match ${headCommit}`);
+  if (startup.passed !== true) errors.push("normal visible startup proof did not pass");
+  if (startup.noSmokeMode !== true || startup.noProofArguments !== true) errors.push("normal visible startup was not a normal no-smoke launch");
+  if (startup.localOnly !== true || (startup.externalRequests ?? []).length !== 0) errors.push("normal visible startup was not local-only");
+  if (errors.length > 0) throw new Error(`packaged runtime proof invalid: ${errors.join("; ")}`);
+
+  await copyRequired(proofPath, path.join(root, "app/packaged-app-runtime-proof.json"));
+  await copyRequired(startupPath, path.join(root, "evidence/packaged-app-runtime/normal-visible-startup.json"));
+  if (existsSync(indexPath)) {
+    await copyRequired(indexPath, path.join(root, "evidence/packaged-app-runtime/artifact-index.json"));
+  }
+  return proof;
+}
+
+function validationResultCount(validationSummary) {
+  return `${validationSummary.commandCount}/${validationSummary.commandCount}`;
 }
 
 async function copyValidationOutputs(root, allowMissingValidation) {
@@ -368,6 +744,86 @@ async function copyValidationOutputs(root, allowMissingValidation) {
       missing
     });
   }
+}
+
+async function writeGeneratedCurrentDocs(root, {
+  headCommit,
+  headTree,
+  headShort,
+  completeZipName,
+  appZipName,
+  validationSummary,
+  phaseEvidence,
+  packagedRuntimeProof
+}) {
+  await writeFile(path.join(root, "docs/SVGA_WORKBENCH_V1_STATUS.md"), [
+    "# SVGA Workbench v1 Current Status",
+    "",
+    "Date: 2026-06-30",
+    "Branch: `agent/codex/svga-workbench-v1-autonomous`",
+    `Current final HEAD: \`${headCommit}\``,
+    `Current final tree: \`${headTree}\``,
+    `Current complete review ZIP: \`${completeZipName}\``,
+    `Current macOS App ZIP: \`app/${appZipName}\``,
+    "Product Owner acceptance: not claimed",
+    "Production release approval: not claimed",
+    "",
+    "## Phase Matrix",
+    "",
+    "| Phase | Current status | Current-head evidence |",
+    "| --- | --- | --- |",
+    "| Phase 1 stabilization | Validated baseline | `validation/desktop-smoke.json`, `validation/validation-summary.json`, `package-hygiene-proof.json` |",
+    `| Phase 2 Asset Intelligence / safe optimization | ${phaseEvidence.phase2AssetIntelligence.status} | \`evidence/phase2/asset-intelligence-report.json\`, \`evidence/phase2/optimization-report.json\` |`,
+    `| Phase 3 supported PNG replacement | ${phaseEvidence.phase3ReplacementEditing.status} | \`evidence/phase3/replacement-editing-report.json\` plus reset, Save As, reopen, and multi-resource proofs |`,
+    `| Phase 4 sequence-frame anti-flicker | ${phaseEvidence.phase4SequenceFrameRepair.status} | \`evidence/phase4/sequence-repair-status-report.json\`; product Save As remains disabled |`,
+    "| macOS internal package | Unsigned internal ZIP validated | `app/macos-package-proof.json`, `app/packaged-app-runtime-proof.json`, `evidence/packaged-app-runtime/normal-visible-startup.json` |",
+    "| UI/HIG carry-forward | Included as evidence and implementation guidance | `ui-audit/`, `docs/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md` |",
+    "",
+    "## Current Evidence Boundary",
+    "",
+    "- Phase 2 and Phase 3 evidence in this directory is generated from the current final-head desktop smoke proof, not from historical incubation heads.",
+    "- Phase 4 is intentionally partial: the byte candidate is smoke-only, product sequence Save As is disabled, repair success is not claimed, and manual visual confirmation is required.",
+    "- The packaged App normal visible startup proof launches the packaged `.app` executable without smoke or proof arguments and verifies local-only runtime behavior.",
+    `- Validation passed with ${validationResultCount(validationSummary)} command records in \`validation/validation-summary.json\`.`,
+    `- Packaged runtime proof passed: \`${packagedRuntimeProof.proofId}\` at head \`${headShort}\`.`,
+    "",
+    "## External Blockers",
+    "",
+    "- Apple Developer ID signing identity and notary credentials are required for trusted macOS distribution.",
+    "- Windows code-signing certificate and release identity are required for trusted Windows distribution.",
+    "- Product Owner review is still required before external product acceptance or production release approval.",
+    ""
+  ].join("\n"), "utf8");
+
+  await writeFile(path.join(root, "docs/AUTONOMOUS_RUN_LOG.md"), [
+    "# SVGA Workbench v1 Current Run Log",
+    "",
+    "Date: 2026-06-30",
+    `Final HEAD: \`${headCommit}\``,
+    `Complete review ZIP generated by this run: \`${completeZipName}\``,
+    "",
+    "## Repair Summary",
+    "",
+    "- Rebuilt the review directory around current-head evidence instead of old P3/P4 incubation artifacts.",
+    "- Added final-head Phase 2 reports for resource classification, abnormality findings, safe optimization candidates, skipped/risky reasons, before/after metrics, optimized output hash, Save As behavior, source immutability, and reopen validation.",
+    "- Added final-head Phase 3 replacement-editing reports for supported PNG replacement, undo, redo, reset, Save As, multi-resource replacement, reopened export, reference validation, and unsupported edit boundaries.",
+    "- Continued Phase 4 sequence repair through detection, grouped evidence, no-write simulation, bounded prototype, rendered before/after proof, no-op round-trip rehearsal, and byte-candidate proof while keeping product Save As disabled.",
+    "- Added packaged App normal visible startup proof as a validation step after macOS packaging and package proof.",
+    "- Kept App ZIP hygiene, Info.plist security cleanup, privacy audit, manifest verification, signing dry-run, and notarization dry-run constraints fail-closed.",
+    "",
+    "## Validation Summary",
+    "",
+    `- \`npm run svga-workbench:v1:validate\` passed with ${validationResultCount(validationSummary)} command records.`,
+    "- Covered syntax/type checks, complete review package tests, shared frontend tests, root tests, svga-web experiment tests, signing dry-run, macOS package generation, macOS package proof, packaged normal runtime proof, desktop smoke, and loop validation.",
+    "- Complete review package generation verified manifest coverage, package hygiene, privacy audit, App ZIP entry list, upload index, and hashes.",
+    "",
+    "## Current Stop State",
+    "",
+    "- This package is a complete review-directory handoff candidate, not Product Owner acceptance.",
+    "- Phase 4 remains a precise partial blocker, recorded in `evidence/phase4/sequence-repair-status-report.json`.",
+    "- Autonomous implementation should continue in a follow-up slice if Phase 4 product Save As is required before review.",
+    ""
+  ].join("\n"), "utf8");
 }
 
 async function buildManifest(root, extra = {}) {
@@ -401,9 +857,11 @@ function roleForPath(relativePath) {
   if (relativePath === "hashes/sha256sums.txt") return "hash_list";
   if (relativePath.startsWith("extracted-index/")) return "extracted_zip_index";
   if (relativePath.startsWith("validation/")) return "validation_output";
+  if (relativePath === "app/packaged-app-runtime-proof.json") return "packaged_app_runtime_proof";
   if (relativePath.startsWith("app/")) return "macos_app_payload";
   if (relativePath.startsWith("docs/")) return "status_or_guidance_doc";
   if (relativePath.startsWith("ui-audit/")) return "ui_audit_evidence";
+  if (relativePath.startsWith("evidence/packaged-app-runtime/")) return "packaged_app_runtime_proof";
   if (relativePath.startsWith("evidence/phase2/")) return "phase2_evidence";
   if (relativePath.startsWith("evidence/phase3/")) return "phase3_evidence";
   if (relativePath.startsWith("evidence/phase4/")) return "phase4_evidence";
@@ -569,7 +1027,7 @@ async function writeUploadIndex(root, { headCommit, headTree, completeZipName, a
   return uploadIndex;
 }
 
-async function writeReviewPacket(root, { headCommit, headTree, headShort, completeZipName, appZipName }) {
+async function writeReviewPacket(root, { headCommit, headTree, headShort, completeZipName, appZipName, validationSummary }) {
   await writeFile(path.join(root, "README.md"), [
     "# SVGA Workbench v1 Complete Review Directory",
     "",
@@ -577,7 +1035,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     "This directory is generated from a clean staging root. Do not re-compress it in Finder.",
     "",
-    "Status: basically complete review directory ready for external review. This handoff is not Product Owner acceptance.",
+    "Status: complete review-directory handoff candidate. This handoff is not Product Owner acceptance, and Phase 4 is still partial.",
     "",
     "Start with `REVIEW_PACKET.md`, then use `UPLOAD_INDEX.json`, `MANIFEST.json`,",
     "`bundle-privacy-audit.json`, `package-hygiene-proof.json`, and",
@@ -593,7 +1051,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     `- macOS App ZIP: \`app/${appZipName}\``,
     "- Product acceptance: not claimed",
     "- Phase 4 sequence repair: partial; product Save As remains disabled and manual visual confirmation is required",
-    "- Review state: ready for external review of the complete directory package",
+    "- Review state: complete directory package regenerated at the current final head",
     "",
     "## Feature Completion Matrix",
     "",
@@ -614,15 +1072,18 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "- `bundle-privacy-audit.json`: outward-facing payload and App ZIP privacy scan.",
     "- `package-hygiene-proof.json`: App ZIP entry hygiene proof.",
     "- `extracted-index/app-zip-entry-list.json`: extracted App ZIP entry list.",
-    "- `validation/`: complete validation command outputs, including desktop smoke and loop validation.",
-    "- `evidence/phase2`, `evidence/phase3`, `evidence/phase4`: phase-specific reports, screenshots, edited SVGA outputs, and sequence status evidence.",
+    "- `validation/`: complete validation command outputs, including packaged normal runtime proof, desktop smoke, and loop validation.",
+    "- `evidence/phase2/asset-intelligence-report.json` and `evidence/phase2/optimization-report.json`: final-head asset classification and safe optimization evidence.",
+    "- `evidence/phase3/replacement-editing-report.json`: final-head supported PNG replacement, undo/redo/reset, Save As, reopen, and multi-resource evidence.",
+    "- `evidence/phase4/sequence-repair-status-report.json`: final-head sequence repair attempt, smoke-only byte candidate, and precise blocker.",
+    "- `app/packaged-app-runtime-proof.json` plus `evidence/packaged-app-runtime/normal-visible-startup.json`: packaged App normal visible startup proof.",
     "- `ui-audit/`: HIG study digest, UI audit report, screenshot index, and contact sheets.",
     "",
     "## Validation Summary",
     "",
-    "- `npm run svga-workbench:v1:validate` passed with 14/14 command records.",
-    "- Covered checks: syntax/type gates, complete-review package tests, shared frontend tests, root `npm test`, svga-web experiment tests, signing dry-run, macOS package generation, macOS package proof, desktop smoke, and final loop validation.",
-    "- Desktop smoke passed with local-only page, strict CSP, nonblank playback canvas, inspection report, drag/drop, invalid recovery, owner usability, workbench region map, Phase 2 optimized reopen proof, Phase 3 replacement proofs, and Phase 4 partial sequence proofs.",
+    `- \`npm run svga-workbench:v1:validate\` passed with ${validationResultCount(validationSummary)} command records.`,
+    "- Covered checks: syntax/type gates, complete-review package tests, shared frontend tests, root `npm test`, svga-web experiment tests, signing dry-run, macOS package generation, macOS package proof, packaged normal runtime proof, desktop smoke, and final loop validation.",
+    "- Desktop smoke passed with local-only page, strict CSP, nonblank playback canvas, inspection report, drag/drop, invalid recovery, owner usability, workbench region map, Phase 2 optimized reopen proof, Phase 3 replacement/reset/Save As proofs, and Phase 4 partial sequence proofs.",
     "",
     "## App ZIP / Signing / Installer Status",
     "",
@@ -634,9 +1095,9 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     "## Changed Files Summary",
     "",
-    "- `tools/svga-workbench/`: complete review directory generator, manifest/privacy/hygiene validation, validation collector, and tests.",
-    "- `tools/electron-prototype/experiments/svga-web/`: clean macOS packaging, package proof, signing/notarization dry-run workflow, and desktop smoke evidence paths.",
-    "- `tools/shared/product-frontend/`: Workbench UI surfaces for safe optimization, replacement, sequence evidence, diagnostics visibility, and smoke assertions.",
+    "- `tools/svga-workbench/`: complete review directory generator, manifest/privacy/hygiene validation, validation collector, packaged runtime proof, and tests.",
+    "- `tools/electron-prototype/experiments/svga-web/`: clean macOS packaging, package proof, signing/notarization dry-run workflow, desktop smoke evidence paths, and reset-proof validation.",
+    "- `tools/shared/product-frontend/`: Workbench UI surfaces for safe optimization, replacement, reset, sequence evidence, diagnostics visibility, and smoke assertions.",
     "- `src/` and `dist/`-validated product modules: Asset Intelligence, safe optimization, replacement editing, and sequence evidence contracts are covered by the root test suite.",
     "- `docs/autonomous`, `docs/product`, and `docs/reviews`: status, blockers, HIG carry-forward, lessons candidates, and review notes.",
     "",
@@ -684,7 +1145,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     `SVGA Workbench v1 complete review directory ready for external review at head ${headShort}.`,
     `Primary artifact: review/${completeZipName}`,
     `macOS App ZIP: app/${appZipName}`,
-    "Validation: 14/14 commands passed in validation/validation-summary.json.",
+    `Validation: ${validationResultCount(validationSummary)} commands passed in validation/validation-summary.json.`,
     "Package hygiene: App ZIP clean; manifest verified; privacy audit passed with zero findings.",
     "Phase status: Phase 1/2/3 reviewable; Phase 4 partial with product sequence Save As disabled and manual visual confirmation required.",
     "Blockers: Apple Developer ID/notary credentials and Windows signing credentials only for trusted distribution.",
@@ -702,7 +1163,9 @@ async function copyDocs(root) {
     ["docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md", "docs/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md"],
     ["docs/reviews/2026-06-30-codex-svga-workbench-safe-optimization-ui.md", "review-notes/2026-06-30-codex-svga-workbench-safe-optimization-ui.md"],
     ["docs/reviews/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md", "review-notes/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md"],
-    ["docs/reviews/2026-06-30-codex-svga-workbench-signing-workflow.md", "review-notes/2026-06-30-codex-svga-workbench-signing-workflow.md"]
+    ["docs/reviews/2026-06-30-codex-svga-workbench-signing-workflow.md", "review-notes/2026-06-30-codex-svga-workbench-signing-workflow.md"],
+    ["docs/reviews/2026-06-30-codex-svga-workbench-uiux-repair.md", "review-notes/2026-06-30-codex-svga-workbench-uiux-repair.md"],
+    ["docs/reviews/2026-06-30-codex-svga-workbench-self-contained-evidence.md", "review-notes/2026-06-30-codex-svga-workbench-self-contained-evidence.md"]
   ];
   for (const [source, target] of docs) {
     const sourcePath = path.join(repoRoot, source);
@@ -737,9 +1200,21 @@ async function main() {
   });
   await copyDocs(completeRoot);
   await copyUiAuditEvidence(completeRoot);
-  await copyPhaseEvidence(completeRoot);
   await copyValidationOutputs(completeRoot, allowMissingValidation);
-  await writeReviewPacket(completeRoot, { headCommit, headTree, headShort, completeZipName, appZipName });
+  const validationSummary = await readValidationJson("validation-summary.json");
+  const phaseEvidence = await copyPhaseEvidence(completeRoot, { headCommit, headTree });
+  const packagedRuntimeProof = await copyPackagedRuntimeEvidence(completeRoot, { headCommit, headTree });
+  await writeReviewPacket(completeRoot, { headCommit, headTree, headShort, completeZipName, appZipName, validationSummary });
+  await writeGeneratedCurrentDocs(completeRoot, {
+    headCommit,
+    headTree,
+    headShort,
+    completeZipName,
+    appZipName,
+    validationSummary,
+    phaseEvidence,
+    packagedRuntimeProof
+  });
 
   await mkdir(path.join(completeRoot, "extracted-index"), { recursive: true });
   await writeJson(path.join(completeRoot, "extracted-index/app-zip-entry-list.json"), await buildZipEntryList(appZipPath, "macos_app_zip"));

@@ -84,6 +84,12 @@ const commands = [
     args: ["--prefix", "tools/electron-prototype/experiments/svga-web", "run", "internal:trial:proof:mac"]
   },
   {
+    id: "packaged-normal-runtime-proof",
+    fileName: "packaged-normal-runtime-proof.json",
+    command: "node",
+    args: ["tools/svga-workbench/run-packaged-runtime-proof.mjs"]
+  },
+  {
     id: "desktop-smoke",
     fileName: "desktop-smoke.json",
     command: "npm",

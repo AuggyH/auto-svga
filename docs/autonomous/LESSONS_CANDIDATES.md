@@ -103,3 +103,18 @@ Do not copy raw chat history or unverified guesses here.
   `sequenceProofStates`.
 - Validation: `desktop-state-render-proof.json` records these fields and
   `npm run desktop:smoke` passed on the UI/UX repair slice.
+
+## Current review packages must derive phase evidence from the final head
+
+- Context: the first complete Workbench review package mixed useful product
+  progress with older P3/P4 incubation evidence and stale status references.
+- Problem: a mechanically clean ZIP can still be misleading if package-local
+  status docs or phase reports point to an old active head as current.
+- Rule: final review generation should parse the current desktop smoke payload,
+  generate compact Phase 2/3/4 reports at package time, and keep historical
+  incubation artifacts out of the current evidence path unless they are clearly
+  labelled as lineage.
+- Validation: the complete review package generator now fails closed when
+  required desktop smoke proofs are missing, when `desktop-state-render-proof`
+  is not bound to the final head, or when packaged normal runtime proof is not
+  bound to the final head.

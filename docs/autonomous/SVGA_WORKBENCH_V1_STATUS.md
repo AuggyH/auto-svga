@@ -3,7 +3,7 @@
 Date: 2026-06-30
 Branch: `agent/codex/svga-workbench-v1-autonomous`
 Baseline commit: `545252838311233cc03ce2e5f917e53d43207589`
-Current repair state: `UI_UX_REPAIR_VALIDATED_PENDING_FINAL_PACKAGE_REGEN`
+Current repair state: `SELF_CONTAINED_EVIDENCE_REPAIR_IN_PROGRESS_PENDING_FINAL_PACKAGE_REGEN`
 
 ## Authorization
 
@@ -17,10 +17,10 @@ work in this dedicated autonomous branch.
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | Phase 1 stabilization baseline | Baseline pass, continue hardening only when gaps are found | `npm run desktop:smoke`; `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`; package proof privacy audit |
-| Phase 2 asset detection and optimization | Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, optimized-output reopen proof, and a bounded desktop `生成优化副本` Save As entry are implemented | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
-| Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, multi-resource replacement, and edited Save As are smoke-validated; batch/folder mapping remains prototype-only | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementSaveAsProof`; `replacementMultiResourceProof`; desktop smoke |
-| Phase 4 sequence-frame anti-flicker | Read-only Workbench sequence review, repair-preview contract, no-write simulation, bounded repair prototype, rendered boundary proof, no-op round-trip rehearsal, failure-first byte-repair proof validation, smoke-only byte-producing sequence candidate, and owner-visible candidate review are validated; product Save As and owner acceptance remain closed | `sequenceReviewProof`; `sequenceRepairPreviewProof`; `sequenceNoWriteSimulationProof`; `sequenceBoundedRepairPrototypeProof`; `sequencePrototypeRenderedBoundaryProof`; `sequenceNoopRoundTripProof`; `validateSequenceByteRepairProof`; `sequenceByteRepairProof`; `docs/reviews/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md`; existing sequence tests in root suite; desktop smoke |
-| Production-client delivery | Internal unsigned macOS ZIP generation is clean and review-ready; signing/notarization dry-run workflow and entitlements are present; trusted distribution completion is blocked by credentials | internal trial manifest; macOS signing workflow dry-run; package proof privacy audit; App ZIP entry-list hygiene proof |
+| Phase 2 asset detection and optimization | Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, optimized-output reopen proof, and a bounded desktop `生成优化副本` Save As entry are implemented; current review package must regenerate final-head self-contained reports | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke; `asset-intelligence-report.json`; `optimization-report.json` |
+| Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, reset, multi-resource replacement, and edited Save As are smoke-validated; batch/folder mapping remains prototype-only | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementResetProof`; `replacementSaveAsProof`; `replacementMultiResourceProof`; desktop smoke |
+| Phase 4 sequence-frame anti-flicker | Read-only Workbench sequence review, repair-preview contract, no-write simulation, bounded repair prototype, rendered boundary proof, no-op round-trip rehearsal, failure-first byte-repair proof validation, smoke-only byte-producing sequence candidate, and owner-visible candidate review are validated; product Save As and owner acceptance remain closed | `sequenceReviewProof`; `sequenceRepairPreviewProof`; `sequenceNoWriteSimulationProof`; `sequenceBoundedRepairPrototypeProof`; `sequencePrototypeRenderedBoundaryProof`; `sequenceNoopRoundTripProof`; `validateSequenceByteRepairProof`; `sequenceByteRepairProof`; `sequence-repair-status-report.json`; existing sequence tests in root suite; desktop smoke |
+| Production-client delivery | Internal unsigned macOS ZIP generation is clean and review-ready; packaged App normal visible startup proof is now part of the validation chain; signing/notarization dry-run workflow and entitlements are present; trusted distribution completion is blocked by credentials | internal trial manifest; packaged normal runtime proof; macOS signing workflow dry-run; package proof privacy audit; App ZIP entry-list hygiene proof |
 | UI audit and HIG application | 2026-06-30 single-file preview audit is included as repair input; diagnostics visibility, loading escape path, settings modal context, toolbar hit areas, resource row focus, sequence proof-state distinction, and long-title containment have targeted repairs | `review/SVGA-Workbench-v1-21849d1-ui-audit/UI_AUDIT_REPORT.md`; `docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md`; `desktop-loading.png`; `desktop-settings-open.png`; `desktop-info-assets-open.png`; `desktop-state-render-proof.json`; `desktop-interaction-trace.source.json` |
 
 ## Current Baseline Evidence
@@ -33,18 +33,15 @@ work in this dedicated autonomous branch.
 - macOS package proof and privacy audit pass with
   `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:proof:mac`.
 - Exact App ZIP SHA-256, package size, and package build commit are recorded in
-  the current owner-visible review folder under `review/` because that folder is
-  generated after the final tracked commit and is not committed to git.
+  the generated owner-visible review folder under `review/` because that folder
+  is generated after the final tracked commit and is not committed to git.
 
 ## Current Repair State
 
 The previous `21849d1` review upload was not accepted as a complete Workbench v1
-handoff. That handoff integrity repair produced the prior complete review
-baseline package `SVGA-Workbench-v1-60bda97-complete-review-directory.zip`,
-with top-level `UPLOAD_INDEX.json`, `MANIFEST.json`,
-`bundle-privacy-audit.json`, App ZIP entry list, hashes, validation outputs,
-and self-contained Phase 2/3/4 evidence. New UI/UX repairs after that package
-must regenerate the complete review directory before external review.
+handoff. The `60bda97` package is treated as a mechanically valid package
+hygiene and structure baseline, but it is not the current active handoff because
+later UI/UX and evidence repairs must be regenerated at the final head.
 
 The default desktop Workbench can preview local SVGA files, inspect assets,
 surface safe optimization candidates, generate an optimized copy through Save As
@@ -52,18 +49,26 @@ when the source was opened through the desktop file picker, replace supported PN
 resources with undo/redo and Save As, review sequence-frame risk, and run the
 current smoke-only sequence byte candidate without exposing sequence Save As.
 
+The current repair adds final-head self-contained Phase 2 and Phase 3 reports,
+keeps historical P3/P4 incubation artifacts out of the current evidence path,
+adds replacement reset proof, and adds a packaged App normal visible startup
+proof after macOS packaging. Phase 4 continues to be implemented only to the
+safe boundary: product sequence Save As stays disabled until exact repair and
+visual acceptance can be proven.
+
 The UI audit is now part of the active repair scope. Diagnostics counts are
 paired with visible issue cards; loading keeps a header `更换文件` path; Settings
 opens without an active diagnostics/log side panel and starts at scroll top;
 toolbar targets, resource row focus, resource action targets, sequence proof
 states, and long preview-card titles now have targeted repairs and desktop
 smoke proof. The current UI/UX repair baseline passed
-`npm run svga-workbench:v1:validate` 14/14 at `2026-06-30T03:40:17.207Z`;
+  `npm run svga-workbench:v1:validate` 14/14 at `2026-06-30T03:40:17.207Z`;
 the NQ1 accessibility source audit was updated to match the current Space-key
-fallback contract without weakening playback or text-input checks. Remaining UI
-debt includes dense diagnostics issue presentation, full settings
-scroll/keyboard review, screen-reader review, and a refreshed full screenshot
-audit bundle before Product Owner UI acceptance.
+fallback contract without weakening playback or text-input checks. The next
+validation run will include the added packaged normal runtime proof, making the
+expected suite 15 command records. Remaining UI debt includes dense diagnostics
+issue presentation, full settings scroll/keyboard review, screen-reader review,
+and a refreshed full screenshot audit bundle before Product Owner UI acceptance.
 
 Keep text editing, key rename, URL import, structural/timeline edits, and
 sequence repair Save As unsupported until they have separate mechanical
@@ -73,9 +78,11 @@ success is not claimed. Signing/notarization scripts now exist in
 dry-run/explicit-execute form, but completion and Windows trusted distribution
 remain credential-bound external blockers.
 
-## Prior Complete Review Artifact
+## Superseded Mechanical Baseline
 
-The most recent complete review directory before the current UI/UX repair is:
+The package below remains useful only as the mechanically valid baseline that
+the current repair continues from. It must not be presented as the active
+current handoff after this self-contained evidence repair:
 
 - Primary artifact:
   `review/SVGA-Workbench-v1-60bda97-complete-review-directory.zip`
@@ -84,9 +91,10 @@ The most recent complete review directory before the current UI/UX repair is:
 - Size: `127673621` bytes
 - Final HEAD: `60bda975682abdad968da818a6e291455b3d9d36`
 - Final tree: `c4df13f25e421a2ee7718b7f29528691ff8c9b28`
-- Validation: `npm run svga-workbench:v1:validate` passed 14/14 commands.
+- Validation: `npm run svga-workbench:v1:validate` passed 14/14 commands at that
+  prior head.
 - Product Owner acceptance and production release are not claimed.
 
-Do not present this prior package as including later UI/UX repair commits.
-Regenerate the complete review directory after the next final UI/UX repair
-baseline commit.
+Do not present this superseded package as including later UI/UX, replacement
+reset, packaged normal-runtime, or final-head self-contained evidence repairs.
+Regenerate the complete review directory after the next final baseline commit.

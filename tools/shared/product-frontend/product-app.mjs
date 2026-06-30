@@ -3117,6 +3117,73 @@ async function runReplacementUndoRedoProof(sourceBytes, resourceKey, fileName) {
   }
 }
 
+async function runReplacementResetProof(sourceBytes, resourceKey, fileName) {
+  const sourceSha256 = await p6Sha256Bytes(sourceBytes);
+  const sourceUrl = URL.createObjectURL(new Blob([sourceBytes], { type: "application/octet-stream" }));
+  const replacementBytes = new Uint8Array(await fetch("/fixture/replacement-a.png").then((response) => {
+    if (!response.ok) throw new Error(`Replacement fixture fetch failed (${response.status})`);
+    return response.arrayBuffer();
+  }));
+  const replacementSha256 = await p6Sha256Bytes(replacementBytes);
+  const replacementFile = typeof File === "function"
+    ? new File([replacementBytes], "replacement-a.png", { type: "image/png" })
+    : Object.assign(new Blob([replacementBytes], { type: "image/png" }), { name: "replacement-a.png" });
+  try {
+    await loadSvga("a", sourceUrl, {
+      fileName,
+      fileSizeBytes: sourceBytes.byteLength,
+      fixtureSha256: sourceSha256,
+      loadingHoldMs: 80
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    await waitForInspectionStatus(players.a);
+    await waitFor(() => replacementReadinessForResource(resourceKey)?.replaceable === true);
+    const edit = await replacePrimaryResource(resourceKey, replacementFile);
+    if (!edit?.passed) throw new Error("Replacement edit did not pass before reset proof.");
+    const editedSha256 = edit.editedSha256;
+    const resetActionVisibleBeforeReset = Boolean(document.querySelector("[data-reset-replacement-preview]"));
+    await resetReplacementPreview();
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    const resetSha256 = await p6Sha256Bytes(await readPrimarySourceBytes());
+    const resetInspectionReport = await waitForInspectionStatus(players.a);
+    const renderedProof = collectRenderedStateProof("loaded");
+    return {
+      schemaVersion: 1,
+      proofId: "svga-replacement-reset-proof",
+      source: "workbench-replacement-reset-state",
+      sourceSha256,
+      resourceKey,
+      replacementSha256,
+      editedSha256,
+      resetActionVisibleBeforeReset,
+      resetRestoredOriginal: resetSha256 === sourceSha256,
+      editClearedAfterReset: primaryReplacementEdit === undefined,
+      undoAvailableAfterReset: canUndoReplacementPreview(),
+      redoClearedAfterReset: !canRedoReplacementPreview(),
+      sourceUnchanged: edit.roundTripReport?.sourceSha256 === sourceSha256
+        && edit.roundTripReport?.sourceSha256AfterEditing === sourceSha256,
+      resetCanvasNonBlank: canvasIsNonBlank(players.a),
+      resetInspectionReport,
+      renderedProofPassed: renderedProof.passed === true,
+      saveAsNotAttempted: true,
+      passed: resetActionVisibleBeforeReset
+        && resetSha256 === sourceSha256
+        && primaryReplacementEdit === undefined
+        && canUndoReplacementPreview()
+        && !canRedoReplacementPreview()
+        && edit.roundTripReport?.sourceSha256 === sourceSha256
+        && edit.roundTripReport?.sourceSha256AfterEditing === sourceSha256
+        && canvasIsNonBlank(players.a)
+        && resetInspectionReport
+        && renderedProof.passed === true
+    };
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
 async function runMultiReplacementWorkbenchProof(sourceBytes, resourceKeys, fileName) {
   const selectedKeys = [...new Set(resourceKeys.filter(Boolean))].slice(0, 2);
   if (selectedKeys.length < 2) throw new Error("Multi-resource proof requires two replacement resources.");
@@ -5304,6 +5371,12 @@ async function runProductSmoke() {
       p6BaselineFixtureDisplayName
     );
     await captureArtifact("desktop-replacement-undo-redo-proof");
+    p6SmokeCurrentPhase = "replacement-reset-proof";
+    const replacementResetProof = await runReplacementResetProof(
+      bytes.slice(0),
+      replacementReadinessProof.replaceableResourceKeys[0],
+      p6BaselineFixtureDisplayName
+    );
     p6SmokeCurrentPhase = "replacement-save-as-proof";
     const replacementSaveAsProof = await runReplacementSaveAsProof(
       bytes.slice(0),
@@ -5581,6 +5654,7 @@ async function runProductSmoke() {
       replacementReadinessProof,
       replacementPreviewProof,
       replacementUndoRedoProof,
+      replacementResetProof,
       replacementSaveAsProof,
       replacementMultiResourceProof,
       optimizedReopenProof,

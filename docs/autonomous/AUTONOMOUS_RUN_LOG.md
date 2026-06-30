@@ -966,3 +966,28 @@
 - Remaining UI debt: dense repeated diagnostics, full settings scroll/keyboard
   review, screen-reader review, and a refreshed full screenshot audit bundle
   before owner UI acceptance.
+
+### Self-Contained Evidence Continuation
+
+- Trigger: Product Owner accepted the `60bda97` package as mechanically valid
+  for package hygiene, manifest coverage, privacy audit, App ZIP cleanliness,
+  Info.plist cleanup, validation summary, macOS internal packaging, and
+  signing/notarization dry-run workflow, but rejected it as a basically complete
+  Workbench v1 handoff.
+- Repair scope: regenerate the next complete review directory at the current
+  final head; avoid presenting the `60bda97` package as current; generate
+  final-head Phase 2 asset-intelligence and optimization reports; generate
+  final-head Phase 3 replacement editing reports; continue Phase 4 sequence
+  repair honestly as partial unless product Save As, exact repair, reopen, and
+  visual acceptance become safe.
+- Implementation added: packaged App normal visible startup proof now runs after
+  macOS package proof in `npm run svga-workbench:v1:validate`; replacement reset
+  proof is part of desktop smoke and Electron smoke-result validation; complete
+  review generation now derives Phase 2/3/4 reports from the current desktop
+  smoke payload rather than old P3/P4 incubation directories.
+- Evidence policy: final review directories write concise current-head
+  `docs/SVGA_WORKBENCH_V1_STATUS.md` and `docs/AUTONOMOUS_RUN_LOG.md` summaries
+  during package generation so no package-local status doc treats a stale
+  package or head as current.
+- Expected validation: the next full suite is 15 command records, adding
+  `packaged-normal-runtime-proof` to the previous 14-command suite.

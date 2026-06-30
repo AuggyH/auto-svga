@@ -6,6 +6,7 @@ import { test } from "node:test";
 
 import {
   buildBundlePrivacyAudit,
+  extractDesktopSmokeResultFromText,
   inspectZipEntries,
   sanitizeReviewText,
   validateManifestPayloadHashes
@@ -73,6 +74,16 @@ test("UI audit text sanitizer removes repo-local paths before packaging", async 
   assert.match(sanitized, /<redacted-local-path>/);
 });
 
+test("desktop smoke result extraction is fail-closed", () => {
+  const result = extractDesktopSmokeResultFromText([
+    "unrelated log",
+    "AUTO_SVGA_WEB_EXPERIMENT_SMOKE {\"passed\":true,\"replacementResetProof\":{\"passed\":true}}"
+  ].join("\n"));
+  assert.equal(result.passed, true);
+  assert.equal(result.replacementResetProof.passed, true);
+  assert.throws(() => extractDesktopSmokeResultFromText("desktop smoke finished without payload"), /desktop smoke result line missing/);
+});
+
 test("review packet template keeps complete handoff sections", async () => {
   const source = await readFile(new URL("./complete-review-package.mjs", import.meta.url), "utf8");
   for (const requiredSection of [
@@ -88,7 +99,14 @@ test("review packet template keeps complete handoff sections", async () => {
     "## Known Risks",
     "## Required Human Decision",
     "Recommended next human decision",
-    "Product Owner acceptance and production release are not claimed"
+    "Product Owner acceptance and production release are not claimed",
+    "asset-intelligence-report.json",
+    "optimization-report.json",
+    "replacement-editing-report.json",
+    "replacement-reset-proof.json",
+    "sequence-repair-status-report.json",
+    "packaged-app-runtime-proof.json",
+    "packaged normal runtime proof"
   ]) {
     assert.match(source, new RegExp(requiredSection.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }

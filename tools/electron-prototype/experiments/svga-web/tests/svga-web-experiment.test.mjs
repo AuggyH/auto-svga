@@ -407,6 +407,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /function validateReplacementReadinessProof/);
   assert.match(main, /function validateReplacementPreviewProof/);
   assert.match(main, /function validateReplacementUndoRedoProof/);
+  assert.match(main, /function validateReplacementResetProof/);
   assert.match(main, /function validateReplacementMultiResourceProof/);
   assert.match(main, /function validateReplacementSaveAsProof/);
   assert.match(main, /function saveOptimizedSvga/);
@@ -421,6 +422,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /replacementReadinessProof/);
   assert.match(main, /replacementPreviewProof/);
   assert.match(main, /replacementUndoRedoProof/);
+  assert.match(main, /replacementResetProof/);
   assert.match(main, /replacementSaveAsProof/);
   assert.match(main, /replacementMultiResourceProof/);
   assert.match(main, /Optimized Save As requires the source SVGA to be opened through the desktop file picker/);
@@ -838,6 +840,7 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   const renderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const server = await readFile(path.join(experimentRoot, "server.mjs"), "utf8");
   const runtimePrep = await readFile(path.join(experimentRoot, "../../scripts/prepare-runtime.mjs"), "utf8");
+  const productApp = await readFile(path.join(repoRoot, "tools/shared/product-frontend/product-app.mjs"), "utf8");
   const preloadApi = hostContract.createPreloadApi(() => undefined, {
     reportToken: "test-token",
     productMilestoneId: "P3"
@@ -873,6 +876,8 @@ test("P3 image replacement prototype stays isolated and records verified Save As
   assert.match(renderer, /replacementSelectedCandidateSha256/);
   assert.match(renderer, /replacementSelectedCandidateVisible/);
   assert.match(renderer, /replacementMatchesReopened/);
+  assert.match(main, /validateReplacementResetProof/);
+  assert.match(productApp, /svga-replacement-reset-proof/);
   assert.match(renderer, /invalidPngRetainsLastValidThumbnail/);
   assert.match(renderer, /resourceThumbnailSha256/);
   assert.match(renderer, /renderP3ComparisonArtifact/);

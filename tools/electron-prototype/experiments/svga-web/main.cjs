@@ -237,6 +237,11 @@ function validateSmokeResult(value) {
     if (!replacementUndoRedoProof) return undefined;
     result.replacementUndoRedoProof = replacementUndoRedoProof;
   }
+  if (value.replacementResetProof !== undefined) {
+    const replacementResetProof = validateReplacementResetProof(value.replacementResetProof);
+    if (!replacementResetProof) return undefined;
+    result.replacementResetProof = replacementResetProof;
+  }
   if (value.replacementSaveAsProof !== undefined) {
     const replacementSaveAsProof = validateReplacementSaveAsProof(value.replacementSaveAsProof);
     if (!replacementSaveAsProof) return undefined;
@@ -311,6 +316,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.replacementUndoRedoProof !== undefined && !validateReplacementUndoRedoProof(value.replacementUndoRedoProof)) {
     return "replacementUndoRedoProof";
+  }
+  if (value.replacementResetProof !== undefined && !validateReplacementResetProof(value.replacementResetProof)) {
+    return "replacementResetProof";
   }
   if (value.replacementSaveAsProof !== undefined && !validateReplacementSaveAsProof(value.replacementSaveAsProof)) {
     return "replacementSaveAsProof";
@@ -719,6 +727,50 @@ function validateReplacementUndoRedoProof(value) {
     redoCanvasNonBlank: true,
     undoInspectionReport: true,
     redoInspectionReport: true,
+    renderedProofPassed: true,
+    saveAsNotAttempted: true,
+    passed: true
+  };
+}
+
+function validateReplacementResetProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "svga-replacement-reset-proof") return undefined;
+  if (value.source !== "workbench-replacement-reset-state") return undefined;
+  if (!isSha256(value.sourceSha256) || !isSha256(value.replacementSha256) || !isSha256(value.editedSha256)) return undefined;
+  if (value.editedSha256 === value.sourceSha256 || value.editedSha256 === value.replacementSha256) return undefined;
+  if (!isBoundedString(value.resourceKey, 120)) return undefined;
+  if (
+    value.resetActionVisibleBeforeReset !== true
+    || value.resetRestoredOriginal !== true
+    || value.editClearedAfterReset !== true
+    || value.undoAvailableAfterReset !== true
+    || value.redoClearedAfterReset !== true
+    || value.sourceUnchanged !== true
+    || value.resetCanvasNonBlank !== true
+    || value.resetInspectionReport !== true
+    || value.renderedProofPassed !== true
+    || value.saveAsNotAttempted !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    sourceSha256: value.sourceSha256,
+    resourceKey: value.resourceKey,
+    replacementSha256: value.replacementSha256,
+    editedSha256: value.editedSha256,
+    resetActionVisibleBeforeReset: true,
+    resetRestoredOriginal: true,
+    editClearedAfterReset: true,
+    undoAvailableAfterReset: true,
+    redoClearedAfterReset: true,
+    sourceUnchanged: true,
+    resetCanvasNonBlank: true,
+    resetInspectionReport: true,
     renderedProofPassed: true,
     saveAsNotAttempted: true,
     passed: true
