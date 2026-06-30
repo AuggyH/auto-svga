@@ -109,11 +109,18 @@ Default: 300×300. Source scaling handled by `production-assets.ts`:
 
 ## UI Design System
 
-The Web preview page follows the design system defined in `DESIGN.md` and `docs/decisions/ADR-002-apple-design-translation.md`.
+Current owner-visible UI work follows the product authority and design-system
+documents listed below. The historical Web preview CSS remains engineering
+lineage and rollback context, not the corrected short-term app visual baseline.
 
 Key references:
-- `DESIGN.md` — color tokens, typography, spacing, motion, accessibility, Do/Don't
-- `ADR-002` — DESIGN-apple.md → Auto SVGA translation map (28 adopted, 14 adapted, 20 excluded)
+- `docs/product/PRODUCT_ROADMAP.md` — only project-level PRD authority
+- `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md` — corrected short-term
+  macOS-first UI/UX input
+- `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md` — token,
+  component, module, page-state, and implementation-trace rules
+- `DESIGN.md` — agent-readable design-system manifest
+- `ADR-002` — historical DESIGN-apple.md -> Auto SVGA translation map
 - `tools/svga-player-preview/styles.css` — CSS custom properties, motion presets, unified dropdown menu, responsive breakpoints
 - `tools/svga-player-preview/server.mjs` — `/api/latest-artifact` endpoint for auto-loading latest export outputs
 

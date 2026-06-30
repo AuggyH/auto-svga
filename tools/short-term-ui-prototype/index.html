@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Auto SVGA Short-term UI Structure Prototype</title>
+    <link rel="stylesheet" href="./styles.css?v=20260701-ui-structure">
+  </head>
+  <body data-view="launch" data-mode="preview">
+    <div class="appShell">
+      <nav class="menuBar" aria-label="Application menu">
+        <button type="button">Auto SVGA</button>
+        <button type="button" data-action="open">File</button>
+        <button type="button" data-action="rename">Edit</button>
+        <button type="button" data-action="compare">View</button>
+        <button type="button" data-action="playback-error">Playback</button>
+        <button type="button" data-action="replace-image">Resource</button>
+        <button type="button" data-action="run-optimization">Optimize</button>
+        <button type="button">Window</button>
+        <button type="button">Help</button>
+      </nav>
+
+      <header class="toolbar">
+        <div class="traffic" aria-hidden="true"><span></span><span></span><span></span></div>
+        <button type="button" data-action="open">打开 SVGA</button>
+        <button type="button" data-action="compare" data-needs-file>对比</button>
+        <div class="segmented">
+          <button type="button" data-action="preview-mode" class="isSelected">预览</button>
+          <button type="button" data-action="edit-mode">编辑</button>
+        </div>
+        <div class="identity" id="identity">未打开文件</div>
+        <button type="button" data-action="save-overwrite" data-save>覆盖保存</button>
+        <button type="button" data-action="save-as" data-save class="primary">另存为</button>
+      </header>
+
+      <section class="saveBanner" id="saveBanner" hidden aria-live="polite"></section>
+
+      <main class="view isActive" id="launch">
+        <section class="launchCard">
+          <div class="mockCanvas"><div class="frameArt"></div></div>
+          <div>
+            <p class="eyebrow">Auto SVGA</p>
+            <h1>打开本地 SVGA 文件</h1>
+            <p>选择文件或拖入窗口后进入预览、资产信息、可替换元素和优化检查流程。</p>
+            <div class="actions">
+              <button type="button" data-action="open" class="primary">打开 SVGA...</button>
+              <button type="button" data-action="fail-load">显示载入失败</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <main class="view" id="loading" hidden>
+        <section class="twoColumn">
+          <div class="panel centerPanel">
+            <span class="spinner"></span>
+            <h2>正在载入文件</h2>
+            <p>解析 SVGA、建立资源索引、准备预览状态。</p>
+          </div>
+          <aside class="panel sidePanel">
+            <h2>载入状态</h2>
+            <p>读取本地文件 -> 解析 SVGA -> 建立检查报告</p>
+            <button type="button" data-action="fail-load">显示失败状态</button>
+          </aside>
+        </section>
+      </main>
+
+      <main class="view" id="loadFailed" hidden>
+        <section class="twoColumn">
+          <div class="panel errorPanel">
+            <span class="badge danger">载入失败</span>
+            <h2>无法打开这个 SVGA</h2>
+            <p>文件结构不完整，预览未启动。源文件没有被修改。</p>
+            <button type="button" data-action="open" class="primary">打开另一个 SVGA...</button>
+          </div>
+          <aside class="panel sidePanel">
+            <h2>恢复</h2>
+            <p>重新选择有效文件即可恢复。</p>
+          </aside>
+        </section>
+      </main>
+
+      <main class="view" id="workbench" hidden>
+        <section class="twoColumn">
+          <section class="panel previewPanel">
+            <div class="sectionHeader">
+              <div>
+                <p class="eyebrow">Preview mode</p>
+                <h2>avatar_frame_basic.svga</h2>
+              </div>
+              <span class="badge" id="playbackStatus">播放就绪</span>
+            </div>
+            <div class="stage">
+              <div class="frameArt large"></div>
+              <div class="runtimeChip" id="runtimeImage" hidden>替换预览</div>
+              <div class="runtimeText" id="runtimeText" hidden>SVGA VIP</div>
+            </div>
+            <div class="actions">
+              <button type="button" data-action="toggle-play" id="playButton">播放</button>
+              <button type="button" data-action="playback-error">异常</button>
+              <span class="status" id="previewNote">预览模式保持激活。</span>
+            </div>
+          </section>
+
+          <aside class="panel inspector">
+            <div class="tabs">
+              <button type="button" data-tab="overview" class="isSelected">总览</button>
+              <button type="button" data-tab="optimization">优化</button>
+              <button type="button" data-tab="replaceable">可替换</button>
+            </div>
+
+            <section class="tabPanel isActive" id="tab-overview">
+              <h3>文件信息</h3>
+              <dl class="facts">
+                <div><dt>文件大小</dt><dd>812 KB</dd></div>
+                <div><dt>估算内存</dt><dd>18.4 MB</dd></div>
+                <div><dt>画布</dt><dd>256 x 256</dd></div>
+                <div><dt>FPS</dt><dd>30</dd></div>
+              </dl>
+              <h3>生产规格</h3>
+              <p class="status success">当前值与要求成对展示，无单独规格模块。</p>
+              <h3>资源信息</h3>
+              <article class="assetRow"><span class="thumb"></span><strong>frame_shell</strong><em>图片</em></article>
+              <article class="assetRow"><span class="thumb sequence"></span><strong>sparkle_sequence</strong><em>序列</em></article>
+              <article class="assetRow"><span class="thumb audio"></span><strong>当前文件暂无音频资产</strong><em>音频</em></article>
+            </section>
+
+            <section class="tabPanel" id="tab-optimization" hidden>
+              <h3>优化机会</h3>
+              <article class="finding">
+                <strong>透明边界裁剪</strong>
+                <p>预计减少 64 KB。</p>
+                <button type="button" data-action="run-optimization" class="primary">运行优化</button>
+              </article>
+              <article class="finding"><strong>序列帧处理</strong><p>需复核，不自动写输出。</p></article>
+            </section>
+
+            <section class="tabPanel" id="tab-replaceable" hidden>
+              <div id="replaceableContent">
+                <h3>可替换图片</h3>
+                <article class="assetRow">
+                  <span class="thumb"></span>
+                  <strong id="imageKeyLabel">profile_frame_highlight</strong>
+                  <button type="button" data-action="rename">重命名</button>
+                  <button type="button" data-action="replace-image">替换预览</button>
+                </article>
+                <h3>可替换文本</h3>
+                <article class="assetRow">
+                  <span class="thumb text">Aa</span>
+                  <strong>nickname_text</strong>
+                  <button type="button" data-action="edit-text">编辑文本</button>
+                </article>
+              </div>
+              <div id="noReplaceableContent" hidden>
+                <h3>没有可替换元素</h3>
+                <p>普通自动命名图片保留在总览资源中。</p>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </main>
+
+      <main class="view" id="optimizationCompare" hidden>
+        <section class="compareGrid">
+          <section class="panel"><h2>Before</h2><div class="miniStage"></div><p>812 KB / 18.4 MB</p></section>
+          <section class="panel"><h2>After</h2><div class="miniStage successStage"></div><p>736 KB / 16.9 MB</p></section>
+          <aside class="panel">
+            <h2>优化结果</h2>
+            <p>生成优化字节，等待明确保存。</p>
+            <button type="button" data-action="save-as" class="primary">另存为优化结果</button>
+            <button type="button" data-action="back-preview">返回预览</button>
+          </aside>
+        </section>
+      </main>
+
+      <main class="view" id="compare" hidden>
+        <section class="compareGrid four">
+          <aside class="panel"><h2>A 文件</h2><p>812 KB / 42 assets</p></aside>
+          <section class="panel"><h2>Preview A</h2><div class="miniStage"></div></section>
+          <section class="panel"><h2>Preview B</h2><div class="miniStage"></div></section>
+          <aside class="panel"><h2>B 文件</h2><p>776 KB / 39 assets</p><button type="button" data-action="back-preview">退出对比</button></aside>
+        </section>
+      </main>
+
+      <main class="view" id="editReserved" hidden>
+        <section class="editGrid">
+          <aside class="panel"><h2>图层</h2><p>frame_shell</p><p>profile_frame_highlight</p></aside>
+          <section class="panel previewPanel"><h2>保留编辑结构</h2><div class="stage"><div class="frameArt large"></div></div></section>
+          <aside class="panel"><h2>操作面板</h2><p>短期版本不暴露高级编辑控件。</p></aside>
+        </section>
+      </main>
+
+      <div class="modal" id="textModal" hidden>
+        <section class="panel modalPanel">
+          <h2>编辑运行时文本</h2>
+          <input id="textInput" value="SVGA VIP">
+          <p>仅模拟运行时动态文本预览，源 SVGA 字节不修改。</p>
+          <button type="button" data-action="close-text">取消</button>
+          <button type="button" data-action="apply-text" class="primary">应用预览</button>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="./app.js?v=20260701-ui-structure"></script>
+  </body>
+</html>

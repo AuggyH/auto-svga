@@ -14,14 +14,21 @@ Exporter-ready intermediate protocol MVP
 
 ## Design Direction
 
-Product and UI design guidance lives in [DESIGN.md](DESIGN.md). `AGENTS.md` describes engineering constraints; `DESIGN.md` describes how auto-svga product surfaces should look and behave.
+Current product scope lives in
+[docs/product/PRODUCT_ROADMAP.md](docs/product/PRODUCT_ROADMAP.md). Short-term
+UI/UX input lives in
+[docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md](docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md),
+and execution rules live in
+[docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md](docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md).
+[DESIGN.md](DESIGN.md) is the agent-readable design-system manifest for visual
+identity, token namespaces, component inventory, and implementation rules.
 
 Current UI direction:
 
-- default local playback review uses one large SVGA preview plus an information panel
-- export review compares exported SVGA against a reference video, preferably MP4/WebM
-- local compare mode is explicit and used for SVGA A/B comparisons
-- Chinese labels are primary, while English labels and original report keys remain visible for debugging
+- short-term Preview mode uses a dominant playback canvas plus a right panel
+- the right panel covers Overview, Optimization, and Replaceable Elements
+- export acceptance and sequence-frame repair are not short-term UI surfaces
+- Chinese labels are primary, while English appears only for traceability where useful
 
 ## Multi-format workbench preparation
 

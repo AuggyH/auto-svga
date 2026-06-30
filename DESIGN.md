@@ -1,393 +1,606 @@
 ---
-version: 0.1.0
-name: auto-svga design system
-description: Design guidance for auto-svga product surfaces, especially playback validation tools.
+version: 0.2.0
+name: auto-svga short-term app design manifest
+description: Agent-readable design system summary for the corrected macOS-first short-term Auto SVGA app.
+status: active_manifest
+authority:
+  product_prd: docs/product/PRODUCT_ROADMAP.md
+  design_input: docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md
+  execution_plan: docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md
+  design_system_spec: docs/product/SHORT_TERM_UI_UX_DESIGN_SYSTEM_SPEC.md
 language:
   primary: zh-CN
   secondary: en
-product_type: creator_tool
+product_type: local_macos_creator_tool
 visual_tone:
   - precise
   - calm
+  - native
   - technical
-  - premium
-colors:
-  canvas: "#F4F5FB"
-  surface: "rgba(255,255,255,0.76)"
-  surface_strong: "#FFFFFF"
-  text_primary: "#1C1C1E"
-  text_secondary: "#8E8E93"
-  text_muted: "#AEAEB2"
-  action: "#007AFF"
-  success: "#34C759"
-  warning: "#FF9500"
-  danger: "#FF3B30"
-  compare_b: "#5856D6"
-typography:
-  family: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
-  code_family: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-  page_title: "17-20px / 700"
-  panel_title: "13-15px / 600"
-  body: "12-14px / 400-500"
-  meta: "10-11px / 400-600"
-shape:
-  panel_radius: 20
-  control_radius: 10
-  badge_radius: 6
-spacing:
-  page_margin: 16
-  panel_gap: 14
-  panel_padding: 14
+  - trustworthy
+scope:
+  includes:
+    - local_svga_open
+    - playback_preview
+    - file_and_asset_inspection
+    - production_spec_comparison
+    - replaceable_element_preview
+    - imagekey_rename
+    - optimization_review_and_output
+    - overwrite_save
+    - save_as
+  excludes:
+    - export_acceptance
+    - sequence_frame_repair
+    - advanced_layer_editing
+    - timeline_editing
+    - batch_replacement
+    - ai_generation
+    - cloud_or_accounts
+    - telemetry
+token_namespaces:
+  primitive:
+    - color
+    - type
+    - space
+    - size
+    - radius
+    - shadow
+    - motion
+  semantic:
+    - color.text
+    - color.surface
+    - color.border
+    - color.action
+    - color.status
+    - color.focus
+    - surface.material
+    - text.role
+    - state.feedback
+  component:
+    - toolbar
+    - button
+    - tab
+    - row
+    - previewStage
+    - inspector
+    - modal
+    - menu
+    - saveState
+modes:
+  color:
+    - light
+    - dark
+  accessibility:
+    - reducedMotion
+    - reducedTransparency
+  density:
+    - default
+    - compact_if_approved
 components:
-  - toolbar
-  - preview_card
-  - info_side_panel
-  - sync_bar
-  - report_grid
+  atoms:
+    - Icon
+    - Text
+    - Label
+    - Badge
+    - StatusDot
+    - Divider
+    - Spinner
+    - ThumbnailFrame
+    - Tooltip
+  molecules:
+    - ToolbarButton
+    - IconButton
+    - SegmentedModeSwitch
+    - TabItem
+    - FactCell
+    - SpecStatusCell
+    - InlineStatus
+    - FileDropTarget
+    - PlaybackButtonGroup
+    - ContextMenuItem
+    - RenameInput
+    - SaveButtonPair
+  components:
+    - WindowToolbar
+    - LaunchDropCard
+    - PreviewStage
+    - PlaybackControls
+    - RightTabPanel
+    - OverviewFactRow
+    - ProductionSpecRow
+    - AssetRow
+    - SequenceThumbnail
+    - AudioAssetRow
+    - ReplaceableImageRow
+    - ReplaceableTextRow
+    - OptimizationFindingRow
+    - OptimizationResultCard
+    - ComparePreviewCard
+    - TextReplacementSheet
+    - SaveFeedbackBanner
+    - ErrorRecoveryPanel
+    - LayerRow
+    - ReservedOperationPanel
+layout:
+  primary_mode: preview
+  preview_mode: center_canvas_plus_right_panel
+  edit_mode: reserved_left_canvas_right_layout
+  toolbar: macos_titlebar_integrated
+implementation_rules:
+  use_tokens_only: true
+  no_page_local_visual_values: true
+  require_prd_trace: true
+  require_component_trace: true
+  require_evidence_trace: true
 ---
 
-# auto-svga Design.md
+# Auto SVGA DESIGN.md
 
-`DESIGN.md` describes what auto-svga should feel like and how product surfaces should be assembled. `AGENTS.md` explains engineering priorities; this file explains the visual and interaction rules that should guide UI work.
+`DESIGN.md` is the design-system manifest for coding agents and design tools.
+It gives stable visual identity, token namespaces, component inventory, and
+implementation rules for the corrected short-term Auto SVGA app.
 
-The current product is a technical creator tool for validating generated SVGA animations. It should feel calm, exact, and trustworthy. Avoid marketing-page drama. The user is usually checking whether a generated animation is correct, so the interface must help them inspect playback, timing, resources, and warnings without decorative noise.
+It is not a PRD, roadmap, interaction spec, or historical Web Preview design
+document. Product scope belongs to `docs/product/PRODUCT_ROADMAP.md`. Detailed
+short-term UI/UX inputs belong to
+`docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md`. The design-system execution
+rules belong to `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md`.
+Concrete token, component, module, and page-state inventory belongs to
+`docs/product/SHORT_TERM_UI_UX_DESIGN_SYSTEM_SPEC.md`.
 
-## Product Surfaces
+If this file conflicts with the main PRD, the main PRD wins. If this file
+conflicts with the short-term UI/UX design brief or execution plan, correct
+this file before design or implementation continues.
 
-Current primary surfaces:
+## Role
 
-- CLI and generated reports
-- `tools/svga-player-preview` playback validation UI
-- future product website or Figma-derived mockups
+Use this file to answer:
 
-The preview validation UI is the reference surface for near-term product design. Future UI should reuse its mental model unless a new workflow clearly needs something different.
+- What should Auto SVGA feel like?
+- Which token namespaces should UI code and design files use?
+- Which component names are canonical?
+- Where should concrete token and component inventory live?
+- Which UI implementation behaviors are forbidden?
 
-## Core Principles
+Do not use this file to answer:
 
-Prefer inspection over presentation. The main canvas should make the SVGA easy to judge, not make the page itself visually loud.
+- What features are in scope?
+- Whether a feature is accepted or release-ready?
+- What evidence proves release-candidate readiness?
+- How a specific algorithm, parser, optimizer, or exporter works?
 
-Default to the user's actual task. Local preview should show one large SVGA by default. Side-by-side comparison is a mode, not the default for every scenario.
+## Product Feel
 
-Keep Chinese primary and English traceable. User-facing labels should put Chinese first, while English labels and original report keys remain visible for debugging.
+Auto SVGA should feel like a local professional macOS utility for motion asset
+inspection and light post-export refinement.
 
-Treat playback truth as higher priority than generated previews. GIF preview can help local debugging, but real SVGA playback and report data should be visually privileged.
+The tone is precise, calm, native, technical, and trustworthy. The interface
+should make the opened SVGA, its metadata, replaceable elements, optimization
+opportunities, and save states easy to inspect without decorative noise.
 
-Never imply success before it is proven. If visual playback cannot be automatically judged, the UI should clearly show that manual review is required.
+Do not make it feel like:
 
-Use one interaction color. Action blue (`#0066cc`) is reserved for primary
-actions, selection, focus, and links. Success, warning, and danger colors are
-status semantics, not alternate brand colors.
+- a marketing landing page
+- a browser dashboard
+- a full animation editor
+- a miniature After Effects
+- a raw engineering report viewer
 
-Separate visual size from hit area. Toolbar icons may remain visually compact
-(32-36px controls with 15-18px icons) while their practical hit area is
-expanded without globally forcing every button to 44px.
+## Current Design Scope
 
-## App Modes
+The current manifest targets the corrected short-term app only:
 
-### 本地预览 / Local Preview
+- Open local SVGA files from toolbar, drag/drop, or macOS menu.
+- Preview playback and show abnormal states.
+- Show file facts, production-spec comparison, and asset information.
+- Identify designer-named replaceable elements.
+- Preview runtime image and text replacement.
+- Rename imageKeys with reference updates.
+- Review and run enabled optimization.
+- Compare before/after optimization output.
+- Save with explicit Overwrite Save or Save As.
 
-Default mode. Show one large SVGA playback window. `Compare` is a stable switch inside Local Preview, not a separate top-level mode.
+Short-term UI must not expose export acceptance, sequence-frame repair,
+advanced layer editing, timeline editing, batch replacement, AI generation,
+cloud/account surfaces, telemetry, or inactive future placeholders.
 
-Use this mode when the user drags or chooses a local `.svga` file. The goal is to inspect the file, not compare it against a potentially unrelated asset.
+## Design System Principle
 
-Do:
-
-- Give the SVGA player the largest area on screen.
-- Keep the transparent checkerboard behind the canvas.
-- Show `SVGA 信息 / SVGA Info` with tabs for overview and assets.
-- Show `运行日志 / Runtime Logs` as a separate right-side panel.
-- Keep lists scrollable inside the panel.
-
-Do not:
-
-- Show a default GIF beside a custom local SVGA.
-- Force every local file into a side-by-side comparison.
-- Hide parse or render warnings behind a decorative state.
-
-### 导出验收 / Export Review
-
-Dual-window validation mode after export.
-
-Left side shows the exported SVGA. Right side shows a reference video, preferably MP4 or WebM. GIF may remain as a local debugging fallback, but should not be presented as the normal delivery reference.
-
-Required controls:
-
-- synchronous play
-- synchronous pause
-- synchronous replay
-- progress alignment where the available player APIs allow it
-
-The right panel should be named `参考视频 / Reference Video` or `对比预览 / Comparison Preview`, not `GIF Preview`.
-
-### Compare 开关
-
-Local Compare is a Compare switch inside Local Preview. It opens SVGA B beside SVGA A for comparing two `.svga` files, such as different `bakedSweep.frameStride` exports.
-
-Do not expose Local Compare as a third top-level mode.
-
-## Layout
-
-Use a workbench layout, not a landing page.
-
-The default preview page should use:
-
-- a compact top toolbar
-- a large central preview area
-- right-side information and logs panels that can coexist
-- a bottom sync bar only in comparison modes
-- a report section below the primary work area
-
-Panels may use a light translucent surface with subtle blur and soft shadow. This should feel like an application shell, not stacked marketing cards.
-
-Avoid nested cards. A preview card can contain the canvas and quick metrics, but do not place decorative cards inside it.
-
-Use an 8px-derived spacing system: 4, 8, 12, 16, 24, and 32px. Responsive
-layouts must remain vertically scrollable. Never combine fixed viewport
-heights and hidden overflow in a way that makes wrapped previews, sync
-controls, or reports unreachable.
-
-## Preview Cards
-
-Preview cards should have:
-
-- compact header with badge, bilingual title, and status pill
-- large stage area with checkerboard background
-- centered media frame that preserves aspect ratio
-- concise drag hint near the bottom edge
-- quick metrics below the stage
-
-The media frame must never stretch the SVGA, reference video, or GIF out of its natural aspect ratio.
-
-Sizing priority:
-
-1. SVGA `viewBoxWidth` / `viewBoxHeight`
-2. player-exposed `videoItem` size
-3. decoded protobuf params fallback
-4. natural video or image size for references
-
-## Information Panel
-
-The SVGA info panel should support these tabs:
-
-- `概览 / Overview`
-- `资源 / Assets`
-
-Overview should show:
-
-- file size
-- estimated memory usage
-- canvas size
-- playback duration
-- FPS
-- layer count
-- image resource count
-- parse status
-- render status
-
-Layer and image lists must be scrollable. Use monospace for layer names, image keys, dimensions, and byte sizes.
-
-The information panel is 320-560px wide with a 420px default. The logs panel
-is 420-720px wide with a 560px default. Both support resizing and persist the
-selected width. At narrow desktop widths they become dismissible overlay
-panels rather than crushing preview cards into unreadable columns.
-
-Information and runtime logs share one right-side diagnostic slot. They are
-mutually exclusive and should open as a restrained overlay so the two preview
-cards keep stable dimensions. Clicking an active toolbar button closes its
-panel; clicking the other button switches panels directly.
-
-All floating surfaces follow one layer hierarchy: side diagnostics, dropdowns,
-settings, asset lightbox, then toast. Settings and lightboxes must never be
-covered by diagnostics. Clicking outside closes only the highest active layer;
-Escape follows the same order and returns focus to the trigger.
-
-Dropdowns belong to the shared floating root, not to preview-card overflow
-contexts. Mode and display menus share one blur, border, shadow, selection,
-focus, motion, and viewport-clamping implementation.
-
-Diagnostic panels use a nearly solid surface, hairline border, restrained blur,
-and soft shadow. The Reduce Blur accessibility option persists locally and
-replaces blurred surfaces with solid fills without changing the selected app
-theme or preview background.
-
-Temporary diagnostic panels stay open when the user invokes persistent toolbar
-actions such as theme or settings. Modal and lightbox backdrops close only the
-top layer and must never pass the click through to the toolbar beneath.
-
-Comparison cards remain horizontal at all supported widths. The page shell is
-one viewport tall with no page-level scrolling; preview stages shrink before
-toolbars or synchronized controls are clipped. Narrow windows may show a quiet
-recommendation to use a larger viewport.
-
-## Menus
-
-Top-level mode selection and card display modes use one dropdown system.
-Shared behavior includes selected state, focus-visible state, arrow-key
-navigation, Enter/Space selection, Escape dismissal, outside-click dismissal,
-viewport-aware positioning, and reduced-motion behavior. A hidden native
-select may remain as a fallback, but it is not the primary visual control.
-
-## Settings
-
-Settings are grouped as:
-
-- preview and appearance
-- playback and acceptance
-- debugging and accessibility
-
-Every row uses the same title, description, and trailing-control hierarchy.
-Rescanning artifacts is a workflow action with scanning, success, and error
-feedback, not a temporary debug button.
-
-Settings apply immediately. Do not add a Save or Done footer. Each change uses
-one reusable toast with a brief setting-specific confirmation.
-
-Resource warnings should be visible but not alarming unless the state is truly blocking. Use warning color for:
-
-- image dimensions that are unexpectedly large
-- image byte size that is too large
-- assets that appear suspiciously uncompressed
-- missing dimensions or unreadable image metadata
-
-## Reports And Debug Data
-
-Report fields should use Chinese labels first and original keys second:
+Every visible element must trace to the smallest useful design unit:
 
 ```text
-文件大小 / fileSizeBytes
-图像数量 / imageCount
-精灵数量 / spriteCount
-扫光采样步长 / bakedSweepFrameStride
+primitive token -> semantic token -> component token -> atom -> molecule -> component -> module -> page state
 ```
 
-Do not remove original keys. They are important for debugging and for aligning the UI with `report.json` and `svga-map.json`.
+Implementation must be traceable in the other direction:
 
-When showing unknown values, use `n/a` instead of hiding the row.
+```text
+PRD requirement -> design surface -> component/module -> source file -> evidence
+```
 
-## Color Usage
+If a UI element cannot be traced both ways, do not implement it until the
+design system or PRD trace is updated.
+
+## Token Model
+
+Use three token levels.
+
+### Primitive Tokens
+
+Primitive tokens are raw values with no product meaning:
+
+- `primitive.color.neutral.*`
+- `primitive.color.blue.*`
+- `primitive.color.green.*`
+- `primitive.color.orange.*`
+- `primitive.color.red.*`
+- `primitive.type.family.system`
+- `primitive.type.family.mono`
+- `primitive.space.*`
+- `primitive.radius.*`
+- `primitive.motion.duration.*`
+
+Primitive tokens may contain raw values. Product surfaces should not reference
+primitive tokens directly.
+
+### Semantic Tokens
+
+Semantic tokens describe product meaning:
+
+- `semantic.color.text.primary`
+- `semantic.color.text.secondary`
+- `semantic.color.surface.window`
+- `semantic.color.surface.panel`
+- `semantic.color.surface.canvas`
+- `semantic.color.border.default`
+- `semantic.color.action.primary`
+- `semantic.color.status.success`
+- `semantic.color.status.warning`
+- `semantic.color.status.danger`
+- `semantic.color.focus.ring`
+- `semantic.motion.standard`
+- `semantic.motion.reduced`
+
+Owner-visible UI must use semantic tokens unless a component token is more
+specific.
+
+### Component Tokens
+
+Component tokens describe reusable component decisions:
+
+- `component.toolbar.height`
+- `component.toolbar.itemGap`
+- `component.button.height`
+- `component.button.radius`
+- `component.tab.height`
+- `component.row.height`
+- `component.assetRow.thumbnailSize`
+- `component.previewStage.minWidth`
+- `component.previewStage.checkerboardSize`
+- `component.inspector.width`
+- `component.modal.width`
+- `component.saveState.bannerHeight`
+
+Component tokens must alias primitive or semantic tokens. Do not hardcode
+component sizes inside page styles.
+
+## Code Token Naming
+
+CSS custom properties should mirror the token hierarchy:
+
+```css
+--asv-color-text-primary
+--asv-color-surface-panel
+--asv-color-action-primary
+--asv-space-panel-padding
+--asv-radius-control
+--asv-toolbar-height
+--asv-asset-row-thumbnail-size
+--asv-preview-stage-min-width
+--asv-motion-standard-duration
+```
+
+Allowed raw values in UI code are limited to token definitions, reset rules,
+fixed media math, or documented browser/platform workarounds. Any other raw
+color, spacing, radius, shadow, z-index, typography, or motion value is design
+system debt.
+
+## Modes
+
+Required modes:
+
+- light
+- dark
+- reduced motion
+- reduced transparency
+
+Optional mode:
+
+- compact density, only after the UI/UX owner and Product Owner agree on the
+  final minimum supported window size
+
+Dark mode, appearance controls, logs, and settings are menu-bar entries in the
+short-term app, not main-surface toolbar buttons.
+
+## Component Hierarchy
+
+Use the canonical component hierarchy below.
+
+### Atoms
+
+Atoms are indivisible display or interaction units:
+
+- `Icon`
+- `Text`
+- `Label`
+- `Badge`
+- `StatusDot`
+- `Divider`
+- `Spinner`
+- `ThumbnailFrame`
+- `Tooltip`
+
+Atoms do not know product workflows. If an atom needs workflow state, promote
+the behavior to a molecule or component.
+
+### Molecules
+
+Molecules combine atoms into reusable controls:
+
+- `ToolbarButton`
+- `IconButton`
+- `SegmentedModeSwitch`
+- `TabItem`
+- `FactCell`
+- `SpecStatusCell`
+- `InlineStatus`
+- `FileDropTarget`
+- `PlaybackButtonGroup`
+- `ContextMenuItem`
+- `RenameInput`
+- `SaveButtonPair`
+
+Molecules own interaction states such as hover, focus, pressed, disabled,
+selected, loading, dirty, and error.
+
+### Components
+
+Components combine molecules into product units:
+
+- `WindowToolbar`
+- `LaunchDropCard`
+- `PreviewStage`
+- `PlaybackControls`
+- `RightTabPanel`
+- `OverviewFactRow`
+- `ProductionSpecRow`
+- `AssetRow`
+- `SequenceThumbnail`
+- `AudioAssetRow`
+- `ReplaceableImageRow`
+- `ReplaceableTextRow`
+- `OptimizationFindingRow`
+- `OptimizationResultCard`
+- `ComparePreviewCard`
+- `TextReplacementSheet`
+- `SaveFeedbackBanner`
+- `ErrorRecoveryPanel`
+- `LayerRow`
+- `ReservedOperationPanel`
+
+Every component must document its supported PRD IDs, tokens, variants, states,
+auto layout behavior, accessibility behavior, expected source module, and
+evidence.
+
+### Modules
+
+Modules compose components into screen regions:
+
+- `LaunchModule`
+- `PreviewCanvasModule`
+- `OverviewTabModule`
+- `OptimizationTabModule`
+- `ReplaceableElementsTabModule`
+- `GeneralCompareModule`
+- `OptimizationCompareModule`
+- `EditReservedModule`
+- `MenuBarCommandModel`
+- `SaveStateModule`
+
+Modules must not create one-off visual systems.
+
+## Page States
+
+The design must cover these states before implementation:
+
+- Launch
+- Loading
+- Load failed
+- Preview Overview
+- Preview Optimization
+- Preview Replaceable Elements
+- No replaceable elements
+- No audio
+- Playback abnormal
+- Rename imageKey
+- Runtime image replacement
+- Runtime text replacement
+- General compare
+- Optimization compare
+- Save validating
+- Save complete
+- Save failed
+- Edit reserved
+
+Any high-fidelity design that omits one of these states is incomplete.
+
+## Layout Model
+
+Launch uses a focused open/drop card inside a macOS window shell.
+
+Preview mode is the default complete product mode:
+
+```text
+toolbar
+center preview canvas + right tab panel
+```
+
+Edit mode is reserved for later advanced editing:
+
+```text
+toolbar
+left layer panel + center preview canvas + right reserved operation panel
+```
+
+The reserved operation panel must not contain inactive advanced controls.
+
+General compare uses factual A/B comparison:
+
+```text
+A info/assets + two previews + B info/assets
+```
+
+Optimization compare uses before/after preview plus an optimization result
+card. Save actions are enabled only when optimized output exists.
+
+## macOS Interaction Rules
+
+The app should feel native even if implemented with web technology:
+
+- Use a titlebar-integrated toolbar.
+- Keep macOS traffic-light controls aligned with the toolbar row.
+- Put Open and Compare near the left side of the toolbar.
+- Put Overwrite Save and Save As on the right side of the toolbar.
+- Use the macOS menu bar for settings, logs, appearance, help, and app-wide
+  commands.
+- Use context menus for row-level resource actions such as Rename imageKey.
+- Use modal sheets or restrained dialogs for runtime text replacement.
+- Keep keyboard focus visible and predictable.
+- Make dense metadata selectable and copyable when it is not a control.
+- Disabled controls must explain why they are unavailable.
+
+Required shortcuts:
+
+- `Cmd+O`: Open SVGA.
+- `Cmd+S`: Overwrite Save when unsaved output exists.
+- `Cmd+Shift+S`: Save As.
+- `Cmd+R`: Rename imageKey when an image resource is selected.
+- `Space`: Play/Pause when focus is not inside a text field or menu.
+- `Esc`: Cancel rename, close top modal/sheet, or exit transient state.
+- `Enter`: Confirm active rename or primary modal action when safe.
+
+Do not expose asset-edit Undo/Redo shortcuts unless the current phase actually
+supports those operations.
+
+## Visual Rules
 
 Use color as state and orientation, not decoration.
 
-- Action blue: primary controls, active tabs, focus rings, SVGA A
-- Purple: SVGA B or secondary comparison target
-- Green: successful parse, successful reference load, MP4/reference side
-- Orange: warnings and resource risks
-- Red: load failures and blocking errors
-
-Avoid one-note purple, beige, dark slate, or gradient-heavy themes. The product should feel utilitarian and precise.
-
-## Typography
-
-Use compact type. This is an inspection tool, so space should be spent on the preview canvas and data density.
-
-Asset inspection uses compact 64–72px rows with 40–48px thumbnails and a
-single-line metadata summary. Asset filters use a low-emphasis 28–32px
-segmented control.
-
-Current resource rows use a fixed 48px thumbnail and two metadata lines:
-dimensions/size, then imageKey/reference count. The filter row never owns a
-vertical scrollbar; only the resource list scrolls.
-
-Preview cards default to original-size rendering, constrained by the available
-stage when the logical canvas would overflow. Each card remembers its own fit
-choice.
-
-Rules:
-
-- Chinese label first, English helper second.
-- Use monospace for keys, dimensions, frame counts, hashes, and file names.
-- Do not use hero-scale text inside tool panels.
-- Keep button labels short and action-oriented.
-- At compact widths, icon-plus-label controls collapse to icons before text can wrap vertically.
-- File summaries may ellipsize, but neither side of the synchronized footer may disappear.
-
-## Motion
-
-UI motion should be subtle. The animation under review is the content; the interface should not compete with it.
-
-Motion only explains state changes: panel entry, modal entry, dropdown entry,
-loading, success, error, and drag acceptance. `prefers-reduced-motion` and the
-manual reduce-motion setting replace movement and scale with near-instant
-state changes.
-
-Every entrance must have a matching exit. Closing should transition to an
-`isClosing` state before the surface becomes hidden. Reduced motion keeps the
-state feedback but removes translation and scale.
-
-Allowed:
-
-- hover state
-- drag-over glow
-- active tab indicator
-- very short mode transitions if already present
+- Primary action: open, run optimization, confirm rename, save.
+- Success: validated parse, save complete, reopened output.
+- Warning: review-only optimization, provisional spec limits, unsupported audio.
+- Danger: invalid file, parse failure, save failure, unsafe optimization.
+- Secondary compare color: B-side or after-side only.
 
 Avoid:
 
-- decorative floating objects
-- animated backgrounds
-- large entrance animations
-- motion that can be mistaken for SVGA playback behavior
+- one-note purple, beige, dark slate, or gradient-heavy themes
+- decorative gradient backgrounds
+- hero-scale type inside app surfaces
+- marketing cards
+- nested decorative cards
+- browser-style navigation bars
+- color-only status communication
 
-## Accessibility Status
+Keep the opened SVGA visually dominant. Interface motion should not compete
+with playback.
 
-WCAG AAA is a target, currently **Partial**. Do not mark it complete until
-axe reports zero violations and contrast, keyboard order, focus visibility,
-dropdown navigation, resize semantics, and reduced motion have all been
-verified in both themes.
+## Typography And Copy
 
-## Drag And Drop
+Chinese is primary. English may appear only for file format terms, keys,
+shortcuts, report fields, or developer-facing traceability.
 
-Drag and drop is the primary local-file interaction.
+Use compact, readable type. Metadata, keys, dimensions, hashes, and filenames
+may use monospace. Labels should be short and operational.
 
-Rules:
+Error copy must say:
 
-- `.svga` files go to SVGA preview cards.
-- `.mp4` and `.webm` go to the reference video card in Export Review.
-- `.gif` is allowed only as a debugging fallback for reference comparison.
-- Page or toolbar drops may route by extension.
-- Wrong file type errors must be bilingual and specific.
+1. what happened
+2. what the user can do
+3. whether the source file was modified
 
-Example:
+Optimization copy must distinguish:
 
-```text
-文件类型不支持，请拖入 .svga 文件。/ Unsupported file type. Please drop a .svga file.
-```
+- can optimize now
+- needs review
+- unsupported
+- skipped for safety
+
+## Accessibility Rules
+
+The design and code must support:
+
+- visible focus for every keyboard-reachable control
+- keyboard path for open, playback, tab switching, context menus, rename,
+  modal confirm/cancel, and save
+- reduced motion
+- reduced transparency
+- copyable metadata and error text
+- no color-only status
+- disabled states with understandable reasons
+- text that does not overlap or collapse into one-character columns
+
+Do not claim WCAG completion until accessibility checks, keyboard order,
+contrast, focus visibility, reduced motion, reduced transparency, and resize
+behavior are verified.
+
+## Design-To-Code Rule
+
+Before implementing any UI slice, the task must name:
+
+- PRD requirement IDs
+- design surface or page state
+- component/module names
+- token dependencies
+- expected source files
+- evidence or screenshot required
+- explicit non-goals
+
+Do not implement UI from visual intuition alone.
 
 ## Do
 
-- Default to Local Preview for local files.
-- Preserve media aspect ratio.
-- Keep checkerboard transparency visible.
-- Show parse and render states explicitly.
-- Keep report keys traceable.
-- Prefer MP4/WebM reference video for export review.
-- Make warnings scannable in lists.
+- Use the main PRD for scope.
+- Use the UI/UX design brief for short-term screen and interaction inputs.
+- Use the redesign execution plan for token/component/implementation gates.
+- Build UI from tokens and documented components.
+- Keep Preview mode complete and primary.
+- Keep Edit mode reserved and quiet.
+- Keep save states honest and validation-gated.
+- Make failure and unsupported states visible.
 
-## Don't
+## Do Not
 
-- Do not default every workflow to left/right preview.
-- Do not call GIF the primary reference for exported SVGA.
-- Do not stretch non-square SVGA into a square.
-- Do not bury playback errors in logs only.
-- Do not create decorative hero pages for tooling surfaces.
-- Do not imply automated playback success when only manual review is possible.
+- Do not revive the old Web Preview visual baseline.
+- Do not expose export acceptance in the short-term app.
+- Do not expose sequence-frame repair in the short-term app.
+- Do not show inactive future controls.
+- Do not make all image assets look like replaceable elements.
+- Do not persist runtime text preview into SVGA bytes.
+- Do not imply optimization output exists before real bytes are produced.
+- Do not hardcode owner-visible visual values outside token definitions.
 
-## Agent Prompt Guide
+## Maintenance
 
-When implementing UI for this repository:
+Update this file when the design system token namespaces, component inventory,
+or agent-readable visual identity changes.
 
-1. Read `AGENTS.md` for engineering constraints.
-2. Read this `DESIGN.md` for product and visual constraints.
-3. Keep UI changes scoped to the requested surface.
-4. Prefer real playback and real decoded metadata over mocked values.
-5. Keep Chinese primary, English secondary.
-6. Verify the page through the local preview server when possible.
+Update `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md` when the short-term
+design input changes.
 
-For `tools/svga-player-preview`, preserve the two top-level mode model:
+Update `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md` when the
+execution workflow, traceability rules, or implementation gates change.
 
-```text
-Local Preview -> one SVGA, optional Compare switch for SVGA B
-Export Review -> exported SVGA + reference video
-```
-
-File selection controls belong to each preview card. Fit mode controls belong to each preview card. Single-window playback controls live inside the relevant preview card. Synchronized controls only affect both visible windows and live in the shared sync bar.
+Update `docs/product/PRODUCT_ROADMAP.md` only when product scope,
+requirements, acceptance boundaries, or roadmap direction change.
