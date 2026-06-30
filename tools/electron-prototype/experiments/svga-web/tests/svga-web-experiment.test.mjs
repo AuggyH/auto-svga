@@ -1167,6 +1167,13 @@ test("desktop smoke captures local compare states as required proof", async () =
   assert.match(productApp, /captureArtifact\("desktop-responsive-local-compare-at-minimum-size"\)/);
 });
 
+test("desktop svga-web compatibility exposes awaitable frame stepping", async () => {
+  const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
+  assert.match(desktopEntry, /stepToFrame\(frame, playAfter = false\) \{/);
+  assert.match(desktopEntry, /return this\.ready\.then\(\(\) => \{/);
+  assert.match(desktopEntry, /drawFrame\(this\.player, this\.videoItem, frame\)/);
+});
+
 test("P2 web reference capture isolates valid and invalid SVGA phases", async () => {
   const source = await readFile(path.join(experimentRoot, "scripts/web-reference-capture.cjs"), "utf8");
   assert.match(source, /setPhase\("valid-load"\)/);

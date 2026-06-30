@@ -11,7 +11,7 @@
 
 | id | area | status | summary | residualRisk | recommendedDecision |
 | --- | --- | --- | --- | --- | --- |
-| PHASE4-SEQUENCE-SAFE-SAVE-AS-BLOCKED | sequence-frame anti-flicker | resolved_for_current_supported_fixture | Product repaired-copy Save As, saved hash binding, source immutability, full affected-frame alpha proof, reopen playback, and fail-closed unsafe cases are now validated. | The svga-web product proof records `playbackDeltaObserved=true`: target frame 23 changed at canvas level and target frame 24 remained stable because the repaired target is a four-pixel near-empty speck; the exact alpha proof records `img_14` changing from 4 non-transparent pixels to 0. | Product Owner should decide whether the alpha-proofed repaired-copy path is acceptable for Workbench v1, and whether a future visual-delta threshold is required for larger real-world repairs. |
+| PHASE4-SEQUENCE-SAFE-SAVE-AS-BLOCKED | sequence-frame anti-flicker | resolved_for_current_supported_fixture | Product repaired-copy Save As, saved hash binding, source immutability, full affected-frame alpha proof, reopen playback, and fail-closed unsafe cases are now validated. | Awaited exact-frame svga-web product proof can record `playbackDeltaObserved=false` because the repaired target is a four-pixel near-empty speck; the exact alpha proof records `img_14` changing from 4 non-transparent pixels to 0. | Product Owner should decide whether the alpha-proofed repaired-copy path is acceptable for Workbench v1, and whether a future visual-delta threshold is required for larger real-world repairs. |
 
 ## No Current Product-Direction Blocker
 

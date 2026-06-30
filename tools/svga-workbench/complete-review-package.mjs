@@ -628,7 +628,9 @@ function buildSequenceRepairStatusReport({ headCommit, headTree, validationSumma
     },
     knownLimitations: [
       {
-        code: "partial_canvas_delta_for_target_speck",
+        code: productProof.playbackDeltaObserved === true
+          ? "partial_canvas_delta_for_target_speck"
+          : "canvas_delta_not_observed_for_target_speck",
         severity: "nonblocking_evidence_note",
         detail: `The repaired target is a four-pixel near-empty speck frame. The product proof records playbackDeltaObserved=${productProof.playbackDeltaObserved === true}; canvas changed for frame(s) ${changedFrames.join(", ") || "none"} and remained stable for frame(s) ${stableFrames.join(", ") || "none"}. Full alpha-level removal remains the exact repair authority.`
       }
@@ -899,7 +901,7 @@ async function writeGeneratedCurrentDocs(root, {
     "## Current Evidence Boundary",
     "",
     "- Phase 2 and Phase 3 evidence in this directory is generated from the current final-head desktop smoke proof, not from historical incubation heads.",
-    "- Phase 4 now includes a product-safe repaired-copy Save As path, full affected-frame alpha proof, saved-output hash binding, reopen validation, and source immutability proof. The product proof records `playbackDeltaObserved=true`: frame 23 changes at canvas level while frame 24 remains stable; alpha proof remains the exact repair authority.",
+    "- Phase 4 now includes a product-safe repaired-copy Save As path, full affected-frame alpha proof, saved-output hash binding, reopen validation, and source immutability proof. Awaited exact-frame playback proof may record no canvas delta for the four-pixel target speck; alpha proof remains the exact repair authority.",
     "- The packaged App normal visible startup proof launches the packaged `.app` executable without smoke or proof arguments and verifies local-only runtime behavior.",
     `- Validation passed with ${validationResultCount(validationSummary)} command records in \`validation/validation-summary.json\`.`,
     `- Packaged runtime proof passed: \`${packagedRuntimeProof.proofId}\` at head \`${headShort}\`.`,
@@ -937,7 +939,7 @@ async function writeGeneratedCurrentDocs(root, {
     "## Current Stop State",
     "",
     "- This package is a complete review-directory handoff candidate, not Product Owner acceptance.",
-    "- Phase 4 no longer has the prior product Save As/manual-confirmation blocker in this package; remaining risk is partial visual-delta observability for the four-pixel target speck: frame 23 changes at canvas level and frame 24 remains stable while alpha proof confirms removal.",
+    "- Phase 4 no longer has the prior product Save As/manual-confirmation blocker in this package; remaining risk is limited visual-delta observability for the four-pixel target speck. The awaited exact-frame canvas proof is auxiliary while alpha proof confirms removal.",
     "- Product Owner review is still required before external product acceptance.",
     ""
   ].join("\n"), "utf8");
@@ -1222,7 +1224,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     "This directory is generated from a clean staging root. Do not re-compress it in Finder.",
     "",
-    "Status: complete review-directory handoff candidate. This handoff is not Product Owner acceptance; Phase 4 includes a validated repaired-copy Save As/reopen path with partial canvas-delta observability recorded for the tiny target speck.",
+    "Status: complete review-directory handoff candidate. This handoff is not Product Owner acceptance; Phase 4 includes a validated repaired-copy Save As/reopen path with limited canvas-delta observability recorded for the tiny target speck.",
     "",
     "Start with `REVIEW_PACKET.md` and `UPLOAD_CHANGELOG_SINCE_A4681D7.md`, then use `UPLOAD_INDEX.json`, `MANIFEST.json`,",
     "`bundle-privacy-audit.json`, `package-hygiene-proof.json`, and",
@@ -1237,7 +1239,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     `- Complete review ZIP: \`${completeZipName}\``,
     `- macOS App ZIP: \`app/${appZipName}\``,
     "- Product acceptance: not claimed",
-    "- Phase 4 sequence repair: product repaired-copy Save As/reopen proof included; playbackDeltaObserved=true, with frame 23 canvas delta and frame 24 stable",
+    "- Phase 4 sequence repair: product repaired-copy Save As/reopen proof included; awaited exact-frame canvas proof is auxiliary and may show no delta for the four-pixel target while alpha proof is authoritative",
     "- Review state: complete directory package regenerated at the current final head",
     "",
     "## Feature Completion Matrix",
@@ -1247,7 +1249,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "| Phase 1 stabilization | Passed baseline, repair package regenerated | Desktop smoke and package proof included in validation outputs |",
     "| Phase 2 Asset Intelligence / safe optimization | Implemented, Save As/reopen smoke validated | Safe candidates only; risky classes remain suggestion-only |",
     "| Phase 3 PNG replacement editing | Implemented for supported PNG resources | Undo/redo/reset/Save As/reopen evidence included |",
-    "| Phase 4 sequence repair | Product repaired-copy Save As/reopen validated | Full alpha proof included; playbackDeltaObserved=true with frame 23 canvas delta and frame 24 stable for the four-pixel speck target |",
+    "| Phase 4 sequence repair | Product repaired-copy Save As/reopen validated | Full alpha proof included; exact-frame canvas delta is non-authoritative for the four-pixel speck target |",
     "| macOS package | Unsigned internal ZIP only | Clean App ZIP hygiene validated; signing/notarization blocked by credentials |",
     "| UI audit / HIG | Included as repair input | Findings are tracked; broad UI polish not completed in this package repair |",
     "",
@@ -1327,14 +1329,14 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     "",
     "## Known Risks",
     "",
-    "- Phase 4 target speck repair is mechanically proven and product Save As/reopen validated. Canvas evidence is partial but positive: frame 23 changed and frame 24 stayed stable; rely on the included alpha proof for exact byte-level visibility evidence.",
+    "- Phase 4 target speck repair is mechanically proven and product Save As/reopen validated. Exact-frame canvas evidence is auxiliary and can be unchanged for this four-pixel target; rely on the included alpha proof for exact byte-level visibility evidence.",
     "- The macOS App ZIP is unsigned and may be blocked by Gatekeeper outside internal/local review contexts.",
     "- UI audit P2/P3 items are tracked but not fully polished unless they hide a required workflow.",
     "- Historical review-upload artifacts are preserved only as lineage; the primary complete review artifact is this package.",
     "",
     "## Required Human Decision",
     "",
-    "Recommended next human decision: review this complete directory as the Workbench v1 handoff candidate, decide whether the Phase 4 alpha-proofed repaired-copy path is acceptable with partial canvas-delta observability, and provide signing/notarization credentials only when trusted distribution is required.",
+    "Recommended next human decision: review this complete directory as the Workbench v1 handoff candidate, decide whether the Phase 4 alpha-proofed repaired-copy path is acceptable with limited canvas-delta observability, and provide signing/notarization credentials only when trusted distribution is required.",
     ""
   ].join("\n"), "utf8");
   await writeFile(path.join(root, "FINAL_RESPONSE.txt"), [
@@ -1343,7 +1345,7 @@ async function writeReviewPacket(root, { headCommit, headTree, headShort, comple
     `macOS App ZIP: app/${appZipName}`,
     `Validation: ${validationResultCount(validationSummary)} commands passed in validation/validation-summary.json.`,
     "Package hygiene: App ZIP clean; manifest verified; privacy audit passed with zero findings.",
-    "Phase status: Phase 1/2/3 reviewable; Phase 4 sequence repaired-copy Save As/reopen validated with playbackDeltaObserved=true and partial target-frame canvas delta recorded.",
+    "Phase status: Phase 1/2/3 reviewable; Phase 4 sequence repaired-copy Save As/reopen validated with full alpha proof; exact-frame canvas delta remains an auxiliary nonblocking evidence note.",
     "Blockers: Apple Developer ID/notary credentials and Windows signing credentials only for trusted distribution.",
     "Status: complete review package generated; Product Owner acceptance and production release are not claimed.",
     ""

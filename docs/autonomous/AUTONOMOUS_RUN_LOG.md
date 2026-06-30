@@ -1008,9 +1008,9 @@
 - Current fixture result: repaired `img_14`; target frames `[23, 24]`; the
   selected image changed from 4 non-transparent pixels to 0; all other sequence
   resources stayed hash-stable; source SHA-256 stayed unchanged.
-- Honest evidence note: svga-web product proof records
-  `playbackDeltaObserved=true`: frame 23 changed at canvas level and frame 24
-  remained stable. The product proof passes because the repair is alpha-proven,
+- Honest evidence note: awaited exact-frame svga-web product proof can record
+  `playbackDeltaObserved=false` for this four-pixel target. The product proof
+  passes because the repair is alpha-proven,
   saved to a new file, reopened, rendered nonblank, and no manual visual
   confirmation is required for this narrow supported case.
 - Validation:
@@ -1039,11 +1039,11 @@
   `evidenceRole=prototype_history`; current Phase 4 authority remains
   `sequence-repair-status-report.json` plus
   `sequence-product-repair-save-as-proof.json`.
-- Current verification: `desktop-state-render-proof.json` is bound to
-  `6720d3a`, top-level PASS, `failedStateIds=[]`, and the three compare states
-  pass. Phase 4 product proof records `playbackDeltaObserved=true`; frame 23
-  changed at canvas level and frame 24 stayed stable; alpha proof remains the
-  exact repair authority.
+- Current verification: `desktop-state-render-proof.json` is regenerated at the
+  final package head, top-level PASS requires `failedStateIds=[]`, and the three
+  compare states pass. Phase 4 product proof now awaits exact frame drawing
+  before sampling; exact target-frame canvas delta can be absent for the
+  four-pixel target, and alpha proof remains the exact repair authority.
 - Validation:
   `node --check tools/shared/product-frontend/product-app.mjs`;
   `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;

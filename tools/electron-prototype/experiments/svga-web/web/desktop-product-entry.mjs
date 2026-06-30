@@ -135,9 +135,10 @@ class CompatibleSvgaPlayer {
   }
 
   stepToFrame(frame, playAfter = false) {
-    this.ready.then(() => {
+    return this.ready.then(() => {
       drawFrame(this.player, this.videoItem, frame);
       if (playAfter) this.startAnimation();
+      return true;
     }).catch((error) => console.error(error));
   }
 

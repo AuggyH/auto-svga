@@ -1300,10 +1300,11 @@ function toggleSlot(slot) {
 
 function seekSlot(slot, percent, playAfter = false) {
   if (!slot.player || !slot.videoItem || !slot.metrics?.frameCount || !slot.player.stepToFrame) {
-    return;
+    return Promise.resolve(null);
   }
   const frame = Math.max(0, Math.min(slot.metrics.frameCount - 1, Math.round((percent / 100) * (slot.metrics.frameCount - 1))));
-  slot.player.stepToFrame(frame, playAfter);
+  const result = slot.player.stepToFrame(frame, playAfter);
+  return result && typeof result.then === "function" ? result.then(() => frame) : Promise.resolve(frame);
 }
 
 function getSlotProgressInput(slot) {
@@ -3052,11 +3053,13 @@ async function collectSequencePlaybackFrame(slot, frameIndex) {
   const frameCount = Math.max(Number(slot.metrics?.frameCount ?? 1), frameIndex + 1, 1);
   const percent = frameCount > 1 ? ((frameIndex + 0.5) / frameCount) * 100 : 0;
   pauseSlot(slot);
-  seekSlot(slot, percent, false);
-  await delay(180);
+  const sampledFrameIndex = await seekSlot(slot, percent, false);
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await delay(60);
   const digest = await collectCanvasRenderDigest(slot);
   return {
     frameIndex,
+    sampledFrameIndex,
     samplePercent: Number(percent.toFixed(4)),
     canvasSha256: digest.sha256,
     canvasWidth: digest.width,
@@ -3124,6 +3127,7 @@ async function runSequenceProductRepairSaveAsProof(sourceBytes, fileName) {
         const afterFrame = afterFrames[index];
         return {
           frameIndex: beforeFrame.frameIndex,
+          sampledFrameIndex: beforeFrame.sampledFrameIndex,
           samplePercent: beforeFrame.samplePercent,
           beforeCanvasSha256: beforeFrame.canvasSha256,
           afterCanvasSha256: afterFrame?.canvasSha256 ?? "",

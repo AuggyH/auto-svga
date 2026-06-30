@@ -149,5 +149,5 @@ Do not copy raw chat history or unverified guesses here.
 - Validation: desktop smoke accepted `sequenceProductRepairProof` with
   `productSaveAsEnabled=true`, `repairSuccessClaimed=true`,
   `manualVisualConfirmationRequired=false`, `repairedResourceKey=img_14`,
-  `changedResourceCount=1`, and `playbackDeltaObserved=true` with frame 23
-  changed and frame 24 stable.
+  `changedResourceCount=1`; exact-frame canvas delta may still be absent for
+  four-pixel/occluded targets, so alpha proof remains authoritative.
