@@ -114,6 +114,9 @@ diagnostics for no-group and no-candidate rows, including numeric resource
 counts, reference-mismatch counts, longest continuous segment length,
 near-empty thresholds, and smallest non-transparent pixel samples. This is
 active product work, not an external blocker and not a completion claim.
+The current technical-limit record recommends treating this as the v1 supported
+automatic anti-flicker subset unless a broader visual-diff/manual-confirmation
+workflow or a known target flicker asset is supplied.
 
 Keep text editing, key rename, URL import, and structural/timeline edits
 unsupported until they have separate mechanical round-trip proof and
