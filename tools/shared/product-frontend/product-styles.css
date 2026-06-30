@@ -6028,3 +6028,116 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
   min-width: var(--layout-logs-panel-min-width, 320px) !important;
   max-width: var(--layout-logs-panel-max-width, 480px) !important;
 }
+
+/* UI/UX repair: HIG-derived reachable targets, row focus, and distinct proof states. */
+.toolbar .iconButton {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.toolbar .dropdownTrigger {
+  min-height: 36px;
+}
+
+.previewCard.isLoading .cardHeader .cardFileButton {
+  display: inline-flex;
+}
+
+.previewCardHeader .cardTitleGroup {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.previewCardHeader .cardActions {
+  flex: 0 0 auto;
+}
+
+.settingsBody {
+  scroll-padding-top: 14px;
+}
+
+.settingsSection {
+  scroll-margin-top: 12px;
+}
+
+.assetFilters button {
+  height: 32px;
+  min-width: 44px;
+  line-height: 32px;
+}
+
+.assetUnifiedRow[data-asset-row-select] {
+  cursor: pointer;
+}
+
+.assetUnifiedRow:focus-visible {
+  outline: 0;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--visual-accent) 44%, var(--hairline)),
+    var(--visual-focus-ring);
+}
+
+.assetUnifiedRow[aria-current="true"] {
+  background: color-mix(in srgb, var(--visual-accent) 8%, transparent);
+}
+
+.assetInlineActions {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sequenceToggle {
+  min-width: 40px;
+  min-height: 30px;
+  padding: 0 10px;
+  line-height: 28px;
+}
+
+.proofSummary {
+  position: relative;
+  border-left: 3px solid var(--visual-accent);
+}
+
+.proofSummary strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.proofStatePill {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--visual-accent) 12%, transparent);
+  color: var(--visual-accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+}
+
+.proof-readonly {
+  border-color: color-mix(in srgb, var(--visual-accent) 36%, var(--visual-border));
+}
+
+.proof-partial {
+  border-color: color-mix(in srgb, var(--visual-warning) 58%, var(--visual-border));
+  background: color-mix(in srgb, var(--visual-warning) 7%, var(--surfaceElevated));
+}
+
+.proof-partial .proofStatePill {
+  background: color-mix(in srgb, var(--visual-warning) 16%, transparent);
+  color: var(--visual-warning);
+}
+
+.proof-blocked {
+  border-color: color-mix(in srgb, var(--visual-danger) 52%, var(--visual-border));
+  background: color-mix(in srgb, var(--visual-danger) 6%, var(--surfaceElevated));
+}
+
+.proof-blocked .proofStatePill {
+  background: color-mix(in srgb, var(--visual-danger) 13%, transparent);
+  color: var(--visual-danger);
+}

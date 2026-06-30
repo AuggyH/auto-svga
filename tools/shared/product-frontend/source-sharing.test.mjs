@@ -224,7 +224,8 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "loadingSourceLabel",
     "primaryHeaderActionVisible",
     "loading empty CTA should be hidden",
-    "loading header choose button should be hidden"
+    "loading header change-file action not visible",
+    "loadingHeaderActionText"
   ]) {
     assert.match(productApp, new RegExp(loadingEvidence));
   }
@@ -276,7 +277,14 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "诊断问题列表",
     "diagnostic issue list first item is not visible",
     "local_preview_first",
-    "localPreviewPrimary"
+    "localPreviewPrimary",
+    "resourceRowsFocusable",
+    "comfortableToolbarTargets",
+    "comfortableResourceActions",
+    "settings modal competes with side panel",
+    "settings initial scroll is not at top",
+    "sequence partial proof state is not distinguishable",
+    "sequence blocked proof state is not distinguishable"
   ]) {
     assert.match(productApp, new RegExp(ownerGateUsabilityEvidence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
@@ -289,6 +297,9 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
   assert.match(productStyles, /\.assetFilters\s*\{[\s\S]*display:\s*flex/);
   assert.match(productStyles, /\.assetFilters button\s*\{[\s\S]*white-space:\s*nowrap/);
   assert.match(productStyles, /\.sequenceToggle\s*\{[\s\S]*position:\s*static/);
+  assert.match(productStyles, /\.toolbar \.iconButton\s*\{[\s\S]*min-height:\s*36px/);
+  assert.match(productStyles, /\.assetUnifiedRow:focus-visible\s*\{/);
+  assert.match(productStyles, /\.proofStatePill\s*\{/);
   assert.match(p6Evidence, /owner_blocking_feedback_fixed_pending_product_owner_review/);
   assert.match(p6Evidence, /productOwnerHumanGateStillRequired/);
   assert.match(p6Evidence, /Default Activity\/Logs exposed internal workflow text/);

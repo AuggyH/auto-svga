@@ -54,14 +54,34 @@ The 2026-06-30 audit is now part of the Workbench v1 repair package. It found:
   empty. The inspector now uses a two-row header/content grid, shows visible
   issue cards below the count, and records first-issue visibility in smoke
   proof.
-- P2: Some toolbar and switch targets are smaller than comfortable HIG-style
-  hit areas.
-- P2: Settings can open over a logs drawer, creating a noisy modal context.
-- P2: Settings initial scroll position clips the next section heading.
-- P3: Loading hides the primary file action.
-- P3: Sequence proof states are visible but hard to distinguish.
-- P3: Dense resource filters and inline actions must preserve row-level click
-  and focus behavior.
+- P2 repaired: Repeated toolbar icon targets now use a 36px practical hit area
+  in the Workbench toolbar, and smoke layout proof records comfortable toolbar
+  targets.
+- P2 repaired: Opening Settings now closes the active diagnostics/log side
+  panel first, keeping one dominant modal context.
+- P2 repaired: Settings resets its internal scroll position on open, and smoke
+  proof records `settingsBodyScrollTop: 0` plus an unclipped first section.
+- P3 repaired: Loading keeps a visible header `更换文件` action while hiding the
+  in-stage empty CTA, so slow loads retain a clear change-file path.
+- P3 repaired: Sequence proof cards now distinguish `readonly`, `partial`, and
+  `blocked` states with visible state pills and state-proof fields.
+- P3 repaired: Dense resource rows are focusable, named, selectable with
+  Enter/Space, and row/action hit-area proof is recorded in desktop smoke.
+- P3 repaired: Preview-card headers now reserve stable space for actions and
+  ellipsize long file titles inside the title region.
+
+Remaining known UI/UX debt after the current repair:
+
+- Diagnostics issue cards are visible but still dense when many similar errors
+  are present.
+- Long single-file names are contained, but the header remains visually tight
+  at narrow widths.
+- Settings still needs a fuller manual scroll/keyboard pass across every row
+  and advanced disclosure state.
+- Source/resources and diagnostics lists need a broader screen-reader review;
+  current proof covers keyboard focus and visible hit points, not VoiceOver.
+- The full screenshot audit should be refreshed as a dedicated evidence bundle
+  before Product Owner UI acceptance.
 
 These are repair inputs for future Workbench implementation. They are not
 Product Owner acceptance blockers by themselves unless they hide a required

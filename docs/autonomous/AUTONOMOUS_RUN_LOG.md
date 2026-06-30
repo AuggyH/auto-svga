@@ -903,14 +903,15 @@
 
 ### Complete Review Directory Ready For External Review
 
-- Result: regenerated the primary complete review package as
-  `review/SVGA-Workbench-v1-86fb24f-complete-review-directory.zip`.
+- Result: regenerated the primary complete review package; the final package
+  after the generator/template repair is
+  `review/SVGA-Workbench-v1-60bda97-complete-review-directory.zip`.
 - Identity:
-  - HEAD: `86fb24f8b8cc9d6b8b900c20a513581b6a1532c5`
-  - Tree: `f1431bd4e47d0142fb10c65d9e0d4d623a63ac09`
+  - HEAD: `60bda975682abdad968da818a6e291455b3d9d36`
+  - Tree: `c4df13f25e421a2ee7718b7f29528691ff8c9b28`
   - SHA-256:
-    `f49201fe95bc4e41bb8060bf4e579e3eddd0572238595b6a1872dd9be9558031`
-  - Size: `127670403` bytes
+    `7c610df858d3b4807413ad1f5a6b6210818bd1702285b9efddc9b8d3d51af307`
+  - Size: `127673621` bytes
 - Validation: `npm run svga-workbench:v1:validate` passed 14/14 records on the
   final review head. The first attempt exposed an external-state interference
   from an old packaged App process; after closing that stale process, the same
@@ -930,3 +931,38 @@
 - Boundary: this is a complete review-directory handoff candidate, not Product
   Owner acceptance, trusted distribution approval, signing/notarization
   completion, or a product release.
+
+### UI/UX Repair Slice
+
+- Trigger: Product Owner reported that the UI audit still left many interaction
+  issues in the single-file Workbench flow.
+- Result: repaired targeted HIG audit items without changing parser/export
+  scope: loading keeps a visible header `更换文件` path; Settings closes the
+  active diagnostics/log side panel and starts at scroll top; toolbar targets
+  have 36px practical hit areas; dense resource rows are focusable, named, and
+  selectable with Enter/Space; resource actions have larger hit areas; sequence
+  proof cards distinguish readonly/partial/blocked states; preview-card titles
+  now ellipsize inside the title region instead of colliding with header
+  actions.
+- Evidence: `.artifacts/product/P2/desktop-loading.png`,
+  `.artifacts/product/P2/desktop-settings-open.png`,
+  `.artifacts/product/P2/desktop-info-assets-open.png`,
+  `.artifacts/product/P2/desktop-synchronized-playback-toggled-by-space.png`,
+  `.artifacts/product/P2/desktop-state-render-proof.json`, and
+  `.artifacts/product/P2/desktop-interaction-trace.source.json`.
+- Validation:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --check tools/electron-prototype/experiments/svga-web/main.cjs`;
+  `node --test dist/tests/nq1-accessibility-audit.test.js`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`;
+  `npm run desktop:smoke`;
+  `npm run svga-workbench:v1:validate` passed 14/14 commands at
+  `2026-06-30T03:40:17.207Z`.
+- Validation repair: the first full suite run failed because the NQ1
+  accessibility source audit still matched the older Space-key handler shape.
+  The audit helper now checks the current contract: Space code or key fallback,
+  text-input exclusion, and playback toggle paths.
+- Remaining UI debt: dense repeated diagnostics, full settings scroll/keyboard
+  review, screen-reader review, and a refreshed full screenshot audit bundle
+  before owner UI acceptance.

@@ -64,7 +64,7 @@ function buildSourceChecks(input: {
     check("focus_visible_styles_present", /button:focus-visible[\s\S]*label:has\(input:focus-visible\)[\s\S]*resizeHandle:focus-visible/.test(cssSource)),
     check("disabled_buttons_have_visible_state", /button:disabled[\s\S]*opacity:\s*0\.48/.test(cssSource) || /button:disabled[\s\S]*opacity:\s*0\.5/.test(cssSource)),
     check("keyboard_escape_closes_top_layer", /event\.key === "Escape"[\s\S]*closeAssetPreview[\s\S]*closeSettings[\s\S]*closeDropdown/.test(rendererSource)),
-    check("keyboard_space_toggles_playback", /event\.code !== "Space"[\s\S]*toggleSyncPlayback[\s\S]*toggleSlot\(players\.a\)/.test(rendererSource)),
+    check("keyboard_space_toggles_playback", hasSpacePlaybackShortcut(rendererSource)),
     check("keyboard_ignores_text_inputs", rendererSource.includes('["input", "select", "textarea"].includes(tagName)')),
     check("file_input_change_loads_svga", /svgaFileInput\.addEventListener\("change"[\s\S]*handleDroppedFile/.test(rendererSource)),
     check("drag_drop_loads_supported_files", /addEventListener\("dragover"[\s\S]*addEventListener\("drop"[\s\S]*handleDroppedFile/.test(rendererSource)),
@@ -92,6 +92,15 @@ function buildAdvisories(input: { rendererSource: string }): Nq1AccessibilityAdv
     });
   }
   return advisories;
+}
+
+function hasSpacePlaybackShortcut(rendererSource: string): boolean {
+  const acceptsSpaceCode = /event\.code\s*===\s*"Space"/.test(rendererSource)
+    || /event\.code\s*!==\s*"Space"/.test(rendererSource);
+  const acceptsSpaceKeyFallback = /event\.key\s*===\s*" "\s*\|\|\s*event\.key\s*===\s*"Space"\s*\|\|\s*event\.key\s*===\s*"Spacebar"/.test(rendererSource);
+  const ignoresTextInputs = rendererSource.includes('["input", "select", "textarea"].includes(tagName)');
+  const togglesPlayback = /toggleSyncPlayback\(\)[\s\S]*toggleSlot\(players\.a\)/.test(rendererSource);
+  return acceptsSpaceCode && acceptsSpaceKeyFallback && ignoresTextInputs && togglesPlayback;
 }
 
 function countMatches(value: string, pattern: RegExp): number {

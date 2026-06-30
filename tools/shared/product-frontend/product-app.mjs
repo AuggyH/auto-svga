@@ -419,11 +419,11 @@ function updatePreviewCardHeader(slot) {
   if (slot.slotName === "A") {
     svgaBadgeA.hidden = !compareEnabled;
     svgaBadgeA.textContent = compareEnabled ? "SVGA A" : "SVGA";
-    primaryInputLabel.textContent = fileName
+    setPrimaryFileButtonLabel(fileName
       ? "重新选择文件"
       : modeSelect.value === "exportReview"
         ? "选择导出 SVGA"
-        : compareEnabled ? "选择 SVGA A" : "选择文件";
+        : compareEnabled ? "选择 SVGA A" : "选择文件");
   } else {
     secondaryInputLabel.textContent = fileName ? "重新选择 SVGA B" : "选择 SVGA B";
   }
@@ -599,9 +599,16 @@ function applyPrimaryEmptyCopy() {
   updatePreviewCardHeader(players.a);
 }
 
+function setPrimaryFileButtonLabel(label) {
+  primaryInputLabel.textContent = label;
+  primaryFileButton.title = label;
+  primaryFileButton.setAttribute("aria-label", label);
+}
+
 function applyPrimaryLoadingCopy(fileName) {
   svgaEmptyTitleA.textContent = "正在加载 SVGA 文件";
   svgaEmptySubtitleA.textContent = fileName ? `正在处理 ${fileName}` : "正在读取、解析并生成检查结果";
+  setPrimaryFileButtonLabel("更换文件");
 }
 
 function ensureSvgaLibrary() {
@@ -838,7 +845,7 @@ function setAppMode(nextMode = modeSelect.value) {
   referenceFileInput.value = "";
 
   if (nextMode === "localPreview") {
-    primaryInputLabel.textContent = players.a.metrics ? "重新选择文件" : (compareEnabled ? "选择 SVGA A" : "选择文件");
+    setPrimaryFileButtonLabel(players.a.metrics ? "重新选择文件" : (compareEnabled ? "选择 SVGA A" : "选择文件"));
     primaryEmptyFileButton.textContent = compareEnabled ? "选择 SVGA A" : "选择文件";
     secondaryInputLabel.textContent = "选择 SVGA B";
     secondaryFileInput.accept = ".svga,application/octet-stream";
@@ -850,7 +857,7 @@ function setAppMode(nextMode = modeSelect.value) {
     compareEnabled = false;
     compareToggle.checked = false;
     resetSlotMediaState(players.b);
-    primaryInputLabel.textContent = "选择导出 SVGA";
+    setPrimaryFileButtonLabel("选择导出 SVGA");
     primaryEmptyFileButton.textContent = "选择导出 SVGA";
     svgaTitleA.removeAttribute("data-subtitle");
     svgaEmptyTitleA.textContent = "拖入导出的 SVGA 文件";
@@ -4158,6 +4165,13 @@ function collectWorkbenchLayoutIntegrity(regions) {
     if (rectsOverlap(left?.rect, right?.rect, 2)) failures.push(`region_overlap:${leftId}:${rightId}`);
   }
 
+  for (const control of document.querySelectorAll(".toolbar .iconButton, .toolbar .dropdownTrigger")) {
+    const rect = rectFor(control);
+    if (isElementVisible(control) && (rect.width < 36 || rect.height < 36)) {
+      failures.push(`toolbar_target_too_small:${control.id || compactText(control).slice(0, 16)}`);
+    }
+  }
+
   for (const button of document.querySelectorAll("#tab-assets .assetFilters button")) {
     const rect = rectFor(button);
     const style = getComputedStyle(button);
@@ -4168,8 +4182,15 @@ function collectWorkbenchLayoutIntegrity(regions) {
 
   for (const row of document.querySelectorAll(".assetUnifiedRow")) {
     if (!isElementVisible(row)) continue;
+    if (!row.hasAttribute("data-asset-row-select")) failures.push("resource_row_not_clickable");
+    if (row.tabIndex < 0) failures.push("resource_row_not_focusable");
+    if (!row.getAttribute("aria-label")) failures.push("resource_row_missing_accessible_name");
     const action = row.querySelector(".sequenceToggle");
     if (!action || !isElementVisible(action)) continue;
+    const actionRect = rectFor(action);
+    if (actionRect && (actionRect.width < 40 || actionRect.height < 30)) {
+      failures.push(`resource_action_target_too_small:${compactText(action).slice(0, 16)}`);
+    }
     for (const targetSelector of [".assetPrimaryLine", ".assetMetaLines", ".assetWarningTags"]) {
       const target = row.querySelector(targetSelector);
       if (isElementVisible(target) && rectsOverlap(rectFor(action), rectFor(target), 1)) {
@@ -4206,6 +4227,9 @@ function collectWorkbenchLayoutIntegrity(regions) {
       noRegionOverlap: !failures.some((failure) => failure.startsWith("region_overlap")),
       sourceDocumentNotToolbar: !failures.includes("source_document_maps_toolbar_instead_of_left_panel"),
       noResourceActionCollision: !failures.some((failure) => failure.startsWith("resource_action_collision")),
+      resourceRowsFocusable: !failures.some((failure) => failure.startsWith("resource_row")),
+      comfortableToolbarTargets: !failures.some((failure) => failure.startsWith("toolbar_target_too_small")),
+      comfortableResourceActions: !failures.some((failure) => failure.startsWith("resource_action_target_too_small")),
       noVerticalFilterWrapping: !failures.some((failure) => failure.startsWith("resource_filter")),
       noOneCharacterChips: !failures.some((failure) => failure.startsWith("one_character_chip")),
       inspectorTextReadable: !failures.some((failure) => failure.startsWith("inspector_text_clipped")),
@@ -4286,6 +4310,15 @@ function collectRenderedStateProof(state) {
   const diagnosticFirstIssue = document.querySelector("#tab-diagnostics .diagnosticIssueItem, #tab-diagnostics .diagnosticIssueList.isEmpty, #tab-diagnostics .diagnosticIssueList.isPending, #tab-diagnostics .diagnosticIssueList.isError");
   const diagnosticFirstIssueVisible = elementHasVisibleHitPoint(diagnosticFirstIssue);
   const infoPanelGridRows = infoPanel ? getComputedStyle(infoPanel).gridTemplateRows.split(/\s+/).filter(Boolean) : [];
+  const sequenceProofStates = [...document.querySelectorAll("[data-sequence-proof-state]")]
+    .filter((node) => isElementVisible(node))
+    .map((node) => node.dataset.sequenceProofState);
+  const settingsBody = settingsModal.querySelector(".settingsBody");
+  const settingsBodyScrollTop = settingsBody ? Math.round(settingsBody.scrollTop) : null;
+  const settingsBodyRect = rectFor(settingsBody);
+  const settingsFirstSectionRect = rectFor(settingsModal.querySelector(".settingsSection"));
+  const settingsStartsAtTop = !settingsBodyRect || !settingsFirstSectionRect
+    || settingsFirstSectionRect.top >= settingsBodyRect.top - 2;
   const reportOverviewVisible = isElementVisible(document.querySelector("#tab-overview .overviewGrid, #reportGrid"));
   const statusAnnouncementText = compactText(statusAnnouncer);
   const staleFieldPattern = /文件体积|fileSizeBytes|内存占用|memoryUsage|画布尺寸|canvasSize|播放时长|duration|帧率|fps|图层数量|spriteCount|图片资源|imageCount|文件名|fileName/;
@@ -4316,7 +4349,8 @@ function collectRenderedStateProof(state) {
     if (!loadingActivePhases.length) failures.push("loading phase has no active step");
     if (!loadingSourceLabel || loadingSourceLabel === "或选择本地文件") failures.push("loading source label missing");
     if (primaryActionVisible) failures.push("loading empty CTA should be hidden");
-    if (primaryHeaderActionVisible) failures.push("loading header choose button should be hidden");
+    if (!primaryHeaderActionVisible) failures.push("loading header change-file action not visible");
+    if (!/更换|重新|选择/.test(primaryInputLabel.textContent ?? "")) failures.push("loading header change-file label missing");
     if (!["file", "read", "parse", "check"].every((phase) => loadingPhaseItems.some((item) => item.phase === phase))) {
       failures.push("loading phases missing");
     }
@@ -4414,6 +4448,15 @@ function collectRenderedStateProof(state) {
     if (!infoPanelVisible) failures.push("info panel is not visible");
     if (!assetsPanelVisible) failures.push("assets tab is not visible");
     if (!/资源|Assets|全部|图片|序列帧/.test(assetText)) failures.push("assets content is not reachable");
+    if (document.querySelector("[data-sequence-review-summary]") && !sequenceProofStates.includes("readonly")) {
+      failures.push("sequence readonly proof state is not distinguishable");
+    }
+    if (document.querySelector("[data-sequence-repair-preview-contract]") && !sequenceProofStates.includes("partial")) {
+      failures.push("sequence partial proof state is not distinguishable");
+    }
+    if (document.querySelector("[data-sequence-no-write-simulation], [data-sequence-bounded-repair-prototype]") && !sequenceProofStates.includes("blocked")) {
+      failures.push("sequence blocked proof state is not distinguishable");
+    }
   }
   if (normalizedState === "info-diagnostics-open") {
     if (!infoPanelVisible) failures.push("info panel is not visible");
@@ -4429,6 +4472,9 @@ function collectRenderedStateProof(state) {
   if (normalizedState === "settings-open") {
     if (!settingsVisible) failures.push("settings modal is not visible");
     if (!isElementVisible(settingsCloseButton)) failures.push("settings close control is not visible");
+    if (activeSidePanel) failures.push("settings modal competes with side panel");
+    if (Number(settingsBodyScrollTop) > 2) failures.push("settings initial scroll is not at top");
+    if (!settingsStartsAtTop) failures.push("settings first section is clipped");
   }
   if (normalizedState === "accessibility-toggles-on") {
     if (!reduceMotionToggle.checked || !document.documentElement.classList.contains("reduceMotion")) failures.push("reduce motion is not enabled");
@@ -4503,6 +4549,7 @@ function collectRenderedStateProof(state) {
     loadingPhases: loadingPhaseItems,
     loadingActivePhases,
     loadingSourceLabel,
+    loadingHeaderActionText: primaryInputLabel.textContent ?? "",
     primaryActionText: button?.textContent?.replace(/\s+/g, " ").trim() ?? "",
     primaryActionRect,
     primaryActionVisible,
@@ -4535,9 +4582,12 @@ function collectRenderedStateProof(state) {
       infoPanelGridRows,
       logsPanelVisible,
       settingsVisible,
+      settingsBodyScrollTop,
+      settingsStartsAtTop,
       assetPreviewVisible,
       diagnosticsPanelVisible,
       diagnosticFirstIssueVisible,
+      sequenceProofStates,
       comparePanelVisible,
       referencePanelVisible,
       syncBarVisible,
@@ -6057,7 +6107,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     ${renderSequenceReviewSummary(intelligence, sequenceGroupCount)}
     ${renderSequenceRepairPreviewPlan(sequenceRepairPreviewPlan)}
     ${replacementEditSummary}
-    <div class="assetUnifiedList inspectorSection">
+    <div class="assetUnifiedList inspectorSection" role="list" aria-label="资源列表">
       ${filtered.length ? filtered.map(renderAssetEntry).join("") : renderBilingualEmpty("当前筛选没有资源", "")}
     </div>
   `;
@@ -6170,8 +6220,8 @@ function renderSequenceReviewSummary(intelligence, sequenceGroupCount) {
     ? sequenceFindings.map((finding) => assetIntelligenceFindingLabel(finding.code)).slice(0, 3).join(" · ")
     : "暂无阻塞复核项";
   return `
-    <div class="assetIntelligenceSummary" data-sequence-review-summary>
-      <strong>序列帧复核</strong>
+    <div class="assetIntelligenceSummary proofSummary proof-readonly" data-sequence-review-summary data-sequence-proof-state="readonly">
+      <strong>序列帧复核 <span class="proofStatePill">只读</span></strong>
       <span>${escapeHtml(sequenceGroupCount)} 组序列 · ${escapeHtml(sequenceFindings.length)} 项发现 · ${escapeHtml(affectedResources.size)} 个资源</span>
       <em>${escapeHtml(severityLabels)}</em>
     </div>
@@ -6285,21 +6335,21 @@ function renderSequenceRepairPreviewPlan(plan) {
   const prototype = createBoundedSequenceRepairPrototype(plan, simulation);
   const labels = plan.proposedActions.map((action) => action.label).slice(0, 2).join(" · ");
   return `
-    <div class="assetIntelligenceSummary" data-sequence-repair-preview-contract>
-      <strong>修复预览</strong>
+    <div class="assetIntelligenceSummary proofSummary proof-partial" data-sequence-repair-preview-contract data-sequence-proof-state="partial">
+      <strong>修复预览 <span class="proofStatePill">局部</span></strong>
       <span>${escapeHtml(plan.proposedActions.length)} 项候选 · ${escapeHtml(plan.affectedResourceIds.length)} 个资源 · 暂不写入</span>
       <em>${escapeHtml(labels)}</em>
     </div>
     ${simulation ? `
-      <div class="assetIntelligenceSummary" data-sequence-no-write-simulation>
-        <strong>模拟结果</strong>
+      <div class="assetIntelligenceSummary proofSummary proof-blocked" data-sequence-no-write-simulation data-sequence-proof-state="blocked">
+        <strong>模拟结果 <span class="proofStatePill">阻断</span></strong>
         <span>前：${escapeHtml(simulation.beforeReview.sequenceFindingCount)} 项发现 · 后：${escapeHtml(simulation.afterReview.proposedActionCount)} 项候选仍需验证</span>
         <em>未生成编辑字节 · 未写入 SVGA · 等待 round-trip 与人工视觉确认</em>
       </div>
     ` : ""}
     ${prototype ? `
-      <div class="assetIntelligenceSummary" data-sequence-bounded-repair-prototype>
-        <strong>补丁原型</strong>
+      <div class="assetIntelligenceSummary proofSummary proof-blocked" data-sequence-bounded-repair-prototype data-sequence-proof-state="blocked">
+        <strong>补丁原型 <span class="proofStatePill">阻断</span></strong>
         <span>${escapeHtml(prototype.operationCount)} 项原型 · ${escapeHtml(prototype.resourceKeyCount)} / ${escapeHtml(prototype.resourceKeyLimit)} 个资源键 · 另存为已阻断</span>
         <em>仅记录候选范围；文本、键名、URL 与时间线编辑仍未开放</em>
       </div>
@@ -6393,8 +6443,9 @@ function renderAssetEntry(asset) {
       ? `<button class="sequenceToggle" type="button" data-sequence-toggle="${escapeHtml(asset.key)}">${sequenceExpanded ? "收起序列帧" : "展开序列帧"}</button>`
       : ""
   ].filter(Boolean).join("");
+  const rowLabel = `资源：${asset.name}，类型：${asset.typeLabel}`;
   return `
-    <article class="assetUnifiedRow resourceRow ${asset.warnings?.length ? "hasWarning" : ""} ${asset.abnormalityLevel && asset.abnormalityLevel !== "none" ? `abnormality-${escapeHtml(asset.abnormalityLevel)}` : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}">
+    <article class="assetUnifiedRow resourceRow ${asset.warnings?.length ? "hasWarning" : ""} ${asset.abnormalityLevel && asset.abnormalityLevel !== "none" ? `abnormality-${escapeHtml(asset.abnormalityLevel)}` : ""} ${isSelected ? "isSelected" : ""}" data-asset-key="${escapeHtml(asset.key)}" data-asset-row-select tabindex="0" role="listitem" aria-current="${isSelected ? "true" : "false"}" aria-label="${escapeHtml(rowLabel)}">
       <button class="assetUnifiedThumb checkerboard ${asset.kind === "sequence" ? "isSequence" : ""}" type="button" data-preview-image-key="${escapeHtml(asset.items?.[0]?.key ?? asset.imageKey ?? "")}" ${asset.previewUrl ? "" : "disabled"}>
         ${asset.kind === "sequence"
           ? (asset.previewItems ?? []).map((item) => item.previewUrl ? `<img src="${escapeHtml(item.previewUrl)}" alt="">` : `<span></span>`).join("")
@@ -6726,7 +6777,14 @@ function setPreviewBackground(value) {
 }
 
 function openSettings(trigger = settingsButton) {
+  closeFitMenus();
+  if (activeSidePanel) setActiveSidePanel(null, { restoreFocus: false });
+  const settingsBody = settingsModal.querySelector(".settingsBody");
+  if (settingsBody) settingsBody.scrollTop = 0;
   openModal(settingsModal, trigger);
+  window.requestAnimationFrame(() => {
+    if (settingsBody) settingsBody.scrollTop = 0;
+  });
 }
 
 function closeSettings() {
@@ -7175,6 +7233,16 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
   }
 });
 
+document.querySelector("#tab-assets").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
+  if (event.target.closest("button,input,select,textarea,a")) return;
+  const row = event.target.closest("[data-asset-row-select]");
+  if (!row?.dataset.assetKey) return;
+  event.preventDefault();
+  selectedAssetKey = row.dataset.assetKey;
+  renderInfoPanel();
+});
+
 replacementPngInput.addEventListener("change", () => {
   const file = replacementPngInput.files?.[0];
   const resourceKey = pendingReplacementResourceKey;
@@ -7402,7 +7470,8 @@ document.addEventListener("keydown", (event) => {
     }
     return;
   }
-  if (event.code !== "Space" || event.repeat) return;
+  const isSpaceKey = event.code === "Space" || event.key === " " || event.key === "Space" || event.key === "Spacebar";
+  if (!isSpaceKey || event.repeat) return;
   const target = event.target;
   const tagName = target?.tagName?.toLowerCase();
   if (["input", "select", "textarea"].includes(tagName) || target?.isContentEditable) return;

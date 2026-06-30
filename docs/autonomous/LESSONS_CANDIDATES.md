@@ -72,3 +72,34 @@ Do not copy raw chat history or unverified guesses here.
 - Validation: `npm run desktop:smoke` passed after adding
   `diagnosticFirstIssueVisible` proof for `info-diagnostics-open`, and the
   latest diagnostics screenshot shows visible issue cards.
+
+## Keyboard smoke input must focus body before global shortcut proof
+
+- Context: Workbench smoke uses a trusted Electron keyboard path to prove Space
+  toggles synchronized playback from the product surface.
+- Problem: sending Space to `body` is unreliable if `document.body` is not
+  programmatically focusable; focus can remain on the previous toolbar control
+  after closing a modal.
+- Rule: smoke drivers that target `body` for global shortcuts should make body
+  temporarily focusable before sending the key, and product proof should record
+  the trusted key receipt.
+- Validation: `npm run desktop:smoke` passed after the smoke input driver set
+  `tabindex="-1"` on `body` for keyboard proof and recorded the Space key
+  receipt in `desktop-interaction-trace.source.json`.
+- Follow-up: source-level accessibility audits should validate the behavior
+  contract, not only one historical handler shape. The NQ1 audit now accepts
+  the current Space code/key fallback while still requiring text-input
+  exclusion and playback toggles.
+
+## UI audit repairs should promote visual findings into machine proof fields
+
+- Context: the HIG audit found target-size, modal-context, loading escape,
+  sequence-state, and row-focus issues that were visible in screenshots.
+- Problem: screenshot-only review can regress quietly when later layout rules
+  preserve DOM text but shrink hit areas or blur state distinctions.
+- Rule: each repaired UI issue should add a small proof field or layout check,
+  such as `comfortableToolbarTargets`, `resourceRowsFocusable`,
+  `settingsBodyScrollTop`, `loadingHeaderActionText`, and
+  `sequenceProofStates`.
+- Validation: `desktop-state-render-proof.json` records these fields and
+  `npm run desktop:smoke` passed on the UI/UX repair slice.

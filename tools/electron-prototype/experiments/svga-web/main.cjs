@@ -1584,6 +1584,7 @@ async function performP6SmokeInput(webContents, value) {
         const selector = ${JSON.stringify(input.selector)};
         const node = selector === "body" ? document.body : document.querySelector(selector);
         if (!node) return null;
+        if (selector === "body" && !node.hasAttribute("tabindex")) node.setAttribute("tabindex", "-1");
         node.focus?.({ preventScroll: true });
         const rect = node.getBoundingClientRect();
         const style = getComputedStyle(node);
