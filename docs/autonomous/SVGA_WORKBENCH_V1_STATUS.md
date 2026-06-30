@@ -21,7 +21,7 @@ work in this dedicated autonomous branch.
 | Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, multi-resource replacement, and edited Save As are smoke-validated; batch/folder mapping remains prototype-only | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementSaveAsProof`; `replacementMultiResourceProof`; desktop smoke |
 | Phase 4 sequence-frame anti-flicker | Read-only Workbench sequence review, repair-preview contract, no-write simulation, bounded repair prototype, rendered boundary proof, no-op round-trip rehearsal, failure-first byte-repair proof validation, smoke-only byte-producing sequence candidate, and owner-visible candidate review are validated; product Save As and owner acceptance remain closed | `sequenceReviewProof`; `sequenceRepairPreviewProof`; `sequenceNoWriteSimulationProof`; `sequenceBoundedRepairPrototypeProof`; `sequencePrototypeRenderedBoundaryProof`; `sequenceNoopRoundTripProof`; `validateSequenceByteRepairProof`; `sequenceByteRepairProof`; `docs/reviews/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md`; existing sequence tests in root suite; desktop smoke |
 | Production-client delivery | Internal unsigned macOS ZIP generation is being repaired so the App ZIP itself is clean; signing/notarization dry-run workflow and entitlements are present; completion blocked by credentials | internal trial manifest; macOS signing workflow dry-run; package proof privacy audit; App ZIP entry-list hygiene proof |
-| UI audit and HIG application | 2026-06-30 single-file preview audit is included as repair input; HIG-derived Workbench rules are now tracked in product docs | `review/SVGA-Workbench-v1-21849d1-ui-audit/UI_AUDIT_REPORT.md`; `docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md` |
+| UI audit and HIG application | 2026-06-30 single-file preview audit is included as repair input; the P1 diagnostics-empty-body finding is repaired; HIG-derived Workbench rules are now tracked in product docs | `review/SVGA-Workbench-v1-21849d1-ui-audit/UI_AUDIT_REPORT.md`; `docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md`; `desktop-info-diagnostics-open.png`; `desktop-state-render-proof.json` |
 
 ## Current Baseline Evidence
 
@@ -47,6 +47,13 @@ surface safe optimization candidates, generate an optimized copy through Save As
 when the source was opened through the desktop file picker, replace supported PNG
 resources with undo/redo and Save As, review sequence-frame risk, and run the
 current smoke-only sequence byte candidate without exposing sequence Save As.
+
+The UI audit is now part of the active repair scope. The P1 diagnostics finding
+is fixed: diagnostics counts are paired with visible issue cards, the inspector
+no longer reserves a missing tab row, and desktop smoke records first-issue
+visibility in state proof. Remaining toolbar target, modal stacking, settings
+scroll, loading escape, sequence proof distinction, and dense row-focus items
+stay as nonblocking UI backlog unless they hide a required workflow.
 
 Keep text editing, key rename, URL import, structural/timeline edits, and
 sequence repair Save As unsupported until they have separate mechanical

@@ -878,3 +878,25 @@
   package generation, macOS package proof, desktop smoke, and loop validation.
 - Note: this was run before committing the repair. Final review artifact
   generation must rerun validation on the final repair HEAD.
+
+### UI Audit P1 Diagnostics Visibility Repair
+
+- Trigger: the 2026-06-30 UI audit found that the right diagnostics panel could
+  show `25 errors` while the visible body looked empty.
+- Root cause: the inspector panel CSS still reserved an old 42px tab row even
+  though the current inspector no longer renders tab controls; the diagnostics
+  content existed in the DOM but was clipped into the missing tab row.
+- Result: the inspector grid is now `header + content`; the diagnostics summary
+  renders the first actionable issues directly below the count; and smoke proof
+  fails if the first issue is present in the DOM but not visibly hittable.
+- Commands:
+  `node --check tools/shared/product-frontend/product-app.mjs`;
+  `node --test tools/shared/product-frontend/source-sharing.test.mjs`;
+  `node tools/p6/visual-system-audit.mjs --source-only`;
+  `npm run desktop:smoke`;
+  `node tools/p6/visual-system-audit.mjs`;
+  `git diff --check`
+- Evidence: `.artifacts/product/P2/desktop-info-diagnostics-open.png` now shows
+  visible issue cards; `.artifacts/product/P2/desktop-state-render-proof.json`
+  records `diagnosticFirstIssueVisible: true` and two inspector grid rows for
+  `info-diagnostics-open`.

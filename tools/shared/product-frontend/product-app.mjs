@@ -3983,6 +3983,17 @@ function isElementVisible(node) {
     && Number(style.opacity ?? 1) > 0.01;
 }
 
+function elementHasVisibleHitPoint(node) {
+  if (!isElementVisible(node)) return false;
+  const rect = node.getBoundingClientRect();
+  const point = {
+    x: Math.round(Math.min(Math.max(rect.left + Math.min(rect.width / 2, 32), 0), Math.max(innerWidth - 1, 0))),
+    y: Math.round(Math.min(Math.max(rect.top + Math.min(rect.height / 2, 18), 0), Math.max(innerHeight - 1, 0)))
+  };
+  const top = document.elementFromPoint(point.x, point.y);
+  return Boolean(top && (top === node || node.contains(top)));
+}
+
 function compactText(node) {
   return node?.textContent?.replace(/\s+/g, " ").trim() ?? "";
 }
@@ -4272,6 +4283,9 @@ function collectRenderedStateProof(state) {
   const assetsPanelVisible = isElementVisible(document.querySelector("#tab-assets")) && !document.querySelector("#tab-assets")?.classList.contains("isHidden");
   const diagnosticsPanelVisible = isElementVisible(document.querySelector("#tab-diagnostics")) && !document.querySelector("#tab-diagnostics")?.classList.contains("isHidden");
   const diagnosticsText = compactText(document.querySelector("#tab-diagnostics"));
+  const diagnosticFirstIssue = document.querySelector("#tab-diagnostics .diagnosticIssueItem, #tab-diagnostics .diagnosticIssueList.isEmpty, #tab-diagnostics .diagnosticIssueList.isPending, #tab-diagnostics .diagnosticIssueList.isError");
+  const diagnosticFirstIssueVisible = elementHasVisibleHitPoint(diagnosticFirstIssue);
+  const infoPanelGridRows = infoPanel ? getComputedStyle(infoPanel).gridTemplateRows.split(/\s+/).filter(Boolean) : [];
   const reportOverviewVisible = isElementVisible(document.querySelector("#tab-overview .overviewGrid, #reportGrid"));
   const statusAnnouncementText = compactText(statusAnnouncer);
   const staleFieldPattern = /文件体积|fileSizeBytes|内存占用|memoryUsage|画布尺寸|canvasSize|播放时长|duration|帧率|fps|图层数量|spriteCount|图片资源|imageCount|文件名|fileName/;
@@ -4405,6 +4419,8 @@ function collectRenderedStateProof(state) {
     if (!infoPanelVisible) failures.push("info panel is not visible");
     if (!diagnosticsPanelVisible) failures.push("diagnostics tab is not visible");
     if (!/诊断|检查报告|检查结果/.test(diagnosticsText)) failures.push("diagnostics content is not reachable");
+    if (!diagnosticFirstIssueVisible) failures.push("diagnostic issue list first item is not visible");
+    if (infoPanelGridRows.length > 2 && !infoPanel?.querySelector(".tabs")) failures.push("info panel reserves a missing tab row");
   }
   if (normalizedState === "logs-open") {
     if (!logsPanelVisible) failures.push("logs panel is not visible");
@@ -4516,10 +4532,12 @@ function collectRenderedStateProof(state) {
       activeModal: activeModal?.id ?? null,
       modeMenuVisible,
       infoPanelVisible,
+      infoPanelGridRows,
       logsPanelVisible,
       settingsVisible,
       assetPreviewVisible,
       diagnosticsPanelVisible,
+      diagnosticFirstIssueVisible,
       comparePanelVisible,
       referencePanelVisible,
       syncBarVisible,
@@ -5809,16 +5827,54 @@ function inspectionIssueSummary(report, status) {
   if (status === "error") return "检查失败";
   if (status === "loading") return "检查中";
   if (!report) return "等待检查";
-  const issues = [
-    ...(Array.isArray(report.issues) ? report.issues : []),
-    ...(Array.isArray(report.specIssues) ? report.specIssues : []),
-    ...(Array.isArray(report.policyIssues) ? report.policyIssues : [])
-  ];
+  const issues = collectInspectionIssues(report);
   if (!issues.length) return "未发现阻塞项";
   const errors = issues.filter((issue) => issue?.severity === "error").length;
   const warnings = issues.filter((issue) => issue?.severity === "warning").length;
   if (errors || warnings) return `${errors} 个错误 · ${warnings} 个提醒`;
   return `${issues.length} 项待复核`;
+}
+
+function collectInspectionIssues(report) {
+  if (!report) return [];
+  return [
+    ...(Array.isArray(report.issues) ? report.issues : []),
+    ...(Array.isArray(report.specIssues) ? report.specIssues : []),
+    ...(Array.isArray(report.policyIssues) ? report.policyIssues : [])
+  ].filter((issue) => issue && typeof issue === "object");
+}
+
+function renderDiagnosticsIssueList(report, status) {
+  const issues = collectInspectionIssues(report);
+  if (status === "loading") {
+    return `<div class="diagnosticIssueList isPending">正在检查，结果会显示在这里。</div>`;
+  }
+  if (status === "error") {
+    return `<div class="diagnosticIssueList isError">诊断暂不可用，请查看运行日志或重新加载文件。</div>`;
+  }
+  if (!report) {
+    return `<div class="diagnosticIssueList isEmpty">加载 SVGA 后会显示首批诊断结果。</div>`;
+  }
+  if (!issues.length) {
+    return `<div class="diagnosticIssueList isEmpty">未发现阻塞项，可继续复核资源与播放表现。</div>`;
+  }
+  return `
+    <ol class="diagnosticIssueList" aria-label="诊断问题列表">
+      ${issues.slice(0, 6).map((issue, index) => {
+        const severity = issue.severity === "error" ? "error" : issue.severity === "warning" ? "warning" : "info";
+        const code = issue.code ?? issue.ruleId ?? `issue_${index + 1}`;
+        const message = issue.message ?? issue.description ?? issue.summary ?? "需要人工复核";
+        return `
+          <li class="diagnosticIssueItem is-${escapeHtml(severity)}">
+            <span>${escapeHtml(severity === "error" ? "错误" : severity === "warning" ? "提醒" : "复核")}</span>
+            <strong>${escapeHtml(code)}</strong>
+            <em>${escapeHtml(message)}</em>
+          </li>
+        `;
+      }).join("")}
+    </ol>
+    ${issues.length > 6 ? `<p class="diagnosticIssueOverflow">另有 ${escapeHtml(issues.length - 6)} 项，请展开检查报告查看。</p>` : ""}
+  `;
 }
 
 function renderOverviewDiagnostics(slot) {
@@ -5830,6 +5886,7 @@ function renderOverviewDiagnostics(slot) {
           <span>诊断</span>
           <strong>${escapeHtml(summary)}</strong>
         </summary>
+        ${renderDiagnosticsIssueList(slot.inspectionReport, slot.inspectionStatus)}
         ${renderAvatarFrameInspectionReport(slot.inspectionReport, slot.inspectionStatus)}
       </details>
     </section>
@@ -5866,6 +5923,7 @@ function renderDiagnostics(metrics, slot) {
             </div>
           `).join("")}
         </dl>
+        ${renderDiagnosticsIssueList(slot.inspectionReport, slot.inspectionStatus)}
       </section>
       <details class="diagnosticDetails" open>
         <summary>检查报告</summary>

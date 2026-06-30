@@ -269,6 +269,12 @@ test("shared product app exposes Repair 6 product states and invalid cleanup evi
     "function isInternalDiagnosticLogMessage",
     "高级诊断",
     "userFacingLogMessage(log)",
+    "function collectInspectionIssues",
+    "function renderDiagnosticsIssueList",
+    "function elementHasVisibleHitPoint",
+    "diagnosticIssueList",
+    "诊断问题列表",
+    "diagnostic issue list first item is not visible",
     "local_preview_first",
     "localPreviewPrimary"
   ]) {

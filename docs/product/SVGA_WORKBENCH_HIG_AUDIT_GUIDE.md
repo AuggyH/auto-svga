@@ -50,7 +50,10 @@ Use these rules for future SVGA Workbench implementation and review:
 
 The 2026-06-30 audit is now part of the Workbench v1 repair package. It found:
 
-- P1: Diagnostics can report `25 errors` while the detailed area looks empty.
+- P1 repaired: Diagnostics reported `25 errors` while the detailed area looked
+  empty. The inspector now uses a two-row header/content grid, shows visible
+  issue cards below the count, and records first-issue visibility in smoke
+  proof.
 - P2: Some toolbar and switch targets are smaller than comfortable HIG-style
   hit areas.
 - P2: Settings can open over a logs drawer, creating a noisy modal context.

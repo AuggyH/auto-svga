@@ -58,3 +58,17 @@ Do not copy raw chat history or unverified guesses here.
   and truthful privacy/security metadata.
 - Validation: `docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md` now records the
   project-specific rules and the current UI audit repair queue.
+
+## UI proof must verify visible hit points, not only DOM text
+
+- Context: the diagnostics inspector contained issue text in the DOM, but the
+  visible screenshot only showed the summary count.
+- Problem: an obsolete 42px tab row in the inspector grid clipped diagnostics
+  content into a non-existent tab area, so text-based proof alone overstated
+  user-visible feedback.
+- Rule: for critical feedback panels, smoke proof should verify that the first
+  actionable item is visibly hittable, and layout CSS should not reserve rows
+  for controls that are no longer rendered.
+- Validation: `npm run desktop:smoke` passed after adding
+  `diagnosticFirstIssueVisible` proof for `info-diagnostics-open`, and the
+  latest diagnostics screenshot shows visible issue cards.

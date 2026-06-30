@@ -3501,7 +3501,7 @@ html.reduceMotion *::after {
 
 .infoPanel {
   display: grid;
-  grid-template-rows: auto 42px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .logsPanel {
@@ -3594,7 +3594,7 @@ html.reduceMotion *::after {
 
 .infoPanel {
   display: grid;
-  grid-template-rows: auto 42px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .logsPanel {
@@ -4071,6 +4071,90 @@ button:disabled {
   overflow-wrap: anywhere;
   color: var(--visual-text-primary);
   font-weight: 600;
+}
+
+.diagnosticIssueList {
+  display: grid;
+  gap: var(--visual-space-tight);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diagnosticIssueList.isEmpty,
+.diagnosticIssueList.isPending,
+.diagnosticIssueList.isError {
+  padding: 10px 12px;
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  color: var(--visual-text-secondary);
+  background: var(--metric-card-surface);
+}
+
+.diagnosticIssueList.isError {
+  color: var(--visual-danger);
+}
+
+.diagnosticIssueItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px var(--visual-space-tight);
+  padding: 10px 12px;
+  border: 1px solid var(--visual-hairline);
+  border-left-width: 3px;
+  border-radius: var(--visual-radius-small);
+  background: var(--metric-card-surface);
+}
+
+.diagnosticIssueItem.is-error {
+  border-left-color: var(--visual-danger);
+}
+
+.diagnosticIssueItem.is-warning {
+  border-left-color: var(--visual-warning);
+}
+
+.diagnosticIssueItem.is-info {
+  border-left-color: var(--visual-accent);
+}
+
+.diagnosticIssueItem span {
+  grid-row: span 2;
+  align-self: start;
+  padding: 2px 6px;
+  border-radius: var(--visual-radius-small);
+  color: var(--floatingSurface);
+  background: var(--visual-text-secondary);
+  font-size: var(--visual-font-caption);
+  line-height: var(--visual-line-caption);
+}
+
+.diagnosticIssueItem.is-error span {
+  background: var(--visual-danger);
+}
+
+.diagnosticIssueItem.is-warning span {
+  background: var(--visual-warning);
+  color: var(--visual-text-primary);
+}
+
+.diagnosticIssueItem strong,
+.diagnosticIssueItem em {
+  min-width: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.diagnosticIssueItem em {
+  color: var(--visual-text-secondary);
+  font-style: normal;
+}
+
+.diagnosticIssueOverflow {
+  margin: 0;
+  color: var(--visual-text-secondary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
 }
 
 .diagnosticDetails {
@@ -5042,7 +5126,7 @@ body,
 
 .infoPanel {
   display: grid;
-  grid-template-rows: auto 42px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .logsPanel {
