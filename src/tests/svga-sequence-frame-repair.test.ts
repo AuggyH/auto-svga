@@ -40,6 +40,7 @@ test("sequence repair replaces one near-empty speck frame with transparent PNG",
   assert.equal(result.report.invariantSummary.roundTripPassed, true);
   assert.equal(result.report.invariantSummary.onlySelectedResourceChanged, true);
   assert.equal(result.report.invariantSummary.spriteTimelineStable, true);
+  assert.equal(result.report.invariantSummary.sequenceVisibilityWindowsDisjoint, true);
   assert.equal(result.report.roundTripReport.passed, true);
 
   const changed = result.report.sequenceGroup.fullAffectedFrameVisibilityAlphaProof
@@ -54,7 +55,7 @@ test("sequence repair fails closed when no near-empty speck frame exists", async
   await assert.rejects(
     repairSvgaSequenceFrameFlicker(sourceBytes, { sourceName: "no-speck.svga" }),
     (error) => error instanceof SvgaSequenceFrameRepairError
-      && error.code === "sequence_near_empty_candidate_not_unique"
+      && error.code === "sequence_near_empty_candidate_not_found"
   );
 });
 
@@ -64,6 +65,29 @@ test("sequence repair fails closed when near-empty candidates are not unique", a
     repairSvgaSequenceFrameFlicker(sourceBytes, { sourceName: "two-specks.svga" }),
     (error) => error instanceof SvgaSequenceFrameRepairError
       && error.code === "sequence_near_empty_candidate_not_unique"
+  );
+});
+
+test("sequence repair supports a terminal-tail near-empty speck with proven previous frames", async () => {
+  const sourceBytes = await createSequenceFixture({ speckKeys: ["seq_012"] });
+  const result = await repairSvgaSequenceFrameFlicker(sourceBytes, {
+    sourceName: "terminal-tail-speck.svga"
+  });
+
+  assert.equal(result.report.passed, true);
+  assert.equal(result.report.sequenceGroup.repairedResourceKey, "seq_012");
+  assert.equal(result.report.selectedRepair.selectionRule, "terminal_tail_near_empty_speck");
+  assert.deepEqual(result.report.sequenceGroup.targetVisibleFrames, [23, 24]);
+  assert.equal(result.report.selectedRepair.afterNonTransparentPixelCount, 0);
+  assert.equal(result.report.invariantSummary.sequenceVisibilityWindowsDisjoint, true);
+});
+
+test("sequence repair still fails closed for a leading boundary speck", async () => {
+  const sourceBytes = await createSequenceFixture({ speckKeys: ["seq_001"] });
+  await assert.rejects(
+    repairSvgaSequenceFrameFlicker(sourceBytes, { sourceName: "leading-boundary-speck.svga" }),
+    (error) => error instanceof SvgaSequenceFrameRepairError
+      && error.code === "sequence_near_empty_candidate_on_boundary"
   );
 });
 

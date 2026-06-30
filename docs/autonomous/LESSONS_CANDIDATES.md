@@ -28,8 +28,23 @@ Do not copy raw chat history or unverified guesses here.
   boundary.
 - Validation: indexed/palette PNG decoding now supports 1/2/4/8-bit
   non-interlaced PLTE/tRNS images; the matrix advanced from color-type failures
-  to explicit sequence repair policy outcomes: no group, non-unique candidate,
-  or boundary-frame candidate.
+  to explicit sequence repair policy outcomes: no group, visibility-window
+  overlap, no near-empty candidate, or a narrow terminal-tail repair candidate.
+
+## Terminal sequence repair needs visible predecessor proof
+
+- Context: real avatar-frame samples can contain a single near-empty final
+  sequence PNG after a run of ordered non-overlapping frames.
+- Problem: rejecting every boundary candidate leaves a real flicker class
+  unfixed, while blindly repairing boundary frames can remove intentional tiny
+  artwork.
+- Rule: terminal-tail repair is allowed only when there is exactly one
+  near-empty candidate, adjacent visibility windows are ordered and
+  non-overlapping, the candidate is not the leading frame, and two predecessor
+  frames prove visible tail continuity.
+- Validation: the real-asset matrix now repairs 3 duplicate rows through
+  `terminal_tail_near_empty_speck`; 50 remaining rows fail closed under
+  documented group, visibility-window, or no-candidate limits.
 
 ## Host source identity must survive renderer file loading
 

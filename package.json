@@ -50,6 +50,7 @@
     "nq1-r1:reports": "npm run build && node tools/nq1-r1/generate-reports.mjs",
     "svga-workbench:v1:validate": "node tools/svga-workbench/run-validation-suite.mjs",
     "svga-workbench:v1:complete-review": "node tools/svga-workbench/complete-review-package.mjs",
+    "svga-workbench:v1:distribution-readiness": "node tools/svga-workbench/distribution-readiness.mjs",
     "svga-workbench:real-assets": "npm run build && node tools/svga-workbench/real-asset-validation-matrix.mjs"
   },
   "dependencies": {

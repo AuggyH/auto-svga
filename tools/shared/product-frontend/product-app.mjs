@@ -5673,6 +5673,12 @@ async function runProductSmoke() {
       if (!response.ok) throw new Error(`Fixture fetch failed (${response.status})`);
       return response.arrayBuffer();
     }));
+    const sequenceFixtureUrl = "/fixture/sequence-repair-smoke.svga";
+    const sequenceBytes = new Uint8Array(await fetch(sequenceFixtureUrl).then((response) => {
+      if (!response.ok) throw new Error(`Sequence fixture fetch failed (${response.status})`);
+      return response.arrayBuffer();
+    }));
+    const sequenceFixtureDisplayName = "sequence-repair-smoke.svga";
     p6SmokeActionTrace.length = 0;
     p6SmokeFixture = {
       sha256: await p6Sha256Bytes(bytes),
@@ -5735,27 +5741,27 @@ async function runProductSmoke() {
     p6SmokeCurrentPhase = "capture-recovered";
     await captureArtifact("desktop-recovered-from-invalid");
     p6SmokeCurrentPhase = "sequence-review-proof";
-    const sequenceReviewProof = await runSequenceReviewProof(bytes.slice(0), p6BaselineFixtureDisplayName);
+    const sequenceReviewProof = await runSequenceReviewProof(sequenceBytes.slice(0), sequenceFixtureDisplayName);
     await captureArtifact("desktop-sequence-review-proof");
     p6SmokeCurrentPhase = "sequence-repair-preview-proof";
-    const sequenceRepairPreviewProof = await runSequenceRepairPreviewContractProof(bytes.slice(0));
+    const sequenceRepairPreviewProof = await runSequenceRepairPreviewContractProof(sequenceBytes.slice(0));
     await captureArtifact("desktop-sequence-repair-preview-proof");
     p6SmokeCurrentPhase = "sequence-no-write-simulation-proof";
-    const sequenceNoWriteSimulationProof = await runSequenceNoWriteSimulationProof(bytes.slice(0));
+    const sequenceNoWriteSimulationProof = await runSequenceNoWriteSimulationProof(sequenceBytes.slice(0));
     await captureArtifact("desktop-sequence-no-write-simulation-proof");
     p6SmokeCurrentPhase = "sequence-bounded-repair-prototype-proof";
-    const sequenceBoundedRepairPrototypeProof = await runSequenceBoundedRepairPrototypeProof(bytes.slice(0));
+    const sequenceBoundedRepairPrototypeProof = await runSequenceBoundedRepairPrototypeProof(sequenceBytes.slice(0));
     await captureArtifact("desktop-sequence-bounded-repair-prototype-proof");
     p6SmokeCurrentPhase = "sequence-prototype-rendered-boundary-proof";
-    const sequencePrototypeRenderedBoundaryProof = await runSequencePrototypeRenderedBoundaryProof(bytes.slice(0));
+    const sequencePrototypeRenderedBoundaryProof = await runSequencePrototypeRenderedBoundaryProof(sequenceBytes.slice(0));
     await captureArtifact("desktop-sequence-prototype-rendered-boundary-proof");
     p6SmokeCurrentPhase = "sequence-noop-round-trip-proof";
-    const sequenceNoopRoundTripProof = await runSequenceNoopRoundTripProof(bytes.slice(0), p6BaselineFixtureDisplayName);
+    const sequenceNoopRoundTripProof = await runSequenceNoopRoundTripProof(sequenceBytes.slice(0), sequenceFixtureDisplayName);
     await captureArtifact("desktop-sequence-noop-round-trip-proof");
     p6SmokeCurrentPhase = "sequence-byte-repair-candidate-proof";
-    const sequenceByteRepairProof = await runSequenceByteRepairCandidateProof(bytes.slice(0), p6BaselineFixtureDisplayName);
+    const sequenceByteRepairProof = await runSequenceByteRepairCandidateProof(sequenceBytes.slice(0), sequenceFixtureDisplayName);
     p6SmokeCurrentPhase = "sequence-product-repair-save-as-proof";
-    const sequenceProductRepairProof = await runSequenceProductRepairSaveAsProof(bytes.slice(0), p6BaselineFixtureDisplayName);
+    const sequenceProductRepairProof = await runSequenceProductRepairSaveAsProof(sequenceBytes.slice(0), sequenceFixtureDisplayName);
     await captureArtifact("desktop-sequence-product-repair-proof");
     p6SmokeCurrentPhase = "replacement-readiness-proof";
     const replacementReadinessProof = await runReplacementReadinessProof(bytes.slice(0), p6BaselineFixtureDisplayName);

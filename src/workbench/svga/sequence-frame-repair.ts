@@ -13,6 +13,7 @@ export interface SvgaSequenceFrameRepairOptions {
   maxNearEmptyPixels?: number;
   maxNearEmptyRatio?: number;
   minNeighborPixelRatio?: number;
+  minTerminalPreviousPixelRatio?: number;
 }
 
 export interface SvgaSequenceFrameAlphaProof {
@@ -58,6 +59,7 @@ export interface SvgaSequenceFrameRepairReport {
   selectedRepair: {
     resourceKey: string;
     reason: "near_empty_visible_speck_frame";
+    selectionRule: RepairSelectionRule;
     replacement: "same_dimensions_transparent_png";
     beforeNonTransparentPixelCount: number;
     afterNonTransparentPixelCount: number;
@@ -75,6 +77,7 @@ export interface SvgaSequenceFrameRepairReport {
     untouchedResourceHashesStable: boolean;
     onlySelectedResourceChanged: boolean;
     replacementDimensionsMatchOriginal: boolean;
+    sequenceVisibilityWindowsDisjoint: boolean;
   };
   productSaveAsEnabled: true;
   repairSuccessClaimed: true;
@@ -143,9 +146,18 @@ interface ImageFacts {
   alphaBounds: PixelBounds | null;
 }
 
+type RepairSelectionRule = "interior_near_empty_speck" | "terminal_tail_near_empty_speck";
+
+interface RepairTarget extends ResourceProofInput {
+  index: number;
+  facts: ImageFacts;
+  selectionRule: RepairSelectionRule;
+}
+
 const defaultMaxNearEmptyPixels = 16;
 const defaultMaxNearEmptyRatio = 0.0002;
 const defaultMinNeighborPixelRatio = 0.005;
+const defaultMinTerminalPreviousPixelRatio = 0.002;
 const minimumSequenceGroupSize = 8;
 
 export class SvgaSequenceFrameRepairError extends Error {
@@ -194,7 +206,8 @@ export async function repairSvgaSequenceFrameFlicker(
       .filter(({ beforeSha256, afterSha256 }) => beforeSha256 !== afterSha256)
       .every(({ resourceKey }) => resourceKey === target.resourceKey),
     replacementDimensionsMatchOriginal: proof.find(({ resourceKey }) => resourceKey === target.resourceKey)?.width === target.width
-      && proof.find(({ resourceKey }) => resourceKey === target.resourceKey)?.height === target.height
+      && proof.find(({ resourceKey }) => resourceKey === target.resourceKey)?.height === target.height,
+    sequenceVisibilityWindowsDisjoint: sequenceVisibilityWindowsDisjoint(group.items)
   };
   const selectedProof = proof.find(({ resourceKey }) => resourceKey === target.resourceKey);
   const passed = Boolean(
@@ -235,6 +248,7 @@ export async function repairSvgaSequenceFrameFlicker(
       selectedRepair: {
         resourceKey: target.resourceKey,
         reason: "near_empty_visible_speck_frame",
+        selectionRule: target.selectionRule,
         replacement: "same_dimensions_transparent_png",
         beforeNonTransparentPixelCount: selectedProof.beforeNonTransparentPixelCount,
         afterNonTransparentPixelCount: selectedProof.afterNonTransparentPixelCount,
@@ -251,8 +265,11 @@ export async function repairSvgaSequenceFrameFlicker(
       failureClosed: true,
       unsafeCasePolicy: [
         "reject when no continuous numeric sequence group is detected",
-        "reject when there is not exactly one near-empty visible speck frame",
-        "reject when the target is the first or last frame in its sequence group",
+        "reject when there is no near-empty visible speck frame",
+        "reject when there is more than one near-empty visible speck frame",
+        "reject when adjacent sequence visibility windows overlap or cannot be ordered",
+        "reject when the target is the first frame in its sequence group",
+        "reject when the target is the last frame unless it is a terminal-tail near-empty speck with two visible predecessor frames",
         "reject when neighboring frames do not have visible alpha content",
         "reject when any non-target resource hash changes",
         "reject when any sprite timeline, alpha, layout, transform, shape, audio, image key, or resource key invariant changes",
@@ -318,6 +335,14 @@ function selectRepairTarget(
   const maxPixels = options.maxNearEmptyPixels ?? defaultMaxNearEmptyPixels;
   const maxRatio = options.maxNearEmptyRatio ?? defaultMaxNearEmptyRatio;
   const minNeighborRatio = options.minNeighborPixelRatio ?? defaultMinNeighborPixelRatio;
+  const minTerminalPreviousRatio = options.minTerminalPreviousPixelRatio ?? defaultMinTerminalPreviousPixelRatio;
+  if (!sequenceVisibilityWindowsDisjoint(group.items)) {
+    throw new SvgaSequenceFrameRepairError(
+      "sequence_group_visibility_overlap_detected",
+      "Sequence repair requires adjacent sequence frames to have ordered, non-overlapping visibility windows.",
+      { groupId: group.groupId }
+    );
+  }
   const candidates = group.items.map((item, index) => ({
     ...item,
     index,
@@ -327,10 +352,17 @@ function selectRepairTarget(
     && facts.nonTransparentPixelCount <= maxPixels
     && facts.nonTransparentRatio <= maxRatio
   ));
-  if (candidates.length !== 1) {
+  if (candidates.length === 0) {
+    throw new SvgaSequenceFrameRepairError(
+      "sequence_near_empty_candidate_not_found",
+      "No near-empty visible speck frame was detected in the sequence group.",
+      { maxPixels, maxRatio }
+    );
+  }
+  if (candidates.length > 1) {
     throw new SvgaSequenceFrameRepairError(
       "sequence_near_empty_candidate_not_unique",
-      "Sequence repair requires exactly one near-empty visible speck frame.",
+      "Sequence repair refuses multiple near-empty visible speck frame candidates.",
       {
         candidateCount: candidates.length,
         candidateResourceKeys: candidates.map(({ resourceKey }) => resourceKey),
@@ -340,12 +372,18 @@ function selectRepairTarget(
     );
   }
   const target = candidates[0];
-  if (target.index <= 0 || target.index >= group.items.length - 1) {
+  if (target.index <= 0) {
     throw new SvgaSequenceFrameRepairError(
       "sequence_near_empty_candidate_on_boundary",
-      "Sequence repair refuses boundary frames because adjacent visual continuity cannot be proven.",
+      "Sequence repair refuses leading boundary frames because previous visual continuity cannot be proven.",
       { resourceKey: target.resourceKey }
     );
+  }
+  if (target.index >= group.items.length - 1) {
+    return selectTerminalTailRepairTarget(group.items, target, {
+      minNeighborRatio,
+      minTerminalPreviousRatio
+    });
   }
   const beforeNeighbor = imageFacts(group.items[target.index - 1].beforeBytes);
   const afterNeighbor = imageFacts(group.items[target.index + 1].beforeBytes);
@@ -361,7 +399,39 @@ function selectRepairTarget(
       }
     );
   }
-  return target;
+  return {
+    ...target,
+    selectionRule: "interior_near_empty_speck" as const
+  };
+}
+
+function selectTerminalTailRepairTarget(
+  groupItems: readonly ResourceProofInput[],
+  target: Omit<RepairTarget, "selectionRule">,
+  thresholds: { minNeighborRatio: number; minTerminalPreviousRatio: number }
+): RepairTarget {
+  const previous = imageFacts(groupItems[target.index - 1].beforeBytes);
+  const previous2 = imageFacts(groupItems[target.index - 2].beforeBytes);
+  if (
+    previous.nonTransparentRatio < thresholds.minTerminalPreviousRatio
+    || previous2.nonTransparentRatio < thresholds.minNeighborRatio
+  ) {
+    throw new SvgaSequenceFrameRepairError(
+      "sequence_terminal_tail_context_insufficient",
+      "Sequence repair refuses terminal near-empty specks unless two predecessor frames prove visible tail continuity.",
+      {
+        resourceKey: target.resourceKey,
+        previousNeighborRatio: previous.nonTransparentRatio,
+        secondPreviousNeighborRatio: previous2.nonTransparentRatio,
+        minTerminalPreviousRatio: thresholds.minTerminalPreviousRatio,
+        minNeighborRatio: thresholds.minNeighborRatio
+      }
+    );
+  }
+  return {
+    ...target,
+    selectionRule: "terminal_tail_near_empty_speck"
+  };
 }
 
 function buildAlphaProof(
@@ -459,6 +529,25 @@ function visibleFrames(frames: readonly ({ alpha?: number } & Record<string, unk
   return frames
     .map((frame, index) => Number(frame.alpha ?? 0) > 0.001 ? index : -1)
     .filter((index) => index >= 0);
+}
+
+function sequenceVisibilityWindowsDisjoint(items: readonly ResourceProofInput[]): boolean {
+  for (let index = 1; index < items.length; index += 1) {
+    const previous = visibilityWindow(items[index - 1].visibleFrameIndices);
+    const current = visibilityWindow(items[index].visibleFrameIndices);
+    if (!previous || !current || previous.end >= current.start) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function visibilityWindow(indices: readonly number[]): { start: number; end: number } | null {
+  if (indices.length === 0) return null;
+  return {
+    start: Math.min(...indices),
+    end: Math.max(...indices)
+  };
 }
 
 function maxAlpha(frames: readonly ({ alpha?: number } & Record<string, unknown>)[]): number {

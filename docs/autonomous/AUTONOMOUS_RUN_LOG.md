@@ -2,6 +2,22 @@
 
 ## 2026-06-30
 
+### Short-term Distribution Preparation Track
+
+- Input: Product Owner direction to begin release and distribution preparation
+  for the short-term first distributable version in parallel with Phase 1,
+  Phase 2, Phase 3, and Phase 4 product development/review.
+- Boundary: this starts P7 desktop-client preparation only. It does not publish,
+  upload, tag, merge, release, sign, notarize, or claim Product Owner
+  acceptance.
+- Added: `docs/product/SHORT_TERM_DISTRIBUTION_PREP.md` defining D0 internal
+  unsigned ZIP, D1 signed/notarized macOS ZIP, and D2 Windows trusted package
+  tiers, plus release candidate gates and non-goals.
+- Added: `tools/svga-workbench/distribution-readiness.mjs` and root script
+  `npm run svga-workbench:v1:distribution-readiness` for a read-only prep check.
+- Current expected result: prep can pass while release remains blocked by
+  Product Owner review state and signing/notarization credentials.
+
 ### Product Owner Correction After `cdb101e`
 
 - Input: Product Owner correction attached in the Codex thread.
@@ -44,6 +60,34 @@
   visible sequence group, 19 non-unique near-empty candidates, 3 boundary-frame
   candidates. This records a stronger product limitation and keeps the run
   active.
+
+### Phase 4 Terminal-Tail Sequence Repair Slice
+
+- Finding: the 53-sample real-asset matrix contained 3 duplicate rows where the
+  only near-empty candidate was the final frame of an otherwise ordered numeric
+  sequence group.
+- Action: added a stricter terminal-tail repair rule. It keeps leading boundary
+  frames rejected, splits `not_found` from `not_unique`, rejects overlapping or
+  unordered adjacent visibility windows, and requires two visible predecessor
+  frames before replacing the terminal near-empty PNG with a same-size
+  transparent PNG.
+- Action: split Phase 4 desktop smoke onto a dedicated
+  `sequence-repair-smoke.svga` fixture with ordered non-overlapping sequence
+  windows and a persistent background layer. The regular avatar-frame preview
+  fixture remains the baseline for single-file preview, replacement, and
+  comparison flows.
+- Real-asset result: `npm run svga-workbench:real-assets` passes with 53/53
+  SVGA samples parsed, 22 safe optimization candidate assets, 53 PNG replacement
+  candidate assets, 3 Phase 4 repaired candidates, and 50 fail-closed sequence
+  attempts. Remaining Phase 4 reasons: 31 no continuous numeric visible
+  sequence group, 11 overlapping or unordered sequence visibility windows, and
+  8 no near-empty speck candidate.
+- Validation: `node --test dist/tests/svga-sequence-frame-repair.test.js`
+  passed 5/5; `npm test` passed 243/243; svga-web experiment tests passed
+  28/28; `npm run desktop:smoke` passed with product Save As/reopen proof for
+  `seq_012`.
+- Status: this is real product progress but not Phase 4 completion. The
+  broader sequence-frame repair path remains active work.
 
 ### Run Start
 

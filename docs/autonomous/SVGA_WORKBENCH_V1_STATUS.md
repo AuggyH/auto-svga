@@ -26,8 +26,9 @@ implementation repairs. The project-specific execution rules are recorded in
 | Phase 1 stabilization baseline | Baseline pass, continue hardening only when gaps are found | `npm run desktop:smoke`; `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`; package proof privacy audit |
 | Phase 2 asset detection and optimization | Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, optimized-output reopen proof, and a bounded desktop `生成优化副本` Save As entry are implemented; current review package must regenerate final-head self-contained reports | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke; `asset-intelligence-report.json`; `optimization-report.json` |
 | Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, reset, multi-resource replacement, and edited Save As are smoke-validated; batch/folder mapping remains prototype-only | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementResetProof`; `replacementSaveAsProof`; `replacementMultiResourceProof`; desktop smoke |
-| Phase 4 sequence-frame anti-flicker | Product repaired-copy Save As/reopen path is validated for the current supported near-empty sequence speck repair; source immutability, full affected-frame alpha proof, saved hash binding, reopen playback, and failure-closed unsafe cases are covered. Awaited exact-frame product proof can record `playbackDeltaObserved=false` for the four-pixel speck; alpha proof remains the exact repair authority | `repairSvgaSequenceFrameFlicker`; `sequenceProductRepairProof`; `sequence-full-affected-frame-alpha-proof.json`; `sequence-repair-status-report.json`; `sequence-repaired-output.svga`; `desktop-sequence-product-repair-proof.png`; desktop smoke |
+| Phase 4 sequence-frame anti-flicker | Product repaired-copy Save As/reopen path is validated for the supported near-empty speck repair. Real-asset matrix now includes 3 repaired terminal-tail rows and 50 fail-closed rows; broader sequence cases remain active work. Source immutability, alpha proof, saved hash binding, reopen playback, and failure-closed unsafe cases are covered for repaired candidates. | `repairSvgaSequenceFrameFlicker`; `sequenceProductRepairProof`; `sequence-full-affected-frame-alpha-proof.json`; `sequence-repair-status-report.json`; `sequence-repaired-output.svga`; `REAL_ASSET_VALIDATION_MATRIX`; desktop smoke |
 | Production-client delivery | Internal unsigned macOS ZIP generation is clean and review-ready; packaged App normal visible startup proof is now part of the validation chain; signing/notarization dry-run workflow and entitlements are present; trusted distribution completion is blocked by credentials | internal trial manifest; packaged normal runtime proof; macOS signing workflow dry-run; package proof privacy audit; App ZIP entry-list hygiene proof |
+| Short-term distribution preparation | Parallel prep has started for the first distributable Workbench version. D0 internal unsigned ZIP remains evidence-only, D1 trusted macOS distribution is credential-blocked, and D2 Windows trusted distribution remains future work. Release candidate readiness is checked separately from product function acceptance. | `docs/product/SHORT_TERM_DISTRIBUTION_PREP.md`; `npm run svga-workbench:v1:distribution-readiness` |
 | UI audit and HIG application | 2026-06-30 single-file preview audit is included as repair input; diagnostics visibility, loading escape path, settings modal context, toolbar hit areas, resource row focus, sequence proof-state distinction, and long-title containment have targeted repairs | `review/SVGA-Workbench-v1-21849d1-ui-audit/UI_AUDIT_REPORT.md`; `docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md`; `desktop-loading.png`; `desktop-settings-open.png`; `desktop-info-assets-open.png`; `desktop-state-render-proof.json`; `desktop-interaction-trace.source.json` |
 
 ## Current Baseline Evidence
@@ -59,19 +60,18 @@ surface safe optimization candidates, generate an optimized copy through Save As
 when the source was opened through the desktop file picker, replace supported PNG
 resources with undo/redo and Save As, review sequence-frame risk, and generate a
 repaired-copy sequence anti-flicker Save As for the current supported near-empty
-speck case.
+speck cases.
 
 The current repair adds final-head self-contained Phase 2 and Phase 3 reports,
 keeps historical P3/P4 incubation artifacts out of the current evidence path,
 adds replacement reset proof, adds a packaged App normal visible startup proof
 after macOS packaging, and completes the Phase 4 product sequence-repair path
-for the current supported fixture. The repaired output is saved as a new SVGA,
-reopened through the product player, and bound to a full affected-frame alpha
-proof. The awaited exact-frame player proof can record `playbackDeltaObserved=false`
-for the same four-pixel speck target. This limited visual-delta observability is
-recorded for Product Owner review and does not re-enable manual visual
-confirmation as a blocker because the alpha proof confirms the target resource
-removal.
+for the current supported near-empty-speck fixture and the real-asset
+terminal-tail subset. Repaired output is saved as a new SVGA, reopened through
+the product player, and bound to full affected-frame alpha proof. Exact-frame
+player proof remains auxiliary because very small target removals can have
+limited canvas-delta observability; alpha proof remains the exact repair
+authority.
 
 The UI audit is now part of the active repair scope. Diagnostics counts are
 paired with visible issue cards; loading keeps a header `更换文件` path; Settings
@@ -102,19 +102,30 @@ Current real-asset matrix status: 53/53 local SVGA samples parse, 22 samples
 have safe optimization candidates, and 53 samples expose supported PNG
 replacement candidates. Indexed/palette PNG decoding for embedded resources is
 now supported in the shared PNG reader, removing the earlier
-`Unsupported PNG color type: 3` Phase 4 parser stop. Phase 4 still fails closed
-on all 53 real assets because the current algorithm is intentionally narrow:
-31 assets have no continuous numeric visible sequence group, 19 have non-unique
-near-empty candidates, and 3 place the near-empty candidate on a boundary frame.
-This is active product work, not an external blocker and not a completion claim.
+`Unsupported PNG color type: 3` Phase 4 parser stop. Phase 4 now repairs 3
+real-asset rows using the terminal-tail near-empty-speck rule: the target must
+be the only near-empty candidate, adjacent sequence visibility windows must be
+ordered and non-overlapping, the leading boundary remains rejected, and two
+predecessor frames must prove visible tail continuity. The remaining 50 rows
+fail closed: 31 have no continuous numeric visible sequence group, 11 have
+overlapping or unordered sequence visibility windows, and 8 have no near-empty
+speck candidate. This is active product work, not an external blocker and not a
+completion claim.
 
 Keep text editing, key rename, URL import, and structural/timeline edits
 unsupported until they have separate mechanical round-trip proof and
 owner-visible acceptance. Sequence repair remains deliberately narrow: only the
-current fail-closed near-empty speck-to-transparent path is product Save As
+current fail-closed near-empty speck-to-transparent paths are product Save As
 validated. Signing/notarization scripts now exist in dry-run/explicit-execute
 form, but completion and Windows trusted distribution remain credential-bound
 external blockers.
+
+Short-term release and distribution preparation is now an explicit parallel
+track. It may prepare checklists, package hygiene gates, credential handoff
+requirements, release candidate commands, and distribution-readiness reports
+while Phase 1-4 product work continues. It must not publish, upload, tag,
+release, or treat the current Workbench as accepted until the release candidate
+gate in `docs/product/SHORT_TERM_DISTRIBUTION_PREP.md` is satisfied.
 
 ## Superseded Mechanical Baseline
 

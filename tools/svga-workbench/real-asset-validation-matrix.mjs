@@ -220,6 +220,7 @@ async function attemptSequenceRepair(modules, bytes, name) {
       repairSuccessClaimed: result.report.repairSuccessClaimed,
       manualVisualConfirmationRequired: result.report.manualVisualConfirmationRequired,
       repairedResourceKey: result.report.sequenceGroup.repairedResourceKey,
+      selectionRule: result.report.selectedRepair.selectionRule ?? "unspecified",
       resourceKeyCount: result.report.sequenceGroup.resourceKeyCount,
       editedSha256: result.report.editedSha256,
       failureClosed: result.report.failureClosed,
