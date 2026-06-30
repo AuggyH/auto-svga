@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -71,4 +71,25 @@ test("UI audit text sanitizer removes repo-local paths before packaging", async 
   assert.doesNotMatch(sanitized, /\/Users\//);
   assert.doesNotMatch(sanitized, new RegExp(os.userInfo().username));
   assert.match(sanitized, /<redacted-local-path>/);
+});
+
+test("review packet template keeps complete handoff sections", async () => {
+  const source = await readFile(new URL("./complete-review-package.mjs", import.meta.url), "utf8");
+  for (const requiredSection of [
+    "## Feature Completion Matrix",
+    "## Self-Contained Evidence",
+    "## Validation Summary",
+    "## App ZIP / Signing / Installer Status",
+    "## Changed Files Summary",
+    "## Security / Privacy Summary",
+    "## Knowledge And Docs Updated",
+    "## Blockers Requiring Product Owner Or External Credentials",
+    "## Nonblocking Backlog",
+    "## Known Risks",
+    "## Required Human Decision",
+    "Recommended next human decision",
+    "Product Owner acceptance and production release are not claimed"
+  ]) {
+    assert.match(source, new RegExp(requiredSection.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
 });

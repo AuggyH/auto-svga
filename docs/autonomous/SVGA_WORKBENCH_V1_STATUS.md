@@ -3,7 +3,7 @@
 Date: 2026-06-30
 Branch: `agent/codex/svga-workbench-v1-autonomous`
 Baseline commit: `545252838311233cc03ce2e5f917e53d43207589`
-Current repair state: `AUTONOMOUS_RUN_REPAIR_REQUIRED_AND_CONTINUE`
+Current repair state: `COMPLETE_REVIEW_DIRECTORY_READY_FOR_EXTERNAL_REVIEW`
 
 ## Authorization
 
@@ -20,7 +20,7 @@ work in this dedicated autonomous branch.
 | Phase 2 asset detection and optimization | Asset Intelligence, host-neutral safe-image optimizer, token-bound local optimizer API, report-bound optimized Save As IPC, optimized-output reopen proof, and a bounded desktop `生成优化副本` Save As entry are implemented | `asset-intelligence` unit tests; avatar-frame report contract tests; SVGA optimizer/editor tests; svga-web server tests; shared frontend source guard; `npm test`; desktop smoke |
 | Phase 3 imageKey / replacement editing | Single-resource replacement preview, bounded undo-redo, multi-resource replacement, and edited Save As are smoke-validated; batch/folder mapping remains prototype-only | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md`; `replacementReadinessProof`; `replacementPreviewProof`; `replacementUndoRedoProof`; `replacementSaveAsProof`; `replacementMultiResourceProof`; desktop smoke |
 | Phase 4 sequence-frame anti-flicker | Read-only Workbench sequence review, repair-preview contract, no-write simulation, bounded repair prototype, rendered boundary proof, no-op round-trip rehearsal, failure-first byte-repair proof validation, smoke-only byte-producing sequence candidate, and owner-visible candidate review are validated; product Save As and owner acceptance remain closed | `sequenceReviewProof`; `sequenceRepairPreviewProof`; `sequenceNoWriteSimulationProof`; `sequenceBoundedRepairPrototypeProof`; `sequencePrototypeRenderedBoundaryProof`; `sequenceNoopRoundTripProof`; `validateSequenceByteRepairProof`; `sequenceByteRepairProof`; `docs/reviews/2026-06-30-codex-svga-workbench-sequence-byte-candidate.md`; existing sequence tests in root suite; desktop smoke |
-| Production-client delivery | Internal unsigned macOS ZIP generation is being repaired so the App ZIP itself is clean; signing/notarization dry-run workflow and entitlements are present; completion blocked by credentials | internal trial manifest; macOS signing workflow dry-run; package proof privacy audit; App ZIP entry-list hygiene proof |
+| Production-client delivery | Internal unsigned macOS ZIP generation is clean and review-ready; signing/notarization dry-run workflow and entitlements are present; trusted distribution completion is blocked by credentials | internal trial manifest; macOS signing workflow dry-run; package proof privacy audit; App ZIP entry-list hygiene proof |
 | UI audit and HIG application | 2026-06-30 single-file preview audit is included as repair input; the P1 diagnostics-empty-body finding is repaired; HIG-derived Workbench rules are now tracked in product docs | `review/SVGA-Workbench-v1-21849d1-ui-audit/UI_AUDIT_REPORT.md`; `docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md`; `desktop-info-diagnostics-open.png`; `desktop-state-render-proof.json` |
 
 ## Current Baseline Evidence
@@ -38,9 +38,12 @@ work in this dedicated autonomous branch.
 
 ## Current Repair State
 
-The previous `21849d1` review upload is not accepted as a complete Workbench v1
-handoff. Autonomous work is continuing to repair package integrity, App ZIP
-hygiene, privacy/manifest validation, and self-contained Phase 2/3/4 evidence.
+The previous `21849d1` review upload was not accepted as a complete Workbench v1
+handoff. That handoff integrity repair is now complete for external review:
+the active package is `SVGA-Workbench-v1-86fb24f-complete-review-directory.zip`,
+with top-level `UPLOAD_INDEX.json`, `MANIFEST.json`,
+`bundle-privacy-audit.json`, App ZIP entry list, hashes, validation outputs,
+and self-contained Phase 2/3/4 evidence.
 
 The default desktop Workbench can preview local SVGA files, inspect assets,
 surface safe optimization candidates, generate an optimized copy through Save As
@@ -62,3 +65,15 @@ candidate is smoke-only, manual visual confirmation is required, and repair
 success is not claimed. Signing/notarization scripts now exist in
 dry-run/explicit-execute form, but completion and Windows trusted distribution
 remain credential-bound external blockers.
+
+## Final Review Artifact
+
+- Primary artifact:
+  `review/SVGA-Workbench-v1-86fb24f-complete-review-directory.zip`
+- SHA-256:
+  `f49201fe95bc4e41bb8060bf4e579e3eddd0572238595b6a1872dd9be9558031`
+- Size: `127670403` bytes
+- Final HEAD: `86fb24f8b8cc9d6b8b900c20a513581b6a1532c5`
+- Final tree: `f1431bd4e47d0142fb10c65d9e0d4d623a63ac09`
+- Validation: `npm run svga-workbench:v1:validate` passed 14/14 commands.
+- Product Owner acceptance and production release are not claimed.
