@@ -1254,7 +1254,7 @@ async function writeUploadChangelog(root, { headCommit, headTree, completeZipNam
   ].join("\n"), "utf8");
 }
 
-async function writeReviewPacket(root, { headCommit, headTree, headShort, completeZipName, appZipName, validationSummary }) {
+async function writeReviewPacket(root, { headCommit, headTree, headShort, completeZipName, appZipName, validationSummary, phaseEvidence }) {
   await writeFile(path.join(root, "README.md"), [
     "# SVGA Workbench v1 Complete Review Directory",
     "",
@@ -1442,7 +1442,7 @@ async function main() {
   const validationSummary = await readValidationJson("validation-summary.json");
   const phaseEvidence = await copyPhaseEvidence(completeRoot, { headCommit, headTree });
   const packagedRuntimeProof = await copyPackagedRuntimeEvidence(completeRoot, { headCommit, headTree });
-  await writeReviewPacket(completeRoot, { headCommit, headTree, headShort, completeZipName, appZipName, validationSummary });
+  await writeReviewPacket(completeRoot, { headCommit, headTree, headShort, completeZipName, appZipName, validationSummary, phaseEvidence });
   await writeGeneratedCurrentDocs(completeRoot, {
     headCommit,
     headTree,
