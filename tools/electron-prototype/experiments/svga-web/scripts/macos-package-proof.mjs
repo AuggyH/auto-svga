@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -35,6 +36,34 @@ const sourceAuditFiles = [
   "packaging/macos/Info.plist",
   "packaging/macos/entitlements.plist"
 ];
+const forbiddenPermissionUsageDescriptionKeys = [
+  "NSCameraUsageDescription",
+  "NSMicrophoneUsageDescription",
+  "NSBluetoothAlwaysUsageDescription",
+  "NSBluetoothPeripheralUsageDescription",
+  "NSSpeechRecognitionUsageDescription",
+  "NSAppleEventsUsageDescription",
+  "NSMotionUsageDescription",
+  "NSLocationUsageDescription",
+  "NSLocationWhenInUseUsageDescription",
+  "NSLocationAlwaysAndWhenInUseUsageDescription",
+  "NSPhotoLibraryUsageDescription",
+  "NSPhotoLibraryAddUsageDescription",
+  "NSContactsUsageDescription",
+  "NSCalendarsUsageDescription",
+  "NSRemindersUsageDescription",
+  "NSDesktopFolderUsageDescription",
+  "NSDocumentsFolderUsageDescription",
+  "NSDownloadsFolderUsageDescription",
+  "NSNetworkVolumesUsageDescription",
+  "NSRemovableVolumesUsageDescription",
+  "NSSystemAdministrationUsageDescription"
+];
+const forbiddenArbitraryNetworkKeys = [
+  "NSAllowsArbitraryLoads",
+  "NSAllowsArbitraryLoadsInWebContent",
+  "NSExceptionAllowsInsecureHTTPLoads"
+];
 
 export function macosPackagerArgs(outputRoot = ".artifacts/internal-trial") {
   return [
@@ -62,8 +91,19 @@ export async function buildMacosPackageProof(options = {}) {
   const archivePath = options.archivePath
     ? path.resolve(options.archivePath)
     : path.join(artifactsRoot, `${appName}-darwin-arm64.zip`);
-  const plist = await readFile(plistPath, "utf8");
-  const privacyAudit = await runPrivacyAudit(plist);
+  const sourcePlist = await readFile(plistPath, "utf8");
+  const packagedPlistPath = path.join(appBundle, "Contents/Info.plist");
+  const validatePackagedApp = options.validatePackagedApp !== false;
+  const packagedPlist = validatePackagedApp && existsSync(packagedPlistPath)
+    ? await readFile(packagedPlistPath, "utf8")
+    : sourcePlist;
+  const privacyAudit = await runPrivacyAudit(sourcePlist);
+  const sourceInfoPlistSecurityAudit = auditInfoPlistSecurity(sourcePlist);
+  const packagedInfoPlistSecurityAudit = auditInfoPlistSecurity(packagedPlist);
+  const infoPlistSecurityAudit = mergeInfoPlistSecurityAudits({
+    sourceInfoPlistSecurityAudit,
+    packagedInfoPlistSecurityAudit
+  });
   const proof = {
     schemaVersion: proofSchemaVersion,
     appName,
@@ -103,6 +143,13 @@ export async function buildMacosPackageProof(options = {}) {
       persistedAbsolutePaths: false,
       arbitraryFileServing: false
     },
+    metadataSecurity: {
+      noArbitraryNetworkLoads: infoPlistSecurityAudit.arbitraryNetworkAllowances.length === 0,
+      noUnnecessaryPermissionUsageDescriptions: infoPlistSecurityAudit.permissionUsageDescriptions.length === 0,
+      noFinderDocumentAssociation: infoPlistSecurityAudit.finderDocumentAssociations.length === 0,
+      localOnlySecurityPosture: true
+    },
+    infoPlistSecurityAudit,
     packagingScaffold: {
       packageScript: "internal:trial:package:mac",
       signScript: "internal:trial:sign:mac",
@@ -111,6 +158,8 @@ export async function buildMacosPackageProof(options = {}) {
       appBundlePath: path.relative(repoRoot, appBundle),
       archivePath: path.relative(repoRoot, archivePath),
       extendInfoPath: path.relative(repoRoot, plistPath),
+      packagedInfoPlistPath: path.relative(repoRoot, packagedPlistPath),
+      packagedInfoPlistValidated: validatePackagedApp && existsSync(packagedPlistPath),
       entitlementsPath: path.relative(repoRoot, entitlementsPath),
       electronPackagerArgs: macosPackagerArgs(path.relative(experimentRoot, artifactsRoot))
     },
@@ -127,7 +176,7 @@ export async function buildMacosPackageProof(options = {}) {
     ],
     generatedAt: new Date().toISOString()
   };
-  validateProof(plist, proof);
+  validateProof(sourcePlist, proof, packagedPlist);
   return proof;
 }
 
@@ -139,22 +188,90 @@ export async function writeMacosPackageProof(options = {}) {
   return proof;
 }
 
-export function validateProof(plist, proof) {
+export function validateProof(plist, proof, packagedPlist = plist) {
   const checks = [
     ["internalUseOnly", proof.distribution.internalUseOnly === true && plist.includes("<key>AutoSVGAInternalUseOnly</key>")],
     ["unsigned", proof.distribution.unsigned === true && plist.includes("<key>AutoSVGASigned</key>")],
     ["unnotarized", proof.distribution.notarized === false && plist.includes("<key>AutoSVGANotarized</key>")],
     ["productionApprovedFalse", proof.distribution.productionApproved === false && plist.includes("<key>AutoSVGAProductionApproved</key>")],
-    ["noSvgaDocumentType", !plist.includes("<key>CFBundleDocumentTypes</key>") && !plist.includes("<string>svga</string>")],
-    ["noUtiDeclaration", !plist.includes("<key>UTExportedTypeDeclarations</key>") && !plist.includes("<string>com.auto-svga.svga</string>")],
+    ["noSvgaDocumentType", !plist.includes("<key>CFBundleDocumentTypes</key>") && !packagedPlist.includes("<key>CFBundleDocumentTypes</key>") && !plist.includes("<string>svga</string>") && !packagedPlist.includes("<string>svga</string>")],
+    ["noUtiDeclaration", !plist.includes("<key>UTExportedTypeDeclarations</key>") && !packagedPlist.includes("<key>UTExportedTypeDeclarations</key>") && !plist.includes("<string>com.auto-svga.svga</string>") && !packagedPlist.includes("<string>com.auto-svga.svga</string>")],
     ["extendInfoArg", proof.packagingScaffold.electronPackagerArgs.some((arg) => arg.startsWith("--extend-info="))],
+    ["packagedInfoPlistPath", typeof proof.packagingScaffold.packagedInfoPlistPath === "string" && proof.packagingScaffold.packagedInfoPlistPath.endsWith("Contents/Info.plist")],
     ["entitlementsPath", typeof proof.packagingScaffold.entitlementsPath === "string" && proof.packagingScaffold.entitlementsPath.endsWith("entitlements.plist")],
     ["signingScripts", proof.packagingScaffold.signScript === "internal:trial:sign:mac" && proof.packagingScaffold.notarizeScript === "internal:trial:notarize:mac"],
     ["privacyAuditPassed", proof.privacyAudit.passed === true],
+    ["infoPlistSecurityAuditPassed", proof.infoPlistSecurityAudit?.passed === true && auditInfoPlistSecurity(plist).passed === true && auditInfoPlistSecurity(packagedPlist).passed === true],
+    ["noArbitraryNetworkLoads", proof.metadataSecurity?.noArbitraryNetworkLoads === true],
+    ["noUnnecessaryPermissionUsageDescriptions", proof.metadataSecurity?.noUnnecessaryPermissionUsageDescriptions === true],
+    ["noFinderDocumentAssociation", proof.metadataSecurity?.noFinderDocumentAssociation === true],
     ["acceptanceOwner", proof.distribution.finalPackagedAppAcceptanceOwner === finalAcceptanceOwner]
   ];
   const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length > 0) throw new Error(`macOS package proof failed: ${failed.join(", ")}`);
+}
+
+function mergeInfoPlistSecurityAudits({ sourceInfoPlistSecurityAudit, packagedInfoPlistSecurityAudit }) {
+  return {
+    passed: sourceInfoPlistSecurityAudit.passed === true && packagedInfoPlistSecurityAudit.passed === true,
+    source: sourceInfoPlistSecurityAudit,
+    packagedApp: packagedInfoPlistSecurityAudit,
+    arbitraryNetworkAllowances: [
+      ...new Set([
+        ...sourceInfoPlistSecurityAudit.arbitraryNetworkAllowances,
+        ...packagedInfoPlistSecurityAudit.arbitraryNetworkAllowances
+      ])
+    ],
+    permissionUsageDescriptions: [
+      ...new Set([
+        ...sourceInfoPlistSecurityAudit.permissionUsageDescriptions,
+        ...packagedInfoPlistSecurityAudit.permissionUsageDescriptions
+      ])
+    ],
+    finderDocumentAssociations: [
+      ...new Set([
+        ...sourceInfoPlistSecurityAudit.finderDocumentAssociations,
+        ...packagedInfoPlistSecurityAudit.finderDocumentAssociations
+      ])
+    ],
+    findings: [
+      ...sourceInfoPlistSecurityAudit.findings.map((finding) => `source:${finding}`),
+      ...packagedInfoPlistSecurityAudit.findings.map((finding) => `packaged:${finding}`)
+    ]
+  };
+}
+
+export function auditInfoPlistSecurity(plist) {
+  const arbitraryNetworkAllowances = forbiddenArbitraryNetworkKeys.filter((key) => plistBooleanTrue(plist, key));
+  const permissionUsageDescriptions = forbiddenPermissionUsageDescriptionKeys.filter((key) => plistKeyPresent(plist, key));
+  const finderDocumentAssociations = [
+    "CFBundleDocumentTypes",
+    "UTExportedTypeDeclarations",
+    "UTImportedTypeDeclarations"
+  ].filter((key) => plistKeyPresent(plist, key));
+  if (/<string>\s*svga\s*<\/string>/i.test(plist) || /public\.filename-extension[\s\S]*<string>\s*svga\s*<\/string>/i.test(plist)) {
+    finderDocumentAssociations.push("svga-filename-extension");
+  }
+  const findings = [
+    ...arbitraryNetworkAllowances.map((key) => `${key}=true is not allowed for the local-only internal package`),
+    ...permissionUsageDescriptions.map((key) => `${key} is not allowed unless the app actually uses that permission`),
+    ...finderDocumentAssociations.map((key) => `${key} is not allowed until Finder open-file support is implemented`)
+  ];
+  return {
+    passed: findings.length === 0,
+    arbitraryNetworkAllowances,
+    permissionUsageDescriptions,
+    finderDocumentAssociations,
+    findings
+  };
+}
+
+function plistKeyPresent(plist, key) {
+  return new RegExp(`<key>\\s*${escapeRegExp(key)}\\s*<\\/key>`).test(plist);
+}
+
+function plistBooleanTrue(plist, key) {
+  return new RegExp(`<key>\\s*${escapeRegExp(key)}\\s*<\\/key>\\s*<true\\s*\\/>`, "m").test(plist);
 }
 
 async function runPrivacyAudit(plist) {
@@ -215,6 +332,10 @@ function stripPlistDoctype(text, relativePath) {
 
 function stripAllowedLocalUrls(text) {
   return text.replace(/https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?/g, "<loopback>");
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function git(args, options = {}) {

@@ -24,6 +24,7 @@ const repoRoot = path.resolve(experimentRoot, "../../../..");
 const artifactsRoot = path.join(experimentRoot, ".artifacts/internal-trial");
 const appDirectory = path.join(artifactsRoot, `${appName}-darwin-arm64`);
 const appBundle = path.join(appDirectory, `${appName}.app`);
+const packagedInfoPlist = path.join(appBundle, "Contents/Info.plist");
 const archivePath = path.join(artifactsRoot, `${appName}-darwin-arm64.zip`);
 const manifestPath = path.join(artifactsRoot, "internal-trial-manifest.json");
 const localElectronVersionPath = path.join(experimentRoot, "../../node_modules/electron/dist/version");
@@ -32,7 +33,7 @@ function run(command, args, options = {}) {
   execFileSync(command, args, {
     cwd: options.cwd ?? experimentRoot,
     stdio: options.stdio ?? "inherit",
-    env: process.env
+    env: options.env ?? process.env
   });
 }
 
@@ -55,6 +56,76 @@ function zipEntries(zipPath) {
     cwd: repoRoot,
     encoding: "utf8"
   }).split("\n").filter(Boolean).sort();
+}
+
+function assertCleanZipEntries(entries, label) {
+  const seen = new Set();
+  const duplicates = [];
+  const forbidden = [];
+  for (const entry of entries) {
+    if (seen.has(entry)) duplicates.push(entry);
+    seen.add(entry);
+    const parts = entry.split("/").filter(Boolean);
+    if (
+      entry.startsWith("/")
+      || parts.includes("..")
+      || parts.some((part) => part === "__MACOSX" || part === ".DS_Store" || part.startsWith("._"))
+      || parts.some((part) => part === ".fseventsd" || part === ".Spotlight-V100" || part === ".Trashes" || part === "Icon\r")
+    ) {
+      forbidden.push(entry);
+    }
+  }
+  if (duplicates.length > 0 || forbidden.length > 0) {
+    throw new Error(`${label} is not clean: duplicates=${duplicates.slice(0, 5).join(", ")} forbidden=${forbidden.slice(0, 5).join(", ")}`);
+  }
+}
+
+function createCleanAppArchive() {
+  run("/usr/bin/ditto", [
+    "-c",
+    "-k",
+    "--norsrc",
+    "--keepParent",
+    appBundle,
+    archivePath
+  ], {
+    env: {
+      ...process.env,
+      COPYFILE_DISABLE: "1"
+    }
+  });
+  assertCleanZipEntries(zipEntries(archivePath), "macOS internal App ZIP");
+}
+
+function deletePlistKey(plistPath, key) {
+  const result = execFileSync("/usr/libexec/PlistBuddy", ["-c", `Delete :${key}`, plistPath], {
+    cwd: experimentRoot,
+    env: process.env,
+    encoding: "utf8",
+    stdio: "pipe"
+  });
+  return result;
+}
+
+function sanitizePackagedInfoPlist() {
+  const removableKeys = [
+    "NSAppTransportSecurity",
+    "NSAudioCaptureUsageDescription",
+    "NSBluetoothAlwaysUsageDescription",
+    "NSBluetoothPeripheralUsageDescription",
+    "NSCameraUsageDescription",
+    "NSMicrophoneUsageDescription",
+    "CFBundleDocumentTypes",
+    "UTExportedTypeDeclarations",
+    "UTImportedTypeDeclarations"
+  ];
+  for (const key of removableKeys) {
+    try {
+      deletePlistKey(packagedInfoPlist, key);
+    } catch {
+      // Missing keys are expected after the package has already been sanitized.
+    }
+  }
 }
 
 async function findCachedElectronZip() {
@@ -97,14 +168,8 @@ async function main() {
     ? [...macosPackagerArgs(artifactsRoot), `--electron-zip-dir=${cachedElectronZipDir}`]
     : macosPackagerArgs(artifactsRoot);
   run("../../node_modules/.bin/electron-packager", packagerArgs);
-  run("/usr/bin/ditto", [
-    "-c",
-    "-k",
-    "--sequesterRsrc",
-    "--keepParent",
-    appBundle,
-    archivePath
-  ]);
+  sanitizePackagedInfoPlist();
+  createCleanAppArchive();
 
   const packageSizeBytes = await directorySizeBytes(appBundle);
   const archiveSizeBytes = (await stat(archivePath)).size;

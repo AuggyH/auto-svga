@@ -819,3 +819,62 @@
 - Result: pass; signing plan dry-run reported missing credentials as the
   external blocker, package proof privacy audit passed, shared frontend suite
   passed 7 tests, and svga-web experiment suite passed 23 tests.
+
+### Handoff Integrity Repair Intake
+
+- Trigger: `SVGA-Workbench-v1-21849d1-review-upload.zip` was treated as
+  `AUTONOMOUS_RUN_REPAIR_REQUIRED_AND_CONTINUE`, not as a basically complete
+  Workbench v1 handoff.
+- Finding: the old macOS App ZIP contained `__MACOSX` and AppleDouble `._*`
+  entries, so package hygiene could not be claimed even if the outer review ZIP
+  looked clean.
+- Finding: the previous complete-review ZIP did not provide a top-level
+  complete directory contract with `UPLOAD_INDEX.json`,
+  `bundle-privacy-audit.json`, extracted App ZIP entry list, hashes, and a
+  manifest covering every payload except itself.
+- Result: added a Workbench v1 complete review package generator and validation
+  collector:
+  `tools/svga-workbench/complete-review-package.mjs`,
+  `tools/svga-workbench/complete-review-package.test.mjs`, and
+  `tools/svga-workbench/run-validation-suite.mjs`.
+- Package boundary: the final primary artifact must be
+  `SVGA-Workbench-v1-<short-sha>-complete-review-directory.zip`; Product Owner
+  acceptance is not claimed by package generation.
+
+### macOS Package Metadata Hygiene Repair
+
+- Result: internal macOS App ZIP generation now uses resource-fork-free
+  archival settings and immediately validates ZIP entries for `__MACOSX`,
+  AppleDouble `._*`, `.DS_Store`, Finder metadata, path traversal, and
+  duplicate entries.
+- Result: macOS package proof now fails closed if `Info.plist` reintroduces
+  arbitrary network allowances, unused permission usage descriptions, or
+  misleading Finder `.svga` document associations.
+- Safety boundary: local-only CSP, context isolation, sandboxing, blocked
+  navigation, blocked new windows, no telemetry, and dry-run signing remain the
+  intended internal package posture.
+
+### UI Audit And HIG Carry-Forward
+
+- Result: the 2026-06-30 single-file preview UI audit is now a required repair
+  input for the complete review package.
+- Result: HIG-derived Workbench rules were distilled into
+  `docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md` so future Workbench changes
+  keep applying accessibility, hierarchy, feedback, modality, scrolling,
+  keyboard, and privacy/security principles.
+- Current UI repair queue: diagnostics details visibility, toolbar/switch hit
+  areas, settings/modal stacking, settings scroll affordance, loading escape
+  path, sequence proof distinguishability, and row-level resource click/focus.
+- Boundary: this package repair records the audit and makes it portable; it does
+  not claim broad UI polish/layout-system completion.
+
+### Validation Collector Dry Run
+
+- Command: `npm run svga-workbench:v1:validate`
+- Result: pass; 14/14 validation records passed and were written to
+  `.artifacts/svga-workbench-v1-validation/latest`.
+- Covered: syntax checks, complete-review package tests, shared frontend tests,
+  root `npm test`, svga-web experiment tests, signing plan dry-run, macOS
+  package generation, macOS package proof, desktop smoke, and loop validation.
+- Note: this was run before committing the repair. Final review artifact
+  generation must rerun validation on the final repair HEAD.

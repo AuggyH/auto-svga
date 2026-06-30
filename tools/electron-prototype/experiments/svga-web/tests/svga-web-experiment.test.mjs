@@ -11,6 +11,7 @@ import protobuf from "protobufjs";
 import { legacyBrowserBaselineAuditCsp, strictCsp, startSvgaWebExperimentServer } from "../server.mjs";
 import {
   appName,
+  auditInfoPlistSecurity,
   buildMacosPackageProof,
   bundleIdentifier,
   finalAcceptanceOwner,
@@ -43,6 +44,11 @@ test("macOS internal package scaffold avoids unsupported Finder .svga document a
   assert.doesNotMatch(plist, /UTExportedTypeDeclarations/);
   assert.doesNotMatch(plist, /com\.auto-svga\.svga/);
   assert.doesNotMatch(plist, /public\.filename-extension[\s\S]*svga/);
+  assert.doesNotMatch(plist, /NSAllowsArbitraryLoads/);
+  assert.doesNotMatch(plist, /NSCameraUsageDescription/);
+  assert.doesNotMatch(plist, /NSMicrophoneUsageDescription/);
+  assert.doesNotMatch(plist, /NSBluetooth/);
+  assert.equal(auditInfoPlistSecurity(plist).passed, true);
 
   const packagerArgs = macosPackagerArgs(".artifacts/internal-trial");
   assert.equal(packagerArgs[1], appName);
@@ -60,7 +66,8 @@ test("macOS internal package scaffold avoids unsupported Finder .svga document a
 test("macOS package proof manifest records audit boundaries without final App acceptance", async () => {
   const proof = await buildMacosPackageProof({
     appBundle: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app"),
-    archivePath: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip")
+    archivePath: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip"),
+    validatePackagedApp: false
   });
   const packageScript = await readFile(path.join(experimentRoot, "scripts/package-internal-trial.mjs"), "utf8");
   const signingWorkflow = await readFile(path.join(experimentRoot, "scripts/macos-signing-workflow.mjs"), "utf8");
@@ -81,7 +88,14 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(proof.knownRisks.join(" "), /Finder double-click/);
   assert.equal(proof.privacyAudit.passed, true);
   assert.deepEqual(proof.privacyAudit.findings, []);
+  assert.equal(proof.infoPlistSecurityAudit.passed, true);
+  assert.equal(proof.infoPlistSecurityAudit.source.passed, true);
+  assert.equal(proof.infoPlistSecurityAudit.packagedApp.passed, true);
+  assert.equal(proof.metadataSecurity.noArbitraryNetworkLoads, true);
+  assert.equal(proof.metadataSecurity.noUnnecessaryPermissionUsageDescriptions, true);
+  assert.equal(proof.metadataSecurity.noFinderDocumentAssociation, true);
   assert.match(proof.packagingScaffold.extendInfoPath, /packaging\/macos\/Info\.plist$/);
+  assert.match(proof.packagingScaffold.packagedInfoPlistPath, /Auto SVGA\.app\/Contents\/Info\.plist$/);
   assert.match(proof.packagingScaffold.entitlementsPath, /packaging\/macos\/entitlements\.plist$/);
   assert.equal(proof.packagingScaffold.signScript, "internal:trial:sign:mac");
   assert.equal(proof.packagingScaffold.notarizeScript, "internal:trial:notarize:mac");
@@ -97,6 +111,32 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(proof.requestedIntegrationChanges[0], /root package script/);
   assert.match(packageScript, /archiveEntryCount/);
   assert.match(packageScript, /zipEntries\(archivePath\)\.length/);
+  assert.match(packageScript, /--norsrc/);
+  assert.match(packageScript, /COPYFILE_DISABLE/);
+  assert.match(packageScript, /assertCleanZipEntries/);
+  assert.match(packageScript, /sanitizePackagedInfoPlist/);
+  assert.match(packageScript, /NSAudioCaptureUsageDescription/);
+  assert.doesNotMatch(packageScript, /--sequesterRsrc/);
+});
+
+test("macOS Info.plist security audit rejects arbitrary network, unused permissions, and Finder associations", () => {
+  const badPlist = [
+    "<plist><dict>",
+    "<key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><true/></dict>",
+    "<key>NSCameraUsageDescription</key><string>unused</string>",
+    "<key>NSMicrophoneUsageDescription</key><string>unused</string>",
+    "<key>NSBluetoothAlwaysUsageDescription</key><string>unused</string>",
+    "<key>CFBundleDocumentTypes</key><array><dict><key>CFBundleTypeExtensions</key><array><string>svga</string></array></dict></array>",
+    "</dict></plist>"
+  ].join("");
+  const audit = auditInfoPlistSecurity(badPlist);
+  assert.equal(audit.passed, false);
+  assert.deepEqual(audit.arbitraryNetworkAllowances, ["NSAllowsArbitraryLoads"]);
+  assert.ok(audit.permissionUsageDescriptions.includes("NSCameraUsageDescription"));
+  assert.ok(audit.permissionUsageDescriptions.includes("NSMicrophoneUsageDescription"));
+  assert.ok(audit.permissionUsageDescriptions.includes("NSBluetoothAlwaysUsageDescription"));
+  assert.ok(audit.finderDocumentAssociations.includes("CFBundleDocumentTypes"));
+  assert.ok(audit.finderDocumentAssociations.includes("svga-filename-extension"));
 });
 
 test("sequence byte repair proof rejects no-op and write-exposed evidence", () => {

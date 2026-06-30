@@ -33,3 +33,28 @@ Do not copy raw chat history or unverified guesses here.
   reported `SIGNING_BLOCKED_REQUIRES_CREDENTIALS`, and
   `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:proof:mac`
   passed on 2026-06-30.
+
+## Package hygiene must inspect the product App ZIP itself
+
+- Context: Workbench review artifacts can have a clean outer ZIP while the
+  nested macOS App ZIP still contains Finder metadata.
+- Problem: a package hygiene PASS based only on the review wrapper can miss
+  `__MACOSX`, AppleDouble `._*`, `.DS_Store`, duplicate entries, or path
+  traversal inside the actual product App ZIP.
+- Rule: package hygiene is not PASS until the App ZIP entry list itself is
+  extracted, indexed, and validated.
+- Validation: `tools/svga-workbench/complete-review-package.test.mjs` includes
+  failure-first ZIP entry checks; the complete review package generator writes
+  `extracted-index/app-zip-entry-list.json` and `package-hygiene-proof.json`.
+
+## HIG study should become a standing Workbench checklist
+
+- Context: the 2026-06-30 UI audit was preceded by a full Apple HIG directory
+  crawl and review.
+- Problem: HIG learning loses value if it only lives in one audit artifact.
+- Rule: carry HIG-derived rules into future Workbench implementation through a
+  durable checklist covering hierarchy, feedback, target size, focus, modality,
+  scrolling, loading, proof-state distinction, text integrity, reduced motion,
+  and truthful privacy/security metadata.
+- Validation: `docs/product/SVGA_WORKBENCH_HIG_AUDIT_GUIDE.md` now records the
+  project-specific rules and the current UI audit repair queue.
