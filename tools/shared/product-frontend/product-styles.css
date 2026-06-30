@@ -4486,6 +4486,101 @@ button:disabled {
   line-height: var(--visual-line-meta);
 }
 
+.phaseWorkflowPanel {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--visual-space-tight);
+  margin: var(--space-2) var(--space-4) 0;
+  padding: 10px;
+  border: 1px solid var(--visual-hairline);
+  border-radius: var(--visual-radius-small);
+  background: var(--visual-surface-2);
+}
+
+.phaseWorkflowPanel > header {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--visual-space-tight);
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.phaseWorkflowPanel > header strong {
+  color: var(--visual-text-primary);
+  font-size: var(--visual-font-meta);
+}
+
+.phaseActionGrid {
+  display: grid;
+  gap: var(--visual-space-tight);
+}
+
+.phaseActionCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px var(--visual-space-tight);
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--visual-hairline);
+  border-left-width: 3px;
+  border-radius: var(--visual-radius-small);
+  background: var(--visual-inline-surface);
+}
+
+.phaseActionCard-p2 {
+  border-left-color: var(--visual-accent);
+}
+
+.phaseActionCard-p3 {
+  border-left-color: var(--visual-success);
+}
+
+.phaseActionCard-p4 {
+  border-left-color: var(--visual-warning);
+}
+
+.phaseActionCard.hasError {
+  border-left-color: var(--visual-danger);
+}
+
+.phaseActionCard .phaseBadge {
+  grid-column: 1 / -1;
+  width: max-content;
+  padding: 1px 6px;
+  border-radius: var(--status-badge-radius);
+  color: var(--visual-text-secondary);
+  background: color-mix(in srgb, var(--visual-text-primary) 7%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+}
+
+.phaseActionCard strong,
+.phaseActionCard p {
+  min-width: 0;
+}
+
+.phaseActionCard strong {
+  color: var(--visual-text-primary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+}
+
+.phaseActionCard p {
+  color: var(--visual-text-tertiary);
+  font-size: var(--visual-font-meta);
+  line-height: var(--visual-line-meta);
+  overflow-wrap: anywhere;
+}
+
+.phaseActionCard .sequenceToggle {
+  justify-self: end;
+}
+
 .resourceRow {
   background: var(--resource-row-surface);
 }
@@ -5845,11 +5940,13 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 }
 
 #tab-assets {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 #tab-assets.isHidden {
@@ -5869,6 +5966,7 @@ html.reduceBlur .floatingRoot > .dropdownMenu {
 }
 
 #tab-assets .assetUnifiedList {
+  flex: 1 1 180px;
   min-height: 0;
   margin-top: var(--visual-space-tight);
   overflow-x: hidden;

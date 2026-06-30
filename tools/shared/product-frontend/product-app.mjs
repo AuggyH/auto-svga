@@ -223,6 +223,7 @@ let p6PrimaryRecoveredFromInvalid = false;
 let pendingReplacementResourceKey;
 let primaryReplacementEdit;
 let primaryOptimizationState = { status: "idle" };
+let primarySequenceRepairState = { status: "idle" };
 let replacementUndoStack = [];
 let replacementRedoStack = [];
 let replacementOperationSequence = 0;
@@ -2020,6 +2021,33 @@ async function readReplacementPngFile(file) {
   return new Uint8Array(await file.arrayBuffer());
 }
 
+function bytesFromHostOpenPayload(opened) {
+  const value = opened?.bytes;
+  if (value instanceof Uint8Array) return value;
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  if (Array.isArray(value)) return new Uint8Array(value);
+  throw new Error("桌面文件选择返回的数据不可用。");
+}
+
+async function openSvgaWithDesktopPicker(slotKey = "a") {
+  if (!electronBridge?.openSvgaFile) {
+    svgaFileInput.click();
+    return undefined;
+  }
+  const opened = await electronBridge.openSvgaFile();
+  if (!opened || opened.status === "cancelled") return opened;
+  if (opened.status !== "opened") throw new Error("桌面文件选择未返回 SVGA。");
+  const bytes = bytesFromHostOpenPayload(opened);
+  const file = new File([bytes], opened.basename ?? "local.svga", { type: opened.mediaType ?? "application/octet-stream" });
+  Object.defineProperty(file, "autoSvgaSourceId", { value: opened.sourceId, configurable: true });
+  Object.defineProperty(file, "autoSvgaSourceHash", { value: opened.hash, configurable: true });
+  handleSvgaFile(file, slotKey);
+  return opened;
+}
+
 function suggestedEditedFileName(fileName) {
   const baseName = String(fileName || "edited-output.svga").replace(/\.svga$/i, "");
   return `${baseName}-replaced.svga`;
@@ -2146,6 +2174,28 @@ function canSaveOptimizedPrimarySvga() {
   );
 }
 
+function canSaveSequenceRepairPrimarySvga(sequenceGroupCount = 0) {
+  return Boolean(
+    sequenceGroupCount > 0
+      && primarySequenceRepairState.status !== "saving"
+      && electronBridge?.saveSequenceRepairSvga
+      && players.a.sourceIdentity?.sourceId
+      && players.a.source
+      && players.a.parseStatus !== "error"
+      && players.a.renderStatus !== "error"
+  );
+}
+
+function sequenceRepairDisabledReason(sequenceGroupCount = 0) {
+  if (sequenceGroupCount <= 0) return "当前文件没有可识别的序列帧组";
+  if (!electronBridge?.saveSequenceRepairSvga) return "当前宿主不支持序列修复另存";
+  if (!players.a.sourceIdentity?.sourceId) return "请用桌面文件选择打开源 SVGA 后再另存";
+  if (!players.a.source) return "当前没有已加载的 SVGA";
+  if (players.a.parseStatus === "error" || players.a.renderStatus === "error") return "当前 SVGA 尚未成功解析与渲染";
+  if (primarySequenceRepairState.status === "saving") return "正在生成序列修复副本";
+  return "";
+}
+
 async function saveOptimizedPrimarySvga() {
   if (safeOptimizationCandidateCount() <= 0) {
     showError("当前 SVGA 没有可安全自动优化的资源。");
@@ -2211,6 +2261,71 @@ async function saveOptimizedPrimarySvga() {
     renderInfoPanel();
     showError(`优化失败：${error.message}`);
     addLog("error", `优化失败：${error.message}`);
+    return undefined;
+  }
+}
+
+async function saveSequenceRepairPrimarySvga() {
+  const sequenceGroupCount = buildSequenceGroups(players.a.metrics?.images ?? []).length;
+  const disabledReason = sequenceRepairDisabledReason(sequenceGroupCount);
+  if (!canSaveSequenceRepairPrimarySvga(sequenceGroupCount)) {
+    showError(disabledReason || "当前不能生成序列修复副本。");
+    return undefined;
+  }
+
+  try {
+    clearError();
+    primarySequenceRepairState = { status: "saving", message: "正在检测闪帧并生成修复副本" };
+    renderInfoPanel();
+    const sourceIdentity = players.a.sourceIdentity ?? {};
+    const sourceBytes = await readPrimarySourceBytes();
+    const sourceFileName = sourceIdentity.fileName ?? players.a.metrics?.fileName ?? "sequence-repaired-output.svga";
+    const payload = await repairSvgaSequenceFrames(sourceBytes, sourceFileName);
+    const editedBytes = base64ToBytes(payload.editedSvgaBase64 ?? "");
+    const editedSha256 = await p6Sha256Bytes(editedBytes);
+    const sequenceRepairReport = payload.sequenceRepairReport ?? {};
+    const result = await electronBridge.saveSequenceRepairSvga({
+      bytesBase64: bytesToBase64(editedBytes),
+      suggestedName: suggestedSequenceRepairFileName(sourceFileName),
+      sourceId: sourceIdentity.sourceId,
+      sequenceRepairReport
+    });
+    if (!result || result.status === "cancelled") {
+      primarySequenceRepairState = { status: "idle", message: "已取消序列修复副本另存为" };
+      renderInfoPanel();
+      addLog("info", "已取消序列修复副本另存为。");
+      return result;
+    }
+    const savedBytes = base64ToBytes(result.savedSvgaBase64 ?? "");
+    const savedSha256 = await p6Sha256Bytes(savedBytes);
+    if (result.sha256 !== savedSha256 || sequenceRepairReport.editedSha256 !== editedSha256 || savedSha256 !== editedSha256) {
+      throw new Error("序列修复结果哈希校验失败。");
+    }
+    await loadSvga("a", URL.createObjectURL(new Blob([savedBytes], { type: "application/octet-stream" })), {
+      fileName: result.fileName,
+      fileSizeBytes: result.sizeBytes,
+      sourceId: result.sourceId ?? null,
+      sourceSha256: result.sha256,
+      fixtureSha256: savedSha256,
+      loadingHoldMs: 80
+    });
+    await waitFor(() => Boolean(players.a.videoItem));
+    await waitFor(() => canvasIsNonBlank(players.a));
+    const reopenedInspectionReport = await waitForInspectionStatus(players.a);
+    primarySequenceRepairState = {
+      status: reopenedInspectionReport ? "saved" : "warning",
+      message: `${result.fileName} 已另存并重开`,
+      repairedResourceKey: sequenceRepairReport.sequenceGroup?.repairedResourceKey,
+      changedResourceCount: sequenceRepairReport.changedResourceCount ?? 1
+    };
+    renderInfoPanel();
+    addLog(reopenedInspectionReport ? "success" : "warning", `序列闪帧修复副本已另存并重开：${result.fileName}`);
+    return result;
+  } catch (error) {
+    primarySequenceRepairState = { status: "error", message: error.message };
+    renderInfoPanel();
+    showError(`序列修复失败：${error.message}`);
+    addLog("error", `序列修复失败：${error.message}`);
     return undefined;
   }
 }
@@ -6249,10 +6364,10 @@ function renderInspectorActionPlaceholders() {
         <strong>只读检查</strong>
       </header>
       <div class="inspectorActionRows">
-        <button class="inspectorActionRow" type="button" disabled>查看诊断结果</button>
-        <button class="inspectorActionRow" type="button" disabled>复核资源异常</button>
+        <button class="inspectorActionRow" type="button" disabled>诊断结果已展开</button>
+        <button class="inspectorActionRow" type="button" disabled>资源页提供 Phase 操作</button>
       </div>
-      <p>优化、替换、导出与生成能力已预留在此区域，但不会在 P6-R1 作为可点击功能出现。</p>
+      <p>Phase 2 优化、Phase 3 替换、Phase 4 序列修复位于左侧“资源”页顶部；另存类操作需要通过桌面文件选择打开源 SVGA。</p>
     </section>
   `;
 }
@@ -6284,6 +6399,56 @@ function renderBilingualEmpty(primary, secondary) {
   `;
 }
 
+function renderWorkbenchPhaseActions({
+  intelligence,
+  safeCandidateCount,
+  optimizationDisabledReason,
+  canSaveOptimized,
+  replaceableResourceCount,
+  sequenceGroupCount,
+  canSaveSequenceRepair,
+  sequenceRepairReason
+}) {
+  const findingCount = Number(intelligence?.summary?.findingCount ?? 0);
+  const phase2State = primaryOptimizationState.message
+    ?? (safeCandidateCount > 0 ? `${safeCandidateCount} 项安全候选` : `${findingCount} 项资产发现`);
+  const phase3State = primaryReplacementEdit
+    ? replacementEditSummaryText(primaryReplacementEdit)
+    : replaceableResourceCount > 0
+      ? `${replaceableResourceCount} 项可替换资源`
+      : "未发现可替换资源";
+  const phase4State = primarySequenceRepairState.message
+    ?? (sequenceGroupCount > 0 ? `${sequenceGroupCount} 组序列帧可检测` : "未发现序列帧组");
+  return `
+    <section class="phaseWorkflowPanel" aria-label="Phase 2 到 Phase 4 工作流">
+      <header>
+        <span>可用工作流</span>
+        <strong>Phase 2 / 3 / 4</strong>
+      </header>
+      <div class="phaseActionGrid">
+        <article class="phaseActionCard phaseActionCard-p2">
+          <span class="phaseBadge">Phase 2</span>
+          <strong>资产智能与安全优化</strong>
+          <p>${escapeHtml(phase2State)}</p>
+          <button class="sequenceToggle" type="button" data-save-optimized-svga ${canSaveOptimized ? "" : "disabled"} title="${escapeHtml(optimizationDisabledReason || "生成优化副本")}">生成优化副本</button>
+        </article>
+        <article class="phaseActionCard phaseActionCard-p3">
+          <span class="phaseBadge">Phase 3</span>
+          <strong>PNG 资源替换</strong>
+          <p>${escapeHtml(phase3State)}</p>
+          <button class="sequenceToggle" type="button" data-show-replaceable-resources ${replaceableResourceCount > 0 ? "" : "disabled"} title="筛选可替换资源后，在资源行点击替换图片">显示可替换资源</button>
+        </article>
+        <article class="phaseActionCard phaseActionCard-p4 ${primarySequenceRepairState.status === "error" ? "hasError" : ""}">
+          <span class="phaseBadge">Phase 4</span>
+          <strong>序列闪帧修复</strong>
+          <p>${escapeHtml(phase4State)}</p>
+          <button class="sequenceToggle" type="button" data-save-sequence-repair-svga ${canSaveSequenceRepair ? "" : "disabled"} title="${escapeHtml(sequenceRepairReason || "修复序列闪帧并另存")}">修复闪帧并另存</button>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 function renderAssets(metrics, inspectionReport, replacementReadiness, replacementReadinessStatus = "idle") {
   if (assetFilter === "sprite") assetFilter = "all";
   const intelligence = inspectionReport?.assetIntelligence;
@@ -6293,6 +6458,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
         ["all", "全部"],
         ["image", "图片"],
         ["sequence", "序列帧"],
+        ["replaceable", "可替换"],
         ["unreferenced", "未引用"],
         ["warning", "异常"]
       ].map(([value, label]) => `<button type="button" class="${assetFilter === value ? "isActive" : ""}" data-asset-filter="${value}">${label}</button>`).join("")}
@@ -6306,8 +6472,10 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
     if (assetFilter === "all") return asset.kind !== "sprite";
     if (assetFilter === "unreferenced") return asset.kind !== "sprite" && Number(asset.referenceCount ?? 0) === 0;
     if (assetFilter === "warning") return asset.warnings?.length;
+    if (assetFilter === "replaceable") return asset.kind === "image" && asset.replaceable === true;
     return asset.kind === assetFilter;
   });
+  const replaceableResourceCount = assets.filter((asset) => asset.kind === "image" && asset.replaceable === true).length;
   const summary = [
     `${metrics.images?.length ?? 0} 张图片`,
     `${assets.filter((asset) => asset.kind === "sequence").length} 组序列`,
@@ -6340,9 +6508,19 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
       <strong>资产智能</strong>
       <span>安全候选仅会通过另存为与重开验证执行。</span>
       ${optimizationStateText}
-      ${safeOptimizationCandidateCount() > 0 ? `<button class="sequenceToggle" type="button" data-save-optimized-svga ${canSaveOptimized ? "" : "disabled"} title="${escapeHtml(optimizationDisabledReason)}">生成优化副本</button>` : ""}
     </div>
   ` : "";
+  const sequenceRepairReason = sequenceRepairDisabledReason(sequenceGroupCount);
+  const phaseWorkflowActions = renderWorkbenchPhaseActions({
+    intelligence,
+    safeCandidateCount: safeOptimizationCandidateCount(),
+    optimizationDisabledReason,
+    canSaveOptimized,
+    replaceableResourceCount,
+    sequenceGroupCount,
+    canSaveSequenceRepair: canSaveSequenceRepairPrimarySvga(sequenceGroupCount),
+    sequenceRepairReason
+  });
   const replacementHistoryVisible = primaryReplacementEdit || canUndoReplacementPreview() || canRedoReplacementPreview();
   const replacementEditSummary = replacementHistoryVisible ? `
     <div class="assetIntelligenceSummary">
@@ -6360,6 +6538,7 @@ function renderAssets(metrics, inspectionReport, replacementReadiness, replaceme
   return `
     ${filterBar}
     <div class="assetSummaryLine">${escapeHtml(summary)}</div>
+    ${phaseWorkflowActions}
     ${intelligenceSummary}
     ${renderSequenceReviewSummary(intelligence, sequenceGroupCount)}
     ${renderSequenceRepairPreviewPlan(sequenceRepairPreviewPlan)}
@@ -6599,16 +6778,16 @@ function renderSequenceRepairPreviewPlan(plan) {
     </div>
     ${simulation ? `
       <div class="assetIntelligenceSummary proofSummary proof-blocked" data-sequence-no-write-simulation data-sequence-proof-state="blocked">
-        <strong>模拟结果 <span class="proofStatePill">阻断</span></strong>
-        <span>前：${escapeHtml(simulation.beforeReview.sequenceFindingCount)} 项发现 · 后：${escapeHtml(simulation.afterReview.proposedActionCount)} 项候选仍需验证</span>
-        <em>未生成编辑字节 · 未写入 SVGA · 等待 round-trip 与人工视觉确认</em>
+        <strong>模拟结果 <span class="proofStatePill">保护</span></strong>
+        <span>前：${escapeHtml(simulation.beforeReview.sequenceFindingCount)} 项发现 · 后：${escapeHtml(simulation.afterReview.proposedActionCount)} 项候选需走安全副本</span>
+        <em>不会直接写源文件；支持的近空白闪帧请使用上方 Phase 4 另存副本</em>
       </div>
     ` : ""}
     ${prototype ? `
       <div class="assetIntelligenceSummary proofSummary proof-blocked" data-sequence-bounded-repair-prototype data-sequence-proof-state="blocked">
-        <strong>补丁原型 <span class="proofStatePill">阻断</span></strong>
-        <span>${escapeHtml(prototype.operationCount)} 项原型 · ${escapeHtml(prototype.resourceKeyCount)} / ${escapeHtml(prototype.resourceKeyLimit)} 个资源键 · 另存为已阻断</span>
-        <em>仅记录候选范围；文本、键名、URL 与时间线编辑仍未开放</em>
+        <strong>补丁原型 <span class="proofStatePill">边界</span></strong>
+        <span>${escapeHtml(prototype.operationCount)} 项原型 · ${escapeHtml(prototype.resourceKeyCount)} / ${escapeHtml(prototype.resourceKeyLimit)} 个资源键 · 源文件写入受保护</span>
+        <em>文本、键名、URL 与时间线编辑不开放；产品路径只允许通过 Save As 写出新 SVGA</em>
       </div>
     ` : ""}
   `;
@@ -7318,8 +7497,32 @@ clearCurrentFileButton.addEventListener("click", () => {
 });
 syncPlayControl.addEventListener("click", toggleSyncPlayback);
 syncReplayControl.addEventListener("click", syncReplay);
-primaryEmptyFileButton.addEventListener("click", () => svgaFileInput.click());
-secondaryEmptyFileButton.addEventListener("click", () => secondaryFileInput.click());
+primaryFileButton.addEventListener("click", (event) => {
+  if (!electronBridge?.openSvgaFile || event.target === svgaFileInput) return;
+  event.preventDefault();
+  event.stopPropagation();
+  openSvgaWithDesktopPicker(getAutoSvgaSlot()).catch((error) => showError(`打开失败：${error.message}`));
+});
+secondaryInputWrap.addEventListener("click", (event) => {
+  if (!electronBridge?.openSvgaFile || event.target === secondaryFileInput) return;
+  event.preventDefault();
+  event.stopPropagation();
+  openSvgaWithDesktopPicker("b").catch((error) => showError(`打开失败：${error.message}`));
+});
+primaryEmptyFileButton.addEventListener("click", () => {
+  if (electronBridge?.openSvgaFile) {
+    openSvgaWithDesktopPicker(getAutoSvgaSlot()).catch((error) => showError(`打开失败：${error.message}`));
+    return;
+  }
+  svgaFileInput.click();
+});
+secondaryEmptyFileButton.addEventListener("click", () => {
+  if (electronBridge?.openSvgaFile) {
+    openSvgaWithDesktopPicker("b").catch((error) => showError(`打开失败：${error.message}`));
+    return;
+  }
+  secondaryFileInput.click();
+});
 referenceEmptyFileButton.addEventListener("click", () => referenceFileInput.click());
 modeSelect.addEventListener("change", () => {
   setAppMode(modeSelect.value);
@@ -7435,6 +7638,15 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
     renderInfoPanel();
     return;
   }
+  const showReplaceableButton = event.target.closest("[data-show-replaceable-resources]");
+  if (showReplaceableButton) {
+    assetFilter = "replaceable";
+    renderInfoPanel();
+    window.requestAnimationFrame(() => {
+      document.querySelector("#tab-assets .assetUnifiedList")?.scrollIntoView({ block: "nearest" });
+    });
+    return;
+  }
   const toggleButton = event.target.closest("[data-sequence-toggle]");
   if (toggleButton) {
     const key = toggleButton.dataset.sequenceToggle;
@@ -7469,6 +7681,11 @@ document.querySelector("#tab-assets").addEventListener("click", (event) => {
   const saveOptimizedButton = event.target.closest("[data-save-optimized-svga]");
   if (saveOptimizedButton) {
     saveOptimizedPrimarySvga().catch((error) => showError(`优化失败：${error.message}`));
+    return;
+  }
+  const saveSequenceRepairButton = event.target.closest("[data-save-sequence-repair-svga]");
+  if (saveSequenceRepairButton) {
+    saveSequenceRepairPrimarySvga().catch((error) => showError(`序列修复失败：${error.message}`));
     return;
   }
   const replaceButton = event.target.closest("[data-replace-resource-key]");
