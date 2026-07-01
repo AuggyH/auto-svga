@@ -161,6 +161,7 @@ let reportServicePromise;
 let shortTermModelFactoryPromise;
 let shortTermOptimizationWorkflowPromise;
 let shortTermRenameWorkflowPromise;
+let shortTermImageReplacementWorkflowPromise;
 
 async function getAvatarFrameInspectionReportService() {
   reportServicePromise ??= import("../../dist/hosts/avatar-frame-inspection.js")
@@ -186,6 +187,12 @@ async function getShortTermRenameWorkflow() {
   shortTermRenameWorkflowPromise ??= import("../../dist/workbench/short-term-rename-workflow.js")
     .then(({ runShortTermRenameWorkflow }) => runShortTermRenameWorkflow);
   return shortTermRenameWorkflowPromise;
+}
+
+async function getShortTermImageReplacementWorkflow() {
+  shortTermImageReplacementWorkflowPromise ??= import("../../dist/workbench/short-term-image-replacement-workflow.js")
+    .then(({ runShortTermImageReplacementWorkflow }) => runShortTermImageReplacementWorkflow);
+  return shortTermImageReplacementWorkflowPromise;
 }
 
 export async function inspectAvatarFrameBytes(bytes, name = "local.svga") {
@@ -231,6 +238,18 @@ export async function runShortTermRenameWorkflowBytes(
   return runShortTermRenameWorkflow(data, fromImageKey, toImageKey, { sourceName: name });
 }
 
+export async function runShortTermImageReplacementWorkflowBytes(
+  bytes,
+  imageKey,
+  pngBytes,
+  name = "local.svga"
+) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const replacementBytes = pngBytes instanceof Uint8Array ? pngBytes : new Uint8Array(pngBytes);
+  const runShortTermImageReplacementWorkflow = await getShortTermImageReplacementWorkflow();
+  return runShortTermImageReplacementWorkflow(data, { imageKey, pngBytes: replacementBytes }, { sourceName: name });
+}
+
 async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
   const chunks = [];
   let size = 0;
@@ -246,8 +265,28 @@ async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
   return new Uint8Array(Buffer.concat(chunks));
 }
 
+async function readRequestJson(request, maxBytes = 35 * 1024 * 1024) {
+  const bytes = await readRequestBytes(request, maxBytes);
+  try {
+    return JSON.parse(Buffer.from(bytes).toString("utf8"));
+  } catch {
+    const error = new Error("请求 JSON 无法解析。");
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
 function encodeBase64(bytes) {
   return Buffer.from(bytes).toString("base64");
+}
+
+function decodeBase64(value, label) {
+  if (typeof value !== "string" || value.length === 0) {
+    const error = new Error(`${label} base64 不能为空。`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return new Uint8Array(Buffer.from(value, "base64"));
 }
 
 export function createPreviewServer() {
@@ -313,6 +352,29 @@ export function createPreviewServer() {
         sendJson(response, 200, {
           renamedSvgaBase64: result.renamedBytes ? encodeBase64(result.renamedBytes) : null,
           rename: result.model
+        });
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-image-replacement-workflow") {
+      try {
+        const body = await readRequestJson(request);
+        const name = path.basename(typeof body.name === "string" ? body.name : "local.svga");
+        const imageKey = typeof body.imageKey === "string" ? body.imageKey : "";
+        const result = await runShortTermImageReplacementWorkflowBytes(
+          decodeBase64(body.svgaBase64, "svgaBase64"),
+          imageKey,
+          decodeBase64(body.pngBase64, "pngBase64"),
+          name
+        );
+        sendJson(response, 200, {
+          replacedSvgaBase64: result.replacedBytes ? encodeBase64(result.replacedBytes) : null,
+          replacement: result.model
         });
       } catch (error) {
         sendJson(response, error?.statusCode ?? 422, {

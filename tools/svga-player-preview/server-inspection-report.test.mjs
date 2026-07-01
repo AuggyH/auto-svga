@@ -8,6 +8,7 @@ import {
   createPreviewServer,
   inspectAvatarFrameBytes,
   inspectShortTermProductModelBytes,
+  runShortTermImageReplacementWorkflowBytes,
   runShortTermOptimizationWorkflowBytes,
   runShortTermRenameWorkflowBytes
 } from "./server.mjs";
@@ -90,6 +91,21 @@ test("preview host creates the short-term rename workflow model", async () => {
   assert.equal(result.model.status, "renamed");
   assert.equal(result.model.referenceUpdates.length, 1);
   assert.equal(result.model.validation.newKeyPresent, true);
+  assert.equal(result.model.saveState.saveAsEnabled, true);
+});
+
+test("preview host creates the short-term image replacement workflow model", async () => {
+  const result = await runShortTermImageReplacementWorkflowBytes(
+    await createOptimizableSvgaFixture(),
+    "img_frame",
+    encodeRgbaPng(createFrameImage("padded")),
+    "replace.svga"
+  );
+
+  assert.ok(result.replacedBytes);
+  assert.equal(result.model.schemaVersion, 1);
+  assert.equal(result.model.status, "replaced");
+  assert.equal(result.model.validation.replacementApplied, true);
   assert.equal(result.model.saveState.saveAsEnabled, true);
 });
 
@@ -199,6 +215,40 @@ test("preview host exposes the short-term rename workflow through its HTTP bound
     assert.equal(body.rename.status, "renamed");
     assert.equal(body.rename.toImageKey, "profile_frame");
     assert.equal(body.rename.saveState.outputAvailable, true);
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+});
+
+test("preview host exposes the short-term image replacement workflow through its HTTP boundary", async () => {
+  const server = createPreviewServer();
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/short-term-product-image-replacement-workflow`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "replace.svga",
+          imageKey: "img_frame",
+          svgaBase64: Buffer.from(await createOptimizableSvgaFixture()).toString("base64"),
+          pngBase64: Buffer.from(encodeRgbaPng(createFrameImage("padded"))).toString("base64")
+        })
+      }
+    );
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(typeof body.replacedSvgaBase64, "string");
+    assert.equal(body.replacement.status, "replaced");
+    assert.equal(body.replacement.imageKey, "img_frame");
+    assert.equal(body.replacement.saveState.outputAvailable, true);
   } finally {
     await new Promise((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());
