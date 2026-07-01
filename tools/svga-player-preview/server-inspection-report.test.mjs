@@ -8,7 +8,8 @@ import {
   createPreviewServer,
   inspectAvatarFrameBytes,
   inspectShortTermProductModelBytes,
-  runShortTermOptimizationWorkflowBytes
+  runShortTermOptimizationWorkflowBytes,
+  runShortTermRenameWorkflowBytes
 } from "./server.mjs";
 
 test("preview host returns the existing avatar-frame inspection report", async () => {
@@ -73,6 +74,22 @@ test("preview host creates the short-term optimization workflow model", async ()
   assert.equal(result.model.status, "optimized");
   assert.equal(result.model.actions.length, 2);
   assert.equal(result.model.validation.reopenPassed, true);
+  assert.equal(result.model.saveState.saveAsEnabled, true);
+});
+
+test("preview host creates the short-term rename workflow model", async () => {
+  const result = await runShortTermRenameWorkflowBytes(
+    await createOptimizableSvgaFixture(),
+    "img_frame",
+    "profile_frame",
+    "rename.svga"
+  );
+
+  assert.ok(result.renamedBytes);
+  assert.equal(result.model.schemaVersion, 1);
+  assert.equal(result.model.status, "renamed");
+  assert.equal(result.model.referenceUpdates.length, 1);
+  assert.equal(result.model.validation.newKeyPresent, true);
   assert.equal(result.model.saveState.saveAsEnabled, true);
 });
 
@@ -153,6 +170,35 @@ test("preview host exposes the short-term optimization workflow through its HTTP
     assert.equal(body.optimization.status, "optimized");
     assert.equal(body.optimization.saveState.outputAvailable, true);
     assert.equal(body.optimization.actions.length, 2);
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+});
+
+test("preview host exposes the short-term rename workflow through its HTTP boundary", async () => {
+  const server = createPreviewServer();
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/short-term-product-image-key-rename?name=rename.svga&from=img_frame&to=profile_frame`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/octet-stream" },
+        body: await createOptimizableSvgaFixture()
+      }
+    );
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(typeof body.renamedSvgaBase64, "string");
+    assert.equal(body.rename.status, "renamed");
+    assert.equal(body.rename.toImageKey, "profile_frame");
+    assert.equal(body.rename.saveState.outputAvailable, true);
   } finally {
     await new Promise((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());

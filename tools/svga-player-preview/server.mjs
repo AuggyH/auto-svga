@@ -160,6 +160,7 @@ export async function scanLatestArtifacts(rootPath = artifactRoot) {
 let reportServicePromise;
 let shortTermModelFactoryPromise;
 let shortTermOptimizationWorkflowPromise;
+let shortTermRenameWorkflowPromise;
 
 async function getAvatarFrameInspectionReportService() {
   reportServicePromise ??= import("../../dist/hosts/avatar-frame-inspection.js")
@@ -179,6 +180,12 @@ async function getShortTermOptimizationWorkflow() {
   shortTermOptimizationWorkflowPromise ??= import("../../dist/workbench/short-term-optimization-workflow.js")
     .then(({ runShortTermOptimizationWorkflow }) => runShortTermOptimizationWorkflow);
   return shortTermOptimizationWorkflowPromise;
+}
+
+async function getShortTermRenameWorkflow() {
+  shortTermRenameWorkflowPromise ??= import("../../dist/workbench/short-term-rename-workflow.js")
+    .then(({ runShortTermRenameWorkflow }) => runShortTermRenameWorkflow);
+  return shortTermRenameWorkflowPromise;
 }
 
 export async function inspectAvatarFrameBytes(bytes, name = "local.svga") {
@@ -211,6 +218,17 @@ export async function runShortTermOptimizationWorkflowBytes(bytes, name = "local
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const runShortTermOptimizationWorkflow = await getShortTermOptimizationWorkflow();
   return runShortTermOptimizationWorkflow(data, { sourceName: name });
+}
+
+export async function runShortTermRenameWorkflowBytes(
+  bytes,
+  fromImageKey,
+  toImageKey,
+  name = "local.svga"
+) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const runShortTermRenameWorkflow = await getShortTermRenameWorkflow();
+  return runShortTermRenameWorkflow(data, fromImageKey, toImageKey, { sourceName: name });
 }
 
 async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
@@ -276,6 +294,25 @@ export function createPreviewServer() {
         sendJson(response, 200, {
           optimizedSvgaBase64: result.optimizedBytes ? encodeBase64(result.optimizedBytes) : null,
           optimization: result.model
+        });
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-image-key-rename") {
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        const fromImageKey = requestUrl.searchParams.get("from") || "";
+        const toImageKey = requestUrl.searchParams.get("to") || "";
+        const result = await runShortTermRenameWorkflowBytes(bytes, fromImageKey, toImageKey, name);
+        sendJson(response, 200, {
+          renamedSvgaBase64: result.renamedBytes ? encodeBase64(result.renamedBytes) : null,
+          rename: result.model
         });
       } catch (error) {
         sendJson(response, error?.statusCode ?? 422, {
