@@ -8,6 +8,12 @@ import {
   type SvgaImageOptimizationReport
 } from "./svga/asset-optimizer.js";
 import { NodeProtobufSvgaInspector } from "./svga/node-protobuf-inspector.js";
+import {
+  createShortTermOutputSaveState,
+  createShortTermPersistedOutputRecord,
+  type ShortTermPersistedOutputRecord,
+  type ShortTermPersistedOutputSaveStateModel
+} from "./short-term-save-state.js";
 
 export const SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
@@ -65,16 +71,7 @@ export interface ShortTermOptimizationValidationModel {
   failedInvariantCodes: readonly string[];
 }
 
-export interface ShortTermOptimizationSaveStateModel {
-  outputKind: "optimized_svga" | "none";
-  dirty: boolean;
-  outputAvailable: boolean;
-  overwriteSaveEnabled: boolean;
-  saveAsEnabled: boolean;
-  autoWritePerformed: false;
-  sourceUnchanged: boolean;
-  validationRequiredBeforeWrite: true;
-}
+export type ShortTermOptimizationSaveStateModel = ShortTermPersistedOutputSaveStateModel;
 
 export interface ShortTermOptimizationComparisonModel {
   schemaVersion: typeof SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION;
@@ -90,6 +87,7 @@ export interface ShortTermOptimizationComparisonModel {
   methods: readonly ShortTermOptimizationMethodItem[];
   validation: ShortTermOptimizationValidationModel;
   saveState: ShortTermOptimizationSaveStateModel;
+  persistedOutput?: ShortTermPersistedOutputRecord;
   diagnostic?: {
     code: string;
     message: string;
@@ -174,6 +172,23 @@ function optimizedModel(input: {
     && input.validation.sourceUnchanged
     && input.validation.invariantChecksPassed
     && input.validation.referenceClosurePassed;
+  const persistedOutput = passed
+    ? createShortTermPersistedOutputRecord({
+      outputKind: "optimized_svga",
+      operationId: input.report.optimizationId,
+      sourceName: input.sourceName,
+      sourceSha256: input.sourceSha256,
+      outputBytes: input.optimizedBytes,
+      sourceUnchanged: input.validation.sourceUnchanged,
+      validationPassed: passed,
+      validationRefs: [
+        "validation:decodePassed",
+        "validation:reopenPassed",
+        "validation:referenceClosurePassed",
+        "validation:invariantChecksPassed"
+      ]
+    })
+    : undefined;
 
   return {
     schemaVersion: SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION,
@@ -193,7 +208,8 @@ function optimizedModel(input: {
     actions: input.report.actions.map(actionItem),
     methods: methodItems(input.report.actions),
     validation: input.validation,
-    saveState: saveState(passed, input.validation.sourceUnchanged)
+    saveState: persistedOutput?.saveState ?? saveState(false, input.validation.sourceUnchanged),
+    ...(persistedOutput ? { persistedOutput } : {})
   };
 }
 
@@ -409,16 +425,7 @@ function methodItems(actions: readonly SvgaImageOptimizationAction[]): ShortTerm
 }
 
 function saveState(outputAvailable: boolean, sourceUnchanged: boolean): ShortTermOptimizationSaveStateModel {
-  return {
-    outputKind: outputAvailable ? "optimized_svga" : "none",
-    dirty: outputAvailable,
-    outputAvailable,
-    overwriteSaveEnabled: outputAvailable,
-    saveAsEnabled: outputAvailable,
-    autoWritePerformed: false,
-    sourceUnchanged,
-    validationRequiredBeforeWrite: true
-  };
+  return createShortTermOutputSaveState("optimized_svga", outputAvailable, sourceUnchanged);
 }
 
 function failedInvariantCodes(checks: readonly SvgaImageOptimizationInvariantCheck[]): string[] {

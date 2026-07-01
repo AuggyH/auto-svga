@@ -71,6 +71,9 @@ test("short-term rename workflow updates imageKey and matteKey references", asyn
   assert.equal(result.model.saveState.dirty, true);
   assert.equal(result.model.saveState.overwriteSaveEnabled, true);
   assert.equal(result.model.saveState.saveAsEnabled, true);
+  assert.equal(result.model.persistedOutput?.outputKind, "renamed_svga");
+  assert.equal(result.model.persistedOutput?.saveState.outputAvailable, true);
+  assert.equal(result.model.persistedOutput?.outputSha256, sha256(result.renamedBytes));
   assert.equal(result.report?.passed, true);
   assert.equal(result.report?.sourceSha256AfterRename, sourceSha256);
 
@@ -112,6 +115,7 @@ test("short-term rename workflow fails closed when target key already exists", a
   assert.equal(result.model.saveState.outputAvailable, false);
   assert.equal(result.model.saveState.overwriteSaveEnabled, false);
   assert.equal(result.model.saveState.saveAsEnabled, false);
+  assert.equal(result.model.persistedOutput, undefined);
   assert.equal(result.model.diagnostic?.code, "rename_target_key_exists");
 });
 

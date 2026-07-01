@@ -89,6 +89,9 @@ test("short-term optimization workflow produces product comparison and save mode
   assert.equal(result.model.saveState.saveAsEnabled, true);
   assert.equal(result.model.saveState.autoWritePerformed, false);
   assert.equal(result.model.saveState.validationRequiredBeforeWrite, true);
+  assert.equal(result.model.persistedOutput?.outputKind, "optimized_svga");
+  assert.equal(result.model.persistedOutput?.saveState.outputAvailable, true);
+  assert.equal(result.model.persistedOutput?.outputSha256, sha256(result.optimizedBytes));
 });
 
 test("short-term optimization workflow reports no-op files without enabling save", async () => {
@@ -120,6 +123,7 @@ test("short-term optimization workflow reports no-op files without enabling save
   assert.equal(result.model.saveState.outputAvailable, false);
   assert.equal(result.model.saveState.overwriteSaveEnabled, false);
   assert.equal(result.model.saveState.saveAsEnabled, false);
+  assert.equal(result.model.persistedOutput, undefined);
   assert.equal(result.model.diagnostic?.code, "optimization_not_applicable");
 });
 

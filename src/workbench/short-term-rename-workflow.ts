@@ -4,6 +4,12 @@ import { deflateSync, inflateSync } from "node:zlib";
 import protobuf from "protobufjs";
 import { SvgaImageResourceEditor } from "./svga/image-resource-editor.js";
 import { NodeProtobufSvgaInspector } from "./svga/node-protobuf-inspector.js";
+import {
+  createShortTermOutputSaveState,
+  createShortTermPersistedOutputRecord,
+  type ShortTermPersistedOutputRecord,
+  type ShortTermPersistedOutputSaveStateModel
+} from "./short-term-save-state.js";
 
 export const SHORT_TERM_RENAME_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
@@ -29,16 +35,7 @@ export interface ShortTermRenameValidationModel {
   reopenedImageCount?: number;
 }
 
-export interface ShortTermRenameSaveStateModel {
-  outputKind: "renamed_svga" | "none";
-  dirty: boolean;
-  outputAvailable: boolean;
-  overwriteSaveEnabled: boolean;
-  saveAsEnabled: boolean;
-  autoWritePerformed: false;
-  sourceUnchanged: boolean;
-  validationRequiredBeforeWrite: true;
-}
+export type ShortTermRenameSaveStateModel = ShortTermPersistedOutputSaveStateModel;
 
 export interface ShortTermRenameWorkflowModel {
   schemaVersion: typeof SHORT_TERM_RENAME_WORKFLOW_SCHEMA_VERSION;
@@ -55,6 +52,7 @@ export interface ShortTermRenameWorkflowModel {
   changedFields: readonly string[];
   validation: ShortTermRenameValidationModel;
   saveState: ShortTermRenameSaveStateModel;
+  persistedOutput?: ShortTermPersistedOutputRecord;
   diagnostic?: {
     code: string;
     message: string;
@@ -168,6 +166,7 @@ export async function runShortTermRenameWorkflow(
       model: renamedModel({
         sourceName,
         sourceSha256,
+        renamedBytes,
         report
       })
     };
@@ -307,9 +306,27 @@ function buildReport(input: {
 function renamedModel(input: {
   sourceName: string;
   sourceSha256: string;
+  renamedBytes: Uint8Array;
   report: ShortTermRenameReport;
 }): ShortTermRenameWorkflowModel {
   const passed = input.report.passed;
+  const persistedOutput = passed
+    ? createShortTermPersistedOutputRecord({
+      outputKind: "renamed_svga",
+      operationId: input.report.operationId,
+      sourceName: input.sourceName,
+      sourceSha256: input.sourceSha256,
+      outputBytes: input.renamedBytes,
+      sourceUnchanged: input.report.sourceUnchanged,
+      validationPassed: passed,
+      validationRefs: [
+        "validation:decodePassed",
+        "validation:reopenPassed",
+        "validation:referenceClosurePassed",
+        "validation:imageBytesPreserved"
+      ]
+    })
+    : undefined;
   return {
     schemaVersion: SHORT_TERM_RENAME_WORKFLOW_SCHEMA_VERSION,
     source: "short-term-rename-workflow",
@@ -326,7 +343,8 @@ function renamedModel(input: {
     referenceUpdates: input.report.referenceUpdates,
     changedFields: input.report.changedFields,
     validation: input.report.validation,
-    saveState: saveState(passed, input.report.sourceUnchanged)
+    saveState: persistedOutput?.saveState ?? saveState(false, input.report.sourceUnchanged),
+    ...(persistedOutput ? { persistedOutput } : {})
   };
 }
 
@@ -410,16 +428,7 @@ async function validateRenamedBytes(input: {
 }
 
 function saveState(outputAvailable: boolean, sourceUnchanged: boolean): ShortTermRenameSaveStateModel {
-  return {
-    outputKind: outputAvailable ? "renamed_svga" : "none",
-    dirty: outputAvailable,
-    outputAvailable,
-    overwriteSaveEnabled: outputAvailable,
-    saveAsEnabled: outputAvailable,
-    autoWritePerformed: false,
-    sourceUnchanged,
-    validationRequiredBeforeWrite: true
-  };
+  return createShortTermOutputSaveState("renamed_svga", outputAvailable, sourceUnchanged);
 }
 
 async function loadMovieEntity(protoPath: string): Promise<protobuf.Type> {
