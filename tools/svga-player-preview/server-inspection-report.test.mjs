@@ -4,7 +4,11 @@ import { deflateSync } from "node:zlib";
 import test from "node:test";
 import protobuf from "protobufjs";
 import { createTransparentImage, encodeRgbaPng } from "../../dist/utils/png-writer.js";
-import { createPreviewServer, inspectAvatarFrameBytes } from "./server.mjs";
+import {
+  createPreviewServer,
+  inspectAvatarFrameBytes,
+  inspectShortTermProductModelBytes
+} from "./server.mjs";
 
 test("preview host returns the existing avatar-frame inspection report", async () => {
   const report = await inspectAvatarFrameBytes(
@@ -40,6 +44,23 @@ test("preview host reports transparent padding from embedded PNG", async () => {
   assert.equal(report.issues[0].path, "resources[0].alphaBounds");
 });
 
+test("preview host creates the short-term product inspection model", async () => {
+  const model = await inspectShortTermProductModelBytes(
+    await createSvgaFixture(300, 300, "opaque"),
+    "short-term.svga"
+  );
+
+  assert.equal(model.schemaVersion, 1);
+  assert.equal(model.source, "avatar-frame-inspection-report");
+  assert.ok(model.prdIds.includes("S3"));
+  assert.ok(model.prdIds.includes("S15"));
+  assert.equal(model.overview.profileId, "production_target");
+  assert.equal(model.overview.audioGroup.copy, "当前文件暂无音频资产");
+  assert.equal(model.replaceableElements.images.length, 1);
+  assert.equal(model.replaceableElements.images[0].imageKey, "img_frame");
+  assert.equal(model.assets.some(({ kind }) => kind === "audio"), true);
+});
+
 test("preview host exposes the inspection report through its HTTP boundary", async () => {
   const server = createPreviewServer();
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -60,6 +81,34 @@ test("preview host exposes the inspection report through its HTTP boundary", asy
     assert.equal(response.status, 200);
     assert.equal(report.asset.name, "passing.svga");
     assert.equal(report.passed, true);
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+});
+
+test("preview host exposes the short-term product model through its HTTP boundary", async () => {
+  const server = createPreviewServer();
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/short-term-product-inspection-model?name=short-term.svga`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/octet-stream" },
+        body: await createSvgaFixture(300, 300, "opaque")
+      }
+    );
+    const model = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(model.schemaVersion, 1);
+    assert.equal(model.overview.facts.find(({ id }) => id === "canvas")?.value, "300 x 300");
+    assert.equal(model.assets.some(({ kind }) => kind === "audio"), true);
   } finally {
     await new Promise((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());

@@ -158,6 +158,7 @@ export async function scanLatestArtifacts(rootPath = artifactRoot) {
 }
 
 let reportServicePromise;
+let shortTermModelFactoryPromise;
 
 async function getAvatarFrameInspectionReportService() {
   reportServicePromise ??= import("../../dist/hosts/avatar-frame-inspection.js")
@@ -165,6 +166,12 @@ async function getAvatarFrameInspectionReportService() {
       createAvatarFrameInspectionReportService()
     ));
   return reportServicePromise;
+}
+
+async function getShortTermProductModelFactory() {
+  shortTermModelFactoryPromise ??= import("../../dist/workbench/short-term-product-model.js")
+    .then(({ createShortTermProductInspectionModel }) => createShortTermProductInspectionModel);
+  return shortTermModelFactoryPromise;
 }
 
 export async function inspectAvatarFrameBytes(bytes, name = "local.svga") {
@@ -185,6 +192,12 @@ export async function inspectAvatarFrameBytes(bytes, name = "local.svga") {
     throw error;
   }
   return result.value;
+}
+
+export async function inspectShortTermProductModelBytes(bytes, name = "local.svga") {
+  const report = await inspectAvatarFrameBytes(bytes, name);
+  const createShortTermProductInspectionModel = await getShortTermProductModelFactory();
+  return createShortTermProductInspectionModel(report);
 }
 
 async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
@@ -215,6 +228,20 @@ export function createPreviewServer() {
         const bytes = await readRequestBytes(request);
         const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
         sendJson(response, 200, await inspectAvatarFrameBytes(bytes, name));
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error),
+          ...(Array.isArray(error?.issues) ? { issues: error.issues } : {})
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-inspection-model") {
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        sendJson(response, 200, await inspectShortTermProductModelBytes(bytes, name));
       } catch (error) {
         sendJson(response, error?.statusCode ?? 422, {
           error: error instanceof Error ? error.message : String(error),
