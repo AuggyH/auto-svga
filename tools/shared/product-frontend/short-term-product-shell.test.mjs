@@ -11,9 +11,10 @@ async function readRepoFile(filePath) {
 }
 
 test("short-term product shell exposes the corrected S1-S16 app structure", async () => {
-  const [shell, app, styles, entryHtml, entryScript] = await Promise.all([
+  const [shell, app, stateModel, styles, entryHtml, entryScript] = await Promise.all([
     readRepoFile("tools/shared/product-frontend/short-term-product-shell.html"),
     readRepoFile("tools/shared/product-frontend/short-term-product-app.mjs"),
+    readRepoFile("tools/shared/product-frontend/short-term-product-state.mjs"),
     readRepoFile("tools/shared/product-frontend/short-term-product-styles.css"),
     readRepoFile("tools/short-term-ui-preview/index.html"),
     readRepoFile("tools/short-term-ui-preview/main.js")
@@ -80,6 +81,10 @@ test("short-term product shell exposes the corrected S1-S16 app structure", asyn
   assert.doesNotMatch(shell, /<h3>生产规格<\/h3>/);
   assert.match(shell, /data-component="SegmentedModeSwitch"[\s\S]*data-action="compare"/);
   assert.match(shell, /data-action="run-all-optimizations"/);
+  assert.match(shell, /class="asvFrameArt asvFrameLarge" aria-hidden="true"><span><\/span><\/div>/);
+  assert.match(shell, /class="asvMiniStage"[\s\S]*class="asvFrameArt" aria-hidden="true"><span><\/span><\/div>/);
+  assert.match(shell, /class="asvResultList" aria-label="优化结果明细"/);
+  assert.match(shell, /class="asvStatusDot asvSuccessDot"/);
   assert.match(shell, /一键优化只执行可安全执行项/);
   assert.match(shell, /暂不支持\/建议项/);
   assert.match(shell, /class="asvSpecStatus">通过<\/span>规格 &lt; 1 MB/);
@@ -87,15 +92,16 @@ test("short-term product shell exposes the corrected S1-S16 app structure", asyn
   assert.match(app, /startLoading/);
   assert.match(app, /startOptimizationCompare/);
   assert.match(app, /run-all-optimizations/);
+  assert.match(app, /from "\.\/short-term-product-state\.mjs"/);
+  assert.match(app, /createShortTermCommandModel/);
+  assert.match(app, /renderCommandAvailability/);
   assert.match(app, /recentFiles: getInitialRecentFiles\(\)/);
   assert.match(app, /renderLaunchRecentFiles/);
   assert.match(app, /renderMenuRecentFiles/);
-  assert.match(app, /slice\(0, 5\)/);
-  assert.match(app, /slice\(0, 10\)/);
+  assert.match(app, /getLaunchRecentFiles/);
+  assert.match(app, /getMenuRecentFiles/);
   assert.match(app, /case "open-recent"/);
   assert.match(app, /case "clear-recent"/);
-  assert.match(app, /missing: true/);
-  assert.match(app, /不展示完整本地路径/);
   assert.match(app, /需复核和暂不支持项未进入批量/);
   assert.match(app, /重试播放/);
   assert.match(app, /finishSave/);
@@ -104,6 +110,13 @@ test("short-term product shell exposes the corrected S1-S16 app structure", asyn
   assert.match(app, /key\.toLowerCase\(\) === "r"/);
   assert.match(app, /key\.toLowerCase\(\) === "s"/);
   assert.match(app, /event\.key === " "/);
+
+  assert.match(stateModel, /MAX_LAUNCH_RECENT_FILES = 5/);
+  assert.match(stateModel, /MAX_MENU_RECENT_FILES = 10/);
+  assert.match(stateModel, /missing: true/);
+  assert.match(stateModel, /不展示完整本地路径/);
+  assert.match(stateModel, /createShortTermCommandModel/);
+  assert.doesNotMatch(stateModel, /Export Acceptance|Sequence Repair|Batch Replacement|AI Generation/);
 
   assert.match(styles, /--asv-color-window/);
   assert.match(styles, /--asv-color-toolbar/);
@@ -117,8 +130,12 @@ test("short-term product shell exposes the corrected S1-S16 app structure", asyn
   assert.match(styles, /--asv-focus-ring/);
   assert.match(styles, /--asv-checker-size/);
   assert.match(styles, /--asv-modal-backdrop/);
+  assert.match(styles, /--asv-color-frame-blue/);
+  assert.match(styles, /--asv-color-stage-guide/);
+  assert.match(styles, /--asv-frame-inner-size/);
   assert.match(styles, /font-family: var\(--asv-type-family\)/);
   assert.match(styles, /box-shadow: var\(--asv-focus-ring\)/);
+  assert.match(styles, /button\.asvPrimary:disabled \{/);
   assert.match(styles, /\.asvMenuBar \{[\s\S]*z-index: 30/);
   assert.match(styles, /\.asvToolbar \{[\s\S]*z-index: 10/);
   assert.match(styles, /\.asvToolbarButton \{[\s\S]*--asv-toolbar-control-height/);
@@ -127,6 +144,13 @@ test("short-term product shell exposes the corrected S1-S16 app structure", asyn
   assert.match(styles, /\.asvMenuRecentList \{/);
   assert.match(styles, /\.asvTabs \{[\s\S]*background: var\(--asv-color-control-recessed\)/);
   assert.match(styles, /\.asvFactGrid div:hover/);
+  assert.match(styles, /\.asvStage::before/);
+  assert.match(styles, /\.asvFrameArt::before/);
+  assert.match(styles, /\.asvFrameArt::after/);
+  assert.match(styles, /\.asvResultPanel \{/);
+  assert.match(styles, /\.asvResultList \{/);
+  assert.match(styles, /\.asvFindingRow::before/);
+  assert.match(styles, /\.asvBadge\.asvSuccess/);
   assert.match(styles, /grid-template-columns: var\(--asv-thumb-size\) minmax\(0, 1fr\) auto auto auto/);
   assert.match(styles, /\.asvRecentFiles ol \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(styles, /\.asvRecentFiles \{[\s\S]*padding: 0/);

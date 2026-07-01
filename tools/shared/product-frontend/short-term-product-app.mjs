@@ -1,18 +1,25 @@
-const initialRecentFiles = [
-  { id: "avatar-frame-basic", name: "avatar_frame_basic.svga", parent: "Frames", time: "今天 14:32" },
-  { id: "festival-badge-preview", name: "festival_badge_preview.svga", parent: "Campaign", time: "今天 11:08" },
-  { id: "vip-level-ring", name: "vip_level_ring.svga", parent: "VIP", time: "昨天 19:44", missing: true },
-  { id: "gift-frame-gold", name: "gift_frame_gold.svga", parent: "Gifts", time: "昨天 16:21" },
-  { id: "profile-aura-blue", name: "profile_aura_blue.svga", parent: "Profile", time: "周二" },
-  { id: "shop-medal-entry", name: "shop_medal_entry.svga", parent: "Shop", time: "周一" },
-  { id: "live-room-badge", name: "live_room_badge.svga", parent: "Live", time: "6月29日" },
-  { id: "rank-top3-frame", name: "rank_top3_frame.svga", parent: "Rank", time: "6月28日" },
-  { id: "summer-campaign", name: "summer_campaign.svga", parent: "Campaign", time: "6月27日" },
-  { id: "creator-avatar-fx", name: "creator_avatar_fx.svga", parent: "Creator", time: "6月26日" }
-];
+import {
+  addRecentFile,
+  clearRecentFileRecords,
+  createDemoRecentFiles,
+  createShortTermCommandModel,
+  getLaunchRecentFiles,
+  getMenuRecentFiles,
+  getRecentStatusCopy,
+  readRecentFilesFromStorage,
+  writeRecentFilesToStorage
+} from "./short-term-product-state.mjs";
 
 function getInitialRecentFiles() {
-  return initialRecentFiles.map((file) => ({ ...file }));
+  return readRecentFilesFromStorage(getRecentStorage(), createDemoRecentFiles());
+}
+
+function getRecentStorage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 const state = {
@@ -61,7 +68,7 @@ function setView(view) {
   render();
 }
 
-function startLoading(sample = "normal") {
+function startLoading(sample = "normal", openedFile = undefined) {
   clearPendingTimer();
   state.sample = sample;
   state.hasFile = false;
@@ -81,6 +88,11 @@ function startLoading(sample = "normal") {
       setView("load-failed");
     } else {
       state.hasFile = true;
+      rememberRecentFile(openedFile ?? {
+        sourceId: "avatar-frame-basic",
+        name: "avatar_frame_basic.svga",
+        parent: "Frames"
+      });
       state.tab = "overview";
       setView("workbench");
     }
@@ -106,18 +118,30 @@ function openRecentFile(recentId) {
   const recentFile = state.recentFiles.find((file) => file.id === recentId);
   if (!recentFile) return;
   if (recentFile.missing) {
+    state.hasFile = false;
+    state.dirtyKind = null;
+    state.saveStatus = "idle";
+    state.playbackError = false;
+    state.imageReplaced = false;
+    state.textApplied = false;
     state.recentStatus = "missing";
     setView("launch");
     return;
   }
-  startLoading("normal");
+  startLoading("normal", recentFile);
 }
 
 function clearRecentFiles() {
   if (state.recentFiles.length === 0) return;
-  state.recentFiles = [];
+  state.recentFiles = clearRecentFileRecords();
   state.recentStatus = "cleared";
+  writeRecentFilesToStorage(getRecentStorage(), state.recentFiles);
   render();
+}
+
+function rememberRecentFile(file) {
+  state.recentFiles = addRecentFile(state.recentFiles, file);
+  writeRecentFilesToStorage(getRecentStorage(), state.recentFiles);
 }
 
 function setMode(mode) {
@@ -296,7 +320,7 @@ function createRecentButton(file, context) {
 
 function renderLaunchRecentFiles() {
   launchRecentList.replaceChildren();
-  const visibleFiles = state.recentFiles.slice(0, 5);
+  const visibleFiles = getLaunchRecentFiles(state.recentFiles);
   for (const file of visibleFiles) {
     const item = document.createElement("li");
     item.classList.toggle("isMissing", Boolean(file.missing));
@@ -315,18 +339,13 @@ function renderLaunchRecentFiles() {
     launchRecentList.append(item);
   }
 
-  const statusCopy = {
-    ready: "最近记录仅显示文件名和父级位置，不展示完整本地路径。",
-    missing: "这个最近文件已缺失或不可访问。可以打开其他文件，或清除最近记录。",
-    cleared: "最近记录已清除，源文件不会被删除。"
-  };
-  recentStatus.textContent = statusCopy[state.recentStatus] || statusCopy.ready;
+  recentStatus.textContent = getRecentStatusCopy(state.recentStatus);
   launchClearRecent.disabled = state.recentFiles.length === 0;
 }
 
 function renderMenuRecentFiles() {
   fileRecentList.replaceChildren();
-  const visibleFiles = state.recentFiles.slice(0, 10);
+  const visibleFiles = getMenuRecentFiles(state.recentFiles);
   for (const file of visibleFiles) {
     const button = createRecentButton(file, "menu");
     button.textContent = `${file.name} — ${file.parent}`;
@@ -353,14 +372,11 @@ function render() {
   document.body.dataset.asvView = state.view;
   document.body.dataset.asvMode = state.mode;
   renderRecentFiles();
+  renderCommandAvailability();
 
   document.querySelectorAll("[data-needs-file]").forEach((button) => {
     button.disabled = !state.hasFile;
     button.title = state.hasFile ? "" : "请先打开 SVGA 文件";
-  });
-  document.querySelectorAll("[data-save-action]").forEach((button) => {
-    button.disabled = !state.dirtyKind || state.saveStatus === "validating";
-    button.title = state.dirtyKind ? "有待保存输出" : "没有可保存的输出";
   });
   document.querySelectorAll("[data-action='mode-preview'], [data-action='mode-edit']").forEach((button) => {
     button.classList.toggle("isSelected", button.dataset.action === `mode-${state.mode}`);
@@ -391,6 +407,37 @@ function render() {
     : "运行时动态文本预览，不写入 SVGA 字节。";
   document.querySelector("#asvRuntimeImage").hidden = !state.imageReplaced;
   document.querySelector("#asvRuntimeText").hidden = !state.textApplied;
+}
+
+function renderCommandAvailability() {
+  const commands = createShortTermCommandModel({
+    hasFile: state.hasFile,
+    selectedImageKey: state.hasFile ? state.imageKey : "",
+    hasRuntimeReplacement: state.imageReplaced || state.textApplied,
+    dirtyKind: state.dirtyKind,
+    saveStatus: state.saveStatus,
+    recentFiles: state.recentFiles,
+    hasSafeOptimizationCandidates: state.hasFile,
+    hasOptimizationOutput: state.dirtyKind === "optimization",
+    isLoading: state.view === "loading"
+  });
+  applyCommandToActions(["clear-recent"], commands.clearRecent);
+  applyCommandToActions(["compare"], commands.compare);
+  applyCommandToActions(["toggle-play"], commands.playPause);
+  applyCommandToActions(["replay"], commands.replay);
+  applyCommandToActions(["rename"], commands.renameImageKey);
+  applyCommandToActions(["replace-image"], commands.replacePreviewImage);
+  applyCommandToActions(["run-optimization", "run-all-optimizations"], commands.runOptimization);
+  applyCommandToActions(["save-overwrite"], commands.overwriteSave);
+  applyCommandToActions(["save-as"], commands.saveAs);
+}
+
+function applyCommandToActions(actions, commandState) {
+  const selector = actions.map((actionName) => `[data-action='${actionName}']`).join(", ");
+  document.querySelectorAll(selector).forEach((button) => {
+    button.disabled = !commandState.enabled;
+    button.title = commandState.disabledReason;
+  });
 }
 
 document.addEventListener("click", (event) => {
