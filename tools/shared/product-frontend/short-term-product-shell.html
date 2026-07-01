@@ -104,7 +104,7 @@
           </div>
         </div>
         <div class="asvStage" aria-label="SVGA 预览舞台">
-          <div class="asvFrameArt asvFrameLarge"></div>
+          <div class="asvFrameArt asvFrameLarge" aria-hidden="true"><span></span></div>
           <div class="asvRuntimeChip" id="asvRuntimeImage" hidden>替换预览</div>
           <div class="asvRuntimeText" id="asvRuntimeText" hidden>SVGA VIP</div>
         </div>
@@ -196,12 +196,17 @@
 
   <section class="asvView" id="asvViewOptimizationCompare" data-view="optimization-compare" data-page-state="Optimization comparing" data-module="OptimizationCompareModule" hidden>
     <div class="asvCompareGrid">
-      <section class="asvPanel" data-component="ComparePreviewCard"><p class="asvEyebrow">Before</p><h2>原始预览</h2><div class="asvMiniStage"></div><p>812 KB / 18.4 MB</p></section>
-      <section class="asvPanel" data-component="ComparePreviewCard"><p class="asvEyebrow">After</p><h2>优化后预览</h2><div class="asvMiniStage asvSuccessStage"></div><p>736 KB / 16.9 MB</p></section>
-      <aside class="asvPanel" data-component="OptimizationResultCard">
+      <section class="asvPanel asvCompareCard" data-component="ComparePreviewCard"><p class="asvEyebrow">Before</p><h2>原始预览</h2><div class="asvMiniStage"><div class="asvFrameArt" aria-hidden="true"><span></span></div></div><p>812 KB / 18.4 MB</p></section>
+      <section class="asvPanel asvCompareCard" data-component="ComparePreviewCard"><p class="asvEyebrow">After</p><h2>优化后预览</h2><div class="asvMiniStage asvSuccessStage"><div class="asvFrameArt asvOptimizedFrame" aria-hidden="true"><span></span></div></div><p>736 KB / 16.9 MB</p></section>
+      <aside class="asvPanel asvResultPanel" data-component="OptimizationResultCard">
         <h2>优化结果</h2>
         <p class="asvMetric" id="asvOptimizationMetric">-76 KB</p>
         <p id="asvOptimizationSummary">生成优化字节，等待明确保存。</p>
+        <ul class="asvResultList" aria-label="优化结果明细">
+          <li><span class="asvStatusDot asvSuccessDot"></span>生成优化后 SVGA 字节</li>
+          <li><span class="asvStatusDot asvSuccessDot"></span>安全项进入批量</li>
+          <li><span class="asvStatusDot asvWarningDot"></span>需复核项保持未执行</li>
+        </ul>
         <button class="asvPrimary" type="button" data-action="save-as" data-prd="S14">另存为优化结果</button>
         <button type="button" data-action="back-preview">返回预览</button>
       </aside>
@@ -211,8 +216,8 @@
   <section class="asvView" id="asvViewCompare" data-view="compare" data-page-state="General comparing" data-module="GeneralCompareModule" hidden>
     <div class="asvCompareGrid asvCompareGridFour">
       <aside class="asvPanel"><h2>A 文件</h2><p>812 KB / 42 assets</p></aside>
-      <section class="asvPanel" data-component="ComparePreviewCard"><h2>Preview A</h2><div class="asvMiniStage"></div></section>
-      <section class="asvPanel" data-component="ComparePreviewCard"><h2>Preview B</h2><div class="asvMiniStage asvCompareStage"></div></section>
+      <section class="asvPanel asvCompareCard" data-component="ComparePreviewCard"><h2>Preview A</h2><div class="asvMiniStage"><div class="asvFrameArt" aria-hidden="true"><span></span></div></div></section>
+      <section class="asvPanel asvCompareCard" data-component="ComparePreviewCard"><h2>Preview B</h2><div class="asvMiniStage asvCompareStage"><div class="asvFrameArt asvCompareFrame" aria-hidden="true"><span></span></div></div></section>
       <aside class="asvPanel"><h2>B 文件</h2><p>776 KB / 39 assets</p><button type="button" data-action="back-preview">退出对比</button></aside>
     </div>
   </section>
@@ -220,7 +225,7 @@
   <section class="asvView" id="asvViewEdit" data-view="edit" data-page-state="Edit reserved" data-module="EditReservedModule" hidden>
     <div class="asvEditGrid">
       <aside class="asvPanel"><h2>图层</h2><p>frame_shell</p><p>profile_frame_highlight</p><p>nickname_text</p></aside>
-      <section class="asvPanel asvPreviewPanel"><h2>保留编辑结构</h2><div class="asvStage"><div class="asvFrameArt asvFrameLarge"></div></div></section>
+      <section class="asvPanel asvPreviewPanel"><h2>保留编辑结构</h2><div class="asvStage"><div class="asvFrameArt asvFrameLarge" aria-hidden="true"><span></span></div></div></section>
       <aside class="asvPanel" data-component="ReservedOperationPanel"><h2>操作面板</h2><p>短期版本不暴露时间线、变换、透明度、蒙版、音频或高级图层编辑控件。</p></aside>
     </div>
   </section>

@@ -26,7 +26,16 @@
   --asv-color-row-hover: color-mix(in srgb, var(--asv-color-action) 7%, var(--asv-color-row));
   --asv-color-status: color-mix(in srgb, var(--asv-color-text) 8%, transparent);
   --asv-color-status-success: color-mix(in srgb, var(--asv-color-success) 10%, transparent);
+  --asv-color-status-warning: color-mix(in srgb, var(--asv-color-warning) 12%, transparent);
+  --asv-color-status-danger: color-mix(in srgb, var(--asv-color-danger) 12%, transparent);
   --asv-color-on-status: #fff;
+  --asv-color-stage-edge: color-mix(in srgb, var(--asv-color-text) 7%, transparent);
+  --asv-color-stage-guide: color-mix(in srgb, var(--asv-color-action) 6%, transparent);
+  --asv-color-stage-vignette: color-mix(in srgb, var(--asv-color-text) 4%, transparent);
+  --asv-color-frame-blue: color-mix(in srgb, var(--asv-color-action) 66%, var(--asv-color-canvas-alt));
+  --asv-color-frame-teal: color-mix(in srgb, var(--asv-color-success) 34%, var(--asv-color-canvas-alt));
+  --asv-color-frame-gold: color-mix(in srgb, var(--asv-color-warning) 46%, var(--asv-color-canvas-alt));
+  --asv-color-frame-shadow: color-mix(in srgb, var(--asv-color-action) 22%, transparent);
   --asv-type-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   --asv-type-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --asv-font-size-menu: 12px;
@@ -50,6 +59,7 @@
   --asv-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.05);
   --asv-shadow-control: 0 1px 2px rgba(15, 23, 42, 0.08);
   --asv-shadow-floating: 0 18px 44px rgba(15, 23, 42, 0.18);
+  --asv-shadow-stage: inset 0 0 0 1px var(--asv-color-stage-edge), inset 0 22px 54px var(--asv-color-stage-vignette);
   --asv-focus-ring: 0 0 0 3px color-mix(in srgb, var(--asv-color-action) 28%, transparent);
   --asv-control-height: 30px;
   --asv-control-height-small: 24px;
@@ -64,7 +74,7 @@
   --asv-frame-border: 22px;
   --asv-stage-min-height: 300px;
   --asv-checker-size: 20px;
-  --asv-checker-strength: 7%;
+  --asv-checker-strength: 5%;
   --asv-backdrop-blur: saturate(180%) blur(18px);
   --asv-traffic-red: #ff5f57;
   --asv-traffic-yellow: #febc2e;
@@ -72,6 +82,9 @@
   --asv-frame-ring: color-mix(in srgb, var(--asv-color-action) 54%, var(--asv-color-canvas-alt));
   --asv-frame-inset: color-mix(in srgb, var(--asv-color-canvas-alt) 56%, transparent);
   --asv-frame-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+  --asv-frame-inner-size: 58%;
+  --asv-frame-gem-size: 20px;
+  --asv-frame-glint-size: 12px;
   --asv-modal-backdrop: rgba(7, 10, 16, 0.34);
   --asv-toolbar-height: 54px;
   --asv-menu-height: 30px;
@@ -126,6 +139,16 @@ button:hover {
 button:disabled {
   cursor: not-allowed;
   opacity: 0.46;
+}
+
+button.asvPrimary:disabled {
+  border-color: var(--asv-color-border);
+  background: var(--asv-color-control);
+  color: var(--asv-color-muted);
+}
+
+button.asvPrimary:disabled:hover {
+  background: var(--asv-color-control);
 }
 
 button:focus-visible,
@@ -387,6 +410,17 @@ h3 {
   grid-template-columns: 220px minmax(420px, 1fr) 300px;
 }
 
+.asvCompareCard {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: var(--asv-space-2);
+}
+
+.asvCompareCard > p:last-child {
+  color: var(--asv-color-muted);
+  font-family: var(--asv-type-mono);
+}
+
 .asvPanel {
   min-width: 0;
   padding: var(--asv-space-4);
@@ -395,6 +429,12 @@ h3 {
   background: var(--asv-color-panel);
   box-shadow: var(--asv-shadow-panel);
   overflow: auto;
+}
+
+.asvInspector {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--asv-color-solid) 32%, transparent), transparent 44%),
+    var(--asv-color-panel);
 }
 
 .asvPreviewPanel {
@@ -414,15 +454,37 @@ h3 {
   border-radius: var(--asv-radius-3);
   background-color: var(--asv-color-canvas);
   background-image:
+    linear-gradient(var(--asv-color-stage-guide) 1px, transparent 1px),
+    linear-gradient(90deg, var(--asv-color-stage-guide) 1px, transparent 1px),
     linear-gradient(45deg, color-mix(in srgb, var(--asv-color-text) var(--asv-checker-strength), transparent) 25%, transparent 25%),
     linear-gradient(-45deg, color-mix(in srgb, var(--asv-color-text) var(--asv-checker-strength), transparent) 25%, transparent 25%);
-  background-size: var(--asv-checker-size) var(--asv-checker-size);
+  background-size:
+    calc(var(--asv-checker-size) * 4) calc(var(--asv-checker-size) * 4),
+    calc(var(--asv-checker-size) * 4) calc(var(--asv-checker-size) * 4),
+    var(--asv-checker-size) var(--asv-checker-size),
+    var(--asv-checker-size) var(--asv-checker-size);
+  box-shadow: var(--asv-shadow-stage);
 }
 
 .asvLaunchPrompt {
   display: grid;
   place-items: center;
   gap: var(--asv-space-3);
+  padding: var(--asv-space-5);
+  border-radius: var(--asv-radius-3);
+}
+
+.asvLaunchPrompt::before {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--asv-color-border);
+  border-radius: var(--asv-radius-3);
+  background:
+    linear-gradient(var(--asv-color-action), var(--asv-color-action)) center 12px / 2px 16px no-repeat,
+    linear-gradient(135deg, transparent 40%, var(--asv-color-action) 42% 58%, transparent 60%) center 10px / 15px 15px no-repeat,
+    var(--asv-color-panel-strong);
+  box-shadow: var(--asv-shadow-control);
+  content: "";
 }
 
 .asvLaunchPrompt p {
@@ -485,7 +547,8 @@ h3 {
   gap: var(--asv-space-2);
   min-width: 0;
   min-height: 28px;
-  padding: 0;
+  padding: 0 var(--asv-space-1);
+  border-radius: var(--asv-radius-1);
 }
 
 .asvRecentFiles li.isMissing button {
@@ -494,6 +557,10 @@ h3 {
 
 .asvRecentFiles li + li {
   border-top: 1px solid color-mix(in srgb, var(--asv-color-border) 56%, transparent);
+}
+
+.asvRecentFiles li:hover {
+  background: color-mix(in srgb, var(--asv-color-solid) 48%, transparent);
 }
 
 .asvRecentFiles button {
@@ -550,6 +617,11 @@ h3 {
   justify-content: space-between;
 }
 
+.asvPanelHeader {
+  min-height: 32px;
+  padding-bottom: var(--asv-space-1);
+}
+
 .asvSectionTitle {
   display: grid;
   gap: 2px;
@@ -579,9 +651,26 @@ h3 {
   border-radius: var(--asv-radius-2);
   background-color: var(--asv-color-canvas);
   background-image:
+    linear-gradient(var(--asv-color-stage-guide) 1px, transparent 1px),
+    linear-gradient(90deg, var(--asv-color-stage-guide) 1px, transparent 1px),
     linear-gradient(45deg, color-mix(in srgb, var(--asv-color-text) var(--asv-checker-strength), transparent) 25%, transparent 25%),
     linear-gradient(-45deg, color-mix(in srgb, var(--asv-color-text) var(--asv-checker-strength), transparent) 25%, transparent 25%);
-  background-size: var(--asv-checker-size) var(--asv-checker-size);
+  background-size:
+    calc(var(--asv-checker-size) * 4) calc(var(--asv-checker-size) * 4),
+    calc(var(--asv-checker-size) * 4) calc(var(--asv-checker-size) * 4),
+    var(--asv-checker-size) var(--asv-checker-size),
+    var(--asv-checker-size) var(--asv-checker-size);
+  box-shadow: var(--asv-shadow-stage);
+}
+
+.asvStage::before,
+.asvMiniStage::before {
+  position: absolute;
+  inset: var(--asv-space-5);
+  border: 1px dashed color-mix(in srgb, var(--asv-color-action) 18%, transparent);
+  border-radius: var(--asv-radius-2);
+  pointer-events: none;
+  content: "";
 }
 
 .asvStage {
@@ -592,14 +681,82 @@ h3 {
   min-height: var(--asv-stage-min-height);
 }
 
+.asvMiniStage .asvFrameArt {
+  transform: scale(0.72);
+}
+
+.asvSuccessStage {
+  border-color: color-mix(in srgb, var(--asv-color-success) 32%, var(--asv-color-border));
+}
+
+.asvCompareStage {
+  border-color: color-mix(in srgb, var(--asv-color-warning) 32%, var(--asv-color-border));
+}
+
 .asvFrameArt {
+  position: relative;
   width: var(--asv-frame-size);
   height: var(--asv-frame-size);
-  border: var(--asv-frame-border) solid var(--asv-frame-ring);
-  border-radius: 36%;
+  border: 0;
+  border-radius: 34%;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 var(--asv-frame-inner-size), var(--asv-frame-inset) calc(var(--asv-frame-inner-size) + 1px) calc(var(--asv-frame-inner-size) + 4px), transparent calc(var(--asv-frame-inner-size) + 5px)),
+    radial-gradient(circle at 28% 24%, var(--asv-color-frame-gold) 0 8px, transparent 9px),
+    radial-gradient(circle at 75% 29%, color-mix(in srgb, var(--asv-color-frame-teal) 78%, var(--asv-color-canvas-alt)) 0 7px, transparent 8px),
+    radial-gradient(circle at 70% 75%, var(--asv-color-frame-gold) 0 6px, transparent 7px),
+    conic-gradient(from 220deg, var(--asv-color-frame-blue), var(--asv-color-frame-teal), var(--asv-color-frame-gold), var(--asv-color-frame-blue));
   box-shadow:
-    inset 0 0 0 8px var(--asv-frame-inset),
+    inset 0 0 0 var(--asv-frame-border) color-mix(in srgb, var(--asv-color-canvas-alt) 22%, transparent),
+    inset 0 0 0 calc(var(--asv-frame-border) + 2px) color-mix(in srgb, var(--asv-color-action) 24%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--asv-color-action) 18%, transparent),
+    0 26px 48px var(--asv-color-frame-shadow),
+    0 8px 18px color-mix(in srgb, var(--asv-color-warning) 12%, transparent),
     var(--asv-frame-shadow);
+}
+
+.asvFrameArt::before {
+  position: absolute;
+  inset: 18%;
+  border-radius: 30%;
+  background: var(--asv-color-canvas);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--asv-color-text) 8%, transparent),
+    inset 0 12px 24px color-mix(in srgb, var(--asv-color-text) 5%, transparent);
+  content: "";
+}
+
+.asvFrameArt::after {
+  position: absolute;
+  top: 17%;
+  right: 18%;
+  width: var(--asv-frame-glint-size);
+  height: var(--asv-frame-glint-size);
+  border-radius: 50%;
+  background: var(--asv-color-canvas-alt);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--asv-color-canvas-alt) 30%, transparent),
+    -58px -4px 0 -2px var(--asv-color-canvas-alt),
+    -88px 78px 0 -3px color-mix(in srgb, var(--asv-color-canvas-alt) 86%, transparent),
+    34px 86px 0 -4px color-mix(in srgb, var(--asv-color-canvas-alt) 86%, transparent);
+  content: "";
+}
+
+.asvFrameArt span {
+  position: absolute;
+  inset: 11%;
+  border-radius: 32%;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--asv-color-canvas-alt) 46%, transparent), transparent 42%),
+    linear-gradient(315deg, color-mix(in srgb, var(--asv-color-action) 18%, transparent), transparent 48%);
+  pointer-events: none;
+}
+
+.asvOptimizedFrame {
+  filter: saturate(1.08) brightness(1.03);
+}
+
+.asvCompareFrame {
+  filter: hue-rotate(18deg) saturate(0.94);
 }
 
 .asvFrameLarge {
@@ -636,6 +793,7 @@ h3 {
   border: 1px solid var(--asv-color-border);
   border-radius: var(--asv-radius-2);
   background: var(--asv-color-control-recessed);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--asv-color-text) 4%, transparent);
 }
 
 .asvTabs button {
@@ -650,6 +808,11 @@ h3 {
   display: grid;
   gap: var(--asv-space-3);
   margin-top: var(--asv-space-4);
+}
+
+.asvTabPanel > h3 {
+  margin-top: var(--asv-space-1);
+  color: var(--asv-color-text);
 }
 
 .asvFactGrid {
@@ -676,6 +839,7 @@ h3 {
 .asvFactGrid div {
   display: grid;
   gap: 3px;
+  min-height: 74px;
 }
 
 dt {
@@ -716,12 +880,26 @@ dd small {
   font-weight: 650;
 }
 
+.asvSpecStatus::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
 .asvAssetRow {
   display: grid;
   grid-template-columns: var(--asv-thumb-size) minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: var(--asv-space-2);
   min-height: var(--asv-row-height);
+}
+
+.asvAssetRow button {
+  min-height: 26px;
+  padding-inline: var(--asv-space-2);
 }
 
 .asvAssetRow strong,
@@ -766,10 +944,29 @@ dd small {
 }
 
 .asvFindingRow {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--asv-space-3);
+  overflow: hidden;
+  padding-left: var(--asv-space-3);
+}
+
+.asvFindingRow::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--asv-color-success);
+  content: "";
+}
+
+.asvFindingRow:has(.asvWarning)::before {
+  background: var(--asv-color-warning);
+}
+
+.asvFindingRow:has(.asvBadge:not(.asvSuccess):not(.asvWarning))::before {
+  background: var(--asv-color-muted);
 }
 
 .asvFindingActions {
@@ -796,6 +993,18 @@ dd small {
   font-weight: 560;
 }
 
+.asvBadge.asvSuccess {
+  background: var(--asv-color-status-success);
+}
+
+.asvBadge.asvWarning {
+  background: var(--asv-color-status-warning);
+}
+
+.asvBadge.asvDanger {
+  background: var(--asv-color-status-danger);
+}
+
 .asvSuccess {
   color: var(--asv-color-success);
 }
@@ -812,6 +1021,44 @@ dd small {
   color: var(--asv-color-success);
   font-size: var(--asv-font-size-metric);
   font-weight: 760;
+}
+
+.asvResultPanel {
+  display: grid;
+  align-content: start;
+  gap: var(--asv-space-3);
+}
+
+.asvResultList {
+  display: grid;
+  gap: var(--asv-space-2);
+  padding: var(--asv-space-2) 0 var(--asv-space-2);
+  margin: 0;
+  color: var(--asv-color-muted);
+  list-style: none;
+}
+
+.asvResultList li {
+  display: flex;
+  align-items: center;
+  gap: var(--asv-space-2);
+  min-width: 0;
+}
+
+.asvStatusDot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--asv-color-muted);
+}
+
+.asvSuccessDot {
+  background: var(--asv-color-success);
+}
+
+.asvWarningDot {
+  background: var(--asv-color-warning);
 }
 
 .asvStateList {
