@@ -5,9 +5,11 @@ import test from "node:test";
 import protobuf from "protobufjs";
 import { createTransparentImage, encodeRgbaPng } from "../../dist/utils/png-writer.js";
 import {
+  applyShortTermImageReplacementPreviewSessionBytes,
   createPreviewServer,
   inspectAvatarFrameBytes,
   inspectShortTermProductModelBytes,
+  resetShortTermImageReplacementPreviewSessionBytes,
   runShortTermImageReplacementWorkflowBytes,
   runShortTermOptimizationWorkflowBytes,
   runShortTermRenameWorkflowBytes
@@ -107,6 +109,30 @@ test("preview host creates the short-term image replacement workflow model", asy
   assert.equal(result.model.status, "replaced");
   assert.equal(result.model.validation.replacementApplied, true);
   assert.equal(result.model.saveState.saveAsEnabled, true);
+});
+
+test("preview host creates the short-term image replacement preview session model", async () => {
+  const sourceBytes = await createOptimizableSvgaFixture();
+  const result = await applyShortTermImageReplacementPreviewSessionBytes(
+    sourceBytes,
+    "img_frame",
+    encodeRgbaPng(createFrameImage("padded")),
+    "replace-preview.svga"
+  );
+
+  assert.equal(result.accepted, true);
+  assert.equal(result.session.model.schemaVersion, 1);
+  assert.equal(result.session.model.mode, "preview");
+  assert.equal(result.session.model.status, "previewDirty");
+  assert.equal(result.session.model.playerAction, "remountPreview");
+  assert.equal(result.session.model.saveState.saveAsEnabled, true);
+  assert.notEqual(Buffer.from(result.session.previewBytes).toString("base64"), Buffer.from(sourceBytes).toString("base64"));
+
+  const reset = await resetShortTermImageReplacementPreviewSessionBytes(sourceBytes, "replace-preview.svga");
+  assert.equal(reset.model.status, "ready");
+  assert.equal(reset.model.playerAction, "remountSource");
+  assert.equal(reset.model.saveState.saveAsEnabled, false);
+  assert.equal(Buffer.from(reset.previewBytes).toString("base64"), Buffer.from(sourceBytes).toString("base64"));
 });
 
 test("preview host exposes the inspection report through its HTTP boundary", async () => {
@@ -249,6 +275,62 @@ test("preview host exposes the short-term image replacement workflow through its
     assert.equal(body.replacement.status, "replaced");
     assert.equal(body.replacement.imageKey, "img_frame");
     assert.equal(body.replacement.saveState.outputAvailable, true);
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+});
+
+test("preview host exposes the short-term image replacement preview session through its HTTP boundary", async () => {
+  const server = createPreviewServer();
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const sourceBytes = await createOptimizableSvgaFixture();
+    const applyResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/short-term-product-image-replacement-preview-session`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "apply",
+          name: "replace-preview.svga",
+          imageKey: "img_frame",
+          svgaBase64: Buffer.from(sourceBytes).toString("base64"),
+          pngBase64: Buffer.from(encodeRgbaPng(createFrameImage("padded"))).toString("base64")
+        })
+      }
+    );
+    const applyBody = await applyResponse.json();
+
+    assert.equal(applyResponse.status, 200);
+    assert.equal(applyBody.accepted, true);
+    assert.equal(typeof applyBody.previewSvgaBase64, "string");
+    assert.equal(applyBody.session.status, "previewDirty");
+    assert.equal(applyBody.session.playerAction, "remountPreview");
+
+    const resetResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/short-term-product-image-replacement-preview-session`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "reset",
+          name: "replace-preview.svga",
+          svgaBase64: Buffer.from(sourceBytes).toString("base64")
+        })
+      }
+    );
+    const resetBody = await resetResponse.json();
+
+    assert.equal(resetResponse.status, 200);
+    assert.equal(resetBody.accepted, true);
+    assert.equal(resetBody.previewSvgaBase64, Buffer.from(sourceBytes).toString("base64"));
+    assert.equal(resetBody.session.status, "ready");
+    assert.equal(resetBody.session.playerAction, "remountSource");
   } finally {
     await new Promise((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());

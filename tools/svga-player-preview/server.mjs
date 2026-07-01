@@ -162,6 +162,7 @@ let shortTermModelFactoryPromise;
 let shortTermOptimizationWorkflowPromise;
 let shortTermRenameWorkflowPromise;
 let shortTermImageReplacementWorkflowPromise;
+let shortTermImageReplacementPreviewSessionPromise;
 
 async function getAvatarFrameInspectionReportService() {
   reportServicePromise ??= import("../../dist/hosts/avatar-frame-inspection.js")
@@ -193,6 +194,12 @@ async function getShortTermImageReplacementWorkflow() {
   shortTermImageReplacementWorkflowPromise ??= import("../../dist/workbench/short-term-image-replacement-workflow.js")
     .then(({ runShortTermImageReplacementWorkflow }) => runShortTermImageReplacementWorkflow);
   return shortTermImageReplacementWorkflowPromise;
+}
+
+async function getShortTermImageReplacementPreviewSession() {
+  shortTermImageReplacementPreviewSessionPromise ??= import("../../dist/workbench/short-term-image-replacement-preview-session.js")
+    .then((module) => module);
+  return shortTermImageReplacementPreviewSessionPromise;
 }
 
 export async function inspectAvatarFrameBytes(bytes, name = "local.svga") {
@@ -248,6 +255,33 @@ export async function runShortTermImageReplacementWorkflowBytes(
   const replacementBytes = pngBytes instanceof Uint8Array ? pngBytes : new Uint8Array(pngBytes);
   const runShortTermImageReplacementWorkflow = await getShortTermImageReplacementWorkflow();
   return runShortTermImageReplacementWorkflow(data, { imageKey, pngBytes: replacementBytes }, { sourceName: name });
+}
+
+export async function applyShortTermImageReplacementPreviewSessionBytes(
+  bytes,
+  imageKey,
+  pngBytes,
+  name = "local.svga"
+) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const replacementBytes = pngBytes instanceof Uint8Array ? pngBytes : new Uint8Array(pngBytes);
+  const {
+    applyShortTermImageReplacementPreview,
+    createShortTermImageReplacementPreviewSession
+  } = await getShortTermImageReplacementPreviewSession();
+  const session = createShortTermImageReplacementPreviewSession(data, { sourceName: name });
+  return applyShortTermImageReplacementPreview(session, { imageKey, pngBytes: replacementBytes });
+}
+
+export async function resetShortTermImageReplacementPreviewSessionBytes(bytes, name = "local.svga") {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const {
+    createShortTermImageReplacementPreviewSession,
+    resetShortTermImageReplacementPreview
+  } = await getShortTermImageReplacementPreviewSession();
+  return resetShortTermImageReplacementPreview(
+    createShortTermImageReplacementPreviewSession(data, { sourceName: name })
+  );
 }
 
 async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
@@ -375,6 +409,49 @@ export function createPreviewServer() {
         sendJson(response, 200, {
           replacedSvgaBase64: result.replacedBytes ? encodeBase64(result.replacedBytes) : null,
           replacement: result.model
+        });
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-image-replacement-preview-session") {
+      try {
+        const body = await readRequestJson(request);
+        const action = typeof body.action === "string" ? body.action : "apply";
+        const name = path.basename(typeof body.name === "string" ? body.name : "local.svga");
+        const svgaBytes = decodeBase64(body.svgaBase64, "svgaBase64");
+
+        if (action === "reset") {
+          const session = await resetShortTermImageReplacementPreviewSessionBytes(svgaBytes, name);
+          sendJson(response, 200, {
+            accepted: true,
+            previewSvgaBase64: encodeBase64(session.previewBytes),
+            session: session.model
+          });
+          return;
+        }
+
+        if (action !== "apply") {
+          sendJson(response, 400, { error: "action 只支持 apply 或 reset。" });
+          return;
+        }
+
+        const imageKey = typeof body.imageKey === "string" ? body.imageKey : "";
+        const result = await applyShortTermImageReplacementPreviewSessionBytes(
+          svgaBytes,
+          imageKey,
+          decodeBase64(body.pngBase64, "pngBase64"),
+          name
+        );
+        sendJson(response, 200, {
+          accepted: result.accepted,
+          previewSvgaBase64: encodeBase64(result.session.previewBytes),
+          session: result.session.model,
+          replacement: result.workflow
         });
       } catch (error) {
         sendJson(response, error?.statusCode ?? 422, {
