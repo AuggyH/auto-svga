@@ -30,7 +30,8 @@ legacy flow.
 | 3 | S2: playback failure keeps current canvas/file context and supports recovery | Done |
 | 4 | S16: recent file labels are path-redacted and missing recent files fail gracefully | Done |
 | 5 | App-wide commands are grouped by menu type with enabled/disabled state | Done |
-| 6 | Temporary UI/UX shell remains untouched | Done |
+| 6 | S14: save menu availability derives from validated persisted output state | Done |
+| 7 | Temporary UI/UX shell remains untouched | Done |
 
 ## 5. Verification
 Commands run and results:
@@ -41,8 +42,11 @@ passed
 $ node --test dist/tests/short-term-app-state.test.js dist/tests/short-term-product-model.test.js dist/tests/short-term-image-replacement-preview-session.test.js dist/tests/short-term-save-state.test.js
 17 tests passed
 
+$ node --test dist/tests/short-term-app-state.test.js dist/tests/short-term-save-state.test.js
+11 tests passed
+
 $ npm run test:all
-271 tests passed
+272 tests passed
 ```
 
 ## 6. Output inspection
@@ -52,6 +56,8 @@ $ npm run test:all
 - Stale request failures are ignored after a newer preview is already ready.
 - Playback abnormal keeps the current file and enables replay/open recovery.
 - Recent-file missing state does not expose stale metadata.
+- Save and Save As menu states now follow the same `persistedOutput.saveState`
+  contract used by optimization, rename, and image replacement outputs.
 
 ## 7. Risks
 - This is a state contract only. Actual native menu, file chooser, drag/drop,

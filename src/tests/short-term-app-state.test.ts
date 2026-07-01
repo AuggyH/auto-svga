@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  attachShortTermPersistedOutput,
   completeShortTermLocalOpen,
   createShortTermLaunchAppState,
   failShortTermLocalOpen,
@@ -11,6 +12,7 @@ import {
   type ShortTermOpenSource
 } from "../workbench/short-term-app-state.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
+import { createShortTermPersistedOutputRecord } from "../workbench/short-term-save-state.js";
 
 test("short-term app state starts at launch with file entry points enabled", () => {
   const state = createShortTermLaunchAppState({
@@ -165,6 +167,45 @@ test("short-term app state marks missing recent files without exposing stale met
   assert.equal(missing.currentFile, undefined);
   assert.equal(missing.staleFileDataCleared, true);
   assert.equal(commandEnabled(missing, "openRecent"), true);
+});
+
+test("short-term app state derives save menu availability from persisted output", () => {
+  const ready = completeShortTermLocalOpen(
+    startShortTermLocalOpen(createShortTermLaunchAppState(), {
+      requestId: "open-1",
+      source: "fileButton",
+      displayName: "save.svga"
+    }),
+    {
+      requestId: "open-1",
+      inspection: inspectionFixture()
+    }
+  );
+  const persistedOutput = createShortTermPersistedOutputRecord({
+    outputKind: "image_replacement_svga",
+    operationId: "test-output",
+    sourceName: "save.svga",
+    sourceSha256: "source-hash",
+    outputBytes: new Uint8Array([1, 2, 3, 4]),
+    sourceUnchanged: true,
+    validationPassed: true
+  });
+
+  assert.equal(commandEnabled(ready, "save"), false);
+  assert.equal(commandEnabled(ready, "saveAs"), false);
+
+  const dirty = attachShortTermPersistedOutput(ready, persistedOutput);
+  assert.equal(dirty.persistedOutput?.outputKind, "image_replacement_svga");
+  assert.equal(commandEnabled(dirty, "save"), true);
+  assert.equal(commandEnabled(dirty, "saveAs"), true);
+
+  const nextOpen = startShortTermLocalOpen(dirty, {
+    requestId: "open-2",
+    source: "menuOpen",
+    displayName: "next.svga"
+  });
+  assert.equal(nextOpen.persistedOutput, undefined);
+  assert.equal(commandEnabled(nextOpen, "save"), false);
 });
 
 function commandEnabled(state: { commands: readonly { id: string; enabled: boolean }[] }, id: string): boolean {

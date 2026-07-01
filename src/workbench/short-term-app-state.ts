@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { ShortTermProductInspectionModel } from "./short-term-product-model.js";
+import type { ShortTermPersistedOutputRecord } from "./short-term-save-state.js";
 
 export const SHORT_TERM_APP_STATE_SCHEMA_VERSION = 1 as const;
 
@@ -77,6 +78,7 @@ export interface ShortTermAppStateModel {
   stateLabel: string;
   recentFiles: readonly ShortTermRecentFileRecord[];
   currentFile?: ShortTermLoadedFileSummary;
+  persistedOutput?: ShortTermPersistedOutputRecord;
   loading?: ShortTermLoadingState;
   failure?: ShortTermFailureState;
   commands: readonly ShortTermCommandState[];
@@ -205,6 +207,7 @@ export function reportShortTermPlaybackFailure(
     stateLabel: "播放异常",
     recentFiles: state.recentFiles,
     currentFile: state.currentFile,
+    ...(state.persistedOutput ? { persistedOutput: state.persistedOutput } : {}),
     failure: {
       requestId: state.currentFile.requestId,
       kind: "playback",
@@ -227,7 +230,20 @@ export function recoverShortTermPlayback(state: ShortTermAppStateModel): ShortTe
     stateLabel: "预览就绪",
     recentFiles: state.recentFiles,
     currentFile: state.currentFile,
+    ...(state.persistedOutput ? { persistedOutput: state.persistedOutput } : {}),
     staleFileDataCleared: false
+  });
+}
+
+export function attachShortTermPersistedOutput(
+  state: ShortTermAppStateModel,
+  persistedOutput: ShortTermPersistedOutputRecord
+): ShortTermAppStateModel {
+  if (!state.currentFile || !persistedOutput.saveState.outputAvailable) return state;
+
+  return withCommands({
+    ...state,
+    persistedOutput
   });
 }
 
@@ -267,13 +283,15 @@ function commandStates(state: Omit<ShortTermAppStateModel, "commands">): ShortTe
   const isLoading = state.state === "loading";
   const canInspect = state.state === "previewReady" || state.state === "playbackAbnormal";
   const canPlay = state.state === "previewReady";
+  const saveEnabled = state.persistedOutput?.saveState.overwriteSaveEnabled === true;
+  const saveAsEnabled = state.persistedOutput?.saveState.saveAsEnabled === true;
   return [
     command("openSvga", "File", "打开 SVGA", true, "Cmd+O"),
     command("openRecent", "File", "最近打开", state.recentFiles.length > 0, undefined, "没有最近文件"),
     command("clearRecent", "File", "清空最近记录", state.recentFiles.length > 0, undefined, "没有最近文件"),
     command("closeFile", "File", "关闭文件", hasFile && !isLoading, "Cmd+W", "当前没有打开文件"),
-    command("save", "File", "保存", false, "Cmd+S", "没有已验证的可保存输出"),
-    command("saveAs", "File", "另存为", false, "Shift+Cmd+S", "没有已验证的可保存输出"),
+    command("save", "File", "保存", saveEnabled, "Cmd+S", "没有已验证的可保存输出"),
+    command("saveAs", "File", "另存为", saveAsEnabled, "Shift+Cmd+S", "没有已验证的可保存输出"),
     command("copy", "Edit", "复制", true, "Cmd+C"),
     command("selectAll", "Edit", "全选", true, "Cmd+A"),
     command("toggleCompare", "View", "比较预览", canInspect, undefined, "需要先打开有效 SVGA"),
