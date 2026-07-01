@@ -6,19 +6,12 @@
       <div class="asvMenuDropdown" role="menu">
         <button type="button" data-action="open" role="menuitem">Open File...</button>
         <div class="asvMenuDivider" aria-hidden="true"></div>
-        <div class="asvSubMenu" data-component="FileRecentSubmenu">
+        <div class="asvSubMenu" data-component="FileRecentSubmenu" data-prd="S16">
           <button type="button" id="asvFileRecent" aria-haspopup="menu">Recent</button>
           <div class="asvSubMenuDropdown" role="menu" aria-labelledby="asvFileRecent">
-            <button type="button" data-action="open" role="menuitem">avatar_frame_basic.svga</button>
-            <button type="button" data-action="open" role="menuitem">festival_badge_preview.svga</button>
-            <button type="button" data-action="open" role="menuitem">vip_level_ring.svga</button>
-            <button type="button" data-action="open" role="menuitem">gift_frame_gold.svga</button>
-            <button type="button" data-action="open" role="menuitem">profile_aura_blue.svga</button>
-            <button type="button" data-action="open" role="menuitem">shop_medal_entry.svga</button>
-            <button type="button" data-action="open" role="menuitem">live_room_badge.svga</button>
-            <button type="button" data-action="open" role="menuitem">rank_top3_frame.svga</button>
-            <button type="button" data-action="open" role="menuitem">summer_campaign.svga</button>
-            <button type="button" data-action="open" role="menuitem">creator_avatar_fx.svga</button>
+            <div class="asvMenuRecentList" id="asvFileRecentList" role="none"></div>
+            <div class="asvMenuDivider" aria-hidden="true"></div>
+            <button type="button" data-action="clear-recent" id="asvMenuClearRecent" role="menuitem">Clear Recent</button>
           </div>
         </div>
       </div>
@@ -55,15 +48,13 @@
         <p>拖入文件</p>
         <button class="asvPrimary" type="button" data-action="open" data-prd="S1">打开文件</button>
       </div>
-      <section class="asvRecentFiles" aria-label="最近打开" data-component="LaunchRecentFilesList" data-product-change="pending-product-manager-confirmation">
-        <h2>最近打开</h2>
-        <ol>
-          <li><button type="button" data-action="open">avatar_frame_basic.svga</button><span>今天 14:32</span></li>
-          <li><button type="button" data-action="open">festival_badge_preview.svga</button><span>今天 11:08</span></li>
-          <li><button type="button" data-action="open">vip_level_ring.svga</button><span>昨天 19:44</span></li>
-          <li><button type="button" data-action="open">gift_frame_gold.svga</button><span>昨天 16:21</span></li>
-          <li><button type="button" data-action="open">profile_aura_blue.svga</button><span>周二</span></li>
-        </ol>
+      <section class="asvRecentFiles" aria-label="最近打开" data-component="LaunchRecentFilesList" data-prd="S16">
+        <div class="asvRecentHeader">
+          <h2>最近打开</h2>
+          <button type="button" data-action="clear-recent" id="asvLaunchClearRecent">清除记录</button>
+        </div>
+        <ol id="asvLaunchRecentList" aria-describedby="asvRecentStatus"></ol>
+        <p class="asvRecentStatus" id="asvRecentStatus" aria-live="polite"></p>
       </section>
     </section>
   </section>
@@ -149,12 +140,18 @@
 
         <section class="asvTabPanel" id="asvTabOptimization" data-tab-panel="optimization" data-module="OptimizationTabModule" hidden>
           <div class="asvSectionHeader">
-            <h3>优化机会</h3>
+            <div class="asvSectionTitle">
+              <h3>优化机会</h3>
+              <p id="asvOptimizationScope">一键优化只执行可安全执行项；需复核和暂不支持项不会进入批量。</p>
+            </div>
             <button class="asvPrimary" type="button" data-action="run-all-optimizations" data-prd="S9 S10">一键优化</button>
           </div>
           <article class="asvFindingRow" data-component="OptimizationFindingRow">
             <div><strong>透明边界裁剪</strong><p>3 个图片资源存在可裁剪透明边缘，预计减少 64 KB。</p></div>
-            <button class="asvPrimary" type="button" data-action="run-optimization" data-prd="S9 S10">运行优化</button>
+            <div class="asvFindingActions">
+              <span class="asvBadge asvSuccess">可安全执行</span>
+              <button class="asvPrimary" type="button" data-action="run-optimization" data-prd="S9 S10">运行优化</button>
+            </div>
           </article>
           <article class="asvFindingRow" data-component="OptimizationFindingRow">
             <div><strong>未引用资源清理</strong><p>检测到 2 个未使用图片资源，预计减少 32 KB。</p></div>
@@ -163,6 +160,10 @@
           <article class="asvFindingRow" data-component="OptimizationFindingRow">
             <div><strong>序列帧处理</strong><p>检测到可优化空间，当前实现入口标记为需复核。</p></div>
             <span class="asvBadge asvWarning">需复核</span>
+          </article>
+          <article class="asvFindingRow" data-component="OptimizationFindingRow">
+            <div><strong>FPS / 画布调整</strong><p>需要显式确认生产规格影响，短期一键优化不会自动执行。</p></div>
+            <span class="asvBadge">暂不支持/建议项</span>
           </article>
         </section>
 

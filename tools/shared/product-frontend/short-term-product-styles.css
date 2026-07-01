@@ -179,6 +179,21 @@ h3 {
   white-space: nowrap;
 }
 
+.asvMenuRecentList {
+  display: grid;
+  gap: 1px;
+}
+
+.asvMenuRecentList .isMissing {
+  color: var(--asv-color-warning);
+}
+
+.asvMenuEmpty {
+  padding: var(--asv-space-2);
+  color: var(--asv-color-muted);
+  font-size: 12px;
+}
+
 .asvMenuDivider {
   height: 1px;
   margin: var(--asv-space-1) 0;
@@ -371,10 +386,27 @@ h3 {
   color: var(--asv-color-muted);
 }
 
+.asvRecentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--asv-space-2);
+}
+
 .asvRecentFiles h2 {
   color: var(--asv-color-muted);
   font-size: 11px;
   font-weight: 560;
+}
+
+.asvRecentHeader button {
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--asv-color-muted);
+  font-size: 11px;
+  font-weight: 400;
 }
 
 .asvRecentFiles ol {
@@ -397,6 +429,10 @@ h3 {
   padding: 0;
 }
 
+.asvRecentFiles li.isMissing button {
+  color: var(--asv-color-warning);
+}
+
 .asvRecentFiles li + li {
   border-top: 1px solid color-mix(in srgb, var(--asv-color-border) 56%, transparent);
 }
@@ -416,10 +452,28 @@ h3 {
   white-space: nowrap;
 }
 
-.asvRecentFiles span {
+.asvRecentMeta {
   color: var(--asv-color-muted);
   font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.asvRecentStatus,
+.asvRecentEmpty {
+  color: var(--asv-color-muted);
+  font-size: 11px;
+}
+
+.asvRecentStatus {
+  min-height: 16px;
+}
+
+.asvRecentEmpty {
+  display: block;
+  min-height: 24px;
+  padding-top: var(--asv-space-1);
 }
 
 .asvPanelHeader,
@@ -435,6 +489,17 @@ h3 {
 .asvPanelHeader,
 .asvSectionHeader {
   justify-content: space-between;
+}
+
+.asvSectionTitle {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.asvSectionTitle p {
+  color: var(--asv-color-muted);
+  font-size: 11px;
 }
 
 .asvEyebrow {
@@ -634,6 +699,12 @@ dd small {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--asv-space-3);
+}
+
+.asvFindingActions {
+  display: flex;
+  align-items: center;
+  gap: var(--asv-space-2);
 }
 
 .asvFindingRow p {

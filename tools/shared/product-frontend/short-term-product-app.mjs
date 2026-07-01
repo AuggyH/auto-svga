@@ -1,3 +1,20 @@
+const initialRecentFiles = [
+  { id: "avatar-frame-basic", name: "avatar_frame_basic.svga", parent: "Frames", time: "今天 14:32" },
+  { id: "festival-badge-preview", name: "festival_badge_preview.svga", parent: "Campaign", time: "今天 11:08" },
+  { id: "vip-level-ring", name: "vip_level_ring.svga", parent: "VIP", time: "昨天 19:44", missing: true },
+  { id: "gift-frame-gold", name: "gift_frame_gold.svga", parent: "Gifts", time: "昨天 16:21" },
+  { id: "profile-aura-blue", name: "profile_aura_blue.svga", parent: "Profile", time: "周二" },
+  { id: "shop-medal-entry", name: "shop_medal_entry.svga", parent: "Shop", time: "周一" },
+  { id: "live-room-badge", name: "live_room_badge.svga", parent: "Live", time: "6月29日" },
+  { id: "rank-top3-frame", name: "rank_top3_frame.svga", parent: "Rank", time: "6月28日" },
+  { id: "summer-campaign", name: "summer_campaign.svga", parent: "Campaign", time: "6月27日" },
+  { id: "creator-avatar-fx", name: "creator_avatar_fx.svga", parent: "Creator", time: "6月26日" }
+];
+
+function getInitialRecentFiles() {
+  return initialRecentFiles.map((file) => ({ ...file }));
+}
+
 const state = {
   view: "launch",
   tab: "overview",
@@ -12,6 +29,8 @@ const state = {
   textApplied: false,
   imageKey: "profile_frame_highlight",
   optimizationMode: "single",
+  recentFiles: getInitialRecentFiles(),
+  recentStatus: "ready",
   pendingTimer: undefined
 };
 
@@ -19,6 +38,11 @@ const views = new Map(Array.from(document.querySelectorAll("[data-view]"), (node
 const saveBanner = document.querySelector("#asvSaveBanner");
 const textModal = document.querySelector("#asvTextModal");
 const textInput = document.querySelector("#asvTextInput");
+const launchRecentList = document.querySelector("#asvLaunchRecentList");
+const fileRecentList = document.querySelector("#asvFileRecentList");
+const recentStatus = document.querySelector("#asvRecentStatus");
+const launchClearRecent = document.querySelector("#asvLaunchClearRecent");
+const menuClearRecent = document.querySelector("#asvMenuClearRecent");
 
 function clearPendingTimer() {
   if (state.pendingTimer) {
@@ -48,6 +72,7 @@ function startLoading(sample = "normal") {
   state.imageReplaced = false;
   state.textApplied = false;
   state.optimizationMode = "single";
+  state.recentStatus = "ready";
   textModal.hidden = true;
   setView("loading");
   state.pendingTimer = window.setTimeout(() => {
@@ -75,6 +100,24 @@ function startOptimizationCompare(mode = "single") {
   state.dirtyKind = "optimization";
   state.optimizationMode = mode;
   setView("optimization-compare");
+}
+
+function openRecentFile(recentId) {
+  const recentFile = state.recentFiles.find((file) => file.id === recentId);
+  if (!recentFile) return;
+  if (recentFile.missing) {
+    state.recentStatus = "missing";
+    setView("launch");
+    return;
+  }
+  startLoading("normal");
+}
+
+function clearRecentFiles() {
+  if (state.recentFiles.length === 0) return;
+  state.recentFiles = [];
+  state.recentStatus = "cleared";
+  render();
 }
 
 function setMode(mode) {
@@ -136,10 +179,16 @@ function failSave() {
   render();
 }
 
-function action(name) {
+function action(name, detail = {}) {
   switch (name) {
     case "open":
       startLoading("normal");
+      break;
+    case "open-recent":
+      openRecentFile(detail.recentId);
+      break;
+    case "clear-recent":
+      clearRecentFiles();
       break;
     case "open-invalid":
     case "fail-load":
@@ -229,9 +278,81 @@ function action(name) {
   }
 }
 
+function createRecentButton(file, context) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.action = "open-recent";
+  button.dataset.recentId = file.id;
+  button.textContent = file.name;
+  if (context === "menu") {
+    button.setAttribute("role", "menuitem");
+  }
+  if (file.missing) {
+    button.classList.add("isMissing");
+    button.title = "文件不可访问，可清除记录或打开其他文件";
+  }
+  return button;
+}
+
+function renderLaunchRecentFiles() {
+  launchRecentList.replaceChildren();
+  const visibleFiles = state.recentFiles.slice(0, 5);
+  for (const file of visibleFiles) {
+    const item = document.createElement("li");
+    item.classList.toggle("isMissing", Boolean(file.missing));
+    const button = createRecentButton(file, "launch");
+    const meta = document.createElement("span");
+    meta.className = "asvRecentMeta";
+    meta.textContent = `${file.time} · ${file.parent}`;
+    item.append(button, meta);
+    launchRecentList.append(item);
+  }
+
+  if (state.recentFiles.length === 0) {
+    const item = document.createElement("li");
+    item.className = "asvRecentEmpty";
+    item.textContent = "暂无最近打开记录";
+    launchRecentList.append(item);
+  }
+
+  const statusCopy = {
+    ready: "最近记录仅显示文件名和父级位置，不展示完整本地路径。",
+    missing: "这个最近文件已缺失或不可访问。可以打开其他文件，或清除最近记录。",
+    cleared: "最近记录已清除，源文件不会被删除。"
+  };
+  recentStatus.textContent = statusCopy[state.recentStatus] || statusCopy.ready;
+  launchClearRecent.disabled = state.recentFiles.length === 0;
+}
+
+function renderMenuRecentFiles() {
+  fileRecentList.replaceChildren();
+  const visibleFiles = state.recentFiles.slice(0, 10);
+  for (const file of visibleFiles) {
+    const button = createRecentButton(file, "menu");
+    button.textContent = `${file.name} — ${file.parent}`;
+    fileRecentList.append(button);
+  }
+
+  if (state.recentFiles.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "asvMenuEmpty";
+    empty.setAttribute("role", "none");
+    empty.textContent = "No Recent Files";
+    fileRecentList.append(empty);
+  }
+
+  menuClearRecent.disabled = state.recentFiles.length === 0;
+}
+
+function renderRecentFiles() {
+  renderLaunchRecentFiles();
+  renderMenuRecentFiles();
+}
+
 function render() {
   document.body.dataset.asvView = state.view;
   document.body.dataset.asvMode = state.mode;
+  renderRecentFiles();
 
   document.querySelectorAll("[data-needs-file]").forEach((button) => {
     button.disabled = !state.hasFile;
@@ -258,7 +379,7 @@ function render() {
 
   document.querySelector("#asvOptimizationMetric").textContent = state.optimizationMode === "batch" ? "-108 KB" : "-76 KB";
   document.querySelector("#asvOptimizationSummary").textContent = state.optimizationMode === "batch"
-    ? "已批量应用透明边界裁剪和未引用资源清理，生成优化字节，等待明确保存。"
+    ? "已批量应用 2 项可安全执行优化，需复核和暂不支持项未进入批量；生成优化字节，等待明确保存。"
     : "已应用透明边界裁剪，生成优化字节，等待明确保存。";
 
   document.querySelector("#asvImageKey").textContent = state.imageKey;
@@ -275,7 +396,7 @@ function render() {
 document.addEventListener("click", (event) => {
   const actionTarget = event.target.closest("[data-action]");
   const tabTarget = event.target.closest("[data-tab]");
-  if (actionTarget) action(actionTarget.dataset.action);
+  if (actionTarget) action(actionTarget.dataset.action, actionTarget.dataset);
   if (tabTarget) setTab(tabTarget.dataset.tab);
 });
 
