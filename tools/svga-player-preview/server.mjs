@@ -159,6 +159,7 @@ export async function scanLatestArtifacts(rootPath = artifactRoot) {
 
 let reportServicePromise;
 let shortTermModelFactoryPromise;
+let shortTermOptimizationWorkflowPromise;
 
 async function getAvatarFrameInspectionReportService() {
   reportServicePromise ??= import("../../dist/hosts/avatar-frame-inspection.js")
@@ -172,6 +173,12 @@ async function getShortTermProductModelFactory() {
   shortTermModelFactoryPromise ??= import("../../dist/workbench/short-term-product-model.js")
     .then(({ createShortTermProductInspectionModel }) => createShortTermProductInspectionModel);
   return shortTermModelFactoryPromise;
+}
+
+async function getShortTermOptimizationWorkflow() {
+  shortTermOptimizationWorkflowPromise ??= import("../../dist/workbench/short-term-optimization-workflow.js")
+    .then(({ runShortTermOptimizationWorkflow }) => runShortTermOptimizationWorkflow);
+  return shortTermOptimizationWorkflowPromise;
 }
 
 export async function inspectAvatarFrameBytes(bytes, name = "local.svga") {
@@ -200,6 +207,12 @@ export async function inspectShortTermProductModelBytes(bytes, name = "local.svg
   return createShortTermProductInspectionModel(report);
 }
 
+export async function runShortTermOptimizationWorkflowBytes(bytes, name = "local.svga") {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const runShortTermOptimizationWorkflow = await getShortTermOptimizationWorkflow();
+  return runShortTermOptimizationWorkflow(data, { sourceName: name });
+}
+
 async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
   const chunks = [];
   let size = 0;
@@ -213,6 +226,10 @@ async function readRequestBytes(request, maxBytes = 25 * 1024 * 1024) {
     chunks.push(chunk);
   }
   return new Uint8Array(Buffer.concat(chunks));
+}
+
+function encodeBase64(bytes) {
+  return Buffer.from(bytes).toString("base64");
 }
 
 export function createPreviewServer() {
@@ -246,6 +263,23 @@ export function createPreviewServer() {
         sendJson(response, error?.statusCode ?? 422, {
           error: error instanceof Error ? error.message : String(error),
           ...(Array.isArray(error?.issues) ? { issues: error.issues } : {})
+        });
+      }
+      return;
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-optimization-workflow") {
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        const result = await runShortTermOptimizationWorkflowBytes(bytes, name);
+        sendJson(response, 200, {
+          optimizedSvgaBase64: result.optimizedBytes ? encodeBase64(result.optimizedBytes) : null,
+          optimization: result.model
+        });
+      } catch (error) {
+        sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
         });
       }
       return;

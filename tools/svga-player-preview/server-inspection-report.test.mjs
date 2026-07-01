@@ -7,7 +7,8 @@ import { createTransparentImage, encodeRgbaPng } from "../../dist/utils/png-writ
 import {
   createPreviewServer,
   inspectAvatarFrameBytes,
-  inspectShortTermProductModelBytes
+  inspectShortTermProductModelBytes,
+  runShortTermOptimizationWorkflowBytes
 } from "./server.mjs";
 
 test("preview host returns the existing avatar-frame inspection report", async () => {
@@ -59,6 +60,20 @@ test("preview host creates the short-term product inspection model", async () =>
   assert.equal(model.replaceableElements.images.length, 1);
   assert.equal(model.replaceableElements.images[0].imageKey, "img_frame");
   assert.equal(model.assets.some(({ kind }) => kind === "audio"), true);
+});
+
+test("preview host creates the short-term optimization workflow model", async () => {
+  const result = await runShortTermOptimizationWorkflowBytes(
+    await createOptimizableSvgaFixture(),
+    "optimizable.svga"
+  );
+
+  assert.ok(result.optimizedBytes);
+  assert.equal(result.model.schemaVersion, 1);
+  assert.equal(result.model.status, "optimized");
+  assert.equal(result.model.actions.length, 2);
+  assert.equal(result.model.validation.reopenPassed, true);
+  assert.equal(result.model.saveState.saveAsEnabled, true);
 });
 
 test("preview host exposes the inspection report through its HTTP boundary", async () => {
@@ -116,6 +131,35 @@ test("preview host exposes the short-term product model through its HTTP boundar
   }
 });
 
+test("preview host exposes the short-term optimization workflow through its HTTP boundary", async () => {
+  const server = createPreviewServer();
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/short-term-product-optimization-workflow?name=optimizable.svga`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/octet-stream" },
+        body: await createOptimizableSvgaFixture()
+      }
+    );
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(typeof body.optimizedSvgaBase64, "string");
+    assert.equal(body.optimization.status, "optimized");
+    assert.equal(body.optimization.saveState.outputAvailable, true);
+    assert.equal(body.optimization.actions.length, 2);
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+});
+
 async function createSvgaFixture(width, height, imageMode) {
   const root = await protobuf.load(fileURLToPath(new URL("../../proto/svga.proto", import.meta.url)));
   const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
@@ -125,6 +169,46 @@ async function createSvgaFixture(width, height, imageMode) {
     images: { img_frame: encodeRgbaPng(createFrameImage(imageMode)) },
     sprites: [{
       imageKey: "img_frame",
+      frames: [{
+        alpha: 1,
+        layout: { x: 0, y: 0, width: 10, height: 10 },
+        transform: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+        clipPath: "",
+        shapes: []
+      }]
+    }],
+    audios: []
+  });
+  return deflateSync(MovieEntity.encode(payload).finish());
+}
+
+async function createOptimizableSvgaFixture() {
+  const root = await protobuf.load(fileURLToPath(new URL("../../proto/svga.proto", import.meta.url)));
+  const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
+  const duplicateBytes = encodeRgbaPng(createFrameImage("opaque"));
+  const sweepBytes = encodeRgbaPng(createFrameImage("padded"));
+  const unusedBytes = encodeRgbaPng(createFrameImage("opaque"));
+  const payload = MovieEntity.create({
+    version: "2.0",
+    params: { viewBoxWidth: 300, viewBoxHeight: 300, fps: 24, frames: 1 },
+    images: {
+      img_frame: duplicateBytes,
+      img_frame_copy: duplicateBytes,
+      img_sweep: sweepBytes,
+      img_unused: unusedBytes
+    },
+    sprites: [{
+      imageKey: "img_frame",
+      frames: [{
+        alpha: 1,
+        layout: { x: 0, y: 0, width: 10, height: 10 },
+        transform: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+        clipPath: "",
+        shapes: []
+      }]
+    }, {
+      imageKey: "img_frame_copy",
+      matteKey: "img_sweep",
       frames: [{
         alpha: 1,
         layout: { x: 0, y: 0, width: 10, height: 10 },
