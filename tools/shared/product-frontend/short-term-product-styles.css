@@ -1,16 +1,42 @@
 :root {
-  --asv-color-window: var(--visual-window-background, #f4f5f7);
+  --asv-color-window: var(--visual-surface-0, #f2f2f7);
   --asv-color-toolbar: var(--visual-toolbar-background, rgba(246, 247, 249, 0.92));
   --asv-color-panel: var(--visual-panel-surface, rgba(255, 255, 255, 0.82));
+  --asv-color-panel-strong: var(--visual-card-surface-elevated, rgba(255, 255, 255, 0.9));
   --asv-color-solid: var(--surfaceElevated, #fff);
   --asv-color-canvas: var(--checkerboardA, #eef0f3);
+  --asv-color-canvas-alt: var(--checkerboardB, #fff);
   --asv-color-text: var(--visual-text-primary, #111827);
   --asv-color-muted: var(--visual-text-secondary, #667085);
+  --asv-color-tertiary: var(--visual-text-tertiary, #98a2b3);
   --asv-color-border: var(--visual-border, rgba(17, 24, 39, 0.14));
+  --asv-color-border-strong: var(--visual-border-strong, rgba(17, 24, 39, 0.2));
   --asv-color-action: var(--visual-accent, #006ee6);
+  --asv-color-action-hover: color-mix(in srgb, var(--asv-color-action) 88%, #001b3d);
+  --asv-color-on-action: #fff;
   --asv-color-success: var(--visual-success, #1d8f58);
   --asv-color-warning: var(--visual-warning, #b26a00);
   --asv-color-danger: var(--visual-danger, #c9362f);
+  --asv-color-control: color-mix(in srgb, var(--asv-color-solid) 86%, transparent);
+  --asv-color-control-hover: color-mix(in srgb, var(--asv-color-action) 9%, var(--asv-color-solid));
+  --asv-color-control-selected: var(--asv-color-solid);
+  --asv-color-control-recessed: color-mix(in srgb, var(--asv-color-text) 5%, transparent);
+  --asv-color-menu: color-mix(in srgb, var(--asv-color-solid) 96%, transparent);
+  --asv-color-row: color-mix(in srgb, var(--asv-color-solid) 64%, transparent);
+  --asv-color-row-hover: color-mix(in srgb, var(--asv-color-action) 7%, var(--asv-color-row));
+  --asv-color-status: color-mix(in srgb, var(--asv-color-text) 8%, transparent);
+  --asv-color-status-success: color-mix(in srgb, var(--asv-color-success) 10%, transparent);
+  --asv-color-on-status: #fff;
+  --asv-type-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --asv-type-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --asv-font-size-menu: 12px;
+  --asv-font-size-micro: 10px;
+  --asv-font-size-meta: 11px;
+  --asv-font-size-body: 13px;
+  --asv-font-size-title: 16px;
+  --asv-font-size-launch: 17px;
+  --asv-font-size-metric: 30px;
+  --asv-line-height-body: 1.45;
   --asv-space-1: 4px;
   --asv-space-2: 8px;
   --asv-space-3: 12px;
@@ -19,7 +45,34 @@
   --asv-space-6: 24px;
   --asv-radius-1: 6px;
   --asv-radius-2: 8px;
-  --asv-radius-3: 12px;
+  --asv-radius-3: 10px;
+  --asv-shadow-menu: var(--visual-shadow-panel, 0 14px 40px rgba(18, 27, 43, 0.12));
+  --asv-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --asv-shadow-control: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --asv-shadow-floating: 0 18px 44px rgba(15, 23, 42, 0.18);
+  --asv-focus-ring: 0 0 0 3px color-mix(in srgb, var(--asv-color-action) 28%, transparent);
+  --asv-control-height: 30px;
+  --asv-control-height-small: 24px;
+  --asv-toolbar-control-height: 30px;
+  --asv-row-height: 44px;
+  --asv-thumb-size: 44px;
+  --asv-spinner-size: 30px;
+  --asv-modal-width: 520px;
+  --asv-save-banner-width: 360px;
+  --asv-frame-size: 180px;
+  --asv-frame-size-large: 240px;
+  --asv-frame-border: 22px;
+  --asv-stage-min-height: 300px;
+  --asv-checker-size: 20px;
+  --asv-checker-strength: 7%;
+  --asv-backdrop-blur: saturate(180%) blur(18px);
+  --asv-traffic-red: #ff5f57;
+  --asv-traffic-yellow: #febc2e;
+  --asv-traffic-green: #28c840;
+  --asv-frame-ring: color-mix(in srgb, var(--asv-color-action) 54%, var(--asv-color-canvas-alt));
+  --asv-frame-inset: color-mix(in srgb, var(--asv-color-canvas-alt) 56%, transparent);
+  --asv-frame-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+  --asv-modal-backdrop: rgba(7, 10, 16, 0.34);
   --asv-toolbar-height: 54px;
   --asv-menu-height: 30px;
   --asv-inspector-width: 360px;
@@ -45,9 +98,9 @@ body {
   overflow: hidden;
   background: var(--asv-color-window);
   color: var(--asv-color-text);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
-  font-size: 13px;
-  line-height: 1.45;
+  font-family: var(--asv-type-family);
+  font-size: var(--asv-font-size-body);
+  line-height: var(--asv-line-height-body);
 }
 
 button,
@@ -56,18 +109,18 @@ input {
 }
 
 button {
-  min-height: 30px;
+  min-height: var(--asv-control-height);
   padding: 0 var(--asv-space-3);
   border: 1px solid var(--asv-color-border);
   border-radius: var(--asv-radius-2);
-  background: color-mix(in srgb, var(--asv-color-solid) 86%, transparent);
+  background: var(--asv-color-control);
   color: var(--asv-color-text);
   font-weight: 520;
   white-space: nowrap;
 }
 
 button:hover {
-  background: color-mix(in srgb, var(--asv-color-action) 9%, var(--asv-color-solid));
+  background: var(--asv-color-control-hover);
 }
 
 button:disabled {
@@ -78,8 +131,8 @@ button:disabled {
 button:focus-visible,
 input:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--asv-color-action) 30%, transparent);
-  outline-offset: 2px;
+  outline: 0;
+  box-shadow: var(--asv-focus-ring);
 }
 
 h1,
@@ -91,19 +144,19 @@ dl {
 }
 
 h1 {
-  font-size: 30px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: 0;
 }
 
 h2 {
-  font-size: 16px;
+  font-size: var(--asv-font-size-title);
   font-weight: 650;
   letter-spacing: 0;
 }
 
 h3 {
-  font-size: 13px;
+  font-size: var(--asv-font-size-body);
   font-weight: 650;
   letter-spacing: 0;
 }
@@ -125,7 +178,7 @@ h3 {
   gap: var(--asv-space-2);
   border-bottom: 1px solid var(--asv-color-border);
   background: var(--asv-color-toolbar);
-  backdrop-filter: blur(18px);
+  backdrop-filter: var(--asv-backdrop-blur);
 }
 
 .asvMenuBar {
@@ -136,11 +189,11 @@ h3 {
 }
 
 .asvMenuBar button {
-  min-height: 24px;
+  min-height: var(--asv-control-height-small);
   padding-inline: var(--asv-space-2);
   border: 0;
   background: transparent;
-  font-size: 12px;
+  font-size: var(--asv-font-size-menu);
 }
 
 .asvMenuItem {
@@ -157,8 +210,8 @@ h3 {
   padding: var(--asv-space-1);
   border: 1px solid var(--asv-color-border);
   border-radius: var(--asv-radius-2);
-  background: color-mix(in srgb, var(--asv-color-solid) 96%, transparent);
-  box-shadow: var(--visual-shadow-panel, 0 14px 40px rgba(18, 27, 43, 0.12));
+  background: var(--asv-color-menu);
+  box-shadow: var(--asv-shadow-menu);
 }
 
 .asvMenuItem:hover .asvMenuDropdown,
@@ -191,7 +244,7 @@ h3 {
 .asvMenuEmpty {
   padding: var(--asv-space-2);
   color: var(--asv-color-muted);
-  font-size: 12px;
+  font-size: var(--asv-font-size-menu);
 }
 
 .asvMenuDivider {
@@ -220,8 +273,8 @@ h3 {
   padding: var(--asv-space-1);
   border: 1px solid var(--asv-color-border);
   border-radius: var(--asv-radius-2);
-  background: color-mix(in srgb, var(--asv-color-solid) 96%, transparent);
-  box-shadow: var(--visual-shadow-panel, 0 14px 40px rgba(18, 27, 43, 0.12));
+  background: var(--asv-color-menu);
+  box-shadow: var(--asv-shadow-menu);
 }
 
 .asvSubMenu:hover .asvSubMenuDropdown,
@@ -237,6 +290,11 @@ h3 {
   padding: 0 var(--asv-space-4);
 }
 
+.asvToolbarButton {
+  min-height: var(--asv-toolbar-control-height);
+  box-shadow: var(--asv-shadow-control);
+}
+
 .asvTrafficLights {
   display: flex;
   gap: 8px;
@@ -247,26 +305,26 @@ h3 {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #ff5f57;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  background: var(--asv-traffic-red);
+  box-shadow: inset 0 0 0 1px var(--asv-color-border);
 }
 
 .asvTrafficLights span:nth-child(2) {
-  background: #febc2e;
+  background: var(--asv-traffic-yellow);
 }
 
 .asvTrafficLights span:nth-child(3) {
-  background: #28c840;
+  background: var(--asv-traffic-green);
 }
 
 .asvPrimary {
   border-color: color-mix(in srgb, var(--asv-color-action) 70%, var(--asv-color-border));
   background: var(--asv-color-action);
-  color: #fff;
+  color: var(--asv-color-on-action);
 }
 
 .asvPrimary:hover {
-  background: color-mix(in srgb, var(--asv-color-action) 84%, #001b3d);
+  background: var(--asv-color-action-hover);
 }
 
 .asvSegmented {
@@ -274,7 +332,7 @@ h3 {
   padding: 2px;
   border: 1px solid var(--asv-color-border);
   border-radius: var(--asv-radius-2);
-  background: color-mix(in srgb, var(--asv-color-text) 5%, transparent);
+  background: var(--asv-color-control-recessed);
 }
 
 .asvSegmented button {
@@ -286,9 +344,9 @@ h3 {
 
 .asvSegmented .isSelected,
 .asvTabs .isSelected {
-  background: var(--asv-color-solid);
+  background: var(--asv-color-control-selected);
   color: var(--asv-color-action);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--asv-shadow-control);
 }
 
 .asvToolbarSpacer {
@@ -335,6 +393,7 @@ h3 {
   border: 1px solid var(--asv-color-border);
   border-radius: var(--asv-radius-3);
   background: var(--asv-color-panel);
+  box-shadow: var(--asv-shadow-panel);
   overflow: auto;
 }
 
@@ -355,9 +414,9 @@ h3 {
   border-radius: var(--asv-radius-3);
   background-color: var(--asv-color-canvas);
   background-image:
-    linear-gradient(45deg, color-mix(in srgb, var(--asv-color-text) 7%, transparent) 25%, transparent 25%),
-    linear-gradient(-45deg, color-mix(in srgb, var(--asv-color-text) 7%, transparent) 25%, transparent 25%);
-  background-size: 20px 20px;
+    linear-gradient(45deg, color-mix(in srgb, var(--asv-color-text) var(--asv-checker-strength), transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--asv-color-text) var(--asv-checker-strength), transparent) 25%, transparent 25%);
+  background-size: var(--asv-checker-size) var(--asv-checker-size);
 }
 
 .asvLaunchPrompt {
@@ -368,7 +427,7 @@ h3 {
 
 .asvLaunchPrompt p {
   color: var(--asv-color-text);
-  font-size: 17px;
+  font-size: var(--asv-font-size-launch);
   font-weight: 680;
 }
 
@@ -395,7 +454,7 @@ h3 {
 
 .asvRecentFiles h2 {
   color: var(--asv-color-muted);
-  font-size: 11px;
+  font-size: var(--asv-font-size-meta);
   font-weight: 560;
 }
 
@@ -405,7 +464,7 @@ h3 {
   border: 0;
   background: transparent;
   color: var(--asv-color-muted);
-  font-size: 11px;
+  font-size: var(--asv-font-size-meta);
   font-weight: 400;
 }
 
@@ -454,7 +513,7 @@ h3 {
 
 .asvRecentMeta {
   color: var(--asv-color-muted);
-  font-size: 11px;
+  font-size: var(--asv-font-size-meta);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -463,7 +522,7 @@ h3 {
 .asvRecentStatus,
 .asvRecentEmpty {
   color: var(--asv-color-muted);
-  font-size: 11px;
+  font-size: var(--asv-font-size-meta);
 }
 
 .asvRecentStatus {
@@ -499,12 +558,12 @@ h3 {
 
 .asvSectionTitle p {
   color: var(--asv-color-muted);
-  font-size: 11px;
+  font-size: var(--asv-font-size-meta);
 }
 
 .asvEyebrow {
   color: var(--asv-color-muted);
-  font-size: 11px;
+  font-size: var(--asv-font-size-meta);
   font-weight: 650;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -520,9 +579,9 @@ h3 {
   border-radius: var(--asv-radius-2);
   background-color: var(--asv-color-canvas);
   background-image:
-    linear-gradient(45deg, color-mix(in srgb, var(--asv-color-text) 7%, transparent) 25%, transparent 25%),
-    linear-gradient(-45deg, color-mix(in srgb, var(--asv-color-text) 7%, transparent) 25%, transparent 25%);
-  background-size: 20px 20px;
+    linear-gradient(45deg, color-mix(in srgb, var(--asv-color-text) var(--asv-checker-strength), transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--asv-color-text) var(--asv-checker-strength), transparent) 25%, transparent 25%);
+  background-size: var(--asv-checker-size) var(--asv-checker-size);
 }
 
 .asvStage {
@@ -530,22 +589,22 @@ h3 {
 }
 
 .asvMiniStage {
-  min-height: 300px;
+  min-height: var(--asv-stage-min-height);
 }
 
 .asvFrameArt {
-  width: 180px;
-  height: 180px;
-  border: 22px solid color-mix(in srgb, var(--asv-color-action) 54%, #cfd7e6);
+  width: var(--asv-frame-size);
+  height: var(--asv-frame-size);
+  border: var(--asv-frame-border) solid var(--asv-frame-ring);
   border-radius: 36%;
   box-shadow:
-    inset 0 0 0 8px rgba(255, 255, 255, 0.36),
-    0 20px 40px rgba(0, 0, 0, 0.12);
+    inset 0 0 0 8px var(--asv-frame-inset),
+    var(--asv-frame-shadow);
 }
 
 .asvFrameLarge {
-  width: 240px;
-  height: 240px;
+  width: var(--asv-frame-size-large);
+  height: var(--asv-frame-size-large);
 }
 
 .asvRuntimeChip,
@@ -557,7 +616,7 @@ h3 {
   padding: var(--asv-space-2) var(--asv-space-3);
   border-radius: 999px;
   background: var(--asv-color-success);
-  color: white;
+  color: var(--asv-color-on-status);
   font-weight: 650;
 }
 
@@ -573,13 +632,18 @@ h3 {
 }
 
 .asvTabs {
-  padding-bottom: var(--asv-space-3);
-  border-bottom: 1px solid var(--asv-color-border);
+  padding: 2px;
+  border: 1px solid var(--asv-color-border);
+  border-radius: var(--asv-radius-2);
+  background: var(--asv-color-control-recessed);
 }
 
 .asvTabs button {
   flex: 1;
   min-width: 0;
+  min-height: 28px;
+  border: 0;
+  background: transparent;
 }
 
 .asvTabPanel {
@@ -600,7 +664,13 @@ h3 {
   padding: var(--asv-space-2);
   border: 1px solid var(--asv-color-border);
   border-radius: var(--asv-radius-2);
-  background: color-mix(in srgb, var(--asv-color-solid) 62%, transparent);
+  background: var(--asv-color-row);
+}
+
+.asvFactGrid div:hover,
+.asvAssetRow:hover,
+.asvFindingRow:hover {
+  background: var(--asv-color-row-hover);
 }
 
 .asvFactGrid div {
@@ -610,7 +680,7 @@ h3 {
 
 dt {
   color: var(--asv-color-muted);
-  font-size: 11px;
+  font-size: var(--asv-font-size-meta);
 }
 
 dd {
@@ -621,8 +691,8 @@ dd {
 }
 
 dd strong {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
+  font-family: var(--asv-type-mono);
+  font-size: var(--asv-font-size-body);
   font-weight: 650;
 }
 
@@ -631,8 +701,8 @@ dd small {
   align-items: center;
   gap: 6px;
   color: var(--asv-color-muted);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
-  font-size: 11px;
+  font-family: var(--asv-type-family);
+  font-size: var(--asv-font-size-meta);
 }
 
 .asvSpecStatus {
@@ -641,16 +711,17 @@ dd small {
   align-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--asv-color-success) 10%, transparent);
+  background: var(--asv-color-status-success);
   color: var(--asv-color-success);
   font-weight: 650;
 }
 
 .asvAssetRow {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto auto auto;
+  grid-template-columns: var(--asv-thumb-size) minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: var(--asv-space-2);
+  min-height: var(--asv-row-height);
 }
 
 .asvAssetRow strong,
@@ -665,23 +736,23 @@ dd small {
 }
 
 .asvThumb {
-  width: 44px;
-  height: 44px;
+  width: var(--asv-thumb-size);
+  height: var(--asv-thumb-size);
   border: 1px solid var(--asv-color-border);
   border-radius: var(--asv-radius-2);
   background:
-    radial-gradient(circle at 62% 32%, color-mix(in srgb, var(--asv-color-warning) 55%, white) 0 9px, transparent 10px),
-    linear-gradient(135deg, color-mix(in srgb, var(--asv-color-action) 38%, white), color-mix(in srgb, var(--purple, #5856d6) 22%, white));
+    radial-gradient(circle at 62% 32%, color-mix(in srgb, var(--asv-color-warning) 55%, var(--asv-color-canvas-alt)) 0 9px, transparent 10px),
+    linear-gradient(135deg, color-mix(in srgb, var(--asv-color-action) 38%, var(--asv-color-canvas-alt)), color-mix(in srgb, var(--asv-color-success) 18%, var(--asv-color-canvas-alt)));
 }
 
 .asvAltThumb {
   background:
-    radial-gradient(circle at 40% 40%, color-mix(in srgb, var(--asv-color-success) 46%, white) 0 10px, transparent 11px),
-    linear-gradient(135deg, color-mix(in srgb, var(--asv-color-action) 24%, white), color-mix(in srgb, var(--asv-color-warning) 26%, white));
+    radial-gradient(circle at 40% 40%, color-mix(in srgb, var(--asv-color-success) 46%, var(--asv-color-canvas-alt)) 0 10px, transparent 11px),
+    linear-gradient(135deg, color-mix(in srgb, var(--asv-color-action) 24%, var(--asv-color-canvas-alt)), color-mix(in srgb, var(--asv-color-warning) 26%, var(--asv-color-canvas-alt)));
 }
 
 .asvSequenceThumb {
-  background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--asv-color-action) 24%, white), color-mix(in srgb, var(--asv-color-action) 24%, white) 8px, white 8px, white 16px);
+  background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--asv-color-action) 24%, var(--asv-color-canvas-alt)), color-mix(in srgb, var(--asv-color-action) 24%, var(--asv-color-canvas-alt)) 8px, var(--asv-color-canvas-alt) 8px, var(--asv-color-canvas-alt) 16px);
 }
 
 .asvAudioThumb,
@@ -689,7 +760,7 @@ dd small {
   display: grid;
   place-items: center;
   color: var(--asv-color-muted);
-  font-size: 10px;
+  font-size: var(--asv-font-size-micro);
   font-weight: 700;
   background: var(--asv-color-canvas);
 }
@@ -719,9 +790,9 @@ dd small {
   align-items: center;
   padding: 0 var(--asv-space-2);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--asv-color-text) 8%, transparent);
+  background: var(--asv-color-status);
   color: var(--asv-color-muted);
-  font-size: 12px;
+  font-size: var(--asv-font-size-menu);
   font-weight: 560;
 }
 
@@ -739,7 +810,7 @@ dd small {
 
 .asvMetric {
   color: var(--asv-color-success);
-  font-size: 30px;
+  font-size: var(--asv-font-size-metric);
   font-weight: 760;
 }
 
@@ -784,9 +855,9 @@ dd small {
   top: calc(var(--asv-menu-height) + var(--asv-toolbar-height) + var(--asv-space-3));
   left: 50%;
   z-index: 10;
-  min-width: 360px;
+  min-width: var(--asv-save-banner-width);
   transform: translateX(-50%);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--asv-shadow-floating);
 }
 
 .asvModal {
@@ -795,13 +866,13 @@ dd small {
   z-index: 20;
   display: grid;
   place-items: center;
-  background: rgba(7, 10, 16, 0.34);
+  background: var(--asv-modal-backdrop);
 }
 
 .asvModalPanel {
   display: grid;
   gap: var(--asv-space-3);
-  width: 520px;
+  width: var(--asv-modal-width);
 }
 
 .asvModalPanel label {
@@ -819,8 +890,8 @@ dd small {
 }
 
 .asvSpinner {
-  width: 30px;
-  height: 30px;
+  width: var(--asv-spinner-size);
+  height: var(--asv-spinner-size);
   border: 3px solid color-mix(in srgb, var(--asv-color-action) 20%, transparent);
   border-top-color: var(--asv-color-action);
   border-radius: 50%;
