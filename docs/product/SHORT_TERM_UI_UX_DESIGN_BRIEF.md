@@ -50,15 +50,16 @@ closely as the implementation allows.
 Design around the most common short-term flow first:
 
 1. Open or drag a local SVGA file.
-2. Confirm playback and visual appearance.
-3. Read basic file information and production-spec comparison.
-4. Inspect asset groups and replaceable elements.
-5. Preview replaceable image or text behavior.
-6. Rename imageKey when needed.
-7. Review optimization opportunities.
-8. Run enabled optimization and compare before/after.
-9. Save by Overwrite Save or Save As.
-10. Reopen or continue inspection.
+2. Or reopen a recent SVGA file from the launch page or File menu.
+3. Confirm playback and visual appearance.
+4. Read basic file information and production-spec comparison.
+5. Inspect asset groups and replaceable elements.
+6. Preview replaceable image or text behavior.
+7. Rename imageKey when needed.
+8. Review optimization opportunities.
+9. Run enabled optimization and compare before/after.
+10. Save by Overwrite Save or Save As.
+11. Reopen or continue inspection.
 
 Do not optimize the first screen for rare or deferred workflows.
 
@@ -69,7 +70,7 @@ states is incomplete.
 
 | Screen or state | Must show |
 | --- | --- |
-| Launch page | One primary central canvas/drop target, open action, drag hint, no full app chrome beyond the window shell. Recent files, if shown, must stay visually secondary to the open/drop action. |
+| Launch page | One primary central canvas/drop target, open action, drag hint, no full app chrome beyond the window shell. Up to five recent SVGA records appear below Open/Drag as secondary actions. |
 | Loading | Honest loading feedback and a visible way to choose another file when loading is slow or failed. |
 | Load failed | Human-readable error, no stale file data, recovery by opening or dragging another file. |
 | Preview mode: Overview | Center playback canvas and right Overview tab with file facts, production-spec comparison, and asset summary. |
@@ -179,7 +180,7 @@ The UI/UX owner may refine labels, but the design must cover the action groups.
 | Menu | Short-term content |
 | --- | --- |
 | Auto SVGA | About, Settings, Services, Hide, Quit. |
-| File | Open SVGA, Recent submenu if supported, Close File, Overwrite Save, Save As. |
+| File | Open SVGA, Close File, Recent submenu with up to ten recent SVGA records and clear-history action, Overwrite Save, Save As. |
 | Edit | Standard text operations where applicable; Rename imageKey; cancel active rename/edit state. |
 | View | Preview Mode, Edit Mode, Enter/Exit Compare, appearance or theme entry if supported. |
 | Playback | Play/Pause, Replay, Loop if supported. |
@@ -244,7 +245,7 @@ The UI design should specify at least:
 - traffic-light integration
 - file open button
 - launch drop canvas
-- optional recent files list and File > Recent submenu, pending product confirmation
+- recent files list and File > Recent submenu
 - compare entry
 - mode switch
 - playback controls
@@ -309,7 +310,7 @@ The UI/UX owner should produce:
 7. Empty/error/loading copy examples.
 8. Responsive/window-size recommendations with screenshots.
 9. Accessibility checklist.
-10. Requirement trace mapping from design surfaces to S1-S15 in
+10. Requirement trace mapping from design surfaces to S1-S16 in
     `docs/product/PRODUCT_ROADMAP.md`.
 
 ## Explicit Design Non-goals
@@ -333,12 +334,6 @@ The short-term design must not include:
 
 These are intentionally left for the UI/UX owner or Product Owner review:
 
-- whether recent files are included in the short-term scope; the current
-  prototype shows five secondary launch-page records and ten File > Recent
-  submenu records as a static interaction proposal only
-- whether the Optimization tab should expose a formal one-click optimization
-  action that batches safe enabled optimizations; the current prototype treats
-  review-only/risky items as excluded from one-click execution
 - final short-term tab label for Replaceable Elements, such as
   `可替换元素` or `编辑可替换元素`
 - final default window size and minimum supported window size
@@ -348,3 +343,28 @@ These are intentionally left for the UI/UX owner or Product Owner review:
 - whether runtime image replacement should ever enable persisted save in the
   short-term build, beyond imageKey rename and optimization output
 - exact appearance/theme menu behavior while dark mode is menu-only
+
+## PM Decisions From 2026-07-02 UI/UX Sync
+
+Recent files:
+
+- Confirmed for the short-term formal product scope.
+- Launch shows up to five recent SVGA records below the primary Open/Drag
+  actions.
+- `File > Recent` shows up to ten recent SVGA records and a clear-history
+  action.
+- Recent records must use real recent-file state in the formal release, but
+  must not expose full local paths by default.
+- Missing or inaccessible recent files must show recoverable feedback without
+  stale file metadata.
+
+Safe optimization batch action:
+
+- Approved only as a batch action for safe deterministic optimizations that can
+  produce bytes and pass round-trip validation without human review.
+- Review-only, risky, unsupported, or visually ambiguous findings must stay out
+  of the batch action.
+- `一键优化` is allowed when nearby text clearly says the action applies only to
+  safe executable items. More explicit labels such as `执行安全优化` or
+  `生成安全优化副本` remain acceptable.
+- Copy should distinguish `可安全执行`, `需复核`, and `暂不支持/建议项`.

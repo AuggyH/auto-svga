@@ -45,7 +45,7 @@ Historical references that must not become the visual baseline:
 1. Start from product state, not screens.
 2. Build from tokens to atoms to molecules to components to modules to pages.
 3. Keep Preview mode and Edit mode structurally distinct.
-4. Keep short-term actions inside S1-S15.
+4. Keep short-term actions inside S1-S16.
 5. Keep disabled controls honest and explain why they are unavailable.
 6. Keep persisted byte-output actions separate from runtime-only previews.
 7. Do not expose export acceptance, sequence repair, batch replacement, AI,
@@ -91,7 +91,7 @@ Before implementation begins, the design or code task must declare:
 
 | Field | Required content |
 | --- | --- |
-| PRD IDs | S1-S15 IDs touched by the task |
+| PRD IDs | S1-S16 IDs touched by the task |
 | Page states | States rendered or changed |
 | Modules | Modules affected |
 | Components | Components created or changed |

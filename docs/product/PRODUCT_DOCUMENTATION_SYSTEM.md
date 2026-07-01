@@ -101,9 +101,9 @@ Create a new product document only when all are true:
 | What is the short-, mid-, and long-term product requirement plan? | `docs/product/PRODUCT_ROADMAP.md` | Product horizon, phase, requirement group, interaction class, or global non-goal changes |
 | What is the active mainline? | `docs/product/PRODUCT_ROADMAP.md` | Phase priority, scope, or delivery track changes |
 | What should guide short-term UI/UX redesign? | `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md` | macOS-first design input, screen inventory, menu/shortcut coverage, or design deliverable expectations change; must not override the main PRD |
-| How must short-term UI/UX design and code execution stay tokenized, componentized, and traceable? | `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md` | Design-system architecture, token/component rules, implementation gates, or S1-S15 design-to-code trace expectations change; must not override the main PRD |
+| How must short-term UI/UX design and code execution stay tokenized, componentized, and traceable? | `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md` | Design-system architecture, token/component rules, implementation gates, or S1-S16 design-to-code trace expectations change; must not override the main PRD |
 | What concrete tokens, variables, components, modules, and page-state compositions should short-term UI/UX work use? | `docs/product/SHORT_TERM_UI_UX_DESIGN_SYSTEM_SPEC.md` | Token inventory, component inventory, module composition, or page-state composition changes; must not override the main PRD |
-| What is the low-fidelity information architecture and wireframe structure for the short-term UI/UX redesign? | `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md` | Navigation model, low-fidelity frame, state flow, or S1-S15 surface trace changes; must not override the main PRD |
+| What is the low-fidelity information architecture and wireframe structure for the short-term UI/UX redesign? | `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md` | Navigation model, low-fidelity frame, state flow, or S1-S16 surface trace changes; must not override the main PRD |
 | What is true about the active Workbench run? | `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md` | Meaningful product checkpoint, blocker change, or owner correction |
 | What is first-distribution readiness? | `docs/product/SHORT_TERM_DISTRIBUTION_PREP.md` | Package tier, release gate, credential, privacy, or rollback change |
 | What editing is supported? | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md` | Any editor capability, Save As, replacement, or fail-closed rule change |
@@ -123,7 +123,7 @@ Create a new product document only when all are true:
 | `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md` | Active subordinate design input | Guides macOS-first UI/UX design; cannot redefine scope from the main PRD. |
 | `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md` | Active subordinate execution plan | Defines design-system-first execution, token/component traceability, and implementation gates; cannot redefine scope from the main PRD. |
 | `docs/product/SHORT_TERM_UI_UX_DESIGN_SYSTEM_SPEC.md` | Active subordinate design-system inventory | Defines concrete tokens, variables, components, modules, and page-state composition; cannot redefine scope from the main PRD. |
-| `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md` | Active subordinate low-fidelity IA | Defines navigation, state flow, wireframes, and S1-S15 surface trace; cannot redefine scope from the main PRD. |
+| `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md` | Active subordinate low-fidelity IA | Defines navigation, state flow, wireframes, and S1-S16 surface trace; cannot redefine scope from the main PRD. |
 | `docs/product/P*_IMPLEMENTATION_PLAN.md` | Stage implementation plans | May describe how to execute a stage; must not redefine product scope. |
 | `docs/loop/milestones/*.md` | Historical or active milestone contracts | Evidence/contract layer; not PRD authority. |
 | `docs/product/p6/**` | P6 worker context, evidence, and handoff material | Supporting evidence and lineage; not PRD authority. |

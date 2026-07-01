@@ -12,7 +12,7 @@ shared product frontend without replacing the historical shared
 
 This is the first implementation slice of the corrected macOS-first UI/UX
 direction. It expresses the short-term app shell, page states, modules,
-component trace attributes, and fixture-only interactions for S1-S15. It does
+component trace attributes, and fixture-only interactions for S1-S16. It does
 not connect real SVGA parsing, optimization, replacement, rename, or save
 logic.
 
@@ -47,12 +47,12 @@ interaction structure over final visual styling:
 
 ## Requirement Checks
 
-- Product authority: aligned to `docs/product/PRODUCT_ROADMAP.md` S1-S15.
+- Product authority: aligned to `docs/product/PRODUCT_ROADMAP.md` S1-S16.
 - Main PRD boundary: `docs/product/PRODUCT_ROADMAP.md` is product-manager owned
   and was not changed by this corrected UI/UX commit.
 - PM sync: launch-page recent files and one-click optimization are documented
-  in `docs/reviews/2026-07-02-codex-uiux-product-sync.md` for Product Manager
-  review instead of being promoted into the main PRD.
+  in `docs/reviews/2026-07-02-codex-uiux-product-sync.md` and promoted into
+  the main PRD as short-term formal scope.
 - UI inputs: follows `DESIGN.md`,
   `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md`,
   `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md`, and
@@ -91,28 +91,34 @@ interaction structure over final visual styling:
 
 ## Product Manager Sync
 
-The following prototype decisions must be confirmed by the Product Manager
-before they are treated as committed short-term product scope. They are also
-recorded in `docs/reviews/2026-07-02-codex-uiux-product-sync.md` for handoff:
+The following prototype decisions were reviewed by the Product Manager in
+`docs/reviews/2026-07-02-codex-uiux-product-sync.md`:
 
 - Recent files: launch page shows five low-emphasis recent records inside the
-  canvas; File menu stores ten records under a `Recent` submenu. Current
-  implementation is static only and does not read/write real history.
+  canvas; File menu stores ten records under a `Recent` submenu. PM decision:
+  approved for the short-term formal product scope. Formal release behavior
+  must use real recent-file state, path-redacted labels, clear-history behavior,
+  and missing-file recovery.
 - One-click optimization: Optimization tab shows `一键优化` that batches safe
   enabled optimizations. Review-only/risky items, such as sequence processing
-  in the fixture, remain excluded.
+  in the fixture, remain excluded. PM decision: approved as a short-term
+  one-click optimization action constrained to safe executable optimization
+  items. The label `一键优化` is acceptable when nearby copy makes the safe-only
+  scope explicit.
 
-The main PRD was not expanded to require these two behaviors. They are tracked
-as pending product-confirmation items in the subordinate UI brief and the
-separate UI/UX -> PM sync note.
+The main PRD was updated for both PM-confirmed recent-file behavior and the
+safe one-click optimization boundary.
 
 ## Risks And Gaps
 
 - This is not yet the default Web Preview or Desktop entry.
 - It is fixture-only UI behavior and does not prove real playback, parsing,
   optimization bytes, rename reference closure, or save validation.
-- Recent files and one-click optimization are static UI proposals pending
-  Product Manager confirmation.
+- Recent files are currently static shell behavior only; a later integration
+  slice must connect real recent-file state, path-redacted labels,
+  clear-history behavior, and missing-file recovery before release.
+- The current `一键优化` prototype label needs nearby safe-only copy before it is
+  treated as final release wording.
 - A later integration slice must decide when to switch the default product
   entry to this shell and how to preserve or retire old P6 evidence contracts.
 

@@ -32,6 +32,7 @@ Covered short-term scope:
 - S13 runtime replaceable text preview
 - S14 Overwrite Save and Save As
 - S15 no-audio and unsupported-audio truthfulness
+- S16 recent SVGA files on launch and File menu
 
 Out of scope:
 
@@ -118,11 +119,14 @@ flowchart TD
 │ Open local SVGA                             │
 │ Drop a file here or use Open SVGA...        │
 │ [Open SVGA...]                              │
+│ Recent                                      │
+│   avatar_frame_intro.svga        parent dir │
+│   profile_border_loop.svga       parent dir │
 │ Local only                                  │
 └─────────────────────────────────────────────┘
 ```
 
-Trace: S1, S2.
+Trace: S1, S2, S16.
 
 ### Loading
 
@@ -247,7 +251,7 @@ Trace: S14.
 
 Short-term Edit mode must not expose inactive advanced editing controls.
 
-## S1-S15 Surface Trace
+## S1-S16 Surface Trace
 
 | PRD ID | Primary state | Module |
 | --- | --- | --- |
@@ -266,6 +270,7 @@ Short-term Edit mode must not expose inactive advanced editing controls.
 | S13 | Runtime text replacement | `ReplaceableElementsTabModule` |
 | S14 | Save states | `SaveStateModule` |
 | S15 | Preview Overview | `OverviewTabModule` |
+| S16 | Launch, File menu, recent missing state | `LaunchModule`, `MenuBarCommandModel` |
 
 ## Open Decisions Preserved
 

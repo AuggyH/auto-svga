@@ -60,10 +60,10 @@ can express the intent.
 
 | Component | PRD IDs | Token dependencies |
 | --- | --- | --- |
-| `Icon` | S1-S15 | semantic color, icon size |
-| `Text` | S1-S15 | type and text color |
-| `Label` | S3-S8, S11-S15 | text role |
-| `Badge` | S2, S4, S7-S15 | status color and radius |
+| `Icon` | S1-S16 | semantic color, icon size |
+| `Text` | S1-S16 | type and text color |
+| `Label` | S3-S8, S11-S16 | text role |
+| `Badge` | S2, S4, S7-S16 | status color and radius |
 | `StatusDot` | S2, S4, S8-S14 | status color |
 | `Divider` | S3-S8 | border color |
 | `Spinner` | S1-S2, S9-S10, S14 | action color, motion |
@@ -80,7 +80,7 @@ can express the intent.
 | `TabItem` | S3-S8, S12-S13 | selected, hover, focus, disabled |
 | `FactCell` | S3-S5 | known, unknown, warning |
 | `SpecStatusCell` | S4 | pass, warning, fail, unknown |
-| `InlineStatus` | S2, S8-S15 | info, success, warning, danger, loading |
+| `InlineStatus` | S2, S8-S16 | info, success, warning, danger, loading |
 | `FileDropTarget` | S1-S2 | empty, hover, invalid, loading |
 | `PlaybackButtonGroup` | S2 | playing, paused, failed, disabled |
 | `ContextMenuItem` | S11-S13 | enabled, disabled, shortcut |
@@ -93,8 +93,8 @@ can express the intent.
 | --- | --- | --- |
 | `WindowToolbar` | app shell | toolbar/menu state proof |
 | `LaunchDropCanvas` | LaunchModule | launch/open/drop proof |
-| `LaunchRecentFilesList` | LaunchModule | optional recent-file proposal proof |
-| `FileRecentSubmenu` | MenuBarCommandModel | optional recent-file menu proposal proof |
+| `LaunchRecentFilesList` | LaunchModule | S16 recent-file launch proof |
+| `FileRecentSubmenu` | MenuBarCommandModel | S16 recent-file menu proof |
 | `PreviewStage` | PreviewCanvasModule | playback and abnormal-state proof |
 | `RightTabPanel` | Preview mode | tab screenshot and keyboard proof |
 | `OverviewFactRow` | OverviewTabModule | rendered Overview proof |

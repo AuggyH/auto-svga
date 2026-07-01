@@ -6,8 +6,8 @@ Autonomous reset: Product Owner authorized SVGA Workbench v1 autonomous executio
 beyond the prior P6-R1 human-gate/UI-polish loop.
 Owner correction: On 2026-07-01, the short-term formal app scope was corrected
 to the SVGA preview, inspection, replaceable-element preview, imageKey rename,
-and optimization workflow below. This corrected scope supersedes earlier
-Workbench v1 feature planning.
+recent-file reopening, and optimization workflow below. This corrected scope
+supersedes earlier Workbench v1 feature planning.
 
 Product documentation system:
 `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` defines the PM responsibility
@@ -52,7 +52,9 @@ the macOS menu bar.
 Goal: ship a macOS-first SVGA app that opens local SVGA files, previews
 playback, exposes file and asset information, supports designer-intended
 replaceable-element preview, supports imageKey rename, and produces optimized
-SVGA output through explicit Overwrite Save or Save As actions.
+SVGA output through explicit Overwrite Save or Save As actions. The short-term
+app also remembers recent SVGA files as a formal convenience workflow, with
+path-redacted display and user-controlled clearing.
 
 ### Required Capabilities
 
@@ -73,6 +75,7 @@ SVGA output through explicit Overwrite Save or Save As actions.
 | S13 | Preview replaceable text | In Preview mode, replaceable text elements can be edited through a modal and applied as runtime dynamic text preview. This simulates terminal playback behavior and does not imply direct SVGA-byte text editing. |
 | S14 | Save edited output | Overwrite Save and Save As are both formal product actions. All persisted byte-edit operations, including imageKey rename, image replacement output, and optimization output, may use either action. |
 | S15 | Keep audio deferred | Audio parsing and duration are not required for the short-term version. If no audio is detected or audio parsing is not implemented, the audio group shows `当前文件暂无音频资产`. |
+| S16 | Show recent SVGA files | The launch page shows up to five low-emphasis recent SVGA records below Open/Drag actions, and `File > Recent` shows up to ten records plus a clear-history action. Recent records must open the same local-file flow, hide full local paths by default, and fail gracefully when a file is missing or inaccessible. |
 
 ### Short-term Acceptance Matrix
 
@@ -97,6 +100,7 @@ ready.
 | S13 | Replaceable text preview applies supported runtime dynamic text fields and reset in Preview mode without persisting text into SVGA bytes. | Runtime text proof, reset proof, byte-immutability proof. |
 | S14 | Overwrite Save and Save As are separate explicit buttons; both stay disabled until a persisted output exists and both revalidate output after writing. | Dirty-state proof, overwrite proof, Save As proof, reopen validation proof. |
 | S15 | Audio group does not block release; no-audio and unsupported-audio states are visible and truthful. | Audio-empty-state proof and known-limitation entry. |
+| S16 | Launch recent rows and `File > Recent` use real recent-file state, preserve Open/Drag as higher-priority actions, avoid full-path exposure by default, clear history on request, and recover gracefully from missing files. | Recent-state persistence proof, launch five-row proof, menu ten-row proof, path-redaction proof, clear-history proof, missing-file recovery proof. |
 
 ### Replaceable Element Definition
 
@@ -146,6 +150,16 @@ The startup page is primarily one preview card prompting the user to open or
 drag in a file. It also prepares for future multi-format routing and gives the
 main app surface time to load without appearing blocked.
 
+Recently opened files are part of the short-term formal product scope. The
+launch page shows up to five recent SVGA files below the primary Open and Drag
+In actions. Recent rows must stay visually secondary, must not expose full
+local paths by default, and must use the same loading, validation, error, and
+recovery flow as files opened from the file chooser or drag-and-drop.
+
+The macOS File menu includes a `Recent` submenu with up to ten recent SVGA
+files and a clear-history action. Clearing recent history removes records from
+the launch page and menu without touching source files.
+
 ### Main Layout
 
 The main app uses a left / center / right structure, but each mode controls
@@ -190,6 +204,7 @@ than as hidden feature modules.
 | Save complete | Saved file feedback with updated clean/dirty state | Continue preview or open another file |
 | Save failed | Failure reason and retry/Save As recovery | Retry save or return to dirty state |
 | Edit reserved | Full left/center/right layout, layer list visible, right operation area empty | Switch back -> Preview ready |
+| Recent file missing | Launch or menu recent entry reports a missing/inaccessible file without stale metadata | Open another file or clear recent history -> Launch or Loading |
 
 No short-term state may expose export acceptance, sequence repair, advanced
 layer editing, inactive feature placeholders, or a separate production-spec
@@ -218,6 +233,8 @@ Text elements:
 ### Top Bar And macOS Chrome
 
 - The top-left action is the file chooser.
+- The File menu and launch page include recent-file reopening as secondary
+  actions.
 - The compare-mode entry sits next to the file chooser and also has a macOS menu
   entry.
 - The top-right actions are Overwrite Save and Save As. They are disabled until
@@ -289,6 +306,21 @@ not active buttons.
 | Sequence-frame processing | Allowed only for optimization | May remove or collapse mechanically safe duplicate/unreferenced frame resources; anti-flicker sequence repair is mid-term. |
 | FPS or canvas adjustment | Allowed only with explicit confirmation | Production spec remains satisfied, timing/canvas impact is shown, before/after playback comparison passes. |
 
+Safe optimization batch action:
+
+- The short-term product may expose one primary batch action for safe
+  deterministic optimization items only.
+- The action must include only items that can produce optimized bytes and pass
+  round-trip safety proof without human review.
+- Review-only, risky, unsupported, or visually ambiguous findings must stay out
+  of the batch action and require separate per-item review, explicit
+  confirmation, or remain suggestion-only.
+- `一键优化` is allowed as short-term product copy only when the UI makes clear
+  that it applies to safe executable items, not every optimization finding. More
+  explicit labels such as `执行安全优化` or `生成安全优化副本` are also acceptable.
+- Optimization copy should classify findings as `可安全执行`, `需复核`, or
+  `暂不支持/建议项`.
+
 Optimization output rules:
 
 - The source file is not overwritten automatically.
@@ -318,6 +350,7 @@ fixtures are acceptable when real production assets cannot be committed.
 | SVGA with transparent padding | Production-spec comparison and review-only or enabled trim state. |
 | SVGA exceeding file size, canvas, FPS, resource, or memory limits | Actual-vs-requirement comparison and clear severity. |
 | Supported imageKey rename fixture | Reference update, no dangling imageKey/matteKey, saved output reopens. |
+| Recent-file history | Launch five-row display, `File > Recent` ten-row display, path-redacted labels, clear-history behavior, and missing-file recovery. |
 
 ### Short-term Non-goals
 
@@ -328,6 +361,8 @@ fixtures are acceptable when real production assets cannot be committed.
 - Text persistence as direct SVGA-byte editing
 - Audio parsing as a required feature
 - Broad batch replacement
+- Advanced recent-file privacy modes beyond path-redacted display and
+  clear-history control
 - Public release, App Store release, auto-update, accounts, telemetry, or cloud
   sync
 
