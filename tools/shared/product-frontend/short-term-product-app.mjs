@@ -11,11 +11,11 @@ const state = {
   imageReplaced: false,
   textApplied: false,
   imageKey: "profile_frame_highlight",
+  optimizationMode: "single",
   pendingTimer: undefined
 };
 
 const views = new Map(Array.from(document.querySelectorAll("[data-view]"), (node) => [node.dataset.view, node]));
-const identity = document.querySelector("#asvIdentity");
 const saveBanner = document.querySelector("#asvSaveBanner");
 const textModal = document.querySelector("#asvTextModal");
 const textInput = document.querySelector("#asvTextInput");
@@ -47,6 +47,7 @@ function startLoading(sample = "normal") {
   state.playbackError = false;
   state.imageReplaced = false;
   state.textApplied = false;
+  state.optimizationMode = "single";
   textModal.hidden = true;
   setView("loading");
   state.pendingTimer = window.setTimeout(() => {
@@ -68,10 +69,11 @@ function setTab(tab) {
   render();
 }
 
-function startOptimizationCompare() {
+function startOptimizationCompare(mode = "single") {
   if (!state.hasFile) return;
   state.tab = "optimization";
   state.dirtyKind = "optimization";
+  state.optimizationMode = mode;
   setView("optimization-compare");
 }
 
@@ -177,7 +179,10 @@ function action(name) {
       setTab("optimization");
       break;
     case "run-optimization":
-      startOptimizationCompare();
+      startOptimizationCompare("single");
+      break;
+    case "run-all-optimizations":
+      startOptimizationCompare("batch");
       break;
     case "rename":
       if (!state.hasFile || state.sample === "empty") return;
@@ -224,20 +229,9 @@ function action(name) {
   }
 }
 
-function identityText() {
-  if (state.view === "loading") return "正在载入本地 SVGA...";
-  if (state.view === "load-failed") return "载入失败 - 源文件未修改";
-  if (state.view === "optimization-compare") return "优化对比 - 输出待保存";
-  if (state.view === "compare") return "普通对比模式";
-  if (state.view === "edit") return "avatar_frame_basic.svga - 编辑模式保留态";
-  if (state.hasFile) return "avatar_frame_basic.svga - 812 KB - 30 FPS";
-  return "未打开文件";
-}
-
 function render() {
   document.body.dataset.asvView = state.view;
   document.body.dataset.asvMode = state.mode;
-  identity.textContent = identityText();
 
   document.querySelectorAll("[data-needs-file]").forEach((button) => {
     button.disabled = !state.hasFile;
@@ -260,14 +254,12 @@ function render() {
     panel.classList.toggle("isActive", active);
   });
 
-  const playbackStatus = document.querySelector("#asvPlaybackStatus");
-  playbackStatus.textContent = state.playbackError ? "播放异常" : state.playing ? "播放中" : "播放就绪";
-  playbackStatus.classList.toggle("asvDanger", state.playbackError);
-  playbackStatus.classList.toggle("asvSuccess", state.playing && !state.playbackError);
-  document.querySelector("#asvPlayButton").textContent = state.playing ? "暂停" : "播放";
-  document.querySelector("#asvPreviewNote").textContent = state.playbackError
-    ? "播放失败。可重播或重新打开文件恢复。"
-    : "预览模式保持激活。";
+  document.querySelector("#asvPlayButton").textContent = state.playbackError ? "重试播放" : state.playing ? "暂停" : "播放";
+
+  document.querySelector("#asvOptimizationMetric").textContent = state.optimizationMode === "batch" ? "-108 KB" : "-76 KB";
+  document.querySelector("#asvOptimizationSummary").textContent = state.optimizationMode === "batch"
+    ? "已批量应用透明边界裁剪和未引用资源清理，生成优化字节，等待明确保存。"
+    : "已应用透明边界裁剪，生成优化字节，等待明确保存。";
 
   document.querySelector("#asvImageKey").textContent = state.imageKey;
   document.querySelector("#asvImageStatus").textContent = state.imageReplaced

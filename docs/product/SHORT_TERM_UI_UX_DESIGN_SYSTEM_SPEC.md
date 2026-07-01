@@ -92,11 +92,13 @@ can express the intent.
 | Component | Module owner | Evidence |
 | --- | --- | --- |
 | `WindowToolbar` | app shell | toolbar/menu state proof |
-| `LaunchDropCard` | LaunchModule | launch/open/drop proof |
+| `LaunchDropCanvas` | LaunchModule | launch/open/drop proof |
+| `LaunchRecentFilesList` | LaunchModule | optional recent-file proposal proof |
+| `FileRecentSubmenu` | MenuBarCommandModel | optional recent-file menu proposal proof |
 | `PreviewStage` | PreviewCanvasModule | playback and abnormal-state proof |
 | `RightTabPanel` | Preview mode | tab screenshot and keyboard proof |
 | `OverviewFactRow` | OverviewTabModule | rendered Overview proof |
-| `ProductionSpecRow` | OverviewTabModule | actual/limit proof |
+| `ProductionSpecInlineRow` | OverviewTabModule | actual/limit proof inside file facts |
 | `AssetRow` | Overview and Replaceable modules | asset grouping proof |
 | `SequenceThumbnail` | OverviewTabModule | four-grid thumbnail proof |
 | `AudioAssetRow` | OverviewTabModule | no-audio proof |

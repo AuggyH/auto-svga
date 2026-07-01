@@ -69,7 +69,7 @@ states is incomplete.
 
 | Screen or state | Must show |
 | --- | --- |
-| Launch page | One primary preview/drop card, open action, drag hint, no full app chrome beyond the window shell. |
+| Launch page | One primary central canvas/drop target, open action, drag hint, no full app chrome beyond the window shell. Recent files, if shown, must stay visually secondary to the open/drop action. |
 | Loading | Honest loading feedback and a visible way to choose another file when loading is slow or failed. |
 | Load failed | Human-readable error, no stale file data, recovery by opening or dragging another file. |
 | Preview mode: Overview | Center playback canvas and right Overview tab with file facts, production-spec comparison, and asset summary. |
@@ -179,7 +179,7 @@ The UI/UX owner may refine labels, but the design must cover the action groups.
 | Menu | Short-term content |
 | --- | --- |
 | Auto SVGA | About, Settings, Services, Hide, Quit. |
-| File | Open SVGA, Open Recent if supported, Close File, Overwrite Save, Save As. |
+| File | Open SVGA, Recent submenu if supported, Close File, Overwrite Save, Save As. |
 | Edit | Standard text operations where applicable; Rename imageKey; cancel active rename/edit state. |
 | View | Preview Mode, Edit Mode, Enter/Exit Compare, appearance or theme entry if supported. |
 | Playback | Play/Pause, Replay, Loop if supported. |
@@ -243,6 +243,8 @@ The UI design should specify at least:
 - window toolbar
 - traffic-light integration
 - file open button
+- launch drop canvas
+- optional recent files list and File > Recent submenu, pending product confirmation
 - compare entry
 - mode switch
 - playback controls
@@ -331,6 +333,12 @@ The short-term design must not include:
 
 These are intentionally left for the UI/UX owner or Product Owner review:
 
+- whether recent files are included in the short-term scope; the current
+  prototype shows five secondary launch-page records and ten File > Recent
+  submenu records as a static interaction proposal only
+- whether the Optimization tab should expose a formal one-click optimization
+  action that batches safe enabled optimizations; the current prototype treats
+  review-only/risky items as excluded from one-click execution
 - final short-term tab label for Replaceable Elements, such as
   `可替换元素` or `编辑可替换元素`
 - final default window size and minimum supported window size
