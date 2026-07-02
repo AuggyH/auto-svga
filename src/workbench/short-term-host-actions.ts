@@ -451,11 +451,27 @@ export async function dispatchShortTermHostMenuAction(
     case "runOptimization":
       return runShortTermHostOptimization(state);
     case "renameImageKey": {
-      const renameInput = input as { fromImageKey: string; toImageKey: string };
+      const renameInput = input as Partial<{ fromImageKey: unknown; toImageKey: unknown }>;
+      if (!isNonEmptyString(renameInput.fromImageKey) || !isNonEmptyString(renameInput.toImageKey)) {
+        return missingContextForMenuCommand(
+          state,
+          commandId,
+          "需要先选择图片资源并输入新的 imageKey。",
+          "renameImageKey requires fromImageKey and toImageKey from the renderer context."
+        );
+      }
       return runShortTermHostImageKeyRename(state, renameInput.fromImageKey, renameInput.toImageKey);
     }
     case "replaceImage": {
-      const replacementInput = input as { imageKey: string; pngBytes: Uint8Array };
+      const replacementInput = input as Partial<{ imageKey: unknown; pngBytes: unknown }>;
+      if (!isNonEmptyString(replacementInput.imageKey) || !isUint8Array(replacementInput.pngBytes)) {
+        return missingContextForMenuCommand(
+          state,
+          commandId,
+          "需要先选择图片资源并提供替换 PNG。",
+          "replaceImage requires imageKey and PNG bytes from the renderer context."
+        );
+      }
       return runShortTermHostImageReplacement(state, replacementInput.imageKey, replacementInput.pngBytes);
     }
     default:
@@ -482,6 +498,21 @@ function delegatedMenuCommand(
       message: owner === "native"
         ? `Menu command "${commandId}" is handled by the native shell.`
         : `Menu command "${commandId}" is handled by the renderer runtime.`
+    }
+  }));
+}
+
+function missingContextForMenuCommand(
+  state: ShortTermHostActionState,
+  commandId: string,
+  message: string,
+  diagnosticMessage: string
+): ShortTermHostActionState {
+  return withLastAction(state, result("menuDispatch", "blocked", message, {
+    commandId,
+    diagnostic: {
+      code: "menu_command_context_missing",
+      message: diagnosticMessage
     }
   }));
 }
@@ -589,6 +620,14 @@ function isCommandEnabled(state: ShortTermHostActionState, commandId: string): b
 
 function hasUnsavedHostOutput(state: ShortTermHostActionState): boolean {
   return Boolean(state.activeOutputBytes || state.facade.model.activeOutput);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isUint8Array(value: unknown): value is Uint8Array {
+  return value instanceof Uint8Array;
 }
 
 function withLastAction(

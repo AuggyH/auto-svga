@@ -12,7 +12,8 @@ import {
   dispatchShortTermHostMenuAction,
   openShortTermHostLocalFile,
   openShortTermHostRecentFile,
-  type ShortTermHostEnvironment
+  type ShortTermHostEnvironment,
+  type ShortTermHostMenuActionInput
 } from "../workbench/short-term-host-actions.js";
 import { flattenShortTermCommandMenuItems } from "../workbench/short-term-command-menu.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
@@ -268,6 +269,42 @@ test("short-term host actions open recent submenu item ids directly", async () =
   assert.equal(opened.facade.model.appState.state, "previewReady");
   assert.equal(opened.currentLocalPath, sourcePath);
   assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
+});
+
+test("short-term host actions block contextual resource menu commands without renderer payload", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const sourceBytes = await createShortTermSvgaFixture();
+  const host = createMemoryHost({
+    [sourcePath]: sourceBytes
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+
+  const renameBlocked = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "renameImageKey"
+  } as unknown as ShortTermHostMenuActionInput);
+
+  assert.equal(renameBlocked.lastAction?.status, "blocked");
+  assert.equal(renameBlocked.lastAction?.commandId, "renameImageKey");
+  assert.equal(renameBlocked.lastAction?.diagnostic?.code, "menu_command_context_missing");
+  assert.equal(renameBlocked.facade.model.appState.state, "previewReady");
+  assert.equal(renameBlocked.currentLocalPath, sourcePath);
+  assert.equal(renameBlocked.activeOutputBytes, undefined);
+
+  const replaceBlocked = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "replaceImage",
+    imageKey: "img_frame"
+  } as unknown as ShortTermHostMenuActionInput);
+
+  assert.equal(replaceBlocked.lastAction?.status, "blocked");
+  assert.equal(replaceBlocked.lastAction?.commandId, "replaceImage");
+  assert.equal(replaceBlocked.lastAction?.diagnostic?.code, "menu_command_context_missing");
+  assert.equal(replaceBlocked.facade.model.appState.state, "previewReady");
+  assert.equal(replaceBlocked.currentLocalPath, sourcePath);
+  assert.equal(replaceBlocked.activeOutputBytes, undefined);
 });
 
 test("short-term host menu command classification covers enabled menu item ids", async () => {
