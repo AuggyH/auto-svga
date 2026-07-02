@@ -24,6 +24,7 @@ import {
   runShortTermHostImageReplacement,
   runShortTermHostOptimization,
   saveShortTermHostOutput,
+  type ShortTermHostActionState,
   type ShortTermHostApplyTextPreviewInput,
   type ShortTermHostEnvironment,
   type ShortTermHostMenuActionInput,
@@ -33,7 +34,10 @@ import {
   type ShortTermHostPrepareTextPreviewInput,
   type ShortTermHostSaveInput
 } from "../workbench/short-term-host-actions.js";
-import { flattenShortTermCommandMenuItems } from "../workbench/short-term-command-menu.js";
+import {
+  createShortTermCommandMenuModel,
+  flattenShortTermCommandMenuItems
+} from "../workbench/short-term-command-menu.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
 
 test("short-term host actions open local files through the facade without exposing local paths", async () => {
@@ -909,6 +913,138 @@ test("short-term host actions reset image replacement without clearing other dir
   assert.equal(reset.activeOutputBytes, undefined);
   assert.equal(commandEnabled(reset, "saveAs"), false);
   assert.equal(reset.currentLocalPath, sourcePath);
+});
+
+test("short-term host menu dispatch executes every host-routed command-menu item", async () => {
+  const editablePath = "/Users/designer/private/editable.svga";
+  const optimizablePath = "/Users/designer/private/optimizable.svga";
+  const saveSourcePath = "/Users/designer/private/save-source.svga";
+  const saveAsSourcePath = "/Users/designer/private/save-as-source.svga";
+  const recentPath = "/Users/designer/private/recent.svga";
+  const saveAsTargetPath = "/Users/designer/private/saved-copy.svga";
+  const host = createMemoryHost({
+    [editablePath]: await createShortTermSvgaFixture(),
+    [optimizablePath]: await createShortTermOptimizableSvgaFixture(),
+    [saveSourcePath]: await createShortTermOptimizableSvgaFixture(),
+    [saveAsSourcePath]: await createShortTermOptimizableSvgaFixture(),
+    [recentPath]: await createShortTermSvgaFixture()
+  });
+  const launchWithRecent = createShortTermHostActionState({
+    recentFiles: [{
+      id: "recent-a",
+      localPath: recentPath,
+      displayName: "recent.svga",
+      lastOpenedAt: "2026-07-02T00:00:00.000Z"
+    }]
+  });
+  const hostMenuCommandIds = Array.from(new Set(
+    flattenShortTermCommandMenuItems(createShortTermCommandMenuModel(launchWithRecent.facade.model.appState))
+      .filter((item) => item.kind === "command" && classifyShortTermHostMenuCommand(item.id) === "host")
+      .map((item) => item.id)
+  )).sort();
+
+  const openEditable = () => openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-editable",
+    source: "fileButton",
+    localPath: editablePath
+  });
+  const openOptimizable = (localPath = optimizablePath) => openShortTermHostLocalFile(
+    createShortTermHostActionState(),
+    host,
+    {
+      requestId: `open-${path.basename(localPath)}`,
+      source: "fileButton",
+      localPath
+    }
+  );
+  const optimize = async (localPath = optimizablePath) => dispatchShortTermHostMenuAction(
+    await openOptimizable(localPath),
+    host,
+    { commandId: "runOptimization" }
+  );
+  const replace = async () => dispatchShortTermHostMenuAction(
+    await openEditable(),
+    host,
+    {
+      commandId: "replaceImage",
+      imageKey: "img_frame",
+      pngBytes: createShortTermColoredPng(16, 16, [0, 0, 255, 255])
+    }
+  );
+  const applyTextPreview = async () => {
+    const opened = await openEditable();
+    const prepared = prepareShortTermHostTextPreview(opened, {
+      textElements: [{ textKey: "nickname", displayName: "昵称", supportedFields: ["text"] }]
+    });
+    return applyShortTermHostTextPreview(prepared, {
+      replacement: { textKey: "nickname", fields: { text: "Alice" } }
+    });
+  };
+
+  const scenarios: Record<string, () => Promise<ShortTermHostActionState>> = {
+    openSvga: () => dispatchShortTermHostMenuAction(createShortTermHostActionState(), host, {
+      commandId: "openSvga",
+      requestId: "open-menu",
+      localPath: editablePath
+    }),
+    "openRecent:recent-a": () => dispatchShortTermHostMenuAction(launchWithRecent, host, {
+      commandId: "openRecent:recent-a"
+    }),
+    clearRecent: () => dispatchShortTermHostMenuAction(launchWithRecent, host, {
+      commandId: "clearRecent"
+    }),
+    closeFile: async () => dispatchShortTermHostMenuAction(await openEditable(), host, {
+      commandId: "closeFile"
+    }),
+    save: async () => dispatchShortTermHostMenuAction(await optimize(saveSourcePath), host, {
+      commandId: "save"
+    }),
+    saveAs: async () => dispatchShortTermHostMenuAction(await optimize(saveAsSourcePath), host, {
+      commandId: "saveAs",
+      targetPath: saveAsTargetPath
+    }),
+    cancelTransientWorkflow: async () => dispatchShortTermHostMenuAction(await optimize(), host, {
+      commandId: "cancelTransientWorkflow"
+    }),
+    runOptimization: async () => dispatchShortTermHostMenuAction(await openOptimizable(), host, {
+      commandId: "runOptimization"
+    }),
+    renameImageKey: async () => dispatchShortTermHostMenuAction(await openEditable(), host, {
+      commandId: "renameImageKey",
+      fromImageKey: "img_frame",
+      toImageKey: "profile_frame"
+    }),
+    replaceImage: replace,
+    resetImageReplacement: async () => dispatchShortTermHostMenuAction(await replace(), host, {
+      commandId: "resetImageReplacement"
+    }),
+    resetTextPreview: async () => dispatchShortTermHostMenuAction(await applyTextPreview(), host, {
+      commandId: "resetTextPreview"
+    })
+  };
+  const expectedActions: Record<string, string> = {
+    openSvga: "openLocalFile",
+    "openRecent:recent-a": "openRecentFile",
+    clearRecent: "clearRecentFiles",
+    closeFile: "closeFile",
+    save: "save",
+    saveAs: "save",
+    cancelTransientWorkflow: "cancelTransientWorkflow",
+    runOptimization: "runOptimization",
+    renameImageKey: "renameImageKey",
+    replaceImage: "replaceImage",
+    resetImageReplacement: "resetImageReplacement",
+    resetTextPreview: "resetTextPreview"
+  };
+
+  assert.deepEqual(hostMenuCommandIds, Object.keys(scenarios).sort());
+
+  for (const commandId of hostMenuCommandIds) {
+    const result = await scenarios[commandId]();
+    assert.equal(result.lastAction?.status, "completed", commandId);
+    assert.equal(result.lastAction?.action, expectedActions[commandId], commandId);
+    assert.notEqual(result.lastAction?.diagnostic?.code, "menu_command_not_routed", commandId);
+  }
 });
 
 test("short-term host actions block disabled or unrouted menu commands", async () => {
