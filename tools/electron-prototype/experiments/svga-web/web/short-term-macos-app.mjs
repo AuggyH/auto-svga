@@ -409,7 +409,7 @@ async function editRuntimeText() {
   if (!state.sourceBytes) return;
   const textElement = selectedTextElement();
   if (!textElement) {
-    showSaveBanner("没有可预览的文本元素。", "当前 SVGA 未暴露可运行时替换的 textKey，源文件没有被修改。");
+    showSaveBanner("没有可预览的文本元素。", "当前文件没有暴露可运行时替换的文本标识，源文件没有被修改。");
     return;
   }
   nodes.runtimeTextInput.value = state.textPreview || "SVGA VIP";
@@ -1293,6 +1293,11 @@ async function runShortTermSmokeIfRequested() {
   const textElementRowCount = nodes.textElementList.querySelectorAll(".textElementRow").length;
   const noReplaceableCopy = nodes.replaceableList.textContent.trim();
   const textUnavailableCopy = nodes.textPreviewSummary.textContent.trim();
+  const runtimeTextSourceSha256Before = await sha256Hex(state.sourceBytes);
+  await editRuntimeText();
+  await waitForSmokeFrame();
+  const runtimeTextSourceSha256After = await sha256Hex(state.sourceBytes);
+  const runtimeTextBannerCopy = nodes.saveBanner.textContent.trim();
   const shortTermEmptyStateProof = {
     schemaVersion: 1,
     proofId: "short-term-empty-state-proof",
@@ -1308,6 +1313,35 @@ async function runShortTermSmokeIfRequested() {
     noReplaceableCopy,
     textUnavailableCopy
   };
+  const shortTermRuntimeTextBoundaryProof = {
+    schemaVersion: 1,
+    proofId: "short-term-runtime-text-boundary-proof",
+    source: "short-term-smoke",
+    prdIds: ["S13"],
+    parserTextSource: "not_exposed_by_current_svga_proto_or_product_model",
+    textElementsDiscovered: textElementRowCount,
+    editAttempted: true,
+    editBlocked: textElementRowCount === 0 && runtimeTextBannerCopy.includes("没有可预览的文本元素"),
+    modalOpened: Boolean(nodes.textDialog.open),
+    runtimeOverlayVisible: !nodes.runtimeTextOverlay.hidden,
+    bytePersistenceClaimed: false,
+    productCompleteClaimed: false,
+    sourceSha256Before: runtimeTextSourceSha256Before,
+    sourceSha256After: runtimeTextSourceSha256After,
+    sourceBytesUnchanged: runtimeTextSourceSha256After === runtimeTextSourceSha256Before,
+    visibleDesignerCopy: runtimeTextBannerCopy,
+    technicalBoundary: "当前解析层没有从 SVGA 字节暴露可产品化的 textKey 清单；运行时文本预览不能冒充完成。",
+    supportedRuntimeFields: ["text", "family", "size", "color", "offset"]
+  };
+  shortTermRuntimeTextBoundaryProof.passed = [
+    shortTermRuntimeTextBoundaryProof.textElementsDiscovered === 0,
+    shortTermRuntimeTextBoundaryProof.editBlocked,
+    shortTermRuntimeTextBoundaryProof.modalOpened === false,
+    shortTermRuntimeTextBoundaryProof.runtimeOverlayVisible === false,
+    shortTermRuntimeTextBoundaryProof.bytePersistenceClaimed === false,
+    shortTermRuntimeTextBoundaryProof.productCompleteClaimed === false,
+    shortTermRuntimeTextBoundaryProof.sourceBytesUnchanged
+  ].every(Boolean);
   shortTermEmptyStateProof.passed = [
     shortTermEmptyStateProof.noAudioVisible,
     shortTermEmptyStateProof.noReplaceableImagesVisible,
@@ -1391,6 +1425,7 @@ async function runShortTermSmokeIfRequested() {
     shortTermSaveFailed: saveFailedVisible,
     shortTermLoadFailed: loadFailedVisible,
     shortTermEmptyStateProof,
+    shortTermRuntimeTextBoundaryProof,
     cleanup: true
   });
 }

@@ -31,6 +31,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Hardened Save failed behavior: saved output bytes are now re-inspected before becoming the current source bytes, so a post-write reopen failure keeps the prior file state and dirty output instead of switching the app to invalid bytes.
 - Added short-term failure-state smoke captures for `short-term-save-failed.png` and `short-term-load-failed.png`; smoke now reports `shortTermSaveFailed=true` and `shortTermLoadFailed=true` before recovering to Preview for menu-state validation.
 - Added short-term empty-state proof for `No audio`, `No replaceable images`, and unavailable runtime text. The smoke proof records visible copy, row counts, and verifies ordinary image assets are not duplicated into the Replaceable Elements list.
+- Added an S13 runtime-text boundary proof. The current SVGA parser/product model exposes no product-safe `textKey` discovery path, so smoke now proves the text edit attempt fails closed, leaves source bytes unchanged, opens no fake modal, and does not claim S13 product completion.
 
 ## Verification
 
@@ -43,6 +44,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Short-term menu-state proof: pass; `shortTermMenuState=true` in desktop smoke and `.artifacts/product/short-term/short-term-menu-state-proof.json` records loaded Preview state plus matching menu enabled/checked states.
 - Short-term screenshot proof: pass; `shortTermScreenshots=true` in desktop smoke and `.artifacts/product/short-term/artifact-index.json` lists nine current-head short-term UI screenshots, including Save failed and Load failed states.
 - Short-term empty-state proof: pass; `.artifacts/product/short-term/short-term-empty-state-proof.json` records `noAudioVisible=true`, `noReplaceableImagesVisible=true`, `textUnavailableVisible=true`, and `ordinaryImagesNotDuplicatedInReplaceables=true`.
+- Short-term runtime-text boundary proof: pass; `.artifacts/product/short-term/short-term-runtime-text-boundary-proof.json` records `productCompleteClaimed=false`, source SHA unchanged, no modal opened, and no runtime overlay shown when no parser-discovered text keys exist.
 - Normal App proof: pass; `AUTO_SVGA_DESKTOP_NORMAL_PROOF` reports `hostOpen=true`, `menuOpen=true`, `playback=true`, `canvasNonBlank=true`, `inspectionReport=true`, `auditPanel=true`, `recentFiles=true`, `recentMissingRecovery=true`, `shortTermSave=true`, `localOnly=true`, and `noCspViolation=true` against the short-term macOS client.
 - Short-term save proof: pass; `.artifacts/product/short-term/short-term-save-proof.json` records disabled initial Save, Save As write/hash/reopen, Overwrite write/hash/reopen, output cleanup after both saves, changed output hashes, and canonical source immutability.
 - Short-term macOS menu guard: pass; the legacy Workbench menu remains isolated, while the default short-term menu has no reload or DevTools item.
@@ -65,7 +67,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 
 - App ZIP is unsigned and not notarized; this remains an external credential/signing decision.
 - Runtime text preview is preview-only and does not persist into SVGA bytes, matching current short-term boundary.
-- Follow-up guard: runtime text controls are disabled when the current model exposes no text elements, so the UI does not imply editable text targets that the parser did not find.
+- S13 is not product-complete until a product-safe textKey discovery source is implemented. The current guard proves failure-closed behavior for real files with no exposed text elements.
 - The package manifest records current Git HEAD, while the package content was built from the working tree before this review commit.
 
 ## Git Notes

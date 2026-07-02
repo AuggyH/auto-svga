@@ -281,6 +281,12 @@ function validateSmokeResult(value) {
     result.shortTermNoReplaceable = shortTermEmptyStateProof.noReplaceableImagesVisible;
     result.shortTermTextUnavailable = shortTermEmptyStateProof.textUnavailableVisible;
   }
+  if (value.shortTermRuntimeTextBoundaryProof !== undefined) {
+    const shortTermRuntimeTextBoundaryProof = validateShortTermRuntimeTextBoundaryProof(value.shortTermRuntimeTextBoundaryProof);
+    if (!shortTermRuntimeTextBoundaryProof) return undefined;
+    result.shortTermRuntimeTextBoundaryProof = shortTermRuntimeTextBoundaryProof;
+    result.shortTermRuntimeTextBoundary = shortTermRuntimeTextBoundaryProof.passed;
+  }
   if (value.optimizedReopenProof !== undefined) {
     const optimizedReopenProof = validateOptimizedReopenProof(value.optimizedReopenProof);
     if (!optimizedReopenProof) return undefined;
@@ -395,6 +401,52 @@ function validateShortTermEmptyStateProof(value) {
   };
 }
 
+function validateShortTermRuntimeTextBoundaryProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-runtime-text-boundary-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.length !== 1 || value.prdIds[0] !== "S13") return undefined;
+  if (value.parserTextSource !== "not_exposed_by_current_svga_proto_or_product_model") return undefined;
+  if (!Number.isInteger(value.textElementsDiscovered) || value.textElementsDiscovered !== 0) return undefined;
+  if (!isSha256(value.sourceSha256Before) || value.sourceSha256After !== value.sourceSha256Before) return undefined;
+  if (!isBoundedString(value.visibleDesignerCopy, 220) || !value.visibleDesignerCopy.includes("没有可预览的文本元素")) return undefined;
+  if (!isBoundedString(value.technicalBoundary, 220) || !value.technicalBoundary.includes("textKey")) return undefined;
+  if (!Array.isArray(value.supportedRuntimeFields) || value.supportedRuntimeFields.join(",") !== "text,family,size,color,offset") return undefined;
+  if (
+    value.editAttempted !== true
+    || value.editBlocked !== true
+    || value.modalOpened !== false
+    || value.runtimeOverlayVisible !== false
+    || value.bytePersistenceClaimed !== false
+    || value.productCompleteClaimed !== false
+    || value.sourceBytesUnchanged !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S13"],
+    parserTextSource: value.parserTextSource,
+    textElementsDiscovered: 0,
+    editAttempted: true,
+    editBlocked: true,
+    modalOpened: false,
+    runtimeOverlayVisible: false,
+    bytePersistenceClaimed: false,
+    productCompleteClaimed: false,
+    sourceSha256Before: value.sourceSha256Before,
+    sourceSha256After: value.sourceSha256After,
+    sourceBytesUnchanged: true,
+    visibleDesignerCopy: value.visibleDesignerCopy,
+    technicalBoundary: value.technicalBoundary,
+    supportedRuntimeFields: ["text", "family", "size", "color", "offset"],
+    passed: true
+  };
+}
+
 function describeSmokeResultValidationFailure(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "root_shape";
   const keys = [
@@ -423,6 +475,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.workbenchRegionMap !== undefined && !validateWorkbenchRegionMap(value.workbenchRegionMap)) {
     return `workbenchRegionMap:${describeWorkbenchRegionMapValidationFailure(value.workbenchRegionMap)}`;
+  }
+  if (value.shortTermRuntimeTextBoundaryProof !== undefined && !validateShortTermRuntimeTextBoundaryProof(value.shortTermRuntimeTextBoundaryProof)) {
+    return "shortTermRuntimeTextBoundaryProof";
   }
   if (value.optimizedReopenProof !== undefined && !validateOptimizedReopenProof(value.optimizedReopenProof)) {
     return "optimizedReopenProof";
@@ -3114,11 +3169,19 @@ async function finishSmoke(window, result) {
         "smoke"
       );
     }
+    if (result.shortTermRuntimeTextBoundaryProof) {
+      writeJsonProductArtifact(
+        "short-term-runtime-text-boundary-proof.json",
+        "short-term-runtime-text-boundary-proof",
+        result.shortTermRuntimeTextBoundaryProof,
+        "smoke"
+      );
+    }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();

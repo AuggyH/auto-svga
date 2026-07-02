@@ -1056,6 +1056,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /shortTermSaveFailed: saveFailedVisible/);
   assert.match(shortTermEntry, /shortTermLoadFailed: loadFailedVisible/);
   assert.match(shortTermEntry, /short-term-empty-state-proof/);
+  assert.match(shortTermEntry, /short-term-runtime-text-boundary-proof/);
+  assert.match(shortTermEntry, /productCompleteClaimed: false/);
+  assert.match(shortTermEntry, /sourceSha256Before: runtimeTextSourceSha256Before/);
+  assert.match(shortTermEntry, /sourceSha256After: runtimeTextSourceSha256After/);
   assert.match(shortTermEntry, /noAudioVisible/);
   assert.match(shortTermEntry, /noReplaceableImagesVisible/);
   assert.match(shortTermEntry, /textUnavailableVisible/);
@@ -1140,10 +1144,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /shortTermLoadFailed/);
   assert.match(main, /shortTermSaveFailed/);
   assert.match(main, /function validateShortTermEmptyStateProof/);
+  assert.match(main, /function validateShortTermRuntimeTextBoundaryProof/);
   assert.match(main, /short-term-empty-state-proof\.json/);
+  assert.match(main, /short-term-runtime-text-boundary-proof\.json/);
   assert.match(main, /shortTermNoAudio/);
   assert.match(main, /shortTermNoReplaceable/);
   assert.match(main, /shortTermTextUnavailable/);
+  assert.match(main, /shortTermRuntimeTextBoundary/);
+  assert.match(main, /productCompleteClaimed !== false/);
   assert.match(main, /short-term-launch/);
   assert.match(main, /short-term-preview-minimum/);
   assert.match(main, /short-term-load-failed/);
