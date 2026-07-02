@@ -13,7 +13,10 @@ import {
   createShortTermHostActionState,
   openShortTermHostLocalFile
 } from "../workbench/short-term-host-actions.js";
-import { createShortTermRecentFilesState } from "../workbench/short-term-recent-files.js";
+import {
+  createShortTermRecentFilesState,
+  parseShortTermRecentFilesStateJson
+} from "../workbench/short-term-recent-files.js";
 import { createShortTermSvgaFixture } from "./helpers/short-term-svga-fixtures.js";
 
 test("short-term node recent store persists host recent files across sessions", async () => {
@@ -79,4 +82,35 @@ test("short-term node recent store clears persisted paths and fails soft on inva
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+});
+
+test("short-term recent parser skips malformed records and normalizes availability", () => {
+  const parsed = parseShortTermRecentFilesStateJson(JSON.stringify({
+    schemaVersion: 1,
+    records: [
+      null,
+      {
+        localPath: "/tmp/auto-svga/a.svga",
+        displayName: "A",
+        availability: "deleted",
+        lastOpenedAt: "2026-07-02T00:00:00.000Z"
+      },
+      {
+        localPath: "/tmp/auto-svga/b.svga",
+        displayName: "B",
+        availability: "missing",
+        lastOpenedAt: "2026-07-02T00:01:00.000Z"
+      },
+      {
+        localPath: 42,
+        displayName: "bad"
+      }
+    ]
+  }));
+
+  assert.equal(parsed.records.length, 2);
+  assert.equal(parsed.records[0].displayName, "B");
+  assert.equal(parsed.records[0].availability, "missing");
+  assert.equal(parsed.records[1].displayName, "A");
+  assert.equal(parsed.records[1].availability, "available");
 });

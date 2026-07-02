@@ -203,7 +203,7 @@ export function parseShortTermRecentFilesStateJson(
 }
 
 function normalizeRecentRecords(
-  records: readonly ShortTermRecentFileInput[],
+  records: readonly unknown[],
   options: ShortTermRecentFilesStateOptions
 ): ShortTermRecentFileHostRecord[] {
   const normalized: ShortTermRecentFileHostRecord[] = [];
@@ -222,9 +222,10 @@ function normalizeRecentRecords(
 }
 
 function createRecentRecord(
-  input: ShortTermRecentFileInput,
+  input: unknown,
   options: ShortTermRecentFilesStateOptions
 ): ShortTermRecentFileHostRecord | undefined {
+  if (!isRecord(input)) return undefined;
   const localPath = normalizeLocalPath(input.localPath);
   if (!localPath) return undefined;
   const displayName = shortTermDisplayNameFromPathLike(input.displayName) || shortTermDisplayNameFromPathLike(localPath);
@@ -240,7 +241,7 @@ function createRecentRecord(
     displayName,
     parentDisplayName,
     lastOpenedAt: isoTimestamp(input.lastOpenedAt ?? options.now),
-    availability: input.availability ?? "available"
+    availability: isRecentAvailability(input.availability) ? input.availability : "available"
   };
 }
 
@@ -271,15 +272,23 @@ function dedupeKey(record: ShortTermRecentFileHostRecord): string {
   return normalizeLocalPath(record.localPath).toLocaleLowerCase();
 }
 
-function normalizeLocalPath(value: string): string {
+function normalizeLocalPath(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function isRecentAvailability(value: unknown): value is ShortTermRecentAvailability {
+  return value === "available" || value === "missing";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
 }
 
 function sanitizeIdentifier(value: unknown): string {
   return typeof value === "string" ? value.replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "") : "";
 }
 
-function isoTimestamp(value: string | number | Date | undefined): string {
+function isoTimestamp(value: unknown): string {
   if (value instanceof Date && Number.isFinite(value.getTime())) return value.toISOString();
   if (typeof value === "number" && Number.isFinite(value)) return new Date(value).toISOString();
   if (typeof value === "string") {
