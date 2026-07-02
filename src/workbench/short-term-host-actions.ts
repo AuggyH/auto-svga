@@ -23,6 +23,7 @@ import type { ShortTermRecentOpenSource } from "./short-term-recent-files.js";
 import type { ShortTermProductInspectionModel } from "./short-term-product-model.js";
 import type { ShortTermSaveCommand } from "./short-term-save-state.js";
 import type { ShortTermSaveExecutionPlan } from "./short-term-save-execution.js";
+import { evaluateShortTermHostLifecycleRequest } from "./short-term-host-lifecycle.js";
 import {
   canonicalShortTermHostMenuCommandId,
   classifyShortTermHostMenuCommand,
@@ -126,6 +127,7 @@ export type ShortTermHostMenuActionInput =
   | ({ commandId: "openRecent" } & Omit<ShortTermHostOpenRecentFileInput, "source"> & { source?: ShortTermRecentOpenSource })
   | { commandId: "clearRecent" }
   | ({ commandId: "closeFile" } & ShortTermHostCloseInput)
+  | ({ commandId: "quit" } & ShortTermHostDirtyOperationInput)
   | ({ commandId: "save" | "saveAs" } & Omit<ShortTermHostSaveInput, "command">)
   | ({ commandId: "runOptimization" } & ShortTermHostDirtyOperationInput)
   | ({ commandId: "renameImageKey"; fromImageKey: string; toImageKey: string } & ShortTermHostDirtyOperationInput)
@@ -418,6 +420,10 @@ export async function dispatchShortTermHostMenuAction(
   }
 
   if (route === "native") {
+    if (commandId === "quit") {
+      const lifecycleInput = input as ShortTermHostDirtyOperationInput;
+      return guardedNativeLifecycleMenuCommand(state, commandId, lifecycleInput.discardUnsavedChanges);
+    }
     return delegatedMenuCommand(state, commandId, "native", "该菜单命令由 macOS 原生命令处理。");
   }
   if (route === "renderer") {
@@ -526,6 +532,33 @@ export async function dispatchShortTermHostMenuAction(
         }
       }));
   }
+}
+
+function guardedNativeLifecycleMenuCommand(
+  state: ShortTermHostActionState,
+  commandId: string,
+  discardUnsavedChanges: boolean | undefined
+): ShortTermHostActionState {
+  const lifecycle = evaluateShortTermHostLifecycleRequest(state, {
+    request: "appQuit",
+    discardUnsavedChanges
+  });
+  if (!lifecycle.canProceed) {
+    return withLastAction(state, result("menuDispatch", "blocked", lifecycle.message, {
+      commandId,
+      outputSha256: lifecycle.activeOutputSha256,
+      diagnostic: lifecycle.diagnostic
+    }));
+  }
+
+  return withLastAction(state, result("menuDispatch", "delegated", lifecycle.message, {
+    commandId,
+    outputSha256: lifecycle.activeOutputSha256,
+    diagnostic: {
+      code: "menu_command_delegated_to_native_after_lifecycle_check",
+      message: `Menu command "${commandId}" is delegated only after the lifecycle guard allows it.`
+    }
+  }));
 }
 
 function delegatedMenuCommand(

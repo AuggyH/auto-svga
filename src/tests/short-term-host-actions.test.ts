@@ -438,6 +438,49 @@ test("short-term host actions delegate native and renderer-owned menu commands",
   assert.equal(minimized.currentLocalPath, sourcePath);
 });
 
+test("short-term host actions guard quit menu dispatch against dirty output", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const launch = createShortTermHostActionState();
+
+  const cleanQuit = await dispatchShortTermHostMenuAction(launch, host, {
+    commandId: "quit"
+  });
+  assert.equal(cleanQuit.lastAction?.status, "delegated");
+  assert.equal(cleanQuit.lastAction?.diagnostic?.code, "menu_command_delegated_to_native_after_lifecycle_check");
+
+  const opened = await openShortTermHostLocalFile(launch, host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+
+  const blockedQuit = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "quit"
+  });
+  assert.equal(blockedQuit.lastAction?.status, "blocked");
+  assert.equal(blockedQuit.lastAction?.commandId, "quit");
+  assert.equal(blockedQuit.lastAction?.diagnostic?.code, "lifecycle_requires_discard_confirmation");
+  assert.equal(blockedQuit.currentLocalPath, sourcePath);
+  assert.ok(blockedQuit.activeOutputBytes);
+  assert.equal(JSON.stringify(blockedQuit.lastAction).includes("/Users/designer"), false);
+
+  const confirmedQuit = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "quit",
+    discardUnsavedChanges: true
+  });
+  assert.equal(confirmedQuit.lastAction?.status, "delegated");
+  assert.equal(confirmedQuit.lastAction?.commandId, "quit");
+  assert.equal(confirmedQuit.lastAction?.diagnostic?.code, "menu_command_delegated_to_native_after_lifecycle_check");
+  assert.equal(confirmedQuit.currentLocalPath, sourcePath);
+  assert.ok(confirmedQuit.activeOutputBytes);
+});
+
 test("short-term host actions open recent submenu item ids directly", async () => {
   const sourcePath = "/Users/designer/private/recent.svga";
   const sourceBytes = await createShortTermSvgaFixture();
