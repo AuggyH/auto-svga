@@ -3,12 +3,15 @@ import {
   dispatchShortTermHostMenuAction,
   openShortTermHostLocalFile,
   openShortTermHostRecentFile,
+  recoverShortTermHostPlayback,
+  reportShortTermHostPlaybackFailure,
   type ShortTermHostActionResult,
   type ShortTermHostActionState,
   type ShortTermHostEnvironment,
   type ShortTermHostMenuActionInput,
   type ShortTermHostOpenLocalFileInput,
-  type ShortTermHostOpenRecentFileInput
+  type ShortTermHostOpenRecentFileInput,
+  type ShortTermHostPlaybackFailureInput
 } from "./short-term-host-actions.js";
 import {
   createShortTermHostActionStateFromRecentStore,
@@ -62,6 +65,8 @@ export interface ShortTermHostSession {
   openLocalFile(input: ShortTermHostOpenLocalFileInput): Promise<ShortTermHostSessionActionResult>;
   openRecentFile(input: ShortTermHostOpenRecentFileInput): Promise<ShortTermHostSessionActionResult>;
   dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult>;
+  reportPlaybackFailure(input: ShortTermHostPlaybackFailureInput): Promise<ShortTermHostSessionActionResult>;
+  recoverPlayback(): Promise<ShortTermHostSessionActionResult>;
   evaluateLifecycleRequest(input: ShortTermHostLifecycleRequestInput): ShortTermHostLifecycleDecision;
   persistRecentFiles(): Promise<ShortTermHostSessionRecentPersistenceResult>;
 }
@@ -105,6 +110,14 @@ class ShortTermHostSessionController implements ShortTermHostSession {
     return this.apply((state) => dispatchShortTermHostMenuAction(state, this.host, input));
   }
 
+  async reportPlaybackFailure(input: ShortTermHostPlaybackFailureInput): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => reportShortTermHostPlaybackFailure(state, input));
+  }
+
+  async recoverPlayback(): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => recoverShortTermHostPlayback(state));
+  }
+
   evaluateLifecycleRequest(input: ShortTermHostLifecycleRequestInput): ShortTermHostLifecycleDecision {
     return evaluateShortTermHostLifecycleRequest(this.state, input);
   }
@@ -114,7 +127,7 @@ class ShortTermHostSessionController implements ShortTermHostSession {
   }
 
   private async apply(
-    action: (state: ShortTermHostActionState) => Promise<ShortTermHostActionState>
+    action: (state: ShortTermHostActionState) => ShortTermHostActionState | Promise<ShortTermHostActionState>
   ): Promise<ShortTermHostSessionActionResult> {
     this.state = await action(this.state);
     return {

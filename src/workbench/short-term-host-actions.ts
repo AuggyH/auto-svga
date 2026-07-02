@@ -12,6 +12,8 @@ import {
   failShortTermWorkbenchSave,
   markShortTermWorkbenchRecentFileMissing,
   openShortTermWorkbenchRecentFile,
+  recoverShortTermWorkbenchPlayback,
+  reportShortTermWorkbenchPlaybackFailure,
   runShortTermWorkbenchImageReplacementPreview,
   runShortTermWorkbenchOptimizationCompare,
   runShortTermWorkbenchRenamePreview,
@@ -49,6 +51,8 @@ export type ShortTermHostActionKind =
   | "runOptimization"
   | "renameImageKey"
   | "replaceImage"
+  | "reportPlaybackFailure"
+  | "recoverPlayback"
   | "save"
   | "menuDispatch";
 
@@ -64,7 +68,7 @@ export interface ShortTermHostActionState {
 export interface ShortTermHostActionResult {
   schemaVersion: typeof SHORT_TERM_HOST_ACTION_SCHEMA_VERSION;
   source: "short-term-host-action";
-  prdIds: readonly ["S1", "S14", "S16"];
+  prdIds: readonly ["S1", "S2", "S14", "S16"];
   action: ShortTermHostActionKind;
   status: ShortTermHostActionStatus;
   message: string;
@@ -123,6 +127,10 @@ export interface ShortTermHostCloseInput {
 
 export interface ShortTermHostDirtyOperationInput {
   discardUnsavedChanges?: boolean;
+}
+
+export interface ShortTermHostPlaybackFailureInput {
+  message: string;
 }
 
 export type ShortTermHostMenuActionInput =
@@ -401,6 +409,44 @@ export async function saveShortTermHostOutput(
       diagnostic: failed.result.diagnostic
     }));
   }
+}
+
+export function reportShortTermHostPlaybackFailure(
+  state: ShortTermHostActionState,
+  input: ShortTermHostPlaybackFailureInput
+): ShortTermHostActionState {
+  if (!state.facade.model.appState.currentFile) {
+    return withLastAction(state, result("reportPlaybackFailure", "blocked", "当前没有打开的 SVGA 可报告播放异常。", {
+      diagnostic: {
+        code: "playback_failure_requires_open_file",
+        message: "Playback failure reporting requires an opened SVGA file."
+      }
+    }));
+  }
+
+  const message = input.message.trim() || "播放器未正常完成播放。";
+  return withLastAction({
+    ...state,
+    facade: reportShortTermWorkbenchPlaybackFailure(state.facade, message)
+  }, result("reportPlaybackFailure", "completed", message));
+}
+
+export function recoverShortTermHostPlayback(
+  state: ShortTermHostActionState
+): ShortTermHostActionState {
+  if (state.facade.model.appState.state !== "playbackAbnormal") {
+    return withLastAction(state, result("recoverPlayback", "blocked", "当前没有播放异常需要恢复。", {
+      diagnostic: {
+        code: "playback_recovery_not_needed",
+        message: "Playback recovery is only meaningful while the short-term app state is playbackAbnormal."
+      }
+    }));
+  }
+
+  return withLastAction({
+    ...state,
+    facade: recoverShortTermWorkbenchPlayback(state.facade)
+  }, result("recoverPlayback", "completed", "播放异常状态已恢复，预览可重新播放。"));
 }
 
 export async function dispatchShortTermHostMenuAction(
@@ -753,7 +799,7 @@ function result(
   return {
     schemaVersion: SHORT_TERM_HOST_ACTION_SCHEMA_VERSION,
     source: "short-term-host-action",
-    prdIds: ["S1", "S14", "S16"],
+    prdIds: ["S1", "S2", "S14", "S16"],
     action,
     status,
     message,

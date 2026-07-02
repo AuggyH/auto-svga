@@ -17,6 +17,8 @@ import {
   createShortTermWorkbenchSavePlan,
   createShortTermWorkbenchTextPreview,
   openShortTermWorkbenchRecentFile,
+  recoverShortTermWorkbenchPlayback,
+  reportShortTermWorkbenchPlaybackFailure,
   runShortTermWorkbenchImageReplacementPreview,
   runShortTermWorkbenchOptimizationCompare,
   runShortTermWorkbenchRenamePreview,
@@ -132,6 +134,38 @@ test("short-term workbench facade runs optimization compare and clears save stat
   assert.equal(saved.state.model.activeOutput, undefined);
   assert.equal(commandEnabled(saved.state.model.appState, "saveAs"), false);
   assert.equal(menuItemEnabled(saved.state.model, "saveAs"), false);
+});
+
+test("short-term workbench facade reports and recovers playback abnormal without clearing dirty output", async () => {
+  const sourceBytes = await createShortTermOptimizableSvgaFixture();
+  const opened = completeShortTermWorkbenchOpen(
+    startShortTermWorkbenchOpen(createShortTermWorkbenchFacade(), {
+      requestId: "open-1",
+      source: "fileButton",
+      displayName: "playback.svga"
+    }),
+    {
+      requestId: "open-1",
+      inspection: inspectionFixture(),
+      sourceBytes
+    }
+  );
+  const compared = await runShortTermWorkbenchOptimizationCompare(opened);
+  const abnormal = reportShortTermWorkbenchPlaybackFailure(compared.state, "播放器首帧渲染失败。");
+
+  assert.equal(abnormal.model.appState.state, "playbackAbnormal");
+  assert.equal(abnormal.model.activeWorkflow.kind, "playback");
+  assert.equal(abnormal.model.activeOutput?.outputKind, "optimized_svga");
+  assert.equal(commandEnabled(abnormal.model.appState, "saveAs"), true);
+  assert.equal(menuItemEnabled(abnormal.model, "saveAs"), true);
+  assert.equal(abnormal.model.currentSourceSha256, sha256(sourceBytes));
+
+  const recovered = recoverShortTermWorkbenchPlayback(abnormal);
+  assert.equal(recovered.model.appState.state, "previewReady");
+  assert.equal(recovered.model.activeWorkflow.kind, "playback");
+  assert.equal(recovered.model.activeOutput?.outputKind, "optimized_svga");
+  assert.equal(commandEnabled(recovered.model.appState, "saveAs"), true);
+  assert.equal(recovered.model.currentSourceSha256, sha256(sourceBytes));
 });
 
 test("short-term workbench facade exposes rename, image replacement, and text preview entries", async () => {

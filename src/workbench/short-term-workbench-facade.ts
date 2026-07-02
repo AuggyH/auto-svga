@@ -6,6 +6,8 @@ import {
   createShortTermLaunchAppState,
   failShortTermLocalOpen,
   markShortTermRecentFileMissing as markAppRecentFileMissing,
+  recoverShortTermPlayback,
+  reportShortTermPlaybackFailure,
   setShortTermAppRecentFiles,
   startShortTermLocalOpen,
   type CompleteShortTermLocalOpenInput,
@@ -72,6 +74,7 @@ export type ShortTermFacadeWorkflowKind =
   | "renamePreview"
   | "imageReplacementPreview"
   | "textPreview"
+  | "playback"
   | "save";
 
 export interface ShortTermFacadeWorkflowSummary {
@@ -428,6 +431,41 @@ export function resetShortTermWorkbenchTextPreview(
       status: textPreviewSession.model.status,
       playerAction: textPreviewSession.model.playerAction,
       message: textPreviewSession.model.message
+    }
+  });
+}
+
+export function reportShortTermWorkbenchPlaybackFailure(
+  state: ShortTermWorkbenchFacadeState,
+  message: string
+): ShortTermWorkbenchFacadeState {
+  const appState = reportShortTermPlaybackFailure(state.model.appState, { message });
+  return buildFacadeState({
+    ...state,
+    appState,
+    activeOutput: state.model.activeOutput,
+    activeWorkflow: {
+      kind: "playback",
+      status: appState.state,
+      playerAction: "keepPreview",
+      message
+    }
+  });
+}
+
+export function recoverShortTermWorkbenchPlayback(
+  state: ShortTermWorkbenchFacadeState
+): ShortTermWorkbenchFacadeState {
+  const appState = recoverShortTermPlayback(state.model.appState);
+  return buildFacadeState({
+    ...state,
+    appState,
+    activeOutput: state.model.activeOutput,
+    activeWorkflow: {
+      kind: "playback",
+      status: appState.state,
+      playerAction: "replay",
+      message: "播放异常状态已恢复，预览可重新播放。"
     }
   });
 }

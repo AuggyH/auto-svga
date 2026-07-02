@@ -264,6 +264,53 @@ test("short-term host session evaluates lifecycle close and quit without mutatin
   assert.equal(savedDecision.shouldPromptDiscard, false);
 });
 
+test("short-term host session records and recovers playback failure without clearing dirty output", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const store = createMemoryRecentFilesStore();
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  const blocked = await session.reportPlaybackFailure({
+    message: "播放器首帧渲染失败。"
+  });
+  assert.equal(blocked.actionResult?.status, "blocked");
+  assert.equal(blocked.actionResult?.diagnostic?.code, "playback_failure_requires_open_file");
+
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await session.dispatchMenuAction({
+    commandId: "runOptimization"
+  });
+  assert.equal(optimized.actionResult?.status, "completed");
+  assert.ok(optimized.state.activeOutputBytes);
+
+  const abnormal = await session.reportPlaybackFailure({
+    message: "播放器首帧渲染失败。"
+  });
+  assert.equal(abnormal.actionResult?.status, "completed");
+  assert.equal(abnormal.actionResult?.action, "reportPlaybackFailure");
+  assert.equal(abnormal.recentPersistence.status, "unchanged");
+  assert.equal(abnormal.state.facade.model.appState.state, "playbackAbnormal");
+  assert.equal(abnormal.state.currentLocalPath, sourcePath);
+  assert.ok(abnormal.state.activeOutputBytes);
+  assert.equal(abnormal.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+
+  const recovered = await session.recoverPlayback();
+  assert.equal(recovered.actionResult?.status, "completed");
+  assert.equal(recovered.actionResult?.action, "recoverPlayback");
+  assert.equal(recovered.recentPersistence.status, "unchanged");
+  assert.equal(recovered.state.facade.model.appState.state, "previewReady");
+  assert.equal(recovered.state.currentLocalPath, sourcePath);
+  assert.ok(recovered.state.activeOutputBytes);
+  assert.equal(recovered.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.equal(JSON.stringify(recovered.state.facade.model).includes("/Users/designer"), false);
+});
+
 function createMemoryHost(
   initialFiles: Record<string, Uint8Array>,
   options: {
