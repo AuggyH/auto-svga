@@ -192,6 +192,78 @@ test("short-term host session blocks dirty open without mutating recent persiste
   assert.equal(store.snapshot().records[0].localPath, nextPath);
 });
 
+test("short-term host session evaluates lifecycle close and quit without mutating state", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const store = createMemoryRecentFilesStore();
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  const cleanDecision = session.evaluateLifecycleRequest({
+    request: "appQuit"
+  });
+
+  assert.equal(cleanDecision.status, "allow");
+  assert.equal(cleanDecision.canProceed, true);
+  assert.equal(cleanDecision.dirty, false);
+  assert.equal(cleanDecision.shouldPromptDiscard, false);
+
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  await session.dispatchMenuAction({
+    commandId: "runOptimization"
+  });
+  const dirtyState = session.getState();
+
+  const blocked = session.evaluateLifecycleRequest({
+    request: "windowClose"
+  });
+
+  assert.equal(blocked.status, "blocked");
+  assert.equal(blocked.canProceed, false);
+  assert.equal(blocked.dirty, true);
+  assert.equal(blocked.shouldPromptDiscard, true);
+  assert.equal(blocked.activeOutputKind, "optimized_svga");
+  assert.equal(blocked.activeOutputSha256, dirtyState.facade.model.activeOutput?.outputSha256);
+  assert.equal(blocked.diagnostic?.code, "lifecycle_requires_discard_confirmation");
+  assert.equal(JSON.stringify(blocked).includes("/Users/designer"), false);
+  assert.equal(session.getState().currentLocalPath, sourcePath);
+  assert.ok(session.getState().activeOutputBytes);
+  assert.equal(store.snapshot().records[0].localPath, sourcePath);
+
+  const confirmed = session.evaluateLifecycleRequest({
+    request: "appQuit",
+    discardUnsavedChanges: true
+  });
+
+  assert.equal(confirmed.status, "allow");
+  assert.equal(confirmed.canProceed, true);
+  assert.equal(confirmed.dirty, true);
+  assert.equal(confirmed.shouldPromptDiscard, false);
+  assert.equal(confirmed.activeOutputKind, "optimized_svga");
+  assert.equal(session.getState().currentLocalPath, sourcePath);
+  assert.ok(session.getState().activeOutputBytes);
+
+  const saved = await session.dispatchMenuAction({
+    commandId: "saveAs",
+    targetPath: "/Users/designer/private/optimized.svga"
+  });
+  assert.equal(saved.actionResult?.status, "completed");
+  assert.equal(saved.state.activeOutputBytes, undefined);
+
+  const savedDecision = session.evaluateLifecycleRequest({
+    request: "windowClose"
+  });
+  assert.equal(savedDecision.status, "allow");
+  assert.equal(savedDecision.canProceed, true);
+  assert.equal(savedDecision.dirty, false);
+  assert.equal(savedDecision.shouldPromptDiscard, false);
+});
+
 function createMemoryHost(
   initialFiles: Record<string, Uint8Array>,
   options: {

@@ -15,6 +15,11 @@ import {
   persistShortTermHostRecentFiles,
   type ShortTermRecentFilesStore
 } from "./short-term-host-recent-persistence.js";
+import {
+  evaluateShortTermHostLifecycleRequest,
+  type ShortTermHostLifecycleDecision,
+  type ShortTermHostLifecycleRequestInput
+} from "./short-term-host-lifecycle.js";
 import { serializeShortTermRecentFilesState } from "./short-term-recent-files.js";
 
 export const SHORT_TERM_HOST_SESSION_SCHEMA_VERSION = 1 as const;
@@ -57,6 +62,7 @@ export interface ShortTermHostSession {
   openLocalFile(input: ShortTermHostOpenLocalFileInput): Promise<ShortTermHostSessionActionResult>;
   openRecentFile(input: ShortTermHostOpenRecentFileInput): Promise<ShortTermHostSessionActionResult>;
   dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult>;
+  evaluateLifecycleRequest(input: ShortTermHostLifecycleRequestInput): ShortTermHostLifecycleDecision;
   persistRecentFiles(): Promise<ShortTermHostSessionRecentPersistenceResult>;
 }
 
@@ -97,6 +103,10 @@ class ShortTermHostSessionController implements ShortTermHostSession {
 
   async dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult> {
     return this.apply((state) => dispatchShortTermHostMenuAction(state, this.host, input));
+  }
+
+  evaluateLifecycleRequest(input: ShortTermHostLifecycleRequestInput): ShortTermHostLifecycleDecision {
+    return evaluateShortTermHostLifecycleRequest(this.state, input);
   }
 
   async persistRecentFiles(): Promise<ShortTermHostSessionRecentPersistenceResult> {
