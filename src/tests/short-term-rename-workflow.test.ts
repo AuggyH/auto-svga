@@ -145,6 +145,22 @@ test("short-term rename workflow redacts local paths from diagnostics", async ()
   assert.equal(JSON.stringify(result.model).includes("private/missing.proto"), false);
 });
 
+test("short-term rename workflow redacts path-like image keys from failed models", async () => {
+  const sourceBytes = await createSvgaFixture();
+
+  const result = await runShortTermRenameWorkflow(
+    sourceBytes,
+    "/Users/designer/private/img_frame",
+    "profile_frame",
+    { sourceName: "rename.svga" }
+  );
+
+  assert.equal(result.renamedBytes, undefined);
+  assert.equal(result.model.status, "failed");
+  assert.equal(JSON.stringify(result.model).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(result.model).includes("private/img_frame"), false);
+});
+
 async function createSvgaFixture(overrides: Partial<{
   version: string;
   params: {

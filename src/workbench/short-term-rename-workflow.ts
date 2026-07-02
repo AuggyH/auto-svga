@@ -11,7 +11,10 @@ import {
   type ShortTermPersistedOutputSaveStateModel
 } from "./short-term-save-state.js";
 import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
-import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
+import {
+  redactShortTermLocalPathsFromError,
+  redactShortTermLocalPathsInValue
+} from "./short-term-local-path-redaction.js";
 
 export const SHORT_TERM_RENAME_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
@@ -286,7 +289,7 @@ function buildReport(input: {
     && input.validation.oldKeyAbsent
     && input.validation.newKeyPresent
     && input.validation.imageBytesPreserved;
-  return {
+  return redactShortTermLocalPathsInValue({
     schemaVersion: SHORT_TERM_RENAME_WORKFLOW_SCHEMA_VERSION,
     operationId: "svga-image-key-rename-v1",
     sourceSha256,
@@ -302,7 +305,7 @@ function buildReport(input: {
     sourceUnchanged: input.validation.sourceUnchanged,
     saveAsRequired: true,
     passed
-  };
+  });
 }
 
 function renamedModel(input: {
@@ -329,7 +332,7 @@ function renamedModel(input: {
       ]
     })
     : undefined;
-  return {
+  return redactShortTermLocalPathsInValue({
     schemaVersion: SHORT_TERM_RENAME_WORKFLOW_SCHEMA_VERSION,
     source: "short-term-rename-workflow",
     prdIds: ["S11", "S14"],
@@ -347,7 +350,7 @@ function renamedModel(input: {
     validation: input.report.validation,
     saveState: persistedOutput?.saveState ?? saveState(false, input.report.sourceUnchanged),
     ...(persistedOutput ? { persistedOutput } : {})
-  };
+  });
 }
 
 function failedModel(input: {
@@ -357,7 +360,7 @@ function failedModel(input: {
   toImageKey: string;
   diagnostic: { code: string; message: string };
 }): ShortTermRenameWorkflowModel {
-  return {
+  return redactShortTermLocalPathsInValue({
     schemaVersion: SHORT_TERM_RENAME_WORKFLOW_SCHEMA_VERSION,
     source: "short-term-rename-workflow",
     prdIds: ["S11", "S14"],
@@ -382,7 +385,7 @@ function failedModel(input: {
     },
     saveState: saveState(false, true),
     diagnostic: input.diagnostic
-  };
+  });
 }
 
 async function validateRenamedBytes(input: {
