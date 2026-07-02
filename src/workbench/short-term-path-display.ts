@@ -19,6 +19,6 @@ export function shortTermSourceNameFromPathLike(value: unknown, fallback = "unti
 
 export function sanitizeShortTermDisplayPart(value: unknown): string {
   return typeof value === "string"
-    ? value.replace(/[\u0000-\u001f]+/g, " ").replace(/[\\/]+/g, " ").replace(/\s+/g, " ").trim()
+    ? value.replace(/[\p{Cc}\p{Cf}]+/gu, " ").replace(/[\\/]+/g, " ").replace(/\s+/g, " ").trim()
     : "";
 }

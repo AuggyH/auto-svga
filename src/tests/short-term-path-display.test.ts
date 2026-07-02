@@ -32,6 +32,7 @@ test("short-term path display extracts a safe parent label", () => {
 
 test("short-term display part sanitizes separators and control characters", () => {
   assert.equal(sanitizeShortTermDisplayPart(" bad/name\\with\u0000control "), "bad name with control");
+  assert.equal(sanitizeShortTermDisplayPart("avatar\u202Egpj.svga\u007F"), "avatar gpj.svga");
 });
 
 test("short-term source names fall back to safe display text", () => {
