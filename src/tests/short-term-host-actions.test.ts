@@ -13,7 +13,10 @@ import {
   dispatchShortTermHostMenuAction,
   openShortTermHostLocalFile,
   openShortTermHostRecentFile,
+  applyShortTermHostTextPreview,
+  prepareShortTermHostTextPreview,
   resetShortTermHostImageReplacement,
+  resetShortTermHostTextPreview,
   runShortTermHostImageKeyRename,
   runShortTermHostImageReplacement,
   runShortTermHostOptimization,
@@ -106,6 +109,44 @@ test("short-term host output actions fail closed without opened source bytes", a
   assert.equal(optimized.lastAction?.action, "runOptimization");
   assert.equal(renamed.lastAction?.action, "renameImageKey");
   assert.equal(replaced.lastAction?.action, "replaceImage");
+});
+
+test("short-term host preview actions fail closed when opened source bytes are missing", async () => {
+  const host = createMemoryHost({
+    "/Users/designer/private/opened.svga": await createShortTermSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: "/Users/designer/private/opened.svga"
+  });
+  const inconsistent = {
+    ...opened,
+    facade: {
+      ...opened.facade,
+      sourceBytes: undefined
+    }
+  };
+
+  const resetImage = resetShortTermHostImageReplacement(inconsistent);
+  const preparedText = prepareShortTermHostTextPreview(inconsistent, {
+    textElements: [{ textKey: "nickname", displayName: "昵称", supportedFields: ["text"] }]
+  });
+  const appliedText = applyShortTermHostTextPreview(inconsistent, {
+    replacement: { textKey: "nickname", fields: { text: "Alice" } }
+  });
+  const resetText = resetShortTermHostTextPreview(inconsistent);
+
+  for (const result of [resetImage, preparedText, appliedText, resetText]) {
+    assert.equal(result.lastAction?.status, "blocked");
+    assert.equal(result.lastAction?.diagnostic?.code, "preview_action_requires_open_file");
+    assert.equal(result.facade.model.appState.state, "previewReady");
+    assert.equal(result.activeOutputBytes, undefined);
+  }
+  assert.equal(resetImage.lastAction?.action, "resetImageReplacement");
+  assert.equal(preparedText.lastAction?.action, "prepareTextPreview");
+  assert.equal(appliedText.lastAction?.action, "applyTextPreview");
+  assert.equal(resetText.lastAction?.action, "resetTextPreview");
 });
 
 test("short-term host actions run optimization and Save As through write-read validation", async () => {

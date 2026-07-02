@@ -693,11 +693,11 @@ function requireOpenedFileForPreviewAction(
   state: ShortTermHostActionState,
   action: Extract<ShortTermHostActionKind, "resetImageReplacement" | "prepareTextPreview" | "applyTextPreview" | "resetTextPreview">
 ): ShortTermHostActionState | undefined {
-  if (state.facade.model.appState.currentFile) return undefined;
+  if (state.facade.model.appState.currentFile && state.facade.sourceBytes) return undefined;
   return withLastAction(state, result(action, "blocked", "当前没有打开的 SVGA 可执行预览操作。", {
     diagnostic: {
       code: "preview_action_requires_open_file",
-      message: "Preview actions require an opened SVGA file."
+      message: "Preview actions require opened source bytes."
     }
   }));
 }
