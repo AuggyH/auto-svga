@@ -522,6 +522,7 @@ test("short-term host actions block disabled or unrouted menu commands", async (
   });
   assert.equal(missingOpenContext.lastAction?.status, "blocked");
   assert.equal(missingOpenContext.lastAction?.commandId, "openSvga");
+  assert.deepEqual(missingOpenContext.lastAction?.prdIds, ["S1", "S2"]);
   assert.equal(missingOpenContext.lastAction?.diagnostic?.code, "menu_command_context_missing");
   assert.equal(missingOpenContext.facade.model.appState.state, "launch");
 
@@ -529,12 +530,14 @@ test("short-term host actions block disabled or unrouted menu commands", async (
     commandId: "clearRecent"
   });
   assert.equal(clearBlocked.lastAction?.status, "blocked");
+  assert.deepEqual(clearBlocked.lastAction?.prdIds, ["S1", "S2", "S16"]);
   assert.equal(clearBlocked.lastAction?.diagnostic?.code, "menu_command_disabled");
 
   const unknownBlocked = await dispatchShortTermHostMenuAction(state, host, {
     commandId: "showLogs"
   });
   assert.equal(unknownBlocked.lastAction?.status, "blocked");
+  assert.deepEqual(unknownBlocked.lastAction?.prdIds, []);
   assert.equal(unknownBlocked.lastAction?.diagnostic?.code, "menu_command_disabled");
 });
 
@@ -550,6 +553,7 @@ test("short-term host actions delegate native and renderer-owned menu commands",
     commandId: "copy"
   });
   assert.equal(copied.lastAction?.status, "delegated");
+  assert.deepEqual(copied.lastAction?.prdIds, []);
   assert.equal(copied.lastAction?.diagnostic?.code, "menu_command_delegated_to_native");
   assert.equal(copied.facade.model.appState.state, "launch");
 
@@ -557,12 +561,14 @@ test("short-term host actions delegate native and renderer-owned menu commands",
     commandId: "help"
   });
   assert.equal(help.lastAction?.status, "delegated");
+  assert.deepEqual(help.lastAction?.prdIds, []);
   assert.equal(help.lastAction?.diagnostic?.code, "menu_command_delegated_to_renderer");
 
   const playBlocked = await dispatchShortTermHostMenuAction(launch, host, {
     commandId: "playPause"
   });
   assert.equal(playBlocked.lastAction?.status, "blocked");
+  assert.deepEqual(playBlocked.lastAction?.prdIds, ["S2"]);
   assert.equal(playBlocked.lastAction?.diagnostic?.code, "menu_command_disabled");
 
   const opened = await openShortTermHostLocalFile(launch, host, {
@@ -574,6 +580,7 @@ test("short-term host actions delegate native and renderer-owned menu commands",
     commandId: "playPause"
   });
   assert.equal(played.lastAction?.status, "delegated");
+  assert.deepEqual(played.lastAction?.prdIds, ["S2"]);
   assert.equal(played.lastAction?.diagnostic?.code, "menu_command_delegated_to_renderer");
   assert.equal(played.currentLocalPath, sourcePath);
 
@@ -581,6 +588,7 @@ test("short-term host actions delegate native and renderer-owned menu commands",
     commandId: "minimize"
   });
   assert.equal(minimized.lastAction?.status, "delegated");
+  assert.deepEqual(minimized.lastAction?.prdIds, []);
   assert.equal(minimized.lastAction?.diagnostic?.code, "menu_command_delegated_to_native");
   assert.equal(minimized.currentLocalPath, sourcePath);
 });
@@ -676,6 +684,7 @@ test("short-term host actions block contextual resource menu commands without re
 
   assert.equal(renameBlocked.lastAction?.status, "blocked");
   assert.equal(renameBlocked.lastAction?.commandId, "renameImageKey");
+  assert.deepEqual(renameBlocked.lastAction?.prdIds, ["S11", "S14"]);
   assert.equal(renameBlocked.lastAction?.diagnostic?.code, "menu_command_context_missing");
   assert.equal(renameBlocked.facade.model.appState.state, "previewReady");
   assert.equal(renameBlocked.currentLocalPath, sourcePath);
@@ -688,6 +697,7 @@ test("short-term host actions block contextual resource menu commands without re
 
   assert.equal(replaceBlocked.lastAction?.status, "blocked");
   assert.equal(replaceBlocked.lastAction?.commandId, "replaceImage");
+  assert.deepEqual(replaceBlocked.lastAction?.prdIds, ["S12", "S14"]);
   assert.equal(replaceBlocked.lastAction?.diagnostic?.code, "menu_command_context_missing");
   assert.equal(replaceBlocked.facade.model.appState.state, "previewReady");
   assert.equal(replaceBlocked.currentLocalPath, sourcePath);
