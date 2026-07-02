@@ -19,7 +19,8 @@ const state = {
   compareBPlayback: undefined,
   editPlayback: undefined,
   textPreview: "",
-  saveStatus: "idle"
+  saveStatus: "idle",
+  lastMenuStateSnapshot: ""
 };
 
 const nodes = {
@@ -234,7 +235,8 @@ async function runOptimization() {
       bytes: optimizedBytes,
       suggestedName: suffixName(state.displayName, "optimized"),
       title: result.optimization.resultTitle,
-      summary: result.optimization.resultSummary
+      summary: result.optimization.resultSummary,
+      details: result.optimization
     });
     renderOptimizationCompare(result.optimization, optimizedBytes);
   } catch (error) {
@@ -376,6 +378,11 @@ function resetRuntimeText() {
 
 async function saveActiveOutput(command) {
   if (!state.activeOutput?.bytes?.byteLength || !bridge?.saveShortTermSvgaOutput) return;
+  if (state.saveStatus === "validating") return;
+  if (command === "overwrite" && !state.sourceId) {
+    showSaveBanner("当前文件不支持覆盖保存。", "请使用“另存为”保存这份 SVGA 输出。");
+    return;
+  }
   state.saveStatus = "validating";
   renderCommandState();
   showSaveBanner("正在验证保存输出。", "写入后会读取文件并校验哈希。");
@@ -410,13 +417,14 @@ async function saveActiveOutput(command) {
   }
 }
 
-function setActiveOutput({ kind, bytes, suggestedName, title, summary }) {
+function setActiveOutput({ kind, bytes, suggestedName, title, summary, details }) {
   state.activeOutput = {
     kind,
     bytes: new Uint8Array(bytes),
     suggestedName,
     title,
-    summary
+    summary,
+    details
   };
   state.saveStatus = "dirty";
   showSaveBanner(title, summary);
@@ -667,7 +675,7 @@ async function renderOptimizationCompare(model, optimizedBytes) {
   nodes.compareInfoB.innerHTML = `
     <h2>${escapeHtml(model.resultTitle)}</h2>
     <p>${escapeHtml(model.resultSummary)}</p>
-    ${model.metrics.map((metric) => `<div class="factCell"><strong>${escapeHtml(metric.after)}</strong><span>${escapeHtml(metric.label)}</span><small>${escapeHtml(metric.delta)}</small></div>`).join("")}
+    ${(model.metrics ?? []).map((metric) => `<div class="factCell"><strong>${escapeHtml(metric.after)}</strong><span>${escapeHtml(metric.label)}</span><small>${escapeHtml(metric.delta)}</small></div>`).join("")}
     <button class="toolbarButton primary" type="button" data-action="save-as">另存为</button>
     <button class="toolbarButton" type="button" data-action="back-preview">返回预览</button>
   `;
@@ -675,6 +683,18 @@ async function renderOptimizationCompare(model, optimizedBytes) {
     mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes),
     mountPlayback("compareB", nodes.compareCanvasB, optimizedBytes)
   ]);
+}
+
+async function showOptimizationComparison() {
+  if (state.activeOutput?.kind !== "optimization" || !state.activeOutput.bytes?.byteLength) return;
+  await renderOptimizationCompare(
+    state.activeOutput.details ?? {
+      resultTitle: state.activeOutput.title || "优化结果",
+      resultSummary: state.activeOutput.summary || "已生成优化副本。",
+      metrics: []
+    },
+    state.activeOutput.bytes
+  );
 }
 
 function renderCompareInfo(title, model, displayName, actions = []) {
@@ -807,15 +827,43 @@ function renderCommandState() {
   const hasFile = Boolean(state.sourceBytes);
   const hasOutput = Boolean(state.activeOutput);
   const saveBusy = state.saveStatus === "validating";
+  const canOverwrite = hasOutput && !saveBusy && Boolean(state.sourceId);
+  const canSaveAs = hasOutput && !saveBusy;
+  const canRunOptimization = hasFile && state.model?.optimization?.batchActionEnabled === true;
+  const canRenameImageKey = hasFile && Boolean(state.selectedImageKey);
+  const canEditText = Boolean(selectedTextElement());
   setActionEnabled("compare", hasFile, "请先打开 SVGA");
   setActionEnabled("play-pause", hasFile, "请先打开 SVGA");
   setActionEnabled("replay", hasFile, "请先打开 SVGA");
-  setActionEnabled("run-optimization", hasFile && state.model?.optimization?.batchActionEnabled === true, "没有可安全执行的优化项");
-  setActionEnabled("save-as", hasOutput && !saveBusy, hasOutput ? "正在验证保存输出" : "没有可保存的输出");
-  setActionEnabled("save-overwrite", hasOutput && !saveBusy && Boolean(state.sourceId), state.sourceId ? "正在验证保存输出" : "当前文件不支持覆盖保存");
-  setActionEnabled("edit-text", Boolean(selectedTextElement()), "当前文件没有可预览文本元素");
+  setActionEnabled("run-optimization", canRunOptimization, "没有可安全执行的优化项");
+  setActionEnabled("save-as", canSaveAs, hasOutput ? "正在验证保存输出" : "没有可保存的输出");
+  setActionEnabled("save-overwrite", canOverwrite, state.sourceId ? "正在验证保存输出" : "当前文件不支持覆盖保存");
+  setActionEnabled("edit-text", canEditText, "当前文件没有可预览文本元素");
   setActionEnabled("reset-text", Boolean(state.textPreview), "当前没有已应用的文本预览");
   document.querySelector("[data-action='play-pause']").textContent = state.primaryPlayback?.playing ? "暂停" : "播放";
+  syncShortTermMenuState({
+    view: state.view,
+    mode: state.mode,
+    tab: state.tab,
+    hasFile,
+    hasOutput,
+    outputKind: state.activeOutput?.kind || "",
+    canOverwrite,
+    canSaveAs,
+    saveBusy,
+    canCompare: hasFile,
+    canPlay: hasFile,
+    canReplay: hasFile,
+    canRenameImageKey,
+    canReplaceImage: canRenameImageKey,
+    canResetImageReplacement: state.activeOutput?.kind === "replacement",
+    canEditText,
+    canResetText: Boolean(state.textPreview),
+    canRunOptimization,
+    canShowOptimizationComparison: state.activeOutput?.kind === "optimization" && Boolean(state.activeOutput.bytes?.byteLength),
+    isRenaming: Boolean(state.renameImageKey),
+    hasTransientState: Boolean(state.renameImageKey) || state.view === "compare" || Boolean(document.querySelector("dialog[open]"))
+  });
 }
 
 function setActionEnabled(action, enabled, reason) {
@@ -823,6 +871,14 @@ function setActionEnabled(action, enabled, reason) {
     button.disabled = !enabled;
     button.title = enabled ? "" : reason;
   });
+}
+
+function syncShortTermMenuState(snapshot) {
+  if (!bridge?.updateShortTermMenuState) return;
+  const serialized = JSON.stringify(snapshot);
+  if (serialized === state.lastMenuStateSnapshot) return;
+  state.lastMenuStateSnapshot = serialized;
+  bridge.updateShortTermMenuState(snapshot).catch(() => {});
 }
 
 function showSaveBanner(title, message) {
@@ -979,10 +1035,12 @@ function showDialog(dialog) {
   return new Promise((resolve) => {
     const handler = () => {
       dialog.removeEventListener("close", handler);
+      renderCommandState();
       resolve(dialog.returnValue);
     };
     dialog.addEventListener("close", handler);
     dialog.showModal();
+    renderCommandState();
   });
 }
 
@@ -1113,6 +1171,7 @@ window.__autoSvgaShortTermActions = Object.freeze({
   editTextPreview: editRuntimeText,
   resetTextPreview: resetRuntimeText,
   runOptimization,
+  showOptimizationComparison,
   openCompareB: openCompareBFromHost,
   playPause: togglePrimaryPlayback,
   replay: replayPrimary,

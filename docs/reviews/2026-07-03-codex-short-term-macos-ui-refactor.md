@@ -20,6 +20,8 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Removed the unused hidden compare file input; the short-term macOS compare flow now has one real B-file entry through the host file picker.
 - Replaced the old imageKey rename dialog with an inline resource-row rename state, including Enter confirm and Esc cancel behavior required by the short-term IA.
 - Made runtime text preview modal keyboard behavior explicit: Enter applies and Esc cancels without relying on button order.
+- Bound the short-term macOS menu to the renderer's current product state, so Close, Compare, Save, Resource, Playback, mode, tab, and Optimization entries enable/disable or check themselves from the same state as the visible controls.
+- Added a menu-state smoke proof for the loaded short-term app; the proof fails if the menu remains in an empty/default state after a file is loaded or if key menu items drift from renderer state.
 
 ## Verification
 
@@ -29,6 +31,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`: 28/28 pass.
 - `node --test tools/shared/product-frontend/source-sharing.test.mjs`: 7/7 pass.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`: pass.
+- Short-term menu-state proof: pass; `shortTermMenuState=true` in desktop smoke and `.artifacts/product/short-term/short-term-menu-state-proof.json` records loaded Preview state plus matching menu enabled/checked states.
 - Short-term macOS menu guard: pass; the legacy Workbench menu remains isolated, while the default short-term menu has no reload or DevTools item.
 - Short-term image replacement failure-copy guard: pass; invalid/corrupt PNG diagnostics stay Chinese and do not expose the old English decoder copy.
 - Short-term operation-failure guard: pass; optimization, rename, and replacement catches use recoverable operation prompts rather than the open-file failure page.

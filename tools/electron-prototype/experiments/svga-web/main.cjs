@@ -142,6 +142,30 @@ let auditFinished = false;
 let cspViolationSeen = false;
 let cleanedUp = false;
 let activeMainWindow;
+const defaultShortTermMenuState = Object.freeze({
+  view: "launch",
+  mode: "preview",
+  tab: "overview",
+  hasFile: false,
+  hasOutput: false,
+  outputKind: "",
+  canOverwrite: false,
+  canSaveAs: false,
+  saveBusy: false,
+  canCompare: false,
+  canPlay: false,
+  canReplay: false,
+  canRenameImageKey: false,
+  canReplaceImage: false,
+  canResetImageReplacement: false,
+  canEditText: false,
+  canResetText: false,
+  canRunOptimization: false,
+  canShowOptimizationComparison: false,
+  isRenaming: false,
+  hasTransientState: false
+});
+let shortTermMenuState = { ...defaultShortTermMenuState };
 const blockedExternalRequests = [];
 const sourceFilePaths = new Map();
 const referenceFileIds = new Set();
@@ -2109,6 +2133,49 @@ function shortTermRecentView() {
   }));
 }
 
+function updateShortTermMenuState(input) {
+  const nextState = validateShortTermMenuState(input);
+  if (!nextState) throw new Error("Invalid short-term menu state");
+  shortTermMenuState = nextState;
+  rebuildShortTermApplicationMenu();
+  return { status: "updated" };
+}
+
+function validateShortTermMenuState(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return undefined;
+  const view = stringEnum(input.view, ["launch", "loading", "failed", "preview", "compare", "edit"], defaultShortTermMenuState.view);
+  const mode = stringEnum(input.mode, ["preview", "edit"], defaultShortTermMenuState.mode);
+  const tab = stringEnum(input.tab, ["overview", "optimization", "replaceable"], defaultShortTermMenuState.tab);
+  const outputKind = stringEnum(input.outputKind, ["", "optimization", "rename", "replacement"], "");
+  return {
+    view,
+    mode,
+    tab,
+    outputKind,
+    hasFile: input.hasFile === true,
+    hasOutput: input.hasOutput === true,
+    canOverwrite: input.canOverwrite === true,
+    canSaveAs: input.canSaveAs === true,
+    saveBusy: input.saveBusy === true,
+    canCompare: input.canCompare === true,
+    canPlay: input.canPlay === true,
+    canReplay: input.canReplay === true,
+    canRenameImageKey: input.canRenameImageKey === true,
+    canReplaceImage: input.canReplaceImage === true,
+    canResetImageReplacement: input.canResetImageReplacement === true,
+    canEditText: input.canEditText === true,
+    canResetText: input.canResetText === true,
+    canRunOptimization: input.canRunOptimization === true,
+    canShowOptimizationComparison: input.canShowOptimizationComparison === true,
+    isRenaming: input.isRenaming === true,
+    hasTransientState: input.hasTransientState === true
+  };
+}
+
+function stringEnum(value, allowed, fallback) {
+  return allowed.includes(value) ? value : fallback;
+}
+
 function openShortTermRecentFile(recentFileId) {
   if (!isBoundedString(recentFileId, 80)) return { status: "missing", message: "最近文件记录无效。" };
   const records = readShortTermRecentRecords();
@@ -2807,6 +2874,52 @@ function mergeExistingProductArtifactIndex() {
   }
 }
 
+function collectShortTermMenuStateProof() {
+  const checks = {
+    stateReflectsLoadedSmoke: shortTermMenuState.hasFile === true && shortTermMenuState.view === "preview",
+    closeFileEnabledMatchesFileState: menuItemEnabled(["文件", "关闭文件"]) === shortTermMenuState.hasFile,
+    compareEnabledMatchesFileState: menuItemEnabled(["文件", "打开对比 SVGA..."]) === shortTermMenuState.canCompare,
+    playbackEnabledAfterLoad: menuItemEnabled(["播放", "播放/暂停"]) === true,
+    saveAsEnabledMatchesOutputState: menuItemEnabled(["文件", "另存为..."]) === shortTermMenuState.canSaveAs,
+    overwriteEnabledMatchesOutputState: menuItemEnabled(["文件", "覆盖保存"]) === shortTermMenuState.canOverwrite,
+    renameEnabledMatchesSelection: menuItemEnabled(["资源", "重命名 imageKey"]) === shortTermMenuState.canRenameImageKey,
+    replaceEnabledMatchesSelection: menuItemEnabled(["资源", "替换预览图片..."]) === shortTermMenuState.canReplaceImage,
+    optimizationEnabledMatchesModel: menuItemEnabled(["优化", "执行安全优化"]) === shortTermMenuState.canRunOptimization,
+    optimizationCompareEnabledMatchesOutput: menuItemEnabled(["优化", "显示优化对比"]) === shortTermMenuState.canShowOptimizationComparison,
+    previewModeCheckedMatchesState: menuItemChecked(["视图", "预览模式"]) === (shortTermMenuState.mode === "preview"),
+    editModeCheckedMatchesState: menuItemChecked(["视图", "编辑模式"]) === (shortTermMenuState.mode === "edit")
+  };
+  return {
+    schemaVersion: 1,
+    proofId: "short-term-menu-state-proof",
+    source: "macos-menu-state-sync-smoke",
+    state: shortTermMenuState,
+    checks,
+    passed: Object.values(checks).every(Boolean)
+  };
+}
+
+function menuItemEnabled(labelPath) {
+  const item = findApplicationMenuItem(labelPath);
+  return item ? item.enabled !== false : undefined;
+}
+
+function menuItemChecked(labelPath) {
+  const item = findApplicationMenuItem(labelPath);
+  return item ? item.checked === true : undefined;
+}
+
+function findApplicationMenuItem(labelPath) {
+  let menu = Menu.getApplicationMenu();
+  for (const label of labelPath) {
+    const item = menu?.items?.find((candidate) => candidate.label === label);
+    if (!item) return undefined;
+    if (label === labelPath[labelPath.length - 1]) return item;
+    menu = item.submenu;
+  }
+  return undefined;
+}
+
 async function finishSmoke(window, result) {
   if (smokeFinished) return;
   smokeFinished = true;
@@ -2831,6 +2944,16 @@ async function finishSmoke(window, result) {
       "workbench-region-map.json",
       "workbench-region-map",
       result.workbenchRegionMap,
+      "smoke"
+    );
+  }
+  if (productSmokeMode && isShortTermProduct) {
+    const shortTermMenuStateProof = collectShortTermMenuStateProof();
+    result.shortTermMenuState = shortTermMenuStateProof.passed;
+    writeJsonProductArtifact(
+      "short-term-menu-state-proof.json",
+      "short-term-menu-state-proof",
+      shortTermMenuStateProof,
       "smoke"
     );
   }
@@ -3413,6 +3536,9 @@ function installShortTermApplicationMenu(window) {
       console.error(`AUTO_SVGA_MENU_ACTION_ERROR ${name} ${redactLogMessage(error instanceof Error ? error.message : error)}`);
     });
   };
+  const menuState = shortTermMenuState;
+  const hasFile = menuState.hasFile;
+  const hasRecent = readShortTermRecentRecords().length > 0;
   const recentRecords = shortTermRecentView().slice(0, maxShortTermRecentFiles);
   const recentSubmenu = [
     ...(recentRecords.length > 0
@@ -3424,7 +3550,7 @@ function installShortTermApplicationMenu(window) {
     { type: "separator" },
     {
       label: "清除最近记录",
-      enabled: recentRecords.length > 0,
+      enabled: hasRecent,
       click: () => invokeShortTermAction("clearRecentFiles")
     }
   ];
@@ -3457,6 +3583,7 @@ function installShortTermApplicationMenu(window) {
         {
           label: "关闭文件",
           accelerator: "CommandOrControl+W",
+          enabled: hasFile,
           click: () => invokeShortTermAction("closeFile")
         },
         {
@@ -3466,17 +3593,20 @@ function installShortTermApplicationMenu(window) {
         { type: "separator" },
         {
           label: "打开对比 SVGA...",
+          enabled: menuState.canCompare,
           click: () => invokeShortTermAction("openCompareB")
         },
         { type: "separator" },
         {
           label: "覆盖保存",
           accelerator: "CommandOrControl+S",
+          enabled: menuState.canOverwrite,
           click: () => invokeShortTermAction("save")
         },
         {
           label: "另存为...",
           accelerator: "CommandOrControl+Shift+S",
+          enabled: menuState.canSaveAs,
           click: () => invokeShortTermAction("saveAs")
         },
         ...(process.platform === "darwin" ? [] : [
@@ -3499,11 +3629,13 @@ function installShortTermApplicationMenu(window) {
         {
           label: "重命名 imageKey",
           accelerator: "CommandOrControl+R",
+          enabled: menuState.canRenameImageKey,
           click: () => invokeShortTermAction("renameImageKey")
         },
         {
           label: "取消当前操作",
           accelerator: "Esc",
+          enabled: menuState.hasTransientState,
           click: () => invokeShortTermAction("cancel")
         }
       ]
@@ -3513,27 +3645,43 @@ function installShortTermApplicationMenu(window) {
       submenu: [
         {
           label: "预览模式",
+          type: "checkbox",
+          checked: menuState.mode === "preview",
+          enabled: hasFile,
           click: () => invokeShortTermAction("previewMode")
         },
         {
           label: "编辑模式",
+          type: "checkbox",
+          checked: menuState.mode === "edit",
+          enabled: hasFile,
           click: () => invokeShortTermAction("editMode")
         },
         {
-          label: "进入或退出对比",
+          label: menuState.view === "compare" ? "退出对比" : "进入对比",
+          enabled: menuState.canCompare,
           click: () => invokeShortTermAction("toggleCompare")
         },
         { type: "separator" },
         {
           label: "总览",
+          enabled: hasFile,
+          type: "checkbox",
+          checked: menuState.tab === "overview" && menuState.view === "preview",
           click: () => invokeShortTermAction("overviewTab")
         },
         {
           label: "优化",
+          enabled: hasFile,
+          type: "checkbox",
+          checked: menuState.tab === "optimization" && menuState.view === "preview",
           click: () => invokeShortTermAction("optimizationTab")
         },
         {
           label: "可替换元素",
+          enabled: hasFile,
+          type: "checkbox",
+          checked: menuState.tab === "replaceable" && menuState.view === "preview",
           click: () => invokeShortTermAction("replaceableTab")
         }
       ]
@@ -3544,10 +3692,12 @@ function installShortTermApplicationMenu(window) {
         {
           label: "播放/暂停",
           accelerator: "Space",
+          enabled: menuState.canPlay,
           click: () => invokeShortTermAction("playPause")
         },
         {
           label: "重播",
+          enabled: menuState.canReplay,
           click: () => invokeShortTermAction("replay")
         }
       ]
@@ -3558,23 +3708,28 @@ function installShortTermApplicationMenu(window) {
         {
           label: "重命名 imageKey",
           accelerator: "CommandOrControl+R",
+          enabled: menuState.canRenameImageKey,
           click: () => invokeShortTermAction("renameImageKey")
         },
         {
           label: "替换预览图片...",
+          enabled: menuState.canReplaceImage,
           click: () => invokeShortTermAction("replaceImage")
         },
         {
           label: "重置预览图片",
+          enabled: menuState.canResetImageReplacement,
           click: () => invokeShortTermAction("resetImageReplacement")
         },
         { type: "separator" },
         {
           label: "编辑文本预览...",
+          enabled: menuState.canEditText,
           click: () => invokeShortTermAction("editTextPreview")
         },
         {
           label: "重置文本预览",
+          enabled: menuState.canResetText,
           click: () => invokeShortTermAction("resetTextPreview")
         }
       ]
@@ -3584,11 +3739,18 @@ function installShortTermApplicationMenu(window) {
       submenu: [
         {
           label: "查看优化建议",
+          enabled: hasFile,
           click: () => invokeShortTermAction("optimizationTab")
         },
         {
           label: "执行安全优化",
+          enabled: menuState.canRunOptimization,
           click: () => invokeShortTermAction("runOptimization")
+        },
+        {
+          label: "显示优化对比",
+          enabled: menuState.canShowOptimizationComparison,
+          click: () => invokeShortTermAction("showOptimizationComparison")
         }
       ]
     },
@@ -4339,6 +4501,11 @@ async function createExperimentWindow() {
   ipcMain.handle(IPC_CHANNELS.writeClipboardText, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return writeClipboardText(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.updateShortTermMenuState, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return updateShortTermMenuState(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.saveShortTermSvgaOutput, async (event, input) => {
