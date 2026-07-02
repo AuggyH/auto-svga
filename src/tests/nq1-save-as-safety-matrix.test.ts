@@ -14,7 +14,8 @@ test("NQ1 Save As safety matrix covers source checks and cross-platform path sce
   assert.equal(report.reportId, "cross-platform-save-as-safety-matrix");
   assert.equal(report.sourceCheckFailures.length, 0, JSON.stringify(report.sourceCheckFailures, null, 2));
   assert.equal(report.blockingScenarioCount, 0);
-  assert.equal(report.deferredRiskCount, 1);
-  assert.equal(report.scenarios.some((scenario) => scenario.id === "windows_case_variant_same_path_needs_runtime_review"), true);
+  assert.equal(report.deferredRiskCount, 0);
+  assert.equal(report.scenarios.some((scenario) => scenario.id === "macos_case_variant_same_path_rejected"), true);
+  assert.equal(report.scenarios.some((scenario) => scenario.id === "windows_case_variant_same_path_rejected"), true);
   assert.equal(report.passed, true);
 });

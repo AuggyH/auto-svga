@@ -62,7 +62,12 @@ function buildSourceChecks(input: { mainSource: string; preloadSource: string })
     check("open_ipc_sender_validated", /(?:svga-web-experiment:open-svga-file|IPC_CHANNELS\.openSvgaFile)[\s\S]*isExpectedSender/.test(mainSource)),
     check("save_payload_validated_before_write", /const value = validateEditedSvgaSaveInput\(input\)/.test(mainSource)),
     check("save_requires_picker_source_outside_automation", /Save As requires the source SVGA to be opened through the desktop file picker/.test(mainSource)),
-    check("same_source_target_rejected", /path\.resolve\(targetPath\) === path\.resolve\(originalPath\)/.test(mainSource)),
+    check(
+      "same_source_target_rejected",
+      /function sameSaveAsSourcePath\(targetPath, originalPath\)/.test(mainSource)
+        && /normalize\("NFC"\)\.toLowerCase\(\)/.test(mainSource)
+        && countMatches(mainSource, /sameSaveAsSourcePath\(targetPath, originalPath\)/g) >= 4
+    ),
     check("temp_file_uses_exclusive_create", /openSync\(temporaryPath, "wx"\)/.test(mainSource)),
     check("temp_file_cleanup_on_failure", /unlinkSync\(temporaryPath\)/.test(mainSource)),
     check("saved_response_uses_basename", /fileName: path\.basename\(targetPath\)/.test(mainSource)),
@@ -84,6 +89,7 @@ function buildScenarios(): Nq1SaveAsSafetyScenario[] {
   const userRoot = "/" + "Users/reviewer";
   const macOriginal = `${userRoot}/auto-svga/frame.svga`;
   const macSibling = `${userRoot}/auto-svga/frame-edited.svga`;
+  const macCaseVariant = `${userRoot.toLowerCase()}/AUTO-SVGA/FRAME.svga`;
   const winOriginal = "C:\\Users\\Reviewer\\AutoSVGA\\frame.svga";
   const winSibling = "C:\\Users\\Reviewer\\AutoSVGA\\frame-edited.svga";
   const winCaseVariant = "c:\\users\\reviewer\\autosvga\\FRAME.svga";
@@ -95,15 +101,17 @@ function buildScenarios(): Nq1SaveAsSafetyScenario[] {
     scenario("macos_sibling_target_allowed", "macos", "pass", "allow sibling edited output path", {
       detectedSamePath: sameResolvedPath("macos", macOriginal, macSibling)
     }),
+    scenario("macos_case_variant_same_path_rejected", "macos", "pass", "reject case-only source aliases", {
+      detectedSamePath: sameResolvedPath("macos", macOriginal, macCaseVariant)
+    }),
     scenario("windows_same_source_target_rejected_same_case", "windows", "pass", "reject same source and target with same case", {
       detectedSamePath: sameResolvedPath("windows", winOriginal, winOriginal)
     }),
     scenario("windows_sibling_target_allowed", "windows", "pass", "allow sibling edited output path", {
       detectedSamePath: sameResolvedPath("windows", winOriginal, winSibling)
     }),
-    scenario("windows_case_variant_same_path_needs_runtime_review", "windows", "deferred", "case-insensitive same-path detection needs Windows runtime validation", {
-      detectedSamePathWithCurrentPathResolveModel: sameResolvedPath("windows", winOriginal, winCaseVariant),
-      deferredReason: "Node path.win32.resolve does not prove case-insensitive filesystem equality."
+    scenario("windows_case_variant_same_path_rejected", "windows", "pass", "reject case-only source aliases", {
+      detectedSamePath: sameResolvedPath("windows", winOriginal, winCaseVariant)
     }),
     scenario("filename_sanitization_removes_path_separators", "all", "pass", "suggested name cannot smuggle directories", {
       sanitized: sanitizeSvgaFileNameLikeMain("../unsafe\\nested/name")
@@ -141,9 +149,17 @@ function check(id: string, passed: boolean): Nq1SaveAsSourceCheck {
   return { id, passed };
 }
 
+function countMatches(source: string, pattern: RegExp): number {
+  return [...source.matchAll(pattern)].length;
+}
+
 function sameResolvedPath(platform: "macos" | "windows", originalPath: string, targetPath: string): boolean {
   const pathModule = platform === "windows" ? path.win32 : path.posix;
-  return pathModule.resolve(targetPath) === pathModule.resolve(originalPath);
+  return canonicalSavePath(pathModule.resolve(targetPath)) === canonicalSavePath(pathModule.resolve(originalPath));
+}
+
+function canonicalSavePath(value: string): string {
+  return value.normalize("NFC").toLowerCase();
 }
 
 function sanitizeSvgaFileNameLikeMain(value: string): string {

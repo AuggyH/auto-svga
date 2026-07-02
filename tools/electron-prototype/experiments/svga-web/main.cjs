@@ -3589,7 +3589,7 @@ async function saveEditedSvga(input) {
     }
     targetPath = result.filePath.toLowerCase().endsWith(".svga") ? result.filePath : `${result.filePath}.svga`;
   }
-  if (originalPath && path.resolve(targetPath) === path.resolve(originalPath)) {
+  if (originalPath && sameSaveAsSourcePath(targetPath, originalPath)) {
     throw new Error("Save As target must be different from the original SVGA.");
   }
 
@@ -3659,7 +3659,7 @@ async function saveOptimizedSvga(input) {
     return { status: "cancelled" };
   }
   const targetPath = result.filePath.toLowerCase().endsWith(".svga") ? result.filePath : `${result.filePath}.svga`;
-  if (path.resolve(targetPath) === path.resolve(originalPath)) {
+  if (sameSaveAsSourcePath(targetPath, originalPath)) {
     throw new Error("Optimized Save As target must be different from the original SVGA.");
   }
 
@@ -3701,7 +3701,7 @@ async function saveSequenceRepairSvga(input) {
     }
     targetPath = result.filePath.toLowerCase().endsWith(".svga") ? result.filePath : `${result.filePath}.svga`;
   }
-  if (originalPath && path.resolve(targetPath) === path.resolve(originalPath)) {
+  if (originalPath && sameSaveAsSourcePath(targetPath, originalPath)) {
     throw new Error("Sequence repair Save As target must be different from the original SVGA.");
   }
 
@@ -3741,6 +3741,14 @@ async function saveSequenceRepairSvga(input) {
     targetPathRedacted: sanitizeRuntimeArgument(targetPath),
     savedSvgaBase64: value.bytes.toString("base64")
   };
+}
+
+function sameSaveAsSourcePath(targetPath, originalPath) {
+  return canonicalSavePath(targetPath) === canonicalSavePath(originalPath);
+}
+
+function canonicalSavePath(value) {
+  return path.resolve(value).normalize("NFC").toLowerCase();
 }
 
 function writeSvgaBytesAtomically(targetPath, bytes) {

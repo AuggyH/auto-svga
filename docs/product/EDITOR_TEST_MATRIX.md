@@ -12,7 +12,7 @@ on chat history, manual screenshots, or hidden local state.
 | Multi-resource edit | P4 per-resource replacement and untouched-resource integrity | `node --test dist/tests/svga-image-resource-editor.test.js` |
 | Undo / redo / save point | deterministic state machine and edit history | `node --test dist/tests/nq1-history-model.test.js dist/tests/svga-image-edit-history.test.js` |
 | Async race and failure handling | stale preview, failed preview, save rejection, rollback | `node --test dist/tests/nq1-async-race.test.js` |
-| Save As safety | path redaction, same-source rejection, IPC boundary | `node --test dist/tests/nq1-save-as-safety-matrix.test.js` |
+| Save As safety | path redaction, same-source and case-alias rejection, IPC boundary | `node --test dist/tests/nq1-save-as-safety-matrix.test.js` |
 | Multi-resource round trip | synthetic fixtures with 1/2/3/5/10/25 resources | `node --test dist/tests/nq1-round-trip-matrix.test.js` |
 | Cleanup lifecycle | server, runtime, player, session, object lifecycle | `node --test dist/tests/nq1-cleanup-stress.test.js` |
 | Accessibility semantics | keyboard, labels, focus, error text, report folding | `node --test dist/tests/nq1-accessibility-audit.test.js` |
