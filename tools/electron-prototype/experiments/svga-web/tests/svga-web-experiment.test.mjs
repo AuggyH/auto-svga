@@ -711,7 +711,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   );
   assert.doesNotMatch(normalProofSource, /#svgaFileInput|#svgaStatusA|#svgaCanvasA|specReportSection|auditReportSection/);
   assert.match(main, /writeJsonProductArtifact\("short-term-save-proof\.json", "short-term-save-proof"/);
-  assert.match(main, /targetPath = path\.join\(productArtifactRoot, "short-term-normal-save-as\.svga"\)/);
+  assert.match(main, /normalProofMode \? "short-term-normal-save-as\.svga" : "short-term-smoke-save-as\.svga"/);
   assert.match(main, /IPC_CHANNELS\.openSvgaFile/);
   assert.match(main, /IPC_CHANNELS\.openReferenceMediaFile/);
   assert.match(main, /IPC_CHANNELS\.scanLatestArtifacts/);
@@ -1050,6 +1050,19 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-general-compare"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-edit-reserved"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-minimum"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-save-failed"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-load-failed"\)/);
+  assert.match(shortTermEntry, /shortTermScreenshots: screenshotCaptures\.length >= 9/);
+  assert.match(shortTermEntry, /shortTermSaveFailed: saveFailedVisible/);
+  assert.match(shortTermEntry, /shortTermLoadFailed: loadFailedVisible/);
+  assert.match(shortTermEntry, /function createSaveFailureProofOutput/);
+  assert.match(shortTermEntry, /const savedModel = await inspectShortTerm\(outputBytes/);
+  assert.ok(
+    shortTermEntry.indexOf("const savedModel = await inspectShortTerm(outputBytes") < shortTermEntry.indexOf("state.sourceBytes = outputBytes"),
+    "saved output must reopen before becoming the current source bytes"
+  );
+  assert.match(shortTermEntry, /playerLifecycleOk/);
+  assert.match(shortTermEntry, /dragDropLoaded/);
   assert.match(shortTermEntry, /waitForCanvasPixels/);
   assert.match(shortTermEntry, /name=invalid\.svga/);
   assert.match(shortTermEntry, /toParserArrayBuffer/);
@@ -1119,8 +1132,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /short-term-menu-state-proof/);
   assert.match(main, /stateReflectsLoadedSmoke/);
   assert.match(main, /shortTermScreenshots/);
+  assert.match(main, /shortTermLoadFailed/);
+  assert.match(main, /shortTermSaveFailed/);
   assert.match(main, /short-term-launch/);
   assert.match(main, /short-term-preview-minimum/);
+  assert.match(main, /short-term-load-failed/);
+  assert.match(main, /short-term-save-failed/);
   assert.match(main, /enabled: menuState\.canOverwrite/);
   assert.match(main, /enabled: menuState\.canSaveAs/);
   assert.match(main, /enabled: menuState\.canRenameImageKey/);

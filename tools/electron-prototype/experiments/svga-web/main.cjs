@@ -265,6 +265,14 @@ function validateSmokeResult(value) {
     if (typeof value.shortTermScreenshots !== "boolean") return undefined;
     result.shortTermScreenshots = value.shortTermScreenshots;
   }
+  if (value.shortTermLoadFailed !== undefined) {
+    if (typeof value.shortTermLoadFailed !== "boolean") return undefined;
+    result.shortTermLoadFailed = value.shortTermLoadFailed;
+  }
+  if (value.shortTermSaveFailed !== undefined) {
+    if (typeof value.shortTermSaveFailed !== "boolean") return undefined;
+    result.shortTermSaveFailed = value.shortTermSaveFailed;
+  }
   if (value.optimizedReopenProof !== undefined) {
     const optimizedReopenProof = validateOptimizedReopenProof(value.optimizedReopenProof);
     if (!optimizedReopenProof) return undefined;
@@ -1838,6 +1846,8 @@ function validateArtifactScenario(value) {
     "short-term-general-compare",
     "short-term-edit-reserved",
     "short-term-preview-minimum",
+    "short-term-save-failed",
+    "short-term-load-failed",
     "desktop-local-info-overview-open",
     "desktop-local-info-assets-open",
     "desktop-local-source-resources-open",
@@ -4161,9 +4171,9 @@ async function saveShortTermSvgaOutput(input) {
       throw new Error("覆盖保存需要先通过客户端打开本地 SVGA。");
     }
     targetPath = originalPath;
-  } else if (normalProofMode) {
+  } else if (normalProofMode || productSmokeMode) {
     mkdirSync(productArtifactRoot, { recursive: true });
-    targetPath = path.join(productArtifactRoot, "short-term-normal-save-as.svga");
+    targetPath = path.join(productArtifactRoot, normalProofMode ? "short-term-normal-save-as.svga" : "short-term-smoke-save-as.svga");
   } else {
     const result = await dialog.showSaveDialog({
       title: "另存为 SVGA",

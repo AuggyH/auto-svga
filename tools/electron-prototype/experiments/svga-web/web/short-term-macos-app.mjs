@@ -340,6 +340,17 @@ async function createSaveProofOutput(suffix) {
   };
 }
 
+function createSaveFailureProofOutput() {
+  if (!state.sourceBytes) throw new Error("保存失败证明需要先打开 SVGA。");
+  setActiveOutput({
+    kind: "rename",
+    bytes: new Uint8Array([0, 1, 2, 3, 4]),
+    suggestedName: suffixName(state.displayName || "save-failure", "invalid"),
+    title: "保存失败验证输出",
+    summary: "保存后重开验证应失败，当前源文件保持不变。"
+  });
+}
+
 function cancelInlineRename() {
   state.renameImageKey = "";
   renderReplaceables(state.model?.replaceableElements);
@@ -447,12 +458,13 @@ async function saveActiveOutput(command) {
       showSaveBanner("已取消保存。", "当前输出仍未保存。");
       return result;
     }
+    const savedModel = await inspectShortTerm(outputBytes, result.fileName || state.displayName);
     state.sourceBytes = outputBytes;
     state.previewBytes = new Uint8Array(outputBytes);
     state.sourceId = result.sourceId || state.sourceId;
     state.displayName = result.fileName || state.displayName;
     clearTransientOutput();
-    state.model = await inspectShortTerm(state.sourceBytes, state.displayName);
+    state.model = savedModel;
     renderPreviewModel();
     await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes);
     showSaveBanner("已保存并通过验证。", `${result.fileName || "输出文件"} 已重新进入干净状态。`);
@@ -1220,6 +1232,7 @@ window.__autoSvgaShortTermActions = Object.freeze({
   saveAs: () => saveActiveOutput("saveAs"),
   renameImageKey: renameSelectedImageKey,
   createSaveProofOutput,
+  createSaveFailureProofOutput,
   replaceImage: () => chooseReplacementImage(),
   resetImageReplacement,
   editTextPreview: editRuntimeText,
@@ -1287,6 +1300,43 @@ async function runShortTermSmokeIfRequested() {
   setTab("overview");
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-preview-minimum");
+  createSaveFailureProofOutput();
+  await waitForSmokeCondition(() => state.activeOutput && state.saveStatus === "dirty", 2_000);
+  try {
+    await window.__autoSvgaShortTermActions.saveAs();
+  } catch {
+    // Expected: smoke-only invalid bytes must fail the post-write reopen validation.
+  }
+  await waitForSmokeCondition(() => (
+    state.saveStatus === "failed"
+    && !nodes.saveBanner.hidden
+    && nodes.saveBanner.textContent.includes("保存失败")
+    && state.view === "preview"
+    && Boolean(state.sourceBytes)
+  ), 4_000);
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-save-failed");
+  const saveFailedVisible = state.saveStatus === "failed"
+    && nodes.saveBanner.textContent.includes("保存失败")
+    && state.view === "preview";
+  const playbackReady = Boolean(state.primaryPlayback);
+  const inspectionReportVisible = Boolean(state.model && nodes.assetList.children.length > 0);
+  const auditPanelVisible = Boolean(nodes.factGrid.children.length > 0);
+  const dragDropLoaded = state.displayName === file.name;
+  const playerLifecycleOk = Boolean(state.primaryPlayback);
+  clearTransientOutput();
+  await loadDroppedFile(new File([new Uint8Array([0, 1, 2, 3, 4])], "invalid.svga", { type: "application/octet-stream" }));
+  await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent.includes("源文件没有被修改"), 4_000);
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-load-failed");
+  const loadFailedVisible = state.view === "failed"
+    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+  await loadOpenedSource({
+    bytes: fixtureBytes,
+    displayName: file.name,
+    sourceId: ""
+  });
+  await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const invalidResponse = await fetch("/api/short-term-product-inspection-model?name=invalid.svga", {
     method: "POST",
     headers: authHeaders(),
@@ -1301,15 +1351,17 @@ async function runShortTermSmokeIfRequested() {
     localOnly: resourceEntriesAreLocalOnly(),
     strictCsp: Boolean(document.querySelector('meta[name="auto-svga-csp"]')),
     noCspViolation: true,
-    playback: Boolean(state.primaryPlayback),
+    playback: playbackReady,
     canvasNonBlank,
-    inspectionReport: Boolean(state.model && nodes.assetList.children.length > 0),
-    auditPanel: Boolean(nodes.factGrid.children.length > 0),
+    inspectionReport: inspectionReportVisible,
+    auditPanel: auditPanelVisible,
     fileInput: Boolean(file.name && fixtureBytes.byteLength > 0),
-    dragDrop: state.displayName === file.name,
+    dragDrop: dragDropLoaded,
     errorFile: invalidResponse.ok === false,
-    playerLifecycle: Boolean(state.primaryPlayback),
-    shortTermScreenshots: screenshotCaptures.length >= 7 && screenshotCaptures.every(Boolean),
+    playerLifecycle: playerLifecycleOk,
+    shortTermScreenshots: screenshotCaptures.length >= 9 && screenshotCaptures.every(Boolean),
+    shortTermSaveFailed: saveFailedVisible,
+    shortTermLoadFailed: loadFailedVisible,
     cleanup: true
   });
 }
