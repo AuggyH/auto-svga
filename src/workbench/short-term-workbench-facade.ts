@@ -558,25 +558,35 @@ function buildFacadeState(input: {
   activeOutput?: ShortTermPersistedOutputRecord;
   activeWorkflow: ShortTermFacadeWorkflowSummary;
 }): ShortTermWorkbenchFacadeState {
-  const recentFiles = createShortTermRecentFilesViewModel(input.recentState);
+  const recentState = cloneFacadeData(input.recentState);
+  const appState = cloneFacadeData(input.appState);
+  const activeOutput = input.activeOutput ? cloneFacadeData(input.activeOutput) : undefined;
+  const activeWorkflow = cloneFacadeData(input.activeWorkflow);
+  const imageReplacementSession = input.imageReplacementSession ? cloneFacadeData(input.imageReplacementSession) : undefined;
+  const textPreviewSession = input.textPreviewSession ? cloneFacadeData(input.textPreviewSession) : undefined;
+  const recentFiles = createShortTermRecentFilesViewModel(recentState);
   const sourceBytes = input.sourceBytes ? new Uint8Array(input.sourceBytes) : undefined;
   return {
     ...(sourceBytes ? { sourceBytes } : {}),
-    recentState: input.recentState,
-    ...(input.imageReplacementSession ? { imageReplacementSession: input.imageReplacementSession } : {}),
-    ...(input.textPreviewSession ? { textPreviewSession: input.textPreviewSession } : {}),
+    recentState,
+    ...(imageReplacementSession ? { imageReplacementSession } : {}),
+    ...(textPreviewSession ? { textPreviewSession } : {}),
     model: {
       schemaVersion: SHORT_TERM_WORKBENCH_FACADE_SCHEMA_VERSION,
       source: "short-term-workbench-facade",
       prdIds: ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16"],
-      appState: input.appState,
-      commandMenu: createShortTermCommandMenuModel(input.appState),
+      appState,
+      commandMenu: createShortTermCommandMenuModel(appState),
       recentFiles,
       ...(sourceBytes ? { currentSourceSha256: sha256(sourceBytes) } : {}),
-      ...(input.activeOutput ? { activeOutput: input.activeOutput } : {}),
-      activeWorkflow: input.activeWorkflow
+      ...(activeOutput ? { activeOutput } : {}),
+      activeWorkflow
     }
   };
+}
+
+function cloneFacadeData<T>(value: T): T {
+  return structuredClone(value) as T;
 }
 
 function idleWorkflow(message: string): ShortTermFacadeWorkflowSummary {

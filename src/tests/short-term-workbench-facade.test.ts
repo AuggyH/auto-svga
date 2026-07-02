@@ -231,6 +231,38 @@ test("short-term workbench facade exposes rename, image replacement, and text pr
   assert.equal(textReset.textPreviewSession?.model.activeReplacement, undefined);
 });
 
+test("short-term workbench facade snapshots derived state objects", async () => {
+  const sourceBytes = await createShortTermSvgaFixture();
+  const opened = completeShortTermWorkbenchOpen(
+    startShortTermWorkbenchOpen(createShortTermWorkbenchFacade(), {
+      requestId: "open-1",
+      source: "fileButton",
+      displayName: "snapshot.svga"
+    }),
+    {
+      requestId: "open-1",
+      inspection: inspectionFixture(),
+      sourceBytes
+    }
+  );
+  const textReady = createShortTermWorkbenchTextPreview(opened, [
+    {
+      textKey: "nickname",
+      displayName: "昵称",
+      supportedFields: ["text"]
+    }
+  ]);
+
+  (opened.model.appState as { state: string }).state = "mutated-outside-facade";
+  opened.model.activeWorkflow.message = "mutated source workflow";
+  if (opened.sourceBytes) opened.sourceBytes[0] = (opened.sourceBytes[0] + 1) % 256;
+
+  assert.equal(textReady.model.appState.state, "previewReady");
+  assert.equal(textReady.model.activeWorkflow.message, "已发现可运行时预览的文本元素。");
+  assert.equal(textReady.model.currentSourceSha256, sha256(sourceBytes));
+  assert.equal(JSON.stringify(textReady.model).includes("mutated-outside-facade"), false);
+});
+
 test("short-term workbench facade clears recent files without touching source bytes", async () => {
   const sourceBytes = await createShortTermSvgaFixture();
   const opened = completeShortTermWorkbenchOpen(
