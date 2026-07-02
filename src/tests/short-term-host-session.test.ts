@@ -45,6 +45,63 @@ test("short-term host session persists recent changes after open and clear actio
   assert.equal(store.snapshot().records.length, 0);
 });
 
+test("short-term host session serializes overlapping mutating actions", async () => {
+  const slowPath = "/Users/designer/private/slow.svga";
+  const fastPath = "/Users/designer/private/fast.svga";
+  const slowRead = deferred<{ bytes: Uint8Array; displayName: string }>();
+  const slowBytes = await createShortTermSvgaFixture();
+  const fastBytes = await createShortTermSvgaFixture();
+  let fastReadCount = 0;
+  const host: ShortTermHostEnvironment = {
+    async readLocalFile(localPath) {
+      if (localPath === slowPath) return slowRead.promise;
+      if (localPath === fastPath) {
+        fastReadCount += 1;
+        return {
+          bytes: new Uint8Array(fastBytes),
+          displayName: "fast.svga"
+        };
+      }
+      throw new Error("File is missing.");
+    },
+    async inspectSvga() {
+      return inspectionFixture();
+    },
+    async writeLocalFile() {},
+    async readSavedFile() {
+      return new Uint8Array();
+    }
+  };
+  const store = createMemoryRecentFilesStore();
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  const slowOpen = session.openLocalFile({
+    requestId: "open-slow",
+    source: "fileButton",
+    localPath: slowPath
+  });
+  const fastOpen = session.openLocalFile({
+    requestId: "open-fast",
+    source: "fileButton",
+    localPath: fastPath
+  });
+
+  await Promise.resolve();
+  assert.equal(fastReadCount, 0);
+
+  slowRead.resolve({
+    bytes: new Uint8Array(slowBytes),
+    displayName: "slow.svga"
+  });
+  const [slowResult, fastResult] = await Promise.all([slowOpen, fastOpen]);
+
+  assert.equal(slowResult.actionResult?.status, "completed");
+  assert.equal(fastResult.actionResult?.status, "completed");
+  assert.equal(fastReadCount, 1);
+  assert.equal(session.getState().currentLocalPath, fastPath);
+  assert.equal(store.snapshot().records[0].localPath, fastPath);
+});
+
 test("short-term host session records missing recent files and persists that state", async () => {
   const missingPath = "/Users/designer/private/missing.svga";
   const host = createMemoryHost({}, {
@@ -608,6 +665,14 @@ function createMemoryRecentFilesStore(
       saveError = nextSaveError;
     }
   };
+}
+
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((innerResolve) => {
+    resolve = innerResolve;
+  });
+  return { promise, resolve };
 }
 
 function inspectionFixture(): ShortTermProductInspectionModel {

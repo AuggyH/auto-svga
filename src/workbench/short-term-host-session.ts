@@ -117,6 +117,7 @@ export async function createShortTermHostSession(
 class ShortTermHostSessionController implements ShortTermHostSession {
   private state: ShortTermHostActionState;
   private recentSnapshot: string;
+  private actionQueue: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly host: ShortTermHostEnvironment,
@@ -204,20 +205,28 @@ class ShortTermHostSessionController implements ShortTermHostSession {
   }
 
   async persistRecentFiles(): Promise<ShortTermHostSessionRecentPersistenceResult> {
-    return this.persistRecentFilesIfChanged();
+    return this.enqueue(() => this.persistRecentFilesIfChanged());
   }
 
   private async apply(
     action: (state: ShortTermHostActionState) => ShortTermHostActionState | Promise<ShortTermHostActionState>
   ): Promise<ShortTermHostSessionActionResult> {
-    this.state = await action(this.state);
-    return {
-      schemaVersion: SHORT_TERM_HOST_SESSION_SCHEMA_VERSION,
-      source: "short-term-host-session",
-      state: this.state,
-      actionResult: this.state.lastAction,
-      recentPersistence: await this.persistRecentFilesIfChanged()
-    };
+    return this.enqueue(async () => {
+      this.state = await action(this.state);
+      return {
+        schemaVersion: SHORT_TERM_HOST_SESSION_SCHEMA_VERSION,
+        source: "short-term-host-session",
+        state: this.state,
+        actionResult: this.state.lastAction,
+        recentPersistence: await this.persistRecentFilesIfChanged()
+      };
+    });
+  }
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const queued = this.actionQueue.then(operation, operation);
+    this.actionQueue = queued.then(() => undefined, () => undefined);
+    return queued;
   }
 
   private async persistRecentFilesIfChanged(): Promise<ShortTermHostSessionRecentPersistenceResult> {
