@@ -44,6 +44,11 @@ import {
   shortTermRecentFileIdFromMenuCommandId,
   type ShortTermHostMenuCommandRoute
 } from "./short-term-host-menu-routing.js";
+import {
+  shortTermPrdIdsForHostAction,
+  shortTermPrdIdsForMenuDispatch,
+  type ShortTermPrdId
+} from "./short-term-prd-trace.js";
 
 export const SHORT_TERM_HOST_ACTION_SCHEMA_VERSION = 1 as const;
 export {
@@ -69,17 +74,7 @@ export type ShortTermHostActionKind =
   | "menuDispatch";
 
 export type ShortTermHostActionStatus = "completed" | "blocked" | "failed" | "delegated";
-export type ShortTermHostActionPrdId =
-  | "S1"
-  | "S2"
-  | "S8"
-  | "S9"
-  | "S10"
-  | "S11"
-  | "S12"
-  | "S13"
-  | "S14"
-  | "S16";
+export type ShortTermHostActionPrdId = ShortTermPrdId;
 
 export interface ShortTermHostActionState {
   facade: ShortTermWorkbenchFacadeState;
@@ -581,7 +576,7 @@ export async function dispatchShortTermHostMenuAction(
     const command = state.facade.model.appState.commands.find((item) => item.id === canonicalCommandId);
     return withLastAction(state, result("menuDispatch", "blocked", command?.reason ?? "当前菜单命令不可用。", {
       commandId,
-      prdIds: prdIdsForMenuCommand(canonicalCommandId),
+      prdIds: shortTermPrdIdsForMenuDispatch(canonicalCommandId),
       diagnostic: {
         code: "menu_command_disabled",
         message: `Menu command "${commandId}" is disabled or unsupported.`
@@ -697,7 +692,7 @@ export async function dispatchShortTermHostMenuAction(
     default:
       return withLastAction(state, result("menuDispatch", "blocked", "当前菜单命令尚未接入主程动作。", {
         commandId,
-        prdIds: prdIdsForMenuCommand(canonicalCommandId),
+        prdIds: shortTermPrdIdsForMenuDispatch(canonicalCommandId),
         diagnostic: {
           code: "menu_command_not_routed",
           message: `Menu command "${commandId}" has no host action route.`
@@ -744,7 +739,7 @@ function guardedNativeLifecycleMenuCommand(
   if (!lifecycle.canProceed) {
     return withLastAction(state, result("menuDispatch", "blocked", lifecycle.message, {
       commandId,
-      prdIds: prdIdsForMenuCommand(commandId),
+      prdIds: shortTermPrdIdsForMenuDispatch(commandId),
       outputSha256: lifecycle.activeOutputSha256,
       diagnostic: lifecycle.diagnostic
     }));
@@ -752,7 +747,7 @@ function guardedNativeLifecycleMenuCommand(
 
   return withLastAction(state, result("menuDispatch", "delegated", lifecycle.message, {
     commandId,
-    prdIds: prdIdsForMenuCommand(commandId),
+    prdIds: shortTermPrdIdsForMenuDispatch(commandId),
     outputSha256: lifecycle.activeOutputSha256,
     diagnostic: {
       code: "menu_command_delegated_to_native_after_lifecycle_check",
@@ -769,7 +764,7 @@ function delegatedMenuCommand(
 ): ShortTermHostActionState {
   return withLastAction(state, result("menuDispatch", "delegated", message, {
     commandId,
-    prdIds: prdIdsForMenuCommand(commandId),
+    prdIds: shortTermPrdIdsForMenuDispatch(commandId),
     diagnostic: {
       code: owner === "native" ? "menu_command_delegated_to_native" : "menu_command_delegated_to_renderer",
       message: owner === "native"
@@ -787,7 +782,7 @@ function missingContextForMenuCommand(
 ): ShortTermHostActionState {
   return withLastAction(state, result("menuDispatch", "blocked", message, {
     commandId,
-    prdIds: prdIdsForMenuCommand(commandId),
+    prdIds: shortTermPrdIdsForMenuDispatch(commandId),
     diagnostic: {
       code: "menu_command_context_missing",
       message: diagnosticMessage
@@ -961,72 +956,13 @@ function result(
   return {
     schemaVersion: SHORT_TERM_HOST_ACTION_SCHEMA_VERSION,
     source: "short-term-host-action",
-    prdIds: prdIds ?? prdIdsForAction(action),
+    prdIds: prdIds ?? shortTermPrdIdsForHostAction(action),
     action,
     status,
     message,
     pathRedacted: true,
     ...withoutUndefined(rest)
   };
-}
-
-function prdIdsForAction(action: ShortTermHostActionKind): readonly ShortTermHostActionPrdId[] {
-  switch (action) {
-    case "openLocalFile":
-      return ["S1", "S2"];
-    case "openRecentFile":
-    case "clearRecentFiles":
-      return ["S1", "S2", "S16"];
-    case "closeFile":
-      return ["S1", "S14"];
-    case "runOptimization":
-      return ["S8", "S9", "S10", "S14"];
-    case "renameImageKey":
-      return ["S11", "S14"];
-    case "replaceImage":
-    case "resetImageReplacement":
-      return ["S12", "S14"];
-    case "prepareTextPreview":
-    case "applyTextPreview":
-    case "resetTextPreview":
-      return ["S13"];
-    case "reportPlaybackFailure":
-    case "recoverPlayback":
-      return ["S2"];
-    case "save":
-      return ["S14"];
-    case "menuDispatch":
-      return ["S1", "S2", "S14", "S16"];
-  }
-}
-
-function prdIdsForMenuCommand(commandId: string): readonly ShortTermHostActionPrdId[] {
-  switch (canonicalShortTermHostMenuCommandId(commandId)) {
-    case "openSvga":
-      return ["S1", "S2"];
-    case "openRecent":
-    case "clearRecent":
-      return ["S1", "S2", "S16"];
-    case "closeFile":
-    case "quit":
-      return ["S1", "S14"];
-    case "save":
-    case "saveAs":
-      return ["S14"];
-    case "runOptimization":
-      return ["S8", "S9", "S10", "S14"];
-    case "renameImageKey":
-      return ["S11", "S14"];
-    case "replaceImage":
-      return ["S12", "S14"];
-    case "playPause":
-    case "replay":
-      return ["S2"];
-    case "toggleCompare":
-      return ["S10"];
-    default:
-      return [];
-  }
 }
 
 function saveResult(
