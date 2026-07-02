@@ -78,11 +78,15 @@ const requirements = [
   {
     id: "S7",
     title: "Identify replaceable elements by naming rule",
-    summary: "Runtime replacement uses designer-named keys; explicit include/exclude classification report is still missing.",
-    proof: "short-term-replacement-proof.json",
-    passWhen: () => false,
-    partialWhen: (proof, ctx) => proof?.passed === true && ctx.proof("short-term-empty-state-proof.json")?.ordinaryImagesNotDuplicatedInReplaceables === true,
-    evidence: ["short-term-replacement-proof.json", "short-term-empty-state-proof.json"],
+    summary: "Designer-named image keys are included while automatic image keys are excluded from replacement.",
+    proof: "short-term-replaceable-classification-proof.json",
+    passWhen: (proof) => proof?.passed === true
+      && proof?.automaticKeysExcluded === true
+      && proof?.designerKeysIncluded === true
+      && proof?.replaceableElementsNotAllImages === true,
+    partialWhen: (_proof, ctx) => ctx.proof("short-term-replacement-proof.json")?.passed === true
+      && ctx.proof("short-term-empty-state-proof.json")?.ordinaryImagesNotDuplicatedInReplaceables === true,
+    evidence: ["short-term-replaceable-classification-proof.json", "short-term-replacement-proof.json", "short-term-empty-state-proof.json"],
     partialGaps: ["Need current-head replaceable-key classification report with included and excluded examples."]
   },
   {

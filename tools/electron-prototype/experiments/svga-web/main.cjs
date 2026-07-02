@@ -281,6 +281,12 @@ function validateSmokeResult(value) {
     result.shortTermSpecComparisonProof = shortTermSpecComparisonProof;
     result.shortTermSpecComparison = shortTermSpecComparisonProof.passed;
   }
+  if (value.shortTermReplaceableClassificationProof !== undefined) {
+    const shortTermReplaceableClassificationProof = validateShortTermReplaceableClassificationProof(value.shortTermReplaceableClassificationProof);
+    if (!shortTermReplaceableClassificationProof) return undefined;
+    result.shortTermReplaceableClassificationProof = shortTermReplaceableClassificationProof;
+    result.shortTermReplaceableClassification = shortTermReplaceableClassificationProof.passed;
+  }
   if (value.shortTermSaveFailed !== undefined) {
     if (typeof value.shortTermSaveFailed !== "boolean") return undefined;
     result.shortTermSaveFailed = value.shortTermSaveFailed;
@@ -576,6 +582,56 @@ function validateShortTermSpecComparisonProof(value) {
     actualRequirementPairsVisible: true,
     overviewTabActive: true,
     separateProductionSpecModuleExposed: false,
+    passed: true
+  };
+}
+
+function validateShortTermReplaceableClassificationProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-replaceable-classification-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.length !== 1 || value.prdIds[0] !== "S7") return undefined;
+  if (value.rule !== "exclude_automatic_image_keys_include_designer_named_image_keys") return undefined;
+  if (!isBoundedString(value.automaticFixtureName, 160) || !value.automaticFixtureName.endsWith(".svga")) return undefined;
+  if (!Number.isInteger(value.automaticImageAssetCount) || value.automaticImageAssetCount <= 0) return undefined;
+  if (!Array.isArray(value.automaticExcludedExamples) || value.automaticExcludedExamples.length <= 0) return undefined;
+  if (!value.automaticExcludedExamples.every((item) => isBoundedString(item, 120) && /^img[_-]?\d+$/i.test(item))) return undefined;
+  if (!Number.isInteger(value.automaticReplaceableCount) || value.automaticReplaceableCount !== 0) return undefined;
+  if (!isBoundedString(value.noReplaceableCopy, 220) || !value.noReplaceableCopy.includes("自动命名资源")) return undefined;
+  if (!isBoundedString(value.designerFixtureName, 160) || !value.designerFixtureName.endsWith(".svga")) return undefined;
+  if (!Number.isInteger(value.designerImageAssetCount) || value.designerImageAssetCount <= 1) return undefined;
+  if (!Array.isArray(value.includedDesignerKeys) || value.includedDesignerKeys.length <= 0) return undefined;
+  if (!value.includedDesignerKeys.every((item) => isBoundedString(item, 120))) return undefined;
+  if (value.includedDesignerKeys.some((item) => /^img[_-]?\d+$/i.test(item))) return undefined;
+  if (!Number.isInteger(value.includedDesignerCount) || value.includedDesignerCount !== value.includedDesignerKeys.length) return undefined;
+  if (
+    value.automaticKeysExcluded !== true
+    || value.designerKeysIncluded !== true
+    || value.replaceableElementsNotAllImages !== true
+    || value.emptyStateExplainsAutomaticExclusion !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S7"],
+    rule: value.rule,
+    automaticFixtureName: value.automaticFixtureName,
+    automaticImageAssetCount: value.automaticImageAssetCount,
+    automaticExcludedExamples: value.automaticExcludedExamples,
+    automaticReplaceableCount: 0,
+    noReplaceableCopy: value.noReplaceableCopy,
+    designerFixtureName: value.designerFixtureName,
+    designerImageAssetCount: value.designerImageAssetCount,
+    includedDesignerKeys: value.includedDesignerKeys,
+    includedDesignerCount: value.includedDesignerCount,
+    automaticKeysExcluded: true,
+    designerKeysIncluded: true,
+    replaceableElementsNotAllImages: true,
+    emptyStateExplainsAutomaticExclusion: true,
     passed: true
   };
 }
@@ -882,6 +938,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.shortTermSpecComparisonProof !== undefined && !validateShortTermSpecComparisonProof(value.shortTermSpecComparisonProof)) {
     return "shortTermSpecComparisonProof";
+  }
+  if (value.shortTermReplaceableClassificationProof !== undefined && !validateShortTermReplaceableClassificationProof(value.shortTermReplaceableClassificationProof)) {
+    return "shortTermReplaceableClassificationProof";
   }
   if (value.shortTermRuntimeTextBoundaryProof !== undefined && !validateShortTermRuntimeTextBoundaryProof(value.shortTermRuntimeTextBoundaryProof)) {
     return "shortTermRuntimeTextBoundaryProof";
@@ -3707,6 +3766,14 @@ async function finishSmoke(window, result) {
         "smoke"
       );
     }
+    if (result.shortTermReplaceableClassificationProof) {
+      writeJsonProductArtifact(
+        "short-term-replaceable-classification-proof.json",
+        "short-term-replaceable-classification-proof",
+        result.shortTermReplaceableClassificationProof,
+        "smoke"
+      );
+    }
     if (result.shortTermRenameProof) {
       writeJsonProductArtifact(
         "short-term-rename-proof.json",
@@ -3725,9 +3792,9 @@ async function finishSmoke(window, result) {
     }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermLoadFailureProof, shortTermSpecComparisonProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermLoadFailureProof, shortTermSpecComparisonProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermReplaceableClassificationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermLoadFailureProof: Boolean(shortTermLoadFailureProof), shortTermSpecComparisonProof: Boolean(shortTermSpecComparisonProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermLoadFailureProof: Boolean(shortTermLoadFailureProof), shortTermSpecComparisonProof: Boolean(shortTermSpecComparisonProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermReplaceableClassificationProof: Boolean(shortTermReplaceableClassificationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();

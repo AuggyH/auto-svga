@@ -1336,6 +1336,10 @@ async function runShortTermSmokeIfRequested() {
   const noReplaceableCopy = nodes.replaceableList.textContent.trim();
   const textUnavailableCopy = nodes.textPreviewSummary.textContent.trim();
   const ordinaryImageThumbnailCount = nodes.assetList.querySelectorAll(".assetRow .thumb img").length;
+  const automaticImageNames = (state.model?.assets ?? [])
+    .filter((asset) => asset.kind === "image" && /^img[_-]?\d+$/i.test(asset.name))
+    .map((asset) => asset.name);
+  const automaticFixtureImageAssetCount = (state.model?.assets ?? []).filter((asset) => asset.kind === "image").length;
   const runtimeTextSourceSha256Before = await sha256Hex(state.sourceBytes);
   await editRuntimeText();
   await waitForSmokeFrame();
@@ -1521,6 +1525,34 @@ async function runShortTermSmokeIfRequested() {
   ), 8_000);
   setTab("replaceable");
   await waitForSmokeFrame();
+  const designerReplaceableKeys = (state.model?.replaceableElements?.images ?? []).map((item) => item.imageKey);
+  const designerImageAssetCount = (state.model?.assets ?? []).filter((asset) => asset.kind === "image").length;
+  const shortTermReplaceableClassificationProof = {
+    schemaVersion: 1,
+    proofId: "short-term-replaceable-classification-proof",
+    source: "short-term-smoke",
+    prdIds: ["S7"],
+    rule: "exclude_automatic_image_keys_include_designer_named_image_keys",
+    automaticFixtureName: file.name,
+    automaticImageAssetCount: automaticFixtureImageAssetCount,
+    automaticExcludedExamples: automaticImageNames.slice(0, 6),
+    automaticReplaceableCount: replaceableImageRowCount,
+    noReplaceableCopy,
+    designerFixtureName: "replaceable-workflow-smoke.svga",
+    designerImageAssetCount,
+    includedDesignerKeys: designerReplaceableKeys,
+    includedDesignerCount: designerReplaceableKeys.length,
+    automaticKeysExcluded: automaticImageNames.length > 0 && replaceableImageRowCount === 0,
+    designerKeysIncluded: designerReplaceableKeys.includes("profile_frame"),
+    replaceableElementsNotAllImages: designerReplaceableKeys.length > 0 && designerReplaceableKeys.length < designerImageAssetCount,
+    emptyStateExplainsAutomaticExclusion: noReplaceableCopy.includes("自动命名资源")
+  };
+  shortTermReplaceableClassificationProof.passed = [
+    shortTermReplaceableClassificationProof.automaticKeysExcluded,
+    shortTermReplaceableClassificationProof.designerKeysIncluded,
+    shortTermReplaceableClassificationProof.replaceableElementsNotAllImages,
+    shortTermReplaceableClassificationProof.emptyStateExplainsAutomaticExclusion
+  ].every(Boolean);
   const renameRow = nodes.replaceableList.querySelector(".replaceableRow");
   const renameFromImageKey = renameRow?.dataset.imageKey || state.model.replaceableElements.images[0]?.imageKey || "";
   const renameToImageKey = `${renameFromImageKey}_renamed`;
@@ -1814,6 +1846,7 @@ async function runShortTermSmokeIfRequested() {
     shortTermRuntimeTextBoundaryProof,
     shortTermThumbnailProof,
     shortTermOptimizationProof,
+    shortTermReplaceableClassificationProof,
     shortTermRenameProof,
     shortTermReplacementProof,
     cleanup: true
