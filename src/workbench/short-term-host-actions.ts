@@ -117,15 +117,19 @@ export interface ShortTermHostCloseInput {
   discardUnsavedChanges?: boolean;
 }
 
+export interface ShortTermHostDirtyOperationInput {
+  discardUnsavedChanges?: boolean;
+}
+
 export type ShortTermHostMenuActionInput =
   | ({ commandId: "openSvga" } & Omit<ShortTermHostOpenLocalFileInput, "source"> & { source?: ShortTermHostOpenLocalFileInput["source"] })
   | ({ commandId: "openRecent" } & Omit<ShortTermHostOpenRecentFileInput, "source"> & { source?: ShortTermRecentOpenSource })
   | { commandId: "clearRecent" }
   | ({ commandId: "closeFile" } & ShortTermHostCloseInput)
   | ({ commandId: "save" | "saveAs" } & Omit<ShortTermHostSaveInput, "command">)
-  | { commandId: "runOptimization" }
-  | { commandId: "renameImageKey"; fromImageKey: string; toImageKey: string }
-  | { commandId: "replaceImage"; imageKey: string; pngBytes: Uint8Array }
+  | ({ commandId: "runOptimization" } & ShortTermHostDirtyOperationInput)
+  | ({ commandId: "renameImageKey"; fromImageKey: string; toImageKey: string } & ShortTermHostDirtyOperationInput)
+  | ({ commandId: "replaceImage"; imageKey: string; pngBytes: Uint8Array } & ShortTermHostDirtyOperationInput)
   | { commandId: string };
 
 export function createShortTermHostActionState(
@@ -256,8 +260,13 @@ export function closeShortTermHostFile(
 }
 
 export async function runShortTermHostOptimization(
-  state: ShortTermHostActionState
+  state: ShortTermHostActionState,
+  input: ShortTermHostDirtyOperationInput = {}
 ): Promise<ShortTermHostActionState> {
+  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+    return blockUnsavedOperation(state, "runOptimization", "runOptimization");
+  }
+
   const operation = await runShortTermWorkbenchOptimizationCompare(state.facade);
   return withLastAction({
     ...state,
@@ -273,8 +282,13 @@ export async function runShortTermHostOptimization(
 export async function runShortTermHostImageKeyRename(
   state: ShortTermHostActionState,
   fromImageKey: string,
-  toImageKey: string
+  toImageKey: string,
+  input: ShortTermHostDirtyOperationInput = {}
 ): Promise<ShortTermHostActionState> {
+  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+    return blockUnsavedOperation(state, "renameImageKey", "renameImageKey");
+  }
+
   const operation = await runShortTermWorkbenchRenamePreview(state.facade, fromImageKey, toImageKey);
   return withLastAction({
     ...state,
@@ -290,8 +304,17 @@ export async function runShortTermHostImageKeyRename(
 export async function runShortTermHostImageReplacement(
   state: ShortTermHostActionState,
   imageKey: string,
-  pngBytes: Uint8Array
+  pngBytes: Uint8Array,
+  input: ShortTermHostDirtyOperationInput = {}
 ): Promise<ShortTermHostActionState> {
+  if (
+    hasUnsavedHostOutput(state)
+      && state.facade.model.activeOutput?.outputKind !== "image_replacement_svga"
+      && input.discardUnsavedChanges !== true
+  ) {
+    return blockUnsavedOperation(state, "replaceImage", "replaceImage");
+  }
+
   const operation = await runShortTermWorkbenchImageReplacementPreview(state.facade, imageKey, pngBytes);
   const outputBytes = operation.state.model.activeOutput ? operation.session.previewBytes : undefined;
   return withLastAction({
@@ -462,10 +485,12 @@ export async function dispatchShortTermHostMenuAction(
         targetPath: saveInput.targetPath
       });
     }
-    case "runOptimization":
-      return runShortTermHostOptimization(state);
+    case "runOptimization": {
+      const operationInput = input as ShortTermHostDirtyOperationInput;
+      return runShortTermHostOptimization(state, operationInput);
+    }
     case "renameImageKey": {
-      const renameInput = input as Partial<{ fromImageKey: unknown; toImageKey: unknown }>;
+      const renameInput = input as Partial<{ fromImageKey: unknown; toImageKey: unknown } & ShortTermHostDirtyOperationInput>;
       if (!isNonEmptyString(renameInput.fromImageKey) || !isNonEmptyString(renameInput.toImageKey)) {
         return missingContextForMenuCommand(
           state,
@@ -474,10 +499,12 @@ export async function dispatchShortTermHostMenuAction(
           "renameImageKey requires fromImageKey and toImageKey from the renderer context."
         );
       }
-      return runShortTermHostImageKeyRename(state, renameInput.fromImageKey, renameInput.toImageKey);
+      return runShortTermHostImageKeyRename(state, renameInput.fromImageKey, renameInput.toImageKey, {
+        discardUnsavedChanges: renameInput.discardUnsavedChanges
+      });
     }
     case "replaceImage": {
-      const replacementInput = input as Partial<{ imageKey: unknown; pngBytes: unknown }>;
+      const replacementInput = input as Partial<{ imageKey: unknown; pngBytes: unknown } & ShortTermHostDirtyOperationInput>;
       if (!isNonEmptyString(replacementInput.imageKey) || !isUint8Array(replacementInput.pngBytes)) {
         return missingContextForMenuCommand(
           state,
@@ -486,7 +513,9 @@ export async function dispatchShortTermHostMenuAction(
           "replaceImage requires imageKey and PNG bytes from the renderer context."
         );
       }
-      return runShortTermHostImageReplacement(state, replacementInput.imageKey, replacementInput.pngBytes);
+      return runShortTermHostImageReplacement(state, replacementInput.imageKey, replacementInput.pngBytes, {
+        discardUnsavedChanges: replacementInput.discardUnsavedChanges
+      });
     }
     default:
       return withLastAction(state, result("menuDispatch", "blocked", "当前菜单命令尚未接入主程动作。", {
@@ -541,6 +570,20 @@ function blockUnsavedOpen(
     diagnostic: {
       code: "open_requires_discard_confirmation",
       message: "Opening another file is blocked until the caller confirms discarding unsaved output."
+    }
+  }));
+}
+
+function blockUnsavedOperation(
+  state: ShortTermHostActionState,
+  action: Extract<ShortTermHostActionKind, "runOptimization" | "renameImageKey" | "replaceImage">,
+  commandId: "runOptimization" | "renameImageKey" | "replaceImage"
+): ShortTermHostActionState {
+  return withLastAction(state, result(action, "blocked", "当前文件有未保存输出，执行新操作前需要确认丢弃。", {
+    commandId,
+    diagnostic: {
+      code: "operation_requires_discard_confirmation",
+      message: "Starting another output-producing operation is blocked until the caller confirms discarding unsaved output."
     }
   }));
 }

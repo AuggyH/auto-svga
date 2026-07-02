@@ -3,6 +3,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import test from "node:test";
 import {
+  createShortTermColoredPng,
   createShortTermOptimizableSvgaFixture,
   createShortTermSvgaFixture
 } from "./helpers/short-term-svga-fixtures.js";
@@ -277,6 +278,100 @@ test("short-term host actions block dirty recent open until discard is confirmed
   assert.equal(reopened.currentLocalPath, recentPath);
   assert.equal(reopened.activeOutputBytes, undefined);
   assert.equal(reopened.facade.model.activeOutput, undefined);
+});
+
+test("short-term host actions block cross-workflow dirty operations until discard is confirmed", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+
+  assert.equal(optimized.lastAction?.status, "completed");
+  assert.equal(optimized.facade.model.activeOutput?.outputKind, "optimized_svga");
+
+  const repeatedOptimization = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "runOptimization"
+  });
+  assert.equal(repeatedOptimization.lastAction?.status, "blocked");
+  assert.equal(repeatedOptimization.lastAction?.diagnostic?.code, "operation_requires_discard_confirmation");
+  assert.equal(repeatedOptimization.facade.model.activeOutput?.outputKind, "optimized_svga");
+
+  const renameBlocked = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "renameImageKey",
+    fromImageKey: "img_frame",
+    toImageKey: "profile_frame"
+  });
+  assert.equal(renameBlocked.lastAction?.status, "blocked");
+  assert.equal(renameBlocked.lastAction?.diagnostic?.code, "operation_requires_discard_confirmation");
+  assert.equal(renameBlocked.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(renameBlocked.activeOutputBytes);
+
+  const renamed = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "renameImageKey",
+    fromImageKey: "img_frame",
+    toImageKey: "profile_frame",
+    discardUnsavedChanges: true
+  });
+  assert.equal(renamed.lastAction?.status, "completed");
+  assert.equal(renamed.facade.model.activeOutput?.outputKind, "renamed_svga");
+  assert.ok(renamed.activeOutputBytes);
+
+  const replaceBlocked = await dispatchShortTermHostMenuAction(renamed, host, {
+    commandId: "replaceImage",
+    imageKey: "img_frame",
+    pngBytes: createShortTermColoredPng(16, 16, [0, 0, 255, 255])
+  });
+  assert.equal(replaceBlocked.lastAction?.status, "blocked");
+  assert.equal(replaceBlocked.lastAction?.diagnostic?.code, "operation_requires_discard_confirmation");
+  assert.equal(replaceBlocked.facade.model.activeOutput?.outputKind, "renamed_svga");
+
+  const replaced = await dispatchShortTermHostMenuAction(renamed, host, {
+    commandId: "replaceImage",
+    imageKey: "img_frame",
+    pngBytes: createShortTermColoredPng(16, 16, [0, 0, 255, 255]),
+    discardUnsavedChanges: true
+  });
+  assert.equal(replaced.lastAction?.status, "completed");
+  assert.equal(replaced.facade.model.activeOutput?.outputKind, "image_replacement_svga");
+});
+
+test("short-term host actions allow repeated image replacement preview without discard confirmation", async () => {
+  const sourcePath = "/Users/designer/private/editable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const first = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "replaceImage",
+    imageKey: "img_frame",
+    pngBytes: createShortTermColoredPng(16, 16, [0, 0, 255, 255])
+  });
+
+  assert.equal(first.lastAction?.status, "completed");
+  assert.equal(first.facade.model.activeOutput?.outputKind, "image_replacement_svga");
+  assert.ok(first.activeOutputBytes);
+
+  const second = await dispatchShortTermHostMenuAction(first, host, {
+    commandId: "replaceImage",
+    imageKey: "img_frame",
+    pngBytes: createShortTermColoredPng(16, 16, [0, 255, 0, 255])
+  });
+
+  assert.equal(second.lastAction?.status, "completed");
+  assert.equal(second.facade.model.activeOutput?.outputKind, "image_replacement_svga");
+  assert.ok(second.activeOutputBytes);
 });
 
 test("short-term host actions block disabled or unrouted menu commands", async () => {
