@@ -2217,6 +2217,7 @@ function validateNormalProofResult(value) {
   const keys = [
     "normalMode",
     "hostOpen",
+    "menuOpen",
     "primaryBridge",
     "playback",
     "canvasNonBlank",
@@ -2231,6 +2232,7 @@ function validateNormalProofResult(value) {
   return {
     normalMode: value.normalMode,
     hostOpen: value.hostOpen,
+    menuOpen: value.menuOpen,
     primaryBridge: value.primaryBridge,
     rendererQuery: typeof value.rendererQuery === "string" ? value.rendererQuery.slice(0, 120) : "",
     playback: value.playback,
@@ -3002,7 +3004,7 @@ async function finishNormalProof(window, result) {
     runtimeInstanceId: normalIdentity.runtimeInstanceId,
     windowShown: false,
     automationMechanism: "host bridge button click in canonical renderer",
-    fileOpenMechanism: "window.autoSvgaElectronHost.openSvgaFile validated IPC",
+    fileOpenMechanism: "macOS File > Open SVGA menu item -> short-term host dialog IPC",
     fixture: canonicalFixtureMetadata().fixtureLabel,
     ...canonicalFixtureMetadata(),
     screenshotHash: productArtifactIndex.artifacts.find((artifact) => artifact.scenario === "actual-normal-loaded")?.sha256 ?? null,
@@ -4851,6 +4853,7 @@ async function driveCanonicalNormalProof(window) {
     if (!smokeFinished) finishNormalProof(window, {
       normalMode: true,
       hostOpen: false,
+      menuOpen: false,
       primaryBridge: false,
       rendererQuery: "",
       playback: false,
@@ -4864,6 +4867,22 @@ async function driveCanonicalNormalProof(window) {
     });
   }, 20_000).unref();
   await new Promise((resolve) => setTimeout(resolve, 260));
+  await window.webContents.executeJavaScript(`
+    (async () => {
+      const startedAt = performance.now();
+      while (performance.now() - startedAt < 5000) {
+        if (window.autoSvgaElectronHost?.openSvgaFile && window.__autoSvgaShortTermActions?.openFromHostDialog) {
+          return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 80));
+      }
+      throw new Error("short-term host bridge unavailable");
+    })()
+  `);
+  const openMenuItem = findApplicationMenuItem(["文件", "打开 SVGA..."]);
+  const menuOpen = Boolean(openMenuItem && openMenuItem.enabled !== false);
+  if (!menuOpen) throw new Error("short-term File > Open menu item unavailable");
+  openMenuItem.click(openMenuItem, window);
   const result = await window.webContents.executeJavaScript(`
     (async () => {
       const host = window.autoSvgaElectronHost;
@@ -4871,7 +4890,6 @@ async function driveCanonicalNormalProof(window) {
       if (!host?.openSvgaFile || !actions?.openFromHostDialog) {
         throw new Error("short-term host bridge unavailable");
       }
-      await actions.openFromHostDialog();
       const startedAt = performance.now();
       while (performance.now() - startedAt < 8000) {
         const previewReady = !document.querySelector('[data-view="preview"]')?.hidden;
@@ -4936,10 +4954,12 @@ async function driveCanonicalNormalProof(window) {
       };
     })()
   `);
+  result.menuOpen = menuOpen;
   await captureProductArtifact(window, "actual-normal-loaded");
   await finishNormalProof(window, validateNormalProofResult(result) ?? {
     normalMode: true,
     hostOpen: false,
+    menuOpen: false,
     primaryBridge: false,
     rendererQuery: "",
     playback: false,
