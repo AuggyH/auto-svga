@@ -947,6 +947,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="textElementList"/);
   assert.match(page, /data-action="edit-text" disabled/);
   assert.doesNotMatch(page, /id="compareFileInput"/);
+  assert.doesNotMatch(page, /id="renameDialog"|id="renameInput"|id="renameHint"/);
   assert.match(page, /短期版仅保留图层查看/);
   assert.doesNotMatch(page, /productShellMount|desktop-product-entry\.mjs|prototype\.js/);
   assert.doesNotMatch(page, /导出验收|序列修复|批量 PNG|Export Acceptance/);
@@ -959,6 +960,18 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /\/api\/short-term-product-optimization-workflow/);
   assert.match(shortTermEntry, /\/api\/short-term-product-image-key-rename/);
   assert.match(shortTermEntry, /\/api\/short-term-product-image-replacement-workflow/);
+  assert.match(shortTermEntry, /renameImageKey: ""/);
+  assert.match(shortTermEntry, /data-rename-input/);
+  assert.match(shortTermEntry, /confirmInlineRename/);
+  assert.match(shortTermEntry, /inline-rename-confirm/);
+  assert.match(shortTermEntry, /inline-rename-cancel/);
+  assert.match(shortTermEntry, /Enter 确认 · Esc 取消/);
+  assert.match(shortTermEntry, /event\.key === "Enter"[\s\S]*confirmInlineRename/);
+  assert.match(shortTermEntry, /event\.key === "Escape"[\s\S]*cancelInlineRename/);
+  assert.match(shortTermEntry, /runtimeTextInput\.addEventListener\("keydown"/);
+  assert.match(shortTermEntry, /nodes\.textDialog\.close\("confirm"\)/);
+  assert.match(shortTermEntry, /nodes\.textDialog\.close\("cancel"\)/);
+  assert.doesNotMatch(shortTermEntry, /renameDialog|renameHint/);
   assert.match(shortTermEntry, /saveShortTermSvgaOutput/);
   assert.match(shortTermEntry, /getRecentSvgaFiles/);
   assert.match(shortTermEntry, /runShortTermSmokeIfRequested/);

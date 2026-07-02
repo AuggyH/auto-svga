@@ -12,6 +12,7 @@ const state = {
   model: undefined,
   selectedImageKey: "",
   selectedTextKey: "",
+  renameImageKey: "",
   activeOutput: undefined,
   primaryPlayback: undefined,
   compareAPlayback: undefined,
@@ -47,9 +48,6 @@ const nodes = {
   compareInfoA: document.querySelector("#compareInfoA"),
   compareInfoB: document.querySelector("#compareInfoB"),
   layerPanel: document.querySelector("#layerPanel"),
-  renameDialog: document.querySelector("#renameDialog"),
-  renameInput: document.querySelector("#renameInput"),
-  renameHint: document.querySelector("#renameHint"),
   textDialog: document.querySelector("#textDialog"),
   runtimeTextInput: document.querySelector("#runtimeTextInput"),
   runtimeTextOverlay: document.querySelector("#runtimeTextOverlay"),
@@ -163,6 +161,7 @@ async function loadOpenedSource({ bytes, displayName, sourceId }) {
   state.sourceId = sourceId || "";
   state.displayName = displayName || "local.svga";
   state.selectedImageKey = "";
+  state.renameImageKey = "";
   state.textPreview = "";
   nodes.runtimeTextOverlay.hidden = true;
   setView("loading");
@@ -189,6 +188,7 @@ function clearCurrentFile() {
   state.model = undefined;
   state.selectedImageKey = "";
   state.selectedTextKey = "";
+  state.renameImageKey = "";
   state.activeOutput = undefined;
 }
 
@@ -245,16 +245,30 @@ async function runOptimization() {
 async function renameSelectedImageKey() {
   if (!state.sourceBytes || !state.selectedImageKey) return;
   if (!(await confirmDiscardUnsavedOutput("重命名 imageKey 会放弃当前未保存的 SVGA 输出。"))) return;
-  nodes.renameInput.value = state.selectedImageKey;
-  nodes.renameHint.textContent = `当前：${state.selectedImageKey}`;
-  const result = await showDialog(nodes.renameDialog);
-  if (result !== "confirm") return;
-  const toImageKey = nodes.renameInput.value.trim();
-  if (!toImageKey || toImageKey === state.selectedImageKey) return;
+  state.renameImageKey = state.selectedImageKey;
+  if (state.view !== "preview") setMode("preview");
+  setTab("replaceable");
+  renderReplaceables(state.model?.replaceableElements);
+  requestAnimationFrame(() => {
+    const input = nodes.replaceableList.querySelector("[data-rename-input]");
+    input?.focus();
+    input?.select?.();
+  });
+}
+
+async function confirmInlineRename() {
+  if (!state.sourceBytes || !state.renameImageKey) return;
+  const fromImageKey = state.renameImageKey;
+  const input = nodes.replaceableList.querySelector("[data-rename-input]");
+  const toImageKey = input?.value?.trim() ?? "";
+  if (!toImageKey || toImageKey === fromImageKey) {
+    cancelInlineRename();
+    return;
+  }
   showSaveBanner("正在重命名 imageKey。", "完成引用闭合检查后启用保存。");
   try {
     const renamed = await postBytes(
-      `/api/short-term-product-image-key-rename?name=${encodeURIComponent(state.displayName)}&from=${encodeURIComponent(state.selectedImageKey)}&to=${encodeURIComponent(toImageKey)}`,
+      `/api/short-term-product-image-key-rename?name=${encodeURIComponent(state.displayName)}&from=${encodeURIComponent(fromImageKey)}&to=${encodeURIComponent(toImageKey)}`,
       state.sourceBytes
     );
     const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
@@ -265,6 +279,7 @@ async function renameSelectedImageKey() {
     state.previewBytes = renamedBytes;
     state.model = await inspectShortTerm(renamedBytes, state.displayName);
     state.selectedImageKey = toImageKey;
+    state.renameImageKey = "";
     setActiveOutput({
       kind: "rename",
       bytes: renamedBytes,
@@ -277,6 +292,11 @@ async function renameSelectedImageKey() {
   } catch (error) {
     showOperationFailure("重命名未完成。", error);
   }
+}
+
+function cancelInlineRename() {
+  state.renameImageKey = "";
+  renderReplaceables(state.model?.replaceableElements);
 }
 
 function chooseReplacementImage(imageKey = state.selectedImageKey) {
@@ -484,18 +504,36 @@ function renderOptimizationResult(model) {
 }
 
 function renderReplaceables(model) {
+  if (!model) return;
   const rows = model.images.map((item) => {
     const row = document.createElement("article");
     row.className = "replaceableRow";
     row.tabIndex = 0;
     row.dataset.action = "select-resource";
     row.dataset.imageKey = item.imageKey;
-    row.classList.toggle("isSelected", item.imageKey === state.selectedImageKey);
-    row.innerHTML = `
-      <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
-      <span class="rowText"><strong>${escapeHtml(item.imageKey)}</strong><span>${escapeHtml(item.dimensions)} · ${escapeHtml(item.fileSize)}</span></span>
-      <span class="badge">${item.imageKey === state.selectedImageKey ? "已选中" : "可替换"}</span>
-    `;
+    const selected = item.imageKey === state.selectedImageKey;
+    const renaming = item.imageKey === state.renameImageKey;
+    row.classList.toggle("isSelected", selected);
+    row.classList.toggle("isRenaming", renaming);
+    if (renaming) {
+      row.innerHTML = `
+        <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
+        <label class="rowText renameEditor">新 imageKey
+          <input class="renameInputInline" data-rename-input value="${escapeHtml(item.imageKey)}" autocomplete="off">
+          <span>Enter 确认 · Esc 取消</span>
+        </label>
+        <span class="inlineActions">
+          <button type="button" data-action="inline-rename-confirm">确认</button>
+          <button type="button" data-action="inline-rename-cancel">取消</button>
+        </span>
+      `;
+    } else {
+      row.innerHTML = `
+        <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
+        <span class="rowText"><strong>${escapeHtml(item.imageKey)}</strong><span>${escapeHtml(item.dimensions)} · ${escapeHtml(item.fileSize)}</span></span>
+        <span class="badge">${selected ? "已选中" : "可替换"}</span>
+      `;
+    }
     return row;
   });
   if (rows.length === 0) {
@@ -562,7 +600,13 @@ function selectedTextElement() {
 
 function selectImageKey(imageKey) {
   if (!imageKey) return;
+  const shouldCancelRename = state.renameImageKey && state.renameImageKey !== imageKey;
   state.selectedImageKey = imageKey;
+  if (shouldCancelRename) {
+    state.renameImageKey = "";
+    renderReplaceables(state.model?.replaceableElements);
+    return;
+  }
   document.querySelectorAll(".replaceableRow").forEach((row) => {
     const selected = row.dataset.imageKey === imageKey;
     row.classList.toggle("isSelected", selected);
@@ -962,6 +1006,8 @@ document.addEventListener("click", (event) => {
   if (action === "open-compare-b") openCompareBFromHost().catch(showFailure);
   if (action === "select-resource") selectImageKey(target.dataset.imageKey || state.selectedImageKey);
   if (action === "select-text") selectTextKey(target.dataset.textKey || state.selectedTextKey);
+  if (action === "inline-rename-confirm") confirmInlineRename().catch(showFailure);
+  if (action === "inline-rename-cancel") cancelInlineRename();
   if (action === "context-rename") {
     closeResourceContextMenu();
     renameSelectedImageKey().catch(showFailure);
@@ -979,10 +1025,23 @@ document.addEventListener("click", (event) => {
 });
 
 nodes.replaceableList.addEventListener("contextmenu", (event) => {
+  if (event.target.closest("[data-rename-input]")) return;
   const target = event.target.closest(".replaceableRow");
   if (!target) return;
   event.preventDefault();
   openResourceContextMenu(event, target.dataset.imageKey);
+});
+
+nodes.replaceableList.addEventListener("keydown", (event) => {
+  if (!event.target.matches("[data-rename-input]")) return;
+  if (event.key === "Enter") {
+    event.preventDefault();
+    confirmInlineRename().catch(showFailure);
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    cancelInlineRename();
+  }
 });
 
 document.querySelectorAll("[data-tab]").forEach((button) => {
@@ -991,6 +1050,17 @@ document.querySelectorAll("[data-tab]").forEach((button) => {
 
 nodes.replacementFileInput.addEventListener("change", () => {
   applyReplacementFile(nodes.replacementFileInput.files?.[0]).catch(showFailure);
+});
+
+nodes.runtimeTextInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    nodes.textDialog.close("confirm");
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    nodes.textDialog.close("cancel");
+  }
 });
 
 nodes.dropZone.addEventListener("dragover", (event) => {
@@ -1026,6 +1096,7 @@ document.addEventListener("keydown", (event) => {
     togglePrimaryPlayback();
   }
   if (event.key === "Escape" && state.view === "compare") setMode("preview");
+  if (event.key === "Escape" && state.renameImageKey) cancelInlineRename();
   if (event.key === "Escape") closeResourceContextMenu();
 });
 

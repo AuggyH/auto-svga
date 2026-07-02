@@ -18,6 +18,8 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Split operation failures from file-open failures: optimization, imageKey rename, and image replacement failures now stay on the current file surface and show a recoverable "source file unchanged" prompt instead of switching to the Load Failed page.
 - Expanded the macOS Help menu state-copy action so copied text includes current app state, file name, save prompt, and visible error text instead of only the file name.
 - Removed the unused hidden compare file input; the short-term macOS compare flow now has one real B-file entry through the host file picker.
+- Replaced the old imageKey rename dialog with an inline resource-row rename state, including Enter confirm and Esc cancel behavior required by the short-term IA.
+- Made runtime text preview modal keyboard behavior explicit: Enter applies and Esc cancels without relying on button order.
 
 ## Verification
 
@@ -31,6 +33,8 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Short-term image replacement failure-copy guard: pass; invalid/corrupt PNG diagnostics stay Chinese and do not expose the old English decoder copy.
 - Short-term operation-failure guard: pass; optimization, rename, and replacement catches use recoverable operation prompts rather than the open-file failure page.
 - Short-term state-copy guard: pass; Help menu state summary copies visible error/save context.
+- Short-term inline rename guard: pass; default page has no rename dialog, and the renderer exposes inline confirm/cancel plus Enter/Esc handling.
+- Short-term text modal keyboard guard: pass; runtime text input closes the modal with explicit confirm/cancel on Enter/Esc.
 - Real-material scan: 84/84 SVGA files opened through the short-term inspection model; pure numeric replaceable noise count is 0 after filtering.
 - System Chrome UI probe: launch, preview, optimization tab, replaceable tab, edit mode, context menu, and 980x680 minimum viewport have no document overflow.
 - Package command checkpoint: `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` passes with clean App ZIP entries and Info.plist security proof. Treat `tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/internal-trial-manifest.json` as the authoritative package SHA/build-commit record after the command is rerun on the final source commit.
