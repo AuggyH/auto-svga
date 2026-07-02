@@ -23,8 +23,19 @@ import type { ShortTermRecentOpenSource } from "./short-term-recent-files.js";
 import type { ShortTermProductInspectionModel } from "./short-term-product-model.js";
 import type { ShortTermSaveCommand } from "./short-term-save-state.js";
 import type { ShortTermSaveExecutionPlan } from "./short-term-save-execution.js";
+import {
+  canonicalShortTermHostMenuCommandId,
+  classifyShortTermHostMenuCommand,
+  isShortTermNativeDelegatedMenuCommand,
+  shortTermRecentFileIdFromMenuCommandId,
+  type ShortTermHostMenuCommandRoute
+} from "./short-term-host-menu-routing.js";
 
 export const SHORT_TERM_HOST_ACTION_SCHEMA_VERSION = 1 as const;
+export {
+  classifyShortTermHostMenuCommand,
+  type ShortTermHostMenuCommandRoute
+};
 
 export type ShortTermHostActionKind =
   | "openLocalFile"
@@ -38,7 +49,6 @@ export type ShortTermHostActionKind =
   | "menuDispatch";
 
 export type ShortTermHostActionStatus = "completed" | "blocked" | "failed" | "delegated";
-export type ShortTermHostMenuCommandRoute = "host" | "native" | "renderer" | "unsupported";
 
 export interface ShortTermHostActionState {
   facade: ShortTermWorkbenchFacadeState;
@@ -111,50 +121,6 @@ export type ShortTermHostMenuActionInput =
   | { commandId: "renameImageKey"; fromImageKey: string; toImageKey: string }
   | { commandId: "replaceImage"; imageKey: string; pngBytes: Uint8Array }
   | { commandId: string };
-
-const HOST_ROUTED_MENU_COMMANDS = new Set([
-  "openSvga",
-  "openRecent",
-  "clearRecent",
-  "closeFile",
-  "save",
-  "saveAs",
-  "runOptimization",
-  "renameImageKey",
-  "replaceImage"
-]);
-
-const NATIVE_DELEGATED_MENU_COMMANDS = new Set([
-  "about",
-  "hide",
-  "hideOthers",
-  "unhide",
-  "quit",
-  "undo",
-  "redo",
-  "cut",
-  "copy",
-  "paste",
-  "selectAll",
-  "minimize",
-  "zoom",
-  "front"
-]);
-
-const RENDERER_DELEGATED_MENU_COMMANDS = new Set([
-  "playPause",
-  "replay",
-  "toggleCompare",
-  "help"
-]);
-
-export function classifyShortTermHostMenuCommand(commandId: string): ShortTermHostMenuCommandRoute {
-  const canonicalCommandId = canonicalHostMenuCommandId(commandId);
-  if (HOST_ROUTED_MENU_COMMANDS.has(canonicalCommandId)) return "host";
-  if (NATIVE_DELEGATED_MENU_COMMANDS.has(canonicalCommandId)) return "native";
-  if (RENDERER_DELEGATED_MENU_COMMANDS.has(canonicalCommandId)) return "renderer";
-  return "unsupported";
-}
 
 export function createShortTermHostActionState(
   options: CreateShortTermWorkbenchFacadeOptions = {}
@@ -390,7 +356,7 @@ export async function dispatchShortTermHostMenuAction(
   input: ShortTermHostMenuActionInput
 ): Promise<ShortTermHostActionState> {
   const commandId = input.commandId;
-  const canonicalCommandId = canonicalHostMenuCommandId(commandId);
+  const canonicalCommandId = canonicalShortTermHostMenuCommandId(commandId);
   const route = classifyShortTermHostMenuCommand(commandId);
   if (!isCommandEnabled(state, commandId)) {
     const command = state.facade.model.appState.commands.find((item) => item.id === canonicalCommandId);
@@ -431,7 +397,7 @@ export async function dispatchShortTermHostMenuAction(
         recentFileId?: string;
         source?: ShortTermRecentOpenSource;
       };
-      const recentFileId = recentInput.recentFileId ?? recentFileIdFromCommandId(commandId);
+      const recentFileId = recentInput.recentFileId ?? shortTermRecentFileIdFromMenuCommandId(commandId);
       if (!recentFileId) {
         return withLastAction(state, result("openRecentFile", "blocked", "最近文件记录不可用。", {
           commandId,
@@ -593,25 +559,15 @@ async function completeHostOpen(
 }
 
 function isCommandEnabled(state: ShortTermHostActionState, commandId: string): boolean {
-  if (NATIVE_DELEGATED_MENU_COMMANDS.has(commandId)) return true;
-  const recentFileId = recentFileIdFromCommandId(commandId);
-  const canonicalCommandId = canonicalHostMenuCommandId(commandId);
+  if (isShortTermNativeDelegatedMenuCommand(commandId)) return true;
+  const recentFileId = shortTermRecentFileIdFromMenuCommandId(commandId);
+  const canonicalCommandId = canonicalShortTermHostMenuCommandId(commandId);
   if (recentFileId) {
     const command = state.facade.model.appState.commands.find((item) => item.id === "openRecent");
     return command?.enabled === true && state.facade.recentState.records.some((record) => record.id === recentFileId);
   }
   const command = state.facade.model.appState.commands.find((item) => item.id === canonicalCommandId);
   return command?.enabled === true;
-}
-
-function canonicalHostMenuCommandId(commandId: string): string {
-  return recentFileIdFromCommandId(commandId) ? "openRecent" : commandId;
-}
-
-function recentFileIdFromCommandId(commandId: string): string | undefined {
-  if (!commandId.startsWith("openRecent:")) return undefined;
-  const recentFileId = commandId.slice("openRecent:".length).trim();
-  return recentFileId && recentFileId !== "empty" ? recentFileId : undefined;
 }
 
 function withLastAction(
