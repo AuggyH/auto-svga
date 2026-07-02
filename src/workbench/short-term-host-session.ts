@@ -129,7 +129,7 @@ class ShortTermHostSessionController implements ShortTermHostSession {
   }
 
   getState(): ShortTermHostActionState {
-    return this.state;
+    return cloneShortTermHostActionState(this.state);
   }
 
   async openLocalFile(input: ShortTermHostOpenLocalFileInput): Promise<ShortTermHostSessionActionResult> {
@@ -213,11 +213,12 @@ class ShortTermHostSessionController implements ShortTermHostSession {
   ): Promise<ShortTermHostSessionActionResult> {
     return this.enqueue(async () => {
       this.state = await action(this.state);
+      const stateSnapshot = cloneShortTermHostActionState(this.state);
       return {
         schemaVersion: SHORT_TERM_HOST_SESSION_SCHEMA_VERSION,
         source: "short-term-host-session",
-        state: this.state,
-        actionResult: this.state.lastAction,
+        state: stateSnapshot,
+        actionResult: stateSnapshot.lastAction,
         recentPersistence: await this.persistRecentFilesIfChanged()
       };
     });
@@ -254,6 +255,10 @@ class ShortTermHostSessionController implements ShortTermHostSession {
 
 function recentSignature(state: ShortTermHostActionState): string {
   return serializeShortTermRecentFilesState(state.facade.recentState);
+}
+
+function cloneShortTermHostActionState(state: ShortTermHostActionState): ShortTermHostActionState {
+  return structuredClone(state) as ShortTermHostActionState;
 }
 
 function persistenceResult(

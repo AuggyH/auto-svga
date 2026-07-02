@@ -45,6 +45,32 @@ test("short-term host session persists recent changes after open and clear actio
   assert.equal(store.snapshot().records.length, 0);
 });
 
+test("short-term host session returns defensive state snapshots", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermSvgaFixture()
+  });
+  const session = await createShortTermHostSession({ host });
+
+  const opened = await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+
+  opened.state.currentLocalPath = "/Users/designer/private/mutated-from-action.svga";
+  const leakedGetState = session.getState();
+  assert.ok(leakedGetState.facade.sourceBytes);
+  const originalFirstByte = leakedGetState.facade.sourceBytes[0];
+  leakedGetState.currentLocalPath = "/Users/designer/private/mutated-from-get-state.svga";
+  leakedGetState.facade.sourceBytes[0] = (originalFirstByte + 1) % 256;
+
+  const current = session.getState();
+  assert.equal(current.currentLocalPath, sourcePath);
+  assert.equal(current.facade.sourceBytes?.[0], originalFirstByte);
+  assert.equal(JSON.stringify(current.facade.model).includes("/Users/designer"), false);
+});
+
 test("short-term host session serializes overlapping mutating actions", async () => {
   const slowPath = "/Users/designer/private/slow.svga";
   const fastPath = "/Users/designer/private/fast.svga";
