@@ -236,6 +236,29 @@ export function openShortTermWorkbenchRecentFile(
   };
 }
 
+export function markShortTermWorkbenchRecentFileMissing(
+  state: ShortTermWorkbenchFacadeState,
+  recentFileId: string,
+  message = "最近文件已不存在或当前无法访问。"
+): ShortTermWorkbenchFacadeState {
+  const recentState = markShortTermRecentFileMissing(state.recentState, recentFileId);
+  const recentView = createShortTermRecentFilesViewModel(recentState, "missing");
+  const appState = markAppRecentFileMissing(
+    setShortTermAppRecentFiles(state.model.appState, recentView.launchRecentFiles),
+    recentFileId,
+    message
+  );
+  return buildFacadeState({
+    recentState,
+    appState,
+    activeWorkflow: {
+      kind: "recent",
+      status: "missing",
+      message
+    }
+  });
+}
+
 export async function runShortTermWorkbenchOptimizationCompare(
   state: ShortTermWorkbenchFacadeState
 ): Promise<{ state: ShortTermWorkbenchFacadeState; session: ShortTermOptimizationCompareSessionResult }> {
@@ -423,6 +446,28 @@ export function completeShortTermWorkbenchSave(
       ...state,
       appState,
       activeOutput: result.status === "saveComplete" ? undefined : output,
+      activeWorkflow: {
+        kind: "save",
+        status: result.status,
+        message: result.message
+      }
+    })
+  };
+}
+
+export function failShortTermWorkbenchSave(
+  state: ShortTermWorkbenchFacadeState,
+  plan: ShortTermSaveExecutionPlan,
+  error: unknown
+): { state: ShortTermWorkbenchFacadeState; result: ShortTermSaveExecutionResult } {
+  const output = state.model.activeOutput;
+  const result = failShortTermSaveExecution(plan, error);
+  return {
+    result,
+    state: buildFacadeState({
+      ...state,
+      appState: state.model.appState,
+      activeOutput: output,
       activeWorkflow: {
         kind: "save",
         status: result.status,
