@@ -57,6 +57,10 @@ import {
   type ShortTermSaveExecutionResult
 } from "./short-term-save-execution.js";
 import type { ShortTermPersistedOutputRecord, ShortTermSaveCommand } from "./short-term-save-state.js";
+import {
+  createShortTermCommandMenuModel,
+  type ShortTermCommandMenuModel
+} from "./short-term-command-menu.js";
 
 export const SHORT_TERM_WORKBENCH_FACADE_SCHEMA_VERSION = 1 as const;
 
@@ -82,6 +86,7 @@ export interface ShortTermWorkbenchFacadeModel {
   source: "short-term-workbench-facade";
   prdIds: readonly string[];
   appState: ShortTermAppStateModel;
+  commandMenu: ShortTermCommandMenuModel;
   recentFiles: ShortTermRecentFilesViewModel;
   currentSourceSha256?: string;
   activeOutput?: ShortTermPersistedOutputRecord;
@@ -469,6 +474,7 @@ function buildFacadeState(input: {
       source: "short-term-workbench-facade",
       prdIds: ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16"],
       appState: input.appState,
+      commandMenu: createShortTermCommandMenuModel(input.appState),
       recentFiles,
       ...(sourceBytes ? { currentSourceSha256: sha256(sourceBytes) } : {}),
       ...(input.activeOutput ? { activeOutput: input.activeOutput } : {}),

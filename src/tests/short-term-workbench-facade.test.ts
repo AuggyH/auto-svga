@@ -38,6 +38,18 @@ test("short-term workbench facade creates path-redacted launch state from recent
   assert.equal(facade.model.schemaVersion, 1);
   assert.equal(facade.model.source, "short-term-workbench-facade");
   assert.equal(facade.model.appState.state, "launch");
+  assert.equal(facade.model.commandMenu.source, "short-term-command-menu");
+  assert.deepEqual(facade.model.commandMenu.groups.map((group) => group.id), [
+    "app",
+    "file",
+    "edit",
+    "resource",
+    "optimize",
+    "playback",
+    "view",
+    "window",
+    "help"
+  ]);
   assert.equal(facade.model.recentFiles.launchRecentFiles.length, 1);
   assert.equal(facade.model.recentFiles.launchRecentFiles[0].displayName, "profile.svga");
   assert.equal(facade.model.recentFiles.launchRecentFiles[0].pathRedacted, true);
@@ -106,6 +118,7 @@ test("short-term workbench facade runs optimization compare and clears save stat
   assert.equal(compared.state.model.activeWorkflow.kind, "optimizationCompare");
   assert.equal(compared.state.model.activeOutput?.outputKind, "optimized_svga");
   assert.equal(commandEnabled(compared.state.model.appState, "saveAs"), true);
+  assert.equal(menuItemEnabled(compared.state.model, "saveAs"), true);
   assert.ok(plan);
   assert.equal(plan.targetDisplayName, "optimized.svga");
 
@@ -113,11 +126,13 @@ test("short-term workbench facade runs optimization compare and clears save stat
   assert.equal(failedRename.session.model.status, "failed");
   assert.equal(failedRename.state.model.activeOutput, undefined);
   assert.equal(commandEnabled(failedRename.state.model.appState, "saveAs"), false);
+  assert.equal(menuItemEnabled(failedRename.state.model, "saveAs"), false);
 
   const saved = completeShortTermWorkbenchSave(compared.state, plan, compared.session.optimizedBytes);
   assert.equal(saved.result.status, "saveComplete");
   assert.equal(saved.state.model.activeOutput, undefined);
   assert.equal(commandEnabled(saved.state.model.appState, "saveAs"), false);
+  assert.equal(menuItemEnabled(saved.state.model, "saveAs"), false);
 });
 
 test("short-term workbench facade exposes rename, image replacement, and text preview entries", async () => {
@@ -273,6 +288,19 @@ function commandEnabled(state: { commands: readonly { id: string; enabled: boole
   const command = state.commands.find((item) => item.id === id);
   assert.ok(command, `missing command ${id}`);
   return command.enabled;
+}
+
+function menuItemEnabled(
+  model: { commandMenu: { groups: readonly { items: readonly { id: string; enabled?: boolean; items?: readonly { id: string; enabled?: boolean }[] }[] }[] } },
+  id: string
+): boolean | undefined {
+  const items = model.commandMenu.groups.flatMap((group) => group.items.flatMap((item) => [
+    item,
+    ...(item.items ?? [])
+  ]));
+  const item = items.find((entry) => entry.id === id);
+  assert.ok(item, `missing menu item ${id}`);
+  return item.enabled;
 }
 
 function inspectionFixture(): ShortTermProductInspectionModel {
