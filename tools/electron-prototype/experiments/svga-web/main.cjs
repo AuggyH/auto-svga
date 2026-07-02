@@ -273,6 +273,12 @@ function validateSmokeResult(value) {
     if (typeof value.shortTermSaveFailed !== "boolean") return undefined;
     result.shortTermSaveFailed = value.shortTermSaveFailed;
   }
+  if (value.shortTermOpenFlowProof !== undefined) {
+    const shortTermOpenFlowProof = validateShortTermOpenFlowProof(value.shortTermOpenFlowProof);
+    if (!shortTermOpenFlowProof) return undefined;
+    result.shortTermOpenFlowProof = shortTermOpenFlowProof;
+    result.shortTermOpenFlow = shortTermOpenFlowProof.passed;
+  }
   if (value.shortTermEmptyStateProof !== undefined) {
     const shortTermEmptyStateProof = validateShortTermEmptyStateProof(value.shortTermEmptyStateProof);
     if (!shortTermEmptyStateProof) return undefined;
@@ -421,6 +427,45 @@ function validateShortTermEmptyStateProof(value) {
     noAudioCopy: value.noAudioCopy,
     noReplaceableCopy: value.noReplaceableCopy,
     textUnavailableCopy: value.textUnavailableCopy,
+    passed: true
+  };
+}
+
+function validateShortTermOpenFlowProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-open-flow-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.length !== 1 || value.prdIds[0] !== "S1") return undefined;
+  if (!isBoundedString(value.fixtureName, 160) || !value.fixtureName.endsWith(".svga")) return undefined;
+  if (!isSha256(value.fixtureSha256)) return undefined;
+  if (!Number.isInteger(value.sourceSizeBytes) || value.sourceSizeBytes <= 0) return undefined;
+  if (value.pairedNormalProof !== "normal-runtime-proof.json") return undefined;
+  if (
+    value.dragDropAttempted !== true
+    || value.dragDropLoaded !== true
+    || value.previewReached !== true
+    || value.localOnly !== true
+    || value.pathRedacted !== true
+    || value.rendererFilesystemAccessClaimed !== false
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S1"],
+    fixtureName: value.fixtureName,
+    fixtureSha256: value.fixtureSha256,
+    sourceSizeBytes: value.sourceSizeBytes,
+    dragDropAttempted: true,
+    dragDropLoaded: true,
+    previewReached: true,
+    localOnly: true,
+    pathRedacted: true,
+    rendererFilesystemAccessClaimed: false,
+    pairedNormalProof: "normal-runtime-proof.json",
     passed: true
   };
 }
@@ -718,6 +763,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.workbenchRegionMap !== undefined && !validateWorkbenchRegionMap(value.workbenchRegionMap)) {
     return `workbenchRegionMap:${describeWorkbenchRegionMapValidationFailure(value.workbenchRegionMap)}`;
+  }
+  if (value.shortTermOpenFlowProof !== undefined && !validateShortTermOpenFlowProof(value.shortTermOpenFlowProof)) {
+    return "shortTermOpenFlowProof";
   }
   if (value.shortTermRuntimeTextBoundaryProof !== undefined && !validateShortTermRuntimeTextBoundaryProof(value.shortTermRuntimeTextBoundaryProof)) {
     return "shortTermRuntimeTextBoundaryProof";
@@ -3487,6 +3535,14 @@ async function finishSmoke(window, result) {
       shortTermMenuStateProof,
       "smoke"
     );
+    if (result.shortTermOpenFlowProof) {
+      writeJsonProductArtifact(
+        "short-term-open-flow-proof.json",
+        "short-term-open-flow-proof",
+        result.shortTermOpenFlowProof,
+        "smoke"
+      );
+    }
     if (result.shortTermEmptyStateProof) {
       writeJsonProductArtifact(
         "short-term-empty-state-proof.json",
@@ -3537,9 +3593,9 @@ async function finishSmoke(window, result) {
     }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();

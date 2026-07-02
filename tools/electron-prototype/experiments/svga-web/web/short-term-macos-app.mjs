@@ -1677,6 +1677,30 @@ async function runShortTermSmokeIfRequested() {
   const auditPanelVisible = Boolean(nodes.factGrid.children.length > 0);
   const dragDropLoaded = state.displayName === file.name;
   const playerLifecycleOk = Boolean(state.primaryPlayback);
+  const shortTermOpenFlowProof = {
+    schemaVersion: 1,
+    proofId: "short-term-open-flow-proof",
+    source: "short-term-smoke",
+    prdIds: ["S1"],
+    fixtureName: file.name,
+    fixtureSha256: await sha256Hex(fixtureBytes),
+    sourceSizeBytes: fixtureBytes.byteLength,
+    dragDropAttempted: true,
+    dragDropLoaded,
+    previewReached: playbackReady && inspectionReportVisible && canvasNonBlank,
+    localOnly: resourceEntriesAreLocalOnly(),
+    pathRedacted: !file.name.includes("/") && !file.name.includes("\\"),
+    rendererFilesystemAccessClaimed: false,
+    pairedNormalProof: "normal-runtime-proof.json"
+  };
+  shortTermOpenFlowProof.passed = [
+    shortTermOpenFlowProof.dragDropAttempted,
+    shortTermOpenFlowProof.dragDropLoaded,
+    shortTermOpenFlowProof.previewReached,
+    shortTermOpenFlowProof.localOnly,
+    shortTermOpenFlowProof.pathRedacted,
+    shortTermOpenFlowProof.rendererFilesystemAccessClaimed === false
+  ].every(Boolean);
   clearTransientOutput();
   await loadDroppedFile(new File([new Uint8Array([0, 1, 2, 3, 4])], "invalid.svga", { type: "application/octet-stream" }));
   await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent.includes("源文件没有被修改"), 4_000);
@@ -1712,6 +1736,7 @@ async function runShortTermSmokeIfRequested() {
     dragDrop: dragDropLoaded,
     errorFile: invalidResponse.ok === false,
     playerLifecycle: playerLifecycleOk,
+    shortTermOpenFlowProof,
     shortTermScreenshots: screenshotCaptures.length >= 9 && screenshotCaptures.every(Boolean),
     shortTermSaveFailed: saveFailedVisible,
     shortTermLoadFailed: loadFailedVisible,

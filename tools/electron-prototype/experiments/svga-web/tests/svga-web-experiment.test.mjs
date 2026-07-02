@@ -1073,6 +1073,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-minimum"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-save-failed"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-load-failed"\)/);
+  assert.match(shortTermEntry, /short-term-open-flow-proof/);
+  assert.match(shortTermEntry, /dragDropAttempted/);
+  assert.match(main, /validateShortTermOpenFlowProof/);
+  assert.match(main, /short-term-open-flow-proof\.json/);
   assert.match(shortTermEntry, /shortTermScreenshots: screenshotCaptures\.length >= 9/);
   assert.match(shortTermEntry, /shortTermSaveFailed: saveFailedVisible/);
   assert.match(shortTermEntry, /shortTermLoadFailed: loadFailedVisible/);
@@ -1487,10 +1491,11 @@ test("short-term acceptance matrix stays current-head bound and does not hide kn
   assert.match(source, /stale/);
   assert.match(source, /headCommit/);
   assert.match(source, /current HEAD/);
+  assert.match(source, /short-term-open-flow-proof\.json/);
   assert.match(source, /id: "S13"/);
   assert.match(source, /productCompleteClaimed === false/);
   assert.match(source, /SVGA proto\/product inspection model/);
-  assert.match(source, /Dedicated drag-and-drop proof/);
+  assert.match(source, /Need both drag\/drop proof and macOS menu\/host-dialog normal proof/);
   assert.match(source, /matteKey reference closure/);
 });
 

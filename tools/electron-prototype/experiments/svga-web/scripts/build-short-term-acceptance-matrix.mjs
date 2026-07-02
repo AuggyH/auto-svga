@@ -16,12 +16,15 @@ const requirements = [
   {
     id: "S1",
     title: "Open SVGA locally",
-    summary: "Open from macOS menu/host dialog is proven; drag/drop still needs a dedicated current-head proof.",
-    proof: "normal-runtime-proof.json",
-    passWhen: () => false,
-    partialWhen: (proof) => proof?.hostOpen === true && proof?.menuOpen === true,
-    evidence: ["normal-runtime-proof.json", "actual-normal-loaded.png"],
-    partialGaps: ["Dedicated drag-and-drop proof is not yet captured as structured current-head evidence."]
+    summary: "Open from macOS menu/host dialog and drag/drop are proven through paired current-head proof.",
+    proof: "short-term-open-flow-proof.json",
+    passWhen: (proof, ctx) => proof?.passed === true
+      && ctx.proof("normal-runtime-proof.json")?.hostOpen === true
+      && ctx.proof("normal-runtime-proof.json")?.menuOpen === true
+      && ctx.proof("normal-runtime-proof.json")?.localOnly === true,
+    partialWhen: (proof, ctx) => proof?.passed === true || ctx.proof("normal-runtime-proof.json")?.hostOpen === true,
+    evidence: ["short-term-open-flow-proof.json", "normal-runtime-proof.json", "actual-normal-loaded.png"],
+    partialGaps: ["Need both drag/drop proof and macOS menu/host-dialog normal proof on the current head."]
   },
   {
     id: "S2",
