@@ -839,7 +839,7 @@ test("short-term host actions block disabled or unrouted menu commands", async (
   assert.equal(emptyRecentBlocked.lastAction?.diagnostic?.code, "menu_command_disabled");
 
   const unknownBlocked = await dispatchShortTermHostMenuAction(state, host, {
-    commandId: "showLogs"
+    commandId: "unsupportedCommand"
   });
   assert.equal(unknownBlocked.lastAction?.status, "blocked");
   assert.deepEqual(unknownBlocked.lastAction?.prdIds, []);
@@ -939,6 +939,13 @@ test("short-term host actions delegate native and renderer-owned menu commands",
   assert.equal(help.lastAction?.status, "delegated");
   assert.deepEqual(help.lastAction?.prdIds, []);
   assert.equal(help.lastAction?.diagnostic?.code, "menu_command_delegated_to_renderer");
+
+  const logs = await dispatchShortTermHostMenuAction(launch, host, {
+    commandId: "showLogs"
+  });
+  assert.equal(logs.lastAction?.status, "delegated");
+  assert.deepEqual(logs.lastAction?.prdIds, []);
+  assert.equal(logs.lastAction?.diagnostic?.code, "menu_command_delegated_to_renderer");
 
   const playBlocked = await dispatchShortTermHostMenuAction(launch, host, {
     commandId: "playPause"

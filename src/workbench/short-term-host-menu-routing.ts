@@ -34,7 +34,8 @@ const RENDERER_DELEGATED_MENU_COMMANDS = new Set([
   "replay",
   "toggleCompare",
   "editTextPreview",
-  "help"
+  "help",
+  "showLogs"
 ]);
 
 export function classifyShortTermHostMenuCommand(commandId: string): ShortTermHostMenuCommandRoute {

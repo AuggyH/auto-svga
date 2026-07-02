@@ -51,7 +51,7 @@ test("short-term PRD trace covers every product-routed menu item", () => {
       lastOpenedAt: "2026-07-02T00:00:00.000Z"
     }]
   }));
-  const allowedUntraced = new Set(["help"]);
+  const allowedUntraced = new Set(["help", "showLogs"]);
   const missingTrace = flattenShortTermCommandMenuItems(menu)
     .filter((item) => item.kind === "command")
     .filter((item) => {

@@ -319,7 +319,8 @@ function commandStates(state: Omit<ShortTermAppStateModel, "commands">): ShortTe
     command("editTextPreview", "Resource", "文本预览", state.state === "previewReady", undefined, "需要先打开有效 SVGA"),
     command("runOptimization", "Optimize", "生成优化副本", state.state === "previewReady", undefined, "需要先打开有效 SVGA"),
     command("minimize", "Window", "最小化", true, "Cmd+M"),
-    command("help", "Help", "Auto SVGA 帮助", true)
+    command("help", "Help", "Auto SVGA 帮助", true),
+    command("showLogs", "Help", "显示日志", true)
   ];
 }
 

@@ -62,6 +62,7 @@ test("short-term command menu covers app state commands and redacts recent paths
   assert.equal(flatItems.find((item) => item.id === "copy")?.role, "copy");
   assert.equal(flatItems.find((item) => item.id === "paste")?.role, "paste");
   assert.equal(flatItems.find((item) => item.id === "selectAll")?.role, "selectAll");
+  assert.equal(flatItems.find((item) => item.id === "showLogs")?.label, "显示日志");
 });
 
 test("short-term command menu exposes product PRD trace for menu entries", () => {

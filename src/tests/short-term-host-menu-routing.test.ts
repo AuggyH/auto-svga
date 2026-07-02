@@ -20,7 +20,8 @@ test("short-term host menu routing classifies host, native, renderer, and unsupp
   assert.equal(classifyShortTermHostMenuCommand("minimize"), "native");
   assert.equal(classifyShortTermHostMenuCommand("playPause"), "renderer");
   assert.equal(classifyShortTermHostMenuCommand("toggleCompare"), "renderer");
-  assert.equal(classifyShortTermHostMenuCommand("showLogs"), "unsupported");
+  assert.equal(classifyShortTermHostMenuCommand("showLogs"), "renderer");
+  assert.equal(classifyShortTermHostMenuCommand("unsupportedCommand"), "unsupported");
 });
 
 test("short-term host menu routing recognizes every command-menu item", () => {

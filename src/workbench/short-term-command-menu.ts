@@ -121,7 +121,8 @@ export function createShortTermCommandMenuModel(
         nativeItem("front", "全部置于前台", "front")
       ]),
       menu("help", "帮助", [
-        commandItem(requiredCommand(lookup, "help"))
+        commandItem(requiredCommand(lookup, "help")),
+        commandItem(requiredCommand(lookup, "showLogs"))
       ])
     ]
   };
