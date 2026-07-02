@@ -494,10 +494,13 @@ function validateShortTermLoadFailureProof(value) {
   if (value.source !== "short-term-smoke") return undefined;
   if (!Array.isArray(value.prdIds) || value.prdIds.length !== 1 || value.prdIds[0] !== "S2") return undefined;
   if (!isBoundedString(value.invalidFileName, 160) || !value.invalidFileName.endsWith(".svga")) return undefined;
+  if (!isBoundedString(value.playbackFailureFileName, 160) || !value.playbackFailureFileName.endsWith(".svga")) return undefined;
   if (!Number.isInteger(value.invalidSizeBytes) || value.invalidSizeBytes <= 0) return undefined;
   if (!isBoundedString(value.errorCopy, 260) || !value.errorCopy.includes("源文件没有被修改")) return undefined;
+  if (!isBoundedString(value.playbackFailureCopy, 260) || !value.playbackFailureCopy.includes("播放失败") || !value.playbackFailureCopy.includes("源文件没有被修改")) return undefined;
   if (!isBoundedString(value.recoveryFileName, 160) || !value.recoveryFileName.endsWith(".svga")) return undefined;
   if (!isSha256(value.sourceSha256BeforeInvalid) || value.sourceSha256AfterRecovery !== value.sourceSha256BeforeInvalid) return undefined;
+  if (!isSha256(value.playbackFailureSourceSha256Before) || value.playbackFailureSourceSha256AfterRecovery !== value.playbackFailureSourceSha256Before) return undefined;
   if (
     value.invalidDropAttempted !== true
     || value.loadFailedVisible !== true
@@ -507,6 +510,11 @@ function validateShortTermLoadFailureProof(value) {
     || value.recoveryLoaded !== true
     || value.playbackRecovered !== true
     || value.sourceBytesRestoredAfterRecovery !== true
+    || value.playbackFailureInjected !== true
+    || value.playbackFailureVisible !== true
+    || value.noStaleMetadataAfterPlaybackFailure !== true
+    || value.playbackFailureRecovered !== true
+    || value.playbackFailureSourceBytesRestoredAfterRecovery !== true
     || value.passed !== true
   ) {
     return undefined;
@@ -530,6 +538,15 @@ function validateShortTermLoadFailureProof(value) {
     sourceSha256BeforeInvalid: value.sourceSha256BeforeInvalid,
     sourceSha256AfterRecovery: value.sourceSha256AfterRecovery,
     sourceBytesRestoredAfterRecovery: true,
+    playbackFailureInjected: true,
+    playbackFailureFileName: value.playbackFailureFileName,
+    playbackFailureVisible: true,
+    playbackFailureCopy: value.playbackFailureCopy,
+    noStaleMetadataAfterPlaybackFailure: true,
+    playbackFailureRecovered: true,
+    playbackFailureSourceSha256Before: value.playbackFailureSourceSha256Before,
+    playbackFailureSourceSha256AfterRecovery: value.playbackFailureSourceSha256AfterRecovery,
+    playbackFailureSourceBytesRestoredAfterRecovery: true,
     passed: true
   };
 }
@@ -803,6 +820,11 @@ function validateShortTermRenameProof(value) {
   if (!isSha256(value.renamedSha256) || value.renamedSha256 === value.sourceSha256Before) return undefined;
   if (!isBoundedString(value.resultTitle, 120) || value.resultTitle !== "已重命名 imageKey") return undefined;
   if (!isBoundedString(value.resultSummary, 220) || !value.resultSummary.includes(value.toImageKey)) return undefined;
+  if (!Array.isArray(value.referenceFieldsChecked) || value.referenceFieldsChecked.join(",") !== "imageKey,matteKey") return undefined;
+  if (!Number.isInteger(value.referenceUpdateCount) || value.referenceUpdateCount < 1) return undefined;
+  if (!Number.isInteger(value.imageKeyReferenceUpdates) || value.imageKeyReferenceUpdates < 1) return undefined;
+  if (!Number.isInteger(value.matteKeyReferenceUpdates) || value.matteKeyReferenceUpdates < 0) return undefined;
+  if (!Array.isArray(value.danglingReferences) || value.danglingReferences.length !== 0) return undefined;
   if (
     value.contextMenuOpened !== true
     || value.enterConfirmed !== true
@@ -811,6 +833,14 @@ function validateShortTermRenameProof(value) {
     || value.renamedBytesDifferent !== true
     || value.renamedKeyVisible !== true
     || value.oldKeyAbsent !== true
+    || value.decodePassed !== true
+    || value.reopenPassed !== true
+    || value.referenceClosurePassed !== true
+    || value.imageKeyReferenceClosurePassed !== true
+    || value.matteKeyReferenceClosurePassed !== true
+    || value.danglingReferenceCount !== 0
+    || value.newKeyPresent !== true
+    || value.imageBytesPreserved !== true
     || value.previewModeStayed !== true
     || value.saveAsEnabled !== true
     || value.canvasNonBlank !== true
@@ -836,6 +866,19 @@ function validateShortTermRenameProof(value) {
     renamedBytesDifferent: true,
     renamedKeyVisible: true,
     oldKeyAbsent: true,
+    referenceFieldsChecked: ["imageKey", "matteKey"],
+    referenceUpdateCount: value.referenceUpdateCount,
+    imageKeyReferenceUpdates: value.imageKeyReferenceUpdates,
+    matteKeyReferenceUpdates: value.matteKeyReferenceUpdates,
+    decodePassed: true,
+    reopenPassed: true,
+    referenceClosurePassed: true,
+    imageKeyReferenceClosurePassed: true,
+    matteKeyReferenceClosurePassed: true,
+    danglingReferences: [],
+    danglingReferenceCount: 0,
+    newKeyPresent: true,
+    imageBytesPreserved: true,
     previewModeStayed: true,
     saveAsEnabled: true,
     canvasNonBlank: true,
@@ -2430,6 +2473,7 @@ function validateArtifactScenario(value) {
     "short-term-preview-minimum",
     "short-term-save-failed",
     "short-term-load-failed",
+    "short-term-playback-failed",
     "desktop-local-info-overview-open",
     "desktop-local-info-assets-open",
     "desktop-local-source-resources-open",

@@ -293,7 +293,8 @@ async function confirmInlineRename() {
       bytes: renamedBytes,
       suggestedName: suffixName(state.displayName, "renamed"),
       title: renamed.rename.resultTitle,
-      summary: renamed.rename.resultSummary
+      summary: renamed.rename.resultSummary,
+      details: renamed.rename
     });
     renderPreviewModel();
     await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes);
@@ -1624,6 +1625,10 @@ async function runShortTermSmokeIfRequested() {
   const renameCanvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
   await captureSmokeArtifact("short-term-rename-dirty");
   const renamedImageKeys = (state.model?.replaceableElements?.images ?? []).map((item) => item.imageKey);
+  const renameWorkflow = state.activeOutput.details ?? {};
+  const renameValidation = renameWorkflow.validation ?? {};
+  const referenceUpdates = Array.isArray(renameWorkflow.referenceUpdates) ? renameWorkflow.referenceUpdates : [];
+  const danglingReferences = Array.isArray(renameValidation.danglingReferences) ? renameValidation.danglingReferences : [];
   const shortTermRenameProof = {
     schemaVersion: 1,
     proofId: "short-term-rename-proof",
@@ -1642,6 +1647,21 @@ async function runShortTermSmokeIfRequested() {
     renamedBytesDifferent: renamedSha256 !== renameSourceSha256Before,
     renamedKeyVisible: renamedImageKeys.includes(renameToImageKey),
     oldKeyAbsent: !renamedImageKeys.includes(renameFromImageKey),
+    referenceFieldsChecked: ["imageKey", "matteKey"],
+    referenceUpdateCount: referenceUpdates.length,
+    imageKeyReferenceUpdates: referenceUpdates.filter((update) => update.field === "imageKey").length,
+    matteKeyReferenceUpdates: referenceUpdates.filter((update) => update.field === "matteKey").length,
+    decodePassed: renameValidation.decodePassed === true,
+    reopenPassed: renameValidation.reopenPassed === true,
+    referenceClosurePassed: renameValidation.referenceClosurePassed === true,
+    imageKeyReferenceClosurePassed: renameValidation.referenceClosurePassed === true
+      && danglingReferences.every((resourceKey) => resourceKey !== renameToImageKey),
+    matteKeyReferenceClosurePassed: renameValidation.referenceClosurePassed === true
+      && danglingReferences.every((resourceKey) => resourceKey !== renameToImageKey),
+    danglingReferences,
+    danglingReferenceCount: danglingReferences.length,
+    newKeyPresent: renameValidation.newKeyPresent === true,
+    imageBytesPreserved: renameValidation.imageBytesPreserved === true,
     previewModeStayed: state.view === "preview" && state.mode === "preview",
     saveAsEnabled: document.querySelector("[data-action='save-as']")?.disabled === false,
     canvasNonBlank: renameCanvasNonBlank,
@@ -1656,6 +1676,14 @@ async function runShortTermSmokeIfRequested() {
     shortTermRenameProof.renamedBytesDifferent,
     shortTermRenameProof.renamedKeyVisible,
     shortTermRenameProof.oldKeyAbsent,
+    shortTermRenameProof.decodePassed,
+    shortTermRenameProof.reopenPassed,
+    shortTermRenameProof.referenceClosurePassed,
+    shortTermRenameProof.imageKeyReferenceClosurePassed,
+    shortTermRenameProof.matteKeyReferenceClosurePassed,
+    shortTermRenameProof.danglingReferenceCount === 0,
+    shortTermRenameProof.newKeyPresent,
+    shortTermRenameProof.imageBytesPreserved,
     shortTermRenameProof.previewModeStayed,
     shortTermRenameProof.saveAsEnabled,
     shortTermRenameProof.canvasNonBlank,
@@ -1831,6 +1859,38 @@ async function runShortTermSmokeIfRequested() {
   });
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const recoverySourceSha256After = await sha256Hex(state.sourceBytes);
+  const playbackFailureSourceSha256Before = await sha256Hex(state.sourceBytes);
+  const originalPlayerMount = SvgaWebPlayer.prototype.mount;
+  try {
+    SvgaWebPlayer.prototype.mount = async function playbackFailureSmokeProbe() {
+      throw new Error("播放失败：播放器挂载失败。");
+    };
+    await loadOpenedSource({
+      bytes: fixtureBytes,
+      displayName: "playback-failure-smoke.svga",
+      sourceId: ""
+    });
+  } finally {
+    SvgaWebPlayer.prototype.mount = originalPlayerMount;
+  }
+  await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent.includes("播放失败"), 4_000);
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-playback-failed");
+  const playbackFailureVisible = state.view === "failed"
+    && nodes.errorMessage.textContent.includes("播放失败")
+    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+  const playbackFailureCopy = nodes.errorMessage.textContent.trim();
+  const noStaleMetadataAfterPlaybackFailure = !state.sourceBytes
+    && !state.model
+    && !state.activeOutput
+    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+  await loadOpenedSource({
+    bytes: fixtureBytes,
+    displayName: file.name,
+    sourceId: ""
+  });
+  await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
+  const playbackFailureSourceSha256AfterRecovery = await sha256Hex(state.sourceBytes);
   const invalidResponse = await fetch("/api/short-term-product-inspection-model?name=invalid.svga", {
     method: "POST",
     headers: authHeaders(),
@@ -1854,7 +1914,16 @@ async function runShortTermSmokeIfRequested() {
     playbackRecovered: Boolean(state.primaryPlayback),
     sourceSha256BeforeInvalid: recoverySourceSha256Before,
     sourceSha256AfterRecovery: recoverySourceSha256After,
-    sourceBytesRestoredAfterRecovery: recoverySourceSha256After === recoverySourceSha256Before
+    sourceBytesRestoredAfterRecovery: recoverySourceSha256After === recoverySourceSha256Before,
+    playbackFailureInjected: true,
+    playbackFailureFileName: "playback-failure-smoke.svga",
+    playbackFailureVisible,
+    playbackFailureCopy,
+    noStaleMetadataAfterPlaybackFailure,
+    playbackFailureRecovered: state.view === "preview" && Boolean(state.primaryPlayback),
+    playbackFailureSourceSha256Before,
+    playbackFailureSourceSha256AfterRecovery,
+    playbackFailureSourceBytesRestoredAfterRecovery: playbackFailureSourceSha256AfterRecovery === playbackFailureSourceSha256Before
   };
   shortTermLoadFailureProof.passed = [
     shortTermLoadFailureProof.invalidDropAttempted,
@@ -1864,7 +1933,12 @@ async function runShortTermSmokeIfRequested() {
     shortTermLoadFailureProof.invalidApiRejected,
     shortTermLoadFailureProof.recoveryLoaded,
     shortTermLoadFailureProof.playbackRecovered,
-    shortTermLoadFailureProof.sourceBytesRestoredAfterRecovery
+    shortTermLoadFailureProof.sourceBytesRestoredAfterRecovery,
+    shortTermLoadFailureProof.playbackFailureInjected,
+    shortTermLoadFailureProof.playbackFailureVisible,
+    shortTermLoadFailureProof.noStaleMetadataAfterPlaybackFailure,
+    shortTermLoadFailureProof.playbackFailureRecovered,
+    shortTermLoadFailureProof.playbackFailureSourceBytesRestoredAfterRecovery
   ].every(Boolean);
   if (state.primaryPlayback) {
     state.primaryPlayback.player.pause();

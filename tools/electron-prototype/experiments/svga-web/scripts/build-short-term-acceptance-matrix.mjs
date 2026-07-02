@@ -29,13 +29,24 @@ const requirements = [
   {
     id: "S2",
     title: "Play SVGA and report abnormal states",
-    summary: "Playback and invalid-file recovery have structured proof; playback-failure-specific proof is still incomplete.",
+    summary: "Playback, invalid-file recovery, and playback-failure recovery have structured current-head proof.",
     proof: "short-term-load-failure-proof.json",
-    passWhen: () => false,
+    passWhen: (proof, ctx) => proof?.passed === true
+      && proof?.loadFailedVisible === true
+      && proof?.invalidApiRejected === true
+      && proof?.playbackFailureInjected === true
+      && proof?.playbackFailureVisible === true
+      && proof?.playbackFailureRecovered === true
+      && proof?.sourceBytesRestoredAfterRecovery === true
+      && proof?.playbackFailureSourceBytesRestoredAfterRecovery === true
+      && ctx.proof("normal-runtime-proof.json")?.playback === true
+      && ctx.proof("normal-runtime-proof.json")?.canvasNonBlank === true
+      && ctx.hasArtifact("short-term-load-failed.png")
+      && ctx.hasArtifact("short-term-playback-failed.png"),
     partialWhen: (proof, ctx) => proof?.passed === true
       && ctx.proof("normal-runtime-proof.json")?.playback === true
       && ctx.proof("normal-runtime-proof.json")?.canvasNonBlank === true,
-    evidence: ["short-term-load-failure-proof.json", "normal-runtime-proof.json", "short-term-load-failed.png"],
+    evidence: ["short-term-load-failure-proof.json", "normal-runtime-proof.json", "short-term-load-failed.png", "short-term-playback-failed.png"],
     partialGaps: ["Need playback-failure-specific abnormal-state proof in addition to invalid-file recovery."]
   },
   {
@@ -116,9 +127,19 @@ const requirements = [
   {
     id: "S11",
     title: "Rename imageKey",
-    summary: "UI rename proof exists, and matteKey closure is covered by source tests, but current-head runtime evidence does not yet expose matteKey closure.",
+    summary: "UI rename proof exposes current-head imageKey and matteKey reference closure after rename.",
     proof: "short-term-rename-proof.json",
-    passWhen: () => false,
+    passWhen: (proof) => proof?.passed === true
+      && proof?.decodePassed === true
+      && proof?.reopenPassed === true
+      && proof?.referenceClosurePassed === true
+      && proof?.imageKeyReferenceClosurePassed === true
+      && proof?.matteKeyReferenceClosurePassed === true
+      && proof?.danglingReferenceCount === 0
+      && proof?.newKeyPresent === true
+      && proof?.imageBytesPreserved === true
+      && Array.isArray(proof?.referenceFieldsChecked)
+      && proof.referenceFieldsChecked.join(",") === "imageKey,matteKey",
     partialWhen: (proof) => proof?.passed === true,
     evidence: ["short-term-rename-proof.json", "src/tests/short-term-rename-workflow.test.ts"],
     partialGaps: ["Need current-head runtime report showing imageKey and matteKey reference closure after rename."]

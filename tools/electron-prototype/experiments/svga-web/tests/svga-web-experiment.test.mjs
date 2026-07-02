@@ -1081,10 +1081,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-minimum"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-save-failed"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-load-failed"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-playback-failed"\)/);
   assert.match(shortTermEntry, /short-term-open-flow-proof/);
   assert.match(shortTermEntry, /dragDropAttempted/);
   assert.match(shortTermEntry, /short-term-load-failure-proof/);
   assert.match(shortTermEntry, /sourceBytesRestoredAfterRecovery/);
+  assert.match(shortTermEntry, /playbackFailureInjected/);
+  assert.match(shortTermEntry, /playbackFailureVisible/);
+  assert.match(shortTermEntry, /playbackFailureRecovered/);
+  assert.match(shortTermEntry, /playbackFailureSourceBytesRestoredAfterRecovery/);
   assert.match(shortTermEntry, /short-term-spec-comparison-proof/);
   assert.match(shortTermEntry, /actualRequirementPairsVisible/);
   assert.match(shortTermEntry, /short-term-replaceable-classification-proof/);
@@ -1125,6 +1130,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /contextMenuOpened/);
   assert.match(shortTermEntry, /enterConfirmed/);
   assert.match(shortTermEntry, /renamedKeyVisible/);
+  assert.match(shortTermEntry, /referenceFieldsChecked: \["imageKey", "matteKey"\]/);
+  assert.match(shortTermEntry, /referenceClosurePassed/);
+  assert.match(shortTermEntry, /matteKeyReferenceClosurePassed/);
+  assert.match(shortTermEntry, /danglingReferenceCount === 0/);
   assert.match(shortTermEntry, /short-term-replacement-proof/);
   assert.match(shortTermEntry, /resetCommandEnabled/);
   assert.match(shortTermEntry, /resetRestoredOriginal/);
@@ -1258,6 +1267,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /short-term-preview-minimum/);
   assert.match(main, /short-term-load-failed/);
   assert.match(main, /short-term-save-failed/);
+  assert.match(main, /short-term-playback-failed/);
   assert.match(main, /enabled: menuState\.canOverwrite/);
   assert.match(main, /enabled: menuState\.canSaveAs/);
   assert.match(main, /enabled: menuState\.canRenameImageKey/);
@@ -1519,6 +1529,7 @@ test("short-term acceptance matrix stays current-head bound and does not hide kn
   assert.match(source, /current HEAD/);
   assert.match(source, /short-term-open-flow-proof\.json/);
   assert.match(source, /short-term-load-failure-proof\.json/);
+  assert.match(source, /short-term-playback-failed\.png/);
   assert.match(source, /short-term-spec-comparison-proof\.json/);
   assert.match(source, /short-term-replaceable-classification-proof\.json/);
   assert.match(source, /id: "S13"/);
@@ -1526,7 +1537,12 @@ test("short-term acceptance matrix stays current-head bound and does not hide kn
   assert.match(source, /SVGA proto\/product inspection model/);
   assert.match(source, /Need both drag\/drop proof and macOS menu\/host-dialog normal proof/);
   assert.match(source, /playback-failure-specific abnormal-state proof/);
-  assert.match(source, /matteKey reference closure/);
+  assert.match(source, /playbackFailureInjected/);
+  assert.match(source, /playbackFailureRecovered/);
+  assert.match(source, /imageKey and matteKey reference closure/);
+  assert.match(source, /imageKeyReferenceClosurePassed/);
+  assert.match(source, /matteKeyReferenceClosurePassed/);
+  assert.match(source, /danglingReferenceCount === 0/);
 });
 
 test("P2 parity report generator is deterministic and not unconditional pass", async () => {
