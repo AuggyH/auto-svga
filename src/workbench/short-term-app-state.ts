@@ -243,7 +243,7 @@ export function attachShortTermPersistedOutput(
 
   return withCommands({
     ...state,
-    persistedOutput
+    persistedOutput: structuredClone(persistedOutput) as ShortTermPersistedOutputRecord
   });
 }
 

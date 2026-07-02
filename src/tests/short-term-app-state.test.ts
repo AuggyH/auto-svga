@@ -228,6 +228,11 @@ test("short-term app state derives save menu availability from persisted output"
   assert.equal(commandEnabled(dirty, "save"), true);
   assert.equal(commandEnabled(dirty, "saveAs"), true);
 
+  persistedOutput.saveState.saveAsEnabled = false;
+  persistedOutput.validationRefs = ["validation:mutatedAfterAttach"];
+  assert.equal(dirty.persistedOutput?.saveState.saveAsEnabled, true);
+  assert.deepEqual(dirty.persistedOutput?.validationRefs, []);
+
   const nextOpen = startShortTermLocalOpen(dirty, {
     requestId: "open-2",
     source: "menuOpen",
