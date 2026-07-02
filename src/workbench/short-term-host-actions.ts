@@ -159,6 +159,8 @@ export interface ShortTermHostPlaybackFailureInput {
   message: string;
 }
 
+const SAFE_RESULT_COMMAND_ID_PATTERN = /^[A-Za-z][A-Za-z0-9]*(?::[A-Za-z0-9._-]+)?$/u;
+
 export interface ShortTermHostPrepareTextPreviewInput {
   textElements: readonly ShortTermRuntimeTextElement[];
 }
@@ -585,15 +587,16 @@ export async function dispatchShortTermHostMenuAction(
 ): Promise<ShortTermHostActionState> {
   const commandId = input.commandId;
   const canonicalCommandId = canonicalShortTermHostMenuCommandId(commandId);
+  const resultCommandId = safeResultCommandId(commandId);
   const route = classifyShortTermHostMenuCommand(commandId);
   if (!isCommandEnabled(state, commandId)) {
     const command = state.facade.model.appState.commands.find((item) => item.id === canonicalCommandId);
     return withLastAction(state, result("menuDispatch", "blocked", command?.reason ?? "当前菜单命令不可用。", {
-      commandId,
+      commandId: resultCommandId,
       prdIds: shortTermPrdIdsForMenuDispatch(canonicalCommandId),
       diagnostic: {
         code: "menu_command_disabled",
-        message: `Menu command "${commandId}" is disabled or unsupported.`
+        message: `Menu command "${resultCommandId}" is disabled or unsupported.`
       }
     }));
   }
@@ -637,10 +640,10 @@ export async function dispatchShortTermHostMenuAction(
       );
       if (!recentFileId) {
         return withLastAction(state, result("openRecentFile", "blocked", "最近文件记录不可用。", {
-          commandId,
+          commandId: resultCommandId,
           diagnostic: {
             code: "recent_file_id_missing",
-            message: `Menu command "${commandId}" did not include a recent file id.`
+            message: `Menu command "${resultCommandId}" did not include a recent file id.`
           }
         }));
       }
@@ -705,11 +708,11 @@ export async function dispatchShortTermHostMenuAction(
     }
     default:
       return withLastAction(state, result("menuDispatch", "blocked", "当前菜单命令尚未接入主程动作。", {
-        commandId,
+        commandId: resultCommandId,
         prdIds: shortTermPrdIdsForMenuDispatch(canonicalCommandId),
         diagnostic: {
           code: "menu_command_not_routed",
-          message: `Menu command "${commandId}" has no host action route.`
+          message: `Menu command "${resultCommandId}" has no host action route.`
         }
       }));
   }
@@ -752,7 +755,7 @@ function guardedNativeLifecycleMenuCommand(
   });
   if (!lifecycle.canProceed) {
     return withLastAction(state, result("menuDispatch", "blocked", lifecycle.message, {
-      commandId,
+      commandId: safeResultCommandId(commandId),
       prdIds: shortTermPrdIdsForMenuDispatch(commandId),
       outputSha256: lifecycle.activeOutputSha256,
       diagnostic: lifecycle.diagnostic
@@ -760,12 +763,12 @@ function guardedNativeLifecycleMenuCommand(
   }
 
   return withLastAction(state, result("menuDispatch", "delegated", lifecycle.message, {
-    commandId,
+    commandId: safeResultCommandId(commandId),
     prdIds: shortTermPrdIdsForMenuDispatch(commandId),
     outputSha256: lifecycle.activeOutputSha256,
     diagnostic: {
       code: "menu_command_delegated_to_native_after_lifecycle_check",
-      message: `Menu command "${commandId}" is delegated only after the lifecycle guard allows it.`
+      message: `Menu command "${safeResultCommandId(commandId)}" is delegated only after the lifecycle guard allows it.`
     }
   }));
 }
@@ -776,14 +779,15 @@ function delegatedMenuCommand(
   owner: "native" | "renderer",
   message: string
 ): ShortTermHostActionState {
+  const resultCommandId = safeResultCommandId(commandId);
   return withLastAction(state, result("menuDispatch", "delegated", message, {
-    commandId,
+    commandId: resultCommandId,
     prdIds: shortTermPrdIdsForMenuDispatch(commandId),
     diagnostic: {
       code: owner === "native" ? "menu_command_delegated_to_native" : "menu_command_delegated_to_renderer",
       message: owner === "native"
-        ? `Menu command "${commandId}" is handled by the native shell.`
-        : `Menu command "${commandId}" is handled by the renderer runtime.`
+        ? `Menu command "${resultCommandId}" is handled by the native shell.`
+        : `Menu command "${resultCommandId}" is handled by the renderer runtime.`
     }
   }));
 }
@@ -794,12 +798,13 @@ function missingContextForMenuCommand(
   message: string,
   diagnosticMessage: string
 ): ShortTermHostActionState {
+  const resultCommandId = safeResultCommandId(commandId);
   return withLastAction(state, result("menuDispatch", "blocked", message, {
-    commandId,
+    commandId: resultCommandId,
     prdIds: shortTermPrdIdsForMenuDispatch(commandId),
     diagnostic: {
       code: "menu_command_context_missing",
-      message: diagnosticMessage
+      message: diagnosticMessage.replaceAll(commandId, resultCommandId)
     }
   }));
 }
@@ -1002,6 +1007,19 @@ function sanitizeDisplayName(displayName: string | undefined, localPath: string)
 
 function sameResolvedPath(a: string, b: string): boolean {
   return path.resolve(a) === path.resolve(b);
+}
+
+function safeResultCommandId(commandId: string): string {
+  const trimmed = commandId.trim();
+  if (SAFE_RESULT_COMMAND_ID_PATTERN.test(trimmed)) return trimmed;
+  const canonicalCommandId = canonicalShortTermHostMenuCommandId(trimmed);
+  if (
+    SAFE_RESULT_COMMAND_ID_PATTERN.test(canonicalCommandId)
+    && classifyShortTermHostMenuCommand(canonicalCommandId) !== "unsupported"
+  ) {
+    return canonicalCommandId;
+  }
+  return "unsupported";
 }
 
 function errorMessage(error: unknown, fallback: string, sensitivePaths: readonly string[] = []): string {

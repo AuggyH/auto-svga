@@ -634,6 +634,27 @@ test("short-term host actions block disabled or unrouted menu commands", async (
   assert.equal(unknownBlocked.lastAction?.diagnostic?.code, "menu_command_disabled");
 });
 
+test("short-term host actions sanitize menu command ids before returning results", async () => {
+  const host = createMemoryHost({});
+  const state = createShortTermHostActionState();
+
+  const unsafeUnknown = await dispatchShortTermHostMenuAction(state, host, {
+    commandId: "/Users/designer/private/showLogs"
+  });
+  assert.equal(unsafeUnknown.lastAction?.status, "blocked");
+  assert.equal(unsafeUnknown.lastAction?.commandId, "unsupported");
+  assert.equal(JSON.stringify(unsafeUnknown.lastAction).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(unsafeUnknown.lastAction).includes("designer"), false);
+
+  const unsafeRecent = await dispatchShortTermHostMenuAction(state, host, {
+    commandId: "openRecent:/Users/designer/private/recent.svga"
+  });
+  assert.equal(unsafeRecent.lastAction?.status, "blocked");
+  assert.equal(unsafeRecent.lastAction?.commandId, "openRecent");
+  assert.equal(JSON.stringify(unsafeRecent.lastAction).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(unsafeRecent.lastAction).includes("designer"), false);
+});
+
 test("short-term host actions delegate native and renderer-owned menu commands", async () => {
   const sourcePath = "/Users/designer/private/opened.svga";
   const sourceBytes = await createShortTermSvgaFixture();
