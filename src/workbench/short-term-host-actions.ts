@@ -3,6 +3,7 @@ import path from "node:path";
 import type { ShortTermOpenSource } from "./short-term-app-state.js";
 import {
   clearShortTermWorkbenchRecentFiles,
+  closeShortTermWorkbenchFile,
   completeShortTermWorkbenchOpen,
   completeShortTermWorkbenchSave,
   createShortTermWorkbenchFacade,
@@ -29,6 +30,7 @@ export type ShortTermHostActionKind =
   | "openLocalFile"
   | "openRecentFile"
   | "clearRecentFiles"
+  | "closeFile"
   | "runOptimization"
   | "renameImageKey"
   | "replaceImage"
@@ -102,6 +104,7 @@ export type ShortTermHostMenuActionInput =
   | ({ commandId: "openSvga" } & Omit<ShortTermHostOpenLocalFileInput, "source"> & { source?: ShortTermHostOpenLocalFileInput["source"] })
   | ({ commandId: "openRecent" } & Omit<ShortTermHostOpenRecentFileInput, "source"> & { source?: ShortTermRecentOpenSource })
   | { commandId: "clearRecent" }
+  | { commandId: "closeFile" }
   | ({ commandId: "save" | "saveAs" } & Omit<ShortTermHostSaveInput, "command">)
   | { commandId: "runOptimization" }
   | { commandId: "renameImageKey"; fromImageKey: string; toImageKey: string }
@@ -201,6 +204,19 @@ export function clearShortTermHostRecentFiles(
     ...state,
     facade: clearShortTermWorkbenchRecentFiles(state.facade)
   }, result("clearRecentFiles", "completed", "最近记录已清除，源文件不会被删除。"));
+}
+
+export function closeShortTermHostFile(
+  state: ShortTermHostActionState
+): ShortTermHostActionState {
+  return withLastAction({
+    ...state,
+    facade: closeShortTermWorkbenchFile(state.facade),
+    currentLocalPath: undefined,
+    activeOutputBytes: undefined
+  }, result("closeFile", "completed", "当前文件已关闭，最近记录保留。", {
+    commandId: "closeFile"
+  }));
 }
 
 export async function runShortTermHostOptimization(
@@ -369,6 +385,8 @@ export async function dispatchShortTermHostMenuAction(
     }
     case "clearRecent":
       return clearShortTermHostRecentFiles(state);
+    case "closeFile":
+      return closeShortTermHostFile(state);
     case "save": {
       const saveInput = input as { targetPath?: string };
       return saveShortTermHostOutput(state, host, {

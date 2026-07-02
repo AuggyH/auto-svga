@@ -10,6 +10,7 @@ import {
 import {
   applyShortTermWorkbenchTextPreview,
   clearShortTermWorkbenchRecentFiles,
+  closeShortTermWorkbenchFile,
   completeShortTermWorkbenchOpen,
   completeShortTermWorkbenchSave,
   createShortTermWorkbenchFacade,
@@ -205,6 +206,33 @@ test("short-term workbench facade clears recent files without touching source by
   assert.equal(cleared.model.recentFiles.launchRecentFiles.length, 0);
   assert.equal(cleared.model.appState.recentFiles.length, 0);
   assert.equal(cleared.model.currentSourceSha256, sha256(sourceBytes));
+});
+
+test("short-term workbench facade closes current file while keeping recent records", async () => {
+  const sourceBytes = await createShortTermSvgaFixture();
+  const opened = completeShortTermWorkbenchOpen(
+    startShortTermWorkbenchOpen(createShortTermWorkbenchFacade(), {
+      requestId: "open-1",
+      source: "menuOpen",
+      localPath: "/Users/designer/private/opened.svga"
+    }),
+    {
+      requestId: "open-1",
+      inspection: inspectionFixture(),
+      sourceBytes,
+      localPath: "/Users/designer/private/opened.svga"
+    }
+  );
+  const closed = closeShortTermWorkbenchFile(opened);
+
+  assert.equal(closed.model.appState.state, "launch");
+  assert.equal(closed.model.activeWorkflow.kind, "none");
+  assert.equal(closed.sourceBytes, undefined);
+  assert.equal(closed.model.activeOutput, undefined);
+  assert.equal(closed.model.currentSourceSha256, undefined);
+  assert.equal(closed.model.recentFiles.launchRecentFiles[0].displayName, "opened.svga");
+  assert.equal(commandEnabled(closed.model.appState, "closeFile"), false);
+  assert.equal(JSON.stringify(closed.model).includes("/Users/designer"), false);
 });
 
 function commandEnabled(state: { commands: readonly { id: string; enabled: boolean }[] }, id: string): boolean {

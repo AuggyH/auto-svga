@@ -201,6 +201,19 @@ export function clearShortTermWorkbenchRecentFiles(
   });
 }
 
+export function closeShortTermWorkbenchFile(
+  state: ShortTermWorkbenchFacadeState
+): ShortTermWorkbenchFacadeState {
+  const recentView = createShortTermRecentFilesViewModel(state.recentState);
+  return buildFacadeState({
+    recentState: state.recentState,
+    appState: createShortTermLaunchAppState({
+      recentFiles: recentView.launchRecentFiles
+    }),
+    activeWorkflow: idleWorkflow("当前文件已关闭。")
+  });
+}
+
 export function openShortTermWorkbenchRecentFile(
   state: ShortTermWorkbenchFacadeState,
   recentFileId: string,
