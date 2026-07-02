@@ -17,9 +17,10 @@ export async function createShortTermHostActionStateFromRecentStore(
 ): Promise<ShortTermHostActionState> {
   try {
     const recentState = await store.load();
-    return createShortTermHostActionState({
-      recentFiles: recentState.records
-    });
+    const recentFiles = isRecord(recentState) && Array.isArray(recentState.records)
+      ? recentState.records
+      : [];
+    return createShortTermHostActionState({ recentFiles });
   } catch {
     return createShortTermHostActionState();
   }
@@ -30,4 +31,8 @@ export async function persistShortTermHostRecentFiles(
   store: ShortTermRecentFilesStore
 ): Promise<void> {
   await store.save(state.facade.recentState);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
 }

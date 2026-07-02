@@ -15,8 +15,10 @@ import {
 } from "../workbench/short-term-host-actions.js";
 import {
   createShortTermRecentFilesState,
-  parseShortTermRecentFilesStateJson
+  parseShortTermRecentFilesStateJson,
+  type ShortTermRecentFilesState
 } from "../workbench/short-term-recent-files.js";
+import type { ShortTermRecentFilesStore } from "../workbench/short-term-host-recent-persistence.js";
 import { createShortTermSvgaFixture } from "./helpers/short-term-svga-fixtures.js";
 
 test("short-term node recent store persists host recent files across sessions", async () => {
@@ -84,6 +86,26 @@ test("short-term node recent store clears persisted paths and fails soft on inva
   }
 });
 
+test("short-term host recent persistence ignores malformed store load results", async () => {
+  const malformedStores: readonly ShortTermRecentFilesStore[] = [
+    createMalformedStore(null),
+    createMalformedStore({
+      schemaVersion: 1,
+      records: "not-an-array",
+      updatedAt: "2026-07-02T00:00:00.000Z"
+    })
+  ];
+
+  for (const store of malformedStores) {
+    const restored = await createShortTermHostActionStateFromRecentStore(store);
+
+    assert.equal(restored.facade.model.appState.state, "launch");
+    assert.equal(restored.facade.model.recentFiles.launchRecentFiles.length, 0);
+    assert.equal(restored.facade.model.recentFiles.menuRecentFiles.length, 0);
+    assert.equal(restored.facade.model.recentFiles.privacy.rendererRecordsContainFullPath, false);
+  }
+});
+
 test("short-term recent parser skips malformed records and normalizes availability", () => {
   const parsed = parseShortTermRecentFilesStateJson(JSON.stringify({
     schemaVersion: 1,
@@ -114,3 +136,15 @@ test("short-term recent parser skips malformed records and normalizes availabili
   assert.equal(parsed.records[1].displayName, "A");
   assert.equal(parsed.records[1].availability, "available");
 });
+
+function createMalformedStore(value: unknown): ShortTermRecentFilesStore {
+  return {
+    async load() {
+      return value as ShortTermRecentFilesState;
+    },
+    async save() {},
+    async clear() {
+      return createShortTermRecentFilesState();
+    }
+  };
+}
