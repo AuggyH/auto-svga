@@ -1383,6 +1383,82 @@ async function runShortTermSmokeIfRequested() {
       && sequenceThumbnailImageCount >= 4
       && noAudioCopy.includes("当前文件暂无音频资产")
   };
+  const optimizationResponse = await fetch("/fixture/optimizer-reopen-smoke.svga");
+  const optimizationBytes = new Uint8Array(await optimizationResponse.arrayBuffer());
+  await loadOpenedSource({
+    bytes: optimizationBytes,
+    displayName: "optimizer-reopen-smoke.svga",
+    sourceId: ""
+  });
+  await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model?.optimization), 8_000);
+  setTab("optimization");
+  await waitForSmokeFrame();
+  const optimizationModel = state.model.optimization;
+  const optimizationCandidateRows = nodes.findingList.querySelectorAll(".findingRow").length;
+  const optimizationSourceSha256Before = await sha256Hex(state.sourceBytes);
+  await runOptimization();
+  await waitForSmokeCondition(() => state.view === "compare" && state.activeOutput?.kind === "optimization", 8_000);
+  const optimizedBytes = state.activeOutput.bytes;
+  const optimizationSourceSha256After = await sha256Hex(state.sourceBytes);
+  const optimizedSha256 = await sha256Hex(optimizedBytes);
+  const optimizationCompareANonBlank = await waitForCanvasPixels(nodes.compareCanvasA, 2_500);
+  const optimizationCompareBNonBlank = await waitForCanvasPixels(nodes.compareCanvasB, 2_500);
+  await captureSmokeArtifact("short-term-optimization-result");
+  const optimizationResult = state.activeOutput.details ?? {};
+  const optimizationSaveButton = nodes.compareInfoB.querySelector("[data-action='save-as']");
+  const shortTermOptimizationProof = {
+    schemaVersion: 1,
+    proofId: "short-term-optimization-proof",
+    source: "short-term-smoke",
+    prdIds: ["S8", "S9", "S10", "S14"],
+    fixtureName: "optimizer-reopen-smoke.svga",
+    sourceSha256Before: optimizationSourceSha256Before,
+    sourceSha256After: optimizationSourceSha256After,
+    sourceBytesUnchanged: optimizationSourceSha256After === optimizationSourceSha256Before,
+    sourceSizeBytes: state.sourceBytes.byteLength,
+    optimizedSha256,
+    optimizedSizeBytes: optimizedBytes.byteLength,
+    optimizedOutputProduced: optimizedBytes.byteLength > 0,
+    optimizedBytesDifferent: optimizedSha256 !== optimizationSourceSha256Before,
+    optimizedBytesSmaller: optimizedBytes.byteLength < state.sourceBytes.byteLength,
+    batchActionEnabled: optimizationModel.batchActionEnabled === true,
+    safeExecutableCount: optimizationModel.safeExecutableCount,
+    reviewOnlyCount: optimizationModel.reviewOnlyCount,
+    unsupportedCount: optimizationModel.unsupportedCount,
+    optimizationCandidateRows,
+    optimizationCandidatesVisible: optimizationCandidateRows > 0,
+    resultStatus: optimizationResult.status,
+    resultTitle: state.activeOutput.title,
+    resultSummary: state.activeOutput.summary,
+    executedActionCount: Array.isArray(optimizationResult.actions) ? optimizationResult.actions.length : 0,
+    metricCount: Array.isArray(optimizationResult.metrics) ? optimizationResult.metrics.length : 0,
+    metricsVisible: nodes.compareInfoB.querySelectorAll(".factCell").length >= 2,
+    comparisonVisible: state.view === "compare",
+    compareCanvasANonBlank: optimizationCompareANonBlank,
+    compareCanvasBNonBlank: optimizationCompareBNonBlank,
+    saveAsEnabled: optimizationSaveButton?.disabled === false,
+    sourceOutputSeparated: state.activeOutput.bytes !== state.sourceBytes
+  };
+  shortTermOptimizationProof.passed = [
+    shortTermOptimizationProof.sourceBytesUnchanged,
+    shortTermOptimizationProof.optimizedOutputProduced,
+    shortTermOptimizationProof.optimizedBytesDifferent,
+    shortTermOptimizationProof.optimizedBytesSmaller,
+    shortTermOptimizationProof.batchActionEnabled,
+    shortTermOptimizationProof.safeExecutableCount > 0,
+    shortTermOptimizationProof.optimizationCandidatesVisible,
+    shortTermOptimizationProof.resultStatus === "optimized",
+    shortTermOptimizationProof.resultTitle === "已生成优化副本",
+    shortTermOptimizationProof.executedActionCount > 0,
+    shortTermOptimizationProof.metricCount >= 2,
+    shortTermOptimizationProof.metricsVisible,
+    shortTermOptimizationProof.comparisonVisible,
+    shortTermOptimizationProof.compareCanvasANonBlank,
+    shortTermOptimizationProof.compareCanvasBNonBlank,
+    shortTermOptimizationProof.saveAsEnabled,
+    shortTermOptimizationProof.sourceOutputSeparated
+  ].every(Boolean);
+  clearTransientOutput();
   await loadOpenedSource({
     bytes: fixtureBytes,
     displayName: file.name,
@@ -1470,6 +1546,7 @@ async function runShortTermSmokeIfRequested() {
     shortTermEmptyStateProof,
     shortTermRuntimeTextBoundaryProof,
     shortTermThumbnailProof,
+    shortTermOptimizationProof,
     cleanup: true
   });
 }

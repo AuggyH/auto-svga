@@ -293,6 +293,12 @@ function validateSmokeResult(value) {
     result.shortTermThumbnailProof = shortTermThumbnailProof;
     result.shortTermThumbnails = shortTermThumbnailProof.passed;
   }
+  if (value.shortTermOptimizationProof !== undefined) {
+    const shortTermOptimizationProof = validateShortTermOptimizationProof(value.shortTermOptimizationProof);
+    if (!shortTermOptimizationProof) return undefined;
+    result.shortTermOptimizationProof = shortTermOptimizationProof;
+    result.shortTermOptimization = shortTermOptimizationProof.passed;
+  }
   if (value.optimizedReopenProof !== undefined) {
     const optimizedReopenProof = validateOptimizedReopenProof(value.optimizedReopenProof);
     if (!optimizedReopenProof) return undefined;
@@ -486,6 +492,78 @@ function validateShortTermThumbnailProof(value) {
   };
 }
 
+function validateShortTermOptimizationProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-optimization-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S8,S9,S10,S14") return undefined;
+  if (!isBoundedString(value.fixtureName, 120) || !value.fixtureName.endsWith(".svga")) return undefined;
+  if (!isSha256(value.sourceSha256Before) || value.sourceSha256After !== value.sourceSha256Before) return undefined;
+  if (!isSha256(value.optimizedSha256) || value.optimizedSha256 === value.sourceSha256Before) return undefined;
+  if (!Number.isInteger(value.sourceSizeBytes) || value.sourceSizeBytes <= 0) return undefined;
+  if (!Number.isInteger(value.optimizedSizeBytes) || value.optimizedSizeBytes <= 0 || value.optimizedSizeBytes >= value.sourceSizeBytes) return undefined;
+  if (!Number.isInteger(value.safeExecutableCount) || value.safeExecutableCount <= 0) return undefined;
+  if (!Number.isInteger(value.reviewOnlyCount) || value.reviewOnlyCount < 0) return undefined;
+  if (!Number.isInteger(value.unsupportedCount) || value.unsupportedCount < 0) return undefined;
+  if (!Number.isInteger(value.optimizationCandidateRows) || value.optimizationCandidateRows <= 0) return undefined;
+  if (!Number.isInteger(value.executedActionCount) || value.executedActionCount <= 0) return undefined;
+  if (!Number.isInteger(value.metricCount) || value.metricCount < 2) return undefined;
+  if (value.resultStatus !== "optimized") return undefined;
+  if (!isBoundedString(value.resultTitle, 120) || value.resultTitle !== "已生成优化副本") return undefined;
+  if (!isBoundedString(value.resultSummary, 220) || !value.resultSummary.includes("安全优化动作")) return undefined;
+  if (
+    value.sourceBytesUnchanged !== true
+    || value.optimizedOutputProduced !== true
+    || value.optimizedBytesDifferent !== true
+    || value.optimizedBytesSmaller !== true
+    || value.batchActionEnabled !== true
+    || value.optimizationCandidatesVisible !== true
+    || value.metricsVisible !== true
+    || value.comparisonVisible !== true
+    || value.compareCanvasANonBlank !== true
+    || value.compareCanvasBNonBlank !== true
+    || value.saveAsEnabled !== true
+    || value.sourceOutputSeparated !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S8", "S9", "S10", "S14"],
+    fixtureName: value.fixtureName,
+    sourceSha256Before: value.sourceSha256Before,
+    sourceSha256After: value.sourceSha256After,
+    sourceBytesUnchanged: true,
+    sourceSizeBytes: value.sourceSizeBytes,
+    optimizedSha256: value.optimizedSha256,
+    optimizedSizeBytes: value.optimizedSizeBytes,
+    optimizedOutputProduced: true,
+    optimizedBytesDifferent: true,
+    optimizedBytesSmaller: true,
+    batchActionEnabled: true,
+    safeExecutableCount: value.safeExecutableCount,
+    reviewOnlyCount: value.reviewOnlyCount,
+    unsupportedCount: value.unsupportedCount,
+    optimizationCandidateRows: value.optimizationCandidateRows,
+    optimizationCandidatesVisible: true,
+    resultStatus: "optimized",
+    resultTitle: value.resultTitle,
+    resultSummary: value.resultSummary,
+    executedActionCount: value.executedActionCount,
+    metricCount: value.metricCount,
+    metricsVisible: true,
+    comparisonVisible: true,
+    compareCanvasANonBlank: true,
+    compareCanvasBNonBlank: true,
+    saveAsEnabled: true,
+    sourceOutputSeparated: true,
+    passed: true
+  };
+}
+
 function describeSmokeResultValidationFailure(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "root_shape";
   const keys = [
@@ -520,6 +598,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.shortTermThumbnailProof !== undefined && !validateShortTermThumbnailProof(value.shortTermThumbnailProof)) {
     return "shortTermThumbnailProof";
+  }
+  if (value.shortTermOptimizationProof !== undefined && !validateShortTermOptimizationProof(value.shortTermOptimizationProof)) {
+    return "shortTermOptimizationProof";
   }
   if (value.optimizedReopenProof !== undefined && !validateOptimizedReopenProof(value.optimizedReopenProof)) {
     return "optimizedReopenProof";
@@ -1985,6 +2066,7 @@ function validateArtifactScenario(value) {
     "short-term-preview-optimization",
     "short-term-preview-replaceable",
     "short-term-sequence-thumbnails",
+    "short-term-optimization-result",
     "short-term-general-compare",
     "short-term-edit-reserved",
     "short-term-preview-minimum",
@@ -3277,11 +3359,19 @@ async function finishSmoke(window, result) {
         "smoke"
       );
     }
+    if (result.shortTermOptimizationProof) {
+      writeJsonProductArtifact(
+        "short-term-optimization-proof.json",
+        "short-term-optimization-proof",
+        result.shortTermOptimizationProof,
+        "smoke"
+      );
+    }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();
