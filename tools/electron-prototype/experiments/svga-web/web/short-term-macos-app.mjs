@@ -296,6 +296,50 @@ async function confirmInlineRename() {
   }
 }
 
+function saveProofImageKey(fromImageKey, suffix) {
+  const clean = String(fromImageKey || "image_key")
+    .replace(/[\u0000-\u001F\u007F/\\]/gu, "_")
+    .replace(/[^A-Za-z0-9_.-]/g, "_")
+    .slice(0, 64) || "image_key";
+  return `${clean}_${suffix}`;
+}
+
+async function createSaveProofOutput(suffix) {
+  if (!state.sourceBytes) throw new Error("保存证明需要先打开 SVGA。");
+  const fromImageKey = state.selectedImageKey
+    || state.model?.replaceableElements?.images?.[0]?.imageKey
+    || state.model?.assets?.find((asset) => asset.kind === "image")?.name
+    || "";
+  if (!fromImageKey) throw new Error("保存证明没有可用 imageKey。");
+  const toImageKey = saveProofImageKey(fromImageKey, suffix);
+  showSaveBanner("正在生成保存证明输出。", "使用短期重命名工作流生成可验证 SVGA 输出。");
+  const renamed = await postBytes(
+    `/api/short-term-product-image-key-rename?name=${encodeURIComponent(state.displayName)}&from=${encodeURIComponent(fromImageKey)}&to=${encodeURIComponent(toImageKey)}`,
+    state.sourceBytes
+  );
+  const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
+  if (!renamedBytes?.byteLength || renamed.rename?.status !== "renamed") {
+    throw new Error(renamed.rename?.diagnostic?.message || "保存证明输出生成失败。");
+  }
+  state.previewBytes = renamedBytes;
+  state.model = await inspectShortTerm(renamedBytes, state.displayName);
+  state.selectedImageKey = toImageKey;
+  setActiveOutput({
+    kind: "rename",
+    bytes: renamedBytes,
+    suggestedName: suffixName(state.displayName, "renamed"),
+    title: renamed.rename.resultTitle,
+    summary: renamed.rename.resultSummary
+  });
+  renderPreviewModel();
+  await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes);
+  return {
+    fromImageKey,
+    toImageKey,
+    expectedSha256: await sha256Hex(renamedBytes)
+  };
+}
+
 function cancelInlineRename() {
   state.renameImageKey = "";
   renderReplaceables(state.model?.replaceableElements);
@@ -387,21 +431,24 @@ async function saveActiveOutput(command) {
   renderCommandState();
   showSaveBanner("正在验证保存输出。", "写入后会读取文件并校验哈希。");
   try {
+    const outputKind = state.activeOutput.kind;
+    const outputBytes = new Uint8Array(state.activeOutput.bytes);
+    const expectedSha256 = await sha256Hex(outputBytes);
     const result = await bridge.saveShortTermSvgaOutput({
       command,
       sourceId: state.sourceId,
       suggestedName: state.activeOutput.suggestedName,
-      bytesBase64: toBase64(state.activeOutput.bytes),
-      expectedSha256: await sha256Hex(state.activeOutput.bytes)
+      bytesBase64: toBase64(outputBytes),
+      expectedSha256
     });
     if (!result || result.status === "cancelled") {
       state.saveStatus = "idle";
       renderCommandState();
       showSaveBanner("已取消保存。", "当前输出仍未保存。");
-      return;
+      return result;
     }
-    state.sourceBytes = new Uint8Array(state.activeOutput.bytes);
-    state.previewBytes = new Uint8Array(state.activeOutput.bytes);
+    state.sourceBytes = outputBytes;
+    state.previewBytes = new Uint8Array(outputBytes);
     state.sourceId = result.sourceId || state.sourceId;
     state.displayName = result.fileName || state.displayName;
     clearTransientOutput();
@@ -410,10 +457,16 @@ async function saveActiveOutput(command) {
     await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes);
     showSaveBanner("已保存并通过验证。", `${result.fileName || "输出文件"} 已重新进入干净状态。`);
     await refreshRecentFiles();
+    return {
+      ...result,
+      outputKind,
+      expectedSha256
+    };
   } catch (error) {
     state.saveStatus = "failed";
     renderCommandState();
     showSaveBanner("保存失败。", error instanceof Error ? error.message : String(error));
+    throw error;
   }
 }
 
@@ -1166,6 +1219,7 @@ window.__autoSvgaShortTermActions = Object.freeze({
   save: () => saveActiveOutput("overwrite"),
   saveAs: () => saveActiveOutput("saveAs"),
   renameImageKey: renameSelectedImageKey,
+  createSaveProofOutput,
   replaceImage: () => chooseReplacementImage(),
   resetImageReplacement,
   editTextPreview: editRuntimeText,

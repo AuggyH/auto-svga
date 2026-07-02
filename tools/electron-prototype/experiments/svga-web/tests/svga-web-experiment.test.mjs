@@ -690,6 +690,16 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(normalProofSource, /openRecentFromMenu/);
   assert.match(normalProofSource, /missingRecordRemoved/);
   assert.match(normalProofSource, /missingFeedbackVisible/);
+  assert.match(normalProofSource, /short-term-save-proof/);
+  assert.match(normalProofSource, /produceRenameOutput/);
+  assert.match(normalProofSource, /actions\.createSaveProofOutput/);
+  assert.match(normalProofSource, /actions\.saveAs\(\)/);
+  assert.match(normalProofSource, /actions\.save\(\)/);
+  assert.match(normalProofSource, /firstOutputSaveEnabled/);
+  assert.match(normalProofSource, /overwriteReopenValidated/);
+  assert.match(normalProofSource, /canonicalFixtureSha256Before/);
+  assert.match(normalProofSource, /canonicalSourceUnchanged/);
+  assert.match(normalProofSource, /result\.shortTermSave = result\.shortTermSaveProof\.passed === true/);
   assert.match(normalProofSource, /pathRedacted/);
   assert.ok(
     normalProofSource.indexOf("openMenuItem.click(openMenuItem, window)") < normalProofSource.indexOf("const result = await window.webContents.executeJavaScript"),
@@ -700,6 +710,8 @@ test("main process keeps sandboxed Electron security settings", async () => {
     "direct host open action is allowed only after missing-recent recovery starts"
   );
   assert.doesNotMatch(normalProofSource, /#svgaFileInput|#svgaStatusA|#svgaCanvasA|specReportSection|auditReportSection/);
+  assert.match(main, /writeJsonProductArtifact\("short-term-save-proof\.json", "short-term-save-proof"/);
+  assert.match(main, /targetPath = path\.join\(productArtifactRoot, "short-term-normal-save-as\.svga"\)/);
   assert.match(main, /IPC_CHANNELS\.openSvgaFile/);
   assert.match(main, /IPC_CHANNELS\.openReferenceMediaFile/);
   assert.match(main, /IPC_CHANNELS\.scanLatestArtifacts/);
@@ -910,6 +922,10 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /menuOpen: value\.menuOpen/);
   assert.match(main, /recentFiles: value\.recentFiles/);
   assert.match(main, /recentMissingRecovery: value\.recentMissingRecovery/);
+  assert.match(main, /shortTermSave: value\.shortTermSave/);
+  assert.match(main, /function validateShortTermNormalSaveProof/);
+  assert.match(main, /saveAsSavedSha256 !== value\.overwriteSavedSha256|value\.saveAsSavedSha256 === value\.overwriteSavedSha256/);
+  assert.match(main, /short-term-normal-save-as\.svga/);
   assert.match(main, /host\.getRecentSvgaFiles/);
   const normalProofSource = main.slice(main.indexOf("async function driveCanonicalNormalProof"));
   assert.doesNotMatch(normalProofSource, /document\.querySelector\("#svgaFileInput"\)/);
@@ -1006,6 +1022,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /\/api\/short-term-product-inspection-model/);
   assert.match(shortTermEntry, /\/api\/short-term-product-optimization-workflow/);
   assert.match(shortTermEntry, /\/api\/short-term-product-image-key-rename/);
+  assert.match(shortTermEntry, /function createSaveProofOutput/);
+  assert.match(shortTermEntry, /createSaveProofOutput,/);
   assert.match(shortTermEntry, /\/api\/short-term-product-image-replacement-workflow/);
   assert.match(shortTermEntry, /renameImageKey: ""/);
   assert.match(shortTermEntry, /data-rename-input/);
@@ -1021,6 +1039,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /renameDialog|renameHint/);
   assert.doesNotMatch(shortTermEntry, /mountPlayback\("edit"[\s\S]{0,120}start:\s*false/);
   assert.match(shortTermEntry, /saveShortTermSvgaOutput/);
+  assert.match(shortTermEntry, /return \{\s*\.\.\.result,\s*outputKind,\s*expectedSha256/s);
   assert.match(shortTermEntry, /getRecentSvgaFiles/);
   assert.match(shortTermEntry, /runShortTermSmokeIfRequested/);
   assert.match(shortTermEntry, /reportSmokeResult/);

@@ -27,6 +27,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Made Edit Reserved mount a visible playback preview instead of a blank canvas while still keeping the right operation panel empty.
 - Rebound the normal App proof driver from legacy Workbench selectors to the short-term macOS client: it now opens the fixture through the macOS `File > Open SVGA...` menu item, waits for the Preview canvas, Overview facts, and asset list, verifies redacted recent-file state, and captures the normal loaded screenshot from the new UI.
 - Added normal-path recent-file recovery proof: the proof injects a missing recent SVGA record, opens it through the renderer recent-file action, requires visible missing/inaccessible feedback, verifies stale-record removal, then reopens a valid SVGA and returns to Preview.
+- Added S14 normal-path save proof: the normal App proof now requires initial Save disabled state, generated output Save As, verified write/hash/reopen, generated second output Overwrite Save, verified write/hash/reopen, output cleanup after each save, and unchanged canonical source bytes. The proof uses a hidden automation output generator only when the canonical fixture has no designer-named replaceable row; no new visible product action is added.
 
 ## Verification
 
@@ -38,7 +39,8 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`: pass.
 - Short-term menu-state proof: pass; `shortTermMenuState=true` in desktop smoke and `.artifacts/product/short-term/short-term-menu-state-proof.json` records loaded Preview state plus matching menu enabled/checked states.
 - Short-term screenshot proof: pass; `shortTermScreenshots=true` in desktop smoke and `.artifacts/product/short-term/artifact-index.json` lists seven current-head short-term UI screenshots.
-- Normal App proof: pass; `AUTO_SVGA_DESKTOP_NORMAL_PROOF` reports `hostOpen=true`, `menuOpen=true`, `playback=true`, `canvasNonBlank=true`, `inspectionReport=true`, `auditPanel=true`, `recentFiles=true`, `recentMissingRecovery=true`, `localOnly=true`, and `noCspViolation=true` against the short-term macOS client.
+- Normal App proof: pass; `AUTO_SVGA_DESKTOP_NORMAL_PROOF` reports `hostOpen=true`, `menuOpen=true`, `playback=true`, `canvasNonBlank=true`, `inspectionReport=true`, `auditPanel=true`, `recentFiles=true`, `recentMissingRecovery=true`, `shortTermSave=true`, `localOnly=true`, and `noCspViolation=true` against the short-term macOS client.
+- Short-term save proof: pass; `.artifacts/product/short-term/short-term-save-proof.json` records disabled initial Save, Save As write/hash/reopen, Overwrite write/hash/reopen, output cleanup after both saves, changed output hashes, and canonical source immutability.
 - Short-term macOS menu guard: pass; the legacy Workbench menu remains isolated, while the default short-term menu has no reload or DevTools item.
 - Short-term image replacement failure-copy guard: pass; invalid/corrupt PNG diagnostics stay Chinese and do not expose the old English decoder copy.
 - Short-term operation-failure guard: pass; optimization, rename, and replacement catches use recoverable operation prompts rather than the open-file failure page.

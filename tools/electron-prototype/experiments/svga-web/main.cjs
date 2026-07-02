@@ -1697,6 +1697,10 @@ function sha256Text(value) {
   return createHash("sha256").update(String(value)).digest("hex");
 }
 
+function sha256File(filePath) {
+  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
 function validateP6SmokeInput(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   if (value.kind !== "click" && value.kind !== "keyboard") return undefined;
@@ -2212,6 +2216,76 @@ function sanitizeSvgaFileName(value) {
   return base.toLowerCase().endsWith(".svga") ? base : `${base}.svga`;
 }
 
+function validateShortTermNormalSaveProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-save-proof") return undefined;
+  if (value.source !== "short-term-normal-proof") return undefined;
+  const booleanKeys = [
+    "initialSaveDisabled",
+    "firstOutputSaveEnabled",
+    "saveAsSaved",
+    "saveAsHashBound",
+    "saveAsReopenValidated",
+    "outputClearedAfterSaveAs",
+    "secondOutputSaveEnabled",
+    "overwriteSaved",
+    "overwriteHashBound",
+    "overwriteReopenValidated",
+    "outputClearedAfterOverwrite",
+    "canonicalSourceUnchanged",
+    "passed"
+  ];
+  if (!booleanKeys.every((key) => value[key] === true)) return undefined;
+  const hashKeys = [
+    "canonicalFixtureSha256Before",
+    "canonicalFixtureSha256After",
+    "saveAsExpectedSha256",
+    "saveAsSavedSha256",
+    "overwriteExpectedSha256",
+    "overwriteSavedSha256"
+  ];
+  if (!hashKeys.every((key) => isSha256(value[key]))) return undefined;
+  if (value.canonicalFixtureSha256Before !== value.canonicalFixtureSha256After) return undefined;
+  if (value.saveAsExpectedSha256 !== value.saveAsSavedSha256) return undefined;
+  if (value.overwriteExpectedSha256 !== value.overwriteSavedSha256) return undefined;
+  if (value.saveAsSavedSha256 === value.overwriteSavedSha256) return undefined;
+  if (!isBoundedString(value.saveAsFileName, 180) || !value.saveAsFileName.endsWith(".svga")) return undefined;
+  if (!isBoundedString(value.overwriteFileName, 180) || !value.overwriteFileName.endsWith(".svga")) return undefined;
+  if (!isBoundedString(value.firstRenameFrom, 120) || !isBoundedString(value.firstRenameTo, 120)) return undefined;
+  if (!isBoundedString(value.secondRenameFrom, 120) || !isBoundedString(value.secondRenameTo, 120)) return undefined;
+  if (value.firstRenameFrom === value.firstRenameTo || value.secondRenameFrom === value.secondRenameTo) return undefined;
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    initialSaveDisabled: true,
+    firstOutputSaveEnabled: true,
+    saveAsSaved: true,
+    saveAsHashBound: true,
+    saveAsReopenValidated: true,
+    outputClearedAfterSaveAs: true,
+    secondOutputSaveEnabled: true,
+    overwriteSaved: true,
+    overwriteHashBound: true,
+    overwriteReopenValidated: true,
+    outputClearedAfterOverwrite: true,
+    canonicalSourceUnchanged: true,
+    canonicalFixtureSha256Before: value.canonicalFixtureSha256Before,
+    canonicalFixtureSha256After: value.canonicalFixtureSha256After,
+    saveAsExpectedSha256: value.saveAsExpectedSha256,
+    saveAsSavedSha256: value.saveAsSavedSha256,
+    overwriteExpectedSha256: value.overwriteExpectedSha256,
+    overwriteSavedSha256: value.overwriteSavedSha256,
+    saveAsFileName: value.saveAsFileName,
+    overwriteFileName: value.overwriteFileName,
+    firstRenameFrom: value.firstRenameFrom,
+    firstRenameTo: value.firstRenameTo,
+    secondRenameFrom: value.secondRenameFrom,
+    secondRenameTo: value.secondRenameTo,
+    passed: true
+  };
+}
+
 function validateNormalProofResult(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const keys = [
@@ -2225,11 +2299,14 @@ function validateNormalProofResult(value) {
     "auditPanel",
     "recentFiles",
     "recentMissingRecovery",
+    "shortTermSave",
     "localOnly",
     "cspAccepted",
     "noCspViolation"
   ];
   if (!keys.every((key) => typeof value[key] === "boolean")) return undefined;
+  const shortTermSaveProof = validateShortTermNormalSaveProof(value.shortTermSaveProof);
+  if (!shortTermSaveProof || value.shortTermSave !== true) return undefined;
   return {
     normalMode: value.normalMode,
     hostOpen: value.hostOpen,
@@ -2242,6 +2319,8 @@ function validateNormalProofResult(value) {
     auditPanel: value.auditPanel,
     recentFiles: value.recentFiles,
     recentMissingRecovery: value.recentMissingRecovery,
+    shortTermSave: value.shortTermSave,
+    shortTermSaveProof,
     localOnly: value.localOnly,
     cspAccepted: value.cspAccepted,
     noCspViolation: value.noCspViolation && !cspViolationSeen
@@ -2990,6 +3069,9 @@ async function finishNormalProof(window, result) {
   smokeFinished = true;
   const normalIdentity = runtimeIdentity("normal", `${expectedOrigin}/`);
   const passed = Object.values(result).filter((value) => typeof value === "boolean").every(Boolean);
+  if (result.shortTermSaveProof) {
+    writeJsonProductArtifact("short-term-save-proof.json", "short-term-save-proof", result.shortTermSaveProof, "normal");
+  }
   writeJsonProductArtifact("normal-runtime-proof.json", "normal-runtime-proof", {
     schemaVersion: 1,
     milestoneId: productMilestoneId,
@@ -4079,6 +4161,9 @@ async function saveShortTermSvgaOutput(input) {
       throw new Error("覆盖保存需要先通过客户端打开本地 SVGA。");
     }
     targetPath = originalPath;
+  } else if (normalProofMode) {
+    mkdirSync(productArtifactRoot, { recursive: true });
+    targetPath = path.join(productArtifactRoot, "short-term-normal-save-as.svga");
   } else {
     const result = await dialog.showSaveDialog({
       title: "另存为 SVGA",
@@ -4864,6 +4949,7 @@ async function driveCanonicalNormalProof(window) {
       auditPanel: false,
       recentFiles: false,
       recentMissingRecovery: false,
+      shortTermSave: false,
       localOnly: false,
       cspAccepted: false,
       noCspViolation: false
@@ -4885,6 +4971,7 @@ async function driveCanonicalNormalProof(window) {
   const openMenuItem = findApplicationMenuItem(["文件", "打开 SVGA..."]);
   const menuOpen = Boolean(openMenuItem && openMenuItem.enabled !== false);
   if (!menuOpen) throw new Error("short-term File > Open menu item unavailable");
+  const canonicalFixtureSha256Before = sha256File(canonicalFixtureRuntimePath);
   openMenuItem.click(openMenuItem, window);
   const missingRecentFileName = "missing-normal-proof.svga";
   rememberShortTermRecentFile(path.join(sessionRoot, missingRecentFileName));
@@ -4969,6 +5056,129 @@ async function driveCanonicalNormalProof(window) {
           && previewRecovered
         );
       }
+      const waitForProofState = async (predicate, label, timeoutMs = 8000) => {
+        const waitStartedAt = performance.now();
+        while (performance.now() - waitStartedAt < timeoutMs) {
+          const value = predicate();
+          if (value) return value;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        throw new Error(label + " timed out");
+      };
+      const saveButtonState = () => {
+        const saveAs = document.querySelector("[data-action='save-as']");
+        const overwrite = document.querySelector("[data-action='save-overwrite']");
+        return {
+          canSaveAs: Boolean(saveAs && !saveAs.disabled),
+          canOverwrite: Boolean(overwrite && !overwrite.disabled)
+        };
+      };
+      const previewValidated = () => !document.querySelector('[data-view="preview"]')?.hidden
+        && document.querySelector("#factGrid")?.children?.length > 0
+        && document.querySelector("#assetList")?.children?.length > 0
+        && document.querySelector("#primaryCanvas")?.width > 0;
+      const makeProofKey = (fromImageKey, suffix) => {
+        const clean = String(fromImageKey || "image_key")
+          .replace(/[\\u0000-\\u001F\\u007F/\\\\]/gu, "_")
+          .replace(/[^A-Za-z0-9_.-]/g, "_")
+          .slice(0, 64) || "image_key";
+        return clean + "_" + suffix;
+      };
+      const produceRenameOutput = async (suffix) => {
+        const row = document.querySelector(".replaceableRow.isSelected")
+          || document.querySelector(".replaceableRow[data-image-key]");
+        if (!row?.dataset.imageKey) {
+          const proofOutput = await actions.createSaveProofOutput?.(suffix);
+          await waitForProofState(() => {
+            const state = saveButtonState();
+            return state.canSaveAs && state.canOverwrite;
+          }, "proof output save state");
+          return {
+            fromImageKey: proofOutput?.fromImageKey || "",
+            toImageKey: proofOutput?.toImageKey || "",
+            saveState: saveButtonState()
+          };
+        }
+        row.click();
+        await actions.renameImageKey();
+        const input = await waitForProofState(
+          () => document.querySelector("[data-rename-input]"),
+          "rename input"
+        );
+        const fromImageKey = input.value;
+        const toImageKey = makeProofKey(fromImageKey, suffix);
+        input.value = toImageKey;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        document.querySelector("[data-action='inline-rename-confirm']")?.click();
+        await waitForProofState(() => {
+          const state = saveButtonState();
+          return !document.querySelector("[data-rename-input]") && state.canSaveAs && state.canOverwrite;
+        }, "renamed output save state");
+        return {
+          fromImageKey,
+          toImageKey,
+          saveState: saveButtonState()
+        };
+      };
+      const initialSaveState = saveButtonState();
+      let shortTermSaveProof = {
+        schemaVersion: 1,
+        proofId: "short-term-save-proof",
+        source: "short-term-normal-proof",
+        initialSaveDisabled: !initialSaveState.canSaveAs && !initialSaveState.canOverwrite,
+        passed: false
+      };
+      try {
+        const firstRename = await produceRenameOutput("normal_save_as");
+        const firstOutputSaveEnabled = firstRename.saveState.canSaveAs && firstRename.saveState.canOverwrite;
+        const saveAsResult = await actions.saveAs();
+        await waitForProofState(previewValidated, "save-as reopened preview");
+        const afterSaveAsState = saveButtonState();
+        const secondRename = await produceRenameOutput("normal_overwrite");
+        const secondOutputSaveEnabled = secondRename.saveState.canSaveAs && secondRename.saveState.canOverwrite;
+        const overwriteResult = await actions.save();
+        await waitForProofState(previewValidated, "overwrite reopened preview");
+        const afterOverwriteState = saveButtonState();
+        shortTermSaveProof = {
+          ...shortTermSaveProof,
+          firstRenameFrom: firstRename.fromImageKey,
+          firstRenameTo: firstRename.toImageKey,
+          secondRenameFrom: secondRename.fromImageKey,
+          secondRenameTo: secondRename.toImageKey,
+          firstOutputSaveEnabled,
+          saveAsSaved: saveAsResult?.status === "saved",
+          saveAsExpectedSha256: saveAsResult?.expectedSha256 || "",
+          saveAsSavedSha256: saveAsResult?.sha256 || "",
+          saveAsHashBound: Boolean(saveAsResult?.expectedSha256 && saveAsResult.expectedSha256 === saveAsResult.sha256),
+          saveAsFileName: saveAsResult?.fileName || "",
+          saveAsReopenValidated: previewValidated(),
+          outputClearedAfterSaveAs: !afterSaveAsState.canSaveAs && !afterSaveAsState.canOverwrite,
+          secondOutputSaveEnabled,
+          overwriteSaved: overwriteResult?.status === "saved",
+          overwriteExpectedSha256: overwriteResult?.expectedSha256 || "",
+          overwriteSavedSha256: overwriteResult?.sha256 || "",
+          overwriteHashBound: Boolean(overwriteResult?.expectedSha256 && overwriteResult.expectedSha256 === overwriteResult.sha256),
+          overwriteFileName: overwriteResult?.fileName || "",
+          overwriteReopenValidated: previewValidated(),
+          outputClearedAfterOverwrite: !afterOverwriteState.canSaveAs && !afterOverwriteState.canOverwrite
+        };
+        shortTermSaveProof.passed = [
+          shortTermSaveProof.initialSaveDisabled,
+          shortTermSaveProof.firstOutputSaveEnabled,
+          shortTermSaveProof.saveAsSaved,
+          shortTermSaveProof.saveAsHashBound,
+          shortTermSaveProof.saveAsReopenValidated,
+          shortTermSaveProof.outputClearedAfterSaveAs,
+          shortTermSaveProof.secondOutputSaveEnabled,
+          shortTermSaveProof.overwriteSaved,
+          shortTermSaveProof.overwriteHashBound,
+          shortTermSaveProof.overwriteReopenValidated,
+          shortTermSaveProof.outputClearedAfterOverwrite,
+          shortTermSaveProof.saveAsSavedSha256 !== shortTermSaveProof.overwriteSavedSha256
+        ].every(Boolean);
+      } catch (error) {
+        shortTermSaveProof.failureMessage = error instanceof Error ? error.message : String(error);
+      }
       return {
         normalMode: true,
         hostOpen: true,
@@ -4980,6 +5190,8 @@ async function driveCanonicalNormalProof(window) {
         auditPanel: Boolean(document.querySelector(".inspectorPanel [data-panel='overview']")),
         recentFiles,
         recentMissingRecovery,
+        shortTermSave: shortTermSaveProof.passed === true,
+        shortTermSaveProof,
         localOnly: performance.getEntriesByType("resource").every((entry) => {
           try {
             const url = new URL(entry.name, location.href);
@@ -4993,22 +5205,34 @@ async function driveCanonicalNormalProof(window) {
       };
     })()
   `);
+  const canonicalFixtureSha256After = sha256File(canonicalFixtureRuntimePath);
+  if (result.shortTermSaveProof) {
+    result.shortTermSaveProof.canonicalFixtureSha256Before = canonicalFixtureSha256Before;
+    result.shortTermSaveProof.canonicalFixtureSha256After = canonicalFixtureSha256After;
+    result.shortTermSaveProof.canonicalSourceUnchanged = canonicalFixtureSha256Before === canonicalFixtureSha256After;
+    result.shortTermSaveProof.passed = result.shortTermSaveProof.passed === true
+      && result.shortTermSaveProof.canonicalSourceUnchanged === true;
+    result.shortTermSave = result.shortTermSaveProof.passed === true;
+  }
   result.menuOpen = menuOpen;
   await captureProductArtifact(window, "actual-normal-loaded");
-  await finishNormalProof(window, validateNormalProofResult(result) ?? {
-    normalMode: true,
-    hostOpen: false,
-    menuOpen: false,
-    primaryBridge: false,
-    rendererQuery: "",
-    playback: false,
-    canvasNonBlank: false,
-    inspectionReport: false,
-    auditPanel: false,
-    recentFiles: false,
-    recentMissingRecovery: false,
-    localOnly: false,
-    cspAccepted: false,
+  const validatedResult = validateNormalProofResult(result);
+  await finishNormalProof(window, validatedResult ?? {
+    normalMode: result.normalMode === true,
+    hostOpen: result.hostOpen === true,
+    menuOpen: result.menuOpen === true,
+    primaryBridge: result.primaryBridge === true,
+    rendererQuery: typeof result.rendererQuery === "string" ? result.rendererQuery.slice(0, 120) : "",
+    playback: result.playback === true,
+    canvasNonBlank: result.canvasNonBlank === true,
+    inspectionReport: result.inspectionReport === true,
+    auditPanel: result.auditPanel === true,
+    recentFiles: result.recentFiles === true,
+    recentMissingRecovery: result.recentMissingRecovery === true,
+    shortTermSave: false,
+    shortTermSaveProof: result.shortTermSaveProof,
+    localOnly: result.localOnly === true,
+    cspAccepted: result.cspAccepted === true,
     noCspViolation: false
   });
 }
