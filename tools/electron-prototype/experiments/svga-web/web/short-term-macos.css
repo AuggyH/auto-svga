@@ -484,6 +484,44 @@ canvas {
   color: var(--asv-subtle);
 }
 
+.resultGroup {
+  margin: var(--asv-space-3) 0;
+  padding-top: var(--asv-space-2);
+  border-top: 1px solid var(--asv-border);
+}
+
+.resultGroup h3 {
+  margin: 0 0 var(--asv-space-2);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.resultGroup ul {
+  display: grid;
+  gap: var(--asv-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resultGroup li {
+  display: grid;
+  gap: 2px;
+}
+
+.resultGroup li strong {
+  font-size: 12px;
+}
+
+.resultGroup li span {
+  color: var(--asv-muted);
+  font-size: 12px;
+}
+
+.resultGroup.muted li strong {
+  color: var(--asv-muted);
+}
+
 .assetSection,
 .textPreviewBlock {
   margin-top: var(--asv-space-4);

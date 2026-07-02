@@ -1033,6 +1033,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStyles, /prefers-color-scheme: dark/);
   assert.match(shortTermStyles, /:focus-visible/);
   assert.match(shortTermStyles, /button\.primary:disabled/);
+  assert.match(shortTermStyles, /\.resultGroup/);
   assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
   assert.match(shortTermEntry, /\/api\/short-term-product-inspection-model/);
   assert.match(shortTermEntry, /\/api\/short-term-product-optimization-workflow/);
@@ -1086,6 +1087,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /short-term-optimization-proof/);
   assert.match(shortTermEntry, /optimizedBytesSmaller/);
   assert.match(shortTermEntry, /executedActionCount/);
+  assert.match(shortTermEntry, /executedActionRowsVisible/);
+  assert.match(shortTermEntry, /skippedMethodRowsVisible/);
+  assert.match(shortTermEntry, /data-optimization-actions/);
+  assert.match(shortTermEntry, /data-optimization-skipped/);
   assert.match(shortTermEntry, /comparisonVisible/);
   assert.match(shortTermEntry, /sourceBytesUnchanged/);
   assert.match(shortTermEntry, /short-term-rename-proof/);

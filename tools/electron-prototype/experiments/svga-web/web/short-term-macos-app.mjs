@@ -736,11 +736,23 @@ function renderEditReserved() {
 
 async function renderOptimizationCompare(model, optimizedBytes) {
   setView("compare");
+  const actionRows = (model.actions ?? []).map((action) => `
+    <li>
+      <strong>${escapeHtml(action.title)}</strong>
+      <span>${escapeHtml(action.summary)}</span>
+    </li>
+  `).join("");
+  const skippedRows = (model.methods ?? [])
+    .filter((method) => method.disposition !== "executed")
+    .map((method) => `<li><strong>${escapeHtml(method.label)}</strong><span>${escapeHtml(method.reason)}</span></li>`)
+    .join("");
   nodes.compareInfoA.innerHTML = renderCompareInfo("原始文件", state.model, state.displayName);
   nodes.compareInfoB.innerHTML = `
     <h2>${escapeHtml(model.resultTitle)}</h2>
     <p>${escapeHtml(model.resultSummary)}</p>
     ${(model.metrics ?? []).map((metric) => `<div class="factCell"><strong>${escapeHtml(metric.after)}</strong><span>${escapeHtml(metric.label)}</span><small>${escapeHtml(metric.delta)}</small></div>`).join("")}
+    ${actionRows ? `<section class="resultGroup"><h3>已执行</h3><ul data-optimization-actions>${actionRows}</ul></section>` : ""}
+    ${skippedRows ? `<section class="resultGroup muted"><h3>未执行</h3><ul data-optimization-skipped>${skippedRows}</ul></section>` : ""}
     <button class="toolbarButton primary" type="button" data-action="save-as">另存为</button>
     <button class="toolbarButton" type="button" data-action="back-preview">返回预览</button>
   `;
@@ -1431,6 +1443,8 @@ async function runShortTermSmokeIfRequested() {
     resultTitle: state.activeOutput.title,
     resultSummary: state.activeOutput.summary,
     executedActionCount: Array.isArray(optimizationResult.actions) ? optimizationResult.actions.length : 0,
+    executedActionRowsVisible: nodes.compareInfoB.querySelectorAll("[data-optimization-actions] li").length,
+    skippedMethodRowsVisible: nodes.compareInfoB.querySelectorAll("[data-optimization-skipped] li").length,
     metricCount: Array.isArray(optimizationResult.metrics) ? optimizationResult.metrics.length : 0,
     metricsVisible: nodes.compareInfoB.querySelectorAll(".factCell").length >= 2,
     comparisonVisible: state.view === "compare",
@@ -1450,6 +1464,8 @@ async function runShortTermSmokeIfRequested() {
     shortTermOptimizationProof.resultStatus === "optimized",
     shortTermOptimizationProof.resultTitle === "已生成优化副本",
     shortTermOptimizationProof.executedActionCount > 0,
+    shortTermOptimizationProof.executedActionRowsVisible >= shortTermOptimizationProof.executedActionCount,
+    shortTermOptimizationProof.skippedMethodRowsVisible > 0,
     shortTermOptimizationProof.metricCount >= 2,
     shortTermOptimizationProof.metricsVisible,
     shortTermOptimizationProof.comparisonVisible,

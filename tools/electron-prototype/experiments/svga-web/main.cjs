@@ -519,6 +519,8 @@ function validateShortTermOptimizationProof(value) {
   if (!Number.isInteger(value.unsupportedCount) || value.unsupportedCount < 0) return undefined;
   if (!Number.isInteger(value.optimizationCandidateRows) || value.optimizationCandidateRows <= 0) return undefined;
   if (!Number.isInteger(value.executedActionCount) || value.executedActionCount <= 0) return undefined;
+  if (!Number.isInteger(value.executedActionRowsVisible) || value.executedActionRowsVisible < value.executedActionCount) return undefined;
+  if (!Number.isInteger(value.skippedMethodRowsVisible) || value.skippedMethodRowsVisible <= 0) return undefined;
   if (!Number.isInteger(value.metricCount) || value.metricCount < 2) return undefined;
   if (value.resultStatus !== "optimized") return undefined;
   if (!isBoundedString(value.resultTitle, 120) || value.resultTitle !== "已生成优化副本") return undefined;
@@ -565,6 +567,8 @@ function validateShortTermOptimizationProof(value) {
     resultTitle: value.resultTitle,
     resultSummary: value.resultSummary,
     executedActionCount: value.executedActionCount,
+    executedActionRowsVisible: value.executedActionRowsVisible,
+    skippedMethodRowsVisible: value.skippedMethodRowsVisible,
     metricCount: value.metricCount,
     metricsVisible: true,
     comparisonVisible: true,
