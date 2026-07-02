@@ -16,16 +16,20 @@ import {
   openShortTermHostRecentFile,
   applyShortTermHostTextPreview,
   prepareShortTermHostTextPreview,
+  reportShortTermHostPlaybackFailure,
   resetShortTermHostImageReplacement,
   resetShortTermHostTextPreview,
   runShortTermHostImageKeyRename,
   runShortTermHostImageReplacement,
   runShortTermHostOptimization,
   saveShortTermHostOutput,
+  type ShortTermHostApplyTextPreviewInput,
   type ShortTermHostEnvironment,
   type ShortTermHostMenuActionInput,
   type ShortTermHostOpenLocalFileInput,
   type ShortTermHostOpenRecentFileInput,
+  type ShortTermHostPlaybackFailureInput,
+  type ShortTermHostPrepareTextPreviewInput,
   type ShortTermHostSaveInput
 } from "../workbench/short-term-host-actions.js";
 import { flattenShortTermCommandMenuItems } from "../workbench/short-term-command-menu.js";
@@ -247,6 +251,50 @@ test("short-term host preview actions fail closed when opened source bytes are m
   assert.equal(preparedText.lastAction?.action, "prepareTextPreview");
   assert.equal(appliedText.lastAction?.action, "applyTextPreview");
   assert.equal(resetText.lastAction?.action, "resetTextPreview");
+});
+
+test("short-term host preview and playback actions fail closed for malformed runtime payloads", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+
+  const badPrepare = prepareShortTermHostTextPreview(
+    opened,
+    { textElements: [{ textKey: 42, displayName: "昵称", supportedFields: ["text"] }] } as unknown as ShortTermHostPrepareTextPreviewInput
+  );
+  assert.equal(badPrepare.lastAction?.status, "blocked");
+  assert.equal(badPrepare.lastAction?.action, "prepareTextPreview");
+  assert.equal(badPrepare.lastAction?.diagnostic?.code, "text_preview_input_invalid");
+  assert.equal(badPrepare.facade.model.appState.state, "previewReady");
+  assert.equal(badPrepare.activeOutputBytes, undefined);
+
+  const prepared = prepareShortTermHostTextPreview(opened, {
+    textElements: [{ textKey: "nickname", displayName: "昵称", supportedFields: ["text", "size"] }]
+  });
+  const badApply = applyShortTermHostTextPreview(
+    prepared,
+    { replacement: { textKey: "nickname", fields: { size: "large" } } } as unknown as ShortTermHostApplyTextPreviewInput
+  );
+  assert.equal(badApply.lastAction?.status, "blocked");
+  assert.equal(badApply.lastAction?.action, "applyTextPreview");
+  assert.equal(badApply.lastAction?.diagnostic?.code, "text_preview_input_invalid");
+  assert.equal(badApply.facade.textPreviewSession?.model.status, "ready");
+
+  const badPlayback = reportShortTermHostPlaybackFailure(
+    opened,
+    { message: ["/Users/designer/private/opened.svga"] } as unknown as ShortTermHostPlaybackFailureInput
+  );
+  assert.equal(badPlayback.lastAction?.status, "blocked");
+  assert.equal(badPlayback.lastAction?.action, "reportPlaybackFailure");
+  assert.equal(badPlayback.lastAction?.diagnostic?.code, "playback_failure_input_invalid");
+  assert.equal(badPlayback.facade.model.appState.state, "previewReady");
+  assert.equal(JSON.stringify(badPlayback.lastAction).includes("/Users/designer"), false);
 });
 
 test("short-term host output actions fail closed for malformed runtime payloads", async () => {

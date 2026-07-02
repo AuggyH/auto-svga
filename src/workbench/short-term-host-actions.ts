@@ -564,7 +564,17 @@ export function reportShortTermHostPlaybackFailure(
     }));
   }
 
-  const rawMessage = input.message.trim();
+  const playbackMessage = isRecord(input) ? input.message : undefined;
+  if (typeof playbackMessage !== "string") {
+    return withLastAction(state, result("reportPlaybackFailure", "blocked", "播放异常上报请求不可用。", {
+      diagnostic: {
+        code: "playback_failure_input_invalid",
+        message: "Playback failure reporting requires a string message."
+      }
+    }));
+  }
+
+  const rawMessage = playbackMessage.trim();
   const message = rawMessage
     ? redactShortTermLocalPathsFromError(rawMessage, "播放器未正常完成播放。", [
       ...(state.currentLocalPath ? [state.currentLocalPath] : [])
@@ -600,6 +610,9 @@ export function prepareShortTermHostTextPreview(
 ): ShortTermHostActionState {
   const blocked = requireOpenedFileForPreviewAction(state, "prepareTextPreview");
   if (blocked) return blocked;
+  if (!isRuntimeTextElementArray(isRecord(input) ? input.textElements : undefined)) {
+    return invalidTextPreviewInput(state, "prepareTextPreview");
+  }
 
   const facade = createShortTermWorkbenchTextPreview(state.facade, input.textElements);
   return withLastAction({
@@ -614,6 +627,9 @@ export function applyShortTermHostTextPreview(
 ): ShortTermHostActionState {
   const blocked = requireOpenedFileForPreviewAction(state, "applyTextPreview");
   if (blocked) return blocked;
+  if (!isRuntimeTextReplacement(isRecord(input) ? input.replacement : undefined)) {
+    return invalidTextPreviewInput(state, "applyTextPreview");
+  }
 
   const facade = applyShortTermWorkbenchTextPreview(state.facade, input.replacement);
   const status = facade.textPreviewSession?.model.status === "failed" ? "failed" : "completed";
@@ -911,6 +927,20 @@ function invalidOutputInput(
   }));
 }
 
+function invalidTextPreviewInput(
+  state: ShortTermHostActionState,
+  action: Extract<ShortTermHostActionKind, "prepareTextPreview" | "applyTextPreview">
+): ShortTermHostActionState {
+  return withLastAction(state, result(action, "blocked", "文本预览请求不可用。", {
+    diagnostic: {
+      code: "text_preview_input_invalid",
+      message: action === "prepareTextPreview"
+        ? "Text preview preparation requires a valid textElements array."
+        : "Text preview application requires a valid replacement payload."
+    }
+  }));
+}
+
 function invalidSaveInput(
   state: ShortTermHostActionState,
   command?: ShortTermSaveCommand
@@ -1080,6 +1110,31 @@ function isRecentOpenSource(value: unknown): value is ShortTermRecentOpenSource 
 
 function isShortTermSaveCommand(value: unknown): value is ShortTermSaveCommand {
   return value === "overwrite" || value === "saveAs";
+}
+
+function isRuntimeTextElementArray(value: unknown): value is readonly ShortTermRuntimeTextElement[] {
+  return Array.isArray(value) && value.every(isRuntimeTextElement);
+}
+
+function isRuntimeTextElement(value: unknown): value is ShortTermRuntimeTextElement {
+  if (!isRecord(value)) return false;
+  if (!isNonEmptyString(value.textKey) || typeof value.displayName !== "string") return false;
+  if (value.initialText !== undefined && typeof value.initialText !== "string") return false;
+  return Array.isArray(value.supportedFields) && value.supportedFields.every((item) => typeof item === "string");
+}
+
+function isRuntimeTextReplacement(value: unknown): value is ShortTermRuntimeTextReplacement {
+  if (!isRecord(value) || !isNonEmptyString(value.textKey) || !isRecord(value.fields)) return false;
+  const fields = value.fields;
+  if (fields.text !== undefined && typeof fields.text !== "string") return false;
+  if (fields.family !== undefined && typeof fields.family !== "string") return false;
+  if (fields.size !== undefined && !Number.isFinite(fields.size)) return false;
+  if (fields.color !== undefined && typeof fields.color !== "string") return false;
+  if (fields.offset !== undefined) {
+    if (!isRecord(fields.offset)) return false;
+    if (!Number.isFinite(fields.offset.x) || !Number.isFinite(fields.offset.y)) return false;
+  }
+  return true;
 }
 
 function withLastAction(
