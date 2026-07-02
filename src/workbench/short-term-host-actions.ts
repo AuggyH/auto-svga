@@ -659,7 +659,8 @@ export async function dispatchShortTermHostMenuAction(
   host: ShortTermHostEnvironment,
   input: ShortTermHostMenuActionInput
 ): Promise<ShortTermHostActionState> {
-  const rawCommandId = (input as { commandId?: unknown }).commandId;
+  const menuInput: Record<string, unknown> = isRecord(input) ? input : {};
+  const rawCommandId = menuInput.commandId;
   if (!isNonEmptyString(rawCommandId)) {
     return withLastAction(state, result("menuDispatch", "blocked", "菜单命令不可用。", {
       commandId: "unsupported",
@@ -689,7 +690,7 @@ export async function dispatchShortTermHostMenuAction(
 
   if (route === "native") {
     if (commandId === "quit") {
-      const lifecycleInput = input as ShortTermHostDirtyOperationInput;
+      const lifecycleInput = menuInput as ShortTermHostDirtyOperationInput;
       return guardedNativeLifecycleMenuCommand(state, commandId, lifecycleInput.discardUnsavedChanges);
     }
     return delegatedMenuCommand(state, commandId, "native", "该菜单命令由 macOS 原生命令处理。");
@@ -700,7 +701,7 @@ export async function dispatchShortTermHostMenuAction(
 
   switch (canonicalCommandId) {
     case "openSvga": {
-      const openInput = input as Record<string, unknown>;
+      const openInput = menuInput;
       if (!isNonEmptyString(openInput.requestId) || !isNonEmptyString(openInput.localPath)) {
         return missingContextForMenuCommand(
           state,
@@ -718,7 +719,7 @@ export async function dispatchShortTermHostMenuAction(
       });
     }
     case "openRecent": {
-      const recentInput = input as Record<string, unknown>;
+      const recentInput = menuInput;
       const recentFileId = (
         isNonEmptyString(recentInput.recentFileId)
           ? recentInput.recentFileId
@@ -743,29 +744,29 @@ export async function dispatchShortTermHostMenuAction(
     case "clearRecent":
       return clearShortTermHostRecentFiles(state);
     case "closeFile": {
-      const closeInput = input as ShortTermHostCloseInput;
+      const closeInput = menuInput as ShortTermHostCloseInput;
       return closeShortTermHostFile(state, closeInput);
     }
     case "save": {
-      const saveInput = input as { targetPath?: unknown };
+      const saveInput = menuInput as { targetPath?: unknown };
       return saveShortTermHostOutput(state, host, {
         command: "overwrite",
         ...(isNonEmptyString(saveInput.targetPath) ? { targetPath: saveInput.targetPath } : {})
       });
     }
     case "saveAs": {
-      const saveInput = input as { targetPath?: unknown };
+      const saveInput = menuInput as { targetPath?: unknown };
       return saveShortTermHostOutput(state, host, {
         command: "saveAs",
         ...(isNonEmptyString(saveInput.targetPath) ? { targetPath: saveInput.targetPath } : {})
       });
     }
     case "runOptimization": {
-      const operationInput = input as ShortTermHostDirtyOperationInput;
+      const operationInput = menuInput as ShortTermHostDirtyOperationInput;
       return runShortTermHostOptimization(state, operationInput);
     }
     case "renameImageKey": {
-      const renameInput = input as Partial<{ fromImageKey: unknown; toImageKey: unknown } & ShortTermHostDirtyOperationInput>;
+      const renameInput = menuInput as Partial<{ fromImageKey: unknown; toImageKey: unknown } & ShortTermHostDirtyOperationInput>;
       if (!isNonEmptyString(renameInput.fromImageKey) || !isNonEmptyString(renameInput.toImageKey)) {
         return missingContextForMenuCommand(
           state,
@@ -779,7 +780,7 @@ export async function dispatchShortTermHostMenuAction(
       });
     }
     case "replaceImage": {
-      const replacementInput = input as Partial<{ imageKey: unknown; pngBytes: unknown } & ShortTermHostDirtyOperationInput>;
+      const replacementInput = menuInput as Partial<{ imageKey: unknown; pngBytes: unknown } & ShortTermHostDirtyOperationInput>;
       if (!isNonEmptyString(replacementInput.imageKey) || !isUint8Array(replacementInput.pngBytes)) {
         return missingContextForMenuCommand(
           state,

@@ -844,6 +844,26 @@ test("short-term host actions fail closed for malformed runtime menu command ids
   assert.equal(missing.lastAction?.diagnostic?.code, "menu_command_id_invalid");
   assert.equal(missing.facade.model.appState.state, "launch");
 
+  const nullInput = await dispatchShortTermHostMenuAction(
+    state,
+    host,
+    null as unknown as ShortTermHostMenuActionInput
+  );
+  assert.equal(nullInput.lastAction?.status, "blocked");
+  assert.equal(nullInput.lastAction?.commandId, "unsupported");
+  assert.equal(nullInput.lastAction?.diagnostic?.code, "menu_command_id_invalid");
+  assert.equal(nullInput.facade.model.appState.state, "launch");
+
+  const undefinedInput = await dispatchShortTermHostMenuAction(
+    state,
+    host,
+    undefined as unknown as ShortTermHostMenuActionInput
+  );
+  assert.equal(undefinedInput.lastAction?.status, "blocked");
+  assert.equal(undefinedInput.lastAction?.commandId, "unsupported");
+  assert.equal(undefinedInput.lastAction?.diagnostic?.code, "menu_command_id_invalid");
+  assert.equal(undefinedInput.facade.model.appState.state, "launch");
+
   const nonString = await dispatchShortTermHostMenuAction(
     state,
     host,
