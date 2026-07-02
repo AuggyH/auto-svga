@@ -11,7 +11,7 @@ test("short-term save state enables save only for validated persisted output", (
   const record = createShortTermPersistedOutputRecord({
     outputKind: "optimized_svga",
     operationId: "svga-safe-image-optimizer-v1",
-    sourceName: "source.svga",
+    sourceName: "/Users/designer/private/source.svga",
     sourceSha256: "source-hash",
     outputBytes,
     sourceUnchanged: true,
@@ -22,6 +22,8 @@ test("short-term save state enables save only for validated persisted output", (
   assert.equal(record.schemaVersion, 1);
   assert.deepEqual(record.prdIds, ["S14"]);
   assert.equal(record.outputKind, "optimized_svga");
+  assert.equal(record.sourceName, "source.svga");
+  assert.equal(JSON.stringify(record).includes("/Users/designer"), false);
   assert.equal(record.outputSha256, sha256(outputBytes));
   assert.equal(record.dirty, true);
   assert.equal(record.saveState.outputAvailable, true);

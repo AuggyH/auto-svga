@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_SAVE_STATE_SCHEMA_VERSION = 1 as const;
 
@@ -89,7 +90,7 @@ export function createShortTermPersistedOutputRecord(
     outputId,
     outputKind: input.outputKind,
     operationId: input.operationId,
-    sourceName: input.sourceName,
+    sourceName: shortTermSourceNameFromPathLike(input.sourceName),
     sourceSha256: input.sourceSha256,
     outputSha256,
     outputSizeBytes: input.outputBytes.byteLength,
