@@ -943,6 +943,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="discardDialog"/);
   assert.match(page, /id="resourceContextMenu"/);
   assert.match(page, /放弃未保存输出/);
+  assert.match(page, /id="textPreviewSummary"/);
+  assert.match(page, /id="textElementList"/);
+  assert.match(page, /data-action="edit-text" disabled/);
   assert.match(page, /短期版仅保留图层查看/);
   assert.doesNotMatch(page, /productShellMount|desktop-product-entry\.mjs|prototype\.js/);
   assert.doesNotMatch(page, /导出验收|序列修复|批量 PNG|Export Acceptance/);
@@ -964,6 +967,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /toParserArrayBuffer/);
   assert.match(shortTermEntry, /view\.buffer\.slice\(view\.byteOffset, view\.byteOffset \+ view\.byteLength\)/);
   assert.match(shortTermEntry, /confirmDiscardUnsavedOutput/);
+  assert.match(shortTermEntry, /renderTextElements/);
+  assert.match(shortTermEntry, /selectedTextElement/);
+  assert.match(shortTermEntry, /当前文件没有可预览文本元素/);
   assert.match(shortTermEntry, /打开新文件会放弃当前未保存的 SVGA 输出/);
   assert.match(shortTermEntry, /拖入新文件会放弃当前未保存的 SVGA 输出/);
   assert.match(shortTermEntry, /state\.activeOutput\?\.kind !== "replacement"/);

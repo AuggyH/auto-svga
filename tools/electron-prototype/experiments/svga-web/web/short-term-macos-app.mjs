@@ -11,6 +11,7 @@ const state = {
   displayName: "",
   model: undefined,
   selectedImageKey: "",
+  selectedTextKey: "",
   activeOutput: undefined,
   primaryPlayback: undefined,
   compareAPlayback: undefined,
@@ -40,6 +41,8 @@ const nodes = {
   optimizationSummary: document.querySelector("#optimizationSummary"),
   replaceableList: document.querySelector("#replaceableList"),
   replaceableSummary: document.querySelector("#replaceableSummary"),
+  textPreviewSummary: document.querySelector("#textPreviewSummary"),
+  textElementList: document.querySelector("#textElementList"),
   resourceContextMenu: document.querySelector("#resourceContextMenu"),
   compareInfoA: document.querySelector("#compareInfoA"),
   compareInfoB: document.querySelector("#compareInfoB"),
@@ -186,6 +189,7 @@ function clearCurrentFile() {
   state.displayName = "";
   state.model = undefined;
   state.selectedImageKey = "";
+  state.selectedTextKey = "";
   state.activeOutput = undefined;
 }
 
@@ -327,18 +331,28 @@ async function resetImageReplacement() {
 
 async function editRuntimeText() {
   if (!state.sourceBytes) return;
+  const textElement = selectedTextElement();
+  if (!textElement) {
+    showSaveBanner("没有可预览的文本元素。", "当前 SVGA 未暴露可运行时替换的 textKey，源文件没有被修改。");
+    return;
+  }
   nodes.runtimeTextInput.value = state.textPreview || "SVGA VIP";
+  nodes.runtimeTextInput.placeholder = textElement.initialText || textElement.displayName || textElement.textKey;
   const result = await showDialog(nodes.textDialog);
   if (result !== "confirm") return;
   state.textPreview = nodes.runtimeTextInput.value.trim();
-  nodes.runtimeTextOverlay.textContent = state.textPreview;
+  nodes.runtimeTextOverlay.textContent = `${textElement.displayName || textElement.textKey}: ${state.textPreview}`;
   nodes.runtimeTextOverlay.hidden = !state.textPreview;
+  renderTextElements(state.model?.replaceableElements);
+  renderCommandState();
 }
 
 function resetRuntimeText() {
   state.textPreview = "";
   nodes.runtimeTextOverlay.hidden = true;
   nodes.runtimeTextOverlay.textContent = "";
+  renderTextElements(state.model?.replaceableElements);
+  renderCommandState();
 }
 
 async function saveActiveOutput(command) {
@@ -411,6 +425,7 @@ function renderPreviewModel() {
   renderAssets(model);
   renderOptimization(model.optimization);
   renderReplaceables(model.replaceableElements);
+  renderTextElements(model.replaceableElements);
   renderEditReserved();
   nodes.playbackMeta.textContent = model.overview.facts
     .filter((fact) => ["canvas", "fps", "duration"].includes(fact.id))
@@ -495,6 +510,55 @@ function renderReplaceables(model) {
   nodes.replaceableSummary.textContent = rows.length
     ? `${rows.length} 个设计师命名图片元素。`
     : "普通自动命名图片不会出现在这里。";
+}
+
+function renderTextElements(model) {
+  const texts = Array.isArray(model?.texts) ? model.texts : [];
+  if (!state.selectedTextKey || !texts.some((item) => item.textKey === state.selectedTextKey)) {
+    state.selectedTextKey = texts[0]?.textKey || "";
+  }
+  if (texts.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "emptyText";
+    empty.textContent = model?.textPreviewCopy || "当前文件没有可运行时预览的文本元素。";
+    nodes.textElementList.replaceChildren(empty);
+    nodes.textPreviewSummary.textContent = "未发现可运行时替换的 textKey。";
+  } else {
+    nodes.textElementList.replaceChildren(...texts.map((item) => {
+      const row = document.createElement("article");
+      row.className = "textElementRow";
+      row.tabIndex = 0;
+      row.dataset.action = "select-text";
+      row.dataset.textKey = item.textKey;
+      row.classList.toggle("isSelected", item.textKey === state.selectedTextKey);
+      row.innerHTML = `
+        <span class="rowText"><strong>${escapeHtml(item.displayName || item.textKey)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
+        <span class="badge">${item.textKey === state.selectedTextKey ? "已选中" : "文本"}</span>
+      `;
+      return row;
+    }));
+    nodes.textPreviewSummary.textContent = state.textPreview
+      ? "文本预览已应用，源 SVGA 字节未修改。"
+      : `${texts.length} 个文本元素可运行时预览。`;
+  }
+  setActionEnabled("edit-text", texts.length > 0, "当前文件没有可预览文本元素");
+  setActionEnabled("reset-text", Boolean(state.textPreview), "当前没有已应用的文本预览");
+}
+
+function selectTextKey(textKey) {
+  if (!textKey) return;
+  state.selectedTextKey = textKey;
+  state.textPreview = "";
+  nodes.runtimeTextOverlay.hidden = true;
+  nodes.runtimeTextOverlay.textContent = "";
+  renderTextElements(state.model?.replaceableElements);
+}
+
+function selectedTextElement() {
+  const texts = Array.isArray(state.model?.replaceableElements?.texts)
+    ? state.model.replaceableElements.texts
+    : [];
+  return texts.find((item) => item.textKey === state.selectedTextKey);
 }
 
 function selectImageKey(imageKey) {
@@ -706,6 +770,8 @@ function renderCommandState() {
   setActionEnabled("run-optimization", hasFile && state.model?.optimization?.batchActionEnabled === true, "没有可安全执行的优化项");
   setActionEnabled("save-as", hasOutput && !saveBusy, hasOutput ? "正在验证保存输出" : "没有可保存的输出");
   setActionEnabled("save-overwrite", hasOutput && !saveBusy && Boolean(state.sourceId), state.sourceId ? "正在验证保存输出" : "当前文件不支持覆盖保存");
+  setActionEnabled("edit-text", Boolean(selectedTextElement()), "当前文件没有可预览文本元素");
+  setActionEnabled("reset-text", Boolean(state.textPreview), "当前没有已应用的文本预览");
   document.querySelector("[data-action='play-pause']").textContent = state.primaryPlayback?.playing ? "暂停" : "播放";
 }
 
@@ -860,6 +926,7 @@ document.addEventListener("click", (event) => {
   if (action === "save-overwrite") saveActiveOutput("overwrite").catch(showFailure);
   if (action === "open-compare-b") openCompareBFromHost().catch(showFailure);
   if (action === "select-resource") selectImageKey(target.dataset.imageKey || state.selectedImageKey);
+  if (action === "select-text") selectTextKey(target.dataset.textKey || state.selectedTextKey);
   if (action === "context-rename") {
     closeResourceContextMenu();
     renameSelectedImageKey().catch(showFailure);

@@ -37,6 +37,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 
 - App ZIP is unsigned and not notarized; this remains an external credential/signing decision.
 - Runtime text preview is preview-only and does not persist into SVGA bytes, matching current short-term boundary.
+- Follow-up guard: runtime text controls are disabled when the current model exposes no text elements, so the UI does not imply editable text targets that the parser did not find.
 - The package manifest records current Git HEAD, while the package content was built from the working tree before this review commit.
 
 ## Git Notes

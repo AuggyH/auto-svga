@@ -483,7 +483,8 @@ canvas {
 
 .assetList,
 .findingList,
-.replaceableList {
+.replaceableList,
+.textElementList {
   display: grid;
   gap: var(--asv-space-2);
   margin-top: var(--asv-space-2);
@@ -491,7 +492,8 @@ canvas {
 
 .assetRow,
 .findingRow,
-.replaceableRow {
+.replaceableRow,
+.textElementRow {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) auto;
   gap: var(--asv-space-2);
@@ -511,18 +513,27 @@ canvas {
   grid-template-columns: 42px minmax(0, 1fr) auto;
 }
 
-.replaceableRow {
+.textElementRow {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.replaceableRow,
+.textElementRow {
   outline: none;
 }
 
 .replaceableRow:hover,
 .replaceableRow.isSelected,
-.replaceableRow:focus-visible {
+.replaceableRow:focus-visible,
+.textElementRow:hover,
+.textElementRow.isSelected,
+.textElementRow:focus-visible {
   border-color: var(--asv-border-strong);
   background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-action) 6%);
 }
 
-.replaceableRow:focus-visible {
+.replaceableRow:focus-visible,
+.textElementRow:focus-visible {
   box-shadow: var(--asv-focus);
 }
 
@@ -579,7 +590,8 @@ canvas {
 
 .rowText span,
 .findingRow p,
-.sectionHead p {
+.sectionHead p,
+.textPreviewBlock p {
   margin: var(--asv-space-1) 0 0;
   color: var(--asv-muted);
   font-size: 12px;
