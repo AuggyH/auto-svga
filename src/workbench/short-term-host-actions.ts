@@ -265,6 +265,16 @@ export async function saveShortTermHostOutput(
       }
     }));
   }
+  if (input.command === "saveAs" && state.currentLocalPath && sameResolvedPath(targetPath, state.currentLocalPath)) {
+    return withLastAction(state, result("save", "blocked", "另存为目标必须不同于当前源文件；如需覆盖请使用覆盖保存。", {
+      commandId: "saveAs",
+      targetDisplayName: path.basename(targetPath),
+      diagnostic: {
+        code: "save_as_target_matches_source",
+        message: "Save As target must be different from the current source path."
+      }
+    }));
+  }
   if (!state.activeOutputBytes) {
     return withLastAction(state, result("save", "blocked", "没有已验证的可保存输出。", {
       targetDisplayName: path.basename(targetPath),
@@ -539,6 +549,10 @@ function sanitizeDisplayName(displayName: string | undefined, localPath: string)
   const candidate = displayName?.trim();
   if (candidate) return path.basename(candidate);
   return path.basename(localPath);
+}
+
+function sameResolvedPath(a: string, b: string): boolean {
+  return path.resolve(a) === path.resolve(b);
 }
 
 function errorMessage(error: unknown, fallback: string): string {
