@@ -3390,18 +3390,31 @@ function mergeExistingProductArtifactIndex() {
 
 function collectShortTermMenuStateProof() {
   const checks = {
+    openMenuAvailable: menuItemEnabled(["文件", "打开 SVGA..."]) === true,
+    recentMenuExists: menuItemExists(["文件", "最近打开"]),
+    clearRecentMenuExists: menuItemExists(["文件", "最近打开", "清除最近记录"]),
     stateReflectsLoadedSmoke: shortTermMenuState.hasFile === true && shortTermMenuState.view === "preview",
     closeFileEnabledMatchesFileState: menuItemEnabled(["文件", "关闭文件"]) === shortTermMenuState.hasFile,
     compareEnabledMatchesFileState: menuItemEnabled(["文件", "打开对比 SVGA..."]) === shortTermMenuState.canCompare,
     playbackEnabledAfterLoad: menuItemEnabled(["播放", "播放/暂停"]) === true,
     saveAsEnabledMatchesOutputState: menuItemEnabled(["文件", "另存为..."]) === shortTermMenuState.canSaveAs,
     overwriteEnabledMatchesOutputState: menuItemEnabled(["文件", "覆盖保存"]) === shortTermMenuState.canOverwrite,
+    editRenameEnabledMatchesSelection: menuItemEnabled(["编辑", "重命名 imageKey"]) === shortTermMenuState.canRenameImageKey,
+    cancelEnabledMatchesTransientState: menuItemEnabled(["编辑", "取消当前操作"]) === shortTermMenuState.hasTransientState,
     renameEnabledMatchesSelection: menuItemEnabled(["资源", "重命名 imageKey"]) === shortTermMenuState.canRenameImageKey,
     replaceEnabledMatchesSelection: menuItemEnabled(["资源", "替换预览图片..."]) === shortTermMenuState.canReplaceImage,
+    resetImageEnabledMatchesReplacementState: menuItemEnabled(["资源", "重置预览图片"]) === shortTermMenuState.canResetImageReplacement,
+    editTextEnabledMatchesTextState: menuItemEnabled(["资源", "编辑文本预览..."]) === shortTermMenuState.canEditText,
+    resetTextEnabledMatchesTextState: menuItemEnabled(["资源", "重置文本预览"]) === shortTermMenuState.canResetText,
     optimizationEnabledMatchesModel: menuItemEnabled(["优化", "执行安全优化"]) === shortTermMenuState.canRunOptimization,
     optimizationCompareEnabledMatchesOutput: menuItemEnabled(["优化", "显示优化对比"]) === shortTermMenuState.canShowOptimizationComparison,
+    optimizationTabAvailableWithFile: menuItemEnabled(["优化", "查看优化建议"]) === shortTermMenuState.hasFile,
     previewModeCheckedMatchesState: menuItemChecked(["视图", "预览模式"]) === (shortTermMenuState.mode === "preview"),
-    editModeCheckedMatchesState: menuItemChecked(["视图", "编辑模式"]) === (shortTermMenuState.mode === "edit")
+    editModeCheckedMatchesState: menuItemChecked(["视图", "编辑模式"]) === (shortTermMenuState.mode === "edit"),
+    overviewTabCheckedMatchesState: menuItemChecked(["视图", "总览"]) === (shortTermMenuState.tab === "overview" && shortTermMenuState.view === "preview"),
+    optimizationTabCheckedMatchesState: menuItemChecked(["视图", "优化"]) === (shortTermMenuState.tab === "optimization" && shortTermMenuState.view === "preview"),
+    replaceableTabCheckedMatchesState: menuItemChecked(["视图", "可替换元素"]) === (shortTermMenuState.tab === "replaceable" && shortTermMenuState.view === "preview"),
+    helpStateSummaryAvailable: menuItemEnabled(["帮助", "复制当前状态摘要"]) === true
   };
   return {
     schemaVersion: 1,
@@ -3411,6 +3424,10 @@ function collectShortTermMenuStateProof() {
     checks,
     passed: Object.values(checks).every(Boolean)
   };
+}
+
+function menuItemExists(labelPath) {
+  return Boolean(findApplicationMenuItem(labelPath));
 }
 
 function menuItemEnabled(labelPath) {

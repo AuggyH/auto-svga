@@ -22,6 +22,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Made runtime text preview modal keyboard behavior explicit: Enter applies and Esc cancels without relying on button order.
 - Bound the short-term macOS menu to the renderer's current product state, so Close, Compare, Save, Resource, Playback, mode, tab, and Optimization entries enable/disable or check themselves from the same state as the visible controls.
 - Added a menu-state smoke proof for the loaded short-term app; the proof fails if the menu remains in an empty/default state after a file is loaded or if key menu items drift from renderer state.
+- Expanded the menu-state proof to cover Open, Recent/Clear Recent, Edit rename/cancel, Resource rename/replace/reset, text preview/reset, Optimization entry/compare, View tab checkmarks, and Help state-copy availability.
 - Added repeatable short-term smoke screenshots for Launch, Preview Overview, Optimization, Replaceable Elements, General Compare, Edit Reserved, and minimum-size Preview states.
 - Fixed disabled primary-button styling so unavailable Save As and Run Optimization actions no longer look like active blue primary actions.
 - Made Edit Reserved mount a visible playback preview instead of a blank canvas while still keeping the right operation panel empty.
@@ -46,7 +47,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`: 28/28 pass.
 - `node --test tools/shared/product-frontend/source-sharing.test.mjs`: 7/7 pass.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`: pass; includes `shortTermScreenshots=true`, `shortTermSaveFailed=true`, `shortTermLoadFailed=true`, `shortTermNoAudio=true`, `shortTermNoReplaceable=true`, `shortTermTextUnavailable=true`, `shortTermOptimization=true`, `shortTermRename=true`, and `shortTermReplacement=true`.
-- Short-term menu-state proof: pass; `shortTermMenuState=true` in desktop smoke and `.artifacts/product/short-term/short-term-menu-state-proof.json` records loaded Preview state plus matching menu enabled/checked states.
+- Short-term menu-state proof: pass; `shortTermMenuState=true` in desktop smoke and `.artifacts/product/short-term/short-term-menu-state-proof.json` records loaded Preview state plus 25 menu existence, enabled/disabled, and checked-state checks.
 - Short-term screenshot proof: pass; `shortTermScreenshots=true` in desktop smoke and `.artifacts/product/short-term/artifact-index.json` lists ten current-head short-term UI screenshots, including sequence thumbnails, Save failed, and Load failed states.
 - Short-term empty-state proof: pass; `.artifacts/product/short-term/short-term-empty-state-proof.json` records `noAudioVisible=true`, `noReplaceableImagesVisible=true`, `textUnavailableVisible=true`, and `ordinaryImagesNotDuplicatedInReplaceables=true`.
 - Short-term runtime-text boundary proof: pass; `.artifacts/product/short-term/short-term-runtime-text-boundary-proof.json` records `productCompleteClaimed=false`, source SHA unchanged, no modal opened, and no runtime overlay shown when no parser-discovered text keys exist.
