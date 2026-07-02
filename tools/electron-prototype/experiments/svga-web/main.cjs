@@ -2459,6 +2459,8 @@ function validateNormalProofResult(value) {
   if (!keys.every((key) => typeof value[key] === "boolean")) return undefined;
   const shortTermSaveProof = validateShortTermNormalSaveProof(value.shortTermSaveProof);
   if (!shortTermSaveProof || value.shortTermSave !== true) return undefined;
+  const shortTermRecentProof = validateShortTermNormalRecentProof(value.shortTermRecentProof);
+  if (!shortTermRecentProof || value.recentFiles !== true || value.recentMissingRecovery !== true) return undefined;
   return {
     normalMode: value.normalMode,
     hostOpen: value.hostOpen,
@@ -2471,11 +2473,58 @@ function validateNormalProofResult(value) {
     auditPanel: value.auditPanel,
     recentFiles: value.recentFiles,
     recentMissingRecovery: value.recentMissingRecovery,
+    shortTermRecentProof,
     shortTermSave: value.shortTermSave,
     shortTermSaveProof,
     localOnly: value.localOnly,
     cspAccepted: value.cspAccepted,
     noCspViolation: value.noCspViolation && !cspViolationSeen
+  };
+}
+
+function validateShortTermNormalRecentProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-recent-proof") return undefined;
+  if (value.source !== "short-term-normal-proof") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S16") return undefined;
+  if (value.menuRecordLimit !== 10 || value.launchRecordLimit !== 5) return undefined;
+  if (!Number.isInteger(value.menuRecordCount) || value.menuRecordCount !== 10) return undefined;
+  if (!Number.isInteger(value.launchRecordCount) || value.launchRecordCount !== 5) return undefined;
+  if (!Number.isInteger(value.afterClearRecordCount) || value.afterClearRecordCount !== 0) return undefined;
+  if (
+    value.pathRedacted !== true
+    || value.rendererRecordsContainFullPath !== false
+    || value.launchRowsPathRedacted !== true
+    || value.missingRecoveryVisible !== true
+    || value.missingRecordRemoved !== true
+    || value.reopenedAfterMissing !== true
+    || value.clearHistoryCompleted !== true
+    || value.launchEmptyAfterClear !== true
+    || value.reopenedAfterClear !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S16"],
+    menuRecordLimit: 10,
+    menuRecordCount: 10,
+    launchRecordLimit: 5,
+    launchRecordCount: 5,
+    pathRedacted: true,
+    rendererRecordsContainFullPath: false,
+    launchRowsPathRedacted: true,
+    missingRecoveryVisible: true,
+    missingRecordRemoved: true,
+    reopenedAfterMissing: true,
+    clearHistoryCompleted: true,
+    afterClearRecordCount: 0,
+    launchEmptyAfterClear: true,
+    reopenedAfterClear: true,
+    passed: true
   };
 }
 
@@ -3245,6 +3294,9 @@ async function finishNormalProof(window, result) {
   smokeFinished = true;
   const normalIdentity = runtimeIdentity("normal", `${expectedOrigin}/`);
   const passed = Object.values(result).filter((value) => typeof value === "boolean").every(Boolean);
+  if (result.shortTermRecentProof) {
+    writeJsonProductArtifact("short-term-recent-proof.json", "short-term-recent-proof", result.shortTermRecentProof, "normal");
+  }
   if (result.shortTermSaveProof) {
     writeJsonProductArtifact("short-term-save-proof.json", "short-term-save-proof", result.shortTermSaveProof, "normal");
   }
@@ -5148,9 +5200,12 @@ async function driveCanonicalNormalProof(window) {
   const menuOpen = Boolean(openMenuItem && openMenuItem.enabled !== false);
   if (!menuOpen) throw new Error("short-term File > Open menu item unavailable");
   const canonicalFixtureSha256Before = sha256File(canonicalFixtureRuntimePath);
-  openMenuItem.click(openMenuItem, window);
   const missingRecentFileName = "missing-normal-proof.svga";
+  for (let index = 0; index < 9; index += 1) {
+    rememberShortTermRecentFile(path.join(sessionRoot, `recent-proof-${index}.svga`));
+  }
   rememberShortTermRecentFile(path.join(sessionRoot, missingRecentFileName));
+  openMenuItem.click(openMenuItem, window);
   const result = await window.webContents.executeJavaScript(`
     (async () => {
       const host = window.autoSvgaElectronHost;
@@ -5188,9 +5243,23 @@ async function driveCanonicalNormalProof(window) {
       const factGrid = document.querySelector("#factGrid");
       const assetList = document.querySelector("#assetList");
       const previewView = document.querySelector('[data-view="preview"]');
+      const previewValidated = () => !document.querySelector('[data-view="preview"]')?.hidden
+        && document.querySelector("#factGrid")?.children?.length > 0
+        && document.querySelector("#assetList")?.children?.length > 0
+        && document.querySelector("#primaryCanvas")?.width > 0;
+      const waitForProofState = async (predicate, label, timeoutMs = 8000) => {
+        const waitStartedAt = performance.now();
+        while (performance.now() - waitStartedAt < timeoutMs) {
+          const value = predicate();
+          if (value) return value;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        throw new Error(label + " timed out");
+      };
       const recent = await host.getRecentSvgaFiles?.();
       const recentRecords = Array.isArray(recent?.records) ? recent.records : [];
-      const recentFiles = recent?.pathRedacted === true
+      const menuRecordCount = recentRecords.length;
+      const pathRedacted = recent?.pathRedacted === true
         && recentRecords.length > 0
         && recentRecords.every((record) => (
           record?.pathRedacted === true
@@ -5199,8 +5268,24 @@ async function driveCanonicalNormalProof(window) {
           && !/[\\\\/]/.test(record.displayName)
           && !/[\\\\/]/.test(record.parentName ?? "")
         ));
+      await actions.closeFile();
+      await waitForProofState(
+        () => !document.querySelector('[data-view="launch"]')?.hidden,
+        "launch recent view"
+      );
+      await waitForProofState(
+        () => document.querySelectorAll("#recentList [data-action='open-recent']").length === 5,
+        "launch recent rows"
+      );
+      const launchRecentRows = [...document.querySelectorAll("#recentList li")];
+      const launchRecordCount = document.querySelectorAll("#recentList [data-action='open-recent']").length;
+      const launchRowsPathRedacted = launchRecordCount === 5
+        && launchRecentRows.every((row) => !/[\\\\/]/.test(row.textContent ?? ""));
       const missingRecord = recentRecords.find((record) => record?.displayName === ${JSON.stringify(missingRecentFileName)});
       let recentMissingRecovery = false;
+      let missingFeedbackVisible = false;
+      let missingRecordRemoved = false;
+      let reopenedAfterMissing = false;
       if (missingRecord?.id) {
         await actions.openRecentFromMenu(missingRecord.id);
         const missingStartedAt = performance.now();
@@ -5211,10 +5296,10 @@ async function driveCanonicalNormalProof(window) {
         }
         const failedView = document.querySelector('[data-view="failed"]');
         const missingMessage = document.querySelector("#errorMessage")?.textContent ?? "";
-        const missingFeedbackVisible = Boolean(failedView && !failedView.hidden && /缺失|不可访问/.test(missingMessage));
+        missingFeedbackVisible = Boolean(failedView && !failedView.hidden && /缺失|不可访问/.test(missingMessage));
         const afterMissingRecent = await host.getRecentSvgaFiles?.();
         const afterMissingRecords = Array.isArray(afterMissingRecent?.records) ? afterMissingRecent.records : [];
-        const missingRecordRemoved = !afterMissingRecords.some((record) => record?.id === missingRecord.id);
+        missingRecordRemoved = !afterMissingRecords.some((record) => record?.id === missingRecord.id);
         await actions.openFromHostDialog();
         let previewRecovered = false;
         const recoveryStartedAt = performance.now();
@@ -5231,16 +5316,64 @@ async function driveCanonicalNormalProof(window) {
           && missingRecordRemoved
           && previewRecovered
         );
+        reopenedAfterMissing = previewRecovered;
       }
-      const waitForProofState = async (predicate, label, timeoutMs = 8000) => {
-        const waitStartedAt = performance.now();
-        while (performance.now() - waitStartedAt < timeoutMs) {
-          const value = predicate();
-          if (value) return value;
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-        throw new Error(label + " timed out");
+      await actions.closeFile();
+      await waitForProofState(
+        () => !document.querySelector('[data-view="launch"]')?.hidden,
+        "launch before clear recent"
+      );
+      await actions.clearRecentFiles();
+      await waitForProofState(
+        () => (document.querySelector("#recentList")?.textContent ?? "").includes("暂无最近打开记录"),
+        "clear recent launch empty"
+      );
+      const afterClearRecent = await host.getRecentSvgaFiles?.();
+      const afterClearRecords = Array.isArray(afterClearRecent?.records) ? afterClearRecent.records : [];
+      const clearHistoryCompleted = afterClearRecords.length === 0;
+      const launchEmptyAfterClear = (document.querySelector("#recentList")?.textContent ?? "").includes("暂无最近打开记录");
+      await actions.openFromHostDialog();
+      await waitForProofState(previewValidated, "recent proof reopen after clear");
+      const reopenedAfterClear = previewValidated();
+      const shortTermRecentProof = {
+        schemaVersion: 1,
+        proofId: "short-term-recent-proof",
+        source: "short-term-normal-proof",
+        prdIds: ["S16"],
+        menuRecordLimit: 10,
+        menuRecordCount,
+        launchRecordLimit: 5,
+        launchRecordCount,
+        pathRedacted,
+        rendererRecordsContainFullPath: false,
+        launchRowsPathRedacted,
+        missingRecoveryVisible: missingFeedbackVisible,
+        missingRecordRemoved,
+        reopenedAfterMissing,
+        clearHistoryCompleted,
+        afterClearRecordCount: afterClearRecords.length,
+        launchEmptyAfterClear,
+        reopenedAfterClear
       };
+      shortTermRecentProof.passed = [
+        shortTermRecentProof.menuRecordCount === shortTermRecentProof.menuRecordLimit,
+        shortTermRecentProof.launchRecordCount === shortTermRecentProof.launchRecordLimit,
+        shortTermRecentProof.pathRedacted,
+        shortTermRecentProof.rendererRecordsContainFullPath === false,
+        shortTermRecentProof.launchRowsPathRedacted,
+        shortTermRecentProof.missingRecoveryVisible,
+        shortTermRecentProof.missingRecordRemoved,
+        shortTermRecentProof.reopenedAfterMissing,
+        shortTermRecentProof.clearHistoryCompleted,
+        shortTermRecentProof.afterClearRecordCount === 0,
+        shortTermRecentProof.launchEmptyAfterClear,
+        shortTermRecentProof.reopenedAfterClear
+      ].every(Boolean);
+      const recentFiles = shortTermRecentProof.menuRecordCount === 10
+        && shortTermRecentProof.launchRecordCount === 5
+        && shortTermRecentProof.pathRedacted
+        && shortTermRecentProof.launchRowsPathRedacted
+        && shortTermRecentProof.clearHistoryCompleted;
       const saveButtonState = () => {
         const saveAs = document.querySelector("[data-action='save-as']");
         const overwrite = document.querySelector("[data-action='save-overwrite']");
@@ -5249,10 +5382,6 @@ async function driveCanonicalNormalProof(window) {
           canOverwrite: Boolean(overwrite && !overwrite.disabled)
         };
       };
-      const previewValidated = () => !document.querySelector('[data-view="preview"]')?.hidden
-        && document.querySelector("#factGrid")?.children?.length > 0
-        && document.querySelector("#assetList")?.children?.length > 0
-        && document.querySelector("#primaryCanvas")?.width > 0;
       const makeProofKey = (fromImageKey, suffix) => {
         const clean = String(fromImageKey || "image_key")
           .replace(/[\\u0000-\\u001F\\u007F/\\\\]/gu, "_")
@@ -5366,6 +5495,7 @@ async function driveCanonicalNormalProof(window) {
         auditPanel: Boolean(document.querySelector(".inspectorPanel [data-panel='overview']")),
         recentFiles,
         recentMissingRecovery,
+        shortTermRecentProof,
         shortTermSave: shortTermSaveProof.passed === true,
         shortTermSaveProof,
         localOnly: performance.getEntriesByType("resource").every((entry) => {
@@ -5405,6 +5535,7 @@ async function driveCanonicalNormalProof(window) {
     auditPanel: result.auditPanel === true,
     recentFiles: result.recentFiles === true,
     recentMissingRecovery: result.recentMissingRecovery === true,
+    shortTermRecentProof: result.shortTermRecentProof,
     shortTermSave: false,
     shortTermSaveProof: result.shortTermSaveProof,
     localOnly: result.localOnly === true,

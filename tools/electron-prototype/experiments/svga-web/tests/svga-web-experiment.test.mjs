@@ -686,6 +686,11 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(normalProofSource, /getRecentSvgaFiles/);
   assert.match(normalProofSource, /recentFiles/);
   assert.match(normalProofSource, /recentMissingRecovery/);
+  assert.match(normalProofSource, /short-term-recent-proof/);
+  assert.match(normalProofSource, /menuRecordLimit: 10/);
+  assert.match(normalProofSource, /launchRecordLimit: 5/);
+  assert.match(normalProofSource, /clearHistoryCompleted/);
+  assert.match(normalProofSource, /launchEmptyAfterClear/);
   assert.match(normalProofSource, /missing-normal-proof\.svga/);
   assert.match(normalProofSource, /openRecentFromMenu/);
   assert.match(normalProofSource, /missingRecordRemoved/);
@@ -702,6 +707,10 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(normalProofSource, /result\.shortTermSave = result\.shortTermSaveProof\.passed === true/);
   assert.match(normalProofSource, /pathRedacted/);
   assert.ok(
+    normalProofSource.indexOf("await actions.closeFile()") < normalProofSource.indexOf("await actions.clearRecentFiles()"),
+    "normal proof must inspect launch recent rows before clearing history"
+  );
+  assert.ok(
     normalProofSource.indexOf("openMenuItem.click(openMenuItem, window)") < normalProofSource.indexOf("const result = await window.webContents.executeJavaScript"),
     "normal proof initial open must be triggered by the macOS File menu before renderer validation"
   );
@@ -710,6 +719,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
     "direct host open action is allowed only after missing-recent recovery starts"
   );
   assert.doesNotMatch(normalProofSource, /#svgaFileInput|#svgaStatusA|#svgaCanvasA|specReportSection|auditReportSection/);
+  assert.match(main, /writeJsonProductArtifact\("short-term-recent-proof\.json", "short-term-recent-proof"/);
   assert.match(main, /writeJsonProductArtifact\("short-term-save-proof\.json", "short-term-save-proof"/);
   assert.match(main, /normalProofMode \? "short-term-normal-save-as\.svga" : "short-term-smoke-save-as\.svga"/);
   assert.match(main, /IPC_CHANNELS\.openSvgaFile/);
@@ -922,7 +932,9 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /menuOpen: value\.menuOpen/);
   assert.match(main, /recentFiles: value\.recentFiles/);
   assert.match(main, /recentMissingRecovery: value\.recentMissingRecovery/);
+  assert.match(main, /shortTermRecentProof/);
   assert.match(main, /shortTermSave: value\.shortTermSave/);
+  assert.match(main, /function validateShortTermNormalRecentProof/);
   assert.match(main, /function validateShortTermNormalSaveProof/);
   assert.match(main, /saveAsSavedSha256 !== value\.overwriteSavedSha256|value\.saveAsSavedSha256 === value\.overwriteSavedSha256/);
   assert.match(main, /short-term-normal-save-as\.svga/);
