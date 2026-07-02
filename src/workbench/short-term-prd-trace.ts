@@ -42,6 +42,8 @@ export function shortTermPrdIdsForCommandMenuItem(commandId: string): readonly S
     case "save":
     case "saveAs":
       return ["S14"];
+    case "cancelTransientWorkflow":
+      return ["S10", "S11", "S14"];
     case "toggleCompare":
       return ["S10"];
     case "playPause":
@@ -75,6 +77,8 @@ export function shortTermPrdIdsForMenuDispatch(commandId: string): readonly Shor
     case "save":
     case "saveAs":
       return ["S14"];
+    case "cancelTransientWorkflow":
+      return ["S10", "S11", "S14"];
     case "runOptimization":
       return ["S8", "S9", "S10", "S14"];
     case "renameImageKey":
@@ -120,6 +124,8 @@ export function shortTermPrdIdsForHostAction(action: string): readonly ShortTerm
       return ["S2"];
     case "save":
       return ["S14"];
+    case "cancelTransientWorkflow":
+      return ["S10", "S11", "S14"];
     case "menuDispatch":
       return ["S1", "S2", "S14", "S16"];
     default:

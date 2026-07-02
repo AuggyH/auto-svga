@@ -89,6 +89,7 @@ test("short-term command menu exposes product PRD trace for menu entries", () =>
   assert.deepEqual(flatItems.find((item) => item.id === "openRecent")?.prdIds, ["S1", "S2", "S16"]);
   assert.deepEqual(flatItems.find((item) => item.id === "openRecent:recent-a")?.prdIds, ["S1", "S2", "S16"]);
   assert.deepEqual(flatItems.find((item) => item.id === "clearRecent")?.prdIds, ["S16"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "cancelTransientWorkflow")?.prdIds, ["S10", "S11", "S14"]);
   assert.deepEqual(flatItems.find((item) => item.id === "runOptimization")?.prdIds, ["S8", "S9", "S10", "S14"]);
   assert.deepEqual(flatItems.find((item) => item.id === "toggleCompare")?.prdIds, ["S10"]);
   assert.deepEqual(flatItems.find((item) => item.id === "renameImageKey")?.prdIds, ["S11", "S14"]);
@@ -127,6 +128,7 @@ test("short-term command menu reflects save availability and macOS accelerators"
   const flatItems = flattenShortTermCommandMenuItems(menu);
 
   assert.equal(flatItems.find((item) => item.id === "openSvga")?.accelerator, "Command+O");
+  assert.equal(flatItems.find((item) => item.id === "cancelTransientWorkflow")?.accelerator, "Esc");
   assert.equal(flatItems.find((item) => item.id === "save")?.accelerator, "Command+S");
   assert.equal(flatItems.find((item) => item.id === "saveAs")?.accelerator, "Shift+Command+S");
   assert.equal(flatItems.find((item) => item.id === "minimize")?.accelerator, "Command+M");

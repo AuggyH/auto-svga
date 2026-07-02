@@ -9,6 +9,7 @@ const HOST_ROUTED_MENU_COMMANDS = new Set([
   "saveAs",
   "runOptimization",
   "renameImageKey",
+  "cancelTransientWorkflow",
   "replaceImage",
   "resetImageReplacement",
   "resetTextPreview"

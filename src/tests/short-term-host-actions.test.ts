@@ -10,6 +10,7 @@ import {
 import {
   clearShortTermHostRecentFiles,
   classifyShortTermHostMenuCommand,
+  cancelShortTermHostTransientWorkflow,
   createShortTermHostActionState,
   dispatchShortTermHostMenuAction,
   openShortTermHostLocalFile,
@@ -427,6 +428,7 @@ test("short-term host action results expose action-specific PRD ids", async () =
   const textPrepared = prepareShortTermHostTextPreview(opened, {
     textElements: [{ textKey: "nickname", displayName: "昵称", supportedFields: ["text"] }]
   });
+  const cancelled = cancelShortTermHostTransientWorkflow(optimized);
   const saved = await saveShortTermHostOutput(optimized, host, {
     command: "saveAs",
     targetPath: "/Users/designer/private/optimized.svga"
@@ -438,6 +440,7 @@ test("short-term host action results expose action-specific PRD ids", async () =
   assert.deepEqual(renamed.lastAction?.prdIds, ["S11", "S14"]);
   assert.deepEqual(replaced.lastAction?.prdIds, ["S12", "S14"]);
   assert.deepEqual(textPrepared.lastAction?.prdIds, ["S13"]);
+  assert.deepEqual(cancelled.lastAction?.prdIds, ["S10", "S11", "S14"]);
   assert.deepEqual(saved.lastAction?.prdIds, ["S14"]);
   assert.deepEqual(clearedRecent.lastAction?.prdIds, ["S1", "S2", "S16"]);
 });
@@ -777,6 +780,65 @@ test("short-term host actions block cross-workflow dirty operations until discar
   });
   assert.equal(replaced.lastAction?.status, "completed");
   assert.equal(replaced.facade.model.activeOutput?.outputKind, "image_replacement_svga");
+});
+
+test("short-term host actions cancel active optimization and rename previews only", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const launchCancel = cancelShortTermHostTransientWorkflow(createShortTermHostActionState());
+  assert.equal(launchCancel.lastAction?.status, "blocked");
+  assert.equal(launchCancel.lastAction?.diagnostic?.code, "cancel_transient_requires_open_file");
+
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const idleCancel = cancelShortTermHostTransientWorkflow(opened);
+  assert.equal(idleCancel.lastAction?.status, "blocked");
+  assert.equal(idleCancel.lastAction?.diagnostic?.code, "transient_workflow_cancel_not_needed");
+
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+  const optimizationCancelled = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "cancelTransientWorkflow"
+  });
+  assert.equal(optimizationCancelled.lastAction?.status, "completed");
+  assert.equal(optimizationCancelled.lastAction?.action, "cancelTransientWorkflow");
+  assert.equal(optimizationCancelled.facade.model.activeWorkflow.kind, "optimizationCompare");
+  assert.equal(optimizationCancelled.facade.model.activeWorkflow.status, "cancelled");
+  assert.equal(optimizationCancelled.facade.model.activeOutput, undefined);
+  assert.equal(optimizationCancelled.activeOutputBytes, undefined);
+  assert.equal(commandEnabled(optimizationCancelled, "saveAs"), false);
+  assert.equal(commandEnabled(optimizationCancelled, "cancelTransientWorkflow"), false);
+
+  const failedRename = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "renameImageKey",
+    fromImageKey: "missing_key",
+    toImageKey: "profile_frame"
+  });
+  const failedCancel = cancelShortTermHostTransientWorkflow(failedRename);
+  assert.equal(failedCancel.lastAction?.status, "blocked");
+  assert.equal(failedCancel.lastAction?.diagnostic?.code, "transient_workflow_cancel_not_needed");
+
+  const renamed = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "renameImageKey",
+    fromImageKey: "img_frame",
+    toImageKey: "profile_frame"
+  });
+  const renameCancelled = await dispatchShortTermHostMenuAction(renamed, host, {
+    commandId: "cancelTransientWorkflow"
+  });
+  assert.equal(renameCancelled.lastAction?.status, "completed");
+  assert.equal(renameCancelled.facade.model.activeWorkflow.kind, "renamePreview");
+  assert.equal(renameCancelled.facade.model.activeWorkflow.status, "cancelled");
+  assert.equal(renameCancelled.facade.model.activeOutput, undefined);
+  assert.equal(renameCancelled.activeOutputBytes, undefined);
+  assert.equal(commandEnabled(renameCancelled, "saveAs"), false);
+  assert.equal(commandEnabled(renameCancelled, "cancelTransientWorkflow"), false);
 });
 
 test("short-term host actions allow repeated image replacement preview without discard confirmation", async () => {

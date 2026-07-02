@@ -13,6 +13,7 @@ import {
   markShortTermWorkbenchRecentFileMissing,
   openShortTermWorkbenchRecentFile,
   applyShortTermWorkbenchTextPreview,
+  cancelShortTermWorkbenchTransientWorkflow,
   createShortTermWorkbenchTextPreview,
   recoverShortTermWorkbenchPlayback,
   reportShortTermWorkbenchPlaybackFailure,
@@ -70,6 +71,7 @@ export type ShortTermHostActionKind =
   | "renameImageKey"
   | "replaceImage"
   | "resetImageReplacement"
+  | "cancelTransientWorkflow"
   | "prepareTextPreview"
   | "applyTextPreview"
   | "resetTextPreview"
@@ -181,6 +183,7 @@ export type ShortTermHostMenuActionInput =
   | ({ commandId: "replaceImage"; imageKey: string; pngBytes: Uint8Array } & ShortTermHostDirtyOperationInput)
   | { commandId: "resetImageReplacement" }
   | { commandId: "resetTextPreview" }
+  | { commandId: "cancelTransientWorkflow" }
   | ({ commandId: string } & Record<string, unknown>);
 
 export function createShortTermHostActionState(
@@ -482,6 +485,39 @@ export function resetShortTermHostImageReplacement(
     facade,
     activeOutputBytes: undefined
   }, result("resetImageReplacement", "completed", facade.model.activeWorkflow.message));
+}
+
+export function cancelShortTermHostTransientWorkflow(
+  state: ShortTermHostActionState
+): ShortTermHostActionState {
+  if (!state.facade.model.appState.currentFile || !state.facade.sourceBytes) {
+    return withLastAction(state, result("cancelTransientWorkflow", "blocked", "当前没有打开的 SVGA 可取消临时操作。", {
+      diagnostic: {
+        code: "cancel_transient_requires_open_file",
+        message: "Transient workflow cancellation requires opened source bytes."
+      }
+    }));
+  }
+
+  const workflowKind = state.facade.model.activeWorkflow.kind;
+  if (
+    (workflowKind !== "optimizationCompare" && workflowKind !== "renamePreview")
+      || !state.facade.model.activeOutput
+  ) {
+    return withLastAction(state, result("cancelTransientWorkflow", "blocked", "当前没有可取消的临时操作。", {
+      diagnostic: {
+        code: "transient_workflow_cancel_not_needed",
+        message: "Only active optimization comparison and rename preview outputs are cancellable in the short-term host action boundary."
+      }
+    }));
+  }
+
+  const facade = cancelShortTermWorkbenchTransientWorkflow(state.facade);
+  return withLastAction({
+    ...state,
+    facade,
+    activeOutputBytes: undefined
+  }, result("cancelTransientWorkflow", "completed", facade.model.activeWorkflow.message));
 }
 
 export async function saveShortTermHostOutput(
@@ -826,6 +862,8 @@ export async function dispatchShortTermHostMenuAction(
       return resetShortTermHostImageReplacement(state);
     case "resetTextPreview":
       return resetShortTermHostTextPreview(state);
+    case "cancelTransientWorkflow":
+      return cancelShortTermHostTransientWorkflow(state);
     default:
       return withLastAction(state, result("menuDispatch", "blocked", "当前菜单命令尚未接入主程动作。", {
         commandId: resultCommandId,

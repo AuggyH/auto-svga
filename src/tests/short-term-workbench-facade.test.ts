@@ -9,6 +9,7 @@ import {
 } from "./helpers/short-term-svga-fixtures.js";
 import {
   applyShortTermWorkbenchTextPreview,
+  cancelShortTermWorkbenchTransientWorkflow,
   clearShortTermWorkbenchRecentFiles,
   closeShortTermWorkbenchFile,
   completeShortTermWorkbenchOpen,
@@ -122,6 +123,14 @@ test("short-term workbench facade runs optimization compare and clears save stat
   assert.equal(compared.state.model.activeOutput?.outputKind, "optimized_svga");
   assert.equal(commandEnabled(compared.state.model.appState, "saveAs"), true);
   assert.equal(menuItemEnabled(compared.state.model, "saveAs"), true);
+  assert.equal(commandEnabled(compared.state.model.appState, "cancelTransientWorkflow"), true);
+  assert.equal(menuItemEnabled(compared.state.model, "cancelTransientWorkflow"), true);
+  const cancelledCompare = cancelShortTermWorkbenchTransientWorkflow(compared.state);
+  assert.equal(cancelledCompare.model.activeWorkflow.kind, "optimizationCompare");
+  assert.equal(cancelledCompare.model.activeWorkflow.status, "cancelled");
+  assert.equal(cancelledCompare.model.activeOutput, undefined);
+  assert.equal(commandEnabled(cancelledCompare.model.appState, "saveAs"), false);
+  assert.equal(commandEnabled(cancelledCompare.model.appState, "cancelTransientWorkflow"), false);
   assert.ok(plan);
   assert.equal(plan.targetDisplayName, "optimized.svga");
 
@@ -129,7 +138,11 @@ test("short-term workbench facade runs optimization compare and clears save stat
   assert.equal(failedRename.session.model.status, "failed");
   assert.equal(failedRename.state.model.activeOutput, undefined);
   assert.equal(commandEnabled(failedRename.state.model.appState, "saveAs"), false);
+  assert.equal(commandEnabled(failedRename.state.model.appState, "cancelTransientWorkflow"), false);
   assert.equal(menuItemEnabled(failedRename.state.model, "saveAs"), false);
+  const failedRenameCancel = cancelShortTermWorkbenchTransientWorkflow(failedRename.state);
+  assert.equal(failedRenameCancel.model.activeWorkflow.kind, "renamePreview");
+  assert.equal(failedRenameCancel.model.activeWorkflow.status, "failed");
 
   const saved = completeShortTermWorkbenchSave(compared.state, plan, compared.session.optimizedBytes);
   assert.equal(saved.result.status, "saveComplete");
@@ -197,6 +210,13 @@ test("short-term workbench facade exposes rename, image replacement, and text pr
   const renamed = await runShortTermWorkbenchRenamePreview(opened, "img_frame", "profile_frame");
   assert.equal(renamed.session.model.status, "renameDirty");
   assert.equal(renamed.state.model.activeOutput?.outputKind, "renamed_svga");
+  assert.equal(commandEnabled(renamed.state.model.appState, "cancelTransientWorkflow"), true);
+  const renameCancelled = cancelShortTermWorkbenchTransientWorkflow(renamed.state);
+  assert.equal(renameCancelled.model.activeWorkflow.kind, "renamePreview");
+  assert.equal(renameCancelled.model.activeWorkflow.status, "cancelled");
+  assert.equal(renameCancelled.model.activeOutput, undefined);
+  assert.equal(commandEnabled(renameCancelled.model.appState, "saveAs"), false);
+  assert.equal(commandEnabled(renameCancelled.model.appState, "cancelTransientWorkflow"), false);
 
   const replaced = await runShortTermWorkbenchImageReplacementPreview(
     opened,

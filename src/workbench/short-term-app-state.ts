@@ -311,6 +311,7 @@ function commandStates(state: Omit<ShortTermAppStateModel, "commands">): ShortTe
     command("saveAs", "File", "另存为", saveAsEnabled, "Shift+Cmd+S", "没有已验证的可保存输出"),
     command("copy", "Edit", "复制", true, "Cmd+C"),
     command("selectAll", "Edit", "全选", true, "Cmd+A"),
+    command("cancelTransientWorkflow", "Edit", "取消当前操作", false, "Esc", "当前没有可取消的临时操作"),
     command("toggleCompare", "View", "比较预览", canInspect, undefined, "需要先打开有效 SVGA"),
     command("playPause", "Playback", "播放/暂停", canPlay, "Space", "预览未就绪"),
     command("replay", "Playback", "重新播放", canInspect, undefined, "预览未就绪"),

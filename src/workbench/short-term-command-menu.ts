@@ -98,7 +98,9 @@ export function createShortTermCommandMenuModel(
         nativeItem("cut", "剪切", "cut", "Cmd+X"),
         commandItem(requiredCommand(lookup, "copy"), { role: "copy" }),
         nativeItem("paste", "粘贴", "paste", "Cmd+V"),
-        commandItem(requiredCommand(lookup, "selectAll"), { role: "selectAll" })
+        commandItem(requiredCommand(lookup, "selectAll"), { role: "selectAll" }),
+        separator("edit-workflow-separator"),
+        commandItem(requiredCommand(lookup, "cancelTransientWorkflow"))
       ]),
       menu("resource", "资源", [
         commandItem(requiredCommand(lookup, "renameImageKey")),

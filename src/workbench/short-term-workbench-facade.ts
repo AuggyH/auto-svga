@@ -320,6 +320,28 @@ export async function runShortTermWorkbenchRenamePreview(
   };
 }
 
+export function cancelShortTermWorkbenchTransientWorkflow(
+  state: ShortTermWorkbenchFacadeState
+): ShortTermWorkbenchFacadeState {
+  const workflow = state.model.activeWorkflow;
+  if (
+    !state.model.activeOutput
+      || (workflow.kind !== "optimizationCompare" && workflow.kind !== "renamePreview")
+  ) {
+    return state;
+  }
+  return buildFacadeStateWithOutput(state, {
+    activeWorkflow: {
+      kind: workflow.kind,
+      status: "cancelled",
+      playerAction: "returnToPreview",
+      message: workflow.kind === "renamePreview"
+        ? "已取消 imageKey 重命名预览，预览回到源文件状态。"
+        : "已取消当前比较预览，预览回到源文件状态。"
+    }
+  });
+}
+
 export async function runShortTermWorkbenchImageReplacementPreview(
   state: ShortTermWorkbenchFacadeState,
   imageKey: string,
@@ -569,6 +591,7 @@ function buildFacadeState(input: {
   const sourceBytes = input.sourceBytes ? new Uint8Array(input.sourceBytes) : undefined;
   const commandAppState = applyFacadeCommandAvailability(appState, {
     activeOutput,
+    activeWorkflow,
     imageReplacementSession,
     textPreviewSession
   });
@@ -595,6 +618,7 @@ function applyFacadeCommandAvailability(
   appState: ShortTermAppStateModel,
   input: {
     activeOutput?: ShortTermPersistedOutputRecord;
+    activeWorkflow: ShortTermFacadeWorkflowSummary;
     imageReplacementSession?: ShortTermImageReplacementPreviewSessionState;
     textPreviewSession?: ShortTermTextPreviewSessionState;
   }
@@ -602,9 +626,17 @@ function applyFacadeCommandAvailability(
   const imageResetEnabled = input.imageReplacementSession?.model.resetEnabled === true
     || input.activeOutput?.outputKind === "image_replacement_svga";
   const textResetEnabled = Boolean(input.textPreviewSession?.model.activeReplacement);
+  const cancelTransientEnabled = Boolean(input.activeOutput)
+    && (
+      input.activeWorkflow.kind === "optimizationCompare"
+        || input.activeWorkflow.kind === "renamePreview"
+    );
   return {
     ...appState,
     commands: appState.commands.map((command) => {
+      if (command.id === "cancelTransientWorkflow") {
+        return withCommandAvailability(command, cancelTransientEnabled, "当前没有可取消的临时操作");
+      }
       if (command.id === "resetImageReplacement") {
         return withCommandAvailability(command, imageResetEnabled, "当前没有需要重置的图片替换预览");
       }

@@ -19,6 +19,7 @@ test("short-term PRD trace centralizes command menu and host dispatch mappings",
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("openSvga"), ["S1", "S2"]);
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("openRecent:recent-a"), ["S1", "S2", "S16"]);
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("clearRecent"), ["S16"]);
+  assert.deepEqual(shortTermPrdIdsForCommandMenuItem("cancelTransientWorkflow"), ["S10", "S11", "S14"]);
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("renameImageKey"), ["S11", "S14"]);
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("resetImageReplacement"), ["S12", "S14"]);
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("editTextPreview"), ["S13"]);
@@ -28,6 +29,7 @@ test("short-term PRD trace centralizes command menu and host dispatch mappings",
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("openRecent:recent-a"), ["S1", "S2", "S16"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("clearRecent"), ["S1", "S2", "S16"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("quit"), ["S1", "S14"]);
+  assert.deepEqual(shortTermPrdIdsForMenuDispatch("cancelTransientWorkflow"), ["S10", "S11", "S14"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("resetImageReplacement"), ["S12", "S14"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("editTextPreview"), ["S13"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("resetTextPreview"), ["S13"]);
@@ -43,6 +45,7 @@ test("short-term PRD trace covers host action result mappings", () => {
   assert.deepEqual(shortTermPrdIdsForHostAction("renameImageKey"), ["S11", "S14"]);
   assert.deepEqual(shortTermPrdIdsForHostAction("replaceImage"), ["S12", "S14"]);
   assert.deepEqual(shortTermPrdIdsForHostAction("applyTextPreview"), ["S13"]);
+  assert.deepEqual(shortTermPrdIdsForHostAction("cancelTransientWorkflow"), ["S10", "S11", "S14"]);
   assert.deepEqual(shortTermPrdIdsForHostAction("save"), ["S14"]);
   assert.deepEqual(shortTermPrdIdsForHostAction("unknownAction"), []);
 });
