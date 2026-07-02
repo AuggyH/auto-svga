@@ -2,6 +2,8 @@
 
 This backlog records product candidates, not committed delivery dates. Items
 must still pass mainline, evidence, dependency, and client-readiness review.
+Committed mid-term scope lives in `docs/product/PRODUCT_ROADMAP.md`; this file
+is a candidate pool and must not override that PRD.
 
 ## Roadmap
 

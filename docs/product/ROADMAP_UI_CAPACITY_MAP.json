@@ -30,9 +30,9 @@
     },
     {
       "capability": "multi_format_workbench",
-      "phase": "Mid-term",
+      "phase": "Long-term",
       "hostRegions": ["source_document", "preview_stage", "inspector", "resources"],
-      "status": "mid_term_adapter_foundation"
+      "status": "long_term_adapter_foundation"
     },
     {
       "capability": "sweep_glow_shiny_ray_blend_particles_template_matching",

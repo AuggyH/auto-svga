@@ -368,30 +368,327 @@ fixtures are acceptable when real production assets cannot be committed.
 
 ## Mid-term Direction
 
-The mid-term version extends the short-term product after the short-term scope
-is accepted. It may add advanced editing and deeper repair flows, but only after
-each capability has explicit product acceptance criteria.
+The mid-term version turns Auto SVGA from a preview and inspection tool into a
+template-based SVGA motion editing tool. It still must not become a small,
+low-end After Effects clone. Users edit by selecting layers, applying bounded
+motion/effect templates, adjusting recommended parameter ranges, choosing
+preset easing curves, and compiling the result back into a real SVGA file.
 
-Mid-term capabilities:
+Mid-term work starts only after the short-term scope is accepted. Every
+capability below needs current-head product evidence before it can be called
+accepted.
 
-- Sequence-frame repair and anti-flicker optimization
-- Edit-mode layer operations
-- Advanced layer/property editing where SVGA semantics can be preserved
-- Batch or folder replacement with mapping review
-- Configurable production-spec versions and user-defined spec profiles
-- Replaceable-element naming rules with whitelist/blacklist regular
-  expressions
-- Audio asset parsing and duration display
-- Trusted macOS signing and notarization when credentials are available
-- Windows packaging plan after runtime and signing validation
+### Mid-term Product Principle
 
-Mid-term interaction expectations:
+- Import starts from a complete, already-composed, and clearly named SVGA file.
+  Designers are expected to place and name layer elements in AE before export.
+- The app may use deterministic rules based on file names, imageKeys, layer
+  names, dimensions, position, alpha bounds, overlap area, and left/right/top/
+  bottom relationships.
+- The app must not use external AI, multimodal analysis, cloud services, or
+  broad visual recognition in the mid-term version.
+- The app must not assemble an unordered asset folder into a finished avatar
+  frame in the mid-term version.
+- Edit mode owns mid-term editing. Preview mode remains the short-term
+  inspection/playback/optimization surface and must work on the compiled edited
+  SVGA.
+- No free keyframe editor, advanced timeline, expression/script editor, or
+  general composition authoring is exposed. Template parameters such as speed,
+  period, intensity, amplitude, direction, phase, and easing replace manual
+  timeline editing.
+- All persisted edits are either reversible in the edit session or gated by
+  explicit Overwrite Save / Save As after validation.
 
-- use Edit mode for advanced layer/property workflows
-- compare before/after repair output with clear affected-frame evidence
-- review batch findings before applying output changes
-- manage production-spec versions without editing repository code
-- keep every persisted edit reversible or explicitly Save/Save As gated
+### Mid-term Sub-version Plan
+
+| Sub-version | Theme | Product goal | Depends on |
+| --- | --- | --- | --- |
+| M1 | Edit foundation and transform output | Make Edit mode useful for layer transforms, preset curves, copy/paste, undo/redo, mirror transforms, and real SVGA compile-back. | Accepted short-term open/play/save flow and MVP transform/export primitives. |
+| M2 | Production rules, audio, and repair | Add configurable spec profiles, audio parsing/display/export toggle, and sequence-frame anti-flicker repair. | M1 output validation and short-term diagnostics. |
+| M3 | Template library MVP | Add transform templates, one advanced wing-flap template, common blend modes, basic light templates, and seeded basic particles. | M1 transform/curve system and M2 spec risk reporting. |
+| M4 | Semantic template recommendation | Analyze a normalized SVGA, recommend templates by deterministic layer semantics, and enter Edit mode with proposed plans. | M3 template library and layer classification. |
+| M5 | Advanced baked effects and distribution hardening | Add selected baked displacement/light extensions, later-stage particle controls, trusted macOS signing, and Windows packaging planning. | M1-M4 validation and performance evidence. |
+
+### Mid-term Required Capabilities
+
+| ID | Requirement | Product detail |
+| --- | --- | --- |
+| M1 | Edit-mode layer transform editing | Edit selected image layers using the five base properties: anchor, position, scale, rotation, and opacity. Existing short-term reserved Edit mode becomes active. |
+| M2 | Preset easing curves | All transform and template animations use preset curves only: `linear`, `easeIn`, `easeOut`, `easeInOut`, `sineIn`, `sineOut`, `sineInOut`, `quadIn`, `quadOut`, `quadInOut`, `cubicIn`, `cubicOut`, `cubicInOut`, `quartIn`, `quartOut`, `quartInOut`, `quintIn`, `quintOut`, `quintInOut`, `circIn`, `circOut`, `circInOut`, `backIn`, `backOut`, and `backInOut`. |
+| M3 | Template-parameter editing instead of timeline editing | Users adjust bounded template parameters such as speed, period, phase, amplitude, intensity, density, direction, width, and seed. They cannot create or drag arbitrary keyframes. |
+| M4 | Copy, paste, undo, and redo | Layer transform parameters and template effect settings support copy/paste. Every edit operation supports undo and redo with a save-point dirty state. |
+| M5 | Mirror layer mode for transforms | Selecting a layer can create a mirror-linked layer using axis symmetry or center symmetry. Transform edits on the source are applied to the mirror with direction, position, and rotation adjusted by mirror type. Light and particle effects do not apply to mirror links. |
+| M6 | Mirror output as real layers | Mirror-linked layers remain associated in Edit mode, but compile into real independent SVGA sprite/layer output. |
+| M7 | Compile edited SVGA and return to Preview mode | After editing, the app can compile edits into real SVGA bytes, switch to Preview mode, play the edited result, and run short-term Overview, asset, diagnostic, optimization, save, and comparison functions. |
+| M8 | Sequence-frame repair | Detect supported sequence-frame flicker cases, repair them fail-closed, show before/after affected-frame evidence, and produce validated edited SVGA bytes. |
+| M9 | Configurable production spec profiles | Users can choose repository-provided production spec versions without editing code. Active profile id and actual-vs-required values remain visible. |
+| M10 | User-defined production specs | Users can create or import a local custom production spec profile with validation, version label, and rollback to built-in profiles. |
+| M11 | Audio asset parsing and duration display | Parse SVGA audio assets when present, show audio asset rows and duration, and keep the short-term no-audio empty state truthful. |
+| M12 | Optional audio exclusion on export | When compiling edited SVGA output, users can choose not to export audio. No waveform editing, audio replacement, trimming, or volume editing is included in the mid-term version. |
+| M13 | Common blend-mode subset | Support the layer blend-mode subset `Normal`, `Add`, `Screen`, `Lighten`, `Multiply`, and `Overlay`. Unsupported blend modes must preserve, warn, bake, degrade, or block with explicit explanation. |
+| M14 | Basic transform templates | Provide reusable templates based on anchor, position, scale, rotation, and opacity changes, such as breathing, pulse, float, swing, rotate, pop, settle, and shimmer-like transform cycles. |
+| M15 | Advanced motion template MVP | Provide wing flap as the first advanced motion template. It combines anchor placement, rotation, scale, easing, phase, and optional baked bend/displacement to simulate wing motion. |
+| M16 | Deterministic wing joint estimation | For likely wing layers, estimate joint position using deterministic rules: name/layer semantics, layer side, bounding box, alpha bounds, and overlap area with frame/body layers. No AI or broad visual recognition is allowed. Low-confidence joint estimates require user review or manual anchor adjustment. |
+| M17 | Advanced transform/displacement boundary | Support a limited baked displacement path for effects such as bend and wave when needed by wing flap or similar templates. Output must be real SVGA through baked frames or generated assets and must show file-size and memory risk. |
+| M18 | Basic light templates | Provide sweep light, sparkle/star flash, and glow templates. Sweep supports direction/angle, linear or radial behavior, forward/reverse motion, density, width, opacity/intensity, easing, and supported blend modes. |
+| M19 | Advanced light template MVPs | Provide bounded edge-flow and energy-flow light templates when deterministic input evidence exists. Edge-flow applies sweep/glow/star accents to high-light or edge regions. Energy-flow may use generated fractal/noise-like assets, masks, and blend modes. |
+| M20 | Basic particle templates | Provide seeded particle templates only: upward floating particles, downward/falling particles including vertical and diagonal directions, and star sparkle particles. Parameters remain limited and recommended. |
+| M21 | Advanced particle system later-stage | Advanced particles are mid-term later-stage only. They may expose key parameters such as emitter binding, speed, and curve presets, but must not become a complete particle editor. |
+| M22 | Semantic SVGA analysis | Analyze imported static SVGA layer/resource names and geometry to identify likely wings, gems, crown, ribbon, ring, metal, glow, and left/right pairs. |
+| M23 | Template recommendation and add flow | After analysis, suggest suitable transform/light/particle templates and enter Edit mode with auto-loop playback. Users review and apply recommendations before bytes are changed. |
+| M24 | Edit operation tabs | In Edit mode, the right panel shows exactly three editing tabs for mid-term MVP: Transform, Light, and Particle. Each tab lists supported templates and limited parameters with recommended min/max ranges. |
+| M25 | Replaceable-element naming rule configuration | Add configurable whitelist/blacklist regular expressions for identifying designer-intended replaceable elements. |
+| M26 | Distribution hardening | Trusted macOS signing/notarization and Windows packaging planning may proceed when credentials, runtime validation, and package evidence are available. |
+
+### Mid-term Detailed Product Contracts
+
+#### Edit Session And Compile Contract
+
+- Edit mode works against an edit session derived from the opened SVGA. The
+  original SVGA bytes remain unchanged until explicit Overwrite Save.
+- Compile to Preview creates real edited SVGA bytes and hands those bytes to
+  the short-term Preview surfaces. The compiled Preview state is the save
+  candidate.
+- Returning from compiled Preview to Edit may continue from the current edit
+  session while the file remains open. Reopening a saved SVGA without a future
+  sidecar/project format treats it as an ordinary SVGA input, not as a fully
+  restorable authoring project.
+- A durable sidecar or project-session format is not part of the committed
+  mid-term scope unless Product Owner explicitly promotes it.
+
+#### Template Parameter Contract
+
+Every template promoted into a mid-term sub-version must define a small schema
+before implementation starts:
+
+- supported target layer roles
+- editable parameters, units, default value, recommended min/max, and hard
+  validation min/max
+- supported preset easing curves
+- deterministic seed behavior when randomness is used
+- whether the template affects transform, generated image assets, blend mode,
+  mask/matte, audio export, or compile-only baked output
+- preview strategy, compile strategy, unsupported-case behavior, and expected
+  size/memory risk fields
+
+Templates without this schema remain candidates and must not appear as inactive
+placeholders in the formal mid-term UI.
+
+#### Mirror Layer Contract
+
+- Mirror mode supports axis symmetry and center symmetry.
+- For axis symmetry, users can choose the mirror reference from canvas center
+  line, selected-layer center line, or a custom user-specified axis. The default
+  is canvas center line.
+- For center symmetry, users can choose the symmetry center from canvas center,
+  selected-layer center, or a custom user-specified point. The default is
+  canvas center.
+- Mirror links apply only to transform edits and transform-based templates.
+  Light and particle templates are not applied through mirror links.
+- Source-layer transform changes must map to mirror-layer position, direction,
+  rotation, and scale consistently with the selected mirror reference. For
+  example, a clockwise wing swing on the left side may become a counter-clockwise
+  swing on the mirrored right side with matched amplitude.
+- Compile output must write mirror results as real independent SVGA sprites or
+  layers. Edit mode may retain mirror-link metadata only inside the active edit
+  session.
+
+#### Blend Mode And Baked Output Contract
+
+- Mid-term blend mode support is limited to `Normal`, `Add`, `Screen`,
+  `Lighten`, `Multiply`, and `Overlay`.
+- SVGA has no committed native blend-mode field in the standard proto path, so
+  each supported blend mode must declare whether it is preview-only, baked into
+  generated image assets, approximated with fallback opacity, preserved as
+  metadata, or blocked for the current output path.
+- Unsupported blend modes must never silently become `Normal`. They must be
+  preserved, warned, baked, degraded, or blocked with an explicit report entry.
+- Preview and compiled output must use the same declared strategy or show a
+  visible warning when preview is only an approximation.
+
+#### Baked Effect Budget Contract
+
+Baked displacement, light, particle, and sequence-repair output must report:
+
+- generated asset count
+- generated frame count
+- random seed, when applicable
+- affected layer ids and resource ids
+- before/after file size
+- before/after estimated decoded memory
+- active production-spec profile and whether the result remains within limits
+- skipped, degraded, or blocked optimizations with reasons
+
+When an effect would exceed the active production-spec profile or the selected
+quality budget, the app must offer a lower-risk setting, keep the item
+suggestion-only, or block compile. It must not produce an oversized file without
+an explicit user-visible risk state.
+
+#### Semantic Analysis Contract
+
+- Mid-term semantic analysis is deterministic and local-only. It may use file
+  names, imageKeys, layer names, dimensions, alpha bounds, position, z-order,
+  overlap area, and left/right/top/bottom relationships.
+- The first committed naming vocabulary should cover common avatar-frame roles
+  such as wing/翅膀, gem/宝石, crown/皇冠, ribbon/飘带, ring/圆环, frame/主体,
+  metal/金属, glow/光效, left/right/L/R/左/右, top/bottom/上/下.
+- Every inferred role or pair must carry evidence and confidence. Ambiguous,
+  conflicting, missing, or low-confidence results remain suggestions and require
+  user review before applying templates.
+- Semantic analysis must not use external AI, broad visual recognition, network
+  services, or unordered asset-folder assembly.
+
+#### Wing Joint Estimation Contract
+
+- For likely wing layers, the app may estimate the joint by combining naming
+  evidence, side detection, bounding box, alpha bounds, and overlap area with
+  likely frame/body layers.
+- High-confidence estimates may prefill the anchor. Low-confidence estimates
+  must expose a review state and allow manual anchor adjustment before the wing
+  flap template is applied.
+- The report must include the chosen joint position, evidence used, confidence,
+  and whether the user confirmed or changed it.
+
+#### Audio Export Contract
+
+- Audio parsing in the mid-term version covers asset presence and duration
+  display only.
+- The export-audio toggle applies during compile. When disabled, compiled SVGA
+  output must remove `AudioEntity` entries and any audio bytes that are no
+  longer referenced by the output, while preserving unrelated image resources.
+- Reports must compare audio count and audio byte size before and after compile.
+- Audio replacement, waveform display, trimming, volume automation, and timing
+  editing remain out of mid-term scope.
+
+#### Undo, Redo, Copy, And Paste Contract
+
+Undo and redo must cover all edit-session mutations that can affect compiled
+output:
+
+- layer transform changes
+- anchor changes
+- template add/remove and parameter changes
+- mirror-link create/remove and mirror reference changes
+- semantic recommendation apply/reject actions
+- audio export toggle
+- replaceable-element naming-rule changes when they affect the open file
+
+Copy and paste must cover layer transform parameters and template settings.
+Pasting incompatible settings must fail with a clear reason instead of creating
+hidden partial state.
+
+#### Compile Invariant Contract
+
+Every mid-term compile must validate that output remains a standards-compliant
+SVGA and that preserved structures remain intentional:
+
+- no dangling `imageKey` or `matteKey`
+- sprite frame counts match movie frame count
+- resource key closure is complete
+- image, audio, matte, clipPath, and shape fields are preserved or explicitly
+  transformed by an accepted edit
+- unsupported or unknown structures are preserved, blocked, or reported; they
+  must not be silently dropped
+- compiled output can be reopened by the app and reaches Preview mode with
+  short-term Overview, assets, diagnostics, optimization, comparison, and save
+  behavior available
+
+#### Mid-term Verification Sample Matrix
+
+Mid-term validation should include at least these sample classes:
+
+| Sample class | Required coverage |
+| --- | --- |
+| Named wing pair | Semantic wing detection, joint estimate, mirror transform, wing flap compile. |
+| Ambiguous or low-confidence wing | Review state, manual anchor adjustment, no automatic template apply. |
+| No wing or unmatched side | No false positive auto-apply, recommendation remains absent or low confidence. |
+| Blend-mode fixtures | `Normal`, `Add`, `Screen`, `Lighten`, `Multiply`, `Overlay`, plus unsupported blend warning/block path. |
+| Audio fixture | Duration display, export with audio, export without audio, reopen proof. |
+| Mirror references | Canvas-center axis, layer-center axis, custom axis, canvas-center point, layer-center point, custom point. |
+| Baked displacement fixture | File-size and memory delta, compile proof, over-budget handling. |
+| Basic particles fixture | Seed reproducibility, generated asset report, output risk report. |
+| Sequence-flicker fixture | Supported repair success, unsupported fail-closed path, before/after evidence. |
+| Custom production spec | Built-in profile selection, custom import/validation, rollback to built-in profile. |
+
+#### Privacy And Temporary Asset Contract
+
+- All semantic analysis, preview, baking, and compile work remains local.
+- Temporary frames and generated assets may contain user artwork and must follow
+  the same local-file redaction, cleanup, and no-asset-commit rules as
+  short-term optimization output.
+- Reports may include filenames, resource ids, sizes, dimensions, hashes, and
+  redacted paths, but must not expose unnecessary absolute local paths.
+
+### Mid-term Interaction Model
+
+Default mid-term editing flow:
+
+1. Open or drag a complete static SVGA.
+2. Preview mode loads and verifies the file using short-term behavior.
+3. User enters Edit mode manually, or accepts a template recommendation flow
+   that enters Edit mode after semantic analysis.
+4. Left panel shows layers with thumbnail, layer name, semantic role, mirror
+   marker when present, and confidence markers for inferred semantics.
+5. Center canvas auto-loops playback and reflects current edit-session state.
+6. Right panel shows Transform, Light, and Particle tabs.
+7. User applies templates or edits bounded parameters.
+8. Copy/paste, undo/redo, reset, and dirty state remain visible and reliable.
+9. User compiles to Preview mode.
+10. The app generates real SVGA bytes, validates inflate/decode/reopen/playback,
+    and hands the compiled file to the short-term Preview mode surfaces.
+11. User chooses Overwrite Save or Save As.
+
+### Mid-term Output And Evidence Rules
+
+- Compiled output must be real SVGA bytes, not a project-only sidecar.
+- Original input bytes remain unchanged until explicit Overwrite Save.
+- Baked displacement, light, particle, and sequence repair outputs must show
+  before/after file size and estimated decoded memory.
+- Baked effects must record generated asset count, frame count, seed when
+  applicable, and affected layers.
+- Every compile must validate inflate, decode, resource reference closure,
+  sprite frame count, image/matte references, playback load, and save-state
+  consistency.
+- If a template or repair cannot preserve SVGA semantics, it must fail closed
+  or remain suggestion-only.
+- Reference sources: SVGA official proto defines `FrameEntity.alpha`,
+  `FrameEntity.transform`, `SpriteEntity.imageKey`, and audio fields
+  (`https://github.com/svga/SVGA-Format/blob/master/proto/svga.proto`);
+  Adobe After Effects blend modes are used as conceptual reference for the
+  common blend-mode subset
+  (`https://helpx.adobe.com/after-effects/using/blending-modes-layer-styles.html`).
+
+### Mid-term Acceptance Matrix
+
+| ID | Accept when | Required evidence |
+| --- | --- | --- |
+| M1-M3 | A selected layer can be transformed by bounded parameters and preset curves without exposing keyframe editing. | Edit-mode interaction proof, transform math proof, curve interpolation tests, no-free-keyframe UI proof. |
+| M4 | Copy/paste and undo/redo restore exact edit-session state and dirty state. | History model tests, UI proof, save-point proof. |
+| M5-M6 | Mirror layer mode creates correct mirrored motion and compiles to independent SVGA sprites. | Mirror transform proof, exported sprite proof, source/mirror direction proof. |
+| M7 | Edited output compiles, returns to Preview mode, plays, inspects, optimizes, and saves through short-term flows. | Compile report, reopen proof, Preview-mode proof, Save/Save As proof. |
+| M8 | Supported sequence flicker cases repair fail-closed and show affected-frame evidence. | Sequence repair report, before/after proof, alpha/visibility proof, unsupported-case proof. |
+| M9-M10 | Built-in and custom spec profiles can be selected, validated, compared, and restored. | Profile selection proof, custom profile validation, actual-vs-required UI proof. |
+| M11-M12 | Audio assets parse with duration, and export can include or exclude audio. | Audio parse fixture, duration proof, export-with-audio proof, export-without-audio proof. |
+| M13 | Supported blend modes preview and compile consistently, while unsupported modes are handled truthfully. | Blend-mode preview matrix, export/fallback report, unsupported-mode proof. |
+| M14-M17 | Transform and wing-flap templates produce controlled motion and, when baked displacement is used, report size/memory risk. | Template application proof, wing joint estimate proof, baked output report, file/memory delta proof. |
+| M18-M21 | Light and particle templates render deterministic seeded output with bounded parameters and risk reporting. | Template fixture proof, seed reproducibility proof, generated asset report, memory/file-size proof. |
+| M22-M23 | Semantic analysis recommends templates from deterministic naming/geometry evidence and requires user review before applying. | Classification report, recommendation proof, low-confidence review proof. |
+| M24 | Edit mode exposes Transform, Light, and Particle tabs only, without future inactive controls. | Screen-state proof and no-placeholder audit. |
+| M25 | Replaceable-element naming rules can be configured without showing every automatic image key as replaceable. | Regex config proof, include/exclude examples, fallback proof. |
+| M26 | Distribution hardening claims are tied to actual signing, notarization, Windows runtime, and package evidence. | Package evidence, signing/notarization result, Windows validation plan. |
+
+### Mid-term Non-goals
+
+- Free keyframe editing, dope sheet, graph editor, or advanced timeline.
+- AE expression scripting, user scripts, or plugin execution.
+- Full mesh deformation, rigging, bone/skin weights, or arbitrary shape editing.
+- Complete particle editor comparable to Particular.
+- Automatic assembly of unordered asset folders into a complete avatar frame.
+- External AI, multimodal, cloud, or ComfyUI-based semantic recognition.
+- Direct Figma, PSD, Sketch, After Effects, C4D, or Blender project import.
+- Multi-format intake, conversion, and recommendation; those remain long-term
+  unless the Product Owner explicitly changes the roadmap.
+- Audio waveform editing, audio replacement, trimming, or volume automation.
 
 ## Long-term Direction
 
