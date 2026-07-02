@@ -208,12 +208,17 @@ function normalizeRecentRecords(
 ): ShortTermRecentFileHostRecord[] {
   const normalized: ShortTermRecentFileHostRecord[] = [];
   const seen = new Set<string>();
+  const seenIds = new Set<string>();
   for (const input of records) {
-    const record = createRecentRecord(input, options);
+    let record = createRecentRecord(input, options);
     if (!record) continue;
     const key = dedupeKey(record);
     if (seen.has(key)) continue;
     seen.add(key);
+    if (seenIds.has(record.id)) {
+      record = { ...record, id: uniqueRecentId(record.localPath, seenIds) };
+    }
+    seenIds.add(record.id);
     normalized.push(record);
   }
   return normalized
@@ -286,6 +291,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function sanitizeIdentifier(value: unknown): string {
   return typeof value === "string" ? value.replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "") : "";
+}
+
+function uniqueRecentId(localPath: string, seenIds: ReadonlySet<string>): string {
+  const base = `recent-${sha256(localPath).slice(0, 16)}`;
+  if (!seenIds.has(base)) return base;
+  let suffix = 2;
+  while (seenIds.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
 }
 
 function isoTimestamp(value: unknown): string {

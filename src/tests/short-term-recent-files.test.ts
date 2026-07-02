@@ -98,6 +98,32 @@ test("short-term recent files de-duplicate by local path and promote reopened fi
   assert.equal(next.records[1].displayName, "b.svga");
 });
 
+test("short-term recent files prevent duplicate renderer ids from restored host records", () => {
+  const state = createShortTermRecentFilesState([
+    {
+      id: "recent-duplicate",
+      localPath: "/Users/designer/frames/a.svga",
+      lastOpenedAt: "2026-07-02T00:00:00.000Z"
+    },
+    {
+      id: "recent-duplicate",
+      localPath: "/Users/designer/frames/b.svga",
+      lastOpenedAt: "2026-07-02T00:01:00.000Z"
+    }
+  ]);
+  const view = createShortTermRecentFilesViewModel(state);
+  const ids = view.menuRecentFiles.map((record) => record.id);
+
+  assert.equal(state.records.length, 2);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(ids.includes("recent-duplicate"), true);
+  assert.equal(ids.some((id) => id.startsWith("recent-") && id !== "recent-duplicate"), true);
+  for (const id of ids) {
+    const resolved = resolveShortTermRecentOpen(state, id, "recentMenu", `request-${id}`);
+    assert.equal(resolved.status, "ready");
+  }
+});
+
 test("short-term recent files resolve recent open requests for the shared loading flow", () => {
   const state = createShortTermRecentFilesState([
     {
