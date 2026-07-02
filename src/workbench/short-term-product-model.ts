@@ -46,9 +46,22 @@ export interface ShortTermReplaceableImageElement {
   usageCount: number;
 }
 
+export type ShortTermRuntimeTextField = "text";
+
+export interface ShortTermReplaceableTextElement {
+  index: number;
+  textKey: string;
+  imageKey: string;
+  resourceId: string;
+  displayName: string;
+  initialText: string;
+  supportedFields: readonly ShortTermRuntimeTextField[];
+  anchorSource: "designerNamedImageKey";
+}
+
 export interface ShortTermReplaceableElementsModel {
   images: readonly ShortTermReplaceableImageElement[];
-  texts: readonly never[];
+  texts: readonly ShortTermReplaceableTextElement[];
   emptyCopy: string;
   textPreviewCopy: string;
 }
@@ -110,13 +123,15 @@ export function createShortTermProductInspectionModel(
 ): ShortTermProductInspectionModel {
   const sequenceGroups = groupSequenceResources(report.assetIntelligence.resources);
   const sequenceResourceIds = new Set(sequenceGroups.flatMap(({ resources }) => resources.map(({ resourceId }) => resourceId)));
-  const replaceableImages = replaceableImageElements(report.assetIntelligence.resources);
+  const replaceableTexts = replaceableTextElements(report.assetIntelligence.resources);
+  const replaceableTextResourceIds = new Set(replaceableTexts.map(({ resourceId }) => resourceId));
+  const replaceableImages = replaceableImageElements(report.assetIntelligence.resources, replaceableTextResourceIds);
   const audioResources = report.assetIntelligence.resources.filter(({ kind }) => kind === "audio");
 
   return {
     schemaVersion: SHORT_TERM_PRODUCT_MODEL_SCHEMA_VERSION,
     source: "avatar-frame-inspection-report",
-    prdIds: ["S3", "S4", "S5", "S6", "S7", "S8", "S15"],
+    prdIds: ["S3", "S4", "S5", "S6", "S7", "S8", "S13", "S15"],
     overview: {
       profileId: report.profileId,
       profileLabel: report.profileLabel,
@@ -136,11 +151,13 @@ export function createShortTermProductInspectionModel(
     ],
     replaceableElements: {
       images: replaceableImages,
-      texts: [],
+      texts: replaceableTexts,
       emptyCopy: replaceableImages.length === 0
         ? "未发现设计师命名的可替换图片元素。自动命名资源不会出现在这里。"
         : "",
-      textPreviewCopy: "短期版本仅支持运行时文本预览，不写入 SVGA 字节。"
+      textPreviewCopy: replaceableTexts.length === 0
+        ? "未发现设计师命名的文本锚点。短期版本仅支持运行时文本预览，不写入 SVGA 字节。"
+        : "文本会叠加到对应 imageKey 的预览位置，不写入 SVGA 字节。"
     },
     optimization: optimizationModel(report.assetIntelligence.findings, report.assetIntelligence.summary)
   };
@@ -267,10 +284,11 @@ function audioAssetRow(resources: readonly AssetIntelligenceResourceNode[]): Sho
 }
 
 function replaceableImageElements(
-  resources: readonly AssetIntelligenceResourceNode[]
+  resources: readonly AssetIntelligenceResourceNode[],
+  excludedResourceIds: ReadonlySet<string> = new Set()
 ): ShortTermReplaceableImageElement[] {
   return resources
-    .filter(isReplaceableImageResource)
+    .filter((resource) => isReplaceableImageResource(resource) && !excludedResourceIds.has(resource.resourceId))
     .sort((left, right) => left.name.localeCompare(right.name) || left.resourceId.localeCompare(right.resourceId))
     .map((resource, index) => ({
       index: index + 1,
@@ -280,6 +298,39 @@ function replaceableImageElements(
       fileSize: formatBytes(resource.compressedSizeBytes),
       usageCount: resource.usageCount
     }));
+}
+
+function replaceableTextElements(
+  resources: readonly AssetIntelligenceResourceNode[]
+): ShortTermReplaceableTextElement[] {
+  return resources
+    .filter(isReplaceableTextAnchorResource)
+    .sort((left, right) => left.name.localeCompare(right.name) || left.resourceId.localeCompare(right.resourceId))
+    .map((resource, index) => ({
+      index: index + 1,
+      textKey: resource.name,
+      imageKey: resource.name,
+      resourceId: resource.resourceId,
+      displayName: displayNameFromTextKey(resource.name),
+      initialText: "SVGA VIP",
+      supportedFields: ["text"],
+      anchorSource: "designerNamedImageKey"
+    }));
+}
+
+function isReplaceableTextAnchorResource(resource: AssetIntelligenceResourceNode): boolean {
+  return isReplaceableImageResource(resource) && isTextAnchorName(resource.name);
+}
+
+function isTextAnchorName(imageKey: string): boolean {
+  return /(^|[_-])(text|txt|label|title|name|nickname|nick|level|caption|copy)([_-]|$)/i.test(imageKey)
+    || /(文本|昵称|标题|等级|文案)/u.test(imageKey);
+}
+
+function displayNameFromTextKey(textKey: string): string {
+  return textKey
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (value) => value.toUpperCase());
 }
 
 function optimizationModel(

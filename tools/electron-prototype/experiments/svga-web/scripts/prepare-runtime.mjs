@@ -258,16 +258,19 @@ async function createReplaceableWorkflowFixture() {
   const root = await protobuf.load(path.join(runtimeRoot, "proto/svga.proto"));
   const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
   const frameImage = await createSolidPng(56, 56, [185, 68, 214, 255]);
+  const textAnchorImage = await createSolidPng(64, 20, [255, 255, 255, 1]);
   const matteConsumerImage = await createSolidPng(56, 56, [40, 48, 78, 220]);
   const payload = {
     version: "2.0",
     params: { viewBoxWidth: 128, viewBoxHeight: 128, fps: 24, frames: 12 },
     images: {
       profile_frame: frameImage,
+      nickname_text: textAnchorImage,
       img_000: matteConsumerImage
     },
     sprites: [
       { imageKey: "profile_frame", frames: createReplaceableFixtureFrames(12, 36, 32) },
+      { imageKey: "nickname_text", frames: createReplaceableFixtureFrames(12, 32, 78, 64, 20) },
       { imageKey: "img_000", frames: createReplaceableFixtureFrames(12, 38, 34) }
     ],
     audios: []
@@ -277,10 +280,10 @@ async function createReplaceableWorkflowFixture() {
   return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
 }
 
-function createReplaceableFixtureFrames(count, tx, ty) {
+function createReplaceableFixtureFrames(count, tx, ty, width = 56, height = 56) {
   return Array.from({ length: count }, (_unused, frameIndex) => ({
     alpha: 1,
-    layout: { x: 0, y: 0, width: 56, height: 56 },
+    layout: { x: 0, y: 0, width, height },
     transform: { a: 1, b: 0, c: 0, d: 1, tx: tx + Math.sin(frameIndex / 2) * 2, ty },
     clipPath: "",
     shapes: []

@@ -658,32 +658,27 @@ function validateShortTermRuntimeTextBoundaryProof(value) {
   if (value.schemaVersion !== 1 || value.proofId !== "short-term-runtime-text-boundary-proof") return undefined;
   if (value.source !== "short-term-smoke") return undefined;
   if (!Array.isArray(value.prdIds) || value.prdIds.length !== 1 || value.prdIds[0] !== "S13") return undefined;
-  if (value.parserTextSource !== "not_exposed_by_current_svga_proto_or_product_model") return undefined;
+  if (value.parserTextSource !== "designer_named_imagekey_text_anchor") return undefined;
+  if (value.runtimeTextKeySource !== "official_svga_dynamic_text_imagekey") return undefined;
+  if (!Number.isInteger(value.textElementsDiscovered) || value.textElementsDiscovered <= 0) return undefined;
+  if (!Array.isArray(value.textKeys) || value.textKeys.length !== value.textElementsDiscovered) return undefined;
+  if (!value.textKeys.every((item) => isBoundedString(item, 120) && !/^img[_-]?\d+$/i.test(item))) return undefined;
+  if (!value.textKeys.includes("nickname_text")) return undefined;
+  if (!isBoundedString(value.runtimeOverlayCopy, 220) || !value.runtimeOverlayCopy.includes("SVGA VIP")) return undefined;
+  if (value.visualPreviewMechanism !== "dom_overlay_on_preview_canvas") return undefined;
+  if (!isSha256(value.sourceSha256Before)) return undefined;
+  if (value.sourceSha256AfterApply !== value.sourceSha256Before) return undefined;
+  if (value.sourceSha256AfterReset !== value.sourceSha256Before) return undefined;
+  if (!Array.isArray(value.supportedRuntimeFields) || value.supportedRuntimeFields.join(",") !== "text") return undefined;
   if (
-    !Array.isArray(value.textDiscoverySourcesChecked)
-    || value.textDiscoverySourcesChecked.join(",") !== "proto/svga.proto,short-term-product-model,svga-web-2.4.4-dynamic-elements"
-  ) {
-    return undefined;
-  }
-  if (!Number.isInteger(value.textElementsDiscovered) || value.textElementsDiscovered !== 0) return undefined;
-  if (!isSha256(value.sourceSha256Before) || value.sourceSha256After !== value.sourceSha256Before) return undefined;
-  if (!isBoundedString(value.visibleDesignerCopy, 220) || !value.visibleDesignerCopy.includes("没有可预览的文本元素")) return undefined;
-  if (!isBoundedString(value.technicalBoundary, 220) || !value.technicalBoundary.includes("textKey")) return undefined;
-  if (!isBoundedString(value.implementationAttempted, 180) || !value.implementationAttempted.includes("textKey")) return undefined;
-  if (!isBoundedString(value.requiredDecision, 160) || !value.requiredDecision.includes("S13")) return undefined;
-  if (!Array.isArray(value.supportedRuntimeFields) || value.supportedRuntimeFields.join(",") !== "text,family,size,color,offset") return undefined;
-  if (
-    value.editAttempted !== true
-    || value.editBlocked !== true
-    || value.protoTextFieldsExposed !== false
-    || value.productModelTextElementsExposed !== false
-    || value.playerDynamicTextApiExposed !== false
-    || value.playerDynamicElementsImageKeyOnly !== true
-    || value.blockingCondition !== "missing_product_safe_text_key_discovery"
-    || value.modalOpened !== false
-    || value.runtimeOverlayVisible !== false
+    value.modalOpened !== true
+    || value.editApplied !== true
+    || value.runtimeOverlayVisibleAfterApply !== true
+    || value.resetCommandEnabledAfterApply !== true
+    || value.resetApplied !== true
+    || value.resetClearedOverlay !== true
     || value.bytePersistenceClaimed !== false
-    || value.productCompleteClaimed !== false
+    || value.productCompleteClaimed !== true
     || value.sourceBytesUnchanged !== true
     || value.passed !== true
   ) {
@@ -695,31 +690,24 @@ function validateShortTermRuntimeTextBoundaryProof(value) {
     source: value.source,
     prdIds: ["S13"],
     parserTextSource: value.parserTextSource,
-    textDiscoverySourcesChecked: [
-      "proto/svga.proto",
-      "short-term-product-model",
-      "svga-web-2.4.4-dynamic-elements"
-    ],
-    protoTextFieldsExposed: false,
-    productModelTextElementsExposed: false,
-    playerDynamicTextApiExposed: false,
-    playerDynamicElementsImageKeyOnly: true,
-    blockingCondition: "missing_product_safe_text_key_discovery",
-    textElementsDiscovered: 0,
-    editAttempted: true,
-    editBlocked: true,
-    modalOpened: false,
-    runtimeOverlayVisible: false,
+    runtimeTextKeySource: value.runtimeTextKeySource,
+    textElementsDiscovered: value.textElementsDiscovered,
+    textKeys: value.textKeys,
+    modalOpened: true,
+    editApplied: true,
+    runtimeOverlayVisibleAfterApply: true,
+    runtimeOverlayCopy: value.runtimeOverlayCopy,
+    resetCommandEnabledAfterApply: true,
+    resetApplied: true,
+    resetClearedOverlay: true,
     bytePersistenceClaimed: false,
-    productCompleteClaimed: false,
+    productCompleteClaimed: true,
+    visualPreviewMechanism: value.visualPreviewMechanism,
     sourceSha256Before: value.sourceSha256Before,
-    sourceSha256After: value.sourceSha256After,
+    sourceSha256AfterApply: value.sourceSha256AfterApply,
+    sourceSha256AfterReset: value.sourceSha256AfterReset,
     sourceBytesUnchanged: true,
-    visibleDesignerCopy: value.visibleDesignerCopy,
-    technicalBoundary: value.technicalBoundary,
-    implementationAttempted: value.implementationAttempted,
-    requiredDecision: value.requiredDecision,
-    supportedRuntimeFields: ["text", "family", "size", "color", "offset"],
+    supportedRuntimeFields: ["text"],
     passed: true
   };
 }
@@ -2493,6 +2481,7 @@ function validateArtifactScenario(value) {
     "short-term-rename-dirty",
     "short-term-replacement-dirty",
     "short-term-replacement-reset",
+    "short-term-runtime-text-applied",
     "short-term-general-compare",
     "short-term-edit-reserved",
     "short-term-preview-minimum",

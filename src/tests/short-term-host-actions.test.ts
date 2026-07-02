@@ -1600,7 +1600,7 @@ function inspectionFixture(): ShortTermProductInspectionModel {
   return {
     schemaVersion: 1,
     source: "avatar-frame-inspection-report",
-    prdIds: ["S3", "S4", "S5", "S6", "S7", "S8", "S15"],
+    prdIds: ["S3", "S4", "S5", "S6", "S7", "S8", "S13", "S15"],
     overview: {
       profileId: "production_target",
       profileLabel: "Avatar Frame Production Target",

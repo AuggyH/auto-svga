@@ -155,18 +155,25 @@ const requirements = [
   {
     id: "S13",
     title: "Preview replaceable text",
-    summary: "Current proto, product model, and player bridge expose no product-safe text keys; the app fails closed without byte mutation.",
+    summary: "Designer-named text ImageKey anchors can be edited in runtime preview, reset, and proven source-immutable without claiming byte persistence.",
     proof: "short-term-runtime-text-boundary-proof.json",
-    blockedWhen: (proof) => proof?.productCompleteClaimed === false
-      && proof?.editBlocked === true
+    passWhen: (proof, ctx) => proof?.passed === true
+      && proof?.productCompleteClaimed === true
+      && proof?.parserTextSource === "designer_named_imagekey_text_anchor"
+      && proof?.runtimeTextKeySource === "official_svga_dynamic_text_imagekey"
+      && proof?.textElementsDiscovered > 0
+      && Array.isArray(proof?.textKeys)
+      && proof.textKeys.includes("nickname_text")
+      && proof?.modalOpened === true
+      && proof?.editApplied === true
+      && proof?.runtimeOverlayVisibleAfterApply === true
+      && proof?.resetCommandEnabledAfterApply === true
+      && proof?.resetApplied === true
+      && proof?.resetClearedOverlay === true
       && proof?.sourceBytesUnchanged === true
-      && proof?.protoTextFieldsExposed === false
-      && proof?.productModelTextElementsExposed === false
-      && proof?.playerDynamicTextApiExposed === false
-      && proof?.playerDynamicElementsImageKeyOnly === true
-      && proof?.blockingCondition === "missing_product_safe_text_key_discovery",
-    evidence: ["short-term-runtime-text-boundary-proof.json"],
-    blocker: "SVGA proto/product inspection model and the current svga-web player bridge do not expose product-safe runtime text keys for a real modal preview flow."
+      && proof?.bytePersistenceClaimed === false
+      && ctx.hasArtifact("short-term-runtime-text-applied.png"),
+    evidence: ["short-term-runtime-text-boundary-proof.json", "short-term-runtime-text-applied.png"]
   },
   {
     id: "S14",

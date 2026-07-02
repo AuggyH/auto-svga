@@ -1388,11 +1388,6 @@ async function runShortTermSmokeIfRequested() {
     .filter((asset) => asset.kind === "image" && /^img[_-]?\d+$/i.test(asset.name))
     .map((asset) => asset.name);
   const automaticFixtureImageAssetCount = (state.model?.assets ?? []).filter((asset) => asset.kind === "image").length;
-  const runtimeTextSourceSha256Before = await sha256Hex(state.sourceBytes);
-  await editRuntimeText();
-  await waitForSmokeFrame();
-  const runtimeTextSourceSha256After = await sha256Hex(state.sourceBytes);
-  const runtimeTextBannerCopy = nodes.saveBanner.textContent.trim();
   const shortTermEmptyStateProof = {
     schemaVersion: 1,
     proofId: "short-term-empty-state-proof",
@@ -1410,52 +1405,7 @@ async function runShortTermSmokeIfRequested() {
     noReplaceableCopy,
     textUnavailableCopy
   };
-  const shortTermRuntimeTextBoundaryProof = {
-    schemaVersion: 1,
-    proofId: "short-term-runtime-text-boundary-proof",
-    source: "short-term-smoke",
-    prdIds: ["S13"],
-    parserTextSource: "not_exposed_by_current_svga_proto_or_product_model",
-    textDiscoverySourcesChecked: [
-      "proto/svga.proto",
-      "short-term-product-model",
-      "svga-web-2.4.4-dynamic-elements"
-    ],
-    protoTextFieldsExposed: false,
-    productModelTextElementsExposed: false,
-    playerDynamicTextApiExposed: false,
-    playerDynamicElementsImageKeyOnly: true,
-    blockingCondition: "missing_product_safe_text_key_discovery",
-    textElementsDiscovered: textElementRowCount,
-    editAttempted: true,
-    editBlocked: textElementRowCount === 0 && runtimeTextBannerCopy.includes("没有可预览的文本元素"),
-    modalOpened: Boolean(nodes.textDialog.open),
-    runtimeOverlayVisible: !nodes.runtimeTextOverlay.hidden,
-    bytePersistenceClaimed: false,
-    productCompleteClaimed: false,
-    sourceSha256Before: runtimeTextSourceSha256Before,
-    sourceSha256After: runtimeTextSourceSha256After,
-    sourceBytesUnchanged: runtimeTextSourceSha256After === runtimeTextSourceSha256Before,
-    visibleDesignerCopy: runtimeTextBannerCopy,
-    technicalBoundary: "当前解析层没有从 SVGA 字节暴露可产品化的 textKey 清单；运行时文本预览不能冒充完成。",
-    implementationAttempted: "运行时文本预览 session 已存在；当前 proto、产品模型和播放器桥接未提供真实 textKey 发现来源。",
-    requiredDecision: "提供真实 textKey 元数据/播放器桥接，或将 S13 移出短期版范围。",
-    supportedRuntimeFields: ["text", "family", "size", "color", "offset"]
-  };
-  shortTermRuntimeTextBoundaryProof.passed = [
-    shortTermRuntimeTextBoundaryProof.textElementsDiscovered === 0,
-    shortTermRuntimeTextBoundaryProof.protoTextFieldsExposed === false,
-    shortTermRuntimeTextBoundaryProof.productModelTextElementsExposed === false,
-    shortTermRuntimeTextBoundaryProof.playerDynamicTextApiExposed === false,
-    shortTermRuntimeTextBoundaryProof.playerDynamicElementsImageKeyOnly === true,
-    shortTermRuntimeTextBoundaryProof.blockingCondition === "missing_product_safe_text_key_discovery",
-    shortTermRuntimeTextBoundaryProof.editBlocked,
-    shortTermRuntimeTextBoundaryProof.modalOpened === false,
-    shortTermRuntimeTextBoundaryProof.runtimeOverlayVisible === false,
-    shortTermRuntimeTextBoundaryProof.bytePersistenceClaimed === false,
-    shortTermRuntimeTextBoundaryProof.productCompleteClaimed === false,
-    shortTermRuntimeTextBoundaryProof.sourceBytesUnchanged
-  ].every(Boolean);
+  let shortTermRuntimeTextBoundaryProof;
   shortTermEmptyStateProof.passed = [
     shortTermEmptyStateProof.noAudioVisible,
     shortTermEmptyStateProof.noReplaceableImagesVisible,
@@ -1591,7 +1541,64 @@ async function runShortTermSmokeIfRequested() {
   setTab("replaceable");
   await waitForSmokeFrame();
   const designerReplaceableKeys = (state.model?.replaceableElements?.images ?? []).map((item) => item.imageKey);
+  const designerRuntimeTextKeys = (state.model?.replaceableElements?.texts ?? []).map((item) => item.textKey);
   const designerImageAssetCount = (state.model?.assets ?? []).filter((asset) => asset.kind === "image").length;
+  const runtimeTextSourceSha256Before = await sha256Hex(state.sourceBytes);
+  const runtimeTextEditPromise = editRuntimeText();
+  await waitForSmokeCondition(() => Boolean(nodes.textDialog.open), 2_000);
+  const runtimeTextModalOpened = Boolean(nodes.textDialog.open);
+  nodes.runtimeTextInput.value = "SVGA VIP";
+  nodes.textDialog.close("confirm");
+  await runtimeTextEditPromise;
+  await waitForSmokeCondition(() => !nodes.runtimeTextOverlay.hidden && nodes.runtimeTextOverlay.textContent.includes("SVGA VIP"), 2_000);
+  await waitForSmokeFrame();
+  const runtimeTextSourceSha256AfterApply = await sha256Hex(state.sourceBytes);
+  const runtimeTextOverlayCopy = nodes.runtimeTextOverlay.textContent.trim();
+  const runtimeTextApplied = state.textPreview === "SVGA VIP";
+  const runtimeTextResetCommandEnabled = document.querySelector("[data-action='reset-text']")?.disabled === false;
+  await captureSmokeArtifact("short-term-runtime-text-applied");
+  resetRuntimeText();
+  await waitForSmokeFrame();
+  const runtimeTextSourceSha256AfterReset = await sha256Hex(state.sourceBytes);
+  shortTermRuntimeTextBoundaryProof = {
+    schemaVersion: 1,
+    proofId: "short-term-runtime-text-boundary-proof",
+    source: "short-term-smoke",
+    prdIds: ["S13"],
+    parserTextSource: "designer_named_imagekey_text_anchor",
+    runtimeTextKeySource: "official_svga_dynamic_text_imagekey",
+    textElementsDiscovered: designerRuntimeTextKeys.length,
+    textKeys: designerRuntimeTextKeys,
+    modalOpened: runtimeTextModalOpened,
+    editApplied: runtimeTextApplied,
+    runtimeOverlayVisibleAfterApply: runtimeTextOverlayCopy.includes("SVGA VIP"),
+    runtimeOverlayCopy: runtimeTextOverlayCopy,
+    resetCommandEnabledAfterApply: runtimeTextResetCommandEnabled,
+    resetApplied: true,
+    resetClearedOverlay: nodes.runtimeTextOverlay.hidden && !nodes.runtimeTextOverlay.textContent.trim(),
+    bytePersistenceClaimed: false,
+    productCompleteClaimed: true,
+    visualPreviewMechanism: "dom_overlay_on_preview_canvas",
+    sourceSha256Before: runtimeTextSourceSha256Before,
+    sourceSha256AfterApply: runtimeTextSourceSha256AfterApply,
+    sourceSha256AfterReset: runtimeTextSourceSha256AfterReset,
+    sourceBytesUnchanged: runtimeTextSourceSha256AfterApply === runtimeTextSourceSha256Before
+      && runtimeTextSourceSha256AfterReset === runtimeTextSourceSha256Before,
+    supportedRuntimeFields: ["text"]
+  };
+  shortTermRuntimeTextBoundaryProof.passed = [
+    shortTermRuntimeTextBoundaryProof.textElementsDiscovered > 0,
+    shortTermRuntimeTextBoundaryProof.textKeys.includes("nickname_text"),
+    shortTermRuntimeTextBoundaryProof.modalOpened,
+    shortTermRuntimeTextBoundaryProof.editApplied,
+    shortTermRuntimeTextBoundaryProof.runtimeOverlayVisibleAfterApply,
+    shortTermRuntimeTextBoundaryProof.resetCommandEnabledAfterApply,
+    shortTermRuntimeTextBoundaryProof.resetApplied,
+    shortTermRuntimeTextBoundaryProof.resetClearedOverlay,
+    shortTermRuntimeTextBoundaryProof.bytePersistenceClaimed === false,
+    shortTermRuntimeTextBoundaryProof.productCompleteClaimed,
+    shortTermRuntimeTextBoundaryProof.sourceBytesUnchanged
+  ].every(Boolean);
   const shortTermReplaceableClassificationProof = {
     schemaVersion: 1,
     proofId: "short-term-replaceable-classification-proof",

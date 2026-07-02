@@ -17,7 +17,7 @@ test("short-term product model exposes Overview facts and grouped assets", () =>
   const model = createShortTermProductInspectionModel(reportFixture());
 
   assert.equal(model.schemaVersion, 1);
-  assert.deepEqual(model.prdIds, ["S3", "S4", "S5", "S6", "S7", "S8", "S15"]);
+  assert.deepEqual(model.prdIds, ["S3", "S4", "S5", "S6", "S7", "S8", "S13", "S15"]);
   assert.deepEqual(
     model.overview.facts.map(({ id, value, requirement, status }) => ({ id, value, requirement, status })),
     [
@@ -25,12 +25,12 @@ test("short-term product model exposes Overview facts and grouped assets", () =>
       { id: "decodedMemory", value: "1.5 MiB", requirement: "低风险 <= 4 MiB", status: "pass" },
       { id: "canvas", value: "300 x 300", requirement: "<= 300 x 300", status: "pass" },
       { id: "fps", value: "30", requirement: "<= 24", status: "fail" },
-      { id: "assetCount", value: "8", requirement: "<= 32", status: "pass" },
+      { id: "assetCount", value: "9", requirement: "<= 32", status: "pass" },
       { id: "duration", value: "2400 ms", requirement: "<= 3000 ms", status: "pass" }
     ]
   );
   assert.deepEqual(model.overview.assetSummary, {
-    imageResourceCount: 8,
+    imageResourceCount: 9,
     sequenceGroupCount: 1,
     replaceableImageCount: 1,
     findingCount: 3
@@ -76,8 +76,27 @@ test("short-term product model keeps replaceable elements separate from ordinary
       usageCount: 1
     }]
   );
-  assert.equal(model.replaceableElements.texts.length, 0);
-  assert.equal(model.replaceableElements.textPreviewCopy, "短期版本仅支持运行时文本预览，不写入 SVGA 字节。");
+  assert.deepEqual(
+    model.replaceableElements.texts.map(({ index, textKey, imageKey, displayName, initialText, supportedFields, anchorSource }) => ({
+      index,
+      textKey,
+      imageKey,
+      displayName,
+      initialText,
+      supportedFields,
+      anchorSource
+    })),
+    [{
+      index: 1,
+      textKey: "nickname_text",
+      imageKey: "nickname_text",
+      displayName: "Nickname Text",
+      initialText: "SVGA VIP",
+      supportedFields: ["text"],
+      anchorSource: "designerNamedImageKey"
+    }]
+  );
+  assert.equal(model.replaceableElements.textPreviewCopy, "文本会叠加到对应 imageKey 的预览位置，不写入 SVGA 字节。");
 });
 
 test("short-term product model classifies optimization findings for UI actions", () => {
@@ -125,6 +144,7 @@ function reportFixture(): AvatarFrameInspectionReport {
   const resources = [
     resource("img_000", "static_image", { sizeBytes: 2048, usageCount: 1 }),
     resource("profile_frame_highlight", "static_image", { sizeBytes: 4096, usageCount: 1 }),
+    resource("nickname_text", "static_image", { sizeBytes: 2048, usageCount: 1 }),
     resource("sparkle_000", "sequence_frame", { sizeBytes: 512, width: 32, height: 32, usageCount: 1 }),
     resource("sparkle_001", "sequence_frame", { sizeBytes: 512, width: 32, height: 32, usageCount: 1 }),
     resource("sparkle_002", "sequence_frame", { sizeBytes: 512, width: 32, height: 32, usageCount: 1 }),
@@ -268,7 +288,7 @@ function finding(
 
 function summary(findings: readonly AssetIntelligenceFinding[]): AssetIntelligenceSummary {
   return {
-    resourceCount: 8,
+    resourceCount: 9,
     findingCount: findings.length,
     severityCounts: {
       info: findings.filter(({ severity }) => severity === "info").length,
