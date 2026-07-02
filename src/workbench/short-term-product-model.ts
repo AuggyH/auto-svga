@@ -147,7 +147,8 @@ export function createShortTermProductInspectionModel(
 }
 
 export function isAutomaticImageKey(imageKey: string): boolean {
-  return /^img[_-]?\d+$/i.test(imageKey.trim());
+  const normalized = imageKey.trim();
+  return /^\d+$/.test(normalized) || /^img[_-]?\d+$/i.test(normalized);
 }
 
 export function isReplaceableImageResource(resource: Pick<AssetIntelligenceResourceNode, "kind" | "name" | "role">): boolean {

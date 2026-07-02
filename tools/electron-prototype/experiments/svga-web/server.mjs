@@ -133,6 +133,45 @@ async function attachSessionThumbnails(session, svgaBytes, inspector) {
   };
 }
 
+async function shortTermThumbnailPayload(svgaBytes, inspector) {
+  try {
+    const inspection = await inspector.inspect(svgaBytes);
+    return {
+      schemaVersion: 1,
+      source: "node-protobuf-svga-inspector",
+      imageDataUrlsByResourceId: Object.fromEntries(inspection.images
+        .filter((image) => isPngBytes(image.bytes))
+        .map((image) => [
+          image.imageKey,
+          `data:image/png;base64,${encodeBase64(image.bytes)}`
+        ]))
+    };
+  } catch (error) {
+    return {
+      schemaVersion: 1,
+      source: "node-protobuf-svga-inspector",
+      imageDataUrlsByResourceId: {},
+      diagnostic: {
+        code: "thumbnail_extraction_failed",
+        message: error instanceof Error ? error.message : String(error)
+      }
+    };
+  }
+}
+
+function isPngBytes(bytes) {
+  return bytes instanceof Uint8Array
+    && bytes.byteLength >= 8
+    && bytes[0] === 0x89
+    && bytes[1] === 0x50
+    && bytes[2] === 0x4e
+    && bytes[3] === 0x47
+    && bytes[4] === 0x0d
+    && bytes[5] === 0x0a
+    && bytes[6] === 0x1a
+    && bytes[7] === 0x0a;
+}
+
 function resolveStaticPath(appRoot, pathname) {
   const runtimeRoot = path.join(appRoot, ".runtime");
   const mappings = [
@@ -191,12 +230,28 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken, deskt
   const inspectorModuleUrl = pathToFileURL(
     path.join(appRoot, ".runtime/dist/workbench/svga/node-protobuf-inspector.js")
   ).href;
+  const shortTermModelModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/workbench/short-term-product-model.js")
+  ).href;
+  const shortTermOptimizationModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/workbench/short-term-optimization-workflow.js")
+  ).href;
+  const shortTermRenameModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/workbench/short-term-rename-workflow.js")
+  ).href;
+  const shortTermReplacementModuleUrl = pathToFileURL(
+    path.join(appRoot, ".runtime/dist/workbench/short-term-image-replacement-workflow.js")
+  ).href;
   let reportServicePromise;
   let editorPromise;
   let optimizerPromise;
   let sequenceRepairPromise;
   let batchMappingPromise;
   let inspectorPromise;
+  let shortTermModelFactoryPromise;
+  let shortTermOptimizationPromise;
+  let shortTermRenamePromise;
+  let shortTermReplacementPromise;
 
   const server = createServer(async (request, response) => {
     if (!request.url || !isLoopback(request)) return sendText(response, 403, "Forbidden");
@@ -249,6 +304,118 @@ export async function startSvgaWebExperimentServer({ appRoot, reportToken, deskt
           return sendJson(response, 422, { error: "Inspection failed", issues: result.issues });
         }
         return sendJson(response, 200, result.value);
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-inspection-model") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        reportServicePromise ??= import(reportModuleUrl)
+          .then(({ createAvatarFrameInspectionReportService }) => createAvatarFrameInspectionReportService());
+        shortTermModelFactoryPromise ??= import(shortTermModelModuleUrl)
+          .then(({ createShortTermProductInspectionModel }) => createShortTermProductInspectionModel);
+        inspectorPromise ??= import(inspectorModuleUrl).then(({ NodeProtobufSvgaInspector }) => new NodeProtobufSvgaInspector());
+        const [reportService, createShortTermProductInspectionModel, inspector] = await Promise.all([
+          reportServicePromise,
+          shortTermModelFactoryPromise,
+          inspectorPromise
+        ]);
+        const result = await reportService.inspect({
+          id: `short-term:${name}`,
+          name,
+          sizeBytes: bytes.byteLength,
+          mediaType: "application/octet-stream",
+          async read() {
+            return bytes;
+          }
+        });
+        if (!result.value) {
+          return sendJson(response, 422, { error: "Inspection failed", issues: result.issues });
+        }
+        return sendJson(response, 200, {
+          ...createShortTermProductInspectionModel(result.value),
+          thumbnails: await shortTermThumbnailPayload(bytes, inspector)
+        });
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error),
+          ...(Array.isArray(error?.issues) ? { issues: error.issues } : {})
+        });
+      }
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-optimization-workflow") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        shortTermOptimizationPromise ??= import(shortTermOptimizationModuleUrl)
+          .then(({ runShortTermOptimizationWorkflow }) => runShortTermOptimizationWorkflow);
+        const runShortTermOptimizationWorkflow = await shortTermOptimizationPromise;
+        const result = await runShortTermOptimizationWorkflow(bytes, { sourceName: name });
+        return sendJson(response, 200, {
+          optimizedSvgaBase64: result.optimizedBytes ? encodeBase64(result.optimizedBytes) : null,
+          optimization: result.model
+        });
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-image-key-rename") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const bytes = await readRequestBytes(request);
+        const name = path.basename(requestUrl.searchParams.get("name") || "local.svga");
+        const fromImageKey = requestUrl.searchParams.get("from") || "";
+        const toImageKey = requestUrl.searchParams.get("to") || "";
+        shortTermRenamePromise ??= import(shortTermRenameModuleUrl)
+          .then(({ runShortTermRenameWorkflow }) => runShortTermRenameWorkflow);
+        const runShortTermRenameWorkflow = await shortTermRenamePromise;
+        const result = await runShortTermRenameWorkflow(bytes, fromImageKey, toImageKey, { sourceName: name });
+        return sendJson(response, 200, {
+          renamedSvgaBase64: result.renamedBytes ? encodeBase64(result.renamedBytes) : null,
+          rename: result.model
+        });
+      } catch (error) {
+        return sendJson(response, error?.statusCode ?? 422, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/short-term-product-image-replacement-workflow") {
+      if (!tokensMatch(request.headers["x-auto-svga-prototype-token"], reportToken)) {
+        return sendText(response, 401, "Unauthorized");
+      }
+      try {
+        const input = await readRequestJson(request);
+        const bytes = decodeBase64Field(input?.svgaBase64, "svgaBase64");
+        const pngBytes = decodeBase64Field(input?.pngBase64, "pngBase64", 10 * 1024 * 1024);
+        const imageKey = typeof input?.imageKey === "string" ? input.imageKey : "";
+        const name = path.basename(typeof input?.name === "string" ? input.name : "local.svga");
+        shortTermReplacementPromise ??= import(shortTermReplacementModuleUrl)
+          .then(({ runShortTermImageReplacementWorkflow }) => runShortTermImageReplacementWorkflow);
+        const runShortTermImageReplacementWorkflow = await shortTermReplacementPromise;
+        const result = await runShortTermImageReplacementWorkflow(bytes, { imageKey, pngBytes }, { sourceName: name });
+        return sendJson(response, 200, {
+          replacedSvgaBase64: result.replacedBytes ? encodeBase64(result.replacedBytes) : null,
+          replacement: result.model
+        });
       } catch (error) {
         return sendJson(response, error?.statusCode ?? 422, {
           error: error instanceof Error ? error.message : String(error)

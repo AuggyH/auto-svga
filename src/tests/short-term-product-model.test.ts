@@ -52,7 +52,10 @@ test("short-term product model keeps replaceable elements separate from ordinary
 
   assert.equal(isAutomaticImageKey("img_000"), true);
   assert.equal(isAutomaticImageKey("img-42"), true);
+  assert.equal(isAutomaticImageKey("000"), true);
+  assert.equal(isAutomaticImageKey("42"), true);
   assert.equal(isAutomaticImageKey("profile_frame_highlight"), false);
+  assert.equal(isAutomaticImageKey("profile_42_frame"), false);
   assert.equal(isReplaceableImageResource(resource("sparkle_000", "sequence_frame")), false);
   assert.equal(isReplaceableImageResource(resource("mask_matte", "mask_or_matte")), false);
   assert.equal(isReplaceableImageResource(resource("profile_frame_highlight", "static_image")), true);

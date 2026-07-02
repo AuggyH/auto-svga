@@ -381,23 +381,31 @@ test("P6-R1 Reviewer B category request and parity runner include macOS visual-s
   assert.match(parityRunner, /"macosVisualSystem"/);
 });
 
-test("Electron default renderer uses shared product source and hides editor incubation", async () => {
-  const [electronHtml, electronStyles, electronEntry, prototypeSource, shellHtml] = await Promise.all([
+test("Electron short-term default stays macOS-specific while legacy Workbench preserves shared source", async () => {
+  const [electronHtml, shortTermStyles, shortTermEntry, workbenchHtml, electronEntry, prototypeSource, shellHtml] = await Promise.all([
     readRepoFile("tools/electron-prototype/experiments/svga-web/web/index.html"),
-    readRepoFile("tools/electron-prototype/experiments/svga-web/web/styles.css"),
+    readRepoFile("tools/electron-prototype/experiments/svga-web/web/short-term-macos.css"),
+    readRepoFile("tools/electron-prototype/experiments/svga-web/web/short-term-macos-app.mjs"),
+    readRepoFile("tools/electron-prototype/experiments/svga-web/web/workbench.html"),
     readRepoFile("tools/electron-prototype/experiments/svga-web/web/desktop-product-entry.mjs"),
     readRepoFile("tools/electron-prototype/experiments/svga-web/web/prototype.js"),
     readRepoFile("tools/shared/product-frontend/product-shell.html")
   ]);
   const shellHash = createHash("sha256").update(shellHtml).digest("hex");
 
-  assert.match(electronHtml, /id="productShellMount"/);
-  assert.match(electronHtml, /data-product-shell-src="\/tools\/shared\/product-frontend\/product-shell\.html"/);
-  assert.match(electronHtml, new RegExp(`data-product-shell-sha256="${shellHash}"`));
+  assert.match(electronHtml, /short-term-macos-app\.mjs/);
+  assert.match(electronHtml, /short-term-macos\.css/);
+  assert.match(electronHtml, /data-app-state="launch"/);
+  assert.doesNotMatch(electronHtml, /id="productShellMount"/);
+  assert.doesNotMatch(electronHtml, /src="\/desktop-product-entry\.mjs"/);
+  assert.match(shortTermStyles, /--asv-window/);
+  assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
+  assert.match(workbenchHtml, /id="productShellMount"/);
+  assert.match(workbenchHtml, /data-product-shell-src="\/tools\/shared\/product-frontend\/product-shell\.html"/);
+  assert.match(workbenchHtml, new RegExp(`data-product-shell-sha256="${shellHash}"`));
+  assert.match(workbenchHtml, /src="\/desktop-product-entry\.mjs"/);
   assert.doesNotMatch(electronHtml, /<main class="shell"/);
-  assert.match(electronHtml, /src="\/desktop-product-entry\.mjs"/);
   assert.doesNotMatch(electronHtml, /prototype\.js/);
-  assert.equal(electronStyles.trim(), '@import url("/tools/shared/product-frontend/product-styles.css");');
   assert.match(electronEntry, /mountProductShell/);
   assert.match(electronEntry, /product-shell-loader\.mjs/);
   assert.match(electronEntry, /autoSvgaHostAdapter/);

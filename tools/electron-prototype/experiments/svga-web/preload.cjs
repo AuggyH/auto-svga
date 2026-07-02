@@ -11,7 +11,11 @@ const IPC_CHANNELS = Object.freeze({
   scanLatestArtifacts: "svga-web-experiment:scan-latest-artifacts",
   openSvgaFile: "svga-web-experiment:open-svga-file",
   openReferenceMediaFile: "svga-web-experiment:open-reference-media-file",
+  getRecentSvgaFiles: "svga-web-experiment:get-recent-svga-files",
+  openRecentSvgaFile: "svga-web-experiment:open-recent-svga-file",
+  clearRecentSvgaFiles: "svga-web-experiment:clear-recent-svga-files",
   writeClipboardText: "svga-web-experiment:write-clipboard-text",
+  saveShortTermSvgaOutput: "svga-web-experiment:save-short-term-svga-output",
   saveEditedSvga: "svga-web-experiment:save-edited-svga",
   saveOptimizedSvga: "svga-web-experiment:save-optimized-svga",
   saveSequenceRepairSvga: "svga-web-experiment:save-sequence-repair-svga",
@@ -41,9 +45,11 @@ function createBasePreloadApi() {
       fileOpen: "host-dialog-svga-only",
       dragDrop: "renderer-file-api-no-path-authority",
       referenceMediaOpen: "host-dialog-mp4-webm-gif-only",
+      recentFiles: "host-user-data-redacted",
       clipboardWrite: "host-clipboard-write-text-only",
       finderDocumentAssociation: "not-declared",
       saveAs: "host-dialog-svga-only",
+      overwriteSave: "host-source-path-from-file-picker-only",
       arbitraryFileSystemAccess: false,
       shellAccess: false,
       remoteNavigation: false,
@@ -73,14 +79,17 @@ function createBasePreloadApi() {
     openReferenceMediaFile() {
       return invoke(IPC_CHANNELS.openReferenceMediaFile);
     },
+    getRecentSvgaFiles() {
+      return invoke(IPC_CHANNELS.getRecentSvgaFiles);
+    },
+    openRecentSvgaFile(recentFileId) {
+      return invoke(IPC_CHANNELS.openRecentSvgaFile, recentFileId);
+    },
+    clearRecentSvgaFiles() {
+      return invoke(IPC_CHANNELS.clearRecentSvgaFiles);
+    },
     writeClipboardText(text) {
       return invoke(IPC_CHANNELS.writeClipboardText, text);
-    },
-    saveEditedSvga(input) {
-      return invoke(IPC_CHANNELS.saveEditedSvga, input);
-    },
-    saveOptimizedSvga(input) {
-      return invoke(IPC_CHANNELS.saveOptimizedSvga, input);
     }
   };
 }
@@ -92,6 +101,15 @@ function freezePreloadApi(api) {
   });
 }
 
+function withShortTermProductApi(api) {
+  return {
+    ...api,
+    saveShortTermSvgaOutput(input) {
+      return invoke(IPC_CHANNELS.saveShortTermSvgaOutput, input);
+    }
+  };
+}
+
 function withDeferredWorkbenchApi(api) {
   api.capabilities = {
     ...api.capabilities,
@@ -99,6 +117,12 @@ function withDeferredWorkbenchApi(api) {
   };
   return {
     ...api,
+    saveEditedSvga(input) {
+      return invoke(IPC_CHANNELS.saveEditedSvga, input);
+    },
+    saveOptimizedSvga(input) {
+      return invoke(IPC_CHANNELS.saveOptimizedSvga, input);
+    },
     saveSequenceRepairSvga(input) {
       return invoke(IPC_CHANNELS.saveSequenceRepairSvga, input);
     },
@@ -117,7 +141,7 @@ function withDeferredWorkbenchApi(api) {
 function createProductPreloadApi() {
   const api = createBasePreloadApi();
   if (productMilestoneId === "short-term") {
-    return freezePreloadApi(api);
+    return freezePreloadApi(withShortTermProductApi(api));
   }
   return freezePreloadApi(withDeferredWorkbenchApi(api));
 }

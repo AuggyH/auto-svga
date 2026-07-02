@@ -4,17 +4,181 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="auto-svga-csp" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
-    <title>auto-svga 播放验证</title>
-    <link rel="stylesheet" href="/tools/shared/product-tokens.css">
-    <link rel="stylesheet" href="./styles.css">
+    <title>Auto SVGA</title>
+    <link rel="stylesheet" href="./short-term-macos.css">
   </head>
   <body>
-    <div
-      id="productShellMount"
-      data-product-shell-src="/tools/shared/product-frontend/product-shell.html"
-      data-product-shell-sha256="1cd1a65a9e2a817824d345aaa0b9c1cd5543e19fbcb8b5587ce2226b5063d0fd"
-    ></div>
+    <main class="macApp" data-app-state="launch">
+      <header class="titlebar" aria-label="工具栏">
+        <div class="trafficLights" aria-hidden="true"><span></span><span></span><span></span></div>
+        <button class="toolbarButton primary" type="button" data-action="open">打开 SVGA</button>
+        <button class="toolbarButton" type="button" data-action="compare" disabled title="请先打开 SVGA">对比</button>
+        <div class="modeSwitch" role="group" aria-label="模式">
+          <button type="button" class="isSelected" data-action="mode-preview">预览</button>
+          <button type="button" data-action="mode-edit">编辑</button>
+        </div>
+        <div class="fileIdentity" id="fileIdentity">等待打开文件</div>
+        <button class="toolbarButton" type="button" data-action="save-overwrite" disabled title="没有可保存的输出">覆盖保存</button>
+        <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出">另存为</button>
+      </header>
+
+      <section class="saveBanner" id="saveBanner" aria-live="polite" hidden></section>
+
+      <section class="view launchView isActive" data-view="launch" aria-label="启动">
+        <div class="launchCanvas" id="dropZone">
+          <div class="launchPrompt">
+            <p>拖入 SVGA 文件</p>
+            <button class="largeOpenButton" type="button" data-action="open">打开文件</button>
+          </div>
+          <section class="recentBlock" aria-label="最近打开">
+            <div class="recentHeader">
+              <h2>最近打开</h2>
+              <button type="button" data-action="clear-recent">清除记录</button>
+            </div>
+            <ol id="recentList"></ol>
+            <p class="recentNote" id="recentNote"></p>
+          </section>
+        </div>
+      </section>
+
+      <section class="view stateView" data-view="loading" aria-live="polite" hidden>
+        <div class="stateCard">
+          <span class="spinner" aria-hidden="true"></span>
+          <h1>正在打开 SVGA</h1>
+          <p id="loadingMessage">读取文件并准备预览。</p>
+        </div>
+      </section>
+
+      <section class="view stateView" data-view="failed" hidden>
+        <div class="stateCard error">
+          <h1>无法打开这个文件</h1>
+          <p id="errorMessage">文件未能解析，源文件没有被修改。</p>
+          <button class="toolbarButton primary" type="button" data-action="open">打开另一个 SVGA</button>
+        </div>
+      </section>
+
+      <section class="view previewView" data-view="preview" hidden>
+        <section class="previewStagePanel" aria-label="SVGA 预览">
+          <div class="canvasWrap" id="primaryCanvasWrap">
+            <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
+            <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
+          </div>
+          <div class="playbackBar" aria-label="播放控制">
+            <button type="button" data-action="play-pause">播放</button>
+            <button type="button" data-action="replay">重播</button>
+            <span id="playbackMeta">-</span>
+          </div>
+        </section>
+
+        <aside class="inspectorPanel" aria-label="检查面板">
+          <nav class="tabs" aria-label="检查标签">
+            <button type="button" class="isSelected" data-tab="overview">总览</button>
+            <button type="button" data-tab="optimization">优化</button>
+            <button type="button" data-tab="replaceable">可替换</button>
+          </nav>
+
+          <section class="tabPanel isActive" data-panel="overview">
+            <section class="factGrid" id="factGrid" aria-label="文件信息"></section>
+            <section class="assetSection">
+              <h2>资源</h2>
+              <div class="assetList" id="assetList"></div>
+            </section>
+          </section>
+
+          <section class="tabPanel" data-panel="optimization" hidden>
+            <div class="sectionHead">
+              <div>
+                <h2>优化</h2>
+                <p id="optimizationSummary">打开文件后显示可安全执行项。</p>
+              </div>
+              <button class="toolbarButton primary" type="button" data-action="run-optimization">执行安全优化</button>
+            </div>
+            <div class="findingList" id="findingList"></div>
+          </section>
+
+          <section class="tabPanel" data-panel="replaceable" hidden>
+            <div class="sectionHead">
+              <div>
+                <h2>可替换元素</h2>
+                <p id="replaceableSummary">仅显示设计师命名的 imageKey。</p>
+              </div>
+            </div>
+            <div class="replaceableList" id="replaceableList"></div>
+            <menu class="contextMenu" id="resourceContextMenu" tabindex="-1" hidden>
+              <button type="button" data-action="context-rename">重命名 imageKey</button>
+              <button type="button" data-action="context-replace">替换预览图片</button>
+              <button type="button" data-action="context-reset">重置预览图片</button>
+            </menu>
+            <section class="textPreviewBlock">
+              <h3>运行时文本</h3>
+              <button type="button" data-action="edit-text">编辑文本预览</button>
+              <button type="button" data-action="reset-text">重置文本</button>
+            </section>
+          </section>
+        </aside>
+      </section>
+
+      <section class="view compareView" data-view="compare" hidden>
+        <aside class="compareInfo" id="compareInfoA"></aside>
+        <section class="compareStage">
+          <div class="compareCanvasWrap"><canvas id="compareCanvasA" aria-label="A 文件预览"></canvas></div>
+          <div class="compareCanvasWrap"><canvas id="compareCanvasB" aria-label="B 文件预览"></canvas></div>
+        </section>
+        <aside class="compareInfo" id="compareInfoB">
+          <button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>
+          <button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>
+        </aside>
+      </section>
+
+      <section class="view editView" data-view="edit" hidden>
+        <aside class="layerPanel" id="layerPanel"></aside>
+        <section class="previewStagePanel">
+          <div class="canvasWrap"><canvas id="editCanvas" aria-label="编辑预留预览"></canvas></div>
+        </section>
+        <aside class="reservedPanel">
+          <p>短期版仅保留图层查看。</p>
+        </aside>
+      </section>
+    </main>
+
+    <dialog class="appDialog" id="renameDialog">
+      <form method="dialog">
+        <h2>重命名 imageKey</h2>
+        <label>新名称<input id="renameInput" autocomplete="off"></label>
+        <p id="renameHint"></p>
+        <menu>
+          <button value="cancel">取消</button>
+          <button class="primary" value="confirm">确认</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog class="appDialog" id="textDialog">
+      <form method="dialog">
+        <h2>运行时文本预览</h2>
+        <label>文本<input id="runtimeTextInput" autocomplete="off" value="SVGA VIP"></label>
+        <p>仅影响当前预览，不写入 SVGA 文件。</p>
+        <menu>
+          <button value="cancel">取消</button>
+          <button class="primary" value="confirm">应用</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog class="appDialog" id="discardDialog">
+      <form method="dialog">
+        <h2>放弃未保存输出？</h2>
+        <p id="discardMessage">当前有未保存的 SVGA 输出。</p>
+        <menu>
+          <button value="cancel">取消</button>
+          <button class="danger" value="confirm">放弃</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <input id="compareFileInput" type="file" accept=".svga,application/octet-stream" hidden>
+    <input id="replacementFileInput" type="file" accept="image/png,.png" hidden>
     <script src="/legacy-vendor/pako-2.1.0.min.js"></script>
-    <script type="module" src="/desktop-product-entry.mjs"></script>
+    <script type="module" src="./short-term-macos-app.mjs"></script>
   </body>
 </html>

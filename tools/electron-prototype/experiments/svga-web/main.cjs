@@ -1,6 +1,6 @@
 const { execFileSync } = require("node:child_process");
 const { createHash, randomBytes } = require("node:crypto");
-const { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync, writeSync } = require("node:fs");
+const { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync, writeSync } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -76,12 +76,13 @@ const hostMenuActions = Object.freeze([
 ]);
 const mainEntry = "main.cjs";
 const preloadEntry = "preload.cjs";
-const rendererHtmlEntry = "web/index.html";
-const rendererEntry = "web/desktop-product-entry.mjs";
-const stylesEntry = "web/styles.css";
 const playerIdentity = "svga-web@2.4.4";
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
-const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "P2";
+const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "short-term";
+const isShortTermProduct = productMilestoneId === "short-term";
+const rendererHtmlEntry = isShortTermProduct ? "web/index.html" : "web/workbench.html";
+const rendererEntry = isShortTermProduct ? "web/short-term-macos-app.mjs" : "web/desktop-product-entry.mjs";
+const stylesEntry = isShortTermProduct ? "web/short-term-macos.css" : "web/styles.css";
 const macosWorkbenchWindowSizing = Object.freeze({
   defaultLaunch: { width: 1440, height: 900 },
   comfortable: { width: 1280, height: 800 },
@@ -92,6 +93,7 @@ const macosWorkbenchWindowSizing = Object.freeze({
   aspectRatio: 16 / 10
 });
 const productMilestoneTitle = {
+  "short-term": "Short-term SVGA Preview, Inspection, Replacement, And Optimization",
   P2: "Desktop Product Shell And Web Preview Parity",
   P3: "Basic Image Resource Replacement And Save As",
   P4: "Multi-Resource Editing, Undo/Redo And Export Integrity",
@@ -139,9 +141,11 @@ let smokeFinished = false;
 let auditFinished = false;
 let cspViolationSeen = false;
 let cleanedUp = false;
+let activeMainWindow;
 const blockedExternalRequests = [];
 const sourceFilePaths = new Map();
 const referenceFileIds = new Set();
+const maxShortTermRecentFiles = 10;
 const productArtifactIndex = {
   milestoneId: productMilestoneId,
   title: productMilestoneTitle,
@@ -159,8 +163,10 @@ if (productSmokeMode && productMilestoneId === "P5") {
 
 mkdirSync(sessionRoot, { recursive: true });
 if (productSmokeMode || normalProofMode || normalVisibleStartupMode) mkdirSync(productArtifactRoot, { recursive: true });
-app.setPath("userData", path.join(sessionRoot, "user-data"));
-app.setPath("sessionData", path.join(sessionRoot, "session-data"));
+if (!isShortTermProduct || smokeMode || auditMode || normalProofMode) {
+  app.setPath("userData", path.join(sessionRoot, "user-data"));
+  app.setPath("sessionData", path.join(sessionRoot, "session-data"));
+}
 
 function chooseMacosWorkbenchWindowBounds() {
   const display = screen.getPrimaryDisplay();
@@ -1928,6 +1934,28 @@ function validateSequenceRepairSvgaSaveInput(value) {
   };
 }
 
+function validateShortTermSvgaSaveInput(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const command = value.command === "overwrite" ? "overwrite" : value.command === "saveAs" ? "saveAs" : "";
+  if (!command) return undefined;
+  if (typeof value.bytesBase64 !== "string" || value.bytesBase64.length === 0) return undefined;
+  const bytes = Buffer.from(value.bytesBase64, "base64");
+  if (bytes.byteLength <= 0 || bytes.byteLength > 25 * 1024 * 1024) return undefined;
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  if (!isSha256(value.expectedSha256) || value.expectedSha256 !== sha256) return undefined;
+  const suggestedName = sanitizeSvgaFileName(
+    typeof value.suggestedName === "string" ? value.suggestedName : "short-term-output.svga"
+  );
+  const sourceId = typeof value.sourceId === "string" && /^[a-f0-9]{24}$/.test(value.sourceId) ? value.sourceId : "";
+  return {
+    command,
+    bytes,
+    sha256,
+    suggestedName,
+    sourceId
+  };
+}
+
 function validateSaveRevisionBinding(value, bytes) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const milestoneId = value.milestoneId === "P3"
@@ -2002,6 +2030,103 @@ function rememberSourceFile(filePath) {
     sourceFilePaths.delete(firstKey);
   }
   return sourceId;
+}
+
+function shortTermRecentStorePath() {
+  return path.join(app.getPath("userData"), "short-term-recent-svga-files.json");
+}
+
+function shortTermRecentId(filePath) {
+  return createHash("sha256").update(canonicalSavePath(filePath)).digest("hex").slice(0, 24);
+}
+
+function normalizeShortTermRecentRecord(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (typeof value.path !== "string" || !value.path.toLowerCase().endsWith(".svga")) return undefined;
+  const filePath = path.resolve(value.path);
+  if (filePath.includes("\0")) return undefined;
+  const lastOpenedAt = typeof value.lastOpenedAt === "string" && value.lastOpenedAt.length <= 40
+    ? value.lastOpenedAt
+    : new Date(0).toISOString();
+  return {
+    id: shortTermRecentId(filePath),
+    path: filePath,
+    displayName: path.basename(filePath),
+    parentName: path.basename(path.dirname(filePath)) || "本地文件",
+    lastOpenedAt
+  };
+}
+
+function readShortTermRecentRecords() {
+  if (!isShortTermProduct) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(shortTermRecentStorePath(), "utf8"));
+    if (!Array.isArray(parsed?.records)) return [];
+    return parsed.records
+      .map(normalizeShortTermRecentRecord)
+      .filter(Boolean)
+      .slice(0, maxShortTermRecentFiles);
+  } catch {
+    return [];
+  }
+}
+
+function writeShortTermRecentRecords(records) {
+  if (!isShortTermProduct) return;
+  mkdirSync(path.dirname(shortTermRecentStorePath()), { recursive: true });
+  writeFileSync(shortTermRecentStorePath(), `${JSON.stringify({
+    schemaVersion: 1,
+    pathRedactedToRenderer: true,
+    records: records.slice(0, maxShortTermRecentFiles).map((record) => ({
+      path: record.path,
+      lastOpenedAt: record.lastOpenedAt
+    }))
+  }, null, 2)}\n`);
+}
+
+function rememberShortTermRecentFile(filePath) {
+  if (!isShortTermProduct) return;
+  const normalized = normalizeShortTermRecentRecord({
+    path: filePath,
+    lastOpenedAt: new Date().toISOString()
+  });
+  if (!normalized) return;
+  const records = [
+    normalized,
+    ...readShortTermRecentRecords().filter((record) => record.id !== normalized.id)
+  ].slice(0, maxShortTermRecentFiles);
+  writeShortTermRecentRecords(records);
+  rebuildShortTermApplicationMenu();
+}
+
+function shortTermRecentView() {
+  return readShortTermRecentRecords().map((record) => ({
+    id: record.id,
+    displayName: record.displayName,
+    parentName: record.parentName,
+    lastOpenedAt: record.lastOpenedAt,
+    pathRedacted: true
+  }));
+}
+
+function openShortTermRecentFile(recentFileId) {
+  if (!isBoundedString(recentFileId, 80)) return { status: "missing", message: "最近文件记录无效。" };
+  const records = readShortTermRecentRecords();
+  const record = records.find(({ id }) => id === recentFileId);
+  if (!record || !existsSync(record.path)) {
+    writeShortTermRecentRecords(records.filter(({ id }) => id !== recentFileId));
+    rebuildShortTermApplicationMenu();
+    return { status: "missing", message: "这个最近文件已缺失或不可访问。" };
+  }
+  return openSvgaFileBytes(record.path);
+}
+
+function clearShortTermRecentFiles() {
+  if (!isShortTermProduct) return { status: "cleared", count: 0 };
+  const count = readShortTermRecentRecords().length;
+  writeShortTermRecentRecords([]);
+  rebuildShortTermApplicationMenu();
+  return { status: "cleared", count };
 }
 
 function sanitizeSvgaFileName(value) {
@@ -3162,6 +3287,7 @@ function openSvgaFileBytes(filePath) {
     throw new Error("SVGA file size is outside the supported internal prototype limit.");
   }
   const sourceId = rememberSourceFile(filePath);
+  rememberShortTermRecentFile(filePath);
   return {
     status: "opened",
     sourceId,
@@ -3273,7 +3399,232 @@ async function injectOpenedFile(window, selector, opened) {
   `);
 }
 
+function rebuildShortTermApplicationMenu() {
+  if (isShortTermProduct && activeMainWindow && !activeMainWindow.isDestroyed()) {
+    installShortTermApplicationMenu(activeMainWindow);
+  }
+}
+
+function installShortTermApplicationMenu(window) {
+  const invokeShortTermAction = (name, ...args) => {
+    window.webContents.executeJavaScript(
+      `window.__autoSvgaShortTermActions?.[${JSON.stringify(name)}]?.(...${JSON.stringify(args)})`
+    ).catch((error) => {
+      console.error(`AUTO_SVGA_MENU_ACTION_ERROR ${name} ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+    });
+  };
+  const recentRecords = shortTermRecentView().slice(0, maxShortTermRecentFiles);
+  const recentSubmenu = [
+    ...(recentRecords.length > 0
+      ? recentRecords.map((record) => ({
+          label: `${record.displayName} - ${record.parentName || "本地文件"}`,
+          click: () => invokeShortTermAction("openRecentFromMenu", record.id)
+        }))
+      : [{ label: "暂无最近文件", enabled: false }]),
+    { type: "separator" },
+    {
+      label: "清除最近记录",
+      enabled: recentRecords.length > 0,
+      click: () => invokeShortTermAction("clearRecentFiles")
+    }
+  ];
+  const appMenu = process.platform === "darwin"
+    ? [{
+        label: "Auto SVGA",
+        submenu: [
+          { role: "about", label: "关于 Auto SVGA" },
+          { type: "separator" },
+          { role: "services", label: "服务" },
+          { type: "separator" },
+          { role: "hide", label: "隐藏 Auto SVGA" },
+          { role: "hideOthers", label: "隐藏其他" },
+          { role: "unhide", label: "全部显示" },
+          { type: "separator" },
+          { role: "quit", label: "退出 Auto SVGA" }
+        ]
+      }]
+    : [];
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    ...appMenu,
+    {
+      label: "文件",
+      submenu: [
+        {
+          label: "打开 SVGA...",
+          accelerator: "CommandOrControl+O",
+          click: () => invokeShortTermAction("openFromHostDialog")
+        },
+        {
+          label: "关闭文件",
+          accelerator: "CommandOrControl+W",
+          click: () => invokeShortTermAction("closeFile")
+        },
+        {
+          label: "最近打开",
+          submenu: recentSubmenu
+        },
+        { type: "separator" },
+        {
+          label: "打开对比 SVGA...",
+          click: () => invokeShortTermAction("openCompareB")
+        },
+        { type: "separator" },
+        {
+          label: "覆盖保存",
+          accelerator: "CommandOrControl+S",
+          click: () => invokeShortTermAction("save")
+        },
+        {
+          label: "另存为...",
+          accelerator: "CommandOrControl+Shift+S",
+          click: () => invokeShortTermAction("saveAs")
+        },
+        ...(process.platform === "darwin" ? [] : [
+          { type: "separator" },
+          { role: "quit", label: "退出 Auto SVGA" }
+        ])
+      ]
+    },
+    {
+      label: "编辑",
+      submenu: [
+        { label: "撤销", role: "undo" },
+        { label: "重做", role: "redo" },
+        { type: "separator" },
+        { label: "剪切", role: "cut" },
+        { label: "复制", role: "copy" },
+        { label: "粘贴", role: "paste" },
+        { label: "全选", role: "selectAll" },
+        { type: "separator" },
+        {
+          label: "重命名 imageKey",
+          accelerator: "CommandOrControl+R",
+          click: () => invokeShortTermAction("renameImageKey")
+        },
+        {
+          label: "取消当前操作",
+          accelerator: "Esc",
+          click: () => invokeShortTermAction("cancel")
+        }
+      ]
+    },
+    {
+      label: "视图",
+      submenu: [
+        {
+          label: "预览模式",
+          click: () => invokeShortTermAction("previewMode")
+        },
+        {
+          label: "编辑模式",
+          click: () => invokeShortTermAction("editMode")
+        },
+        {
+          label: "进入或退出对比",
+          click: () => invokeShortTermAction("toggleCompare")
+        },
+        { type: "separator" },
+        {
+          label: "总览",
+          click: () => invokeShortTermAction("overviewTab")
+        },
+        {
+          label: "优化",
+          click: () => invokeShortTermAction("optimizationTab")
+        },
+        {
+          label: "可替换元素",
+          click: () => invokeShortTermAction("replaceableTab")
+        },
+        { type: "separator" },
+        { role: "reload", label: "重新载入窗口" },
+        { role: "toggleDevTools", label: "开发者工具" }
+      ]
+    },
+    {
+      label: "播放",
+      submenu: [
+        {
+          label: "播放/暂停",
+          accelerator: "Space",
+          click: () => invokeShortTermAction("playPause")
+        },
+        {
+          label: "重播",
+          click: () => invokeShortTermAction("replay")
+        }
+      ]
+    },
+    {
+      label: "资源",
+      submenu: [
+        {
+          label: "重命名 imageKey",
+          accelerator: "CommandOrControl+R",
+          click: () => invokeShortTermAction("renameImageKey")
+        },
+        {
+          label: "替换预览图片...",
+          click: () => invokeShortTermAction("replaceImage")
+        },
+        {
+          label: "重置预览图片",
+          click: () => invokeShortTermAction("resetImageReplacement")
+        },
+        { type: "separator" },
+        {
+          label: "编辑文本预览...",
+          click: () => invokeShortTermAction("editTextPreview")
+        },
+        {
+          label: "重置文本预览",
+          click: () => invokeShortTermAction("resetTextPreview")
+        }
+      ]
+    },
+    {
+      label: "优化",
+      submenu: [
+        {
+          label: "查看优化建议",
+          click: () => invokeShortTermAction("optimizationTab")
+        },
+        {
+          label: "执行安全优化",
+          click: () => invokeShortTermAction("runOptimization")
+        }
+      ]
+    },
+    {
+      label: "窗口",
+      submenu: [
+        { role: "minimize", label: "最小化" },
+        { role: "zoom", label: "缩放" },
+        ...(process.platform === "darwin" ? [
+          { type: "separator" },
+          { role: "front", label: "全部置于最前" }
+        ] : [
+          { role: "close", label: "关闭窗口" }
+        ])
+      ]
+    },
+    {
+      label: "帮助",
+      submenu: [
+        {
+          label: "复制当前状态摘要",
+          click: () => invokeShortTermAction("copyStateSummary")
+        }
+      ]
+    }
+  ]));
+}
+
 function installApplicationMenu(window) {
+  if (isShortTermProduct) {
+    installShortTermApplicationMenu(window);
+    return;
+  }
   const runRendererMenuAction = (label, code) => {
     window.webContents.executeJavaScript(code).catch((error) => {
       console.error(`AUTO_SVGA_MENU_ACTION_ERROR ${label} ${redactLogMessage(error instanceof Error ? error.message : error)}`);
@@ -3538,6 +3889,51 @@ function installApplicationMenu(window) {
       ]
     }
   ]));
+}
+
+async function saveShortTermSvgaOutput(input) {
+  if (!isShortTermProduct) throw new Error("Short-term save is only available in the short-term product.");
+  const value = validateShortTermSvgaSaveInput(input);
+  if (!value) throw new Error("Invalid short-term save payload");
+  const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";
+  let targetPath;
+  if (value.command === "overwrite") {
+    if (!originalPath) {
+      throw new Error("覆盖保存需要先通过客户端打开本地 SVGA。");
+    }
+    targetPath = originalPath;
+  } else {
+    const result = await dialog.showSaveDialog({
+      title: "另存为 SVGA",
+      defaultPath: value.suggestedName,
+      filters: [{ name: "SVGA", extensions: ["svga"] }],
+      properties: ["createDirectory", "showOverwriteConfirmation"]
+    });
+    if (result.canceled || !result.filePath) {
+      return { status: "cancelled" };
+    }
+    targetPath = result.filePath.toLowerCase().endsWith(".svga") ? result.filePath : `${result.filePath}.svga`;
+    if (originalPath && sameSaveAsSourcePath(targetPath, originalPath)) {
+      throw new Error("另存为目标需要不同于当前源文件；请使用覆盖保存。");
+    }
+  }
+
+  writeSvgaBytesAtomically(targetPath, value.bytes);
+  const writtenBytes = readFileSync(targetPath);
+  const writtenSha256 = createHash("sha256").update(writtenBytes).digest("hex");
+  if (writtenSha256 !== value.sha256) {
+    throw new Error("保存后校验失败，输出文件哈希不一致。");
+  }
+  const savedSourceId = rememberSourceFile(targetPath);
+  rememberShortTermRecentFile(targetPath);
+  return {
+    status: "saved",
+    sourceId: savedSourceId,
+    fileName: path.basename(targetPath),
+    sizeBytes: value.bytes.byteLength,
+    sha256: writtenSha256,
+    targetPathRedacted: sanitizeRuntimeArgument(targetPath)
+  };
 }
 
 async function saveEditedSvga(input) {
@@ -3822,6 +4218,7 @@ async function createExperimentWindow() {
       })
     }
   });
+  activeMainWindow = window;
   installApplicationMenu(window);
 
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
@@ -3923,9 +4320,33 @@ async function createExperimentWindow() {
     return openReferenceMediaFile();
   });
 
+  ipcMain.handle(IPC_CHANNELS.getRecentSvgaFiles, async (event) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return {
+      schemaVersion: 1,
+      pathRedacted: true,
+      records: shortTermRecentView()
+    };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.openRecentSvgaFile, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return openShortTermRecentFile(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.clearRecentSvgaFiles, async (event) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return clearShortTermRecentFiles();
+  });
+
   ipcMain.handle(IPC_CHANNELS.writeClipboardText, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return writeClipboardText(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.saveShortTermSvgaOutput, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return saveShortTermSvgaOutput(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.p3EditResult, async (event, input) => {
@@ -4223,7 +4644,8 @@ async function createExperimentWindow() {
     : smokeMode
       ? `?mode=smoke${productSmokeMode ? "&artifacts=1" : ""}`
       : "";
-  const rendererUrl = auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}/${productMode}`;
+  const rendererPath = isShortTermProduct ? "/" : "/workbench.html";
+  const rendererUrl = auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}${rendererPath}${productMode}`;
   if (productSmokeMode) {
     const smokeIdentity = runtimeIdentity("smoke", rendererUrl);
     writeJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
