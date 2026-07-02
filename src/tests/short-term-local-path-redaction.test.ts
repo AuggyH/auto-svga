@@ -25,6 +25,16 @@ test("short-term local path redaction handles generic macOS and Windows paths", 
   assert.match(redacted, /\[local path\]/u);
 });
 
+test("short-term local path redaction keeps apostrophes inside generic path matches", () => {
+  const redacted = redactShortTermLocalPaths(
+    "Cannot inspect /Users/designer/Frame's Folder/private/source.svga; retry later."
+  );
+
+  assert.equal(redacted.includes("/Users/designer"), false);
+  assert.equal(redacted.includes("Frame's Folder"), false);
+  assert.equal(redacted, "Cannot inspect [local path]; retry later.");
+});
+
 test("short-term local path redaction handles Error and string inputs", () => {
   assert.equal(
     redactShortTermLocalPathsFromError(

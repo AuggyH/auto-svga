@@ -1,6 +1,6 @@
 const GENERIC_LOCAL_PATH_PATTERNS: readonly RegExp[] = [
-  /(?:\/Users\/|\/Volumes\/|\/private\/|\/var\/|\/tmp\/)[^，。；;:'")\n\r]*/gu,
-  /[A-Za-z]:[\\/][^，。；;:'")\n\r]*/gu
+  /(?:\/Users\/|\/Volumes\/|\/private\/|\/var\/|\/tmp\/)(?:[^，。；;:'")\n\r]|'(?=\S))*/gu,
+  /[A-Za-z]:[\\/](?:[^，。；;:'")\n\r]|'(?=\S))*/gu
 ];
 
 export function redactShortTermLocalPaths(
