@@ -141,6 +141,21 @@ test("short-term optimization workflow fails closed on invalid SVGA bytes", asyn
   assert.ok(result.model.diagnostic?.code);
 });
 
+test("short-term optimization workflow redacts local paths from diagnostics", async () => {
+  const sourceBytes = await createSvgaFixture();
+
+  const result = await runShortTermOptimizationWorkflow(sourceBytes, {
+    sourceName: "/Users/designer/private/optimizable.svga",
+    protoPath: "/Users/designer/private/missing.proto"
+  });
+
+  assert.equal(result.optimizedBytes, undefined);
+  assert.equal(result.model.status, "failed");
+  assert.equal(result.model.sourceName, "optimizable.svga");
+  assert.equal(JSON.stringify(result.model).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(result.model).includes("private/missing.proto"), false);
+});
+
 async function createSvgaFixture(overrides: Partial<{
   version: string;
   params: {

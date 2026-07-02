@@ -130,6 +130,21 @@ test("short-term rename workflow fails closed on unsafe target keys", async () =
   assert.equal(result.model.diagnostic?.code, "rename_target_key_invalid");
 });
 
+test("short-term rename workflow redacts local paths from diagnostics", async () => {
+  const sourceBytes = await createSvgaFixture();
+
+  const result = await runShortTermRenameWorkflow(sourceBytes, "img_frame", "profile_frame", {
+    sourceName: "/Users/designer/private/rename.svga",
+    protoPath: "/Users/designer/private/missing.proto"
+  });
+
+  assert.equal(result.renamedBytes, undefined);
+  assert.equal(result.model.status, "failed");
+  assert.equal(result.model.sourceName, "rename.svga");
+  assert.equal(JSON.stringify(result.model).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(result.model).includes("private/missing.proto"), false);
+});
+
 async function createSvgaFixture(overrides: Partial<{
   version: string;
   params: {

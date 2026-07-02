@@ -13,6 +13,7 @@ import {
   type SvgaRoundTripReport
 } from "./svga/index.js";
 import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
+import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
 
 export const SHORT_TERM_IMAGE_REPLACEMENT_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
@@ -313,12 +314,12 @@ function diagnosticFromError(error: unknown): { code: string; message: string } 
   if (error instanceof ShortTermImageReplacementWorkflowError || error instanceof SvgaImageEditError) {
     return {
       code: error.code,
-      message: error.message
+      message: redactShortTermLocalPathsFromError(error, error.message)
     };
   }
   return {
     code: "image_replacement_unexpected_error",
-    message: error instanceof Error ? error.message : String(error)
+    message: redactShortTermLocalPathsFromError(error, "替换图片流程出现未预期错误。")
   };
 }
 

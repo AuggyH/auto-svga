@@ -11,6 +11,7 @@ import {
   type ShortTermPersistedOutputSaveStateModel
 } from "./short-term-save-state.js";
 import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
+import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
 
 export const SHORT_TERM_RENAME_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
@@ -479,18 +480,18 @@ function diagnosticFromError(error: unknown): { code: string; message: string } 
   if (error instanceof ShortTermRenameWorkflowError) {
     return {
       code: error.code,
-      message: error.message
+      message: redactShortTermLocalPathsFromError(error, error.message)
     };
   }
   if (error instanceof Error && "code" in error && typeof error.code === "string") {
     return {
       code: error.code,
-      message: error.message
+      message: redactShortTermLocalPathsFromError(error, error.message)
     };
   }
   return {
     code: "rename_unexpected_error",
-    message: error instanceof Error ? error.message : String(error)
+    message: redactShortTermLocalPathsFromError(error, "重命名流程出现未预期错误。")
   };
 }
 

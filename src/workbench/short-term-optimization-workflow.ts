@@ -15,6 +15,7 @@ import {
   type ShortTermPersistedOutputSaveStateModel
 } from "./short-term-save-state.js";
 import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
+import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
 
 export const SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
@@ -437,12 +438,12 @@ function diagnosticFromError(error: unknown): { code: string; message: string } 
   if (error instanceof SvgaImageOptimizationError) {
     return {
       code: error.code,
-      message: error.message
+      message: redactShortTermLocalPathsFromError(error, error.message)
     };
   }
   return {
     code: "optimization_unexpected_error",
-    message: error instanceof Error ? error.message : String(error)
+    message: redactShortTermLocalPathsFromError(error, "优化流程出现未预期错误。")
   };
 }
 

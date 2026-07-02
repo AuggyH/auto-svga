@@ -108,6 +108,25 @@ test("short-term image replacement workflow fails closed on invalid PNG input", 
   assert.equal(result.model.diagnostic?.code, "replacement_not_png");
 });
 
+test("short-term image replacement workflow redacts local paths from diagnostics", async () => {
+  const sourceBytes = await createSvgaFixture();
+
+  const result = await runShortTermImageReplacementWorkflow(
+    sourceBytes,
+    { imageKey: "profile_frame", pngBytes: createColoredPng(16, 16, [0, 255, 0, 255]) },
+    {
+      sourceName: "/Users/designer/private/replace.svga",
+      protoPath: "/Users/designer/private/missing.proto"
+    }
+  );
+
+  assert.equal(result.replacedBytes, undefined);
+  assert.equal(result.model.status, "failed");
+  assert.equal(result.model.sourceName, "replace.svga");
+  assert.equal(JSON.stringify(result.model).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(result.model).includes("private/missing.proto"), false);
+});
+
 async function createSvgaFixture(overrides: Partial<{
   version: string;
   params: {
