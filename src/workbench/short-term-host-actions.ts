@@ -868,7 +868,7 @@ async function completeHostOpen(
       facade: failShortTermWorkbenchOpen(state.facade, {
         requestId: input.requestId,
         kind: "read",
-        message: errorMessage(error, "文件读取失败。")
+        message: errorMessage(error, "文件读取失败。", [input.localPath])
       }),
       currentLocalPath: undefined,
       activeOutputBytes: undefined
@@ -905,7 +905,7 @@ async function completeHostOpen(
       facade: failShortTermWorkbenchOpen(state.facade, {
         requestId: input.requestId,
         kind: "parse",
-        message: errorMessage(error, "SVGA 解析失败。")
+        message: errorMessage(error, "SVGA 解析失败。", [input.localPath])
       }),
       currentLocalPath: undefined,
       activeOutputBytes: undefined

@@ -77,7 +77,7 @@ test("short-term host actions mark unavailable recent files without stale source
 });
 
 test("short-term host actions redact local paths from host error diagnostics", async () => {
-  const localPath = "/Users/designer/My Documents/private/broken.svga";
+  const localPath = "/Users/designer/My Documents/Frame's Folder/broken.svga";
   const host = createMemoryHost({}, {
     readError: () => new Error(`Cannot read ${localPath}`)
   });
@@ -91,7 +91,31 @@ test("short-term host actions redact local paths from host error diagnostics", a
   assert.equal(opened.facade.model.appState.state, "loadFailed");
   assert.equal(opened.lastAction?.status, "failed");
   assert.equal(opened.lastAction?.diagnostic?.message.includes("/Users/designer"), false);
-  assert.equal(opened.lastAction?.diagnostic?.message.includes("My Documents/private"), false);
+  assert.equal(opened.lastAction?.diagnostic?.message.includes("My Documents"), false);
+  assert.equal(opened.facade.model.appState.failure?.message.includes("Frame's Folder"), false);
+  assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
+});
+
+test("short-term host actions redact local paths from visible inspection failures", async () => {
+  const localPath = "/Users/designer/My Documents/Frame's Folder/invalid.svga";
+  const host = createMemoryHost({
+    [localPath]: new Uint8Array([1, 2, 3])
+  }, {
+    inspect: () => {
+      throw new Error(`Cannot parse ${localPath}`);
+    }
+  });
+
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath
+  });
+
+  assert.equal(opened.facade.model.appState.state, "loadFailed");
+  assert.equal(opened.lastAction?.status, "failed");
+  assert.equal(opened.lastAction?.diagnostic?.message.includes("/Users/designer"), false);
+  assert.equal(opened.facade.model.appState.failure?.message.includes("Frame's Folder"), false);
   assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
 });
 
