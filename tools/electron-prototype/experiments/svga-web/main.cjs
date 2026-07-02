@@ -2224,6 +2224,7 @@ function validateNormalProofResult(value) {
     "inspectionReport",
     "auditPanel",
     "recentFiles",
+    "recentMissingRecovery",
     "localOnly",
     "cspAccepted",
     "noCspViolation"
@@ -2240,6 +2241,7 @@ function validateNormalProofResult(value) {
     inspectionReport: value.inspectionReport,
     auditPanel: value.auditPanel,
     recentFiles: value.recentFiles,
+    recentMissingRecovery: value.recentMissingRecovery,
     localOnly: value.localOnly,
     cspAccepted: value.cspAccepted,
     noCspViolation: value.noCspViolation && !cspViolationSeen
@@ -4861,6 +4863,7 @@ async function driveCanonicalNormalProof(window) {
       inspectionReport: false,
       auditPanel: false,
       recentFiles: false,
+      recentMissingRecovery: false,
       localOnly: false,
       cspAccepted: false,
       noCspViolation: false
@@ -4883,6 +4886,8 @@ async function driveCanonicalNormalProof(window) {
   const menuOpen = Boolean(openMenuItem && openMenuItem.enabled !== false);
   if (!menuOpen) throw new Error("short-term File > Open menu item unavailable");
   openMenuItem.click(openMenuItem, window);
+  const missingRecentFileName = "missing-normal-proof.svga";
+  rememberShortTermRecentFile(path.join(sessionRoot, missingRecentFileName));
   const result = await window.webContents.executeJavaScript(`
     (async () => {
       const host = window.autoSvgaElectronHost;
@@ -4931,6 +4936,39 @@ async function driveCanonicalNormalProof(window) {
           && !/[\\\\/]/.test(record.displayName)
           && !/[\\\\/]/.test(record.parentName ?? "")
         ));
+      const missingRecord = recentRecords.find((record) => record?.displayName === ${JSON.stringify(missingRecentFileName)});
+      let recentMissingRecovery = false;
+      if (missingRecord?.id) {
+        await actions.openRecentFromMenu(missingRecord.id);
+        const missingStartedAt = performance.now();
+        while (performance.now() - missingStartedAt < 4000) {
+          const failedView = document.querySelector('[data-view="failed"]');
+          if (failedView && !failedView.hidden) break;
+          await new Promise((resolve) => setTimeout(resolve, 80));
+        }
+        const failedView = document.querySelector('[data-view="failed"]');
+        const missingMessage = document.querySelector("#errorMessage")?.textContent ?? "";
+        const missingFeedbackVisible = Boolean(failedView && !failedView.hidden && /缺失|不可访问/.test(missingMessage));
+        const afterMissingRecent = await host.getRecentSvgaFiles?.();
+        const afterMissingRecords = Array.isArray(afterMissingRecent?.records) ? afterMissingRecent.records : [];
+        const missingRecordRemoved = !afterMissingRecords.some((record) => record?.id === missingRecord.id);
+        await actions.openFromHostDialog();
+        let previewRecovered = false;
+        const recoveryStartedAt = performance.now();
+        while (performance.now() - recoveryStartedAt < 8000) {
+          previewRecovered = !document.querySelector('[data-view="preview"]')?.hidden
+            && document.querySelector("#factGrid")?.children?.length > 0
+            && document.querySelector("#assetList")?.children?.length > 0
+            && document.querySelector("#primaryCanvas")?.width > 0;
+          if (previewRecovered) break;
+          await new Promise((resolve) => setTimeout(resolve, 120));
+        }
+        recentMissingRecovery = Boolean(
+          missingFeedbackVisible
+          && missingRecordRemoved
+          && previewRecovered
+        );
+      }
       return {
         normalMode: true,
         hostOpen: true,
@@ -4941,6 +4979,7 @@ async function driveCanonicalNormalProof(window) {
         inspectionReport: Boolean(factGrid?.children?.length > 0 && assetList?.children?.length > 0),
         auditPanel: Boolean(document.querySelector(".inspectorPanel [data-panel='overview']")),
         recentFiles,
+        recentMissingRecovery,
         localOnly: performance.getEntriesByType("resource").every((entry) => {
           try {
             const url = new URL(entry.name, location.href);
@@ -4967,6 +5006,7 @@ async function driveCanonicalNormalProof(window) {
     inspectionReport: false,
     auditPanel: false,
     recentFiles: false,
+    recentMissingRecovery: false,
     localOnly: false,
     cspAccepted: false,
     noCspViolation: false

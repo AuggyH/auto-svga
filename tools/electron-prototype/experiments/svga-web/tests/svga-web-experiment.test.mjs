@@ -685,8 +685,20 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(normalProofSource, /#assetList/);
   assert.match(normalProofSource, /getRecentSvgaFiles/);
   assert.match(normalProofSource, /recentFiles/);
+  assert.match(normalProofSource, /recentMissingRecovery/);
+  assert.match(normalProofSource, /missing-normal-proof\.svga/);
+  assert.match(normalProofSource, /openRecentFromMenu/);
+  assert.match(normalProofSource, /missingRecordRemoved/);
+  assert.match(normalProofSource, /missingFeedbackVisible/);
   assert.match(normalProofSource, /pathRedacted/);
-  assert.doesNotMatch(normalProofSource, /await actions\.openFromHostDialog\(\)/);
+  assert.ok(
+    normalProofSource.indexOf("openMenuItem.click(openMenuItem, window)") < normalProofSource.indexOf("const result = await window.webContents.executeJavaScript"),
+    "normal proof initial open must be triggered by the macOS File menu before renderer validation"
+  );
+  assert.ok(
+    normalProofSource.indexOf("await actions.openRecentFromMenu(missingRecord.id)") < normalProofSource.indexOf("await actions.openFromHostDialog()"),
+    "direct host open action is allowed only after missing-recent recovery starts"
+  );
   assert.doesNotMatch(normalProofSource, /#svgaFileInput|#svgaStatusA|#svgaCanvasA|specReportSection|auditReportSection/);
   assert.match(main, /IPC_CHANNELS\.openSvgaFile/);
   assert.match(main, /IPC_CHANNELS\.openReferenceMediaFile/);
@@ -897,6 +909,7 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /document\.querySelector\("#assetList"\)/);
   assert.match(main, /menuOpen: value\.menuOpen/);
   assert.match(main, /recentFiles: value\.recentFiles/);
+  assert.match(main, /recentMissingRecovery: value\.recentMissingRecovery/);
   assert.match(main, /host\.getRecentSvgaFiles/);
   const normalProofSource = main.slice(main.indexOf("async function driveCanonicalNormalProof"));
   assert.doesNotMatch(normalProofSource, /document\.querySelector\("#svgaFileInput"\)/);
