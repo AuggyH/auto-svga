@@ -6,6 +6,7 @@ import {
   openShortTermHostLocalFile,
   openShortTermHostRecentFile,
   applyShortTermHostTextPreview,
+  cancelShortTermHostTransientWorkflow,
   prepareShortTermHostTextPreview,
   resetShortTermHostImageReplacement,
   runShortTermHostImageKeyRename,
@@ -109,6 +110,7 @@ export interface ShortTermHostSession {
   ): Promise<ShortTermHostSessionActionResult>;
   saveOutput(input: ShortTermHostSaveInput): Promise<ShortTermHostSessionActionResult>;
   dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult>;
+  cancelTransientWorkflow(): Promise<ShortTermHostSessionActionResult>;
   resetImageReplacementPreview(): Promise<ShortTermHostSessionActionResult>;
   prepareTextPreview(input: ShortTermHostPrepareTextPreviewInput): Promise<ShortTermHostSessionActionResult>;
   applyTextPreview(input: ShortTermHostApplyTextPreviewInput): Promise<ShortTermHostSessionActionResult>;
@@ -208,6 +210,10 @@ class ShortTermHostSessionController implements ShortTermHostSession {
 
   async dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult> {
     return this.apply((state) => dispatchShortTermHostMenuAction(state, this.host, input));
+  }
+
+  async cancelTransientWorkflow(): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => cancelShortTermHostTransientWorkflow(state));
   }
 
   async resetImageReplacementPreview(): Promise<ShortTermHostSessionActionResult> {

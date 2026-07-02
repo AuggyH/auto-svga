@@ -752,6 +752,20 @@ test("short-term host session exposes first-class methods for formal short-term 
   assert.equal(optimized.state.facade.model.activeOutput?.outputKind, "optimized_svga");
   assert.ok(optimized.state.activeOutputBytes);
 
+  const optimizationCancelled = await session.cancelTransientWorkflow();
+  assert.equal(optimizationCancelled.actionResult?.status, "completed");
+  assert.equal(optimizationCancelled.actionResult?.action, "cancelTransientWorkflow");
+  assert.equal(optimizationCancelled.state.facade.model.activeWorkflow.kind, "optimizationCompare");
+  assert.equal(optimizationCancelled.state.facade.model.activeWorkflow.status, "cancelled");
+  assert.equal(optimizationCancelled.state.facade.model.activeOutput, undefined);
+  assert.equal(optimizationCancelled.state.activeOutputBytes, undefined);
+
+  const optimizedAgain = await session.runOptimization();
+  assert.equal(optimizedAgain.actionResult?.status, "completed");
+  assert.equal(optimizedAgain.actionResult?.action, "runOptimization");
+  assert.equal(optimizedAgain.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(optimizedAgain.state.activeOutputBytes);
+
   const blockedRename = await session.renameImageKey("img_frame", "profile_frame");
   assert.equal(blockedRename.actionResult?.status, "blocked");
   assert.equal(blockedRename.actionResult?.diagnostic?.code, "operation_requires_discard_confirmation");
@@ -792,6 +806,20 @@ test("short-term host session exposes first-class methods for formal short-term 
   assert.equal(renamed.actionResult?.action, "renameImageKey");
   assert.equal(renamed.state.facade.model.activeOutput?.outputKind, "renamed_svga");
   assert.ok(renamed.state.activeOutputBytes);
+
+  const renameCancelled = await session.cancelTransientWorkflow();
+  assert.equal(renameCancelled.actionResult?.status, "completed");
+  assert.equal(renameCancelled.actionResult?.action, "cancelTransientWorkflow");
+  assert.equal(renameCancelled.state.facade.model.activeWorkflow.kind, "renamePreview");
+  assert.equal(renameCancelled.state.facade.model.activeWorkflow.status, "cancelled");
+  assert.equal(renameCancelled.state.facade.model.activeOutput, undefined);
+  assert.equal(renameCancelled.state.activeOutputBytes, undefined);
+
+  const renamedAgain = await session.renameImageKey("img_frame", "profile_frame");
+  assert.equal(renamedAgain.actionResult?.status, "completed");
+  assert.equal(renamedAgain.actionResult?.action, "renameImageKey");
+  assert.equal(renamedAgain.state.facade.model.activeOutput?.outputKind, "renamed_svga");
+  assert.ok(renamedAgain.state.activeOutputBytes);
 
   const closeBlocked = await session.closeFile();
   assert.equal(closeBlocked.actionResult?.status, "blocked");
