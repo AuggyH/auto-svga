@@ -8,6 +8,7 @@ import {
   createShortTermSvgaFixture
 } from "./helpers/short-term-svga-fixtures.js";
 import {
+  clearShortTermHostRecentFiles,
   classifyShortTermHostMenuCommand,
   createShortTermHostActionState,
   dispatchShortTermHostMenuAction,
@@ -20,6 +21,7 @@ import {
   runShortTermHostImageKeyRename,
   runShortTermHostImageReplacement,
   runShortTermHostOptimization,
+  saveShortTermHostOutput,
   type ShortTermHostEnvironment,
   type ShortTermHostMenuActionInput
 } from "../workbench/short-term-host-actions.js";
@@ -147,6 +149,41 @@ test("short-term host preview actions fail closed when opened source bytes are m
   assert.equal(preparedText.lastAction?.action, "prepareTextPreview");
   assert.equal(appliedText.lastAction?.action, "applyTextPreview");
   assert.equal(resetText.lastAction?.action, "resetTextPreview");
+});
+
+test("short-term host action results expose action-specific PRD ids", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await runShortTermHostOptimization(opened);
+  const renamed = await runShortTermHostImageKeyRename(opened, "img_frame", "profile_frame");
+  const replaced = await runShortTermHostImageReplacement(
+    opened,
+    "img_frame",
+    createShortTermColoredPng(16, 16, [0, 255, 0, 255])
+  );
+  const textPrepared = prepareShortTermHostTextPreview(opened, {
+    textElements: [{ textKey: "nickname", displayName: "昵称", supportedFields: ["text"] }]
+  });
+  const saved = await saveShortTermHostOutput(optimized, host, {
+    command: "saveAs",
+    targetPath: "/Users/designer/private/optimized.svga"
+  });
+  const clearedRecent = clearShortTermHostRecentFiles(opened);
+
+  assert.deepEqual(opened.lastAction?.prdIds, ["S1", "S2"]);
+  assert.deepEqual(optimized.lastAction?.prdIds, ["S8", "S9", "S10", "S14"]);
+  assert.deepEqual(renamed.lastAction?.prdIds, ["S11", "S14"]);
+  assert.deepEqual(replaced.lastAction?.prdIds, ["S12", "S14"]);
+  assert.deepEqual(textPrepared.lastAction?.prdIds, ["S13"]);
+  assert.deepEqual(saved.lastAction?.prdIds, ["S14"]);
+  assert.deepEqual(clearedRecent.lastAction?.prdIds, ["S1", "S2", "S16"]);
 });
 
 test("short-term host actions run optimization and Save As through write-read validation", async () => {

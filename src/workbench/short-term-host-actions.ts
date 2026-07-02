@@ -69,6 +69,17 @@ export type ShortTermHostActionKind =
   | "menuDispatch";
 
 export type ShortTermHostActionStatus = "completed" | "blocked" | "failed" | "delegated";
+export type ShortTermHostActionPrdId =
+  | "S1"
+  | "S2"
+  | "S8"
+  | "S9"
+  | "S10"
+  | "S11"
+  | "S12"
+  | "S13"
+  | "S14"
+  | "S16";
 
 export interface ShortTermHostActionState {
   facade: ShortTermWorkbenchFacadeState;
@@ -80,7 +91,7 @@ export interface ShortTermHostActionState {
 export interface ShortTermHostActionResult {
   schemaVersion: typeof SHORT_TERM_HOST_ACTION_SCHEMA_VERSION;
   source: "short-term-host-action";
-  prdIds: readonly ["S1", "S2", "S14", "S16"];
+  prdIds: readonly ShortTermHostActionPrdId[];
   action: ShortTermHostActionKind;
   status: ShortTermHostActionStatus;
   message: string;
@@ -931,13 +942,43 @@ function result(
   return {
     schemaVersion: SHORT_TERM_HOST_ACTION_SCHEMA_VERSION,
     source: "short-term-host-action",
-    prdIds: ["S1", "S2", "S14", "S16"],
+    prdIds: prdIdsForAction(action),
     action,
     status,
     message,
     pathRedacted: true,
     ...withoutUndefined(options)
   };
+}
+
+function prdIdsForAction(action: ShortTermHostActionKind): readonly ShortTermHostActionPrdId[] {
+  switch (action) {
+    case "openLocalFile":
+      return ["S1", "S2"];
+    case "openRecentFile":
+    case "clearRecentFiles":
+      return ["S1", "S2", "S16"];
+    case "closeFile":
+      return ["S1", "S14"];
+    case "runOptimization":
+      return ["S8", "S9", "S10", "S14"];
+    case "renameImageKey":
+      return ["S11", "S14"];
+    case "replaceImage":
+    case "resetImageReplacement":
+      return ["S12", "S14"];
+    case "prepareTextPreview":
+    case "applyTextPreview":
+    case "resetTextPreview":
+      return ["S13"];
+    case "reportPlaybackFailure":
+    case "recoverPlayback":
+      return ["S2"];
+    case "save":
+      return ["S14"];
+    case "menuDispatch":
+      return ["S1", "S2", "S14", "S16"];
+  }
 }
 
 function saveResult(
