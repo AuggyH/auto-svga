@@ -90,9 +90,13 @@ function buildScenarios(): Nq1SaveAsSafetyScenario[] {
   const macOriginal = `${userRoot}/auto-svga/frame.svga`;
   const macSibling = `${userRoot}/auto-svga/frame-edited.svga`;
   const macCaseVariant = `${userRoot.toLowerCase()}/AUTO-SVGA/FRAME.svga`;
+  const macUnicodeOriginal = `${userRoot}/auto-svga/caf\u00e9.svga`;
+  const macUnicodeVariant = `${userRoot}/auto-svga/cafe\u0301.svga`;
   const winOriginal = "C:\\Users\\Reviewer\\AutoSVGA\\frame.svga";
   const winSibling = "C:\\Users\\Reviewer\\AutoSVGA\\frame-edited.svga";
   const winCaseVariant = "c:\\users\\reviewer\\autosvga\\FRAME.svga";
+  const winUnicodeOriginal = "C:\\Users\\Reviewer\\AutoSVGA\\caf\u00e9.svga";
+  const winUnicodeVariant = "C:\\Users\\Reviewer\\AutoSVGA\\cafe\u0301.svga";
 
   return [
     scenario("macos_same_source_target_rejected", "macos", "pass", "reject same source and target", {
@@ -104,6 +108,9 @@ function buildScenarios(): Nq1SaveAsSafetyScenario[] {
     scenario("macos_case_variant_same_path_rejected", "macos", "pass", "reject case-only source aliases", {
       detectedSamePath: sameResolvedPath("macos", macOriginal, macCaseVariant)
     }),
+    scenario("macos_unicode_normalized_same_path_rejected", "macos", "pass", "reject unicode-normalized source aliases", {
+      detectedSamePath: sameResolvedPath("macos", macUnicodeOriginal, macUnicodeVariant)
+    }),
     scenario("windows_same_source_target_rejected_same_case", "windows", "pass", "reject same source and target with same case", {
       detectedSamePath: sameResolvedPath("windows", winOriginal, winOriginal)
     }),
@@ -112,6 +119,9 @@ function buildScenarios(): Nq1SaveAsSafetyScenario[] {
     }),
     scenario("windows_case_variant_same_path_rejected", "windows", "pass", "reject case-only source aliases", {
       detectedSamePath: sameResolvedPath("windows", winOriginal, winCaseVariant)
+    }),
+    scenario("windows_unicode_normalized_same_path_rejected", "windows", "pass", "reject unicode-normalized source aliases", {
+      detectedSamePath: sameResolvedPath("windows", winUnicodeOriginal, winUnicodeVariant)
     }),
     scenario("filename_sanitization_removes_path_separators", "all", "pass", "suggested name cannot smuggle directories", {
       sanitized: sanitizeSvgaFileNameLikeMain("../unsafe\\nested/name")
