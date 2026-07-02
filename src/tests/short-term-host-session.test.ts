@@ -58,13 +58,24 @@ test("short-term host session returns defensive state snapshots", async () => {
     localPath: sourcePath
   });
 
+  assert.equal(opened.model.appState.state, "previewReady");
+  assert.equal(JSON.stringify(opened.model).includes("/Users/designer"), false);
+  opened.model.activeWorkflow.message = "mutated action result model";
   opened.state.currentLocalPath = "/Users/designer/private/mutated-from-action.svga";
+
+  const leakedModel = session.getModel();
+  assert.equal(leakedModel.appState.state, "previewReady");
+  assert.equal(JSON.stringify(leakedModel).includes("/Users/designer"), false);
+  assert.notEqual(leakedModel.activeWorkflow.message, "mutated action result model");
+  leakedModel.activeWorkflow.message = "mutated get model";
+
   const leakedGetState = session.getState();
   assert.ok(leakedGetState.facade.sourceBytes);
   const originalFirstByte = leakedGetState.facade.sourceBytes[0];
   leakedGetState.currentLocalPath = "/Users/designer/private/mutated-from-get-state.svga";
   leakedGetState.facade.sourceBytes[0] = (originalFirstByte + 1) % 256;
 
+  assert.notEqual(session.getModel().activeWorkflow.message, "mutated get model");
   const current = session.getState();
   assert.equal(current.currentLocalPath, sourcePath);
   assert.equal(current.facade.sourceBytes?.[0], originalFirstByte);

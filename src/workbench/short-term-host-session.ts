@@ -39,6 +39,7 @@ import {
   type ShortTermHostLifecycleRequestInput
 } from "./short-term-host-lifecycle.js";
 import { serializeShortTermRecentFilesState } from "./short-term-recent-files.js";
+import type { ShortTermWorkbenchFacadeModel } from "./short-term-workbench-facade.js";
 
 export const SHORT_TERM_HOST_SESSION_SCHEMA_VERSION = 1 as const;
 
@@ -64,6 +65,7 @@ export interface ShortTermHostSessionRecentPersistenceResult {
 export interface ShortTermHostSessionActionResult {
   schemaVersion: typeof SHORT_TERM_HOST_SESSION_SCHEMA_VERSION;
   source: "short-term-host-session";
+  model: ShortTermWorkbenchFacadeModel;
   state: ShortTermHostActionState;
   actionResult?: ShortTermHostActionResult;
   recentPersistence: ShortTermHostSessionRecentPersistenceResult;
@@ -77,6 +79,7 @@ export interface CreateShortTermHostSessionOptions {
 
 export interface ShortTermHostSession {
   getState(): ShortTermHostActionState;
+  getModel(): ShortTermWorkbenchFacadeModel;
   openLocalFile(input: ShortTermHostOpenLocalFileInput): Promise<ShortTermHostSessionActionResult>;
   openRecentFile(input: ShortTermHostOpenRecentFileInput): Promise<ShortTermHostSessionActionResult>;
   clearRecentFiles(): Promise<ShortTermHostSessionActionResult>;
@@ -130,6 +133,10 @@ class ShortTermHostSessionController implements ShortTermHostSession {
 
   getState(): ShortTermHostActionState {
     return cloneShortTermHostActionState(this.state);
+  }
+
+  getModel(): ShortTermWorkbenchFacadeModel {
+    return cloneShortTermWorkbenchFacadeModel(this.state.facade.model);
   }
 
   async openLocalFile(input: ShortTermHostOpenLocalFileInput): Promise<ShortTermHostSessionActionResult> {
@@ -217,6 +224,7 @@ class ShortTermHostSessionController implements ShortTermHostSession {
       return {
         schemaVersion: SHORT_TERM_HOST_SESSION_SCHEMA_VERSION,
         source: "short-term-host-session",
+        model: cloneShortTermWorkbenchFacadeModel(stateSnapshot.facade.model),
         state: stateSnapshot,
         actionResult: stateSnapshot.lastAction,
         recentPersistence: await this.persistRecentFilesIfChanged()
@@ -259,6 +267,10 @@ function recentSignature(state: ShortTermHostActionState): string {
 
 function cloneShortTermHostActionState(state: ShortTermHostActionState): ShortTermHostActionState {
   return structuredClone(state) as ShortTermHostActionState;
+}
+
+function cloneShortTermWorkbenchFacadeModel(model: ShortTermWorkbenchFacadeModel): ShortTermWorkbenchFacadeModel {
+  return structuredClone(model) as ShortTermWorkbenchFacadeModel;
 }
 
 function persistenceResult(
