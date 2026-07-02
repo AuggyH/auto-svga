@@ -469,6 +469,7 @@ export function reportShortTermWorkbenchPlaybackFailure(
   message: string
 ): ShortTermWorkbenchFacadeState {
   const appState = reportShortTermPlaybackFailure(state.model.appState, { message });
+  if (appState === state.model.appState) return state;
   return buildFacadeState({
     ...state,
     appState,
@@ -485,6 +486,7 @@ export function reportShortTermWorkbenchPlaybackFailure(
 export function recoverShortTermWorkbenchPlayback(
   state: ShortTermWorkbenchFacadeState
 ): ShortTermWorkbenchFacadeState {
+  if (state.model.appState.state !== "playbackAbnormal") return state;
   const appState = recoverShortTermPlayback(state.model.appState);
   return buildFacadeState({
     ...state,

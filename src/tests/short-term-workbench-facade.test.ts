@@ -218,6 +218,35 @@ test("short-term workbench facade reports and recovers playback abnormal without
   assert.equal(recovered.model.currentSourceSha256, sha256(sourceBytes));
 });
 
+test("short-term workbench facade ignores playback transitions outside playback abnormal flow", async () => {
+  const launch = createShortTermWorkbenchFacade();
+  const launchReport = reportShortTermWorkbenchPlaybackFailure(launch, "播放器首帧渲染失败。");
+  const launchRecover = recoverShortTermWorkbenchPlayback(launch);
+
+  assert.equal(launchReport, launch);
+  assert.equal(launchRecover, launch);
+  assert.equal(launch.model.activeWorkflow.kind, "none");
+
+  const sourceBytes = await createShortTermSvgaFixture();
+  const opened = completeShortTermWorkbenchOpen(
+    startShortTermWorkbenchOpen(createShortTermWorkbenchFacade(), {
+      requestId: "open-1",
+      source: "fileButton",
+      displayName: "ready.svga"
+    }),
+    {
+      requestId: "open-1",
+      inspection: inspectionFixture(),
+      sourceBytes
+    }
+  );
+  const readyRecover = recoverShortTermWorkbenchPlayback(opened);
+
+  assert.equal(readyRecover, opened);
+  assert.equal(opened.model.appState.state, "previewReady");
+  assert.equal(opened.model.activeWorkflow.kind, "open");
+});
+
 test("short-term workbench facade exposes rename, image replacement, and text preview entries", async () => {
   const sourceBytes = await createShortTermSvgaFixture({
     images: {
