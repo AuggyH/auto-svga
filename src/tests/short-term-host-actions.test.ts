@@ -7,12 +7,14 @@ import {
   createShortTermSvgaFixture
 } from "./helpers/short-term-svga-fixtures.js";
 import {
+  classifyShortTermHostMenuCommand,
   createShortTermHostActionState,
   dispatchShortTermHostMenuAction,
   openShortTermHostLocalFile,
   openShortTermHostRecentFile,
   type ShortTermHostEnvironment
 } from "../workbench/short-term-host-actions.js";
+import { flattenShortTermCommandMenuItems } from "../workbench/short-term-command-menu.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
 
 test("short-term host actions open local files through the facade without exposing local paths", async () => {
@@ -192,6 +194,101 @@ test("short-term host actions block disabled or unrouted menu commands", async (
   });
   assert.equal(unknownBlocked.lastAction?.status, "blocked");
   assert.equal(unknownBlocked.lastAction?.diagnostic?.code, "menu_command_disabled");
+});
+
+test("short-term host actions delegate native and renderer-owned menu commands", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const sourceBytes = await createShortTermSvgaFixture();
+  const host = createMemoryHost({
+    [sourcePath]: sourceBytes
+  });
+  const launch = createShortTermHostActionState();
+
+  const copied = await dispatchShortTermHostMenuAction(launch, host, {
+    commandId: "copy"
+  });
+  assert.equal(copied.lastAction?.status, "delegated");
+  assert.equal(copied.lastAction?.diagnostic?.code, "menu_command_delegated_to_native");
+  assert.equal(copied.facade.model.appState.state, "launch");
+
+  const help = await dispatchShortTermHostMenuAction(launch, host, {
+    commandId: "help"
+  });
+  assert.equal(help.lastAction?.status, "delegated");
+  assert.equal(help.lastAction?.diagnostic?.code, "menu_command_delegated_to_renderer");
+
+  const playBlocked = await dispatchShortTermHostMenuAction(launch, host, {
+    commandId: "playPause"
+  });
+  assert.equal(playBlocked.lastAction?.status, "blocked");
+  assert.equal(playBlocked.lastAction?.diagnostic?.code, "menu_command_disabled");
+
+  const opened = await openShortTermHostLocalFile(launch, host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const played = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "playPause"
+  });
+  assert.equal(played.lastAction?.status, "delegated");
+  assert.equal(played.lastAction?.diagnostic?.code, "menu_command_delegated_to_renderer");
+  assert.equal(played.currentLocalPath, sourcePath);
+
+  const minimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "minimize"
+  });
+  assert.equal(minimized.lastAction?.status, "delegated");
+  assert.equal(minimized.lastAction?.diagnostic?.code, "menu_command_delegated_to_native");
+  assert.equal(minimized.currentLocalPath, sourcePath);
+});
+
+test("short-term host actions open recent submenu item ids directly", async () => {
+  const sourcePath = "/Users/designer/private/recent.svga";
+  const sourceBytes = await createShortTermSvgaFixture();
+  const host = createMemoryHost({
+    [sourcePath]: sourceBytes
+  });
+  const state = createShortTermHostActionState({
+    recentFiles: [
+      {
+        id: "recent-a",
+        localPath: sourcePath,
+        displayName: "recent.svga",
+        lastOpenedAt: "2026-07-02T00:00:00.000Z"
+      }
+    ]
+  });
+
+  const opened = await dispatchShortTermHostMenuAction(state, host, {
+    commandId: "openRecent:recent-a"
+  });
+
+  assert.equal(opened.lastAction?.status, "completed");
+  assert.equal(opened.facade.model.appState.state, "previewReady");
+  assert.equal(opened.currentLocalPath, sourcePath);
+  assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
+});
+
+test("short-term host menu command classification covers enabled menu item ids", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const sourceBytes = await createShortTermSvgaFixture();
+  const host = createMemoryHost({
+    [sourcePath]: sourceBytes
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "menuOpen",
+    localPath: sourcePath
+  });
+  const enabledCommandIds = flattenShortTermCommandMenuItems(opened.facade.model.commandMenu)
+    .filter((item) => item.kind === "command" && item.enabled !== false)
+    .map((item) => item.id);
+
+  assert.ok(enabledCommandIds.length > 0);
+  for (const commandId of enabledCommandIds) {
+    assert.notEqual(classifyShortTermHostMenuCommand(commandId), "unsupported", commandId);
+  }
 });
 
 test("short-term host actions close the current file without clearing recent records", async () => {

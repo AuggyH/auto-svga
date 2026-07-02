@@ -37,7 +37,8 @@ export type ShortTermHostActionKind =
   | "save"
   | "menuDispatch";
 
-export type ShortTermHostActionStatus = "completed" | "blocked" | "failed";
+export type ShortTermHostActionStatus = "completed" | "blocked" | "failed" | "delegated";
+export type ShortTermHostMenuCommandRoute = "host" | "native" | "renderer" | "unsupported";
 
 export interface ShortTermHostActionState {
   facade: ShortTermWorkbenchFacadeState;
@@ -110,6 +111,50 @@ export type ShortTermHostMenuActionInput =
   | { commandId: "renameImageKey"; fromImageKey: string; toImageKey: string }
   | { commandId: "replaceImage"; imageKey: string; pngBytes: Uint8Array }
   | { commandId: string };
+
+const HOST_ROUTED_MENU_COMMANDS = new Set([
+  "openSvga",
+  "openRecent",
+  "clearRecent",
+  "closeFile",
+  "save",
+  "saveAs",
+  "runOptimization",
+  "renameImageKey",
+  "replaceImage"
+]);
+
+const NATIVE_DELEGATED_MENU_COMMANDS = new Set([
+  "about",
+  "hide",
+  "hideOthers",
+  "unhide",
+  "quit",
+  "undo",
+  "redo",
+  "cut",
+  "copy",
+  "paste",
+  "selectAll",
+  "minimize",
+  "zoom",
+  "front"
+]);
+
+const RENDERER_DELEGATED_MENU_COMMANDS = new Set([
+  "playPause",
+  "replay",
+  "toggleCompare",
+  "help"
+]);
+
+export function classifyShortTermHostMenuCommand(commandId: string): ShortTermHostMenuCommandRoute {
+  const canonicalCommandId = canonicalHostMenuCommandId(commandId);
+  if (HOST_ROUTED_MENU_COMMANDS.has(canonicalCommandId)) return "host";
+  if (NATIVE_DELEGATED_MENU_COMMANDS.has(canonicalCommandId)) return "native";
+  if (RENDERER_DELEGATED_MENU_COMMANDS.has(canonicalCommandId)) return "renderer";
+  return "unsupported";
+}
 
 export function createShortTermHostActionState(
   options: CreateShortTermWorkbenchFacadeOptions = {}
@@ -345,8 +390,10 @@ export async function dispatchShortTermHostMenuAction(
   input: ShortTermHostMenuActionInput
 ): Promise<ShortTermHostActionState> {
   const commandId = input.commandId;
+  const canonicalCommandId = canonicalHostMenuCommandId(commandId);
+  const route = classifyShortTermHostMenuCommand(commandId);
   if (!isCommandEnabled(state, commandId)) {
-    const command = state.facade.model.appState.commands.find((item) => item.id === commandId);
+    const command = state.facade.model.appState.commands.find((item) => item.id === canonicalCommandId);
     return withLastAction(state, result("menuDispatch", "blocked", command?.reason ?? "当前菜单命令不可用。", {
       commandId,
       diagnostic: {
@@ -356,7 +403,14 @@ export async function dispatchShortTermHostMenuAction(
     }));
   }
 
-  switch (commandId) {
+  if (route === "native") {
+    return delegatedMenuCommand(state, commandId, "native", "该菜单命令由 macOS 原生命令处理。");
+  }
+  if (route === "renderer") {
+    return delegatedMenuCommand(state, commandId, "renderer", "该菜单命令由预览界面运行时处理。");
+  }
+
+  switch (canonicalCommandId) {
     case "openSvga": {
       const openInput = input as {
         requestId: string;
@@ -374,12 +428,22 @@ export async function dispatchShortTermHostMenuAction(
     case "openRecent": {
       const recentInput = input as {
         requestId: string;
-        recentFileId: string;
+        recentFileId?: string;
         source?: ShortTermRecentOpenSource;
       };
+      const recentFileId = recentInput.recentFileId ?? recentFileIdFromCommandId(commandId);
+      if (!recentFileId) {
+        return withLastAction(state, result("openRecentFile", "blocked", "最近文件记录不可用。", {
+          commandId,
+          diagnostic: {
+            code: "recent_file_id_missing",
+            message: `Menu command "${commandId}" did not include a recent file id.`
+          }
+        }));
+      }
       return openShortTermHostRecentFile(state, host, {
-        requestId: recentInput.requestId,
-        recentFileId: recentInput.recentFileId,
+        requestId: recentInput.requestId ?? `recent-menu-${recentFileId}`,
+        recentFileId,
         source: recentInput.source ?? "recentMenu"
       });
     }
@@ -420,6 +484,23 @@ export async function dispatchShortTermHostMenuAction(
         }
       }));
   }
+}
+
+function delegatedMenuCommand(
+  state: ShortTermHostActionState,
+  commandId: string,
+  owner: "native" | "renderer",
+  message: string
+): ShortTermHostActionState {
+  return withLastAction(state, result("menuDispatch", "delegated", message, {
+    commandId,
+    diagnostic: {
+      code: owner === "native" ? "menu_command_delegated_to_native" : "menu_command_delegated_to_renderer",
+      message: owner === "native"
+        ? `Menu command "${commandId}" is handled by the native shell.`
+        : `Menu command "${commandId}" is handled by the renderer runtime.`
+    }
+  }));
 }
 
 async function completeHostOpen(
@@ -512,9 +593,25 @@ async function completeHostOpen(
 }
 
 function isCommandEnabled(state: ShortTermHostActionState, commandId: string): boolean {
-  if (["undo", "redo", "cut", "copy", "paste", "selectAll"].includes(commandId)) return true;
-  const command = state.facade.model.appState.commands.find((item) => item.id === commandId);
+  if (NATIVE_DELEGATED_MENU_COMMANDS.has(commandId)) return true;
+  const recentFileId = recentFileIdFromCommandId(commandId);
+  const canonicalCommandId = canonicalHostMenuCommandId(commandId);
+  if (recentFileId) {
+    const command = state.facade.model.appState.commands.find((item) => item.id === "openRecent");
+    return command?.enabled === true && state.facade.recentState.records.some((record) => record.id === recentFileId);
+  }
+  const command = state.facade.model.appState.commands.find((item) => item.id === canonicalCommandId);
   return command?.enabled === true;
+}
+
+function canonicalHostMenuCommandId(commandId: string): string {
+  return recentFileIdFromCommandId(commandId) ? "openRecent" : commandId;
+}
+
+function recentFileIdFromCommandId(commandId: string): string | undefined {
+  if (!commandId.startsWith("openRecent:")) return undefined;
+  const recentFileId = commandId.slice("openRecent:".length).trim();
+  return recentFileId && recentFileId !== "empty" ? recentFileId : undefined;
 }
 
 function withLastAction(
