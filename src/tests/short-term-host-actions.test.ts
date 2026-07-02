@@ -591,6 +591,14 @@ test("short-term host actions block disabled or unrouted menu commands", async (
   assert.deepEqual(clearBlocked.lastAction?.prdIds, ["S1", "S2", "S16"]);
   assert.equal(clearBlocked.lastAction?.diagnostic?.code, "menu_command_disabled");
 
+  const emptyRecentBlocked = await dispatchShortTermHostMenuAction(state, host, {
+    commandId: "openRecent:empty"
+  });
+  assert.equal(emptyRecentBlocked.lastAction?.status, "blocked");
+  assert.equal(emptyRecentBlocked.lastAction?.commandId, "openRecent:empty");
+  assert.deepEqual(emptyRecentBlocked.lastAction?.prdIds, ["S1", "S2", "S16"]);
+  assert.equal(emptyRecentBlocked.lastAction?.diagnostic?.code, "menu_command_disabled");
+
   const unknownBlocked = await dispatchShortTermHostMenuAction(state, host, {
     commandId: "showLogs"
   });

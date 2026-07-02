@@ -46,7 +46,7 @@ export function classifyShortTermHostMenuCommand(commandId: string): ShortTermHo
 }
 
 export function canonicalShortTermHostMenuCommandId(commandId: string): string {
-  return shortTermRecentFileIdFromMenuCommandId(commandId) ? "openRecent" : commandId;
+  return commandId.startsWith("openRecent:") ? "openRecent" : commandId;
 }
 
 export function shortTermRecentFileIdFromMenuCommandId(commandId: string): string | undefined {
