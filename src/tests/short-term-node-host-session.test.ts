@@ -4,7 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { createShortTermNodeHostSession } from "../hosts/short-term-node-host-session.js";
-import { createShortTermSvgaFixture } from "./helpers/short-term-svga-fixtures.js";
+import {
+  createShortTermOptimizableSvgaFixture,
+  createShortTermSvgaFixture
+} from "./helpers/short-term-svga-fixtures.js";
 
 test("short-term node host session opens real local files and restores recent records", async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-node-session-"));
@@ -64,6 +67,48 @@ test("short-term node host session can run without a configured recent store", a
     assert.equal(opened.actionResult?.status, "completed");
     assert.equal(opened.recentPersistence.status, "notConfigured");
     assert.equal(JSON.stringify(opened.state.facade.model).includes(tempDir), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("short-term node host session exposes lifecycle and guarded quit for dirty output", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-node-session-lifecycle-"));
+  const sourcePath = path.join(tempDir, "optimizable.svga");
+
+  try {
+    await writeFile(sourcePath, await createShortTermOptimizableSvgaFixture());
+    const session = await createShortTermNodeHostSession();
+    await session.openLocalFile({
+      requestId: "open-1",
+      source: "fileButton",
+      localPath: sourcePath
+    });
+    await session.dispatchMenuAction({
+      commandId: "runOptimization"
+    });
+
+    const lifecycle = session.evaluateLifecycleRequest({
+      request: "appQuit"
+    });
+    assert.equal(lifecycle.status, "blocked");
+    assert.equal(lifecycle.diagnostic?.code, "lifecycle_requires_discard_confirmation");
+    assert.equal(JSON.stringify(lifecycle).includes(tempDir), false);
+
+    const blockedQuit = await session.dispatchMenuAction({
+      commandId: "quit"
+    });
+    assert.equal(blockedQuit.actionResult?.status, "blocked");
+    assert.equal(blockedQuit.actionResult?.diagnostic?.code, "lifecycle_requires_discard_confirmation");
+    assert.ok(blockedQuit.state.activeOutputBytes);
+
+    const confirmedQuit = await session.dispatchMenuAction({
+      commandId: "quit",
+      discardUnsavedChanges: true
+    });
+    assert.equal(confirmedQuit.actionResult?.status, "delegated");
+    assert.equal(confirmedQuit.actionResult?.diagnostic?.code, "menu_command_delegated_to_native_after_lifecycle_check");
+    assert.ok(confirmedQuit.state.activeOutputBytes);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
