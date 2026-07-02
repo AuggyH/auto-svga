@@ -75,19 +75,21 @@ test("short-term host actions mark unavailable recent files without stale source
 });
 
 test("short-term host actions redact local paths from host error diagnostics", async () => {
+  const localPath = "/Users/designer/My Documents/private/broken.svga";
   const host = createMemoryHost({}, {
-    readError: () => new Error("Cannot read /Users/designer/private/broken.svga")
+    readError: () => new Error(`Cannot read ${localPath}`)
   });
 
   const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
     requestId: "open-1",
     source: "fileButton",
-    localPath: "/Users/designer/private/broken.svga"
+    localPath
   });
 
   assert.equal(opened.facade.model.appState.state, "loadFailed");
   assert.equal(opened.lastAction?.status, "failed");
   assert.equal(opened.lastAction?.diagnostic?.message.includes("/Users/designer"), false);
+  assert.equal(opened.lastAction?.diagnostic?.message.includes("My Documents/private"), false);
   assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
 });
 
@@ -240,6 +242,36 @@ test("short-term host actions keep dirty output when saved bytes fail read-back 
 
   assert.equal(saved.lastAction?.status, "failed");
   assert.match(saved.facade.model.activeWorkflow.message, /未匹配已验证输出/);
+  assert.ok(saved.activeOutputBytes);
+  assert.ok(saved.facade.model.activeOutput);
+  assert.equal(commandEnabled(saved, "saveAs"), true);
+});
+
+test("short-term host actions redact spaced local paths from save failures", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const outputPath = "/Users/designer/My Documents/private/optimized copy.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  }, {
+    writeError: (localPath) => new Error(`Cannot write ${localPath}`)
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+  const saved = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "saveAs",
+    targetPath: outputPath
+  });
+
+  assert.equal(saved.lastAction?.status, "failed");
+  assert.equal(saved.lastAction?.diagnostic?.code, "save_write_failed");
+  assert.equal(saved.lastAction?.diagnostic?.message.includes("/Users/designer"), false);
+  assert.equal(saved.lastAction?.diagnostic?.message.includes("My Documents/private"), false);
   assert.ok(saved.activeOutputBytes);
   assert.ok(saved.facade.model.activeOutput);
   assert.equal(commandEnabled(saved, "saveAs"), true);
@@ -794,6 +826,7 @@ function createMemoryHost(
   options: {
     exists?: (localPath: string) => boolean;
     readError?: (localPath: string) => Error;
+    writeError?: (localPath: string) => Error;
     inspect?: (input: { bytes: Uint8Array; displayName: string; localPath?: string }) => ShortTermProductInspectionModel;
     readSavedOverride?: (localPath: string) => Uint8Array;
   } = {}
@@ -814,6 +847,8 @@ function createMemoryHost(
       return options.inspect?.(input) ?? inspectionFixture();
     },
     async writeLocalFile(localPath, bytes) {
+      const writeError = options.writeError?.(localPath);
+      if (writeError) throw writeError;
       files.set(localPath, new Uint8Array(bytes));
     },
     async readSavedFile(localPath) {

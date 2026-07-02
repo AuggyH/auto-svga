@@ -38,6 +38,7 @@ import {
   type ShortTermHostLifecycleDecision,
   type ShortTermHostLifecycleRequestInput
 } from "./short-term-host-lifecycle.js";
+import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
 import { serializeShortTermRecentFilesState } from "./short-term-recent-files.js";
 import type { ShortTermWorkbenchFacadeModel } from "./short-term-workbench-facade.js";
 
@@ -290,6 +291,5 @@ function persistenceResult(
 }
 
 function errorMessage(error: unknown, fallback: string): string {
-  const message = error instanceof Error && error.message ? error.message : fallback;
-  return message.replace(/\/[^\s，。；;:'")]+/gu, "[local path]");
+  return redactShortTermLocalPathsFromError(error, fallback);
 }

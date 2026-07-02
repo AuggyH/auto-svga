@@ -49,6 +49,7 @@ import {
   shortTermPrdIdsForMenuDispatch,
   type ShortTermPrdId
 } from "./short-term-prd-trace.js";
+import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
 
 export const SHORT_TERM_HOST_ACTION_SCHEMA_VERSION = 1 as const;
 export {
@@ -471,7 +472,11 @@ export async function saveShortTermHostOutput(
       outputSha256: completed.result.savedSha256
     }));
   } catch (error) {
-    const failed = failShortTermWorkbenchSave(state.facade, plan, error);
+    const failed = failShortTermWorkbenchSave(
+      state.facade,
+      plan,
+      new Error(errorMessage(error, "保存失败。", [targetPath]))
+    );
     return withLastAction({
       ...state,
       facade: failed.state,
@@ -840,14 +845,14 @@ async function completeHostOpen(
         facade: markShortTermWorkbenchRecentFileMissing(
           state.facade,
           input.recentFileId,
-          errorMessage(error, "最近文件已不存在或当前无法访问。")
+          errorMessage(error, "最近文件已不存在或当前无法访问。", [input.localPath])
         ),
         currentLocalPath: undefined,
         activeOutputBytes: undefined
       }, result(input.action, "failed", "最近文件已不存在或当前无法访问。", {
         diagnostic: {
           code: "recent_file_read_failed",
-          message: errorMessage(error, "Host could not read the recent file.")
+          message: errorMessage(error, "Host could not read the recent file.", [input.localPath])
         }
       }));
     }
@@ -864,7 +869,7 @@ async function completeHostOpen(
     }, result(input.action, "failed", "文件读取失败。", {
       diagnostic: {
         code: "local_file_read_failed",
-        message: errorMessage(error, "Host could not read the local file.")
+        message: errorMessage(error, "Host could not read the local file.", [input.localPath])
       }
     }));
   }
@@ -901,7 +906,7 @@ async function completeHostOpen(
     }, result(input.action, "failed", "SVGA 解析失败。", {
       diagnostic: {
         code: "local_file_inspection_failed",
-        message: errorMessage(error, "Host could not inspect the SVGA file.")
+        message: errorMessage(error, "Host could not inspect the SVGA file.", [input.localPath])
       }
     }));
   }
@@ -992,9 +997,8 @@ function sameResolvedPath(a: string, b: string): boolean {
   return path.resolve(a) === path.resolve(b);
 }
 
-function errorMessage(error: unknown, fallback: string): string {
-  const message = error instanceof Error && error.message ? error.message : fallback;
-  return message.replace(/\/[^\s，。；;:'")]+/gu, "[local path]");
+function errorMessage(error: unknown, fallback: string, sensitivePaths: readonly string[] = []): string {
+  return redactShortTermLocalPathsFromError(error, fallback, sensitivePaths);
 }
 
 function sha256(bytes: Uint8Array): string {

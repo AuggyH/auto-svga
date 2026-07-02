@@ -172,7 +172,7 @@ test("short-term host session leaves successful actions intact when recent persi
     [sourcePath]: await createShortTermSvgaFixture()
   });
   const store = createMemoryRecentFilesStore([], {
-    saveError: () => new Error("Cannot write /Users/designer/private/recent.json")
+    saveError: () => new Error("Cannot write /Users/designer/My Documents/private/recent.json")
   });
   const session = await createShortTermHostSession({ host, recentStore: store });
 
@@ -187,6 +187,7 @@ test("short-term host session leaves successful actions intact when recent persi
   assert.equal(opened.recentPersistence.status, "failed");
   assert.equal(opened.recentPersistence.diagnostic?.code, "recent_files_persist_failed");
   assert.equal(opened.recentPersistence.diagnostic?.message.includes("/Users/designer"), false);
+  assert.equal(opened.recentPersistence.diagnostic?.message.includes("My Documents/private"), false);
 
   store.setSaveError(undefined);
   const retry = await session.persistRecentFiles();
