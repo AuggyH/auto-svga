@@ -1,6 +1,6 @@
-import path from "node:path";
 import type { ShortTermProductInspectionModel } from "./short-term-product-model.js";
 import type { ShortTermPersistedOutputRecord } from "./short-term-save-state.js";
+import { shortTermDisplayNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_APP_STATE_SCHEMA_VERSION = 1 as const;
 
@@ -341,15 +341,15 @@ function command(
 }
 
 function displayNameForRequest(request: ShortTermLocalOpenRequest): string {
-  if (request.displayName?.trim()) return path.basename(request.displayName.trim());
-  if (request.localPath?.trim()) return path.basename(request.localPath.trim());
-  return "未命名.svga";
+  return shortTermDisplayNameFromPathLike(request.displayName)
+    || shortTermDisplayNameFromPathLike(request.localPath)
+    || "未命名.svga";
 }
 
 function normalizeRecentFiles(records: readonly ShortTermRecentFileRecord[]): ShortTermRecentFileRecord[] {
   return records.slice(0, 10).map((record) => ({
     id: record.id,
-    displayName: path.basename(record.displayName),
+    displayName: shortTermDisplayNameFromPathLike(record.displayName) || "未命名.svga",
     lastOpenedAt: record.lastOpenedAt
   }));
 }

@@ -501,7 +501,12 @@ export function reportShortTermHostPlaybackFailure(
     }));
   }
 
-  const message = input.message.trim() || "播放器未正常完成播放。";
+  const rawMessage = input.message.trim();
+  const message = rawMessage
+    ? redactShortTermLocalPathsFromError(rawMessage, "播放器未正常完成播放。", [
+      ...(state.currentLocalPath ? [state.currentLocalPath] : [])
+    ])
+    : "播放器未正常完成播放。";
   return withLastAction({
     ...state,
     facade: reportShortTermWorkbenchPlaybackFailure(state.facade, message)

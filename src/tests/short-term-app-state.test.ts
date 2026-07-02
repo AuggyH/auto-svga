@@ -32,6 +32,35 @@ test("short-term app state starts at launch with file entry points enabled", () 
   assert.equal(commandEnabled(state, "replaceImage"), false);
 });
 
+test("short-term app state sanitizes path-like display labels across platforms", () => {
+  const launch = createShortTermLaunchAppState({
+    recentFiles: [
+      {
+        id: "recent-win",
+        displayName: "C:\\Users\\designer\\secret\\frame.svga",
+        lastOpenedAt: "2026-07-02T00:00:00.000Z"
+      }
+    ]
+  });
+  const loadingFromDisplayName = startShortTermLocalOpen(launch, {
+    requestId: "open-win-display",
+    source: "menuOpen",
+    displayName: "D:\\Users\\designer\\secret\\opened.svga"
+  });
+  const loadingFromLocalPath = startShortTermLocalOpen(launch, {
+    requestId: "open-win-path",
+    source: "menuOpen",
+    localPath: "E:\\Users\\designer\\secret\\fallback.svga"
+  });
+  const missing = markShortTermRecentFileMissing(launch, "recent-win");
+
+  assert.equal(launch.recentFiles[0].displayName, "frame.svga");
+  assert.equal(loadingFromDisplayName.loading?.displayName, "opened.svga");
+  assert.equal(loadingFromLocalPath.loading?.displayName, "fallback.svga");
+  assert.equal(missing.failure?.title, "frame.svga 无法打开");
+  assert.equal(JSON.stringify({ launch, loadingFromDisplayName, loadingFromLocalPath, missing }).includes("Users"), false);
+});
+
 test("short-term app state routes file button, drag, menu, and recent opens through loading", () => {
   for (const source of ["fileButton", "dragDrop", "menuOpen", "recentLaunch", "recentMenu"] as ShortTermOpenSource[]) {
     const state = startShortTermLocalOpen(

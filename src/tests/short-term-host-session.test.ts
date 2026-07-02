@@ -401,12 +401,15 @@ test("short-term host session records and recovers playback failure without clea
   assert.ok(optimized.state.activeOutputBytes);
 
   const abnormal = await session.reportPlaybackFailure({
-    message: "播放器首帧渲染失败。"
+    message: `播放器无法读取 ${sourcePath}`
   });
   assert.equal(abnormal.actionResult?.status, "completed");
   assert.equal(abnormal.actionResult?.action, "reportPlaybackFailure");
   assert.equal(abnormal.recentPersistence.status, "unchanged");
   assert.equal(abnormal.state.facade.model.appState.state, "playbackAbnormal");
+  assert.equal(abnormal.state.facade.model.appState.failure?.message, "播放器无法读取 [local path]");
+  assert.equal(abnormal.actionResult?.message, "播放器无法读取 [local path]");
+  assert.equal(JSON.stringify(abnormal.model).includes("/Users/designer"), false);
   assert.equal(abnormal.state.currentLocalPath, sourcePath);
   assert.ok(abnormal.state.activeOutputBytes);
   assert.equal(abnormal.state.facade.model.activeOutput?.outputKind, "optimized_svga");
