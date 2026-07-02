@@ -287,6 +287,12 @@ function validateSmokeResult(value) {
     result.shortTermRuntimeTextBoundaryProof = shortTermRuntimeTextBoundaryProof;
     result.shortTermRuntimeTextBoundary = shortTermRuntimeTextBoundaryProof.passed;
   }
+  if (value.shortTermThumbnailProof !== undefined) {
+    const shortTermThumbnailProof = validateShortTermThumbnailProof(value.shortTermThumbnailProof);
+    if (!shortTermThumbnailProof) return undefined;
+    result.shortTermThumbnailProof = shortTermThumbnailProof;
+    result.shortTermThumbnails = shortTermThumbnailProof.passed;
+  }
   if (value.optimizedReopenProof !== undefined) {
     const optimizedReopenProof = validateOptimizedReopenProof(value.optimizedReopenProof);
     if (!optimizedReopenProof) return undefined;
@@ -447,6 +453,39 @@ function validateShortTermRuntimeTextBoundaryProof(value) {
   };
 }
 
+function validateShortTermThumbnailProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-thumbnail-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S5,S6,S15") return undefined;
+  if (!isBoundedString(value.sequenceFixtureName, 120) || !value.sequenceFixtureName.endsWith(".svga")) return undefined;
+  if (!Number.isInteger(value.ordinaryImageThumbnailCount) || value.ordinaryImageThumbnailCount <= 0) return undefined;
+  if (!Number.isInteger(value.sequenceRowCount) || value.sequenceRowCount <= 0) return undefined;
+  if (!Number.isInteger(value.sequenceThumbnailImageCount) || value.sequenceThumbnailImageCount < 4) return undefined;
+  if (
+    value.ordinaryImageThumbnailVisible !== true
+    || value.sequenceFourGridVisible !== true
+    || value.audioEmptyStateVisible !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S5", "S6", "S15"],
+    ordinaryImageThumbnailVisible: true,
+    ordinaryImageThumbnailCount: value.ordinaryImageThumbnailCount,
+    sequenceFixtureName: value.sequenceFixtureName,
+    sequenceRowCount: value.sequenceRowCount,
+    sequenceThumbnailImageCount: value.sequenceThumbnailImageCount,
+    sequenceFourGridVisible: true,
+    audioEmptyStateVisible: true,
+    passed: true
+  };
+}
+
 function describeSmokeResultValidationFailure(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "root_shape";
   const keys = [
@@ -478,6 +517,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.shortTermRuntimeTextBoundaryProof !== undefined && !validateShortTermRuntimeTextBoundaryProof(value.shortTermRuntimeTextBoundaryProof)) {
     return "shortTermRuntimeTextBoundaryProof";
+  }
+  if (value.shortTermThumbnailProof !== undefined && !validateShortTermThumbnailProof(value.shortTermThumbnailProof)) {
+    return "shortTermThumbnailProof";
   }
   if (value.optimizedReopenProof !== undefined && !validateOptimizedReopenProof(value.optimizedReopenProof)) {
     return "optimizedReopenProof";
@@ -1942,6 +1984,7 @@ function validateArtifactScenario(value) {
     "short-term-preview-overview",
     "short-term-preview-optimization",
     "short-term-preview-replaceable",
+    "short-term-sequence-thumbnails",
     "short-term-general-compare",
     "short-term-edit-reserved",
     "short-term-preview-minimum",
@@ -3177,11 +3220,19 @@ async function finishSmoke(window, result) {
         "smoke"
       );
     }
+    if (result.shortTermThumbnailProof) {
+      writeJsonProductArtifact(
+        "short-term-thumbnail-proof.json",
+        "short-term-thumbnail-proof",
+        result.shortTermThumbnailProof,
+        "smoke"
+      );
+    }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();

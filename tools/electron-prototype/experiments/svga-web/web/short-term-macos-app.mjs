@@ -1293,6 +1293,7 @@ async function runShortTermSmokeIfRequested() {
   const textElementRowCount = nodes.textElementList.querySelectorAll(".textElementRow").length;
   const noReplaceableCopy = nodes.replaceableList.textContent.trim();
   const textUnavailableCopy = nodes.textPreviewSummary.textContent.trim();
+  const ordinaryImageThumbnailCount = nodes.assetList.querySelectorAll(".assetRow .thumb img").length;
   const runtimeTextSourceSha256Before = await sha256Hex(state.sourceBytes);
   await editRuntimeText();
   await waitForSmokeFrame();
@@ -1306,7 +1307,9 @@ async function runShortTermSmokeIfRequested() {
     noReplaceableImagesVisible: replaceableImageRowCount === 0 && noReplaceableCopy.includes("未发现设计师命名"),
     textUnavailableVisible: textElementRowCount === 0 && textUnavailableCopy.includes("未发现可运行时替换"),
     ordinaryImagesNotDuplicatedInReplaceables: replaceableImageRowCount === 0 && nodes.assetList.children.length > 0,
+    ordinaryImageThumbnailVisible: ordinaryImageThumbnailCount > 0,
     assetRowCount: nodes.assetList.children.length,
+    ordinaryImageThumbnailCount,
     replaceableImageRowCount,
     textElementRowCount,
     noAudioCopy,
@@ -1346,8 +1349,48 @@ async function runShortTermSmokeIfRequested() {
     shortTermEmptyStateProof.noAudioVisible,
     shortTermEmptyStateProof.noReplaceableImagesVisible,
     shortTermEmptyStateProof.textUnavailableVisible,
-    shortTermEmptyStateProof.ordinaryImagesNotDuplicatedInReplaceables
+    shortTermEmptyStateProof.ordinaryImagesNotDuplicatedInReplaceables,
+    shortTermEmptyStateProof.ordinaryImageThumbnailVisible
   ].every(Boolean);
+  const sequenceResponse = await fetch("/fixture/sequence-repair-smoke.svga");
+  const sequenceBytes = new Uint8Array(await sequenceResponse.arrayBuffer());
+  await loadOpenedSource({
+    bytes: sequenceBytes,
+    displayName: "sequence-repair-smoke.svga",
+    sourceId: ""
+  });
+  await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
+  setTab("overview");
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-sequence-thumbnails");
+  const sequenceRows = [...nodes.assetList.querySelectorAll(".assetRow")]
+    .filter((row) => row.querySelector(".thumb.sequence"));
+  const sequenceThumbnailImageCount = sequenceRows.reduce((total, row) => total + row.querySelectorAll(".thumb.sequence img").length, 0);
+  const shortTermThumbnailProof = {
+    schemaVersion: 1,
+    proofId: "short-term-thumbnail-proof",
+    source: "short-term-smoke",
+    prdIds: ["S5", "S6", "S15"],
+    ordinaryImageThumbnailVisible: ordinaryImageThumbnailCount > 0,
+    ordinaryImageThumbnailCount,
+    sequenceFixtureName: "sequence-repair-smoke.svga",
+    sequenceRowCount: sequenceRows.length,
+    sequenceThumbnailImageCount,
+    sequenceFourGridVisible: sequenceRows.length > 0 && sequenceThumbnailImageCount >= 4,
+    audioEmptyStateVisible: noAudioCopy.includes("当前文件暂无音频资产"),
+    passed: ordinaryImageThumbnailCount > 0
+      && sequenceRows.length > 0
+      && sequenceThumbnailImageCount >= 4
+      && noAudioCopy.includes("当前文件暂无音频资产")
+  };
+  await loadOpenedSource({
+    bytes: fixtureBytes,
+    displayName: file.name,
+    sourceId: ""
+  });
+  await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
+  setTab("overview");
+  await waitForSmokeFrame();
   await enterGeneralCompare();
   await waitForSmokeCondition(() => state.view === "compare", 2_000);
   await waitForCanvasPixels(nodes.compareCanvasA, 2_500);
@@ -1426,6 +1469,7 @@ async function runShortTermSmokeIfRequested() {
     shortTermLoadFailed: loadFailedVisible,
     shortTermEmptyStateProof,
     shortTermRuntimeTextBoundaryProof,
+    shortTermThumbnailProof,
     cleanup: true
   });
 }

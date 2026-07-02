@@ -1047,6 +1047,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-overview"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-optimization"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-replaceable"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-sequence-thumbnails"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-general-compare"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-edit-reserved"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-minimum"\)/);
@@ -1060,10 +1061,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /productCompleteClaimed: false/);
   assert.match(shortTermEntry, /sourceSha256Before: runtimeTextSourceSha256Before/);
   assert.match(shortTermEntry, /sourceSha256After: runtimeTextSourceSha256After/);
+  assert.match(shortTermEntry, /short-term-thumbnail-proof/);
+  assert.match(shortTermEntry, /sequenceFourGridVisible/);
+  assert.match(shortTermEntry, /sequenceThumbnailImageCount/);
   assert.match(shortTermEntry, /noAudioVisible/);
   assert.match(shortTermEntry, /noReplaceableImagesVisible/);
   assert.match(shortTermEntry, /textUnavailableVisible/);
   assert.match(shortTermEntry, /ordinaryImagesNotDuplicatedInReplaceables/);
+  assert.match(shortTermEntry, /ordinaryImageThumbnailVisible/);
   assert.match(shortTermEntry, /function createSaveFailureProofOutput/);
   assert.match(shortTermEntry, /const savedModel = await inspectShortTerm\(outputBytes/);
   assert.ok(
@@ -1145,14 +1150,18 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /shortTermSaveFailed/);
   assert.match(main, /function validateShortTermEmptyStateProof/);
   assert.match(main, /function validateShortTermRuntimeTextBoundaryProof/);
+  assert.match(main, /function validateShortTermThumbnailProof/);
   assert.match(main, /short-term-empty-state-proof\.json/);
   assert.match(main, /short-term-runtime-text-boundary-proof\.json/);
+  assert.match(main, /short-term-thumbnail-proof\.json/);
   assert.match(main, /shortTermNoAudio/);
   assert.match(main, /shortTermNoReplaceable/);
   assert.match(main, /shortTermTextUnavailable/);
   assert.match(main, /shortTermRuntimeTextBoundary/);
+  assert.match(main, /shortTermThumbnails/);
   assert.match(main, /productCompleteClaimed !== false/);
   assert.match(main, /short-term-launch/);
+  assert.match(main, /short-term-sequence-thumbnails/);
   assert.match(main, /short-term-preview-minimum/);
   assert.match(main, /short-term-load-failed/);
   assert.match(main, /short-term-save-failed/);
