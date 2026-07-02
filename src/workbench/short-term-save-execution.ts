@@ -6,6 +6,7 @@ import {
   type ShortTermSaveCommand,
   type ShortTermSaveValidationResult
 } from "./short-term-save-state.js";
+import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
 
 export const SHORT_TERM_SAVE_EXECUTION_SCHEMA_VERSION = 1 as const;
 
@@ -147,7 +148,7 @@ export function failShortTermSaveExecution(
 ): ShortTermSaveExecutionResult {
   return failedResult(plan, {
     code: "save_write_failed",
-    message: error instanceof Error ? error.message : String(error)
+    message: redactShortTermLocalPathsFromError(error, "保存写入失败。")
   });
 }
 

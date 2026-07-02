@@ -88,6 +88,24 @@ test("short-term save execution records host write failures without clearing dir
   assert.match(result.diagnostic?.message ?? "", /permission denied/);
 });
 
+test("short-term save execution redacts local paths from direct write failures", () => {
+  const record = outputRecord(new Uint8Array([4, 5, 6]));
+  const plan = createShortTermSaveExecutionPlan(record, "saveAs", {
+    targetPath: "/Users/designer/My Documents/private/manual-output.svga"
+  });
+  const result = failShortTermSaveExecution(
+    plan,
+    new Error("Cannot write /Users/designer/My Documents/private/manual-output.svga")
+  );
+
+  assert.equal(result.status, "saveFailed");
+  assert.equal(result.diagnostic?.code, "save_write_failed");
+  assert.equal(result.diagnostic?.message.includes("/Users/designer"), false);
+  assert.equal(result.diagnostic?.message.includes("My Documents/private"), false);
+  assert.equal(JSON.stringify(result).includes("/Users/designer"), false);
+  assert.equal(result.dirty, true);
+});
+
 function outputRecord(
   outputBytes: Uint8Array,
   outputKind: "optimized_svga" | "renamed_svga" | "image_replacement_svga" = "optimized_svga"
