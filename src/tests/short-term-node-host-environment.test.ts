@@ -65,6 +65,9 @@ test("short-term node host writes optimized Save As output and validates read-ba
     assert.equal(saved.currentLocalPath, outputPath);
     assert.equal(saved.activeOutputBytes, undefined);
     assert.equal(sha256(outputBytes), saved.lastAction?.outputSha256);
+    assert.equal(saved.facade.model.currentSourceSha256, saved.lastAction?.outputSha256);
+    assert.equal(saved.facade.model.appState.currentFile?.displayName, "optimized.svga");
+    assert.equal(saved.facade.model.recentFiles.launchRecentFiles[0].displayName, "optimized.svga");
     assert.equal(JSON.stringify(saved.facade.model).includes(tempDir), false);
   } finally {
     await rm(tempDir, { recursive: true, force: true });

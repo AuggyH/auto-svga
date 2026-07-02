@@ -7,6 +7,7 @@ import {
   failShortTermLocalOpen,
   markShortTermRecentFileMissing as markAppRecentFileMissing,
   recoverShortTermPlayback,
+  rebaseShortTermSavedCurrentFile,
   reportShortTermPlaybackFailure,
   setShortTermAppRecentFiles,
   startShortTermLocalOpen,
@@ -60,6 +61,7 @@ import {
   type ShortTermSaveExecutionResult
 } from "./short-term-save-execution.js";
 import type { ShortTermPersistedOutputRecord, ShortTermSaveCommand } from "./short-term-save-state.js";
+import type { ShortTermProductInspectionModel } from "./short-term-product-model.js";
 import {
   createShortTermCommandMenuModel,
   type ShortTermCommandMenuModel
@@ -112,6 +114,11 @@ export interface CreateShortTermWorkbenchFacadeOptions {
 export interface CompleteShortTermWorkbenchOpenInput extends CompleteShortTermLocalOpenInput {
   sourceBytes: Uint8Array;
   localPath?: string;
+}
+
+export interface CompleteShortTermWorkbenchSaveOptions {
+  targetPath?: string;
+  inspection?: ShortTermProductInspectionModel;
 }
 
 export function createShortTermWorkbenchFacade(
@@ -513,21 +520,43 @@ export function createShortTermWorkbenchSavePlan(
 export function completeShortTermWorkbenchSave(
   state: ShortTermWorkbenchFacadeState,
   plan: ShortTermSaveExecutionPlan,
-  savedBytes: Uint8Array
+  savedBytes: Uint8Array,
+  options: CompleteShortTermWorkbenchSaveOptions = {}
 ): { state: ShortTermWorkbenchFacadeState; result: ShortTermSaveExecutionResult } {
   const output = state.model.activeOutput;
   const result = output
     ? completeShortTermSaveExecution(plan, output, savedBytes)
     : failShortTermSaveExecution(plan, new Error("No active persisted output."));
-  const appState = result.status === "saveComplete"
+  const saveComplete = result.status === "saveComplete";
+  let recentState = state.recentState;
+  if (saveComplete && options.targetPath) {
+    recentState = addShortTermRecentFile(recentState, {
+      localPath: options.targetPath,
+      displayName: result.targetDisplayName,
+      lastOpenedAt: new Date().toISOString()
+    });
+  }
+  const recentView = createShortTermRecentFilesViewModel(recentState);
+  const clearedAppState = saveComplete
     ? clearShortTermPersistedOutput(state.model.appState)
     : state.model.appState;
+  const appState = saveComplete
+    ? rebaseShortTermSavedCurrentFile(clearedAppState, {
+      displayName: result.targetDisplayName,
+      inspection: options.inspection,
+      recentFiles: recentView.launchRecentFiles
+    })
+    : clearedAppState;
   return {
     result,
     state: buildFacadeState({
       ...state,
+      sourceBytes: saveComplete ? savedBytes : state.sourceBytes,
+      recentState,
+      imageReplacementSession: saveComplete ? undefined : state.imageReplacementSession,
+      textPreviewSession: saveComplete ? undefined : state.textPreviewSession,
       appState,
-      activeOutput: result.status === "saveComplete" ? undefined : output,
+      activeOutput: saveComplete ? undefined : output,
       activeWorkflow: {
         kind: "save",
         status: result.status,
@@ -540,10 +569,11 @@ export function completeShortTermWorkbenchSave(
 export function failShortTermWorkbenchSave(
   state: ShortTermWorkbenchFacadeState,
   plan: ShortTermSaveExecutionPlan,
-  error: unknown
+  error: unknown,
+  diagnosticCode?: string
 ): { state: ShortTermWorkbenchFacadeState; result: ShortTermSaveExecutionResult } {
   const output = state.model.activeOutput;
-  const result = failShortTermSaveExecution(plan, error);
+  const result = failShortTermSaveExecution(plan, error, diagnosticCode);
   return {
     result,
     state: buildFacadeState({

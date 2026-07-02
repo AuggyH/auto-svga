@@ -144,10 +144,11 @@ export function completeShortTermSaveExecution(
 
 export function failShortTermSaveExecution(
   plan: ShortTermSaveExecutionPlan,
-  error: unknown
+  error: unknown,
+  diagnosticCode = "save_write_failed"
 ): ShortTermSaveExecutionResult {
   return failedResult(plan, {
-    code: "save_write_failed",
+    code: diagnosticCode,
     message: redactShortTermLocalPathsFromError(error, "保存写入失败。")
   });
 }

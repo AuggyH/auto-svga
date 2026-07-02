@@ -104,6 +104,12 @@ export interface ReportShortTermPlaybackFailureInput {
   message: string;
 }
 
+export interface RebaseShortTermSavedCurrentFileInput {
+  displayName?: string;
+  inspection?: ShortTermProductInspectionModel;
+  recentFiles?: readonly ShortTermRecentFileRecord[];
+}
+
 export function createShortTermLaunchAppState(
   input: CreateShortTermLaunchStateInput = {}
 ): ShortTermAppStateModel {
@@ -252,6 +258,30 @@ export function clearShortTermPersistedOutput(state: ShortTermAppStateModel): Sh
   const nextState = { ...state };
   delete nextState.persistedOutput;
   return withCommands(nextState);
+}
+
+export function rebaseShortTermSavedCurrentFile(
+  state: ShortTermAppStateModel,
+  input: RebaseShortTermSavedCurrentFileInput
+): ShortTermAppStateModel {
+  if (!state.currentFile) return state;
+  const displayName = shortTermDisplayNameFromPathLike(input.displayName) || state.currentFile.displayName;
+  return withCommands({
+    schemaVersion: SHORT_TERM_APP_STATE_SCHEMA_VERSION,
+    source: "short-term-app-state",
+    prdIds: ["S1", "S2", "S16"],
+    state: "previewReady",
+    stateLabel: "预览就绪",
+    recentFiles: normalizeRecentFiles(input.recentFiles ?? state.recentFiles),
+    currentFile: {
+      ...state.currentFile,
+      displayName,
+      ...(input.inspection ? { inspection: input.inspection } : {}),
+      pathRedacted: true,
+      rendererHasFullPath: false
+    },
+    staleFileDataCleared: false
+  });
 }
 
 export function setShortTermAppRecentFiles(

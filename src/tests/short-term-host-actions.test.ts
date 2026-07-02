@@ -473,13 +473,28 @@ test("short-term host actions run optimization and Save As through write-read va
     targetPath: "/Users/designer/private/optimized.svga"
   });
 
+  const savedOutputSha256 = saved.lastAction?.outputSha256;
   assert.equal(saved.lastAction?.status, "completed");
   assert.equal(saved.lastAction?.targetDisplayName, "optimized.svga");
   assert.equal(saved.activeOutputBytes, undefined);
+  assert.equal(saved.currentLocalPath, "/Users/designer/private/optimized.svga");
+  assert.equal(saved.facade.model.appState.currentFile?.displayName, "optimized.svga");
+  assert.equal(saved.facade.model.recentFiles.launchRecentFiles[0].displayName, "optimized.svga");
+  assert.equal(saved.facade.model.currentSourceSha256, savedOutputSha256);
+  assert.equal(saved.facade.sourceBytes ? sha256(saved.facade.sourceBytes) : undefined, savedOutputSha256);
   assert.equal(commandEnabled(saved, "saveAs"), false);
   assert.equal(menuItemEnabled(saved, "saveAs"), false);
-  assert.equal(sha256(host.snapshot("/Users/designer/private/optimized.svga")), saved.lastAction?.outputSha256);
+  assert.equal(sha256(host.snapshot("/Users/designer/private/optimized.svga")), savedOutputSha256);
   assert.equal(JSON.stringify(saved.facade.model).includes("/Users/designer"), false);
+
+  const renamedAfterSaveAs = await dispatchShortTermHostMenuAction(saved, host, {
+    commandId: "renameImageKey",
+    fromImageKey: "img_frame",
+    toImageKey: "profile_frame"
+  });
+  assert.equal(renamedAfterSaveAs.lastAction?.status, "completed");
+  assert.equal(renamedAfterSaveAs.facade.model.activeOutput?.sourceSha256, savedOutputSha256);
+  assert.equal(renamedAfterSaveAs.currentLocalPath, "/Users/designer/private/optimized.svga");
 });
 
 test("short-term host actions keep dirty output when saved bytes fail read-back validation", async () => {
@@ -506,6 +521,45 @@ test("short-term host actions keep dirty output when saved bytes fail read-back 
   assert.match(saved.facade.model.activeWorkflow.message, /未匹配已验证输出/);
   assert.ok(saved.activeOutputBytes);
   assert.ok(saved.facade.model.activeOutput);
+  assert.equal(commandEnabled(saved, "saveAs"), true);
+});
+
+test("short-term host actions keep dirty output when saved bytes fail reopen inspection", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const targetPath = "/Users/designer/private/optimized.svga";
+  const sourceBytes = await createShortTermOptimizableSvgaFixture();
+  const host = createMemoryHost({
+    [sourcePath]: sourceBytes
+  }, {
+    inspect: (input) => {
+      if (input.localPath === targetPath) {
+        throw new Error(`Cannot reopen ${targetPath}`);
+      }
+      return inspectionFixture();
+    }
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+  const optimizedHash = optimized.activeOutputBytes ? sha256(optimized.activeOutputBytes) : "";
+  const saved = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "saveAs",
+    targetPath
+  });
+
+  assert.equal(saved.lastAction?.status, "failed");
+  assert.equal(saved.lastAction?.diagnostic?.code, "saved_reopen_validation_failed");
+  assert.equal(saved.lastAction?.diagnostic?.message.includes("/Users/designer"), false);
+  assert.equal(saved.currentLocalPath, sourcePath);
+  assert.ok(saved.activeOutputBytes);
+  assert.equal(saved.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.equal(saved.facade.model.currentSourceSha256, sha256(sourceBytes));
+  assert.equal(sha256(host.snapshot(targetPath)), optimizedHash);
   assert.equal(commandEnabled(saved, "saveAs"), true);
 });
 

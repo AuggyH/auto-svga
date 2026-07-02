@@ -778,9 +778,12 @@ test("short-term host session exposes first-class methods for formal short-term 
   });
   assert.equal(saved.actionResult?.status, "completed");
   assert.equal(saved.actionResult?.action, "save");
+  assert.equal(saved.recentPersistence.status, "saved");
   assert.equal(saved.state.currentLocalPath, outputPath);
   assert.equal(saved.state.activeOutputBytes, undefined);
   assert.equal(saved.state.facade.model.activeOutput, undefined);
+  assert.equal(saved.state.facade.model.recentFiles.launchRecentFiles[0].displayName, "optimized-copy.svga");
+  assert.equal(store.snapshot().records[0].localPath, outputPath);
 
   const replaced = await session.replaceImagePreview(
     "img_frame",

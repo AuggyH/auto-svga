@@ -580,7 +580,35 @@ export async function saveShortTermHostOutput(
   try {
     await host.writeLocalFile(targetPath, outputBytes);
     const savedBytes = await host.readSavedFile(targetPath);
-    const completed = completeShortTermWorkbenchSave(state.facade, plan, savedBytes);
+    let completed = completeShortTermWorkbenchSave(state.facade, plan, savedBytes);
+    if (completed.result.status === "saveComplete") {
+      let savedInspection: ShortTermProductInspectionModel;
+      try {
+        savedInspection = await host.inspectSvga({
+          bytes: new Uint8Array(savedBytes),
+          displayName: plan.targetDisplayName,
+          localPath: targetPath
+        });
+      } catch (error) {
+        const failed = failShortTermWorkbenchSave(
+          state.facade,
+          plan,
+          new Error(errorMessage(error, "保存后重新解析失败。", [targetPath])),
+          "saved_reopen_validation_failed"
+        );
+        return withLastAction({
+          ...state,
+          facade: failed.state,
+          activeOutputBytes: outputBytes
+        }, saveResult("failed", failed.result.message, plan, {
+          diagnostic: failed.result.diagnostic
+        }));
+      }
+      completed = completeShortTermWorkbenchSave(state.facade, plan, savedBytes, {
+        targetPath,
+        inspection: redactShortTermLocalPathsInValue(savedInspection, [targetPath])
+      });
+    }
     return withLastAction({
       ...state,
       facade: completed.state,

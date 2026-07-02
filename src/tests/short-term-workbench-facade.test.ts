@@ -182,6 +182,8 @@ test("short-term workbench facade runs optimization compare and clears save stat
   const saved = completeShortTermWorkbenchSave(compared.state, plan, compared.session.optimizedBytes);
   assert.equal(saved.result.status, "saveComplete");
   assert.equal(saved.state.model.activeOutput, undefined);
+  assert.equal(saved.state.model.currentSourceSha256, sha256(compared.session.optimizedBytes));
+  assert.equal(saved.state.model.appState.currentFile?.displayName, "optimized.svga");
   assert.equal(commandEnabled(saved.state.model.appState, "saveAs"), false);
   assert.equal(menuItemEnabled(saved.state.model, "saveAs"), false);
 });
