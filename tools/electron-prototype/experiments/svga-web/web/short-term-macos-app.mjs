@@ -1280,12 +1280,40 @@ async function runShortTermSmokeIfRequested() {
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const canvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
   await captureSmokeArtifact("short-term-preview-overview");
+  const noAudioCopy = [...nodes.assetList.querySelectorAll(".assetRow")]
+    .map((row) => row.textContent.trim())
+    .find((text) => text.includes("当前文件暂无音频资产")) || "";
   setTab("optimization");
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-preview-optimization");
   setTab("replaceable");
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-preview-replaceable");
+  const replaceableImageRowCount = nodes.replaceableList.querySelectorAll(".replaceableRow").length;
+  const textElementRowCount = nodes.textElementList.querySelectorAll(".textElementRow").length;
+  const noReplaceableCopy = nodes.replaceableList.textContent.trim();
+  const textUnavailableCopy = nodes.textPreviewSummary.textContent.trim();
+  const shortTermEmptyStateProof = {
+    schemaVersion: 1,
+    proofId: "short-term-empty-state-proof",
+    source: "short-term-smoke",
+    noAudioVisible: noAudioCopy.includes("当前文件暂无音频资产"),
+    noReplaceableImagesVisible: replaceableImageRowCount === 0 && noReplaceableCopy.includes("未发现设计师命名"),
+    textUnavailableVisible: textElementRowCount === 0 && textUnavailableCopy.includes("未发现可运行时替换"),
+    ordinaryImagesNotDuplicatedInReplaceables: replaceableImageRowCount === 0 && nodes.assetList.children.length > 0,
+    assetRowCount: nodes.assetList.children.length,
+    replaceableImageRowCount,
+    textElementRowCount,
+    noAudioCopy,
+    noReplaceableCopy,
+    textUnavailableCopy
+  };
+  shortTermEmptyStateProof.passed = [
+    shortTermEmptyStateProof.noAudioVisible,
+    shortTermEmptyStateProof.noReplaceableImagesVisible,
+    shortTermEmptyStateProof.textUnavailableVisible,
+    shortTermEmptyStateProof.ordinaryImagesNotDuplicatedInReplaceables
+  ].every(Boolean);
   await enterGeneralCompare();
   await waitForSmokeCondition(() => state.view === "compare", 2_000);
   await waitForCanvasPixels(nodes.compareCanvasA, 2_500);
@@ -1362,6 +1390,7 @@ async function runShortTermSmokeIfRequested() {
     shortTermScreenshots: screenshotCaptures.length >= 9 && screenshotCaptures.every(Boolean),
     shortTermSaveFailed: saveFailedVisible,
     shortTermLoadFailed: loadFailedVisible,
+    shortTermEmptyStateProof,
     cleanup: true
   });
 }

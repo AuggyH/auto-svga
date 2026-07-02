@@ -1055,6 +1055,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /shortTermScreenshots: screenshotCaptures\.length >= 9/);
   assert.match(shortTermEntry, /shortTermSaveFailed: saveFailedVisible/);
   assert.match(shortTermEntry, /shortTermLoadFailed: loadFailedVisible/);
+  assert.match(shortTermEntry, /short-term-empty-state-proof/);
+  assert.match(shortTermEntry, /noAudioVisible/);
+  assert.match(shortTermEntry, /noReplaceableImagesVisible/);
+  assert.match(shortTermEntry, /textUnavailableVisible/);
+  assert.match(shortTermEntry, /ordinaryImagesNotDuplicatedInReplaceables/);
   assert.match(shortTermEntry, /function createSaveFailureProofOutput/);
   assert.match(shortTermEntry, /const savedModel = await inspectShortTerm\(outputBytes/);
   assert.ok(
@@ -1134,6 +1139,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /shortTermScreenshots/);
   assert.match(main, /shortTermLoadFailed/);
   assert.match(main, /shortTermSaveFailed/);
+  assert.match(main, /function validateShortTermEmptyStateProof/);
+  assert.match(main, /short-term-empty-state-proof\.json/);
+  assert.match(main, /shortTermNoAudio/);
+  assert.match(main, /shortTermNoReplaceable/);
+  assert.match(main, /shortTermTextUnavailable/);
   assert.match(main, /short-term-launch/);
   assert.match(main, /short-term-preview-minimum/);
   assert.match(main, /short-term-load-failed/);

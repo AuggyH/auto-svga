@@ -30,6 +30,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Added S14 normal-path save proof: the normal App proof now requires initial Save disabled state, generated output Save As, verified write/hash/reopen, generated second output Overwrite Save, verified write/hash/reopen, output cleanup after each save, and unchanged canonical source bytes. The proof uses a hidden automation output generator only when the canonical fixture has no designer-named replaceable row; no new visible product action is added.
 - Hardened Save failed behavior: saved output bytes are now re-inspected before becoming the current source bytes, so a post-write reopen failure keeps the prior file state and dirty output instead of switching the app to invalid bytes.
 - Added short-term failure-state smoke captures for `short-term-save-failed.png` and `short-term-load-failed.png`; smoke now reports `shortTermSaveFailed=true` and `shortTermLoadFailed=true` before recovering to Preview for menu-state validation.
+- Added short-term empty-state proof for `No audio`, `No replaceable images`, and unavailable runtime text. The smoke proof records visible copy, row counts, and verifies ordinary image assets are not duplicated into the Replaceable Elements list.
 
 ## Verification
 
@@ -38,9 +39,10 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - `node --test dist/tests/short-term-product-model.test.js dist/tests/short-term-image-replacement-workflow.test.js dist/tests/short-term-host-actions.test.js dist/tests/short-term-host-session.test.js dist/tests/short-term-save-execution.test.js dist/tests/short-term-prd-trace.test.js`: 74/74 pass.
 - `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`: 28/28 pass.
 - `node --test tools/shared/product-frontend/source-sharing.test.mjs`: 7/7 pass.
-- `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`: pass; includes `shortTermScreenshots=true`, `shortTermSaveFailed=true`, and `shortTermLoadFailed=true`.
+- `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`: pass; includes `shortTermScreenshots=true`, `shortTermSaveFailed=true`, `shortTermLoadFailed=true`, `shortTermNoAudio=true`, `shortTermNoReplaceable=true`, and `shortTermTextUnavailable=true`.
 - Short-term menu-state proof: pass; `shortTermMenuState=true` in desktop smoke and `.artifacts/product/short-term/short-term-menu-state-proof.json` records loaded Preview state plus matching menu enabled/checked states.
 - Short-term screenshot proof: pass; `shortTermScreenshots=true` in desktop smoke and `.artifacts/product/short-term/artifact-index.json` lists nine current-head short-term UI screenshots, including Save failed and Load failed states.
+- Short-term empty-state proof: pass; `.artifacts/product/short-term/short-term-empty-state-proof.json` records `noAudioVisible=true`, `noReplaceableImagesVisible=true`, `textUnavailableVisible=true`, and `ordinaryImagesNotDuplicatedInReplaceables=true`.
 - Normal App proof: pass; `AUTO_SVGA_DESKTOP_NORMAL_PROOF` reports `hostOpen=true`, `menuOpen=true`, `playback=true`, `canvasNonBlank=true`, `inspectionReport=true`, `auditPanel=true`, `recentFiles=true`, `recentMissingRecovery=true`, `shortTermSave=true`, `localOnly=true`, and `noCspViolation=true` against the short-term macOS client.
 - Short-term save proof: pass; `.artifacts/product/short-term/short-term-save-proof.json` records disabled initial Save, Save As write/hash/reopen, Overwrite write/hash/reopen, output cleanup after both saves, changed output hashes, and canonical source immutability.
 - Short-term macOS menu guard: pass; the legacy Workbench menu remains isolated, while the default short-term menu has no reload or DevTools item.

@@ -273,6 +273,14 @@ function validateSmokeResult(value) {
     if (typeof value.shortTermSaveFailed !== "boolean") return undefined;
     result.shortTermSaveFailed = value.shortTermSaveFailed;
   }
+  if (value.shortTermEmptyStateProof !== undefined) {
+    const shortTermEmptyStateProof = validateShortTermEmptyStateProof(value.shortTermEmptyStateProof);
+    if (!shortTermEmptyStateProof) return undefined;
+    result.shortTermEmptyStateProof = shortTermEmptyStateProof;
+    result.shortTermNoAudio = shortTermEmptyStateProof.noAudioVisible;
+    result.shortTermNoReplaceable = shortTermEmptyStateProof.noReplaceableImagesVisible;
+    result.shortTermTextUnavailable = shortTermEmptyStateProof.textUnavailableVisible;
+  }
   if (value.optimizedReopenProof !== undefined) {
     const optimizedReopenProof = validateOptimizedReopenProof(value.optimizedReopenProof);
     if (!optimizedReopenProof) return undefined;
@@ -349,6 +357,42 @@ function validateSmokeResult(value) {
     result.replacementMultiResourceProof = replacementMultiResourceProof;
   }
   return result;
+}
+
+function validateShortTermEmptyStateProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-empty-state-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  const booleanKeys = [
+    "noAudioVisible",
+    "noReplaceableImagesVisible",
+    "textUnavailableVisible",
+    "ordinaryImagesNotDuplicatedInReplaceables",
+    "passed"
+  ];
+  if (!booleanKeys.every((key) => value[key] === true)) return undefined;
+  if (!Number.isInteger(value.assetRowCount) || value.assetRowCount <= 0) return undefined;
+  if (!Number.isInteger(value.replaceableImageRowCount) || value.replaceableImageRowCount !== 0) return undefined;
+  if (!Number.isInteger(value.textElementRowCount) || value.textElementRowCount !== 0) return undefined;
+  if (!isBoundedString(value.noAudioCopy, 120) || !value.noAudioCopy.includes("当前文件暂无音频资产")) return undefined;
+  if (!isBoundedString(value.noReplaceableCopy, 180) || !value.noReplaceableCopy.includes("未发现设计师命名")) return undefined;
+  if (!isBoundedString(value.textUnavailableCopy, 180) || !value.textUnavailableCopy.includes("未发现可运行时替换")) return undefined;
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    noAudioVisible: true,
+    noReplaceableImagesVisible: true,
+    textUnavailableVisible: true,
+    ordinaryImagesNotDuplicatedInReplaceables: true,
+    assetRowCount: value.assetRowCount,
+    replaceableImageRowCount: 0,
+    textElementRowCount: 0,
+    noAudioCopy: value.noAudioCopy,
+    noReplaceableCopy: value.noReplaceableCopy,
+    textUnavailableCopy: value.textUnavailableCopy,
+    passed: true
+  };
 }
 
 function describeSmokeResultValidationFailure(value) {
@@ -3062,11 +3106,19 @@ async function finishSmoke(window, result) {
       shortTermMenuStateProof,
       "smoke"
     );
+    if (result.shortTermEmptyStateProof) {
+      writeJsonProductArtifact(
+        "short-term-empty-state-proof.json",
+        "short-term-empty-state-proof",
+        result.shortTermEmptyStateProof,
+        "smoke"
+      );
+    }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();
