@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createShortTermLaunchAppState } from "../workbench/short-term-app-state.js";
+import {
+  createShortTermCommandMenuModel,
+  flattenShortTermCommandMenuItems
+} from "../workbench/short-term-command-menu.js";
 import {
   canonicalShortTermHostMenuCommandId,
   classifyShortTermHostMenuCommand,
@@ -15,6 +20,26 @@ test("short-term host menu routing classifies host, native, renderer, and unsupp
   assert.equal(classifyShortTermHostMenuCommand("playPause"), "renderer");
   assert.equal(classifyShortTermHostMenuCommand("toggleCompare"), "renderer");
   assert.equal(classifyShortTermHostMenuCommand("showLogs"), "unsupported");
+});
+
+test("short-term host menu routing recognizes every command-menu item", () => {
+  const menu = createShortTermCommandMenuModel(createShortTermLaunchAppState({
+    recentFiles: [{
+      id: "recent-a",
+      displayName: "recent.svga",
+      lastOpenedAt: "2026-07-02T00:00:00.000Z"
+    }]
+  }));
+  const commands = flattenShortTermCommandMenuItems(menu).filter((item) => item.kind === "command");
+
+  assert.deepEqual(
+    commands.filter((item) => classifyShortTermHostMenuCommand(item.id) === "unsupported").map((item) => item.id),
+    []
+  );
+  for (const item of commands) {
+    if (!item.role) continue;
+    assert.equal(classifyShortTermHostMenuCommand(item.id), "native", `${item.id} should stay native delegated`);
+  }
 });
 
 test("short-term host menu routing parses recent submenu ids without treating empty rows as openable", () => {
