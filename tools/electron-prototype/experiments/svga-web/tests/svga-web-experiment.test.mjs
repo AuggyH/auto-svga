@@ -1019,6 +1019,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /label: "编辑"/);
   assert.match(main, /label: "资源"/);
   assert.match(main, /label: "优化"/);
+  const shortTermMenuStart = main.indexOf("function installShortTermApplicationMenu");
+  const legacyMenuStart = main.indexOf("function installApplicationMenu", shortTermMenuStart + 1);
+  assert.ok(shortTermMenuStart >= 0, "short-term macOS menu must be present");
+  assert.ok(legacyMenuStart > shortTermMenuStart, "legacy menu boundary must follow short-term menu");
+  const shortTermMenuSource = main.slice(shortTermMenuStart, legacyMenuStart);
+  assert.doesNotMatch(shortTermMenuSource, /toggleDevTools|开发者工具|role: "reload"|重新载入窗口/);
   assert.match(prototypeRenderer, /loadBatchPngFiles/);
   assert.doesNotMatch(page, /id="pngInput"|id="batchPngInput"|批量 PNG 映射复核|替换 PNG/);
   assert.doesNotMatch(desktopEntry, /svgaplayerweb|unsafe-eval/);

@@ -13,6 +13,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Moved replaceable row operations to selection plus context menu/macOS menu; ordinary resource rows remain browse-only.
 - Added dirty-output confirmation for new open, recent open, drag-drop, close, optimization, rename, and replacement operations.
 - Tightened automatic imageKey filtering so pure numeric keys do not appear as replaceable elements.
+- Removed development-only reload/DevTools items from the short-term macOS menu and added a guard so they do not reappear on the designer-facing client surface.
 
 ## Verification
 
@@ -22,6 +23,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`: 28/28 pass.
 - `node --test tools/shared/product-frontend/source-sharing.test.mjs`: 7/7 pass.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`: pass.
+- Short-term macOS menu guard: pass; the legacy Workbench menu remains isolated, while the default short-term menu has no reload or DevTools item.
 - Real-material scan: 84/84 SVGA files opened through the short-term inspection model; pure numeric replaceable noise count is 0 after filtering.
 - System Chrome UI probe: launch, preview, optimization tab, replaceable tab, edit mode, context menu, and 980x680 minimum viewport have no document overflow.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`: pass; unsigned internal App ZIP generated with clean App ZIP entries and Info.plist security proof.

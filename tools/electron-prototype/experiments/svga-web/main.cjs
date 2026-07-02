@@ -3535,10 +3535,7 @@ function installShortTermApplicationMenu(window) {
         {
           label: "可替换元素",
           click: () => invokeShortTermAction("replaceableTab")
-        },
-        { type: "separator" },
-        { role: "reload", label: "重新载入窗口" },
-        { role: "toggleDevTools", label: "开发者工具" }
+        }
       ]
     },
     {
