@@ -128,7 +128,7 @@ export async function runShortTermImageReplacementWorkflow(
     return {
       replacedBytes: model.status === "replaced" ? result.editedBytes : undefined,
       model,
-      roundTripReport: result.roundTripReport
+      roundTripReport: redactShortTermLocalPathsInValue(result.roundTripReport)
     };
   } catch (error) {
     return {

@@ -180,6 +180,32 @@ test("short-term image replacement workflow redacts path-like image keys from fa
   assert.equal(JSON.stringify(result.model).includes("private/profile_frame"), false);
 });
 
+test("short-term image replacement workflow redacts path-like image keys from round-trip reports", async () => {
+  const imageKey = "/Users/designer/private/profile_frame";
+  const sourceBytes = await createSvgaFixture({
+    images: {
+      [imageKey]: createColoredPng(16, 16, [255, 0, 0, 255])
+    },
+    sprites: [
+      { imageKey, frames: createFrames(4) }
+    ]
+  });
+
+  const result = await runShortTermImageReplacementWorkflow(
+    sourceBytes,
+    {
+      imageKey,
+      pngBytes: createColoredPng(16, 16, [0, 255, 0, 255])
+    },
+    { sourceName: "replace.svga" }
+  );
+
+  assert.ok(result.replacedBytes);
+  assert.equal(result.roundTripReport?.passed, true);
+  assert.equal(JSON.stringify(result.roundTripReport).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(result.roundTripReport).includes("private/profile_frame"), false);
+});
+
 async function createSvgaFixture(overrides: Partial<{
   version: string;
   params: {
