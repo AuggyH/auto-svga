@@ -5,7 +5,11 @@ import {
   createShortTermHostSession,
   toShortTermHostSessionRendererResult
 } from "../workbench/short-term-host-session.js";
-import type { ShortTermHostEnvironment } from "../workbench/short-term-host-actions.js";
+import {
+  createShortTermHostActionState,
+  openShortTermHostLocalFile,
+  type ShortTermHostEnvironment
+} from "../workbench/short-term-host-actions.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
 import type { ShortTermRecentFilesStore } from "../workbench/short-term-host-recent-persistence.js";
 import {
@@ -106,6 +110,31 @@ test("short-term host session returns defensive state snapshots", async () => {
   const current = session.getState();
   assert.equal(current.currentLocalPath, sourcePath);
   assert.equal(current.facade.sourceBytes?.[0], originalFirstByte);
+  assert.equal(JSON.stringify(current.facade.model).includes("/Users/designer"), false);
+});
+
+test("short-term host session clones injected initial state", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermSvgaFixture()
+  });
+  const initialState = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  assert.ok(initialState.facade.sourceBytes);
+  const originalFirstByte = initialState.facade.sourceBytes[0];
+
+  const session = await createShortTermHostSession({ host, initialState });
+  initialState.currentLocalPath = "/Users/designer/private/mutated-after-constructor.svga";
+  initialState.facade.sourceBytes[0] = (originalFirstByte + 1) % 256;
+  initialState.facade.model.activeWorkflow.message = "mutated external initial state";
+
+  const current = session.getState();
+  assert.equal(current.currentLocalPath, sourcePath);
+  assert.equal(current.facade.sourceBytes?.[0], originalFirstByte);
+  assert.notEqual(current.facade.model.activeWorkflow.message, "mutated external initial state");
   assert.equal(JSON.stringify(current.facade.model).includes("/Users/designer"), false);
 });
 

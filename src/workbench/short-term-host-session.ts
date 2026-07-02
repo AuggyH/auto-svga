@@ -154,8 +154,8 @@ class ShortTermHostSessionController implements ShortTermHostSession {
     initialState: ShortTermHostActionState,
     private readonly recentStore: ShortTermRecentFilesStore | undefined
   ) {
-    this.state = initialState;
-    this.recentSnapshot = recentSignature(initialState);
+    this.state = cloneShortTermHostActionState(initialState);
+    this.recentSnapshot = recentSignature(this.state);
   }
 
   getState(): ShortTermHostActionState {
