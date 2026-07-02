@@ -11,6 +11,7 @@ import {
   type ShortTermHostEnvironment
 } from "../workbench/short-term-host-actions.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
+import type { ShortTermHostLifecycleRequestInput } from "../workbench/short-term-host-lifecycle.js";
 import type { ShortTermRecentFilesStore } from "../workbench/short-term-host-recent-persistence.js";
 import {
   clearShortTermRecentFiles,
@@ -497,6 +498,52 @@ test("short-term host session evaluates lifecycle close and quit without mutatin
   assert.equal(savedDecision.canProceed, true);
   assert.equal(savedDecision.dirty, false);
   assert.equal(savedDecision.shouldPromptDiscard, false);
+});
+
+test("short-term host session blocks malformed lifecycle requests without mutating state", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const session = await createShortTermHostSession({ host });
+
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  await session.dispatchMenuAction({
+    commandId: "runOptimization"
+  });
+  const dirtyState = session.getState();
+
+  const unsupported = session.evaluateLifecycleRequest({
+    request: "forceQuit"
+  } as unknown as ShortTermHostLifecycleRequestInput);
+
+  assert.equal(unsupported.status, "blocked");
+  assert.equal(unsupported.canProceed, false);
+  assert.equal(unsupported.request, "unsupported");
+  assert.equal(unsupported.dirty, true);
+  assert.equal(unsupported.shouldPromptDiscard, false);
+  assert.equal(unsupported.activeOutputKind, "optimized_svga");
+  assert.equal(unsupported.activeOutputSha256, dirtyState.facade.model.activeOutput?.outputSha256);
+  assert.equal(unsupported.diagnostic?.code, "lifecycle_request_kind_invalid");
+  assert.equal(JSON.stringify(unsupported).includes("/Users/designer"), false);
+  assert.equal(session.getState().currentLocalPath, sourcePath);
+  assert.ok(session.getState().activeOutputBytes);
+
+  const malformedDiscard = session.evaluateLifecycleRequest({
+    request: "windowClose",
+    discardUnsavedChanges: "yes"
+  } as unknown as ShortTermHostLifecycleRequestInput);
+
+  assert.equal(malformedDiscard.status, "blocked");
+  assert.equal(malformedDiscard.canProceed, false);
+  assert.equal(malformedDiscard.request, "unsupported");
+  assert.equal(malformedDiscard.diagnostic?.code, "lifecycle_discard_flag_invalid");
+  assert.equal(session.getState().currentLocalPath, sourcePath);
+  assert.ok(session.getState().activeOutputBytes);
 });
 
 test("short-term host session records and recovers playback failure without clearing dirty output", async () => {
