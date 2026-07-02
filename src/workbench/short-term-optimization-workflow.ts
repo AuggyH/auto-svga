@@ -15,7 +15,10 @@ import {
   type ShortTermPersistedOutputSaveStateModel
 } from "./short-term-save-state.js";
 import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
-import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
+import {
+  redactShortTermLocalPathsFromError,
+  redactShortTermLocalPathsInValue
+} from "./short-term-local-path-redaction.js";
 
 export const SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
@@ -131,7 +134,7 @@ export async function runShortTermOptimizationWorkflow(
     return {
       optimizedBytes: result.optimizedBytes,
       model,
-      report: result.report
+      report: redactShortTermLocalPathsInValue(result.report)
     };
   } catch (error) {
     if (error instanceof SvgaImageOptimizationError && error.code === "optimization_not_applicable") {
@@ -192,7 +195,7 @@ function optimizedModel(input: {
     })
     : undefined;
 
-  return {
+  return redactShortTermLocalPathsInValue({
     schemaVersion: SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION,
     source: "short-term-optimization-workflow",
     prdIds: ["S9", "S10", "S14"],
@@ -212,7 +215,7 @@ function optimizedModel(input: {
     validation: input.validation,
     saveState: persistedOutput?.saveState ?? saveState(false, input.validation.sourceUnchanged),
     ...(persistedOutput ? { persistedOutput } : {})
-  };
+  });
 }
 
 function notApplicableModel(input: {
@@ -261,7 +264,7 @@ function baseClosedModel(input: {
   methods: readonly ShortTermOptimizationMethodItem[];
   diagnostic: { code: string; message: string };
 }): ShortTermOptimizationComparisonModel {
-  return {
+  return redactShortTermLocalPathsInValue({
     schemaVersion: SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION,
     source: "short-term-optimization-workflow",
     prdIds: ["S9", "S10", "S14"],
@@ -293,7 +296,7 @@ function baseClosedModel(input: {
     },
     saveState: saveState(false, true),
     diagnostic: input.diagnostic
-  };
+  });
 }
 
 async function validateOptimizedBytes(

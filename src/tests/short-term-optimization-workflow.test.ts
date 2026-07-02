@@ -156,6 +156,25 @@ test("short-term optimization workflow redacts local paths from diagnostics", as
   assert.equal(JSON.stringify(result.model).includes("private/missing.proto"), false);
 });
 
+test("short-term optimization workflow redacts path-like resource keys from models", async () => {
+  const sourceBytes = await createSvgaFixture({
+    images: {
+      img_frame: createColoredPng(16, 16, [255, 0, 0, 255]),
+      "/Users/designer/private/unused.png": createColoredPng(4, 4, [0, 0, 255, 255])
+    },
+    sprites: [
+      { imageKey: "img_frame", frames: createFrames(4) }
+    ]
+  });
+
+  const result = await runShortTermOptimizationWorkflow(sourceBytes, { sourceName: "optimizable.svga" });
+
+  assert.ok(result.optimizedBytes);
+  assert.equal(result.model.status, "optimized");
+  assert.equal(JSON.stringify(result.model).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(result.model).includes("private/unused.png"), false);
+});
+
 async function createSvgaFixture(overrides: Partial<{
   version: string;
   params: {
