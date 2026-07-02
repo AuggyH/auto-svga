@@ -22,6 +22,9 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Made runtime text preview modal keyboard behavior explicit: Enter applies and Esc cancels without relying on button order.
 - Bound the short-term macOS menu to the renderer's current product state, so Close, Compare, Save, Resource, Playback, mode, tab, and Optimization entries enable/disable or check themselves from the same state as the visible controls.
 - Added a menu-state smoke proof for the loaded short-term app; the proof fails if the menu remains in an empty/default state after a file is loaded or if key menu items drift from renderer state.
+- Added repeatable short-term smoke screenshots for Launch, Preview Overview, Optimization, Replaceable Elements, General Compare, Edit Reserved, and minimum-size Preview states.
+- Fixed disabled primary-button styling so unavailable Save As and Run Optimization actions no longer look like active blue primary actions.
+- Made Edit Reserved mount a visible playback preview instead of a blank canvas while still keeping the right operation panel empty.
 
 ## Verification
 
@@ -32,6 +35,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - `node --test tools/shared/product-frontend/source-sharing.test.mjs`: 7/7 pass.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`: pass.
 - Short-term menu-state proof: pass; `shortTermMenuState=true` in desktop smoke and `.artifacts/product/short-term/short-term-menu-state-proof.json` records loaded Preview state plus matching menu enabled/checked states.
+- Short-term screenshot proof: pass; `shortTermScreenshots=true` in desktop smoke and `.artifacts/product/short-term/artifact-index.json` lists seven current-head short-term UI screenshots.
 - Short-term macOS menu guard: pass; the legacy Workbench menu remains isolated, while the default short-term menu has no reload or DevTools item.
 - Short-term image replacement failure-copy guard: pass; invalid/corrupt PNG diagnostics stay Chinese and do not expose the old English decoder copy.
 - Short-term operation-failure guard: pass; optimization, rename, and replacement catches use recoverable operation prompts rather than the open-file failure page.

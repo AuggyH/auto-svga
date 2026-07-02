@@ -261,6 +261,10 @@ function validateSmokeResult(value) {
     if (!workbenchRegionMap) return undefined;
     result.workbenchRegionMap = workbenchRegionMap;
   }
+  if (value.shortTermScreenshots !== undefined) {
+    if (typeof value.shortTermScreenshots !== "boolean") return undefined;
+    result.shortTermScreenshots = value.shortTermScreenshots;
+  }
   if (value.optimizedReopenProof !== undefined) {
     const optimizedReopenProof = validateOptimizedReopenProof(value.optimizedReopenProof);
     if (!optimizedReopenProof) return undefined;
@@ -1823,6 +1827,13 @@ function validateArtifactScenario(value) {
     "desktop-responsive-local-compare-at-900-x-720",
     "desktop-responsive-local-compare-at-minimum-size",
     "desktop-responsive-local-preview-at-900-x-720",
+    "short-term-launch",
+    "short-term-preview-overview",
+    "short-term-preview-optimization",
+    "short-term-preview-replaceable",
+    "short-term-general-compare",
+    "short-term-edit-reserved",
+    "short-term-preview-minimum",
     "desktop-local-info-overview-open",
     "desktop-local-info-assets-open",
     "desktop-local-source-resources-open",
@@ -2716,7 +2727,7 @@ function scenarioFixtureMetadata(scenario) {
       ...canonicalFixtureMetadata()
     };
   }
-  if (scenario === "desktop-empty" || scenario === "normal-visible-startup") {
+  if (scenario === "desktop-empty" || scenario === "normal-visible-startup" || scenario === "short-term-launch") {
     return {
       fixture: null,
       inputKind: "none",
@@ -3260,7 +3271,8 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-local-minimum-size") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
   if (scenario === "desktop-responsive-local-compare-at-minimum-size") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
-  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size") {
+  if (scenario === "short-term-preview-minimum") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size" || scenario === "short-term-preview-minimum") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
   if (scenario === "desktop-invalid") {
@@ -3278,7 +3290,7 @@ async function captureProductArtifact(window, scenario) {
   const filePath = path.join(productArtifactRoot, fileName);
   writeFileSync(filePath, png);
   await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName, viewportCss);
-  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size") {
+  if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size" || scenario === "short-term-preview-minimum") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
   } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);

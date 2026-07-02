@@ -103,6 +103,14 @@ button.primary,
   color: white;
 }
 
+button.primary:disabled,
+.toolbarButton.primary:disabled,
+.largeOpenButton:disabled {
+  border-color: var(--asv-border);
+  background: color-mix(in srgb, var(--asv-panel-strong) 70%, transparent);
+  color: var(--asv-subtle);
+}
+
 button.danger {
   border-color: transparent;
   background: var(--asv-danger);

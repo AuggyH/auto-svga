@@ -958,6 +958,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStyles, /--asv-window/);
   assert.match(shortTermStyles, /prefers-color-scheme: dark/);
   assert.match(shortTermStyles, /:focus-visible/);
+  assert.match(shortTermStyles, /button\.primary:disabled/);
   assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
   assert.match(shortTermEntry, /\/api\/short-term-product-inspection-model/);
   assert.match(shortTermEntry, /\/api\/short-term-product-optimization-workflow/);
@@ -975,10 +976,18 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /nodes\.textDialog\.close\("confirm"\)/);
   assert.match(shortTermEntry, /nodes\.textDialog\.close\("cancel"\)/);
   assert.doesNotMatch(shortTermEntry, /renameDialog|renameHint/);
+  assert.doesNotMatch(shortTermEntry, /mountPlayback\("edit"[\s\S]{0,120}start:\s*false/);
   assert.match(shortTermEntry, /saveShortTermSvgaOutput/);
   assert.match(shortTermEntry, /getRecentSvgaFiles/);
   assert.match(shortTermEntry, /runShortTermSmokeIfRequested/);
   assert.match(shortTermEntry, /reportSmokeResult/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-launch"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-overview"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-optimization"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-replaceable"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-general-compare"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-edit-reserved"\)/);
+  assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-minimum"\)/);
   assert.match(shortTermEntry, /waitForCanvasPixels/);
   assert.match(shortTermEntry, /name=invalid\.svga/);
   assert.match(shortTermEntry, /toParserArrayBuffer/);
@@ -1047,6 +1056,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /function validateShortTermMenuState/);
   assert.match(main, /short-term-menu-state-proof/);
   assert.match(main, /stateReflectsLoadedSmoke/);
+  assert.match(main, /shortTermScreenshots/);
+  assert.match(main, /short-term-launch/);
+  assert.match(main, /short-term-preview-minimum/);
   assert.match(main, /enabled: menuState\.canOverwrite/);
   assert.match(main, /enabled: menuState\.canSaveAs/);
   assert.match(main, /enabled: menuState\.canRenameImageKey/);

@@ -80,7 +80,7 @@ function setMode(mode) {
   if (mode === "edit") {
     setView("edit");
     renderEditReserved();
-    mountPlayback("edit", nodes.editCanvas, state.previewBytes ?? state.sourceBytes, { start: false }).catch(showFailure);
+    mountPlayback("edit", nodes.editCanvas, state.previewBytes ?? state.sourceBytes).catch(showFailure);
     return;
   }
   setView("preview");
@@ -1196,6 +1196,14 @@ runShortTermSmokeIfRequested().catch((error) => {
 
 async function runShortTermSmokeIfRequested() {
   if (new URLSearchParams(location.search).get("mode") !== "smoke") return;
+  const screenshotCaptures = [];
+  const captureSmokeArtifact = async (scenario) => {
+    const artifact = await bridge?.captureArtifact?.(scenario);
+    screenshotCaptures.push(Boolean(artifact?.path));
+    return artifact;
+  };
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-launch");
   const fixtureResponse = await fetch("/fixture/avatar-frame-smoke.svga");
   const fixtureBytes = new Uint8Array(await fixtureResponse.arrayBuffer());
   const file = new File([fixtureBytes], "avatar-frame-smoke.svga", { type: "application/octet-stream" });
@@ -1204,6 +1212,27 @@ async function runShortTermSmokeIfRequested() {
   nodes.dropZone.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const canvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
+  await captureSmokeArtifact("short-term-preview-overview");
+  setTab("optimization");
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-preview-optimization");
+  setTab("replaceable");
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-preview-replaceable");
+  await enterGeneralCompare();
+  await waitForSmokeCondition(() => state.view === "compare", 2_000);
+  await waitForCanvasPixels(nodes.compareCanvasA, 2_500);
+  await captureSmokeArtifact("short-term-general-compare");
+  setMode("edit");
+  await waitForSmokeCondition(() => state.view === "edit", 2_000);
+  await waitForCanvasPixels(nodes.editCanvas, 2_500);
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-edit-reserved");
+  setMode("preview");
+  await waitForSmokeCondition(() => state.view === "preview", 2_000);
+  setTab("overview");
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-preview-minimum");
   const invalidResponse = await fetch("/api/short-term-product-inspection-model?name=invalid.svga", {
     method: "POST",
     headers: authHeaders(),
@@ -1226,6 +1255,7 @@ async function runShortTermSmokeIfRequested() {
     dragDrop: state.displayName === file.name,
     errorFile: invalidResponse.ok === false,
     playerLifecycle: Boolean(state.primaryPlayback),
+    shortTermScreenshots: screenshotCaptures.length >= 7 && screenshotCaptures.every(Boolean),
     cleanup: true
   });
 }
@@ -1287,6 +1317,12 @@ function waitForSmokeCondition(predicate, timeoutMs) {
       requestAnimationFrame(tick);
     };
     tick();
+  });
+}
+
+function waitForSmokeFrame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
   });
 }
 
