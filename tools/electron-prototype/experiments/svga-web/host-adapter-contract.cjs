@@ -59,14 +59,14 @@ function isExpectedSenderUrl(url, expectedOrigin) {
   return isAllowedHostUrl(url, expectedOrigin);
 }
 
-function createPreloadApi(invoke, { reportToken, productMilestoneId }) {
-  return Object.freeze({
+function createBasePreloadApi(invoke, { reportToken, productMilestoneId }) {
+  return {
     hostAdapterVersion: ELECTRON_HOST_ADAPTER_VERSION,
     productMilestoneId,
     reportToken,
     localOnly: true,
     telemetry: "disabled",
-    capabilities: Object.freeze({
+    capabilities: {
       documentTypes: DOCUMENT_TYPES,
       fileOpen: "host-dialog-svga-only",
       dragDrop: "renderer-file-api-no-path-authority",
@@ -74,12 +74,11 @@ function createPreloadApi(invoke, { reportToken, productMilestoneId }) {
       clipboardWrite: "host-clipboard-write-text-only",
       finderDocumentAssociation: "not-declared",
       saveAs: "host-dialog-svga-only",
-      sequenceRepairSaveAs: "host-dialog-svga-only",
       arbitraryFileSystemAccess: false,
       shellAccess: false,
       remoteNavigation: false,
       newWindows: false
-    }),
+    },
     reportSmokeResult(result) {
       return invoke(IPC_CHANNELS.smokeResult, result);
     },
@@ -112,7 +111,24 @@ function createPreloadApi(invoke, { reportToken, productMilestoneId }) {
     },
     saveOptimizedSvga(input) {
       return invoke(IPC_CHANNELS.saveOptimizedSvga, input);
-    },
+    }
+  };
+}
+
+function freezePreloadApi(api) {
+  return Object.freeze({
+    ...api,
+    capabilities: Object.freeze(api.capabilities)
+  });
+}
+
+function withDeferredWorkbenchApi(api, invoke) {
+  api.capabilities = {
+    ...api.capabilities,
+    sequenceRepairSaveAs: "host-dialog-svga-only"
+  };
+  return {
+    ...api,
     saveSequenceRepairSvga(input) {
       return invoke(IPC_CHANNELS.saveSequenceRepairSvga, input);
     },
@@ -125,7 +141,24 @@ function createPreloadApi(invoke, { reportToken, productMilestoneId }) {
     reportP5BatchResult(result) {
       return invoke(IPC_CHANNELS.p5BatchResult, result);
     }
-  });
+  };
+}
+
+function createProductPreloadApi(invoke, options) {
+  const api = createBasePreloadApi(invoke, options);
+  if (options.productMilestoneId === "short-term") {
+    return freezePreloadApi(api);
+  }
+  return freezePreloadApi(withDeferredWorkbenchApi(api, invoke));
+}
+
+function createLegacyPrototypePreloadApi(invoke, options) {
+  const api = createBasePreloadApi(invoke, options);
+  return freezePreloadApi(withDeferredWorkbenchApi(api, invoke));
+}
+
+function createPreloadApi(invoke, options) {
+  return createLegacyPrototypePreloadApi(invoke, options);
 }
 
 module.exports = {
@@ -134,7 +167,9 @@ module.exports = {
   ELECTRON_HOST_BRIDGE_NAME,
   IPC_CHANNELS,
   LEGACY_PROTOTYPE_BRIDGE_NAME,
+  createLegacyPrototypePreloadApi,
   createPreloadApi,
+  createProductPreloadApi,
   createSecureWebPreferences,
   isAllowedHostUrl,
   isExpectedSenderUrl

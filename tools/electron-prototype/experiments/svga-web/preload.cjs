@@ -29,72 +29,106 @@ function invoke(channel, input) {
   return input === undefined ? ipcRenderer.invoke(channel) : ipcRenderer.invoke(channel, input);
 }
 
-const hostApi = Object.freeze({
-  hostAdapterVersion: 1,
-  productMilestoneId,
-  reportToken,
-  localOnly: true,
-  telemetry: "disabled",
-  capabilities: Object.freeze({
-    documentTypes: Object.freeze(["svga"]),
-    fileOpen: "host-dialog-svga-only",
-    dragDrop: "renderer-file-api-no-path-authority",
-    referenceMediaOpen: "host-dialog-mp4-webm-gif-only",
-    clipboardWrite: "host-clipboard-write-text-only",
-    finderDocumentAssociation: "not-declared",
-    saveAs: "host-dialog-svga-only",
-    sequenceRepairSaveAs: "host-dialog-svga-only",
-    arbitraryFileSystemAccess: false,
-    shellAccess: false,
-    remoteNavigation: false,
-    newWindows: false
-  }),
-  reportSmokeResult(result) {
-    return invoke(IPC_CHANNELS.smokeResult, result);
-  },
-  reportNormalProofResult(result) {
-    return invoke(IPC_CHANNELS.normalProofResult, result);
-  },
-  reportAuditResult(result) {
-    return invoke(IPC_CHANNELS.auditResult, result);
-  },
-  captureArtifact(scenario) {
-    return invoke(IPC_CHANNELS.captureArtifact, scenario);
-  },
-  performSmokeInput(input) {
-    return invoke(IPC_CHANNELS.performSmokeInput, input);
-  },
-  scanLatestArtifacts() {
-    return invoke(IPC_CHANNELS.scanLatestArtifacts);
-  },
-  openSvgaFile() {
-    return invoke(IPC_CHANNELS.openSvgaFile);
-  },
-  openReferenceMediaFile() {
-    return invoke(IPC_CHANNELS.openReferenceMediaFile);
-  },
-  writeClipboardText(text) {
-    return invoke(IPC_CHANNELS.writeClipboardText, text);
-  },
-  saveEditedSvga(input) {
-    return invoke(IPC_CHANNELS.saveEditedSvga, input);
-  },
-  saveOptimizedSvga(input) {
-    return invoke(IPC_CHANNELS.saveOptimizedSvga, input);
-  },
-  saveSequenceRepairSvga(input) {
-    return invoke(IPC_CHANNELS.saveSequenceRepairSvga, input);
-  },
-  reportP3EditResult(result) {
-    return invoke(IPC_CHANNELS.p3EditResult, result);
-  },
-  reportP4EditResult(result) {
-    return invoke(IPC_CHANNELS.p4EditResult, result);
-  },
-  reportP5BatchResult(result) {
-    return invoke(IPC_CHANNELS.p5BatchResult, result);
-  }
-});
+function createBasePreloadApi() {
+  return {
+    hostAdapterVersion: 1,
+    productMilestoneId,
+    reportToken,
+    localOnly: true,
+    telemetry: "disabled",
+    capabilities: {
+      documentTypes: Object.freeze(["svga"]),
+      fileOpen: "host-dialog-svga-only",
+      dragDrop: "renderer-file-api-no-path-authority",
+      referenceMediaOpen: "host-dialog-mp4-webm-gif-only",
+      clipboardWrite: "host-clipboard-write-text-only",
+      finderDocumentAssociation: "not-declared",
+      saveAs: "host-dialog-svga-only",
+      arbitraryFileSystemAccess: false,
+      shellAccess: false,
+      remoteNavigation: false,
+      newWindows: false
+    },
+    reportSmokeResult(result) {
+      return invoke(IPC_CHANNELS.smokeResult, result);
+    },
+    reportNormalProofResult(result) {
+      return invoke(IPC_CHANNELS.normalProofResult, result);
+    },
+    reportAuditResult(result) {
+      return invoke(IPC_CHANNELS.auditResult, result);
+    },
+    captureArtifact(scenario) {
+      return invoke(IPC_CHANNELS.captureArtifact, scenario);
+    },
+    performSmokeInput(input) {
+      return invoke(IPC_CHANNELS.performSmokeInput, input);
+    },
+    scanLatestArtifacts() {
+      return invoke(IPC_CHANNELS.scanLatestArtifacts);
+    },
+    openSvgaFile() {
+      return invoke(IPC_CHANNELS.openSvgaFile);
+    },
+    openReferenceMediaFile() {
+      return invoke(IPC_CHANNELS.openReferenceMediaFile);
+    },
+    writeClipboardText(text) {
+      return invoke(IPC_CHANNELS.writeClipboardText, text);
+    },
+    saveEditedSvga(input) {
+      return invoke(IPC_CHANNELS.saveEditedSvga, input);
+    },
+    saveOptimizedSvga(input) {
+      return invoke(IPC_CHANNELS.saveOptimizedSvga, input);
+    }
+  };
+}
 
-contextBridge.exposeInMainWorld(ELECTRON_HOST_BRIDGE_NAME, hostApi);
-contextBridge.exposeInMainWorld(LEGACY_PROTOTYPE_BRIDGE_NAME, hostApi);
+function freezePreloadApi(api) {
+  return Object.freeze({
+    ...api,
+    capabilities: Object.freeze(api.capabilities)
+  });
+}
+
+function withDeferredWorkbenchApi(api) {
+  api.capabilities = {
+    ...api.capabilities,
+    sequenceRepairSaveAs: "host-dialog-svga-only"
+  };
+  return {
+    ...api,
+    saveSequenceRepairSvga(input) {
+      return invoke(IPC_CHANNELS.saveSequenceRepairSvga, input);
+    },
+    reportP3EditResult(result) {
+      return invoke(IPC_CHANNELS.p3EditResult, result);
+    },
+    reportP4EditResult(result) {
+      return invoke(IPC_CHANNELS.p4EditResult, result);
+    },
+    reportP5BatchResult(result) {
+      return invoke(IPC_CHANNELS.p5BatchResult, result);
+    }
+  };
+}
+
+function createProductPreloadApi() {
+  const api = createBasePreloadApi();
+  if (productMilestoneId === "short-term") {
+    return freezePreloadApi(api);
+  }
+  return freezePreloadApi(withDeferredWorkbenchApi(api));
+}
+
+function createLegacyPrototypePreloadApi() {
+  const api = createBasePreloadApi();
+  return freezePreloadApi(withDeferredWorkbenchApi(api));
+}
+
+const productHostApi = createProductPreloadApi(invoke, { reportToken, productMilestoneId });
+const legacyPrototypeApi = createLegacyPrototypePreloadApi(invoke, { reportToken, productMilestoneId });
+
+contextBridge.exposeInMainWorld(ELECTRON_HOST_BRIDGE_NAME, productHostApi);
+contextBridge.exposeInMainWorld(LEGACY_PROTOTYPE_BRIDGE_NAME, legacyPrototypeApi);

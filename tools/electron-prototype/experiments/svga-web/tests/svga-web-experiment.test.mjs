@@ -481,6 +481,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
+  const hostContractSource = await readFile(path.join(experimentRoot, "host-adapter-contract.cjs"), "utf8");
   const productApp = await readFile(path.join(repoRoot, "tools/shared/product-frontend/product-app.mjs"), "utf8");
   const localTmpPath = ["/", "tmp", "preload.cjs"].join("");
   const localTmpFileUrl = `file://${["", "tmp", "test.svga"].join("/")}`;
@@ -512,6 +513,14 @@ test("main process keeps sandboxed Electron security settings", async () => {
     invocations.push({ channel, input });
     return { channel, input };
   }, { reportToken: "test-token", productMilestoneId: "P6" });
+  const productPreloadApi = hostContract.createProductPreloadApi(() => undefined, {
+    reportToken: "test-token",
+    productMilestoneId: "short-term"
+  });
+  const p6ProductPreloadApi = hostContract.createProductPreloadApi(() => undefined, {
+    reportToken: "test-token",
+    productMilestoneId: "P6"
+  });
   assert.equal(preloadApi.hostAdapterVersion, 1);
   assert.equal(preloadApi.telemetry, "disabled");
   assert.equal(preloadApi.capabilities.arbitraryFileSystemAccess, false);
@@ -520,6 +529,13 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(preloadApi.capabilities.clipboardWrite, "host-clipboard-write-text-only");
   assert.equal(preloadApi.capabilities.finderDocumentAssociation, "not-declared");
   assert.deepEqual(preloadApi.capabilities.documentTypes, ["svga"]);
+  assert.equal("sequenceRepairSaveAs" in productPreloadApi.capabilities, false);
+  assert.equal("saveSequenceRepairSvga" in productPreloadApi, false);
+  assert.equal("reportP4EditResult" in productPreloadApi, false);
+  assert.equal(typeof p6ProductPreloadApi.saveSequenceRepairSvga, "function");
+  assert.equal(typeof p6ProductPreloadApi.reportP4EditResult, "function");
+  assert.equal(typeof preloadApi.saveSequenceRepairSvga, "function");
+  assert.equal(typeof preloadApi.reportP4EditResult, "function");
   assert.equal(preloadApi.openSvgaFile().channel, hostContract.IPC_CHANNELS.openSvgaFile);
   assert.equal(preloadApi.openReferenceMediaFile().channel, hostContract.IPC_CHANNELS.openReferenceMediaFile);
   assert.equal(preloadApi.scanLatestArtifacts().channel, hostContract.IPC_CHANNELS.scanLatestArtifacts);
@@ -530,6 +546,10 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(invocations.length, 6);
   assert.equal(hostContract.ELECTRON_HOST_BRIDGE_NAME, "autoSvgaElectronHost");
   assert.equal(hostContract.LEGACY_PROTOTYPE_BRIDGE_NAME, "autoSvgaPrototype");
+  assert.match(preload, /createProductPreloadApi/);
+  assert.match(preload, /createLegacyPrototypePreloadApi/);
+  assert.match(hostContractSource, /createProductPreloadApi/);
+  assert.match(hostContractSource, /createLegacyPrototypePreloadApi/);
   const hostOpenReturn = main.match(/function openSvgaFileBytes[\s\S]*?\n}\n\nasync function openSvgaFile/)?.[0] ?? "";
   const referenceOpenReturn = main.match(/function openReferenceMediaFileBytes[\s\S]*?\n}\n\nasync function openSvgaFile/)?.[0] ?? "";
   assert.match(main, /createSecureWebPreferences/);
@@ -907,6 +927,7 @@ test("default Electron renderer shares the Web product page and keeps editor inc
   assert.match(desktopEntry, /installSvgaWebCompatibility/);
   assert.match(desktopEntry, /\/tools\/shared\/product-frontend\/product-app\.mjs/);
   assert.match(desktopEntry, /x-auto-svga-prototype-token/);
+  assert.match(desktopEntry, /productMilestoneId: bridge\?\.productMilestoneId \?\? "short-term"/);
   assert.match(desktopEntry, /latestArtifactHttpApi: Boolean\(bridge\?\.scanLatestArtifacts\)/);
   assert.match(desktopEntry, /electronReferenceMediaDialog: Boolean\(bridge\?\.openReferenceMediaFile\)/);
   assert.match(desktopEntry, /scanLatestArtifacts\?\.\(\)/);
@@ -915,6 +936,10 @@ test("default Electron renderer shares the Web product page and keeps editor inc
   assert.match(desktopEntry, /editorIncubationDefaultVisible: false/);
   assert.match(desktopEntry, /class CompatibleSvgaPlayer/);
   assert.match(desktopEntry, /class CompatibleSvgaParser/);
+  assert.match(
+    desktopEntry,
+    /bridge\?\.productMilestoneId !== "short-term"[\s\S]*tokenBoundApiPaths\.add\("\/api\/svga-sequence-repair"\)/
+  );
   assert.ok(
     desktopEntry.indexOf("class CompatibleSvgaParser") < desktopEntry.indexOf("installSvgaWebCompatibility();"),
     "svga-web compatibility classes must be defined before installation"
@@ -951,7 +976,7 @@ test("legacy editor prototype remains isolated from the default product surface"
   assert.match(renderer, /clearCanvas/);
   assert.match(renderer, /summary\.dimensions/);
   assert.match(renderer, /timing\.durationMs/);
-  assert.match(renderer, /const hostBridge = window\.autoSvgaElectronHost \?\? window\.autoSvgaPrototype/);
+  assert.match(renderer, /const hostBridge = window\.autoSvgaPrototype \?\? window\.autoSvgaElectronHost/);
   assert.match(renderer, /openHostSvgaFile/);
   assert.match(renderer, /hostBridge\.openSvgaFile/);
   assert.match(renderer, /saveEditedSvga/);

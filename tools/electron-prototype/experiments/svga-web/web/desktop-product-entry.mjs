@@ -48,9 +48,11 @@ function createElectronProductHostAdapter(environment = globalThis) {
           "/api/avatar-frame-inspection-report",
           "/api/svga-image-edit-session",
           "/api/svga-image-replace",
-          "/api/svga-image-optimize",
-          "/api/svga-sequence-repair"
+          "/api/svga-image-optimize"
         ]);
+        if (bridge?.productMilestoneId !== "short-term") {
+          tokenBoundApiPaths.add("/api/svga-sequence-repair");
+        }
         if (!tokenBoundApiPaths.has(requestUrl.pathname) || !reportToken) {
           return fetchApi(input, init);
         }
@@ -60,7 +62,7 @@ function createElectronProductHostAdapter(environment = globalThis) {
       }
     }),
     environment: Object.freeze({
-      productMilestoneId: bridge?.productMilestoneId ?? "P6",
+      productMilestoneId: bridge?.productMilestoneId ?? "short-term",
       localOnly: bridge?.localOnly === true,
       telemetry: bridge?.telemetry ?? "disabled"
     })

@@ -29,6 +29,12 @@
       "status": "deferred_phase4_foundation_ready"
     },
     {
+      "capability": "mid_term_native_adapter_and_connected_shell_integration",
+      "phase": "Mid-term",
+      "hostRegions": ["source_document", "preview_stage", "inspector", "resources", "action_workflow", "activity_history"],
+      "status": "mid_term_adapter_foundation"
+    },
+    {
       "capability": "multi_format_workbench",
       "phase": "Long-term",
       "hostRegions": ["source_document", "preview_stage", "inspector", "resources"],

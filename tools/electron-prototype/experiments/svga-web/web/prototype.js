@@ -19,7 +19,7 @@ const fileInfo = document.querySelector("#fileInfo");
 const urlParams = new URLSearchParams(location.search);
 const isSmokeMode = urlParams.get("mode") === "smoke";
 const shouldCaptureArtifacts = urlParams.get("artifacts") === "1";
-const hostBridge = window.autoSvgaElectronHost ?? window.autoSvgaPrototype;
+const hostBridge = window.autoSvgaPrototype ?? window.autoSvgaElectronHost;
 const productMilestoneId = hostBridge?.productMilestoneId ?? "P2";
 const p6BaselineFixtureDisplayName = "p6-web-baseline-fixture.svga";
 const cspViolations = [];
