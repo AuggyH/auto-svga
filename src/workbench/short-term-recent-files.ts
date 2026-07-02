@@ -191,7 +191,10 @@ export function parseShortTermRecentFilesStateJson(
 ): ShortTermRecentFilesState {
   if (!raw) return createShortTermRecentFilesState(fallback, options);
   try {
-    const parsed = JSON.parse(raw) as { records?: unknown };
+    const parsed = JSON.parse(raw) as { schemaVersion?: unknown; records?: unknown };
+    if (parsed.schemaVersion !== SHORT_TERM_RECENT_FILES_SCHEMA_VERSION) {
+      return createShortTermRecentFilesState(fallback, options);
+    }
     const records = Array.isArray(parsed.records) ? parsed.records : fallback;
     return createShortTermRecentFilesState(records as ShortTermRecentFileInput[], options);
   } catch {

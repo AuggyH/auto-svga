@@ -188,3 +188,22 @@ test("short-term recent files storage round-trips host state and keeps view payl
   assert.equal(fallback.records[0].displayName, "fallback.svga");
   assert.equal(JSON.stringify(createShortTermRecentFilesViewModel(parsed)).includes("/Users/designer"), false);
 });
+
+test("short-term recent files storage rejects unsupported schema versions", () => {
+  const parsed = parseShortTermRecentFilesStateJson(
+    JSON.stringify({
+      schemaVersion: 99,
+      records: [{
+        localPath: "/Users/designer/stale/stale.svga",
+        lastOpenedAt: "2026-07-02T00:00:00.000Z"
+      }]
+    }),
+    [{
+      localPath: "/Users/designer/fallback/fallback.svga",
+      lastOpenedAt: "2026-07-02T00:01:00.000Z"
+    }]
+  );
+
+  assert.equal(parsed.records.length, 1);
+  assert.equal(parsed.records[0].displayName, "fallback.svga");
+});
