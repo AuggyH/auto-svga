@@ -248,6 +248,42 @@ test("short-term host preview actions fail closed when opened source bytes are m
   assert.equal(resetText.lastAction?.action, "resetTextPreview");
 });
 
+test("short-term host output actions fail closed for malformed runtime payloads", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+
+  const renamed = await runShortTermHostImageKeyRename(
+    opened,
+    42 as unknown as string,
+    "profile_frame"
+  );
+  assert.equal(renamed.lastAction?.status, "blocked");
+  assert.equal(renamed.lastAction?.commandId, "renameImageKey");
+  assert.equal(renamed.lastAction?.diagnostic?.code, "rename_input_invalid");
+  assert.equal(renamed.facade.model.appState.state, "previewReady");
+  assert.equal(renamed.currentLocalPath, sourcePath);
+  assert.equal(renamed.activeOutputBytes, undefined);
+
+  const replaced = await runShortTermHostImageReplacement(
+    opened,
+    "profile_frame",
+    [1, 2, 3] as unknown as Uint8Array
+  );
+  assert.equal(replaced.lastAction?.status, "blocked");
+  assert.equal(replaced.lastAction?.commandId, "replaceImage");
+  assert.equal(replaced.lastAction?.diagnostic?.code, "replacement_input_invalid");
+  assert.equal(replaced.facade.model.appState.state, "previewReady");
+  assert.equal(replaced.currentLocalPath, sourcePath);
+  assert.equal(replaced.activeOutputBytes, undefined);
+});
+
 test("short-term host action results expose action-specific PRD ids", async () => {
   const sourcePath = "/Users/designer/private/optimizable.svga";
   const host = createMemoryHost({

@@ -327,7 +327,7 @@ export function closeShortTermHostFile(
   state: ShortTermHostActionState,
   input: ShortTermHostCloseInput = {}
 ): ShortTermHostActionState {
-  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  if (hasShortTermUnsavedHostOutput(state) && !isDiscardConfirmed(input)) {
     return withLastAction(state, result("closeFile", "blocked", "当前文件有未保存输出，关闭前需要确认丢弃。", {
       commandId: "closeFile",
       diagnostic: {
@@ -354,7 +354,7 @@ export async function runShortTermHostOptimization(
   const unopened = requireOpenedFileForOutputAction(state, "runOptimization");
   if (unopened) return unopened;
 
-  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  if (hasShortTermUnsavedHostOutput(state) && !isDiscardConfirmed(input)) {
     return blockUnsavedOperation(state, "runOptimization", "runOptimization");
   }
 
@@ -379,11 +379,15 @@ export async function runShortTermHostImageKeyRename(
   const unopened = requireOpenedFileForOutputAction(state, "renameImageKey");
   if (unopened) return unopened;
 
-  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  if (!isNonEmptyString(fromImageKey) || !isNonEmptyString(toImageKey)) {
+    return invalidOutputInput(state, "renameImageKey", "renameImageKey");
+  }
+
+  if (hasShortTermUnsavedHostOutput(state) && !isDiscardConfirmed(input)) {
     return blockUnsavedOperation(state, "renameImageKey", "renameImageKey");
   }
 
-  const operation = await runShortTermWorkbenchRenamePreview(state.facade, fromImageKey, toImageKey);
+  const operation = await runShortTermWorkbenchRenamePreview(state.facade, fromImageKey.trim(), toImageKey.trim());
   return withLastAction({
     ...state,
     facade: operation.state,
@@ -404,15 +408,19 @@ export async function runShortTermHostImageReplacement(
   const unopened = requireOpenedFileForOutputAction(state, "replaceImage");
   if (unopened) return unopened;
 
+  if (!isNonEmptyString(imageKey) || !isUint8Array(pngBytes)) {
+    return invalidOutputInput(state, "replaceImage", "replaceImage");
+  }
+
   if (
     hasShortTermUnsavedHostOutput(state)
       && state.facade.model.activeOutput?.outputKind !== "image_replacement_svga"
-      && input.discardUnsavedChanges !== true
+      && !isDiscardConfirmed(input)
   ) {
     return blockUnsavedOperation(state, "replaceImage", "replaceImage");
   }
 
-  const operation = await runShortTermWorkbenchImageReplacementPreview(state.facade, imageKey, pngBytes);
+  const operation = await runShortTermWorkbenchImageReplacementPreview(state.facade, imageKey.trim(), pngBytes);
   const outputBytes = operation.state.model.activeOutput ? operation.session.previewBytes : undefined;
   return withLastAction({
     ...state,
@@ -876,6 +884,22 @@ function invalidOpenInput(
   }));
 }
 
+function invalidOutputInput(
+  state: ShortTermHostActionState,
+  action: Extract<ShortTermHostActionKind, "renameImageKey" | "replaceImage">,
+  commandId: "renameImageKey" | "replaceImage"
+): ShortTermHostActionState {
+  return withLastAction(state, result(action, "blocked", "操作请求不可用。", {
+    commandId,
+    diagnostic: {
+      code: action === "renameImageKey" ? "rename_input_invalid" : "replacement_input_invalid",
+      message: action === "renameImageKey"
+        ? "Rename imageKey requires source and target imageKey strings."
+        : "Replace image requires an imageKey string and PNG bytes."
+    }
+  }));
+}
+
 function blockUnsavedOpen(
   state: ShortTermHostActionState,
   action: Extract<ShortTermHostActionKind, "openLocalFile" | "openRecentFile">,
@@ -1011,6 +1035,10 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
+}
+
+function isDiscardConfirmed(value: unknown): boolean {
+  return isRecord(value) && value.discardUnsavedChanges === true;
 }
 
 function isUint8Array(value: unknown): value is Uint8Array {
