@@ -25,7 +25,8 @@ import {
   type ShortTermHostEnvironment,
   type ShortTermHostMenuActionInput,
   type ShortTermHostOpenLocalFileInput,
-  type ShortTermHostOpenRecentFileInput
+  type ShortTermHostOpenRecentFileInput,
+  type ShortTermHostSaveInput
 } from "../workbench/short-term-host-actions.js";
 import { flattenShortTermCommandMenuItems } from "../workbench/short-term-command-menu.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
@@ -377,6 +378,53 @@ test("short-term host actions keep dirty output when saved bytes fail read-back 
   assert.ok(saved.activeOutputBytes);
   assert.ok(saved.facade.model.activeOutput);
   assert.equal(commandEnabled(saved, "saveAs"), true);
+});
+
+test("short-term host actions block malformed save input without dropping dirty output", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const targetPath = "/Users/designer/private/optimized.svga";
+  const sourceBytes = await createShortTermOptimizableSvgaFixture();
+  const host = createMemoryHost({
+    [sourcePath]: sourceBytes
+  }, {
+    writeError: () => {
+      assert.fail("Malformed save input must not write.");
+    }
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+
+  const invalidCommand = await saveShortTermHostOutput(
+    optimized,
+    host,
+    { command: "export" } as unknown as ShortTermHostSaveInput
+  );
+
+  assert.equal(invalidCommand.lastAction?.status, "blocked");
+  assert.equal(invalidCommand.lastAction?.commandId, undefined);
+  assert.equal(invalidCommand.lastAction?.diagnostic?.code, "save_input_invalid");
+  assert.ok(invalidCommand.activeOutputBytes);
+  assert.ok(invalidCommand.facade.model.activeOutput);
+
+  const invalidTarget = await saveShortTermHostOutput(
+    optimized,
+    host,
+    { command: "saveAs", targetPath: [targetPath] } as unknown as ShortTermHostSaveInput
+  );
+
+  assert.equal(invalidTarget.lastAction?.status, "blocked");
+  assert.equal(invalidTarget.lastAction?.commandId, "saveAs");
+  assert.equal(invalidTarget.lastAction?.diagnostic?.code, "save_input_invalid");
+  assert.equal(JSON.stringify(invalidTarget.lastAction).includes("/Users/designer"), false);
+  assert.ok(invalidTarget.activeOutputBytes);
+  assert.ok(invalidTarget.facade.model.activeOutput);
+  assert.throws(() => host.snapshot(targetPath), /missing snapshot/);
 });
 
 test("short-term host actions redact spaced local paths from save failures", async () => {

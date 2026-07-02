@@ -469,16 +469,27 @@ export async function saveShortTermHostOutput(
   host: ShortTermHostEnvironment,
   input: ShortTermHostSaveInput
 ): Promise<ShortTermHostActionState> {
-  const targetPath = input.targetPath ?? (input.command === "overwrite" ? state.currentLocalPath : undefined);
+  const saveInput: Record<string, unknown> = isRecord(input) ? input : {};
+  if (!isShortTermSaveCommand(saveInput.command)) {
+    return invalidSaveInput(state);
+  }
+  if (saveInput.targetPath !== undefined && !isNonEmptyString(saveInput.targetPath)) {
+    return invalidSaveInput(state, saveInput.command);
+  }
+
+  const command = saveInput.command;
+  const explicitTargetPath = isNonEmptyString(saveInput.targetPath) ? saveInput.targetPath : undefined;
+  const targetPath = explicitTargetPath ?? (command === "overwrite" ? state.currentLocalPath : undefined);
   if (!targetPath) {
     return withLastAction(state, result("save", "blocked", "保存目标不可用。", {
+      commandId: command === "overwrite" ? "save" : "saveAs",
       diagnostic: {
         code: "save_target_missing",
         message: "Save As requires a target path and overwrite requires the current local path."
       }
     }));
   }
-  if (input.command === "saveAs" && state.currentLocalPath && sameResolvedPath(targetPath, state.currentLocalPath)) {
+  if (command === "saveAs" && state.currentLocalPath && sameResolvedPath(targetPath, state.currentLocalPath)) {
     return withLastAction(state, result("save", "blocked", "另存为目标必须不同于当前源文件；如需覆盖请使用覆盖保存。", {
       commandId: "saveAs",
       targetDisplayName: shortTermDisplayNameFromPathLike(targetPath),
@@ -498,7 +509,7 @@ export async function saveShortTermHostOutput(
     }));
   }
 
-  const plan = createShortTermWorkbenchSavePlan(state.facade, input.command, { targetPath });
+  const plan = createShortTermWorkbenchSavePlan(state.facade, command, { targetPath });
   if (!plan || plan.status !== "readyToWrite") {
     return withLastAction(state, result("save", "blocked", plan?.message ?? "没有已验证的可保存输出。", {
       targetDisplayName: shortTermDisplayNameFromPathLike(targetPath),
@@ -518,7 +529,7 @@ export async function saveShortTermHostOutput(
       ...state,
       facade: completed.state,
       activeOutputBytes: completed.result.status === "saveComplete" ? undefined : outputBytes,
-      currentLocalPath: input.command === "saveAs" && completed.result.status === "saveComplete"
+      currentLocalPath: command === "saveAs" && completed.result.status === "saveComplete"
         ? targetPath
         : state.currentLocalPath
     }, saveResult(completed.result.status === "saveComplete" ? "completed" : "failed", completed.result.message, plan, {
@@ -720,17 +731,17 @@ export async function dispatchShortTermHostMenuAction(
       return closeShortTermHostFile(state, closeInput);
     }
     case "save": {
-      const saveInput = input as { targetPath?: string };
+      const saveInput = input as { targetPath?: unknown };
       return saveShortTermHostOutput(state, host, {
         command: "overwrite",
-        targetPath: saveInput.targetPath
+        ...(isNonEmptyString(saveInput.targetPath) ? { targetPath: saveInput.targetPath } : {})
       });
     }
     case "saveAs": {
-      const saveInput = input as { targetPath?: string };
+      const saveInput = input as { targetPath?: unknown };
       return saveShortTermHostOutput(state, host, {
         command: "saveAs",
-        targetPath: saveInput.targetPath
+        ...(isNonEmptyString(saveInput.targetPath) ? { targetPath: saveInput.targetPath } : {})
       });
     }
     case "runOptimization": {
@@ -900,6 +911,20 @@ function invalidOutputInput(
   }));
 }
 
+function invalidSaveInput(
+  state: ShortTermHostActionState,
+  command?: ShortTermSaveCommand
+): ShortTermHostActionState {
+  const commandId = command === "overwrite" ? "save" : command === "saveAs" ? "saveAs" : undefined;
+  return withLastAction(state, result("save", "blocked", "保存请求不可用。", {
+    ...(commandId ? { commandId } : {}),
+    diagnostic: {
+      code: "save_input_invalid",
+      message: "Save requires a valid command and an optional string target path."
+    }
+  }));
+}
+
 function blockUnsavedOpen(
   state: ShortTermHostActionState,
   action: Extract<ShortTermHostActionKind, "openLocalFile" | "openRecentFile">,
@@ -1051,6 +1076,10 @@ function isOpenLocalSource(value: unknown): value is ShortTermHostOpenLocalFileI
 
 function isRecentOpenSource(value: unknown): value is ShortTermRecentOpenSource {
   return value === "recentLaunch" || value === "recentMenu";
+}
+
+function isShortTermSaveCommand(value: unknown): value is ShortTermSaveCommand {
+  return value === "overwrite" || value === "saveAs";
 }
 
 function withLastAction(
