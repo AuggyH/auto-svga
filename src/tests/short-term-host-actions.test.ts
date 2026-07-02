@@ -111,6 +111,43 @@ test("short-term host actions mark unavailable recent files without stale source
   assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
 });
 
+test("short-term host actions fail closed when recent availability checks throw", async () => {
+  const recentPath = "/Users/designer/private/permission-denied.svga";
+  const host = createMemoryHost({}, {
+    exists: () => {
+      throw new Error(`Cannot stat ${recentPath}`);
+    },
+    readError: () => {
+      assert.fail("Failed availability checks must not continue to host file reads.");
+    }
+  });
+  const state = createShortTermHostActionState({
+    recentFiles: [
+      {
+        id: "recent-denied",
+        localPath: recentPath,
+        displayName: "permission-denied.svga",
+        lastOpenedAt: "2026-07-02T00:00:00.000Z"
+      }
+    ]
+  });
+
+  const opened = await openShortTermHostRecentFile(state, host, {
+    requestId: "recent-1",
+    recentFileId: "recent-denied",
+    source: "recentMenu"
+  });
+
+  assert.equal(opened.lastAction?.status, "failed");
+  assert.equal(opened.lastAction?.diagnostic?.code, "recent_file_availability_check_failed");
+  assert.equal(opened.facade.model.appState.state, "recentFileMissing");
+  assert.equal(opened.currentLocalPath, undefined);
+  assert.equal(opened.activeOutputBytes, undefined);
+  assert.equal(opened.facade.model.recentFiles.menuRecentFiles[0].availability, "missing");
+  assert.equal(JSON.stringify(opened.lastAction).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
+});
+
 test("short-term host open actions fail closed for malformed runtime inputs", async () => {
   const host = createMemoryHost({}, {
     readError: () => {

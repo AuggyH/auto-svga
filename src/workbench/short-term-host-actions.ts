@@ -286,18 +286,20 @@ export async function openShortTermHostRecentFile(
   }
 
   const { request } = opened.resolution;
-  if (host.fileExists && !(await host.fileExists(request.localPath))) {
-    return withLastAction({
-      ...state,
-      facade: markShortTermWorkbenchRecentFileMissing(opened.state, request.recentFileId),
-      activeOutputBytes: undefined,
-      currentLocalPath: undefined
-    }, result("openRecentFile", "failed", "最近文件已不存在或当前无法访问。", {
-      diagnostic: {
-        code: "recent_file_missing",
-        message: "Host reported that the recent file path is unavailable."
+  if (host.fileExists) {
+    try {
+      if (!(await host.fileExists(request.localPath))) {
+        return recentFileUnavailable(state, opened.state, request.recentFileId, {
+          code: "recent_file_missing",
+          message: "Host reported that the recent file path is unavailable."
+        });
       }
-    }));
+    } catch (error) {
+      return recentFileUnavailable(state, opened.state, request.recentFileId, {
+        code: "recent_file_availability_check_failed",
+        message: errorMessage(error, "Host could not verify recent file availability.", [request.localPath])
+      });
+    }
   }
 
   return completeHostOpen(
@@ -312,6 +314,22 @@ export async function openShortTermHostRecentFile(
       recentFileId: request.recentFileId
     }
   );
+}
+
+function recentFileUnavailable(
+  state: ShortTermHostActionState,
+  openedState: ShortTermHostActionState["facade"],
+  recentFileId: string,
+  diagnostic: NonNullable<ShortTermHostActionResult["diagnostic"]>
+): ShortTermHostActionState {
+  return withLastAction({
+    ...state,
+    facade: markShortTermWorkbenchRecentFileMissing(openedState, recentFileId),
+    activeOutputBytes: undefined,
+    currentLocalPath: undefined
+  }, result("openRecentFile", "failed", "最近文件已不存在或当前无法访问。", {
+    diagnostic
+  }));
 }
 
 export function clearShortTermHostRecentFiles(
