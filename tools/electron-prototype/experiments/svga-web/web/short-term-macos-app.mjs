@@ -1416,6 +1416,16 @@ async function runShortTermSmokeIfRequested() {
     source: "short-term-smoke",
     prdIds: ["S13"],
     parserTextSource: "not_exposed_by_current_svga_proto_or_product_model",
+    textDiscoverySourcesChecked: [
+      "proto/svga.proto",
+      "short-term-product-model",
+      "svga-web-2.4.4-dynamic-elements"
+    ],
+    protoTextFieldsExposed: false,
+    productModelTextElementsExposed: false,
+    playerDynamicTextApiExposed: false,
+    playerDynamicElementsImageKeyOnly: true,
+    blockingCondition: "missing_product_safe_text_key_discovery",
     textElementsDiscovered: textElementRowCount,
     editAttempted: true,
     editBlocked: textElementRowCount === 0 && runtimeTextBannerCopy.includes("没有可预览的文本元素"),
@@ -1428,10 +1438,17 @@ async function runShortTermSmokeIfRequested() {
     sourceBytesUnchanged: runtimeTextSourceSha256After === runtimeTextSourceSha256Before,
     visibleDesignerCopy: runtimeTextBannerCopy,
     technicalBoundary: "当前解析层没有从 SVGA 字节暴露可产品化的 textKey 清单；运行时文本预览不能冒充完成。",
+    implementationAttempted: "运行时文本预览 session 已存在；当前 proto、产品模型和播放器桥接未提供真实 textKey 发现来源。",
+    requiredDecision: "提供真实 textKey 元数据/播放器桥接，或将 S13 移出短期版范围。",
     supportedRuntimeFields: ["text", "family", "size", "color", "offset"]
   };
   shortTermRuntimeTextBoundaryProof.passed = [
     shortTermRuntimeTextBoundaryProof.textElementsDiscovered === 0,
+    shortTermRuntimeTextBoundaryProof.protoTextFieldsExposed === false,
+    shortTermRuntimeTextBoundaryProof.productModelTextElementsExposed === false,
+    shortTermRuntimeTextBoundaryProof.playerDynamicTextApiExposed === false,
+    shortTermRuntimeTextBoundaryProof.playerDynamicElementsImageKeyOnly === true,
+    shortTermRuntimeTextBoundaryProof.blockingCondition === "missing_product_safe_text_key_discovery",
     shortTermRuntimeTextBoundaryProof.editBlocked,
     shortTermRuntimeTextBoundaryProof.modalOpened === false,
     shortTermRuntimeTextBoundaryProof.runtimeOverlayVisible === false,

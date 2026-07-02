@@ -155,11 +155,18 @@ const requirements = [
   {
     id: "S13",
     title: "Preview replaceable text",
-    summary: "Current parser/product model exposes no product-safe text keys; the app fails closed without byte mutation.",
+    summary: "Current proto, product model, and player bridge expose no product-safe text keys; the app fails closed without byte mutation.",
     proof: "short-term-runtime-text-boundary-proof.json",
-    blockedWhen: (proof) => proof?.productCompleteClaimed === false && proof?.editBlocked === true && proof?.sourceBytesUnchanged === true,
+    blockedWhen: (proof) => proof?.productCompleteClaimed === false
+      && proof?.editBlocked === true
+      && proof?.sourceBytesUnchanged === true
+      && proof?.protoTextFieldsExposed === false
+      && proof?.productModelTextElementsExposed === false
+      && proof?.playerDynamicTextApiExposed === false
+      && proof?.playerDynamicElementsImageKeyOnly === true
+      && proof?.blockingCondition === "missing_product_safe_text_key_discovery",
     evidence: ["short-term-runtime-text-boundary-proof.json"],
-    blocker: "SVGA proto/product inspection model does not currently expose product-safe runtime text keys for a real modal preview flow."
+    blocker: "SVGA proto/product inspection model and the current svga-web player bridge do not expose product-safe runtime text keys for a real modal preview flow."
   },
   {
     id: "S14",

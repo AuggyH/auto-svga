@@ -1257,6 +1257,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /shortTermOptimization/);
   assert.match(main, /shortTermRename/);
   assert.match(main, /shortTermReplacement/);
+  assert.match(main, /textDiscoverySourcesChecked/);
+  assert.match(main, /protoTextFieldsExposed !== false/);
+  assert.match(main, /productModelTextElementsExposed !== false/);
+  assert.match(main, /playerDynamicTextApiExposed !== false/);
+  assert.match(main, /playerDynamicElementsImageKeyOnly !== true/);
+  assert.match(main, /missing_product_safe_text_key_discovery/);
   assert.match(main, /productCompleteClaimed !== false/);
   assert.match(main, /short-term-launch/);
   assert.match(main, /short-term-sequence-thumbnails/);
@@ -1534,7 +1540,11 @@ test("short-term acceptance matrix stays current-head bound and does not hide kn
   assert.match(source, /short-term-replaceable-classification-proof\.json/);
   assert.match(source, /id: "S13"/);
   assert.match(source, /productCompleteClaimed === false/);
-  assert.match(source, /SVGA proto\/product inspection model/);
+  assert.match(source, /protoTextFieldsExposed === false/);
+  assert.match(source, /productModelTextElementsExposed === false/);
+  assert.match(source, /playerDynamicTextApiExposed === false/);
+  assert.match(source, /playerDynamicElementsImageKeyOnly === true/);
+  assert.match(source, /SVGA proto\/product inspection model and the current svga-web player bridge/);
   assert.match(source, /Need both drag\/drop proof and macOS menu\/host-dialog normal proof/);
   assert.match(source, /playback-failure-specific abnormal-state proof/);
   assert.match(source, /playbackFailureInjected/);

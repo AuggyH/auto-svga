@@ -659,14 +659,27 @@ function validateShortTermRuntimeTextBoundaryProof(value) {
   if (value.source !== "short-term-smoke") return undefined;
   if (!Array.isArray(value.prdIds) || value.prdIds.length !== 1 || value.prdIds[0] !== "S13") return undefined;
   if (value.parserTextSource !== "not_exposed_by_current_svga_proto_or_product_model") return undefined;
+  if (
+    !Array.isArray(value.textDiscoverySourcesChecked)
+    || value.textDiscoverySourcesChecked.join(",") !== "proto/svga.proto,short-term-product-model,svga-web-2.4.4-dynamic-elements"
+  ) {
+    return undefined;
+  }
   if (!Number.isInteger(value.textElementsDiscovered) || value.textElementsDiscovered !== 0) return undefined;
   if (!isSha256(value.sourceSha256Before) || value.sourceSha256After !== value.sourceSha256Before) return undefined;
   if (!isBoundedString(value.visibleDesignerCopy, 220) || !value.visibleDesignerCopy.includes("没有可预览的文本元素")) return undefined;
   if (!isBoundedString(value.technicalBoundary, 220) || !value.technicalBoundary.includes("textKey")) return undefined;
+  if (!isBoundedString(value.implementationAttempted, 180) || !value.implementationAttempted.includes("textKey")) return undefined;
+  if (!isBoundedString(value.requiredDecision, 160) || !value.requiredDecision.includes("S13")) return undefined;
   if (!Array.isArray(value.supportedRuntimeFields) || value.supportedRuntimeFields.join(",") !== "text,family,size,color,offset") return undefined;
   if (
     value.editAttempted !== true
     || value.editBlocked !== true
+    || value.protoTextFieldsExposed !== false
+    || value.productModelTextElementsExposed !== false
+    || value.playerDynamicTextApiExposed !== false
+    || value.playerDynamicElementsImageKeyOnly !== true
+    || value.blockingCondition !== "missing_product_safe_text_key_discovery"
     || value.modalOpened !== false
     || value.runtimeOverlayVisible !== false
     || value.bytePersistenceClaimed !== false
@@ -682,6 +695,16 @@ function validateShortTermRuntimeTextBoundaryProof(value) {
     source: value.source,
     prdIds: ["S13"],
     parserTextSource: value.parserTextSource,
+    textDiscoverySourcesChecked: [
+      "proto/svga.proto",
+      "short-term-product-model",
+      "svga-web-2.4.4-dynamic-elements"
+    ],
+    protoTextFieldsExposed: false,
+    productModelTextElementsExposed: false,
+    playerDynamicTextApiExposed: false,
+    playerDynamicElementsImageKeyOnly: true,
+    blockingCondition: "missing_product_safe_text_key_discovery",
     textElementsDiscovered: 0,
     editAttempted: true,
     editBlocked: true,
@@ -694,6 +717,8 @@ function validateShortTermRuntimeTextBoundaryProof(value) {
     sourceBytesUnchanged: true,
     visibleDesignerCopy: value.visibleDesignerCopy,
     technicalBoundary: value.technicalBoundary,
+    implementationAttempted: value.implementationAttempted,
+    requiredDecision: value.requiredDecision,
     supportedRuntimeFields: ["text", "family", "size", "color", "offset"],
     passed: true
   };
