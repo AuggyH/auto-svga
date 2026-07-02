@@ -14,6 +14,9 @@ import {
   openShortTermHostLocalFile,
   openShortTermHostRecentFile,
   resetShortTermHostImageReplacement,
+  runShortTermHostImageKeyRename,
+  runShortTermHostImageReplacement,
+  runShortTermHostOptimization,
   type ShortTermHostEnvironment,
   type ShortTermHostMenuActionInput
 } from "../workbench/short-term-host-actions.js";
@@ -82,6 +85,27 @@ test("short-term host actions redact local paths from host error diagnostics", a
   assert.equal(opened.lastAction?.status, "failed");
   assert.equal(opened.lastAction?.diagnostic?.message.includes("/Users/designer"), false);
   assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
+});
+
+test("short-term host output actions fail closed without opened source bytes", async () => {
+  const state = createShortTermHostActionState();
+  const optimized = await runShortTermHostOptimization(state);
+  const renamed = await runShortTermHostImageKeyRename(state, "img_frame", "profile_frame");
+  const replaced = await runShortTermHostImageReplacement(
+    state,
+    "img_frame",
+    createShortTermColoredPng(16, 16, [0, 255, 0, 255])
+  );
+
+  for (const result of [optimized, renamed, replaced]) {
+    assert.equal(result.lastAction?.status, "blocked");
+    assert.equal(result.lastAction?.diagnostic?.code, "operation_requires_open_file");
+    assert.equal(result.facade.model.appState.state, "launch");
+    assert.equal(result.activeOutputBytes, undefined);
+  }
+  assert.equal(optimized.lastAction?.action, "runOptimization");
+  assert.equal(renamed.lastAction?.action, "renameImageKey");
+  assert.equal(replaced.lastAction?.action, "replaceImage");
 });
 
 test("short-term host actions run optimization and Save As through write-read validation", async () => {

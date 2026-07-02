@@ -296,6 +296,9 @@ export async function runShortTermHostOptimization(
   state: ShortTermHostActionState,
   input: ShortTermHostDirtyOperationInput = {}
 ): Promise<ShortTermHostActionState> {
+  const unopened = requireOpenedFileForOutputAction(state, "runOptimization");
+  if (unopened) return unopened;
+
   if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
     return blockUnsavedOperation(state, "runOptimization", "runOptimization");
   }
@@ -318,6 +321,9 @@ export async function runShortTermHostImageKeyRename(
   toImageKey: string,
   input: ShortTermHostDirtyOperationInput = {}
 ): Promise<ShortTermHostActionState> {
+  const unopened = requireOpenedFileForOutputAction(state, "renameImageKey");
+  if (unopened) return unopened;
+
   if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
     return blockUnsavedOperation(state, "renameImageKey", "renameImageKey");
   }
@@ -340,6 +346,9 @@ export async function runShortTermHostImageReplacement(
   pngBytes: Uint8Array,
   input: ShortTermHostDirtyOperationInput = {}
 ): Promise<ShortTermHostActionState> {
+  const unopened = requireOpenedFileForOutputAction(state, "replaceImage");
+  if (unopened) return unopened;
+
   if (
     hasShortTermUnsavedHostOutput(state)
       && state.facade.model.activeOutput?.outputKind !== "image_replacement_svga"
@@ -689,6 +698,19 @@ function requireOpenedFileForPreviewAction(
     diagnostic: {
       code: "preview_action_requires_open_file",
       message: "Preview actions require an opened SVGA file."
+    }
+  }));
+}
+
+function requireOpenedFileForOutputAction(
+  state: ShortTermHostActionState,
+  action: Extract<ShortTermHostActionKind, "runOptimization" | "renameImageKey" | "replaceImage">
+): ShortTermHostActionState | undefined {
+  if (state.facade.model.appState.currentFile && state.facade.sourceBytes) return undefined;
+  return withLastAction(state, result(action, "blocked", "当前没有打开的 SVGA 可执行该操作。", {
+    diagnostic: {
+      code: "operation_requires_open_file",
+      message: "Output-producing operations require opened source bytes."
     }
   }));
 }

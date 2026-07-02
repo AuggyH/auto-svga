@@ -109,6 +109,21 @@ test("short-term host session blocks dirty close and keeps session state until d
   const store = createMemoryRecentFilesStore();
   const session = await createShortTermHostSession({ host, recentStore: store });
 
+  const unopenedOptimization = await session.runOptimization();
+  assert.equal(unopenedOptimization.actionResult?.status, "blocked");
+  assert.equal(unopenedOptimization.actionResult?.diagnostic?.code, "operation_requires_open_file");
+
+  const unopenedRename = await session.renameImageKey("img_frame", "profile_frame");
+  assert.equal(unopenedRename.actionResult?.status, "blocked");
+  assert.equal(unopenedRename.actionResult?.diagnostic?.code, "operation_requires_open_file");
+
+  const unopenedReplacement = await session.replaceImagePreview(
+    "img_frame",
+    createShortTermColoredPng(16, 16, [0, 255, 0, 255])
+  );
+  assert.equal(unopenedReplacement.actionResult?.status, "blocked");
+  assert.equal(unopenedReplacement.actionResult?.diagnostic?.code, "operation_requires_open_file");
+
   await session.openLocalFile({
     requestId: "open-1",
     source: "fileButton",
