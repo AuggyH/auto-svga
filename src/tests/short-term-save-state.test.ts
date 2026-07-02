@@ -73,6 +73,34 @@ test("short-term save state blocks unvalidated outputs", () => {
   assert.equal(record.saveState.saveAsEnabled, false);
 });
 
+test("short-term save state snapshots safe validation refs", () => {
+  const validationRefs = [
+    "validation:reopenPassed",
+    "/Users/designer/private/proof.json",
+    " validation:decodePassed ",
+    "validation:reopenPassed"
+  ];
+  const record = createShortTermPersistedOutputRecord({
+    outputKind: "optimized_svga",
+    operationId: "svga-safe-image-optimizer-v1",
+    sourceName: "source.svga",
+    sourceSha256: "source-hash",
+    outputBytes: new Uint8Array([1, 2, 3]),
+    sourceUnchanged: true,
+    validationPassed: true,
+    validationRefs
+  });
+
+  validationRefs.push("validation:lateMutation");
+
+  assert.deepEqual(record.validationRefs, [
+    "validation:reopenPassed",
+    "validation:decodePassed"
+  ]);
+  assert.equal(JSON.stringify(record).includes("/Users/designer"), false);
+  assert.equal(record.validationRefs.includes("validation:lateMutation"), false);
+});
+
 function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }

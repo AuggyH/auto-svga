@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_SAVE_STATE_SCHEMA_VERSION = 1 as const;
+const SAFE_VALIDATION_REF_PATTERN = /^[A-Za-z][A-Za-z0-9._:-]*$/u;
 
 export type ShortTermPersistedOutputKind =
   | "optimized_svga"
@@ -97,7 +98,7 @@ export function createShortTermPersistedOutputRecord(
     validationPassed: input.validationPassed,
     dirty: outputAvailable,
     saveState: createShortTermOutputSaveState(input.outputKind, outputAvailable, input.sourceUnchanged),
-    validationRefs: input.validationRefs ?? []
+    validationRefs: normalizeValidationRefs(input.validationRefs)
   };
 }
 
@@ -127,4 +128,17 @@ export function validateShortTermSavedBytes(
 
 function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function normalizeValidationRefs(refs: readonly string[] | undefined): string[] {
+  if (!refs) return [];
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const ref of refs) {
+    const value = typeof ref === "string" ? ref.trim() : "";
+    if (!SAFE_VALIDATION_REF_PATTERN.test(value) || seen.has(value)) continue;
+    seen.add(value);
+    normalized.push(value);
+  }
+  return normalized;
 }
