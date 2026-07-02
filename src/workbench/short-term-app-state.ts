@@ -316,6 +316,7 @@ function commandStates(state: Omit<ShortTermAppStateModel, "commands">): ShortTe
     command("replay", "Playback", "重新播放", canInspect, undefined, "预览未就绪"),
     command("renameImageKey", "Resource", "重命名 imageKey", state.state === "previewReady", "Cmd+R", "需要先打开有效 SVGA"),
     command("replaceImage", "Resource", "替换图片预览", state.state === "previewReady", undefined, "需要先打开有效 SVGA"),
+    command("editTextPreview", "Resource", "文本预览", state.state === "previewReady", undefined, "需要先打开有效 SVGA"),
     command("runOptimization", "Optimize", "生成优化副本", state.state === "previewReady", undefined, "需要先打开有效 SVGA"),
     command("minimize", "Window", "最小化", true, "Cmd+M"),
     command("help", "Help", "Auto SVGA 帮助", true)

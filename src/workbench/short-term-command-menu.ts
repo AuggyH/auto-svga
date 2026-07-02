@@ -102,7 +102,8 @@ export function createShortTermCommandMenuModel(
       ]),
       menu("resource", "Resource", [
         commandItem(requiredCommand(lookup, "renameImageKey")),
-        commandItem(requiredCommand(lookup, "replaceImage"))
+        commandItem(requiredCommand(lookup, "replaceImage")),
+        commandItem(requiredCommand(lookup, "editTextPreview"))
       ]),
       menu("optimize", "Optimize", [
         commandItem(requiredCommand(lookup, "runOptimization"))

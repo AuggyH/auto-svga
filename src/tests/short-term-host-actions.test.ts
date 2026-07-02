@@ -642,6 +642,14 @@ test("short-term host actions delegate native and renderer-owned menu commands",
   assert.equal(played.lastAction?.diagnostic?.code, "menu_command_delegated_to_renderer");
   assert.equal(played.currentLocalPath, sourcePath);
 
+  const textPreview = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "editTextPreview"
+  });
+  assert.equal(textPreview.lastAction?.status, "delegated");
+  assert.deepEqual(textPreview.lastAction?.prdIds, ["S13"]);
+  assert.equal(textPreview.lastAction?.diagnostic?.code, "menu_command_delegated_to_renderer");
+  assert.equal(textPreview.currentLocalPath, sourcePath);
+
   const minimized = await dispatchShortTermHostMenuAction(opened, host, {
     commandId: "minimize"
   });

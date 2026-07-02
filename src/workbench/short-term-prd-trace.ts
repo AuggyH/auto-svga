@@ -24,6 +24,7 @@ export const SHORT_TERM_COMMAND_MENU_PRD_IDS: readonly ShortTermPrdId[] = [
   "S10",
   "S11",
   "S12",
+  "S13",
   "S14",
   "S16"
 ];
@@ -50,6 +51,8 @@ export function shortTermPrdIdsForCommandMenuItem(commandId: string): readonly S
       return ["S11", "S14"];
     case "replaceImage":
       return ["S12", "S14"];
+    case "editTextPreview":
+      return ["S13"];
     case "runOptimization":
       return ["S8", "S9", "S10", "S14"];
     default:
@@ -76,6 +79,8 @@ export function shortTermPrdIdsForMenuDispatch(commandId: string): readonly Shor
       return ["S11", "S14"];
     case "replaceImage":
       return ["S12", "S14"];
+    case "editTextPreview":
+      return ["S13"];
     case "playPause":
     case "replay":
       return ["S2"];

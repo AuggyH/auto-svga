@@ -33,6 +33,7 @@ const RENDERER_DELEGATED_MENU_COMMANDS = new Set([
   "playPause",
   "replay",
   "toggleCompare",
+  "editTextPreview",
   "help"
 ]);
 
