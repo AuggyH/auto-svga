@@ -174,7 +174,7 @@ export type ShortTermHostMenuActionInput =
   | ({ commandId: "runOptimization" } & ShortTermHostDirtyOperationInput)
   | ({ commandId: "renameImageKey"; fromImageKey: string; toImageKey: string } & ShortTermHostDirtyOperationInput)
   | ({ commandId: "replaceImage"; imageKey: string; pngBytes: Uint8Array } & ShortTermHostDirtyOperationInput)
-  | { commandId: string };
+  | ({ commandId: string } & Record<string, unknown>);
 
 export function createShortTermHostActionState(
   options: CreateShortTermWorkbenchFacadeOptions = {}
@@ -598,29 +598,30 @@ export async function dispatchShortTermHostMenuAction(
 
   switch (canonicalCommandId) {
     case "openSvga": {
-      const openInput = input as {
-        requestId: string;
-        source?: ShortTermHostOpenLocalFileInput["source"];
-        localPath: string;
-        displayName?: string;
-        discardUnsavedChanges?: boolean;
-      };
+      const openInput = input as Record<string, unknown>;
+      if (!isNonEmptyString(openInput.requestId) || !isNonEmptyString(openInput.localPath)) {
+        return missingContextForMenuCommand(
+          state,
+          commandId,
+          "需要先通过 macOS 打开面板选择有效 SVGA。",
+          "openSvga requires requestId and localPath from the native open panel."
+        );
+      }
       return openShortTermHostLocalFile(state, host, {
         requestId: openInput.requestId,
-        source: openInput.source ?? "menuOpen",
+        source: isOpenLocalSource(openInput.source) ? openInput.source : "menuOpen",
         localPath: openInput.localPath,
-        displayName: openInput.displayName,
-        discardUnsavedChanges: openInput.discardUnsavedChanges
+        ...(isNonEmptyString(openInput.displayName) ? { displayName: openInput.displayName } : {}),
+        ...(openInput.discardUnsavedChanges === true ? { discardUnsavedChanges: true } : {})
       });
     }
     case "openRecent": {
-      const recentInput = input as {
-        requestId: string;
-        recentFileId?: string;
-        source?: ShortTermRecentOpenSource;
-        discardUnsavedChanges?: boolean;
-      };
-      const recentFileId = recentInput.recentFileId ?? shortTermRecentFileIdFromMenuCommandId(commandId);
+      const recentInput = input as Record<string, unknown>;
+      const recentFileId = (
+        isNonEmptyString(recentInput.recentFileId)
+          ? recentInput.recentFileId
+          : shortTermRecentFileIdFromMenuCommandId(commandId)
+      );
       if (!recentFileId) {
         return withLastAction(state, result("openRecentFile", "blocked", "最近文件记录不可用。", {
           commandId,
@@ -631,10 +632,10 @@ export async function dispatchShortTermHostMenuAction(
         }));
       }
       return openShortTermHostRecentFile(state, host, {
-        requestId: recentInput.requestId ?? `recent-menu-${recentFileId}`,
+        requestId: isNonEmptyString(recentInput.requestId) ? recentInput.requestId : `recent-menu-${recentFileId}`,
         recentFileId,
-        source: recentInput.source ?? "recentMenu",
-        discardUnsavedChanges: recentInput.discardUnsavedChanges
+        source: isRecentOpenSource(recentInput.source) ? recentInput.source : "recentMenu",
+        ...(recentInput.discardUnsavedChanges === true ? { discardUnsavedChanges: true } : {})
       });
     }
     case "clearRecent":
@@ -920,6 +921,14 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isUint8Array(value: unknown): value is Uint8Array {
   return value instanceof Uint8Array;
+}
+
+function isOpenLocalSource(value: unknown): value is ShortTermHostOpenLocalFileInput["source"] {
+  return value === "fileButton" || value === "dragDrop" || value === "menuOpen";
+}
+
+function isRecentOpenSource(value: unknown): value is ShortTermRecentOpenSource {
+  return value === "recentLaunch" || value === "recentMenu";
 }
 
 function withLastAction(

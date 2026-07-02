@@ -22,8 +22,7 @@ import {
   runShortTermHostImageReplacement,
   runShortTermHostOptimization,
   saveShortTermHostOutput,
-  type ShortTermHostEnvironment,
-  type ShortTermHostMenuActionInput
+  type ShortTermHostEnvironment
 } from "../workbench/short-term-host-actions.js";
 import { flattenShortTermCommandMenuItems } from "../workbench/short-term-command-menu.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
@@ -518,6 +517,14 @@ test("short-term host actions block disabled or unrouted menu commands", async (
   const host = createMemoryHost({});
   const state = createShortTermHostActionState();
 
+  const missingOpenContext = await dispatchShortTermHostMenuAction(state, host, {
+    commandId: "openSvga"
+  });
+  assert.equal(missingOpenContext.lastAction?.status, "blocked");
+  assert.equal(missingOpenContext.lastAction?.commandId, "openSvga");
+  assert.equal(missingOpenContext.lastAction?.diagnostic?.code, "menu_command_context_missing");
+  assert.equal(missingOpenContext.facade.model.appState.state, "launch");
+
   const clearBlocked = await dispatchShortTermHostMenuAction(state, host, {
     commandId: "clearRecent"
   });
@@ -639,11 +646,14 @@ test("short-term host actions open recent submenu item ids directly", async () =
   });
 
   const opened = await dispatchShortTermHostMenuAction(state, host, {
-    commandId: "openRecent:recent-a"
+    commandId: "openRecent:recent-a",
+    requestId: 42,
+    source: "unsupported-source"
   });
 
   assert.equal(opened.lastAction?.status, "completed");
   assert.equal(opened.facade.model.appState.state, "previewReady");
+  assert.equal(opened.facade.model.appState.currentFile?.openedFrom, "recentMenu");
   assert.equal(opened.currentLocalPath, sourcePath);
   assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
 });
@@ -662,7 +672,7 @@ test("short-term host actions block contextual resource menu commands without re
 
   const renameBlocked = await dispatchShortTermHostMenuAction(opened, host, {
     commandId: "renameImageKey"
-  } as unknown as ShortTermHostMenuActionInput);
+  });
 
   assert.equal(renameBlocked.lastAction?.status, "blocked");
   assert.equal(renameBlocked.lastAction?.commandId, "renameImageKey");
@@ -674,7 +684,7 @@ test("short-term host actions block contextual resource menu commands without re
   const replaceBlocked = await dispatchShortTermHostMenuAction(opened, host, {
     commandId: "replaceImage",
     imageKey: "img_frame"
-  } as unknown as ShortTermHostMenuActionInput);
+  });
 
   assert.equal(replaceBlocked.lastAction?.status, "blocked");
   assert.equal(replaceBlocked.lastAction?.commandId, "replaceImage");
