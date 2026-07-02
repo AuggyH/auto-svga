@@ -9,6 +9,7 @@ import {
   type ShortTermPersistedOutputRecord,
   type ShortTermPersistedOutputSaveStateModel
 } from "./short-term-save-state.js";
+import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_OPTIMIZATION_COMPARE_SESSION_SCHEMA_VERSION = 1 as const;
 
@@ -58,10 +59,13 @@ export async function startShortTermOptimizationCompareSession(
   sourceBytes: Uint8Array,
   options: StartShortTermOptimizationCompareSessionOptions = {}
 ): Promise<ShortTermOptimizationCompareSessionResult> {
-  const sourceName = options.sourceName ?? "untitled.svga";
+  const sourceName = shortTermSourceNameFromPathLike(options.sourceName);
   const stableSourceBytes = new Uint8Array(sourceBytes);
   const sourceSha256 = sha256(stableSourceBytes);
-  const workflow = await runShortTermOptimizationWorkflow(stableSourceBytes, options);
+  const workflow = await runShortTermOptimizationWorkflow(stableSourceBytes, {
+    ...options,
+    sourceName
+  });
   const workflowModel = workflow.model;
   const optimizedBytes = workflow.optimizedBytes;
   const optimized = optimizedBytes !== undefined && workflowModel.status === "optimized";

@@ -30,7 +30,7 @@ test("short-term rename preview session applies renamed bytes in Preview mode", 
     sourceBytes,
     "img_frame",
     "profile_frame",
-    { sourceName: "rename.svga" }
+    { sourceName: "/Users/designer/private/rename.svga" }
   );
 
   assert.ok(session.renamedBytes);
@@ -39,6 +39,8 @@ test("short-term rename preview session applies renamed bytes in Preview mode", 
   assert.equal(session.model.mode, "preview");
   assert.equal(session.model.status, "renameDirty");
   assert.equal(session.model.playerAction, "remountPreview");
+  assert.equal(session.model.sourceName, "rename.svga");
+  assert.equal(JSON.stringify(session.model).includes("/Users/designer"), false);
   assert.equal(session.model.dirty, true);
   assert.equal(session.model.sourceSha256, sha256(sourceBytes));
   assert.equal(session.model.previewSha256, sha256(session.renamedBytes));

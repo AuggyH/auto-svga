@@ -14,6 +14,7 @@ import {
   type ShortTermPersistedOutputRecord,
   type ShortTermPersistedOutputSaveStateModel
 } from "./short-term-save-state.js";
+import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
@@ -109,7 +110,7 @@ export async function runShortTermOptimizationWorkflow(
   sourceBytes: Uint8Array,
   options: RunShortTermOptimizationWorkflowOptions = {}
 ): Promise<ShortTermOptimizationWorkflowResult> {
-  const sourceName = options.sourceName ?? "untitled.svga";
+  const sourceName = shortTermSourceNameFromPathLike(options.sourceName);
   const sourceSha256 = sha256(sourceBytes);
 
   try {

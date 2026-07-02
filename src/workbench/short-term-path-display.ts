@@ -13,6 +13,10 @@ export function shortTermParentDisplayNameFromPathLike(value: unknown): string {
   return sanitizeShortTermDisplayPart(parts.at(-2) ?? "");
 }
 
+export function shortTermSourceNameFromPathLike(value: unknown, fallback = "untitled.svga"): string {
+  return shortTermDisplayNameFromPathLike(value) || fallback;
+}
+
 export function sanitizeShortTermDisplayPart(value: unknown): string {
   return typeof value === "string"
     ? value.replace(/[\u0000-\u001f]+/g, " ").replace(/[\\/]+/g, " ").replace(/\s+/g, " ").trim()

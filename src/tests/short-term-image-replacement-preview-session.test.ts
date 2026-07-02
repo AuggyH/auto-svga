@@ -17,11 +17,15 @@ import {
 
 test("short-term image replacement preview session starts from source bytes", async () => {
   const sourceBytes = await createSvgaFixture();
-  const session = createShortTermImageReplacementPreviewSession(sourceBytes, { sourceName: "preview.svga" });
+  const session = createShortTermImageReplacementPreviewSession(sourceBytes, {
+    sourceName: "/Users/designer/private/preview.svga"
+  });
 
   assert.equal(session.model.schemaVersion, 1);
   assert.deepEqual(session.model.prdIds, ["S12", "S14"]);
   assert.equal(session.model.mode, "preview");
+  assert.equal(session.model.sourceName, "preview.svga");
+  assert.equal(JSON.stringify(session.model).includes("/Users/designer"), false);
   assert.equal(session.model.status, "ready");
   assert.equal(session.model.dirty, false);
   assert.equal(session.model.resetEnabled, false);
@@ -36,7 +40,9 @@ test("short-term image replacement preview session starts from source bytes", as
 
 test("short-term image replacement preview session applies replacement without leaving preview mode", async () => {
   const sourceBytes = await createSvgaFixture();
-  const session = createShortTermImageReplacementPreviewSession(sourceBytes, { sourceName: "preview.svga" });
+  const session = createShortTermImageReplacementPreviewSession(sourceBytes, {
+    sourceName: "/Users/designer/private/preview.svga"
+  });
   const result = await applyShortTermImageReplacementPreview(
     session,
     { imageKey: "profile_frame", pngBytes: createColoredPng(16, 16, [0, 255, 0, 255]) }
@@ -52,6 +58,9 @@ test("short-term image replacement preview session applies replacement without l
   assert.equal(result.session.model.playerAction, "remountPreview");
   assert.equal(result.session.model.sourceUnchanged, true);
   assert.equal(result.session.model.activeReplacement?.imageKey, "profile_frame");
+  assert.equal(result.session.model.sourceName, "preview.svga");
+  assert.equal(result.session.model.persistedOutput?.sourceName, "preview.svga");
+  assert.equal(JSON.stringify(result.session.model).includes("/Users/designer"), false);
   assert.equal(result.session.model.saveState.outputAvailable, true);
   assert.equal(result.session.model.saveState.saveAsEnabled, true);
   assert.equal(result.session.model.persistedOutput?.outputSha256, sha256(result.session.previewBytes));

@@ -28,7 +28,7 @@ test("short-term optimization compare session enters before-after mode with save
   });
 
   const session = await startShortTermOptimizationCompareSession(sourceBytes, {
-    sourceName: "optimizable.svga"
+    sourceName: "/Users/designer/private/optimizable.svga"
   });
 
   assert.ok(session.optimizedBytes);
@@ -37,6 +37,10 @@ test("short-term optimization compare session enters before-after mode with save
   assert.equal(session.model.mode, "optimizationComparison");
   assert.equal(session.model.status, "comparing");
   assert.equal(session.model.playerAction, "showBeforeAfter");
+  assert.equal(session.model.sourceName, "optimizable.svga");
+  assert.equal(session.model.before.sourceName, "optimizable.svga");
+  assert.equal(session.model.after?.sourceName, "optimizable.svga");
+  assert.equal(JSON.stringify(session.model).includes("/Users/designer"), false);
   assert.equal(session.model.before.bytesSha256, sha256(sourceBytes));
   assert.equal(session.model.after?.bytesSha256, sha256(session.optimizedBytes));
   assert.notEqual(session.model.after?.bytesSha256, session.model.before.bytesSha256);

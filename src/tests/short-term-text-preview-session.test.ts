@@ -29,7 +29,7 @@ test("short-term text preview session fails closed when parser exposes no text e
 test("short-term text preview session applies only supported runtime fields", () => {
   const sourceBytes = new Uint8Array([4, 5, 6]);
   const session = createShortTermTextPreviewSession(sourceBytes, {
-    sourceName: "text.svga",
+    sourceName: "/Users/designer/private/text.svga",
     textElements: [
       {
         textKey: "nickname",
@@ -51,6 +51,8 @@ test("short-term text preview session applies only supported runtime fields", ()
   });
 
   assert.equal(session.model.status, "ready");
+  assert.equal(session.model.sourceName, "text.svga");
+  assert.equal(JSON.stringify(session.model).includes("/Users/designer"), false);
   assert.equal(applied.model.status, "applied");
   assert.equal(applied.model.playerAction, "applyRuntimeText");
   assert.equal(applied.model.bytePersistenceSupported, false);

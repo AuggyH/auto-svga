@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createShortTermLaunchAppState } from "../workbench/short-term-app-state.js";
+import {
+  createShortTermCommandMenuModel,
+  flattenShortTermCommandMenuItems
+} from "../workbench/short-term-command-menu.js";
+import { classifyShortTermHostMenuCommand } from "../workbench/short-term-host-menu-routing.js";
 import {
   SHORT_TERM_COMMAND_MENU_PRD_IDS,
   shortTermPrdIdsForCommandMenuItem,
@@ -35,4 +41,26 @@ test("short-term PRD trace covers host action result mappings", () => {
   assert.deepEqual(shortTermPrdIdsForHostAction("applyTextPreview"), ["S13"]);
   assert.deepEqual(shortTermPrdIdsForHostAction("save"), ["S14"]);
   assert.deepEqual(shortTermPrdIdsForHostAction("unknownAction"), []);
+});
+
+test("short-term PRD trace covers every product-routed menu item", () => {
+  const menu = createShortTermCommandMenuModel(createShortTermLaunchAppState({
+    recentFiles: [{
+      id: "recent-a",
+      displayName: "recent.svga",
+      lastOpenedAt: "2026-07-02T00:00:00.000Z"
+    }]
+  }));
+  const allowedUntraced = new Set(["help"]);
+  const missingTrace = flattenShortTermCommandMenuItems(menu)
+    .filter((item) => item.kind === "command")
+    .filter((item) => {
+      if (allowedUntraced.has(item.id)) return false;
+      const route = classifyShortTermHostMenuCommand(item.id);
+      if (route === "native") return false;
+      return (item.prdIds?.length ?? 0) === 0 || shortTermPrdIdsForMenuDispatch(item.id).length === 0;
+    })
+    .map((item) => item.id);
+
+  assert.deepEqual(missingTrace, []);
 });

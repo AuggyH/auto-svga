@@ -10,6 +10,7 @@ import {
   type ShortTermImageReplacementSummary,
   type ShortTermImageReplacementWorkflowModel
 } from "./short-term-image-replacement-workflow.js";
+import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_IMAGE_REPLACEMENT_PREVIEW_SESSION_SCHEMA_VERSION = 1 as const;
 
@@ -79,7 +80,7 @@ export function createShortTermImageReplacementPreviewSession(
   options: CreateShortTermImageReplacementPreviewSessionOptions = {}
 ): ShortTermImageReplacementPreviewSessionState {
   const stableSourceBytes = new Uint8Array(sourceBytes);
-  const sourceName = options.sourceName ?? "untitled.svga";
+  const sourceName = shortTermSourceNameFromPathLike(options.sourceName);
   const sourceSha256 = sha256(stableSourceBytes);
   return {
     sourceBytes: stableSourceBytes,

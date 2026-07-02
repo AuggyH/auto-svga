@@ -9,6 +9,7 @@ import {
   type ShortTermPersistedOutputRecord,
   type ShortTermPersistedOutputSaveStateModel
 } from "./short-term-save-state.js";
+import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_RENAME_PREVIEW_SESSION_SCHEMA_VERSION = 1 as const;
 
@@ -52,10 +53,13 @@ export async function startShortTermRenamePreviewSession(
   toImageKey: string,
   options: StartShortTermRenamePreviewSessionOptions = {}
 ): Promise<ShortTermRenamePreviewSessionResult> {
-  const sourceName = options.sourceName ?? "untitled.svga";
+  const sourceName = shortTermSourceNameFromPathLike(options.sourceName);
   const stableSourceBytes = new Uint8Array(sourceBytes);
   const sourceSha256 = sha256(stableSourceBytes);
-  const workflow = await runShortTermRenameWorkflow(stableSourceBytes, fromImageKey, toImageKey, options);
+  const workflow = await runShortTermRenameWorkflow(stableSourceBytes, fromImageKey, toImageKey, {
+    ...options,
+    sourceName
+  });
   const workflowModel = workflow.model;
   const renamedBytes = workflow.renamedBytes;
   const renamed = renamedBytes !== undefined && workflowModel.status === "renamed";

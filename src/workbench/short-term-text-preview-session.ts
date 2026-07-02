@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_TEXT_PREVIEW_SESSION_SCHEMA_VERSION = 1 as const;
 
@@ -69,7 +70,7 @@ export function createShortTermTextPreviewSession(
       prdIds: ["S13"],
       mode: "preview",
       status: textElements.length > 0 ? "ready" : "noTextElements",
-      sourceName: options.sourceName ?? "untitled.svga",
+      sourceName: shortTermSourceNameFromPathLike(options.sourceName),
       sourceSha256: sha256(sourceBytes),
       textElements,
       playerAction: "keepPreview",
