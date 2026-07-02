@@ -162,6 +162,24 @@ test("short-term image replacement workflow redacts local paths from diagnostics
   assert.equal(JSON.stringify(result.model).includes("private/missing.proto"), false);
 });
 
+test("short-term image replacement workflow redacts path-like image keys from failed models", async () => {
+  const sourceBytes = await createSvgaFixture();
+
+  const result = await runShortTermImageReplacementWorkflow(
+    sourceBytes,
+    {
+      imageKey: "/Users/designer/private/profile_frame",
+      pngBytes: createColoredPng(16, 16, [0, 255, 0, 255])
+    },
+    { sourceName: "replace.svga" }
+  );
+
+  assert.equal(result.replacedBytes, undefined);
+  assert.equal(result.model.status, "failed");
+  assert.equal(JSON.stringify(result.model).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(result.model).includes("private/profile_frame"), false);
+});
+
 async function createSvgaFixture(overrides: Partial<{
   version: string;
   params: {

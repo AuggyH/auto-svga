@@ -13,7 +13,10 @@ import {
   type SvgaRoundTripReport
 } from "./svga/index.js";
 import { shortTermSourceNameFromPathLike } from "./short-term-path-display.js";
-import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
+import {
+  redactShortTermLocalPathsFromError,
+  redactShortTermLocalPathsInValue
+} from "./short-term-local-path-redaction.js";
 
 export const SHORT_TERM_IMAGE_REPLACEMENT_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
@@ -211,7 +214,7 @@ function replacedModel(input: {
     ...(input.replacement.dimensionWarning ? { dimensionWarning: input.replacement.dimensionWarning } : {})
   };
 
-  return {
+  return redactShortTermLocalPathsInValue({
     schemaVersion: SHORT_TERM_IMAGE_REPLACEMENT_WORKFLOW_SCHEMA_VERSION,
     source: "short-term-image-replacement-workflow",
     prdIds: ["S12", "S14"],
@@ -228,7 +231,7 @@ function replacedModel(input: {
     validation: input.validation,
     saveState: persistedOutput?.saveState ?? saveState(false, input.validation.sourceUnchanged),
     ...(persistedOutput ? { persistedOutput } : {})
-  };
+  });
 }
 
 function failedModel(input: {
@@ -237,7 +240,7 @@ function failedModel(input: {
   imageKey: string;
   diagnostic: { code: string; message: string };
 }): ShortTermImageReplacementWorkflowModel {
-  return {
+  return redactShortTermLocalPathsInValue({
     schemaVersion: SHORT_TERM_IMAGE_REPLACEMENT_WORKFLOW_SCHEMA_VERSION,
     source: "short-term-image-replacement-workflow",
     prdIds: ["S12", "S14"],
@@ -260,7 +263,7 @@ function failedModel(input: {
     },
     saveState: saveState(false, true),
     diagnostic: input.diagnostic
-  };
+  });
 }
 
 async function validateReplacement(input: {
