@@ -1460,6 +1460,7 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.equal(rootPackage.scripts["desktop:dev"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:dev");
   assert.equal(rootPackage.scripts["desktop:smoke"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke");
   assert.match(rootPackage.scripts["desktop:p2:normal-proof"], /desktop:p2:normal-proof/);
+  assert.equal(rootPackage.scripts["desktop:short-term:acceptance-matrix"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:short-term:acceptance-matrix");
   assert.equal(rootPackage.scripts["desktop:p2:reviewer-b"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:reviewer-b");
   assert.equal(rootPackage.scripts["desktop:p2:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:upload-package");
   assert.equal(rootPackage.scripts["desktop:p3:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p3:upload-package");
@@ -1469,6 +1470,7 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.match(experimentPackage.scripts["desktop:dev"], /electron \.$/);
   assert.match(experimentPackage.scripts["desktop:smoke"], /--smoke --product-smoke/);
   assert.match(experimentPackage.scripts["desktop:p2:normal-proof"], /run-canonical-normal-proof\.mjs/);
+  assert.match(experimentPackage.scripts["desktop:short-term:acceptance-matrix"], /build-short-term-acceptance-matrix\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p2:reviewer-b"], /build-p2-reviewer-b-categories\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p2:upload-package"], /build-p2-upload-package\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p3:upload-package"], /build-p3-upload-package\.mjs/);
@@ -1476,6 +1478,20 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.doesNotMatch(experimentPackage.scripts["desktop:p2:normal-proof"], /--p2-normal-proof/);
   assert.notEqual(rootPackage.scripts["desktop:dev"], legacyPackage.scripts["spike:electron:smoke"]);
   assert.doesNotMatch(rootPackage.scripts["desktop:dev"], /tools\/electron-prototype run/);
+});
+
+test("short-term acceptance matrix stays current-head bound and does not hide known gaps", async () => {
+  const source = await readFile(path.join(experimentRoot, "scripts/build-short-term-acceptance-matrix.mjs"), "utf8");
+  assert.match(source, /proofId: "short-term-acceptance-matrix"/);
+  assert.match(source, /releaseCandidateReady/);
+  assert.match(source, /stale/);
+  assert.match(source, /headCommit/);
+  assert.match(source, /current HEAD/);
+  assert.match(source, /id: "S13"/);
+  assert.match(source, /productCompleteClaimed === false/);
+  assert.match(source, /SVGA proto\/product inspection model/);
+  assert.match(source, /Dedicated drag-and-drop proof/);
+  assert.match(source, /matteKey reference closure/);
 });
 
 test("P2 parity report generator is deterministic and not unconditional pass", async () => {
