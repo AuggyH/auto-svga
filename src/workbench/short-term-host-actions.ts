@@ -194,25 +194,45 @@ export async function openShortTermHostLocalFile(
   host: ShortTermHostEnvironment,
   input: ShortTermHostOpenLocalFileInput
 ): Promise<ShortTermHostActionState> {
-  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  const openInput: Record<string, unknown> = isRecord(input) ? input : {};
+  const requestId = openInput.requestId;
+  const source = openInput.source;
+  const localPath = openInput.localPath;
+  if (
+    !isNonEmptyString(requestId)
+      || !isOpenLocalSource(source)
+      || !isNonEmptyString(localPath)
+  ) {
+    return invalidOpenInput(state, "openLocalFile", "openSvga");
+  }
+
+  const normalizedInput: ShortTermHostOpenLocalFileInput = {
+    requestId,
+    source,
+    localPath,
+    ...(isNonEmptyString(openInput.displayName) ? { displayName: openInput.displayName } : {}),
+    ...(openInput.discardUnsavedChanges === true ? { discardUnsavedChanges: true } : {})
+  };
+
+  if (hasShortTermUnsavedHostOutput(state) && normalizedInput.discardUnsavedChanges !== true) {
     return blockUnsavedOpen(state, "openLocalFile", "openSvga");
   }
 
   const loadingFacade = startShortTermWorkbenchOpen(state.facade, {
-    requestId: input.requestId,
-    source: input.source,
-    localPath: input.localPath,
-    displayName: input.displayName
+    requestId: normalizedInput.requestId,
+    source: normalizedInput.source,
+    localPath: normalizedInput.localPath,
+    displayName: normalizedInput.displayName
   });
   return completeHostOpen(
     { ...state, facade: loadingFacade, activeOutputBytes: undefined },
     host,
     {
       action: "openLocalFile",
-      requestId: input.requestId,
-      source: input.source,
-      localPath: input.localPath,
-      displayName: input.displayName
+      requestId: normalizedInput.requestId,
+      source: normalizedInput.source,
+      localPath: normalizedInput.localPath,
+      displayName: normalizedInput.displayName
     }
   );
 }
@@ -222,15 +242,34 @@ export async function openShortTermHostRecentFile(
   host: ShortTermHostEnvironment,
   input: ShortTermHostOpenRecentFileInput
 ): Promise<ShortTermHostActionState> {
-  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  const openInput: Record<string, unknown> = isRecord(input) ? input : {};
+  const requestId = openInput.requestId;
+  const recentFileId = openInput.recentFileId;
+  const source = openInput.source;
+  if (
+    !isNonEmptyString(requestId)
+      || !isNonEmptyString(recentFileId)
+      || !isRecentOpenSource(source)
+  ) {
+    return invalidOpenInput(state, "openRecentFile", "openRecent");
+  }
+
+  const normalizedInput: ShortTermHostOpenRecentFileInput = {
+    requestId,
+    recentFileId,
+    source,
+    ...(openInput.discardUnsavedChanges === true ? { discardUnsavedChanges: true } : {})
+  };
+
+  if (hasShortTermUnsavedHostOutput(state) && normalizedInput.discardUnsavedChanges !== true) {
     return blockUnsavedOpen(state, "openRecentFile", "openRecent");
   }
 
   const opened = openShortTermWorkbenchRecentFile(
     state.facade,
-    input.recentFileId,
-    input.source,
-    input.requestId
+    normalizedInput.recentFileId,
+    normalizedInput.source,
+    normalizedInput.requestId
   );
   if (opened.resolution.status === "missing") {
     return withLastAction({
@@ -821,6 +860,22 @@ function missingContextForMenuCommand(
   }));
 }
 
+function invalidOpenInput(
+  state: ShortTermHostActionState,
+  action: Extract<ShortTermHostActionKind, "openLocalFile" | "openRecentFile">,
+  commandId: "openSvga" | "openRecent"
+): ShortTermHostActionState {
+  return withLastAction(state, result(action, "blocked", "打开请求不可用。", {
+    commandId,
+    diagnostic: {
+      code: action === "openLocalFile" ? "open_local_input_invalid" : "open_recent_input_invalid",
+      message: action === "openLocalFile"
+        ? "Open local file requires requestId, source, and localPath."
+        : "Open recent file requires requestId, recentFileId, and source."
+    }
+  }));
+}
+
 function blockUnsavedOpen(
   state: ShortTermHostActionState,
   action: Extract<ShortTermHostActionKind, "openLocalFile" | "openRecentFile">,
@@ -952,6 +1007,10 @@ function isCommandEnabled(state: ShortTermHostActionState, commandId: string): b
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
 }
 
 function isUint8Array(value: unknown): value is Uint8Array {

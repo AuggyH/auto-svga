@@ -23,7 +23,9 @@ import {
   runShortTermHostOptimization,
   saveShortTermHostOutput,
   type ShortTermHostEnvironment,
-  type ShortTermHostMenuActionInput
+  type ShortTermHostMenuActionInput,
+  type ShortTermHostOpenLocalFileInput,
+  type ShortTermHostOpenRecentFileInput
 } from "../workbench/short-term-host-actions.js";
 import { flattenShortTermCommandMenuItems } from "../workbench/short-term-command-menu.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
@@ -102,6 +104,46 @@ test("short-term host actions mark unavailable recent files without stale source
   assert.equal(opened.lastAction?.status, "failed");
   assert.equal(opened.facade.model.recentFiles.menuRecentFiles[0].availability, "missing");
   assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
+});
+
+test("short-term host open actions fail closed for malformed runtime inputs", async () => {
+  const host = createMemoryHost({}, {
+    readError: () => {
+      assert.fail("Malformed open input must not reach host file reads.");
+    }
+  });
+  const state = createShortTermHostActionState();
+
+  const invalidLocal = await openShortTermHostLocalFile(
+    state,
+    host,
+    {
+      requestId: "open-1",
+      source: "unsupported-source",
+      localPath: "/Users/designer/private/opened.svga"
+    } as unknown as ShortTermHostOpenLocalFileInput
+  );
+  assert.equal(invalidLocal.lastAction?.status, "blocked");
+  assert.equal(invalidLocal.lastAction?.commandId, "openSvga");
+  assert.equal(invalidLocal.lastAction?.diagnostic?.code, "open_local_input_invalid");
+  assert.equal(invalidLocal.facade.model.appState.state, "launch");
+  assert.equal(invalidLocal.currentLocalPath, undefined);
+  assert.equal(JSON.stringify(invalidLocal.lastAction).includes("/Users/designer"), false);
+
+  const invalidRecent = await openShortTermHostRecentFile(
+    state,
+    host,
+    {
+      requestId: "recent-1",
+      recentFileId: 42,
+      source: "recentMenu"
+    } as unknown as ShortTermHostOpenRecentFileInput
+  );
+  assert.equal(invalidRecent.lastAction?.status, "blocked");
+  assert.equal(invalidRecent.lastAction?.commandId, "openRecent");
+  assert.equal(invalidRecent.lastAction?.diagnostic?.code, "open_recent_input_invalid");
+  assert.equal(invalidRecent.facade.model.appState.state, "launch");
+  assert.equal(invalidRecent.currentLocalPath, undefined);
 });
 
 test("short-term host actions redact local paths from host error diagnostics", async () => {
