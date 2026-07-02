@@ -32,3 +32,24 @@ export function redactShortTermLocalPathsFromError(
       : fallback;
   return redactShortTermLocalPaths(message, sensitivePaths);
 }
+
+export function redactShortTermLocalPathsInValue<T>(
+  value: T,
+  sensitivePaths: readonly string[] = []
+): T {
+  return redactValue(value, sensitivePaths) as T;
+}
+
+function redactValue(value: unknown, sensitivePaths: readonly string[]): unknown {
+  if (typeof value === "string") return redactShortTermLocalPaths(value, sensitivePaths);
+  if (Array.isArray(value)) return value.map((entry) => redactValue(entry, sensitivePaths));
+  if (!value || typeof value !== "object") return value;
+  if (value instanceof Uint8Array) return new Uint8Array(value);
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+      key,
+      redactValue(entry, sensitivePaths)
+    ])
+  );
+}

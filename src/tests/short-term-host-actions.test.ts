@@ -48,6 +48,33 @@ test("short-term host actions open local files through the facade without exposi
   assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
 });
 
+test("short-term host actions redact local paths returned by inspection models", async () => {
+  const localPath = "/Users/designer/private/opened.svga";
+  const host = createMemoryHost({
+    [localPath]: await createShortTermSvgaFixture()
+  }, {
+    inspect: () => inspectionFixtureWithLocalPath(localPath)
+  });
+
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath
+  });
+
+  assert.equal(opened.facade.model.appState.state, "previewReady");
+  assert.equal(opened.lastAction?.status, "completed");
+  assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
+  assert.equal(
+    opened.facade.model.appState.currentFile?.inspection.overview.profileLabel,
+    "Loaded from [local path]"
+  );
+  assert.equal(
+    opened.facade.model.appState.currentFile?.inspection.assets[0]?.name,
+    "Image from [local path]"
+  );
+});
+
 test("short-term host actions mark unavailable recent files without stale source state", async () => {
   const host = createMemoryHost({}, {
     exists: () => false
@@ -967,6 +994,72 @@ function inspectionFixture(): ShortTermProductInspectionModel {
       batchActionEnabled: false,
       batchActionLabel: "暂无可执行优化",
       items: []
+    }
+  };
+}
+
+function inspectionFixtureWithLocalPath(localPath: string): ShortTermProductInspectionModel {
+  return {
+    ...inspectionFixture(),
+    overview: {
+      ...inspectionFixture().overview,
+      profileLabel: `Loaded from ${localPath}`,
+      facts: [{
+        id: "fileSize",
+        label: "文件大小",
+        value: `Source ${localPath}`,
+        requirement: `<= ${localPath}`,
+        status: "pass",
+        copyable: true
+      }],
+      audioGroup: {
+        status: "detected",
+        copy: `Audio source ${localPath}`,
+        count: 1
+      }
+    },
+    assets: [{
+      id: "img_frame",
+      kind: "image",
+      name: `Image from ${localPath}`,
+      role: "static_image",
+      thumbnail: {
+        type: "image",
+        resourceIds: ["img_frame"]
+      },
+      dimensions: "256 x 256",
+      fileSize: "1 KiB",
+      usageCount: 1,
+      replaceable: true,
+      findingCodes: [`from-${localPath}`]
+    }],
+    replaceableElements: {
+      images: [{
+        index: 0,
+        imageKey: `key-${localPath}`,
+        resourceId: "img_frame",
+        dimensions: "256 x 256",
+        fileSize: "1 KiB",
+        usageCount: 1
+      }],
+      texts: [],
+      emptyCopy: `Empty ${localPath}`,
+      textPreviewCopy: `Preview ${localPath}`
+    },
+    optimization: {
+      ...inspectionFixture().optimization,
+      batchActionLabel: `Optimize ${localPath}`,
+      items: [{
+        code: `code-${localPath}`,
+        title: `Title ${localPath}`,
+        summary: `Summary ${localPath}`,
+        disposition: "safeExecutable",
+        enabled: true,
+        estimatedFileSizeImpact: "1 KiB",
+        estimatedDecodedMemoryImpact: "2 KiB",
+        affectedResourceIds: [`affected-${localPath}`],
+        evidenceRefs: [`evidence-${localPath}`]
+      }]
     }
   };
 }

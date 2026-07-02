@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   redactShortTermLocalPaths,
-  redactShortTermLocalPathsFromError
+  redactShortTermLocalPathsFromError,
+  redactShortTermLocalPathsInValue
 } from "../workbench/short-term-local-path-redaction.js";
 
 test("short-term local path redaction handles known paths with spaces exactly", () => {
@@ -40,4 +41,23 @@ test("short-term local path redaction handles Error and string inputs", () => {
     false
   );
   assert.equal(redactShortTermLocalPathsFromError(undefined, "fallback"), "fallback");
+});
+
+test("short-term local path redaction clones nested renderer values", () => {
+  const path = "/Users/designer/private/source.svga";
+  const source = {
+    label: `Loaded from ${path}`,
+    nested: [{ message: "See C:\\Users\\designer\\Desktop\\source.svga" }],
+    bytes: new Uint8Array([1, 2, 3])
+  };
+
+  const redacted = redactShortTermLocalPathsInValue(source, [path]);
+
+  assert.equal(redacted.label, "Loaded from [local path]");
+  assert.equal(redacted.nested[0].message.includes("C:\\Users"), false);
+  assert.deepEqual([...redacted.bytes], [1, 2, 3]);
+  redacted.nested[0].message = "mutated";
+  redacted.bytes[0] = 9;
+  assert.notEqual(source.nested[0].message, "mutated");
+  assert.equal(source.bytes[0], 1);
 });

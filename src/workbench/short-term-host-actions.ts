@@ -49,7 +49,10 @@ import {
   shortTermPrdIdsForMenuDispatch,
   type ShortTermPrdId
 } from "./short-term-prd-trace.js";
-import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
+import {
+  redactShortTermLocalPathsFromError,
+  redactShortTermLocalPathsInValue
+} from "./short-term-local-path-redaction.js";
 import { shortTermDisplayNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_HOST_ACTION_SCHEMA_VERSION = 1 as const;
@@ -889,7 +892,7 @@ async function completeHostOpen(
     });
     const facade = completeShortTermWorkbenchOpen(state.facade, {
       requestId: input.requestId,
-      inspection,
+      inspection: redactShortTermLocalPathsInValue(inspection, [input.localPath]),
       sourceBytes: file.bytes,
       localPath: input.localPath
     });
