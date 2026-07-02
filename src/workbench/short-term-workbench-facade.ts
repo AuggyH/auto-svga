@@ -146,6 +146,9 @@ export function completeShortTermWorkbenchOpen(
   state: ShortTermWorkbenchFacadeState,
   input: CompleteShortTermWorkbenchOpenInput
 ): ShortTermWorkbenchFacadeState {
+  const completedAppState = completeShortTermLocalOpen(state.model.appState, input);
+  if (completedAppState === state.model.appState) return state;
+
   const sourceBytes = new Uint8Array(input.sourceBytes);
   let recentState = state.recentState;
   if (input.localPath) {
@@ -157,7 +160,7 @@ export function completeShortTermWorkbenchOpen(
   }
   const recentView = createShortTermRecentFilesViewModel(recentState);
   const appState = setShortTermAppRecentFiles(
-    completeShortTermLocalOpen(state.model.appState, input),
+    completedAppState,
     recentView.launchRecentFiles
   );
   return buildFacadeState({
@@ -176,9 +179,12 @@ export function failShortTermWorkbenchOpen(
   state: ShortTermWorkbenchFacadeState,
   input: FailShortTermLocalOpenInput
 ): ShortTermWorkbenchFacadeState {
+  const appState = failShortTermLocalOpen(state.model.appState, input);
+  if (appState === state.model.appState) return state;
+
   return buildFacadeState({
     recentState: state.recentState,
-    appState: failShortTermLocalOpen(state.model.appState, input),
+    appState,
     activeWorkflow: {
       kind: "open",
       status: "failed",

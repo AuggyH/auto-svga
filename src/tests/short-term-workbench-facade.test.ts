@@ -17,6 +17,7 @@ import {
   createShortTermWorkbenchFacade,
   createShortTermWorkbenchSavePlan,
   createShortTermWorkbenchTextPreview,
+  failShortTermWorkbenchOpen,
   openShortTermWorkbenchRecentFile,
   recoverShortTermWorkbenchPlayback,
   reportShortTermWorkbenchPlaybackFailure,
@@ -78,6 +79,40 @@ test("short-term workbench facade opens a file and records recent state", async 
   assert.equal(opened.model.currentSourceSha256, sha256(sourceBytes));
   assert.equal(opened.model.recentFiles.launchRecentFiles[0].displayName, "opened.svga");
   assert.equal(opened.model.appState.recentFiles[0].displayName, "opened.svga");
+});
+
+test("short-term workbench facade ignores stale open completion and failure results", async () => {
+  const loadingOld = startShortTermWorkbenchOpen(createShortTermWorkbenchFacade(), {
+    requestId: "open-old",
+    source: "fileButton",
+    localPath: "/Users/designer/private/old.svga"
+  });
+  const loadingNew = startShortTermWorkbenchOpen(loadingOld, {
+    requestId: "open-new",
+    source: "dragDrop",
+    localPath: "/Users/designer/private/new.svga"
+  });
+  const staleComplete = completeShortTermWorkbenchOpen(loadingNew, {
+    requestId: "open-old",
+    inspection: inspectionFixture(),
+    sourceBytes: await createShortTermSvgaFixture(),
+    localPath: "/Users/designer/private/old.svga"
+  });
+  const staleFailure = failShortTermWorkbenchOpen(loadingNew, {
+    requestId: "open-old",
+    kind: "parse",
+    message: "旧打开请求解析失败。"
+  });
+
+  assert.equal(staleComplete, loadingNew);
+  assert.equal(staleFailure, loadingNew);
+  assert.equal(loadingNew.model.appState.state, "loading");
+  assert.equal(loadingNew.model.appState.loading?.requestId, "open-new");
+  assert.equal(loadingNew.sourceBytes, undefined);
+  assert.equal(loadingNew.model.currentSourceSha256, undefined);
+  assert.equal(loadingNew.model.recentFiles.launchRecentFiles.length, 0);
+  assert.equal(loadingNew.model.activeWorkflow.kind, "open");
+  assert.equal(loadingNew.model.activeWorkflow.status, "loading");
 });
 
 test("short-term workbench facade resolves missing recent files into recoverable app state", () => {
