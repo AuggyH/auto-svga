@@ -35,7 +35,7 @@ export function evaluateShortTermHostLifecycleRequest(
   input: ShortTermHostLifecycleRequestInput
 ): ShortTermHostLifecycleDecision {
   const activeOutput = state.facade.model.activeOutput;
-  const dirty = Boolean(state.activeOutputBytes || activeOutput);
+  const dirty = hasShortTermUnsavedHostOutput(state);
   const confirmedDiscard = input.discardUnsavedChanges === true;
   if (dirty && !confirmedDiscard) {
     return decision(input.request, "blocked", dirty, "当前文件有未保存输出，退出前需要确认丢弃。", {
@@ -54,6 +54,10 @@ export function evaluateShortTermHostLifecycleRequest(
     activeOutputKind: activeOutput?.outputKind,
     activeOutputSha256: activeOutput?.outputSha256
   });
+}
+
+export function hasShortTermUnsavedHostOutput(state: ShortTermHostActionState): boolean {
+  return Boolean(state.activeOutputBytes || state.facade.model.activeOutput);
 }
 
 function decision(

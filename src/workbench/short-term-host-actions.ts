@@ -23,7 +23,10 @@ import type { ShortTermRecentOpenSource } from "./short-term-recent-files.js";
 import type { ShortTermProductInspectionModel } from "./short-term-product-model.js";
 import type { ShortTermSaveCommand } from "./short-term-save-state.js";
 import type { ShortTermSaveExecutionPlan } from "./short-term-save-execution.js";
-import { evaluateShortTermHostLifecycleRequest } from "./short-term-host-lifecycle.js";
+import {
+  evaluateShortTermHostLifecycleRequest,
+  hasShortTermUnsavedHostOutput
+} from "./short-term-host-lifecycle.js";
 import {
   canonicalShortTermHostMenuCommandId,
   classifyShortTermHostMenuCommand,
@@ -147,7 +150,7 @@ export async function openShortTermHostLocalFile(
   host: ShortTermHostEnvironment,
   input: ShortTermHostOpenLocalFileInput
 ): Promise<ShortTermHostActionState> {
-  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
     return blockUnsavedOpen(state, "openLocalFile", "openSvga");
   }
 
@@ -175,7 +178,7 @@ export async function openShortTermHostRecentFile(
   host: ShortTermHostEnvironment,
   input: ShortTermHostOpenRecentFileInput
 ): Promise<ShortTermHostActionState> {
-  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
     return blockUnsavedOpen(state, "openRecentFile", "openRecent");
   }
 
@@ -241,7 +244,7 @@ export function closeShortTermHostFile(
   state: ShortTermHostActionState,
   input: ShortTermHostCloseInput = {}
 ): ShortTermHostActionState {
-  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
     return withLastAction(state, result("closeFile", "blocked", "当前文件有未保存输出，关闭前需要确认丢弃。", {
       commandId: "closeFile",
       diagnostic: {
@@ -265,7 +268,7 @@ export async function runShortTermHostOptimization(
   state: ShortTermHostActionState,
   input: ShortTermHostDirtyOperationInput = {}
 ): Promise<ShortTermHostActionState> {
-  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
     return blockUnsavedOperation(state, "runOptimization", "runOptimization");
   }
 
@@ -287,7 +290,7 @@ export async function runShortTermHostImageKeyRename(
   toImageKey: string,
   input: ShortTermHostDirtyOperationInput = {}
 ): Promise<ShortTermHostActionState> {
-  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+  if (hasShortTermUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
     return blockUnsavedOperation(state, "renameImageKey", "renameImageKey");
   }
 
@@ -310,7 +313,7 @@ export async function runShortTermHostImageReplacement(
   input: ShortTermHostDirtyOperationInput = {}
 ): Promise<ShortTermHostActionState> {
   if (
-    hasUnsavedHostOutput(state)
+    hasShortTermUnsavedHostOutput(state)
       && state.facade.model.activeOutput?.outputKind !== "image_replacement_svga"
       && input.discardUnsavedChanges !== true
   ) {
@@ -720,10 +723,6 @@ function isCommandEnabled(state: ShortTermHostActionState, commandId: string): b
   }
   const command = state.facade.model.appState.commands.find((item) => item.id === canonicalCommandId);
   return command?.enabled === true;
-}
-
-function hasUnsavedHostOutput(state: ShortTermHostActionState): boolean {
-  return Boolean(state.activeOutputBytes || state.facade.model.activeOutput);
 }
 
 function isNonEmptyString(value: unknown): value is string {
