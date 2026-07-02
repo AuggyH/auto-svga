@@ -973,6 +973,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /当前文件没有可预览文本元素/);
   assert.match(shortTermEntry, /打开新文件会放弃当前未保存的 SVGA 输出/);
   assert.match(shortTermEntry, /拖入新文件会放弃当前未保存的 SVGA 输出/);
+  assert.match(shortTermEntry, /showOperationFailure\("优化未完成。", error\)/);
+  assert.match(shortTermEntry, /showOperationFailure\("重命名未完成。", error\)/);
+  assert.match(shortTermEntry, /showOperationFailure\("替换未完成。", error\)/);
+  assert.match(shortTermEntry, /源文件没有被修改。/);
   assert.match(shortTermEntry, /buildCurrentStateSummary/);
   assert.match(shortTermEntry, /错误：\$\{nodes\.errorMessage\.textContent\.trim\(\)\}/);
   assert.match(shortTermEntry, /提示：\$\{nodes\.saveBanner\.textContent\.trim\(\)\}/);

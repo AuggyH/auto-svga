@@ -15,6 +15,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Tightened automatic imageKey filtering so pure numeric keys do not appear as replaceable elements.
 - Removed development-only reload/DevTools items from the short-term macOS menu and added a guard so they do not reappear on the designer-facing client surface.
 - Localized short-term image replacement PNG validation failures into designer-facing Chinese guidance while keeping replacement output fail-closed.
+- Split operation failures from file-open failures: optimization, imageKey rename, and image replacement failures now stay on the current file surface and show a recoverable "source file unchanged" prompt instead of switching to the Load Failed page.
 - Expanded the macOS Help menu state-copy action so copied text includes current app state, file name, save prompt, and visible error text instead of only the file name.
 - Removed the unused hidden compare file input; the short-term macOS compare flow now has one real B-file entry through the host file picker.
 
@@ -28,6 +29,7 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`: pass.
 - Short-term macOS menu guard: pass; the legacy Workbench menu remains isolated, while the default short-term menu has no reload or DevTools item.
 - Short-term image replacement failure-copy guard: pass; invalid/corrupt PNG diagnostics stay Chinese and do not expose the old English decoder copy.
+- Short-term operation-failure guard: pass; optimization, rename, and replacement catches use recoverable operation prompts rather than the open-file failure page.
 - Short-term state-copy guard: pass; Help menu state summary copies visible error/save context.
 - Real-material scan: 84/84 SVGA files opened through the short-term inspection model; pure numeric replaceable noise count is 0 after filtering.
 - System Chrome UI probe: launch, preview, optimization tab, replaceable tab, edit mode, context menu, and 980x680 minimum viewport have no document overflow.

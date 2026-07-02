@@ -238,7 +238,7 @@ async function runOptimization() {
     });
     renderOptimizationCompare(result.optimization, optimizedBytes);
   } catch (error) {
-    showFailure(error);
+    showOperationFailure("优化未完成。", error);
   }
 }
 
@@ -275,7 +275,7 @@ async function renameSelectedImageKey() {
     renderPreviewModel();
     await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes);
   } catch (error) {
-    showFailure(error);
+    showOperationFailure("重命名未完成。", error);
   }
 }
 
@@ -315,7 +315,7 @@ async function applyReplacementFile(file) {
     renderPreviewModel();
     await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes);
   } catch (error) {
-    showFailure(error);
+    showOperationFailure("替换未完成。", error);
   }
 }
 
@@ -790,6 +790,16 @@ function showFailure(error) {
   const message = error instanceof Error ? error.message : String(error);
   nodes.errorMessage.textContent = `${message || "未知错误"} 源文件没有被修改。`;
   setView("failed");
+}
+
+function showOperationFailure(title, error) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (state.sourceBytes && !["preview", "compare", "edit"].includes(state.view)) {
+    setMode("preview");
+  }
+  showSaveBanner(title, `${message || "未知错误"} 源文件没有被修改。`);
+  state.saveStatus = state.activeOutput ? "dirty" : "idle";
+  renderCommandState();
 }
 
 function buildCurrentStateSummary() {
