@@ -9,28 +9,29 @@
   </head>
   <body>
     <main class="macApp" data-app-state="launch">
-      <header class="titlebar" aria-label="工具栏">
+      <header class="titlebar" aria-label="工具栏" data-component="WindowToolbar">
         <div class="trafficLights" aria-hidden="true"><span></span><span></span><span></span></div>
-        <button class="toolbarButton primary" type="button" data-action="open">打开 SVGA</button>
+        <button class="toolbarButton primary" type="button" data-action="open" aria-keyshortcuts="Meta+O">打开 SVGA</button>
         <button class="toolbarButton" type="button" data-action="compare" disabled title="请先打开 SVGA">对比</button>
         <div class="modeSwitch" role="group" aria-label="模式">
-          <button type="button" class="isSelected" data-action="mode-preview">预览</button>
-          <button type="button" data-action="mode-edit">编辑</button>
+          <button type="button" class="isSelected" data-action="mode-preview" aria-pressed="true">预览</button>
+          <button type="button" data-action="mode-edit" aria-pressed="false">编辑</button>
         </div>
         <div class="fileIdentity" id="fileIdentity">等待打开文件</div>
-        <button class="toolbarButton" type="button" data-action="save-overwrite" disabled title="没有可保存的输出">覆盖保存</button>
-        <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出">另存为</button>
+        <button class="toolbarButton" type="button" data-action="save-overwrite" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+S">覆盖保存</button>
+        <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+Shift+S">另存为</button>
       </header>
 
       <section class="saveBanner" id="saveBanner" aria-live="polite" hidden></section>
 
-      <section class="view launchView isActive" data-view="launch" aria-label="启动">
-        <div class="launchCanvas" id="dropZone">
+      <section class="view launchView isActive" data-view="launch" aria-label="启动" data-page-state="Launch" data-module="LaunchModule">
+        <div class="launchCanvas" id="dropZone" data-component="LaunchDropCanvas">
           <div class="launchPrompt">
             <p>拖入 SVGA 文件</p>
             <button class="largeOpenButton" type="button" data-action="open">打开文件</button>
+            <span>本地预览，不上传。</span>
           </div>
-          <section class="recentBlock" aria-label="最近打开">
+          <section class="recentBlock" aria-label="最近打开" data-component="LaunchRecentFilesList">
             <div class="recentHeader">
               <h2>最近打开</h2>
               <button type="button" data-action="clear-recent">清除记录</button>
@@ -41,51 +42,51 @@
         </div>
       </section>
 
-      <section class="view stateView" data-view="loading" aria-live="polite" hidden>
-        <div class="stateCard">
+      <section class="view stateView" data-view="loading" aria-live="polite" data-page-state="Loading" hidden>
+        <div class="stateCard" data-component="FileDropTarget">
           <span class="spinner" aria-hidden="true"></span>
           <h1>正在打开 SVGA</h1>
           <p id="loadingMessage">读取文件并准备预览。</p>
         </div>
       </section>
 
-      <section class="view stateView" data-view="failed" hidden>
-        <div class="stateCard error">
-          <h1>无法打开这个文件</h1>
+      <section class="view stateView" data-view="failed" data-page-state="Load failed" hidden>
+        <div class="stateCard error" data-component="ErrorRecoveryPanel">
+          <h1>无法打开这个 SVGA</h1>
           <p id="errorMessage">文件未能解析，源文件没有被修改。</p>
           <button class="toolbarButton primary" type="button" data-action="open">打开另一个 SVGA</button>
         </div>
       </section>
 
-      <section class="view previewView" data-view="preview" hidden>
-        <section class="previewStagePanel" aria-label="SVGA 预览">
+      <section class="view previewView" data-view="preview" data-page-state="Preview ready" hidden>
+        <section class="previewStagePanel" aria-label="SVGA 预览" data-module="PreviewCanvasModule" data-component="PreviewStage">
           <div class="canvasWrap" id="primaryCanvasWrap">
             <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
             <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
           </div>
-          <div class="playbackBar" aria-label="播放控制">
+          <div class="playbackBar" aria-label="播放控制" data-component="PlaybackControls">
             <button type="button" data-action="play-pause">播放</button>
             <button type="button" data-action="replay">重播</button>
-            <span id="playbackMeta">-</span>
+            <span id="playbackMeta" aria-live="polite">-</span>
           </div>
         </section>
 
-        <aside class="inspectorPanel" aria-label="检查面板">
-          <nav class="tabs" aria-label="检查标签">
-            <button type="button" class="isSelected" data-tab="overview">总览</button>
-            <button type="button" data-tab="optimization">优化</button>
-            <button type="button" data-tab="replaceable">可替换</button>
+        <aside class="inspectorPanel" aria-label="检查面板" data-component="RightTabPanel">
+          <nav class="tabs" aria-label="检查标签" role="tablist">
+            <button type="button" class="isSelected" data-tab="overview" role="tab" aria-selected="true">总览</button>
+            <button type="button" data-tab="optimization" role="tab" aria-selected="false">优化</button>
+            <button type="button" data-tab="replaceable" role="tab" aria-selected="false">可替换</button>
           </nav>
 
-          <section class="tabPanel isActive" data-panel="overview">
-            <section class="factGrid" id="factGrid" aria-label="文件信息"></section>
-            <section class="assetSection">
+          <section class="tabPanel isActive" data-panel="overview" role="tabpanel" data-module="OverviewTabModule">
+            <section class="factGrid" id="factGrid" aria-label="文件信息" data-component="OverviewFactRow"></section>
+            <section class="assetSection" data-component="AssetRow">
               <h2>资源</h2>
               <div class="assetList" id="assetList"></div>
             </section>
           </section>
 
-          <section class="tabPanel" data-panel="optimization" hidden>
+          <section class="tabPanel" data-panel="optimization" role="tabpanel" data-module="OptimizationTabModule" hidden>
             <div class="sectionHead">
               <div>
                 <h2>优化</h2>
@@ -96,7 +97,7 @@
             <div class="findingList" id="findingList"></div>
           </section>
 
-          <section class="tabPanel" data-panel="replaceable" hidden>
+          <section class="tabPanel" data-panel="replaceable" role="tabpanel" data-module="ReplaceableElementsTabModule" hidden>
             <div class="sectionHead">
               <div>
                 <h2>可替换元素</h2>
@@ -104,10 +105,10 @@
               </div>
             </div>
             <div class="replaceableList" id="replaceableList"></div>
-            <menu class="contextMenu" id="resourceContextMenu" tabindex="-1" hidden>
-              <button type="button" data-action="context-rename">重命名 imageKey</button>
-              <button type="button" data-action="context-replace">替换预览图片</button>
-              <button type="button" data-action="context-reset">重置预览图片</button>
+            <menu class="contextMenu" id="resourceContextMenu" role="menu" tabindex="-1" hidden>
+              <button type="button" role="menuitem" data-action="context-rename">重命名 imageKey</button>
+              <button type="button" role="menuitem" data-action="context-replace">替换预览图片</button>
+              <button type="button" role="menuitem" data-action="context-reset">重置预览图片</button>
             </menu>
             <section class="textPreviewBlock">
               <h3>运行时文本</h3>
@@ -120,7 +121,7 @@
         </aside>
       </section>
 
-      <section class="view compareView" data-view="compare" hidden>
+      <section class="view compareView" data-view="compare" data-page-state="General comparing" hidden>
         <aside class="compareInfo" id="compareInfoA"></aside>
         <section class="compareStage">
           <div class="compareCanvasWrap"><canvas id="compareCanvasA" aria-label="A 文件预览"></canvas></div>
@@ -132,7 +133,7 @@
         </aside>
       </section>
 
-      <section class="view editView" data-view="edit" hidden>
+      <section class="view editView" data-view="edit" data-page-state="Edit reserved" data-module="EditReservedModule" hidden>
         <aside class="layerPanel" id="layerPanel"></aside>
         <section class="previewStagePanel">
           <div class="canvasWrap"><canvas id="editCanvas" aria-label="编辑预留预览"></canvas></div>

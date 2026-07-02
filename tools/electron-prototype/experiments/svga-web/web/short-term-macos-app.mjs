@@ -45,6 +45,8 @@ const nodes = {
   replaceableSummary: document.querySelector("#replaceableSummary"),
   textPreviewSummary: document.querySelector("#textPreviewSummary"),
   textElementList: document.querySelector("#textElementList"),
+  editTextButton: document.querySelector("[data-action='edit-text']"),
+  resetTextButton: document.querySelector("[data-action='reset-text']"),
   resourceContextMenu: document.querySelector("#resourceContextMenu"),
   compareInfoA: document.querySelector("#compareInfoA"),
   compareInfoB: document.querySelector("#compareInfoB"),
@@ -71,7 +73,9 @@ function setView(view) {
 function setMode(mode) {
   state.mode = mode;
   document.querySelectorAll("[data-action='mode-preview'], [data-action='mode-edit']").forEach((button) => {
-    button.classList.toggle("isSelected", button.dataset.action === `mode-${mode}`);
+    const selected = button.dataset.action === `mode-${mode}`;
+    button.classList.toggle("isSelected", selected);
+    button.setAttribute("aria-pressed", selected ? "true" : "false");
   });
   if (!state.sourceBytes) {
     setView("launch");
@@ -166,7 +170,7 @@ async function loadOpenedSource({ bytes, displayName, sourceId }) {
   state.textPreview = "";
   nodes.runtimeTextOverlay.hidden = true;
   setView("loading");
-  nodes.loadingMessage.textContent = "解析 SVGA、建立短期检查模型。";
+  nodes.loadingMessage.textContent = "解析文件并准备预览。";
   try {
     const model = await inspectShortTerm(bytes, state.displayName);
     state.model = model;
@@ -203,7 +207,9 @@ async function closeFile() {
   nodes.saveBanner.hidden = true;
   setTab("overview");
   document.querySelectorAll("[data-action='mode-preview'], [data-action='mode-edit']").forEach((button) => {
-    button.classList.toggle("isSelected", button.dataset.action === "mode-preview");
+    const selected = button.dataset.action === "mode-preview";
+    button.classList.toggle("isSelected", selected);
+    button.setAttribute("aria-pressed", selected ? "true" : "false");
   });
   setView("launch");
   refreshRecentFiles().catch(() => {});
@@ -217,7 +223,7 @@ async function runOptimization() {
   if (!state.sourceBytes) return;
   if (!(await confirmDiscardUnsavedOutput("执行安全优化会放弃当前未保存的 SVGA 输出。"))) return;
   setTab("optimization");
-  showSaveBanner("正在执行安全优化。", "只处理可机械验证的安全项。");
+  showSaveBanner("正在执行安全优化。", "只处理当前可安全执行的项目。");
   try {
     const result = await postBytes(
       `/api/short-term-product-optimization-workflow?name=${encodeURIComponent(state.displayName)}`,
@@ -529,7 +535,9 @@ function renderFacts(model) {
   nodes.factGrid.replaceChildren(...model.overview.facts.map((fact) => {
     const cell = document.createElement("article");
     cell.className = "factCell";
+    cell.dataset.component = "ProductionSpecInlineRow";
     cell.dataset.status = fact.status;
+    cell.title = `${fact.label}: ${fact.value}`;
     cell.innerHTML = `
       <strong>${escapeHtml(fact.value)}</strong>
       <span>${escapeHtml(fact.label)}</span>
@@ -543,9 +551,11 @@ function renderAssets(model) {
   const rows = model.assets.map((asset) => {
     const row = document.createElement("article");
     row.className = "assetRow";
+    row.dataset.component = asset.kind === "sequence" ? "SequenceThumbnail" : asset.kind === "audio" ? "AudioAssetRow" : "AssetRow";
     const detail = asset.kind === "audio" && model.overview.audioGroup.status === "empty"
       ? model.overview.audioGroup.copy
       : `${asset.dimensions} · ${asset.fileSize} · ${asset.usageCount} 次引用`;
+    row.title = `${asset.name} ${detail}`;
     row.innerHTML = `
       <span class="thumb ${asset.kind === "sequence" ? "sequence" : asset.kind === "audio" ? "audio" : ""}">${renderThumbnail(asset.thumbnail)}</span>
       <span class="rowText"><strong>${escapeHtml(asset.name)}</strong><span>${escapeHtml(detail)}</span></span>
@@ -563,6 +573,8 @@ function renderOptimization(model) {
   nodes.findingList.replaceChildren(...model.items.map((item) => {
     const row = document.createElement("article");
     row.className = "findingRow";
+    row.dataset.component = "OptimizationFindingRow";
+    row.title = `${item.title}: ${item.summary}`;
     row.innerHTML = `
       <div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.summary)} ${escapeHtml(item.estimatedFileSizeImpact)}</p></div>
       <span class="badge ${item.disposition === "safeExecutable" ? "safe" : item.disposition === "reviewOnly" ? "review" : "unsupported"}">${dispositionCopy(item.disposition)}</span>
@@ -583,11 +595,14 @@ function renderReplaceables(model) {
     row.className = "replaceableRow";
     row.tabIndex = 0;
     row.dataset.action = "select-resource";
+    row.dataset.component = "ReplaceableImageRow";
     row.dataset.imageKey = item.imageKey;
     const selected = item.imageKey === state.selectedImageKey;
     const renaming = item.imageKey === state.renameImageKey;
     row.classList.toggle("isSelected", selected);
     row.classList.toggle("isRenaming", renaming);
+    row.setAttribute("aria-selected", selected ? "true" : "false");
+    row.title = `${item.imageKey} ${item.dimensions} ${item.fileSize}`;
     if (renaming) {
       row.innerHTML = `
         <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
@@ -604,7 +619,7 @@ function renderReplaceables(model) {
       row.innerHTML = `
         <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
         <span class="rowText"><strong>${escapeHtml(item.imageKey)}</strong><span>${escapeHtml(item.dimensions)} · ${escapeHtml(item.fileSize)}</span></span>
-        <span class="badge">${selected ? "已选中" : "可替换"}</span>
+        <span class="badge">imageKey</span>
       `;
     }
     return row;
@@ -633,17 +648,24 @@ function renderTextElements(model) {
     empty.textContent = model?.textPreviewCopy || "当前文件没有可运行时预览的文本元素。";
     nodes.textElementList.replaceChildren(empty);
     nodes.textPreviewSummary.textContent = "未发现可运行时替换的 textKey。";
+    nodes.editTextButton.hidden = true;
+    nodes.resetTextButton.hidden = true;
   } else {
+    nodes.editTextButton.hidden = false;
+    nodes.resetTextButton.hidden = false;
     nodes.textElementList.replaceChildren(...texts.map((item) => {
       const row = document.createElement("article");
       row.className = "textElementRow";
       row.tabIndex = 0;
       row.dataset.action = "select-text";
+      row.dataset.component = "ReplaceableTextRow";
       row.dataset.textKey = item.textKey;
       row.classList.toggle("isSelected", item.textKey === state.selectedTextKey);
+      row.setAttribute("aria-selected", item.textKey === state.selectedTextKey ? "true" : "false");
+      row.title = `${item.displayName || item.textKey}: ${item.initialText || item.textKey}`;
       row.innerHTML = `
         <span class="rowText"><strong>${escapeHtml(item.displayName || item.textKey)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
-        <span class="badge">${item.textKey === state.selectedTextKey ? "已选中" : "文本"}</span>
+        <span class="badge">文本</span>
       `;
       return row;
     }));
@@ -683,8 +705,7 @@ function selectImageKey(imageKey) {
   document.querySelectorAll(".replaceableRow").forEach((row) => {
     const selected = row.dataset.imageKey === imageKey;
     row.classList.toggle("isSelected", selected);
-    const badge = row.querySelector(".badge");
-    if (badge) badge.textContent = selected ? "已选中" : "可替换";
+    row.setAttribute("aria-selected", selected ? "true" : "false");
   });
 }
 
@@ -857,6 +878,7 @@ function setTab(tab) {
   state.tab = tab;
   document.querySelectorAll("[data-tab]").forEach((button) => {
     button.classList.toggle("isSelected", button.dataset.tab === tab);
+    button.setAttribute("aria-selected", button.dataset.tab === tab ? "true" : "false");
   });
   document.querySelectorAll("[data-panel]").forEach((panel) => {
     const active = panel.dataset.panel === tab;

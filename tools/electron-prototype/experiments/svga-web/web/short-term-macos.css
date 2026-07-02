@@ -1,49 +1,70 @@
 :root {
   color-scheme: light dark;
-  --asv-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --asv-window: #f5f5f7;
-  --asv-toolbar: rgba(247, 247, 248, 0.86);
-  --asv-panel: rgba(255, 255, 255, 0.82);
-  --asv-panel-strong: #ffffff;
-  --asv-canvas: #eceef2;
-  --asv-text: #1d1d1f;
-  --asv-muted: #6e6e73;
-  --asv-subtle: #8a8a8e;
-  --asv-border: rgba(60, 60, 67, 0.16);
-  --asv-border-strong: rgba(60, 60, 67, 0.26);
-  --asv-action: #0a84ff;
-  --asv-success: #248a3d;
-  --asv-warning: #b26a00;
-  --asv-danger: #d70015;
-  --asv-focus: 0 0 0 3px rgba(10, 132, 255, 0.28);
+  --asv-type-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --asv-type-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --asv-font: var(--asv-type-family);
+  --asv-color-window: #f5f5f7;
+  --asv-color-toolbar: rgba(247, 247, 248, 0.9);
+  --asv-color-panel: rgba(255, 255, 255, 0.82);
+  --asv-color-panel-strong: #ffffff;
+  --asv-color-canvas: #eceef2;
+  --asv-color-text: #1d1d1f;
+  --asv-color-text-muted: #6e6e73;
+  --asv-color-text-subtle: #8a8a8e;
+  --asv-color-border: rgba(60, 60, 67, 0.16);
+  --asv-color-border-strong: rgba(60, 60, 67, 0.26);
+  --asv-color-action: #0a84ff;
+  --asv-color-success: #248a3d;
+  --asv-color-warning: #b26a00;
+  --asv-color-danger: #d70015;
+  --asv-window: var(--asv-color-window);
+  --asv-toolbar: var(--asv-color-toolbar);
+  --asv-panel: var(--asv-color-panel);
+  --asv-panel-strong: var(--asv-color-panel-strong);
+  --asv-canvas: var(--asv-color-canvas);
+  --asv-text: var(--asv-color-text);
+  --asv-muted: var(--asv-color-text-muted);
+  --asv-subtle: var(--asv-color-text-subtle);
+  --asv-border: var(--asv-color-border);
+  --asv-border-strong: var(--asv-color-border-strong);
+  --asv-action: var(--asv-color-action);
+  --asv-success: var(--asv-color-success);
+  --asv-warning: var(--asv-color-warning);
+  --asv-danger: var(--asv-color-danger);
+  --asv-focus: 0 0 0 3px color-mix(in srgb, var(--asv-action) 28%, transparent);
   --asv-radius-sm: 6px;
   --asv-radius-md: 8px;
-  --asv-radius-lg: 12px;
-  --asv-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.07);
+  --asv-radius-lg: 10px;
+  --asv-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --asv-shadow-floating: 0 18px 44px rgba(15, 23, 42, 0.16);
   --asv-space-1: 4px;
   --asv-space-2: 8px;
   --asv-space-3: 12px;
   --asv-space-4: 16px;
   --asv-space-5: 20px;
   --asv-space-6: 24px;
-  --asv-toolbar-height: 52px;
-  --asv-inspector-width: 360px;
+  --asv-toolbar-height: 54px;
+  --asv-control-height: 30px;
+  --asv-row-height: 52px;
+  --asv-thumb-size: 44px;
+  --asv-inspector-width: clamp(380px, 30vw, 440px);
   --asv-left-width: 238px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --asv-window: #1e1e20;
-    --asv-toolbar: rgba(37, 37, 39, 0.88);
-    --asv-panel: rgba(44, 44, 46, 0.82);
-    --asv-panel-strong: #2f2f32;
-    --asv-canvas: #151517;
-    --asv-text: #f5f5f7;
-    --asv-muted: #a1a1a6;
-    --asv-subtle: #8e8e93;
-    --asv-border: rgba(235, 235, 245, 0.14);
-    --asv-border-strong: rgba(235, 235, 245, 0.24);
-    --asv-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.34), 0 18px 36px rgba(0, 0, 0, 0.28);
+    --asv-color-window: #1e1e20;
+    --asv-color-toolbar: rgba(37, 37, 39, 0.9);
+    --asv-color-panel: rgba(44, 44, 46, 0.82);
+    --asv-color-panel-strong: #2f2f32;
+    --asv-color-canvas: #151517;
+    --asv-color-text: #f5f5f7;
+    --asv-color-text-muted: #a1a1a6;
+    --asv-color-text-subtle: #8e8e93;
+    --asv-color-border: rgba(235, 235, 245, 0.14);
+    --asv-color-border-strong: rgba(235, 235, 245, 0.24);
+    --asv-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.34);
+    --asv-shadow-floating: 0 18px 44px rgba(0, 0, 0, 0.32);
   }
 }
 
@@ -51,10 +72,14 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
-  min-width: 980px;
-  min-height: 680px;
+  min-width: 1060px;
+  min-height: 720px;
   overflow: hidden;
   background: var(--asv-window);
   color: var(--asv-text);
@@ -71,12 +96,15 @@ input {
 }
 
 button {
-  min-height: 28px;
+  min-height: var(--asv-control-height);
+  padding-inline: var(--asv-space-3);
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-sm);
   background: color-mix(in srgb, var(--asv-panel-strong) 88%, transparent);
   color: var(--asv-text);
   cursor: default;
+  font-weight: 520;
+  white-space: nowrap;
 }
 
 button:hover:not(:disabled) {
@@ -121,6 +149,7 @@ button.danger {
   display: grid;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   grid-template-rows: var(--asv-toolbar-height) auto 1fr;
 }
 
@@ -128,12 +157,13 @@ button.danger {
   -webkit-app-region: drag;
   display: grid;
   align-items: center;
-  grid-template-columns: 72px auto auto auto minmax(180px, 1fr) auto auto;
+  grid-template-columns: 72px auto auto auto minmax(160px, 1fr) auto auto;
   gap: var(--asv-space-2);
-  padding: 10px var(--asv-space-3);
+  min-height: var(--asv-toolbar-height);
+  padding: 0 var(--asv-space-4);
   border-bottom: 1px solid var(--asv-border);
   background: var(--asv-toolbar);
-  backdrop-filter: saturate(1.3) blur(20px);
+  backdrop-filter: saturate(1.5) blur(18px);
 }
 
 .titlebar button,
@@ -167,13 +197,14 @@ button.danger {
   grid-template-columns: 1fr 1fr;
   padding: 2px;
   border: 1px solid var(--asv-border);
-  border-radius: var(--asv-radius-sm);
+  border-radius: var(--asv-radius-md);
   background: color-mix(in srgb, var(--asv-canvas) 74%, transparent);
 }
 
 .modeSwitch button {
   min-width: 52px;
   border: 0;
+  border-radius: var(--asv-radius-sm);
   background: transparent;
 }
 
@@ -188,13 +219,22 @@ button.danger {
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+  user-select: text;
 }
 
 .saveBanner {
   z-index: 6;
+  display: flex;
+  gap: var(--asv-space-2);
+  align-items: baseline;
+  min-height: 38px;
   padding: var(--asv-space-2) var(--asv-space-4);
   border-bottom: 1px solid var(--asv-border);
   background: color-mix(in srgb, var(--asv-panel-strong) 90%, var(--asv-action) 4%);
+}
+
+.saveBanner span {
+  color: var(--asv-muted);
 }
 
 .view {
@@ -211,14 +251,15 @@ button.danger {
   display: grid;
   place-items: center;
   padding: var(--asv-space-6);
+  overflow: auto;
 }
 
 .launchCanvas {
   display: grid;
   align-content: center;
   justify-items: center;
-  width: min(720px, 72vw);
-  min-height: 480px;
+  width: min(760px, 72vw);
+  min-height: min(520px, calc(100vh - 150px));
   padding: var(--asv-space-6);
   border: 1px dashed var(--asv-border-strong);
   border-radius: var(--asv-radius-lg);
@@ -238,13 +279,18 @@ button.danger {
 .launchPrompt {
   display: grid;
   justify-items: center;
-  gap: var(--asv-space-3);
+  gap: var(--asv-space-2);
 }
 
 .launchPrompt p {
   margin: 0;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 650;
+}
+
+.launchPrompt span {
+  color: var(--asv-muted);
+  font-size: 12px;
 }
 
 .largeOpenButton {
@@ -255,7 +301,7 @@ button.danger {
 
 .recentBlock {
   width: min(520px, 100%);
-  margin-top: var(--asv-space-6);
+  margin-top: var(--asv-space-5);
   color: var(--asv-muted);
 }
 
@@ -349,8 +395,10 @@ button.danger {
 
 .previewView {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--asv-inspector-width);
+  grid-template-columns: minmax(520px, 1fr) var(--asv-inspector-width);
   gap: var(--asv-space-4);
+  height: 100%;
+  min-height: 0;
   padding: var(--asv-space-4);
 }
 
@@ -390,8 +438,8 @@ button.danger {
 canvas {
   max-width: 100%;
   max-height: 100%;
-  width: min(72vh, 520px);
-  height: min(72vh, 520px);
+  width: min(70vh, 560px);
+  height: min(70vh, 560px);
 }
 
 .runtimeOverlay {
@@ -409,7 +457,7 @@ canvas {
   display: flex;
   align-items: center;
   gap: var(--asv-space-2);
-  min-height: 48px;
+  min-height: 46px;
   padding: var(--asv-space-2) var(--asv-space-3);
   border-top: 1px solid var(--asv-border);
 }
@@ -428,17 +476,20 @@ canvas {
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--asv-space-1);
-  padding: var(--asv-space-3) var(--asv-space-3) var(--asv-space-2);
+  gap: var(--asv-space-2);
+  padding: var(--asv-space-3) var(--asv-space-3) var(--asv-space-1);
   border-bottom: 1px solid var(--asv-border);
 }
 
 .tabs button {
+  min-height: 32px;
+  padding: 0 var(--asv-space-1);
   border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--asv-muted);
+  font-weight: 540;
 }
 
 .tabs button.isSelected {
@@ -451,6 +502,7 @@ canvas {
   min-height: 0;
   overflow: auto;
   padding: var(--asv-space-3);
+  scrollbar-gutter: stable;
 }
 
 .factGrid {
@@ -461,7 +513,7 @@ canvas {
 
 .factCell {
   min-width: 0;
-  padding: var(--asv-space-3);
+  padding: var(--asv-space-2) var(--asv-space-3);
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-sm);
   background: color-mix(in srgb, var(--asv-panel-strong) 80%, transparent);
@@ -470,7 +522,9 @@ canvas {
 .factCell strong {
   display: block;
   overflow-wrap: anywhere;
-  font-size: 16px;
+  font-family: var(--asv-type-mono);
+  font-size: 15px;
+  font-weight: 650;
 }
 
 .factCell span {
@@ -524,7 +578,9 @@ canvas {
 
 .assetSection,
 .textPreviewBlock {
-  margin-top: var(--asv-space-4);
+  margin-top: var(--asv-space-3);
+  padding-top: var(--asv-space-3);
+  border-top: 1px solid var(--asv-border);
 }
 
 .assetList,
@@ -532,7 +588,7 @@ canvas {
 .replaceableList,
 .textElementList {
   display: grid;
-  gap: var(--asv-space-2);
+  gap: var(--asv-space-1);
   margin-top: var(--asv-space-2);
 }
 
@@ -541,10 +597,10 @@ canvas {
 .replaceableRow,
 .textElementRow {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: var(--asv-thumb-size) minmax(0, 1fr) auto;
   gap: var(--asv-space-2);
   align-items: center;
-  min-height: 58px;
+  min-height: var(--asv-row-height);
   padding: var(--asv-space-2);
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-sm);
@@ -553,14 +609,15 @@ canvas {
 
 .findingRow {
   grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
 }
 
 .replaceableRow {
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: var(--asv-thumb-size) minmax(0, 1fr) auto;
 }
 
 .replaceableRow.isRenaming {
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: var(--asv-thumb-size) minmax(0, 1fr) auto;
   align-items: end;
 }
 
@@ -598,7 +655,7 @@ canvas {
 .renameInputInline {
   min-width: 0;
   width: 100%;
-  height: 28px;
+  height: var(--asv-control-height);
   padding: 0 var(--asv-space-2);
   border: 1px solid var(--asv-border-strong);
   border-radius: var(--asv-radius-sm);
@@ -618,7 +675,7 @@ canvas {
 }
 
 .inlineActions button {
-  height: 28px;
+  height: var(--asv-control-height);
   padding: 0 var(--asv-space-2);
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-sm);
@@ -630,8 +687,8 @@ canvas {
 .thumb {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: var(--asv-thumb-size);
+  height: var(--asv-thumb-size);
   overflow: hidden;
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-sm);
@@ -689,10 +746,10 @@ canvas {
 
 .badge {
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--asv-radius-sm);
   background: color-mix(in srgb, var(--asv-border) 70%, transparent);
   color: var(--asv-muted);
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -706,12 +763,16 @@ canvas {
   justify-content: space-between;
   gap: var(--asv-space-3);
   align-items: flex-start;
+  padding-bottom: var(--asv-space-2);
+  border-bottom: 1px solid var(--asv-border);
 }
 
 .compareView {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(240px, 300px);
   gap: var(--asv-space-4);
+  height: 100%;
+  min-height: 0;
   padding: var(--asv-space-4);
 }
 
@@ -725,12 +786,15 @@ canvas {
 .compareInfo {
   overflow: auto;
   padding: var(--asv-space-3);
+  scrollbar-gutter: stable;
 }
 
 .editView {
   display: grid;
-  grid-template-columns: var(--asv-left-width) minmax(0, 1fr) var(--asv-inspector-width);
+  grid-template-columns: var(--asv-left-width) minmax(480px, 1fr) minmax(300px, var(--asv-inspector-width));
   gap: var(--asv-space-4);
+  height: 100%;
+  min-height: 0;
   padding: var(--asv-space-4);
 }
 
@@ -744,6 +808,7 @@ canvas {
   display: grid;
   place-items: center;
   color: var(--asv-muted);
+  text-align: center;
 }
 
 .appDialog {
@@ -796,14 +861,14 @@ canvas {
   position: fixed;
   z-index: 20;
   display: grid;
-  min-width: 168px;
+  min-width: 190px;
   gap: 2px;
   margin: 0;
   padding: 5px;
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-panel-strong);
-  box-shadow: var(--asv-shadow-panel);
+  box-shadow: var(--asv-shadow-floating);
 }
 
 .contextMenu[hidden] {
@@ -812,7 +877,7 @@ canvas {
 
 .contextMenu button {
   justify-content: flex-start;
-  min-height: 28px;
+  min-height: 30px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -828,6 +893,7 @@ canvas {
   color: var(--asv-muted);
   border: 1px dashed var(--asv-border);
   border-radius: var(--asv-radius-sm);
+  line-height: 1.5;
 }
 
 @keyframes spin {
@@ -845,11 +911,12 @@ canvas {
 
 @media (max-width: 1080px) {
   :root {
-    --asv-inspector-width: 330px;
+    --asv-inspector-width: 360px;
+    --asv-left-width: 220px;
   }
 
   .titlebar {
-    grid-template-columns: 72px auto auto auto minmax(96px, 1fr) auto auto;
+    grid-template-columns: 72px auto auto auto minmax(84px, 1fr) auto auto;
   }
 
   .previewView,
@@ -857,5 +924,13 @@ canvas {
   .editView {
     gap: var(--asv-space-3);
     padding: var(--asv-space-3);
+  }
+
+  .previewView {
+    grid-template-columns: minmax(480px, 1fr) var(--asv-inspector-width);
+  }
+
+  .compareView {
+    grid-template-columns: 210px minmax(420px, 1fr) 230px;
   }
 }

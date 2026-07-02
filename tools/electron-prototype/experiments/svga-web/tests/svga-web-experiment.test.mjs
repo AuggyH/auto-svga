@@ -1023,6 +1023,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="textPreviewSummary"/);
   assert.match(page, /id="textElementList"/);
   assert.match(page, /data-action="edit-text" disabled/);
+  assert.match(page, /data-component="WindowToolbar"/);
+  assert.match(page, /role="tablist"/);
+  assert.match(page, /aria-selected="true"/);
   assert.doesNotMatch(page, /id="compareFileInput"/);
   assert.doesNotMatch(page, /id="renameDialog"|id="renameInput"|id="renameHint"/);
   assert.match(page, /短期版仅保留图层查看/);
@@ -1030,11 +1033,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(page, /导出验收|序列修复|批量 PNG|Export Acceptance/);
   assert.doesNotMatch(page, /brandMark/);
   assert.match(shortTermStyles, /--asv-window/);
+  assert.match(shortTermStyles, /--asv-color-window/);
+  assert.match(shortTermStyles, /\[hidden\]\s*\{\s*display: none !important;/);
   assert.match(shortTermStyles, /prefers-color-scheme: dark/);
   assert.match(shortTermStyles, /:focus-visible/);
   assert.match(shortTermStyles, /button\.primary:disabled/);
   assert.match(shortTermStyles, /\.resultGroup/);
   assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
+  assert.match(shortTermEntry, /aria-pressed/);
+  assert.match(shortTermEntry, /aria-selected/);
   assert.match(shortTermEntry, /\/api\/short-term-product-inspection-model/);
   assert.match(shortTermEntry, /\/api\/short-term-product-optimization-workflow/);
   assert.match(shortTermEntry, /\/api\/short-term-product-image-key-rename/);
@@ -1043,6 +1050,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /\/api\/short-term-product-image-replacement-workflow/);
   assert.match(shortTermEntry, /renameImageKey: ""/);
   assert.match(shortTermEntry, /data-rename-input/);
+  assert.match(shortTermEntry, /ReplaceableImageRow/);
   assert.match(shortTermEntry, /confirmInlineRename/);
   assert.match(shortTermEntry, /inline-rename-confirm/);
   assert.match(shortTermEntry, /inline-rename-cancel/);
