@@ -4863,28 +4863,23 @@ async function driveCanonicalNormalProof(window) {
   await new Promise((resolve) => setTimeout(resolve, 260));
   const result = await window.webContents.executeJavaScript(`
     (async () => {
-      const opened = await window.autoSvgaElectronHost?.openSvgaFile?.();
-      if (!opened || opened.status !== "opened" || !opened.sourceId || !opened.hash || !opened.bytes) {
-        throw new Error("primary host bridge open failed");
+      const host = window.autoSvgaElectronHost;
+      const actions = window.__autoSvgaShortTermActions;
+      if (!host?.openSvgaFile || !actions?.openFromHostDialog) {
+        throw new Error("short-term host bridge unavailable");
       }
-      const bytes = new Uint8Array(opened.bytes);
-      const file = new File([bytes], opened.basename ?? "repository-avatar-frame-basic.svga", { type: "application/octet-stream" });
-      Object.defineProperty(file, "autoSvgaSourceId", { value: opened.sourceId, configurable: true });
-      Object.defineProperty(file, "autoSvgaSourceHash", { value: opened.hash, configurable: true });
-      const transfer = new DataTransfer();
-      transfer.items.add(file);
-      const input = document.querySelector("#svgaFileInput");
-      Object.defineProperty(input, "files", { value: transfer.files, configurable: true });
-      input.dispatchEvent(new Event("change", { bubbles: true }));
+      await actions.openFromHostDialog();
       const startedAt = performance.now();
       while (performance.now() - startedAt < 8000) {
-        const reportReady = Boolean(document.querySelector(".auditReportSection"));
-        const playing = document.querySelector("#svgaStatusA")?.textContent?.includes("播放中");
-        if (reportReady && playing) break;
+        const previewReady = !document.querySelector('[data-view="preview"]')?.hidden;
+        const reportReady = document.querySelector("#factGrid")?.children?.length > 0
+          && document.querySelector("#assetList")?.children?.length > 0;
+        const canvas = document.querySelector("#primaryCanvas");
+        if (previewReady && reportReady && canvas?.width > 0 && canvas?.height > 0) break;
         await new Promise((resolve) => setTimeout(resolve, 120));
       }
       const isCanvasNonBlank = () => {
-        const context = document.querySelector("#svgaCanvasA canvas")?.getContext("2d");
+        const context = document.querySelector("#primaryCanvas")?.getContext("2d");
         if (!context) return false;
         const width = context.canvas.width;
         const height = context.canvas.height;
@@ -4901,16 +4896,26 @@ async function driveCanonicalNormalProof(window) {
         if (canvasNonBlank) break;
         await new Promise((resolve) => setTimeout(resolve, 160));
       }
+      const factGrid = document.querySelector("#factGrid");
+      const assetList = document.querySelector("#assetList");
+      const previewView = document.querySelector('[data-view="preview"]');
       return {
         normalMode: true,
         hostOpen: true,
         primaryBridge: true,
         rendererQuery: location.search,
-        playback: document.querySelector("#svgaStatusA")?.textContent?.includes("播放中") ?? false,
+        playback: Boolean(!previewView?.hidden && document.querySelector("#primaryCanvas")?.width > 0),
         canvasNonBlank,
-        inspectionReport: Boolean(document.querySelector(".specReportSection")),
-        auditPanel: Boolean(document.querySelector(".auditReportSection")),
-        localOnly: performance.getEntriesByType("resource").every((entry) => new URL(entry.name).origin === location.origin || entry.name.startsWith("blob:" + location.origin + "/")),
+        inspectionReport: Boolean(factGrid?.children?.length > 0 && assetList?.children?.length > 0),
+        auditPanel: Boolean(document.querySelector(".inspectorPanel [data-panel='overview']")),
+        localOnly: performance.getEntriesByType("resource").every((entry) => {
+          try {
+            const url = new URL(entry.name, location.href);
+            return url.origin === location.origin || entry.name.startsWith("blob:" + location.origin + "/");
+          } catch {
+            return false;
+          }
+        }),
         cspAccepted: Boolean(document.querySelector("meta[name='auto-svga-csp']")?.content.includes("wasm-unsafe-eval")),
         noCspViolation: true
       };
