@@ -16,6 +16,7 @@ import {
   createShortTermWorkbenchTextPreview,
   recoverShortTermWorkbenchPlayback,
   reportShortTermWorkbenchPlaybackFailure,
+  resetShortTermWorkbenchImageReplacementPreview,
   resetShortTermWorkbenchTextPreview,
   runShortTermWorkbenchImageReplacementPreview,
   runShortTermWorkbenchOptimizationCompare,
@@ -58,6 +59,7 @@ export type ShortTermHostActionKind =
   | "runOptimization"
   | "renameImageKey"
   | "replaceImage"
+  | "resetImageReplacement"
   | "prepareTextPreview"
   | "applyTextPreview"
   | "resetTextPreview"
@@ -357,6 +359,39 @@ export async function runShortTermHostImageReplacement(
   }));
 }
 
+export function resetShortTermHostImageReplacement(
+  state: ShortTermHostActionState
+): ShortTermHostActionState {
+  const blocked = requireOpenedFileForPreviewAction(state, "resetImageReplacement");
+  if (blocked) return blocked;
+
+  const activeOutputKind = state.facade.model.activeOutput?.outputKind;
+  if (hasShortTermUnsavedHostOutput(state) && activeOutputKind !== "image_replacement_svga") {
+    return withLastAction(state, result("resetImageReplacement", "blocked", "当前文件有其他未保存输出，重置图片替换前需要先保存或确认丢弃。", {
+      diagnostic: {
+        code: "operation_requires_discard_confirmation",
+        message: "Image replacement reset would clear active output and is blocked while another output kind is dirty."
+      }
+    }));
+  }
+
+  if (state.facade.imageReplacementSession?.model.resetEnabled !== true && activeOutputKind !== "image_replacement_svga") {
+    return withLastAction(state, result("resetImageReplacement", "blocked", "当前没有需要重置的图片替换预览。", {
+      diagnostic: {
+        code: "image_replacement_reset_not_needed",
+        message: "Image replacement reset is only enabled after an image replacement preview is applied."
+      }
+    }));
+  }
+
+  const facade = resetShortTermWorkbenchImageReplacementPreview(state.facade);
+  return withLastAction({
+    ...state,
+    facade,
+    activeOutputBytes: undefined
+  }, result("resetImageReplacement", "completed", facade.model.activeWorkflow.message));
+}
+
 export async function saveShortTermHostOutput(
   state: ShortTermHostActionState,
   host: ShortTermHostEnvironment,
@@ -647,7 +682,7 @@ export async function dispatchShortTermHostMenuAction(
 
 function requireOpenedFileForPreviewAction(
   state: ShortTermHostActionState,
-  action: Extract<ShortTermHostActionKind, "prepareTextPreview" | "applyTextPreview" | "resetTextPreview">
+  action: Extract<ShortTermHostActionKind, "resetImageReplacement" | "prepareTextPreview" | "applyTextPreview" | "resetTextPreview">
 ): ShortTermHostActionState | undefined {
   if (state.facade.model.appState.currentFile) return undefined;
   return withLastAction(state, result(action, "blocked", "当前没有打开的 SVGA 可执行预览操作。", {

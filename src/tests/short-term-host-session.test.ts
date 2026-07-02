@@ -12,6 +12,7 @@ import {
   type ShortTermRecentFilesState
 } from "../workbench/short-term-recent-files.js";
 import {
+  createShortTermColoredPng,
   createShortTermOptimizableSvgaFixture,
   createShortTermSvgaFixture
 } from "./helpers/short-term-svga-fixtures.js";
@@ -399,6 +400,50 @@ test("short-term host session applies and resets runtime text preview without wr
   assert.equal(reset.state.facade.textPreviewSession?.model.activeReplacement, undefined);
   assert.equal(reset.state.facade.model.activeOutput?.outputKind, "optimized_svga");
   assert.ok(reset.state.activeOutputBytes);
+  assert.equal(JSON.stringify(reset.state.facade.model).includes("/Users/designer"), false);
+});
+
+test("short-term host session resets image replacement preview and clears only replacement output", async () => {
+  const sourcePath = "/Users/designer/private/editable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermSvgaFixture()
+  });
+  const store = createMemoryRecentFilesStore();
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  const blocked = await session.resetImageReplacementPreview();
+  assert.equal(blocked.actionResult?.status, "blocked");
+  assert.equal(blocked.actionResult?.diagnostic?.code, "preview_action_requires_open_file");
+
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const notNeeded = await session.resetImageReplacementPreview();
+  assert.equal(notNeeded.actionResult?.status, "blocked");
+  assert.equal(notNeeded.actionResult?.diagnostic?.code, "image_replacement_reset_not_needed");
+
+  const replaced = await session.dispatchMenuAction({
+    commandId: "replaceImage",
+    imageKey: "img_frame",
+    pngBytes: createShortTermColoredPng(16, 16, [0, 0, 255, 255])
+  });
+  assert.equal(replaced.actionResult?.status, "completed");
+  assert.equal(replaced.state.facade.model.activeOutput?.outputKind, "image_replacement_svga");
+  assert.ok(replaced.state.activeOutputBytes);
+  assert.equal(replaced.state.facade.imageReplacementSession?.model.resetEnabled, true);
+
+  const reset = await session.resetImageReplacementPreview();
+  assert.equal(reset.actionResult?.status, "completed");
+  assert.equal(reset.actionResult?.action, "resetImageReplacement");
+  assert.equal(reset.recentPersistence.status, "unchanged");
+  assert.equal(reset.state.currentLocalPath, sourcePath);
+  assert.equal(reset.state.activeOutputBytes, undefined);
+  assert.equal(reset.state.facade.model.activeOutput, undefined);
+  assert.equal(reset.state.facade.imageReplacementSession?.model.status, "ready");
+  assert.equal(reset.state.facade.imageReplacementSession?.model.resetEnabled, false);
+  assert.equal(reset.state.facade.imageReplacementSession?.model.activeReplacement, undefined);
   assert.equal(JSON.stringify(reset.state.facade.model).includes("/Users/designer"), false);
 });
 

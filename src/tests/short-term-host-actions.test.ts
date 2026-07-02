@@ -13,6 +13,7 @@ import {
   dispatchShortTermHostMenuAction,
   openShortTermHostLocalFile,
   openShortTermHostRecentFile,
+  resetShortTermHostImageReplacement,
   type ShortTermHostEnvironment,
   type ShortTermHostMenuActionInput
 } from "../workbench/short-term-host-actions.js";
@@ -372,6 +373,43 @@ test("short-term host actions allow repeated image replacement preview without d
   assert.equal(second.lastAction?.status, "completed");
   assert.equal(second.facade.model.activeOutput?.outputKind, "image_replacement_svga");
   assert.ok(second.activeOutputBytes);
+});
+
+test("short-term host actions reset image replacement without clearing other dirty output kinds", async () => {
+  const sourcePath = "/Users/designer/private/editable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+  const blocked = resetShortTermHostImageReplacement(optimized);
+
+  assert.equal(blocked.lastAction?.status, "blocked");
+  assert.equal(blocked.lastAction?.diagnostic?.code, "operation_requires_discard_confirmation");
+  assert.equal(blocked.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(blocked.activeOutputBytes);
+
+  const replaced = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "replaceImage",
+    imageKey: "img_frame",
+    pngBytes: createShortTermColoredPng(16, 16, [0, 0, 255, 255])
+  });
+  const reset = resetShortTermHostImageReplacement(replaced);
+
+  assert.equal(reset.lastAction?.status, "completed");
+  assert.equal(reset.lastAction?.action, "resetImageReplacement");
+  assert.equal(reset.facade.imageReplacementSession?.model.status, "ready");
+  assert.equal(reset.facade.imageReplacementSession?.model.activeReplacement, undefined);
+  assert.equal(reset.facade.model.activeOutput, undefined);
+  assert.equal(reset.activeOutputBytes, undefined);
+  assert.equal(commandEnabled(reset, "saveAs"), false);
+  assert.equal(reset.currentLocalPath, sourcePath);
 });
 
 test("short-term host actions block disabled or unrouted menu commands", async () => {

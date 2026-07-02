@@ -19,6 +19,7 @@ import {
   openShortTermWorkbenchRecentFile,
   recoverShortTermWorkbenchPlayback,
   reportShortTermWorkbenchPlaybackFailure,
+  resetShortTermWorkbenchImageReplacementPreview,
   resetShortTermWorkbenchTextPreview,
   runShortTermWorkbenchImageReplacementPreview,
   runShortTermWorkbenchOptimizationCompare,
@@ -204,6 +205,10 @@ test("short-term workbench facade exposes rename, image replacement, and text pr
   );
   assert.equal(replaced.session.model.status, "previewDirty");
   assert.equal(replaced.state.model.activeOutput?.outputKind, "image_replacement_svga");
+  const replacementReset = resetShortTermWorkbenchImageReplacementPreview(replaced.state);
+  assert.equal(replacementReset.imageReplacementSession?.model.status, "ready");
+  assert.equal(replacementReset.model.activeOutput, undefined);
+  assert.equal(commandEnabled(replacementReset.model.appState, "saveAs"), false);
 
   const textReady = createShortTermWorkbenchTextPreview(opened, [
     {

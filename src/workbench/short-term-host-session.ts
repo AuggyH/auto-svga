@@ -5,6 +5,7 @@ import {
   openShortTermHostRecentFile,
   applyShortTermHostTextPreview,
   prepareShortTermHostTextPreview,
+  resetShortTermHostImageReplacement,
   recoverShortTermHostPlayback,
   reportShortTermHostPlaybackFailure,
   resetShortTermHostTextPreview,
@@ -70,6 +71,7 @@ export interface ShortTermHostSession {
   openLocalFile(input: ShortTermHostOpenLocalFileInput): Promise<ShortTermHostSessionActionResult>;
   openRecentFile(input: ShortTermHostOpenRecentFileInput): Promise<ShortTermHostSessionActionResult>;
   dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult>;
+  resetImageReplacementPreview(): Promise<ShortTermHostSessionActionResult>;
   prepareTextPreview(input: ShortTermHostPrepareTextPreviewInput): Promise<ShortTermHostSessionActionResult>;
   applyTextPreview(input: ShortTermHostApplyTextPreviewInput): Promise<ShortTermHostSessionActionResult>;
   resetTextPreview(): Promise<ShortTermHostSessionActionResult>;
@@ -116,6 +118,10 @@ class ShortTermHostSessionController implements ShortTermHostSession {
 
   async dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult> {
     return this.apply((state) => dispatchShortTermHostMenuAction(state, this.host, input));
+  }
+
+  async resetImageReplacementPreview(): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => resetShortTermHostImageReplacement(state));
   }
 
   async prepareTextPreview(input: ShortTermHostPrepareTextPreviewInput): Promise<ShortTermHostSessionActionResult> {
