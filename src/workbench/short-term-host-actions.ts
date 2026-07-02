@@ -1261,7 +1261,11 @@ function sanitizeDisplayName(displayName: string | undefined, localPath: string)
 }
 
 function sameResolvedPath(a: string, b: string): boolean {
-  return path.resolve(a) === path.resolve(b);
+  return canonicalSavePath(a) === canonicalSavePath(b);
+}
+
+function canonicalSavePath(value: string): string {
+  return path.resolve(value).normalize("NFC").toLowerCase();
 }
 
 function safeResultCommandId(commandId: string): string {

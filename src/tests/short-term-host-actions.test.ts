@@ -624,6 +624,35 @@ test("short-term host actions block same-source Save As and allow explicit overw
   assert.equal(commandEnabled(overwritten, "saveAs"), false);
 });
 
+test("short-term host actions block case-only Save As target aliases", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const caseOnlyTargetPath = "/users/designer/private/OPTIMIZABLE.svga";
+  const sourceBytes = await createShortTermOptimizableSvgaFixture();
+  const host = createMemoryHost({
+    [sourcePath]: sourceBytes
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+  assert.ok(optimized.activeOutputBytes);
+
+  const blockedSaveAs = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "saveAs",
+    targetPath: caseOnlyTargetPath
+  });
+
+  assert.equal(blockedSaveAs.lastAction?.status, "blocked");
+  assert.equal(blockedSaveAs.lastAction?.diagnostic?.code, "save_as_target_matches_source");
+  assert.ok(blockedSaveAs.activeOutputBytes);
+  assert.equal(sha256(host.snapshot(sourcePath)), sha256(sourceBytes));
+  assert.throws(() => host.snapshot(caseOnlyTargetPath), /missing snapshot/);
+});
+
 test("short-term host actions block dirty local open until discard is confirmed", async () => {
   const sourcePath = "/Users/designer/private/optimizable.svga";
   const nextPath = "/Users/designer/private/next.svga";
