@@ -1,4 +1,6 @@
 import {
+  clearShortTermHostRecentFiles,
+  closeShortTermHostFile,
   createShortTermHostActionState,
   dispatchShortTermHostMenuAction,
   openShortTermHostLocalFile,
@@ -6,18 +8,25 @@ import {
   applyShortTermHostTextPreview,
   prepareShortTermHostTextPreview,
   resetShortTermHostImageReplacement,
+  runShortTermHostImageKeyRename,
+  runShortTermHostImageReplacement,
+  runShortTermHostOptimization,
+  saveShortTermHostOutput,
   recoverShortTermHostPlayback,
   reportShortTermHostPlaybackFailure,
   resetShortTermHostTextPreview,
   type ShortTermHostActionResult,
   type ShortTermHostActionState,
   type ShortTermHostApplyTextPreviewInput,
+  type ShortTermHostCloseInput,
+  type ShortTermHostDirtyOperationInput,
   type ShortTermHostEnvironment,
   type ShortTermHostMenuActionInput,
   type ShortTermHostOpenLocalFileInput,
   type ShortTermHostOpenRecentFileInput,
   type ShortTermHostPlaybackFailureInput,
-  type ShortTermHostPrepareTextPreviewInput
+  type ShortTermHostPrepareTextPreviewInput,
+  type ShortTermHostSaveInput
 } from "./short-term-host-actions.js";
 import {
   createShortTermHostActionStateFromRecentStore,
@@ -70,6 +79,20 @@ export interface ShortTermHostSession {
   getState(): ShortTermHostActionState;
   openLocalFile(input: ShortTermHostOpenLocalFileInput): Promise<ShortTermHostSessionActionResult>;
   openRecentFile(input: ShortTermHostOpenRecentFileInput): Promise<ShortTermHostSessionActionResult>;
+  clearRecentFiles(): Promise<ShortTermHostSessionActionResult>;
+  closeFile(input?: ShortTermHostCloseInput): Promise<ShortTermHostSessionActionResult>;
+  runOptimization(input?: ShortTermHostDirtyOperationInput): Promise<ShortTermHostSessionActionResult>;
+  renameImageKey(
+    fromImageKey: string,
+    toImageKey: string,
+    input?: ShortTermHostDirtyOperationInput
+  ): Promise<ShortTermHostSessionActionResult>;
+  replaceImagePreview(
+    imageKey: string,
+    pngBytes: Uint8Array,
+    input?: ShortTermHostDirtyOperationInput
+  ): Promise<ShortTermHostSessionActionResult>;
+  saveOutput(input: ShortTermHostSaveInput): Promise<ShortTermHostSessionActionResult>;
   dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult>;
   resetImageReplacementPreview(): Promise<ShortTermHostSessionActionResult>;
   prepareTextPreview(input: ShortTermHostPrepareTextPreviewInput): Promise<ShortTermHostSessionActionResult>;
@@ -114,6 +137,38 @@ class ShortTermHostSessionController implements ShortTermHostSession {
 
   async openRecentFile(input: ShortTermHostOpenRecentFileInput): Promise<ShortTermHostSessionActionResult> {
     return this.apply((state) => openShortTermHostRecentFile(state, this.host, input));
+  }
+
+  async clearRecentFiles(): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => clearShortTermHostRecentFiles(state));
+  }
+
+  async closeFile(input: ShortTermHostCloseInput = {}): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => closeShortTermHostFile(state, input));
+  }
+
+  async runOptimization(input: ShortTermHostDirtyOperationInput = {}): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => runShortTermHostOptimization(state, input));
+  }
+
+  async renameImageKey(
+    fromImageKey: string,
+    toImageKey: string,
+    input: ShortTermHostDirtyOperationInput = {}
+  ): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => runShortTermHostImageKeyRename(state, fromImageKey, toImageKey, input));
+  }
+
+  async replaceImagePreview(
+    imageKey: string,
+    pngBytes: Uint8Array,
+    input: ShortTermHostDirtyOperationInput = {}
+  ): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => runShortTermHostImageReplacement(state, imageKey, pngBytes, input));
+  }
+
+  async saveOutput(input: ShortTermHostSaveInput): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => saveShortTermHostOutput(state, this.host, input));
   }
 
   async dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult> {

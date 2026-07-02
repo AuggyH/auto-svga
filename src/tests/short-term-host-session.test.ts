@@ -447,6 +447,86 @@ test("short-term host session resets image replacement preview and clears only r
   assert.equal(JSON.stringify(reset.state.facade.model).includes("/Users/designer"), false);
 });
 
+test("short-term host session exposes first-class methods for formal short-term actions", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const outputPath = "/Users/designer/private/optimized-copy.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const store = createMemoryRecentFilesStore();
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+
+  const optimized = await session.runOptimization();
+  assert.equal(optimized.actionResult?.status, "completed");
+  assert.equal(optimized.actionResult?.action, "runOptimization");
+  assert.equal(optimized.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(optimized.state.activeOutputBytes);
+
+  const blockedRename = await session.renameImageKey("img_frame", "profile_frame");
+  assert.equal(blockedRename.actionResult?.status, "blocked");
+  assert.equal(blockedRename.actionResult?.diagnostic?.code, "operation_requires_discard_confirmation");
+  assert.equal(blockedRename.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(blockedRename.state.activeOutputBytes);
+
+  const saved = await session.saveOutput({
+    command: "saveAs",
+    targetPath: outputPath
+  });
+  assert.equal(saved.actionResult?.status, "completed");
+  assert.equal(saved.actionResult?.action, "save");
+  assert.equal(saved.state.currentLocalPath, outputPath);
+  assert.equal(saved.state.activeOutputBytes, undefined);
+  assert.equal(saved.state.facade.model.activeOutput, undefined);
+
+  const replaced = await session.replaceImagePreview(
+    "img_frame",
+    createShortTermColoredPng(16, 16, [0, 255, 0, 255])
+  );
+  assert.equal(replaced.actionResult?.status, "completed");
+  assert.equal(replaced.actionResult?.action, "replaceImage");
+  assert.equal(replaced.state.facade.model.activeOutput?.outputKind, "image_replacement_svga");
+  assert.ok(replaced.state.activeOutputBytes);
+
+  const blockedOptimization = await session.runOptimization();
+  assert.equal(blockedOptimization.actionResult?.status, "blocked");
+  assert.equal(blockedOptimization.actionResult?.diagnostic?.code, "operation_requires_discard_confirmation");
+  assert.equal(blockedOptimization.state.facade.model.activeOutput?.outputKind, "image_replacement_svga");
+
+  const reset = await session.resetImageReplacementPreview();
+  assert.equal(reset.actionResult?.status, "completed");
+  assert.equal(reset.state.activeOutputBytes, undefined);
+  assert.equal(reset.state.facade.model.activeOutput, undefined);
+
+  const renamed = await session.renameImageKey("img_frame", "profile_frame");
+  assert.equal(renamed.actionResult?.status, "completed");
+  assert.equal(renamed.actionResult?.action, "renameImageKey");
+  assert.equal(renamed.state.facade.model.activeOutput?.outputKind, "renamed_svga");
+  assert.ok(renamed.state.activeOutputBytes);
+
+  const closeBlocked = await session.closeFile();
+  assert.equal(closeBlocked.actionResult?.status, "blocked");
+  assert.equal(closeBlocked.actionResult?.diagnostic?.code, "close_requires_discard_confirmation");
+  assert.equal(closeBlocked.state.facade.model.activeOutput?.outputKind, "renamed_svga");
+
+  const closed = await session.closeFile({ discardUnsavedChanges: true });
+  assert.equal(closed.actionResult?.status, "completed");
+  assert.equal(closed.state.facade.model.appState.state, "launch");
+  assert.equal(closed.state.currentLocalPath, undefined);
+  assert.equal(closed.state.activeOutputBytes, undefined);
+
+  const cleared = await session.clearRecentFiles();
+  assert.equal(cleared.actionResult?.status, "completed");
+  assert.equal(cleared.recentPersistence.status, "saved");
+  assert.equal(store.snapshot().records.length, 0);
+  assert.equal(JSON.stringify(cleared.state.facade.model).includes("/Users/designer"), false);
+});
+
 function createMemoryHost(
   initialFiles: Record<string, Uint8Array>,
   options: {
