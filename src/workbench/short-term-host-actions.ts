@@ -50,6 +50,7 @@ import {
   type ShortTermPrdId
 } from "./short-term-prd-trace.js";
 import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
+import { shortTermDisplayNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_HOST_ACTION_SCHEMA_VERSION = 1 as const;
 export {
@@ -428,7 +429,7 @@ export async function saveShortTermHostOutput(
   if (input.command === "saveAs" && state.currentLocalPath && sameResolvedPath(targetPath, state.currentLocalPath)) {
     return withLastAction(state, result("save", "blocked", "另存为目标必须不同于当前源文件；如需覆盖请使用覆盖保存。", {
       commandId: "saveAs",
-      targetDisplayName: path.basename(targetPath),
+      targetDisplayName: shortTermDisplayNameFromPathLike(targetPath),
       diagnostic: {
         code: "save_as_target_matches_source",
         message: "Save As target must be different from the current source path."
@@ -437,7 +438,7 @@ export async function saveShortTermHostOutput(
   }
   if (!state.activeOutputBytes) {
     return withLastAction(state, result("save", "blocked", "没有已验证的可保存输出。", {
-      targetDisplayName: path.basename(targetPath),
+      targetDisplayName: shortTermDisplayNameFromPathLike(targetPath),
       diagnostic: {
         code: "active_output_bytes_missing",
         message: "Host action state does not contain validated output bytes."
@@ -448,7 +449,7 @@ export async function saveShortTermHostOutput(
   const plan = createShortTermWorkbenchSavePlan(state.facade, input.command, { targetPath });
   if (!plan || plan.status !== "readyToWrite") {
     return withLastAction(state, result("save", "blocked", plan?.message ?? "没有已验证的可保存输出。", {
-      targetDisplayName: path.basename(targetPath),
+      targetDisplayName: shortTermDisplayNameFromPathLike(targetPath),
       diagnostic: plan?.diagnostic ?? {
         code: "save_plan_unavailable",
         message: "The facade did not expose a ready save plan."
@@ -988,9 +989,7 @@ function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
 }
 
 function sanitizeDisplayName(displayName: string | undefined, localPath: string): string {
-  const candidate = displayName?.trim();
-  if (candidate) return path.basename(candidate);
-  return path.basename(localPath);
+  return shortTermDisplayNameFromPathLike(displayName) || shortTermDisplayNameFromPathLike(localPath);
 }
 
 function sameResolvedPath(a: string, b: string): boolean {

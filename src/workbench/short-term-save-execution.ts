@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import path from "node:path";
 import {
   validateShortTermSavedBytes,
   type ShortTermPersistedOutputRecord,
@@ -7,6 +6,7 @@ import {
   type ShortTermSaveValidationResult
 } from "./short-term-save-state.js";
 import { redactShortTermLocalPathsFromError } from "./short-term-local-path-redaction.js";
+import { shortTermDisplayNameFromPathLike } from "./short-term-path-display.js";
 
 export const SHORT_TERM_SAVE_EXECUTION_SCHEMA_VERSION = 1 as const;
 
@@ -178,10 +178,10 @@ function targetDisplayName(
   options: CreateShortTermSaveExecutionPlanOptions,
   record: ShortTermPersistedOutputRecord
 ): string {
-  const explicit = options.targetDisplayName?.trim();
-  if (explicit) return path.basename(explicit);
-  const targetPath = options.targetPath?.trim();
-  if (targetPath) return path.basename(targetPath);
+  const explicit = shortTermDisplayNameFromPathLike(options.targetDisplayName);
+  if (explicit) return explicit;
+  const targetPath = shortTermDisplayNameFromPathLike(options.targetPath);
+  if (targetPath) return targetPath;
   return record.sourceName;
 }
 

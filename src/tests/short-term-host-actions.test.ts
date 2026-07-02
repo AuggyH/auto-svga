@@ -36,13 +36,15 @@ test("short-term host actions open local files through the facade without exposi
   const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
     requestId: "open-1",
     source: "menuOpen",
-    localPath: "/Users/designer/private/opened.svga"
+    localPath: "/Users/designer/private/opened.svga",
+    displayName: "/Users/designer/private/unsafe_display.svga"
   });
 
   assert.equal(opened.facade.model.appState.state, "previewReady");
   assert.equal(opened.currentLocalPath, "/Users/designer/private/opened.svga");
   assert.equal(opened.lastAction?.status, "completed");
-  assert.equal(opened.facade.model.recentFiles.launchRecentFiles[0].displayName, "opened.svga");
+  assert.equal(opened.facade.model.appState.currentFile?.displayName, "unsafe_display.svga");
+  assert.equal(opened.facade.model.recentFiles.launchRecentFiles[0].displayName, "unsafe_display.svga");
   assert.equal(JSON.stringify(opened.facade.model).includes("/Users/designer"), false);
 });
 

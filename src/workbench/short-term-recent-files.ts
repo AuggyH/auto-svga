@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import {
+  shortTermDisplayNameFromPathLike,
+  shortTermParentDisplayNameFromPathLike
+} from "./short-term-path-display.js";
 
 export const SHORT_TERM_RECENT_FILES_SCHEMA_VERSION = 1 as const;
 export const SHORT_TERM_RECENT_FILES_STORAGE_KEY = "auto-svga.short-term.recent-files.v1" as const;
@@ -220,9 +224,11 @@ function createRecentRecord(
 ): ShortTermRecentFileHostRecord | undefined {
   const localPath = normalizeLocalPath(input.localPath);
   if (!localPath) return undefined;
-  const displayName = sanitizeDisplayPart(input.displayName) || basenameFromPath(localPath);
+  const displayName = shortTermDisplayNameFromPathLike(input.displayName) || shortTermDisplayNameFromPathLike(localPath);
   if (!displayName) return undefined;
-  const parentDisplayName = sanitizeDisplayPart(input.parentDisplayName) || parentNameFromPath(localPath) || "本地文件";
+  const parentDisplayName = shortTermDisplayNameFromPathLike(input.parentDisplayName)
+    || shortTermParentDisplayNameFromPathLike(localPath)
+    || "本地文件";
 
   return {
     schemaVersion: SHORT_TERM_RECENT_FILES_SCHEMA_VERSION,
@@ -266,23 +272,8 @@ function normalizeLocalPath(value: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function basenameFromPath(filePath: string): string {
-  const parts = filePath.split(/[\\/]+/).filter(Boolean);
-  return sanitizeDisplayPart(parts.at(-1) ?? "");
-}
-
-function parentNameFromPath(filePath: string): string {
-  const parts = filePath.split(/[\\/]+/).filter(Boolean);
-  if (parts.length < 2) return "";
-  return sanitizeDisplayPart(parts.at(-2) ?? "");
-}
-
 function sanitizeIdentifier(value: unknown): string {
   return typeof value === "string" ? value.replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "") : "";
-}
-
-function sanitizeDisplayPart(value: unknown): string {
-  return typeof value === "string" ? value.replace(/[\\/]+/g, " ").replace(/\s+/g, " ").trim() : "";
 }
 
 function isoTimestamp(value: string | number | Date | undefined): string {

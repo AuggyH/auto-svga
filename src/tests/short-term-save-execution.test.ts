@@ -12,7 +12,7 @@ test("short-term save execution creates a redacted ready-to-write save-as plan",
   const outputBytes = new Uint8Array([1, 2, 3, 4]);
   const record = outputRecord(outputBytes);
   const plan = createShortTermSaveExecutionPlan(record, "saveAs", {
-    targetPath: "/Users/designer/private/output.svga"
+    targetPath: "C:\\Users\\designer\\Private Project\\output.svga"
   });
 
   assert.equal(plan.schemaVersion, 1);
@@ -24,7 +24,8 @@ test("short-term save execution creates a redacted ready-to-write save-as plan",
   assert.equal(plan.expectedOutputSizeBytes, outputBytes.byteLength);
   assert.equal(plan.targetDisplayName, "output.svga");
   assert.equal(plan.targetPathRedacted, true);
-  assert.equal(JSON.stringify(plan).includes("/Users/designer"), false);
+  assert.equal(JSON.stringify(plan).includes("C:\\Users"), false);
+  assert.equal(JSON.stringify(plan).includes("Private Project"), false);
   assert.equal(plan.autoWritePerformed, false);
   assert.equal(plan.dirty, true);
 });

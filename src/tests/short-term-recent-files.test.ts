@@ -39,6 +39,24 @@ test("short-term recent files create path-redacted renderer view records", () =>
   assert.equal(JSON.stringify(view).includes("/Users/designer"), false);
 });
 
+test("short-term recent files sanitize path-like display inputs", () => {
+  const state = createShortTermRecentFilesState([
+    {
+      localPath: "/Users/designer/Secret Project/profile_frame.svga",
+      displayName: "/Users/designer/Secret Project/unsafe_display.svga",
+      parentDisplayName: "/Users/designer/Secret Project",
+      lastOpenedAt: "2026-07-02T00:00:00.000Z"
+    }
+  ]);
+  const view = createShortTermRecentFilesViewModel(state);
+
+  assert.equal(state.records[0].displayName, "unsafe_display.svga");
+  assert.equal(state.records[0].parentDisplayName, "Secret Project");
+  assert.equal(view.launchRecentFiles[0].displayName, "unsafe_display.svga");
+  assert.equal(view.launchRecentFiles[0].parentDisplayName, "Secret Project");
+  assert.equal(JSON.stringify(view).includes("/Users/designer"), false);
+});
+
 test("short-term recent files cap launch at five and menu at ten", () => {
   const state = createShortTermRecentFilesState(
     Array.from({ length: 12 }, (_, index) => ({
