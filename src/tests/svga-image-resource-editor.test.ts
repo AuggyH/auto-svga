@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { deflateSync, inflateSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { encode as encodeFastPng } from "fast-png";
 import protobuf from "protobufjs";
 import {
   createTransparentImage,
@@ -58,6 +59,12 @@ test("SVGA image editor validates PNG replacements", async () => {
   assert.equal(result.sizeBytes, png.byteLength);
   assert.equal(result.width, 8);
   assert.equal(result.height, 6);
+
+  const indexedPng = createIndexedPng();
+  const indexed = editor.validatePngReplacement(indexedPng);
+  assert.equal(indexed.sha256, sha256(indexedPng));
+  assert.equal(indexed.width, 2);
+  assert.equal(indexed.height, 1);
 
   assertEditError(() => editor.validatePngReplacement(Uint8Array.from([1, 2, 3])), "replacement_not_png");
   assertEditError(() => editor.validatePngReplacement(corruptPngWithSize(2, 2)), "replacement_png_decode_failed");
@@ -556,6 +563,20 @@ function createColoredPng(width: number, height: number, rgba: [number, number, 
     }
   }
   return encodeRgbaPng(image);
+}
+
+function createIndexedPng(): Uint8Array {
+  return encodeFastPng({
+    width: 2,
+    height: 1,
+    data: Uint8Array.from([0, 1]),
+    channels: 1,
+    depth: 8,
+    palette: [
+      [255, 0, 0, 255],
+      [0, 255, 0, 255]
+    ]
+  });
 }
 
 function corruptPngWithSize(width: number, height: number): Uint8Array {

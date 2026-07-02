@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { encode as encodeFastPng } from "fast-png";
 import protobuf from "protobufjs";
 import {
   createTransparentImage,
@@ -68,6 +69,40 @@ test("short-term image replacement workflow produces persisted replacement outpu
       { imageKey: "profile_frame", matteKey: "" },
       { imageKey: "img_sweep", matteKey: "profile_frame" }
     ]
+  );
+});
+
+test("short-term image replacement workflow accepts indexed PNG replacements", async () => {
+  const replacement = createIndexedPng();
+  const sourceBytes = await createSvgaFixture({
+    images: {
+      profile_frame: createColoredPng(2, 1, [255, 0, 0, 255]),
+      img_sweep: createColoredPng(1, 1, [0, 0, 255, 255])
+    },
+    sprites: [
+      { imageKey: "profile_frame", frames: createFrames(4) },
+      { imageKey: "img_sweep", matteKey: "profile_frame", frames: createFrames(4) }
+    ]
+  });
+
+  const result = await runShortTermImageReplacementWorkflow(
+    sourceBytes,
+    { imageKey: "profile_frame", pngBytes: replacement },
+    { sourceName: "indexed-replace.svga" }
+  );
+
+  assert.ok(result.replacedBytes);
+  assert.equal(result.model.status, "replaced");
+  assert.equal(result.model.replacement?.replacementWidth, 2);
+  assert.equal(result.model.replacement?.replacementHeight, 1);
+  assert.equal(result.model.replacement?.replacementSha256, sha256(replacement));
+  assert.equal(result.model.validation.replacementApplied, true);
+  assert.equal(result.model.saveState.saveAsEnabled, true);
+
+  const inspected = await new NodeProtobufSvgaInspector().inspect(result.replacedBytes);
+  assert.equal(
+    sha256(inspected.images.find(({ imageKey }) => imageKey === "profile_frame")?.bytes ?? new Uint8Array()),
+    sha256(replacement)
   );
 });
 
@@ -186,6 +221,20 @@ function createColoredPng(width: number, height: number, rgba: [number, number, 
     }
   }
   return encodeRgbaPng(image);
+}
+
+function createIndexedPng(): Uint8Array {
+  return encodeFastPng({
+    width: 2,
+    height: 1,
+    data: Uint8Array.from([0, 1]),
+    channels: 1,
+    depth: 8,
+    palette: [
+      [255, 0, 0, 255],
+      [0, 255, 0, 255]
+    ]
+  });
 }
 
 function protoPath(): string {
