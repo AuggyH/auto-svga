@@ -180,6 +180,105 @@ test("short-term host actions block same-source Save As and allow explicit overw
   assert.equal(commandEnabled(overwritten, "saveAs"), false);
 });
 
+test("short-term host actions block dirty local open until discard is confirmed", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const nextPath = "/Users/designer/private/next.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture(),
+    [nextPath]: await createShortTermSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+
+  assert.ok(optimized.activeOutputBytes);
+
+  const blocked = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "openSvga",
+    requestId: "open-2",
+    localPath: nextPath
+  });
+
+  assert.equal(blocked.lastAction?.status, "blocked");
+  assert.equal(blocked.lastAction?.diagnostic?.code, "open_requires_discard_confirmation");
+  assert.equal(blocked.facade.model.appState.state, "previewReady");
+  assert.equal(blocked.currentLocalPath, sourcePath);
+  assert.ok(blocked.activeOutputBytes);
+  assert.ok(blocked.facade.model.activeOutput);
+
+  const reopened = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "openSvga",
+    requestId: "open-2",
+    localPath: nextPath,
+    discardUnsavedChanges: true
+  });
+
+  assert.equal(reopened.lastAction?.status, "completed");
+  assert.equal(reopened.facade.model.appState.state, "previewReady");
+  assert.equal(reopened.currentLocalPath, nextPath);
+  assert.equal(reopened.activeOutputBytes, undefined);
+  assert.equal(reopened.facade.model.activeOutput, undefined);
+});
+
+test("short-term host actions block dirty recent open until discard is confirmed", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const recentPath = "/Users/designer/private/recent.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture(),
+    [recentPath]: await createShortTermSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState({
+    recentFiles: [
+      {
+        id: "recent-b",
+        localPath: recentPath,
+        displayName: "recent.svga",
+        lastOpenedAt: "2026-07-02T00:00:00.000Z"
+      }
+    ]
+  }), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "runOptimization"
+  });
+
+  assert.ok(optimized.activeOutputBytes);
+
+  const blocked = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "openRecent",
+    requestId: "recent-1",
+    recentFileId: "recent-b"
+  });
+
+  assert.equal(blocked.lastAction?.status, "blocked");
+  assert.equal(blocked.lastAction?.diagnostic?.code, "open_requires_discard_confirmation");
+  assert.equal(blocked.facade.model.appState.state, "previewReady");
+  assert.equal(blocked.currentLocalPath, sourcePath);
+  assert.ok(blocked.activeOutputBytes);
+  assert.ok(blocked.facade.model.activeOutput);
+
+  const reopened = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "openRecent",
+    requestId: "recent-1",
+    recentFileId: "recent-b",
+    discardUnsavedChanges: true
+  });
+
+  assert.equal(reopened.lastAction?.status, "completed");
+  assert.equal(reopened.facade.model.appState.state, "previewReady");
+  assert.equal(reopened.currentLocalPath, recentPath);
+  assert.equal(reopened.activeOutputBytes, undefined);
+  assert.equal(reopened.facade.model.activeOutput, undefined);
+});
+
 test("short-term host actions block disabled or unrouted menu commands", async () => {
   const host = createMemoryHost({});
   const state = createShortTermHostActionState();

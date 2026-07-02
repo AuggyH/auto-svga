@@ -98,12 +98,14 @@ export interface ShortTermHostOpenLocalFileInput {
   source: Extract<ShortTermOpenSource, "fileButton" | "dragDrop" | "menuOpen">;
   localPath: string;
   displayName?: string;
+  discardUnsavedChanges?: boolean;
 }
 
 export interface ShortTermHostOpenRecentFileInput {
   requestId: string;
   recentFileId: string;
   source: ShortTermRecentOpenSource;
+  discardUnsavedChanges?: boolean;
 }
 
 export interface ShortTermHostSaveInput {
@@ -139,6 +141,10 @@ export async function openShortTermHostLocalFile(
   host: ShortTermHostEnvironment,
   input: ShortTermHostOpenLocalFileInput
 ): Promise<ShortTermHostActionState> {
+  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+    return blockUnsavedOpen(state, "openLocalFile", "openSvga");
+  }
+
   const loadingFacade = startShortTermWorkbenchOpen(state.facade, {
     requestId: input.requestId,
     source: input.source,
@@ -163,6 +169,10 @@ export async function openShortTermHostRecentFile(
   host: ShortTermHostEnvironment,
   input: ShortTermHostOpenRecentFileInput
 ): Promise<ShortTermHostActionState> {
+  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+    return blockUnsavedOpen(state, "openRecentFile", "openRecent");
+  }
+
   const opened = openShortTermWorkbenchRecentFile(
     state.facade,
     input.recentFileId,
@@ -398,12 +408,14 @@ export async function dispatchShortTermHostMenuAction(
         source?: ShortTermHostOpenLocalFileInput["source"];
         localPath: string;
         displayName?: string;
+        discardUnsavedChanges?: boolean;
       };
       return openShortTermHostLocalFile(state, host, {
         requestId: openInput.requestId,
         source: openInput.source ?? "menuOpen",
         localPath: openInput.localPath,
-        displayName: openInput.displayName
+        displayName: openInput.displayName,
+        discardUnsavedChanges: openInput.discardUnsavedChanges
       });
     }
     case "openRecent": {
@@ -411,6 +423,7 @@ export async function dispatchShortTermHostMenuAction(
         requestId: string;
         recentFileId?: string;
         source?: ShortTermRecentOpenSource;
+        discardUnsavedChanges?: boolean;
       };
       const recentFileId = recentInput.recentFileId ?? shortTermRecentFileIdFromMenuCommandId(commandId);
       if (!recentFileId) {
@@ -425,7 +438,8 @@ export async function dispatchShortTermHostMenuAction(
       return openShortTermHostRecentFile(state, host, {
         requestId: recentInput.requestId ?? `recent-menu-${recentFileId}`,
         recentFileId,
-        source: recentInput.source ?? "recentMenu"
+        source: recentInput.source ?? "recentMenu",
+        discardUnsavedChanges: recentInput.discardUnsavedChanges
       });
     }
     case "clearRecent":
@@ -513,6 +527,20 @@ function missingContextForMenuCommand(
     diagnostic: {
       code: "menu_command_context_missing",
       message: diagnosticMessage
+    }
+  }));
+}
+
+function blockUnsavedOpen(
+  state: ShortTermHostActionState,
+  action: Extract<ShortTermHostActionKind, "openLocalFile" | "openRecentFile">,
+  commandId: "openSvga" | "openRecent"
+): ShortTermHostActionState {
+  return withLastAction(state, result(action, "blocked", "当前文件有未保存输出，打开其他文件前需要确认丢弃。", {
+    commandId,
+    diagnostic: {
+      code: "open_requires_discard_confirmation",
+      message: "Opening another file is blocked until the caller confirms discarding unsaved output."
     }
   }));
 }

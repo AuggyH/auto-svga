@@ -143,6 +143,55 @@ test("short-term host session blocks dirty close and keeps session state until d
   assert.equal(closed.state.activeOutputBytes, undefined);
 });
 
+test("short-term host session blocks dirty open without mutating recent persistence", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const nextPath = "/Users/designer/private/next.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture(),
+    [nextPath]: await createShortTermSvgaFixture()
+  });
+  const store = createMemoryRecentFilesStore();
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await session.dispatchMenuAction({
+    commandId: "runOptimization"
+  });
+
+  assert.equal(optimized.actionResult?.status, "completed");
+  assert.ok(optimized.state.activeOutputBytes);
+
+  const blocked = await session.openLocalFile({
+    requestId: "open-2",
+    source: "fileButton",
+    localPath: nextPath
+  });
+
+  assert.equal(blocked.actionResult?.status, "blocked");
+  assert.equal(blocked.actionResult?.diagnostic?.code, "open_requires_discard_confirmation");
+  assert.equal(blocked.recentPersistence.status, "unchanged");
+  assert.equal(blocked.state.currentLocalPath, sourcePath);
+  assert.ok(blocked.state.activeOutputBytes);
+  assert.equal(store.snapshot().records[0].localPath, sourcePath);
+
+  const reopened = await session.openLocalFile({
+    requestId: "open-2",
+    source: "fileButton",
+    localPath: nextPath,
+    discardUnsavedChanges: true
+  });
+
+  assert.equal(reopened.actionResult?.status, "completed");
+  assert.equal(reopened.recentPersistence.status, "saved");
+  assert.equal(reopened.state.currentLocalPath, nextPath);
+  assert.equal(reopened.state.activeOutputBytes, undefined);
+  assert.equal(store.snapshot().records[0].localPath, nextPath);
+});
+
 function createMemoryHost(
   initialFiles: Record<string, Uint8Array>,
   options: {
