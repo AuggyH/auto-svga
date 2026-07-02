@@ -253,7 +253,7 @@ class ShortTermHostSessionController implements ShortTermHostSession {
         source: "short-term-host-session",
         model: cloneShortTermWorkbenchFacadeModel(stateSnapshot.facade.model),
         state: stateSnapshot,
-        actionResult: stateSnapshot.lastAction,
+        ...(stateSnapshot.lastAction ? { actionResult: cloneShortTermHostActionResult(stateSnapshot.lastAction) } : {}),
         recentPersistence: await this.persistRecentFilesIfChanged()
       };
     });

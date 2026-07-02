@@ -138,6 +138,30 @@ test("short-term host session clones injected initial state", async () => {
   assert.equal(JSON.stringify(current.facade.model).includes("/Users/designer"), false);
 });
 
+test("short-term host session action result projection is independent", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const session = await createShortTermHostSession({ host });
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await session.runOptimization();
+  const originalActionMessage = optimized.actionResult?.message;
+
+  assert.ok(optimized.actionResult);
+  assert.ok(optimized.state.lastAction);
+  optimized.actionResult.message = "mutated top-level action result";
+  assert.equal(optimized.state.lastAction.message, originalActionMessage);
+
+  optimized.state.lastAction.message = "mutated nested state action";
+  assert.equal(optimized.actionResult.message, "mutated top-level action result");
+  assert.notEqual(session.getState().lastAction?.message, "mutated nested state action");
+});
+
 test("short-term host session creates renderer-safe action results without host state", async () => {
   const sourcePath = "/Users/designer/private/optimizable.svga";
   const host = createMemoryHost({
