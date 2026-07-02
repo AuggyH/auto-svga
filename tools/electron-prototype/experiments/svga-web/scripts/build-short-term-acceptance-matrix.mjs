@@ -29,12 +29,14 @@ const requirements = [
   {
     id: "S2",
     title: "Play SVGA and report abnormal states",
-    summary: "Playback, load-failed screenshot, and recovery surfaces exist; structured invalid/playback-failure recovery proof is still incomplete.",
-    proof: "normal-runtime-proof.json",
+    summary: "Playback and invalid-file recovery have structured proof; playback-failure-specific proof is still incomplete.",
+    proof: "short-term-load-failure-proof.json",
     passWhen: () => false,
-    partialWhen: (proof, ctx) => proof?.playback === true && proof?.canvasNonBlank === true && ctx.hasArtifact("short-term-load-failed.png"),
-    evidence: ["normal-runtime-proof.json", "short-term-load-failed.png"],
-    partialGaps: ["Invalid-file and playback-failure recovery need structured proof, not only rendered state capture."]
+    partialWhen: (proof, ctx) => proof?.passed === true
+      && ctx.proof("normal-runtime-proof.json")?.playback === true
+      && ctx.proof("normal-runtime-proof.json")?.canvasNonBlank === true,
+    evidence: ["short-term-load-failure-proof.json", "normal-runtime-proof.json", "short-term-load-failed.png"],
+    partialGaps: ["Need playback-failure-specific abnormal-state proof in addition to invalid-file recovery."]
   },
   {
     id: "S3",

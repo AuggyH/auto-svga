@@ -269,6 +269,12 @@ function validateSmokeResult(value) {
     if (typeof value.shortTermLoadFailed !== "boolean") return undefined;
     result.shortTermLoadFailed = value.shortTermLoadFailed;
   }
+  if (value.shortTermLoadFailureProof !== undefined) {
+    const shortTermLoadFailureProof = validateShortTermLoadFailureProof(value.shortTermLoadFailureProof);
+    if (!shortTermLoadFailureProof) return undefined;
+    result.shortTermLoadFailureProof = shortTermLoadFailureProof;
+    result.shortTermLoadFailure = shortTermLoadFailureProof.passed;
+  }
   if (value.shortTermSaveFailed !== undefined) {
     if (typeof value.shortTermSaveFailed !== "boolean") return undefined;
     result.shortTermSaveFailed = value.shortTermSaveFailed;
@@ -466,6 +472,52 @@ function validateShortTermOpenFlowProof(value) {
     pathRedacted: true,
     rendererFilesystemAccessClaimed: false,
     pairedNormalProof: "normal-runtime-proof.json",
+    passed: true
+  };
+}
+
+function validateShortTermLoadFailureProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-load-failure-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.length !== 1 || value.prdIds[0] !== "S2") return undefined;
+  if (!isBoundedString(value.invalidFileName, 160) || !value.invalidFileName.endsWith(".svga")) return undefined;
+  if (!Number.isInteger(value.invalidSizeBytes) || value.invalidSizeBytes <= 0) return undefined;
+  if (!isBoundedString(value.errorCopy, 260) || !value.errorCopy.includes("源文件没有被修改")) return undefined;
+  if (!isBoundedString(value.recoveryFileName, 160) || !value.recoveryFileName.endsWith(".svga")) return undefined;
+  if (!isSha256(value.sourceSha256BeforeInvalid) || value.sourceSha256AfterRecovery !== value.sourceSha256BeforeInvalid) return undefined;
+  if (
+    value.invalidDropAttempted !== true
+    || value.loadFailedVisible !== true
+    || value.sourceFileUnmodifiedClaimVisible !== true
+    || value.noStaleMetadataAfterFailure !== true
+    || value.invalidApiRejected !== true
+    || value.recoveryLoaded !== true
+    || value.playbackRecovered !== true
+    || value.sourceBytesRestoredAfterRecovery !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S2"],
+    invalidFileName: value.invalidFileName,
+    invalidSizeBytes: value.invalidSizeBytes,
+    invalidDropAttempted: true,
+    loadFailedVisible: true,
+    errorCopy: value.errorCopy,
+    sourceFileUnmodifiedClaimVisible: true,
+    noStaleMetadataAfterFailure: true,
+    invalidApiRejected: true,
+    recoveryFileName: value.recoveryFileName,
+    recoveryLoaded: true,
+    playbackRecovered: true,
+    sourceSha256BeforeInvalid: value.sourceSha256BeforeInvalid,
+    sourceSha256AfterRecovery: value.sourceSha256AfterRecovery,
+    sourceBytesRestoredAfterRecovery: true,
     passed: true
   };
 }
@@ -766,6 +818,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.shortTermOpenFlowProof !== undefined && !validateShortTermOpenFlowProof(value.shortTermOpenFlowProof)) {
     return "shortTermOpenFlowProof";
+  }
+  if (value.shortTermLoadFailureProof !== undefined && !validateShortTermLoadFailureProof(value.shortTermLoadFailureProof)) {
+    return "shortTermLoadFailureProof";
   }
   if (value.shortTermRuntimeTextBoundaryProof !== undefined && !validateShortTermRuntimeTextBoundaryProof(value.shortTermRuntimeTextBoundaryProof)) {
     return "shortTermRuntimeTextBoundaryProof";
@@ -3543,6 +3598,14 @@ async function finishSmoke(window, result) {
         "smoke"
       );
     }
+    if (result.shortTermLoadFailureProof) {
+      writeJsonProductArtifact(
+        "short-term-load-failure-proof.json",
+        "short-term-load-failure-proof",
+        result.shortTermLoadFailureProof,
+        "smoke"
+      );
+    }
     if (result.shortTermEmptyStateProof) {
       writeJsonProductArtifact(
         "short-term-empty-state-proof.json",
@@ -3593,9 +3656,9 @@ async function finishSmoke(window, result) {
     }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermLoadFailureProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermLoadFailureProof: Boolean(shortTermLoadFailureProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();

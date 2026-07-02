@@ -1702,11 +1702,18 @@ async function runShortTermSmokeIfRequested() {
     shortTermOpenFlowProof.rendererFilesystemAccessClaimed === false
   ].every(Boolean);
   clearTransientOutput();
-  await loadDroppedFile(new File([new Uint8Array([0, 1, 2, 3, 4])], "invalid.svga", { type: "application/octet-stream" }));
+  const recoverySourceSha256Before = await sha256Hex(state.sourceBytes);
+  const invalidBytes = new Uint8Array([0, 1, 2, 3, 4]);
+  await loadDroppedFile(new File([invalidBytes], "invalid.svga", { type: "application/octet-stream" }));
   await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent.includes("源文件没有被修改"), 4_000);
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-load-failed");
   const loadFailedVisible = state.view === "failed"
+    && nodes.errorMessage.textContent.includes("源文件没有被修改");
+  const loadFailureCopy = nodes.errorMessage.textContent.trim();
+  const noStaleMetadataAfterFailure = !state.sourceBytes
+    && !state.model
+    && !state.activeOutput
     && nodes.errorMessage.textContent.includes("源文件没有被修改");
   await loadOpenedSource({
     bytes: fixtureBytes,
@@ -1714,11 +1721,42 @@ async function runShortTermSmokeIfRequested() {
     sourceId: ""
   });
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
+  const recoverySourceSha256After = await sha256Hex(state.sourceBytes);
   const invalidResponse = await fetch("/api/short-term-product-inspection-model?name=invalid.svga", {
     method: "POST",
     headers: authHeaders(),
     body: new Uint8Array([0, 1, 2, 3, 4])
   });
+  const shortTermLoadFailureProof = {
+    schemaVersion: 1,
+    proofId: "short-term-load-failure-proof",
+    source: "short-term-smoke",
+    prdIds: ["S2"],
+    invalidFileName: "invalid.svga",
+    invalidSizeBytes: invalidBytes.byteLength,
+    invalidDropAttempted: true,
+    loadFailedVisible,
+    errorCopy: loadFailureCopy,
+    sourceFileUnmodifiedClaimVisible: loadFailureCopy.includes("源文件没有被修改"),
+    noStaleMetadataAfterFailure,
+    invalidApiRejected: invalidResponse.ok === false,
+    recoveryFileName: file.name,
+    recoveryLoaded: state.view === "preview" && Boolean(state.model),
+    playbackRecovered: Boolean(state.primaryPlayback),
+    sourceSha256BeforeInvalid: recoverySourceSha256Before,
+    sourceSha256AfterRecovery: recoverySourceSha256After,
+    sourceBytesRestoredAfterRecovery: recoverySourceSha256After === recoverySourceSha256Before
+  };
+  shortTermLoadFailureProof.passed = [
+    shortTermLoadFailureProof.invalidDropAttempted,
+    shortTermLoadFailureProof.loadFailedVisible,
+    shortTermLoadFailureProof.sourceFileUnmodifiedClaimVisible,
+    shortTermLoadFailureProof.noStaleMetadataAfterFailure,
+    shortTermLoadFailureProof.invalidApiRejected,
+    shortTermLoadFailureProof.recoveryLoaded,
+    shortTermLoadFailureProof.playbackRecovered,
+    shortTermLoadFailureProof.sourceBytesRestoredAfterRecovery
+  ].every(Boolean);
   if (state.primaryPlayback) {
     state.primaryPlayback.player.pause();
     state.primaryPlayback.player.start();
@@ -1740,6 +1778,7 @@ async function runShortTermSmokeIfRequested() {
     shortTermScreenshots: screenshotCaptures.length >= 9 && screenshotCaptures.every(Boolean),
     shortTermSaveFailed: saveFailedVisible,
     shortTermLoadFailed: loadFailedVisible,
+    shortTermLoadFailureProof,
     shortTermEmptyStateProof,
     shortTermRuntimeTextBoundaryProof,
     shortTermThumbnailProof,
