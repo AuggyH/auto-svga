@@ -14,6 +14,16 @@ export type ShortTermCommandMenuGroupId =
   | "help";
 
 export type ShortTermCommandMenuItemKind = "command" | "separator" | "submenu";
+export type ShortTermCommandMenuPrdId =
+  | "S1"
+  | "S2"
+  | "S8"
+  | "S9"
+  | "S10"
+  | "S11"
+  | "S12"
+  | "S14"
+  | "S16";
 
 export type ShortTermNativeRole =
   | "about"
@@ -34,7 +44,7 @@ export type ShortTermNativeRole =
 export interface ShortTermCommandMenuModel {
   schemaVersion: typeof SHORT_TERM_COMMAND_MENU_SCHEMA_VERSION;
   source: "short-term-command-menu";
-  prdIds: readonly ["S1", "S2", "S14", "S16"];
+  prdIds: readonly ShortTermCommandMenuPrdId[];
   groups: readonly ShortTermCommandMenuGroup[];
 }
 
@@ -52,6 +62,7 @@ export interface ShortTermCommandMenuItem {
   accelerator?: string;
   role?: ShortTermNativeRole;
   sourceCommandId?: string;
+  prdIds?: readonly ShortTermCommandMenuPrdId[];
   reason?: string;
   recentFileId?: string;
   items?: readonly ShortTermCommandMenuItem[];
@@ -64,7 +75,7 @@ export function createShortTermCommandMenuModel(
   return {
     schemaVersion: SHORT_TERM_COMMAND_MENU_SCHEMA_VERSION,
     source: "short-term-command-menu",
-    prdIds: ["S1", "S2", "S14", "S16"],
+    prdIds: ["S1", "S2", "S8", "S9", "S10", "S11", "S12", "S14", "S16"],
     groups: [
       menu("app", "Auto SVGA", [
         nativeItem("about", "关于 Auto SVGA", "about"),
@@ -158,6 +169,7 @@ function commandItem(
     ...(command.shortcut ? { accelerator: normalizeMacShortcut(command.shortcut) } : {}),
     ...(options.role ? { role: options.role } : {}),
     sourceCommandId: command.id,
+    prdIds: prdIdsForCommand(command.id),
     ...(!command.enabled && command.reason ? { reason: command.reason } : {})
   };
 }
@@ -188,6 +200,7 @@ function recentSubmenu(
     label: record.displayName,
     enabled: command.enabled,
     sourceCommandId: command.id,
+    prdIds: prdIdsForCommand(command.id),
     recentFileId: record.id,
     ...(!command.enabled && command.reason ? { reason: command.reason } : {})
   }));
@@ -197,6 +210,7 @@ function recentSubmenu(
     label: command.label,
     enabled: command.enabled,
     sourceCommandId: command.id,
+    prdIds: prdIdsForCommand(command.id),
     ...(!command.enabled && command.reason ? { reason: command.reason } : {}),
     items: recentItems.length > 0 ? recentItems : [
       {
@@ -205,6 +219,7 @@ function recentSubmenu(
         label: "暂无最近打开记录",
         enabled: false,
         sourceCommandId: command.id,
+        prdIds: prdIdsForCommand(command.id),
         reason: command.reason ?? "没有最近文件"
       }
     ]
@@ -220,4 +235,33 @@ function normalizeMacShortcut(shortcut: string): string {
     .replace(/^Cmd\+/u, "Command+")
     .replace(/\+Cmd\+/u, "+Command+")
     .replace(/^Shift\+Cmd\+/u, "Shift+Command+");
+}
+
+function prdIdsForCommand(commandId: string): readonly ShortTermCommandMenuPrdId[] {
+  switch (commandId) {
+    case "openSvga":
+      return ["S1", "S2"];
+    case "openRecent":
+      return ["S1", "S2", "S16"];
+    case "clearRecent":
+      return ["S16"];
+    case "closeFile":
+      return ["S1", "S14"];
+    case "save":
+    case "saveAs":
+      return ["S14"];
+    case "toggleCompare":
+      return ["S10"];
+    case "playPause":
+    case "replay":
+      return ["S2"];
+    case "renameImageKey":
+      return ["S11", "S14"];
+    case "replaceImage":
+      return ["S12", "S14"];
+    case "runOptimization":
+      return ["S8", "S9", "S10", "S14"];
+    default:
+      return [];
+  }
 }

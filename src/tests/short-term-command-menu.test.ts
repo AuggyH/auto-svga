@@ -52,6 +52,39 @@ test("short-term command menu covers app state commands and redacts recent paths
   assert.equal(flatItems.find((item) => item.id === "selectAll")?.role, "selectAll");
 });
 
+test("short-term command menu exposes product PRD trace for menu entries", () => {
+  const ready = completeShortTermLocalOpen(
+    startShortTermLocalOpen(createShortTermLaunchAppState({
+      recentFiles: [{
+        id: "recent-a",
+        displayName: "recent.svga",
+        lastOpenedAt: "2026-07-02T00:00:00.000Z"
+      }]
+    }), {
+      requestId: "open-1",
+      source: "fileButton",
+      displayName: "editable.svga"
+    }),
+    {
+      requestId: "open-1",
+      inspection: inspectionFixture()
+    }
+  );
+  const flatItems = flattenShortTermCommandMenuItems(createShortTermCommandMenuModel(ready));
+
+  assert.deepEqual(flatItems.find((item) => item.id === "openSvga")?.prdIds, ["S1", "S2"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "openRecent")?.prdIds, ["S1", "S2", "S16"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "openRecent:recent-a")?.prdIds, ["S1", "S2", "S16"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "clearRecent")?.prdIds, ["S16"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "runOptimization")?.prdIds, ["S8", "S9", "S10", "S14"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "toggleCompare")?.prdIds, ["S10"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "renameImageKey")?.prdIds, ["S11", "S14"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "replaceImage")?.prdIds, ["S12", "S14"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "save")?.prdIds, ["S14"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "playPause")?.prdIds, ["S2"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "copy")?.prdIds, []);
+});
+
 test("short-term command menu reflects save availability and macOS accelerators", () => {
   const ready = completeShortTermLocalOpen(
     startShortTermLocalOpen(createShortTermLaunchAppState(), {
