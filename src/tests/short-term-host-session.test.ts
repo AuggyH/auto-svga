@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
-import { createShortTermHostSession } from "../workbench/short-term-host-session.js";
+import {
+  createShortTermHostSession,
+  toShortTermHostSessionRendererResult
+} from "../workbench/short-term-host-session.js";
 import type { ShortTermHostEnvironment } from "../workbench/short-term-host-actions.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
 import type { ShortTermRecentFilesStore } from "../workbench/short-term-host-recent-persistence.js";
@@ -80,6 +83,50 @@ test("short-term host session returns defensive state snapshots", async () => {
   assert.equal(current.currentLocalPath, sourcePath);
   assert.equal(current.facade.sourceBytes?.[0], originalFirstByte);
   assert.equal(JSON.stringify(current.facade.model).includes("/Users/designer"), false);
+});
+
+test("short-term host session creates renderer-safe action results without host state", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const store = createMemoryRecentFilesStore();
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await session.runOptimization();
+  assert.ok(optimized.state.activeOutputBytes);
+
+  const rendererResult = toShortTermHostSessionRendererResult(optimized);
+  const serialized = JSON.stringify(rendererResult);
+
+  assert.equal(rendererResult.source, "short-term-host-session-renderer");
+  assert.equal(rendererResult.model.activeOutput?.outputKind, "optimized_svga");
+  assert.equal(rendererResult.actionResult?.status, "completed");
+  assert.equal(rendererResult.recentPersistence.status, "unchanged");
+  assert.equal(rendererResult.pathRedacted, true);
+  assert.equal(rendererResult.hostStateIncluded, false);
+  assert.equal(rendererResult.outputBytesIncluded, false);
+  assert.equal("state" in rendererResult, false);
+  assert.equal(serialized.includes(sourcePath), false);
+  assert.equal(serialized.includes("/Users/designer"), false);
+  assert.equal(serialized.includes("currentLocalPath"), false);
+  assert.equal(serialized.includes("sourceBytes"), false);
+  assert.equal(serialized.includes("activeOutputBytes"), false);
+
+  rendererResult.model.activeWorkflow.message = "mutated renderer model";
+  if (rendererResult.actionResult) {
+    rendererResult.actionResult.message = "mutated renderer action";
+  }
+  rendererResult.recentPersistence.message = "mutated renderer persistence";
+
+  assert.notEqual(optimized.model.activeWorkflow.message, "mutated renderer model");
+  assert.notEqual(optimized.actionResult?.message, "mutated renderer action");
+  assert.notEqual(optimized.recentPersistence.message, "mutated renderer persistence");
 });
 
 test("short-term host session serializes overlapping mutating actions", async () => {

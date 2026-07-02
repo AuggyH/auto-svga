@@ -72,6 +72,17 @@ export interface ShortTermHostSessionActionResult {
   recentPersistence: ShortTermHostSessionRecentPersistenceResult;
 }
 
+export interface ShortTermHostSessionRendererActionResult {
+  schemaVersion: typeof SHORT_TERM_HOST_SESSION_SCHEMA_VERSION;
+  source: "short-term-host-session-renderer";
+  model: ShortTermWorkbenchFacadeModel;
+  actionResult?: ShortTermHostActionResult;
+  recentPersistence: ShortTermHostSessionRecentPersistenceResult;
+  pathRedacted: true;
+  hostStateIncluded: false;
+  outputBytesIncluded: false;
+}
+
 export interface CreateShortTermHostSessionOptions {
   host: ShortTermHostEnvironment;
   recentStore?: ShortTermRecentFilesStore;
@@ -116,6 +127,21 @@ export async function createShortTermHostSession(
       ? await createShortTermHostActionStateFromRecentStore(options.recentStore)
       : createShortTermHostActionState());
   return new ShortTermHostSessionController(options.host, initialState, options.recentStore);
+}
+
+export function toShortTermHostSessionRendererResult(
+  result: ShortTermHostSessionActionResult
+): ShortTermHostSessionRendererActionResult {
+  return {
+    schemaVersion: SHORT_TERM_HOST_SESSION_SCHEMA_VERSION,
+    source: "short-term-host-session-renderer",
+    model: cloneShortTermWorkbenchFacadeModel(result.model),
+    ...(result.actionResult ? { actionResult: cloneShortTermHostActionResult(result.actionResult) } : {}),
+    recentPersistence: cloneShortTermHostSessionRecentPersistenceResult(result.recentPersistence),
+    pathRedacted: true,
+    hostStateIncluded: false,
+    outputBytesIncluded: false
+  };
 }
 
 class ShortTermHostSessionController implements ShortTermHostSession {
@@ -272,6 +298,16 @@ function cloneShortTermHostActionState(state: ShortTermHostActionState): ShortTe
 
 function cloneShortTermWorkbenchFacadeModel(model: ShortTermWorkbenchFacadeModel): ShortTermWorkbenchFacadeModel {
   return structuredClone(model) as ShortTermWorkbenchFacadeModel;
+}
+
+function cloneShortTermHostActionResult(result: ShortTermHostActionResult): ShortTermHostActionResult {
+  return structuredClone(result) as ShortTermHostActionResult;
+}
+
+function cloneShortTermHostSessionRecentPersistenceResult(
+  result: ShortTermHostSessionRecentPersistenceResult
+): ShortTermHostSessionRecentPersistenceResult {
+  return structuredClone(result) as ShortTermHostSessionRecentPersistenceResult;
 }
 
 function persistenceResult(
