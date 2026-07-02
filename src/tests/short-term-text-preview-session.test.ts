@@ -67,6 +67,23 @@ test("short-term text preview session applies only supported runtime fields", ()
   assert.equal(sha256(applied.sourceBytes), sha256(sourceBytes));
 });
 
+test("short-term text preview session ignores elements without supported runtime fields", () => {
+  const sourceBytes = new Uint8Array([4, 5, 6]);
+  const session = createShortTermTextPreviewSession(sourceBytes, {
+    textElements: [
+      {
+        textKey: "nickname",
+        displayName: "昵称",
+        supportedFields: ["tracking" as "text"]
+      }
+    ]
+  });
+
+  assert.equal(session.model.status, "noTextElements");
+  assert.equal(session.model.textElements.length, 0);
+  assert.equal(session.model.message, "当前解析层未发现可运行时预览的文本元素。");
+});
+
 test("short-term text preview session rejects empty supported field updates", () => {
   const sourceBytes = new Uint8Array([7, 8, 9]);
   const session = createShortTermTextPreviewSession(sourceBytes, {

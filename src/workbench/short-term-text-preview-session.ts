@@ -165,12 +165,14 @@ function normalizeTextElements(elements: readonly ShortTermRuntimeTextElement[])
   for (const element of elements) {
     const textKey = element.textKey.trim();
     if (!textKey || seen.has(textKey)) continue;
+    const supportedFields = [...new Set(element.supportedFields)].filter(isSupportedField);
+    if (supportedFields.length === 0) continue;
     seen.add(textKey);
     normalized.push({
       textKey,
       displayName: element.displayName.trim() || textKey,
       ...(element.initialText !== undefined ? { initialText: element.initialText } : {}),
-      supportedFields: [...new Set(element.supportedFields)].filter(isSupportedField)
+      supportedFields
     });
   }
   return normalized;
