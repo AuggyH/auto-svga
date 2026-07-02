@@ -37,8 +37,12 @@ await ensureWebBaselineFixture();
 await cp(webBaselineFixturePath, path.join(runtimeRoot, "fixture/avatar-frame-smoke.svga"));
 const optimizerReopenFixture = await createOptimizerReopenFixture();
 const sequenceRepairFixture = await createSequenceRepairFixture();
+const replaceableWorkflowFixture = await createReplaceableWorkflowFixture();
+const replacementPreviewPng = await createReplacementPreviewPng();
 await writeFile(path.join(runtimeRoot, "fixture/optimizer-reopen-smoke.svga"), optimizerReopenFixture);
 await writeFile(path.join(runtimeRoot, "fixture/sequence-repair-smoke.svga"), sequenceRepairFixture);
+await writeFile(path.join(runtimeRoot, "fixture/replaceable-workflow-smoke.svga"), replaceableWorkflowFixture);
+await writeFile(path.join(runtimeRoot, "fixture/replacement-preview-green.png"), replacementPreviewPng);
 await writeFile(path.join(runtimeRoot, "manifest.json"), JSON.stringify({
   runtime: "svga-web-strict-csp-spike",
   sourceRuntime: path.relative(experimentRoot, path.join(prototypeRoot, ".runtime")),
@@ -47,6 +51,10 @@ await writeFile(path.join(runtimeRoot, "manifest.json"), JSON.stringify({
   optimizerReopenFixtureSha256: createHash("sha256").update(optimizerReopenFixture).digest("hex"),
   sequenceRepairFixture: "fixture/sequence-repair-smoke.svga",
   sequenceRepairFixtureSha256: createHash("sha256").update(sequenceRepairFixture).digest("hex"),
+  replaceableWorkflowFixture: "fixture/replaceable-workflow-smoke.svga",
+  replaceableWorkflowFixtureSha256: createHash("sha256").update(replaceableWorkflowFixture).digest("hex"),
+  replacementPreviewPng: "fixture/replacement-preview-green.png",
+  replacementPreviewPngSha256: createHash("sha256").update(replacementPreviewPng).digest("hex"),
   vendor: "svga-web@2.4.4",
   strictCsp: true
 }, null, 2));
@@ -244,4 +252,58 @@ function createSequenceBackgroundFrames(count) {
     clipPath: "",
     shapes: []
   }));
+}
+
+async function createReplaceableWorkflowFixture() {
+  const root = await protobuf.load(path.join(runtimeRoot, "proto/svga.proto"));
+  const MovieEntity = root.lookupType("com.opensource.svga.MovieEntity");
+  const frameImage = await createSolidPng(56, 56, [185, 68, 214, 255]);
+  const matteConsumerImage = await createSolidPng(56, 56, [40, 48, 78, 220]);
+  const payload = {
+    version: "2.0",
+    params: { viewBoxWidth: 128, viewBoxHeight: 128, fps: 24, frames: 12 },
+    images: {
+      profile_frame: frameImage,
+      img_000: matteConsumerImage
+    },
+    sprites: [
+      { imageKey: "profile_frame", frames: createReplaceableFixtureFrames(12, 36, 32) },
+      { imageKey: "img_000", frames: createReplaceableFixtureFrames(12, 38, 34) }
+    ],
+    audios: []
+  };
+  const verificationError = MovieEntity.verify(payload);
+  if (verificationError) throw new Error(`Replaceable workflow fixture verification failed: ${verificationError}`);
+  return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
+}
+
+function createReplaceableFixtureFrames(count, tx, ty) {
+  return Array.from({ length: count }, (_unused, frameIndex) => ({
+    alpha: 1,
+    layout: { x: 0, y: 0, width: 56, height: 56 },
+    transform: { a: 1, b: 0, c: 0, d: 1, tx: tx + Math.sin(frameIndex / 2) * 2, ty },
+    clipPath: "",
+    shapes: []
+  }));
+}
+
+async function createReplacementPreviewPng() {
+  return createSolidPng(56, 56, [44, 188, 98, 255]);
+}
+
+async function createSolidPng(width, height, rgba) {
+  const { createTransparentImage, encodeRgbaPng } = await import(
+    pathToFileURL(path.join(runtimeRoot, "dist/utils/png-writer.js")).href
+  );
+  const image = createTransparentImage(width, height);
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      const offset = (y * image.width + x) * 4;
+      image.pixels[offset] = rgba[0];
+      image.pixels[offset + 1] = rgba[1];
+      image.pixels[offset + 2] = rgba[2];
+      image.pixels[offset + 3] = rgba[3];
+    }
+  }
+  return encodeRgbaPng(image);
 }

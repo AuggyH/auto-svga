@@ -299,6 +299,18 @@ function validateSmokeResult(value) {
     result.shortTermOptimizationProof = shortTermOptimizationProof;
     result.shortTermOptimization = shortTermOptimizationProof.passed;
   }
+  if (value.shortTermRenameProof !== undefined) {
+    const shortTermRenameProof = validateShortTermRenameProof(value.shortTermRenameProof);
+    if (!shortTermRenameProof) return undefined;
+    result.shortTermRenameProof = shortTermRenameProof;
+    result.shortTermRename = shortTermRenameProof.passed;
+  }
+  if (value.shortTermReplacementProof !== undefined) {
+    const shortTermReplacementProof = validateShortTermReplacementProof(value.shortTermReplacementProof);
+    if (!shortTermReplacementProof) return undefined;
+    result.shortTermReplacementProof = shortTermReplacementProof;
+    result.shortTermReplacement = shortTermReplacementProof.passed;
+  }
   if (value.optimizedReopenProof !== undefined) {
     const optimizedReopenProof = validateOptimizedReopenProof(value.optimizedReopenProof);
     if (!optimizedReopenProof) return undefined;
@@ -564,6 +576,116 @@ function validateShortTermOptimizationProof(value) {
   };
 }
 
+function validateShortTermRenameProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-rename-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S11,S14") return undefined;
+  if (!isBoundedString(value.fixtureName, 120) || !value.fixtureName.endsWith(".svga")) return undefined;
+  if (!isBoundedString(value.fromImageKey, 120) || !isBoundedString(value.toImageKey, 120)) return undefined;
+  if (value.fromImageKey === value.toImageKey || !value.toImageKey.endsWith("_renamed")) return undefined;
+  if (!isSha256(value.sourceSha256Before) || value.sourceSha256After !== value.sourceSha256Before) return undefined;
+  if (!isSha256(value.renamedSha256) || value.renamedSha256 === value.sourceSha256Before) return undefined;
+  if (!isBoundedString(value.resultTitle, 120) || value.resultTitle !== "已重命名 imageKey") return undefined;
+  if (!isBoundedString(value.resultSummary, 220) || !value.resultSummary.includes(value.toImageKey)) return undefined;
+  if (
+    value.contextMenuOpened !== true
+    || value.enterConfirmed !== true
+    || value.sourceBytesUnchanged !== true
+    || value.renamedOutputProduced !== true
+    || value.renamedBytesDifferent !== true
+    || value.renamedKeyVisible !== true
+    || value.oldKeyAbsent !== true
+    || value.previewModeStayed !== true
+    || value.saveAsEnabled !== true
+    || value.canvasNonBlank !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S11", "S14"],
+    fixtureName: value.fixtureName,
+    fromImageKey: value.fromImageKey,
+    toImageKey: value.toImageKey,
+    contextMenuOpened: true,
+    enterConfirmed: true,
+    sourceSha256Before: value.sourceSha256Before,
+    sourceSha256After: value.sourceSha256After,
+    sourceBytesUnchanged: true,
+    renamedSha256: value.renamedSha256,
+    renamedOutputProduced: true,
+    renamedBytesDifferent: true,
+    renamedKeyVisible: true,
+    oldKeyAbsent: true,
+    previewModeStayed: true,
+    saveAsEnabled: true,
+    canvasNonBlank: true,
+    resultTitle: value.resultTitle,
+    resultSummary: value.resultSummary,
+    passed: true
+  };
+}
+
+function validateShortTermReplacementProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-replacement-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S12,S14") return undefined;
+  if (!isBoundedString(value.fixtureName, 120) || !value.fixtureName.endsWith(".svga")) return undefined;
+  if (!isBoundedString(value.imageKey, 120)) return undefined;
+  if (!isSha256(value.replacementPngSha256)) return undefined;
+  if (!isSha256(value.sourceSha256Before) || value.sourceSha256After !== value.sourceSha256Before) return undefined;
+  if (!isSha256(value.editedSha256) || value.editedSha256 === value.sourceSha256Before) return undefined;
+  if (value.resetPreviewSha256 !== value.sourceSha256Before) return undefined;
+  if (!isBoundedString(value.resultTitle, 120) || value.resultTitle !== "已生成替换图片副本") return undefined;
+  if (
+    value.sourceBytesUnchanged !== true
+    || value.replacementOutputProduced !== true
+    || value.replacementBytesDifferent !== true
+    || value.previewModeStayed !== true
+    || value.saveAsEnabledBeforeReset !== true
+    || value.contextMenuOpenedAfterReplacement !== true
+    || value.resetCommandEnabled !== true
+    || value.replacementCanvasNonBlank !== true
+    || value.resetRestoredOriginal !== true
+    || value.resetClearedOutput !== true
+    || value.resetCanvasNonBlank !== true
+    || value.passed !== true
+  ) {
+    return undefined;
+  }
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S12", "S14"],
+    fixtureName: value.fixtureName,
+    imageKey: value.imageKey,
+    replacementPngSha256: value.replacementPngSha256,
+    sourceSha256Before: value.sourceSha256Before,
+    sourceSha256After: value.sourceSha256After,
+    sourceBytesUnchanged: true,
+    editedSha256: value.editedSha256,
+    replacementOutputProduced: true,
+    replacementBytesDifferent: true,
+    previewModeStayed: true,
+    saveAsEnabledBeforeReset: true,
+    contextMenuOpenedAfterReplacement: true,
+    resetCommandEnabled: true,
+    replacementCanvasNonBlank: true,
+    resetPreviewSha256: value.resetPreviewSha256,
+    resetRestoredOriginal: true,
+    resetClearedOutput: true,
+    resetCanvasNonBlank: true,
+    resultTitle: value.resultTitle,
+    passed: true
+  };
+}
+
 function describeSmokeResultValidationFailure(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "root_shape";
   const keys = [
@@ -601,6 +723,12 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.shortTermOptimizationProof !== undefined && !validateShortTermOptimizationProof(value.shortTermOptimizationProof)) {
     return "shortTermOptimizationProof";
+  }
+  if (value.shortTermRenameProof !== undefined && !validateShortTermRenameProof(value.shortTermRenameProof)) {
+    return "shortTermRenameProof";
+  }
+  if (value.shortTermReplacementProof !== undefined && !validateShortTermReplacementProof(value.shortTermReplacementProof)) {
+    return "shortTermReplacementProof";
   }
   if (value.optimizedReopenProof !== undefined && !validateOptimizedReopenProof(value.optimizedReopenProof)) {
     return "optimizedReopenProof";
@@ -2067,6 +2195,9 @@ function validateArtifactScenario(value) {
     "short-term-preview-replaceable",
     "short-term-sequence-thumbnails",
     "short-term-optimization-result",
+    "short-term-rename-dirty",
+    "short-term-replacement-dirty",
+    "short-term-replacement-reset",
     "short-term-general-compare",
     "short-term-edit-reserved",
     "short-term-preview-minimum",
@@ -3367,11 +3498,27 @@ async function finishSmoke(window, result) {
         "smoke"
       );
     }
+    if (result.shortTermRenameProof) {
+      writeJsonProductArtifact(
+        "short-term-rename-proof.json",
+        "short-term-rename-proof",
+        result.shortTermRenameProof,
+        "smoke"
+      );
+    }
+    if (result.shortTermReplacementProof) {
+      writeJsonProductArtifact(
+        "short-term-replacement-proof.json",
+        "short-term-replacement-proof",
+        result.shortTermReplacementProof,
+        "smoke"
+      );
+    }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();

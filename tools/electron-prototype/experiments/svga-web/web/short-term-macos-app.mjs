@@ -1459,6 +1459,162 @@ async function runShortTermSmokeIfRequested() {
     shortTermOptimizationProof.sourceOutputSeparated
   ].every(Boolean);
   clearTransientOutput();
+  const replaceableResponse = await fetch("/fixture/replaceable-workflow-smoke.svga");
+  const replaceableBytes = new Uint8Array(await replaceableResponse.arrayBuffer());
+  const replacementPngResponse = await fetch("/fixture/replacement-preview-green.png");
+  const replacementPngBytes = new Uint8Array(await replacementPngResponse.arrayBuffer());
+  await loadOpenedSource({
+    bytes: replaceableBytes,
+    displayName: "replaceable-workflow-smoke.svga",
+    sourceId: ""
+  });
+  await waitForSmokeCondition(() => (
+    state.view === "preview"
+    && Boolean(state.primaryPlayback)
+    && (state.model?.replaceableElements?.images?.length ?? 0) > 0
+  ), 8_000);
+  setTab("replaceable");
+  await waitForSmokeFrame();
+  const renameRow = nodes.replaceableList.querySelector(".replaceableRow");
+  const renameFromImageKey = renameRow?.dataset.imageKey || state.model.replaceableElements.images[0]?.imageKey || "";
+  const renameToImageKey = `${renameFromImageKey}_renamed`;
+  const renameSourceSha256Before = await sha256Hex(state.sourceBytes);
+  const renameContextEvent = new MouseEvent("contextmenu", {
+    bubbles: true,
+    cancelable: true,
+    clientX: renameRow?.getBoundingClientRect().left ?? 240,
+    clientY: renameRow?.getBoundingClientRect().top ?? 240
+  });
+  renameRow?.dispatchEvent(renameContextEvent);
+  await waitForSmokeFrame();
+  const renameContextMenuOpened = nodes.resourceContextMenu.hidden === false;
+  nodes.resourceContextMenu.querySelector("[data-action='context-rename']")?.click();
+  await waitForSmokeCondition(() => state.renameImageKey === renameFromImageKey && Boolean(nodes.replaceableList.querySelector("[data-rename-input]")), 2_000);
+  const renameInput = nodes.replaceableList.querySelector("[data-rename-input]");
+  renameInput.value = renameToImageKey;
+  renameInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+  await waitForSmokeCondition(() => state.activeOutput?.kind === "rename" && state.selectedImageKey === renameToImageKey, 8_000);
+  const renameSourceSha256After = await sha256Hex(state.sourceBytes);
+  const renamedSha256 = await sha256Hex(state.activeOutput.bytes);
+  const renameCanvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
+  await captureSmokeArtifact("short-term-rename-dirty");
+  const renamedImageKeys = (state.model?.replaceableElements?.images ?? []).map((item) => item.imageKey);
+  const shortTermRenameProof = {
+    schemaVersion: 1,
+    proofId: "short-term-rename-proof",
+    source: "short-term-smoke",
+    prdIds: ["S11", "S14"],
+    fixtureName: "replaceable-workflow-smoke.svga",
+    fromImageKey: renameFromImageKey,
+    toImageKey: renameToImageKey,
+    contextMenuOpened: renameContextMenuOpened,
+    enterConfirmed: true,
+    sourceSha256Before: renameSourceSha256Before,
+    sourceSha256After: renameSourceSha256After,
+    sourceBytesUnchanged: renameSourceSha256After === renameSourceSha256Before,
+    renamedSha256,
+    renamedOutputProduced: state.activeOutput.bytes.byteLength > 0,
+    renamedBytesDifferent: renamedSha256 !== renameSourceSha256Before,
+    renamedKeyVisible: renamedImageKeys.includes(renameToImageKey),
+    oldKeyAbsent: !renamedImageKeys.includes(renameFromImageKey),
+    previewModeStayed: state.view === "preview" && state.mode === "preview",
+    saveAsEnabled: document.querySelector("[data-action='save-as']")?.disabled === false,
+    canvasNonBlank: renameCanvasNonBlank,
+    resultTitle: state.activeOutput.title,
+    resultSummary: state.activeOutput.summary
+  };
+  shortTermRenameProof.passed = [
+    shortTermRenameProof.contextMenuOpened,
+    shortTermRenameProof.enterConfirmed,
+    shortTermRenameProof.sourceBytesUnchanged,
+    shortTermRenameProof.renamedOutputProduced,
+    shortTermRenameProof.renamedBytesDifferent,
+    shortTermRenameProof.renamedKeyVisible,
+    shortTermRenameProof.oldKeyAbsent,
+    shortTermRenameProof.previewModeStayed,
+    shortTermRenameProof.saveAsEnabled,
+    shortTermRenameProof.canvasNonBlank,
+    shortTermRenameProof.resultTitle === "已重命名 imageKey"
+  ].every(Boolean);
+  clearTransientOutput();
+  await loadOpenedSource({
+    bytes: replaceableBytes,
+    displayName: "replaceable-workflow-smoke.svga",
+    sourceId: ""
+  });
+  await waitForSmokeCondition(() => (
+    state.view === "preview"
+    && Boolean(state.primaryPlayback)
+    && (state.model?.replaceableElements?.images?.length ?? 0) > 0
+  ), 8_000);
+  setTab("replaceable");
+  await waitForSmokeFrame();
+  const replacementImageKey = state.model.replaceableElements.images[0]?.imageKey || "";
+  const replacementSourceSha256Before = await sha256Hex(state.sourceBytes);
+  selectImageKey(replacementImageKey);
+  await applyReplacementFile(new File([replacementPngBytes], "replacement-preview-green.png", { type: "image/png" }));
+  await waitForSmokeCondition(() => state.activeOutput?.kind === "replacement", 8_000);
+  const replacementSourceSha256After = await sha256Hex(state.sourceBytes);
+  const replacementEditedSha256 = await sha256Hex(state.activeOutput.bytes);
+  const replacementPngSha256 = await sha256Hex(replacementPngBytes);
+  const replacementSaveAsEnabledBeforeReset = document.querySelector("[data-action='save-as']")?.disabled === false;
+  const replacementResultTitle = state.activeOutput.title;
+  const replacementCanvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
+  const replacementRow = nodes.replaceableList.querySelector(`[data-image-key='${CSS.escape(replacementImageKey)}']`) || nodes.replaceableList.querySelector(".replaceableRow");
+  replacementRow?.dispatchEvent(new MouseEvent("contextmenu", {
+    bubbles: true,
+    cancelable: true,
+    clientX: replacementRow?.getBoundingClientRect().left ?? 240,
+    clientY: replacementRow?.getBoundingClientRect().top ?? 240
+  }));
+  await waitForSmokeFrame();
+  const replacementContextMenuOpened = nodes.resourceContextMenu.hidden === false;
+  const resetCommandEnabled = nodes.resourceContextMenu.querySelector("[data-action='context-reset']")?.disabled === false;
+  closeResourceContextMenu();
+  await captureSmokeArtifact("short-term-replacement-dirty");
+  await resetImageReplacement();
+  await waitForSmokeCondition(() => !state.activeOutput && state.saveStatus === "idle", 4_000);
+  const resetPreviewSha256 = await sha256Hex(state.previewBytes);
+  const resetCanvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
+  await captureSmokeArtifact("short-term-replacement-reset");
+  const shortTermReplacementProof = {
+    schemaVersion: 1,
+    proofId: "short-term-replacement-proof",
+    source: "short-term-smoke",
+    prdIds: ["S12", "S14"],
+    fixtureName: "replaceable-workflow-smoke.svga",
+    imageKey: replacementImageKey,
+    replacementPngSha256,
+    sourceSha256Before: replacementSourceSha256Before,
+    sourceSha256After: replacementSourceSha256After,
+    sourceBytesUnchanged: replacementSourceSha256After === replacementSourceSha256Before,
+    editedSha256: replacementEditedSha256,
+    replacementOutputProduced: state.saveStatus === "dirty" || replacementEditedSha256 !== replacementSourceSha256Before,
+    replacementBytesDifferent: replacementEditedSha256 !== replacementSourceSha256Before,
+    previewModeStayed: state.view === "preview" && state.mode === "preview",
+    saveAsEnabledBeforeReset: replacementSaveAsEnabledBeforeReset,
+    contextMenuOpenedAfterReplacement: replacementContextMenuOpened,
+    resetCommandEnabled,
+    replacementCanvasNonBlank,
+    resetPreviewSha256,
+    resetRestoredOriginal: resetPreviewSha256 === replacementSourceSha256Before,
+    resetClearedOutput: !state.activeOutput && state.saveStatus === "idle",
+    resetCanvasNonBlank,
+    resultTitle: replacementResultTitle
+  };
+  shortTermReplacementProof.passed = [
+    shortTermReplacementProof.sourceBytesUnchanged,
+    shortTermReplacementProof.replacementOutputProduced,
+    shortTermReplacementProof.replacementBytesDifferent,
+    shortTermReplacementProof.previewModeStayed,
+    shortTermReplacementProof.saveAsEnabledBeforeReset,
+    shortTermReplacementProof.contextMenuOpenedAfterReplacement,
+    shortTermReplacementProof.resetCommandEnabled,
+    shortTermReplacementProof.replacementCanvasNonBlank,
+    shortTermReplacementProof.resetRestoredOriginal,
+    shortTermReplacementProof.resetClearedOutput,
+    shortTermReplacementProof.resetCanvasNonBlank
+  ].every(Boolean);
   await loadOpenedSource({
     bytes: fixtureBytes,
     displayName: file.name,
@@ -1547,6 +1703,8 @@ async function runShortTermSmokeIfRequested() {
     shortTermRuntimeTextBoundaryProof,
     shortTermThumbnailProof,
     shortTermOptimizationProof,
+    shortTermRenameProof,
+    shortTermReplacementProof,
     cleanup: true
   });
 }
