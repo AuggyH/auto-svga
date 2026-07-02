@@ -12,8 +12,11 @@ import {
   failShortTermWorkbenchSave,
   markShortTermWorkbenchRecentFileMissing,
   openShortTermWorkbenchRecentFile,
+  applyShortTermWorkbenchTextPreview,
+  createShortTermWorkbenchTextPreview,
   recoverShortTermWorkbenchPlayback,
   reportShortTermWorkbenchPlaybackFailure,
+  resetShortTermWorkbenchTextPreview,
   runShortTermWorkbenchImageReplacementPreview,
   runShortTermWorkbenchOptimizationCompare,
   runShortTermWorkbenchRenamePreview,
@@ -25,6 +28,10 @@ import type { ShortTermRecentOpenSource } from "./short-term-recent-files.js";
 import type { ShortTermProductInspectionModel } from "./short-term-product-model.js";
 import type { ShortTermSaveCommand } from "./short-term-save-state.js";
 import type { ShortTermSaveExecutionPlan } from "./short-term-save-execution.js";
+import type {
+  ShortTermRuntimeTextElement,
+  ShortTermRuntimeTextReplacement
+} from "./short-term-text-preview-session.js";
 import {
   evaluateShortTermHostLifecycleRequest,
   hasShortTermUnsavedHostOutput
@@ -51,6 +58,9 @@ export type ShortTermHostActionKind =
   | "runOptimization"
   | "renameImageKey"
   | "replaceImage"
+  | "prepareTextPreview"
+  | "applyTextPreview"
+  | "resetTextPreview"
   | "reportPlaybackFailure"
   | "recoverPlayback"
   | "save"
@@ -131,6 +141,14 @@ export interface ShortTermHostDirtyOperationInput {
 
 export interface ShortTermHostPlaybackFailureInput {
   message: string;
+}
+
+export interface ShortTermHostPrepareTextPreviewInput {
+  textElements: readonly ShortTermRuntimeTextElement[];
+}
+
+export interface ShortTermHostApplyTextPreviewInput {
+  replacement: ShortTermRuntimeTextReplacement;
 }
 
 export type ShortTermHostMenuActionInput =
@@ -449,6 +467,50 @@ export function recoverShortTermHostPlayback(
   }, result("recoverPlayback", "completed", "播放异常状态已恢复，预览可重新播放。"));
 }
 
+export function prepareShortTermHostTextPreview(
+  state: ShortTermHostActionState,
+  input: ShortTermHostPrepareTextPreviewInput
+): ShortTermHostActionState {
+  const blocked = requireOpenedFileForPreviewAction(state, "prepareTextPreview");
+  if (blocked) return blocked;
+
+  const facade = createShortTermWorkbenchTextPreview(state.facade, input.textElements);
+  return withLastAction({
+    ...state,
+    facade
+  }, result("prepareTextPreview", "completed", facade.model.activeWorkflow.message));
+}
+
+export function applyShortTermHostTextPreview(
+  state: ShortTermHostActionState,
+  input: ShortTermHostApplyTextPreviewInput
+): ShortTermHostActionState {
+  const blocked = requireOpenedFileForPreviewAction(state, "applyTextPreview");
+  if (blocked) return blocked;
+
+  const facade = applyShortTermWorkbenchTextPreview(state.facade, input.replacement);
+  const status = facade.textPreviewSession?.model.status === "failed" ? "failed" : "completed";
+  return withLastAction({
+    ...state,
+    facade
+  }, result("applyTextPreview", status, facade.model.activeWorkflow.message, {
+    diagnostic: facade.textPreviewSession?.model.diagnostic
+  }));
+}
+
+export function resetShortTermHostTextPreview(
+  state: ShortTermHostActionState
+): ShortTermHostActionState {
+  const blocked = requireOpenedFileForPreviewAction(state, "resetTextPreview");
+  if (blocked) return blocked;
+
+  const facade = resetShortTermWorkbenchTextPreview(state.facade);
+  return withLastAction({
+    ...state,
+    facade
+  }, result("resetTextPreview", "completed", facade.model.activeWorkflow.message));
+}
+
 export async function dispatchShortTermHostMenuAction(
   state: ShortTermHostActionState,
   host: ShortTermHostEnvironment,
@@ -581,6 +643,19 @@ export async function dispatchShortTermHostMenuAction(
         }
       }));
   }
+}
+
+function requireOpenedFileForPreviewAction(
+  state: ShortTermHostActionState,
+  action: Extract<ShortTermHostActionKind, "prepareTextPreview" | "applyTextPreview" | "resetTextPreview">
+): ShortTermHostActionState | undefined {
+  if (state.facade.model.appState.currentFile) return undefined;
+  return withLastAction(state, result(action, "blocked", "当前没有打开的 SVGA 可执行预览操作。", {
+    diagnostic: {
+      code: "preview_action_requires_open_file",
+      message: "Preview actions require an opened SVGA file."
+    }
+  }));
 }
 
 function guardedNativeLifecycleMenuCommand(

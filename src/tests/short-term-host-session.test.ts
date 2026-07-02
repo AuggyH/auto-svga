@@ -311,6 +311,97 @@ test("short-term host session records and recovers playback failure without clea
   assert.equal(JSON.stringify(recovered.state.facade.model).includes("/Users/designer"), false);
 });
 
+test("short-term host session applies and resets runtime text preview without writing bytes", async () => {
+  const sourcePath = "/Users/designer/private/optimizable.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const store = createMemoryRecentFilesStore();
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  const blocked = await session.prepareTextPreview({
+    textElements: [{
+      textKey: "nickname",
+      displayName: "昵称",
+      supportedFields: ["text"]
+    }]
+  });
+  assert.equal(blocked.actionResult?.status, "blocked");
+  assert.equal(blocked.actionResult?.diagnostic?.code, "preview_action_requires_open_file");
+
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await session.dispatchMenuAction({
+    commandId: "runOptimization"
+  });
+  assert.equal(optimized.actionResult?.status, "completed");
+  assert.equal(optimized.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(optimized.state.activeOutputBytes);
+
+  const prepared = await session.prepareTextPreview({
+    textElements: [{
+      textKey: " nickname ",
+      displayName: " 昵称 ",
+      initialText: "Guest",
+      supportedFields: ["text", "color", "text"]
+    }]
+  });
+  assert.equal(prepared.actionResult?.status, "completed");
+  assert.equal(prepared.actionResult?.action, "prepareTextPreview");
+  assert.equal(prepared.recentPersistence.status, "unchanged");
+  assert.equal(prepared.state.facade.textPreviewSession?.model.status, "ready");
+  assert.equal(prepared.state.facade.textPreviewSession?.model.textElements[0].textKey, "nickname");
+  assert.equal(prepared.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(prepared.state.activeOutputBytes);
+
+  const invalid = await session.applyTextPreview({
+    replacement: {
+      textKey: "missing",
+      fields: { text: "Alice" }
+    }
+  });
+  assert.equal(invalid.actionResult?.status, "failed");
+  assert.equal(invalid.actionResult?.diagnostic?.code, "text_key_not_found");
+  assert.equal(invalid.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(invalid.state.activeOutputBytes);
+
+  const applied = await session.applyTextPreview({
+    replacement: {
+      textKey: "nickname",
+      fields: {
+        text: "Alice",
+        size: 20,
+        color: "#ffffff"
+      }
+    }
+  });
+  assert.equal(applied.actionResult?.status, "completed");
+  assert.equal(applied.actionResult?.action, "applyTextPreview");
+  assert.deepEqual(applied.state.facade.textPreviewSession?.model.activeReplacement, {
+    textKey: "nickname",
+    fields: {
+      text: "Alice",
+      color: "#ffffff"
+    }
+  });
+  assert.equal(applied.state.facade.textPreviewSession?.model.bytePersistenceSupported, false);
+  assert.equal(applied.state.facade.textPreviewSession?.model.sourceBytesUnchanged, true);
+  assert.equal(applied.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(applied.state.activeOutputBytes);
+
+  const reset = await session.resetTextPreview();
+  assert.equal(reset.actionResult?.status, "completed");
+  assert.equal(reset.actionResult?.action, "resetTextPreview");
+  assert.equal(reset.state.facade.textPreviewSession?.model.status, "reset");
+  assert.equal(reset.state.facade.textPreviewSession?.model.activeReplacement, undefined);
+  assert.equal(reset.state.facade.model.activeOutput?.outputKind, "optimized_svga");
+  assert.ok(reset.state.activeOutputBytes);
+  assert.equal(JSON.stringify(reset.state.facade.model).includes("/Users/designer"), false);
+});
+
 function createMemoryHost(
   initialFiles: Record<string, Uint8Array>,
   options: {

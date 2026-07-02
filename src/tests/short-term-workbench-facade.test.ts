@@ -19,6 +19,7 @@ import {
   openShortTermWorkbenchRecentFile,
   recoverShortTermWorkbenchPlayback,
   reportShortTermWorkbenchPlaybackFailure,
+  resetShortTermWorkbenchTextPreview,
   runShortTermWorkbenchImageReplacementPreview,
   runShortTermWorkbenchOptimizationCompare,
   runShortTermWorkbenchRenamePreview,
@@ -215,9 +216,14 @@ test("short-term workbench facade exposes rename, image replacement, and text pr
     textKey: "nickname",
     fields: { text: "Alice" }
   });
+  const textReset = resetShortTermWorkbenchTextPreview(textApplied);
   assert.equal(textApplied.textPreviewSession?.model.status, "applied");
+  assert.equal(textApplied.textPreviewSession?.model.bytePersistenceSupported, false);
+  assert.equal(textApplied.textPreviewSession?.model.sourceBytesUnchanged, true);
   assert.equal(textApplied.model.activeOutput, undefined);
   assert.equal(textApplied.model.activeWorkflow.kind, "textPreview");
+  assert.equal(textReset.textPreviewSession?.model.status, "reset");
+  assert.equal(textReset.textPreviewSession?.model.activeReplacement, undefined);
 });
 
 test("short-term workbench facade clears recent files without touching source bytes", async () => {

@@ -3,15 +3,20 @@ import {
   dispatchShortTermHostMenuAction,
   openShortTermHostLocalFile,
   openShortTermHostRecentFile,
+  applyShortTermHostTextPreview,
+  prepareShortTermHostTextPreview,
   recoverShortTermHostPlayback,
   reportShortTermHostPlaybackFailure,
+  resetShortTermHostTextPreview,
   type ShortTermHostActionResult,
   type ShortTermHostActionState,
+  type ShortTermHostApplyTextPreviewInput,
   type ShortTermHostEnvironment,
   type ShortTermHostMenuActionInput,
   type ShortTermHostOpenLocalFileInput,
   type ShortTermHostOpenRecentFileInput,
-  type ShortTermHostPlaybackFailureInput
+  type ShortTermHostPlaybackFailureInput,
+  type ShortTermHostPrepareTextPreviewInput
 } from "./short-term-host-actions.js";
 import {
   createShortTermHostActionStateFromRecentStore,
@@ -65,6 +70,9 @@ export interface ShortTermHostSession {
   openLocalFile(input: ShortTermHostOpenLocalFileInput): Promise<ShortTermHostSessionActionResult>;
   openRecentFile(input: ShortTermHostOpenRecentFileInput): Promise<ShortTermHostSessionActionResult>;
   dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult>;
+  prepareTextPreview(input: ShortTermHostPrepareTextPreviewInput): Promise<ShortTermHostSessionActionResult>;
+  applyTextPreview(input: ShortTermHostApplyTextPreviewInput): Promise<ShortTermHostSessionActionResult>;
+  resetTextPreview(): Promise<ShortTermHostSessionActionResult>;
   reportPlaybackFailure(input: ShortTermHostPlaybackFailureInput): Promise<ShortTermHostSessionActionResult>;
   recoverPlayback(): Promise<ShortTermHostSessionActionResult>;
   evaluateLifecycleRequest(input: ShortTermHostLifecycleRequestInput): ShortTermHostLifecycleDecision;
@@ -108,6 +116,18 @@ class ShortTermHostSessionController implements ShortTermHostSession {
 
   async dispatchMenuAction(input: ShortTermHostMenuActionInput): Promise<ShortTermHostSessionActionResult> {
     return this.apply((state) => dispatchShortTermHostMenuAction(state, this.host, input));
+  }
+
+  async prepareTextPreview(input: ShortTermHostPrepareTextPreviewInput): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => prepareShortTermHostTextPreview(state, input));
+  }
+
+  async applyTextPreview(input: ShortTermHostApplyTextPreviewInput): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => applyShortTermHostTextPreview(state, input));
+  }
+
+  async resetTextPreview(): Promise<ShortTermHostSessionActionResult> {
+    return this.apply((state) => resetShortTermHostTextPreview(state));
   }
 
   async reportPlaybackFailure(input: ShortTermHostPlaybackFailureInput): Promise<ShortTermHostSessionActionResult> {
