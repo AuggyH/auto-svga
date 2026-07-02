@@ -508,22 +508,27 @@ canvas {
 .factGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--asv-space-2);
+  column-gap: var(--asv-space-4);
 }
 
 .factCell {
   min-width: 0;
-  padding: var(--asv-space-2) var(--asv-space-3);
-  border: 1px solid var(--asv-border);
-  border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-panel-strong) 80%, transparent);
+  padding: var(--asv-space-2) 0;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--asv-border) 72%, transparent);
+  background: transparent;
+}
+
+.factCell:nth-child(5) {
+  grid-column: 1 / -1;
+  border-bottom: 0;
 }
 
 .factCell strong {
   display: block;
   overflow-wrap: anywhere;
   font-family: var(--asv-type-mono);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 650;
 }
 

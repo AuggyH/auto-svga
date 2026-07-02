@@ -532,7 +532,7 @@ function renderPreviewModel() {
 }
 
 function renderFacts(model) {
-  nodes.factGrid.replaceChildren(...model.overview.facts.map((fact) => {
+  nodes.factGrid.replaceChildren(...overviewVisibleFacts(model).map((fact) => {
     const cell = document.createElement("article");
     cell.className = "factCell";
     cell.dataset.component = "ProductionSpecInlineRow";
@@ -545,6 +545,11 @@ function renderFacts(model) {
     `;
     return cell;
   }));
+}
+
+function overviewVisibleFacts(model) {
+  const requiredIds = new Set(["fileSize", "decodedMemory", "canvas", "fps", "assetCount"]);
+  return (model?.overview?.facts ?? []).filter((fact) => requiredIds.has(fact.id));
 }
 
 function renderAssets(model) {
@@ -570,17 +575,37 @@ function renderOptimization(model) {
   if (!model) return;
   nodes.optimizationSummary.textContent = `${model.safeExecutableCount} 项可安全执行，${model.reviewOnlyCount} 项需复核，${model.unsupportedCount} 项暂不支持。`;
   document.querySelector("[data-action='run-optimization']").disabled = !model.batchActionEnabled;
-  nodes.findingList.replaceChildren(...model.items.map((item) => {
+  nodes.findingList.replaceChildren(...groupOptimizationItems(model.items).map((item) => {
     const row = document.createElement("article");
     row.className = "findingRow";
     row.dataset.component = "OptimizationFindingRow";
     row.title = `${item.title}: ${item.summary}`;
+    const countCopy = item.count > 1 ? ` · ${item.count} 项` : "";
     row.innerHTML = `
-      <div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.summary)} ${escapeHtml(item.estimatedFileSizeImpact)}</p></div>
+      <div><strong>${escapeHtml(item.title)}${escapeHtml(countCopy)}</strong><p>${escapeHtml(item.summary)} ${escapeHtml(item.estimatedFileSizeImpact)}</p></div>
       <span class="badge ${item.disposition === "safeExecutable" ? "safe" : item.disposition === "reviewOnly" ? "review" : "unsupported"}">${dispositionCopy(item.disposition)}</span>
     `;
     return row;
   }));
+}
+
+function groupOptimizationItems(items = []) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = [
+      item.disposition,
+      item.title,
+      item.summary,
+      item.estimatedFileSizeImpact
+    ].join("\u0000");
+    const existing = groups.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      groups.set(key, { ...item, count: 1 });
+    }
+  }
+  return [...groups.values()];
 }
 
 function renderOptimizationResult(model) {
@@ -797,7 +822,7 @@ async function showOptimizationComparison() {
 
 function renderCompareInfo(title, model, displayName, actions = []) {
   if (!model) return `<h2>${escapeHtml(title)}</h2><p>未打开文件。</p>${actions.join("")}`;
-  const facts = model.overview.facts.slice(0, 5).map((fact) => `
+  const facts = overviewVisibleFacts(model).map((fact) => `
     <div class="factCell"><strong>${escapeHtml(fact.value)}</strong><span>${escapeHtml(fact.label)}</span></div>
   `).join("");
   return `<h2>${escapeHtml(title)}</h2><p>${escapeHtml(displayName)}</p>${facts}${actions.join("")}`;
@@ -1314,7 +1339,7 @@ async function runShortTermSmokeIfRequested() {
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const canvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
   await captureSmokeArtifact("short-term-preview-overview");
-  const overviewFactRows = Array.isArray(state.model?.overview?.facts) ? state.model.overview.facts : [];
+  const overviewFactRows = overviewVisibleFacts(state.model);
   const shortTermSpecComparisonProof = {
     schemaVersion: 1,
     proofId: "short-term-spec-comparison-proof",

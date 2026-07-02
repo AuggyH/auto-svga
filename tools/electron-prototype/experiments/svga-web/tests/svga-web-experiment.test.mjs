@@ -1108,11 +1108,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /short-term-thumbnail-proof/);
   assert.match(shortTermEntry, /sequenceFourGridVisible/);
   assert.match(shortTermEntry, /sequenceThumbnailImageCount/);
+  assert.match(shortTermEntry, /overviewVisibleFacts/);
+  assert.match(shortTermEntry, /"fileSize", "decodedMemory", "canvas", "fps", "assetCount"/);
   assert.match(shortTermEntry, /short-term-optimization-proof/);
   assert.match(shortTermEntry, /optimizedBytesSmaller/);
   assert.match(shortTermEntry, /executedActionCount/);
   assert.match(shortTermEntry, /executedActionRowsVisible/);
   assert.match(shortTermEntry, /skippedMethodRowsVisible/);
+  assert.match(shortTermEntry, /groupOptimizationItems/);
+  assert.match(shortTermEntry, /item\.count > 1/);
   assert.match(shortTermEntry, /data-optimization-actions/);
   assert.match(shortTermEntry, /data-optimization-skipped/);
   assert.match(shortTermEntry, /comparisonVisible/);
