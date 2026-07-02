@@ -334,6 +334,43 @@ test("short-term host preview and playback actions fail closed for malformed run
   assert.equal(JSON.stringify(badPlayback.lastAction).includes("/Users/designer"), false);
 });
 
+test("short-term host text reset only succeeds after an active runtime text preview", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermSvgaFixture()
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+
+  const unopenedReset = resetShortTermHostTextPreview(opened);
+  assert.equal(unopenedReset.lastAction?.status, "blocked");
+  assert.equal(unopenedReset.lastAction?.diagnostic?.code, "text_preview_reset_not_needed");
+
+  const prepared = prepareShortTermHostTextPreview(opened, {
+    textElements: [{ textKey: "nickname", displayName: "昵称", supportedFields: ["text"] }]
+  });
+  const preparedReset = resetShortTermHostTextPreview(prepared);
+  assert.equal(preparedReset.lastAction?.status, "blocked");
+  assert.equal(preparedReset.lastAction?.diagnostic?.code, "text_preview_reset_not_needed");
+
+  const applied = applyShortTermHostTextPreview(prepared, {
+    replacement: { textKey: "nickname", fields: { text: "Alice" } }
+  });
+  const reset = await dispatchShortTermHostMenuAction(applied, host, {
+    commandId: "resetTextPreview"
+  });
+  assert.equal(reset.lastAction?.status, "completed");
+  assert.equal(reset.facade.textPreviewSession?.model.status, "reset");
+  assert.equal(reset.facade.textPreviewSession?.model.activeReplacement, undefined);
+
+  const resetAgain = resetShortTermHostTextPreview(reset);
+  assert.equal(resetAgain.lastAction?.status, "blocked");
+  assert.equal(resetAgain.lastAction?.diagnostic?.code, "text_preview_reset_not_needed");
+});
+
 test("short-term host output actions fail closed for malformed runtime payloads", async () => {
   const sourcePath = "/Users/designer/private/opened.svga";
   const host = createMemoryHost({
@@ -798,7 +835,9 @@ test("short-term host actions reset image replacement without clearing other dir
     imageKey: "img_frame",
     pngBytes: createShortTermColoredPng(16, 16, [0, 0, 255, 255])
   });
-  const reset = resetShortTermHostImageReplacement(replaced);
+  const reset = await dispatchShortTermHostMenuAction(replaced, host, {
+    commandId: "resetImageReplacement"
+  });
 
   assert.equal(reset.lastAction?.status, "completed");
   assert.equal(reset.lastAction?.action, "resetImageReplacement");

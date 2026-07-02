@@ -12,6 +12,7 @@ import {
   startShortTermLocalOpen,
   type CompleteShortTermLocalOpenInput,
   type FailShortTermLocalOpenInput,
+  type ShortTermCommandState,
   type ShortTermAppStateModel,
   type ShortTermLocalOpenRequest
 } from "./short-term-app-state.js";
@@ -566,6 +567,11 @@ function buildFacadeState(input: {
   const textPreviewSession = input.textPreviewSession ? cloneFacadeData(input.textPreviewSession) : undefined;
   const recentFiles = createShortTermRecentFilesViewModel(recentState);
   const sourceBytes = input.sourceBytes ? new Uint8Array(input.sourceBytes) : undefined;
+  const commandAppState = applyFacadeCommandAvailability(appState, {
+    activeOutput,
+    imageReplacementSession,
+    textPreviewSession
+  });
   return {
     ...(sourceBytes ? { sourceBytes } : {}),
     recentState,
@@ -575,14 +581,56 @@ function buildFacadeState(input: {
       schemaVersion: SHORT_TERM_WORKBENCH_FACADE_SCHEMA_VERSION,
       source: "short-term-workbench-facade",
       prdIds: ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16"],
-      appState,
-      commandMenu: createShortTermCommandMenuModel(appState),
+      appState: commandAppState,
+      commandMenu: createShortTermCommandMenuModel(commandAppState),
       recentFiles,
       ...(sourceBytes ? { currentSourceSha256: sha256(sourceBytes) } : {}),
       ...(activeOutput ? { activeOutput } : {}),
       activeWorkflow
     }
   };
+}
+
+function applyFacadeCommandAvailability(
+  appState: ShortTermAppStateModel,
+  input: {
+    activeOutput?: ShortTermPersistedOutputRecord;
+    imageReplacementSession?: ShortTermImageReplacementPreviewSessionState;
+    textPreviewSession?: ShortTermTextPreviewSessionState;
+  }
+): ShortTermAppStateModel {
+  const imageResetEnabled = input.imageReplacementSession?.model.resetEnabled === true
+    || input.activeOutput?.outputKind === "image_replacement_svga";
+  const textResetEnabled = Boolean(input.textPreviewSession?.model.activeReplacement);
+  return {
+    ...appState,
+    commands: appState.commands.map((command) => {
+      if (command.id === "resetImageReplacement") {
+        return withCommandAvailability(command, imageResetEnabled, "当前没有需要重置的图片替换预览");
+      }
+      if (command.id === "resetTextPreview") {
+        return withCommandAvailability(command, textResetEnabled, "当前没有需要重置的文本预览");
+      }
+      return command;
+    })
+  };
+}
+
+function withCommandAvailability(
+  command: ShortTermCommandState,
+  enabled: boolean,
+  disabledReason: string
+): ShortTermCommandState {
+  const updated: ShortTermCommandState = {
+    ...command,
+    enabled
+  };
+  if (enabled) {
+    delete updated.reason;
+  } else {
+    updated.reason = disabledReason;
+  }
+  return updated;
 }
 
 function cloneFacadeData<T>(value: T): T {

@@ -9,7 +9,9 @@ const HOST_ROUTED_MENU_COMMANDS = new Set([
   "saveAs",
   "runOptimization",
   "renameImageKey",
-  "replaceImage"
+  "replaceImage",
+  "resetImageReplacement",
+  "resetTextPreview"
 ]);
 
 const NATIVE_DELEGATED_MENU_COMMANDS = new Set([

@@ -93,7 +93,9 @@ test("short-term command menu exposes product PRD trace for menu entries", () =>
   assert.deepEqual(flatItems.find((item) => item.id === "toggleCompare")?.prdIds, ["S10"]);
   assert.deepEqual(flatItems.find((item) => item.id === "renameImageKey")?.prdIds, ["S11", "S14"]);
   assert.deepEqual(flatItems.find((item) => item.id === "replaceImage")?.prdIds, ["S12", "S14"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "resetImageReplacement")?.prdIds, ["S12", "S14"]);
   assert.deepEqual(flatItems.find((item) => item.id === "editTextPreview")?.prdIds, ["S13"]);
+  assert.deepEqual(flatItems.find((item) => item.id === "resetTextPreview")?.prdIds, ["S13"]);
   assert.deepEqual(flatItems.find((item) => item.id === "save")?.prdIds, ["S14"]);
   assert.deepEqual(flatItems.find((item) => item.id === "playPause")?.prdIds, ["S2"]);
   assert.deepEqual(flatItems.find((item) => item.id === "copy")?.prdIds, []);

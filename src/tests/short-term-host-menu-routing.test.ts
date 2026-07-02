@@ -16,6 +16,8 @@ test("short-term host menu routing classifies host, native, renderer, and unsupp
   assert.equal(classifyShortTermHostMenuCommand("openSvga"), "host");
   assert.equal(classifyShortTermHostMenuCommand("openRecent:recent-a"), "host");
   assert.equal(classifyShortTermHostMenuCommand("openRecent:empty"), "host");
+  assert.equal(classifyShortTermHostMenuCommand("resetImageReplacement"), "host");
+  assert.equal(classifyShortTermHostMenuCommand("resetTextPreview"), "host");
   assert.equal(classifyShortTermHostMenuCommand("copy"), "native");
   assert.equal(classifyShortTermHostMenuCommand("minimize"), "native");
   assert.equal(classifyShortTermHostMenuCommand("playPause"), "renderer");

@@ -30,6 +30,8 @@ test("short-term app state starts at launch with file entry points enabled", () 
   assert.equal(commandEnabled(state, "openRecent"), true);
   assert.equal(commandEnabled(state, "playPause"), false);
   assert.equal(commandEnabled(state, "replaceImage"), false);
+  assert.equal(commandEnabled(state, "resetImageReplacement"), false);
+  assert.equal(commandEnabled(state, "resetTextPreview"), false);
 });
 
 test("short-term app state sanitizes path-like display labels across platforms", () => {

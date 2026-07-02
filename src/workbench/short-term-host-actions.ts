@@ -179,6 +179,8 @@ export type ShortTermHostMenuActionInput =
   | ({ commandId: "runOptimization" } & ShortTermHostDirtyOperationInput)
   | ({ commandId: "renameImageKey"; fromImageKey: string; toImageKey: string } & ShortTermHostDirtyOperationInput)
   | ({ commandId: "replaceImage"; imageKey: string; pngBytes: Uint8Array } & ShortTermHostDirtyOperationInput)
+  | { commandId: "resetImageReplacement" }
+  | { commandId: "resetTextPreview" }
   | ({ commandId: string } & Record<string, unknown>);
 
 export function createShortTermHostActionState(
@@ -665,6 +667,15 @@ export function resetShortTermHostTextPreview(
   const blocked = requireOpenedFileForPreviewAction(state, "resetTextPreview");
   if (blocked) return blocked;
 
+  if (!state.facade.textPreviewSession?.model.activeReplacement) {
+    return withLastAction(state, result("resetTextPreview", "blocked", "当前没有需要重置的文本预览。", {
+      diagnostic: {
+        code: "text_preview_reset_not_needed",
+        message: "Text preview reset is only enabled after a runtime text replacement is applied."
+      }
+    }));
+  }
+
   const facade = resetShortTermWorkbenchTextPreview(state.facade);
   return withLastAction({
     ...state,
@@ -811,6 +822,10 @@ export async function dispatchShortTermHostMenuAction(
         discardUnsavedChanges: replacementInput.discardUnsavedChanges
       });
     }
+    case "resetImageReplacement":
+      return resetShortTermHostImageReplacement(state);
+    case "resetTextPreview":
+      return resetShortTermHostTextPreview(state);
     default:
       return withLastAction(state, result("menuDispatch", "blocked", "当前菜单命令尚未接入主程动作。", {
         commandId: resultCommandId,

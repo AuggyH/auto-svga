@@ -205,10 +205,14 @@ test("short-term workbench facade exposes rename, image replacement, and text pr
   );
   assert.equal(replaced.session.model.status, "previewDirty");
   assert.equal(replaced.state.model.activeOutput?.outputKind, "image_replacement_svga");
+  assert.equal(commandEnabled(replaced.state.model.appState, "resetImageReplacement"), true);
+  assert.equal(menuItemEnabled(replaced.state.model, "resetImageReplacement"), true);
   const replacementReset = resetShortTermWorkbenchImageReplacementPreview(replaced.state);
   assert.equal(replacementReset.imageReplacementSession?.model.status, "ready");
   assert.equal(replacementReset.model.activeOutput, undefined);
   assert.equal(commandEnabled(replacementReset.model.appState, "saveAs"), false);
+  assert.equal(commandEnabled(replacementReset.model.appState, "resetImageReplacement"), false);
+  assert.equal(menuItemEnabled(replacementReset.model, "resetImageReplacement"), false);
 
   const textReady = createShortTermWorkbenchTextPreview(opened, [
     {
@@ -227,8 +231,12 @@ test("short-term workbench facade exposes rename, image replacement, and text pr
   assert.equal(textApplied.textPreviewSession?.model.sourceBytesUnchanged, true);
   assert.equal(textApplied.model.activeOutput, undefined);
   assert.equal(textApplied.model.activeWorkflow.kind, "textPreview");
+  assert.equal(commandEnabled(textApplied.model.appState, "resetTextPreview"), true);
+  assert.equal(menuItemEnabled(textApplied.model, "resetTextPreview"), true);
   assert.equal(textReset.textPreviewSession?.model.status, "reset");
   assert.equal(textReset.textPreviewSession?.model.activeReplacement, undefined);
+  assert.equal(commandEnabled(textReset.model.appState, "resetTextPreview"), false);
+  assert.equal(menuItemEnabled(textReset.model, "resetTextPreview"), false);
 });
 
 test("short-term workbench facade snapshots derived state objects", async () => {

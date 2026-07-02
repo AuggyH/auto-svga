@@ -20,13 +20,17 @@ test("short-term PRD trace centralizes command menu and host dispatch mappings",
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("openRecent:recent-a"), ["S1", "S2", "S16"]);
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("clearRecent"), ["S16"]);
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("renameImageKey"), ["S11", "S14"]);
+  assert.deepEqual(shortTermPrdIdsForCommandMenuItem("resetImageReplacement"), ["S12", "S14"]);
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("editTextPreview"), ["S13"]);
+  assert.deepEqual(shortTermPrdIdsForCommandMenuItem("resetTextPreview"), ["S13"]);
   assert.deepEqual(shortTermPrdIdsForCommandMenuItem("showLogs"), []);
 
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("openRecent:recent-a"), ["S1", "S2", "S16"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("clearRecent"), ["S1", "S2", "S16"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("quit"), ["S1", "S14"]);
+  assert.deepEqual(shortTermPrdIdsForMenuDispatch("resetImageReplacement"), ["S12", "S14"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("editTextPreview"), ["S13"]);
+  assert.deepEqual(shortTermPrdIdsForMenuDispatch("resetTextPreview"), ["S13"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("playPause"), ["S2"]);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("copy"), []);
   assert.deepEqual(shortTermPrdIdsForMenuDispatch("showLogs"), []);

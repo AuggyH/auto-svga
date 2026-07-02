@@ -50,8 +50,10 @@ export function shortTermPrdIdsForCommandMenuItem(commandId: string): readonly S
     case "renameImageKey":
       return ["S11", "S14"];
     case "replaceImage":
+    case "resetImageReplacement":
       return ["S12", "S14"];
     case "editTextPreview":
+    case "resetTextPreview":
       return ["S13"];
     case "runOptimization":
       return ["S8", "S9", "S10", "S14"];
@@ -78,8 +80,10 @@ export function shortTermPrdIdsForMenuDispatch(commandId: string): readonly Shor
     case "renameImageKey":
       return ["S11", "S14"];
     case "replaceImage":
+    case "resetImageReplacement":
       return ["S12", "S14"];
     case "editTextPreview":
+    case "resetTextPreview":
       return ["S13"];
     case "playPause":
     case "replay":
