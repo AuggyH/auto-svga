@@ -638,7 +638,6 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /label: "编辑"/);
   assert.match(main, /label: "资源"/);
   assert.match(main, /label: "优化"/);
-  assert.match(main, /label: "序列"/);
   assert.match(main, /label: "播放"/);
   assert.match(main, /label: "视图"/);
   assert.match(main, /label: "窗口"/);
@@ -648,7 +647,11 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /打开参考媒体\.\.\./);
   assert.match(main, /另存替换副本\.\.\./);
   assert.match(main, /生成优化副本\.\.\./);
-  assert.match(main, /修复闪帧并另存\.\.\./);
+  assert.doesNotMatch(main, /label: "序列"/);
+  assert.doesNotMatch(main, /修复闪帧并另存\.\.\./);
+  assert.doesNotMatch(main, /加载最新导出产物/);
+  assert.doesNotMatch(main, /本地预览/);
+  assert.doesNotMatch(main, /导出验收/);
   assert.match(main, /撤销替换预览/);
   assert.match(main, /重做替换预览/);
   assert.match(main, /重置替换预览/);
@@ -658,13 +661,15 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(main, /显示资源列表/);
   assert.match(main, /替换选中资源\.\.\./);
   assert.match(main, /复制当前资源 Key/);
-  assert.match(main, /加载最新导出产物/);
   assert.match(main, /活动记录/);
   assert.match(main, /设置/);
   assert.match(main, /退出 Auto SVGA/);
   assert.match(main, /invokeWorkbenchAction\("replaceSelectedResource"\)/);
   assert.match(main, /invokeWorkbenchAction\("saveOptimizedCopy"\)/);
-  assert.match(main, /invokeWorkbenchAction\("saveSequenceRepairCopy"\)/);
+  assert.doesNotMatch(main, /invokeWorkbenchAction\("saveSequenceRepairCopy"\)/);
+  assert.doesNotMatch(main, /invokeWorkbenchAction\("loadLatestExportArtifact"\)/);
+  assert.doesNotMatch(main, /invokeWorkbenchAction\("setLocalPreviewMode"\)/);
+  assert.doesNotMatch(main, /invokeWorkbenchAction\("setExportReviewMode"\)/);
   assert.match(main, /invokeWorkbenchAction\("toggleLogs"\)/);
   assert.match(main, /invokeWorkbenchActionAsync\("prepareSecondaryOpen"\)/);
   assert.match(main, /invokeWorkbenchActionAsync\("prepareReferenceOpen"\)/);

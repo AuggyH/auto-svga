@@ -33,11 +33,9 @@ const hostMenuActions = Object.freeze([
   "open-primary-svga",
   "open-secondary-svga",
   "open-reference-media",
-  "load-latest-export-artifact",
   "clear-current-file",
   "save-replacement-as",
   "save-optimized-copy",
-  "save-sequence-repair-copy",
   "undo-replacement-preview",
   "redo-replacement-preview",
   "reset-replacement-preview",
@@ -49,8 +47,6 @@ const hostMenuActions = Object.freeze([
   "show-layers",
   "replace-selected-resource",
   "copy-current-resource-key",
-  "local-preview-mode",
-  "export-review-mode",
   "show-diagnostics",
   "toggle-logs",
   "open-settings",
@@ -3347,10 +3343,6 @@ function installApplicationMenu(window) {
         },
         { type: "separator" },
         {
-          label: "加载最新导出产物",
-          click: () => invokeWorkbenchAction("loadLatestExportArtifact")
-        },
-        {
           label: "清空当前文件",
           click: () => invokeWorkbenchAction("clearCurrentFile")
         },
@@ -3424,15 +3416,6 @@ function installApplicationMenu(window) {
       ]
     },
     {
-      label: "序列",
-      submenu: [
-        {
-          label: "修复闪帧并另存...",
-          click: () => invokeWorkbenchAction("saveSequenceRepairCopy")
-        }
-      ]
-    },
-    {
       label: "播放",
       submenu: [
         {
@@ -3469,14 +3452,6 @@ function installApplicationMenu(window) {
     {
       label: "视图",
       submenu: [
-        {
-          label: "本地预览",
-          click: () => invokeWorkbenchAction("setLocalPreviewMode")
-        },
-        {
-          label: "导出验收",
-          click: () => invokeWorkbenchAction("setExportReviewMode")
-        },
         {
           label: "显示检查报告",
           click: () => invokeWorkbenchAction("openDiagnostics")
