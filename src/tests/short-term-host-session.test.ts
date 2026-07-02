@@ -48,6 +48,30 @@ test("short-term host session persists recent changes after open and clear actio
   assert.equal(store.snapshot().records.length, 0);
 });
 
+test("short-term host session starts with empty recents when recent storage load fails", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermSvgaFixture()
+  });
+  const store = createMemoryRecentFilesStore([], {
+    loadError: () => new Error("Cannot read /Users/designer/private/recent.json")
+  });
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  assert.equal(session.getModel().recentFiles.launchRecentFiles.length, 0);
+
+  const opened = await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+
+  assert.equal(opened.actionResult?.status, "completed");
+  assert.equal(opened.recentPersistence.status, "saved");
+  assert.equal(store.snapshot().records[0].localPath, sourcePath);
+  assert.equal(JSON.stringify(opened.model).includes("/Users/designer"), false);
+});
+
 test("short-term host session returns defensive state snapshots", async () => {
   const sourcePath = "/Users/designer/private/opened.svga";
   const host = createMemoryHost({
@@ -722,7 +746,7 @@ function createMemoryHost(
 
 function createMemoryRecentFilesStore(
   initialRecords: readonly ShortTermRecentFileInput[] = [],
-  options: { saveError?: () => Error } = {}
+  options: { loadError?: () => Error; saveError?: () => Error } = {}
 ): ShortTermRecentFilesStore & {
   snapshot(): ShortTermRecentFilesState;
   setSaveError(saveError: (() => Error) | undefined): void;
@@ -733,6 +757,8 @@ function createMemoryRecentFilesStore(
   let saveError = options.saveError;
   return {
     async load() {
+      const error = options.loadError?.();
+      if (error) throw error;
       return state;
     },
     async save(nextState) {

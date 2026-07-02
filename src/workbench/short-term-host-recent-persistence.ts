@@ -15,10 +15,14 @@ export interface ShortTermRecentFilesStore {
 export async function createShortTermHostActionStateFromRecentStore(
   store: ShortTermRecentFilesStore
 ): Promise<ShortTermHostActionState> {
-  const recentState = await store.load();
-  return createShortTermHostActionState({
-    recentFiles: recentState.records
-  });
+  try {
+    const recentState = await store.load();
+    return createShortTermHostActionState({
+      recentFiles: recentState.records
+    });
+  } catch {
+    return createShortTermHostActionState();
+  }
 }
 
 export async function persistShortTermHostRecentFiles(
