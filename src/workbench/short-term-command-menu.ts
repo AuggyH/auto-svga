@@ -82,7 +82,7 @@ export function createShortTermCommandMenuModel(
         separator("app-quit-separator"),
         nativeItem("quit", "退出 Auto SVGA", "quit")
       ]),
-      menu("file", "File", [
+      menu("file", "文件", [
         commandItem(requiredCommand(lookup, "openSvga")),
         recentSubmenu(requiredCommand(lookup, "openRecent"), appState),
         commandItem(requiredCommand(lookup, "clearRecent")),
@@ -91,7 +91,7 @@ export function createShortTermCommandMenuModel(
         commandItem(requiredCommand(lookup, "save")),
         commandItem(requiredCommand(lookup, "saveAs"))
       ]),
-      menu("edit", "Edit", [
+      menu("edit", "编辑", [
         nativeItem("undo", "撤销", "undo", "Cmd+Z"),
         nativeItem("redo", "重做", "redo", "Shift+Cmd+Z"),
         separator("edit-text-separator"),
@@ -100,27 +100,27 @@ export function createShortTermCommandMenuModel(
         nativeItem("paste", "粘贴", "paste", "Cmd+V"),
         commandItem(requiredCommand(lookup, "selectAll"), { role: "selectAll" })
       ]),
-      menu("resource", "Resource", [
+      menu("resource", "资源", [
         commandItem(requiredCommand(lookup, "renameImageKey")),
         commandItem(requiredCommand(lookup, "replaceImage")),
         commandItem(requiredCommand(lookup, "editTextPreview"))
       ]),
-      menu("optimize", "Optimize", [
+      menu("optimize", "优化", [
         commandItem(requiredCommand(lookup, "runOptimization"))
       ]),
-      menu("playback", "Playback", [
+      menu("playback", "播放", [
         commandItem(requiredCommand(lookup, "playPause")),
         commandItem(requiredCommand(lookup, "replay"))
       ]),
-      menu("view", "View", [
+      menu("view", "视图", [
         commandItem(requiredCommand(lookup, "toggleCompare"))
       ]),
-      menu("window", "Window", [
+      menu("window", "窗口", [
         commandItem(requiredCommand(lookup, "minimize"), { role: "minimize" }),
         nativeItem("zoom", "缩放", "zoom"),
         nativeItem("front", "全部置于前台", "front")
       ]),
-      menu("help", "Help", [
+      menu("help", "帮助", [
         commandItem(requiredCommand(lookup, "help"))
       ])
     ]

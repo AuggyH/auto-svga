@@ -41,6 +41,17 @@ test("short-term command menu covers app state commands and redacts recent paths
     "window",
     "help"
   ]);
+  assert.deepEqual(menu.groups.map((group) => group.label), [
+    "Auto SVGA",
+    "文件",
+    "编辑",
+    "资源",
+    "优化",
+    "播放",
+    "视图",
+    "窗口",
+    "帮助"
+  ]);
   assert.equal(menu.prdIds.includes("S13"), true);
   for (const command of appState.commands) {
     assert.equal(sourceCommandIds.has(command.id), true, `missing menu command ${command.id}`);
