@@ -1077,10 +1077,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /dragDropAttempted/);
   assert.match(shortTermEntry, /short-term-load-failure-proof/);
   assert.match(shortTermEntry, /sourceBytesRestoredAfterRecovery/);
+  assert.match(shortTermEntry, /short-term-spec-comparison-proof/);
+  assert.match(shortTermEntry, /actualRequirementPairsVisible/);
   assert.match(main, /validateShortTermOpenFlowProof/);
   assert.match(main, /short-term-open-flow-proof\.json/);
   assert.match(main, /validateShortTermLoadFailureProof/);
   assert.match(main, /short-term-load-failure-proof\.json/);
+  assert.match(main, /validateShortTermSpecComparisonProof/);
+  assert.match(main, /short-term-spec-comparison-proof\.json/);
   assert.match(shortTermEntry, /shortTermScreenshots: screenshotCaptures\.length >= 9/);
   assert.match(shortTermEntry, /shortTermSaveFailed: saveFailedVisible/);
   assert.match(shortTermEntry, /shortTermLoadFailed: loadFailedVisible/);
@@ -1497,6 +1501,7 @@ test("short-term acceptance matrix stays current-head bound and does not hide kn
   assert.match(source, /current HEAD/);
   assert.match(source, /short-term-open-flow-proof\.json/);
   assert.match(source, /short-term-load-failure-proof\.json/);
+  assert.match(source, /short-term-spec-comparison-proof\.json/);
   assert.match(source, /id: "S13"/);
   assert.match(source, /productCompleteClaimed === false/);
   assert.match(source, /SVGA proto\/product inspection model/);

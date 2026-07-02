@@ -1292,6 +1292,36 @@ async function runShortTermSmokeIfRequested() {
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const canvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
   await captureSmokeArtifact("short-term-preview-overview");
+  const overviewFactRows = Array.isArray(state.model?.overview?.facts) ? state.model.overview.facts : [];
+  const shortTermSpecComparisonProof = {
+    schemaVersion: 1,
+    proofId: "short-term-spec-comparison-proof",
+    source: "short-term-smoke",
+    prdIds: ["S4"],
+    profileId: state.model?.overview?.profileId || "",
+    profileLabel: state.model?.overview?.profileLabel || "",
+    factRowCount: overviewFactRows.length,
+    renderedFactRowCount: nodes.factGrid.querySelectorAll(".factCell").length,
+    factRows: overviewFactRows.map((fact) => ({
+      id: fact.id,
+      label: fact.label,
+      value: fact.value,
+      requirement: fact.requirement,
+      status: fact.status
+    })),
+    actualRequirementPairsVisible: overviewFactRows.length > 0
+      && overviewFactRows.every((fact) => Boolean(fact.value) && Boolean(fact.requirement)),
+    overviewTabActive: state.tab === "overview",
+    separateProductionSpecModuleExposed: Boolean(document.querySelector("#productionSpecModule, #specReportSection, [data-panel='production-spec']"))
+  };
+  shortTermSpecComparisonProof.passed = [
+    shortTermSpecComparisonProof.profileId === "production_target",
+    shortTermSpecComparisonProof.factRowCount >= 5,
+    shortTermSpecComparisonProof.renderedFactRowCount >= shortTermSpecComparisonProof.factRowCount,
+    shortTermSpecComparisonProof.actualRequirementPairsVisible,
+    shortTermSpecComparisonProof.overviewTabActive,
+    shortTermSpecComparisonProof.separateProductionSpecModuleExposed === false
+  ].every(Boolean);
   const noAudioCopy = [...nodes.assetList.querySelectorAll(".assetRow")]
     .map((row) => row.textContent.trim())
     .find((text) => text.includes("当前文件暂无音频资产")) || "";
@@ -1779,6 +1809,7 @@ async function runShortTermSmokeIfRequested() {
     shortTermSaveFailed: saveFailedVisible,
     shortTermLoadFailed: loadFailedVisible,
     shortTermLoadFailureProof,
+    shortTermSpecComparisonProof,
     shortTermEmptyStateProof,
     shortTermRuntimeTextBoundaryProof,
     shortTermThumbnailProof,

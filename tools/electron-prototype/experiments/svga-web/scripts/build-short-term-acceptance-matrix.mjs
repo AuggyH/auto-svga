@@ -49,12 +49,15 @@ const requirements = [
   {
     id: "S4",
     title: "Show production-spec comparison inside Overview",
-    summary: "Overview screenshot exists, but actual/requirement row values are not yet isolated in structured proof.",
-    proof: "normal-runtime-proof.json",
-    passWhen: () => false,
+    summary: "Overview shows current values, production requirements, status, and active spec profile without exposing a separate spec module.",
+    proof: "short-term-spec-comparison-proof.json",
+    passWhen: (proof, ctx) => proof?.passed === true
+      && proof?.profileId === "production_target"
+      && proof?.actualRequirementPairsVisible === true
+      && proof?.separateProductionSpecModuleExposed === false
+      && ctx.hasArtifact("short-term-preview-overview.png"),
     partialWhen: (_proof, ctx) => ctx.hasArtifact("short-term-preview-overview.png"),
-    evidence: ["short-term-preview-overview.png"],
-    partialGaps: ["Need structured actual-vs-requirement pairs and active spec profile id."]
+    evidence: ["short-term-spec-comparison-proof.json", "short-term-preview-overview.png"]
   },
   {
     id: "S5",
