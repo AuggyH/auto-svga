@@ -679,6 +679,9 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(normalProofSource, /#primaryCanvas/);
   assert.match(normalProofSource, /#factGrid/);
   assert.match(normalProofSource, /#assetList/);
+  assert.match(normalProofSource, /getRecentSvgaFiles/);
+  assert.match(normalProofSource, /recentFiles/);
+  assert.match(normalProofSource, /pathRedacted/);
   assert.doesNotMatch(normalProofSource, /#svgaFileInput|#svgaStatusA|#svgaCanvasA|specReportSection|auditReportSection/);
   assert.match(main, /IPC_CHANNELS\.openSvgaFile/);
   assert.match(main, /IPC_CHANNELS\.openReferenceMediaFile/);
@@ -886,6 +889,8 @@ test("P6 normal App proof launches without smoke query mode and uses Web baselin
   assert.match(main, /document\.querySelector\("#primaryCanvas"\)/);
   assert.match(main, /document\.querySelector\("#factGrid"\)/);
   assert.match(main, /document\.querySelector\("#assetList"\)/);
+  assert.match(main, /recentFiles: value\.recentFiles/);
+  assert.match(main, /host\.getRecentSvgaFiles/);
   const normalProofSource = main.slice(main.indexOf("async function driveCanonicalNormalProof"));
   assert.doesNotMatch(normalProofSource, /document\.querySelector\("#svgaFileInput"\)/);
   assert.match(prototype, /p6BaselineFixtureDisplayName = "p6-web-baseline-fixture\.svga"/);

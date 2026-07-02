@@ -2222,6 +2222,7 @@ function validateNormalProofResult(value) {
     "canvasNonBlank",
     "inspectionReport",
     "auditPanel",
+    "recentFiles",
     "localOnly",
     "cspAccepted",
     "noCspViolation"
@@ -2236,6 +2237,7 @@ function validateNormalProofResult(value) {
     canvasNonBlank: value.canvasNonBlank,
     inspectionReport: value.inspectionReport,
     auditPanel: value.auditPanel,
+    recentFiles: value.recentFiles,
     localOnly: value.localOnly,
     cspAccepted: value.cspAccepted,
     noCspViolation: value.noCspViolation && !cspViolationSeen
@@ -4855,6 +4857,7 @@ async function driveCanonicalNormalProof(window) {
       canvasNonBlank: false,
       inspectionReport: false,
       auditPanel: false,
+      recentFiles: false,
       localOnly: false,
       cspAccepted: false,
       noCspViolation: false
@@ -4899,6 +4902,17 @@ async function driveCanonicalNormalProof(window) {
       const factGrid = document.querySelector("#factGrid");
       const assetList = document.querySelector("#assetList");
       const previewView = document.querySelector('[data-view="preview"]');
+      const recent = await host.getRecentSvgaFiles?.();
+      const recentRecords = Array.isArray(recent?.records) ? recent.records : [];
+      const recentFiles = recent?.pathRedacted === true
+        && recentRecords.length > 0
+        && recentRecords.every((record) => (
+          record?.pathRedacted === true
+          && typeof record.displayName === "string"
+          && record.displayName.endsWith(".svga")
+          && !/[\\\\/]/.test(record.displayName)
+          && !/[\\\\/]/.test(record.parentName ?? "")
+        ));
       return {
         normalMode: true,
         hostOpen: true,
@@ -4908,6 +4922,7 @@ async function driveCanonicalNormalProof(window) {
         canvasNonBlank,
         inspectionReport: Boolean(factGrid?.children?.length > 0 && assetList?.children?.length > 0),
         auditPanel: Boolean(document.querySelector(".inspectorPanel [data-panel='overview']")),
+        recentFiles,
         localOnly: performance.getEntriesByType("resource").every((entry) => {
           try {
             const url = new URL(entry.name, location.href);
@@ -4931,6 +4946,7 @@ async function driveCanonicalNormalProof(window) {
     canvasNonBlank: false,
     inspectionReport: false,
     auditPanel: false,
+    recentFiles: false,
     localOnly: false,
     cspAccepted: false,
     noCspViolation: false
