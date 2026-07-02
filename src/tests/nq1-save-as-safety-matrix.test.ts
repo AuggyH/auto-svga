@@ -19,5 +19,7 @@ test("NQ1 Save As safety matrix covers source checks and cross-platform path sce
   assert.equal(report.scenarios.some((scenario) => scenario.id === "windows_case_variant_same_path_rejected"), true);
   assert.equal(report.scenarios.some((scenario) => scenario.id === "macos_unicode_normalized_same_path_rejected"), true);
   assert.equal(report.scenarios.some((scenario) => scenario.id === "windows_unicode_normalized_same_path_rejected"), true);
+  assert.equal(report.scenarios.some((scenario) => scenario.id === "log_redaction_hides_spaced_posix_user_paths"), true);
+  assert.equal(report.scenarios.some((scenario) => scenario.id === "runtime_argument_redaction_hides_spaced_windows_user_paths"), true);
   assert.equal(report.passed, true);
 });

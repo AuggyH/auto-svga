@@ -2428,10 +2428,24 @@ function validateAuditResult(value) {
   };
 }
 
+const LOCAL_PATH_PATTERNS = Object.freeze([
+  /(?:\/Users\/|\/Volumes\/|\/home\/|\/private\/|\/var\/|\/tmp\/)(?:[^，。；;:'")\n\r]|'(?=\S))*/gu,
+  /[A-Za-z]:[\\/](?:[^，。；;:'")\n\r]|'(?=\S))*/gu
+]);
+
+function redactLocalPaths(value, replacement = "<local-path>") {
+  let redacted = String(value);
+  for (const pattern of LOCAL_PATH_PATTERNS) {
+    redacted = redacted.replace(pattern, replacement);
+  }
+  return redacted;
+}
+
 function redactLogMessage(value) {
-  return String(value)
-    .replaceAll(sessionRoot, "<svga-web-spike-session>")
-    .replace(/(?:[A-Za-z]:\\|\/Users\/|\/home\/)[^\s"']+/g, "<local-path>");
+  return redactLocalPaths(
+    String(value).replaceAll(sessionRoot, "<svga-web-spike-session>"),
+    "<local-path>"
+  );
 }
 
 function gitHeadCommit() {
@@ -2541,13 +2555,9 @@ function scenarioFixtureMetadata(scenario) {
 }
 
 function sanitizeRuntimeArgument(value) {
-  return String(value)
+  return redactLocalPaths(String(value)
     .replaceAll(appRoot, "<experiment-root>")
-    .replaceAll(repoRoot, "<repo-root>")
-    .replace(/\/Users\/[^/\s]+/g, "<home>")
-    .replace(/\/private\/var\/folders\/[^\s"]+/g, "<temp>")
-    .replace(/\/var\/folders\/[^\s"]+/g, "<temp>")
-    .replace(/[A-Za-z]:\\Users\\[^\\\s]+/g, "<home>");
+    .replaceAll(repoRoot, "<repo-root>"), "<local-path>");
 }
 
 function sanitizedRuntimeArgv() {
@@ -2789,7 +2799,7 @@ async function writeVisibleNormalStartupProof(window, rendererUrl) {
             } catch {
               return true;
             }
-          }).map((value) => value.replace(/\\/Users\\/[^/\\s]+/g, "<home>"))
+          })
         };
       })()
     `);
@@ -2821,7 +2831,7 @@ async function writeVisibleNormalStartupProof(window, rendererUrl) {
     noProofArguments,
     bridgeLocalOnly: rendererProbe.primaryBridge === true,
     localOnly: rendererProbe.localOnly === true && blockedExternalRequests.length === 0,
-    externalRequests: [...new Set([...blockedExternalRequests, ...(rendererProbe.externalRequests ?? [])])],
+    externalRequests: [...new Set([...blockedExternalRequests, ...(rendererProbe.externalRequests ?? []).map((value) => redactLogMessage(value))])],
     hostOpenTargets: ["primary-svga", "secondary-svga", "reference-media"],
     hostMenuActions,
     processLifecycle: {

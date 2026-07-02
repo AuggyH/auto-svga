@@ -81,6 +81,13 @@ function buildSourceChecks(input: { mainSource: string; preloadSource: string })
         && mainSource.includes("Users")
         && mainSource.includes("home")
         && /<local-path>/.test(mainSource)
+        && /LOCAL_PATH_PATTERNS/.test(mainSource)
+    ),
+    check(
+      "runtime_arguments_use_full_local_path_redaction",
+      /function sanitizeRuntimeArgument\(value\)/.test(mainSource)
+        && /redactLocalPaths/.test(mainSource)
+        && /LOCAL_PATH_PATTERNS/.test(mainSource)
     )
   ];
 }
@@ -134,6 +141,12 @@ function buildScenarios(): Nq1SaveAsSafetyScenario[] {
     }),
     scenario("log_redaction_hides_windows_user_paths", "all", "pass", "Windows absolute paths are redacted from logs", {
       redacted: redactLikeMain("C:\\Users\\Reviewer\\private\\sample.svga")
+    }),
+    scenario("log_redaction_hides_spaced_posix_user_paths", "all", "pass", "POSIX absolute paths with spaces are fully redacted from logs", {
+      redacted: redactLikeMain(`${userRoot}/My Documents/Frame's Folder/sample.svga`)
+    }),
+    scenario("runtime_argument_redaction_hides_spaced_windows_user_paths", "all", "pass", "Windows runtime arguments with spaces are fully redacted", {
+      redacted: redactLikeMain("C:\\Users\\Reviewer\\My Documents\\Frame's Folder\\sample.svga")
     })
   ];
 }
@@ -178,8 +191,13 @@ function sanitizeSvgaFileNameLikeMain(value: string): string {
 }
 
 function redactLikeMain(value: string): string {
-  const posixUserRootPattern = "/" + "Users/";
-  const homeRootPattern = "/" + "home/";
-  const pattern = new RegExp(`(?:[A-Za-z]:\\\\|${posixUserRootPattern}|${homeRootPattern})[^\\s\"']+`, "g");
-  return String(value).replace(pattern, "<local-path>");
+  const localPathPatterns = [
+    /(?:\/Users\/|\/Volumes\/|\/home\/|\/private\/|\/var\/|\/tmp\/)(?:[^，。；;:'")\n\r]|'(?=\S))*/gu,
+    /[A-Za-z]:[\\/](?:[^，。；;:'")\n\r]|'(?=\S))*/gu
+  ];
+  let redacted = String(value);
+  for (const pattern of localPathPatterns) {
+    redacted = redacted.replace(pattern, "<local-path>");
+  }
+  return redacted;
 }
