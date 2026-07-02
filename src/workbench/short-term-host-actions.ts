@@ -111,11 +111,15 @@ export interface ShortTermHostSaveInput {
   targetPath?: string;
 }
 
+export interface ShortTermHostCloseInput {
+  discardUnsavedChanges?: boolean;
+}
+
 export type ShortTermHostMenuActionInput =
   | ({ commandId: "openSvga" } & Omit<ShortTermHostOpenLocalFileInput, "source"> & { source?: ShortTermHostOpenLocalFileInput["source"] })
   | ({ commandId: "openRecent" } & Omit<ShortTermHostOpenRecentFileInput, "source"> & { source?: ShortTermRecentOpenSource })
   | { commandId: "clearRecent" }
-  | { commandId: "closeFile" }
+  | ({ commandId: "closeFile" } & ShortTermHostCloseInput)
   | ({ commandId: "save" | "saveAs" } & Omit<ShortTermHostSaveInput, "command">)
   | { commandId: "runOptimization" }
   | { commandId: "renameImageKey"; fromImageKey: string; toImageKey: string }
@@ -218,8 +222,19 @@ export function clearShortTermHostRecentFiles(
 }
 
 export function closeShortTermHostFile(
-  state: ShortTermHostActionState
+  state: ShortTermHostActionState,
+  input: ShortTermHostCloseInput = {}
 ): ShortTermHostActionState {
+  if (hasUnsavedHostOutput(state) && input.discardUnsavedChanges !== true) {
+    return withLastAction(state, result("closeFile", "blocked", "当前文件有未保存输出，关闭前需要确认丢弃。", {
+      commandId: "closeFile",
+      diagnostic: {
+        code: "close_requires_discard_confirmation",
+        message: "Close file is blocked until the caller confirms discarding unsaved output."
+      }
+    }));
+  }
+
   return withLastAction({
     ...state,
     facade: closeShortTermWorkbenchFile(state.facade),
@@ -415,8 +430,10 @@ export async function dispatchShortTermHostMenuAction(
     }
     case "clearRecent":
       return clearShortTermHostRecentFiles(state);
-    case "closeFile":
-      return closeShortTermHostFile(state);
+    case "closeFile": {
+      const closeInput = input as ShortTermHostCloseInput;
+      return closeShortTermHostFile(state, closeInput);
+    }
     case "save": {
       const saveInput = input as { targetPath?: string };
       return saveShortTermHostOutput(state, host, {
@@ -568,6 +585,10 @@ function isCommandEnabled(state: ShortTermHostActionState, commandId: string): b
   }
   const command = state.facade.model.appState.commands.find((item) => item.id === canonicalCommandId);
   return command?.enabled === true;
+}
+
+function hasUnsavedHostOutput(state: ShortTermHostActionState): boolean {
+  return Boolean(state.activeOutputBytes || state.facade.model.activeOutput);
 }
 
 function withLastAction(

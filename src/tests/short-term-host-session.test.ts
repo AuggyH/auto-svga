@@ -11,7 +11,10 @@ import {
   type ShortTermRecentFileInput,
   type ShortTermRecentFilesState
 } from "../workbench/short-term-recent-files.js";
-import { createShortTermSvgaFixture } from "./helpers/short-term-svga-fixtures.js";
+import {
+  createShortTermOptimizableSvgaFixture,
+  createShortTermSvgaFixture
+} from "./helpers/short-term-svga-fixtures.js";
 
 test("short-term host session persists recent changes after open and clear actions", async () => {
   const sourcePath = "/Users/designer/private/opened.svga";
@@ -95,6 +98,49 @@ test("short-term host session leaves successful actions intact when recent persi
 
   assert.equal(retry.status, "saved");
   assert.equal(store.snapshot().records[0].localPath, sourcePath);
+});
+
+test("short-term host session blocks dirty close and keeps session state until discard is confirmed", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const host = createMemoryHost({
+    [sourcePath]: await createShortTermOptimizableSvgaFixture()
+  });
+  const store = createMemoryRecentFilesStore();
+  const session = await createShortTermHostSession({ host, recentStore: store });
+
+  await session.openLocalFile({
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const optimized = await session.dispatchMenuAction({
+    commandId: "runOptimization"
+  });
+
+  assert.equal(optimized.actionResult?.status, "completed");
+  assert.ok(optimized.state.activeOutputBytes);
+
+  const blocked = await session.dispatchMenuAction({
+    commandId: "closeFile"
+  });
+
+  assert.equal(blocked.actionResult?.status, "blocked");
+  assert.equal(blocked.actionResult?.diagnostic?.code, "close_requires_discard_confirmation");
+  assert.equal(blocked.recentPersistence.status, "unchanged");
+  assert.equal(blocked.state.facade.model.appState.state, "previewReady");
+  assert.equal(blocked.state.currentLocalPath, sourcePath);
+  assert.ok(blocked.state.activeOutputBytes);
+
+  const closed = await session.dispatchMenuAction({
+    commandId: "closeFile",
+    discardUnsavedChanges: true
+  });
+
+  assert.equal(closed.actionResult?.status, "completed");
+  assert.equal(closed.recentPersistence.status, "unchanged");
+  assert.equal(closed.state.facade.model.appState.state, "launch");
+  assert.equal(closed.state.currentLocalPath, undefined);
+  assert.equal(closed.state.activeOutputBytes, undefined);
 });
 
 function createMemoryHost(

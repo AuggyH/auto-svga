@@ -291,9 +291,9 @@ test("short-term host menu command classification covers enabled menu item ids",
   }
 });
 
-test("short-term host actions close the current file without clearing recent records", async () => {
+test("short-term host actions block dirty close until discard is confirmed", async () => {
   const sourcePath = "/Users/designer/private/opened.svga";
-  const sourceBytes = await createShortTermSvgaFixture();
+  const sourceBytes = await createShortTermOptimizableSvgaFixture();
   const host = createMemoryHost({
     [sourcePath]: sourceBytes
   });
@@ -305,8 +305,21 @@ test("short-term host actions close the current file without clearing recent rec
   const optimized = await dispatchShortTermHostMenuAction(opened, host, {
     commandId: "runOptimization"
   });
-  const closed = await dispatchShortTermHostMenuAction(optimized, host, {
+  const blocked = await dispatchShortTermHostMenuAction(optimized, host, {
     commandId: "closeFile"
+  });
+
+  assert.equal(blocked.lastAction?.status, "blocked");
+  assert.equal(blocked.lastAction?.commandId, "closeFile");
+  assert.equal(blocked.lastAction?.diagnostic?.code, "close_requires_discard_confirmation");
+  assert.equal(blocked.facade.model.appState.state, "previewReady");
+  assert.equal(blocked.currentLocalPath, sourcePath);
+  assert.ok(blocked.activeOutputBytes);
+  assert.ok(blocked.facade.model.activeOutput);
+
+  const closed = await dispatchShortTermHostMenuAction(optimized, host, {
+    commandId: "closeFile",
+    discardUnsavedChanges: true
   });
 
   assert.equal(closed.lastAction?.status, "completed");
@@ -318,6 +331,28 @@ test("short-term host actions close the current file without clearing recent rec
   assert.equal(closed.facade.model.recentFiles.launchRecentFiles[0].displayName, "opened.svga");
   assert.equal(commandEnabled(closed, "closeFile"), false);
   assert.equal(JSON.stringify(closed.facade.model).includes("/Users/designer"), false);
+});
+
+test("short-term host actions close clean files without discard confirmation", async () => {
+  const sourcePath = "/Users/designer/private/opened.svga";
+  const sourceBytes = await createShortTermSvgaFixture();
+  const host = createMemoryHost({
+    [sourcePath]: sourceBytes
+  });
+  const opened = await openShortTermHostLocalFile(createShortTermHostActionState(), host, {
+    requestId: "open-1",
+    source: "fileButton",
+    localPath: sourcePath
+  });
+  const closed = await dispatchShortTermHostMenuAction(opened, host, {
+    commandId: "closeFile"
+  });
+
+  assert.equal(closed.lastAction?.status, "completed");
+  assert.equal(closed.facade.model.appState.state, "launch");
+  assert.equal(closed.currentLocalPath, undefined);
+  assert.equal(closed.activeOutputBytes, undefined);
+  assert.equal(closed.facade.model.recentFiles.launchRecentFiles[0].displayName, "opened.svga");
 });
 
 function createMemoryHost(
