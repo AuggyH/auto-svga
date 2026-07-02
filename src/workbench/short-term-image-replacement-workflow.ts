@@ -317,13 +317,59 @@ function diagnosticFromError(error: unknown): { code: string; message: string } 
   if (error instanceof ShortTermImageReplacementWorkflowError || error instanceof SvgaImageEditError) {
     return {
       code: error.code,
-      message: redactShortTermLocalPathsFromError(error, error.message)
+      message: imageReplacementUserMessage(error)
     };
   }
   return {
     code: "image_replacement_unexpected_error",
     message: redactShortTermLocalPathsFromError(error, "替换图片流程出现未预期错误。")
   };
+}
+
+function imageReplacementUserMessage(error: ShortTermImageReplacementWorkflowError | SvgaImageEditError): string {
+  if (error instanceof ShortTermImageReplacementWorkflowError) {
+    return redactShortTermLocalPathsFromError(error, error.message);
+  }
+
+  if (error.code === "replacement_not_png") {
+    return "请选择有效的 PNG 图片。";
+  }
+  if (error.code === "replacement_png_too_large") {
+    return `替换图片过大（当前 ${formatOptionalBytes(error.details.sizeBytes)}，上限 ${formatOptionalBytes(error.details.maxInputBytes)}）。请压缩后再试。`;
+  }
+  if (error.code === "replacement_png_invalid_dimensions") {
+    return "替换图片尺寸无效。请重新导出宽高大于 0 的 PNG。";
+  }
+  if (error.code === "replacement_png_dimensions_too_large") {
+    return `替换图片尺寸过大。请控制在 ${formatOptionalNumber(error.details.maxWidth)} x ${formatOptionalNumber(error.details.maxHeight)} 以内后再试。`;
+  }
+  if (error.code === "replacement_png_decode_failed") {
+    return pngDecodeFailureUserMessage(error.details.reason);
+  }
+
+  return redactShortTermLocalPathsFromError(error, error.message);
+}
+
+function pngDecodeFailureUserMessage(reason: unknown): string {
+  const copy = typeof reason === "string" ? reason : "";
+  if (/Unsupported PNG color type/i.test(copy)) {
+    return "这张 PNG 使用当前版本不支持的色彩模式。请重新导出为标准 PNG-24/RGBA 后再替换。";
+  }
+  if (/interlaced|bit depth|non-interlaced/i.test(copy)) {
+    return "这张 PNG 使用隔行扫描或不支持的位深。请关闭隔行扫描，并重新导出为 PNG-24/RGBA 后再替换。";
+  }
+  if (/palette|PLTE|Indexed PNG/i.test(copy)) {
+    return "这张 PNG 的调色板数据不完整。请重新导出为标准 PNG-24/RGBA 后再替换。";
+  }
+  return "替换图片无法解码。请重新导出为标准 PNG-24/RGBA 后再替换。";
+}
+
+function formatOptionalBytes(value: unknown): string {
+  return typeof value === "number" ? formatBytes(value) : "-";
+}
+
+function formatOptionalNumber(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : "-";
 }
 
 function formatBytes(value: number): string {

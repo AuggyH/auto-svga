@@ -946,6 +946,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="textPreviewSummary"/);
   assert.match(page, /id="textElementList"/);
   assert.match(page, /data-action="edit-text" disabled/);
+  assert.doesNotMatch(page, /id="compareFileInput"/);
   assert.match(page, /短期版仅保留图层查看/);
   assert.doesNotMatch(page, /productShellMount|desktop-product-entry\.mjs|prototype\.js/);
   assert.doesNotMatch(page, /导出验收|序列修复|批量 PNG|Export Acceptance/);
@@ -972,6 +973,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /当前文件没有可预览文本元素/);
   assert.match(shortTermEntry, /打开新文件会放弃当前未保存的 SVGA 输出/);
   assert.match(shortTermEntry, /拖入新文件会放弃当前未保存的 SVGA 输出/);
+  assert.match(shortTermEntry, /buildCurrentStateSummary/);
+  assert.match(shortTermEntry, /错误：\$\{nodes\.errorMessage\.textContent\.trim\(\)\}/);
+  assert.match(shortTermEntry, /提示：\$\{nodes\.saveBanner\.textContent\.trim\(\)\}/);
+  assert.match(shortTermEntry, /writeClipboardText\?\.\(buildCurrentStateSummary\(\)\)/);
   assert.match(shortTermEntry, /state\.activeOutput\?\.kind !== "replacement"/);
   assert.match(shortTermEntry, /addEventListener\("contextmenu"/);
   assert.match(shortTermEntry, /openResourceContextMenu/);

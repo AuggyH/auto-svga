@@ -55,7 +55,6 @@ const nodes = {
   runtimeTextOverlay: document.querySelector("#runtimeTextOverlay"),
   discardDialog: document.querySelector("#discardDialog"),
   discardMessage: document.querySelector("#discardMessage"),
-  compareFileInput: document.querySelector("#compareFileInput"),
   replacementFileInput: document.querySelector("#replacementFileInput")
 };
 
@@ -793,6 +792,32 @@ function showFailure(error) {
   setView("failed");
 }
 
+function buildCurrentStateSummary() {
+  const lines = [
+    "Auto SVGA 状态摘要",
+    `状态：${viewCopy(state.view)}`,
+    state.displayName ? `文件：${state.displayName}` : "文件：未打开",
+    nodes.playbackMeta.textContent && nodes.playbackMeta.textContent !== "-"
+      ? `播放：${nodes.playbackMeta.textContent}`
+      : "",
+    state.activeOutput ? `未保存输出：${state.activeOutput.title || state.activeOutput.kind}` : "",
+    !nodes.saveBanner.hidden && nodes.saveBanner.textContent ? `提示：${nodes.saveBanner.textContent.trim()}` : "",
+    state.view === "failed" && nodes.errorMessage.textContent ? `错误：${nodes.errorMessage.textContent.trim()}` : ""
+  ];
+  return lines.filter(Boolean).join("\n");
+}
+
+function viewCopy(view) {
+  return {
+    launch: "等待打开",
+    loading: "正在打开",
+    failed: "打开失败",
+    preview: "预览",
+    compare: "对比",
+    edit: "编辑预留"
+  }[view] || view;
+}
+
 function messageRow(title, summary) {
   const row = document.createElement("article");
   row.className = "findingRow";
@@ -1020,7 +1045,7 @@ window.__autoSvgaShortTermActions = Object.freeze({
     document.querySelector("dialog[open]")?.close("cancel");
     if (state.view === "compare") setMode("preview");
   },
-  copyStateSummary: () => bridge?.writeClipboardText?.(state.displayName || "Auto SVGA")
+  copyStateSummary: () => bridge?.writeClipboardText?.(buildCurrentStateSummary())
 });
 
 refreshRecentFiles().catch(() => {});

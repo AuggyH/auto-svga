@@ -14,6 +14,9 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - Added dirty-output confirmation for new open, recent open, drag-drop, close, optimization, rename, and replacement operations.
 - Tightened automatic imageKey filtering so pure numeric keys do not appear as replaceable elements.
 - Removed development-only reload/DevTools items from the short-term macOS menu and added a guard so they do not reappear on the designer-facing client surface.
+- Localized short-term image replacement PNG validation failures into designer-facing Chinese guidance while keeping replacement output fail-closed.
+- Expanded the macOS Help menu state-copy action so copied text includes current app state, file name, save prompt, and visible error text instead of only the file name.
+- Removed the unused hidden compare file input; the short-term macOS compare flow now has one real B-file entry through the host file picker.
 
 ## Verification
 
@@ -24,20 +27,23 @@ Implemented the first macOS-only short-term client surface for Auto SVGA. The de
 - `node --test tools/shared/product-frontend/source-sharing.test.mjs`: 7/7 pass.
 - `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`: pass.
 - Short-term macOS menu guard: pass; the legacy Workbench menu remains isolated, while the default short-term menu has no reload or DevTools item.
+- Short-term image replacement failure-copy guard: pass; invalid/corrupt PNG diagnostics stay Chinese and do not expose the old English decoder copy.
+- Short-term state-copy guard: pass; Help menu state summary copies visible error/save context.
 - Real-material scan: 84/84 SVGA files opened through the short-term inspection model; pure numeric replaceable noise count is 0 after filtering.
 - System Chrome UI probe: launch, preview, optimization tab, replaceable tab, edit mode, context menu, and 980x680 minimum viewport have no document overflow.
-- `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac`: pass; unsigned internal App ZIP generated with clean App ZIP entries and Info.plist security proof.
+- Previous package checkpoint: `npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:package:mac` passed with clean App ZIP entries and Info.plist security proof. The latest incremental fixes in this review need a new package run before the ZIP is treated as current-head evidence.
 
 ## Artifacts
 
-- Internal App ZIP: `tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64.zip`
-- App ZIP SHA-256: `b4a98a397b7d0b53d333e65f55964d0b922d4e26d5b5f9e9429df8c131f5e37c`
-- App ZIP size: `118494400` bytes
+- Last pre-incremental internal App ZIP: `tools/electron-prototype/experiments/svga-web/.artifacts/internal-trial/Auto SVGA-darwin-arm64.zip`
+- Last pre-incremental App ZIP SHA-256: `88c18998d778a6922cf7ca17ac1a74bab8d774773c8cb064b67f1325c95727fb`
+- Last pre-incremental App ZIP size: `118495033` bytes
 - UI probe screenshots: `tools/electron-prototype/experiments/svga-web/.artifacts/short-term-ui-probe/`
 
 ## Risks
 
 - App ZIP is unsigned and not notarized; this remains an external credential/signing decision.
+- The current incremental fixes are not reflected in the listed App ZIP until `internal:trial:package:mac` is rerun after the next commit.
 - Runtime text preview is preview-only and does not persist into SVGA bytes, matching current short-term boundary.
 - Follow-up guard: runtime text controls are disabled when the current model exposes no text elements, so the UI does not imply editable text targets that the parser did not find.
 - The package manifest records current Git HEAD, while the package content was built from the working tree before this review commit.

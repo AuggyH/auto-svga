@@ -141,6 +141,24 @@ test("short-term image replacement workflow fails closed on invalid PNG input", 
   assert.equal(result.model.status, "failed");
   assert.equal(result.model.saveState.saveAsEnabled, false);
   assert.equal(result.model.diagnostic?.code, "replacement_not_png");
+  assert.equal(result.model.diagnostic?.message, "请选择有效的 PNG 图片。");
+});
+
+test("short-term image replacement workflow localizes PNG decode failures", async () => {
+  const sourceBytes = await createSvgaFixture();
+
+  const result = await runShortTermImageReplacementWorkflow(
+    sourceBytes,
+    { imageKey: "profile_frame", pngBytes: corruptPngWithSize(16, 16) }
+  );
+
+  assert.equal(result.replacedBytes, undefined);
+  assert.equal(result.model.status, "failed");
+  assert.equal(result.model.saveState.outputAvailable, false);
+  assert.equal(result.model.diagnostic?.code, "replacement_png_decode_failed");
+  assert.match(result.model.diagnostic?.message ?? "", /替换图片无法解码|重新导出/);
+  assert.equal((result.model.diagnostic?.message ?? "").includes("Replacement PNG"), false);
+  assert.equal((result.model.diagnostic?.message ?? "").includes("could not be decoded"), false);
 });
 
 test("short-term image replacement workflow redacts local paths from diagnostics", async () => {
@@ -279,6 +297,18 @@ function createIndexedPng(): Uint8Array {
       [0, 255, 0, 255]
     ]
   });
+}
+
+function corruptPngWithSize(width: number, height: number): Uint8Array {
+  const bytes = Buffer.alloc(33);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(bytes, 0);
+  bytes.writeUInt32BE(13, 8);
+  bytes.write("IHDR", 12, "ascii");
+  bytes.writeUInt32BE(width, 16);
+  bytes.writeUInt32BE(height, 20);
+  bytes[24] = 8;
+  bytes[25] = 6;
+  return bytes;
 }
 
 function protoPath(): string {
