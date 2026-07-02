@@ -72,6 +72,47 @@ test("short-term node host session can run without a configured recent store", a
   }
 });
 
+test("short-term node host session recovers from invalid local files without stale data", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-node-session-invalid-"));
+  const invalidPath = path.join(tempDir, "broken.svga");
+  const validPath = path.join(tempDir, "valid.svga");
+
+  try {
+    await writeFile(invalidPath, new Uint8Array([1, 2, 3, 4]));
+    await writeFile(validPath, await createShortTermSvgaFixture());
+    const session = await createShortTermNodeHostSession();
+
+    const failed = await session.openLocalFile({
+      requestId: "bad-1",
+      source: "dragDrop",
+      localPath: invalidPath
+    });
+
+    assert.equal(failed.actionResult?.status, "failed");
+    assert.equal(failed.actionResult?.diagnostic?.code, "local_file_inspection_failed");
+    assert.equal(failed.state.facade.model.appState.state, "loadFailed");
+    assert.equal(failed.state.facade.model.appState.currentFile, undefined);
+    assert.equal(failed.state.currentLocalPath, undefined);
+    assert.equal(failed.state.activeOutputBytes, undefined);
+    assert.equal(failed.state.facade.model.appState.staleFileDataCleared, true);
+    assert.equal(JSON.stringify(failed.state.facade.model).includes(tempDir), false);
+
+    const recovered = await session.openLocalFile({
+      requestId: "good-1",
+      source: "fileButton",
+      localPath: validPath
+    });
+
+    assert.equal(recovered.actionResult?.status, "completed");
+    assert.equal(recovered.state.facade.model.appState.state, "previewReady");
+    assert.equal(recovered.state.facade.model.appState.currentFile?.displayName, "valid.svga");
+    assert.equal(recovered.state.currentLocalPath, validPath);
+    assert.equal(JSON.stringify(recovered.state.facade.model).includes(tempDir), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("short-term node host session exposes lifecycle and guarded quit for dirty output", async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "auto-svga-node-session-lifecycle-"));
   const sourcePath = path.join(tempDir, "optimizable.svga");
