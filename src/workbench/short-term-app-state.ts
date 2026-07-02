@@ -247,6 +247,23 @@ export function attachShortTermPersistedOutput(
   });
 }
 
+export function clearShortTermPersistedOutput(state: ShortTermAppStateModel): ShortTermAppStateModel {
+  if (!state.persistedOutput) return state;
+  const nextState = { ...state };
+  delete nextState.persistedOutput;
+  return withCommands(nextState);
+}
+
+export function setShortTermAppRecentFiles(
+  state: ShortTermAppStateModel,
+  recentFiles: readonly ShortTermRecentFileRecord[]
+): ShortTermAppStateModel {
+  return withCommands({
+    ...state,
+    recentFiles: normalizeRecentFiles(recentFiles)
+  });
+}
+
 export function markShortTermRecentFileMissing(
   state: ShortTermAppStateModel,
   recentFileId: string,
