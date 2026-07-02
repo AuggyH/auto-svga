@@ -22,7 +22,8 @@ import {
   runShortTermHostImageReplacement,
   runShortTermHostOptimization,
   saveShortTermHostOutput,
-  type ShortTermHostEnvironment
+  type ShortTermHostEnvironment,
+  type ShortTermHostMenuActionInput
 } from "../workbench/short-term-host-actions.js";
 import { flattenShortTermCommandMenuItems } from "../workbench/short-term-command-menu.js";
 import type { ShortTermProductInspectionModel } from "../workbench/short-term-product-model.js";
@@ -653,6 +654,36 @@ test("short-term host actions sanitize menu command ids before returning results
   assert.equal(unsafeRecent.lastAction?.commandId, "openRecent");
   assert.equal(JSON.stringify(unsafeRecent.lastAction).includes("/Users/designer"), false);
   assert.equal(JSON.stringify(unsafeRecent.lastAction).includes("designer"), false);
+});
+
+test("short-term host actions fail closed for malformed runtime menu command ids", async () => {
+  const host = createMemoryHost({});
+  const state = createShortTermHostActionState();
+
+  const missing = await dispatchShortTermHostMenuAction(
+    state,
+    host,
+    {} as unknown as ShortTermHostMenuActionInput
+  );
+  assert.equal(missing.lastAction?.status, "blocked");
+  assert.equal(missing.lastAction?.commandId, "unsupported");
+  assert.equal(missing.lastAction?.diagnostic?.code, "menu_command_id_invalid");
+  assert.equal(missing.facade.model.appState.state, "launch");
+
+  const nonString = await dispatchShortTermHostMenuAction(
+    state,
+    host,
+    { commandId: 42 } as unknown as ShortTermHostMenuActionInput
+  );
+  assert.equal(nonString.lastAction?.status, "blocked");
+  assert.equal(nonString.lastAction?.commandId, "unsupported");
+  assert.equal(nonString.lastAction?.diagnostic?.code, "menu_command_id_invalid");
+
+  const trimmedValid = await dispatchShortTermHostMenuAction(state, host, {
+    commandId: " copy "
+  });
+  assert.equal(trimmedValid.lastAction?.status, "delegated");
+  assert.equal(trimmedValid.lastAction?.commandId, "copy");
 });
 
 test("short-term host actions delegate native and renderer-owned menu commands", async () => {

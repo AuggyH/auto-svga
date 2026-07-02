@@ -585,7 +585,19 @@ export async function dispatchShortTermHostMenuAction(
   host: ShortTermHostEnvironment,
   input: ShortTermHostMenuActionInput
 ): Promise<ShortTermHostActionState> {
-  const commandId = input.commandId;
+  const rawCommandId = (input as { commandId?: unknown }).commandId;
+  if (!isNonEmptyString(rawCommandId)) {
+    return withLastAction(state, result("menuDispatch", "blocked", "菜单命令不可用。", {
+      commandId: "unsupported",
+      prdIds: [],
+      diagnostic: {
+        code: "menu_command_id_invalid",
+        message: "Menu command id is missing or invalid."
+      }
+    }));
+  }
+
+  const commandId = rawCommandId.trim();
   const canonicalCommandId = canonicalShortTermHostMenuCommandId(commandId);
   const resultCommandId = safeResultCommandId(commandId);
   const route = classifyShortTermHostMenuCommand(commandId);
