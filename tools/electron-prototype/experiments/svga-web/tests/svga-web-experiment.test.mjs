@@ -1187,6 +1187,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /hideResourceContextMenu/);
   assert.match(shortTermEntry, /hideSaveFeedbackBanner/);
   assert.match(shortTermEntry, /markCompareSlotLoaded/);
+  assert.match(shortTermEntry, /renderRuntimeTextElements/);
   assert.match(shortTermEntry, /showSaveFeedbackBanner/);
   assert.match(shortTermEntry, /showResourceContextMenu/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-command-state\.mjs"/);
@@ -1254,6 +1255,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function clearRuntimeTextOverlay/);
   assert.match(shortTermDomRenderers, /export function createReplaceableImageRow/);
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
+  assert.match(shortTermDomRenderers, /export function renderRuntimeTextElements/);
   assert.match(shortTermDomRenderers, /export function createEditLayerRow/);
   assert.match(shortTermDomRenderers, /renderThumbnailHtml/);
   assert.match(shortTermDomState, /export function applyViewState/);
@@ -1326,6 +1328,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /runtimeTextListView/);
   assert.match(shortTermEntry, /runtimeTextOverlayCopy/);
   assert.match(shortTermEntry, /selectedRuntimeTextElement/);
+  assert.match(shortTermEntry, /renderRuntimeTextElements\(nodes, view, state\.selectedTextKey\)/);
+  assert.doesNotMatch(shortTermEntry, /createTextElementRow|nodes\.textElementList\.replaceChildren|nodes\.textPreviewSummary\.textContent =|nodes\.editTextButton\.hidden =|nodes\.resetTextButton\.hidden =/);
+  assert.match(shortTermDomRenderers, /nodes\.textElementList\.replaceChildren/);
+  assert.match(shortTermDomRenderers, /nodes\.textPreviewSummary\.textContent = view\.summaryCopy/);
+  assert.match(shortTermDomRenderers, /nodes\.editTextButton\.hidden = !view\.hasTextElements/);
+  assert.match(shortTermDomRenderers, /nodes\.resetTextButton\.hidden = !view\.hasTextElements/);
   assert.match(shortTermEntry, /applyRuntimeTextOverlay\(\s*nodes\.runtimeTextOverlay,\s*runtimeTextOverlayCopy\(textElement, state\.textPreview\),\s*Boolean\(state\.textPreview\)\s*\)/s);
   assert.match(shortTermEntry, /clearRuntimeTextOverlay\(nodes\.runtimeTextOverlay\)/);
   assert.doesNotMatch(shortTermEntry, /nodes\.runtimeTextOverlay\.(hidden|textContent)\s*=/);

@@ -180,6 +180,19 @@ export function createTextElementRow(item, index, options) {
   return row;
 }
 
+export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
+  nodes.textPreviewSummary.textContent = view.summaryCopy;
+  nodes.editTextButton.hidden = !view.hasTextElements;
+  nodes.resetTextButton.hidden = !view.hasTextElements;
+  if (!view.hasTextElements) {
+    nodes.textElementList.replaceChildren(createInlineStatusText(view.emptyCopy));
+    return;
+  }
+  nodes.textElementList.replaceChildren(...view.texts.map((item, index) => createTextElementRow(item, index, {
+    selected: item.textKey === selectedTextKey
+  })));
+}
+
 export function createEditLayerRow(asset, model) {
   const row = document.createElement("article");
   row.className = "assetRow";

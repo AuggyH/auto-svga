@@ -28,10 +28,10 @@ import {
   createOptimizationFindingRow,
   createOverviewFactCell,
   createReplaceableImageRow,
-  createTextElementRow,
   hideSaveFeedbackBanner,
   hideResourceContextMenu,
   markCompareSlotLoaded,
+  renderRuntimeTextElements,
   showSaveFeedbackBanner,
   showResourceContextMenu
 } from "./short-term-macos-dom-renderers.mjs";
@@ -642,19 +642,7 @@ function renderReplaceables(model) {
 function renderTextElements(model) {
   const view = runtimeTextListView(model, state.textPreview);
   state.selectedTextKey = nextSelectedTextKey(state.selectedTextKey, view.texts);
-  if (!view.hasTextElements) {
-    nodes.textElementList.replaceChildren(createInlineStatusText(view.emptyCopy));
-    nodes.textPreviewSummary.textContent = view.summaryCopy;
-    nodes.editTextButton.hidden = true;
-    nodes.resetTextButton.hidden = true;
-  } else {
-    nodes.editTextButton.hidden = false;
-    nodes.resetTextButton.hidden = false;
-    nodes.textElementList.replaceChildren(...view.texts.map((item, index) => createTextElementRow(item, index, {
-      selected: item.textKey === state.selectedTextKey
-    })));
-    nodes.textPreviewSummary.textContent = view.summaryCopy;
-  }
+  renderRuntimeTextElements(nodes, view, state.selectedTextKey);
   setActionEnabled("edit-text", view.hasTextElements, "当前文件没有可预览文本元素");
   setActionEnabled("reset-text", Boolean(state.textPreview), "当前没有已应用的文本预览");
 }
