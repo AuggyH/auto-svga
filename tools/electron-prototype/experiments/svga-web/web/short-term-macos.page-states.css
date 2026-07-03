@@ -1,0 +1,168 @@
+/* Page-state styles control app-level layout, active views, and environment preferences. */
+
+.macApp {
+  position: relative;
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  grid-template-rows: var(--asv-toolbar-height) auto 1fr;
+}
+
+.macApp[data-app-state="launch"],
+.macApp[data-app-state="loading"],
+.macApp[data-app-state="failed"] {
+  grid-template-rows: 1fr;
+}
+
+.macApp[data-app-state="launch"] .titlebar,
+.macApp[data-app-state="loading"] .titlebar,
+.macApp[data-app-state="failed"] .titlebar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 8;
+  border-bottom: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.macApp[data-app-state="launch"] .titlebar > :not(.windowControlSpace),
+.macApp[data-app-state="loading"] .titlebar > :not(.windowControlSpace),
+.macApp[data-app-state="failed"] .titlebar > :not(.windowControlSpace) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.view {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.view[hidden] {
+  display: none !important;
+}
+
+.launchView,
+.stateView {
+  display: grid;
+  place-items: center;
+  padding: var(--asv-space-6);
+  overflow: auto;
+}
+
+.launchView {
+  padding: 0;
+  background: var(--asv-window);
+}
+
+.previewView {
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) var(--asv-inspector-width);
+  gap: var(--asv-preview-gap);
+  height: 100%;
+  min-height: 0;
+  padding: var(--asv-preview-gap);
+  background: var(--asv-workbench);
+}
+
+.compareView {
+  display: grid;
+  grid-template-columns:
+    minmax(var(--asv-compare-side-min-width), var(--asv-compare-side-width))
+    minmax(0, 1fr)
+    minmax(var(--asv-compare-side-min-width), var(--asv-compare-side-max-width));
+  gap: var(--asv-preview-gap);
+  height: 100%;
+  min-height: 0;
+  padding: var(--asv-preview-gap);
+  background: var(--asv-workbench);
+}
+
+.editView {
+  display: grid;
+  grid-template-columns: var(--asv-left-width) minmax(480px, 1fr) minmax(300px, var(--asv-inspector-width));
+  gap: var(--asv-space-4);
+  height: 100%;
+  min-height: 0;
+  padding: var(--asv-space-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --asv-color-toolbar: var(--asv-color-panel-strong);
+    --asv-color-panel: var(--asv-color-panel-strong);
+  }
+
+  .titlebar {
+    backdrop-filter: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  :root {
+    --asv-inspector-width: 360px;
+    --asv-left-width: 220px;
+  }
+
+  .titlebar {
+    grid-template-columns: var(--asv-window-controls-width) auto minmax(84px, 1fr) auto;
+    gap: var(--asv-space-2);
+  }
+
+  .toolbarCluster {
+    gap: var(--asv-space-1);
+  }
+
+  .previewView,
+  .compareView,
+  .editView {
+    gap: var(--asv-space-3);
+    padding: var(--asv-space-3);
+  }
+
+  .previewView {
+    grid-template-columns: minmax(480px, 1fr) var(--asv-inspector-width);
+  }
+
+  .compareView {
+    grid-template-columns:
+      minmax(calc(var(--asv-compare-side-min-width) - var(--asv-space-3)), var(--asv-compare-side-width))
+      minmax(420px, 1fr)
+      minmax(calc(var(--asv-compare-side-min-width) - var(--asv-space-2)), var(--asv-compare-side-max-width));
+  }
+}
+
+@media (max-height: 780px) {
+  .previewView,
+  .compareView,
+  .editView {
+    gap: var(--asv-preview-gap);
+    padding: var(--asv-preview-gap);
+  }
+
+  .titlebar {
+    gap: var(--asv-space-1);
+  }
+
+  .factGrid {
+    gap: var(--asv-space-2);
+  }
+
+  .sectionHead {
+    align-items: center;
+  }
+
+  canvas {
+    width: min(64vh, 560px);
+    height: min(64vh, 560px);
+  }
+}
