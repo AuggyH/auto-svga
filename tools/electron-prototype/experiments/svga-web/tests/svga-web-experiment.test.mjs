@@ -1010,6 +1010,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermModules = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
   const shortTermPageStates = await readFile(path.join(experimentRoot, "web/short-term-macos.page-states.css"), "utf8");
   const shortTermStyles = await readFile(path.join(experimentRoot, "web/short-term-macos.css"), "utf8");
+  const shortTermCommandState = await readFile(path.join(experimentRoot, "web/short-term-macos-command-state.mjs"), "utf8");
   const shortTermDomRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-renderers.mjs"), "utf8");
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
@@ -1156,11 +1157,20 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /createOverviewFactCell/);
   assert.match(shortTermEntry, /createAssetRow/);
   assert.match(shortTermEntry, /createReplaceableImageRow/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-command-state\.mjs"/);
+  assert.match(shortTermEntry, /buildCommandState/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-state\.mjs"/);
   assert.match(shortTermEntry, /applyViewState/);
   assert.match(shortTermEntry, /applyModeButtons/);
   assert.match(shortTermEntry, /applyTabState/);
   assert.match(shortTermEntry, /setActionEnabled/);
+  assert.match(shortTermCommandState, /export function buildCommandState/);
+  assert.match(shortTermCommandState, /actionStates/);
+  assert.match(shortTermCommandState, /"run-optimization": \{ enabled: canRunOptimization, reason: "没有可安全执行的优化项" \}/);
+  assert.match(shortTermCommandState, /"save-overwrite": \{ enabled: canOverwrite/);
+  assert.match(shortTermCommandState, /playPauseCopy: input\.primaryPlaybackPlaying \? "暂停" : "播放"/);
+  assert.match(shortTermCommandState, /canShowOptimizationComparison/);
+  assert.match(shortTermCommandState, /hasTransientState/);
   assert.match(shortTermDomRenderers, /export function createOverviewFactCell/);
   assert.match(shortTermDomRenderers, /export function createAssetRow/);
   assert.match(shortTermDomRenderers, /export function createOptimizationFindingRow/);
@@ -1347,7 +1357,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /writeClipboardText\?\.\(buildCurrentStateSummary\(\)\)/);
   assert.match(shortTermEntry, /syncShortTermMenuState/);
   assert.match(shortTermEntry, /updateShortTermMenuState/);
-  assert.match(shortTermEntry, /canShowOptimizationComparison/);
+  assert.match(shortTermCommandState, /canShowOptimizationComparison/);
   assert.match(shortTermEntry, /showOptimizationComparison/);
   assert.match(shortTermEntry, /compareSummary/);
   assert.match(shortTermEntry, /compareMetricGrid/);

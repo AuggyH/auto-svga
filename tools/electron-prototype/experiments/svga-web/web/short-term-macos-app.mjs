@@ -6,6 +6,7 @@ import {
   setActionEnabled,
   tabButtons
 } from "./short-term-macos-dom-state.mjs";
+import { buildCommandState } from "./short-term-macos-command-state.mjs";
 import {
   createAssetRow,
   createEditLayerRow,
@@ -932,46 +933,27 @@ async function clearRecentFiles() {
 }
 
 function renderCommandState() {
-  const hasFile = Boolean(state.sourceBytes);
-  const hasOutput = Boolean(state.activeOutput);
-  const saveBusy = state.saveStatus === "validating";
-  const canOverwrite = hasOutput && !saveBusy && Boolean(state.sourceId);
-  const canSaveAs = hasOutput && !saveBusy;
-  const canRunOptimization = hasFile && state.model?.optimization?.batchActionEnabled === true;
-  const canRenameImageKey = hasFile && Boolean(state.selectedImageKey);
-  const canEditText = Boolean(selectedTextElement());
-  setActionEnabled("compare", hasFile, "请先打开 SVGA");
-  setActionEnabled("play-pause", hasFile, "请先打开 SVGA");
-  setActionEnabled("replay", hasFile, "请先打开 SVGA");
-  setActionEnabled("run-optimization", canRunOptimization, "没有可安全执行的优化项");
-  setActionEnabled("save-as", canSaveAs, hasOutput ? "正在验证保存输出" : "没有可保存的输出");
-  setActionEnabled("save-overwrite", canOverwrite, state.sourceId ? "正在验证保存输出" : "当前文件不支持覆盖保存");
-  setActionEnabled("edit-text", canEditText, "当前文件没有可预览文本元素");
-  setActionEnabled("reset-text", Boolean(state.textPreview), "当前没有已应用的文本预览");
-  document.querySelector("[data-action='play-pause']").textContent = state.primaryPlayback?.playing ? "暂停" : "播放";
-  syncShortTermMenuState({
+  const commandState = buildCommandState({
     view: state.view,
     mode: state.mode,
     tab: state.tab,
-    hasFile,
-    hasOutput,
-    outputKind: state.activeOutput?.kind || "",
-    canOverwrite,
-    canSaveAs,
-    saveBusy,
-    canCompare: hasFile,
-    canPlay: hasFile,
-    canReplay: hasFile,
-    canRenameImageKey,
-    canReplaceImage: canRenameImageKey,
-    canResetImageReplacement: state.activeOutput?.kind === "replacement",
-    canEditText,
-    canResetText: Boolean(state.textPreview),
-    canRunOptimization,
-    canShowOptimizationComparison: state.activeOutput?.kind === "optimization" && Boolean(state.activeOutput.bytes?.byteLength),
-    isRenaming: Boolean(state.renameImageKey),
-    hasTransientState: Boolean(state.renameImageKey) || state.view === "compare" || Boolean(document.querySelector("dialog[open]"))
+    hasFile: Boolean(state.sourceBytes),
+    activeOutput: state.activeOutput,
+    saveStatus: state.saveStatus,
+    sourceId: state.sourceId,
+    optimizationBatchActionEnabled: state.model?.optimization?.batchActionEnabled === true,
+    selectedImageKey: state.selectedImageKey,
+    canEditText: Boolean(selectedTextElement()),
+    textPreview: state.textPreview,
+    primaryPlaybackPlaying: state.primaryPlayback?.playing === true,
+    renameImageKey: state.renameImageKey,
+    dialogOpen: Boolean(document.querySelector("dialog[open]"))
   });
+  Object.entries(commandState.actionStates).forEach(([action, actionState]) => {
+    setActionEnabled(action, actionState.enabled, actionState.reason);
+  });
+  document.querySelector("[data-action='play-pause']").textContent = commandState.playPauseCopy;
+  syncShortTermMenuState(commandState.menuState);
 }
 
 function syncShortTermMenuState(snapshot) {
