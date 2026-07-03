@@ -1022,6 +1022,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /short-term-macos\.css/);
   assert.match(page, /short-term-macos\.components\.css/);
   assert.match(page, /short-term-macos-app\.mjs/);
+  assert.match(page, /data-compare-label="A"/);
+  assert.match(page, /data-compare-label="B"/);
   assert.match(page, /最近打开/);
   assert.match(page, /覆盖保存/);
   assert.match(page, /id="discardDialog"/);
@@ -1081,6 +1083,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStyles, /\.tabPanel:focus-visible/);
   assert.match(shortTermStyles, /\.saveBanner\[data-status="success"\]::before/);
   assert.match(shortTermStyles, /\.saveBanner\[data-status="loading"\]::before/);
+  assert.match(shortTermStyles, /\.compareCanvasWrap::before/);
+  assert.match(shortTermStyles, /\.compareSummary/);
+  assert.match(shortTermStyles, /\.compareMetricGrid/);
+  assert.match(shortTermStyles, /\.compareActions/);
   assert.match(shortTermStyles, /@media \(max-height: 780px\)/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermRenderModel, /export function renderOverviewFactCellHtml/);
@@ -1236,6 +1242,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /updateShortTermMenuState/);
   assert.match(shortTermEntry, /canShowOptimizationComparison/);
   assert.match(shortTermEntry, /showOptimizationComparison/);
+  assert.match(shortTermEntry, /compareSummary/);
+  assert.match(shortTermEntry, /compareMetricGrid/);
+  assert.match(shortTermEntry, /compareActions/);
   assert.match(shortTermEntry, /state\.activeOutput\?\.kind !== "replacement"/);
   assert.match(shortTermEntry, /addEventListener\("contextmenu"/);
   assert.match(shortTermEntry, /openResourceContextMenu/);
