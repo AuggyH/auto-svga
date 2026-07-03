@@ -103,12 +103,14 @@ components:
     - SaveButtonPair
   components:
     - WindowToolbar
-    - LaunchDropCard
+    - LaunchDropCanvas
+    - LaunchRecentFilesList
+    - FileRecentSubmenu
     - PreviewStage
     - PlaybackControls
     - RightTabPanel
     - OverviewFactRow
-    - ProductionSpecRow
+    - ProductionSpecInlineRow
     - AssetRow
     - SequenceThumbnail
     - AudioAssetRow
@@ -369,12 +371,14 @@ selected, loading, dirty, and error.
 Components combine molecules into product units:
 
 - `WindowToolbar`
-- `LaunchDropCard`
+- `LaunchDropCanvas`
+- `LaunchRecentFilesList`
+- `FileRecentSubmenu`
 - `PreviewStage`
 - `PlaybackControls`
 - `RightTabPanel`
 - `OverviewFactRow`
-- `ProductionSpecRow`
+- `ProductionSpecInlineRow`
 - `AssetRow`
 - `SequenceThumbnail`
 - `AudioAssetRow`

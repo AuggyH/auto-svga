@@ -96,6 +96,7 @@ can express the intent.
 | `LaunchRecentFilesList` | LaunchModule | S16 recent-file launch proof |
 | `FileRecentSubmenu` | MenuBarCommandModel | S16 recent-file menu proof |
 | `PreviewStage` | PreviewCanvasModule | playback and abnormal-state proof |
+| `PlaybackControls` | PreviewCanvasModule | playback control proof |
 | `RightTabPanel` | Preview mode | tab screenshot and keyboard proof |
 | `OverviewFactRow` | OverviewTabModule | rendered Overview proof |
 | `ProductionSpecInlineRow` | OverviewTabModule | actual/limit proof inside file facts |

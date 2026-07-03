@@ -31,6 +31,7 @@
     "desktop:smoke": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke",
     "desktop:p2:normal-proof": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:normal-proof",
     "desktop:short-term:acceptance-matrix": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:short-term:acceptance-matrix",
+    "desktop:short-term:design-system-check": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:short-term:design-system-check",
     "desktop:p2:web-reference": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:web-reference",
     "desktop:p2:parity-report": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:parity-report",
     "desktop:p2:reviewer-b": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:reviewer-b",

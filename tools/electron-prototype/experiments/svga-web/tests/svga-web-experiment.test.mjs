@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -1967,6 +1968,20 @@ test("P4 multi-resource editing keeps history and export integrity boundaries is
   assert.doesNotMatch(renderer, /readFile|writeFile|dialog|shell|\/Users\//);
 });
 
+test("short-term design system check enforces UI implementation guardrails", () => {
+  const output = execFileSync(process.execPath, ["scripts/check-short-term-design-system.mjs"], {
+    cwd: experimentRoot,
+    encoding: "utf8"
+  });
+  const report = JSON.parse(output);
+  assert.equal(report.proofId, "short-term-design-system-check");
+  assert.equal(report.passed, true);
+  assert.ok(report.checks.some((check) => check.name === "stylesheet-order" && check.passed === true));
+  assert.ok(report.checks.some((check) => check.name === "focus-visible-covered-by-ui-layers" && check.passed === true));
+  assert.ok(report.checks.some((check) => check.name === "reduced-motion-covered" && check.passed === true));
+  assert.ok(report.checks.some((check) => check.name === "foreground-validation-rule-documented" && check.passed === true));
+});
+
 test("root package exposes explicit desktop entrypoints without changing default scripts", async () => {
   const rootPackage = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
   const experimentPackage = JSON.parse(await readFile(path.join(experimentRoot, "package.json"), "utf8"));
@@ -1975,6 +1990,7 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.equal(rootPackage.scripts["desktop:smoke"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke");
   assert.match(rootPackage.scripts["desktop:p2:normal-proof"], /desktop:p2:normal-proof/);
   assert.equal(rootPackage.scripts["desktop:short-term:acceptance-matrix"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:short-term:acceptance-matrix");
+  assert.equal(rootPackage.scripts["desktop:short-term:design-system-check"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:short-term:design-system-check");
   assert.equal(rootPackage.scripts["desktop:p2:reviewer-b"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:reviewer-b");
   assert.equal(rootPackage.scripts["desktop:p2:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p2:upload-package");
   assert.equal(rootPackage.scripts["desktop:p3:upload-package"], "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:p3:upload-package");
@@ -1985,6 +2001,7 @@ test("root package exposes explicit desktop entrypoints without changing default
   assert.match(experimentPackage.scripts["desktop:smoke"], /--smoke --product-smoke/);
   assert.match(experimentPackage.scripts["desktop:p2:normal-proof"], /run-canonical-normal-proof\.mjs/);
   assert.match(experimentPackage.scripts["desktop:short-term:acceptance-matrix"], /build-short-term-acceptance-matrix\.mjs/);
+  assert.match(experimentPackage.scripts["desktop:short-term:design-system-check"], /check-short-term-design-system\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p2:reviewer-b"], /build-p2-reviewer-b-categories\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p2:upload-package"], /build-p2-upload-package\.mjs/);
   assert.match(experimentPackage.scripts["desktop:p3:upload-package"], /build-p3-upload-package\.mjs/);
