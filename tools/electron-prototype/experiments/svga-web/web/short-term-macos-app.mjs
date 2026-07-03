@@ -42,6 +42,12 @@ import {
   saveProofImageKey,
   saveProofSourceImageKey
 } from "./short-term-macos-save-model.mjs";
+import {
+  consumeKeyboardEvent,
+  isActivationKey,
+  isContextMenuKey,
+  nextTabIndexForKey
+} from "./short-term-macos-interaction-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -676,19 +682,6 @@ function selectImageKey(imageKey) {
   });
 }
 
-function consumeKeyboardEvent(event) {
-  event.preventDefault();
-  event.stopPropagation();
-}
-
-function isActivationKey(event) {
-  return event.key === "Enter" || event.key === " " || event.key === "Spacebar";
-}
-
-function isContextMenuKey(event) {
-  return event.key === "ContextMenu" || (event.shiftKey && event.key === "F10");
-}
-
 function openKeyboardResourceContextMenu(row) {
   const rect = row.getBoundingClientRect();
   openResourceContextMenu({
@@ -841,12 +834,8 @@ function handleTabListKeydown(event) {
   const current = event.target.closest("[data-tab]");
   if (!current || tabs.length === 0) return;
   const currentIndex = Math.max(0, tabs.indexOf(current));
-  let nextIndex = currentIndex;
-  if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
-  else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-  else if (event.key === "Home") nextIndex = 0;
-  else if (event.key === "End") nextIndex = tabs.length - 1;
-  else return;
+  const nextIndex = nextTabIndexForKey(event.key, currentIndex, tabs.length);
+  if (nextIndex === undefined) return;
   consumeKeyboardEvent(event);
   setTab(tabs[nextIndex].dataset.tab, { focus: true });
 }
