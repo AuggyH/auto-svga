@@ -357,9 +357,14 @@ canvas {
 
 .tabPanel {
   min-height: 0;
+  outline: none;
   overflow: auto;
   padding: var(--asv-inspector-padding);
   scrollbar-gutter: stable;
+}
+
+.tabPanel:focus-visible {
+  box-shadow: var(--asv-focus-inset);
 }
 
 .factGrid {
@@ -532,5 +537,31 @@ canvas {
 
   .compareView {
     grid-template-columns: 210px minmax(420px, 1fr) 230px;
+  }
+}
+
+@media (max-height: 780px) {
+  .previewView,
+  .compareView,
+  .editView {
+    gap: var(--asv-preview-gap);
+    padding: var(--asv-preview-gap);
+  }
+
+  .titlebar {
+    gap: var(--asv-space-1);
+  }
+
+  .factGrid {
+    gap: var(--asv-space-2);
+  }
+
+  .sectionHead {
+    align-items: center;
+  }
+
+  canvas {
+    width: min(64vh, 560px);
+    height: min(64vh, 560px);
   }
 }

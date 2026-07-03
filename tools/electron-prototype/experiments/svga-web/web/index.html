@@ -80,7 +80,7 @@
             <button type="button" data-tab="replaceable" role="tab" aria-selected="false">可替换</button>
           </nav>
 
-          <section class="tabPanel isActive" data-panel="overview" role="tabpanel" data-module="OverviewTabModule">
+          <section class="tabPanel isActive" data-panel="overview" role="tabpanel" tabindex="0" aria-label="总览检查内容" data-module="OverviewTabModule">
             <section class="factGrid" id="factGrid" aria-label="文件信息" data-component="OverviewFactRow"></section>
             <section class="assetSection" data-component="AssetRow">
               <h2>资源</h2>
@@ -88,7 +88,7 @@
             </section>
           </section>
 
-          <section class="tabPanel" data-panel="optimization" role="tabpanel" data-module="OptimizationTabModule" hidden>
+          <section class="tabPanel" data-panel="optimization" role="tabpanel" tabindex="0" aria-label="优化检查内容" data-module="OptimizationTabModule" hidden>
             <div class="sectionHead">
               <div>
                 <h2>优化</h2>
@@ -99,14 +99,14 @@
             <div class="findingList" id="findingList"></div>
           </section>
 
-          <section class="tabPanel" data-panel="replaceable" role="tabpanel" data-module="ReplaceableElementsTabModule" hidden>
+          <section class="tabPanel" data-panel="replaceable" role="tabpanel" tabindex="0" aria-label="可替换元素内容" data-module="ReplaceableElementsTabModule" hidden>
             <div class="sectionHead">
               <div>
                 <h2>可替换元素</h2>
                 <p id="replaceableSummary">仅显示设计师命名的 imageKey。</p>
               </div>
             </div>
-            <div class="replaceableList" id="replaceableList"></div>
+            <div class="replaceableList" id="replaceableList" role="listbox" aria-label="可替换图片"></div>
             <menu class="contextMenu" id="resourceContextMenu" role="menu" tabindex="-1" hidden>
               <button type="button" role="menuitem" data-action="context-rename">重命名 imageKey</button>
               <button type="button" role="menuitem" data-action="context-replace">替换预览图片</button>
@@ -115,7 +115,7 @@
             <section class="textPreviewBlock">
               <h3>运行时文本</h3>
               <p id="textPreviewSummary">打开文件后显示可运行时预览的文本元素。</p>
-              <div class="textElementList" id="textElementList"></div>
+              <div class="textElementList" id="textElementList" role="listbox" aria-label="运行时文本"></div>
               <button type="button" data-action="edit-text" disabled>编辑文本预览</button>
               <button type="button" data-action="reset-text" disabled>重置文本</button>
             </section>

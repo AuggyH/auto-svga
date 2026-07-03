@@ -553,6 +553,10 @@ button.danger {
   background: color-mix(in srgb, var(--asv-action) 12%, transparent);
 }
 
+.contextMenu button:disabled {
+  opacity: 0.42;
+}
+
 .emptyText {
   padding: var(--asv-empty-padding);
   color: var(--asv-muted);

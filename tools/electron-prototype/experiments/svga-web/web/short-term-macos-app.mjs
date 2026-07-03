@@ -624,6 +624,7 @@ function renderReplaceables(model) {
     row.dataset.action = "select-resource";
     row.dataset.component = "ReplaceableImageRow";
     row.dataset.imageKey = item.imageKey;
+    row.setAttribute("role", "option");
     const selected = item.imageKey === state.selectedImageKey;
     const renaming = item.imageKey === state.renameImageKey;
     row.classList.toggle("isSelected", selected);
@@ -687,6 +688,7 @@ function renderTextElements(model) {
       row.dataset.action = "select-text";
       row.dataset.component = "ReplaceableTextRow";
       row.dataset.textKey = item.textKey;
+      row.setAttribute("role", "option");
       row.classList.toggle("isSelected", item.textKey === state.selectedTextKey);
       row.setAttribute("aria-selected", item.textKey === state.selectedTextKey ? "true" : "false");
       row.title = `${item.displayName || item.textKey}: ${item.initialText || item.textKey}`;
@@ -736,6 +738,27 @@ function selectImageKey(imageKey) {
   });
 }
 
+function consumeKeyboardEvent(event) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function isActivationKey(event) {
+  return event.key === "Enter" || event.key === " " || event.key === "Spacebar";
+}
+
+function isContextMenuKey(event) {
+  return event.key === "ContextMenu" || (event.shiftKey && event.key === "F10");
+}
+
+function openKeyboardResourceContextMenu(row) {
+  const rect = row.getBoundingClientRect();
+  openResourceContextMenu({
+    clientX: rect.right - 4,
+    clientY: rect.top + Math.min(rect.height - 4, 28)
+  }, row.dataset.imageKey);
+}
+
 function openResourceContextMenu(event, imageKey) {
   if (!imageKey) return;
   selectImageKey(imageKey);
@@ -744,7 +767,7 @@ function openResourceContextMenu(event, imageKey) {
   menu.style.left = `${Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 8)}px`;
   menu.style.top = `${Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 8)}px`;
   menu.querySelector("[data-action='context-reset']").disabled = state.activeOutput?.kind !== "replacement";
-  menu.focus();
+  menu.querySelector("button:not(:disabled)")?.focus();
 }
 
 function closeResourceContextMenu() {
@@ -1191,14 +1214,36 @@ nodes.replaceableList.addEventListener("contextmenu", (event) => {
 });
 
 nodes.replaceableList.addEventListener("keydown", (event) => {
-  if (!event.target.matches("[data-rename-input]")) return;
-  if (event.key === "Enter") {
-    event.preventDefault();
-    confirmInlineRename().catch(showFailure);
+  if (event.target.matches("[data-rename-input]")) {
+    if (event.key === "Enter") {
+      consumeKeyboardEvent(event);
+      confirmInlineRename().catch(showFailure);
+    }
+    if (event.key === "Escape") {
+      consumeKeyboardEvent(event);
+      cancelInlineRename();
+    }
+    return;
   }
-  if (event.key === "Escape") {
-    event.preventDefault();
-    cancelInlineRename();
+  if (event.target.closest("button")) return;
+  const row = event.target.closest(".replaceableRow[data-image-key]");
+  if (!row) return;
+  if (isActivationKey(event)) {
+    consumeKeyboardEvent(event);
+    selectImageKey(row.dataset.imageKey);
+  }
+  if (isContextMenuKey(event)) {
+    consumeKeyboardEvent(event);
+    openKeyboardResourceContextMenu(row);
+  }
+});
+
+nodes.textElementList.addEventListener("keydown", (event) => {
+  const row = event.target.closest(".textElementRow[data-text-key]");
+  if (!row) return;
+  if (isActivationKey(event)) {
+    consumeKeyboardEvent(event);
+    selectTextKey(row.dataset.textKey);
   }
 });
 

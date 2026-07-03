@@ -109,6 +109,7 @@
   --asv-warning: var(--asv-color-warning);
   --asv-danger: var(--asv-color-danger);
   --asv-focus: 0 0 0 3px color-mix(in srgb, var(--asv-action) 28%, transparent);
+  --asv-focus-inset: inset 0 0 0 2px color-mix(in srgb, var(--asv-action) 30%, transparent);
   --asv-toolbar-height: var(--asv-component-toolbar-height);
   --asv-toolbar-padding-inline: var(--asv-component-toolbar-padding-inline);
   --asv-file-identity-font-size: var(--asv-component-file-identity-font-size);
@@ -160,5 +161,22 @@
     --asv-color-status-danger-soft: rgba(255, 69, 58, 0.12);
     --asv-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.34);
     --asv-shadow-floating: 0 18px 44px rgba(0, 0, 0, 0.32);
+  }
+}
+
+@media (max-height: 780px) {
+  :root {
+    --asv-component-toolbar-height: 46px;
+    --asv-component-control-height: 26px;
+    --asv-component-tab-height: 28px;
+    --asv-component-row-height: 46px;
+    --asv-component-thumbnail-size: 38px;
+    --asv-component-inspector-padding: var(--asv-space-2);
+    --asv-component-inspector-section-gap: var(--asv-space-2);
+    --asv-component-preview-gap: var(--asv-space-2);
+    --asv-component-playback-bar-height: 38px;
+    --asv-component-fact-cell-min-height: 62px;
+    --asv-component-asset-row-min-height: 44px;
+    --asv-component-finding-row-min-height: 50px;
   }
 }
