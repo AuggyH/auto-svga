@@ -555,6 +555,29 @@ Do not claim WCAG completion until accessibility checks, keyboard order,
 contrast, focus visibility, reduced motion, reduced transparency, and resize
 behavior are verified.
 
+## Foreground Desktop Evidence
+
+Automated smoke screenshots and smoke reports are regression evidence. They do
+not prove that the macOS window layout, system chrome integration, menu bar
+presence, visual hierarchy, spacing, focus path, or real production-material
+behavior is acceptable.
+
+Do not claim owner-visible UI/UX acceptance for a visual or interaction slice
+until the review includes foreground screenshots from the actual desktop
+client. The captures should include the macOS menu bar, native titlebar/window
+chrome, and the active app state the owner would actually see.
+
+When available, use multiple real SVGA files from
+`/Users/huangtengxin/Downloads/auto-svga测试物料` for this foreground pass. Cover
+varied file size, resource count, memory estimate, replaceable elements, text
+elements, and optimization conditions when those factors affect the touched
+surface.
+
+If foreground screenshots cannot be collected during a slice, mark the visual
+or interaction acceptance as unproven. The review may still report automated
+smoke as regression evidence, but it must not equate smoke success with UI
+design acceptance.
+
 ## Design-To-Code Rule
 
 Before implementing any UI slice, the task must name:

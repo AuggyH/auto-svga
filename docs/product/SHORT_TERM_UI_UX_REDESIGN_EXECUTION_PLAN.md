@@ -125,6 +125,33 @@ Every UI implementation slice should include a proportional subset of:
 - no stale metadata in loading/failure states
 - no old out-of-scope menu or toolbar entries
 
+## Foreground macOS Validation Gate
+
+Automated smoke evidence is regression evidence only. It can prove that the
+short-term flow still opens, renders, and exercises required states, but it must
+not be used as the sole basis for saying the page layout, interaction quality,
+or UI design is acceptable.
+
+Before a UI/UX slice claims visual or interaction acceptance, collect
+foreground desktop evidence from the actual macOS client:
+
+- capture the real foreground app window, including the macOS menu bar and
+  native titlebar/window chrome;
+- use real production SVGA materials from
+  `/Users/huangtengxin/Downloads/auto-svga测试物料` when available, not only
+  synthetic fixtures or smoke inputs;
+- cover more than one SVGA file when the touched surface depends on file size,
+  resource count, memory estimate, replaceable elements, text elements, or
+  optimization findings;
+- inspect Launch, Preview Overview, Replaceable Elements, Optimization,
+  General Compare, Save Failed, Loading, and Failure states when those surfaces
+  are touched;
+- record screenshot paths or review links in the UI/UX review file.
+
+If foreground capture is temporarily unavailable, the review must explicitly
+mark visual/interaction acceptance as not yet proven and state that smoke
+evidence only covers automated regression.
+
 ## Rollback Plan
 
 This plan is documentation-only. If it introduces confusion, revert the document
