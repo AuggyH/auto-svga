@@ -99,6 +99,13 @@ import {
   toParserArrayBuffer,
   toUint8Array
 } from "./short-term-macos-byte-model.mjs";
+import {
+  inspectShortTermSvga,
+  optimizeShortTermSvga,
+  probeInvalidShortTermInspection,
+  renameShortTermImageKey,
+  replaceShortTermImageAsset
+} from "./short-term-macos-api-client.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -312,7 +319,7 @@ async function closeFile() {
 }
 
 async function inspectShortTerm(bytes, name) {
-  return postBytes(`/api/short-term-product-inspection-model?name=${encodeURIComponent(name)}`, bytes);
+  return inspectShortTermSvga({ bytes, name, reportToken: bridge?.reportToken });
 }
 
 async function runOptimization() {
@@ -321,10 +328,11 @@ async function runOptimization() {
   setTab("optimization");
   showSaveBanner("正在执行安全优化。", "只处理当前可安全执行的项目。");
   try {
-    const result = await postBytes(
-      `/api/short-term-product-optimization-workflow?name=${encodeURIComponent(state.displayName)}`,
-      state.sourceBytes
-    );
+    const result = await optimizeShortTermSvga({
+      bytes: state.sourceBytes,
+      name: state.displayName,
+      reportToken: bridge?.reportToken
+    });
     const optimizedBytes = result.optimizedSvgaBase64 ? fromBase64(result.optimizedSvgaBase64) : undefined;
     if (!optimizedBytes?.byteLength || result.optimization?.status !== "optimized") {
       showSaveBanner(result.optimization?.resultTitle || "没有可安全执行的优化项。", result.optimization?.resultSummary || "保存保持关闭。");
@@ -371,10 +379,13 @@ async function confirmInlineRename() {
   }
   showSaveBanner("正在重命名 imageKey。", "完成引用闭合检查后启用保存。");
   try {
-    const renamed = await postBytes(
-      `/api/short-term-product-image-key-rename?name=${encodeURIComponent(state.displayName)}&from=${encodeURIComponent(fromImageKey)}&to=${encodeURIComponent(toImageKey)}`,
-      state.sourceBytes
-    );
+    const renamed = await renameShortTermImageKey({
+      bytes: state.sourceBytes,
+      name: state.displayName,
+      fromImageKey,
+      toImageKey,
+      reportToken: bridge?.reportToken
+    });
     const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
     if (!renamedBytes?.byteLength || renamed.rename?.status !== "renamed") {
       showSaveBanner(renamed.rename?.resultTitle || "重命名失败。", renamed.rename?.diagnostic?.message || "保存保持关闭。");
@@ -408,10 +419,13 @@ async function createSaveProofOutput(suffix) {
   if (!fromImageKey) throw new Error("保存证明没有可用 imageKey。");
   const toImageKey = saveProofImageKey(fromImageKey, suffix);
   showSaveBanner("正在生成保存证明输出。", "使用短期重命名工作流生成可验证 SVGA 输出。");
-  const renamed = await postBytes(
-    `/api/short-term-product-image-key-rename?name=${encodeURIComponent(state.displayName)}&from=${encodeURIComponent(fromImageKey)}&to=${encodeURIComponent(toImageKey)}`,
-    state.sourceBytes
-  );
+  const renamed = await renameShortTermImageKey({
+    bytes: state.sourceBytes,
+    name: state.displayName,
+    fromImageKey,
+    toImageKey,
+    reportToken: bridge?.reportToken
+  });
   const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
   if (!renamedBytes?.byteLength || renamed.rename?.status !== "renamed") {
     throw new Error(renamed.rename?.diagnostic?.message || "保存证明输出生成失败。");
@@ -463,7 +477,10 @@ async function applyReplacementFile(file) {
       svgaBase64: toBase64(state.sourceBytes),
       pngBase64: toBase64(new Uint8Array(await file.arrayBuffer()))
     };
-    const replaced = await postJson("/api/short-term-product-image-replacement-workflow", payload);
+    const replaced = await replaceShortTermImageAsset({
+      payload,
+      reportToken: bridge?.reportToken
+    });
     const replacedBytes = replaced.replacedSvgaBase64 ? fromBase64(replaced.replacedSvgaBase64) : undefined;
     if (!replacedBytes?.byteLength || replaced.replacement?.status !== "replaced") {
       showSaveBanner(replaced.replacement?.resultTitle || "替换未完成。", replaced.replacement?.diagnostic?.message || "保存保持关闭。");
@@ -902,37 +919,6 @@ function currentStateSummary() {
     errorVisible: state.view === "failed",
     errorText: nodes.errorMessage.textContent
   });
-}
-
-async function postBytes(url, bytes) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: authHeaders(),
-    body: bytes
-  });
-  return readJsonResponse(response);
-}
-
-async function postJson(url, payload) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      ...authHeaders(),
-      "content-type": "application/json; charset=utf-8"
-    },
-    body: JSON.stringify(payload)
-  });
-  return readJsonResponse(response);
-}
-
-function authHeaders() {
-  return bridge?.reportToken ? { "x-auto-svga-prototype-token": bridge.reportToken } : {};
-}
-
-async function readJsonResponse(response) {
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || `请求失败 (${response.status})`);
-  return payload;
 }
 
 function showDialog(dialog) {
@@ -1732,10 +1718,8 @@ async function runShortTermSmokeIfRequested() {
   });
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const playbackFailureSourceSha256AfterRecovery = await sha256Hex(state.sourceBytes);
-  const invalidResponse = await fetch("/api/short-term-product-inspection-model?name=invalid.svga", {
-    method: "POST",
-    headers: authHeaders(),
-    body: new Uint8Array([0, 1, 2, 3, 4])
+  const invalidResponse = await probeInvalidShortTermInspection({
+    reportToken: bridge?.reportToken
   });
   const shortTermLoadFailureProof = {
     schemaVersion: 1,

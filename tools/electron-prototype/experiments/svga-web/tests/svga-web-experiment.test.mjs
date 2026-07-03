@@ -1028,6 +1028,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermResourceMenuModel = await readFile(path.join(experimentRoot, "web/short-term-macos-resource-menu-model.mjs"), "utf8");
   const shortTermSmokeProofModel = await readFile(path.join(experimentRoot, "web/short-term-macos-smoke-proof-model.mjs"), "utf8");
   const shortTermByteModel = await readFile(path.join(experimentRoot, "web/short-term-macos-byte-model.mjs"), "utf8");
+  const shortTermApiClient = await readFile(path.join(experimentRoot, "web/short-term-macos-api-client.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1473,6 +1474,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermByteModel, /export function toParserArrayBuffer/);
   assert.match(shortTermByteModel, /export async function sha256Hex/);
   assert.doesNotMatch(shortTermEntry, /function toUint8Array|function toBase64|function fromBase64|function toParserArrayBuffer|async function sha256Hex/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-api-client\.mjs"/);
+  assert.match(shortTermApiClient, /export async function inspectShortTermSvga/);
+  assert.match(shortTermApiClient, /export async function optimizeShortTermSvga/);
+  assert.match(shortTermApiClient, /export async function renameShortTermImageKey/);
+  assert.match(shortTermApiClient, /export async function replaceShortTermImageAsset/);
+  assert.match(shortTermApiClient, /export async function probeInvalidShortTermInspection/);
+  assert.match(shortTermApiClient, /x-auto-svga-prototype-token/);
+  assert.doesNotMatch(shortTermEntry, /function postBytes|function postJson|function authHeaders|function readJsonResponse|\/api\/short-term-product-/);
   assert.match(shortTermRenderModel, /export function renderOverviewFactCellHtml/);
   assert.match(shortTermRenderModel, /export function renderOptimizationFindingHtml/);
   assert.match(shortTermRenderModel, /export function renderMessageRowHtml\(title, summary, tone = "info"\)/);
@@ -1481,12 +1490,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermRenderModel, /export function groupOptimizationItems/);
   assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
   assert.match(shortTermEntry, /aria-selected/);
-  assert.match(shortTermEntry, /\/api\/short-term-product-inspection-model/);
-  assert.match(shortTermEntry, /\/api\/short-term-product-optimization-workflow/);
-  assert.match(shortTermEntry, /\/api\/short-term-product-image-key-rename/);
+  assert.match(shortTermApiClient, /\/api\/short-term-product-inspection-model/);
+  assert.match(shortTermApiClient, /\/api\/short-term-product-optimization-workflow/);
+  assert.match(shortTermApiClient, /\/api\/short-term-product-image-key-rename/);
   assert.match(shortTermEntry, /function createSaveProofOutput/);
   assert.match(shortTermEntry, /createSaveProofOutput,/);
-  assert.match(shortTermEntry, /\/api\/short-term-product-image-replacement-workflow/);
+  assert.match(shortTermApiClient, /\/api\/short-term-product-image-replacement-workflow/);
   assert.match(shortTermEntry, /renameImageKey: ""/);
   assert.match(shortTermDomRenderers, /data-rename-input/);
   assert.match(shortTermDomRenderers, /ReplaceableImageRow/);
@@ -1630,7 +1639,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /export async function waitForCanvasPixels/);
   assert.match(shortTermSmokeProofModel, /export function resourceEntriesAreLocalOnly/);
   assert.match(shortTermEntry, /waitForCanvasPixels/);
-  assert.match(shortTermEntry, /name=invalid\.svga/);
+  assert.match(shortTermApiClient, /name=invalid\.svga/);
   assert.match(shortTermEntry, /toParserArrayBuffer/);
   assert.match(shortTermByteModel, /view\.buffer\.slice\(view\.byteOffset, view\.byteOffset \+ view\.byteLength\)/);
   assert.match(shortTermEntry, /confirmDiscardUnsavedOutput/);
