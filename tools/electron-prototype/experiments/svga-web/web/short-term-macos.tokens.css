@@ -92,6 +92,11 @@
   --asv-component-status-strip-radius: 999px;
   --asv-component-empty-padding: var(--asv-space-3);
   --asv-component-left-panel-width: 238px;
+  --asv-component-compare-side-min-width: 220px;
+  --asv-component-compare-side-width: 280px;
+  --asv-component-compare-side-max-width: 300px;
+  --asv-component-compare-canvas-header-height: 38px;
+  --asv-component-compare-metric-row-min-height: 46px;
   --asv-component-launch-content-width: 520px;
   --asv-component-launch-action-width: 132px;
   --asv-component-launch-recent-row-height: 34px;
@@ -178,6 +183,11 @@
   --asv-status-strip-radius: var(--asv-component-status-strip-radius);
   --asv-empty-padding: var(--asv-component-empty-padding);
   --asv-left-width: var(--asv-component-left-panel-width);
+  --asv-compare-side-min-width: var(--asv-component-compare-side-min-width);
+  --asv-compare-side-width: var(--asv-component-compare-side-width);
+  --asv-compare-side-max-width: var(--asv-component-compare-side-max-width);
+  --asv-compare-canvas-header-height: var(--asv-component-compare-canvas-header-height);
+  --asv-compare-metric-row-min-height: var(--asv-component-compare-metric-row-min-height);
   --asv-launch-content-width: var(--asv-component-launch-content-width);
   --asv-launch-action-width: var(--asv-component-launch-action-width);
   --asv-launch-recent-row-height: var(--asv-component-launch-recent-row-height);
@@ -227,5 +237,7 @@
     --asv-component-fact-cell-min-height: 62px;
     --asv-component-asset-row-min-height: 44px;
     --asv-component-finding-row-min-height: 50px;
+    --asv-component-compare-canvas-header-height: 34px;
+    --asv-component-compare-metric-row-min-height: 42px;
   }
 }

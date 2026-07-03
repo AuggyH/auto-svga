@@ -541,11 +541,14 @@ canvas {
 
 .compareView {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(240px, 300px);
-  gap: var(--asv-space-4);
+  grid-template-columns:
+    minmax(var(--asv-compare-side-min-width), var(--asv-compare-side-width))
+    minmax(0, 1fr)
+    minmax(var(--asv-compare-side-min-width), var(--asv-compare-side-max-width));
+  gap: var(--asv-preview-gap);
   height: 100%;
   min-height: 0;
-  padding: var(--asv-space-4);
+  padding: var(--asv-preview-gap);
   background: var(--asv-workbench);
 }
 
@@ -557,11 +560,24 @@ canvas {
 }
 
 .compareCanvasWrap {
+  grid-template-rows: var(--asv-compare-canvas-header-height) minmax(0, 1fr);
+  place-items: stretch;
   box-shadow: var(--asv-shadow-panel-highlight);
 }
 
-.canvasWrap[data-canvas-label]::before,
-.compareCanvasWrap::before {
+.compareCanvasHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--asv-space-2);
+  align-items: center;
+  min-height: var(--asv-compare-canvas-header-height);
+  padding: 0 var(--asv-space-3);
+  border-bottom: 1px solid var(--asv-subtle-border);
+  background: var(--asv-fact-bg);
+}
+
+.compareCanvasHeader span,
+.canvasWrap[data-canvas-label]::before {
   position: absolute;
   z-index: 1;
   top: var(--asv-space-3);
@@ -579,12 +595,42 @@ canvas {
   pointer-events: none;
 }
 
+.compareCanvasHeader span {
+  position: static;
+  pointer-events: auto;
+}
+
+.compareCanvasHeader strong,
+.compareCanvasHeader small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compareCanvasHeader strong {
+  color: var(--asv-text);
+  font-size: var(--asv-type-size-footnote);
+  font-weight: 650;
+}
+
+.compareCanvasHeader small {
+  color: var(--asv-subtle);
+  font-family: var(--asv-type-mono);
+  font-size: var(--asv-type-size-caption);
+  text-align: right;
+}
+
 .canvasWrap[data-canvas-label]::before {
   content: attr(data-canvas-label);
 }
 
-.compareCanvasWrap::before {
-  content: attr(data-compare-label);
+.compareCanvasWrap canvas {
+  align-self: center;
+  justify-self: center;
+}
+
+.compareCanvasWrap[data-compare-state="empty"] canvas {
+  opacity: 0.28;
 }
 
 .compareInfo {
@@ -620,7 +666,47 @@ canvas {
 
 .compareMetricGrid {
   display: grid;
-  gap: var(--asv-space-2);
+  gap: 0;
+  border-top: 1px solid var(--asv-subtle-border);
+}
+
+.compareMetricCell {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  min-height: var(--asv-compare-metric-row-min-height);
+  padding: var(--asv-space-2) var(--asv-space-1) var(--asv-space-2) var(--asv-space-4);
+  border: 0;
+  border-bottom: 1px solid var(--asv-subtle-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.compareMetricCell[data-status="warning"],
+.compareMetricCell[data-status="fail"] {
+  background: transparent;
+}
+
+.compareMetricCell strong {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: var(--asv-type-size-footnote);
+  text-align: right;
+}
+
+.compareMetricCell span {
+  grid-column: 1;
+  grid-row: 1;
+  overflow: hidden;
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-footnote);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compareMetricCell small {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  color: var(--asv-subtle);
 }
 
 .compareActions {
@@ -700,7 +786,10 @@ canvas {
   }
 
   .compareView {
-    grid-template-columns: 210px minmax(420px, 1fr) 230px;
+    grid-template-columns:
+      minmax(calc(var(--asv-compare-side-min-width) - var(--asv-space-3)), var(--asv-compare-side-width))
+      minmax(420px, 1fr)
+      minmax(calc(var(--asv-compare-side-min-width) - var(--asv-space-2)), var(--asv-compare-side-max-width));
   }
 }
 

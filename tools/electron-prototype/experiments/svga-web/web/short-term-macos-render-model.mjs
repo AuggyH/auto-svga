@@ -13,13 +13,21 @@ export function renderOverviewFactCellHtml(fact) {
 
 export function renderCompareFactCellHtml(fact) {
   return `
-    <div class="factCell"><strong>${escapeHtml(fact.value)}</strong><span>${escapeHtml(fact.label)}</span></div>
+    <div class="factCell compareMetricCell" data-status="${escapeHtml(fact.status || "unknown")}">
+      <span>${escapeHtml(fact.label)}</span>
+      <strong>${escapeHtml(fact.value)}</strong>
+      <small><b>${escapeHtml(statusCopy(fact.status))}</b>${escapeHtml(fact.requirement)}</small>
+    </div>
   `;
 }
 
 export function renderCompareMetricCellHtml(metric) {
   return `
-    <div class="factCell"><strong>${escapeHtml(metric.after)}</strong><span>${escapeHtml(metric.label)}</span><small>${escapeHtml(metric.delta)}</small></div>
+    <div class="factCell compareMetricCell" data-status="success">
+      <span>${escapeHtml(metric.label)}</span>
+      <strong>${escapeHtml(metric.after)}</strong>
+      <small>${escapeHtml(metric.delta)}</small>
+    </div>
   `;
 }
 

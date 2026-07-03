@@ -1026,8 +1026,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /short-term-macos\.css/);
   assert.match(page, /short-term-macos\.components\.css/);
   assert.match(page, /short-term-macos-app\.mjs/);
+  assert.match(page, /data-module="GeneralCompareModule"/);
+  assert.match(page, /data-component="ComparePreviewCard"/);
   assert.match(page, /data-compare-label="A"/);
   assert.match(page, /data-compare-label="B"/);
+  assert.match(page, /id="compareCanvasTitleA"/);
+  assert.match(page, /id="compareCanvasMetaB"/);
   assert.match(page, /data-canvas-label="预览"/);
   assert.match(page, /class="playbackActions" data-component="PlaybackButtonGroup"/);
   assert.match(page, /class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus"/);
@@ -1075,6 +1079,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-launch-content-width/);
   assert.match(shortTermTokens, /--asv-launch-recent-row-height/);
   assert.match(shortTermTokens, /--asv-component-preview-gap/);
+  assert.match(shortTermTokens, /--asv-component-compare-canvas-header-height/);
+  assert.match(shortTermTokens, /--asv-compare-metric-row-min-height/);
   assert.match(shortTermTokens, /--asv-playback-bar-height/);
   assert.match(shortTermTokens, /--asv-component-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-row-index-width/);
@@ -1114,7 +1120,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStyles, /\.playbackActions/);
   assert.match(shortTermStyles, /\.playbackMeta/);
   assert.match(shortTermStyles, /\.textPreviewActions/);
-  assert.match(shortTermStyles, /\.compareCanvasWrap::before/);
+  assert.match(shortTermStyles, /\.compareCanvasHeader/);
+  assert.match(shortTermStyles, /\.compareMetricCell/);
   assert.match(shortTermStyles, /\.compareSummary/);
   assert.match(shortTermStyles, /\.compareMetricGrid/);
   assert.match(shortTermStyles, /\.compareActions/);
@@ -1127,6 +1134,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /event\.key === "Home"/);
   assert.match(shortTermEntry, /event\.key === "End"/);
   assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);
+  assert.match(shortTermEntry, /setCompareTrace\("GeneralCompareModule", "General comparing"\)/);
+  assert.match(shortTermEntry, /setCompareTrace\("OptimizationCompareModule", "Optimization compare"\)/);
   assert.match(shortTermEntry, /async function collectShortTermTabKeyboardProof/);
   assert.match(shortTermEntry, /proofId: "short-term-tab-keyboard-proof"/);
   assert.match(shortTermEntry, /shortTermTabKeyboardProof/);

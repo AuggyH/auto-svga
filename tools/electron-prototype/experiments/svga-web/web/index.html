@@ -131,11 +131,25 @@
         </aside>
       </section>
 
-      <section class="view compareView" data-view="compare" data-page-state="General comparing" hidden>
+      <section class="view compareView" data-view="compare" data-page-state="General comparing" data-module="GeneralCompareModule" hidden>
         <aside class="compareInfo" id="compareInfoA"></aside>
         <section class="compareStage">
-          <div class="compareCanvasWrap" data-compare-label="A"><canvas id="compareCanvasA" aria-label="A 文件预览"></canvas></div>
-          <div class="compareCanvasWrap" data-compare-label="B"><canvas id="compareCanvasB" aria-label="B 文件预览"></canvas></div>
+          <div class="compareCanvasWrap" id="compareCanvasWrapA" data-component="ComparePreviewCard" data-compare-label="A" data-compare-state="empty">
+            <header class="compareCanvasHeader">
+              <span>A</span>
+              <strong id="compareCanvasTitleA">A 文件</strong>
+              <small id="compareCanvasMetaA"></small>
+            </header>
+            <canvas id="compareCanvasA" aria-label="A 文件预览"></canvas>
+          </div>
+          <div class="compareCanvasWrap" id="compareCanvasWrapB" data-component="ComparePreviewCard" data-compare-label="B" data-compare-state="empty">
+            <header class="compareCanvasHeader">
+              <span>B</span>
+              <strong id="compareCanvasTitleB">B 文件</strong>
+              <small id="compareCanvasMetaB"></small>
+            </header>
+            <canvas id="compareCanvasB" aria-label="B 文件预览"></canvas>
+          </div>
         </section>
         <aside class="compareInfo" id="compareInfoB">
           <button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>

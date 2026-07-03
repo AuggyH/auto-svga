@@ -48,6 +48,12 @@ const nodes = {
   primaryCanvas: document.querySelector("#primaryCanvas"),
   compareCanvasA: document.querySelector("#compareCanvasA"),
   compareCanvasB: document.querySelector("#compareCanvasB"),
+  compareCanvasWrapA: document.querySelector("#compareCanvasWrapA"),
+  compareCanvasWrapB: document.querySelector("#compareCanvasWrapB"),
+  compareCanvasTitleA: document.querySelector("#compareCanvasTitleA"),
+  compareCanvasTitleB: document.querySelector("#compareCanvasTitleB"),
+  compareCanvasMetaA: document.querySelector("#compareCanvasMetaA"),
+  compareCanvasMetaB: document.querySelector("#compareCanvasMetaB"),
   editCanvas: document.querySelector("#editCanvas"),
   playbackMeta: document.querySelector("#playbackMeta"),
   factGrid: document.querySelector("#factGrid"),
@@ -154,6 +160,7 @@ async function openCompareBFromHost() {
   const bytes = toUint8Array(opened.bytes);
   await mountPlayback("compareB", nodes.compareCanvasB, bytes);
   const model = await inspectShortTerm(bytes, opened.basename || "compare.svga");
+  setCompareSlot("B", opened.basename || "B 文件", model);
   nodes.compareInfoB.innerHTML = renderCompareInfo("B 文件", model, opened.basename || "compare.svga", [
     `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
   ]);
@@ -814,6 +821,9 @@ function renderEditReserved() {
 
 async function renderOptimizationCompare(model, optimizedBytes) {
   setView("compare");
+  setCompareTrace("OptimizationCompareModule", "Optimization compare");
+  setCompareSlot("A", state.displayName || "原始文件", state.model);
+  setCompareSlot("B", model.resultTitle || "优化结果", undefined, "优化副本");
   const actionRows = (model.actions ?? []).map((action) => `
     <li>
       <strong>${escapeHtml(action.title)}</strong>
@@ -842,6 +852,7 @@ async function renderOptimizationCompare(model, optimizedBytes) {
     mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes),
     mountPlayback("compareB", nodes.compareCanvasB, optimizedBytes)
   ]);
+  if (nodes.compareCanvasWrapB) nodes.compareCanvasWrapB.dataset.compareState = "loaded";
 }
 
 async function showOptimizationComparison() {
@@ -865,9 +876,35 @@ function renderCompareInfo(title, model, displayName, actions = []) {
   return `<section class="compareSummary"><h2>${escapeHtml(title)}</h2><p>${escapeHtml(displayName)}</p></section><section class="compareMetricGrid" aria-label="${escapeHtml(title)} 信息">${facts}</section>${actionHtml}`;
 }
 
+function compareSlotMeta(model, fallback = "") {
+  const facts = overviewVisibleFacts(model);
+  const canvas = facts.find((fact) => fact.id === "canvas")?.value;
+  const fps = facts.find((fact) => fact.id === "fps")?.value;
+  return [canvas, fps ? `${fps} FPS` : ""].filter(Boolean).join(" / ") || fallback;
+}
+
+function setCompareSlot(slot, title, model, fallbackMeta = "") {
+  const titleNode = slot === "A" ? nodes.compareCanvasTitleA : nodes.compareCanvasTitleB;
+  const metaNode = slot === "A" ? nodes.compareCanvasMetaA : nodes.compareCanvasMetaB;
+  const wrapNode = slot === "A" ? nodes.compareCanvasWrapA : nodes.compareCanvasWrapB;
+  if (titleNode) titleNode.textContent = title || `${slot} 文件`;
+  if (metaNode) metaNode.textContent = compareSlotMeta(model, fallbackMeta);
+  if (wrapNode) wrapNode.dataset.compareState = model ? "loaded" : "empty";
+}
+
+function setCompareTrace(moduleName, pageState) {
+  const compareView = document.querySelector("[data-view='compare']");
+  if (!compareView) return;
+  compareView.dataset.module = moduleName;
+  compareView.dataset.pageState = pageState;
+}
+
 async function enterGeneralCompare() {
   if (!state.sourceBytes) return;
   setView("compare");
+  setCompareTrace("GeneralCompareModule", "General comparing");
+  setCompareSlot("A", state.displayName || "A 文件", state.model);
+  setCompareSlot("B", "B 文件", undefined, "等待打开");
   nodes.compareInfoA.innerHTML = renderCompareInfo("A 文件", state.model, state.displayName);
   nodes.compareInfoB.innerHTML = `
     <section class="compareSummary" data-status="info">
