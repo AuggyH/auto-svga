@@ -26,9 +26,7 @@ const cssRawDimensionDebtLimit = new Map([
 ]);
 
 const allowedDynamicDomModules = new Set([
-  "short-term-macos-compare-model.mjs",
-  "short-term-macos-dom-renderers.mjs",
-  "short-term-macos-render-model.mjs"
+  "short-term-macos-dom-renderers.mjs"
 ]);
 
 const allowedDataComponents = new Set([

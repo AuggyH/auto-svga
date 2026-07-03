@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
@@ -2063,6 +2064,10 @@ test("P4 multi-resource editing keeps history and export integrity boundaries is
 });
 
 test("short-term design system check enforces UI implementation guardrails", () => {
+  const source = readFileSync(path.join(experimentRoot, "scripts/check-short-term-design-system.mjs"), "utf8");
+  const dynamicDomAllowlist = source.match(/const allowedDynamicDomModules = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
+  assert.match(dynamicDomAllowlist, /short-term-macos-dom-renderers\.mjs/);
+  assert.doesNotMatch(dynamicDomAllowlist, /short-term-macos-compare-model\.mjs|short-term-macos-render-model\.mjs|short-term-macos-recent-files-model\.mjs/);
   const output = execFileSync(process.execPath, ["scripts/check-short-term-design-system.mjs"], {
     cwd: experimentRoot,
     encoding: "utf8"
