@@ -1019,6 +1019,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
   const shortTermSaveModel = await readFile(path.join(experimentRoot, "web/short-term-macos-save-model.mjs"), "utf8");
   const shortTermInteractionModel = await readFile(path.join(experimentRoot, "web/short-term-macos-interaction-model.mjs"), "utf8");
+  const shortTermTextModel = await readFile(path.join(experimentRoot, "web/short-term-macos-text-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1262,6 +1263,20 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermInteractionModel, /event\.key === "Spacebar"/);
   assert.match(shortTermInteractionModel, /event\.key === "ContextMenu"/);
   assert.match(shortTermInteractionModel, /event\.shiftKey && event\.key === "F10"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-text-model\.mjs"/);
+  assert.match(shortTermEntry, /runtimeTextListView/);
+  assert.match(shortTermEntry, /runtimeTextOverlayCopy/);
+  assert.match(shortTermEntry, /selectedRuntimeTextElement/);
+  assert.match(shortTermTextModel, /export const RUNTIME_TEXT_DEFAULT_VALUE = "SVGA VIP"/);
+  assert.match(shortTermTextModel, /export function runtimeTextInputValue/);
+  assert.match(shortTermTextModel, /export function runtimeTextPlaceholder/);
+  assert.match(shortTermTextModel, /export function runtimeTextOverlayCopy/);
+  assert.match(shortTermTextModel, /export function runtimeTextListView/);
+  assert.match(shortTermTextModel, /export function nextSelectedTextKey/);
+  assert.match(shortTermTextModel, /export function selectedRuntimeTextElement/);
+  assert.match(shortTermTextModel, /当前文件没有可运行时预览的文本元素。/);
+  assert.match(shortTermTextModel, /未发现可运行时替换的 textKey。/);
+  assert.match(shortTermTextModel, /文本预览已应用，源 SVGA 字节未修改。/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);

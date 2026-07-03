@@ -48,6 +48,14 @@ import {
   isContextMenuKey,
   nextTabIndexForKey
 } from "./short-term-macos-interaction-model.mjs";
+import {
+  nextSelectedTextKey,
+  runtimeTextInputValue,
+  runtimeTextListView,
+  runtimeTextOverlayCopy,
+  runtimeTextPlaceholder,
+  selectedRuntimeTextElement
+} from "./short-term-macos-text-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -449,12 +457,12 @@ async function editRuntimeText() {
     showSaveBanner("没有可预览的文本元素。", "当前文件没有暴露可运行时替换的文本标识，源文件没有被修改。");
     return;
   }
-  nodes.runtimeTextInput.value = state.textPreview || "SVGA VIP";
-  nodes.runtimeTextInput.placeholder = textElement.initialText || textElement.displayName || textElement.textKey;
+  nodes.runtimeTextInput.value = runtimeTextInputValue(state.textPreview);
+  nodes.runtimeTextInput.placeholder = runtimeTextPlaceholder(textElement);
   const result = await showDialog(nodes.textDialog);
   if (result !== "confirm") return;
   state.textPreview = nodes.runtimeTextInput.value.trim();
-  nodes.runtimeTextOverlay.textContent = `${textElement.displayName || textElement.textKey}: ${state.textPreview}`;
+  nodes.runtimeTextOverlay.textContent = runtimeTextOverlayCopy(textElement, state.textPreview);
   nodes.runtimeTextOverlay.hidden = !state.textPreview;
   renderTextElements(state.model?.replaceableElements);
   renderCommandState();
@@ -623,30 +631,26 @@ function renderReplaceables(model) {
 }
 
 function renderTextElements(model) {
-  const texts = Array.isArray(model?.texts) ? model.texts : [];
-  if (!state.selectedTextKey || !texts.some((item) => item.textKey === state.selectedTextKey)) {
-    state.selectedTextKey = texts[0]?.textKey || "";
-  }
-  if (texts.length === 0) {
+  const view = runtimeTextListView(model, state.textPreview);
+  state.selectedTextKey = nextSelectedTextKey(state.selectedTextKey, view.texts);
+  if (!view.hasTextElements) {
     const empty = document.createElement("p");
     empty.className = "emptyText";
     empty.dataset.component = "InlineStatus";
-    empty.textContent = model?.textPreviewCopy || "当前文件没有可运行时预览的文本元素。";
+    empty.textContent = view.emptyCopy;
     nodes.textElementList.replaceChildren(empty);
-    nodes.textPreviewSummary.textContent = "未发现可运行时替换的 textKey。";
+    nodes.textPreviewSummary.textContent = view.summaryCopy;
     nodes.editTextButton.hidden = true;
     nodes.resetTextButton.hidden = true;
   } else {
     nodes.editTextButton.hidden = false;
     nodes.resetTextButton.hidden = false;
-    nodes.textElementList.replaceChildren(...texts.map((item, index) => createTextElementRow(item, index, {
+    nodes.textElementList.replaceChildren(...view.texts.map((item, index) => createTextElementRow(item, index, {
       selected: item.textKey === state.selectedTextKey
     })));
-    nodes.textPreviewSummary.textContent = state.textPreview
-      ? "文本预览已应用，源 SVGA 字节未修改。"
-      : `${texts.length} 个文本元素可运行时预览。`;
+    nodes.textPreviewSummary.textContent = view.summaryCopy;
   }
-  setActionEnabled("edit-text", texts.length > 0, "当前文件没有可预览文本元素");
+  setActionEnabled("edit-text", view.hasTextElements, "当前文件没有可预览文本元素");
   setActionEnabled("reset-text", Boolean(state.textPreview), "当前没有已应用的文本预览");
 }
 
@@ -660,10 +664,7 @@ function selectTextKey(textKey) {
 }
 
 function selectedTextElement() {
-  const texts = Array.isArray(state.model?.replaceableElements?.texts)
-    ? state.model.replaceableElements.texts
-    : [];
-  return texts.find((item) => item.textKey === state.selectedTextKey);
+  return selectedRuntimeTextElement(state.model?.replaceableElements, state.selectedTextKey);
 }
 
 function selectImageKey(imageKey) {
