@@ -940,17 +940,39 @@ function clearCanvas(canvas) {
   context?.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function setTab(tab) {
+function tabButtons() {
+  return [...document.querySelectorAll("[data-tab]")];
+}
+
+function setTab(tab, options = {}) {
   state.tab = tab;
-  document.querySelectorAll("[data-tab]").forEach((button) => {
-    button.classList.toggle("isSelected", button.dataset.tab === tab);
-    button.setAttribute("aria-selected", button.dataset.tab === tab ? "true" : "false");
+  tabButtons().forEach((button) => {
+    const selected = button.dataset.tab === tab;
+    button.classList.toggle("isSelected", selected);
+    button.setAttribute("aria-selected", selected ? "true" : "false");
+    button.tabIndex = selected ? 0 : -1;
+    if (selected && options.focus === true) button.focus();
   });
   document.querySelectorAll("[data-panel]").forEach((panel) => {
     const active = panel.dataset.panel === tab;
     panel.hidden = !active;
     panel.classList.toggle("isActive", active);
   });
+}
+
+function handleTabListKeydown(event) {
+  const tabs = tabButtons();
+  const current = event.target.closest("[data-tab]");
+  if (!current || tabs.length === 0) return;
+  const currentIndex = Math.max(0, tabs.indexOf(current));
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
+  else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  else if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = tabs.length - 1;
+  else return;
+  consumeKeyboardEvent(event);
+  setTab(tabs[nextIndex].dataset.tab, { focus: true });
 }
 
 function openTab(tab) {
@@ -1283,6 +1305,8 @@ nodes.textElementList.addEventListener("keydown", (event) => {
 document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => setTab(button.dataset.tab));
 });
+
+document.querySelector("[role='tablist']")?.addEventListener("keydown", handleTabListKeydown);
 
 nodes.replacementFileInput.addEventListener("change", () => {
   applyReplacementFile(nodes.replacementFileInput.files?.[0]).catch(showFailure);

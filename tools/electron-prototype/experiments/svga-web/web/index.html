@@ -80,10 +80,10 @@
         </section>
 
         <aside class="inspectorPanel" aria-label="检查面板" data-component="RightTabPanel">
-          <nav class="tabs" aria-label="检查标签" role="tablist">
-            <button type="button" class="isSelected" id="tabOverview" data-tab="overview" role="tab" aria-selected="true" aria-controls="panelOverview">总览</button>
-            <button type="button" id="tabOptimization" data-tab="optimization" role="tab" aria-selected="false" aria-controls="panelOptimization">优化</button>
-            <button type="button" id="tabReplaceable" data-tab="replaceable" role="tab" aria-selected="false" aria-controls="panelReplaceable">可替换</button>
+          <nav class="tabs" aria-label="检查标签" role="tablist" aria-orientation="horizontal">
+            <button type="button" class="isSelected" id="tabOverview" data-tab="overview" data-component="TabItem" role="tab" aria-selected="true" aria-controls="panelOverview" tabindex="0">总览</button>
+            <button type="button" id="tabOptimization" data-tab="optimization" data-component="TabItem" role="tab" aria-selected="false" aria-controls="panelOptimization" tabindex="-1">优化</button>
+            <button type="button" id="tabReplaceable" data-tab="replaceable" data-component="TabItem" role="tab" aria-selected="false" aria-controls="panelReplaceable" tabindex="-1">可替换</button>
           </nav>
 
           <section class="tabPanel isActive" id="panelOverview" data-panel="overview" role="tabpanel" tabindex="0" aria-labelledby="tabOverview" data-module="OverviewTabModule">

@@ -1019,9 +1019,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /data-panel="overview"/);
   assert.match(page, /data-panel="optimization"/);
   assert.match(page, /data-panel="replaceable"/);
-  assert.match(page, /id="tabOverview" data-tab="overview" role="tab" aria-selected="true" aria-controls="panelOverview"/);
-  assert.match(page, /id="tabOptimization" data-tab="optimization" role="tab" aria-selected="false" aria-controls="panelOptimization"/);
-  assert.match(page, /id="tabReplaceable" data-tab="replaceable" role="tab" aria-selected="false" aria-controls="panelReplaceable"/);
+  assert.match(page, /role="tablist" aria-orientation="horizontal"/);
+  assert.match(page, /id="tabOverview" data-tab="overview" data-component="TabItem" role="tab" aria-selected="true" aria-controls="panelOverview" tabindex="0"/);
+  assert.match(page, /id="tabOptimization" data-tab="optimization" data-component="TabItem" role="tab" aria-selected="false" aria-controls="panelOptimization" tabindex="-1"/);
+  assert.match(page, /id="tabReplaceable" data-tab="replaceable" data-component="TabItem" role="tab" aria-selected="false" aria-controls="panelReplaceable" tabindex="-1"/);
   assert.match(page, /short-term-macos\.css/);
   assert.match(page, /short-term-macos\.components\.css/);
   assert.match(page, /short-term-macos-app\.mjs/);
@@ -1119,6 +1120,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStyles, /\.compareActions/);
   assert.match(shortTermStyles, /@media \(max-height: 780px\)/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
+  assert.match(shortTermEntry, /function handleTabListKeydown/);
+  assert.match(shortTermEntry, /button\.tabIndex = selected \? 0 : -1/);
+  assert.match(shortTermEntry, /event\.key === "ArrowRight"/);
+  assert.match(shortTermEntry, /event\.key === "ArrowLeft"/);
+  assert.match(shortTermEntry, /event\.key === "Home"/);
+  assert.match(shortTermEntry, /event\.key === "End"/);
+  assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);
   assert.match(shortTermRenderModel, /export function renderOverviewFactCellHtml/);
   assert.match(shortTermRenderModel, /export function renderOptimizationFindingHtml/);
   assert.match(shortTermRenderModel, /export function renderMessageRowHtml\(title, summary, tone = "info"\)/);
