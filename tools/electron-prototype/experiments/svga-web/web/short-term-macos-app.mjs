@@ -8,7 +8,9 @@ import {
 } from "./short-term-macos-dom-state.mjs";
 import { buildCommandState } from "./short-term-macos-command-state.mjs";
 import {
-  compareSlotMeta,
+  compareSlotView,
+  generalCompareTraceView,
+  optimizationCompareTraceView,
   renderCompareInfoHtml,
   renderGeneralComparePlaceholderHtml,
   renderOptimizationCompareResultHtml
@@ -716,7 +718,7 @@ function renderEditReserved() {
 
 async function renderOptimizationCompare(model, optimizedBytes) {
   setView("compare");
-  setCompareTrace("OptimizationCompareModule", "Optimization compare");
+  setCompareTrace(optimizationCompareTraceView());
   setCompareSlot("A", state.displayName || "原始文件", state.model);
   setCompareSlot("B", model.resultTitle || "优化结果", undefined, "优化副本");
   nodes.compareInfoA.innerHTML = renderCompareInfoHtml("原始文件", state.model, state.displayName);
@@ -741,25 +743,26 @@ async function showOptimizationComparison() {
 }
 
 function setCompareSlot(slot, title, model, fallbackMeta = "") {
+  const view = compareSlotView(slot, title, model, fallbackMeta);
   const titleNode = slot === "A" ? nodes.compareCanvasTitleA : nodes.compareCanvasTitleB;
   const metaNode = slot === "A" ? nodes.compareCanvasMetaA : nodes.compareCanvasMetaB;
   const wrapNode = slot === "A" ? nodes.compareCanvasWrapA : nodes.compareCanvasWrapB;
-  if (titleNode) titleNode.textContent = title || `${slot} 文件`;
-  if (metaNode) metaNode.textContent = compareSlotMeta(model, fallbackMeta);
-  if (wrapNode) wrapNode.dataset.compareState = model ? "loaded" : "empty";
+  if (titleNode) titleNode.textContent = view.title;
+  if (metaNode) metaNode.textContent = view.meta;
+  if (wrapNode) wrapNode.dataset.compareState = view.compareState;
 }
 
-function setCompareTrace(moduleName, pageState) {
+function setCompareTrace(view) {
   const compareView = document.querySelector("[data-view='compare']");
   if (!compareView) return;
-  compareView.dataset.module = moduleName;
-  compareView.dataset.pageState = pageState;
+  compareView.dataset.module = view.moduleName;
+  compareView.dataset.pageState = view.pageState;
 }
 
 async function enterGeneralCompare() {
   if (!state.sourceBytes) return;
   setView("compare");
-  setCompareTrace("GeneralCompareModule", "General comparing");
+  setCompareTrace(generalCompareTraceView());
   setCompareSlot("A", state.displayName || "A 文件", state.model);
   setCompareSlot("B", "B 文件", undefined, "等待打开");
   nodes.compareInfoA.innerHTML = renderCompareInfoHtml("A 文件", state.model, state.displayName);

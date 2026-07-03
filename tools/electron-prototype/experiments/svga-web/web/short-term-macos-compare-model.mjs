@@ -21,6 +21,28 @@ export function compareSlotMeta(model, fallback = "") {
   return [canvas, fps ? `${fps} FPS` : ""].filter(Boolean).join(" / ") || fallback;
 }
 
+export function compareSlotView(slot, title, model, fallbackMeta = "") {
+  return {
+    title: title || `${slot} 文件`,
+    meta: compareSlotMeta(model, fallbackMeta),
+    compareState: model ? "loaded" : "empty"
+  };
+}
+
+export function generalCompareTraceView() {
+  return {
+    moduleName: "GeneralCompareModule",
+    pageState: "General comparing"
+  };
+}
+
+export function optimizationCompareTraceView() {
+  return {
+    moduleName: "OptimizationCompareModule",
+    pageState: "Optimization compare"
+  };
+}
+
 export function renderOptimizationCompareResultHtml(model) {
   const actionRows = (model.actions ?? []).map((action) => `
     <li>

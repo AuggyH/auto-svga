@@ -1208,6 +1208,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCommandState, /hasTransientState/);
   assert.match(shortTermCompareModel, /export function renderCompareInfoHtml/);
   assert.match(shortTermCompareModel, /export function compareSlotMeta/);
+  assert.match(shortTermCompareModel, /export function compareSlotView/);
+  assert.match(shortTermCompareModel, /export function generalCompareTraceView/);
+  assert.match(shortTermCompareModel, /export function optimizationCompareTraceView/);
+  assert.match(shortTermCompareModel, /GeneralCompareModule/);
+  assert.match(shortTermCompareModel, /OptimizationCompareModule/);
   assert.match(shortTermCompareModel, /export function renderOptimizationCompareResultHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermCompareModel, /renderCompareFactCellHtml/);
@@ -1308,8 +1313,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);
-  assert.match(shortTermEntry, /setCompareTrace\("GeneralCompareModule", "General comparing"\)/);
-  assert.match(shortTermEntry, /setCompareTrace\("OptimizationCompareModule", "Optimization compare"\)/);
+  assert.match(shortTermEntry, /generalCompareTraceView/);
+  assert.match(shortTermEntry, /optimizationCompareTraceView/);
+  assert.doesNotMatch(shortTermEntry, /setCompareTrace\("GeneralCompareModule", "General comparing"\)|setCompareTrace\("OptimizationCompareModule", "Optimization compare"\)/);
   assert.match(shortTermEntry, /async function collectShortTermTabKeyboardProof/);
   assert.match(shortTermEntry, /proofId: "short-term-tab-keyboard-proof"/);
   assert.match(shortTermEntry, /shortTermTabKeyboardProof/);
