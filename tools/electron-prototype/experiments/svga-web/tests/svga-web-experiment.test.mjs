@@ -1006,6 +1006,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermTokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
   const shortTermComponents = await readFile(path.join(experimentRoot, "web/short-term-macos.components.css"), "utf8");
   const shortTermStyles = await readFile(path.join(experimentRoot, "web/short-term-macos.css"), "utf8");
+  const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1052,6 +1053,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStyles, /\[hidden\]\s*\{\s*display: none !important;/);
   assert.doesNotMatch(shortTermStyles, /button\.primary:disabled/);
   assert.match(shortTermStyles, /\.resultGroup/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
+  assert.match(shortTermRenderModel, /export function renderOverviewFactCellHtml/);
+  assert.match(shortTermRenderModel, /export function renderOptimizationFindingHtml/);
+  assert.match(shortTermRenderModel, /export function renderCompareFactCellHtml/);
+  assert.match(shortTermRenderModel, /export function groupOptimizationItems/);
   assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
   assert.match(shortTermEntry, /aria-pressed/);
   assert.match(shortTermEntry, /aria-selected/);
@@ -1130,14 +1136,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /sequenceFourGridVisible/);
   assert.match(shortTermEntry, /sequenceThumbnailImageCount/);
   assert.match(shortTermEntry, /overviewVisibleFacts/);
-  assert.match(shortTermEntry, /"fileSize", "decodedMemory", "canvas", "fps", "assetCount"/);
+  assert.match(shortTermRenderModel, /"fileSize", "decodedMemory", "canvas", "fps", "assetCount"/);
   assert.match(shortTermEntry, /short-term-optimization-proof/);
   assert.match(shortTermEntry, /optimizedBytesSmaller/);
   assert.match(shortTermEntry, /executedActionCount/);
   assert.match(shortTermEntry, /executedActionRowsVisible/);
   assert.match(shortTermEntry, /skippedMethodRowsVisible/);
   assert.match(shortTermEntry, /groupOptimizationItems/);
-  assert.match(shortTermEntry, /item\.count > 1/);
+  assert.match(shortTermRenderModel, /item\.count > 1/);
   assert.match(shortTermEntry, /data-optimization-actions/);
   assert.match(shortTermEntry, /data-optimization-skipped/);
   assert.match(shortTermEntry, /comparisonVisible/);

@@ -1,4 +1,16 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
+import {
+  escapeHtml,
+  groupOptimizationItems,
+  isSafeImageDataUrl,
+  overviewVisibleFacts,
+  renderCompareFactCellHtml,
+  renderCompareMetricCellHtml,
+  renderMessageRowHtml,
+  renderOptimizationFindingHtml,
+  renderOverviewFactCellHtml,
+  suffixName
+} from "./short-term-macos-render-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -539,18 +551,9 @@ function renderFacts(model) {
     cell.dataset.component = "ProductionSpecInlineRow";
     cell.dataset.status = fact.status;
     cell.title = `${fact.label}: ${fact.value}`;
-    cell.innerHTML = `
-      <strong>${escapeHtml(fact.value)}</strong>
-      <span>${escapeHtml(fact.label)}</span>
-      <small><b>${escapeHtml(statusCopy(fact.status))}</b>${escapeHtml(fact.requirement)}</small>
-    `;
+    cell.innerHTML = renderOverviewFactCellHtml(fact);
     return cell;
   }));
-}
-
-function overviewVisibleFacts(model) {
-  const requiredIds = new Set(["fileSize", "decodedMemory", "canvas", "fps", "assetCount"]);
-  return (model?.overview?.facts ?? []).filter((fact) => requiredIds.has(fact.id));
 }
 
 function renderAssets(model) {
@@ -601,36 +604,9 @@ function renderOptimization(model) {
     row.dataset.component = "OptimizationFindingRow";
     row.dataset.disposition = item.disposition;
     row.title = `${item.title}: ${item.summary}`;
-    const countCopy = item.count > 1 ? ` · ${item.count} 项` : "";
-    const impactCopy = item.estimatedFileSizeImpact && item.estimatedFileSizeImpact !== "-"
-      ? item.estimatedFileSizeImpact
-      : item.estimatedDecodedMemoryImpact;
-    row.innerHTML = `
-      <div><strong>${escapeHtml(item.title)}${escapeHtml(countCopy)}</strong><p>${escapeHtml(item.summary)}</p></div>
-      <span class="findingImpact">${escapeHtml(impactCopy || "-")}</span>
-      <span class="badge ${item.disposition === "safeExecutable" ? "safe" : item.disposition === "reviewOnly" ? "review" : "unsupported"}">${dispositionCopy(item.disposition)}</span>
-    `;
+    row.innerHTML = renderOptimizationFindingHtml(item);
     return row;
   }));
-}
-
-function groupOptimizationItems(items = []) {
-  const groups = new Map();
-  for (const item of items) {
-    const key = [
-      item.disposition,
-      item.title,
-      item.summary,
-      item.estimatedFileSizeImpact
-    ].join("\u0000");
-    const existing = groups.get(key);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      groups.set(key, { ...item, count: 1 });
-    }
-  }
-  return [...groups.values()];
 }
 
 function renderOptimizationResult(model) {
@@ -787,10 +763,6 @@ function renderThumbnail(thumbnail) {
     .join("");
 }
 
-function isSafeImageDataUrl(value) {
-  return typeof value === "string" && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value);
-}
-
 function renderEditReserved() {
   const assets = state.model?.assets ?? [];
   nodes.layerPanel.replaceChildren(...assets.filter((asset) => asset.kind !== "audio").slice(0, 32).map((asset) => {
@@ -821,7 +793,7 @@ async function renderOptimizationCompare(model, optimizedBytes) {
   nodes.compareInfoB.innerHTML = `
     <h2>${escapeHtml(model.resultTitle)}</h2>
     <p>${escapeHtml(model.resultSummary)}</p>
-    ${(model.metrics ?? []).map((metric) => `<div class="factCell"><strong>${escapeHtml(metric.after)}</strong><span>${escapeHtml(metric.label)}</span><small>${escapeHtml(metric.delta)}</small></div>`).join("")}
+    ${(model.metrics ?? []).map(renderCompareMetricCellHtml).join("")}
     ${actionRows ? `<section class="resultGroup"><h3>已执行</h3><ul data-optimization-actions>${actionRows}</ul></section>` : ""}
     ${skippedRows ? `<section class="resultGroup muted"><h3>未执行</h3><ul data-optimization-skipped>${skippedRows}</ul></section>` : ""}
     <button class="toolbarButton primary" type="button" data-action="save-as">另存为</button>
@@ -847,9 +819,7 @@ async function showOptimizationComparison() {
 
 function renderCompareInfo(title, model, displayName, actions = []) {
   if (!model) return `<h2>${escapeHtml(title)}</h2><p>未打开文件。</p>${actions.join("")}`;
-  const facts = overviewVisibleFacts(model).map((fact) => `
-    <div class="factCell"><strong>${escapeHtml(fact.value)}</strong><span>${escapeHtml(fact.label)}</span></div>
-  `).join("");
+  const facts = overviewVisibleFacts(model).map(renderCompareFactCellHtml).join("");
   return `<h2>${escapeHtml(title)}</h2><p>${escapeHtml(displayName)}</p>${facts}${actions.join("")}`;
 }
 
@@ -1080,7 +1050,7 @@ function viewCopy(view) {
 function messageRow(title, summary) {
   const row = document.createElement("article");
   row.className = "findingRow";
-  row.innerHTML = `<div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(summary || "")}</p></div><span class="badge fail">未执行</span>`;
+  row.innerHTML = renderMessageRowHtml(title, summary);
   return row;
 }
 
@@ -1148,36 +1118,6 @@ function toParserArrayBuffer(bytes) {
 async function sha256Hex(bytes) {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function suffixName(name, suffix) {
-  const cleanName = name && name.toLowerCase().endsWith(".svga") ? name.slice(0, -5) : (name || "output");
-  return `${cleanName}-${suffix}.svga`;
-}
-
-function statusCopy(status) {
-  return {
-    pass: "通过",
-    warning: "注意",
-    fail: "超出",
-    unknown: "未知"
-  }[status] || "未知";
-}
-
-function dispositionCopy(disposition) {
-  return {
-    safeExecutable: "可安全执行",
-    reviewOnly: "需复核",
-    unsupported: "暂不支持"
-  }[disposition] || "建议项";
-}
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 function showDialog(dialog) {

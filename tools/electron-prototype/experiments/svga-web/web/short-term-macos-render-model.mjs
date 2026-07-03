@@ -1,0 +1,96 @@
+export function overviewVisibleFacts(model) {
+  const requiredIds = new Set(["fileSize", "decodedMemory", "canvas", "fps", "assetCount"]);
+  return (model?.overview?.facts ?? []).filter((fact) => requiredIds.has(fact.id));
+}
+
+export function renderOverviewFactCellHtml(fact) {
+  return `
+    <strong>${escapeHtml(fact.value)}</strong>
+    <span>${escapeHtml(fact.label)}</span>
+    <small><b>${escapeHtml(statusCopy(fact.status))}</b>${escapeHtml(fact.requirement)}</small>
+  `;
+}
+
+export function renderCompareFactCellHtml(fact) {
+  return `
+    <div class="factCell"><strong>${escapeHtml(fact.value)}</strong><span>${escapeHtml(fact.label)}</span></div>
+  `;
+}
+
+export function renderCompareMetricCellHtml(metric) {
+  return `
+    <div class="factCell"><strong>${escapeHtml(metric.after)}</strong><span>${escapeHtml(metric.label)}</span><small>${escapeHtml(metric.delta)}</small></div>
+  `;
+}
+
+export function renderOptimizationFindingHtml(item) {
+  const countCopy = item.count > 1 ? ` · ${item.count} 项` : "";
+  const impactCopy = item.estimatedFileSizeImpact && item.estimatedFileSizeImpact !== "-"
+    ? item.estimatedFileSizeImpact
+    : item.estimatedDecodedMemoryImpact;
+  const badgeClass = item.disposition === "safeExecutable"
+    ? "safe"
+    : item.disposition === "reviewOnly" ? "review" : "unsupported";
+  return `
+    <div><strong>${escapeHtml(item.title)}${escapeHtml(countCopy)}</strong><p>${escapeHtml(item.summary)}</p></div>
+    <span class="findingImpact">${escapeHtml(impactCopy || "-")}</span>
+    <span class="badge ${badgeClass}">${dispositionCopy(item.disposition)}</span>
+  `;
+}
+
+export function renderMessageRowHtml(title, summary) {
+  return `<div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(summary || "")}</p></div><span class="badge fail">未执行</span>`;
+}
+
+export function groupOptimizationItems(items = []) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = [
+      item.disposition,
+      item.title,
+      item.summary,
+      item.estimatedFileSizeImpact
+    ].join("\u0000");
+    const existing = groups.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      groups.set(key, { ...item, count: 1 });
+    }
+  }
+  return [...groups.values()];
+}
+
+export function isSafeImageDataUrl(value) {
+  return typeof value === "string" && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value);
+}
+
+export function suffixName(name, suffix) {
+  const cleanName = name && name.toLowerCase().endsWith(".svga") ? name.slice(0, -5) : (name || "output");
+  return `${cleanName}-${suffix}.svga`;
+}
+
+export function statusCopy(status) {
+  return {
+    pass: "通过",
+    warning: "注意",
+    fail: "超出",
+    unknown: "未知"
+  }[status] || "未知";
+}
+
+export function dispositionCopy(disposition) {
+  return {
+    safeExecutable: "可安全执行",
+    reviewOnly: "需复核",
+    unsupported: "暂不支持"
+  }[disposition] || "建议项";
+}
+
+export function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
