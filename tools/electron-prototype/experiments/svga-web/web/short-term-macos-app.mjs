@@ -85,6 +85,7 @@ import { editReservedLayerListView } from "./short-term-macos-edit-reserved-mode
 import {
   collectShortTermDesignInteractionProof,
   collectShortTermTabKeyboardProof,
+  createSmokeArtifactCapture,
   reportShortTermSmokeFailure,
   resourceEntriesAreLocalOnly,
   waitForCanvasPixels,
@@ -1098,12 +1099,8 @@ runShortTermSmokeIfRequested().catch((error) => {
 
 async function runShortTermSmokeIfRequested() {
   if (new URLSearchParams(location.search).get("mode") !== "smoke") return;
-  const screenshotCaptures = [];
-  const captureSmokeArtifact = async (scenario) => {
-    const artifact = await bridge?.captureArtifact?.(scenario);
-    screenshotCaptures.push(Boolean(artifact?.path));
-    return artifact;
-  };
+  const smokeArtifactCapture = createSmokeArtifactCapture(bridge);
+  const { captureSmokeArtifact } = smokeArtifactCapture;
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-launch");
   const fixtureResponse = await fetch("/fixture/avatar-frame-smoke.svga");
@@ -1591,7 +1588,7 @@ async function runShortTermSmokeIfRequested() {
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-preview-minimum");
   const shortTermDesignInteractionProof = collectShortTermDesignInteractionProof({
-    minimumPreviewCaptured: screenshotCaptures.at(-1) === true,
+    minimumPreviewCaptured: smokeArtifactCapture.lastSmokeArtifactCaptured(),
     nodes,
     state,
     currentStateSummary
@@ -1763,7 +1760,7 @@ async function runShortTermSmokeIfRequested() {
     errorFile: invalidResponse.ok === false,
     playerLifecycle: playerLifecycleOk,
     shortTermOpenFlowProof,
-    shortTermScreenshots: screenshotCaptures.length >= 9 && screenshotCaptures.every(Boolean),
+    shortTermScreenshots: smokeArtifactCapture.allSmokeArtifactsCaptured(9),
     shortTermSaveFailed: saveFailedVisible,
     shortTermLoadFailed: loadFailedVisible,
     shortTermLoadFailureProof,

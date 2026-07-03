@@ -1,5 +1,20 @@
 import { tabButtons } from "./short-term-macos-dom-state.mjs";
 
+export function createSmokeArtifactCapture(bridge) {
+  const capturedArtifacts = [];
+  const captureSmokeArtifact = async (scenario) => {
+    const artifact = await bridge?.captureArtifact?.(scenario);
+    capturedArtifacts.push(Boolean(artifact?.path));
+    return artifact;
+  };
+  return {
+    captureSmokeArtifact,
+    lastSmokeArtifactCaptured: () => capturedArtifacts.at(-1) === true,
+    allSmokeArtifactsCaptured: (minimumCount) => capturedArtifacts.length >= minimumCount
+      && capturedArtifacts.every(Boolean)
+  };
+}
+
 export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
   const tabs = tabButtons();
   const tabOverview = document.querySelector("#tabOverview");

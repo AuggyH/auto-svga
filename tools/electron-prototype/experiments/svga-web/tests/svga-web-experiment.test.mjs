@@ -1583,7 +1583,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /short-term-tab-keyboard-proof/);
   assert.match(shortTermSmokeProofModel, /selectedTabOnlyInSequentialFocus/);
   assert.match(shortTermSmokeProofModel, /short-term-design-interaction-proof/);
+  assert.match(shortTermSmokeProofModel, /export function createSmokeArtifactCapture/);
+  assert.match(shortTermSmokeProofModel, /captureSmokeArtifact/);
+  assert.match(shortTermSmokeProofModel, /allSmokeArtifactsCaptured/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermDesignInteractionProof/);
+  assert.match(shortTermEntry, /const smokeArtifactCapture = createSmokeArtifactCapture\(bridge\)/);
   assert.match(shortTermEntry, /collectShortTermDesignInteractionProof/);
   assert.match(shortTermSmokeProofModel, /visibleFocusableElements/);
   assert.match(shortTermSmokeProofModel, /metadataSelectable/);
@@ -1607,7 +1611,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /shortTermDesignInteractionProof: Boolean\(shortTermDesignInteractionProof\)/);
   assert.match(main, /validateShortTermReplaceableClassificationProof/);
   assert.match(main, /short-term-replaceable-classification-proof\.json/);
-  assert.match(shortTermEntry, /shortTermScreenshots: screenshotCaptures\.length >= 9/);
+  assert.doesNotMatch(shortTermEntry, /const screenshotCaptures = \[\]/);
+  assert.match(shortTermEntry, /shortTermScreenshots: smokeArtifactCapture\.allSmokeArtifactsCaptured\(9\)/);
   assert.match(shortTermEntry, /shortTermSaveFailed: saveFailedVisible/);
   assert.match(shortTermEntry, /shortTermLoadFailed: loadFailedVisible/);
   assert.match(shortTermEntry, /short-term-empty-state-proof/);
