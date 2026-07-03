@@ -1127,6 +1127,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /event\.key === "Home"/);
   assert.match(shortTermEntry, /event\.key === "End"/);
   assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);
+  assert.match(shortTermEntry, /async function collectShortTermTabKeyboardProof/);
+  assert.match(shortTermEntry, /proofId: "short-term-tab-keyboard-proof"/);
+  assert.match(shortTermEntry, /shortTermTabKeyboardProof/);
   assert.match(shortTermRenderModel, /export function renderOverviewFactCellHtml/);
   assert.match(shortTermRenderModel, /export function renderOptimizationFindingHtml/);
   assert.match(shortTermRenderModel, /export function renderMessageRowHtml\(title, summary, tone = "info"\)/);
@@ -1192,6 +1195,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /playbackFailureSourceBytesRestoredAfterRecovery/);
   assert.match(shortTermEntry, /short-term-spec-comparison-proof/);
   assert.match(shortTermEntry, /actualRequirementPairsVisible/);
+  assert.match(shortTermEntry, /short-term-tab-keyboard-proof/);
+  assert.match(shortTermEntry, /selectedTabOnlyInSequentialFocus/);
   assert.match(shortTermEntry, /short-term-replaceable-classification-proof/);
   assert.match(shortTermEntry, /automaticKeysExcluded/);
   assert.match(main, /validateShortTermOpenFlowProof/);
@@ -1200,6 +1205,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /short-term-load-failure-proof\.json/);
   assert.match(main, /validateShortTermSpecComparisonProof/);
   assert.match(main, /short-term-spec-comparison-proof\.json/);
+  assert.match(main, /function validateShortTermTabKeyboardProof/);
+  assert.match(main, /shortTermTabKeyboardProof = validateShortTermTabKeyboardProof/);
+  assert.match(main, /short-term-tab-keyboard-proof\.json/);
+  assert.match(main, /shortTermTabKeyboardProof: Boolean\(shortTermTabKeyboardProof\)/);
   assert.match(main, /validateShortTermReplaceableClassificationProof/);
   assert.match(main, /short-term-replaceable-classification-proof\.json/);
   assert.match(shortTermEntry, /shortTermScreenshots: screenshotCaptures\.length >= 9/);

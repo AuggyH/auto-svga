@@ -283,6 +283,12 @@ function validateSmokeResult(value) {
     result.shortTermSpecComparisonProof = shortTermSpecComparisonProof;
     result.shortTermSpecComparison = shortTermSpecComparisonProof.passed;
   }
+  if (value.shortTermTabKeyboardProof !== undefined) {
+    const shortTermTabKeyboardProof = validateShortTermTabKeyboardProof(value.shortTermTabKeyboardProof);
+    if (!shortTermTabKeyboardProof) return undefined;
+    result.shortTermTabKeyboardProof = shortTermTabKeyboardProof;
+    result.shortTermTabKeyboard = shortTermTabKeyboardProof.passed;
+  }
   if (value.shortTermReplaceableClassificationProof !== undefined) {
     const shortTermReplaceableClassificationProof = validateShortTermReplaceableClassificationProof(value.shortTermReplaceableClassificationProof);
     if (!shortTermReplaceableClassificationProof) return undefined;
@@ -601,6 +607,59 @@ function validateShortTermSpecComparisonProof(value) {
     actualRequirementPairsVisible: true,
     overviewTabActive: true,
     separateProductionSpecModuleExposed: false,
+    passed: true
+  };
+}
+
+function validateShortTermTabKeyboardProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-tab-keyboard-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S3,S8,S12,S13") return undefined;
+  if (value.component !== "RightTabPanel" || value.molecule !== "TabItem") return undefined;
+  if (!Array.isArray(value.tabOrder) || value.tabOrder.join(",") !== "overview,optimization,replaceable") return undefined;
+  if (value.arrowRightFocusedTabId !== "tabOptimization") return undefined;
+  if (value.endFocusedTabId !== "tabReplaceable") return undefined;
+  if (value.homeFocusedTabId !== "tabOverview") return undefined;
+  const booleanKeys = [
+    "arrowRightPrevented",
+    "arrowRightSelected",
+    "arrowRightPanelVisible",
+    "endPrevented",
+    "endSelected",
+    "endPanelVisible",
+    "homePrevented",
+    "homeSelected",
+    "homePanelVisible",
+    "selectedTabOnlyInSequentialFocus",
+    "ariaSelectedSynced",
+    "panelVisibilitySynced",
+    "passed"
+  ];
+  if (!booleanKeys.every((key) => value[key] === true)) return undefined;
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S3", "S8", "S12", "S13"],
+    component: "RightTabPanel",
+    molecule: "TabItem",
+    tabOrder: ["overview", "optimization", "replaceable"],
+    arrowRightPrevented: true,
+    arrowRightSelected: true,
+    arrowRightFocusedTabId: "tabOptimization",
+    arrowRightPanelVisible: true,
+    endPrevented: true,
+    endSelected: true,
+    endFocusedTabId: "tabReplaceable",
+    endPanelVisible: true,
+    homePrevented: true,
+    homeSelected: true,
+    homeFocusedTabId: "tabOverview",
+    homePanelVisible: true,
+    selectedTabOnlyInSequentialFocus: true,
+    ariaSelectedSynced: true,
+    panelVisibilitySynced: true,
     passed: true
   };
 }
@@ -996,6 +1055,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.shortTermSpecComparisonProof !== undefined && !validateShortTermSpecComparisonProof(value.shortTermSpecComparisonProof)) {
     return "shortTermSpecComparisonProof";
+  }
+  if (value.shortTermTabKeyboardProof !== undefined && !validateShortTermTabKeyboardProof(value.shortTermTabKeyboardProof)) {
+    return "shortTermTabKeyboardProof";
   }
   if (value.shortTermReplaceableClassificationProof !== undefined && !validateShortTermReplaceableClassificationProof(value.shortTermReplaceableClassificationProof)) {
     return "shortTermReplaceableClassificationProof";
@@ -3794,6 +3856,14 @@ async function finishSmoke(window, result) {
         "smoke"
       );
     }
+    if (result.shortTermTabKeyboardProof) {
+      writeJsonProductArtifact(
+        "short-term-tab-keyboard-proof.json",
+        "short-term-tab-keyboard-proof",
+        result.shortTermTabKeyboardProof,
+        "smoke"
+      );
+    }
     if (result.shortTermEmptyStateProof) {
       writeJsonProductArtifact(
         "short-term-empty-state-proof.json",
@@ -3852,9 +3922,9 @@ async function finishSmoke(window, result) {
     }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermLoadFailureProof, shortTermSpecComparisonProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermReplaceableClassificationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermLoadFailureProof, shortTermSpecComparisonProof, shortTermTabKeyboardProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermReplaceableClassificationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermLoadFailureProof: Boolean(shortTermLoadFailureProof), shortTermSpecComparisonProof: Boolean(shortTermSpecComparisonProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermReplaceableClassificationProof: Boolean(shortTermReplaceableClassificationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermLoadFailureProof: Boolean(shortTermLoadFailureProof), shortTermSpecComparisonProof: Boolean(shortTermSpecComparisonProof), shortTermTabKeyboardProof: Boolean(shortTermTabKeyboardProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermReplaceableClassificationProof: Boolean(shortTermReplaceableClassificationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();

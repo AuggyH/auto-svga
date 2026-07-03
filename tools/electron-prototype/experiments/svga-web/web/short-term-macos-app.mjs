@@ -1450,6 +1450,7 @@ async function runShortTermSmokeIfRequested() {
   const noAudioCopy = [...nodes.assetList.querySelectorAll(".assetRow")]
     .map((row) => row.textContent.trim())
     .find((text) => text.includes("当前文件暂无音频资产")) || "";
+  const shortTermTabKeyboardProof = await collectShortTermTabKeyboardProof();
   setTab("optimization");
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-preview-optimization");
@@ -2064,6 +2065,7 @@ async function runShortTermSmokeIfRequested() {
     shortTermLoadFailed: loadFailedVisible,
     shortTermLoadFailureProof,
     shortTermSpecComparisonProof,
+    shortTermTabKeyboardProof,
     shortTermEmptyStateProof,
     shortTermRuntimeTextBoundaryProof,
     shortTermThumbnailProof,
@@ -2073,6 +2075,93 @@ async function runShortTermSmokeIfRequested() {
     shortTermReplacementProof,
     cleanup: true
   });
+}
+
+async function collectShortTermTabKeyboardProof() {
+  const tabs = tabButtons();
+  const tabOverview = document.querySelector("#tabOverview");
+  const tabOptimization = document.querySelector("#tabOptimization");
+  const tabReplaceable = document.querySelector("#tabReplaceable");
+  const panelOverview = document.querySelector("#panelOverview");
+  const panelOptimization = document.querySelector("#panelOptimization");
+  const panelReplaceable = document.querySelector("#panelReplaceable");
+  setTab("overview");
+  await waitForSmokeFrame();
+  tabOverview?.focus();
+  const arrowRightPrevented = !tabOverview?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }));
+  await waitForSmokeFrame();
+  const arrowRightState = {
+    selectedTab: state.tab,
+    focusedTabId: document.activeElement?.id || "",
+    optimizationPanelVisible: panelOptimization?.hidden === false
+  };
+  const endPrevented = !tabOptimization?.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true, cancelable: true }));
+  await waitForSmokeFrame();
+  const endState = {
+    selectedTab: state.tab,
+    focusedTabId: document.activeElement?.id || "",
+    replaceablePanelVisible: panelReplaceable?.hidden === false
+  };
+  const homePrevented = !tabReplaceable?.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true, cancelable: true }));
+  await waitForSmokeFrame();
+  const homeState = {
+    selectedTab: state.tab,
+    focusedTabId: document.activeElement?.id || "",
+    overviewPanelVisible: panelOverview?.hidden === false
+  };
+  const selectedTabOnlyInSequentialFocus = tabs.filter((tab) => tab.tabIndex === 0).length === 1
+    && tabOverview?.tabIndex === 0
+    && tabOptimization?.tabIndex === -1
+    && tabReplaceable?.tabIndex === -1;
+  const ariaSelectedSynced = tabOverview?.getAttribute("aria-selected") === "true"
+    && tabOptimization?.getAttribute("aria-selected") === "false"
+    && tabReplaceable?.getAttribute("aria-selected") === "false";
+  const panelVisibilitySynced = panelOverview?.hidden === false
+    && panelOptimization?.hidden === true
+    && panelReplaceable?.hidden === true;
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-tab-keyboard-proof",
+    source: "short-term-smoke",
+    prdIds: ["S3", "S8", "S12", "S13"],
+    component: "RightTabPanel",
+    molecule: "TabItem",
+    tabOrder: tabs.map((tab) => tab.dataset.tab || ""),
+    arrowRightPrevented,
+    arrowRightSelected: arrowRightState.selectedTab === "optimization",
+    arrowRightFocusedTabId: arrowRightState.focusedTabId,
+    arrowRightPanelVisible: arrowRightState.optimizationPanelVisible,
+    endPrevented,
+    endSelected: endState.selectedTab === "replaceable",
+    endFocusedTabId: endState.focusedTabId,
+    endPanelVisible: endState.replaceablePanelVisible,
+    homePrevented,
+    homeSelected: homeState.selectedTab === "overview",
+    homeFocusedTabId: homeState.focusedTabId,
+    homePanelVisible: homeState.overviewPanelVisible,
+    selectedTabOnlyInSequentialFocus,
+    ariaSelectedSynced,
+    panelVisibilitySynced
+  };
+  proof.passed = [
+    proof.tabOrder.join(",") === "overview,optimization,replaceable",
+    proof.arrowRightPrevented,
+    proof.arrowRightSelected,
+    proof.arrowRightFocusedTabId === "tabOptimization",
+    proof.arrowRightPanelVisible,
+    proof.endPrevented,
+    proof.endSelected,
+    proof.endFocusedTabId === "tabReplaceable",
+    proof.endPanelVisible,
+    proof.homePrevented,
+    proof.homeSelected,
+    proof.homeFocusedTabId === "tabOverview",
+    proof.homePanelVisible,
+    proof.selectedTabOnlyInSequentialFocus,
+    proof.ariaSelectedSynced,
+    proof.panelVisibilitySynced
+  ].every(Boolean);
+  return proof;
 }
 
 async function reportShortTermSmokeFailure(phase, error) {
