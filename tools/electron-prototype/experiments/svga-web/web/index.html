@@ -81,12 +81,12 @@
 
         <aside class="inspectorPanel" aria-label="检查面板" data-component="RightTabPanel">
           <nav class="tabs" aria-label="检查标签" role="tablist">
-            <button type="button" class="isSelected" data-tab="overview" role="tab" aria-selected="true">总览</button>
-            <button type="button" data-tab="optimization" role="tab" aria-selected="false">优化</button>
-            <button type="button" data-tab="replaceable" role="tab" aria-selected="false">可替换</button>
+            <button type="button" class="isSelected" id="tabOverview" data-tab="overview" role="tab" aria-selected="true" aria-controls="panelOverview">总览</button>
+            <button type="button" id="tabOptimization" data-tab="optimization" role="tab" aria-selected="false" aria-controls="panelOptimization">优化</button>
+            <button type="button" id="tabReplaceable" data-tab="replaceable" role="tab" aria-selected="false" aria-controls="panelReplaceable">可替换</button>
           </nav>
 
-          <section class="tabPanel isActive" data-panel="overview" role="tabpanel" tabindex="0" aria-label="总览检查内容" data-module="OverviewTabModule">
+          <section class="tabPanel isActive" id="panelOverview" data-panel="overview" role="tabpanel" tabindex="0" aria-labelledby="tabOverview" data-module="OverviewTabModule">
             <section class="factGrid" id="factGrid" aria-label="文件信息" data-component="OverviewFactRow"></section>
             <section class="assetSection" data-component="AssetRow">
               <h2>资源</h2>
@@ -94,7 +94,7 @@
             </section>
           </section>
 
-          <section class="tabPanel" data-panel="optimization" role="tabpanel" tabindex="0" aria-label="优化检查内容" data-module="OptimizationTabModule" hidden>
+          <section class="tabPanel" id="panelOptimization" data-panel="optimization" role="tabpanel" tabindex="0" aria-labelledby="tabOptimization" data-module="OptimizationTabModule" hidden>
             <div class="sectionHead">
               <div>
                 <h2>优化</h2>
@@ -105,7 +105,7 @@
             <div class="findingList" id="findingList"></div>
           </section>
 
-          <section class="tabPanel" data-panel="replaceable" role="tabpanel" tabindex="0" aria-label="可替换元素内容" data-module="ReplaceableElementsTabModule" hidden>
+          <section class="tabPanel" id="panelReplaceable" data-panel="replaceable" role="tabpanel" tabindex="0" aria-labelledby="tabReplaceable" data-module="ReplaceableElementsTabModule" hidden>
             <div class="sectionHead">
               <div>
                 <h2>可替换元素</h2>
@@ -118,12 +118,14 @@
               <button type="button" role="menuitem" data-action="context-replace">替换预览图片</button>
               <button type="button" role="menuitem" data-action="context-reset">重置预览图片</button>
             </menu>
-            <section class="textPreviewBlock">
-              <h3>运行时文本</h3>
+            <section class="textPreviewBlock" aria-labelledby="textPreviewHeading" aria-describedby="textPreviewSummary">
+              <h3 id="textPreviewHeading">运行时文本</h3>
               <p id="textPreviewSummary">打开文件后显示可运行时预览的文本元素。</p>
               <div class="textElementList" id="textElementList" role="listbox" aria-label="运行时文本"></div>
-              <button type="button" data-action="edit-text" disabled>编辑文本预览</button>
-              <button type="button" data-action="reset-text" disabled>重置文本</button>
+              <div class="textPreviewActions">
+                <button type="button" data-action="edit-text" disabled>编辑文本预览</button>
+                <button type="button" data-action="reset-text" disabled>重置文本</button>
+              </div>
             </section>
           </section>
         </aside>

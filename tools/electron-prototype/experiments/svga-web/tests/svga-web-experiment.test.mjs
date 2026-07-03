@@ -1019,6 +1019,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /data-panel="overview"/);
   assert.match(page, /data-panel="optimization"/);
   assert.match(page, /data-panel="replaceable"/);
+  assert.match(page, /id="tabOverview" data-tab="overview" role="tab" aria-selected="true" aria-controls="panelOverview"/);
+  assert.match(page, /id="tabOptimization" data-tab="optimization" role="tab" aria-selected="false" aria-controls="panelOptimization"/);
+  assert.match(page, /id="tabReplaceable" data-tab="replaceable" role="tab" aria-selected="false" aria-controls="panelReplaceable"/);
   assert.match(page, /short-term-macos\.css/);
   assert.match(page, /short-term-macos\.components\.css/);
   assert.match(page, /short-term-macos-app\.mjs/);
@@ -1038,6 +1041,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="textPreviewSummary"/);
   assert.match(page, /id="textElementList"/);
   assert.match(page, /data-action="edit-text" disabled/);
+  assert.match(page, /class="textPreviewBlock" aria-labelledby="textPreviewHeading" aria-describedby="textPreviewSummary"/);
+  assert.match(page, /class="textPreviewActions"/);
   assert.match(page, /data-component="WindowToolbar"/);
   assert.match(page, /class="toolbarCluster toolbarClusterPrimary"/);
   assert.match(page, /data-component="SegmentedModeSwitch"/);
@@ -1045,7 +1050,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /data-component="ReservedOperationPanel"/);
   assert.match(page, /role="tablist"/);
   assert.match(page, /aria-selected="true"/);
-  assert.match(page, /role="tabpanel" tabindex="0" aria-label="总览检查内容"/);
+  assert.match(page, /id="panelOverview" data-panel="overview" role="tabpanel" tabindex="0" aria-labelledby="tabOverview"/);
+  assert.match(page, /id="panelOptimization" data-panel="optimization" role="tabpanel" tabindex="0" aria-labelledby="tabOptimization"/);
+  assert.match(page, /id="panelReplaceable" data-panel="replaceable" role="tabpanel" tabindex="0" aria-labelledby="tabReplaceable"/);
   assert.match(page, /id="replaceableList" role="listbox" aria-label="可替换图片"/);
   assert.match(page, /id="textElementList" role="listbox" aria-label="运行时文本"/);
   assert.match(page, /short-term-macos\.tokens\.css/);
@@ -1105,6 +1112,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStyles, /\.canvasWrap\[data-canvas-label\]::before/);
   assert.match(shortTermStyles, /\.playbackActions/);
   assert.match(shortTermStyles, /\.playbackMeta/);
+  assert.match(shortTermStyles, /\.textPreviewActions/);
   assert.match(shortTermStyles, /\.compareCanvasWrap::before/);
   assert.match(shortTermStyles, /\.compareSummary/);
   assert.match(shortTermStyles, /\.compareMetricGrid/);

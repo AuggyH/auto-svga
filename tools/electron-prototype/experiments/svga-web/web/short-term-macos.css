@@ -519,6 +519,17 @@ canvas {
   gap: var(--asv-space-1);
 }
 
+.textPreviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--asv-space-2);
+  margin-top: var(--asv-space-2);
+}
+
+.textPreviewActions button {
+  min-width: 0;
+}
+
 .sectionHead {
   display: flex;
   justify-content: space-between;
