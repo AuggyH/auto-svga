@@ -42,7 +42,9 @@ import {
 } from "./short-term-macos-resource-menu-renderers.mjs";
 import {
   applyRuntimeTextOverlay,
-  clearRuntimeTextOverlay,
+  clearRuntimeTextOverlay
+} from "./short-term-macos-text-renderers.mjs";
+import {
   prependOptimizationResult,
   renderAssetList,
   renderEditReservedLayers,

@@ -1025,6 +1025,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermSaveModel = await readFile(path.join(experimentRoot, "web/short-term-macos-save-model.mjs"), "utf8");
   const shortTermStateRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-state-renderers.mjs"), "utf8");
   const shortTermInteractionModel = await readFile(path.join(experimentRoot, "web/short-term-macos-interaction-model.mjs"), "utf8");
+  const shortTermTextRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-text-renderers.mjs"), "utf8");
   const shortTermTextModel = await readFile(path.join(experimentRoot, "web/short-term-macos-text-model.mjs"), "utf8");
   const shortTermReplaceableModel = await readFile(path.join(experimentRoot, "web/short-term-macos-replaceable-model.mjs"), "utf8");
   const shortTermOptimizationModel = await readFile(path.join(experimentRoot, "web/short-term-macos-optimization-model.mjs"), "utf8");
@@ -1192,6 +1193,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-resource-menu-renderers\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-save-renderers\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-state-renderers\.mjs"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-text-renderers\.mjs"/);
   assert.match(shortTermEntry, /applyCompareSlotView/);
   assert.match(shortTermEntry, /applyCompareTraceView/);
   assert.match(shortTermEntry, /applyRuntimeTextOverlay/);
@@ -1310,8 +1312,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermResourceMenuRenderers, /export function hideResourceContextMenu/);
   assert.match(shortTermResourceMenuRenderers, /menu\.style\.left = view\.left/);
   assert.match(shortTermResourceMenuRenderers, /menu\.querySelector\("\[data-action='context-reset'\]"\)\.disabled = view\.resetDisabled/);
-  assert.match(shortTermDomRenderers, /export function applyRuntimeTextOverlay/);
-  assert.match(shortTermDomRenderers, /export function clearRuntimeTextOverlay/);
+  assert.doesNotMatch(shortTermDomRenderers, /export function applyRuntimeTextOverlay|export function clearRuntimeTextOverlay/);
+  assert.match(shortTermTextRenderers, /export function applyRuntimeTextOverlay/);
+  assert.match(shortTermTextRenderers, /export function clearRuntimeTextOverlay/);
   assert.match(shortTermDomRenderers, /export function createReplaceableImageRow/);
   assert.match(shortTermDomRenderers, /export function renderReplaceableImages/);
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
@@ -1419,9 +1422,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /applyRuntimeTextOverlay\(\s*nodes\.runtimeTextOverlay,\s*runtimeTextOverlayCopy\(textElement, state\.textPreview\),\s*Boolean\(state\.textPreview\)\s*\)/s);
   assert.match(shortTermEntry, /clearRuntimeTextOverlay\(nodes\.runtimeTextOverlay\)/);
   assert.doesNotMatch(shortTermEntry, /nodes\.runtimeTextOverlay\.(hidden|textContent)\s*=/);
-  assert.match(shortTermDomRenderers, /node\.textContent = copy/);
-  assert.match(shortTermDomRenderers, /node\.hidden = !visible/);
-  assert.match(shortTermDomRenderers, /node\.textContent = ""/);
+  assert.match(shortTermTextRenderers, /node\.textContent = copy/);
+  assert.match(shortTermTextRenderers, /node\.hidden = !visible/);
+  assert.match(shortTermTextRenderers, /node\.textContent = ""/);
   assert.match(shortTermTextModel, /export const RUNTIME_TEXT_DEFAULT_VALUE = "SVGA VIP"/);
   assert.match(shortTermTextModel, /export function runtimeTextInputValue/);
   assert.match(shortTermTextModel, /export function runtimeTextPlaceholder/);
