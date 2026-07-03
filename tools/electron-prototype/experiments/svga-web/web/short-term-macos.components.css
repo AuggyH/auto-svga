@@ -99,7 +99,7 @@ button.danger {
 
 .stateCard h1 {
   margin: var(--asv-space-3) 0 var(--asv-space-2);
-  font-size: 18px;
+  font-size: var(--asv-type-size-state-title);
 }
 
 .stateCard p {
@@ -124,10 +124,10 @@ button.danger {
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--asv-space-1);
+  gap: 0;
   padding: var(--asv-tab-padding);
   border-bottom: 1px solid var(--asv-border);
-  background: color-mix(in srgb, var(--asv-window) 38%, transparent);
+  background: color-mix(in srgb, var(--asv-window) 28%, transparent);
 }
 
 .tabs button {
@@ -137,23 +137,27 @@ button.danger {
   border-radius: var(--asv-radius-sm);
   background: transparent;
   color: var(--asv-muted);
-  font-weight: 540;
+  font-size: var(--asv-type-size-body);
+  font-weight: 560;
 }
 
 .tabs button.isSelected {
-  background: color-mix(in srgb, var(--asv-panel-strong) 94%, var(--asv-action) 4%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-border-strong) 58%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-action) 6%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-border-strong) 48%, transparent);
   color: var(--asv-text);
   font-weight: 650;
 }
 
 .factCell {
   position: relative;
+  display: grid;
+  align-content: start;
+  min-height: var(--asv-fact-cell-min-height);
   min-width: 0;
   padding: var(--asv-space-2) var(--asv-space-2) var(--asv-space-2) var(--asv-space-3);
-  border: 1px solid color-mix(in srgb, var(--asv-border) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 58%, transparent);
   border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-panel-strong) 46%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 32%, transparent);
 }
 
 .factCell:nth-child(5) {
@@ -164,7 +168,7 @@ button.danger {
   content: "";
   position: absolute;
   inset: var(--asv-space-2) auto var(--asv-space-2) var(--asv-space-2);
-  width: 3px;
+  width: 2px;
   border-radius: 999px;
   background: var(--asv-border-strong);
 }
@@ -174,7 +178,8 @@ button.danger {
 }
 
 .factCell[data-status="warning"] {
-  background: color-mix(in srgb, var(--asv-panel-strong) 82%, var(--asv-color-warning-soft));
+  border-color: color-mix(in srgb, var(--asv-warning) 22%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-color-warning-soft));
 }
 
 .factCell[data-status="warning"]::before {
@@ -182,8 +187,8 @@ button.danger {
 }
 
 .factCell[data-status="fail"] {
-  border-color: color-mix(in srgb, var(--asv-danger) 26%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 82%, var(--asv-color-danger-soft));
+  border-color: color-mix(in srgb, var(--asv-danger) 24%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-color-danger-soft));
 }
 
 .factCell[data-status="fail"]::before {
@@ -194,13 +199,14 @@ button.danger {
   display: block;
   overflow-wrap: anywhere;
   font-family: var(--asv-type-mono);
-  font-size: 14px;
+  font-size: var(--asv-type-size-metadata);
   font-weight: 650;
+  line-height: 1.25;
 }
 
 .factCell span {
   color: var(--asv-muted);
-  font-size: 12px;
+  font-size: var(--asv-type-size-footnote);
 }
 
 .factCell small {
@@ -238,9 +244,23 @@ button.danger {
   background: color-mix(in srgb, var(--asv-panel-strong) 40%, transparent);
 }
 
+.assetRow {
+  min-height: var(--asv-asset-row-min-height);
+  padding: var(--asv-space-2) var(--asv-space-1);
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--asv-border) 58%, transparent);
+  border-radius: 0;
+  background: transparent;
+}
+
+.assetRow:hover {
+  background: color-mix(in srgb, var(--asv-panel-strong) 42%, transparent);
+}
+
 .findingRow {
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: start;
+  min-height: var(--asv-finding-row-min-height);
 }
 
 .findingRow[data-disposition="safeExecutable"] {
@@ -288,9 +308,9 @@ button.danger {
 
 .renameEditor {
   display: grid;
-  gap: 3px;
+  gap: var(--asv-space-1);
   color: var(--asv-muted);
-  font-size: 11px;
+  font-size: var(--asv-type-size-caption);
 }
 
 .renameInputInline {
@@ -326,14 +346,14 @@ button.danger {
 }
 
 .rowMenuButton {
-  height: 24px;
+  height: var(--asv-row-action-height);
   padding: 0 var(--asv-space-2);
   border: 1px solid color-mix(in srgb, var(--asv-border) 66%, transparent);
   border-radius: var(--asv-radius-sm);
   background: color-mix(in srgb, var(--asv-panel-strong) 54%, transparent);
   color: var(--asv-muted);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--asv-type-size-caption);
   white-space: nowrap;
 }
 
@@ -358,7 +378,7 @@ button.danger {
   border-radius: var(--asv-radius-sm);
   background: var(--asv-canvas);
   color: var(--asv-muted);
-  font-size: 11px;
+  font-size: var(--asv-type-size-caption);
 }
 
 .thumb.sequence {
@@ -405,23 +425,26 @@ button.danger {
 .textPreviewBlock p {
   margin: var(--asv-space-1) 0 0;
   color: var(--asv-muted);
-  font-size: 12px;
+  font-size: var(--asv-type-size-footnote);
 }
 
 .findingImpact {
   align-self: center;
   color: var(--asv-muted);
   font-family: var(--asv-type-mono);
-  font-size: 12px;
+  font-size: var(--asv-type-size-footnote);
   white-space: nowrap;
 }
 
 .badge {
-  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--asv-badge-min-height);
+  padding: 0 var(--asv-space-2);
   border-radius: var(--asv-radius-sm);
   background: color-mix(in srgb, var(--asv-border) 46%, transparent);
   color: var(--asv-muted);
-  font-size: 11px;
+  font-size: var(--asv-type-size-caption);
   white-space: nowrap;
 }
 
@@ -464,7 +487,7 @@ button.danger {
 
 .appDialog h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--asv-type-size-dialog-title);
 }
 
 .appDialog label {
@@ -474,7 +497,7 @@ button.danger {
 }
 
 .appDialog input {
-  min-height: 30px;
+  min-height: var(--asv-control-height);
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-sm);
   padding: 0 var(--asv-space-2);
@@ -510,7 +533,7 @@ button.danger {
 
 .contextMenu button {
   justify-content: flex-start;
-  min-height: 30px;
+  min-height: var(--asv-control-height);
   border: 0;
   background: transparent;
   text-align: left;
@@ -522,10 +545,11 @@ button.danger {
 }
 
 .emptyText {
-  padding: var(--asv-space-3);
+  padding: var(--asv-empty-padding);
   color: var(--asv-muted);
   border: 1px dashed color-mix(in srgb, var(--asv-border) 72%, transparent);
   border-radius: var(--asv-radius-sm);
+  background: color-mix(in srgb, var(--asv-panel-strong) 24%, transparent);
   line-height: 1.5;
 }
 

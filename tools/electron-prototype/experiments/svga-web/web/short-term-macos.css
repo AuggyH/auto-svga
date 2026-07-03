@@ -16,7 +16,7 @@ body {
   background: var(--asv-window);
   color: var(--asv-text);
   font-family: var(--asv-font);
-  font-size: 13px;
+  font-size: var(--asv-type-size-body);
   line-height: 1.42;
   letter-spacing: 0;
   user-select: text;
@@ -162,7 +162,7 @@ body {
 
 .launchPrompt span {
   color: var(--asv-muted);
-  font-size: 12px;
+  font-size: var(--asv-type-size-footnote);
 }
 
 .recentBlock {
@@ -184,12 +184,12 @@ body {
 .textPreviewBlock h3 {
   margin: 0;
   color: var(--asv-text);
-  font-size: 13px;
+  font-size: var(--asv-type-size-body);
   font-weight: 650;
 }
 
 .recentHeader button {
-  min-height: 24px;
+  min-height: var(--asv-row-action-height);
   border: 0;
   background: transparent;
   color: var(--asv-muted);
@@ -226,7 +226,7 @@ body {
 .recentMeta,
 .recentNote {
   color: var(--asv-subtle);
-  font-size: 12px;
+  font-size: var(--asv-type-size-footnote);
 }
 
 .previewView {
@@ -311,7 +311,7 @@ canvas {
 .tabPanel {
   min-height: 0;
   overflow: auto;
-  padding: var(--asv-space-3);
+  padding: var(--asv-inspector-padding);
   scrollbar-gutter: stable;
 }
 
@@ -322,20 +322,20 @@ canvas {
 }
 
 .resultGroup {
-  margin: var(--asv-space-3) 0;
+  margin: var(--asv-inspector-section-gap) 0;
   padding-top: var(--asv-space-2);
-  border-top: 1px solid var(--asv-border);
+  border-top: 1px solid color-mix(in srgb, var(--asv-border) 72%, transparent);
 }
 
 .resultGroup h3 {
   margin: 0 0 var(--asv-space-2);
-  font-size: 12px;
+  font-size: var(--asv-type-size-footnote);
   font-weight: 650;
 }
 
 .resultGroup ul {
   display: grid;
-  gap: var(--asv-space-2);
+  gap: var(--asv-space-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -343,16 +343,16 @@ canvas {
 
 .resultGroup li {
   display: grid;
-  gap: 2px;
+  gap: var(--asv-space-1);
 }
 
 .resultGroup li strong {
-  font-size: 12px;
+  font-size: var(--asv-type-size-footnote);
 }
 
 .resultGroup li span {
   color: var(--asv-muted);
-  font-size: 12px;
+  font-size: var(--asv-type-size-footnote);
 }
 
 .resultGroup.muted li strong {
@@ -361,9 +361,9 @@ canvas {
 
 .assetSection,
 .textPreviewBlock {
-  margin-top: var(--asv-space-3);
-  padding-top: var(--asv-space-3);
-  border-top: 1px solid var(--asv-border);
+  margin-top: var(--asv-inspector-section-gap);
+  padding-top: var(--asv-inspector-section-gap);
+  border-top: 1px solid color-mix(in srgb, var(--asv-border) 72%, transparent);
 }
 
 .assetList,
@@ -371,8 +371,22 @@ canvas {
 .replaceableList,
 .textElementList {
   display: grid;
-  gap: var(--asv-space-1);
   margin-top: var(--asv-space-2);
+}
+
+.assetList {
+  gap: 0;
+  border-top: 1px solid color-mix(in srgb, var(--asv-border) 58%, transparent);
+}
+
+.assetList .assetRow:last-child {
+  border-bottom: 0;
+}
+
+.findingList,
+.replaceableList,
+.textElementList {
+  gap: var(--asv-space-1);
 }
 
 .sectionHead {
@@ -381,7 +395,7 @@ canvas {
   gap: var(--asv-space-3);
   align-items: flex-start;
   padding-bottom: var(--asv-space-2);
-  border-bottom: 1px solid var(--asv-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--asv-border) 72%, transparent);
 }
 
 .compareView {

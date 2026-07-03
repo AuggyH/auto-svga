@@ -4,6 +4,12 @@
   /* Primitive tokens */
   --asv-type-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   --asv-type-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --asv-type-size-caption: 11px;
+  --asv-type-size-footnote: 12px;
+  --asv-type-size-body: 13px;
+  --asv-type-size-metadata: 14px;
+  --asv-type-size-dialog-title: 16px;
+  --asv-type-size-state-title: 18px;
   --asv-space-1: 4px;
   --asv-space-2: 8px;
   --asv-space-3: 12px;
@@ -50,6 +56,14 @@
   --asv-component-row-height: 50px;
   --asv-component-thumbnail-size: 42px;
   --asv-component-inspector-width: clamp(380px, 30vw, 440px);
+  --asv-component-inspector-padding: var(--asv-space-3);
+  --asv-component-inspector-section-gap: var(--asv-space-3);
+  --asv-component-fact-cell-min-height: 78px;
+  --asv-component-asset-row-min-height: 50px;
+  --asv-component-finding-row-min-height: 54px;
+  --asv-component-row-action-height: 24px;
+  --asv-component-badge-min-height: 18px;
+  --asv-component-empty-padding: var(--asv-space-3);
   --asv-component-left-panel-width: 238px;
   --asv-component-launch-checker-size: 24px;
   --asv-component-preview-checker-size: 22px;
@@ -98,6 +112,14 @@
   --asv-row-height: var(--asv-component-row-height);
   --asv-thumb-size: var(--asv-component-thumbnail-size);
   --asv-inspector-width: var(--asv-component-inspector-width);
+  --asv-inspector-padding: var(--asv-component-inspector-padding);
+  --asv-inspector-section-gap: var(--asv-component-inspector-section-gap);
+  --asv-fact-cell-min-height: var(--asv-component-fact-cell-min-height);
+  --asv-asset-row-min-height: var(--asv-component-asset-row-min-height);
+  --asv-finding-row-min-height: var(--asv-component-finding-row-min-height);
+  --asv-row-action-height: var(--asv-component-row-action-height);
+  --asv-badge-min-height: var(--asv-component-badge-min-height);
+  --asv-empty-padding: var(--asv-component-empty-padding);
   --asv-left-width: var(--asv-component-left-panel-width);
   --asv-launch-checker-size: var(--asv-component-launch-checker-size);
   --asv-preview-checker-size: var(--asv-component-preview-checker-size);
