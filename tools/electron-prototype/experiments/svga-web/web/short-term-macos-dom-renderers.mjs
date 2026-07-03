@@ -242,6 +242,10 @@ export function createEditLayerRow(asset, model) {
   return row;
 }
 
+export function renderEditReservedLayers(nodes, view, model) {
+  nodes.layerPanel.replaceChildren(...view.rows.map((asset) => createEditLayerRow(asset, model)));
+}
+
 function renderThumbnailHtml(thumbnail, model) {
   if (!thumbnail || thumbnail.type === "audio-empty") return "无音频";
   if (thumbnail.type === "music") return "音频";

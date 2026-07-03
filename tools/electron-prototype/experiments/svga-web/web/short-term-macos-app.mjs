@@ -21,12 +21,12 @@ import {
   applyRuntimeTextOverlay,
   clearSaveFeedbackBanner,
   clearRuntimeTextOverlay,
-  createEditLayerRow,
   hideSaveFeedbackBanner,
   hideResourceContextMenu,
   markCompareSlotLoaded,
   prependOptimizationResult,
   renderAssetList,
+  renderEditReservedLayers,
   renderOptimizationFindings,
   renderOverviewFacts,
   renderReplaceableImages,
@@ -672,9 +672,7 @@ function closeResourceContextMenu() {
 }
 
 function renderEditReserved() {
-  const view = editReservedLayerListView(state.model);
-  nodes.layerPanel.replaceChildren(...view.rows
-    .map((asset) => createEditLayerRow(asset, state.model)));
+  renderEditReservedLayers(nodes, editReservedLayerListView(state.model), state.model);
 }
 
 async function renderOptimizationCompare(model, optimizedBytes) {

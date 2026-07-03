@@ -1262,6 +1262,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
   assert.match(shortTermDomRenderers, /export function renderRuntimeTextElements/);
   assert.match(shortTermDomRenderers, /export function createEditLayerRow/);
+  assert.match(shortTermDomRenderers, /export function renderEditReservedLayers/);
   assert.match(shortTermDomRenderers, /renderThumbnailHtml/);
   assert.match(shortTermDomState, /export function applyViewState/);
   assert.match(shortTermDomState, /export function applyModeButtons/);
@@ -1401,6 +1402,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOverviewModel, /"canvas", "fps", "duration"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-edit-reserved-model\.mjs"/);
   assert.match(shortTermEntry, /editReservedLayerListView/);
+  assert.match(shortTermEntry, /renderEditReservedLayers\(nodes, editReservedLayerListView\(state\.model\), state\.model\)/);
+  assert.doesNotMatch(shortTermEntry, /createEditLayerRow|nodes\.layerPanel\.replaceChildren/);
+  assert.match(shortTermDomRenderers, /nodes\.layerPanel\.replaceChildren/);
   assert.doesNotMatch(shortTermEntry, /\.filter\(\(asset\) => asset\.kind !== "audio"\)[\s\S]*\.slice\(0, 32\)/);
   assert.match(shortTermEditReservedModel, /export const EDIT_RESERVED_LAYER_LIMIT = 32/);
   assert.match(shortTermEditReservedModel, /export function editReservedLayerListView/);
