@@ -26,10 +26,13 @@ import {
   renderRecentFilesUnavailable
 } from "./short-term-macos-launch-renderers.mjs";
 import {
-  applyRuntimeTextOverlay,
   clearSaveFeedbackBanner,
-  clearRuntimeTextOverlay,
   hideSaveFeedbackBanner,
+  showSaveFeedbackBanner
+} from "./short-term-macos-save-renderers.mjs";
+import {
+  applyRuntimeTextOverlay,
+  clearRuntimeTextOverlay,
   hideResourceContextMenu,
   prependOptimizationResult,
   renderAssetList,
@@ -42,7 +45,6 @@ import {
   renderOverviewFacts,
   renderReplaceableImages,
   renderRuntimeTextElements,
-  showSaveFeedbackBanner,
   showResourceContextMenu
 } from "./short-term-macos-dom-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";

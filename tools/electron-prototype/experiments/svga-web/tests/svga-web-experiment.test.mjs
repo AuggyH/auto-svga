@@ -1021,6 +1021,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermLaunchRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-launch-renderers.mjs"), "utf8");
   const shortTermRecentFilesModel = await readFile(path.join(experimentRoot, "web/short-term-macos-recent-files-model.mjs"), "utf8");
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
+  const shortTermSaveRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-save-renderers.mjs"), "utf8");
   const shortTermSaveModel = await readFile(path.join(experimentRoot, "web/short-term-macos-save-model.mjs"), "utf8");
   const shortTermInteractionModel = await readFile(path.join(experimentRoot, "web/short-term-macos-interaction-model.mjs"), "utf8");
   const shortTermTextModel = await readFile(path.join(experimentRoot, "web/short-term-macos-text-model.mjs"), "utf8");
@@ -1186,6 +1187,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-renderers\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-compare-renderers\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-launch-renderers\.mjs"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-save-renderers\.mjs"/);
   assert.match(shortTermEntry, /applyCompareSlotView/);
   assert.match(shortTermEntry, /applyCompareTraceView/);
   assert.match(shortTermEntry, /applyRuntimeTextOverlay/);
@@ -1279,9 +1281,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function prependOptimizationResult/);
   assert.match(shortTermDomRenderers, /export function createMessageRow/);
   assert.match(shortTermDomRenderers, /export function createInlineStatusText/);
-  assert.match(shortTermDomRenderers, /export function showSaveFeedbackBanner/);
-  assert.match(shortTermDomRenderers, /export function hideSaveFeedbackBanner/);
-  assert.match(shortTermDomRenderers, /export function clearSaveFeedbackBanner/);
+  assert.doesNotMatch(shortTermDomRenderers, /export function showSaveFeedbackBanner|export function hideSaveFeedbackBanner|export function clearSaveFeedbackBanner|saveBannerView/);
+  assert.match(shortTermSaveRenderers, /export function showSaveFeedbackBanner/);
+  assert.match(shortTermSaveRenderers, /export function hideSaveFeedbackBanner/);
+  assert.match(shortTermSaveRenderers, /export function clearSaveFeedbackBanner/);
+  assert.match(shortTermSaveRenderers, /saveBannerView/);
+  assert.match(shortTermSaveRenderers, /node\.innerHTML = view\.html/);
   assert.match(shortTermDomRenderers, /export function renderLoadingMessage/);
   assert.match(shortTermDomRenderers, /export function renderFileHeader/);
   assert.match(shortTermDomRenderers, /export function renderDiscardMessage/);
@@ -1674,8 +1679,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /clearSaveFeedbackBanner\(nodes\.saveBanner\)/);
   assert.match(shortTermEntry, /hideSaveFeedbackBanner\(nodes\.saveBanner\)/);
   assert.doesNotMatch(shortTermEntry, /nodes\.saveBanner\.hidden = true|nodes\.saveBanner\.dataset\.status|nodes\.saveBanner\.innerHTML =/);
-  assert.match(shortTermDomRenderers, /node\.dataset\.status = view\.status/);
-  assert.match(shortTermDomRenderers, /node\.innerHTML = view\.html/);
+  assert.match(shortTermSaveRenderers, /node\.dataset\.status = view\.status/);
+  assert.match(shortTermSaveRenderers, /node\.innerHTML = view\.html/);
   assert.doesNotMatch(shortTermEntry, /function messageRow|renderMessageRowHtml/);
   assert.doesNotMatch(shortTermEntry, /document\.createElement\("p"\)|empty\.dataset\.component = "InlineStatus"/);
   assert.match(shortTermDomRenderers, /row\.dataset\.component = "InlineStatus"/);
@@ -2075,6 +2080,7 @@ test("short-term design system check enforces UI implementation guardrails", () 
   assert.match(dynamicDomAllowlist, /short-term-macos-dom-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-compare-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-launch-renderers\.mjs/);
+  assert.match(dynamicDomAllowlist, /short-term-macos-save-renderers\.mjs/);
   assert.doesNotMatch(dynamicDomAllowlist, /short-term-macos-compare-model\.mjs|short-term-macos-render-model\.mjs|short-term-macos-recent-files-model\.mjs/);
   const output = execFileSync(process.execPath, ["scripts/check-short-term-design-system.mjs"], {
     cwd: experimentRoot,
