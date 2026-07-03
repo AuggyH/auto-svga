@@ -30,6 +30,10 @@ import {
   renderOverviewFacts
 } from "./short-term-macos-overview-renderers.mjs";
 import {
+  prependOptimizationResult,
+  renderOptimizationFindings
+} from "./short-term-macos-optimization-renderers.mjs";
+import {
   clearSaveFeedbackBanner,
   hideSaveFeedbackBanner,
   showSaveFeedbackBanner
@@ -49,9 +53,7 @@ import {
   clearRuntimeTextOverlay
 } from "./short-term-macos-text-renderers.mjs";
 import {
-  prependOptimizationResult,
   renderEditReservedLayers,
-  renderOptimizationFindings,
   renderReplaceableImages,
   renderRuntimeTextElements
 } from "./short-term-macos-dom-renderers.mjs";
