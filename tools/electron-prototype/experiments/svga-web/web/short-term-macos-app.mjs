@@ -31,9 +31,11 @@ import {
   renderEditReservedLayers,
   renderFailureMessage,
   renderFileHeader,
+  renderLaunchRecentFiles,
   renderLoadingMessage,
   renderOptimizationFindings,
   renderOverviewFacts,
+  renderRecentFilesUnavailable,
   renderReplaceableImages,
   renderRuntimeTextElements,
   showSaveFeedbackBanner,
@@ -44,11 +46,7 @@ import {
   buildCurrentStateSummary,
   sourceUnmodifiedMessage
 } from "./short-term-macos-feedback-model.mjs";
-import {
-  renderLaunchRecentFiles,
-  renderRecentFilesUnavailable,
-  visibleLaunchRecentRecords
-} from "./short-term-macos-recent-files-model.mjs";
+import { visibleLaunchRecentRecords } from "./short-term-macos-recent-files-model.mjs";
 import {
   createSaveFailureProofActiveOutput,
   saveProofImageKey,
