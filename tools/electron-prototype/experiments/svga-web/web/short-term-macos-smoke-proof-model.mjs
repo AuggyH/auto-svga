@@ -1,0 +1,273 @@
+import { tabButtons } from "./short-term-macos-dom-state.mjs";
+
+export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
+  const tabs = tabButtons();
+  const tabOverview = document.querySelector("#tabOverview");
+  const tabOptimization = document.querySelector("#tabOptimization");
+  const tabReplaceable = document.querySelector("#tabReplaceable");
+  const panelOverview = document.querySelector("#panelOverview");
+  const panelOptimization = document.querySelector("#panelOptimization");
+  const panelReplaceable = document.querySelector("#panelReplaceable");
+  setTab("overview");
+  await waitForSmokeFrame();
+  tabOverview?.focus();
+  const arrowRightPrevented = !tabOverview?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }));
+  await waitForSmokeFrame();
+  const arrowRightState = {
+    selectedTab: state.tab,
+    focusedTabId: document.activeElement?.id || "",
+    optimizationPanelVisible: panelOptimization?.hidden === false
+  };
+  const endPrevented = !tabOptimization?.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true, cancelable: true }));
+  await waitForSmokeFrame();
+  const endState = {
+    selectedTab: state.tab,
+    focusedTabId: document.activeElement?.id || "",
+    replaceablePanelVisible: panelReplaceable?.hidden === false
+  };
+  const homePrevented = !tabReplaceable?.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true, cancelable: true }));
+  await waitForSmokeFrame();
+  const homeState = {
+    selectedTab: state.tab,
+    focusedTabId: document.activeElement?.id || "",
+    overviewPanelVisible: panelOverview?.hidden === false
+  };
+  const selectedTabOnlyInSequentialFocus = tabs.filter((tab) => tab.tabIndex === 0).length === 1
+    && tabOverview?.tabIndex === 0
+    && tabOptimization?.tabIndex === -1
+    && tabReplaceable?.tabIndex === -1;
+  const ariaSelectedSynced = tabOverview?.getAttribute("aria-selected") === "true"
+    && tabOptimization?.getAttribute("aria-selected") === "false"
+    && tabReplaceable?.getAttribute("aria-selected") === "false";
+  const panelVisibilitySynced = panelOverview?.hidden === false
+    && panelOptimization?.hidden === true
+    && panelReplaceable?.hidden === true;
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-tab-keyboard-proof",
+    source: "short-term-smoke",
+    prdIds: ["S3", "S8", "S12", "S13"],
+    component: "RightTabPanel",
+    molecule: "TabItem",
+    tabOrder: tabs.map((tab) => tab.dataset.tab || ""),
+    arrowRightPrevented,
+    arrowRightSelected: arrowRightState.selectedTab === "optimization",
+    arrowRightFocusedTabId: arrowRightState.focusedTabId,
+    arrowRightPanelVisible: arrowRightState.optimizationPanelVisible,
+    endPrevented,
+    endSelected: endState.selectedTab === "replaceable",
+    endFocusedTabId: endState.focusedTabId,
+    endPanelVisible: endState.replaceablePanelVisible,
+    homePrevented,
+    homeSelected: homeState.selectedTab === "overview",
+    homeFocusedTabId: homeState.focusedTabId,
+    homePanelVisible: homeState.overviewPanelVisible,
+    selectedTabOnlyInSequentialFocus,
+    ariaSelectedSynced,
+    panelVisibilitySynced
+  };
+  proof.passed = [
+    proof.tabOrder.join(",") === "overview,optimization,replaceable",
+    proof.arrowRightPrevented,
+    proof.arrowRightSelected,
+    proof.arrowRightFocusedTabId === "tabOptimization",
+    proof.arrowRightPanelVisible,
+    proof.endPrevented,
+    proof.endSelected,
+    proof.endFocusedTabId === "tabReplaceable",
+    proof.endPanelVisible,
+    proof.homePrevented,
+    proof.homeSelected,
+    proof.homeFocusedTabId === "tabOverview",
+    proof.homePanelVisible,
+    proof.selectedTabOnlyInSequentialFocus,
+    proof.ariaSelectedSynced,
+    proof.panelVisibilitySynced
+  ].every(Boolean);
+  return proof;
+}
+
+export function collectShortTermDesignInteractionProof({ minimumPreviewCaptured, nodes, state, currentStateSummary }) {
+  const focusOrder = visibleFocusableElements().map((element) => ({
+    id: element.id || "",
+    action: element.dataset.action || "",
+    tab: element.dataset.tab || "",
+    role: element.getAttribute("role") || "",
+    component: element.dataset.component || ""
+  })).slice(0, 24);
+  const focusKeys = focusOrder.map((item) => item.action || item.tab || item.id || item.role).filter(Boolean);
+  const openIndex = focusKeys.indexOf("open");
+  const compareIndex = focusKeys.indexOf("compare");
+  const tabOverviewIndex = focusKeys.indexOf("overview");
+  const panelOverview = document.querySelector("#panelOverview");
+  const panelStyle = getComputedStyle(panelOverview);
+  const factCell = nodes.factGrid.querySelector(".factCell");
+  const assetText = nodes.assetList.querySelector(".rowText");
+  const stateSummary = currentStateSummary();
+  const localUserPathPrefix = ["/", "Users", "/"].join("");
+  const menuState = parseLastMenuStateSnapshot(state.lastMenuStateSnapshot);
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-design-interaction-proof",
+    source: "short-term-smoke",
+    prdIds: ["S1", "S3", "S8", "S12", "S13", "S14", "S16"],
+    focusOrder,
+    focusTargetCount: focusOrder.length,
+    openBeforeCompare: openIndex >= 0 && compareIndex > openIndex,
+    overviewTabReachable: tabOverviewIndex >= 0,
+    selectedTabOnlyInSequentialFocus: tabButtons().filter((tab) => tab.tabIndex === 0).length === 1,
+    panelScrollRegionFocusable: panelOverview?.tabIndex === 0,
+    panelScrollRegionScrollable: ["auto", "scroll"].includes(panelStyle.overflowY),
+    metadataSelectable: userSelectAllowsText(document.body)
+      && userSelectAllowsText(factCell)
+      && userSelectAllowsText(assetText),
+    stateSummaryCopyable: stateSummary.includes("Auto SVGA 状态摘要")
+      && stateSummary.includes(state.displayName)
+      && !stateSummary.includes(localUserPathPrefix)
+      && !stateSummary.includes("\\"),
+    menuStateDiscoverable: menuState?.hasFile === true
+      && menuState?.canCompare === true
+      && menuState?.canPlay === true
+      && menuState?.view === "preview"
+      && menuState?.mode === "preview",
+    reducedMotionRulePresent: styleSheetsContain("prefers-reduced-motion"),
+    minimumPreviewCaptured: minimumPreviewCaptured === true
+  };
+  proof.passed = [
+    proof.focusTargetCount >= 8,
+    proof.openBeforeCompare,
+    proof.overviewTabReachable,
+    proof.selectedTabOnlyInSequentialFocus,
+    proof.panelScrollRegionFocusable,
+    proof.panelScrollRegionScrollable,
+    proof.metadataSelectable,
+    proof.stateSummaryCopyable,
+    proof.menuStateDiscoverable,
+    proof.reducedMotionRulePresent,
+    proof.minimumPreviewCaptured
+  ].every(Boolean);
+  return proof;
+}
+
+export async function reportShortTermSmokeFailure({ bridge, phase, error }) {
+  await bridge?.reportSmokeResult?.({
+    localPage: location.origin.startsWith("http://127.0.0.1:"),
+    localOnly: resourceEntriesAreLocalOnly(),
+    strictCsp: Boolean(document.querySelector('meta[name="auto-svga-csp"]')),
+    noCspViolation: true,
+    playback: false,
+    canvasNonBlank: false,
+    inspectionReport: false,
+    auditPanel: false,
+    fileInput: false,
+    dragDrop: false,
+    errorFile: false,
+    playerLifecycle: false,
+    cleanup: false,
+    diagnostics: {
+      schemaVersion: 1,
+      phase,
+      errorName: boundedSmokeText(error instanceof Error ? error.name : "Error", 80),
+      errorMessage: boundedSmokeText(error instanceof Error ? error.message : String(error), 260),
+      actionCount: 0,
+      currentActionId: null,
+      lastActionId: null
+    }
+  });
+}
+
+export function visibleFocusableElements() {
+  return [...document.querySelectorAll("button, input, [tabindex]")]
+    .filter((element) => !element.disabled && element.tabIndex >= 0 && isElementVisible(element));
+}
+
+export function isElementVisible(element) {
+  return element.getClientRects().length > 0 && !element.closest("[hidden]");
+}
+
+export function userSelectAllowsText(element) {
+  if (!element) return false;
+  return ["auto", "text", "contain", "all"].includes(getComputedStyle(element).userSelect);
+}
+
+export function parseLastMenuStateSnapshot(lastMenuStateSnapshot) {
+  try {
+    return JSON.parse(lastMenuStateSnapshot || "{}");
+  } catch {
+    return {};
+  }
+}
+
+export function styleSheetsContain(pattern) {
+  return [...document.styleSheets].some((sheet) => {
+    try {
+      return [...sheet.cssRules].some((rule) => rule.cssText.includes(pattern));
+    } catch {
+      return false;
+    }
+  });
+}
+
+export function boundedSmokeText(value, maxLength) {
+  return String(value ?? "").slice(0, maxLength);
+}
+
+export function resourceEntriesAreLocalOnly() {
+  return performance.getEntriesByType("resource").every((entry) => {
+    try {
+      const url = new URL(entry.name, location.href);
+      return url.origin === location.origin || entry.name.startsWith(`blob:${location.origin}/`);
+    } catch {
+      return false;
+    }
+  });
+}
+
+export function waitForSmokeCondition(predicate, timeoutMs) {
+  const startedAt = performance.now();
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      if (predicate()) {
+        resolve(true);
+        return;
+      }
+      if (performance.now() - startedAt > timeoutMs) {
+        reject(new Error("Short-term smoke timed out."));
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+export function waitForSmokeFrame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+}
+
+export async function waitForCanvasPixels(canvas, timeoutMs) {
+  const startedAt = performance.now();
+  while (performance.now() - startedAt <= timeoutMs) {
+    if (canvasHasNonBlankPixels(canvas)) return true;
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
+  return false;
+}
+
+export function canvasHasNonBlankPixels(canvas) {
+  if (!canvas?.width || !canvas?.height) return false;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return false;
+  const sampleCount = 7;
+  for (let y = 0; y < sampleCount; y += 1) {
+    for (let x = 0; x < sampleCount; x += 1) {
+      const pixelX = Math.min(canvas.width - 1, Math.max(0, Math.round((canvas.width * (x + 0.5)) / sampleCount)));
+      const pixelY = Math.min(canvas.height - 1, Math.max(0, Math.round((canvas.height * (y + 0.5)) / sampleCount)));
+      const [red, green, blue, alpha] = context.getImageData(pixelX, pixelY, 1, 1).data;
+      if (alpha > 0 && (red > 0 || green > 0 || blue > 0)) return true;
+    }
+  }
+  return false;
+}
