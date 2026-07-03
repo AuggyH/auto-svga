@@ -1464,7 +1464,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermInteractionModel, /export function isContextMenuKey/);
   assert.match(shortTermInteractionModel, /export function isTextEditingTarget/);
   assert.match(shortTermInteractionModel, /export function shouldHandleGlobalPlaybackShortcut/);
+  assert.match(shortTermInteractionModel, /export function enabledMenuItems/);
+  assert.match(shortTermInteractionModel, /export function nextMenuItemIndexForKey/);
   assert.match(shortTermInteractionModel, /export function nextTabIndexForKey/);
+  assert.match(shortTermInteractionModel, /key === "ArrowDown"/);
+  assert.match(shortTermInteractionModel, /key === "ArrowUp"/);
   assert.match(shortTermInteractionModel, /key === "ArrowRight"/);
   assert.match(shortTermInteractionModel, /key === "ArrowLeft"/);
   assert.match(shortTermInteractionModel, /key === "Home"/);
@@ -1479,6 +1483,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /resourceContextMenuView/);
   assert.match(shortTermEntry, /showResourceContextMenu\(menu, view\)/);
   assert.match(shortTermEntry, /hideResourceContextMenu\(nodes\.resourceContextMenu\)/);
+  assert.match(shortTermEntry, /handleResourceContextMenuKeydown/);
+  assert.match(shortTermEntry, /enabledMenuItems\(nodes\.resourceContextMenu\)/);
+  assert.match(shortTermEntry, /nextMenuItemIndexForKey\(event\.key, currentIndex, items\.length\)/);
+  assert.match(shortTermEntry, /nodes\.resourceContextMenu\.addEventListener\("keydown", handleResourceContextMenuKeydown\)/);
   assert.match(shortTermEntry, /resourceMenuReturnFocus/);
   assert.match(shortTermEntry, /openResourceContextMenu\(keyboardResourceMenuAnchor\(rect\), row\.dataset\.imageKey, row\)/);
   assert.match(shortTermEntry, /openResourceContextMenu\(event, target\.dataset\.imageKey, target\)/);
@@ -1828,6 +1836,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /short-term-replacement-proof/);
   assert.match(shortTermSmokeProofModel, /resetCommandEnabled/);
   assert.match(shortTermSmokeProofModel, /resetRestoredOriginal/);
+  assert.match(shortTermSmokeProofModel, /resourceMenuKeyboardNavigationPassed/);
+  assert.match(shortTermEntry, /resourceMenuArrowDownFocusedAction/);
+  assert.match(shortTermEntry, /resourceMenuEndFocusedAction/);
+  assert.match(shortTermEntry, /resourceMenuHomeFocusedAction/);
   assert.match(shortTermSmokeProofModel, /resourceMenuFocusReturnedAfterClose/);
   assert.match(shortTermEntry, /const resourceMenuFocusReturnedAfterClose = document\.activeElement === replacementRow/);
   assert.match(shortTermSmokeProofModel, /saveAsEnabledBeforeReset/);

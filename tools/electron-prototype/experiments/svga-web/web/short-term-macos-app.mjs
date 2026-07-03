@@ -72,9 +72,11 @@ import {
 } from "./short-term-macos-save-model.mjs";
 import {
   consumeKeyboardEvent,
+  enabledMenuItems,
   isActivationKey,
   isContextMenuKey,
   isTextEditingTarget,
+  nextMenuItemIndexForKey,
   nextTabIndexForKey,
   shouldHandleGlobalPlaybackShortcut
 } from "./short-term-macos-interaction-model.mjs";
@@ -865,6 +867,16 @@ function handleTabListKeydown(event) {
   setTab(tabs[nextIndex].dataset.tab, { focus: true });
 }
 
+function handleResourceContextMenuKeydown(event) {
+  const items = enabledMenuItems(nodes.resourceContextMenu);
+  const current = event.target.closest("[role='menuitem']");
+  const currentIndex = items.indexOf(current);
+  const nextIndex = nextMenuItemIndexForKey(event.key, currentIndex, items.length);
+  if (nextIndex === undefined) return;
+  consumeKeyboardEvent(event);
+  items[nextIndex]?.focus();
+}
+
 function openTab(tab) {
   if (state.sourceBytes && state.view !== "preview") setMode("preview");
   setTab(tab);
@@ -1042,6 +1054,7 @@ document.querySelectorAll("[data-tab]").forEach((button) => {
 });
 
 document.querySelector("[role='tablist']")?.addEventListener("keydown", handleTabListKeydown);
+nodes.resourceContextMenu.addEventListener("keydown", handleResourceContextMenuKeydown);
 
 nodes.replacementFileInput.addEventListener("change", () => {
   applyReplacementFile(nodes.replacementFileInput.files?.[0]).catch(showFailure);
@@ -1398,6 +1411,13 @@ async function runShortTermSmokeIfRequested() {
   await waitForSmokeFrame();
   const replacementContextMenuOpened = nodes.resourceContextMenu.hidden === false;
   const resetCommandEnabled = nodes.resourceContextMenu.querySelector("[data-action='context-reset']")?.disabled === false;
+  const resourceMenuInitialFocusedAction = document.activeElement?.dataset.action || "";
+  document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+  const resourceMenuArrowDownFocusedAction = document.activeElement?.dataset.action || "";
+  document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true, cancelable: true }));
+  const resourceMenuEndFocusedAction = document.activeElement?.dataset.action || "";
+  document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true, cancelable: true }));
+  const resourceMenuHomeFocusedAction = document.activeElement?.dataset.action || "";
   closeResourceContextMenu({ restoreFocus: true });
   const resourceMenuFocusReturnedAfterClose = document.activeElement === replacementRow;
   await captureSmokeArtifact("short-term-replacement-dirty");
@@ -1411,7 +1431,11 @@ async function runShortTermSmokeIfRequested() {
     editedSha256: replacementEditedSha256,
     imageKey: replacementImageKey,
     previewModeStayed: state.view === "preview" && state.mode === "preview",
+    resourceMenuArrowDownFocusedAction,
+    resourceMenuEndFocusedAction,
     resourceMenuFocusReturnedAfterClose,
+    resourceMenuHomeFocusedAction,
+    resourceMenuInitialFocusedAction,
     replacementCanvasNonBlank,
     replacementPngSha256,
     resetCanvasNonBlank,

@@ -32,6 +32,20 @@ export function shouldHandleGlobalPlaybackShortcut(target) {
   ].join(", "));
 }
 
+export function enabledMenuItems(menu) {
+  if (!(menu instanceof Element)) return [];
+  return [...menu.querySelectorAll("[role='menuitem']")].filter((item) => item.disabled !== true);
+}
+
+export function nextMenuItemIndexForKey(key, currentIndex, itemCount) {
+  if (itemCount <= 0) return undefined;
+  if (key === "ArrowDown") return currentIndex >= 0 ? (currentIndex + 1) % itemCount : 0;
+  if (key === "ArrowUp") return currentIndex > 0 ? currentIndex - 1 : itemCount - 1;
+  if (key === "Home") return 0;
+  if (key === "End") return itemCount - 1;
+  return undefined;
+}
+
 export function nextTabIndexForKey(key, currentIndex, tabCount) {
   if (tabCount <= 0) return undefined;
   if (key === "ArrowRight") return (currentIndex + 1) % tabCount;
