@@ -85,6 +85,7 @@ import { editReservedLayerListView } from "./short-term-macos-edit-reserved-mode
 import {
   collectShortTermDesignInteractionProof,
   collectShortTermEmptyStateProof,
+  collectShortTermRuntimeTextBoundaryProof,
   collectShortTermSpecComparisonProof,
   collectShortTermTabKeyboardProof,
   collectShortTermThumbnailProof,
@@ -1150,7 +1151,6 @@ async function runShortTermSmokeIfRequested() {
     textElementRowCount,
     textUnavailableCopy
   });
-  let shortTermRuntimeTextBoundaryProof;
   const sequenceResponse = await fetch("/fixture/sequence-repair-smoke.svga");
   const sequenceBytes = new Uint8Array(await sequenceResponse.arrayBuffer());
   await loadOpenedSource({
@@ -1283,45 +1283,17 @@ async function runShortTermSmokeIfRequested() {
   resetRuntimeText();
   await waitForSmokeFrame();
   const runtimeTextSourceSha256AfterReset = await sha256Hex(state.sourceBytes);
-  shortTermRuntimeTextBoundaryProof = {
-    schemaVersion: 1,
-    proofId: "short-term-runtime-text-boundary-proof",
-    source: "short-term-smoke",
-    prdIds: ["S13"],
-    parserTextSource: "designer_named_imagekey_text_anchor",
-    runtimeTextKeySource: "official_svga_dynamic_text_imagekey",
-    textElementsDiscovered: designerRuntimeTextKeys.length,
-    textKeys: designerRuntimeTextKeys,
-    modalOpened: runtimeTextModalOpened,
+  const shortTermRuntimeTextBoundaryProof = collectShortTermRuntimeTextBoundaryProof({
     editApplied: runtimeTextApplied,
-    runtimeOverlayVisibleAfterApply: runtimeTextOverlayCopy.includes("SVGA VIP"),
-    runtimeOverlayCopy: runtimeTextOverlayCopy,
-    resetCommandEnabledAfterApply: runtimeTextResetCommandEnabled,
-    resetApplied: true,
+    modalOpened: runtimeTextModalOpened,
     resetClearedOverlay: nodes.runtimeTextOverlay.hidden && !nodes.runtimeTextOverlay.textContent.trim(),
-    bytePersistenceClaimed: false,
-    productCompleteClaimed: true,
-    visualPreviewMechanism: "dom_overlay_on_preview_canvas",
-    sourceSha256Before: runtimeTextSourceSha256Before,
+    resetCommandEnabledAfterApply: runtimeTextResetCommandEnabled,
+    runtimeOverlayCopy: runtimeTextOverlayCopy,
     sourceSha256AfterApply: runtimeTextSourceSha256AfterApply,
     sourceSha256AfterReset: runtimeTextSourceSha256AfterReset,
-    sourceBytesUnchanged: runtimeTextSourceSha256AfterApply === runtimeTextSourceSha256Before
-      && runtimeTextSourceSha256AfterReset === runtimeTextSourceSha256Before,
-    supportedRuntimeFields: ["text"]
-  };
-  shortTermRuntimeTextBoundaryProof.passed = [
-    shortTermRuntimeTextBoundaryProof.textElementsDiscovered > 0,
-    shortTermRuntimeTextBoundaryProof.textKeys.includes("nickname_text"),
-    shortTermRuntimeTextBoundaryProof.modalOpened,
-    shortTermRuntimeTextBoundaryProof.editApplied,
-    shortTermRuntimeTextBoundaryProof.runtimeOverlayVisibleAfterApply,
-    shortTermRuntimeTextBoundaryProof.resetCommandEnabledAfterApply,
-    shortTermRuntimeTextBoundaryProof.resetApplied,
-    shortTermRuntimeTextBoundaryProof.resetClearedOverlay,
-    shortTermRuntimeTextBoundaryProof.bytePersistenceClaimed === false,
-    shortTermRuntimeTextBoundaryProof.productCompleteClaimed,
-    shortTermRuntimeTextBoundaryProof.sourceBytesUnchanged
-  ].every(Boolean);
+    sourceSha256Before: runtimeTextSourceSha256Before,
+    textKeys: designerRuntimeTextKeys
+  });
   const shortTermReplaceableClassificationProof = {
     schemaVersion: 1,
     proofId: "short-term-replaceable-classification-proof",

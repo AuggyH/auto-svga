@@ -110,6 +110,59 @@ export function collectShortTermThumbnailProof({ assetList, noAudioCopy, ordinar
   };
 }
 
+export function collectShortTermRuntimeTextBoundaryProof({
+  editApplied,
+  modalOpened,
+  resetClearedOverlay,
+  resetCommandEnabledAfterApply,
+  runtimeOverlayCopy,
+  sourceSha256AfterApply,
+  sourceSha256AfterReset,
+  sourceSha256Before,
+  textKeys
+}) {
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-runtime-text-boundary-proof",
+    source: "short-term-smoke",
+    prdIds: ["S13"],
+    parserTextSource: "designer_named_imagekey_text_anchor",
+    runtimeTextKeySource: "official_svga_dynamic_text_imagekey",
+    textElementsDiscovered: textKeys.length,
+    textKeys,
+    modalOpened,
+    editApplied,
+    runtimeOverlayVisibleAfterApply: runtimeOverlayCopy.includes("SVGA VIP"),
+    runtimeOverlayCopy,
+    resetCommandEnabledAfterApply,
+    resetApplied: true,
+    resetClearedOverlay,
+    bytePersistenceClaimed: false,
+    productCompleteClaimed: true,
+    visualPreviewMechanism: "dom_overlay_on_preview_canvas",
+    sourceSha256Before,
+    sourceSha256AfterApply,
+    sourceSha256AfterReset,
+    sourceBytesUnchanged: sourceSha256AfterApply === sourceSha256Before
+      && sourceSha256AfterReset === sourceSha256Before,
+    supportedRuntimeFields: ["text"]
+  };
+  proof.passed = [
+    proof.textElementsDiscovered > 0,
+    proof.textKeys.includes("nickname_text"),
+    proof.modalOpened,
+    proof.editApplied,
+    proof.runtimeOverlayVisibleAfterApply,
+    proof.resetCommandEnabledAfterApply,
+    proof.resetApplied,
+    proof.resetClearedOverlay,
+    proof.bytePersistenceClaimed === false,
+    proof.productCompleteClaimed,
+    proof.sourceBytesUnchanged
+  ].every(Boolean);
+  return proof;
+}
+
 export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
   const tabs = tabButtons();
   const tabOverview = document.querySelector("#tabOverview");
