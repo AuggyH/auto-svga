@@ -1183,10 +1183,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /createAssetRow/);
   assert.match(shortTermEntry, /createInlineStatusText/);
   assert.match(shortTermEntry, /createMessageRow/);
-  assert.match(shortTermEntry, /createReplaceableImageRow/);
   assert.match(shortTermEntry, /hideResourceContextMenu/);
   assert.match(shortTermEntry, /hideSaveFeedbackBanner/);
   assert.match(shortTermEntry, /markCompareSlotLoaded/);
+  assert.match(shortTermEntry, /renderReplaceableImages/);
   assert.match(shortTermEntry, /renderRuntimeTextElements/);
   assert.match(shortTermEntry, /showSaveFeedbackBanner/);
   assert.match(shortTermEntry, /showResourceContextMenu/);
@@ -1254,6 +1254,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function applyRuntimeTextOverlay/);
   assert.match(shortTermDomRenderers, /export function clearRuntimeTextOverlay/);
   assert.match(shortTermDomRenderers, /export function createReplaceableImageRow/);
+  assert.match(shortTermDomRenderers, /export function renderReplaceableImages/);
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
   assert.match(shortTermDomRenderers, /export function renderRuntimeTextElements/);
   assert.match(shortTermDomRenderers, /export function createEditLayerRow/);
@@ -1353,6 +1354,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-replaceable-model\.mjs"/);
   assert.match(shortTermEntry, /replaceableImageListView/);
   assert.match(shortTermEntry, /nextReplaceableSelection/);
+  assert.match(shortTermEntry, /renderReplaceableImages\(nodes, view, state\.model\)/);
+  assert.doesNotMatch(shortTermEntry, /createReplaceableImageRow|nodes\.replaceableList\.replaceChildren|nodes\.replaceableSummary\.textContent =/);
+  assert.match(shortTermDomRenderers, /nodes\.replaceableList\.replaceChildren/);
+  assert.match(shortTermDomRenderers, /nodes\.replaceableSummary\.textContent = view\.summaryCopy/);
   assert.doesNotMatch(shortTermEntry, /普通自动命名图片不会出现在这里。|没有可替换元素。|\$\{rows\.length\} 个设计师命名图片元素。/);
   assert.match(shortTermReplaceableModel, /export function replaceableImageListView/);
   assert.match(shortTermReplaceableModel, /export function nextReplaceableSelection/);

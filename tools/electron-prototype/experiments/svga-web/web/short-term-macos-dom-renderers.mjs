@@ -161,6 +161,19 @@ export function createReplaceableImageRow(item, index, options) {
   return row;
 }
 
+export function renderReplaceableImages(nodes, view, model) {
+  nodes.replaceableSummary.textContent = view.summaryCopy;
+  if (!view.hasImages) {
+    nodes.replaceableList.replaceChildren(createInlineStatusText(view.emptyCopy));
+    return;
+  }
+  nodes.replaceableList.replaceChildren(...view.rows.map((row) => createReplaceableImageRow(row.item, row.index, {
+    model,
+    selected: row.selected,
+    renaming: row.renaming
+  })));
+}
+
 export function createTextElementRow(item, index, options) {
   const row = document.createElement("article");
   row.className = "textElementRow";

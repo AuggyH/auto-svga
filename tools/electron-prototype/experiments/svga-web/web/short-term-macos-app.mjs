@@ -27,10 +27,10 @@ import {
   createMessageRow,
   createOptimizationFindingRow,
   createOverviewFactCell,
-  createReplaceableImageRow,
   hideSaveFeedbackBanner,
   hideResourceContextMenu,
   markCompareSlotLoaded,
+  renderReplaceableImages,
   renderRuntimeTextElements,
   showSaveFeedbackBanner,
   showResourceContextMenu
@@ -626,17 +626,7 @@ function renderOptimizationResult(model) {
 function renderReplaceables(model) {
   if (!model) return;
   const view = replaceableImageListView(model, state.selectedImageKey, state.renameImageKey);
-  const rows = view.rows.map((row) => createReplaceableImageRow(row.item, row.index, {
-    model: state.model,
-    selected: row.selected,
-    renaming: row.renaming
-  }));
-  if (!view.hasImages) {
-    nodes.replaceableList.replaceChildren(createInlineStatusText(view.emptyCopy));
-  } else {
-    nodes.replaceableList.replaceChildren(...rows);
-  }
-  nodes.replaceableSummary.textContent = view.summaryCopy;
+  renderReplaceableImages(nodes, view, state.model);
 }
 
 function renderTextElements(model) {
