@@ -56,6 +56,10 @@ import {
   runtimeTextPlaceholder,
   selectedRuntimeTextElement
 } from "./short-term-macos-text-model.mjs";
+import {
+  nextReplaceableSelection,
+  replaceableImageListView
+} from "./short-term-macos-replaceable-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -611,23 +615,22 @@ function renderOptimizationResult(model) {
 
 function renderReplaceables(model) {
   if (!model) return;
-  const rows = model.images.map((item, index) => {
-    const selected = item.imageKey === state.selectedImageKey;
-    const renaming = item.imageKey === state.renameImageKey;
-    return createReplaceableImageRow(item, index, { model: state.model, selected, renaming });
-  });
-  if (rows.length === 0) {
+  const view = replaceableImageListView(model, state.selectedImageKey, state.renameImageKey);
+  const rows = view.rows.map((row) => createReplaceableImageRow(row.item, row.index, {
+    model: state.model,
+    selected: row.selected,
+    renaming: row.renaming
+  }));
+  if (!view.hasImages) {
     const empty = document.createElement("p");
     empty.className = "emptyText";
     empty.dataset.component = "InlineStatus";
-    empty.textContent = model.emptyCopy || "没有可替换元素。";
+    empty.textContent = view.emptyCopy;
     nodes.replaceableList.replaceChildren(empty);
   } else {
     nodes.replaceableList.replaceChildren(...rows);
   }
-  nodes.replaceableSummary.textContent = rows.length
-    ? `${rows.length} 个设计师命名图片元素。`
-    : "普通自动命名图片不会出现在这里。";
+  nodes.replaceableSummary.textContent = view.summaryCopy;
 }
 
 function renderTextElements(model) {
@@ -669,10 +672,10 @@ function selectedTextElement() {
 
 function selectImageKey(imageKey) {
   if (!imageKey) return;
-  const shouldCancelRename = state.renameImageKey && state.renameImageKey !== imageKey;
-  state.selectedImageKey = imageKey;
-  if (shouldCancelRename) {
-    state.renameImageKey = "";
+  const selection = nextReplaceableSelection(imageKey, state.renameImageKey);
+  state.selectedImageKey = selection.selectedImageKey;
+  state.renameImageKey = selection.renameImageKey;
+  if (selection.shouldRerender) {
     renderReplaceables(state.model?.replaceableElements);
     return;
   }

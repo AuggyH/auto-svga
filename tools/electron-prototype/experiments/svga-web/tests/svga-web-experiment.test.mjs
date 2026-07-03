@@ -1020,6 +1020,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermSaveModel = await readFile(path.join(experimentRoot, "web/short-term-macos-save-model.mjs"), "utf8");
   const shortTermInteractionModel = await readFile(path.join(experimentRoot, "web/short-term-macos-interaction-model.mjs"), "utf8");
   const shortTermTextModel = await readFile(path.join(experimentRoot, "web/short-term-macos-text-model.mjs"), "utf8");
+  const shortTermReplaceableModel = await readFile(path.join(experimentRoot, "web/short-term-macos-replaceable-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1277,6 +1278,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTextModel, /当前文件没有可运行时预览的文本元素。/);
   assert.match(shortTermTextModel, /未发现可运行时替换的 textKey。/);
   assert.match(shortTermTextModel, /文本预览已应用，源 SVGA 字节未修改。/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-replaceable-model\.mjs"/);
+  assert.match(shortTermEntry, /replaceableImageListView/);
+  assert.match(shortTermEntry, /nextReplaceableSelection/);
+  assert.doesNotMatch(shortTermEntry, /普通自动命名图片不会出现在这里。|没有可替换元素。|\$\{rows\.length\} 个设计师命名图片元素。/);
+  assert.match(shortTermReplaceableModel, /export function replaceableImageListView/);
+  assert.match(shortTermReplaceableModel, /export function nextReplaceableSelection/);
+  assert.match(shortTermReplaceableModel, /没有可替换元素。/);
+  assert.match(shortTermReplaceableModel, /普通自动命名图片不会出现在这里。/);
+  assert.match(shortTermReplaceableModel, /个设计师命名图片元素。/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);
