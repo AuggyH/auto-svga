@@ -1017,6 +1017,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
   const shortTermRecentFilesModel = await readFile(path.join(experimentRoot, "web/short-term-macos-recent-files-model.mjs"), "utf8");
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
+  const shortTermSaveModel = await readFile(path.join(experimentRoot, "web/short-term-macos-save-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1183,6 +1184,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /renderLaunchRecentFiles/);
   assert.match(shortTermEntry, /renderRecentFilesUnavailable/);
   assert.doesNotMatch(shortTermEntry, /暂无最近打开记录|仅显示文件名和父级位置|最近文件由 macOS 客户端提供/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-save-model\.mjs"/);
+  assert.match(shortTermEntry, /saveProofSourceImageKey/);
+  assert.match(shortTermEntry, /saveProofImageKey/);
+  assert.match(shortTermEntry, /createSaveFailureProofActiveOutput/);
+  assert.doesNotMatch(shortTermEntry, /保存失败验证输出/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-state\.mjs"/);
   assert.match(shortTermEntry, /applyViewState/);
   assert.match(shortTermEntry, /applyModeButtons/);
@@ -1235,6 +1241,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermRecentFilesModel, /暂无最近打开记录/);
   assert.match(shortTermRecentFilesModel, /仅显示文件名和父级位置/);
   assert.match(shortTermRecentFilesModel, /最近文件由 macOS 客户端提供/);
+  assert.match(shortTermSaveModel, /export function saveProofImageKey/);
+  assert.match(shortTermSaveModel, /export function saveProofSourceImageKey/);
+  assert.match(shortTermSaveModel, /export function createSaveFailureProofActiveOutput/);
+  assert.match(shortTermSaveModel, /kind: "rename"/);
+  assert.match(shortTermSaveModel, /保存失败验证输出/);
+  assert.match(shortTermSaveModel, /保存后重开验证应失败，当前源文件保持不变。/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /event\.key === "ArrowRight"/);

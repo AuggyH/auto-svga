@@ -37,6 +37,11 @@ import {
   renderRecentFilesUnavailable,
   visibleLaunchRecentRecords
 } from "./short-term-macos-recent-files-model.mjs";
+import {
+  createSaveFailureProofActiveOutput,
+  saveProofImageKey,
+  saveProofSourceImageKey
+} from "./short-term-macos-save-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -336,20 +341,12 @@ async function confirmInlineRename() {
   }
 }
 
-function saveProofImageKey(fromImageKey, suffix) {
-  const clean = String(fromImageKey || "image_key")
-    .replace(/[\u0000-\u001F\u007F/\\]/gu, "_")
-    .replace(/[^A-Za-z0-9_.-]/g, "_")
-    .slice(0, 64) || "image_key";
-  return `${clean}_${suffix}`;
-}
-
 async function createSaveProofOutput(suffix) {
   if (!state.sourceBytes) throw new Error("保存证明需要先打开 SVGA。");
-  const fromImageKey = state.selectedImageKey
-    || state.model?.replaceableElements?.images?.[0]?.imageKey
-    || state.model?.assets?.find((asset) => asset.kind === "image")?.name
-    || "";
+  const fromImageKey = saveProofSourceImageKey({
+    selectedImageKey: state.selectedImageKey,
+    model: state.model
+  });
   if (!fromImageKey) throw new Error("保存证明没有可用 imageKey。");
   const toImageKey = saveProofImageKey(fromImageKey, suffix);
   showSaveBanner("正在生成保存证明输出。", "使用短期重命名工作流生成可验证 SVGA 输出。");
@@ -382,13 +379,7 @@ async function createSaveProofOutput(suffix) {
 
 function createSaveFailureProofOutput() {
   if (!state.sourceBytes) throw new Error("保存失败证明需要先打开 SVGA。");
-  setActiveOutput({
-    kind: "rename",
-    bytes: new Uint8Array([0, 1, 2, 3, 4]),
-    suggestedName: suffixName(state.displayName || "save-failure", "invalid"),
-    title: "保存失败验证输出",
-    summary: "保存后重开验证应失败，当前源文件保持不变。"
-  });
+  setActiveOutput(createSaveFailureProofActiveOutput(state.displayName));
 }
 
 function cancelInlineRename() {
