@@ -23,7 +23,6 @@ import {
 } from "./short-term-macos-dom-renderers.mjs";
 import {
   escapeHtml,
-  overviewVisibleFacts,
   renderMessageRowHtml,
   suffixName
 } from "./short-term-macos-render-model.mjs";
@@ -63,6 +62,7 @@ import {
   optimizationResultTone,
   optimizationTabView
 } from "./short-term-macos-optimization-model.mjs";
+import { overviewTabView } from "./short-term-macos-overview-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -565,25 +565,23 @@ async function confirmDiscardUnsavedOutput(message) {
 function renderPreviewModel() {
   const model = state.model;
   if (!model) return;
+  const overviewView = overviewTabView(model);
   nodes.fileIdentity.textContent = state.displayName;
-  renderFacts(model);
-  renderAssets(model);
+  renderFacts(overviewView);
+  renderAssets(overviewView, model);
   renderOptimization(model.optimization);
   renderReplaceables(model.replaceableElements);
   renderTextElements(model.replaceableElements);
   renderEditReserved();
-  nodes.playbackMeta.textContent = model.overview.facts
-    .filter((fact) => ["canvas", "fps", "duration"].includes(fact.id))
-    .map((fact) => fact.value)
-    .join(" / ");
+  nodes.playbackMeta.textContent = overviewView.playbackMeta;
 }
 
-function renderFacts(model) {
-  nodes.factGrid.replaceChildren(...overviewVisibleFacts(model).map(createOverviewFactCell));
+function renderFacts(view) {
+  nodes.factGrid.replaceChildren(...view.facts.map(createOverviewFactCell));
 }
 
-function renderAssets(model) {
-  const rows = model.assets.map((asset) => createAssetRow(asset, model));
+function renderAssets(view, model) {
+  const rows = view.assets.map((asset) => createAssetRow(asset, model));
   nodes.assetList.replaceChildren(...rows);
 }
 
@@ -1227,7 +1225,7 @@ async function runShortTermSmokeIfRequested() {
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const canvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
   await captureSmokeArtifact("short-term-preview-overview");
-  const overviewFactRows = overviewVisibleFacts(state.model);
+  const overviewFactRows = overviewTabView(state.model).facts;
   const shortTermSpecComparisonProof = {
     schemaVersion: 1,
     proofId: "short-term-spec-comparison-proof",

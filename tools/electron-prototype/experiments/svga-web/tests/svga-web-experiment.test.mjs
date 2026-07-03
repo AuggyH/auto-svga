@@ -1022,6 +1022,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermTextModel = await readFile(path.join(experimentRoot, "web/short-term-macos-text-model.mjs"), "utf8");
   const shortTermReplaceableModel = await readFile(path.join(experimentRoot, "web/short-term-macos-replaceable-model.mjs"), "utf8");
   const shortTermOptimizationModel = await readFile(path.join(experimentRoot, "web/short-term-macos-optimization-model.mjs"), "utf8");
+  const shortTermOverviewModel = await readFile(path.join(experimentRoot, "web/short-term-macos-overview-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1298,6 +1299,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOptimizationModel, /一键优化/);
   assert.match(shortTermOptimizationModel, /批量执行当前可安全执行的优化项/);
   assert.match(shortTermOptimizationModel, /没有可一键优化的安全项。若总览存在超标，请按规格复核或等待后续支持。/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-overview-model\.mjs"/);
+  assert.match(shortTermEntry, /overviewTabView/);
+  assert.doesNotMatch(shortTermEntry, /overviewVisibleFacts/);
+  assert.match(shortTermOverviewModel, /export function overviewTabView/);
+  assert.match(shortTermOverviewModel, /overviewVisibleFacts/);
+  assert.match(shortTermOverviewModel, /"canvas", "fps", "duration"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);
@@ -1408,7 +1415,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /short-term-thumbnail-proof/);
   assert.match(shortTermEntry, /sequenceFourGridVisible/);
   assert.match(shortTermEntry, /sequenceThumbnailImageCount/);
-  assert.match(shortTermEntry, /overviewVisibleFacts/);
+  assert.match(shortTermOverviewModel, /overviewVisibleFacts/);
   assert.match(shortTermRenderModel, /"fileSize", "decodedMemory", "canvas", "fps", "assetCount"/);
   assert.match(shortTermEntry, /short-term-optimization-proof/);
   assert.match(shortTermEntry, /optimizedBytesSmaller/);
