@@ -1027,6 +1027,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermEditReservedModel = await readFile(path.join(experimentRoot, "web/short-term-macos-edit-reserved-model.mjs"), "utf8");
   const shortTermResourceMenuModel = await readFile(path.join(experimentRoot, "web/short-term-macos-resource-menu-model.mjs"), "utf8");
   const shortTermSmokeProofModel = await readFile(path.join(experimentRoot, "web/short-term-macos-smoke-proof-model.mjs"), "utf8");
+  const shortTermByteModel = await readFile(path.join(experimentRoot, "web/short-term-macos-byte-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1465,6 +1466,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /export async function collectShortTermTabKeyboardProof/);
   assert.match(shortTermSmokeProofModel, /proofId: "short-term-tab-keyboard-proof"/);
   assert.match(shortTermEntry, /shortTermTabKeyboardProof/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-byte-model\.mjs"/);
+  assert.match(shortTermByteModel, /export function toUint8Array/);
+  assert.match(shortTermByteModel, /export function toBase64/);
+  assert.match(shortTermByteModel, /export function fromBase64/);
+  assert.match(shortTermByteModel, /export function toParserArrayBuffer/);
+  assert.match(shortTermByteModel, /export async function sha256Hex/);
+  assert.doesNotMatch(shortTermEntry, /function toUint8Array|function toBase64|function fromBase64|function toParserArrayBuffer|async function sha256Hex/);
   assert.match(shortTermRenderModel, /export function renderOverviewFactCellHtml/);
   assert.match(shortTermRenderModel, /export function renderOptimizationFindingHtml/);
   assert.match(shortTermRenderModel, /export function renderMessageRowHtml\(title, summary, tone = "info"\)/);
@@ -1624,7 +1632,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /waitForCanvasPixels/);
   assert.match(shortTermEntry, /name=invalid\.svga/);
   assert.match(shortTermEntry, /toParserArrayBuffer/);
-  assert.match(shortTermEntry, /view\.buffer\.slice\(view\.byteOffset, view\.byteOffset \+ view\.byteLength\)/);
+  assert.match(shortTermByteModel, /view\.buffer\.slice\(view\.byteOffset, view\.byteOffset \+ view\.byteLength\)/);
   assert.match(shortTermEntry, /confirmDiscardUnsavedOutput/);
   assert.match(shortTermEntry, /renderTextElements/);
   assert.match(shortTermEntry, /selectedTextElement/);
