@@ -24,13 +24,12 @@ import {
   createTextElementRow
 } from "./short-term-macos-dom-renderers.mjs";
 import {
-  escapeHtml,
   renderMessageRowHtml,
   suffixName
 } from "./short-term-macos-render-model.mjs";
 import {
-  bannerTone,
-  buildCurrentStateSummary
+  buildCurrentStateSummary,
+  saveBannerView
 } from "./short-term-macos-feedback-model.mjs";
 import {
   renderLaunchRecentFiles,
@@ -912,10 +911,11 @@ function syncShortTermMenuState(snapshot) {
   bridge.updateShortTermMenuState(snapshot).catch(() => {});
 }
 
-function showSaveBanner(title, message, tone = bannerTone(title)) {
+function showSaveBanner(title, message, tone) {
+  const view = saveBannerView(title, message, tone);
   nodes.saveBanner.hidden = false;
-  nodes.saveBanner.dataset.status = tone;
-  nodes.saveBanner.innerHTML = `<strong>${escapeHtml(title)}</strong><span> ${escapeHtml(message || "")}</span>`;
+  nodes.saveBanner.dataset.status = view.status;
+  nodes.saveBanner.innerHTML = view.html;
 }
 
 function showFailure(error) {

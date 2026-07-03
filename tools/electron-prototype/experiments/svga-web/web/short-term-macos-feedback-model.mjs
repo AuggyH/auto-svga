@@ -1,9 +1,18 @@
+import { escapeHtml } from "./short-term-macos-render-model.mjs";
+
 export function bannerTone(title) {
   if (/正在/.test(title)) return "loading";
   if (/失败|未完成|未通过/.test(title)) return "danger";
   if (/没有|不支持|取消/.test(title)) return "warning";
   if (/已/.test(title)) return "success";
   return "info";
+}
+
+export function saveBannerView(title, message, tone = bannerTone(title)) {
+  return {
+    status: tone,
+    html: `<strong>${escapeHtml(title)}</strong><span> ${escapeHtml(message || "")}</span>`
+  };
 }
 
 export function buildCurrentStateSummary(input) {

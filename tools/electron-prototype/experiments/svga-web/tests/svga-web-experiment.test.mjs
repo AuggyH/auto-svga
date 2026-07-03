@@ -1184,8 +1184,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /renderOptimizationCompareResultHtml/);
   assert.match(shortTermEntry, /renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-feedback-model\.mjs"/);
-  assert.match(shortTermEntry, /bannerTone/);
   assert.match(shortTermEntry, /buildCurrentStateSummary/);
+  assert.match(shortTermEntry, /saveBannerView/);
+  assert.doesNotMatch(shortTermEntry, /saveBanner\.innerHTML = `<strong>\$\{escapeHtml\(title\)\}/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-recent-files-model\.mjs"/);
   assert.match(shortTermEntry, /visibleLaunchRecentRecords/);
   assert.match(shortTermEntry, /renderLaunchRecentFiles/);
@@ -1238,6 +1239,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomState, /button\.tabIndex = selected \? 0 : -1/);
   assert.match(shortTermDomState, /aria-pressed/);
   assert.match(shortTermFeedbackModel, /export function bannerTone/);
+  assert.match(shortTermFeedbackModel, /export function saveBannerView/);
+  assert.match(shortTermFeedbackModel, /escapeHtml\(title\)/);
+  assert.match(shortTermFeedbackModel, /escapeHtml\(message \|\| ""\)/);
   assert.match(shortTermFeedbackModel, /export function buildCurrentStateSummary/);
   assert.match(shortTermFeedbackModel, /export function viewCopy/);
   assert.match(shortTermFeedbackModel, /Auto SVGA 状态摘要/);
@@ -1451,7 +1455,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /data-optimization-actions/);
   assert.match(shortTermCompareModel, /data-optimization-skipped/);
   assert.match(shortTermFeedbackModel, /function bannerTone/);
-  assert.match(shortTermEntry, /nodes\.saveBanner\.dataset\.status = tone/);
+  assert.match(shortTermEntry, /nodes\.saveBanner\.dataset\.status = view\.status/);
   assert.match(shortTermEntry, /messageRow\(model\.resultTitle, model\.resultSummary, tone\)/);
   assert.match(shortTermEntry, /row\.dataset\.component = "InlineStatus"/);
   assert.match(shortTermEntry, /empty\.dataset\.component = "InlineStatus"/);
