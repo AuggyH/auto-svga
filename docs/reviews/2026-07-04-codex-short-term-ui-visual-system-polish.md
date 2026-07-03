@@ -57,10 +57,10 @@ Observed results:
 
 ## Visual Evidence Note
 
-Desktop smoke reported `shortTermScreenshots: true`, but current PNG artifacts
-under the internal-trial package did not refresh after the latest source edits.
-Therefore, those screenshots must be treated as stale automated regression
-artifacts, not as visual acceptance evidence.
+Desktop smoke reported `shortTermScreenshots: true` and wrote source-smoke PNG
+artifacts under the repository-level `.artifacts/product/short-term/` root.
+The older PNG artifacts under the internal-trial package root are package
+history artifacts and must not be used as source-smoke evidence for this slice.
 
 Per Owner direction, final UI/UX acceptance still requires foreground desktop
 client screenshots with real production SVGA files and macOS window chrome.
@@ -70,5 +70,5 @@ client screenshots with real production SVGA files and macOS window chrome.
 - This is a visual-system polish slice, not final high-fidelity acceptance.
 - Foreground App validation is still required after rebuilding or launching the
   current source in a real desktop window.
-- The stale screenshot behavior should be investigated separately if automated
-  visual artifacts are expected to reflect every source UI change.
+- Do not mix repository-level source-smoke screenshots with packaged
+  internal-trial history screenshots when reviewing visual evidence.

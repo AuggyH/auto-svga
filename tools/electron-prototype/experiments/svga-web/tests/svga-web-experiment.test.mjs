@@ -105,6 +105,8 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(proof.packagingScaffold.entitlementsPath, /packaging\/macos\/entitlements\.plist$/);
   assert.equal(proof.packagingScaffold.signScript, "internal:trial:sign:mac");
   assert.equal(proof.packagingScaffold.notarizeScript, "internal:trial:notarize:mac");
+  assert.match(packageScript, /const artifactsRoot = path\.join\(experimentRoot, "\.artifacts\/internal-trial"\)/);
+  assert.doesNotMatch(packageScript, /AUTO_SVGA_PRODUCT_ARTIFACTS|\.artifacts\/product/);
   assert.equal(packageJson.scripts["internal:trial:sign:mac"], "node scripts/macos-signing-workflow.mjs sign");
   assert.equal(packageJson.scripts["internal:trial:notarize:mac"], "node scripts/macos-signing-workflow.mjs notarize");
   assert.match(signingWorkflow, /SIGNING_BLOCKED_REQUIRES_CREDENTIALS/);
@@ -1838,6 +1840,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   );
   assert.match(main, /rendererEntry = isShortTermProduct \? "web\/short-term-macos-app\.mjs"/);
   assert.match(main, /rendererPath = isShortTermProduct \? "\/" : "\/workbench\.html"/);
+  assert.match(main, /const productArtifactRoot = process\.env\.AUTO_SVGA_PRODUCT_ARTIFACTS[\s\S]*path\.join\(repoRoot, "\.artifacts\/product", productMilestoneId\)/);
+  assert.match(main, /path: `\.artifacts\/product\/\$\{productMilestoneId\}\/\$\{fileName\}`/);
+  assert.doesNotMatch(main, /productArtifactRoot[\s\S]{0,160}\.artifacts\/internal-trial/);
   assert.match(main, /installShortTermApplicationMenu/);
   assert.match(main, /function updateShortTermMenuState/);
   assert.match(main, /function validateShortTermMenuState/);
