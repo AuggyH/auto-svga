@@ -1033,6 +1033,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="textElementList"/);
   assert.match(page, /data-action="edit-text" disabled/);
   assert.match(page, /data-component="WindowToolbar"/);
+  assert.match(page, /data-component="ReservedOperationPanel"/);
   assert.match(page, /role="tablist"/);
   assert.match(page, /aria-selected="true"/);
   assert.match(page, /role="tabpanel" tabindex="0" aria-label="总览检查内容"/);
@@ -1059,7 +1060,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-preview-gap/);
   assert.match(shortTermTokens, /--asv-playback-bar-height/);
   assert.match(shortTermTokens, /--asv-component-status-strip-width/);
+  assert.match(shortTermTokens, /--asv-component-row-index-width/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
+  assert.match(shortTermTokens, /--asv-row-index-width/);
   assert.match(shortTermTokens, /--asv-focus-inset/);
   assert.match(shortTermTokens, /prefers-color-scheme: dark/);
   assert.match(shortTermTokens, /@media \(max-height: 780px\)/);
@@ -1073,6 +1076,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
   assert.match(shortTermComponents, /\.messageRow/);
   assert.match(shortTermComponents, /\.messageRow\[data-status="success"\]/);
+  assert.match(shortTermComponents, /\.rowIndex/);
+  assert.match(shortTermComponents, /\.reservedNotice/);
   assert.match(shortTermComponents, /\.stateCard\.error::before/);
   assert.match(shortTermComponents, /\.badge/);
   assert.match(shortTermComponents, /:focus-visible/);
@@ -1193,6 +1198,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /nodes\.saveBanner\.dataset\.status = tone/);
   assert.match(shortTermEntry, /messageRow\(model\.resultTitle, model\.resultSummary, tone\)/);
   assert.match(shortTermEntry, /row\.dataset\.component = "InlineStatus"/);
+  assert.match(shortTermEntry, /empty\.dataset\.component = "InlineStatus"/);
+  assert.match(shortTermEntry, /row\.dataset\.component = "LayerRow"/);
+  assert.match(shortTermEntry, /class="rowIndex"/);
   assert.match(shortTermEntry, /comparisonVisible/);
   assert.match(shortTermEntry, /sourceBytesUnchanged/);
   assert.match(shortTermEntry, /short-term-rename-proof/);

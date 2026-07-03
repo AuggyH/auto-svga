@@ -86,6 +86,7 @@
   --asv-component-asset-row-min-height: 48px;
   --asv-component-finding-row-min-height: 54px;
   --asv-component-row-action-height: 24px;
+  --asv-component-row-index-width: 24px;
   --asv-component-badge-min-height: 18px;
   --asv-component-status-strip-width: 3px;
   --asv-component-status-strip-radius: 999px;
@@ -171,6 +172,7 @@
   --asv-asset-row-min-height: var(--asv-component-asset-row-min-height);
   --asv-finding-row-min-height: var(--asv-component-finding-row-min-height);
   --asv-row-action-height: var(--asv-component-row-action-height);
+  --asv-row-index-width: var(--asv-component-row-index-width);
   --asv-badge-min-height: var(--asv-component-badge-min-height);
   --asv-status-strip-width: var(--asv-component-status-strip-width);
   --asv-status-strip-radius: var(--asv-component-status-strip-radius);

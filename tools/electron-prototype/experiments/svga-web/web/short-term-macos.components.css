@@ -360,16 +360,16 @@ button.danger {
 }
 
 .replaceableRow {
-  grid-template-columns: var(--asv-thumb-size) minmax(0, 1fr) auto;
+  grid-template-columns: var(--asv-row-index-width) var(--asv-thumb-size) minmax(0, 1fr) auto;
 }
 
 .replaceableRow.isRenaming {
-  grid-template-columns: var(--asv-thumb-size) minmax(0, 1fr) auto;
+  grid-template-columns: var(--asv-row-index-width) var(--asv-thumb-size) minmax(0, 1fr) auto;
   align-items: end;
 }
 
 .textElementRow {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: var(--asv-row-index-width) minmax(0, 1fr) auto;
 }
 
 .replaceableRow,
@@ -495,6 +495,15 @@ button.danger {
 
 .rowText {
   min-width: 0;
+}
+
+.rowIndex {
+  align-self: center;
+  color: var(--asv-subtle);
+  font-family: var(--asv-type-mono);
+  font-size: var(--asv-type-size-caption);
+  font-weight: 650;
+  text-align: center;
 }
 
 .rowText strong,
@@ -639,12 +648,19 @@ button.danger {
 }
 
 .emptyText {
+  margin: 0;
   padding: var(--asv-empty-padding);
   color: var(--asv-muted);
   border: 1px dashed var(--asv-row-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-fact-bg);
   line-height: 1.5;
+}
+
+.reservedNotice {
+  width: 100%;
+  max-width: var(--asv-launch-content-width);
+  text-align: center;
 }
 
 @keyframes spin {

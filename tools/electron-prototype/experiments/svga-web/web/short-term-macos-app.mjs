@@ -596,6 +596,7 @@ function renderOptimization(model) {
   if (groupedItems.length === 0) {
     const empty = document.createElement("p");
     empty.className = "emptyText";
+    empty.dataset.component = "InlineStatus";
     empty.textContent = "没有可一键优化的安全项。若总览存在超标，请按规格复核或等待后续支持。";
     nodes.findingList.replaceChildren(empty);
     return;
@@ -621,7 +622,7 @@ function renderOptimizationResult(model) {
 
 function renderReplaceables(model) {
   if (!model) return;
-  const rows = model.images.map((item) => {
+  const rows = model.images.map((item, index) => {
     const row = document.createElement("article");
     row.className = "replaceableRow";
     row.tabIndex = 0;
@@ -637,6 +638,7 @@ function renderReplaceables(model) {
     row.title = `${item.imageKey} ${item.dimensions} ${item.fileSize}`;
     if (renaming) {
       row.innerHTML = `
+        <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
         <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
         <label class="rowText renameEditor">新 imageKey
           <input class="renameInputInline" data-rename-input value="${escapeHtml(item.imageKey)}" autocomplete="off">
@@ -649,6 +651,7 @@ function renderReplaceables(model) {
       `;
     } else {
       row.innerHTML = `
+        <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
         <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
         <span class="rowText"><strong>${escapeHtml(item.imageKey)}</strong><span>${escapeHtml(item.dimensions)} · ${escapeHtml(item.fileSize)}</span></span>
         <button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(item.imageKey)} 操作">操作</button>
@@ -659,6 +662,7 @@ function renderReplaceables(model) {
   if (rows.length === 0) {
     const empty = document.createElement("p");
     empty.className = "emptyText";
+    empty.dataset.component = "InlineStatus";
     empty.textContent = model.emptyCopy || "没有可替换元素。";
     nodes.replaceableList.replaceChildren(empty);
   } else {
@@ -677,6 +681,7 @@ function renderTextElements(model) {
   if (texts.length === 0) {
     const empty = document.createElement("p");
     empty.className = "emptyText";
+    empty.dataset.component = "InlineStatus";
     empty.textContent = model?.textPreviewCopy || "当前文件没有可运行时预览的文本元素。";
     nodes.textElementList.replaceChildren(empty);
     nodes.textPreviewSummary.textContent = "未发现可运行时替换的 textKey。";
@@ -685,7 +690,7 @@ function renderTextElements(model) {
   } else {
     nodes.editTextButton.hidden = false;
     nodes.resetTextButton.hidden = false;
-    nodes.textElementList.replaceChildren(...texts.map((item) => {
+    nodes.textElementList.replaceChildren(...texts.map((item, index) => {
       const row = document.createElement("article");
       row.className = "textElementRow";
       row.tabIndex = 0;
@@ -697,6 +702,7 @@ function renderTextElements(model) {
       row.setAttribute("aria-selected", item.textKey === state.selectedTextKey ? "true" : "false");
       row.title = `${item.displayName || item.textKey}: ${item.initialText || item.textKey}`;
       row.innerHTML = `
+        <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
         <span class="rowText"><strong>${escapeHtml(item.displayName || item.textKey)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
         <span class="badge">文本</span>
       `;
@@ -796,6 +802,7 @@ function renderEditReserved() {
   nodes.layerPanel.replaceChildren(...assets.filter((asset) => asset.kind !== "audio").slice(0, 32).map((asset) => {
     const row = document.createElement("article");
     row.className = "assetRow";
+    row.dataset.component = "LayerRow";
     row.innerHTML = `
       <span class="thumb ${asset.kind === "sequence" ? "sequence" : ""}">${renderThumbnail(asset.thumbnail)}</span>
       <span class="rowText"><strong>${escapeHtml(asset.name)}</strong><span>${asset.kind === "sequence" ? "序列组" : "图层资源"}</span></span>
