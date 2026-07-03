@@ -1603,7 +1603,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDialogModel, /dialog\.showModal\(\)/);
   assert.match(shortTermDialogModel, /querySelector\("dialog\[open\]"\)/);
   assert.match(shortTermEntry, /dialogOpen: hasOpenDialog\(document\)/);
-  assert.match(shortTermEntry, /if \(hasOpenDialog\(document\)\) return/);
+  assert.match(shortTermEntry, /if \(hasOpenDialog\(document\)\) \{\s+if \(event\.key === "Escape"\) closeOpenDialog\(document, "cancel"\);\s+return;\s+\}/);
   assert.match(shortTermEntry, /closeOpenDialog\(document, "cancel"\)/);
   assert.doesNotMatch(shortTermEntry, /function showDialog|dialog\.showModal\(\)|document\.querySelector\("dialog\[open\]"\)/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);

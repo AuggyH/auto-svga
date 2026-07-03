@@ -1065,7 +1065,10 @@ document.addEventListener("keydown", (event) => {
   const command = event.metaKey || event.ctrlKey;
   const target = event.target instanceof Element ? event.target : document.body;
   const textInput = target.matches("input, textarea, [contenteditable='true']");
-  if (hasOpenDialog(document)) return;
+  if (hasOpenDialog(document)) {
+    if (event.key === "Escape") closeOpenDialog(document, "cancel");
+    return;
+  }
   if (textInput && command && ["o", "r", "s"].includes(event.key.toLowerCase())) return;
   if (command && event.key.toLowerCase() === "o") {
     event.preventDefault();
