@@ -37,17 +37,19 @@ import {
   renderLoadingMessage
 } from "./short-term-macos-state-renderers.mjs";
 import {
+  hideResourceContextMenu,
+  showResourceContextMenu
+} from "./short-term-macos-resource-menu-renderers.mjs";
+import {
   applyRuntimeTextOverlay,
   clearRuntimeTextOverlay,
-  hideResourceContextMenu,
   prependOptimizationResult,
   renderAssetList,
   renderEditReservedLayers,
   renderOptimizationFindings,
   renderOverviewFacts,
   renderReplaceableImages,
-  renderRuntimeTextElements,
-  showResourceContextMenu
+  renderRuntimeTextElements
 } from "./short-term-macos-dom-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
 import {
