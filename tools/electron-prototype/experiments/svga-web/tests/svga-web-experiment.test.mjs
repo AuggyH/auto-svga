@@ -1004,6 +1004,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const shortTermTokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
+  const shortTermComponents = await readFile(path.join(experimentRoot, "web/short-term-macos.components.css"), "utf8");
   const shortTermStyles = await readFile(path.join(experimentRoot, "web/short-term-macos.css"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
@@ -1016,6 +1017,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /data-panel="optimization"/);
   assert.match(page, /data-panel="replaceable"/);
   assert.match(page, /short-term-macos\.css/);
+  assert.match(page, /short-term-macos\.components\.css/);
   assert.match(page, /short-term-macos-app\.mjs/);
   assert.match(page, /最近打开/);
   assert.match(page, /覆盖保存/);
@@ -1040,9 +1042,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-color-surface-window/);
   assert.match(shortTermTokens, /--asv-component-toolbar-height/);
   assert.match(shortTermTokens, /prefers-color-scheme: dark/);
+  assert.match(shortTermComponents, /button\.primary:disabled/);
+  assert.match(shortTermComponents, /\.modeSwitch/);
+  assert.match(shortTermComponents, /\.tabs/);
+  assert.match(shortTermComponents, /\.factCell/);
+  assert.match(shortTermComponents, /\.assetRow/);
+  assert.match(shortTermComponents, /\.badge/);
+  assert.match(shortTermComponents, /:focus-visible/);
   assert.match(shortTermStyles, /\[hidden\]\s*\{\s*display: none !important;/);
-  assert.match(shortTermStyles, /:focus-visible/);
-  assert.match(shortTermStyles, /button\.primary:disabled/);
+  assert.doesNotMatch(shortTermStyles, /button\.primary:disabled/);
   assert.match(shortTermStyles, /\.resultGroup/);
   assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
   assert.match(shortTermEntry, /aria-pressed/);
