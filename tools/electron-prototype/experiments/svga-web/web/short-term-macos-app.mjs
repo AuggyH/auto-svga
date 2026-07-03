@@ -22,13 +22,12 @@ import {
   clearSaveFeedbackBanner,
   clearRuntimeTextOverlay,
   createEditLayerRow,
-  createInlineStatusText,
-  createMessageRow,
-  createOptimizationFindingRow,
   hideSaveFeedbackBanner,
   hideResourceContextMenu,
   markCompareSlotLoaded,
+  prependOptimizationResult,
   renderAssetList,
+  renderOptimizationFindings,
   renderOverviewFacts,
   renderReplaceableImages,
   renderRuntimeTextElements,
@@ -128,6 +127,7 @@ const nodes = {
   assetList: document.querySelector("#assetList"),
   findingList: document.querySelector("#findingList"),
   optimizationSummary: document.querySelector("#optimizationSummary"),
+  runOptimizationButton: document.querySelector("[data-action='run-optimization']"),
   replaceableList: document.querySelector("#replaceableList"),
   replaceableSummary: document.querySelector("#replaceableSummary"),
   textPreviewSummary: document.querySelector("#textPreviewSummary"),
@@ -595,23 +595,13 @@ function renderPreviewModel() {
 
 function renderOptimization(model) {
   if (!model) return;
-  const view = optimizationTabView(model);
-  nodes.optimizationSummary.textContent = view.summaryCopy;
-  const runButton = document.querySelector("[data-action='run-optimization']");
-  runButton.textContent = view.runButtonCopy;
-  runButton.title = view.runButtonTitle;
-  runButton.disabled = view.runButtonDisabled;
-  if (!view.hasFindings) {
-    nodes.findingList.replaceChildren(createInlineStatusText(view.emptyCopy));
-    return;
-  }
-  nodes.findingList.replaceChildren(...view.groupedItems.map(createOptimizationFindingRow));
+  renderOptimizationFindings(nodes, optimizationTabView(model));
 }
 
 function renderOptimizationResult(model) {
   if (!model) return;
   const tone = optimizationResultTone(model);
-  nodes.findingList.prepend(createMessageRow(model.resultTitle, model.resultSummary, tone));
+  prependOptimizationResult(nodes, model.resultTitle, model.resultSummary, tone);
 }
 
 function renderReplaceables(model) {

@@ -57,6 +57,22 @@ export function createOptimizationFindingRow(item) {
   return row;
 }
 
+export function renderOptimizationFindings(nodes, view) {
+  nodes.optimizationSummary.textContent = view.summaryCopy;
+  nodes.runOptimizationButton.textContent = view.runButtonCopy;
+  nodes.runOptimizationButton.title = view.runButtonTitle;
+  nodes.runOptimizationButton.disabled = view.runButtonDisabled;
+  if (!view.hasFindings) {
+    nodes.findingList.replaceChildren(createInlineStatusText(view.emptyCopy));
+    return;
+  }
+  nodes.findingList.replaceChildren(...view.groupedItems.map(createOptimizationFindingRow));
+}
+
+export function prependOptimizationResult(nodes, title, summary, tone) {
+  nodes.findingList.prepend(createMessageRow(title, summary, tone));
+}
+
 export function createMessageRow(title, summary, tone = "info") {
   const row = document.createElement("article");
   row.className = "findingRow messageRow";
