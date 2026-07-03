@@ -1479,6 +1479,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /resourceContextMenuView/);
   assert.match(shortTermEntry, /showResourceContextMenu\(menu, view\)/);
   assert.match(shortTermEntry, /hideResourceContextMenu\(nodes\.resourceContextMenu\)/);
+  assert.match(shortTermEntry, /resourceMenuReturnFocus/);
+  assert.match(shortTermEntry, /openResourceContextMenu\(keyboardResourceMenuAnchor\(rect\), row\.dataset\.imageKey, row\)/);
+  assert.match(shortTermEntry, /openResourceContextMenu\(event, target\.dataset\.imageKey, target\)/);
+  assert.match(shortTermEntry, /closeResourceContextMenu\(\{ restoreFocus: true \}\)/);
+  assert.match(shortTermEntry, /returnFocus\.focus\(\{ preventScroll: true \}\)/);
   assert.doesNotMatch(shortTermEntry, /menu\.hidden = false|menu\.style\.left = view\.left|menu\.style\.top = view\.top|menu\.querySelector\("\[data-action='context-reset'\]"\)\.disabled|menu\.querySelector\("button:not\(:disabled\)"\)\?\.focus/);
   assert.match(shortTermResourceMenuRenderers, /menu\.hidden = false/);
   assert.match(shortTermResourceMenuRenderers, /menu\.style\.left = view\.left/);
@@ -1823,6 +1828,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /short-term-replacement-proof/);
   assert.match(shortTermSmokeProofModel, /resetCommandEnabled/);
   assert.match(shortTermSmokeProofModel, /resetRestoredOriginal/);
+  assert.match(shortTermSmokeProofModel, /resourceMenuFocusReturnedAfterClose/);
+  assert.match(shortTermEntry, /const resourceMenuFocusReturnedAfterClose = document\.activeElement === replacementRow/);
   assert.match(shortTermSmokeProofModel, /saveAsEnabledBeforeReset/);
   assert.match(shortTermEntry, /collectShortTermReplacementProof/);
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-replacement-proof"/);

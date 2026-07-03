@@ -175,6 +175,7 @@ const state = {
   editPlayback: undefined,
   textPreview: "",
   saveStatus: "idle",
+  resourceMenuReturnFocus: undefined,
   lastMenuStateSnapshot: ""
 };
 
@@ -737,12 +738,13 @@ function selectImageKey(imageKey) {
 
 function openKeyboardResourceContextMenu(row) {
   const rect = row.getBoundingClientRect();
-  openResourceContextMenu(keyboardResourceMenuAnchor(rect), row.dataset.imageKey);
+  openResourceContextMenu(keyboardResourceMenuAnchor(rect), row.dataset.imageKey, row);
 }
 
-function openResourceContextMenu(event, imageKey) {
+function openResourceContextMenu(event, imageKey, returnFocus = undefined) {
   if (!imageKey) return;
   selectImageKey(imageKey);
+  state.resourceMenuReturnFocus = returnFocus?.isConnected ? returnFocus : undefined;
   const menu = nodes.resourceContextMenu;
   const view = resourceContextMenuView({
     clientX: event.clientX,
@@ -756,8 +758,13 @@ function openResourceContextMenu(event, imageKey) {
   showResourceContextMenu(menu, view);
 }
 
-function closeResourceContextMenu() {
+function closeResourceContextMenu({ restoreFocus = false } = {}) {
+  const wasOpen = nodes.resourceContextMenu.hidden === false;
+  const returnFocus = state.resourceMenuReturnFocus;
   hideResourceContextMenu(nodes.resourceContextMenu);
+  state.resourceMenuReturnFocus = undefined;
+  if (!restoreFocus || !wasOpen || !returnFocus?.isConnected) return;
+  returnFocus.focus({ preventScroll: true });
 }
 
 function renderEditReserved() {
@@ -967,21 +974,21 @@ document.addEventListener("click", (event) => {
     openResourceContextMenu({
       clientX: rect.right,
       clientY: rect.bottom
-    }, target.dataset.imageKey || state.selectedImageKey);
+    }, target.dataset.imageKey || state.selectedImageKey, target);
   }
   if (action === "select-text") selectTextKey(target.dataset.textKey || state.selectedTextKey);
   if (action === "inline-rename-confirm") confirmInlineRename().catch(showFailure);
   if (action === "inline-rename-cancel") cancelInlineRename();
   if (action === "context-rename") {
-    closeResourceContextMenu();
+    closeResourceContextMenu({ restoreFocus: true });
     renameSelectedImageKey().catch(showFailure);
   }
   if (action === "context-replace") {
-    closeResourceContextMenu();
+    closeResourceContextMenu({ restoreFocus: true });
     chooseReplacementImage();
   }
   if (action === "context-reset") {
-    closeResourceContextMenu();
+    closeResourceContextMenu({ restoreFocus: true });
     resetImageReplacement().catch(showFailure);
   }
   if (action === "edit-text") editRuntimeText().catch(showFailure);
@@ -993,7 +1000,7 @@ nodes.replaceableList.addEventListener("contextmenu", (event) => {
   const target = event.target.closest(".replaceableRow");
   if (!target) return;
   event.preventDefault();
-  openResourceContextMenu(event, target.dataset.imageKey);
+  openResourceContextMenu(event, target.dataset.imageKey, target);
 });
 
 nodes.replaceableList.addEventListener("keydown", (event) => {
@@ -1089,7 +1096,7 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "Escape" && state.view === "compare") setMode("preview");
   if (event.key === "Escape" && state.renameImageKey) cancelInlineRename();
-  if (event.key === "Escape") closeResourceContextMenu();
+  if (event.key === "Escape") closeResourceContextMenu({ restoreFocus: true });
 });
 
 window.__autoSvgaShortTermActions = Object.freeze({
@@ -1391,7 +1398,8 @@ async function runShortTermSmokeIfRequested() {
   await waitForSmokeFrame();
   const replacementContextMenuOpened = nodes.resourceContextMenu.hidden === false;
   const resetCommandEnabled = nodes.resourceContextMenu.querySelector("[data-action='context-reset']")?.disabled === false;
-  closeResourceContextMenu();
+  closeResourceContextMenu({ restoreFocus: true });
+  const resourceMenuFocusReturnedAfterClose = document.activeElement === replacementRow;
   await captureSmokeArtifact("short-term-replacement-dirty");
   await resetImageReplacement();
   await waitForSmokeCondition(() => !state.activeOutput && state.saveStatus === "idle", 4_000);
@@ -1403,6 +1411,7 @@ async function runShortTermSmokeIfRequested() {
     editedSha256: replacementEditedSha256,
     imageKey: replacementImageKey,
     previewModeStayed: state.view === "preview" && state.mode === "preview",
+    resourceMenuFocusReturnedAfterClose,
     replacementCanvasNonBlank,
     replacementPngSha256,
     resetCanvasNonBlank,
