@@ -29,6 +29,12 @@
       "status": "deferred_phase4_foundation_ready"
     },
     {
+      "capability": "ae_to_auto_svga_production_bridge_package_scan_bake_preview_export",
+      "phase": "AE Production Bridge",
+      "hostRegions": ["source_document", "preview_stage", "inspector", "resources", "action_workflow", "activity_history"],
+      "status": "owner_committed_priority_after_short_term"
+    },
+    {
       "capability": "mid_term_native_adapter_and_connected_shell_integration",
       "phase": "Mid-term",
       "hostRegions": ["source_document", "preview_stage", "inspector", "resources", "action_workflow", "activity_history"],
@@ -50,13 +56,15 @@
       "capability": "comfyui_motion_plan_agent_headless_generation",
       "phase": "Long-term Agent Engine",
       "hostRegions": ["source_document", "action_workflow", "activity_history"],
-      "status": "long_term_agent_engine"
+      "status": "deferred_after_ae_bridge_and_explicit_ai_approval"
     }
   ],
   "visibilityRules": [
     "Do not expose inactive future features as clickable UI in P6-R1.",
     "Do not reduce Web parity inventory or weaken parity checks.",
     "Do not start Phase 2, Phase 3, Phase 4, conversion, export workbench, or Agent APIs from this map.",
+    "AE Production Bridge is owner-committed, but visible entry points still require a dedicated implementation lane and must not appear as inactive short-term controls.",
+    "ComfyUI, external AI, multimodal, and agent-driven generation remain lower priority than AE Production Bridge.",
     "Use this map only to verify that current macOS IA can host future capabilities without becoming an engineering dashboard."
   ],
   "productionApproved": false,

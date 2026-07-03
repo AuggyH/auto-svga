@@ -4,6 +4,9 @@ This backlog records product candidates, not committed delivery dates. Items
 must still pass mainline, evidence, dependency, and client-readiness review.
 Committed mid-term scope lives in `docs/product/PRODUCT_ROADMAP.md`; this file
 is a candidate pool and must not override that PRD.
+The Owner-approved AE to Auto SVGA production bridge is no longer a backlog
+candidate. Its committed scope lives in `docs/product/PRODUCT_ROADMAP.md` and
+its subordinate brief is `docs/product/AE_BRIDGE_PRODUCT_BRIEF.md`.
 
 ## Roadmap
 
@@ -77,7 +80,9 @@ MVP objective.
 
 ## Explicitly Deferred
 
-- direct Figma, PSD, Sketch, After Effects, C4D, or Blender project import
+- direct Figma, PSD, Sketch, C4D, Blender, or unbounded source-project import
+- direct After Effects source-project import outside the Owner-approved
+  `AE_BRIDGE_PRODUCT_BRIEF.md` package/scanner/bake pipeline
 - universal layer and composition authoring
 - complete timeline and advanced keyframe-curve editor
 - complete particle authoring system

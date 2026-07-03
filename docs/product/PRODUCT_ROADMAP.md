@@ -9,6 +9,14 @@ to the SVGA preview, inspection, replaceable-element preview, imageKey rename,
 recent-file reopening, and optimization workflow below. This corrected scope
 supersedes earlier Workbench v1 feature planning.
 
+Owner correction: On 2026-07-03, the AE to Auto SVGA production bridge was
+promoted from long-term candidate to committed product mainline. This bridge
+serves human designers and the current team production workflow. It has higher
+delivery priority than ComfyUI, external AI, multimodal generation, or
+agent-driven automatic design. It may schedule ahead of parts of the mid-term
+template-editing line, but it does not cancel or roll back already-started
+mid-term foundation work.
+
 Product documentation system:
 `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` defines the PM responsibility
 model, source hierarchy, status vocabulary, product brief checklist, and
@@ -25,9 +33,16 @@ subordinate design-system and implementation-trace plan for executing the
 short-term UI/UX redesign. It must not redefine product scope from this
 roadmap.
 
-This file is also the active high-level PRD for short-term, mid-term, and
-long-term product planning. Related implementation plans remain in their
-phase-specific documents; this roadmap owns the cross-phase product intent,
+AE production bridge planning input:
+`docs/product/AE_BRIDGE_PRODUCT_BRIEF.md` provides the subordinate product brief
+for the Owner-confirmed AE to Auto SVGA production bridge. It must not redefine
+scope from this roadmap, but it may add workflow detail, compatibility matrix
+requirements, technical lanes, and validation gates.
+
+This file is also the active high-level PRD for short-term, AE production
+bridge, mid-term, and long-term product planning. Related implementation plans
+remain in their phase-specific documents; this roadmap owns the cross-phase
+product intent,
 required capabilities, interaction expectations, acceptance boundaries, and
 non-goals.
 
@@ -366,6 +381,150 @@ fixtures are acceptable when real production assets cannot be committed.
 - Public release, App Store release, auto-update, accounts, telemetry, or cloud
   sync
 
+## AE Production Bridge: AE To Auto SVGA Pipeline
+
+Goal: let designers finish motion work in After Effects and send the current
+composition to Auto SVGA for compatibility analysis, preview, optimization,
+SVGA encoding, and production handoff without relying on the official
+SVGAConverter as the required export path.
+
+This is an Owner-confirmed must-do production-efficiency mainline. It is not an
+AI or generative-design feature. It serves human designers and the current team
+workflow first, and it should be scheduled before ComfyUI, external AI,
+multimodal generation, or agent-driven automatic design. It may run ahead of
+parts of the mid-term template-editing line when implementation capacity is
+limited. Already-started mid-term foundation work may continue in isolated lanes
+when it provides reusable SVGA parsing, encoding, validation, edit-history,
+budget, or preview infrastructure and does not block AE bridge delivery.
+
+Subordinate planning lives in `docs/product/AE_BRIDGE_PRODUCT_BRIEF.md`.
+
+### AE Bridge Product Principle
+
+- Keep AE as the creative authoring environment. Auto SVGA does not try to
+  become a smaller After Effects for human designers.
+- Keep the AE extension thin. The extension scans the active composition,
+  exports a local package, executes requested bake jobs, and hands results to
+  Auto SVGA. Auto SVGA owns compatibility decisions, optimization, SVGA
+  encoding, preview, and reports.
+- Prefer a robust local folder/package bridge first. Localhost, socket, or deep
+  link handoff can be added after the file-based path is reliable.
+- Support native conversion only for a bounded AE-safe subset. Unsupported AE
+  features are detected and handled through bake, degrade, block, or
+  suggestion-only states.
+- Never silently claim that arbitrary AE effects can be losslessly converted to
+  SVGA. Visual parity must be proven or described as approximate.
+- Protect replaceable elements. Designer-named imageKey/textKey candidates
+  must not be accidentally baked into opaque frame sequences when runtime
+  replacement is required.
+- Keep all analysis local by default. Do not upload AE projects, assets, bake
+  frames, logs, or reports to AI or cloud services.
+
+### AE Bridge Delivery Order
+
+| Stage | Theme | Product goal | Depends on |
+| --- | --- | --- | --- |
+| AEB0 | Compatibility research and package contract | Prove supported AE/OS versions, extension approach, package schema, and local handoff path. | Short-term app can open/import local packages or fixture files in an isolated lane. |
+| AEB1 | AE scan-to-Auto-SVGA bridge MVP | From AE, export a composition package and show a compatibility report in Auto SVGA. Final SVGA output is not required yet. | AEB0 package contract and local import proof. |
+| AEB2 | Native SVGA subset export | Convert supported image layers and transform animation into real SVGA bytes and enter Auto SVGA Preview. | Existing SVGA exporter, preview, validation, and save flows. |
+| AEB3 | Bake fallback MVP | Detect unsupported layers, request AE-side transparent sequence baking, import baked assets, and show size/memory risk. | AEB1 scanner and AEB2 package import/preview. |
+| AEB4 | Bake planner and production optimization | Recommend native-vs-bake decisions, group safe bake candidates, protect replaceable layers, and produce production-ready SVGA reports. | AEB3 bake evidence and short-term optimization primitives. |
+| AEB5 | Converter replacement and future output | Make the bridge the default internal AE-to-SVGA production route and prepare the same package/IR for approved future formats. | AEB1-AEB4 evidence and target-runtime validation. |
+
+### AE Bridge Required Capabilities
+
+| ID | Requirement | Product detail |
+| --- | --- | --- |
+| AEB1 | AE extension entry | Designers can open an Auto SVGA extension, script, or panel from AE and run `Export to Auto SVGA` on the active composition. |
+| AEB2 | Local export package | The bridge writes an `ae-export-package` containing manifest, composition metadata, layer facts, assets, optional bake outputs, and scanner report. |
+| AEB3 | Local handoff to Auto SVGA | Auto SVGA can open or watch the package locally. File/folder handoff is the primary baseline; localhost/socket/deep link is optional after the baseline is stable. |
+| AEB4 | AE compatibility scanner | The bridge detects supported native-conversion layers, unsupported features, bake-required features, replaceability risks, and environment details before export. |
+| AEB5 | Native conversion subset | The first native subset covers comp size, FPS, duration, transparent background, image/footage layers, z-order, anchor point, position, scale, rotation, opacity, and frame-based sampled transforms. |
+| AEB6 | Unsupported feature handling | Effects, expressions, 3D layers, cameras, lights, complex shape/path animation, text animators, track mattes, adjustment layers, complex masks, particles, blur, glow, and distortion are not silently converted. They become bake, degrade, block, or suggestion-only findings. |
+| AEB7 | Bake request plan | Auto SVGA can return bake instructions for selected layers, precomps, or safe layer groups, including time range, FPS, alpha output, bbox, and expected risk. |
+| AEB8 | AE-side bake execution | The AE bridge can create temporary bake comps, preserve timing/canvas/alpha, render transparent sequences through AE's render workflow, and return a bake manifest. |
+| AEB9 | Bake grouping decision | Auto SVGA can recommend merged or separate bake groups based on z-order safety, overlap, time range, replaceability, bbox size, empty-frame ratio, duplicate-frame ratio, and memory/file-size risk. |
+| AEB10 | Replaceable-element protection | The scanner and bake planner must identify designer-named replaceable candidates and avoid baking them into non-replaceable sequences unless the user explicitly accepts that loss. |
+| AEB11 | Auto SVGA preview handoff | Successful native or baked output opens directly in Auto SVGA Preview mode with short-term Overview, assets, diagnostics, optimization, comparison, and save behavior available. |
+| AEB12 | Production diagnostics | Every bridge run reports compatibility, native-converted layers, baked layers, blocked layers, expected visual risk, file size, decoded memory, production-spec status, and target-player risk. |
+| AEB13 | Real SVGA output | When export is enabled, Auto SVGA must produce standards-compliant SVGA bytes, validate inflate/decode/reopen/playback load, and allow Overwrite Save or Save As only after validation. |
+| AEB14 | Version and OS compatibility matrix | The product must maintain a real compatibility matrix for macOS and Windows across supported AE versions. Formal support, compatibility support, and best-effort legacy support must be separate. |
+| AEB15 | Failure-safe source handling | The bridge must not mutate the original AE project, must isolate temporary comps and rendered frames, and must provide cleanup/recovery instructions on failure. |
+| AEB16 | Future-format readiness | The package and internal animation IR should avoid SVGA-only assumptions where practical, so VAP, WebM, APNG, Lottie, or other approved future outputs can reuse the bridge. Future formats remain later scope until approved. |
+
+### AE Bridge Compatibility Policy
+
+Formal support starts narrow and evidence-based:
+
+- Formal support target: current production AE versions on macOS and Windows,
+  initially AE 2024, AE 2025, and AE 2026 unless real team inventory requires a
+  different first matrix.
+- Compatibility support target: AE 2020 through AE 2023 with possible UI or
+  automation degradation.
+- Legacy best-effort target: earlier CC versions may receive the thin script
+  export path only. Automatic bake, modern panel UI, or full workflow support is
+  not guaranteed.
+- Unsupported environments include modified AE installs, missing render-output
+  templates, blocked file permissions, unavailable local disk space, or
+  environments where the bridge cannot prove source safety.
+
+Every supported OS/version cell must prove:
+
+- extension or script launch
+- active composition detection
+- manifest export
+- asset export
+- compatibility scanning
+- temporary bake comp creation when bake is supported
+- transparent sequence output when bake is supported
+- package import into Auto SVGA
+- Auto SVGA preview or clear failure state
+- source project remains unchanged
+
+### AE Bridge Interaction Model
+
+Default AE bridge flow:
+
+1. Designer completes motion in AE.
+2. Designer runs `Export to Auto SVGA`.
+3. AE bridge scans the active composition and writes a local export package.
+4. Auto SVGA opens the package and shows a compatibility report.
+5. Auto SVGA proposes native conversion, bake, degrade, block, or manual-fix
+   actions.
+6. If baking is needed, Auto SVGA sends a bake plan back to the AE bridge or
+   instructs the designer to run the next bridge step.
+7. AE bridge renders temporary transparent bake outputs and updates the package.
+8. Auto SVGA imports native and baked assets into its internal animation IR.
+9. Auto SVGA generates a preview and diagnostics.
+10. When output is enabled, Auto SVGA writes validated SVGA bytes and exposes
+    Overwrite Save / Save As.
+
+### AE Bridge Acceptance Matrix
+
+| ID | Accept when | Required evidence |
+| --- | --- | --- |
+| AEB1-AEB3 | A designer can export a local package from AE and Auto SVGA can open it without source mutation. | AE launch proof, package manifest proof, local import proof, source-unchanged proof. |
+| AEB4-AEB6 | The scanner separates native, bake-required, blocked, and suggestion-only features without silent conversion. | Feature fixture matrix, unsupported-feature report, no-false-success proof. |
+| AEB7-AEB9 | Unsupported but bakeable content can be rendered through temporary comps and returned with cost/risk evidence. | Bake manifest, transparent-sequence proof, generated asset count, file/memory estimate, cleanup proof. |
+| AEB10 | Replaceable candidates remain protected from accidental bake loss. | Replaceable fixture, bake-plan exclusion proof, explicit-loss-confirmation proof. |
+| AEB11-AEB13 | Converted output opens in Auto SVGA Preview, validates as real SVGA, and can be saved through existing save flows. | Preview proof, inflate/decode/reopen proof, playback-load proof, Save/Save As proof. |
+| AEB14 | Compatibility claims are backed by real OS/AE version cells. | macOS/Windows matrix, AE version report, known limitations. |
+| AEB15 | Failure leaves the AE project and original assets safe. | Failure-injection proof, source hash/project-state proof, temp cleanup proof. |
+| AEB16 | The bridge package does not block future approved output formats. | Package schema review and IR boundary review. |
+
+### AE Bridge Non-goals
+
+- Full lossless conversion of arbitrary AE projects into SVGA.
+- Replacing After Effects as the creative motion-authoring tool.
+- Requiring designers to use Auto SVGA to create human-authored motion.
+- External AI, ComfyUI, multimodal, cloud, or hosted model analysis.
+- Uploading AE projects, assets, bake frames, or reports to external services.
+- Full keyframe/timeline editor inside Auto SVGA for human designers.
+- Direct PSD, Figma, Sketch, C4D, Blender, or unordered asset-folder assembly
+  as part of the AE bridge MVP.
+- Public plugin marketplace distribution before internal compatibility evidence
+  and signing/installation strategy are settled.
+
 ## Mid-term Direction
 
 The mid-term version turns Auto SVGA from a preview and inspection tool into a
@@ -374,9 +533,14 @@ low-end After Effects clone. Users edit by selecting layers, applying bounded
 motion/effect templates, adjusting recommended parameter ranges, choosing
 preset easing curves, and compiling the result back into a real SVGA file.
 
-Mid-term work starts only after the short-term scope is accepted. Every
-capability below needs current-head product evidence before it can be called
-accepted.
+Mid-term remains planned and may continue in isolated implementation lanes.
+However, after the 2026-07-03 Owner correction, the AE production bridge has
+higher product priority for near-term team value than the template-editing
+line. Mid-term work should therefore avoid consuming the integration capacity
+needed by the AE bridge, while still preserving reusable foundations such as
+SVGA parsing, transform math, compile validation, history, budget reporting,
+and preview handoff. Every capability below needs current-head product evidence
+before it can be called accepted.
 
 ### Mid-term Product Principle
 
@@ -400,6 +564,11 @@ accepted.
   explicit Overwrite Save / Save As after validation.
 
 ### Mid-term Sub-version Plan
+
+Implementation preparation for this section lives in
+`docs/product/MID_TERM_IMPLEMENTATION_PREP.md`. That document is subordinate to
+this roadmap and may sequence work, record technical risks, and define
+validation gates, but it must not redefine mid-term product scope.
 
 | Sub-version | Theme | Product goal | Depends on |
 | --- | --- | --- | --- |
@@ -685,20 +854,28 @@ Default mid-term editing flow:
 - Complete particle editor comparable to Particular.
 - Automatic assembly of unordered asset folders into a complete avatar frame.
 - External AI, multimodal, cloud, or ComfyUI-based semantic recognition.
-- Direct Figma, PSD, Sketch, After Effects, C4D, or Blender project import.
+- Direct Figma, PSD, Sketch, C4D, Blender, or unbounded source-project import.
+  The Owner-approved AE production bridge is a separate committed production
+  pipeline with a bounded export package, compatibility scanner, and bake
+  strategy; it is not a general mid-term source-project editor.
 - Multi-format intake, conversion, and recommendation; those remain long-term
   unless the Product Owner explicitly changes the roadmap.
 - Audio waveform editing, audio replacement, trimming, or volume automation.
 
 ## Long-term Direction
 
-Longer term, Auto SVGA may become a multi-format motion workbench. Generative
-AI, ComfyUI, or external model modules require separate explicit approval and
-must stay isolated from the core deterministic pipeline.
+Longer term, Auto SVGA may become a multi-format motion workbench. The AE
+production bridge has been promoted into its own committed production mainline
+and should inform the future multi-format package/IR design. Generative AI,
+ComfyUI, or external model modules remain lower priority and require separate
+explicit approval; they must stay isolated from the core deterministic
+pipeline.
 
 Long-term capabilities:
 
 - Multi-format intake and routing from the startup page
+- AE export package intake as the first approved source-authoring bridge,
+  bounded by compatibility scanning and bake planning
 - Format adapters for SVGA, VAP, Lottie, animated WebP, WebM, APNG, sprite
   sequences, and prepared layered-result packages
 - Decode, preview, inspect, validate, optimize, replace, convert, and export

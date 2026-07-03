@@ -106,6 +106,8 @@ Create a new product document only when all are true:
 | What is the low-fidelity information architecture and wireframe structure for the short-term UI/UX redesign? | `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md` | Navigation model, low-fidelity frame, state flow, or S1-S16 surface trace changes; must not override the main PRD |
 | What is true about the active Workbench run? | `docs/autonomous/SVGA_WORKBENCH_V1_STATUS.md` | Meaningful product checkpoint, blocker change, or owner correction |
 | What is first-distribution readiness? | `docs/product/SHORT_TERM_DISTRIBUTION_PREP.md` | Package tier, release gate, credential, privacy, or rollback change |
+| How should the AE to Auto SVGA production bridge serve current designer workflow? | `docs/product/AE_BRIDGE_PRODUCT_BRIEF.md` | AE bridge workflow, package contract, compatibility matrix, bake planning, or bridge validation changes; must not override the main PRD |
+| How should mid-term implementation start without redefining PRD scope? | `docs/product/MID_TERM_IMPLEMENTATION_PREP.md` | Mid-term work-package sequencing, technical readiness, validation gates, or cross-lane coordination changes |
 | What editing is supported? | `docs/product/SUPPORTED_EDITABLE_SVGA_BOUNDARY.md` | Any editor capability, Save As, replacement, or fail-closed rule change |
 | What is Web/Desktop source-of-truth behavior? | `docs/product/WEB_PREVIEW_PRODUCT_SOURCE_OF_TRUTH.md` and `docs/product/P6_SHARED_FRONTEND_ARCHITECTURE.md` | Shared frontend, host adapter, parity, or rollback boundary changes |
 | What could be built later? | `docs/product/auto-svga-backlog.md` | New idea, reprioritization, owner feedback, or deferred item change |
@@ -124,6 +126,7 @@ Create a new product document only when all are true:
 | `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md` | Active subordinate execution plan | Defines design-system-first execution, token/component traceability, and implementation gates; cannot redefine scope from the main PRD. |
 | `docs/product/SHORT_TERM_UI_UX_DESIGN_SYSTEM_SPEC.md` | Active subordinate design-system inventory | Defines concrete tokens, variables, components, modules, and page-state composition; cannot redefine scope from the main PRD. |
 | `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md` | Active subordinate low-fidelity IA | Defines navigation, state flow, wireframes, and S1-S16 surface trace; cannot redefine scope from the main PRD. |
+| `docs/product/AE_BRIDGE_PRODUCT_BRIEF.md` | Active subordinate production-bridge brief | Details AE bridge workflow, compatibility, package, bake, and validation planning; cannot redefine scope from the main PRD. |
 | `docs/product/P*_IMPLEMENTATION_PLAN.md` | Stage implementation plans | May describe how to execute a stage; must not redefine product scope. |
 | `docs/loop/milestones/*.md` | Historical or active milestone contracts | Evidence/contract layer; not PRD authority. |
 | `docs/product/p6/**` | P6 worker context, evidence, and handoff material | Supporting evidence and lineage; not PRD authority. |
