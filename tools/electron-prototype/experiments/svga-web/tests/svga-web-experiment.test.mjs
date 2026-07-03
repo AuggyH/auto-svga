@@ -1011,6 +1011,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermPageStates = await readFile(path.join(experimentRoot, "web/short-term-macos.page-states.css"), "utf8");
   const shortTermStyles = await readFile(path.join(experimentRoot, "web/short-term-macos.css"), "utf8");
   const shortTermCommandState = await readFile(path.join(experimentRoot, "web/short-term-macos-command-state.mjs"), "utf8");
+  const shortTermCompareModel = await readFile(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs"), "utf8");
   const shortTermDomRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-renderers.mjs"), "utf8");
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
   const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
@@ -1160,6 +1161,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /createReplaceableImageRow/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-command-state\.mjs"/);
   assert.match(shortTermEntry, /buildCommandState/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-compare-model\.mjs"/);
+  assert.match(shortTermEntry, /renderCompareInfoHtml/);
+  assert.match(shortTermEntry, /renderOptimizationCompareResultHtml/);
+  assert.match(shortTermEntry, /renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-feedback-model\.mjs"/);
   assert.match(shortTermEntry, /bannerTone/);
   assert.match(shortTermEntry, /buildCurrentStateSummary/);
@@ -1175,6 +1180,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCommandState, /playPauseCopy: input\.primaryPlaybackPlaying \? "暂停" : "播放"/);
   assert.match(shortTermCommandState, /canShowOptimizationComparison/);
   assert.match(shortTermCommandState, /hasTransientState/);
+  assert.match(shortTermCompareModel, /export function renderCompareInfoHtml/);
+  assert.match(shortTermCompareModel, /export function compareSlotMeta/);
+  assert.match(shortTermCompareModel, /export function renderOptimizationCompareResultHtml/);
+  assert.match(shortTermCompareModel, /export function renderGeneralComparePlaceholderHtml/);
+  assert.match(shortTermCompareModel, /renderCompareFactCellHtml/);
+  assert.match(shortTermCompareModel, /renderCompareMetricCellHtml/);
+  assert.match(shortTermCompareModel, /data-optimization-actions/);
+  assert.match(shortTermCompareModel, /data-optimization-skipped/);
+  assert.match(shortTermCompareModel, /打开另一个 SVGA 后开始对比/);
   assert.match(shortTermDomRenderers, /export function createOverviewFactCell/);
   assert.match(shortTermDomRenderers, /export function createAssetRow/);
   assert.match(shortTermDomRenderers, /export function createOptimizationFindingRow/);
@@ -1321,8 +1335,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /skippedMethodRowsVisible/);
   assert.match(shortTermEntry, /groupOptimizationItems/);
   assert.match(shortTermRenderModel, /item\.count > 1/);
-  assert.match(shortTermEntry, /data-optimization-actions/);
-  assert.match(shortTermEntry, /data-optimization-skipped/);
+  assert.match(shortTermCompareModel, /data-optimization-actions/);
+  assert.match(shortTermCompareModel, /data-optimization-skipped/);
   assert.match(shortTermFeedbackModel, /function bannerTone/);
   assert.match(shortTermEntry, /nodes\.saveBanner\.dataset\.status = tone/);
   assert.match(shortTermEntry, /messageRow\(model\.resultTitle, model\.resultSummary, tone\)/);
@@ -1379,9 +1393,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /updateShortTermMenuState/);
   assert.match(shortTermCommandState, /canShowOptimizationComparison/);
   assert.match(shortTermEntry, /showOptimizationComparison/);
-  assert.match(shortTermEntry, /compareSummary/);
-  assert.match(shortTermEntry, /compareMetricGrid/);
-  assert.match(shortTermEntry, /compareActions/);
+  assert.match(shortTermCompareModel, /compareSummary/);
+  assert.match(shortTermCompareModel, /compareMetricGrid/);
+  assert.match(shortTermCompareModel, /compareActions/);
   assert.match(shortTermEntry, /state\.activeOutput\?\.kind !== "replacement"/);
   assert.match(shortTermEntry, /addEventListener\("contextmenu"/);
   assert.match(shortTermEntry, /openResourceContextMenu/);
