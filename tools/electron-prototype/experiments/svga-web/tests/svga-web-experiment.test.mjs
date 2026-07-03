@@ -1030,6 +1030,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermByteModel = await readFile(path.join(experimentRoot, "web/short-term-macos-byte-model.mjs"), "utf8");
   const shortTermApiClient = await readFile(path.join(experimentRoot, "web/short-term-macos-api-client.mjs"), "utf8");
   const shortTermHostClient = await readFile(path.join(experimentRoot, "web/short-term-macos-host-client.mjs"), "utf8");
+  const shortTermDialogModel = await readFile(path.join(experimentRoot, "web/short-term-macos-dialog-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1313,7 +1314,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /renderLoadingMessage\(nodes, "解析文件并准备预览。"\)/);
   assert.match(shortTermEntry, /renderFileHeader\(nodes, "等待打开文件", "-"\)/);
   assert.match(shortTermEntry, /renderFileHeader\(nodes, state\.displayName, overviewView\.playbackMeta\)/);
-  assert.match(shortTermEntry, /renderDiscardMessage\(nodes, message\)/);
+  assert.match(shortTermEntry, /renderMessage: \(copy\) => renderDiscardMessage\(nodes, copy\)/);
+  assert.match(shortTermDialogModel, /renderMessage\(message\)/);
   assert.match(shortTermEntry, /renderFailureMessage\(nodes, sourceUnmodifiedMessage\(message\)\)/);
   assert.doesNotMatch(shortTermEntry, /nodes\.(loadingMessage|fileIdentity|playbackMeta|discardMessage|errorMessage)\.textContent\s*=/);
   assert.match(shortTermDomRenderers, /nodes\.loadingMessage\.textContent = copy/);
@@ -1484,6 +1486,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermByteModel, /export function toParserArrayBuffer/);
   assert.match(shortTermByteModel, /export async function sha256Hex/);
   assert.doesNotMatch(shortTermEntry, /function toUint8Array|function toBase64|function fromBase64|function toParserArrayBuffer|async function sha256Hex/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-dialog-model\.mjs"/);
+  assert.match(shortTermDialogModel, /export function hasOpenDialog/);
+  assert.match(shortTermDialogModel, /export function closeOpenDialog/);
+  assert.match(shortTermDialogModel, /export function showDialog/);
+  assert.match(shortTermDialogModel, /export async function confirmDiscardUnsavedOutput/);
+  assert.match(shortTermDialogModel, /dialog\.showModal\(\)/);
+  assert.match(shortTermDialogModel, /querySelector\("dialog\[open\]"\)/);
+  assert.match(shortTermEntry, /dialogOpen: hasOpenDialog\(document\)/);
+  assert.match(shortTermEntry, /closeOpenDialog\(document, "cancel"\)/);
+  assert.doesNotMatch(shortTermEntry, /function showDialog|dialog\.showModal\(\)|document\.querySelector\("dialog\[open\]"\)/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-api-client\.mjs"/);
   assert.match(shortTermApiClient, /export async function inspectShortTermSvga/);
   assert.match(shortTermApiClient, /export async function optimizeShortTermSvga/);

@@ -111,6 +111,12 @@ import {
   getRecentSvgaFiles,
   syncShortTermMenuState
 } from "./short-term-macos-host-client.mjs";
+import {
+  closeOpenDialog,
+  confirmDiscardUnsavedOutput as confirmDiscardDialogOutput,
+  hasOpenDialog,
+  showDialog
+} from "./short-term-macos-dialog-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -525,7 +531,7 @@ async function editRuntimeText() {
   }
   nodes.runtimeTextInput.value = runtimeTextInputValue(state.textPreview);
   nodes.runtimeTextInput.placeholder = runtimeTextPlaceholder(textElement);
-  const result = await showDialog(nodes.textDialog);
+  const result = await showDialog(nodes.textDialog, renderCommandState);
   if (result !== "confirm") return;
   state.textPreview = nodes.runtimeTextInput.value.trim();
   applyRuntimeTextOverlay(
@@ -617,9 +623,13 @@ function clearTransientOutput() {
 }
 
 async function confirmDiscardUnsavedOutput(message) {
-  if (!state.activeOutput) return true;
-  renderDiscardMessage(nodes, message);
-  return (await showDialog(nodes.discardDialog)) === "confirm";
+  return confirmDiscardDialogOutput({
+    hasActiveOutput: Boolean(state.activeOutput),
+    message,
+    dialog: nodes.discardDialog,
+    renderMessage: (copy) => renderDiscardMessage(nodes, copy),
+    onDialogStateChange: renderCommandState
+  });
 }
 
 function renderPreviewModel() {
@@ -879,7 +889,7 @@ function renderCommandState() {
     textPreview: state.textPreview,
     primaryPlaybackPlaying: state.primaryPlayback?.playing === true,
     renameImageKey: state.renameImageKey,
-    dialogOpen: Boolean(document.querySelector("dialog[open]"))
+    dialogOpen: hasOpenDialog(document)
   });
   applyCommandState(commandState);
   state.lastMenuStateSnapshot = syncShortTermMenuState(
@@ -919,19 +929,6 @@ function currentStateSummary() {
     saveBannerText: nodes.saveBanner.textContent,
     errorVisible: state.view === "failed",
     errorText: nodes.errorMessage.textContent
-  });
-}
-
-function showDialog(dialog) {
-  return new Promise((resolve) => {
-    const handler = () => {
-      dialog.removeEventListener("close", handler);
-      renderCommandState();
-      resolve(dialog.returnValue);
-    };
-    dialog.addEventListener("close", handler);
-    dialog.showModal();
-    renderCommandState();
   });
 }
 
@@ -1106,7 +1103,7 @@ window.__autoSvgaShortTermActions = Object.freeze({
   optimizationTab: () => openTab("optimization"),
   replaceableTab: () => openTab("replaceable"),
   cancel: () => {
-    document.querySelector("dialog[open]")?.close("cancel");
+    closeOpenDialog(document, "cancel");
     if (state.view === "compare") setMode("preview");
   },
   copyStateSummary: () => bridge?.writeClipboardText?.(currentStateSummary())
