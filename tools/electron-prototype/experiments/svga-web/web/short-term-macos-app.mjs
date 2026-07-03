@@ -24,6 +24,10 @@ import {
   renderMessageRowHtml,
   suffixName
 } from "./short-term-macos-render-model.mjs";
+import {
+  bannerTone,
+  buildCurrentStateSummary
+} from "./short-term-macos-feedback-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -964,14 +968,6 @@ function syncShortTermMenuState(snapshot) {
   bridge.updateShortTermMenuState(snapshot).catch(() => {});
 }
 
-function bannerTone(title) {
-  if (/正在/.test(title)) return "loading";
-  if (/失败|未完成|未通过/.test(title)) return "danger";
-  if (/没有|不支持|取消/.test(title)) return "warning";
-  if (/已/.test(title)) return "success";
-  return "info";
-}
-
 function showSaveBanner(title, message, tone = bannerTone(title)) {
   nodes.saveBanner.hidden = false;
   nodes.saveBanner.dataset.status = tone;
@@ -994,30 +990,17 @@ function showOperationFailure(title, error) {
   renderCommandState();
 }
 
-function buildCurrentStateSummary() {
-  const lines = [
-    "Auto SVGA 状态摘要",
-    `状态：${viewCopy(state.view)}`,
-    state.displayName ? `文件：${state.displayName}` : "文件：未打开",
-    nodes.playbackMeta.textContent && nodes.playbackMeta.textContent !== "-"
-      ? `播放：${nodes.playbackMeta.textContent}`
-      : "",
-    state.activeOutput ? `未保存输出：${state.activeOutput.title || state.activeOutput.kind}` : "",
-    !nodes.saveBanner.hidden && nodes.saveBanner.textContent ? `提示：${nodes.saveBanner.textContent.trim()}` : "",
-    state.view === "failed" && nodes.errorMessage.textContent ? `错误：${nodes.errorMessage.textContent.trim()}` : ""
-  ];
-  return lines.filter(Boolean).join("\n");
-}
-
-function viewCopy(view) {
-  return {
-    launch: "等待打开",
-    loading: "正在打开",
-    failed: "打开失败",
-    preview: "预览",
-    compare: "对比",
-    edit: "编辑预留"
-  }[view] || view;
+function currentStateSummary() {
+  return buildCurrentStateSummary({
+    view: state.view,
+    displayName: state.displayName,
+    playbackMeta: nodes.playbackMeta.textContent,
+    activeOutput: state.activeOutput,
+    saveBannerVisible: !nodes.saveBanner.hidden,
+    saveBannerText: nodes.saveBanner.textContent,
+    errorVisible: state.view === "failed",
+    errorText: nodes.errorMessage.textContent
+  });
 }
 
 function messageRow(title, summary, tone = "info") {
@@ -1282,7 +1265,7 @@ window.__autoSvgaShortTermActions = Object.freeze({
     document.querySelector("dialog[open]")?.close("cancel");
     if (state.view === "compare") setMode("preview");
   },
-  copyStateSummary: () => bridge?.writeClipboardText?.(buildCurrentStateSummary())
+  copyStateSummary: () => bridge?.writeClipboardText?.(currentStateSummary())
 });
 
 refreshRecentFiles().catch(() => {});
@@ -2077,7 +2060,7 @@ function collectShortTermDesignInteractionProof(options) {
   const panelStyle = getComputedStyle(panelOverview);
   const factCell = nodes.factGrid.querySelector(".factCell");
   const assetText = nodes.assetList.querySelector(".rowText");
-  const stateSummary = buildCurrentStateSummary();
+  const stateSummary = currentStateSummary();
   const localUserPathPrefix = ["/", "Users", "/"].join("");
   const menuState = parseLastMenuStateSnapshot();
   const proof = {

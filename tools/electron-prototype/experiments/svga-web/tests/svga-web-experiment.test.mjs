@@ -1013,6 +1013,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermCommandState = await readFile(path.join(experimentRoot, "web/short-term-macos-command-state.mjs"), "utf8");
   const shortTermDomRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-renderers.mjs"), "utf8");
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
+  const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
@@ -1159,6 +1160,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /createReplaceableImageRow/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-command-state\.mjs"/);
   assert.match(shortTermEntry, /buildCommandState/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-feedback-model\.mjs"/);
+  assert.match(shortTermEntry, /bannerTone/);
+  assert.match(shortTermEntry, /buildCurrentStateSummary/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-state\.mjs"/);
   assert.match(shortTermEntry, /applyViewState/);
   assert.match(shortTermEntry, /applyModeButtons/);
@@ -1186,6 +1190,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomState, /document\.querySelectorAll\("\[data-view\]"\)/);
   assert.match(shortTermDomState, /button\.tabIndex = selected \? 0 : -1/);
   assert.match(shortTermDomState, /aria-pressed/);
+  assert.match(shortTermFeedbackModel, /export function bannerTone/);
+  assert.match(shortTermFeedbackModel, /export function buildCurrentStateSummary/);
+  assert.match(shortTermFeedbackModel, /export function viewCopy/);
+  assert.match(shortTermFeedbackModel, /Auto SVGA 状态摘要/);
+  assert.match(shortTermFeedbackModel, /状态：\$\{viewCopy\(input\.view\)\}/);
+  assert.match(shortTermFeedbackModel, /未保存输出：/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /event\.key === "ArrowRight"/);
@@ -1313,7 +1323,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermRenderModel, /item\.count > 1/);
   assert.match(shortTermEntry, /data-optimization-actions/);
   assert.match(shortTermEntry, /data-optimization-skipped/);
-  assert.match(shortTermEntry, /function bannerTone/);
+  assert.match(shortTermFeedbackModel, /function bannerTone/);
   assert.match(shortTermEntry, /nodes\.saveBanner\.dataset\.status = tone/);
   assert.match(shortTermEntry, /messageRow\(model\.resultTitle, model\.resultSummary, tone\)/);
   assert.match(shortTermEntry, /row\.dataset\.component = "InlineStatus"/);
@@ -1361,10 +1371,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /showOperationFailure\("重命名未完成。", error\)/);
   assert.match(shortTermEntry, /showOperationFailure\("替换未完成。", error\)/);
   assert.match(shortTermEntry, /源文件没有被修改。/);
-  assert.match(shortTermEntry, /buildCurrentStateSummary/);
-  assert.match(shortTermEntry, /错误：\$\{nodes\.errorMessage\.textContent\.trim\(\)\}/);
-  assert.match(shortTermEntry, /提示：\$\{nodes\.saveBanner\.textContent\.trim\(\)\}/);
-  assert.match(shortTermEntry, /writeClipboardText\?\.\(buildCurrentStateSummary\(\)\)/);
+  assert.match(shortTermEntry, /currentStateSummary/);
+  assert.match(shortTermFeedbackModel, /错误：\$\{input\.errorText\.trim\(\)\}/);
+  assert.match(shortTermFeedbackModel, /提示：\$\{input\.saveBannerText\.trim\(\)\}/);
+  assert.match(shortTermEntry, /writeClipboardText\?\.\(currentStateSummary\(\)\)/);
   assert.match(shortTermEntry, /syncShortTermMenuState/);
   assert.match(shortTermEntry, /updateShortTermMenuState/);
   assert.match(shortTermCommandState, /canShowOptimizationComparison/);
