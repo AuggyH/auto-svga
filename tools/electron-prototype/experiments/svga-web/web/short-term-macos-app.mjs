@@ -91,6 +91,7 @@ import {
   collectShortTermThumbnailProof,
   collectShortTermReplaceableClassificationProof,
   collectShortTermOptimizationProof,
+  collectShortTermRenameProof,
   createSmokeArtifactCapture,
   reportShortTermSmokeFailure,
   resourceEntriesAreLocalOnly,
@@ -1292,66 +1293,22 @@ async function runShortTermSmokeIfRequested() {
   const renameValidation = renameWorkflow.validation ?? {};
   const referenceUpdates = Array.isArray(renameWorkflow.referenceUpdates) ? renameWorkflow.referenceUpdates : [];
   const danglingReferences = Array.isArray(renameValidation.danglingReferences) ? renameValidation.danglingReferences : [];
-  const shortTermRenameProof = {
-    schemaVersion: 1,
-    proofId: "short-term-rename-proof",
-    source: "short-term-smoke",
-    prdIds: ["S11", "S14"],
-    fixtureName: "replaceable-workflow-smoke.svga",
-    fromImageKey: renameFromImageKey,
-    toImageKey: renameToImageKey,
-    contextMenuOpened: renameContextMenuOpened,
-    enterConfirmed: true,
-    sourceSha256Before: renameSourceSha256Before,
-    sourceSha256After: renameSourceSha256After,
-    sourceBytesUnchanged: renameSourceSha256After === renameSourceSha256Before,
-    renamedSha256,
-    renamedOutputProduced: state.activeOutput.bytes.byteLength > 0,
-    renamedBytesDifferent: renamedSha256 !== renameSourceSha256Before,
-    renamedKeyVisible: renamedImageKeys.includes(renameToImageKey),
-    oldKeyAbsent: !renamedImageKeys.includes(renameFromImageKey),
-    referenceFieldsChecked: ["imageKey", "matteKey"],
-    referenceUpdateCount: referenceUpdates.length,
-    imageKeyReferenceUpdates: referenceUpdates.filter((update) => update.field === "imageKey").length,
-    matteKeyReferenceUpdates: referenceUpdates.filter((update) => update.field === "matteKey").length,
-    decodePassed: renameValidation.decodePassed === true,
-    reopenPassed: renameValidation.reopenPassed === true,
-    referenceClosurePassed: renameValidation.referenceClosurePassed === true,
-    imageKeyReferenceClosurePassed: renameValidation.referenceClosurePassed === true
-      && danglingReferences.every((resourceKey) => resourceKey !== renameToImageKey),
-    matteKeyReferenceClosurePassed: renameValidation.referenceClosurePassed === true
-      && danglingReferences.every((resourceKey) => resourceKey !== renameToImageKey),
-    danglingReferences,
-    danglingReferenceCount: danglingReferences.length,
-    newKeyPresent: renameValidation.newKeyPresent === true,
-    imageBytesPreserved: renameValidation.imageBytesPreserved === true,
-    previewModeStayed: state.view === "preview" && state.mode === "preview",
-    saveAsEnabled: document.querySelector("[data-action='save-as']")?.disabled === false,
+  const shortTermRenameProof = collectShortTermRenameProof({
+    activeOutput: state.activeOutput,
     canvasNonBlank: renameCanvasNonBlank,
-    resultTitle: state.activeOutput.title,
-    resultSummary: state.activeOutput.summary
-  };
-  shortTermRenameProof.passed = [
-    shortTermRenameProof.contextMenuOpened,
-    shortTermRenameProof.enterConfirmed,
-    shortTermRenameProof.sourceBytesUnchanged,
-    shortTermRenameProof.renamedOutputProduced,
-    shortTermRenameProof.renamedBytesDifferent,
-    shortTermRenameProof.renamedKeyVisible,
-    shortTermRenameProof.oldKeyAbsent,
-    shortTermRenameProof.decodePassed,
-    shortTermRenameProof.reopenPassed,
-    shortTermRenameProof.referenceClosurePassed,
-    shortTermRenameProof.imageKeyReferenceClosurePassed,
-    shortTermRenameProof.matteKeyReferenceClosurePassed,
-    shortTermRenameProof.danglingReferenceCount === 0,
-    shortTermRenameProof.newKeyPresent,
-    shortTermRenameProof.imageBytesPreserved,
-    shortTermRenameProof.previewModeStayed,
-    shortTermRenameProof.saveAsEnabled,
-    shortTermRenameProof.canvasNonBlank,
-    shortTermRenameProof.resultTitle === "已重命名 imageKey"
-  ].every(Boolean);
+    contextMenuOpened: renameContextMenuOpened,
+    danglingReferences,
+    fromImageKey: renameFromImageKey,
+    previewModeStayed: state.view === "preview" && state.mode === "preview",
+    referenceUpdates,
+    renamedImageKeys,
+    renamedSha256,
+    renameValidation,
+    saveAsEnabled: document.querySelector("[data-action='save-as']")?.disabled === false,
+    sourceSha256After: renameSourceSha256After,
+    sourceSha256Before: renameSourceSha256Before,
+    toImageKey: renameToImageKey
+  });
   clearTransientOutput();
   await loadOpenedSource({
     bytes: replaceableBytes,

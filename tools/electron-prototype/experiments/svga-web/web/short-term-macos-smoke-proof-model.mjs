@@ -277,6 +277,85 @@ export function collectShortTermOptimizationProof({
   return proof;
 }
 
+export function collectShortTermRenameProof({
+  activeOutput,
+  canvasNonBlank,
+  contextMenuOpened,
+  danglingReferences,
+  fromImageKey,
+  previewModeStayed,
+  referenceUpdates,
+  renamedImageKeys,
+  renamedSha256,
+  renameValidation,
+  saveAsEnabled,
+  sourceSha256After,
+  sourceSha256Before,
+  toImageKey
+}) {
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-rename-proof",
+    source: "short-term-smoke",
+    prdIds: ["S11", "S14"],
+    fixtureName: "replaceable-workflow-smoke.svga",
+    fromImageKey,
+    toImageKey,
+    contextMenuOpened,
+    enterConfirmed: true,
+    sourceSha256Before,
+    sourceSha256After,
+    sourceBytesUnchanged: sourceSha256After === sourceSha256Before,
+    renamedSha256,
+    renamedOutputProduced: activeOutput.bytes.byteLength > 0,
+    renamedBytesDifferent: renamedSha256 !== sourceSha256Before,
+    renamedKeyVisible: renamedImageKeys.includes(toImageKey),
+    oldKeyAbsent: !renamedImageKeys.includes(fromImageKey),
+    referenceFieldsChecked: ["imageKey", "matteKey"],
+    referenceUpdateCount: referenceUpdates.length,
+    imageKeyReferenceUpdates: referenceUpdates.filter((update) => update.field === "imageKey").length,
+    matteKeyReferenceUpdates: referenceUpdates.filter((update) => update.field === "matteKey").length,
+    decodePassed: renameValidation.decodePassed === true,
+    reopenPassed: renameValidation.reopenPassed === true,
+    referenceClosurePassed: renameValidation.referenceClosurePassed === true,
+    imageKeyReferenceClosurePassed: renameValidation.referenceClosurePassed === true
+      && danglingReferences.every((resourceKey) => resourceKey !== toImageKey),
+    matteKeyReferenceClosurePassed: renameValidation.referenceClosurePassed === true
+      && danglingReferences.every((resourceKey) => resourceKey !== toImageKey),
+    danglingReferences,
+    danglingReferenceCount: danglingReferences.length,
+    newKeyPresent: renameValidation.newKeyPresent === true,
+    imageBytesPreserved: renameValidation.imageBytesPreserved === true,
+    previewModeStayed,
+    saveAsEnabled,
+    canvasNonBlank,
+    resultTitle: activeOutput.title,
+    resultSummary: activeOutput.summary
+  };
+  proof.passed = [
+    proof.contextMenuOpened,
+    proof.enterConfirmed,
+    proof.sourceBytesUnchanged,
+    proof.renamedOutputProduced,
+    proof.renamedBytesDifferent,
+    proof.renamedKeyVisible,
+    proof.oldKeyAbsent,
+    proof.decodePassed,
+    proof.reopenPassed,
+    proof.referenceClosurePassed,
+    proof.imageKeyReferenceClosurePassed,
+    proof.matteKeyReferenceClosurePassed,
+    proof.danglingReferenceCount === 0,
+    proof.newKeyPresent,
+    proof.imageBytesPreserved,
+    proof.previewModeStayed,
+    proof.saveAsEnabled,
+    proof.canvasNonBlank,
+    proof.resultTitle === "已重命名 imageKey"
+  ].every(Boolean);
+  return proof;
+}
+
 export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
   const tabs = tabButtons();
   const tabOverview = document.querySelector("#tabOverview");
