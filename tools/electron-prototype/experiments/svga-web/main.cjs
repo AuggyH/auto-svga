@@ -289,6 +289,12 @@ function validateSmokeResult(value) {
     result.shortTermTabKeyboardProof = shortTermTabKeyboardProof;
     result.shortTermTabKeyboard = shortTermTabKeyboardProof.passed;
   }
+  if (value.shortTermDesignInteractionProof !== undefined) {
+    const shortTermDesignInteractionProof = validateShortTermDesignInteractionProof(value.shortTermDesignInteractionProof);
+    if (!shortTermDesignInteractionProof) return undefined;
+    result.shortTermDesignInteractionProof = shortTermDesignInteractionProof;
+    result.shortTermDesignInteraction = shortTermDesignInteractionProof.passed;
+  }
   if (value.shortTermReplaceableClassificationProof !== undefined) {
     const shortTermReplaceableClassificationProof = validateShortTermReplaceableClassificationProof(value.shortTermReplaceableClassificationProof);
     if (!shortTermReplaceableClassificationProof) return undefined;
@@ -662,6 +668,94 @@ function validateShortTermTabKeyboardProof(value) {
     panelVisibilitySynced: true,
     passed: true
   };
+}
+
+function validateShortTermDesignInteractionProof(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-design-interaction-proof") return undefined;
+  if (value.source !== "short-term-smoke") return undefined;
+  if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S1,S3,S8,S12,S13,S14,S16") return undefined;
+  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 8 || value.focusOrder.length > 24) return undefined;
+  const focusOrder = value.focusOrder.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return undefined;
+    const normalized = {
+      id: String(item.id || ""),
+      action: String(item.action || ""),
+      tab: String(item.tab || ""),
+      role: String(item.role || ""),
+      component: String(item.component || "")
+    };
+    if (!Object.values(normalized).every((field) => field.length <= 80)) return undefined;
+    if (!Object.values(normalized).some((field) => field.length > 0)) return undefined;
+    return normalized;
+  });
+  if (focusOrder.some((item) => !item)) return undefined;
+  const booleanKeys = [
+    "openBeforeCompare",
+    "overviewTabReachable",
+    "selectedTabOnlyInSequentialFocus",
+    "panelScrollRegionFocusable",
+    "panelScrollRegionScrollable",
+    "metadataSelectable",
+    "stateSummaryCopyable",
+    "menuStateDiscoverable",
+    "reducedMotionRulePresent",
+    "minimumPreviewCaptured",
+    "passed"
+  ];
+  if (!booleanKeys.every((key) => value[key] === true)) return undefined;
+  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 8) return undefined;
+  return {
+    schemaVersion: 1,
+    proofId: value.proofId,
+    source: value.source,
+    prdIds: ["S1", "S3", "S8", "S12", "S13", "S14", "S16"],
+    focusOrder,
+    focusTargetCount: value.focusTargetCount,
+    openBeforeCompare: true,
+    overviewTabReachable: true,
+    selectedTabOnlyInSequentialFocus: true,
+    panelScrollRegionFocusable: true,
+    panelScrollRegionScrollable: true,
+    metadataSelectable: true,
+    stateSummaryCopyable: true,
+    menuStateDiscoverable: true,
+    reducedMotionRulePresent: true,
+    minimumPreviewCaptured: true,
+    passed: true
+  };
+}
+
+function describeShortTermDesignInteractionProofFailure(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "shape";
+  if (value.schemaVersion !== 1) return "schemaVersion";
+  if (value.proofId !== "short-term-design-interaction-proof") return "proofId";
+  if (value.source !== "short-term-smoke") return "source";
+  if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S1,S3,S8,S12,S13,S14,S16") return "prdIds";
+  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 8 || value.focusOrder.length > 24) return "focusOrder";
+  const invalidFocusItem = value.focusOrder.find((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return true;
+    const fields = [item.id, item.action, item.tab, item.role, item.component].map((field) => String(field || ""));
+    return fields.some((field) => field.length > 80) || fields.every((field) => field.length === 0);
+  });
+  if (invalidFocusItem) return "focusOrder:item";
+  const booleanKeys = [
+    "openBeforeCompare",
+    "overviewTabReachable",
+    "selectedTabOnlyInSequentialFocus",
+    "panelScrollRegionFocusable",
+    "panelScrollRegionScrollable",
+    "metadataSelectable",
+    "stateSummaryCopyable",
+    "menuStateDiscoverable",
+    "reducedMotionRulePresent",
+    "minimumPreviewCaptured",
+    "passed"
+  ];
+  const failedBoolean = booleanKeys.find((key) => value[key] !== true);
+  if (failedBoolean) return failedBoolean;
+  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 8) return "focusTargetCount";
+  return "unknown";
 }
 
 function validateShortTermReplaceableClassificationProof(value) {
@@ -1058,6 +1152,9 @@ function describeSmokeResultValidationFailure(value) {
   }
   if (value.shortTermTabKeyboardProof !== undefined && !validateShortTermTabKeyboardProof(value.shortTermTabKeyboardProof)) {
     return "shortTermTabKeyboardProof";
+  }
+  if (value.shortTermDesignInteractionProof !== undefined && !validateShortTermDesignInteractionProof(value.shortTermDesignInteractionProof)) {
+    return `shortTermDesignInteractionProof:${describeShortTermDesignInteractionProofFailure(value.shortTermDesignInteractionProof)}`;
   }
   if (value.shortTermReplaceableClassificationProof !== undefined && !validateShortTermReplaceableClassificationProof(value.shortTermReplaceableClassificationProof)) {
     return "shortTermReplaceableClassificationProof";
@@ -3864,6 +3961,14 @@ async function finishSmoke(window, result) {
         "smoke"
       );
     }
+    if (result.shortTermDesignInteractionProof) {
+      writeJsonProductArtifact(
+        "short-term-design-interaction-proof.json",
+        "short-term-design-interaction-proof",
+        result.shortTermDesignInteractionProof,
+        "smoke"
+      );
+    }
     if (result.shortTermEmptyStateProof) {
       writeJsonProductArtifact(
         "short-term-empty-state-proof.json",
@@ -3922,9 +4027,9 @@ async function finishSmoke(window, result) {
     }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermLoadFailureProof, shortTermSpecComparisonProof, shortTermTabKeyboardProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermReplaceableClassificationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermLoadFailureProof, shortTermSpecComparisonProof, shortTermTabKeyboardProof, shortTermDesignInteractionProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermReplaceableClassificationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermLoadFailureProof: Boolean(shortTermLoadFailureProof), shortTermSpecComparisonProof: Boolean(shortTermSpecComparisonProof), shortTermTabKeyboardProof: Boolean(shortTermTabKeyboardProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermReplaceableClassificationProof: Boolean(shortTermReplaceableClassificationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermLoadFailureProof: Boolean(shortTermLoadFailureProof), shortTermSpecComparisonProof: Boolean(shortTermSpecComparisonProof), shortTermTabKeyboardProof: Boolean(shortTermTabKeyboardProof), shortTermDesignInteractionProof: Boolean(shortTermDesignInteractionProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermReplaceableClassificationProof: Boolean(shortTermReplaceableClassificationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();

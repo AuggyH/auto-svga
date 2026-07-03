@@ -1264,6 +1264,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /actualRequirementPairsVisible/);
   assert.match(shortTermEntry, /short-term-tab-keyboard-proof/);
   assert.match(shortTermEntry, /selectedTabOnlyInSequentialFocus/);
+  assert.match(shortTermEntry, /short-term-design-interaction-proof/);
+  assert.match(shortTermEntry, /collectShortTermDesignInteractionProof/);
+  assert.match(shortTermEntry, /visibleFocusableElements/);
+  assert.match(shortTermEntry, /metadataSelectable/);
+  assert.match(shortTermEntry, /menuStateDiscoverable/);
+  assert.match(shortTermEntry, /minimumPreviewCaptured/);
   assert.match(shortTermEntry, /short-term-replaceable-classification-proof/);
   assert.match(shortTermEntry, /automaticKeysExcluded/);
   assert.match(main, /validateShortTermOpenFlowProof/);
@@ -1276,6 +1282,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /shortTermTabKeyboardProof = validateShortTermTabKeyboardProof/);
   assert.match(main, /short-term-tab-keyboard-proof\.json/);
   assert.match(main, /shortTermTabKeyboardProof: Boolean\(shortTermTabKeyboardProof\)/);
+  assert.match(main, /function validateShortTermDesignInteractionProof/);
+  assert.match(main, /shortTermDesignInteractionProof = validateShortTermDesignInteractionProof/);
+  assert.match(main, /short-term-design-interaction-proof\.json/);
+  assert.match(main, /shortTermDesignInteractionProof: Boolean\(shortTermDesignInteractionProof\)/);
   assert.match(main, /validateShortTermReplaceableClassificationProof/);
   assert.match(main, /short-term-replaceable-classification-proof\.json/);
   assert.match(shortTermEntry, /shortTermScreenshots: screenshotCaptures\.length >= 9/);

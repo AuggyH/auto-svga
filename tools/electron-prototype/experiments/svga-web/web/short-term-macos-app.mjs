@@ -1785,6 +1785,9 @@ async function runShortTermSmokeIfRequested() {
   setTab("overview");
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-preview-minimum");
+  const shortTermDesignInteractionProof = collectShortTermDesignInteractionProof({
+    minimumPreviewCaptured: screenshotCaptures.at(-1) === true
+  });
   createSaveFailureProofOutput();
   await waitForSmokeCondition(() => state.activeOutput && state.saveStatus === "dirty", 2_000);
   try {
@@ -1966,6 +1969,7 @@ async function runShortTermSmokeIfRequested() {
     shortTermReplaceableClassificationProof,
     shortTermRenameProof,
     shortTermReplacementProof,
+    shortTermDesignInteractionProof,
     cleanup: true
   });
 }
@@ -2055,6 +2059,100 @@ async function collectShortTermTabKeyboardProof() {
     proof.panelVisibilitySynced
   ].every(Boolean);
   return proof;
+}
+
+function collectShortTermDesignInteractionProof(options) {
+  const focusOrder = visibleFocusableElements().map((element) => ({
+    id: element.id || "",
+    action: element.dataset.action || "",
+    tab: element.dataset.tab || "",
+    role: element.getAttribute("role") || "",
+    component: element.dataset.component || ""
+  })).slice(0, 24);
+  const focusKeys = focusOrder.map((item) => item.action || item.tab || item.id || item.role).filter(Boolean);
+  const openIndex = focusKeys.indexOf("open");
+  const compareIndex = focusKeys.indexOf("compare");
+  const tabOverviewIndex = focusKeys.indexOf("overview");
+  const panelOverview = document.querySelector("#panelOverview");
+  const panelStyle = getComputedStyle(panelOverview);
+  const factCell = nodes.factGrid.querySelector(".factCell");
+  const assetText = nodes.assetList.querySelector(".rowText");
+  const stateSummary = buildCurrentStateSummary();
+  const localUserPathPrefix = ["/", "Users", "/"].join("");
+  const menuState = parseLastMenuStateSnapshot();
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-design-interaction-proof",
+    source: "short-term-smoke",
+    prdIds: ["S1", "S3", "S8", "S12", "S13", "S14", "S16"],
+    focusOrder,
+    focusTargetCount: focusOrder.length,
+    openBeforeCompare: openIndex >= 0 && compareIndex > openIndex,
+    overviewTabReachable: tabOverviewIndex >= 0,
+    selectedTabOnlyInSequentialFocus: tabButtons().filter((tab) => tab.tabIndex === 0).length === 1,
+    panelScrollRegionFocusable: panelOverview?.tabIndex === 0,
+    panelScrollRegionScrollable: ["auto", "scroll"].includes(panelStyle.overflowY),
+    metadataSelectable: userSelectAllowsText(document.body)
+      && userSelectAllowsText(factCell)
+      && userSelectAllowsText(assetText),
+    stateSummaryCopyable: stateSummary.includes("Auto SVGA 状态摘要")
+      && stateSummary.includes(state.displayName)
+      && !stateSummary.includes(localUserPathPrefix)
+      && !stateSummary.includes("\\"),
+    menuStateDiscoverable: menuState?.hasFile === true
+      && menuState?.canCompare === true
+      && menuState?.canPlay === true
+      && menuState?.view === "preview"
+      && menuState?.mode === "preview",
+    reducedMotionRulePresent: styleSheetsContain("prefers-reduced-motion"),
+    minimumPreviewCaptured: options.minimumPreviewCaptured === true
+  };
+  proof.passed = [
+    proof.focusTargetCount >= 8,
+    proof.openBeforeCompare,
+    proof.overviewTabReachable,
+    proof.selectedTabOnlyInSequentialFocus,
+    proof.panelScrollRegionFocusable,
+    proof.panelScrollRegionScrollable,
+    proof.metadataSelectable,
+    proof.stateSummaryCopyable,
+    proof.menuStateDiscoverable,
+    proof.reducedMotionRulePresent,
+    proof.minimumPreviewCaptured
+  ].every(Boolean);
+  return proof;
+}
+
+function visibleFocusableElements() {
+  return [...document.querySelectorAll("button, input, [tabindex]")]
+    .filter((element) => !element.disabled && element.tabIndex >= 0 && isElementVisible(element));
+}
+
+function isElementVisible(element) {
+  return element.getClientRects().length > 0 && !element.closest("[hidden]");
+}
+
+function userSelectAllowsText(element) {
+  if (!element) return false;
+  return ["auto", "text", "contain", "all"].includes(getComputedStyle(element).userSelect);
+}
+
+function parseLastMenuStateSnapshot() {
+  try {
+    return JSON.parse(state.lastMenuStateSnapshot || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function styleSheetsContain(pattern) {
+  return [...document.styleSheets].some((sheet) => {
+    try {
+      return [...sheet.cssRules].some((rule) => rule.cssText.includes(pattern));
+    } catch {
+      return false;
+    }
+  });
 }
 
 async function reportShortTermSmokeFailure(phase, error) {
