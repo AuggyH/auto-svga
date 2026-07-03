@@ -188,19 +188,39 @@
 }
 
 .findingRow {
+  position: relative;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: start;
   min-height: var(--asv-finding-row-min-height);
+  overflow: hidden;
+  padding-left: var(--asv-space-4);
+}
+
+.findingRow::before {
+  content: "";
+  position: absolute;
+  inset: var(--asv-space-2) auto var(--asv-space-2) var(--asv-space-2);
+  width: var(--asv-status-strip-width);
+  border-radius: var(--asv-status-strip-radius);
+  background: var(--asv-subtle-border);
 }
 
 .findingRow[data-disposition="safeExecutable"] {
-  border-color: color-mix(in srgb, var(--asv-success) 24%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-success-soft));
+  border-color: var(--asv-row-border);
+  background: color-mix(in srgb, var(--asv-row-bg) 92%, var(--asv-color-success-soft));
+}
+
+.findingRow[data-disposition="safeExecutable"]::before {
+  background: var(--asv-success);
 }
 
 .findingRow[data-disposition="reviewOnly"] {
-  border-color: color-mix(in srgb, var(--asv-warning) 24%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-warning-soft));
+  border-color: var(--asv-row-border);
+  background: color-mix(in srgb, var(--asv-row-bg) 92%, var(--asv-color-warning-soft));
+}
+
+.findingRow[data-disposition="reviewOnly"]::before {
+  background: var(--asv-warning);
 }
 
 .messageRow {
