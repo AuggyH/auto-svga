@@ -13,7 +13,7 @@ button {
   background: color-mix(in srgb, var(--asv-panel-strong) 76%, transparent);
   color: var(--asv-text);
   cursor: default;
-  font-weight: 560;
+  font-weight: 540;
   white-space: nowrap;
 }
 
@@ -125,9 +125,9 @@ button.danger {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0;
-  padding: var(--asv-tab-padding);
+  padding: calc(var(--asv-tab-padding) - 1px);
   border-bottom: 1px solid var(--asv-border);
-  background: color-mix(in srgb, var(--asv-window) 28%, transparent);
+  background: color-mix(in srgb, var(--asv-window) 18%, transparent);
 }
 
 .tabs button {
@@ -142,8 +142,10 @@ button.danger {
 }
 
 .tabs button.isSelected {
-  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-action) 6%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-border-strong) 48%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 92%, var(--asv-action) 4%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--asv-border-strong) 42%, transparent),
+    0 1px 1px rgba(0, 0, 0, 0.08);
   color: var(--asv-text);
   font-weight: 650;
 }
@@ -152,12 +154,13 @@ button.danger {
   position: relative;
   display: grid;
   align-content: start;
+  gap: 1px;
   min-height: var(--asv-fact-cell-min-height);
   min-width: 0;
-  padding: var(--asv-space-2) var(--asv-space-2) var(--asv-space-2) var(--asv-space-3);
-  border: 1px solid color-mix(in srgb, var(--asv-border) 58%, transparent);
+  padding: var(--asv-space-2) var(--asv-space-3) var(--asv-space-2) var(--asv-space-4);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 48%, transparent);
   border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-panel-strong) 32%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 22%, transparent);
 }
 
 .factCell:nth-child(5) {
@@ -178,8 +181,8 @@ button.danger {
 }
 
 .factCell[data-status="warning"] {
-  border-color: color-mix(in srgb, var(--asv-warning) 22%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-color-warning-soft));
+  border-color: color-mix(in srgb, var(--asv-warning) 10%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 96%, var(--asv-color-warning-soft));
 }
 
 .factCell[data-status="warning"]::before {
@@ -187,8 +190,8 @@ button.danger {
 }
 
 .factCell[data-status="fail"] {
-  border-color: color-mix(in srgb, var(--asv-danger) 24%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-color-danger-soft));
+  border-color: color-mix(in srgb, var(--asv-danger) 10%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 96%, var(--asv-color-danger-soft));
 }
 
 .factCell[data-status="fail"]::before {
@@ -210,13 +213,14 @@ button.danger {
 }
 
 .factCell small {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--asv-space-1);
   margin-top: var(--asv-space-1);
   color: var(--asv-subtle);
 }
 
 .factCell small b {
-  margin-right: var(--asv-space-1);
   color: var(--asv-muted);
   font-weight: 650;
 }
@@ -246,6 +250,7 @@ button.danger {
 
 .assetRow {
   min-height: var(--asv-asset-row-min-height);
+  gap: var(--asv-space-3);
   padding: var(--asv-space-2) var(--asv-space-1);
   border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--asv-border) 58%, transparent);
@@ -442,7 +447,8 @@ button.danger {
   min-height: var(--asv-badge-min-height);
   padding: 0 var(--asv-space-2);
   border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-border) 46%, transparent);
+  background: color-mix(in srgb, var(--asv-border) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-border) 42%, transparent);
   color: var(--asv-muted);
   font-size: var(--asv-type-size-caption);
   white-space: nowrap;
@@ -450,11 +456,13 @@ button.danger {
 
 .badge.safe {
   background: var(--asv-color-success-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-success) 24%, transparent);
   color: var(--asv-success);
 }
 
 .badge.review {
   background: var(--asv-color-warning-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-warning) 24%, transparent);
   color: var(--asv-warning);
 }
 
@@ -464,6 +472,7 @@ button.danger {
 
 .badge.fail {
   background: var(--asv-color-danger-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-danger) 24%, transparent);
   color: var(--asv-danger);
 }
 
