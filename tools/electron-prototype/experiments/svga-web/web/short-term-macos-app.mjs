@@ -28,8 +28,10 @@ import {
   createReplaceableImageRow,
   createTextElementRow,
   hideSaveFeedbackBanner,
+  hideResourceContextMenu,
   markCompareSlotLoaded,
-  showSaveFeedbackBanner
+  showSaveFeedbackBanner,
+  showResourceContextMenu
 } from "./short-term-macos-dom-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
 import {
@@ -691,7 +693,6 @@ function openResourceContextMenu(event, imageKey) {
   if (!imageKey) return;
   selectImageKey(imageKey);
   const menu = nodes.resourceContextMenu;
-  menu.hidden = false;
   const view = resourceContextMenuView({
     clientX: event.clientX,
     clientY: event.clientY,
@@ -701,14 +702,11 @@ function openResourceContextMenu(event, imageKey) {
     viewportHeight: window.innerHeight,
     activeOutput: state.activeOutput
   });
-  menu.style.left = view.left;
-  menu.style.top = view.top;
-  menu.querySelector("[data-action='context-reset']").disabled = view.resetDisabled;
-  menu.querySelector("button:not(:disabled)")?.focus();
+  showResourceContextMenu(menu, view);
 }
 
 function closeResourceContextMenu() {
-  nodes.resourceContextMenu.hidden = true;
+  hideResourceContextMenu(nodes.resourceContextMenu);
 }
 
 function renderEditReserved() {

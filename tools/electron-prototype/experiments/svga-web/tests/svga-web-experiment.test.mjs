@@ -1182,9 +1182,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /createInlineStatusText/);
   assert.match(shortTermEntry, /createMessageRow/);
   assert.match(shortTermEntry, /createReplaceableImageRow/);
+  assert.match(shortTermEntry, /hideResourceContextMenu/);
   assert.match(shortTermEntry, /hideSaveFeedbackBanner/);
   assert.match(shortTermEntry, /markCompareSlotLoaded/);
   assert.match(shortTermEntry, /showSaveFeedbackBanner/);
+  assert.match(shortTermEntry, /showResourceContextMenu/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-command-state\.mjs"/);
   assert.match(shortTermEntry, /buildCommandState/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-compare-model\.mjs"/);
@@ -1244,6 +1246,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function applyCompareSlotView/);
   assert.match(shortTermDomRenderers, /export function markCompareSlotLoaded/);
   assert.match(shortTermDomRenderers, /export function applyCompareTraceView/);
+  assert.match(shortTermDomRenderers, /export function showResourceContextMenu/);
+  assert.match(shortTermDomRenderers, /export function hideResourceContextMenu/);
   assert.match(shortTermDomRenderers, /export function createReplaceableImageRow/);
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
   assert.match(shortTermDomRenderers, /export function createEditLayerRow/);
@@ -1300,6 +1304,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-resource-menu-model\.mjs"/);
   assert.match(shortTermEntry, /keyboardResourceMenuAnchor/);
   assert.match(shortTermEntry, /resourceContextMenuView/);
+  assert.match(shortTermEntry, /showResourceContextMenu\(menu, view\)/);
+  assert.match(shortTermEntry, /hideResourceContextMenu\(nodes\.resourceContextMenu\)/);
+  assert.doesNotMatch(shortTermEntry, /menu\.hidden = false|menu\.style\.left = view\.left|menu\.style\.top = view\.top|menu\.querySelector\("\[data-action='context-reset'\]"\)\.disabled|menu\.querySelector\("button:not\(:disabled\)"\)\?\.focus/);
+  assert.match(shortTermDomRenderers, /menu\.hidden = false/);
+  assert.match(shortTermDomRenderers, /menu\.style\.left = view\.left/);
+  assert.match(shortTermDomRenderers, /menu\.style\.top = view\.top/);
+  assert.match(shortTermDomRenderers, /menu\.querySelector\("\[data-action='context-reset'\]"\)\.disabled = view\.resetDisabled/);
+  assert.match(shortTermDomRenderers, /menu\.querySelector\("button:not\(:disabled\)"\)\?\.focus/);
   assert.doesNotMatch(shortTermEntry, /context-reset[\s\S]{0,120}activeOutput\?\.kind !== "replacement"/);
   assert.match(shortTermResourceMenuModel, /export function keyboardResourceMenuAnchor/);
   assert.match(shortTermResourceMenuModel, /export function resourceContextMenuView/);
@@ -1397,7 +1409,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /event\.key === "Escape"[\s\S]*cancelInlineRename/);
   assert.match(shortTermEntry, /openKeyboardResourceContextMenu/);
   assert.match(shortTermEntry, /nodes\.textElementList\.addEventListener\("keydown"/);
-  assert.match(shortTermEntry, /button:not\(:disabled\)/);
+  assert.match(shortTermDomRenderers, /button:not\(:disabled\)/);
   assert.match(shortTermEntry, /runtimeTextInput\.addEventListener\("keydown"/);
   assert.match(shortTermEntry, /nodes\.textDialog\.close\("confirm"\)/);
   assert.match(shortTermEntry, /nodes\.textDialog\.close\("cancel"\)/);
