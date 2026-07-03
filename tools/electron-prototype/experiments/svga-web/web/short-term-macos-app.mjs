@@ -1,4 +1,3 @@
-import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
 import {
   applyCommandState,
   applyModeButtons,
@@ -96,7 +95,6 @@ import {
   fromBase64,
   sha256Hex,
   toBase64,
-  toParserArrayBuffer,
   toUint8Array
 } from "./short-term-macos-byte-model.mjs";
 import {
@@ -117,6 +115,15 @@ import {
   hasOpenDialog,
   showDialog
 } from "./short-term-macos-dialog-model.mjs";
+import {
+  clearCanvas as clearPlaybackCanvas,
+  mountPlayback as mountSvgaPlayback,
+  replayPrimaryPlayback,
+  stopAllPlayback as stopAllSvgaPlayback,
+  stopPlayback as stopSvgaPlayback,
+  svgaWebPlayerPrototype,
+  togglePrimaryPlayback as togglePrimarySvgaPlayback
+} from "./short-term-macos-playback-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -775,60 +782,34 @@ async function enterGeneralCompare() {
 }
 
 async function mountPlayback(key, canvas, bytes, options = {}) {
-  if (!canvas || !bytes?.byteLength) return undefined;
-  stopPlayback(key);
-  const parser = new SvgaWebParser();
-  const videoItem = await parser.do(toParserArrayBuffer(bytes));
-  canvas.width = Math.max(1, Math.round(videoItem.videoSize?.width ?? videoItem.width ?? 512));
-  canvas.height = Math.max(1, Math.round(videoItem.videoSize?.height ?? videoItem.height ?? 512));
-  const player = new SvgaWebPlayer(canvas);
-  player.set({ loop: true, fillMode: FILL_MODE.FORWARDS, noExecutionDelay: false });
-  await player.mount(videoItem);
-  if (options.start !== false) player.start();
-  state[`${key}Playback`] = { player, videoItem, playing: options.start !== false };
-  renderCommandState();
-  return state[`${key}Playback`];
+  return mountSvgaPlayback({
+    key,
+    canvas,
+    bytes,
+    options,
+    playbackState: state,
+    onPlaybackStateChange: renderCommandState
+  });
 }
 
 function stopPlayback(key) {
-  const playback = state[`${key}Playback`];
-  try {
-    playback?.player?.clear?.();
-  } catch {
-    // Renderer cleanup should never block opening another local file.
-  }
-  state[`${key}Playback`] = undefined;
+  stopSvgaPlayback({ key, playbackState: state });
 }
 
 function stopAllPlayback() {
-  for (const key of ["primary", "compareA", "compareB", "edit"]) stopPlayback(key);
+  stopAllSvgaPlayback(state);
 }
 
 function togglePrimaryPlayback() {
-  const playback = state.primaryPlayback;
-  if (!playback) return;
-  if (playback.playing) {
-    playback.player.pause();
-    playback.playing = false;
-  } else {
-    playback.player.start();
-    playback.playing = true;
-  }
-  renderCommandState();
+  togglePrimarySvgaPlayback(state, renderCommandState);
 }
 
 function replayPrimary() {
-  const playback = state.primaryPlayback;
-  if (!playback) return;
-  playback.player.clear();
-  playback.player.start();
-  playback.playing = true;
-  renderCommandState();
+  replayPrimaryPlayback(state, renderCommandState);
 }
 
 function clearCanvas(canvas) {
-  const context = canvas.getContext("2d");
-  context?.clearRect(0, 0, canvas.width, canvas.height);
+  clearPlaybackCanvas(canvas);
 }
 
 function setTab(tab, options = {}) {
@@ -1685,9 +1666,10 @@ async function runShortTermSmokeIfRequested() {
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const recoverySourceSha256After = await sha256Hex(state.sourceBytes);
   const playbackFailureSourceSha256Before = await sha256Hex(state.sourceBytes);
-  const originalPlayerMount = SvgaWebPlayer.prototype.mount;
+  const playerPrototype = svgaWebPlayerPrototype();
+  const originalPlayerMount = playerPrototype.mount;
   try {
-    SvgaWebPlayer.prototype.mount = async function playbackFailureSmokeProbe() {
+    playerPrototype.mount = async function playbackFailureSmokeProbe() {
       throw new Error("播放失败：播放器挂载失败。");
     };
     await loadOpenedSource({
@@ -1696,7 +1678,7 @@ async function runShortTermSmokeIfRequested() {
       sourceId: ""
     });
   } finally {
-    SvgaWebPlayer.prototype.mount = originalPlayerMount;
+    playerPrototype.mount = originalPlayerMount;
   }
   await waitForSmokeCondition(() => state.view === "failed" && nodes.errorMessage.textContent.includes("播放失败"), 4_000);
   await waitForSmokeFrame();

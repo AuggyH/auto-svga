@@ -1031,6 +1031,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermApiClient = await readFile(path.join(experimentRoot, "web/short-term-macos-api-client.mjs"), "utf8");
   const shortTermHostClient = await readFile(path.join(experimentRoot, "web/short-term-macos-host-client.mjs"), "utf8");
   const shortTermDialogModel = await readFile(path.join(experimentRoot, "web/short-term-macos-dialog-model.mjs"), "utf8");
+  const shortTermPlaybackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-playback-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1496,6 +1497,19 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /dialogOpen: hasOpenDialog\(document\)/);
   assert.match(shortTermEntry, /closeOpenDialog\(document, "cancel"\)/);
   assert.doesNotMatch(shortTermEntry, /function showDialog|dialog\.showModal\(\)|document\.querySelector\("dialog\[open\]"\)/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);
+  assert.match(shortTermPlaybackModel, /export async function mountPlayback/);
+  assert.match(shortTermPlaybackModel, /export function stopPlayback/);
+  assert.match(shortTermPlaybackModel, /export function stopAllPlayback/);
+  assert.match(shortTermPlaybackModel, /export function togglePrimaryPlayback/);
+  assert.match(shortTermPlaybackModel, /export function replayPrimaryPlayback/);
+  assert.match(shortTermPlaybackModel, /export function clearCanvas/);
+  assert.match(shortTermPlaybackModel, /export function svgaWebPlayerPrototype/);
+  assert.match(shortTermPlaybackModel, /Parser as SvgaWebParser/);
+  assert.match(shortTermPlaybackModel, /Player as SvgaWebPlayer/);
+  assert.match(shortTermPlaybackModel, /FILL_MODE\.FORWARDS/);
+  assert.match(shortTermPlaybackModel, /toParserArrayBuffer\(bytes\)/);
+  assert.doesNotMatch(shortTermEntry, /FILL_MODE|SvgaWebParser|SvgaWebPlayer|player\.set|new SvgaWebParser|new SvgaWebPlayer|toParserArrayBuffer/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-api-client\.mjs"/);
   assert.match(shortTermApiClient, /export async function inspectShortTermSvga/);
   assert.match(shortTermApiClient, /export async function optimizeShortTermSvga/);
@@ -1662,7 +1676,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /export function resourceEntriesAreLocalOnly/);
   assert.match(shortTermEntry, /waitForCanvasPixels/);
   assert.match(shortTermApiClient, /name=invalid\.svga/);
-  assert.match(shortTermEntry, /toParserArrayBuffer/);
+  assert.match(shortTermPlaybackModel, /toParserArrayBuffer/);
   assert.match(shortTermByteModel, /view\.buffer\.slice\(view\.byteOffset, view\.byteOffset \+ view\.byteLength\)/);
   assert.match(shortTermEntry, /confirmDiscardUnsavedOutput/);
   assert.match(shortTermEntry, /renderTextElements/);
