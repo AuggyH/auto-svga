@@ -92,13 +92,32 @@ button.danger {
 }
 
 .stateCard {
+  position: relative;
   width: min(440px, 80vw);
+  overflow: hidden;
   padding: var(--asv-space-6);
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-lg);
   background: var(--asv-panel);
   box-shadow: var(--asv-shadow-panel);
   text-align: center;
+}
+
+.stateCard::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--asv-status-strip-width);
+  background: var(--asv-action);
+}
+
+.stateCard.error {
+  border-color: color-mix(in srgb, var(--asv-danger) 22%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel) 92%, var(--asv-color-danger-soft));
+}
+
+.stateCard.error::before {
+  background: var(--asv-danger);
 }
 
 .stateCard h1 {
@@ -295,6 +314,49 @@ button.danger {
 .findingRow[data-disposition="reviewOnly"] {
   border-color: color-mix(in srgb, var(--asv-warning) 24%, var(--asv-border));
   background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-warning-soft));
+}
+
+.messageRow {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto;
+  overflow: hidden;
+  padding-left: var(--asv-space-4);
+}
+
+.messageRow::before {
+  content: "";
+  position: absolute;
+  inset: var(--asv-space-2) auto var(--asv-space-2) var(--asv-space-2);
+  width: var(--asv-status-strip-width);
+  border-radius: var(--asv-status-strip-radius);
+  background: var(--asv-action);
+}
+
+.messageRow[data-status="success"] {
+  border-color: color-mix(in srgb, var(--asv-success) 24%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-success-soft));
+}
+
+.messageRow[data-status="success"]::before {
+  background: var(--asv-success);
+}
+
+.messageRow[data-status="warning"] {
+  border-color: color-mix(in srgb, var(--asv-warning) 24%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-warning-soft));
+}
+
+.messageRow[data-status="warning"]::before {
+  background: var(--asv-warning);
+}
+
+.messageRow[data-status="danger"] {
+  border-color: color-mix(in srgb, var(--asv-danger) 24%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-danger-soft));
+}
+
+.messageRow[data-status="danger"]::before {
+  background: var(--asv-danger);
 }
 
 .replaceableRow {

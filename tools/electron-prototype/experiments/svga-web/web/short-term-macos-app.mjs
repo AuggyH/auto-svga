@@ -520,6 +520,7 @@ function clearTransientOutput() {
   state.activeOutput = undefined;
   state.saveStatus = "idle";
   nodes.saveBanner.hidden = true;
+  nodes.saveBanner.removeAttribute("data-status");
   renderCommandState();
 }
 
@@ -612,7 +613,10 @@ function renderOptimization(model) {
 
 function renderOptimizationResult(model) {
   if (!model) return;
-  nodes.findingList.prepend(messageRow(model.resultTitle, model.resultSummary));
+  const tone = model.status === "optimized"
+    ? "success"
+    : model.status === "failed" ? "danger" : "warning";
+  nodes.findingList.prepend(messageRow(model.resultTitle, model.resultSummary, tone));
 }
 
 function renderReplaceables(model) {
@@ -1027,8 +1031,17 @@ function syncShortTermMenuState(snapshot) {
   bridge.updateShortTermMenuState(snapshot).catch(() => {});
 }
 
-function showSaveBanner(title, message) {
+function bannerTone(title) {
+  if (/正在/.test(title)) return "loading";
+  if (/失败|未完成|未通过/.test(title)) return "danger";
+  if (/没有|不支持|取消/.test(title)) return "warning";
+  if (/已/.test(title)) return "success";
+  return "info";
+}
+
+function showSaveBanner(title, message, tone = bannerTone(title)) {
   nodes.saveBanner.hidden = false;
+  nodes.saveBanner.dataset.status = tone;
   nodes.saveBanner.innerHTML = `<strong>${escapeHtml(title)}</strong><span> ${escapeHtml(message || "")}</span>`;
 }
 
@@ -1074,10 +1087,12 @@ function viewCopy(view) {
   }[view] || view;
 }
 
-function messageRow(title, summary) {
+function messageRow(title, summary, tone = "info") {
   const row = document.createElement("article");
-  row.className = "findingRow";
-  row.innerHTML = renderMessageRowHtml(title, summary);
+  row.className = "findingRow messageRow";
+  row.dataset.status = tone;
+  row.dataset.component = "InlineStatus";
+  row.innerHTML = renderMessageRowHtml(title, summary, tone);
   return row;
 }
 

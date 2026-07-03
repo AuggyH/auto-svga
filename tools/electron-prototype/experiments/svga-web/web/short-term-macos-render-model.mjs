@@ -38,8 +38,20 @@ export function renderOptimizationFindingHtml(item) {
   `;
 }
 
-export function renderMessageRowHtml(title, summary) {
-  return `<div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(summary || "")}</p></div><span class="badge fail">未执行</span>`;
+export function renderMessageRowHtml(title, summary, tone = "info") {
+  const badgeClass = {
+    success: "safe",
+    warning: "review",
+    danger: "fail",
+    info: ""
+  }[tone] || "";
+  const badgeCopy = {
+    success: "已生成",
+    warning: "未执行",
+    danger: "未完成",
+    info: "状态"
+  }[tone] || "状态";
+  return `<div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(summary || "")}</p></div><span class="badge ${badgeClass}">${badgeCopy}</span>`;
 }
 
 export function groupOptimizationItems(items = []) {

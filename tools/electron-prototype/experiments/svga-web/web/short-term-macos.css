@@ -92,14 +92,40 @@ body {
 }
 
 .saveBanner {
+  position: relative;
   z-index: 6;
   display: flex;
   gap: var(--asv-space-2);
   align-items: baseline;
   min-height: 38px;
-  padding: var(--asv-space-2) var(--asv-space-4);
+  padding: var(--asv-space-2) var(--asv-space-4) var(--asv-space-2) var(--asv-space-5);
   border-bottom: 1px solid var(--asv-border);
   background: var(--asv-save-banner-bg);
+}
+
+.saveBanner::before {
+  content: "";
+  position: absolute;
+  inset: var(--asv-space-2) auto var(--asv-space-2) var(--asv-space-3);
+  width: var(--asv-status-strip-width);
+  border-radius: var(--asv-status-strip-radius);
+  background: var(--asv-action);
+}
+
+.saveBanner[data-status="success"]::before {
+  background: var(--asv-success);
+}
+
+.saveBanner[data-status="warning"]::before {
+  background: var(--asv-warning);
+}
+
+.saveBanner[data-status="danger"]::before {
+  background: var(--asv-danger);
+}
+
+.saveBanner[data-status="loading"]::before {
+  background: var(--asv-action);
 }
 
 .saveBanner span {

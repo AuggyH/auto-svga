@@ -1056,6 +1056,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-launch-recent-row-height/);
   assert.match(shortTermTokens, /--asv-component-preview-gap/);
   assert.match(shortTermTokens, /--asv-playback-bar-height/);
+  assert.match(shortTermTokens, /--asv-component-status-strip-width/);
+  assert.match(shortTermTokens, /--asv-status-strip-width/);
   assert.match(shortTermTokens, /--asv-focus-inset/);
   assert.match(shortTermTokens, /prefers-color-scheme: dark/);
   assert.match(shortTermTokens, /@media \(max-height: 780px\)/);
@@ -1067,6 +1069,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.factCell/);
   assert.match(shortTermComponents, /\.assetRow/);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
+  assert.match(shortTermComponents, /\.messageRow/);
+  assert.match(shortTermComponents, /\.messageRow\[data-status="success"\]/);
+  assert.match(shortTermComponents, /\.stateCard\.error::before/);
   assert.match(shortTermComponents, /\.badge/);
   assert.match(shortTermComponents, /:focus-visible/);
   assert.match(shortTermComponents, /\.contextMenu button:disabled/);
@@ -1074,10 +1079,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermStyles, /button\.primary:disabled/);
   assert.match(shortTermStyles, /\.resultGroup/);
   assert.match(shortTermStyles, /\.tabPanel:focus-visible/);
+  assert.match(shortTermStyles, /\.saveBanner\[data-status="success"\]::before/);
+  assert.match(shortTermStyles, /\.saveBanner\[data-status="loading"\]::before/);
   assert.match(shortTermStyles, /@media \(max-height: 780px\)/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermRenderModel, /export function renderOverviewFactCellHtml/);
   assert.match(shortTermRenderModel, /export function renderOptimizationFindingHtml/);
+  assert.match(shortTermRenderModel, /export function renderMessageRowHtml\(title, summary, tone = "info"\)/);
+  assert.match(shortTermRenderModel, /success: "已生成"/);
   assert.match(shortTermRenderModel, /export function renderCompareFactCellHtml/);
   assert.match(shortTermRenderModel, /export function groupOptimizationItems/);
   assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
@@ -1174,6 +1183,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermRenderModel, /item\.count > 1/);
   assert.match(shortTermEntry, /data-optimization-actions/);
   assert.match(shortTermEntry, /data-optimization-skipped/);
+  assert.match(shortTermEntry, /function bannerTone/);
+  assert.match(shortTermEntry, /nodes\.saveBanner\.dataset\.status = tone/);
+  assert.match(shortTermEntry, /messageRow\(model\.resultTitle, model\.resultSummary, tone\)/);
+  assert.match(shortTermEntry, /row\.dataset\.component = "InlineStatus"/);
   assert.match(shortTermEntry, /comparisonVisible/);
   assert.match(shortTermEntry, /sourceBytesUnchanged/);
   assert.match(shortTermEntry, /short-term-rename-proof/);
