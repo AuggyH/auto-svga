@@ -369,6 +369,7 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     assert.match(page, /<title>Auto SVGA<\/title>/);
     assert.match(page, /data-app-state="launch"/);
     assert.match(page, /short-term-macos-app\.mjs/);
+    assert.match(page, /short-term-macos\.tokens\.css/);
     assert.match(page, /short-term-macos\.css/);
     assert.match(page, /覆盖保存/);
     assert.doesNotMatch(page, /productShellMount/);
@@ -1002,6 +1003,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermEntry = await readFile(path.join(experimentRoot, "web/short-term-macos-app.mjs"), "utf8");
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const shortTermTokens = await readFile(path.join(experimentRoot, "web/short-term-macos.tokens.css"), "utf8");
   const shortTermStyles = await readFile(path.join(experimentRoot, "web/short-term-macos.css"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
@@ -1026,16 +1028,19 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /data-component="WindowToolbar"/);
   assert.match(page, /role="tablist"/);
   assert.match(page, /aria-selected="true"/);
+  assert.match(page, /short-term-macos\.tokens\.css/);
   assert.doesNotMatch(page, /id="compareFileInput"/);
   assert.doesNotMatch(page, /id="renameDialog"|id="renameInput"|id="renameHint"/);
   assert.match(page, /短期版仅保留图层查看/);
   assert.doesNotMatch(page, /productShellMount|desktop-product-entry\.mjs|prototype\.js/);
   assert.doesNotMatch(page, /导出验收|序列修复|批量 PNG|Export Acceptance/);
   assert.doesNotMatch(page, /brandMark/);
-  assert.match(shortTermStyles, /--asv-window/);
-  assert.match(shortTermStyles, /--asv-color-window/);
+  assert.match(shortTermTokens, /--asv-window/);
+  assert.match(shortTermTokens, /--asv-color-window/);
+  assert.match(shortTermTokens, /--asv-color-surface-window/);
+  assert.match(shortTermTokens, /--asv-component-toolbar-height/);
+  assert.match(shortTermTokens, /prefers-color-scheme: dark/);
   assert.match(shortTermStyles, /\[hidden\]\s*\{\s*display: none !important;/);
-  assert.match(shortTermStyles, /prefers-color-scheme: dark/);
   assert.match(shortTermStyles, /:focus-visible/);
   assert.match(shortTermStyles, /button\.primary:disabled/);
   assert.match(shortTermStyles, /\.resultGroup/);
