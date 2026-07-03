@@ -94,6 +94,11 @@ an interchangeable layer model. Treat its fusion/replacement data as
 format-specific metadata. Do not promise VAP export until an encoder,
 redistribution model, and desktop playback path are approved.
 
+Research note: `docs/research/vap-official-repository-research.md` records the
+2026-07-04 official Tencent VAP repository findings, including the stopped
+upstream maintenance state, `vapc` config model, fusion-mask semantics, 1504
+compatibility limit, and follow-up work package candidates.
+
 #### Lottie
 
 Lottie contains vector, text, shape, mask, expression, and external asset
@@ -304,6 +309,10 @@ Primary references checked on 2026-06-13:
 - <https://github.com/Tencent/vap>
 - <https://github.com/photopea/UPNG.js>
 - <https://ffmpeg.org/legal.html>
+
+Additional VAP-specific research checked on 2026-07-04:
+
+- `docs/research/vap-official-repository-research.md`
 
 FFmpeg is the highest distribution risk. The current MP4 preview command uses
 `libx264`, which the FFmpeg legal checklist identifies as GPL-related. Do not
