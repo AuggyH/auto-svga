@@ -571,7 +571,9 @@ async function editRuntimeText() {
   }
   nodes.runtimeTextInput.value = runtimeTextInputValue(state.textPreview);
   nodes.runtimeTextInput.placeholder = runtimeTextPlaceholder(textElement);
-  const result = await showDialog(nodes.textDialog, renderCommandState);
+  const result = await showDialog(nodes.textDialog, renderCommandState, {
+    initialFocus: nodes.runtimeTextInput
+  });
   if (result !== "confirm") return;
   state.textPreview = nodes.runtimeTextInput.value.trim();
   applyRuntimeTextOverlay(
@@ -1291,9 +1293,11 @@ async function runShortTermSmokeIfRequested() {
   const designerRuntimeTextKeys = (state.model?.replaceableElements?.texts ?? []).map((item) => item.textKey);
   const designerImageAssetCount = (state.model?.assets ?? []).filter((asset) => asset.kind === "image").length;
   const runtimeTextSourceSha256Before = await sha256Hex(state.sourceBytes);
+  nodes.editTextButton.focus();
   const runtimeTextEditPromise = editRuntimeText();
   await waitForSmokeCondition(() => Boolean(nodes.textDialog.open), 2_000);
   const runtimeTextModalOpened = Boolean(nodes.textDialog.open);
+  const runtimeTextInitialFocusInput = document.activeElement === nodes.runtimeTextInput;
   const runtimeTextModalPlaybackBeforeSpace = state.primaryPlayback?.playing === true;
   nodes.textDialog.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
   await waitForSmokeFrame();
@@ -1301,6 +1305,7 @@ async function runShortTermSmokeIfRequested() {
   nodes.runtimeTextInput.value = "SVGA VIP";
   nodes.textDialog.close("confirm");
   await runtimeTextEditPromise;
+  const runtimeTextFocusReturnedAfterClose = document.activeElement === nodes.editTextButton;
   await waitForSmokeCondition(() => !nodes.runtimeTextOverlay.hidden && nodes.runtimeTextOverlay.textContent.includes("SVGA VIP"), 2_000);
   await waitForSmokeFrame();
   const runtimeTextSourceSha256AfterApply = await sha256Hex(state.sourceBytes);
@@ -1313,6 +1318,8 @@ async function runShortTermSmokeIfRequested() {
   const runtimeTextSourceSha256AfterReset = await sha256Hex(state.sourceBytes);
   const shortTermRuntimeTextBoundaryProof = collectShortTermRuntimeTextBoundaryProof({
     editApplied: runtimeTextApplied,
+    focusReturnedAfterClose: runtimeTextFocusReturnedAfterClose,
+    initialFocusInput: runtimeTextInitialFocusInput,
     modalSpaceSuppressed: runtimeTextModalPlaybackAfterSpace === runtimeTextModalPlaybackBeforeSpace,
     modalOpened: runtimeTextModalOpened,
     resetClearedOverlay: nodes.runtimeTextOverlay.hidden && !nodes.runtimeTextOverlay.textContent.trim(),

@@ -112,6 +112,8 @@ export function collectShortTermThumbnailProof({ assetList, noAudioCopy, ordinar
 
 export function collectShortTermRuntimeTextBoundaryProof({
   editApplied,
+  focusReturnedAfterClose,
+  initialFocusInput,
   modalSpaceSuppressed,
   modalOpened,
   resetClearedOverlay,
@@ -132,6 +134,8 @@ export function collectShortTermRuntimeTextBoundaryProof({
     textElementsDiscovered: textKeys.length,
     textKeys,
     modalOpened,
+    initialFocusInput,
+    focusReturnedAfterClose,
     modalSpaceSuppressed,
     editApplied,
     runtimeOverlayVisibleAfterApply: runtimeOverlayCopy.includes("SVGA VIP"),
@@ -153,6 +157,8 @@ export function collectShortTermRuntimeTextBoundaryProof({
     proof.textElementsDiscovered > 0,
     proof.textKeys.includes("nickname_text"),
     proof.modalOpened,
+    proof.initialFocusInput,
+    proof.focusReturnedAfterClose,
     proof.modalSpaceSuppressed,
     proof.editApplied,
     proof.runtimeOverlayVisibleAfterApply,

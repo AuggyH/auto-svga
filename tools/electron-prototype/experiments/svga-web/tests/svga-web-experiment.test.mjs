@@ -1618,8 +1618,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDialogModel, /export function showDialog/);
   assert.match(shortTermDialogModel, /export async function confirmDiscardUnsavedOutput/);
   assert.match(shortTermDialogModel, /dialog\.showModal\(\)/);
+  assert.match(shortTermDialogModel, /function focusInitialDialogElement/);
+  assert.match(shortTermDialogModel, /options\.initialFocus/);
+  assert.match(shortTermDialogModel, /returnFocus\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(shortTermDialogModel, /querySelector\("dialog\[open\]"\)/);
   assert.match(shortTermEntry, /dialogOpen: hasOpenDialog\(document\)/);
+  assert.match(shortTermEntry, /showDialog\(nodes\.textDialog, renderCommandState, \{\s*initialFocus: nodes\.runtimeTextInput\s*\}\)/s);
   assert.match(shortTermEntry, /if \(hasOpenDialog\(document\)\) \{\s+if \(event\.key === "Escape"\) closeOpenDialog\(document, "cancel"\);\s+return;\s+\}/);
   assert.match(shortTermEntry, /closeOpenDialog\(document, "cancel"\)/);
   assert.doesNotMatch(shortTermEntry, /function showDialog|dialog\.showModal\(\)|document\.querySelector\("dialog\[open\]"\)/);
@@ -1674,6 +1678,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /runtimeTextInput\.addEventListener\("keydown"/);
   assert.match(shortTermEntry, /nodes\.textDialog\.close\("confirm"\)/);
   assert.match(shortTermEntry, /nodes\.textDialog\.close\("cancel"\)/);
+  assert.match(shortTermSmokeProofModel, /initialFocusInput/);
+  assert.match(shortTermSmokeProofModel, /focusReturnedAfterClose/);
+  assert.match(shortTermEntry, /const runtimeTextInitialFocusInput = document\.activeElement === nodes\.runtimeTextInput/);
+  assert.match(shortTermEntry, /const runtimeTextFocusReturnedAfterClose = document\.activeElement === nodes\.editTextButton/);
   assert.doesNotMatch(shortTermEntry, /renameDialog|renameHint/);
   assert.doesNotMatch(shortTermEntry, /mountPlayback\("edit"[\s\S]{0,120}start:\s*false/);
   assert.match(shortTermEntry, /saveShortTermSvgaOutput/);
