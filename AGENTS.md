@@ -207,6 +207,16 @@ Before modifying owner-visible UI:
 9. Chinese labels are primary; English appears only for traceability where
    useful.
 10. Do not create duplicate one-off menu, button, row, or panel systems.
+11. For desktop UI/UX judgment, use real foreground desktop-client screenshots
+    that include the macOS menu bar, native titlebar/window chrome, and actual
+    foreground state. Smoke screenshots are functional evidence, not primary
+    visual/experience evidence.
+12. When launching the desktop client for UI/UX review, place it on the second
+    display when available so the owner's main display is not interrupted.
+13. For SVGA open/playback/editing UI review, test multiple real owner-provided
+    production materials from `/Users/huangtengxin/Downloads/auto-svga测试物料`
+    when available. Do not rely only on fixtures; cover varied file size,
+    estimated memory, resource count, and replaceability conditions.
 
 ## Agent Handoff
 

@@ -17,6 +17,11 @@
   --asv-color-success: #248a3d;
   --asv-color-warning: #b26a00;
   --asv-color-danger: #d70015;
+  --asv-color-canvas-checker: rgba(60, 60, 67, 0.032);
+  --asv-color-info-soft: rgba(10, 132, 255, 0.12);
+  --asv-color-success-soft: rgba(36, 138, 61, 0.12);
+  --asv-color-warning-soft: rgba(178, 106, 0, 0.14);
+  --asv-color-danger-soft: rgba(215, 0, 21, 0.14);
   --asv-window: var(--asv-color-window);
   --asv-toolbar: var(--asv-color-toolbar);
   --asv-panel: var(--asv-color-panel);
@@ -44,6 +49,7 @@
   --asv-space-5: 20px;
   --asv-space-6: 24px;
   --asv-toolbar-height: 54px;
+  --asv-window-controls-width: 78px;
   --asv-control-height: 30px;
   --asv-row-height: 52px;
   --asv-thumb-size: 44px;
@@ -63,6 +69,11 @@
     --asv-color-text-subtle: #8e8e93;
     --asv-color-border: rgba(235, 235, 245, 0.14);
     --asv-color-border-strong: rgba(235, 235, 245, 0.24);
+    --asv-color-canvas-checker: rgba(235, 235, 245, 0.018);
+    --asv-color-info-soft: rgba(10, 132, 255, 0.18);
+    --asv-color-success-soft: rgba(48, 209, 88, 0.16);
+    --asv-color-warning-soft: rgba(255, 214, 10, 0.15);
+    --asv-color-danger-soft: rgba(255, 69, 58, 0.16);
     --asv-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.34);
     --asv-shadow-floating: 0 18px 44px rgba(0, 0, 0, 0.32);
   }
@@ -146,6 +157,7 @@ button.danger {
 }
 
 .macApp {
+  position: relative;
   display: grid;
   width: 100vw;
   height: 100vh;
@@ -153,11 +165,35 @@ button.danger {
   grid-template-rows: var(--asv-toolbar-height) auto 1fr;
 }
 
+.macApp[data-app-state="launch"],
+.macApp[data-app-state="loading"],
+.macApp[data-app-state="failed"] {
+  grid-template-rows: 1fr;
+}
+
+.macApp[data-app-state="launch"] .titlebar,
+.macApp[data-app-state="loading"] .titlebar,
+.macApp[data-app-state="failed"] .titlebar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 8;
+  border-bottom: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.macApp[data-app-state="launch"] .titlebar > :not(.windowControlSpace),
+.macApp[data-app-state="loading"] .titlebar > :not(.windowControlSpace),
+.macApp[data-app-state="failed"] .titlebar > :not(.windowControlSpace) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .titlebar {
   -webkit-app-region: drag;
   display: grid;
   align-items: center;
-  grid-template-columns: 72px auto auto auto minmax(160px, 1fr) auto auto;
+  grid-template-columns: var(--asv-window-controls-width) auto auto auto minmax(160px, 1fr) auto auto;
   gap: var(--asv-space-2);
   min-height: var(--asv-toolbar-height);
   padding: 0 var(--asv-space-4);
@@ -171,21 +207,12 @@ button.danger {
   -webkit-app-region: no-drag;
 }
 
-.trafficLights {
-  display: flex;
-  gap: 8px;
-  padding-left: 8px;
+.windowControlSpace {
+  width: var(--asv-window-controls-width);
+  min-width: var(--asv-window-controls-width);
+  height: 100%;
+  pointer-events: none;
 }
-
-.trafficLights span {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.trafficLights span:nth-child(1) { background: #ff5f57; }
-.trafficLights span:nth-child(2) { background: #febc2e; }
-.trafficLights span:nth-child(3) { background: #28c840; }
 
 .toolbarButton {
   padding: 0 var(--asv-space-3);
@@ -254,37 +281,41 @@ button.danger {
   overflow: auto;
 }
 
+.launchView {
+  padding: 0;
+  background: var(--asv-window);
+}
+
 .launchCanvas {
   display: grid;
   align-content: center;
   justify-items: center;
-  width: min(760px, 72vw);
-  min-height: min(520px, calc(100vh - 150px));
-  padding: var(--asv-space-6);
-  border: 1px dashed var(--asv-border-strong);
-  border-radius: var(--asv-radius-lg);
+  width: 100%;
+  min-height: 100%;
+  padding: calc(var(--asv-toolbar-height) + var(--asv-space-6)) var(--asv-space-6) var(--asv-space-6);
+  border: 0;
+  border-radius: 0;
   background:
-    linear-gradient(45deg, color-mix(in srgb, var(--asv-canvas) 94%, white 6%) 25%, transparent 25%),
-    linear-gradient(-45deg, color-mix(in srgb, var(--asv-canvas) 94%, white 6%) 25%, transparent 25%),
+    conic-gradient(from 45deg, var(--asv-color-canvas-checker) 25%, transparent 0 50%, var(--asv-color-canvas-checker) 0 75%, transparent 0),
     var(--asv-canvas);
-  background-size: 22px 22px;
-  box-shadow: var(--asv-shadow-panel);
+  background-size: 20px 20px;
+  box-shadow: none;
 }
 
 .launchCanvas.isDragOver {
   border-color: var(--asv-action);
-  box-shadow: var(--asv-focus), var(--asv-shadow-panel);
+  box-shadow: inset 0 0 0 2px var(--asv-action);
 }
 
 .launchPrompt {
   display: grid;
   justify-items: center;
-  gap: var(--asv-space-2);
+  gap: var(--asv-space-3);
 }
 
 .launchPrompt p {
   margin: 0;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 650;
 }
 
@@ -295,13 +326,13 @@ button.danger {
 
 .largeOpenButton {
   min-width: 120px;
-  min-height: 34px;
+  min-height: 36px;
   padding: 0 var(--asv-space-5);
 }
 
 .recentBlock {
-  width: min(520px, 100%);
-  margin-top: var(--asv-space-5);
+  width: min(460px, 100%);
+  margin-top: var(--asv-space-6);
   color: var(--asv-muted);
 }
 
@@ -324,6 +355,10 @@ button.danger {
 
 .recentHeader button {
   min-height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--asv-muted);
+  font-weight: 520;
 }
 
 .recentBlock ol {
@@ -332,7 +367,7 @@ button.danger {
   margin: var(--asv-space-2) 0 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--asv-border);
+  border-top: 1px solid color-mix(in srgb, var(--asv-border) 58%, transparent);
 }
 
 .recentBlock li {
@@ -341,7 +376,7 @@ button.danger {
   gap: var(--asv-space-3);
   align-items: center;
   min-height: 34px;
-  border-bottom: 1px solid var(--asv-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--asv-border) 58%, transparent);
 }
 
 .recentBlock li button {
@@ -412,7 +447,7 @@ button.danger {
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-md);
   background: var(--asv-panel);
-  box-shadow: var(--asv-shadow-panel);
+  box-shadow: none;
 }
 
 .previewStagePanel {
@@ -429,8 +464,7 @@ button.danger {
   min-height: 0;
   overflow: hidden;
   background:
-    linear-gradient(45deg, color-mix(in srgb, var(--asv-canvas) 92%, white 8%) 25%, transparent 25%),
-    linear-gradient(-45deg, color-mix(in srgb, var(--asv-canvas) 92%, white 8%) 25%, transparent 25%),
+    conic-gradient(from 45deg, var(--asv-color-canvas-checker) 25%, transparent 0 50%, var(--asv-color-canvas-checker) 0 75%, transparent 0),
     var(--asv-canvas);
   background-size: 18px 18px;
 }
@@ -476,24 +510,25 @@ canvas {
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--asv-space-2);
-  padding: var(--asv-space-3) var(--asv-space-3) var(--asv-space-1);
+  gap: 2px;
+  padding: var(--asv-space-2);
   border-bottom: 1px solid var(--asv-border);
+  background: color-mix(in srgb, var(--asv-canvas) 52%, transparent);
 }
 
 .tabs button {
   min-height: 32px;
   padding: 0 var(--asv-space-1);
   border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
+  border-radius: var(--asv-radius-sm);
   background: transparent;
   color: var(--asv-muted);
   font-weight: 540;
 }
 
 .tabs button.isSelected {
-  border-bottom-color: var(--asv-action);
+  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-action) 8%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-border-strong) 70%, transparent);
   color: var(--asv-text);
   font-weight: 650;
 }
@@ -508,20 +543,50 @@ canvas {
 .factGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: var(--asv-space-4);
+  gap: var(--asv-space-2);
 }
 
 .factCell {
+  position: relative;
   min-width: 0;
-  padding: var(--asv-space-2) 0;
-  border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--asv-border) 72%, transparent);
-  background: transparent;
+  padding: var(--asv-space-2) var(--asv-space-2) var(--asv-space-2) var(--asv-space-3);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 82%, transparent);
+  border-radius: var(--asv-radius-sm);
+  background: color-mix(in srgb, var(--asv-panel-strong) 58%, transparent);
 }
 
 .factCell:nth-child(5) {
-  grid-column: 1 / -1;
-  border-bottom: 0;
+  grid-column: auto;
+}
+
+.factCell::before {
+  content: "";
+  position: absolute;
+  inset: var(--asv-space-2) auto var(--asv-space-2) var(--asv-space-2);
+  width: 3px;
+  border-radius: 999px;
+  background: var(--asv-border-strong);
+}
+
+.factCell[data-status="pass"]::before {
+  background: var(--asv-success);
+}
+
+.factCell[data-status="warning"] {
+  background: color-mix(in srgb, var(--asv-panel-strong) 70%, var(--asv-color-warning-soft));
+}
+
+.factCell[data-status="warning"]::before {
+  background: var(--asv-warning);
+}
+
+.factCell[data-status="fail"] {
+  border-color: color-mix(in srgb, var(--asv-danger) 36%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 70%, var(--asv-color-danger-soft));
+}
+
+.factCell[data-status="fail"]::before {
+  background: var(--asv-danger);
 }
 
 .factCell strong {
@@ -541,6 +606,20 @@ canvas {
   display: block;
   margin-top: var(--asv-space-1);
   color: var(--asv-subtle);
+}
+
+.factCell small b {
+  margin-right: var(--asv-space-1);
+  color: var(--asv-muted);
+  font-weight: 650;
+}
+
+.factCell[data-status="warning"] small b {
+  color: var(--asv-warning);
+}
+
+.factCell[data-status="fail"] small b {
+  color: var(--asv-danger);
 }
 
 .resultGroup {
@@ -607,14 +686,24 @@ canvas {
   align-items: center;
   min-height: var(--asv-row-height);
   padding: var(--asv-space-2);
-  border: 1px solid var(--asv-border);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 78%, transparent);
   border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-panel-strong) 74%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 52%, transparent);
 }
 
 .findingRow {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: start;
+}
+
+.findingRow[data-disposition="safeExecutable"] {
+  border-color: color-mix(in srgb, var(--asv-success) 32%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 70%, var(--asv-color-success-soft));
+}
+
+.findingRow[data-disposition="reviewOnly"] {
+  border-color: color-mix(in srgb, var(--asv-warning) 30%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 72%, var(--asv-color-warning-soft));
 }
 
 .replaceableRow {
@@ -642,7 +731,7 @@ canvas {
 .textElementRow.isSelected,
 .textElementRow:focus-visible {
   border-color: var(--asv-border-strong);
-  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-action) 6%);
+  background: color-mix(in srgb, var(--asv-panel-strong) 82%, var(--asv-color-info-soft));
 }
 
 .replaceableRow:focus-visible,
@@ -687,6 +776,29 @@ canvas {
   background: var(--asv-panel);
   color: var(--asv-text);
   font: inherit;
+}
+
+.rowMenuButton {
+  height: 24px;
+  padding: 0 var(--asv-space-2);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 78%, transparent);
+  border-radius: var(--asv-radius-sm);
+  background: color-mix(in srgb, var(--asv-panel-strong) 68%, transparent);
+  color: var(--asv-muted);
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.rowMenuButton:hover,
+.rowMenuButton:focus-visible {
+  border-color: var(--asv-border-strong);
+  color: var(--asv-text);
+}
+
+.rowMenuButton:focus-visible {
+  outline: none;
+  box-shadow: var(--asv-focus);
 }
 
 .thumb {
@@ -749,6 +861,14 @@ canvas {
   font-size: 12px;
 }
 
+.findingImpact {
+  align-self: center;
+  color: var(--asv-muted);
+  font-family: var(--asv-type-mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .badge {
   padding: 2px 7px;
   border-radius: var(--asv-radius-sm);
@@ -758,10 +878,21 @@ canvas {
   white-space: nowrap;
 }
 
-.badge.safe { color: var(--asv-success); }
-.badge.review { color: var(--asv-warning); }
+.badge.safe {
+  background: var(--asv-color-success-soft);
+  color: var(--asv-success);
+}
+
+.badge.review {
+  background: var(--asv-color-warning-soft);
+  color: var(--asv-warning);
+}
 .badge.unsupported { color: var(--asv-muted); }
-.badge.fail { color: var(--asv-danger); }
+
+.badge.fail {
+  background: var(--asv-color-danger-soft);
+  color: var(--asv-danger);
+}
 
 .sectionHead {
   display: flex;
@@ -914,6 +1045,17 @@ canvas {
   }
 }
 
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --asv-color-toolbar: var(--asv-color-panel-strong);
+    --asv-color-panel: var(--asv-color-panel-strong);
+  }
+
+  .titlebar {
+    backdrop-filter: none;
+  }
+}
+
 @media (max-width: 1080px) {
   :root {
     --asv-inspector-width: 360px;
@@ -921,7 +1063,7 @@ canvas {
   }
 
   .titlebar {
-    grid-template-columns: 72px auto auto auto minmax(84px, 1fr) auto auto;
+    grid-template-columns: var(--asv-window-controls-width) auto auto auto minmax(84px, 1fr) auto auto;
   }
 
   .previewView,

@@ -29,6 +29,7 @@ const normalVisibleStartupMode = !(smokeMode || auditMode || normalProofMode);
 const appRoot = app.getAppPath();
 const repoRoot = path.resolve(appRoot, "../../../..");
 const productIdentity = "auto-svga";
+const productDisplayName = "Auto SVGA";
 const hostMenuActions = Object.freeze([
   "open-primary-svga",
   "open-secondary-svga",
@@ -5263,12 +5264,18 @@ async function createExperimentWindow() {
   const launchBounds = chooseMacosWorkbenchWindowBounds();
 
   const window = new BrowserWindow({
-    title: productIdentity,
+    title: productDisplayName,
     ...(smokeMode ? { x: -20000, y: -20000 } : { x: launchBounds.x, y: launchBounds.y }),
     width: launchBounds.width,
     height: launchBounds.height,
     minWidth: macosWorkbenchWindowSizing.minimumSupported.width,
     minHeight: macosWorkbenchWindowSizing.minimumSupported.height,
+    ...(process.platform === "darwin"
+      ? {
+          titleBarStyle: "hiddenInset",
+          trafficLightPosition: { x: 14, y: 18 }
+        }
+      : {}),
     show: false,
     paintWhenInitiallyHidden: true,
     webPreferences: {

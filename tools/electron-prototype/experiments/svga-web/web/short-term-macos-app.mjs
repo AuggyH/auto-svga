@@ -542,7 +542,7 @@ function renderFacts(model) {
     cell.innerHTML = `
       <strong>${escapeHtml(fact.value)}</strong>
       <span>${escapeHtml(fact.label)}</span>
-      <small>${escapeHtml(fact.requirement)} · ${statusCopy(fact.status)}</small>
+      <small><b>${escapeHtml(statusCopy(fact.status))}</b>${escapeHtml(fact.requirement)}</small>
     `;
     return cell;
   }));
@@ -558,14 +558,20 @@ function renderAssets(model) {
     const row = document.createElement("article");
     row.className = "assetRow";
     row.dataset.component = asset.kind === "sequence" ? "SequenceThumbnail" : asset.kind === "audio" ? "AudioAssetRow" : "AssetRow";
+    row.dataset.kind = asset.kind;
+    row.dataset.attention = asset.findingCodes.length > 0 ? "true" : "false";
     const detail = asset.kind === "audio" && model.overview.audioGroup.status === "empty"
       ? model.overview.audioGroup.copy
       : `${asset.dimensions} · ${asset.fileSize} · ${asset.usageCount} 次引用`;
+    const badgeCopy = asset.findingCodes.length > 0
+      ? "需关注"
+      : asset.kind === "sequence" ? "序列" : asset.kind === "audio" ? "音频" : asset.replaceable ? "可替换" : "图片";
+    const badgeClass = asset.findingCodes.length > 0 ? " review" : "";
     row.title = `${asset.name} ${detail}`;
     row.innerHTML = `
       <span class="thumb ${asset.kind === "sequence" ? "sequence" : asset.kind === "audio" ? "audio" : ""}">${renderThumbnail(asset.thumbnail)}</span>
       <span class="rowText"><strong>${escapeHtml(asset.name)}</strong><span>${escapeHtml(detail)}</span></span>
-      <span class="badge">${asset.kind === "sequence" ? "序列" : asset.kind === "audio" ? "音频" : asset.replaceable ? "可替换" : "图片"}</span>
+      <span class="badge${badgeClass}">${escapeHtml(badgeCopy)}</span>
     `;
     return row;
   });
@@ -575,15 +581,33 @@ function renderAssets(model) {
 function renderOptimization(model) {
   if (!model) return;
   nodes.optimizationSummary.textContent = `${model.safeExecutableCount} 项可安全执行，${model.reviewOnlyCount} 项需复核，${model.unsupportedCount} 项暂不支持。`;
-  document.querySelector("[data-action='run-optimization']").disabled = !model.batchActionEnabled;
-  nodes.findingList.replaceChildren(...groupOptimizationItems(model.items).map((item) => {
+  const runButton = document.querySelector("[data-action='run-optimization']");
+  runButton.textContent = "一键优化";
+  runButton.title = model.batchActionEnabled
+    ? "批量执行当前可安全执行的优化项"
+    : "没有可安全执行的优化项";
+  runButton.disabled = !model.batchActionEnabled;
+  const groupedItems = groupOptimizationItems(model.items);
+  if (groupedItems.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "emptyText";
+    empty.textContent = "没有可一键优化的安全项。若总览存在超标，请按规格复核或等待后续支持。";
+    nodes.findingList.replaceChildren(empty);
+    return;
+  }
+  nodes.findingList.replaceChildren(...groupedItems.map((item) => {
     const row = document.createElement("article");
     row.className = "findingRow";
     row.dataset.component = "OptimizationFindingRow";
+    row.dataset.disposition = item.disposition;
     row.title = `${item.title}: ${item.summary}`;
     const countCopy = item.count > 1 ? ` · ${item.count} 项` : "";
+    const impactCopy = item.estimatedFileSizeImpact && item.estimatedFileSizeImpact !== "-"
+      ? item.estimatedFileSizeImpact
+      : item.estimatedDecodedMemoryImpact;
     row.innerHTML = `
-      <div><strong>${escapeHtml(item.title)}${escapeHtml(countCopy)}</strong><p>${escapeHtml(item.summary)} ${escapeHtml(item.estimatedFileSizeImpact)}</p></div>
+      <div><strong>${escapeHtml(item.title)}${escapeHtml(countCopy)}</strong><p>${escapeHtml(item.summary)}</p></div>
+      <span class="findingImpact">${escapeHtml(impactCopy || "-")}</span>
       <span class="badge ${item.disposition === "safeExecutable" ? "safe" : item.disposition === "reviewOnly" ? "review" : "unsupported"}">${dispositionCopy(item.disposition)}</span>
     `;
     return row;
@@ -645,7 +669,7 @@ function renderReplaceables(model) {
       row.innerHTML = `
         <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
         <span class="rowText"><strong>${escapeHtml(item.imageKey)}</strong><span>${escapeHtml(item.dimensions)} · ${escapeHtml(item.fileSize)}</span></span>
-        <span class="badge">imageKey</span>
+        <button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(item.imageKey)} 操作">操作</button>
       `;
     }
     return row;
@@ -1188,6 +1212,13 @@ document.addEventListener("click", (event) => {
   if (action === "save-overwrite") saveActiveOutput("overwrite").catch(showFailure);
   if (action === "open-compare-b") openCompareBFromHost().catch(showFailure);
   if (action === "select-resource") selectImageKey(target.dataset.imageKey || state.selectedImageKey);
+  if (action === "row-menu") {
+    const rect = target.getBoundingClientRect();
+    openResourceContextMenu({
+      clientX: rect.right,
+      clientY: rect.bottom
+    }, target.dataset.imageKey || state.selectedImageKey);
+  }
   if (action === "select-text") selectTextKey(target.dataset.textKey || state.selectedTextKey);
   if (action === "inline-rename-confirm") confirmInlineRename().catch(showFailure);
   if (action === "inline-rename-cancel") cancelInlineRename();
