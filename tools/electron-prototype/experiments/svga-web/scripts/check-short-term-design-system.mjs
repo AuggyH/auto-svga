@@ -32,6 +32,7 @@ const allowedDynamicDomModules = new Set([
   "short-term-macos-launch-renderers.mjs",
   "short-term-macos-optimization-renderers.mjs",
   "short-term-macos-overview-renderers.mjs",
+  "short-term-macos-replaceable-renderers.mjs",
   "short-term-macos-save-renderers.mjs"
 ]);
 

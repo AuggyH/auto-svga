@@ -1,0 +1,84 @@
+import { escapeHtml } from "./short-term-macos-render-model.mjs";
+import { createInlineStatusText } from "./short-term-macos-inline-status-renderers.mjs";
+import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
+
+export function createReplaceableImageRow(item, index, options) {
+  const row = document.createElement("article");
+  row.className = "replaceableRow";
+  row.tabIndex = 0;
+  row.dataset.action = "select-resource";
+  row.dataset.component = "ReplaceableImageRow";
+  row.dataset.imageKey = item.imageKey;
+  row.setAttribute("role", "option");
+  row.classList.toggle("isSelected", options.selected);
+  row.classList.toggle("isRenaming", options.renaming);
+  row.setAttribute("aria-selected", options.selected ? "true" : "false");
+  row.title = `${item.imageKey} ${item.dimensions} ${item.fileSize}`;
+  if (options.renaming) {
+    row.innerHTML = `
+      <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
+      <span class="thumb">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
+      <label class="rowText renameEditor">新 imageKey
+        <input class="renameInputInline" data-rename-input value="${escapeHtml(item.imageKey)}" autocomplete="off">
+        <span>Enter 确认 · Esc 取消</span>
+      </label>
+      <span class="inlineActions">
+        <button type="button" data-action="inline-rename-confirm">确认</button>
+        <button type="button" data-action="inline-rename-cancel">取消</button>
+      </span>
+    `;
+  } else {
+    row.innerHTML = `
+      <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
+      <span class="thumb">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
+      <span class="rowText"><strong>${escapeHtml(item.imageKey)}</strong><span>${escapeHtml(item.dimensions)} · ${escapeHtml(item.fileSize)}</span></span>
+      <button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(item.imageKey)} 操作">操作</button>
+    `;
+  }
+  return row;
+}
+
+export function renderReplaceableImages(nodes, view, model) {
+  nodes.replaceableSummary.textContent = view.summaryCopy;
+  if (!view.hasImages) {
+    nodes.replaceableList.replaceChildren(createInlineStatusText(view.emptyCopy));
+    return;
+  }
+  nodes.replaceableList.replaceChildren(...view.rows.map((row) => createReplaceableImageRow(row.item, row.index, {
+    model,
+    selected: row.selected,
+    renaming: row.renaming
+  })));
+}
+
+export function createTextElementRow(item, index, options) {
+  const row = document.createElement("article");
+  row.className = "textElementRow";
+  row.tabIndex = 0;
+  row.dataset.action = "select-text";
+  row.dataset.component = "ReplaceableTextRow";
+  row.dataset.textKey = item.textKey;
+  row.setAttribute("role", "option");
+  row.classList.toggle("isSelected", options.selected);
+  row.setAttribute("aria-selected", options.selected ? "true" : "false");
+  row.title = `${item.displayName || item.textKey}: ${item.initialText || item.textKey}`;
+  row.innerHTML = `
+    <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
+    <span class="rowText"><strong>${escapeHtml(item.displayName || item.textKey)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
+    <span class="badge">文本</span>
+  `;
+  return row;
+}
+
+export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
+  nodes.textPreviewSummary.textContent = view.summaryCopy;
+  nodes.editTextButton.hidden = !view.hasTextElements;
+  nodes.resetTextButton.hidden = !view.hasTextElements;
+  if (!view.hasTextElements) {
+    nodes.textElementList.replaceChildren(createInlineStatusText(view.emptyCopy));
+    return;
+  }
+  nodes.textElementList.replaceChildren(...view.texts.map((item, index) => createTextElementRow(item, index, {
+    selected: item.textKey === selectedTextKey
+  })));
+}

@@ -49,13 +49,15 @@ import {
   showResourceContextMenu
 } from "./short-term-macos-resource-menu-renderers.mjs";
 import {
+  renderReplaceableImages,
+  renderRuntimeTextElements
+} from "./short-term-macos-replaceable-renderers.mjs";
+import {
   applyRuntimeTextOverlay,
   clearRuntimeTextOverlay
 } from "./short-term-macos-text-renderers.mjs";
 import {
-  renderEditReservedLayers,
-  renderReplaceableImages,
-  renderRuntimeTextElements
+  renderEditReservedLayers
 } from "./short-term-macos-dom-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
 import {
