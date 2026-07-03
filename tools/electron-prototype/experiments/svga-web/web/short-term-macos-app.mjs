@@ -93,6 +93,8 @@ import {
   collectShortTermOptimizationProof,
   collectShortTermRenameProof,
   collectShortTermReplacementProof,
+  collectShortTermOpenFlowProof,
+  collectShortTermLoadFailureProof,
   createSmokeArtifactCapture,
   reportShortTermSmokeFailure,
   resourceEntriesAreLocalOnly,
@@ -1420,30 +1422,16 @@ async function runShortTermSmokeIfRequested() {
   const auditPanelVisible = Boolean(nodes.factGrid.children.length > 0);
   const dragDropLoaded = state.displayName === file.name;
   const playerLifecycleOk = Boolean(state.primaryPlayback);
-  const shortTermOpenFlowProof = {
-    schemaVersion: 1,
-    proofId: "short-term-open-flow-proof",
-    source: "short-term-smoke",
-    prdIds: ["S1"],
-    fixtureName: file.name,
-    fixtureSha256: await sha256Hex(fixtureBytes),
-    sourceSizeBytes: fixtureBytes.byteLength,
-    dragDropAttempted: true,
+  const shortTermOpenFlowProof = collectShortTermOpenFlowProof({
+    canvasNonBlank,
     dragDropLoaded,
-    previewReached: playbackReady && inspectionReportVisible && canvasNonBlank,
-    localOnly: resourceEntriesAreLocalOnly(),
-    pathRedacted: !file.name.includes("/") && !file.name.includes("\\"),
-    rendererFilesystemAccessClaimed: false,
-    pairedNormalProof: "normal-runtime-proof.json"
-  };
-  shortTermOpenFlowProof.passed = [
-    shortTermOpenFlowProof.dragDropAttempted,
-    shortTermOpenFlowProof.dragDropLoaded,
-    shortTermOpenFlowProof.previewReached,
-    shortTermOpenFlowProof.localOnly,
-    shortTermOpenFlowProof.pathRedacted,
-    shortTermOpenFlowProof.rendererFilesystemAccessClaimed === false
-  ].every(Boolean);
+    fileName: file.name,
+    fixtureSha256: await sha256Hex(fixtureBytes),
+    inspectionReportVisible,
+    playbackReady,
+    resourceEntriesLocalOnly: resourceEntriesAreLocalOnly(),
+    sourceSizeBytes: fixtureBytes.byteLength
+  });
   clearTransientOutput();
   const recoverySourceSha256Before = await sha256Hex(state.sourceBytes);
   const invalidBytes = new Uint8Array([0, 1, 2, 3, 4]);
@@ -1501,50 +1489,24 @@ async function runShortTermSmokeIfRequested() {
   const invalidResponse = await probeInvalidShortTermInspection({
     reportToken: bridge?.reportToken
   });
-  const shortTermLoadFailureProof = {
-    schemaVersion: 1,
-    proofId: "short-term-load-failure-proof",
-    source: "short-term-smoke",
-    prdIds: ["S2"],
-    invalidFileName: "invalid.svga",
-    invalidSizeBytes: invalidBytes.byteLength,
-    invalidDropAttempted: true,
-    loadFailedVisible,
-    errorCopy: loadFailureCopy,
-    sourceFileUnmodifiedClaimVisible: loadFailureCopy.includes("源文件没有被修改"),
-    noStaleMetadataAfterFailure,
+  const shortTermLoadFailureProof = collectShortTermLoadFailureProof({
     invalidApiRejected: invalidResponse.ok === false,
+    invalidSizeBytes: invalidBytes.byteLength,
+    loadFailedVisible,
+    loadFailureCopy,
+    noStaleMetadataAfterFailure,
+    noStaleMetadataAfterPlaybackFailure,
+    playbackFailureCopy,
+    playbackFailureSourceSha256AfterRecovery,
+    playbackFailureSourceSha256Before,
+    playbackFailureVisible,
+    playbackFailureRecovered: state.view === "preview" && Boolean(state.primaryPlayback),
+    playbackRecovered: Boolean(state.primaryPlayback),
     recoveryFileName: file.name,
     recoveryLoaded: state.view === "preview" && Boolean(state.model),
-    playbackRecovered: Boolean(state.primaryPlayback),
-    sourceSha256BeforeInvalid: recoverySourceSha256Before,
     sourceSha256AfterRecovery: recoverySourceSha256After,
-    sourceBytesRestoredAfterRecovery: recoverySourceSha256After === recoverySourceSha256Before,
-    playbackFailureInjected: true,
-    playbackFailureFileName: "playback-failure-smoke.svga",
-    playbackFailureVisible,
-    playbackFailureCopy,
-    noStaleMetadataAfterPlaybackFailure,
-    playbackFailureRecovered: state.view === "preview" && Boolean(state.primaryPlayback),
-    playbackFailureSourceSha256Before,
-    playbackFailureSourceSha256AfterRecovery,
-    playbackFailureSourceBytesRestoredAfterRecovery: playbackFailureSourceSha256AfterRecovery === playbackFailureSourceSha256Before
-  };
-  shortTermLoadFailureProof.passed = [
-    shortTermLoadFailureProof.invalidDropAttempted,
-    shortTermLoadFailureProof.loadFailedVisible,
-    shortTermLoadFailureProof.sourceFileUnmodifiedClaimVisible,
-    shortTermLoadFailureProof.noStaleMetadataAfterFailure,
-    shortTermLoadFailureProof.invalidApiRejected,
-    shortTermLoadFailureProof.recoveryLoaded,
-    shortTermLoadFailureProof.playbackRecovered,
-    shortTermLoadFailureProof.sourceBytesRestoredAfterRecovery,
-    shortTermLoadFailureProof.playbackFailureInjected,
-    shortTermLoadFailureProof.playbackFailureVisible,
-    shortTermLoadFailureProof.noStaleMetadataAfterPlaybackFailure,
-    shortTermLoadFailureProof.playbackFailureRecovered,
-    shortTermLoadFailureProof.playbackFailureSourceBytesRestoredAfterRecovery
-  ].every(Boolean);
+    sourceSha256BeforeInvalid: recoverySourceSha256Before
+  });
   if (state.primaryPlayback) {
     state.primaryPlayback.player.pause();
     state.primaryPlayback.player.start();

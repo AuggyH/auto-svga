@@ -414,6 +414,109 @@ export function collectShortTermReplacementProof({
   return proof;
 }
 
+export function collectShortTermOpenFlowProof({
+  canvasNonBlank,
+  dragDropLoaded,
+  fileName,
+  fixtureSha256,
+  inspectionReportVisible,
+  playbackReady,
+  resourceEntriesLocalOnly,
+  sourceSizeBytes
+}) {
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-open-flow-proof",
+    source: "short-term-smoke",
+    prdIds: ["S1"],
+    fixtureName: fileName,
+    fixtureSha256,
+    sourceSizeBytes,
+    dragDropAttempted: true,
+    dragDropLoaded,
+    previewReached: playbackReady && inspectionReportVisible && canvasNonBlank,
+    localOnly: resourceEntriesLocalOnly,
+    pathRedacted: !fileName.includes("/") && !fileName.includes("\\"),
+    rendererFilesystemAccessClaimed: false,
+    pairedNormalProof: "normal-runtime-proof.json"
+  };
+  proof.passed = [
+    proof.dragDropAttempted,
+    proof.dragDropLoaded,
+    proof.previewReached,
+    proof.localOnly,
+    proof.pathRedacted,
+    proof.rendererFilesystemAccessClaimed === false
+  ].every(Boolean);
+  return proof;
+}
+
+export function collectShortTermLoadFailureProof({
+  invalidApiRejected,
+  invalidSizeBytes,
+  loadFailedVisible,
+  loadFailureCopy,
+  noStaleMetadataAfterFailure,
+  noStaleMetadataAfterPlaybackFailure,
+  playbackFailureCopy,
+  playbackFailureRecovered,
+  playbackFailureSourceSha256AfterRecovery,
+  playbackFailureSourceSha256Before,
+  playbackFailureVisible,
+  playbackRecovered,
+  recoveryFileName,
+  recoveryLoaded,
+  sourceSha256AfterRecovery,
+  sourceSha256BeforeInvalid
+}) {
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-load-failure-proof",
+    source: "short-term-smoke",
+    prdIds: ["S2"],
+    invalidFileName: "invalid.svga",
+    invalidSizeBytes,
+    invalidDropAttempted: true,
+    loadFailedVisible,
+    errorCopy: loadFailureCopy,
+    sourceFileUnmodifiedClaimVisible: loadFailureCopy.includes("源文件没有被修改"),
+    noStaleMetadataAfterFailure,
+    invalidApiRejected,
+    recoveryFileName,
+    recoveryLoaded,
+    playbackRecovered,
+    sourceSha256BeforeInvalid,
+    sourceSha256AfterRecovery,
+    sourceBytesRestoredAfterRecovery: sourceSha256AfterRecovery === sourceSha256BeforeInvalid,
+    playbackFailureInjected: true,
+    playbackFailureFileName: "playback-failure-smoke.svga",
+    playbackFailureVisible,
+    playbackFailureCopy,
+    noStaleMetadataAfterPlaybackFailure,
+    playbackFailureRecovered,
+    playbackFailureSourceSha256Before,
+    playbackFailureSourceSha256AfterRecovery,
+    playbackFailureSourceBytesRestoredAfterRecovery:
+      playbackFailureSourceSha256AfterRecovery === playbackFailureSourceSha256Before
+  };
+  proof.passed = [
+    proof.invalidDropAttempted,
+    proof.loadFailedVisible,
+    proof.sourceFileUnmodifiedClaimVisible,
+    proof.noStaleMetadataAfterFailure,
+    proof.invalidApiRejected,
+    proof.recoveryLoaded,
+    proof.playbackRecovered,
+    proof.sourceBytesRestoredAfterRecovery,
+    proof.playbackFailureInjected,
+    proof.playbackFailureVisible,
+    proof.noStaleMetadataAfterPlaybackFailure,
+    proof.playbackFailureRecovered,
+    proof.playbackFailureSourceBytesRestoredAfterRecovery
+  ].every(Boolean);
+  return proof;
+}
+
 export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
   const tabs = tabButtons();
   const tabOverview = document.querySelector("#tabOverview");
