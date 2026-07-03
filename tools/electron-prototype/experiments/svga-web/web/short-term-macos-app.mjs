@@ -16,6 +16,8 @@ import {
   renderOptimizationCompareResultHtml
 } from "./short-term-macos-compare-model.mjs";
 import {
+  applyCompareSlotView,
+  applyCompareTraceView,
   clearSaveFeedbackBanner,
   createAssetRow,
   createEditLayerRow,
@@ -26,6 +28,7 @@ import {
   createReplaceableImageRow,
   createTextElementRow,
   hideSaveFeedbackBanner,
+  markCompareSlotLoaded,
   showSaveFeedbackBanner
 } from "./short-term-macos-dom-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
@@ -108,6 +111,7 @@ const nodes = {
   primaryCanvas: document.querySelector("#primaryCanvas"),
   compareCanvasA: document.querySelector("#compareCanvasA"),
   compareCanvasB: document.querySelector("#compareCanvasB"),
+  compareView: document.querySelector("[data-view='compare']"),
   compareCanvasWrapA: document.querySelector("#compareCanvasWrapA"),
   compareCanvasWrapB: document.querySelector("#compareCanvasWrapB"),
   compareCanvasTitleA: document.querySelector("#compareCanvasTitleA"),
@@ -724,7 +728,7 @@ async function renderOptimizationCompare(model, optimizedBytes) {
     mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes),
     mountPlayback("compareB", nodes.compareCanvasB, optimizedBytes)
   ]);
-  if (nodes.compareCanvasWrapB) nodes.compareCanvasWrapB.dataset.compareState = "loaded";
+  markCompareSlotLoaded(nodes, "B");
 }
 
 async function showOptimizationComparison() {
@@ -741,19 +745,11 @@ async function showOptimizationComparison() {
 
 function setCompareSlot(slot, title, model, fallbackMeta = "") {
   const view = compareSlotView(slot, title, model, fallbackMeta);
-  const titleNode = slot === "A" ? nodes.compareCanvasTitleA : nodes.compareCanvasTitleB;
-  const metaNode = slot === "A" ? nodes.compareCanvasMetaA : nodes.compareCanvasMetaB;
-  const wrapNode = slot === "A" ? nodes.compareCanvasWrapA : nodes.compareCanvasWrapB;
-  if (titleNode) titleNode.textContent = view.title;
-  if (metaNode) metaNode.textContent = view.meta;
-  if (wrapNode) wrapNode.dataset.compareState = view.compareState;
+  applyCompareSlotView(nodes, slot, view);
 }
 
 function setCompareTrace(view) {
-  const compareView = document.querySelector("[data-view='compare']");
-  if (!compareView) return;
-  compareView.dataset.module = view.moduleName;
-  compareView.dataset.pageState = view.pageState;
+  applyCompareTraceView(nodes.compareView, view);
 }
 
 async function enterGeneralCompare() {

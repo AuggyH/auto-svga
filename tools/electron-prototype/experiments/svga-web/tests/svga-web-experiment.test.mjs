@@ -1174,6 +1174,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermStyles, /button\.primary:disabled/);
   assert.doesNotMatch(shortTermStyles, /\.toolbarCluster|\.resultGroup|\.previewView|\.compareView/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-renderers\.mjs"/);
+  assert.match(shortTermEntry, /applyCompareSlotView/);
+  assert.match(shortTermEntry, /applyCompareTraceView/);
   assert.match(shortTermEntry, /clearSaveFeedbackBanner/);
   assert.match(shortTermEntry, /createOverviewFactCell/);
   assert.match(shortTermEntry, /createAssetRow/);
@@ -1181,6 +1183,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /createMessageRow/);
   assert.match(shortTermEntry, /createReplaceableImageRow/);
   assert.match(shortTermEntry, /hideSaveFeedbackBanner/);
+  assert.match(shortTermEntry, /markCompareSlotLoaded/);
   assert.match(shortTermEntry, /showSaveFeedbackBanner/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-command-state\.mjs"/);
   assert.match(shortTermEntry, /buildCommandState/);
@@ -1238,6 +1241,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function showSaveFeedbackBanner/);
   assert.match(shortTermDomRenderers, /export function hideSaveFeedbackBanner/);
   assert.match(shortTermDomRenderers, /export function clearSaveFeedbackBanner/);
+  assert.match(shortTermDomRenderers, /export function applyCompareSlotView/);
+  assert.match(shortTermDomRenderers, /export function markCompareSlotLoaded/);
+  assert.match(shortTermDomRenderers, /export function applyCompareTraceView/);
   assert.match(shortTermDomRenderers, /export function createReplaceableImageRow/);
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
   assert.match(shortTermDomRenderers, /export function createEditLayerRow/);
@@ -1351,6 +1357,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);
   assert.match(shortTermEntry, /generalCompareTraceView/);
   assert.match(shortTermEntry, /optimizationCompareTraceView/);
+  assert.match(shortTermEntry, /applyCompareSlotView\(nodes, slot, view\)/);
+  assert.match(shortTermEntry, /applyCompareTraceView\(nodes\.compareView, view\)/);
+  assert.match(shortTermEntry, /markCompareSlotLoaded\(nodes, "B"\)/);
+  assert.doesNotMatch(shortTermEntry, /textContent = view\.title|textContent = view\.meta|dataset\.compareState = view\.compareState|dataset\.compareState = "loaded"|dataset\.module = view\.moduleName|dataset\.pageState = view\.pageState/);
+  assert.match(shortTermDomRenderers, /textContent = view\.title/);
+  assert.match(shortTermDomRenderers, /textContent = view\.meta/);
+  assert.match(shortTermDomRenderers, /dataset\.compareState = view\.compareState/);
+  assert.match(shortTermDomRenderers, /dataset\.compareState = "loaded"/);
+  assert.match(shortTermDomRenderers, /dataset\.module = view\.moduleName/);
+  assert.match(shortTermDomRenderers, /dataset\.pageState = view\.pageState/);
   assert.doesNotMatch(shortTermEntry, /setCompareTrace\("GeneralCompareModule", "General comparing"\)|setCompareTrace\("OptimizationCompareModule", "Optimization compare"\)/);
   assert.match(shortTermEntry, /async function collectShortTermTabKeyboardProof/);
   assert.match(shortTermEntry, /proofId: "short-term-tab-keyboard-proof"/);
