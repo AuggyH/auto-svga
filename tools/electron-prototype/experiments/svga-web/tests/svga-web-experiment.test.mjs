@@ -1021,6 +1021,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermInteractionModel = await readFile(path.join(experimentRoot, "web/short-term-macos-interaction-model.mjs"), "utf8");
   const shortTermTextModel = await readFile(path.join(experimentRoot, "web/short-term-macos-text-model.mjs"), "utf8");
   const shortTermReplaceableModel = await readFile(path.join(experimentRoot, "web/short-term-macos-replaceable-model.mjs"), "utf8");
+  const shortTermOptimizationModel = await readFile(path.join(experimentRoot, "web/short-term-macos-optimization-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1287,6 +1288,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableModel, /没有可替换元素。/);
   assert.match(shortTermReplaceableModel, /普通自动命名图片不会出现在这里。/);
   assert.match(shortTermReplaceableModel, /个设计师命名图片元素。/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-optimization-model\.mjs"/);
+  assert.match(shortTermEntry, /optimizationTabView/);
+  assert.match(shortTermEntry, /optimizationResultTone/);
+  assert.doesNotMatch(shortTermEntry, /没有可一键优化的安全项。若总览存在超标，请按规格复核或等待后续支持。|批量执行当前可安全执行的优化项/);
+  assert.match(shortTermOptimizationModel, /export function optimizationTabView/);
+  assert.match(shortTermOptimizationModel, /export function optimizationResultTone/);
+  assert.match(shortTermOptimizationModel, /groupOptimizationItems/);
+  assert.match(shortTermOptimizationModel, /一键优化/);
+  assert.match(shortTermOptimizationModel, /批量执行当前可安全执行的优化项/);
+  assert.match(shortTermOptimizationModel, /没有可一键优化的安全项。若总览存在超标，请按规格复核或等待后续支持。/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);
@@ -1404,7 +1415,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /executedActionCount/);
   assert.match(shortTermEntry, /executedActionRowsVisible/);
   assert.match(shortTermEntry, /skippedMethodRowsVisible/);
-  assert.match(shortTermEntry, /groupOptimizationItems/);
+  assert.match(shortTermOptimizationModel, /groupOptimizationItems/);
   assert.match(shortTermRenderModel, /item\.count > 1/);
   assert.match(shortTermCompareModel, /data-optimization-actions/);
   assert.match(shortTermCompareModel, /data-optimization-skipped/);

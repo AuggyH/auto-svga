@@ -23,7 +23,6 @@ import {
 } from "./short-term-macos-dom-renderers.mjs";
 import {
   escapeHtml,
-  groupOptimizationItems,
   overviewVisibleFacts,
   renderMessageRowHtml,
   suffixName
@@ -60,6 +59,10 @@ import {
   nextReplaceableSelection,
   replaceableImageListView
 } from "./short-term-macos-replaceable-model.mjs";
+import {
+  optimizationResultTone,
+  optimizationTabView
+} from "./short-term-macos-optimization-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -586,30 +589,26 @@ function renderAssets(model) {
 
 function renderOptimization(model) {
   if (!model) return;
-  nodes.optimizationSummary.textContent = `${model.safeExecutableCount} 项可安全执行，${model.reviewOnlyCount} 项需复核，${model.unsupportedCount} 项暂不支持。`;
+  const view = optimizationTabView(model);
+  nodes.optimizationSummary.textContent = view.summaryCopy;
   const runButton = document.querySelector("[data-action='run-optimization']");
-  runButton.textContent = "一键优化";
-  runButton.title = model.batchActionEnabled
-    ? "批量执行当前可安全执行的优化项"
-    : "没有可安全执行的优化项";
-  runButton.disabled = !model.batchActionEnabled;
-  const groupedItems = groupOptimizationItems(model.items);
-  if (groupedItems.length === 0) {
+  runButton.textContent = view.runButtonCopy;
+  runButton.title = view.runButtonTitle;
+  runButton.disabled = view.runButtonDisabled;
+  if (!view.hasFindings) {
     const empty = document.createElement("p");
     empty.className = "emptyText";
     empty.dataset.component = "InlineStatus";
-    empty.textContent = "没有可一键优化的安全项。若总览存在超标，请按规格复核或等待后续支持。";
+    empty.textContent = view.emptyCopy;
     nodes.findingList.replaceChildren(empty);
     return;
   }
-  nodes.findingList.replaceChildren(...groupedItems.map(createOptimizationFindingRow));
+  nodes.findingList.replaceChildren(...view.groupedItems.map(createOptimizationFindingRow));
 }
 
 function renderOptimizationResult(model) {
   if (!model) return;
-  const tone = model.status === "optimized"
-    ? "success"
-    : model.status === "failed" ? "danger" : "warning";
+  const tone = optimizationResultTone(model);
   nodes.findingList.prepend(messageRow(model.resultTitle, model.resultSummary, tone));
 }
 
