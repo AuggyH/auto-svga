@@ -18,6 +18,7 @@ import {
 import {
   createAssetRow,
   createEditLayerRow,
+  createInlineStatusText,
   createMessageRow,
   createOptimizationFindingRow,
   createOverviewFactCell,
@@ -599,11 +600,7 @@ function renderOptimization(model) {
   runButton.title = view.runButtonTitle;
   runButton.disabled = view.runButtonDisabled;
   if (!view.hasFindings) {
-    const empty = document.createElement("p");
-    empty.className = "emptyText";
-    empty.dataset.component = "InlineStatus";
-    empty.textContent = view.emptyCopy;
-    nodes.findingList.replaceChildren(empty);
+    nodes.findingList.replaceChildren(createInlineStatusText(view.emptyCopy));
     return;
   }
   nodes.findingList.replaceChildren(...view.groupedItems.map(createOptimizationFindingRow));
@@ -624,11 +621,7 @@ function renderReplaceables(model) {
     renaming: row.renaming
   }));
   if (!view.hasImages) {
-    const empty = document.createElement("p");
-    empty.className = "emptyText";
-    empty.dataset.component = "InlineStatus";
-    empty.textContent = view.emptyCopy;
-    nodes.replaceableList.replaceChildren(empty);
+    nodes.replaceableList.replaceChildren(createInlineStatusText(view.emptyCopy));
   } else {
     nodes.replaceableList.replaceChildren(...rows);
   }
@@ -639,11 +632,7 @@ function renderTextElements(model) {
   const view = runtimeTextListView(model, state.textPreview);
   state.selectedTextKey = nextSelectedTextKey(state.selectedTextKey, view.texts);
   if (!view.hasTextElements) {
-    const empty = document.createElement("p");
-    empty.className = "emptyText";
-    empty.dataset.component = "InlineStatus";
-    empty.textContent = view.emptyCopy;
-    nodes.textElementList.replaceChildren(empty);
+    nodes.textElementList.replaceChildren(createInlineStatusText(view.emptyCopy));
     nodes.textPreviewSummary.textContent = view.summaryCopy;
     nodes.editTextButton.hidden = true;
     nodes.resetTextButton.hidden = true;

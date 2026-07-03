@@ -1176,6 +1176,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-renderers\.mjs"/);
   assert.match(shortTermEntry, /createOverviewFactCell/);
   assert.match(shortTermEntry, /createAssetRow/);
+  assert.match(shortTermEntry, /createInlineStatusText/);
   assert.match(shortTermEntry, /createMessageRow/);
   assert.match(shortTermEntry, /createReplaceableImageRow/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-command-state\.mjs"/);
@@ -1230,6 +1231,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function createAssetRow/);
   assert.match(shortTermDomRenderers, /export function createOptimizationFindingRow/);
   assert.match(shortTermDomRenderers, /export function createMessageRow/);
+  assert.match(shortTermDomRenderers, /export function createInlineStatusText/);
   assert.match(shortTermDomRenderers, /export function createReplaceableImageRow/);
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
   assert.match(shortTermDomRenderers, /export function createEditLayerRow/);
@@ -1464,8 +1466,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /nodes\.saveBanner\.dataset\.status = view\.status/);
   assert.match(shortTermEntry, /createMessageRow\(model\.resultTitle, model\.resultSummary, tone\)/);
   assert.doesNotMatch(shortTermEntry, /function messageRow|renderMessageRowHtml/);
+  assert.match(shortTermEntry, /createInlineStatusText\(view\.emptyCopy\)/);
+  assert.doesNotMatch(shortTermEntry, /document\.createElement\("p"\)|empty\.dataset\.component = "InlineStatus"/);
   assert.match(shortTermDomRenderers, /row\.dataset\.component = "InlineStatus"/);
-  assert.match(shortTermEntry, /empty\.dataset\.component = "InlineStatus"/);
+  assert.match(shortTermDomRenderers, /empty\.dataset\.component = "InlineStatus"/);
   assert.match(shortTermDomRenderers, /row\.dataset\.component = "LayerRow"/);
   assert.match(shortTermDomRenderers, /class="rowIndex"/);
   assert.match(shortTermEntry, /comparisonVisible/);

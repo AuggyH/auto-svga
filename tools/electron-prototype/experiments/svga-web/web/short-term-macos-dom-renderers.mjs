@@ -57,6 +57,14 @@ export function createMessageRow(title, summary, tone = "info") {
   return row;
 }
 
+export function createInlineStatusText(copy) {
+  const empty = document.createElement("p");
+  empty.className = "emptyText";
+  empty.dataset.component = "InlineStatus";
+  empty.textContent = copy;
+  return empty;
+}
+
 export function createReplaceableImageRow(item, index, options) {
   const row = document.createElement("article");
   row.className = "replaceableRow";
