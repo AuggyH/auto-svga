@@ -356,6 +356,64 @@ export function collectShortTermRenameProof({
   return proof;
 }
 
+export function collectShortTermReplacementProof({
+  contextMenuOpenedAfterReplacement,
+  editedSha256,
+  imageKey,
+  previewModeStayed,
+  replacementCanvasNonBlank,
+  replacementPngSha256,
+  resetCanvasNonBlank,
+  resetClearedOutput,
+  resetCommandEnabled,
+  resetPreviewSha256,
+  resultTitle,
+  saveAsEnabledBeforeReset,
+  saveStatusAfterReset,
+  sourceSha256After,
+  sourceSha256Before
+}) {
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-replacement-proof",
+    source: "short-term-smoke",
+    prdIds: ["S12", "S14"],
+    fixtureName: "replaceable-workflow-smoke.svga",
+    imageKey,
+    replacementPngSha256,
+    sourceSha256Before,
+    sourceSha256After,
+    sourceBytesUnchanged: sourceSha256After === sourceSha256Before,
+    editedSha256,
+    replacementOutputProduced: saveStatusAfterReset === "dirty" || editedSha256 !== sourceSha256Before,
+    replacementBytesDifferent: editedSha256 !== sourceSha256Before,
+    previewModeStayed,
+    saveAsEnabledBeforeReset,
+    contextMenuOpenedAfterReplacement,
+    resetCommandEnabled,
+    replacementCanvasNonBlank,
+    resetPreviewSha256,
+    resetRestoredOriginal: resetPreviewSha256 === sourceSha256Before,
+    resetClearedOutput,
+    resetCanvasNonBlank,
+    resultTitle
+  };
+  proof.passed = [
+    proof.sourceBytesUnchanged,
+    proof.replacementOutputProduced,
+    proof.replacementBytesDifferent,
+    proof.previewModeStayed,
+    proof.saveAsEnabledBeforeReset,
+    proof.contextMenuOpenedAfterReplacement,
+    proof.resetCommandEnabled,
+    proof.replacementCanvasNonBlank,
+    proof.resetRestoredOriginal,
+    proof.resetClearedOutput,
+    proof.resetCanvasNonBlank
+  ].every(Boolean);
+  return proof;
+}
+
 export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
   const tabs = tabButtons();
   const tabOverview = document.querySelector("#tabOverview");

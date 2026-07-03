@@ -92,6 +92,7 @@ import {
   collectShortTermReplaceableClassificationProof,
   collectShortTermOptimizationProof,
   collectShortTermRenameProof,
+  collectShortTermReplacementProof,
   createSmokeArtifactCapture,
   reportShortTermSmokeFailure,
   resourceEntriesAreLocalOnly,
@@ -1350,44 +1351,23 @@ async function runShortTermSmokeIfRequested() {
   const resetPreviewSha256 = await sha256Hex(state.previewBytes);
   const resetCanvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
   await captureSmokeArtifact("short-term-replacement-reset");
-  const shortTermReplacementProof = {
-    schemaVersion: 1,
-    proofId: "short-term-replacement-proof",
-    source: "short-term-smoke",
-    prdIds: ["S12", "S14"],
-    fixtureName: "replaceable-workflow-smoke.svga",
-    imageKey: replacementImageKey,
-    replacementPngSha256,
-    sourceSha256Before: replacementSourceSha256Before,
-    sourceSha256After: replacementSourceSha256After,
-    sourceBytesUnchanged: replacementSourceSha256After === replacementSourceSha256Before,
-    editedSha256: replacementEditedSha256,
-    replacementOutputProduced: state.saveStatus === "dirty" || replacementEditedSha256 !== replacementSourceSha256Before,
-    replacementBytesDifferent: replacementEditedSha256 !== replacementSourceSha256Before,
-    previewModeStayed: state.view === "preview" && state.mode === "preview",
-    saveAsEnabledBeforeReset: replacementSaveAsEnabledBeforeReset,
+  const shortTermReplacementProof = collectShortTermReplacementProof({
     contextMenuOpenedAfterReplacement: replacementContextMenuOpened,
-    resetCommandEnabled,
+    editedSha256: replacementEditedSha256,
+    imageKey: replacementImageKey,
+    previewModeStayed: state.view === "preview" && state.mode === "preview",
     replacementCanvasNonBlank,
-    resetPreviewSha256,
-    resetRestoredOriginal: resetPreviewSha256 === replacementSourceSha256Before,
-    resetClearedOutput: !state.activeOutput && state.saveStatus === "idle",
+    replacementPngSha256,
     resetCanvasNonBlank,
-    resultTitle: replacementResultTitle
-  };
-  shortTermReplacementProof.passed = [
-    shortTermReplacementProof.sourceBytesUnchanged,
-    shortTermReplacementProof.replacementOutputProduced,
-    shortTermReplacementProof.replacementBytesDifferent,
-    shortTermReplacementProof.previewModeStayed,
-    shortTermReplacementProof.saveAsEnabledBeforeReset,
-    shortTermReplacementProof.contextMenuOpenedAfterReplacement,
-    shortTermReplacementProof.resetCommandEnabled,
-    shortTermReplacementProof.replacementCanvasNonBlank,
-    shortTermReplacementProof.resetRestoredOriginal,
-    shortTermReplacementProof.resetClearedOutput,
-    shortTermReplacementProof.resetCanvasNonBlank
-  ].every(Boolean);
+    resetClearedOutput: !state.activeOutput && state.saveStatus === "idle",
+    resetCommandEnabled,
+    resetPreviewSha256,
+    resultTitle: replacementResultTitle,
+    saveAsEnabledBeforeReset: replacementSaveAsEnabledBeforeReset,
+    saveStatusAfterReset: state.saveStatus,
+    sourceSha256After: replacementSourceSha256After,
+    sourceSha256Before: replacementSourceSha256Before
+  });
   await loadOpenedSource({
     bytes: fixtureBytes,
     displayName: file.name,

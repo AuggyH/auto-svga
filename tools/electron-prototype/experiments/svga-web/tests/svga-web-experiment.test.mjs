@@ -1669,7 +1669,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /row\.dataset\.component = "LayerRow"/);
   assert.match(shortTermDomRenderers, /class="rowIndex"/);
   assert.match(shortTermSmokeProofModel, /comparisonVisible/);
-  assert.match(shortTermEntry, /sourceBytesUnchanged/);
+  assert.match(shortTermSmokeProofModel, /sourceBytesUnchanged/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermRenameProof/);
   assert.match(shortTermSmokeProofModel, /short-term-rename-proof/);
   assert.match(shortTermSmokeProofModel, /contextMenuOpened/);
@@ -1681,10 +1681,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /danglingReferenceCount === 0/);
   assert.match(shortTermEntry, /collectShortTermRenameProof/);
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-rename-proof"/);
-  assert.match(shortTermEntry, /short-term-replacement-proof/);
-  assert.match(shortTermEntry, /resetCommandEnabled/);
-  assert.match(shortTermEntry, /resetRestoredOriginal/);
-  assert.match(shortTermEntry, /saveAsEnabledBeforeReset/);
+  assert.match(shortTermSmokeProofModel, /export function collectShortTermReplacementProof/);
+  assert.match(shortTermSmokeProofModel, /short-term-replacement-proof/);
+  assert.match(shortTermSmokeProofModel, /resetCommandEnabled/);
+  assert.match(shortTermSmokeProofModel, /resetRestoredOriginal/);
+  assert.match(shortTermSmokeProofModel, /saveAsEnabledBeforeReset/);
+  assert.match(shortTermEntry, /collectShortTermReplacementProof/);
+  assert.doesNotMatch(shortTermEntry, /proofId: "short-term-replacement-proof"/);
   assert.match(shortTermSmokeProofModel, /noAudioVisible/);
   assert.match(shortTermSmokeProofModel, /noReplaceableImagesVisible/);
   assert.match(shortTermSmokeProofModel, /textUnavailableVisible/);
