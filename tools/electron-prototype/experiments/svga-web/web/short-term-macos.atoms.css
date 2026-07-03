@@ -189,11 +189,9 @@ button.danger {
 
 .emptyText {
   margin: 0;
-  padding: var(--asv-empty-padding);
+  padding: var(--asv-space-3) 0;
+  background: transparent;
   color: var(--asv-muted);
-  border: 1px dashed var(--asv-row-border);
-  border-radius: var(--asv-radius-sm);
-  background: var(--asv-fact-bg);
   line-height: 1.5;
 }
 

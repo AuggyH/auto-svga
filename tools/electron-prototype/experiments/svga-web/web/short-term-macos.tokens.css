@@ -107,7 +107,6 @@
   --asv-component-badge-min-height: 18px;
   --asv-component-status-strip-width: 3px;
   --asv-component-status-strip-radius: 999px;
-  --asv-component-empty-padding: var(--asv-space-3);
   --asv-component-left-panel-width: 238px;
   --asv-component-compare-side-min-width: 220px;
   --asv-component-compare-side-width: 280px;
@@ -208,7 +207,6 @@
   --asv-badge-min-height: var(--asv-component-badge-min-height);
   --asv-status-strip-width: var(--asv-component-status-strip-width);
   --asv-status-strip-radius: var(--asv-component-status-strip-radius);
-  --asv-empty-padding: var(--asv-component-empty-padding);
   --asv-left-width: var(--asv-component-left-panel-width);
   --asv-compare-side-min-width: var(--asv-component-compare-side-min-width);
   --asv-compare-side-width: var(--asv-component-compare-side-width);

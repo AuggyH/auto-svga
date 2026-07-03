@@ -1153,6 +1153,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermAtoms, /\.thumb\.sequence/);
   assert.match(shortTermAtoms, /\.rowIndex/);
   assert.match(shortTermAtoms, /\.badge/);
+  assert.match(shortTermAtoms, /\.emptyText\s*\{[^}]*background: transparent/s);
+  assert.doesNotMatch(shortTermAtoms, /\.emptyText\s*\{[^}]*border: 1px dashed/s);
   assert.match(shortTermAtoms, /:focus-visible/);
   assert.match(shortTermMolecules, /\.toolbarButton/);
   assert.match(shortTermMolecules, /\.modeSwitch/);
