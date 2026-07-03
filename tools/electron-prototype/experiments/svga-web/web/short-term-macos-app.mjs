@@ -1,14 +1,19 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
 import {
+  createAssetRow,
+  createEditLayerRow,
+  createOptimizationFindingRow,
+  createOverviewFactCell,
+  createReplaceableImageRow,
+  createTextElementRow
+} from "./short-term-macos-dom-renderers.mjs";
+import {
   escapeHtml,
   groupOptimizationItems,
-  isSafeImageDataUrl,
   overviewVisibleFacts,
   renderCompareFactCellHtml,
   renderCompareMetricCellHtml,
   renderMessageRowHtml,
-  renderOptimizationFindingHtml,
-  renderOverviewFactCellHtml,
   suffixName
 } from "./short-term-macos-render-model.mjs";
 
@@ -554,39 +559,11 @@ function renderPreviewModel() {
 }
 
 function renderFacts(model) {
-  nodes.factGrid.replaceChildren(...overviewVisibleFacts(model).map((fact) => {
-    const cell = document.createElement("article");
-    cell.className = "factCell";
-    cell.dataset.component = "ProductionSpecInlineRow";
-    cell.dataset.status = fact.status;
-    cell.title = `${fact.label}: ${fact.value}`;
-    cell.innerHTML = renderOverviewFactCellHtml(fact);
-    return cell;
-  }));
+  nodes.factGrid.replaceChildren(...overviewVisibleFacts(model).map(createOverviewFactCell));
 }
 
 function renderAssets(model) {
-  const rows = model.assets.map((asset) => {
-    const row = document.createElement("article");
-    row.className = "assetRow";
-    row.dataset.component = asset.kind === "sequence" ? "SequenceThumbnail" : asset.kind === "audio" ? "AudioAssetRow" : "AssetRow";
-    row.dataset.kind = asset.kind;
-    row.dataset.attention = asset.findingCodes.length > 0 ? "true" : "false";
-    const detail = asset.kind === "audio" && model.overview.audioGroup.status === "empty"
-      ? model.overview.audioGroup.copy
-      : `${asset.dimensions} · ${asset.fileSize} · ${asset.usageCount} 次引用`;
-    const badgeCopy = asset.findingCodes.length > 0
-      ? "需关注"
-      : asset.kind === "sequence" ? "序列" : asset.kind === "audio" ? "音频" : asset.replaceable ? "可替换" : "图片";
-    const badgeClass = asset.findingCodes.length > 0 ? " review" : "";
-    row.title = `${asset.name} ${detail}`;
-    row.innerHTML = `
-      <span class="thumb ${asset.kind === "sequence" ? "sequence" : asset.kind === "audio" ? "audio" : ""}">${renderThumbnail(asset.thumbnail)}</span>
-      <span class="rowText"><strong>${escapeHtml(asset.name)}</strong><span>${escapeHtml(detail)}</span></span>
-      <span class="badge${badgeClass}">${escapeHtml(badgeCopy)}</span>
-    `;
-    return row;
-  });
+  const rows = model.assets.map((asset) => createAssetRow(asset, model));
   nodes.assetList.replaceChildren(...rows);
 }
 
@@ -608,15 +585,7 @@ function renderOptimization(model) {
     nodes.findingList.replaceChildren(empty);
     return;
   }
-  nodes.findingList.replaceChildren(...groupedItems.map((item) => {
-    const row = document.createElement("article");
-    row.className = "findingRow";
-    row.dataset.component = "OptimizationFindingRow";
-    row.dataset.disposition = item.disposition;
-    row.title = `${item.title}: ${item.summary}`;
-    row.innerHTML = renderOptimizationFindingHtml(item);
-    return row;
-  }));
+  nodes.findingList.replaceChildren(...groupedItems.map(createOptimizationFindingRow));
 }
 
 function renderOptimizationResult(model) {
@@ -630,41 +599,9 @@ function renderOptimizationResult(model) {
 function renderReplaceables(model) {
   if (!model) return;
   const rows = model.images.map((item, index) => {
-    const row = document.createElement("article");
-    row.className = "replaceableRow";
-    row.tabIndex = 0;
-    row.dataset.action = "select-resource";
-    row.dataset.component = "ReplaceableImageRow";
-    row.dataset.imageKey = item.imageKey;
-    row.setAttribute("role", "option");
     const selected = item.imageKey === state.selectedImageKey;
     const renaming = item.imageKey === state.renameImageKey;
-    row.classList.toggle("isSelected", selected);
-    row.classList.toggle("isRenaming", renaming);
-    row.setAttribute("aria-selected", selected ? "true" : "false");
-    row.title = `${item.imageKey} ${item.dimensions} ${item.fileSize}`;
-    if (renaming) {
-      row.innerHTML = `
-        <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-        <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
-        <label class="rowText renameEditor">新 imageKey
-          <input class="renameInputInline" data-rename-input value="${escapeHtml(item.imageKey)}" autocomplete="off">
-          <span>Enter 确认 · Esc 取消</span>
-        </label>
-        <span class="inlineActions">
-          <button type="button" data-action="inline-rename-confirm">确认</button>
-          <button type="button" data-action="inline-rename-cancel">取消</button>
-        </span>
-      `;
-    } else {
-      row.innerHTML = `
-        <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-        <span class="thumb">${renderThumbnail({ type: "image", resourceIds: [item.resourceId] })}</span>
-        <span class="rowText"><strong>${escapeHtml(item.imageKey)}</strong><span>${escapeHtml(item.dimensions)} · ${escapeHtml(item.fileSize)}</span></span>
-        <button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(item.imageKey)} 操作">操作</button>
-      `;
-    }
-    return row;
+    return createReplaceableImageRow(item, index, { model: state.model, selected, renaming });
   });
   if (rows.length === 0) {
     const empty = document.createElement("p");
@@ -697,24 +634,9 @@ function renderTextElements(model) {
   } else {
     nodes.editTextButton.hidden = false;
     nodes.resetTextButton.hidden = false;
-    nodes.textElementList.replaceChildren(...texts.map((item, index) => {
-      const row = document.createElement("article");
-      row.className = "textElementRow";
-      row.tabIndex = 0;
-      row.dataset.action = "select-text";
-      row.dataset.component = "ReplaceableTextRow";
-      row.dataset.textKey = item.textKey;
-      row.setAttribute("role", "option");
-      row.classList.toggle("isSelected", item.textKey === state.selectedTextKey);
-      row.setAttribute("aria-selected", item.textKey === state.selectedTextKey ? "true" : "false");
-      row.title = `${item.displayName || item.textKey}: ${item.initialText || item.textKey}`;
-      row.innerHTML = `
-        <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-        <span class="rowText"><strong>${escapeHtml(item.displayName || item.textKey)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
-        <span class="badge">文本</span>
-      `;
-      return row;
-    }));
+    nodes.textElementList.replaceChildren(...texts.map((item, index) => createTextElementRow(item, index, {
+      selected: item.textKey === state.selectedTextKey
+    })));
     nodes.textPreviewSummary.textContent = state.textPreview
       ? "文本预览已应用，源 SVGA 字节未修改。"
       : `${texts.length} 个文本元素可运行时预览。`;
@@ -791,32 +713,12 @@ function closeResourceContextMenu() {
   nodes.resourceContextMenu.hidden = true;
 }
 
-function renderThumbnail(thumbnail) {
-  if (!thumbnail || thumbnail.type === "audio-empty") return "无音频";
-  if (thumbnail.type === "music") return "音频";
-  const urls = (thumbnail.resourceIds ?? [])
-    .map((id) => state.model?.thumbnails?.imageDataUrlsByResourceId?.[id])
-    .filter(isSafeImageDataUrl)
-    .slice(0, thumbnail.type === "sequence-four-grid" ? 4 : 1);
-  if (urls.length === 0) return "";
-  return urls
-    .map((url) => `<img src="${escapeHtml(url)}" alt="">`)
-    .join("");
-}
-
 function renderEditReserved() {
   const assets = state.model?.assets ?? [];
-  nodes.layerPanel.replaceChildren(...assets.filter((asset) => asset.kind !== "audio").slice(0, 32).map((asset) => {
-    const row = document.createElement("article");
-    row.className = "assetRow";
-    row.dataset.component = "LayerRow";
-    row.innerHTML = `
-      <span class="thumb ${asset.kind === "sequence" ? "sequence" : ""}">${renderThumbnail(asset.thumbnail)}</span>
-      <span class="rowText"><strong>${escapeHtml(asset.name)}</strong><span>${asset.kind === "sequence" ? "序列组" : "图层资源"}</span></span>
-      <span class="badge">${asset.kind === "sequence" ? "组" : "层"}</span>
-    `;
-    return row;
-  }));
+  nodes.layerPanel.replaceChildren(...assets
+    .filter((asset) => asset.kind !== "audio")
+    .slice(0, 32)
+    .map((asset) => createEditLayerRow(asset, state.model)));
 }
 
 async function renderOptimizationCompare(model, optimizedBytes) {
