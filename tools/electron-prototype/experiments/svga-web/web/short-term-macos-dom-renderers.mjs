@@ -1,6 +1,7 @@
 import {
   escapeHtml,
   isSafeImageDataUrl,
+  renderMessageRowHtml,
   renderOptimizationFindingHtml,
   renderOverviewFactCellHtml
 } from "./short-term-macos-render-model.mjs";
@@ -44,6 +45,15 @@ export function createOptimizationFindingRow(item) {
   row.dataset.disposition = item.disposition;
   row.title = `${item.title}: ${item.summary}`;
   row.innerHTML = renderOptimizationFindingHtml(item);
+  return row;
+}
+
+export function createMessageRow(title, summary, tone = "info") {
+  const row = document.createElement("article");
+  row.className = "findingRow messageRow";
+  row.dataset.status = tone;
+  row.dataset.component = "InlineStatus";
+  row.innerHTML = renderMessageRowHtml(title, summary, tone);
   return row;
 }
 

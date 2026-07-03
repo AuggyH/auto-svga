@@ -18,15 +18,13 @@ import {
 import {
   createAssetRow,
   createEditLayerRow,
+  createMessageRow,
   createOptimizationFindingRow,
   createOverviewFactCell,
   createReplaceableImageRow,
   createTextElementRow
 } from "./short-term-macos-dom-renderers.mjs";
-import {
-  renderMessageRowHtml,
-  suffixName
-} from "./short-term-macos-render-model.mjs";
+import { suffixName } from "./short-term-macos-render-model.mjs";
 import {
   buildCurrentStateSummary,
   saveBannerView,
@@ -614,7 +612,7 @@ function renderOptimization(model) {
 function renderOptimizationResult(model) {
   if (!model) return;
   const tone = optimizationResultTone(model);
-  nodes.findingList.prepend(messageRow(model.resultTitle, model.resultSummary, tone));
+  nodes.findingList.prepend(createMessageRow(model.resultTitle, model.resultSummary, tone));
 }
 
 function renderReplaceables(model) {
@@ -946,15 +944,6 @@ function currentStateSummary() {
     errorVisible: state.view === "failed",
     errorText: nodes.errorMessage.textContent
   });
-}
-
-function messageRow(title, summary, tone = "info") {
-  const row = document.createElement("article");
-  row.className = "findingRow messageRow";
-  row.dataset.status = tone;
-  row.dataset.component = "InlineStatus";
-  row.innerHTML = renderMessageRowHtml(title, summary, tone);
-  return row;
 }
 
 async function postBytes(url, bytes) {
