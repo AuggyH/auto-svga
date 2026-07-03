@@ -58,7 +58,7 @@ import {
 } from "./short-term-macos-text-renderers.mjs";
 import {
   renderEditReservedLayers
-} from "./short-term-macos-dom-renderers.mjs";
+} from "./short-term-macos-edit-reserved-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
 import {
   buildCurrentStateSummary,
