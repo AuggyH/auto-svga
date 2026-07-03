@@ -31,16 +31,18 @@ import {
   showSaveFeedbackBanner
 } from "./short-term-macos-save-renderers.mjs";
 import {
+  renderDiscardMessage,
+  renderFailureMessage,
+  renderFileHeader,
+  renderLoadingMessage
+} from "./short-term-macos-state-renderers.mjs";
+import {
   applyRuntimeTextOverlay,
   clearRuntimeTextOverlay,
   hideResourceContextMenu,
   prependOptimizationResult,
   renderAssetList,
-  renderDiscardMessage,
   renderEditReservedLayers,
-  renderFailureMessage,
-  renderFileHeader,
-  renderLoadingMessage,
   renderOptimizationFindings,
   renderOverviewFacts,
   renderReplaceableImages,
