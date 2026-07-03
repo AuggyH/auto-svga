@@ -11,6 +11,27 @@ export function isContextMenuKey(event) {
   return event.key === "ContextMenu" || (event.shiftKey && event.key === "F10");
 }
 
+export function isTextEditingTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+}
+
+export function shouldHandleGlobalPlaybackShortcut(target) {
+  if (!(target instanceof Element)) return true;
+  return !target.closest([
+    "button",
+    "input",
+    "textarea",
+    "select",
+    "[contenteditable='true']",
+    "[role='button']",
+    "[role='menu']",
+    "[role='menuitem']",
+    "[role='tab']",
+    "[role='option']"
+  ].join(", "));
+}
+
 export function nextTabIndexForKey(key, currentIndex, tabCount) {
   if (tabCount <= 0) return undefined;
   if (key === "ArrowRight") return (currentIndex + 1) % tabCount;

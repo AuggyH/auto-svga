@@ -74,7 +74,9 @@ import {
   consumeKeyboardEvent,
   isActivationKey,
   isContextMenuKey,
-  nextTabIndexForKey
+  isTextEditingTarget,
+  nextTabIndexForKey,
+  shouldHandleGlobalPlaybackShortcut
 } from "./short-term-macos-interaction-model.mjs";
 import {
   keyboardResourceMenuAnchor,
@@ -1063,8 +1065,7 @@ nodes.dropZone.addEventListener("drop", (event) => {
 
 document.addEventListener("keydown", (event) => {
   const command = event.metaKey || event.ctrlKey;
-  const target = event.target instanceof Element ? event.target : document.body;
-  const textInput = target.matches("input, textarea, [contenteditable='true']");
+  const textInput = isTextEditingTarget(event.target);
   if (hasOpenDialog(document)) {
     if (event.key === "Escape") closeOpenDialog(document, "cancel");
     return;
@@ -1082,7 +1083,7 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     saveActiveOutput(event.shiftKey ? "saveAs" : "overwrite").catch(showFailure);
   }
-  if (event.key === " " && !textInput) {
+  if (event.key === " " && shouldHandleGlobalPlaybackShortcut(event.target)) {
     event.preventDefault();
     togglePrimaryPlayback();
   }
@@ -1436,7 +1437,21 @@ async function runShortTermSmokeIfRequested() {
   setTab("overview");
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-preview-minimum");
+  const focusedControlForSpace = document.querySelector("[data-action='compare']");
+  focusedControlForSpace?.focus();
+  const focusedControlPlaybackBeforeSpace = state.primaryPlayback?.playing === true;
+  const focusedControlSpacePrevented = focusedControlForSpace
+    ? !focusedControlForSpace.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }))
+    : true;
+  await waitForSmokeFrame();
+  const focusedControlSpaceProof = {
+    targetAction: focusedControlForSpace?.dataset.action || "",
+    targetStillFocused: document.activeElement === focusedControlForSpace,
+    spacePrevented: focusedControlSpacePrevented,
+    playbackUnchanged: (state.primaryPlayback?.playing === true) === focusedControlPlaybackBeforeSpace
+  };
   const shortTermDesignInteractionProof = collectShortTermDesignInteractionProof({
+    focusedControlSpaceProof,
     minimumPreviewCaptured: smokeArtifactCapture.lastSmokeArtifactCaptured(),
     nodes,
     state,

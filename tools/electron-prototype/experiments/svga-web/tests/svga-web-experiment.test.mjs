@@ -1462,6 +1462,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermInteractionModel, /export function consumeKeyboardEvent/);
   assert.match(shortTermInteractionModel, /export function isActivationKey/);
   assert.match(shortTermInteractionModel, /export function isContextMenuKey/);
+  assert.match(shortTermInteractionModel, /export function isTextEditingTarget/);
+  assert.match(shortTermInteractionModel, /export function shouldHandleGlobalPlaybackShortcut/);
   assert.match(shortTermInteractionModel, /export function nextTabIndexForKey/);
   assert.match(shortTermInteractionModel, /key === "ArrowRight"/);
   assert.match(shortTermInteractionModel, /key === "ArrowLeft"/);
@@ -1470,6 +1472,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermInteractionModel, /event\.key === "Spacebar"/);
   assert.match(shortTermInteractionModel, /event\.key === "ContextMenu"/);
   assert.match(shortTermInteractionModel, /event\.shiftKey && event\.key === "F10"/);
+  assert.match(shortTermInteractionModel, /"\[role='menuitem'\]"/);
+  assert.match(shortTermInteractionModel, /"\[role='tab'\]"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-resource-menu-model\.mjs"/);
   assert.match(shortTermEntry, /keyboardResourceMenuAnchor/);
   assert.match(shortTermEntry, /resourceContextMenuView/);
@@ -1721,6 +1725,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /metadataSelectable/);
   assert.match(shortTermSmokeProofModel, /tabCaptureStatesSynced/);
   assert.match(shortTermSmokeProofModel, /menuStateDiscoverable/);
+  assert.match(shortTermSmokeProofModel, /focusedControlSpaceNotGlobalPlayback/);
+  assert.match(shortTermEntry, /focusedControlSpaceProof/);
   assert.match(shortTermSmokeProofModel, /minimumPreviewCaptured/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermReplaceableClassificationProof/);
   assert.match(shortTermSmokeProofModel, /short-term-replaceable-classification-proof/);

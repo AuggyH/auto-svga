@@ -607,7 +607,13 @@ export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFra
   return proof;
 }
 
-export function collectShortTermDesignInteractionProof({ minimumPreviewCaptured, nodes, state, currentStateSummary }) {
+export function collectShortTermDesignInteractionProof({
+  focusedControlSpaceProof,
+  minimumPreviewCaptured,
+  nodes,
+  state,
+  currentStateSummary
+}) {
   const focusOrder = visibleFocusableElements().map((element) => ({
     id: element.id || "",
     action: element.dataset.action || "",
@@ -679,6 +685,11 @@ export function collectShortTermDesignInteractionProof({ minimumPreviewCaptured,
       && menuState?.canPlay === true
       && menuState?.view === "preview"
       && menuState?.mode === "preview",
+    focusedControlSpaceProof,
+    focusedControlSpaceNotGlobalPlayback: focusedControlSpaceProof?.targetAction === "compare"
+      && focusedControlSpaceProof?.targetStillFocused === true
+      && focusedControlSpaceProof?.spacePrevented === false
+      && focusedControlSpaceProof?.playbackUnchanged === true,
     reducedMotionRulePresent: styleSheetsContain("prefers-reduced-motion"),
     minimumPreviewCaptured: minimumPreviewCaptured === true
   };
@@ -693,6 +704,7 @@ export function collectShortTermDesignInteractionProof({ minimumPreviewCaptured,
     proof.stateSummaryCopyable,
     proof.tabCaptureStatesSynced,
     proof.menuStateDiscoverable,
+    proof.focusedControlSpaceNotGlobalPlayback,
     proof.reducedMotionRulePresent,
     proof.minimumPreviewCaptured
   ].every(Boolean);
