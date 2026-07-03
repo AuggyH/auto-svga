@@ -1,5 +1,12 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
 import {
+  applyModeButtons,
+  applyTabState,
+  applyViewState,
+  setActionEnabled,
+  tabButtons
+} from "./short-term-macos-dom-state.mjs";
+import {
   createAssetRow,
   createEditLayerRow,
   createOptimizationFindingRow,
@@ -85,22 +92,13 @@ const nodes = {
 
 function setView(view) {
   state.view = view;
-  nodes.app.dataset.appState = view;
-  document.querySelectorAll("[data-view]").forEach((node) => {
-    const active = node.dataset.view === view;
-    node.hidden = !active;
-    node.classList.toggle("isActive", active);
-  });
+  applyViewState(nodes.app, view);
   renderCommandState();
 }
 
 function setMode(mode) {
   state.mode = mode;
-  document.querySelectorAll("[data-action='mode-preview'], [data-action='mode-edit']").forEach((button) => {
-    const selected = button.dataset.action === `mode-${mode}`;
-    button.classList.toggle("isSelected", selected);
-    button.setAttribute("aria-pressed", selected ? "true" : "false");
-  });
+  applyModeButtons(mode);
   if (!state.sourceBytes) {
     setView("launch");
     return;
@@ -231,11 +229,7 @@ async function closeFile() {
   nodes.playbackMeta.textContent = "-";
   nodes.saveBanner.hidden = true;
   setTab("overview");
-  document.querySelectorAll("[data-action='mode-preview'], [data-action='mode-edit']").forEach((button) => {
-    const selected = button.dataset.action === "mode-preview";
-    button.classList.toggle("isSelected", selected);
-    button.setAttribute("aria-pressed", selected ? "true" : "false");
-  });
+  applyModeButtons("preview");
   setView("launch");
   refreshRecentFiles().catch(() => {});
 }
@@ -879,24 +873,9 @@ function clearCanvas(canvas) {
   context?.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function tabButtons() {
-  return [...document.querySelectorAll("[data-tab]")];
-}
-
 function setTab(tab, options = {}) {
   state.tab = tab;
-  tabButtons().forEach((button) => {
-    const selected = button.dataset.tab === tab;
-    button.classList.toggle("isSelected", selected);
-    button.setAttribute("aria-selected", selected ? "true" : "false");
-    button.tabIndex = selected ? 0 : -1;
-    if (selected && options.focus === true) button.focus();
-  });
-  document.querySelectorAll("[data-panel]").forEach((panel) => {
-    const active = panel.dataset.panel === tab;
-    panel.hidden = !active;
-    panel.classList.toggle("isActive", active);
-  });
+  applyTabState(tab, options);
 }
 
 function handleTabListKeydown(event) {
@@ -992,13 +971,6 @@ function renderCommandState() {
     canShowOptimizationComparison: state.activeOutput?.kind === "optimization" && Boolean(state.activeOutput.bytes?.byteLength),
     isRenaming: Boolean(state.renameImageKey),
     hasTransientState: Boolean(state.renameImageKey) || state.view === "compare" || Boolean(document.querySelector("dialog[open]"))
-  });
-}
-
-function setActionEnabled(action, enabled, reason) {
-  document.querySelectorAll(`[data-action='${action}']`).forEach((button) => {
-    button.disabled = !enabled;
-    button.title = enabled ? "" : reason;
   });
 }
 

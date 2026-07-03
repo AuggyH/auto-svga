@@ -1011,6 +1011,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermPageStates = await readFile(path.join(experimentRoot, "web/short-term-macos.page-states.css"), "utf8");
   const shortTermStyles = await readFile(path.join(experimentRoot, "web/short-term-macos.css"), "utf8");
   const shortTermDomRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-renderers.mjs"), "utf8");
+  const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
@@ -1155,6 +1156,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /createOverviewFactCell/);
   assert.match(shortTermEntry, /createAssetRow/);
   assert.match(shortTermEntry, /createReplaceableImageRow/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-state\.mjs"/);
+  assert.match(shortTermEntry, /applyViewState/);
+  assert.match(shortTermEntry, /applyModeButtons/);
+  assert.match(shortTermEntry, /applyTabState/);
+  assert.match(shortTermEntry, /setActionEnabled/);
   assert.match(shortTermDomRenderers, /export function createOverviewFactCell/);
   assert.match(shortTermDomRenderers, /export function createAssetRow/);
   assert.match(shortTermDomRenderers, /export function createOptimizationFindingRow/);
@@ -1162,9 +1168,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
   assert.match(shortTermDomRenderers, /export function createEditLayerRow/);
   assert.match(shortTermDomRenderers, /renderThumbnailHtml/);
+  assert.match(shortTermDomState, /export function applyViewState/);
+  assert.match(shortTermDomState, /export function applyModeButtons/);
+  assert.match(shortTermDomState, /export function tabButtons/);
+  assert.match(shortTermDomState, /export function applyTabState/);
+  assert.match(shortTermDomState, /export function setActionEnabled/);
+  assert.match(shortTermDomState, /document\.querySelectorAll\("\[data-view\]"\)/);
+  assert.match(shortTermDomState, /button\.tabIndex = selected \? 0 : -1/);
+  assert.match(shortTermDomState, /aria-pressed/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
-  assert.match(shortTermEntry, /button\.tabIndex = selected \? 0 : -1/);
   assert.match(shortTermEntry, /event\.key === "ArrowRight"/);
   assert.match(shortTermEntry, /event\.key === "ArrowLeft"/);
   assert.match(shortTermEntry, /event\.key === "Home"/);
@@ -1182,7 +1195,6 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermRenderModel, /export function renderCompareFactCellHtml/);
   assert.match(shortTermRenderModel, /export function groupOptimizationItems/);
   assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
-  assert.match(shortTermEntry, /aria-pressed/);
   assert.match(shortTermEntry, /aria-selected/);
   assert.match(shortTermEntry, /\/api\/short-term-product-inspection-model/);
   assert.match(shortTermEntry, /\/api\/short-term-product-optimization-workflow/);
