@@ -202,6 +202,81 @@ export function collectShortTermReplaceableClassificationProof({
   return proof;
 }
 
+export function collectShortTermOptimizationProof({
+  activeOutput,
+  compareCanvasANonBlank,
+  compareCanvasBNonBlank,
+  compareInfoPanel,
+  optimizationCandidateRows,
+  optimizationModel,
+  optimizationResult,
+  optimizedBytes,
+  optimizedSha256,
+  sourceBytes,
+  sourceSha256After,
+  sourceSha256Before,
+  view
+}) {
+  const saveButton = compareInfoPanel.querySelector("[data-action='save-as']");
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-optimization-proof",
+    source: "short-term-smoke",
+    prdIds: ["S8", "S9", "S10", "S14"],
+    fixtureName: "optimizer-reopen-smoke.svga",
+    sourceSha256Before,
+    sourceSha256After,
+    sourceBytesUnchanged: sourceSha256After === sourceSha256Before,
+    sourceSizeBytes: sourceBytes.byteLength,
+    optimizedSha256,
+    optimizedSizeBytes: optimizedBytes.byteLength,
+    optimizedOutputProduced: optimizedBytes.byteLength > 0,
+    optimizedBytesDifferent: optimizedSha256 !== sourceSha256Before,
+    optimizedBytesSmaller: optimizedBytes.byteLength < sourceBytes.byteLength,
+    batchActionEnabled: optimizationModel.batchActionEnabled === true,
+    safeExecutableCount: optimizationModel.safeExecutableCount,
+    reviewOnlyCount: optimizationModel.reviewOnlyCount,
+    unsupportedCount: optimizationModel.unsupportedCount,
+    optimizationCandidateRows,
+    optimizationCandidatesVisible: optimizationCandidateRows > 0,
+    resultStatus: optimizationResult.status,
+    resultTitle: activeOutput.title,
+    resultSummary: activeOutput.summary,
+    executedActionCount: Array.isArray(optimizationResult.actions) ? optimizationResult.actions.length : 0,
+    executedActionRowsVisible: compareInfoPanel.querySelectorAll("[data-optimization-actions] li").length,
+    skippedMethodRowsVisible: compareInfoPanel.querySelectorAll("[data-optimization-skipped] li").length,
+    metricCount: Array.isArray(optimizationResult.metrics) ? optimizationResult.metrics.length : 0,
+    metricsVisible: compareInfoPanel.querySelectorAll(".factCell").length >= 2,
+    comparisonVisible: view === "compare",
+    compareCanvasANonBlank,
+    compareCanvasBNonBlank,
+    saveAsEnabled: saveButton?.disabled === false,
+    sourceOutputSeparated: activeOutput.bytes !== sourceBytes
+  };
+  proof.passed = [
+    proof.sourceBytesUnchanged,
+    proof.optimizedOutputProduced,
+    proof.optimizedBytesDifferent,
+    proof.optimizedBytesSmaller,
+    proof.batchActionEnabled,
+    proof.safeExecutableCount > 0,
+    proof.optimizationCandidatesVisible,
+    proof.resultStatus === "optimized",
+    proof.resultTitle === "已生成优化副本",
+    proof.executedActionCount > 0,
+    proof.executedActionRowsVisible >= proof.executedActionCount,
+    proof.skippedMethodRowsVisible > 0,
+    proof.metricCount >= 2,
+    proof.metricsVisible,
+    proof.comparisonVisible,
+    proof.compareCanvasANonBlank,
+    proof.compareCanvasBNonBlank,
+    proof.saveAsEnabled,
+    proof.sourceOutputSeparated
+  ].every(Boolean);
+  return proof;
+}
+
 export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
   const tabs = tabButtons();
   const tabOverview = document.querySelector("#tabOverview");

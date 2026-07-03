@@ -90,6 +90,7 @@ import {
   collectShortTermTabKeyboardProof,
   collectShortTermThumbnailProof,
   collectShortTermReplaceableClassificationProof,
+  collectShortTermOptimizationProof,
   createSmokeArtifactCapture,
   reportShortTermSmokeFailure,
   resourceEntriesAreLocalOnly,
@@ -1190,63 +1191,21 @@ async function runShortTermSmokeIfRequested() {
   const optimizationCompareBNonBlank = await waitForCanvasPixels(nodes.compareCanvasB, 2_500);
   await captureSmokeArtifact("short-term-optimization-result");
   const optimizationResult = state.activeOutput.details ?? {};
-  const optimizationSaveButton = nodes.compareInfoB.querySelector("[data-action='save-as']");
-  const shortTermOptimizationProof = {
-    schemaVersion: 1,
-    proofId: "short-term-optimization-proof",
-    source: "short-term-smoke",
-    prdIds: ["S8", "S9", "S10", "S14"],
-    fixtureName: "optimizer-reopen-smoke.svga",
-    sourceSha256Before: optimizationSourceSha256Before,
-    sourceSha256After: optimizationSourceSha256After,
-    sourceBytesUnchanged: optimizationSourceSha256After === optimizationSourceSha256Before,
-    sourceSizeBytes: state.sourceBytes.byteLength,
-    optimizedSha256,
-    optimizedSizeBytes: optimizedBytes.byteLength,
-    optimizedOutputProduced: optimizedBytes.byteLength > 0,
-    optimizedBytesDifferent: optimizedSha256 !== optimizationSourceSha256Before,
-    optimizedBytesSmaller: optimizedBytes.byteLength < state.sourceBytes.byteLength,
-    batchActionEnabled: optimizationModel.batchActionEnabled === true,
-    safeExecutableCount: optimizationModel.safeExecutableCount,
-    reviewOnlyCount: optimizationModel.reviewOnlyCount,
-    unsupportedCount: optimizationModel.unsupportedCount,
-    optimizationCandidateRows,
-    optimizationCandidatesVisible: optimizationCandidateRows > 0,
-    resultStatus: optimizationResult.status,
-    resultTitle: state.activeOutput.title,
-    resultSummary: state.activeOutput.summary,
-    executedActionCount: Array.isArray(optimizationResult.actions) ? optimizationResult.actions.length : 0,
-    executedActionRowsVisible: nodes.compareInfoB.querySelectorAll("[data-optimization-actions] li").length,
-    skippedMethodRowsVisible: nodes.compareInfoB.querySelectorAll("[data-optimization-skipped] li").length,
-    metricCount: Array.isArray(optimizationResult.metrics) ? optimizationResult.metrics.length : 0,
-    metricsVisible: nodes.compareInfoB.querySelectorAll(".factCell").length >= 2,
-    comparisonVisible: state.view === "compare",
+  const shortTermOptimizationProof = collectShortTermOptimizationProof({
+    activeOutput: state.activeOutput,
     compareCanvasANonBlank: optimizationCompareANonBlank,
     compareCanvasBNonBlank: optimizationCompareBNonBlank,
-    saveAsEnabled: optimizationSaveButton?.disabled === false,
-    sourceOutputSeparated: state.activeOutput.bytes !== state.sourceBytes
-  };
-  shortTermOptimizationProof.passed = [
-    shortTermOptimizationProof.sourceBytesUnchanged,
-    shortTermOptimizationProof.optimizedOutputProduced,
-    shortTermOptimizationProof.optimizedBytesDifferent,
-    shortTermOptimizationProof.optimizedBytesSmaller,
-    shortTermOptimizationProof.batchActionEnabled,
-    shortTermOptimizationProof.safeExecutableCount > 0,
-    shortTermOptimizationProof.optimizationCandidatesVisible,
-    shortTermOptimizationProof.resultStatus === "optimized",
-    shortTermOptimizationProof.resultTitle === "已生成优化副本",
-    shortTermOptimizationProof.executedActionCount > 0,
-    shortTermOptimizationProof.executedActionRowsVisible >= shortTermOptimizationProof.executedActionCount,
-    shortTermOptimizationProof.skippedMethodRowsVisible > 0,
-    shortTermOptimizationProof.metricCount >= 2,
-    shortTermOptimizationProof.metricsVisible,
-    shortTermOptimizationProof.comparisonVisible,
-    shortTermOptimizationProof.compareCanvasANonBlank,
-    shortTermOptimizationProof.compareCanvasBNonBlank,
-    shortTermOptimizationProof.saveAsEnabled,
-    shortTermOptimizationProof.sourceOutputSeparated
-  ].every(Boolean);
+    compareInfoPanel: nodes.compareInfoB,
+    optimizationCandidateRows,
+    optimizationModel,
+    optimizationResult,
+    optimizedBytes,
+    optimizedSha256,
+    sourceBytes: state.sourceBytes,
+    sourceSha256After: optimizationSourceSha256After,
+    sourceSha256Before: optimizationSourceSha256Before,
+    view: state.view
+  });
   clearTransientOutput();
   const replaceableResponse = await fetch("/fixture/replaceable-workflow-smoke.svga");
   const replaceableBytes = new Uint8Array(await replaceableResponse.arrayBuffer());

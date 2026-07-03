@@ -1643,11 +1643,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-thumbnail-proof"/);
   assert.match(shortTermOverviewModel, /overviewVisibleFacts/);
   assert.match(shortTermRenderModel, /"fileSize", "decodedMemory", "canvas", "fps", "assetCount"/);
-  assert.match(shortTermEntry, /short-term-optimization-proof/);
-  assert.match(shortTermEntry, /optimizedBytesSmaller/);
-  assert.match(shortTermEntry, /executedActionCount/);
-  assert.match(shortTermEntry, /executedActionRowsVisible/);
-  assert.match(shortTermEntry, /skippedMethodRowsVisible/);
+  assert.match(shortTermSmokeProofModel, /export function collectShortTermOptimizationProof/);
+  assert.match(shortTermSmokeProofModel, /short-term-optimization-proof/);
+  assert.match(shortTermSmokeProofModel, /optimizedBytesSmaller/);
+  assert.match(shortTermSmokeProofModel, /executedActionCount/);
+  assert.match(shortTermSmokeProofModel, /executedActionRowsVisible/);
+  assert.match(shortTermSmokeProofModel, /skippedMethodRowsVisible/);
+  assert.match(shortTermEntry, /collectShortTermOptimizationProof/);
+  assert.doesNotMatch(shortTermEntry, /proofId: "short-term-optimization-proof"/);
   assert.match(shortTermOptimizationModel, /groupOptimizationItems/);
   assert.match(shortTermRenderModel, /item\.count > 1/);
   assert.match(shortTermCompareModel, /data-optimization-actions/);
@@ -1665,7 +1668,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /empty\.dataset\.component = "InlineStatus"/);
   assert.match(shortTermDomRenderers, /row\.dataset\.component = "LayerRow"/);
   assert.match(shortTermDomRenderers, /class="rowIndex"/);
-  assert.match(shortTermEntry, /comparisonVisible/);
+  assert.match(shortTermSmokeProofModel, /comparisonVisible/);
   assert.match(shortTermEntry, /sourceBytesUnchanged/);
   assert.match(shortTermEntry, /short-term-rename-proof/);
   assert.match(shortTermEntry, /contextMenuOpened/);
