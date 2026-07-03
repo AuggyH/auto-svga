@@ -192,7 +192,11 @@ export async function writeMacosPackageProof(options = {}) {
 }
 
 export function validateProof(plist, proof, packagedPlist = plist) {
+  const packagedInfoPlistValidated = packagedPlist !== plist;
   const checks = [
+    ["sourceAppIdentity", plistStringValue(plist, "CFBundleName") === appName && plistStringValue(plist, "CFBundleDisplayName") === bundleDisplayName],
+    ["packagedAppIdentity", plistStringValue(packagedPlist, "CFBundleName") === appName && plistStringValue(packagedPlist, "CFBundleDisplayName") === bundleDisplayName],
+    ["packagedExecutableIdentity", !packagedInfoPlistValidated || plistStringValue(packagedPlist, "CFBundleExecutable") === appName],
     ["internalUseOnly", proof.distribution.internalUseOnly === true && plist.includes("<key>AutoSVGAInternalUseOnly</key>")],
     ["unsigned", proof.distribution.unsigned === true && plist.includes("<key>AutoSVGASigned</key>")],
     ["unnotarized", proof.distribution.notarized === false && plist.includes("<key>AutoSVGANotarized</key>")],
@@ -275,6 +279,10 @@ function plistKeyPresent(plist, key) {
 
 function plistBooleanTrue(plist, key) {
   return new RegExp(`<key>\\s*${escapeRegExp(key)}\\s*<\\/key>\\s*<true\\s*\\/>`, "m").test(plist);
+}
+
+function plistStringValue(plist, key) {
+  return new RegExp(`<key>\\s*${escapeRegExp(key)}\\s*<\\/key>\\s*<string>([^<]*)<\\/string>`, "m").exec(plist)?.[1];
 }
 
 async function runPrivacyAudit(plist) {

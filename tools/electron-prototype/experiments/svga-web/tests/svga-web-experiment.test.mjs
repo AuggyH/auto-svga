@@ -17,7 +17,8 @@ import {
   buildMacosPackageProof,
   bundleIdentifier,
   finalAcceptanceOwner,
-  macosPackagerArgs
+  macosPackagerArgs,
+  validateProof
 } from "../scripts/macos-package-proof.mjs";
 
 const require = createRequire(import.meta.url);
@@ -125,6 +126,33 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(packageScript, /sanitizePackagedInfoPlist/);
   assert.match(packageScript, /NSAudioCaptureUsageDescription/);
   assert.doesNotMatch(packageScript, /--sequesterRsrc/);
+});
+
+test("macOS package proof rejects packaged App identity drift", async () => {
+  const sourcePlist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
+  const proof = await buildMacosPackageProof({
+    appBundle: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app"),
+    archivePath: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip"),
+    validatePackagedApp: false
+  });
+  const packagedPlist = sourcePlist.replace(
+    "</dict>",
+    "  <key>CFBundleExecutable</key>\n  <string>Auto SVGA</string>\n</dict>"
+  );
+
+  assert.doesNotThrow(() => validateProof(sourcePlist, proof, packagedPlist));
+  assert.throws(
+    () => validateProof(
+      sourcePlist,
+      proof,
+      packagedPlist.replace("<key>CFBundleDisplayName</key>\n  <string>Auto SVGA</string>", "<key>CFBundleDisplayName</key>\n  <string>Electron</string>")
+    ),
+    /packagedAppIdentity/
+  );
+  assert.throws(
+    () => validateProof(sourcePlist, proof, packagedPlist.replace("<key>CFBundleExecutable</key>\n  <string>Auto SVGA</string>", "<key>CFBundleExecutable</key>\n  <string>Electron</string>")),
+    /packagedExecutableIdentity/
+  );
 });
 
 test("macOS Info.plist security audit rejects arbitrary network, unused permissions, and Finder associations", () => {
