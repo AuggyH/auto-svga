@@ -1619,6 +1619,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /getRecentSvgaFiles/);
   assert.match(shortTermEntry, /runShortTermSmokeIfRequested/);
   assert.match(shortTermEntry, /reportSmokeResult/);
+  assert.match(shortTermSmokeProofModel, /export function collectShortTermTabCaptureState/);
+  assert.match(shortTermEntry, /collectShortTermTabCaptureState/);
+  assert.match(shortTermEntry, /state\.smokeTabCaptureStates = \[\]/);
+  assert.match(shortTermEntry, /const setSmokeTab = async \(tab, artifactName = ""\)/);
+  assert.match(shortTermEntry, /setTab\(tab, \{ focus: true \}\)/);
+  assert.match(shortTermEntry, /document\.activeElement\?\.blur\?\.\(\)/);
+  assert.ok(shortTermEntry.includes('document.querySelector(`[data-tab="${tab}"]`)?.classList.contains("isSelected")'));
+  assert.ok(shortTermEntry.includes('document.querySelector(`[data-panel="${tab}"]`)?.hidden === false'));
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-launch"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-overview"\)/);
   assert.match(shortTermEntry, /captureSmokeArtifact\("short-term-preview-optimization"\)/);
@@ -1661,9 +1669,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /allSmokeArtifactsCaptured/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermDesignInteractionProof/);
   assert.match(shortTermEntry, /const smokeArtifactCapture = createSmokeArtifactCapture\(bridge\)/);
+  assert.match(shortTermEntry, /await setSmokeTab\("optimization", "short-term-preview-optimization"\);[\s\S]*captureSmokeArtifact\("short-term-preview-optimization"\)/);
+  assert.match(shortTermEntry, /await setSmokeTab\("replaceable", "short-term-preview-replaceable"\);[\s\S]*captureSmokeArtifact\("short-term-preview-replaceable"\)/);
   assert.match(shortTermEntry, /collectShortTermDesignInteractionProof/);
   assert.match(shortTermSmokeProofModel, /visibleFocusableElements/);
   assert.match(shortTermSmokeProofModel, /metadataSelectable/);
+  assert.match(shortTermSmokeProofModel, /tabCaptureStatesSynced/);
   assert.match(shortTermSmokeProofModel, /menuStateDiscoverable/);
   assert.match(shortTermSmokeProofModel, /minimumPreviewCaptured/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermReplaceableClassificationProof/);
@@ -1682,6 +1693,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /short-term-tab-keyboard-proof\.json/);
   assert.match(main, /shortTermTabKeyboardProof: Boolean\(shortTermTabKeyboardProof\)/);
   assert.match(main, /function validateShortTermDesignInteractionProof/);
+  assert.match(main, /normalizeBoundedStringList/);
+  assert.match(main, /short-term-preview-optimization", "optimization", "tabOptimization", "panelOptimization"/);
+  assert.match(main, /short-term-preview-replaceable", "replaceable", "tabReplaceable", "panelReplaceable"/);
   assert.match(main, /shortTermDesignInteractionProof = validateShortTermDesignInteractionProof/);
   assert.match(main, /short-term-design-interaction-proof\.json/);
   assert.match(main, /shortTermDesignInteractionProof: Boolean\(shortTermDesignInteractionProof\)/);

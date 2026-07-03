@@ -86,6 +86,10 @@
   --asv-component-control-height: 28px;
   --asv-component-tab-height: 30px;
   --asv-component-tab-padding: 6px;
+  --asv-component-tab-indicator-height: 2px;
+  --asv-component-tab-selected-background: color-mix(in srgb, var(--asv-color-surface-panel-strong) 86%, var(--asv-color-action-primary) 14%);
+  --asv-component-tab-selected-border: color-mix(in srgb, var(--asv-color-action-primary) 34%, var(--asv-color-border-strong));
+  --asv-component-tab-selected-ring: inset 0 0 0 1px var(--asv-component-tab-selected-border);
   --asv-component-row-height: 50px;
   --asv-component-thumbnail-size: 42px;
   --asv-component-right-panel-width: clamp(380px, 30vw, 440px);
@@ -183,6 +187,10 @@
   --asv-control-height: var(--asv-component-control-height);
   --asv-tab-height: var(--asv-component-tab-height);
   --asv-tab-padding: var(--asv-component-tab-padding);
+  --asv-tab-indicator-height: var(--asv-component-tab-indicator-height);
+  --asv-tab-selected-bg: var(--asv-component-tab-selected-background);
+  --asv-tab-selected-border: var(--asv-component-tab-selected-border);
+  --asv-tab-selected-ring: var(--asv-component-tab-selected-ring);
   --asv-row-height: var(--asv-component-row-height);
   --asv-thumb-size: var(--asv-component-thumbnail-size);
   --asv-right-panel-width: var(--asv-component-right-panel-width);

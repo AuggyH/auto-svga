@@ -104,6 +104,7 @@ import {
   collectShortTermRuntimeTextBoundaryProof,
   collectShortTermSpecComparisonProof,
   collectShortTermTabKeyboardProof,
+  collectShortTermTabCaptureState,
   collectShortTermThumbnailProof,
   collectShortTermReplaceableClassificationProof,
   collectShortTermOptimizationProof,
@@ -1127,6 +1128,25 @@ async function runShortTermSmokeIfRequested() {
   if (new URLSearchParams(location.search).get("mode") !== "smoke") return;
   const smokeArtifactCapture = createSmokeArtifactCapture(bridge);
   const { captureSmokeArtifact } = smokeArtifactCapture;
+  state.smokeTabCaptureStates = [];
+  const setSmokeTab = async (tab, artifactName = "") => {
+    setTab(tab, { focus: true });
+    await waitForSmokeCondition(() => (
+      state.tab === tab
+      && document.querySelector(`[data-tab="${tab}"]`)?.classList.contains("isSelected")
+      && document.querySelector(`[data-panel="${tab}"]`)?.hidden === false
+    ), 2_000);
+    await waitForSmokeFrame();
+    if (artifactName) {
+      state.smokeTabCaptureStates.push(collectShortTermTabCaptureState({
+        artifactName,
+        expectedTab: tab,
+        stateTab: state.tab
+      }));
+      document.activeElement?.blur?.();
+      await waitForSmokeFrame();
+    }
+  };
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-launch");
   const fixtureResponse = await fetch("/fixture/avatar-frame-smoke.svga");
@@ -1149,11 +1169,9 @@ async function runShortTermSmokeIfRequested() {
     .map((row) => row.textContent.trim())
     .find((text) => text.includes("当前文件暂无音频资产")) || "";
   const shortTermTabKeyboardProof = await collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state });
-  setTab("optimization");
-  await waitForSmokeFrame();
+  await setSmokeTab("optimization", "short-term-preview-optimization");
   await captureSmokeArtifact("short-term-preview-optimization");
-  setTab("replaceable");
-  await waitForSmokeFrame();
+  await setSmokeTab("replaceable", "short-term-preview-replaceable");
   await captureSmokeArtifact("short-term-preview-replaceable");
   const replaceableImageRowCount = nodes.replaceableList.querySelectorAll(".replaceableRow").length;
   const textElementRowCount = nodes.textElementList.querySelectorAll(".textElementRow").length;

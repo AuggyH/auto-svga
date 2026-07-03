@@ -47,6 +47,7 @@
 }
 
 .tabs button {
+  position: relative;
   min-height: var(--asv-tab-height);
   padding: 0 var(--asv-space-1);
   border: 0;
@@ -58,12 +59,34 @@
 }
 
 .tabs button.isSelected {
-  background: var(--asv-control-selected-bg);
+  background: var(--asv-tab-selected-bg);
   box-shadow:
-    inset 0 0 0 1px var(--asv-badge-border),
+    var(--asv-tab-selected-ring),
     var(--asv-shadow-control-selected);
   color: var(--asv-text);
   font-weight: 650;
+}
+
+.tabs button.isSelected::after {
+  content: "";
+  position: absolute;
+  inset-inline: var(--asv-space-2);
+  bottom: var(--asv-space-1);
+  height: var(--asv-tab-indicator-height);
+  border-radius: var(--asv-status-strip-radius);
+  background: var(--asv-action);
+}
+
+.tabs button:focus-visible {
+  outline: none;
+  box-shadow: var(--asv-focus-inset);
+}
+
+.tabs button.isSelected:focus-visible {
+  box-shadow:
+    var(--asv-focus-inset),
+    var(--asv-tab-selected-ring),
+    var(--asv-shadow-control-selected);
 }
 
 .renameEditor {

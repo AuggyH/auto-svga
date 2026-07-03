@@ -690,6 +690,61 @@ function validateShortTermDesignInteractionProof(value) {
     return normalized;
   });
   if (focusOrder.some((item) => !item)) return undefined;
+  if (!Array.isArray(value.tabCaptureStates) || value.tabCaptureStates.length < 2 || value.tabCaptureStates.length > 8) return undefined;
+  const tabCaptureStates = value.tabCaptureStates.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return undefined;
+    const normalized = {
+      artifactName: String(item.artifactName || ""),
+      expectedTab: String(item.expectedTab || ""),
+      stateTab: String(item.stateTab || ""),
+      expectedTabId: String(item.expectedTabId || ""),
+      expectedPanelId: String(item.expectedPanelId || ""),
+      activeElementId: String(item.activeElementId || ""),
+      selectedTabIds: normalizeBoundedStringList(item.selectedTabIds, 4, 80),
+      ariaSelectedTabIds: normalizeBoundedStringList(item.ariaSelectedTabIds, 4, 80),
+      visiblePanelIds: normalizeBoundedStringList(item.visiblePanelIds, 4, 80),
+      selectedMatchesExpected: item.selectedMatchesExpected === true,
+      ariaMatchesExpected: item.ariaMatchesExpected === true,
+      visiblePanelMatchesExpected: item.visiblePanelMatchesExpected === true
+    };
+    if (
+      !isBoundedString(normalized.artifactName, 120)
+      || !isBoundedString(normalized.expectedTab, 40)
+      || !isBoundedString(normalized.stateTab, 40)
+      || !isBoundedString(normalized.expectedTabId, 80)
+      || !isBoundedString(normalized.expectedPanelId, 80)
+      || !isBoundedString(normalized.activeElementId, 80)
+      || !normalized.selectedTabIds
+      || !normalized.ariaSelectedTabIds
+      || !normalized.visiblePanelIds
+    ) {
+      return undefined;
+    }
+    return normalized;
+  });
+  if (tabCaptureStates.some((item) => !item)) return undefined;
+  const captureStateByArtifact = new Map(tabCaptureStates.map((item) => [item.artifactName, item]));
+  const requiredCaptureStates = [
+    ["short-term-preview-optimization", "optimization", "tabOptimization", "panelOptimization"],
+    ["short-term-preview-replaceable", "replaceable", "tabReplaceable", "panelReplaceable"]
+  ];
+  const tabCaptureStatesSynced = requiredCaptureStates.every(([artifactName, expectedTab, expectedTabId, expectedPanelId]) => {
+    const captureState = captureStateByArtifact.get(artifactName);
+    return captureState?.expectedTab === expectedTab
+      && captureState?.stateTab === expectedTab
+      && captureState?.expectedTabId === expectedTabId
+      && captureState?.expectedPanelId === expectedPanelId
+      && captureState?.selectedTabIds.length === 1
+      && captureState.selectedTabIds[0] === expectedTabId
+      && captureState?.ariaSelectedTabIds.length === 1
+      && captureState.ariaSelectedTabIds[0] === expectedTabId
+      && captureState?.visiblePanelIds.length === 1
+      && captureState.visiblePanelIds[0] === expectedPanelId
+      && captureState.selectedMatchesExpected
+      && captureState.ariaMatchesExpected
+      && captureState.visiblePanelMatchesExpected;
+  });
+  if (tabCaptureStatesSynced !== true || value.tabCaptureStatesSynced !== true) return undefined;
   const booleanKeys = [
     "openBeforeCompare",
     "overviewTabReachable",
@@ -698,6 +753,7 @@ function validateShortTermDesignInteractionProof(value) {
     "panelScrollRegionScrollable",
     "metadataSelectable",
     "stateSummaryCopyable",
+    "tabCaptureStatesSynced",
     "menuStateDiscoverable",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",
@@ -719,11 +775,20 @@ function validateShortTermDesignInteractionProof(value) {
     panelScrollRegionScrollable: true,
     metadataSelectable: true,
     stateSummaryCopyable: true,
+    tabCaptureStates,
+    tabCaptureStatesSynced: true,
     menuStateDiscoverable: true,
     reducedMotionRulePresent: true,
     minimumPreviewCaptured: true,
     passed: true
   };
+}
+
+function normalizeBoundedStringList(value, maxCount, maxLength) {
+  if (!Array.isArray(value) || value.length > maxCount) return undefined;
+  const normalized = value.map((item) => String(item || ""));
+  if (!normalized.every((item) => isBoundedString(item, maxLength))) return undefined;
+  return normalized;
 }
 
 function describeShortTermDesignInteractionProofFailure(value) {
@@ -739,6 +804,44 @@ function describeShortTermDesignInteractionProofFailure(value) {
     return fields.some((field) => field.length > 80) || fields.every((field) => field.length === 0);
   });
   if (invalidFocusItem) return "focusOrder:item";
+  if (!Array.isArray(value.tabCaptureStates) || value.tabCaptureStates.length < 2 || value.tabCaptureStates.length > 8) return "tabCaptureStates";
+  const invalidTabCapture = value.tabCaptureStates.find((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return true;
+    const strings = [
+      [item.artifactName, 120],
+      [item.expectedTab, 40],
+      [item.stateTab, 40],
+      [item.expectedTabId, 80],
+      [item.expectedPanelId, 80],
+      [item.activeElementId, 80]
+    ];
+    const lists = [item.selectedTabIds, item.ariaSelectedTabIds, item.visiblePanelIds];
+    return strings.some(([field, maxLength]) => !isBoundedString(String(field || ""), maxLength))
+      || lists.some((list) => !normalizeBoundedStringList(list, 4, 80));
+  });
+  if (invalidTabCapture) return "tabCaptureStates:item";
+  const captureStateByArtifact = new Map(value.tabCaptureStates.map((item) => [item.artifactName, item]));
+  const requiredCaptureStates = [
+    ["short-term-preview-optimization", "optimization", "tabOptimization", "panelOptimization"],
+    ["short-term-preview-replaceable", "replaceable", "tabReplaceable", "panelReplaceable"]
+  ];
+  const tabCaptureStatesSynced = requiredCaptureStates.every(([artifactName, expectedTab, expectedTabId, expectedPanelId]) => {
+    const captureState = captureStateByArtifact.get(artifactName);
+    return captureState?.expectedTab === expectedTab
+      && captureState?.stateTab === expectedTab
+      && captureState?.expectedTabId === expectedTabId
+      && captureState?.expectedPanelId === expectedPanelId
+      && captureState?.selectedTabIds?.length === 1
+      && captureState.selectedTabIds[0] === expectedTabId
+      && captureState?.ariaSelectedTabIds?.length === 1
+      && captureState.ariaSelectedTabIds[0] === expectedTabId
+      && captureState?.visiblePanelIds?.length === 1
+      && captureState.visiblePanelIds[0] === expectedPanelId
+      && captureState.selectedMatchesExpected === true
+      && captureState.ariaMatchesExpected === true
+      && captureState.visiblePanelMatchesExpected === true;
+  });
+  if (tabCaptureStatesSynced !== true || value.tabCaptureStatesSynced !== true) return "tabCaptureStatesSynced";
   const booleanKeys = [
     "openBeforeCompare",
     "overviewTabReachable",
@@ -747,6 +850,7 @@ function describeShortTermDesignInteractionProofFailure(value) {
     "panelScrollRegionScrollable",
     "metadataSelectable",
     "stateSummaryCopyable",
+    "tabCaptureStatesSynced",
     "menuStateDiscoverable",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",

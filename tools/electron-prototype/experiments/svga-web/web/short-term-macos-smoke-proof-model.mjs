@@ -623,6 +623,33 @@ export function collectShortTermDesignInteractionProof({ minimumPreviewCaptured,
   const stateSummary = currentStateSummary();
   const localUserPathPrefix = ["/", "Users", "/"].join("");
   const menuState = parseLastMenuStateSnapshot(state.lastMenuStateSnapshot);
+  const tabCaptureStates = Array.isArray(state.smokeTabCaptureStates) ? state.smokeTabCaptureStates : [];
+  const requiredTabCaptureStates = [
+    {
+      artifactName: "short-term-preview-optimization",
+      expectedTab: "optimization",
+      expectedTabId: "tabOptimization",
+      expectedPanelId: "panelOptimization"
+    },
+    {
+      artifactName: "short-term-preview-replaceable",
+      expectedTab: "replaceable",
+      expectedTabId: "tabReplaceable",
+      expectedPanelId: "panelReplaceable"
+    }
+  ];
+  const tabCaptureStateByArtifact = new Map(tabCaptureStates.map((item) => [item.artifactName, item]));
+  const tabCaptureStatesSynced = requiredTabCaptureStates.every((expected) => {
+    const captureState = tabCaptureStateByArtifact.get(expected.artifactName);
+    return captureState?.expectedTab === expected.expectedTab
+      && captureState?.stateTab === expected.expectedTab
+      && captureState?.selectedTabIds?.length === 1
+      && captureState.selectedTabIds[0] === expected.expectedTabId
+      && captureState?.ariaSelectedTabIds?.length === 1
+      && captureState.ariaSelectedTabIds[0] === expected.expectedTabId
+      && captureState?.visiblePanelIds?.length === 1
+      && captureState.visiblePanelIds[0] === expected.expectedPanelId;
+  });
   const proof = {
     schemaVersion: 1,
     proofId: "short-term-design-interaction-proof",
@@ -642,6 +669,8 @@ export function collectShortTermDesignInteractionProof({ minimumPreviewCaptured,
       && stateSummary.includes(state.displayName)
       && !stateSummary.includes(localUserPathPrefix)
       && !stateSummary.includes("\\"),
+    tabCaptureStates,
+    tabCaptureStatesSynced,
     menuStateDiscoverable: menuState?.hasFile === true
       && menuState?.canCompare === true
       && menuState?.canPlay === true
@@ -659,11 +688,43 @@ export function collectShortTermDesignInteractionProof({ minimumPreviewCaptured,
     proof.panelScrollRegionScrollable,
     proof.metadataSelectable,
     proof.stateSummaryCopyable,
+    proof.tabCaptureStatesSynced,
     proof.menuStateDiscoverable,
     proof.reducedMotionRulePresent,
     proof.minimumPreviewCaptured
   ].every(Boolean);
   return proof;
+}
+
+export function collectShortTermTabCaptureState({ artifactName, expectedTab, stateTab }) {
+  const tabSelector = `[data-tab="${CSS.escape(expectedTab)}"]`;
+  const panelSelector = `[data-panel="${CSS.escape(expectedTab)}"]`;
+  const expectedTabId = document.querySelector(tabSelector)?.id || "";
+  const expectedPanelId = document.querySelector(panelSelector)?.id || "";
+  const selectedTabIds = tabButtons()
+    .filter((tab) => tab.classList.contains("isSelected"))
+    .map((tab) => tab.id || "");
+  const ariaSelectedTabIds = tabButtons()
+    .filter((tab) => tab.getAttribute("aria-selected") === "true")
+    .map((tab) => tab.id || "");
+  const visiblePanelIds = [...document.querySelectorAll("[data-panel]")]
+    .filter((panel) => panel.hidden === false)
+    .map((panel) => panel.id || "");
+
+  return {
+    artifactName: boundedSmokeText(artifactName, 120),
+    expectedTab: boundedSmokeText(expectedTab, 40),
+    stateTab: boundedSmokeText(stateTab, 40),
+    expectedTabId: boundedSmokeText(expectedTabId, 80),
+    expectedPanelId: boundedSmokeText(expectedPanelId, 80),
+    selectedTabIds,
+    ariaSelectedTabIds,
+    visiblePanelIds,
+    activeElementId: boundedSmokeText(document.activeElement?.id || "", 80),
+    selectedMatchesExpected: selectedTabIds.length === 1 && selectedTabIds[0] === expectedTabId,
+    ariaMatchesExpected: ariaSelectedTabIds.length === 1 && ariaSelectedTabIds[0] === expectedTabId,
+    visiblePanelMatchesExpected: visiblePanelIds.length === 1 && visiblePanelIds[0] === expectedPanelId
+  };
 }
 
 export async function reportShortTermSmokeFailure({ bridge, phase, error }) {
