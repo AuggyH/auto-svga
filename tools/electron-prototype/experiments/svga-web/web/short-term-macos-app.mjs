@@ -84,8 +84,10 @@ import { overviewTabView } from "./short-term-macos-overview-model.mjs";
 import { editReservedLayerListView } from "./short-term-macos-edit-reserved-model.mjs";
 import {
   collectShortTermDesignInteractionProof,
+  collectShortTermEmptyStateProof,
   collectShortTermSpecComparisonProof,
   collectShortTermTabKeyboardProof,
+  collectShortTermThumbnailProof,
   createSmokeArtifactCapture,
   reportShortTermSmokeFailure,
   resourceEntriesAreLocalOnly,
@@ -1139,31 +1141,16 @@ async function runShortTermSmokeIfRequested() {
     .filter((asset) => asset.kind === "image" && /^img[_-]?\d+$/i.test(asset.name))
     .map((asset) => asset.name);
   const automaticFixtureImageAssetCount = (state.model?.assets ?? []).filter((asset) => asset.kind === "image").length;
-  const shortTermEmptyStateProof = {
-    schemaVersion: 1,
-    proofId: "short-term-empty-state-proof",
-    source: "short-term-smoke",
-    noAudioVisible: noAudioCopy.includes("当前文件暂无音频资产"),
-    noReplaceableImagesVisible: replaceableImageRowCount === 0 && noReplaceableCopy.includes("未发现设计师命名"),
-    textUnavailableVisible: textElementRowCount === 0 && textUnavailableCopy.includes("未发现可运行时替换"),
-    ordinaryImagesNotDuplicatedInReplaceables: replaceableImageRowCount === 0 && nodes.assetList.children.length > 0,
-    ordinaryImageThumbnailVisible: ordinaryImageThumbnailCount > 0,
+  const shortTermEmptyStateProof = collectShortTermEmptyStateProof({
     assetRowCount: nodes.assetList.children.length,
+    noAudioCopy,
+    noReplaceableCopy,
     ordinaryImageThumbnailCount,
     replaceableImageRowCount,
     textElementRowCount,
-    noAudioCopy,
-    noReplaceableCopy,
     textUnavailableCopy
-  };
+  });
   let shortTermRuntimeTextBoundaryProof;
-  shortTermEmptyStateProof.passed = [
-    shortTermEmptyStateProof.noAudioVisible,
-    shortTermEmptyStateProof.noReplaceableImagesVisible,
-    shortTermEmptyStateProof.textUnavailableVisible,
-    shortTermEmptyStateProof.ordinaryImagesNotDuplicatedInReplaceables,
-    shortTermEmptyStateProof.ordinaryImageThumbnailVisible
-  ].every(Boolean);
   const sequenceResponse = await fetch("/fixture/sequence-repair-smoke.svga");
   const sequenceBytes = new Uint8Array(await sequenceResponse.arrayBuffer());
   await loadOpenedSource({
@@ -1175,26 +1162,11 @@ async function runShortTermSmokeIfRequested() {
   setTab("overview");
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-sequence-thumbnails");
-  const sequenceRows = [...nodes.assetList.querySelectorAll(".assetRow")]
-    .filter((row) => row.querySelector(".thumb.sequence"));
-  const sequenceThumbnailImageCount = sequenceRows.reduce((total, row) => total + row.querySelectorAll(".thumb.sequence img").length, 0);
-  const shortTermThumbnailProof = {
-    schemaVersion: 1,
-    proofId: "short-term-thumbnail-proof",
-    source: "short-term-smoke",
-    prdIds: ["S5", "S6", "S15"],
-    ordinaryImageThumbnailVisible: ordinaryImageThumbnailCount > 0,
-    ordinaryImageThumbnailCount,
-    sequenceFixtureName: "sequence-repair-smoke.svga",
-    sequenceRowCount: sequenceRows.length,
-    sequenceThumbnailImageCount,
-    sequenceFourGridVisible: sequenceRows.length > 0 && sequenceThumbnailImageCount >= 4,
-    audioEmptyStateVisible: noAudioCopy.includes("当前文件暂无音频资产"),
-    passed: ordinaryImageThumbnailCount > 0
-      && sequenceRows.length > 0
-      && sequenceThumbnailImageCount >= 4
-      && noAudioCopy.includes("当前文件暂无音频资产")
-  };
+  const shortTermThumbnailProof = collectShortTermThumbnailProof({
+    assetList: nodes.assetList,
+    noAudioCopy,
+    ordinaryImageThumbnailCount
+  });
   const optimizationResponse = await fetch("/fixture/optimizer-reopen-smoke.svga");
   const optimizationBytes = new Uint8Array(await optimizationResponse.arrayBuffer());
   await loadOpenedSource({

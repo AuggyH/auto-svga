@@ -1618,7 +1618,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /shortTermScreenshots: smokeArtifactCapture\.allSmokeArtifactsCaptured\(9\)/);
   assert.match(shortTermEntry, /shortTermSaveFailed: saveFailedVisible/);
   assert.match(shortTermEntry, /shortTermLoadFailed: loadFailedVisible/);
-  assert.match(shortTermEntry, /short-term-empty-state-proof/);
+  assert.match(shortTermSmokeProofModel, /export function collectShortTermEmptyStateProof/);
+  assert.match(shortTermSmokeProofModel, /short-term-empty-state-proof/);
+  assert.match(shortTermEntry, /collectShortTermEmptyStateProof/);
+  assert.doesNotMatch(shortTermEntry, /proofId: "short-term-empty-state-proof"/);
   assert.match(shortTermEntry, /short-term-runtime-text-boundary-proof/);
   assert.match(shortTermEntry, /productCompleteClaimed: true/);
   assert.match(shortTermEntry, /sourceSha256Before: runtimeTextSourceSha256Before/);
@@ -1626,9 +1629,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /runtimeTextKeySource: "official_svga_dynamic_text_imagekey"/);
   assert.match(shortTermEntry, /runtimeOverlayVisibleAfterApply/);
   assert.match(shortTermEntry, /resetClearedOverlay/);
-  assert.match(shortTermEntry, /short-term-thumbnail-proof/);
-  assert.match(shortTermEntry, /sequenceFourGridVisible/);
-  assert.match(shortTermEntry, /sequenceThumbnailImageCount/);
+  assert.match(shortTermSmokeProofModel, /export function collectShortTermThumbnailProof/);
+  assert.match(shortTermSmokeProofModel, /short-term-thumbnail-proof/);
+  assert.match(shortTermSmokeProofModel, /sequenceFourGridVisible/);
+  assert.match(shortTermSmokeProofModel, /sequenceThumbnailImageCount/);
+  assert.match(shortTermEntry, /collectShortTermThumbnailProof/);
+  assert.doesNotMatch(shortTermEntry, /proofId: "short-term-thumbnail-proof"/);
   assert.match(shortTermOverviewModel, /overviewVisibleFacts/);
   assert.match(shortTermRenderModel, /"fileSize", "decodedMemory", "canvas", "fps", "assetCount"/);
   assert.match(shortTermEntry, /short-term-optimization-proof/);
@@ -1667,11 +1673,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /resetCommandEnabled/);
   assert.match(shortTermEntry, /resetRestoredOriginal/);
   assert.match(shortTermEntry, /saveAsEnabledBeforeReset/);
-  assert.match(shortTermEntry, /noAudioVisible/);
-  assert.match(shortTermEntry, /noReplaceableImagesVisible/);
-  assert.match(shortTermEntry, /textUnavailableVisible/);
-  assert.match(shortTermEntry, /ordinaryImagesNotDuplicatedInReplaceables/);
-  assert.match(shortTermEntry, /ordinaryImageThumbnailVisible/);
+  assert.match(shortTermSmokeProofModel, /noAudioVisible/);
+  assert.match(shortTermSmokeProofModel, /noReplaceableImagesVisible/);
+  assert.match(shortTermSmokeProofModel, /textUnavailableVisible/);
+  assert.match(shortTermSmokeProofModel, /ordinaryImagesNotDuplicatedInReplaceables/);
+  assert.match(shortTermSmokeProofModel, /ordinaryImageThumbnailVisible/);
   assert.match(shortTermEntry, /function createSaveFailureProofOutput/);
   assert.match(shortTermEntry, /const savedModel = await inspectShortTerm\(outputBytes/);
   assert.ok(

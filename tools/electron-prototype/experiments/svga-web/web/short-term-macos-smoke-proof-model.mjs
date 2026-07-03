@@ -48,6 +48,68 @@ export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid
   return proof;
 }
 
+export function collectShortTermEmptyStateProof({
+  assetRowCount,
+  noAudioCopy,
+  noReplaceableCopy,
+  ordinaryImageThumbnailCount,
+  replaceableImageRowCount,
+  textElementRowCount,
+  textUnavailableCopy
+}) {
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-empty-state-proof",
+    source: "short-term-smoke",
+    noAudioVisible: noAudioCopy.includes("当前文件暂无音频资产"),
+    noReplaceableImagesVisible: replaceableImageRowCount === 0 && noReplaceableCopy.includes("未发现设计师命名"),
+    textUnavailableVisible: textElementRowCount === 0 && textUnavailableCopy.includes("未发现可运行时替换"),
+    ordinaryImagesNotDuplicatedInReplaceables: replaceableImageRowCount === 0 && assetRowCount > 0,
+    ordinaryImageThumbnailVisible: ordinaryImageThumbnailCount > 0,
+    assetRowCount,
+    ordinaryImageThumbnailCount,
+    replaceableImageRowCount,
+    textElementRowCount,
+    noAudioCopy,
+    noReplaceableCopy,
+    textUnavailableCopy
+  };
+  proof.passed = [
+    proof.noAudioVisible,
+    proof.noReplaceableImagesVisible,
+    proof.textUnavailableVisible,
+    proof.ordinaryImagesNotDuplicatedInReplaceables,
+    proof.ordinaryImageThumbnailVisible
+  ].every(Boolean);
+  return proof;
+}
+
+export function collectShortTermThumbnailProof({ assetList, noAudioCopy, ordinaryImageThumbnailCount }) {
+  const sequenceRows = [...assetList.querySelectorAll(".assetRow")]
+    .filter((row) => row.querySelector(".thumb.sequence"));
+  const sequenceThumbnailImageCount = sequenceRows.reduce(
+    (total, row) => total + row.querySelectorAll(".thumb.sequence img").length,
+    0
+  );
+  return {
+    schemaVersion: 1,
+    proofId: "short-term-thumbnail-proof",
+    source: "short-term-smoke",
+    prdIds: ["S5", "S6", "S15"],
+    ordinaryImageThumbnailVisible: ordinaryImageThumbnailCount > 0,
+    ordinaryImageThumbnailCount,
+    sequenceFixtureName: "sequence-repair-smoke.svga",
+    sequenceRowCount: sequenceRows.length,
+    sequenceThumbnailImageCount,
+    sequenceFourGridVisible: sequenceRows.length > 0 && sequenceThumbnailImageCount >= 4,
+    audioEmptyStateVisible: noAudioCopy.includes("当前文件暂无音频资产"),
+    passed: ordinaryImageThumbnailCount > 0
+      && sequenceRows.length > 0
+      && sequenceThumbnailImageCount >= 4
+      && noAudioCopy.includes("当前文件暂无音频资产")
+  };
+}
+
 export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
   const tabs = tabButtons();
   const tabOverview = document.querySelector("#tabOverview");
