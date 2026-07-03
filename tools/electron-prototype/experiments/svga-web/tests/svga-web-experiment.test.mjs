@@ -1012,6 +1012,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const sharedShell = await readFile(path.join(repoRoot, "tools/shared/product-frontend/product-shell.html"), "utf8");
   assert.match(page, /<title>Auto SVGA<\/title>/);
+  assert.match(main, /productDisplayName = "Auto SVGA"/);
+  assert.match(main, /app\.setName\(productDisplayName\)/);
   assert.match(page, /data-app-state="launch"/);
   assert.match(page, /data-view="preview"/);
   assert.match(page, /data-panel="overview"/);

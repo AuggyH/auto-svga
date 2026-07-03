@@ -30,6 +30,7 @@ const appRoot = app.getAppPath();
 const repoRoot = path.resolve(appRoot, "../../../..");
 const productIdentity = "auto-svga";
 const productDisplayName = "Auto SVGA";
+app.setName(productDisplayName);
 const hostMenuActions = Object.freeze([
   "open-primary-svga",
   "open-secondary-svga",
