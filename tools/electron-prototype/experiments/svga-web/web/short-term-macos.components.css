@@ -61,8 +61,8 @@ button.danger {
 }
 
 .largeOpenButton {
-  min-width: 120px;
-  min-height: 36px;
+  min-width: var(--asv-launch-action-width);
+  min-height: calc(var(--asv-control-height) + var(--asv-space-2));
   padding: 0 var(--asv-space-5);
 }
 

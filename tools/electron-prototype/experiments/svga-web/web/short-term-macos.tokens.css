@@ -10,6 +10,7 @@
   --asv-type-size-metadata: 14px;
   --asv-type-size-dialog-title: 16px;
   --asv-type-size-state-title: 18px;
+  --asv-type-size-launch-title: 22px;
   --asv-space-1: 4px;
   --asv-space-2: 8px;
   --asv-space-3: 12px;
@@ -65,6 +66,10 @@
   --asv-component-badge-min-height: 18px;
   --asv-component-empty-padding: var(--asv-space-3);
   --asv-component-left-panel-width: 238px;
+  --asv-component-launch-content-width: 520px;
+  --asv-component-launch-action-width: 132px;
+  --asv-component-launch-recent-row-height: 34px;
+  --asv-component-launch-recent-meta-width: 96px;
   --asv-component-launch-checker-size: 24px;
   --asv-component-preview-checker-size: 22px;
 
@@ -121,6 +126,10 @@
   --asv-badge-min-height: var(--asv-component-badge-min-height);
   --asv-empty-padding: var(--asv-component-empty-padding);
   --asv-left-width: var(--asv-component-left-panel-width);
+  --asv-launch-content-width: var(--asv-component-launch-content-width);
+  --asv-launch-action-width: var(--asv-component-launch-action-width);
+  --asv-launch-recent-row-height: var(--asv-component-launch-recent-row-height);
+  --asv-launch-recent-meta-width: var(--asv-component-launch-recent-meta-width);
   --asv-launch-checker-size: var(--asv-component-launch-checker-size);
   --asv-preview-checker-size: var(--asv-component-preview-checker-size);
 }

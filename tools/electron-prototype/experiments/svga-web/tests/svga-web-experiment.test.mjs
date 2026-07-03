@@ -1044,7 +1044,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-color-window/);
   assert.match(shortTermTokens, /--asv-color-surface-window/);
   assert.match(shortTermTokens, /--asv-component-toolbar-height/);
+  assert.match(shortTermTokens, /--asv-component-launch-content-width/);
+  assert.match(shortTermTokens, /--asv-launch-recent-row-height/);
   assert.match(shortTermTokens, /prefers-color-scheme: dark/);
+  assert.match(shortTermEntry, /clearRecentButton/);
+  assert.match(shortTermEntry, /disabled = visible\.length === 0/);
   assert.match(shortTermComponents, /button\.primary:disabled/);
   assert.match(shortTermComponents, /\.modeSwitch/);
   assert.match(shortTermComponents, /\.tabs/);

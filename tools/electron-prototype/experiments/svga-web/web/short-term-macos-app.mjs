@@ -42,6 +42,7 @@ const nodes = {
   dropZone: document.querySelector("#dropZone"),
   recentList: document.querySelector("#recentList"),
   recentNote: document.querySelector("#recentNote"),
+  clearRecentButton: document.querySelector("[data-action='clear-recent']"),
   loadingMessage: document.querySelector("#loadingMessage"),
   errorMessage: document.querySelector("#errorMessage"),
   primaryCanvas: document.querySelector("#primaryCanvas"),
@@ -915,12 +916,14 @@ function openTab(tab) {
 async function refreshRecentFiles() {
   if (!bridge?.getRecentSvgaFiles) {
     nodes.recentList.replaceChildren();
+    nodes.clearRecentButton.disabled = true;
     nodes.recentNote.textContent = "最近文件由 macOS 客户端提供。";
     return;
   }
   const result = await bridge.getRecentSvgaFiles();
   const records = Array.isArray(result?.records) ? result.records : [];
   const visible = records.slice(0, 5);
+  nodes.clearRecentButton.disabled = visible.length === 0;
   nodes.recentList.replaceChildren(...visible.map((record) => {
     const item = document.createElement("li");
     item.innerHTML = `
@@ -931,6 +934,7 @@ async function refreshRecentFiles() {
   }));
   if (visible.length === 0) {
     const empty = document.createElement("li");
+    empty.className = "isEmpty";
     empty.innerHTML = `<span class="recentMeta">暂无最近打开记录</span>`;
     nodes.recentList.append(empty);
   }

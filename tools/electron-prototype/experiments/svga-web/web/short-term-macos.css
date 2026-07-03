@@ -131,6 +131,7 @@ body {
   display: grid;
   align-content: center;
   justify-items: center;
+  gap: var(--asv-space-6);
   width: 100%;
   min-height: 100%;
   padding: calc(var(--asv-toolbar-height) + var(--asv-space-6)) var(--asv-space-6) var(--asv-space-6);
@@ -138,7 +139,7 @@ body {
   border-radius: 0;
   background:
     conic-gradient(from 45deg, var(--asv-color-canvas-checker) 25%, transparent 0 50%, var(--asv-color-canvas-checker) 0 75%, transparent 0),
-    var(--asv-canvas);
+    color-mix(in srgb, var(--asv-canvas) 96%, var(--asv-window));
   background-size: var(--asv-launch-checker-size) var(--asv-launch-checker-size);
   box-shadow: none;
 }
@@ -152,22 +153,26 @@ body {
   display: grid;
   justify-items: center;
   gap: var(--asv-space-3);
+  width: min(var(--asv-launch-content-width), 100%);
+  text-align: center;
 }
 
 .launchPrompt p {
   margin: 0;
-  font-size: 21px;
+  font-size: var(--asv-type-size-launch-title);
   font-weight: 650;
+  line-height: 1.2;
 }
 
 .launchPrompt span {
+  margin-top: calc(var(--asv-space-1) * -1);
   color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
 }
 
 .recentBlock {
-  width: min(460px, 100%);
-  margin-top: var(--asv-space-6);
+  width: min(var(--asv-launch-content-width), 100%);
+  margin-top: 0;
   color: var(--asv-muted);
 }
 
@@ -176,6 +181,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: var(--asv-space-3);
+  min-height: var(--asv-control-height);
 }
 
 .recentHeader h2,
@@ -192,14 +198,24 @@ body {
   min-height: var(--asv-row-action-height);
   border: 0;
   background: transparent;
-  color: var(--asv-muted);
+  color: var(--asv-subtle);
   font-weight: 520;
+}
+
+.recentHeader button:hover:not(:disabled) {
+  color: var(--asv-muted);
+  background: transparent;
+}
+
+.recentHeader h2 {
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-footnote);
 }
 
 .recentBlock ol {
   display: grid;
   gap: 0;
-  margin: var(--asv-space-2) 0 0;
+  margin: var(--asv-space-1) 0 0;
   padding: 0;
   list-style: none;
   border-top: 1px solid color-mix(in srgb, var(--asv-border) 58%, transparent);
@@ -207,26 +223,54 @@ body {
 
 .recentBlock li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(var(--asv-launch-recent-meta-width), auto);
   gap: var(--asv-space-3);
   align-items: center;
-  min-height: 34px;
+  min-height: var(--asv-launch-recent-row-height);
   border-bottom: 1px solid color-mix(in srgb, var(--asv-border) 58%, transparent);
+}
+
+.recentBlock li.isEmpty {
+  grid-template-columns: 1fr;
 }
 
 .recentBlock li button {
   overflow: hidden;
+  min-height: var(--asv-launch-recent-row-height);
+  padding: 0;
   border: 0;
   background: transparent;
+  color: var(--asv-muted);
+  font-weight: 560;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.recentBlock li button:hover:not(:disabled) {
+  color: var(--asv-text);
+  background: transparent;
 }
 
 .recentMeta,
 .recentNote {
   color: var(--asv-subtle);
   font-size: var(--asv-type-size-footnote);
+}
+
+.recentMeta {
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentBlock li.isEmpty .recentMeta {
+  text-align: left;
+}
+
+.recentNote {
+  margin: var(--asv-space-3) 0 0;
 }
 
 .previewView {
