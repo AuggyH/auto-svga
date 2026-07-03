@@ -1179,13 +1179,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /applyRuntimeTextOverlay/);
   assert.match(shortTermEntry, /clearRuntimeTextOverlay/);
   assert.match(shortTermEntry, /clearSaveFeedbackBanner/);
-  assert.match(shortTermEntry, /createOverviewFactCell/);
-  assert.match(shortTermEntry, /createAssetRow/);
   assert.match(shortTermEntry, /createInlineStatusText/);
   assert.match(shortTermEntry, /createMessageRow/);
   assert.match(shortTermEntry, /hideResourceContextMenu/);
   assert.match(shortTermEntry, /hideSaveFeedbackBanner/);
   assert.match(shortTermEntry, /markCompareSlotLoaded/);
+  assert.match(shortTermEntry, /renderAssetList/);
+  assert.match(shortTermEntry, /renderOverviewFacts/);
   assert.match(shortTermEntry, /renderReplaceableImages/);
   assert.match(shortTermEntry, /renderRuntimeTextElements/);
   assert.match(shortTermEntry, /showSaveFeedbackBanner/);
@@ -1240,6 +1240,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /打开另一个 SVGA 后开始对比/);
   assert.match(shortTermDomRenderers, /export function createOverviewFactCell/);
   assert.match(shortTermDomRenderers, /export function createAssetRow/);
+  assert.match(shortTermDomRenderers, /export function renderOverviewFacts/);
+  assert.match(shortTermDomRenderers, /export function renderAssetList/);
   assert.match(shortTermDomRenderers, /export function createOptimizationFindingRow/);
   assert.match(shortTermDomRenderers, /export function createMessageRow/);
   assert.match(shortTermDomRenderers, /export function createInlineStatusText/);
@@ -1273,6 +1275,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackModel, /escapeHtml\(title\)/);
   assert.match(shortTermFeedbackModel, /escapeHtml\(message \|\| ""\)/);
   assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
+  assert.match(shortTermEntry, /renderOverviewFacts\(nodes, overviewView\)/);
+  assert.match(shortTermEntry, /renderAssetList\(nodes, overviewView, model\)/);
+  assert.doesNotMatch(shortTermEntry, /createOverviewFactCell|createAssetRow|nodes\.factGrid\.replaceChildren|nodes\.assetList\.replaceChildren/);
+  assert.match(shortTermDomRenderers, /nodes\.factGrid\.replaceChildren/);
+  assert.match(shortTermDomRenderers, /nodes\.assetList\.replaceChildren/);
   assert.match(shortTermFeedbackModel, /export function buildCurrentStateSummary/);
   assert.match(shortTermFeedbackModel, /export function viewCopy/);
   assert.match(shortTermFeedbackModel, /Auto SVGA 状态摘要/);

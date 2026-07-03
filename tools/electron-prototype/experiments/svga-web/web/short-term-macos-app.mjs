@@ -21,15 +21,15 @@ import {
   applyRuntimeTextOverlay,
   clearSaveFeedbackBanner,
   clearRuntimeTextOverlay,
-  createAssetRow,
   createEditLayerRow,
   createInlineStatusText,
   createMessageRow,
   createOptimizationFindingRow,
-  createOverviewFactCell,
   hideSaveFeedbackBanner,
   hideResourceContextMenu,
   markCompareSlotLoaded,
+  renderAssetList,
+  renderOverviewFacts,
   renderReplaceableImages,
   renderRuntimeTextElements,
   showSaveFeedbackBanner,
@@ -584,22 +584,13 @@ function renderPreviewModel() {
   if (!model) return;
   const overviewView = overviewTabView(model);
   nodes.fileIdentity.textContent = state.displayName;
-  renderFacts(overviewView);
-  renderAssets(overviewView, model);
+  renderOverviewFacts(nodes, overviewView);
+  renderAssetList(nodes, overviewView, model);
   renderOptimization(model.optimization);
   renderReplaceables(model.replaceableElements);
   renderTextElements(model.replaceableElements);
   renderEditReserved();
   nodes.playbackMeta.textContent = overviewView.playbackMeta;
-}
-
-function renderFacts(view) {
-  nodes.factGrid.replaceChildren(...view.facts.map(createOverviewFactCell));
-}
-
-function renderAssets(view, model) {
-  const rows = view.assets.map((asset) => createAssetRow(asset, model));
-  nodes.assetList.replaceChildren(...rows);
 }
 
 function renderOptimization(model) {

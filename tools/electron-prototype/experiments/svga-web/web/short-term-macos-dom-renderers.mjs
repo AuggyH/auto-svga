@@ -39,6 +39,14 @@ export function createAssetRow(asset, model) {
   return row;
 }
 
+export function renderOverviewFacts(nodes, view) {
+  nodes.factGrid.replaceChildren(...view.facts.map(createOverviewFactCell));
+}
+
+export function renderAssetList(nodes, view, model) {
+  nodes.assetList.replaceChildren(...view.assets.map((asset) => createAssetRow(asset, model)));
+}
+
 export function createOptimizationFindingRow(item) {
   const row = document.createElement("article");
   row.className = "findingRow";
