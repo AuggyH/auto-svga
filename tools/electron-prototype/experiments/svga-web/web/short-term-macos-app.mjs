@@ -1,5 +1,6 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
 import {
+  applyCommandState,
   applyModeButtons,
   applyTabState,
   applyViewState,
@@ -839,10 +840,7 @@ function renderCommandState() {
     renameImageKey: state.renameImageKey,
     dialogOpen: Boolean(document.querySelector("dialog[open]"))
   });
-  Object.entries(commandState.actionStates).forEach(([action, actionState]) => {
-    setActionEnabled(action, actionState.enabled, actionState.reason);
-  });
-  document.querySelector("[data-action='play-pause']").textContent = commandState.playPauseCopy;
+  applyCommandState(commandState);
   syncShortTermMenuState(commandState.menuState);
 }
 

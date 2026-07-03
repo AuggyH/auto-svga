@@ -1213,12 +1213,18 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /createSaveFailureProofActiveOutput/);
   assert.doesNotMatch(shortTermEntry, /保存失败验证输出/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-state\.mjs"/);
+  assert.match(shortTermEntry, /applyCommandState/);
   assert.match(shortTermEntry, /applyViewState/);
   assert.match(shortTermEntry, /applyModeButtons/);
   assert.match(shortTermEntry, /applyTabState/);
   assert.match(shortTermEntry, /setActionEnabled/);
   assert.match(shortTermCommandState, /export function buildCommandState/);
   assert.match(shortTermCommandState, /actionStates/);
+  assert.match(shortTermEntry, /applyCommandState\(commandState\)/);
+  assert.doesNotMatch(shortTermEntry, /Object\.entries\(commandState\.actionStates\)|document\.querySelector\("\[data-action='play-pause'\]"\)\.textContent = commandState\.playPauseCopy/);
+  assert.match(shortTermDomState, /Object\.entries\(commandState\.actionStates\)/);
+  assert.match(shortTermDomState, /setActionEnabled\(action, actionState\.enabled, actionState\.reason\)/);
+  assert.match(shortTermDomState, /document\.querySelector\("\[data-action='play-pause'\]"\)\.textContent = commandState\.playPauseCopy/);
   assert.match(shortTermCommandState, /"run-optimization": \{ enabled: canRunOptimization, reason: "没有可安全执行的优化项" \}/);
   assert.match(shortTermCommandState, /"save-overwrite": \{ enabled: canOverwrite/);
   assert.match(shortTermCommandState, /playPauseCopy: input\.primaryPlaybackPlaying \? "暂停" : "播放"/);
@@ -1269,6 +1275,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomState, /export function tabButtons/);
   assert.match(shortTermDomState, /export function applyTabState/);
   assert.match(shortTermDomState, /export function setActionEnabled/);
+  assert.match(shortTermDomState, /export function applyCommandState/);
   assert.match(shortTermDomState, /document\.querySelectorAll\("\[data-view\]"\)/);
   assert.match(shortTermDomState, /button\.tabIndex = selected \? 0 : -1/);
   assert.match(shortTermDomState, /aria-pressed/);

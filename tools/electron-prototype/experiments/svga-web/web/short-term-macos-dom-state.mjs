@@ -40,3 +40,10 @@ export function setActionEnabled(action, enabled, reason) {
     button.title = enabled ? "" : reason;
   });
 }
+
+export function applyCommandState(commandState) {
+  Object.entries(commandState.actionStates).forEach(([action, actionState]) => {
+    setActionEnabled(action, actionState.enabled, actionState.reason);
+  });
+  document.querySelector("[data-action='play-pause']").textContent = commandState.playPauseCopy;
+}
