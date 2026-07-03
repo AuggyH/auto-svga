@@ -27,6 +27,7 @@ import {
   markCompareSlotLoaded,
   prependOptimizationResult,
   renderAssetList,
+  renderCompareInfoPanel,
   renderEditReservedLayers,
   renderOptimizationFindings,
   renderOverviewFacts,
@@ -221,9 +222,9 @@ async function openCompareBFromHost() {
   await mountPlayback("compareB", nodes.compareCanvasB, bytes);
   const model = await inspectShortTerm(bytes, opened.basename || "compare.svga");
   setCompareSlot("B", opened.basename || "B 文件", model);
-  nodes.compareInfoB.innerHTML = renderCompareInfoHtml("B 文件", model, opened.basename || "compare.svga", [
+  renderCompareInfoPanel(nodes, "B", renderCompareInfoHtml("B 文件", model, opened.basename || "compare.svga", [
     `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
-  ]);
+  ]));
   await refreshRecentFiles();
 }
 
@@ -681,8 +682,8 @@ async function renderOptimizationCompare(model, optimizedBytes) {
   setCompareTrace(optimizationCompareTraceView());
   setCompareSlot("A", state.displayName || "原始文件", state.model);
   setCompareSlot("B", model.resultTitle || "优化结果", undefined, "优化副本");
-  nodes.compareInfoA.innerHTML = renderCompareInfoHtml("原始文件", state.model, state.displayName);
-  nodes.compareInfoB.innerHTML = renderOptimizationCompareResultHtml(model);
+  renderCompareInfoPanel(nodes, "A", renderCompareInfoHtml("原始文件", state.model, state.displayName));
+  renderCompareInfoPanel(nodes, "B", renderOptimizationCompareResultHtml(model));
   await Promise.all([
     mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes),
     mountPlayback("compareB", nodes.compareCanvasB, optimizedBytes)
@@ -717,8 +718,8 @@ async function enterGeneralCompare() {
   setCompareTrace(generalCompareTraceView());
   setCompareSlot("A", state.displayName || "A 文件", state.model);
   setCompareSlot("B", "B 文件", undefined, "等待打开");
-  nodes.compareInfoA.innerHTML = renderCompareInfoHtml("A 文件", state.model, state.displayName);
-  nodes.compareInfoB.innerHTML = renderGeneralComparePlaceholderHtml();
+  renderCompareInfoPanel(nodes, "A", renderCompareInfoHtml("A 文件", state.model, state.displayName));
+  renderCompareInfoPanel(nodes, "B", renderGeneralComparePlaceholderHtml());
   await mountPlayback("compareA", nodes.compareCanvasA, state.previewBytes ?? state.sourceBytes);
   clearCanvas(nodes.compareCanvasB);
 }

@@ -1184,6 +1184,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /markCompareSlotLoaded/);
   assert.match(shortTermEntry, /prependOptimizationResult/);
   assert.match(shortTermEntry, /renderAssetList/);
+  assert.match(shortTermEntry, /renderCompareInfoPanel/);
   assert.match(shortTermEntry, /renderOptimizationFindings/);
   assert.match(shortTermEntry, /renderOverviewFacts/);
   assert.match(shortTermEntry, /renderReplaceableImages/);
@@ -1259,6 +1260,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function applyCompareSlotView/);
   assert.match(shortTermDomRenderers, /export function markCompareSlotLoaded/);
   assert.match(shortTermDomRenderers, /export function applyCompareTraceView/);
+  assert.match(shortTermDomRenderers, /export function renderCompareInfoPanel/);
   assert.match(shortTermDomRenderers, /export function showResourceContextMenu/);
   assert.match(shortTermDomRenderers, /export function hideResourceContextMenu/);
   assert.match(shortTermDomRenderers, /export function applyRuntimeTextOverlay/);
@@ -1425,13 +1427,17 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /applyCompareSlotView\(nodes, slot, view\)/);
   assert.match(shortTermEntry, /applyCompareTraceView\(nodes\.compareView, view\)/);
   assert.match(shortTermEntry, /markCompareSlotLoaded\(nodes, "B"\)/);
-  assert.doesNotMatch(shortTermEntry, /textContent = view\.title|textContent = view\.meta|dataset\.compareState = view\.compareState|dataset\.compareState = "loaded"|dataset\.module = view\.moduleName|dataset\.pageState = view\.pageState/);
+  assert.match(shortTermEntry, /renderCompareInfoPanel\(nodes, "A", renderCompareInfoHtml\("A 文件", state\.model, state\.displayName\)\)/);
+  assert.match(shortTermEntry, /renderCompareInfoPanel\(nodes, "B", renderGeneralComparePlaceholderHtml\(\)\)/);
+  assert.match(shortTermEntry, /renderCompareInfoPanel\(nodes, "B", renderOptimizationCompareResultHtml\(model\)\)/);
+  assert.doesNotMatch(shortTermEntry, /textContent = view\.title|textContent = view\.meta|dataset\.compareState = view\.compareState|dataset\.compareState = "loaded"|dataset\.module = view\.moduleName|dataset\.pageState = view\.pageState|nodes\.compareInfo[AB]\.innerHTML/);
   assert.match(shortTermDomRenderers, /textContent = view\.title/);
   assert.match(shortTermDomRenderers, /textContent = view\.meta/);
   assert.match(shortTermDomRenderers, /dataset\.compareState = view\.compareState/);
   assert.match(shortTermDomRenderers, /dataset\.compareState = "loaded"/);
   assert.match(shortTermDomRenderers, /dataset\.module = view\.moduleName/);
   assert.match(shortTermDomRenderers, /dataset\.pageState = view\.pageState/);
+  assert.match(shortTermDomRenderers, /node\.innerHTML = html/);
   assert.doesNotMatch(shortTermEntry, /setCompareTrace\("GeneralCompareModule", "General comparing"\)|setCompareTrace\("OptimizationCompareModule", "Optimization compare"\)/);
   assert.match(shortTermEntry, /async function collectShortTermTabKeyboardProof/);
   assert.match(shortTermEntry, /proofId: "short-term-tab-keyboard-proof"/);

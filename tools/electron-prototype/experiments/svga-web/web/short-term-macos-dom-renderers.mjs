@@ -127,6 +127,11 @@ export function applyCompareTraceView(node, view) {
   node.dataset.pageState = view.pageState;
 }
 
+export function renderCompareInfoPanel(nodes, slot, html) {
+  const node = slot === "A" ? nodes.compareInfoA : nodes.compareInfoB;
+  if (node) node.innerHTML = html;
+}
+
 export function showResourceContextMenu(menu, view) {
   menu.hidden = false;
   menu.style.left = view.left;
