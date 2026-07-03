@@ -1195,6 +1195,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareActions/);
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="launch"\]/);
   assert.match(shortTermPageStates, /\.launchView\s*\{[^}]*place-items: stretch/s);
+  assert.match(shortTermPageStates, /\.saveBanner\s*\{[^}]*grid-row: 2/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\] \.view,[\s\S]*\.macApp\[data-app-state="compare"\] \.view,[\s\S]*\.macApp\[data-app-state="edit"\] \.view\s*\{[^}]*grid-row: 3/s);
+  assert.match(shortTermPageStates, /\.previewView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
+  assert.match(shortTermPageStates, /\.compareView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
+  assert.match(shortTermPageStates, /\.editView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
   assert.match(shortTermPageStates, /\.previewView/);
   assert.match(shortTermPageStates, /\.compareView/);
   assert.match(shortTermPageStates, /\.editView/);
