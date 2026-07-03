@@ -567,7 +567,9 @@ button.danger {
 }
 
 .appDialog {
+  position: relative;
   width: min(420px, 92vw);
+  overflow: hidden;
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-lg);
   background: var(--asv-panel-strong);
@@ -575,13 +577,31 @@ button.danger {
   box-shadow: var(--asv-shadow-panel);
 }
 
+.appDialog::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--asv-status-strip-width);
+  background: var(--asv-action);
+}
+
+.appDialog[data-status="warning"]::before {
+  background: var(--asv-warning);
+}
+
 .appDialog::backdrop {
   background: color-mix(in srgb, black 24%, transparent);
 }
 
-.appDialog form {
+.appDialog form,
+.dialogBody {
   display: grid;
   gap: var(--asv-space-3);
+}
+
+.dialogHeader {
+  display: grid;
+  gap: var(--asv-space-1);
 }
 
 .appDialog h2 {
@@ -589,10 +609,17 @@ button.danger {
   font-size: var(--asv-type-size-dialog-title);
 }
 
+.dialogHeader p,
+.dialogField,
 .appDialog label {
+  margin: 0;
+  color: var(--asv-muted);
+}
+
+.appDialog label,
+.dialogField {
   display: grid;
   gap: var(--asv-space-2);
-  color: var(--asv-muted);
 }
 
 .appDialog input {
@@ -604,6 +631,7 @@ button.danger {
   color: var(--asv-text);
 }
 
+.dialogActions,
 .appDialog menu {
   display: flex;
   justify-content: flex-end;

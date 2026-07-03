@@ -152,23 +152,27 @@
       </section>
     </main>
 
-    <dialog class="appDialog" id="textDialog">
-      <form method="dialog">
-        <h2>运行时文本预览</h2>
-        <label>文本<input id="runtimeTextInput" autocomplete="off" value="SVGA VIP"></label>
-        <p>仅影响当前预览，不写入 SVGA 文件。</p>
-        <menu>
+    <dialog class="appDialog" id="textDialog" data-component="TextReplacementSheet" data-status="info">
+      <form method="dialog" class="dialogBody">
+        <header class="dialogHeader">
+          <h2>运行时文本预览</h2>
+          <p>仅影响当前预览，不写入 SVGA 文件。</p>
+        </header>
+        <label class="dialogField"><span>文本</span><input id="runtimeTextInput" autocomplete="off" value="SVGA VIP"></label>
+        <menu class="dialogActions">
           <button value="cancel">取消</button>
           <button class="primary" value="confirm">应用</button>
         </menu>
       </form>
     </dialog>
 
-    <dialog class="appDialog" id="discardDialog">
-      <form method="dialog">
-        <h2>放弃未保存输出？</h2>
-        <p id="discardMessage">当前有未保存的 SVGA 输出。</p>
-        <menu>
+    <dialog class="appDialog" id="discardDialog" data-component="ErrorRecoveryPanel" data-status="warning">
+      <form method="dialog" class="dialogBody">
+        <header class="dialogHeader">
+          <h2>放弃未保存输出？</h2>
+          <p id="discardMessage">当前有未保存的 SVGA 输出。</p>
+        </header>
+        <menu class="dialogActions">
           <button value="cancel">取消</button>
           <button class="danger" value="confirm">放弃</button>
         </menu>

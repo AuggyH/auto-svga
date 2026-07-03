@@ -1030,6 +1030,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /最近打开/);
   assert.match(page, /覆盖保存/);
   assert.match(page, /id="discardDialog"/);
+  assert.match(page, /id="textDialog" data-component="TextReplacementSheet" data-status="info"/);
+  assert.match(page, /id="discardDialog" data-component="ErrorRecoveryPanel" data-status="warning"/);
+  assert.match(page, /class="dialogActions"/);
   assert.match(page, /id="resourceContextMenu"/);
   assert.match(page, /放弃未保存输出/);
   assert.match(page, /id="textPreviewSummary"/);
@@ -1085,6 +1088,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.rowIndex/);
   assert.match(shortTermComponents, /\.reservedNotice/);
   assert.match(shortTermComponents, /\.stateCard\.error::before/);
+  assert.match(shortTermComponents, /\.appDialog\[data-status="warning"\]::before/);
+  assert.match(shortTermComponents, /\.dialogHeader/);
+  assert.match(shortTermComponents, /\.dialogActions/);
   assert.match(shortTermComponents, /\.badge/);
   assert.match(shortTermComponents, /:focus-visible/);
   assert.match(shortTermComponents, /\.contextMenu button:disabled/);
