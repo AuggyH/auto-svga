@@ -184,6 +184,7 @@ button.danger {
   border: 1px solid var(--asv-subtle-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-fact-bg);
+  box-shadow: var(--asv-shadow-panel-highlight);
 }
 
 .factCell:nth-child(5) {
@@ -233,6 +234,7 @@ button.danger {
 .factCell span {
   color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
+  font-weight: 560;
 }
 
 .factCell small {
@@ -287,7 +289,12 @@ button.danger {
 }
 
 .assetRow[data-attention="true"] {
-  background: color-mix(in srgb, var(--asv-color-warning-soft) 28%, transparent);
+  background: color-mix(in srgb, var(--asv-color-warning-soft) 18%, transparent);
+}
+
+.assetRow:hover .thumb,
+.assetRow[data-attention="true"] .thumb {
+  border-color: var(--asv-border-strong);
 }
 
 .assetRow .badge {

@@ -1056,6 +1056,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /role="tablist"/);
   assert.match(page, /aria-selected="true"/);
   assert.match(page, /id="panelOverview" data-panel="overview" role="tabpanel" tabindex="0" aria-labelledby="tabOverview"/);
+  assert.doesNotMatch(page, /id="overviewSummary"/);
+  assert.doesNotMatch(page, /id="assetSummary"/);
   assert.match(page, /id="panelOptimization" data-panel="optimization" role="tabpanel" tabindex="0" aria-labelledby="tabOptimization"/);
   assert.match(page, /id="panelReplaceable" data-panel="replaceable" role="tabpanel" tabindex="0" aria-labelledby="tabReplaceable"/);
   assert.match(page, /id="replaceableList" role="listbox" aria-label="可替换图片"/);
