@@ -65,6 +65,7 @@ import {
   optimizationTabView
 } from "./short-term-macos-optimization-model.mjs";
 import { overviewTabView } from "./short-term-macos-overview-model.mjs";
+import { editReservedLayerListView } from "./short-term-macos-edit-reserved-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -709,10 +710,8 @@ function closeResourceContextMenu() {
 }
 
 function renderEditReserved() {
-  const assets = state.model?.assets ?? [];
-  nodes.layerPanel.replaceChildren(...assets
-    .filter((asset) => asset.kind !== "audio")
-    .slice(0, 32)
+  const view = editReservedLayerListView(state.model);
+  nodes.layerPanel.replaceChildren(...view.rows
     .map((asset) => createEditLayerRow(asset, state.model)));
 }
 

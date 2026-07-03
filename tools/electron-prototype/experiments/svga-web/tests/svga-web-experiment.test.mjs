@@ -1023,6 +1023,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermReplaceableModel = await readFile(path.join(experimentRoot, "web/short-term-macos-replaceable-model.mjs"), "utf8");
   const shortTermOptimizationModel = await readFile(path.join(experimentRoot, "web/short-term-macos-optimization-model.mjs"), "utf8");
   const shortTermOverviewModel = await readFile(path.join(experimentRoot, "web/short-term-macos-overview-model.mjs"), "utf8");
+  const shortTermEditReservedModel = await readFile(path.join(experimentRoot, "web/short-term-macos-edit-reserved-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1310,6 +1311,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOverviewModel, /export function overviewTabView/);
   assert.match(shortTermOverviewModel, /overviewVisibleFacts/);
   assert.match(shortTermOverviewModel, /"canvas", "fps", "duration"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-edit-reserved-model\.mjs"/);
+  assert.match(shortTermEntry, /editReservedLayerListView/);
+  assert.doesNotMatch(shortTermEntry, /\.filter\(\(asset\) => asset\.kind !== "audio"\)[\s\S]*\.slice\(0, 32\)/);
+  assert.match(shortTermEditReservedModel, /export const EDIT_RESERVED_LAYER_LIMIT = 32/);
+  assert.match(shortTermEditReservedModel, /export function editReservedLayerListView/);
+  assert.match(shortTermEditReservedModel, /asset\.kind !== "audio"/);
+  assert.match(shortTermEditReservedModel, /EDIT_RESERVED_LAYER_LIMIT/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handleTabListKeydown\)/);
