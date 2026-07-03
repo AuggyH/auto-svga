@@ -29,7 +29,8 @@ import {
 } from "./short-term-macos-render-model.mjs";
 import {
   buildCurrentStateSummary,
-  saveBannerView
+  saveBannerView,
+  sourceUnmodifiedMessage
 } from "./short-term-macos-feedback-model.mjs";
 import {
   renderLaunchRecentFiles,
@@ -920,7 +921,7 @@ function showSaveBanner(title, message, tone) {
 
 function showFailure(error) {
   const message = error instanceof Error ? error.message : String(error);
-  nodes.errorMessage.textContent = `${message || "未知错误"} 源文件没有被修改。`;
+  nodes.errorMessage.textContent = sourceUnmodifiedMessage(message);
   setView("failed");
 }
 
@@ -929,7 +930,7 @@ function showOperationFailure(title, error) {
   if (state.sourceBytes && !["preview", "compare", "edit"].includes(state.view)) {
     setMode("preview");
   }
-  showSaveBanner(title, `${message || "未知错误"} 源文件没有被修改。`);
+  showSaveBanner(title, sourceUnmodifiedMessage(message));
   state.saveStatus = state.activeOutput ? "dirty" : "idle";
   renderCommandState();
 }

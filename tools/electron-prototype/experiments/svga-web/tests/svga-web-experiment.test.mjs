@@ -1186,7 +1186,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-feedback-model\.mjs"/);
   assert.match(shortTermEntry, /buildCurrentStateSummary/);
   assert.match(shortTermEntry, /saveBannerView/);
+  assert.match(shortTermEntry, /sourceUnmodifiedMessage/);
   assert.doesNotMatch(shortTermEntry, /saveBanner\.innerHTML = `<strong>\$\{escapeHtml\(title\)\}/);
+  assert.doesNotMatch(shortTermEntry, /\$\{message \|\| "未知错误"\} 源文件没有被修改。/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-recent-files-model\.mjs"/);
   assert.match(shortTermEntry, /visibleLaunchRecentRecords/);
   assert.match(shortTermEntry, /renderLaunchRecentFiles/);
@@ -1240,8 +1242,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomState, /aria-pressed/);
   assert.match(shortTermFeedbackModel, /export function bannerTone/);
   assert.match(shortTermFeedbackModel, /export function saveBannerView/);
+  assert.match(shortTermFeedbackModel, /export function sourceUnmodifiedMessage/);
   assert.match(shortTermFeedbackModel, /escapeHtml\(title\)/);
   assert.match(shortTermFeedbackModel, /escapeHtml\(message \|\| ""\)/);
+  assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
   assert.match(shortTermFeedbackModel, /export function buildCurrentStateSummary/);
   assert.match(shortTermFeedbackModel, /export function viewCopy/);
   assert.match(shortTermFeedbackModel, /Auto SVGA 状态摘要/);
@@ -1501,7 +1505,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /showOperationFailure\("优化未完成。", error\)/);
   assert.match(shortTermEntry, /showOperationFailure\("重命名未完成。", error\)/);
   assert.match(shortTermEntry, /showOperationFailure\("替换未完成。", error\)/);
-  assert.match(shortTermEntry, /源文件没有被修改。/);
+  assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
   assert.match(shortTermEntry, /currentStateSummary/);
   assert.match(shortTermFeedbackModel, /错误：\$\{input\.errorText\.trim\(\)\}/);
   assert.match(shortTermFeedbackModel, /提示：\$\{input\.saveBannerText\.trim\(\)\}/);
