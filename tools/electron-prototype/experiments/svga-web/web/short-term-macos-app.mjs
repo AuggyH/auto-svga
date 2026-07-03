@@ -26,6 +26,10 @@ import {
   renderRecentFilesUnavailable
 } from "./short-term-macos-launch-renderers.mjs";
 import {
+  renderAssetList,
+  renderOverviewFacts
+} from "./short-term-macos-overview-renderers.mjs";
+import {
   clearSaveFeedbackBanner,
   hideSaveFeedbackBanner,
   showSaveFeedbackBanner
@@ -46,10 +50,8 @@ import {
 } from "./short-term-macos-text-renderers.mjs";
 import {
   prependOptimizationResult,
-  renderAssetList,
   renderEditReservedLayers,
   renderOptimizationFindings,
-  renderOverviewFacts,
   renderReplaceableImages,
   renderRuntimeTextElements
 } from "./short-term-macos-dom-renderers.mjs";
