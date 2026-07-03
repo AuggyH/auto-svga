@@ -10,7 +10,7 @@
   padding: 0 var(--asv-toolbar-padding-inline);
   border-bottom: 1px solid var(--asv-border);
   background: var(--asv-toolbar);
-  backdrop-filter: saturate(1.35) blur(18px);
+  backdrop-filter: var(--asv-effect-titlebar-backdrop-filter);
 }
 
 .titlebar button,

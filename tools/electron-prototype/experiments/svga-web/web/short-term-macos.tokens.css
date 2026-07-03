@@ -76,6 +76,7 @@
   --asv-shadow-fact-cell: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 38%, transparent);
   --asv-shadow-overlay: 0 1px 6px rgba(15, 23, 42, 0.16);
   --asv-shadow-menu: 0 12px 30px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+  --asv-effect-titlebar-backdrop-filter: saturate(1.35) blur(18px);
   --asv-effect-menu-backdrop-filter: saturate(1.2) blur(18px);
 
   /* Component tokens */

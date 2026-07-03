@@ -112,11 +112,15 @@
 
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --asv-color-toolbar: var(--asv-color-panel-strong);
-    --asv-color-panel: var(--asv-color-panel-strong);
+    --asv-color-surface-toolbar: var(--asv-color-surface-panel-strong);
+    --asv-color-surface-panel: var(--asv-color-surface-panel-strong);
+    --asv-color-surface-overlay: var(--asv-color-surface-panel-strong);
+    --asv-effect-titlebar-backdrop-filter: none;
+    --asv-effect-menu-backdrop-filter: none;
   }
 
-  .titlebar {
+  .titlebar,
+  .contextMenu {
     backdrop-filter: none;
   }
 }
