@@ -1014,6 +1014,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermStyles = await readFile(path.join(experimentRoot, "web/short-term-macos.css"), "utf8");
   const shortTermCommandState = await readFile(path.join(experimentRoot, "web/short-term-macos-command-state.mjs"), "utf8");
   const shortTermCompareModel = await readFile(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs"), "utf8");
+  const shortTermCompareRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-compare-renderers.mjs"), "utf8");
   const shortTermDomRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-renderers.mjs"), "utf8");
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
   const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
@@ -1182,6 +1183,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermStyles, /button\.primary:disabled/);
   assert.doesNotMatch(shortTermStyles, /\.toolbarCluster|\.resultGroup|\.previewView|\.compareView/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-renderers\.mjs"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-compare-renderers\.mjs"/);
   assert.match(shortTermEntry, /applyCompareSlotView/);
   assert.match(shortTermEntry, /applyCompareTraceView/);
   assert.match(shortTermEntry, /applyRuntimeTextOverlay/);
@@ -1282,10 +1284,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function renderFileHeader/);
   assert.match(shortTermDomRenderers, /export function renderDiscardMessage/);
   assert.match(shortTermDomRenderers, /export function renderFailureMessage/);
-  assert.match(shortTermDomRenderers, /export function applyCompareSlotView/);
-  assert.match(shortTermDomRenderers, /export function markCompareSlotLoaded/);
-  assert.match(shortTermDomRenderers, /export function applyCompareTraceView/);
-  assert.match(shortTermDomRenderers, /export function renderCompareInfoPanel/);
+  assert.doesNotMatch(shortTermDomRenderers, /export function applyCompareSlotView|export function markCompareSlotLoaded|export function applyCompareTraceView|export function renderCompareInfoPanel/);
+  assert.match(shortTermCompareRenderers, /export function applyCompareSlotView/);
+  assert.match(shortTermCompareRenderers, /export function markCompareSlotLoaded/);
+  assert.match(shortTermCompareRenderers, /export function applyCompareTraceView/);
+  assert.match(shortTermCompareRenderers, /export function renderCompareInfoPanel/);
   assert.match(shortTermDomRenderers, /export function showResourceContextMenu/);
   assert.match(shortTermDomRenderers, /export function hideResourceContextMenu/);
   assert.match(shortTermDomRenderers, /export function applyRuntimeTextOverlay/);
@@ -1470,13 +1473,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /renderCompareInfoPanel\(nodes, "B", renderGeneralComparePlaceholderHtml\(\)\)/);
   assert.match(shortTermEntry, /renderCompareInfoPanel\(nodes, "B", renderOptimizationCompareResultHtml\(model\)\)/);
   assert.doesNotMatch(shortTermEntry, /textContent = view\.title|textContent = view\.meta|dataset\.compareState = view\.compareState|dataset\.compareState = "loaded"|dataset\.module = view\.moduleName|dataset\.pageState = view\.pageState|nodes\.compareInfo[AB]\.innerHTML/);
-  assert.match(shortTermDomRenderers, /textContent = view\.title/);
-  assert.match(shortTermDomRenderers, /textContent = view\.meta/);
-  assert.match(shortTermDomRenderers, /dataset\.compareState = view\.compareState/);
-  assert.match(shortTermDomRenderers, /dataset\.compareState = "loaded"/);
-  assert.match(shortTermDomRenderers, /dataset\.module = view\.moduleName/);
-  assert.match(shortTermDomRenderers, /dataset\.pageState = view\.pageState/);
-  assert.match(shortTermDomRenderers, /node\.innerHTML = html/);
+  assert.match(shortTermCompareRenderers, /textContent = view\.title/);
+  assert.match(shortTermCompareRenderers, /textContent = view\.meta/);
+  assert.match(shortTermCompareRenderers, /dataset\.compareState = view\.compareState/);
+  assert.match(shortTermCompareRenderers, /dataset\.compareState = "loaded"/);
+  assert.match(shortTermCompareRenderers, /dataset\.module = view\.moduleName/);
+  assert.match(shortTermCompareRenderers, /dataset\.pageState = view\.pageState/);
+  assert.match(shortTermCompareRenderers, /node\.innerHTML = html/);
   assert.doesNotMatch(shortTermEntry, /setCompareTrace\("GeneralCompareModule", "General comparing"\)|setCompareTrace\("OptimizationCompareModule", "Optimization compare"\)/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-smoke-proof-model\.mjs"/);
   assert.match(shortTermSmokeProofModel, /export async function collectShortTermTabKeyboardProof/);
@@ -2067,6 +2070,7 @@ test("short-term design system check enforces UI implementation guardrails", () 
   const source = readFileSync(path.join(experimentRoot, "scripts/check-short-term-design-system.mjs"), "utf8");
   const dynamicDomAllowlist = source.match(/const allowedDynamicDomModules = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
   assert.match(dynamicDomAllowlist, /short-term-macos-dom-renderers\.mjs/);
+  assert.match(dynamicDomAllowlist, /short-term-macos-compare-renderers\.mjs/);
   assert.doesNotMatch(dynamicDomAllowlist, /short-term-macos-compare-model\.mjs|short-term-macos-render-model\.mjs|short-term-macos-recent-files-model\.mjs/);
   const output = execFileSync(process.execPath, ["scripts/check-short-term-design-system.mjs"], {
     cwd: experimentRoot,

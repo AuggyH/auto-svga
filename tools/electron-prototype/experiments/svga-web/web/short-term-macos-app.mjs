@@ -18,15 +18,17 @@ import {
 import {
   applyCompareSlotView,
   applyCompareTraceView,
+  markCompareSlotLoaded,
+  renderCompareInfoPanel
+} from "./short-term-macos-compare-renderers.mjs";
+import {
   applyRuntimeTextOverlay,
   clearSaveFeedbackBanner,
   clearRuntimeTextOverlay,
   hideSaveFeedbackBanner,
   hideResourceContextMenu,
-  markCompareSlotLoaded,
   prependOptimizationResult,
   renderAssetList,
-  renderCompareInfoPanel,
   renderDiscardMessage,
   renderEditReservedLayers,
   renderFailureMessage,
