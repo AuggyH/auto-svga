@@ -63,7 +63,7 @@ token_namespaces:
     - tab
     - row
     - previewStage
-    - inspector
+    - rightPanel
     - modal
     - menu
     - saveState
@@ -278,7 +278,7 @@ Component tokens describe reusable component decisions:
 - `component.assetRow.thumbnailSize`
 - `component.previewStage.minWidth`
 - `component.previewStage.checkerboardSize`
-- `component.inspector.width`
+- `component.rightPanel.width`
 - `component.modal.width`
 - `component.saveState.bannerHeight`
 

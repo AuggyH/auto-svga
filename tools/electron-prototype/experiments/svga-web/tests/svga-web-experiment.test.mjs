@@ -1029,6 +1029,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /data-panel="optimization"/);
   assert.match(page, /data-panel="replaceable"/);
   assert.match(page, /role="tablist" aria-orientation="horizontal"/);
+  assert.match(page, /class="rightPanel" aria-label="右侧面板" data-component="RightTabPanel"/);
+  assert.match(page, /class="tabs" aria-label="面板标签" role="tablist"/);
   assert.match(page, /id="tabOverview" data-tab="overview" data-component="TabItem" role="tab" aria-selected="true" aria-controls="panelOverview" tabindex="0"/);
   assert.match(page, /id="tabOptimization" data-tab="optimization" data-component="TabItem" role="tab" aria-selected="false" aria-controls="panelOptimization" tabindex="-1"/);
   assert.match(page, /id="tabReplaceable" data-tab="replaceable" data-component="TabItem" role="tab" aria-selected="false" aria-controls="panelReplaceable" tabindex="-1"/);
@@ -1082,10 +1084,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(page, /productShellMount|desktop-product-entry\.mjs|prototype\.js/);
   assert.doesNotMatch(page, /导出验收|序列修复|批量 PNG|Export Acceptance/);
   assert.doesNotMatch(page, /brandMark/);
+  assert.doesNotMatch(page, /inspectorPanel|检查面板|检查标签|检查器/);
   assert.match(shortTermTokens, /--asv-window/);
   assert.match(shortTermTokens, /--asv-color-window/);
   assert.match(shortTermTokens, /--asv-color-surface-window/);
   assert.match(shortTermTokens, /--asv-color-surface-workbench/);
+  assert.match(shortTermTokens, /--asv-color-surface-right-panel/);
+  assert.match(shortTermTokens, /--asv-component-right-panel-width/);
+  assert.doesNotMatch(shortTermTokens, /inspector/);
   assert.match(shortTermTokens, /--asv-color-surface-control/);
   assert.match(shortTermTokens, /--asv-color-surface-row-selected/);
   assert.match(shortTermTokens, /--asv-panel-border/);
@@ -1132,6 +1138,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.dialogActions/);
   assert.match(shortTermComponents, /\.contextMenu button:disabled/);
   assert.match(shortTermModules, /\.toolbarCluster/);
+  assert.match(shortTermModules, /\.rightPanel/);
+  assert.doesNotMatch(shortTermModules, /inspector/);
   assert.match(shortTermModules, /grid-template-columns: var\(--asv-window-controls-width\) auto minmax\(160px, 1fr\) auto/);
   assert.match(shortTermModules, /\.resultGroup/);
   assert.match(shortTermModules, /\.tabPanel:focus-visible/);
@@ -1150,6 +1158,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPageStates, /\.previewView/);
   assert.match(shortTermPageStates, /\.compareView/);
   assert.match(shortTermPageStates, /\.editView/);
+  assert.match(shortTermPageStates, /--asv-right-panel-width/);
+  assert.doesNotMatch(shortTermPageStates, /inspector/);
   assert.match(shortTermPageStates, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(shortTermPageStates, /@media \(max-height: 780px\)/);
   assert.match(shortTermStyles, /\[hidden\]\s*\{\s*display: none !important;/);

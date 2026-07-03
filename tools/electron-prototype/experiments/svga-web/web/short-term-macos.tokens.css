@@ -30,7 +30,7 @@
   --asv-color-surface-panel-strong: #ffffff;
   --asv-color-surface-canvas: #eceef2;
   --asv-color-surface-workbench: color-mix(in srgb, var(--asv-color-surface-window) 94%, var(--asv-color-surface-panel-strong));
-  --asv-color-surface-inspector: color-mix(in srgb, var(--asv-color-surface-panel) 94%, var(--asv-color-surface-window));
+  --asv-color-surface-right-panel: color-mix(in srgb, var(--asv-color-surface-panel) 94%, var(--asv-color-surface-window));
   --asv-color-text-primary: #1d1d1f;
   --asv-color-text-secondary: #6e6e73;
   --asv-color-text-tertiary: #8a8a8e;
@@ -77,9 +77,9 @@
   --asv-component-tab-padding: 6px;
   --asv-component-row-height: 50px;
   --asv-component-thumbnail-size: 42px;
-  --asv-component-inspector-width: clamp(380px, 30vw, 440px);
-  --asv-component-inspector-padding: var(--asv-space-3);
-  --asv-component-inspector-section-gap: var(--asv-space-3);
+  --asv-component-right-panel-width: clamp(380px, 30vw, 440px);
+  --asv-component-right-panel-padding: var(--asv-space-3);
+  --asv-component-right-panel-section-gap: var(--asv-space-3);
   --asv-component-preview-gap: 10px;
   --asv-component-playback-bar-height: 42px;
   --asv-component-fact-cell-min-height: 70px;
@@ -112,7 +112,7 @@
   --asv-color-panel-strong: var(--asv-color-surface-panel-strong);
   --asv-color-canvas: var(--asv-color-surface-canvas);
   --asv-color-workbench: var(--asv-color-surface-workbench);
-  --asv-color-inspector: var(--asv-color-surface-inspector);
+  --asv-color-right-panel: var(--asv-color-surface-right-panel);
   --asv-color-text: var(--asv-color-text-primary);
   --asv-color-text-muted: var(--asv-color-text-secondary);
   --asv-color-text-subtle: var(--asv-color-text-tertiary);
@@ -142,7 +142,7 @@
   --asv-panel-strong: var(--asv-color-panel-strong);
   --asv-canvas: var(--asv-color-canvas);
   --asv-workbench: var(--asv-color-workbench);
-  --asv-inspector: var(--asv-color-inspector);
+  --asv-right-panel: var(--asv-color-right-panel);
   --asv-text: var(--asv-color-text);
   --asv-muted: var(--asv-color-text-muted);
   --asv-subtle: var(--asv-color-text-subtle);
@@ -168,9 +168,9 @@
   --asv-tab-padding: var(--asv-component-tab-padding);
   --asv-row-height: var(--asv-component-row-height);
   --asv-thumb-size: var(--asv-component-thumbnail-size);
-  --asv-inspector-width: var(--asv-component-inspector-width);
-  --asv-inspector-padding: var(--asv-component-inspector-padding);
-  --asv-inspector-section-gap: var(--asv-component-inspector-section-gap);
+  --asv-right-panel-width: var(--asv-component-right-panel-width);
+  --asv-right-panel-padding: var(--asv-component-right-panel-padding);
+  --asv-right-panel-section-gap: var(--asv-component-right-panel-section-gap);
   --asv-preview-gap: var(--asv-component-preview-gap);
   --asv-playback-bar-height: var(--asv-component-playback-bar-height);
   --asv-fact-cell-min-height: var(--asv-component-fact-cell-min-height);
@@ -230,8 +230,8 @@
     --asv-component-tab-height: 28px;
     --asv-component-row-height: 46px;
     --asv-component-thumbnail-size: 38px;
-    --asv-component-inspector-padding: var(--asv-space-2);
-    --asv-component-inspector-section-gap: var(--asv-space-2);
+    --asv-component-right-panel-padding: var(--asv-space-2);
+    --asv-component-right-panel-section-gap: var(--asv-space-2);
     --asv-component-preview-gap: var(--asv-space-2);
     --asv-component-playback-bar-height: 38px;
     --asv-component-fact-cell-min-height: 62px;

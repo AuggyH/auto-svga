@@ -250,7 +250,7 @@
 }
 
 .previewStagePanel,
-.inspectorPanel,
+.rightPanel,
 .compareInfo,
 .compareCanvasWrap,
 .layerPanel,
@@ -327,18 +327,18 @@ canvas {
   line-height: var(--asv-badge-min-height);
 }
 
-.inspectorPanel {
+.rightPanel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
-  background: var(--asv-inspector);
+  background: var(--asv-right-panel);
 }
 
 .tabPanel {
   min-height: 0;
   outline: none;
   overflow: auto;
-  padding: var(--asv-inspector-padding);
+  padding: var(--asv-right-panel-padding);
   scrollbar-gutter: stable;
 }
 
@@ -353,7 +353,7 @@ canvas {
 }
 
 .resultGroup {
-  margin: var(--asv-inspector-section-gap) 0;
+  margin: var(--asv-right-panel-section-gap) 0;
   padding: var(--asv-space-2);
   border: 1px solid var(--asv-row-border);
   border-radius: var(--asv-radius-sm);
@@ -404,8 +404,8 @@ canvas {
 
 .assetSection,
 .textPreviewBlock {
-  margin-top: var(--asv-inspector-section-gap);
-  padding-top: var(--asv-inspector-section-gap);
+  margin-top: var(--asv-right-panel-section-gap);
+  padding-top: var(--asv-right-panel-section-gap);
   border-top: 1px solid var(--asv-row-border);
 }
 
@@ -539,7 +539,7 @@ canvas {
   gap: var(--asv-space-3);
   overflow: auto;
   padding: var(--asv-space-3);
-  background: var(--asv-inspector);
+  background: var(--asv-right-panel);
   scrollbar-gutter: stable;
 }
 

@@ -57,7 +57,7 @@
 
 .previewView {
   display: grid;
-  grid-template-columns: minmax(520px, 1fr) var(--asv-inspector-width);
+  grid-template-columns: minmax(520px, 1fr) var(--asv-right-panel-width);
   gap: var(--asv-preview-gap);
   height: 100%;
   min-height: 0;
@@ -80,7 +80,7 @@
 
 .editView {
   display: grid;
-  grid-template-columns: var(--asv-left-width) minmax(480px, 1fr) minmax(300px, var(--asv-inspector-width));
+  grid-template-columns: var(--asv-left-width) minmax(480px, 1fr) minmax(300px, var(--asv-right-panel-width));
   gap: var(--asv-space-4);
   height: 100%;
   min-height: 0;
@@ -109,7 +109,7 @@
 
 @media (max-width: 1080px) {
   :root {
-    --asv-inspector-width: 360px;
+    --asv-right-panel-width: 360px;
     --asv-left-width: 220px;
   }
 
@@ -130,7 +130,7 @@
   }
 
   .previewView {
-    grid-template-columns: minmax(480px, 1fr) var(--asv-inspector-width);
+    grid-template-columns: minmax(480px, 1fr) var(--asv-right-panel-width);
   }
 
   .compareView {

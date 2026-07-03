@@ -29,7 +29,7 @@ model remains `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md`.
 | `semantic.color.status` | success, warning, danger, info | never color-only |
 | `component.button` | height, padding, radius, state color | toolbar/action controls |
 | `component.row` | height, gap, thumbnail size | asset and fact rows |
-| `layout.window` | toolbar, inspector, compare, canvas | macOS app shell |
+| `layout.window` | toolbar, right panel, compare, canvas | macOS app shell |
 
 ## CSS Variable Mapping
 
