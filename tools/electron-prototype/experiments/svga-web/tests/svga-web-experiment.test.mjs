@@ -1079,6 +1079,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /class="playbackActions" data-component="PlaybackButtonGroup"/);
   assert.match(page, /class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus"/);
   assert.match(page, /最近打开/);
+  assert.doesNotMatch(page, /本地预览，不上传/);
   assert.match(page, /覆盖保存/);
   assert.match(page, /id="discardDialog"/);
   assert.match(page, /id="textDialog" data-component="TextReplacementSheet" data-status="info"/);
@@ -1118,12 +1119,17 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-color-surface-window/);
   assert.match(shortTermTokens, /--asv-color-surface-workbench/);
   assert.match(shortTermTokens, /--asv-color-surface-right-panel/);
+  assert.match(shortTermTokens, /--asv-color-surface-panel-chrome/);
+  assert.match(shortTermTokens, /--asv-color-surface-panel-recessed/);
   assert.match(shortTermTokens, /--asv-component-right-panel-width/);
   assert.doesNotMatch(shortTermTokens, /inspector/);
   assert.match(shortTermTokens, /--asv-color-surface-control/);
   assert.match(shortTermTokens, /--asv-color-surface-row-selected/);
   assert.match(shortTermTokens, /--asv-panel-border/);
   assert.match(shortTermTokens, /--asv-shadow-panel-highlight/);
+  assert.match(shortTermTokens, /--asv-shadow-panel-chrome/);
+  assert.match(shortTermTokens, /--asv-shadow-row-selected/);
+  assert.match(shortTermTokens, /--asv-shadow-fact-cell/);
   assert.match(shortTermTokens, /--asv-component-toolbar-height/);
   assert.match(shortTermTokens, /--asv-component-launch-content-width/);
   assert.match(shortTermTokens, /--asv-launch-recent-row-height/);
@@ -1132,6 +1138,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-compare-metric-row-min-height/);
   assert.match(shortTermTokens, /--asv-playback-bar-height/);
   assert.match(shortTermTokens, /--asv-component-status-strip-width/);
+  assert.match(shortTermTokens, /--asv-component-fact-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-row-index-width/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
   assert.match(shortTermTokens, /--asv-row-index-width/);
@@ -1154,6 +1161,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermComponents, /\.modeSwitch/);
   assert.doesNotMatch(shortTermComponents, /\.tabs/);
   assert.match(shortTermComponents, /\.factCell/);
+  assert.match(shortTermComponents, /box-shadow: var\(--asv-shadow-fact-cell\)/);
   assert.match(shortTermComponents, /\.assetRow/);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
   assert.match(shortTermComponents, /\.messageRow/);
@@ -1168,6 +1176,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightPanel/);
   assert.doesNotMatch(shortTermModules, /inspector/);
   assert.match(shortTermModules, /grid-template-columns: var\(--asv-window-controls-width\) auto minmax\(160px, 1fr\) auto/);
+  assert.match(shortTermModules, /background: var\(--asv-panel-chrome\)/);
+  assert.match(shortTermModules, /background: var\(--asv-panel-recessed\)/);
   assert.match(shortTermModules, /\.resultGroup/);
   assert.match(shortTermModules, /\.tabPanel:focus-visible/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="success"\]::before/);
@@ -1182,6 +1192,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareMetricGrid/);
   assert.match(shortTermModules, /\.compareActions/);
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="launch"\]/);
+  assert.match(shortTermPageStates, /\.launchView\s*\{[^}]*place-items: stretch/s);
   assert.match(shortTermPageStates, /\.previewView/);
   assert.match(shortTermPageStates, /\.compareView/);
   assert.match(shortTermPageStates, /\.editView/);
@@ -1391,8 +1402,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermLaunchRenderers, /data-action="open-recent"/);
   assert.match(shortTermLaunchRenderers, /data-recent-id/);
   assert.match(shortTermLaunchRenderers, /暂无最近打开记录/);
-  assert.match(shortTermLaunchRenderers, /仅显示文件名和父级位置/);
-  assert.match(shortTermLaunchRenderers, /最近文件由 macOS 客户端提供/);
+  assert.match(shortTermLaunchRenderers, /noteNode\.hidden = true/);
+  assert.doesNotMatch(shortTermLaunchRenderers, /仅显示文件名和父级位置|最近文件由 macOS 客户端提供/);
   assert.match(shortTermSaveModel, /export function saveProofImageKey/);
   assert.match(shortTermSaveModel, /export function saveProofSourceImageKey/);
   assert.match(shortTermSaveModel, /export function createSaveFailureProofActiveOutput/);

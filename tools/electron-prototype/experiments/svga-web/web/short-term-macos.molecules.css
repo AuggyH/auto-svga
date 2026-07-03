@@ -18,7 +18,8 @@
   padding: 2px;
   border: 1px solid var(--asv-control-border);
   border-radius: var(--asv-radius-md);
-  background: color-mix(in srgb, var(--asv-window) 58%, transparent);
+  background: var(--asv-panel-recessed);
+  box-shadow: var(--asv-shadow-control);
 }
 
 .modeSwitch button {
@@ -41,7 +42,8 @@
   gap: 0;
   padding: calc(var(--asv-tab-padding) - 1px);
   border-bottom: 1px solid var(--asv-border);
-  background: color-mix(in srgb, var(--asv-window) 18%, transparent);
+  background: var(--asv-panel-chrome);
+  box-shadow: var(--asv-shadow-panel-highlight);
 }
 
 .tabs button {

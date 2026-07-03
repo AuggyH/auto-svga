@@ -47,14 +47,18 @@
   position: relative;
   display: grid;
   align-content: start;
-  gap: 1px;
+  gap: var(--asv-fact-cell-gap);
   min-height: var(--asv-fact-cell-min-height);
   min-width: 0;
   padding: var(--asv-space-2) var(--asv-space-3) var(--asv-space-2) var(--asv-space-4);
   border: 1px solid var(--asv-subtle-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-fact-bg);
-  box-shadow: var(--asv-shadow-panel-highlight);
+  box-shadow: var(--asv-shadow-fact-cell);
+  transition:
+    background-color var(--asv-motion-duration-fast) ease,
+    border-color var(--asv-motion-duration-fast) ease,
+    box-shadow var(--asv-motion-duration-fast) ease;
 }
 
 .factCell:nth-child(5) {
@@ -65,8 +69,8 @@
   content: "";
   position: absolute;
   inset: var(--asv-space-2) auto var(--asv-space-2) var(--asv-space-2);
-  width: 2px;
-  border-radius: 999px;
+  width: var(--asv-fact-status-strip-width);
+  border-radius: var(--asv-status-strip-radius);
   background: var(--asv-border-strong);
 }
 
@@ -142,6 +146,11 @@
   border: 1px solid var(--asv-row-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-row-bg);
+  box-shadow: var(--asv-shadow-row);
+  transition:
+    background-color var(--asv-motion-duration-fast) ease,
+    border-color var(--asv-motion-duration-fast) ease,
+    box-shadow var(--asv-motion-duration-fast) ease;
 }
 
 .assetRow {
@@ -152,6 +161,7 @@
   border-bottom: 1px solid var(--asv-subtle-border);
   border-radius: 0;
   background: transparent;
+  box-shadow: none;
 }
 
 .assetRow:hover {
@@ -262,6 +272,7 @@
 .textElementRow:focus-visible {
   border-color: var(--asv-border-strong);
   background: var(--asv-row-selected-bg);
+  box-shadow: var(--asv-shadow-row-selected);
 }
 
 .replaceableRow:focus-visible,
@@ -354,7 +365,8 @@
   border: 1px solid var(--asv-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-panel-strong);
-  box-shadow: var(--asv-shadow-floating);
+  box-shadow: var(--asv-shadow-menu);
+  backdrop-filter: var(--asv-effect-menu-backdrop-filter);
 }
 
 .contextMenu[hidden] {

@@ -28,9 +28,11 @@
   --asv-color-surface-toolbar: rgba(247, 247, 248, 0.9);
   --asv-color-surface-panel: rgba(255, 255, 255, 0.88);
   --asv-color-surface-panel-strong: #ffffff;
+  --asv-color-surface-panel-chrome: color-mix(in srgb, var(--asv-color-surface-panel-strong) 78%, var(--asv-color-surface-window));
+  --asv-color-surface-panel-recessed: color-mix(in srgb, var(--asv-color-surface-window) 72%, var(--asv-color-surface-panel-strong));
   --asv-color-surface-canvas: #eceef2;
   --asv-color-surface-workbench: color-mix(in srgb, var(--asv-color-surface-window) 94%, var(--asv-color-surface-panel-strong));
-  --asv-color-surface-right-panel: color-mix(in srgb, var(--asv-color-surface-panel) 94%, var(--asv-color-surface-window));
+  --asv-color-surface-right-panel: color-mix(in srgb, var(--asv-color-surface-panel-chrome) 88%, var(--asv-color-surface-window));
   --asv-color-text-primary: #1d1d1f;
   --asv-color-text-secondary: #6e6e73;
   --asv-color-text-tertiary: #8a8a8e;
@@ -45,14 +47,14 @@
   --asv-color-status-warning-soft: rgba(178, 106, 0, 0.14);
   --asv-color-status-danger-soft: rgba(215, 0, 21, 0.14);
   --asv-color-canvas-checker: rgba(60, 60, 67, 0.026);
-  --asv-color-surface-control: color-mix(in srgb, var(--asv-color-surface-panel-strong) 76%, transparent);
-  --asv-color-surface-control-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-action-primary) 5%);
+  --asv-color-surface-control: color-mix(in srgb, var(--asv-color-surface-panel-strong) 82%, var(--asv-color-surface-window));
+  --asv-color-surface-control-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 92%, var(--asv-color-action-primary) 5%);
   --asv-color-surface-control-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 92%, var(--asv-color-action-primary) 3%);
   --asv-color-surface-control-disabled: color-mix(in srgb, var(--asv-color-surface-panel-strong) 70%, transparent);
-  --asv-color-surface-row: color-mix(in srgb, var(--asv-color-surface-panel-strong) 38%, transparent);
-  --asv-color-surface-row-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 54%, transparent);
-  --asv-color-surface-row-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 88%, var(--asv-color-status-info-soft));
-  --asv-color-surface-fact: color-mix(in srgb, var(--asv-color-surface-panel-strong) 24%, transparent);
+  --asv-color-surface-row: color-mix(in srgb, var(--asv-color-surface-panel-strong) 66%, var(--asv-color-surface-panel-recessed));
+  --asv-color-surface-row-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 84%, var(--asv-color-status-info-soft));
+  --asv-color-surface-row-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 86%, var(--asv-color-status-info-soft));
+  --asv-color-surface-fact: color-mix(in srgb, var(--asv-color-surface-panel-strong) 76%, var(--asv-color-surface-panel-recessed));
   --asv-color-surface-badge: color-mix(in srgb, var(--asv-color-border-default) 22%, transparent);
   --asv-color-surface-overlay: color-mix(in srgb, var(--asv-color-surface-panel-strong) 86%, transparent);
   --asv-color-surface-save-banner: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-action-primary) 4%);
@@ -62,10 +64,19 @@
   --asv-color-border-subtle: color-mix(in srgb, var(--asv-color-border-default) 52%, transparent);
   --asv-color-border-badge: color-mix(in srgb, var(--asv-color-border-default) 42%, transparent);
   --asv-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --asv-shadow-panel-chrome: 0 1px 2px rgba(15, 23, 42, 0.07), 0 18px 34px rgba(15, 23, 42, 0.05);
   --asv-shadow-floating: 0 18px 44px rgba(15, 23, 42, 0.16);
   --asv-shadow-panel-highlight: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 36%, transparent);
+  --asv-shadow-control: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 42%, transparent);
+  --asv-shadow-control-hover: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 62%, transparent), 0 1px 2px rgba(15, 23, 42, 0.05);
   --asv-shadow-control-selected: 0 1px 1px rgba(15, 23, 42, 0.08);
+  --asv-shadow-control-primary: 0 1px 2px rgba(10, 132, 255, 0.22);
+  --asv-shadow-row: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 34%, transparent);
+  --asv-shadow-row-selected: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 58%, transparent), 0 1px 2px rgba(15, 23, 42, 0.06);
+  --asv-shadow-fact-cell: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 54%, transparent), 0 1px 1px rgba(15, 23, 42, 0.03);
   --asv-shadow-overlay: 0 1px 6px rgba(15, 23, 42, 0.16);
+  --asv-shadow-menu: 0 12px 30px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+  --asv-effect-menu-backdrop-filter: saturate(1.2) blur(18px);
 
   /* Component tokens */
   --asv-component-toolbar-height: 50px;
@@ -83,6 +94,8 @@
   --asv-component-preview-gap: 10px;
   --asv-component-playback-bar-height: 42px;
   --asv-component-fact-cell-min-height: 70px;
+  --asv-component-fact-cell-gap: 2px;
+  --asv-component-fact-status-strip-width: 2px;
   --asv-component-asset-row-min-height: 48px;
   --asv-component-finding-row-min-height: 54px;
   --asv-component-row-action-height: 24px;
@@ -110,6 +123,8 @@
   --asv-color-toolbar: var(--asv-color-surface-toolbar);
   --asv-color-panel: var(--asv-color-surface-panel);
   --asv-color-panel-strong: var(--asv-color-surface-panel-strong);
+  --asv-color-panel-chrome: var(--asv-color-surface-panel-chrome);
+  --asv-color-panel-recessed: var(--asv-color-surface-panel-recessed);
   --asv-color-canvas: var(--asv-color-surface-canvas);
   --asv-color-workbench: var(--asv-color-surface-workbench);
   --asv-color-right-panel: var(--asv-color-surface-right-panel);
@@ -140,6 +155,8 @@
   --asv-toolbar: var(--asv-color-toolbar);
   --asv-panel: var(--asv-color-panel);
   --asv-panel-strong: var(--asv-color-panel-strong);
+  --asv-panel-chrome: var(--asv-color-panel-chrome);
+  --asv-panel-recessed: var(--asv-color-panel-recessed);
   --asv-canvas: var(--asv-color-canvas);
   --asv-workbench: var(--asv-color-workbench);
   --asv-right-panel: var(--asv-color-right-panel);
@@ -174,6 +191,8 @@
   --asv-preview-gap: var(--asv-component-preview-gap);
   --asv-playback-bar-height: var(--asv-component-playback-bar-height);
   --asv-fact-cell-min-height: var(--asv-component-fact-cell-min-height);
+  --asv-fact-cell-gap: var(--asv-component-fact-cell-gap);
+  --asv-fact-status-strip-width: var(--asv-component-fact-status-strip-width);
   --asv-asset-row-min-height: var(--asv-component-asset-row-min-height);
   --asv-finding-row-min-height: var(--asv-component-finding-row-min-height);
   --asv-row-action-height: var(--asv-component-row-action-height);
@@ -202,6 +221,8 @@
     --asv-color-surface-toolbar: rgba(36, 36, 39, 0.86);
     --asv-color-surface-panel: rgba(42, 42, 46, 0.86);
     --asv-color-surface-panel-strong: #303036;
+    --asv-color-surface-panel-chrome: color-mix(in srgb, var(--asv-color-surface-panel-strong) 78%, var(--asv-color-surface-window));
+    --asv-color-surface-panel-recessed: color-mix(in srgb, var(--asv-color-surface-window) 76%, var(--asv-color-surface-panel-strong));
     --asv-color-surface-canvas: #18191c;
     --asv-color-text-primary: #f5f5f7;
     --asv-color-text-secondary: #adadb3;
@@ -217,9 +238,17 @@
     --asv-color-status-warning-soft: rgba(255, 214, 10, 0.12);
     --asv-color-status-danger-soft: rgba(255, 69, 58, 0.12);
     --asv-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.34);
+    --asv-shadow-panel-chrome: 0 1px 2px rgba(0, 0, 0, 0.34), 0 18px 34px rgba(0, 0, 0, 0.2);
     --asv-shadow-floating: 0 18px 44px rgba(0, 0, 0, 0.32);
+    --asv-shadow-control: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+    --asv-shadow-control-hover: inset 0 1px 0 color-mix(in srgb, white 11%, transparent), 0 1px 2px rgba(0, 0, 0, 0.2);
     --asv-shadow-control-selected: 0 1px 1px rgba(0, 0, 0, 0.22);
+    --asv-shadow-control-primary: 0 1px 2px rgba(10, 132, 255, 0.18);
+    --asv-shadow-row: inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
+    --asv-shadow-row-selected: inset 0 1px 0 color-mix(in srgb, white 12%, transparent), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --asv-shadow-fact-cell: inset 0 1px 0 color-mix(in srgb, white 9%, transparent), 0 1px 1px rgba(0, 0, 0, 0.14);
     --asv-shadow-overlay: 0 1px 6px rgba(0, 0, 0, 0.28);
+    --asv-shadow-menu: 0 12px 30px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.2);
   }
 }
 

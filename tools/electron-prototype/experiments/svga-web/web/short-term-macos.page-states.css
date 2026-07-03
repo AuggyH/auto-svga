@@ -51,6 +51,7 @@
 }
 
 .launchView {
+  place-items: stretch;
   padding: 0;
   background: var(--asv-window);
 }

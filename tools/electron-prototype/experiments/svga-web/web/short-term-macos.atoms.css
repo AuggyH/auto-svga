@@ -14,12 +14,19 @@ button {
   color: var(--asv-text);
   cursor: default;
   font-weight: 540;
+  box-shadow: var(--asv-shadow-control);
+  transition:
+    background-color var(--asv-motion-duration-fast) ease,
+    border-color var(--asv-motion-duration-fast) ease,
+    box-shadow var(--asv-motion-duration-fast) ease,
+    color var(--asv-motion-duration-fast) ease;
   white-space: nowrap;
 }
 
 button:hover:not(:disabled) {
   border-color: var(--asv-border-strong);
   background: var(--asv-control-hover-bg);
+  box-shadow: var(--asv-shadow-control-hover);
 }
 
 button:focus-visible,
@@ -40,6 +47,7 @@ button.primary,
   background: var(--asv-action);
   color: white;
   font-weight: 620;
+  box-shadow: var(--asv-shadow-control-primary);
 }
 
 button.primary:disabled,
@@ -48,6 +56,7 @@ button.primary:disabled,
   border-color: var(--asv-border);
   background: var(--asv-control-disabled-bg);
   color: var(--asv-subtle);
+  box-shadow: var(--asv-shadow-control);
 }
 
 button.danger {

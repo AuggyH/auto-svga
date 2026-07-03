@@ -3,14 +3,16 @@ import { escapeHtml } from "./short-term-macos-render-model.mjs";
 export function renderRecentFilesUnavailable({ listNode, noteNode, clearButton }) {
   listNode.replaceChildren();
   clearButton.disabled = true;
-  noteNode.textContent = "最近文件由 macOS 客户端提供。";
+  noteNode.textContent = "";
+  noteNode.hidden = true;
 }
 
 export function renderLaunchRecentFiles({ listNode, noteNode, clearButton }, records) {
   clearButton.disabled = records.length === 0;
   listNode.replaceChildren(...records.map(createRecentFileRow));
   if (records.length === 0) listNode.append(createEmptyRecentFileRow());
-  noteNode.textContent = "仅显示文件名和父级位置。";
+  noteNode.textContent = "";
+  noteNode.hidden = true;
 }
 
 export function createRecentFileRow(record) {

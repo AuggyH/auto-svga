@@ -140,12 +140,6 @@
   line-height: 1.2;
 }
 
-.launchPrompt span {
-  margin-top: calc(var(--asv-space-1) * -1);
-  color: var(--asv-muted);
-  font-size: var(--asv-type-size-footnote);
-}
-
 .recentBlock {
   width: min(var(--asv-launch-content-width), 100%);
   margin-top: 0;
@@ -228,8 +222,7 @@
   background: transparent;
 }
 
-.recentMeta,
-.recentNote {
+.recentMeta {
   color: var(--asv-subtle);
   font-size: var(--asv-type-size-footnote);
 }
@@ -245,10 +238,6 @@
   text-align: left;
 }
 
-.recentNote {
-  margin: var(--asv-space-3) 0 0;
-}
-
 .previewStagePanel,
 .rightPanel,
 .compareInfo,
@@ -258,8 +247,10 @@
   min-height: 0;
   border: 1px solid var(--asv-panel-border);
   border-radius: var(--asv-radius-md);
-  background: var(--asv-panel);
-  box-shadow: var(--asv-shadow-panel-highlight);
+  background: var(--asv-panel-chrome);
+  box-shadow:
+    var(--asv-shadow-panel-chrome),
+    var(--asv-shadow-panel-highlight);
 }
 
 .previewStagePanel {
@@ -306,7 +297,7 @@ canvas {
   min-height: var(--asv-playback-bar-height);
   padding: var(--asv-space-2) var(--asv-space-3);
   border-top: 1px solid var(--asv-border);
-  background: var(--asv-fact-bg);
+  background: var(--asv-panel-recessed);
 }
 
 .playbackActions {
@@ -339,6 +330,7 @@ canvas {
   outline: none;
   overflow: auto;
   padding: var(--asv-right-panel-padding);
+  background: var(--asv-panel-recessed);
   scrollbar-gutter: stable;
 }
 
@@ -358,6 +350,7 @@ canvas {
   border: 1px solid var(--asv-row-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-row-bg);
+  box-shadow: var(--asv-shadow-row);
 }
 
 .resultGroup[data-status="success"] {
