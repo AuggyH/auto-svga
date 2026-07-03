@@ -106,6 +106,11 @@ import {
   renameShortTermImageKey,
   replaceShortTermImageAsset
 } from "./short-term-macos-api-client.mjs";
+import {
+  clearRecentSvgaFiles,
+  getRecentSvgaFiles,
+  syncShortTermMenuState
+} from "./short-term-macos-host-client.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -838,7 +843,8 @@ function openTab(tab) {
 }
 
 async function refreshRecentFiles() {
-  if (!bridge?.getRecentSvgaFiles) {
+  const result = await getRecentSvgaFiles(bridge);
+  if (!result.available) {
     renderRecentFilesUnavailable({
       listNode: nodes.recentList,
       noteNode: nodes.recentNote,
@@ -846,16 +852,15 @@ async function refreshRecentFiles() {
     });
     return;
   }
-  const result = await bridge.getRecentSvgaFiles();
   renderLaunchRecentFiles({
     listNode: nodes.recentList,
     noteNode: nodes.recentNote,
     clearButton: nodes.clearRecentButton
-  }, visibleLaunchRecentRecords(result));
+  }, visibleLaunchRecentRecords(result.value));
 }
 
 async function clearRecentFiles() {
-  if (bridge?.clearRecentSvgaFiles) await bridge.clearRecentSvgaFiles();
+  await clearRecentSvgaFiles(bridge);
   await refreshRecentFiles();
 }
 
@@ -877,15 +882,11 @@ function renderCommandState() {
     dialogOpen: Boolean(document.querySelector("dialog[open]"))
   });
   applyCommandState(commandState);
-  syncShortTermMenuState(commandState.menuState);
-}
-
-function syncShortTermMenuState(snapshot) {
-  if (!bridge?.updateShortTermMenuState) return;
-  const serialized = JSON.stringify(snapshot);
-  if (serialized === state.lastMenuStateSnapshot) return;
-  state.lastMenuStateSnapshot = serialized;
-  bridge.updateShortTermMenuState(snapshot).catch(() => {});
+  state.lastMenuStateSnapshot = syncShortTermMenuState(
+    bridge,
+    commandState.menuState,
+    state.lastMenuStateSnapshot
+  );
 }
 
 function showSaveBanner(title, message, tone) {

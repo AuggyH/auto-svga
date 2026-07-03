@@ -1029,6 +1029,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermSmokeProofModel = await readFile(path.join(experimentRoot, "web/short-term-macos-smoke-proof-model.mjs"), "utf8");
   const shortTermByteModel = await readFile(path.join(experimentRoot, "web/short-term-macos-byte-model.mjs"), "utf8");
   const shortTermApiClient = await readFile(path.join(experimentRoot, "web/short-term-macos-api-client.mjs"), "utf8");
+  const shortTermHostClient = await readFile(path.join(experimentRoot, "web/short-term-macos-host-client.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1215,6 +1216,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /visibleLaunchRecentRecords/);
   assert.match(shortTermEntry, /renderLaunchRecentFiles/);
   assert.match(shortTermEntry, /renderRecentFilesUnavailable/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-host-client\.mjs"/);
+  assert.match(shortTermHostClient, /export async function getRecentSvgaFiles/);
+  assert.match(shortTermHostClient, /export async function clearRecentSvgaFiles/);
+  assert.match(shortTermHostClient, /export function syncShortTermMenuState/);
+  assert.match(shortTermEntry, /state\.lastMenuStateSnapshot = syncShortTermMenuState/);
+  assert.doesNotMatch(shortTermEntry, /bridge\.getRecentSvgaFiles|bridge\.clearRecentSvgaFiles|bridge\.updateShortTermMenuState/);
+  assert.match(shortTermHostClient, /bridge\.getRecentSvgaFiles/);
+  assert.match(shortTermHostClient, /bridge\.clearRecentSvgaFiles/);
+  assert.match(shortTermHostClient, /bridge\.updateShortTermMenuState/);
   assert.doesNotMatch(shortTermEntry, /暂无最近打开记录|仅显示文件名和父级位置|最近文件由 macOS 客户端提供/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-save-model\.mjs"/);
   assert.match(shortTermEntry, /saveProofSourceImageKey/);
@@ -1657,7 +1667,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackModel, /提示：\$\{input\.saveBannerText\.trim\(\)\}/);
   assert.match(shortTermEntry, /writeClipboardText\?\.\(currentStateSummary\(\)\)/);
   assert.match(shortTermEntry, /syncShortTermMenuState/);
-  assert.match(shortTermEntry, /updateShortTermMenuState/);
+  assert.match(shortTermHostClient, /updateShortTermMenuState/);
   assert.match(shortTermCommandState, /canShowOptimizationComparison/);
   assert.match(shortTermEntry, /showOptimizationComparison/);
   assert.match(shortTermCompareModel, /compareSummary/);
