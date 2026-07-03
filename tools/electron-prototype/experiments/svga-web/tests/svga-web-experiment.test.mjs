@@ -1024,6 +1024,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermOptimizationModel = await readFile(path.join(experimentRoot, "web/short-term-macos-optimization-model.mjs"), "utf8");
   const shortTermOverviewModel = await readFile(path.join(experimentRoot, "web/short-term-macos-overview-model.mjs"), "utf8");
   const shortTermEditReservedModel = await readFile(path.join(experimentRoot, "web/short-term-macos-edit-reserved-model.mjs"), "utf8");
+  const shortTermResourceMenuModel = await readFile(path.join(experimentRoot, "web/short-term-macos-resource-menu-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1272,6 +1273,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermInteractionModel, /event\.key === "Spacebar"/);
   assert.match(shortTermInteractionModel, /event\.key === "ContextMenu"/);
   assert.match(shortTermInteractionModel, /event\.shiftKey && event\.key === "F10"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-resource-menu-model\.mjs"/);
+  assert.match(shortTermEntry, /keyboardResourceMenuAnchor/);
+  assert.match(shortTermEntry, /resourceContextMenuView/);
+  assert.doesNotMatch(shortTermEntry, /context-reset[\s\S]{0,120}activeOutput\?\.kind !== "replacement"/);
+  assert.match(shortTermResourceMenuModel, /export function keyboardResourceMenuAnchor/);
+  assert.match(shortTermResourceMenuModel, /export function resourceContextMenuView/);
+  assert.match(shortTermResourceMenuModel, /MENU_EDGE_INSET = 8/);
+  assert.match(shortTermResourceMenuModel, /KEYBOARD_MENU_Y_LIMIT = 28/);
+  assert.match(shortTermResourceMenuModel, /input\.activeOutput\?\.kind !== "replacement"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-text-model\.mjs"/);
   assert.match(shortTermEntry, /runtimeTextListView/);
   assert.match(shortTermEntry, /runtimeTextOverlayCopy/);
@@ -1499,7 +1509,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /compareSummary/);
   assert.match(shortTermCompareModel, /compareMetricGrid/);
   assert.match(shortTermCompareModel, /compareActions/);
-  assert.match(shortTermEntry, /state\.activeOutput\?\.kind !== "replacement"/);
+  assert.match(shortTermResourceMenuModel, /input\.activeOutput\?\.kind !== "replacement"/);
   assert.match(shortTermEntry, /addEventListener\("contextmenu"/);
   assert.match(shortTermEntry, /openResourceContextMenu/);
   assert.doesNotMatch(shortTermEntry, /rename-resource|replace-resource|reset-resource/);

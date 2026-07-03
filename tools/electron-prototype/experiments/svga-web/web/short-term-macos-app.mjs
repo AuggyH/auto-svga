@@ -49,6 +49,10 @@ import {
   nextTabIndexForKey
 } from "./short-term-macos-interaction-model.mjs";
 import {
+  keyboardResourceMenuAnchor,
+  resourceContextMenuView
+} from "./short-term-macos-resource-menu-model.mjs";
+import {
   nextSelectedTextKey,
   runtimeTextInputValue,
   runtimeTextListView,
@@ -688,10 +692,7 @@ function selectImageKey(imageKey) {
 
 function openKeyboardResourceContextMenu(row) {
   const rect = row.getBoundingClientRect();
-  openResourceContextMenu({
-    clientX: rect.right - 4,
-    clientY: rect.top + Math.min(rect.height - 4, 28)
-  }, row.dataset.imageKey);
+  openResourceContextMenu(keyboardResourceMenuAnchor(rect), row.dataset.imageKey);
 }
 
 function openResourceContextMenu(event, imageKey) {
@@ -699,9 +700,18 @@ function openResourceContextMenu(event, imageKey) {
   selectImageKey(imageKey);
   const menu = nodes.resourceContextMenu;
   menu.hidden = false;
-  menu.style.left = `${Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 8)}px`;
-  menu.style.top = `${Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 8)}px`;
-  menu.querySelector("[data-action='context-reset']").disabled = state.activeOutput?.kind !== "replacement";
+  const view = resourceContextMenuView({
+    clientX: event.clientX,
+    clientY: event.clientY,
+    menuWidth: menu.offsetWidth,
+    menuHeight: menu.offsetHeight,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    activeOutput: state.activeOutput
+  });
+  menu.style.left = view.left;
+  menu.style.top = view.top;
+  menu.querySelector("[data-action='context-reset']").disabled = view.resetDisabled;
   menu.querySelector("button:not(:disabled)")?.focus();
 }
 
