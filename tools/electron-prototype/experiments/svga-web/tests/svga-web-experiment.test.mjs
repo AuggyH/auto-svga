@@ -1046,6 +1046,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-window/);
   assert.match(shortTermTokens, /--asv-color-window/);
   assert.match(shortTermTokens, /--asv-color-surface-window/);
+  assert.match(shortTermTokens, /--asv-color-surface-workbench/);
+  assert.match(shortTermTokens, /--asv-color-surface-control/);
+  assert.match(shortTermTokens, /--asv-color-surface-row-selected/);
+  assert.match(shortTermTokens, /--asv-panel-border/);
+  assert.match(shortTermTokens, /--asv-shadow-panel-highlight/);
   assert.match(shortTermTokens, /--asv-component-toolbar-height/);
   assert.match(shortTermTokens, /--asv-component-launch-content-width/);
   assert.match(shortTermTokens, /--asv-launch-recent-row-height/);
@@ -1061,6 +1066,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.tabs/);
   assert.match(shortTermComponents, /\.factCell/);
   assert.match(shortTermComponents, /\.assetRow/);
+  assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
   assert.match(shortTermComponents, /\.badge/);
   assert.match(shortTermComponents, /:focus-visible/);
   assert.match(shortTermComponents, /\.contextMenu button:disabled/);

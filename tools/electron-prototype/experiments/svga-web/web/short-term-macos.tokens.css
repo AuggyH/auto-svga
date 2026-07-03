@@ -29,6 +29,8 @@
   --asv-color-surface-panel: rgba(255, 255, 255, 0.88);
   --asv-color-surface-panel-strong: #ffffff;
   --asv-color-surface-canvas: #eceef2;
+  --asv-color-surface-workbench: color-mix(in srgb, var(--asv-color-surface-window) 94%, var(--asv-color-surface-panel-strong));
+  --asv-color-surface-inspector: color-mix(in srgb, var(--asv-color-surface-panel) 94%, var(--asv-color-surface-window));
   --asv-color-text-primary: #1d1d1f;
   --asv-color-text-secondary: #6e6e73;
   --asv-color-text-tertiary: #8a8a8e;
@@ -43,8 +45,27 @@
   --asv-color-status-warning-soft: rgba(178, 106, 0, 0.14);
   --asv-color-status-danger-soft: rgba(215, 0, 21, 0.14);
   --asv-color-canvas-checker: rgba(60, 60, 67, 0.026);
+  --asv-color-surface-control: color-mix(in srgb, var(--asv-color-surface-panel-strong) 76%, transparent);
+  --asv-color-surface-control-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-action-primary) 5%);
+  --asv-color-surface-control-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 92%, var(--asv-color-action-primary) 3%);
+  --asv-color-surface-control-disabled: color-mix(in srgb, var(--asv-color-surface-panel-strong) 70%, transparent);
+  --asv-color-surface-row: color-mix(in srgb, var(--asv-color-surface-panel-strong) 38%, transparent);
+  --asv-color-surface-row-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 54%, transparent);
+  --asv-color-surface-row-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 88%, var(--asv-color-status-info-soft));
+  --asv-color-surface-fact: color-mix(in srgb, var(--asv-color-surface-panel-strong) 24%, transparent);
+  --asv-color-surface-badge: color-mix(in srgb, var(--asv-color-border-default) 22%, transparent);
+  --asv-color-surface-overlay: color-mix(in srgb, var(--asv-color-surface-panel-strong) 86%, transparent);
+  --asv-color-surface-save-banner: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-action-primary) 4%);
+  --asv-color-border-panel: color-mix(in srgb, var(--asv-color-border-default) 68%, transparent);
+  --asv-color-border-control: color-mix(in srgb, var(--asv-color-border-default) 82%, transparent);
+  --asv-color-border-row: color-mix(in srgb, var(--asv-color-border-default) 62%, transparent);
+  --asv-color-border-subtle: color-mix(in srgb, var(--asv-color-border-default) 52%, transparent);
+  --asv-color-border-badge: color-mix(in srgb, var(--asv-color-border-default) 42%, transparent);
   --asv-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.06);
   --asv-shadow-floating: 0 18px 44px rgba(15, 23, 42, 0.16);
+  --asv-shadow-panel-highlight: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 36%, transparent);
+  --asv-shadow-control-selected: 0 1px 1px rgba(15, 23, 42, 0.08);
+  --asv-shadow-overlay: 0 1px 6px rgba(15, 23, 42, 0.16);
 
   /* Component tokens */
   --asv-component-toolbar-height: 50px;
@@ -82,6 +103,8 @@
   --asv-color-panel: var(--asv-color-surface-panel);
   --asv-color-panel-strong: var(--asv-color-surface-panel-strong);
   --asv-color-canvas: var(--asv-color-surface-canvas);
+  --asv-color-workbench: var(--asv-color-surface-workbench);
+  --asv-color-inspector: var(--asv-color-surface-inspector);
   --asv-color-text: var(--asv-color-text-primary);
   --asv-color-text-muted: var(--asv-color-text-secondary);
   --asv-color-text-subtle: var(--asv-color-text-tertiary);
@@ -94,11 +117,24 @@
   --asv-color-success-soft: var(--asv-color-status-success-soft);
   --asv-color-warning-soft: var(--asv-color-status-warning-soft);
   --asv-color-danger-soft: var(--asv-color-status-danger-soft);
+  --asv-control-bg: var(--asv-color-surface-control);
+  --asv-control-hover-bg: var(--asv-color-surface-control-hover);
+  --asv-control-selected-bg: var(--asv-color-surface-control-selected);
+  --asv-control-disabled-bg: var(--asv-color-surface-control-disabled);
+  --asv-row-bg: var(--asv-color-surface-row);
+  --asv-row-hover-bg: var(--asv-color-surface-row-hover);
+  --asv-row-selected-bg: var(--asv-color-surface-row-selected);
+  --asv-fact-bg: var(--asv-color-surface-fact);
+  --asv-badge-bg: var(--asv-color-surface-badge);
+  --asv-overlay-bg: var(--asv-color-surface-overlay);
+  --asv-save-banner-bg: var(--asv-color-surface-save-banner);
   --asv-window: var(--asv-color-window);
   --asv-toolbar: var(--asv-color-toolbar);
   --asv-panel: var(--asv-color-panel);
   --asv-panel-strong: var(--asv-color-panel-strong);
   --asv-canvas: var(--asv-color-canvas);
+  --asv-workbench: var(--asv-color-workbench);
+  --asv-inspector: var(--asv-color-inspector);
   --asv-text: var(--asv-color-text);
   --asv-muted: var(--asv-color-text-muted);
   --asv-subtle: var(--asv-color-text-subtle);
@@ -108,6 +144,11 @@
   --asv-success: var(--asv-color-success);
   --asv-warning: var(--asv-color-warning);
   --asv-danger: var(--asv-color-danger);
+  --asv-panel-border: var(--asv-color-border-panel);
+  --asv-control-border: var(--asv-color-border-control);
+  --asv-row-border: var(--asv-color-border-row);
+  --asv-subtle-border: var(--asv-color-border-subtle);
+  --asv-badge-border: var(--asv-color-border-badge);
   --asv-focus: 0 0 0 3px color-mix(in srgb, var(--asv-action) 28%, transparent);
   --asv-focus-inset: inset 0 0 0 2px color-mix(in srgb, var(--asv-action) 30%, transparent);
   --asv-toolbar-height: var(--asv-component-toolbar-height);
@@ -161,6 +202,8 @@
     --asv-color-status-danger-soft: rgba(255, 69, 58, 0.12);
     --asv-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.34);
     --asv-shadow-floating: 0 18px 44px rgba(0, 0, 0, 0.32);
+    --asv-shadow-control-selected: 0 1px 1px rgba(0, 0, 0, 0.22);
+    --asv-shadow-overlay: 0 1px 6px rgba(0, 0, 0, 0.28);
   }
 }
 
