@@ -1015,6 +1015,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermDomRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-renderers.mjs"), "utf8");
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
   const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
+  const shortTermRecentFilesModel = await readFile(path.join(experimentRoot, "web/short-term-macos-recent-files-model.mjs"), "utf8");
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
@@ -1111,7 +1112,6 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /prefers-color-scheme: dark/);
   assert.match(shortTermTokens, /@media \(max-height: 780px\)/);
   assert.match(shortTermEntry, /clearRecentButton/);
-  assert.match(shortTermEntry, /disabled = visible\.length === 0/);
   assert.match(shortTermAtoms, /button\.primary:disabled/);
   assert.match(shortTermAtoms, /\.spinner/);
   assert.match(shortTermAtoms, /\.thumb\.sequence/);
@@ -1178,6 +1178,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-feedback-model\.mjs"/);
   assert.match(shortTermEntry, /bannerTone/);
   assert.match(shortTermEntry, /buildCurrentStateSummary/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-recent-files-model\.mjs"/);
+  assert.match(shortTermEntry, /visibleLaunchRecentRecords/);
+  assert.match(shortTermEntry, /renderLaunchRecentFiles/);
+  assert.match(shortTermEntry, /renderRecentFilesUnavailable/);
+  assert.doesNotMatch(shortTermEntry, /暂无最近打开记录|仅显示文件名和父级位置|最近文件由 macOS 客户端提供/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-state\.mjs"/);
   assert.match(shortTermEntry, /applyViewState/);
   assert.match(shortTermEntry, /applyModeButtons/);
@@ -1220,6 +1225,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackModel, /Auto SVGA 状态摘要/);
   assert.match(shortTermFeedbackModel, /状态：\$\{viewCopy\(input\.view\)\}/);
   assert.match(shortTermFeedbackModel, /未保存输出：/);
+  assert.match(shortTermRecentFilesModel, /export const LAUNCH_RECENT_LIMIT = 5/);
+  assert.match(shortTermRecentFilesModel, /export function visibleLaunchRecentRecords/);
+  assert.match(shortTermRecentFilesModel, /export function renderLaunchRecentFiles/);
+  assert.match(shortTermRecentFilesModel, /export function renderRecentFilesUnavailable/);
+  assert.match(shortTermRecentFilesModel, /clearButton\.disabled = records\.length === 0/);
+  assert.match(shortTermRecentFilesModel, /data-action="open-recent"/);
+  assert.match(shortTermRecentFilesModel, /data-recent-id/);
+  assert.match(shortTermRecentFilesModel, /暂无最近打开记录/);
+  assert.match(shortTermRecentFilesModel, /仅显示文件名和父级位置/);
+  assert.match(shortTermRecentFilesModel, /最近文件由 macOS 客户端提供/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /event\.key === "ArrowRight"/);

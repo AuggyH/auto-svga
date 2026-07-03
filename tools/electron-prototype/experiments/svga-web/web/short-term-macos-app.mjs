@@ -32,6 +32,11 @@ import {
   bannerTone,
   buildCurrentStateSummary
 } from "./short-term-macos-feedback-model.mjs";
+import {
+  renderLaunchRecentFiles,
+  renderRecentFilesUnavailable,
+  visibleLaunchRecentRecords
+} from "./short-term-macos-recent-files-model.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -862,30 +867,19 @@ function openTab(tab) {
 
 async function refreshRecentFiles() {
   if (!bridge?.getRecentSvgaFiles) {
-    nodes.recentList.replaceChildren();
-    nodes.clearRecentButton.disabled = true;
-    nodes.recentNote.textContent = "最近文件由 macOS 客户端提供。";
+    renderRecentFilesUnavailable({
+      listNode: nodes.recentList,
+      noteNode: nodes.recentNote,
+      clearButton: nodes.clearRecentButton
+    });
     return;
   }
   const result = await bridge.getRecentSvgaFiles();
-  const records = Array.isArray(result?.records) ? result.records : [];
-  const visible = records.slice(0, 5);
-  nodes.clearRecentButton.disabled = visible.length === 0;
-  nodes.recentList.replaceChildren(...visible.map((record) => {
-    const item = document.createElement("li");
-    item.innerHTML = `
-      <button type="button" data-action="open-recent" data-recent-id="${escapeHtml(record.id)}">${escapeHtml(record.displayName)}</button>
-      <span class="recentMeta">${escapeHtml(record.parentName || "本地文件")}</span>
-    `;
-    return item;
-  }));
-  if (visible.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "isEmpty";
-    empty.innerHTML = `<span class="recentMeta">暂无最近打开记录</span>`;
-    nodes.recentList.append(empty);
-  }
-  nodes.recentNote.textContent = "仅显示文件名和父级位置。";
+  renderLaunchRecentFiles({
+    listNode: nodes.recentList,
+    noteNode: nodes.recentNote,
+    clearButton: nodes.clearRecentButton
+  }, visibleLaunchRecentRecords(result));
 }
 
 async function clearRecentFiles() {
