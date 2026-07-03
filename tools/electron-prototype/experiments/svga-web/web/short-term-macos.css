@@ -378,11 +378,22 @@ canvas {
   background: var(--asv-fact-bg);
 }
 
-.playbackBar span {
+.playbackActions {
+  display: flex;
+  gap: var(--asv-space-2);
+}
+
+.playbackMeta {
   margin-left: auto;
+  min-height: var(--asv-badge-min-height);
+  padding: 0 var(--asv-space-2);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-badge-bg);
+  box-shadow: inset 0 0 0 1px var(--asv-badge-border);
   color: var(--asv-muted);
   font-family: var(--asv-type-mono);
   font-size: var(--asv-type-size-footnote);
+  line-height: var(--asv-badge-min-height);
 }
 
 .inspectorPanel {
@@ -520,8 +531,8 @@ canvas {
   box-shadow: var(--asv-shadow-panel-highlight);
 }
 
+.canvasWrap[data-canvas-label]::before,
 .compareCanvasWrap::before {
-  content: attr(data-compare-label);
   position: absolute;
   z-index: 1;
   top: var(--asv-space-3);
@@ -537,6 +548,14 @@ canvas {
   font-size: var(--asv-type-size-caption);
   font-weight: 650;
   pointer-events: none;
+}
+
+.canvasWrap[data-canvas-label]::before {
+  content: attr(data-canvas-label);
+}
+
+.compareCanvasWrap::before {
+  content: attr(data-compare-label);
 }
 
 .compareInfo {

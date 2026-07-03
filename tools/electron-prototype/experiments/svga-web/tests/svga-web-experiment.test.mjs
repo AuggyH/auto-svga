@@ -1024,6 +1024,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /short-term-macos-app\.mjs/);
   assert.match(page, /data-compare-label="A"/);
   assert.match(page, /data-compare-label="B"/);
+  assert.match(page, /data-canvas-label="预览"/);
+  assert.match(page, /class="playbackActions" data-component="PlaybackButtonGroup"/);
+  assert.match(page, /class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus"/);
   assert.match(page, /最近打开/);
   assert.match(page, /覆盖保存/);
   assert.match(page, /id="discardDialog"/);
@@ -1088,6 +1091,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermStyles, /\.tabPanel:focus-visible/);
   assert.match(shortTermStyles, /\.saveBanner\[data-status="success"\]::before/);
   assert.match(shortTermStyles, /\.saveBanner\[data-status="loading"\]::before/);
+  assert.match(shortTermStyles, /\.canvasWrap\[data-canvas-label\]::before/);
+  assert.match(shortTermStyles, /\.playbackActions/);
+  assert.match(shortTermStyles, /\.playbackMeta/);
   assert.match(shortTermStyles, /\.compareCanvasWrap::before/);
   assert.match(shortTermStyles, /\.compareSummary/);
   assert.match(shortTermStyles, /\.compareMetricGrid/);

@@ -62,14 +62,16 @@
 
       <section class="view previewView" data-view="preview" data-page-state="Preview ready" hidden>
         <section class="previewStagePanel" aria-label="SVGA 预览" data-module="PreviewCanvasModule" data-component="PreviewStage">
-          <div class="canvasWrap" id="primaryCanvasWrap">
+          <div class="canvasWrap" id="primaryCanvasWrap" data-canvas-label="预览">
             <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
             <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
           </div>
           <div class="playbackBar" aria-label="播放控制" data-component="PlaybackControls">
-            <button type="button" data-action="play-pause">播放</button>
-            <button type="button" data-action="replay">重播</button>
-            <span id="playbackMeta" aria-live="polite">-</span>
+            <div class="playbackActions" data-component="PlaybackButtonGroup">
+              <button type="button" data-action="play-pause">播放</button>
+              <button type="button" data-action="replay">重播</button>
+            </div>
+            <span class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus">-</span>
           </div>
         </section>
 
