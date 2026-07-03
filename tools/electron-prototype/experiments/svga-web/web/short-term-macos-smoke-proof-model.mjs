@@ -15,6 +15,39 @@ export function createSmokeArtifactCapture(bridge) {
   };
 }
 
+export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid, model, tab }) {
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-spec-comparison-proof",
+    source: "short-term-smoke",
+    prdIds: ["S4"],
+    profileId: model?.overview?.profileId || "",
+    profileLabel: model?.overview?.profileLabel || "",
+    factRowCount: overviewFactRows.length,
+    renderedFactRowCount: factGrid.querySelectorAll(".factCell").length,
+    factRows: overviewFactRows.map((fact) => ({
+      id: fact.id,
+      label: fact.label,
+      value: fact.value,
+      requirement: fact.requirement,
+      status: fact.status
+    })),
+    actualRequirementPairsVisible: overviewFactRows.length > 0
+      && overviewFactRows.every((fact) => Boolean(fact.value) && Boolean(fact.requirement)),
+    overviewTabActive: tab === "overview",
+    separateProductionSpecModuleExposed: Boolean(document.querySelector("#productionSpecModule, #specReportSection, [data-panel='production-spec']"))
+  };
+  proof.passed = [
+    proof.profileId === "production_target",
+    proof.factRowCount >= 5,
+    proof.renderedFactRowCount >= proof.factRowCount,
+    proof.actualRequirementPairsVisible,
+    proof.overviewTabActive,
+    proof.separateProductionSpecModuleExposed === false
+  ].every(Boolean);
+  return proof;
+}
+
 export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
   const tabs = tabButtons();
   const tabOverview = document.querySelector("#tabOverview");

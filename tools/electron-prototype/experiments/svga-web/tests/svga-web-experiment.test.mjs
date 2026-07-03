@@ -1578,8 +1578,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /playbackFailureVisible/);
   assert.match(shortTermEntry, /playbackFailureRecovered/);
   assert.match(shortTermEntry, /playbackFailureSourceBytesRestoredAfterRecovery/);
-  assert.match(shortTermEntry, /short-term-spec-comparison-proof/);
-  assert.match(shortTermEntry, /actualRequirementPairsVisible/);
+  assert.match(shortTermSmokeProofModel, /export function collectShortTermSpecComparisonProof/);
+  assert.match(shortTermSmokeProofModel, /short-term-spec-comparison-proof/);
+  assert.match(shortTermSmokeProofModel, /actualRequirementPairsVisible/);
+  assert.match(shortTermEntry, /collectShortTermSpecComparisonProof/);
+  assert.doesNotMatch(shortTermEntry, /proofId: "short-term-spec-comparison-proof"/);
   assert.match(shortTermSmokeProofModel, /short-term-tab-keyboard-proof/);
   assert.match(shortTermSmokeProofModel, /selectedTabOnlyInSequentialFocus/);
   assert.match(shortTermSmokeProofModel, /short-term-design-interaction-proof/);
