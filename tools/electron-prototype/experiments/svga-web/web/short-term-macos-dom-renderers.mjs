@@ -3,6 +3,7 @@ import {
   renderMessageRowHtml,
   renderOptimizationFindingHtml
 } from "./short-term-macos-render-model.mjs";
+import { createInlineStatusText } from "./short-term-macos-inline-status-renderers.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
 
 export function createOptimizationFindingRow(item) {
@@ -38,14 +39,6 @@ export function createMessageRow(title, summary, tone = "info") {
   row.dataset.component = "InlineStatus";
   row.innerHTML = renderMessageRowHtml(title, summary, tone);
   return row;
-}
-
-export function createInlineStatusText(copy) {
-  const empty = document.createElement("p");
-  empty.className = "emptyText";
-  empty.dataset.component = "InlineStatus";
-  empty.textContent = copy;
-  return empty;
 }
 
 export function createReplaceableImageRow(item, index, options) {

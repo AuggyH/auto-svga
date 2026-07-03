@@ -1018,6 +1018,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermDomRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-renderers.mjs"), "utf8");
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
   const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
+  const shortTermInlineStatusRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-inline-status-renderers.mjs"), "utf8");
   const shortTermLaunchRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-launch-renderers.mjs"), "utf8");
   const shortTermRecentFilesModel = await readFile(path.join(experimentRoot, "web/short-term-macos-recent-files-model.mjs"), "utf8");
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
@@ -1291,7 +1292,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function renderOptimizationFindings/);
   assert.match(shortTermDomRenderers, /export function prependOptimizationResult/);
   assert.match(shortTermDomRenderers, /export function createMessageRow/);
-  assert.match(shortTermDomRenderers, /export function createInlineStatusText/);
+  assert.doesNotMatch(shortTermDomRenderers, /export function createInlineStatusText/);
+  assert.match(shortTermDomRenderers, /from "\.\/short-term-macos-inline-status-renderers\.mjs"/);
+  assert.match(shortTermInlineStatusRenderers, /export function createInlineStatusText/);
   assert.doesNotMatch(shortTermDomRenderers, /export function showSaveFeedbackBanner|export function hideSaveFeedbackBanner|export function clearSaveFeedbackBanner|saveBannerView/);
   assert.match(shortTermSaveRenderers, /export function showSaveFeedbackBanner/);
   assert.match(shortTermSaveRenderers, /export function hideSaveFeedbackBanner/);
@@ -1709,7 +1712,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /function messageRow|renderMessageRowHtml/);
   assert.doesNotMatch(shortTermEntry, /document\.createElement\("p"\)|empty\.dataset\.component = "InlineStatus"/);
   assert.match(shortTermDomRenderers, /row\.dataset\.component = "InlineStatus"/);
-  assert.match(shortTermDomRenderers, /empty\.dataset\.component = "InlineStatus"/);
+  assert.doesNotMatch(shortTermDomRenderers, /empty\.dataset\.component = "InlineStatus"/);
+  assert.match(shortTermInlineStatusRenderers, /empty\.dataset\.component = "InlineStatus"/);
   assert.match(shortTermDomRenderers, /row\.dataset\.component = "LayerRow"/);
   assert.match(shortTermDomRenderers, /class="rowIndex"/);
   assert.match(shortTermSmokeProofModel, /comparisonVisible/);
@@ -2104,6 +2108,7 @@ test("short-term design system check enforces UI implementation guardrails", () 
   const dynamicDomAllowlist = source.match(/const allowedDynamicDomModules = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
   assert.match(dynamicDomAllowlist, /short-term-macos-dom-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-compare-renderers\.mjs/);
+  assert.match(dynamicDomAllowlist, /short-term-macos-inline-status-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-launch-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-overview-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-save-renderers\.mjs/);
