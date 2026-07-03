@@ -1596,8 +1596,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /metadataSelectable/);
   assert.match(shortTermSmokeProofModel, /menuStateDiscoverable/);
   assert.match(shortTermSmokeProofModel, /minimumPreviewCaptured/);
-  assert.match(shortTermEntry, /short-term-replaceable-classification-proof/);
-  assert.match(shortTermEntry, /automaticKeysExcluded/);
+  assert.match(shortTermSmokeProofModel, /export function collectShortTermReplaceableClassificationProof/);
+  assert.match(shortTermSmokeProofModel, /short-term-replaceable-classification-proof/);
+  assert.match(shortTermSmokeProofModel, /automaticKeysExcluded/);
+  assert.match(shortTermEntry, /collectShortTermReplaceableClassificationProof/);
+  assert.doesNotMatch(shortTermEntry, /proofId: "short-term-replaceable-classification-proof"/);
   assert.match(main, /validateShortTermOpenFlowProof/);
   assert.match(main, /short-term-open-flow-proof\.json/);
   assert.match(main, /validateShortTermLoadFailureProof/);

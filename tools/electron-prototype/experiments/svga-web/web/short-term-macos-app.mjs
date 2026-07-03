@@ -89,6 +89,7 @@ import {
   collectShortTermSpecComparisonProof,
   collectShortTermTabKeyboardProof,
   collectShortTermThumbnailProof,
+  collectShortTermReplaceableClassificationProof,
   createSmokeArtifactCapture,
   reportShortTermSmokeFailure,
   resourceEntriesAreLocalOnly,
@@ -1294,32 +1295,16 @@ async function runShortTermSmokeIfRequested() {
     sourceSha256Before: runtimeTextSourceSha256Before,
     textKeys: designerRuntimeTextKeys
   });
-  const shortTermReplaceableClassificationProof = {
-    schemaVersion: 1,
-    proofId: "short-term-replaceable-classification-proof",
-    source: "short-term-smoke",
-    prdIds: ["S7"],
-    rule: "exclude_automatic_image_keys_include_designer_named_image_keys",
+  const shortTermReplaceableClassificationProof = collectShortTermReplaceableClassificationProof({
     automaticFixtureName: file.name,
     automaticImageAssetCount: automaticFixtureImageAssetCount,
-    automaticExcludedExamples: automaticImageNames.slice(0, 6),
+    automaticImageNames,
     automaticReplaceableCount: replaceableImageRowCount,
-    noReplaceableCopy,
     designerFixtureName: "replaceable-workflow-smoke.svga",
     designerImageAssetCount,
-    includedDesignerKeys: designerReplaceableKeys,
-    includedDesignerCount: designerReplaceableKeys.length,
-    automaticKeysExcluded: automaticImageNames.length > 0 && replaceableImageRowCount === 0,
-    designerKeysIncluded: designerReplaceableKeys.includes("profile_frame"),
-    replaceableElementsNotAllImages: designerReplaceableKeys.length > 0 && designerReplaceableKeys.length < designerImageAssetCount,
-    emptyStateExplainsAutomaticExclusion: noReplaceableCopy.includes("自动命名资源")
-  };
-  shortTermReplaceableClassificationProof.passed = [
-    shortTermReplaceableClassificationProof.automaticKeysExcluded,
-    shortTermReplaceableClassificationProof.designerKeysIncluded,
-    shortTermReplaceableClassificationProof.replaceableElementsNotAllImages,
-    shortTermReplaceableClassificationProof.emptyStateExplainsAutomaticExclusion
-  ].every(Boolean);
+    designerReplaceableKeys,
+    noReplaceableCopy
+  });
   const renameRow = nodes.replaceableList.querySelector(".replaceableRow");
   const renameFromImageKey = renameRow?.dataset.imageKey || state.model.replaceableElements.images[0]?.imageKey || "";
   const renameToImageKey = `${renameFromImageKey}_renamed`;

@@ -163,6 +163,45 @@ export function collectShortTermRuntimeTextBoundaryProof({
   return proof;
 }
 
+export function collectShortTermReplaceableClassificationProof({
+  automaticFixtureName,
+  automaticImageAssetCount,
+  automaticImageNames,
+  automaticReplaceableCount,
+  designerFixtureName,
+  designerImageAssetCount,
+  designerReplaceableKeys,
+  noReplaceableCopy
+}) {
+  const proof = {
+    schemaVersion: 1,
+    proofId: "short-term-replaceable-classification-proof",
+    source: "short-term-smoke",
+    prdIds: ["S7"],
+    rule: "exclude_automatic_image_keys_include_designer_named_image_keys",
+    automaticFixtureName,
+    automaticImageAssetCount,
+    automaticExcludedExamples: automaticImageNames.slice(0, 6),
+    automaticReplaceableCount,
+    noReplaceableCopy,
+    designerFixtureName,
+    designerImageAssetCount,
+    includedDesignerKeys: designerReplaceableKeys,
+    includedDesignerCount: designerReplaceableKeys.length,
+    automaticKeysExcluded: automaticImageNames.length > 0 && automaticReplaceableCount === 0,
+    designerKeysIncluded: designerReplaceableKeys.includes("profile_frame"),
+    replaceableElementsNotAllImages: designerReplaceableKeys.length > 0 && designerReplaceableKeys.length < designerImageAssetCount,
+    emptyStateExplainsAutomaticExclusion: noReplaceableCopy.includes("自动命名资源")
+  };
+  proof.passed = [
+    proof.automaticKeysExcluded,
+    proof.designerKeysIncluded,
+    proof.replaceableElementsNotAllImages,
+    proof.emptyStateExplainsAutomaticExclusion
+  ].every(Boolean);
+  return proof;
+}
+
 export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
   const tabs = tabButtons();
   const tabOverview = document.querySelector("#tabOverview");
