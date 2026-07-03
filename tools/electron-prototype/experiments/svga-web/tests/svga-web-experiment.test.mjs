@@ -1603,6 +1603,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDialogModel, /dialog\.showModal\(\)/);
   assert.match(shortTermDialogModel, /querySelector\("dialog\[open\]"\)/);
   assert.match(shortTermEntry, /dialogOpen: hasOpenDialog\(document\)/);
+  assert.match(shortTermEntry, /if \(hasOpenDialog\(document\)\) return/);
   assert.match(shortTermEntry, /closeOpenDialog\(document, "cancel"\)/);
   assert.doesNotMatch(shortTermEntry, /function showDialog|dialog\.showModal\(\)|document\.querySelector\("dialog\[open\]"\)/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);
@@ -1755,7 +1756,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-empty-state-proof"/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermRuntimeTextBoundaryProof/);
   assert.match(shortTermSmokeProofModel, /short-term-runtime-text-boundary-proof/);
+  assert.match(shortTermSmokeProofModel, /modalSpaceSuppressed/);
   assert.match(shortTermSmokeProofModel, /productCompleteClaimed: true/);
+  assert.match(shortTermEntry, /runtimeTextModalPlaybackBeforeSpace/);
   assert.match(shortTermEntry, /sourceSha256Before: runtimeTextSourceSha256Before/);
   assert.match(shortTermEntry, /sourceSha256AfterApply: runtimeTextSourceSha256AfterApply/);
   assert.match(shortTermSmokeProofModel, /runtimeTextKeySource: "official_svga_dynamic_text_imagekey"/);

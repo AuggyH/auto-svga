@@ -1063,7 +1063,9 @@ nodes.dropZone.addEventListener("drop", (event) => {
 
 document.addEventListener("keydown", (event) => {
   const command = event.metaKey || event.ctrlKey;
-  const textInput = event.target.matches("input, textarea, [contenteditable='true']");
+  const target = event.target instanceof Element ? event.target : document.body;
+  const textInput = target.matches("input, textarea, [contenteditable='true']");
+  if (hasOpenDialog(document)) return;
   if (textInput && command && ["o", "r", "s"].includes(event.key.toLowerCase())) return;
   if (command && event.key.toLowerCase() === "o") {
     event.preventDefault();
@@ -1268,6 +1270,10 @@ async function runShortTermSmokeIfRequested() {
   const runtimeTextEditPromise = editRuntimeText();
   await waitForSmokeCondition(() => Boolean(nodes.textDialog.open), 2_000);
   const runtimeTextModalOpened = Boolean(nodes.textDialog.open);
+  const runtimeTextModalPlaybackBeforeSpace = state.primaryPlayback?.playing === true;
+  nodes.textDialog.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+  await waitForSmokeFrame();
+  const runtimeTextModalPlaybackAfterSpace = state.primaryPlayback?.playing === true;
   nodes.runtimeTextInput.value = "SVGA VIP";
   nodes.textDialog.close("confirm");
   await runtimeTextEditPromise;
@@ -1283,6 +1289,7 @@ async function runShortTermSmokeIfRequested() {
   const runtimeTextSourceSha256AfterReset = await sha256Hex(state.sourceBytes);
   const shortTermRuntimeTextBoundaryProof = collectShortTermRuntimeTextBoundaryProof({
     editApplied: runtimeTextApplied,
+    modalSpaceSuppressed: runtimeTextModalPlaybackAfterSpace === runtimeTextModalPlaybackBeforeSpace,
     modalOpened: runtimeTextModalOpened,
     resetClearedOverlay: nodes.runtimeTextOverlay.hidden && !nodes.runtimeTextOverlay.textContent.trim(),
     resetCommandEnabledAfterApply: runtimeTextResetCommandEnabled,
