@@ -1176,6 +1176,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-renderers\.mjs"/);
   assert.match(shortTermEntry, /applyCompareSlotView/);
   assert.match(shortTermEntry, /applyCompareTraceView/);
+  assert.match(shortTermEntry, /applyRuntimeTextOverlay/);
+  assert.match(shortTermEntry, /clearRuntimeTextOverlay/);
   assert.match(shortTermEntry, /clearSaveFeedbackBanner/);
   assert.match(shortTermEntry, /createOverviewFactCell/);
   assert.match(shortTermEntry, /createAssetRow/);
@@ -1248,6 +1250,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function applyCompareTraceView/);
   assert.match(shortTermDomRenderers, /export function showResourceContextMenu/);
   assert.match(shortTermDomRenderers, /export function hideResourceContextMenu/);
+  assert.match(shortTermDomRenderers, /export function applyRuntimeTextOverlay/);
+  assert.match(shortTermDomRenderers, /export function clearRuntimeTextOverlay/);
   assert.match(shortTermDomRenderers, /export function createReplaceableImageRow/);
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
   assert.match(shortTermDomRenderers, /export function createEditLayerRow/);
@@ -1322,6 +1326,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /runtimeTextListView/);
   assert.match(shortTermEntry, /runtimeTextOverlayCopy/);
   assert.match(shortTermEntry, /selectedRuntimeTextElement/);
+  assert.match(shortTermEntry, /applyRuntimeTextOverlay\(\s*nodes\.runtimeTextOverlay,\s*runtimeTextOverlayCopy\(textElement, state\.textPreview\),\s*Boolean\(state\.textPreview\)\s*\)/s);
+  assert.match(shortTermEntry, /clearRuntimeTextOverlay\(nodes\.runtimeTextOverlay\)/);
+  assert.doesNotMatch(shortTermEntry, /nodes\.runtimeTextOverlay\.(hidden|textContent)\s*=/);
+  assert.match(shortTermDomRenderers, /node\.textContent = copy/);
+  assert.match(shortTermDomRenderers, /node\.hidden = !visible/);
+  assert.match(shortTermDomRenderers, /node\.textContent = ""/);
   assert.match(shortTermTextModel, /export const RUNTIME_TEXT_DEFAULT_VALUE = "SVGA VIP"/);
   assert.match(shortTermTextModel, /export function runtimeTextInputValue/);
   assert.match(shortTermTextModel, /export function runtimeTextPlaceholder/);

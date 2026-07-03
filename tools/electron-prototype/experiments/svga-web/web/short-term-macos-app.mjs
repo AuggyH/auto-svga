@@ -18,7 +18,9 @@ import {
 import {
   applyCompareSlotView,
   applyCompareTraceView,
+  applyRuntimeTextOverlay,
   clearSaveFeedbackBanner,
+  clearRuntimeTextOverlay,
   createAssetRow,
   createEditLayerRow,
   createInlineStatusText,
@@ -245,7 +247,7 @@ async function loadOpenedSource({ bytes, displayName, sourceId }) {
   state.selectedImageKey = "";
   state.renameImageKey = "";
   state.textPreview = "";
-  nodes.runtimeTextOverlay.hidden = true;
+  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   setView("loading");
   nodes.loadingMessage.textContent = "解析文件并准备预览。";
   try {
@@ -483,16 +485,18 @@ async function editRuntimeText() {
   const result = await showDialog(nodes.textDialog);
   if (result !== "confirm") return;
   state.textPreview = nodes.runtimeTextInput.value.trim();
-  nodes.runtimeTextOverlay.textContent = runtimeTextOverlayCopy(textElement, state.textPreview);
-  nodes.runtimeTextOverlay.hidden = !state.textPreview;
+  applyRuntimeTextOverlay(
+    nodes.runtimeTextOverlay,
+    runtimeTextOverlayCopy(textElement, state.textPreview),
+    Boolean(state.textPreview)
+  );
   renderTextElements(state.model?.replaceableElements);
   renderCommandState();
 }
 
 function resetRuntimeText() {
   state.textPreview = "";
-  nodes.runtimeTextOverlay.hidden = true;
-  nodes.runtimeTextOverlay.textContent = "";
+  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   renderTextElements(state.model?.replaceableElements);
   renderCommandState();
 }
@@ -659,8 +663,7 @@ function selectTextKey(textKey) {
   if (!textKey) return;
   state.selectedTextKey = textKey;
   state.textPreview = "";
-  nodes.runtimeTextOverlay.hidden = true;
-  nodes.runtimeTextOverlay.textContent = "";
+  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   renderTextElements(state.model?.replaceableElements);
 }
 

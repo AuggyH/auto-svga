@@ -115,6 +115,16 @@ export function hideResourceContextMenu(menu) {
   menu.hidden = true;
 }
 
+export function applyRuntimeTextOverlay(node, copy, visible) {
+  node.textContent = copy;
+  node.hidden = !visible;
+}
+
+export function clearRuntimeTextOverlay(node) {
+  node.hidden = true;
+  node.textContent = "";
+}
+
 export function createReplaceableImageRow(item, index, options) {
   const row = document.createElement("article");
   row.className = "replaceableRow";
