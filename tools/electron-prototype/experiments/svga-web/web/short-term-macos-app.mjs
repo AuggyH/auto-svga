@@ -28,7 +28,11 @@ import {
   prependOptimizationResult,
   renderAssetList,
   renderCompareInfoPanel,
+  renderDiscardMessage,
   renderEditReservedLayers,
+  renderFailureMessage,
+  renderFileHeader,
+  renderLoadingMessage,
   renderOptimizationFindings,
   renderOverviewFacts,
   renderReplaceableImages,
@@ -192,7 +196,7 @@ async function openRecentFromMenu(recentFileId) {
   if (!bridge?.openRecentSvgaFile) return;
   if (!(await confirmDiscardUnsavedOutput("打开最近文件会放弃当前未保存的 SVGA 输出。"))) return;
   setView("loading");
-  nodes.loadingMessage.textContent = "正在打开最近文件。";
+  renderLoadingMessage(nodes, "正在打开最近文件。");
   const opened = await bridge.openRecentSvgaFile(recentFileId);
   if (!opened || opened.status === "cancelled") return setView(state.sourceBytes ? "preview" : "launch");
   if (opened.status === "missing") {
@@ -251,7 +255,7 @@ async function loadOpenedSource({ bytes, displayName, sourceId }) {
   state.textPreview = "";
   clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   setView("loading");
-  nodes.loadingMessage.textContent = "解析文件并准备预览。";
+  renderLoadingMessage(nodes, "解析文件并准备预览。");
   try {
     const model = await inspectShortTerm(bytes, state.displayName);
     state.model = model;
@@ -283,8 +287,7 @@ async function closeFile() {
   clearCurrentFile();
   state.mode = "preview";
   state.tab = "overview";
-  nodes.fileIdentity.textContent = "等待打开文件";
-  nodes.playbackMeta.textContent = "-";
+  renderFileHeader(nodes, "等待打开文件", "-");
   hideSaveFeedbackBanner(nodes.saveBanner);
   setTab("overview");
   applyModeButtons("preview");
@@ -577,7 +580,7 @@ function clearTransientOutput() {
 
 async function confirmDiscardUnsavedOutput(message) {
   if (!state.activeOutput) return true;
-  nodes.discardMessage.textContent = message;
+  renderDiscardMessage(nodes, message);
   return (await showDialog(nodes.discardDialog)) === "confirm";
 }
 
@@ -585,14 +588,13 @@ function renderPreviewModel() {
   const model = state.model;
   if (!model) return;
   const overviewView = overviewTabView(model);
-  nodes.fileIdentity.textContent = state.displayName;
+  renderFileHeader(nodes, state.displayName, overviewView.playbackMeta);
   renderOverviewFacts(nodes, overviewView);
   renderAssetList(nodes, overviewView, model);
   renderOptimization(model.optimization);
   renderReplaceables(model.replaceableElements);
   renderTextElements(model.replaceableElements);
   renderEditReserved();
-  nodes.playbackMeta.textContent = overviewView.playbackMeta;
 }
 
 function renderOptimization(model) {
@@ -859,7 +861,7 @@ function showSaveBanner(title, message, tone) {
 
 function showFailure(error) {
   const message = error instanceof Error ? error.message : String(error);
-  nodes.errorMessage.textContent = sourceUnmodifiedMessage(message);
+  renderFailureMessage(nodes, sourceUnmodifiedMessage(message));
   setView("failed");
 }
 
