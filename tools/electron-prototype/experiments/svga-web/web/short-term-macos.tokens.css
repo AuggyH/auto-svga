@@ -12,14 +12,14 @@
   --asv-space-6: 24px;
   --asv-radius-sm: 6px;
   --asv-radius-md: 8px;
-  --asv-radius-lg: 10px;
+  --asv-radius-lg: 8px;
   --asv-motion-duration-fast: 120ms;
   --asv-motion-duration-standard: 180ms;
 
   /* Semantic tokens */
   --asv-color-surface-window: #f5f5f7;
   --asv-color-surface-toolbar: rgba(247, 247, 248, 0.9);
-  --asv-color-surface-panel: rgba(255, 255, 255, 0.82);
+  --asv-color-surface-panel: rgba(255, 255, 255, 0.88);
   --asv-color-surface-panel-strong: #ffffff;
   --asv-color-surface-canvas: #eceef2;
   --asv-color-text-primary: #1d1d1f;
@@ -35,18 +35,24 @@
   --asv-color-status-success-soft: rgba(36, 138, 61, 0.12);
   --asv-color-status-warning-soft: rgba(178, 106, 0, 0.14);
   --asv-color-status-danger-soft: rgba(215, 0, 21, 0.14);
-  --asv-color-canvas-checker: rgba(60, 60, 67, 0.032);
+  --asv-color-canvas-checker: rgba(60, 60, 67, 0.026);
   --asv-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.06);
   --asv-shadow-floating: 0 18px 44px rgba(15, 23, 42, 0.16);
 
   /* Component tokens */
-  --asv-component-toolbar-height: 54px;
+  --asv-component-toolbar-height: 50px;
+  --asv-component-toolbar-padding-inline: 14px;
+  --asv-component-file-identity-font-size: 12px;
   --asv-component-window-controls-width: 78px;
-  --asv-component-control-height: 30px;
-  --asv-component-row-height: 52px;
-  --asv-component-thumbnail-size: 44px;
+  --asv-component-control-height: 28px;
+  --asv-component-tab-height: 30px;
+  --asv-component-tab-padding: 6px;
+  --asv-component-row-height: 50px;
+  --asv-component-thumbnail-size: 42px;
   --asv-component-inspector-width: clamp(380px, 30vw, 440px);
   --asv-component-left-panel-width: 238px;
+  --asv-component-launch-checker-size: 24px;
+  --asv-component-preview-checker-size: 22px;
 
   /* Compatibility aliases consumed by the current implementation. */
   --asv-font: var(--asv-type-family);
@@ -83,31 +89,40 @@
   --asv-danger: var(--asv-color-danger);
   --asv-focus: 0 0 0 3px color-mix(in srgb, var(--asv-action) 28%, transparent);
   --asv-toolbar-height: var(--asv-component-toolbar-height);
+  --asv-toolbar-padding-inline: var(--asv-component-toolbar-padding-inline);
+  --asv-file-identity-font-size: var(--asv-component-file-identity-font-size);
   --asv-window-controls-width: var(--asv-component-window-controls-width);
   --asv-control-height: var(--asv-component-control-height);
+  --asv-tab-height: var(--asv-component-tab-height);
+  --asv-tab-padding: var(--asv-component-tab-padding);
   --asv-row-height: var(--asv-component-row-height);
   --asv-thumb-size: var(--asv-component-thumbnail-size);
   --asv-inspector-width: var(--asv-component-inspector-width);
   --asv-left-width: var(--asv-component-left-panel-width);
+  --asv-launch-checker-size: var(--asv-component-launch-checker-size);
+  --asv-preview-checker-size: var(--asv-component-preview-checker-size);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --asv-color-surface-window: #1e1e20;
-    --asv-color-surface-toolbar: rgba(37, 37, 39, 0.9);
-    --asv-color-surface-panel: rgba(44, 44, 46, 0.82);
-    --asv-color-surface-panel-strong: #2f2f32;
-    --asv-color-surface-canvas: #151517;
+    --asv-color-surface-window: #202124;
+    --asv-color-surface-toolbar: rgba(36, 36, 39, 0.86);
+    --asv-color-surface-panel: rgba(42, 42, 46, 0.86);
+    --asv-color-surface-panel-strong: #303036;
+    --asv-color-surface-canvas: #18191c;
     --asv-color-text-primary: #f5f5f7;
-    --asv-color-text-secondary: #a1a1a6;
+    --asv-color-text-secondary: #adadb3;
     --asv-color-text-tertiary: #8e8e93;
-    --asv-color-border-default: rgba(235, 235, 245, 0.14);
-    --asv-color-border-strong: rgba(235, 235, 245, 0.24);
-    --asv-color-canvas-checker: rgba(235, 235, 245, 0.018);
-    --asv-color-status-info-soft: rgba(10, 132, 255, 0.18);
-    --asv-color-status-success-soft: rgba(48, 209, 88, 0.16);
-    --asv-color-status-warning-soft: rgba(255, 214, 10, 0.15);
-    --asv-color-status-danger-soft: rgba(255, 69, 58, 0.16);
+    --asv-color-border-default: rgba(235, 235, 245, 0.12);
+    --asv-color-border-strong: rgba(235, 235, 245, 0.2);
+    --asv-color-status-success: #30d158;
+    --asv-color-status-warning: #ffd60a;
+    --asv-color-status-danger: #ff453a;
+    --asv-color-canvas-checker: rgba(235, 235, 245, 0.011);
+    --asv-color-status-info-soft: rgba(10, 132, 255, 0.14);
+    --asv-color-status-success-soft: rgba(48, 209, 88, 0.12);
+    --asv-color-status-warning-soft: rgba(255, 214, 10, 0.12);
+    --asv-color-status-danger-soft: rgba(255, 69, 58, 0.12);
     --asv-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.34);
     --asv-shadow-floating: 0 18px 44px rgba(0, 0, 0, 0.32);
   }

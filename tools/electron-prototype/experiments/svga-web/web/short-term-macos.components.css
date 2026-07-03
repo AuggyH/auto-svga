@@ -8,18 +8,18 @@ input {
 button {
   min-height: var(--asv-control-height);
   padding-inline: var(--asv-space-3);
-  border: 1px solid var(--asv-border);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 82%, transparent);
   border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-panel-strong) 88%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 76%, transparent);
   color: var(--asv-text);
   cursor: default;
-  font-weight: 520;
+  font-weight: 560;
   white-space: nowrap;
 }
 
 button:hover:not(:disabled) {
   border-color: var(--asv-border-strong);
-  background: color-mix(in srgb, var(--asv-panel-strong) 94%, var(--asv-action) 6%);
+  background: color-mix(in srgb, var(--asv-panel-strong) 90%, var(--asv-action) 5%);
 }
 
 button:focus-visible,
@@ -30,7 +30,7 @@ input:focus-visible {
 
 button:disabled {
   color: var(--asv-subtle);
-  opacity: 0.58;
+  opacity: 0.48;
 }
 
 button.primary,
@@ -70,9 +70,9 @@ button.danger {
   display: inline-grid;
   grid-template-columns: 1fr 1fr;
   padding: 2px;
-  border: 1px solid var(--asv-border);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 82%, transparent);
   border-radius: var(--asv-radius-md);
-  background: color-mix(in srgb, var(--asv-canvas) 74%, transparent);
+  background: color-mix(in srgb, var(--asv-window) 58%, transparent);
 }
 
 .modeSwitch button {
@@ -83,8 +83,8 @@ button.danger {
 }
 
 .modeSwitch button.isSelected {
-  background: var(--asv-panel-strong);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  background: color-mix(in srgb, var(--asv-panel-strong) 92%, var(--asv-action) 3%);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 }
 
 .stateCard {
@@ -124,14 +124,14 @@ button.danger {
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  padding: var(--asv-space-2);
+  gap: var(--asv-space-1);
+  padding: var(--asv-tab-padding);
   border-bottom: 1px solid var(--asv-border);
-  background: color-mix(in srgb, var(--asv-canvas) 52%, transparent);
+  background: color-mix(in srgb, var(--asv-window) 38%, transparent);
 }
 
 .tabs button {
-  min-height: 32px;
+  min-height: var(--asv-tab-height);
   padding: 0 var(--asv-space-1);
   border: 0;
   border-radius: var(--asv-radius-sm);
@@ -141,8 +141,8 @@ button.danger {
 }
 
 .tabs button.isSelected {
-  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-action) 8%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-border-strong) 70%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 94%, var(--asv-action) 4%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-border-strong) 58%, transparent);
   color: var(--asv-text);
   font-weight: 650;
 }
@@ -151,9 +151,9 @@ button.danger {
   position: relative;
   min-width: 0;
   padding: var(--asv-space-2) var(--asv-space-2) var(--asv-space-2) var(--asv-space-3);
-  border: 1px solid color-mix(in srgb, var(--asv-border) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 70%, transparent);
   border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-panel-strong) 58%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 46%, transparent);
 }
 
 .factCell:nth-child(5) {
@@ -174,7 +174,7 @@ button.danger {
 }
 
 .factCell[data-status="warning"] {
-  background: color-mix(in srgb, var(--asv-panel-strong) 70%, var(--asv-color-warning-soft));
+  background: color-mix(in srgb, var(--asv-panel-strong) 82%, var(--asv-color-warning-soft));
 }
 
 .factCell[data-status="warning"]::before {
@@ -182,8 +182,8 @@ button.danger {
 }
 
 .factCell[data-status="fail"] {
-  border-color: color-mix(in srgb, var(--asv-danger) 36%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 70%, var(--asv-color-danger-soft));
+  border-color: color-mix(in srgb, var(--asv-danger) 26%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 82%, var(--asv-color-danger-soft));
 }
 
 .factCell[data-status="fail"]::before {
@@ -233,9 +233,9 @@ button.danger {
   align-items: center;
   min-height: var(--asv-row-height);
   padding: var(--asv-space-2);
-  border: 1px solid color-mix(in srgb, var(--asv-border) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 68%, transparent);
   border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-panel-strong) 52%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 40%, transparent);
 }
 
 .findingRow {
@@ -244,13 +244,13 @@ button.danger {
 }
 
 .findingRow[data-disposition="safeExecutable"] {
-  border-color: color-mix(in srgb, var(--asv-success) 32%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 70%, var(--asv-color-success-soft));
+  border-color: color-mix(in srgb, var(--asv-success) 24%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-success-soft));
 }
 
 .findingRow[data-disposition="reviewOnly"] {
-  border-color: color-mix(in srgb, var(--asv-warning) 30%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 72%, var(--asv-color-warning-soft));
+  border-color: color-mix(in srgb, var(--asv-warning) 24%, var(--asv-border));
+  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-warning-soft));
 }
 
 .replaceableRow {
@@ -278,7 +278,7 @@ button.danger {
 .textElementRow.isSelected,
 .textElementRow:focus-visible {
   border-color: var(--asv-border-strong);
-  background: color-mix(in srgb, var(--asv-panel-strong) 82%, var(--asv-color-info-soft));
+  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-color-info-soft));
 }
 
 .replaceableRow:focus-visible,
@@ -328,9 +328,9 @@ button.danger {
 .rowMenuButton {
   height: 24px;
   padding: 0 var(--asv-space-2);
-  border: 1px solid color-mix(in srgb, var(--asv-border) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 66%, transparent);
   border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-panel-strong) 68%, transparent);
+  background: color-mix(in srgb, var(--asv-panel-strong) 54%, transparent);
   color: var(--asv-muted);
   font: inherit;
   font-size: 11px;
@@ -354,7 +354,7 @@ button.danger {
   width: var(--asv-thumb-size);
   height: var(--asv-thumb-size);
   overflow: hidden;
-  border: 1px solid var(--asv-border);
+  border: 1px solid color-mix(in srgb, var(--asv-border) 76%, transparent);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-canvas);
   color: var(--asv-muted);
@@ -419,7 +419,7 @@ button.danger {
 .badge {
   padding: 2px 7px;
   border-radius: var(--asv-radius-sm);
-  background: color-mix(in srgb, var(--asv-border) 70%, transparent);
+  background: color-mix(in srgb, var(--asv-border) 46%, transparent);
   color: var(--asv-muted);
   font-size: 11px;
   white-space: nowrap;
@@ -524,7 +524,7 @@ button.danger {
 .emptyText {
   padding: var(--asv-space-3);
   color: var(--asv-muted);
-  border: 1px dashed var(--asv-border);
+  border: 1px dashed color-mix(in srgb, var(--asv-border) 72%, transparent);
   border-radius: var(--asv-radius-sm);
   line-height: 1.5;
 }
