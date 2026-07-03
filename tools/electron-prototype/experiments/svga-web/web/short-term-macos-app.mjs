@@ -22,6 +22,10 @@ import {
   renderCompareInfoPanel
 } from "./short-term-macos-compare-renderers.mjs";
 import {
+  renderLaunchRecentFiles,
+  renderRecentFilesUnavailable
+} from "./short-term-macos-launch-renderers.mjs";
+import {
   applyRuntimeTextOverlay,
   clearSaveFeedbackBanner,
   clearRuntimeTextOverlay,
@@ -33,11 +37,9 @@ import {
   renderEditReservedLayers,
   renderFailureMessage,
   renderFileHeader,
-  renderLaunchRecentFiles,
   renderLoadingMessage,
   renderOptimizationFindings,
   renderOverviewFacts,
-  renderRecentFilesUnavailable,
   renderReplaceableImages,
   renderRuntimeTextElements,
   showSaveFeedbackBanner,

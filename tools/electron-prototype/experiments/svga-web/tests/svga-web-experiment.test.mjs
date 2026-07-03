@@ -1018,6 +1018,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermDomRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-renderers.mjs"), "utf8");
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
   const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
+  const shortTermLaunchRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-launch-renderers.mjs"), "utf8");
   const shortTermRecentFilesModel = await readFile(path.join(experimentRoot, "web/short-term-macos-recent-files-model.mjs"), "utf8");
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
   const shortTermSaveModel = await readFile(path.join(experimentRoot, "web/short-term-macos-save-model.mjs"), "utf8");
@@ -1184,6 +1185,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermStyles, /\.toolbarCluster|\.resultGroup|\.previewView|\.compareView/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-renderers\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-compare-renderers\.mjs"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-launch-renderers\.mjs"/);
   assert.match(shortTermEntry, /applyCompareSlotView/);
   assert.match(shortTermEntry, /applyCompareTraceView/);
   assert.match(shortTermEntry, /applyRuntimeTextOverlay/);
@@ -1341,14 +1343,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermRecentFilesModel, /export const LAUNCH_RECENT_LIMIT = 5/);
   assert.match(shortTermRecentFilesModel, /export function visibleLaunchRecentRecords/);
   assert.doesNotMatch(shortTermRecentFilesModel, /document\.createElement|innerHTML|replaceChildren|textContent|clearButton\.disabled|data-action="open-recent"/);
-  assert.match(shortTermDomRenderers, /export function renderLaunchRecentFiles/);
-  assert.match(shortTermDomRenderers, /export function renderRecentFilesUnavailable/);
-  assert.match(shortTermDomRenderers, /clearButton\.disabled = records\.length === 0/);
-  assert.match(shortTermDomRenderers, /data-action="open-recent"/);
-  assert.match(shortTermDomRenderers, /data-recent-id/);
-  assert.match(shortTermDomRenderers, /暂无最近打开记录/);
-  assert.match(shortTermDomRenderers, /仅显示文件名和父级位置/);
-  assert.match(shortTermDomRenderers, /最近文件由 macOS 客户端提供/);
+  assert.doesNotMatch(shortTermDomRenderers, /export function renderLaunchRecentFiles|export function renderRecentFilesUnavailable|export function createRecentFileRow|export function createEmptyRecentFileRow/);
+  assert.match(shortTermLaunchRenderers, /export function renderLaunchRecentFiles/);
+  assert.match(shortTermLaunchRenderers, /export function renderRecentFilesUnavailable/);
+  assert.match(shortTermLaunchRenderers, /clearButton\.disabled = records\.length === 0/);
+  assert.match(shortTermLaunchRenderers, /data-action="open-recent"/);
+  assert.match(shortTermLaunchRenderers, /data-recent-id/);
+  assert.match(shortTermLaunchRenderers, /暂无最近打开记录/);
+  assert.match(shortTermLaunchRenderers, /仅显示文件名和父级位置/);
+  assert.match(shortTermLaunchRenderers, /最近文件由 macOS 客户端提供/);
   assert.match(shortTermSaveModel, /export function saveProofImageKey/);
   assert.match(shortTermSaveModel, /export function saveProofSourceImageKey/);
   assert.match(shortTermSaveModel, /export function createSaveFailureProofActiveOutput/);
@@ -2071,6 +2074,7 @@ test("short-term design system check enforces UI implementation guardrails", () 
   const dynamicDomAllowlist = source.match(/const allowedDynamicDomModules = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
   assert.match(dynamicDomAllowlist, /short-term-macos-dom-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-compare-renderers\.mjs/);
+  assert.match(dynamicDomAllowlist, /short-term-macos-launch-renderers\.mjs/);
   assert.doesNotMatch(dynamicDomAllowlist, /short-term-macos-compare-model\.mjs|short-term-macos-render-model\.mjs|short-term-macos-recent-files-model\.mjs/);
   const output = execFileSync(process.execPath, ["scripts/check-short-term-design-system.mjs"], {
     cwd: experimentRoot,
