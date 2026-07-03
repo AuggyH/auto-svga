@@ -13,15 +13,19 @@
     <main class="macApp" data-app-state="launch">
       <header class="titlebar" aria-label="工具栏" data-component="WindowToolbar">
         <div class="windowControlSpace" aria-hidden="true"></div>
-        <button class="toolbarButton primary" type="button" data-action="open" aria-keyshortcuts="Meta+O">打开 SVGA</button>
-        <button class="toolbarButton" type="button" data-action="compare" disabled title="请先打开 SVGA">对比</button>
-        <div class="modeSwitch" role="group" aria-label="模式">
-          <button type="button" class="isSelected" data-action="mode-preview" aria-pressed="true">预览</button>
-          <button type="button" data-action="mode-edit" aria-pressed="false">编辑</button>
+        <div class="toolbarCluster toolbarClusterPrimary">
+          <button class="toolbarButton primary" type="button" data-action="open" aria-keyshortcuts="Meta+O">打开 SVGA</button>
+          <button class="toolbarButton" type="button" data-action="compare" disabled title="请先打开 SVGA">对比</button>
+          <div class="modeSwitch" role="group" aria-label="模式" data-component="SegmentedModeSwitch">
+            <button type="button" class="isSelected" data-action="mode-preview" aria-pressed="true">预览</button>
+            <button type="button" data-action="mode-edit" aria-pressed="false">编辑</button>
+          </div>
         </div>
         <div class="fileIdentity" id="fileIdentity">等待打开文件</div>
-        <button class="toolbarButton" type="button" data-action="save-overwrite" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+S">覆盖保存</button>
-        <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+Shift+S">另存为</button>
+        <div class="toolbarCluster toolbarClusterSave" data-component="SaveButtonPair">
+          <button class="toolbarButton" type="button" data-action="save-overwrite" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+S">覆盖保存</button>
+          <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+Shift+S">另存为</button>
+        </div>
       </header>
 
       <section class="saveBanner" id="saveBanner" aria-live="polite" hidden></section>

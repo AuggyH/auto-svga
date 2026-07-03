@@ -59,8 +59,8 @@ body {
   -webkit-app-region: drag;
   display: grid;
   align-items: center;
-  grid-template-columns: var(--asv-window-controls-width) auto auto auto minmax(160px, 1fr) auto auto;
-  gap: var(--asv-space-2);
+  grid-template-columns: var(--asv-window-controls-width) auto minmax(160px, 1fr) auto;
+  gap: var(--asv-space-3);
   min-height: var(--asv-toolbar-height);
   padding: 0 var(--asv-toolbar-padding-inline);
   border-bottom: 1px solid var(--asv-border);
@@ -73,6 +73,21 @@ body {
   -webkit-app-region: no-drag;
 }
 
+.toolbarCluster {
+  display: flex;
+  align-items: center;
+  gap: var(--asv-space-2);
+  min-width: 0;
+}
+
+.toolbarClusterPrimary {
+  justify-self: start;
+}
+
+.toolbarClusterSave {
+  justify-self: end;
+}
+
 .windowControlSpace {
   width: var(--asv-window-controls-width);
   min-width: var(--asv-window-controls-width);
@@ -81,7 +96,10 @@ body {
 }
 
 .fileIdentity {
+  justify-self: stretch;
   overflow: hidden;
+  min-width: 0;
+  padding: 0 var(--asv-space-2);
   color: var(--asv-muted);
   font-size: var(--asv-file-identity-font-size);
   font-weight: 560;
@@ -651,7 +669,12 @@ canvas {
   }
 
   .titlebar {
-    grid-template-columns: var(--asv-window-controls-width) auto auto auto minmax(84px, 1fr) auto auto;
+    grid-template-columns: var(--asv-window-controls-width) auto minmax(84px, 1fr) auto;
+    gap: var(--asv-space-2);
+  }
+
+  .toolbarCluster {
+    gap: var(--asv-space-1);
   }
 
   .previewView,

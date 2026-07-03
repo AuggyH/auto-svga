@@ -1036,6 +1036,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="textElementList"/);
   assert.match(page, /data-action="edit-text" disabled/);
   assert.match(page, /data-component="WindowToolbar"/);
+  assert.match(page, /class="toolbarCluster toolbarClusterPrimary"/);
+  assert.match(page, /data-component="SegmentedModeSwitch"/);
+  assert.match(page, /class="toolbarCluster toolbarClusterSave" data-component="SaveButtonPair"/);
   assert.match(page, /data-component="ReservedOperationPanel"/);
   assert.match(page, /role="tablist"/);
   assert.match(page, /aria-selected="true"/);
@@ -1087,6 +1090,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.contextMenu button:disabled/);
   assert.match(shortTermStyles, /\[hidden\]\s*\{\s*display: none !important;/);
   assert.doesNotMatch(shortTermStyles, /button\.primary:disabled/);
+  assert.match(shortTermStyles, /\.toolbarCluster/);
+  assert.match(shortTermStyles, /grid-template-columns: var\(--asv-window-controls-width\) auto minmax\(160px, 1fr\) auto/);
   assert.match(shortTermStyles, /\.resultGroup/);
   assert.match(shortTermStyles, /\.tabPanel:focus-visible/);
   assert.match(shortTermStyles, /\.saveBanner\[data-status="success"\]::before/);
