@@ -1132,6 +1132,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-shadow-panel-chrome/);
   assert.match(shortTermTokens, /--asv-shadow-row-selected/);
   assert.match(shortTermTokens, /--asv-shadow-fact-cell/);
+  assert.match(shortTermTokens, /--asv-component-toolbar-control-background/);
+  assert.match(shortTermTokens, /--asv-toolbar-control-bg: var\(--asv-component-toolbar-control-background\)/);
   assert.match(shortTermTokens, /--asv-component-toolbar-height/);
   assert.match(shortTermTokens, /--asv-component-launch-content-width/);
   assert.match(shortTermTokens, /--asv-launch-recent-row-height/);
@@ -1180,6 +1182,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightPanel/);
   assert.doesNotMatch(shortTermModules, /inspector/);
   assert.match(shortTermModules, /grid-template-columns: var\(--asv-window-controls-width\) auto minmax\(160px, 1fr\) auto/);
+  assert.match(shortTermModules, /\.titlebar \.toolbarButton,[\s\S]*\.titlebar \.modeSwitch\s*\{[^}]*background: var\(--asv-toolbar-control-bg\)/s);
+  assert.match(shortTermModules, /\.titlebar \.toolbarButton\.primary\s*\{[^}]*background: var\(--asv-action\)/s);
+  assert.match(shortTermModules, /\.titlebar \.modeSwitch button\.isSelected\s*\{[^}]*background: var\(--asv-toolbar-control-selected-bg\)/s);
   assert.match(shortTermModules, /background: var\(--asv-panel-chrome\)/);
   assert.match(shortTermModules, /background: var\(--asv-panel-recessed\)/);
   assert.match(shortTermModules, /\.resultGroup/);

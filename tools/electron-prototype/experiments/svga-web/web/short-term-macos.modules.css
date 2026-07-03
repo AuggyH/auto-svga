@@ -18,6 +18,37 @@
   -webkit-app-region: no-drag;
 }
 
+.titlebar .toolbarButton,
+.titlebar .modeSwitch {
+  border-color: var(--asv-toolbar-control-border);
+  background: var(--asv-toolbar-control-bg);
+  box-shadow: var(--asv-toolbar-control-shadow);
+}
+
+.titlebar .toolbarButton:hover:not(:disabled) {
+  background: var(--asv-toolbar-control-hover-bg);
+  box-shadow: var(--asv-toolbar-control-hover-shadow);
+}
+
+.titlebar .toolbarButton.primary {
+  border-color: transparent;
+  background: var(--asv-action);
+  color: white;
+  box-shadow: var(--asv-toolbar-primary-shadow);
+}
+
+.titlebar .toolbarButton.primary:disabled {
+  border-color: var(--asv-toolbar-control-border);
+  background: var(--asv-control-disabled-bg);
+  color: var(--asv-subtle);
+  box-shadow: var(--asv-toolbar-control-shadow);
+}
+
+.titlebar .modeSwitch button.isSelected {
+  background: var(--asv-toolbar-control-selected-bg);
+  box-shadow: var(--asv-toolbar-control-selected-shadow);
+}
+
 .toolbarCluster {
   display: flex;
   align-items: center;

@@ -81,6 +81,14 @@
   /* Component tokens */
   --asv-component-toolbar-height: 50px;
   --asv-component-toolbar-padding-inline: 14px;
+  --asv-component-toolbar-control-background: color-mix(in srgb, var(--asv-color-surface-panel-strong) 42%, transparent);
+  --asv-component-toolbar-control-hover-background: color-mix(in srgb, var(--asv-color-surface-panel-strong) 58%, var(--asv-color-action-primary) 4%);
+  --asv-component-toolbar-control-selected-background: color-mix(in srgb, var(--asv-color-surface-panel-strong) 62%, var(--asv-color-action-primary) 5%);
+  --asv-component-toolbar-control-border: color-mix(in srgb, var(--asv-color-border-default) 66%, transparent);
+  --asv-component-toolbar-control-shadow: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 22%, transparent);
+  --asv-component-toolbar-control-hover-shadow: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 34%, transparent);
+  --asv-component-toolbar-control-selected-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-color-action-primary) 18%, transparent);
+  --asv-component-toolbar-primary-shadow: inset 0 1px 0 color-mix(in srgb, white 26%, transparent);
   --asv-component-file-identity-font-size: 12px;
   --asv-component-window-controls-width: 78px;
   --asv-component-control-height: 28px;
@@ -181,6 +189,14 @@
   --asv-focus-inset: inset 0 0 0 2px color-mix(in srgb, var(--asv-action) 30%, transparent);
   --asv-toolbar-height: var(--asv-component-toolbar-height);
   --asv-toolbar-padding-inline: var(--asv-component-toolbar-padding-inline);
+  --asv-toolbar-control-bg: var(--asv-component-toolbar-control-background);
+  --asv-toolbar-control-hover-bg: var(--asv-component-toolbar-control-hover-background);
+  --asv-toolbar-control-selected-bg: var(--asv-component-toolbar-control-selected-background);
+  --asv-toolbar-control-border: var(--asv-component-toolbar-control-border);
+  --asv-toolbar-control-shadow: var(--asv-component-toolbar-control-shadow);
+  --asv-toolbar-control-hover-shadow: var(--asv-component-toolbar-control-hover-shadow);
+  --asv-toolbar-control-selected-shadow: var(--asv-component-toolbar-control-selected-shadow);
+  --asv-toolbar-primary-shadow: var(--asv-component-toolbar-primary-shadow);
   --asv-file-identity-font-size: var(--asv-component-file-identity-font-size);
   --asv-window-controls-width: var(--asv-component-window-controls-width);
   --asv-control-height: var(--asv-component-control-height);
