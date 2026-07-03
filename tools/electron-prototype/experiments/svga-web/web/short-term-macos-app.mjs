@@ -16,6 +16,7 @@ import {
   renderOptimizationCompareResultHtml
 } from "./short-term-macos-compare-model.mjs";
 import {
+  clearSaveFeedbackBanner,
   createAssetRow,
   createEditLayerRow,
   createInlineStatusText,
@@ -23,12 +24,13 @@ import {
   createOptimizationFindingRow,
   createOverviewFactCell,
   createReplaceableImageRow,
-  createTextElementRow
+  createTextElementRow,
+  hideSaveFeedbackBanner,
+  showSaveFeedbackBanner
 } from "./short-term-macos-dom-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
 import {
   buildCurrentStateSummary,
-  saveBannerView,
   sourceUnmodifiedMessage
 } from "./short-term-macos-feedback-model.mjs";
 import {
@@ -273,7 +275,7 @@ async function closeFile() {
   state.tab = "overview";
   nodes.fileIdentity.textContent = "等待打开文件";
   nodes.playbackMeta.textContent = "-";
-  nodes.saveBanner.hidden = true;
+  hideSaveFeedbackBanner(nodes.saveBanner);
   setTab("overview");
   applyModeButtons("preview");
   setView("launch");
@@ -557,8 +559,7 @@ function setActiveOutput({ kind, bytes, suggestedName, title, summary, details }
 function clearTransientOutput() {
   state.activeOutput = undefined;
   state.saveStatus = "idle";
-  nodes.saveBanner.hidden = true;
-  nodes.saveBanner.removeAttribute("data-status");
+  clearSaveFeedbackBanner(nodes.saveBanner);
   renderCommandState();
 }
 
@@ -900,10 +901,7 @@ function syncShortTermMenuState(snapshot) {
 }
 
 function showSaveBanner(title, message, tone) {
-  const view = saveBannerView(title, message, tone);
-  nodes.saveBanner.hidden = false;
-  nodes.saveBanner.dataset.status = view.status;
-  nodes.saveBanner.innerHTML = view.html;
+  showSaveFeedbackBanner(nodes.saveBanner, title, message, tone);
 }
 
 function showFailure(error) {

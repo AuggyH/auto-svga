@@ -1174,11 +1174,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermStyles, /button\.primary:disabled/);
   assert.doesNotMatch(shortTermStyles, /\.toolbarCluster|\.resultGroup|\.previewView|\.compareView/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-renderers\.mjs"/);
+  assert.match(shortTermEntry, /clearSaveFeedbackBanner/);
   assert.match(shortTermEntry, /createOverviewFactCell/);
   assert.match(shortTermEntry, /createAssetRow/);
   assert.match(shortTermEntry, /createInlineStatusText/);
   assert.match(shortTermEntry, /createMessageRow/);
   assert.match(shortTermEntry, /createReplaceableImageRow/);
+  assert.match(shortTermEntry, /hideSaveFeedbackBanner/);
+  assert.match(shortTermEntry, /showSaveFeedbackBanner/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-command-state\.mjs"/);
   assert.match(shortTermEntry, /buildCommandState/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-compare-model\.mjs"/);
@@ -1187,8 +1190,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-feedback-model\.mjs"/);
   assert.match(shortTermEntry, /buildCurrentStateSummary/);
-  assert.match(shortTermEntry, /saveBannerView/);
   assert.match(shortTermEntry, /sourceUnmodifiedMessage/);
+  assert.doesNotMatch(shortTermEntry, /saveBannerView/);
   assert.doesNotMatch(shortTermEntry, /saveBanner\.innerHTML = `<strong>\$\{escapeHtml\(title\)\}/);
   assert.doesNotMatch(shortTermEntry, /\$\{message \|\| "未知错误"\} 源文件没有被修改。/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-recent-files-model\.mjs"/);
@@ -1232,6 +1235,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomRenderers, /export function createOptimizationFindingRow/);
   assert.match(shortTermDomRenderers, /export function createMessageRow/);
   assert.match(shortTermDomRenderers, /export function createInlineStatusText/);
+  assert.match(shortTermDomRenderers, /export function showSaveFeedbackBanner/);
+  assert.match(shortTermDomRenderers, /export function hideSaveFeedbackBanner/);
+  assert.match(shortTermDomRenderers, /export function clearSaveFeedbackBanner/);
   assert.match(shortTermDomRenderers, /export function createReplaceableImageRow/);
   assert.match(shortTermDomRenderers, /export function createTextElementRow/);
   assert.match(shortTermDomRenderers, /export function createEditLayerRow/);
@@ -1463,7 +1469,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /data-optimization-actions/);
   assert.match(shortTermCompareModel, /data-optimization-skipped/);
   assert.match(shortTermFeedbackModel, /function bannerTone/);
-  assert.match(shortTermEntry, /nodes\.saveBanner\.dataset\.status = view\.status/);
+  assert.match(shortTermEntry, /showSaveFeedbackBanner\(nodes\.saveBanner, title, message, tone\)/);
+  assert.match(shortTermEntry, /clearSaveFeedbackBanner\(nodes\.saveBanner\)/);
+  assert.match(shortTermEntry, /hideSaveFeedbackBanner\(nodes\.saveBanner\)/);
+  assert.doesNotMatch(shortTermEntry, /nodes\.saveBanner\.hidden = true|nodes\.saveBanner\.dataset\.status|nodes\.saveBanner\.innerHTML =/);
+  assert.match(shortTermDomRenderers, /node\.dataset\.status = view\.status/);
+  assert.match(shortTermDomRenderers, /node\.innerHTML = view\.html/);
   assert.match(shortTermEntry, /createMessageRow\(model\.resultTitle, model\.resultSummary, tone\)/);
   assert.doesNotMatch(shortTermEntry, /function messageRow|renderMessageRowHtml/);
   assert.match(shortTermEntry, /createInlineStatusText\(view\.emptyCopy\)/);
