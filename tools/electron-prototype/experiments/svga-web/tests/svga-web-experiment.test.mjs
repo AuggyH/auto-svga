@@ -1945,6 +1945,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /openMenuAvailable/);
   assert.match(main, /recentMenuExists/);
   assert.match(main, /clearRecentMenuExists/);
+  assert.match(main, /recentMenuRecordCountMatchesState/);
+  assert.match(main, /recentMenuRecordLimitRespected/);
+  assert.match(main, /recentMenuLabelsPathRedacted/);
+  assert.match(main, /recentMenuPlaceholderMatchesEmptyState/);
+  assert.match(main, /clearRecentEnabledMatchesState/);
+  assert.match(main, /function menuSubmenuItems/);
   assert.match(main, /editRenameEnabledMatchesSelection/);
   assert.match(main, /cancelEnabledMatchesTransientState/);
   assert.match(main, /resetImageEnabledMatchesReplacementState/);

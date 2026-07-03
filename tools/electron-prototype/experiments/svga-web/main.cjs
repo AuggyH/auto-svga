@@ -3935,10 +3935,24 @@ function mergeExistingProductArtifactIndex() {
 }
 
 function collectShortTermMenuStateProof() {
+  const recentRecords = shortTermRecentView().slice(0, maxShortTermRecentFiles);
+  const recentMenuItems = menuSubmenuItems(["文件", "最近打开"]);
+  const recentRecordLabels = recentMenuItems
+    .filter((item) => item.type !== "separator" && item.label !== "清除最近记录" && item.label !== "暂无最近文件")
+    .map((item) => item.label || "");
+  const hasRecentRecords = recentRecords.length > 0;
   const checks = {
     openMenuAvailable: menuItemEnabled(["文件", "打开 SVGA..."]) === true,
     recentMenuExists: menuItemExists(["文件", "最近打开"]),
     clearRecentMenuExists: menuItemExists(["文件", "最近打开", "清除最近记录"]),
+    recentMenuRecordCountMatchesState: recentRecordLabels.length === recentRecords.length,
+    recentMenuRecordLimitRespected: recentRecordLabels.length <= maxShortTermRecentFiles,
+    recentMenuLabelsPathRedacted: recentRecordLabels.every((label) => !/[\\/]/.test(label)),
+    recentMenuPlaceholderMatchesEmptyState: hasRecentRecords
+      ? recentRecordLabels.length > 0
+      : menuItemExists(["文件", "最近打开", "暂无最近文件"]) === true
+        && menuItemEnabled(["文件", "最近打开", "暂无最近文件"]) === false,
+    clearRecentEnabledMatchesState: menuItemEnabled(["文件", "最近打开", "清除最近记录"]) === hasRecentRecords,
     stateReflectsLoadedSmoke: shortTermMenuState.hasFile === true && shortTermMenuState.view === "preview",
     closeFileEnabledMatchesFileState: menuItemEnabled(["文件", "关闭文件"]) === shortTermMenuState.hasFile,
     compareEnabledMatchesFileState: menuItemEnabled(["文件", "打开对比 SVGA..."]) === shortTermMenuState.canCompare,
@@ -3967,6 +3981,13 @@ function collectShortTermMenuStateProof() {
     proofId: "short-term-menu-state-proof",
     source: "macos-menu-state-sync-smoke",
     state: shortTermMenuState,
+    recentMenu: {
+      recordCount: recentRecordLabels.length,
+      recordLimit: maxShortTermRecentFiles,
+      pathRedacted: recentRecordLabels.every((label) => !/[\\/]/.test(label)),
+      hasPlaceholder: menuItemExists(["文件", "最近打开", "暂无最近文件"]) === true,
+      clearEnabled: menuItemEnabled(["文件", "最近打开", "清除最近记录"]) === true
+    },
     checks,
     passed: Object.values(checks).every(Boolean)
   };
@@ -3984,6 +4005,10 @@ function menuItemEnabled(labelPath) {
 function menuItemChecked(labelPath) {
   const item = findApplicationMenuItem(labelPath);
   return item ? item.checked === true : undefined;
+}
+
+function menuSubmenuItems(labelPath) {
+  return findApplicationMenuItem(labelPath)?.submenu?.items ?? [];
 }
 
 function findApplicationMenuItem(labelPath) {
