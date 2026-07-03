@@ -1,0 +1,193 @@
+/* Atom styles consume semantic and component tokens from short-term-macos.tokens.css. */
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  min-height: var(--asv-control-height);
+  padding-inline: var(--asv-space-3);
+  border: 1px solid var(--asv-control-border);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-control-bg);
+  color: var(--asv-text);
+  cursor: default;
+  font-weight: 540;
+  white-space: nowrap;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--asv-border-strong);
+  background: var(--asv-control-hover-bg);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: none;
+  box-shadow: var(--asv-focus);
+}
+
+button:disabled {
+  color: var(--asv-subtle);
+  opacity: 0.48;
+}
+
+button.primary,
+.toolbarButton.primary,
+.largeOpenButton {
+  border-color: transparent;
+  background: var(--asv-action);
+  color: white;
+  font-weight: 620;
+}
+
+button.primary:disabled,
+.toolbarButton.primary:disabled,
+.largeOpenButton:disabled {
+  border-color: var(--asv-border);
+  background: var(--asv-control-disabled-bg);
+  color: var(--asv-subtle);
+}
+
+button.danger {
+  border-color: transparent;
+  background: var(--asv-danger);
+  color: white;
+}
+
+.spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--asv-border);
+  border-top-color: var(--asv-action);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+
+.thumb {
+  display: grid;
+  place-items: center;
+  width: var(--asv-thumb-size);
+  height: var(--asv-thumb-size);
+  overflow: hidden;
+  border: 1px solid var(--asv-row-border);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-canvas);
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-caption);
+}
+
+.thumb.sequence {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 1px;
+  background:
+    linear-gradient(90deg, transparent 48%, var(--asv-border) 48%, var(--asv-border) 52%, transparent 52%),
+    linear-gradient(0deg, transparent 48%, var(--asv-border) 48%, var(--asv-border) 52%, transparent 52%),
+    var(--asv-canvas);
+}
+
+.thumb.audio {
+  text-align: center;
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.thumb.sequence img {
+  min-width: 0;
+  min-height: 0;
+}
+
+.rowText {
+  min-width: 0;
+}
+
+.rowIndex {
+  align-self: center;
+  color: var(--asv-subtle);
+  font-family: var(--asv-type-mono);
+  font-size: var(--asv-type-size-caption);
+  font-weight: 650;
+  text-align: center;
+}
+
+.rowText strong,
+.rowText span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowText span,
+.findingRow p,
+.sectionHead p,
+.textPreviewBlock p {
+  margin: var(--asv-space-1) 0 0;
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-footnote);
+}
+
+.findingImpact {
+  align-self: center;
+  color: var(--asv-muted);
+  font-family: var(--asv-type-mono);
+  font-size: var(--asv-type-size-footnote);
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--asv-badge-min-height);
+  padding: 0 var(--asv-space-2);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-badge-bg);
+  box-shadow: inset 0 0 0 1px var(--asv-badge-border);
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-caption);
+  white-space: nowrap;
+}
+
+.badge.safe {
+  background: var(--asv-color-success-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-success) 24%, transparent);
+  color: var(--asv-success);
+}
+
+.badge.review {
+  background: var(--asv-color-warning-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-warning) 24%, transparent);
+  color: var(--asv-warning);
+}
+
+.badge.unsupported {
+  color: var(--asv-muted);
+}
+
+.badge.fail {
+  background: var(--asv-color-danger-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-danger) 24%, transparent);
+  color: var(--asv-danger);
+}
+
+.emptyText {
+  margin: 0;
+  padding: var(--asv-empty-padding);
+  color: var(--asv-muted);
+  border: 1px dashed var(--asv-row-border);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-fact-bg);
+  line-height: 1.5;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
