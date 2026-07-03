@@ -46,7 +46,7 @@
 .factCell {
   position: relative;
   display: grid;
-  align-content: start;
+  align-content: center;
   gap: var(--asv-fact-cell-gap);
   min-height: var(--asv-fact-cell-min-height);
   min-width: 0;
@@ -115,7 +115,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--asv-space-1);
-  margin-top: var(--asv-space-1);
+  margin-top: var(--asv-fact-cell-meta-gap);
   color: var(--asv-subtle);
 }
 

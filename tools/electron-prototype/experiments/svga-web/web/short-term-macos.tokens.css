@@ -73,7 +73,7 @@
   --asv-shadow-control-primary: 0 1px 2px rgba(10, 132, 255, 0.22);
   --asv-shadow-row: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 34%, transparent);
   --asv-shadow-row-selected: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 58%, transparent), 0 1px 2px rgba(15, 23, 42, 0.06);
-  --asv-shadow-fact-cell: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 54%, transparent), 0 1px 1px rgba(15, 23, 42, 0.03);
+  --asv-shadow-fact-cell: inset 0 1px 0 color-mix(in srgb, var(--asv-color-surface-panel-strong) 38%, transparent);
   --asv-shadow-overlay: 0 1px 6px rgba(15, 23, 42, 0.16);
   --asv-shadow-menu: 0 12px 30px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
   --asv-effect-menu-backdrop-filter: saturate(1.2) blur(18px);
@@ -105,8 +105,9 @@
   --asv-component-right-panel-section-gap: var(--asv-space-3);
   --asv-component-preview-gap: 10px;
   --asv-component-playback-bar-height: 42px;
-  --asv-component-fact-cell-min-height: 70px;
-  --asv-component-fact-cell-gap: 2px;
+  --asv-component-fact-cell-min-height: 64px;
+  --asv-component-fact-cell-gap: 1px;
+  --asv-component-fact-cell-meta-gap: 0px;
   --asv-component-fact-status-strip-width: 2px;
   --asv-component-asset-row-min-height: 48px;
   --asv-component-finding-row-min-height: 54px;
@@ -215,6 +216,7 @@
   --asv-playback-bar-height: var(--asv-component-playback-bar-height);
   --asv-fact-cell-min-height: var(--asv-component-fact-cell-min-height);
   --asv-fact-cell-gap: var(--asv-component-fact-cell-gap);
+  --asv-fact-cell-meta-gap: var(--asv-component-fact-cell-meta-gap);
   --asv-fact-status-strip-width: var(--asv-component-fact-status-strip-width);
   --asv-asset-row-min-height: var(--asv-component-asset-row-min-height);
   --asv-finding-row-min-height: var(--asv-component-finding-row-min-height);
@@ -268,7 +270,7 @@
     --asv-shadow-control-primary: 0 1px 2px rgba(10, 132, 255, 0.18);
     --asv-shadow-row: inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
     --asv-shadow-row-selected: inset 0 1px 0 color-mix(in srgb, white 12%, transparent), 0 1px 2px rgba(0, 0, 0, 0.2);
-    --asv-shadow-fact-cell: inset 0 1px 0 color-mix(in srgb, white 9%, transparent), 0 1px 1px rgba(0, 0, 0, 0.14);
+    --asv-shadow-fact-cell: inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
     --asv-shadow-overlay: 0 1px 6px rgba(0, 0, 0, 0.28);
     --asv-shadow-menu: 0 12px 30px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.2);
   }
@@ -285,7 +287,7 @@
     --asv-component-right-panel-section-gap: var(--asv-space-2);
     --asv-component-preview-gap: var(--asv-space-2);
     --asv-component-playback-bar-height: 38px;
-    --asv-component-fact-cell-min-height: 62px;
+    --asv-component-fact-cell-min-height: 60px;
     --asv-component-asset-row-min-height: 44px;
     --asv-component-finding-row-min-height: 50px;
     --asv-component-compare-canvas-header-height: 34px;
