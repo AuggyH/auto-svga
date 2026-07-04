@@ -1649,7 +1649,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEditReservedModel, /export function editReservedLayerListView/);
   assert.match(shortTermEditReservedModel, /asset\.kind !== "audio"/);
   assert.match(shortTermEditReservedModel, /EDIT_RESERVED_LAYER_LIMIT/);
-  assert.match(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
+  assert.match(shortTermReplaceableSurface, /from "\.\/short-term-macos-render-model\.mjs"/);
+  assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-render-model\.mjs"/);
   assert.match(shortTermEntry, /function handleTabListKeydown/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-event-bindings\.mjs"/);
   assert.match(shortTermEntry, /bindShortTermInteractionEvents\(\{/);
@@ -1972,8 +1973,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /打开新文件会放弃当前未保存的 SVGA 输出/);
   assert.match(shortTermEntry, /拖入新文件会放弃当前未保存的 SVGA 输出/);
   assert.match(shortTermOptimizationSurface, /showOperationFailure\("优化未完成。", error\)/);
-  assert.match(shortTermEntry, /showOperationFailure\("重命名未完成。", error\)/);
-  assert.match(shortTermEntry, /showOperationFailure\("替换未完成。", error\)/);
+  assert.match(shortTermReplaceableSurface, /showOperationFailure\("重命名未完成。", error\)/);
+  assert.match(shortTermReplaceableSurface, /showOperationFailure\("替换未完成。", error\)/);
   assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
   assert.match(shortTermEntry, /currentStateSummary/);
   assert.match(shortTermFeedbackModel, /错误：\$\{input\.errorText\.trim\(\)\}/);

@@ -13,7 +13,6 @@ import {
 import {
   renderEditReservedLayers
 } from "./short-term-macos-edit-reserved-renderers.mjs";
-import { suffixName } from "./short-term-macos-render-model.mjs";
 import { overviewTabView } from "./short-term-macos-overview-model.mjs";
 import { editReservedLayerListView } from "./short-term-macos-edit-reserved-model.mjs";
 import {
@@ -38,16 +37,12 @@ import {
   waitForSmokeFrame
 } from "./short-term-macos-smoke-proof-model.mjs";
 import {
-  fromBase64,
   sha256Hex,
-  toBase64,
   toUint8Array
 } from "./short-term-macos-byte-model.mjs";
 import {
   inspectShortTermSvga,
-  probeInvalidShortTermInspection,
-  renameShortTermImageKey,
-  replaceShortTermImageAsset
+  probeInvalidShortTermInspection
 } from "./short-term-macos-api-client.mjs";
 import {
   confirmDiscardUnsavedOutput as confirmDiscardDialogOutput
@@ -92,8 +87,14 @@ import {
   setShortTermTab
 } from "./short-term-macos-navigation-surface.mjs";
 import {
+  applyShortTermReplacementFile,
+  beginShortTermImageKeyRename,
+  cancelShortTermInlineRename,
+  chooseShortTermReplacementImage,
+  confirmShortTermInlineRename,
   renderShortTermReplaceableImages,
   renderShortTermRuntimeTextElements,
+  resetShortTermImageReplacement,
   selectShortTermImageKey,
   selectShortTermRuntimeTextElement,
   selectedShortTermRuntimeTextElement
@@ -301,59 +302,27 @@ async function runOptimization() {
 }
 
 async function renameSelectedImageKey() {
-  if (!state.sourceBytes || !state.selectedImageKey) return;
-  if (!(await confirmDiscardUnsavedOutput("重命名 imageKey 会放弃当前未保存的 SVGA 输出。"))) return;
-  state.renameImageKey = state.selectedImageKey;
-  if (state.view !== "preview") setMode("preview");
-  setTab("replaceable");
-  renderReplaceables(state.model?.replaceableElements);
-  requestAnimationFrame(() => {
-    const input = nodes.replaceableList.querySelector("[data-rename-input]");
-    input?.focus();
-    input?.select?.();
+  return beginShortTermImageKeyRename({
+    nodes,
+    state,
+    confirmDiscardUnsavedOutput,
+    setMode,
+    setTab
   });
 }
 
 async function confirmInlineRename() {
-  if (!state.sourceBytes || !state.renameImageKey) return;
-  const fromImageKey = state.renameImageKey;
-  const input = nodes.replaceableList.querySelector("[data-rename-input]");
-  const toImageKey = input?.value?.trim() ?? "";
-  if (!toImageKey || toImageKey === fromImageKey) {
-    cancelInlineRename();
-    return;
-  }
-  showSaveBanner("正在重命名 imageKey。", "完成引用闭合检查后启用保存。");
-  try {
-    const renamed = await renameShortTermImageKey({
-      bytes: state.sourceBytes,
-      name: state.displayName,
-      fromImageKey,
-      toImageKey,
-      reportToken: bridge?.reportToken
-    });
-    const renamedBytes = renamed.renamedSvgaBase64 ? fromBase64(renamed.renamedSvgaBase64) : undefined;
-    if (!renamedBytes?.byteLength || renamed.rename?.status !== "renamed") {
-      showSaveBanner(renamed.rename?.resultTitle || "重命名失败。", renamed.rename?.diagnostic?.message || "保存保持关闭。");
-      return;
-    }
-    state.previewBytes = renamedBytes;
-    state.model = await inspectShortTerm(renamedBytes, state.displayName);
-    state.selectedImageKey = toImageKey;
-    state.renameImageKey = "";
-    setActiveOutput({
-      kind: "rename",
-      bytes: renamedBytes,
-      suggestedName: suffixName(state.displayName, "renamed"),
-      title: renamed.rename.resultTitle,
-      summary: renamed.rename.resultSummary,
-      details: renamed.rename
-    });
-    renderPreviewModel();
-    await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes);
-  } catch (error) {
-    showOperationFailure("重命名未完成。", error);
-  }
+  return confirmShortTermInlineRename({
+    bridge,
+    nodes,
+    state,
+    inspectShortTerm,
+    setActiveOutput,
+    renderPreviewModel,
+    mountPrimaryPlayback: (bytes) => mountPlayback("primary", nodes.primaryCanvas, bytes),
+    showSaveBanner,
+    showOperationFailure
+  });
 }
 
 async function createSaveProofOutput(suffix) {
@@ -374,60 +343,36 @@ function createSaveFailureProofOutput() {
 }
 
 function cancelInlineRename() {
-  state.renameImageKey = "";
-  renderReplaceables(state.model?.replaceableElements);
+  cancelShortTermInlineRename({ nodes, state });
 }
 
 function chooseReplacementImage(imageKey = state.selectedImageKey) {
-  if (!state.sourceBytes || !imageKey) return;
-  state.selectedImageKey = imageKey;
-  nodes.replacementFileInput.value = "";
-  nodes.replacementFileInput.click();
+  chooseShortTermReplacementImage({ nodes, state, imageKey });
 }
 
 async function applyReplacementFile(file) {
-  if (!file || !state.sourceBytes || !state.selectedImageKey) return;
-  if (!(await confirmDiscardUnsavedOutput("替换图片会放弃当前未保存的 SVGA 输出。"))) return;
-  showSaveBanner("正在替换图片资源。", "完成重开验证后启用保存。");
-  try {
-    const payload = {
-      name: state.displayName,
-      imageKey: state.selectedImageKey,
-      svgaBase64: toBase64(state.sourceBytes),
-      pngBase64: toBase64(new Uint8Array(await file.arrayBuffer()))
-    };
-    const replaced = await replaceShortTermImageAsset({
-      payload,
-      reportToken: bridge?.reportToken
-    });
-    const replacedBytes = replaced.replacedSvgaBase64 ? fromBase64(replaced.replacedSvgaBase64) : undefined;
-    if (!replacedBytes?.byteLength || replaced.replacement?.status !== "replaced") {
-      showSaveBanner(replaced.replacement?.resultTitle || "替换未完成。", replaced.replacement?.diagnostic?.message || "保存保持关闭。");
-      return;
-    }
-    state.previewBytes = replacedBytes;
-    state.model = await inspectShortTerm(replacedBytes, state.displayName);
-    setActiveOutput({
-      kind: "replacement",
-      bytes: replacedBytes,
-      suggestedName: suffixName(state.displayName, "replaced"),
-      title: replaced.replacement.resultTitle,
-      summary: replaced.replacement.resultSummary
-    });
-    renderPreviewModel();
-    await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes);
-  } catch (error) {
-    showOperationFailure("替换未完成。", error);
-  }
+  return applyShortTermReplacementFile({
+    bridge,
+    file,
+    state,
+    confirmDiscardUnsavedOutput,
+    inspectShortTerm,
+    setActiveOutput,
+    renderPreviewModel,
+    mountPrimaryPlayback: (bytes) => mountPlayback("primary", nodes.primaryCanvas, bytes),
+    showSaveBanner,
+    showOperationFailure
+  });
 }
 
 async function resetImageReplacement() {
-  if (!state.sourceBytes || state.activeOutput?.kind !== "replacement") return;
-  state.previewBytes = new Uint8Array(state.sourceBytes);
-  state.model = await inspectShortTerm(state.sourceBytes, state.displayName);
-  clearTransientOutput();
-  renderPreviewModel();
-  await mountPlayback("primary", nodes.primaryCanvas, state.previewBytes);
+  return resetShortTermImageReplacement({
+    state,
+    inspectShortTerm,
+    clearTransientOutput,
+    renderPreviewModel,
+    mountPrimaryPlayback: (bytes) => mountPlayback("primary", nodes.primaryCanvas, bytes)
+  });
 }
 
 async function editRuntimeText() {
