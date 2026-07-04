@@ -1,7 +1,6 @@
 import {
   applyModeButtons,
-  applyViewState,
-  setActionEnabled
+  applyViewState
 } from "./short-term-macos-dom-state.mjs";
 import {
   renderAssetList,
@@ -17,10 +16,6 @@ import {
   renderLoadingMessage
 } from "./short-term-macos-state-renderers.mjs";
 import {
-  renderReplaceableImages,
-  renderRuntimeTextElements
-} from "./short-term-macos-replaceable-renderers.mjs";
-import {
   applyRuntimeTextOverlay,
   clearRuntimeTextOverlay
 } from "./short-term-macos-text-renderers.mjs";
@@ -34,17 +29,10 @@ import {
   saveProofSourceImageKey
 } from "./short-term-macos-save-model.mjs";
 import {
-  nextSelectedTextKey,
   runtimeTextInputValue,
-  runtimeTextListView,
   runtimeTextOverlayCopy,
-  runtimeTextPlaceholder,
-  selectedRuntimeTextElement
+  runtimeTextPlaceholder
 } from "./short-term-macos-text-model.mjs";
-import {
-  nextReplaceableSelection,
-  replaceableImageListView
-} from "./short-term-macos-replaceable-model.mjs";
 import {
   optimizationResultTone,
   optimizationTabView
@@ -134,6 +122,13 @@ import {
   openShortTermTab,
   setShortTermTab
 } from "./short-term-macos-navigation-surface.mjs";
+import {
+  renderShortTermReplaceableImages,
+  renderShortTermRuntimeTextElements,
+  selectShortTermImageKey,
+  selectShortTermRuntimeTextElement,
+  selectedShortTermRuntimeTextElement
+} from "./short-term-macos-replaceable-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -634,45 +629,23 @@ function renderOptimizationResult(model) {
 }
 
 function renderReplaceables(model) {
-  if (!model) return;
-  const view = replaceableImageListView(model, state.selectedImageKey, state.renameImageKey);
-  renderReplaceableImages(nodes, view, state.model);
+  renderShortTermReplaceableImages({ nodes, state, model });
 }
 
 function renderTextElements(model) {
-  const view = runtimeTextListView(model, state.textPreview);
-  state.selectedTextKey = nextSelectedTextKey(state.selectedTextKey, view.texts);
-  renderRuntimeTextElements(nodes, view, state.selectedTextKey);
-  setActionEnabled("edit-text", view.hasTextElements, "当前文件没有可预览文本元素");
-  setActionEnabled("reset-text", Boolean(state.textPreview), "当前没有已应用的文本预览");
+  renderShortTermRuntimeTextElements({ nodes, state, model });
 }
 
 function selectTextKey(textKey) {
-  if (!textKey) return;
-  state.selectedTextKey = textKey;
-  state.textPreview = "";
-  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
-  renderTextElements(state.model?.replaceableElements);
+  selectShortTermRuntimeTextElement({ nodes, state, textKey });
 }
 
 function selectedTextElement() {
-  return selectedRuntimeTextElement(state.model?.replaceableElements, state.selectedTextKey);
+  return selectedShortTermRuntimeTextElement(state);
 }
 
 function selectImageKey(imageKey) {
-  if (!imageKey) return;
-  const selection = nextReplaceableSelection(imageKey, state.renameImageKey);
-  state.selectedImageKey = selection.selectedImageKey;
-  state.renameImageKey = selection.renameImageKey;
-  if (selection.shouldRerender) {
-    renderReplaceables(state.model?.replaceableElements);
-    return;
-  }
-  document.querySelectorAll(".replaceableRow").forEach((row) => {
-    const selected = row.dataset.imageKey === imageKey;
-    row.classList.toggle("isSelected", selected);
-    row.setAttribute("aria-selected", selected ? "true" : "false");
-  });
+  selectShortTermImageKey({ nodes, state, imageKey });
 }
 
 function openKeyboardResourceContextMenu(row) {
