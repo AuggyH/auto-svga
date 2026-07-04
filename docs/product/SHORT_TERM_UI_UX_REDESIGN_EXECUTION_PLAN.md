@@ -45,7 +45,8 @@ Owner-confirmed visual/reference inputs:
 - `docs/reviews/2026-07-04-codex-uiux-owner-confirmed-canvas-direction-sync.md`
 - `docs/reviews/2026-07-04-codex-uiux-native-tool-static-direction-mvp.md`
 - Owner local reference sketches listed in
-  `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md`; these are review inputs
+  `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md`; these use the stable
+  local archive under `/Users/huangtengxin/Documents/Auto_SVGA_References/`
   and should not be committed as repository assets unless explicitly requested.
 
 ## Execution Principles

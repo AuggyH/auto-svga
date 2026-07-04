@@ -292,18 +292,22 @@ controls.
 ## Reference Sketches
 
 Owner-provided local sketches were reviewed as reference input and should not
-be committed unless the Product Owner explicitly asks:
+be committed unless the Product Owner explicitly asks. Stable local archive:
+`/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/`.
 
-- `/Users/huangtengxin/Desktop/启动页.png`
-- `/Users/huangtengxin/Desktop/预览页.png`
-- `/Users/huangtengxin/Desktop/预览模式.png`
-- `/Users/huangtengxin/Desktop/拖拽对比.png`
-- `/Users/huangtengxin/Desktop/拖拽对比_不支持格式.png`
-- `/Users/huangtengxin/Desktop/编辑模式.png`
-- `/Users/huangtengxin/Desktop/预览模式_对比模式.png`
-- `/Users/huangtengxin/Desktop/预览模式_对比模式_空.png`
-- `/Users/huangtengxin/Desktop/预览模式_对比模式_拖拽.png`
-- `/Users/huangtengxin/Desktop/预览模式_优化对比.png`
+Do not rely on the original Desktop copies; they may be removed during routine
+cleanup. The archive includes a local README with file hashes.
+
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/启动页.png`
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/预览页.png`
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/预览模式.png`
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/拖拽对比.png`
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/拖拽对比_不支持格式.png`
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/编辑模式.png`
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/预览模式_对比模式.png`
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/预览模式_对比模式_空.png`
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/预览模式_对比模式_拖拽.png`
+- `/Users/huangtengxin/Documents/Auto_SVGA_References/2026-07-04-owner-canvas-direction/预览模式_优化对比.png`
 
 ## Open Decisions Preserved
 
