@@ -1058,6 +1058,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermLaunchRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-launch-renderers.mjs"), "utf8");
   const shortTermRecentFilesModel = await readFile(path.join(experimentRoot, "web/short-term-macos-recent-files-model.mjs"), "utf8");
   const shortTermRecentFilesSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-recent-files-surface.mjs"), "utf8");
+  const shortTermOutputSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-output-surface.mjs"), "utf8");
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
   const shortTermSaveRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-save-renderers.mjs"), "utf8");
   const shortTermSaveModel = await readFile(path.join(experimentRoot, "web/short-term-macos-save-model.mjs"), "utf8");
@@ -1272,6 +1273,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-state-renderers\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-text-renderers\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-replaceable-surface\.mjs"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-output-surface\.mjs"/);
   assert.match(shortTermCompareSurface, /applyCompareSlotView/);
   assert.match(shortTermCompareSurface, /applyCompareTraceView/);
   assert.match(shortTermEntry, /applyRuntimeTextOverlay/);
@@ -1292,6 +1294,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableSurface, /renderReplaceableImages/);
   assert.match(shortTermReplaceableSurface, /renderRuntimeTextElements/);
   assert.match(shortTermFeedbackSurface, /showSaveFeedbackBanner/);
+  assert.match(shortTermOutputSurface, /showShortTermSaveBanner/);
   assert.match(shortTermResourceMenuSurface, /showResourceContextMenu/);
   assert.match(shortTermCommandSurface, /from "\.\/short-term-macos-command-state\.mjs"/);
   assert.match(shortTermCommandSurface, /buildCommandState/);
@@ -1303,7 +1306,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareSurface, /renderGeneralComparePlaceholderHtml/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-compare-model\.mjs"|from "\.\/short-term-macos-compare-renderers\.mjs"|renderCompareInfoHtml|renderOptimizationCompareResultHtml|renderGeneralComparePlaceholderHtml|applyCompareSlotView|applyCompareTraceView|markCompareSlotLoaded|renderCompareInfoPanel/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-feedback-surface\.mjs"/);
-  assert.match(shortTermEntry, /showShortTermSaveBanner\(\{ nodes, title, message, tone \}\)/);
+  assert.match(shortTermOutputSurface, /showShortTermOutputBanner/);
+  assert.match(shortTermEntry, /showShortTermOutputBanner\(\{ nodes, title, message, tone \}\)/);
   assert.match(shortTermEntry, /showShortTermFailure\(\{ nodes, setView \}, error\)/);
   assert.match(shortTermEntry, /showShortTermOperationFailure\(\{ nodes, state, setMode, renderCommandState \}, title, error\)/);
   assert.match(shortTermEntry, /shortTermCurrentStateSummary\(\{ nodes, state \}\)/);
@@ -1311,6 +1315,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackSurface, /buildCurrentStateSummary/);
   assert.match(shortTermFeedbackSurface, /sourceUnmodifiedMessage/);
   assert.doesNotMatch(shortTermEntry, /showSaveFeedbackBanner|clearSaveFeedbackBanner|hideSaveFeedbackBanner|renderFailureMessage|buildCurrentStateSummary|sourceUnmodifiedMessage/);
+  assert.match(shortTermOutputSurface, /clearShortTermSaveBanner\(nodes\)/);
+  assert.match(shortTermOutputSurface, /state\.activeOutput = \{/);
+  assert.match(shortTermOutputSurface, /state\.saveStatus = "dirty"/);
+  assert.match(shortTermOutputSurface, /state\.saveStatus = "idle"/);
+  assert.doesNotMatch(shortTermEntry, /state\.activeOutput = \{[\s\S]*state\.saveStatus = "dirty"|clearShortTermSaveBanner\(nodes\)/);
   assert.doesNotMatch(shortTermEntry, /saveBannerView/);
   assert.doesNotMatch(shortTermEntry, /saveBanner\.innerHTML = `<strong>\$\{escapeHtml\(title\)\}/);
   assert.doesNotMatch(shortTermEntry, /\$\{message \|\| "未知错误"\} 源文件没有被修改。/);

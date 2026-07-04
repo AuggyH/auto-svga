@@ -86,12 +86,10 @@ import {
   refreshShortTermRecentFiles
 } from "./short-term-macos-recent-files-surface.mjs";
 import {
-  clearShortTermSaveBanner,
   hideShortTermSaveBanner,
   shortTermCurrentStateSummary,
   showShortTermFailure,
-  showShortTermOperationFailure,
-  showShortTermSaveBanner
+  showShortTermOperationFailure
 } from "./short-term-macos-feedback-surface.mjs";
 import {
   clearShortTermPlaybackCanvas,
@@ -129,6 +127,11 @@ import {
   selectShortTermRuntimeTextElement,
   selectedShortTermRuntimeTextElement
 } from "./short-term-macos-replaceable-surface.mjs";
+import {
+  clearShortTermTransientOutput,
+  setShortTermActiveOutput,
+  showShortTermOutputBanner
+} from "./short-term-macos-output-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -574,24 +577,16 @@ async function saveActiveOutput(command) {
 }
 
 function setActiveOutput({ kind, bytes, suggestedName, title, summary, details }) {
-  state.activeOutput = {
-    kind,
-    bytes: new Uint8Array(bytes),
-    suggestedName,
-    title,
-    summary,
-    details
-  };
-  state.saveStatus = "dirty";
-  showSaveBanner(title, summary);
-  renderCommandState();
+  setShortTermActiveOutput({
+    nodes,
+    state,
+    output: { kind, bytes, suggestedName, title, summary, details },
+    onOutputStateChange: renderCommandState
+  });
 }
 
 function clearTransientOutput() {
-  state.activeOutput = undefined;
-  state.saveStatus = "idle";
-  clearShortTermSaveBanner(nodes);
-  renderCommandState();
+  clearShortTermTransientOutput({ nodes, state, onOutputStateChange: renderCommandState });
 }
 
 async function confirmDiscardUnsavedOutput(message) {
@@ -782,7 +777,7 @@ function renderCommandState() {
 }
 
 function showSaveBanner(title, message, tone) {
-  showShortTermSaveBanner({ nodes, title, message, tone });
+  showShortTermOutputBanner({ nodes, title, message, tone });
 }
 
 function showFailure(error) {
