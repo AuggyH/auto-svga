@@ -1063,6 +1063,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermRenderModel = await readFile(path.join(experimentRoot, "web/short-term-macos-render-model.mjs"), "utf8");
   const shortTermSaveRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-save-renderers.mjs"), "utf8");
   const shortTermSaveModel = await readFile(path.join(experimentRoot, "web/short-term-macos-save-model.mjs"), "utf8");
+  const shortTermSaveSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-save-surface.mjs"), "utf8");
   const shortTermStateRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-state-renderers.mjs"), "utf8");
   const shortTermInteractionModel = await readFile(path.join(experimentRoot, "web/short-term-macos-interaction-model.mjs"), "utf8");
   const shortTermTextRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-text-renderers.mjs"), "utf8");
@@ -1343,10 +1344,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermHostClient, /bridge\.clearRecentSvgaFiles/);
   assert.match(shortTermHostClient, /bridge\.updateShortTermMenuState/);
   assert.doesNotMatch(shortTermEntry, /暂无最近打开记录|仅显示文件名和父级位置|最近文件由 macOS 客户端提供/);
-  assert.match(shortTermEntry, /from "\.\/short-term-macos-save-model\.mjs"/);
-  assert.match(shortTermEntry, /saveProofSourceImageKey/);
-  assert.match(shortTermEntry, /saveProofImageKey/);
-  assert.match(shortTermEntry, /createSaveFailureProofActiveOutput/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-save-surface\.mjs"/);
+  assert.match(shortTermSaveSurface, /from "\.\/short-term-macos-save-model\.mjs"/);
+  assert.match(shortTermSaveSurface, /saveProofSourceImageKey/);
+  assert.match(shortTermSaveSurface, /saveProofImageKey/);
+  assert.match(shortTermSaveSurface, /createSaveFailureProofActiveOutput/);
   assert.doesNotMatch(shortTermEntry, /保存失败验证输出/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-state\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-nodes\.mjs"/);
@@ -1767,8 +1769,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /const runtimeTextFocusReturnedAfterClose = document\.activeElement === nodes\.editTextButton/);
   assert.doesNotMatch(shortTermEntry, /renameDialog|renameHint/);
   assert.doesNotMatch(shortTermEntry, /mountPlayback\("edit"[\s\S]{0,120}start:\s*false/);
-  assert.match(shortTermEntry, /saveShortTermSvgaOutput/);
-  assert.match(shortTermEntry, /return \{\s*\.\.\.result,\s*outputKind,\s*expectedSha256/s);
+  assert.match(shortTermSaveSurface, /saveShortTermSvgaOutput/);
+  assert.match(shortTermSaveSurface, /return \{\s*\.\.\.result,\s*outputKind,\s*expectedSha256/s);
   assert.match(shortTermRecentFilesSurface, /getRecentSvgaFiles/);
   assert.match(shortTermEntry, /runShortTermSmokeIfRequested/);
   assert.match(shortTermEntry, /reportSmokeResult/);
@@ -1942,9 +1944,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /ordinaryImagesNotDuplicatedInReplaceables/);
   assert.match(shortTermSmokeProofModel, /ordinaryImageThumbnailVisible/);
   assert.match(shortTermEntry, /function createSaveFailureProofOutput/);
-  assert.match(shortTermEntry, /const savedModel = await inspectShortTerm\(outputBytes/);
+  assert.match(shortTermSaveSurface, /const savedModel = await inspectShortTerm\(outputBytes/);
   assert.ok(
-    shortTermEntry.indexOf("const savedModel = await inspectShortTerm(outputBytes") < shortTermEntry.indexOf("state.sourceBytes = outputBytes"),
+    shortTermSaveSurface.indexOf("const savedModel = await inspectShortTerm(outputBytes") < shortTermSaveSurface.indexOf("state.sourceBytes = outputBytes"),
     "saved output must reopen before becoming the current source bytes"
   );
   assert.match(shortTermEntry, /playerLifecycleOk/);
