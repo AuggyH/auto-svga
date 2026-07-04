@@ -50,11 +50,13 @@
   gap: var(--asv-fact-cell-gap);
   min-height: var(--asv-fact-cell-min-height);
   min-width: 0;
-  padding: var(--asv-space-2) var(--asv-space-3) var(--asv-space-2) var(--asv-space-4);
-  border: 1px solid var(--asv-subtle-border);
-  border-radius: var(--asv-radius-sm);
-  background: var(--asv-fact-bg);
-  box-shadow: var(--asv-shadow-fact-cell);
+  padding: var(--asv-space-2) var(--asv-space-2) var(--asv-space-2) var(--asv-space-4);
+  border: 0;
+  border-right: 1px solid var(--asv-subtle-border);
+  border-bottom: 1px solid var(--asv-subtle-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   transition:
     background-color var(--asv-motion-duration-fast) ease,
     border-color var(--asv-motion-duration-fast) ease,
@@ -62,7 +64,7 @@
 }
 
 .factCell:nth-child(5) {
-  grid-column: auto;
+  grid-column: 1 / -1;
 }
 
 .factCell::before {

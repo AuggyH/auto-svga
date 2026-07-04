@@ -1171,7 +1171,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-playback-bar-height/);
   assert.match(shortTermTokens, /--asv-component-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-fact-status-strip-width/);
-  assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 64px/);
+  assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 60px/);
   assert.match(shortTermTokens, /--asv-fact-cell-meta-gap: var\(--asv-component-fact-cell-meta-gap\)/);
   assert.match(shortTermTokens, /--asv-component-row-index-width/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
@@ -1198,7 +1198,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermComponents, /\.tabs/);
   assert.match(shortTermComponents, /\.factCell/);
   assert.match(shortTermComponents, /\.factCell\s*\{[^}]*align-content: center/s);
-  assert.match(shortTermComponents, /box-shadow: var\(--asv-shadow-fact-cell\)/);
+  assert.match(shortTermComponents, /\.factCell\s*\{[^}]*border-right: 1px solid var\(--asv-subtle-border\)/s);
+  assert.match(shortTermComponents, /\.factCell\s*\{[^}]*box-shadow: none/s);
+  assert.match(shortTermComponents, /\.factCell:nth-child\(5\)\s*\{[^}]*grid-column: 1 \/ -1/s);
   assert.match(shortTermComponents, /\.factCell small\s*\{[^}]*margin-top: var\(--asv-fact-cell-meta-gap\)/s);
   assert.match(shortTermComponents, /\.assetRow/);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
