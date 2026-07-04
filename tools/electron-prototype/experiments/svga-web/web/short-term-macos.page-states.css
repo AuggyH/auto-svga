@@ -6,7 +6,7 @@
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  grid-template-rows: var(--asv-toolbar-height) auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .macApp[data-app-state="launch"],
@@ -18,34 +18,23 @@
 .macApp[data-app-state="launch"] .titlebar,
 .macApp[data-app-state="loading"] .titlebar,
 .macApp[data-app-state="failed"] .titlebar {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 8;
-  border-bottom: 0;
-  background: transparent;
-  backdrop-filter: none;
-}
-
-.macApp[data-app-state="launch"] .titlebar > :not(.windowControlSpace),
-.macApp[data-app-state="loading"] .titlebar > :not(.windowControlSpace),
-.macApp[data-app-state="failed"] .titlebar > :not(.windowControlSpace) {
-  visibility: hidden;
-  pointer-events: none;
+  min-height: var(--asv-toolbar-height);
 }
 
 .view {
+  grid-row: 2;
   min-height: 0;
   overflow: hidden;
 }
 
 .saveBanner {
-  grid-row: 2;
+  grid-row: 1;
 }
 
 .macApp[data-app-state="preview"] .view,
 .macApp[data-app-state="compare"] .view,
 .macApp[data-app-state="edit"] .view {
-  grid-row: 3;
+  grid-row: 2;
 }
 
 .view[hidden] {
@@ -61,6 +50,7 @@
 }
 
 .launchView {
+  grid-row: 1 / -1;
   place-items: stretch;
   padding: 0;
   background: var(--asv-window);
@@ -132,7 +122,7 @@
   }
 
   .titlebar {
-    grid-template-columns: var(--asv-window-controls-width) auto minmax(84px, 1fr) auto;
+    grid-template-columns: var(--asv-window-controls-width) minmax(0, 1fr);
     gap: var(--asv-space-2);
   }
 

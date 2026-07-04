@@ -73,7 +73,7 @@ export function renderGeneralComparePlaceholderHtml() {
   return `
     <section class="compareSummary" data-status="info">
       <h2>B 文件</h2>
-      <p>打开另一个 SVGA 后开始对比。</p>
+      <p>未打开文件。</p>
     </section>
     <div class="compareActions">
       <button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>

@@ -37,13 +37,13 @@ const allowedDynamicDomModules = new Set([
 ]);
 
 const allowedDataComponents = new Set([
-  "WindowToolbar",
+  "WindowChrome",
   "LaunchDropCanvas",
   "LaunchRecentFilesList",
   "FileRecentSubmenu",
   "PreviewStage",
   "PlaybackControls",
-  "RightTabPanel",
+  "RightInformationSurface",
   "OverviewFactRow",
   "ProductionSpecInlineRow",
   "AssetRow",
@@ -61,7 +61,7 @@ const allowedDataComponents = new Set([
   "ReservedOperationPanel",
   "ToolbarButton",
   "IconButton",
-  "SegmentedModeSwitch",
+  "CanvasModeSwitch",
   "TabItem",
   "FactCell",
   "SpecStatusCell",
@@ -273,7 +273,6 @@ async function main() {
     && /--asv-effect-titlebar-backdrop-filter:\s*none/.test(pageStatesCss)
     && /--asv-effect-menu-backdrop-filter:\s*none/.test(pageStatesCss)
     && /\.titlebar,\s*\.contextMenu\s*\{[\s\S]*backdrop-filter:\s*none/.test(pageStatesCss)
-    && /backdrop-filter:\s*var\(--asv-effect-titlebar-backdrop-filter\)/.test(modules)
     && /backdrop-filter:\s*var\(--asv-effect-menu-backdrop-filter\)/.test(components));
   record("minimum-window-boundary-explicit", /min-width:\s*1060px/.test(baseCss)
     && /min-height:\s*720px/.test(baseCss)

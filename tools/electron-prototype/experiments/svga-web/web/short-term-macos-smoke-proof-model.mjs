@@ -589,7 +589,7 @@ export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFra
     proofId: "short-term-tab-keyboard-proof",
     source: "short-term-smoke",
     prdIds: ["S3", "S8", "S12", "S13"],
-    component: "RightTabPanel",
+    component: "RightInformationSurface",
     molecule: "TabItem",
     tabOrder: tabs.map((tab) => tab.dataset.tab || ""),
     arrowRightPrevented,
@@ -644,8 +644,9 @@ export function collectShortTermDesignInteractionProof({
     component: element.dataset.component || ""
   })).slice(0, 24);
   const focusKeys = focusOrder.map((item) => item.action || item.tab || item.id || item.role).filter(Boolean);
-  const openIndex = focusKeys.indexOf("open");
   const compareIndex = focusKeys.indexOf("compare");
+  const previewModeIndex = focusKeys.indexOf("mode-preview");
+  const editModeIndex = focusKeys.indexOf("mode-edit");
   const tabOverviewIndex = focusKeys.indexOf("overview");
   const panelOverview = document.querySelector("#panelOverview");
   const panelStyle = getComputedStyle(panelOverview);
@@ -688,7 +689,8 @@ export function collectShortTermDesignInteractionProof({
     prdIds: ["S1", "S3", "S8", "S12", "S13", "S14", "S16"],
     focusOrder,
     focusTargetCount: focusOrder.length,
-    openBeforeCompare: openIndex >= 0 && compareIndex > openIndex,
+    noVisibleCompareEntrypoint: compareIndex < 0,
+    canvasModeSwitchReachable: previewModeIndex >= 0 && editModeIndex > previewModeIndex,
     overviewTabReachable: tabOverviewIndex >= 0,
     selectedTabOnlyInSequentialFocus: tabButtons().filter((tab) => tab.tabIndex === 0).length === 1,
     panelScrollRegionFocusable: panelOverview?.tabIndex === 0,
@@ -708,7 +710,7 @@ export function collectShortTermDesignInteractionProof({
       && menuState?.view === "preview"
       && menuState?.mode === "preview",
     focusedControlSpaceProof,
-    focusedControlSpaceNotGlobalPlayback: focusedControlSpaceProof?.targetAction === "compare"
+    focusedControlSpaceNotGlobalPlayback: focusedControlSpaceProof?.targetAction === "mode-edit"
       && focusedControlSpaceProof?.targetStillFocused === true
       && focusedControlSpaceProof?.spacePrevented === false
       && focusedControlSpaceProof?.playbackUnchanged === true,
@@ -716,8 +718,9 @@ export function collectShortTermDesignInteractionProof({
     minimumPreviewCaptured: minimumPreviewCaptured === true
   };
   proof.passed = [
-    proof.focusTargetCount >= 8,
-    proof.openBeforeCompare,
+    proof.focusTargetCount >= 6,
+    proof.noVisibleCompareEntrypoint,
+    proof.canvasModeSwitchReachable,
     proof.overviewTabReachable,
     proof.selectedTabOnlyInSequentialFocus,
     proof.panelScrollRegionFocusable,

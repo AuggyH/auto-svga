@@ -12,24 +12,27 @@
   padding: 0 var(--asv-space-5);
 }
 
-.modeSwitch {
+.modeSwitch,
+.canvasModeSwitch {
   display: inline-grid;
   grid-template-columns: 1fr 1fr;
-  padding: 2px;
+  padding: var(--asv-space-1);
   border: 1px solid var(--asv-control-border);
   border-radius: var(--asv-radius-md);
   background: var(--asv-panel-recessed);
   box-shadow: var(--asv-shadow-control);
 }
 
-.modeSwitch button {
-  min-width: 52px;
+.modeSwitch button,
+.canvasModeSwitch button {
+  min-width: calc(var(--asv-control-height) * 2);
   border: 0;
   border-radius: var(--asv-radius-sm);
   background: transparent;
 }
 
-.modeSwitch button.isSelected {
+.modeSwitch button.isSelected,
+.canvasModeSwitch button.isSelected {
   background: var(--asv-control-selected-bg);
   box-shadow: var(--asv-shadow-control-selected);
   color: var(--asv-text);

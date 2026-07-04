@@ -622,7 +622,7 @@ function validateShortTermTabKeyboardProof(value) {
   if (value.schemaVersion !== 1 || value.proofId !== "short-term-tab-keyboard-proof") return undefined;
   if (value.source !== "short-term-smoke") return undefined;
   if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S3,S8,S12,S13") return undefined;
-  if (value.component !== "RightTabPanel" || value.molecule !== "TabItem") return undefined;
+  if (value.component !== "RightInformationSurface" || value.molecule !== "TabItem") return undefined;
   if (!Array.isArray(value.tabOrder) || value.tabOrder.join(",") !== "overview,optimization,replaceable") return undefined;
   if (value.arrowRightFocusedTabId !== "tabOptimization") return undefined;
   if (value.endFocusedTabId !== "tabReplaceable") return undefined;
@@ -648,7 +648,7 @@ function validateShortTermTabKeyboardProof(value) {
     proofId: value.proofId,
     source: value.source,
     prdIds: ["S3", "S8", "S12", "S13"],
-    component: "RightTabPanel",
+    component: "RightInformationSurface",
     molecule: "TabItem",
     tabOrder: ["overview", "optimization", "replaceable"],
     arrowRightPrevented: true,
@@ -675,7 +675,7 @@ function validateShortTermDesignInteractionProof(value) {
   if (value.schemaVersion !== 1 || value.proofId !== "short-term-design-interaction-proof") return undefined;
   if (value.source !== "short-term-smoke") return undefined;
   if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S1,S3,S8,S12,S13,S14,S16") return undefined;
-  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 8 || value.focusOrder.length > 24) return undefined;
+  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 6 || value.focusOrder.length > 24) return undefined;
   const focusOrder = value.focusOrder.map((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return undefined;
     const normalized = {
@@ -746,7 +746,8 @@ function validateShortTermDesignInteractionProof(value) {
   });
   if (tabCaptureStatesSynced !== true || value.tabCaptureStatesSynced !== true) return undefined;
   const booleanKeys = [
-    "openBeforeCompare",
+    "noVisibleCompareEntrypoint",
+    "canvasModeSwitchReachable",
     "overviewTabReachable",
     "selectedTabOnlyInSequentialFocus",
     "panelScrollRegionFocusable",
@@ -760,7 +761,7 @@ function validateShortTermDesignInteractionProof(value) {
     "passed"
   ];
   if (!booleanKeys.every((key) => value[key] === true)) return undefined;
-  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 8) return undefined;
+  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 6) return undefined;
   return {
     schemaVersion: 1,
     proofId: value.proofId,
@@ -768,7 +769,8 @@ function validateShortTermDesignInteractionProof(value) {
     prdIds: ["S1", "S3", "S8", "S12", "S13", "S14", "S16"],
     focusOrder,
     focusTargetCount: value.focusTargetCount,
-    openBeforeCompare: true,
+    noVisibleCompareEntrypoint: true,
+    canvasModeSwitchReachable: true,
     overviewTabReachable: true,
     selectedTabOnlyInSequentialFocus: true,
     panelScrollRegionFocusable: true,
@@ -797,7 +799,9 @@ function describeShortTermDesignInteractionProofFailure(value) {
   if (value.proofId !== "short-term-design-interaction-proof") return "proofId";
   if (value.source !== "short-term-smoke") return "source";
   if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S1,S3,S8,S12,S13,S14,S16") return "prdIds";
-  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 8 || value.focusOrder.length > 24) return "focusOrder";
+  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 6 || value.focusOrder.length > 24) {
+    return `focusOrder:length:${Array.isArray(value.focusOrder) ? value.focusOrder.length : "invalid"}`;
+  }
   const invalidFocusItem = value.focusOrder.find((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return true;
     const fields = [item.id, item.action, item.tab, item.role, item.component].map((field) => String(field || ""));
@@ -843,7 +847,8 @@ function describeShortTermDesignInteractionProofFailure(value) {
   });
   if (tabCaptureStatesSynced !== true || value.tabCaptureStatesSynced !== true) return "tabCaptureStatesSynced";
   const booleanKeys = [
-    "openBeforeCompare",
+    "noVisibleCompareEntrypoint",
+    "canvasModeSwitchReachable",
     "overviewTabReachable",
     "selectedTabOnlyInSequentialFocus",
     "panelScrollRegionFocusable",
@@ -858,7 +863,7 @@ function describeShortTermDesignInteractionProofFailure(value) {
   ];
   const failedBoolean = booleanKeys.find((key) => value[key] !== true);
   if (failedBoolean) return failedBoolean;
-  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 8) return "focusTargetCount";
+  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 6) return "focusTargetCount";
   return "unknown";
 }
 

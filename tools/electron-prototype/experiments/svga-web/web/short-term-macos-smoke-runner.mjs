@@ -414,7 +414,7 @@ async function runShortTermSmoke({
   setTab("overview");
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-preview-minimum");
-  const focusedControlForSpace = document.querySelector("[data-action='compare']");
+  const focusedControlForSpace = document.querySelector("[data-action='mode-edit']");
   focusedControlForSpace?.focus();
   const focusedControlPlaybackBeforeSpace = state.primaryPlayback?.playing === true;
   const focusedControlSpacePrevented = focusedControlForSpace

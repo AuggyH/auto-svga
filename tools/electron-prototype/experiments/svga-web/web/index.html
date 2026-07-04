@@ -15,21 +15,8 @@
   </head>
   <body>
     <main class="macApp" data-app-state="launch">
-      <header class="titlebar" aria-label="工具栏" data-component="WindowToolbar">
+      <header class="titlebar" aria-label="窗口区域" data-component="WindowChrome">
         <div class="windowControlSpace" aria-hidden="true"></div>
-        <div class="toolbarCluster toolbarClusterPrimary">
-          <button class="toolbarButton primary" type="button" data-action="open" aria-keyshortcuts="Meta+O">打开 SVGA</button>
-          <button class="toolbarButton" type="button" data-action="compare" disabled title="请先打开 SVGA">对比</button>
-          <div class="modeSwitch" role="group" aria-label="模式" data-component="SegmentedModeSwitch">
-            <button type="button" class="isSelected" data-action="mode-preview" aria-pressed="true">预览</button>
-            <button type="button" data-action="mode-edit" aria-pressed="false">编辑</button>
-          </div>
-        </div>
-        <div class="fileIdentity" id="fileIdentity">等待打开文件</div>
-        <div class="toolbarCluster toolbarClusterSave" data-component="SaveButtonPair">
-          <button class="toolbarButton" type="button" data-action="save-overwrite" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+S">覆盖保存</button>
-          <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+Shift+S">另存为</button>
-        </div>
       </header>
 
       <section class="saveBanner" id="saveBanner" aria-live="polite" hidden></section>
@@ -63,12 +50,16 @@
         <div class="stateCard error" data-component="ErrorRecoveryPanel">
           <h1>无法打开这个 SVGA</h1>
           <p id="errorMessage">文件未能解析，源文件没有被修改。</p>
-          <button class="toolbarButton primary" type="button" data-action="open">打开另一个 SVGA</button>
+          <button class="toolbarButton primary" type="button" data-action="open">打开文件</button>
         </div>
       </section>
 
       <section class="view previewView" data-view="preview" data-page-state="Preview ready" hidden>
         <section class="previewStagePanel" aria-label="SVGA 预览" data-module="PreviewCanvasModule" data-component="PreviewStage">
+          <div class="canvasModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch">
+            <button type="button" class="isSelected" data-action="mode-preview" aria-pressed="true">预览模式</button>
+            <button type="button" data-action="mode-edit" aria-pressed="false">编辑模式</button>
+          </div>
           <div class="canvasWrap" id="primaryCanvasWrap" data-canvas-label="预览">
             <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
             <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
@@ -82,7 +73,14 @@
           </div>
         </section>
 
-        <aside class="rightPanel" aria-label="右侧面板" data-component="RightTabPanel">
+        <aside class="rightPanel" aria-label="信息" data-component="RightInformationSurface">
+          <div class="rightSurfaceHeader">
+            <h1 class="fileIdentity" id="fileIdentity">等待打开文件</h1>
+            <div class="toolbarCluster toolbarClusterSave" data-component="SaveButtonPair">
+              <button class="toolbarButton" type="button" data-action="save-overwrite" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+S">覆盖保存</button>
+              <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+Shift+S">另存为</button>
+            </div>
+          </div>
           <nav class="tabs" aria-label="面板标签" role="tablist" aria-orientation="horizontal">
             <button type="button" class="isSelected" id="tabOverview" data-tab="overview" data-component="TabItem" role="tab" aria-selected="true" aria-controls="panelOverview" tabindex="0">总览</button>
             <button type="button" id="tabOptimization" data-tab="optimization" data-component="TabItem" role="tab" aria-selected="false" aria-controls="panelOptimization" tabindex="-1">优化</button>
@@ -163,6 +161,10 @@
       <section class="view editView" data-view="edit" data-page-state="Edit reserved" data-module="EditReservedModule" hidden>
         <aside class="layerPanel" id="layerPanel"></aside>
         <section class="previewStagePanel">
+          <div class="canvasModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch">
+            <button type="button" data-action="mode-preview" aria-pressed="false">预览模式</button>
+            <button type="button" class="isSelected" data-action="mode-edit" aria-pressed="true">编辑模式</button>
+          </div>
           <div class="canvasWrap"><canvas id="editCanvas" aria-label="编辑预留预览"></canvas></div>
         </section>
         <aside class="reservedPanel" data-component="ReservedOperationPanel">

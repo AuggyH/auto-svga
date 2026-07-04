@@ -92,7 +92,7 @@ components:
   molecules:
     - ToolbarButton
     - IconButton
-    - SegmentedModeSwitch
+    - CanvasModeSwitch
     - SegmentItem
     - FactCell
     - SpecStatusCell
@@ -105,7 +105,7 @@ components:
     - InlineTextReplacementInput
     - SaveButtonPair
   components:
-    - WindowToolbar
+    - WindowChrome
     - LaunchDropCanvas
     - LaunchRecentFilesList
     - FileRecentSubmenu
@@ -426,7 +426,7 @@ Molecules combine atoms into reusable controls:
 
 - `ToolbarButton`
 - `IconButton`
-- `SegmentedModeSwitch`
+- `CanvasModeSwitch`
 - `SegmentItem`
 - `FactCell`
 - `SpecStatusCell`
@@ -446,7 +446,7 @@ selected, loading, dirty, and error.
 
 Components combine molecules into product units:
 
-- `WindowToolbar`
+- `WindowChrome`
 - `LaunchDropCanvas`
 - `LaunchRecentFilesList`
 - `FileRecentSubmenu`
