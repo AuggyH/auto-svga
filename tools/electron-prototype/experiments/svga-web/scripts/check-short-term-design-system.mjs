@@ -102,6 +102,15 @@ const disallowedLaunchCopyPatterns = [
   /父级位置/
 ];
 
+const disallowedLegacySurfaceCopyPatterns = [
+  /检查器/,
+  /检查面板/,
+  /检查标签/,
+  /工作台/,
+  /\bInspector\b/,
+  /\bWorkbench\b/
+];
+
 const failures = [];
 const checks = [];
 
@@ -149,6 +158,22 @@ function collectDynamicDomUsage(source) {
   return matches;
 }
 
+function collectPatternViolations(file, source, patterns) {
+  const violations = [];
+  for (const pattern of patterns) {
+    const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+    const globalPattern = new RegExp(pattern.source, flags);
+    for (const match of source.matchAll(globalPattern)) {
+      violations.push({
+        file,
+        pattern: pattern.source,
+        line: lineNumber(source, match.index ?? 0)
+      });
+    }
+  }
+  return violations;
+}
+
 async function main() {
   const page = await readFile(path.join(webRoot, "index.html"), "utf8");
   const launchRenderer = await readFile(path.join(webRoot, "short-term-macos-launch-renderers.mjs"), "utf8");
@@ -193,6 +218,19 @@ async function main() {
     disallowedLaunchCopy
   });
 
+  const shortTermMjsFiles = (await readdir(webRoot))
+    .filter((file) => file.startsWith("short-term-macos") && file.endsWith(".mjs"))
+    .sort();
+  const visibleSurfaceFiles = ["index.html", ...shortTermMjsFiles];
+  const legacySurfaceCopyViolations = [];
+  for (const file of visibleSurfaceFiles) {
+    const source = file === "index.html" ? page : await readFile(path.join(webRoot, file), "utf8");
+    legacySurfaceCopyViolations.push(...collectPatternViolations(file, source, disallowedLegacySurfaceCopyPatterns));
+  }
+  record("visible-surface-avoids-legacy-workbench-and-inspector-language", legacySurfaceCopyViolations.length === 0, {
+    legacySurfaceCopyViolations
+  });
+
   const cssFiles = (await readdir(webRoot))
     .filter((file) => file.startsWith("short-term-macos") && file.endsWith(".css"))
     .sort();
@@ -232,10 +270,7 @@ async function main() {
     && /@media \(max-width: 1080px\)/.test(pageStatesCss)
     && /@media \(max-height: 780px\)/.test(pageStatesCss));
 
-  const mjsFiles = (await readdir(webRoot))
-    .filter((file) => file.startsWith("short-term-macos") && file.endsWith(".mjs"))
-    .sort();
-  for (const mjsFile of mjsFiles) {
+  for (const mjsFile of shortTermMjsFiles) {
     const source = await readFile(path.join(webRoot, mjsFile), "utf8");
     const dynamicDomUsage = collectDynamicDomUsage(source);
     record(`visible-dom-owned-by-render-modules:${mjsFile}`, allowedDynamicDomModules.has(mjsFile) || dynamicDomUsage.length === 0, {

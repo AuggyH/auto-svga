@@ -2246,6 +2246,8 @@ test("short-term design system check enforces UI implementation guardrails", () 
   assert.doesNotMatch(dynamicDomAllowlist, /short-term-macos-compare-model\.mjs|short-term-macos-render-model\.mjs|short-term-macos-recent-files-model\.mjs/);
   assert.match(source, /const disallowedLaunchCopyPatterns = \[/);
   assert.match(source, /launch-page-copy-stays-minimal/);
+  assert.match(source, /const disallowedLegacySurfaceCopyPatterns = \[/);
+  assert.match(source, /visible-surface-avoids-legacy-workbench-and-inspector-language/);
   assert.match(source, /<p>拖入 SVGA 文件<\\\/p>/);
   assert.match(source, /largeOpenButton/);
   assert.match(source, /recentNote" hidden/);
@@ -2261,6 +2263,7 @@ test("short-term design system check enforces UI implementation guardrails", () 
   assert.ok(report.checks.some((check) => check.name === "reduced-motion-covered" && check.passed === true));
   assert.ok(report.checks.some((check) => check.name === "foreground-validation-rule-documented" && check.passed === true));
   assert.ok(report.checks.some((check) => check.name === "launch-page-copy-stays-minimal" && check.passed === true));
+  assert.ok(report.checks.some((check) => check.name === "visible-surface-avoids-legacy-workbench-and-inspector-language" && check.passed === true));
 });
 
 test("root package exposes explicit desktop entrypoints without changing default scripts", async () => {
