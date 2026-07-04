@@ -27,7 +27,6 @@ export function shouldHandleGlobalPlaybackShortcut(target) {
     "[role='button']",
     "[role='menu']",
     "[role='menuitem']",
-    "[role='tab']",
     "[role='option']"
   ].join(", "));
 }
@@ -43,14 +42,5 @@ export function nextMenuItemIndexForKey(key, currentIndex, itemCount) {
   if (key === "ArrowUp") return currentIndex > 0 ? currentIndex - 1 : itemCount - 1;
   if (key === "Home") return 0;
   if (key === "End") return itemCount - 1;
-  return undefined;
-}
-
-export function nextTabIndexForKey(key, currentIndex, tabCount) {
-  if (tabCount <= 0) return undefined;
-  if (key === "ArrowRight") return (currentIndex + 1) % tabCount;
-  if (key === "ArrowLeft") return (currentIndex - 1 + tabCount) % tabCount;
-  if (key === "Home") return 0;
-  if (key === "End") return tabCount - 1;
   return undefined;
 }

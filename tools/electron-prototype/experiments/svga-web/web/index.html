@@ -81,53 +81,44 @@
               <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+Shift+S">另存为</button>
             </div>
           </div>
-          <nav class="tabs" aria-label="面板标签" role="tablist" aria-orientation="horizontal">
-            <button type="button" class="isSelected" id="tabOverview" data-tab="overview" data-component="TabItem" role="tab" aria-selected="true" aria-controls="panelOverview" tabindex="0">总览</button>
-            <button type="button" id="tabOptimization" data-tab="optimization" data-component="TabItem" role="tab" aria-selected="false" aria-controls="panelOptimization" tabindex="-1">优化</button>
-            <button type="button" id="tabReplaceable" data-tab="replaceable" data-component="TabItem" role="tab" aria-selected="false" aria-controls="panelReplaceable" tabindex="-1">可替换</button>
-          </nav>
-
-          <section class="tabPanel isActive" id="panelOverview" data-panel="overview" role="tabpanel" tabindex="0" aria-labelledby="tabOverview" data-module="OverviewTabModule">
+          <section class="rightSurfaceBody isActive" id="panelOverview" data-panel="overview" tabindex="0" aria-label="文件信息" data-module="OverviewInformationModule">
             <section class="factGrid" id="factGrid" aria-label="文件信息" data-component="OverviewFactRow"></section>
-            <section class="assetSection" data-component="AssetRow">
-              <h2>资源</h2>
-              <div class="assetList" id="assetList"></div>
+            <section class="replaceableSection" data-component="ReplaceableImageRow" aria-labelledby="replaceableHeading" tabindex="-1">
+              <div class="sectionHead">
+                <h2 id="replaceableHeading">imageKey <span id="replaceableSummary"></span></h2>
+              </div>
+              <div class="replaceableList" id="replaceableList" role="listbox" aria-label="imageKey"></div>
+              <menu class="contextMenu" id="resourceContextMenu" role="menu" tabindex="-1" hidden>
+                <button type="button" role="menuitem" data-action="context-rename">重命名 imageKey</button>
+                <button type="button" role="menuitem" data-action="context-replace">替换预览图片</button>
+                <button type="button" role="menuitem" data-action="context-reset">重置预览图片</button>
+              </menu>
             </section>
-          </section>
-
-          <section class="tabPanel" id="panelOptimization" data-panel="optimization" role="tabpanel" tabindex="0" aria-labelledby="tabOptimization" data-module="OptimizationTabModule" hidden>
-            <div class="sectionHead">
-              <div>
-                <h2>优化</h2>
-                <p id="optimizationSummary">打开文件后显示可安全执行项。</p>
+            <section class="textPreviewBlock" aria-labelledby="textPreviewHeading">
+              <div class="sectionHead">
+                <h3 id="textPreviewHeading">运行时文本 <span id="textPreviewSummary"></span></h3>
               </div>
-              <button class="toolbarButton primary" type="button" data-action="run-optimization">执行安全优化</button>
-            </div>
-            <div class="findingList" id="findingList"></div>
-          </section>
-
-          <section class="tabPanel" id="panelReplaceable" data-panel="replaceable" role="tabpanel" tabindex="0" aria-labelledby="tabReplaceable" data-module="ReplaceableElementsTabModule" hidden>
-            <div class="sectionHead">
-              <div>
-                <h2>可替换元素</h2>
-                <p id="replaceableSummary">仅显示设计师命名的 imageKey。</p>
-              </div>
-            </div>
-            <div class="replaceableList" id="replaceableList" role="listbox" aria-label="可替换图片"></div>
-            <menu class="contextMenu" id="resourceContextMenu" role="menu" tabindex="-1" hidden>
-              <button type="button" role="menuitem" data-action="context-rename">重命名 imageKey</button>
-              <button type="button" role="menuitem" data-action="context-replace">替换预览图片</button>
-              <button type="button" role="menuitem" data-action="context-reset">重置预览图片</button>
-            </menu>
-            <section class="textPreviewBlock" aria-labelledby="textPreviewHeading" aria-describedby="textPreviewSummary">
-              <h3 id="textPreviewHeading">运行时文本</h3>
-              <p id="textPreviewSummary">打开文件后显示可运行时预览的文本元素。</p>
               <div class="textElementList" id="textElementList" role="listbox" aria-label="运行时文本"></div>
               <div class="textPreviewActions">
                 <button type="button" data-action="edit-text" disabled>编辑文本预览</button>
                 <button type="button" data-action="reset-text" disabled>重置文本</button>
               </div>
             </section>
+            <section class="assetSection" data-component="AssetRow">
+              <h2>资源</h2>
+              <div class="assetList" id="assetList"></div>
+            </section>
+          </section>
+
+          <section class="rightSurfaceBody" id="panelOptimization" data-panel="optimization" tabindex="0" aria-label="优化" data-module="OptimizationDetailSurface" hidden>
+            <div class="sectionHead">
+              <div>
+                <h2>优化</h2>
+                <p id="optimizationSummary"></p>
+              </div>
+              <button class="toolbarButton primary" type="button" data-action="run-optimization">执行安全优化</button>
+            </div>
+            <div class="findingList" id="findingList"></div>
           </section>
         </aside>
       </section>

@@ -15,23 +15,19 @@ export function applyModeButtons(mode) {
   });
 }
 
-export function tabButtons() {
-  return [...document.querySelectorAll("[data-tab]")];
-}
-
 export function applyTabState(tab, options = {}) {
-  tabButtons().forEach((button) => {
-    const selected = button.dataset.tab === tab;
-    button.classList.toggle("isSelected", selected);
-    button.setAttribute("aria-selected", selected ? "true" : "false");
-    button.tabIndex = selected ? 0 : -1;
-    if (selected && options.focus === true) button.focus();
-  });
+  const activePanel = tab === "optimization" ? "optimization" : "overview";
   document.querySelectorAll("[data-panel]").forEach((panel) => {
-    const active = panel.dataset.panel === tab;
+    const active = panel.dataset.panel === activePanel;
     panel.hidden = !active;
     panel.classList.toggle("isActive", active);
   });
+  const targetSelector = tab === "replaceable"
+    ? ".replaceableSection"
+    : `[data-panel="${activePanel}"]`;
+  const target = document.querySelector(targetSelector);
+  if (options.focus === true) target?.focus?.();
+  if (options.scroll === true) target?.scrollIntoView?.({ block: "nearest" });
 }
 
 export function setActionEnabled(action, enabled, reason) {

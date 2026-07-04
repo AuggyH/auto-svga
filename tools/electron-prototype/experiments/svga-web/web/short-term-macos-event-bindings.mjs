@@ -105,11 +105,6 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
     }
   });
 
-  documentRef.querySelectorAll("[data-tab]").forEach((button) => {
-    button.addEventListener("click", () => handlers.setTab(button.dataset.tab));
-  });
-
-  documentRef.querySelector("[role='tablist']")?.addEventListener("keydown", handlers.handleTabListKeydown);
   nodes.resourceContextMenu.addEventListener("keydown", handlers.handleResourceContextMenuKeydown);
 
   nodes.replacementFileInput.addEventListener("change", () => {

@@ -358,7 +358,7 @@ canvas {
 
 .rightPanel {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
   background: var(--asv-right-panel);
 }
@@ -372,7 +372,7 @@ canvas {
   border-bottom: 1px solid var(--asv-subtle-border);
 }
 
-.tabPanel {
+.rightSurfaceBody {
   min-height: 0;
   outline: none;
   overflow: auto;
@@ -381,7 +381,7 @@ canvas {
   scrollbar-gutter: stable;
 }
 
-.tabPanel:focus-visible {
+.rightSurfaceBody:focus-visible {
   box-shadow: var(--asv-focus-inset);
 }
 
@@ -445,6 +445,7 @@ canvas {
 }
 
 .assetSection,
+.replaceableSection,
 .textPreviewBlock {
   margin-top: var(--asv-right-panel-section-gap);
   padding-top: var(--asv-right-panel-section-gap);
@@ -492,6 +493,13 @@ canvas {
   align-items: flex-start;
   padding-bottom: var(--asv-space-2);
   border-bottom: 1px solid var(--asv-row-border);
+}
+
+.sectionHead h2 span,
+.sectionHead h3 span {
+  color: var(--asv-subtle);
+  font-size: var(--asv-type-size-footnote);
+  font-weight: 560;
 }
 
 .compareStage {

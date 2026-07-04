@@ -1,5 +1,3 @@
-import { tabButtons } from "./short-term-macos-dom-state.mjs";
-
 export function createSmokeArtifactCapture(bridge) {
   const capturedArtifacts = [];
   const captureSmokeArtifact = async (scenario) => {
@@ -15,7 +13,7 @@ export function createSmokeArtifactCapture(bridge) {
   };
 }
 
-export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid, model, tab }) {
+export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid, model }) {
   const factGridCopy = factGrid.textContent || "";
   const thresholdCopies = overviewFactRows.map((fact) => fact.requirement).filter(Boolean);
   const optimizableRows = factGrid.querySelectorAll(".factCell[data-status='warning'], .factCell[data-status='fail']");
@@ -40,7 +38,7 @@ export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid
     defaultThresholdsHidden: thresholdCopies.every((copy) => !factGridCopy.includes(copy)),
     optimizationStatusVisible: optimizableRows.length === 0
       || [...optimizableRows].every((row) => row.textContent.includes("可优化")),
-    overviewTabActive: tab === "overview",
+    defaultInformationSurfaceActive: document.querySelector("#panelOverview")?.hidden === false,
     separateProductionSpecModuleExposed: Boolean(document.querySelector("#productionSpecModule, #specReportSection, [data-panel='production-spec']"))
   };
   proof.passed = [
@@ -50,7 +48,7 @@ export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid
     proof.actualValuesVisible,
     proof.defaultThresholdsHidden,
     proof.optimizationStatusVisible,
-    proof.overviewTabActive,
+    proof.defaultInformationSurfaceActive,
     proof.separateProductionSpecModuleExposed === false
   ].every(Boolean);
   return proof;
@@ -71,7 +69,7 @@ export function collectShortTermEmptyStateProof({
     source: "short-term-smoke",
     noAudioVisible: noAudioCopy.includes("当前文件暂无音频资产"),
     noReplaceableImagesVisible: replaceableImageRowCount === 0 && noReplaceableCopy.includes("未发现设计师命名"),
-    textUnavailableVisible: textElementRowCount === 0 && textUnavailableCopy.includes("未发现可运行时替换"),
+    textUnavailableVisible: textElementRowCount === 0 && textUnavailableCopy.includes("未发现设计师命名的文本锚点"),
     ordinaryImagesNotDuplicatedInReplaceables: replaceableImageRowCount === 0 && assetRowCount > 0,
     ordinaryImageThumbnailVisible: ordinaryImageThumbnailCount > 0,
     assetRowCount,
@@ -550,88 +548,66 @@ export function collectShortTermLoadFailureProof({
   return proof;
 }
 
-export async function collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state }) {
-  const tabs = tabButtons();
-  const tabOverview = document.querySelector("#tabOverview");
-  const tabOptimization = document.querySelector("#tabOptimization");
-  const tabReplaceable = document.querySelector("#tabReplaceable");
+export async function collectShortTermRightSurfaceNavigationProof({ setTab, waitForSmokeFrame, state }) {
   const panelOverview = document.querySelector("#panelOverview");
   const panelOptimization = document.querySelector("#panelOptimization");
-  const panelReplaceable = document.querySelector("#panelReplaceable");
+  const replaceableSection = document.querySelector(".replaceableSection");
   setTab("overview");
   await waitForSmokeFrame();
-  tabOverview?.focus();
-  const arrowRightPrevented = !tabOverview?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }));
+  const overviewState = {
+    selectedSurface: state.tab,
+    overviewPanelVisible: panelOverview?.hidden === false,
+    optimizationPanelHidden: panelOptimization?.hidden === true
+  };
+  setTab("optimization", { focus: true });
   await waitForSmokeFrame();
-  const arrowRightState = {
-    selectedTab: state.tab,
-    focusedTabId: document.activeElement?.id || "",
+  const optimizationState = {
+    selectedSurface: state.tab,
+    focusedPanelId: document.activeElement?.id || "",
+    overviewPanelHidden: panelOverview?.hidden === true,
     optimizationPanelVisible: panelOptimization?.hidden === false
   };
-  const endPrevented = !tabOptimization?.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true, cancelable: true }));
+  setTab("replaceable", { focus: true, scroll: true });
   await waitForSmokeFrame();
-  const endState = {
-    selectedTab: state.tab,
-    focusedTabId: document.activeElement?.id || "",
-    replaceablePanelVisible: panelReplaceable?.hidden === false
+  const replaceableState = {
+    selectedSurface: state.tab,
+    focusedClass: document.activeElement?.className || "",
+    overviewPanelVisible: panelOverview?.hidden === false,
+    optimizationPanelHidden: panelOptimization?.hidden === true,
+    replaceableTargetFocusable: replaceableSection?.getAttribute("tabindex") === "-1"
   };
-  const homePrevented = !tabReplaceable?.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true, cancelable: true }));
+  setTab("overview", { focus: true });
   await waitForSmokeFrame();
-  const homeState = {
-    selectedTab: state.tab,
-    focusedTabId: document.activeElement?.id || "",
-    overviewPanelVisible: panelOverview?.hidden === false
-  };
-  const selectedTabOnlyInSequentialFocus = tabs.filter((tab) => tab.tabIndex === 0).length === 1
-    && tabOverview?.tabIndex === 0
-    && tabOptimization?.tabIndex === -1
-    && tabReplaceable?.tabIndex === -1;
-  const ariaSelectedSynced = tabOverview?.getAttribute("aria-selected") === "true"
-    && tabOptimization?.getAttribute("aria-selected") === "false"
-    && tabReplaceable?.getAttribute("aria-selected") === "false";
+  const tabButtonsRemoved = document.querySelectorAll("[data-tab], [role='tab'], [role='tablist']").length === 0;
   const panelVisibilitySynced = panelOverview?.hidden === false
-    && panelOptimization?.hidden === true
-    && panelReplaceable?.hidden === true;
+    && panelOptimization?.hidden === true;
   const proof = {
     schemaVersion: 1,
-    proofId: "short-term-tab-keyboard-proof",
+    proofId: "short-term-right-surface-navigation-proof",
     source: "short-term-smoke",
     prdIds: ["S3", "S8", "S12", "S13"],
     component: "RightInformationSurface",
-    molecule: "TabItem",
-    tabOrder: tabs.map((tab) => tab.dataset.tab || ""),
-    arrowRightPrevented,
-    arrowRightSelected: arrowRightState.selectedTab === "optimization",
-    arrowRightFocusedTabId: arrowRightState.focusedTabId,
-    arrowRightPanelVisible: arrowRightState.optimizationPanelVisible,
-    endPrevented,
-    endSelected: endState.selectedTab === "replaceable",
-    endFocusedTabId: endState.focusedTabId,
-    endPanelVisible: endState.replaceablePanelVisible,
-    homePrevented,
-    homeSelected: homeState.selectedTab === "overview",
-    homeFocusedTabId: homeState.focusedTabId,
-    homePanelVisible: homeState.overviewPanelVisible,
-    selectedTabOnlyInSequentialFocus,
-    ariaSelectedSynced,
+    model: "surfaceReplacement",
+    tabButtonsRemoved,
+    overviewSurfaceVisible: overviewState.selectedSurface === "overview"
+      && overviewState.overviewPanelVisible
+      && overviewState.optimizationPanelHidden,
+    optimizationSurfaceVisible: optimizationState.selectedSurface === "optimization"
+      && optimizationState.focusedPanelId === "panelOptimization"
+      && optimizationState.overviewPanelHidden
+      && optimizationState.optimizationPanelVisible,
+    replaceableSurfaceReturnsToDefault: replaceableState.selectedSurface === "replaceable"
+      && replaceableState.overviewPanelVisible
+      && replaceableState.optimizationPanelHidden
+      && replaceableState.replaceableTargetFocusable
+      && String(replaceableState.focusedClass).includes("replaceableSection"),
     panelVisibilitySynced
   };
   proof.passed = [
-    proof.tabOrder.join(",") === "overview,optimization,replaceable",
-    proof.arrowRightPrevented,
-    proof.arrowRightSelected,
-    proof.arrowRightFocusedTabId === "tabOptimization",
-    proof.arrowRightPanelVisible,
-    proof.endPrevented,
-    proof.endSelected,
-    proof.endFocusedTabId === "tabReplaceable",
-    proof.endPanelVisible,
-    proof.homePrevented,
-    proof.homeSelected,
-    proof.homeFocusedTabId === "tabOverview",
-    proof.homePanelVisible,
-    proof.selectedTabOnlyInSequentialFocus,
-    proof.ariaSelectedSynced,
+    proof.tabButtonsRemoved,
+    proof.overviewSurfaceVisible,
+    proof.optimizationSurfaceVisible,
+    proof.replaceableSurfaceReturnsToDefault,
     proof.panelVisibilitySynced
   ].every(Boolean);
   return proof;
@@ -647,15 +623,13 @@ export function collectShortTermDesignInteractionProof({
   const focusOrder = visibleFocusableElements().map((element) => ({
     id: element.id || "",
     action: element.dataset.action || "",
-    tab: element.dataset.tab || "",
     role: element.getAttribute("role") || "",
     component: element.dataset.component || ""
   })).slice(0, 24);
-  const focusKeys = focusOrder.map((item) => item.action || item.tab || item.id || item.role).filter(Boolean);
+  const focusKeys = focusOrder.map((item) => item.action || item.id || item.role).filter(Boolean);
   const compareIndex = focusKeys.indexOf("compare");
   const previewModeIndex = focusKeys.indexOf("mode-preview");
   const editModeIndex = focusKeys.indexOf("mode-edit");
-  const tabOverviewIndex = focusKeys.indexOf("overview");
   const panelOverview = document.querySelector("#panelOverview");
   const panelStyle = getComputedStyle(panelOverview);
   const factCell = nodes.factGrid.querySelector(".factCell");
@@ -663,30 +637,24 @@ export function collectShortTermDesignInteractionProof({
   const stateSummary = currentStateSummary();
   const localUserPathPrefix = ["/", "Users", "/"].join("");
   const menuState = parseLastMenuStateSnapshot(state.lastMenuStateSnapshot);
-  const tabCaptureStates = Array.isArray(state.smokeTabCaptureStates) ? state.smokeTabCaptureStates : [];
-  const requiredTabCaptureStates = [
+  const surfaceCaptureStates = Array.isArray(state.smokeSurfaceCaptureStates) ? state.smokeSurfaceCaptureStates : [];
+  const requiredSurfaceCaptureStates = [
     {
       artifactName: "short-term-preview-optimization",
-      expectedTab: "optimization",
-      expectedTabId: "tabOptimization",
+      expectedSurface: "optimization",
       expectedPanelId: "panelOptimization"
     },
     {
       artifactName: "short-term-preview-replaceable",
-      expectedTab: "replaceable",
-      expectedTabId: "tabReplaceable",
-      expectedPanelId: "panelReplaceable"
+      expectedSurface: "replaceable",
+      expectedPanelId: "panelOverview"
     }
   ];
-  const tabCaptureStateByArtifact = new Map(tabCaptureStates.map((item) => [item.artifactName, item]));
-  const tabCaptureStatesSynced = requiredTabCaptureStates.every((expected) => {
-    const captureState = tabCaptureStateByArtifact.get(expected.artifactName);
-    return captureState?.expectedTab === expected.expectedTab
-      && captureState?.stateTab === expected.expectedTab
-      && captureState?.selectedTabIds?.length === 1
-      && captureState.selectedTabIds[0] === expected.expectedTabId
-      && captureState?.ariaSelectedTabIds?.length === 1
-      && captureState.ariaSelectedTabIds[0] === expected.expectedTabId
+  const surfaceCaptureStateByArtifact = new Map(surfaceCaptureStates.map((item) => [item.artifactName, item]));
+  const surfaceCaptureStatesSynced = requiredSurfaceCaptureStates.every((expected) => {
+    const captureState = surfaceCaptureStateByArtifact.get(expected.artifactName);
+    return captureState?.expectedSurface === expected.expectedSurface
+      && captureState?.stateSurface === expected.expectedSurface
       && captureState?.visiblePanelIds?.length === 1
       && captureState.visiblePanelIds[0] === expected.expectedPanelId;
   });
@@ -699,8 +667,7 @@ export function collectShortTermDesignInteractionProof({
     focusTargetCount: focusOrder.length,
     noVisibleCompareEntrypoint: compareIndex < 0,
     canvasModeSwitchReachable: previewModeIndex >= 0 && editModeIndex > previewModeIndex,
-    overviewTabReachable: tabOverviewIndex >= 0,
-    selectedTabOnlyInSequentialFocus: tabButtons().filter((tab) => tab.tabIndex === 0).length === 1,
+    tabButtonsRemoved: document.querySelectorAll("[data-tab], [role='tab'], [role='tablist']").length === 0,
     panelScrollRegionFocusable: panelOverview?.tabIndex === 0,
     panelScrollRegionScrollable: ["auto", "scroll"].includes(panelStyle.overflowY),
     metadataSelectable: userSelectAllowsText(document.body)
@@ -710,8 +677,8 @@ export function collectShortTermDesignInteractionProof({
       && stateSummary.includes(state.displayName)
       && !stateSummary.includes(localUserPathPrefix)
       && !stateSummary.includes("\\"),
-    tabCaptureStates,
-    tabCaptureStatesSynced,
+    surfaceCaptureStates,
+    surfaceCaptureStatesSynced,
     menuStateDiscoverable: menuState?.hasFile === true
       && menuState?.canCompare === true
       && menuState?.canPlay === true
@@ -726,16 +693,15 @@ export function collectShortTermDesignInteractionProof({
     minimumPreviewCaptured: minimumPreviewCaptured === true
   };
   proof.passed = [
-    proof.focusTargetCount >= 6,
+    proof.focusTargetCount >= 5,
     proof.noVisibleCompareEntrypoint,
     proof.canvasModeSwitchReachable,
-    proof.overviewTabReachable,
-    proof.selectedTabOnlyInSequentialFocus,
+    proof.tabButtonsRemoved,
     proof.panelScrollRegionFocusable,
     proof.panelScrollRegionScrollable,
     proof.metadataSelectable,
     proof.stateSummaryCopyable,
-    proof.tabCaptureStatesSynced,
+    proof.surfaceCaptureStatesSynced,
     proof.menuStateDiscoverable,
     proof.focusedControlSpaceNotGlobalPlayback,
     proof.reducedMotionRulePresent,
@@ -744,33 +710,21 @@ export function collectShortTermDesignInteractionProof({
   return proof;
 }
 
-export function collectShortTermTabCaptureState({ artifactName, expectedTab, stateTab }) {
-  const tabSelector = `[data-tab="${CSS.escape(expectedTab)}"]`;
-  const panelSelector = `[data-panel="${CSS.escape(expectedTab)}"]`;
-  const expectedTabId = document.querySelector(tabSelector)?.id || "";
+export function collectShortTermRightSurfaceCaptureState({ artifactName, expectedSurface, stateSurface }) {
+  const expectedPanel = expectedSurface === "optimization" ? "optimization" : "overview";
+  const panelSelector = `[data-panel="${CSS.escape(expectedPanel)}"]`;
   const expectedPanelId = document.querySelector(panelSelector)?.id || "";
-  const selectedTabIds = tabButtons()
-    .filter((tab) => tab.classList.contains("isSelected"))
-    .map((tab) => tab.id || "");
-  const ariaSelectedTabIds = tabButtons()
-    .filter((tab) => tab.getAttribute("aria-selected") === "true")
-    .map((tab) => tab.id || "");
   const visiblePanelIds = [...document.querySelectorAll("[data-panel]")]
     .filter((panel) => panel.hidden === false)
     .map((panel) => panel.id || "");
 
   return {
     artifactName: boundedSmokeText(artifactName, 120),
-    expectedTab: boundedSmokeText(expectedTab, 40),
-    stateTab: boundedSmokeText(stateTab, 40),
-    expectedTabId: boundedSmokeText(expectedTabId, 80),
+    expectedSurface: boundedSmokeText(expectedSurface, 40),
+    stateSurface: boundedSmokeText(stateSurface, 40),
     expectedPanelId: boundedSmokeText(expectedPanelId, 80),
-    selectedTabIds,
-    ariaSelectedTabIds,
     visiblePanelIds,
     activeElementId: boundedSmokeText(document.activeElement?.id || "", 80),
-    selectedMatchesExpected: selectedTabIds.length === 1 && selectedTabIds[0] === expectedTabId,
-    ariaMatchesExpected: ariaSelectedTabIds.length === 1 && ariaSelectedTabIds[0] === expectedTabId,
     visiblePanelMatchesExpected: visiblePanelIds.length === 1 && visiblePanelIds[0] === expectedPanelId
   };
 }

@@ -10,9 +10,7 @@ export function replaceableImageListView(model, selectedImageKey, renameImageKey
     })),
     hasImages: images.length > 0,
     emptyCopy: model?.emptyCopy || "没有可替换元素。",
-    summaryCopy: images.length
-      ? `${images.length} 个设计师命名图片元素。`
-      : "普通自动命名图片不会出现在这里。"
+    summaryCopy: `(${images.length})`
   };
 }
 

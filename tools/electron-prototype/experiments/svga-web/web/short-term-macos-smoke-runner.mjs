@@ -7,8 +7,8 @@ import {
   collectShortTermEmptyStateProof,
   collectShortTermRuntimeTextBoundaryProof,
   collectShortTermSpecComparisonProof,
-  collectShortTermTabKeyboardProof,
-  collectShortTermTabCaptureState,
+  collectShortTermRightSurfaceNavigationProof,
+  collectShortTermRightSurfaceCaptureState,
   collectShortTermThumbnailProof,
   collectShortTermReplaceableClassificationProof,
   collectShortTermOptimizationProof,
@@ -93,20 +93,20 @@ async function runShortTermSmoke({
 }) {
   const smokeArtifactCapture = createSmokeArtifactCapture(bridge);
   const { captureSmokeArtifact } = smokeArtifactCapture;
-  state.smokeTabCaptureStates = [];
-  const setSmokeTab = async (tab, artifactName = "") => {
-    setTab(tab, { focus: true });
+  state.smokeSurfaceCaptureStates = [];
+  const setSmokeSurface = async (surface, artifactName = "") => {
+    setTab(surface, { focus: true, scroll: true });
+    const expectedPanel = surface === "optimization" ? "optimization" : "overview";
     await waitForSmokeCondition(() => (
-      state.tab === tab
-      && document.querySelector(`[data-tab="${tab}"]`)?.classList.contains("isSelected")
-      && document.querySelector(`[data-panel="${tab}"]`)?.hidden === false
+      state.tab === surface
+      && document.querySelector(`[data-panel="${expectedPanel}"]`)?.hidden === false
     ), 2_000);
     await waitForSmokeFrame();
     if (artifactName) {
-      state.smokeTabCaptureStates.push(collectShortTermTabCaptureState({
+      state.smokeSurfaceCaptureStates.push(collectShortTermRightSurfaceCaptureState({
         artifactName,
-        expectedTab: tab,
-        stateTab: state.tab
+        expectedSurface: surface,
+        stateSurface: state.tab
       }));
       document.activeElement?.blur?.();
       await waitForSmokeFrame();
@@ -127,21 +127,20 @@ async function runShortTermSmoke({
   const shortTermSpecComparisonProof = collectShortTermSpecComparisonProof({
     overviewFactRows,
     factGrid: nodes.factGrid,
-    model: state.model,
-    tab: state.tab
+    model: state.model
   });
   const noAudioCopy = [...nodes.assetList.querySelectorAll(".assetRow")]
     .map((row) => row.textContent.trim())
     .find((text) => text.includes("当前文件暂无音频资产")) || "";
-  const shortTermTabKeyboardProof = await collectShortTermTabKeyboardProof({ setTab, waitForSmokeFrame, state });
-  await setSmokeTab("optimization", "short-term-preview-optimization");
+  const shortTermRightSurfaceNavigationProof = await collectShortTermRightSurfaceNavigationProof({ setTab, waitForSmokeFrame, state });
+  await setSmokeSurface("optimization", "short-term-preview-optimization");
   await captureSmokeArtifact("short-term-preview-optimization");
-  await setSmokeTab("replaceable", "short-term-preview-replaceable");
+  await setSmokeSurface("replaceable", "short-term-preview-replaceable");
   await captureSmokeArtifact("short-term-preview-replaceable");
   const replaceableImageRowCount = nodes.replaceableList.querySelectorAll(".replaceableRow").length;
   const textElementRowCount = nodes.textElementList.querySelectorAll(".textElementRow").length;
   const noReplaceableCopy = nodes.replaceableList.textContent.trim();
-  const textUnavailableCopy = nodes.textPreviewSummary.textContent.trim();
+  const textUnavailableCopy = nodes.textElementList.textContent.trim();
   const ordinaryImageThumbnailCount = nodes.assetList.querySelectorAll(".assetRow .thumb img").length;
   const automaticImageNames = (state.model?.assets ?? [])
     .filter((asset) => asset.kind === "image" && /^img[_-]?\d+$/i.test(asset.name))
@@ -566,7 +565,7 @@ async function runShortTermSmoke({
     shortTermLoadFailed: loadFailedVisible,
     shortTermLoadFailureProof,
     shortTermSpecComparisonProof,
-    shortTermTabKeyboardProof,
+    shortTermRightSurfaceNavigationProof,
     shortTermEmptyStateProof,
     shortTermRuntimeTextBoundaryProof,
     shortTermThumbnailProof,

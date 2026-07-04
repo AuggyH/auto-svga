@@ -283,11 +283,11 @@ function validateSmokeResult(value) {
     result.shortTermSpecComparisonProof = shortTermSpecComparisonProof;
     result.shortTermSpecComparison = shortTermSpecComparisonProof.passed;
   }
-  if (value.shortTermTabKeyboardProof !== undefined) {
-    const shortTermTabKeyboardProof = validateShortTermTabKeyboardProof(value.shortTermTabKeyboardProof);
-    if (!shortTermTabKeyboardProof) return undefined;
-    result.shortTermTabKeyboardProof = shortTermTabKeyboardProof;
-    result.shortTermTabKeyboard = shortTermTabKeyboardProof.passed;
+  if (value.shortTermRightSurfaceNavigationProof !== undefined) {
+    const shortTermRightSurfaceNavigationProof = validateShortTermRightSurfaceNavigationProof(value.shortTermRightSurfaceNavigationProof);
+    if (!shortTermRightSurfaceNavigationProof) return undefined;
+    result.shortTermRightSurfaceNavigationProof = shortTermRightSurfaceNavigationProof;
+    result.shortTermRightSurfaceNavigation = shortTermRightSurfaceNavigationProof.passed;
   }
   if (value.shortTermDesignInteractionProof !== undefined) {
     const shortTermDesignInteractionProof = validateShortTermDesignInteractionProof(value.shortTermDesignInteractionProof);
@@ -444,7 +444,7 @@ function validateShortTermEmptyStateProof(value) {
   if (!Number.isInteger(value.textElementRowCount) || value.textElementRowCount !== 0) return undefined;
   if (!isBoundedString(value.noAudioCopy, 120) || !value.noAudioCopy.includes("当前文件暂无音频资产")) return undefined;
   if (!isBoundedString(value.noReplaceableCopy, 180) || !value.noReplaceableCopy.includes("未发现设计师命名")) return undefined;
-  if (!isBoundedString(value.textUnavailableCopy, 180) || !value.textUnavailableCopy.includes("未发现可运行时替换")) return undefined;
+  if (!isBoundedString(value.textUnavailableCopy, 180) || !value.textUnavailableCopy.includes("未发现设计师命名的文本锚点")) return undefined;
   return {
     schemaVersion: 1,
     proofId: value.proofId,
@@ -596,7 +596,7 @@ function validateShortTermSpecComparisonProof(value) {
     value.actualValuesVisible !== true
     || value.defaultThresholdsHidden !== true
     || value.optimizationStatusVisible !== true
-    || value.overviewTabActive !== true
+    || value.defaultInformationSurfaceActive !== true
     || value.separateProductionSpecModuleExposed !== false
     || value.passed !== true
   ) {
@@ -615,34 +615,23 @@ function validateShortTermSpecComparisonProof(value) {
     actualValuesVisible: true,
     defaultThresholdsHidden: true,
     optimizationStatusVisible: true,
-    overviewTabActive: true,
+    defaultInformationSurfaceActive: true,
     separateProductionSpecModuleExposed: false,
     passed: true
   };
 }
 
-function validateShortTermTabKeyboardProof(value) {
+function validateShortTermRightSurfaceNavigationProof(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-  if (value.schemaVersion !== 1 || value.proofId !== "short-term-tab-keyboard-proof") return undefined;
+  if (value.schemaVersion !== 1 || value.proofId !== "short-term-right-surface-navigation-proof") return undefined;
   if (value.source !== "short-term-smoke") return undefined;
   if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S3,S8,S12,S13") return undefined;
-  if (value.component !== "RightInformationSurface" || value.molecule !== "TabItem") return undefined;
-  if (!Array.isArray(value.tabOrder) || value.tabOrder.join(",") !== "overview,optimization,replaceable") return undefined;
-  if (value.arrowRightFocusedTabId !== "tabOptimization") return undefined;
-  if (value.endFocusedTabId !== "tabReplaceable") return undefined;
-  if (value.homeFocusedTabId !== "tabOverview") return undefined;
+  if (value.component !== "RightInformationSurface" || value.model !== "surfaceReplacement") return undefined;
   const booleanKeys = [
-    "arrowRightPrevented",
-    "arrowRightSelected",
-    "arrowRightPanelVisible",
-    "endPrevented",
-    "endSelected",
-    "endPanelVisible",
-    "homePrevented",
-    "homeSelected",
-    "homePanelVisible",
-    "selectedTabOnlyInSequentialFocus",
-    "ariaSelectedSynced",
+    "tabButtonsRemoved",
+    "overviewSurfaceVisible",
+    "optimizationSurfaceVisible",
+    "replaceableSurfaceReturnsToDefault",
     "panelVisibilitySynced",
     "passed"
   ];
@@ -653,22 +642,11 @@ function validateShortTermTabKeyboardProof(value) {
     source: value.source,
     prdIds: ["S3", "S8", "S12", "S13"],
     component: "RightInformationSurface",
-    molecule: "TabItem",
-    tabOrder: ["overview", "optimization", "replaceable"],
-    arrowRightPrevented: true,
-    arrowRightSelected: true,
-    arrowRightFocusedTabId: "tabOptimization",
-    arrowRightPanelVisible: true,
-    endPrevented: true,
-    endSelected: true,
-    endFocusedTabId: "tabReplaceable",
-    endPanelVisible: true,
-    homePrevented: true,
-    homeSelected: true,
-    homeFocusedTabId: "tabOverview",
-    homePanelVisible: true,
-    selectedTabOnlyInSequentialFocus: true,
-    ariaSelectedSynced: true,
+    model: "surfaceReplacement",
+    tabButtonsRemoved: true,
+    overviewSurfaceVisible: true,
+    optimizationSurfaceVisible: true,
+    replaceableSurfaceReturnsToDefault: true,
     panelVisibilitySynced: true,
     passed: true
   };
@@ -679,13 +657,12 @@ function validateShortTermDesignInteractionProof(value) {
   if (value.schemaVersion !== 1 || value.proofId !== "short-term-design-interaction-proof") return undefined;
   if (value.source !== "short-term-smoke") return undefined;
   if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S1,S3,S8,S12,S13,S14,S16") return undefined;
-  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 6 || value.focusOrder.length > 24) return undefined;
+  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 5 || value.focusOrder.length > 24) return undefined;
   const focusOrder = value.focusOrder.map((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return undefined;
     const normalized = {
       id: String(item.id || ""),
       action: String(item.action || ""),
-      tab: String(item.tab || ""),
       role: String(item.role || ""),
       component: String(item.component || "")
     };
@@ -694,78 +671,63 @@ function validateShortTermDesignInteractionProof(value) {
     return normalized;
   });
   if (focusOrder.some((item) => !item)) return undefined;
-  if (!Array.isArray(value.tabCaptureStates) || value.tabCaptureStates.length < 2 || value.tabCaptureStates.length > 8) return undefined;
-  const tabCaptureStates = value.tabCaptureStates.map((item) => {
+  if (!Array.isArray(value.surfaceCaptureStates) || value.surfaceCaptureStates.length < 2 || value.surfaceCaptureStates.length > 8) return undefined;
+  const surfaceCaptureStates = value.surfaceCaptureStates.map((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return undefined;
     const normalized = {
       artifactName: String(item.artifactName || ""),
-      expectedTab: String(item.expectedTab || ""),
-      stateTab: String(item.stateTab || ""),
-      expectedTabId: String(item.expectedTabId || ""),
+      expectedSurface: String(item.expectedSurface || ""),
+      stateSurface: String(item.stateSurface || ""),
       expectedPanelId: String(item.expectedPanelId || ""),
       activeElementId: String(item.activeElementId || ""),
-      selectedTabIds: normalizeBoundedStringList(item.selectedTabIds, 4, 80),
-      ariaSelectedTabIds: normalizeBoundedStringList(item.ariaSelectedTabIds, 4, 80),
       visiblePanelIds: normalizeBoundedStringList(item.visiblePanelIds, 4, 80),
-      selectedMatchesExpected: item.selectedMatchesExpected === true,
-      ariaMatchesExpected: item.ariaMatchesExpected === true,
       visiblePanelMatchesExpected: item.visiblePanelMatchesExpected === true
     };
     if (
       !isBoundedString(normalized.artifactName, 120)
-      || !isBoundedString(normalized.expectedTab, 40)
-      || !isBoundedString(normalized.stateTab, 40)
-      || !isBoundedString(normalized.expectedTabId, 80)
+      || !isBoundedString(normalized.expectedSurface, 40)
+      || !isBoundedString(normalized.stateSurface, 40)
       || !isBoundedString(normalized.expectedPanelId, 80)
-      || !isBoundedString(normalized.activeElementId, 80)
-      || !normalized.selectedTabIds
-      || !normalized.ariaSelectedTabIds
+      || typeof normalized.activeElementId !== "string"
+      || normalized.activeElementId.length > 80
       || !normalized.visiblePanelIds
     ) {
       return undefined;
     }
     return normalized;
   });
-  if (tabCaptureStates.some((item) => !item)) return undefined;
-  const captureStateByArtifact = new Map(tabCaptureStates.map((item) => [item.artifactName, item]));
+  if (surfaceCaptureStates.some((item) => !item)) return undefined;
+  const captureStateByArtifact = new Map(surfaceCaptureStates.map((item) => [item.artifactName, item]));
   const requiredCaptureStates = [
-    ["short-term-preview-optimization", "optimization", "tabOptimization", "panelOptimization"],
-    ["short-term-preview-replaceable", "replaceable", "tabReplaceable", "panelReplaceable"]
+    ["short-term-preview-optimization", "optimization", "panelOptimization"],
+    ["short-term-preview-replaceable", "replaceable", "panelOverview"]
   ];
-  const tabCaptureStatesSynced = requiredCaptureStates.every(([artifactName, expectedTab, expectedTabId, expectedPanelId]) => {
+  const surfaceCaptureStatesSynced = requiredCaptureStates.every(([artifactName, expectedSurface, expectedPanelId]) => {
     const captureState = captureStateByArtifact.get(artifactName);
-    return captureState?.expectedTab === expectedTab
-      && captureState?.stateTab === expectedTab
-      && captureState?.expectedTabId === expectedTabId
+    return captureState?.expectedSurface === expectedSurface
+      && captureState?.stateSurface === expectedSurface
       && captureState?.expectedPanelId === expectedPanelId
-      && captureState?.selectedTabIds.length === 1
-      && captureState.selectedTabIds[0] === expectedTabId
-      && captureState?.ariaSelectedTabIds.length === 1
-      && captureState.ariaSelectedTabIds[0] === expectedTabId
       && captureState?.visiblePanelIds.length === 1
       && captureState.visiblePanelIds[0] === expectedPanelId
-      && captureState.selectedMatchesExpected
-      && captureState.ariaMatchesExpected
       && captureState.visiblePanelMatchesExpected;
   });
-  if (tabCaptureStatesSynced !== true || value.tabCaptureStatesSynced !== true) return undefined;
+  if (surfaceCaptureStatesSynced !== true || value.surfaceCaptureStatesSynced !== true) return undefined;
   const booleanKeys = [
     "noVisibleCompareEntrypoint",
     "canvasModeSwitchReachable",
-    "overviewTabReachable",
-    "selectedTabOnlyInSequentialFocus",
+    "tabButtonsRemoved",
     "panelScrollRegionFocusable",
     "panelScrollRegionScrollable",
     "metadataSelectable",
     "stateSummaryCopyable",
-    "tabCaptureStatesSynced",
+    "surfaceCaptureStatesSynced",
     "menuStateDiscoverable",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",
     "passed"
   ];
   if (!booleanKeys.every((key) => value[key] === true)) return undefined;
-  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 6) return undefined;
+  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 5) return undefined;
   return {
     schemaVersion: 1,
     proofId: value.proofId,
@@ -775,14 +737,13 @@ function validateShortTermDesignInteractionProof(value) {
     focusTargetCount: value.focusTargetCount,
     noVisibleCompareEntrypoint: true,
     canvasModeSwitchReachable: true,
-    overviewTabReachable: true,
-    selectedTabOnlyInSequentialFocus: true,
+    tabButtonsRemoved: true,
     panelScrollRegionFocusable: true,
     panelScrollRegionScrollable: true,
     metadataSelectable: true,
     stateSummaryCopyable: true,
-    tabCaptureStates,
-    tabCaptureStatesSynced: true,
+    surfaceCaptureStates,
+    surfaceCaptureStatesSynced: true,
     menuStateDiscoverable: true,
     reducedMotionRulePresent: true,
     minimumPreviewCaptured: true,
@@ -803,63 +764,55 @@ function describeShortTermDesignInteractionProofFailure(value) {
   if (value.proofId !== "short-term-design-interaction-proof") return "proofId";
   if (value.source !== "short-term-smoke") return "source";
   if (!Array.isArray(value.prdIds) || value.prdIds.join(",") !== "S1,S3,S8,S12,S13,S14,S16") return "prdIds";
-  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 6 || value.focusOrder.length > 24) {
+  if (!Array.isArray(value.focusOrder) || value.focusOrder.length < 5 || value.focusOrder.length > 24) {
     return `focusOrder:length:${Array.isArray(value.focusOrder) ? value.focusOrder.length : "invalid"}`;
   }
   const invalidFocusItem = value.focusOrder.find((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return true;
-    const fields = [item.id, item.action, item.tab, item.role, item.component].map((field) => String(field || ""));
+    const fields = [item.id, item.action, item.role, item.component].map((field) => String(field || ""));
     return fields.some((field) => field.length > 80) || fields.every((field) => field.length === 0);
   });
   if (invalidFocusItem) return "focusOrder:item";
-  if (!Array.isArray(value.tabCaptureStates) || value.tabCaptureStates.length < 2 || value.tabCaptureStates.length > 8) return "tabCaptureStates";
-  const invalidTabCapture = value.tabCaptureStates.find((item) => {
+  if (!Array.isArray(value.surfaceCaptureStates) || value.surfaceCaptureStates.length < 2 || value.surfaceCaptureStates.length > 8) return "surfaceCaptureStates";
+  const invalidSurfaceCapture = value.surfaceCaptureStates.find((item) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) return true;
     const strings = [
       [item.artifactName, 120],
-      [item.expectedTab, 40],
-      [item.stateTab, 40],
-      [item.expectedTabId, 80],
+      [item.expectedSurface, 40],
+      [item.stateSurface, 40],
       [item.expectedPanelId, 80],
-      [item.activeElementId, 80]
     ];
-    const lists = [item.selectedTabIds, item.ariaSelectedTabIds, item.visiblePanelIds];
+    const lists = [item.visiblePanelIds];
     return strings.some(([field, maxLength]) => !isBoundedString(String(field || ""), maxLength))
+      || typeof item.activeElementId !== "string"
+      || item.activeElementId.length > 80
       || lists.some((list) => !normalizeBoundedStringList(list, 4, 80));
   });
-  if (invalidTabCapture) return "tabCaptureStates:item";
-  const captureStateByArtifact = new Map(value.tabCaptureStates.map((item) => [item.artifactName, item]));
+  if (invalidSurfaceCapture) return "surfaceCaptureStates:item";
+  const captureStateByArtifact = new Map(value.surfaceCaptureStates.map((item) => [item.artifactName, item]));
   const requiredCaptureStates = [
-    ["short-term-preview-optimization", "optimization", "tabOptimization", "panelOptimization"],
-    ["short-term-preview-replaceable", "replaceable", "tabReplaceable", "panelReplaceable"]
+    ["short-term-preview-optimization", "optimization", "panelOptimization"],
+    ["short-term-preview-replaceable", "replaceable", "panelOverview"]
   ];
-  const tabCaptureStatesSynced = requiredCaptureStates.every(([artifactName, expectedTab, expectedTabId, expectedPanelId]) => {
+  const surfaceCaptureStatesSynced = requiredCaptureStates.every(([artifactName, expectedSurface, expectedPanelId]) => {
     const captureState = captureStateByArtifact.get(artifactName);
-    return captureState?.expectedTab === expectedTab
-      && captureState?.stateTab === expectedTab
-      && captureState?.expectedTabId === expectedTabId
+    return captureState?.expectedSurface === expectedSurface
+      && captureState?.stateSurface === expectedSurface
       && captureState?.expectedPanelId === expectedPanelId
-      && captureState?.selectedTabIds?.length === 1
-      && captureState.selectedTabIds[0] === expectedTabId
-      && captureState?.ariaSelectedTabIds?.length === 1
-      && captureState.ariaSelectedTabIds[0] === expectedTabId
       && captureState?.visiblePanelIds?.length === 1
       && captureState.visiblePanelIds[0] === expectedPanelId
-      && captureState.selectedMatchesExpected === true
-      && captureState.ariaMatchesExpected === true
       && captureState.visiblePanelMatchesExpected === true;
   });
-  if (tabCaptureStatesSynced !== true || value.tabCaptureStatesSynced !== true) return "tabCaptureStatesSynced";
+  if (surfaceCaptureStatesSynced !== true || value.surfaceCaptureStatesSynced !== true) return "surfaceCaptureStatesSynced";
   const booleanKeys = [
     "noVisibleCompareEntrypoint",
     "canvasModeSwitchReachable",
-    "overviewTabReachable",
-    "selectedTabOnlyInSequentialFocus",
+    "tabButtonsRemoved",
     "panelScrollRegionFocusable",
     "panelScrollRegionScrollable",
     "metadataSelectable",
     "stateSummaryCopyable",
-    "tabCaptureStatesSynced",
+    "surfaceCaptureStatesSynced",
     "menuStateDiscoverable",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",
@@ -867,7 +820,7 @@ function describeShortTermDesignInteractionProofFailure(value) {
   ];
   const failedBoolean = booleanKeys.find((key) => value[key] !== true);
   if (failedBoolean) return failedBoolean;
-  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 6) return "focusTargetCount";
+  if (!Number.isInteger(value.focusTargetCount) || value.focusTargetCount < 5) return "focusTargetCount";
   return "unknown";
 }
 
@@ -1254,6 +1207,15 @@ function describeSmokeResultValidationFailure(value) {
   if (value.workbenchRegionMap !== undefined && !validateWorkbenchRegionMap(value.workbenchRegionMap)) {
     return `workbenchRegionMap:${describeWorkbenchRegionMapValidationFailure(value.workbenchRegionMap)}`;
   }
+  if (value.shortTermScreenshots !== undefined && typeof value.shortTermScreenshots !== "boolean") {
+    return "shortTermScreenshots";
+  }
+  if (value.shortTermLoadFailed !== undefined && typeof value.shortTermLoadFailed !== "boolean") {
+    return "shortTermLoadFailed";
+  }
+  if (value.shortTermSaveFailed !== undefined && typeof value.shortTermSaveFailed !== "boolean") {
+    return "shortTermSaveFailed";
+  }
   if (value.shortTermOpenFlowProof !== undefined && !validateShortTermOpenFlowProof(value.shortTermOpenFlowProof)) {
     return "shortTermOpenFlowProof";
   }
@@ -1263,14 +1225,17 @@ function describeSmokeResultValidationFailure(value) {
   if (value.shortTermSpecComparisonProof !== undefined && !validateShortTermSpecComparisonProof(value.shortTermSpecComparisonProof)) {
     return "shortTermSpecComparisonProof";
   }
-  if (value.shortTermTabKeyboardProof !== undefined && !validateShortTermTabKeyboardProof(value.shortTermTabKeyboardProof)) {
-    return "shortTermTabKeyboardProof";
+  if (value.shortTermRightSurfaceNavigationProof !== undefined && !validateShortTermRightSurfaceNavigationProof(value.shortTermRightSurfaceNavigationProof)) {
+    return "shortTermRightSurfaceNavigationProof";
   }
   if (value.shortTermDesignInteractionProof !== undefined && !validateShortTermDesignInteractionProof(value.shortTermDesignInteractionProof)) {
     return `shortTermDesignInteractionProof:${describeShortTermDesignInteractionProofFailure(value.shortTermDesignInteractionProof)}`;
   }
   if (value.shortTermReplaceableClassificationProof !== undefined && !validateShortTermReplaceableClassificationProof(value.shortTermReplaceableClassificationProof)) {
     return "shortTermReplaceableClassificationProof";
+  }
+  if (value.shortTermEmptyStateProof !== undefined && !validateShortTermEmptyStateProof(value.shortTermEmptyStateProof)) {
+    return "shortTermEmptyStateProof";
   }
   if (value.shortTermRuntimeTextBoundaryProof !== undefined && !validateShortTermRuntimeTextBoundaryProof(value.shortTermRuntimeTextBoundaryProof)) {
     return "shortTermRuntimeTextBoundaryProof";
@@ -4091,11 +4056,11 @@ async function finishSmoke(window, result) {
         "smoke"
       );
     }
-    if (result.shortTermTabKeyboardProof) {
+    if (result.shortTermRightSurfaceNavigationProof) {
       writeJsonProductArtifact(
-        "short-term-tab-keyboard-proof.json",
-        "short-term-tab-keyboard-proof",
-        result.shortTermTabKeyboardProof,
+        "short-term-right-surface-navigation-proof.json",
+        "short-term-right-surface-navigation-proof",
+        result.shortTermRightSurfaceNavigationProof,
         "smoke"
       );
     }
@@ -4165,9 +4130,9 @@ async function finishSmoke(window, result) {
     }
   }
   if (productSmokeMode) writeProductArtifactIndex();
-  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermLoadFailureProof, shortTermSpecComparisonProof, shortTermTabKeyboardProof, shortTermDesignInteractionProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermReplaceableClassificationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
+  const { p6InteractionTrace, diagnostics, ownerUsability, workbenchRegionMap, shortTermOpenFlowProof, shortTermLoadFailureProof, shortTermSpecComparisonProof, shortTermRightSurfaceNavigationProof, shortTermDesignInteractionProof, shortTermEmptyStateProof, shortTermRuntimeTextBoundaryProof, shortTermThumbnailProof, shortTermOptimizationProof, shortTermReplaceableClassificationProof, shortTermRenameProof, shortTermReplacementProof, ...summary } = result;
   const passed = Object.values(summary).every(Boolean);
-  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermLoadFailureProof: Boolean(shortTermLoadFailureProof), shortTermSpecComparisonProof: Boolean(shortTermSpecComparisonProof), shortTermTabKeyboardProof: Boolean(shortTermTabKeyboardProof), shortTermDesignInteractionProof: Boolean(shortTermDesignInteractionProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermReplaceableClassificationProof: Boolean(shortTermReplaceableClassificationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
+  const logPayload = { ...summary, passed, p6InteractionTrace: Boolean(p6InteractionTrace), ownerUsability: Boolean(ownerUsability), workbenchRegionMap: Boolean(workbenchRegionMap), shortTermOpenFlowProof: Boolean(shortTermOpenFlowProof), shortTermLoadFailureProof: Boolean(shortTermLoadFailureProof), shortTermSpecComparisonProof: Boolean(shortTermSpecComparisonProof), shortTermRightSurfaceNavigationProof: Boolean(shortTermRightSurfaceNavigationProof), shortTermDesignInteractionProof: Boolean(shortTermDesignInteractionProof), shortTermEmptyStateProof: Boolean(shortTermEmptyStateProof), shortTermRuntimeTextBoundaryProof: Boolean(shortTermRuntimeTextBoundaryProof), shortTermThumbnailProof: Boolean(shortTermThumbnailProof), shortTermOptimizationProof: Boolean(shortTermOptimizationProof), shortTermReplaceableClassificationProof: Boolean(shortTermReplaceableClassificationProof), shortTermRenameProof: Boolean(shortTermRenameProof), shortTermReplacementProof: Boolean(shortTermReplacementProof) };
   if (diagnostics) logPayload.diagnostics = diagnostics;
   console.log(`AUTO_SVGA_WEB_EXPERIMENT_SMOKE ${JSON.stringify(logPayload)}`);
   await cleanupRuntime();

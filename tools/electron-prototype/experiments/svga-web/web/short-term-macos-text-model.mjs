@@ -18,9 +18,7 @@ export function runtimeTextListView(model, textPreview) {
     texts,
     hasTextElements: texts.length > 0,
     emptyCopy: model?.textPreviewCopy || "当前文件没有可运行时预览的文本元素。",
-    summaryCopy: texts.length === 0
-      ? "未发现可运行时替换的 textKey。"
-      : textPreview ? "文本预览已应用，源 SVGA 字节未修改。" : `${texts.length} 个文本元素可运行时预览。`
+    summaryCopy: `(${texts.length})`
   };
 }
 

@@ -39,54 +39,6 @@
   font-weight: 650;
 }
 
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-  padding: calc(var(--asv-tab-padding) - 1px);
-  border-bottom: 1px solid var(--asv-border);
-  background: var(--asv-panel-chrome);
-  box-shadow: var(--asv-shadow-panel-highlight);
-}
-
-.tabs button {
-  position: relative;
-  min-height: var(--asv-tab-height);
-  padding: 0 var(--asv-space-1);
-  border: 0;
-  border-radius: var(--asv-radius-sm);
-  background: transparent;
-  color: var(--asv-muted);
-  font-size: var(--asv-type-size-body);
-  font-weight: 560;
-}
-
-.tabs button.isSelected {
-  background: var(--asv-tab-selected-bg);
-  box-shadow: none;
-  color: var(--asv-text);
-  font-weight: 650;
-}
-
-.tabs button.isSelected::after {
-  content: "";
-  position: absolute;
-  inset-inline: var(--asv-space-2);
-  bottom: var(--asv-space-1);
-  height: var(--asv-tab-indicator-height);
-  border-radius: var(--asv-status-strip-radius);
-  background: var(--asv-action);
-}
-
-.tabs button:focus-visible {
-  outline: none;
-  box-shadow: var(--asv-focus-inset);
-}
-
-.tabs button.isSelected:focus-visible {
-  box-shadow: var(--asv-focus-inset);
-}
-
 .renameEditor {
   display: grid;
   gap: var(--asv-space-1);
