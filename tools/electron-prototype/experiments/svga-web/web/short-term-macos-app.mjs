@@ -12,8 +12,7 @@ import {
 } from "./short-term-macos-optimization-renderers.mjs";
 import {
   renderDiscardMessage,
-  renderFileHeader,
-  renderLoadingMessage
+  renderFileHeader
 } from "./short-term-macos-state-renderers.mjs";
 import {
   applyRuntimeTextOverlay,
@@ -86,7 +85,6 @@ import {
   refreshShortTermRecentFiles
 } from "./short-term-macos-recent-files-surface.mjs";
 import {
-  hideShortTermSaveBanner,
   shortTermCurrentStateSummary,
   showShortTermFailure,
   showShortTermOperationFailure
@@ -132,6 +130,12 @@ import {
   setShortTermActiveOutput,
   showShortTermOutputBanner
 } from "./short-term-macos-output-surface.mjs";
+import {
+  clearShortTermCurrentFile,
+  prepareShortTermSourceLoad,
+  renderShortTermRecentOpenLoading,
+  resetShortTermLaunchSurface
+} from "./short-term-macos-file-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -202,8 +206,7 @@ async function openFromHostDialog() {
 async function openRecentFromMenu(recentFileId) {
   if (!bridge?.openRecentSvgaFile) return;
   if (!(await confirmDiscardUnsavedOutput("打开最近文件会放弃当前未保存的 SVGA 输出。"))) return;
-  setView("loading");
-  renderLoadingMessage(nodes, "正在打开最近文件。");
+  renderShortTermRecentOpenLoading({ nodes, setView });
   const opened = await bridge.openRecentSvgaFile(recentFileId);
   if (!opened || opened.status === "cancelled") return setView(state.sourceBytes ? "preview" : "launch");
   if (opened.status === "missing") {
@@ -251,18 +254,15 @@ async function loadDroppedFile(file) {
 }
 
 async function loadOpenedSource({ bytes, displayName, sourceId }) {
-  if (!bytes?.byteLength) throw new Error("文件为空。");
-  clearTransientOutput();
-  state.sourceBytes = new Uint8Array(bytes);
-  state.previewBytes = new Uint8Array(bytes);
-  state.sourceId = sourceId || "";
-  state.displayName = displayName || "local.svga";
-  state.selectedImageKey = "";
-  state.renameImageKey = "";
-  state.textPreview = "";
-  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
-  setView("loading");
-  renderLoadingMessage(nodes, "解析文件并准备预览。");
+  prepareShortTermSourceLoad({
+    nodes,
+    state,
+    bytes,
+    displayName,
+    sourceId,
+    clearTransientOutput,
+    setView
+  });
   try {
     const model = await inspectShortTerm(bytes, state.displayName);
     state.model = model;
@@ -277,29 +277,19 @@ async function loadOpenedSource({ bytes, displayName, sourceId }) {
 }
 
 function clearCurrentFile() {
-  stopAllPlayback();
-  state.sourceBytes = undefined;
-  state.previewBytes = undefined;
-  state.sourceId = "";
-  state.displayName = "";
-  state.model = undefined;
-  state.selectedImageKey = "";
-  state.selectedTextKey = "";
-  state.renameImageKey = "";
-  state.activeOutput = undefined;
+  clearShortTermCurrentFile({ state, stopAllPlayback });
 }
 
 async function closeFile() {
   if (!(await confirmDiscardUnsavedOutput("关闭文件会放弃当前未保存的 SVGA 输出。"))) return;
-  clearCurrentFile();
-  state.mode = "preview";
-  state.tab = "overview";
-  renderFileHeader(nodes, "等待打开文件", "-");
-  hideShortTermSaveBanner(nodes);
-  setTab("overview");
-  applyModeButtons("preview");
-  setView("launch");
-  refreshRecentFiles().catch(() => {});
+  resetShortTermLaunchSurface({
+    nodes,
+    state,
+    stopAllPlayback,
+    setTab,
+    setView,
+    refreshRecentFiles
+  });
 }
 
 async function inspectShortTerm(bytes, name) {

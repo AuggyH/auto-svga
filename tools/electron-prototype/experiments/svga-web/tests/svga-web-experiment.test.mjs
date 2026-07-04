@@ -1054,6 +1054,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermActionBridge = await readFile(path.join(experimentRoot, "web/short-term-macos-action-bridge.mjs"), "utf8");
   const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
   const shortTermFeedbackSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-surface.mjs"), "utf8");
+  const shortTermFileSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-file-surface.mjs"), "utf8");
   const shortTermInlineStatusRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-inline-status-renderers.mjs"), "utf8");
   const shortTermLaunchRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-launch-renderers.mjs"), "utf8");
   const shortTermRecentFilesModel = await readFile(path.join(experimentRoot, "web/short-term-macos-recent-files-model.mjs"), "utf8");
@@ -1274,6 +1275,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-text-renderers\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-replaceable-surface\.mjs"/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-output-surface\.mjs"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-file-surface\.mjs"/);
   assert.match(shortTermCompareSurface, /applyCompareSlotView/);
   assert.match(shortTermCompareSurface, /applyCompareTraceView/);
   assert.match(shortTermEntry, /applyRuntimeTextOverlay/);
@@ -1288,7 +1290,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /renderDiscardMessage/);
   assert.match(shortTermFeedbackSurface, /renderFailureMessage/);
   assert.match(shortTermEntry, /renderFileHeader/);
-  assert.match(shortTermEntry, /renderLoadingMessage/);
+  assert.match(shortTermFileSurface, /renderLoadingMessage/);
   assert.match(shortTermEntry, /renderOptimizationFindings/);
   assert.match(shortTermEntry, /renderOverviewFacts/);
   assert.match(shortTermReplaceableSurface, /renderReplaceableImages/);
@@ -1462,14 +1464,19 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackModel, /escapeHtml\(title\)/);
   assert.match(shortTermFeedbackModel, /escapeHtml\(message \|\| ""\)/);
   assert.match(shortTermFeedbackModel, /源文件没有被修改。/);
-  assert.match(shortTermEntry, /renderLoadingMessage\(nodes, "正在打开最近文件。"\)/);
-  assert.match(shortTermEntry, /renderLoadingMessage\(nodes, "解析文件并准备预览。"\)/);
-  assert.match(shortTermEntry, /renderFileHeader\(nodes, "等待打开文件", "-"\)/);
+  assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, "正在打开最近文件。"\)/);
+  assert.match(shortTermFileSurface, /renderLoadingMessage\(nodes, "解析文件并准备预览。"\)/);
+  assert.match(shortTermFileSurface, /renderFileHeader\(nodes, "等待打开文件", "-"\)/);
   assert.match(shortTermEntry, /renderFileHeader\(nodes, state\.displayName, overviewView\.playbackMeta\)/);
   assert.match(shortTermEntry, /renderMessage: \(copy\) => renderDiscardMessage\(nodes, copy\)/);
   assert.match(shortTermDialogModel, /renderMessage\(message\)/);
   assert.match(shortTermFeedbackSurface, /renderFailureMessage\(nodes, sourceUnmodifiedMessage\(message\)\)/);
+  assert.match(shortTermFileSurface, /state\.sourceBytes = new Uint8Array\(bytes\)/);
+  assert.match(shortTermFileSurface, /state\.sourceBytes = undefined/);
+  assert.match(shortTermFileSurface, /clearRuntimeTextOverlay\(nodes\.runtimeTextOverlay\)/);
+  assert.match(shortTermFileSurface, /hideShortTermSaveBanner\(nodes\)/);
   assert.doesNotMatch(shortTermEntry, /nodes\.(loadingMessage|fileIdentity|playbackMeta|discardMessage|errorMessage)\.textContent\s*=/);
+  assert.doesNotMatch(shortTermEntry, /renderLoadingMessage\(nodes, "正在打开最近文件。"\)|renderLoadingMessage\(nodes, "解析文件并准备预览。"\)|renderFileHeader\(nodes, "等待打开文件", "-"\)|state\.sourceBytes = new Uint8Array\(bytes\)|state\.sourceBytes = undefined|hideShortTermSaveBanner\(nodes\)/);
   assert.match(shortTermStateRenderers, /nodes\.loadingMessage\.textContent = copy/);
   assert.match(shortTermStateRenderers, /nodes\.fileIdentity\.textContent = displayName/);
   assert.match(shortTermStateRenderers, /nodes\.playbackMeta\.textContent = playbackMeta/);
