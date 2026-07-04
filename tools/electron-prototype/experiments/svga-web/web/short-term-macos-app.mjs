@@ -20,10 +20,6 @@ import {
   renderCompareInfoPanel
 } from "./short-term-macos-compare-renderers.mjs";
 import {
-  renderLaunchRecentFiles,
-  renderRecentFilesUnavailable
-} from "./short-term-macos-launch-renderers.mjs";
-import {
   renderAssetList,
   renderOverviewFacts
 } from "./short-term-macos-overview-renderers.mjs";
@@ -62,7 +58,6 @@ import {
   buildCurrentStateSummary,
   sourceUnmodifiedMessage
 } from "./short-term-macos-feedback-model.mjs";
-import { visibleLaunchRecentRecords } from "./short-term-macos-recent-files-model.mjs";
 import {
   createSaveFailureProofActiveOutput,
   saveProofImageKey,
@@ -131,10 +126,6 @@ import {
   replaceShortTermImageAsset
 } from "./short-term-macos-api-client.mjs";
 import {
-  clearRecentSvgaFiles,
-  getRecentSvgaFiles
-} from "./short-term-macos-host-client.mjs";
-import {
   confirmDiscardUnsavedOutput as confirmDiscardDialogOutput,
   showDialog
 } from "./short-term-macos-dialog-model.mjs";
@@ -151,6 +142,10 @@ import { collectShortTermNodes } from "./short-term-macos-nodes.mjs";
 import { bindShortTermInteractionEvents } from "./short-term-macos-event-bindings.mjs";
 import { installShortTermActionBridge } from "./short-term-macos-action-bridge.mjs";
 import { renderShortTermCommandSurface } from "./short-term-macos-command-surface.mjs";
+import {
+  clearShortTermRecentFiles,
+  refreshShortTermRecentFiles
+} from "./short-term-macos-recent-files-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -837,25 +832,11 @@ function openTab(tab) {
 }
 
 async function refreshRecentFiles() {
-  const result = await getRecentSvgaFiles(bridge);
-  if (!result.available) {
-    renderRecentFilesUnavailable({
-      listNode: nodes.recentList,
-      noteNode: nodes.recentNote,
-      clearButton: nodes.clearRecentButton
-    });
-    return;
-  }
-  renderLaunchRecentFiles({
-    listNode: nodes.recentList,
-    noteNode: nodes.recentNote,
-    clearButton: nodes.clearRecentButton
-  }, visibleLaunchRecentRecords(result.value));
+  await refreshShortTermRecentFiles({ bridge, nodes });
 }
 
 async function clearRecentFiles() {
-  await clearRecentSvgaFiles(bridge);
-  await refreshRecentFiles();
+  await clearShortTermRecentFiles({ bridge, nodes });
 }
 
 function renderCommandState() {
