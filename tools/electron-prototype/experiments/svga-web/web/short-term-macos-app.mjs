@@ -28,13 +28,7 @@ import {
   renderOptimizationFindings
 } from "./short-term-macos-optimization-renderers.mjs";
 import {
-  clearSaveFeedbackBanner,
-  hideSaveFeedbackBanner,
-  showSaveFeedbackBanner
-} from "./short-term-macos-save-renderers.mjs";
-import {
   renderDiscardMessage,
-  renderFailureMessage,
   renderFileHeader,
   renderLoadingMessage
 } from "./short-term-macos-state-renderers.mjs";
@@ -54,10 +48,6 @@ import {
   renderEditReservedLayers
 } from "./short-term-macos-edit-reserved-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
-import {
-  buildCurrentStateSummary,
-  sourceUnmodifiedMessage
-} from "./short-term-macos-feedback-model.mjs";
 import {
   createSaveFailureProofActiveOutput,
   saveProofImageKey,
@@ -146,6 +136,14 @@ import {
   clearShortTermRecentFiles,
   refreshShortTermRecentFiles
 } from "./short-term-macos-recent-files-surface.mjs";
+import {
+  clearShortTermSaveBanner,
+  hideShortTermSaveBanner,
+  shortTermCurrentStateSummary,
+  showShortTermFailure,
+  showShortTermOperationFailure,
+  showShortTermSaveBanner
+} from "./short-term-macos-feedback-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -309,7 +307,7 @@ async function closeFile() {
   state.mode = "preview";
   state.tab = "overview";
   renderFileHeader(nodes, "等待打开文件", "-");
-  hideSaveFeedbackBanner(nodes.saveBanner);
+  hideShortTermSaveBanner(nodes);
   setTab("overview");
   applyModeButtons("preview");
   setView("launch");
@@ -607,7 +605,7 @@ function setActiveOutput({ kind, bytes, suggestedName, title, summary, details }
 function clearTransientOutput() {
   state.activeOutput = undefined;
   state.saveStatus = "idle";
-  clearSaveFeedbackBanner(nodes.saveBanner);
+  clearShortTermSaveBanner(nodes);
   renderCommandState();
 }
 
@@ -848,36 +846,19 @@ function renderCommandState() {
 }
 
 function showSaveBanner(title, message, tone) {
-  showSaveFeedbackBanner(nodes.saveBanner, title, message, tone);
+  showShortTermSaveBanner({ nodes, title, message, tone });
 }
 
 function showFailure(error) {
-  const message = error instanceof Error ? error.message : String(error);
-  renderFailureMessage(nodes, sourceUnmodifiedMessage(message));
-  setView("failed");
+  showShortTermFailure({ nodes, setView }, error);
 }
 
 function showOperationFailure(title, error) {
-  const message = error instanceof Error ? error.message : String(error);
-  if (state.sourceBytes && !["preview", "compare", "edit"].includes(state.view)) {
-    setMode("preview");
-  }
-  showSaveBanner(title, sourceUnmodifiedMessage(message));
-  state.saveStatus = state.activeOutput ? "dirty" : "idle";
-  renderCommandState();
+  showShortTermOperationFailure({ nodes, state, setMode, renderCommandState }, title, error);
 }
 
 function currentStateSummary() {
-  return buildCurrentStateSummary({
-    view: state.view,
-    displayName: state.displayName,
-    playbackMeta: nodes.playbackMeta.textContent,
-    activeOutput: state.activeOutput,
-    saveBannerVisible: !nodes.saveBanner.hidden,
-    saveBannerText: nodes.saveBanner.textContent,
-    errorVisible: state.view === "failed",
-    errorText: nodes.errorMessage.textContent
-  });
+  return shortTermCurrentStateSummary({ nodes, state });
 }
 
 bindShortTermInteractionEvents({
