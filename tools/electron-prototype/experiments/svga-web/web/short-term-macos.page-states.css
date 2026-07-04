@@ -171,10 +171,6 @@
     gap: var(--asv-space-1);
   }
 
-  .factGrid {
-    gap: var(--asv-space-2);
-  }
-
   .sectionHead {
     align-items: center;
   }
