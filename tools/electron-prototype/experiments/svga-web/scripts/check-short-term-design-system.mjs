@@ -95,6 +95,13 @@ const requiredPageStates = [
   "Edit reserved"
 ];
 
+const disallowedLaunchCopyPatterns = [
+  /本地预览/,
+  /不上传/,
+  /仅显示文件名/,
+  /父级位置/
+];
+
 const failures = [];
 const checks = [];
 
@@ -144,6 +151,7 @@ function collectDynamicDomUsage(source) {
 
 async function main() {
   const page = await readFile(path.join(webRoot, "index.html"), "utf8");
+  const launchRenderer = await readFile(path.join(webRoot, "short-term-macos-launch-renderers.mjs"), "utf8");
   const designManifest = await readFile(path.join(repoRoot, "DESIGN.md"), "utf8");
   const executionPlan = await readFile(path.join(repoRoot, "docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md"), "utf8");
 
@@ -172,6 +180,17 @@ async function main() {
   record("required-page-state-trace", missingPageStates.length === 0, {
     missingPageStates,
     pageStateCount: pageStates.length
+  });
+
+  const launchCopySources = [page, launchRenderer].join("\n");
+  const disallowedLaunchCopy = disallowedLaunchCopyPatterns
+    .filter((pattern) => pattern.test(launchCopySources))
+    .map((pattern) => pattern.source);
+  record("launch-page-copy-stays-minimal", disallowedLaunchCopy.length === 0
+    && /<p>拖入 SVGA 文件<\/p>/.test(page)
+    && /<button class="largeOpenButton"[^>]*>打开文件<\/button>/.test(page)
+    && /<p class="recentNote" id="recentNote" hidden><\/p>/.test(page), {
+    disallowedLaunchCopy
   });
 
   const cssFiles = (await readdir(webRoot))
