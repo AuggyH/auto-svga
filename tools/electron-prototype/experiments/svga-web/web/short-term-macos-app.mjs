@@ -119,15 +119,6 @@ import {
   confirmDiscardUnsavedOutput as confirmDiscardDialogOutput,
   showDialog
 } from "./short-term-macos-dialog-model.mjs";
-import {
-  clearCanvas as clearPlaybackCanvas,
-  mountPlayback as mountSvgaPlayback,
-  replayPrimaryPlayback,
-  stopAllPlayback as stopAllSvgaPlayback,
-  stopPlayback as stopSvgaPlayback,
-  svgaWebPlayerPrototype,
-  togglePrimaryPlayback as togglePrimarySvgaPlayback
-} from "./short-term-macos-playback-model.mjs";
 import { collectShortTermNodes } from "./short-term-macos-nodes.mjs";
 import { bindShortTermInteractionEvents } from "./short-term-macos-event-bindings.mjs";
 import { installShortTermActionBridge } from "./short-term-macos-action-bridge.mjs";
@@ -144,6 +135,15 @@ import {
   showShortTermOperationFailure,
   showShortTermSaveBanner
 } from "./short-term-macos-feedback-surface.mjs";
+import {
+  clearShortTermPlaybackCanvas,
+  mountShortTermPlayback,
+  replayShortTermPrimaryPlayback,
+  shortTermPlayerPrototype,
+  stopAllShortTermPlayback,
+  stopShortTermPlayback,
+  toggleShortTermPrimaryPlayback
+} from "./short-term-macos-playback-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -768,34 +768,34 @@ async function enterGeneralCompare() {
 }
 
 async function mountPlayback(key, canvas, bytes, options = {}) {
-  return mountSvgaPlayback({
+  return mountShortTermPlayback({
+    state,
     key,
     canvas,
     bytes,
     options,
-    playbackState: state,
     onPlaybackStateChange: renderCommandState
   });
 }
 
 function stopPlayback(key) {
-  stopSvgaPlayback({ key, playbackState: state });
+  stopShortTermPlayback({ state, key });
 }
 
 function stopAllPlayback() {
-  stopAllSvgaPlayback(state);
+  stopAllShortTermPlayback(state);
 }
 
 function togglePrimaryPlayback() {
-  togglePrimarySvgaPlayback(state, renderCommandState);
+  toggleShortTermPrimaryPlayback({ state, onPlaybackStateChange: renderCommandState });
 }
 
 function replayPrimary() {
-  replayPrimaryPlayback(state, renderCommandState);
+  replayShortTermPrimaryPlayback({ state, onPlaybackStateChange: renderCommandState });
 }
 
 function clearCanvas(canvas) {
-  clearPlaybackCanvas(canvas);
+  clearShortTermPlaybackCanvas(canvas);
 }
 
 function setTab(tab, options = {}) {
@@ -1331,7 +1331,7 @@ async function runShortTermSmokeIfRequested() {
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const recoverySourceSha256After = await sha256Hex(state.sourceBytes);
   const playbackFailureSourceSha256Before = await sha256Hex(state.sourceBytes);
-  const playerPrototype = svgaWebPlayerPrototype();
+  const playerPrototype = shortTermPlayerPrototype();
   const originalPlayerMount = playerPrototype.mount;
   try {
     playerPrototype.mount = async function playbackFailureSmokeProbe() {

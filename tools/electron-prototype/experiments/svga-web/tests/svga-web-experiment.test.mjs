@@ -1080,6 +1080,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermHostClient = await readFile(path.join(experimentRoot, "web/short-term-macos-host-client.mjs"), "utf8");
   const shortTermDialogModel = await readFile(path.join(experimentRoot, "web/short-term-macos-dialog-model.mjs"), "utf8");
   const shortTermPlaybackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-playback-model.mjs"), "utf8");
+  const shortTermPlaybackSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-playback-surface.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
   const desktopEntry = await readFile(path.join(experimentRoot, "web/desktop-product-entry.mjs"), "utf8");
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
@@ -1659,7 +1660,17 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEventBindings, /if \(hasOpenDialog\(documentRef\)\) \{\s+if \(event\.key === "Escape"\) closeOpenDialog\(documentRef, "cancel"\);\s+return;\s+\}/);
   assert.match(shortTermActionBridge, /closeOpenDialog\(documentRef, "cancel"\)/);
   assert.doesNotMatch(shortTermEntry, /function showDialog|dialog\.showModal\(\)|document\.querySelector\("dialog\[open\]"\)/);
-  assert.match(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-playback-surface\.mjs"/);
+  assert.match(shortTermPlaybackSurface, /from "\.\/short-term-macos-playback-model\.mjs"/);
+  assert.match(shortTermPlaybackSurface, /export async function mountShortTermPlayback/);
+  assert.match(shortTermPlaybackSurface, /playbackState: state/);
+  assert.match(shortTermPlaybackSurface, /export function stopShortTermPlayback/);
+  assert.match(shortTermPlaybackSurface, /export function stopAllShortTermPlayback/);
+  assert.match(shortTermPlaybackSurface, /export function toggleShortTermPrimaryPlayback/);
+  assert.match(shortTermPlaybackSurface, /export function replayShortTermPrimaryPlayback/);
+  assert.match(shortTermPlaybackSurface, /export function clearShortTermPlaybackCanvas/);
+  assert.match(shortTermPlaybackSurface, /export function shortTermPlayerPrototype/);
+  assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);
   assert.match(shortTermPlaybackModel, /export async function mountPlayback/);
   assert.match(shortTermPlaybackModel, /export function stopPlayback/);
   assert.match(shortTermPlaybackModel, /export function stopAllPlayback/);
