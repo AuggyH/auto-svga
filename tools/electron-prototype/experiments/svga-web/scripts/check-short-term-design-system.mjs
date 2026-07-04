@@ -95,6 +95,15 @@ const requiredPageStates = [
   "Edit reserved"
 ];
 
+const expectedAppEntryImports = [
+  "./short-term-macos-nodes.mjs",
+  "./short-term-macos-event-bindings.mjs",
+  "./short-term-macos-action-bridge.mjs",
+  "./short-term-macos-state.mjs",
+  "./short-term-macos-controller.mjs",
+  "./short-term-macos-smoke-runner.mjs"
+];
+
 const disallowedLaunchCopyPatterns = [
   /本地预览/,
   /不上传/,
@@ -176,6 +185,7 @@ function collectPatternViolations(file, source, patterns) {
 
 async function main() {
   const page = await readFile(path.join(webRoot, "index.html"), "utf8");
+  const appEntry = await readFile(path.join(webRoot, "short-term-macos-app.mjs"), "utf8");
   const launchRenderer = await readFile(path.join(webRoot, "short-term-macos-launch-renderers.mjs"), "utf8");
   const designManifest = await readFile(path.join(repoRoot, "DESIGN.md"), "utf8");
   const executionPlan = await readFile(path.join(repoRoot, "docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md"), "utf8");
@@ -269,6 +279,17 @@ async function main() {
     && /min-height:\s*720px/.test(baseCss)
     && /@media \(max-width: 1080px\)/.test(pageStatesCss)
     && /@media \(max-height: 780px\)/.test(pageStatesCss));
+
+  const appEntryImports = [...appEntry.matchAll(/from "([^"]+)"/g)].map((match) => match[1]);
+  const appEntryLineCount = appEntry.trimEnd().split("\n").length;
+  record("app-entry-stays-assembly-only", appEntryLineCount <= 40
+    && JSON.stringify(appEntryImports) === JSON.stringify(expectedAppEntryImports)
+    && /createShortTermInitialState/.test(appEntry)
+    && /createShortTermAppController/.test(appEntry)
+    && !/function\s+/.test(appEntry), {
+    appEntryLineCount,
+    appEntryImports
+  });
 
   for (const mjsFile of shortTermMjsFiles) {
     const source = await readFile(path.join(webRoot, mjsFile), "utf8");
