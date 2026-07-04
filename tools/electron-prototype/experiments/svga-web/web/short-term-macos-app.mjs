@@ -7,10 +7,6 @@ import {
   renderOverviewFacts
 } from "./short-term-macos-overview-renderers.mjs";
 import {
-  prependOptimizationResult,
-  renderOptimizationFindings
-} from "./short-term-macos-optimization-renderers.mjs";
-import {
   renderDiscardMessage,
   renderFileHeader
 } from "./short-term-macos-state-renderers.mjs";
@@ -18,10 +14,6 @@ import {
   renderEditReservedLayers
 } from "./short-term-macos-edit-reserved-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
-import {
-  optimizationResultTone,
-  optimizationTabView
-} from "./short-term-macos-optimization-model.mjs";
 import { overviewTabView } from "./short-term-macos-overview-model.mjs";
 import { editReservedLayerListView } from "./short-term-macos-edit-reserved-model.mjs";
 import {
@@ -53,7 +45,6 @@ import {
 } from "./short-term-macos-byte-model.mjs";
 import {
   inspectShortTermSvga,
-  optimizeShortTermSvga,
   probeInvalidShortTermInspection,
   renameShortTermImageKey,
   replaceShortTermImageAsset
@@ -84,13 +75,10 @@ import {
   toggleShortTermPrimaryPlayback
 } from "./short-term-macos-playback-surface.mjs";
 import {
-  markShortTermCompareSlotLoaded,
   renderShortTermCompareInfo,
   renderShortTermCompareSlot,
   renderShortTermGeneralComparePlaceholder,
-  renderShortTermGeneralCompareTrace,
-  renderShortTermOptimizationCompareResult,
-  renderShortTermOptimizationCompareTrace
+  renderShortTermGeneralCompareTrace
 } from "./short-term-macos-compare-surface.mjs";
 import {
   closeShortTermResourceMenu,
@@ -130,6 +118,11 @@ import {
   editShortTermRuntimeTextPreview,
   resetShortTermRuntimeTextPreview
 } from "./short-term-macos-runtime-text-surface.mjs";
+import {
+  renderShortTermOptimization,
+  runShortTermOptimizationWorkflow,
+  showShortTermOptimizationComparison
+} from "./short-term-macos-optimization-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -291,35 +284,20 @@ async function inspectShortTerm(bytes, name) {
 }
 
 async function runOptimization() {
-  if (!state.sourceBytes) return;
-  if (!(await confirmDiscardUnsavedOutput("执行安全优化会放弃当前未保存的 SVGA 输出。"))) return;
-  setTab("optimization");
-  showSaveBanner("正在执行安全优化。", "只处理当前可安全执行的项目。");
-  try {
-    const result = await optimizeShortTermSvga({
-      bytes: state.sourceBytes,
-      name: state.displayName,
-      reportToken: bridge?.reportToken
-    });
-    const optimizedBytes = result.optimizedSvgaBase64 ? fromBase64(result.optimizedSvgaBase64) : undefined;
-    if (!optimizedBytes?.byteLength || result.optimization?.status !== "optimized") {
-      showSaveBanner(result.optimization?.resultTitle || "没有可安全执行的优化项。", result.optimization?.resultSummary || "保存保持关闭。");
-      renderOptimizationResult(result.optimization);
-      return;
-    }
-    state.previewBytes = optimizedBytes;
-    setActiveOutput({
-      kind: "optimization",
-      bytes: optimizedBytes,
-      suggestedName: suffixName(state.displayName, "optimized"),
-      title: result.optimization.resultTitle,
-      summary: result.optimization.resultSummary,
-      details: result.optimization
-    });
-    renderOptimizationCompare(result.optimization, optimizedBytes);
-  } catch (error) {
-    showOperationFailure("优化未完成。", error);
-  }
+  return runShortTermOptimizationWorkflow({
+    bridge,
+    nodes,
+    state,
+    confirmDiscardUnsavedOutput,
+    setTab,
+    setView,
+    showSaveBanner,
+    setActiveOutput,
+    setCompareSlot,
+    renderCompareInfo,
+    mountPlayback,
+    showOperationFailure
+  });
 }
 
 async function renameSelectedImageKey() {
@@ -524,14 +502,7 @@ function renderPreviewModel() {
 }
 
 function renderOptimization(model) {
-  if (!model) return;
-  renderOptimizationFindings(nodes, optimizationTabView(model));
-}
-
-function renderOptimizationResult(model) {
-  if (!model) return;
-  const tone = optimizationResultTone(model);
-  prependOptimizationResult(nodes, model.resultTitle, model.resultSummary, tone);
+  renderShortTermOptimization({ nodes, model });
 }
 
 function renderReplaceables(model) {
@@ -570,30 +541,15 @@ function renderEditReserved() {
   renderEditReservedLayers(nodes, editReservedLayerListView(state.model), state.model);
 }
 
-async function renderOptimizationCompare(model, optimizedBytes) {
-  setView("compare");
-  setOptimizationCompareTrace();
-  setCompareSlot("A", state.displayName || "原始文件", state.model);
-  setCompareSlot("B", model.resultTitle || "优化结果", undefined, "优化副本");
-  renderCompareInfo("A", "原始文件", state.model, state.displayName);
-  renderShortTermOptimizationCompareResult({ nodes, model });
-  await Promise.all([
-    mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes),
-    mountPlayback("compareB", nodes.compareCanvasB, optimizedBytes)
-  ]);
-  markShortTermCompareSlotLoaded({ nodes, slot: "B" });
-}
-
 async function showOptimizationComparison() {
-  if (state.activeOutput?.kind !== "optimization" || !state.activeOutput.bytes?.byteLength) return;
-  await renderOptimizationCompare(
-    state.activeOutput.details ?? {
-      resultTitle: state.activeOutput.title || "优化结果",
-      resultSummary: state.activeOutput.summary || "已生成优化副本。",
-      metrics: []
-    },
-    state.activeOutput.bytes
-  );
+  await showShortTermOptimizationComparison({
+    nodes,
+    state,
+    setView,
+    setCompareSlot,
+    renderCompareInfo,
+    mountPlayback
+  });
 }
 
 function setCompareSlot(slot, title, model, fallbackMeta = "") {
@@ -602,10 +558,6 @@ function setCompareSlot(slot, title, model, fallbackMeta = "") {
 
 function setGeneralCompareTrace() {
   renderShortTermGeneralCompareTrace(nodes);
-}
-
-function setOptimizationCompareTrace() {
-  renderShortTermOptimizationCompareTrace(nodes);
 }
 
 function renderCompareInfo(slot, title, model, displayName, actions = []) {
