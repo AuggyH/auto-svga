@@ -60,11 +60,13 @@ const requirements = [
   {
     id: "S4",
     title: "Show production-spec comparison inside Overview",
-    summary: "Overview shows current values, production requirements, status, and active spec profile without exposing a separate spec module.",
+    summary: "Overview shows current values and status without exposing target thresholds or a separate spec module.",
     proof: "short-term-spec-comparison-proof.json",
     passWhen: (proof, ctx) => proof?.passed === true
       && proof?.profileId === "production_target"
-      && proof?.actualRequirementPairsVisible === true
+      && proof?.actualValuesVisible === true
+      && proof?.defaultThresholdsHidden === true
+      && proof?.optimizationStatusVisible === true
       && proof?.separateProductionSpecModuleExposed === false
       && ctx.hasArtifact("short-term-preview-overview.png"),
     partialWhen: (_proof, ctx) => ctx.hasArtifact("short-term-preview-overview.png"),

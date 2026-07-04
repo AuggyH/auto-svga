@@ -4,10 +4,11 @@ export function overviewVisibleFacts(model) {
 }
 
 export function renderOverviewFactCellHtml(fact) {
+  const status = overviewStatusCopy(fact.status);
   return `
-    <strong>${escapeHtml(fact.value)}</strong>
     <span>${escapeHtml(fact.label)}</span>
-    <small><b>${escapeHtml(statusCopy(fact.status))}</b>${escapeHtml(fact.requirement)}</small>
+    <strong>${escapeHtml(fact.value)}</strong>
+    ${status ? `<small><b>${escapeHtml(status)}</b></small>` : ""}
   `;
 }
 
@@ -97,6 +98,14 @@ export function statusCopy(status) {
     fail: "超出",
     unknown: "未知"
   }[status] || "未知";
+}
+
+export function overviewStatusCopy(status) {
+  return {
+    warning: "可优化",
+    fail: "可优化",
+    unknown: "未知"
+  }[status] || "";
 }
 
 export function dispositionCopy(disposition) {

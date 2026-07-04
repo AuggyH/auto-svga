@@ -388,12 +388,9 @@ canvas {
 .factGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
+  gap: var(--asv-space-4) var(--asv-space-3);
   overflow: hidden;
-  border-top: 1px solid var(--asv-subtle-border);
-  border-left: 1px solid var(--asv-subtle-border);
-  border-radius: var(--asv-radius-sm);
-  background: var(--asv-fact-bg);
+  background: transparent;
 }
 
 .resultGroup {

@@ -1223,9 +1223,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermComponents, /\.tabs/);
   assert.match(shortTermComponents, /\.factCell/);
   assert.match(shortTermComponents, /\.factCell\s*\{[^}]*align-content: center/s);
-  assert.match(shortTermComponents, /\.factCell\s*\{[^}]*border-right: 1px solid var\(--asv-subtle-border\)/s);
+  assert.match(shortTermComponents, /\.factCell\s*\{[^}]*padding: 0/s);
   assert.match(shortTermComponents, /\.factCell\s*\{[^}]*box-shadow: none/s);
   assert.match(shortTermComponents, /\.factCell:nth-child\(5\)\s*\{[^}]*grid-column: 1 \/ -1/s);
+  assert.match(shortTermComponents, /\.factCell::before\s*\{[^}]*display: none/s);
   assert.match(shortTermComponents, /\.factCell small\s*\{[^}]*margin-top: var\(--asv-fact-cell-meta-gap\)/s);
   assert.match(shortTermComponents, /\.assetRow/);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
@@ -1845,7 +1846,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-load-failure-proof"/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermSpecComparisonProof/);
   assert.match(shortTermSmokeProofModel, /short-term-spec-comparison-proof/);
-  assert.match(shortTermSmokeProofModel, /actualRequirementPairsVisible/);
+  assert.match(shortTermSmokeProofModel, /actualValuesVisible/);
+  assert.match(shortTermSmokeProofModel, /defaultThresholdsHidden/);
+  assert.match(shortTermSmokeProofModel, /optimizationStatusVisible/);
   assert.match(shortTermSmokeRunner, /collectShortTermSpecComparisonProof/);
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-spec-comparison-proof"/);
   assert.match(shortTermSmokeProofModel, /short-term-tab-keyboard-proof/);

@@ -16,6 +16,9 @@ export function createSmokeArtifactCapture(bridge) {
 }
 
 export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid, model, tab }) {
+  const factGridCopy = factGrid.textContent || "";
+  const thresholdCopies = overviewFactRows.map((fact) => fact.requirement).filter(Boolean);
+  const optimizableRows = factGrid.querySelectorAll(".factCell[data-status='warning'], .factCell[data-status='fail']");
   const proof = {
     schemaVersion: 1,
     proofId: "short-term-spec-comparison-proof",
@@ -32,8 +35,11 @@ export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid
       requirement: fact.requirement,
       status: fact.status
     })),
-    actualRequirementPairsVisible: overviewFactRows.length > 0
-      && overviewFactRows.every((fact) => Boolean(fact.value) && Boolean(fact.requirement)),
+    actualValuesVisible: overviewFactRows.length > 0
+      && overviewFactRows.every((fact) => Boolean(fact.value) && factGridCopy.includes(fact.value)),
+    defaultThresholdsHidden: thresholdCopies.every((copy) => !factGridCopy.includes(copy)),
+    optimizationStatusVisible: optimizableRows.length === 0
+      || [...optimizableRows].every((row) => row.textContent.includes("可优化")),
     overviewTabActive: tab === "overview",
     separateProductionSpecModuleExposed: Boolean(document.querySelector("#productionSpecModule, #specReportSection, [data-panel='production-spec']"))
   };
@@ -41,7 +47,9 @@ export function collectShortTermSpecComparisonProof({ overviewFactRows, factGrid
     proof.profileId === "production_target",
     proof.factRowCount >= 5,
     proof.renderedFactRowCount >= proof.factRowCount,
-    proof.actualRequirementPairsVisible,
+    proof.actualValuesVisible,
+    proof.defaultThresholdsHidden,
+    proof.optimizationStatusVisible,
     proof.overviewTabActive,
     proof.separateProductionSpecModuleExposed === false
   ].every(Boolean);

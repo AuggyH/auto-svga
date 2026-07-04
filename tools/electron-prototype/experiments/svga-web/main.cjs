@@ -593,7 +593,9 @@ function validateShortTermSpecComparisonProof(value) {
   }
   if (![...requiredIds].every((id) => rows.some((row) => row.id === id))) return undefined;
   if (
-    value.actualRequirementPairsVisible !== true
+    value.actualValuesVisible !== true
+    || value.defaultThresholdsHidden !== true
+    || value.optimizationStatusVisible !== true
     || value.overviewTabActive !== true
     || value.separateProductionSpecModuleExposed !== false
     || value.passed !== true
@@ -610,7 +612,9 @@ function validateShortTermSpecComparisonProof(value) {
     factRowCount: value.factRowCount,
     renderedFactRowCount: value.renderedFactRowCount,
     factRows: rows,
-    actualRequirementPairsVisible: true,
+    actualValuesVisible: true,
+    defaultThresholdsHidden: true,
+    optimizationStatusVisible: true,
     overviewTabActive: true,
     separateProductionSpecModuleExposed: false,
     passed: true
