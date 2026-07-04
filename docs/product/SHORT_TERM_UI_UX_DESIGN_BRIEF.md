@@ -52,7 +52,7 @@ Design around the most common short-term flow first:
 1. Open or drag a local SVGA file.
 2. Or reopen a recent SVGA file from the launch page or File menu.
 3. Confirm playback and visual appearance.
-4. Read basic file information and production-spec comparison.
+4. Read basic file information and compact production-spec status.
 5. Inspect asset groups and replaceable elements.
 6. Preview replaceable image or text behavior.
 7. Rename imageKey when needed.
@@ -73,18 +73,18 @@ states is incomplete.
 | Launch page | One primary central canvas/drop target, open action, drag hint, no full app chrome beyond the window shell. Up to five recent SVGA records appear below Open/Drag as secondary actions. |
 | Loading | Honest loading feedback and a visible way to choose another file when loading is slow or failed. |
 | Load failed | Human-readable error, no stale file data, recovery by opening or dragging another file. |
-| Preview mode: Overview | Center playback canvas and right Overview tab with file facts, production-spec comparison, and asset summary. |
-| Preview mode: Optimization | Optimization findings, estimated file/memory impact, enabled action buttons only when real output can be produced. |
-| Preview mode: Replaceable Elements | Image and text replaceable groups, sorted keys, display numbering, Replace/Edit/Reset actions. |
+| Preview mode: default information | Center playback canvas and right state-driven information area with file facts, compact production-spec status, asset summary, and replaceable-element controls. |
+| Preview mode: optimization detail/result | Metric-level optimization entry replaces the right information area with optimization detail or result comparison; enabled action buttons appear only when real output can be produced. |
+| Preview mode: replaceable elements | Image and text replaceable groups, sorted keys, display numbering, image replacement/reset actions, inline text inputs, key edit actions, and reset actions. |
 | No replaceable elements | Empty state that explains no designer-named imageKeys/text keys were found without showing all ordinary images again. |
 | No audio | Audio group empty state: `当前文件暂无音频资产`. |
 | Playback abnormal | Playback canvas area plus clear abnormal status and recovery action. |
 | Rename imageKey | Context menu and `Cmd+R` flow, inline rename state, Enter confirm, Esc cancel, save buttons enabled after valid rename. |
 | Runtime image replacement | Preview mode remains active; replacement and reset affect playback preview without switching to Edit mode. |
-| Runtime text replacement | Modal or sheet for supported text fields; Apply/Cancel/Reset; no claim of byte persistence. |
+| Runtime text replacement | Inline text input for supported text fields; realtime preview and Reset; no claim of byte persistence. |
 | Edit mode | Left layer list, center canvas, right operation area empty/reserved without inactive controls. |
-| General compare mode | Left A info/assets, center two animation previews, right B info/assets; no optimization panel. |
-| Optimization compare mode | Before/after previews, optimization result card, before/after metrics, save buttons. |
+| General compare mode | No persistent main-surface entry; entered by macOS menu or drag-decision overlay. Empty state keeps disabled playback controls. Loaded state shows two canvases and one comparison-focused right panel. |
+| Optimization compare mode | Before/after previews, optimization result card, before/after metrics, Save As SVGA, Overwrite Save, and Abandon Optimization. |
 | Save validating | In-progress save state with disabled duplicate save actions and no success claim before validation. |
 | Save complete | Saved feedback, clean dirty state, reopened or validated output status. |
 | Save failed | Failure reason, retry, Save As recovery when overwrite fails. |
@@ -97,8 +97,11 @@ The short-term app has two modes.
 
 Preview mode is the default and should feel complete. It shows:
 
-- center playback canvas and playback controls
-- right panel with Overview, Optimization, and Replaceable Elements tabs
+- one immersive canvas-first playback surface and playback controls
+- right state-driven information area. The default state combines file facts,
+  compact production-spec status, assets, and replaceable elements without
+  returning to a boxed engineering inspector. Optimization detail/result
+  replaces this surface when entered from a metric-level optimization action.
 - no left panel
 
 Edit mode is reserved. It shows:
@@ -119,8 +122,7 @@ Required principles:
 
 - Prefer a single window workbench with a toolbar integrated into the titlebar
   area.
-- Keep the macOS traffic-light controls in the same horizontal row as the file,
-  compare, and save controls.
+- Keep the macOS traffic-light controls as the minimum native window chrome.
 - Use the menu bar for app-wide actions, settings, logs, appearance, window
   commands, and help.
 - Use context menus for resource-row actions such as Rename imageKey.
@@ -153,24 +155,30 @@ Apple reference pages consulted for this brief:
 - Segmented controls:
   https://developer.apple.com/design/human-interface-guidelines/segmented-controls
 
-## Toolbar And Window Chrome
+## Canvas-first Chrome And Window Structure
 
-Top toolbar structure:
+Owner-confirmed short-term direction treats the window as one immersive canvas
+surface, not as a toolbar-heavy engineering shell.
+
+Required structure:
 
 | Zone | Required content |
 | --- | --- |
-| Left window area | macOS traffic-light controls, visually integrated with the toolbar row. |
-| Left app controls | Open File, Compare entry. |
-| Mode control | Preview/Edit mode switch near the left side, not the old Local Preview / Export Acceptance switcher. |
-| Center | File identity or concise state only when it helps; avoid large titles or status badges. |
-| Right app controls | Overwrite Save and Save As, disabled until there is unsaved output. |
+| Native chrome | macOS traffic-light controls as the minimum window chrome. |
+| Launch center | Drag-in prompt, Open File action, and low-emphasis recent files inside the canvas. |
+| Canvas top center | Preview/Edit mode switch. Do not restore the old Local Preview / Export Acceptance switcher. |
+| Preview canvas | Opened SVGA artwork, playback controls, drag overlays, runtime replacement preview, and transient toast states. |
+| Right information area | Default file/asset/replaceable information; replaced by optimization detail/result or comparison information when those states are active. |
+| Right save area | Preview key-rename dirty state enables Save As; optimization result exposes Save As SVGA and Overwrite Save. |
 
 Design notes:
 
-- The toolbar should feel like a macOS app toolbar, not a website header.
-- The Compare entry sits next to file open and also appears in the menu bar.
-- Export acceptance must not appear in the short-term toolbar.
-- Settings, logs, and dark/light mode must not appear as direct toolbar
+- Preview must not show a visible Open Another File button. Open another file
+  through the macOS menu or by dragging a file onto the canvas.
+- General compare must not have a persistent visible main-surface entry. It is
+  entered from the macOS menu or drag-decision overlay.
+- Export acceptance must not appear in the short-term surface.
+- Settings, logs, and dark/light mode must not appear as direct main-surface
   buttons in the short-term app.
 
 ## Suggested Menu Bar Architecture
@@ -180,9 +188,9 @@ The UI/UX owner may refine labels, but the design must cover the action groups.
 | Menu | Short-term content |
 | --- | --- |
 | Auto SVGA | About, Settings, Services, Hide, Quit. |
-| File | Open SVGA, Close File, Recent submenu with up to ten recent SVGA records and clear-history action, Overwrite Save, Save As. |
+| File | Open SVGA, Close File, Recent submenu with up to ten recent SVGA records and clear-history action, Save As when contextually enabled, Overwrite Save for optimization result output. |
 | Edit | Standard text operations where applicable; Rename imageKey; cancel active rename/edit state. |
-| View | Preview Mode, Edit Mode, Enter/Exit Compare, appearance or theme entry if supported. |
+| View | Preview Mode, Edit Mode, Enter/Exit Compare, Appearance/Theme entry. If no file is open, Enter Compare starts a two-file selection flow. |
 | Playback | Play/Pause, Replay, Loop if supported. |
 | Resource | Rename imageKey, Replace Preview Image, Reset Preview Replacement. |
 | Optimize | Check Optimization, Run Optimization, Show Optimization Comparison when output exists. |
@@ -234,8 +242,8 @@ current input constraints rather than final UI decisions:
   actions at the proposed minimum window size.
 
 Any final minimum size or breakpoint must include screenshots for Launch,
-Preview Overview, Replaceable Elements, Optimization, General Compare, and Save
-Failed states.
+Preview default information, Replaceable Elements, Optimization Detail/Result,
+General Compare, and Save Failed states.
 
 ## Component Requirements
 
@@ -246,13 +254,13 @@ The UI design should specify at least:
 - file open button
 - launch drop canvas
 - recent files list and File > Recent submenu
-- compare entry
+- compare menu and drag-decision entry states
 - mode switch
 - playback controls
 - preview canvas/stage
-- right tab panel
-- overview fact rows
-- production-spec comparison rows
+- right state-driven information area
+- file fact rows
+- compact production-spec status rows and optimization-context detail rows
 - asset rows with thumbnail/name/dimensions/size
 - sequence four-grid thumbnail
 - audio empty state/music icon state
@@ -260,12 +268,14 @@ The UI design should specify at least:
 - replaceable text row
 - context menu
 - rename inline editor
-- text edit modal or sheet
-- optimization finding row
+- inline text replacement input
+- metric-level optimization entry and finding row
 - optimization result card
 - before/after preview card
-- save disabled/enabled/validating/success/failure states
+- Save As disabled/enabled/validating/success/failure states
+- optimization Overwrite Save state
 - toast or feedback pattern
+- drag decision overlay and unsupported-format overlay
 - menu bar structure
 - keyboard focus state
 - empty/error/loading states
@@ -287,13 +297,15 @@ The UI design should specify at least:
 The design must account for:
 
 - visible focus for every keyboard-reachable control
-- keyboard path for open, play/pause, tab switching, context menu actions,
-  rename confirm/cancel, modal confirm/cancel, and save
+- keyboard path for open, play/pause, mode switching, context menu actions,
+  rename confirm/cancel, inline text replacement, settings sheet actions, and
+  save
 - reduced motion
 - reduced transparency or reduced blur when materials are used
 - copyable metadata and error text
 - no color-only status communication
 - touchpad and mouse drag/drop states
+- unsupported-file drop state with canvas toast
 - disabled and unavailable states with understandable reasons
 
 ## Design Deliverables
@@ -302,7 +314,8 @@ The UI/UX owner should produce:
 
 1. Information architecture and navigation model.
 2. User flows for open/play/inspect, replaceable preview, imageKey rename,
-   optimization, general compare, and save failure recovery.
+   optimization, general compare from menu/drag-decision entry, and save
+   failure recovery.
 3. Full screen inventory covering every state listed in this brief.
 4. High-fidelity macOS-style designs for the primary surfaces.
 5. Component and state specifications.
@@ -334,15 +347,12 @@ The short-term design must not include:
 
 These are intentionally left for the UI/UX owner or Product Owner review:
 
-- final short-term tab label for Replaceable Elements, such as
-  `可替换元素` or `编辑可替换元素`
+- final section label for Replaceable Elements inside the right information
+  area, such as `可替换元素` or `编辑可替换元素`
 - final default window size and minimum supported window size
-- whether text editing appears as a macOS sheet, modal dialog, or popover
-- whether Compare uses a toolbar button, segmented control, or split-view
-  command style
-- whether runtime image replacement should ever enable persisted save in the
-  short-term build, beyond imageKey rename and optimization output
-- exact appearance/theme menu behavior while dark mode is menu-only
+- exact text input styling for runtime text replacement
+- exact visual style of the compare menu and drag-decision entry states
+- exact Settings sheet layout for Follow System / Light / Dark
 
 ## PM Decisions From 2026-07-02 UI/UX Sync
 
@@ -368,3 +378,79 @@ Safe optimization batch action:
   safe executable items. More explicit labels such as `执行安全优化` or
   `生成安全优化副本` remain acceptable.
 - Copy should distinguish `可安全执行`, `需复核`, and `暂不支持/建议项`.
+
+## PM Decisions From 2026-07-04 Owner-confirmed Canvas Direction
+
+Canvas-first direction:
+
+- The short-term client uses a canvas-first, immersive, boundary-light,
+  state-driven design language.
+- Old Web Preview, historical Electron prototype, and Workbench v1 surfaces
+  remain lineage only and must not become the visual baseline.
+- Reduce heavy borders, cards, helper copy, status badges, and engineering
+  panels; use hierarchy, spacing, color, state, and surface replacement to
+  organize information.
+
+Launch:
+
+- Launch is one full-window canvas/drop surface.
+- The center contains drag-in prompt and Open File.
+- Recent files remain visually secondary inside the canvas and show at most
+  five records.
+- The launch recent trash icon clears all recent records.
+
+Preview and dirty/save:
+
+- Preview has no visible Open Another File button.
+- Preview/Edit mode switching sits at the top center of the canvas.
+- In Preview, only imageKey key rename creates dirty bytes.
+- Dirty state appends `*` to the right-side filename and enables Save As.
+- Save As success immediately removes `*`; Save As remains visible but disabled
+  until the next dirty state.
+- Runtime image replacement and inline runtime text editing stay in Preview and
+  do not create dirty SVGA bytes.
+
+Optimization:
+
+- The top-right area is reserved for save actions, not an optimization summary.
+- Optimization entries live under relevant file-information metrics such as
+  file size and estimated memory.
+- Clicking an optimization entry replaces the right information area with
+  optimization detail or result context.
+- Default Preview shows production-spec status only; target thresholds appear
+  in optimization detail/result context.
+- Optimization result comparison provides Save As SVGA, Overwrite Save, and
+  Abandon Optimization. Successful overwrite returns to Preview.
+
+Compare and drag/drop:
+
+- General compare has no persistent main-surface entry.
+- Compare is entered from the macOS menu or from drag-decision overlays.
+- If no file is open, the menu command enters a two-file selection flow.
+- Compare empty state keeps bottom playback controls visible but disabled.
+- Loaded compare shows two canvases and one right comparison panel focused on
+  differences.
+- Drag overlays use a semi-transparent black base. Supported focus regions are
+  green; unsupported focus regions are red and show `不支持的文件格式`.
+- Dropping an unsupported file clears the canvas and shows a centered canvas
+  toast with `不支持的文件格式`.
+
+Edit, window, and settings:
+
+- Short-term Edit may show the left layer list only.
+- The right operation panel remains a quiet placeholder with no inactive
+  advanced controls.
+- The right information area responds until the minimum no-wrap readable width;
+  after that it stops compressing. It does not collapse or use horizontal
+  scrolling.
+- Light and dark appearances are required.
+- Settings entry lives in the macOS menu and opens a Settings sheet for
+  Follow System, Light, and Dark only unless the Product Owner confirms more.
+
+Reference sketches:
+
+- Owner provided local reference sketches on the desktop for Launch, Preview,
+  dirty Preview, drag compare, unsupported drag, Edit, compare empty/loaded,
+  compare drag, and optimization comparison.
+- These images are reference inputs only and should not be committed unless the
+  Product Owner explicitly asks for them.

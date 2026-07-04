@@ -17,6 +17,15 @@ agent-driven automatic design. It may schedule ahead of parts of the mid-term
 template-editing line, but it does not cancel or roll back already-started
 mid-term foundation work.
 
+Owner correction: On 2026-07-04, the short-term client UI/UX direction was
+reset to the Owner-confirmed canvas-first design language. This correction does
+not add new short-term feature categories, but it changes the required
+interaction model: the window is treated as an immersive canvas, Preview/Edit
+switching sits at the top center of the canvas, comparison is entered from the
+macOS menu or drag-decision flow rather than a persistent main-surface button,
+default Preview shows production-spec status without target thresholds, and
+dirty/save behavior is context-specific as described below.
+
 Product documentation system:
 `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` defines the PM responsibility
 model, source hierarchy, status vocabulary, product brief checklist, and
@@ -75,22 +84,22 @@ path-redacted display and user-controlled clearing.
 
 | ID | Requirement | Product detail |
 | --- | --- | --- |
-| S1 | Open SVGA locally | Open from the top-left file button, drag into the window, or macOS menu entry. |
+| S1 | Open SVGA locally | Launch opens from the central Open action, drag into the canvas, or macOS menu entry. In Preview, there is no visible `Open Another File` button; opening another file uses the macOS menu or drag-and-drop onto the canvas. |
 | S2 | Play SVGA and report abnormal states | Playback failures, parse failures, loading failures, and invalid files must show clear feedback. |
 | S3 | Show basic file information | File size, estimated memory usage, canvas size, FPS, and asset count. |
-| S4 | Show production-spec comparison inside Overview | Basic information must show current file values next to production-spec requirements; do not create a separate production-spec module. |
+| S4 | Show production-spec status inside file information | Default Preview shows compact production-spec status inside file information without exposing target thresholds. Detailed current-vs-requirement values appear only in optimization detail/result context or another explicit detail state; do not create a separate production-spec module. |
 | S5 | Show all asset information | Images, sequence/video-like frame assets, audio group, and replaceable elements. Display thumbnail, file/key name, image dimensions when available, audio duration when available, and file size. |
 | S6 | Show image thumbnails | Images show their image thumbnail. Sequence/frame groups show the existing four-grid thumbnail from the first four frames. Audio uses a fixed music icon when audio parsing is later supported. |
 | S7 | Identify replaceable elements by naming rule | In the short term, exclude automatic names such as `img_000` / `img_001`; non-automatic designer names are treated as replaceable imageKeys. Future versions may add configurable whitelist/blacklist regular expressions. |
-| S8 | Detect optimization opportunities | Detect file-size and memory-usage optimization opportunities, briefly explain each item, and estimate impact. |
+| S8 | Detect optimization opportunities | Detect file-size and memory-usage optimization opportunities, briefly explain each item, and estimate impact. Optimization entry points live inside the relevant file-information metrics, such as file size and memory estimate, not as a persistent top-right summary button. |
 | S9 | Run real optimization | Produce optimized SVGA bytes, not a report-only recommendation. Allowed methods include image compression with quality controls, removing unreferenced resources, transparent-bound trimming, sequence-frame processing, FPS adjustment, and canvas adjustment when production specs remain satisfied. |
-| S10 | Enter optimization comparison flow | Clicking optimization starts a comparison flow with before/after preview cards and an optimization-result card showing concrete items and effects. |
-| S11 | Rename imageKey | From the asset panel, selecting an image and using the context menu Rename or `Cmd+R` enters rename mode. Enter confirms. All related references must update and the app must produce updated SVGA bytes. |
+| S10 | Enter optimization comparison flow | Clicking a metric-level optimization entry replaces the current right information surface with optimization detail or result comparison. Optimization result comparison shows before/after previews plus concrete optimization items and exposes `另存为 SVGA`, `覆盖保存`, and `放弃优化`; successful overwrite returns to Preview. |
+| S11 | Rename imageKey | From the asset panel, selecting an image and using the context menu Rename or `Cmd+R` enters key rename mode. Enter confirms. All related references must update and the app must produce updated SVGA bytes. In Preview, changing the key value is the only replaceable-element operation that creates dirty state. |
 | S12 | Preview replaceable images | In Preview mode, replaceable image elements can be replaced and reset with realtime playback preview. This does not switch to Edit mode. |
-| S13 | Preview replaceable text | In Preview mode, replaceable text elements can be edited through a modal and applied as runtime dynamic text preview. This simulates terminal playback behavior and does not imply direct SVGA-byte text editing. |
-| S14 | Save edited output | Overwrite Save and Save As are both formal product actions. All persisted byte-edit operations, including imageKey rename, image replacement output, and optimization output, may use either action. |
+| S13 | Preview replaceable text | In Preview mode, replaceable text values are editable inline through text inputs and apply as runtime dynamic text preview. Editing text content simulates terminal playback behavior and does not create dirty SVGA bytes. The key value itself is changed through the key edit action and follows S11 dirty behavior. |
+| S14 | Save edited output | Save behavior is context-specific. Preview imageKey key rename dirty state appends `*` to the filename and enables Save As; after Save As succeeds, `*` disappears and Save As remains visible but disabled. Optimization result output exposes both Save As SVGA and Overwrite Save, plus Abandon Optimization. All save paths require output validation. |
 | S15 | Keep audio deferred | Audio parsing and duration are not required for the short-term version. If no audio is detected or audio parsing is not implemented, the audio group shows `当前文件暂无音频资产`. |
-| S16 | Show recent SVGA files | The launch page shows up to five low-emphasis recent SVGA records below Open/Drag actions, and `File > Recent` shows up to ten records plus a clear-history action. Recent records must open the same local-file flow, hide full local paths by default, and fail gracefully when a file is missing or inaccessible. |
+| S16 | Show recent SVGA files | The launch page shows up to five low-emphasis recent SVGA records inside the canvas below Open/Drag actions, with a trash icon that clears all recent records. `File > Recent` shows up to ten records plus a clear-history action. Recent records must open the same local-file flow, hide full local paths by default, and fail gracefully when a file is missing or inaccessible. |
 
 ### Short-term Acceptance Matrix
 
@@ -100,22 +109,22 @@ ready.
 
 | ID | Accept when | Required evidence |
 | --- | --- | --- |
-| S1 | File chooser, drag-and-drop, and macOS menu opening all load the same local SVGA bytes without exposing arbitrary renderer filesystem access. | Open-flow proof, drag/drop proof, menu-entry proof, path-redaction check. |
+| S1 | Launch Open, canvas drag-and-drop, and macOS menu opening all load the same local SVGA bytes without exposing arbitrary renderer filesystem access. Preview has no visible Open Another File button. | Open-flow proof, drag/drop proof, menu-entry proof, preview-surface no-open-button proof, path-redaction check. |
 | S2 | Invalid files, parse failures, loading failures, and playback failures show a visible user message and recover when a valid file is opened. | Invalid-file proof, recovery proof, player lifecycle cleanup proof. |
-| S3 | Overview shows file size, estimated decoded memory, canvas, FPS, and asset count for a parsed SVGA. | Inspection report and rendered Overview proof. |
-| S4 | Overview shows actual file values beside active production-spec limits and statuses; no separate production-spec module is exposed. | Spec comparison proof with actual/limit pairs and current spec profile id. |
+| S3 | Preview information shows file size, estimated decoded memory, canvas, FPS, and asset count for a parsed SVGA. | Inspection report and rendered right-information proof. |
+| S4 | Default Preview shows production-spec status inline without target thresholds; detailed actual/limit pairs appear only in optimization detail/result context or another explicit detail state. | Default status-only proof, optimization-detail actual/limit proof, current spec profile id. |
 | S5 | Asset information covers image resources, sequence/frame groups, audio group state, and replaceable elements without duplicating every image under replaceable elements. | Asset-list proof with resource counts and grouping. |
 | S6 | Image thumbnails, four-frame sequence thumbnails, and audio empty/icon states render without layout shift. | Rendered thumbnail proof for image, sequence, and no-audio states. |
 | S7 | Replaceable image elements are designer-named imageKeys after short-term automatic-name exclusion. | Replaceable-key classification report with included and excluded examples. |
-| S8 | Optimization tab lists file-size and memory opportunities with brief reason and estimated impact; risky items are labelled as review-only. | Optimization-candidate report and UI proof. |
+| S8 | File-size and memory rows expose metric-level optimization entries with brief reason and estimated impact; risky items are labelled as review-only. No top-right `2 项可优化` style summary button is shown. | Optimization-candidate report, metric-entry UI proof, no-summary-button proof. |
 | S9 | Running an enabled optimization produces new SVGA bytes and a report binding before/after metrics, changed items, safety checks, and output hash. | Optimized output, optimization report, inflate/decode proof, reopen proof. |
-| S10 | Optimization action enters the specialized before/after comparison flow and keeps save actions available only when optimized output exists. | Before/after comparison proof and dirty/save-state proof. |
+| S10 | Optimization action replaces the right information surface with detail/result context; result comparison exposes Save As SVGA, Overwrite Save, and Abandon Optimization. Successful overwrite returns to Preview. | Before/after comparison proof, result-action proof, overwrite-return proof, dirty/save-state proof. |
 | S11 | imageKey rename updates every related `imageKey` and `matteKey` reference, leaves no dangling reference, and produces updated SVGA bytes. | Rename report, reference-closure proof, round-trip decode proof, reopen proof. |
 | S12 | Replaceable image preview can replace and reset one designer-named imageKey in Preview mode without switching to Edit mode. | Runtime replacement proof, reset proof, mode-state proof. |
-| S13 | Replaceable text preview applies supported runtime dynamic text fields and reset in Preview mode without persisting text into SVGA bytes. | Runtime text proof, reset proof, byte-immutability proof. |
-| S14 | Overwrite Save and Save As are separate explicit buttons; both stay disabled until a persisted output exists and both revalidate output after writing. | Dirty-state proof, overwrite proof, Save As proof, reopen validation proof. |
+| S13 | Replaceable text preview applies supported runtime dynamic text fields through inline inputs and reset in Preview mode without persisting text into SVGA bytes. | Runtime text input proof, reset proof, byte-immutability proof. |
+| S14 | Preview imageKey key rename dirty state shows filename `*` and enables Save As only; Save As success clears `*` and leaves Save As visible but disabled. Optimization result output separately supports Save As SVGA and Overwrite Save. | Preview dirty-star proof, Save As clean-state proof, optimization overwrite proof, reopen validation proof. |
 | S15 | Audio group does not block release; no-audio and unsupported-audio states are visible and truthful. | Audio-empty-state proof and known-limitation entry. |
-| S16 | Launch recent rows and `File > Recent` use real recent-file state, preserve Open/Drag as higher-priority actions, avoid full-path exposure by default, clear history on request, and recover gracefully from missing files. | Recent-state persistence proof, launch five-row proof, menu ten-row proof, path-redaction proof, clear-history proof, missing-file recovery proof. |
+| S16 | Launch recent rows and `File > Recent` use real recent-file state, preserve Open/Drag as higher-priority actions, avoid full-path exposure by default, clear all history from the launch trash icon or menu action, and recover gracefully from missing files. | Recent-state persistence proof, launch five-row proof, menu ten-row proof, path-redaction proof, launch-trash clear proof, menu clear-history proof, missing-file recovery proof. |
 
 ### Replaceable Element Definition
 
@@ -125,7 +134,7 @@ designer-provided `ImageKey`; the iOS/Android docs describe the imageKey as
 coming from the exported PNG filename. For product language, Auto SVGA calls
 only designer-intended, manually named keys "replaceable elements"; automatic
 export keys such as `img_000` remain ordinary image assets so the replaceable
-elements tab does not repeat every image.
+elements section does not repeat every image.
 
 Runtime replacement constraints:
 
@@ -152,18 +161,18 @@ The app has two user-visible modes:
 
 | Mode | Layout | Purpose |
 | --- | --- | --- |
-| Preview mode | Center canvas + right panel only | Default mode. Open, play, inspect, optimize, compare, and preview replaceable elements. |
+| Preview mode | Canvas-first preview surface + state-driven right information area | Default mode. Open from Launch/menu/drag, play, inspect, optimize, compare through menu/drag-decision flow, and preview replaceable elements. |
 | Edit mode | Left layer panel + center canvas + right operation panel | Reserved for mid-term and long-term advanced editing. Short-term right panel stays empty and must not expose inactive controls. |
 
-Mode switching lives at the app top-left. Triggering lightweight replacement
-actions in Preview mode does not switch to Edit mode.
+Mode switching lives at the top center of the canvas. Triggering lightweight
+replacement actions in Preview mode does not switch to Edit mode.
 
 ### Launch Page
 
 Initial app launch shows a startup page rather than the full main interface.
-The startup page is primarily one preview card prompting the user to open or
-drag in a file. It also prepares for future multi-format routing and gives the
-main app surface time to load without appearing blocked.
+The startup page is one full-window canvas/drop surface with central drag-in
+prompt and Open action. It also prepares for future multi-format routing and
+gives the main app surface time to load without appearing blocked.
 
 Recently opened files are part of the short-term formal product scope. The
 launch page shows up to five recent SVGA files below the primary Open and Drag
@@ -171,9 +180,10 @@ In actions. Recent rows must stay visually secondary, must not expose full
 local paths by default, and must use the same loading, validation, error, and
 recovery flow as files opened from the file chooser or drag-and-drop.
 
-The macOS File menu includes a `Recent` submenu with up to ten recent SVGA
-files and a clear-history action. Clearing recent history removes records from
-the launch page and menu without touching source files.
+The launch recent-file trash icon clears all recent records. The macOS File
+menu includes a `Recent` submenu with up to ten recent SVGA files and a
+clear-history action. Clearing recent history removes records from the launch
+page and menu without touching source files.
 
 ### Main Layout
 
@@ -183,13 +193,13 @@ which regions are visible.
 Preview mode:
 
 - center: playback canvas and playback controls
-- right: three tabs
-  - Overview: basic file information, production-spec comparison, and asset
-    information
-  - Optimization: file-size and memory optimization opportunities and action
-    entry
-  - Replaceable Elements: image and text replaceable elements, grouped and
-    sorted by key
+- right: a state-driven information surface, not a heavy inspector panel
+  - default Preview information: basic file information, compact
+    production-spec status, asset information, and replaceable elements
+  - optimization detail/result: replaces the default information surface after
+    the user clicks a metric-level optimization entry
+  - compare information: appears only in comparison state and emphasizes A/B
+    differences rather than two independent file reports
 
 Edit mode:
 
@@ -205,27 +215,30 @@ than as hidden feature modules.
 
 | State | Visible surface | Primary transitions |
 | --- | --- | --- |
-| Launch | Startup preview card with open/drag prompt | Open or drag file -> Loading |
+| Launch | Full-window canvas/drop surface with open/drag prompt | Open or drag file -> Loading |
 | Loading | Main surface skeleton or loading feedback | Success -> Preview ready; failure -> Load failed |
 | Load failed | Error feedback with open/drag recovery | Open valid file -> Loading |
-| Preview ready | Preview mode canvas and right tabs | Play, inspect, optimize, compare, replace, rename, switch mode |
+| Preview ready | Preview mode canvas and right information surface | Play, inspect, optimize through metric entries, replace, rename, switch mode; compare enters from menu or drag-decision overlay |
 | Playback abnormal | Canvas remains visible when possible plus clear failure feedback | Replay or open valid file -> Preview ready |
-| Replace preview dirty | Preview mode remains active; runtime replacement and Reset are available | Reset -> Preview ready; persisted image output, if exposed, enables save actions |
-| Rename dirty | imageKey rename has updated bytes and top-right save actions are enabled | Overwrite or Save As -> Save validating |
-| Optimization candidates | Optimization tab shows opportunities and action button | Run optimization -> Optimization comparing |
-| Optimization comparing | Before/after previews, optimization-result card, save actions if output exists | Save -> Save validating; cancel/back -> Preview ready |
-| General comparing | A info left, two previews center, B info right | Exit compare -> Preview ready |
+| Runtime replacement preview | Preview mode remains active; runtime image/text replacement and Reset are available without dirty bytes | Reset -> Preview ready |
+| Rename dirty | imageKey key rename has updated bytes, filename shows `*`, and Save As is enabled | Save As -> Save validating |
+| Optimization candidates | File information metrics expose optimization entries | Click metric entry -> Optimization detail/result |
+| Optimization comparing | Before/after previews, optimization-result card, Save As SVGA, Overwrite Save, and Abandon Optimization | Save -> Save validating; abandon -> Preview ready |
+| General compare empty | Compare surface without files; playback controls remain visible but disabled | Select two files -> General comparing |
+| General comparing | Two preview canvases and one right comparison panel emphasizing deltas | Exit compare -> Preview ready |
 | Save validating | Output is written only after explicit button click and round-trip checks | Success -> Save complete; failure -> Save failed |
-| Save complete | Saved file feedback with updated clean/dirty state | Continue preview or open another file |
+| Save complete | Saved file feedback with updated clean/dirty state; Save As remains visible but disabled after Preview dirty save | Continue preview or open another file |
 | Save failed | Failure reason and retry/Save As recovery | Retry save or return to dirty state |
 | Edit reserved | Full left/center/right layout, layer list visible, right operation area empty | Switch back -> Preview ready |
 | Recent file missing | Launch or menu recent entry reports a missing/inaccessible file without stale metadata | Open another file or clear recent history -> Launch or Loading |
+| Drag decision overlay | Supported file drag over an open canvas shows Open File / Add As Compare File zones | Drop -> open or compare flow |
+| Unsupported drag | Focused drag half turns red with `不支持的文件格式`; dropping clears the canvas and shows a canvas toast | Open valid file -> Loading |
 
 No short-term state may expose export acceptance, sequence repair, advanced
 layer editing, inactive feature placeholders, or a separate production-spec
 module.
 
-### Replaceable Elements Tab
+### Replaceable Elements Surface
 
 Image elements:
 
@@ -241,39 +254,48 @@ Text elements:
 - sorted by key
 - auto-numbered from 1 for display only
 - show initial text when available
-- provide Edit and Reset actions
-- Edit opens a modal for text content and supported runtime text style fields
-  such as family, size, color, and offset, subject to SVGA player support
+- the text value is an input; focusing it allows direct editing and realtime
+  runtime preview
+- provide Reset for runtime text value
+- the key value itself is changed through the key edit action after the key
+  label; only changing the key value creates dirty bytes
 
-### Top Bar And macOS Chrome
+### Canvas-first Chrome And macOS Menu
 
-- The top-left action is the file chooser.
-- The File menu and launch page include recent-file reopening as secondary
-  actions.
-- The compare-mode entry sits next to the file chooser and also has a macOS menu
-  entry.
-- The top-right actions are Overwrite Save and Save As. They are disabled until
-  an operation creates unsaved output.
-- Settings, logs, and dark-mode controls move to the macOS menu bar.
-- The app window uses a custom title-bar style: the macOS red/yellow/green
-  window controls share the same horizontal row as the file and save controls.
-- The old top-center mode switcher for local preview / export acceptance is
-  removed or hidden in the short-term version.
+- The app window is treated as an immersive canvas-first surface.
+- Launch uses a central Open action; Preview does not show a visible Open
+  Another File button.
+- Opening another file in Preview uses the macOS File menu or drag-and-drop
+  onto the canvas.
+- Preview/Edit mode switching sits at the top center of the canvas.
+- General compare has no persistent visible main-surface entry. It is entered
+  from the macOS menu or from drag-and-drop decision overlays.
+- Save controls occupy the right-side action area only when contextually
+  relevant. Preview imageKey dirty state enables Save As; optimization result
+  exposes Save As SVGA and Overwrite Save.
+- Settings, logs, and appearance controls move to the macOS menu bar and must
+  not appear as direct main-surface buttons.
+- The old top-center Local Preview / Export Acceptance switcher is removed or
+  hidden in the short-term version.
 
 ### Comparison Mode
 
 General comparison mode focuses only on file and canvas comparison:
 
-- left: A file basic information and asset information
-- center: two animation previews
-- right: B file basic information and asset information
+- empty compare keeps bottom playback controls visible but disabled
+- if no file is open, the macOS compare command enters a two-file selection
+  flow
+- dragging a supported file over an open canvas offers Open File or Add As
+  Compare File
+- loaded compare shows two canvases on the left and one right comparison panel
+  that emphasizes A/B differences rather than two standalone file summaries
 
 Optimization comparison is a specialized comparison flow:
 
 - sidebars collapse for the before/after preview
 - the right-side optimization card shows concrete optimization items and effects
-- Overwrite Save and Save As remain available from the top-right when optimized
-  output exists
+- Save As SVGA, Overwrite Save, and Abandon Optimization are available when
+  optimized output exists; successful Overwrite Save returns to Preview
 
 ### Production Spec And Optimization Contract
 
@@ -294,9 +316,11 @@ Current short-term spec profile:
 | Resource dimensions | <= 300 x 300 | Embedded image resources should stay inside the production canvas. |
 | Transparent padding ratio | <= 0.5 | Provisional texture-waste boundary. |
 
-Overview must show both current file value and requirement value for every
-available field. Missing decoded values should show an unknown or unavailable
-state instead of passing silently.
+Default Preview information shows compact production-spec status without target
+thresholds. Optimization detail or result context must show the relevant
+current value and requirement value for fields involved in the optimization
+decision. Missing decoded values should show an unknown or unavailable state
+instead of passing silently.
 
 Memory estimation:
 
@@ -339,13 +363,47 @@ Safe optimization batch action:
 Optimization output rules:
 
 - The source file is not overwritten automatically.
-- Overwrite Save is allowed only after the user explicitly chooses it.
-- Save As is always available for persisted optimization output.
+- Optimization result output exposes Save As SVGA and Overwrite Save. Overwrite
+  Save is allowed only after the user explicitly chooses it.
+- Preview imageKey key rename dirty state exposes Save As; after successful
+  Save As, the filename `*` disappears and Save As remains visible but disabled
+  until the next dirty state.
 - Both save paths require inflate/decode validation and reopen proof for the
   saved bytes.
 - The optimization result card must show what changed, before/after file size
   where available, estimated memory impact where available, and risky/skipped
   candidates.
+
+### Drag And Unsupported Format Behavior
+
+- Dragging a file over the canvas shows a semi-transparent black overlay.
+- The pointer-focused half is the focus region.
+- For supported files, the focus region turns semi-transparent green.
+- When a file is dragged over an already-open preview, the overlay offers Open
+  File and Add As Compare File.
+- For unsupported files, the focus region turns semi-transparent red and shows
+  `不支持的文件格式`.
+- Dropping an unsupported file clears the canvas and shows a centered canvas
+  toast with `不支持的文件格式`.
+
+### Appearance And Settings
+
+- The short-term client must support both light and dark appearance.
+- Owner-confirmed designs establish the light canvas-first direction; dark mode
+  must preserve the same immersive, boundary-light, canvas-first hierarchy.
+- Appearance switching is available from the macOS menu and a Settings sheet,
+  not from a main-surface toolbar button.
+- The Settings sheet exposes only appearance options unless the Product Owner
+  explicitly confirms more settings: Follow System, Light, and Dark.
+
+### Small-window Rule
+
+- The right information area responds to window width until reaching the
+  minimum width where all required information can display without wrapping in
+  an incoherent way.
+- After that minimum, the surface must stop compressing.
+- The short-term app does not collapse the information area and does not use
+  horizontal scrolling as the small-window solution.
 
 ### Short-term Verification Sample Matrix
 
@@ -358,7 +416,7 @@ fixtures are acceptable when real production assets cannot be committed.
 | Invalid or non-SVGA file | Error message, no stale metadata, recovery by opening a valid file. |
 | SVGA with only automatic imageKeys | No replaceable image elements shown beyond ordinary image assets. |
 | SVGA with designer-named imageKeys | Replaceable image list, runtime image replacement, reset, rename path. |
-| SVGA with runtime text keys | Text edit modal, runtime preview, reset, byte-immutability. |
+| SVGA with runtime text keys | Inline text input, runtime preview, reset, byte-immutability. |
 | SVGA with sequence/frame resources | Four-frame thumbnail, sequence grouping, optimization findings. |
 | SVGA with no audio | Audio group shows `当前文件暂无音频资产`. |
 | SVGA with unreferenced or duplicate image resources | Safe optimization candidate, optimized output, reopen proof. |
@@ -445,7 +503,7 @@ Subordinate planning lives in `docs/product/AE_BRIDGE_PRODUCT_BRIEF.md`.
 | AEB8 | AE-side bake execution | The AE bridge can create temporary bake comps, preserve timing/canvas/alpha, render transparent sequences through AE's render workflow, and return a bake manifest. |
 | AEB9 | Bake grouping decision | Auto SVGA can recommend merged or separate bake groups based on z-order safety, overlap, time range, replaceability, bbox size, empty-frame ratio, duplicate-frame ratio, and memory/file-size risk. |
 | AEB10 | Replaceable-element protection | The scanner and bake planner must identify designer-named replaceable candidates and avoid baking them into non-replaceable sequences unless the user explicitly accepts that loss. |
-| AEB11 | Auto SVGA preview handoff | Successful native or baked output opens directly in Auto SVGA Preview mode with short-term Overview, assets, diagnostics, optimization, comparison, and save behavior available. |
+| AEB11 | Auto SVGA preview handoff | Successful native or baked output opens directly in Auto SVGA Preview mode with short-term preview information, assets, diagnostics, optimization, comparison, and save behavior available. |
 | AEB12 | Production diagnostics | Every bridge run reports compatibility, native-converted layers, baked layers, blocked layers, expected visual risk, file size, decoded memory, production-spec status, and target-player risk. |
 | AEB13 | Real SVGA output | When export is enabled, Auto SVGA must produce standards-compliant SVGA bytes, validate inflate/decode/reopen/playback load, and allow Overwrite Save or Save As only after validation. |
 | AEB14 | Version and OS compatibility matrix | The product must maintain a real compatibility matrix for macOS and Windows across supported AE versions. Formal support, compatibility support, and best-effort legacy support must be separate. |
@@ -588,7 +646,7 @@ validation gates, but it must not redefine mid-term product scope.
 | M4 | Copy, paste, undo, and redo | Layer transform parameters and template effect settings support copy/paste. Every edit operation supports undo and redo with a save-point dirty state. |
 | M5 | Mirror layer mode for transforms | Selecting a layer can create a mirror-linked layer using axis symmetry or center symmetry. Transform edits on the source are applied to the mirror with direction, position, and rotation adjusted by mirror type. Light and particle effects do not apply to mirror links. |
 | M6 | Mirror output as real layers | Mirror-linked layers remain associated in Edit mode, but compile into real independent SVGA sprite/layer output. |
-| M7 | Compile edited SVGA and return to Preview mode | After editing, the app can compile edits into real SVGA bytes, switch to Preview mode, play the edited result, and run short-term Overview, asset, diagnostic, optimization, save, and comparison functions. |
+| M7 | Compile edited SVGA and return to Preview mode | After editing, the app can compile edits into real SVGA bytes, switch to Preview mode, play the edited result, and run short-term preview information, asset, diagnostic, optimization, save, and comparison functions. |
 | M8 | Sequence-frame repair | Detect supported sequence-frame flicker cases, repair them fail-closed, show before/after affected-frame evidence, and produce validated edited SVGA bytes. |
 | M9 | Configurable production spec profiles | Users can choose repository-provided production spec versions without editing code. Active profile id and actual-vs-required values remain visible. |
 | M10 | User-defined production specs | Users can create or import a local custom production spec profile with validation, version label, and rollback to built-in profiles. |
@@ -759,7 +817,7 @@ SVGA and that preserved structures remain intentional:
 - unsupported or unknown structures are preserved, blocked, or reported; they
   must not be silently dropped
 - compiled output can be reopened by the app and reaches Preview mode with
-  short-term Overview, assets, diagnostics, optimization, comparison, and save
+  short-term preview information, assets, diagnostics, optimization, comparison, and save
   behavior available
 
 #### Mid-term Verification Sample Matrix

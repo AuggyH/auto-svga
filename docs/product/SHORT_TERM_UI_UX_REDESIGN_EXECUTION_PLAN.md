@@ -40,6 +40,14 @@ Historical references that must not become the visual baseline:
 - Electron prototype
 - P6 Workbench
 
+Owner-confirmed visual/reference inputs:
+
+- `docs/reviews/2026-07-04-codex-uiux-owner-confirmed-canvas-direction-sync.md`
+- `docs/reviews/2026-07-04-codex-uiux-native-tool-static-direction-mvp.md`
+- Owner local reference sketches listed in
+  `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md`; these are review inputs
+  and should not be committed as repository assets unless explicitly requested.
+
 ## Execution Principles
 
 1. Start from product state, not screens.
@@ -48,7 +56,11 @@ Historical references that must not become the visual baseline:
 4. Keep short-term actions inside S1-S16.
 5. Keep disabled controls honest and explain why they are unavailable.
 6. Keep persisted byte-output actions separate from runtime-only previews.
-7. Do not expose export acceptance, sequence repair, batch replacement, AI,
+7. Treat the app window as a canvas-first, state-driven surface. Do not rebuild
+   the old toolbar-heavy Workbench shell or permanent Preview tabs.
+8. Keep compare entry in the macOS menu and drag-decision flow, not as a
+   persistent main-surface button.
+9. Do not expose export acceptance, sequence repair, batch replacement, AI,
    accounts, cloud sync, telemetry, or advanced motion authoring controls.
 
 ## Design System Layers
@@ -57,11 +69,11 @@ Historical references that must not become the visual baseline:
 | --- | --- | --- |
 | Primitive tokens | Stable raw values | color, type, space, radius, shadow, motion |
 | Semantic tokens | Mode-aware intent | text, surface, border, action, status, focus |
-| Component tokens | Reusable control contracts | toolbar, button, tab, row, modal, save state |
+| Component tokens | Reusable control contracts | window chrome, button, mode switch, row, modal, save state |
 | Atoms | Smallest visible units | icon, text, badge, dot, divider, thumbnail |
-| Molecules | Small controls and rows | toolbar button, tab item, fact cell, rename input |
-| Components | Reusable UI objects | preview stage, right tab panel, asset row, modal |
-| Modules | Feature surfaces | launch, overview, optimization, replaceable, compare |
+| Molecules | Small controls and rows | canvas button, mode switch item, fact cell, rename input |
+| Components | Reusable UI objects | preview stage, right information surface, asset row, inline input, overlay |
+| Modules | Feature surfaces | launch, right information, optimization detail, replaceable, compare |
 | Page states | User-visible screens | Launch, Loading, Preview, Compare, Save states |
 
 ## Required Page States
@@ -71,14 +83,17 @@ The short-term UI must cover:
 - Launch
 - Loading
 - Load failed
-- Preview Overview
-- Preview Optimization
-- Preview Replaceable Elements
+- Preview default information
+- Optimization detail
+- Preview replaceable elements
 - No Replaceable Elements
 - Rename imageKey
 - Runtime image replacement
-- Runtime text replacement
-- General Compare
+- Inline runtime text replacement
+- Drag decision overlay
+- Unsupported drop toast
+- Compare empty
+- Compare loaded
 - Optimization Compare
 - Save validating
 - Save complete
@@ -124,6 +139,10 @@ Every UI implementation slice should include a proportional subset of:
 - save/dirty-state checks when persisted output UI is touched
 - no stale metadata in loading/failure states
 - no old out-of-scope menu or toolbar entries
+- no visible Preview Open Another File button
+- no persistent main-surface compare entry
+- production-spec thresholds hidden in default Preview and visible in
+  optimization detail/result where relevant
 
 ## Foreground macOS Validation Gate
 
@@ -143,9 +162,9 @@ foreground desktop evidence from the actual macOS client:
 - cover more than one SVGA file when the touched surface depends on file size,
   resource count, memory estimate, replaceable elements, text elements, or
   optimization findings;
-- inspect Launch, Preview Overview, Replaceable Elements, Optimization,
-  General Compare, Save Failed, Loading, and Failure states when those surfaces
-  are touched;
+- inspect Launch, Preview default information, Replaceable Elements,
+  Optimization Detail/Result, General Compare, Save Failed, Loading, and
+  Failure states when those surfaces are touched;
 - record screenshot paths or review links in the UI/UX review file.
 
 If foreground capture is temporarily unavailable, the review must explicitly

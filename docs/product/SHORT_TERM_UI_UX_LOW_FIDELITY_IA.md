@@ -1,7 +1,7 @@
 # Short-term UI/UX Low-fidelity Information Architecture
 
-Date: 2026-07-01
-Status: draft low-fidelity IA and wireframes
+Date: 2026-07-04
+Status: draft low-fidelity IA and wireframes, updated for Owner-confirmed canvas direction
 Authority: subordinate to `docs/product/PRODUCT_ROADMAP.md`
 
 ## Purpose
@@ -20,17 +20,17 @@ Covered short-term scope:
 - S1 open local SVGA
 - S2 playback and abnormal states
 - S3 file information
-- S4 production-spec comparison inside Overview
+- S4 production-spec status and optimization-context detail
 - S5 all asset information
 - S6 thumbnails
 - S7 replaceable-element identification
 - S8 optimization opportunities
 - S9 real optimization output
 - S10 optimization comparison flow
-- S11 imageKey rename
+- S11 imageKey key rename
 - S12 runtime replaceable image preview
 - S13 runtime replaceable text preview
-- S14 Overwrite Save and Save As
+- S14 context-specific Save As / Overwrite Save
 - S15 no-audio and unsupported-audio truthfulness
 - S16 recent SVGA files on launch and File menu
 
@@ -45,25 +45,31 @@ Out of scope:
 
 ## App Shell
 
+The short-term shell is canvas-first. It does not use a persistent toolbar with
+Open, Compare, and mode controls.
+
 ```text
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ ● ● ●  [Open SVGA] [Compare] [Preview | Edit]      [Overwrite] [Save As] │
-├──────────────────────────────────────────────────────────────────────────┤
+│ ● ● ●                                                                    │
 │                                                                          │
-│                         mode-specific content                            │
+│                         immersive canvas surface                         │
 │                                                                          │
+│                  mode switch or state UI appears on canvas               │
+│                                                                          │
+│                                                          right info area │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-Toolbar zones:
+Shell zones:
 
 | Zone | Content | PRD IDs |
 | --- | --- | --- |
-| Window controls | macOS traffic lights | app shell |
-| File controls | Open SVGA, Compare | S1, S10 |
-| Mode control | Preview / Edit | app mode |
-| Center identity | file identity or concise state | S2-S5 |
-| Save controls | Overwrite Save, Save As | S14 |
+| Native chrome | macOS traffic lights | app shell |
+| Canvas | launch drop surface, preview artwork, drag overlay, compare previews, optimization before/after previews | S1, S2, S10 |
+| Canvas top center | Preview / Edit switch when a file surface is active | app mode |
+| Canvas bottom | playback controls; disabled in compare empty state | S2 |
+| Right information area | default file/asset/replaceable info, optimization detail/result, or compare panel | S3-S14 |
+| macOS menu | Open, Recent, Compare, Settings, appearance, logs, window/help actions | S1, S14, S16 |
 
 ## Menu Bar IA
 
@@ -79,6 +85,14 @@ Window
 Help
 ```
 
+Menu requirements:
+
+- `File > Open SVGA` opens or replaces the current file.
+- `File > Recent` shows up to ten recent SVGA records and clear history.
+- `View > Compare` enters compare. If no file is open, it starts a two-file
+  selection flow.
+- Settings and appearance live in the macOS menu, not on the main canvas.
+
 Forbidden menu items:
 
 - Export Acceptance
@@ -91,192 +105,209 @@ Forbidden menu items:
 
 ```mermaid
 flowchart TD
-  Launch["Launch"] --> Loading["Loading"]
-  Loading --> Preview["Preview ready"]
-  Loading --> Failed["Load failed"]
+  Launch["Launch Canvas"] --> Loading["Loading"]
+  Launch --> Recent["Recent File"]
+  Recent --> Loading
+  Loading --> Preview["Preview Ready"]
+  Loading --> Failed["Load Failed"]
   Failed --> Loading
-  Preview --> Overview["Overview tab"]
-  Preview --> Optimization["Optimization tab"]
-  Preview --> Replaceable["Replaceable Elements tab"]
-  Optimization --> OptCompare["Optimization Compare"]
-  Replaceable --> Rename["Rename imageKey"]
-  Replaceable --> RuntimeImage["Runtime image preview"]
-  Replaceable --> RuntimeText["Runtime text modal"]
-  Preview --> Compare["General Compare"]
+  Preview --> RuntimeImage["Runtime Image Preview"]
+  Preview --> RuntimeText["Inline Runtime Text Preview"]
+  Preview --> RenameDirty["imageKey Rename Dirty"]
+  Preview --> OptDetail["Optimization Detail"]
+  OptDetail --> OptCompare["Optimization Result Compare"]
+  OptCompare --> SaveValidating["Save Validating"]
+  RenameDirty --> SaveValidating
+  SaveValidating --> SaveComplete["Save Complete"]
+  SaveValidating --> SaveFailed["Save Failed"]
+  Preview --> CompareEntry["Compare From Menu Or Drag"]
+  CompareEntry --> CompareEmpty["Compare Empty"]
+  CompareEntry --> CompareLoaded["Compare Loaded"]
+  Preview --> DragDecision["Drag Decision Overlay"]
+  DragDecision --> Loading
+  DragDecision --> CompareLoaded
+  DragDecision --> Unsupported["Unsupported Drop Toast"]
   Preview --> Edit["Edit Reserved"]
-  Rename --> SaveValidating["Save validating"]
-  OptCompare --> SaveValidating
-  SaveValidating --> SaveComplete["Save complete"]
-  SaveValidating --> SaveFailed["Save failed"]
 ```
 
 ## Low-fidelity States
 
-### Launch
+### Launch Canvas
 
 ```text
 ┌─────────────────────────────────────────────┐
-│ Open local SVGA                             │
-│ Drop a file here or use Open SVGA...        │
-│ [Open SVGA...]                              │
-│ Recent                                      │
-│   avatar_frame_intro.svga        parent dir │
-│   profile_border_loop.svga       parent dir │
-│ Local only                                  │
+│ ● ● ●                                       │
+│                                             │
+│                 [upload icon]              │
+│              拖拽文件到此处                 │
+│                [打开文件]                  │
+│                                             │
+│        最近打开                         [trash] │
+│        avatar_frame.svga        4 分钟前      │
+│        profile_border.svga      4 分钟前      │
 └─────────────────────────────────────────────┘
 ```
 
 Trace: S1, S2, S16.
 
-### Loading
+### Preview Ready
 
 ```text
 ┌──────────────────────────────┐ ┌──────────────────────┐
-│ Preview loading              │ │ Loading file...       │
-│ spinner                      │ │ Parsing SVGA          │
+│ ● ● ●        Preview | Edit   │ │ filename.svga        │
+│                              │ │ File facts           │
+│         SVGA artwork         │ │ compact spec status  │
+│                              │ │ imageKey rows        │
+│ playback controls            │ │ asset rows           │
 └──────────────────────────────┘ └──────────────────────┘
 ```
 
-Trace: S1, S2.
+Trace: S2, S3, S4, S5, S6, S7, S12, S13, S15.
 
-### Load Failed
+### Preview Dirty From imageKey Rename
 
 ```text
 ┌──────────────────────────────┐ ┌──────────────────────┐
-│ Cannot open this SVGA        │ │ What happened         │
-│ Source file was not modified │ │ Parse/load failed     │
-│ [Open another SVGA...]       │ │ Recovery              │
+│          Preview | Edit       │ │ filename.svga * [另存为] │
+│         SVGA artwork         │ │ imageKey row editing │
 └──────────────────────────────┘ └──────────────────────┘
-```
-
-Trace: S2.
-
-### Preview Overview
-
-```text
-┌──────────────────────────────┐ ┌──────────────────────┐
-│ SVGA canvas                  │ │ Overview | Opt | Repl │
-│ playback controls            │ │ File facts            │
-│                              │ │ Production spec       │
-│                              │ │ Assets summary        │
-│                              │ │ Audio empty state     │
-└──────────────────────────────┘ └──────────────────────┘
-```
-
-Trace: S2, S3, S4, S5, S6, S15.
-
-### Preview Optimization
-
-```text
-┌──────────────────────────────┐ ┌──────────────────────┐
-│ SVGA canvas                  │ │ Optimization          │
-│ playback controls            │ │ Finding row           │
-│                              │ │ reason + impact       │
-│                              │ │ [Run] / review-only   │
-└──────────────────────────────┘ └──────────────────────┘
-```
-
-Trace: S8, S9.
-
-### Preview Replaceable Elements
-
-```text
-┌──────────────────────────────┐ ┌──────────────────────┐
-│ SVGA canvas                  │ │ Replaceable images    │
-│ playback controls            │ │ imageKey [Replace]    │
-│                              │ │ Replaceable text      │
-│                              │ │ textKey [Edit]        │
-└──────────────────────────────┘ └──────────────────────┘
-```
-
-Trace: S7, S12, S13.
-
-### Rename imageKey
-
-```text
-Context menu:
-┌──────────────────────────────┐
-│ Rename imageKey      Cmd+R   │
-│ Replace Preview Image        │
-│ Reset Preview Replacement    │
-└──────────────────────────────┘
-
-Inline row:
-┌──────────────────────────────────────────┐
-│ thumbnail  [ imageKey_name________ ]     │
-│ Enter to confirm · Esc to cancel         │
-└──────────────────────────────────────────┘
 ```
 
 Trace: S11, S14.
 
-### General Compare
+Rules:
+
+- Only key rename creates dirty bytes in Preview.
+- Runtime image/text replacement does not dirty the SVGA file.
+- Save As success removes `*` and leaves Save As visible but disabled.
+
+### Inline Runtime Text Preview
 
 ```text
-┌──────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌────────────┐
-│ A info/assets│ │ Preview A       │ │ Preview B       │ │ B info     │
-└──────────────┘ └─────────────────┘ └─────────────────┘ └────────────┘
+┌──────────────────────────────┐ ┌──────────────────────┐
+│         SVGA artwork         │ │ imageKey             │
+│                              │ │ text_key [edit key]  │
+│                              │ │ [输入文字以预览____] │
+└──────────────────────────────┘ └──────────────────────┘
 ```
 
-Trace: S10 support context.
+Trace: S13.
 
-### Optimization Compare
+### Drag Decision Overlay
+
+```text
+┌────────────────────────────────────────────────────┐
+│ semi-transparent black overlay                     │
+│                                                    │
+│   Open File half        Add As Compare File half   │
+│   focused supported region = green                 │
+│   focused unsupported region = red                 │
+└────────────────────────────────────────────────────┘
+```
+
+Trace: S1, S2, S10.
+
+Unsupported drop:
+
+```text
+canvas clears
+toast: 不支持的文件格式
+```
+
+### Optimization Detail / Result
 
 ```text
 ┌────────────────────────┐ ┌────────────────────────┐ ┌───────────────┐
-│ Before                 │ │ After                  │ │ Optimization  │
-│ original preview       │ │ optimized preview      │ │ result        │
+│ Before preview          │ │ After preview           │ │ 优化结果对比   │
+│                         │ │                         │ │ before facts  │
+│                         │ │                         │ │ after facts   │
+│                         │ │                         │ │ [另存为 SVGA] │
+│                         │ │                         │ │ [覆盖保存]    │
+│                         │ │                         │ │ 放弃优化      │
 └────────────────────────┘ └────────────────────────┘ └───────────────┘
 ```
 
-Trace: S9, S10, S14.
+Trace: S8, S9, S10, S14.
 
-### Save States
+### Compare Empty
 
 ```text
-Save validating -> Save complete
-Save validating -> Save failed -> Retry / Save As / Return to preview
+┌────────────────────────┐ ┌────────────────────────┐ ┌───────────────┐
+│ Empty compare slot A    │ │ Empty compare slot B    │ │ 对比模式       │
+│ [打开文件]              │ │ [打开文件]              │ │ 未打开文件     │
+│ disabled playback controls remain visible          │ │ 未打开文件     │
+└────────────────────────┘ └────────────────────────┘ └───────────────┘
 ```
 
-Trace: S14.
+Trace: S10.
+
+### Compare Loaded
+
+```text
+┌────────────────────────┐ ┌────────────────────────┐ ┌───────────────┐
+│ Preview A               │ │ Preview B               │ │ 对比模式       │
+│                         │ │                         │ │ A/B facts     │
+│                         │ │                         │ │ differences   │
+│ playback controls       │ │ playback controls       │ │ [退出对比]    │
+└────────────────────────┘ └────────────────────────┘ └───────────────┘
+```
+
+Trace: S10.
 
 ### Edit Reserved
 
 ```text
 ┌──────────────┐ ┌─────────────────────────────────┐ ┌────────────────┐
 │ Layer list   │ │ Preview canvas                  │ │ Reserved       │
-│ thumbnail    │ │ playback controls               │ │ operation area │
+│ thumbnail    │ │ playback controls               │ │ no inactive    │
+│ layer name   │ │                                 │ │ controls       │
 └──────────────┘ └─────────────────────────────────┘ └────────────────┘
 ```
 
-Short-term Edit mode must not expose inactive advanced editing controls.
+Short-term Edit mode may show the left layer list only. The right operation
+area remains a quiet placeholder and must not expose inactive advanced editing
+controls.
 
 ## S1-S16 Surface Trace
 
 | PRD ID | Primary state | Module |
 | --- | --- | --- |
-| S1 | Launch, Loading | `LaunchModule` |
-| S2 | Loading, Load failed, Preview | `PreviewCanvasModule` |
-| S3 | Preview Overview | `OverviewTabModule` |
-| S4 | Preview Overview | `OverviewTabModule` |
-| S5 | Preview Overview | `OverviewTabModule` |
-| S6 | Preview Overview | `OverviewTabModule` |
-| S7 | Replaceable Elements | `ReplaceableElementsTabModule` |
-| S8 | Preview Optimization | `OptimizationTabModule` |
-| S9 | Optimization Compare | `OptimizationCompareModule` |
-| S10 | Compare states | `GeneralCompareModule`, `OptimizationCompareModule` |
-| S11 | Rename imageKey | `ReplaceableElementsTabModule` |
-| S12 | Runtime image replacement | `ReplaceableElementsTabModule` |
-| S13 | Runtime text replacement | `ReplaceableElementsTabModule` |
+| S1 | Launch, Loading, Drag Decision | `LaunchModule`, `DragDecisionOverlay` |
+| S2 | Loading, Load failed, Preview, Unsupported Drop | `PreviewCanvasModule` |
+| S3 | Preview Ready | `RightInformationSurface` |
+| S4 | Preview Ready, Optimization Detail | `RightInformationSurface`, `OptimizationDetailSurface` |
+| S5 | Preview Ready | `RightInformationSurface` |
+| S6 | Preview Ready | `RightInformationSurface` |
+| S7 | Preview Ready | `ReplaceableElementsSurface` |
+| S8 | Preview Ready, Optimization Detail | `OptimizationEntrySurface` |
+| S9 | Optimization Result | `OptimizationCompareModule` |
+| S10 | Compare states, Optimization Result | `GeneralCompareModule`, `OptimizationCompareModule` |
+| S11 | Rename Dirty | `ReplaceableElementsSurface` |
+| S12 | Runtime image replacement | `ReplaceableElementsSurface` |
+| S13 | Inline runtime text preview | `ReplaceableElementsSurface` |
 | S14 | Save states | `SaveStateModule` |
-| S15 | Preview Overview | `OverviewTabModule` |
+| S15 | Preview Ready | `RightInformationSurface` |
 | S16 | Launch, File menu, recent missing state | `LaunchModule`, `MenuBarCommandModel` |
+
+## Reference Sketches
+
+Owner-provided local sketches were reviewed as reference input and should not
+be committed unless the Product Owner explicitly asks:
+
+- `/Users/huangtengxin/Desktop/启动页.png`
+- `/Users/huangtengxin/Desktop/预览页.png`
+- `/Users/huangtengxin/Desktop/预览模式.png`
+- `/Users/huangtengxin/Desktop/拖拽对比.png`
+- `/Users/huangtengxin/Desktop/拖拽对比_不支持格式.png`
+- `/Users/huangtengxin/Desktop/编辑模式.png`
+- `/Users/huangtengxin/Desktop/预览模式_对比模式.png`
+- `/Users/huangtengxin/Desktop/预览模式_对比模式_空.png`
+- `/Users/huangtengxin/Desktop/预览模式_对比模式_拖拽.png`
+- `/Users/huangtengxin/Desktop/预览模式_优化对比.png`
 
 ## Open Decisions Preserved
 
-- final label for Replaceable Elements
-- final default and minimum window size
-- text replacement sheet versus modal versus popover
-- Compare entry visual style
-- exact appearance menu behavior
+- final default and minimum supported window size
+- exact input styling for inline runtime text replacement
+- exact Settings sheet visual layout
 - first-build optimization methods

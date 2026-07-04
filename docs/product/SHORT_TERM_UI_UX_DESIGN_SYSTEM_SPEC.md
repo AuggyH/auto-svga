@@ -29,7 +29,7 @@ model remains `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md`.
 | `semantic.color.status` | success, warning, danger, info | never color-only |
 | `component.button` | height, padding, radius, state color | toolbar/action controls |
 | `component.row` | height, gap, thumbnail size | asset and fact rows |
-| `layout.window` | toolbar, right panel, compare, canvas | macOS app shell |
+| `layout.window` | canvas, right information area, compare, edit reserved | macOS app shell |
 
 ## CSS Variable Mapping
 
@@ -74,10 +74,10 @@ can express the intent.
 
 | Component | PRD IDs | Required states |
 | --- | --- | --- |
-| `ToolbarButton` | S1, S10, S14 | default, hover, focus, disabled, loading |
+| `CanvasButton` | S1, S10, S14 | default, hover, focus, disabled, loading |
 | `IconButton` | S2, S11-S13 | default, hover, focus, disabled |
-| `SegmentedModeSwitch` | S1-S14 | Preview selected, Edit selected |
-| `TabItem` | S3-S8, S12-S13 | selected, hover, focus, disabled |
+| `CanvasModeSwitch` | S1-S14 | Preview selected, Edit selected, canvas top-center placement |
+| `ModeSwitchItem` | S1-S14 | selected, hover, focus, disabled |
 | `FactCell` | S3-S5 | known, unknown, warning |
 | `SpecStatusCell` | S4 | pass, warning, fail, unknown |
 | `InlineStatus` | S2, S8-S16 | info, success, warning, danger, loading |
@@ -85,30 +85,37 @@ can express the intent.
 | `PlaybackButtonGroup` | S2 | playing, paused, failed, disabled |
 | `ContextMenuItem` | S11-S13 | enabled, disabled, shortcut |
 | `RenameInput` | S11 | editing, invalid, saving, cancelled |
-| `SaveButtonPair` | S10-S14 | disabled, dirty, validating, failed |
+| `InlineTextPreviewInput` | S13 | empty, focused, applied, reset |
+| `ContextualSaveAction` | S10-S14 | hidden where not applicable, disabled, dirty, validating, failed |
+| `DragDecisionZone` | S1, S10 | supported focused, unsupported focused, inactive half |
 
 ### Components
 
 | Component | Module owner | Evidence |
 | --- | --- | --- |
-| `WindowToolbar` | app shell | toolbar/menu state proof |
+| `WindowChrome` | app shell | native chrome/menu state proof |
 | `LaunchDropCanvas` | LaunchModule | launch/open/drop proof |
 | `LaunchRecentFilesList` | LaunchModule | S16 recent-file launch proof |
 | `FileRecentSubmenu` | MenuBarCommandModel | S16 recent-file menu proof |
 | `PreviewStage` | PreviewCanvasModule | playback and abnormal-state proof |
 | `PlaybackControls` | PreviewCanvasModule | playback control proof |
-| `RightTabPanel` | Preview mode | tab screenshot and keyboard proof |
-| `OverviewFactRow` | OverviewTabModule | rendered Overview proof |
-| `ProductionSpecInlineRow` | OverviewTabModule | actual/limit proof inside file facts |
-| `AssetRow` | Overview and Replaceable modules | asset grouping proof |
-| `SequenceThumbnail` | OverviewTabModule | four-grid thumbnail proof |
-| `AudioAssetRow` | OverviewTabModule | no-audio proof |
-| `ReplaceableImageRow` | ReplaceableElementsTabModule | runtime replacement proof |
-| `ReplaceableTextRow` | ReplaceableElementsTabModule | runtime text proof |
-| `OptimizationFindingRow` | OptimizationTabModule | candidate proof |
+| `RightInformationSurface` | Preview mode | default/detail/replaced-surface proof |
+| `FileFactRow` | RightInformationSurface | rendered file-information proof |
+| `ProductionSpecStatusRow` | RightInformationSurface | default status-only proof |
+| `OptimizationSpecDetailRow` | OptimizationDetailSurface | actual/limit proof inside optimization context |
+| `AssetRow` | Right information and Replaceable modules | asset grouping proof |
+| `SequenceThumbnail` | RightInformationSurface | four-grid thumbnail proof |
+| `AudioAssetRow` | RightInformationSurface | no-audio proof |
+| `ReplaceableImageRow` | ReplaceableElementsSurface | runtime replacement proof |
+| `ReplaceableTextRow` | ReplaceableElementsSurface | runtime text proof |
+| `MetricOptimizationEntry` | RightInformationSurface | metric-level entry proof |
+| `OptimizationFindingRow` | OptimizationDetailSurface | candidate proof |
 | `OptimizationResultCard` | OptimizationCompareModule | before/after output proof |
 | `ComparePreviewCard` | Compare modules | compare proof |
-| `TextReplacementSheet` | ReplaceableElementsTabModule | modal interaction proof |
+| `CompareInfoPanel` | GeneralCompareModule | A/B difference proof |
+| `DragDecisionOverlay` | PreviewCanvasModule | open-vs-compare decision proof |
+| `UnsupportedDropToast` | PreviewCanvasModule | unsupported file recovery proof |
+| `InlineTextReplacementInput` | ReplaceableElementsSurface | runtime text input proof |
 | `SaveFeedbackBanner` | SaveStateModule | save state proof |
 | `ErrorRecoveryPanel` | Load failed, Save failed | recovery proof |
 | `LayerRow` | EditReservedModule | reserved mode proof |
@@ -118,13 +125,13 @@ can express the intent.
 
 | Module | Required page states |
 | --- | --- |
-| `LaunchModule` | Launch, Loading, Load failed |
-| `PreviewCanvasModule` | Preview ready, Playback abnormal |
-| `OverviewTabModule` | Preview Overview, No audio |
-| `OptimizationTabModule` | Optimization candidates |
-| `ReplaceableElementsTabModule` | Replaceable, No replaceable, Rename, Runtime replacement |
-| `GeneralCompareModule` | General compare |
-| `OptimizationCompareModule` | Optimization compare |
+| `LaunchModule` | Launch, Loading, Load failed, recent clear |
+| `PreviewCanvasModule` | Preview ready, Playback abnormal, Drag decision, Unsupported drop |
+| `RightInformationSurface` | Default Preview information, No audio, compact spec status |
+| `OptimizationDetailSurface` | Metric-level optimization detail |
+| `ReplaceableElementsSurface` | Replaceable, No replaceable, Rename, Runtime replacement, inline text preview |
+| `GeneralCompareModule` | Compare empty, Compare loaded, drag-add compare |
+| `OptimizationCompareModule` | Optimization compare, Save As SVGA, Overwrite Save, Abandon Optimization |
 | `EditReservedModule` | Edit reserved |
 | `MenuBarCommandModel` | Menu bar |
 | `SaveStateModule` | Save validating, Save complete, Save failed |
@@ -158,7 +165,7 @@ Each component or page frame should be traceable to:
 
 - final minimum window size
 - compact breakpoint behavior
-- text replacement sheet versus modal versus popover
-- exact appearance menu behavior
+- exact inline text replacement input styling
+- exact Settings sheet visual layout for Follow System / Light / Dark
 - which optimization methods are active in the first distributable build
-- whether runtime image replacement enables persisted save in short-term
+- exact compare menu and drag-decision visual treatment
