@@ -6,20 +6,6 @@ import {
   tabButtons
 } from "./short-term-macos-dom-state.mjs";
 import {
-  compareSlotView,
-  generalCompareTraceView,
-  optimizationCompareTraceView,
-  renderCompareInfoHtml,
-  renderGeneralComparePlaceholderHtml,
-  renderOptimizationCompareResultHtml
-} from "./short-term-macos-compare-model.mjs";
-import {
-  applyCompareSlotView,
-  applyCompareTraceView,
-  markCompareSlotLoaded,
-  renderCompareInfoPanel
-} from "./short-term-macos-compare-renderers.mjs";
-import {
   renderAssetList,
   renderOverviewFacts
 } from "./short-term-macos-overview-renderers.mjs";
@@ -144,6 +130,15 @@ import {
   stopShortTermPlayback,
   toggleShortTermPrimaryPlayback
 } from "./short-term-macos-playback-surface.mjs";
+import {
+  markShortTermCompareSlotLoaded,
+  renderShortTermCompareInfo,
+  renderShortTermCompareSlot,
+  renderShortTermGeneralComparePlaceholder,
+  renderShortTermGeneralCompareTrace,
+  renderShortTermOptimizationCompareResult,
+  renderShortTermOptimizationCompareTrace
+} from "./short-term-macos-compare-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -245,9 +240,9 @@ async function openCompareBFromHost() {
   await mountPlayback("compareB", nodes.compareCanvasB, bytes);
   const model = await inspectShortTerm(bytes, opened.basename || "compare.svga");
   setCompareSlot("B", opened.basename || "B 文件", model);
-  renderCompareInfoPanel(nodes, "B", renderCompareInfoHtml("B 文件", model, opened.basename || "compare.svga", [
+  renderCompareInfo("B", "B 文件", model, opened.basename || "compare.svga", [
     `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
-  ]));
+  ]);
   await refreshRecentFiles();
 }
 
@@ -722,16 +717,16 @@ function renderEditReserved() {
 
 async function renderOptimizationCompare(model, optimizedBytes) {
   setView("compare");
-  setCompareTrace(optimizationCompareTraceView());
+  setOptimizationCompareTrace();
   setCompareSlot("A", state.displayName || "原始文件", state.model);
   setCompareSlot("B", model.resultTitle || "优化结果", undefined, "优化副本");
-  renderCompareInfoPanel(nodes, "A", renderCompareInfoHtml("原始文件", state.model, state.displayName));
-  renderCompareInfoPanel(nodes, "B", renderOptimizationCompareResultHtml(model));
+  renderCompareInfo("A", "原始文件", state.model, state.displayName);
+  renderShortTermOptimizationCompareResult({ nodes, model });
   await Promise.all([
     mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes),
     mountPlayback("compareB", nodes.compareCanvasB, optimizedBytes)
   ]);
-  markCompareSlotLoaded(nodes, "B");
+  markShortTermCompareSlotLoaded({ nodes, slot: "B" });
 }
 
 async function showOptimizationComparison() {
@@ -747,22 +742,29 @@ async function showOptimizationComparison() {
 }
 
 function setCompareSlot(slot, title, model, fallbackMeta = "") {
-  const view = compareSlotView(slot, title, model, fallbackMeta);
-  applyCompareSlotView(nodes, slot, view);
+  renderShortTermCompareSlot({ nodes, slot, title, model, fallbackMeta });
 }
 
-function setCompareTrace(view) {
-  applyCompareTraceView(nodes.compareView, view);
+function setGeneralCompareTrace() {
+  renderShortTermGeneralCompareTrace(nodes);
+}
+
+function setOptimizationCompareTrace() {
+  renderShortTermOptimizationCompareTrace(nodes);
+}
+
+function renderCompareInfo(slot, title, model, displayName, actions = []) {
+  renderShortTermCompareInfo({ nodes, slot, title, model, displayName, actions });
 }
 
 async function enterGeneralCompare() {
   if (!state.sourceBytes) return;
   setView("compare");
-  setCompareTrace(generalCompareTraceView());
+  setGeneralCompareTrace();
   setCompareSlot("A", state.displayName || "A 文件", state.model);
   setCompareSlot("B", "B 文件", undefined, "等待打开");
-  renderCompareInfoPanel(nodes, "A", renderCompareInfoHtml("A 文件", state.model, state.displayName));
-  renderCompareInfoPanel(nodes, "B", renderGeneralComparePlaceholderHtml());
+  renderCompareInfo("A", "A 文件", state.model, state.displayName);
+  renderShortTermGeneralComparePlaceholder(nodes);
   await mountPlayback("compareA", nodes.compareCanvasA, state.previewBytes ?? state.sourceBytes);
   clearCanvas(nodes.compareCanvasB);
 }
