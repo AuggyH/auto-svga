@@ -60,9 +60,7 @@
 
 .tabs button.isSelected {
   background: var(--asv-tab-selected-bg);
-  box-shadow:
-    var(--asv-tab-selected-ring),
-    var(--asv-shadow-control-selected);
+  box-shadow: none;
   color: var(--asv-text);
   font-weight: 650;
 }
@@ -83,10 +81,7 @@
 }
 
 .tabs button.isSelected:focus-visible {
-  box-shadow:
-    var(--asv-focus-inset),
-    var(--asv-tab-selected-ring),
-    var(--asv-shadow-control-selected);
+  box-shadow: var(--asv-focus-inset);
 }
 
 .renameEditor {

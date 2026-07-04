@@ -96,8 +96,8 @@
   --asv-component-tab-height: 30px;
   --asv-component-tab-padding: 6px;
   --asv-component-tab-indicator-height: 2px;
-  --asv-component-tab-selected-background: color-mix(in srgb, var(--asv-color-surface-panel-strong) 86%, var(--asv-color-action-primary) 14%);
-  --asv-component-tab-selected-border: color-mix(in srgb, var(--asv-color-action-primary) 34%, var(--asv-color-border-strong));
+  --asv-component-tab-selected-background: color-mix(in srgb, var(--asv-color-surface-panel-strong) 97%, var(--asv-color-action-primary) 3%);
+  --asv-component-tab-selected-border: color-mix(in srgb, var(--asv-color-action-primary) 16%, var(--asv-color-border-strong));
   --asv-component-tab-selected-ring: inset 0 0 0 1px var(--asv-component-tab-selected-border);
   --asv-component-row-height: 50px;
   --asv-component-thumbnail-size: 42px;
