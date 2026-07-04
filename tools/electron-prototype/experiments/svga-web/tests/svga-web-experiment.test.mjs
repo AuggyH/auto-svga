@@ -1256,6 +1256,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.playbackMeta/);
   assert.match(shortTermModules, /\.textPreviewActions/);
   assert.match(shortTermModules, /\.compareCanvasHeader/);
+  assert.match(shortTermModules, /\.comparePairHeader/);
+  assert.match(shortTermModules, /\.compareMetricRow/);
   assert.match(shortTermModules, /\.compareMetricCell/);
   assert.match(shortTermModules, /\.compareSummary/);
   assert.match(shortTermModules, /\.compareMetricGrid/);
@@ -1401,6 +1403,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /OptimizationCompareModule/);
   assert.match(shortTermCompareModel, /export function renderOptimizationCompareResultHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePlaceholderHtml/);
+  assert.match(shortTermCompareModel, /export function renderGeneralComparePanelHtml/);
+  assert.match(shortTermCompareModel, /comparePairHeader/);
+  assert.match(shortTermCompareModel, /compareMetricRow/);
   assert.match(shortTermCompareModel, /renderCompareFactCellHtml/);
   assert.match(shortTermCompareModel, /renderCompareMetricCellHtml/);
   assert.match(shortTermCompareModel, /data-optimization-actions/);
@@ -1678,8 +1683,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareSurface, /applyCompareTraceView\(nodes\.compareView, generalCompareTraceView\(\)\)/);
   assert.match(shortTermCompareSurface, /applyCompareTraceView\(nodes\.compareView, optimizationCompareTraceView\(\)\)/);
   assert.match(shortTermCompareSurface, /markCompareSlotLoaded\(nodes, slot\)/);
-  assert.match(shortTermCompareSurface, /renderShortTermCompareInfo\(\{ nodes, slot: "A", title: "A 文件", model: state\.model, displayName: state\.displayName \}\)/);
-  assert.match(shortTermCompareSurface, /renderShortTermGeneralComparePlaceholder\(nodes\)/);
+  assert.match(shortTermCompareSurface, /renderShortTermGeneralComparePanel\(\{/);
+  assert.match(shortTermCompareSurface, /renderCompareInfoPanel\(nodes, "B", renderGeneralComparePanelHtml/);
+  assert.doesNotMatch(page, /id="compareInfoA"/);
   assert.match(shortTermOptimizationSurface, /renderShortTermOptimizationCompareResult\(\{ nodes, model \}\)/);
   assert.doesNotMatch(shortTermEntry, /textContent = view\.title|textContent = view\.meta|dataset\.compareState = view\.compareState|dataset\.compareState = "loaded"|dataset\.module = view\.moduleName|dataset\.pageState = view\.pageState|nodes\.compareInfo[AB]\.innerHTML/);
   assert.match(shortTermCompareRenderers, /textContent = view\.title/);

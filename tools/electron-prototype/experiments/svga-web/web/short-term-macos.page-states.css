@@ -69,10 +69,7 @@
 
 .compareView {
   display: grid;
-  grid-template-columns:
-    minmax(var(--asv-compare-side-min-width), var(--asv-compare-side-width))
-    minmax(0, 1fr)
-    minmax(var(--asv-compare-side-min-width), var(--asv-compare-side-max-width));
+  grid-template-columns: minmax(0, 1fr) var(--asv-right-panel-width);
   grid-template-rows: minmax(0, 1fr);
   gap: var(--asv-preview-gap);
   height: 100%;
@@ -142,10 +139,7 @@
   }
 
   .compareView {
-    grid-template-columns:
-      minmax(calc(var(--asv-compare-side-min-width) - var(--asv-space-3)), var(--asv-compare-side-width))
-      minmax(420px, 1fr)
-      minmax(calc(var(--asv-compare-side-min-width) - var(--asv-space-2)), var(--asv-compare-side-max-width));
+    grid-template-columns: minmax(0, 1fr) var(--asv-right-panel-width);
   }
 }
 

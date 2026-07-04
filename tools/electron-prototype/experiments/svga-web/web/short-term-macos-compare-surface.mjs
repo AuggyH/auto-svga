@@ -2,6 +2,7 @@ import {
   compareSlotView,
   generalCompareTraceView,
   optimizationCompareTraceView,
+  renderGeneralComparePanelHtml,
   renderCompareInfoHtml,
   renderGeneralComparePlaceholderHtml,
   renderOptimizationCompareResultHtml
@@ -34,6 +35,18 @@ export function renderShortTermGeneralComparePlaceholder(nodes) {
   renderCompareInfoPanel(nodes, "B", renderGeneralComparePlaceholderHtml());
 }
 
+export function renderShortTermGeneralComparePanel({ nodes, state, bModel, bDisplayName = "", actions = [] }) {
+  renderCompareInfoPanel(nodes, "B", renderGeneralComparePanelHtml({
+    aTitle: "A 文件",
+    aModel: state.model,
+    aDisplayName: state.displayName,
+    bTitle: "B 文件",
+    bModel,
+    bDisplayName,
+    actions
+  }));
+}
+
 export function renderShortTermOptimizationCompareResult({ nodes, model }) {
   renderCompareInfoPanel(nodes, "B", renderOptimizationCompareResultHtml(model));
 }
@@ -54,8 +67,14 @@ export async function enterShortTermGeneralCompare({
   renderShortTermGeneralCompareTrace(nodes);
   renderShortTermCompareSlot({ nodes, slot: "A", title: state.displayName || "A 文件", model: state.model });
   renderShortTermCompareSlot({ nodes, slot: "B", title: "B 文件", fallbackMeta: "等待打开" });
-  renderShortTermCompareInfo({ nodes, slot: "A", title: "A 文件", model: state.model, displayName: state.displayName });
-  renderShortTermGeneralComparePlaceholder(nodes);
+  renderShortTermGeneralComparePanel({
+    nodes,
+    state,
+    actions: [
+      `<button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>`,
+      `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
+    ]
+  });
   await mountPlayback("compareA", nodes.compareCanvasA, state.previewBytes ?? state.sourceBytes);
   clearCanvas(nodes.compareCanvasB);
 }
@@ -82,12 +101,11 @@ export async function openShortTermCompareBFromHost({
   await mountPlayback("compareB", nodes.compareCanvasB, bytes);
   const model = await inspectShortTerm(bytes, opened.basename || "compare.svga");
   renderShortTermCompareSlot({ nodes, slot: "B", title: opened.basename || "B 文件", model });
-  renderShortTermCompareInfo({
+  renderShortTermGeneralComparePanel({
     nodes,
-    slot: "B",
-    title: "B 文件",
-    model,
-    displayName: opened.basename || "compare.svga",
+    state,
+    bModel: model,
+    bDisplayName: opened.basename || "compare.svga",
     actions: [
       `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
     ]

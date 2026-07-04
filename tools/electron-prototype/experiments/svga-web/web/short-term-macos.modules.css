@@ -609,10 +609,70 @@ canvas {
   overflow-wrap: anywhere;
 }
 
+.comparePairHeader {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--asv-space-2);
+}
+
+.comparePairHeader div {
+  display: grid;
+  gap: var(--asv-space-1);
+  min-width: 0;
+  padding: var(--asv-space-2);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-fact-bg);
+}
+
+.comparePairHeader span {
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-caption);
+}
+
+.comparePairHeader strong {
+  overflow: hidden;
+  color: var(--asv-text);
+  font-size: var(--asv-type-size-footnote);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .compareMetricGrid {
   display: grid;
   gap: 0;
   border-top: 1px solid var(--asv-subtle-border);
+}
+
+.compareMetricRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr);
+  gap: var(--asv-space-2);
+  align-items: baseline;
+  min-height: var(--asv-compare-metric-row-min-height);
+  padding: var(--asv-space-2) 0;
+  border-bottom: 1px solid var(--asv-subtle-border);
+}
+
+.compareMetricRow span,
+.compareMetricRow strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compareMetricRow span {
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-footnote);
+}
+
+.compareMetricRow strong {
+  color: var(--asv-text);
+  font-size: var(--asv-type-size-footnote);
+  text-align: right;
+}
+
+.compareMetricRow[data-status="different"] strong:last-child {
+  color: var(--asv-success);
 }
 
 .compareMetricCell {

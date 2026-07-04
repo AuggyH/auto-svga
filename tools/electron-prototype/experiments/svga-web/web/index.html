@@ -133,7 +133,6 @@
       </section>
 
       <section class="view compareView" data-view="compare" data-page-state="General comparing" data-module="GeneralCompareModule" hidden>
-        <aside class="compareInfo" id="compareInfoA"></aside>
         <section class="compareStage">
           <div class="compareCanvasWrap" id="compareCanvasWrapA" data-component="ComparePreviewCard" data-compare-label="A" data-compare-state="empty">
             <header class="compareCanvasHeader">
@@ -152,7 +151,7 @@
             <canvas id="compareCanvasB" aria-label="B 文件预览"></canvas>
           </div>
         </section>
-        <aside class="compareInfo" id="compareInfoB">
+        <aside class="compareInfo" id="compareInfoB" data-component="RightInformationSurface">
           <button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>
           <button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>
         </aside>

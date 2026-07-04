@@ -29,6 +29,64 @@ export function compareSlotView(slot, title, model, fallbackMeta = "") {
   };
 }
 
+function compareFacts(model) {
+  return model ? overviewVisibleFacts(model) : [];
+}
+
+function compareFactValue(facts, id) {
+  return facts.find((fact) => fact.id === id)?.value || "";
+}
+
+function renderComparePairRows(aModel, bModel) {
+  const aFacts = compareFacts(aModel);
+  const bFacts = compareFacts(bModel);
+  const ids = Array.from(new Set([...aFacts, ...bFacts].map((fact) => fact.id)));
+  return ids.map((id) => {
+    const label = aFacts.find((fact) => fact.id === id)?.label || bFacts.find((fact) => fact.id === id)?.label || id;
+    const aValue = compareFactValue(aFacts, id) || "未打开";
+    const bValue = compareFactValue(bFacts, id) || "未打开";
+    const status = bModel ? (aValue === bValue ? "same" : "different") : "empty";
+    return `
+      <div class="compareMetricRow" data-status="${escapeHtml(status)}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(aValue)}</strong>
+        <strong>${escapeHtml(bValue)}</strong>
+      </div>
+    `;
+  }).join("");
+}
+
+export function renderGeneralComparePanelHtml({
+  aTitle = "A 文件",
+  aModel,
+  aDisplayName = "",
+  bTitle = "B 文件",
+  bModel,
+  bDisplayName = "",
+  actions = []
+} = {}) {
+  const actionHtml = actions.length ? `<div class="compareActions">${actions.join("")}</div>` : "";
+  return `
+    <section class="compareSummary">
+      <h2>对比模式</h2>
+    </section>
+    <section class="comparePairHeader" aria-label="对比文件">
+      <div>
+        <span>${escapeHtml(aTitle)}</span>
+        <strong>${escapeHtml(aDisplayName || "未打开文件")}</strong>
+      </div>
+      <div>
+        <span>${escapeHtml(bTitle)}</span>
+        <strong>${escapeHtml(bDisplayName || "未打开文件")}</strong>
+      </div>
+    </section>
+    <section class="compareMetricGrid" aria-label="对比信息">
+      ${renderComparePairRows(aModel, bModel)}
+    </section>
+    ${actionHtml}
+  `;
+}
+
 export function generalCompareTraceView() {
   return {
     moduleName: "GeneralCompareModule",
@@ -70,14 +128,10 @@ export function renderOptimizationCompareResultHtml(model) {
 }
 
 export function renderGeneralComparePlaceholderHtml() {
-  return `
-    <section class="compareSummary" data-status="info">
-      <h2>B 文件</h2>
-      <p>未打开文件。</p>
-    </section>
-    <div class="compareActions">
-      <button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>
-      <button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>
-    </div>
-  `;
+  return renderGeneralComparePanelHtml({
+    actions: [
+      `<button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>`,
+      `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
+    ]
+  });
 }
