@@ -1076,6 +1076,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermResourceMenuRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-resource-menu-renderers.mjs"), "utf8");
   const shortTermResourceMenuModel = await readFile(path.join(experimentRoot, "web/short-term-macos-resource-menu-model.mjs"), "utf8");
   const shortTermResourceMenuSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-resource-menu-surface.mjs"), "utf8");
+  const shortTermNavigationSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-navigation-surface.mjs"), "utf8");
   const shortTermSmokeProofModel = await readFile(path.join(experimentRoot, "web/short-term-macos-smoke-proof-model.mjs"), "utf8");
   const shortTermByteModel = await readFile(path.join(experimentRoot, "web/short-term-macos-byte-model.mjs"), "utf8");
   const shortTermApiClient = await readFile(path.join(experimentRoot, "web/short-term-macos-api-client.mjs"), "utf8");
@@ -1348,7 +1349,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCommandSurface, /dialogOpen: hasOpenDialog\(documentRef\)/);
   assert.match(shortTermEntry, /applyViewState/);
   assert.match(shortTermEntry, /applyModeButtons/);
-  assert.match(shortTermEntry, /applyTabState/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-navigation-surface\.mjs"/);
+  assert.match(shortTermNavigationSurface, /applyTabState/);
   assert.match(shortTermEntry, /setActionEnabled/);
   assert.match(shortTermCommandState, /export function buildCommandState/);
   assert.match(shortTermCommandState, /actionStates/);
@@ -1490,9 +1492,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSaveModel, /kind: "rename"/);
   assert.match(shortTermSaveModel, /保存失败验证输出/);
   assert.match(shortTermSaveModel, /保存后重开验证应失败，当前源文件保持不变。/);
-  assert.match(shortTermEntry, /from "\.\/short-term-macos-interaction-model\.mjs"/);
-  assert.match(shortTermEntry, /nextTabIndexForKey/);
-  assert.match(shortTermEntry, /consumeKeyboardEvent/);
+  assert.match(shortTermNavigationSurface, /from "\.\/short-term-macos-interaction-model\.mjs"/);
+  assert.match(shortTermNavigationSurface, /nextTabIndexForKey/);
+  assert.match(shortTermNavigationSurface, /consumeKeyboardEvent/);
   assert.match(shortTermInteractionModel, /export function consumeKeyboardEvent/);
   assert.match(shortTermInteractionModel, /export function isActivationKey/);
   assert.match(shortTermInteractionModel, /export function isContextMenuKey/);
@@ -1624,6 +1626,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /bindShortTermInteractionEvents\(\{/);
   assert.match(shortTermEventBindings, /export function bindShortTermInteractionEvents/);
   assert.match(shortTermEventBindings, /querySelector\("\[role='tablist'\]"\)\?\.addEventListener\("keydown", handlers\.handleTabListKeydown\)/);
+  assert.match(shortTermNavigationSurface, /export function handleShortTermTabListKeydown/);
+  assert.match(shortTermNavigationSurface, /setTab\(tabs\[nextIndex\]\.dataset\.tab, \{ focus: true \}\)/);
+  assert.match(shortTermNavigationSurface, /export function openShortTermTab/);
+  assert.doesNotMatch(shortTermEntry, /nextTabIndexForKey|tabButtons\(\)|applyTabState\(tab, options\)|consumeKeyboardEvent\(event\)/);
   assert.doesNotMatch(shortTermEntry, /document\.addEventListener\("click"|document\.addEventListener\("keydown"|nodes\.dropZone\.addEventListener\("drop"/);
   assert.match(shortTermCompareSurface, /generalCompareTraceView/);
   assert.match(shortTermCompareSurface, /optimizationCompareTraceView/);

@@ -1,9 +1,7 @@
 import {
   applyModeButtons,
-  applyTabState,
   applyViewState,
-  setActionEnabled,
-  tabButtons
+  setActionEnabled
 } from "./short-term-macos-dom-state.mjs";
 import {
   renderAssetList,
@@ -35,10 +33,6 @@ import {
   saveProofImageKey,
   saveProofSourceImageKey
 } from "./short-term-macos-save-model.mjs";
-import {
-  consumeKeyboardEvent,
-  nextTabIndexForKey
-} from "./short-term-macos-interaction-model.mjs";
 import {
   nextSelectedTextKey,
   runtimeTextInputValue,
@@ -135,6 +129,11 @@ import {
   openShortTermKeyboardResourceMenu,
   openShortTermResourceMenu
 } from "./short-term-macos-resource-menu-surface.mjs";
+import {
+  handleShortTermTabListKeydown,
+  openShortTermTab,
+  setShortTermTab
+} from "./short-term-macos-navigation-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -778,19 +777,11 @@ function clearCanvas(canvas) {
 }
 
 function setTab(tab, options = {}) {
-  state.tab = tab;
-  applyTabState(tab, options);
+  setShortTermTab({ state, tab, options });
 }
 
 function handleTabListKeydown(event) {
-  const tabs = tabButtons();
-  const current = event.target.closest("[data-tab]");
-  if (!current || tabs.length === 0) return;
-  const currentIndex = Math.max(0, tabs.indexOf(current));
-  const nextIndex = nextTabIndexForKey(event.key, currentIndex, tabs.length);
-  if (nextIndex === undefined) return;
-  consumeKeyboardEvent(event);
-  setTab(tabs[nextIndex].dataset.tab, { focus: true });
+  handleShortTermTabListKeydown({ event, setTab });
 }
 
 function handleResourceContextMenuKeydown(event) {
@@ -798,8 +789,7 @@ function handleResourceContextMenuKeydown(event) {
 }
 
 function openTab(tab) {
-  if (state.sourceBytes && state.view !== "preview") setMode("preview");
-  setTab(tab);
+  openShortTermTab({ state, tab, setMode, setTab });
 }
 
 async function refreshRecentFiles() {
