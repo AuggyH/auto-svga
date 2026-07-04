@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Auto SVGA Settings Direction</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="asvPreviewDirection asvSettingsDirection" aria-label="Auto SVGA 设置弹窗静态方向稿">
+      <section class="asvPreviewWindow">
+        <section class="asvPreviewCanvas">
+          <div class="asvTrafficLights" aria-hidden="true">
+            <span class="asvTraffic asvTrafficClose"></span>
+            <span class="asvTraffic asvTrafficMin"></span>
+            <span class="asvTraffic asvTrafficMax"></span>
+          </div>
+          <div class="asvModeSwitch" aria-label="模式切换">
+            <span class="isSelected">预览模式</span>
+            <span>编辑模式</span>
+          </div>
+          <div class="asvWolfFrame isBlurred" aria-hidden="true">
+            <span class="asvWolfTop"></span>
+            <span class="asvWolfSide asvWolfLeft"></span>
+            <span class="asvWolfSide asvWolfRight"></span>
+            <span class="asvWolfBottom"></span>
+            <span class="asvWolfGem"></span>
+            <span class="asvWolfHead asvWolfHeadLeft"></span>
+            <span class="asvWolfHead asvWolfHeadRight"></span>
+            <span class="asvWolfCenter"></span>
+          </div>
+        </section>
+        <aside class="asvPreviewSidebar" aria-hidden="true"></aside>
+        <section class="asvModalBackdrop">
+          <dialog class="asvSettingsSheet" open aria-label="设置">
+            <header>
+              <h1>设置</h1>
+            </header>
+            <section class="asvSettingsRows">
+              <div class="asvSettingsRow">
+                <span>外观</span>
+                <div class="asvThemeOptions" aria-label="外观">
+                  <span>跟随系统</span>
+                  <span class="isSelected">浅色</span>
+                  <span>深色</span>
+                </div>
+              </div>
+            </section>
+          </dialog>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

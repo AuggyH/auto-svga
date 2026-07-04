@@ -16,6 +16,8 @@ visual_tone:
   - precise
   - calm
   - native
+  - immersive
+  - boundary_light
   - technical
   - trustworthy
 scope:
@@ -58,12 +60,11 @@ token_namespaces:
     - text.role
     - state.feedback
   component:
-    - toolbar
     - button
-    - tab
+    - segment
     - row
     - previewStage
-    - rightPanel
+    - rightInformation
     - modal
     - menu
     - saveState
@@ -92,14 +93,16 @@ components:
     - ToolbarButton
     - IconButton
     - SegmentedModeSwitch
-    - TabItem
+    - SegmentItem
     - FactCell
     - SpecStatusCell
     - InlineStatus
     - FileDropTarget
+    - DragDecisionZone
     - PlaybackButtonGroup
     - ContextMenuItem
     - RenameInput
+    - InlineTextReplacementInput
     - SaveButtonPair
   components:
     - WindowToolbar
@@ -108,9 +111,15 @@ components:
     - FileRecentSubmenu
     - PreviewStage
     - PlaybackControls
-    - RightTabPanel
-    - OverviewFactRow
-    - ProductionSpecInlineRow
+    - RightInformationSurface
+    - FileFactRow
+    - ProductionSpecStatusRow
+    - OptimizationSpecDetailRow
+    - MetricOptimizationEntry
+    - DragDecisionOverlay
+    - CompareFileSlot
+    - SettingsSheet
+    - ThemeSegmentedControl
     - AssetRow
     - SequenceThumbnail
     - AudioAssetRow
@@ -118,20 +127,25 @@ components:
     - ReplaceableTextRow
     - OptimizationFindingRow
     - OptimizationResultCard
+    - OptimizationResultSurface
     - ComparePreviewCard
     - TextReplacementSheet
     - SaveFeedbackBanner
     - ErrorRecoveryPanel
     - LayerRow
+    - LayerListSurface
     - ReservedOperationPanel
 layout:
   primary_mode: preview
-  preview_mode: center_canvas_plus_right_panel
+  preview_mode: canvas_plus_state_driven_right_information
   edit_mode: reserved_left_canvas_right_layout
-  toolbar: macos_titlebar_integrated
+  chrome: canvas_first_menu_driven
 implementation_rules:
   use_tokens_only: true
   no_page_local_visual_values: true
+  immersive_boundary_light_hierarchy: true
+  prefer_icons_for_self_evident_actions: true
+  no_unapproved_visible_copy: true
   require_prd_trace: true
   require_component_trace: true
   require_evidence_trace: true
@@ -181,6 +195,68 @@ The tone is precise, calm, native, technical, and trustworthy. The interface
 should make the opened SVGA, its metadata, replaceable elements, optimization
 opportunities, and save states easy to inspect without decorative noise.
 
+Owner-confirmed visual direction rules:
+
+- Immersion and boundary-light hierarchy are core UI/UX principles. Prefer
+  typography, color, background tone, shape, spacing, and material depth to
+  express hierarchy. Avoid using dense outlines, boxed cards, or hard dividers
+  as the default way to separate information.
+- Use icons for actions that are self-evident as icons, such as playback,
+  replay, reset, clear, and compact toolbar controls. Use visible text only
+  when the action needs disambiguation or when the product requirement calls
+  for explicit wording.
+- Every visible in-app text string, status label, annotation, specification,
+  and helper phrase must trace to the main PRD or an approved UI/UX design
+  document. Do not add explanatory copy, status badges, comments, or technical
+  details just to make the layout feel complete.
+
+Owner-confirmed canvas direction, aligned with the PM-synced main PRD:
+
+- Treat the checkerboard canvas as the primary app surface. Launch, preview,
+  compare, drag, and optimization states should feel like variations of the
+  same continuous canvas, not separate dashboard pages.
+- Launch shows the central drag affordance, Open File action, and a
+  low-emphasis recent-file list only. The recent-file clear icon clears all
+  recent records.
+- Preview mode does not show a visible Open Another File control. Opening a
+  different file happens through the macOS menu or by dragging a file onto the
+  canvas.
+- Preview/Edit switching sits at the top center of the canvas.
+- In Preview mode, dirty state is created only by imageKey key rename. Dirty
+  state is shown by appending `*` to the file name and enabling the right-side
+  Save As button. After Save As succeeds, the `*` disappears and Save As stays
+  visible but disabled until dirty again.
+- File-size and memory optimization entries remain in the basic information
+  area. Clicking an optimization entry replaces the current right information
+  surface with optimization detail or result comparison. Production-spec target
+  thresholds are not shown in the default preview surface; they appear only in
+  the optimization detail/result context.
+- General compare has no persistent visible entry on the main surface. It is
+  entered from the macOS menu or from drag-and-drop decision overlays. If no
+  file is open, the menu command enters a two-file compare selection state.
+- Dragging a supported file over an open preview shows a two-zone overlay:
+  Open File and Add As Compare File. The focused half turns green. Unsupported
+  files turn the focused region red with `不支持的文件格式`; dropping an
+  unsupported file clears the canvas and shows the same text as a canvas toast.
+- Compare empty state keeps playback controls visible but disabled.
+- Optimization result comparison exits back to Preview after successful
+  Overwrite Save. Save As SVGA, Overwrite Save, and Abandon Optimization are
+  the visible result actions.
+- Short-term Edit mode may show the left layer list only. The right operation
+  panel remains a quiet placeholder and must not expose inactive controls.
+- Light and dark appearance must both be designed. Owner sketches establish the
+  light-mode visual language, but implementation must provide a dark-mode
+  counterpart with the same immersive canvas model, hierarchy, spacing, and
+  component structure.
+- Theme selection belongs in the macOS menu and Settings sheet, not on the main
+  canvas. The Settings sheet should use the new boundary-light visual language
+  and expose only the approved appearance choices: Follow System, Light, and
+  Dark. Do not import the old Workbench v1 settings surface wholesale.
+
+This update records the Owner-approved UI/UX direction for design execution.
+It does not override `docs/product/PRODUCT_ROADMAP.md`; if this manifest drifts
+from the PRD, the PRD wins and this manifest must be corrected.
+
 Do not make it feel like:
 
 - a marketing landing page
@@ -193,9 +269,9 @@ Do not make it feel like:
 
 The current manifest targets the corrected short-term app only:
 
-- Open local SVGA files from toolbar, drag/drop, or macOS menu.
+- Open local SVGA files from Launch, drag/drop, or macOS menu.
 - Preview playback and show abnormal states.
-- Show file facts, production-spec comparison, and asset information.
+- Show file facts, compact production-spec status, and asset information.
 - Identify designer-named replaceable elements.
 - Preview runtime image and text replacement.
 - Rename imageKeys with reference updates.
@@ -271,16 +347,14 @@ specific.
 
 Component tokens describe reusable component decisions:
 
-- `component.toolbar.height`
-- `component.toolbar.itemGap`
 - `component.button.height`
 - `component.button.radius`
-- `component.tab.height`
+- `component.segment.height`
 - `component.row.height`
 - `component.assetRow.thumbnailSize`
 - `component.previewStage.minWidth`
 - `component.previewStage.checkerboardSize`
-- `component.rightPanel.width`
+- `component.rightInformation.width`
 - `component.modal.width`
 - `component.saveState.bannerHeight`
 
@@ -353,14 +427,16 @@ Molecules combine atoms into reusable controls:
 - `ToolbarButton`
 - `IconButton`
 - `SegmentedModeSwitch`
-- `TabItem`
+- `SegmentItem`
 - `FactCell`
 - `SpecStatusCell`
 - `InlineStatus`
 - `FileDropTarget`
+- `DragDecisionZone`
 - `PlaybackButtonGroup`
 - `ContextMenuItem`
 - `RenameInput`
+- `InlineTextReplacementInput`
 - `SaveButtonPair`
 
 Molecules own interaction states such as hover, focus, pressed, disabled,
@@ -376,9 +452,11 @@ Components combine molecules into product units:
 - `FileRecentSubmenu`
 - `PreviewStage`
 - `PlaybackControls`
-- `RightTabPanel`
-- `OverviewFactRow`
-- `ProductionSpecInlineRow`
+- `RightInformationSurface`
+- `FileFactRow`
+- `ProductionSpecStatusRow`
+- `MetricOptimizationEntry`
+- `OptimizationSpecDetailRow`
 - `AssetRow`
 - `SequenceThumbnail`
 - `AudioAssetRow`
@@ -386,7 +464,12 @@ Components combine molecules into product units:
 - `ReplaceableTextRow`
 - `OptimizationFindingRow`
 - `OptimizationResultCard`
+- `OptimizationResultSurface`
 - `ComparePreviewCard`
+- `DragDecisionOverlay`
+- `CompareFileSlot`
+- `SettingsSheet`
+- `ThemeSegmentedControl`
 - `TextReplacementSheet`
 - `SaveFeedbackBanner`
 - `ErrorRecoveryPanel`
@@ -403,9 +486,9 @@ Modules compose components into screen regions:
 
 - `LaunchModule`
 - `PreviewCanvasModule`
-- `OverviewTabModule`
-- `OptimizationTabModule`
-- `ReplaceableElementsTabModule`
+- `RightInformationSurface`
+- `OptimizationDetailSurface`
+- `ReplaceableElementsSurface`
 - `GeneralCompareModule`
 - `OptimizationCompareModule`
 - `EditReservedModule`
@@ -422,8 +505,8 @@ The design must cover these states before implementation:
 - Loading
 - Load failed
 - Preview Overview
-- Preview Optimization
-- Preview Replaceable Elements
+- Preview optimization detail/result
+- Preview replaceable elements surface
 - No replaceable elements
 - No audio
 - Playback abnormal
@@ -441,41 +524,45 @@ Any high-fidelity design that omits one of these states is incomplete.
 
 ## Layout Model
 
-Launch uses a focused open/drop card inside a macOS window shell.
+Launch uses a full-window canvas/drop surface with central Open and Drag
+affordances and secondary recent-file rows.
 
 Preview mode is the default complete product mode:
 
 ```text
-toolbar
-center preview canvas + right tab panel
+canvas-first preview surface + state-driven right information surface
 ```
 
 Edit mode is reserved for later advanced editing:
 
 ```text
-toolbar
 left layer panel + center preview canvas + right reserved operation panel
 ```
 
 The reserved operation panel must not contain inactive advanced controls.
 
-General compare uses factual A/B comparison:
+General compare uses canvas-first A/B comparison:
 
 ```text
-A info/assets + two previews + B info/assets
+two preview canvases + one right comparison surface
 ```
 
 Optimization compare uses before/after preview plus an optimization result
-card. Save actions are enabled only when optimized output exists.
+surface. Save actions are enabled only when optimized output exists.
 
 ## macOS Interaction Rules
 
 The app should feel native even if implemented with web technology:
 
-- Use a titlebar-integrated toolbar.
-- Keep macOS traffic-light controls aligned with the toolbar row.
-- Put Open and Compare near the left side of the toolbar.
-- Put Overwrite Save and Save As on the right side of the toolbar.
+- Treat the window as a canvas-first surface.
+- Keep macOS traffic-light controls visually present without turning the first
+  row into a toolbar-heavy engineering shell.
+- Launch has the central Open action; Preview opens another file from the
+  macOS menu or canvas drag-and-drop.
+- General Compare is entered from the macOS menu or drag-decision overlay, not
+  from a persistent main-surface button.
+- Put context-specific save affordances in the right-side action area only
+  when output exists or dirty state requires it.
 - Use the macOS menu bar for settings, logs, appearance, help, and app-wide
   commands.
 - Use context menus for row-level resource actions such as Rename imageKey.
@@ -546,7 +633,7 @@ Optimization copy must distinguish:
 The design and code must support:
 
 - visible focus for every keyboard-reachable control
-- keyboard path for open, playback, tab switching, context menus, rename,
+- keyboard path for open, playback, mode switching, context menus, rename,
   modal confirm/cancel, and save
 - reduced motion
 - reduced transparency
