@@ -1043,6 +1043,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermPageStates = await readFile(path.join(experimentRoot, "web/short-term-macos.page-states.css"), "utf8");
   const shortTermStyles = await readFile(path.join(experimentRoot, "web/short-term-macos.css"), "utf8");
   const shortTermCommandState = await readFile(path.join(experimentRoot, "web/short-term-macos-command-state.mjs"), "utf8");
+  const shortTermCommandSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-command-surface.mjs"), "utf8");
   const shortTermCompareModel = await readFile(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs"), "utf8");
   const shortTermCompareRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-compare-renderers.mjs"), "utf8");
   const shortTermEditReservedRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-edit-reserved-renderers.mjs"), "utf8");
@@ -1284,8 +1285,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /renderRuntimeTextElements/);
   assert.match(shortTermEntry, /showSaveFeedbackBanner/);
   assert.match(shortTermEntry, /showResourceContextMenu/);
-  assert.match(shortTermEntry, /from "\.\/short-term-macos-command-state\.mjs"/);
-  assert.match(shortTermEntry, /buildCommandState/);
+  assert.match(shortTermCommandSurface, /from "\.\/short-term-macos-command-state\.mjs"/);
+  assert.match(shortTermCommandSurface, /buildCommandState/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-compare-model\.mjs"/);
   assert.match(shortTermEntry, /renderCompareInfoHtml/);
   assert.match(shortTermEntry, /renderOptimizationCompareResultHtml/);
@@ -1304,7 +1305,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermHostClient, /export async function getRecentSvgaFiles/);
   assert.match(shortTermHostClient, /export async function clearRecentSvgaFiles/);
   assert.match(shortTermHostClient, /export function syncShortTermMenuState/);
-  assert.match(shortTermEntry, /state\.lastMenuStateSnapshot = syncShortTermMenuState/);
+  assert.match(shortTermEntry, /state\.lastMenuStateSnapshot = renderShortTermCommandSurface/);
+  assert.match(shortTermCommandSurface, /syncShortTermMenuState/);
   assert.doesNotMatch(shortTermEntry, /bridge\.getRecentSvgaFiles|bridge\.clearRecentSvgaFiles|bridge\.updateShortTermMenuState/);
   assert.match(shortTermHostClient, /bridge\.getRecentSvgaFiles/);
   assert.match(shortTermHostClient, /bridge\.clearRecentSvgaFiles/);
@@ -1322,14 +1324,18 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermNodes, /export function collectShortTermNodes\(\)/);
   assert.match(shortTermNodes, /app: document\.querySelector\("\.macApp"\)/);
   assert.match(shortTermNodes, /replacementFileInput: document\.querySelector\("#replacementFileInput"\)/);
-  assert.match(shortTermEntry, /applyCommandState/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-command-surface\.mjs"/);
+  assert.match(shortTermCommandSurface, /export function renderShortTermCommandSurface/);
+  assert.match(shortTermCommandSurface, /buildCommandState\(\{/);
+  assert.match(shortTermCommandSurface, /applyCommandState\(commandState\)/);
+  assert.match(shortTermCommandSurface, /dialogOpen: hasOpenDialog\(documentRef\)/);
   assert.match(shortTermEntry, /applyViewState/);
   assert.match(shortTermEntry, /applyModeButtons/);
   assert.match(shortTermEntry, /applyTabState/);
   assert.match(shortTermEntry, /setActionEnabled/);
   assert.match(shortTermCommandState, /export function buildCommandState/);
   assert.match(shortTermCommandState, /actionStates/);
-  assert.match(shortTermEntry, /applyCommandState\(commandState\)/);
+  assert.doesNotMatch(shortTermEntry, /applyCommandState\(commandState\)|buildCommandState\(\{|dialogOpen: hasOpenDialog\(document\)/);
   assert.doesNotMatch(shortTermEntry, /Object\.entries\(commandState\.actionStates\)|document\.querySelector\("\[data-action='play-pause'\]"\)\.textContent = commandState\.playPauseCopy/);
   assert.match(shortTermDomState, /Object\.entries\(commandState\.actionStates\)/);
   assert.match(shortTermDomState, /setActionEnabled\(action, actionState\.enabled, actionState\.reason\)/);
@@ -1637,7 +1643,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDialogModel, /options\.initialFocus/);
   assert.match(shortTermDialogModel, /returnFocus\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(shortTermDialogModel, /querySelector\("dialog\[open\]"\)/);
-  assert.match(shortTermEntry, /dialogOpen: hasOpenDialog\(document\)/);
+  assert.match(shortTermCommandSurface, /dialogOpen: hasOpenDialog\(documentRef\)/);
   assert.match(shortTermEntry, /showDialog\(nodes\.textDialog, renderCommandState, \{\s*initialFocus: nodes\.runtimeTextInput\s*\}\)/s);
   assert.match(shortTermEventBindings, /if \(hasOpenDialog\(documentRef\)\) \{\s+if \(event\.key === "Escape"\) closeOpenDialog\(documentRef, "cancel"\);\s+return;\s+\}/);
   assert.match(shortTermActionBridge, /closeOpenDialog\(documentRef, "cancel"\)/);
@@ -1907,7 +1913,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackModel, /错误：\$\{input\.errorText\.trim\(\)\}/);
   assert.match(shortTermFeedbackModel, /提示：\$\{input\.saveBannerText\.trim\(\)\}/);
   assert.match(shortTermActionBridge, /writeClipboardText\?\.\(handlers\.currentStateSummary\(\)\)/);
-  assert.match(shortTermEntry, /syncShortTermMenuState/);
+  assert.match(shortTermCommandSurface, /syncShortTermMenuState/);
   assert.match(shortTermHostClient, /updateShortTermMenuState/);
   assert.match(shortTermCommandState, /canShowOptimizationComparison/);
   assert.match(shortTermEntry, /showOptimizationComparison/);

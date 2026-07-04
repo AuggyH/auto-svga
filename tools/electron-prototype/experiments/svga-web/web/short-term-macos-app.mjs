@@ -1,12 +1,10 @@
 import {
-  applyCommandState,
   applyModeButtons,
   applyTabState,
   applyViewState,
   setActionEnabled,
   tabButtons
 } from "./short-term-macos-dom-state.mjs";
-import { buildCommandState } from "./short-term-macos-command-state.mjs";
 import {
   compareSlotView,
   generalCompareTraceView,
@@ -134,12 +132,10 @@ import {
 } from "./short-term-macos-api-client.mjs";
 import {
   clearRecentSvgaFiles,
-  getRecentSvgaFiles,
-  syncShortTermMenuState
+  getRecentSvgaFiles
 } from "./short-term-macos-host-client.mjs";
 import {
   confirmDiscardUnsavedOutput as confirmDiscardDialogOutput,
-  hasOpenDialog,
   showDialog
 } from "./short-term-macos-dialog-model.mjs";
 import {
@@ -154,6 +150,7 @@ import {
 import { collectShortTermNodes } from "./short-term-macos-nodes.mjs";
 import { bindShortTermInteractionEvents } from "./short-term-macos-event-bindings.mjs";
 import { installShortTermActionBridge } from "./short-term-macos-action-bridge.mjs";
+import { renderShortTermCommandSurface } from "./short-term-macos-command-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -862,28 +859,11 @@ async function clearRecentFiles() {
 }
 
 function renderCommandState() {
-  const commandState = buildCommandState({
-    view: state.view,
-    mode: state.mode,
-    tab: state.tab,
-    hasFile: Boolean(state.sourceBytes),
-    activeOutput: state.activeOutput,
-    saveStatus: state.saveStatus,
-    sourceId: state.sourceId,
-    optimizationBatchActionEnabled: state.model?.optimization?.batchActionEnabled === true,
-    selectedImageKey: state.selectedImageKey,
-    canEditText: Boolean(selectedTextElement()),
-    textPreview: state.textPreview,
-    primaryPlaybackPlaying: state.primaryPlayback?.playing === true,
-    renameImageKey: state.renameImageKey,
-    dialogOpen: hasOpenDialog(document)
-  });
-  applyCommandState(commandState);
-  state.lastMenuStateSnapshot = syncShortTermMenuState(
+  state.lastMenuStateSnapshot = renderShortTermCommandSurface({
     bridge,
-    commandState.menuState,
-    state.lastMenuStateSnapshot
-  );
+    state,
+    canEditText: Boolean(selectedTextElement())
+  });
 }
 
 function showSaveBanner(title, message, tone) {
