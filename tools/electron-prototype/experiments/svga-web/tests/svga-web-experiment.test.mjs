@@ -1047,6 +1047,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermCompareRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-compare-renderers.mjs"), "utf8");
   const shortTermEditReservedRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-edit-reserved-renderers.mjs"), "utf8");
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
+  const shortTermNodes = await readFile(path.join(experimentRoot, "web/short-term-macos-nodes.mjs"), "utf8");
   const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
   const shortTermInlineStatusRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-inline-status-renderers.mjs"), "utf8");
   const shortTermLaunchRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-launch-renderers.mjs"), "utf8");
@@ -1313,6 +1314,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /createSaveFailureProofActiveOutput/);
   assert.doesNotMatch(shortTermEntry, /保存失败验证输出/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-dom-state\.mjs"/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-nodes\.mjs"/);
+  assert.match(shortTermEntry, /collectShortTermNodes/);
+  assert.doesNotMatch(shortTermEntry, /const nodes = \{\s*app: document\.querySelector\("\.macApp"\)/);
+  assert.match(shortTermNodes, /export function collectShortTermNodes\(\)/);
+  assert.match(shortTermNodes, /app: document\.querySelector\("\.macApp"\)/);
+  assert.match(shortTermNodes, /replacementFileInput: document\.querySelector\("#replacementFileInput"\)/);
   assert.match(shortTermEntry, /applyCommandState/);
   assert.match(shortTermEntry, /applyViewState/);
   assert.match(shortTermEntry, /applyModeButtons/);
@@ -1549,7 +1556,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-optimization-model\.mjs"/);
   assert.match(shortTermEntry, /optimizationTabView/);
   assert.match(shortTermEntry, /optimizationResultTone/);
-  assert.match(shortTermEntry, /runOptimizationButton: document\.querySelector\("\[data-action='run-optimization'\]"\)/);
+  assert.match(shortTermNodes, /runOptimizationButton: document\.querySelector\("\[data-action='run-optimization'\]"\)/);
   assert.match(shortTermEntry, /renderOptimizationFindings\(nodes, optimizationTabView\(model\)\)/);
   assert.match(shortTermEntry, /prependOptimizationResult\(nodes, model\.resultTitle, model\.resultSummary, tone\)/);
   assert.doesNotMatch(shortTermEntry, /createOptimizationFindingRow|createInlineStatusText|createMessageRow|nodes\.optimizationSummary\.textContent|nodes\.findingList\.replaceChildren|nodes\.findingList\.prepend/);
