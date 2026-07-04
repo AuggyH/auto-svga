@@ -285,6 +285,12 @@
 
 .replaceableRow,
 .textElementRow {
+  padding: var(--asv-space-2) var(--asv-space-1);
+  border: 0;
+  border-bottom: 1px solid var(--asv-subtle-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   outline: none;
 }
 
@@ -294,9 +300,9 @@
 .textElementRow:hover,
 .textElementRow.isSelected,
 .textElementRow:focus-visible {
-  border-color: var(--asv-border-strong);
-  background: var(--asv-row-selected-bg);
-  box-shadow: var(--asv-shadow-row-selected);
+  border-color: var(--asv-subtle-border);
+  background: var(--asv-row-hover-bg);
+  box-shadow: none;
 }
 
 .replaceableRow:focus-visible,
