@@ -73,12 +73,8 @@ import {
 import {
   consumeKeyboardEvent,
   enabledMenuItems,
-  isActivationKey,
-  isContextMenuKey,
-  isTextEditingTarget,
   nextMenuItemIndexForKey,
-  nextTabIndexForKey,
-  shouldHandleGlobalPlaybackShortcut
+  nextTabIndexForKey
 } from "./short-term-macos-interaction-model.mjs";
 import {
   keyboardResourceMenuAnchor,
@@ -157,6 +153,7 @@ import {
   togglePrimaryPlayback as togglePrimarySvgaPlayback
 } from "./short-term-macos-playback-model.mjs";
 import { collectShortTermNodes } from "./short-term-macos-nodes.mjs";
+import { bindShortTermInteractionEvents } from "./short-term-macos-event-bindings.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -922,154 +919,39 @@ function currentStateSummary() {
   });
 }
 
-document.addEventListener("click", (event) => {
-  const target = event.target.closest("[data-action]");
-  if (!event.target.closest("#resourceContextMenu")) closeResourceContextMenu();
-  if (!target) return;
-  const { action } = target.dataset;
-  if (action === "open") openFromHostDialog().catch(showFailure);
-  if (action === "open-recent") openRecentFromMenu(target.dataset.recentId).catch(showFailure);
-  if (action === "clear-recent") clearRecentFiles().catch(showFailure);
-  if (action === "compare") enterGeneralCompare().catch(showFailure);
-  if (action === "back-preview") setMode("preview");
-  if (action === "mode-preview") setMode("preview");
-  if (action === "mode-edit") setMode("edit");
-  if (action === "play-pause") togglePrimaryPlayback();
-  if (action === "replay") replayPrimary();
-  if (action === "run-optimization") runOptimization().catch(showFailure);
-  if (action === "save-as") saveActiveOutput("saveAs").catch(showFailure);
-  if (action === "save-overwrite") saveActiveOutput("overwrite").catch(showFailure);
-  if (action === "open-compare-b") openCompareBFromHost().catch(showFailure);
-  if (action === "select-resource") selectImageKey(target.dataset.imageKey || state.selectedImageKey);
-  if (action === "row-menu") {
-    const rect = target.getBoundingClientRect();
-    openResourceContextMenu({
-      clientX: rect.right,
-      clientY: rect.bottom
-    }, target.dataset.imageKey || state.selectedImageKey, target);
+bindShortTermInteractionEvents({
+  nodes,
+  state,
+  handlers: {
+    openFromHostDialog,
+    openRecentFromMenu,
+    clearRecentFiles,
+    enterGeneralCompare,
+    setMode,
+    togglePrimaryPlayback,
+    replayPrimary,
+    runOptimization,
+    saveActiveOutput,
+    openCompareBFromHost,
+    selectImageKey,
+    openResourceContextMenu,
+    closeResourceContextMenu,
+    selectTextKey,
+    confirmInlineRename,
+    cancelInlineRename,
+    renameSelectedImageKey,
+    chooseReplacementImage,
+    resetImageReplacement,
+    editRuntimeText,
+    resetRuntimeText,
+    openKeyboardResourceContextMenu,
+    setTab,
+    handleTabListKeydown,
+    handleResourceContextMenuKeydown,
+    applyReplacementFile,
+    loadDroppedFile,
+    showFailure
   }
-  if (action === "select-text") selectTextKey(target.dataset.textKey || state.selectedTextKey);
-  if (action === "inline-rename-confirm") confirmInlineRename().catch(showFailure);
-  if (action === "inline-rename-cancel") cancelInlineRename();
-  if (action === "context-rename") {
-    closeResourceContextMenu({ restoreFocus: true });
-    renameSelectedImageKey().catch(showFailure);
-  }
-  if (action === "context-replace") {
-    closeResourceContextMenu({ restoreFocus: true });
-    chooseReplacementImage();
-  }
-  if (action === "context-reset") {
-    closeResourceContextMenu({ restoreFocus: true });
-    resetImageReplacement().catch(showFailure);
-  }
-  if (action === "edit-text") editRuntimeText().catch(showFailure);
-  if (action === "reset-text") resetRuntimeText();
-});
-
-nodes.replaceableList.addEventListener("contextmenu", (event) => {
-  if (event.target.closest("[data-rename-input]")) return;
-  const target = event.target.closest(".replaceableRow");
-  if (!target) return;
-  event.preventDefault();
-  openResourceContextMenu(event, target.dataset.imageKey, target);
-});
-
-nodes.replaceableList.addEventListener("keydown", (event) => {
-  if (event.target.matches("[data-rename-input]")) {
-    if (event.key === "Enter") {
-      consumeKeyboardEvent(event);
-      confirmInlineRename().catch(showFailure);
-    }
-    if (event.key === "Escape") {
-      consumeKeyboardEvent(event);
-      cancelInlineRename();
-    }
-    return;
-  }
-  if (event.target.closest("button")) return;
-  const row = event.target.closest(".replaceableRow[data-image-key]");
-  if (!row) return;
-  if (isActivationKey(event)) {
-    consumeKeyboardEvent(event);
-    selectImageKey(row.dataset.imageKey);
-  }
-  if (isContextMenuKey(event)) {
-    consumeKeyboardEvent(event);
-    openKeyboardResourceContextMenu(row);
-  }
-});
-
-nodes.textElementList.addEventListener("keydown", (event) => {
-  const row = event.target.closest(".textElementRow[data-text-key]");
-  if (!row) return;
-  if (isActivationKey(event)) {
-    consumeKeyboardEvent(event);
-    selectTextKey(row.dataset.textKey);
-  }
-});
-
-document.querySelectorAll("[data-tab]").forEach((button) => {
-  button.addEventListener("click", () => setTab(button.dataset.tab));
-});
-
-document.querySelector("[role='tablist']")?.addEventListener("keydown", handleTabListKeydown);
-nodes.resourceContextMenu.addEventListener("keydown", handleResourceContextMenuKeydown);
-
-nodes.replacementFileInput.addEventListener("change", () => {
-  applyReplacementFile(nodes.replacementFileInput.files?.[0]).catch(showFailure);
-});
-
-nodes.runtimeTextInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    nodes.textDialog.close("confirm");
-  }
-  if (event.key === "Escape") {
-    event.preventDefault();
-    nodes.textDialog.close("cancel");
-  }
-});
-
-nodes.dropZone.addEventListener("dragover", (event) => {
-  event.preventDefault();
-  nodes.dropZone.classList.add("isDragOver");
-});
-
-nodes.dropZone.addEventListener("dragleave", () => nodes.dropZone.classList.remove("isDragOver"));
-nodes.dropZone.addEventListener("drop", (event) => {
-  event.preventDefault();
-  nodes.dropZone.classList.remove("isDragOver");
-  loadDroppedFile(event.dataTransfer?.files?.[0]).catch(showFailure);
-});
-
-document.addEventListener("keydown", (event) => {
-  const command = event.metaKey || event.ctrlKey;
-  const textInput = isTextEditingTarget(event.target);
-  if (hasOpenDialog(document)) {
-    if (event.key === "Escape") closeOpenDialog(document, "cancel");
-    return;
-  }
-  if (textInput && command && ["o", "r", "s"].includes(event.key.toLowerCase())) return;
-  if (command && event.key.toLowerCase() === "o") {
-    event.preventDefault();
-    openFromHostDialog().catch(showFailure);
-  }
-  if (command && event.key.toLowerCase() === "r") {
-    event.preventDefault();
-    renameSelectedImageKey().catch(showFailure);
-  }
-  if (command && event.key.toLowerCase() === "s") {
-    event.preventDefault();
-    saveActiveOutput(event.shiftKey ? "saveAs" : "overwrite").catch(showFailure);
-  }
-  if (event.key === " " && shouldHandleGlobalPlaybackShortcut(event.target)) {
-    event.preventDefault();
-    togglePrimaryPlayback();
-  }
-  if (event.key === "Escape" && state.view === "compare") setMode("preview");
-  if (event.key === "Escape" && state.renameImageKey) cancelInlineRename();
-  if (event.key === "Escape") closeResourceContextMenu({ restoreFocus: true });
 });
 
 window.__autoSvgaShortTermActions = Object.freeze({
