@@ -15,18 +15,9 @@ import {
   renderFileHeader
 } from "./short-term-macos-state-renderers.mjs";
 import {
-  applyRuntimeTextOverlay,
-  clearRuntimeTextOverlay
-} from "./short-term-macos-text-renderers.mjs";
-import {
   renderEditReservedLayers
 } from "./short-term-macos-edit-reserved-renderers.mjs";
 import { suffixName } from "./short-term-macos-render-model.mjs";
-import {
-  runtimeTextInputValue,
-  runtimeTextOverlayCopy,
-  runtimeTextPlaceholder
-} from "./short-term-macos-text-model.mjs";
 import {
   optimizationResultTone,
   optimizationTabView
@@ -68,8 +59,7 @@ import {
   replaceShortTermImageAsset
 } from "./short-term-macos-api-client.mjs";
 import {
-  confirmDiscardUnsavedOutput as confirmDiscardDialogOutput,
-  showDialog
+  confirmDiscardUnsavedOutput as confirmDiscardDialogOutput
 } from "./short-term-macos-dialog-model.mjs";
 import { collectShortTermNodes } from "./short-term-macos-nodes.mjs";
 import { bindShortTermInteractionEvents } from "./short-term-macos-event-bindings.mjs";
@@ -136,6 +126,10 @@ import {
   createShortTermSaveProofOutput,
   saveShortTermActiveOutput
 } from "./short-term-macos-save-surface.mjs";
+import {
+  editShortTermRuntimeTextPreview,
+  resetShortTermRuntimeTextPreview
+} from "./short-term-macos-runtime-text-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -459,33 +453,23 @@ async function resetImageReplacement() {
 }
 
 async function editRuntimeText() {
-  if (!state.sourceBytes) return;
-  const textElement = selectedTextElement();
-  if (!textElement) {
-    showSaveBanner("没有可预览的文本元素。", "当前文件没有暴露可运行时替换的文本标识，源文件没有被修改。");
-    return;
-  }
-  nodes.runtimeTextInput.value = runtimeTextInputValue(state.textPreview);
-  nodes.runtimeTextInput.placeholder = runtimeTextPlaceholder(textElement);
-  const result = await showDialog(nodes.textDialog, renderCommandState, {
-    initialFocus: nodes.runtimeTextInput
+  await editShortTermRuntimeTextPreview({
+    nodes,
+    state,
+    textElement: selectedTextElement(),
+    showSaveBanner,
+    renderTextElements,
+    renderCommandState
   });
-  if (result !== "confirm") return;
-  state.textPreview = nodes.runtimeTextInput.value.trim();
-  applyRuntimeTextOverlay(
-    nodes.runtimeTextOverlay,
-    runtimeTextOverlayCopy(textElement, state.textPreview),
-    Boolean(state.textPreview)
-  );
-  renderTextElements(state.model?.replaceableElements);
-  renderCommandState();
 }
 
 function resetRuntimeText() {
-  state.textPreview = "";
-  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
-  renderTextElements(state.model?.replaceableElements);
-  renderCommandState();
+  resetShortTermRuntimeTextPreview({
+    nodes,
+    state,
+    renderTextElements,
+    renderCommandState
+  });
 }
 
 async function saveActiveOutput(command) {
