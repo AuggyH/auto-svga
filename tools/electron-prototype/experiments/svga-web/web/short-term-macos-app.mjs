@@ -138,7 +138,6 @@ import {
   syncShortTermMenuState
 } from "./short-term-macos-host-client.mjs";
 import {
-  closeOpenDialog,
   confirmDiscardUnsavedOutput as confirmDiscardDialogOutput,
   hasOpenDialog,
   showDialog
@@ -154,6 +153,7 @@ import {
 } from "./short-term-macos-playback-model.mjs";
 import { collectShortTermNodes } from "./short-term-macos-nodes.mjs";
 import { bindShortTermInteractionEvents } from "./short-term-macos-event-bindings.mjs";
+import { installShortTermActionBridge } from "./short-term-macos-action-bridge.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -954,36 +954,32 @@ bindShortTermInteractionEvents({
   }
 });
 
-window.__autoSvgaShortTermActions = Object.freeze({
-  openFromHostDialog,
-  openRecentFromMenu,
-  clearRecentFiles,
-  closeFile,
-  save: () => saveActiveOutput("overwrite"),
-  saveAs: () => saveActiveOutput("saveAs"),
-  renameImageKey: renameSelectedImageKey,
-  createSaveProofOutput,
-  createSaveFailureProofOutput,
-  replaceImage: () => chooseReplacementImage(),
-  resetImageReplacement,
-  editTextPreview: editRuntimeText,
-  resetTextPreview: resetRuntimeText,
-  runOptimization,
-  showOptimizationComparison,
-  openCompareB: openCompareBFromHost,
-  playPause: togglePrimaryPlayback,
-  replay: replayPrimary,
-  previewMode: () => setMode("preview"),
-  editMode: () => setMode("edit"),
-  toggleCompare: () => (state.view === "compare" ? setMode("preview") : enterGeneralCompare()),
-  overviewTab: () => openTab("overview"),
-  optimizationTab: () => openTab("optimization"),
-  replaceableTab: () => openTab("replaceable"),
-  cancel: () => {
-    closeOpenDialog(document, "cancel");
-    if (state.view === "compare") setMode("preview");
-  },
-  copyStateSummary: () => bridge?.writeClipboardText?.(currentStateSummary())
+installShortTermActionBridge({
+  bridge,
+  state,
+  handlers: {
+    openFromHostDialog,
+    openRecentFromMenu,
+    clearRecentFiles,
+    closeFile,
+    saveActiveOutput,
+    renameSelectedImageKey,
+    createSaveProofOutput,
+    createSaveFailureProofOutput,
+    chooseReplacementImage,
+    resetImageReplacement,
+    editRuntimeText,
+    resetRuntimeText,
+    runOptimization,
+    showOptimizationComparison,
+    openCompareBFromHost,
+    togglePrimaryPlayback,
+    replayPrimary,
+    setMode,
+    enterGeneralCompare,
+    openTab,
+    currentStateSummary
+  }
 });
 
 refreshRecentFiles().catch(() => {});

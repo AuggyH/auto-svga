@@ -1049,6 +1049,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
   const shortTermNodes = await readFile(path.join(experimentRoot, "web/short-term-macos-nodes.mjs"), "utf8");
   const shortTermEventBindings = await readFile(path.join(experimentRoot, "web/short-term-macos-event-bindings.mjs"), "utf8");
+  const shortTermActionBridge = await readFile(path.join(experimentRoot, "web/short-term-macos-action-bridge.mjs"), "utf8");
   const shortTermFeedbackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs"), "utf8");
   const shortTermInlineStatusRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-inline-status-renderers.mjs"), "utf8");
   const shortTermLaunchRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-launch-renderers.mjs"), "utf8");
@@ -1639,7 +1640,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /dialogOpen: hasOpenDialog\(document\)/);
   assert.match(shortTermEntry, /showDialog\(nodes\.textDialog, renderCommandState, \{\s*initialFocus: nodes\.runtimeTextInput\s*\}\)/s);
   assert.match(shortTermEventBindings, /if \(hasOpenDialog\(documentRef\)\) \{\s+if \(event\.key === "Escape"\) closeOpenDialog\(documentRef, "cancel"\);\s+return;\s+\}/);
-  assert.match(shortTermEntry, /closeOpenDialog\(document, "cancel"\)/);
+  assert.match(shortTermActionBridge, /closeOpenDialog\(documentRef, "cancel"\)/);
   assert.doesNotMatch(shortTermEntry, /function showDialog|dialog\.showModal\(\)|document\.querySelector\("dialog\[open\]"\)/);
   assert.match(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);
   assert.match(shortTermPlaybackModel, /export async function mountPlayback/);
@@ -1668,7 +1669,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermRenderModel, /success: "已生成"/);
   assert.match(shortTermRenderModel, /export function renderCompareFactCellHtml/);
   assert.match(shortTermRenderModel, /export function groupOptimizationItems/);
-  assert.match(shortTermEntry, /window\.__autoSvgaShortTermActions/);
+  assert.match(shortTermEntry, /from "\.\/short-term-macos-action-bridge\.mjs"/);
+  assert.match(shortTermEntry, /installShortTermActionBridge\(\{/);
+  assert.match(shortTermActionBridge, /export function installShortTermActionBridge/);
+  assert.match(shortTermActionBridge, /windowRef\.__autoSvgaShortTermActions = Object\.freeze/);
+  assert.match(shortTermActionBridge, /save: \(\) => handlers\.saveActiveOutput\("overwrite"\)/);
+  assert.match(shortTermActionBridge, /copyStateSummary: \(\) => bridge\?\.writeClipboardText\?\.\(handlers\.currentStateSummary\(\)\)/);
+  assert.doesNotMatch(shortTermEntry, /window\.__autoSvgaShortTermActions = Object\.freeze/);
   assert.match(shortTermEntry, /aria-selected/);
   assert.match(shortTermApiClient, /\/api\/short-term-product-inspection-model/);
   assert.match(shortTermApiClient, /\/api\/short-term-product-optimization-workflow/);
@@ -1899,7 +1906,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /currentStateSummary/);
   assert.match(shortTermFeedbackModel, /错误：\$\{input\.errorText\.trim\(\)\}/);
   assert.match(shortTermFeedbackModel, /提示：\$\{input\.saveBannerText\.trim\(\)\}/);
-  assert.match(shortTermEntry, /writeClipboardText\?\.\(currentStateSummary\(\)\)/);
+  assert.match(shortTermActionBridge, /writeClipboardText\?\.\(handlers\.currentStateSummary\(\)\)/);
   assert.match(shortTermEntry, /syncShortTermMenuState/);
   assert.match(shortTermHostClient, /updateShortTermMenuState/);
   assert.match(shortTermCommandState, /canShowOptimizationComparison/);
