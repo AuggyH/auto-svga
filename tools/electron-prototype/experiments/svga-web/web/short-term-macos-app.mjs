@@ -19,10 +19,6 @@ import {
   renderLoadingMessage
 } from "./short-term-macos-state-renderers.mjs";
 import {
-  hideResourceContextMenu,
-  showResourceContextMenu
-} from "./short-term-macos-resource-menu-renderers.mjs";
-import {
   renderReplaceableImages,
   renderRuntimeTextElements
 } from "./short-term-macos-replaceable-renderers.mjs";
@@ -41,14 +37,8 @@ import {
 } from "./short-term-macos-save-model.mjs";
 import {
   consumeKeyboardEvent,
-  enabledMenuItems,
-  nextMenuItemIndexForKey,
   nextTabIndexForKey
 } from "./short-term-macos-interaction-model.mjs";
-import {
-  keyboardResourceMenuAnchor,
-  resourceContextMenuView
-} from "./short-term-macos-resource-menu-model.mjs";
 import {
   nextSelectedTextKey,
   runtimeTextInputValue,
@@ -139,6 +129,12 @@ import {
   renderShortTermOptimizationCompareResult,
   renderShortTermOptimizationCompareTrace
 } from "./short-term-macos-compare-surface.mjs";
+import {
+  closeShortTermResourceMenu,
+  handleShortTermResourceMenuKeydown,
+  openShortTermKeyboardResourceMenu,
+  openShortTermResourceMenu
+} from "./short-term-macos-resource-menu-surface.mjs";
 
 const bridge = globalThis.autoSvgaElectronHost;
 const state = {
@@ -681,34 +677,15 @@ function selectImageKey(imageKey) {
 }
 
 function openKeyboardResourceContextMenu(row) {
-  const rect = row.getBoundingClientRect();
-  openResourceContextMenu(keyboardResourceMenuAnchor(rect), row.dataset.imageKey, row);
+  openShortTermKeyboardResourceMenu({ nodes, state, row, selectImageKey });
 }
 
 function openResourceContextMenu(event, imageKey, returnFocus = undefined) {
-  if (!imageKey) return;
-  selectImageKey(imageKey);
-  state.resourceMenuReturnFocus = returnFocus?.isConnected ? returnFocus : undefined;
-  const menu = nodes.resourceContextMenu;
-  const view = resourceContextMenuView({
-    clientX: event.clientX,
-    clientY: event.clientY,
-    menuWidth: menu.offsetWidth,
-    menuHeight: menu.offsetHeight,
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight,
-    activeOutput: state.activeOutput
-  });
-  showResourceContextMenu(menu, view);
+  openShortTermResourceMenu({ nodes, state, event, imageKey, returnFocus, selectImageKey });
 }
 
 function closeResourceContextMenu({ restoreFocus = false } = {}) {
-  const wasOpen = nodes.resourceContextMenu.hidden === false;
-  const returnFocus = state.resourceMenuReturnFocus;
-  hideResourceContextMenu(nodes.resourceContextMenu);
-  state.resourceMenuReturnFocus = undefined;
-  if (!restoreFocus || !wasOpen || !returnFocus?.isConnected) return;
-  returnFocus.focus({ preventScroll: true });
+  closeShortTermResourceMenu({ nodes, state, restoreFocus });
 }
 
 function renderEditReserved() {
@@ -817,13 +794,7 @@ function handleTabListKeydown(event) {
 }
 
 function handleResourceContextMenuKeydown(event) {
-  const items = enabledMenuItems(nodes.resourceContextMenu);
-  const current = event.target.closest("[role='menuitem']");
-  const currentIndex = items.indexOf(current);
-  const nextIndex = nextMenuItemIndexForKey(event.key, currentIndex, items.length);
-  if (nextIndex === undefined) return;
-  consumeKeyboardEvent(event);
-  items[nextIndex]?.focus();
+  handleShortTermResourceMenuKeydown({ nodes, event });
 }
 
 function openTab(tab) {
