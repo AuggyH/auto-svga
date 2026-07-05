@@ -68,8 +68,8 @@ export function collectShortTermEmptyStateProof({
     proofId: "short-term-empty-state-proof",
     source: "short-term-smoke",
     noAudioVisible: noAudioCopy.includes("当前文件暂无音频资产"),
-    noReplaceableImagesVisible: replaceableImageRowCount === 0 && noReplaceableCopy.includes("未发现设计师命名"),
-    textUnavailableVisible: textElementRowCount === 0 && textUnavailableCopy.includes("未发现设计师命名的文本锚点"),
+    noReplaceableImagesMinimal: replaceableImageRowCount === 0 && noReplaceableCopy === "",
+    textUnavailableMinimal: textElementRowCount === 0 && textUnavailableCopy === "",
     ordinaryImagesNotDuplicatedInReplaceables: replaceableImageRowCount === 0 && assetRowCount > 0,
     ordinaryImageThumbnailVisible: ordinaryImageThumbnailCount > 0,
     assetRowCount,
@@ -82,8 +82,8 @@ export function collectShortTermEmptyStateProof({
   };
   proof.passed = [
     proof.noAudioVisible,
-    proof.noReplaceableImagesVisible,
-    proof.textUnavailableVisible,
+    proof.noReplaceableImagesMinimal,
+    proof.textUnavailableMinimal,
     proof.ordinaryImagesNotDuplicatedInReplaceables,
     proof.ordinaryImageThumbnailVisible
   ].every(Boolean);
@@ -203,13 +203,13 @@ export function collectShortTermReplaceableClassificationProof({
     automaticKeysExcluded: automaticImageNames.length > 0 && automaticReplaceableCount === 0,
     designerKeysIncluded: designerReplaceableKeys.includes("profile_frame"),
     replaceableElementsNotAllImages: designerReplaceableKeys.length > 0 && designerReplaceableKeys.length < designerImageAssetCount,
-    emptyStateExplainsAutomaticExclusion: noReplaceableCopy.includes("自动命名资源")
+    automaticEmptyStateMinimal: noReplaceableCopy === ""
   };
   proof.passed = [
     proof.automaticKeysExcluded,
     proof.designerKeysIncluded,
     proof.replaceableElementsNotAllImages,
-    proof.emptyStateExplainsAutomaticExclusion
+    proof.automaticEmptyStateMinimal
   ].every(Boolean);
   return proof;
 }

@@ -1,5 +1,4 @@
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
-import { createInlineStatusText } from "./short-term-macos-inline-status-renderers.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
 
 export function createReplaceableImageRow(item, index, options) {
@@ -41,7 +40,7 @@ export function createReplaceableImageRow(item, index, options) {
 export function renderReplaceableImages(nodes, view, model) {
   nodes.replaceableSummary.textContent = view.summaryCopy;
   if (!view.hasImages) {
-    nodes.replaceableList.replaceChildren(createInlineStatusText(view.emptyCopy));
+    nodes.replaceableList.replaceChildren();
     return;
   }
   nodes.replaceableList.replaceChildren(...view.rows.map((row) => createReplaceableImageRow(row.item, row.index, {
@@ -76,7 +75,7 @@ export function createTextElementRow(item, index, options) {
 export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
   nodes.textPreviewSummary.textContent = view.summaryCopy;
   if (!view.hasTextElements) {
-    nodes.textElementList.replaceChildren(createInlineStatusText(view.emptyCopy));
+    nodes.textElementList.replaceChildren();
     return;
   }
   nodes.textElementList.replaceChildren(...view.texts.map((item, index) => createTextElementRow(item, index, {

@@ -9,7 +9,7 @@ export function replaceableImageListView(model, selectedImageKey, renameImageKey
       renaming: item.imageKey === renameImageKey
     })),
     hasImages: images.length > 0,
-    emptyCopy: model?.emptyCopy || "没有可替换元素。",
+    emptyCopy: "",
     summaryCopy: `(${images.length})`
   };
 }

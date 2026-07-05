@@ -317,8 +317,8 @@ function validateSmokeResult(value) {
     if (!shortTermEmptyStateProof) return undefined;
     result.shortTermEmptyStateProof = shortTermEmptyStateProof;
     result.shortTermNoAudio = shortTermEmptyStateProof.noAudioVisible;
-    result.shortTermNoReplaceable = shortTermEmptyStateProof.noReplaceableImagesVisible;
-    result.shortTermTextUnavailable = shortTermEmptyStateProof.textUnavailableVisible;
+    result.shortTermNoReplaceable = shortTermEmptyStateProof.noReplaceableImagesMinimal;
+    result.shortTermTextUnavailable = shortTermEmptyStateProof.textUnavailableMinimal;
   }
   if (value.shortTermRuntimeTextBoundaryProof !== undefined) {
     const shortTermRuntimeTextBoundaryProof = validateShortTermRuntimeTextBoundaryProof(value.shortTermRuntimeTextBoundaryProof);
@@ -434,8 +434,8 @@ function validateShortTermEmptyStateProof(value) {
   if (value.source !== "short-term-smoke") return undefined;
   const booleanKeys = [
     "noAudioVisible",
-    "noReplaceableImagesVisible",
-    "textUnavailableVisible",
+    "noReplaceableImagesMinimal",
+    "textUnavailableMinimal",
     "ordinaryImagesNotDuplicatedInReplaceables",
     "passed"
   ];
@@ -444,15 +444,15 @@ function validateShortTermEmptyStateProof(value) {
   if (!Number.isInteger(value.replaceableImageRowCount) || value.replaceableImageRowCount !== 0) return undefined;
   if (!Number.isInteger(value.textElementRowCount) || value.textElementRowCount !== 0) return undefined;
   if (!isBoundedString(value.noAudioCopy, 120) || !value.noAudioCopy.includes("当前文件暂无音频资产")) return undefined;
-  if (!isBoundedString(value.noReplaceableCopy, 180) || !value.noReplaceableCopy.includes("未发现设计师命名")) return undefined;
-  if (!isBoundedString(value.textUnavailableCopy, 180) || !value.textUnavailableCopy.includes("未发现设计师命名的文本锚点")) return undefined;
+  if (value.noReplaceableCopy !== "") return undefined;
+  if (value.textUnavailableCopy !== "") return undefined;
   return {
     schemaVersion: 1,
     proofId: value.proofId,
     source: value.source,
     noAudioVisible: true,
-    noReplaceableImagesVisible: true,
-    textUnavailableVisible: true,
+    noReplaceableImagesMinimal: true,
+    textUnavailableMinimal: true,
     ordinaryImagesNotDuplicatedInReplaceables: true,
     assetRowCount: value.assetRowCount,
     replaceableImageRowCount: 0,
@@ -904,7 +904,7 @@ function validateShortTermReplaceableClassificationProof(value) {
   if (!Array.isArray(value.automaticExcludedExamples) || value.automaticExcludedExamples.length <= 0) return undefined;
   if (!value.automaticExcludedExamples.every((item) => isBoundedString(item, 120) && /^img[_-]?\d+$/i.test(item))) return undefined;
   if (!Number.isInteger(value.automaticReplaceableCount) || value.automaticReplaceableCount !== 0) return undefined;
-  if (!isBoundedString(value.noReplaceableCopy, 220) || !value.noReplaceableCopy.includes("自动命名资源")) return undefined;
+  if (value.noReplaceableCopy !== "") return undefined;
   if (!isBoundedString(value.designerFixtureName, 160) || !value.designerFixtureName.endsWith(".svga")) return undefined;
   if (!Number.isInteger(value.designerImageAssetCount) || value.designerImageAssetCount <= 1) return undefined;
   if (!Array.isArray(value.includedDesignerKeys) || value.includedDesignerKeys.length <= 0) return undefined;
@@ -915,7 +915,7 @@ function validateShortTermReplaceableClassificationProof(value) {
     value.automaticKeysExcluded !== true
     || value.designerKeysIncluded !== true
     || value.replaceableElementsNotAllImages !== true
-    || value.emptyStateExplainsAutomaticExclusion !== true
+    || value.automaticEmptyStateMinimal !== true
     || value.passed !== true
   ) {
     return undefined;
@@ -938,7 +938,7 @@ function validateShortTermReplaceableClassificationProof(value) {
     automaticKeysExcluded: true,
     designerKeysIncluded: true,
     replaceableElementsNotAllImages: true,
-    emptyStateExplainsAutomaticExclusion: true,
+    automaticEmptyStateMinimal: true,
     passed: true
   };
 }

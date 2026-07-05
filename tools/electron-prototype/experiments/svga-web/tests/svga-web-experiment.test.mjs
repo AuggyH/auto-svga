@@ -1521,7 +1521,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableRenderers, /export function renderReplaceableImages/);
   assert.match(shortTermReplaceableRenderers, /export function createTextElementRow/);
   assert.match(shortTermReplaceableRenderers, /export function renderRuntimeTextElements/);
-  assert.match(shortTermReplaceableRenderers, /from "\.\/short-term-macos-inline-status-renderers\.mjs"/);
+  assert.doesNotMatch(shortTermReplaceableRenderers, /from "\.\/short-term-macos-inline-status-renderers\.mjs"/);
   assert.match(shortTermReplaceableRenderers, /from "\.\/short-term-macos-thumbnail-renderers\.mjs"/);
   assert.match(shortTermEditReservedRenderers, /export function createEditLayerRow/);
   assert.match(shortTermEditReservedRenderers, /export function renderEditReservedLayers/);
@@ -1670,7 +1670,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTextModel, /export function runtimeTextListView/);
   assert.match(shortTermTextModel, /export function nextSelectedTextKey/);
   assert.match(shortTermTextModel, /export function selectedRuntimeTextElement/);
-  assert.match(shortTermTextModel, /当前文件没有可运行时预览的文本元素。/);
+  assert.doesNotMatch(shortTermTextModel, /当前文件没有可运行时预览的文本元素。/);
   assert.match(shortTermTextModel, /summaryCopy: `\(\$\{texts\.length\}\)`/);
   assert.match(shortTermReplaceableSurface, /from "\.\/short-term-macos-replaceable-model\.mjs"/);
   assert.match(shortTermReplaceableSurface, /replaceableImageListView/);
@@ -1681,9 +1681,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermReplaceableRenderers, /nodes\.replaceableList\.replaceChildren/);
   assert.match(shortTermReplaceableRenderers, /nodes\.replaceableSummary\.textContent = view\.summaryCopy/);
   assert.doesNotMatch(shortTermEntry, /普通自动命名图片不会出现在这里。|没有可替换元素。|\$\{rows\.length\} 个设计师命名图片元素。/);
+  assert.doesNotMatch(shortTermReplaceableRenderers, /createInlineStatusText/);
   assert.match(shortTermReplaceableModel, /export function replaceableImageListView/);
   assert.match(shortTermReplaceableModel, /export function nextReplaceableSelection/);
-  assert.match(shortTermReplaceableModel, /没有可替换元素。/);
+  assert.doesNotMatch(shortTermReplaceableModel, /没有可替换元素。/);
   assert.match(shortTermReplaceableModel, /summaryCopy: `\(\$\{images\.length\}\)`/);
   assert.match(shortTermController, /from "\.\/short-term-macos-optimization-surface\.mjs"/);
   assert.match(shortTermOptimizationSurface, /from "\.\/short-term-macos-optimization-model\.mjs"/);
@@ -2055,8 +2056,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeRunner, /collectShortTermReplacementProof/);
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-replacement-proof"/);
   assert.match(shortTermSmokeProofModel, /noAudioVisible/);
-  assert.match(shortTermSmokeProofModel, /noReplaceableImagesVisible/);
-  assert.match(shortTermSmokeProofModel, /textUnavailableVisible/);
+  assert.match(shortTermSmokeProofModel, /noReplaceableImagesMinimal/);
+  assert.match(shortTermSmokeProofModel, /textUnavailableMinimal/);
   assert.match(shortTermSmokeProofModel, /ordinaryImagesNotDuplicatedInReplaceables/);
   assert.match(shortTermSmokeProofModel, /ordinaryImageThumbnailVisible/);
   assert.match(shortTermController, /function createSaveFailureProofOutput/);

@@ -27,7 +27,7 @@ export function runtimeTextListView(model, textPreviewValues) {
     })),
     hasTextElements: texts.length > 0,
     hasTextPreview: hasRuntimeTextPreview(textPreviewValues),
-    emptyCopy: model?.textPreviewCopy || "当前文件没有可运行时预览的文本元素。",
+    emptyCopy: "",
     summaryCopy: `(${texts.length})`
   };
 }
