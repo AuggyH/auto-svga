@@ -450,7 +450,20 @@ export function collectShortTermOpenFlowProof({
   inspectionReportVisible,
   playbackReady,
   resourceEntriesLocalOnly,
-  sourceSizeBytes
+  sourceSizeBytes,
+  supportedDragDecisionCopy,
+  supportedDragDecisionFocusZone,
+  supportedDragDecisionOverlayVisible,
+  supportedDragDecisionStatus,
+  unsupportedDragCopy,
+  unsupportedDragFocusZone,
+  unsupportedDragOverlayVisible,
+  unsupportedDragStatus,
+  unsupportedDropClearedCanvas,
+  unsupportedDropRecovered,
+  unsupportedDropSourceSha256AfterRecovery,
+  unsupportedDropSourceSha256Before,
+  unsupportedDropToastVisible
 }) {
   const proof = {
     schemaVersion: 1,
@@ -466,7 +479,20 @@ export function collectShortTermOpenFlowProof({
     localOnly: resourceEntriesLocalOnly,
     pathRedacted: !fileName.includes("/") && !fileName.includes("\\"),
     rendererFilesystemAccessClaimed: false,
-    pairedNormalProof: "normal-runtime-proof.json"
+    pairedNormalProof: "normal-runtime-proof.json",
+    dragDecisionOverlayVisible: supportedDragDecisionOverlayVisible,
+    dragDecisionSupportedState: supportedDragDecisionStatus === "supported",
+    dragDecisionCompareFocus: supportedDragDecisionFocusZone === "compare",
+    dragDecisionOffersOpenAndCompare: supportedDragDecisionCopy.includes("打开文件")
+      && supportedDragDecisionCopy.includes("添加为对比文件"),
+    unsupportedDragOverlayVisible,
+    unsupportedDragRejected: unsupportedDragStatus === "unsupported"
+      && unsupportedDragFocusZone === "open"
+      && unsupportedDragCopy.includes("不支持的文件格式"),
+    unsupportedDropClearedCanvas,
+    unsupportedDropToastVisible,
+    unsupportedDropRecovered,
+    unsupportedDropSourceBytesRestoredAfterRecovery: unsupportedDropSourceSha256AfterRecovery === unsupportedDropSourceSha256Before
   };
   proof.passed = [
     proof.dragDropAttempted,
@@ -474,7 +500,17 @@ export function collectShortTermOpenFlowProof({
     proof.previewReached,
     proof.localOnly,
     proof.pathRedacted,
-    proof.rendererFilesystemAccessClaimed === false
+    proof.rendererFilesystemAccessClaimed === false,
+    proof.dragDecisionOverlayVisible,
+    proof.dragDecisionSupportedState,
+    proof.dragDecisionCompareFocus,
+    proof.dragDecisionOffersOpenAndCompare,
+    proof.unsupportedDragOverlayVisible,
+    proof.unsupportedDragRejected,
+    proof.unsupportedDropClearedCanvas,
+    proof.unsupportedDropToastVisible,
+    proof.unsupportedDropRecovered,
+    proof.unsupportedDropSourceBytesRestoredAfterRecovery
   ].every(Boolean);
   return proof;
 }

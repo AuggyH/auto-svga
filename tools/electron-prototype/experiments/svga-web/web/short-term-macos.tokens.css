@@ -36,6 +36,7 @@
   --asv-color-text-primary: #1d1d1f;
   --asv-color-text-secondary: #6e6e73;
   --asv-color-text-tertiary: #8a8a8e;
+  --asv-color-text-on-drag-overlay: #ffffff;
   --asv-color-border-default: rgba(60, 60, 67, 0.16);
   --asv-color-border-strong: rgba(60, 60, 67, 0.26);
   --asv-color-action-primary: #0a84ff;
@@ -57,6 +58,9 @@
   --asv-color-surface-fact: color-mix(in srgb, var(--asv-color-surface-panel-strong) 58%, var(--asv-color-surface-panel-recessed));
   --asv-color-surface-badge: color-mix(in srgb, var(--asv-color-border-default) 22%, transparent);
   --asv-color-surface-overlay: color-mix(in srgb, var(--asv-color-surface-panel-strong) 86%, transparent);
+  --asv-color-surface-drag-overlay: color-mix(in srgb, black 52%, transparent);
+  --asv-color-surface-drag-supported: color-mix(in srgb, var(--asv-success) 42%, transparent);
+  --asv-color-surface-drag-unsupported: color-mix(in srgb, var(--asv-danger) 46%, transparent);
   --asv-color-surface-save-banner: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-action-primary) 4%);
   --asv-color-border-panel: color-mix(in srgb, var(--asv-color-border-default) 68%, transparent);
   --asv-color-border-control: color-mix(in srgb, var(--asv-color-border-default) 82%, transparent);
@@ -144,6 +148,7 @@
   --asv-color-workbench: var(--asv-color-surface-workbench);
   --asv-color-right-panel: var(--asv-color-surface-right-panel);
   --asv-color-text: var(--asv-color-text-primary);
+  --asv-color-drag-overlay-text: var(--asv-color-text-on-drag-overlay);
   --asv-color-text-muted: var(--asv-color-text-secondary);
   --asv-color-text-subtle: var(--asv-color-text-tertiary);
   --asv-color-border: var(--asv-color-border-default);
@@ -165,6 +170,9 @@
   --asv-fact-bg: var(--asv-color-surface-fact);
   --asv-badge-bg: var(--asv-color-surface-badge);
   --asv-overlay-bg: var(--asv-color-surface-overlay);
+  --asv-drag-overlay-bg: var(--asv-color-surface-drag-overlay);
+  --asv-drag-supported-bg: var(--asv-color-surface-drag-supported);
+  --asv-drag-unsupported-bg: var(--asv-color-surface-drag-unsupported);
   --asv-save-banner-bg: var(--asv-color-surface-save-banner);
   --asv-window: var(--asv-color-window);
   --asv-toolbar: var(--asv-color-toolbar);

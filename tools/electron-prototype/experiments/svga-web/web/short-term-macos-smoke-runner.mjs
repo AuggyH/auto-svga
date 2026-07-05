@@ -132,6 +132,27 @@ async function runShortTermSmoke({
   await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
   const canvasNonBlank = await waitForCanvasPixels(nodes.primaryCanvas, 2_500);
   await captureSmokeArtifact("short-term-preview-overview");
+  const supportedDragTransfer = new DataTransfer();
+  supportedDragTransfer.items.add(file);
+  const previewStageRect = nodes.previewStagePanel.getBoundingClientRect();
+  nodes.previewStagePanel.dispatchEvent(new DragEvent("dragover", {
+    bubbles: true,
+    cancelable: true,
+    clientX: previewStageRect.left + previewStageRect.width * 0.75,
+    clientY: previewStageRect.top + previewStageRect.height / 2,
+    dataTransfer: supportedDragTransfer
+  }));
+  await waitForSmokeFrame();
+  const supportedDragDecisionOverlayVisible = nodes.previewDragOverlay.hidden === false;
+  const supportedDragDecisionStatus = nodes.previewDragOverlay.dataset.status;
+  const supportedDragDecisionFocusZone = nodes.previewDragOverlay.dataset.focusZone;
+  const supportedDragDecisionCopy = nodes.previewDragOverlay.textContent.trim();
+  nodes.previewStagePanel.dispatchEvent(new DragEvent("dragleave", {
+    bubbles: true,
+    cancelable: true,
+    dataTransfer: supportedDragTransfer
+  }));
+  await waitForSmokeFrame();
   const overviewFactRows = overviewTabView(state.model).facts;
   const shortTermSpecComparisonProof = collectShortTermSpecComparisonProof({
     overviewFactRows,
@@ -496,6 +517,47 @@ async function runShortTermSmoke({
   const auditPanelVisible = Boolean(nodes.factGrid.children.length > 0);
   const dragDropLoaded = state.displayName === file.name;
   const playerLifecycleOk = Boolean(state.primaryPlayback);
+  const unsupportedDropSourceSha256Before = await sha256Hex(state.sourceBytes);
+  const unsupportedFile = new File([new Uint8Array([1, 2, 3])], "unsupported.txt", { type: "text/plain" });
+  const unsupportedDragTransfer = new DataTransfer();
+  unsupportedDragTransfer.items.add(unsupportedFile);
+  const unsupportedPreviewStageRect = nodes.previewStagePanel.getBoundingClientRect();
+  nodes.previewStagePanel.dispatchEvent(new DragEvent("dragover", {
+    bubbles: true,
+    cancelable: true,
+    clientX: unsupportedPreviewStageRect.left + unsupportedPreviewStageRect.width * 0.25,
+    clientY: unsupportedPreviewStageRect.top + unsupportedPreviewStageRect.height / 2,
+    dataTransfer: unsupportedDragTransfer
+  }));
+  await waitForSmokeFrame();
+  const unsupportedDragOverlayVisible = nodes.previewDragOverlay.hidden === false;
+  const unsupportedDragStatus = nodes.previewDragOverlay.dataset.status;
+  const unsupportedDragFocusZone = nodes.previewDragOverlay.dataset.focusZone;
+  const unsupportedDragCopy = nodes.previewDragOverlay.textContent.trim();
+  nodes.previewStagePanel.dispatchEvent(new DragEvent("drop", {
+    bubbles: true,
+    cancelable: true,
+    clientX: unsupportedPreviewStageRect.left + unsupportedPreviewStageRect.width * 0.25,
+    clientY: unsupportedPreviewStageRect.top + unsupportedPreviewStageRect.height / 2,
+    dataTransfer: unsupportedDragTransfer
+  }));
+  await waitForSmokeCondition(() => (
+    state.view === "launch"
+    && !state.sourceBytes
+    && nodes.canvasToast.textContent.includes("不支持的文件格式")
+  ), 2_000);
+  await waitForSmokeFrame();
+  const unsupportedDropClearedCanvas = state.view === "launch" && !state.sourceBytes && !state.model;
+  const unsupportedDropToastVisible = nodes.canvasToast.hidden === false
+    && nodes.canvasToast.textContent.includes("不支持的文件格式");
+  await loadOpenedSource({
+    bytes: fixtureBytes,
+    displayName: file.name,
+    sourceId: ""
+  });
+  await waitForSmokeCondition(() => state.view === "preview" && Boolean(state.primaryPlayback) && Boolean(state.model), 8_000);
+  const unsupportedDropRecovered = state.view === "preview" && Boolean(state.sourceBytes);
+  const unsupportedDropSourceSha256AfterRecovery = await sha256Hex(state.sourceBytes);
   const shortTermOpenFlowProof = collectShortTermOpenFlowProof({
     canvasNonBlank,
     dragDropLoaded,
@@ -504,7 +566,20 @@ async function runShortTermSmoke({
     inspectionReportVisible,
     playbackReady,
     resourceEntriesLocalOnly: resourceEntriesAreLocalOnly(),
-    sourceSizeBytes: fixtureBytes.byteLength
+    sourceSizeBytes: fixtureBytes.byteLength,
+    supportedDragDecisionCopy,
+    supportedDragDecisionFocusZone,
+    supportedDragDecisionOverlayVisible,
+    supportedDragDecisionStatus,
+    unsupportedDragCopy,
+    unsupportedDragFocusZone,
+    unsupportedDragOverlayVisible,
+    unsupportedDragStatus,
+    unsupportedDropClearedCanvas,
+    unsupportedDropRecovered,
+    unsupportedDropSourceSha256AfterRecovery,
+    unsupportedDropSourceSha256Before,
+    unsupportedDropToastVisible
   });
   clearTransientOutput();
   const recoverySourceSha256Before = await sha256Hex(state.sourceBytes);

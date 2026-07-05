@@ -25,6 +25,7 @@ import {
 } from "./short-term-macos-playback-surface.mjs";
 import {
   enterShortTermGeneralCompare,
+  loadShortTermCompareBFromDroppedFile,
   openShortTermCompareBFromHost,
   renderShortTermCompareInfo,
   renderShortTermCompareSlot
@@ -63,7 +64,8 @@ import {
   loadShortTermDroppedFile,
   loadShortTermOpenedSource,
   openShortTermRecentSource,
-  openShortTermSourceFromHostDialog
+  openShortTermSourceFromHostDialog,
+  resetShortTermLaunchSurface
 } from "./short-term-macos-file-surface.mjs";
 import {
   createShortTermSaveFailureProofOutput,
@@ -84,6 +86,13 @@ import {
   renderShortTermEditReserved,
   renderShortTermPreviewModel
 } from "./short-term-macos-preview-surface.mjs";
+import {
+  dragDecisionForEvent,
+  hideShortTermCanvasToast,
+  hideShortTermDragDecisionOverlays,
+  showShortTermCanvasToast,
+  showShortTermDragDecisionOverlay
+} from "./short-term-macos-drag-decision-surface.mjs";
 import {
   applyShortTermAppearance,
   closeShortTermSettings,
@@ -152,6 +161,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function loadDroppedFile(file) {
+    hideShortTermCanvasToast(nodes);
     return loadShortTermDroppedFile({
       file,
       confirmDiscardUnsavedOutput,
@@ -159,7 +169,20 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     });
   }
 
+  async function loadDroppedCompareFile(file) {
+    hideShortTermCanvasToast(nodes);
+    return loadShortTermCompareBFromDroppedFile({
+      file,
+      nodes,
+      state,
+      enterGeneralCompare,
+      inspectShortTerm,
+      mountPlayback
+    });
+  }
+
   async function loadOpenedSource({ bytes, displayName, sourceId }) {
+    hideShortTermCanvasToast(nodes);
     return loadShortTermOpenedSource({
       nodes,
       state,
@@ -186,6 +209,40 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       setView,
       refreshRecentFiles
     });
+  }
+
+  function showCanvasDragDecision(event, target, overlay) {
+    const decision = dragDecisionForEvent(target, event);
+    showShortTermDragDecisionOverlay(overlay, decision);
+    return decision;
+  }
+
+  function hideCanvasDragDecision() {
+    hideShortTermDragDecisionOverlays(nodes);
+  }
+
+  async function dropCanvasFile(event, target, overlay) {
+    const decision = showCanvasDragDecision(event, target, overlay);
+    hideCanvasDragDecision();
+    if (!decision.file) return;
+    if (!decision.supported) {
+      resetShortTermLaunchSurface({
+        nodes,
+        state,
+        stopAllPlayback,
+        setTab,
+        setView,
+        refreshRecentFiles
+      });
+      showShortTermCanvasToast(nodes, "不支持的文件格式");
+      renderCommandState();
+      return;
+    }
+    if (state.sourceBytes && decision.focusZone === "compare") {
+      await loadDroppedCompareFile(decision.file);
+      return;
+    }
+    await loadDroppedFile(decision.file);
   }
 
   async function inspectShortTerm(bytes, name) {
@@ -559,6 +616,9 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     handleResourceContextMenuKeydown,
     applyReplacementFile,
     loadDroppedFile,
+    showCanvasDragDecision,
+    hideCanvasDragDecision,
+    dropCanvasFile,
     loadOpenedSource,
     clearTransientOutput,
     showFailure,

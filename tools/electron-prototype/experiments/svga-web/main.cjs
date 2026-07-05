@@ -480,6 +480,16 @@ function validateShortTermOpenFlowProof(value) {
     || value.localOnly !== true
     || value.pathRedacted !== true
     || value.rendererFilesystemAccessClaimed !== false
+    || value.dragDecisionOverlayVisible !== true
+    || value.dragDecisionSupportedState !== true
+    || value.dragDecisionCompareFocus !== true
+    || value.dragDecisionOffersOpenAndCompare !== true
+    || value.unsupportedDragOverlayVisible !== true
+    || value.unsupportedDragRejected !== true
+    || value.unsupportedDropClearedCanvas !== true
+    || value.unsupportedDropToastVisible !== true
+    || value.unsupportedDropRecovered !== true
+    || value.unsupportedDropSourceBytesRestoredAfterRecovery !== true
     || value.passed !== true
   ) {
     return undefined;
@@ -498,6 +508,16 @@ function validateShortTermOpenFlowProof(value) {
     localOnly: true,
     pathRedacted: true,
     rendererFilesystemAccessClaimed: false,
+    dragDecisionOverlayVisible: true,
+    dragDecisionSupportedState: true,
+    dragDecisionCompareFocus: true,
+    dragDecisionOffersOpenAndCompare: true,
+    unsupportedDragOverlayVisible: true,
+    unsupportedDragRejected: true,
+    unsupportedDropClearedCanvas: true,
+    unsupportedDropToastVisible: true,
+    unsupportedDropRecovered: true,
+    unsupportedDropSourceBytesRestoredAfterRecovery: true,
     pairedNormalProof: "normal-runtime-proof.json",
     passed: true
   };

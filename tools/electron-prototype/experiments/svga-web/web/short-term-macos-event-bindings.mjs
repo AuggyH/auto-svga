@@ -14,6 +14,22 @@ function eventElement(event) {
   return event.target instanceof Element ? event.target : undefined;
 }
 
+function bindCanvasDragDecision(target, overlay, handlers) {
+  if (!target || !overlay) return;
+  target.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    handlers.showCanvasDragDecision(event, target, overlay);
+  });
+  target.addEventListener("dragleave", (event) => {
+    if (event.relatedTarget instanceof Node && target.contains(event.relatedTarget)) return;
+    handlers.hideCanvasDragDecision();
+  });
+  target.addEventListener("drop", (event) => {
+    event.preventDefault();
+    handlers.dropCanvasFile(event, target, overlay).catch(handlers.showFailure);
+  });
+}
+
 export function bindShortTermInteractionEvents({ documentRef = document, nodes, state, handlers }) {
   documentRef.addEventListener("click", (event) => {
     const eventTarget = eventElement(event);
@@ -148,8 +164,11 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
   nodes.dropZone.addEventListener("drop", (event) => {
     event.preventDefault();
     nodes.dropZone.classList.remove("isDragOver");
-    handlers.loadDroppedFile(event.dataTransfer?.files?.[0]).catch(handlers.showFailure);
+    handlers.dropCanvasFile(event, nodes.dropZone).catch(handlers.showFailure);
   });
+
+  bindCanvasDragDecision(nodes.previewStagePanel, nodes.previewDragOverlay, handlers);
+  bindCanvasDragDecision(nodes.compareStage, nodes.compareDragOverlay, handlers);
 
   documentRef.addEventListener("keydown", (event) => {
     const command = event.metaKey || event.ctrlKey;

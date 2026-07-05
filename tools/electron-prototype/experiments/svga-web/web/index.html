@@ -55,11 +55,15 @@
       </section>
 
       <section class="view previewView" data-view="preview" data-page-state="Preview ready" hidden>
-        <section class="previewStagePanel" aria-label="SVGA 预览" data-module="PreviewCanvasModule" data-component="PreviewStage">
+        <section class="previewStagePanel" id="previewStagePanel" aria-label="SVGA 预览" data-module="PreviewCanvasModule" data-component="PreviewStage">
           <div class="canvasModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch">
             <button type="button" class="isSelected" data-action="mode-preview" aria-pressed="true">预览模式</button>
             <button type="button" data-action="mode-edit" aria-pressed="false">编辑模式</button>
           </div>
+          <section class="dragDecisionOverlay" id="previewDragOverlay" data-component="DragDecisionOverlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
+            <div class="dragDecisionZone" data-drag-zone="open"><strong>打开文件</strong></div>
+            <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>
+          </section>
           <div class="canvasWrap" id="primaryCanvasWrap" data-canvas-label="预览">
             <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
             <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
@@ -120,7 +124,11 @@
       </section>
 
       <section class="view compareView" data-view="compare" data-page-state="General comparing" data-module="GeneralCompareModule" hidden>
-        <section class="compareStage">
+        <section class="compareStage" id="compareStage">
+          <section class="dragDecisionOverlay" id="compareDragOverlay" data-component="DragDecisionOverlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
+            <div class="dragDecisionZone" data-drag-zone="open"><strong>打开文件</strong></div>
+            <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>
+          </section>
           <div class="compareCanvasWrap" id="compareCanvasWrapA" data-component="ComparePreviewCard" data-compare-label="A" data-compare-state="empty">
             <header class="compareCanvasHeader">
               <span>A</span>
@@ -157,6 +165,8 @@
           <p class="emptyText reservedNotice">短期版仅保留图层查看。</p>
         </aside>
       </section>
+
+      <div class="canvasToast" id="canvasToast" data-component="CanvasToast" role="status" aria-live="polite" hidden></div>
     </main>
 
     <dialog class="appDialog" id="discardDialog" data-component="ErrorRecoveryPanel" data-status="warning">

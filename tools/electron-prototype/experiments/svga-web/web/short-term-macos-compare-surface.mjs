@@ -112,3 +112,32 @@ export async function openShortTermCompareBFromHost({
   });
   await refreshRecentFiles();
 }
+
+export async function loadShortTermCompareBFromDroppedFile({
+  file,
+  nodes,
+  state,
+  enterGeneralCompare,
+  inspectShortTerm,
+  mountPlayback
+}) {
+  if (!file) return;
+  if (!state.sourceBytes) {
+    await enterGeneralCompare();
+    return;
+  }
+  if (state.view !== "compare") await enterGeneralCompare();
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  await mountPlayback("compareB", nodes.compareCanvasB, bytes);
+  const model = await inspectShortTerm(bytes, file.name || "compare.svga");
+  renderShortTermCompareSlot({ nodes, slot: "B", title: file.name || "B 文件", model });
+  renderShortTermGeneralComparePanel({
+    nodes,
+    state,
+    bModel: model,
+    bDisplayName: file.name || "compare.svga",
+    actions: [
+      `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
+    ]
+  });
+}

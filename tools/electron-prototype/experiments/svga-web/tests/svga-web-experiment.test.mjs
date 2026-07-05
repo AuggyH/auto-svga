@@ -1051,6 +1051,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermCompareModel = await readFile(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs"), "utf8");
   const shortTermCompareRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-compare-renderers.mjs"), "utf8");
   const shortTermCompareSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-compare-surface.mjs"), "utf8");
+  const shortTermDragDecisionModel = await readFile(path.join(experimentRoot, "web/short-term-macos-drag-decision-model.mjs"), "utf8");
+  const shortTermDragDecisionSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-drag-decision-surface.mjs"), "utf8");
   const shortTermEditReservedRenderers = await readFile(path.join(experimentRoot, "web/short-term-macos-edit-reserved-renderers.mjs"), "utf8");
   const shortTermDomState = await readFile(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs"), "utf8");
   const shortTermNodes = await readFile(path.join(experimentRoot, "web/short-term-macos-nodes.mjs"), "utf8");
@@ -1101,6 +1103,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const prototypeRenderer = await readFile(path.join(experimentRoot, "web/prototype.js"), "utf8");
   const sharedShell = await readFile(path.join(repoRoot, "tools/shared/product-frontend/product-shell.html"), "utf8");
   assert.match(page, /<title>Auto SVGA<\/title>/);
+  assert.match(page, /id="previewDragOverlay"/);
+  assert.match(page, /id="compareDragOverlay"/);
+  assert.match(page, /data-component="DragDecisionOverlay"/);
+  assert.match(page, /id="canvasToast"/);
+  assert.match(page, /data-component="CanvasToast"/);
   assert.match(main, /productDisplayName = "Auto SVGA"/);
   assert.match(main, /app\.setName\(productDisplayName\)/);
   assert.match(page, /data-app-state="launch"/);
@@ -1273,6 +1280,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareSummary/);
   assert.match(shortTermModules, /\.compareMetricGrid/);
   assert.match(shortTermModules, /\.compareActions/);
+  assert.match(shortTermModules, /\.dragDecisionOverlay/);
+  assert.match(shortTermModules, /\.canvasToast/);
+  assert.match(shortTermModules, /var\(--asv-drag-overlay-bg\)/);
+  assert.match(shortTermModules, /var\(--asv-drag-supported-bg\)/);
+  assert.match(shortTermModules, /var\(--asv-drag-unsupported-bg\)/);
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="launch"\]/);
   assert.match(shortTermPageStates, /\.launchView\s*\{[^}]*place-items: stretch/s);
   assert.match(shortTermPageStates, /\.saveBanner\s*\{[^}]*grid-row: 1/s);
@@ -1342,12 +1354,22 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCommandSurface, /from "\.\/short-term-macos-command-state\.mjs"/);
   assert.match(shortTermCommandSurface, /buildCommandState/);
   assert.match(shortTermController, /from "\.\/short-term-macos-compare-surface\.mjs"/);
+  assert.match(shortTermController, /from "\.\/short-term-macos-drag-decision-surface\.mjs"/);
+  assert.match(shortTermController, /showCanvasDragDecision/);
+  assert.match(shortTermController, /dropCanvasFile/);
+  assert.match(shortTermController, /resetShortTermLaunchSurface/);
   assert.match(shortTermCompareSurface, /from "\.\/short-term-macos-compare-model\.mjs"/);
   assert.match(shortTermCompareSurface, /from "\.\/short-term-macos-compare-renderers\.mjs"/);
   assert.match(shortTermCompareSurface, /renderCompareInfoHtml/);
   assert.match(shortTermCompareSurface, /renderOptimizationCompareResultHtml/);
   assert.match(shortTermCompareSurface, /renderGeneralComparePlaceholderHtml/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-compare-model\.mjs"|from "\.\/short-term-macos-compare-renderers\.mjs"|renderCompareInfoHtml|renderOptimizationCompareResultHtml|renderGeneralComparePlaceholderHtml|applyCompareSlotView|applyCompareTraceView|markCompareSlotLoaded|renderCompareInfoPanel/);
+  assert.match(shortTermDragDecisionModel, /isSupportedShortTermDropFile/);
+  assert.match(shortTermDragDecisionModel, /\.svga\$\/i/);
+  assert.match(shortTermDragDecisionModel, /dragDecisionZoneForEvent/);
+  assert.match(shortTermDragDecisionSurface, /showShortTermDragDecisionOverlay/);
+  assert.match(shortTermDragDecisionSurface, /showShortTermCanvasToast/);
+  assert.match(shortTermDragDecisionSurface, /不支持的文件格式/);
   assert.match(shortTermController, /from "\.\/short-term-macos-feedback-surface\.mjs"/);
   assert.match(shortTermOutputSurface, /showShortTermOutputBanner/);
   assert.match(shortTermController, /showShortTermOutputBanner\(\{ nodes, title, message, tone \}\)/);
@@ -1693,6 +1715,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermEntry, /from "\.\/short-term-macos-event-bindings\.mjs"/);
   assert.match(shortTermEntry, /bindShortTermInteractionEvents\(\{/);
   assert.match(shortTermEventBindings, /export function bindShortTermInteractionEvents/);
+  assert.match(shortTermEventBindings, /bindCanvasDragDecision/);
+  assert.match(shortTermEventBindings, /handlers\.dropCanvasFile/);
   assert.doesNotMatch(shortTermEventBindings, /querySelector\("\[role='tablist'\]"\)|\[data-tab\]/);
   assert.match(shortTermNavigationSurface, /export function handleShortTermTabListKeydown/);
   assert.match(shortTermNavigationSurface, /void event/);
@@ -1857,7 +1881,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /export function collectShortTermOpenFlowProof/);
   assert.match(shortTermSmokeProofModel, /short-term-open-flow-proof/);
   assert.match(shortTermSmokeProofModel, /dragDropAttempted/);
+  assert.match(shortTermSmokeProofModel, /dragDecisionOverlayVisible/);
+  assert.match(shortTermSmokeProofModel, /dragDecisionOffersOpenAndCompare/);
+  assert.match(shortTermSmokeProofModel, /unsupportedDropToastVisible/);
   assert.match(shortTermSmokeRunner, /collectShortTermOpenFlowProof/);
+  assert.match(shortTermSmokeRunner, /supportedDragDecisionOverlayVisible/);
+  assert.match(shortTermSmokeRunner, /unsupportedDropClearedCanvas/);
+  assert.match(shortTermSmokeRunner, /unsupportedDropToastVisible/);
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-open-flow-proof"/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermLoadFailureProof/);
   assert.match(shortTermSmokeProofModel, /short-term-load-failure-proof/);
@@ -1907,6 +1937,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeRunner, /collectShortTermReplaceableClassificationProof/);
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-replaceable-classification-proof"/);
   assert.match(main, /validateShortTermOpenFlowProof/);
+  assert.match(main, /dragDecisionOverlayVisible/);
+  assert.match(main, /unsupportedDropSourceBytesRestoredAfterRecovery/);
   assert.match(main, /short-term-open-flow-proof\.json/);
   assert.match(main, /validateShortTermLoadFailureProof/);
   assert.match(main, /short-term-load-failure-proof\.json/);
@@ -2386,6 +2418,7 @@ test("P4 multi-resource editing keeps history and export integrity boundaries is
 test("short-term design system check enforces UI implementation guardrails", () => {
   const source = readFileSync(path.join(experimentRoot, "scripts/check-short-term-design-system.mjs"), "utf8");
   const dynamicDomAllowlist = source.match(/const allowedDynamicDomModules = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
+  const dataComponentAllowlist = source.match(/const allowedDataComponents = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
   assert.doesNotMatch(dynamicDomAllowlist, /short-term-macos-dom-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-compare-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-edit-reserved-renderers\.mjs/);
@@ -2396,6 +2429,8 @@ test("short-term design system check enforces UI implementation guardrails", () 
   assert.match(dynamicDomAllowlist, /short-term-macos-replaceable-renderers\.mjs/);
   assert.match(dynamicDomAllowlist, /short-term-macos-save-renderers\.mjs/);
   assert.doesNotMatch(dynamicDomAllowlist, /short-term-macos-compare-model\.mjs|short-term-macos-render-model\.mjs|short-term-macos-recent-files-model\.mjs/);
+  assert.match(dataComponentAllowlist, /DragDecisionOverlay/);
+  assert.match(dataComponentAllowlist, /CanvasToast/);
   assert.match(source, /const disallowedLaunchCopyPatterns = \[/);
   assert.match(source, /launch-page-copy-stays-minimal/);
   assert.match(source, /const disallowedLegacySurfaceCopyPatterns = \[/);

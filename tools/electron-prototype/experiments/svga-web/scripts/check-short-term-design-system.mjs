@@ -67,6 +67,8 @@ const allowedDataComponents = new Set([
   "SpecStatusCell",
   "InlineStatus",
   "FileDropTarget",
+  "DragDecisionOverlay",
+  "CanvasToast",
   "PlaybackButtonGroup",
   "ContextMenuItem",
   "RenameInput",
