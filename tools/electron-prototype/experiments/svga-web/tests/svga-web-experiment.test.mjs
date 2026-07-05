@@ -1201,6 +1201,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-right-panel-separator/);
   assert.doesNotMatch(shortTermTokens, /inspector/);
   assert.match(shortTermTokens, /--asv-color-surface-control/);
+  assert.match(shortTermTokens, /--asv-color-surface-mode-switch/);
+  assert.match(shortTermTokens, /--asv-color-surface-mode-selected/);
+  assert.match(shortTermTokens, /--asv-mode-switch-bg: var\(--asv-color-surface-mode-switch\)/);
+  assert.match(shortTermTokens, /--asv-mode-selected-bg: var\(--asv-color-surface-mode-selected\)/);
   assert.match(shortTermTokens, /--asv-color-surface-row-selected/);
   assert.match(shortTermTokens, /--asv-panel-border/);
   assert.match(shortTermTokens, /--asv-shadow-panel-highlight/);
@@ -1244,6 +1248,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermAtoms, /:focus-visible/);
   assert.match(shortTermMolecules, /\.toolbarButton/);
   assert.match(shortTermMolecules, /\.modeSwitch/);
+  assert.match(shortTermMolecules, /\.modeSwitch,[\s\S]*\.canvasModeSwitch\s*\{[^}]*border: 0/s);
+  assert.match(shortTermMolecules, /\.modeSwitch,[\s\S]*\.canvasModeSwitch\s*\{[^}]*background: var\(--asv-mode-switch-bg\)/s);
+  assert.match(shortTermMolecules, /\.modeSwitch button\.isSelected,[\s\S]*\.canvasModeSwitch button\.isSelected\s*\{[^}]*background: var\(--asv-mode-selected-bg\)/s);
   assert.doesNotMatch(shortTermMolecules, /\.tabs/);
   assert.match(shortTermMolecules, /\.rowMenuButton/);
   assert.match(shortTermMolecules, /:focus-visible/);
@@ -1283,6 +1290,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceHeader \.toolbarButton\s*\{[^}]*background: var\(--asv-toolbar-control-bg\)/s);
   assert.match(shortTermModules, /\.rightSurfaceHeader \.toolbarButton\.primary\s*\{[^}]*background: var\(--asv-action\)/s);
   assert.match(shortTermModules, /\.canvasModeSwitch\s*\{[^}]*position: absolute/s);
+  assert.match(shortTermModules, /\.compareCanvasWrap\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
+  assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*position: absolute/s);
+  assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*background: transparent/s);
+  assert.match(shortTermModules, /\.layerPanel\s*\{[^}]*box-shadow: inset calc\(-1 \* var\(--asv-right-panel-separator-width\)\) 0 0 var\(--asv-right-panel-separator\)/s);
+  assert.match(shortTermModules, /\.reservedPanel\s*\{[^}]*box-shadow: inset var\(--asv-right-panel-separator-width\) 0 0 var\(--asv-right-panel-separator\)/s);
   assert.match(shortTermModules, /background: var\(--asv-panel-chrome\)/);
   assert.match(shortTermModules, /\.resultGroup/);
   assert.match(shortTermModules, /\.rightSurfaceBody:focus-visible/);

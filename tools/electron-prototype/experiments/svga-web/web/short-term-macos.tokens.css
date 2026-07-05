@@ -53,6 +53,8 @@
   --asv-color-surface-control-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 92%, var(--asv-color-action-primary) 5%);
   --asv-color-surface-control-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 92%, var(--asv-color-action-primary) 3%);
   --asv-color-surface-control-disabled: color-mix(in srgb, var(--asv-color-surface-panel-strong) 70%, transparent);
+  --asv-color-surface-mode-switch: color-mix(in srgb, var(--asv-color-surface-panel-strong) 56%, transparent);
+  --asv-color-surface-mode-selected: color-mix(in srgb, var(--asv-color-action-primary) 14%, var(--asv-color-surface-panel-strong));
   --asv-color-surface-row: color-mix(in srgb, var(--asv-color-surface-panel-strong) 54%, var(--asv-color-surface-panel-recessed));
   --asv-color-surface-row-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-status-info-soft));
   --asv-color-surface-row-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 94%, var(--asv-color-status-info-soft));
@@ -69,7 +71,7 @@
   --asv-color-border-panel: color-mix(in srgb, var(--asv-color-border-default) 68%, transparent);
   --asv-color-border-control: color-mix(in srgb, var(--asv-color-border-default) 82%, transparent);
   --asv-color-border-row: color-mix(in srgb, var(--asv-color-border-default) 62%, transparent);
-  --asv-color-border-subtle: color-mix(in srgb, var(--asv-color-border-default) 52%, transparent);
+  --asv-color-border-subtle: color-mix(in srgb, var(--asv-color-border-default) 38%, transparent);
   --asv-color-border-badge: color-mix(in srgb, var(--asv-color-border-default) 42%, transparent);
   --asv-color-border-right-panel-separator: color-mix(in srgb, var(--asv-color-border-default) 38%, transparent);
   --asv-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.06);
@@ -178,6 +180,8 @@
   --asv-control-hover-bg: var(--asv-color-surface-control-hover);
   --asv-control-selected-bg: var(--asv-color-surface-control-selected);
   --asv-control-disabled-bg: var(--asv-color-surface-control-disabled);
+  --asv-mode-switch-bg: var(--asv-color-surface-mode-switch);
+  --asv-mode-selected-bg: var(--asv-color-surface-mode-selected);
   --asv-row-bg: var(--asv-color-surface-row);
   --asv-row-hover-bg: var(--asv-color-surface-row-hover);
   --asv-row-selected-bg: var(--asv-color-surface-row-selected);

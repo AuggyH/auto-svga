@@ -306,12 +306,10 @@
 .layerPanel,
 .reservedPanel {
   min-height: 0;
-  border: 1px solid var(--asv-panel-border);
-  border-radius: var(--asv-radius-md);
+  border: 0;
+  border-radius: 0;
   background: var(--asv-panel-chrome);
-  box-shadow:
-    var(--asv-shadow-panel-chrome),
-    var(--asv-shadow-panel-highlight);
+  box-shadow: none;
 }
 
 .previewStagePanel,
@@ -408,7 +406,6 @@
   top: var(--asv-space-4);
   left: 50%;
   transform: translateX(-50%);
-  background: color-mix(in srgb, var(--asv-panel-strong) 72%, transparent);
 }
 
 .canvasWrap,
@@ -692,27 +689,29 @@ canvas {
 }
 
 .compareCanvasWrap {
-  grid-template-rows: var(--asv-compare-canvas-header-height) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   place-items: stretch;
-  box-shadow: var(--asv-shadow-panel-highlight);
+  box-shadow: none;
 }
 
 .compareCanvasHeader {
+  position: absolute;
+  z-index: 2;
+  top: var(--asv-space-3);
+  right: var(--asv-space-3);
+  left: var(--asv-space-3);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: var(--asv-space-2);
   align-items: center;
   min-height: var(--asv-compare-canvas-header-height);
-  padding: 0 var(--asv-space-3);
-  border-bottom: 1px solid var(--asv-subtle-border);
-  background: var(--asv-fact-bg);
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+  pointer-events: none;
 }
 
 .compareCanvasHeader span {
-  position: absolute;
-  z-index: 1;
-  top: var(--asv-space-3);
-  left: var(--asv-space-3);
   display: inline-grid;
   place-items: center;
   min-height: var(--asv-badge-min-height);
@@ -723,12 +722,6 @@ canvas {
   color: var(--asv-muted);
   font-size: var(--asv-type-size-caption);
   font-weight: 650;
-  pointer-events: none;
-}
-
-.compareCanvasHeader span {
-  position: static;
-  pointer-events: auto;
 }
 
 .compareCanvasHeader strong,
@@ -739,7 +732,7 @@ canvas {
 }
 
 .compareCanvasHeader strong {
-  color: var(--asv-text);
+  color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
   font-weight: 650;
 }
@@ -767,6 +760,7 @@ canvas {
   overflow: auto;
   padding: var(--asv-space-3);
   background: var(--asv-right-panel);
+  box-shadow: inset var(--asv-right-panel-separator-width) 0 0 var(--asv-right-panel-separator);
   scrollbar-gutter: stable;
 }
 
@@ -908,11 +902,18 @@ canvas {
 .reservedPanel {
   overflow: auto;
   padding: var(--asv-space-3);
+  background: var(--asv-right-panel);
+  scrollbar-gutter: stable;
+}
+
+.layerPanel {
+  box-shadow: inset calc(-1 * var(--asv-right-panel-separator-width)) 0 0 var(--asv-right-panel-separator);
 }
 
 .reservedPanel {
   display: grid;
   place-items: center;
+  box-shadow: inset var(--asv-right-panel-separator-width) 0 0 var(--asv-right-panel-separator);
   color: var(--asv-muted);
   text-align: center;
 }
