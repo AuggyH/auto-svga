@@ -241,11 +241,13 @@
         <header class="dialogHeader">
           <h2>设置</h2>
         </header>
-        <fieldset class="settingsGroup" aria-label="外观">
+        <fieldset class="settingsGroup" aria-label="外观" data-component="ThemeSegmentedControl">
           <legend>外观</legend>
-          <label class="settingsChoice"><input type="radio" name="appearance" value="system" data-appearance-choice>跟随系统</label>
-          <label class="settingsChoice"><input type="radio" name="appearance" value="light" data-appearance-choice>浅色</label>
-          <label class="settingsChoice"><input type="radio" name="appearance" value="dark" data-appearance-choice>深色</label>
+          <div class="settingsChoiceGroup">
+            <label class="settingsChoice"><input type="radio" name="appearance" value="system" data-appearance-choice><span>跟随系统</span></label>
+            <label class="settingsChoice"><input type="radio" name="appearance" value="light" data-appearance-choice><span>浅色</span></label>
+            <label class="settingsChoice"><input type="radio" name="appearance" value="dark" data-appearance-choice><span>深色</span></label>
+          </div>
         </fieldset>
         <menu class="dialogActions">
           <button value="close" data-action="close-settings">完成</button>

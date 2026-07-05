@@ -422,45 +422,75 @@
 
 .settingsDialog {
   width: var(--asv-settings-sheet-width);
+  border-color: var(--asv-subtle-border);
+  background: var(--asv-panel-chrome);
+  box-shadow: var(--asv-shadow-floating);
+}
+
+.settingsDialog::before {
+  display: none;
+}
+
+.settingsDialog .dialogBody {
+  gap: var(--asv-space-4);
 }
 
 .settingsGroup {
   display: grid;
-  gap: var(--asv-space-1);
+  gap: var(--asv-space-2);
   margin: 0;
   padding: 0;
   border: 0;
 }
 
 .settingsGroup legend {
-  margin: 0 0 var(--asv-space-2);
+  margin: 0;
   color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
   font-weight: 650;
 }
 
+.settingsChoiceGroup {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--asv-settings-choice-gap);
+  padding: var(--asv-settings-choice-gap);
+  border-radius: var(--asv-radius-md);
+  background: var(--asv-mode-switch-bg);
+}
+
 .settingsChoice {
-  display: flex;
-  align-items: center;
-  gap: var(--asv-space-2);
-  min-height: var(--asv-control-height);
-  padding: 0 var(--asv-space-2);
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: var(--asv-settings-choice-height);
+  padding: 0 var(--asv-space-3);
   border-radius: var(--asv-radius-sm);
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-footnote);
+  font-weight: 650;
+  text-align: center;
 }
 
 .settingsChoice:hover {
-  background: var(--asv-row-hover-bg);
+  background: var(--asv-control-hover-bg);
   color: var(--asv-text);
 }
 
 .settingsChoice input {
-  min-height: auto;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  accent-color: var(--asv-action);
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.settingsChoice:has(input:checked) {
+  background: var(--asv-mode-selected-bg);
+  color: var(--asv-action);
+  box-shadow: var(--asv-shadow-control-selected);
+}
+
+.settingsChoice:has(input:focus-visible) {
+  box-shadow: var(--asv-focus-inset);
 }
 
 .contextMenu {

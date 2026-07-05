@@ -57,6 +57,7 @@ const allowedDataComponents = new Set([
   "ComparePreviewCard",
   "InlineTextReplacementInput",
   "SettingsSheet",
+  "ThemeSegmentedControl",
   "SaveFeedbackBanner",
   "ErrorRecoveryPanel",
   "LayerRow",

@@ -1160,9 +1160,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(page, /id="textDialog"|data-component="TextReplacementSheet"/);
   assert.match(page, /id="discardDialog" data-component="ErrorRecoveryPanel" data-status="warning"/);
   assert.match(page, /id="settingsDialog" data-component="SettingsSheet" data-status="info"/);
-  assert.match(page, /data-appearance-choice>跟随系统/);
-  assert.match(page, /name="appearance" value="light" data-appearance-choice>浅色/);
-  assert.match(page, /name="appearance" value="dark" data-appearance-choice>深色/);
+  assert.match(page, /class="settingsGroup" aria-label="外观" data-component="ThemeSegmentedControl"/);
+  assert.match(page, /data-appearance-choice><span>跟随系统<\/span>/);
+  assert.match(page, /name="appearance" value="light" data-appearance-choice><span>浅色<\/span>/);
+  assert.match(page, /name="appearance" value="dark" data-appearance-choice><span>深色<\/span>/);
   assert.doesNotMatch(page, /预览背景|主预览适配|活动记录/);
   assert.match(page, /class="dialogActions"/);
   assert.match(page, /id="resourceContextMenu"/);
@@ -1230,6 +1231,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-compare-canvas-header-height/);
   assert.match(shortTermTokens, /--asv-compare-metric-row-min-height/);
   assert.match(shortTermTokens, /--asv-component-settings-sheet-width/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-height/);
+  assert.match(shortTermTokens, /--asv-component-settings-choice-gap/);
   assert.match(shortTermTokens, /:root\[data-appearance="light"\]/);
   assert.match(shortTermTokens, /:root\[data-appearance="dark"\]/);
   assert.match(shortTermTokens, /:root:not\(\[data-appearance="light"\]\)/);
@@ -1283,7 +1286,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.dialogActions/);
   assert.match(shortTermComponents, /\.settingsDialog/);
   assert.match(shortTermComponents, /\.settingsGroup/);
+  assert.match(shortTermComponents, /\.settingsChoiceGroup/);
   assert.match(shortTermComponents, /\.settingsChoice/);
+  assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)/);
+  assert.match(shortTermComponents, /\.settingsChoice:has\(input:focus-visible\)/);
   assert.match(shortTermComponents, /\.contextMenu button:disabled/);
   assert.match(shortTermModules, /\.toolbarCluster/);
   assert.match(shortTermModules, /\.rightPanel/);

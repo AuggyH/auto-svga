@@ -150,7 +150,9 @@
   --asv-component-launch-recent-meta-width: 96px;
   --asv-component-launch-checker-size: 24px;
   --asv-component-preview-checker-size: 22px;
-  --asv-component-settings-sheet-width: 360px;
+  --asv-component-settings-sheet-width: 340px;
+  --asv-component-settings-choice-height: 30px;
+  --asv-component-settings-choice-gap: 2px;
 
   /* Compatibility aliases consumed by the current implementation. */
   --asv-font: var(--asv-type-family);
@@ -283,6 +285,8 @@
   --asv-launch-checker-size: var(--asv-component-launch-checker-size);
   --asv-preview-checker-size: var(--asv-component-preview-checker-size);
   --asv-settings-sheet-width: var(--asv-component-settings-sheet-width);
+  --asv-settings-choice-height: var(--asv-component-settings-choice-height);
+  --asv-settings-choice-gap: var(--asv-component-settings-choice-gap);
 }
 
 :root[data-appearance="light"] {
