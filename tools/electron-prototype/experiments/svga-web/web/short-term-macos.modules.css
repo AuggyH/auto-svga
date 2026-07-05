@@ -161,6 +161,27 @@
   text-align: center;
 }
 
+.launchDropIcon {
+  display: inline-grid;
+  place-items: center;
+  width: var(--asv-launch-drop-icon-size);
+  height: var(--asv-launch-drop-icon-size);
+  border: 1px dashed var(--asv-border-strong);
+  border-radius: var(--asv-radius-lg);
+  background: color-mix(in srgb, var(--asv-panel-recessed) 58%, transparent);
+  color: var(--asv-subtle);
+}
+
+.launchDropIcon svg {
+  width: var(--asv-launch-button-icon-size);
+  height: var(--asv-launch-button-icon-size);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
 .launchPrompt p {
   margin: 0;
   font-size: var(--asv-type-size-launch-title);
@@ -192,17 +213,31 @@
   font-weight: 650;
 }
 
-.recentHeader button {
+.recentClearButton {
+  display: inline-grid;
+  place-items: center;
+  width: var(--asv-control-height);
   min-height: var(--asv-row-action-height);
+  padding: 0;
   border: 0;
+  border-radius: var(--asv-radius-sm);
   background: transparent;
   color: var(--asv-subtle);
-  font-weight: 520;
 }
 
-.recentHeader button:hover:not(:disabled) {
+.recentClearButton:hover:not(:disabled) {
   color: var(--asv-muted);
-  background: transparent;
+  background: var(--asv-control-hover-bg);
+}
+
+.recentClearButton svg {
+  width: var(--asv-launch-clear-icon-size);
+  height: var(--asv-launch-clear-icon-size);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .recentHeader h2 {

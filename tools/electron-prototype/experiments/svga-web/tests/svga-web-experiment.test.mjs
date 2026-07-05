@@ -1145,6 +1145,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(page, /<button type="button" data-action="replay">重播<\/button>/);
   assert.match(page, /class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus"/);
   assert.match(page, /最近打开/);
+  assert.match(page, /class="launchDropIcon"/);
+  assert.match(page, /class="largeOpenButton" type="button" data-action="open"[\s\S]*class="buttonIcon"/);
+  assert.match(page, /class="recentClearButton" type="button" data-action="clear-recent" aria-label="清除最近记录"/);
+  assert.doesNotMatch(page, />清除记录<\/button>/);
   assert.doesNotMatch(page, /本地预览，不上传/);
   assert.match(page, /覆盖保存/);
   assert.match(page, /id="discardDialog"/);
@@ -1207,6 +1211,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-toolbar-control-bg: var\(--asv-component-toolbar-control-background\)/);
   assert.match(shortTermTokens, /--asv-component-toolbar-height/);
   assert.match(shortTermTokens, /--asv-component-launch-content-width/);
+  assert.match(shortTermTokens, /--asv-component-launch-drop-icon-size/);
+  assert.match(shortTermTokens, /--asv-launch-button-icon-size/);
+  assert.match(shortTermTokens, /--asv-launch-clear-icon-size/);
   assert.match(shortTermTokens, /--asv-launch-recent-row-height/);
   assert.match(shortTermTokens, /--asv-component-preview-gap/);
   assert.match(shortTermTokens, /--asv-component-compare-canvas-header-height/);
@@ -1267,6 +1274,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightPanel/);
   assert.match(shortTermModules, /box-shadow: inset var\(--asv-right-panel-separator-width\) 0 0 var\(--asv-right-panel-separator\)/);
   assert.match(shortTermModules, /\.rightSurfaceBody\s*\{[^}]*background: var\(--asv-right-panel\)/s);
+  assert.match(shortTermModules, /\.launchDropIcon\s*\{/);
+  assert.match(shortTermModules, /\.recentClearButton\s*\{/);
   assert.doesNotMatch(shortTermModules, /inspector/);
   assert.match(shortTermModules, /grid-template-columns: var\(--asv-window-controls-width\) minmax\(0, 1fr\)/);
   assert.match(shortTermModules, /\.titlebar\s*\{[\s\S]*background: transparent/s);

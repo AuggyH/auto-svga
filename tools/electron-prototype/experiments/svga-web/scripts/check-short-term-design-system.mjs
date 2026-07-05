@@ -224,7 +224,7 @@ async function main() {
     .map((pattern) => pattern.source);
   record("launch-page-copy-stays-minimal", disallowedLaunchCopy.length === 0
     && /<p>拖入 SVGA 文件<\/p>/.test(page)
-    && /<button class="largeOpenButton"[^>]*>打开文件<\/button>/.test(page)
+    && /<button class="largeOpenButton"[^>]*>[\s\S]*?<span>打开文件<\/span>[\s\S]*?<\/button>/.test(page)
     && /<p class="recentNote" id="recentNote" hidden><\/p>/.test(page), {
     disallowedLaunchCopy
   });

@@ -140,6 +140,9 @@
   --asv-component-compare-metric-row-min-height: 46px;
   --asv-component-launch-content-width: 520px;
   --asv-component-launch-action-width: 132px;
+  --asv-component-launch-drop-icon-size: 48px;
+  --asv-component-launch-button-icon-size: 18px;
+  --asv-component-launch-clear-icon-size: 16px;
   --asv-component-launch-recent-row-height: 34px;
   --asv-component-launch-recent-meta-width: 96px;
   --asv-component-launch-checker-size: 24px;
@@ -266,6 +269,9 @@
   --asv-compare-metric-row-min-height: var(--asv-component-compare-metric-row-min-height);
   --asv-launch-content-width: var(--asv-component-launch-content-width);
   --asv-launch-action-width: var(--asv-component-launch-action-width);
+  --asv-launch-drop-icon-size: var(--asv-component-launch-drop-icon-size);
+  --asv-launch-button-icon-size: var(--asv-component-launch-button-icon-size);
+  --asv-launch-clear-icon-size: var(--asv-component-launch-clear-icon-size);
   --asv-launch-recent-row-height: var(--asv-component-launch-recent-row-height);
   --asv-launch-recent-meta-width: var(--asv-component-launch-recent-meta-width);
   --asv-launch-checker-size: var(--asv-component-launch-checker-size);
