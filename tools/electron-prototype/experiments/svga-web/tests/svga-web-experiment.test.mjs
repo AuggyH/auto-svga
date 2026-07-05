@@ -1732,13 +1732,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOptimizationRenderers, /nodes\.runOptimizationButton\.disabled = view\.runButtonDisabled/);
   assert.match(shortTermOptimizationRenderers, /nodes\.findingList\.replaceChildren/);
   assert.match(shortTermOptimizationRenderers, /nodes\.findingList\.prepend/);
-  assert.doesNotMatch(shortTermEntry, /没有可一键优化的安全项。若总览存在超标，请按规格复核或等待后续支持。|批量执行当前可安全执行的优化项/);
+  assert.doesNotMatch(shortTermEntry, /暂无可执行优化项|批量执行当前可安全执行的优化项/);
   assert.match(shortTermOptimizationModel, /export function optimizationTabView/);
   assert.match(shortTermOptimizationModel, /export function optimizationResultTone/);
   assert.match(shortTermOptimizationModel, /groupOptimizationItems/);
   assert.match(shortTermOptimizationModel, /一键优化/);
   assert.match(shortTermOptimizationModel, /批量执行当前可安全执行的优化项/);
-  assert.match(shortTermOptimizationModel, /没有可一键优化的安全项。若总览存在超标，请按规格复核或等待后续支持。/);
+  assert.match(shortTermOptimizationModel, /暂无可执行优化项/);
   assert.match(shortTermPreviewSurface, /from "\.\/short-term-macos-overview-model\.mjs"/);
   assert.match(shortTermPreviewSurface, /overviewTabView/);
   assert.doesNotMatch(shortTermEntry, /overviewVisibleFacts/);

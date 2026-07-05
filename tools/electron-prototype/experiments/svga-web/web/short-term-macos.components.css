@@ -204,7 +204,20 @@
   border-color: var(--asv-border-strong);
 }
 
+.assetRow .rowText strong {
+  color: var(--asv-text);
+  font-size: var(--asv-type-size-body);
+  font-weight: 650;
+}
+
+.assetRow .rowText span {
+  color: var(--asv-subtle);
+}
+
 .assetRow .badge {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
   color: var(--asv-subtle);
 }
 

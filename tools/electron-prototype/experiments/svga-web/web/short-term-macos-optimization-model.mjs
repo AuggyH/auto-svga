@@ -11,7 +11,7 @@ export function optimizationTabView(model) {
     runButtonDisabled: !model.batchActionEnabled,
     groupedItems,
     hasFindings: groupedItems.length > 0,
-    emptyCopy: "没有可一键优化的安全项。若总览存在超标，请按规格复核或等待后续支持。"
+    emptyCopy: "暂无可执行优化项"
   };
 }
 

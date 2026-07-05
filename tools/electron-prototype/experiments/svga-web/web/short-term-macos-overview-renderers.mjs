@@ -25,13 +25,13 @@ export function createAssetRow(asset, model) {
     : `${asset.dimensions} · ${asset.fileSize} · ${asset.usageCount} 次引用`;
   const badgeCopy = asset.findingCodes.length > 0
     ? "需关注"
-    : asset.kind === "sequence" ? "序列" : asset.kind === "audio" ? "音频" : asset.replaceable ? "可替换" : "图片";
+    : asset.kind === "sequence" ? "序列" : asset.kind === "audio" ? "音频" : asset.replaceable ? "可替换" : "";
   const badgeClass = asset.findingCodes.length > 0 ? " review" : "";
   row.title = `${asset.name} ${detail}`;
   row.innerHTML = `
     <span class="thumb ${asset.kind === "sequence" ? "sequence" : asset.kind === "audio" ? "audio" : ""}">${renderThumbnailHtml(asset.thumbnail, model)}</span>
     <span class="rowText"><strong>${escapeHtml(asset.name)}</strong><span>${escapeHtml(detail)}</span></span>
-    <span class="badge${badgeClass}">${escapeHtml(badgeCopy)}</span>
+    ${badgeCopy ? `<span class="badge${badgeClass}">${escapeHtml(badgeCopy)}</span>` : ""}
   `;
   return row;
 }
