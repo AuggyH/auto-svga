@@ -22,6 +22,7 @@ export function setShortTermActiveOutput({
     summary,
     details
   };
+  state.cleanSaveAsVisible = false;
   state.saveStatus = "dirty";
   clearShortTermSaveBanner(nodes);
   onOutputStateChange?.();
@@ -29,6 +30,7 @@ export function setShortTermActiveOutput({
 
 export function clearShortTermTransientOutput({ nodes, state, onOutputStateChange }) {
   state.activeOutput = undefined;
+  state.cleanSaveAsVisible = false;
   state.saveStatus = "idle";
   clearShortTermSaveBanner(nodes);
   onOutputStateChange?.();

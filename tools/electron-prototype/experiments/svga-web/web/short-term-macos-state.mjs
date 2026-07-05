@@ -14,6 +14,7 @@ export function createShortTermInitialState() {
     selectedTextKey: "",
     renameImageKey: "",
     activeOutput: undefined,
+    cleanSaveAsVisible: false,
     primaryPlayback: undefined,
     compareAPlayback: undefined,
     compareBPlayback: undefined,

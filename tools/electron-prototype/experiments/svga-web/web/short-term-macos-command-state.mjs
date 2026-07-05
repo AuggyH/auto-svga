@@ -2,9 +2,11 @@ export function buildCommandState(input) {
   const appearance = ["system", "light", "dark"].includes(input.appearance) ? input.appearance : "system";
   const hasFile = input.hasFile === true;
   const hasOutput = Boolean(input.activeOutput);
+  const outputKind = input.activeOutput?.kind || "";
   const saveBusy = input.saveStatus === "validating";
   const canOverwrite = hasOutput && !saveBusy && Boolean(input.sourceId);
   const canSaveAs = hasOutput && !saveBusy;
+  const headerSaveAsVisible = (hasOutput && outputKind !== "optimization") || input.cleanSaveAsVisible === true;
   const canRunOptimization = hasFile && input.optimizationBatchActionEnabled === true;
   const canRenameImageKey = hasFile && Boolean(input.selectedImageKey);
   const canEditText = input.canEditText === true;
@@ -24,6 +26,7 @@ export function buildCommandState(input) {
       "edit-text": { enabled: canEditText, reason: "当前文件没有可预览文本元素" },
       "reset-text": { enabled: canResetText, reason: "当前没有已应用的文本预览" }
     },
+    headerSaveAsVisible,
     playPauseCopy: input.primaryPlaybackPlaying ? "暂停" : "播放",
     menuState: {
       view: input.view,
@@ -32,7 +35,7 @@ export function buildCommandState(input) {
       appearance,
       hasFile,
       hasOutput,
-      outputKind: input.activeOutput?.kind || "",
+      outputKind,
       canOverwrite,
       canSaveAs,
       saveBusy,

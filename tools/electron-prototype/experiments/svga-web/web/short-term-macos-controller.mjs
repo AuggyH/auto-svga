@@ -119,6 +119,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       mountPlayback("edit", nodes.editCanvas, state.previewBytes ?? state.sourceBytes).catch(showFailure);
       return;
     }
+    setTab("overview");
     setView("preview");
     mountPlayback("primary", nodes.primaryCanvas, state.previewBytes ?? state.sourceBytes).catch(showFailure);
   }

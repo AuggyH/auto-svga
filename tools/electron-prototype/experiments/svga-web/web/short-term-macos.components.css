@@ -124,17 +124,40 @@
   line-height: var(--asv-badge-min-height);
 }
 
-.factCell small b {
+.metricOptimizationEntry {
+  display: inline-flex;
+  gap: var(--asv-space-1);
+  margin-top: var(--asv-fact-cell-meta-gap);
+  justify-self: start;
+  min-height: var(--asv-badge-min-height);
+  padding: 0 var(--asv-space-2);
+  border: 0;
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-badge-bg);
+  color: var(--asv-subtle);
+  cursor: default;
+  font: inherit;
+  line-height: var(--asv-badge-min-height);
+}
+
+.factCell small b,
+.metricOptimizationEntry b {
   color: var(--asv-muted);
   font-weight: 650;
 }
 
-.factCell[data-status="warning"] small b {
+.factCell[data-status="warning"] small b,
+.factCell[data-status="warning"] .metricOptimizationEntry b {
   color: var(--asv-warning);
 }
 
-.factCell[data-status="fail"] small b {
+.factCell[data-status="fail"] small b,
+.factCell[data-status="fail"] .metricOptimizationEntry b {
   color: var(--asv-danger);
+}
+
+.metricOptimizationEntry:hover {
+  background: var(--asv-control-hover-bg);
 }
 
 .assetRow,

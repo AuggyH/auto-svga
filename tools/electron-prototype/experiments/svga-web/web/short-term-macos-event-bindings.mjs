@@ -48,6 +48,7 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
     if (action === "mode-edit") handlers.setMode("edit");
     if (action === "play-pause") handlers.togglePrimaryPlayback();
     if (action === "replay") handlers.replayPrimary();
+    if (action === "open-optimization") handlers.openTab("optimization");
     if (action === "run-optimization") handlers.runOptimization().catch(handlers.showFailure);
     if (action === "save-as") handlers.saveActiveOutput("saveAs").catch(handlers.showFailure);
     if (action === "save-overwrite") handlers.saveActiveOutput("overwrite").catch(handlers.showFailure);
@@ -195,6 +196,7 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
       handlers.togglePrimaryPlayback();
     }
     if (event.key === "Escape" && state.view === "compare") handlers.setMode("preview");
+    if (event.key === "Escape" && state.view === "preview" && state.tab === "optimization") handlers.openTab("overview");
     if (event.key === "Escape" && state.renameImageKey) handlers.cancelInlineRename();
     if (event.key === "Escape") handlers.closeResourceContextMenu({ restoreFocus: true });
   });

@@ -41,6 +41,12 @@ export function applyCommandState(commandState) {
   Object.entries(commandState.actionStates).forEach(([action, actionState]) => {
     setActionEnabled(action, actionState.enabled, actionState.reason);
   });
+  const headerSaveCluster = document.querySelector(".rightSurfaceHeader .toolbarClusterSave");
+  const headerSaveAs = document.querySelector(".rightSurfaceHeader [data-action='save-as']");
+  const headerSaveOverwrite = document.querySelector(".rightSurfaceHeader [data-action='save-overwrite']");
+  if (headerSaveOverwrite) headerSaveOverwrite.hidden = true;
+  if (headerSaveAs) headerSaveAs.hidden = !commandState.headerSaveAsVisible;
+  if (headerSaveCluster) headerSaveCluster.hidden = !commandState.headerSaveAsVisible;
   const playPauseButton = document.querySelector("[data-action='play-pause']");
   if (playPauseButton) {
     const playing = commandState.playPauseCopy === "暂停";

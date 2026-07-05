@@ -161,6 +161,7 @@ export function prepareShortTermSourceLoad({
   state.renameImageKey = "";
   state.textPreview = "";
   state.textPreviewValues = {};
+  state.cleanSaveAsVisible = false;
   clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   setView("loading");
   renderLoadingMessage(nodes, "解析文件并准备预览。");
@@ -179,6 +180,7 @@ export function clearShortTermCurrentFile({ state, stopAllPlayback }) {
   state.textPreview = "";
   state.textPreviewValues = {};
   state.activeOutput = undefined;
+  state.cleanSaveAsVisible = false;
 }
 
 export function resetShortTermLaunchSurface({

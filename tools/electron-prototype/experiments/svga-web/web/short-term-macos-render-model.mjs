@@ -8,7 +8,7 @@ export function renderOverviewFactCellHtml(fact) {
   return `
     <span>${escapeHtml(fact.label)}</span>
     <strong>${escapeHtml(fact.value)}</strong>
-    ${status ? `<small><b>${escapeHtml(status)}</b></small>` : ""}
+    ${status ? `<button type="button" class="metricOptimizationEntry" data-action="open-optimization"><b>${escapeHtml(status)}</b></button>` : ""}
   `;
 }
 

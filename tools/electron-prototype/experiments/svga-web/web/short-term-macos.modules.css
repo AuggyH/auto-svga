@@ -534,6 +534,7 @@ canvas {
 }
 
 .playbackMeta {
+  display: none;
   margin-left: auto;
   min-height: var(--asv-badge-min-height);
   padding: 0 var(--asv-space-2);

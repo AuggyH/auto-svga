@@ -108,9 +108,11 @@ export async function saveShortTermActiveOutput({
     state.sourceId = result.sourceId || state.sourceId;
     state.displayName = result.fileName || state.displayName;
     clearTransientOutput();
+    state.cleanSaveAsVisible = outputKind !== "optimization" && command === "saveAs";
     state.model = savedModel;
     renderPreviewModel();
     await mountPrimaryPlayback(state.previewBytes);
+    renderCommandState();
     showSaveBanner("已保存并通过验证。", `${result.fileName || "输出文件"} 已重新进入干净状态。`);
     await refreshRecentFiles();
     return {
