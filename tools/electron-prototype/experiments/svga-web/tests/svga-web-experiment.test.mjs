@@ -1184,7 +1184,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /short-term-macos\.tokens\.css/);
   assert.doesNotMatch(page, /id="compareFileInput"/);
   assert.doesNotMatch(page, /id="renameDialog"|id="renameInput"|id="renameHint"/);
-  assert.match(page, /短期版仅保留图层查看/);
+  assert.doesNotMatch(page, /短期版仅保留图层查看/);
   assert.doesNotMatch(page, /productShellMount|desktop-product-entry\.mjs|prototype\.js/);
   assert.doesNotMatch(page, /导出验收|序列修复|批量 PNG|Export Acceptance/);
   assert.doesNotMatch(page, /brandMark/);
@@ -1271,7 +1271,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
   assert.match(shortTermComponents, /\.messageRow/);
   assert.match(shortTermComponents, /\.messageRow\[data-status="success"\]/);
-  assert.match(shortTermComponents, /\.reservedNotice/);
+  assert.doesNotMatch(shortTermComponents, /\.reservedNotice/);
   assert.match(shortTermComponents, /\.stateCard\.error::before/);
   assert.match(shortTermComponents, /\.appDialog\[data-status="warning"\]::before/);
   assert.match(shortTermComponents, /\.dialogHeader/);

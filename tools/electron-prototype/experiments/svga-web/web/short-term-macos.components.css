@@ -498,9 +498,3 @@
 .contextMenu button:disabled {
   opacity: 0.42;
 }
-
-.reservedNotice {
-  width: 100%;
-  max-width: var(--asv-launch-content-width);
-  text-align: center;
-}
