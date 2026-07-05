@@ -280,7 +280,7 @@
 }
 
 .textElementRow {
-  grid-template-columns: var(--asv-row-index-width) minmax(0, 1fr) auto;
+  grid-template-columns: var(--asv-row-index-width) minmax(0, 0.8fr) minmax(var(--asv-runtime-text-input-min-width), 1fr) auto;
 }
 
 .replaceableRow,

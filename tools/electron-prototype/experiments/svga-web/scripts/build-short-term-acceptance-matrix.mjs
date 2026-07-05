@@ -166,10 +166,12 @@ const requirements = [
       && proof?.textElementsDiscovered > 0
       && Array.isArray(proof?.textKeys)
       && proof.textKeys.includes("nickname_text")
-      && proof?.modalOpened === true
+      && proof?.inlineInputRendered === true
+      && proof?.initialFocusInput === true
+      && proof?.inputSpaceSuppressed === true
       && proof?.editApplied === true
       && proof?.runtimeOverlayVisibleAfterApply === true
-      && proof?.resetCommandEnabledAfterApply === true
+      && proof?.resetButtonEnabledAfterApply === true
       && proof?.resetApplied === true
       && proof?.resetClearedOverlay === true
       && proof?.sourceBytesUnchanged === true

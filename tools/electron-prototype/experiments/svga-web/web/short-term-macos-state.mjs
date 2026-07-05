@@ -17,6 +17,7 @@ export function createShortTermInitialState() {
     compareBPlayback: undefined,
     editPlayback: undefined,
     textPreview: "",
+    textPreviewValues: {},
     saveStatus: "idle",
     resourceMenuReturnFocus: undefined,
     lastMenuStateSnapshot: ""

@@ -61,19 +61,20 @@ export function createTextElementRow(item, index, options) {
   row.setAttribute("role", "option");
   row.classList.toggle("isSelected", options.selected);
   row.setAttribute("aria-selected", options.selected ? "true" : "false");
-  row.title = `${item.displayName || item.textKey}: ${item.initialText || item.textKey}`;
+  const label = item.displayName || item.textKey;
+  const value = item.inputValue || "";
+  row.title = `${label}: ${value || item.initialText || item.textKey}`;
   row.innerHTML = `
     <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-    <span class="rowText"><strong>${escapeHtml(item.displayName || item.textKey)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
-    <span class="badge">文本</span>
+    <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
+    <input class="runtimeTextInput" data-component="InlineTextReplacementInput" data-text-input data-text-key="${escapeHtml(item.textKey)}" value="${escapeHtml(value)}" placeholder="${escapeHtml(item.placeholder)}" autocomplete="off" aria-label="${escapeHtml(label)} 文本预览">
+    <button type="button" class="runtimeTextResetButton" data-action="runtime-text-reset" data-text-key="${escapeHtml(item.textKey)}" aria-label="重置 ${escapeHtml(label)} 文本预览" ${item.resetDisabled ? "disabled" : ""}>重置</button>
   `;
   return row;
 }
 
 export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
   nodes.textPreviewSummary.textContent = view.summaryCopy;
-  nodes.editTextButton.hidden = !view.hasTextElements;
-  nodes.resetTextButton.hidden = !view.hasTextElements;
   if (!view.hasTextElements) {
     nodes.textElementList.replaceChildren(createInlineStatusText(view.emptyCopy));
     return;
@@ -81,4 +82,12 @@ export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
   nodes.textElementList.replaceChildren(...view.texts.map((item, index) => createTextElementRow(item, index, {
     selected: item.textKey === selectedTextKey
   })));
+}
+
+export function applyRuntimeTextSelection(nodes, selectedTextKey) {
+  nodes.textElementList.querySelectorAll(".textElementRow[data-text-key]").forEach((row) => {
+    const selected = row.dataset.textKey === selectedTextKey;
+    row.classList.toggle("isSelected", selected);
+    row.setAttribute("aria-selected", selected ? "true" : "false");
+  });
 }

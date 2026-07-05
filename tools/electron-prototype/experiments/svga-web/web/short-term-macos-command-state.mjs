@@ -7,7 +7,7 @@ export function buildCommandState(input) {
   const canRunOptimization = hasFile && input.optimizationBatchActionEnabled === true;
   const canRenameImageKey = hasFile && Boolean(input.selectedImageKey);
   const canEditText = input.canEditText === true;
-  const canResetText = Boolean(input.textPreview);
+  const canResetText = Object.values(input.textPreviewValues || {}).some(Boolean);
   const canResetImageReplacement = input.activeOutput?.kind === "replacement";
   const canShowOptimizationComparison = input.activeOutput?.kind === "optimization"
     && Boolean(input.activeOutput.bytes?.byteLength);

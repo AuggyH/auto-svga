@@ -1,51 +1,87 @@
-import { showDialog } from "./short-term-macos-dialog-model.mjs";
 import {
-  runtimeTextInputValue,
   runtimeTextOverlayCopy,
-  runtimeTextPlaceholder
+  selectedRuntimeTextElement
 } from "./short-term-macos-text-model.mjs";
 import {
   applyRuntimeTextOverlay,
   clearRuntimeTextOverlay
 } from "./short-term-macos-text-renderers.mjs";
 
-export async function editShortTermRuntimeTextPreview({
+function findRuntimeTextInput(nodes, textKey) {
+  return Array.from(nodes.textElementList.querySelectorAll("[data-text-input]"))
+    .find((input) => input.dataset.textKey === textKey);
+}
+
+function setRuntimeTextValue(state, textKey, value) {
+  state.textPreviewValues = { ...(state.textPreviewValues || {}) };
+  if (value) {
+    state.textPreviewValues[textKey] = value;
+  } else {
+    delete state.textPreviewValues[textKey];
+  }
+  state.textPreview = state.textPreviewValues[textKey] || "";
+}
+
+export function focusShortTermRuntimeTextPreviewInput({
   nodes,
   state,
   textElement,
-  showSaveBanner,
-  renderTextElements,
-  renderCommandState
+  showSaveBanner
 }) {
   if (!state.sourceBytes) return;
   if (!textElement) {
     showSaveBanner("没有可预览的文本元素。", "当前文件没有暴露可运行时替换的文本标识，源文件没有被修改。");
     return;
   }
-  nodes.runtimeTextInput.value = runtimeTextInputValue(state.textPreview);
-  nodes.runtimeTextInput.placeholder = runtimeTextPlaceholder(textElement);
-  const result = await showDialog(nodes.textDialog, renderCommandState, {
-    initialFocus: nodes.runtimeTextInput
-  });
-  if (result !== "confirm") return;
-  state.textPreview = nodes.runtimeTextInput.value.trim();
+  const input = findRuntimeTextInput(nodes, textElement.textKey);
+  input?.focus();
+  input?.select?.();
+}
+
+export function applyShortTermRuntimeTextPreview({
+  nodes,
+  state,
+  textKey,
+  value,
+  renderCommandState
+}) {
+  if (!state.sourceBytes || !textKey) return;
+  const textElement = selectedRuntimeTextElement(state.model?.replaceableElements, textKey);
+  if (!textElement) return;
+  state.selectedTextKey = textKey;
+  setRuntimeTextValue(state, textKey, value);
   applyRuntimeTextOverlay(
     nodes.runtimeTextOverlay,
     runtimeTextOverlayCopy(textElement, state.textPreview),
     Boolean(state.textPreview)
   );
-  renderTextElements(state.model?.replaceableElements);
+  const input = findRuntimeTextInput(nodes, textKey);
+  const resetButton = input?.closest(".textElementRow")?.querySelector("[data-action='runtime-text-reset']");
+  if (resetButton) resetButton.disabled = !state.textPreview;
   renderCommandState();
 }
 
 export function resetShortTermRuntimeTextPreview({
   nodes,
   state,
+  textKey,
   renderTextElements,
   renderCommandState
 }) {
-  state.textPreview = "";
-  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
+  if (!textKey) {
+    state.textPreviewValues = {};
+    state.textPreview = "";
+    clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
+    renderTextElements(state.model?.replaceableElements);
+    renderCommandState();
+    return;
+  }
+  setRuntimeTextValue(state, textKey, "");
+  if (state.selectedTextKey === textKey) {
+    clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
+  } else {
+    state.textPreview = state.textPreviewValues?.[state.selectedTextKey] || "";
+  }
   renderTextElements(state.model?.replaceableElements);
   renderCommandState();
 }

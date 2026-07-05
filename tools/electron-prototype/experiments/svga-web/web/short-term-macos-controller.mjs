@@ -71,7 +71,8 @@ import {
   saveShortTermActiveOutput
 } from "./short-term-macos-save-surface.mjs";
 import {
-  editShortTermRuntimeTextPreview,
+  applyShortTermRuntimeTextPreview,
+  focusShortTermRuntimeTextPreviewInput,
   resetShortTermRuntimeTextPreview
 } from "./short-term-macos-runtime-text-surface.mjs";
 import {
@@ -277,21 +278,30 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     });
   }
 
-  async function editRuntimeText() {
-    await editShortTermRuntimeTextPreview({
+  function editRuntimeText() {
+    focusShortTermRuntimeTextPreviewInput({
       nodes,
       state,
       textElement: selectedTextElement(),
-      showSaveBanner,
-      renderTextElements,
+      showSaveBanner
+    });
+  }
+
+  function updateRuntimeText(textKey, value) {
+    applyShortTermRuntimeTextPreview({
+      nodes,
+      state,
+      textKey,
+      value,
       renderCommandState
     });
   }
 
-  function resetRuntimeText() {
+  function resetRuntimeText(textKey) {
     resetShortTermRuntimeTextPreview({
       nodes,
       state,
+      textKey,
       renderTextElements,
       renderCommandState
     });
@@ -351,8 +361,13 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     renderShortTermRuntimeTextElements({ nodes, state, model });
   }
 
-  function selectTextKey(textKey) {
-    selectShortTermRuntimeTextElement({ nodes, state, textKey });
+  function selectTextKey(textKey, options = {}) {
+    selectShortTermRuntimeTextElement({
+      nodes,
+      state,
+      textKey,
+      rerender: options.rerender !== false
+    });
   }
 
   function selectedTextElement() {
@@ -509,6 +524,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     chooseReplacementImage,
     resetImageReplacement,
     editRuntimeText,
+    updateRuntimeText,
     resetRuntimeText,
     openKeyboardResourceContextMenu,
     setTab,

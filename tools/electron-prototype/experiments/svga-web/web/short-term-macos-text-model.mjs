@@ -1,7 +1,7 @@
 export const RUNTIME_TEXT_DEFAULT_VALUE = "SVGA VIP";
 
-export function runtimeTextInputValue(textPreview) {
-  return textPreview || RUNTIME_TEXT_DEFAULT_VALUE;
+export function runtimeTextInputValue(textPreviewValues, textElement) {
+  return textPreviewValues?.[textElement?.textKey] || "";
 }
 
 export function runtimeTextPlaceholder(textElement) {
@@ -12,11 +12,21 @@ export function runtimeTextOverlayCopy(textElement, textPreview) {
   return `${textElement?.displayName || textElement?.textKey}: ${textPreview}`;
 }
 
-export function runtimeTextListView(model, textPreview) {
+export function hasRuntimeTextPreview(textPreviewValues) {
+  return Object.values(textPreviewValues || {}).some(Boolean);
+}
+
+export function runtimeTextListView(model, textPreviewValues) {
   const texts = Array.isArray(model?.texts) ? model.texts : [];
   return {
-    texts,
+    texts: texts.map((item) => ({
+      ...item,
+      inputValue: runtimeTextInputValue(textPreviewValues, item),
+      placeholder: runtimeTextPlaceholder(item),
+      resetDisabled: !runtimeTextInputValue(textPreviewValues, item)
+    })),
     hasTextElements: texts.length > 0,
+    hasTextPreview: hasRuntimeTextPreview(textPreviewValues),
     emptyCopy: model?.textPreviewCopy || "当前文件没有可运行时预览的文本元素。",
     summaryCopy: `(${texts.length})`
   };

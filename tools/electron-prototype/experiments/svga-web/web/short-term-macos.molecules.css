@@ -63,6 +63,43 @@
   box-shadow: var(--asv-focus);
 }
 
+.runtimeTextInput {
+  min-width: 0;
+  width: 100%;
+  height: var(--asv-control-height);
+  padding: 0 var(--asv-space-2);
+  border: 1px solid var(--asv-control-border);
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-panel);
+  color: var(--asv-text);
+  font: inherit;
+}
+
+.runtimeTextInput::placeholder {
+  color: var(--asv-subtle);
+}
+
+.runtimeTextResetButton {
+  min-width: var(--asv-row-action-height);
+  height: var(--asv-row-action-height);
+  padding: 0 var(--asv-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--asv-action);
+  box-shadow: none;
+}
+
+.runtimeTextResetButton:hover:not(:disabled),
+.runtimeTextResetButton:focus-visible {
+  background: var(--asv-control-hover-bg);
+  color: var(--asv-action);
+}
+
+.runtimeTextResetButton:focus-visible {
+  outline: none;
+  box-shadow: var(--asv-focus);
+}
+
 .inlineActions {
   display: flex;
   gap: var(--asv-space-1);

@@ -8,6 +8,7 @@ import {
   replaceShortTermImageAsset
 } from "./short-term-macos-api-client.mjs";
 import {
+  applyRuntimeTextSelection,
   renderReplaceableImages,
   renderRuntimeTextElements
 } from "./short-term-macos-replaceable-renderers.mjs";
@@ -18,10 +19,14 @@ import {
 } from "./short-term-macos-replaceable-model.mjs";
 import {
   nextSelectedTextKey,
+  runtimeTextOverlayCopy,
   runtimeTextListView,
   selectedRuntimeTextElement
 } from "./short-term-macos-text-model.mjs";
-import { clearRuntimeTextOverlay } from "./short-term-macos-text-renderers.mjs";
+import {
+  applyRuntimeTextOverlay,
+  clearRuntimeTextOverlay
+} from "./short-term-macos-text-renderers.mjs";
 
 export function renderShortTermReplaceableImages({ nodes, state, model }) {
   if (!model) return;
@@ -30,18 +35,27 @@ export function renderShortTermReplaceableImages({ nodes, state, model }) {
 }
 
 export function renderShortTermRuntimeTextElements({ nodes, state, model }) {
-  const view = runtimeTextListView(model, state.textPreview);
+  const view = runtimeTextListView(model, state.textPreviewValues);
   state.selectedTextKey = nextSelectedTextKey(state.selectedTextKey, view.texts);
   renderRuntimeTextElements(nodes, view, state.selectedTextKey);
   setActionEnabled("edit-text", view.hasTextElements, "当前文件没有可预览文本元素");
-  setActionEnabled("reset-text", Boolean(state.textPreview), "当前没有已应用的文本预览");
+  setActionEnabled("reset-text", view.hasTextPreview, "当前没有已应用的文本预览");
 }
 
-export function selectShortTermRuntimeTextElement({ nodes, state, textKey }) {
+export function selectShortTermRuntimeTextElement({ nodes, state, textKey, rerender = true }) {
   if (!textKey) return;
   state.selectedTextKey = textKey;
-  state.textPreview = "";
-  clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
+  state.textPreview = state.textPreviewValues?.[textKey] || "";
+  const textElement = selectedRuntimeTextElement(state.model?.replaceableElements, textKey);
+  if (state.textPreview) {
+    applyRuntimeTextOverlay(nodes.runtimeTextOverlay, runtimeTextOverlayCopy(textElement, state.textPreview), true);
+  } else {
+    clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
+  }
+  if (!rerender) {
+    applyRuntimeTextSelection(nodes, textKey);
+    return;
+  }
   renderShortTermRuntimeTextElements({
     nodes,
     state,

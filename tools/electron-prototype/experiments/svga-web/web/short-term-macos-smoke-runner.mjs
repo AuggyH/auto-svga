@@ -229,37 +229,35 @@ async function runShortTermSmoke({
   const designerRuntimeTextKeys = (state.model?.replaceableElements?.texts ?? []).map((item) => item.textKey);
   const designerImageAssetCount = (state.model?.assets ?? []).filter((asset) => asset.kind === "image").length;
   const runtimeTextSourceSha256Before = await sha256Hex(state.sourceBytes);
-  nodes.editTextButton.focus();
-  const runtimeTextEditPromise = editRuntimeText();
-  await waitForSmokeCondition(() => Boolean(nodes.textDialog.open), 2_000);
-  const runtimeTextModalOpened = Boolean(nodes.textDialog.open);
-  const runtimeTextInitialFocusInput = document.activeElement === nodes.runtimeTextInput;
-  const runtimeTextModalPlaybackBeforeSpace = state.primaryPlayback?.playing === true;
-  nodes.textDialog.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+  const runtimeTextInput = nodes.textElementList.querySelector("[data-text-input][data-text-key='nickname_text']")
+    || nodes.textElementList.querySelector("[data-text-input]");
+  const runtimeTextInlineInputRendered = Boolean(runtimeTextInput);
+  runtimeTextInput?.focus();
+  const runtimeTextInitialFocusInput = document.activeElement === runtimeTextInput;
+  const runtimeTextPlaybackBeforeSpace = state.primaryPlayback?.playing === true;
+  runtimeTextInput?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
   await waitForSmokeFrame();
-  const runtimeTextModalPlaybackAfterSpace = state.primaryPlayback?.playing === true;
-  nodes.runtimeTextInput.value = "SVGA VIP";
-  nodes.textDialog.close("confirm");
-  await runtimeTextEditPromise;
-  const runtimeTextFocusReturnedAfterClose = document.activeElement === nodes.editTextButton;
+  const runtimeTextPlaybackAfterSpace = state.primaryPlayback?.playing === true;
+  runtimeTextInput.value = "SVGA VIP";
+  runtimeTextInput.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "SVGA VIP" }));
   await waitForSmokeCondition(() => !nodes.runtimeTextOverlay.hidden && nodes.runtimeTextOverlay.textContent.includes("SVGA VIP"), 2_000);
   await waitForSmokeFrame();
   const runtimeTextSourceSha256AfterApply = await sha256Hex(state.sourceBytes);
   const runtimeTextOverlayCopy = nodes.runtimeTextOverlay.textContent.trim();
   const runtimeTextApplied = state.textPreview === "SVGA VIP";
-  const runtimeTextResetCommandEnabled = document.querySelector("[data-action='reset-text']")?.disabled === false;
+  const runtimeTextResetButton = runtimeTextInput.closest(".textElementRow")?.querySelector("[data-action='runtime-text-reset']");
+  const runtimeTextResetButtonEnabled = runtimeTextResetButton?.disabled === false;
   await captureSmokeArtifact("short-term-runtime-text-applied");
-  resetRuntimeText();
+  runtimeTextResetButton?.click();
   await waitForSmokeFrame();
   const runtimeTextSourceSha256AfterReset = await sha256Hex(state.sourceBytes);
   const shortTermRuntimeTextBoundaryProof = collectShortTermRuntimeTextBoundaryProof({
     editApplied: runtimeTextApplied,
-    focusReturnedAfterClose: runtimeTextFocusReturnedAfterClose,
     initialFocusInput: runtimeTextInitialFocusInput,
-    modalSpaceSuppressed: runtimeTextModalPlaybackAfterSpace === runtimeTextModalPlaybackBeforeSpace,
-    modalOpened: runtimeTextModalOpened,
+    inlineInputRendered: runtimeTextInlineInputRendered,
+    inputSpaceSuppressed: runtimeTextPlaybackAfterSpace === runtimeTextPlaybackBeforeSpace,
     resetClearedOverlay: nodes.runtimeTextOverlay.hidden && !nodes.runtimeTextOverlay.textContent.trim(),
-    resetCommandEnabledAfterApply: runtimeTextResetCommandEnabled,
+    resetButtonEnabledAfterApply: runtimeTextResetButtonEnabled,
     runtimeOverlayCopy: runtimeTextOverlayCopy,
     sourceSha256AfterApply: runtimeTextSourceSha256AfterApply,
     sourceSha256AfterReset: runtimeTextSourceSha256AfterReset,

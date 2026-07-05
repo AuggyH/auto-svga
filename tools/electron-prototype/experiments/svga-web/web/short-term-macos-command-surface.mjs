@@ -15,7 +15,7 @@ export function renderShortTermCommandSurface({ bridge, documentRef = document, 
     optimizationBatchActionEnabled: state.model?.optimization?.batchActionEnabled === true,
     selectedImageKey: state.selectedImageKey,
     canEditText: canEditText === true,
-    textPreview: state.textPreview,
+    textPreviewValues: state.textPreviewValues,
     primaryPlaybackPlaying: state.primaryPlayback?.playing === true,
     renameImageKey: state.renameImageKey,
     dialogOpen: hasOpenDialog(documentRef)

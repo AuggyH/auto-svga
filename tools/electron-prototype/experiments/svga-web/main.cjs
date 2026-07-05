@@ -892,10 +892,12 @@ function validateShortTermRuntimeTextBoundaryProof(value) {
   if (value.sourceSha256AfterReset !== value.sourceSha256Before) return undefined;
   if (!Array.isArray(value.supportedRuntimeFields) || value.supportedRuntimeFields.join(",") !== "text") return undefined;
   if (
-    value.modalOpened !== true
+    value.inlineInputRendered !== true
+    || value.initialFocusInput !== true
+    || value.inputSpaceSuppressed !== true
     || value.editApplied !== true
     || value.runtimeOverlayVisibleAfterApply !== true
-    || value.resetCommandEnabledAfterApply !== true
+    || value.resetButtonEnabledAfterApply !== true
     || value.resetApplied !== true
     || value.resetClearedOverlay !== true
     || value.bytePersistenceClaimed !== false
@@ -914,11 +916,13 @@ function validateShortTermRuntimeTextBoundaryProof(value) {
     runtimeTextKeySource: value.runtimeTextKeySource,
     textElementsDiscovered: value.textElementsDiscovered,
     textKeys: value.textKeys,
-    modalOpened: true,
+    inlineInputRendered: true,
+    initialFocusInput: true,
+    inputSpaceSuppressed: true,
     editApplied: true,
     runtimeOverlayVisibleAfterApply: true,
     runtimeOverlayCopy: value.runtimeOverlayCopy,
-    resetCommandEnabledAfterApply: true,
+    resetButtonEnabledAfterApply: true,
     resetApplied: true,
     resetClearedOverlay: true,
     bytePersistenceClaimed: false,
@@ -3938,7 +3942,7 @@ function collectShortTermMenuStateProof() {
     renameEnabledMatchesSelection: menuItemEnabled(["资源", "重命名 imageKey"]) === shortTermMenuState.canRenameImageKey,
     replaceEnabledMatchesSelection: menuItemEnabled(["资源", "替换预览图片..."]) === shortTermMenuState.canReplaceImage,
     resetImageEnabledMatchesReplacementState: menuItemEnabled(["资源", "重置预览图片"]) === shortTermMenuState.canResetImageReplacement,
-    editTextEnabledMatchesTextState: menuItemEnabled(["资源", "编辑文本预览..."]) === shortTermMenuState.canEditText,
+    editTextEnabledMatchesTextState: menuItemEnabled(["资源", "编辑文本预览"]) === shortTermMenuState.canEditText,
     resetTextEnabledMatchesTextState: menuItemEnabled(["资源", "重置文本预览"]) === shortTermMenuState.canResetText,
     optimizationEnabledMatchesModel: menuItemEnabled(["优化", "执行安全优化"]) === shortTermMenuState.canRunOptimization,
     optimizationCompareEnabledMatchesOutput: menuItemEnabled(["优化", "显示优化对比"]) === shortTermMenuState.canShowOptimizationComparison,
@@ -4902,7 +4906,7 @@ function installShortTermApplicationMenu(window) {
         },
         { type: "separator" },
         {
-          label: "编辑文本预览...",
+          label: "编辑文本预览",
           enabled: menuState.canEditText,
           click: () => invokeShortTermAction("editTextPreview")
         },

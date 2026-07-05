@@ -111,6 +111,7 @@ export async function loadShortTermOpenedSource({
     const model = await inspectShortTerm(bytes, state.displayName);
     state.model = model;
     state.selectedImageKey = model.replaceableElements.images[0]?.imageKey || "";
+    state.selectedTextKey = model.replaceableElements.texts[0]?.textKey || "";
     renderPreviewModel();
     setView("preview");
     await mountPrimaryPlayback(state.previewBytes);
@@ -156,8 +157,10 @@ export function prepareShortTermSourceLoad({
   state.sourceId = sourceId || "";
   state.displayName = displayName || "local.svga";
   state.selectedImageKey = "";
+  state.selectedTextKey = "";
   state.renameImageKey = "";
   state.textPreview = "";
+  state.textPreviewValues = {};
   clearRuntimeTextOverlay(nodes.runtimeTextOverlay);
   setView("loading");
   renderLoadingMessage(nodes, "解析文件并准备预览。");
@@ -173,6 +176,8 @@ export function clearShortTermCurrentFile({ state, stopAllPlayback }) {
   state.selectedImageKey = "";
   state.selectedTextKey = "";
   state.renameImageKey = "";
+  state.textPreview = "";
+  state.textPreviewValues = {};
   state.activeOutput = undefined;
 }
 

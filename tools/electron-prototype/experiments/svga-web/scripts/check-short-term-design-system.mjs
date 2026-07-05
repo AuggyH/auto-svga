@@ -54,7 +54,7 @@ const allowedDataComponents = new Set([
   "OptimizationFindingRow",
   "OptimizationResultCard",
   "ComparePreviewCard",
-  "TextReplacementSheet",
+  "InlineTextReplacementInput",
   "SaveFeedbackBanner",
   "ErrorRecoveryPanel",
   "LayerRow",

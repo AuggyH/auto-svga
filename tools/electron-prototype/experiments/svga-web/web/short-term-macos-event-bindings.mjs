@@ -42,7 +42,10 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
         clientY: rect.bottom
       }, target.dataset.imageKey || state.selectedImageKey, target);
     }
-    if (action === "select-text") handlers.selectTextKey(target.dataset.textKey || state.selectedTextKey);
+    if (action === "select-text" && !eventTarget.closest("[data-text-input], [data-action='runtime-text-reset']")) {
+      handlers.selectTextKey(target.dataset.textKey || state.selectedTextKey);
+    }
+    if (action === "runtime-text-reset") handlers.resetRuntimeText(target.dataset.textKey);
     if (action === "inline-rename-confirm") handlers.confirmInlineRename().catch(handlers.showFailure);
     if (action === "inline-rename-cancel") handlers.cancelInlineRename();
     if (action === "context-rename") {
@@ -57,7 +60,7 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
       handlers.closeResourceContextMenu({ restoreFocus: true });
       handlers.resetImageReplacement().catch(handlers.showFailure);
     }
-    if (action === "edit-text") handlers.editRuntimeText().catch(handlers.showFailure);
+    if (action === "edit-text") handlers.editRuntimeText();
     if (action === "reset-text") handlers.resetRuntimeText();
   });
 
@@ -97,7 +100,10 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
   });
 
   nodes.textElementList.addEventListener("keydown", (event) => {
-    const row = eventElement(event)?.closest(".textElementRow[data-text-key]");
+    const eventTarget = eventElement(event);
+    if (eventTarget?.matches("[data-text-input]")) return;
+    if (eventTarget?.closest("[data-action='runtime-text-reset']")) return;
+    const row = eventTarget?.closest(".textElementRow[data-text-key]");
     if (!row) return;
     if (isActivationKey(event)) {
       consumeKeyboardEvent(event);
@@ -105,21 +111,22 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
     }
   });
 
+  nodes.textElementList.addEventListener("focusin", (event) => {
+    const input = eventElement(event)?.closest("[data-text-input]");
+    if (!input) return;
+    handlers.selectTextKey(input.dataset.textKey, { rerender: false });
+  });
+
+  nodes.textElementList.addEventListener("input", (event) => {
+    const input = eventElement(event)?.closest("[data-text-input]");
+    if (!input) return;
+    handlers.updateRuntimeText(input.dataset.textKey, input.value);
+  });
+
   nodes.resourceContextMenu.addEventListener("keydown", handlers.handleResourceContextMenuKeydown);
 
   nodes.replacementFileInput.addEventListener("change", () => {
     handlers.applyReplacementFile(nodes.replacementFileInput.files?.[0]).catch(handlers.showFailure);
-  });
-
-  nodes.runtimeTextInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      nodes.textDialog.close("confirm");
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      nodes.textDialog.close("cancel");
-    }
   });
 
   nodes.dropZone.addEventListener("dragover", (event) => {
