@@ -725,6 +725,8 @@ export function collectShortTermDesignInteractionProof({
     appearanceSwitchingWorks: settingsAppearanceProof?.darkAppearanceApplied === true
       && settingsAppearanceProof?.lightAppearanceApplied === true
       && settingsAppearanceProof?.systemAppearanceRestored === true,
+    appearanceScreenshotsCaptured: settingsAppearanceProof?.darkAppearanceScreenshotCaptured === true
+      && settingsAppearanceProof?.lightAppearanceScreenshotCaptured === true,
     appearanceMenuStateSynced: menuState?.appearance === "system",
     noMainSurfaceAppearanceButton: settingsAppearanceProof?.noMainSurfaceAppearanceButton === true,
     focusedControlSpaceProof,
@@ -748,6 +750,7 @@ export function collectShortTermDesignInteractionProof({
     proof.menuStateDiscoverable,
     proof.settingsSheetAvailable,
     proof.appearanceSwitchingWorks,
+    proof.appearanceScreenshotsCaptured,
     proof.appearanceMenuStateSynced,
     proof.noMainSurfaceAppearanceButton,
     proof.focusedControlSpaceNotGlobalPlayback,

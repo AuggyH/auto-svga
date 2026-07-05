@@ -2797,6 +2797,8 @@ function validateArtifactScenario(value) {
     "short-term-general-compare",
     "short-term-edit-reserved",
     "short-term-preview-minimum",
+    "short-term-appearance-dark",
+    "short-term-appearance-light",
     "short-term-save-failed",
     "short-term-load-failed",
     "short-term-playback-failed",

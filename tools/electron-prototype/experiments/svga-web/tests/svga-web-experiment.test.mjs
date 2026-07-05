@@ -1968,6 +1968,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /menuStateDiscoverable/);
   assert.match(shortTermSmokeProofModel, /settingsSheetAvailable/);
   assert.match(shortTermSmokeProofModel, /appearanceSwitchingWorks/);
+  assert.match(shortTermSmokeProofModel, /appearanceScreenshotsCaptured/);
   assert.match(shortTermSmokeProofModel, /appearanceMenuStateSynced/);
   assert.match(shortTermSmokeProofModel, /noMainSurfaceAppearanceButton/);
   assert.match(shortTermSmokeProofModel, /noVisibleCompareEntrypoint/);
@@ -1976,6 +1977,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeRunner, /focusedControlSpaceProof/);
   assert.match(shortTermSmokeRunner, /settingsAppearanceProof/);
   assert.match(shortTermSmokeRunner, /setAppearance\("dark"\)/);
+  assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-appearance-dark"\)/);
+  assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-appearance-light"\)/);
+  assert.match(shortTermSmokeRunner, /darkAppearanceScreenshotCaptured/);
+  assert.match(shortTermSmokeRunner, /lightAppearanceScreenshotCaptured/);
   assert.match(shortTermSmokeProofModel, /minimumPreviewCaptured/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermReplaceableClassificationProof/);
   assert.match(shortTermSmokeProofModel, /short-term-replaceable-classification-proof/);
@@ -2243,6 +2248,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /short-term-replacement-reset/);
   assert.match(main, /short-term-runtime-text-applied/);
   assert.match(main, /short-term-preview-minimum/);
+  assert.match(main, /short-term-appearance-dark/);
+  assert.match(main, /short-term-appearance-light/);
   assert.match(main, /short-term-load-failed/);
   assert.match(main, /short-term-save-failed/);
   assert.match(main, /short-term-playback-failed/);

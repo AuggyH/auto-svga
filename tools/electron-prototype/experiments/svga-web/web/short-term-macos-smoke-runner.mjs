@@ -463,12 +463,22 @@ async function runShortTermSmoke({
   closeSettings();
   await waitForSmokeCondition(() => nodes.settingsDialog.open === false, 2_000);
   await waitForSmokeFrame();
+  setAppearance("dark");
+  await waitForSmokeFrame();
+  const darkAppearanceArtifact = await captureSmokeArtifact("short-term-appearance-dark");
+  setAppearance("light");
+  await waitForSmokeFrame();
+  const lightAppearanceArtifact = await captureSmokeArtifact("short-term-appearance-light");
+  setAppearance("system");
+  await waitForSmokeFrame();
   const settingsAppearanceProof = {
     settingsDialogOpened,
     settingsChoiceValues,
     darkAppearanceApplied,
     lightAppearanceApplied,
     systemAppearanceRestored,
+    darkAppearanceScreenshotCaptured: Boolean(darkAppearanceArtifact?.path),
+    lightAppearanceScreenshotCaptured: Boolean(lightAppearanceArtifact?.path),
     settingsDialogClosed: nodes.settingsDialog.open === false,
     noMainSurfaceAppearanceButton: !document.querySelector("[data-action='open-settings']")
   };
