@@ -23,7 +23,7 @@ export function setShortTermActiveOutput({
     details
   };
   state.saveStatus = "dirty";
-  showShortTermOutputBanner({ nodes, title, message: summary });
+  clearShortTermSaveBanner(nodes);
   onOutputStateChange?.();
 }
 

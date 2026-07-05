@@ -1423,6 +1423,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermFeedbackSurface, /sourceUnmodifiedMessage/);
   assert.doesNotMatch(shortTermEntry, /showSaveFeedbackBanner|clearSaveFeedbackBanner|hideSaveFeedbackBanner|renderFailureMessage|buildCurrentStateSummary|sourceUnmodifiedMessage/);
   assert.match(shortTermOutputSurface, /clearShortTermSaveBanner\(nodes\)/);
+  assert.doesNotMatch(shortTermOutputSurface, /showShortTermOutputBanner\(\{ nodes, title, message: summary \}\)/);
   assert.match(shortTermOutputSurface, /state\.activeOutput = \{/);
   assert.match(shortTermOutputSurface, /state\.saveStatus = "dirty"/);
   assert.match(shortTermOutputSurface, /state\.saveStatus = "idle"/);
