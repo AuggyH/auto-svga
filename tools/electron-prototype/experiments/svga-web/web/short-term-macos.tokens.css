@@ -71,6 +71,7 @@
   --asv-color-border-row: color-mix(in srgb, var(--asv-color-border-default) 62%, transparent);
   --asv-color-border-subtle: color-mix(in srgb, var(--asv-color-border-default) 52%, transparent);
   --asv-color-border-badge: color-mix(in srgb, var(--asv-color-border-default) 42%, transparent);
+  --asv-color-border-right-panel-separator: color-mix(in srgb, var(--asv-color-border-default) 38%, transparent);
   --asv-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.06);
   --asv-shadow-panel-chrome: 0 1px 2px rgba(15, 23, 42, 0.06);
   --asv-shadow-floating: 0 18px 44px rgba(15, 23, 42, 0.16);
@@ -112,6 +113,7 @@
   --asv-component-right-panel-width: clamp(380px, 30vw, 440px);
   --asv-component-right-panel-padding: var(--asv-space-3);
   --asv-component-right-panel-section-gap: var(--asv-space-3);
+  --asv-component-right-panel-separator-width: 1px;
   --asv-component-preview-gap: 10px;
   --asv-component-playback-bar-height: 42px;
   --asv-component-playback-primary-size: 42px;
@@ -210,6 +212,7 @@
   --asv-row-border: var(--asv-color-border-row);
   --asv-subtle-border: var(--asv-color-border-subtle);
   --asv-badge-border: var(--asv-color-border-badge);
+  --asv-right-panel-separator: var(--asv-color-border-right-panel-separator);
   --asv-focus: 0 0 0 3px color-mix(in srgb, var(--asv-action) 28%, transparent);
   --asv-focus-inset: inset 0 0 0 2px color-mix(in srgb, var(--asv-action) 30%, transparent);
   --asv-toolbar-height: var(--asv-component-toolbar-height);
@@ -236,6 +239,7 @@
   --asv-right-panel-width: var(--asv-component-right-panel-width);
   --asv-right-panel-padding: var(--asv-component-right-panel-padding);
   --asv-right-panel-section-gap: var(--asv-component-right-panel-section-gap);
+  --asv-right-panel-separator-width: var(--asv-component-right-panel-separator-width);
   --asv-preview-gap: var(--asv-component-preview-gap);
   --asv-playback-bar-height: var(--asv-component-playback-bar-height);
   --asv-playback-primary-size: var(--asv-component-playback-primary-size);

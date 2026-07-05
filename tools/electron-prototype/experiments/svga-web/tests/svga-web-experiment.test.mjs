@@ -1193,6 +1193,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-color-surface-panel-chrome/);
   assert.match(shortTermTokens, /--asv-color-surface-panel-recessed/);
   assert.match(shortTermTokens, /--asv-component-right-panel-width/);
+  assert.match(shortTermTokens, /--asv-component-right-panel-separator-width/);
+  assert.match(shortTermTokens, /--asv-right-panel-separator/);
   assert.doesNotMatch(shortTermTokens, /inspector/);
   assert.match(shortTermTokens, /--asv-color-surface-control/);
   assert.match(shortTermTokens, /--asv-color-surface-row-selected/);
@@ -1263,6 +1265,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.contextMenu button:disabled/);
   assert.match(shortTermModules, /\.toolbarCluster/);
   assert.match(shortTermModules, /\.rightPanel/);
+  assert.match(shortTermModules, /box-shadow: inset var\(--asv-right-panel-separator-width\) 0 0 var\(--asv-right-panel-separator\)/);
+  assert.match(shortTermModules, /\.rightSurfaceBody\s*\{[^}]*background: var\(--asv-right-panel\)/s);
   assert.doesNotMatch(shortTermModules, /inspector/);
   assert.match(shortTermModules, /grid-template-columns: var\(--asv-window-controls-width\) minmax\(0, 1fr\)/);
   assert.match(shortTermModules, /\.titlebar\s*\{[\s\S]*background: transparent/s);
@@ -1270,7 +1274,6 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceHeader \.toolbarButton\.primary\s*\{[^}]*background: var\(--asv-action\)/s);
   assert.match(shortTermModules, /\.canvasModeSwitch\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /background: var\(--asv-panel-chrome\)/);
-  assert.match(shortTermModules, /background: var\(--asv-panel-recessed\)/);
   assert.match(shortTermModules, /\.resultGroup/);
   assert.match(shortTermModules, /\.rightSurfaceBody:focus-visible/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="success"\]::before/);
