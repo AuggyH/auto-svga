@@ -8,7 +8,7 @@ import {
 export function renderCompareInfoHtml(title, model, displayName, actions = []) {
   const actionHtml = actions.length ? `<div class="compareActions">${actions.join("")}</div>` : "";
   if (!model) {
-    return `<section class="compareSummary" data-status="warning"><h2>${escapeHtml(title)}</h2><p>未打开文件。</p></section>${actionHtml}`;
+    return `<section class="compareSummary" data-status="warning"><h2>${escapeHtml(title)}</h2><p>未打开文件</p></section>${actionHtml}`;
   }
   const facts = overviewVisibleFacts(model).map(renderCompareFactCellHtml).join("");
   return `<section class="compareSummary"><h2>${escapeHtml(title)}</h2><p>${escapeHtml(displayName)}</p></section><section class="compareMetricGrid" aria-label="${escapeHtml(title)} 信息">${facts}</section>${actionHtml}`;
@@ -67,8 +67,9 @@ export function renderGeneralComparePanelHtml({
 } = {}) {
   const actionHtml = actions.length ? `<div class="compareActions">${actions.join("")}</div>` : "";
   return `
-    <section class="compareSummary">
+    <section class="compareSummary compareModeHeader">
       <h2>对比模式</h2>
+      ${actionHtml}
     </section>
     <section class="comparePairHeader" aria-label="对比文件">
       <div>
@@ -83,7 +84,6 @@ export function renderGeneralComparePanelHtml({
     <section class="compareMetricGrid" aria-label="对比信息">
       ${renderComparePairRows(aModel, bModel)}
     </section>
-    ${actionHtml}
   `;
 }
 
@@ -131,7 +131,6 @@ export function renderOptimizationCompareResultHtml(model) {
 export function renderGeneralComparePlaceholderHtml() {
   return renderGeneralComparePanelHtml({
     actions: [
-      `<button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>`,
       `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
     ]
   });

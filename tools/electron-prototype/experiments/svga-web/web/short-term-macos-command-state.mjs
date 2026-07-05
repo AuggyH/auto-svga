@@ -17,7 +17,7 @@ export function buildCommandState(input) {
 
   return {
     actionStates: {
-      compare: { enabled: hasFile, reason: "请先打开 SVGA" },
+      compare: { enabled: true, reason: "" },
       "play-pause": { enabled: hasFile, reason: "请先打开 SVGA" },
       replay: { enabled: hasFile, reason: "请先打开 SVGA" },
       "run-optimization": { enabled: canRunOptimization, reason: "没有可安全执行的优化项" },
@@ -39,7 +39,7 @@ export function buildCommandState(input) {
       canOverwrite,
       canSaveAs,
       saveBusy,
-      canCompare: hasFile,
+      canCompare: true,
       canPlay: hasFile,
       canReplay: hasFile,
       canRenameImageKey,

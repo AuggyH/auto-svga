@@ -1135,6 +1135,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /data-compare-label="B"/);
   assert.match(page, /id="compareCanvasTitleA"/);
   assert.match(page, /id="compareCanvasMetaB"/);
+  assert.match(page, /data-component="CompareCanvasSurface"/);
+  assert.match(page, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-a">打开文件<\/button>/);
+  assert.match(page, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-b">打开文件<\/button>/);
   assert.doesNotMatch(page, /data-canvas-label="预览"/);
   assert.match(page, /class="playbackActions" data-component="PlaybackButtonGroup"/);
   assert.match(page, /class="playbackIconButton primary" data-action="play-pause"/);
@@ -1144,6 +1147,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(page, /<button type="button" data-action="play-pause">播放<\/button>/);
   assert.doesNotMatch(page, /<button type="button" data-action="replay">重播<\/button>/);
   assert.match(page, /class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus"/);
+  assert.match(page, /class="playbackBar comparePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled"/);
+  assert.match(page, /class="playbackIconButton primary" data-playback-state="paused" aria-label="播放" title="播放" disabled/);
   assert.match(page, /最近打开/);
   assert.match(page, /class="launchDropIcon"/);
   assert.match(page, /class="largeOpenButton" type="button" data-action="open"[\s\S]*class="buttonIcon"/);
@@ -1293,6 +1298,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceHeader \.toolbarButton\.primary\s*\{[^}]*background: var\(--asv-action\)/s);
   assert.match(shortTermModules, /\.canvasModeSwitch\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasWrap\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
+  assert.match(shortTermModules, /\.compareCanvasSurface\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\) auto/s);
+  assert.match(shortTermModules, /\.compareCanvasOpenButton\s*\{[^}]*position: absolute/s);
+  assert.match(shortTermModules, /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareCanvasOpenButton\s*\{[^}]*display: none/s);
+  assert.match(shortTermModules, /\.comparePlaybackBar\s*\{[^}]*pointer-events: none/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*background: transparent/s);
   assert.match(shortTermModules, /\.layerPanel\s*\{[^}]*box-shadow: inset calc\(-1 \* var\(--asv-right-panel-separator-width\)\) 0 0 var\(--asv-right-panel-separator\)/s);
@@ -1320,6 +1329,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareMetricRow/);
   assert.match(shortTermModules, /\.compareMetricCell/);
   assert.match(shortTermModules, /\.compareSummary/);
+  assert.match(shortTermModules, /\.compareModeHeader/);
   assert.match(shortTermModules, /\.compareMetricGrid/);
   assert.match(shortTermModules, /\.compareActions/);
   assert.match(shortTermModules, /\.dragDecisionOverlay/);
@@ -1362,7 +1372,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermAppearanceModel, /APPEARANCE_VALUES = Object\.freeze\(\["system", "light", "dark"\]\)/);
   assert.match(shortTermSettingsSurface, /applyShortTermAppearance/);
   assert.match(shortTermSettingsSurface, /openShortTermSettings/);
+  assert.match(shortTermController, /async function openCompareAFromHost/);
+  assert.match(shortTermEventBindings, /action === "open-compare-a"/);
   assert.match(shortTermCommandState, /appearance/);
+  assert.match(shortTermCommandState, /compare: \{ enabled: true, reason: "" \}/);
+  assert.match(shortTermCommandState, /canCompare: true/);
   assert.match(shortTermCommandSurface, /appearance: state\.appearance/);
   assert.match(shortTermActionBridge, /openSettings: handlers\.openSettings/);
   assert.match(shortTermActionBridge, /setAppearance: handlers\.setAppearance/);
@@ -1497,6 +1511,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /export function renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePanelHtml/);
   assert.match(shortTermCompareModel, /comparePairHeader/);
+  assert.match(shortTermCompareModel, /compareModeHeader/);
   assert.match(shortTermCompareModel, /compareMetricRow/);
   assert.match(shortTermCompareModel, /renderCompareFactCellHtml/);
   assert.match(shortTermCompareModel, /renderCompareMetricCellHtml/);

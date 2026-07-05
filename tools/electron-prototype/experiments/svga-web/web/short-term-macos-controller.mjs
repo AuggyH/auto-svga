@@ -149,6 +149,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function openCompareBFromHost() {
+    if (!state.sourceBytes && state.view === "compare") return openCompareAFromHost();
     return openShortTermCompareBFromHost({
       bridge,
       nodes,
@@ -159,6 +160,11 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       mountPlayback,
       refreshRecentFiles
     });
+  }
+
+  async function openCompareAFromHost() {
+    await openFromHostDialog();
+    if (state.sourceBytes) await enterGeneralCompare();
   }
 
   async function loadDroppedFile(file) {
@@ -243,7 +249,9 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       await loadDroppedCompareFile(decision.file);
       return;
     }
+    const returnToCompare = state.view === "compare";
     await loadDroppedFile(decision.file);
+    if (returnToCompare && state.sourceBytes) await enterGeneralCompare();
   }
 
   async function inspectShortTerm(bytes, name) {
@@ -594,6 +602,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     replayPrimary,
     runOptimization,
     saveActiveOutput,
+    openCompareAFromHost,
     openCompareBFromHost,
     selectImageKey,
     openResourceContextMenu,

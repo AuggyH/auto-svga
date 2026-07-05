@@ -158,30 +158,52 @@
       </section>
 
       <section class="view compareView" data-view="compare" data-page-state="General comparing" data-module="GeneralCompareModule" hidden>
-        <section class="compareStage" id="compareStage">
-          <section class="dragDecisionOverlay" id="compareDragOverlay" data-component="DragDecisionOverlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
-            <div class="dragDecisionZone" data-drag-zone="open"><strong>打开文件</strong></div>
-            <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>
+        <section class="compareCanvasSurface" data-component="CompareCanvasSurface">
+          <section class="compareStage" id="compareStage">
+            <section class="dragDecisionOverlay" id="compareDragOverlay" data-component="DragDecisionOverlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
+              <div class="dragDecisionZone" data-drag-zone="open"><strong>打开文件</strong></div>
+              <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>
+            </section>
+            <div class="compareCanvasWrap" id="compareCanvasWrapA" data-component="ComparePreviewCard" data-compare-label="A" data-compare-state="empty">
+              <header class="compareCanvasHeader">
+                <span>A</span>
+                <strong id="compareCanvasTitleA">A 文件</strong>
+                <small id="compareCanvasMetaA"></small>
+              </header>
+              <canvas id="compareCanvasA" aria-label="A 文件预览"></canvas>
+              <button class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-a">打开文件</button>
+            </div>
+            <div class="compareCanvasWrap" id="compareCanvasWrapB" data-component="ComparePreviewCard" data-compare-label="B" data-compare-state="empty">
+              <header class="compareCanvasHeader">
+                <span>B</span>
+                <strong id="compareCanvasTitleB">B 文件</strong>
+                <small id="compareCanvasMetaB"></small>
+              </header>
+              <canvas id="compareCanvasB" aria-label="B 文件预览"></canvas>
+              <button class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-b">打开文件</button>
+            </div>
           </section>
-          <div class="compareCanvasWrap" id="compareCanvasWrapA" data-component="ComparePreviewCard" data-compare-label="A" data-compare-state="empty">
-            <header class="compareCanvasHeader">
-              <span>A</span>
-              <strong id="compareCanvasTitleA">A 文件</strong>
-              <small id="compareCanvasMetaA"></small>
-            </header>
-            <canvas id="compareCanvasA" aria-label="A 文件预览"></canvas>
-          </div>
-          <div class="compareCanvasWrap" id="compareCanvasWrapB" data-component="ComparePreviewCard" data-compare-label="B" data-compare-state="empty">
-            <header class="compareCanvasHeader">
-              <span>B</span>
-              <strong id="compareCanvasTitleB">B 文件</strong>
-              <small id="compareCanvasMetaB"></small>
-            </header>
-            <canvas id="compareCanvasB" aria-label="B 文件预览"></canvas>
+          <div class="playbackBar comparePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled">
+            <div class="playbackActions" data-component="PlaybackButtonGroup">
+              <button type="button" class="playbackIconButton primary" data-playback-state="paused" aria-label="播放" title="播放" disabled>
+                <svg class="playbackIcon playbackIconPlay" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5.5v13l10-6.5-10-6.5Z"></path>
+                </svg>
+                <svg class="playbackIcon playbackIconPause" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5.5v13"></path>
+                  <path d="M16 5.5v13"></path>
+                </svg>
+              </button>
+              <button type="button" class="playbackIconButton" aria-label="重播" title="重播" disabled>
+                <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5.5 12a6.5 6.5 0 1 0 2-4.7"></path>
+                  <path d="M7.8 4.6v3.2H4.6"></path>
+                </svg>
+              </button>
+            </div>
           </div>
         </section>
         <aside class="compareInfo" id="compareInfoB" data-component="RightInformationSurface">
-          <button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>
           <button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>
         </aside>
       </section>

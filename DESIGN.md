@@ -128,6 +128,7 @@ components:
     - OptimizationFindingRow
     - OptimizationResultCard
     - OptimizationResultSurface
+    - CompareCanvasSurface
     - ComparePreviewCard
     - TextReplacementSheet
     - SaveFeedbackBanner
@@ -465,6 +466,7 @@ Components combine molecules into product units:
 - `OptimizationFindingRow`
 - `OptimizationResultCard`
 - `OptimizationResultSurface`
+- `CompareCanvasSurface`
 - `ComparePreviewCard`
 - `DragDecisionOverlay`
 - `CompareFileSlot`

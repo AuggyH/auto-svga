@@ -62,20 +62,27 @@ export async function enterShortTermGeneralCompare({
   mountPlayback,
   clearCanvas
 }) {
-  if (!state.sourceBytes) return;
   setView("compare");
   renderShortTermGeneralCompareTrace(nodes);
-  renderShortTermCompareSlot({ nodes, slot: "A", title: state.displayName || "A 文件", model: state.model });
-  renderShortTermCompareSlot({ nodes, slot: "B", title: "B 文件", fallbackMeta: "等待打开" });
+  renderShortTermCompareSlot({
+    nodes,
+    slot: "A",
+    title: state.sourceBytes ? state.displayName || "A 文件" : "未打开文件",
+    model: state.model
+  });
+  renderShortTermCompareSlot({ nodes, slot: "B", title: "未打开文件" });
   renderShortTermGeneralComparePanel({
     nodes,
     state,
     actions: [
-      `<button class="toolbarButton primary" type="button" data-action="open-compare-b">打开 B 文件</button>`,
       `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
     ]
   });
-  await mountPlayback("compareA", nodes.compareCanvasA, state.previewBytes ?? state.sourceBytes);
+  if (state.sourceBytes) {
+    await mountPlayback("compareA", nodes.compareCanvasA, state.previewBytes ?? state.sourceBytes);
+  } else {
+    clearCanvas(nodes.compareCanvasA);
+  }
   clearCanvas(nodes.compareCanvasB);
 }
 
@@ -91,7 +98,7 @@ export async function openShortTermCompareBFromHost({
 }) {
   if (!bridge?.openSvgaFile) return;
   if (!state.sourceBytes) {
-    await openFromHostDialog();
+    await enterGeneralCompare();
     return;
   }
   if (state.view !== "compare") await enterGeneralCompare();

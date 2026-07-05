@@ -52,6 +52,7 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
     if (action === "run-optimization") handlers.runOptimization().catch(handlers.showFailure);
     if (action === "save-as") handlers.saveActiveOutput("saveAs").catch(handlers.showFailure);
     if (action === "save-overwrite") handlers.saveActiveOutput("overwrite").catch(handlers.showFailure);
+    if (action === "open-compare-a") handlers.openCompareAFromHost().catch(handlers.showFailure);
     if (action === "open-compare-b") handlers.openCompareBFromHost().catch(handlers.showFailure);
     if (action === "select-resource") handlers.selectImageKey(target.dataset.imageKey || state.selectedImageKey);
     if (action === "row-menu") {

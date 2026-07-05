@@ -53,6 +53,7 @@ const allowedDataComponents = new Set([
   "ReplaceableTextRow",
   "OptimizationFindingRow",
   "OptimizationResultCard",
+  "CompareCanvasSurface",
   "ComparePreviewCard",
   "InlineTextReplacementInput",
   "SettingsSheet",

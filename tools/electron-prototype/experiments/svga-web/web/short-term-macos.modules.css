@@ -680,6 +680,14 @@ canvas {
   font-weight: 560;
 }
 
+.compareCanvasSurface {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--asv-panel-chrome);
+}
+
 .compareStage {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -749,7 +757,24 @@ canvas {
 }
 
 .compareCanvasWrap[data-compare-state="empty"] canvas {
-  opacity: 0.28;
+  opacity: 0.18;
+}
+
+.compareCanvasOpenButton {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  width: var(--asv-launch-action-width);
+  transform: translate(-50%, -50%);
+}
+
+.compareCanvasWrap[data-compare-state="loaded"] .compareCanvasOpenButton {
+  display: none;
+}
+
+.comparePlaybackBar {
+  pointer-events: none;
 }
 
 .compareInfo {
@@ -768,6 +793,17 @@ canvas {
   gap: var(--asv-space-1);
   padding-bottom: var(--asv-space-2);
   border-bottom: 1px solid var(--asv-row-border);
+}
+
+.compareModeHeader {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--asv-space-2);
+  align-items: center;
+}
+
+.compareModeHeader .compareActions {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .compareSummary h2 {
@@ -794,9 +830,8 @@ canvas {
   display: grid;
   gap: var(--asv-space-1);
   min-width: 0;
-  padding: var(--asv-space-2);
-  border-radius: var(--asv-radius-sm);
-  background: var(--asv-fact-bg);
+  padding: 0;
+  background: transparent;
 }
 
 .comparePairHeader span {
