@@ -70,8 +70,21 @@
           </div>
           <div class="playbackBar" aria-label="播放控制" data-component="PlaybackControls">
             <div class="playbackActions" data-component="PlaybackButtonGroup">
-              <button type="button" data-action="play-pause">播放</button>
-              <button type="button" data-action="replay">重播</button>
+              <button type="button" class="playbackIconButton primary" data-action="play-pause" data-playback-state="paused" aria-label="播放" title="播放">
+                <svg class="playbackIcon playbackIconPlay" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5.5v13l10-6.5-10-6.5Z"></path>
+                </svg>
+                <svg class="playbackIcon playbackIconPause" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5.5v13"></path>
+                  <path d="M16 5.5v13"></path>
+                </svg>
+              </button>
+              <button type="button" class="playbackIconButton" data-action="replay" aria-label="重播" title="重播">
+                <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5.5 12a6.5 6.5 0 1 0 2-4.7"></path>
+                  <path d="M7.8 4.6v3.2H4.6"></path>
+                </svg>
+              </button>
             </div>
             <span class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus">-</span>
           </div>

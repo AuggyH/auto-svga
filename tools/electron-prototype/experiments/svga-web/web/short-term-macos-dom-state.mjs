@@ -41,5 +41,16 @@ export function applyCommandState(commandState) {
   Object.entries(commandState.actionStates).forEach(([action, actionState]) => {
     setActionEnabled(action, actionState.enabled, actionState.reason);
   });
-  document.querySelector("[data-action='play-pause']").textContent = commandState.playPauseCopy;
+  const playPauseButton = document.querySelector("[data-action='play-pause']");
+  if (playPauseButton) {
+    const playing = commandState.playPauseCopy === "暂停";
+    playPauseButton.dataset.playbackState = playing ? "playing" : "paused";
+    playPauseButton.setAttribute("aria-label", commandState.playPauseCopy);
+    if (!playPauseButton.disabled) playPauseButton.title = commandState.playPauseCopy;
+  }
+  const replayButton = document.querySelector("[data-action='replay']");
+  if (replayButton) {
+    replayButton.setAttribute("aria-label", "重播");
+    if (!replayButton.disabled) replayButton.title = "重播";
+  }
 }

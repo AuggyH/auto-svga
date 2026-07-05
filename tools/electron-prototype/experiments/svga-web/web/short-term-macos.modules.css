@@ -396,14 +396,93 @@ canvas {
   align-items: center;
   gap: var(--asv-space-2);
   min-height: var(--asv-playback-bar-height);
-  padding: var(--asv-space-2) var(--asv-space-3);
-  border-top: 1px solid var(--asv-border);
-  background: var(--asv-panel-recessed);
+  padding: var(--asv-space-2) var(--asv-space-4);
+  background: var(--asv-playback-bar-bg);
+  backdrop-filter: var(--asv-effect-titlebar-backdrop-filter);
 }
 
 .playbackActions {
   display: flex;
-  gap: var(--asv-space-2);
+  align-items: center;
+  gap: var(--asv-space-3);
+}
+
+.playbackIconButton {
+  display: grid;
+  place-items: center;
+  width: var(--asv-playback-control-size);
+  min-width: var(--asv-playback-control-size);
+  height: var(--asv-playback-control-size);
+  min-height: var(--asv-playback-control-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--asv-radius-md);
+  background: var(--asv-playback-control-bg);
+  color: var(--asv-muted);
+  box-shadow: none;
+}
+
+.playbackIconButton.primary {
+  width: var(--asv-playback-primary-size);
+  min-width: var(--asv-playback-primary-size);
+  height: var(--asv-playback-primary-size);
+  min-height: var(--asv-playback-primary-size);
+  background: var(--asv-action);
+  color: var(--asv-on-action);
+  box-shadow: var(--asv-shadow-control-primary);
+}
+
+.playbackIconButton:hover:not(:disabled) {
+  background: var(--asv-playback-control-hover-bg);
+  color: var(--asv-text);
+}
+
+.playbackIconButton.primary:hover:not(:disabled) {
+  background: var(--asv-action);
+  color: var(--asv-on-action);
+}
+
+.playbackIconButton:disabled {
+  background: var(--asv-control-disabled-bg);
+  color: var(--asv-subtle);
+  box-shadow: none;
+}
+
+.playbackIcon {
+  display: block;
+  width: var(--asv-playback-icon-size);
+  height: var(--asv-playback-icon-size);
+  overflow: visible;
+}
+
+.playbackIconButton.primary .playbackIcon {
+  width: var(--asv-playback-primary-icon-size);
+  height: var(--asv-playback-primary-icon-size);
+}
+
+.playbackIcon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.playbackIconPlay path {
+  fill: currentColor;
+  stroke: none;
+}
+
+.playbackIconPause {
+  display: none;
+}
+
+.playbackIconButton[data-playback-state="playing"] .playbackIconPlay {
+  display: none;
+}
+
+.playbackIconButton[data-playback-state="playing"] .playbackIconPause {
+  display: block;
 }
 
 .playbackMeta {

@@ -1137,6 +1137,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="compareCanvasMetaB"/);
   assert.match(page, /data-canvas-label="预览"/);
   assert.match(page, /class="playbackActions" data-component="PlaybackButtonGroup"/);
+  assert.match(page, /class="playbackIconButton primary" data-action="play-pause"/);
+  assert.match(page, /class="playbackIcon playbackIconPlay"/);
+  assert.match(page, /class="playbackIcon playbackIconPause"/);
+  assert.match(page, /class="playbackIconButton" data-action="replay"/);
+  assert.doesNotMatch(page, /<button type="button" data-action="play-pause">播放<\/button>/);
+  assert.doesNotMatch(page, /<button type="button" data-action="replay">重播<\/button>/);
   assert.match(page, /class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus"/);
   assert.match(page, /最近打开/);
   assert.doesNotMatch(page, /本地预览，不上传/);
@@ -1271,6 +1277,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.saveBanner\[data-status="loading"\]::before/);
   assert.match(shortTermModules, /\.canvasWrap\[data-canvas-label\]::before/);
   assert.match(shortTermModules, /\.playbackActions/);
+  assert.match(shortTermModules, /\.playbackIconButton/);
+  assert.match(shortTermModules, /\.playbackIconButton\[data-playback-state="playing"\] \.playbackIconPause/);
+  assert.match(shortTermModules, /var\(--asv-playback-primary-size\)/);
+  assert.match(shortTermModules, /var\(--asv-playback-control-size\)/);
   assert.match(shortTermModules, /\.playbackMeta/);
   assert.doesNotMatch(shortTermModules, /\.textPreviewActions/);
   assert.match(shortTermModules, /\.compareCanvasHeader/);
@@ -1435,7 +1445,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /Object\.entries\(commandState\.actionStates\)|document\.querySelector\("\[data-action='play-pause'\]"\)\.textContent = commandState\.playPauseCopy/);
   assert.match(shortTermDomState, /Object\.entries\(commandState\.actionStates\)/);
   assert.match(shortTermDomState, /setActionEnabled\(action, actionState\.enabled, actionState\.reason\)/);
-  assert.match(shortTermDomState, /document\.querySelector\("\[data-action='play-pause'\]"\)\.textContent = commandState\.playPauseCopy/);
+  assert.match(shortTermDomState, /playPauseButton\.dataset\.playbackState = playing \? "playing" : "paused"/);
+  assert.match(shortTermDomState, /playPauseButton\.setAttribute\("aria-label", commandState\.playPauseCopy\)/);
+  assert.doesNotMatch(shortTermDomState, /textContent = commandState\.playPauseCopy/);
   assert.match(shortTermCommandState, /"run-optimization": \{ enabled: canRunOptimization, reason: "没有可安全执行的优化项" \}/);
   assert.match(shortTermCommandState, /"save-overwrite": \{ enabled: canOverwrite/);
   assert.match(shortTermCommandState, /playPauseCopy: input\.primaryPlaybackPlaying \? "暂停" : "播放"/);
