@@ -1151,6 +1151,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /class="playbackIconButton primary" data-playback-state="paused" aria-label="播放" title="播放" disabled/);
   assert.match(page, /最近打开/);
   assert.match(page, /class="launchDropIcon"/);
+  assert.match(page, />拖拽文件到此处<\/p>/);
   assert.match(page, /class="largeOpenButton" type="button" data-action="open"[\s\S]*class="buttonIcon"/);
   assert.match(page, /class="recentClearButton" type="button" data-action="clear-recent" aria-label="清除最近记录"/);
   assert.doesNotMatch(page, />清除记录<\/button>/);
@@ -2519,7 +2520,7 @@ test("short-term design system check enforces UI implementation guardrails", () 
   assert.match(source, /launch-page-copy-stays-minimal/);
   assert.match(source, /const disallowedLegacySurfaceCopyPatterns = \[/);
   assert.match(source, /visible-surface-avoids-legacy-workbench-and-inspector-language/);
-  assert.match(source, /<p>拖入 SVGA 文件<\\\/p>/);
+  assert.match(source, /<p>拖拽文件到此处<\\\/p>/);
   assert.match(source, /largeOpenButton/);
   assert.match(source, /recentNote" hidden/);
   const output = execFileSync(process.execPath, ["scripts/check-short-term-design-system.mjs"], {
