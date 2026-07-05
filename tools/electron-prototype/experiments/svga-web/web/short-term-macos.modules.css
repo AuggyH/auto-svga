@@ -673,8 +673,7 @@ canvas {
   background: var(--asv-fact-bg);
 }
 
-.compareCanvasHeader span,
-.canvasWrap[data-canvas-label]::before {
+.compareCanvasHeader span {
   position: absolute;
   z-index: 1;
   top: var(--asv-space-3);
@@ -715,10 +714,6 @@ canvas {
   font-family: var(--asv-type-mono);
   font-size: var(--asv-type-size-caption);
   text-align: right;
-}
-
-.canvasWrap[data-canvas-label]::before {
-  content: attr(data-canvas-label);
 }
 
 .compareCanvasWrap canvas {

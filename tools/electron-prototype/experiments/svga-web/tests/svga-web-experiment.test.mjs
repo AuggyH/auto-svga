@@ -1135,7 +1135,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /data-compare-label="B"/);
   assert.match(page, /id="compareCanvasTitleA"/);
   assert.match(page, /id="compareCanvasMetaB"/);
-  assert.match(page, /data-canvas-label="预览"/);
+  assert.doesNotMatch(page, /data-canvas-label="预览"/);
   assert.match(page, /class="playbackActions" data-component="PlaybackButtonGroup"/);
   assert.match(page, /class="playbackIconButton primary" data-action="play-pause"/);
   assert.match(page, /class="playbackIcon playbackIconPlay"/);
@@ -1278,7 +1278,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceBody:focus-visible/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="success"\]::before/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="loading"\]::before/);
-  assert.match(shortTermModules, /\.canvasWrap\[data-canvas-label\]::before/);
+  assert.doesNotMatch(shortTermModules, /\.canvasWrap\[data-canvas-label\]::before/);
   assert.match(shortTermModules, /\.playbackActions/);
   assert.match(shortTermModules, /\.playbackIconButton/);
   assert.match(shortTermModules, /\.playbackIconButton\[data-playback-state="playing"\] \.playbackIconPause/);
