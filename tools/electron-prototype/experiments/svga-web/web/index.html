@@ -172,6 +172,23 @@
       </form>
     </dialog>
 
+    <dialog class="appDialog settingsDialog" id="settingsDialog" data-component="SettingsSheet" data-status="info">
+      <form method="dialog" class="dialogBody">
+        <header class="dialogHeader">
+          <h2>设置</h2>
+        </header>
+        <fieldset class="settingsGroup" aria-label="外观">
+          <legend>外观</legend>
+          <label class="settingsChoice"><input type="radio" name="appearance" value="system" data-appearance-choice>跟随系统</label>
+          <label class="settingsChoice"><input type="radio" name="appearance" value="light" data-appearance-choice>浅色</label>
+          <label class="settingsChoice"><input type="radio" name="appearance" value="dark" data-appearance-choice>深色</label>
+        </fieldset>
+        <menu class="dialogActions">
+          <button value="close" data-action="close-settings">完成</button>
+        </menu>
+      </form>
+    </dialog>
+
     <input id="replacementFileInput" type="file" accept="image/png,.png" hidden>
     <script src="/legacy-vendor/pako-2.1.0.min.js"></script>
     <script type="module" src="./short-term-macos-app.mjs"></script>

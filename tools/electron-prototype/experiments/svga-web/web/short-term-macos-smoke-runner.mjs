@@ -40,6 +40,9 @@ export async function runShortTermSmokeIfRequested({
   resetImageReplacement,
   enterGeneralCompare,
   setMode,
+  openSettings,
+  closeSettings,
+  setAppearance,
   currentStateSummary,
   createSaveFailureProofOutput,
   loadDroppedFile
@@ -62,6 +65,9 @@ export async function runShortTermSmokeIfRequested({
       resetImageReplacement,
       enterGeneralCompare,
       setMode,
+      openSettings,
+      closeSettings,
+      setAppearance,
       currentStateSummary,
       createSaveFailureProofOutput,
       loadDroppedFile
@@ -87,6 +93,9 @@ async function runShortTermSmoke({
   resetImageReplacement,
   enterGeneralCompare,
   setMode,
+  openSettings,
+  closeSettings,
+  setAppearance,
   currentStateSummary,
   createSaveFailureProofOutput,
   loadDroppedFile
@@ -411,6 +420,37 @@ async function runShortTermSmoke({
   setTab("overview");
   await waitForSmokeFrame();
   await captureSmokeArtifact("short-term-preview-minimum");
+  openSettings();
+  await waitForSmokeCondition(() => nodes.settingsDialog.open === true, 2_000);
+  const settingsChoiceValues = nodes.appearanceChoices.map((input) => input.value);
+  const settingsDialogOpened = nodes.settingsDialog.open === true;
+  setAppearance("dark");
+  await waitForSmokeFrame();
+  const darkAppearanceApplied = document.documentElement.dataset.appearance === "dark"
+    && document.documentElement.style.colorScheme === "dark"
+    && nodes.appearanceChoices.find((input) => input.value === "dark")?.checked === true;
+  setAppearance("light");
+  await waitForSmokeFrame();
+  const lightAppearanceApplied = document.documentElement.dataset.appearance === "light"
+    && document.documentElement.style.colorScheme === "light"
+    && nodes.appearanceChoices.find((input) => input.value === "light")?.checked === true;
+  setAppearance("system");
+  await waitForSmokeFrame();
+  const systemAppearanceRestored = document.documentElement.dataset.appearance === "system"
+    && document.documentElement.style.colorScheme === "light dark"
+    && nodes.appearanceChoices.find((input) => input.value === "system")?.checked === true;
+  closeSettings();
+  await waitForSmokeCondition(() => nodes.settingsDialog.open === false, 2_000);
+  await waitForSmokeFrame();
+  const settingsAppearanceProof = {
+    settingsDialogOpened,
+    settingsChoiceValues,
+    darkAppearanceApplied,
+    lightAppearanceApplied,
+    systemAppearanceRestored,
+    settingsDialogClosed: nodes.settingsDialog.open === false,
+    noMainSurfaceAppearanceButton: !document.querySelector("[data-action='open-settings']")
+  };
   const focusedControlForSpace = document.querySelector("[data-action='mode-edit']");
   focusedControlForSpace?.focus();
   const focusedControlPlaybackBeforeSpace = state.primaryPlayback?.playing === true;
@@ -429,6 +469,7 @@ async function runShortTermSmoke({
     minimumPreviewCaptured: smokeArtifactCapture.lastSmokeArtifactCaptured(),
     nodes,
     state,
+    settingsAppearanceProof,
     currentStateSummary
   });
   createSaveFailureProofOutput();

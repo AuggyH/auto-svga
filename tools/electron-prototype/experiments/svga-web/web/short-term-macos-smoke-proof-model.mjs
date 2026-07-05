@@ -615,6 +615,7 @@ export function collectShortTermDesignInteractionProof({
   minimumPreviewCaptured,
   nodes,
   state,
+  settingsAppearanceProof,
   currentStateSummary
 }) {
   const focusOrder = visibleFocusableElements().map((element) => ({
@@ -681,6 +682,15 @@ export function collectShortTermDesignInteractionProof({
       && menuState?.canPlay === true
       && menuState?.view === "preview"
       && menuState?.mode === "preview",
+    settingsAppearanceProof,
+    settingsSheetAvailable: settingsAppearanceProof?.settingsDialogOpened === true
+      && settingsAppearanceProof?.settingsDialogClosed === true
+      && settingsAppearanceProof?.settingsChoiceValues?.join(",") === "system,light,dark",
+    appearanceSwitchingWorks: settingsAppearanceProof?.darkAppearanceApplied === true
+      && settingsAppearanceProof?.lightAppearanceApplied === true
+      && settingsAppearanceProof?.systemAppearanceRestored === true,
+    appearanceMenuStateSynced: menuState?.appearance === "system",
+    noMainSurfaceAppearanceButton: settingsAppearanceProof?.noMainSurfaceAppearanceButton === true,
     focusedControlSpaceProof,
     focusedControlSpaceNotGlobalPlayback: focusedControlSpaceProof?.targetAction === "mode-edit"
       && focusedControlSpaceProof?.targetStillFocused === true
@@ -700,6 +710,10 @@ export function collectShortTermDesignInteractionProof({
     proof.stateSummaryCopyable,
     proof.surfaceCaptureStatesSynced,
     proof.menuStateDiscoverable,
+    proof.settingsSheetAvailable,
+    proof.appearanceSwitchingWorks,
+    proof.appearanceMenuStateSynced,
+    proof.noMainSurfaceAppearanceButton,
     proof.focusedControlSpaceNotGlobalPlayback,
     proof.reducedMotionRulePresent,
     proof.minimumPreviewCaptured

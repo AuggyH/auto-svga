@@ -148,6 +148,7 @@ const defaultShortTermMenuState = Object.freeze({
   view: "launch",
   mode: "preview",
   tab: "overview",
+  appearance: "system",
   hasFile: false,
   hasOutput: false,
   outputKind: "",
@@ -697,6 +698,26 @@ function validateShortTermDesignInteractionProof(value) {
     return normalized;
   });
   if (surfaceCaptureStates.some((item) => !item)) return undefined;
+  if (!value.settingsAppearanceProof || typeof value.settingsAppearanceProof !== "object" || Array.isArray(value.settingsAppearanceProof)) return undefined;
+  const settingsChoiceValues = normalizeBoundedStringList(value.settingsAppearanceProof.settingsChoiceValues, 3, 20);
+  if (settingsChoiceValues?.join(",") !== "system,light,dark") return undefined;
+  const settingsAppearanceProof = {
+    settingsDialogOpened: value.settingsAppearanceProof.settingsDialogOpened === true,
+    settingsChoiceValues,
+    darkAppearanceApplied: value.settingsAppearanceProof.darkAppearanceApplied === true,
+    lightAppearanceApplied: value.settingsAppearanceProof.lightAppearanceApplied === true,
+    systemAppearanceRestored: value.settingsAppearanceProof.systemAppearanceRestored === true,
+    settingsDialogClosed: value.settingsAppearanceProof.settingsDialogClosed === true,
+    noMainSurfaceAppearanceButton: value.settingsAppearanceProof.noMainSurfaceAppearanceButton === true
+  };
+  if (![
+    settingsAppearanceProof.settingsDialogOpened,
+    settingsAppearanceProof.darkAppearanceApplied,
+    settingsAppearanceProof.lightAppearanceApplied,
+    settingsAppearanceProof.systemAppearanceRestored,
+    settingsAppearanceProof.settingsDialogClosed,
+    settingsAppearanceProof.noMainSurfaceAppearanceButton
+  ].every(Boolean)) return undefined;
   const captureStateByArtifact = new Map(surfaceCaptureStates.map((item) => [item.artifactName, item]));
   const requiredCaptureStates = [
     ["short-term-preview-optimization", "optimization", "panelOptimization"],
@@ -722,6 +743,10 @@ function validateShortTermDesignInteractionProof(value) {
     "stateSummaryCopyable",
     "surfaceCaptureStatesSynced",
     "menuStateDiscoverable",
+    "settingsSheetAvailable",
+    "appearanceSwitchingWorks",
+    "appearanceMenuStateSynced",
+    "noMainSurfaceAppearanceButton",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",
     "passed"
@@ -745,6 +770,11 @@ function validateShortTermDesignInteractionProof(value) {
     surfaceCaptureStates,
     surfaceCaptureStatesSynced: true,
     menuStateDiscoverable: true,
+    settingsAppearanceProof,
+    settingsSheetAvailable: true,
+    appearanceSwitchingWorks: true,
+    appearanceMenuStateSynced: true,
+    noMainSurfaceAppearanceButton: true,
     reducedMotionRulePresent: true,
     minimumPreviewCaptured: true,
     passed: true
@@ -789,6 +819,21 @@ function describeShortTermDesignInteractionProofFailure(value) {
       || lists.some((list) => !normalizeBoundedStringList(list, 4, 80));
   });
   if (invalidSurfaceCapture) return "surfaceCaptureStates:item";
+  if (!value.settingsAppearanceProof || typeof value.settingsAppearanceProof !== "object" || Array.isArray(value.settingsAppearanceProof)) {
+    return "settingsAppearanceProof";
+  }
+  const settingsChoiceValues = normalizeBoundedStringList(value.settingsAppearanceProof.settingsChoiceValues, 3, 20);
+  if (settingsChoiceValues?.join(",") !== "system,light,dark") return "settingsAppearanceProof:choices";
+  const settingsBooleanKeys = [
+    "settingsDialogOpened",
+    "darkAppearanceApplied",
+    "lightAppearanceApplied",
+    "systemAppearanceRestored",
+    "settingsDialogClosed",
+    "noMainSurfaceAppearanceButton"
+  ];
+  const failedSettingsBoolean = settingsBooleanKeys.find((key) => value.settingsAppearanceProof[key] !== true);
+  if (failedSettingsBoolean) return `settingsAppearanceProof:${failedSettingsBoolean}`;
   const captureStateByArtifact = new Map(value.surfaceCaptureStates.map((item) => [item.artifactName, item]));
   const requiredCaptureStates = [
     ["short-term-preview-optimization", "optimization", "panelOptimization"],
@@ -814,6 +859,10 @@ function describeShortTermDesignInteractionProofFailure(value) {
     "stateSummaryCopyable",
     "surfaceCaptureStatesSynced",
     "menuStateDiscoverable",
+    "settingsSheetAvailable",
+    "appearanceSwitchingWorks",
+    "appearanceMenuStateSynced",
+    "noMainSurfaceAppearanceButton",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",
     "passed"
@@ -3054,11 +3103,13 @@ function validateShortTermMenuState(input) {
   const view = stringEnum(input.view, ["launch", "loading", "failed", "preview", "compare", "edit"], defaultShortTermMenuState.view);
   const mode = stringEnum(input.mode, ["preview", "edit"], defaultShortTermMenuState.mode);
   const tab = stringEnum(input.tab, ["overview", "optimization", "replaceable"], defaultShortTermMenuState.tab);
+  const appearance = stringEnum(input.appearance, ["system", "light", "dark"], defaultShortTermMenuState.appearance);
   const outputKind = stringEnum(input.outputKind, ["", "optimization", "rename", "replacement"], "");
   return {
     view,
     mode,
     tab,
+    appearance,
     outputKind,
     hasFile: input.hasFile === true,
     hasOutput: input.hasOutput === true,
@@ -3931,6 +3982,9 @@ function collectShortTermMenuStateProof() {
       : menuItemExists(["文件", "最近打开", "暂无最近文件"]) === true
         && menuItemEnabled(["文件", "最近打开", "暂无最近文件"]) === false,
     clearRecentEnabledMatchesState: menuItemEnabled(["文件", "最近打开", "清除最近记录"]) === hasRecentRecords,
+    settingsMenuAvailable: process.platform === "darwin"
+      ? menuItemEnabled(["Auto SVGA", "设置..."]) === true
+      : true,
     stateReflectsLoadedSmoke: shortTermMenuState.hasFile === true && shortTermMenuState.view === "preview",
     closeFileEnabledMatchesFileState: menuItemEnabled(["文件", "关闭文件"]) === shortTermMenuState.hasFile,
     compareEnabledMatchesFileState: menuItemEnabled(["文件", "打开对比 SVGA..."]) === shortTermMenuState.canCompare,
@@ -3952,6 +4006,10 @@ function collectShortTermMenuStateProof() {
     overviewTabCheckedMatchesState: menuItemChecked(["视图", "总览"]) === (shortTermMenuState.tab === "overview" && shortTermMenuState.view === "preview"),
     optimizationTabCheckedMatchesState: menuItemChecked(["视图", "优化"]) === (shortTermMenuState.tab === "optimization" && shortTermMenuState.view === "preview"),
     replaceableTabCheckedMatchesState: menuItemChecked(["视图", "可替换元素"]) === (shortTermMenuState.tab === "replaceable" && shortTermMenuState.view === "preview"),
+    appearanceMenuExists: menuItemExists(["视图", "外观"]),
+    systemAppearanceCheckedMatchesState: menuItemChecked(["视图", "外观", "跟随系统"]) === (shortTermMenuState.appearance === "system"),
+    lightAppearanceCheckedMatchesState: menuItemChecked(["视图", "外观", "浅色"]) === (shortTermMenuState.appearance === "light"),
+    darkAppearanceCheckedMatchesState: menuItemChecked(["视图", "外观", "深色"]) === (shortTermMenuState.appearance === "dark"),
     helpStateSummaryAvailable: menuItemEnabled(["帮助", "复制当前状态摘要"]) === true
   };
   return {
@@ -4743,6 +4801,12 @@ function installShortTermApplicationMenu(window) {
         submenu: [
           { role: "about", label: "关于 Auto SVGA" },
           { type: "separator" },
+          {
+            label: "设置...",
+            accelerator: "CommandOrControl+,",
+            click: () => invokeShortTermAction("openSettings")
+          },
+          { type: "separator" },
           { role: "services", label: "服务" },
           { type: "separator" },
           { role: "hide", label: "隐藏 Auto SVGA" },
@@ -4866,6 +4930,30 @@ function installShortTermApplicationMenu(window) {
           type: "checkbox",
           checked: menuState.tab === "replaceable" && menuState.view === "preview",
           click: () => invokeShortTermAction("replaceableTab")
+        },
+        { type: "separator" },
+        {
+          label: "外观",
+          submenu: [
+            {
+              label: "跟随系统",
+              type: "radio",
+              checked: menuState.appearance === "system",
+              click: () => invokeShortTermAction("setAppearance", "system", { persist: true })
+            },
+            {
+              label: "浅色",
+              type: "radio",
+              checked: menuState.appearance === "light",
+              click: () => invokeShortTermAction("setAppearance", "light", { persist: true })
+            },
+            {
+              label: "深色",
+              type: "radio",
+              checked: menuState.appearance === "dark",
+              click: () => invokeShortTermAction("setAppearance", "dark", { persist: true })
+            }
+          ]
         }
       ]
     },

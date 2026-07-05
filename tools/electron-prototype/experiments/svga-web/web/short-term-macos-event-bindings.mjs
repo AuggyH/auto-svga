@@ -25,6 +25,8 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
     if (action === "open-recent") handlers.openRecentFromMenu(target.dataset.recentId).catch(handlers.showFailure);
     if (action === "clear-recent") handlers.clearRecentFiles().catch(handlers.showFailure);
     if (action === "compare") handlers.enterGeneralCompare().catch(handlers.showFailure);
+    if (action === "open-settings") handlers.openSettings();
+    if (action === "close-settings") handlers.closeSettings();
     if (action === "back-preview") handlers.setMode("preview");
     if (action === "mode-preview") handlers.setMode("preview");
     if (action === "mode-edit") handlers.setMode("edit");
@@ -128,6 +130,14 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
   nodes.replacementFileInput.addEventListener("change", () => {
     handlers.applyReplacementFile(nodes.replacementFileInput.files?.[0]).catch(handlers.showFailure);
   });
+
+  nodes.settingsDialog.addEventListener("change", (event) => {
+    const input = eventElement(event)?.closest("[data-appearance-choice]");
+    if (!input) return;
+    handlers.setAppearance(input.value, { persist: true });
+  });
+
+  nodes.settingsDialog.addEventListener("close", handlers.renderCommandState);
 
   nodes.dropZone.addEventListener("dragover", (event) => {
     event.preventDefault();

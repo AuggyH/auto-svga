@@ -21,6 +21,8 @@ export function installShortTermActionBridge({
     resetImageReplacement: handlers.resetImageReplacement,
     editTextPreview: handlers.editRuntimeText,
     resetTextPreview: handlers.resetRuntimeText,
+    openSettings: handlers.openSettings,
+    setAppearance: handlers.setAppearance,
     runOptimization: handlers.runOptimization,
     showOptimizationComparison: handlers.showOptimizationComparison,
     openCompareB: handlers.openCompareBFromHost,

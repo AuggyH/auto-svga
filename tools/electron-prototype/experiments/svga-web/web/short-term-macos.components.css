@@ -384,6 +384,49 @@
   padding: 0;
 }
 
+.settingsDialog {
+  width: var(--asv-settings-sheet-width);
+}
+
+.settingsGroup {
+  display: grid;
+  gap: var(--asv-space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settingsGroup legend {
+  margin: 0 0 var(--asv-space-2);
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-footnote);
+  font-weight: 650;
+}
+
+.settingsChoice {
+  display: flex;
+  align-items: center;
+  gap: var(--asv-space-2);
+  min-height: var(--asv-control-height);
+  padding: 0 var(--asv-space-2);
+  border-radius: var(--asv-radius-sm);
+}
+
+.settingsChoice:hover {
+  background: var(--asv-row-hover-bg);
+  color: var(--asv-text);
+}
+
+.settingsChoice input {
+  min-height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  accent-color: var(--asv-action);
+}
+
 .contextMenu {
   position: fixed;
   z-index: 20;

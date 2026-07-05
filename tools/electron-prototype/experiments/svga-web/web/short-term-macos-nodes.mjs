@@ -37,6 +37,8 @@ export function collectShortTermNodes() {
     runtimeTextOverlay: document.querySelector("#runtimeTextOverlay"),
     discardDialog: document.querySelector("#discardDialog"),
     discardMessage: document.querySelector("#discardMessage"),
+    settingsDialog: document.querySelector("#settingsDialog"),
+    appearanceChoices: Array.from(document.querySelectorAll("[data-appearance-choice]")),
     replacementFileInput: document.querySelector("#replacementFileInput")
   };
 }

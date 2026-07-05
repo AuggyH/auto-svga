@@ -84,6 +84,11 @@ import {
   renderShortTermEditReserved,
   renderShortTermPreviewModel
 } from "./short-term-macos-preview-surface.mjs";
+import {
+  applyShortTermAppearance,
+  closeShortTermSettings,
+  openShortTermSettings
+} from "./short-term-macos-settings-surface.mjs";
 
 export function createShortTermAppController({ bridge, nodes, state }) {
   function setView(view) {
@@ -478,6 +483,24 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     await clearShortTermRecentFiles({ bridge, nodes });
   }
 
+  function setAppearance(appearance, options = {}) {
+    applyShortTermAppearance({
+      nodes,
+      state,
+      appearance,
+      persist: options.persist === true
+    });
+    renderCommandState();
+  }
+
+  function openSettings() {
+    openShortTermSettings({ nodes, state, renderCommandState });
+  }
+
+  function closeSettings() {
+    closeShortTermSettings({ nodes, renderCommandState });
+  }
+
   function renderCommandState() {
     state.lastMenuStateSnapshot = renderShortTermCommandSurface({
       bridge,
@@ -526,6 +549,9 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     editRuntimeText,
     updateRuntimeText,
     resetRuntimeText,
+    openSettings,
+    closeSettings,
+    setAppearance,
     openKeyboardResourceContextMenu,
     setTab,
     openTab,
@@ -539,12 +565,13 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     showOptimizationComparison,
     createSaveProofOutput,
     createSaveFailureProofOutput,
-    currentStateSummary
+    currentStateSummary,
+    renderCommandState
   };
 
   function initialize() {
+    setAppearance(state.appearance);
     refreshRecentFiles().catch(() => {});
-    renderCommandState();
   }
 
   return {

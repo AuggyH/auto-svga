@@ -130,6 +130,7 @@
   --asv-component-launch-recent-meta-width: 96px;
   --asv-component-launch-checker-size: 24px;
   --asv-component-preview-checker-size: 22px;
+  --asv-component-settings-sheet-width: 360px;
 
   /* Compatibility aliases consumed by the current implementation. */
   --asv-font: var(--asv-type-family);
@@ -240,10 +241,19 @@
   --asv-launch-recent-meta-width: var(--asv-component-launch-recent-meta-width);
   --asv-launch-checker-size: var(--asv-component-launch-checker-size);
   --asv-preview-checker-size: var(--asv-component-preview-checker-size);
+  --asv-settings-sheet-width: var(--asv-component-settings-sheet-width);
+}
+
+:root[data-appearance="light"] {
+  color-scheme: light;
+}
+
+:root[data-appearance="dark"] {
+  color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-appearance="light"]) {
     --asv-color-surface-window: #202124;
     --asv-color-surface-toolbar: rgba(36, 36, 39, 0.86);
     --asv-color-surface-panel: rgba(42, 42, 46, 0.86);
@@ -277,6 +287,41 @@
     --asv-shadow-overlay: 0 1px 6px rgba(0, 0, 0, 0.28);
     --asv-shadow-menu: 0 12px 30px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.2);
   }
+}
+
+:root[data-appearance="dark"] {
+  --asv-color-surface-window: #202124;
+  --asv-color-surface-toolbar: rgba(36, 36, 39, 0.86);
+  --asv-color-surface-panel: rgba(42, 42, 46, 0.86);
+  --asv-color-surface-panel-strong: #303036;
+  --asv-color-surface-panel-chrome: color-mix(in srgb, var(--asv-color-surface-panel-strong) 78%, var(--asv-color-surface-window));
+  --asv-color-surface-panel-recessed: color-mix(in srgb, var(--asv-color-surface-window) 76%, var(--asv-color-surface-panel-strong));
+  --asv-color-surface-canvas: #18191c;
+  --asv-color-text-primary: #f5f5f7;
+  --asv-color-text-secondary: #adadb3;
+  --asv-color-text-tertiary: #8e8e93;
+  --asv-color-border-default: rgba(235, 235, 245, 0.12);
+  --asv-color-border-strong: rgba(235, 235, 245, 0.2);
+  --asv-color-status-success: #30d158;
+  --asv-color-status-warning: #ffd60a;
+  --asv-color-status-danger: #ff453a;
+  --asv-color-canvas-checker: rgba(235, 235, 245, 0.011);
+  --asv-color-status-info-soft: rgba(10, 132, 255, 0.14);
+  --asv-color-status-success-soft: rgba(48, 209, 88, 0.12);
+  --asv-color-status-warning-soft: rgba(255, 214, 10, 0.12);
+  --asv-color-status-danger-soft: rgba(255, 69, 58, 0.12);
+  --asv-shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.34);
+  --asv-shadow-panel-chrome: 0 1px 2px rgba(0, 0, 0, 0.34);
+  --asv-shadow-floating: 0 18px 44px rgba(0, 0, 0, 0.32);
+  --asv-shadow-control: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+  --asv-shadow-control-hover: inset 0 1px 0 color-mix(in srgb, white 11%, transparent), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --asv-shadow-control-selected: 0 1px 1px rgba(0, 0, 0, 0.22);
+  --asv-shadow-control-primary: 0 1px 2px rgba(10, 132, 255, 0.18);
+  --asv-shadow-row: inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
+  --asv-shadow-row-selected: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+  --asv-shadow-fact-cell: inset 0 1px 0 color-mix(in srgb, white 7%, transparent);
+  --asv-shadow-overlay: 0 1px 6px rgba(0, 0, 0, 0.28);
+  --asv-shadow-menu: 0 12px 30px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-height: 780px) {

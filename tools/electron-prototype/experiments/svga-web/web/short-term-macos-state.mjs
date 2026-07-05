@@ -1,3 +1,5 @@
+import { loadStoredAppearance } from "./short-term-macos-appearance-model.mjs";
+
 export function createShortTermInitialState() {
   return {
     view: "launch",
@@ -19,6 +21,7 @@ export function createShortTermInitialState() {
     textPreview: "",
     textPreviewValues: {},
     saveStatus: "idle",
+    appearance: loadStoredAppearance(),
     resourceMenuReturnFocus: undefined,
     lastMenuStateSnapshot: ""
   };

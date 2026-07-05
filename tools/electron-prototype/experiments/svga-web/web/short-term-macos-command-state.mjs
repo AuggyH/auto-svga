@@ -1,4 +1,5 @@
 export function buildCommandState(input) {
+  const appearance = ["system", "light", "dark"].includes(input.appearance) ? input.appearance : "system";
   const hasFile = input.hasFile === true;
   const hasOutput = Boolean(input.activeOutput);
   const saveBusy = input.saveStatus === "validating";
@@ -28,6 +29,7 @@ export function buildCommandState(input) {
       view: input.view,
       mode: input.mode,
       tab: input.tab,
+      appearance,
       hasFile,
       hasOutput,
       outputKind: input.activeOutput?.kind || "",
