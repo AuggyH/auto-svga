@@ -113,17 +113,18 @@ export function renderOptimizationCompareResultHtml(model) {
     .map((method) => `<li><strong>${escapeHtml(method.label)}</strong><span>${escapeHtml(method.reason)}</span></li>`)
     .join("");
   return `
-    <section class="compareSummary" data-status="success">
+    <section class="compareSummary optimizationResultSummary" data-status="success">
       <h2>${escapeHtml(model.resultTitle)}</h2>
       <p>${escapeHtml(model.resultSummary)}</p>
     </section>
-    ${(model.metrics ?? []).length ? `<section class="compareMetricGrid" aria-label="优化指标">${(model.metrics ?? []).map(renderCompareMetricCellHtml).join("")}</section>` : ""}
+    ${(model.metrics ?? []).length ? `<section class="compareMetricGrid optimizationMetricGrid" aria-label="优化指标">${(model.metrics ?? []).map(renderCompareMetricCellHtml).join("")}</section>` : ""}
+    <div class="compareActions optimizationActions">
+      <button class="toolbarButton primary" type="button" data-action="save-as">另存为 SVGA</button>
+      <button class="toolbarButton" type="button" data-action="save-overwrite">覆盖保存</button>
+      <button class="toolbarButton" type="button" data-action="back-preview">放弃优化</button>
+    </div>
     ${actionRows ? `<section class="resultGroup" data-status="success"><h3>已执行</h3><ul data-optimization-actions>${actionRows}</ul></section>` : ""}
     ${skippedRows ? `<section class="resultGroup muted" data-status="warning"><h3>未执行</h3><ul data-optimization-skipped>${skippedRows}</ul></section>` : ""}
-    <div class="compareActions">
-      <button class="toolbarButton primary" type="button" data-action="save-as">另存为</button>
-      <button class="toolbarButton" type="button" data-action="back-preview">返回预览</button>
-    </div>
   `;
 }
 

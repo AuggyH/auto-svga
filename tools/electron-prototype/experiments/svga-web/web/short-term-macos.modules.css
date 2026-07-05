@@ -585,21 +585,19 @@ canvas {
 
 .resultGroup {
   margin: var(--asv-right-panel-section-gap) 0;
-  padding: var(--asv-space-2);
-  border: 1px solid var(--asv-row-border);
-  border-radius: var(--asv-radius-sm);
-  background: var(--asv-row-bg);
-  box-shadow: var(--asv-shadow-row);
+  padding: 0 0 0 var(--asv-space-3);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset var(--asv-status-rail-width) 0 0 var(--asv-subtle-border);
 }
 
 .resultGroup[data-status="success"] {
-  border-color: color-mix(in srgb, var(--asv-success) 20%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-color-success-soft));
+  box-shadow: inset var(--asv-status-rail-width) 0 0 var(--asv-success);
 }
 
 .resultGroup[data-status="warning"] {
-  border-color: color-mix(in srgb, var(--asv-warning) 20%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 88%, var(--asv-color-warning-soft));
+  box-shadow: inset var(--asv-status-rail-width) 0 0 var(--asv-warning);
 }
 
 .resultGroup h3 {
@@ -610,7 +608,7 @@ canvas {
 
 .resultGroup ul {
   display: grid;
-  gap: var(--asv-space-1);
+  gap: var(--asv-space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -819,6 +817,12 @@ canvas {
   border-top: 1px solid var(--asv-subtle-border);
 }
 
+.optimizationMetricGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--asv-space-2);
+  border-top: 0;
+}
+
 .compareMetricRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr);
@@ -890,12 +894,32 @@ canvas {
   color: var(--asv-subtle);
 }
 
+.optimizationMetricGrid .compareMetricCell {
+  padding: var(--asv-space-2);
+  border-bottom: 0;
+  border-radius: var(--asv-radius-sm);
+  background: var(--asv-fact-bg);
+}
+
+.optimizationMetricGrid .compareMetricCell strong,
+.optimizationMetricGrid .compareMetricCell small {
+  color: var(--asv-success);
+}
+
 .compareActions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--asv-space-2);
   padding-top: var(--asv-space-2);
   border-top: 1px solid var(--asv-row-border);
+}
+
+.optimizationActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--asv-space-2);
+  padding-top: var(--asv-right-panel-section-gap);
+  border-top: 0;
 }
 
 .layerPanel,

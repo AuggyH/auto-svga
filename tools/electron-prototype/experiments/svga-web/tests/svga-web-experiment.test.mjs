@@ -1205,6 +1205,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-color-surface-mode-selected/);
   assert.match(shortTermTokens, /--asv-mode-switch-bg: var\(--asv-color-surface-mode-switch\)/);
   assert.match(shortTermTokens, /--asv-mode-selected-bg: var\(--asv-color-surface-mode-selected\)/);
+  assert.match(shortTermTokens, /--asv-component-status-rail-width/);
+  assert.match(shortTermTokens, /--asv-status-rail-width: var\(--asv-component-status-rail-width\)/);
   assert.match(shortTermTokens, /--asv-color-surface-row-selected/);
   assert.match(shortTermTokens, /--asv-panel-border/);
   assert.match(shortTermTokens, /--asv-shadow-panel-highlight/);
@@ -1297,6 +1299,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.reservedPanel\s*\{[^}]*box-shadow: inset var\(--asv-right-panel-separator-width\) 0 0 var\(--asv-right-panel-separator\)/s);
   assert.match(shortTermModules, /background: var\(--asv-panel-chrome\)/);
   assert.match(shortTermModules, /\.resultGroup/);
+  assert.match(shortTermModules, /\.resultGroup\s*\{[^}]*border: 0/s);
+  assert.match(shortTermModules, /\.resultGroup\s*\{[^}]*box-shadow: inset var\(--asv-status-rail-width\) 0 0 var\(--asv-subtle-border\)/s);
+  assert.match(shortTermModules, /\.optimizationMetricGrid\s*\{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/s);
+  assert.match(shortTermModules, /\.optimizationMetricGrid \.compareMetricCell\s*\{[^}]*background: var\(--asv-fact-bg\)/s);
+  assert.match(shortTermModules, /\.optimizationActions\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\)/s);
   assert.match(shortTermModules, /\.rightSurfaceBody:focus-visible/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="success"\]::before/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="loading"\]::before/);
@@ -2037,6 +2044,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermRenderModel, /item\.count > 1/);
   assert.match(shortTermCompareModel, /data-optimization-actions/);
   assert.match(shortTermCompareModel, /data-optimization-skipped/);
+  assert.match(shortTermCompareModel, /optimizationMetricGrid/);
+  assert.match(shortTermCompareModel, /optimizationActions/);
+  assert.match(shortTermCompareModel, /data-action="save-as">另存为 SVGA/);
+  assert.match(shortTermCompareModel, /data-action="save-overwrite">覆盖保存/);
+  assert.match(shortTermCompareModel, /data-action="back-preview">放弃优化/);
+  assert.ok(
+    shortTermCompareModel.indexOf("optimizationMetricGrid") < shortTermCompareModel.indexOf("optimizationActions")
+      && shortTermCompareModel.indexOf("optimizationActions") < shortTermCompareModel.indexOf("data-optimization-actions"),
+    "optimization result actions stay above long detail lists"
+  );
   assert.match(shortTermFeedbackModel, /function bannerTone/);
   assert.match(shortTermFeedbackSurface, /showSaveFeedbackBanner\(nodes\.saveBanner, title, message, tone\)/);
   assert.match(shortTermFeedbackSurface, /clearSaveFeedbackBanner\(nodes\.saveBanner\)/);
