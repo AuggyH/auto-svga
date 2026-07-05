@@ -1732,6 +1732,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /createReplaceableImageRow|nodes\.replaceableList\.replaceChildren|nodes\.replaceableSummary\.textContent =/);
   assert.match(shortTermReplaceableRenderers, /nodes\.replaceableList\.replaceChildren/);
   assert.match(shortTermReplaceableRenderers, /nodes\.replaceableSummary\.textContent = view\.summaryCopy/);
+  assert.match(shortTermReplaceableRenderers, /closest\("\.replaceableSection"\)\?\.setAttribute\("data-empty", view\.hasImages \? "false" : "true"\)/);
+  assert.match(shortTermReplaceableRenderers, /closest\("\.textPreviewBlock"\)\?\.setAttribute\("data-empty", view\.hasTextElements \? "false" : "true"\)/);
+  assert.match(shortTermModules, /\.replaceableSection\[data-empty="true"\]/);
+  assert.match(shortTermModules, /\.textPreviewBlock\[data-empty="true"\]/);
   assert.doesNotMatch(shortTermEntry, /普通自动命名图片不会出现在这里。|没有可替换元素。|\$\{rows\.length\} 个设计师命名图片元素。/);
   assert.doesNotMatch(shortTermReplaceableRenderers, /createInlineStatusText/);
   assert.match(shortTermReplaceableModel, /export function replaceableImageListView/);

@@ -642,6 +642,22 @@ canvas {
   border-top: 1px solid var(--asv-subtle-border);
 }
 
+.replaceableSection[data-empty="true"],
+.textPreviewBlock[data-empty="true"] {
+  color: var(--asv-subtle);
+}
+
+.replaceableSection[data-empty="true"] .sectionHead,
+.textPreviewBlock[data-empty="true"] .sectionHead {
+  padding-bottom: 0;
+}
+
+.replaceableSection[data-empty="true"] h2,
+.textPreviewBlock[data-empty="true"] h3 {
+  color: var(--asv-muted);
+  font-weight: 600;
+}
+
 .assetList,
 .findingList,
 .replaceableList,
@@ -657,6 +673,10 @@ canvas {
 
 .assetList .assetRow:last-child {
   border-bottom: 0;
+}
+
+.assetList .assetRow {
+  border-bottom-color: var(--asv-subtle-border);
 }
 
 .findingList,

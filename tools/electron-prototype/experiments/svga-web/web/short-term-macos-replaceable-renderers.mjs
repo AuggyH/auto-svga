@@ -39,6 +39,7 @@ export function createReplaceableImageRow(item, index, options) {
 
 export function renderReplaceableImages(nodes, view, model) {
   nodes.replaceableSummary.textContent = view.summaryCopy;
+  nodes.replaceableList.closest(".replaceableSection")?.setAttribute("data-empty", view.hasImages ? "false" : "true");
   if (!view.hasImages) {
     nodes.replaceableList.replaceChildren();
     return;
@@ -74,6 +75,7 @@ export function createTextElementRow(item, index, options) {
 
 export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
   nodes.textPreviewSummary.textContent = view.summaryCopy;
+  nodes.textElementList.closest(".textPreviewBlock")?.setAttribute("data-empty", view.hasTextElements ? "false" : "true");
   if (!view.hasTextElements) {
     nodes.textElementList.replaceChildren();
     return;
