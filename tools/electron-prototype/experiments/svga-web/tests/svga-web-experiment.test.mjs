@@ -1256,6 +1256,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.factCell\s*\{[^}]*box-shadow: none/s);
   assert.match(shortTermComponents, /\.factCell:nth-child\(5\)\s*\{[^}]*grid-column: 1 \/ -1/s);
   assert.match(shortTermComponents, /\.factCell::before\s*\{[^}]*display: none/s);
+  assert.match(shortTermComponents, /\.factCell strong\s*\{[^}]*font-family: var\(--asv-font\)/s);
   assert.match(shortTermComponents, /\.factCell small\s*\{[^}]*margin-top: var\(--asv-fact-cell-meta-gap\)/s);
   assert.match(shortTermComponents, /\.assetRow/);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);

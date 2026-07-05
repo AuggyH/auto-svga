@@ -98,7 +98,7 @@
 .factCell strong {
   display: block;
   overflow-wrap: anywhere;
-  font-family: var(--asv-type-mono);
+  font-family: var(--asv-font);
   font-size: var(--asv-type-size-metadata);
   font-weight: 650;
   line-height: 1.25;
