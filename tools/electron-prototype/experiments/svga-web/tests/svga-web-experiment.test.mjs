@@ -1270,6 +1270,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-layer-panel-padding-block-start: var\(--asv-component-layer-panel-padding-block-start\)/);
   assert.match(shortTermTokens, /--asv-component-edit-view-gap/);
   assert.match(shortTermTokens, /--asv-edit-canvas-min-width: var\(--asv-component-edit-canvas-min-width\)/);
+  assert.match(shortTermTokens, /--asv-component-finding-row-gap/);
+  assert.match(shortTermTokens, /--asv-finding-row-review-bg: var\(--asv-component-finding-row-review-background\)/);
   assert.match(shortTermTokens, /--asv-component-row-index-width/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
   assert.match(shortTermTokens, /--asv-row-index-width/);
@@ -1316,6 +1318,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*grid-template-columns: var\(--asv-thumb-size\) minmax\(0, 1fr\)/s);
   assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*border-bottom: var\(--asv-layer-row-divider\)/s);
   assert.match(shortTermComponents, /\.layerRowText strong\s*\{[^}]*text-overflow: ellipsis/s);
+  assert.match(shortTermComponents, /\.findingRow\s*\{[^}]*gap: var\(--asv-finding-row-gap\)/s);
+  assert.match(shortTermComponents, /\.findingRow\s*\{[^}]*background: var\(--asv-finding-row-bg\)/s);
+  assert.match(shortTermComponents, /\.findingRow\[data-disposition="reviewOnly"\]\s*\{[^}]*background: var\(--asv-finding-row-review-bg\)/s);
   assert.match(shortTermComponents, /\.replaceableRow,[\s\S]*\.textElementRow\s*\{[^}]*gap: var\(--asv-replaceable-row-gap\)/s);
   assert.match(shortTermComponents, /\.replaceableRow,[\s\S]*\.textElementRow\s*\{[^}]*border-bottom: var\(--asv-replaceable-row-divider\)/s);
   assert.match(shortTermComponents, /\.replaceableRow\.isSelected,[\s\S]*\.textElementRow\.isSelected\s*\{[^}]*background: var\(--asv-replaceable-row-selected-bg\)/s);

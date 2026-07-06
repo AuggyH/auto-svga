@@ -279,24 +279,34 @@
 .findingRow {
   position: relative;
   grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--asv-finding-row-gap);
   align-items: start;
   min-height: var(--asv-finding-row-min-height);
   overflow: hidden;
-  padding-left: var(--asv-space-4);
+  padding: var(--asv-finding-row-padding-block) var(--asv-finding-row-padding-inline) var(--asv-finding-row-padding-block) var(--asv-finding-row-padding-inline-start);
+  border: 0;
+  border-radius: var(--asv-finding-row-radius);
+  background: var(--asv-finding-row-bg);
+  box-shadow: none;
+}
+
+.findingRow strong {
+  color: var(--asv-finding-row-title-color);
+  font-size: var(--asv-finding-row-title-size);
+  font-weight: 650;
 }
 
 .findingRow::before {
   content: "";
   position: absolute;
-  inset: var(--asv-space-2) auto var(--asv-space-2) var(--asv-space-2);
+  inset: var(--asv-finding-row-strip-inset-block) auto var(--asv-finding-row-strip-inset-block) var(--asv-finding-row-strip-inset-inline);
   width: var(--asv-status-strip-width);
   border-radius: var(--asv-status-strip-radius);
   background: var(--asv-subtle-border);
 }
 
 .findingRow[data-disposition="safeExecutable"] {
-  border-color: var(--asv-row-border);
-  background: color-mix(in srgb, var(--asv-row-bg) 92%, var(--asv-color-success-soft));
+  background: var(--asv-finding-row-safe-bg);
 }
 
 .findingRow[data-disposition="safeExecutable"]::before {
@@ -304,8 +314,7 @@
 }
 
 .findingRow[data-disposition="reviewOnly"] {
-  border-color: var(--asv-row-border);
-  background: color-mix(in srgb, var(--asv-row-bg) 92%, var(--asv-color-warning-soft));
+  background: var(--asv-finding-row-review-bg);
 }
 
 .findingRow[data-disposition="reviewOnly"]::before {
