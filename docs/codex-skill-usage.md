@@ -7,6 +7,11 @@ Use only the skills needed for the current Auto SVGA task.
 Load `auto-svga-core-guard` for every task. It defines the product mainline,
 priority, scope, validation, anti-drift rules, and report contract.
 
+For meaningful tasks, also read the relevant section of
+`docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md` after the authority check.
+Use it to choose a lower-risk, lower-rework execution path; it is not product
+scope authority.
+
 For any product, UI, feature, release, planning, acceptance, or product-doc
 task, follow the core guard's Product Authority Check before implementation.
 That means checking `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` and the
@@ -28,6 +33,7 @@ the Product Owner.
 
 - `context-budget`: restrict repository reads and repeated context.
 - `diff-first`: report changes and verification evidence first.
+- `verification-budget`: choose validation depth based on change risk.
 - `caveman-report`: compress plans and completion reports.
 
 Do not load every skill by default. Combine `auto-svga-core-guard` with only the

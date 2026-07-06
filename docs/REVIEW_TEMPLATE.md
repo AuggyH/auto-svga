@@ -41,3 +41,22 @@ result summary (not full log)
 - Commit: <hash>
 - Branch: <name>
 - Tag: <tag> (if any)
+
+## 10. Project retrospective
+- Value assessment: High / Medium / Low
+- Cost drivers:
+- Avoidable costs:
+- Product lessons:
+- Technical lessons:
+- Design / interaction lessons:
+- Process lessons:
+- Follow-up candidate for `docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md`: Yes / No
+
+## 11. Token usage
+- Source: codex-session-token-count / manual-estimate / unavailable
+- Input tokens:
+- Cached input tokens:
+- Output tokens:
+- Reasoning output tokens:
+- Total tokens:
+- Token lesson:

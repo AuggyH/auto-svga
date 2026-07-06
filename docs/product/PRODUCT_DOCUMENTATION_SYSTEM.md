@@ -113,6 +113,7 @@ Create a new product document only when all are true:
 | What could be built later? | `docs/product/auto-svga-backlog.md` | New idea, reprioritization, owner feedback, or deferred item change |
 | Why was a product/architecture choice made? | `docs/decisions/ADR-*.md` | Durable decision with alternatives or long-lived consequences |
 | What did a task change? | `docs/reviews/YYYY-MM-DD-agent-task.md` | Every completed task that changes source or durable docs |
+| What did the project learn from recent work? | `docs/retrospectives/PROJECT_REVIEW_SYSTEM.md`, `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md`, and `docs/retrospectives/TASK_RETRO_LEDGER.jsonl` | Task retrospectives, weekly/monthly project reviews, reusable lessons, or token-cost rules change; must not override the main PRD |
 | What proves a package/release candidate? | `review/<task-or-milestone>-<head>/` and generated validation summaries | Only at meaningful product checkpoints on final head |
 
 ## Documentation Cleanup Audit
@@ -131,6 +132,8 @@ Create a new product document only when all are true:
 | `docs/loop/milestones/*.md` | Historical or active milestone contracts | Evidence/contract layer; not PRD authority. |
 | `docs/product/p6/**` | P6 worker context, evidence, and handoff material | Supporting evidence and lineage; not PRD authority. |
 | `docs/product/auto-svga-backlog.md` | Candidate backlog | May add candidates only; committed scope must be promoted into the main PRD. |
+| `docs/retrospectives/PROJECT_REVIEW_SYSTEM.md` | Active execution-learning governance | Defines task, weekly, monthly, and failure retrospective cadence; not PRD authority. |
+| `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md` | Active distilled project guidance | Read before meaningful tasks to reduce rework and token cost; not PRD authority. |
 
 ## Required Product Brief
 
@@ -242,8 +245,17 @@ decision. They are not part of the current first distributable version.
 ## Maintenance Cadence
 
 - Task start: read the product roadmap, active status, relevant boundary docs,
-  and the requested task review/evidence path.
+  the requested task review/evidence path, and relevant sections of
+  `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md`.
 - During implementation: update only the docs directly affected by the change.
+- Task completion: update the task review retrospective section and append a
+  compact entry to `docs/retrospectives/TASK_RETRO_LEDGER.jsonl` for
+  meaningful tasks.
+- Weekly: aggregate recent reviews, task-ledger entries, commits, blockers,
+  and token-cost patterns into `docs/retrospectives/weekly/YYYY-WW.md`.
+- Monthly or after four weekly reviews: distill repeated lessons into
+  `docs/retrospectives/monthly/YYYY-MM.md` and
+  `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md`.
 - Meaningful checkpoint: update active status, roadmap/backlog if scope moved,
   and regenerate evidence only when the checkpoint is worth a review package.
 - Before release candidate: update distribution prep, known limitations,

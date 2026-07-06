@@ -227,8 +227,11 @@ When a new agent takes over this repo:
 3. Check `git status`, `git log`, `git branch` — never pull/reset before understanding current state.
 4. If there are uncommitted changes, create a safety branch before working.
 5. Read `docs/TOKEN_BUDGET_RULES.md` for token usage rules.
-6. Load `docs/TECH_SPEC.md` only if technical details are needed.
-7. Do not expand beyond avatar_frame MVP scope unless explicitly requested.
+6. Read relevant sections of
+   `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md` for reusable project
+   execution lessons.
+7. Load `docs/TECH_SPEC.md` only if technical details are needed.
+8. Do not expand beyond avatar_frame MVP scope unless explicitly requested.
 
 ## Autonomous Loop Protocol
 
@@ -308,12 +311,34 @@ before implementation. If the task conflicts with that authority or would
 revive hidden/deferred scope, ask the Product Owner instead of choosing
 silently.
 
+## Project Retrospective And Experience
+
+Project retrospectives cover product planning, implementation, technical
+architecture, UI/UX, validation, release, coordination, and token cost. They do
+not define product scope or acceptance.
+
+For meaningful tasks:
+
+1. Read `docs/retrospectives/PROJECT_EXPERIENCE_GUIDE.md` after the relevant
+   authority docs.
+2. Add a compact retrospective section to the task review.
+3. Append one valid JSON line to
+   `docs/retrospectives/TASK_RETRO_LEDGER.jsonl`.
+4. Record exact Codex session token counts when available; otherwise mark the
+   source as `unavailable` or `manual-estimate`.
+5. Add reusable but unproven lessons to
+   `docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md`.
+
+Weekly and monthly project retrospectives follow
+`docs/retrospectives/PROJECT_REVIEW_SYSTEM.md`. Do not copy raw chat history,
+long logs, full diffs, or production assets into retrospective docs.
+
 ## Review Process
 
 1. Each task outputs a review file in `docs/reviews/`:
    - Filename: `YYYY-MM-DD-agent-task-name.md`
    - Template: `docs/REVIEW_TEMPLATE.md`
-2. Review must include: summary, git state, changed files, requirement checks, verification, risks, next steps.
+2. Review must include: summary, git state, changed files, requirement checks, verification, risks, next steps, project retrospective, and token usage.
 3. Do NOT include: full diffs, full logs, project background repetition.
 4. Review is for the next agent — write only what they need to continue.
 5. Every completed task must also expose owner-visible review material under
