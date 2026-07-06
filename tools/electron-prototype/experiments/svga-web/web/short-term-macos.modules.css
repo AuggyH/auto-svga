@@ -351,6 +351,7 @@
   overflow: hidden;
   background: var(--asv-drag-overlay-bg);
   color: var(--asv-color-drag-overlay-text);
+  backdrop-filter: var(--asv-drag-overlay-backdrop-filter);
 }
 
 .dragDecisionOverlay[hidden] {
@@ -363,14 +364,19 @@
   min-width: 0;
   min-height: 0;
   background: transparent;
+  opacity: var(--asv-drag-zone-opacity);
   text-align: center;
+  transition:
+    background-color var(--asv-motion-duration-fast) ease,
+    opacity var(--asv-motion-duration-fast) ease;
 }
 
 .dragDecisionZone strong {
   max-width: 100%;
   color: inherit;
-  font-size: var(--asv-type-size-launch-title);
-  font-weight: 700;
+  font-size: var(--asv-drag-overlay-label-size);
+  font-weight: var(--asv-drag-overlay-label-weight);
+  letter-spacing: 0;
   line-height: 1.2;
   white-space: normal;
 }
@@ -378,11 +384,13 @@
 .dragDecisionOverlay[data-status="supported"][data-focus-zone="open"] [data-drag-zone="open"],
 .dragDecisionOverlay[data-status="supported"][data-focus-zone="compare"] [data-drag-zone="compare"] {
   background: var(--asv-drag-supported-bg);
+  opacity: var(--asv-drag-zone-focus-opacity);
 }
 
 .dragDecisionOverlay[data-status="unsupported"][data-focus-zone="open"] [data-drag-zone="open"],
 .dragDecisionOverlay[data-status="unsupported"][data-focus-zone="compare"] [data-drag-zone="compare"] {
   background: var(--asv-drag-unsupported-bg);
+  opacity: var(--asv-drag-zone-focus-opacity);
 }
 
 .canvasToast {
@@ -757,7 +765,7 @@ canvas {
 .compareStage {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--asv-space-3);
+  gap: var(--asv-compare-canvas-gap);
   min-height: 0;
 }
 

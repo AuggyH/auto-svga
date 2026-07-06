@@ -276,8 +276,10 @@ async function main() {
   record("reduced-transparency-covered", /@media \(prefers-reduced-transparency: reduce\)/.test(pageStatesCss)
     && /--asv-effect-titlebar-backdrop-filter:\s*none/.test(pageStatesCss)
     && /--asv-effect-menu-backdrop-filter:\s*none/.test(pageStatesCss)
-    && /\.titlebar,\s*\.contextMenu\s*\{[\s\S]*backdrop-filter:\s*none/.test(pageStatesCss)
-    && /backdrop-filter:\s*var\(--asv-effect-menu-backdrop-filter\)/.test(components));
+    && /--asv-effect-drag-overlay-backdrop-filter:\s*none/.test(pageStatesCss)
+    && /\.titlebar,\s*\.contextMenu,\s*\.dragDecisionOverlay\s*\{[\s\S]*backdrop-filter:\s*none/.test(pageStatesCss)
+    && /backdrop-filter:\s*var\(--asv-effect-menu-backdrop-filter\)/.test(components)
+    && /backdrop-filter:\s*var\(--asv-drag-overlay-backdrop-filter\)/.test(modules));
   record("minimum-window-boundary-explicit", /min-width:\s*1060px/.test(baseCss)
     && /min-height:\s*720px/.test(baseCss)
     && /@media \(max-width: 1080px\)/.test(pageStatesCss)
