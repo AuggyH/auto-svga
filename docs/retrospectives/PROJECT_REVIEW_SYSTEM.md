@@ -36,6 +36,8 @@ conflicts, use `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md`.
 
 Weekly and monthly retrospectives should use:
 
+- `docs/retrospectives/PROJECT_BASELINE_RETROSPECTIVE.md` for inception-to-date
+  context when a task needs historical grounding
 - `docs/reviews/*.md`
 - `docs/retrospectives/TASK_RETRO_LEDGER.jsonl`
 - `docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md`

@@ -101,3 +101,34 @@ promoted, watched, rejected, or kept historical.
   UI/UX bundle; individual reviews should reference it and only add deltas.
 - Evidence: `docs/retrospectives/weekly/2026-W28.md`
 - Status: watch
+
+## Use the baseline retrospective before historical deep dives
+
+- Source: `docs/retrospectives/PROJECT_BASELINE_RETROSPECTIVE.md`
+- Area: coordination, token-cost
+- Context: The expanded first retrospective scanned project history from
+  2026-06-02 through 2026-07-06, including docs inventory, review inventory,
+  loop history, product docs, retrospectives, overnight reports, decisions,
+  research notes, and current Git history.
+- Problem: The repository has hundreds of useful historical docs. Reading them
+  broadly for ordinary tasks is expensive and often unnecessary.
+- Candidate rule: For onboarding, milestone planning, or broad retrospectives,
+  read the baseline retrospective first, then open only the historical docs
+  matching the current failure pattern or lane.
+- Evidence: `docs/retrospectives/PROJECT_BASELINE_RETROSPECTIVE.md`
+- Status: promote
+
+## Product resets are acceleration when they are written into authority docs
+
+- Source: `docs/retrospectives/PROJECT_BASELINE_RETROSPECTIVE.md`
+- Area: product, coordination
+- Context: P5 was reset into editor incubation; short-term scope was corrected;
+  UI/UX was reset to canvas-first; AEB was promoted above AI/ComfyUI.
+- Problem: Incremental continuation of the wrong lane wastes more time than a
+  clear correction.
+- Candidate rule: When the Product Owner corrects direction, update the main
+  authority doc or subordinate brief quickly, isolate old lanes, and stop
+  historical scope from leaking back into the product surface.
+- Evidence: P5 reset, short-term PRD correction, UI/UX canvas reset, and AEB
+  promotion summarized in the baseline retrospective.
+- Status: promote

@@ -11,6 +11,9 @@ release gate, or acceptance record.
 - Product, planning, UI/UX, feature, release, and acceptance tasks still start
   from `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` and
   `docs/product/PRODUCT_ROADMAP.md`.
+- For first-time onboarding, milestone planning, or broad retrospective work,
+  read `docs/retrospectives/PROJECT_BASELINE_RETROSPECTIVE.md` once before
+  opening older historical documents.
 - Use this guide to choose a lower-risk execution path after the authority
   documents are understood.
 - Read only the sections relevant to the task. Do not expand every historical
@@ -26,6 +29,9 @@ release gate, or acceptance record.
 - Separate short-term release surface from mid-term integration lanes. Internal
   debug or integration clients may accelerate validation, but they must not
   leak unfinished scope into the formal short-term client.
+- Technically valuable work can still be the wrong mainline. Preserve
+  incubation work, but hide or isolate it when the Product Owner resets the
+  active product direction.
 
 ## Implementation
 
@@ -35,6 +41,9 @@ release gate, or acceptance record.
   layer changes that only prove isolated internals.
 - When compiling or saving SVGA output, keep source immutability, reference
   closure, inflate/decode, reopen, and playback-load proof separate.
+- Preserve the original MVP discipline: one source of truth, clear output
+  contracts, shared preview/export semantics, and explicit separation between
+  binary validity and visual success.
 
 ## UI/UX
 
@@ -54,6 +63,8 @@ release gate, or acceptance record.
 - Report passing validation as command names and short results, not long logs.
 - Do not claim `PASS`, accepted, released, visually successful, or production
   ready unless the exact gate and evidence are named.
+- Evidence should prove a user-visible flow or a fail-closed invariant, not
+  only artifact existence, packet completeness, or generated status text.
 
 ## Coordination
 
