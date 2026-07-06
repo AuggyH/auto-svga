@@ -1035,19 +1035,19 @@ canvas {
 .layerPanel,
 .reservedPanel {
   overflow: auto;
-  padding: var(--asv-space-3);
+  padding: var(--asv-layer-panel-padding-block-start) var(--asv-layer-panel-padding) var(--asv-layer-panel-padding);
   background: var(--asv-right-panel);
   scrollbar-gutter: stable;
 }
 
 .layerPanel {
+  display: grid;
+  align-content: start;
+  gap: 0;
   box-shadow: inset calc(-1 * var(--asv-right-panel-separator-width)) 0 0 var(--asv-right-panel-separator);
 }
 
 .reservedPanel {
-  display: grid;
-  place-items: center;
+  display: block;
   box-shadow: inset var(--asv-right-panel-separator-width) 0 0 var(--asv-right-panel-separator);
-  color: var(--asv-muted);
-  text-align: center;
 }

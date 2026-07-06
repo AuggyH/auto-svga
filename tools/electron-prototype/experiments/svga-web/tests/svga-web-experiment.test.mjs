@@ -1264,6 +1264,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-replaceable-row-gap/);
   assert.match(shortTermTokens, /--asv-replaceable-row-divider: var\(--asv-component-replaceable-row-divider\)/);
   assert.match(shortTermTokens, /--asv-replaceable-row-selected-bg: var\(--asv-component-replaceable-row-selected-background\)/);
+  assert.match(shortTermTokens, /--asv-component-layer-row-min-height/);
+  assert.match(shortTermTokens, /--asv-layer-row-divider: var\(--asv-component-layer-row-divider\)/);
+  assert.match(shortTermTokens, /--asv-layer-panel-padding: var\(--asv-component-layer-panel-padding\)/);
+  assert.match(shortTermTokens, /--asv-layer-panel-padding-block-start: var\(--asv-component-layer-panel-padding-block-start\)/);
+  assert.match(shortTermTokens, /--asv-component-edit-view-gap/);
+  assert.match(shortTermTokens, /--asv-edit-canvas-min-width: var\(--asv-component-edit-canvas-min-width\)/);
   assert.match(shortTermTokens, /--asv-component-row-index-width/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
   assert.match(shortTermTokens, /--asv-row-index-width/);
@@ -1306,6 +1312,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.assetRow\s*\{[^}]*border-bottom: var\(--asv-asset-row-divider\)/s);
   assert.match(shortTermComponents, /\.assetRow:hover\s*\{[^}]*background: var\(--asv-asset-row-hover-bg\)/s);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
+  assert.match(shortTermComponents, /\.layerRow/);
+  assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*grid-template-columns: var\(--asv-thumb-size\) minmax\(0, 1fr\)/s);
+  assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*border-bottom: var\(--asv-layer-row-divider\)/s);
+  assert.match(shortTermComponents, /\.layerRowText strong\s*\{[^}]*text-overflow: ellipsis/s);
   assert.match(shortTermComponents, /\.replaceableRow,[\s\S]*\.textElementRow\s*\{[^}]*gap: var\(--asv-replaceable-row-gap\)/s);
   assert.match(shortTermComponents, /\.replaceableRow,[\s\S]*\.textElementRow\s*\{[^}]*border-bottom: var\(--asv-replaceable-row-divider\)/s);
   assert.match(shortTermComponents, /\.replaceableRow\.isSelected,[\s\S]*\.textElementRow\.isSelected\s*\{[^}]*background: var\(--asv-replaceable-row-selected-bg\)/s);
@@ -1341,6 +1351,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareCanvasOpenButton\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareCanvasOpenButton\s*\{[^}]*display: none/s);
   assert.match(shortTermModules, /\.assetList \.assetRow\s*\{[^}]*border-bottom: var\(--asv-asset-row-divider\)/s);
+  assert.match(shortTermModules, /\.layerPanel,\s*\.reservedPanel\s*\{[^}]*padding: var\(--asv-layer-panel-padding-block-start\) var\(--asv-layer-panel-padding\) var\(--asv-layer-panel-padding\)/s);
   assert.match(shortTermModules, /\.comparePlaybackBar\s*\{[^}]*pointer-events: none/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*background: transparent/s);
@@ -1395,7 +1406,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\] \.view,[\s\S]*\.macApp\[data-app-state="compare"\] \.view,[\s\S]*\.macApp\[data-app-state="edit"\] \.view\s*\{[^}]*grid-row: 2/s);
   assert.match(shortTermPageStates, /\.previewView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
   assert.match(shortTermPageStates, /\.compareView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
+  assert.match(shortTermPageStates, /\.editView\s*\{[^}]*grid-template-columns: var\(--asv-left-width\) minmax\(var\(--asv-edit-canvas-min-width\), 1fr\) minmax\(var\(--asv-edit-right-panel-min-width\), var\(--asv-right-panel-width\)\)/s);
   assert.match(shortTermPageStates, /\.editView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
+  assert.match(shortTermPageStates, /\.editView\s*\{[^}]*gap: var\(--asv-edit-view-gap\)/s);
+  assert.match(shortTermPageStates, /\.editView\s*\{[^}]*padding: var\(--asv-edit-view-padding\)/s);
   assert.match(shortTermPageStates, /\.previewView/);
   assert.match(shortTermPageStates, /\.compareView/);
   assert.match(shortTermPageStates, /\.editView/);
@@ -2153,6 +2167,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermOptimizationRenderers, /row\.dataset\.component = "InlineStatus"/);
   assert.doesNotMatch(shortTermEditReservedRenderers, /empty\.dataset\.component = "InlineStatus"/);
   assert.match(shortTermInlineStatusRenderers, /empty\.dataset\.component = "InlineStatus"/);
+  assert.match(shortTermEditReservedRenderers, /row\.className = "layerRow"/);
+  assert.doesNotMatch(shortTermEditReservedRenderers, /row\.className = "assetRow"/);
   assert.match(shortTermEditReservedRenderers, /row\.dataset\.component = "LayerRow"/);
   assert.match(shortTermReplaceableRenderers, /class="rowIndex"/);
   assert.match(shortTermSmokeProofModel, /comparisonVisible/);

@@ -80,12 +80,13 @@
 
 .editView {
   display: grid;
-  grid-template-columns: var(--asv-left-width) minmax(480px, 1fr) minmax(300px, var(--asv-right-panel-width));
+  grid-template-columns: var(--asv-left-width) minmax(var(--asv-edit-canvas-min-width), 1fr) minmax(var(--asv-edit-right-panel-min-width), var(--asv-right-panel-width));
   grid-template-rows: minmax(0, 1fr);
-  gap: var(--asv-space-4);
+  gap: var(--asv-edit-view-gap);
   height: 100%;
   min-height: 0;
-  padding: var(--asv-space-4);
+  padding: var(--asv-edit-view-padding);
+  background: var(--asv-workbench);
 }
 
 @media (prefers-reduced-motion: reduce) {
