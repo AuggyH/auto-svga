@@ -151,13 +151,14 @@
   --asv-component-metric-entry-hover-bg: color-mix(in srgb, var(--asv-color-status-danger-soft) 78%, var(--asv-color-surface-panel-strong) 6%);
   --asv-component-metric-entry-border: color-mix(in srgb, var(--asv-color-status-danger) 8%, transparent);
   --asv-component-metric-entry-color: var(--asv-color-status-danger);
+  --asv-component-asset-list-gap: var(--asv-space-1);
   --asv-component-asset-row-min-height: 48px;
   --asv-component-asset-row-gap: var(--asv-space-3);
   --asv-component-asset-row-padding-block: var(--asv-space-2);
   --asv-component-asset-row-padding-inline: var(--asv-space-1);
   --asv-component-asset-row-radius: var(--asv-radius-md);
-  --asv-component-asset-row-divider: 1px solid var(--asv-color-border-subtle);
-  --asv-component-asset-row-hover-background: color-mix(in srgb, var(--asv-color-surface-row-hover) 46%, transparent);
+  --asv-component-asset-row-divider: 0 solid transparent;
+  --asv-component-asset-row-hover-background: transparent;
   --asv-component-asset-row-attention-background: color-mix(in srgb, var(--asv-color-status-warning-soft) 16%, transparent);
   --asv-component-asset-row-title-size: var(--asv-type-size-metadata);
   --asv-component-asset-row-detail-size: var(--asv-type-size-footnote);
@@ -376,6 +377,7 @@
   --asv-metric-entry-hover-bg: var(--asv-component-metric-entry-hover-bg);
   --asv-metric-entry-border: var(--asv-component-metric-entry-border);
   --asv-metric-entry-color: var(--asv-component-metric-entry-color);
+  --asv-asset-list-gap: var(--asv-component-asset-list-gap);
   --asv-asset-row-min-height: var(--asv-component-asset-row-min-height);
   --asv-asset-row-gap: var(--asv-component-asset-row-gap);
   --asv-asset-row-padding-block: var(--asv-component-asset-row-padding-block);

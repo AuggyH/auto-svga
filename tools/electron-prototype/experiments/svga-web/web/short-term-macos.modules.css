@@ -722,7 +722,7 @@ canvas {
 }
 
 .assetList {
-  gap: 0;
+  gap: var(--asv-asset-list-gap);
   border-top: 0;
 }
 
