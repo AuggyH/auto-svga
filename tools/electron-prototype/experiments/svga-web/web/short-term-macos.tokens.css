@@ -185,10 +185,11 @@
   --asv-component-layer-row-padding-block: var(--asv-space-2);
   --asv-component-layer-row-padding-inline: var(--asv-space-1);
   --asv-component-layer-row-radius: var(--asv-radius-md);
-  --asv-component-layer-row-divider: 1px solid var(--asv-color-border-subtle);
+  --asv-component-layer-row-divider: 0 solid transparent;
   --asv-component-layer-row-title-size: var(--asv-type-size-metadata);
   --asv-component-layer-row-title-color: var(--asv-color-text-primary);
   --asv-component-layer-row-thumb-border: var(--asv-color-border-subtle);
+  --asv-component-layer-list-gap: var(--asv-space-1);
   --asv-component-layer-panel-padding: var(--asv-space-4);
   --asv-component-layer-panel-padding-block-start: calc(var(--asv-toolbar-height) + var(--asv-space-3));
   --asv-component-finding-row-min-height: 54px;
@@ -422,6 +423,7 @@
   --asv-layer-row-title-size: var(--asv-component-layer-row-title-size);
   --asv-layer-row-title-color: var(--asv-component-layer-row-title-color);
   --asv-layer-row-thumb-border: var(--asv-component-layer-row-thumb-border);
+  --asv-layer-list-gap: var(--asv-component-layer-list-gap);
   --asv-layer-panel-padding: var(--asv-component-layer-panel-padding);
   --asv-layer-panel-padding-block-start: var(--asv-component-layer-panel-padding-block-start);
   --asv-finding-row-min-height: var(--asv-component-finding-row-min-height);

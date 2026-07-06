@@ -1046,7 +1046,7 @@ canvas {
 .layerPanel {
   display: grid;
   align-content: start;
-  gap: 0;
+  gap: var(--asv-layer-list-gap);
   box-shadow: inset calc(-1 * var(--asv-right-panel-separator-width)) 0 0 var(--asv-right-panel-separator);
 }
 

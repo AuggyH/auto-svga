@@ -1287,6 +1287,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-replaceable-row-divider: var\(--asv-component-replaceable-row-divider\)/);
   assert.match(shortTermTokens, /--asv-replaceable-row-selected-bg: var\(--asv-component-replaceable-row-selected-background\)/);
   assert.match(shortTermTokens, /--asv-component-layer-row-min-height/);
+  assert.match(shortTermTokens, /--asv-component-layer-row-divider: 0 solid transparent/);
+  assert.match(shortTermTokens, /--asv-layer-list-gap: var\(--asv-component-layer-list-gap\)/);
   assert.match(shortTermTokens, /--asv-layer-row-divider: var\(--asv-component-layer-row-divider\)/);
   assert.match(shortTermTokens, /--asv-layer-panel-padding: var\(--asv-component-layer-panel-padding\)/);
   assert.match(shortTermTokens, /--asv-layer-panel-padding-block-start: var\(--asv-component-layer-panel-padding-block-start\)/);
@@ -1401,6 +1403,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareCanvasOpenButton\s*\{[^}]*display: none/s);
   assert.match(shortTermModules, /\.assetList \.assetRow\s*\{[^}]*border-bottom: var\(--asv-asset-row-divider\)/s);
   assert.match(shortTermModules, /\.layerPanel,\s*\.reservedPanel\s*\{[^}]*padding: var\(--asv-layer-panel-padding-block-start\) var\(--asv-layer-panel-padding\) var\(--asv-layer-panel-padding\)/s);
+  assert.match(shortTermModules, /\.layerPanel\s*\{[^}]*gap: var\(--asv-layer-list-gap\)/s);
   assert.match(shortTermModules, /\.comparePlaybackBar\s*\{[^}]*pointer-events: none/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*background: transparent/s);
