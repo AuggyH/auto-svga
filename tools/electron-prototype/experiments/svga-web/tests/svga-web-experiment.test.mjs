@@ -1221,6 +1221,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-status-rail-width/);
   assert.match(shortTermTokens, /--asv-status-rail-width: var\(--asv-component-status-rail-width\)/);
   assert.match(shortTermTokens, /--asv-color-surface-row-selected/);
+  assert.match(shortTermTokens, /--asv-component-canvas-checker-pattern: conic-gradient\(var\(--asv-color-canvas-checker\) 25%/);
+  assert.match(shortTermTokens, /--asv-canvas-checker-pattern: var\(--asv-component-canvas-checker-pattern\)/);
   assert.match(shortTermTokens, /--asv-panel-border/);
   assert.match(shortTermTokens, /--asv-shadow-panel-highlight/);
   assert.match(shortTermTokens, /--asv-shadow-panel-chrome/);
@@ -1353,6 +1355,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightPanel/);
   assert.match(shortTermModules, /box-shadow: inset var\(--asv-right-panel-separator-width\) 0 0 var\(--asv-right-panel-separator\)/);
   assert.match(shortTermModules, /\.rightSurfaceBody\s*\{[^}]*background: var\(--asv-right-panel\)/s);
+  assert.match(shortTermModules, /\.launchCanvas\s*\{[^}]*background:[^}]*var\(--asv-canvas-checker-pattern\)/s);
+  assert.match(shortTermModules, /\.canvasWrap,[\s\S]*\.compareCanvasWrap\s*\{[^}]*background:[^}]*var\(--asv-canvas-checker-pattern\)/s);
+  assert.doesNotMatch(shortTermModules, /conic-gradient\(from 45deg/);
   assert.match(shortTermModules, /\.factGrid\s*\{[^}]*gap: var\(--asv-fact-grid-row-gap\) var\(--asv-fact-grid-column-gap\)/s);
   assert.match(shortTermModules, /\.launchDropIcon\s*\{/);
   assert.match(shortTermModules, /\.recentClearButton\s*\{/);
