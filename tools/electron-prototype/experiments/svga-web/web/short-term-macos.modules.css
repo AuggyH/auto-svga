@@ -720,7 +720,7 @@ canvas {
 }
 
 .assetList .assetRow {
-  border-bottom-color: var(--asv-subtle-border);
+  border-bottom: var(--asv-asset-row-divider);
 }
 
 .findingList,

@@ -1250,6 +1250,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-metric-entry-height/);
   assert.match(shortTermTokens, /--asv-metric-entry-bg: var\(--asv-component-metric-entry-bg\)/);
   assert.match(shortTermTokens, /--asv-metric-entry-color: var\(--asv-component-metric-entry-color\)/);
+  assert.match(shortTermTokens, /--asv-component-asset-row-gap/);
+  assert.match(shortTermTokens, /--asv-asset-row-divider: var\(--asv-component-asset-row-divider\)/);
+  assert.match(shortTermTokens, /--asv-asset-row-hover-bg: var\(--asv-component-asset-row-hover-background\)/);
   assert.match(shortTermTokens, /--asv-component-row-index-width/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
   assert.match(shortTermTokens, /--asv-row-index-width/);
@@ -1288,6 +1291,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.metricOptimizationEntry\s*\{[^}]*background: var\(--asv-metric-entry-bg\)/s);
   assert.match(shortTermComponents, /\.metricOptimizationEntry::after\s*\{[^}]*border-top: var\(--asv-metric-entry-arrow-stroke\) solid currentColor/s);
   assert.match(shortTermComponents, /\.assetRow/);
+  assert.match(shortTermComponents, /\.assetRow\s*\{[^}]*gap: var\(--asv-asset-row-gap\)/s);
+  assert.match(shortTermComponents, /\.assetRow\s*\{[^}]*border-bottom: var\(--asv-asset-row-divider\)/s);
+  assert.match(shortTermComponents, /\.assetRow:hover\s*\{[^}]*background: var\(--asv-asset-row-hover-bg\)/s);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
   assert.match(shortTermComponents, /\.messageRow/);
   assert.match(shortTermComponents, /\.messageRow\[data-status="success"\]/);
@@ -1320,6 +1326,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareCanvasSurface\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\) auto/s);
   assert.match(shortTermModules, /\.compareCanvasOpenButton\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareCanvasOpenButton\s*\{[^}]*display: none/s);
+  assert.match(shortTermModules, /\.assetList \.assetRow\s*\{[^}]*border-bottom: var\(--asv-asset-row-divider\)/s);
   assert.match(shortTermModules, /\.comparePlaybackBar\s*\{[^}]*pointer-events: none/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*background: transparent/s);

@@ -195,21 +195,21 @@
 
 .assetRow {
   min-height: var(--asv-asset-row-min-height);
-  gap: var(--asv-space-3);
-  padding: var(--asv-space-2) var(--asv-space-1);
+  gap: var(--asv-asset-row-gap);
+  padding: var(--asv-asset-row-padding-block) var(--asv-asset-row-padding-inline);
   border: 0;
-  border-bottom: 1px solid var(--asv-subtle-border);
-  border-radius: 0;
+  border-bottom: var(--asv-asset-row-divider);
+  border-radius: var(--asv-asset-row-radius);
   background: transparent;
   box-shadow: none;
 }
 
 .assetRow:hover {
-  background: var(--asv-row-hover-bg);
+  background: var(--asv-asset-row-hover-bg);
 }
 
 .assetRow[data-attention="true"] {
-  background: color-mix(in srgb, var(--asv-color-warning-soft) 18%, transparent);
+  background: var(--asv-asset-row-attention-bg);
 }
 
 .assetRow:hover .thumb,
@@ -219,23 +219,24 @@
 
 .assetRow .rowText strong {
   color: var(--asv-text);
-  font-size: var(--asv-type-size-body);
+  font-size: var(--asv-asset-row-title-size);
   font-weight: 650;
 }
 
 .assetRow .rowText span {
-  color: var(--asv-subtle);
+  color: var(--asv-asset-row-detail-color);
+  font-size: var(--asv-asset-row-detail-size);
 }
 
 .assetRow .badge {
   padding: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--asv-subtle);
+  color: var(--asv-asset-row-badge-color);
 }
 
 .assetRow[data-attention="true"] .badge {
-  background: var(--asv-color-warning-soft);
+  background: var(--asv-asset-row-badge-attention-bg);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-warning) 18%, transparent);
   color: var(--asv-warning);
 }
