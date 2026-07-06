@@ -53,7 +53,7 @@
   --asv-color-surface-control-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 92%, var(--asv-color-action-primary) 5%);
   --asv-color-surface-control-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 92%, var(--asv-color-action-primary) 3%);
   --asv-color-surface-control-disabled: color-mix(in srgb, var(--asv-color-surface-panel-strong) 70%, transparent);
-  --asv-color-surface-mode-switch: color-mix(in srgb, var(--asv-color-surface-panel-strong) 56%, transparent);
+  --asv-color-surface-mode-switch: transparent;
   --asv-color-surface-mode-selected: color-mix(in srgb, var(--asv-color-action-primary) 14%, var(--asv-color-surface-panel-strong));
   --asv-color-surface-row: color-mix(in srgb, var(--asv-color-surface-panel-strong) 54%, var(--asv-color-surface-panel-recessed));
   --asv-color-surface-row-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-status-info-soft));
@@ -104,6 +104,14 @@
   --asv-component-file-identity-font-size: 12px;
   --asv-component-window-controls-width: 78px;
   --asv-component-control-height: 28px;
+  --asv-component-mode-switch-gap: var(--asv-space-2);
+  --asv-component-mode-switch-padding: 0px;
+  --asv-component-mode-switch-shadow: none;
+  --asv-component-mode-switch-backdrop-filter: none;
+  --asv-component-mode-button-color: var(--asv-color-text-secondary);
+  --asv-component-mode-button-shadow: none;
+  --asv-component-mode-button-hover-background: color-mix(in srgb, var(--asv-color-status-info-soft) 48%, transparent);
+  --asv-component-mode-selected-shadow: none;
   --asv-component-tab-height: 30px;
   --asv-component-tab-padding: 6px;
   --asv-component-tab-indicator-height: 2px;
@@ -258,6 +266,14 @@
   --asv-control-disabled-bg: var(--asv-color-surface-control-disabled);
   --asv-mode-switch-bg: var(--asv-color-surface-mode-switch);
   --asv-mode-selected-bg: var(--asv-color-surface-mode-selected);
+  --asv-mode-switch-gap: var(--asv-component-mode-switch-gap);
+  --asv-mode-switch-padding: var(--asv-component-mode-switch-padding);
+  --asv-mode-switch-shadow: var(--asv-component-mode-switch-shadow);
+  --asv-mode-switch-backdrop-filter: var(--asv-component-mode-switch-backdrop-filter);
+  --asv-mode-button-color: var(--asv-component-mode-button-color);
+  --asv-mode-button-shadow: var(--asv-component-mode-button-shadow);
+  --asv-mode-button-hover-bg: var(--asv-component-mode-button-hover-background);
+  --asv-mode-selected-shadow: var(--asv-component-mode-selected-shadow);
   --asv-row-bg: var(--asv-color-surface-row);
   --asv-row-hover-bg: var(--asv-color-surface-row-hover);
   --asv-row-selected-bg: var(--asv-color-surface-row-selected);

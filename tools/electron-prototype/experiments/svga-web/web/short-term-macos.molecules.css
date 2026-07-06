@@ -30,12 +30,13 @@
 .canvasModeSwitch {
   display: inline-grid;
   grid-template-columns: 1fr 1fr;
-  padding: var(--asv-space-1);
+  gap: var(--asv-mode-switch-gap);
+  padding: var(--asv-mode-switch-padding);
   border: 0;
   border-radius: var(--asv-radius-md);
   background: var(--asv-mode-switch-bg);
-  box-shadow: var(--asv-shadow-overlay);
-  backdrop-filter: var(--asv-effect-titlebar-backdrop-filter);
+  box-shadow: var(--asv-mode-switch-shadow);
+  backdrop-filter: var(--asv-mode-switch-backdrop-filter);
 }
 
 .modeSwitch button,
@@ -44,12 +45,20 @@
   border: 0;
   border-radius: var(--asv-radius-sm);
   background: transparent;
+  box-shadow: var(--asv-mode-button-shadow);
+  color: var(--asv-mode-button-color);
+}
+
+.modeSwitch button:hover:not(.isSelected),
+.canvasModeSwitch button:hover:not(.isSelected) {
+  background: var(--asv-mode-button-hover-bg);
+  box-shadow: var(--asv-mode-button-shadow);
 }
 
 .modeSwitch button.isSelected,
 .canvasModeSwitch button.isSelected {
   background: var(--asv-mode-selected-bg);
-  box-shadow: var(--asv-shadow-control-selected);
+  box-shadow: var(--asv-mode-selected-shadow);
   color: var(--asv-action);
   font-weight: 650;
 }
