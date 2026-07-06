@@ -527,7 +527,7 @@
   gap: var(--asv-settings-choice-gap);
   padding: var(--asv-settings-choice-gap);
   border-radius: var(--asv-radius-md);
-  background: var(--asv-mode-switch-bg);
+  background: var(--asv-settings-choice-group-bg);
 }
 
 .settingsChoice {
@@ -544,7 +544,7 @@
 }
 
 .settingsChoice:hover {
-  background: var(--asv-control-hover-bg);
+  background: var(--asv-settings-choice-hover-bg);
   color: var(--asv-text);
 }
 
@@ -555,9 +555,9 @@
 }
 
 .settingsChoice:has(input:checked) {
-  background: var(--asv-mode-selected-bg);
+  background: var(--asv-settings-choice-selected-bg);
   color: var(--asv-action);
-  box-shadow: var(--asv-shadow-control-selected);
+  box-shadow: var(--asv-settings-choice-selected-shadow);
 }
 
 .settingsChoice:has(input:focus-visible) {

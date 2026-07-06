@@ -244,6 +244,10 @@
   --asv-component-settings-sheet-width: 340px;
   --asv-component-settings-choice-height: 30px;
   --asv-component-settings-choice-gap: 2px;
+  --asv-component-settings-choice-group-bg: color-mix(in srgb, var(--asv-color-surface-control) 54%, transparent);
+  --asv-component-settings-choice-hover-bg: color-mix(in srgb, var(--asv-color-surface-control-hover) 62%, transparent);
+  --asv-component-settings-choice-selected-bg: var(--asv-color-surface-mode-selected);
+  --asv-component-settings-choice-selected-shadow: var(--asv-shadow-control-selected);
   --asv-effect-drag-overlay-backdrop-filter: saturate(1.08) blur(8px);
 
   /* Compatibility aliases consumed by the current implementation. */
@@ -470,6 +474,10 @@
   --asv-settings-sheet-width: var(--asv-component-settings-sheet-width);
   --asv-settings-choice-height: var(--asv-component-settings-choice-height);
   --asv-settings-choice-gap: var(--asv-component-settings-choice-gap);
+  --asv-settings-choice-group-bg: var(--asv-component-settings-choice-group-bg);
+  --asv-settings-choice-hover-bg: var(--asv-component-settings-choice-hover-bg);
+  --asv-settings-choice-selected-bg: var(--asv-component-settings-choice-selected-bg);
+  --asv-settings-choice-selected-shadow: var(--asv-component-settings-choice-selected-shadow);
 }
 
 :root[data-appearance="light"] {

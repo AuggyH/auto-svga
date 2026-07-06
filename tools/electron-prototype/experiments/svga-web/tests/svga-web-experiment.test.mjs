@@ -1259,6 +1259,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-settings-sheet-width/);
   assert.match(shortTermTokens, /--asv-component-settings-choice-height/);
   assert.match(shortTermTokens, /--asv-component-settings-choice-gap/);
+  assert.match(shortTermTokens, /--asv-settings-choice-group-bg: var\(--asv-component-settings-choice-group-bg\)/);
+  assert.match(shortTermTokens, /--asv-settings-choice-hover-bg: var\(--asv-component-settings-choice-hover-bg\)/);
+  assert.match(shortTermTokens, /--asv-settings-choice-selected-bg: var\(--asv-component-settings-choice-selected-bg\)/);
+  assert.match(shortTermTokens, /--asv-settings-choice-selected-shadow: var\(--asv-component-settings-choice-selected-shadow\)/);
   assert.match(shortTermTokens, /:root\[data-appearance="light"\]/);
   assert.match(shortTermTokens, /:root\[data-appearance="dark"\]/);
   assert.match(shortTermTokens, /:root:not\(\[data-appearance="light"\]\)/);
@@ -1356,8 +1360,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.settingsDialog/);
   assert.match(shortTermComponents, /\.settingsGroup/);
   assert.match(shortTermComponents, /\.settingsChoiceGroup/);
+  assert.match(shortTermComponents, /\.settingsChoiceGroup\s*\{[^}]*background: var\(--asv-settings-choice-group-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice/);
+  assert.match(shortTermComponents, /\.settingsChoice:hover\s*\{[^}]*background: var\(--asv-settings-choice-hover-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)/);
+  assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)\s*\{[^}]*background: var\(--asv-settings-choice-selected-bg\)/s);
+  assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)\s*\{[^}]*box-shadow: var\(--asv-settings-choice-selected-shadow\)/s);
   assert.match(shortTermComponents, /\.settingsChoice:has\(input:focus-visible\)/);
   assert.match(shortTermComponents, /\.contextMenu button:disabled/);
   assert.match(shortTermModules, /\.toolbarCluster/);
