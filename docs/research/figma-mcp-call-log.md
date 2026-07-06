@@ -257,3 +257,107 @@ Future component reads should:
   implemented or compared
 
 This reduces context waste and makes the log more complete.
+
+## Batch 02 - R1 Target Screenshot Archive
+
+Date: 2026-07-07
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R1 - Target Screenshot Archive
+Owner approval: Owner approved cautious progress from R1.
+
+### Objective
+
+Create stable local design-target screenshots for the short-term UI/UX
+implementation pass before any Figma-guided UI code changes.
+
+This batch intentionally did not read structured node metadata and did not
+modify app UI.
+
+### Planned Budget
+
+- Planned screenshot calls: 12-15
+- Planned quota-counted reads: 12-15
+- Hard stop for this batch: 16 screenshot calls
+- Request mode: URL output, no base64
+- Archive policy: save PNGs outside Git and commit text manifest only
+
+### Actual Usage
+
+| # | Tool | Node ID | Purpose | Counts against read quota | Time |
+| ---: | --- | --- | --- | --- | ---: |
+| 1 | `get_screenshot` | `37:154` | 启动 / 默认 pilot capture | Yes | 4.4508s |
+| 2 | `get_screenshot` | `27:2` | 预览 / 默认 | Yes | 4.2941s |
+| 3 | `get_screenshot` | `82:1821` | 预览 / imageKey 重命名 Dirty 状态 | Yes | 8.6070s |
+| 4 | `get_screenshot` | `82:2669` | 预览 / 优化详情 | Yes | 16.1712s |
+| 5 | `get_screenshot` | `64:2040` | 预览 / 优化结果对比 | Yes | 19.5493s |
+| 6 | `get_screenshot` | `66:522` | 对比 / 空态 | Yes | 12.0197s |
+| 7 | `get_screenshot` | `64:1320` | 对比 / 双文件已加载 | Yes | 4.7689s |
+| 8 | `get_screenshot` | `55:197` | 拖拽 / 已有文件_拖入对比 | Yes | 8.6486s |
+| 9 | `get_screenshot` | `64:361` | 拖拽 / 格式不支持_拖拽中 | Yes | 16.3922s |
+| 10 | `get_screenshot` | `86:1271` | 拖拽 / 格式不支持_Drop后 | Yes | 12.3855s |
+| 11 | `get_screenshot` | `55:535` | 编辑 / 默认 | Yes | 20.7243s |
+| 12 | `get_screenshot` | `83:2069` | 参考 / 设置面板 | Yes | 5.4349s |
+| 13 | `get_screenshot` | `80:16365` | 加载 / 加载中 | Yes | 9.7750s |
+| 14 | `get_screenshot` | `80:16612` | 加载 / 加载失败 | Yes | 13.8555s |
+| 15 | `get_screenshot` | `83:1136` | 保存 / 保存失败 | Yes | 16.5507s |
+
+Actual total MCP calls: 15
+
+Actual quota-counted reads, conservative: 15
+
+Measured MCP screenshot tool wall time total: 173.6277s
+
+Remaining practical daily budget after Batch 02: about 141 quota-counted reads.
+
+### Archive
+
+Stable local archive:
+
+`/Users/huangtengxin/Documents/Auto_SVGA_References/figma-mcp/2026-07-07-r1-target-screenshots/`
+
+Repository text manifest:
+
+`docs/research/figma-mcp-read-packets/r1-target-screenshot-manifest-20260707.md`
+
+Local files:
+
+- 15 target PNG screenshots
+- `contact-sheet.png`
+- `README.md`
+
+### Verification
+
+- Downloaded every screenshot URL before expiry.
+- `file` confirmed all downloaded files are PNG images.
+- `shasum -a 256` recorded hashes for all target screenshots.
+- A local contact sheet was generated and visually inspected.
+
+### Batch Result
+
+R1 is complete. The project now has stable visual target evidence for:
+
+- Launch
+- Preview default
+- Preview dirty Save As
+- Optimization detail
+- Optimization result comparison
+- Compare empty
+- Compare two-file loaded
+- Drag decision
+- Unsupported drag/drop
+- Edit reserved
+- Settings
+- Loading
+- Load failed
+- Save failed
+
+### Protocol Feedback
+
+- The pilot-first approach was useful: it caught that rendered screenshot
+  dimensions can include outer window/shadow treatment and differ from the
+  frame inventory dimensions.
+- Full app screenshots should continue to be read in small batches. One frame
+  crossed the 20s soft threshold, although the result was still usable.
+- Contact-sheet visual QA is a cheap guard against storing blank or wrong
+  target screenshots.

@@ -132,3 +132,22 @@ promoted, watched, rejected, or kept historical.
 - Evidence: P5 reset, short-term PRD correction, UI/UX canvas reset, and AEB
   promotion summarized in the baseline retrospective.
 - Status: promote
+
+## Use pilot screenshots before batch Figma target capture
+
+- Source: `docs/reviews/2026-07-07-codex-figma-mcp-r1-screenshot-archive.md`
+- Area: UI/UX, Figma MCP, validation, token-cost
+- Context: R1 target screenshot capture needed 15 Figma MCP screenshot calls
+  for the short-term UI/UX design targets while preserving a daily quota
+  reserve.
+- Problem: A broad screenshot batch can waste quota if screenshot dimensions,
+  URL downloading, local archiving, or visual content checks fail after several
+  calls have already been consumed.
+- Candidate rule: For Figma screenshot archive work, capture one pilot target
+  first, download it, hash it, and verify dimensions before batching the
+  remaining screenshots. Create a contact sheet for quick visual integrity
+  checks.
+- Evidence: The R1 pilot caught that rendered screenshots include outer
+  window/shadow treatment and can differ from inventory dimensions; one later
+  full-frame screenshot crossed the soft time threshold but was usable.
+- Status: watch
