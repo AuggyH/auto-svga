@@ -1236,6 +1236,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-launch-button-icon-size/);
   assert.match(shortTermTokens, /--asv-launch-clear-icon-size/);
   assert.match(shortTermTokens, /--asv-launch-recent-row-height/);
+  assert.match(shortTermTokens, /--asv-launch-recent-list-border: var\(--asv-component-launch-recent-list-border\)/);
+  assert.match(shortTermTokens, /--asv-launch-recent-row-border: var\(--asv-component-launch-recent-row-border\)/);
+  assert.match(shortTermTokens, /--asv-launch-recent-name-color: var\(--asv-component-launch-recent-name-color\)/);
+  assert.match(shortTermTokens, /--asv-launch-recent-clear-hover-bg: var\(--asv-component-launch-recent-clear-hover-bg\)/);
+  assert.match(shortTermTokens, /--asv-launch-recent-control-shadow: var\(--asv-component-launch-recent-control-shadow\)/);
   assert.match(shortTermTokens, /--asv-component-preview-gap/);
   assert.match(shortTermTokens, /--asv-component-compare-canvas-header-height/);
   assert.match(shortTermTokens, /--asv-component-compare-canvas-gap/);
@@ -1361,6 +1366,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.factGrid\s*\{[^}]*gap: var\(--asv-fact-grid-row-gap\) var\(--asv-fact-grid-column-gap\)/s);
   assert.match(shortTermModules, /\.launchDropIcon\s*\{/);
   assert.match(shortTermModules, /\.recentClearButton\s*\{/);
+  assert.match(shortTermModules, /\.recentClearButton\s*\{[^}]*box-shadow: var\(--asv-launch-recent-control-shadow\)/s);
+  assert.match(shortTermModules, /\.recentClearButton:hover:not\(:disabled\)\s*\{[^}]*background: var\(--asv-launch-recent-clear-hover-bg\)/s);
+  assert.match(shortTermModules, /\.recentBlock ol\s*\{[^}]*border-top: var\(--asv-launch-recent-list-border\)/s);
+  assert.match(shortTermModules, /\.recentBlock li\s*\{[^}]*border-bottom: var\(--asv-launch-recent-row-border\)/s);
+  assert.match(shortTermModules, /\.recentBlock li button\s*\{[^}]*color: var\(--asv-launch-recent-name-color\)/s);
+  assert.match(shortTermModules, /\.recentBlock li button\s*\{[^}]*box-shadow: var\(--asv-launch-recent-control-shadow\)/s);
   assert.doesNotMatch(shortTermModules, /inspector/);
   assert.match(shortTermModules, /grid-template-columns: var\(--asv-window-controls-width\) minmax\(0, 1fr\)/);
   assert.match(shortTermModules, /\.titlebar\s*\{[\s\S]*background: transparent/s);
