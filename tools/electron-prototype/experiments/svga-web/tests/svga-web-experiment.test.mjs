@@ -1270,6 +1270,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-playback-progress-height/);
   assert.match(shortTermTokens, /--asv-playback-progress-min-width: var\(--asv-component-playback-progress-min-width\)/);
   assert.match(shortTermTokens, /--asv-playback-time-width: var\(--asv-component-playback-time-width\)/);
+  assert.match(shortTermTokens, /--asv-playback-control-shadow: var\(--asv-component-playback-control-shadow\)/);
+  assert.match(shortTermTokens, /--asv-playback-progress-track-bg: var\(--asv-component-playback-track-bg\)/);
+  assert.match(shortTermTokens, /--asv-playback-progress-track-ring: var\(--asv-component-playback-track-ring\)/);
   assert.match(shortTermTokens, /--asv-component-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-fact-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 56px/);
@@ -1418,10 +1421,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.playbackBar\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.playbackBar\s*\{[^}]*background: transparent/s);
   assert.match(shortTermModules, /\.playbackIconButton/);
+  assert.match(shortTermModules, /\.playbackIconButton\s*\{[^}]*background: var\(--asv-playback-control-bg\)/s);
+  assert.match(shortTermModules, /\.playbackIconButton\s*\{[^}]*box-shadow: var\(--asv-playback-control-shadow\)/s);
   assert.match(shortTermModules, /\.playbackIconButton\[data-playback-state="playing"\] \.playbackIconPause/);
   assert.match(shortTermModules, /var\(--asv-playback-primary-size\)/);
   assert.match(shortTermModules, /var\(--asv-playback-control-size\)/);
   assert.match(shortTermModules, /\.playbackProgress/);
+  assert.match(shortTermModules, /\.playbackProgress\s*\{[^}]*background: var\(--asv-playback-progress-track-bg\)/s);
+  assert.match(shortTermModules, /\.playbackProgress\s*\{[^}]*box-shadow: var\(--asv-playback-progress-track-ring\)/s);
+  assert.doesNotMatch(shortTermModules, /\.playbackProgress\s*\{[^}]*color-mix\(in srgb, var\(--asv-color-border-default\)/s);
   assert.match(shortTermModules, /--asv-playback-progress: 0%/);
   assert.match(shortTermModules, /width: var\(--asv-playback-progress\)/);
   assert.match(shortTermModules, /\.playbackTime/);

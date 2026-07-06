@@ -65,8 +65,9 @@
   --asv-color-surface-drag-supported: color-mix(in srgb, var(--asv-success) 42%, transparent);
   --asv-color-surface-drag-unsupported: color-mix(in srgb, var(--asv-danger) 46%, transparent);
   --asv-color-surface-playback-bar: color-mix(in srgb, var(--asv-color-surface-panel-recessed) 72%, transparent);
-  --asv-color-surface-playback-control: color-mix(in srgb, var(--asv-color-surface-panel-strong) 34%, transparent);
-  --asv-color-surface-playback-control-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 48%, var(--asv-color-action-primary) 4%);
+  --asv-color-surface-playback-control: transparent;
+  --asv-color-surface-playback-control-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 42%, transparent);
+  --asv-color-surface-playback-track: color-mix(in srgb, var(--asv-color-border-default) 34%, transparent);
   --asv-color-surface-save-banner: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-action-primary) 4%);
   --asv-color-border-panel: color-mix(in srgb, var(--asv-color-border-default) 68%, transparent);
   --asv-color-border-control: color-mix(in srgb, var(--asv-color-border-default) 82%, transparent);
@@ -74,6 +75,7 @@
   --asv-color-border-subtle: color-mix(in srgb, var(--asv-color-border-default) 28%, transparent);
   --asv-color-border-badge: color-mix(in srgb, var(--asv-color-border-default) 42%, transparent);
   --asv-color-border-right-panel-separator: color-mix(in srgb, var(--asv-color-border-default) 38%, transparent);
+  --asv-color-border-playback-track: color-mix(in srgb, var(--asv-color-border-default) 18%, transparent);
   --asv-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.06);
   --asv-shadow-panel-chrome: 0 1px 2px rgba(15, 23, 42, 0.06);
   --asv-shadow-floating: 0 18px 44px rgba(15, 23, 42, 0.16);
@@ -133,6 +135,9 @@
   --asv-component-playback-progress-height: 4px;
   --asv-component-playback-progress-min-width: 160px;
   --asv-component-playback-time-width: 82px;
+  --asv-component-playback-control-shadow: none;
+  --asv-component-playback-track-bg: var(--asv-color-surface-playback-track);
+  --asv-component-playback-track-ring: inset 0 0 0 1px var(--asv-color-border-playback-track);
   --asv-component-fact-grid-row-gap: var(--asv-space-4);
   --asv-component-fact-grid-column-gap: var(--asv-space-3);
   --asv-component-fact-cell-min-height: 56px;
@@ -301,6 +306,9 @@
   --asv-playback-bar-bg: var(--asv-color-surface-playback-bar);
   --asv-playback-control-bg: var(--asv-color-surface-playback-control);
   --asv-playback-control-hover-bg: var(--asv-color-surface-playback-control-hover);
+  --asv-playback-control-shadow: var(--asv-component-playback-control-shadow);
+  --asv-playback-progress-track-bg: var(--asv-component-playback-track-bg);
+  --asv-playback-progress-track-ring: var(--asv-component-playback-track-ring);
   --asv-save-banner-bg: var(--asv-color-surface-save-banner);
   --asv-window: var(--asv-color-window);
   --asv-toolbar: var(--asv-color-toolbar);

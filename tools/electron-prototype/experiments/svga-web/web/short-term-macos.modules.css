@@ -486,7 +486,7 @@ canvas {
   border-radius: var(--asv-radius-md);
   background: var(--asv-playback-control-bg);
   color: var(--asv-muted);
-  box-shadow: none;
+  box-shadow: var(--asv-playback-control-shadow);
 }
 
 .playbackIconButton.primary {
@@ -521,8 +521,8 @@ canvas {
   overflow: hidden;
   height: var(--asv-playback-progress-height);
   border-radius: var(--asv-radius-lg);
-  background: color-mix(in srgb, var(--asv-color-border-default) 38%, transparent);
-  box-shadow: inset 0 0 0 1px var(--asv-subtle-border);
+  background: var(--asv-playback-progress-track-bg);
+  box-shadow: var(--asv-playback-progress-track-ring);
   pointer-events: none;
 }
 
