@@ -1253,6 +1253,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-asset-row-gap/);
   assert.match(shortTermTokens, /--asv-asset-row-divider: var\(--asv-component-asset-row-divider\)/);
   assert.match(shortTermTokens, /--asv-asset-row-hover-bg: var\(--asv-component-asset-row-hover-background\)/);
+  assert.match(shortTermTokens, /--asv-component-replaceable-row-gap/);
+  assert.match(shortTermTokens, /--asv-replaceable-row-divider: var\(--asv-component-replaceable-row-divider\)/);
+  assert.match(shortTermTokens, /--asv-replaceable-row-selected-bg: var\(--asv-component-replaceable-row-selected-background\)/);
   assert.match(shortTermTokens, /--asv-component-row-index-width/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
   assert.match(shortTermTokens, /--asv-row-index-width/);
@@ -1295,6 +1298,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.assetRow\s*\{[^}]*border-bottom: var\(--asv-asset-row-divider\)/s);
   assert.match(shortTermComponents, /\.assetRow:hover\s*\{[^}]*background: var\(--asv-asset-row-hover-bg\)/s);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
+  assert.match(shortTermComponents, /\.replaceableRow,[\s\S]*\.textElementRow\s*\{[^}]*gap: var\(--asv-replaceable-row-gap\)/s);
+  assert.match(shortTermComponents, /\.replaceableRow,[\s\S]*\.textElementRow\s*\{[^}]*border-bottom: var\(--asv-replaceable-row-divider\)/s);
+  assert.match(shortTermComponents, /\.replaceableRow\.isSelected,[\s\S]*\.textElementRow\.isSelected\s*\{[^}]*background: var\(--asv-replaceable-row-selected-bg\)/s);
   assert.match(shortTermComponents, /\.messageRow/);
   assert.match(shortTermComponents, /\.messageRow\[data-status="success"\]/);
   assert.doesNotMatch(shortTermComponents, /\.reservedNotice/);
@@ -1727,6 +1733,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /createTextElementRow|nodes\.textElementList\.replaceChildren|nodes\.textPreviewSummary\.textContent =|nodes\.editTextButton\.hidden =|nodes\.resetTextButton\.hidden =/);
   assert.match(shortTermReplaceableRenderers, /nodes\.textElementList\.replaceChildren/);
   assert.match(shortTermReplaceableRenderers, /nodes\.textPreviewSummary\.textContent = view\.summaryCopy/);
+  assert.doesNotMatch(shortTermReplaceableRenderers, /Enter 确认 · Esc 取消/);
   assert.match(shortTermReplaceableRenderers, /data-component="InlineTextReplacementInput"/);
   assert.match(shortTermReplaceableRenderers, /data-action="runtime-text-reset"/);
   assert.doesNotMatch(shortTermReplaceableRenderers, /nodes\.editTextButton\.hidden|nodes\.resetTextButton\.hidden/);
@@ -1937,7 +1944,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermController, /confirmInlineRename/);
   assert.match(shortTermReplaceableRenderers, /inline-rename-confirm/);
   assert.match(shortTermReplaceableRenderers, /inline-rename-cancel/);
-  assert.match(shortTermReplaceableRenderers, /Enter 确认 · Esc 取消/);
+  assert.doesNotMatch(shortTermReplaceableRenderers, /Enter 确认 · Esc 取消/);
   assert.match(shortTermEventBindings, /event\.key === "Enter"[\s\S]*handlers\.confirmInlineRename/);
   assert.match(shortTermEventBindings, /event\.key === "Escape"[\s\S]*handlers\.cancelInlineRename/);
   assert.match(shortTermController, /openKeyboardResourceContextMenu/);

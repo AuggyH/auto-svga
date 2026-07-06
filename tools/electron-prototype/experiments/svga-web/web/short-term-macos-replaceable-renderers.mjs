@@ -19,7 +19,6 @@ export function createReplaceableImageRow(item, index, options) {
       <span class="thumb">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
       <label class="rowText renameEditor">新 imageKey
         <input class="renameInputInline" data-rename-input value="${escapeHtml(item.imageKey)}" autocomplete="off">
-        <span>Enter 确认 · Esc 取消</span>
       </label>
       <span class="inlineActions">
         <button type="button" data-action="inline-rename-confirm">确认</button>

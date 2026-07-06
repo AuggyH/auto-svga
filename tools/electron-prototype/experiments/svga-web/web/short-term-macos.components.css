@@ -335,10 +335,11 @@
 
 .replaceableRow,
 .textElementRow {
-  padding: var(--asv-space-2) var(--asv-space-1);
+  gap: var(--asv-replaceable-row-gap);
+  padding: var(--asv-replaceable-row-padding-block) var(--asv-replaceable-row-padding-inline);
   border: 0;
-  border-bottom: 1px solid var(--asv-subtle-border);
-  border-radius: 0;
+  border-bottom: var(--asv-replaceable-row-divider);
+  border-radius: var(--asv-replaceable-row-radius);
   background: transparent;
   box-shadow: none;
   outline: none;
@@ -350,14 +351,29 @@
 .textElementRow:hover,
 .textElementRow.isSelected,
 .textElementRow:focus-visible {
-  border-color: var(--asv-subtle-border);
-  background: var(--asv-row-hover-bg);
+  background: var(--asv-replaceable-row-hover-bg);
   box-shadow: none;
+}
+
+.replaceableRow.isSelected,
+.textElementRow.isSelected {
+  background: var(--asv-replaceable-row-selected-bg);
+  box-shadow: var(--asv-replaceable-row-selected-shadow);
 }
 
 .replaceableRow:focus-visible,
 .textElementRow:focus-visible {
   box-shadow: var(--asv-focus);
+}
+
+.replaceableRow .rowIndex,
+.textElementRow .rowIndex {
+  color: var(--asv-replaceable-row-index-color);
+}
+
+.replaceableRow .rowText span,
+.textElementRow .rowText span {
+  color: var(--asv-replaceable-row-detail-color);
 }
 
 .appDialog {
