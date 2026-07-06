@@ -780,11 +780,11 @@ canvas {
 
 .compareCanvasHeader {
   position: absolute;
+  display: none;
   z-index: 2;
   top: var(--asv-space-3);
   right: var(--asv-space-3);
   left: var(--asv-space-3);
-  display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: var(--asv-space-2);
   align-items: center;

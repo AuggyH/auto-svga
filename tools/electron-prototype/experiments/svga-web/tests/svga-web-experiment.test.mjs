@@ -1439,6 +1439,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.playbackMeta/);
   assert.doesNotMatch(shortTermModules, /\.textPreviewActions/);
   assert.match(shortTermModules, /\.compareCanvasHeader/);
+  assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*display: none/s);
+  assert.doesNotMatch(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*display: grid/s);
   assert.match(shortTermModules, /\.comparePairHeader/);
   assert.match(shortTermModules, /\.compareMetricRow/);
   assert.match(shortTermModules, /\.compareMetricCell/);
