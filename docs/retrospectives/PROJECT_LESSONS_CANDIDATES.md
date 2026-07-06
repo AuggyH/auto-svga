@@ -52,3 +52,52 @@ promoted, watched, rejected, or kept historical.
 - Evidence: The task ledger schema records token source and counts without raw
   transcript fields.
 - Status: promote
+
+## Batch adjacent visual polish into owner-visible bundles
+
+- Source: `docs/retrospectives/weekly/2026-W28.md`
+- Area: UI/UX, coordination, token-cost
+- Context: The first weekly retrospective counted 144 review files across
+  2026-07-04 through 2026-07-06, including 116 UI/UX reviews. Many were
+  neighboring split or polish slices with repeated scope, smoke, foreground,
+  and next-step language.
+- Problem: Small slices improve traceability, but too many adjacent visual-only
+  slices multiply startup, validation, screenshot, review, and handoff cost.
+- Candidate rule: Batch adjacent visual-only polish by page state or surface
+  and run one bundled foreground acceptance pass, unless behavior, save/output,
+  host security, accessibility-critical focus behavior, or fragile cross-state
+  layout requires isolation.
+- Evidence: `docs/retrospectives/weekly/2026-W28.md`
+- Status: promote
+
+## Use P6 retrospectives as a preflight anti-pattern checklist
+
+- Source: `docs/retrospectives/P6_POSTMORTEM.md`,
+  `docs/retrospectives/P6_ROOT_CAUSE_TREE.md`,
+  `docs/retrospectives/P6_MULTI_WORKER_ASSESSMENT.md`,
+  `docs/retrospectives/P6_REPAIR_ROUND_MATRIX.md`
+- Area: implementation, validation, coordination
+- Context: P6 consumed six repair rounds while still missing product
+  acceptance because evidence, packaging, protocol, and technical-layer work
+  competed with vertical user-flow proof.
+- Problem: Future milestones can repeat the same pattern if workers pass by
+  layer while no one owns a complete user journey.
+- Candidate rule: Before any large multi-lane milestone, check for vertical
+  owner, failure-first evidence, machine/human gate separation, and
+  final-head-bound proof.
+- Evidence: First weekly retrospective confirms these retrospectives remain
+  the highest-value historical learning source.
+- Status: promote
+
+## Centralize repeated foreground-validation disclaimers
+
+- Source: `docs/retrospectives/weekly/2026-W28.md`
+- Area: UI/UX, validation, token-cost
+- Context: Recent UI/UX reviews repeatedly state that smoke is regression-only
+  and foreground macOS evidence is still required.
+- Problem: The disclaimer is correct, but repeating it in every adjacent
+  visual slice consumes attention without closing acceptance.
+- Candidate rule: Maintain one active foreground-validation checklist per
+  UI/UX bundle; individual reviews should reference it and only add deltas.
+- Evidence: `docs/retrospectives/weekly/2026-W28.md`
+- Status: watch

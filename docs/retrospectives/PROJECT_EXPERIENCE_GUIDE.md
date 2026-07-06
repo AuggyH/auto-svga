@@ -64,6 +64,15 @@ release gate, or acceptance record.
   integration point.
 - If the working tree is dirty, isolate your staged files. Do not clean up or
   commit another lane's changes unless explicitly asked.
+- Use vertical user-flow ownership for major capability closure. Technical
+  layers may be useful implementation slices, but they are not enough to claim
+  evidence-ready product behavior.
+- Batch adjacent visual-only UI polish by page state or surface. Avoid paying a
+  full task-start, smoke, screenshot, review, and handoff cycle for every tiny
+  neighboring style change unless risk requires isolation.
+- Keep one foreground-validation checklist per UI/UX bundle. Individual
+  visual-only reviews should link to the bundle evidence instead of restating
+  the same smoke-vs-foreground boundary each time.
 
 ## Token And Context Cost
 
@@ -75,3 +84,7 @@ release gate, or acceptance record.
   over full diffs, full logs, and repeated background explanations.
 - When token usage is high but justified, record why. When token usage is high
   and avoidable, add an avoidance note to the task retrospective.
+- Declare the validation tier before running checks. Documentation and
+  low-risk visual-token work should not trigger full regression by habit;
+  parser, exporter, playback, host, dependency, and release work still needs
+  stronger gates.
