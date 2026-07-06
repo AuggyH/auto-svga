@@ -122,6 +122,9 @@
   --asv-component-playback-control-size: 32px;
   --asv-component-playback-icon-size: 18px;
   --asv-component-playback-primary-icon-size: 20px;
+  --asv-component-playback-progress-height: 4px;
+  --asv-component-playback-progress-min-width: 160px;
+  --asv-component-playback-time-width: 82px;
   --asv-component-fact-cell-min-height: 60px;
   --asv-component-fact-cell-gap: 1px;
   --asv-component-fact-cell-meta-gap: 0px;
@@ -256,6 +259,9 @@
   --asv-playback-control-size: var(--asv-component-playback-control-size);
   --asv-playback-icon-size: var(--asv-component-playback-icon-size);
   --asv-playback-primary-icon-size: var(--asv-component-playback-primary-icon-size);
+  --asv-playback-progress-height: var(--asv-component-playback-progress-height);
+  --asv-playback-progress-min-width: var(--asv-component-playback-progress-min-width);
+  --asv-playback-time-width: var(--asv-component-playback-time-width);
   --asv-fact-cell-min-height: var(--asv-component-fact-cell-min-height);
   --asv-fact-cell-gap: var(--asv-component-fact-cell-gap);
   --asv-fact-cell-meta-gap: var(--asv-component-fact-cell-meta-gap);

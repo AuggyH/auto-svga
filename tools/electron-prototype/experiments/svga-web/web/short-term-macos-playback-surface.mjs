@@ -1,6 +1,7 @@
 import {
   clearCanvas,
   mountPlayback,
+  playbackProgressView,
   replayPrimaryPlayback,
   stopAllPlayback,
   stopPlayback,
@@ -40,6 +41,13 @@ export function toggleShortTermPrimaryPlayback({ state, onPlaybackStateChange })
 
 export function replayShortTermPrimaryPlayback({ state, onPlaybackStateChange }) {
   replayPrimaryPlayback(state, onPlaybackStateChange);
+}
+
+export function renderShortTermPlaybackProgress(nodes, playback) {
+  const view = playbackProgressView(playback);
+  nodes.playbackProgress?.style.setProperty("--asv-playback-progress", `${view.progress}%`);
+  nodes.playbackProgress?.setAttribute("aria-valuenow", String(Math.round(view.progress)));
+  if (nodes.playbackTime) nodes.playbackTime.textContent = view.timeCopy;
 }
 
 export function clearShortTermPlaybackCanvas(canvas) {

@@ -25,6 +25,8 @@ export function collectShortTermNodes() {
     compareCanvasMetaA: document.querySelector("#compareCanvasMetaA"),
     compareCanvasMetaB: document.querySelector("#compareCanvasMetaB"),
     editCanvas: document.querySelector("#editCanvas"),
+    playbackProgress: document.querySelector("#playbackProgress"),
+    playbackTime: document.querySelector("#playbackTime"),
     playbackMeta: document.querySelector("#playbackMeta"),
     factGrid: document.querySelector("#factGrid"),
     assetList: document.querySelector("#assetList"),

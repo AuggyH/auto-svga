@@ -19,6 +19,7 @@ import {
   clearShortTermPlaybackCanvas,
   mountShortTermPlayback,
   replayShortTermPrimaryPlayback,
+  renderShortTermPlaybackProgress,
   stopAllShortTermPlayback,
   stopShortTermPlayback,
   toggleShortTermPrimaryPlayback
@@ -100,6 +101,27 @@ import {
 } from "./short-term-macos-settings-surface.mjs";
 
 export function createShortTermAppController({ bridge, nodes, state }) {
+  let playbackProgressFrame = 0;
+
+  function renderPlaybackProgress() {
+    renderShortTermPlaybackProgress(nodes, state.primaryPlayback);
+  }
+
+  function stopPlaybackProgressLoop() {
+    if (playbackProgressFrame) cancelAnimationFrame(playbackProgressFrame);
+    playbackProgressFrame = 0;
+    renderPlaybackProgress();
+  }
+
+  function startPlaybackProgressLoop() {
+    if (playbackProgressFrame) return;
+    const tick = () => {
+      renderPlaybackProgress();
+      playbackProgressFrame = state.primaryPlayback ? requestAnimationFrame(tick) : 0;
+    };
+    tick();
+  }
+
   function setView(view) {
     state.view = view;
     applyViewState(nodes.app, view);
@@ -495,7 +517,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   }
 
   async function mountPlayback(key, canvas, bytes, options = {}) {
-    return mountShortTermPlayback({
+    const playback = await mountShortTermPlayback({
       state,
       key,
       canvas,
@@ -503,14 +525,18 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       options,
       onPlaybackStateChange: renderCommandState
     });
+    if (key === "primary") startPlaybackProgressLoop();
+    return playback;
   }
 
   function stopPlayback(key) {
     stopShortTermPlayback({ state, key });
+    if (key === "primary") stopPlaybackProgressLoop();
   }
 
   function stopAllPlayback() {
     stopAllShortTermPlayback(state);
+    stopPlaybackProgressLoop();
   }
 
   function togglePrimaryPlayback() {

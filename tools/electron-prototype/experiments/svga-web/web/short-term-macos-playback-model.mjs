@@ -65,6 +65,32 @@ export function clearCanvas(canvas) {
   context?.clearRect(0, 0, canvas.width, canvas.height);
 }
 
+export function playbackProgressView(playback) {
+  const frames = Math.max(0, Number(playback?.videoItem?.frames ?? 0));
+  const fps = Math.max(0, Number(playback?.videoItem?.FPS ?? 0));
+  const currentFrame = Math.max(0, Number(playback?.player?.currentFrame ?? 0));
+  const rawProgress = typeof playback?.player?.progress === "number"
+    ? playback.player.progress
+    : frames > 0
+      ? (currentFrame / frames) * 100
+      : 0;
+  const progress = Math.max(0, Math.min(100, rawProgress));
+  const durationSeconds = frames > 0 && fps > 0 ? frames / fps : 0;
+  const currentSeconds = fps > 0 ? Math.min(durationSeconds, currentFrame / fps) : 0;
+  return {
+    progress,
+    timeCopy: `${formatPlaybackTime(currentSeconds)} / ${formatPlaybackTime(durationSeconds)}`
+  };
+}
+
 export function svgaWebPlayerPrototype() {
   return SvgaWebPlayer.prototype;
+}
+
+function formatPlaybackTime(seconds) {
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  const wholeSeconds = Math.floor(safeSeconds);
+  const minutes = Math.floor(wholeSeconds / 60);
+  const remainder = wholeSeconds % 60;
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }

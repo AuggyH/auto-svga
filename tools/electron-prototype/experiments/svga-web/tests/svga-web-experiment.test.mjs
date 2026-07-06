@@ -1146,6 +1146,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /class="playbackIconButton" data-action="replay"/);
   assert.doesNotMatch(page, /<button type="button" data-action="play-pause">播放<\/button>/);
   assert.doesNotMatch(page, /<button type="button" data-action="replay">重播<\/button>/);
+  assert.match(page, /class="playbackProgress" id="playbackProgress" role="progressbar" aria-label="播放进度"/);
+  assert.match(page, /class="playbackTime" id="playbackTime">0:00 \/ 0:00<\/span>/);
   assert.match(page, /class="playbackMeta" id="playbackMeta" aria-live="polite" data-component="InlineStatus"/);
   assert.match(page, /class="playbackBar comparePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled"/);
   assert.match(page, /class="playbackIconButton primary" data-playback-state="paused" aria-label="播放" title="播放" disabled/);
@@ -1238,6 +1240,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /:root\[data-appearance="dark"\]/);
   assert.match(shortTermTokens, /:root:not\(\[data-appearance="light"\]\)/);
   assert.match(shortTermTokens, /--asv-playback-bar-height/);
+  assert.match(shortTermTokens, /--asv-component-playback-progress-height/);
+  assert.match(shortTermTokens, /--asv-playback-progress-min-width: var\(--asv-component-playback-progress-min-width\)/);
+  assert.match(shortTermTokens, /--asv-playback-time-width: var\(--asv-component-playback-time-width\)/);
   assert.match(shortTermTokens, /--asv-component-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-fact-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 60px/);
@@ -1305,6 +1310,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceHeader \.toolbarButton\.primary\s*\{[^}]*background: var\(--asv-action\)/s);
   assert.match(shortTermModules, /\.canvasModeSwitch\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasWrap\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
+  assert.match(shortTermModules, /\.compareCanvasSurface\s*\{[^}]*position: relative/s);
   assert.match(shortTermModules, /\.compareCanvasSurface\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\) auto/s);
   assert.match(shortTermModules, /\.compareCanvasOpenButton\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareCanvasOpenButton\s*\{[^}]*display: none/s);
@@ -1325,10 +1331,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.saveBanner\[data-status="loading"\]::before/);
   assert.doesNotMatch(shortTermModules, /\.canvasWrap\[data-canvas-label\]::before/);
   assert.match(shortTermModules, /\.playbackActions/);
+  assert.match(shortTermModules, /\.playbackBar\s*\{[^}]*position: absolute/s);
+  assert.match(shortTermModules, /\.playbackBar\s*\{[^}]*background: transparent/s);
   assert.match(shortTermModules, /\.playbackIconButton/);
   assert.match(shortTermModules, /\.playbackIconButton\[data-playback-state="playing"\] \.playbackIconPause/);
   assert.match(shortTermModules, /var\(--asv-playback-primary-size\)/);
   assert.match(shortTermModules, /var\(--asv-playback-control-size\)/);
+  assert.match(shortTermModules, /\.playbackProgress/);
+  assert.match(shortTermModules, /--asv-playback-progress: 0%/);
+  assert.match(shortTermModules, /width: var\(--asv-playback-progress\)/);
+  assert.match(shortTermModules, /\.playbackTime/);
   assert.match(shortTermModules, /\.playbackMeta/);
   assert.doesNotMatch(shortTermModules, /\.textPreviewActions/);
   assert.match(shortTermModules, /\.compareCanvasHeader/);
@@ -1855,6 +1867,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPlaybackSurface, /export function stopAllShortTermPlayback/);
   assert.match(shortTermPlaybackSurface, /export function toggleShortTermPrimaryPlayback/);
   assert.match(shortTermPlaybackSurface, /export function replayShortTermPrimaryPlayback/);
+  assert.match(shortTermPlaybackSurface, /export function renderShortTermPlaybackProgress/);
+  assert.match(shortTermController, /requestAnimationFrame\(tick\)/);
+  assert.match(shortTermController, /cancelAnimationFrame\(playbackProgressFrame\)/);
+  assert.match(shortTermController, /if \(key === "primary"\) startPlaybackProgressLoop\(\)/);
   assert.match(shortTermPlaybackSurface, /export function clearShortTermPlaybackCanvas/);
   assert.match(shortTermPlaybackSurface, /export function shortTermPlayerPrototype/);
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-playback-model\.mjs"/);
@@ -1863,6 +1879,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPlaybackModel, /export function stopAllPlayback/);
   assert.match(shortTermPlaybackModel, /export function togglePrimaryPlayback/);
   assert.match(shortTermPlaybackModel, /export function replayPrimaryPlayback/);
+  assert.match(shortTermPlaybackModel, /export function playbackProgressView/);
+  assert.match(shortTermPlaybackModel, /formatPlaybackTime/);
   assert.match(shortTermPlaybackModel, /export function clearCanvas/);
   assert.match(shortTermPlaybackModel, /export function svgaWebPlayerPrototype/);
   assert.match(shortTermPlaybackModel, /Parser as SvgaWebParser/);
