@@ -8,7 +8,7 @@ export function renderOverviewFactCellHtml(fact) {
   return `
     <span>${escapeHtml(fact.label)}</span>
     <strong>${escapeHtml(fact.value)}</strong>
-    ${status ? `<button type="button" class="metricOptimizationEntry" data-action="open-optimization"><b>${escapeHtml(status)}</b></button>` : ""}
+    ${status ? `<button type="button" class="metricOptimizationEntry" data-component="MetricOptimizationEntry" data-action="open-optimization" aria-label="${escapeHtml(fact.label)}${escapeHtml(status)}"><b>${escapeHtml(status)}</b></button>` : ""}
   `;
 }
 

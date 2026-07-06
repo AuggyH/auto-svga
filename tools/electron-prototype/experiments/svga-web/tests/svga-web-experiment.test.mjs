@@ -1247,6 +1247,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-fact-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 60px/);
   assert.match(shortTermTokens, /--asv-fact-cell-meta-gap: var\(--asv-component-fact-cell-meta-gap\)/);
+  assert.match(shortTermTokens, /--asv-component-metric-entry-height/);
+  assert.match(shortTermTokens, /--asv-metric-entry-bg: var\(--asv-component-metric-entry-bg\)/);
+  assert.match(shortTermTokens, /--asv-metric-entry-color: var\(--asv-component-metric-entry-color\)/);
   assert.match(shortTermTokens, /--asv-component-row-index-width/);
   assert.match(shortTermTokens, /--asv-status-strip-width/);
   assert.match(shortTermTokens, /--asv-row-index-width/);
@@ -1281,6 +1284,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.factCell::before\s*\{[^}]*display: none/s);
   assert.match(shortTermComponents, /\.factCell strong\s*\{[^}]*font-family: var\(--asv-font\)/s);
   assert.match(shortTermComponents, /\.factCell small\s*\{[^}]*margin-top: var\(--asv-fact-cell-meta-gap\)/s);
+  assert.match(shortTermComponents, /\.metricOptimizationEntry\s*\{[^}]*border-radius: var\(--asv-status-strip-radius\)/s);
+  assert.match(shortTermComponents, /\.metricOptimizationEntry\s*\{[^}]*background: var\(--asv-metric-entry-bg\)/s);
+  assert.match(shortTermComponents, /\.metricOptimizationEntry::after\s*\{[^}]*border-top: var\(--asv-metric-entry-arrow-stroke\) solid currentColor/s);
   assert.match(shortTermComponents, /\.assetRow/);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
   assert.match(shortTermComponents, /\.messageRow/);
@@ -1897,6 +1903,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermApiClient, /x-auto-svga-prototype-token/);
   assert.doesNotMatch(shortTermEntry, /function postBytes|function postJson|function authHeaders|function readJsonResponse|\/api\/short-term-product-/);
   assert.match(shortTermRenderModel, /export function renderOverviewFactCellHtml/);
+  assert.match(shortTermRenderModel, /data-component="MetricOptimizationEntry"/);
   assert.match(shortTermRenderModel, /export function renderOptimizationFindingHtml/);
   assert.match(shortTermRenderModel, /export function renderMessageRowHtml\(title, summary, tone = "info"\)/);
   assert.match(shortTermRenderModel, /success: "已生成"/);

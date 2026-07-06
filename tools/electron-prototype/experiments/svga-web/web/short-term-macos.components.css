@@ -126,38 +126,51 @@
 
 .metricOptimizationEntry {
   display: inline-flex;
+  align-items: center;
   gap: var(--asv-space-1);
   margin-top: var(--asv-fact-cell-meta-gap);
   justify-self: start;
-  min-height: var(--asv-badge-min-height);
-  padding: 0 var(--asv-space-2);
+  min-height: var(--asv-metric-entry-height);
+  padding: 0 var(--asv-metric-entry-padding-inline);
   border: 0;
-  border-radius: var(--asv-radius-sm);
-  background: var(--asv-badge-bg);
-  color: var(--asv-subtle);
-  cursor: default;
+  border-radius: var(--asv-status-strip-radius);
+  background: var(--asv-metric-entry-bg);
+  box-shadow: inset 0 0 0 1px var(--asv-metric-entry-border);
+  color: var(--asv-metric-entry-color);
+  cursor: pointer;
   font: inherit;
-  line-height: var(--asv-badge-min-height);
+  font-size: var(--asv-type-size-footnote);
+  line-height: var(--asv-metric-entry-height);
+  transition:
+    background-color var(--asv-motion-duration-fast) ease,
+    box-shadow var(--asv-motion-duration-fast) ease;
+}
+
+.metricOptimizationEntry::after {
+  content: "";
+  width: var(--asv-metric-entry-arrow-size);
+  height: var(--asv-metric-entry-arrow-size);
+  border-top: var(--asv-metric-entry-arrow-stroke) solid currentColor;
+  border-right: var(--asv-metric-entry-arrow-stroke) solid currentColor;
+  transform: rotate(45deg);
 }
 
 .factCell small b,
 .metricOptimizationEntry b {
-  color: var(--asv-muted);
+  color: currentColor;
   font-weight: 650;
 }
 
-.factCell[data-status="warning"] small b,
-.factCell[data-status="warning"] .metricOptimizationEntry b {
+.factCell[data-status="warning"] small b {
   color: var(--asv-warning);
 }
 
-.factCell[data-status="fail"] small b,
-.factCell[data-status="fail"] .metricOptimizationEntry b {
+.factCell[data-status="fail"] small b {
   color: var(--asv-danger);
 }
 
 .metricOptimizationEntry:hover {
-  background: var(--asv-control-hover-bg);
+  background: var(--asv-metric-entry-hover-bg);
 }
 
 .assetRow,

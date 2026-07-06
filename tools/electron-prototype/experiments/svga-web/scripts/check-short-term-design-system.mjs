@@ -46,6 +46,7 @@ const allowedDataComponents = new Set([
   "RightInformationSurface",
   "OverviewFactRow",
   "ProductionSpecInlineRow",
+  "MetricOptimizationEntry",
   "AssetRow",
   "SequenceThumbnail",
   "AudioAssetRow",
