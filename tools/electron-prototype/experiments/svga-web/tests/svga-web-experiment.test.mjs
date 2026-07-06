@@ -1253,7 +1253,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-playback-time-width: var\(--asv-component-playback-time-width\)/);
   assert.match(shortTermTokens, /--asv-component-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-fact-status-strip-width/);
-  assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 60px/);
+  assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 56px/);
   assert.match(shortTermTokens, /--asv-fact-cell-meta-gap: var\(--asv-component-fact-cell-meta-gap\)/);
   assert.match(shortTermTokens, /--asv-component-metric-entry-height/);
   assert.match(shortTermTokens, /--asv-metric-entry-bg: var\(--asv-component-metric-entry-bg\)/);
@@ -1302,9 +1302,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.factCell\s*\{[^}]*align-content: center/s);
   assert.match(shortTermComponents, /\.factCell\s*\{[^}]*padding: 0/s);
   assert.match(shortTermComponents, /\.factCell\s*\{[^}]*box-shadow: none/s);
-  assert.match(shortTermComponents, /\.factCell:nth-child\(5\)\s*\{[^}]*grid-column: 1 \/ -1/s);
+  assert.doesNotMatch(shortTermComponents, /\.factCell:nth-child\(5\)/);
   assert.match(shortTermComponents, /\.factCell::before\s*\{[^}]*display: none/s);
   assert.match(shortTermComponents, /\.factCell strong\s*\{[^}]*font-family: var\(--asv-font\)/s);
+  assert.match(shortTermComponents, /\.factCell strong\s*\{[^}]*color: var\(--asv-fact-cell-value-color\)/s);
+  assert.match(shortTermComponents, /\.factCell span\s*\{[^}]*color: var\(--asv-fact-cell-label-color\)/s);
   assert.match(shortTermComponents, /\.factCell small\s*\{[^}]*margin-top: var\(--asv-fact-cell-meta-gap\)/s);
   assert.match(shortTermComponents, /\.metricOptimizationEntry\s*\{[^}]*border-radius: var\(--asv-status-strip-radius\)/s);
   assert.match(shortTermComponents, /\.metricOptimizationEntry\s*\{[^}]*background: var\(--asv-metric-entry-bg\)/s);
@@ -1342,6 +1344,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightPanel/);
   assert.match(shortTermModules, /box-shadow: inset var\(--asv-right-panel-separator-width\) 0 0 var\(--asv-right-panel-separator\)/);
   assert.match(shortTermModules, /\.rightSurfaceBody\s*\{[^}]*background: var\(--asv-right-panel\)/s);
+  assert.match(shortTermModules, /\.factGrid\s*\{[^}]*gap: var\(--asv-fact-grid-row-gap\) var\(--asv-fact-grid-column-gap\)/s);
   assert.match(shortTermModules, /\.launchDropIcon\s*\{/);
   assert.match(shortTermModules, /\.recentClearButton\s*\{/);
   assert.doesNotMatch(shortTermModules, /inspector/);

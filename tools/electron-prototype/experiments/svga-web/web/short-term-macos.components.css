@@ -61,10 +61,6 @@
     box-shadow var(--asv-motion-duration-fast) ease;
 }
 
-.factCell:nth-child(5) {
-  grid-column: 1 / -1;
-}
-
 .factCell::before {
   content: "";
   display: none;
@@ -99,15 +95,16 @@
   display: block;
   overflow-wrap: anywhere;
   font-family: var(--asv-font);
-  font-size: var(--asv-type-size-metadata);
+  color: var(--asv-fact-cell-value-color);
+  font-size: var(--asv-fact-cell-value-size);
   font-weight: 650;
   line-height: 1.25;
 }
 
 .factCell span {
   grid-row: 1;
-  color: var(--asv-muted);
-  font-size: var(--asv-type-size-footnote);
+  color: var(--asv-fact-cell-label-color);
+  font-size: var(--asv-fact-cell-label-size);
   font-weight: 560;
 }
 

@@ -632,7 +632,7 @@ canvas {
 .factGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--asv-space-4) var(--asv-space-3);
+  gap: var(--asv-fact-grid-row-gap) var(--asv-fact-grid-column-gap);
   overflow: hidden;
   background: transparent;
 }
