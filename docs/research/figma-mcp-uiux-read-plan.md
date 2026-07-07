@@ -887,7 +887,11 @@ Each WP review must include:
 ## Next Action
 
 R1 screenshots, R2 tokens, R3 hierarchy, and R3b dependency planning are
-complete. The next efficient Figma action is R4, and it requires explicit Owner
+complete. WP1A has started implementation by wiring the R2 base palette,
+semantic color aliases, spacing scale, radius scale, dark aliases, and
+design-system regression check into the short-term client.
+
+The next efficient Figma action is still R4, and it requires explicit Owner
 authorization before any MCP call.
 
 Recommended first R4 request:

@@ -227,3 +227,20 @@ promoted, watched, rejected, or kept historical.
 - Evidence: R3b narrowed the next R4 action to `Module/启动页模块/默认`
   (`125:42`) with a one-call expected budget and two-call hard cap.
 - Status: watch
+
+## Turn Figma token reads into code guardrails before more visual polish
+
+- Source:
+  `docs/reviews/2026-07-07-codex-short-term-uiux-wp1a-figma-token-foundation.md`
+- Area: UI/UX, design systems, Figma MCP, implementation quality
+- Context: R2 produced exact base palette, semantic color, spacing, and radius
+  values, but those values only became useful for implementation after they
+  were wired into `short-term-macos.tokens.css`.
+- Problem: Reading token values without adding code-level checks lets later
+  visual work drift back to local color and spacing choices.
+- Candidate rule: After a token extraction round, land a small WP that maps the
+  extracted variables into code tokens and adds a design-system check before
+  starting broad visual polish.
+- Evidence: WP1A added Figma R2 base/semantic token coverage and a
+  `figma-r2-token-foundation-covered` design-system check.
+- Status: watch

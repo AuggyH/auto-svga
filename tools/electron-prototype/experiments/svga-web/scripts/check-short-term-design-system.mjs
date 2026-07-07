@@ -187,6 +187,21 @@ function collectPatternViolations(file, source, patterns) {
   return violations;
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function collectMissingTokenValues(source, expectedTokens) {
+  const missing = [];
+  for (const [name, expectedValue] of expectedTokens) {
+    const pattern = new RegExp(`${escapeRegExp(name)}:\\s*${escapeRegExp(expectedValue)};`);
+    if (!pattern.test(source)) {
+      missing.push({ name, expectedValue });
+    }
+  }
+  return missing;
+}
+
 async function main() {
   const page = await readFile(path.join(webRoot, "index.html"), "utf8");
   const appEntry = await readFile(path.join(webRoot, "short-term-macos-app.mjs"), "utf8");
@@ -263,6 +278,7 @@ async function main() {
   }
 
   const atoms = await readFile(path.join(webRoot, "short-term-macos.atoms.css"), "utf8");
+  const tokens = await readFile(path.join(webRoot, "short-term-macos.tokens.css"), "utf8");
   const molecules = await readFile(path.join(webRoot, "short-term-macos.molecules.css"), "utf8");
   const components = await readFile(path.join(webRoot, "short-term-macos.components.css"), "utf8");
   const modules = await readFile(path.join(webRoot, "short-term-macos.modules.css"), "utf8");
@@ -284,6 +300,98 @@ async function main() {
     && /min-height:\s*720px/.test(baseCss)
     && /@media \(max-width: 1080px\)/.test(pageStatesCss)
     && /@media \(max-height: 780px\)/.test(pageStatesCss));
+
+  const figmaR2FoundationTokens = new Map([
+    ["--asv-base-neutral-0", "#ffffff"],
+    ["--asv-base-neutral-50", "#f8f8f8"],
+    ["--asv-base-neutral-100", "#f0f0f0"],
+    ["--asv-base-neutral-150", "#e8e8e8"],
+    ["--asv-base-neutral-200", "#e0e0e0"],
+    ["--asv-base-neutral-300", "#c4c4c4"],
+    ["--asv-base-neutral-400", "#a0a0a0"],
+    ["--asv-base-neutral-500", "#737373"],
+    ["--asv-base-neutral-600", "#525252"],
+    ["--asv-base-neutral-700", "#383838"],
+    ["--asv-base-neutral-800", "#222222"],
+    ["--asv-base-neutral-900", "#111111"],
+    ["--asv-base-neutral-1000", "#000000"],
+    ["--asv-base-blue-100", "#eff4ff"],
+    ["--asv-base-blue-200", "#c7d9fd"],
+    ["--asv-base-blue-300", "#93b4f7"],
+    ["--asv-base-blue-400", "#5b8bf5"],
+    ["--asv-base-blue-500", "#2d62f0"],
+    ["--asv-base-blue-600", "#1a4fcc"],
+    ["--asv-base-blue-700", "#0f3a9e"],
+    ["--asv-base-green-100", "#eefaf3"],
+    ["--asv-base-green-300", "#6dd98a"],
+    ["--asv-base-green-500", "#2ea355"],
+    ["--asv-base-green-700", "#1a6636"],
+    ["--asv-base-red-100", "#fff0ee"],
+    ["--asv-base-red-300", "#f5908a"],
+    ["--asv-base-red-500", "#e03030"],
+    ["--asv-base-red-700", "#a01a1a"],
+    ["--asv-base-orange-100", "#fff7e8"],
+    ["--asv-base-orange-300", "#f5c063"],
+    ["--asv-base-orange-400", "#e89930"],
+    ["--asv-base-orange-600", "#b86a10"],
+    ["--asv-base-space-2", "2px"],
+    ["--asv-base-space-6", "6px"],
+    ["--asv-base-space-10", "10px"],
+    ["--asv-base-space-32", "32px"],
+    ["--asv-base-space-40", "40px"],
+    ["--asv-base-space-48", "48px"],
+    ["--asv-base-radius-2", "2px"],
+    ["--asv-base-radius-4", "4px"],
+    ["--asv-base-radius-8", "8px"],
+    ["--asv-base-radius-12", "12px"],
+    ["--asv-base-radius-16", "16px"],
+    ["--asv-base-radius-full", "999px"]
+  ]);
+  const figmaR2SemanticTokens = new Map([
+    ["--asv-color-text-primary", "var(--asv-base-neutral-900)"],
+    ["--asv-color-text-secondary", "var(--asv-base-neutral-500)"],
+    ["--asv-color-text-tertiary", "var(--asv-base-neutral-400)"],
+    ["--asv-color-text-disabled", "var(--asv-base-neutral-300)"],
+    ["--asv-color-text-danger", "var(--asv-base-red-500)"],
+    ["--asv-color-text-link", "var(--asv-base-blue-500)"],
+    ["--asv-color-surface-window", "var(--asv-base-neutral-50)"],
+    ["--asv-color-surface-canvas", "var(--asv-base-neutral-100)"],
+    ["--asv-color-surface-overlay", "var(--asv-base-neutral-0)"],
+    ["--asv-color-surface-mask", "var(--asv-base-neutral-900)"],
+    ["--asv-color-surface-muted", "var(--asv-base-neutral-50)"],
+    ["--asv-color-border-default", "var(--asv-base-neutral-200)"],
+    ["--asv-color-border-strong", "var(--asv-base-neutral-300)"],
+    ["--asv-color-border-focus", "var(--asv-base-blue-500)"],
+    ["--asv-color-action-primary", "var(--asv-base-blue-500)"],
+    ["--asv-color-action-secondary", "var(--asv-base-neutral-100)"],
+    ["--asv-color-action-hover", "var(--asv-base-blue-100)"],
+    ["--asv-color-status-success", "var(--asv-base-green-500)"],
+    ["--asv-color-status-warning", "var(--asv-base-orange-400)"],
+    ["--asv-color-status-danger", "var(--asv-base-red-500)"],
+    ["--asv-color-status-success-bg", "var(--asv-base-green-100)"],
+    ["--asv-color-status-warning-bg", "var(--asv-base-orange-100)"],
+    ["--asv-color-status-danger-bg", "var(--asv-base-red-100)"],
+    ["--asv-color-drag-accept", "var(--asv-base-green-500)"],
+    ["--asv-color-drag-reject", "var(--asv-base-red-500)"],
+    ["--asv-space-panel-padding", "var(--asv-base-space-16)"],
+    ["--asv-space-panel-gap", "var(--asv-base-space-12)"],
+    ["--asv-size-list-row-height", "var(--asv-base-space-32)"],
+    ["--asv-size-resource-row-height", "var(--asv-base-space-48)"],
+    ["--asv-radius-control", "var(--asv-base-radius-control-8)"],
+    ["--asv-radius-card", "var(--asv-base-radius-8)"],
+    ["--asv-radius-modal", "var(--asv-base-radius-16)"],
+    ["--asv-radius-toast", "var(--asv-base-radius-12)"]
+  ]);
+  const missingFigmaR2FoundationTokens = collectMissingTokenValues(tokens, figmaR2FoundationTokens);
+  const missingFigmaR2SemanticTokens = collectMissingTokenValues(tokens, figmaR2SemanticTokens);
+  record("figma-r2-token-foundation-covered", missingFigmaR2FoundationTokens.length === 0
+    && missingFigmaR2SemanticTokens.length === 0
+    && /:root\[data-radius-mode="large"\]/.test(tokens)
+    && /--asv-color-surface-window:\s*var\(--asv-base-neutral-900\);/.test(tokens)
+    && /--asv-color-action-primary:\s*var\(--asv-base-blue-400\);/.test(tokens), {
+    missingFigmaR2FoundationTokens,
+    missingFigmaR2SemanticTokens
+  });
 
   const appEntryImports = [...appEntry.matchAll(/from "([^"]+)"/g)].map((match) => match[1]);
   const appEntryLineCount = appEntry.trimEnd().split("\n").length;
