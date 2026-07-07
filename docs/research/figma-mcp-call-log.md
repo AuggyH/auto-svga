@@ -581,3 +581,74 @@ Repository packet:
   visible text was `打开文件`, and the clear-all icon node was named `上传图标`.
   Implementation must follow PRD plus visible design intent, not raw layer
   naming alone.
+
+## Batch 06 - R4 Right Surface State Index
+
+Date: 2026-07-07
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R4 - Module-first component contract attempt
+Owner approval: Owner explicitly confirmed authorization before this read.
+
+### Objective
+
+Read only the right-surface module information needed to start WP4/WP5/WP6.
+This batch intentionally did not read all atoms, all molecules, all page-state
+frames, screenshots, assets, or any Figma write operations.
+
+### Planned Budget
+
+- Planned structured reads: 1
+- Target node: `Module/右侧栏` (`227:2861`)
+- Hard cap: 2 structured reads if the root only returned state shells
+- Output shape: compact contract essentials only
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_get_metadata` | `227:2861` | Right-surface module state index | Yes | 15.2526s | Complete state index; no truncation |
+| 2 | `_get_metadata` | `227:2796` | Test whether default Preview symbol internals expand | Yes | 11.6318s | Returned only symbol shell; no internal structure |
+
+Actual total MCP calls: 2
+
+Actual quota-counted reads, conservative: 2
+
+Measured MCP tool wall time total: 26.8844s
+
+Remaining practical daily budget after Batch 06: about 128 quota-counted
+reads.
+
+### Result
+
+R4 captured a useful right-surface state index but not a complete implementation
+contract:
+
+- module root: `Module/右侧栏` (`227:2861`)
+- module frame size: `6408 x 848`
+- state symbols: 16
+- each state symbol size: `360 x 800`
+- covered modes: Preview, Optimization, Edit, Compare
+- default Preview state ID: `227:2796`
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r4-right-surface-state-index-20260707.md`
+
+### Verification
+
+- The first metadata read returned complete XML and was not truncated.
+- The second metadata read confirmed that metadata-only symbol reads do not
+  expose the internal child structure needed for pixel-level implementation.
+- This batch is therefore marked partial rather than complete.
+
+### Protocol Feedback
+
+- Metadata-only reads are useful for state indexes, not detailed module
+  contracts, when component-set children are returned as symbols.
+- Do not spend additional reads repeating `_get_metadata` on right-surface
+  symbols; the next useful read needs a structured child/context path such as a
+  compact `use_figma` script or an equivalent design-context expansion.
+- If that path is unavailable, use archived R1 screenshots for rough visual
+  analysis only and do not claim pixel-level right-surface implementation
+  readiness.

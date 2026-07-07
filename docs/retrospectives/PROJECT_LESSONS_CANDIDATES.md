@@ -303,3 +303,22 @@ promoted, watched, rejected, or kept historical.
 - Evidence: The settings-sheet slice used archived Figma visual evidence but
   deliberately did not add loop/fullscreen playback controls.
 - Status: watch
+
+## Treat metadata-only Figma variant reads as state indexes
+
+- Source:
+  `docs/research/figma-mcp-read-packets/r4-right-surface-state-index-20260707.md`
+- Area: UI/UX, Figma MCP, design systems, token-cost, implementation planning
+- Context: The Owner authorized an R4 read for `Module/右侧栏` (`227:2861`).
+  The available Figma metadata tool returned the component-set state symbols,
+  and drilling into `模式=预览, 状态=默认` (`227:2796`) still returned only a
+  symbol shell.
+- Problem: A metadata-only component-set read can look successful while still
+  lacking child structure, visible text, instance refs, geometry, and component
+  properties needed for pixel-level implementation.
+- Candidate rule: Use metadata-only reads of Figma component-set variants as
+  state indexes only. Before implementation, require a structured child/context
+  read or explicitly downgrade the work to screenshot-based rough alignment.
+- Evidence: Batch 06 captured 16 right-surface states but could not expose the
+  default Preview right-surface internals within the two-call hard cap.
+- Status: watch

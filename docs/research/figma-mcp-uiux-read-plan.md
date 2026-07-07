@@ -907,10 +907,24 @@ Completed WP3 launch visual alignment used:
 
 WP3 did not require another Figma MCP read.
 
-The next efficient project action is to continue with the next visible surface
-bundle. Prefer WP2 playback/core controls if the launch page needs no immediate
-foreground-client correction, because playback controls appear across Preview,
-Compare, Optimization, and Edit states.
+Completed second R4 request:
+
+1. target `Module/右侧栏` (`227:2861`);
+2. expected calls: 1;
+3. actual calls: 2 because the module root returned only a state-symbol index
+   and the default Preview symbol drilldown still returned only a shell;
+4. packet:
+   `docs/research/figma-mcp-read-packets/r4-right-surface-state-index-20260707.md`;
+5. status: partial. It is useful as a right-surface state index, but not enough
+   for pixel-level WP4 implementation.
+
+The next efficient project action is to avoid repeating metadata-only reads for
+right-surface symbols. If Owner authorizes another Figma MCP batch, request a
+structured child/context read for `模式=预览, 状态=默认` (`227:2796`) that returns
+direct children, visible text, geometry, instance main-component IDs,
+component properties, and implementation findings. If that read path is not
+available, use archived R1 screenshots only for a rough visual analysis pass and
+do not claim pixel-level right-surface readiness.
 
 Before any new R4 read, request Owner authorization and target one named module
 or component only. Do not read all atoms, all molecules, or all module
