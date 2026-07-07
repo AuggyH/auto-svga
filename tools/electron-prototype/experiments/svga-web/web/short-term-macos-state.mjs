@@ -24,6 +24,7 @@ export function createShortTermInitialState() {
     saveStatus: "idle",
     appearance: loadStoredAppearance(),
     resourceMenuReturnFocus: undefined,
-    lastMenuStateSnapshot: ""
+    lastMenuStateSnapshot: "",
+    lastWindowModeSnapshot: ""
   };
 }

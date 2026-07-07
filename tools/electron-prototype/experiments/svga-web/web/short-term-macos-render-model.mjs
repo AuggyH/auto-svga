@@ -22,12 +22,15 @@ export function renderCompareFactCellHtml(fact) {
   `;
 }
 
-export function renderCompareMetricCellHtml(metric) {
+export function renderOptimizationMetricCellHtml(metric) {
+  const improved = metric.improved === true && metric.before && metric.after;
   return `
-    <div class="factCell compareMetricCell" data-status="success">
+    <div class="optimizationMetricCell" data-component="OptimizationMetricCell" data-improved="${improved ? "true" : "false"}">
       <span>${escapeHtml(metric.label)}</span>
-      <strong>${escapeHtml(metric.after)}</strong>
-      <small>${escapeHtml(metric.delta)}</small>
+      <strong class="optimizationMetricValue">
+        <b>${escapeHtml(metric.before || metric.after || "-")}</b>
+        ${metric.after && metric.before !== metric.after ? `<i aria-hidden="true">→</i><em>${escapeHtml(metric.after)}</em>` : ""}
+      </strong>
     </div>
   `;
 }

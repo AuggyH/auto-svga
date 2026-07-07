@@ -98,14 +98,16 @@
   color: var(--asv-fact-cell-value-color);
   font-size: var(--asv-fact-cell-value-size);
   font-weight: 650;
-  line-height: 1.25;
+  line-height: var(--asv-fact-cell-value-line-height);
 }
 
 .factCell span {
   grid-row: 1;
   color: var(--asv-fact-cell-label-color);
   font-size: var(--asv-fact-cell-label-size);
-  font-weight: 560;
+  font-weight: 400;
+  letter-spacing: var(--asv-fact-cell-label-letter-spacing);
+  line-height: var(--asv-fact-cell-label-line-height);
 }
 
 .factCell small {
@@ -136,7 +138,9 @@
   color: var(--asv-metric-entry-color);
   cursor: pointer;
   font: inherit;
-  font-size: var(--asv-type-size-footnote);
+  font-size: var(--asv-metric-entry-font-size);
+  font-weight: 500;
+  letter-spacing: var(--asv-metric-entry-letter-spacing);
   line-height: var(--asv-metric-entry-height);
   transition:
     background-color var(--asv-motion-duration-fast) ease,
@@ -218,12 +222,14 @@
 .assetRow .rowText strong {
   color: var(--asv-text);
   font-size: var(--asv-asset-row-title-size);
-  font-weight: 650;
+  font-weight: 560;
+  line-height: var(--asv-asset-row-title-line-height);
 }
 
 .assetRow .rowText span {
   color: var(--asv-asset-row-detail-color);
   font-size: var(--asv-asset-row-detail-size);
+  line-height: var(--asv-asset-row-detail-line-height);
 }
 
 .assetRow .badge {

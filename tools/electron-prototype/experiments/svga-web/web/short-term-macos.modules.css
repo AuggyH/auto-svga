@@ -22,9 +22,14 @@
 }
 
 .rightSurfaceHeader .toolbarButton {
+  min-width: var(--asv-file-header-action-width);
+  min-height: var(--asv-file-header-action-height);
+  padding: 0 var(--asv-space-3);
   border-color: var(--asv-toolbar-control-border);
   background: var(--asv-toolbar-control-bg);
   box-shadow: var(--asv-toolbar-control-shadow);
+  font-size: var(--asv-asset-row-title-size);
+  font-weight: 500;
 }
 
 .rightSurfaceHeader .toolbarButton:hover:not(:disabled) {
@@ -72,10 +77,10 @@
   overflow: hidden;
   min-width: 0;
   margin: 0;
-  color: var(--asv-muted);
-  font-size: var(--asv-type-size-dialog-title);
-  font-weight: 700;
-  line-height: 1.25;
+  color: var(--asv-text);
+  font-size: var(--asv-file-header-title-size);
+  font-weight: 650;
+  line-height: var(--asv-file-header-title-line-height);
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -145,13 +150,26 @@
   background:
     var(--asv-canvas-checker-pattern),
     color-mix(in srgb, var(--asv-canvas) 96%, var(--asv-window));
-  background-size: var(--asv-launch-checker-size) var(--asv-launch-checker-size);
+  background-position: 0 0, 0 0;
+  background-size: var(--asv-launch-checker-size) var(--asv-launch-checker-size), auto;
   box-shadow: none;
+  animation: launchCheckerIdleDrift var(--asv-launch-checker-idle-duration) var(--asv-launch-checker-idle-easing) infinite;
 }
 
 .launchCanvas.isDragOver {
+  animation-play-state: paused;
   border-color: var(--asv-action);
   box-shadow: inset 0 0 0 2px var(--asv-action);
+}
+
+@keyframes launchCheckerIdleDrift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+
+  to {
+    background-position: var(--asv-launch-checker-idle-offset) var(--asv-launch-checker-idle-offset), 0 0;
+  }
 }
 
 .launchPrompt {
@@ -631,8 +649,10 @@ canvas {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--asv-space-3);
-  align-items: start;
-  padding: var(--asv-right-panel-padding);
+  align-items: center;
+  width: min(var(--asv-file-header-width), 100%);
+  padding: var(--asv-file-header-padding-block) 0;
+  margin: 0 var(--asv-right-panel-padding);
   border-bottom: 0;
 }
 
@@ -640,7 +660,7 @@ canvas {
   min-height: 0;
   outline: none;
   overflow: auto;
-  padding: var(--asv-right-panel-padding);
+  padding: 0 var(--asv-right-panel-padding) var(--asv-right-panel-padding);
   background: var(--asv-right-panel);
   scrollbar-gutter: stable;
 }
@@ -653,25 +673,19 @@ canvas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--asv-fact-grid-row-gap) var(--asv-fact-grid-column-gap);
+  width: min(var(--asv-fact-grid-width), 100%);
+  padding: var(--asv-fact-grid-padding-block) 0 0;
   overflow: hidden;
   background: transparent;
 }
 
 .resultGroup {
   margin: var(--asv-right-panel-section-gap) 0;
-  padding: 0 0 0 var(--asv-space-3);
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
-  box-shadow: inset var(--asv-status-rail-width) 0 0 var(--asv-subtle-border);
-}
-
-.resultGroup[data-status="success"] {
-  box-shadow: inset var(--asv-status-rail-width) 0 0 var(--asv-success);
-}
-
-.resultGroup[data-status="warning"] {
-  box-shadow: inset var(--asv-status-rail-width) 0 0 var(--asv-warning);
+  box-shadow: none;
 }
 
 .resultGroup h3 {
@@ -953,6 +967,59 @@ canvas {
   border-top: 0;
 }
 
+.optimizationMetricCell {
+  display: grid;
+  gap: var(--asv-component-optimization-metric-gap);
+  align-content: start;
+  min-height: var(--asv-component-optimization-metric-min-height);
+  padding: var(--asv-component-optimization-metric-padding-block) var(--asv-component-optimization-metric-padding-inline);
+}
+
+.optimizationMetricCell span {
+  overflow: hidden;
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-footnote);
+  line-height: var(--asv-component-fact-cell-label-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optimizationMetricValue {
+  display: flex;
+  gap: var(--asv-component-optimization-metric-value-gap);
+  align-items: baseline;
+  min-width: 0;
+  color: var(--asv-text);
+  font-size: var(--asv-type-size-metric);
+  line-height: var(--asv-component-fact-cell-value-line-height);
+  white-space: nowrap;
+}
+
+.optimizationMetricValue b,
+.optimizationMetricValue em,
+.optimizationMetricValue i {
+  overflow: hidden;
+  font: inherit;
+  font-style: normal;
+  text-overflow: ellipsis;
+}
+
+.optimizationMetricValue b {
+  color: var(--asv-text);
+  font-weight: 700;
+}
+
+.optimizationMetricValue i {
+  flex: 0 0 auto;
+  color: var(--asv-subtle);
+}
+
+.optimizationMetricValue em {
+  min-width: 0;
+  color: var(--asv-success);
+  font-weight: 700;
+}
+
 .compareMetricRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr);
@@ -1024,18 +1091,6 @@ canvas {
   color: var(--asv-subtle);
 }
 
-.optimizationMetricGrid .compareMetricCell {
-  padding: var(--asv-space-2);
-  border-bottom: 0;
-  border-radius: var(--asv-radius-sm);
-  background: var(--asv-fact-bg);
-}
-
-.optimizationMetricGrid .compareMetricCell strong,
-.optimizationMetricGrid .compareMetricCell small {
-  color: var(--asv-success);
-}
-
 .compareActions {
   display: flex;
   flex-wrap: wrap;
@@ -1047,9 +1102,36 @@ canvas {
 .optimizationActions {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--asv-space-2);
+  gap: var(--asv-space-3);
   padding-top: var(--asv-right-panel-section-gap);
   border-top: 0;
+}
+
+.optimizationActions .toolbarButton {
+  justify-content: center;
+}
+
+.optimizationActions .toolbarButton:not(.primary) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--asv-action);
+}
+
+.optimizationActions .toolbarButton:not(.primary):hover:not(:disabled) {
+  background: var(--asv-panel-recessed);
+  box-shadow: none;
+}
+
+.optimizationActions .toolbarButton:not(.primary):disabled {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--asv-subtle);
+}
+
+.optimizationActions .toolbarButton[data-action="back-preview"] {
+  color: var(--asv-text);
 }
 
 .layerPanel,

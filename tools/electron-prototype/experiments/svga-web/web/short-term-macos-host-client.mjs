@@ -14,3 +14,10 @@ export function syncShortTermMenuState(bridge, snapshot, lastMenuStateSnapshot) 
   bridge.updateShortTermMenuState(snapshot).catch(() => {});
   return serialized;
 }
+
+export function syncShortTermWindowMode(bridge, mode, lastWindowModeSnapshot) {
+  if (!bridge?.setShortTermWindowMode) return lastWindowModeSnapshot;
+  if (mode === lastWindowModeSnapshot) return lastWindowModeSnapshot;
+  bridge.setShortTermWindowMode(mode).catch(() => {});
+  return mode;
+}

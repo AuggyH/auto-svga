@@ -96,6 +96,11 @@
     animation-duration: 1ms !important;
     transition-duration: 1ms !important;
   }
+
+  .launchCanvas {
+    animation: none !important;
+    background-position: 0 0, 0 0 !important;
+  }
 }
 
 @media (prefers-reduced-transparency: reduce) {

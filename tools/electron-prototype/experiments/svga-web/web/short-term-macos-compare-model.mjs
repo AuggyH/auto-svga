@@ -2,7 +2,7 @@ import {
   escapeHtml,
   overviewVisibleFacts,
   renderCompareFactCellHtml,
-  renderCompareMetricCellHtml
+  renderOptimizationMetricCellHtml
 } from "./short-term-macos-render-model.mjs";
 
 export function renderCompareInfoHtml(title, model, displayName, actions = []) {
@@ -114,10 +114,9 @@ export function renderOptimizationCompareResultHtml(model) {
     .join("");
   return `
     <section class="compareSummary optimizationResultSummary" data-status="success">
-      <h2>${escapeHtml(model.resultTitle)}</h2>
-      <p>${escapeHtml(model.resultSummary)}</p>
+      <h2>优化结果</h2>
     </section>
-    ${(model.metrics ?? []).length ? `<section class="compareMetricGrid optimizationMetricGrid" aria-label="优化指标">${(model.metrics ?? []).map(renderCompareMetricCellHtml).join("")}</section>` : ""}
+    ${(model.metrics ?? []).length ? `<section class="compareMetricGrid optimizationMetricGrid" aria-label="优化指标">${(model.metrics ?? []).map(renderOptimizationMetricCellHtml).join("")}</section>` : ""}
     <div class="compareActions optimizationActions">
       <button class="toolbarButton primary" type="button" data-action="save-as">另存为 SVGA</button>
       <button class="toolbarButton" type="button" data-action="save-overwrite">覆盖保存</button>

@@ -16,6 +16,7 @@ const IPC_CHANNELS = Object.freeze({
   clearRecentSvgaFiles: "svga-web-experiment:clear-recent-svga-files",
   writeClipboardText: "svga-web-experiment:write-clipboard-text",
   updateShortTermMenuState: "svga-web-experiment:update-short-term-menu-state",
+  setShortTermWindowMode: "svga-web-experiment:set-short-term-window-mode",
   saveShortTermSvgaOutput: "svga-web-experiment:save-short-term-svga-output",
   saveEditedSvga: "svga-web-experiment:save-edited-svga",
   saveOptimizedSvga: "svga-web-experiment:save-optimized-svga",
@@ -94,6 +95,9 @@ function createBasePreloadApi() {
     },
     updateShortTermMenuState(state) {
       return invoke(IPC_CHANNELS.updateShortTermMenuState, state);
+    },
+    setShortTermWindowMode(mode) {
+      return invoke(IPC_CHANNELS.setShortTermWindowMode, mode);
     }
   };
 }

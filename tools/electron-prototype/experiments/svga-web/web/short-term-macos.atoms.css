@@ -188,11 +188,17 @@ button.danger {
 }
 
 .emptyText {
+  display: grid;
+  place-items: center;
+  width: min(var(--asv-empty-state-width), 100%);
   margin: 0;
-  padding: var(--asv-space-3) 0;
+  padding: var(--asv-empty-state-padding-block) 0;
+  border-radius: var(--asv-empty-state-radius);
   background: transparent;
-  color: var(--asv-muted);
-  line-height: 1.5;
+  color: var(--asv-empty-state-text-color);
+  font-size: var(--asv-empty-state-text-size);
+  line-height: var(--asv-empty-state-text-line-height);
+  text-align: center;
 }
 
 @keyframes spin {

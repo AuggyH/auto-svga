@@ -258,7 +258,7 @@ export function collectShortTermOptimizationProof({
     executedActionRowsVisible: compareInfoPanel.querySelectorAll("[data-optimization-actions] li").length,
     skippedMethodRowsVisible: compareInfoPanel.querySelectorAll("[data-optimization-skipped] li").length,
     metricCount: Array.isArray(optimizationResult.metrics) ? optimizationResult.metrics.length : 0,
-    metricsVisible: compareInfoPanel.querySelectorAll(".factCell").length >= 2,
+    metricsVisible: compareInfoPanel.querySelectorAll(".optimizationMetricCell").length >= 2,
     comparisonVisible: view === "compare",
     compareCanvasANonBlank,
     compareCanvasBNonBlank,

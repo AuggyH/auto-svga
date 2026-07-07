@@ -86,13 +86,15 @@ const rendererHtmlEntry = isShortTermProduct ? "web/index.html" : "web/workbench
 const rendererEntry = isShortTermProduct ? "web/short-term-macos-app.mjs" : "web/desktop-product-entry.mjs";
 const stylesEntry = isShortTermProduct ? "web/short-term-macos.css" : "web/styles.css";
 const macosWorkbenchWindowSizing = Object.freeze({
-  defaultLaunch: { width: 1440, height: 900 },
+  launch: { width: 720, height: 720 },
+  defaultWorkbench: { width: 1440, height: 900 },
   comfortable: { width: 1280, height: 800 },
   compact: { width: 1180, height: 760 },
+  minimumLaunch: { width: 640, height: 640 },
   minimumSupported: { width: 1180, height: 760 },
   legacyStressViewport: { width: 900, height: 720 },
   availableScreenFitRatio: 0.86,
-  aspectRatio: 16 / 10
+  workbenchAspectRatio: 16 / 10
 });
 const productMilestoneTitle = {
   "short-term": "Short-term SVGA Preview, Inspection, Replacement, And Optimization",
@@ -195,30 +197,53 @@ if (!isShortTermProduct || smokeMode || auditMode || normalProofMode) {
   app.setPath("sessionData", path.join(sessionRoot, "session-data"));
 }
 
-function chooseMacosWorkbenchWindowBounds() {
-  const display = screen.getPrimaryDisplay();
-  const workArea = display?.workArea ?? {
+function workAreaForWindow(window) {
+  const bounds = window?.getBounds?.();
+  const display = bounds ? screen.getDisplayMatching(bounds) : screen.getPrimaryDisplay();
+  return display?.workArea;
+}
+
+function chooseMacosWindowBounds(target, options = {}) {
+  const workArea = options.workArea ?? workAreaForWindow(options.window) ?? {
     x: 0,
     y: 0,
-    width: macosWorkbenchWindowSizing.defaultLaunch.width,
-    height: macosWorkbenchWindowSizing.defaultLaunch.height
+    width: target.width,
+    height: target.height
   };
+  const minSize = options.minimumSize ?? target;
   const maxWidth = Math.floor(workArea.width * macosWorkbenchWindowSizing.availableScreenFitRatio);
   const maxHeight = Math.floor(workArea.height * macosWorkbenchWindowSizing.availableScreenFitRatio);
-  let width = Math.min(macosWorkbenchWindowSizing.defaultLaunch.width, maxWidth);
-  let height = Math.round(width / macosWorkbenchWindowSizing.aspectRatio);
+  let width = Math.min(target.width, maxWidth);
+  let height = options.aspectRatio
+    ? Math.round(width / options.aspectRatio)
+    : Math.min(target.height, maxHeight);
   if (height > maxHeight) {
     height = maxHeight;
-    width = Math.round(height * macosWorkbenchWindowSizing.aspectRatio);
+    if (options.aspectRatio) width = Math.round(height * options.aspectRatio);
   }
-  width = Math.max(width, Math.min(macosWorkbenchWindowSizing.minimumSupported.width, workArea.width));
-  height = Math.max(height, Math.min(macosWorkbenchWindowSizing.minimumSupported.height, workArea.height));
+  width = Math.max(width, Math.min(minSize.width, workArea.width));
+  height = Math.max(height, Math.min(minSize.height, workArea.height));
   return {
     width,
     height,
     x: Math.round(workArea.x + (workArea.width - width) / 2),
     y: Math.round(workArea.y + (workArea.height - height) / 2)
   };
+}
+
+function chooseMacosLaunchWindowBounds(window) {
+  return chooseMacosWindowBounds(macosWorkbenchWindowSizing.launch, {
+    window,
+    minimumSize: macosWorkbenchWindowSizing.minimumLaunch
+  });
+}
+
+function chooseMacosWorkbenchWindowBounds(window) {
+  return chooseMacosWindowBounds(macosWorkbenchWindowSizing.defaultWorkbench, {
+    window,
+    minimumSize: macosWorkbenchWindowSizing.minimumSupported,
+    aspectRatio: macosWorkbenchWindowSizing.workbenchAspectRatio
+  });
 }
 
 function isExpectedSender(event) {
@@ -3121,6 +3146,26 @@ function updateShortTermMenuState(input) {
   return { status: "updated" };
 }
 
+function setShortTermWindowMode(input, window = activeMainWindow) {
+  if (!isShortTermProduct || !window || window.isDestroyed()) return { status: "ignored" };
+  if (smokeMode || auditMode || normalProofMode) return { status: "ignored" };
+  const mode = stringEnum(input, ["launch", "workbench"], "workbench");
+  const minimumSize = mode === "launch"
+    ? macosWorkbenchWindowSizing.minimumLaunch
+    : macosWorkbenchWindowSizing.minimumSupported;
+  const bounds = mode === "launch"
+    ? chooseMacosLaunchWindowBounds(window)
+    : chooseMacosWorkbenchWindowBounds(window);
+  window.setMinimumSize(minimumSize.width, minimumSize.height);
+  window.setBounds(bounds, true);
+  return {
+    status: "updated",
+    mode,
+    width: bounds.width,
+    height: bounds.height
+  };
+}
+
 function validateShortTermMenuState(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return undefined;
   const view = stringEnum(input.view, ["launch", "loading", "failed", "preview", "compare", "edit"], defaultShortTermMenuState.view);
@@ -4517,7 +4562,7 @@ async function captureProductArtifact(window, scenario) {
   const originalSize = window.getSize();
   const originalContentSize = window.getContentSize();
   if (scenario === "desktop-1280x800") window.setContentSize(macosWorkbenchWindowSizing.comfortable.width, macosWorkbenchWindowSizing.comfortable.height);
-  if (scenario === "desktop-1440x900") window.setContentSize(macosWorkbenchWindowSizing.defaultLaunch.width, macosWorkbenchWindowSizing.defaultLaunch.height);
+  if (scenario === "desktop-1440x900") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
@@ -5655,15 +5700,21 @@ async function createExperimentWindow() {
   );
   experimentServer = await startSvgaWebExperimentServer({ appRoot, reportToken, desktopArtifacts });
   expectedOrigin = experimentServer.origin;
-  const launchBounds = chooseMacosWorkbenchWindowBounds();
+  const launchBounds = isShortTermProduct
+    ? chooseMacosLaunchWindowBounds()
+    : chooseMacosWorkbenchWindowBounds();
 
   const window = new BrowserWindow({
     title: productDisplayName,
     ...(smokeMode ? { x: -20000, y: -20000 } : { x: launchBounds.x, y: launchBounds.y }),
     width: launchBounds.width,
     height: launchBounds.height,
-    minWidth: macosWorkbenchWindowSizing.minimumSupported.width,
-    minHeight: macosWorkbenchWindowSizing.minimumSupported.height,
+    minWidth: isShortTermProduct
+      ? macosWorkbenchWindowSizing.minimumLaunch.width
+      : macosWorkbenchWindowSizing.minimumSupported.width,
+    minHeight: isShortTermProduct
+      ? macosWorkbenchWindowSizing.minimumLaunch.height
+      : macosWorkbenchWindowSizing.minimumSupported.height,
     ...(process.platform === "darwin"
       ? {
           titleBarStyle: "hiddenInset",
@@ -5809,6 +5860,11 @@ async function createExperimentWindow() {
   ipcMain.handle(IPC_CHANNELS.updateShortTermMenuState, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return updateShortTermMenuState(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.setShortTermWindowMode, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return setShortTermWindowMode(input, window);
   });
 
   ipcMain.handle(IPC_CHANNELS.saveShortTermSvgaOutput, async (event, input) => {

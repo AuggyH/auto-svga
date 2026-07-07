@@ -99,6 +99,7 @@ import {
   closeShortTermSettings,
   openShortTermSettings
 } from "./short-term-macos-settings-surface.mjs";
+import { syncShortTermWindowMode } from "./short-term-macos-host-client.mjs";
 
 export function createShortTermAppController({ bridge, nodes, state }) {
   let playbackProgressFrame = 0;
@@ -125,6 +126,11 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   function setView(view) {
     state.view = view;
     applyViewState(nodes.app, view);
+    state.lastWindowModeSnapshot = syncShortTermWindowMode(
+      bridge,
+      view === "launch" ? "launch" : "workbench",
+      state.lastWindowModeSnapshot
+    );
     renderCommandState();
   }
 

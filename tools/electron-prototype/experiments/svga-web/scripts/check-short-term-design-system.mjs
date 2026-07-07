@@ -289,6 +289,13 @@ async function main() {
   record("reduced-motion-covered", /@media \(prefers-reduced-motion: reduce\)/.test(pageStatesCss)
     && /animation-duration:\s*1ms !important/.test(pageStatesCss)
     && /transition-duration:\s*1ms !important/.test(pageStatesCss));
+  record("launch-checker-idle-motion-tokenized", /--asv-motion-duration-idle/.test(tokens)
+    && /--asv-component-launch-checker-idle-duration:\s*var\(--asv-motion-duration-idle\)/.test(tokens)
+    && /animation:\s*launchCheckerIdleDrift var\(--asv-launch-checker-idle-duration\) var\(--asv-launch-checker-idle-easing\) infinite/.test(modules)
+    && /@keyframes launchCheckerIdleDrift/.test(modules)
+    && /\.launchCanvas\.isDragOver\s*\{[\s\S]*animation-play-state:\s*paused/.test(modules)
+    && /\.launchCanvas\s*\{[\s\S]*animation:\s*none !important/.test(pageStatesCss)
+    && /\.launchCanvas\s*\{[\s\S]*background-position:\s*0 0, 0 0 !important/.test(pageStatesCss));
   record("reduced-transparency-covered", /@media \(prefers-reduced-transparency: reduce\)/.test(pageStatesCss)
     && /--asv-effect-titlebar-backdrop-filter:\s*none/.test(pageStatesCss)
     && /--asv-effect-menu-backdrop-filter:\s*none/.test(pageStatesCss)
