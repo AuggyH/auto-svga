@@ -1164,9 +1164,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="discardDialog" data-component="ErrorRecoveryPanel" data-status="warning"/);
   assert.match(page, /id="settingsDialog" data-component="SettingsSheet" data-status="info"/);
   assert.match(page, /class="settingsGroup" aria-label="外观" data-component="ThemeSegmentedControl"/);
-  assert.match(page, /data-appearance-choice><span>跟随系统<\/span>/);
-  assert.match(page, /name="appearance" value="light" data-appearance-choice><span>浅色<\/span>/);
-  assert.match(page, /name="appearance" value="dark" data-appearance-choice><span>深色<\/span>/);
+  assert.match(page, /class="dialogHeader settingsHeader"/);
+  assert.match(page, /class="settingsHeaderIcon"/);
+  assert.match(page, /name="appearance" value="system" data-appearance-choice>[\s\S]*class="settingsChoiceIcon"[\s\S]*<span>跟随系统<\/span>/);
+  assert.match(page, /name="appearance" value="light" data-appearance-choice>[\s\S]*class="settingsChoiceIcon"[\s\S]*<span>浅色<\/span>/);
+  assert.match(page, /name="appearance" value="dark" data-appearance-choice>[\s\S]*class="settingsChoiceIcon"[\s\S]*<span>深色<\/span>/);
   assert.doesNotMatch(page, /预览背景|主预览适配|活动记录/);
   assert.match(page, /class="dialogActions"/);
   assert.match(page, /id="resourceContextMenu"/);
@@ -1364,11 +1366,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.dialogActions/);
   assert.match(shortTermComponents, /\.settingsDialog/);
   assert.match(shortTermComponents, /\.settingsGroup/);
+  assert.match(shortTermComponents, /\.settingsHeader/);
+  assert.match(shortTermComponents, /\.settingsHeaderIcon/);
   assert.match(shortTermComponents, /\.settingsChoiceGroup/);
   assert.match(shortTermComponents, /\.settingsChoiceGroup\s*\{[^}]*background: var\(--asv-settings-choice-group-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice/);
+  assert.match(shortTermComponents, /\.settingsChoiceIcon/);
   assert.match(shortTermComponents, /\.settingsChoice:hover\s*\{[^}]*background: var\(--asv-settings-choice-hover-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)/);
+  assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)\s*\{[^}]*border-color: var\(--asv-settings-choice-selected-border\)/s);
   assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)\s*\{[^}]*background: var\(--asv-settings-choice-selected-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice:has\(input:checked\)\s*\{[^}]*box-shadow: var\(--asv-settings-choice-selected-shadow\)/s);
   assert.match(shortTermComponents, /\.settingsChoice:has\(input:focus-visible\)/);
@@ -2123,6 +2129,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /settingsSheetAvailable/);
   assert.match(shortTermSmokeProofModel, /appearanceSwitchingWorks/);
   assert.match(shortTermSmokeProofModel, /appearanceScreenshotsCaptured/);
+  assert.match(shortTermSmokeProofModel, /settingsDialogScreenshotCaptured/);
   assert.match(shortTermSmokeProofModel, /appearanceMenuStateSynced/);
   assert.match(shortTermSmokeProofModel, /noMainSurfaceAppearanceButton/);
   assert.match(shortTermSmokeProofModel, /noVisibleCompareEntrypoint/);
@@ -2132,6 +2139,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeRunner, /settingsAppearanceProof/);
   assert.match(shortTermSmokeRunner, /setAppearance\("dark"\)/);
   assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-appearance-dark"\)/);
+  assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-settings-dialog"\)/);
   assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-appearance-light"\)/);
   assert.match(shortTermSmokeRunner, /darkAppearanceScreenshotCaptured/);
   assert.match(shortTermSmokeRunner, /lightAppearanceScreenshotCaptured/);
@@ -2404,6 +2412,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /short-term-replacement-reset/);
   assert.match(main, /short-term-runtime-text-applied/);
   assert.match(main, /short-term-preview-minimum/);
+  assert.match(main, /short-term-settings-dialog/);
   assert.match(main, /short-term-appearance-dark/);
   assert.match(main, /short-term-appearance-light/);
   assert.match(main, /short-term-load-failed/);

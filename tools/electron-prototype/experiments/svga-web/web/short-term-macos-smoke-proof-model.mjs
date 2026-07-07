@@ -725,7 +725,8 @@ export function collectShortTermDesignInteractionProof({
     appearanceSwitchingWorks: settingsAppearanceProof?.darkAppearanceApplied === true
       && settingsAppearanceProof?.lightAppearanceApplied === true
       && settingsAppearanceProof?.systemAppearanceRestored === true,
-    appearanceScreenshotsCaptured: settingsAppearanceProof?.darkAppearanceScreenshotCaptured === true
+    appearanceScreenshotsCaptured: settingsAppearanceProof?.settingsDialogScreenshotCaptured === true
+      && settingsAppearanceProof?.darkAppearanceScreenshotCaptured === true
       && settingsAppearanceProof?.lightAppearanceScreenshotCaptured === true,
     appearanceMenuStateSynced: menuState?.appearance === "system",
     noMainSurfaceAppearanceButton: settingsAppearanceProof?.noMainSurfaceAppearanceButton === true,

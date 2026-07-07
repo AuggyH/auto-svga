@@ -503,15 +503,42 @@
 }
 
 .settingsDialog .dialogBody {
-  gap: var(--asv-space-4);
+  gap: var(--asv-base-space-0);
+}
+
+.settingsHeader {
+  padding: var(--asv-settings-sheet-padding);
+  border-bottom: var(--asv-settings-divider-width) solid var(--asv-settings-divider-color);
+}
+
+.settingsHeader h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--asv-space-2);
+}
+
+.settingsHeaderIcon {
+  width: var(--asv-settings-choice-icon-size);
+  height: var(--asv-settings-choice-icon-size);
+  color: var(--asv-action);
+}
+
+.settingsHeaderIcon path,
+.settingsHeaderIcon circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: var(--asv-settings-choice-icon-stroke-width);
 }
 
 .settingsGroup {
   display: grid;
-  gap: var(--asv-space-2);
+  gap: var(--asv-space-3);
   margin: 0;
-  padding: 0;
+  padding: var(--asv-settings-sheet-padding);
   border: 0;
+  border-bottom: var(--asv-settings-divider-width) solid var(--asv-settings-divider-color);
 }
 
 .settingsGroup legend {
@@ -525,22 +552,48 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--asv-settings-choice-gap);
-  padding: var(--asv-settings-choice-gap);
-  border-radius: var(--asv-radius-md);
+  padding: var(--asv-base-space-0);
+  border-radius: var(--asv-base-radius-0);
   background: var(--asv-settings-choice-group-bg);
 }
 
 .settingsChoice {
   position: relative;
   display: grid;
+  grid-template-rows: auto auto;
   place-items: center;
+  align-content: center;
+  gap: var(--asv-space-2);
   min-height: var(--asv-settings-choice-height);
-  padding: 0 var(--asv-space-3);
-  border-radius: var(--asv-radius-sm);
+  padding: 0 var(--asv-space-2);
+  border: var(--asv-settings-choice-border-width) solid var(--asv-settings-choice-border);
+  border-radius: var(--asv-settings-choice-radius);
+  background: var(--asv-settings-choice-bg);
   color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
   font-weight: 650;
   text-align: center;
+}
+
+.settingsChoiceIcon {
+  display: grid;
+  place-items: center;
+  width: var(--asv-settings-choice-icon-size);
+  height: var(--asv-settings-choice-icon-size);
+}
+
+.settingsChoiceIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.settingsChoiceIcon path,
+.settingsChoiceIcon circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: var(--asv-settings-choice-icon-stroke-width);
 }
 
 .settingsChoice:hover {
@@ -555,6 +608,7 @@
 }
 
 .settingsChoice:has(input:checked) {
+  border-color: var(--asv-settings-choice-selected-border);
   background: var(--asv-settings-choice-selected-bg);
   color: var(--asv-action);
   box-shadow: var(--asv-settings-choice-selected-shadow);
@@ -562,6 +616,15 @@
 
 .settingsChoice:has(input:focus-visible) {
   box-shadow: var(--asv-focus-inset);
+}
+
+.settingsDialog .dialogActions {
+  padding: var(--asv-settings-sheet-padding);
+}
+
+.settingsDialog .dialogActions button {
+  justify-content: center;
+  width: 100%;
 }
 
 .contextMenu {

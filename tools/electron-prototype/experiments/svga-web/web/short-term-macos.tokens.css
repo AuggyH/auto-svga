@@ -335,13 +335,23 @@
   --asv-component-launch-checker-size: 24px;
   --asv-component-preview-checker-size: 22px;
   --asv-component-canvas-checker-pattern: conic-gradient(var(--asv-color-canvas-checker) 25%, transparent 0 50%, var(--asv-color-canvas-checker) 0 75%, transparent 0);
-  --asv-component-settings-sheet-width: 340px;
-  --asv-component-settings-choice-height: 30px;
-  --asv-component-settings-choice-gap: 2px;
-  --asv-component-settings-choice-group-bg: color-mix(in srgb, var(--asv-color-surface-control) 54%, transparent);
-  --asv-component-settings-choice-hover-bg: color-mix(in srgb, var(--asv-color-surface-control-hover) 62%, transparent);
-  --asv-component-settings-choice-selected-bg: var(--asv-color-surface-mode-selected);
-  --asv-component-settings-choice-selected-shadow: var(--asv-shadow-control-selected);
+  --asv-component-settings-sheet-width: 360px;
+  --asv-component-settings-sheet-padding: var(--asv-space-5);
+  --asv-component-settings-divider-width: 1px;
+  --asv-component-settings-divider-color: var(--asv-color-border-subtle);
+  --asv-component-settings-choice-height: 88px;
+  --asv-component-settings-choice-gap: var(--asv-space-3);
+  --asv-component-settings-choice-icon-size: 18px;
+  --asv-component-settings-choice-icon-stroke-width: 1.8;
+  --asv-component-settings-choice-radius: var(--asv-radius-md);
+  --asv-component-settings-choice-border-width: 1px;
+  --asv-component-settings-choice-group-bg: transparent;
+  --asv-component-settings-choice-bg: transparent;
+  --asv-component-settings-choice-hover-bg: color-mix(in srgb, var(--asv-color-status-info-soft) 36%, transparent);
+  --asv-component-settings-choice-selected-bg: color-mix(in srgb, var(--asv-color-status-info-soft) 54%, var(--asv-color-surface-panel-strong));
+  --asv-component-settings-choice-border: transparent;
+  --asv-component-settings-choice-selected-border: var(--asv-color-action-primary);
+  --asv-component-settings-choice-selected-shadow: none;
   --asv-effect-drag-overlay-backdrop-filter: saturate(1.08) blur(8px);
 
   /* Compatibility aliases consumed by the current implementation. */
@@ -573,6 +583,16 @@
   --asv-launch-recent-name-hover-color: var(--asv-component-launch-recent-name-hover-color);
   --asv-launch-recent-meta-color: var(--asv-component-launch-recent-meta-color);
   --asv-launch-recent-clear-hover-bg: var(--asv-component-launch-recent-clear-hover-bg);
+  --asv-settings-sheet-padding: var(--asv-component-settings-sheet-padding);
+  --asv-settings-divider-width: var(--asv-component-settings-divider-width);
+  --asv-settings-divider-color: var(--asv-component-settings-divider-color);
+  --asv-settings-choice-icon-size: var(--asv-component-settings-choice-icon-size);
+  --asv-settings-choice-icon-stroke-width: var(--asv-component-settings-choice-icon-stroke-width);
+  --asv-settings-choice-radius: var(--asv-component-settings-choice-radius);
+  --asv-settings-choice-border-width: var(--asv-component-settings-choice-border-width);
+  --asv-settings-choice-bg: var(--asv-component-settings-choice-bg);
+  --asv-settings-choice-border: var(--asv-component-settings-choice-border);
+  --asv-settings-choice-selected-border: var(--asv-component-settings-choice-selected-border);
   --asv-launch-recent-control-shadow: var(--asv-component-launch-recent-control-shadow);
   --asv-launch-checker-size: var(--asv-component-launch-checker-size);
   --asv-preview-checker-size: var(--asv-component-preview-checker-size);

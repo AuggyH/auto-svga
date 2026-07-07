@@ -284,3 +284,22 @@ promoted, watched, rejected, or kept historical.
   retry completed within the hard cap and produced enough information for WP3
   launch visual alignment.
 - Status: watch
+
+## Do not turn unresolved Figma component children into unapproved product features
+
+- Source:
+  `docs/reviews/2026-07-07-codex-short-term-uiux-settings-sheet-figma-alignment.md`
+- Area: UI/UX, Figma MCP, product scope, implementation quality
+- Context: R3 mapped `Module/播放控制栏/播放中` to replay, play/pause, loop,
+  and fullscreen icon-button children, but the current short-term PRD and
+  implementation do not yet confirm loop/fullscreen as visible main-surface
+  capabilities.
+- Problem: Treating every Figma child as immediately implementable can add
+  visible controls or product behavior without Owner/PRD confirmation.
+- Candidate rule: When a Figma component child implies new user-visible
+  capability, pause that child as a decision item unless the PRD or Owner has
+  explicitly confirmed it; continue with style-only slices that do not alter
+  capability scope.
+- Evidence: The settings-sheet slice used archived Figma visual evidence but
+  deliberately did not add loop/fullscreen playback controls.
+- Status: watch

@@ -445,6 +445,7 @@ async function runShortTermSmoke({
   await waitForSmokeCondition(() => nodes.settingsDialog.open === true, 2_000);
   const settingsChoiceValues = nodes.appearanceChoices.map((input) => input.value);
   const settingsDialogOpened = nodes.settingsDialog.open === true;
+  const settingsDialogArtifact = await captureSmokeArtifact("short-term-settings-dialog");
   setAppearance("dark");
   await waitForSmokeFrame();
   const darkAppearanceApplied = document.documentElement.dataset.appearance === "dark"
@@ -474,6 +475,7 @@ async function runShortTermSmoke({
   const settingsAppearanceProof = {
     settingsDialogOpened,
     settingsChoiceValues,
+    settingsDialogScreenshotCaptured: Boolean(settingsDialogArtifact?.path),
     darkAppearanceApplied,
     lightAppearanceApplied,
     systemAppearanceRestored,
