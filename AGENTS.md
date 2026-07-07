@@ -166,6 +166,31 @@ Playback verification:
     - Hermes: `git config user.name "Hermes"` / `user.email "hermes-agent@local"`
     - Codex: `git config user.name "Codex"` / `user.email "codex-agent@local"`
 
+## Local Stable App Promotion
+
+The Product Owner's quick-open macOS client is
+`~/Applications/Auto SVGA.app`. It is a D0 internal unsigned app entry, not a
+signed/notarized release and not Product Owner acceptance.
+
+After a meaningful desktop-client, host, packaging, or owner-visible UI change
+is completed and committed, refresh that local entry with:
+
+```bash
+npm run svga-workbench:v1:promote-local-stable
+```
+
+Rules:
+
+1. Do not manually copy `.app` bundles into `~/Applications`.
+2. The promotion command must package from a clean worktree by default.
+3. If a current-head package already exists and unrelated dirty files are
+   present, use `-- --use-existing` only to install that already-built package.
+   Do not claim uncommitted work was installed.
+4. If promotion fails, keep the previous local stable app in place and record
+   the blocker in the review.
+5. Do not call a promoted D0 app a release candidate, signed build,
+   notarized build, or public release.
+
 ## Asset Commit Rules
 
 The repository should contain engineering files only. Do not commit:

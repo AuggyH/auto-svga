@@ -103,6 +103,44 @@ npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:pr
 npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:signing-plan:mac
 ```
 
+Local stable app entry:
+
+```bash
+npm run svga-workbench:v1:promote-local-stable
+```
+
+Use the local stable app entry when a completed desktop-client change should
+become the Product Owner's quick-open client on this Mac. The default target is
+`~/Applications/Auto SVGA.app`; the Product Owner may pin this app once in the
+Dock or open it from Launchpad/Spotlight. Shortcuts should point to this stable
+target, not to generated `.artifacts` package paths.
+
+The promotion command is intentionally stricter than a manual copy:
+
+1. Refuses to package a dirty worktree by default.
+2. Rebuilds the D0 internal macOS package unless `--use-existing` is passed.
+3. Requires the internal package manifest to match current `HEAD`.
+4. Requires the macOS package proof and privacy audit to pass.
+5. Verifies the app identity is `Auto SVGA`.
+6. Installs to `~/Applications/Auto SVGA.app` using an atomic temp-copy and
+   previous-app backup.
+7. Registers the installed app with Launch Services.
+8. Writes a local promotion manifest under `.artifacts/local-stable-app/`.
+
+`--use-existing` may be used only when a current-head internal package already
+exists and the agent wants to avoid rebuilding from an unrelated dirty
+worktree. It must not be used to claim uncommitted work is installed. If the
+command fails, the agent must leave the previous local stable app in place,
+record the reason in the review, and must not manually copy an app bundle as a
+substitute.
+
+Agents that complete a meaningful desktop-client, host, packaging, or
+owner-visible UI change should run the local stable app promotion after the
+final source commit for that change, or explicitly explain in the review why it
+was skipped. This is a D0 internal convenience entry only; it does not imply
+Product Owner acceptance, D1 signing/notarization, Windows readiness, or public
+release.
+
 Credential-backed execution, only after release approval:
 
 ```bash
