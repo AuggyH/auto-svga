@@ -361,3 +361,76 @@ R1 is complete. The project now has stable visual target evidence for:
   crossed the 20s soft threshold, although the result was still usable.
 - Contact-sheet visual QA is a cheap guard against storing blank or wrong
   target screenshots.
+
+## Batch 03 - R2 Token Values And Code Mapping
+
+Date: 2026-07-07
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R2 - Exact Token Values And Code Mapping
+Owner approval: Owner asked to continue after R1.
+
+### Objective
+
+Read exact Figma variable values for the five known token collections and map
+them to the existing Auto SVGA CSS token layer before WP1 implementation.
+
+This batch intentionally did not modify app UI or CSS.
+
+### Planned Budget
+
+- Planned structured reads: 2-4
+- Expected target collections: 5
+- Expected variables: 95
+- Hard stop for this batch: 8 structured reads
+
+### Actual Usage
+
+| # | Tool | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | ---: | --- |
+| 1 | `use_figma` | Initial all-collections token read | Yes | 4.7888s | Tool response truncated; not used as final source |
+| 2 | `use_figma` | `基础/色彩` compact collection read | Yes | 4.2505s | Complete |
+| 3 | `use_figma` | `语义/色彩` compact collection read | Yes | 1.0871s | Complete |
+| 4 | `use_figma` | `基础/间距` compact collection read | Yes | 1.7691s | Complete |
+| 5 | `use_figma` | `基础/圆角` compact collection read | Yes | 1.1602s | Complete |
+| 6 | `use_figma` | `语义/间距` compact collection read | Yes | 1.0716s | Complete |
+
+Actual total MCP calls: 6
+
+Actual quota-counted reads, conservative: 6
+
+Measured MCP tool wall time total: 14.1273s
+
+Remaining practical daily budget after Batch 03: about 135 quota-counted reads.
+
+### Result
+
+R2 captured all target variables:
+
+- Collections: 5 / 5
+- Variables: 95 / 95
+- Color alias references: present and recorded by target variable name
+- Base64 responses: 0
+- Screenshots: 0
+
+Repository token map:
+
+`docs/research/figma-mcp-read-packets/r2-token-map-20260707.md`
+
+### Verification
+
+- The initial all-token output was detected as truncated and not used as the
+  final R2 source.
+- The five split collection reads each returned `truncated:false` and complete
+  variable counts matching Batch 01 inventory.
+- Local code token mapping was checked against
+  `tools/electron-prototype/experiments/svga-web/web/short-term-macos.tokens.css`.
+
+### Protocol Feedback
+
+- The original R2 plan said 2-4 reads, but 95 variables with IDs, scopes,
+  modes, values, and aliases exceeded the practical response size.
+- Future token reads should split by collection from the start.
+- Compact color values should be returned as CSS hex strings and aliases as
+  `{alias, aliasName}` pairs. This preserves implementation value while
+  avoiding response truncation.

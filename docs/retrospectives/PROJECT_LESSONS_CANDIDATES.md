@@ -151,3 +151,19 @@ promoted, watched, rejected, or kept historical.
   window/shadow treatment and can differ from inventory dimensions; one later
   full-frame screenshot crossed the soft time threshold but was usable.
 - Status: watch
+
+## Split Figma variable reads by collection
+
+- Source: `docs/reviews/2026-07-07-codex-figma-mcp-r2-token-map.md`
+- Area: UI/UX, Figma MCP, design systems, token-cost
+- Context: R2 needed exact values for 95 variables across five Figma variable
+  collections.
+- Problem: A single all-token structured read technically completed but the
+  response was too large and got truncated, making it unsafe as a source for
+  implementation.
+- Candidate rule: For Figma variable extraction, read one collection per call
+  and return compact values: colors as CSS hex, aliases as `{alias, aliasName}`,
+  and only the fields needed by the implementation map.
+- Evidence: The five split collection reads all returned complete payloads,
+  while the combined read was truncated.
+- Status: watch
