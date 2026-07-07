@@ -397,3 +397,23 @@ promoted, watched, rejected, or kept historical.
 - Evidence: The clipboard workflow opened `战狼头像框.svga` successfully and
   avoided further failed dialog screenshots.
 - Status: watch
+
+## Assert packaged runtime dependency closure
+
+- Source:
+  `docs/reviews/2026-07-07-codex-packaged-runtime-protobufjs-dependency-fix.md`
+- Area: release, validation, implementation
+- Context: The packaged macOS App failed the optimization path with
+  `Cannot find package 'protobufjs' imported from .../.runtime/dist/...`,
+  while source files were not modified.
+- Problem: Development-mode tests can resolve packages from the workspace, but
+  the packaged App only has what was copied into `.runtime` and sealed into
+  `app.asar`.
+- Candidate rule: Whenever `.runtime/dist` imports an external Node package,
+  add that package to the runtime copy list and assert its expected `app.asar`
+  entries during internal packaging. Do not rely on developer-machine module
+  resolution as release evidence.
+- Evidence: Adding explicit `protobufjs` / `long` runtime copies plus package
+  assertions fixed the packaged App import failure and prevented missing
+  dependencies from reaching Owner handoff.
+- Status: watch

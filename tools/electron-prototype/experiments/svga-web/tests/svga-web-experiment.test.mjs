@@ -77,6 +77,7 @@ test("macOS package proof manifest records audit boundaries without final App ac
     validatePackagedApp: false
   });
   const packageScript = await readFile(path.join(experimentRoot, "scripts/package-internal-trial.mjs"), "utf8");
+  const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
   const signingWorkflow = await readFile(path.join(experimentRoot, "scripts/macos-signing-workflow.mjs"), "utf8");
   const packageJson = JSON.parse(await readFile(path.join(experimentRoot, "package.json"), "utf8"));
   assert.equal(proof.schemaVersion, 1);
@@ -125,6 +126,14 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(packageScript, /assertCleanZipEntries/);
   assert.match(packageScript, /sanitizePackagedInfoPlist/);
   assert.match(packageScript, /NSAudioCaptureUsageDescription/);
+  assert.match(prepareRuntime, /const runtimeNodeDependencies = \["protobufjs", "long"\]/);
+  assert.match(prepareRuntime, /copyRuntimeNodeDependency\(packageName\)/);
+  assert.match(prepareRuntime, /runtimeDependencies: runtimeNodeDependencies\.map/);
+  assert.match(prepareRuntime, /path\.join\(runtimeRoot, "node_modules", packageName\)/);
+  assert.match(packageScript, /assertPackagedRuntimeDependencies/);
+  assert.match(packageScript, /Contents\/Resources\/app\.asar/);
+  assert.match(packageScript, /\/\.runtime\/node_modules\/protobufjs\/package\.json/);
+  assert.match(packageScript, /\/\.runtime\/node_modules\/long\/package\.json/);
   assert.doesNotMatch(packageScript, /--sequesterRsrc/);
 });
 

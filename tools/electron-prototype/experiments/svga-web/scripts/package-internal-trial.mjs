@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,9 +22,12 @@ import {
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
+const prototypeRoot = path.resolve(experimentRoot, "../..");
+const requireFromPrototype = createRequire(path.join(prototypeRoot, "package.json"));
 const artifactsRoot = path.join(experimentRoot, ".artifacts/internal-trial");
 const appDirectory = path.join(artifactsRoot, `${appName}-darwin-arm64`);
 const appBundle = path.join(appDirectory, `${appName}.app`);
+const packagedAsarPath = path.join(appBundle, "Contents/Resources/app.asar");
 const packagedInfoPlist = path.join(appBundle, "Contents/Info.plist");
 const archivePath = path.join(artifactsRoot, `${appName}-darwin-arm64.zip`);
 const manifestPath = path.join(artifactsRoot, "internal-trial-manifest.json");
@@ -77,6 +81,25 @@ function assertCleanZipEntries(entries, label) {
   }
   if (duplicates.length > 0 || forbidden.length > 0) {
     throw new Error(`${label} is not clean: duplicates=${duplicates.slice(0, 5).join(", ")} forbidden=${forbidden.slice(0, 5).join(", ")}`);
+  }
+}
+
+function asarEntries(asarPath) {
+  const asar = requireFromPrototype("@electron/asar");
+  return asar.listPackage(asarPath).sort();
+}
+
+function assertPackagedRuntimeDependencies() {
+  const entries = new Set(asarEntries(packagedAsarPath));
+  const requiredEntries = [
+    "/.runtime/node_modules/protobufjs/package.json",
+    "/.runtime/node_modules/protobufjs/index.js",
+    "/.runtime/node_modules/long/package.json",
+    "/.runtime/node_modules/long/index.js"
+  ];
+  const missing = requiredEntries.filter((entry) => !entries.has(entry));
+  if (missing.length > 0) {
+    throw new Error(`macOS internal App is missing runtime dependencies: ${missing.join(", ")}`);
   }
 }
 
@@ -169,6 +192,7 @@ async function main() {
     : macosPackagerArgs(artifactsRoot);
   run("../../node_modules/.bin/electron-packager", packagerArgs);
   sanitizePackagedInfoPlist();
+  assertPackagedRuntimeDependencies();
   createCleanAppArchive();
 
   const packageSizeBytes = await directorySizeBytes(appBundle);

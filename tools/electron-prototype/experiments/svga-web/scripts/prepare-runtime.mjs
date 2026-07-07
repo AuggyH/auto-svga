@@ -19,6 +19,7 @@ const expectedVendorHashes = new Map([
 const expectedLegacyVendorHashes = new Map([
   ["pako-2.1.0.min.js", "ede2693a4a6a5126b9d35669062b358ecab6ae7b9b86a1cf302feb45a8514907"]
 ]);
+const runtimeNodeDependencies = ["protobufjs", "long"];
 
 await verifyVendorAssets();
 await verifyLegacyVendorAssets();
@@ -29,6 +30,9 @@ await pruneRuntimeDist(path.join(runtimeRoot, "dist"));
 await cp(path.join(prototypeRoot, ".runtime/tools"), path.join(runtimeRoot, "tools"), { recursive: true });
 await cp(path.join(prototypeRoot, ".runtime/fixture"), path.join(runtimeRoot, "fixture"), { recursive: true });
 await cp(path.join(prototypeRoot, ".runtime/proto"), path.join(runtimeRoot, "proto"), { recursive: true });
+for (const packageName of runtimeNodeDependencies) {
+  await copyRuntimeNodeDependency(packageName);
+}
 await mkdir(path.join(runtimeRoot, "legacy-vendor"), { recursive: true });
 for (const name of expectedLegacyVendorHashes.keys()) {
   await cp(path.join(prototypeRoot, "vendor", name), path.join(runtimeRoot, "legacy-vendor", name));
@@ -55,6 +59,7 @@ await writeFile(path.join(runtimeRoot, "manifest.json"), JSON.stringify({
   replaceableWorkflowFixtureSha256: createHash("sha256").update(replaceableWorkflowFixture).digest("hex"),
   replacementPreviewPng: "fixture/replacement-preview-green.png",
   replacementPreviewPngSha256: createHash("sha256").update(replacementPreviewPng).digest("hex"),
+  runtimeDependencies: runtimeNodeDependencies.map((packageName) => `node_modules/${packageName}`),
   vendor: "svga-web@2.4.4",
   strictCsp: true
 }, null, 2));
@@ -84,6 +89,14 @@ async function verifyLegacyVendorAssets() {
     const actualHash = createHash("sha256").update(bytes).digest("hex");
     if (actualHash !== expectedHash) throw new Error(`Legacy vendor checksum mismatch: ${name}`);
   }
+}
+
+async function copyRuntimeNodeDependency(packageName) {
+  await cp(
+    path.join(prototypeRoot, "node_modules", packageName),
+    path.join(runtimeRoot, "node_modules", packageName),
+    { recursive: true }
+  );
 }
 
 async function ensureWebBaselineFixture() {
