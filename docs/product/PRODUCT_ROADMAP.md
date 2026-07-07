@@ -86,13 +86,13 @@ path-redacted display and user-controlled clearing.
 | --- | --- | --- |
 | S1 | Open SVGA locally | Launch opens from the central Open action, drag into the canvas, or macOS menu entry. In Preview, there is no visible `Open Another File` button; opening another file uses the macOS menu or drag-and-drop onto the canvas. |
 | S2 | Play SVGA and report abnormal states | Playback failures, parse failures, loading failures, and invalid files must show clear feedback. |
-| S3 | Show basic file information | File size, estimated memory usage, canvas size, FPS, and asset count. |
+| S3 | Show basic file information | File size, estimated decoded image memory, runtime structure risk, canvas size, FPS, and asset count. Decoded image memory and runtime structure risk must be separate so a file with small images but thousands of timeline objects is not presented as low-risk. |
 | S4 | Show production-spec status inside file information | Default Preview shows compact production-spec status inside file information without exposing target thresholds. Detailed current-vs-requirement values appear only in optimization detail/result context or another explicit detail state; do not create a separate production-spec module. |
 | S5 | Show all asset information | Images, sequence/video-like frame assets, audio group, and replaceable elements. Display thumbnail, file/key name, image dimensions when available, audio duration when available, and file size. |
 | S6 | Show image thumbnails | Images show their image thumbnail. Sequence/frame groups show the existing four-grid thumbnail from the first four frames. Audio uses a fixed music icon when audio parsing is later supported. |
 | S7 | Identify replaceable elements by naming rule | In the short term, exclude automatic names such as `img_000` / `img_001`; non-automatic designer names are treated as replaceable imageKeys. Future versions may add configurable whitelist/blacklist regular expressions. |
-| S8 | Detect optimization opportunities | Detect file-size and memory-usage optimization opportunities, briefly explain each item, and estimate impact. Optimization entry points live inside the relevant file-information metrics, such as file size and memory estimate, not as a persistent top-right summary button. |
-| S9 | Run real optimization | Produce optimized SVGA bytes, not a report-only recommendation. Allowed methods include image compression with quality controls, removing unreferenced resources, transparent-bound trimming, sequence-frame processing, FPS adjustment, and canvas adjustment when production specs remain satisfied. |
+| S8 | Detect optimization opportunities | Detect file-size, decoded-memory, and runtime-structure optimization opportunities, briefly explain each item, and estimate impact. Optimization entry points live inside the relevant file-information metrics, such as file size, memory estimate, and runtime structure risk, not as a persistent top-right summary button. |
+| S9 | Run real optimization | Produce optimized SVGA bytes, not a report-only recommendation. Allowed methods include image compression with quality controls, removing unreferenced resources, transparent-bound trimming, sequence-frame processing, FPS adjustment, canvas adjustment when production specs remain satisfied, all-zero sprite/frame pruning, target-player low-alpha pruning when validated, and sequence-fanout reduction when before/after playback comparison passes. |
 | S10 | Enter optimization comparison flow | Clicking a metric-level optimization entry replaces the current right information surface with optimization detail or result comparison. Optimization result comparison shows before/after previews plus concrete optimization items and exposes `另存为 SVGA`, `覆盖保存`, and `放弃优化`; successful overwrite returns to Preview. |
 | S11 | Rename imageKey | From the asset panel, selecting an image and using the context menu Rename or `Cmd+R` enters key rename mode. Enter confirms. All related references must update and the app must produce updated SVGA bytes. In Preview, changing the key value is the only replaceable-element operation that creates dirty state. |
 | S12 | Preview replaceable images | In Preview mode, replaceable image elements can be replaced and reset with realtime playback preview. This does not switch to Edit mode. |
@@ -100,6 +100,8 @@ path-redacted display and user-controlled clearing.
 | S14 | Save edited output | Save behavior is context-specific. Preview imageKey key rename dirty state appends `*` to the filename and enables Save As; after Save As succeeds, `*` disappears and Save As remains visible but disabled. Optimization result output exposes both Save As SVGA and Overwrite Save, plus Abandon Optimization. All save paths require output validation. |
 | S15 | Keep audio deferred | Audio parsing and duration are not required for the short-term version. If no audio is detected or audio parsing is not implemented, the audio group shows `当前文件暂无音频资产`. |
 | S16 | Show recent SVGA files | The launch page shows up to five low-emphasis recent SVGA records inside the canvas below Open/Drag actions, with a trash icon that clears all recent records. `File > Recent` shows up to ten records plus a clear-history action. Recent records must open the same local-file flow, hide full local paths by default, and fail gracefully when a file is missing or inaccessible. |
+| S17 | Detect runtime structure complexity | Inspect sprite count, FrameEntity count, alpha-positive frame count, target-player-visible frame count when a threshold profile exists, invisible/low-alpha ratios, sequence-frame fanout, per-frame visible sprite peak/average, and estimated runtime structure memory. This is a required production performance diagnostic because real production SVGA files can have small image memory but high mobile runtime memory. |
+| S18 | Optimize runtime structure complexity | Provide output-producing optimization for supported runtime-structure problems. Safe items include all-zero sprite removal and newly unreferenced image cleanup. Review-required items include target-player alpha-threshold pruning, FPS resampling, sequence-fanout pruning, and sequence-fanout rebake/collapse. The app must show before/after structure metrics, file size, decoded memory, runtime risk, and playback comparison before Save As or Overwrite Save. |
 
 ### Short-term Acceptance Matrix
 
@@ -111,7 +113,7 @@ ready.
 | --- | --- | --- |
 | S1 | Launch Open, canvas drag-and-drop, and macOS menu opening all load the same local SVGA bytes without exposing arbitrary renderer filesystem access. Preview has no visible Open Another File button. | Open-flow proof, drag/drop proof, menu-entry proof, preview-surface no-open-button proof, path-redaction check. |
 | S2 | Invalid files, parse failures, loading failures, and playback failures show a visible user message and recover when a valid file is opened. | Invalid-file proof, recovery proof, player lifecycle cleanup proof. |
-| S3 | Preview information shows file size, estimated decoded memory, canvas, FPS, and asset count for a parsed SVGA. | Inspection report and rendered right-information proof. |
+| S3 | Preview information shows file size, estimated decoded image memory, runtime structure risk, canvas, FPS, and asset count for a parsed SVGA. | Inspection report and rendered right-information proof with decoded-memory and runtime-structure fields separated. |
 | S4 | Default Preview shows production-spec status inline without target thresholds; detailed actual/limit pairs appear only in optimization detail/result context or another explicit detail state. | Default status-only proof, optimization-detail actual/limit proof, current spec profile id. |
 | S5 | Asset information covers image resources, sequence/frame groups, audio group state, and replaceable elements without duplicating every image under replaceable elements. | Asset-list proof with resource counts and grouping. |
 | S6 | Image thumbnails, four-frame sequence thumbnails, and audio empty/icon states render without layout shift. | Rendered thumbnail proof for image, sequence, and no-audio states. |
@@ -125,6 +127,8 @@ ready.
 | S14 | Preview imageKey key rename dirty state shows filename `*` and enables Save As only; Save As success clears `*` and leaves Save As visible but disabled. Optimization result output separately supports Save As SVGA and Overwrite Save. | Preview dirty-star proof, Save As clean-state proof, optimization overwrite proof, reopen validation proof. |
 | S15 | Audio group does not block release; no-audio and unsupported-audio states are visible and truthful. | Audio-empty-state proof and known-limitation entry. |
 | S16 | Launch recent rows and `File > Recent` use real recent-file state, preserve Open/Drag as higher-priority actions, avoid full-path exposure by default, clear all history from the launch trash icon or menu action, and recover gracefully from missing files. | Recent-state persistence proof, launch five-row proof, menu ten-row proof, path-redaction proof, launch-trash clear proof, menu clear-history proof, missing-file recovery proof. |
+| S17 | SVGA files with small decoded image memory but high sprite/FrameEntity counts are flagged as runtime-structure risk and explain why mobile memory may be high. | Real or synthetic high-fanout SVGA report, sprite/FrameEntity counts, visible-frame density, estimated runtime-structure memory, and UI proof. |
+| S18 | Supported runtime-structure optimizations produce validated SVGA bytes and show before/after structure metrics and playback comparison. Risky or target-player-specific items stay review-only until validated. | Optimized output, before/after structure report, inflate/decode proof, reopen proof, playback comparison proof, target-player threshold note when applicable. |
 
 ### Replaceable Element Definition
 
@@ -332,6 +336,27 @@ Memory estimation:
   above 16 MiB.
 - The product copy must call this an estimate, not measured runtime memory.
 
+Runtime structure estimation:
+
+- Decoded image memory is not the same as target-player runtime memory.
+- The app must estimate and display runtime structure risk separately from
+  decoded image memory.
+- Runtime structure metrics include sprite count, total FrameEntity count,
+  alpha-positive frame count, invisible-frame ratio, low-alpha frame ratio,
+  sequence-frame fanout, per-frame visible sprite peak/average, and estimated
+  runtime structure memory.
+- The first calibrated production case is the lucky notice SVGA module: one
+  file with only 27 images and about 1.10 MiB decoded image memory expanded to
+  2883 sprites and 345,960 FrameEntity records, and was reported by client
+  engineers to approach 20 MiB runtime memory on phones.
+- Until target-player-specific measurements are available, runtime structure
+  thresholds are advisory and must fail closed: high sprite/FrameEntity counts
+  must warn even when file size and decoded image memory pass.
+- When a target player has a documented alpha draw threshold or object
+  allocation profile, Auto SVGA may show target-player-specific risk and
+  optimization estimates, but generic SVGA output must not silently assume that
+  all players skip the same low-alpha content.
+
 Optimization actions are enabled only when the app can produce optimized bytes
 and prove round-trip safety. Otherwise they remain findings or suggestions,
 not active buttons.
@@ -344,6 +369,9 @@ not active buttons.
 | Transparent-bound trimming | Allowed when implemented | Offset or transform compensation is proven, visual comparison passes, unsupported cases remain suggestion-only. |
 | Sequence-frame processing | Allowed only for optimization | May remove or collapse mechanically safe duplicate/unreferenced frame resources; anti-flicker sequence repair is mid-term. |
 | FPS or canvas adjustment | Allowed only with explicit confirmation | Production spec remains satisfied, timing/canvas impact is shown, before/after playback comparison passes. |
+| All-zero sprite/frame pruning | May be enabled | Sprite maximum alpha is zero across its timeline, removed resources become unreferenced only after the sprite removal, references remain closed, output inflates/decodes/reopens. |
+| Target-player low-alpha pruning | Review-only unless a target-player threshold profile is selected and validated | The optimization states the threshold, proves before/after playback equivalence for that target, and remains suggestion-only for generic SVGA compatibility. |
+| Sequence-fanout reduction or rebake | Review-only until validated | Detects repeated sequence instances that create excessive sprite/FrameEntity counts; output must show before/after sprite count, FrameEntity count, decoded memory, file size, and playback comparison. |
 
 Safe optimization batch action:
 
@@ -418,6 +446,7 @@ fixtures are acceptable when real production assets cannot be committed.
 | SVGA with designer-named imageKeys | Replaceable image list, runtime image replacement, reset, rename path. |
 | SVGA with runtime text keys | Inline text input, runtime preview, reset, byte-immutability. |
 | SVGA with sequence/frame resources | Four-frame thumbnail, sequence grouping, optimization findings. |
+| SVGA with runtime structure fanout | Sprite count, FrameEntity count, sequence-fanout warning, runtime memory risk, and runtime-structure optimization candidates. |
 | SVGA with no audio | Audio group shows `当前文件暂无音频资产`. |
 | SVGA with unreferenced or duplicate image resources | Safe optimization candidate, optimized output, reopen proof. |
 | SVGA with transparent padding | Production-spec comparison and review-only or enabled trim state. |
@@ -430,7 +459,9 @@ fixtures are acceptable when real production assets cannot be committed.
 - Export acceptance UI or export-review mode
 - Sequence-frame repair
 - Advanced layer editing
-- Timeline, transform, alpha, shape, audio, mask, or frame-structure editing
+- Timeline, transform, alpha, shape, audio, mask, or general frame-structure
+  editing, except the bounded runtime-structure optimization required by S17
+  and S18
 - Text persistence as direct SVGA-byte editing
 - Audio parsing as a required feature
 - Broad batch replacement
@@ -504,7 +535,7 @@ Subordinate planning lives in `docs/product/AE_BRIDGE_PRODUCT_BRIEF.md`.
 | AEB9 | Bake grouping decision | Auto SVGA can recommend merged or separate bake groups based on z-order safety, overlap, time range, replaceability, bbox size, empty-frame ratio, duplicate-frame ratio, and memory/file-size risk. |
 | AEB10 | Replaceable-element protection | The scanner and bake planner must identify designer-named replaceable candidates and avoid baking them into non-replaceable sequences unless the user explicitly accepts that loss. |
 | AEB11 | Auto SVGA preview handoff | Successful native or baked output opens directly in Auto SVGA Preview mode with short-term preview information, assets, diagnostics, optimization, comparison, and save behavior available. |
-| AEB12 | Production diagnostics | Every bridge run reports compatibility, native-converted layers, baked layers, blocked layers, expected visual risk, file size, decoded memory, production-spec status, and target-player risk. |
+| AEB12 | Production diagnostics | Every bridge run reports compatibility, native-converted layers, baked layers, blocked layers, expected visual risk, file size, decoded memory, runtime structure risk, production-spec status, and target-player risk. |
 | AEB13 | Real SVGA output | When export is enabled, Auto SVGA must produce standards-compliant SVGA bytes, validate inflate/decode/reopen/playback load, and allow Overwrite Save or Save As only after validation. |
 | AEB14 | Version and OS compatibility matrix | The product must maintain a real compatibility matrix for macOS and Windows across supported AE versions. Formal support, compatibility support, and best-effort legacy support must be separate. |
 | AEB15 | Failure-safe source handling | The bridge must not mutate the original AE project, must isolate temporary comps and rendered frames, and must provide cleanup/recovery instructions on failure. |

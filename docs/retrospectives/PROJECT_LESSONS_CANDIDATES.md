@@ -133,6 +133,26 @@ promoted, watched, rejected, or kept historical.
   promotion summarized in the baseline retrospective.
 - Status: promote
 
+## Separate decoded image memory from runtime structure memory
+
+- Source:
+  `docs/retrospectives/production-cases/2026-07-07-lucky-notice-svga-runtime-structure-memory.md`
+- Area: product, implementation, validation
+- Context: A real lucky notice SVGA module had modest encoded size and decoded
+  image memory, but the client team observed about 20 MiB runtime memory on
+  phones. The ending file had only 27 embedded images but 2883 sprites and
+  345,960 FrameEntity records.
+- Problem: Image-only memory estimates can falsely reassure designers,
+  reviewers, and engineers when the actual target-player cost comes from
+  parsed timeline objects.
+- Candidate rule: Every SVGA performance report should separate decoded image
+  memory from runtime structure risk and include sprite count, FrameEntity
+  count, sequence fanout, invisible/low-alpha ratios, and target-player
+  assumptions.
+- Evidence: Lucky notice production case promoted runtime structure diagnostics
+  and optimization into `docs/product/PRODUCT_ROADMAP.md` as S17/S18.
+- Status: promote
+
 ## Use pilot screenshots before batch Figma target capture
 
 - Source: `docs/reviews/2026-07-07-codex-figma-mcp-r1-screenshot-archive.md`
