@@ -281,22 +281,26 @@ Implementation dependency:
 
 Purpose:
 
-Identify the component library's atomic hierarchy before reading component
-details. The Owner-confirmed library model is:
+Read the component library's atomic hierarchy before reading component details.
+The Owner-confirmed library model is:
 
 - `module` is composed from `molecule` and `atom`
 - `molecule` is composed from `atom`
 - `atom` is the smallest reusable UI unit
 - Figma component sets and variant properties manage each layer
+- the component-library page now has three top-level sections named exactly
+  `atom`, `molecule`, and `module`
 
-R3 must avoid a flat component-library scan. It should classify top-level
-library entries first, then let R3b and R4 read from large composed surfaces
-downward only where an active work package needs the dependency.
+R3 must avoid a flat component-library scan. It should read only the three
+known top-level sections and their direct children, then let R3b and R4 read
+from large composed surfaces downward only where an active work package needs
+the dependency.
 
 Expected cost:
 
 - 1 structured read
-- hard cap: 2 reads if pagination is needed or the first payload is truncated
+- hard cap: 3 reads if the response must be split by `atom`, `molecule`, and
+  `module`
 
 Page:
 
@@ -304,7 +308,8 @@ Page:
 
 Read fields only:
 
-- top-level node ID
+- section node ID for `atom`, `molecule`, and `module`
+- direct child node ID
 - name
 - type
 - parent or section name when visible
@@ -313,7 +318,7 @@ Read fields only:
 - direct child instance names and IDs only when depth stays at 1
 - variant count
 - variant property names only
-- classification hint from explicit section, frame, or component naming
+- classification from containing section
 
 Do not return:
 
@@ -326,10 +331,12 @@ Do not return:
 Output:
 
 - `docs/research/figma-mcp-read-packets/r3-atomic-component-hierarchy-YYYYMMDD.md`
-- classified table: module, molecule, atom, or unknown
-- confidence per row: explicit, strong inference, weak inference, or unknown
+- classified table grouped by `module`, `molecule`, and `atom`
+- section-level confidence; entries inside the three Owner-confirmed sections
+  are explicit, while entries outside those sections are `unknown`
 - component-set variant property list
-- unknowns that need targeted follow-up before implementation
+- missing expected section or section-outside entries that need targeted
+  follow-up before implementation
 
 Authorization gate:
 
@@ -354,14 +361,14 @@ Inputs:
 
 - R1 screenshots
 - R2 token map
-- R3 atomic component hierarchy map
+- R3 `atom` / `molecule` / `module` section map
 - Batch 01 component names only, if R3 has not been authorized yet
 
 Rules:
 
 - Prefer module roots over isolated atom/molecule reads.
-- Mark any dependency as `explicit` only when R3 identifies it or a later
-  component contract confirms it.
+- Mark dependencies as `explicit` when they come from the Owner-confirmed
+  `atom`, `molecule`, or `module` sections.
 - Mark Batch 01-only dependency guesses as `provisional`.
 - Do not ask Figma for a global atom list just because one module might use
   atoms internally.
@@ -758,7 +765,7 @@ Validation:
 | R0 | Completed inventory | 4 | already done |
 | R1 | Screenshot archive | 12-15 | 16 |
 | R2 | Token values | 2-4 | 6 |
-| R3 | Atomic component hierarchy map | 1 | 2 |
+| R3 | Atomic component hierarchy map | 1 | 3 |
 | R3b | WP component dependency plan | 0 | 0 |
 | R4 | Module-first component contracts | 8-14 | 18 |
 | R5 | WP page-state metadata | 18-35 | 45 |
@@ -879,8 +886,8 @@ R1 screenshots and R2 tokens are complete. The next efficient Figma action is
 R3:
 
 1. ask Owner for explicit authorization before any Figma MCP call;
-2. read only the `🧱 组件库` top-level hierarchy needed to classify
-   module/molecule/atom entries;
+2. read only the `🧱 组件库` top-level sections named `atom`, `molecule`, and
+   `module`, plus their direct child entries;
 3. write `r3-atomic-component-hierarchy-YYYYMMDD.md`;
 4. perform R3b locally to map WPs to module roots and allowed follow-up
    molecules/atoms;
