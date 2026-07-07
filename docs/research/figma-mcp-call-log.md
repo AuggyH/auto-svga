@@ -434,3 +434,74 @@ Repository token map:
 - Compact color values should be returned as CSS hex strings and aliases as
   `{alias, aliasName}` pairs. This preserves implementation value while
   avoiding response truncation.
+
+## Batch 04 - R3 Atomic Component Hierarchy
+
+Date: 2026-07-07
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R3 - Atomic Component Hierarchy Map
+Owner approval: Owner explicitly authorized entering R3.
+
+### Objective
+
+Read the `🧱 组件库` page's atomic component hierarchy after the Owner organized
+the library into three top-level sections. This batch intentionally did not
+read component descendants, visual style dumps, screenshots, or product
+behavior.
+
+### Planned Budget
+
+- Expected structured reads: 1
+- Hard cap: 3 structured reads if section matching or payload size required
+  recovery
+- Target page: `🧱 组件库` (`88:4275`)
+- Target sections: `Atom`, `Molecule`, `Module`
+
+### Actual Usage
+
+| # | Tool | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | ---: | --- |
+| 1 | `use_figma` | Initial lower-case section lookup | Yes | 4.3418s | Complete but actual section names are title case |
+| 2 | `use_figma` | Title-case section map with richer direct refs | Yes | 4.8640s | Tool response truncated around 20 KB; not used as final source |
+| 3 | `use_figma` | Ultra-compact section map | Yes | 11.1492s | Complete final source |
+
+Actual total MCP calls: 3
+
+Actual quota-counted reads, conservative: 3
+
+Measured MCP tool wall time total: 20.3550s
+
+Remaining practical daily budget after Batch 04: about 132 quota-counted
+reads.
+
+### Result
+
+R3 captured all target sections:
+
+- `Atom` - 15 direct children
+- `Molecule` - 16 direct children
+- `Module` - 8 direct children
+
+Repository hierarchy packet:
+
+`docs/research/figma-mcp-read-packets/r3-atomic-component-hierarchy-20260707.md`
+
+### Verification
+
+- The final compact read returned `missingSections: []`.
+- The final compact read returned `outsideTopLevel: []`.
+- The final compact read returned `sectionsFound: 3` and `directChildren: 39`.
+- The final compact read returned `truncated:false`; the earlier richer read
+  was discarded as a final source because the tool output channel truncated it.
+
+### Protocol Feedback
+
+- Match section names case-insensitively and normalize them locally to
+  `atom`, `molecule`, and `module`.
+- R4 should start from the `Module` section and read one module contract at a
+  time.
+- Even a direct-child component map can exceed response limits if every direct
+  instance reference is returned with coordinates and redundant metadata. Keep
+  component reads ultra-compact by default, then expand one named component
+  only when implementation needs it.

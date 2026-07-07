@@ -289,7 +289,7 @@ The Owner-confirmed library model is:
 - `atom` is the smallest reusable UI unit
 - Figma component sets and variant properties manage each layer
 - the component-library page now has three top-level sections named exactly
-  `atom`, `molecule`, and `module`
+  `Atom`, `Molecule`, and `Module`
 
 R3 must avoid a flat component-library scan. It should read only the three
 known top-level sections and their direct children, then let R3b and R4 read
@@ -301,6 +301,8 @@ Expected cost:
 - 1 structured read
 - hard cap: 3 reads if the response must be split by `atom`, `molecule`, and
   `module`
+- match section names case-insensitively and normalize them to canonical
+  lower-case `atom`, `molecule`, and `module` in local records
 
 Page:
 
@@ -886,8 +888,9 @@ R1 screenshots and R2 tokens are complete. The next efficient Figma action is
 R3:
 
 1. ask Owner for explicit authorization before any Figma MCP call;
-2. read only the `🧱 组件库` top-level sections named `atom`, `molecule`, and
-   `module`, plus their direct child entries;
+2. read only the `🧱 组件库` top-level sections named `Atom`, `Molecule`, and
+   `Module`, plus their direct child entries; normalize them locally to
+   `atom`, `molecule`, and `module`;
 3. write `r3-atomic-component-hierarchy-YYYYMMDD.md`;
 4. perform R3b locally to map WPs to module roots and allowed follow-up
    molecules/atoms;

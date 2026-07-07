@@ -171,7 +171,8 @@ promoted, watched, rejected, or kept historical.
 ## Read Figma components by atomic hierarchy
 
 - Source:
-  `docs/reviews/2026-07-07-codex-figma-mcp-atomic-read-strategy.md`
+  `docs/reviews/2026-07-07-codex-figma-mcp-atomic-read-strategy.md`,
+  `docs/research/figma-mcp-read-packets/r3-atomic-component-hierarchy-20260707.md`
 - Area: UI/UX, Figma MCP, design systems, token-cost
 - Context: The Owner clarified that the Figma component library is organized by
   module, molecule, and atom, with modules composed from molecules/atoms and
@@ -186,5 +187,25 @@ promoted, watched, rejected, or kept historical.
   package. Avoid global atom or molecule sweeps unless a module contract
   explicitly requires a targeted follow-up.
 - Evidence: The revised Figma MCP read plan changes R3 to an atomic hierarchy
-  section map and R4 to module-first component contracts.
+  section map and R4 to module-first component contracts. The R3 read confirmed
+  the component-library page has only three top-level sections and 39 direct
+  children.
+- Status: watch
+
+## Keep Figma component reads ultra-compact by default
+
+- Source:
+  `docs/research/figma-mcp-read-packets/r3-atomic-component-hierarchy-20260707.md`
+- Area: UI/UX, Figma MCP, design systems, token-cost
+- Context: R3's richer direct-child component map completed in Figma but the
+  tool output channel truncated the response around 20 KB.
+- Problem: Component maps can exceed response limits even without deep
+  descendant traversal if they include coordinates, repeated metadata, and
+  direct instance refs for many nodes.
+- Candidate rule: Default component reads should return IDs, names, node type,
+  layer classification, child/variant counts, variant property names/options,
+  and compact direct refs only. Expand layout, tokens, or descendants for one
+  named module or molecule at a time.
+- Evidence: R3 call 3 completed with an ultra-compact section map covering all
+  39 direct children, while R3 call 2 was too large for final use.
 - Status: watch
