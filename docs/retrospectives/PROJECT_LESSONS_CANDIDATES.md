@@ -244,3 +244,23 @@ promoted, watched, rejected, or kept historical.
 - Evidence: WP1A added Figma R2 base/semantic token coverage and a
   `figma-r2-token-foundation-covered` design-system check.
 - Status: watch
+
+## Retry truncated Figma module reads with contract essentials only
+
+- Source:
+  `docs/research/figma-mcp-read-packets/r4-launch-module-contract-20260707.md`
+- Area: UI/UX, Figma MCP, design systems, token-cost, implementation planning
+- Context: R4 targeted a single launch module, but the first module-contract
+  read still exceeded the tool output channel because it returned too much
+  nested data.
+- Problem: A scoped module read can still waste quota if it asks for rich
+  descendant metadata instead of the exact implementation contract needed for
+  the active WP.
+- Candidate rule: When a module read truncates, do not repeat the same request.
+  Retry once with contract essentials only: node IDs, names, direct geometry,
+  visible text, direct instance main-component IDs, component properties, and
+  explicit implementation findings.
+- Evidence: The first R4 launch-module read was truncated, while the compact
+  retry completed within the hard cap and produced enough information for WP3
+  launch visual alignment.
+- Status: watch

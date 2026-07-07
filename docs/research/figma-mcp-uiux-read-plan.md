@@ -886,20 +886,26 @@ Each WP review must include:
 
 ## Next Action
 
-R1 screenshots, R2 tokens, R3 hierarchy, and R3b dependency planning are
-complete. WP1A has started implementation by wiring the R2 base palette,
-semantic color aliases, spacing scale, radius scale, dark aliases, and
-design-system regression check into the short-term client.
+R1 screenshots, R2 tokens, R3 hierarchy, R3b dependency planning, WP1A token
+implementation, and the first R4 module contract are complete.
 
-The next efficient Figma action is still R4, and it requires explicit Owner
-authorization before any MCP call.
-
-Recommended first R4 request:
+Completed first R4 request:
 
 1. target `Module/启动页模块/默认` (`125:42`);
-2. read only the module contract needed for WP3 launch implementation;
-3. expected calls: 1;
-4. hard cap: 2 if a compact retry is needed.
+2. expected calls: 1;
+3. actual calls: 2 because the first response was truncated and a compact
+   retry was required;
+4. packet:
+   `docs/research/figma-mcp-read-packets/r4-launch-module-contract-20260707.md`.
 
-R4 must continue module-first. Do not read all atoms, all molecules, or all
-module descendants in one batch.
+The next efficient project action is WP3 launch visual alignment using:
+
+- R1 launch target screenshot;
+- R2 token map and implemented token foundation;
+- R4 launch module contract.
+
+No additional Figma MCP read is required before WP3 unless implementation hits
+a specific unresolved detail in `Molecule/空态画布` or
+`Atom/最近文件行/正常`. If that happens, request Owner authorization for one
+named component only. Do not read all atoms, all molecules, or all module
+descendants in one batch.

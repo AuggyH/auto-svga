@@ -505,3 +505,79 @@ Repository hierarchy packet:
   instance reference is returned with coordinates and redundant metadata. Keep
   component reads ultra-compact by default, then expand one named component
   only when implementation needs it.
+
+## Batch 05 - R4 Launch Module Contract
+
+Date: 2026-07-07
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R4 - Module-first component contract
+Owner approval: Owner explicitly confirmed authorization for this R4 read.
+
+### Objective
+
+Read only the launch-page module contract needed for WP3 launch implementation.
+This batch intentionally did not read all atoms, all molecules, full page-state
+metadata, screenshots, assets, or any Figma write operations.
+
+### Planned Budget
+
+- Planned structured reads: 1
+- Target node: `Module/启动页模块/默认` (`125:42`)
+- Hard cap: 2 structured reads if compact retry was required
+- Output shape: compact contract essentials only
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `use_figma` | `125:42` | Initial launch module contract read | Yes | 4.5312s | Completed in Figma but response was truncated around 20 KB; not used as final source |
+| 2 | `use_figma` | `125:42` | Compact retry with contract essentials only | Yes | 3.5509s | Complete final source |
+
+Actual total MCP calls: 2
+
+Actual quota-counted reads, conservative: 2
+
+Measured MCP tool wall time total: 8.0821s
+
+Remaining practical daily budget after Batch 05: about 130 quota-counted
+reads.
+
+### Result
+
+R4 captured the launch module contract:
+
+- module root: `Module/启动页模块/默认` (`125:42`)
+- module size: `640 x 592`
+- direct children: `棋盘格背景`, `Molecule/空态画布`, `最近文件区`
+- empty canvas instance: `Molecule/空态画布` (`124:58`)
+- launch action visible text: `打开文件`
+- recent list: nested directly in launch module
+- recent rows visible: 5
+- invalid recent row example: present, using `文件不可访问`
+- clear-all recent control: present in the recent header
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r4-launch-module-contract-20260707.md`
+
+### Verification
+
+- The first read was discarded as final source because the output was
+  truncated.
+- The second read returned the needed module facts within the planned hard cap.
+- The R4 result matches PRD S1 and S16 at the contract level: one launch canvas
+  with drag/open affordance and five recent records.
+
+### Protocol Feedback
+
+- For module contracts, a broad descendant read can still overflow even when
+  scoped to one module.
+- The retry should explicitly request only names, IDs, geometry, visible text,
+  instance main component IDs, component properties, and implementation
+  findings.
+- Raw Figma node/component names are not always product copy or role truth.
+  In this batch, the launch button variant name included `另存为` while the
+  visible text was `打开文件`, and the clear-all icon node was named `上传图标`.
+  Implementation must follow PRD plus visible design intent, not raw layer
+  naming alone.
