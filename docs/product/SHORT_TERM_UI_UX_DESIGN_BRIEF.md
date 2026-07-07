@@ -395,6 +395,9 @@ Launch:
 
 - Launch is one full-window canvas/drop surface.
 - The center contains drag-in prompt and Open File.
+- The checkerboard canvas may drift slowly as an idle background animation.
+  The motion must stay subtle, background-only, and disabled under reduced
+  motion.
 - Recent files remain visually secondary inside the canvas and show at most
   five records.
 - The launch recent trash icon clears all recent records.

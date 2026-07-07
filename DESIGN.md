@@ -219,6 +219,9 @@ Owner-confirmed canvas direction, aligned with the PM-synced main PRD:
 - Launch shows the central drag affordance, Open File action, and a
   low-emphasis recent-file list only. The recent-file clear icon clears all
   recent records.
+- Launch may use a subtle, slow checkerboard idle motion on the canvas
+  background. It must remain background-only, stop under reduced motion, and
+  give way to drag-hover, invalid-format, loading, and error states.
 - Preview mode does not show a visible Open Another File control. Opening a
   different file happens through the macOS menu or by dragging a file onto the
   canvas.
@@ -607,7 +610,8 @@ Avoid:
 - color-only status communication
 
 Keep the opened SVGA visually dominant. Interface motion should not compete
-with playback.
+with playback. The Launch checkerboard idle motion is allowed only before a
+file is opened and only as a low-emphasis background state.
 
 ## Typography And Copy
 

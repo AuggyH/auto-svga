@@ -125,6 +125,9 @@ Before implementation begins, the design or code task must declare:
   traceability.
 - Keep focus states visible.
 - Keep `prefers-reduced-motion` behavior for animated elements.
+- Implement Launch checkerboard idle motion only as tokenized background
+  surface motion. It must be disabled by `prefers-reduced-motion`, and drag,
+  invalid-format, loading, and error states must override its visual priority.
 - Keep dense metadata selectable where practical.
 - Avoid page-local decorative effects that are not tied to product state.
 

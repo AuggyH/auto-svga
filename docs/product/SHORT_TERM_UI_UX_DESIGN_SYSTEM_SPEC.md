@@ -23,7 +23,7 @@ model remains `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md`.
 | `primitive.space` | 4, 8, 12, 16, 20, 24, 32 | layout rhythm |
 | `primitive.radius` | 6, 8, 12 | keep tool UI restrained |
 | `primitive.shadow` | menu, panel, floating | only where hierarchy needs it |
-| `primitive.motion` | fast, normal, reduced | must support reduced motion |
+| `primitive.motion` | fast, normal, idle, reduced | must support reduced motion |
 | `semantic.color.text` | primary, secondary, muted, inverse | mode-aware |
 | `semantic.color.surface` | window, toolbar, panel, canvas | mode-aware |
 | `semantic.color.status` | success, warning, danger, info | never color-only |
@@ -94,7 +94,7 @@ can express the intent.
 | Component | Module owner | Evidence |
 | --- | --- | --- |
 | `WindowChrome` | app shell | native chrome/menu state proof |
-| `LaunchDropCanvas` | LaunchModule | launch/open/drop proof |
+| `LaunchDropCanvas` | LaunchModule | launch/open/drop proof, subtle checkerboard idle-motion proof, reduced-motion static proof |
 | `LaunchRecentFilesList` | LaunchModule | S16 recent-file launch proof |
 | `FileRecentSubmenu` | MenuBarCommandModel | S16 recent-file menu proof |
 | `PreviewStage` | PreviewCanvasModule | playback and abnormal-state proof |

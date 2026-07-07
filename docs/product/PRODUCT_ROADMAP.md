@@ -111,7 +111,7 @@ ready.
 
 | ID | Accept when | Required evidence |
 | --- | --- | --- |
-| S1 | Launch Open, canvas drag-and-drop, and macOS menu opening all load the same local SVGA bytes without exposing arbitrary renderer filesystem access. Preview has no visible Open Another File button. | Open-flow proof, drag/drop proof, menu-entry proof, preview-surface no-open-button proof, path-redaction check. |
+| S1 | Launch Open, canvas drag-and-drop, and macOS menu opening all load the same local SVGA bytes without exposing arbitrary renderer filesystem access. Preview has no visible Open Another File button. Launch may show a subtle checkerboard idle background motion, but it must remain background-only and stop under reduced motion. | Open-flow proof, drag/drop proof, menu-entry proof, preview-surface no-open-button proof, launch idle-motion proof, reduced-motion fallback proof, path-redaction check. |
 | S2 | Invalid files, parse failures, loading failures, and playback failures show a visible user message and recover when a valid file is opened. | Invalid-file proof, recovery proof, player lifecycle cleanup proof. |
 | S3 | Preview information shows file size, estimated decoded image memory, runtime structure risk, canvas, FPS, and asset count for a parsed SVGA. | Inspection report and rendered right-information proof with decoded-memory and runtime-structure fields separated. |
 | S4 | Default Preview shows production-spec status inline without target thresholds; detailed actual/limit pairs appear only in optimization detail/result context or another explicit detail state. | Default status-only proof, optimization-detail actual/limit proof, current spec profile id. |
@@ -177,6 +177,13 @@ Initial app launch shows a startup page rather than the full main interface.
 The startup page is one full-window canvas/drop surface with central drag-in
 prompt and Open action. It also prepares for future multi-format routing and
 gives the main app surface time to load without appearing blocked.
+
+The launch canvas may include a subtle, slow checkerboard background idle
+motion. This motion is part of the canvas atmosphere only: it must not add
+visible controls or copy, must not compete with the drag-in prompt, Open action,
+or recent-file list, and must be disabled when the user or system requests
+reduced motion. Drag-hover, invalid-format, loading, and error states take
+visual priority over the idle background.
 
 Recently opened files are part of the short-term formal product scope. The
 launch page shows up to five recent SVGA files below the primary Open and Drag

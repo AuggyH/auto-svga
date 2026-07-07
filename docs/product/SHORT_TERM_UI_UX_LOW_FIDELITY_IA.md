@@ -150,6 +150,10 @@ flowchart TD
 
 Trace: S1, S2, S16.
 
+Note: The low-fidelity frame does not render motion, but the Launch canvas may
+use a subtle checkerboard idle background drift. It remains background-only and
+is static when reduced motion is requested.
+
 ### Preview Ready
 
 ```text
