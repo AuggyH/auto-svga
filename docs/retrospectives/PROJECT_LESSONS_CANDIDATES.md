@@ -209,3 +209,21 @@ promoted, watched, rejected, or kept historical.
 - Evidence: R3 call 3 completed with an ultra-compact section map covering all
   39 direct children, while R3 call 2 was too large for final use.
 - Status: watch
+
+## Convert Figma hierarchy into a WP read queue before component-detail reads
+
+- Source:
+  `docs/research/figma-mcp-read-packets/r3b-wp-component-dependency-plan-20260707.md`
+- Area: UI/UX, Figma MCP, design systems, token-cost, implementation planning
+- Context: R3 established the Atom/Molecule/Module library hierarchy, but that
+  hierarchy alone did not say which component should be read first for each
+  implementation work package.
+- Problem: Jumping from a hierarchy map directly into R4 can still waste quota
+  by reading low-priority modules or broad atom/molecule details.
+- Candidate rule: Insert a no-MCP R3b step between hierarchy discovery and R4.
+  Map each WP to a module root, allowed follow-up dependencies, blocked
+  questions, and a small module-first read queue before requesting more Figma
+  access.
+- Evidence: R3b narrowed the next R4 action to `Module/启动页模块/默认`
+  (`125:42`) with a one-call expected budget and two-call hard cap.
+- Status: watch

@@ -381,6 +381,8 @@ Output:
 - module root per WP
 - allowed molecule/atom follow-up list
 - dependencies blocked by missing R3 evidence
+- completed packet:
+  `docs/research/figma-mcp-read-packets/r3b-wp-component-dependency-plan-20260707.md`
 
 ### R4 - Module-first Component Contracts
 
@@ -884,18 +886,16 @@ Each WP review must include:
 
 ## Next Action
 
-R1 screenshots and R2 tokens are complete. The next efficient Figma action is
-R3:
+R1 screenshots, R2 tokens, R3 hierarchy, and R3b dependency planning are
+complete. The next efficient Figma action is R4, and it requires explicit Owner
+authorization before any MCP call.
 
-1. ask Owner for explicit authorization before any Figma MCP call;
-2. read only the `🧱 组件库` top-level sections named `Atom`, `Molecule`, and
-   `Module`, plus their direct child entries; normalize them locally to
-   `atom`, `molecule`, and `module`;
-3. write `r3-atomic-component-hierarchy-YYYYMMDD.md`;
-4. perform R3b locally to map WPs to module roots and allowed follow-up
-   molecules/atoms;
-5. start WP1 token alignment before any visual implementation if the code token
-   foundation is still not Figma-aligned.
+Recommended first R4 request:
 
-No R4 component-detail reads should start until R3 and R3b exist, unless the
-Owner explicitly approves a narrower one-off component read.
+1. target `Module/启动页模块/默认` (`125:42`);
+2. read only the module contract needed for WP3 launch implementation;
+3. expected calls: 1;
+4. hard cap: 2 if a compact retry is needed.
+
+R4 must continue module-first. Do not read all atoms, all molecules, or all
+module descendants in one batch.
