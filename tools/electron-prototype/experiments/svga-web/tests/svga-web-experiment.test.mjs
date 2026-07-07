@@ -136,7 +136,7 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(packageScript, /assertCleanZipEntries/);
   assert.match(packageScript, /sanitizePackagedInfoPlist/);
   assert.match(packageScript, /NSAudioCaptureUsageDescription/);
-  assert.match(prepareRuntime, /const runtimeNodeDependencies = \["protobufjs", "long"\]/);
+  assert.match(prepareRuntime, /const runtimeNodeDependencies = \["protobufjs", "long", "fast-png", "fflate", "iobuffer"\]/);
   assert.match(prepareRuntime, /copyRuntimeNodeDependency\(packageName\)/);
   assert.match(prepareRuntime, /runtimeDependencies: runtimeNodeDependencies\.map/);
   assert.match(prepareRuntime, /path\.join\(runtimeRoot, "node_modules", packageName\)/);
@@ -147,6 +147,9 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(packageScript, /readAsarJson\(packagedAsarPath, "\.runtime\/build-info\.json"\)/);
   assert.match(packageScript, /\/\.runtime\/node_modules\/protobufjs\/package\.json/);
   assert.match(packageScript, /\/\.runtime\/node_modules\/long\/package\.json/);
+  assert.match(packageScript, /\/\.runtime\/node_modules\/fast-png\/package\.json/);
+  assert.match(packageScript, /\/\.runtime\/node_modules\/fflate\/package\.json/);
+  assert.match(packageScript, /\/\.runtime\/node_modules\/iobuffer\/package\.json/);
   assert.match(mainProcess, /packagedBuildCommit\(\) \?\? "unknown"/);
   assert.match(mainProcess, /\.runtime\/build-info\.json/);
   assert.doesNotMatch(packageScript, /--sequesterRsrc/);

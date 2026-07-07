@@ -19,7 +19,7 @@ const expectedVendorHashes = new Map([
 const expectedLegacyVendorHashes = new Map([
   ["pako-2.1.0.min.js", "ede2693a4a6a5126b9d35669062b358ecab6ae7b9b86a1cf302feb45a8514907"]
 ]);
-const runtimeNodeDependencies = ["protobufjs", "long"];
+const runtimeNodeDependencies = ["protobufjs", "long", "fast-png", "fflate", "iobuffer"];
 
 await verifyVendorAssets();
 await verifyLegacyVendorAssets();

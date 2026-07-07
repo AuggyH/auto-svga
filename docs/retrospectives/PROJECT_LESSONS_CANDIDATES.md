@@ -414,8 +414,8 @@ promoted, watched, rejected, or kept historical.
   packaged runtime closure and assert its expected `app.asar` entries during
   internal packaging. Do not rely on developer-machine module resolution or the
   App being located under a Git checkout as release evidence.
-- Evidence: Adding explicit `protobufjs` / `long` runtime copies plus package
-  assertions fixed the packaged App import failure; adding `.runtime/build-info.json`
-  kept the installed App current-head bound after it was promoted outside the
-  Git checkout.
+- Evidence: Adding explicit `protobufjs` / `long` / `fast-png` / `fflate` /
+  `iobuffer` runtime copies plus package assertions fixed packaged App import
+  failures; adding `.runtime/build-info.json` kept the installed App
+  current-head bound after it was promoted outside the Git checkout.
 - Status: watch

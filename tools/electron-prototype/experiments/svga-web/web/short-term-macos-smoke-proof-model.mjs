@@ -780,7 +780,10 @@ export function collectShortTermRightSurfaceCaptureState({ artifactName, expecte
   };
 }
 
-export async function reportShortTermSmokeFailure({ bridge, phase, error }) {
+export async function reportShortTermSmokeFailure({ bridge, phase, error, nodes, state }) {
+  const stateView = boundedSmokeText(state?.view || "", 80);
+  const stateDisplayName = boundedSmokeText(state?.displayName || "", 180);
+  const errorText = boundedSmokeText(nodes?.errorMessage?.textContent || "", 260);
   await bridge?.reportSmokeResult?.({
     localPage: location.origin.startsWith("http://127.0.0.1:"),
     localOnly: resourceEntriesAreLocalOnly(),
@@ -802,7 +805,10 @@ export async function reportShortTermSmokeFailure({ bridge, phase, error }) {
       errorMessage: boundedSmokeText(error instanceof Error ? error.message : String(error), 260),
       actionCount: 0,
       currentActionId: null,
-      lastActionId: null
+      lastActionId: null,
+      ...(stateView ? { stateView } : {}),
+      ...(stateDisplayName ? { stateDisplayName } : {}),
+      ...(errorText ? { errorText } : {})
     }
   });
 }

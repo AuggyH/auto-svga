@@ -111,7 +111,11 @@ function assertPackagedRuntimeDependencies(buildCommit) {
     "/.runtime/node_modules/protobufjs/package.json",
     "/.runtime/node_modules/protobufjs/index.js",
     "/.runtime/node_modules/long/package.json",
-    "/.runtime/node_modules/long/index.js"
+    "/.runtime/node_modules/long/index.js",
+    "/.runtime/node_modules/fast-png/package.json",
+    "/.runtime/node_modules/fast-png/lib/index.js",
+    "/.runtime/node_modules/fflate/package.json",
+    "/.runtime/node_modules/iobuffer/package.json"
   ];
   const missing = requiredEntries.filter((entry) => !entries.has(entry));
   if (missing.length > 0) {

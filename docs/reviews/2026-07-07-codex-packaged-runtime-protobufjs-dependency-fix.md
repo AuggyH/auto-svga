@@ -22,6 +22,8 @@ the runtime Node dependency closure required by `.runtime/dist`.
 - `tools/electron-prototype/experiments/svga-web/scripts/prepare-runtime.mjs`
 - `tools/electron-prototype/experiments/svga-web/main.cjs`
 - `tools/electron-prototype/experiments/svga-web/scripts/package-internal-trial.mjs`
+- `tools/electron-prototype/experiments/svga-web/web/short-term-macos-smoke-proof-model.mjs`
+- `tools/electron-prototype/experiments/svga-web/web/short-term-macos-smoke-runner.mjs`
 - `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`
 - `docs/reviews/2026-07-07-codex-packaged-runtime-protobufjs-dependency-fix.md`
 - `docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md`
@@ -31,7 +33,7 @@ the runtime Node dependency closure required by `.runtime/dist`.
 | # | Requirement | Status |
 |---|-------------|--------|
 | 1 | Do not modify source SVGA while fixing the packaging failure. | Done |
-| 2 | Include the runtime dependencies needed by `.runtime/dist/workbench/svga/asset-optimizer.js` inside the packaged App. | Done |
+| 2 | Include the runtime dependencies needed by `.runtime/dist` inside the packaged App. | Done |
 | 3 | Make packaging fail closed if the App archive is missing those runtime dependencies. | Done |
 | 4 | Keep installed App smoke independent from the source Git checkout path. | Done |
 | 5 | Keep the fix scoped to packaging/runtime dependency closure, not UI or product behavior. | Done |
@@ -66,6 +68,10 @@ Additional packaged App inspection confirmed these entries exist in
 /.runtime/node_modules/protobufjs/index.js
 /.runtime/node_modules/long/package.json
 /.runtime/node_modules/long/index.js
+/.runtime/node_modules/fast-png/package.json
+/.runtime/node_modules/fast-png/lib/index.js
+/.runtime/node_modules/fflate/package.json
+/.runtime/node_modules/iobuffer/package.json
 ```
 
 A packaged App product smoke was also run from the `.app` binary and completed
@@ -78,15 +84,23 @@ outside the Git checkout and could not derive a valid `headCommit` from
 smoke can remain current-head bound without requiring the App to live inside a
 Git repository.
 
+The installed-App validation also exposed a second missing package:
+`fast-png`, imported by `.runtime/dist/hosts/fast-png-alpha-analyzer.js`.
+The runtime closure now includes `fast-png`, `fflate`, and `iobuffer`, and
+smoke failure diagnostics include the current view and rendered failure text so
+packaged-only dependency misses are visible instead of collapsing into a generic
+timeout.
+
 ## 6. Output inspection
 - Source SVGA mutation: not part of the fix; no source material was edited.
-- Runtime dependency closure: `protobufjs` and `long` are copied into `.runtime/node_modules`.
+- Runtime dependency closure: `protobufjs`, `long`, `fast-png`, `fflate`, and `iobuffer` are copied into `.runtime/node_modules`.
 - Packaged archive guard: packaging now checks `app.asar` for the required runtime dependency entries before creating the final ZIP.
 - Packaged build identity: `.runtime/build-info.json` carries the source commit into the installed App.
+- Smoke diagnostics: packaged-only load failures now preserve current view and failure text.
 - UI changes: none.
 
 ## 7. Risks
-- This fixes the known `protobufjs` package resolution failure and the installed-App Git-path dependency found during verification. If future runtime modules import additional external packages, those packages must be added to the runtime dependency closure and package assertion in the same change.
+- This fixes the known `protobufjs` / `fast-png` package resolution failures and the installed-App Git-path dependency found during verification. If future runtime modules import additional external packages, those packages must be added to the runtime dependency closure and package assertion in the same change.
 - Packaged smoke is functional evidence. Owner-visible foreground use remains the final practical acceptance path for the installed App.
 
 ## 8. Next steps

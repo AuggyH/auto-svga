@@ -2149,6 +2149,9 @@ function validateSmokeDiagnostics(value) {
   if (!Number.isInteger(value.actionCount) || value.actionCount < 0 || value.actionCount > 60) return undefined;
   if (value.currentActionId !== null && !isBoundedString(value.currentActionId, 180)) return undefined;
   if (value.lastActionId !== null && !isBoundedString(value.lastActionId, 180)) return undefined;
+  if (value.stateView !== undefined && !isBoundedString(value.stateView, 80)) return undefined;
+  if (value.stateDisplayName !== undefined && !isBoundedString(value.stateDisplayName, 180)) return undefined;
+  if (value.errorText !== undefined && !isBoundedString(value.errorText, 260)) return undefined;
   const diagnostics = {
     schemaVersion: 1,
     phase: value.phase,
@@ -2158,6 +2161,9 @@ function validateSmokeDiagnostics(value) {
     currentActionId: value.currentActionId,
     lastActionId: value.lastActionId
   };
+  if (value.stateView !== undefined) diagnostics.stateView = value.stateView;
+  if (value.stateDisplayName !== undefined) diagnostics.stateDisplayName = value.stateDisplayName;
+  if (value.errorText !== undefined) diagnostics.errorText = value.errorText;
   if (value.renderedStateProof !== undefined) {
     if (!value.renderedStateProof || typeof value.renderedStateProof !== "object" || Array.isArray(value.renderedStateProof)) return undefined;
     if (!isBoundedString(value.renderedStateProof.state, 80)) return undefined;

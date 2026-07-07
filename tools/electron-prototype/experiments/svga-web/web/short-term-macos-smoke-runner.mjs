@@ -73,7 +73,7 @@ export async function runShortTermSmokeIfRequested({
       loadDroppedFile
     });
   } catch (error) {
-    await reportShortTermSmokeFailure({ bridge, phase: "smoke-runner", error }).catch(() => {});
+    await reportShortTermSmokeFailure({ bridge, phase: "smoke-runner", error, nodes, state }).catch(() => {});
   }
 }
 
