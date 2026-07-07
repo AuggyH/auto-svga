@@ -31,6 +31,7 @@ const packagedAsarPath = path.join(appBundle, "Contents/Resources/app.asar");
 const packagedInfoPlist = path.join(appBundle, "Contents/Info.plist");
 const archivePath = path.join(artifactsRoot, `${appName}-darwin-arm64.zip`);
 const manifestPath = path.join(artifactsRoot, "internal-trial-manifest.json");
+const runtimeBuildInfoPath = path.join(experimentRoot, ".runtime/build-info.json");
 const localElectronVersionPath = path.join(experimentRoot, "../../node_modules/electron/dist/version");
 
 function run(command, args, options = {}) {
@@ -89,9 +90,24 @@ function asarEntries(asarPath) {
   return asar.listPackage(asarPath).sort();
 }
 
-function assertPackagedRuntimeDependencies() {
+async function writeRuntimeBuildInfo(buildCommit) {
+  const buildInfo = {
+    schemaVersion: 1,
+    buildCommit,
+    source: "package-internal-trial"
+  };
+  await writeFile(runtimeBuildInfoPath, `${JSON.stringify(buildInfo, null, 2)}\n`);
+}
+
+function readAsarJson(asarPath, relativePath) {
+  const asar = requireFromPrototype("@electron/asar");
+  return JSON.parse(asar.extractFile(asarPath, relativePath).toString("utf8"));
+}
+
+function assertPackagedRuntimeDependencies(buildCommit) {
   const entries = new Set(asarEntries(packagedAsarPath));
   const requiredEntries = [
+    "/.runtime/build-info.json",
     "/.runtime/node_modules/protobufjs/package.json",
     "/.runtime/node_modules/protobufjs/index.js",
     "/.runtime/node_modules/long/package.json",
@@ -100,6 +116,10 @@ function assertPackagedRuntimeDependencies() {
   const missing = requiredEntries.filter((entry) => !entries.has(entry));
   if (missing.length > 0) {
     throw new Error(`macOS internal App is missing runtime dependencies: ${missing.join(", ")}`);
+  }
+  const buildInfo = readAsarJson(packagedAsarPath, ".runtime/build-info.json");
+  if (buildInfo.buildCommit !== buildCommit) {
+    throw new Error("macOS internal App runtime build info does not match the current HEAD");
   }
 }
 
@@ -186,13 +206,14 @@ async function main() {
   await mkdir(artifactsRoot, { recursive: true });
 
   run("npm", ["run", "spike:svga-web:prepare"]);
+  await writeRuntimeBuildInfo(buildCommit);
   const cachedElectronZipDir = await findCachedElectronZip();
   const packagerArgs = cachedElectronZipDir
     ? [...macosPackagerArgs(artifactsRoot), `--electron-zip-dir=${cachedElectronZipDir}`]
     : macosPackagerArgs(artifactsRoot);
   run("../../node_modules/.bin/electron-packager", packagerArgs);
   sanitizePackagedInfoPlist();
-  assertPackagedRuntimeDependencies();
+  assertPackagedRuntimeDependencies(buildCommit);
   createCleanAppArchive();
 
   const packageSizeBytes = await directorySizeBytes(appBundle);

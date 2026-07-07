@@ -3797,11 +3797,24 @@ function gitHeadCommit() {
   try {
     return execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: repoRoot,
-      encoding: "utf8"
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
     }).trim();
   } catch {
-    return "unknown";
+    return packagedBuildCommit() ?? "unknown";
   }
+}
+
+function packagedBuildCommit() {
+  try {
+    const buildInfo = JSON.parse(readFileSync(path.join(appRoot, ".runtime/build-info.json"), "utf8"));
+    if (typeof buildInfo.buildCommit === "string" && /^[a-f0-9]{40}$/.test(buildInfo.buildCommit)) {
+      return buildInfo.buildCommit;
+    }
+  } catch {
+    // Development runs can rely on Git. Packaged Apps use this file as fallback.
+  }
+  return undefined;
 }
 
 function sha256RelativeFile(relativePath) {

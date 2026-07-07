@@ -409,11 +409,13 @@ promoted, watched, rejected, or kept historical.
 - Problem: Development-mode tests can resolve packages from the workspace, but
   the packaged App only has what was copied into `.runtime` and sealed into
   `app.asar`.
-- Candidate rule: Whenever `.runtime/dist` imports an external Node package,
-  add that package to the runtime copy list and assert its expected `app.asar`
-  entries during internal packaging. Do not rely on developer-machine module
-  resolution as release evidence.
+- Candidate rule: Whenever `.runtime/dist` imports an external Node package or
+  depends on source-control metadata, add that dependency or build fact to the
+  packaged runtime closure and assert its expected `app.asar` entries during
+  internal packaging. Do not rely on developer-machine module resolution or the
+  App being located under a Git checkout as release evidence.
 - Evidence: Adding explicit `protobufjs` / `long` runtime copies plus package
-  assertions fixed the packaged App import failure and prevented missing
-  dependencies from reaching Owner handoff.
+  assertions fixed the packaged App import failure; adding `.runtime/build-info.json`
+  kept the installed App current-head bound after it was promoted outside the
+  Git checkout.
 - Status: watch

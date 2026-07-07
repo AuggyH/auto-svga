@@ -79,6 +79,7 @@ test("macOS package proof manifest records audit boundaries without final App ac
   });
   const packageScript = await readFile(path.join(experimentRoot, "scripts/package-internal-trial.mjs"), "utf8");
   const prepareRuntime = await readFile(path.join(experimentRoot, "scripts/prepare-runtime.mjs"), "utf8");
+  const mainProcess = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const signingWorkflow = await readFile(path.join(experimentRoot, "scripts/macos-signing-workflow.mjs"), "utf8");
   const packageJson = JSON.parse(await readFile(path.join(experimentRoot, "package.json"), "utf8"));
   assert.equal(proof.schemaVersion, 1);
@@ -141,8 +142,13 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(prepareRuntime, /path\.join\(runtimeRoot, "node_modules", packageName\)/);
   assert.match(packageScript, /assertPackagedRuntimeDependencies/);
   assert.match(packageScript, /Contents\/Resources\/app\.asar/);
+  assert.match(packageScript, /\.runtime\/build-info\.json/);
+  assert.match(packageScript, /writeRuntimeBuildInfo\(buildCommit\)/);
+  assert.match(packageScript, /readAsarJson\(packagedAsarPath, "\.runtime\/build-info\.json"\)/);
   assert.match(packageScript, /\/\.runtime\/node_modules\/protobufjs\/package\.json/);
   assert.match(packageScript, /\/\.runtime\/node_modules\/long\/package\.json/);
+  assert.match(mainProcess, /packagedBuildCommit\(\) \?\? "unknown"/);
+  assert.match(mainProcess, /\.runtime\/build-info\.json/);
   assert.doesNotMatch(packageScript, /--sequesterRsrc/);
 });
 
