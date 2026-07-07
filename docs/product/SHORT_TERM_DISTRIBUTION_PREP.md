@@ -103,6 +103,13 @@ npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:pr
 npm --prefix tools/electron-prototype/experiments/svga-web run internal:trial:signing-plan:mac
 ```
 
+The internal macOS package must use the current temporary owner-provided app
+icon at
+`tools/electron-prototype/experiments/svga-web/packaging/macos/app-icon.icns`.
+The source PNG is kept beside it as `app-icon-source.png` so future icon
+iterations can replace the asset through the same packaging path instead of a
+local Downloads/Desktop file.
+
 Local stable app entry:
 
 ```bash

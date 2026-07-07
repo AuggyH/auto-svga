@@ -214,6 +214,7 @@ async function main() {
     playerVersion: "2.4.4",
     CSP: internalTrialCsp,
     documentTypes: proof.documentTypes,
+    appIcon: proof.appIcon,
     distribution: proof.distribution,
     securityFlags: {
       contextIsolation: true,

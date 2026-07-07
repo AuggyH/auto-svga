@@ -196,6 +196,14 @@ The tone is precise, calm, native, technical, and trustworthy. The interface
 should make the opened SVGA, its metadata, replaceable elements, optimization
 opportunities, and save states easy to inspect without decorative noise.
 
+## App Icon
+
+The current app icon is a temporary Owner-provided asset for packaging and
+local desktop identity. Packaging must use
+`tools/electron-prototype/experiments/svga-web/packaging/macos/app-icon.icns`.
+The source PNG is stored beside it as `app-icon-source.png` for traceable
+future replacement.
+
 Owner-confirmed visual direction rules:
 
 - Immersion and boundary-light hierarchy are core UI/UX principles. Prefer

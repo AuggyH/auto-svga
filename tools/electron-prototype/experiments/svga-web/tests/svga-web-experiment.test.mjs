@@ -64,6 +64,7 @@ test("macOS internal package scaffold avoids unsupported Finder .svga document a
   assert.ok(packagerArgs.includes(`--app-bundle-id=${bundleIdentifier}`));
   assert.ok(packagerArgs.includes("--app-version=0.0.0-internal"));
   assert.ok(packagerArgs.includes("--build-version=0.0.0-internal"));
+  assert.ok(packagerArgs.includes("--icon=packaging/macos/app-icon"));
   assert.ok(packagerArgs.some((arg) => arg === "--extend-info=packaging/macos/Info.plist"));
   assert.match(entitlements, /com\.apple\.security\.cs\.allow-jit/);
   assert.match(entitlements, /com\.apple\.security\.cs\.allow-unsigned-executable-memory/);
@@ -103,6 +104,7 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.equal(proof.metadataSecurity.noUnnecessaryPermissionUsageDescriptions, true);
   assert.equal(proof.metadataSecurity.noFinderDocumentAssociation, true);
   assert.match(proof.packagingScaffold.extendInfoPath, /packaging\/macos\/Info\.plist$/);
+  assert.match(proof.packagingScaffold.appIconPath, /packaging\/macos\/app-icon\.icns$/);
   assert.match(proof.packagingScaffold.packagedInfoPlistPath, /Auto SVGA\.app\/Contents\/Info\.plist$/);
   assert.match(proof.packagingScaffold.entitlementsPath, /packaging\/macos\/entitlements\.plist$/);
   assert.equal(proof.packagingScaffold.signScript, "internal:trial:sign:mac");
@@ -119,6 +121,13 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(proof.packagingScaffold.appBundlePath, /Auto SVGA-darwin-arm64\/Auto SVGA\.app$/);
   assert.doesNotMatch(JSON.stringify(proof), /AutoSVGAInternalPrototype|Auto SVGA Internal Prototype/);
   assert.match(proof.requestedIntegrationChanges[0], /root package script/);
+  assert.equal(proof.appIcon.status, "temporary-owner-provided");
+  assert.match(proof.appIcon.sourcePngPath, /packaging\/macos\/app-icon-source\.png$/);
+  assert.match(proof.appIcon.icnsPath, /packaging\/macos\/app-icon\.icns$/);
+  assert.match(proof.appIcon.packagedIconPath, /Auto SVGA\.app\/Contents\/Resources\/electron\.icns$/);
+  assert.equal(proof.appIcon.packagedIconMatchesSource, null);
+  assert.equal(typeof proof.appIcon.icnsSha256, "string");
+  assert.equal(proof.appIcon.icnsSha256.length, 64);
   assert.match(packageScript, /archiveEntryCount/);
   assert.match(packageScript, /zipEntries\(archivePath\)\.length/);
   assert.match(packageScript, /--norsrc/);

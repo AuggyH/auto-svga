@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
@@ -23,6 +24,8 @@ const artifactsRoot = path.join(experimentRoot, ".artifacts/internal-trial");
 const proofPath = path.join(artifactsRoot, "macos-package-proof.json");
 const plistPath = path.join(experimentRoot, "packaging/macos/Info.plist");
 const entitlementsPath = path.join(experimentRoot, "packaging/macos/entitlements.plist");
+const appIconSourcePath = path.join(experimentRoot, "packaging/macos/app-icon-source.png");
+const appIconPath = path.join(experimentRoot, "packaging/macos/app-icon.icns");
 const sourceAuditFiles = [
   "main.cjs",
   "preload.cjs",
@@ -82,6 +85,7 @@ export function macosPackagerArgs(outputRoot = ".artifacts/internal-trial") {
     "--overwrite",
     "--prune=true",
     "--asar",
+    `--icon=${path.relative(experimentRoot, appIconPath).replace(/\.icns$/, "")}`,
     `--extend-info=${path.relative(experimentRoot, plistPath)}`,
     "--ignore=^/(tests|scripts|\\.artifacts)($|/)"
   ];
@@ -107,6 +111,13 @@ export async function buildMacosPackageProof(options = {}) {
     sourceInfoPlistSecurityAudit,
     packagedInfoPlistSecurityAudit
   });
+  const appIconSourceStats = await stat(appIconSourcePath);
+  const appIconStats = await stat(appIconPath);
+  const appIconSourceSha256 = await sha256(appIconSourcePath);
+  const appIconSha256 = await sha256(appIconPath);
+  const packagedAppIconPath = path.join(appBundle, "Contents/Resources/electron.icns");
+  const packagedAppIconExists = validatePackagedApp && existsSync(packagedAppIconPath);
+  const packagedAppIconSha256 = packagedAppIconExists ? await sha256(packagedAppIconPath) : null;
   const proof = {
     schemaVersion: proofSchemaVersion,
     appName,
@@ -146,6 +157,18 @@ export async function buildMacosPackageProof(options = {}) {
       persistedAbsolutePaths: false,
       arbitraryFileServing: false
     },
+    appIcon: {
+      status: "temporary-owner-provided",
+      sourcePngPath: path.relative(repoRoot, appIconSourcePath),
+      icnsPath: path.relative(repoRoot, appIconPath),
+      sourceSizeBytes: appIconSourceStats.size,
+      icnsSizeBytes: appIconStats.size,
+      sourceSha256: appIconSourceSha256,
+      icnsSha256: appIconSha256,
+      packagedIconPath: path.relative(repoRoot, packagedAppIconPath),
+      packagedIconSha256: packagedAppIconSha256,
+      packagedIconMatchesSource: packagedAppIconExists ? packagedAppIconSha256 === appIconSha256 : null
+    },
     metadataSecurity: {
       noArbitraryNetworkLoads: infoPlistSecurityAudit.arbitraryNetworkAllowances.length === 0,
       noUnnecessaryPermissionUsageDescriptions: infoPlistSecurityAudit.permissionUsageDescriptions.length === 0,
@@ -160,6 +183,7 @@ export async function buildMacosPackageProof(options = {}) {
       signingPlanScript: "internal:trial:signing-plan:mac",
       appBundlePath: path.relative(repoRoot, appBundle),
       archivePath: path.relative(repoRoot, archivePath),
+      appIconPath: path.relative(repoRoot, appIconPath),
       extendInfoPath: path.relative(repoRoot, plistPath),
       packagedInfoPlistPath: path.relative(repoRoot, packagedPlistPath),
       packagedInfoPlistValidated: validatePackagedApp && existsSync(packagedPlistPath),
@@ -203,7 +227,11 @@ export function validateProof(plist, proof, packagedPlist = plist) {
     ["productionApprovedFalse", proof.distribution.productionApproved === false && plist.includes("<key>AutoSVGAProductionApproved</key>")],
     ["noSvgaDocumentType", !plist.includes("<key>CFBundleDocumentTypes</key>") && !packagedPlist.includes("<key>CFBundleDocumentTypes</key>") && !plist.includes("<string>svga</string>") && !packagedPlist.includes("<string>svga</string>")],
     ["noUtiDeclaration", !plist.includes("<key>UTExportedTypeDeclarations</key>") && !packagedPlist.includes("<key>UTExportedTypeDeclarations</key>") && !plist.includes("<string>com.auto-svga.svga</string>") && !packagedPlist.includes("<string>com.auto-svga.svga</string>")],
+    ["iconArg", proof.packagingScaffold.electronPackagerArgs.some((arg) => arg === "--icon=packaging/macos/app-icon")],
     ["extendInfoArg", proof.packagingScaffold.electronPackagerArgs.some((arg) => arg.startsWith("--extend-info="))],
+    ["appIconPath", proof.packagingScaffold.appIconPath === "tools/electron-prototype/experiments/svga-web/packaging/macos/app-icon.icns"],
+    ["appIconProof", proof.appIcon?.status === "temporary-owner-provided" && proof.appIcon?.icnsPath === proof.packagingScaffold.appIconPath && typeof proof.appIcon?.icnsSha256 === "string"],
+    ["packagedAppIcon", proof.packagingScaffold.packagedInfoPlistValidated !== true || proof.appIcon?.packagedIconMatchesSource === true],
     ["packagedInfoPlistPath", typeof proof.packagingScaffold.packagedInfoPlistPath === "string" && proof.packagingScaffold.packagedInfoPlistPath.endsWith("Contents/Info.plist")],
     ["entitlementsPath", typeof proof.packagingScaffold.entitlementsPath === "string" && proof.packagingScaffold.entitlementsPath.endsWith("entitlements.plist")],
     ["signingScripts", proof.packagingScaffold.signScript === "internal:trial:sign:mac" && proof.packagingScaffold.notarizeScript === "internal:trial:notarize:mac"],
@@ -216,6 +244,10 @@ export function validateProof(plist, proof, packagedPlist = plist) {
   ];
   const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length > 0) throw new Error(`macOS package proof failed: ${failed.join(", ")}`);
+}
+
+async function sha256(filePath) {
+  return createHash("sha256").update(await readFile(filePath)).digest("hex");
 }
 
 function mergeInfoPlistSecurityAudits({ sourceInfoPlistSecurityAudit, packagedInfoPlistSecurityAudit }) {
