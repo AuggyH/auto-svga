@@ -167,3 +167,22 @@ promoted, watched, rejected, or kept historical.
 - Evidence: The five split collection reads all returned complete payloads,
   while the combined read was truncated.
 - Status: watch
+
+## Read Figma components by atomic hierarchy
+
+- Source:
+  `docs/reviews/2026-07-07-codex-figma-mcp-atomic-read-strategy.md`
+- Area: UI/UX, Figma MCP, design systems, token-cost
+- Context: The Owner clarified that the Figma component library is organized by
+  module, molecule, and atom, with modules composed from molecules/atoms and
+  molecules composed from atoms.
+- Problem: A flat component-library scan wastes quota and context, and can
+  cause implementation to read isolated low-level components before
+  understanding the composed design surface.
+- Candidate rule: For atomic component libraries, first classify top-level
+  module/molecule/atom hierarchy, then read module dependencies by work package.
+  Avoid global atom or molecule sweeps unless a module contract explicitly
+  requires a targeted follow-up.
+- Evidence: The revised Figma MCP read plan changes R3 to an atomic hierarchy
+  map and R4 to module-first component contracts.
+- Status: watch

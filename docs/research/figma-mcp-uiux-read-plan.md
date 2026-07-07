@@ -91,9 +91,11 @@ Read Figma in the same order that implementation should happen:
 
 1. visual target screenshots
 2. token values and token-to-code map
-3. component contracts
-4. page-state metadata by work package
-5. targeted rechecks only where implementation evidence is uncertain
+3. atomic component hierarchy map
+4. module-first component dependency graph by work package
+5. component contracts for only the dependencies that active work packages need
+6. page-state metadata by work package
+7. targeted rechecks only where implementation evidence is uncertain
 
 Do not read by curiosity. Every read must name the WP, node IDs, expected
 payload, hard stop, and local record path before calling MCP.
@@ -275,16 +277,26 @@ Implementation dependency:
 
 - WP1 cannot start until R2 is recorded.
 
-### R3 - Corrected Component Index
+### R3 - Atomic Component Hierarchy Map
 
 Purpose:
 
-Repair the Batch 01 component-library truncation with a strict top-level
-component index.
+Identify the component library's atomic hierarchy before reading component
+details. The Owner-confirmed library model is:
+
+- `module` is composed from `molecule` and `atom`
+- `molecule` is composed from `atom`
+- `atom` is the smallest reusable UI unit
+- Figma component sets and variant properties manage each layer
+
+R3 must avoid a flat component-library scan. It should classify top-level
+library entries first, then let R3b and R4 read from large composed surfaces
+downward only where an active work package needs the dependency.
 
 Expected cost:
 
 - 1 structured read
+- hard cap: 2 reads if pagination is needed or the first payload is truncated
 
 Page:
 
@@ -295,47 +307,110 @@ Read fields only:
 - top-level node ID
 - name
 - type
+- parent or section name when visible
 - size
 - child count
+- direct child instance names and IDs only when depth stays at 1
 - variant count
 - variant property names only
+- classification hint from explicit section, frame, or component naming
 
-Do not return nested components.
+Do not return:
+
+- descendant trees
+- full fills, effects, or text styles
+- child instance internals
+- all component variants' internal layers
+- inferred product behavior
 
 Output:
 
-- complete top-level component index
-- list of component sets to inspect per WP
+- `docs/research/figma-mcp-read-packets/r3-atomic-component-hierarchy-YYYYMMDD.md`
+- classified table: module, molecule, atom, or unknown
+- confidence per row: explicit, strong inference, weak inference, or unknown
+- component-set variant property list
+- unknowns that need targeted follow-up before implementation
 
-### R4 - Core Component Contracts
+Authorization gate:
+
+- Do not execute R3 without explicit Owner authorization.
+- Before the MCP call, state the exact scope, expected calls, hard cap, and
+  fallback if the response is large or truncated.
+
+### R3b - Work-Package Component Dependency Plan
 
 Purpose:
 
-Read reusable component contracts once so multiple page states can share
-implementation.
+Turn R3's hierarchy map into a no-Figma-call dependency plan for implementation
+work packages. This is where each WP decides which module is the root, which
+molecules and atoms are allowed to be read, and which candidates are out of
+scope.
 
 Expected cost:
 
-- 10 to 14 structured reads
+- 0 Figma MCP calls
 
-Components, in priority order:
+Inputs:
 
-| Priority | Component | Why |
-| ---: | --- | --- |
-| 1 | `右侧栏` | Main state-driven information surface |
-| 2 | `中间面板` | Preview and compare canvas shell |
-| 3 | `播放控制栏/播放中` | Shared bottom playback controls |
-| 4 | `模式切换器` | Top-center Preview/Edit switch |
-| 5 | `图标按钮` | Icon-only action grammar |
-| 6 | `文字按钮` | Save/abandon/replace action grammar |
-| 7 | `资源列表行` | Asset and replaceable rows |
-| 8 | `数据指标块` | File facts and optimization results |
-| 9 | `指标优化入口` | Metric-level optimization entry |
-| 10 | `优化候选项行` | Optimization detail rows |
-| 11 | `拖拽决策区` | Open/compare drag zones |
-| 12 | `启动页模块/默认` | Launch canvas composition |
-| 13 | `设置面板/跟随系统` | Appearance settings |
-| 14 | `图层列表行` | Edit reserved left list |
+- R1 screenshots
+- R2 token map
+- R3 atomic component hierarchy map
+- Batch 01 component names only, if R3 has not been authorized yet
+
+Rules:
+
+- Prefer module roots over isolated atom/molecule reads.
+- Mark any dependency as `explicit` only when R3 identifies it or a later
+  component contract confirms it.
+- Mark Batch 01-only dependency guesses as `provisional`.
+- Do not ask Figma for a global atom list just because one module might use
+  atoms internally.
+
+Output:
+
+- WP-to-component dependency table
+- module root per WP
+- allowed molecule/atom follow-up list
+- dependencies blocked by missing R3 evidence
+
+### R4 - Module-first Component Contracts
+
+Purpose:
+
+Read reusable component contracts in the same direction as the Figma design
+system: module first, then referenced molecule, then referenced atom. R4 should
+produce enough detail to implement code contracts and pixel alignment, not a
+complete reproduction of every descendant layer.
+
+Expected cost:
+
+- 8 to 14 structured reads in the normal case
+- hard cap: 18 structured reads
+
+Read order:
+
+| Priority | Layer | Component | Why |
+| ---: | --- | --- | --- |
+| 1 | module | `启动页模块/默认` | Launch canvas composition |
+| 2 | module | `右侧栏` | Main state-driven information surface |
+| 3 | module | `中间面板` | Preview, compare, and drag canvas shell |
+| 4 | module | `左侧栏` | Edit reserved left layer surface |
+| 5 | module | `设置面板/跟随系统` | Appearance settings |
+| 6 | molecule | `播放控制栏/播放中` | Shared bottom playback controls |
+| 7 | molecule | `统计信息网格` | File facts and optimization results |
+| 8 | molecule | `资源列表行` | Asset and replaceable rows |
+| 9 | molecule | `文件信息头部/默认` | Filename, dirty star, save affordance |
+| 10 | molecule | `拖拽决策区` | Open/compare drag zones |
+| 11 | molecule | `优化候选项行` | Optimization detail rows |
+| 12 | molecule | `图层列表行` | Edit reserved layer list |
+| 13 | atom | `图标按钮` | Icon-only action grammar |
+| 14 | atom | `文字按钮` | Save/abandon/replace action grammar |
+| 15 | atom | `模式切换器` | Top-center Preview/Edit switch |
+| 16 | atom | `文字输入框` | Runtime text preview and key input |
+| 17 | atom | `缩略图框` | Asset/resource thumbnail frame |
+| 18 | atom | `Tab Item` | Asset and settings tab item |
+| 19 | atom | `状态徽标` | Compact status only where approved by PRD/design |
+| 20 | atom | `toast` | Transient unsupported/drop/save feedback |
 
 Read fields:
 
@@ -346,6 +421,17 @@ Read fields:
 - token bindings
 - visible text inventory
 - main nested instances by component name
+
+Rules:
+
+- Start from the module root for a WP whenever a module exists.
+- Read molecule and atom details only when the active module references them or
+  the R1 screenshot clearly requires them.
+- Do not sweep all atoms globally.
+- Do not read every nested instance layer when module-level composition already
+  gives enough implementation guidance.
+- If a module uses unknown nested instances, record the unknown dependency and
+  perform one targeted follow-up rather than broadening the whole read.
 
 Stop condition:
 
@@ -420,7 +506,8 @@ Scope:
 
 - R1 screenshot archive
 - R2 token values
-- R3 corrected component index
+- R3 atomic component hierarchy map
+- R3b WP component dependency plan
 
 PRD IDs:
 
@@ -432,7 +519,9 @@ Exit criteria:
 
 - screenshot archive manifest exists
 - token map exists
-- corrected component index exists
+- atomic component hierarchy map exists or the task explicitly records that R3
+  is waiting for Owner authorization
+- WP dependency plan exists, with any pre-R3 assumptions marked provisional
 - Figma MCP call log updated
 
 ### WP1 - Token And Theme Foundation
@@ -476,7 +565,7 @@ PRD IDs:
 
 Figma reads:
 
-- R4 component contracts
+- R4 module-first component contracts
 - targeted R5 only for controls embedded in a page state
 
 Validation:
@@ -501,7 +590,9 @@ PRD IDs:
 Figma reads:
 
 - screenshots: `37:154`
-- component: `启动页模块/默认`, `最近文件行/正常`
+- module root: `启动页模块/默认`
+- follow-up molecules/atoms only when referenced by that module, such as
+  `最近文件行/正常`, `文字按钮`, or `图标按钮`
 - page metadata only for launch regions if needed
 
 Validation:
@@ -529,8 +620,10 @@ Figma reads:
 
 - screenshots: `27:2`, `82:616`, `82:1821`, `82:1139`,
   `82:1423`, `298:9755`
-- components: `右侧栏`, `统计信息网格`, `资源列表行`,
-  `文件信息头部/默认`, `指标优化入口`, `文字输入框`
+- module root: `右侧栏`
+- follow-up molecules/atoms only when referenced by the right-surface module,
+  such as `统计信息网格`, `资源列表行`, `文件信息头部/默认`,
+  `指标优化入口`, or `文字输入框`
 - page metadata for right surface only
 
 Validation:
@@ -557,8 +650,9 @@ PRD IDs:
 Figma reads:
 
 - screenshots: `82:2669`, `83:2318`, `64:2040`
-- components: `优化候选项行`, `进度状态`, `数据指标块`,
-  `文字按钮`, `保存反馈横幅`
+- module root: optimization right-surface/result module when present in R3
+- follow-up molecules/atoms only when referenced by that module, such as
+  `优化候选项行`, `进度状态`, `数据指标块`, `文字按钮`, or `保存反馈横幅`
 - page metadata for right surface and compare canvas only
 
 Validation:
@@ -586,8 +680,9 @@ Figma reads:
 
 - screenshots: `66:522`, `66:899`, `83:2239`, `64:1320`,
   `55:197`, `64:361`, `86:1271`
-- components: `中间面板`, `拖拽决策`, `拖拽决策区`,
-  `错误恢复面板`, `toast`
+- module roots: `中间面板` and compare/drag module when present in R3
+- follow-up molecules/atoms only when referenced by those modules, such as
+  `拖拽决策`, `拖拽决策区`, `错误恢复面板`, or `toast`
 - page metadata only for compare/drag regions
 
 Validation:
@@ -615,8 +710,10 @@ Figma reads:
 
 - screenshots: `55:535`, `83:2069`, `80:16365`, `80:16612`,
   `80:16859`, `82:2948`, `82:3324`, `83:1136`
-- components: `左侧栏`, `图层列表行`, `设置面板/跟随系统`,
-  `加载提示文字`, `错误恢复面板`, `保存反馈横幅`
+- module roots: `左侧栏`, `设置面板/跟随系统`, and loading/save/error
+  modules when present in R3
+- follow-up molecules/atoms only when referenced by those modules, such as
+  `图层列表行`, `加载提示文字`, `错误恢复面板`, or `保存反馈横幅`
 - page metadata only where screenshots and component contracts are insufficient
 
 Validation:
@@ -661,8 +758,9 @@ Validation:
 | R0 | Completed inventory | 4 | already done |
 | R1 | Screenshot archive | 12-15 | 16 |
 | R2 | Token values | 2-4 | 6 |
-| R3 | Corrected component index | 1 | 2 |
-| R4 | Core component contracts | 10-14 | 18 |
+| R3 | Atomic component hierarchy map | 1 | 2 |
+| R3b | WP component dependency plan | 0 | 0 |
+| R4 | Module-first component contracts | 8-14 | 18 |
 | R5 | WP page-state metadata | 18-35 | 45 |
 | R6 | Targeted rechecks | 0-20 | 24 |
 | Reserve | rate-limit, stale URLs, broken IDs, design changes | 40 | 40 |
@@ -777,12 +875,17 @@ Each WP review must include:
 
 ## Next Action
 
-The next efficient Figma action is R1:
+R1 screenshots and R2 tokens are complete. The next efficient Figma action is
+R3:
 
-1. capture and archive target screenshots for the 12-15 key states;
-2. write the screenshot manifest and hashes;
-3. update `docs/research/figma-mcp-call-log.md`;
-4. then run R2 token value extraction before any Figma-guided UI implementation.
+1. ask Owner for explicit authorization before any Figma MCP call;
+2. read only the `🧱 组件库` top-level hierarchy needed to classify
+   module/molecule/atom entries;
+3. write `r3-atomic-component-hierarchy-YYYYMMDD.md`;
+4. perform R3b locally to map WPs to module roots and allowed follow-up
+   molecules/atoms;
+5. start WP1 token alignment before any visual implementation if the code token
+   foundation is still not Figma-aligned.
 
-No UI code should be changed until the target screenshot archive and token map
-exist.
+No R4 component-detail reads should start until R3 and R3b exist, unless the
+Owner explicitly approves a narrower one-off component read.
