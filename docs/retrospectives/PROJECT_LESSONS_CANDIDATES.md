@@ -322,3 +322,24 @@ promoted, watched, rejected, or kept historical.
 - Evidence: Batch 06 captured 16 right-surface states but could not expose the
   default Preview right-surface internals within the two-call hard cap.
 - Status: watch
+
+## Validate Figma implementation feasibility through WP dependency components
+
+- Source:
+  `docs/research/figma-mcp-read-packets/r4-wp4-right-surface-dependency-contracts-20260707.md`
+- Area: UI/UX, Figma MCP, design systems, implementation planning, token-cost
+- Context: The right-surface module read only returned state-symbol shells, but
+  targeted `get_design_context` reads for the WP4 molecule/atom dependencies
+  returned useful structure, typography, spacing, visible copy, variants, and
+  screenshot context.
+- Problem: Judging implementation feasibility from a failed module-internals
+  read alone can cause the team to over-fall back to screenshot-only work or
+  over-spend by scanning the full component library.
+- Candidate rule: When a high-level module cannot expose internals, read the
+  smallest WP dependency set of molecule/atom components before deciding the
+  implementation route. If those contracts are sufficient, proceed with
+  implementation instead of reading the full library.
+- Evidence: Batch 07 used five reads to cover the WP4 right-surface dependency
+  set and was enough to start the first high-fidelity Preview right-surface
+  implementation pass.
+- Status: watch

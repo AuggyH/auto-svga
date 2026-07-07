@@ -918,13 +918,29 @@ Completed second R4 request:
 5. status: partial. It is useful as a right-surface state index, but not enough
    for pixel-level WP4 implementation.
 
-The next efficient project action is to avoid repeating metadata-only reads for
-right-surface symbols. If Owner authorizes another Figma MCP batch, request a
-structured child/context read for `模式=预览, 状态=默认` (`227:2796`) that returns
-direct children, visible text, geometry, instance main-component IDs,
-component properties, and implementation findings. If that read path is not
-available, use archived R1 screenshots only for a rough visual analysis pass and
-do not claim pixel-level right-surface readiness.
+Completed third R4 request:
+
+1. target dependency set:
+   - `Molecule/统计信息网格` (`236:4479`);
+   - `Molecule/资源列表行` (`95:81`);
+   - `Atom/文件信息头部/默认` (`115:1114`);
+   - `Atom/筛选标签栏` (`154:2476`);
+   - `Molecule/缺省` (`298:7215`);
+2. expected calls: 3;
+3. actual calls: 5 because the pilot succeeded and the full WP4 minimum
+   dependency set stayed inside the approved hard cap;
+4. packet:
+   `docs/research/figma-mcp-read-packets/r4-wp4-right-surface-dependency-contracts-20260707.md`;
+5. status: complete for the first WP4 Preview right-surface implementation
+   pass.
+
+The next efficient project action is to start WP4 Preview default right-surface
+implementation from R1 screenshots, R2 tokens, the Batch 06 right-surface state
+index, and the Batch 07 molecule/atom dependency contracts. Do not request a
+full component-library read. Do not repeat metadata-only reads for
+right-surface symbols. Request a new Figma read only if implementation exposes a
+specific visible mismatch that cannot be resolved from the current packet and
+foreground screenshots.
 
 Before any new R4 read, request Owner authorization and target one named module
 or component only. Do not read all atoms, all molecules, or all module

@@ -652,3 +652,79 @@ Repository packet:
 - If that path is unavailable, use archived R1 screenshots for rough visual
   analysis only and do not claim pixel-level right-surface implementation
   readiness.
+
+## Batch 07 - R4 WP4 Right Surface Dependency Contracts
+
+Date: 2026-07-07
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R4 - WP4 molecule/atom dependency contracts
+Owner approval: Owner explicitly approved this follow-up batch.
+
+### Objective
+
+Read only the high-value WP4 right-surface molecule/atom dependencies needed to
+decide whether pixel-oriented implementation should proceed from component
+contracts, instead of reading the entire component library or repeating
+metadata-only module reads.
+
+### Planned Budget
+
+- Planned structured reads: 3
+- Hard cap: 5
+- Initial pilot: `Molecule/统计信息网格` (`236:4479`)
+- Follow-up targets only if the pilot returned usable structure
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_get_design_context` | `236:4479` | Fact grid and metric block contract | Yes | 6.6398s | Complete usable component context |
+| 2 | `_get_design_context` | `95:81` | Resource/replacement row contract | Yes | 7.6002s | Complete usable component context |
+| 3 | `_get_design_context` | `115:1114` | File header and Save As contract | Yes | 11.1256s | Complete usable component context |
+| 4 | `_get_design_context` | `154:2476` | Asset filter tab contract | Yes | 4.5797s | Complete usable component context |
+| 5 | `_get_design_context` | `298:7215` | Empty-state contract | Yes | 9.5353s | Complete usable component context |
+
+Actual total MCP calls: 5
+
+Actual quota-counted reads, conservative: 5
+
+Measured MCP tool wall time total: 39.4806s
+
+Remaining practical daily budget after Batch 07: about 123 quota-counted
+reads.
+
+### Result
+
+R4 captured enough WP4 dependency contracts for a first Preview right-surface
+implementation pass:
+
+- `Molecule/统计信息网格` (`236:4479`)
+- `Molecule/资源列表行` (`95:81`)
+- `Atom/文件信息头部/默认` (`115:1114`)
+- `Atom/筛选标签栏` (`154:2476`)
+- `Molecule/缺省` (`298:7215`)
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r4-wp4-right-surface-dependency-contracts-20260707.md`
+
+### Verification
+
+- The pilot molecule read returned concrete structure, token names, typography,
+  spacing, variants, visible copy, and screenshot context.
+- The remaining four reads also returned usable component context.
+- No Figma screenshots or remote assets were committed.
+- This batch changes the implementation decision: WP4 should proceed from
+  R1 screenshots + R2 tokens + these molecule/atom contracts, without waiting
+  for a full component-library read.
+
+### Protocol Feedback
+
+- Do not judge pixel implementation feasibility from module reads alone.
+  Component-set metadata can fail while targeted molecule/atom design context
+  still provides useful contracts.
+- Avoid full component-library reads. The dependency-driven subset was enough
+  for WP4 first pass and stayed within the five-call hard cap.
+- Treat generated React/Tailwind code only as a design-context carrier; convert
+  it into the existing Electron HTML/CSS/token/component structure.
