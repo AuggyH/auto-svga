@@ -343,3 +343,57 @@ promoted, watched, rejected, or kept historical.
   set and was enough to start the first high-fidelity Preview right-surface
   implementation pass.
 - Status: watch
+
+## Use packaged app identity when dev-mode Electron foreground capture is ambiguous
+
+- Source:
+  `docs/reviews/2026-07-07-codex-short-term-uiux-wp4-preview-right-surface-figma-alignment.md`
+- Area: UI/UX, validation, foreground evidence, macOS, token-cost
+- Context: WP4 right-surface styling changes passed design-system checks,
+  focused tests, diff checks, and smoke, but dev-mode foreground screenshots
+  were initially blocked by Stage Manager and same-name Electron activation
+  ambiguity.
+- Problem: Repeating generic activation commands can waste time and may capture
+  unrelated private foreground content. Treating smoke as a replacement would
+  also weaken UI/UX acceptance quality.
+- Candidate rule: When dev-mode Electron foreground targeting is ambiguous,
+  package and launch the current source as `Auto SVGA.app`, use the unique app
+  identity for menu and window targeting, then capture foreground screenshots.
+  Delete any wrong-app screenshots immediately.
+- Evidence: Incorrect screenshots were deleted; the packaged app route produced
+  usable foreground evidence for launch and real `战狼头像框.svga` preview.
+- Status: watch
+
+## Treat Launch window size as its own product state
+
+- Source:
+  `docs/reviews/2026-07-07-codex-short-term-uiux-launch-square-window.md`
+- Area: UI/UX, macOS desktop behavior, foreground validation
+- Context: The Owner clarified that the Launch page should not share the wide
+  Preview workbench size. Launch is a compact 1:1 window focused on opening a
+  file; Preview, Edit, and Compare need the wide workspace.
+- Problem: Reading “full-window Launch canvas” as “same physical window size as
+  the workbench” creates unused side space and weakens the startup focus.
+- Candidate rule: Model desktop window size as a page-state behavior when the
+  Owner has defined different spatial tasks. Keep actual dimensions in host
+  tokens and let the renderer send semantic modes only.
+- Evidence: The packaged App opened at `720 x 720`, expanded to `1440 x 900`
+  after opening real `战狼头像框.svga`, and returned to `720 x 720` after
+  `文件 > 关闭文件`.
+- Status: watch
+
+## Use clipboard paste for macOS file-dialog paths with Chinese text
+
+- Source:
+  `docs/reviews/2026-07-07-codex-short-term-uiux-launch-square-window.md`
+- Area: validation, macOS automation, real-material testing, token-cost
+- Context: Foreground validation had to open real production material from
+  `/Users/huangtengxin/Downloads/auto-svga测试物料/...`.
+- Problem: Simulated keystrokes for a non-ASCII path were affected by the
+  active input method and produced an invalid path in the macOS file dialog.
+- Candidate rule: For foreground validation through macOS file dialogs, copy
+  the absolute path to the clipboard, invoke “Go to Folder”, paste, then press
+  Return. Do not type Chinese paths character by character.
+- Evidence: The clipboard workflow opened `战狼头像框.svga` successfully and
+  avoided further failed dialog screenshots.
+- Status: watch
