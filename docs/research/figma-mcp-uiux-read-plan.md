@@ -887,7 +887,8 @@ Each WP review must include:
 ## Next Action
 
 R1 screenshots, R2 tokens, R3 hierarchy, R3b dependency planning, WP1A token
-implementation, and the first R4 module contract are complete.
+implementation, the first R4 module contract, and WP3 launch visual alignment
+are complete.
 
 Completed first R4 request:
 
@@ -898,14 +899,19 @@ Completed first R4 request:
 4. packet:
    `docs/research/figma-mcp-read-packets/r4-launch-module-contract-20260707.md`.
 
-The next efficient project action is WP3 launch visual alignment using:
+Completed WP3 launch visual alignment used:
 
 - R1 launch target screenshot;
 - R2 token map and implemented token foundation;
 - R4 launch module contract.
 
-No additional Figma MCP read is required before WP3 unless implementation hits
-a specific unresolved detail in `Molecule/空态画布` or
-`Atom/最近文件行/正常`. If that happens, request Owner authorization for one
-named component only. Do not read all atoms, all molecules, or all module
+WP3 did not require another Figma MCP read.
+
+The next efficient project action is to continue with the next visible surface
+bundle. Prefer WP2 playback/core controls if the launch page needs no immediate
+foreground-client correction, because playback controls appear across Preview,
+Compare, Optimization, and Edit states.
+
+Before any new R4 read, request Owner authorization and target one named module
+or component only. Do not read all atoms, all molecules, or all module
 descendants in one batch.

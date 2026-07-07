@@ -133,12 +133,13 @@
 
 .launchCanvas {
   display: grid;
+  grid-template-rows: var(--asv-launch-empty-canvas-size) var(--asv-launch-recent-height);
   align-content: center;
   justify-items: center;
-  gap: var(--asv-space-6);
+  gap: 0;
   width: 100%;
   min-height: 100%;
-  padding: calc(var(--asv-toolbar-height) + var(--asv-space-6)) var(--asv-space-6) var(--asv-space-6);
+  padding: var(--asv-toolbar-height) var(--asv-space-6) var(--asv-space-6);
   border: 0;
   border-radius: 0;
   background:
@@ -155,9 +156,11 @@
 
 .launchPrompt {
   display: grid;
+  align-content: center;
   justify-items: center;
   gap: var(--asv-space-3);
   width: min(var(--asv-launch-content-width), 100%);
+  min-height: var(--asv-launch-empty-canvas-size);
   text-align: center;
 }
 
@@ -167,7 +170,7 @@
   width: var(--asv-launch-drop-icon-size);
   height: var(--asv-launch-drop-icon-size);
   border: 1px dashed var(--asv-border-strong);
-  border-radius: var(--asv-radius-lg);
+  border-radius: var(--asv-launch-drop-icon-radius);
   background: color-mix(in srgb, var(--asv-panel-recessed) 58%, transparent);
   color: var(--asv-subtle);
 }
@@ -185,13 +188,24 @@
 .launchPrompt p {
   margin: 0;
   color: var(--asv-muted);
-  font-size: var(--asv-type-size-metadata);
+  font-size: var(--asv-type-size-footnote);
   font-weight: 540;
   line-height: 1.35;
 }
 
+.launchPrompt .largeOpenButton {
+  min-width: var(--asv-launch-action-width);
+  min-height: var(--asv-launch-action-height);
+  padding: 0 var(--asv-space-3);
+}
+
+.launchPrompt .largeOpenButton .buttonIcon {
+  display: none;
+}
+
 .recentBlock {
-  width: min(var(--asv-launch-content-width), 100%);
+  width: min(var(--asv-launch-recent-width), 100%);
+  min-height: var(--asv-launch-recent-height);
   margin-top: 0;
   color: var(--asv-muted);
 }
@@ -201,7 +215,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--asv-space-3);
-  min-height: var(--asv-control-height);
+  min-height: var(--asv-launch-recent-header-height);
+  padding: 0 var(--asv-launch-recent-row-padding-inline);
 }
 
 .recentHeader h2,
@@ -217,8 +232,8 @@
 .recentClearButton {
   display: inline-grid;
   place-items: center;
-  width: var(--asv-control-height);
-  min-height: var(--asv-row-action-height);
+  width: var(--asv-launch-recent-header-height);
+  min-height: var(--asv-launch-recent-header-height);
   padding: 0;
   border: 0;
   border-radius: var(--asv-radius-sm);
@@ -262,7 +277,9 @@
   gap: var(--asv-launch-recent-row-gap);
   align-items: center;
   min-height: var(--asv-launch-recent-row-height);
+  padding: 0 var(--asv-launch-recent-row-padding-inline);
   border-bottom: var(--asv-launch-recent-row-border);
+  border-radius: var(--asv-launch-recent-row-radius);
 }
 
 .recentBlock li.isEmpty {
