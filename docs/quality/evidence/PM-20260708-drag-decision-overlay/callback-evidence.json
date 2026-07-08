@@ -3,7 +3,7 @@
   "handoffId": "PM-20260708-drag-decision-overlay",
   "status": "Fix Ready",
   "branch": "agent/codex/short-term-preview-qa-20260708",
-  "fixCommit": "recorded_in_handoff_message",
+  "fixCommit": "2e296031",
   "generatedAt": "2026-07-08T18:24:51+08:00",
   "authority": {
     "pmCommit": "f6664b02",

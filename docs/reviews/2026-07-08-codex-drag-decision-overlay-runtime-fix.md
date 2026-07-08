@@ -6,7 +6,7 @@
 - Add As Compare File is the top secondary 25% strip.
 - Open File is the lower primary 75% zone.
 - Center, lower-center, and bottom-entry drag points resolve to Open File; only a deliberate top-strip point resolves to Compare.
-- Fix commit: recorded in the final handoff after commit creation.
+- Fix commit: `2e296031`.
 
 ## Changed Files
 
