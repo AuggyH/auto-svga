@@ -1321,8 +1321,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /id="compareCanvasTitleA"/);
   assert.match(page, /id="compareCanvasMetaB"/);
   assert.match(page, /data-component="CompareCanvasSurface"/);
-  assert.match(page, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-a">打开文件<\/button>/);
-  assert.match(page, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-b">打开文件<\/button>/);
+  assert.match(page, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-a"[\s\S]*class="buttonIcon"[\s\S]*<span>打开文件<\/span>/);
+  assert.match(page, /class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-b"[\s\S]*class="buttonIcon"[\s\S]*<span>打开文件<\/span>/);
   assert.doesNotMatch(page, /data-canvas-label="预览"/);
   assert.match(page, /class="playbackActions" data-component="PlaybackButtonGroup"/);
   assert.match(page, /class="playbackIconButton primary" data-action="play-pause"/);
@@ -1340,6 +1340,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /class="launchDropIcon"/);
   assert.match(page, />拖拽文件到此处<\/p>/);
   assert.match(page, /class="largeOpenButton" type="button" data-action="open"[\s\S]*class="buttonIcon"/);
+  assert.doesNotMatch(shortTermModules, /\.launchPrompt \.largeOpenButton \.buttonIcon\s*\{[^}]*display:\s*none/s);
   assert.match(page, /class="recentClearButton" type="button" data-action="clear-recent" aria-label="清除最近记录"/);
   assert.doesNotMatch(page, />清除记录<\/button>/);
   assert.doesNotMatch(page, /本地预览，不上传/);
@@ -1529,6 +1530,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermAtoms, /\.emptyText\s*\{[^}]*border: 1px dashed/s);
   assert.match(shortTermAtoms, /:focus-visible/);
   assert.match(shortTermMolecules, /\.toolbarButton/);
+  assert.match(shortTermMolecules, /\.buttonIcon\s*\{[^}]*flex: 0 0 auto/s);
   assert.match(shortTermMolecules, /\.modeSwitch/);
   assert.match(shortTermMolecules, /\.modeSwitch,[\s\S]*\.canvasModeSwitch\s*\{[^}]*border: 0/s);
   assert.match(shortTermMolecules, /\.modeSwitch,[\s\S]*\.canvasModeSwitch\s*\{[^}]*gap: var\(--asv-mode-switch-gap\)/s);

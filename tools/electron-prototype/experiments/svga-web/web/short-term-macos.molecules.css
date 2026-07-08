@@ -17,6 +17,7 @@
 }
 
 .buttonIcon {
+  flex: 0 0 auto;
   width: var(--asv-launch-button-icon-size);
   height: var(--asv-launch-button-icon-size);
   fill: none;

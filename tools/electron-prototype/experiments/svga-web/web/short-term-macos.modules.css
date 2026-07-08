@@ -217,10 +217,6 @@
   padding: 0 var(--asv-space-3);
 }
 
-.launchPrompt .largeOpenButton .buttonIcon {
-  display: none;
-}
-
 .recentBlock {
   width: min(var(--asv-launch-recent-width), 100%);
   min-height: var(--asv-launch-recent-height);
