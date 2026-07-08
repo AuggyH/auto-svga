@@ -1561,9 +1561,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.assetRow:hover\s*\{[^}]*background: var\(--asv-asset-row-hover-bg\)/s);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
   assert.match(shortTermComponents, /\.layerRow/);
-  assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*grid-template-columns: var\(--asv-thumb-size\) minmax\(0, 1fr\)/s);
+  assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*grid-template-columns: var\(--asv-layer-row-thumb-size\) minmax\(0, 1fr\)/s);
   assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*border-bottom: var\(--asv-layer-row-divider\)/s);
+  assert.match(shortTermComponents, /\.layerRow \.thumb\s*\{[^}]*width: var\(--asv-layer-row-thumb-size\)/s);
   assert.match(shortTermComponents, /\.layerRowText strong\s*\{[^}]*text-overflow: ellipsis/s);
+  assert.match(shortTermComponents, /\.layerRowText strong\s*\{[^}]*font-weight: var\(--asv-layer-row-title-weight\)/s);
   assert.match(shortTermComponents, /\.findingRow\s*\{[^}]*gap: var\(--asv-finding-row-gap\)/s);
   assert.match(shortTermComponents, /\.findingRow\s*\{[^}]*background: var\(--asv-finding-row-bg\)/s);
   assert.match(shortTermComponents, /\.findingRow\[data-disposition="reviewOnly"\]\s*\{[^}]*background: var\(--asv-finding-row-review-bg\)/s);

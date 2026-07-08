@@ -316,7 +316,7 @@
 }
 
 .layerRow {
-  grid-template-columns: var(--asv-thumb-size) minmax(0, 1fr);
+  grid-template-columns: var(--asv-layer-row-thumb-size) minmax(0, 1fr);
   min-height: var(--asv-layer-row-min-height);
   gap: var(--asv-layer-row-gap);
   padding: var(--asv-layer-row-padding-block) var(--asv-layer-row-padding-inline);
@@ -332,6 +332,8 @@
 }
 
 .layerRow .thumb {
+  width: var(--asv-layer-row-thumb-size);
+  height: var(--asv-layer-row-thumb-size);
   border-color: var(--asv-layer-row-thumb-border);
 }
 
@@ -344,7 +346,7 @@
   overflow: hidden;
   color: var(--asv-layer-row-title-color);
   font-size: var(--asv-layer-row-title-size);
-  font-weight: 650;
+  font-weight: var(--asv-layer-row-title-weight);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

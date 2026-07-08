@@ -435,3 +435,22 @@ promoted, watched, rejected, or kept historical.
   `short-term-image-replacement-workflow`, while generic editor and hardening
   tests continue to pass.
 - Status: watch
+
+## Do not judge wide reserved layouts from square smoke screenshots
+
+- Source:
+  `docs/reviews/2026-07-09-codex-uiux-edit-reserved-layer-polish.md`
+- Area: UI/UX, validation, smoke evidence
+- Context: The short-term Edit reserved state is a wide three-column workbench,
+  but the smoke artifact for `short-term-edit-reserved` is captured at
+  `720 x 720`.
+- Problem: A square smoke screenshot can visually clip or underrepresent the
+  right reserved operation area, making a valid three-column layout look like a
+  missing panel.
+- Candidate rule: Treat square smoke screenshots as regression evidence for
+  loaded state and obvious visual breakage only. For full-layout acceptance of
+  Preview, Edit, and Compare, use a packaged foreground screenshot at the
+  owner-visible wide window size.
+- Evidence: The Edit reserved smoke screenshot remained `720 x 720` while the
+  renderer CSS still defines the short-term three-column layout.
+- Status: watch
