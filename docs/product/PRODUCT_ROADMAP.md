@@ -26,6 +26,13 @@ macOS menu or drag-decision flow rather than a persistent main-surface button,
 default Preview shows production-spec status without target thresholds, and
 dirty/save behavior is context-specific as described below.
 
+PM clarification: On 2026-07-08, QA ticket `ASV-QA-20260708-003` clarified the
+short-term text replacement boundary. Designer-named raster/imageKey
+placeholders with text semantics, such as `text1`, `text2`, `from`, and `to`,
+are in scope for S13 runtime text preview. They must be classified as text
+replacement targets by deterministic name rules, not by OCR or visual AI, and
+must not be duplicated as ordinary image replacement rows.
+
 Product documentation system:
 `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` defines the PM responsibility
 model, source hierarchy, status vocabulary, product brief checklist, and
@@ -90,13 +97,13 @@ path-redacted display and user-controlled clearing.
 | S4 | Show production-spec status inside file information | Default Preview shows compact production-spec status inside file information without exposing target thresholds. Detailed current-vs-requirement values appear only in optimization detail/result context or another explicit detail state; do not create a separate production-spec module. |
 | S5 | Show all asset information | Images, sequence/video-like frame assets, audio group, and replaceable elements. Display thumbnail, file/key name, image dimensions when available, audio duration when available, and file size. |
 | S6 | Show image thumbnails | Images show their image thumbnail. Sequence/frame groups show the existing four-grid thumbnail from the first four frames. Audio uses a fixed music icon when audio parsing is later supported. |
-| S7 | Identify replaceable elements by naming rule | In the short term, exclude automatic names such as `img_000` / `img_001`; non-automatic designer names are treated as replaceable imageKeys. Future versions may add configurable whitelist/blacklist regular expressions. |
+| S7 | Identify replaceable elements by naming rule | In the short term, exclude automatic names such as `img_000` / `img_001`; non-automatic designer names are treated as replaceable imageKeys, then split into image or text replacement groups by deterministic key semantics. Text-like keys such as `text1`, `text2`, `from`, and `to` are text replacement targets, not image replacement rows. Future versions may add configurable whitelist/blacklist regular expressions. |
 | S8 | Detect optimization opportunities | Detect file-size, decoded-memory, and runtime-structure optimization opportunities, briefly explain each item, and estimate impact. Optimization entry points live inside the relevant file-information metrics, such as file size, memory estimate, and runtime structure risk, not as a persistent top-right summary button. |
 | S9 | Run real optimization | Produce optimized SVGA bytes, not a report-only recommendation. Allowed methods include image compression with quality controls, removing unreferenced resources, transparent-bound trimming, sequence-frame processing, FPS adjustment, canvas adjustment when production specs remain satisfied, all-zero sprite/frame pruning, target-player low-alpha pruning when validated, and sequence-fanout reduction when before/after playback comparison passes. |
 | S10 | Enter optimization comparison flow | Clicking a metric-level optimization entry replaces the current right information surface with optimization detail or result comparison. Optimization result comparison shows before/after previews plus concrete optimization items and exposes `另存为 SVGA`, `覆盖保存`, and `放弃优化`; successful overwrite returns to Preview. |
 | S11 | Rename imageKey | From the asset panel, selecting an image and using the context menu Rename or `Cmd+R` enters key rename mode. Enter confirms. All related references must update and the app must produce updated SVGA bytes. In Preview, changing the key value is the only replaceable-element operation that creates dirty state. |
 | S12 | Preview replaceable images | In Preview mode, replaceable image elements can be replaced and reset with realtime playback preview. This does not switch to Edit mode. |
-| S13 | Preview replaceable text | In Preview mode, replaceable text values are editable inline through text inputs and apply as runtime dynamic text preview. Editing text content simulates terminal playback behavior and does not create dirty SVGA bytes. The key value itself is changed through the key edit action and follows S11 dirty behavior. |
+| S13 | Preview replaceable text | In Preview mode, replaceable text values are editable inline through text inputs and apply as runtime dynamic text preview against the target imageKey. Text targets include official runtime dynamic text metadata when available and designer-named raster/imageKey placeholders with text semantics, such as `text1`, `text2`, `from`, and `to`. Editing text content simulates terminal playback behavior and does not create dirty SVGA bytes. The key value itself is changed through the key edit action and follows S11 dirty behavior. |
 | S14 | Save edited output | Save behavior is context-specific. Preview imageKey key rename dirty state appends `*` to the filename and enables Save As; after Save As succeeds, `*` disappears and Save As remains visible but disabled. Optimization result output exposes both Save As SVGA and Overwrite Save, plus Abandon Optimization. All save paths require output validation. |
 | S15 | Keep audio deferred | Audio parsing and duration are not required for the short-term version. If no audio is detected or audio parsing is not implemented, the audio group shows `当前文件暂无音频资产`. |
 | S16 | Show recent SVGA files | The launch page shows up to five low-emphasis recent SVGA records inside the canvas below Open/Drag actions, with a trash icon that clears all recent records. `File > Recent` shows up to ten records plus a clear-history action. Recent records must open the same local-file flow, hide full local paths by default, and fail gracefully when a file is missing or inaccessible. |
@@ -117,13 +124,13 @@ ready.
 | S4 | Default Preview shows production-spec status inline without target thresholds; detailed actual/limit pairs appear only in optimization detail/result context or another explicit detail state. | Default status-only proof, optimization-detail actual/limit proof, current spec profile id. |
 | S5 | Asset information covers image resources, sequence/frame groups, audio group state, and replaceable elements without duplicating every image under replaceable elements. | Asset-list proof with resource counts and grouping. |
 | S6 | Image thumbnails, four-frame sequence thumbnails, and audio empty/icon states render without layout shift. | Rendered thumbnail proof for image, sequence, and no-audio states. |
-| S7 | Replaceable image elements are designer-named imageKeys after short-term automatic-name exclusion. | Replaceable-key classification report with included and excluded examples. |
+| S7 | Replaceable elements are designer-named imageKeys after short-term automatic-name exclusion, and text-semantic keys are split into the text group instead of the image group. | Replaceable-key classification report with included image, included text, and excluded automatic-name examples. |
 | S8 | File-size and memory rows expose metric-level optimization entries with brief reason and estimated impact; risky items are labelled as review-only. No top-right `2 项可优化` style summary button is shown. | Optimization-candidate report, metric-entry UI proof, no-summary-button proof. |
 | S9 | Running an enabled optimization produces new SVGA bytes and a report binding before/after metrics, changed items, safety checks, and output hash. | Optimized output, optimization report, inflate/decode proof, reopen proof. |
 | S10 | Optimization action replaces the right information surface with detail/result context; result comparison exposes Save As SVGA, Overwrite Save, and Abandon Optimization. Successful overwrite returns to Preview. | Before/after comparison proof, result-action proof, overwrite-return proof, dirty/save-state proof. |
 | S11 | imageKey rename updates every related `imageKey` and `matteKey` reference, leaves no dangling reference, and produces updated SVGA bytes. | Rename report, reference-closure proof, round-trip decode proof, reopen proof. |
 | S12 | Replaceable image preview can replace and reset one designer-named imageKey in Preview mode without switching to Edit mode. | Runtime replacement proof, reset proof, mode-state proof. |
-| S13 | Replaceable text preview applies supported runtime dynamic text fields through inline inputs and reset in Preview mode without persisting text into SVGA bytes. | Runtime text input proof, reset proof, byte-immutability proof. |
+| S13 | Replaceable text preview applies supported runtime dynamic text fields through inline inputs and reset in Preview mode without persisting text into SVGA bytes. Text-semantic raster imageKeys such as `text1` / `text2` are supported text targets when detected by name rule. | Runtime text input proof, text-like imageKey classification proof, reset proof, byte-immutability proof, unsupported-fallback proof. |
 | S14 | Preview imageKey key rename dirty state shows filename `*` and enables Save As only; Save As success clears `*` and leaves Save As visible but disabled. Optimization result output separately supports Save As SVGA and Overwrite Save. | Preview dirty-star proof, Save As clean-state proof, optimization overwrite proof, reopen validation proof. |
 | S15 | Audio group does not block release; no-audio and unsupported-audio states are visible and truthful. | Audio-empty-state proof and known-limitation entry. |
 | S16 | Launch recent rows and `File > Recent` use real recent-file state, preserve Open/Drag as higher-priority actions, avoid full-path exposure by default, clear all history from the launch trash icon or menu action, and recover gracefully from missing files. | Recent-state persistence proof, launch five-row proof, menu ten-row proof, path-redaction proof, launch-trash clear proof, menu clear-history proof, missing-file recovery proof. |
@@ -145,9 +152,26 @@ Runtime replacement constraints:
 - Image replacement is addressed by imageKey. Short-term replacement images
   should match the original resource dimensions unless the app can show a
   clear fit/crop warning and preserve playback layout.
+- Dynamic text replacement is also addressed by imageKey. It does not require a
+  separate text-metadata table when the designer intentionally named a raster
+  placeholder with text semantics. Short-term text-target detection accepts:
+  explicit runtime dynamic text metadata when present, or a non-automatic
+  designer key whose normalized name matches text semantics such as `text`,
+  `txt`, `title`, `name`, `nickname`, `from`, `to`, `sender`, `receiver`,
+  `content`, `copy`, `label`, `desc`, `message`, and simple numeric suffixes
+  such as `text1` / `text2`.
+- Text-target detection must be deterministic. Do not use OCR, visual
+  recognition, external AI, or guess from artwork content. Ambiguous
+  non-automatic keys remain image replacement targets until a future
+  configurable whitelist/blacklist rule promotes them.
 - Dynamic text replacement is runtime preview only in the short term. Supported
   fields are limited to the official player-supported dynamic text fields such
   as text, family, size, color, and offset.
+- Editing runtime text fields must not create dirty SVGA bytes. Reset clears
+  the runtime dynamic object and restores the original raster placeholder. If
+  the current player cannot apply dynamic text to a detected text target, the
+  app must show an explicit unsupported text-preview fallback instead of
+  showing image replacement actions for that row.
 - If the SVGA runtime requires dynamic objects before playback starts, the app
   may remount or restart the preview after applying the replacement.
 - Reset must clear runtime dynamic objects or remount original bytes; it must
@@ -264,12 +288,18 @@ Text elements:
 - grouped separately from image elements
 - sorted by key
 - auto-numbered from 1 for display only
-- show initial text when available
+- include runtime text metadata and text-semantic imageKeys such as `text1`,
+  `text2`, `from`, and `to`
+- show initial text when metadata provides it; otherwise show the original
+  placeholder preview/key context and an empty text input for runtime preview
 - the text value is an input; focusing it allows direct editing and realtime
   runtime preview
 - provide Reset for runtime text value
 - the key value itself is changed through the key edit action after the key
   label; only changing the key value creates dirty bytes
+- text rows must not expose image-only actions such as Replace Preview Image or
+  Reset Preview Image unless the user explicitly changes the key classification
+  through a future configuration feature
 
 ### Canvas-first Chrome And macOS Menu
 
@@ -451,7 +481,7 @@ fixtures are acceptable when real production assets cannot be committed.
 | Invalid or non-SVGA file | Error message, no stale metadata, recovery by opening a valid file. |
 | SVGA with only automatic imageKeys | No replaceable image elements shown beyond ordinary image assets. |
 | SVGA with designer-named imageKeys | Replaceable image list, runtime image replacement, reset, rename path. |
-| SVGA with runtime text keys | Inline text input, runtime preview, reset, byte-immutability. |
+| SVGA with runtime text metadata or text-semantic imageKeys | Inline text input, runtime preview, reset, byte-immutability, and no duplicate image replacement row for keys such as `text1`, `text2`, `from`, or `to`. |
 | SVGA with sequence/frame resources | Four-frame thumbnail, sequence grouping, optimization findings. |
 | SVGA with runtime structure fanout | Sprite count, FrameEntity count, sequence-fanout warning, runtime memory risk, and runtime-structure optimization candidates. |
 | SVGA with no audio | Audio group shows `当前文件暂无音频资产`. |
