@@ -419,3 +419,19 @@ promoted, watched, rejected, or kept historical.
   failures; adding `.runtime/build-info.json` kept the installed App
   current-head bound after it was promoted outside the Git checkout.
 - Status: watch
+
+## Scope short-term Preview fixes above generic editor contracts
+
+- Source: `docs/reviews/2026-07-08-codex-short-term-preview-qa-fixes.md`
+- Area: implementation, validation
+- Context: ASV-QA-20260708-002 needed short-term replacement Preview to keep a
+  large replacement image bounded to the original imageKey slot/resource size.
+- Problem: Moving that normalization into the generic SVGA resource editor would
+  break lower-level callers that intentionally expect exact PNG byte replacement.
+- Candidate rule: Put product-specific fit, crop, fallback, and preview policies
+  in the product workflow layer unless the lower-level editor contract is
+  explicitly changed and all callers agree.
+- Evidence: The final fix normalizes only in
+  `short-term-image-replacement-workflow`, while generic editor and hardening
+  tests continue to pass.
+- Status: watch

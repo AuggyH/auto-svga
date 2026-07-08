@@ -168,7 +168,7 @@
   }
 
   canvas {
-    width: min(64vh, 560px);
-    height: min(64vh, 560px);
+    max-width: 100%;
+    max-height: 100%;
   }
 }

@@ -323,7 +323,10 @@ function isReplaceableTextAnchorResource(resource: AssetIntelligenceResourceNode
 }
 
 function isTextAnchorName(imageKey: string): boolean {
-  return /(^|[_-])(text|txt|label|title|name|nickname|nick|level|caption|copy)([_-]|$)/i.test(imageKey)
+  const normalized = imageKey.trim().toLowerCase();
+  return /(^|[_-])(text|txt|label|title|name|nickname|nick|level|caption|copy|desc|message|content|from|to|sender|receiver)(\d+)?([_-]|$)/i.test(normalized)
+    || /^(text|txt)(\d+)$/i.test(normalized)
+    || /^(from|to|sender|receiver|content|copy|label|desc|message)$/i.test(normalized)
     || /(文本|昵称|标题|等级|文案)/u.test(imageKey);
 }
 

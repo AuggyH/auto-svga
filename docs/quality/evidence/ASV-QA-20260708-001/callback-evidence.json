@@ -1,0 +1,61 @@
+{
+  "ticket": "ASV-QA-20260708-001",
+  "status": "fix_ready_callback_evidence",
+  "branch": "agent/codex/short-term-preview-qa-20260708",
+  "baseHead": "c2a6a85039e43c27d091e7d69d4dc9faf98a56e4",
+  "ownerAssetAlias": "owner-lucky-notice-optimized-001",
+  "evidenceKind": "synthetic_regression_and_runtime_contract",
+  "privacy": {
+    "productionSvgaCommitted": false,
+    "ownerScreenshotsCommitted": false
+  },
+  "fixAssertions": [
+    {
+      "case": "981x360 movie inside 900x720 container",
+      "expected": "visible canvas keeps 981:360 aspect ratio and fits without squeezing"
+    },
+    {
+      "case": "981x360 movie inside 520x420 container",
+      "expected": "resize keeps the movie ratio and bounds height to the container"
+    },
+    {
+      "case": "runtime mount",
+      "expected": "canvas intrinsic size and CSS fit are derived from movieWidth/movieHeight"
+    }
+  ],
+  "validation": [
+    {
+      "command": "npm run build",
+      "result": "PASS"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/short-term-playback-fit.test.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run desktop:short-term:design-system-check",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run desktop:smoke",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run test:all",
+      "result": "PASS"
+    }
+  ],
+  "qaRerunRequired": [
+    "Open the owner wide SVGA near 981 x 360.",
+    "Check initial load, active playback, and window resize.",
+    "Confirm the animation is fit-contained, not stretched into a square."
+  ],
+  "limitations": [
+    "Exact owner production SVGA and screenshot evidence remain local-only.",
+    "QA must perform independent visual regression before closing the ticket."
+  ]
+}

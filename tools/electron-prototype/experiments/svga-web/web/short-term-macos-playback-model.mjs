@@ -1,5 +1,6 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
 import { toParserArrayBuffer } from "./short-term-macos-byte-model.mjs";
+import { playbackCanvasFitSize } from "./short-term-macos-playback-fit-model.mjs";
 
 export async function mountPlayback({
   key,
@@ -13,13 +14,17 @@ export async function mountPlayback({
   stopPlayback({ key, playbackState });
   const parser = new SvgaWebParser();
   const videoItem = await parser.do(toParserArrayBuffer(bytes));
-  canvas.width = Math.max(1, Math.round(videoItem.videoSize?.width ?? videoItem.width ?? 512));
-  canvas.height = Math.max(1, Math.round(videoItem.videoSize?.height ?? videoItem.height ?? 512));
+  const movieWidth = Math.max(1, Math.round(videoItem.videoSize?.width ?? videoItem.width ?? 512));
+  const movieHeight = Math.max(1, Math.round(videoItem.videoSize?.height ?? videoItem.height ?? 512));
+  canvas.width = movieWidth;
+  canvas.height = movieHeight;
+  fitPlaybackCanvasToContainer(canvas, movieWidth, movieHeight);
+  const resizeObserver = observePlaybackCanvasContainer(canvas, movieWidth, movieHeight);
   const player = new SvgaWebPlayer(canvas);
   player.set({ loop: true, fillMode: FILL_MODE.FORWARDS, noExecutionDelay: false });
   await player.mount(videoItem);
   if (options.start !== false) player.start();
-  playbackState[`${key}Playback`] = { player, videoItem, playing: options.start !== false };
+  playbackState[`${key}Playback`] = { player, videoItem, playing: options.start !== false, resizeObserver };
   onPlaybackStateChange();
   return playbackState[`${key}Playback`];
 }
@@ -31,6 +36,7 @@ export function stopPlayback({ key, playbackState }) {
   } catch {
     // Renderer cleanup should never block opening another local file.
   }
+  playback?.resizeObserver?.disconnect?.();
   playbackState[`${key}Playback`] = undefined;
 }
 
@@ -93,4 +99,32 @@ function formatPlaybackTime(seconds) {
   const minutes = Math.floor(wholeSeconds / 60);
   const remainder = wholeSeconds % 60;
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function observePlaybackCanvasContainer(canvas, movieWidth, movieHeight) {
+  if (typeof ResizeObserver !== "function") return undefined;
+  const target = canvas.parentElement ?? canvas;
+  const observer = new ResizeObserver(() => fitPlaybackCanvasToContainer(canvas, movieWidth, movieHeight));
+  observer.observe(target);
+  return observer;
+}
+
+export function fitPlaybackCanvasToContainer(canvas, movieWidth, movieHeight) {
+  const safeMovieWidth = Math.max(1, Number(movieWidth) || 1);
+  const safeMovieHeight = Math.max(1, Number(movieHeight) || 1);
+  const parent = canvas.parentElement;
+  const bounds = parent?.getBoundingClientRect?.();
+  const maxWidth = Math.max(1, Math.floor(bounds?.width || parent?.clientWidth || safeMovieWidth));
+  const maxHeight = Math.max(1, Math.floor(bounds?.height || parent?.clientHeight || safeMovieHeight));
+  const fit = playbackCanvasFitSize({
+    containerWidth: maxWidth,
+    containerHeight: maxHeight,
+    movieWidth: safeMovieWidth,
+    movieHeight: safeMovieHeight
+  });
+  canvas.style.setProperty("--asv-playback-aspect", `${safeMovieWidth} / ${safeMovieHeight}`);
+  canvas.style.width = `${fit.width}px`;
+  canvas.style.height = `${fit.height}px`;
+  canvas.dataset.movieWidth = String(safeMovieWidth);
+  canvas.dataset.movieHeight = String(safeMovieHeight);
 }

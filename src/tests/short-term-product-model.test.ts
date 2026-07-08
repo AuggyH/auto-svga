@@ -99,6 +99,39 @@ test("short-term product model keeps replaceable elements separate from ordinary
   assert.equal(model.replaceableElements.textPreviewCopy, "文本会叠加到对应 imageKey 的预览位置，不写入 SVGA 字节。");
 });
 
+test("short-term product model classifies deterministic text imageKeys into text targets", () => {
+  const base = reportFixture();
+  const resources = [
+    ...base.assetIntelligence.resources,
+    resource("text1", "static_image", { width: 96, height: 32 }),
+    resource("text2", "static_image", { width: 96, height: 32 }),
+    resource("from", "static_image", { width: 96, height: 32 }),
+    resource("to", "static_image", { width: 96, height: 32 }),
+    resource("avatar", "static_image", { width: 96, height: 96 })
+  ];
+  const model = createShortTermProductInspectionModel({
+    ...base,
+    asset: {
+      ...base.asset,
+      resourceCount: resources.length
+    },
+    assetIntelligence: {
+      ...base.assetIntelligence,
+      resources
+    }
+  });
+
+  assert.deepEqual(
+    model.replaceableElements.texts.map(({ textKey }) => textKey),
+    ["from", "nickname_text", "text1", "text2", "to"]
+  );
+  assert.equal(model.replaceableElements.images.some(({ imageKey }) => imageKey === "text1"), false);
+  assert.equal(model.replaceableElements.images.some(({ imageKey }) => imageKey === "text2"), false);
+  assert.equal(model.replaceableElements.images.some(({ imageKey }) => imageKey === "from"), false);
+  assert.equal(model.replaceableElements.images.some(({ imageKey }) => imageKey === "to"), false);
+  assert.equal(model.replaceableElements.images.some(({ imageKey }) => imageKey === "avatar"), true);
+});
+
 test("short-term product model classifies optimization findings for UI actions", () => {
   const model = createShortTermProductInspectionModel(reportFixture());
 

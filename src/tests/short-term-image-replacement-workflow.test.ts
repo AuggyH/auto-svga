@@ -10,6 +10,7 @@ import {
   encodeRgbaPng,
   setPixel
 } from "../utils/png-writer.js";
+import { decodeRgbaPng } from "../utils/png-reader.js";
 import {
   runShortTermImageReplacementWorkflow
 } from "../workbench/short-term-image-replacement-workflow.js";
@@ -104,6 +105,47 @@ test("short-term image replacement workflow accepts indexed PNG replacements", a
     sha256(inspected.images.find(({ imageKey }) => imageKey === "profile_frame")?.bytes ?? new Uint8Array()),
     sha256(replacement)
   );
+});
+
+test("short-term image replacement workflow constrains oversized replacement to original slot dimensions", async () => {
+  const originalFrame = createColoredPng(96, 96, [255, 0, 0, 255]);
+  const oversizedReplacement = createColoredPng(512, 512, [0, 255, 0, 255]);
+  const sourceBytes = await createSvgaFixture({
+    images: {
+      avatar: originalFrame,
+      img_sweep: createColoredPng(8, 16, [0, 0, 255, 255])
+    },
+    sprites: [
+      { imageKey: "avatar", frames: createFrames(4) },
+      { imageKey: "img_sweep", matteKey: "avatar", frames: createFrames(4) }
+    ]
+  });
+
+  const result = await runShortTermImageReplacementWorkflow(
+    sourceBytes,
+    { imageKey: "avatar", pngBytes: oversizedReplacement },
+    { sourceName: "wide-owner-slot.svga" }
+  );
+
+  assert.ok(result.replacedBytes);
+  assert.equal(result.model.status, "replaced");
+  assert.equal(result.model.replacement?.sourceWidth, 512);
+  assert.equal(result.model.replacement?.sourceHeight, 512);
+  assert.equal(result.model.replacement?.originalWidth, 96);
+  assert.equal(result.model.replacement?.originalHeight, 96);
+  assert.equal(result.model.replacement?.replacementWidth, 96);
+  assert.equal(result.model.replacement?.replacementHeight, 96);
+  assert.equal(result.model.replacement?.normalizedToOriginalDimensions, true);
+  assert.equal(result.model.replacement?.fitPolicy, "resize_to_original_resource_dimensions");
+  assert.notEqual(result.model.replacement?.replacementSha256, sha256(oversizedReplacement));
+
+  const inspected = await new NodeProtobufSvgaInspector().inspect(result.replacedBytes);
+  const exportedAvatar = inspected.images.find(({ imageKey }) => imageKey === "avatar")?.bytes;
+  assert.ok(exportedAvatar);
+  const exportedImage = decodeRgbaPng(Buffer.from(exportedAvatar));
+  assert.equal(exportedImage.width, 96);
+  assert.equal(exportedImage.height, 96);
+  assert.equal(sha256(exportedAvatar), result.model.replacement?.replacementSha256);
 });
 
 test("short-term image replacement workflow rejects automatic image keys", async () => {

@@ -95,6 +95,29 @@ test("short-term image replacement preview session resets to source bytes", asyn
   assert.equal(sha256(reset.sourceBytes), sha256(sourceBytes));
 });
 
+test("short-term image replacement preview session resets oversized replacement without stale preview state", async () => {
+  const sourceBytes = await createSvgaFixture();
+  const session = createShortTermImageReplacementPreviewSession(sourceBytes);
+  const applied = await applyShortTermImageReplacementPreview(
+    session,
+    { imageKey: "profile_frame", pngBytes: createColoredPng(512, 512, [0, 255, 0, 255]) }
+  );
+
+  assert.equal(applied.accepted, true);
+  assert.equal(applied.session.model.activeReplacement?.sourceWidth, 512);
+  assert.equal(applied.session.model.activeReplacement?.sourceHeight, 512);
+  assert.equal(applied.session.model.activeReplacement?.replacementWidth, 16);
+  assert.equal(applied.session.model.activeReplacement?.replacementHeight, 16);
+  assert.equal(applied.session.model.activeReplacement?.normalizedToOriginalDimensions, true);
+
+  const reset = resetShortTermImageReplacementPreview(applied.session);
+  assert.equal(reset.model.status, "ready");
+  assert.equal(reset.model.activeReplacement, undefined);
+  assert.equal(reset.model.persistedOutput, undefined);
+  assert.equal(reset.model.resetEnabled, false);
+  assert.equal(sha256(reset.previewBytes), sha256(sourceBytes));
+});
+
 test("short-term image replacement preview session rejects unsafe replacement without changing preview bytes", async () => {
   const sourceBytes = await createSvgaFixture();
   const session = createShortTermImageReplacementPreviewSession(sourceBytes);

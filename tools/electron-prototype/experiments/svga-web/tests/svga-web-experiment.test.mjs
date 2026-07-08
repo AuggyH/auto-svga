@@ -1128,6 +1128,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   const shortTermApiClient = await readFile(path.join(experimentRoot, "web/short-term-macos-api-client.mjs"), "utf8");
   const shortTermHostClient = await readFile(path.join(experimentRoot, "web/short-term-macos-host-client.mjs"), "utf8");
   const shortTermDialogModel = await readFile(path.join(experimentRoot, "web/short-term-macos-dialog-model.mjs"), "utf8");
+  const shortTermPlaybackFitModel = await readFile(path.join(experimentRoot, "web/short-term-macos-playback-fit-model.mjs"), "utf8");
   const shortTermPlaybackModel = await readFile(path.join(experimentRoot, "web/short-term-macos-playback-model.mjs"), "utf8");
   const shortTermPlaybackSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-playback-surface.mjs"), "utf8");
   const workbenchPage = await readFile(path.join(experimentRoot, "web/workbench.html"), "utf8");
@@ -2069,6 +2070,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPlaybackModel, /Player as SvgaWebPlayer/);
   assert.match(shortTermPlaybackModel, /FILL_MODE\.FORWARDS/);
   assert.match(shortTermPlaybackModel, /toParserArrayBuffer\(bytes\)/);
+  assert.match(shortTermPlaybackModel, /from "\.\/short-term-macos-playback-fit-model\.mjs"/);
+  assert.match(shortTermPlaybackModel, /fitPlaybackCanvasToContainer\(canvas, movieWidth, movieHeight\)/);
+  assert.match(shortTermPlaybackFitModel, /export function playbackCanvasFitSize/);
+  assert.match(shortTermPlaybackModel, /new ResizeObserver/);
+  assert.match(shortTermPlaybackModel, /canvas\.style\.setProperty\("--asv-playback-aspect"/);
+  assert.match(shortTermPlaybackModel, /canvas\.dataset\.movieWidth/);
+  assert.doesNotMatch(shortTermModules, /width:\s*min\(70vh,\s*560px\);\s*height:\s*min\(70vh,\s*560px\);/);
+  assert.doesNotMatch(shortTermPageStates, /width:\s*min\(64vh,\s*560px\);\s*height:\s*min\(64vh,\s*560px\);/);
   assert.doesNotMatch(shortTermEntry, /FILL_MODE|SvgaWebParser|SvgaWebPlayer|player\.set|new SvgaWebParser|new SvgaWebPlayer|toParserArrayBuffer/);
   assert.match(shortTermController, /from "\.\/short-term-macos-api-client\.mjs"/);
   assert.match(shortTermApiClient, /export async function inspectShortTermSvga/);

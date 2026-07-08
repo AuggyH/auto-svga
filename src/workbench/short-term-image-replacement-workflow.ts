@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { decodeRgbaPng } from "../utils/png-reader.js";
+import { createTransparentImage, encodeRgbaPng, type RgbaImage } from "../utils/png-writer.js";
 import {
   createShortTermOutputSaveState,
   createShortTermPersistedOutputRecord,
@@ -8,6 +10,7 @@ import {
 import { isAutomaticImageKey } from "./short-term-product-model.js";
 import {
   NodeProtobufSvgaInspector,
+  readEmbeddedImageMetadata,
   SvgaImageEditError,
   SvgaImageResourceEditor,
   type SvgaRoundTripReport
@@ -34,6 +37,14 @@ export interface ShortTermImageReplacementSummary {
   replacementSize: string;
   replacementWidth: number;
   replacementHeight: number;
+  sourceSha256?: string;
+  sourceSize?: string;
+  sourceWidth?: number;
+  sourceHeight?: number;
+  originalWidth?: number;
+  originalHeight?: number;
+  normalizedToOriginalDimensions?: boolean;
+  fitPolicy?: "resize_to_original_resource_dimensions";
   dimensionWarning?: string;
 }
 
@@ -81,6 +92,17 @@ export interface RunShortTermImageReplacementWorkflowOptions {
   protoPath?: string;
 }
 
+interface NormalizedShortTermReplacement {
+  input: ShortTermImageReplacementInput;
+  sourceSha256?: string;
+  sourceSizeBytes?: number;
+  sourceWidth?: number;
+  sourceHeight?: number;
+  originalWidth?: number;
+  originalHeight?: number;
+  normalizedToOriginalDimensions?: boolean;
+}
+
 export async function runShortTermImageReplacementWorkflow(
   sourceBytes: Uint8Array,
   replacement: ShortTermImageReplacementInput,
@@ -93,13 +115,19 @@ export async function runShortTermImageReplacementWorkflow(
   try {
     validateReplacementInput(imageKey, replacement.pngBytes);
     const editor = new SvgaImageResourceEditor(options.protoPath);
+    const normalized = await normalizeShortTermReplacementToOriginalSlot(
+      sourceBytes,
+      { imageKey, pngBytes: replacement.pngBytes },
+      editor,
+      options.protoPath
+    );
     const result = await editor.replaceImages(
       sourceBytes,
-      [{ resourceKey: imageKey, pngBytes: replacement.pngBytes }],
+      [{ resourceKey: imageKey, pngBytes: normalized.input.pngBytes }],
       sourceName,
       { milestoneId: "P3" }
     );
-    const replacementSummary = result.session.replacements[imageKey];
+    const replacementSummary = enrichReplacementSummary(result.session.replacements[imageKey], normalized);
     if (!replacementSummary) {
       throw new ShortTermImageReplacementWorkflowError(
         "replacement_summary_missing",
@@ -152,6 +180,114 @@ class ShortTermImageReplacementWorkflowError extends Error {
   }
 }
 
+async function normalizeShortTermReplacementToOriginalSlot(
+  sourceBytes: Uint8Array,
+  replacement: ShortTermImageReplacementInput,
+  editor: SvgaImageResourceEditor,
+  protoPath?: string
+): Promise<NormalizedShortTermReplacement> {
+  const validated = editor.validatePngReplacement(replacement.pngBytes);
+  const inspected = await new NodeProtobufSvgaInspector(protoPath).inspect(sourceBytes);
+  const originalImage = inspected.images.find(({ imageKey }) => imageKey === replacement.imageKey);
+  const originalDimensions = originalImage
+    ? readEmbeddedImageMetadata(originalImage.bytes).dimensions
+    : undefined;
+  if (!originalDimensions) {
+    throw new ShortTermImageReplacementWorkflowError(
+      "replacement_original_dimensions_unavailable",
+      "原始 imageKey 图片尺寸无法确认，当前版本不会生成可能撑大画布的替换预览。"
+    );
+  }
+
+  if (validated.width === originalDimensions.width && validated.height === originalDimensions.height) {
+    return {
+      input: {
+        imageKey: replacement.imageKey,
+        pngBytes: validated.bytes
+      },
+      originalWidth: originalDimensions.width,
+      originalHeight: originalDimensions.height,
+      normalizedToOriginalDimensions: false
+    };
+  }
+
+  const decoded = decodeRgbaPng(Buffer.from(
+    validated.bytes.buffer,
+    validated.bytes.byteOffset,
+    validated.bytes.byteLength
+  ));
+  const resized = resizeRgbaImage(decoded, originalDimensions.width, originalDimensions.height);
+  const normalizedBytes = new Uint8Array(encodeRgbaPng(resized));
+  return {
+    input: {
+      imageKey: replacement.imageKey,
+      pngBytes: normalizedBytes
+    },
+    sourceSha256: validated.sha256,
+    sourceSizeBytes: validated.sizeBytes,
+    sourceWidth: validated.width,
+    sourceHeight: validated.height,
+    originalWidth: originalDimensions.width,
+    originalHeight: originalDimensions.height,
+    normalizedToOriginalDimensions: true
+  };
+}
+
+function enrichReplacementSummary(
+  replacement: {
+    replacementSha256: string;
+    replacementSizeBytes: number;
+    replacementWidth: number;
+    replacementHeight: number;
+    dimensionWarning?: string;
+  } | undefined,
+  normalized: NormalizedShortTermReplacement
+): ({
+  replacementSha256: string;
+  replacementSizeBytes: number;
+  replacementWidth: number;
+  replacementHeight: number;
+  sourceSha256?: string;
+  sourceSizeBytes?: number;
+  sourceWidth?: number;
+  sourceHeight?: number;
+  originalWidth?: number;
+  originalHeight?: number;
+  normalizedToOriginalDimensions?: boolean;
+  dimensionWarning?: string;
+} | undefined) {
+  if (!replacement) return undefined;
+  return {
+    ...replacement,
+    sourceSha256: normalized.sourceSha256,
+    sourceSizeBytes: normalized.sourceSizeBytes,
+    sourceWidth: normalized.sourceWidth,
+    sourceHeight: normalized.sourceHeight,
+    originalWidth: normalized.originalWidth,
+    originalHeight: normalized.originalHeight,
+    normalizedToOriginalDimensions: normalized.normalizedToOriginalDimensions
+  };
+}
+
+function resizeRgbaImage(source: RgbaImage, width: number, height: number): RgbaImage {
+  const targetWidth = Math.max(1, Math.round(width));
+  const targetHeight = Math.max(1, Math.round(height));
+  const output = createTransparentImage(targetWidth, targetHeight);
+  for (let y = 0; y < targetHeight; y += 1) {
+    const sourceY = Math.min(source.height - 1, Math.floor(((y + 0.5) * source.height) / targetHeight));
+    for (let x = 0; x < targetWidth; x += 1) {
+      const sourceX = Math.min(source.width - 1, Math.floor(((x + 0.5) * source.width) / targetWidth));
+      const sourceOffset = (sourceY * source.width + sourceX) * 4;
+      const targetOffset = (y * targetWidth + x) * 4;
+      output.pixels[targetOffset] = source.pixels[sourceOffset];
+      output.pixels[targetOffset + 1] = source.pixels[sourceOffset + 1];
+      output.pixels[targetOffset + 2] = source.pixels[sourceOffset + 2];
+      output.pixels[targetOffset + 3] = source.pixels[sourceOffset + 3];
+    }
+  }
+  return output;
+}
+
 function validateReplacementInput(imageKey: string, pngBytes: Uint8Array): void {
   if (!imageKey) {
     throw new ShortTermImageReplacementWorkflowError("replacement_image_key_required", "替换目标 imageKey 不能为空。");
@@ -177,6 +313,13 @@ function replacedModel(input: {
     replacementSizeBytes: number;
     replacementWidth: number;
     replacementHeight: number;
+    sourceSha256?: string;
+    sourceSizeBytes?: number;
+    sourceWidth?: number;
+    sourceHeight?: number;
+    originalWidth?: number;
+    originalHeight?: number;
+    normalizedToOriginalDimensions?: boolean;
     dimensionWarning?: string;
   };
   validation: ShortTermImageReplacementValidationModel;
@@ -211,6 +354,18 @@ function replacedModel(input: {
     replacementSize: formatBytes(input.replacement.replacementSizeBytes),
     replacementWidth: input.replacement.replacementWidth,
     replacementHeight: input.replacement.replacementHeight,
+    ...(input.replacement.sourceSha256 ? { sourceSha256: input.replacement.sourceSha256 } : {}),
+    ...(input.replacement.sourceSizeBytes ? { sourceSize: formatBytes(input.replacement.sourceSizeBytes) } : {}),
+    ...(input.replacement.sourceWidth ? { sourceWidth: input.replacement.sourceWidth } : {}),
+    ...(input.replacement.sourceHeight ? { sourceHeight: input.replacement.sourceHeight } : {}),
+    ...(input.replacement.originalWidth ? { originalWidth: input.replacement.originalWidth } : {}),
+    ...(input.replacement.originalHeight ? { originalHeight: input.replacement.originalHeight } : {}),
+    ...(input.replacement.normalizedToOriginalDimensions !== undefined ? {
+      normalizedToOriginalDimensions: input.replacement.normalizedToOriginalDimensions
+    } : {}),
+    ...(input.replacement.normalizedToOriginalDimensions ? {
+      fitPolicy: "resize_to_original_resource_dimensions" as const
+    } : {}),
     ...(input.replacement.dimensionWarning ? { dimensionWarning: input.replacement.dimensionWarning } : {})
   };
 
@@ -345,6 +500,9 @@ function imageReplacementUserMessage(error: ShortTermImageReplacementWorkflowErr
   }
   if (error.code === "replacement_png_decode_failed") {
     return pngDecodeFailureUserMessage(error.details.reason);
+  }
+  if (error.code === "replacement_original_dimensions_unavailable") {
+    return "原始 imageKey 图片尺寸无法确认，当前版本不会生成可能撑大画布的替换预览。";
   }
 
   return redactShortTermLocalPathsFromError(error, error.message);
