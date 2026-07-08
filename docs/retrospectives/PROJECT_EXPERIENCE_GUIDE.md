@@ -84,6 +84,10 @@ release gate, or acceptance record.
   priority, importance, source, and response expectation to decide whether a
   responsible owner may be interrupted; immediate interruption requires an
   explicit emergency reason.
+- Confirmed Product Owner feature, optimization, interaction, or production
+  workflow requests need an `ASV-REQ` requirement ticket after PRD promotion.
+  Do not rely on chat memory or roadmap text alone to push implementation and
+  QA acceptance forward.
 - Treat the owner local stable app at
   `/Users/huangtengxin/Applications/Auto SVGA.app` as the current short-term
   macOS client baseline for owner-visible QA and version progression.

@@ -375,6 +375,15 @@ See `docs/engineering/REPAIR_HEALTH_PROTOCOL.md`.
 
 ## Project QA And Defect Workflow
 
+Confirmed Product Owner feature requests, optimization requests, interaction
+changes, and production-workflow improvements must not stop after PRD updates.
+After PM evaluation, feasibility review, Product Owner confirmation, and PRD or
+product-brief promotion, create an `ASV-REQ-YYYYMMDD-###` ticket under
+`docs/product/requirements/`, route it to one accountable implementation owner,
+and require an implementation-ready handoff to QA. Use `ASV-QA` tickets only
+for bugs, regressions, acceptance failures, or QA findings linked back to the
+requirement.
+
 Real-use bugs, regressions, and acceptance failures must follow
 `docs/quality/PROJECT_TEST_ENGINEER_WORKFLOW.md`.
 

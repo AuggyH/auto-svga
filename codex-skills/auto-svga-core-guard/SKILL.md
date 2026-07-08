@@ -81,6 +81,15 @@ proves there is no suitable existing document. Prefer updating the authoritative
 or closest existing document, and add cross-references instead of duplicating
 requirements.
 
+After a Product Owner feature request, optimization request, interaction change,
+or production-workflow improvement has been evaluated, confirmed, and promoted
+into the PRD or a subordinate product brief, do not let it stop at
+documentation. Create or route an `ASV-REQ-YYYYMMDD-###` requirement ticket
+under `docs/product/requirements/` to one accountable implementation owner,
+then require implementation-ready handoff to QA. Use `ASV-QA` tickets for
+defects, regressions, acceptance failures, or QA findings linked back to the
+requirement, not as the primary product-delivery ticket.
+
 ## Inspection Primitives First
 
 Build reusable parsing, normalized metadata, resource facts, spec profiles,

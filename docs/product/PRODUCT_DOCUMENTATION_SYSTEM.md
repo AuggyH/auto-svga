@@ -97,6 +97,7 @@ Create a new product document only when all are true:
 | Product question | Source of truth | Maintain when |
 | --- | --- | --- |
 | What is the project-level PRD authority? | `docs/product/PRODUCT_ROADMAP.md` | Product goal, scope, phases, requirements, interactions, or release eligibility changes |
+| How do confirmed Product Owner feature or optimization requests move from PRD into implementation and QA? | `docs/product/requirements/` requirement tickets, governed by this document | A Product Owner request is evaluated, confirmed, added to PRD or a subordinate product brief, and needs an accountable implementation/QA handoff |
 | What is Auto SVGA? | `docs/product/auto-svga-product-principles.md` | Positioning, anti-drift, input boundary, or editing boundary changes; must not override the main PRD |
 | What is the short-, mid-, and long-term product requirement plan? | `docs/product/PRODUCT_ROADMAP.md` | Product horizon, phase, requirement group, interaction class, or global non-goal changes |
 | What is the active mainline? | `docs/product/PRODUCT_ROADMAP.md` | Phase priority, scope, or delivery track changes |
@@ -186,6 +187,51 @@ Minimum required fields:
 If any of these fields are missing and the task could change product behavior,
 the agent should ask the Product Owner or add the missing product clarification
 to the authoritative document before implementation.
+
+## Confirmed Requirement Delivery Flow
+
+Product Owner feature requests, optimization requests, interaction changes, and
+production-process improvements must not stop at documentation once they are
+confirmed for implementation.
+
+After Product Manager evaluation, feasibility review, and Product Owner
+confirmation, a committed requirement must follow this flow:
+
+1. Promote the requirement into `docs/product/PRODUCT_ROADMAP.md` or the
+   closest subordinate product brief, with explicit acceptance criteria and
+   non-goals.
+2. Create an `ASV-REQ-YYYYMMDD-###` requirement ticket under
+   `docs/product/requirements/` using the local template.
+3. Assign one accountable implementation owner and optional secondary owners.
+   Do not ask multiple lanes to implement the same requirement in parallel
+   unless the ticket names one integration owner.
+4. Send a short handoff to the responsible owner thread with the requirement
+   ticket path, PRD anchor, priority, response expectation, acceptance
+   criteria, and QA handoff expectation.
+5. The implementation owner moves the ticket through accepted, in progress,
+   and implementation-ready states, then returns a completion handoff with
+   commit, review file, validation summary, skipped checks, and test notes.
+6. The completed implementation is handed to the Test Engineer lane for
+   acceptance testing. QA writes a report or creates a linked `ASV-QA` ticket
+   if regression finds a defect.
+7. The requirement ticket is closed only after the implementation owner and QA
+   handoff are both recorded, or after Product Manager explicitly defers or
+   cancels the requirement.
+
+Requirement tickets are for approved product delivery work. They are separate
+from `ASV-QA` defect tickets:
+
+- `ASV-REQ` tracks a confirmed requirement from product decision to
+  implementation and QA handoff.
+- `ASV-QA` tracks a bug, regression, acceptance failure, or test finding from
+  reproduction through fix and closure.
+- A requirement may produce one or more QA tickets during testing; those QA
+  tickets must link back to the requirement ticket.
+
+If a Product Owner request is still being researched, debated, or held as a
+candidate idea, do not create an implementation requirement ticket yet. Keep it
+in the roadmap, backlog, research note, or review document until Product Owner
+confirmation makes it committed scope.
 
 ## Status Vocabulary
 
