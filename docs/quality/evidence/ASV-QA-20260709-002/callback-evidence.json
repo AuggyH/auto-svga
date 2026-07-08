@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "ticketId": "ASV-QA-20260709-002",
+  "requirementId": "ASV-REQ-20260709-002",
+  "status": "Fix Ready",
+  "productVersion": "Auto SVGA 0.1.x / SVGA Preview MVP",
+  "releaseStage": "alpha",
+  "distributionChannel": "local",
+  "ownerVisibleLabel": "Auto SVGA 0.1.0-alpha local",
+  "branch": "agent/codex/short-term-preview-qa-20260708",
+  "fixCommit": "fa0ca9f6ed5beb589b00dd1593d8379abb87476d",
+  "sourceTree": "008230d22f952038765fd6ce75d73781e85f557a",
+  "generatedAt": "2026-07-09T02:15:07+08:00",
+  "privacy": {
+    "usesProductionAsset": false,
+    "productionAssetCommitted": false,
+    "screenshotsCommitted": false,
+    "notes": "Callback evidence is source, static package-inspection, and automated test evidence only."
+  },
+  "rootCause": {
+    "summary": "The right-panel overview model filtered non-risk disclosure=moreInfo runtime structure facts out of the visible model and did not expose an expanded secondary-details renderer.",
+    "fixedBoundary": "Overview facts are grouped into default summary facts and expandable moreInfo facts; warning/fail facts are still promoted into the default summary."
+  },
+  "codeEvidence": {
+    "overviewFactGroupsExported": true,
+    "overviewVisibleFactsCompatibilityPreserved": true,
+    "moreInfoFactsPassedToOverviewView": true,
+    "createOverviewMoreInfoDisclosurePresent": true,
+    "runtimeStructureMoreInfoMarkerPresent": true,
+    "factMoreInfoMarkerPresent": true,
+    "visibleMoreInfoCopyPresent": true,
+    "friendlyTerminologyPreserved": true,
+    "defaultTechnicalLabelsAbsentFromRenderer": true
+  },
+  "behaviorEvidence": {
+    "nonRiskMoreInfoFactsAccessibleAfterExpansion": true,
+    "riskMoreInfoFactsPromotedToSummary": true,
+    "defaultSummaryStillContainsRuntimeStructureFacts": true,
+    "unsupportedRawProtocolLabelsInDefaultRenderer": false,
+    "rawProtocolLabelsChecked": [
+      "SpriteEntity",
+      "FrameEntity",
+      "图层数",
+      "图层过多"
+    ]
+  },
+  "validation": [
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/short-term-runtime-structure-more-info.test.mjs",
+      "result": "pass",
+      "summary": "2/2 tests passed."
+    },
+    {
+      "command": "git diff --check -- touched implementation and test files",
+      "result": "pass"
+    },
+    {
+      "command": "npm run build",
+      "result": "pass"
+    },
+    {
+      "command": "node --test dist/tests/runtime-structure-diagnostics.test.js dist/tests/svga-image-optimizer.test.js dist/tests/short-term-optimization-workflow.test.js dist/tests/short-term-product-model.test.js dist/tests/asset-intelligence.test.js",
+      "result": "pass",
+      "summary": "19/19 tests passed."
+    },
+    {
+      "command": "npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+      "result": "pass",
+      "summary": "39/39 tests passed.",
+      "note": "The sandboxed first attempt failed on listen EPERM for 127.0.0.1; rerun with local listener permission passed."
+    }
+  ],
+  "ownerLocalStableApp": {
+    "path": "/Users/huangtengxin/Applications/Auto SVGA.app",
+    "knownBaselineCommitBeforeFix": "ba9bfb8b335141762ee57e8d005fcd80258d6439",
+    "containsFixCommit": false,
+    "handoffRequirement": "Release/Packaging or clean local-stable promotion must refresh the owner-used app to include fa0ca9f6ed5beb589b00dd1593d8379abb87476d or a descendant before QA owner-baseline regression."
+  },
+  "qaRegressionRequest": {
+    "rerunRequirementAcceptance": true,
+    "expectedResult": "The Preview right information surface exposes a 更多信息 disclosure for secondary runtime-structure diagnostics while keeping warning/fail fields visible by default.",
+    "adjacentChecks": [
+      "Inspect packaged app.asar for overviewFactGroups and createOverviewMoreInfoDisclosure.",
+      "Open a low-risk file and confirm secondary runtime-structure diagnostics are accessible after expanding 更多信息.",
+      "Open or synthesize a high-risk runtime-structure file and confirm the triggering field appears in the default summary.",
+      "Confirm default UI uses friendly labels and does not expose SpriteEntity, FrameEntity, 图层数, or 图层过多 as runtime structure labels."
+    ]
+  }
+}
