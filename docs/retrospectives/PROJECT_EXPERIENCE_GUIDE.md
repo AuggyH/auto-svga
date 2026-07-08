@@ -84,6 +84,19 @@ release gate, or acceptance record.
   priority, importance, source, and response expectation to decide whether a
   responsible owner may be interrupted; immediate interruption requires an
   explicit emergency reason.
+- Treat the owner local stable app at
+  `/Users/huangtengxin/Applications/Auto SVGA.app` as the current short-term
+  macOS client baseline for owner-visible QA and version progression.
+  Historical Workbench v1, Web Preview, dev Electron windows, `.artifacts`
+  packages, and Windows clients are not current-stage standards unless the
+  Product Owner explicitly names them.
+- Before foreground desktop validation, distinguish owner local stable,
+  candidate, and other workers' client instances by path, PID, window,
+  display/workspace, and task context. If identity is ambiguous, do not
+  automate or capture the frontmost app.
+- Before replacing the owner local stable app, check for baseline drift: do not
+  drop behavior that exists in the installed app but is absent from source,
+  product docs, review notes, or promotion evidence.
 - Use vertical user-flow ownership for major capability closure. Technical
   layers may be useful implementation slices, but they are not enough to claim
   evidence-ready product behavior.

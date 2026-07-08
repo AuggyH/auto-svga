@@ -15,6 +15,11 @@ The workbench is not a small After Effects and does not replace designer
 judgment. Prioritize export acceptance, deterministic diagnostics, and bounded
 reversible post-export refinement over full motion authoring.
 
+The active owner-visible baseline is the short-term macOS client at
+`/Users/huangtengxin/Applications/Auto SVGA.app`. Historical Workbench v1,
+Web Preview, dev Electron windows, `.artifacts` packages, and Windows clients
+are not current-stage standards unless the Product Owner explicitly names them.
+
 ## Priority
 
 - P0: Keep the current tool runnable.
@@ -44,6 +49,13 @@ reversible post-export refinement over full motion authoring.
 8. Prefer result files from Figma, PSD, After Effects, C4D, Blender, and
    AI-assisted workflows. Do not add direct source-project ingestion without a
    separate scope decision.
+9. Before foreground desktop-client work, follow
+   `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md`; never assume a
+   frontmost Auto SVGA/Electron window belongs to the current process without
+   matching app path, PID, window, display/workspace, and task context.
+10. Before replacing the owner local stable app, check for baseline drift and
+    do not drop owner-visible behavior that exists in the installed app but is
+    absent from source, product docs, review notes, or promotion evidence.
 
 ## Product Authority Check
 

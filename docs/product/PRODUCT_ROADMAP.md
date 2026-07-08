@@ -1,9 +1,12 @@
 # Auto SVGA Product Roadmap
 
 Date: 2026-06-30
-Owner reset: P5 product acceptance is deferred. P6 became the active product mainline.
-Autonomous reset: Product Owner authorized SVGA Workbench v1 autonomous execution
-beyond the prior P6-R1 human-gate/UI-polish loop.
+Current mainline: short-term macOS client at
+`/Users/huangtengxin/Applications/Auto SVGA.app` is the owner-visible
+development, QA, and version-progression baseline.
+Historical reset: P5/P6/P6-R1 Workbench evidence remains lineage and rollback
+context, but it is not the current product surface or QA target unless the
+Product Owner explicitly requests it.
 Owner correction: On 2026-07-01, the short-term formal app scope was corrected
 to the SVGA preview, inspection, replaceable-element preview, imageKey rename,
 recent-file reopening, and optimization workflow below. This corrected scope
@@ -46,6 +49,19 @@ zone, defaulting to 75% of canvas height and allowed to vary between 70%-80%.
 The split line defaults to 25% from the top. The canvas center, lower-center,
 and bottom-entry casual drop path must resolve to Open File. Compare is an
 opt-in target that requires deliberately moving into the top secondary strip.
+
+Owner correction: On 2026-07-08, the active owner-visible development and QA
+baseline was clarified as the short-term macOS client installed at
+`/Users/huangtengxin/Applications/Auto SVGA.app` (`~/Applications/Auto SVGA.app`).
+Historical Workbench v1 screens, Web Preview pages, frozen parity artifacts,
+development Electron windows, and generated `.artifacts` packages are lineage
+or supplemental narrowing evidence only; they are not current-stage product
+standards, QA baselines, or requirement targets unless the Product Owner
+explicitly names them. Current short-term development is macOS-client first.
+Windows and standalone Web Preview are not short-term acceptance or QA targets
+unless explicitly requested. If the installed owner-used app contains behavior
+that is not represented in source, product docs, review notes, or promotion
+metadata, treat it as baseline drift and reconcile it before replacing the app.
 
 Product documentation system:
 `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` defines the PM responsibility
@@ -100,6 +116,13 @@ replaceable-element preview, supports imageKey rename, and produces optimized
 SVGA output through explicit Overwrite Save or Save As actions. The short-term
 app also remembers recent SVGA files as a formal convenience workflow, with
 path-redacted display and user-controlled clearing.
+
+Current QA and owner-visible version progression for this short-term scope
+starts from the owner-used local stable app at
+`/Users/huangtengxin/Applications/Auto SVGA.app`. Development builds, Web
+Preview, and historical Workbench v1 may help isolate a problem, but they do
+not replace this baseline for Product Owner daily-use reports or promotion
+decisions.
 
 ### Required Capabilities
 

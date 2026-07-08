@@ -1,12 +1,15 @@
 ---
 name: auto-svga-ui-stability
-description: Auto SVGA Web 预览界面稳定性规则。涉及预览页、响应式布局、双预览、按钮降级、汉化、文件信息、空加载错误状态或交互修复时使用；同时加载 auto-svga-core-guard。
+description: Auto SVGA 短期 macOS 客户端 UI 稳定性规则。涉及预览页、响应式布局、双预览、按钮降级、汉化、文件信息、空加载错误状态或交互修复时使用；同时加载 auto-svga-core-guard。
 ---
 
 # Auto SVGA UI Stability
 
-Treat the Web UI as a production tool: stable, clear, restrained, readable,
-and maintainable. Use Chinese for primary UI; keep English only as debug help.
+Treat the short-term macOS client UI as the current production-facing tool:
+stable, clear, restrained, readable, and maintainable. Use Chinese for primary
+UI; keep English only as debug help. Historical Web Preview and Workbench v1
+surfaces are not the current UI standard unless the Product Owner explicitly
+names them.
 
 ## Known Risks
 
@@ -33,5 +36,9 @@ and maintainable. Use Chinese for primary UI; keep English only as debug help.
 10. Before foreground desktop UI validation, check for a second display and use
     it when available. If unavailable, prefer silent or low-disturbance
     operation and record the fallback.
+11. Before controlling a foreground client, follow
+    `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md` and verify the
+    app path, PID, window, display/workspace, and task context. Do not assume
+    another worker's foreground client belongs to this task.
 
 Verify normal, narrow, and extreme-narrow widths for every UI change.

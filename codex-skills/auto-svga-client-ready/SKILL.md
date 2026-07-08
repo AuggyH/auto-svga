@@ -5,12 +5,17 @@ description: Auto SVGA 桌面客户端准备规则。涉及模块、依赖、播
 
 # Auto SVGA Client Ready
 
-Target a distributable macOS and Windows desktop client evolved from the local
-service and Web preview page.
+Target the short-term macOS desktop client first. The current owner-used
+baseline is `/Users/huangtengxin/Applications/Auto SVGA.app`.
+
+Windows clients and standalone Web Preview are not current-stage readiness
+targets unless the Product Owner explicitly requests them. Historical Web
+Preview and Workbench v1 surfaces are lineage or supplemental evidence only.
 
 ## Evaluate Every Relevant Change
 
-- macOS and Windows compatibility
+- macOS client compatibility
+- Windows compatibility only when the task explicitly targets Windows
 - cross-platform paths and file permissions
 - offline operation
 - system and native dependencies
@@ -35,14 +40,31 @@ service and Web preview page.
 1. Prefer non-foreground validation when it is enough: tests, passive logs,
    package metadata, smoke artifacts, or headless/browser automation.
 2. Before any foreground desktop-client launch, automation, or screenshot,
+   check whether another Auto SVGA/Electron client is already running. Do not
+   assume the frontmost client belongs to this task unless the app path, PID,
+   window, display/workspace, and task context match.
+3. Follow `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md` for
+   foreground leases, instance identity, and owner local stable replacement.
+4. Before any foreground desktop-client launch, automation, or screenshot,
    check whether a second or non-primary display is available.
-3. If a second display is available, put the app there before foreground
+5. If a second display is available, put the app there before foreground
    interaction so the Product Owner's main display is not interrupted.
-4. If no second display is available, prefer silent or low-disturbance startup:
+6. If no second display is available, prefer silent or low-disturbance startup:
    background/headless, minimized, hidden, non-activating, or the shortest
    possible foreground session.
-5. Record the foreground strategy in the review or handoff when foreground
+7. Multiple clients may run concurrently only when each instance is clearly
+   identified as owner local stable, candidate, or supplemental narrowing
+   evidence.
+8. Record the foreground strategy in the review or handoff when foreground
    evidence is used.
+
+## Owner Local Stable Baseline
+
+Before promoting or replacing `/Users/huangtengxin/Applications/Auto SVGA.app`,
+verify the candidate package is current-head bound and does not drop behavior
+already present in the installed owner-used app. If installed behavior is not
+represented in source, product docs, review notes, package manifest, or
+promotion evidence, stop and route baseline drift to Product Manager / Release.
 
 ## AI and External Model Constraints
 
@@ -64,6 +86,10 @@ service and Web preview page.
 State:
 
 - effect on macOS and Windows packaging
+- whether the task used owner local stable, candidate, or supplemental
+  narrowing evidence
+- foreground lease / instance identity strategy when foreground work occurred
+- baseline-drift result when replacing owner local stable
 - new system dependencies
 - path or permission risks
 - offline readiness

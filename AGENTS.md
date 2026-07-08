@@ -2,29 +2,26 @@
 
 ## Project Goal
 
-This repository is an MVP for automating SVGA-like animation project generation for avatar frame assets.
+The current Auto SVGA product mainline is the short-term macOS client for SVGA
+preview, inspection, replacement preview, imageKey rename, optimization,
+comparison, save, and owner-visible QA.
 
-Auto-SVGA product mainline is P6-R1 owner-visible Workbench parity and
-acceptance.
+The Product Owner's current daily-use client and QA baseline is:
 
-The frozen Web Preview parity baseline is historical lineage, required
-inventory, and rollback reference. It is no longer the active P6-R1 product
-ceiling after owner-authorized Workbench revisions. Current P6-R1 work must
-bind evidence and handoff to the owner-visible shared Product Workbench on the
-active final head.
+```text
+/Users/huangtengxin/Applications/Auto SVGA.app
+~/Applications/Auto SVGA.app
+```
 
-Do not add new editor features to the default Desktop product until the P6-R1
-Workbench and macOS internal app are accepted.
+Historical Workbench v1 surfaces, Web Preview pages, frozen parity baselines,
+development Electron windows, and generated `.artifacts` packages are lineage,
+supplemental narrowing evidence, or rollback references. They are not the
+current product standard, QA baseline, or requirement target unless the Product
+Owner explicitly names them for a task.
 
-Desktop-specific host behavior may differ only for native window, file dialogs,
-menus, shortcuts, file association, Save As, and security boundaries.
-
-Current scope is intentionally narrow:
-- only avatar_frame asset type
-- CLI first
-- intermediate project format first
-- exporter-ready project.json protocol first
-- 5 animation templates: wing_flap, gem_twinkle, metal_sweep, frame_breath, pop_settle (pop_settle defined but not enabled by default)
+Current stage focus is macOS only. Do not plan, validate, or gate short-term
+work against Windows clients or standalone Web Preview unless the Product Owner
+explicitly requests that target.
 
 ## Priorities
 
@@ -172,6 +169,14 @@ The Product Owner's quick-open macOS client is
 `~/Applications/Auto SVGA.app`. It is a D0 internal unsigned app entry, not a
 signed/notarized release and not Product Owner acceptance.
 
+This local stable app is the owner-used short-term client baseline. Before a
+worker promotes a new package over it, the worker must prove the candidate is
+current-head bound and must not drop owner-visible behavior already present in
+the installed app. If the installed app appears to contain behavior that is not
+represented in source, PRD, review notes, or the promotion manifest, stop and
+route a baseline-drift question to Product Manager / Release before replacing
+the app.
+
 After a meaningful desktop-client, host, packaging, or owner-visible UI change
 is completed and committed, refresh that local entry with:
 
@@ -190,6 +195,9 @@ Rules:
    the blocker in the review.
 5. Do not call a promoted D0 app a release candidate, signed build,
    notarized build, or public release.
+
+See `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md` for foreground
+lease, client-instance identity, and baseline-drift rules.
 
 ## Asset Commit Rules
 
@@ -251,20 +259,28 @@ the foreground:
 1. Prefer non-foreground evidence first when it is sufficient: unit tests,
    source checks, smoke artifacts, headless/browser automation, passive logs,
    or packaged-app metadata.
-2. If foreground operation is required, check the current display topology
+2. Check for existing Auto SVGA / Electron foreground sessions, running
+   processes, and windows before taking focus. Do not assume the frontmost app
+   is yours unless its app path, PID, window, and task context match your own
+   launch.
+3. If foreground operation is required, check the current display topology
    first using the available macOS/tooling context.
-3. If a second or non-primary display is available, launch, move, automate, and
+4. If a second or non-primary display is available, launch, move, automate, and
    capture the app there so the Product Owner's main display is not interrupted.
-4. If no second display is available, prefer silent or low-disturbance startup:
+5. If no second display is available, prefer silent or low-disturbance startup:
    background/headless mode, minimized or hidden window, non-activating launch,
    or the shortest possible foreground session.
-5. Use the main display foreground only when secondary-display operation is not
+6. Use the main display foreground only when secondary-display operation is not
    available and silent evidence cannot prove the required behavior. In that
    case, say what you are about to do, keep the interruption brief, avoid
    repeated focus stealing, and restore or close the app afterward.
-6. Reviews and handoffs that rely on foreground evidence must record the
-   strategy used: second display, silent/low-disturbance fallback, or main
-   display with reason.
+7. Multiple clients may run concurrently only when each process can identify
+   and control its own instance by app path, PID, window, display/workspace,
+   and evidence label. If identity cannot be proven, serialize foreground
+   debugging instead of sharing or stealing an ambiguous window.
+8. Reviews and handoffs that rely on foreground evidence must record the
+   strategy used: second display, isolated client instance, silent/
+   low-disturbance fallback, or main display with reason.
 
 ## Agent Handoff
 
@@ -288,10 +304,10 @@ Create a frozen milestone contract before implementation, execute
 Implement -> Validate -> Review -> Repair, and do not push, merge, release, or
 deploy automatically.
 
-For the active SVGA Workbench v1 autonomous branch, also follow
-`docs/autonomous/AUTONOMOUS_EXECUTION_RULES.md`. In particular, do not convert
-small fixes into new review packages, do not stop for ordinary implementation
-gaps, and keep real-asset validation redacted.
+For historical or explicitly resumed SVGA Workbench v1 autonomous branches,
+also follow `docs/autonomous/AUTONOMOUS_EXECUTION_RULES.md`. Do not treat those
+branches as the current short-term macOS client baseline unless the Product
+Owner explicitly asks to resume that lane.
 
 Before returning `PASS` or `HUMAN_REQUIRED`, run the repository handoff command
 successfully and return the generated `FINAL_RESPONSE.txt` verbatim. Never
@@ -325,13 +341,19 @@ See `docs/engineering/REPAIR_HEALTH_PROTOCOL.md`.
 
 - Formal implementation workers must be visible project Worktree threads.
 - Subagents are limited to short-lived read-only audit and review.
+- Foreground desktop-client work must follow
+  `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md`; each worker must
+  distinguish owner local stable app, its own development instance, and any
+  other process's foreground client.
 - Before coordinating or resuming a multi-worker milestone, A0 must read the
   protocol, coordination doc, and registry; list visible project threads;
   refresh the registry; and validate it.
 - List and reuse existing project threads before creating workers.
 - A0 is the only integration coordinator and global lifecycle writer.
 - Worker PASS does not imply milestone PASS.
-- Heavy Electron, Web server, and packaged-App validation runs serially.
+- Shared-port servers, package promotion, and owner local stable replacement
+  run serially. Isolated foreground clients may run concurrently only when
+  their instance identity and display/workspace ownership are recorded.
 
 ## Project QA And Defect Workflow
 
