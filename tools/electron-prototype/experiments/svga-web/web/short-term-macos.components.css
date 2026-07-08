@@ -300,7 +300,13 @@
   border-color: var(--asv-border-strong);
 }
 
+.assetRow .rowText {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .assetRow .rowText strong {
+  min-width: 0;
   color: var(--asv-text);
   font-size: var(--asv-asset-row-title-size);
   font-weight: 560;
@@ -308,12 +314,14 @@
 }
 
 .assetRow .rowText span {
+  min-width: 0;
   color: var(--asv-asset-row-detail-color);
   font-size: var(--asv-asset-row-detail-size);
   line-height: var(--asv-asset-row-detail-line-height);
 }
 
 .assetRow .badge {
+  justify-self: end;
   padding: 0;
   background: transparent;
   box-shadow: none;

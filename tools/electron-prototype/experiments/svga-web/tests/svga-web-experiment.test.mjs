@@ -1580,6 +1580,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.assetRow\s*\{[^}]*border-bottom: var\(--asv-asset-row-divider\)/s);
   assert.match(shortTermComponents, /\.assetRow:hover\s*\{[^}]*background: var\(--asv-asset-row-hover-bg\)/s);
   assert.match(shortTermComponents, /\.assetRow\[data-attention="true"\]/);
+  assert.match(shortTermComponents, /\.assetRow \.rowText\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermComponents, /\.assetRow \.rowText\s*\{[^}]*overflow: hidden/s);
+  assert.match(shortTermComponents, /\.assetRow \.rowText strong\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermComponents, /\.assetRow \.rowText span\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermComponents, /\.assetRow \.badge\s*\{[^}]*justify-self: end/s);
   assert.match(shortTermComponents, /\.layerRow/);
   assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*grid-template-columns: var\(--asv-layer-row-thumb-size\) minmax\(0, 1fr\)/s);
   assert.match(shortTermComponents, /\.layerRow\s*\{[^}]*border-bottom: var\(--asv-layer-row-divider\)/s);
