@@ -3,7 +3,7 @@
   "ticketId": "ASV-QA-20260708-004",
   "status": "Fix Ready",
   "branch": "agent/codex/short-term-preview-qa-20260708",
-  "fixCommit": "this_commit_recorded_in_qa_callback",
+  "fixCommit": "94424954",
   "generatedAt": "2026-07-08T18:09:32+08:00",
   "privacy": {
     "usesProductionAsset": false,
