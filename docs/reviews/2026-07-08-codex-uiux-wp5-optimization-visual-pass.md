@@ -17,9 +17,13 @@ logic. It uses Figma as design evidence and the PRD as product authority.
 - `docs/research/figma-mcp-read-packets/r5-wp5-optimization-contracts-20260708.md`
 - `docs/reviews/2026-07-08-codex-uiux-wp5-optimization-visual-pass.md`
 - `tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`
+- `tools/electron-prototype/experiments/svga-web/web/short-term-macos-command-state.mjs`
+- `tools/electron-prototype/experiments/svga-web/web/short-term-macos-compare-model.mjs`
 - `tools/electron-prototype/experiments/svga-web/web/short-term-macos.atoms.css`
 - `tools/electron-prototype/experiments/svga-web/web/short-term-macos.components.css`
 - `tools/electron-prototype/experiments/svga-web/web/short-term-macos.modules.css`
+- `tools/electron-prototype/experiments/svga-web/web/short-term-macos-optimization-model.mjs`
+- `tools/electron-prototype/experiments/svga-web/web/short-term-macos-save-surface.mjs`
 - `tools/electron-prototype/experiments/svga-web/web/short-term-macos.tokens.css`
 
 ## Requirement Checks
@@ -31,13 +35,15 @@ logic. It uses Figma as design evidence and the PRD as product authority.
 | Do not hard-code Figma sample optimization copy | Done |
 | Preserve `另存为 SVGA`, `覆盖保存`, and `放弃优化` | Done |
 | Preserve concrete optimization item output required by PRD | Done |
+| Do not present no-benefit / failed optimization as success | Done |
+| Disable Save As / Overwrite for non-saveable optimization result status | Done |
 | Keep implementation token/component layered | Done |
 | Avoid new visible explanatory copy | Done |
 
 ## Verification
 
 - `npm run desktop:short-term:design-system-check` - pass
-- `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs` - pass, 33/33
+- `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs` - pass, 35/35
 - `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke` - pass
 - `git diff --check -- <touched short-term UI files>` - pass
 - Foreground second-display screenshots from promoted App:
@@ -72,3 +78,6 @@ logic. It uses Figma as design evidence and the PRD as product authority.
 - What improved during validation: foreground result evidence caught truncated
   metric values that smoke could not judge; the value sizing was repaired before
   handoff.
+- What changed after PM sync: the optimization result surface now fails closed
+  for `failed` / `no-benefit` statuses and keeps Save actions disabled unless
+  the result status is saveable.

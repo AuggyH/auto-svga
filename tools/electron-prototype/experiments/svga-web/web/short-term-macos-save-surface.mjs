@@ -10,6 +10,7 @@ import {
   saveProofImageKey,
   saveProofSourceImageKey
 } from "./short-term-macos-save-model.mjs";
+import { canSaveOptimizationResult } from "./short-term-macos-optimization-model.mjs";
 
 export async function createShortTermSaveProofOutput({
   state,
@@ -77,6 +78,10 @@ export async function saveShortTermActiveOutput({
   showSaveBanner
 }) {
   if (!state.activeOutput?.bytes?.byteLength || !bridge?.saveShortTermSvgaOutput) return undefined;
+  if (state.activeOutput.kind === "optimization" && !canSaveOptimizationResult(state.activeOutput.details)) {
+    showSaveBanner(state.activeOutput.title || "优化结果不可保存。", state.activeOutput.summary || "保存保持关闭。");
+    return undefined;
+  }
   if (state.saveStatus === "validating") return undefined;
   if (command === "overwrite" && !state.sourceId) {
     showSaveBanner("当前文件不支持覆盖保存。", "请使用“另存为”保存这份 SVGA 输出。");

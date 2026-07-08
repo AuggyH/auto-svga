@@ -16,7 +16,11 @@ export function optimizationTabView(model) {
 }
 
 export function optimizationResultTone(model) {
-  return model.status === "optimized"
-    ? "success"
-    : model.status === "failed" ? "danger" : "warning";
+  if (model?.status === "optimized") return "success";
+  if (model?.status === "tradeoff") return "warning";
+  return "danger";
+}
+
+export function canSaveOptimizationResult(model) {
+  return model?.status === "optimized" || model?.status === "tradeoff";
 }

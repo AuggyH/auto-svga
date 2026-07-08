@@ -1,11 +1,16 @@
+import { canSaveOptimizationResult } from "./short-term-macos-optimization-model.mjs";
+
 export function buildCommandState(input) {
   const appearance = ["system", "light", "dark"].includes(input.appearance) ? input.appearance : "system";
   const hasFile = input.hasFile === true;
   const hasOutput = Boolean(input.activeOutput);
   const outputKind = input.activeOutput?.kind || "";
+  const outputSaveable = outputKind === "optimization"
+    ? canSaveOptimizationResult(input.activeOutput?.details)
+    : hasOutput;
   const saveBusy = input.saveStatus === "validating";
-  const canOverwrite = hasOutput && !saveBusy && Boolean(input.sourceId);
-  const canSaveAs = hasOutput && !saveBusy;
+  const canOverwrite = hasOutput && outputSaveable && !saveBusy && Boolean(input.sourceId);
+  const canSaveAs = hasOutput && outputSaveable && !saveBusy;
   const headerSaveAsVisible = (hasOutput && outputKind !== "optimization") || input.cleanSaveAsVisible === true;
   const canRunOptimization = hasFile && input.optimizationBatchActionEnabled === true;
   const canRenameImageKey = hasFile && Boolean(input.selectedImageKey);

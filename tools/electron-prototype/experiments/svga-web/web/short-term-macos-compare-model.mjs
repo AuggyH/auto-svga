@@ -4,6 +4,10 @@ import {
   renderCompareFactCellHtml,
   renderOptimizationMetricCellHtml
 } from "./short-term-macos-render-model.mjs";
+import {
+  canSaveOptimizationResult,
+  optimizationResultTone
+} from "./short-term-macos-optimization-model.mjs";
 
 export function renderCompareInfoHtml(title, model, displayName, actions = []) {
   const actionHtml = actions.length ? `<div class="compareActions">${actions.join("")}</div>` : "";
@@ -102,6 +106,8 @@ export function optimizationCompareTraceView() {
 }
 
 export function renderOptimizationCompareResultHtml(model) {
+  const tone = optimizationResultTone(model);
+  const saveDisabled = canSaveOptimizationResult(model) ? "" : " disabled";
   const actionRows = (model.actions ?? []).map((action) => `
     <li>
       <strong>${escapeHtml(action.title)}</strong>
@@ -113,13 +119,13 @@ export function renderOptimizationCompareResultHtml(model) {
     .map((method) => `<li><strong>${escapeHtml(method.label)}</strong><span>${escapeHtml(method.reason)}</span></li>`)
     .join("");
   return `
-    <section class="compareSummary optimizationResultSummary" data-status="success">
+    <section class="compareSummary optimizationResultSummary" data-status="${escapeHtml(tone)}">
       <h2>优化结果</h2>
     </section>
     ${(model.metrics ?? []).length ? `<section class="compareMetricGrid optimizationMetricGrid" aria-label="优化指标">${(model.metrics ?? []).map(renderOptimizationMetricCellHtml).join("")}</section>` : ""}
     <div class="compareActions optimizationActions">
-      <button class="toolbarButton primary" type="button" data-action="save-as">另存为 SVGA</button>
-      <button class="toolbarButton" type="button" data-action="save-overwrite">覆盖保存</button>
+      <button class="toolbarButton primary" type="button" data-action="save-as"${saveDisabled}>另存为 SVGA</button>
+      <button class="toolbarButton" type="button" data-action="save-overwrite"${saveDisabled}>覆盖保存</button>
       <button class="toolbarButton" type="button" data-action="back-preview">放弃优化</button>
     </div>
     ${actionRows ? `<section class="resultGroup" data-status="success"><h3>已执行</h3><ul data-optimization-actions>${actionRows}</ul></section>` : ""}

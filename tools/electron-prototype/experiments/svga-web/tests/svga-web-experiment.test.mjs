@@ -423,6 +423,47 @@ test("short-term drag decision hit testing keeps Compare opt-in at the top", asy
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 200 }), "open");
 });
 
+test("short-term optimization result UI fails closed for no-benefit output", async () => {
+  const optimizationModel = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-optimization-model.mjs"
+  )).href);
+  const commandStateModel = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-command-state.mjs"
+  )).href);
+  const compareModel = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-compare-model.mjs"
+  )).href);
+
+  assert.equal(optimizationModel.optimizationResultTone({ status: "optimized" }), "success");
+  assert.equal(optimizationModel.optimizationResultTone({ status: "tradeoff" }), "warning");
+  assert.equal(optimizationModel.optimizationResultTone({ status: "no-benefit" }), "danger");
+  assert.equal(optimizationModel.canSaveOptimizationResult({ status: "optimized" }), true);
+  assert.equal(optimizationModel.canSaveOptimizationResult({ status: "tradeoff" }), true);
+  assert.equal(optimizationModel.canSaveOptimizationResult({ status: "failed" }), false);
+
+  const disabledState = commandStateModel.buildCommandState({
+    activeOutput: {
+      kind: "optimization",
+      bytes: new Uint8Array([1]),
+      details: { status: "no-benefit" }
+    },
+    sourceId: "source-id"
+  });
+  assert.equal(disabledState.actionStates["save-as"].enabled, false);
+  assert.equal(disabledState.actionStates["save-overwrite"].enabled, false);
+
+  const disabledHtml = compareModel.renderOptimizationCompareResultHtml({
+    status: "no-benefit",
+    metrics: [{ label: "文件体积", before: "2.4 MiB", after: "2.5 MiB" }]
+  });
+  assert.match(disabledHtml, /data-status="danger"/);
+  assert.match(disabledHtml, /data-action="save-as" disabled>另存为 SVGA/);
+  assert.match(disabledHtml, /data-action="save-overwrite" disabled>覆盖保存/);
+});
+
 test("short-term future compatibility guardrails keep current behavior bounded", async () => {
   const webRoot = path.join(experimentRoot, "web");
   const shortTermFileNames = (await readdir(webRoot))
@@ -2419,8 +2460,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /optimizationMetricGrid/);
   assert.match(shortTermCompareModel, /renderOptimizationMetricCellHtml/);
   assert.match(shortTermCompareModel, /optimizationActions/);
-  assert.match(shortTermCompareModel, /data-action="save-as">另存为 SVGA/);
-  assert.match(shortTermCompareModel, /data-action="save-overwrite">覆盖保存/);
+  assert.match(shortTermCompareModel, /data-action="save-as"\$\{saveDisabled\}>另存为 SVGA/);
+  assert.match(shortTermCompareModel, /data-action="save-overwrite"\$\{saveDisabled\}>覆盖保存/);
   assert.match(shortTermCompareModel, /data-action="back-preview">放弃优化/);
   assert.ok(
     shortTermCompareModel.indexOf("optimizationMetricGrid") < shortTermCompareModel.indexOf("optimizationActions")
