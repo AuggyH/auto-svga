@@ -46,6 +46,7 @@ export async function renderShortTermOptimizationCompare({
     mountPlayback("compareA", nodes.compareCanvasA, state.sourceBytes),
     mountPlayback("compareB", nodes.compareCanvasB, optimizedBytes)
   ]);
+  markShortTermCompareSlotLoaded({ nodes, slot: "A" });
   markShortTermCompareSlotLoaded({ nodes, slot: "B" });
 }
 

@@ -80,6 +80,7 @@ export async function enterShortTermGeneralCompare({
   });
   if (state.sourceBytes) {
     await mountPlayback("compareA", nodes.compareCanvasA, state.previewBytes ?? state.sourceBytes);
+    markShortTermCompareSlotLoaded({ nodes, slot: "A" });
   } else {
     clearCanvas(nodes.compareCanvasA);
   }
@@ -106,6 +107,7 @@ export async function openShortTermCompareBFromHost({
   if (!opened || opened.status === "cancelled") return;
   const bytes = toUint8Array(opened.bytes);
   await mountPlayback("compareB", nodes.compareCanvasB, bytes);
+  markShortTermCompareSlotLoaded({ nodes, slot: "B" });
   const model = await inspectShortTerm(bytes, opened.basename || "compare.svga");
   renderShortTermCompareSlot({ nodes, slot: "B", title: opened.basename || "B 文件", model });
   renderShortTermGeneralComparePanel({
@@ -136,6 +138,7 @@ export async function loadShortTermCompareBFromDroppedFile({
   if (state.view !== "compare") await enterGeneralCompare();
   const bytes = new Uint8Array(await file.arrayBuffer());
   await mountPlayback("compareB", nodes.compareCanvasB, bytes);
+  markShortTermCompareSlotLoaded({ nodes, slot: "B" });
   const model = await inspectShortTerm(bytes, file.name || "compare.svga");
   renderShortTermCompareSlot({ nodes, slot: "B", title: file.name || "B 文件", model });
   renderShortTermGeneralComparePanel({

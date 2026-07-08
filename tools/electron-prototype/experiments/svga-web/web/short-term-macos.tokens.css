@@ -77,7 +77,7 @@
   --asv-radius-lg: var(--asv-base-radius-8);
   --asv-motion-duration-fast: 120ms;
   --asv-motion-duration-standard: 180ms;
-  --asv-motion-duration-idle: 36s;
+  --asv-motion-duration-idle: 30s;
   --asv-motion-easing-idle: linear;
 
   /* Semantic tokens */
@@ -258,6 +258,10 @@
   --asv-component-fact-cell-value-size: var(--asv-type-size-metric);
   --asv-component-fact-cell-value-line-height: 22px;
   --asv-component-fact-cell-value-color: var(--asv-color-text-primary);
+  --asv-component-fact-cell-unit-gap: var(--asv-base-space-4);
+  --asv-component-fact-cell-unit-size: var(--asv-type-size-footnote);
+  --asv-component-fact-cell-unit-weight: 450;
+  --asv-component-fact-cell-unit-color: var(--asv-color-text-tertiary);
   --asv-component-fact-status-strip-width: 2px;
   --asv-component-metric-entry-height: 18px;
   --asv-component-metric-entry-padding-inline: var(--asv-base-space-6);
@@ -269,6 +273,19 @@
   --asv-component-metric-entry-hover-bg: color-mix(in srgb, var(--asv-color-status-danger-soft) 64%, var(--asv-color-surface-panel-strong) 6%);
   --asv-component-metric-entry-border: color-mix(in srgb, var(--asv-color-status-danger) 6%, transparent);
   --asv-component-metric-entry-color: var(--asv-color-status-danger);
+  --asv-component-fact-more-info-gap: var(--asv-space-1);
+  --asv-component-fact-more-info-row-gap: var(--asv-component-fact-grid-row-gap);
+  --asv-component-fact-more-info-column-gap: var(--asv-component-fact-grid-column-gap);
+  --asv-component-fact-more-info-grid-padding-top: var(--asv-space-1);
+  --asv-component-fact-more-info-summary-height: 22px;
+  --asv-component-fact-more-info-summary-gap: var(--asv-space-1);
+  --asv-component-fact-more-info-summary-padding-inline: var(--asv-space-2);
+  --asv-component-fact-more-info-summary-radius: var(--asv-radius-sm);
+  --asv-component-fact-more-info-summary-font-size: var(--asv-type-size-caption);
+  --asv-component-fact-more-info-summary-color: var(--asv-color-text-secondary);
+  --asv-component-fact-more-info-summary-hover-background: color-mix(in srgb, var(--asv-color-surface-row-hover) 20%, transparent);
+  --asv-component-fact-more-info-arrow-size: 6px;
+  --asv-component-fact-more-info-arrow-stroke: 1.5px;
   --asv-component-asset-list-gap: var(--asv-space-1);
   --asv-component-asset-row-min-height: 56px;
   --asv-component-asset-row-gap: var(--asv-space-3);
@@ -368,6 +385,7 @@
   --asv-component-drag-overlay-label-size: 36px;
   --asv-component-drag-overlay-label-size-compact: 30px;
   --asv-component-drag-overlay-label-weight: 750;
+  --asv-component-drag-overlay-grid-rows: 1fr 3fr;
   --asv-component-drag-overlay-zone-opacity: 0.86;
   --asv-component-drag-overlay-zone-focus-opacity: 1;
   --asv-component-launch-empty-canvas-size: 300px;
@@ -397,7 +415,7 @@
   --asv-component-launch-checker-size: 24px;
   --asv-component-launch-checker-idle-duration: var(--asv-motion-duration-idle);
   --asv-component-launch-checker-idle-easing: var(--asv-motion-easing-idle);
-  --asv-component-launch-checker-idle-offset: calc(var(--asv-component-launch-checker-size) * 2);
+  --asv-component-launch-checker-idle-offset: calc(var(--asv-component-launch-checker-size) * 12);
   --asv-component-preview-checker-size: 22px;
   --asv-component-canvas-checker-pattern: conic-gradient(var(--asv-color-canvas-checker) 25%, transparent 0 50%, var(--asv-color-canvas-checker) 0 75%, transparent 0);
   --asv-component-settings-sheet-width: 360px;
@@ -571,6 +589,10 @@
   --asv-fact-cell-value-size: var(--asv-component-fact-cell-value-size);
   --asv-fact-cell-value-line-height: var(--asv-component-fact-cell-value-line-height);
   --asv-fact-cell-value-color: var(--asv-component-fact-cell-value-color);
+  --asv-fact-cell-unit-gap: var(--asv-component-fact-cell-unit-gap);
+  --asv-fact-cell-unit-size: var(--asv-component-fact-cell-unit-size);
+  --asv-fact-cell-unit-weight: var(--asv-component-fact-cell-unit-weight);
+  --asv-fact-cell-unit-color: var(--asv-component-fact-cell-unit-color);
   --asv-fact-status-strip-width: var(--asv-component-fact-status-strip-width);
   --asv-metric-entry-height: var(--asv-component-metric-entry-height);
   --asv-metric-entry-padding-inline: var(--asv-component-metric-entry-padding-inline);
@@ -582,6 +604,19 @@
   --asv-metric-entry-hover-bg: var(--asv-component-metric-entry-hover-bg);
   --asv-metric-entry-border: var(--asv-component-metric-entry-border);
   --asv-metric-entry-color: var(--asv-component-metric-entry-color);
+  --asv-fact-more-info-gap: var(--asv-component-fact-more-info-gap);
+  --asv-fact-more-info-row-gap: var(--asv-component-fact-more-info-row-gap);
+  --asv-fact-more-info-column-gap: var(--asv-component-fact-more-info-column-gap);
+  --asv-fact-more-info-grid-padding-top: var(--asv-component-fact-more-info-grid-padding-top);
+  --asv-fact-more-info-summary-height: var(--asv-component-fact-more-info-summary-height);
+  --asv-fact-more-info-summary-gap: var(--asv-component-fact-more-info-summary-gap);
+  --asv-fact-more-info-summary-padding-inline: var(--asv-component-fact-more-info-summary-padding-inline);
+  --asv-fact-more-info-summary-radius: var(--asv-component-fact-more-info-summary-radius);
+  --asv-fact-more-info-summary-font-size: var(--asv-component-fact-more-info-summary-font-size);
+  --asv-fact-more-info-summary-color: var(--asv-component-fact-more-info-summary-color);
+  --asv-fact-more-info-summary-hover-bg: var(--asv-component-fact-more-info-summary-hover-background);
+  --asv-fact-more-info-arrow-size: var(--asv-component-fact-more-info-arrow-size);
+  --asv-fact-more-info-arrow-stroke: var(--asv-component-fact-more-info-arrow-stroke);
   --asv-asset-list-gap: var(--asv-component-asset-list-gap);
   --asv-asset-row-min-height: var(--asv-component-asset-row-min-height);
   --asv-asset-row-gap: var(--asv-component-asset-row-gap);
@@ -675,6 +710,7 @@
   --asv-optimization-action-gap: var(--asv-component-optimization-action-gap);
   --asv-drag-overlay-label-size: var(--asv-component-drag-overlay-label-size);
   --asv-drag-overlay-label-weight: var(--asv-component-drag-overlay-label-weight);
+  --asv-drag-overlay-grid-rows: var(--asv-component-drag-overlay-grid-rows);
   --asv-drag-zone-opacity: var(--asv-component-drag-overlay-zone-opacity);
   --asv-drag-zone-focus-opacity: var(--asv-component-drag-overlay-zone-focus-opacity);
   --asv-drag-overlay-backdrop-filter: var(--asv-effect-drag-overlay-backdrop-filter);

@@ -42,6 +42,7 @@ function compareFactValue(facts, id) {
 }
 
 function renderComparePairRows(aModel, bModel) {
+  if (!aModel || !bModel) return "";
   const aFacts = compareFacts(aModel);
   const bFacts = compareFacts(bModel);
   const ids = Array.from(new Set([...aFacts, ...bFacts].map((fact) => fact.id)));
@@ -70,6 +71,7 @@ export function renderGeneralComparePanelHtml({
   actions = []
 } = {}) {
   const actionHtml = actions.length ? `<div class="compareActions">${actions.join("")}</div>` : "";
+  const rows = renderComparePairRows(aModel, bModel);
   return `
     <section class="compareSummary compareModeHeader">
       <h2>对比模式</h2>
@@ -85,9 +87,7 @@ export function renderGeneralComparePanelHtml({
         <strong>${escapeHtml(bDisplayName || "未打开文件")}</strong>
       </div>
     </section>
-    <section class="compareMetricGrid" aria-label="对比信息">
-      ${renderComparePairRows(aModel, bModel)}
-    </section>
+    ${rows ? `<section class="compareMetricGrid" aria-label="对比信息">${rows}</section>` : ""}
   `;
 }
 

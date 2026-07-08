@@ -8,6 +8,7 @@ export function createOverviewFactCell(fact) {
   const cell = document.createElement("article");
   cell.className = "factCell";
   cell.dataset.component = "ProductionSpecInlineRow";
+  cell.dataset.factId = fact.id;
   cell.dataset.status = fact.status;
   cell.title = `${fact.label}: ${fact.value}`;
   cell.innerHTML = renderOverviewFactCellHtml(fact);

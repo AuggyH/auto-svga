@@ -36,6 +36,13 @@ const {
   validateSequenceRepairReportBinding
 } = require("../sequence-repair-proof-contract.cjs");
 
+test("short-term metric values split units only for simple numeric facts", async () => {
+  const { renderMetricValueHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
+  assert.equal(renderMetricValueHtml("104.5 KiB"), "104.5 <span class=\"factValueUnit\">KiB</span>");
+  assert.equal(renderMetricValueHtml("300 x 300 px"), "300 x 300 <span class=\"factValueUnit\">px</span>");
+  assert.equal(renderMetricValueHtml("低风险 / 估算 125.6 KiB"), "低风险 / 估算 125.6 KiB");
+});
+
 test("macOS internal package scaffold avoids unsupported Finder .svga document association", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
   const entitlements = await readFile(path.join(experimentRoot, "packaging/macos/entitlements.plist"), "utf8");
@@ -1392,7 +1399,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-canvas-checker-pattern: var\(--asv-component-canvas-checker-pattern\)/);
   assert.match(shortTermTokens, /--asv-motion-duration-idle: 30s/);
   assert.match(shortTermTokens, /--asv-component-launch-checker-idle-duration: var\(--asv-motion-duration-idle\)/);
-  assert.match(shortTermTokens, /--asv-component-launch-checker-idle-offset: calc\(var\(--asv-component-launch-checker-size\) \* 3\)/);
+  assert.match(shortTermTokens, /--asv-component-launch-checker-idle-offset: calc\(var\(--asv-component-launch-checker-size\) \* 12\)/);
   assert.match(shortTermTokens, /--asv-panel-border/);
   assert.match(shortTermTokens, /--asv-shadow-panel-highlight/);
   assert.match(shortTermTokens, /--asv-shadow-panel-chrome/);
@@ -1457,6 +1464,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-fact-grid-width: 280px/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 56px/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-value-size: var\(--asv-type-size-metric\)/);
+  assert.match(shortTermTokens, /--asv-component-fact-cell-unit-size: var\(--asv-type-size-footnote\)/);
+  assert.match(shortTermTokens, /--asv-fact-cell-unit-color: var\(--asv-component-fact-cell-unit-color\)/);
   assert.match(shortTermTokens, /--asv-component-metric-entry-font-size: var\(--asv-type-size-micro\)/);
   assert.match(shortTermTokens, /--asv-fact-cell-meta-gap: var\(--asv-component-fact-cell-meta-gap\)/);
   assert.match(shortTermTokens, /--asv-component-metric-entry-height/);
@@ -1521,9 +1530,20 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.factCell strong\s*\{[^}]*font-family: var\(--asv-font\)/s);
   assert.match(shortTermComponents, /\.factCell strong\s*\{[^}]*color: var\(--asv-fact-cell-value-color\)/s);
   assert.match(shortTermComponents, /\.factCell strong\s*\{[^}]*line-height: var\(--asv-fact-cell-value-line-height\)/s);
+  assert.match(shortTermComponents, /\.factCell strong\s*\{[^}]*gap: var\(--asv-fact-cell-unit-gap\)/s);
+  assert.match(shortTermComponents, /\.factCell\[data-fact-id="runtimeStructure"\]\s*\{[^}]*grid-column: 1 \/ -1/s);
+  assert.match(shortTermComponents, /\.factValueUnit\s*\{[^}]*color: var\(--asv-fact-cell-unit-color\)/s);
+  assert.match(shortTermComponents, /\.factValueUnit\s*\{[^}]*font-size: var\(--asv-fact-cell-unit-size\)/s);
+  assert.match(shortTermComponents, /\.factValueUnit\s*\{[^}]*white-space: nowrap/s);
   assert.match(shortTermComponents, /\.factCell span\s*\{[^}]*color: var\(--asv-fact-cell-label-color\)/s);
   assert.match(shortTermComponents, /\.factCell span\s*\{[^}]*letter-spacing: var\(--asv-fact-cell-label-letter-spacing\)/s);
   assert.match(shortTermComponents, /\.factCell small\s*\{[^}]*margin-top: var\(--asv-fact-cell-meta-gap\)/s);
+  assert.match(shortTermComponents, /\.factMoreInfo\s*\{[^}]*gap: var\(--asv-fact-more-info-gap\)/s);
+  assert.match(shortTermComponents, /\.factMoreInfo summary\s*\{[^}]*min-height: var\(--asv-fact-more-info-summary-height\)/s);
+  assert.match(shortTermComponents, /\.factMoreInfo summary\s*\{[^}]*font-size: var\(--asv-fact-more-info-summary-font-size\)/s);
+  assert.match(shortTermComponents, /\.factMoreInfo summary::after\s*\{[^}]*border-right: var\(--asv-fact-more-info-arrow-stroke\) solid currentColor/s);
+  assert.match(shortTermComponents, /\.factMoreInfo summary:hover\s*\{[^}]*background: var\(--asv-fact-more-info-summary-hover-bg\)/s);
+  assert.match(shortTermComponents, /\.factMoreInfoGrid\s*\{[^}]*gap: var\(--asv-fact-more-info-row-gap\) var\(--asv-fact-more-info-column-gap\)/s);
   assert.match(shortTermComponents, /\.metricOptimizationEntry\s*\{[^}]*border-radius: var\(--asv-status-strip-radius\)/s);
   assert.match(shortTermComponents, /\.metricOptimizationEntry\s*\{[^}]*background: var\(--asv-metric-entry-bg\)/s);
   assert.match(shortTermComponents, /\.metricOptimizationEntry::after\s*\{[^}]*border-top: var\(--asv-metric-entry-arrow-stroke\) solid currentColor/s);
@@ -1575,6 +1595,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.launchCanvas\s*\{[^}]*animation: launchCheckerIdleDrift var\(--asv-launch-checker-idle-duration\) var\(--asv-launch-checker-idle-easing\) infinite/s);
   assert.match(shortTermModules, /\.launchCanvas\.isDragOver\s*\{[^}]*animation-play-state: paused/s);
   assert.match(shortTermModules, /@keyframes launchCheckerIdleDrift/);
+  assert.match(shortTermModules, /background-position: var\(--asv-launch-checker-idle-offset\) calc\(var\(--asv-launch-checker-idle-offset\) \* -1\), 0 0/);
   assert.match(shortTermModules, /\.canvasWrap,[\s\S]*\.compareCanvasWrap\s*\{[^}]*background:[^}]*var\(--asv-canvas-checker-pattern\)/s);
   assert.doesNotMatch(shortTermModules, /conic-gradient\(from 45deg/);
   assert.match(shortTermModules, /\.factGrid\s*\{[^}]*gap: var\(--asv-fact-grid-row-gap\) var\(--asv-fact-grid-column-gap\)/s);
@@ -1598,6 +1619,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareCanvasSurface\s*\{[^}]*position: relative/s);
   assert.match(shortTermModules, /\.compareCanvasSurface\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\) auto/s);
   assert.match(shortTermModules, /\.compareCanvasOpenButton\s*\{[^}]*position: absolute/s);
+  assert.match(shortTermModules, /\.compareCanvasWrap\[data-compare-state="empty"\] canvas\s*\{[^}]*opacity: 0/s);
   assert.match(shortTermModules, /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareCanvasOpenButton\s*\{[^}]*display: none/s);
   assert.match(shortTermModules, /\.assetList \.assetRow\s*\{[^}]*border-bottom: var\(--asv-asset-row-divider\)/s);
   assert.match(shortTermModules, /\.layerPanel,\s*\.reservedPanel\s*\{[^}]*padding: var\(--asv-layer-panel-padding-block-start\) var\(--asv-layer-panel-padding\) var\(--asv-layer-panel-padding\)/s);
@@ -1659,7 +1681,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /var\(--asv-drag-supported-bg\)/);
   assert.match(shortTermModules, /var\(--asv-drag-unsupported-bg\)/);
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-columns: 1fr/s);
-  assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-rows: 1fr 3fr/s);
+  assert.match(shortTermTokens, /--asv-component-drag-overlay-grid-rows: 1fr 3fr/);
+  assert.match(shortTermTokens, /--asv-drag-overlay-grid-rows: var\(--asv-component-drag-overlay-grid-rows\)/);
+  assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-rows: var\(--asv-drag-overlay-grid-rows\)/s);
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*backdrop-filter: var\(--asv-drag-overlay-backdrop-filter\)/s);
   assert.match(shortTermModules, /\.dragDecisionZone\s*\{[^}]*opacity: var\(--asv-drag-zone-opacity\)/s);
   assert.match(shortTermModules, /\.dragDecisionZone strong\s*\{[^}]*font-size: var\(--asv-drag-overlay-label-size\)/s);
@@ -1854,6 +1878,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /export function renderOptimizationCompareResultHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePanelHtml/);
+  assert.match(shortTermCompareModel, /if \(!aModel \|\| !bModel\) return ""/);
+  assert.match(shortTermCompareModel, /const rows = renderComparePairRows\(aModel, bModel\)/);
+  assert.match(shortTermCompareModel, /rows \? `<section class="compareMetricGrid" aria-label="对比信息">/);
   assert.match(shortTermCompareModel, /comparePairHeader/);
   assert.match(shortTermCompareModel, /compareModeHeader/);
   assert.match(shortTermCompareModel, /compareMetricRow/);
@@ -1865,10 +1892,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermCompareModel, /打开另一个 SVGA 后开始对比/);
   assert.doesNotMatch(shortTermEditReservedRenderers, /export function createOverviewFactCell|export function createAssetRow|export function renderOverviewFacts|export function renderAssetList|renderOverviewFactCellHtml/);
   assert.match(shortTermOverviewRenderers, /export function createOverviewFactCell/);
+  assert.match(shortTermOverviewRenderers, /export function createOverviewMoreInfoDisclosure/);
+  assert.match(shortTermOverviewRenderers, /cell\.dataset\.factId = fact\.id/);
   assert.match(shortTermOverviewRenderers, /export function createAssetRow/);
   assert.match(shortTermOverviewRenderers, /export function renderOverviewFacts/);
   assert.match(shortTermOverviewRenderers, /export function renderAssetList/);
   assert.match(shortTermOverviewRenderers, /renderOverviewFactCellHtml/);
+  assert.match(shortTermOverviewRenderers, /RuntimeStructureMoreInfo/);
   assert.doesNotMatch(shortTermEditReservedRenderers, /export function createOptimizationFindingRow|export function renderOptimizationFindings|export function prependOptimizationResult|export function createMessageRow|renderOptimizationFindingHtml|renderMessageRowHtml/);
   assert.match(shortTermOptimizationRenderers, /export function createOptimizationFindingRow/);
   assert.match(shortTermOptimizationRenderers, /export function renderOptimizationFindings/);
@@ -2108,7 +2138,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPreviewSurface, /overviewTabView/);
   assert.doesNotMatch(shortTermEntry, /overviewVisibleFacts/);
   assert.match(shortTermOverviewModel, /export function overviewTabView/);
-  assert.match(shortTermOverviewModel, /overviewVisibleFacts/);
+  assert.match(shortTermOverviewModel, /overviewFactGroups/);
   assert.match(shortTermOverviewModel, /"canvas", "fps", "duration"/);
   assert.match(shortTermPreviewSurface, /from "\.\/short-term-macos-edit-reserved-model\.mjs"/);
   assert.match(shortTermPreviewSurface, /editReservedLayerListView/);
@@ -2142,8 +2172,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareSurface, /markCompareSlotLoaded\(nodes, slot\)/);
   assert.match(shortTermCompareSurface, /renderShortTermGeneralComparePanel\(\{/);
   assert.match(shortTermCompareSurface, /renderCompareInfoPanel\(nodes, "B", renderGeneralComparePanelHtml/);
+  assert.match(shortTermCompareSurface, /markShortTermCompareSlotLoaded\(\{ nodes, slot: "A" \}\)/);
+  assert.match(shortTermCompareSurface, /markShortTermCompareSlotLoaded\(\{ nodes, slot: "B" \}\)/);
   assert.doesNotMatch(page, /id="compareInfoA"/);
   assert.match(shortTermOptimizationSurface, /renderShortTermOptimizationCompareResult\(\{ nodes, model \}\)/);
+  assert.match(shortTermOptimizationSurface, /markShortTermCompareSlotLoaded\(\{ nodes, slot: "A" \}\)/);
   assert.doesNotMatch(shortTermEntry, /textContent = view\.title|textContent = view\.meta|dataset\.compareState = view\.compareState|dataset\.compareState = "loaded"|dataset\.module = view\.moduleName|dataset\.pageState = view\.pageState|nodes\.compareInfo[AB]\.innerHTML/);
   assert.match(shortTermCompareRenderers, /textContent = view\.title/);
   assert.match(shortTermCompareRenderers, /textContent = view\.meta/);
@@ -2232,6 +2265,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermApiClient, /x-auto-svga-prototype-token/);
   assert.doesNotMatch(shortTermEntry, /function postBytes|function postJson|function authHeaders|function readJsonResponse|\/api\/short-term-product-/);
   assert.match(shortTermRenderModel, /export function renderOverviewFactCellHtml/);
+  assert.match(shortTermRenderModel, /export function renderMetricValueHtml/);
+  assert.match(shortTermRenderModel, /<span class="factValueUnit">/);
   assert.match(shortTermRenderModel, /data-component="MetricOptimizationEntry"/);
   assert.match(shortTermRenderModel, /export function renderOptimizationFindingHtml/);
   assert.match(shortTermRenderModel, /export function renderMessageRowHtml\(title, summary, tone = "info"\)/);
@@ -2443,13 +2478,17 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /sequenceThumbnailImageCount/);
   assert.match(shortTermSmokeRunner, /collectShortTermThumbnailProof/);
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-thumbnail-proof"/);
-  assert.match(shortTermOverviewModel, /overviewVisibleFacts/);
+  assert.match(shortTermOverviewModel, /overviewFactGroups/);
   assert.match(shortTermRenderModel, /"fileSize"/);
   assert.match(shortTermRenderModel, /"decodedMemory"/);
   assert.match(shortTermRenderModel, /"runtimeStructure"/);
   assert.match(shortTermRenderModel, /"runtimeObjectCount"/);
   assert.match(shortTermRenderModel, /"animationFrameRecordCount"/);
-  assert.match(shortTermRenderModel, /fact\.disclosure !== "moreInfo"/);
+  assert.match(shortTermRenderModel, /export function overviewFactGroups/);
+  assert.match(shortTermRenderModel, /fact\.disclosure !== "moreInfo" \|\| RISK_STATUSES\.has\(fact\.status\)/);
+  assert.match(shortTermOverviewModel, /moreInfoFacts: factGroups\.moreInfo/);
+  assert.match(shortTermOverviewRenderers, /summary\.textContent = "更多信息"/);
+  assert.match(shortTermOverviewRenderers, /view\.moreInfoFacts\.length > 0/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermOptimizationProof/);
   assert.match(shortTermSmokeProofModel, /short-term-optimization-proof/);
   assert.match(shortTermSmokeProofModel, /optimizedBytesSmaller/);

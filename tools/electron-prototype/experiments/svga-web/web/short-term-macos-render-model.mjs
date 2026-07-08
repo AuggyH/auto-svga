@@ -30,7 +30,7 @@ export function renderOverviewFactCellHtml(fact) {
   const requirement = fact.requirement ? ` title="${escapeHtml(fact.requirement)}"` : "";
   return `
     <span>${escapeHtml(fact.label)}</span>
-    <strong>${escapeHtml(fact.value)}</strong>
+    <strong>${renderMetricValueHtml(fact.value)}</strong>
     ${status ? `<button type="button" class="metricOptimizationEntry" data-component="MetricOptimizationEntry" data-action="open-optimization" aria-label="${escapeHtml(fact.label)}${escapeHtml(status)}"${requirement}><b>${escapeHtml(status)}</b></button>` : ""}
   `;
 }
@@ -39,10 +39,17 @@ export function renderCompareFactCellHtml(fact) {
   return `
     <div class="factCell compareMetricCell" data-status="${escapeHtml(fact.status || "unknown")}">
       <span>${escapeHtml(fact.label)}</span>
-      <strong>${escapeHtml(fact.value)}</strong>
+      <strong>${renderMetricValueHtml(fact.value)}</strong>
       <small><b>${escapeHtml(statusCopy(fact.status))}</b>${escapeHtml(fact.requirement)}</small>
     </div>
   `;
+}
+
+export function renderMetricValueHtml(value) {
+  const copy = String(value ?? "");
+  const match = copy.match(/^(\d+(?:\.\d+)?(?:\s*[×x]\s*\d+(?:\.\d+)?)?)\s+(MiB|KiB|B|fps|px|ms|s)$/i);
+  if (!match) return escapeHtml(copy);
+  return `${escapeHtml(match[1])} <span class="factValueUnit">${escapeHtml(match[2])}</span>`;
 }
 
 export function renderOptimizationMetricCellHtml(metric) {
