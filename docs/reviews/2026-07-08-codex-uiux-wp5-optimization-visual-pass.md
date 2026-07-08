@@ -40,6 +40,9 @@ logic. It uses Figma as design evidence and the PRD as product authority.
 - `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs` - pass, 33/33
 - `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke` - pass
 - `git diff --check -- <touched short-term UI files>` - pass
+- Foreground second-display screenshots from promoted App:
+  - `review/uiux-current-client-evidence-20260708/stable-after-wp5-promotion-optimization-detail-display2.png`
+  - `review/uiux-current-client-evidence-20260708/stable-after-wp5-promotion-optimization-result-display2.png`
 
 ## Figma MCP Usage
 
@@ -66,6 +69,6 @@ logic. It uses Figma as design evidence and the PRD as product authority.
   visual pass without broad Figma scans.
 - What to keep: whenever Figma and PRD differ, record the PRD override in the
   read packet before touching code.
-- What to improve: future WP5 evidence should include a real foreground
-  optimization-detail/result screenshot from the promoted app, not only smoke.
-
+- What improved during validation: foreground result evidence caught truncated
+  metric values that smoke could not judge; the value sizing was repaired before
+  handoff.

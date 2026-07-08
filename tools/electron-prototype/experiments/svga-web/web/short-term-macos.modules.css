@@ -1004,10 +1004,12 @@ canvas {
 .optimizationMetricValue b,
 .optimizationMetricValue em,
 .optimizationMetricValue i {
-  overflow: hidden;
   font: inherit;
   font-style: normal;
-  text-overflow: ellipsis;
+}
+
+.optimizationMetricCell[data-improved="true"] .optimizationMetricValue {
+  font-size: var(--asv-optimization-metric-improved-value-size);
 }
 
 .optimizationMetricValue b {

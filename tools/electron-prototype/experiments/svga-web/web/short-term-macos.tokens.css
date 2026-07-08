@@ -359,6 +359,7 @@
   --asv-component-optimization-metric-grid-row-gap: var(--asv-space-4);
   --asv-component-optimization-metric-grid-column-gap: var(--asv-space-4);
   --asv-component-optimization-metric-value-gap: var(--asv-space-1);
+  --asv-component-optimization-metric-improved-value-size: var(--asv-type-size-footnote);
   --asv-component-optimization-metric-padding-block: var(--asv-space-2);
   --asv-component-optimization-metric-padding-inline: var(--asv-base-space-0);
   --asv-component-optimization-action-height: 30px;
@@ -668,6 +669,7 @@
   --asv-compare-metric-row-min-height: var(--asv-component-compare-metric-row-min-height);
   --asv-optimization-metric-grid-row-gap: var(--asv-component-optimization-metric-grid-row-gap);
   --asv-optimization-metric-grid-column-gap: var(--asv-component-optimization-metric-grid-column-gap);
+  --asv-optimization-metric-improved-value-size: var(--asv-component-optimization-metric-improved-value-size);
   --asv-optimization-action-height: var(--asv-component-optimization-action-height);
   --asv-optimization-action-radius: var(--asv-component-optimization-action-radius);
   --asv-optimization-action-gap: var(--asv-component-optimization-action-gap);
