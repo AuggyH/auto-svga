@@ -692,7 +692,7 @@ canvas {
 }
 
 .resultGroup h3 {
-  margin: 0 0 var(--asv-space-1);
+  margin: 0 0 var(--asv-optimization-result-group-gap);
   color: var(--asv-muted);
   font-size: var(--asv-type-size-caption);
   font-weight: 550;
@@ -700,7 +700,7 @@ canvas {
 
 .resultGroup ul {
   display: grid;
-  gap: var(--asv-space-1);
+  gap: var(--asv-optimization-result-group-gap);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -708,21 +708,24 @@ canvas {
 
 .resultGroup li {
   display: grid;
-  gap: 0;
+  gap: var(--asv-optimization-result-item-gap);
 }
 
 .resultGroup li strong {
-  font-size: var(--asv-type-size-caption);
-  font-weight: 550;
+  color: var(--asv-text);
+  font-size: var(--asv-optimization-result-title-size);
+  font-weight: var(--asv-optimization-result-title-weight);
+  line-height: var(--asv-optimization-result-summary-line-height);
 }
 
 .resultGroup li span {
-  color: var(--asv-muted);
-  font-size: var(--asv-type-size-caption);
+  color: var(--asv-optimization-result-summary-color);
+  font-size: var(--asv-optimization-result-summary-size);
+  line-height: var(--asv-optimization-result-summary-line-height);
 }
 
 .resultGroup.muted li strong {
-  color: var(--asv-muted);
+  color: var(--asv-optimization-result-muted-title-color);
 }
 
 .assetSection,
@@ -1008,6 +1011,11 @@ canvas {
   font-style: normal;
 }
 
+.optimizationMetricValue .factValueUnit {
+  color: currentColor;
+  opacity: var(--asv-optimization-metric-unit-opacity);
+}
+
 .optimizationMetricCell[data-improved="true"] .optimizationMetricValue {
   font-size: var(--asv-optimization-metric-improved-value-size);
 }
@@ -1123,25 +1131,26 @@ canvas {
 
 .optimizationActions .toolbarButton:not(.primary) {
   border-color: transparent;
-  background: var(--asv-panel-recessed);
+  background: transparent;
   box-shadow: none;
-  color: var(--asv-muted);
+  color: var(--asv-optimization-action-secondary-color);
+  min-height: var(--asv-optimization-action-secondary-height);
 }
 
 .optimizationActions .toolbarButton:not(.primary):hover:not(:disabled) {
-  background: var(--asv-row-hover);
+  background: var(--asv-mode-button-hover-bg);
   box-shadow: none;
 }
 
 .optimizationActions .toolbarButton:not(.primary):disabled {
   border-color: transparent;
-  background: var(--asv-panel-recessed);
+  background: transparent;
   box-shadow: none;
   color: var(--asv-subtle);
 }
 
 .optimizationActions .toolbarButton[data-action="back-preview"] {
-  color: var(--asv-text);
+  color: var(--asv-optimization-action-tertiary-color);
 }
 
 .layerPanel,

@@ -37,10 +37,16 @@ const {
 } = require("../sequence-repair-proof-contract.cjs");
 
 test("short-term metric values split units only for simple numeric facts", async () => {
-  const { renderMetricValueHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
+  const { renderMetricValueHtml, renderOptimizationMetricCellHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
   assert.equal(renderMetricValueHtml("104.5 KiB"), "104.5 <span class=\"factValueUnit\">KiB</span>");
   assert.equal(renderMetricValueHtml("300 x 300 px"), "300 x 300 <span class=\"factValueUnit\">px</span>");
   assert.equal(renderMetricValueHtml("低风险 / 估算 125.6 KiB"), "低风险 / 估算 125.6 KiB");
+  assert.match(renderOptimizationMetricCellHtml({
+    label: "文件体积",
+    before: "302 B",
+    after: "242 B",
+    improved: true
+  }), /302 <span class="factValueUnit">B<\/span>[\s\S]*242 <span class="factValueUnit">B<\/span>/);
 });
 
 test("macOS internal package scaffold avoids unsupported Finder .svga document association", async () => {
@@ -1637,10 +1643,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.optimizationMetricGrid\s*\{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/s);
   assert.match(shortTermModules, /\.optimizationMetricCell\s*\{[^}]*min-height: var\(--asv-component-optimization-metric-min-height\)/s);
   assert.match(shortTermModules, /\.optimizationMetricValue em\s*\{[^}]*color: var\(--asv-success\)/s);
+  assert.match(shortTermModules, /\.optimizationMetricValue \.factValueUnit\s*\{[^}]*opacity: var\(--asv-optimization-metric-unit-opacity\)/s);
   assert.match(shortTermModules, /\.optimizationActions\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\)/s);
-  assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*background: var\(--asv-panel-recessed\)/s);
+  assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*background: transparent/s);
+  assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*min-height: var\(--asv-optimization-action-secondary-height\)/s);
   assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*box-shadow: none/s);
-  assert.match(shortTermModules, /\.optimizationActions \.toolbarButton\[data-action="back-preview"\]\s*\{[^}]*color: var\(--asv-text\)/s);
+  assert.match(shortTermModules, /\.optimizationActions \.toolbarButton\[data-action="back-preview"\]\s*\{[^}]*color: var\(--asv-optimization-action-tertiary-color\)/s);
   assert.match(shortTermModules, /\.rightSurfaceBody:focus-visible/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="success"\]::before/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="loading"\]::before/);
