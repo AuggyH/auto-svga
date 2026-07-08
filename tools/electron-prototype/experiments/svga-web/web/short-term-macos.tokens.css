@@ -137,7 +137,7 @@
   --asv-color-surface-playback-bar: color-mix(in srgb, var(--asv-color-surface-panel-recessed) 72%, transparent);
   --asv-color-surface-playback-control: transparent;
   --asv-color-surface-playback-control-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 42%, transparent);
-  --asv-color-surface-playback-track: color-mix(in srgb, var(--asv-color-border-default) 34%, transparent);
+  --asv-color-surface-playback-track: color-mix(in srgb, var(--asv-color-border-default) 54%, transparent);
   --asv-color-surface-save-banner: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-action-primary) 4%);
   --asv-color-border-panel: color-mix(in srgb, var(--asv-color-border-default) 68%, transparent);
   --asv-color-border-control: color-mix(in srgb, var(--asv-color-border-default) 82%, transparent);
@@ -238,6 +238,8 @@
   --asv-component-playback-primary-icon-size: 20px;
   --asv-component-playback-progress-height: 3px;
   --asv-component-playback-progress-min-width: 160px;
+  --asv-component-playback-progress-track-fr: 0.72fr;
+  --asv-component-playback-end-spacer-fr: 0.28fr;
   --asv-component-playback-time-width: 82px;
   --asv-component-playback-time-line-height: 18px;
   --asv-component-playback-canvas-fit-scale: 0.62;
@@ -587,6 +589,8 @@
   --asv-playback-primary-icon-size: var(--asv-component-playback-primary-icon-size);
   --asv-playback-progress-height: var(--asv-component-playback-progress-height);
   --asv-playback-progress-min-width: var(--asv-component-playback-progress-min-width);
+  --asv-playback-progress-track-fr: var(--asv-component-playback-progress-track-fr);
+  --asv-playback-end-spacer-fr: var(--asv-component-playback-end-spacer-fr);
   --asv-playback-time-width: var(--asv-component-playback-time-width);
   --asv-playback-time-line-height: var(--asv-component-playback-time-line-height);
   --asv-playback-canvas-fit-scale: var(--asv-component-playback-canvas-fit-scale);

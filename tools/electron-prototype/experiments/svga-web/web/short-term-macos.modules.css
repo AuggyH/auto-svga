@@ -496,7 +496,11 @@ canvas {
   bottom: 0;
   left: 0;
   display: grid;
-  grid-template-columns: auto minmax(var(--asv-playback-progress-min-width), 1fr) auto;
+  grid-template-columns:
+    auto
+    minmax(var(--asv-playback-progress-min-width), var(--asv-playback-progress-track-fr))
+    auto
+    minmax(0, var(--asv-playback-end-spacer-fr));
   align-items: center;
   gap: var(--asv-playback-bar-gap);
   min-height: var(--asv-playback-bar-height);

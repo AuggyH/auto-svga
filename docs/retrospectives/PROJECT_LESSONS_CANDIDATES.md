@@ -493,3 +493,21 @@ promoted, watched, rejected, or kept historical.
   dimensions kept `300 x 300` and `400 x 200` test cases at source size while
   preserving wide-movie downscaling, and desktop smoke still passed.
 - Status: watch
+
+## Leave quiet playback space instead of adding unsupported controls
+
+- Source:
+  `docs/reviews/2026-07-09-codex-uiux-playback-rhythm-polish.md`
+- Area: UI/UX, playback, design system
+- Context: Owner/Figma playback references include more compact control rhythm
+  than the current implemented action set.
+- Problem: Filling the right side of the playback bar with loop, fullscreen, or
+  zoom icons would make the layout look closer to a sketch but would add
+  controls that were not implemented in this slice.
+- Candidate rule: When a design reference implies future controls, first align
+  the rhythm of existing controls with tokenized layout space. Add new buttons
+  only after product scope and implementation behavior are explicit.
+- Evidence: `PlaybackControls` now uses tokenized progress/spacer proportions
+  so progress and time read as one group while leaving the trailing region quiet
+  and noninteractive.
+- Status: watch
