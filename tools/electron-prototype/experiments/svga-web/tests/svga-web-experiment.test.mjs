@@ -1421,6 +1421,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-right-panel-padding: var\(--asv-space-6\)/);
   assert.match(shortTermTokens, /--asv-component-file-header-width: 312px/);
   assert.match(shortTermTokens, /--asv-component-file-header-action-width: 60px/);
+  assert.match(shortTermTokens, /--asv-component-tab-selected-background: var\(--asv-color-surface-canvas\)/);
+  assert.match(shortTermTokens, /--asv-component-tab-selected-ring: none/);
   assert.match(shortTermTokens, /--asv-component-asset-row-divider: 0 solid transparent/);
   assert.match(shortTermTokens, /--asv-component-asset-row-hover-background: color-mix\(in srgb, var\(--asv-color-surface-row-hover\) 18%, transparent\)/);
   assert.match(shortTermTokens, /--asv-component-asset-row-detail-letter-spacing: 0\.1px/);
@@ -1473,6 +1475,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-fact-status-strip-width/);
   assert.match(shortTermTokens, /--asv-component-fact-grid-width: 280px/);
+  assert.match(shortTermTokens, /--asv-component-fact-grid-padding-block: var\(--asv-space-3\)/);
+  assert.match(shortTermTokens, /--asv-component-fact-grid-row-gap: var\(--asv-space-4\)/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-min-height: 56px/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-value-size: var\(--asv-type-size-metric\)/);
   assert.match(shortTermTokens, /--asv-component-fact-cell-unit-size: var\(--asv-type-size-footnote\)/);

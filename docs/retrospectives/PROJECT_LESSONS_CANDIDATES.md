@@ -511,3 +511,22 @@ promoted, watched, rejected, or kept historical.
   so progress and time read as one group while leaving the trailing region quiet
   and noninteractive.
 - Status: watch
+
+## Spend existing Figma packets before new MCP reads
+
+- Source:
+  `docs/reviews/2026-07-09-codex-uiux-right-surface-token-rhythm.md`
+- Area: UI/UX, Figma MCP, design system
+- Context: The Preview right surface still needed visual rhythm refinement, but
+  the existing R4 Figma packet already contained component-level values for
+  fact-grid spacing and selected tab surfaces.
+- Problem: Calling Figma again for every small polish pass would burn daily MCP
+  budget without necessarily improving implementation precision.
+- Candidate rule: Before a UI/UX polish slice uses a new Figma MCP call, check
+  whether a previous read packet already contains the exact token or component
+  contract. If it does, implement from that packet and reserve fresh reads for
+  unresolved visible mismatches.
+- Evidence: The right-surface rhythm pass adjusted only token values and added
+  token assertions using the existing R4 packet; design-system check and desktop
+  smoke passed without a new Figma read.
+- Status: watch

@@ -207,9 +207,9 @@
   --asv-component-tab-height: 30px;
   --asv-component-tab-padding: 6px;
   --asv-component-tab-indicator-height: 2px;
-  --asv-component-tab-selected-background: color-mix(in srgb, var(--asv-color-surface-panel-strong) 97%, var(--asv-color-action-primary) 3%);
-  --asv-component-tab-selected-border: color-mix(in srgb, var(--asv-color-action-primary) 16%, var(--asv-color-border-strong));
-  --asv-component-tab-selected-ring: inset 0 0 0 1px var(--asv-component-tab-selected-border);
+  --asv-component-tab-selected-background: var(--asv-color-surface-canvas);
+  --asv-component-tab-selected-border: transparent;
+  --asv-component-tab-selected-ring: none;
   --asv-component-row-height: 50px;
   --asv-component-thumbnail-size: 48px;
   --asv-component-thumbnail-border-width: 1px;
@@ -247,8 +247,8 @@
   --asv-component-playback-track-bg: var(--asv-color-surface-playback-track);
   --asv-component-playback-track-ring: none;
   --asv-component-fact-grid-width: 280px;
-  --asv-component-fact-grid-padding-block: var(--asv-space-2);
-  --asv-component-fact-grid-row-gap: var(--asv-space-3);
+  --asv-component-fact-grid-padding-block: var(--asv-space-3);
+  --asv-component-fact-grid-row-gap: var(--asv-space-4);
   --asv-component-fact-grid-column-gap: var(--asv-space-4);
   --asv-component-fact-cell-min-height: 56px;
   --asv-component-fact-cell-gap: var(--asv-space-1);
