@@ -224,8 +224,8 @@
   --asv-component-thumbnail-image-inset: 1px;
   --asv-component-thumbnail-preview-radius: var(--asv-radius-md);
   --asv-component-right-panel-width: 360px;
-  --asv-component-right-panel-padding: var(--asv-space-6);
-  --asv-component-right-panel-section-gap: var(--asv-space-4);
+  --asv-component-right-panel-padding: var(--asv-space-4);
+  --asv-component-right-panel-section-gap: var(--asv-space-2);
   --asv-component-right-panel-separator-width: 1px;
   --asv-component-right-panel-section-divider: 1px solid color-mix(in srgb, var(--asv-color-border-subtle) 66%, transparent);
   --asv-component-file-header-width: auto;

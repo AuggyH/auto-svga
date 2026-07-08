@@ -1427,7 +1427,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-asset-list-gap: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-component-thumbnail-size: 48px/);
   assert.match(shortTermTokens, /--asv-component-right-panel-width: 360px/);
-  assert.match(shortTermTokens, /--asv-component-right-panel-padding: var\(--asv-space-6\)/);
+  assert.match(shortTermTokens, /--asv-component-right-panel-padding: var\(--asv-space-4\)/);
+  assert.match(shortTermTokens, /--asv-component-right-panel-section-gap: var\(--asv-space-2\)/);
   assert.match(shortTermTokens, /--asv-component-file-header-width: auto/);
   assert.match(shortTermTokens, /--asv-component-file-header-action-width: 60px/);
   assert.match(shortTermTokens, /--asv-component-tab-selected-background: var\(--asv-color-surface-canvas\)/);

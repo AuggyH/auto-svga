@@ -794,3 +794,67 @@ Repository packet:
 - The returned center module still contains the older left/right drag-decision
   overlay. Current PRD top/bottom 25/75 drag-decision behavior overrides that
   stale Figma detail.
+
+## Batch 09 - R5 Preview Right Surface Rhythm
+
+Date: 2026-07-09
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R5 - Preview default right-surface rhythm
+Owner approval: Standing authorization applied because local-day conservative
+usage was 0/160 before this batch.
+
+### Objective
+
+Read the smallest useful context needed to align the Auto SVGA `0.1.x` Preview
+right information surface with the Figma default Preview frame, specifically
+right-panel padding and section rhythm.
+
+### Planned Budget
+
+- Planned structured reads: 2
+- Hard cap: 3
+- Stop after locating the Preview default frame and extracting right-surface
+  rhythm, or earlier on quota/rate/permission errors.
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_get_metadata` | file root | Cheap page index | Conservative yes | 1.6275s | Failed: tool not found; no design data returned |
+| 2 | `_use_figma` | file root | Compact page and top-level frame inventory | Yes | 3.2292s | Complete usable page/frame index |
+| 3 | `_use_figma` | `预览 / 默认` (`27:2`) | Compact right-surface layout and typography inventory | Yes | 6.5214s | Usable; response truncated after key facts |
+
+Actual total MCP attempts: 3
+
+Actual quota-counted reads, conservative: 3
+
+Measured MCP tool wall time total: 11.3781s
+
+Current local-day conservative usage after Batch 09: 3/160.
+
+### Result
+
+R5 captured enough right-surface rhythm facts for a token-only implementation
+slice:
+
+- `预览 / 默认` frame (`27:2`)
+- right content instance `右侧内容区` (`158:2709`)
+- right content size `360 x 800`
+- right content padding `16px`
+- right content vertical gap `4`
+- file header width `328px`
+- resource row size `328 x 56`
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r5-preview-right-surface-rhythm-20260709.md`
+
+### Verification
+
+- No Figma write operation, Figma Make action, screenshot archive, or asset
+  commit occurred.
+- The failed `_get_metadata` exposure should not be used again unless the MCP
+  tool list changes.
+- The truncated third response was sufficient for this WP; no extra read was
+  made after the hard cap.

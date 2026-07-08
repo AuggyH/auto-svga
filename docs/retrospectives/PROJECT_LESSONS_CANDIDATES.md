@@ -566,3 +566,22 @@ promoted, watched, rejected, or kept historical.
   viewport changed the evidence from square launch-sized captures to usable
   layout screenshots.
 - Status: watch
+
+## Stop Figma reads once the implementation decision is supported
+
+- Source:
+  `docs/reviews/2026-07-09-codex-uiux-right-surface-figma-rhythm.md`
+- Area: UI/UX, Figma MCP, design system, token-cost
+- Context: The Preview right-surface rhythm pass needed current Figma facts for
+  panel padding and section spacing. A compact `use_figma` read returned those
+  facts, then truncated later in the node list.
+- Problem: A truncated Figma response can tempt another read even when the
+  returned portion already proves the implementation decision.
+- Candidate rule: When a Figma MCP response is truncated, first classify whether
+  the needed implementation decision is already supported. If yes, stop the
+  batch, record the truncation, and avoid another read.
+- Evidence: The batch returned right content size `360 x 800`, padding `16px`,
+  vertical gap `4`, header width `328px`, and resource row size `328 x 56`;
+  token implementation and smoke validation succeeded without another Figma
+  call.
+- Status: watch
