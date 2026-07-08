@@ -197,7 +197,8 @@ Rules:
    notarized build, or public release.
 
 See `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md` for foreground
-lease, client-instance identity, and baseline-drift rules.
+lease, shared desktop-resource identity, client-instance identity, and
+baseline-drift rules.
 
 ## Asset Commit Rules
 
@@ -253,34 +254,48 @@ Before modifying owner-visible UI:
 
 ## Foreground Desktop Debugging Rules
 
-Before launching, automating, clicking through, or capturing a desktop client in
-the foreground:
+Before launching, automating, clicking through, capturing, or otherwise
+controlling any foreground macOS app or system UI, including Auto SVGA, Finder,
+Open/Save dialogs, After Effects, browsers, menu bar interactions, permission
+dialogs, clipboard-changing operations, Dock/Launchpad, or screen capture:
 
 1. Prefer non-foreground evidence first when it is sufficient: unit tests,
    source checks, smoke artifacts, headless/browser automation, passive logs,
    or packaged-app metadata.
-2. Check for existing Auto SVGA / Electron foreground sessions, running
-   processes, and windows before taking focus. Do not assume the frontmost app
-   is yours unless its app path, PID, window, and task context match your own
-   launch.
-3. If foreground operation is required, check the current display topology
+2. Treat active keyboard, mouse, menu bar, modal dialog, and clipboard control
+   as one global foreground input lease. Only one process may hold that active
+   input lease at a time, even when several app windows are visible on
+   different displays.
+3. Check for existing Auto SVGA / Electron / Finder / After Effects / browser
+   foreground sessions, running processes, modals, and windows before taking
+   focus. Do not assume the frontmost app or dialog is yours unless its app
+   path, PID, window/dialog identity, display/workspace, and task context match
+   your own launch.
+4. If foreground operation is required, check the current display topology
    first using the available macOS/tooling context.
-4. If a second or non-primary display is available, launch, move, automate, and
-   capture the app there so the Product Owner's main display is not interrupted.
-5. If no second display is available, prefer silent or low-disturbance startup:
+5. If a second or non-primary display is available, launch, move, automate, and
+   capture there so the Product Owner's main display is not interrupted. This
+   reduces visual disruption but does not remove the single active input lease
+   requirement.
+6. If no second display is available, prefer silent or low-disturbance startup:
    background/headless mode, minimized or hidden window, non-activating launch,
    or the shortest possible foreground session.
-6. Use the main display foreground only when secondary-display operation is not
+7. Use the main display foreground only when secondary-display operation is not
    available and silent evidence cannot prove the required behavior. In that
    case, say what you are about to do, keep the interruption brief, avoid
    repeated focus stealing, and restore or close the app afterward.
-7. Multiple clients may run concurrently only when each process can identify
-   and control its own instance by app path, PID, window, display/workspace,
-   and evidence label. If identity cannot be proven, serialize foreground
-   debugging instead of sharing or stealing an ambiguous window.
-8. Reviews and handoffs that rely on foreground evidence must record the
-   strategy used: second display, isolated client instance, silent/
-   low-disturbance fallback, or main display with reason.
+8. Multiple foreground windows or clients may coexist only when each process can
+   identify its own target by app path, PID/process identity, window/dialog,
+   display/workspace, and evidence label. If identity cannot be proven,
+   serialize foreground debugging instead of sharing or stealing an ambiguous
+   app, dialog, or clipboard state.
+9. Do not hold a foreground lease while running long background builds, waiting
+   for unrelated work, or leaving modal dialogs open. Keep the lease short,
+   release or restore focus when done, and record the result.
+10. Reviews and handoffs that rely on foreground evidence must record the
+   strategy used: second display, isolated instance, active input lease,
+   shared-resource scope, clipboard use, silent/low-disturbance fallback, or
+   main display with reason.
 
 ## Agent Handoff
 
@@ -341,19 +356,22 @@ See `docs/engineering/REPAIR_HEALTH_PROTOCOL.md`.
 
 - Formal implementation workers must be visible project Worktree threads.
 - Subagents are limited to short-lived read-only audit and review.
-- Foreground desktop-client work must follow
+- Foreground desktop or system-UI work must follow
   `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md`; each worker must
-  distinguish owner local stable app, its own development instance, and any
-  other process's foreground client.
+  distinguish owner local stable app, its own development instance, any other
+  process's foreground client, Finder/Open dialog state, After Effects windows,
+  browser windows, and clipboard-changing operations.
 - Before coordinating or resuming a multi-worker milestone, A0 must read the
   protocol, coordination doc, and registry; list visible project threads;
   refresh the registry; and validate it.
 - List and reuse existing project threads before creating workers.
 - A0 is the only integration coordinator and global lifecycle writer.
 - Worker PASS does not imply milestone PASS.
-- Shared-port servers, package promotion, and owner local stable replacement
-  run serially. Isolated foreground clients may run concurrently only when
-  their instance identity and display/workspace ownership are recorded.
+- Shared-port servers, package promotion, owner local stable replacement,
+  active foreground input, Finder/Open dialog automation, After Effects UI
+  automation, and clipboard-changing operations run serially. Isolated visible
+  windows may coexist only when instance identity and display/workspace
+  ownership are recorded.
 
 ## Project QA And Defect Workflow
 

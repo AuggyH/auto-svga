@@ -140,6 +140,20 @@ Optional later handoffs:
 
 These are enhancements, not the MVP baseline.
 
+## Foreground Coordination Boundary
+
+AEB work may require foreground access to After Effects, Finder, Open/Save
+dialogs, Render Queue, script dialogs, plugin panels, browser documentation,
+or Auto SVGA preview handoff. These are shared macOS foreground resources and
+must follow `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md`.
+
+AEB workers must not steal focus from QA, UI/UX, short-term implementation, or
+release packaging work. Prefer scriptable, package-based, non-foreground, or
+second-display evidence when possible. When AE foreground control is required,
+record the AE app path/version, PID/process identity when available,
+composition/project context, window/dialog, display/workspace, clipboard use,
+and foreground lease strategy in the review or handoff.
+
 ## Native Conversion Subset
 
 The first native subset is intentionally small:

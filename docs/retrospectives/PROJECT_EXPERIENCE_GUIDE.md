@@ -94,6 +94,11 @@ release gate, or acceptance record.
   candidate, and other workers' client instances by path, PID, window,
   display/workspace, and task context. If identity is ambiguous, do not
   automate or capture the frontmost app.
+- Foreground coordination covers more than Auto SVGA windows. Finder,
+  Open/Save dialogs, After Effects, browsers, system prompts, menu bar actions,
+  Dock/Launchpad, screenshots, and clipboard-changing operations are shared
+  macOS foreground resources. Only one worker should actively drive keyboard,
+  mouse, menu, modal, or clipboard input at a time.
 - Before replacing the owner local stable app, check for baseline drift: do not
   drop behavior that exists in the installed app but is absent from source,
   product docs, review notes, or promotion evidence.

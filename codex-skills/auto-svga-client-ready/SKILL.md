@@ -39,24 +39,30 @@ Preview and Workbench v1 surfaces are lineage or supplemental evidence only.
 
 1. Prefer non-foreground validation when it is enough: tests, passive logs,
    package metadata, smoke artifacts, or headless/browser automation.
-2. Before any foreground desktop-client launch, automation, or screenshot,
-   check whether another Auto SVGA/Electron client is already running. Do not
-   assume the frontmost client belongs to this task unless the app path, PID,
-   window, display/workspace, and task context match.
+2. Before any foreground app launch, automation, screenshot, file dialog,
+   Finder operation, After Effects operation, browser operation, system prompt,
+   or clipboard-changing step, check whether another worker appears to hold
+   foreground input.
 3. Follow `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md` for
-   foreground leases, instance identity, and owner local stable replacement.
-4. Before any foreground desktop-client launch, automation, or screenshot,
+   global foreground input leases, shared macOS UI resources, instance
+   identity, and owner local stable replacement.
+4. Do not assume the frontmost client, Finder window, AE window, browser,
+   system dialog, or Open/Save panel belongs to this task unless the app path,
+   PID/process identity, window/dialog, display/workspace, and task context
+   match.
+5. Before any foreground desktop-client launch, automation, or screenshot,
    check whether a second or non-primary display is available.
-5. If a second display is available, put the app there before foreground
-   interaction so the Product Owner's main display is not interrupted.
-6. If no second display is available, prefer silent or low-disturbance startup:
+6. If a second display is available, put the app there before foreground
+   interaction so the Product Owner's main display is not interrupted. Active
+   keyboard/mouse/menu/dialog/clipboard control still remains serialized.
+7. If no second display is available, prefer silent or low-disturbance startup:
    background/headless, minimized, hidden, non-activating, or the shortest
    possible foreground session.
-7. Multiple clients may run concurrently only when each instance is clearly
-   identified as owner local stable, candidate, or supplemental narrowing
-   evidence.
-8. Record the foreground strategy in the review or handoff when foreground
-   evidence is used.
+8. Multiple visible apps or clients may coexist only when each instance is
+   clearly identified. Only one process may actively drive foreground input at
+   a time.
+9. Record the foreground strategy and shared-resource scopes in the review or
+   handoff when foreground evidence is used.
 
 ## Owner Local Stable Baseline
 
@@ -88,7 +94,10 @@ State:
 - effect on macOS and Windows packaging
 - whether the task used owner local stable, candidate, or supplemental
   narrowing evidence
-- foreground lease / instance identity strategy when foreground work occurred
+- foreground lease / shared-resource scope / instance identity strategy when
+  foreground work occurred
+- Finder, Open/Save dialog, After Effects, browser, system UI, display, or
+  clipboard effects when relevant
 - baseline-drift result when replacing owner local stable
 - new system dependencies
 - path or permission risks

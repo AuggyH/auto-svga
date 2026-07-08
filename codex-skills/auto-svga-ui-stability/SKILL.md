@@ -36,9 +36,12 @@ names them.
 10. Before foreground desktop UI validation, check for a second display and use
     it when available. If unavailable, prefer silent or low-disturbance
     operation and record the fallback.
-11. Before controlling a foreground client, follow
-    `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md` and verify the
-    app path, PID, window, display/workspace, and task context. Do not assume
-    another worker's foreground client belongs to this task.
+11. Before controlling any foreground app or shared macOS UI resource, follow
+    `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md`. This includes
+    Auto SVGA, Finder, Open/Save dialogs, browsers, system prompts, menu bar
+    actions, screenshots, and clipboard-changing operations. Verify the app
+    path, PID/process identity, window/dialog, display/workspace, and task
+    context. Do not assume another worker's foreground app or dialog belongs to
+    this task.
 
 Verify normal, narrow, and extreme-narrow widths for every UI change.
