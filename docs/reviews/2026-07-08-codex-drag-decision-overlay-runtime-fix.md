@@ -5,6 +5,7 @@
 - Implemented the PM correction from `f136b895`: the short-term drag-decision overlay now uses unequal top/bottom zones instead of the old left/right split.
 - Open File is the primary 75% zone, Add As Compare File is the secondary 25% zone.
 - Center and lower-center drag points resolve to Open File; only the bottom secondary zone resolves to Compare.
+- Fix commit: `fadcca5b`.
 
 ## Changed Files
 
