@@ -64,6 +64,44 @@ Owner-confirmed visual/reference inputs:
 9. Do not expose export acceptance, sequence repair, batch replacement, AI,
    accounts, cloud sync, telemetry, or advanced motion authoring controls.
 
+## Future Compatibility Guardrails
+
+These rules reduce future multi-format, AEB, and Windows migration cost without
+changing the short-term product surface. They are implementation and UI
+structure constraints only; they must not add visible VAP, Lottie, Windows,
+AEB, import-package, or format-selection controls to the short-term app.
+
+- Keep Open, Drag, Save As, Overwrite Save, Recent, Clear Recent, Compare,
+  Settings, Logs, Appearance, and resource commands represented as command
+  intents. The macOS menu bar, context menu, launch action, and drag surface
+  may trigger them, but page modules should not become the source of truth for
+  platform behavior.
+- Keep playback UI format-neutral. Canvas layout, playback controls, disabled
+  states, loading, pause/play, error, and disposal feedback should read a
+  playback model. SVGA remains the only visible short-term format, but the UI
+  should not require the playback surface to know that SVGA is the only future
+  player.
+- Keep file information and asset surfaces capability-driven. Render available
+  fields such as dimensions, FPS, duration, file size, memory estimate, asset
+  count, runtime-structure risk, thumbnails, and replaceable groups from the
+  inspection model. Do not bake SVGA-only field names into generic components
+  such as fact cells, asset rows, empty states, or metric actions.
+- Keep resource rows, thumbnails, replaceable rows, inline text rows, empty
+  states, and unsupported states reusable enough for future VAP fusion
+  elements, Lottie layers/assets, and AEB package facts. Short-term labels may
+  remain SVGA-specific where the user can see them.
+- Keep unsupported input handling centralized. Unknown, unsupported, parse
+  failed, playback failed, missing dependency, unreadable file, and unsupported
+  capability states should share a typed feedback path instead of one-off page
+  messages.
+- Keep file paths, display names, recent-file records, save targets, and error
+  redaction behind host/path helpers. Do not assume macOS-only separators,
+  case-sensitivity, Finder behavior, Dock behavior, or global menu availability
+  inside UI components.
+- Keep dependencies offline-bundled and explicitly reviewed. Do not introduce
+  CDN player loads, unreviewed codec/tool dependencies, external AI services,
+  or user-installed runtime requirements while polishing short-term UI.
+
 ## Design System Layers
 
 | Layer | Purpose | Required output |

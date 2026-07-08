@@ -239,6 +239,24 @@ The startup page is one full-window canvas/drop surface with central drag-in
 prompt and Open action. It also prepares for future multi-format routing and
 gives the main app surface time to load without appearing blocked.
 
+This future-routing preparation is an implementation guardrail, not a
+short-term feature expansion. The short-term client must not expose visible
+VAP, Lottie, Windows, AEB, import-package, or format-selection entry points
+until those scopes are explicitly promoted. However, current implementation
+should avoid avoidable SVGA/macOS-only coupling where it does not change the
+user-visible short-term surface:
+
+- file open, drag, save, recent-file, and menu actions should go through host
+  command boundaries instead of page-local platform assumptions;
+- playback canvas and controls should consume a playback state/model rather
+  than hardcoding one player as the UI contract;
+- right-side file information, asset information, replaceable elements,
+  optimization entries, and error states should render from normalized
+  inspection/capability data where practical;
+- unsupported future formats must stay unsupported in the short-term UI, with
+  the existing unsupported-format feedback, rather than hidden partial
+  playback, inactive controls, or silent acceptance.
+
 The launch canvas may include a subtle, slow checkerboard background idle
 motion. This motion is part of the canvas atmosphere only: it must not add
 visible controls or copy, must not compete with the drag-in prompt, Open action,
