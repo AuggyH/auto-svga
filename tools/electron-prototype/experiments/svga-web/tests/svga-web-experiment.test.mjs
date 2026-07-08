@@ -1283,13 +1283,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-right-panel-separator/);
   assert.doesNotMatch(shortTermTokens, /inspector/);
   assert.match(shortTermTokens, /--asv-color-surface-control/);
-  assert.match(shortTermTokens, /--asv-color-surface-mode-switch: transparent/);
-  assert.match(shortTermTokens, /--asv-color-surface-mode-selected/);
+  assert.match(shortTermTokens, /--asv-color-surface-mode-switch: var\(--asv-color-border-default\)/);
+  assert.match(shortTermTokens, /--asv-color-surface-mode-selected: var\(--asv-color-surface-panel-strong\)/);
   assert.match(shortTermTokens, /--asv-mode-switch-bg: var\(--asv-color-surface-mode-switch\)/);
   assert.match(shortTermTokens, /--asv-mode-selected-bg: var\(--asv-color-surface-mode-selected\)/);
   assert.match(shortTermTokens, /--asv-mode-switch-gap: var\(--asv-component-mode-switch-gap\)/);
   assert.match(shortTermTokens, /--asv-mode-switch-shadow: var\(--asv-component-mode-switch-shadow\)/);
+  assert.match(shortTermTokens, /--asv-mode-button-padding-inline: var\(--asv-component-mode-button-padding-inline\)/);
+  assert.match(shortTermTokens, /--asv-mode-button-font-size: var\(--asv-component-mode-button-font-size\)/);
   assert.match(shortTermTokens, /--asv-mode-button-hover-bg: var\(--asv-component-mode-button-hover-background\)/);
+  assert.match(shortTermTokens, /--asv-mode-selected-color: var\(--asv-component-mode-selected-color\)/);
   assert.match(shortTermTokens, /--asv-mode-selected-shadow: var\(--asv-component-mode-selected-shadow\)/);
   assert.match(shortTermTokens, /--asv-component-status-rail-width/);
   assert.match(shortTermTokens, /--asv-status-rail-width: var\(--asv-component-status-rail-width\)/);

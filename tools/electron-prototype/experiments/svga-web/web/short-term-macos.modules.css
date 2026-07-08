@@ -492,15 +492,15 @@ canvas {
 .playbackBar {
   position: absolute;
   z-index: 5;
-  right: var(--asv-space-4);
-  bottom: var(--asv-space-3);
-  left: var(--asv-space-4);
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: grid;
   grid-template-columns: auto minmax(var(--asv-playback-progress-min-width), 1fr) auto;
   align-items: center;
-  gap: var(--asv-space-3);
+  gap: var(--asv-playback-bar-gap);
   min-height: var(--asv-playback-bar-height);
-  padding: 0;
+  padding: var(--asv-playback-bar-padding-block) var(--asv-playback-bar-padding-inline);
   background: transparent;
   pointer-events: none;
 }
@@ -508,7 +508,7 @@ canvas {
 .playbackActions {
   display: flex;
   align-items: center;
-  gap: var(--asv-space-2);
+  gap: var(--asv-playback-actions-gap);
   pointer-events: auto;
 }
 
@@ -577,8 +577,8 @@ canvas {
   color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
   font-variant-numeric: tabular-nums;
-  line-height: 1;
-  text-align: right;
+  line-height: var(--asv-playback-time-line-height);
+  text-align: center;
   pointer-events: none;
 }
 

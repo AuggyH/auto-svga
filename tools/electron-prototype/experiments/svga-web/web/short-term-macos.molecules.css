@@ -33,7 +33,7 @@
   gap: var(--asv-mode-switch-gap);
   padding: var(--asv-mode-switch-padding);
   border: 0;
-  border-radius: var(--asv-radius-md);
+  border-radius: var(--asv-base-radius-full);
   background: var(--asv-mode-switch-bg);
   box-shadow: var(--asv-mode-switch-shadow);
   backdrop-filter: var(--asv-mode-switch-backdrop-filter);
@@ -42,11 +42,16 @@
 .modeSwitch button,
 .canvasModeSwitch button {
   min-width: calc(var(--asv-control-height) * 2);
+  min-height: 0;
+  padding: var(--asv-mode-button-padding-block) var(--asv-mode-button-padding-inline);
   border: 0;
-  border-radius: var(--asv-radius-sm);
+  border-radius: var(--asv-base-radius-full);
   background: transparent;
   box-shadow: var(--asv-mode-button-shadow);
   color: var(--asv-mode-button-color);
+  font-size: var(--asv-mode-button-font-size);
+  font-weight: var(--asv-mode-button-font-weight);
+  line-height: var(--asv-mode-button-line-height);
 }
 
 .modeSwitch button:hover:not(.isSelected),
@@ -59,8 +64,8 @@
 .canvasModeSwitch button.isSelected {
   background: var(--asv-mode-selected-bg);
   box-shadow: var(--asv-mode-selected-shadow);
-  color: var(--asv-action);
-  font-weight: 650;
+  color: var(--asv-mode-selected-color);
+  font-weight: var(--asv-mode-button-font-weight);
 }
 
 .renameEditor {
