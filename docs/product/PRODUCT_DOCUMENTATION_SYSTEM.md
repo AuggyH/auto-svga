@@ -98,6 +98,7 @@ Create a new product document only when all are true:
 | --- | --- | --- |
 | What is the project-level PRD authority? | `docs/product/PRODUCT_ROADMAP.md` | Product goal, scope, phases, requirements, interactions, or release eligibility changes |
 | How do confirmed Product Owner feature or optimization requests move from PRD into implementation and QA? | `docs/product/requirements/` requirement tickets, governed by this document | A Product Owner request is evaluated, confirmed, added to PRD or a subordinate product brief, and needs an accountable implementation/QA handoff |
+| How are product versions, alpha/beta/RC stages, distribution channels, and build identities named? | `docs/product/VERSIONING_AND_RELEASE_POLICY.md` | Version line, release-stage, package-channel, tag, review-packet, or build-identity rules change |
 | What is Auto SVGA? | `docs/product/auto-svga-product-principles.md` | Positioning, anti-drift, input boundary, or editing boundary changes; must not override the main PRD |
 | What is the short-, mid-, and long-term product requirement plan? | `docs/product/PRODUCT_ROADMAP.md` | Product horizon, phase, requirement group, interaction class, or global non-goal changes |
 | What is the active mainline? | `docs/product/PRODUCT_ROADMAP.md` | Phase priority, scope, or delivery track changes |
@@ -124,6 +125,7 @@ Create a new product document only when all are true:
 | Document area | Current status | Rule |
 | --- | --- | --- |
 | `docs/product/PRODUCT_ROADMAP.md` | Active and authoritative | Only project-level main PRD. |
+| `docs/product/VERSIONING_AND_RELEASE_POLICY.md` | Active version and release naming policy | Defines SemVer-style product versions, alpha/beta/RC stages, distribution channels, build identity, and version-target rules; cannot redefine product scope from the main PRD. |
 | `docs/ROADMAP.md` | Historical roadmap lineage | Keep for history; do not update as PRD; link to the main PRD. |
 | `docs/CURRENT_STATUS.md` | Historical status snapshot | Keep for history until a checkpoint refresh; not current product authority. |
 | `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md` | Active subordinate design input | Guides macOS-first UI/UX design; cannot redefine scope from the main PRD. |
@@ -262,13 +264,19 @@ Keep these separate:
 - Product function validated.
 - Review package generated on final head.
 - Product Owner accepted.
-- D0 internal unsigned package available.
-- D1 trusted signed/notarized macOS package available.
-- D2 trusted Windows package available.
-- Public release.
+- Version stage assigned: `alpha`, `beta`, `rc`, or stable.
+- Distribution channel assigned: `local`, `internal`, `internal-signed`,
+  `windows-internal`, or `public`.
+- Build identity recorded: commit, package manifest, review packet, or build
+  number.
 
-An internal unsigned App ZIP can be useful evidence, but it is not a production
-release and does not imply Product Owner acceptance.
+Use `docs/product/VERSIONING_AND_RELEASE_POLICY.md` for the complete naming
+contract. Legacy `D0`, `D1`, and `D2` may appear in older docs as distribution
+tier shorthand, but new handoffs should identify the product version,
+pre-release stage, distribution channel, and build identity separately.
+
+An internal unsigned App ZIP or local stable app can be useful evidence, but it
+is not a production release and does not imply Product Owner acceptance.
 
 ## Product Metrics And Evidence
 
@@ -325,7 +333,8 @@ These are product-management gaps, not automatic implementation tasks:
   accepted.
 - Add a lightweight owner/reviewer feedback log if feedback starts arriving
   outside generated review packets.
-- Add a Windows distribution plan only when D2 becomes active.
+- Add a Windows distribution plan only when a `windows-internal` or public
+  Windows channel becomes active.
 
 ## Research Inputs
 

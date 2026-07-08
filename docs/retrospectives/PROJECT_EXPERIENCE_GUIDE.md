@@ -88,9 +88,15 @@ release gate, or acceptance record.
   workflow requests need an `ASV-REQ` requirement ticket after PRD promotion.
   Do not rely on chat memory or roadmap text alone to push implementation and
   QA acceptance forward.
+- Use `docs/product/VERSIONING_AND_RELEASE_POLICY.md` for product version,
+  release-stage, distribution-channel, and build-identity language. Do not use
+  "short-term", "mid-term", `D0`, "latest app", or "the app in Applications"
+  as a complete identity in tickets, QA reports, review packets, or release
+  handoffs.
 - Treat the owner local stable app at
-  `/Users/huangtengxin/Applications/Auto SVGA.app` as the current short-term
-  macOS client baseline for owner-visible QA and version progression.
+  `/Users/huangtengxin/Applications/Auto SVGA.app` as the current Auto SVGA
+  `0.1.0-alpha` `local` channel baseline for owner-visible QA and version
+  progression.
   Historical Workbench v1, Web Preview, dev Electron windows, `.artifacts`
   packages, and Windows clients are not current-stage standards unless the
   Product Owner explicitly names them.

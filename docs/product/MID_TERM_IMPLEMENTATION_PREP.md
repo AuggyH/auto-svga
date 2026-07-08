@@ -14,6 +14,12 @@ engineering start plan, technical inventory, work packages, validation gates,
 and coordination rules. It does not redefine product scope. If this document
 conflicts with `PRODUCT_ROADMAP.md`, the roadmap wins.
 
+Version naming follows `docs/product/VERSIONING_AND_RELEASE_POLICY.md`. The
+mid-term template-editing lane is currently planned as Auto SVGA `0.4.x` /
+SVGA Edit MVP. The `M1`, `M2`, and later labels in this document are internal
+engineering sub-versions or work-stage names, not owner-visible product version
+numbers, release stages, or distribution channels.
+
 ## Working Assumptions
 
 1. Short-term product scope is frozen, but not yet accepted as a final release

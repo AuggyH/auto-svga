@@ -44,6 +44,8 @@ Examples:
 Every `ASV-REQ` ticket must name:
 
 - PRD or product-brief anchor
+- target product version or version line, using
+  `docs/product/VERSIONING_AND_RELEASE_POLICY.md`
 - Product Owner confirmation source
 - accountable implementation owner
 - secondary owners, if any

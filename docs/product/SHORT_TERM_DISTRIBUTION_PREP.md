@@ -1,32 +1,37 @@
-# Short-term Distribution Preparation
+# Auto SVGA 0.1 Distribution Preparation
 
 Date: 2026-06-30
-Track: SVGA Workbench v1 first distributable version
+Track: Auto SVGA 0.1 / SVGA Preview MVP first distributable version
 Status: prep started; release candidate not claimed
 
 ## Purpose
 
-Start release and distribution preparation in parallel with the corrected
-short-term SVGA app scope in `docs/product/PRODUCT_ROADMAP.md`.
+Start release and distribution preparation in parallel with the Auto SVGA
+`0.1.x` / SVGA Preview MVP scope in `docs/product/PRODUCT_ROADMAP.md`.
 
 This track prepares the first distributable Workbench version without changing
 the active product acceptance boundary. It must keep packaging readiness,
 Product Owner acceptance, trusted signing, notarization, and public release as
 separate states.
 
-## Short-term Target
+Version naming follows `docs/product/VERSIONING_AND_RELEASE_POLICY.md`.
+`0.1.x` names the product scope, `alpha` / `beta` / `rc` / stable names the
+release stage, and the distribution channel names the package trust/audience.
+
+## Auto SVGA 0.1 Target
 
 The first distributable version is a macOS-first Workbench package that can be
 handed to reviewers or internal users with clear provenance, privacy-clean
 artifacts, rollback instructions, and truthful release limitations.
 
-Distribution tiers:
+Distribution channels:
 
-| Tier | Name | Target | Current status |
+| Channel | Legacy shorthand | Target | Current status |
 | --- | --- | --- | --- |
-| D0 | Internal unsigned ZIP | Local/internal testing through the existing macOS App ZIP | Available as internal evidence, not a product release |
-| D1 | Signed and notarized macOS ZIP | First trusted direct-download candidate | Blocked until Apple Developer ID and notary credentials are provided |
-| D2 | Windows trusted package | Windows distributable candidate | Blocked until Windows signing identity and runtime validation are planned |
+| `local` | D0 local stable app | Product Owner quick-open local app at `/Users/huangtengxin/Applications/Auto SVGA.app` | Available as internal evidence, not a product release |
+| `internal` | D0 internal package | Unsigned local/team testing through the existing macOS App ZIP | Available as internal evidence, not a product release |
+| `internal-signed` | D1 signed/notarized macOS | First trusted direct-download macOS candidate | Blocked until Apple Developer ID and notary credentials are provided |
+| `windows-internal` | D2 Windows | Windows validation package | Blocked until Windows signing identity and runtime validation are planned |
 
 ## Parallel Workstreams
 
@@ -41,7 +46,8 @@ Distribution tiers:
 
 ## Release Candidate Gate
 
-A short-term release candidate can be produced only after all of these are true:
+An Auto SVGA `0.1.0-rc.N` release candidate can be produced only after all of
+these are true:
 
 1. All required short-term capabilities in `docs/product/PRODUCT_ROADMAP.md`
    have current-head evidence or explicit nonblocking limitation records.
@@ -54,20 +60,21 @@ A short-term release candidate can be produced only after all of these are true:
 5. Raw production assets are absent from git, review packages, and distributable
    packages unless separately approved.
 6. Product Owner or Integration Coordinator explicitly marks the package as a
-   release candidate.
+   release candidate and assigns the `0.1.0-rc.N` identifier.
 
 ## Required Known Limitations Snapshot
 
-Every short-term review package or release-candidate handoff must include an
-owner-readable limitations snapshot. It must at least state:
+Every Auto SVGA `0.1.x` review package or release-candidate handoff must
+include an owner-readable limitations snapshot. It must at least state:
 
-- whether the package is D0 unsigned internal, D1 signed/notarized macOS, or
-  another distribution tier
+- product version, release stage, distribution channel, and build identity
+- whether the package is `local`, `internal`, `internal-signed`, or another
+  distribution channel
 - whether the Product Owner has accepted the package
-- audio parsing status; short-term no-audio or unsupported-audio states are not
-  blockers when shown truthfully
-- text replacement status; short-term text replacement is runtime preview and
-  is not persisted into SVGA bytes
+- audio parsing status; Auto SVGA `0.1.x` no-audio or unsupported-audio states
+  are not blockers when shown truthfully
+- text replacement status; Auto SVGA `0.1.x` text replacement is runtime
+  preview and is not persisted into SVGA bytes
 - which optimization methods are enabled as real output and which are
   suggestion-only
 - whether image replacement is runtime preview only or also persisted as
@@ -122,10 +129,29 @@ become the Product Owner's quick-open client on this Mac. The default target is
 Dock or open it from Launchpad/Spotlight. Shortcuts should point to this stable
 target, not to generated `.artifacts` package paths.
 
+The local stable app is currently:
+
+```text
+Auto SVGA 0.1.0-alpha local
+```
+
+The next deliberate package or review-packet stamping step should assign an
+explicit `alpha.N` identifier and record the commit/package manifest.
+
+For Product Owner daily-use reports, this local stable app is the default
+Auto SVGA `0.1.x` owner-visible client unless the report names a different
+build, path, product version, or distribution channel.
+On the Product Owner's machine the expanded path is
+`/Users/huangtengxin/Applications/Auto SVGA.app`. Development launches such as
+`npm run desktop:dev`, smoke runs, historical Workbench v1 windows, and
+generated `.artifacts` package paths may help narrow a problem, but they are
+not the primary owner-used client and must not be reported as the reproduction
+baseline for an Owner-reported client bug.
+
 The promotion command is intentionally stricter than a manual copy:
 
 1. Refuses to package a dirty worktree by default.
-2. Rebuilds the D0 internal macOS package unless `--use-existing` is passed.
+2. Rebuilds the local/internal macOS package unless `--use-existing` is passed.
 3. Requires the internal package manifest to match current `HEAD`.
 4. Requires the macOS package proof and privacy audit to pass.
 5. Verifies the app identity is `Auto SVGA`.
@@ -144,9 +170,9 @@ substitute.
 Agents that complete a meaningful desktop-client, host, packaging, or
 owner-visible UI change should run the local stable app promotion after the
 final source commit for that change, or explicitly explain in the review why it
-was skipped. This is a D0 internal convenience entry only; it does not imply
-Product Owner acceptance, D1 signing/notarization, Windows readiness, or public
-release.
+was skipped. This is a `local` channel convenience entry only; it does not
+imply Product Owner acceptance, `internal-signed` macOS readiness, Windows
+readiness, or public release.
 
 Credential-backed execution, only after release approval:
 
@@ -163,12 +189,12 @@ AUTO_SVGA_NOTARY_PROFILE="auto-svga-notary" \
 - No automatic push, merge, tag, upload, release, or deployment.
 - No production release claim from an unsigned internal package.
 - No App Store, auto-update, account system, telemetry, cloud sync, or license
-  server work in this short-term prep track.
+  server work in this Auto SVGA `0.1.x` prep track.
 - No Windows release claim until Windows runtime and signing are separately
   validated.
 - No export acceptance UI, sequence-frame repair, advanced layer editing, broad
   batch replacement, public release, or inactive feature placeholders in the
-  short-term app.
+  Auto SVGA `0.1.x` app.
 
 ## Current Blockers
 
@@ -176,10 +202,10 @@ AUTO_SVGA_NOTARY_PROFILE="auto-svga-notary" \
   trusted macOS package.
 - Windows code-signing identity and Windows runtime validation are required for
   trusted Windows distribution.
-- Current Workbench v1 is still active product work and is not yet in Product
-  Owner review.
+- Auto SVGA `0.1.x` is still active product work and is not yet in Product
+  Owner review as a beta, RC, or stable release.
 - Sequence-frame repair is deferred to the mid-term product plan and must not
-  be treated as a short-term release-candidate blocker.
+  be treated as an Auto SVGA `0.1.x` release-candidate blocker.
 
 ## Exit Criteria For This Prep Track
 

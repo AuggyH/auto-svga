@@ -5,8 +5,9 @@ description: Auto SVGA 桌面客户端准备规则。涉及模块、依赖、播
 
 # Auto SVGA Client Ready
 
-Target the short-term macOS desktop client first. The current owner-used
-baseline is `/Users/huangtengxin/Applications/Auto SVGA.app`.
+Target Auto SVGA `0.1.x` / SVGA Preview MVP on macOS first. The current
+owner-used baseline is Auto SVGA `0.1.0-alpha` in the `local` channel at
+`/Users/huangtengxin/Applications/Auto SVGA.app`.
 
 Windows clients and standalone Web Preview are not current-stage readiness
 targets unless the Product Owner explicitly requests them. Historical Web

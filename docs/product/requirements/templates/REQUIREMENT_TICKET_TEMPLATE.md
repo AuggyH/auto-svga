@@ -19,6 +19,7 @@
 
 - PRD anchor:
 - Related product brief or review:
+- Target product version:
 - Product phase: Short-term / Mid-term / AEB / Multi-format / Packaging / Other
 - Requirement type: Feature / Optimization / Interaction / Production workflow / Process / Other
 - Current behavior or limitation:

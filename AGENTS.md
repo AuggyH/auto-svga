@@ -2,9 +2,9 @@
 
 ## Project Goal
 
-The current Auto SVGA product mainline is the short-term macOS client for SVGA
-preview, inspection, replacement preview, imageKey rename, optimization,
-comparison, save, and owner-visible QA.
+The current Auto SVGA product mainline is Auto SVGA `0.1.x` / SVGA Preview MVP:
+the macOS client for SVGA preview, inspection, replacement preview, imageKey
+rename, optimization, comparison, save, and owner-visible QA.
 
 The Product Owner's current daily-use client and QA baseline is:
 
@@ -19,9 +19,15 @@ supplemental narrowing evidence, or rollback references. They are not the
 current product standard, QA baseline, or requirement target unless the Product
 Owner explicitly names them for a task.
 
-Current stage focus is macOS only. Do not plan, validate, or gate short-term
-work against Windows clients or standalone Web Preview unless the Product Owner
-explicitly requests that target.
+Current `0.1.x` focus is macOS only. Do not plan, validate, or gate Auto SVGA
+`0.1.x` work against Windows clients or standalone Web Preview unless the
+Product Owner explicitly requests that target.
+
+Product versions, alpha/beta/RC stages, distribution channels, and build
+identity are governed by
+`docs/product/VERSIONING_AND_RELEASE_POLICY.md`. Do not use "short-term",
+"mid-term", "D0", "latest app", or "the app in Applications" as a complete
+version identity in tickets, reviews, QA reports, or release handoffs.
 
 ## Priorities
 
@@ -166,8 +172,9 @@ Playback verification:
 ## Local Stable App Promotion
 
 The Product Owner's quick-open macOS client is
-`~/Applications/Auto SVGA.app`. It is a D0 internal unsigned app entry, not a
-signed/notarized release and not Product Owner acceptance.
+`~/Applications/Auto SVGA.app`. It is the current Auto SVGA `0.1.0-alpha`
+`local` channel app, not a signed/notarized release and not Product Owner
+acceptance.
 
 This local stable app is the owner-used short-term client baseline. Before a
 worker promotes a new package over it, the worker must prove the candidate is
@@ -193,8 +200,9 @@ Rules:
    Do not claim uncommitted work was installed.
 4. If promotion fails, keep the previous local stable app in place and record
    the blocker in the review.
-5. Do not call a promoted D0 app a release candidate, signed build,
-   notarized build, or public release.
+5. Do not call a promoted `local` app a beta, release candidate, signed build,
+   notarized build, or public release unless the version policy gate and
+   evidence make that label true.
 
 See `docs/engineering/DESKTOP_CLIENT_COORDINATION_PROTOCOL.md` for foreground
 lease, shared desktop-resource identity, client-instance identity, and

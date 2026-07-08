@@ -15,10 +15,17 @@ The workbench is not a small After Effects and does not replace designer
 judgment. Prioritize export acceptance, deterministic diagnostics, and bounded
 reversible post-export refinement over full motion authoring.
 
-The active owner-visible baseline is the short-term macOS client at
-`/Users/huangtengxin/Applications/Auto SVGA.app`. Historical Workbench v1,
-Web Preview, dev Electron windows, `.artifacts` packages, and Windows clients
-are not current-stage standards unless the Product Owner explicitly names them.
+The active owner-visible baseline is Auto SVGA `0.1.0-alpha` in the `local`
+channel at `/Users/huangtengxin/Applications/Auto SVGA.app`. Historical
+Workbench v1, Web Preview, dev Electron windows, `.artifacts` packages, and
+Windows clients are not current-stage standards unless the Product Owner
+explicitly names them.
+
+Product versions, alpha/beta/RC stages, distribution channels, and build
+identity are governed by
+`docs/product/VERSIONING_AND_RELEASE_POLICY.md`. Do not use "short-term",
+"mid-term", "D0", "latest app", or "the app in Applications" as a complete
+version identity in tickets, reviews, QA reports, or release handoffs.
 
 ## Priority
 

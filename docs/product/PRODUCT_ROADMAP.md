@@ -1,9 +1,9 @@
 # Auto SVGA Product Roadmap
 
 Date: 2026-06-30
-Current mainline: short-term macOS client at
-`/Users/huangtengxin/Applications/Auto SVGA.app` is the owner-visible
-development, QA, and version-progression baseline.
+Current mainline: Auto SVGA `0.1.x` / SVGA Preview MVP. The current
+owner-visible development and QA baseline is the local channel app at
+`/Users/huangtengxin/Applications/Auto SVGA.app`.
 Historical reset: P5/P6/P6-R1 Workbench evidence remains lineage and rollback
 context, but it is not the current product surface or QA target unless the
 Product Owner explicitly requests it.
@@ -68,6 +68,12 @@ Product documentation system:
 model, source hierarchy, status vocabulary, product brief checklist, and
 maintenance cadence for keeping this roadmap aligned with active development.
 
+Version and release policy:
+`docs/product/VERSIONING_AND_RELEASE_POLICY.md` defines product version lines,
+alpha/beta/RC/stable stages, distribution channels, build identity, and tag or
+review-packet naming. The roadmap owns product scope; the version policy owns
+how that scope is named across packages, requirements, QA, and releases.
+
 UI/UX design input:
 `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md` provides the subordinate
 macOS-first design brief for the corrected short-term version. It must not
@@ -91,6 +97,33 @@ remain in their phase-specific documents; this roadmap owns the cross-phase
 product intent,
 required capabilities, interaction expectations, acceptance boundaries, and
 non-goals.
+
+## Versioned Product Tracks
+
+Short-term, mid-term, and long-term remain planning horizons. They are not
+precise product version names. Product delivery should use the version lines
+below, then attach an alpha/beta/RC/stable stage and distribution channel as
+defined in `docs/product/VERSIONING_AND_RELEASE_POLICY.md`.
+
+| Version line | Product name | Product scope |
+| --- | --- | --- |
+| `0.1.x` | SVGA Preview MVP | Current SVGA-only macOS client: open, play, inspect, replaceable preview, imageKey rename, optimization, comparison, save, and owner-visible QA baseline. |
+| `0.2.x` | Multi-format Preview MVP | Planned VAP/Lottie/SVGA multi-format parsing, playback, preview, information, and asset/fusion-element display. |
+| `0.3.x` | AE Bridge MVP | Planned AE-to-Auto-SVGA production bridge for human designer workflow and direct preview handoff. |
+| `0.4.x` | SVGA Edit MVP | Planned template-based SVGA editing, transform, compile-back, and Edit-mode workflows. |
+| `0.5.x+` | Advanced Motion And Format Expansion | Later advanced effects, conversion/export expansion, Windows, and long-horizon capabilities. |
+
+Current version target:
+
+```text
+Auto SVGA 0.1.0-alpha local
+/Users/huangtengxin/Applications/Auto SVGA.app
+```
+
+The exact `alpha.N` number will be assigned by the next deliberate package or
+review-packet stamping step. Until then, tickets and reviews may identify the
+current owner-visible baseline as `Auto SVGA 0.1.0-alpha local` plus the
+observed commit or package manifest.
 
 ## Owner Correction: Short-term Scope
 
