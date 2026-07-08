@@ -80,6 +80,10 @@ release gate, or acceptance record.
   integration point.
 - If the working tree is dirty, isolate your staged files. Do not clean up or
   commit another lane's changes unless explicitly asked.
+- QA routing should preserve owner task continuity by default. Use the ticket's
+  priority, importance, source, and response expectation to decide whether a
+  responsible owner may be interrupted; immediate interruption requires an
+  explicit emergency reason.
 - Use vertical user-flow ownership for major capability closure. Technical
   layers may be useful implementation slices, but they are not enough to claim
   evidence-ready product behavior.

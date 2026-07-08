@@ -346,6 +346,11 @@ Real-use bugs, regressions, and acceptance failures must follow
   reports under `docs/quality/reports/`.
 - Chat handoff is transport only. Link the ticket and reports instead of
   pasting long reproduction logs.
+- QA routing does not automatically authorize interrupting the responsible
+  owner or jumping the queue. Tickets must carry priority, importance, source,
+  and response expectation; immediate interruption is allowed only when the
+  ticket explicitly says `Immediate interrupt allowed` and records the
+  emergency reason.
 - Route ambiguous scope, hidden/deferred features, and ownership disputes to
   the Product Manager before implementation.
 - Do not commit real production assets while reproducing bugs.
