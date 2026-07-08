@@ -1525,7 +1525,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.optimizationMetricCell\s*\{[^}]*min-height: var\(--asv-component-optimization-metric-min-height\)/s);
   assert.match(shortTermModules, /\.optimizationMetricValue em\s*\{[^}]*color: var\(--asv-success\)/s);
   assert.match(shortTermModules, /\.optimizationActions\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\)/s);
-  assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*background: transparent/s);
+  assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*background: var\(--asv-panel-recessed\)/s);
   assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*box-shadow: none/s);
   assert.match(shortTermModules, /\.optimizationActions \.toolbarButton\[data-action="back-preview"\]\s*\{[^}]*color: var\(--asv-text\)/s);
   assert.match(shortTermModules, /\.rightSurfaceBody:focus-visible/);

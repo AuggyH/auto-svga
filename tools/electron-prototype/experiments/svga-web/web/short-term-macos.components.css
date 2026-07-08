@@ -281,9 +281,9 @@
 
 .findingRow {
   position: relative;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--asv-finding-row-gap);
-  align-items: start;
+  align-items: center;
   min-height: var(--asv-finding-row-min-height);
   overflow: hidden;
   padding: var(--asv-finding-row-padding-block) var(--asv-finding-row-padding-inline) var(--asv-finding-row-padding-block) var(--asv-finding-row-padding-inline-start);
@@ -293,6 +293,10 @@
   box-shadow: none;
 }
 
+.findingRow > div {
+  min-width: 0;
+}
+
 .findingRow strong {
   color: var(--asv-finding-row-title-color);
   font-size: var(--asv-finding-row-title-size);
@@ -300,28 +304,15 @@
 }
 
 .findingRow::before {
-  content: "";
-  position: absolute;
-  inset: var(--asv-finding-row-strip-inset-block) auto var(--asv-finding-row-strip-inset-block) var(--asv-finding-row-strip-inset-inline);
-  width: var(--asv-status-strip-width);
-  border-radius: var(--asv-status-strip-radius);
-  background: var(--asv-subtle-border);
+  content: none;
 }
 
 .findingRow[data-disposition="safeExecutable"] {
   background: var(--asv-finding-row-safe-bg);
 }
 
-.findingRow[data-disposition="safeExecutable"]::before {
-  background: var(--asv-success);
-}
-
 .findingRow[data-disposition="reviewOnly"] {
   background: var(--asv-finding-row-review-bg);
-}
-
-.findingRow[data-disposition="reviewOnly"]::before {
-  background: var(--asv-warning);
 }
 
 .messageRow {

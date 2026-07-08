@@ -683,7 +683,7 @@ canvas {
 }
 
 .resultGroup {
-  margin: var(--asv-right-panel-section-gap) 0;
+  margin: var(--asv-space-3) 0 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -692,14 +692,15 @@ canvas {
 }
 
 .resultGroup h3 {
-  margin: 0 0 var(--asv-space-2);
-  font-size: var(--asv-type-size-footnote);
-  font-weight: 650;
+  margin: 0 0 var(--asv-space-1);
+  color: var(--asv-muted);
+  font-size: var(--asv-type-size-caption);
+  font-weight: 550;
 }
 
 .resultGroup ul {
   display: grid;
-  gap: var(--asv-space-2);
+  gap: var(--asv-space-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -707,16 +708,17 @@ canvas {
 
 .resultGroup li {
   display: grid;
-  gap: var(--asv-space-1);
+  gap: 0;
 }
 
 .resultGroup li strong {
-  font-size: var(--asv-type-size-footnote);
+  font-size: var(--asv-type-size-caption);
+  font-weight: 550;
 }
 
 .resultGroup li span {
   color: var(--asv-muted);
-  font-size: var(--asv-type-size-footnote);
+  font-size: var(--asv-type-size-caption);
 }
 
 .resultGroup.muted li strong {
@@ -966,7 +968,8 @@ canvas {
 
 .optimizationMetricGrid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--asv-space-2);
+  row-gap: var(--asv-optimization-metric-grid-row-gap);
+  column-gap: var(--asv-optimization-metric-grid-column-gap);
   border-top: 0;
 }
 
@@ -1105,30 +1108,32 @@ canvas {
 .optimizationActions {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--asv-space-3);
+  gap: var(--asv-optimization-action-gap);
   padding-top: var(--asv-right-panel-section-gap);
   border-top: 0;
 }
 
 .optimizationActions .toolbarButton {
   justify-content: center;
+  min-height: var(--asv-optimization-action-height);
+  border-radius: var(--asv-optimization-action-radius);
 }
 
 .optimizationActions .toolbarButton:not(.primary) {
   border-color: transparent;
-  background: transparent;
+  background: var(--asv-panel-recessed);
   box-shadow: none;
-  color: var(--asv-action);
+  color: var(--asv-muted);
 }
 
 .optimizationActions .toolbarButton:not(.primary):hover:not(:disabled) {
-  background: var(--asv-panel-recessed);
+  background: var(--asv-row-hover);
   box-shadow: none;
 }
 
 .optimizationActions .toolbarButton:not(.primary):disabled {
   border-color: transparent;
-  background: transparent;
+  background: var(--asv-panel-recessed);
   box-shadow: none;
   color: var(--asv-subtle);
 }

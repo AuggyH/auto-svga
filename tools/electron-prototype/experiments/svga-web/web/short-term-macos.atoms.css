@@ -149,11 +149,18 @@ button.danger {
 }
 
 .findingImpact {
-  align-self: center;
+  grid-column: 1;
+  align-self: start;
   color: var(--asv-muted);
-  font-family: var(--asv-type-mono);
+  font-family: var(--asv-font);
   font-size: var(--asv-type-size-footnote);
   white-space: nowrap;
+}
+
+.findingRow .badge {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
 }
 
 .badge {
