@@ -13,6 +13,10 @@ const {
 } = require("./host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("./desktop-artifact-catalog.cjs");
 const {
+  preserveWindowSizeAcrossDisplay,
+  sameWindowBounds
+} = require("./short-term-window-bounds-policy.cjs");
+const {
   describeSequenceProductRepairProofValidationFailure,
   validateSequenceByteRepairProof,
   validateSequenceProductRepairProof,
@@ -146,6 +150,10 @@ let auditFinished = false;
 let cspViolationSeen = false;
 let cleanedUp = false;
 let activeMainWindow;
+let shortTermWindowMode = isShortTermProduct ? "launch" : "workbench";
+let shortTermLaunchWindowSize = { ...macosWorkbenchWindowSizing.launch };
+let shortTermWindowBoundsTimer;
+let applyingShortTermWindowBounds = false;
 const defaultShortTermMenuState = Object.freeze({
   view: "launch",
   mode: "preview",
@@ -243,6 +251,91 @@ function chooseMacosWorkbenchWindowBounds(window) {
     window,
     minimumSize: macosWorkbenchWindowSizing.minimumSupported,
     aspectRatio: macosWorkbenchWindowSizing.workbenchAspectRatio
+  });
+}
+
+function windowDisplayForBounds(bounds) {
+  return bounds ? screen.getDisplayMatching(bounds) : screen.getPrimaryDisplay();
+}
+
+function displaySnapshot(display) {
+  return {
+    id: display?.id,
+    scaleFactor: display?.scaleFactor,
+    bounds: display?.bounds,
+    workArea: display?.workArea
+  };
+}
+
+function setWindowBoundsWithoutRecordingUserResize(window, bounds, animate = false) {
+  applyingShortTermWindowBounds = true;
+  try {
+    window.setBounds(bounds, animate);
+  } finally {
+    setImmediate(() => {
+      applyingShortTermWindowBounds = false;
+    });
+  }
+}
+
+function preserveShortTermLaunchWindowBounds(window = activeMainWindow, reason = "unknown") {
+  if (!isShortTermProduct || !window || window.isDestroyed()) return { status: "ignored" };
+  if (smokeMode || auditMode || normalProofMode) return { status: "ignored" };
+  if (shortTermWindowMode !== "launch") return { status: "ignored", mode: shortTermWindowMode };
+
+  const before = window.getBounds();
+  const display = windowDisplayForBounds(before);
+  const after = preserveWindowSizeAcrossDisplay({
+    currentBounds: before,
+    preservedSize: shortTermLaunchWindowSize,
+    workArea: display?.workArea,
+    minimumSize: macosWorkbenchWindowSizing.minimumLaunch
+  });
+  const changed = !sameWindowBounds(before, after);
+  if (changed) setWindowBoundsWithoutRecordingUserResize(window, after, false);
+  return {
+    status: "preserved",
+    mode: shortTermWindowMode,
+    reason,
+    display: displaySnapshot(display),
+    before,
+    after,
+    changed
+  };
+}
+
+function scheduleShortTermLaunchWindowBoundsPreservation(window = activeMainWindow, reason = "unknown") {
+  if (!isShortTermProduct || !window || window.isDestroyed()) return;
+  if (smokeMode || auditMode || normalProofMode) return;
+  if (shortTermWindowMode !== "launch") return;
+  clearTimeout(shortTermWindowBoundsTimer);
+  shortTermWindowBoundsTimer = setTimeout(() => {
+    preserveShortTermLaunchWindowBounds(window, reason);
+  }, 80);
+}
+
+function installShortTermWindowBoundsPolicy(window) {
+  if (!isShortTermProduct || smokeMode || auditMode || normalProofMode) return;
+
+  window.on("will-resize", (_event, newBounds) => {
+    if (shortTermWindowMode !== "launch" || applyingShortTermWindowBounds) return;
+    shortTermLaunchWindowSize = {
+      width: Math.max(macosWorkbenchWindowSizing.minimumLaunch.width, Math.round(newBounds.width)),
+      height: Math.max(macosWorkbenchWindowSizing.minimumLaunch.height, Math.round(newBounds.height))
+    };
+  });
+  window.on("move", () => scheduleShortTermLaunchWindowBoundsPreservation(window, "window-move"));
+  window.on("moved", () => scheduleShortTermLaunchWindowBoundsPreservation(window, "window-moved"));
+  window.on("resize", () => scheduleShortTermLaunchWindowBoundsPreservation(window, "window-resize"));
+  window.on("resized", () => scheduleShortTermLaunchWindowBoundsPreservation(window, "window-resized"));
+
+  const handleDisplayMetricsChanged = () => {
+    scheduleShortTermLaunchWindowBoundsPreservation(window, "display-metrics-changed");
+  };
+  screen.on("display-metrics-changed", handleDisplayMetricsChanged);
+  window.on("closed", () => {
+    clearTimeout(shortTermWindowBoundsTimer);
+    screen.removeListener("display-metrics-changed", handleDisplayMetricsChanged);
   });
 }
 
@@ -3252,6 +3345,9 @@ function updateShortTermMenuState(input) {
   const nextState = validateShortTermMenuState(input);
   if (!nextState) throw new Error("Invalid short-term menu state");
   shortTermMenuState = nextState;
+  if (nextState.view === "launch" && shortTermWindowMode !== "launch") {
+    setShortTermWindowMode("launch");
+  }
   rebuildShortTermApplicationMenu();
   return { status: "updated" };
 }
@@ -3260,17 +3356,25 @@ function setShortTermWindowMode(input, window = activeMainWindow) {
   if (!isShortTermProduct || !window || window.isDestroyed()) return { status: "ignored" };
   if (smokeMode || auditMode || normalProofMode) return { status: "ignored" };
   const mode = stringEnum(input, ["launch", "workbench"], "workbench");
+  const previousMode = shortTermWindowMode;
+  shortTermWindowMode = mode;
   const minimumSize = mode === "launch"
     ? macosWorkbenchWindowSizing.minimumLaunch
     : macosWorkbenchWindowSizing.minimumSupported;
-  const bounds = mode === "launch"
-    ? chooseMacosLaunchWindowBounds(window)
-    : chooseMacosWorkbenchWindowBounds(window);
+  const bounds = mode === "launch" && previousMode === "launch"
+    ? preserveShortTermLaunchWindowBounds(window, "mode-sync").after
+    : mode === "launch"
+      ? chooseMacosLaunchWindowBounds(window)
+      : chooseMacosWorkbenchWindowBounds(window);
+  if (mode === "launch") {
+    shortTermLaunchWindowSize = { width: bounds.width, height: bounds.height };
+  }
   window.setMinimumSize(minimumSize.width, minimumSize.height);
-  window.setBounds(bounds, true);
+  setWindowBoundsWithoutRecordingUserResize(window, bounds, true);
   return {
     status: "updated",
     mode,
+    previousMode,
     width: bounds.width,
     height: bounds.height
   };
@@ -5856,6 +5960,7 @@ async function createExperimentWindow() {
   });
   activeMainWindow = window;
   installApplicationMenu(window);
+  installShortTermWindowBoundsPolicy(window);
 
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
     callback(false);

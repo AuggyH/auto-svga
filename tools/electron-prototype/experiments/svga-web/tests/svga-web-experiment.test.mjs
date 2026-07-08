@@ -28,6 +28,9 @@ const vendorPath = path.join(experimentRoot, "vendor/svga-web-2.4.4.js");
 const hostContract = require("../host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("../desktop-artifact-catalog.cjs");
 const {
+  preserveWindowSizeAcrossDisplay
+} = require("../short-term-window-bounds-policy.cjs");
+const {
   validateSequenceByteRepairProof,
   validateSequenceProductRepairProof,
   validateSequenceRepairReportBinding
@@ -45,6 +48,10 @@ test("macOS internal package scaffold avoids unsupported Finder .svga document a
   assert.match(plist, /AutoSVGANotarized/);
   assert.match(plist, /AutoSVGAProductionApproved/);
   assert.match(plist, new RegExp(bundleIdentifier));
+  assert.match(
+    await readFile(path.join(experimentRoot, "scripts/macos-package-proof.mjs"), "utf8"),
+    /"short-term-window-bounds-policy\.cjs"/
+  );
   assert.doesNotMatch(plist, /CFBundleDocumentTypes/);
   assert.doesNotMatch(plist, /CFBundleTypeRole[\s\S]*Viewer/);
   assert.doesNotMatch(plist, /LSHandlerRank[\s\S]*Alternate/);
@@ -894,6 +901,12 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /defaultWorkbench:\s*\{\s*width:\s*1440,\s*height:\s*900\s*\}/);
 	  assert.match(main, /minimumSupported:\s*\{\s*width:\s*1180,\s*height:\s*760\s*\}/);
 	  assert.match(main, /legacyStressViewport:\s*\{\s*width:\s*900,\s*height:\s*720\s*\}/);
+	  assert.match(main, /let shortTermWindowMode = isShortTermProduct \? "launch" : "workbench"/);
+	  assert.match(main, /function installShortTermWindowBoundsPolicy/);
+	  assert.match(main, /preserveShortTermLaunchWindowBounds/);
+	  assert.match(main, /display-metrics-changed/);
+	  assert.match(main, /window\.on\("move"/);
+	  assert.match(main, /window\.on\("resize"/);
 	  assert.match(main, /scenario === "desktop-1440x900"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /scenario === "desktop-1280x800"\) window\.setContentSize\(macosWorkbenchWindowSizing\.comfortable\.width, macosWorkbenchWindowSizing\.comfortable\.height\)/);
 	  assert.match(main, /minWidth:\s*isShortTermProduct[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.width[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.width/);
@@ -1694,6 +1707,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermHostClient, /bridge\.clearRecentSvgaFiles/);
   assert.match(shortTermHostClient, /bridge\.updateShortTermMenuState/);
   assert.match(shortTermHostClient, /bridge\.setShortTermWindowMode/);
+  assert.match(shortTermController, /view === "launch" \|\| \(view === "failed" && !state\.sourceBytes\)/);
   assert.doesNotMatch(shortTermEntry, /暂无最近打开记录|仅显示文件名和父级位置|最近文件由 macOS 客户端提供/);
   assert.match(shortTermController, /from "\.\/short-term-macos-save-surface\.mjs"/);
   assert.match(shortTermSaveSurface, /from "\.\/short-term-macos-save-model\.mjs"/);
@@ -3087,4 +3101,48 @@ test("real sample audit harness stores aliases and avoids absolute paths in repo
   assert.match(auditScript, /sampleRoot: "external local sample root, not committed"/);
   assert.match(auditScript, /redactOutput/);
   assert.match(auditScript, /audit-samples/);
+});
+
+test("short-term launch window policy preserves compact bounds across runtime display work areas", () => {
+  const minimumSize = { width: 640, height: 640 };
+  const preservedSize = { width: 720, height: 720 };
+  const standardDisplay = { x: 0, y: 71, width: 2560, height: 1344 };
+  const retinaDisplay = { x: -1512, y: 458, width: 1512, height: 950 };
+
+  const standardResult = preserveWindowSizeAcrossDisplay({
+    currentBounds: { x: 920, y: 220, width: 1180, height: 760 },
+    preservedSize,
+    workArea: standardDisplay,
+    minimumSize
+  });
+  assert.equal(standardResult.width, 720);
+  assert.equal(standardResult.height, 720);
+  assert.ok(standardResult.x >= standardDisplay.x);
+  assert.ok(standardResult.y >= standardDisplay.y);
+  assert.ok(standardResult.x + standardResult.width <= standardDisplay.x + standardDisplay.width);
+  assert.ok(standardResult.y + standardResult.height <= standardDisplay.y + standardDisplay.height);
+
+  const retinaResult = preserveWindowSizeAcrossDisplay({
+    currentBounds: { x: -1210, y: 560, width: 1180, height: 760 },
+    preservedSize,
+    workArea: retinaDisplay,
+    minimumSize
+  });
+  assert.equal(retinaResult.width, 720);
+  assert.equal(retinaResult.height, 720);
+  assert.ok(retinaResult.x >= retinaDisplay.x);
+  assert.ok(retinaResult.y >= retinaDisplay.y);
+  assert.ok(retinaResult.x + retinaResult.width <= retinaDisplay.x + retinaDisplay.width);
+  assert.ok(retinaResult.y + retinaResult.height <= retinaDisplay.y + retinaDisplay.height);
+
+  const smallDisplayResult = preserveWindowSizeAcrossDisplay({
+    currentBounds: { x: 0, y: 0, width: 1180, height: 760 },
+    preservedSize,
+    workArea: { x: 10, y: 20, width: 650, height: 620 },
+    minimumSize
+  });
+  assert.equal(smallDisplayResult.width, 650);
+  assert.equal(smallDisplayResult.height, 620);
+  assert.equal(smallDisplayResult.x, 10);
+  assert.equal(smallDisplayResult.y, 20);
 });

@@ -126,9 +126,12 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   function setView(view) {
     state.view = view;
     applyViewState(nodes.app, view);
+    const windowMode = view === "launch" || (view === "failed" && !state.sourceBytes)
+      ? "launch"
+      : "workbench";
     state.lastWindowModeSnapshot = syncShortTermWindowMode(
       bridge,
-      view === "launch" ? "launch" : "workbench",
+      windowMode,
       state.lastWindowModeSnapshot
     );
     renderCommandState();

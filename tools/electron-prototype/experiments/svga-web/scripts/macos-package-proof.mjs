@@ -30,6 +30,7 @@ const sourceAuditFiles = [
   "main.cjs",
   "preload.cjs",
   "server.mjs",
+  "short-term-window-bounds-policy.cjs",
   "scripts/macos-signing-workflow.mjs",
   "web/index.html",
   "web/short-term-macos-app.mjs",
