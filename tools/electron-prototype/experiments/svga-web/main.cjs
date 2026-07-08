@@ -4807,6 +4807,8 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "short-term-preview-overview-wide") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
   if (scenario === "short-term-optimization-result") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
   if (scenario === "short-term-general-compare") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
+  if (scenario === "short-term-settings-dialog") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
+  if (scenario === "short-term-edit-reserved") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
   if (scenario === "short-term-drag-decision-supported") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
   if (scenario === "short-term-drag-decision-unsupported") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
@@ -4815,7 +4817,7 @@ async function captureProductArtifact(window, scenario) {
   if (scenario === "desktop-local-minimum-size") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
   if (scenario === "desktop-responsive-local-compare-at-minimum-size") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
   if (scenario === "short-term-preview-minimum") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
-  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "short-term-preview-overview-wide" || scenario === "short-term-optimization-result" || scenario === "short-term-general-compare" || scenario === "short-term-drag-decision-supported" || scenario === "short-term-drag-decision-unsupported" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size" || scenario === "short-term-preview-minimum") {
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "short-term-preview-overview-wide" || scenario === "short-term-optimization-result" || scenario === "short-term-general-compare" || scenario === "short-term-settings-dialog" || scenario === "short-term-edit-reserved" || scenario === "short-term-drag-decision-supported" || scenario === "short-term-drag-decision-unsupported" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size" || scenario === "short-term-preview-minimum") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
   if (scenario === "desktop-invalid") {
@@ -4835,7 +4837,7 @@ async function captureProductArtifact(window, scenario) {
   await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName, viewportCss);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size" || scenario === "short-term-preview-minimum") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
-  } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "short-term-preview-overview-wide" || scenario === "short-term-optimization-result" || scenario === "short-term-general-compare" || scenario === "short-term-drag-decision-supported" || scenario === "short-term-drag-decision-unsupported") {
+  } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "short-term-preview-overview-wide" || scenario === "short-term-optimization-result" || scenario === "short-term-general-compare" || scenario === "short-term-settings-dialog" || scenario === "short-term-edit-reserved" || scenario === "short-term-drag-decision-supported" || scenario === "short-term-drag-decision-unsupported") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
   }
   const fixture = scenarioFixtureMetadata(scenario);
