@@ -135,6 +135,9 @@ async function runShortTermSmoke({
   const supportedDragTransfer = new DataTransfer();
   supportedDragTransfer.items.add(file);
   const previewStageRect = nodes.previewStagePanel.getBoundingClientRect();
+  const dragEvidenceAppearance = document.documentElement.dataset.appearance || "system";
+  setAppearance("light");
+  await waitForSmokeFrame();
   const dragPoint = (rect, xRatio, yRatio) => ({
     clientX: rect.left + rect.width * xRatio,
     clientY: rect.top + rect.height * yRatio
@@ -171,11 +174,26 @@ async function runShortTermSmoke({
     : supportedDragDecisionLastPoint?.status || "";
   const supportedDragDecisionFocusZone = supportedDragDecisionLastPoint?.focusZone || "";
   const supportedDragDecisionCopy = supportedDragDecisionLastPoint?.labelCopy || "";
+  await captureSmokeArtifact("short-term-drag-decision-supported");
+  const unsupportedVisualFile = new File([new Uint8Array([1, 2, 3])], "unsupported.txt", { type: "text/plain" });
+  const unsupportedVisualTransfer = new DataTransfer();
+  unsupportedVisualTransfer.items.add(unsupportedVisualFile);
+  const unsupportedVisualPoint = dragPoint(previewStageRect, 0.5, 0.5);
+  nodes.previewStagePanel.dispatchEvent(new DragEvent("dragover", {
+    bubbles: true,
+    cancelable: true,
+    clientX: unsupportedVisualPoint.clientX,
+    clientY: unsupportedVisualPoint.clientY,
+    dataTransfer: unsupportedVisualTransfer
+  }));
+  await waitForSmokeFrame();
+  await captureSmokeArtifact("short-term-drag-decision-unsupported");
   nodes.previewStagePanel.dispatchEvent(new DragEvent("dragleave", {
     bubbles: true,
     cancelable: true,
-    dataTransfer: supportedDragTransfer
+    dataTransfer: unsupportedVisualTransfer
   }));
+  setAppearance(dragEvidenceAppearance);
   await waitForSmokeFrame();
   const overviewFactRows = overviewTabView(state.model).facts;
   const shortTermSpecComparisonProof = collectShortTermSpecComparisonProof({

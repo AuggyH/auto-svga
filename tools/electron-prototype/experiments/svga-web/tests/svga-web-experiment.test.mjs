@@ -1014,6 +1014,10 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /scenario === "desktop-1440x900"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-preview-overview-wide"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /"short-term-preview-overview-wide",/);
+	  assert.match(main, /scenario === "short-term-drag-decision-supported"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
+	  assert.match(main, /scenario === "short-term-drag-decision-unsupported"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
+	  assert.match(main, /"short-term-drag-decision-supported",/);
+	  assert.match(main, /"short-term-drag-decision-unsupported",/);
 	  assert.match(main, /scenario === "desktop-1280x800"\) window\.setContentSize\(macosWorkbenchWindowSizing\.comfortable\.width, macosWorkbenchWindowSizing\.comfortable\.height\)/);
 	  assert.match(main, /minWidth:\s*isShortTermProduct[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.width[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.width/);
 	  assert.match(main, /minHeight:\s*isShortTermProduct[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.height[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.height/);
@@ -2348,6 +2352,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-launch"\)/);
   assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-preview-overview"\)/);
   assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-preview-overview-wide"\)/);
+  assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-drag-decision-supported"\)/);
+  assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-drag-decision-unsupported"\)/);
+  assert.match(shortTermSmokeRunner, /const dragEvidenceAppearance = document\.documentElement\.dataset\.appearance \|\| "system";[\s\S]*setAppearance\("light"\);[\s\S]*captureSmokeArtifact\("short-term-drag-decision-supported"\)/);
+  assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-drag-decision-unsupported"\);[\s\S]*setAppearance\(dragEvidenceAppearance\)/);
   assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-preview-optimization"\)/);
   assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-preview-replaceable"\)/);
   assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-sequence-thumbnails"\)/);

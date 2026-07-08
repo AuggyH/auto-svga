@@ -530,3 +530,22 @@ promoted, watched, rejected, or kept historical.
   token assertions using the existing R4 packet; design-system check and desktop
   smoke passed without a new Figma read.
 - Status: watch
+
+## Spatial interaction contracts need screenshot evidence
+
+- Source:
+  `docs/reviews/2026-07-09-codex-uiux-drag-decision-visual-evidence.md`
+- Area: UI/UX, validation, drag-and-drop
+- Context: The short-term drag decision overlay had already been corrected to
+  top/bottom zones, with Compare in the top 25% and Open in the lower 75%.
+- Problem: JSON proof can show hit-test correctness, but it cannot show whether
+  the visual overlay communicates the spatial priority or whether unrelated UI
+  state pollutes the evidence.
+- Candidate rule: For spatial interaction contracts, capture at least one clean
+  visual evidence screenshot for each high-risk state after the logic proof
+  passes. Capture it in the state being evaluated, not after unrelated dirty,
+  failure, or settings states.
+- Evidence: Adding `short-term-drag-decision-supported.png` and
+  `short-term-drag-decision-unsupported.png` exposed an initial polluted capture
+  with a save-failure banner; moving the capture earlier produced clean evidence.
+- Status: watch
