@@ -14,6 +14,11 @@ regression verification, and closure. It does not own product scope, UI/UX
 direction, or feature implementation. Those remain with the relevant owner
 threads and the authoritative product documents.
 
+The process is intended to run as a closed loop without Product Owner manual
+chasing. After a Product Owner report enters this lane, the Test Engineer owns
+the ticket lifecycle until the ticket is closed, deferred, duplicated, or
+explicitly blocked for missing information.
+
 ## Source Hierarchy
 
 Use this workflow after reading:
@@ -145,12 +150,28 @@ QA.
    - Do not paste the full report into chat unless the recipient cannot access
      the repository.
    - Ask the owner for either `Accepted By Owner` or a clear routing objection.
+   - If the owner accepts, the Test Engineer updates the ticket to
+     `Accepted By Owner` and records the owner thread.
+   - The routing handoff must state that acceptance starts the repair loop. Do
+     not leave the implementation owner with only an acknowledgement request
+     when the ticket is ready to fix.
 
 5. Fix
    - The implementation owner reproduces or explains why it cannot reproduce.
    - The owner fixes on the correct lane, writes `ASV-QA-...-fix.md`, and
      provides commit hash, changed files, validation, risk, and QA callback
      criteria.
+   - When the owner reaches `Fix Ready`, the owner must actively return the
+     ticket to the Test Engineer thread. A completed commit or local report in
+     the owner thread is not enough by itself.
+   - The return-to-QA message must include ticket ID, `Fix Ready`, fix commit,
+     branch, fix report path, callback evidence path, validation summary, and
+     any skipped checks or known limitations.
+   - The Test Engineer monitors routed tickets. If a routed or accepted ticket
+     appears complete in the owner thread but was not returned, the Test
+     Engineer pulls the handoff, updates the ticket to `Fix Ready`, records the
+     process gap, and continues regression without waiting for Product Owner
+     prompting.
 
 6. Regress
    - Test Engineer reruns the original reproduction steps.
@@ -174,7 +195,30 @@ QA.
   suggested owner in the ticket before handoff returns to QA or PM.
 - Implementation owners must not close tickets directly. They return `Fix
   Ready`; QA closes after regression.
+- Implementation owners must send the `Fix Ready` handoff back to the Test
+  Engineer thread that routed the ticket. A final answer only in the owner
+  thread is an incomplete QA handoff.
+- Test Engineer owns cross-thread follow-up. When an expected callback is
+  missing, QA checks the owner thread, updates the ticket state from durable
+  evidence, and sends the next required handoff instead of waiting for the
+  Product Owner to relay status.
 - Product scope disputes go to PM before implementation.
+
+## Callback Tracking Rules
+
+- Every routed ticket should have one accountable owner thread and one expected
+  callback state.
+- After `Accepted By Owner`, the expected callback is `Fix Ready`, `Deferred`,
+  `Won't Fix`, `Cannot reproduce`, or a routing objection.
+- After `Fix Ready`, the expected callback owner becomes the Test Engineer and
+  the next state is `Regression`.
+- If implementation finishes but does not explicitly return the ticket, QA
+  records this as a handoff gap in the ticket or regression report and proceeds
+  from the available fix report and commit.
+- Product Owner intervention should be required only for missing source
+  material, acceptance judgment, product-scope decisions, or explicit priority
+  changes; ordinary routing, callback, regression, and closure must be handled
+  by the QA lane and responsible owner lanes.
 
 ## Minimum Evidence By Issue Type
 

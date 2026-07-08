@@ -50,3 +50,6 @@
 
 - Returned to QA at:
 - Thread/message note:
+- QA thread:
+- Handoff status: Sent / Not sent
+- If not sent, reason:
