@@ -170,6 +170,62 @@
   color: var(--asv-danger);
 }
 
+.factMoreInfo {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--asv-space-1);
+  min-width: 0;
+}
+
+.factMoreInfo summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--asv-space-1);
+  width: max-content;
+  min-height: var(--asv-fact-cell-value-line-height);
+  padding: 0 var(--asv-space-2);
+  border-radius: var(--asv-radius-sm);
+  color: var(--asv-color-text-secondary);
+  cursor: pointer;
+  font-size: var(--asv-type-size-caption);
+  line-height: var(--asv-fact-cell-value-line-height);
+  list-style: none;
+}
+
+.factMoreInfo summary::-webkit-details-marker {
+  display: none;
+}
+
+.factMoreInfo summary::after {
+  content: "";
+  width: var(--asv-space-1);
+  height: var(--asv-space-1);
+  border-right: var(--asv-metric-entry-arrow-stroke) solid currentColor;
+  border-bottom: var(--asv-metric-entry-arrow-stroke) solid currentColor;
+  transform: rotate(45deg);
+}
+
+.factMoreInfo[open] summary::after {
+  transform: rotate(225deg);
+}
+
+.factMoreInfo summary:hover {
+  background: color-mix(in srgb, var(--asv-color-surface-row-hover) 20%, transparent);
+}
+
+.factMoreInfo summary:focus-visible {
+  outline: var(--asv-focus-ring);
+  outline-offset: var(--asv-focus-offset);
+}
+
+.factMoreInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--asv-fact-grid-row-gap) var(--asv-fact-grid-column-gap);
+  min-width: 0;
+  padding-top: var(--asv-space-1);
+}
+
 .metricOptimizationEntry:hover {
   background: var(--asv-metric-entry-hover-bg);
 }

@@ -1,4 +1,6 @@
-export function overviewVisibleFacts(model) {
+const RISK_STATUSES = new Set(["warning", "fail"]);
+
+export function overviewFactGroups(model) {
   const requiredIds = new Set([
     "fileSize",
     "decodedMemory",
@@ -12,10 +14,15 @@ export function overviewVisibleFacts(model) {
     "fps",
     "assetCount"
   ]);
-  return (model?.overview?.facts ?? []).filter((fact) => {
-    if (!requiredIds.has(fact.id)) return false;
-    return fact.disclosure !== "moreInfo" || fact.status === "warning" || fact.status === "fail";
-  });
+  const facts = (model?.overview?.facts ?? []).filter((fact) => requiredIds.has(fact.id));
+  return {
+    summary: facts.filter((fact) => fact.disclosure !== "moreInfo" || RISK_STATUSES.has(fact.status)),
+    moreInfo: facts.filter((fact) => fact.disclosure === "moreInfo" && !RISK_STATUSES.has(fact.status))
+  };
+}
+
+export function overviewVisibleFacts(model) {
+  return overviewFactGroups(model).summary;
 }
 
 export function renderOverviewFactCellHtml(fact) {
