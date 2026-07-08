@@ -12,6 +12,14 @@ export function playbackCanvasFitSize(input) {
     height = scaledContainerHeight;
     width = height * aspect;
   }
+  if (width > movieWidth) {
+    width = movieWidth;
+    height = width / aspect;
+  }
+  if (height > movieHeight) {
+    height = movieHeight;
+    width = height * aspect;
+  }
   return {
     width: Math.max(1, Math.floor(width)),
     height: Math.max(1, Math.floor(height)),

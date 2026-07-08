@@ -474,3 +474,22 @@ promoted, watched, rejected, or kept historical.
   to pass and generated `short-term-preview-overview-wide.png` at `2880 x
   1800` Retina pixels.
 - Status: watch
+
+## Separate playback internal resolution from visual canvas size
+
+- Source:
+  `docs/reviews/2026-07-09-codex-uiux-preview-canvas-scale-polish.md`
+- Area: UI/UX, playback, visual validation
+- Context: A wide Preview smoke screenshot showed a `300 x 300` SVGA rendered
+  with much larger visual weight than the Owner/Figma canvas-first direction.
+- Problem: The playback model correctly kept the canvas internal bitmap at the
+  SVGA movie dimensions, but the CSS display size could upscale small source
+  canvases to fill a large workbench surface.
+- Candidate rule: For default Preview, treat the decoded SVGA movie size as the
+  visual upper bound unless a product-approved zoom/fit control exists. Keep
+  responsive downscaling for small windows, but do not silently upscale beyond
+  source dimensions.
+- Evidence: Updating `playbackCanvasFitSize` to cap CSS width/height at movie
+  dimensions kept `300 x 300` and `400 x 200` test cases at source size while
+  preserving wide-movie downscaling, and desktop smoke still passed.
+- Status: watch

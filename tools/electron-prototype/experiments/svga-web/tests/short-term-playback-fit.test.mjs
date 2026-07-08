@@ -35,7 +35,7 @@ test("short-term playback fit preserves a 981 x 360 wide movie ratio on load and
   }
 });
 
-test("short-term playback fit can reserve canvas breathing room with a tokenized scale", () => {
+test("short-term playback fit reserves breathing room without upscaling source canvases", () => {
   assert.deepEqual(playbackCanvasFitSize({
     containerWidth: 900,
     containerHeight: 760,
@@ -43,8 +43,8 @@ test("short-term playback fit can reserve canvas breathing room with a tokenized
     movieHeight: 300,
     fitScale: 0.62
   }), {
-    width: 471,
-    height: 471,
+    width: 300,
+    height: 300,
     aspect: 1
   });
 
@@ -55,8 +55,8 @@ test("short-term playback fit can reserve canvas breathing room with a tokenized
     movieHeight: 200,
     fitScale: 0.62
   }), {
-    width: 558,
-    height: 279,
+    width: 400,
+    height: 200,
     aspect: 2
   });
 });
