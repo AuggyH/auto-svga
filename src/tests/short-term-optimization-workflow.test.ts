@@ -37,7 +37,7 @@ test("short-term optimization workflow produces product comparison and save mode
   assert.equal(sha256(sourceBytes), sourceSha256);
   assert.notEqual(sha256(result.optimizedBytes), sourceSha256);
   assert.equal(result.model.schemaVersion, 1);
-  assert.deepEqual(result.model.prdIds, ["S9", "S10", "S14"]);
+  assert.deepEqual(result.model.prdIds, ["S9", "S10", "S14", "S18"]);
   assert.equal(result.model.status, "optimized");
   assert.equal(result.model.sourceName, "fixture.svga");
   assert.equal(result.model.sourceSha256, sourceSha256);
@@ -69,6 +69,7 @@ test("short-term optimization workflow produces product comparison and save mode
     [
       { method: "deduplicateEncodedImages", disposition: "executed" },
       { method: "removeUnreferencedImages", disposition: "executed" },
+      { method: "allZeroRuntimeObjectPruning", disposition: "availableButNoCandidate" },
       { method: "imageCompression", disposition: "notImplemented" },
       { method: "transparentBoundsTrim", disposition: "reviewOnly" },
       { method: "sequenceFrameProcessing", disposition: "reviewOnly" },
@@ -77,6 +78,8 @@ test("short-term optimization workflow produces product comparison and save mode
     ]
   );
   assert.equal(result.model.metrics.find(({ id }) => id === "imageResourceCount")?.delta, "减少 2");
+  assert.equal(result.model.metrics.find(({ id }) => id === "runtimeObjectCount")?.delta, "无变化");
+  assert.equal(result.model.metrics.find(({ id }) => id === "animationFrameRecordCount")?.delta, "无变化");
   assert.equal(result.model.validation.decodePassed, true);
   assert.equal(result.model.validation.reopenPassed, true);
   assert.equal(result.model.validation.sourceUnchanged, true);
@@ -114,10 +117,11 @@ test("short-term optimization workflow reports no-op files without enabling save
   assert.equal(result.model.resultTitle, "没有可安全执行的优化项");
   assert.deepEqual(result.model.actions, []);
   assert.deepEqual(
-    result.model.methods.slice(0, 2).map(({ method, disposition }) => ({ method, disposition })),
+    result.model.methods.slice(0, 3).map(({ method, disposition }) => ({ method, disposition })),
     [
       { method: "deduplicateEncodedImages", disposition: "availableButNoCandidate" },
-      { method: "removeUnreferencedImages", disposition: "availableButNoCandidate" }
+      { method: "removeUnreferencedImages", disposition: "availableButNoCandidate" },
+      { method: "allZeroRuntimeObjectPruning", disposition: "availableButNoCandidate" }
     ]
   );
   assert.equal(result.model.saveState.outputAvailable, false);
@@ -125,6 +129,29 @@ test("short-term optimization workflow reports no-op files without enabling save
   assert.equal(result.model.saveState.saveAsEnabled, false);
   assert.equal(result.model.persistedOutput, undefined);
   assert.equal(result.model.diagnostic?.code, "optimization_not_applicable");
+});
+
+test("short-term optimization workflow exposes safe runtime-structure pruning metrics", async () => {
+  const sourceBytes = await createSvgaFixture({
+    images: {
+      img_visible: createColoredPng(16, 16, [255, 0, 0, 255]),
+      img_invisible: createColoredPng(8, 8, [0, 0, 0, 0])
+    },
+    sprites: [
+      { imageKey: "img_visible", frames: createFrames(4) },
+      { imageKey: "img_invisible", frames: createFrames(4, { alpha: 0 }) }
+    ]
+  });
+
+  const result = await runShortTermOptimizationWorkflow(sourceBytes, { sourceName: "structure.svga" });
+
+  assert.ok(result.optimizedBytes);
+  assert.equal(result.model.status, "optimized");
+  assert.equal(result.model.actions.some(({ type }) => type === "remove_all_zero_sprite"), true);
+  assert.equal(result.model.actions.some(({ type }) => type === "remove_unreferenced_image"), true);
+  assert.equal(result.model.metrics.find(({ id }) => id === "runtimeObjectCount")?.delta, "减少 1");
+  assert.equal(result.model.metrics.find(({ id }) => id === "animationFrameRecordCount")?.delta, "减少 4");
+  assert.equal(result.model.saveState.saveAsEnabled, true);
 });
 
 test("short-term optimization workflow fails closed on invalid SVGA bytes", async () => {
@@ -216,9 +243,9 @@ async function createSvgaFixture(overrides: Partial<{
   return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
 }
 
-function createFrames(count: number): unknown[] {
+function createFrames(count: number, options: { alpha?: number } = {}): unknown[] {
   return Array.from({ length: count }, (_, index) => ({
-    alpha: index % 2 === 0 ? 1 : 0.8,
+    alpha: options.alpha ?? (index % 2 === 0 ? 1 : 0.8),
     layout: { x: 1, y: 2, width: 10, height: 11 },
     transform: { a: 1, b: 0, c: 0, d: 1, tx: index, ty: index + 1 },
     clipPath: "",

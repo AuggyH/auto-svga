@@ -11,6 +11,7 @@ import type {
   WorkbenchIssue
 } from "./contracts.js";
 import { HIGH_MEMORY_RISK_BYTES, MEDIUM_MEMORY_RISK_BYTES } from "./memory-estimation.js";
+import type { RuntimeStructureDiagnostics } from "./runtime-structure-diagnostics.js";
 
 export const ASSET_INTELLIGENCE_REPORT_SCHEMA_VERSION = 1;
 
@@ -94,6 +95,7 @@ export interface AssetIntelligenceInput {
   asset: MotionAssetInfo;
   issues: readonly WorkbenchIssue[];
   memoryEstimation: MotionAssetMemoryEstimation;
+  runtimeStructureDiagnostics?: RuntimeStructureDiagnostics;
   sequenceResidencyDiagnostics: SequenceResidencyDiagnostics;
   sequenceFrameEvidence: SequenceFrameEvidence;
 }
@@ -197,6 +199,7 @@ function createFindings(
     ...transparentResourceFindings(input.asset, usage, decodedBytesById),
     ...transparentPaddingFindings(input.asset, input.issues, decodedBytesById),
     ...largeDecodedResourceFindings(input.asset, decodedBytesById),
+    ...runtimeStructureFindings(input.runtimeStructureDiagnostics),
     ...sequenceMemoryFindings(input.sequenceResidencyDiagnostics),
     ...analysisCoverageFindings(input.sequenceFrameEvidence)
   ];
@@ -362,6 +365,66 @@ function sequenceMemoryFindings(
     decodedMemoryImpact: diagnostics.totalSequenceFrameEstimatedDecodedBytes,
     disposition: "suggestion_only"
   })];
+}
+
+function runtimeStructureFindings(
+  diagnostics: RuntimeStructureDiagnostics | undefined
+): AssetIntelligenceFinding[] {
+  if (!diagnostics) return [];
+  const findings: AssetIntelligenceFinding[] = [];
+  if (diagnostics.riskLevel === "medium" || diagnostics.riskLevel === "high") {
+    findings.push(finding({
+      code: "runtime_structure_complexity_risk",
+      title: "运行时结构复杂",
+      reason: "Runtime object and animation frame-record counts are high enough to require product review separately from decoded image memory.",
+      severity: diagnostics.riskLevel === "high" ? "error" : "warning",
+      confidence: "high",
+      evidenceRefs: [
+        `metric:runtimeObjectCount=${diagnostics.spriteCount}`,
+        `metric:animationFrameRecordCount=${diagnostics.frameEntityCount}`,
+        `metric:estimatedRuntimeStructureBytes=${diagnostics.estimatedRuntimeStructureBytes ?? "unknown"}`
+      ],
+      affectedResourceIds: [],
+      fileSizeImpact: null,
+      decodedMemoryImpact: null,
+      disposition: "suggestion_only"
+    }));
+  }
+  if (diagnostics.allZeroSpriteCount > 0) {
+    findings.push(finding({
+      code: "all_zero_runtime_object_prunable",
+      title: "全零运行对象可清理",
+      reason: "Runtime objects whose frame alpha is zero for the whole timeline can be removed after round-trip validation.",
+      severity: "warning",
+      confidence: "high",
+      evidenceRefs: [
+        `metric:allZeroRuntimeObjectCount=${diagnostics.allZeroSpriteCount}`,
+        `metric:allZeroFrameRecordCount=${diagnostics.allZeroFrameEntityCount}`
+      ],
+      affectedResourceIds: diagnostics.allZeroSpriteResourceIds,
+      fileSizeImpact: null,
+      decodedMemoryImpact: 0,
+      disposition: "safe_auto_optimize"
+    }));
+  }
+  if (diagnostics.sequenceFrameFanout.maxSpriteReferencesInGroup >= 100) {
+    findings.push(finding({
+      code: "sequence_frame_fanout_risk",
+      title: "序列帧展开风险",
+      reason: "Repeated sequence-frame runtime objects can inflate playback structure even when decoded image memory is modest.",
+      severity: "warning",
+      confidence: "medium",
+      evidenceRefs: [
+        `metric:sequenceFanoutMax=${diagnostics.sequenceFrameFanout.maxSpriteReferencesInGroup}`,
+        ...diagnostics.sequenceFrameFanout.groups.slice(0, 5).map(({ groupId }) => `sequence-group:${groupId}`)
+      ],
+      affectedResourceIds: diagnostics.sequenceFrameFanout.groups.flatMap(({ resourceIds }) => resourceIds),
+      fileSizeImpact: null,
+      decodedMemoryImpact: null,
+      disposition: "structural_risky"
+    }));
+  }
+  return findings;
 }
 
 function analysisCoverageFindings(evidence: SequenceFrameEvidence): AssetIntelligenceFinding[] {

@@ -1390,9 +1390,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-color-surface-row-selected/);
   assert.match(shortTermTokens, /--asv-component-canvas-checker-pattern: conic-gradient\(var\(--asv-color-canvas-checker\) 25%/);
   assert.match(shortTermTokens, /--asv-canvas-checker-pattern: var\(--asv-component-canvas-checker-pattern\)/);
-  assert.match(shortTermTokens, /--asv-motion-duration-idle: 36s/);
+  assert.match(shortTermTokens, /--asv-motion-duration-idle: 30s/);
   assert.match(shortTermTokens, /--asv-component-launch-checker-idle-duration: var\(--asv-motion-duration-idle\)/);
-  assert.match(shortTermTokens, /--asv-component-launch-checker-idle-offset: calc\(var\(--asv-component-launch-checker-size\) \* 2\)/);
+  assert.match(shortTermTokens, /--asv-component-launch-checker-idle-offset: calc\(var\(--asv-component-launch-checker-size\) \* 3\)/);
   assert.match(shortTermTokens, /--asv-panel-border/);
   assert.match(shortTermTokens, /--asv-shadow-panel-highlight/);
   assert.match(shortTermTokens, /--asv-shadow-panel-chrome/);
@@ -2444,7 +2444,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeRunner, /collectShortTermThumbnailProof/);
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-thumbnail-proof"/);
   assert.match(shortTermOverviewModel, /overviewVisibleFacts/);
-  assert.match(shortTermRenderModel, /"fileSize", "decodedMemory", "canvas", "fps", "assetCount"/);
+  assert.match(shortTermRenderModel, /"fileSize"/);
+  assert.match(shortTermRenderModel, /"decodedMemory"/);
+  assert.match(shortTermRenderModel, /"runtimeStructure"/);
+  assert.match(shortTermRenderModel, /"runtimeObjectCount"/);
+  assert.match(shortTermRenderModel, /"animationFrameRecordCount"/);
+  assert.match(shortTermRenderModel, /fact\.disclosure !== "moreInfo"/);
   assert.match(shortTermSmokeProofModel, /export function collectShortTermOptimizationProof/);
   assert.match(shortTermSmokeProofModel, /short-term-optimization-proof/);
   assert.match(shortTermSmokeProofModel, /optimizedBytesSmaller/);

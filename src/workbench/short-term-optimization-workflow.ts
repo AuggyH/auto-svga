@@ -22,7 +22,7 @@ import {
 
 export const SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION = 1 as const;
 
-export type ShortTermOptimizationRunStatus = "optimized" | "notApplicable" | "failed";
+export type ShortTermOptimizationRunStatus = "optimized" | "tradeoff" | "no-benefit" | "notApplicable" | "failed";
 export type ShortTermOptimizationMethodDisposition =
   | "executed"
   | "availableButNoCandidate"
@@ -30,7 +30,7 @@ export type ShortTermOptimizationMethodDisposition =
   | "notImplemented";
 
 export interface ShortTermOptimizationMetric {
-  id: "fileSize" | "imageResourceCount";
+  id: "fileSize" | "imageResourceCount" | "runtimeObjectCount" | "animationFrameRecordCount";
   label: string;
   before: string;
   after: string;
@@ -54,6 +54,7 @@ export interface ShortTermOptimizationMethodItem {
   method:
     | "deduplicateEncodedImages"
     | "removeUnreferencedImages"
+    | "allZeroRuntimeObjectPruning"
     | "imageCompression"
     | "transparentBoundsTrim"
     | "sequenceFrameProcessing"
@@ -81,7 +82,7 @@ export type ShortTermOptimizationSaveStateModel = ShortTermPersistedOutputSaveSt
 export interface ShortTermOptimizationComparisonModel {
   schemaVersion: typeof SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION;
   source: "short-term-optimization-workflow";
-  prdIds: readonly ["S9", "S10", "S14"];
+  prdIds: readonly ["S9", "S10", "S14", "S18"];
   status: ShortTermOptimizationRunStatus;
   sourceName: string;
   sourceSha256: string;
@@ -171,13 +172,23 @@ function optimizedModel(input: {
   validation: ShortTermOptimizationValidationModel;
 }): ShortTermOptimizationComparisonModel {
   const actualSavingsBytes = input.sourceBytes.byteLength - input.optimizedBytes.byteLength;
-  const passed = input.report.passed
+  const checksPassed = input.report.passed
     && input.validation.decodePassed
     && input.validation.reopenPassed
     && input.validation.sourceUnchanged
     && input.validation.invariantChecksPassed
     && input.validation.referenceClosurePassed;
-  const persistedOutput = passed
+  const structureImproved = input.report.optimizedSpriteCount < input.report.originalSpriteCount
+    || input.report.optimizedFrameEntityCount < input.report.originalFrameEntityCount;
+  const imageResourcesImproved = input.report.optimizedImageCount < input.report.originalImageCount;
+  const targetMetricImproved = actualSavingsBytes > 0 || imageResourcesImproved || structureImproved;
+  const status: ShortTermOptimizationRunStatus = !checksPassed
+    ? "failed"
+    : targetMetricImproved
+      ? actualSavingsBytes < 0 ? "tradeoff" : "optimized"
+      : "no-benefit";
+  const outputSaveable = status === "optimized" || status === "tradeoff";
+  const persistedOutput = outputSaveable
     ? createShortTermPersistedOutputRecord({
       outputKind: "optimized_svga",
       operationId: input.report.optimizationId,
@@ -185,7 +196,7 @@ function optimizedModel(input: {
       sourceSha256: input.sourceSha256,
       outputBytes: input.optimizedBytes,
       sourceUnchanged: input.validation.sourceUnchanged,
-      validationPassed: passed,
+      validationPassed: outputSaveable,
       validationRefs: [
         "validation:decodePassed",
         "validation:reopenPassed",
@@ -198,17 +209,20 @@ function optimizedModel(input: {
   return redactShortTermLocalPathsInValue({
     schemaVersion: SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION,
     source: "short-term-optimization-workflow",
-    prdIds: ["S9", "S10", "S14"],
-    status: passed ? "optimized" : "failed",
+    prdIds: ["S9", "S10", "S14", "S18"],
+    status,
     sourceName: input.sourceName,
     sourceSha256: input.sourceSha256,
-    resultTitle: passed ? "已生成优化副本" : "优化结果未通过验证",
-    resultSummary: passed
-      ? `执行 ${input.report.actions.length} 个安全优化动作，实际文件体积${formatDelta(actualSavingsBytes)}。`
-      : "优化器已产出候选 bytes，但重新打开或安全校验未全部通过，保存保持关闭。",
+    resultTitle: resultTitle(status),
+    resultSummary: resultSummary(status, input.report.actions.length, actualSavingsBytes, {
+      imageResourcesImproved,
+      structureImproved
+    }),
     metrics: [
       metric("fileSize", "文件体积", input.sourceBytes.byteLength, input.optimizedBytes.byteLength),
-      metric("imageResourceCount", "图片资源数", input.report.originalImageCount, input.report.optimizedImageCount)
+      metric("imageResourceCount", "图片资源数", input.report.originalImageCount, input.report.optimizedImageCount),
+      metric("runtimeObjectCount", "运行对象数", input.report.originalSpriteCount, input.report.optimizedSpriteCount),
+      metric("animationFrameRecordCount", "动画帧记录数", input.report.originalFrameEntityCount, input.report.optimizedFrameEntityCount)
     ],
     actions: input.report.actions.map(actionItem),
     methods: methodItems(input.report.actions),
@@ -216,6 +230,40 @@ function optimizedModel(input: {
     saveState: persistedOutput?.saveState ?? saveState(false, input.validation.sourceUnchanged),
     ...(persistedOutput ? { persistedOutput } : {})
   });
+}
+
+function resultTitle(status: ShortTermOptimizationRunStatus): string {
+  if (status === "optimized") return "已生成优化副本";
+  if (status === "tradeoff") return "已生成结构优化副本";
+  if (status === "no-benefit") return "优化无正向收益";
+  return "优化结果未通过验证";
+}
+
+function resultSummary(
+  status: ShortTermOptimizationRunStatus,
+  actionCount: number,
+  fileSizeSavingsBytes: number,
+  improvements: {
+    imageResourcesImproved: boolean;
+    structureImproved: boolean;
+  }
+): string {
+  if (status === "failed") {
+    return "优化器已产出候选 bytes，但重新打开或安全校验未全部通过，保存保持关闭。";
+  }
+  if (status === "no-benefit") {
+    return "优化结果没有带来文件体积、图片资源数或运行时结构的正向收益，保存保持关闭。";
+  }
+  const targets = [
+    ...(fileSizeSavingsBytes > 0 ? ["文件体积"] : []),
+    ...(improvements.imageResourcesImproved ? ["图片资源数"] : []),
+    ...(improvements.structureImproved ? ["运行时结构"] : [])
+  ];
+  const targetCopy = targets.length > 0 ? `；正向收益：${targets.join("、")}` : "";
+  const tradeoffCopy = fileSizeSavingsBytes < 0
+    ? "；文件体积有增加，但运行时结构指标改善"
+    : "";
+  return `执行 ${actionCount} 个安全优化动作，实际文件体积${formatDelta(fileSizeSavingsBytes)}${targetCopy}${tradeoffCopy}。`;
 }
 
 function notApplicableModel(input: {
@@ -230,7 +278,7 @@ function notApplicableModel(input: {
     sourceSha256: input.sourceSha256,
     sourceSizeBytes: input.sourceSizeBytes,
     resultTitle: "没有可安全执行的优化项",
-    resultSummary: "当前文件没有未引用图片或可机械合并的重复图片，未生成优化副本。",
+    resultSummary: "当前文件没有未引用图片、可机械合并的重复图片或全零运行对象，未生成优化副本。",
     methods: methodItems([]),
     diagnostic: input.diagnostic
   });
@@ -267,7 +315,7 @@ function baseClosedModel(input: {
   return redactShortTermLocalPathsInValue({
     schemaVersion: SHORT_TERM_OPTIMIZATION_WORKFLOW_SCHEMA_VERSION,
     source: "short-term-optimization-workflow",
-    prdIds: ["S9", "S10", "S14"],
+    prdIds: ["S9", "S10", "S14", "S18"],
     status: input.status,
     sourceName: input.sourceName,
     sourceSha256: input.sourceSha256,
@@ -347,20 +395,20 @@ function metric(
   return {
     id,
     label,
-    before: id === "fileSize" ? formatBytes(beforeValue) : String(beforeValue),
-    after: id === "fileSize" ? formatBytes(afterValue) : String(afterValue),
+    before: formatMetricValue(id, beforeValue),
+    after: formatMetricValue(id, afterValue),
     delta: id === "fileSize" ? formatDelta(delta) : formatCountDelta(delta),
     improved: delta > 0
   };
 }
 
+function formatMetricValue(id: ShortTermOptimizationMetric["id"], value: number): string {
+  return id === "fileSize" ? formatBytes(value) : String(value);
+}
+
 function actionItem(action: SvgaImageOptimizationAction): ShortTermOptimizationActionItem {
-  const title = action.type === "deduplicate_encoded_image"
-    ? "合并重复图片引用"
-    : "移除未引用图片";
-  const summary = action.type === "deduplicate_encoded_image"
-    ? `${action.resourceKey} 与 ${action.canonicalResourceKey ?? ""} 的编码内容一致，引用已指向保留资源。`
-    : `${action.resourceKey} 没有图层引用，已从输出副本移除。`;
+  const title = actionTitle(action);
+  const summary = actionSummary(action);
   return {
     id: `${action.type}:${action.resourceKey}`,
     type: action.type,
@@ -375,6 +423,22 @@ function actionItem(action: SvgaImageOptimizationAction): ShortTermOptimizationA
       `sha256:${action.originalSha256}`
     ]
   };
+}
+
+function actionTitle(action: SvgaImageOptimizationAction): string {
+  if (action.type === "deduplicate_encoded_image") return "合并重复图片引用";
+  if (action.type === "remove_all_zero_sprite") return "移除全零运行对象";
+  return "移除未引用图片";
+}
+
+function actionSummary(action: SvgaImageOptimizationAction): string {
+  if (action.type === "deduplicate_encoded_image") {
+    return `${action.resourceKey} 与 ${action.canonicalResourceKey ?? ""} 的编码内容一致，引用已指向保留资源。`;
+  }
+  if (action.type === "remove_all_zero_sprite") {
+    return `${action.resourceKey} 的运行对象全程不可见，已移除 ${action.removedFrameCount ?? 0} 条动画帧记录。`;
+  }
+  return `${action.resourceKey} 没有运行时引用，已从输出副本移除。`;
 }
 
 function methodItems(actions: readonly SvgaImageOptimizationAction[]): ShortTermOptimizationMethodItem[] {
@@ -393,8 +457,16 @@ function methodItems(actions: readonly SvgaImageOptimizationAction[]): ShortTerm
       label: "移除未引用图片",
       disposition: actionTypes.has("remove_unreferenced_image") ? "executed" : "availableButNoCandidate",
       reason: actionTypes.has("remove_unreferenced_image")
-        ? "只移除重定向后仍然没有任何 imageKey 或 matteKey 引用的图片。"
+        ? "只移除重定向和结构剪枝后仍然没有任何运行时引用的图片。"
         : "本次没有发现可安全移除的未引用图片。"
+    },
+    {
+      method: "allZeroRuntimeObjectPruning",
+      label: "移除全零运行对象",
+      disposition: actionTypes.has("remove_all_zero_sprite") ? "executed" : "availableButNoCandidate",
+      reason: actionTypes.has("remove_all_zero_sprite")
+        ? "只移除全部动画帧 alpha 为 0 的运行对象，并重新验证引用闭合。"
+        : "本次没有发现全程不可见、可机械移除的运行对象。"
     },
     {
       method: "imageCompression",

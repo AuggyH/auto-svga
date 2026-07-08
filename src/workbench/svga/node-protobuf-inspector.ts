@@ -20,7 +20,9 @@ interface DecodedMovie {
   sprites?: Array<{
     imageKey?: string;
     matteKey?: string;
-    frames?: unknown[];
+    frames?: Array<{
+      alpha?: number;
+    }>;
   }>;
   audios?: unknown[];
 }
@@ -53,7 +55,10 @@ export class NodeProtobufSvgaInspector implements SvgaBinaryInspector {
       index,
       imageKey: sprite.imageKey ?? "",
       matteKey: sprite.matteKey ?? "",
-      frameCount: sprite.frames?.length ?? 0
+      frameCount: sprite.frames?.length ?? 0,
+      frameAlphas: (sprite.frames ?? []).map((frame) => (
+        typeof frame.alpha === "number" && Number.isFinite(frame.alpha) ? frame.alpha : 0
+      ))
     }));
 
     return {

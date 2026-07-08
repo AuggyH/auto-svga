@@ -122,6 +122,47 @@ test("SVGA image optimizer fails closed when no safe optimization is available",
   );
 });
 
+test("SVGA image optimizer prunes all-zero runtime sprites and newly unreferenced images", async () => {
+  const visibleBytes = createColoredPng(16, 16, [255, 0, 0, 255]);
+  const invisibleBytes = createColoredPng(8, 8, [0, 0, 0, 0]);
+  const sourceBytes = await createSvgaFixture({
+    images: {
+      img_visible: visibleBytes,
+      img_invisible: invisibleBytes
+    },
+    sprites: [
+      { imageKey: "img_visible", frames: createFrames(4) },
+      { imageKey: "img_invisible", frames: createFrames(4, { alpha: 0 }) }
+    ]
+  });
+
+  const result = await optimizeSvgaImageResources(sourceBytes, { sourceName: "structure.svga" });
+
+  assert.equal(result.report.passed, true);
+  assert.equal(result.report.originalSpriteCount, 2);
+  assert.equal(result.report.optimizedSpriteCount, 1);
+  assert.equal(result.report.originalFrameEntityCount, 8);
+  assert.equal(result.report.optimizedFrameEntityCount, 4);
+  assert.equal(result.report.removedAllZeroSpriteCount, 1);
+  assert.equal(result.report.removedAllZeroFrameEntityCount, 4);
+  assert.deepEqual(result.report.removedResourceKeys, ["img_invisible"]);
+  assert.deepEqual(
+    result.report.actions.map(({ type, resourceKey, removedFrameCount }) => ({ type, resourceKey, removedFrameCount })),
+    [
+      { type: "remove_all_zero_sprite", resourceKey: "img_invisible", removedFrameCount: 4 },
+      { type: "remove_unreferenced_image", resourceKey: "img_invisible", removedFrameCount: undefined }
+    ]
+  );
+  assert.ok(result.report.changedFields.includes("sprites.1"));
+
+  const inspected = await new NodeProtobufSvgaInspector().inspect(result.optimizedBytes);
+  assert.deepEqual(inspected.images.map(({ imageKey }) => imageKey), ["img_visible"]);
+  assert.deepEqual(inspected.sprites.map(({ imageKey, frameCount }) => ({ imageKey, frameCount })), [{
+    imageKey: "img_visible",
+    frameCount: 4
+  }]);
+});
+
 async function createSvgaFixture(overrides: Partial<{
   version: string;
   params: {
@@ -163,9 +204,9 @@ async function createSvgaFixture(overrides: Partial<{
   return deflateSync(MovieEntity.encode(MovieEntity.create(payload)).finish());
 }
 
-function createFrames(count: number): unknown[] {
+function createFrames(count: number, options: { alpha?: number } = {}): unknown[] {
   return Array.from({ length: count }, (_, index) => ({
-    alpha: index % 2 === 0 ? 1 : 0.8,
+    alpha: options.alpha ?? (index % 2 === 0 ? 1 : 0.8),
     layout: { x: 1, y: 2, width: 10, height: 11 },
     transform: { a: 1, b: 0, c: 0, d: 1, tx: index, ty: index + 1 },
     clipPath: "",

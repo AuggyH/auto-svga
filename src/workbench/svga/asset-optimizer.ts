@@ -8,7 +8,8 @@ export const SVGA_IMAGE_OPTIMIZATION_REPORT_SCHEMA_VERSION = 1;
 
 export type SvgaImageOptimizationActionType =
   | "deduplicate_encoded_image"
-  | "remove_unreferenced_image";
+  | "remove_unreferenced_image"
+  | "remove_all_zero_sprite";
 
 export interface SvgaImageOptimizationAction {
   type: SvgaImageOptimizationActionType;
@@ -17,6 +18,8 @@ export interface SvgaImageOptimizationAction {
   originalSizeBytes: number;
   originalUsageCount: number;
   canonicalResourceKey?: string;
+  spriteIndex?: number;
+  removedFrameCount?: number;
 }
 
 export interface SvgaImageOptimizationRedirect {
@@ -44,6 +47,12 @@ export interface SvgaImageOptimizationReport {
   optimizedSha256: string;
   originalImageCount: number;
   optimizedImageCount: number;
+  originalSpriteCount: number;
+  optimizedSpriteCount: number;
+  originalFrameEntityCount: number;
+  optimizedFrameEntityCount: number;
+  removedAllZeroSpriteCount: number;
+  removedAllZeroFrameEntityCount: number;
   removedResourceKeys: readonly string[];
   redirectedResourceReferences: readonly SvgaImageOptimizationRedirect[];
   actions: readonly SvgaImageOptimizationAction[];
@@ -86,12 +95,18 @@ interface KnownMoviePayload {
     frames?: number;
   };
   images?: Record<string, Uint8Array>;
-  sprites?: Array<{
-    imageKey?: string;
-    frames?: unknown[];
-    matteKey?: string;
-  }>;
+  sprites?: KnownSprite[];
   audios?: unknown[];
+}
+
+interface KnownFrame {
+  alpha?: number;
+}
+
+interface KnownSprite {
+  imageKey?: string;
+  frames?: KnownFrame[];
+  matteKey?: string;
 }
 
 interface ImageResourceFacts {
@@ -100,6 +115,13 @@ interface ImageResourceFacts {
   sha256: string;
   sizeBytes: number;
   usageCount: number;
+}
+
+interface AllZeroSpriteRemoval {
+  sourceIndex: number;
+  imageKey: string;
+  frameCount: number;
+  proofDigest: string;
 }
 
 export async function optimizeSvgaImageResources(
@@ -122,17 +144,20 @@ export async function optimizeSvgaImageResources(
     fromResourceKey,
     toResourceKey
   ]));
-  const optimizedSprites = sprites.map((sprite) => ({
+  const redirectedSprites = sprites.map((sprite) => ({
     ...sprite,
     imageKey: redirectResourceKey(sprite.imageKey, redirectMap),
     matteKey: redirectResourceKey(sprite.matteKey, redirectMap)
   }));
+  const removedAllZeroSprites = allZeroSpriteRemovals(redirectedSprites);
+  const removedSpriteIndices = new Set(removedAllZeroSprites.map(({ sourceIndex }) => sourceIndex));
+  const optimizedSprites = redirectedSprites.filter((_, index) => !removedSpriteIndices.has(index));
   const usageAfterRedirect = usageCounts(Object.keys(images), optimizedSprites);
   const removedResourceKeys = Object.keys(images)
     .filter((resourceKey) => (usageAfterRedirect.get(resourceKey) ?? 0) === 0)
     .sort();
 
-  const actions = actionsForPlan(redirects, removedResourceKeys, facts);
+  const actions = actionsForPlan(redirects, removedResourceKeys, facts, removedAllZeroSprites);
   if (actions.length === 0) {
     throw new SvgaImageOptimizationError(
       "optimization_not_applicable",
@@ -165,7 +190,8 @@ export async function optimizeSvgaImageResources(
     optimizedPayload: optimizedDecoded,
     facts,
     redirects,
-    removedResourceKeys
+    removedResourceKeys,
+    removedAllZeroSprites
   });
   if (!report.passed) {
     throw new SvgaImageOptimizationError(
@@ -193,18 +219,25 @@ function buildOptimizationReport(input: {
   facts: readonly ImageResourceFacts[];
   redirects: readonly SvgaImageOptimizationRedirect[];
   removedResourceKeys: readonly string[];
+  removedAllZeroSprites: readonly AllZeroSpriteRemoval[];
 }): SvgaImageOptimizationReport {
   const originalImages = normalizeImages(input.originalPayload.images);
   const optimizedImages = normalizeImages(input.optimizedPayload.images);
-  const actions = actionsForPlan(input.redirects, input.removedResourceKeys, input.facts);
+  const actions = actionsForPlan(input.redirects, input.removedResourceKeys, input.facts, input.removedAllZeroSprites);
   const sourceSha256 = sha256(input.sourceBytes);
   const sourceSha256AfterOptimization = sha256(input.sourceBytes);
   const optimizedImageKeys = new Set(Object.keys(optimizedImages));
+  const originalSprites = input.originalPayload.sprites ?? [];
+  const optimizedSprites = input.optimizedPayload.sprites ?? [];
+  const removedSourceIndices = new Set(input.removedAllZeroSprites.map(({ sourceIndex }) => sourceIndex));
+  const expectedKeptSprites = originalSprites.filter((_, index) => !removedSourceIndices.has(index));
   const checks = [
     checkEqual("movie_version", input.originalPayload.version ?? "", input.optimizedPayload.version ?? "", "MovieEntity.version must not change."),
     checkDigest("movie_params", input.originalPayload.params ?? {}, input.optimizedPayload.params ?? {}, "Movie params must not change."),
-    checkEqual("sprite_count", input.originalPayload.sprites?.length ?? 0, input.optimizedPayload.sprites?.length ?? 0, "Sprite count must not change."),
-    checkDigest("sprite_non_reference_fields", spritesWithoutResourceReferences(input.originalPayload.sprites), spritesWithoutResourceReferences(input.optimizedPayload.sprites), "Only sprite imageKey and matteKey references may change."),
+    checkEqual("sprite_count_after_safe_pruning", expectedKeptSprites.length, optimizedSprites.length, "Only fully invisible runtime sprites may be pruned."),
+    checkEqual("removed_sprites_all_zero_alpha", [], nonZeroRemovedSpriteIndices(originalSprites, input.removedAllZeroSprites), "Removed runtime sprites must have alpha zero for every frame record."),
+    checkEqual("frame_entity_count_after_safe_pruning", frameEntityCount(expectedKeptSprites), frameEntityCount(optimizedSprites), "Only frame records belonging to fully invisible runtime sprites may be removed."),
+    checkDigest("sprite_non_reference_fields", spritesWithoutResourceReferences(expectedKeptSprites), spritesWithoutResourceReferences(optimizedSprites), "Only sprite imageKey and matteKey references plus proven all-zero sprite removals may change."),
     checkDigest("audio_entries", input.originalPayload.audios ?? [], input.optimizedPayload.audios ?? [], "Audio entries must not change."),
     checkEqual("removed_resources_absent", input.removedResourceKeys, input.removedResourceKeys.filter((key) => !optimizedImageKeys.has(key)), "Removed image resources must be absent from the exported SVGA."),
     checkEqual("image_references_closed", [], danglingReferences(input.optimizedPayload.sprites, optimizedImageKeys), "Every imageKey and matteKey reference must resolve to a remaining image resource."),
@@ -222,6 +255,12 @@ function buildOptimizationReport(input: {
     optimizedSha256: sha256(input.optimizedBytes),
     originalImageCount: Object.keys(originalImages).length,
     optimizedImageCount: Object.keys(optimizedImages).length,
+    originalSpriteCount: originalSprites.length,
+    optimizedSpriteCount: optimizedSprites.length,
+    originalFrameEntityCount: frameEntityCount(originalSprites),
+    optimizedFrameEntityCount: frameEntityCount(optimizedSprites),
+    removedAllZeroSpriteCount: input.removedAllZeroSprites.length,
+    removedAllZeroFrameEntityCount: input.removedAllZeroSprites.reduce((total, removal) => total + removal.frameCount, 0),
     removedResourceKeys: input.removedResourceKeys,
     redirectedResourceReferences: input.redirects,
     actions,
@@ -231,6 +270,7 @@ function buildOptimizationReport(input: {
     changedFields: [
       ...input.removedResourceKeys.map((resourceKey) => `images.${resourceKey}`),
       ...input.redirects.map(({ fromResourceKey, toResourceKey }) => `sprite_references.${fromResourceKey}->${toResourceKey}`),
+      ...input.removedAllZeroSprites.map(({ sourceIndex }) => `sprites.${sourceIndex}`),
       "zlib_bytes",
       "protobuf_serialization"
     ],
@@ -285,6 +325,50 @@ function imageFacts(
     .sort((left, right) => left.resourceKey.localeCompare(right.resourceKey));
 }
 
+function allZeroSpriteRemovals(sprites: readonly KnownSprite[]): AllZeroSpriteRemoval[] {
+  return sprites.flatMap((sprite, index) => {
+    const frames = sprite.frames ?? [];
+    if (frames.length === 0 || !frames.every((frame) => frameAlpha(frame) <= 0)) {
+      return [];
+    }
+    return [{
+      sourceIndex: index,
+      imageKey: sprite.imageKey || `sprite_${index}`,
+      frameCount: frames.length,
+      proofDigest: digest({
+        sourceIndex: index,
+        imageKey: sprite.imageKey ?? "",
+        matteKey: sprite.matteKey ?? "",
+        frameAlphas: frames.map(frameAlpha)
+      })
+    }];
+  });
+}
+
+function nonZeroRemovedSpriteIndices(
+  sprites: readonly KnownSprite[],
+  removals: readonly AllZeroSpriteRemoval[]
+): number[] {
+  return removals
+    .filter(({ sourceIndex }) => !isAllZeroSprite(sprites[sourceIndex]))
+    .map(({ sourceIndex }) => sourceIndex)
+    .sort((left, right) => left - right);
+}
+
+function isAllZeroSprite(sprite: KnownSprite | undefined): boolean {
+  const frames = sprite?.frames ?? [];
+  return frames.length > 0 && frames.every((frame) => frameAlpha(frame) <= 0);
+}
+
+function frameAlpha(frame: KnownFrame | undefined): number {
+  const alpha = frame?.alpha;
+  return typeof alpha === "number" && Number.isFinite(alpha) ? alpha : 0;
+}
+
+function frameEntityCount(sprites: readonly KnownSprite[]): number {
+  return sprites.reduce((total, sprite) => total + (sprite.frames?.length ?? 0), 0);
+}
+
 function actionForRedirect(
   redirect: SvgaImageOptimizationRedirect,
   facts: readonly ImageResourceFacts[]
@@ -303,15 +387,31 @@ function actionForRedirect(
 function actionsForPlan(
   redirects: readonly SvgaImageOptimizationRedirect[],
   removedResourceKeys: readonly string[],
-  facts: readonly ImageResourceFacts[]
+  facts: readonly ImageResourceFacts[],
+  removedAllZeroSprites: readonly AllZeroSpriteRemoval[]
 ): SvgaImageOptimizationAction[] {
   const redirectedKeys = new Set(redirects.map(({ fromResourceKey }) => fromResourceKey));
   return [
     ...redirects.map((redirect) => actionForRedirect(redirect, facts)),
+    ...removedAllZeroSprites.map(actionForAllZeroSpriteRemoval),
     ...removedResourceKeys
       .filter((resourceKey) => !redirectedKeys.has(resourceKey))
       .map((resourceKey) => actionForRemoval(resourceKey, facts))
   ];
+}
+
+function actionForAllZeroSpriteRemoval(
+  removal: AllZeroSpriteRemoval
+): SvgaImageOptimizationAction {
+  return {
+    type: "remove_all_zero_sprite",
+    resourceKey: removal.imageKey,
+    originalSha256: removal.proofDigest,
+    originalSizeBytes: 0,
+    originalUsageCount: 1,
+    spriteIndex: removal.sourceIndex,
+    removedFrameCount: removal.frameCount
+  };
 }
 
 function actionForRemoval(

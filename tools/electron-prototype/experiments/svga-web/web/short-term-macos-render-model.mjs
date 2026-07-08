@@ -1,14 +1,30 @@
 export function overviewVisibleFacts(model) {
-  const requiredIds = new Set(["fileSize", "decodedMemory", "canvas", "fps", "assetCount"]);
-  return (model?.overview?.facts ?? []).filter((fact) => requiredIds.has(fact.id));
+  const requiredIds = new Set([
+    "fileSize",
+    "decodedMemory",
+    "runtimeStructure",
+    "runtimeObjectCount",
+    "animationFrameRecordCount",
+    "runtimeVisibleDensity",
+    "runtimeInvisibleRatio",
+    "sequenceFanoutRisk",
+    "canvas",
+    "fps",
+    "assetCount"
+  ]);
+  return (model?.overview?.facts ?? []).filter((fact) => {
+    if (!requiredIds.has(fact.id)) return false;
+    return fact.disclosure !== "moreInfo" || fact.status === "warning" || fact.status === "fail";
+  });
 }
 
 export function renderOverviewFactCellHtml(fact) {
   const status = overviewStatusCopy(fact.status);
+  const requirement = fact.requirement ? ` title="${escapeHtml(fact.requirement)}"` : "";
   return `
     <span>${escapeHtml(fact.label)}</span>
     <strong>${escapeHtml(fact.value)}</strong>
-    ${status ? `<button type="button" class="metricOptimizationEntry" data-component="MetricOptimizationEntry" data-action="open-optimization" aria-label="${escapeHtml(fact.label)}${escapeHtml(status)}"><b>${escapeHtml(status)}</b></button>` : ""}
+    ${status ? `<button type="button" class="metricOptimizationEntry" data-component="MetricOptimizationEntry" data-action="open-optimization" aria-label="${escapeHtml(fact.label)}${escapeHtml(status)}"${requirement}><b>${escapeHtml(status)}</b></button>` : ""}
   `;
 }
 

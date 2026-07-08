@@ -3237,9 +3237,16 @@ function validateOptimizationReportBinding(value, bytes) {
   if (value.optimizedSha256 !== optimizedSha256) return undefined;
   if (value.passed !== true || value.sourceUnchanged !== true || value.saveAsRequired !== true) return undefined;
   if (!Number.isInteger(value.originalImageCount) || !Number.isInteger(value.optimizedImageCount)) return undefined;
-  if (value.optimizedImageCount >= value.originalImageCount) return undefined;
+  if (!Number.isInteger(value.originalSpriteCount) || !Number.isInteger(value.optimizedSpriteCount)) return undefined;
+  if (!Number.isInteger(value.originalFrameEntityCount) || !Number.isInteger(value.optimizedFrameEntityCount)) return undefined;
+  if (!Number.isInteger(value.removedAllZeroSpriteCount)) return undefined;
+  const imageCountImproved = value.optimizedImageCount < value.originalImageCount;
+  const runtimeStructureImproved = value.optimizedSpriteCount < value.originalSpriteCount
+    || value.optimizedFrameEntityCount < value.originalFrameEntityCount;
+  if (!imageCountImproved && !runtimeStructureImproved) return undefined;
   if (!Array.isArray(value.actions) || value.actions.length === 0) return undefined;
-  if (!Array.isArray(value.removedResourceKeys) || value.removedResourceKeys.length === 0) return undefined;
+  if (!Array.isArray(value.removedResourceKeys)) return undefined;
+  if (value.removedResourceKeys.length === 0 && value.removedAllZeroSpriteCount <= 0) return undefined;
   if (!Array.isArray(value.invariantChecks) || value.invariantChecks.length === 0) return undefined;
   if (!value.invariantChecks.every((check) => check && typeof check === "object" && check.passed === true)) return undefined;
   return {
@@ -3249,6 +3256,10 @@ function validateOptimizationReportBinding(value, bytes) {
     optimizedSha256,
     originalImageCount: value.originalImageCount,
     optimizedImageCount: value.optimizedImageCount,
+    originalSpriteCount: value.originalSpriteCount,
+    optimizedSpriteCount: value.optimizedSpriteCount,
+    originalFrameEntityCount: value.originalFrameEntityCount,
+    optimizedFrameEntityCount: value.optimizedFrameEntityCount,
     actionCount: value.actions.length,
     removedResourceKeys: value.removedResourceKeys.slice(0, 100)
   };

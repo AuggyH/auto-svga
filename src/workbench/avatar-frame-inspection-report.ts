@@ -29,6 +29,10 @@ import { estimateDecodedMemory } from "./memory-estimation.js";
 import { diagnoseSequenceResidency } from "./sequence-residency-diagnostics.js";
 import { collectSequenceFrameEvidence } from "./sequence-frame-evidence.js";
 import {
+  diagnoseRuntimeStructure,
+  type RuntimeStructureDiagnostics
+} from "./runtime-structure-diagnostics.js";
+import {
   evaluateRoleAwareTransparentPadding,
   type RoleAwareTransparentPaddingPolicySummary
 } from "./role-aware-transparent-padding.js";
@@ -57,6 +61,7 @@ export interface AvatarFrameInspectionReport {
   asset: MotionAssetSummary;
   memoryEstimation: MotionAssetMemoryEstimation;
   memoryDiagnostics: RoleAwareMemoryDiagnostics;
+  runtimeStructureDiagnostics: RuntimeStructureDiagnostics;
   sequenceResidencyDiagnostics: SequenceResidencyDiagnostics;
   sequenceFrameEvidence: SequenceFrameEvidence;
   transparentPaddingPolicy?: RoleAwareTransparentPaddingPolicySummary;
@@ -95,6 +100,7 @@ export class AvatarFrameInspectionReportService {
     const { asset, specReport } = result.value;
     const memoryEstimation = estimateDecodedMemory(asset.resources);
     const memoryDiagnostics = diagnoseMemoryByRole(memoryEstimation);
+    const runtimeStructureDiagnostics = diagnoseRuntimeStructure(asset);
     const sequenceResidencyDiagnostics = diagnoseSequenceResidency(
       asset.resources,
       memoryEstimation
@@ -118,6 +124,7 @@ export class AvatarFrameInspectionReportService {
       asset,
       issues: specReport.issues,
       memoryEstimation,
+      runtimeStructureDiagnostics,
       sequenceResidencyDiagnostics,
       sequenceFrameEvidence
     });
@@ -127,6 +134,7 @@ export class AvatarFrameInspectionReportService {
         asset: summarize(asset),
         memoryEstimation,
         memoryDiagnostics,
+        runtimeStructureDiagnostics,
         sequenceResidencyDiagnostics,
         sequenceFrameEvidence,
         transparentPaddingPolicy,

@@ -144,7 +144,8 @@ async function toMotionAssetInfo(
       spriteIndex: sprite.index,
       imageKey: sprite.imageKey,
       matteKey: sprite.matteKey,
-      frameCount: sprite.frameCount
+      frameCount: sprite.frameCount,
+      frameAlphas: sprite.frameAlphas
     }
   }));
 

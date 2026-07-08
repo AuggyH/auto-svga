@@ -5,6 +5,7 @@ import type {
 } from "./asset-intelligence.js";
 import type { AvatarFrameInspectionReport } from "./avatar-frame-inspection-report.js";
 import type { MemoryRiskLevel, MotionResourceRole, WorkbenchIssue } from "./contracts.js";
+import type { RuntimeStructureDiagnostics } from "./runtime-structure-diagnostics.js";
 import { avatarFrameProductionSpec } from "./specs/index.js";
 
 export const SHORT_TERM_PRODUCT_MODEL_SCHEMA_VERSION = 1 as const;
@@ -13,12 +14,26 @@ export type ShortTermFactStatus = "pass" | "warning" | "fail" | "unknown";
 export type ShortTermOptimizationDisposition = "safeExecutable" | "reviewOnly" | "unsupported";
 
 export interface ShortTermFactRow {
-  id: "fileSize" | "decodedMemory" | "canvas" | "fps" | "assetCount" | "duration";
+  id:
+    | "fileSize"
+    | "decodedMemory"
+    | "runtimeStructure"
+    | "runtimeObjectCount"
+    | "animationFrameRecordCount"
+    | "runtimeVisibleDensity"
+    | "runtimeInvisibleRatio"
+    | "sequenceFanoutRisk"
+    | "canvas"
+    | "fps"
+    | "assetCount"
+    | "duration";
   label: string;
   value: string;
   requirement: string;
   status: ShortTermFactStatus;
   copyable: boolean;
+  disclosure?: "summary" | "moreInfo";
+  evidenceRefs?: readonly string[];
 }
 
 export interface ShortTermAssetRow {
@@ -131,7 +146,7 @@ export function createShortTermProductInspectionModel(
   return {
     schemaVersion: SHORT_TERM_PRODUCT_MODEL_SCHEMA_VERSION,
     source: "avatar-frame-inspection-report",
-    prdIds: ["S3", "S4", "S5", "S6", "S7", "S8", "S13", "S15"],
+    prdIds: ["S3", "S4", "S5", "S6", "S7", "S8", "S9", "S13", "S15", "S17", "S18"],
     overview: {
       profileId: report.profileId,
       profileLabel: report.profileLabel,
@@ -190,6 +205,7 @@ function factRows(report: AvatarFrameInspectionReport): ShortTermFactRow[] {
       requirement: "低风险 <= 4 MiB",
       status: memoryStatus(report.memoryEstimation.memoryRiskLevel)
     },
+    ...runtimeStructureFactRows(report.runtimeStructureDiagnostics),
     {
       id: "canvas",
       label: "画布",
@@ -220,6 +236,89 @@ function factRows(report: AvatarFrameInspectionReport): ShortTermFactRow[] {
     }
   ];
   return rows.map((fact) => ({ ...fact, copyable: true }));
+}
+
+function runtimeStructureFactRows(
+  diagnostics: RuntimeStructureDiagnostics | undefined
+): Array<Omit<ShortTermFactRow, "copyable">> {
+  if (!diagnostics) return [];
+  const risky = diagnostics.riskLevel === "medium" || diagnostics.riskLevel === "high";
+  const hasOptimizationCandidate = diagnostics.allZeroSpriteCount > 0;
+  const hasSequenceFanoutWarning = diagnostics.sequenceFrameFanout.maxSpriteReferencesInGroup >= 100;
+  return [
+    {
+      id: "runtimeStructure",
+      label: "运行时结构",
+      value: runtimeStructureSummaryValue(diagnostics),
+      requirement: "估算风险低",
+      status: memoryStatus(diagnostics.riskLevel),
+      disclosure: "summary",
+      evidenceRefs: diagnostics.evidence
+    },
+    {
+      id: "runtimeObjectCount",
+      label: "运行对象数",
+      value: formatNumber(diagnostics.spriteCount),
+      requirement: hasOptimizationCandidate
+        ? `${diagnostics.allZeroSpriteCount} 个全程不可见可清理`
+        : "数量越低越稳",
+      status: hasOptimizationCandidate ? "warning" : memoryStatus(diagnostics.riskLevel),
+      disclosure: "summary",
+      evidenceRefs: ["MovieEntity.sprites.length"]
+    },
+    {
+      id: "animationFrameRecordCount",
+      label: "动画帧记录数",
+      value: formatNumber(diagnostics.frameEntityCount),
+      requirement: hasOptimizationCandidate
+        ? `${formatNumber(diagnostics.allZeroFrameEntityCount)} 条全零记录可清理`
+        : "按运行对象逐帧累计",
+      status: hasOptimizationCandidate ? "warning" : memoryStatus(diagnostics.riskLevel),
+      disclosure: "summary",
+      evidenceRefs: ["sum(sprite.frames.length)"]
+    },
+    {
+      id: "sequenceFanoutRisk",
+      label: "序列帧展开风险",
+      value: diagnostics.sequenceFrameFanout.groupCount > 0
+        ? `${diagnostics.sequenceFrameFanout.groupCount} 组 / 峰值 ${diagnostics.sequenceFrameFanout.maxSpriteReferencesInGroup}`
+        : "未发现",
+      requirement: hasSequenceFanoutWarning ? "需复核" : "低风险",
+      status: hasSequenceFanoutWarning ? "warning" : "pass",
+      disclosure: hasSequenceFanoutWarning ? "summary" : "moreInfo",
+      evidenceRefs: diagnostics.sequenceFrameFanout.groups.map(({ groupId }) => `sequence-group:${groupId}`)
+    },
+    {
+      id: "runtimeVisibleDensity",
+      label: "活跃绘制峰值/平均",
+      value: `${formatNullableNumber(diagnostics.perFrameVisibleSpritePeak)} / ${formatNullableNumber(diagnostics.perFrameVisibleSpriteAverage)}`,
+      requirement: "按 alpha > 0 估算",
+      status: risky ? "warning" : "pass",
+      disclosure: risky ? "summary" : "moreInfo",
+      evidenceRefs: ["per-frame visible runtime object count"]
+    },
+    {
+      id: "runtimeInvisibleRatio",
+      label: "不可见记录占比",
+      value: formatPercent(diagnostics.invisibleFrameRatio),
+      requirement: diagnostics.lowAlphaFrameCount > 0
+        ? `低透明度 ${formatPercent(diagnostics.lowAlphaFrameRatio)}，需目标播放器 profile`
+        : "alpha = 0 记录占比",
+      status: hasOptimizationCandidate ? "warning" : "pass",
+      disclosure: hasOptimizationCandidate ? "summary" : "moreInfo",
+      evidenceRefs: ["FrameEntity.alpha"]
+    }
+  ];
+}
+
+function runtimeStructureSummaryValue(diagnostics: RuntimeStructureDiagnostics): string {
+  const riskCopy = {
+    low: "低风险",
+    medium: "中风险",
+    high: "高风险",
+    unknown: "未知"
+  }[diagnostics.riskLevel];
+  return `${riskCopy} / 估算 ${formatBytes(diagnostics.estimatedRuntimeStructureBytes)}`;
 }
 
 function imageAssetRows(
@@ -381,9 +480,12 @@ function findingTitle(finding: AssetIntelligenceFinding): string {
   const titles: Readonly<Record<string, string>> = {
     unreferenced_image_resource: "未引用图片可清理",
     duplicate_encoded_image_resource: "重复图片可合并",
+    all_zero_runtime_object_prunable: "全零运行对象可清理",
+    runtime_structure_complexity_risk: "运行时结构复杂",
     fully_transparent_image_resource: "全透明图片需检查",
     excessive_transparent_padding: "透明留白需复核",
     large_decoded_image_resource: "解码内存偏高",
+    sequence_frame_fanout_risk: "序列帧展开风险",
     sequence_frame_memory_concentration: "序列帧内存集中",
     sequence_frame_analysis_incomplete: "序列帧证据不足"
   };
@@ -394,9 +496,12 @@ function findingSummary(finding: AssetIntelligenceFinding): string {
   const summaries: Readonly<Record<string, string>> = {
     unreferenced_image_resource: "图片未被图层引用，可生成新 SVGA 后重新打开验证。",
     duplicate_encoded_image_resource: "相同内容图片可合并引用，输出必须通过重新打开验证。",
+    all_zero_runtime_object_prunable: "全程不可见的运行对象可机械移除，输出必须通过重新打开验证。",
+    runtime_structure_complexity_risk: "运行对象或动画帧记录偏高，需要和解码内存分开判断。",
     fully_transparent_image_resource: "全透明资源可能影响占位或时序，引用中资源需要人工复核。",
     excessive_transparent_padding: "裁剪需要位移补偿和视觉对比，短期不进入安全批量。",
     large_decoded_image_resource: "资源解码内存偏高，先作为建议项展示。",
+    sequence_frame_fanout_risk: "重复序列展开可能放大运行时结构，短期只做风险提示。",
     sequence_frame_memory_concentration: "短期只做优化建议，不执行序列帧闪帧修复。",
     sequence_frame_analysis_incomplete: "缺少哈希或透明度证据，自动优化保持关闭。"
   };
@@ -486,6 +591,14 @@ function formatDimensions(value: { width: number; height: number } | undefined):
 
 function formatNumber(value: number | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? String(value) : "-";
+}
+
+function formatNullableNumber(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) ? trimNumber(value) : "-";
+}
+
+function formatPercent(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) ? `${trimNumber(value * 100)}%` : "-";
 }
 
 function formatDuration(value: number | undefined): string {

@@ -13,6 +13,7 @@ import type {
   WorkbenchIssue
 } from "../workbench/contracts.js";
 import { estimateDecodedMemory } from "../workbench/memory-estimation.js";
+import type { RuntimeStructureDiagnostics } from "../workbench/runtime-structure-diagnostics.js";
 import { diagnoseSequenceResidency } from "../workbench/sequence-residency-diagnostics.js";
 import { collectSequenceFrameEvidence } from "../workbench/sequence-frame-evidence.js";
 
@@ -86,6 +87,44 @@ test("summarizes sequence memory and missing evidence as product-facing findings
   assert.equal(report.summary.unsupportedFindingCount, 1);
 });
 
+test("classifies runtime structure risk and safe all-zero pruning separately", () => {
+  const report = intelligence([
+    resource("seq_001", "sequence_frame"),
+    resource("seq_002", "sequence_frame"),
+    resource("seq_003", "sequence_frame")
+  ], [], [
+    layer("runtime-1", ["seq_001"]),
+    layer("runtime-2", ["seq_002"])
+  ], runtimeStructureDiagnostics());
+
+  assert.deepEqual(
+    report.findings
+      .filter(({ code }) => code.includes("runtime") || code.includes("fanout"))
+      .map(({ code, optimizationDisposition, safeToAutoOptimize }) => ({
+        code,
+        optimizationDisposition,
+        safeToAutoOptimize
+      })),
+    [
+      {
+        code: "runtime_structure_complexity_risk",
+        optimizationDisposition: "suggestion_only",
+        safeToAutoOptimize: false
+      },
+      {
+        code: "all_zero_runtime_object_prunable",
+        optimizationDisposition: "safe_auto_optimize",
+        safeToAutoOptimize: true
+      },
+      {
+        code: "sequence_frame_fanout_risk",
+        optimizationDisposition: "structural_risky",
+        safeToAutoOptimize: false
+      }
+    ]
+  );
+});
+
 test("sorts and filters resources by product table controls", () => {
   const report = intelligence([
     resource("a", "static_image", { width: 10, height: 10, sizeBytes: 50 }),
@@ -127,7 +166,8 @@ test("sorts and filters resources by product table controls", () => {
 function intelligence(
   resources: MotionResourceInfo[],
   issues: WorkbenchIssue[] = [],
-  layers: MotionAssetInfo["layers"] = []
+  layers: MotionAssetInfo["layers"] = [],
+  runtimeStructureDiagnostics?: RuntimeStructureDiagnostics
 ) {
   const asset: MotionAssetInfo = {
     format: "svga",
@@ -143,9 +183,45 @@ function intelligence(
     asset,
     issues,
     memoryEstimation,
+    runtimeStructureDiagnostics,
     sequenceResidencyDiagnostics: diagnoseSequenceResidency(resources, memoryEstimation),
     sequenceFrameEvidence: collectSequenceFrameEvidence(resources)
   });
+}
+
+function runtimeStructureDiagnostics(): RuntimeStructureDiagnostics {
+  return {
+    schemaVersion: 1,
+    spriteCount: 1200,
+    frameEntityCount: 144000,
+    alphaPositiveFrameCount: 120000,
+    zeroAlphaFrameCount: 24000,
+    lowAlphaFrameCount: 0,
+    targetPlayerVisibleFrameCount: null,
+    invisibleFrameRatio: 1 / 6,
+    lowAlphaFrameRatio: 0,
+    perFrameVisibleSpritePeak: 1100,
+    perFrameVisibleSpriteAverage: 1000,
+    estimatedRuntimeStructureBytes: 16 * 1024 * 1024,
+    estimatedRuntimeStructureMiB: 16,
+    riskLevel: "high",
+    allZeroSpriteCount: 1,
+    allZeroFrameEntityCount: 120,
+    allZeroSpriteResourceIds: ["seq_001"],
+    sequenceFrameFanout: {
+      groupCount: 1,
+      totalSpriteReferences: 120,
+      maxSpriteReferencesInGroup: 120,
+      groups: [{
+        groupId: "seq",
+        resourceIds: ["seq_001", "seq_002", "seq_003"],
+        spriteReferenceCount: 120,
+        estimatedInstanceCount: 40
+      }]
+    },
+    evidence: [],
+    limitations: []
+  };
 }
 
 function resource(

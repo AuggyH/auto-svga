@@ -7,6 +7,7 @@ import type {
 } from "../workbench/asset-intelligence.js";
 import type { AvatarFrameInspectionReport } from "../workbench/avatar-frame-inspection-report.js";
 import type { WorkbenchIssue } from "../workbench/contracts.js";
+import type { RuntimeStructureDiagnostics } from "../workbench/runtime-structure-diagnostics.js";
 import {
   createShortTermProductInspectionModel,
   isAutomaticImageKey,
@@ -17,12 +18,18 @@ test("short-term product model exposes Overview facts and grouped assets", () =>
   const model = createShortTermProductInspectionModel(reportFixture());
 
   assert.equal(model.schemaVersion, 1);
-  assert.deepEqual(model.prdIds, ["S3", "S4", "S5", "S6", "S7", "S8", "S13", "S15"]);
+  assert.deepEqual(model.prdIds, ["S3", "S4", "S5", "S6", "S7", "S8", "S9", "S13", "S15", "S17", "S18"]);
   assert.deepEqual(
     model.overview.facts.map(({ id, value, requirement, status }) => ({ id, value, requirement, status })),
     [
       { id: "fileSize", value: "640 KiB", requirement: "<= 512 KiB", status: "fail" },
       { id: "decodedMemory", value: "1.5 MiB", requirement: "低风险 <= 4 MiB", status: "pass" },
+      { id: "runtimeStructure", value: "低风险 / 估算 4 KiB", requirement: "估算风险低", status: "pass" },
+      { id: "runtimeObjectCount", value: "7", requirement: "数量越低越稳", status: "pass" },
+      { id: "animationFrameRecordCount", value: "42", requirement: "按运行对象逐帧累计", status: "pass" },
+      { id: "sequenceFanoutRisk", value: "1 组 / 峰值 4", requirement: "低风险", status: "pass" },
+      { id: "runtimeVisibleDensity", value: "3 / 2.5", requirement: "按 alpha > 0 估算", status: "pass" },
+      { id: "runtimeInvisibleRatio", value: "16.7%", requirement: "alpha = 0 记录占比", status: "pass" },
       { id: "canvas", value: "300 x 300", requirement: "<= 300 x 300", status: "pass" },
       { id: "fps", value: "30", requirement: "<= 24", status: "fail" },
       { id: "assetCount", value: "9", requirement: "<= 32", status: "pass" },
@@ -214,6 +221,7 @@ function reportFixture(): AvatarFrameInspectionReport {
       byRole: {} as AvatarFrameInspectionReport["memoryDiagnostics"]["byRole"],
       sequenceFrameEstimatedDecodedBytes: 16 * 1024
     },
+    runtimeStructureDiagnostics: runtimeStructureDiagnostics(),
     sequenceResidencyDiagnostics: {
       sequenceGroupCount: 1,
       framesPerGroup: [{ groupId: "sparkle", frameCount: 4 }],
@@ -264,6 +272,46 @@ function reportFixture(): AvatarFrameInspectionReport {
       message: "FPS exceeds the active specification."
     }],
     calibrationNotes: []
+  };
+}
+
+function runtimeStructureDiagnostics(): RuntimeStructureDiagnostics {
+  return {
+    schemaVersion: 1,
+    spriteCount: 7,
+    frameEntityCount: 42,
+    alphaPositiveFrameCount: 35,
+    zeroAlphaFrameCount: 7,
+    lowAlphaFrameCount: 0,
+    targetPlayerVisibleFrameCount: null,
+    invisibleFrameRatio: 7 / 42,
+    lowAlphaFrameRatio: 0,
+    perFrameVisibleSpritePeak: 3,
+    perFrameVisibleSpriteAverage: 2.5,
+    estimatedRuntimeStructureBytes: 4096,
+    estimatedRuntimeStructureMiB: 4096 / (1024 * 1024),
+    riskLevel: "low",
+    allZeroSpriteCount: 0,
+    allZeroFrameEntityCount: 0,
+    allZeroSpriteResourceIds: [],
+    sequenceFrameFanout: {
+      groupCount: 1,
+      totalSpriteReferences: 4,
+      maxSpriteReferencesInGroup: 4,
+      groups: [{
+        groupId: "sparkle",
+        resourceIds: ["sparkle_000", "sparkle_001", "sparkle_002", "sparkle_003"],
+        spriteReferenceCount: 4,
+        estimatedInstanceCount: 1
+      }]
+    },
+    evidence: [
+      "spriteCount=7",
+      "frameEntityCount=42"
+    ],
+    limitations: [
+      "target_player_low_alpha_visibility_profile_not_configured"
+    ]
   };
 }
 
