@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "handoffId": "PM-20260708-drag-decision-overlay",
+  "status": "Fix Ready",
+  "branch": "agent/codex/short-term-preview-qa-20260708",
+  "fixCommit": "recorded_in_handoff_message",
+  "generatedAt": "2026-07-08T18:24:51+08:00",
+  "authority": {
+    "pmCommit": "f136b895",
+    "roadmapPath": "docs/product/PRODUCT_ROADMAP.md",
+    "designPath": "DESIGN.md",
+    "reviewPath": "docs/reviews/2026-07-08-codex-drag-decision-overlay-split-correction.md"
+  },
+  "interactionContract": {
+    "split": "top-bottom-75-25",
+    "openFilePrimaryZone": "top_75_percent",
+    "addCompareSecondaryZone": "bottom_25_percent",
+    "canvasCenterBelongsToOpenFile": true,
+    "lowerCenterBelongsToOpenFile": true,
+    "unsupportedFocusedZoneStillRejects": true
+  },
+  "runtimeEvidence": {
+    "source": ".artifacts/product/short-term/short-term-open-flow-proof.json",
+    "passed": true,
+    "dragDecisionSplit": "top-bottom-75-25",
+    "dragDecisionCenterPointOpen": true,
+    "dragDecisionLowerCenterPointOpen": true,
+    "dragDecisionSecondaryPointCompare": true,
+    "dragDecisionPointProofs": [
+      {
+        "id": "center-open",
+        "ratioX": 0.5,
+        "ratioY": 0.5,
+        "expectedZone": "open",
+        "focusZone": "open"
+      },
+      {
+        "id": "lower-center-open",
+        "ratioX": 0.5,
+        "ratioY": 0.7,
+        "expectedZone": "open",
+        "focusZone": "open"
+      },
+      {
+        "id": "secondary-compare",
+        "ratioX": 0.5,
+        "ratioY": 0.9,
+        "expectedZone": "compare",
+        "focusZone": "compare"
+      }
+    ],
+    "unsupportedDragRejected": true,
+    "unsupportedDropToastVisible": true
+  },
+  "validation": [
+    {
+      "command": "npm run build",
+      "result": "pass"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "result": "pass",
+      "note": "Required normal local permissions for 127.0.0.1 binding."
+    },
+    {
+      "command": "npm run desktop:short-term:design-system-check",
+      "result": "pass"
+    },
+    {
+      "command": "npm run desktop:smoke",
+      "result": "pass"
+    }
+  ],
+  "ownerLocalStableApp": {
+    "path": "/Users/huangtengxin/Applications/Auto SVGA.app",
+    "refreshedByThisChange": false,
+    "reason": "Current worktree has unrelated pre-existing dirty files; local stable promotion should happen from a clean packaging lane or clean worktree."
+  },
+  "handoffRequest": {
+    "target": "PM or QA lane",
+    "requestedRegression": [
+      "Drag a supported SVGA over an already-open preview at canvas center; expect Open File focus.",
+      "Drag a supported SVGA over lower-center around 70% height; expect Open File focus.",
+      "Drag a supported SVGA over the bottom secondary region around 90% height; expect Add As Compare File focus.",
+      "Drag an unsupported file over the center; expect unsupported red focused zone and `不支持的文件格式` toast on drop."
+    ]
+  }
+}

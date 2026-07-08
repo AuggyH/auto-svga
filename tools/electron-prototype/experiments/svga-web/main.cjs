@@ -498,6 +498,43 @@ function validateShortTermOpenFlowProof(value) {
   if (!isSha256(value.fixtureSha256)) return undefined;
   if (!Number.isInteger(value.sourceSizeBytes) || value.sourceSizeBytes <= 0) return undefined;
   if (value.pairedNormalProof !== "normal-runtime-proof.json") return undefined;
+  if (value.dragDecisionSplit !== "top-bottom-75-25") return undefined;
+  if (!Array.isArray(value.dragDecisionPointProofs) || value.dragDecisionPointProofs.length !== 3) return undefined;
+  const requiredDragDecisionPoints = new Map([
+    ["center-open", { ratioX: 0.5, ratioY: 0.5, expectedZone: "open" }],
+    ["lower-center-open", { ratioX: 0.5, ratioY: 0.7, expectedZone: "open" }],
+    ["secondary-compare", { ratioX: 0.5, ratioY: 0.9, expectedZone: "compare" }]
+  ]);
+  const dragDecisionPointProofs = value.dragDecisionPointProofs.map((point) => {
+    if (!point || typeof point !== "object" || Array.isArray(point)) return undefined;
+    const expected = requiredDragDecisionPoints.get(point.id);
+    if (!expected) return undefined;
+    const normalized = {
+      id: point.id,
+      ratioX: point.ratioX,
+      ratioY: point.ratioY,
+      expectedZone: point.expectedZone,
+      overlayVisible: point.overlayVisible === true,
+      status: String(point.status || ""),
+      focusZone: String(point.focusZone || ""),
+      labelCopy: String(point.labelCopy || "")
+    };
+    if (
+      normalized.ratioX !== expected.ratioX
+      || normalized.ratioY !== expected.ratioY
+      || normalized.expectedZone !== expected.expectedZone
+      || normalized.overlayVisible !== true
+      || normalized.status !== "supported"
+      || normalized.focusZone !== expected.expectedZone
+      || !isBoundedString(normalized.labelCopy, 160)
+      || !normalized.labelCopy.includes("打开新文件")
+      || !normalized.labelCopy.includes("添加为对比文件")
+    ) {
+      return undefined;
+    }
+    return normalized;
+  });
+  if (dragDecisionPointProofs.some((point) => !point)) return undefined;
   if (
     value.dragDropAttempted !== true
     || value.dragDropLoaded !== true
@@ -505,6 +542,9 @@ function validateShortTermOpenFlowProof(value) {
     || value.localOnly !== true
     || value.pathRedacted !== true
     || value.rendererFilesystemAccessClaimed !== false
+    || value.dragDecisionCenterPointOpen !== true
+    || value.dragDecisionLowerCenterPointOpen !== true
+    || value.dragDecisionSecondaryPointCompare !== true
     || value.dragDecisionOverlayVisible !== true
     || value.dragDecisionSupportedState !== true
     || value.dragDecisionCompareFocus !== true
@@ -534,6 +574,11 @@ function validateShortTermOpenFlowProof(value) {
     pathRedacted: true,
     rendererFilesystemAccessClaimed: false,
     dragDecisionOverlayVisible: true,
+    dragDecisionSplit: "top-bottom-75-25",
+    dragDecisionPointProofs,
+    dragDecisionCenterPointOpen: true,
+    dragDecisionLowerCenterPointOpen: true,
+    dragDecisionSecondaryPointCompare: true,
     dragDecisionSupportedState: true,
     dragDecisionCompareFocus: true,
     dragDecisionOffersOpenAndCompare: true,

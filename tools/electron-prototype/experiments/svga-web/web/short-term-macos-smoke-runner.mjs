@@ -135,18 +135,41 @@ async function runShortTermSmoke({
   const supportedDragTransfer = new DataTransfer();
   supportedDragTransfer.items.add(file);
   const previewStageRect = nodes.previewStagePanel.getBoundingClientRect();
-  nodes.previewStagePanel.dispatchEvent(new DragEvent("dragover", {
-    bubbles: true,
-    cancelable: true,
-    clientX: previewStageRect.left + previewStageRect.width * 0.75,
-    clientY: previewStageRect.top + previewStageRect.height / 2,
-    dataTransfer: supportedDragTransfer
-  }));
-  await waitForSmokeFrame();
-  const supportedDragDecisionOverlayVisible = nodes.previewDragOverlay.hidden === false;
-  const supportedDragDecisionStatus = nodes.previewDragOverlay.dataset.status;
-  const supportedDragDecisionFocusZone = nodes.previewDragOverlay.dataset.focusZone;
-  const supportedDragDecisionCopy = nodes.previewDragOverlay.textContent.trim();
+  const dragPoint = (rect, xRatio, yRatio) => ({
+    clientX: rect.left + rect.width * xRatio,
+    clientY: rect.top + rect.height * yRatio
+  });
+  const supportedDragDecisionPointProofs = [];
+  const supportedDragDecisionPoints = [
+    { id: "center-open", ratioX: 0.5, ratioY: 0.5, expectedZone: "open" },
+    { id: "lower-center-open", ratioX: 0.5, ratioY: 0.7, expectedZone: "open" },
+    { id: "secondary-compare", ratioX: 0.5, ratioY: 0.9, expectedZone: "compare" }
+  ];
+  for (const point of supportedDragDecisionPoints) {
+    const { clientX, clientY } = dragPoint(previewStageRect, point.ratioX, point.ratioY);
+    nodes.previewStagePanel.dispatchEvent(new DragEvent("dragover", {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      dataTransfer: supportedDragTransfer
+    }));
+    await waitForSmokeFrame();
+    supportedDragDecisionPointProofs.push({
+      ...point,
+      overlayVisible: nodes.previewDragOverlay.hidden === false,
+      status: nodes.previewDragOverlay.dataset.status,
+      focusZone: nodes.previewDragOverlay.dataset.focusZone,
+      labelCopy: nodes.previewDragOverlay.textContent.trim()
+    });
+  }
+  const supportedDragDecisionLastPoint = supportedDragDecisionPointProofs.at(-1);
+  const supportedDragDecisionOverlayVisible = supportedDragDecisionPointProofs.every((point) => point.overlayVisible === true);
+  const supportedDragDecisionStatus = supportedDragDecisionPointProofs.every((point) => point.status === "supported")
+    ? "supported"
+    : supportedDragDecisionLastPoint?.status || "";
+  const supportedDragDecisionFocusZone = supportedDragDecisionLastPoint?.focusZone || "";
+  const supportedDragDecisionCopy = supportedDragDecisionLastPoint?.labelCopy || "";
   nodes.previewStagePanel.dispatchEvent(new DragEvent("dragleave", {
     bubbles: true,
     cancelable: true,
@@ -566,11 +589,12 @@ async function runShortTermSmoke({
   const unsupportedDragTransfer = new DataTransfer();
   unsupportedDragTransfer.items.add(unsupportedFile);
   const unsupportedPreviewStageRect = nodes.previewStagePanel.getBoundingClientRect();
+  const unsupportedDragPoint = dragPoint(unsupportedPreviewStageRect, 0.5, 0.5);
   nodes.previewStagePanel.dispatchEvent(new DragEvent("dragover", {
     bubbles: true,
     cancelable: true,
-    clientX: unsupportedPreviewStageRect.left + unsupportedPreviewStageRect.width * 0.25,
-    clientY: unsupportedPreviewStageRect.top + unsupportedPreviewStageRect.height / 2,
+    clientX: unsupportedDragPoint.clientX,
+    clientY: unsupportedDragPoint.clientY,
     dataTransfer: unsupportedDragTransfer
   }));
   await waitForSmokeFrame();
@@ -581,8 +605,8 @@ async function runShortTermSmoke({
   nodes.previewStagePanel.dispatchEvent(new DragEvent("drop", {
     bubbles: true,
     cancelable: true,
-    clientX: unsupportedPreviewStageRect.left + unsupportedPreviewStageRect.width * 0.25,
-    clientY: unsupportedPreviewStageRect.top + unsupportedPreviewStageRect.height / 2,
+    clientX: unsupportedDragPoint.clientX,
+    clientY: unsupportedDragPoint.clientY,
     dataTransfer: unsupportedDragTransfer
   }));
   await waitForSmokeCondition(() => (
@@ -614,6 +638,7 @@ async function runShortTermSmoke({
     supportedDragDecisionCopy,
     supportedDragDecisionFocusZone,
     supportedDragDecisionOverlayVisible,
+    supportedDragDecisionPointProofs,
     supportedDragDecisionStatus,
     unsupportedDragCopy,
     unsupportedDragFocusZone,

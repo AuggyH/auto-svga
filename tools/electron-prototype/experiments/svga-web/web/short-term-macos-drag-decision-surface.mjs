@@ -5,7 +5,7 @@ import {
 } from "./short-term-macos-drag-decision-model.mjs";
 
 const zoneLabels = {
-  open: "打开文件",
+  open: "打开新文件",
   compare: "添加为对比文件",
   unsupported: "不支持的文件格式"
 };
@@ -50,4 +50,3 @@ export function hideShortTermCanvasToast(nodes) {
   nodes.canvasToast.hidden = true;
   nodes.canvasToast.textContent = "";
 }
-

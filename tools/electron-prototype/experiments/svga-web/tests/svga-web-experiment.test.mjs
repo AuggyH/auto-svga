@@ -8,7 +8,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import { test } from "node:test";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import protobuf from "protobufjs";
 import { legacyBrowserBaselineAuditCsp, strictCsp, startSvgaWebExperimentServer } from "../server.mjs";
 import {
@@ -390,6 +390,28 @@ test("vendored svga-web asset is pinned and strict-CSP compatible", async () => 
   assert.equal(source.includes("eval("), false);
   assert.equal(source.includes("Function("), false);
   assert.match(await readFile(path.join(experimentRoot, "vendor/NOTICE.md"), "utf8"), /MIT/);
+});
+
+test("short-term drag decision hit testing keeps Open File as the primary top-bottom zone", async () => {
+  const dragDecisionModel = await import(pathToFileURL(path.join(
+    experimentRoot,
+    "web/short-term-macos-drag-decision-model.mjs"
+  )).href);
+  const target = {
+    getBoundingClientRect: () => ({
+      left: 10,
+      top: 20,
+      width: 400,
+      height: 200
+    })
+  };
+
+  assert.equal(dragDecisionModel.SHORT_TERM_DRAG_DECISION_OPEN_RATIO, 0.75);
+  assert.equal(dragDecisionModel.SHORT_TERM_DRAG_DECISION_COMPARE_RATIO, 0.25);
+  assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 120 }), "open");
+  assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 160 }), "open");
+  assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 390, clientY: 120 }), "open");
+  assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 200 }), "compare");
 });
 
 test("server uses bounded internal-trial CSP and keeps report API token-bound", async () => {
@@ -1138,6 +1160,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /<title>Auto SVGA<\/title>/);
   assert.match(page, /id="previewDragOverlay"/);
   assert.match(page, /id="compareDragOverlay"/);
+  assert.match(page, /data-drag-zone="open"><strong>打开新文件<\/strong>/);
   assert.match(page, /data-component="DragDecisionOverlay"/);
   assert.match(page, /id="canvasToast"/);
   assert.match(page, /data-component="CanvasToast"/);
@@ -1522,6 +1545,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /var\(--asv-drag-overlay-bg\)/);
   assert.match(shortTermModules, /var\(--asv-drag-supported-bg\)/);
   assert.match(shortTermModules, /var\(--asv-drag-unsupported-bg\)/);
+  assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-columns: 1fr/s);
+  assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-rows: 3fr 1fr/s);
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*backdrop-filter: var\(--asv-drag-overlay-backdrop-filter\)/s);
   assert.match(shortTermModules, /\.dragDecisionZone\s*\{[^}]*opacity: var\(--asv-drag-zone-opacity\)/s);
   assert.match(shortTermModules, /\.dragDecisionZone strong\s*\{[^}]*font-size: var\(--asv-drag-overlay-label-size\)/s);
@@ -1619,7 +1644,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /from "\.\/short-term-macos-compare-model\.mjs"|from "\.\/short-term-macos-compare-renderers\.mjs"|renderCompareInfoHtml|renderOptimizationCompareResultHtml|renderGeneralComparePlaceholderHtml|applyCompareSlotView|applyCompareTraceView|markCompareSlotLoaded|renderCompareInfoPanel/);
   assert.match(shortTermDragDecisionModel, /isSupportedShortTermDropFile/);
   assert.match(shortTermDragDecisionModel, /\.svga\$\/i/);
+  assert.match(shortTermDragDecisionModel, /SHORT_TERM_DRAG_DECISION_OPEN_RATIO = 0\.75/);
+  assert.match(shortTermDragDecisionModel, /SHORT_TERM_DRAG_DECISION_COMPARE_RATIO = 1 - SHORT_TERM_DRAG_DECISION_OPEN_RATIO/);
   assert.match(shortTermDragDecisionModel, /dragDecisionZoneForEvent/);
+  assert.match(shortTermDragDecisionModel, /event\.clientY < compareBoundary \? "open" : "compare"/);
+  assert.doesNotMatch(shortTermDragDecisionModel, /event\.clientX <|rect\.left \+ rect\.width \/ 2/);
   assert.match(shortTermDragDecisionSurface, /showShortTermDragDecisionOverlay/);
   assert.match(shortTermDragDecisionSurface, /showShortTermCanvasToast/);
   assert.match(shortTermDragDecisionSurface, /不支持的文件格式/);
@@ -2166,6 +2195,13 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /dragDropAttempted/);
   assert.match(shortTermSmokeProofModel, /dragDecisionOverlayVisible/);
   assert.match(shortTermSmokeProofModel, /dragDecisionOffersOpenAndCompare/);
+  assert.match(shortTermSmokeProofModel, /dragDecisionSplit: "top-bottom-75-25"/);
+  assert.match(shortTermSmokeProofModel, /dragDecisionCenterPointOpen/);
+  assert.match(shortTermSmokeProofModel, /dragDecisionLowerCenterPointOpen/);
+  assert.match(shortTermSmokeProofModel, /dragDecisionSecondaryPointCompare/);
+  assert.match(shortTermSmokeRunner, /id: "center-open", ratioX: 0\.5, ratioY: 0\.5, expectedZone: "open"/);
+  assert.match(shortTermSmokeRunner, /id: "lower-center-open", ratioX: 0\.5, ratioY: 0\.7, expectedZone: "open"/);
+  assert.match(shortTermSmokeRunner, /id: "secondary-compare", ratioX: 0\.5, ratioY: 0\.9, expectedZone: "compare"/);
   assert.match(shortTermSmokeProofModel, /unsupportedDropToastVisible/);
   assert.match(shortTermSmokeRunner, /collectShortTermOpenFlowProof/);
   assert.match(shortTermSmokeRunner, /supportedDragDecisionOverlayVisible/);
@@ -2237,6 +2273,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-replaceable-classification-proof"/);
   assert.match(main, /validateShortTermOpenFlowProof/);
   assert.match(main, /dragDecisionOverlayVisible/);
+  assert.match(main, /dragDecisionSplit !== "top-bottom-75-25"/);
+  assert.match(main, /dragDecisionCenterPointOpen/);
+  assert.match(main, /dragDecisionLowerCenterPointOpen/);
+  assert.match(main, /dragDecisionSecondaryPointCompare/);
   assert.match(main, /unsupportedDropSourceBytesRestoredAfterRecovery/);
   assert.match(main, /short-term-open-flow-proof\.json/);
   assert.match(main, /validateShortTermLoadFailureProof/);

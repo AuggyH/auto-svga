@@ -454,6 +454,7 @@ export function collectShortTermOpenFlowProof({
   supportedDragDecisionCopy,
   supportedDragDecisionFocusZone,
   supportedDragDecisionOverlayVisible,
+  supportedDragDecisionPointProofs,
   supportedDragDecisionStatus,
   unsupportedDragCopy,
   unsupportedDragFocusZone,
@@ -465,6 +466,13 @@ export function collectShortTermOpenFlowProof({
   unsupportedDropSourceSha256Before,
   unsupportedDropToastVisible
 }) {
+  const dragDecisionPointProofs = Array.isArray(supportedDragDecisionPointProofs)
+    ? supportedDragDecisionPointProofs
+    : [];
+  const pointById = new Map(dragDecisionPointProofs.map((point) => [point.id, point]));
+  const centerPoint = pointById.get("center-open");
+  const lowerCenterPoint = pointById.get("lower-center-open");
+  const secondaryPoint = pointById.get("secondary-compare");
   const proof = {
     schemaVersion: 1,
     proofId: "short-term-open-flow-proof",
@@ -480,10 +488,21 @@ export function collectShortTermOpenFlowProof({
     pathRedacted: !fileName.includes("/") && !fileName.includes("\\"),
     rendererFilesystemAccessClaimed: false,
     pairedNormalProof: "normal-runtime-proof.json",
+    dragDecisionSplit: "top-bottom-75-25",
+    dragDecisionPointProofs,
+    dragDecisionCenterPointOpen: centerPoint?.focusZone === "open"
+      && centerPoint?.status === "supported"
+      && centerPoint?.overlayVisible === true,
+    dragDecisionLowerCenterPointOpen: lowerCenterPoint?.focusZone === "open"
+      && lowerCenterPoint?.status === "supported"
+      && lowerCenterPoint?.overlayVisible === true,
+    dragDecisionSecondaryPointCompare: secondaryPoint?.focusZone === "compare"
+      && secondaryPoint?.status === "supported"
+      && secondaryPoint?.overlayVisible === true,
     dragDecisionOverlayVisible: supportedDragDecisionOverlayVisible,
     dragDecisionSupportedState: supportedDragDecisionStatus === "supported",
     dragDecisionCompareFocus: supportedDragDecisionFocusZone === "compare",
-    dragDecisionOffersOpenAndCompare: supportedDragDecisionCopy.includes("打开文件")
+    dragDecisionOffersOpenAndCompare: supportedDragDecisionCopy.includes("打开新文件")
       && supportedDragDecisionCopy.includes("添加为对比文件"),
     unsupportedDragOverlayVisible,
     unsupportedDragRejected: unsupportedDragStatus === "unsupported"
@@ -501,6 +520,10 @@ export function collectShortTermOpenFlowProof({
     proof.localOnly,
     proof.pathRedacted,
     proof.rendererFilesystemAccessClaimed === false,
+    proof.dragDecisionSplit === "top-bottom-75-25",
+    proof.dragDecisionCenterPointOpen,
+    proof.dragDecisionLowerCenterPointOpen,
+    proof.dragDecisionSecondaryPointCompare,
     proof.dragDecisionOverlayVisible,
     proof.dragDecisionSupportedState,
     proof.dragDecisionCompareFocus,
