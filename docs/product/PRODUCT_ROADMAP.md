@@ -136,7 +136,7 @@ decisions.
 | S6 | Show image thumbnails | Images show their image thumbnail. Sequence/frame groups show the existing four-grid thumbnail from the first four frames. Audio uses a fixed music icon when audio parsing is later supported. |
 | S7 | Identify replaceable elements by naming rule | In the short term, exclude automatic names such as `img_000` / `img_001`; non-automatic designer names are treated as replaceable imageKeys, then split into image or text replacement groups by deterministic key semantics. Text-like keys such as `text1`, `text2`, `from`, and `to` are text replacement targets, not image replacement rows. Future versions may add configurable whitelist/blacklist regular expressions. |
 | S8 | Detect optimization opportunities | Detect file-size, decoded-memory, and runtime-structure optimization opportunities, briefly explain each item, and estimate impact. Optimization entry points live inside the relevant file-information metrics, such as file size, memory estimate, and runtime structure risk, not as a persistent top-right summary button. |
-| S9 | Run real optimization | Produce optimized SVGA bytes, not a report-only recommendation. Allowed methods include image compression with quality controls, removing unreferenced resources, transparent-bound trimming, sequence-frame processing, FPS adjustment, canvas adjustment when production specs remain satisfied, all-zero sprite/frame pruning, target-player low-alpha pruning when validated, and sequence-fanout reduction when before/after playback comparison passes. |
+| S9 | Run real optimization | Produce optimized SVGA bytes, not a report-only recommendation. Allowed methods include image compression with quality controls, removing unreferenced resources, transparent-bound trimming, sequence-frame processing, FPS adjustment, canvas adjustment when production specs remain satisfied, all-zero sprite/frame pruning, target-player low-alpha pruning when validated, and sequence-fanout reduction when before/after playback comparison passes. A completed optimization must prove a positive effect on its declared target metrics. If a safe batch action produces larger output without a corresponding decoded-memory or runtime-structure improvement, it is a no-benefit or failed optimization, not an optimized result, and save actions must remain disabled. |
 | S10 | Enter optimization comparison flow | Clicking a metric-level optimization entry replaces the current right information surface with optimization detail or result comparison. Optimization result comparison shows before/after previews plus concrete optimization items and exposes `另存为 SVGA`, `覆盖保存`, and `放弃优化`; successful overwrite returns to Preview. |
 | S11 | Rename imageKey | From the asset panel, selecting an image and using the context menu Rename or `Cmd+R` enters key rename mode. Enter confirms. All related references must update and the app must produce updated SVGA bytes. In Preview, changing the key value is the only replaceable-element operation that creates dirty state. |
 | S12 | Preview replaceable images | In Preview mode, replaceable image elements can be replaced and reset with realtime playback preview. This does not switch to Edit mode. |
@@ -163,7 +163,7 @@ ready.
 | S6 | Image thumbnails, four-frame sequence thumbnails, and audio empty/icon states render without layout shift. | Rendered thumbnail proof for image, sequence, and no-audio states. |
 | S7 | Replaceable elements are designer-named imageKeys after short-term automatic-name exclusion, and text-semantic keys are split into the text group instead of the image group. | Replaceable-key classification report with included image, included text, and excluded automatic-name examples. |
 | S8 | File-size and memory rows expose metric-level optimization entries with brief reason and estimated impact; risky items are labelled as review-only. No top-right `2 项可优化` style summary button is shown. | Optimization-candidate report, metric-entry UI proof, no-summary-button proof. |
-| S9 | Running an enabled optimization produces new SVGA bytes and a report binding before/after metrics, changed items, safety checks, and output hash. | Optimized output, optimization report, inflate/decode proof, reopen proof. |
+| S9 | Running an enabled optimization produces new SVGA bytes and a report binding before/after metrics, changed items, safety checks, output hash, and net effect. File-size-targeting actions must not increase file size. Memory/runtime-targeting actions may increase file size only when the positive primary effect is explicit, meaningful, and accepted in the result UI. A one-click safe optimization with no positive target effect or with only negative deltas must fail closed or report no applicable benefit, with Save As and Overwrite Save disabled. | Optimized output, optimization report, before/after metric deltas, no-negative-net-effect proof, inflate/decode proof, reopen proof. |
 | S10 | Optimization action replaces the right information surface with detail/result context; result comparison exposes Save As SVGA, Overwrite Save, and Abandon Optimization. Successful overwrite returns to Preview. | Before/after comparison proof, result-action proof, overwrite-return proof, dirty/save-state proof. |
 | S11 | imageKey rename updates every related `imageKey` and `matteKey` reference, leaves no dangling reference, and produces updated SVGA bytes. | Rename report, reference-closure proof, round-trip decode proof, reopen proof. |
 | S12 | Replaceable image preview can replace and reset one designer-named imageKey in Preview mode without switching to Edit mode. | Runtime replacement proof, reset proof, mode-state proof. |
@@ -496,6 +496,22 @@ Optimization output rules:
 - The optimization result card must show what changed, before/after file size
   where available, estimated memory impact where available, and risky/skipped
   candidates.
+- The result card must not present a negative or no-benefit candidate as
+  successful optimization. `一键优化` / safe batch output is successful only
+  when at least one declared target metric improves and no non-target metric
+  regresses enough to contradict the optimization claim. For example, merging
+  byte-identical image resources that increases the final `.svga` size because
+  of serialization or compression overhead must be reported as no-benefit or
+  failed for file-size optimization, unless it also shows a clear decoded-memory
+  or runtime-structure improvement.
+- Short-term QA must maintain an optimization matrix across real production
+  samples and synthetic edge fixtures. The matrix should cover every
+  implemented optimization method, no-candidate files, negative/no-benefit
+  outcomes, and rare candidate conditions such as transparent-bound trimming,
+  sequence-frame processing, FPS adjustment, runtime-structure pruning, and
+  file-size-only duplicate cleanup. Optimization methods written in this PRD
+  but not implemented in a short-term build must not appear as executable
+  controls or future-feature teasers in that build.
 
 ### Drag And Unsupported Format Behavior
 
