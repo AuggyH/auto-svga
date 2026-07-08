@@ -3,11 +3,13 @@ export function playbackCanvasFitSize(input) {
   const movieHeight = Math.max(1, Number(input.movieHeight) || 1);
   const containerWidth = Math.max(1, Math.floor(Number(input.containerWidth) || movieWidth));
   const containerHeight = Math.max(1, Math.floor(Number(input.containerHeight) || movieHeight));
+  const fitScale = Math.min(1, Math.max(0.2, Number(input.fitScale) || 1));
   const aspect = movieWidth / movieHeight;
-  let width = Math.min(containerWidth, containerHeight * aspect);
+  let width = Math.min(containerWidth, containerHeight * aspect) * fitScale;
   let height = width / aspect;
-  if (height > containerHeight) {
-    height = containerHeight;
+  const scaledContainerHeight = containerHeight * fitScale;
+  if (height > scaledContainerHeight) {
+    height = scaledContainerHeight;
     width = height * aspect;
   }
   return {

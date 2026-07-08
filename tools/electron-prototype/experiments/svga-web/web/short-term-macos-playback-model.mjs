@@ -116,15 +116,24 @@ export function fitPlaybackCanvasToContainer(canvas, movieWidth, movieHeight) {
   const bounds = parent?.getBoundingClientRect?.();
   const maxWidth = Math.max(1, Math.floor(bounds?.width || parent?.clientWidth || safeMovieWidth));
   const maxHeight = Math.max(1, Math.floor(bounds?.height || parent?.clientHeight || safeMovieHeight));
+  const fitScale = playbackCanvasFitScale(canvas);
   const fit = playbackCanvasFitSize({
     containerWidth: maxWidth,
     containerHeight: maxHeight,
     movieWidth: safeMovieWidth,
-    movieHeight: safeMovieHeight
+    movieHeight: safeMovieHeight,
+    fitScale
   });
   canvas.style.setProperty("--asv-playback-aspect", `${safeMovieWidth} / ${safeMovieHeight}`);
   canvas.style.width = `${fit.width}px`;
   canvas.style.height = `${fit.height}px`;
   canvas.dataset.movieWidth = String(safeMovieWidth);
   canvas.dataset.movieHeight = String(safeMovieHeight);
+}
+
+function playbackCanvasFitScale(canvas) {
+  const target = canvas.parentElement ?? canvas;
+  const rawScale = getComputedStyle(target).getPropertyValue("--asv-playback-canvas-fit-scale").trim();
+  const scale = Number(rawScale);
+  return Number.isFinite(scale) ? scale : 1;
 }

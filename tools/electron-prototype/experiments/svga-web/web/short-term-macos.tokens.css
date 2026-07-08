@@ -225,6 +225,7 @@
   --asv-component-playback-progress-height: 4px;
   --asv-component-playback-progress-min-width: 160px;
   --asv-component-playback-time-width: 82px;
+  --asv-component-playback-canvas-fit-scale: 0.62;
   --asv-component-playback-control-shadow: none;
   --asv-component-playback-track-bg: var(--asv-color-surface-playback-track);
   --asv-component-playback-track-ring: inset 0 0 0 1px var(--asv-color-border-playback-track);
@@ -510,6 +511,7 @@
   --asv-playback-progress-height: var(--asv-component-playback-progress-height);
   --asv-playback-progress-min-width: var(--asv-component-playback-progress-min-width);
   --asv-playback-time-width: var(--asv-component-playback-time-width);
+  --asv-playback-canvas-fit-scale: var(--asv-component-playback-canvas-fit-scale);
   --asv-fact-grid-row-gap: var(--asv-component-fact-grid-row-gap);
   --asv-fact-grid-width: var(--asv-component-fact-grid-width);
   --asv-fact-grid-padding-block: var(--asv-component-fact-grid-padding-block);
