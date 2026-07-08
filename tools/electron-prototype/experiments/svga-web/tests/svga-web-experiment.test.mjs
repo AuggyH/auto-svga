@@ -1013,6 +1013,8 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /window\.on\("resize"/);
 	  assert.match(main, /scenario === "desktop-1440x900"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-preview-overview-wide"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
+	  assert.match(main, /scenario === "short-term-optimization-result"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
+	  assert.match(main, /scenario === "short-term-general-compare"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /"short-term-preview-overview-wide",/);
 	  assert.match(main, /scenario === "short-term-drag-decision-supported"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-drag-decision-unsupported"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
@@ -1696,9 +1698,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareMetricCell/);
   assert.match(shortTermModules, /\.optimizationMetricCell/);
   assert.match(shortTermModules, /\.compareSummary/);
+  assert.match(shortTermModules, /\.compareSummary\s*\{[^}]*border-bottom: 0/s);
   assert.match(shortTermModules, /\.compareModeHeader/);
   assert.match(shortTermModules, /\.compareMetricGrid/);
   assert.match(shortTermModules, /\.compareActions/);
+  assert.match(shortTermModules, /\.compareActions \.toolbarButton\.primary\s*\{[^}]*background: var\(--asv-action\)/s);
   assert.match(shortTermModules, /\.compareStage\s*\{[^}]*gap: var\(--asv-compare-canvas-gap\)/s);
   assert.match(shortTermModules, /\.dragDecisionOverlay/);
   assert.match(shortTermModules, /\.canvasToast/);
@@ -1903,6 +1907,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /export function renderOptimizationCompareResultHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePanelHtml/);
+  assert.match(shortTermCompareModel, /class="toolbarButton primary" type="button" data-action="back-preview">退出对比/);
   assert.match(shortTermCompareModel, /if \(!aModel \|\| !bModel\) return ""/);
   assert.match(shortTermCompareModel, /const rows = renderComparePairRows\(aModel, bModel\)/);
   assert.match(shortTermCompareModel, /rows \? `<section class="compareMetricGrid" aria-label="对比信息">/);

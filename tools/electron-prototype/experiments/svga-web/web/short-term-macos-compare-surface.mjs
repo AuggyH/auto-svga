@@ -75,7 +75,7 @@ export async function enterShortTermGeneralCompare({
     nodes,
     state,
     actions: [
-      `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
+      `<button class="toolbarButton primary" type="button" data-action="back-preview">退出对比</button>`
     ]
   });
   if (state.sourceBytes) {
@@ -116,7 +116,7 @@ export async function openShortTermCompareBFromHost({
     bModel: model,
     bDisplayName: opened.basename || "compare.svga",
     actions: [
-      `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
+      `<button class="toolbarButton primary" type="button" data-action="back-preview">退出对比</button>`
     ]
   });
   await refreshRecentFiles();
@@ -147,7 +147,7 @@ export async function loadShortTermCompareBFromDroppedFile({
     bModel: model,
     bDisplayName: file.name || "compare.svga",
     actions: [
-      `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
+      `<button class="toolbarButton primary" type="button" data-action="back-preview">退出对比</button>`
     ]
   });
 }

@@ -136,7 +136,7 @@ export function renderOptimizationCompareResultHtml(model) {
 export function renderGeneralComparePlaceholderHtml() {
   return renderGeneralComparePanelHtml({
     actions: [
-      `<button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>`
+      `<button class="toolbarButton primary" type="button" data-action="back-preview">退出对比</button>`
     ]
   });
 }

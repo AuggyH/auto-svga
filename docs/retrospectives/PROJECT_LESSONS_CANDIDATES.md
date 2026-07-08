@@ -549,3 +549,20 @@ promoted, watched, rejected, or kept historical.
   `short-term-drag-decision-unsupported.png` exposed an initial polluted capture
   with a save-failure banner; moving the capture earlier produced clean evidence.
 - Status: watch
+
+## 2026-07-09 - Treat screenshot viewport as part of visual evidence
+
+- Source task: `uiux-compare-result-rhythm-polish`
+- Situation: Compare and Optimization Compare smoke screenshots rendered at
+  `1440 x 1440` pixels, which made the right panel look disproportionately wide
+  and risked steering the visual polish toward the wrong layout fix.
+- Problem: A screenshot can be technically valid but visually misleading when
+  its viewport does not match the product surface being judged.
+- Candidate rule: Before using a smoke screenshot for UI/UX layout decisions,
+  verify its viewport and capture geometry. If the state is meant to represent
+  the default workbench, assert the default workbench size in host capture tests.
+- Evidence: Registering `short-term-general-compare` and
+  `short-term-optimization-result` for the default `1440 x 900` workbench
+  viewport changed the evidence from square launch-sized captures to usable
+  layout screenshots.
+- Status: watch
