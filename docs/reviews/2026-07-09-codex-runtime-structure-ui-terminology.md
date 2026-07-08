@@ -5,7 +5,9 @@
 Clarified that short-term runtime structure diagnostics must appear in the
 Preview right information surface with user-facing labels, that SVGA
 `SpriteEntity` must not be translated as `图层`, and that technical evidence
-should record baseline calculation methods for each metric.
+should record baseline calculation methods for each metric. Also clarified the
+right-information disclosure policy: secondary fields may live behind
+`更多信息`, but any risk-causing field must be visible by default.
 
 ## 2. Git state
 
@@ -29,7 +31,8 @@ should record baseline calculation methods for each metric.
 | 2 | Define friendly labels for runtime structure metrics. | Done |
 | 3 | Separate designer/editor layers from SVGA runtime sprites. | Done |
 | 4 | Add baseline calculation guidance for runtime object count, frame-record count, active visible counts, invisible ratio, sequence fanout risk, and estimated structure memory. | Done |
-| 5 | Avoid source/runtime code changes. | Done |
+| 5 | Allow secondary diagnostics behind `更多信息` while requiring risk-causing fields to stay visible. | Done |
+| 6 | Avoid source/runtime code changes. | Done |
 
 ## 5. Verification
 
@@ -55,6 +58,8 @@ Result: PASS.
 - `图层` remains reserved for designer/editor layers.
 - Technical evidence should calculate `运行对象数` from parsed runtime sprites
   and `动画帧记录数` from the sum of sprite frame-state records.
+- `更多信息` can hold secondary diagnostics, but the default summary must show
+  the field that explains the current warning or optimization candidate.
 
 ## 7. Risks
 
@@ -85,7 +90,8 @@ Result: PASS.
   not source authoring layers; runtime structure counts should be derived from
   decoded SVGA records rather than inferred from asset count.
 - Design / interaction lessons: Right-panel metrics should explain why a file
-  is risky without blaming the designer for creating thousands of layers.
+  is risky without blaming the designer for creating thousands of layers; risk
+  facts should not be hidden behind optional detail disclosure.
 - Process lessons: Clarify terminology before implementation begins.
 - Follow-up candidate for `docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md`:
   No

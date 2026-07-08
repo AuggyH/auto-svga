@@ -446,6 +446,19 @@ Runtime structure estimation:
   `活跃绘制峰值/平均` for per-frame visible sprite peak/average, `不可见记录占比`
   for invisible-frame ratio, and `序列帧展开风险` for repeated sequence-frame
   fanout.
+- The right information surface may use a `更多信息` disclosure control for
+  secondary diagnostics, but it must not hide active risk. Default collapsed
+  content should show the commonly useful summary: runtime-structure risk
+  level, `运行对象数`, `动画帧记录数`, estimated structure-memory/risk text, and
+  any metric that contributes to the current warning or optimization candidate.
+  Expanded detail may additionally show fields such as alpha-positive record
+  count, invisible or low-alpha ratios, visible peak/average, sequence fanout
+  group count, top repeated sequence groups, longest runtime-object frame list,
+  active target-player threshold profile, and calculation notes.
+- If any secondary field is the reason a file is classified as medium/high
+  risk or creates an optimization candidate, that field must be promoted into
+  the visible summary with a short explanation. Risk-causing facts cannot be
+  visible only after expanding `更多信息`.
 - Baseline calculation guidance:
   - `运行对象数` = number of parsed SVGA runtime sprite records
     (`MovieEntity.sprites.length`).
