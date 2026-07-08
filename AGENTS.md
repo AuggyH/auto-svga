@@ -310,6 +310,23 @@ See `docs/engineering/REPAIR_HEALTH_PROTOCOL.md`.
 - Worker PASS does not imply milestone PASS.
 - Heavy Electron, Web server, and packaged-App validation runs serially.
 
+## Project QA And Defect Workflow
+
+Real-use bugs, regressions, and acceptance failures must follow
+`docs/quality/PROJECT_TEST_ENGINEER_WORKFLOW.md`.
+
+- The Test Engineer lane owns intake, reproduction evidence, routing,
+  regression, and closure.
+- Implementation owners own fixes in their lane and return `Fix Ready`; they do
+  not close QA tickets directly.
+- Every tracked issue uses one ticket under `docs/quality/tickets/` and related
+  reports under `docs/quality/reports/`.
+- Chat handoff is transport only. Link the ticket and reports instead of
+  pasting long reproduction logs.
+- Route ambiguous scope, hidden/deferred features, and ownership disputes to
+  the Product Manager before implementation.
+- Do not commit real production assets while reproducing bugs.
+
 ## Token-saving Skills
 
 Repository-local reusable skills live under `codex-skills/`:

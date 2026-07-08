@@ -100,6 +100,7 @@ Create a new product document only when all are true:
 | What is Auto SVGA? | `docs/product/auto-svga-product-principles.md` | Positioning, anti-drift, input boundary, or editing boundary changes; must not override the main PRD |
 | What is the short-, mid-, and long-term product requirement plan? | `docs/product/PRODUCT_ROADMAP.md` | Product horizon, phase, requirement group, interaction class, or global non-goal changes |
 | What is the active mainline? | `docs/product/PRODUCT_ROADMAP.md` | Phase priority, scope, or delivery track changes |
+| How should real-use bugs be reproduced, routed, fixed, regressed, and closed across project threads? | `docs/quality/PROJECT_TEST_ENGINEER_WORKFLOW.md` | QA intake, ticket routing, owner handoff, regression, closure, or defect evidence rules change; must not override the main PRD |
 | What should guide short-term UI/UX redesign? | `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md` | macOS-first design input, screen inventory, menu/shortcut coverage, or design deliverable expectations change; must not override the main PRD |
 | How must short-term UI/UX design and code execution stay tokenized, componentized, and traceable? | `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md` | Design-system architecture, token/component rules, implementation gates, or S1-S16 design-to-code trace expectations change; must not override the main PRD |
 | What concrete tokens, variables, components, modules, and page-state compositions should short-term UI/UX work use? | `docs/product/SHORT_TERM_UI_UX_DESIGN_SYSTEM_SPEC.md` | Token inventory, component inventory, module composition, or page-state composition changes; must not override the main PRD |
@@ -128,6 +129,7 @@ Create a new product document only when all are true:
 | `docs/product/SHORT_TERM_UI_UX_DESIGN_SYSTEM_SPEC.md` | Active subordinate design-system inventory | Defines concrete tokens, variables, components, modules, and page-state composition; cannot redefine scope from the main PRD. |
 | `docs/product/SHORT_TERM_UI_UX_LOW_FIDELITY_IA.md` | Active subordinate low-fidelity IA | Defines navigation, state flow, wireframes, and S1-S16 surface trace; cannot redefine scope from the main PRD. |
 | `docs/product/AE_BRIDGE_PRODUCT_BRIEF.md` | Active subordinate production-bridge brief | Details AE bridge workflow, compatibility, package, bake, and validation planning; cannot redefine scope from the main PRD. |
+| `docs/quality/PROJECT_TEST_ENGINEER_WORKFLOW.md` | Active project QA workflow | Defines issue intake, reproduction, routing, fix handoff, regression, and closure; cannot redefine product scope from the main PRD. |
 | `docs/product/P*_IMPLEMENTATION_PLAN.md` | Stage implementation plans | May describe how to execute a stage; must not redefine product scope. |
 | `docs/loop/milestones/*.md` | Historical or active milestone contracts | Evidence/contract layer; not PRD authority. |
 | `docs/product/p6/**` | P6 worker context, evidence, and handoff material | Supporting evidence and lineage; not PRD authority. |
