@@ -629,17 +629,18 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--asv-settings-choice-gap);
-  padding: var(--asv-base-space-0);
-  border-radius: var(--asv-base-radius-0);
+  padding: var(--asv-settings-choice-group-padding);
+  border-radius: var(--asv-settings-choice-radius);
   background: var(--asv-settings-choice-group-bg);
 }
 
 .settingsChoice {
   position: relative;
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-columns: auto auto;
   place-items: center;
   align-content: center;
+  justify-content: center;
   gap: var(--asv-space-2);
   min-height: var(--asv-settings-choice-height);
   padding: 0 var(--asv-space-2);

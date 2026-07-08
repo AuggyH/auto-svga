@@ -1451,6 +1451,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-settings-sheet-width/);
   assert.match(shortTermTokens, /--asv-component-settings-choice-height/);
   assert.match(shortTermTokens, /--asv-component-settings-choice-gap/);
+  assert.match(shortTermTokens, /--asv-settings-choice-group-padding: var\(--asv-component-settings-choice-group-padding\)/);
   assert.match(shortTermTokens, /--asv-settings-choice-group-bg: var\(--asv-component-settings-choice-group-bg\)/);
   assert.match(shortTermTokens, /--asv-settings-choice-hover-bg: var\(--asv-component-settings-choice-hover-bg\)/);
   assert.match(shortTermTokens, /--asv-settings-choice-selected-bg: var\(--asv-component-settings-choice-selected-bg\)/);
@@ -1581,6 +1582,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.settingsHeader/);
   assert.match(shortTermComponents, /\.settingsHeaderIcon/);
   assert.match(shortTermComponents, /\.settingsChoiceGroup/);
+  assert.match(shortTermComponents, /\.settingsChoiceGroup\s*\{[^}]*padding: var\(--asv-settings-choice-group-padding\)/s);
   assert.match(shortTermComponents, /\.settingsChoiceGroup\s*\{[^}]*background: var\(--asv-settings-choice-group-bg\)/s);
   assert.match(shortTermComponents, /\.settingsChoice/);
   assert.match(shortTermComponents, /\.settingsChoiceIcon/);

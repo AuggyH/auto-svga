@@ -434,19 +434,20 @@
   --asv-component-settings-sheet-padding: var(--asv-space-5);
   --asv-component-settings-divider-width: 1px;
   --asv-component-settings-divider-color: var(--asv-color-border-subtle);
-  --asv-component-settings-choice-height: 88px;
-  --asv-component-settings-choice-gap: var(--asv-space-3);
-  --asv-component-settings-choice-icon-size: 18px;
+  --asv-component-settings-choice-height: 34px;
+  --asv-component-settings-choice-gap: var(--asv-space-1);
+  --asv-component-settings-choice-group-padding: var(--asv-space-1);
+  --asv-component-settings-choice-icon-size: 14px;
   --asv-component-settings-choice-icon-stroke-width: 1.8;
-  --asv-component-settings-choice-radius: var(--asv-radius-md);
+  --asv-component-settings-choice-radius: var(--asv-radius-sm);
   --asv-component-settings-choice-border-width: 1px;
-  --asv-component-settings-choice-group-bg: transparent;
+  --asv-component-settings-choice-group-bg: var(--asv-color-surface-control);
   --asv-component-settings-choice-bg: transparent;
-  --asv-component-settings-choice-hover-bg: color-mix(in srgb, var(--asv-color-status-info-soft) 36%, transparent);
-  --asv-component-settings-choice-selected-bg: color-mix(in srgb, var(--asv-color-status-info-soft) 54%, var(--asv-color-surface-panel-strong));
+  --asv-component-settings-choice-hover-bg: color-mix(in srgb, var(--asv-color-status-info-soft) 42%, transparent);
+  --asv-component-settings-choice-selected-bg: var(--asv-color-surface-control-selected);
   --asv-component-settings-choice-border: transparent;
-  --asv-component-settings-choice-selected-border: var(--asv-color-action-primary);
-  --asv-component-settings-choice-selected-shadow: none;
+  --asv-component-settings-choice-selected-border: transparent;
+  --asv-component-settings-choice-selected-shadow: var(--asv-shadow-control-selected);
   --asv-effect-drag-overlay-backdrop-filter: saturate(1.08) blur(8px);
 
   /* Compatibility aliases consumed by the current implementation. */
@@ -781,6 +782,7 @@
   --asv-settings-sheet-width: var(--asv-component-settings-sheet-width);
   --asv-settings-choice-height: var(--asv-component-settings-choice-height);
   --asv-settings-choice-gap: var(--asv-component-settings-choice-gap);
+  --asv-settings-choice-group-padding: var(--asv-component-settings-choice-group-padding);
   --asv-settings-choice-group-bg: var(--asv-component-settings-choice-group-bg);
   --asv-settings-choice-hover-bg: var(--asv-component-settings-choice-hover-bg);
   --asv-settings-choice-selected-bg: var(--asv-component-settings-choice-selected-bg);
