@@ -942,6 +942,26 @@ right-surface symbols. Request a new Figma read only if implementation exposes a
 specific visible mismatch that cannot be resolved from the current packet and
 foreground screenshots.
 
-Before any new R4 read, request Owner authorization and target one named module
-or component only. Do not read all atoms, all molecules, or all module
-descendants in one batch.
+Completed fourth R4 request:
+
+1. target dependency set:
+   - `Module/中间面板` (`238:4602`);
+   - `Module/播放控制栏/播放中` (`115:1098`);
+   - `Atom/模式切换器` (`95:37`);
+   - `Atom/图标按钮` (`105:23`);
+2. expected calls: 4;
+3. actual calls: 4;
+4. packet:
+   `docs/research/figma-mcp-read-packets/r4-canvas-playback-contracts-20260708.md`;
+5. status: complete for the first canvas/playback implementation pass.
+
+Important drift note: `Module/中间面板` still returned the old left/right
+drag-decision overlay. The current PRD top/bottom 25/75 decision-zone contract
+overrides the stale Figma detail. Use this packet for canvas, playback,
+mode-switch, and icon-button styling only.
+
+The next efficient project action is to implement one owner-visible
+canvas/playback visual pass from Batch 08, while preserving current product
+behavior and using the PRD top/bottom drag-decision contract. Do not request
+another Figma read before that pass unless implementation exposes a concrete
+missing state or mismatch.

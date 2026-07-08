@@ -728,3 +728,69 @@ Repository packet:
   for WP4 first pass and stayed within the five-call hard cap.
 - Treat generated React/Tailwind code only as a design-context carrier; convert
   it into the existing Electron HTML/CSS/token/component structure.
+
+## Batch 08 - R4 Canvas And Playback Contracts
+
+Date: 2026-07-08
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R4 - canvas, playback, mode switch, and icon-button contracts
+Owner approval: Standing authorization applied because local-day conservative
+usage was 0/160 before this batch.
+
+### Objective
+
+Read the next shared visual contracts needed for the short-term canvas-first
+client: center canvas module, bottom playback controls, top-center mode switch,
+and shared compact icon-button styling.
+
+### Planned Budget
+
+- Planned structured reads: 4
+- Hard cap: 5
+- Optional fifth read allowed only for one concrete child node if the first four
+  responses were unusable or truncated
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_get_design_context` | `238:4602` | Center canvas shell and embedded control context | Yes | 6.6146s | Complete usable module context |
+| 2 | `_get_design_context` | `115:1098` | Playback control bar contract | Yes | 5.2083s | Complete usable module context |
+| 3 | `_get_design_context` | `95:37` | Preview/Edit mode switch contract | Yes | 4.2247s | Complete usable atom context |
+| 4 | `_get_design_context` | `105:23` | Primary/secondary icon-button contract | Yes | 4.1495s | Complete usable atom context |
+
+Actual total MCP calls: 4
+
+Actual quota-counted reads, conservative: 4
+
+Measured MCP tool wall time total: 20.1971s
+
+Current local-day conservative usage after Batch 08: 4/160.
+
+### Result
+
+R4 captured enough canvas/playback contracts for the next implementation pass:
+
+- `Module/中间面板` (`238:4602`)
+- `Module/播放控制栏/播放中` (`115:1098`)
+- `Atom/模式切换器` (`95:37`)
+- `Atom/图标按钮` (`105:23`)
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r4-canvas-playback-contracts-20260708.md`
+
+### Verification
+
+- All planned reads completed.
+- No optional fifth read was used.
+- No response appeared truncated.
+- No Figma write operation, Figma Make action, or asset commit occurred.
+
+### Protocol Feedback
+
+- Component-targeted reads remain efficient for implementation-ready contracts.
+- The returned center module still contains the older left/right drag-decision
+  overlay. Current PRD top/bottom 25/75 drag-decision behavior overrides that
+  stale Figma detail.
