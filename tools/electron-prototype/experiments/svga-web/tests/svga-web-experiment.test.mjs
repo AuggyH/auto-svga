@@ -1428,7 +1428,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-thumbnail-size: 48px/);
   assert.match(shortTermTokens, /--asv-component-right-panel-width: 360px/);
   assert.match(shortTermTokens, /--asv-component-right-panel-padding: var\(--asv-space-6\)/);
-  assert.match(shortTermTokens, /--asv-component-file-header-width: 312px/);
+  assert.match(shortTermTokens, /--asv-component-file-header-width: auto/);
   assert.match(shortTermTokens, /--asv-component-file-header-action-width: 60px/);
   assert.match(shortTermTokens, /--asv-component-tab-selected-background: var\(--asv-color-surface-canvas\)/);
   assert.match(shortTermTokens, /--asv-component-tab-selected-ring: none/);
@@ -1627,7 +1627,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.toolbarCluster/);
   assert.match(shortTermModules, /\.rightPanel/);
   assert.match(shortTermModules, /box-shadow: inset var\(--asv-right-panel-separator-width\) 0 0 var\(--asv-right-panel-separator\)/);
-  assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*width: min\(var\(--asv-file-header-width\), 100%\)/s);
+  assert.match(shortTermModules, /\.fileIdentity\s*\{[^}]*max-width: 100%/s);
+  assert.match(shortTermModules, /\.toolbarClusterSave\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*width: var\(--asv-file-header-width\)/s);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*padding: var\(--asv-file-header-padding-block\) 0/s);
   assert.match(shortTermModules, /\.rightSurfaceBody\s*\{[^}]*background: var\(--asv-right-panel\)/s);
   assert.match(shortTermModules, /\.launchCanvas\s*\{[^}]*background:[^}]*var\(--asv-canvas-checker-pattern\)/s);
