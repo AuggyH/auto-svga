@@ -53,8 +53,6 @@ logic. It uses Figma as design evidence and the PRD as product authority.
   - `review/uiux-current-client-evidence-20260708/stable-after-wp5-net-guard-optimization-detail-display2.png`
   - `review/uiux-current-client-evidence-20260708/stable-after-wp5-net-guard-optimization-result-display2.png`
 - Local stable App refreshed at `/Users/huangtengxin/Applications/Auto SVGA.app`.
-- Current promoted archive SHA-256:
-  `ed27ae11a0308ff2366c5a7903169e5f48f1186d01faf09b7f83ef6a1c8b0c21`.
 
 ## Figma MCP Usage
 
