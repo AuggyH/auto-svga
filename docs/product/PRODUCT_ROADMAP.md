@@ -130,7 +130,7 @@ decisions.
 | --- | --- | --- |
 | S1 | Open SVGA locally | Launch opens from the central Open action, drag into the canvas, or macOS menu entry. In Preview, there is no visible `Open Another File` button; opening another file uses the macOS menu or drag-and-drop onto the canvas. |
 | S2 | Play SVGA and report abnormal states | Playback failures, parse failures, loading failures, and invalid files must show clear feedback. |
-| S3 | Show basic file information | File size, estimated decoded image memory, runtime structure risk, canvas size, FPS, and asset count. Decoded image memory and runtime structure risk must be separate so a file with small images but thousands of timeline objects is not presented as low-risk. |
+| S3 | Show basic file information | File size, estimated decoded image memory, runtime structure risk, canvas size, FPS, and asset count. Decoded image memory and runtime structure risk must be separate so a file with small images but thousands of timeline objects is not presented as low-risk. Runtime structure details live in the Preview right information surface and must use user-facing labels, not raw SVGA protocol names. |
 | S4 | Show production-spec status inside file information | Default Preview shows compact production-spec status inside file information without exposing target thresholds. Detailed current-vs-requirement values appear only in optimization detail/result context or another explicit detail state; do not create a separate production-spec module. |
 | S5 | Show all asset information | Images, sequence/video-like frame assets, audio group, and replaceable elements. Display thumbnail, file/key name, image dimensions when available, audio duration when available, and file size. |
 | S6 | Show image thumbnails | Images show their image thumbnail. Sequence/frame groups show the existing four-grid thumbnail from the first four frames. Audio uses a fixed music icon when audio parsing is later supported. |
@@ -144,7 +144,7 @@ decisions.
 | S14 | Save edited output | Save behavior is context-specific. Preview imageKey key rename dirty state appends `*` to the filename and enables Save As; after Save As succeeds, `*` disappears and Save As remains visible but disabled. Optimization result output exposes both Save As SVGA and Overwrite Save, plus Abandon Optimization. All save paths require output validation. |
 | S15 | Keep audio deferred | Audio parsing and duration are not required for the short-term version. If no audio is detected or audio parsing is not implemented, the audio group shows `当前文件暂无音频资产`. |
 | S16 | Show recent SVGA files | The launch page shows up to five low-emphasis recent SVGA records inside the canvas below Open/Drag actions, with a trash icon that clears all recent records. `File > Recent` shows up to ten records plus a clear-history action. Recent records must open the same local-file flow, hide full local paths by default, and fail gracefully when a file is missing or inaccessible. |
-| S17 | Detect runtime structure complexity | Inspect sprite count, FrameEntity count, alpha-positive frame count, target-player-visible frame count when a threshold profile exists, invisible/low-alpha ratios, sequence-frame fanout, per-frame visible sprite peak/average, and estimated runtime structure memory. This is a required production performance diagnostic because real production SVGA files can have small image memory but high mobile runtime memory. |
+| S17 | Detect runtime structure complexity | Inspect sprite count, FrameEntity count, alpha-positive frame count, target-player-visible frame count when a threshold profile exists, invisible/low-alpha ratios, sequence-frame fanout, per-frame visible sprite peak/average, and estimated runtime structure memory. Show the relevant summary in the Preview right information surface with understandable labels such as `运行对象数`, `动画帧记录数`, `活跃绘制峰值/平均`, and `序列帧展开风险`; keep raw terms such as `SpriteEntity` and `FrameEntity` in technical reports only. This is a required production performance diagnostic because real production SVGA files can have small image memory but high mobile runtime memory. |
 | S18 | Optimize runtime structure complexity | Provide output-producing optimization for supported runtime-structure problems. Safe items include all-zero sprite removal and newly unreferenced image cleanup. Review-required items include target-player alpha-threshold pruning, FPS resampling, sequence-fanout pruning, and sequence-fanout rebake/collapse. The app must show before/after structure metrics, file size, decoded memory, runtime risk, and playback comparison before Save As or Overwrite Save. |
 
 ### Short-term Acceptance Matrix
@@ -157,7 +157,7 @@ ready.
 | --- | --- | --- |
 | S1 | Launch Open, canvas drag-and-drop, and macOS menu opening all load the same local SVGA bytes without exposing arbitrary renderer filesystem access. Preview has no visible Open Another File button. Launch may show a subtle checkerboard idle background motion, but it must remain background-only and stop under reduced motion. | Open-flow proof, drag/drop proof, menu-entry proof, preview-surface no-open-button proof, drag-decision top/bottom primary Open zone proof, secondary Add Compare zone proof, launch idle-motion proof, reduced-motion fallback proof, path-redaction check. |
 | S2 | Invalid files, parse failures, loading failures, and playback failures show a visible user message and recover when a valid file is opened. | Invalid-file proof, recovery proof, player lifecycle cleanup proof. |
-| S3 | Preview information shows file size, estimated decoded image memory, runtime structure risk, canvas, FPS, and asset count for a parsed SVGA. | Inspection report and rendered right-information proof with decoded-memory and runtime-structure fields separated. |
+| S3 | Preview information shows file size, estimated decoded image memory, runtime structure risk, canvas, FPS, and asset count for a parsed SVGA. Runtime structure detail rows are visible in the right information surface when risk is present or the section is expanded, and use user-facing names rather than protocol terms. | Inspection report and rendered right-information proof with decoded-memory and runtime-structure fields separated, plus visible-label proof. |
 | S4 | Default Preview shows production-spec status inline without target thresholds; detailed actual/limit pairs appear only in optimization detail/result context or another explicit detail state. | Default status-only proof, optimization-detail actual/limit proof, current spec profile id. |
 | S5 | Asset information covers image resources, sequence/frame groups, audio group state, and replaceable elements without duplicating every image under replaceable elements. | Asset-list proof with resource counts and grouping. |
 | S6 | Image thumbnails, four-frame sequence thumbnails, and audio empty/icon states render without layout shift. | Rendered thumbnail proof for image, sequence, and no-audio states. |
@@ -171,7 +171,7 @@ ready.
 | S14 | Preview imageKey key rename dirty state shows filename `*` and enables Save As only; Save As success clears `*` and leaves Save As visible but disabled. Optimization result output separately supports Save As SVGA and Overwrite Save. | Preview dirty-star proof, Save As clean-state proof, optimization overwrite proof, reopen validation proof. |
 | S15 | Audio group does not block release; no-audio and unsupported-audio states are visible and truthful. | Audio-empty-state proof and known-limitation entry. |
 | S16 | Launch recent rows and `File > Recent` use real recent-file state, preserve Open/Drag as higher-priority actions, avoid full-path exposure by default, clear all history from the launch trash icon or menu action, and recover gracefully from missing files. | Recent-state persistence proof, launch five-row proof, menu ten-row proof, path-redaction proof, launch-trash clear proof, menu clear-history proof, missing-file recovery proof. |
-| S17 | SVGA files with small decoded image memory but high sprite/FrameEntity counts are flagged as runtime-structure risk and explain why mobile memory may be high. | Real or synthetic high-fanout SVGA report, sprite/FrameEntity counts, visible-frame density, estimated runtime-structure memory, and UI proof. |
+| S17 | SVGA files with small decoded image memory but high sprite/FrameEntity counts are flagged as runtime-structure risk and explain why mobile memory may be high. The user-facing UI must not label these protocol objects as `图层`; `图层` remains reserved for designer/editor layers. | Real or synthetic high-fanout SVGA report, sprite/FrameEntity counts, visible-frame density, estimated runtime-structure memory, right-information UI proof with friendly labels and a terminology-boundary check. |
 | S18 | Supported runtime-structure optimizations produce validated SVGA bytes and show before/after structure metrics and playback comparison. Risky or target-player-specific items stay review-only until validated. | Optimized output, before/after structure report, inflate/decode proof, reopen proof, playback comparison proof, target-player threshold note when applicable. |
 
 ### Replaceable Element Definition
@@ -439,7 +439,42 @@ Runtime structure estimation:
 - Runtime structure metrics include sprite count, total FrameEntity count,
   alpha-positive frame count, invisible-frame ratio, low-alpha frame ratio,
   sequence-frame fanout, per-frame visible sprite peak/average, and estimated
-  runtime structure memory.
+  runtime structure memory. These protocol names are internal/report names.
+- The Preview right information surface must expose the risk with friendly
+  labels and short explanations. Recommended user-facing Chinese labels are:
+  `运行对象数` for sprite count, `动画帧记录数` for total FrameEntity count,
+  `活跃绘制峰值/平均` for per-frame visible sprite peak/average, `不可见记录占比`
+  for invisible-frame ratio, and `序列帧展开风险` for repeated sequence-frame
+  fanout.
+- Baseline calculation guidance:
+  - `运行对象数` = number of parsed SVGA runtime sprite records
+    (`MovieEntity.sprites.length`).
+  - `动画帧记录数` = sum of every runtime sprite's frame-state records
+    (`sum(sprite.frames.length)`).
+  - `活跃绘制峰值/平均` = for each frame index, count runtime sprites whose
+    frame state is visible under the active threshold, then show the maximum
+    and average. Without a target-player profile, use alpha-positive
+    (`alpha > 0`) as the generic signal and keep target-threshold counts
+    separate.
+  - `不可见记录占比` = invisible frame-state records divided by total
+    frame-state records. Generic invisible means alpha is zero or absent in a
+    way that renders invisible; player-specific low-alpha thresholds require a
+    selected target-player profile.
+  - `序列帧展开风险` = a warning derived from repeated numbered sequence-frame
+    imageKeys or repeated sequence-like runtime objects, especially when unique
+    image count is low but runtime object and frame-record counts are high.
+  - `估算运行时结构内存` is advisory. A first implementation may estimate it
+    from frame-record count plus runtime-object overhead, calibrated by known
+    production cases, and must label it as an estimate rather than measured
+    phone memory.
+- Do not translate SVGA `SpriteEntity` as `图层` in this context. A designer or
+  editor layer is a source/authoring concept shown in Edit mode. A sprite is a
+  runtime playback object exported into SVGA, bound to an imageKey and a frame
+  list. One designer layer may become one sprite, several sprites, or part of a
+  larger sequence expansion. A `FrameEntity` is one per-frame state record for
+  a sprite, such as transform and alpha. User-facing copy can call the issue
+  `运行时结构复杂` or `动画对象过多`, but must not imply the designer created
+  thousands of layers.
 - The first calibrated production case is the lucky notice SVGA module: one
   file with only 27 images and about 1.10 MiB decoded image memory expanded to
   2883 sprites and 345,960 FrameEntity records, and was reported by client
