@@ -247,10 +247,12 @@ Owner-confirmed canvas direction, aligned with the PM-synced main PRD:
   entered from the macOS menu or from drag-and-drop decision overlays. If no
   file is open, the menu command enters a two-file compare selection state.
 - Dragging a supported file over an open preview shows a top/bottom two-zone
-  overlay instead of left/right halves. Open File is the primary large zone,
-  about 70%-80% of the canvas; Add As Compare File is the smaller secondary
-  zone, about 20%-30%. The canvas center belongs to Open File. The focused zone
-  turns green. Unsupported files turn the focused region red with
+  overlay instead of left/right halves. Add As Compare File is the top
+  secondary strip, defaulting to 25% of canvas height and allowed to vary
+  between 20%-30%. Open File is the lower primary zone, defaulting to 75% of
+  canvas height and allowed to vary between 70%-80%. The canvas center,
+  lower-center, and bottom-entry casual drop path belong to Open File. The
+  focused zone turns green. Unsupported files turn the focused region red with
   `不支持的文件格式`; dropping an
   unsupported file clears the canvas and shows the same text as a canvas toast.
 - Compare empty state keeps playback controls visible but disabled.

@@ -178,10 +178,12 @@ Design notes:
 - General compare must not have a persistent visible main-surface entry. It is
   entered from the macOS menu or drag-decision overlay.
 - Drag-decision overlay must use unequal top/bottom zones instead of left/right
-  halves. Open File is the primary large zone, about 70%-80% of the canvas; Add
-  As Compare File is the secondary smaller zone, about 20%-30%. This protects
-  bottom-to-center drag habits from accidentally entering compare. The canvas
-  center must belong to the Open File primary zone.
+  halves. Add As Compare File is the top secondary strip, defaulting to 25% of
+  canvas height and allowed to vary between 20%-30%. Open File is the lower
+  primary zone, defaulting to 75% of canvas height and allowed to vary between
+  70%-80%. This protects bottom-to-center drag habits from accidentally
+  entering compare. The canvas center, lower-center, and bottom-entry casual
+  drop path must belong to the Open File primary zone.
 - Export acceptance must not appear in the short-term surface.
 - Settings, logs, and dark/light mode must not appear as direct main-surface
   buttons in the short-term app.
@@ -438,9 +440,12 @@ Compare and drag/drop:
 - Compare empty state keeps bottom playback controls visible but disabled.
 - Loaded compare shows two canvases and one right comparison panel focused on
   differences.
-- Drag-decision overlay uses unequal top/bottom zones: Open File is the primary
-  large zone and Add As Compare File is the smaller secondary zone. The center
-  of the canvas belongs to Open File, not comparison.
+- Drag-decision overlay uses unequal top/bottom zones: Add As Compare File is
+  the top secondary strip, and Open File is the lower primary zone. The split
+  line defaults to 25% from the top; above the split is comparison, and on or
+  below the split is opening a new file.
+- The center of the canvas, lower-center, and bottom-entry casual drop path
+  belong to Open File, not comparison.
 - Drag overlays use a semi-transparent black base. Supported focus regions are
   green; unsupported focus regions are red and show `不支持的文件格式`.
 - Dropping an unsupported file clears the canvas and shows a centered canvas

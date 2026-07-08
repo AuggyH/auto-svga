@@ -39,7 +39,13 @@ macOS Dock/Desktop folder commonly enters from the bottom and lands near the
 lower-center of the window, so left/right split makes the user more likely to
 miss the decision affordance and accidentally enter comparison. The primary
 Open File target must occupy about 70%-80% of the canvas, and Add As Compare
-File must remain a smaller secondary target.
+File must remain a smaller secondary target. The exact hit-test contract is:
+Add As Compare File is the top secondary strip, defaulting to 25% of canvas
+height and allowed to vary between 20%-30%; Open File is the lower primary
+zone, defaulting to 75% of canvas height and allowed to vary between 70%-80%.
+The split line defaults to 25% from the top. The canvas center, lower-center,
+and bottom-entry casual drop path must resolve to Open File. Compare is an
+opt-in target that requires deliberately moving into the top secondary strip.
 
 Product documentation system:
 `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` defines the PM responsibility
@@ -274,7 +280,7 @@ than as hidden feature modules.
 | Save failed | Failure reason and retry/Save As recovery | Retry save or return to dirty state |
 | Edit reserved | Full left/center/right layout, layer list visible, right operation area empty | Switch back -> Preview ready |
 | Recent file missing | Launch or menu recent entry reports a missing/inaccessible file without stale metadata | Open another file or clear recent history -> Launch or Loading |
-| Drag decision overlay | Supported file drag over an open canvas shows unequal top/bottom zones: Open File as the primary large zone and Add As Compare File as the smaller secondary zone | Drop -> open or compare flow |
+| Drag decision overlay | Supported file drag over an open canvas shows unequal top/bottom zones: Add As Compare File as the top secondary strip, Open File as the lower primary zone | Drop -> open or compare flow |
 | Unsupported drag | Focused drag zone turns red with `不支持的文件格式`; dropping clears the canvas and shows a canvas toast | Open valid file -> Loading |
 
 No short-term state may expose export acceptance, sequence repair, advanced
@@ -335,9 +341,10 @@ General comparison mode focuses only on file and canvas comparison:
 - if no file is open, the macOS compare command enters a two-file selection
   flow
 - dragging a supported file over an open canvas offers Open File or Add As
-  Compare File through an unequal top/bottom decision overlay; Open File is the
-  primary large zone, about 70%-80% of the canvas, and Add As Compare File is
-  the secondary smaller zone, about 20%-30%
+  Compare File through an unequal top/bottom decision overlay; Add As Compare
+  File is the top secondary strip, defaulting to 25% of canvas height and
+  allowed to vary between 20%-30%; Open File is the lower primary zone,
+  defaulting to 75% of canvas height and allowed to vary between 70%-80%
 - loaded compare shows two canvases on the left and one right comparison panel
   that emphasizes A/B differences rather than two standalone file summaries
 
@@ -454,13 +461,19 @@ Optimization output rules:
 - Dragging a file over the canvas shows a semi-transparent black overlay.
 - When a file is dragged over an already-open preview, the overlay uses
   top/bottom decision zones instead of left/right halves.
-- Open File is the primary large zone and should occupy about 70%-80% of the
-  canvas. Add As Compare File is the secondary smaller zone and should occupy
-  about 20%-30%.
+- Add As Compare File is the top secondary strip. It defaults to 25% of the
+  canvas height and may vary only within 20%-30% if responsive constraints
+  require it.
+- Open File is the lower primary zone. It defaults to 75% of the canvas height
+  and may vary only within 70%-80% if responsive constraints require it.
+- The split line defaults to 25% from the top of the canvas. Above the split is
+  Add As Compare File; on and below the split is Open File.
 - The layout should account for the Product Owner's common drag path from the
   macOS Dock/Desktop folder upward into the app; lower-center drops should not
-  accidentally favor comparison, and the canvas center must belong to the Open
-  File primary zone.
+  accidentally favor comparison, and the canvas center, lower-center, and
+  bottom-entry casual drop path must belong to the Open File primary zone.
+- Compare is opt-in: users must deliberately drag into the top secondary strip
+  to add the file as the comparison file.
 - The pointer-focused zone is the focus region.
 - For supported files, the focus region turns semi-transparent green.
 - For unsupported files, the focus region turns semi-transparent red and shows

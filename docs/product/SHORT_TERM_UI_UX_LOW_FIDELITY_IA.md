@@ -203,20 +203,24 @@ Trace: S13.
 ┌────────────────────────────────────────────────────┐
 │ semi-transparent black overlay                     │
 │                                                    │
-│   Open File primary zone                           │
-│   about 70%-80% height                             │
-│   supported file: focused zone = green             │
-│                                                    │
-├────────────────────────────────────────────────────┤
 │   Add As Compare File secondary zone               │
-│   about 20%-30% height                             │
+│   top strip, default 25% height                    │
+│   allowed range: 20%-30% height                    │
+│   supported file: focused zone = green             │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│   Open File primary zone                           │
+│   lower zone, default 75% height                   │
+│   allowed range: 70%-80% height                    │
 │   unsupported file: focused zone = red             │
 └────────────────────────────────────────────────────┘
 ```
 
-The overlay is top/bottom, not left/right. Open File owns the larger target and
-the canvas center so bottom-to-center drag habits do not accidentally trigger
-compare.
+The overlay is top/bottom, not left/right. Add As Compare File owns the top
+secondary strip. Open File owns the lower primary target, the canvas center,
+the lower-center, and the bottom-entry casual drop path so bottom-to-center
+drag habits do not accidentally trigger compare. Compare is opt-in and requires
+deliberately moving into the top strip.
 
 Trace: S1, S2, S10.
 
