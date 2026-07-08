@@ -2,17 +2,21 @@
 
 .stateCard {
   position: relative;
-  width: min(440px, 80vw);
+  display: grid;
+  justify-items: center;
+  gap: var(--asv-state-surface-gap);
+  width: min(var(--asv-state-surface-width), 100%);
   overflow: hidden;
-  padding: var(--asv-space-6);
-  border: 1px solid var(--asv-border);
+  padding: var(--asv-state-surface-padding-block) var(--asv-state-surface-padding-inline);
+  border: 0;
   border-radius: var(--asv-radius-lg);
-  background: var(--asv-panel);
-  box-shadow: var(--asv-shadow-panel);
+  background: transparent;
+  box-shadow: none;
   text-align: center;
 }
 
 .stateCard::before {
+  display: none;
   content: "";
   position: absolute;
   inset: 0 0 auto;
@@ -21,26 +25,33 @@
 }
 
 .stateCard.error {
-  border-color: color-mix(in srgb, var(--asv-danger) 22%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel) 92%, var(--asv-color-danger-soft));
+  background: transparent;
 }
 
 .stateCard.error::before {
-  background: var(--asv-danger);
+  background: transparent;
 }
 
 .stateCard h1 {
-  margin: var(--asv-space-3) 0 var(--asv-space-2);
+  margin: var(--asv-state-surface-title-margin);
   font-size: var(--asv-type-size-state-title);
 }
 
 .stateCard p {
-  margin: 0 0 var(--asv-space-4);
+  max-width: var(--asv-state-surface-message-max-width);
+  margin: 0;
   color: var(--asv-muted);
 }
 
 .stateCard.error h1 {
-  color: var(--asv-danger);
+  color: var(--asv-text);
+}
+
+.stateRecoveryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--asv-space-2);
+  margin-block-start: var(--asv-state-surface-action-margin-block-start);
 }
 
 .factCell {

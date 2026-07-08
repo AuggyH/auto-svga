@@ -56,6 +56,11 @@
   background: var(--asv-window);
 }
 
+.macApp[data-app-state="loading"] .stateView,
+.macApp[data-app-state="failed"] .stateView {
+  grid-row: 1 / -1;
+}
+
 .previewView {
   display: grid;
   grid-template-columns: minmax(520px, 1fr) var(--asv-right-panel-width);

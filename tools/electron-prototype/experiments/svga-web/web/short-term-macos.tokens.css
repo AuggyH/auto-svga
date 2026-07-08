@@ -322,6 +322,13 @@
   --asv-component-empty-state-text-size: var(--asv-type-size-footnote);
   --asv-component-empty-state-text-line-height: 18px;
   --asv-component-empty-state-text-color: var(--asv-color-text-tertiary);
+  --asv-component-state-surface-width: 360px;
+  --asv-component-state-surface-gap: var(--asv-space-3);
+  --asv-component-state-surface-padding-block: var(--asv-space-5);
+  --asv-component-state-surface-padding-inline: var(--asv-space-4);
+  --asv-component-state-surface-title-margin: 0;
+  --asv-component-state-surface-message-max-width: 320px;
+  --asv-component-state-surface-action-margin-block-start: var(--asv-space-1);
   --asv-component-layer-row-min-height: 44px;
   --asv-component-layer-row-gap: var(--asv-space-2);
   --asv-component-layer-row-padding-block: var(--asv-space-1);
@@ -670,6 +677,13 @@
   --asv-empty-state-text-size: var(--asv-component-empty-state-text-size);
   --asv-empty-state-text-line-height: var(--asv-component-empty-state-text-line-height);
   --asv-empty-state-text-color: var(--asv-component-empty-state-text-color);
+  --asv-state-surface-width: var(--asv-component-state-surface-width);
+  --asv-state-surface-gap: var(--asv-component-state-surface-gap);
+  --asv-state-surface-padding-block: var(--asv-component-state-surface-padding-block);
+  --asv-state-surface-padding-inline: var(--asv-component-state-surface-padding-inline);
+  --asv-state-surface-title-margin: var(--asv-component-state-surface-title-margin);
+  --asv-state-surface-message-max-width: var(--asv-component-state-surface-message-max-width);
+  --asv-state-surface-action-margin-block-start: var(--asv-component-state-surface-action-margin-block-start);
   --asv-layer-row-min-height: var(--asv-component-layer-row-min-height);
   --asv-layer-row-gap: var(--asv-component-layer-row-gap);
   --asv-layer-row-padding-block: var(--asv-component-layer-row-padding-block);

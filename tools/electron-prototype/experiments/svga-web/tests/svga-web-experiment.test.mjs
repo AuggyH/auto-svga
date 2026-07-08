@@ -1503,6 +1503,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-replaceable-row-divider: var\(--asv-component-replaceable-row-divider\)/);
   assert.match(shortTermTokens, /--asv-replaceable-row-selected-bg: var\(--asv-component-replaceable-row-selected-background\)/);
   assert.match(shortTermTokens, /--asv-component-empty-state-width: 312px/);
+  assert.match(shortTermTokens, /--asv-component-state-surface-width/);
+  assert.match(shortTermTokens, /--asv-state-surface-width: var\(--asv-component-state-surface-width\)/);
   assert.match(shortTermTokens, /--asv-component-layer-row-min-height/);
   assert.match(shortTermTokens, /--asv-component-layer-row-divider: 0 solid transparent/);
   assert.match(shortTermTokens, /--asv-layer-list-gap: var\(--asv-component-layer-list-gap\)/);
@@ -1593,7 +1595,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.messageRow/);
   assert.match(shortTermComponents, /\.messageRow\[data-status="success"\]/);
   assert.doesNotMatch(shortTermComponents, /\.reservedNotice/);
-  assert.match(shortTermComponents, /\.stateCard\.error::before/);
+  assert.match(shortTermComponents, /\.stateCard\s*\{[^}]*width: min\(var\(--asv-state-surface-width\), 100%\)/s);
+  assert.match(shortTermComponents, /\.stateCard\s*\{[^}]*border: 0/s);
+  assert.match(shortTermComponents, /\.stateCard\s*\{[^}]*background: transparent/s);
+  assert.match(shortTermComponents, /\.stateCard\s*\{[^}]*box-shadow: none/s);
+  assert.match(shortTermComponents, /\.stateCard::before\s*\{[^}]*display: none/s);
+  assert.match(shortTermComponents, /\.stateRecoveryButton\s*\{[^}]*display: inline-flex/s);
+  assert.doesNotMatch(shortTermComponents, /\.stateCard\.error h1\s*\{[^}]*color: var\(--asv-danger\)/s);
+  assert.match(shortTermHtml, /class="toolbarButton primary stateRecoveryButton"/);
+  assert.match(shortTermHtml, /class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true"/);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="loading"\] \.stateView,[\s\S]*\.macApp\[data-app-state="failed"\] \.stateView\s*\{[^}]*grid-row: 1 \/ -1/s);
   assert.match(shortTermComponents, /\.appDialog\[data-status="warning"\]::before/);
   assert.match(shortTermComponents, /\.dialogHeader/);
   assert.match(shortTermComponents, /\.dialogActions/);
