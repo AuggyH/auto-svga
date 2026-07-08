@@ -431,6 +431,37 @@ async function runShortTermSmoke({
   await waitForSmokeCondition(() => state.view === "compare", 2_000);
   await waitForCanvasPixels(nodes.compareCanvasA, 2_500);
   await captureSmokeArtifact("short-term-general-compare");
+  const compareExitButton = nodes.compareInfoB?.querySelector("[data-action='back-preview']");
+  const compareExitButtonRect = compareExitButton?.getBoundingClientRect();
+  const compareTitlebarRect = document.querySelector(".titlebar")?.getBoundingClientRect();
+  const compareExitHitX = compareExitButtonRect ? compareExitButtonRect.left + compareExitButtonRect.width / 2 : 0;
+  const compareExitHitY = compareExitButtonRect ? compareExitButtonRect.top + compareExitButtonRect.height / 2 : 0;
+  const compareExitHitElement = compareExitButtonRect
+    ? document.elementFromPoint(compareExitHitX, compareExitHitY)
+    : null;
+  const compareExitButtonPointerHit = Boolean(
+    compareExitButton
+      && compareExitHitElement
+      && compareExitButton.contains(compareExitHitElement)
+  );
+  compareExitHitElement?.dispatchEvent(new MouseEvent("click", {
+    bubbles: true,
+    cancelable: true,
+    clientX: compareExitHitX,
+    clientY: compareExitHitY
+  }));
+  await waitForSmokeCondition(() => state.view === "preview", 2_000);
+  const compareExitButtonPointerProof = {
+    buttonRendered: Boolean(compareExitButton),
+    buttonTop: Math.round(compareExitButtonRect?.top ?? -1),
+    titlebarBottom: Math.round(compareTitlebarRect?.bottom ?? 0),
+    hitX: Math.round(compareExitHitX),
+    hitY: Math.round(compareExitHitY),
+    hitTargetTag: compareExitHitElement?.tagName?.toLowerCase() || "",
+    hitTargetAction: compareExitHitElement?.closest?.("[data-action]")?.dataset.action || "",
+    hitTargetIsExitButton: compareExitButtonPointerHit,
+    exitedToPreview: state.view === "preview"
+  };
   setMode("edit");
   await waitForSmokeCondition(() => state.view === "edit", 2_000);
   await waitForCanvasPixels(nodes.editCanvas, 2_500);
@@ -498,6 +529,7 @@ async function runShortTermSmoke({
     playbackUnchanged: (state.primaryPlayback?.playing === true) === focusedControlPlaybackBeforeSpace
   };
   const shortTermDesignInteractionProof = collectShortTermDesignInteractionProof({
+    compareExitButtonPointerProof,
     focusedControlSpaceProof,
     minimumPreviewCaptured: smokeArtifactCapture.lastSmokeArtifactCaptured(),
     nodes,

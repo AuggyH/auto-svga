@@ -647,6 +647,7 @@ export async function collectShortTermRightSurfaceNavigationProof({ setTab, wait
 }
 
 export function collectShortTermDesignInteractionProof({
+  compareExitButtonPointerProof,
   focusedControlSpaceProof,
   minimumPreviewCaptured,
   nodes,
@@ -730,6 +731,12 @@ export function collectShortTermDesignInteractionProof({
       && settingsAppearanceProof?.lightAppearanceScreenshotCaptured === true,
     appearanceMenuStateSynced: menuState?.appearance === "system",
     noMainSurfaceAppearanceButton: settingsAppearanceProof?.noMainSurfaceAppearanceButton === true,
+    compareExitButtonPointerProof,
+    compareExitButtonPointerPathWorks: compareExitButtonPointerProof?.buttonRendered === true
+      && compareExitButtonPointerProof?.hitTargetIsExitButton === true
+      && compareExitButtonPointerProof?.hitTargetAction === "back-preview"
+      && compareExitButtonPointerProof?.exitedToPreview === true,
+    compareExitButtonBelowTitlebar: compareExitButtonPointerProof?.buttonTop >= compareExitButtonPointerProof?.titlebarBottom,
     focusedControlSpaceProof,
     focusedControlSpaceNotGlobalPlayback: focusedControlSpaceProof?.targetAction === "mode-edit"
       && focusedControlSpaceProof?.targetStillFocused === true
@@ -754,6 +761,8 @@ export function collectShortTermDesignInteractionProof({
     proof.appearanceScreenshotsCaptured,
     proof.appearanceMenuStateSynced,
     proof.noMainSurfaceAppearanceButton,
+    proof.compareExitButtonPointerPathWorks,
+    proof.compareExitButtonBelowTitlebar,
     proof.focusedControlSpaceNotGlobalPlayback,
     proof.reducedMotionRulePresent,
     proof.minimumPreviewCaptured

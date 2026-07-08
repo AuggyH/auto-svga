@@ -892,7 +892,7 @@ canvas {
   align-content: start;
   gap: var(--asv-space-3);
   overflow: auto;
-  padding: var(--asv-space-3);
+  padding: calc(var(--asv-toolbar-height) + var(--asv-space-3)) var(--asv-space-3) var(--asv-space-3);
   background: var(--asv-right-panel);
   box-shadow: inset var(--asv-right-panel-separator-width) 0 0 var(--asv-right-panel-separator);
   scrollbar-gutter: stable;

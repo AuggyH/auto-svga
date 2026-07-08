@@ -763,6 +763,39 @@ function validateShortTermDesignInteractionProof(value) {
     settingsAppearanceProof.settingsDialogClosed,
     settingsAppearanceProof.noMainSurfaceAppearanceButton
   ].every(Boolean)) return undefined;
+  if (!value.compareExitButtonPointerProof || typeof value.compareExitButtonPointerProof !== "object" || Array.isArray(value.compareExitButtonPointerProof)) {
+    return undefined;
+  }
+  const compareExitButtonPointerProof = {
+    buttonRendered: value.compareExitButtonPointerProof.buttonRendered === true,
+    buttonTop: Number.isFinite(value.compareExitButtonPointerProof.buttonTop)
+      ? Math.round(value.compareExitButtonPointerProof.buttonTop)
+      : -1,
+    titlebarBottom: Number.isFinite(value.compareExitButtonPointerProof.titlebarBottom)
+      ? Math.round(value.compareExitButtonPointerProof.titlebarBottom)
+      : 0,
+    hitX: Number.isFinite(value.compareExitButtonPointerProof.hitX)
+      ? Math.round(value.compareExitButtonPointerProof.hitX)
+      : 0,
+    hitY: Number.isFinite(value.compareExitButtonPointerProof.hitY)
+      ? Math.round(value.compareExitButtonPointerProof.hitY)
+      : 0,
+    hitTargetTag: String(value.compareExitButtonPointerProof.hitTargetTag || ""),
+    hitTargetAction: String(value.compareExitButtonPointerProof.hitTargetAction || ""),
+    hitTargetIsExitButton: value.compareExitButtonPointerProof.hitTargetIsExitButton === true,
+    exitedToPreview: value.compareExitButtonPointerProof.exitedToPreview === true
+  };
+  if (
+    !isBoundedString(compareExitButtonPointerProof.hitTargetTag, 40)
+    || !isBoundedString(compareExitButtonPointerProof.hitTargetAction, 80)
+    || compareExitButtonPointerProof.buttonRendered !== true
+    || compareExitButtonPointerProof.hitTargetIsExitButton !== true
+    || compareExitButtonPointerProof.hitTargetAction !== "back-preview"
+    || compareExitButtonPointerProof.exitedToPreview !== true
+    || compareExitButtonPointerProof.buttonTop < compareExitButtonPointerProof.titlebarBottom
+  ) {
+    return undefined;
+  }
   const captureStateByArtifact = new Map(surfaceCaptureStates.map((item) => [item.artifactName, item]));
   const requiredCaptureStates = [
     ["short-term-preview-optimization", "optimization", "panelOptimization"],
@@ -792,6 +825,8 @@ function validateShortTermDesignInteractionProof(value) {
     "appearanceSwitchingWorks",
     "appearanceMenuStateSynced",
     "noMainSurfaceAppearanceButton",
+    "compareExitButtonPointerPathWorks",
+    "compareExitButtonBelowTitlebar",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",
     "passed"
@@ -820,6 +855,9 @@ function validateShortTermDesignInteractionProof(value) {
     appearanceSwitchingWorks: true,
     appearanceMenuStateSynced: true,
     noMainSurfaceAppearanceButton: true,
+    compareExitButtonPointerProof,
+    compareExitButtonPointerPathWorks: true,
+    compareExitButtonBelowTitlebar: true,
     reducedMotionRulePresent: true,
     minimumPreviewCaptured: true,
     passed: true
@@ -879,6 +917,20 @@ function describeShortTermDesignInteractionProofFailure(value) {
   ];
   const failedSettingsBoolean = settingsBooleanKeys.find((key) => value.settingsAppearanceProof[key] !== true);
   if (failedSettingsBoolean) return `settingsAppearanceProof:${failedSettingsBoolean}`;
+  if (!value.compareExitButtonPointerProof || typeof value.compareExitButtonPointerProof !== "object" || Array.isArray(value.compareExitButtonPointerProof)) {
+    return "compareExitButtonPointerProof";
+  }
+  const compareExitButtonPointerProof = value.compareExitButtonPointerProof;
+  if (compareExitButtonPointerProof.buttonRendered !== true) return "compareExitButtonPointerProof:buttonRendered";
+  if (!Number.isFinite(compareExitButtonPointerProof.buttonTop)) return "compareExitButtonPointerProof:buttonTop";
+  if (!Number.isFinite(compareExitButtonPointerProof.titlebarBottom)) return "compareExitButtonPointerProof:titlebarBottom";
+  if (!Number.isFinite(compareExitButtonPointerProof.hitX)) return "compareExitButtonPointerProof:hitX";
+  if (!Number.isFinite(compareExitButtonPointerProof.hitY)) return "compareExitButtonPointerProof:hitY";
+  if (!isBoundedString(String(compareExitButtonPointerProof.hitTargetTag || ""), 40)) return "compareExitButtonPointerProof:hitTargetTag";
+  if (compareExitButtonPointerProof.hitTargetAction !== "back-preview") return "compareExitButtonPointerProof:hitTargetAction";
+  if (compareExitButtonPointerProof.hitTargetIsExitButton !== true) return "compareExitButtonPointerProof:hitTargetIsExitButton";
+  if (compareExitButtonPointerProof.exitedToPreview !== true) return "compareExitButtonPointerProof:exitedToPreview";
+  if (compareExitButtonPointerProof.buttonTop < compareExitButtonPointerProof.titlebarBottom) return "compareExitButtonPointerProof:titlebarOverlap";
   const captureStateByArtifact = new Map(value.surfaceCaptureStates.map((item) => [item.artifactName, item]));
   const requiredCaptureStates = [
     ["short-term-preview-optimization", "optimization", "panelOptimization"],
@@ -908,6 +960,8 @@ function describeShortTermDesignInteractionProofFailure(value) {
     "appearanceSwitchingWorks",
     "appearanceMenuStateSynced",
     "noMainSurfaceAppearanceButton",
+    "compareExitButtonPointerPathWorks",
+    "compareExitButtonBelowTitlebar",
     "reducedMotionRulePresent",
     "minimumPreviewCaptured",
     "passed"

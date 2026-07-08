@@ -1467,6 +1467,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.layerPanel,\s*\.reservedPanel\s*\{[^}]*padding: var\(--asv-layer-panel-padding-block-start\) var\(--asv-layer-panel-padding\) var\(--asv-layer-panel-padding\)/s);
   assert.match(shortTermModules, /\.layerPanel\s*\{[^}]*gap: var\(--asv-layer-list-gap\)/s);
   assert.match(shortTermModules, /\.comparePlaybackBar\s*\{[^}]*pointer-events: none/s);
+  assert.match(shortTermModules, /\.compareInfo\s*\{[^}]*padding: calc\(var\(--asv-toolbar-height\) \+ var\(--asv-space-3\)\) var\(--asv-space-3\) var\(--asv-space-3\)/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*position: absolute/s);
   assert.match(shortTermModules, /\.compareCanvasHeader\s*\{[^}]*background: transparent/s);
   assert.match(shortTermModules, /\.layerPanel\s*\{[^}]*box-shadow: inset calc\(-1 \* var\(--asv-right-panel-separator-width\)\) 0 0 var\(--asv-right-panel-separator\)/s);
@@ -2210,6 +2211,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /noMainSurfaceAppearanceButton/);
   assert.match(shortTermSmokeProofModel, /noVisibleCompareEntrypoint/);
   assert.match(shortTermSmokeProofModel, /canvasModeSwitchReachable/);
+  assert.match(shortTermSmokeRunner, /document\.elementFromPoint\(compareExitHitX, compareExitHitY\)/);
+  assert.match(shortTermSmokeRunner, /compareExitButtonPointerProof/);
+  assert.match(shortTermSmokeRunner, /hitTargetIsExitButton: compareExitButtonPointerHit/);
+  assert.match(shortTermSmokeRunner, /exitedToPreview: state\.view === "preview"/);
+  assert.match(shortTermSmokeProofModel, /compareExitButtonPointerPathWorks/);
+  assert.match(shortTermSmokeProofModel, /compareExitButtonBelowTitlebar/);
+  assert.match(main, /compareExitButtonPointerProof/);
+  assert.match(main, /hitTargetAction !== "back-preview"/);
+  assert.match(main, /compareExitButtonPointerProof\.buttonTop < compareExitButtonPointerProof\.titlebarBottom/);
   assert.match(shortTermSmokeProofModel, /focusedControlSpaceNotGlobalPlayback/);
   assert.match(shortTermSmokeRunner, /focusedControlSpaceProof/);
   assert.match(shortTermSmokeRunner, /settingsAppearanceProof/);
