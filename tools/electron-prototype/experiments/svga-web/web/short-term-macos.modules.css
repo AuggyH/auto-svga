@@ -728,7 +728,7 @@ canvas {
 .textPreviewBlock {
   margin-top: var(--asv-right-panel-section-gap);
   padding-top: var(--asv-right-panel-section-gap);
-  border-top: 1px solid var(--asv-subtle-border);
+  border-top: var(--asv-right-panel-section-divider);
 }
 
 .replaceableSection[data-empty="true"],
