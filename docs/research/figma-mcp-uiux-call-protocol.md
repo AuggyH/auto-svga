@@ -2,7 +2,7 @@
 
 Owner lane: UI/UX
 Status: operating protocol, not product scope
-Last updated: 2026-07-06
+Last updated: 2026-07-08
 
 This document defines how the UI/UX lane should use Figma MCP for Auto SVGA
 design-to-code work. It exists to preserve Figma MCP quota, avoid accidental
@@ -37,6 +37,18 @@ the working baseline:
 
 Keep a 20% reserve for unexpected review and recovery. The UI/UX lane should
 treat the practical daily planning budget as 160 read calls, not 200.
+
+The Owner grants standing authorization for UI/UX-lane Figma MCP read batches
+while the current local-day conservative usage count remains below that
+160-call practical budget. Within that safe budget, the agent may call Figma
+MCP without asking for a separate per-batch authorization, but it must still
+follow this protocol: plan the batch before reading, use the minimum scoped
+tools, record planned versus actual usage, and stop at the declared hard cap.
+
+If the current local-day conservative usage count has reached the 160-call
+practical budget, if usage cannot be reconstructed from the call log, or if a
+batch would intentionally exceed the declared hard cap, the agent must request
+explicit Owner authorization before making more quota-counted Figma MCP calls.
 
 If Figma returns a rate-limit, permission, or quota-related error, stop reading
 the file. Record which phase failed and what information is still missing.
