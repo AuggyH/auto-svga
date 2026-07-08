@@ -454,3 +454,23 @@ promoted, watched, rejected, or kept historical.
 - Evidence: The Edit reserved smoke screenshot remained `720 x 720` while the
   renderer CSS still defines the short-term three-column layout.
 - Status: watch
+
+## Pair new smoke screenshots with host scenario allowlists
+
+- Source:
+  `docs/reviews/2026-07-09-codex-uiux-wide-preview-evidence.md`
+- Area: UI/UX, validation, desktop smoke
+- Context: UI/UX added `short-term-preview-overview-wide` so Preview can be
+  inspected at the default workbench ratio instead of only through a square
+  smoke screenshot.
+- Problem: The first smoke run failed because the renderer requested the new
+  capture scenario before the Electron main-process artifact scenario whitelist
+  accepted it.
+- Candidate rule: Every new product smoke screenshot scenario must update the
+  renderer capture call, host allowlist, host sizing/restoration behavior when
+  needed, and a unit assertion tying those pieces together.
+- Evidence: Adding the allowlist entry and test allowed
+  `npm --prefix tools/electron-prototype/experiments/svga-web run desktop:smoke`
+  to pass and generated `short-term-preview-overview-wide.png` at `2880 x
+  1800` Retina pixels.
+- Status: watch

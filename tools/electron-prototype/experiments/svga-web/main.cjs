@@ -3028,6 +3028,7 @@ function validateArtifactScenario(value) {
     "short-term-settings-dialog",
     "short-term-appearance-dark",
     "short-term-appearance-light",
+    "short-term-preview-overview-wide",
     "short-term-save-failed",
     "short-term-load-failed",
     "short-term-playback-failed",
@@ -4801,13 +4802,14 @@ async function captureProductArtifact(window, scenario) {
   const originalContentSize = window.getContentSize();
   if (scenario === "desktop-1280x800") window.setContentSize(macosWorkbenchWindowSizing.comfortable.width, macosWorkbenchWindowSizing.comfortable.height);
   if (scenario === "desktop-1440x900") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
+  if (scenario === "short-term-preview-overview-wide") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-local-minimum-size") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
   if (scenario === "desktop-responsive-local-compare-at-minimum-size") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
   if (scenario === "short-term-preview-minimum") window.setContentSize(macosWorkbenchWindowSizing.minimumSupported.width, macosWorkbenchWindowSizing.minimumSupported.height);
-  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size" || scenario === "short-term-preview-minimum") {
+  if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "short-term-preview-overview-wide" || scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size" || scenario === "short-term-preview-minimum") {
     await new Promise((resolve) => setTimeout(resolve, 180));
   }
   if (scenario === "desktop-invalid") {
@@ -4827,7 +4829,7 @@ async function captureProductArtifact(window, scenario) {
   await maybeRecordRenderedStateProof(window, scenario, image, pngHash, fileName, viewportCss);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720" || scenario === "desktop-responsive-local-preview-at-900-x-720" || scenario === "desktop-responsive-local-compare-at-900-x-720" || scenario === "desktop-local-minimum-size" || scenario === "desktop-responsive-local-compare-at-minimum-size" || scenario === "short-term-preview-minimum") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
-  } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900") {
+  } else if (scenario === "desktop-1280x800" || scenario === "desktop-1440x900" || scenario === "short-term-preview-overview-wide") {
     window.setContentSize(originalContentSize[0], originalContentSize[1]);
   }
   const fixture = scenarioFixtureMetadata(scenario);

@@ -525,6 +525,7 @@ async function runShortTermSmoke({
   setAppearance("light");
   await waitForSmokeFrame();
   const lightAppearanceArtifact = await captureSmokeArtifact("short-term-appearance-light");
+  await captureSmokeArtifact("short-term-preview-overview-wide");
   setAppearance("system");
   await waitForSmokeFrame();
   const settingsAppearanceProof = {
