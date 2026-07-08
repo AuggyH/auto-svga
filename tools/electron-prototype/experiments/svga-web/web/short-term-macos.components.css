@@ -418,9 +418,19 @@
   color: var(--asv-replaceable-row-index-color);
 }
 
+.replaceableRow .rowText strong,
+.textElementRow .rowText strong {
+  color: var(--asv-text);
+  font-size: var(--asv-asset-row-title-size);
+  font-weight: 560;
+  line-height: var(--asv-asset-row-title-line-height);
+}
+
 .replaceableRow .rowText span,
 .textElementRow .rowText span {
   color: var(--asv-replaceable-row-detail-color);
+  font-size: var(--asv-asset-row-detail-size);
+  line-height: var(--asv-asset-row-detail-line-height);
 }
 
 .appDialog {

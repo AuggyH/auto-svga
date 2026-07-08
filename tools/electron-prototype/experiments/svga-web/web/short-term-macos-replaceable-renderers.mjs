@@ -1,6 +1,21 @@
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
 
+const rowMenuIconHtml = `
+  <svg class="rowMenuIcon" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="6" cy="12" r="1.5"></circle>
+    <circle cx="12" cy="12" r="1.5"></circle>
+    <circle cx="18" cy="12" r="1.5"></circle>
+  </svg>
+`;
+
+const runtimeTextResetIconHtml = `
+  <svg class="runtimeTextResetIcon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M5.5 12a6.5 6.5 0 1 0 2-4.7"></path>
+    <path d="M7.8 4.6v3.2H4.6"></path>
+  </svg>
+`;
+
 export function createReplaceableImageRow(item, index, options) {
   const row = document.createElement("article");
   row.className = "replaceableRow";
@@ -30,7 +45,7 @@ export function createReplaceableImageRow(item, index, options) {
       <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
       <span class="thumb">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
       <span class="rowText"><strong>${escapeHtml(item.imageKey)}</strong><span>${escapeHtml(item.dimensions)} · ${escapeHtml(item.fileSize)}</span></span>
-      <button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(item.imageKey)} 操作">...</button>
+      <button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(item.imageKey)} 操作">${rowMenuIconHtml}</button>
     `;
   }
   return row;
@@ -67,7 +82,7 @@ export function createTextElementRow(item, index, options) {
     <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
     <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(item.initialText || item.textKey)}</span></span>
     <input class="runtimeTextInput" data-component="InlineTextReplacementInput" data-text-input data-text-key="${escapeHtml(item.textKey)}" value="${escapeHtml(value)}" placeholder="${escapeHtml(item.placeholder)}" autocomplete="off" aria-label="${escapeHtml(label)} 文本预览">
-    <button type="button" class="runtimeTextResetButton" data-action="runtime-text-reset" data-text-key="${escapeHtml(item.textKey)}" aria-label="重置 ${escapeHtml(label)} 文本预览" ${item.resetDisabled ? "disabled" : ""}>重置</button>
+    <button type="button" class="runtimeTextResetButton" data-action="runtime-text-reset" data-text-key="${escapeHtml(item.textKey)}" aria-label="重置 ${escapeHtml(label)} 文本预览" title="重置" ${item.resetDisabled ? "disabled" : ""}>${runtimeTextResetIconHtml}</button>
   `;
   return row;
 }

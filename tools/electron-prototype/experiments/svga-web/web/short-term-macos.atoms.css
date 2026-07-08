@@ -76,12 +76,14 @@ button.danger {
 }
 
 .thumb {
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   width: var(--asv-thumb-size);
   height: var(--asv-thumb-size);
   overflow: hidden;
-  border: 1px solid var(--asv-row-border);
+  padding: var(--asv-thumb-image-inset);
+  border: var(--asv-thumb-border-width) solid var(--asv-row-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-canvas);
   color: var(--asv-muted);
@@ -106,6 +108,7 @@ button.danger {
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: var(--asv-thumb-preview-radius);
   object-fit: contain;
 }
 
@@ -121,9 +124,9 @@ button.danger {
 .rowIndex {
   align-self: center;
   color: var(--asv-subtle);
-  font-family: var(--asv-type-mono);
-  font-size: var(--asv-type-size-caption);
-  font-weight: 650;
+  font-family: var(--asv-font);
+  font-size: var(--asv-row-index-font-size);
+  font-weight: var(--asv-row-index-font-weight);
   text-align: center;
 }
 
@@ -142,6 +145,7 @@ button.danger {
   margin: var(--asv-space-1) 0 0;
   color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
+  letter-spacing: var(--asv-asset-row-detail-letter-spacing);
 }
 
 .findingImpact {
