@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import { test } from "node:test";
@@ -421,6 +421,56 @@ test("short-term drag decision hit testing keeps Compare opt-in at the top", asy
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 160 }), "open");
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 390, clientY: 120 }), "open");
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 200 }), "open");
+});
+
+test("short-term future compatibility guardrails keep current behavior bounded", async () => {
+  const webRoot = path.join(experimentRoot, "web");
+  const shortTermFileNames = (await readdir(webRoot))
+    .filter((name) => /^short-term-macos-.*\.(mjs|css)$/.test(name))
+    .sort();
+  const shortTermSources = Object.fromEntries(await Promise.all(shortTermFileNames.map(async (name) => [
+    name,
+    await readFile(path.join(webRoot, name), "utf8")
+  ])));
+  const indexPage = await readFile(path.join(webRoot, "index.html"), "utf8");
+  const rendererSources = [indexPage, ...Object.values(shortTermSources)].join("\n");
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
+  const hostContractSource = await readFile(path.join(experimentRoot, "host-adapter-contract.cjs"), "utf8");
+  const shortTermMenuSource = main.slice(
+    main.indexOf("function installShortTermApplicationMenu"),
+    main.indexOf("function installApplicationMenu", main.indexOf("function installShortTermApplicationMenu") + 1)
+  );
+
+  assert.doesNotMatch(rendererSources, /\b(?:vap|lottie|aeb|import-package|format-selection|ffmpeg)\b/i);
+  assert.doesNotMatch(rendererSources, /(?:cdn\.jsdelivr|unpkg\.com|https?:\/\/(?!127\.0\.0\.1))/i);
+  assert.doesNotMatch(rendererSources, /\b(?:ipcRenderer|contextBridge|showOpenDialog|showSaveDialog|readFileSync|writeFileSync|require\(|node:fs|node:path|shell\.)/);
+  assert.doesNotMatch(rendererSources, /\/Users\//);
+
+  assert.match(hostContractSource, /const DOCUMENT_TYPES = Object\.freeze\(\["svga"\]\)/);
+  assert.match(preload, /documentTypes: Object\.freeze\(\["svga"\]\)/);
+  assert.match(shortTermSources["short-term-macos-drag-decision-model.mjs"], /\.svga\$\/i/);
+  assert.match(shortTermSources["short-term-macos-file-surface.mjs"], /bridge\?\.openSvgaFile/);
+  assert.match(shortTermSources["short-term-macos-file-surface.mjs"], /bridge\?\.openRecentSvgaFile/);
+  assert.match(shortTermSources["short-term-macos-host-client.mjs"], /getRecentSvgaFiles/);
+  assert.match(shortTermSources["short-term-macos-host-client.mjs"], /clearRecentSvgaFiles/);
+  assert.match(shortTermSources["short-term-macos-save-surface.mjs"], /bridge\.saveShortTermSvgaOutput/);
+  assert.match(shortTermSources["short-term-macos-action-bridge.mjs"], /writeClipboardText/);
+  assert.match(shortTermMenuSource, /invokeShortTermAction\("openFromHostDialog"\)/);
+  assert.match(shortTermMenuSource, /invokeShortTermAction\("saveAs"\)/);
+  assert.match(shortTermMenuSource, /invokeShortTermAction\("copyStateSummary"\)/);
+
+  const playerBindingFiles = Object.entries(shortTermSources)
+    .filter(([, source]) => /SvgaWebParser|SvgaWebPlayer|FILL_MODE|svga-web-2\.4\.4/.test(source))
+    .map(([name]) => name);
+  assert.deepEqual(playerBindingFiles, ["short-term-macos-playback-model.mjs"]);
+  assert.match(shortTermSources["short-term-macos-playback-surface.mjs"], /from "\.\/short-term-macos-playback-model\.mjs"/);
+  assert.doesNotMatch(shortTermSources["short-term-macos-playback-surface.mjs"], /SvgaWebParser|SvgaWebPlayer|FILL_MODE/);
+
+  assert.match(main, /pathRedacted: true/);
+  assert.match(main, /targetPathRedacted: sanitizeRuntimeArgument\(targetPath\)/);
+  assert.match(shortTermSources["short-term-macos-feedback-surface.mjs"], /showShortTermFailure/);
+  assert.match(shortTermSources["short-term-macos-feedback-surface.mjs"], /showShortTermOperationFailure/);
 });
 
 test("server uses bounded internal-trial CSP and keeps report API token-bound", async () => {
