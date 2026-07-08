@@ -49,6 +49,12 @@ logic. It uses Figma as design evidence and the PRD as product authority.
 - Foreground second-display screenshots from promoted App:
   - `review/uiux-current-client-evidence-20260708/stable-after-wp5-promotion-optimization-detail-display2.png`
   - `review/uiux-current-client-evidence-20260708/stable-after-wp5-promotion-optimization-result-display2.png`
+  - `review/uiux-current-client-evidence-20260708/stable-after-wp5-net-guard-preview-display2.png`
+  - `review/uiux-current-client-evidence-20260708/stable-after-wp5-net-guard-optimization-detail-display2.png`
+  - `review/uiux-current-client-evidence-20260708/stable-after-wp5-net-guard-optimization-result-display2.png`
+- Local stable App refreshed at `/Users/huangtengxin/Applications/Auto SVGA.app`.
+- Current promoted archive SHA-256:
+  `ed27ae11a0308ff2366c5a7903169e5f48f1186d01faf09b7f83ef6a1c8b0c21`.
 
 ## Figma MCP Usage
 
@@ -63,8 +69,6 @@ logic. It uses Figma as design evidence and the PRD as product authority.
 - Figma optimization result screenshot omits the PRD-required executed/skipped
   optimization items. This slice keeps those items and visually lowers their
   weight instead of removing product-required information.
-- Foreground packaged-App evidence should be refreshed after the commit and
-  local stable promotion.
 - `docs/retrospectives/TASK_RETRO_LEDGER.jsonl` already contains unrelated
   parallel edits, so this slice keeps the retrospective inside this review
   instead of staging mixed ownership changes.
