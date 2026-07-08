@@ -3,30 +3,39 @@
   "handoffId": "PM-20260708-drag-decision-overlay",
   "status": "Fix Ready",
   "branch": "agent/codex/short-term-preview-qa-20260708",
-  "fixCommit": "fadcca5b",
+  "fixCommit": "recorded_in_handoff_message",
   "generatedAt": "2026-07-08T18:24:51+08:00",
   "authority": {
-    "pmCommit": "f136b895",
+    "pmCommit": "f6664b02",
     "roadmapPath": "docs/product/PRODUCT_ROADMAP.md",
     "designPath": "DESIGN.md",
-    "reviewPath": "docs/reviews/2026-07-08-codex-drag-decision-overlay-split-correction.md"
+    "reviewPath": "docs/reviews/2026-07-08-codex-drag-decision-zone-contract.md"
   },
   "interactionContract": {
-    "split": "top-bottom-75-25",
-    "openFilePrimaryZone": "top_75_percent",
-    "addCompareSecondaryZone": "bottom_25_percent",
+    "split": "top-25-bottom-75",
+    "openFilePrimaryZone": "bottom_75_percent",
+    "addCompareSecondaryZone": "top_25_percent",
     "canvasCenterBelongsToOpenFile": true,
     "lowerCenterBelongsToOpenFile": true,
+    "bottomEntryPathBelongsToOpenFile": true,
     "unsupportedFocusedZoneStillRejects": true
   },
   "runtimeEvidence": {
     "source": ".artifacts/product/short-term/short-term-open-flow-proof.json",
     "passed": true,
-    "dragDecisionSplit": "top-bottom-75-25",
+    "dragDecisionSplit": "top-25-bottom-75",
     "dragDecisionCenterPointOpen": true,
     "dragDecisionLowerCenterPointOpen": true,
-    "dragDecisionSecondaryPointCompare": true,
+    "dragDecisionBottomEntryPointOpen": true,
+    "dragDecisionTopSecondaryPointCompare": true,
     "dragDecisionPointProofs": [
+      {
+        "id": "secondary-compare",
+        "ratioX": 0.5,
+        "ratioY": 0.1,
+        "expectedZone": "compare",
+        "focusZone": "compare"
+      },
       {
         "id": "center-open",
         "ratioX": 0.5,
@@ -42,11 +51,11 @@
         "focusZone": "open"
       },
       {
-        "id": "secondary-compare",
+        "id": "bottom-entry-open",
         "ratioX": 0.5,
-        "ratioY": 0.9,
-        "expectedZone": "compare",
-        "focusZone": "compare"
+        "ratioY": 0.95,
+        "expectedZone": "open",
+        "focusZone": "open"
       }
     ],
     "unsupportedDragRejected": true,
@@ -81,7 +90,8 @@
     "requestedRegression": [
       "Drag a supported SVGA over an already-open preview at canvas center; expect Open File focus.",
       "Drag a supported SVGA over lower-center around 70% height; expect Open File focus.",
-      "Drag a supported SVGA over the bottom secondary region around 90% height; expect Add As Compare File focus.",
+      "Drag a supported SVGA over the bottom-entry path around 95% height; expect Open File focus.",
+      "Drag a supported SVGA over the top secondary region around 10% height; expect Add As Compare File focus.",
       "Drag an unsupported file over the center; expect unsupported red focused zone and `不支持的文件格式` toast on drop."
     ]
   }

@@ -392,7 +392,7 @@ test("vendored svga-web asset is pinned and strict-CSP compatible", async () => 
   assert.match(await readFile(path.join(experimentRoot, "vendor/NOTICE.md"), "utf8"), /MIT/);
 });
 
-test("short-term drag decision hit testing keeps Open File as the primary top-bottom zone", async () => {
+test("short-term drag decision hit testing keeps Compare opt-in at the top", async () => {
   const dragDecisionModel = await import(pathToFileURL(path.join(
     experimentRoot,
     "web/short-term-macos-drag-decision-model.mjs"
@@ -408,10 +408,12 @@ test("short-term drag decision hit testing keeps Open File as the primary top-bo
 
   assert.equal(dragDecisionModel.SHORT_TERM_DRAG_DECISION_OPEN_RATIO, 0.75);
   assert.equal(dragDecisionModel.SHORT_TERM_DRAG_DECISION_COMPARE_RATIO, 0.25);
+  assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 40 }), "compare");
+  assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 70 }), "open");
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 120 }), "open");
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 160 }), "open");
   assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 390, clientY: 120 }), "open");
-  assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 200 }), "compare");
+  assert.equal(dragDecisionModel.dragDecisionZoneForEvent(target, { clientX: 210, clientY: 200 }), "open");
 });
 
 test("server uses bounded internal-trial CSP and keeps report API token-bound", async () => {
@@ -1160,7 +1162,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /<title>Auto SVGA<\/title>/);
   assert.match(page, /id="previewDragOverlay"/);
   assert.match(page, /id="compareDragOverlay"/);
-  assert.match(page, /data-drag-zone="open"><strong>打开新文件<\/strong>/);
+  assert.match(page, /data-drag-zone="compare"><strong>添加为对比文件<\/strong><\/div>\s*<div class="dragDecisionZone" data-drag-zone="open"><strong>打开新文件<\/strong>/);
   assert.match(page, /data-component="DragDecisionOverlay"/);
   assert.match(page, /id="canvasToast"/);
   assert.match(page, /data-component="CanvasToast"/);
@@ -1546,7 +1548,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /var\(--asv-drag-supported-bg\)/);
   assert.match(shortTermModules, /var\(--asv-drag-unsupported-bg\)/);
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-columns: 1fr/s);
-  assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-rows: 3fr 1fr/s);
+  assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*grid-template-rows: 1fr 3fr/s);
   assert.match(shortTermModules, /\.dragDecisionOverlay\s*\{[^}]*backdrop-filter: var\(--asv-drag-overlay-backdrop-filter\)/s);
   assert.match(shortTermModules, /\.dragDecisionZone\s*\{[^}]*opacity: var\(--asv-drag-zone-opacity\)/s);
   assert.match(shortTermModules, /\.dragDecisionZone strong\s*\{[^}]*font-size: var\(--asv-drag-overlay-label-size\)/s);
@@ -1647,7 +1649,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDragDecisionModel, /SHORT_TERM_DRAG_DECISION_OPEN_RATIO = 0\.75/);
   assert.match(shortTermDragDecisionModel, /SHORT_TERM_DRAG_DECISION_COMPARE_RATIO = 1 - SHORT_TERM_DRAG_DECISION_OPEN_RATIO/);
   assert.match(shortTermDragDecisionModel, /dragDecisionZoneForEvent/);
-  assert.match(shortTermDragDecisionModel, /event\.clientY < compareBoundary \? "open" : "compare"/);
+  assert.match(shortTermDragDecisionModel, /event\.clientY < compareBoundary \? "compare" : "open"/);
   assert.doesNotMatch(shortTermDragDecisionModel, /event\.clientX <|rect\.left \+ rect\.width \/ 2/);
   assert.match(shortTermDragDecisionSurface, /showShortTermDragDecisionOverlay/);
   assert.match(shortTermDragDecisionSurface, /showShortTermCanvasToast/);
@@ -2195,13 +2197,16 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /dragDropAttempted/);
   assert.match(shortTermSmokeProofModel, /dragDecisionOverlayVisible/);
   assert.match(shortTermSmokeProofModel, /dragDecisionOffersOpenAndCompare/);
-  assert.match(shortTermSmokeProofModel, /dragDecisionSplit: "top-bottom-75-25"/);
+  assert.match(shortTermSmokeProofModel, /dragDecisionSplit: "top-25-bottom-75"/);
   assert.match(shortTermSmokeProofModel, /dragDecisionCenterPointOpen/);
   assert.match(shortTermSmokeProofModel, /dragDecisionLowerCenterPointOpen/);
+  assert.match(shortTermSmokeProofModel, /dragDecisionBottomEntryPointOpen/);
+  assert.match(shortTermSmokeProofModel, /dragDecisionTopSecondaryPointCompare/);
   assert.match(shortTermSmokeProofModel, /dragDecisionSecondaryPointCompare/);
   assert.match(shortTermSmokeRunner, /id: "center-open", ratioX: 0\.5, ratioY: 0\.5, expectedZone: "open"/);
   assert.match(shortTermSmokeRunner, /id: "lower-center-open", ratioX: 0\.5, ratioY: 0\.7, expectedZone: "open"/);
-  assert.match(shortTermSmokeRunner, /id: "secondary-compare", ratioX: 0\.5, ratioY: 0\.9, expectedZone: "compare"/);
+  assert.match(shortTermSmokeRunner, /id: "bottom-entry-open", ratioX: 0\.5, ratioY: 0\.95, expectedZone: "open"/);
+  assert.match(shortTermSmokeRunner, /id: "secondary-compare", ratioX: 0\.5, ratioY: 0\.1, expectedZone: "compare"/);
   assert.match(shortTermSmokeProofModel, /unsupportedDropToastVisible/);
   assert.match(shortTermSmokeRunner, /collectShortTermOpenFlowProof/);
   assert.match(shortTermSmokeRunner, /supportedDragDecisionOverlayVisible/);
@@ -2273,9 +2278,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermEntry, /proofId: "short-term-replaceable-classification-proof"/);
   assert.match(main, /validateShortTermOpenFlowProof/);
   assert.match(main, /dragDecisionOverlayVisible/);
-  assert.match(main, /dragDecisionSplit !== "top-bottom-75-25"/);
+  assert.match(main, /dragDecisionSplit !== "top-25-bottom-75"/);
   assert.match(main, /dragDecisionCenterPointOpen/);
   assert.match(main, /dragDecisionLowerCenterPointOpen/);
+  assert.match(main, /dragDecisionBottomEntryPointOpen/);
+  assert.match(main, /dragDecisionTopSecondaryPointCompare/);
   assert.match(main, /dragDecisionSecondaryPointCompare/);
   assert.match(main, /unsupportedDropSourceBytesRestoredAfterRecovery/);
   assert.match(main, /short-term-open-flow-proof\.json/);

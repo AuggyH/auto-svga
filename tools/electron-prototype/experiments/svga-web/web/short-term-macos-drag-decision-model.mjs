@@ -12,6 +12,6 @@ export const SHORT_TERM_DRAG_DECISION_COMPARE_RATIO = 1 - SHORT_TERM_DRAG_DECISI
 
 export function dragDecisionZoneForEvent(target, event) {
   const rect = target.getBoundingClientRect();
-  const compareBoundary = rect.top + rect.height * SHORT_TERM_DRAG_DECISION_OPEN_RATIO;
-  return event.clientY < compareBoundary ? "open" : "compare";
+  const compareBoundary = rect.top + rect.height * SHORT_TERM_DRAG_DECISION_COMPARE_RATIO;
+  return event.clientY < compareBoundary ? "compare" : "open";
 }

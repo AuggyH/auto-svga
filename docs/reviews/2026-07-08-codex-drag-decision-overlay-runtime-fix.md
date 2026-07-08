@@ -2,10 +2,11 @@
 
 ## Summary
 
-- Implemented the PM correction from `f136b895`: the short-term drag-decision overlay now uses unequal top/bottom zones instead of the old left/right split.
-- Open File is the primary 75% zone, Add As Compare File is the secondary 25% zone.
-- Center and lower-center drag points resolve to Open File; only the bottom secondary zone resolves to Compare.
-- Fix commit: `fadcca5b`.
+- Implemented the superseding PM correction from `f6664b02`: the short-term drag-decision overlay now uses top Compare / lower Open zones instead of the old left/right split or the earlier reversed top-open implementation.
+- Add As Compare File is the top secondary 25% strip.
+- Open File is the lower primary 75% zone.
+- Center, lower-center, and bottom-entry drag points resolve to Open File; only a deliberate top-strip point resolves to Compare.
+- Fix commit: recorded in the final handoff after commit creation.
 
 ## Changed Files
 
@@ -31,10 +32,11 @@
 - Runtime proof: `.artifacts/product/short-term/short-term-open-flow-proof.json`
 - Handoff evidence: `docs/quality/evidence/PM-20260708-drag-decision-overlay/callback-evidence.json`
 - Confirmed proof fields:
-  - `dragDecisionSplit=top-bottom-75-25`
+  - `dragDecisionSplit=top-25-bottom-75`
   - `dragDecisionCenterPointOpen=true`
   - `dragDecisionLowerCenterPointOpen=true`
-  - `dragDecisionSecondaryPointCompare=true`
+  - `dragDecisionBottomEntryPointOpen=true`
+  - `dragDecisionTopSecondaryPointCompare=true`
   - `unsupportedDragRejected=true`
   - `unsupportedDropToastVisible=true`
 
@@ -45,4 +47,4 @@
 
 ## Retrospective
 
-- Interaction hit testing should prove the high-probability physical drop path, not only the visible overlay. For this contract that means center and lower-center points are as important as the secondary compare target.
+- Interaction hit testing should prove the high-probability physical drop path, not only the visible overlay. For this contract that means center, lower-center, and bottom-entry points are as important as the top opt-in compare strip.

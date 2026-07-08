@@ -472,6 +472,7 @@ export function collectShortTermOpenFlowProof({
   const pointById = new Map(dragDecisionPointProofs.map((point) => [point.id, point]));
   const centerPoint = pointById.get("center-open");
   const lowerCenterPoint = pointById.get("lower-center-open");
+  const bottomEntryPoint = pointById.get("bottom-entry-open");
   const secondaryPoint = pointById.get("secondary-compare");
   const proof = {
     schemaVersion: 1,
@@ -488,7 +489,7 @@ export function collectShortTermOpenFlowProof({
     pathRedacted: !fileName.includes("/") && !fileName.includes("\\"),
     rendererFilesystemAccessClaimed: false,
     pairedNormalProof: "normal-runtime-proof.json",
-    dragDecisionSplit: "top-bottom-75-25",
+    dragDecisionSplit: "top-25-bottom-75",
     dragDecisionPointProofs,
     dragDecisionCenterPointOpen: centerPoint?.focusZone === "open"
       && centerPoint?.status === "supported"
@@ -496,6 +497,12 @@ export function collectShortTermOpenFlowProof({
     dragDecisionLowerCenterPointOpen: lowerCenterPoint?.focusZone === "open"
       && lowerCenterPoint?.status === "supported"
       && lowerCenterPoint?.overlayVisible === true,
+    dragDecisionBottomEntryPointOpen: bottomEntryPoint?.focusZone === "open"
+      && bottomEntryPoint?.status === "supported"
+      && bottomEntryPoint?.overlayVisible === true,
+    dragDecisionTopSecondaryPointCompare: secondaryPoint?.focusZone === "compare"
+      && secondaryPoint?.status === "supported"
+      && secondaryPoint?.overlayVisible === true,
     dragDecisionSecondaryPointCompare: secondaryPoint?.focusZone === "compare"
       && secondaryPoint?.status === "supported"
       && secondaryPoint?.overlayVisible === true,
@@ -520,9 +527,11 @@ export function collectShortTermOpenFlowProof({
     proof.localOnly,
     proof.pathRedacted,
     proof.rendererFilesystemAccessClaimed === false,
-    proof.dragDecisionSplit === "top-bottom-75-25",
+    proof.dragDecisionSplit === "top-25-bottom-75",
     proof.dragDecisionCenterPointOpen,
     proof.dragDecisionLowerCenterPointOpen,
+    proof.dragDecisionBottomEntryPointOpen,
+    proof.dragDecisionTopSecondaryPointCompare,
     proof.dragDecisionSecondaryPointCompare,
     proof.dragDecisionOverlayVisible,
     proof.dragDecisionSupportedState,

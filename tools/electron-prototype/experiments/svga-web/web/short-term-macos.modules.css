@@ -386,7 +386,7 @@
   z-index: 8;
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 3fr 1fr;
+  grid-template-rows: 1fr 3fr;
   overflow: hidden;
   background: var(--asv-drag-overlay-bg);
   color: var(--asv-color-drag-overlay-text);

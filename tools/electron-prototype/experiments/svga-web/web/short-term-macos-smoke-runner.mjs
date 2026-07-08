@@ -143,7 +143,8 @@ async function runShortTermSmoke({
   const supportedDragDecisionPoints = [
     { id: "center-open", ratioX: 0.5, ratioY: 0.5, expectedZone: "open" },
     { id: "lower-center-open", ratioX: 0.5, ratioY: 0.7, expectedZone: "open" },
-    { id: "secondary-compare", ratioX: 0.5, ratioY: 0.9, expectedZone: "compare" }
+    { id: "bottom-entry-open", ratioX: 0.5, ratioY: 0.95, expectedZone: "open" },
+    { id: "secondary-compare", ratioX: 0.5, ratioY: 0.1, expectedZone: "compare" }
   ];
   for (const point of supportedDragDecisionPoints) {
     const { clientX, clientY } = dragPoint(previewStageRect, point.ratioX, point.ratioY);

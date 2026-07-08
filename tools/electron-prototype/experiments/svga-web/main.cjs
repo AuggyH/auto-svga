@@ -498,12 +498,13 @@ function validateShortTermOpenFlowProof(value) {
   if (!isSha256(value.fixtureSha256)) return undefined;
   if (!Number.isInteger(value.sourceSizeBytes) || value.sourceSizeBytes <= 0) return undefined;
   if (value.pairedNormalProof !== "normal-runtime-proof.json") return undefined;
-  if (value.dragDecisionSplit !== "top-bottom-75-25") return undefined;
-  if (!Array.isArray(value.dragDecisionPointProofs) || value.dragDecisionPointProofs.length !== 3) return undefined;
+  if (value.dragDecisionSplit !== "top-25-bottom-75") return undefined;
+  if (!Array.isArray(value.dragDecisionPointProofs) || value.dragDecisionPointProofs.length !== 4) return undefined;
   const requiredDragDecisionPoints = new Map([
     ["center-open", { ratioX: 0.5, ratioY: 0.5, expectedZone: "open" }],
     ["lower-center-open", { ratioX: 0.5, ratioY: 0.7, expectedZone: "open" }],
-    ["secondary-compare", { ratioX: 0.5, ratioY: 0.9, expectedZone: "compare" }]
+    ["bottom-entry-open", { ratioX: 0.5, ratioY: 0.95, expectedZone: "open" }],
+    ["secondary-compare", { ratioX: 0.5, ratioY: 0.1, expectedZone: "compare" }]
   ]);
   const dragDecisionPointProofs = value.dragDecisionPointProofs.map((point) => {
     if (!point || typeof point !== "object" || Array.isArray(point)) return undefined;
@@ -544,6 +545,8 @@ function validateShortTermOpenFlowProof(value) {
     || value.rendererFilesystemAccessClaimed !== false
     || value.dragDecisionCenterPointOpen !== true
     || value.dragDecisionLowerCenterPointOpen !== true
+    || value.dragDecisionBottomEntryPointOpen !== true
+    || value.dragDecisionTopSecondaryPointCompare !== true
     || value.dragDecisionSecondaryPointCompare !== true
     || value.dragDecisionOverlayVisible !== true
     || value.dragDecisionSupportedState !== true
@@ -574,10 +577,12 @@ function validateShortTermOpenFlowProof(value) {
     pathRedacted: true,
     rendererFilesystemAccessClaimed: false,
     dragDecisionOverlayVisible: true,
-    dragDecisionSplit: "top-bottom-75-25",
+    dragDecisionSplit: "top-25-bottom-75",
     dragDecisionPointProofs,
     dragDecisionCenterPointOpen: true,
     dragDecisionLowerCenterPointOpen: true,
+    dragDecisionBottomEntryPointOpen: true,
+    dragDecisionTopSecondaryPointCompare: true,
     dragDecisionSecondaryPointCompare: true,
     dragDecisionSupportedState: true,
     dragDecisionCompareFocus: true,
