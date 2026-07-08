@@ -30,5 +30,8 @@ and maintainable. Use Chinese for primary UI; keep English only as debug help.
 7. Avoid broad refactors for local styling issues.
 8. Do not change the core preview flow without explicit scope.
 9. Do not let visual polish displace mainline capability work.
+10. Before foreground desktop UI validation, check for a second display and use
+    it when available. If unavailable, prefer silent or low-disturbance
+    operation and record the fallback.
 
 Verify normal, narrow, and extreme-narrow widths for every UI change.

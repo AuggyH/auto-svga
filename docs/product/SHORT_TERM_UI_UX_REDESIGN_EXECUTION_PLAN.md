@@ -158,6 +158,9 @@ or UI design is acceptable.
 Before a UI/UX slice claims visual or interaction acceptance, collect
 foreground desktop evidence from the actual macOS client:
 
+- check display topology before foreground operation; use a second or
+  non-primary display when available, and use silent or low-disturbance fallback
+  when it is not available;
 - capture the real foreground app window, including the macOS menu bar and
   native titlebar/window chrome;
 - use real production SVGA materials from

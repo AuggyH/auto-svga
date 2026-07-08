@@ -236,12 +236,35 @@ Before modifying owner-visible UI:
     that include the macOS menu bar, native titlebar/window chrome, and actual
     foreground state. Smoke screenshots are functional evidence, not primary
     visual/experience evidence.
-12. When launching the desktop client for UI/UX review, place it on the second
-    display when available so the owner's main display is not interrupted.
+12. Follow the foreground desktop debugging rules below before launching,
+    automating, or capturing the desktop client in the foreground.
 13. For SVGA open/playback/editing UI review, test multiple real owner-provided
     production materials from `/Users/huangtengxin/Downloads/auto-svga测试物料`
     when available. Do not rely only on fixtures; cover varied file size,
     estimated memory, resource count, and replaceability conditions.
+
+## Foreground Desktop Debugging Rules
+
+Before launching, automating, clicking through, or capturing a desktop client in
+the foreground:
+
+1. Prefer non-foreground evidence first when it is sufficient: unit tests,
+   source checks, smoke artifacts, headless/browser automation, passive logs,
+   or packaged-app metadata.
+2. If foreground operation is required, check the current display topology
+   first using the available macOS/tooling context.
+3. If a second or non-primary display is available, launch, move, automate, and
+   capture the app there so the Product Owner's main display is not interrupted.
+4. If no second display is available, prefer silent or low-disturbance startup:
+   background/headless mode, minimized or hidden window, non-activating launch,
+   or the shortest possible foreground session.
+5. Use the main display foreground only when secondary-display operation is not
+   available and silent evidence cannot prove the required behavior. In that
+   case, say what you are about to do, keep the interruption brief, avoid
+   repeated focus stealing, and restore or close the app afterward.
+6. Reviews and handoffs that rely on foreground evidence must record the
+   strategy used: second display, silent/low-disturbance fallback, or main
+   display with reason.
 
 ## Agent Handoff
 

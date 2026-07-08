@@ -54,6 +54,11 @@ release gate, or acceptance record.
 - Use foreground macOS screenshots with native chrome and varied real
   production materials for visual/interaction judgment when available. Treat
   smoke screenshots as regression evidence, not primary design evidence.
+- Before foreground desktop debugging or screenshot capture, check for a
+  second display. Use it when available so the Product Owner's main display is
+  not interrupted. If no second display is available, prefer silent,
+  background, minimized, hidden, or shortest-possible foreground operation and
+  record the fallback used.
 
 ## Validation
 

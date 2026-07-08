@@ -30,6 +30,20 @@ service and Web preview page.
 5. Avoid tight coupling between players, converters, and checkers.
 6. Isolate host-specific filesystem, process, network, and rendering APIs.
 
+## Foreground Desktop Debugging
+
+1. Prefer non-foreground validation when it is enough: tests, passive logs,
+   package metadata, smoke artifacts, or headless/browser automation.
+2. Before any foreground desktop-client launch, automation, or screenshot,
+   check whether a second or non-primary display is available.
+3. If a second display is available, put the app there before foreground
+   interaction so the Product Owner's main display is not interrupted.
+4. If no second display is available, prefer silent or low-disturbance startup:
+   background/headless, minimized, hidden, non-activating, or the shortest
+   possible foreground session.
+5. Record the foreground strategy in the review or handoff when foreground
+   evidence is used.
+
 ## AI and External Model Constraints
 
 1. Keep normal desktop workflows fully usable offline without AI accounts,
