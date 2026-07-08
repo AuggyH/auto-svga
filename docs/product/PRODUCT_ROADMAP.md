@@ -33,6 +33,14 @@ are in scope for S13 runtime text preview. They must be classified as text
 replacement targets by deterministic name rules, not by OCR or visual AI, and
 must not be duplicated as ordinary image replacement rows.
 
+Owner correction: On 2026-07-08, the short-term drag-decision overlay was
+changed from left/right split to unequal top/bottom split. Dragging from the
+macOS Dock/Desktop folder commonly enters from the bottom and lands near the
+lower-center of the window, so left/right split makes the user more likely to
+miss the decision affordance and accidentally enter comparison. The primary
+Open File target must occupy about 70%-80% of the canvas, and Add As Compare
+File must remain a smaller secondary target.
+
 Product documentation system:
 `docs/product/PRODUCT_DOCUMENTATION_SYSTEM.md` defines the PM responsibility
 model, source hierarchy, status vocabulary, product brief checklist, and
@@ -118,7 +126,7 @@ ready.
 
 | ID | Accept when | Required evidence |
 | --- | --- | --- |
-| S1 | Launch Open, canvas drag-and-drop, and macOS menu opening all load the same local SVGA bytes without exposing arbitrary renderer filesystem access. Preview has no visible Open Another File button. Launch may show a subtle checkerboard idle background motion, but it must remain background-only and stop under reduced motion. | Open-flow proof, drag/drop proof, menu-entry proof, preview-surface no-open-button proof, launch idle-motion proof, reduced-motion fallback proof, path-redaction check. |
+| S1 | Launch Open, canvas drag-and-drop, and macOS menu opening all load the same local SVGA bytes without exposing arbitrary renderer filesystem access. Preview has no visible Open Another File button. Launch may show a subtle checkerboard idle background motion, but it must remain background-only and stop under reduced motion. | Open-flow proof, drag/drop proof, menu-entry proof, preview-surface no-open-button proof, drag-decision top/bottom primary Open zone proof, secondary Add Compare zone proof, launch idle-motion proof, reduced-motion fallback proof, path-redaction check. |
 | S2 | Invalid files, parse failures, loading failures, and playback failures show a visible user message and recover when a valid file is opened. | Invalid-file proof, recovery proof, player lifecycle cleanup proof. |
 | S3 | Preview information shows file size, estimated decoded image memory, runtime structure risk, canvas, FPS, and asset count for a parsed SVGA. | Inspection report and rendered right-information proof with decoded-memory and runtime-structure fields separated. |
 | S4 | Default Preview shows production-spec status inline without target thresholds; detailed actual/limit pairs appear only in optimization detail/result context or another explicit detail state. | Default status-only proof, optimization-detail actual/limit proof, current spec profile id. |
@@ -266,8 +274,8 @@ than as hidden feature modules.
 | Save failed | Failure reason and retry/Save As recovery | Retry save or return to dirty state |
 | Edit reserved | Full left/center/right layout, layer list visible, right operation area empty | Switch back -> Preview ready |
 | Recent file missing | Launch or menu recent entry reports a missing/inaccessible file without stale metadata | Open another file or clear recent history -> Launch or Loading |
-| Drag decision overlay | Supported file drag over an open canvas shows Open File / Add As Compare File zones | Drop -> open or compare flow |
-| Unsupported drag | Focused drag half turns red with `不支持的文件格式`; dropping clears the canvas and shows a canvas toast | Open valid file -> Loading |
+| Drag decision overlay | Supported file drag over an open canvas shows unequal top/bottom zones: Open File as the primary large zone and Add As Compare File as the smaller secondary zone | Drop -> open or compare flow |
+| Unsupported drag | Focused drag zone turns red with `不支持的文件格式`; dropping clears the canvas and shows a canvas toast | Open valid file -> Loading |
 
 No short-term state may expose export acceptance, sequence repair, advanced
 layer editing, inactive feature placeholders, or a separate production-spec
@@ -327,7 +335,9 @@ General comparison mode focuses only on file and canvas comparison:
 - if no file is open, the macOS compare command enters a two-file selection
   flow
 - dragging a supported file over an open canvas offers Open File or Add As
-  Compare File
+  Compare File through an unequal top/bottom decision overlay; Open File is the
+  primary large zone, about 70%-80% of the canvas, and Add As Compare File is
+  the secondary smaller zone, about 20%-30%
 - loaded compare shows two canvases on the left and one right comparison panel
   that emphasizes A/B differences rather than two standalone file summaries
 
@@ -442,10 +452,17 @@ Optimization output rules:
 ### Drag And Unsupported Format Behavior
 
 - Dragging a file over the canvas shows a semi-transparent black overlay.
-- The pointer-focused half is the focus region.
+- When a file is dragged over an already-open preview, the overlay uses
+  top/bottom decision zones instead of left/right halves.
+- Open File is the primary large zone and should occupy about 70%-80% of the
+  canvas. Add As Compare File is the secondary smaller zone and should occupy
+  about 20%-30%.
+- The layout should account for the Product Owner's common drag path from the
+  macOS Dock/Desktop folder upward into the app; lower-center drops should not
+  accidentally favor comparison, and the canvas center must belong to the Open
+  File primary zone.
+- The pointer-focused zone is the focus region.
 - For supported files, the focus region turns semi-transparent green.
-- When a file is dragged over an already-open preview, the overlay offers Open
-  File and Add As Compare File.
 - For unsupported files, the focus region turns semi-transparent red and shows
   `不支持的文件格式`.
 - Dropping an unsupported file clears the canvas and shows a centered canvas

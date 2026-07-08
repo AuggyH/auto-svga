@@ -177,6 +177,11 @@ Design notes:
   through the macOS menu or by dragging a file onto the canvas.
 - General compare must not have a persistent visible main-surface entry. It is
   entered from the macOS menu or drag-decision overlay.
+- Drag-decision overlay must use unequal top/bottom zones instead of left/right
+  halves. Open File is the primary large zone, about 70%-80% of the canvas; Add
+  As Compare File is the secondary smaller zone, about 20%-30%. This protects
+  bottom-to-center drag habits from accidentally entering compare. The canvas
+  center must belong to the Open File primary zone.
 - Export acceptance must not appear in the short-term surface.
 - Settings, logs, and dark/light mode must not appear as direct main-surface
   buttons in the short-term app.
@@ -433,6 +438,9 @@ Compare and drag/drop:
 - Compare empty state keeps bottom playback controls visible but disabled.
 - Loaded compare shows two canvases and one right comparison panel focused on
   differences.
+- Drag-decision overlay uses unequal top/bottom zones: Open File is the primary
+  large zone and Add As Compare File is the smaller secondary zone. The center
+  of the canvas belongs to Open File, not comparison.
 - Drag overlays use a semi-transparent black base. Supported focus regions are
   green; unsupported focus regions are red and show `不支持的文件格式`.
 - Dropping an unsupported file clears the canvas and shows a centered canvas

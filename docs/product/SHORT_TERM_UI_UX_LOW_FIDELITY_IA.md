@@ -203,11 +203,20 @@ Trace: S13.
 ┌────────────────────────────────────────────────────┐
 │ semi-transparent black overlay                     │
 │                                                    │
-│   Open File half        Add As Compare File half   │
-│   focused supported region = green                 │
-│   focused unsupported region = red                 │
+│   Open File primary zone                           │
+│   about 70%-80% height                             │
+│   supported file: focused zone = green             │
+│                                                    │
+├────────────────────────────────────────────────────┤
+│   Add As Compare File secondary zone               │
+│   about 20%-30% height                             │
+│   unsupported file: focused zone = red             │
 └────────────────────────────────────────────────────┘
 ```
+
+The overlay is top/bottom, not left/right. Open File owns the larger target and
+the canvas center so bottom-to-center drag habits do not accidentally trigger
+compare.
 
 Trace: S1, S2, S10.
 

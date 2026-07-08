@@ -246,9 +246,12 @@ Owner-confirmed canvas direction, aligned with the PM-synced main PRD:
 - General compare has no persistent visible entry on the main surface. It is
   entered from the macOS menu or from drag-and-drop decision overlays. If no
   file is open, the menu command enters a two-file compare selection state.
-- Dragging a supported file over an open preview shows a two-zone overlay:
-  Open File and Add As Compare File. The focused half turns green. Unsupported
-  files turn the focused region red with `不支持的文件格式`; dropping an
+- Dragging a supported file over an open preview shows a top/bottom two-zone
+  overlay instead of left/right halves. Open File is the primary large zone,
+  about 70%-80% of the canvas; Add As Compare File is the smaller secondary
+  zone, about 20%-30%. The canvas center belongs to Open File. The focused zone
+  turns green. Unsupported files turn the focused region red with
+  `不支持的文件格式`; dropping an
   unsupported file clears the canvas and shows the same text as a canvas toast.
 - Compare empty state keeps playback controls visible but disabled.
 - Optimization result comparison exits back to Preview after successful
