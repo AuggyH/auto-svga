@@ -77,7 +77,7 @@ Result: PASS.
 
 ## 9. Commit
 
-- Commit: pending
+- Commit: this commit, `docs: route confirmed requirements`
 - Branch: `agent/codex/short-term-preview-qa-20260708`
 - Tag: none
 
