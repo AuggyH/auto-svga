@@ -1683,6 +1683,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.optimizationActions \.toolbarButton:not\(\.primary\)\s*\{[^}]*box-shadow: none/s);
   assert.match(shortTermModules, /\.optimizationActions \.toolbarButton\[data-action="back-preview"\]\s*\{[^}]*color: var\(--asv-optimization-action-tertiary-color\)/s);
   assert.match(shortTermModules, /\.rightSurfaceBody:focus-visible/);
+  assert.match(shortTermTokens, /--asv-component-save-banner-min-height/);
+  assert.match(shortTermTokens, /--asv-save-banner-min-height: var\(--asv-component-save-banner-min-height\)/);
+  assert.match(shortTermModules, /\.saveBanner\s*\{[^}]*min-height: var\(--asv-save-banner-min-height\)/s);
+  assert.match(shortTermModules, /\.saveBanner\s*\{[^}]*border-bottom: var\(--asv-save-banner-border\)/s);
+  assert.match(shortTermModules, /\.saveBanner::before\s*\{[^}]*display: none/s);
   assert.match(shortTermModules, /\.saveBanner\[data-status="success"\]::before/);
   assert.match(shortTermModules, /\.saveBanner\[data-status="loading"\]::before/);
   assert.doesNotMatch(shortTermModules, /\.canvasWrap\[data-canvas-label\]::before/);

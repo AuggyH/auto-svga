@@ -92,15 +92,17 @@
   z-index: 6;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--asv-space-2);
+  gap: var(--asv-save-banner-gap);
   align-items: baseline;
-  min-height: 38px;
-  padding: var(--asv-space-2) var(--asv-space-4) var(--asv-space-2) var(--asv-space-5);
-  border-bottom: 1px solid var(--asv-border);
+  min-height: var(--asv-save-banner-min-height);
+  padding: var(--asv-save-banner-padding-block) var(--asv-save-banner-padding-inline);
+  border-bottom: var(--asv-save-banner-border);
   background: var(--asv-save-banner-bg);
+  box-shadow: var(--asv-save-banner-shadow);
 }
 
 .saveBanner::before {
+  display: none;
   content: "";
   position: absolute;
   inset: var(--asv-space-2) auto var(--asv-space-2) var(--asv-space-3);
@@ -127,12 +129,12 @@
 
 .saveBanner strong {
   color: var(--asv-text);
-  font-weight: 650;
+  font-weight: var(--asv-save-banner-title-weight);
 }
 
 .saveBanner span {
   min-width: 0;
-  color: var(--asv-muted);
+  color: var(--asv-save-banner-message-color);
   overflow-wrap: anywhere;
 }
 
