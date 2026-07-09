@@ -254,7 +254,7 @@
   --asv-component-playback-control-shadow: none;
   --asv-component-playback-track-bg: var(--asv-color-surface-playback-track);
   --asv-component-playback-track-ring: none;
-  --asv-component-fact-grid-width: 280px;
+  --asv-component-fact-grid-width: 328px;
   --asv-component-fact-grid-padding-block: var(--asv-space-3);
   --asv-component-fact-grid-row-gap: var(--asv-space-4);
   --asv-component-fact-grid-column-gap: var(--asv-space-4);
