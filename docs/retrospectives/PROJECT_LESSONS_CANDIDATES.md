@@ -603,3 +603,21 @@ promoted, watched, rejected, or kept historical.
   candidate row size, padding, typography, and state backgrounds needed for a
   tokenized implementation pass.
 - Status: watch
+
+## Validate real preload globals, not just bridge factories
+
+- Source:
+  `docs/reviews/2026-07-10-codex-hb-cr-001-electron-host-boundary-repair.md`
+- Area: Electron, host boundary, security, Code Review
+- Context: The short-term host-adapter factory test said deferred Workbench
+  methods were absent from the product bridge, but the actual `preload.cjs`
+  still exposed a legacy bridge in formal short-term runtime.
+- Problem: Factory-level contract tests can pass while the real preload global
+  surface remains too wide.
+- Candidate rule: For Electron host-boundary work, VM-load the actual
+  `preload.cjs` with formal product arguments and assert exact global names,
+  bridge keys, and blocked helper/deferred methods.
+- Evidence: Adding real preload VM allowlist tests caught and then locked down
+  `autoSvgaPrototype`, deferred save methods, artifact scan, reference-media,
+  proof helpers, and AEB intake exposure in formal short-term mode.
+- Status: watch

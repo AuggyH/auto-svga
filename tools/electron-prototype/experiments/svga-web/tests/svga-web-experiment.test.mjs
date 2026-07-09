@@ -9,6 +9,7 @@ import os from "node:os";
 import { test } from "node:test";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import vm from "node:vm";
 import protobuf from "protobufjs";
 import { legacyBrowserBaselineAuditCsp, strictCsp, startSvgaWebExperimentServer } from "../server.mjs";
 import {
@@ -35,6 +36,47 @@ const {
   validateSequenceProductRepairProof,
   validateSequenceRepairReportBinding
 } = require("../sequence-repair-proof-contract.cjs");
+
+async function exposePreloadGlobals(productMilestoneId, hostBoundaryMode = "formal") {
+  const preloadSource = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
+  const exposed = {};
+  const invocations = [];
+  const context = {
+    Buffer,
+    console,
+    process: {
+      argv: [
+        "electron",
+        "preload.cjs",
+        "--prototype-report-token=test-token",
+        `--prototype-product-milestone=${productMilestoneId}`,
+        `--prototype-host-boundary=${hostBoundaryMode}`
+      ]
+    },
+    require(specifier) {
+      if (specifier === "electron") {
+        return {
+          contextBridge: {
+            exposeInMainWorld(name, api) {
+              exposed[name] = api;
+            }
+          },
+          ipcRenderer: {
+            invoke(channel, input) {
+              invocations.push({ channel, input });
+              return { channel, input };
+            }
+          }
+        };
+      }
+      return require(specifier);
+    }
+  };
+  vm.runInNewContext(preloadSource, context, {
+    filename: path.join(experimentRoot, "preload.cjs")
+  });
+  return { exposed, invocations };
+}
 
 test("short-term metric values split units only for simple numeric facts", async () => {
   const { renderMetricValueHtml, renderOptimizationMetricCellHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-render-model.mjs")).href);
@@ -700,7 +742,8 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(securePreferences.spellcheck, false);
   assert.deepEqual(securePreferences.additionalArguments, [
     "--prototype-report-token=test-token",
-    "--prototype-product-milestone=P6"
+    "--prototype-product-milestone=P6",
+    "--prototype-host-boundary=formal"
   ]);
   assert.equal(hostContract.isAllowedHostUrl("http://127.0.0.1:1234/", "http://127.0.0.1:1234"), true);
   assert.equal(hostContract.isAllowedHostUrl("blob:http://127.0.0.1:1234/id", "http://127.0.0.1:1234", { allowBlob: true }), true);
@@ -727,6 +770,14 @@ test("main process keeps sandboxed Electron security settings", async () => {
     reportToken: "test-token",
     productMilestoneId: "P6"
   });
+  const aebInvocations = [];
+  const aebProductPreloadApi = hostContract.createProductPreloadApi((channel, input) => {
+    aebInvocations.push({ channel, input });
+    return { channel, input };
+  }, {
+    reportToken: "test-token",
+    productMilestoneId: "aeb"
+  });
   assert.equal(preloadApi.hostAdapterVersion, 1);
   assert.equal(preloadApi.telemetry, "disabled");
   assert.equal(preloadApi.capabilities.arbitraryFileSystemAccess, false);
@@ -737,7 +788,15 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(preloadApi.capabilities.finderDocumentAssociation, "not-declared");
   assert.equal(preloadApi.capabilities.overwriteSave, "host-source-path-from-file-picker-only");
   assert.deepEqual(preloadApi.capabilities.documentTypes, ["svga"]);
+  assert.equal("referenceMediaOpen" in productPreloadApi.capabilities, false);
   assert.equal("sequenceRepairSaveAs" in productPreloadApi.capabilities, false);
+  assert.equal("scanLatestArtifacts" in productPreloadApi, false);
+  assert.equal("openReferenceMediaFile" in productPreloadApi, false);
+  assert.equal("captureArtifact" in productPreloadApi, false);
+  assert.equal("performSmokeInput" in productPreloadApi, false);
+  assert.equal("reportSmokeResult" in productPreloadApi, false);
+  assert.equal("reportAuditResult" in productPreloadApi, false);
+  assert.equal("reportNormalProofResult" in productPreloadApi, false);
   assert.equal("saveSequenceRepairSvga" in productPreloadApi, false);
   assert.equal("saveEditedSvga" in productPreloadApi, false);
   assert.equal("saveOptimizedSvga" in productPreloadApi, false);
@@ -764,21 +823,37 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.equal(productPreloadApi.updateShortTermMenuState({ hasFile: true }).channel, hostContract.IPC_CHANNELS.updateShortTermMenuState);
   assert.equal(productPreloadApi.setShortTermWindowMode("launch").channel, hostContract.IPC_CHANNELS.setShortTermWindowMode);
   assert.equal(productPreloadApi.saveShortTermSvgaOutput({ bytesBase64: "AA==" }).channel, hostContract.IPC_CHANNELS.saveShortTermSvgaOutput);
+  assert.equal(aebProductPreloadApi.getAebIntakeReport().channel, hostContract.IPC_CHANNELS.getAebIntakeReport);
   assert.equal(hostContract.IPC_CHANNELS.saveOptimizedSvga, "svga-web-experiment:save-optimized-svga");
   assert.equal(invocations.length, 10);
   assert.equal(shortTermInvocations.length, 3);
+  assert.equal(aebInvocations.length, 1);
   assert.equal(hostContract.ELECTRON_HOST_BRIDGE_NAME, "autoSvgaElectronHost");
   assert.equal(hostContract.LEGACY_PROTOTYPE_BRIDGE_NAME, "autoSvgaPrototype");
   assert.match(preload, /createProductPreloadApi/);
   assert.match(preload, /createLegacyPrototypePreloadApi/);
   assert.match(hostContractSource, /createProductPreloadApi/);
   assert.match(hostContractSource, /createLegacyPrototypePreloadApi/);
+  assert.throws(
+    () => hostContract.rejectFormalShortTermHostCapability("short-term", "formal", "saveEditedSvga"),
+    /Formal short-term product runtime cannot use saveEditedSvga/
+  );
+  assert.doesNotThrow(() => hostContract.rejectFormalShortTermHostCapability("short-term", "proof", "captureArtifact"));
+  assert.throws(
+    () => hostContract.rejectAebProductCapability("aeb", "saveEditedSvga"),
+    /AEB product surface cannot use saveEditedSvga/
+  );
   const hostOpenReturn = main.match(/function openSvgaFileBytes[\s\S]*?\n}\n\nasync function openSvgaFile/)?.[0] ?? "";
   const referenceOpenReturn = main.match(/function openReferenceMediaFileBytes[\s\S]*?\n}\n\nasync function openSvgaFile/)?.[0] ?? "";
   assert.match(main, /createSecureWebPreferences/);
   assert.match(main, /isAllowedHostUrl/);
   assert.match(main, /isExpectedSenderUrl/);
   assert.match(main, /productSmokeMode/);
+  assert.match(main, /hostBoundaryMode/);
+  assert.match(main, /rejectFormalShortTermHostCapability\(productMilestoneId, hostBoundaryMode, "saveEditedSvga"\)/);
+  assert.match(main, /rejectFormalShortTermHostCapability\(productMilestoneId, hostBoundaryMode, "scanLatestArtifacts"\)/);
+  assert.match(main, /rejectFormalShortTermHostCapability\(productMilestoneId, hostBoundaryMode, "openReferenceMediaFile"\)/);
+  assert.match(main, /rejectFormalShortTermHostCapability\(productMilestoneId, hostBoundaryMode, "captureArtifact"\)/);
   assert.match(main, /captureProductArtifact/);
   assert.match(main, /function validateOptimizedSvgaSaveInput/);
   assert.match(main, /function validateOptimizationReportBinding/);
@@ -1066,6 +1141,128 @@ test("main process keeps sandboxed Electron security settings", async () => {
   assert.match(productApp, /function p6BoundedSmokeText/);
   assert.match(productApp, /visibleResultText: p6BoundedSmokeText\(proof\.renderedText\)/);
   assert.doesNotMatch(productApp, /stack: error\.stack|error\.stack/);
+});
+
+test("formal short-term actual preload exposes only the authorized product bridge", async () => {
+  const { exposed, invocations } = await exposePreloadGlobals("short-term");
+  assert.deepEqual(Object.keys(exposed), [hostContract.ELECTRON_HOST_BRIDGE_NAME]);
+  assert.equal(exposed[hostContract.LEGACY_PROTOTYPE_BRIDGE_NAME], undefined);
+
+  const api = exposed[hostContract.ELECTRON_HOST_BRIDGE_NAME];
+  assert.equal(api.hostAdapterVersion, 1);
+  assert.equal(api.productMilestoneId, "short-term");
+  assert.equal(api.reportToken, "test-token");
+  assert.equal(api.localOnly, true);
+  assert.equal(api.telemetry, "disabled");
+  assert.deepEqual(Array.from(api.capabilities.documentTypes), ["svga"]);
+  assert.equal(api.capabilities.fileOpen, "host-dialog-svga-only");
+  assert.equal(api.capabilities.dragDrop, "renderer-file-api-no-path-authority");
+  assert.equal(api.capabilities.recentFiles, "host-user-data-redacted");
+  assert.equal(api.capabilities.clipboardWrite, "host-clipboard-write-text-only");
+  assert.equal(api.capabilities.finderDocumentAssociation, "not-declared");
+  assert.equal(api.capabilities.saveAs, "host-dialog-svga-only");
+  assert.equal(api.capabilities.overwriteSave, "host-source-path-from-file-picker-only");
+  assert.equal(api.capabilities.arbitraryFileSystemAccess, false);
+  assert.equal(api.capabilities.shellAccess, false);
+  assert.equal(api.capabilities.remoteNavigation, false);
+  assert.equal(api.capabilities.newWindows, false);
+
+  const allowedMethods = [
+    "openSvgaFile",
+    "getRecentSvgaFiles",
+    "openRecentSvgaFile",
+    "clearRecentSvgaFiles",
+    "writeClipboardText",
+    "updateShortTermMenuState",
+    "setShortTermWindowMode",
+    "saveShortTermSvgaOutput"
+  ];
+  for (const allowedMethod of allowedMethods) {
+    assert.equal(typeof api[allowedMethod], "function", allowedMethod);
+  }
+
+  const blockedKeys = [
+    "referenceMediaOpen",
+    "sequenceRepairSaveAs",
+    "scanLatestArtifacts",
+    "openReferenceMediaFile",
+    "captureArtifact",
+    "performSmokeInput",
+    "reportSmokeResult",
+    "reportAuditResult",
+    "reportNormalProofResult",
+    "saveEditedSvga",
+    "saveOptimizedSvga",
+    "saveSequenceRepairSvga",
+    "reportP3EditResult",
+    "reportP4EditResult",
+    "reportP5BatchResult",
+    "getAebIntakeReport"
+  ];
+  for (const blockedKey of blockedKeys) {
+    assert.equal(blockedKey in api, false, blockedKey);
+    assert.equal(blockedKey in api.capabilities, false, blockedKey);
+  }
+
+  assert.equal(api.openSvgaFile().channel, hostContract.IPC_CHANNELS.openSvgaFile);
+  assert.equal(api.saveShortTermSvgaOutput({ bytesBase64: "AA==" }).channel, hostContract.IPC_CHANNELS.saveShortTermSvgaOutput);
+  assert.equal(invocations.length, 2);
+});
+
+test("proof short-term actual preload may expose evidence helpers without legacy Workbench bridge", async () => {
+  const { exposed } = await exposePreloadGlobals("short-term", "proof");
+  assert.deepEqual(Object.keys(exposed), [hostContract.ELECTRON_HOST_BRIDGE_NAME]);
+  assert.equal(exposed[hostContract.LEGACY_PROTOTYPE_BRIDGE_NAME], undefined);
+
+  const api = exposed[hostContract.ELECTRON_HOST_BRIDGE_NAME];
+  assert.equal(api.productMilestoneId, "short-term");
+  assert.equal(typeof api.reportSmokeResult, "function");
+  assert.equal(typeof api.captureArtifact, "function");
+  assert.equal(typeof api.reportNormalProofResult, "function");
+  assert.equal("saveEditedSvga" in api, false);
+  assert.equal("saveOptimizedSvga" in api, false);
+  assert.equal("saveSequenceRepairSvga" in api, false);
+});
+
+test("AEB actual preload exposes only the intake bridge", async () => {
+  const { exposed, invocations } = await exposePreloadGlobals("aeb");
+  assert.deepEqual(Object.keys(exposed), [hostContract.ELECTRON_HOST_BRIDGE_NAME]);
+  assert.equal(exposed[hostContract.LEGACY_PROTOTYPE_BRIDGE_NAME], undefined);
+
+  const api = exposed[hostContract.ELECTRON_HOST_BRIDGE_NAME];
+  assert.equal(api.productMilestoneId, "aeb");
+  assert.equal(api.localOnly, true);
+  assert.equal(api.telemetry, "disabled");
+  assert.deepEqual(Array.from(api.capabilities.documentTypes), ["aeb-intake-report"]);
+  assert.equal(api.capabilities.aebIntakeReport, "host-read-normalized-redacted-json-from-launch-path");
+  assert.equal(api.capabilities.arbitraryFileSystemAccess, false);
+  assert.equal(api.capabilities.shellAccess, false);
+  assert.equal(typeof api.getAebIntakeReport, "function");
+
+  const blockedMethods = [
+    "scanLatestArtifacts",
+    "openSvgaFile",
+    "openReferenceMediaFile",
+    "getRecentSvgaFiles",
+    "openRecentSvgaFile",
+    "clearRecentSvgaFiles",
+    "writeClipboardText",
+    "updateShortTermMenuState",
+    "setShortTermWindowMode",
+    "saveShortTermSvgaOutput",
+    "saveEditedSvga",
+    "saveOptimizedSvga",
+    "saveSequenceRepairSvga",
+    "reportP3EditResult",
+    "reportP4EditResult",
+    "reportP5BatchResult"
+  ];
+  for (const blockedMethod of blockedMethods) {
+    assert.equal(blockedMethod in api, false, blockedMethod);
+  }
+
+  assert.equal(api.getAebIntakeReport().channel, hostContract.IPC_CHANNELS.getAebIntakeReport);
+  assert.equal(invocations.length, 1);
 });
 
 test("desktop latest-artifact catalog returns Web-shaped non-empty and safe-empty results without path leaks", async () => {
