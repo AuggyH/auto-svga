@@ -125,6 +125,71 @@ review-packet stamping step. Until then, tickets and reviews may identify the
 current owner-visible baseline as `Auto SVGA 0.1.0-alpha local` plus the
 observed commit or package manifest.
 
+## Planned 0.2.x Scope: Multi-format Preview MVP
+
+Date: 2026-07-09
+
+`Auto SVGA 0.2.x` promotes VAP and Lottie from long-term candidate scope into
+a planned multi-format preview track. This track must not leak visible VAP or
+Lottie controls into the current `0.1.x` SVGA Preview MVP until a `0.2.0-alpha`
+requirement ticket, implementation lane, and QA gate explicitly accept them.
+
+Goal: keep the existing SVGA preview workflow, then add local VAP and Lottie
+preview, parsing, information, asset list, and fusion/replaceable-element
+inspection in a shared multi-format client model.
+
+Primary user value:
+
+- let the same desktop client inspect and preview the team's common motion
+  delivery formats instead of splitting review across separate tools;
+- expose VAP fusion elements and Lottie asset/text candidates in a comparable
+  information surface;
+- preserve truthful support boundaries so unsupported features fail with clear
+  feedback instead of silently misplaying.
+
+Initial supported intake targets:
+
+- SVGA: existing `0.1.x` support remains the baseline and regression target.
+- Lottie: local Lottie JSON as the first target, including local image assets
+  when deterministic path resolution is available. `.lottie` package support is
+  research until a separate parser decision is made.
+- VAP: local single-file VAP/MP4 packages that contain readable `vapc` metadata
+  are the first target. Adjacent `vapc.json` may be used for diagnostics or
+  fallback only; normal support should not depend on sidecar files.
+
+Required 0.2 MVP capabilities:
+
+| ID | Capability | Product expectation |
+| --- | --- | --- |
+| MF1 | Format detection | Open, drag, and menu flows can identify SVGA, VAP, Lottie, and unsupported inputs without path leakage. |
+| MF2 | Shared inspection model | Basic facts, timing, dimensions, file size, asset count, and warnings render through normalized motion asset data. |
+| MF3 | Lottie parse and preview | Local JSON can be parsed, played, and inspected; unsupported Lottie features are reported instead of hidden. |
+| MF4 | VAP parse and preview | `vapc` metadata can be extracted, normalized, and used for local preview when the playback path is available. |
+| MF5 | Asset and element display | Lottie assets/text candidates and VAP fusion images/text are shown with format-appropriate labels and risk notes. |
+| MF6 | Typed failure feedback | Unsupported format, missing dependency, parse failure, playback failure, unsupported feature, and capability limits use shared error states. |
+| MF7 | 0.1 regression safety | SVGA open/play/info/assets/replaceable/optimization/compare/save behavior remains intact. |
+
+0.2 MVP non-goals:
+
+- VAP export/generation, VAP sequence-folder generation, or VAP conversion.
+- Lottie authoring, Lottie export, or lossless conversion into SVGA/VAP.
+- Persistent editing or saving of VAP/Lottie replacement changes.
+- Windows client support.
+- AE Bridge package intake.
+- External AI, cloud services, or network-dependent parsing/playback.
+- Claiming production readiness from fixture-only playback.
+
+Recommended 0.2 rollout:
+
+| Work package | Target | Exit condition |
+| --- | --- | --- |
+| `0.2-WP0` | Readiness and adapter spike | Dependency review, fixture plan, format-detection design, and implementation split are ready without changing `0.1.x` visible behavior. |
+| `0.2-WP1` | Shared format registry and detection | SVGA remains current; VAP/Lottie detection can be exercised behind `0.2` gates with typed unsupported feedback. |
+| `0.2-WP2` | Lottie JSON parse/playback MVP | Local JSON fixture plays and exposes facts/assets; unsupported features are listed. |
+| `0.2-WP3` | VAP container inspection/playback MVP | `vapc` is extracted, fusion metadata is displayed, and a local preview path is proven on safe fixtures. |
+| `0.2-WP4` | Multi-format UI integration | Startup/open/drag/overview/assets surfaces use normalized data while preserving `0.1.x` SVGA flows. |
+| `0.2-WP5` | QA and package gate | Real-material and fixture matrix proves supported/unsupported states before any owner-visible `0.2` package claim. |
+
 ## Owner Correction: Short-term Scope
 
 Date: 2026-07-01
