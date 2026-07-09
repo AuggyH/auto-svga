@@ -71,6 +71,66 @@ test("short-term playback loop toggle updates player loop state", async () => {
   assert.equal(second.looping, true);
 });
 
+test("short-term save banner states expose direct accessible page-state semantics", async () => {
+  const {
+    bannerTone,
+    saveBannerA11yState,
+    saveBannerView
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs")).href);
+  const { showSaveFeedbackBanner, clearSaveFeedbackBanner } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-save-renderers.mjs")).href);
+
+  assert.equal(bannerTone("正在验证保存输出。"), "loading");
+  assert.equal(bannerTone("已保存并通过验证。"), "success");
+  assert.equal(bannerTone("保存失败。"), "danger");
+  assert.equal(bannerTone("已取消保存。"), "warning");
+  assert.deepEqual(saveBannerA11yState("loading"), {
+    role: "status",
+    ariaLive: "polite",
+    ariaBusy: "true"
+  });
+  assert.deepEqual(saveBannerA11yState("danger"), {
+    role: "alert",
+    ariaLive: "assertive",
+    ariaBusy: "false"
+  });
+
+  const loadingView = saveBannerView("正在验证保存输出。", "写入后会读取文件并校验哈希。");
+  assert.equal(loadingView.status, "loading");
+  assert.equal(loadingView.role, "status");
+  assert.equal(loadingView.ariaBusy, "true");
+  assert.match(loadingView.html, /正在验证保存输出。/);
+
+  const attributes = new Map();
+  const node = {
+    hidden: true,
+    dataset: {},
+    innerHTML: "",
+    setAttribute(name, value) {
+      attributes.set(name, value);
+    },
+    removeAttribute(name) {
+      attributes.delete(name);
+      if (name === "data-status") delete this.dataset.status;
+    }
+  };
+
+  const failedView = showSaveFeedbackBanner(node, "保存失败。", "源文件没有被修改。");
+  assert.equal(failedView.status, "danger");
+  assert.equal(node.hidden, false);
+  assert.equal(node.dataset.status, "danger");
+  assert.equal(attributes.get("role"), "alert");
+  assert.equal(attributes.get("aria-live"), "assertive");
+  assert.equal(attributes.get("aria-busy"), "false");
+  assert.match(node.innerHTML, /源文件没有被修改。/);
+
+  clearSaveFeedbackBanner(node);
+  assert.equal(node.hidden, true);
+  assert.equal(node.dataset.status, undefined);
+  assert.equal(attributes.has("role"), false);
+  assert.equal(attributes.get("aria-live"), "polite");
+  assert.equal(attributes.get("aria-busy"), "false");
+});
+
 test("short-term general compare renders loaded A/B facts through shared metric renderer", async () => {
   const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
   const aModel = {

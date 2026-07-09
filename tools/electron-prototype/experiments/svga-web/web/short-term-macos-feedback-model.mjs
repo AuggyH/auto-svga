@@ -1,5 +1,17 @@
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
 
+const SAVE_BANNER_A11Y = {
+  danger: { role: "alert", ariaLive: "assertive", ariaBusy: "false" },
+  loading: { role: "status", ariaLive: "polite", ariaBusy: "true" },
+  success: { role: "status", ariaLive: "polite", ariaBusy: "false" },
+  warning: { role: "status", ariaLive: "polite", ariaBusy: "false" },
+  info: { role: "status", ariaLive: "polite", ariaBusy: "false" }
+};
+
+export function normalizeSaveBannerStatus(status) {
+  return Object.hasOwn(SAVE_BANNER_A11Y, status) ? status : "info";
+}
+
 export function bannerTone(title) {
   if (/正在/.test(title)) return "loading";
   if (/失败|未完成|未通过/.test(title)) return "danger";
@@ -8,9 +20,16 @@ export function bannerTone(title) {
   return "info";
 }
 
+export function saveBannerA11yState(status) {
+  return SAVE_BANNER_A11Y[normalizeSaveBannerStatus(status)];
+}
+
 export function saveBannerView(title, message, tone = bannerTone(title)) {
+  const status = normalizeSaveBannerStatus(tone);
+  const a11y = saveBannerA11yState(status);
   return {
-    status: tone,
+    status,
+    ...a11y,
     html: `<strong>${escapeHtml(title)}</strong><span> ${escapeHtml(message || "")}</span>`
   };
 }
