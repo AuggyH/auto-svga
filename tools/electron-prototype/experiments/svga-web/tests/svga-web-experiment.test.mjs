@@ -1592,6 +1592,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-right-surface-content-width: calc\(var\(--asv-component-right-panel-width\) - \(var\(--asv-component-right-panel-padding\) \* 2\)\)/);
   assert.match(shortTermTokens, /--asv-component-right-panel-section-gap: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-component-right-panel-section-divider: 1px solid color-mix\(in srgb, var\(--asv-color-border-subtle\) 42%, transparent\)/);
+  assert.match(shortTermTokens, /--asv-component-right-panel-header-divider: var\(--asv-component-right-panel-section-divider\)/);
+  assert.match(shortTermTokens, /--asv-component-right-section-head-padding-block-end: var\(--asv-space-1\)/);
+  assert.match(shortTermTokens, /--asv-component-right-section-list-margin-block-start: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-component-file-header-width: calc\(100% - \(var\(--asv-right-panel-padding\) \* 2\)\)/);
   assert.match(shortTermTokens, /--asv-component-file-header-action-width: 72px/);
   assert.match(shortTermTokens, /--asv-component-tab-selected-background: var\(--asv-color-surface-canvas\)/);
@@ -1942,6 +1945,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.compareCanvasWrap\[data-compare-state="empty"\] canvas\s*\{[^}]*opacity: 0/s);
   assert.match(shortTermModules, /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareEmptyPrompt\s*\{[^}]*display: none/s);
   assert.match(shortTermModules, /\.assetList \.assetRow\s*\{[^}]*border-bottom: var\(--asv-asset-row-divider\)/s);
+  assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*border-bottom: var\(--asv-right-panel-header-divider\)/s);
+  assert.match(shortTermModules, /\.sectionHead\s*\{[^}]*padding-bottom: var\(--asv-right-section-head-padding-block-end\)/s);
+  assert.match(shortTermModules, /\.assetList,[\s\S]*\.textElementList\s*\{[^}]*margin-top: var\(--asv-right-section-list-margin-block-start\)/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead\s*\{[^}]*display: grid/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead\s*\{[^}]*gap: var\(--asv-asset-section-head-gap\)/s);
   assert.match(shortTermModules, /\.sectionHead\.assetSectionHead h2\s*\{[^}]*white-space: nowrap/s);

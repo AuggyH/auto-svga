@@ -261,6 +261,9 @@
   --asv-component-right-panel-section-padding-block-start: var(--asv-space-1);
   --asv-component-right-panel-separator-width: 0px;
   --asv-component-right-panel-section-divider: 1px solid color-mix(in srgb, var(--asv-color-border-subtle) 42%, transparent);
+  --asv-component-right-panel-header-divider: var(--asv-component-right-panel-section-divider);
+  --asv-component-right-section-head-padding-block-end: var(--asv-space-1);
+  --asv-component-right-section-list-margin-block-start: var(--asv-space-1);
   --asv-component-side-surface-background: var(--asv-color-surface-right-panel);
   --asv-component-side-surface-separator-width: var(--asv-component-right-panel-separator-width);
   --asv-component-side-surface-separator-color: var(--asv-color-border-right-panel-separator);
@@ -767,6 +770,9 @@
   --asv-right-panel-section-padding-block-start: var(--asv-component-right-panel-section-padding-block-start);
   --asv-right-panel-separator-width: var(--asv-component-right-panel-separator-width);
   --asv-right-panel-section-divider: var(--asv-component-right-panel-section-divider);
+  --asv-right-panel-header-divider: var(--asv-component-right-panel-header-divider);
+  --asv-right-section-head-padding-block-end: var(--asv-component-right-section-head-padding-block-end);
+  --asv-right-section-list-margin-block-start: var(--asv-component-right-section-list-margin-block-start);
   --asv-side-surface-bg: var(--asv-component-side-surface-background);
   --asv-side-surface-separator-width: var(--asv-component-side-surface-separator-width);
   --asv-side-surface-separator: var(--asv-component-side-surface-separator-color);

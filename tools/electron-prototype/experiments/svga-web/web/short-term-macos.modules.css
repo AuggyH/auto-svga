@@ -683,7 +683,7 @@ canvas {
   overflow: hidden;
   padding: var(--asv-file-header-padding-block) 0;
   margin: var(--asv-right-panel-safe-padding-block-start) var(--asv-right-panel-padding) 0;
-  border-bottom: 0;
+  border-bottom: var(--asv-right-panel-header-divider);
 }
 
 .rightSurfaceBody > .factGrid,
@@ -836,7 +836,7 @@ canvas {
 .replaceableList,
 .textElementList {
   display: grid;
-  margin-top: var(--asv-space-2);
+  margin-top: var(--asv-right-section-list-margin-block-start);
 }
 
 .assetList {
@@ -863,7 +863,7 @@ canvas {
   justify-content: space-between;
   gap: var(--asv-space-3);
   align-items: flex-start;
-  padding-bottom: var(--asv-space-2);
+  padding-bottom: var(--asv-right-section-head-padding-block-end);
   border-bottom: 0;
 }
 
