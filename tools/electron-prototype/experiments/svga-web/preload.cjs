@@ -14,6 +14,7 @@ const IPC_CHANNELS = Object.freeze({
   getRecentSvgaFiles: "svga-web-experiment:get-recent-svga-files",
   openRecentSvgaFile: "svga-web-experiment:open-recent-svga-file",
   clearRecentSvgaFiles: "svga-web-experiment:clear-recent-svga-files",
+  getAebIntakeReport: "svga-web-experiment:get-aeb-intake-report",
   writeClipboardText: "svga-web-experiment:write-clipboard-text",
   updateShortTermMenuState: "svga-web-experiment:update-short-term-menu-state",
   setShortTermWindowMode: "svga-web-experiment:set-short-term-window-mode",
@@ -30,6 +31,8 @@ const tokenArgument = process.argv.find((value) => value.startsWith("--prototype
 const reportToken = tokenArgument?.slice("--prototype-report-token=".length) ?? "";
 const milestoneArgument = process.argv.find((value) => value.startsWith("--prototype-product-milestone="));
 const productMilestoneId = milestoneArgument?.slice("--prototype-product-milestone=".length) ?? "P2";
+const hostBoundaryArgument = process.argv.find((value) => value.startsWith("--prototype-host-boundary="));
+const hostBoundaryMode = hostBoundaryArgument?.slice("--prototype-host-boundary=".length) ?? "formal";
 
 function invoke(channel, input) {
   return input === undefined ? ipcRenderer.invoke(channel) : ipcRenderer.invoke(channel, input);
@@ -109,6 +112,74 @@ function freezePreloadApi(api) {
   });
 }
 
+function createShortTermProductPreloadApi() {
+  return freezePreloadApi({
+    hostAdapterVersion: 1,
+    productMilestoneId,
+    reportToken,
+    localOnly: true,
+    telemetry: "disabled",
+    capabilities: {
+      documentTypes: Object.freeze(["svga"]),
+      fileOpen: "host-dialog-svga-only",
+      dragDrop: "renderer-file-api-no-path-authority",
+      recentFiles: "host-user-data-redacted",
+      clipboardWrite: "host-clipboard-write-text-only",
+      finderDocumentAssociation: "not-declared",
+      saveAs: "host-dialog-svga-only",
+      overwriteSave: "host-source-path-from-file-picker-only",
+      arbitraryFileSystemAccess: false,
+      shellAccess: false,
+      remoteNavigation: false,
+      newWindows: false
+    },
+    openSvgaFile() {
+      return invoke(IPC_CHANNELS.openSvgaFile);
+    },
+    getRecentSvgaFiles() {
+      return invoke(IPC_CHANNELS.getRecentSvgaFiles);
+    },
+    openRecentSvgaFile(recentFileId) {
+      return invoke(IPC_CHANNELS.openRecentSvgaFile, recentFileId);
+    },
+    clearRecentSvgaFiles() {
+      return invoke(IPC_CHANNELS.clearRecentSvgaFiles);
+    },
+    writeClipboardText(text) {
+      return invoke(IPC_CHANNELS.writeClipboardText, text);
+    },
+    updateShortTermMenuState(state) {
+      return invoke(IPC_CHANNELS.updateShortTermMenuState, state);
+    },
+    setShortTermWindowMode(mode) {
+      return invoke(IPC_CHANNELS.setShortTermWindowMode, mode);
+    },
+    saveShortTermSvgaOutput(input) {
+      return invoke(IPC_CHANNELS.saveShortTermSvgaOutput, input);
+    }
+  });
+}
+
+function createAebProductPreloadApi() {
+  return freezePreloadApi({
+    hostAdapterVersion: 1,
+    productMilestoneId,
+    localOnly: true,
+    telemetry: "disabled",
+    capabilities: {
+      documentTypes: Object.freeze(["aeb-intake-report"]),
+      aebIntakeReport: "host-read-normalized-redacted-json-from-launch-path",
+      arbitraryFileSystemAccess: false,
+      shellAccess: false,
+      remoteNavigation: false,
+      newWindows: false
+    },
+    getAebIntakeReport() {
+      return invoke(IPC_CHANNELS.getAebIntakeReport);
+    }
+  });
+}
+
 function withShortTermProductApi(api) {
   return {
     ...api,
@@ -147,10 +218,16 @@ function withDeferredWorkbenchApi(api) {
 }
 
 function createProductPreloadApi() {
-  const api = createBasePreloadApi();
-  if (productMilestoneId === "short-term") {
-    return freezePreloadApi(withShortTermProductApi(api));
+  if (productMilestoneId === "aeb") {
+    return createAebProductPreloadApi();
   }
+  if (productMilestoneId === "short-term") {
+    if (hostBoundaryMode === "formal") {
+      return createShortTermProductPreloadApi();
+    }
+    return freezePreloadApi(withShortTermProductApi(createBasePreloadApi()));
+  }
+  const api = createBasePreloadApi();
   return freezePreloadApi(withDeferredWorkbenchApi(api));
 }
 
@@ -160,7 +237,9 @@ function createLegacyPrototypePreloadApi() {
 }
 
 const productHostApi = createProductPreloadApi(invoke, { reportToken, productMilestoneId });
-const legacyPrototypeApi = createLegacyPrototypePreloadApi(invoke, { reportToken, productMilestoneId });
 
 contextBridge.exposeInMainWorld(ELECTRON_HOST_BRIDGE_NAME, productHostApi);
-contextBridge.exposeInMainWorld(LEGACY_PROTOTYPE_BRIDGE_NAME, legacyPrototypeApi);
+if (productMilestoneId !== "short-term" && productMilestoneId !== "aeb") {
+  const legacyPrototypeApi = createLegacyPrototypePreloadApi(invoke, { reportToken, productMilestoneId });
+  contextBridge.exposeInMainWorld(LEGACY_PROTOTYPE_BRIDGE_NAME, legacyPrototypeApi);
+}

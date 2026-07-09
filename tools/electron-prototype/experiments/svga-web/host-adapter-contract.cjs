@@ -16,6 +16,7 @@ const IPC_CHANNELS = Object.freeze({
   getRecentSvgaFiles: "svga-web-experiment:get-recent-svga-files",
   openRecentSvgaFile: "svga-web-experiment:open-recent-svga-file",
   clearRecentSvgaFiles: "svga-web-experiment:clear-recent-svga-files",
+  getAebIntakeReport: "svga-web-experiment:get-aeb-intake-report",
   writeClipboardText: "svga-web-experiment:write-clipboard-text",
   updateShortTermMenuState: "svga-web-experiment:update-short-term-menu-state",
   setShortTermWindowMode: "svga-web-experiment:set-short-term-window-mode",
@@ -30,12 +31,13 @@ const IPC_CHANNELS = Object.freeze({
 
 const DOCUMENT_TYPES = Object.freeze(["svga"]);
 
-function createSecureWebPreferences({ preloadPath, reportToken, productMilestoneId }) {
+function createSecureWebPreferences({ preloadPath, reportToken, productMilestoneId, hostBoundaryMode = "formal" }) {
   return {
     preload: preloadPath,
     additionalArguments: [
       `--prototype-report-token=${reportToken}`,
-      `--prototype-product-milestone=${productMilestoneId}`
+      `--prototype-product-milestone=${productMilestoneId}`,
+      `--prototype-host-boundary=${hostBoundaryMode}`
     ],
     contextIsolation: true,
     nodeIntegration: false,
@@ -45,6 +47,74 @@ function createSecureWebPreferences({ preloadPath, reportToken, productMilestone
     backgroundThrottling: false,
     spellcheck: false
   };
+}
+
+function createShortTermProductPreloadApi(invoke, { reportToken, productMilestoneId }) {
+  return freezePreloadApi({
+    hostAdapterVersion: ELECTRON_HOST_ADAPTER_VERSION,
+    productMilestoneId,
+    reportToken,
+    localOnly: true,
+    telemetry: "disabled",
+    capabilities: {
+      documentTypes: DOCUMENT_TYPES,
+      fileOpen: "host-dialog-svga-only",
+      dragDrop: "renderer-file-api-no-path-authority",
+      recentFiles: "host-user-data-redacted",
+      clipboardWrite: "host-clipboard-write-text-only",
+      finderDocumentAssociation: "not-declared",
+      saveAs: "host-dialog-svga-only",
+      overwriteSave: "host-source-path-from-file-picker-only",
+      arbitraryFileSystemAccess: false,
+      shellAccess: false,
+      remoteNavigation: false,
+      newWindows: false
+    },
+    openSvgaFile() {
+      return invoke(IPC_CHANNELS.openSvgaFile);
+    },
+    getRecentSvgaFiles() {
+      return invoke(IPC_CHANNELS.getRecentSvgaFiles);
+    },
+    openRecentSvgaFile(recentFileId) {
+      return invoke(IPC_CHANNELS.openRecentSvgaFile, recentFileId);
+    },
+    clearRecentSvgaFiles() {
+      return invoke(IPC_CHANNELS.clearRecentSvgaFiles);
+    },
+    writeClipboardText(text) {
+      return invoke(IPC_CHANNELS.writeClipboardText, text);
+    },
+    updateShortTermMenuState(state) {
+      return invoke(IPC_CHANNELS.updateShortTermMenuState, state);
+    },
+    setShortTermWindowMode(mode) {
+      return invoke(IPC_CHANNELS.setShortTermWindowMode, mode);
+    },
+    saveShortTermSvgaOutput(input) {
+      return invoke(IPC_CHANNELS.saveShortTermSvgaOutput, input);
+    }
+  });
+}
+
+function createAebProductPreloadApi(invoke, { productMilestoneId }) {
+  return freezePreloadApi({
+    hostAdapterVersion: ELECTRON_HOST_ADAPTER_VERSION,
+    productMilestoneId,
+    localOnly: true,
+    telemetry: "disabled",
+    capabilities: {
+      documentTypes: Object.freeze(["aeb-intake-report"]),
+      aebIntakeReport: "host-read-normalized-redacted-json-from-launch-path",
+      arbitraryFileSystemAccess: false,
+      shellAccess: false,
+      remoteNavigation: false,
+      newWindows: false
+    },
+    getAebIntakeReport() {
+      return invoke(IPC_CHANNELS.getAebIntakeReport);
+    }
+  });
 }
 
 function isAllowedHostUrl(url, expectedOrigin, options = {}) {
@@ -177,10 +247,16 @@ function withDeferredWorkbenchApi(api, invoke) {
 }
 
 function createProductPreloadApi(invoke, options) {
-  const api = createBasePreloadApi(invoke, options);
-  if (options.productMilestoneId === "short-term") {
-    return freezePreloadApi(withShortTermProductApi(api, invoke));
+  if (options.productMilestoneId === "aeb") {
+    return createAebProductPreloadApi(invoke, options);
   }
+  if (options.productMilestoneId === "short-term") {
+    if ((options.hostBoundaryMode ?? "formal") === "formal") {
+      return createShortTermProductPreloadApi(invoke, options);
+    }
+    return freezePreloadApi(withShortTermProductApi(createBasePreloadApi(invoke, options), invoke));
+  }
+  const api = createBasePreloadApi(invoke, options);
   return freezePreloadApi(withDeferredWorkbenchApi(api, invoke));
 }
 
@@ -193,16 +269,32 @@ function createPreloadApi(invoke, options) {
   return createLegacyPrototypePreloadApi(invoke, options);
 }
 
+function rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, capabilityName) {
+  if (productMilestoneId === "short-term" && (hostBoundaryMode ?? "formal") === "formal") {
+    throw new Error(`Formal short-term product runtime cannot use ${capabilityName}`);
+  }
+}
+
+function rejectAebProductCapability(productMilestoneId, capabilityName) {
+  if (productMilestoneId === "aeb") {
+    throw new Error(`AEB product surface cannot use ${capabilityName}`);
+  }
+}
+
 module.exports = {
   DOCUMENT_TYPES,
   ELECTRON_HOST_ADAPTER_VERSION,
   ELECTRON_HOST_BRIDGE_NAME,
   IPC_CHANNELS,
   LEGACY_PROTOTYPE_BRIDGE_NAME,
+  createAebProductPreloadApi,
   createLegacyPrototypePreloadApi,
   createPreloadApi,
   createProductPreloadApi,
   createSecureWebPreferences,
+  createShortTermProductPreloadApi,
   isAllowedHostUrl,
-  isExpectedSenderUrl
+  isExpectedSenderUrl,
+  rejectAebProductCapability,
+  rejectFormalShortTermHostCapability
 };

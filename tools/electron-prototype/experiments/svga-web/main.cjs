@@ -9,7 +9,8 @@ const {
   IPC_CHANNELS,
   createSecureWebPreferences,
   isAllowedHostUrl,
-  isExpectedSenderUrl
+  isExpectedSenderUrl,
+  rejectFormalShortTermHostCapability
 } = require("./host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("./desktop-artifact-catalog.cjs");
 const {
@@ -30,6 +31,7 @@ const auditPlayerArgument = process.argv.find((argument) => argument.startsWith(
 const auditPlayer = auditPlayerArgument?.split("=")[1];
 const auditMode = auditPlayer === "svga-web" || auditPlayer === "svgaplayerweb";
 const normalVisibleStartupMode = !(smokeMode || auditMode || normalProofMode);
+const hostBoundaryMode = normalVisibleStartupMode ? "formal" : "proof";
 const appRoot = app.getAppPath();
 const repoRoot = path.resolve(appRoot, "../../../..");
 const productIdentity = "auto-svga";
@@ -5987,7 +5989,8 @@ async function createExperimentWindow() {
       ...createSecureWebPreferences({
         preloadPath: path.join(appRoot, "preload.cjs"),
         reportToken,
-        productMilestoneId
+        productMilestoneId,
+        hostBoundaryMode
       })
     }
   });
@@ -6025,6 +6028,7 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.smokeResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "smokeResult");
     const result = validateSmokeResult(input);
     if (!result) {
       console.log(`AUTO_SVGA_SMOKE_RESULT_REJECTED ${JSON.stringify({ reason: describeSmokeResultValidationFailure(input) })}`);
@@ -6036,6 +6040,7 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.captureArtifact, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "captureArtifact");
     if (!productSmokeMode && !normalProofMode) throw new Error("Product artifact capture is only available in product capture mode");
     const scenario = validateArtifactScenario(input);
     if (!scenario) throw new Error("Invalid product artifact scenario");
@@ -6044,17 +6049,20 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.performSmokeInput, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "performSmokeInput");
     if (!productSmokeMode) throw new Error("Product smoke input is only available in product smoke mode");
     return performP6SmokeInput(event.sender, input);
   });
 
   ipcMain.handle(IPC_CHANNELS.scanLatestArtifacts, async (event) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "scanLatestArtifacts");
     return desktopArtifacts.scan();
   });
 
   ipcMain.handle(IPC_CHANNELS.auditResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "auditResult");
     const result = validateAuditResult(input);
     if (!result) throw new Error("Invalid audit result");
     if (auditMode) await finishAudit(window, result);
@@ -6063,6 +6071,7 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.normalProofResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "normalProofResult");
     const result = validateNormalProofResult(input);
     if (!result) throw new Error("Invalid normal proof result");
     if (normalProofMode) await finishNormalProof(window, result);
@@ -6071,16 +6080,19 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.saveEditedSvga, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "saveEditedSvga");
     return saveEditedSvga(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.saveOptimizedSvga, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "saveOptimizedSvga");
     return saveOptimizedSvga(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.saveSequenceRepairSvga, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "saveSequenceRepairSvga");
     return saveSequenceRepairSvga(input);
   });
 
@@ -6091,6 +6103,7 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.openReferenceMediaFile, async (event) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "openReferenceMediaFile");
     return openReferenceMediaFile();
   });
 
@@ -6135,6 +6148,7 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.p3EditResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "p3EditResult");
     if (productMilestoneId !== "P3") throw new Error("P3 edit result is only accepted in P3 artifact mode");
     const result = validateP3EditResult(input);
     if (!result) throw new Error("Invalid P3 edit result");
@@ -6170,6 +6184,7 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.p4EditResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "p4EditResult");
     if (productMilestoneId !== "P4") throw new Error("P4 edit result is only accepted in P4 artifact mode");
     const result = validateP4EditResult(input);
     if (!result) throw new Error("Invalid P4 edit result");
@@ -6238,6 +6253,7 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.p5BatchResult, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "p5BatchResult");
     if (productMilestoneId !== "P5") throw new Error("P5 batch result is only accepted in P5 artifact mode");
     const result = validateP5BatchResult(input);
     if (!result) throw new Error("Invalid P5 batch result");
