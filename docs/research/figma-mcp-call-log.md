@@ -920,3 +920,345 @@ Repository packet:
   commit occurred.
 - The first read returned enough compact data; the optional second read was not
   used.
+
+## Batch 11 - R6 Design System System Read
+
+Date: 2026-07-09
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R6 - system-level design-system read
+Owner approval: Standing authorization applied because local-day conservative
+usage was 4/160 before this batch.
+
+### Objective
+
+Read the current Figma design system in implementation order instead of by
+page-level polish target:
+
+1. token/variable collections;
+2. `Atom` / `Molecule` / `Module` component catalog;
+3. page-state frame index and top-level module composition.
+
+This batch exists to support WP-A token/theme and WP-B component-system
+implementation before further page-state polish.
+
+### Planned Budget
+
+- Planned structured reads: 3
+- Hard cap: 5
+- Optional reads allowed only for truncation or one narrower retry of the same
+  system-level target.
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_use_figma` | Figma variables | Compact current variable collections and mode values | Yes | 10.3451s | Complete usable JSON |
+| 2 | `_use_figma` | `🧱 组件库` | Compact direct-child component catalog | Yes | 4.5688s | Complete usable JSON |
+| 3 | `_use_figma` | `auto-svga` page | Page-state index with deeper system instances | Yes | 13.5602s | Truncated around 20 KB |
+| 4 | `_use_figma` | `auto-svga` page | Ultra-compact page-state retry | Yes | 6.8827s | Complete usable JSON |
+
+Actual total MCP attempts: 4
+
+Actual quota-counted reads, conservative: 4
+
+Measured MCP tool wall time total: 35.3568s
+
+Current local-day conservative usage after Batch 11: 8/160.
+
+### Result
+
+R6 confirmed:
+
+- 5 variable collections and 95 variables.
+- Component library top-level sections:
+  - `Atom`: 14 direct implementation entries.
+  - `Molecule`: 15 direct implementation entries.
+  - `Module`: 7 direct implementation roots.
+- `auto-svga` page-state frames: 25.
+- Launch target: `640 x 640`, titlebar `640 x 48`, launch module
+  `640 x 592`.
+- Main workbench frames: `1280 x 800`, center module `920 x 800`, right
+  module `360 x 800`.
+- Edit frame: left `360`, center `560`, right `360`.
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r6-design-system-system-read-20260709.md`
+
+### Verification
+
+- No Figma write operation, screenshot archive, Figma Make action, or asset
+  commit occurred.
+- The truncated third response was followed by one narrower retry within the
+  predeclared hard cap.
+- R6 does not authorize page-level micro-polish by itself; it feeds WP-A,
+  WP-B, and then WP-C.
+
+## Batch 12 - R7 Right Surface Default Contract
+
+Date: 2026-07-09
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R7 - targeted right-surface structure
+Owner approval: Standing authorization applied because local-day conservative
+usage was 8/160 before this batch.
+
+### Objective
+
+Read the internal structure for `Module/右侧栏` default Preview state
+`模式=预览, 状态=默认` (`227:2796`) so the next RightSurface implementation
+pass can follow the Figma module contract instead of page-level guessing.
+
+### Planned Budget
+
+- Planned structured reads: 1
+- Hard cap: 2
+- Optional retry allowed only for truncation or a symbol-shell response.
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_use_figma` | `227:2796` | Compact right-surface structure with descendants | Yes | 6.8383s | Direct children complete; response tail truncated |
+| 2 | `_use_figma` | `227:2796` | Direct-child-only compact retry | Yes | 3.2104s | Complete usable JSON |
+
+Actual total MCP attempts: 2
+
+Actual quota-counted reads, conservative: 2
+
+Measured MCP tool wall time total: 10.0487s
+
+Current local-day conservative usage after Batch 12: 10/160.
+
+### Result
+
+R7 confirmed:
+
+- right surface default Preview state is `360 x 800`;
+- padding is `16px` on all sides;
+- direct child width is `328px`;
+- direct vertical rhythm is header `50px`, divider, metric grid `204px`,
+  divider, replaceable section `147px`, divider, asset list `301px`;
+- the contract is sufficient for the next RightSurface module alignment pass.
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r7-right-surface-default-contract-20260709.md`
+
+### Verification
+
+- No Figma write operation, screenshot archive, Figma Make action, or asset
+  commit occurred.
+- The first response was useful but truncated, and the second response stayed
+  within the predeclared hard cap.
+
+## Batch 13 - R8 State Module Contract Batch
+
+Date: 2026-07-09
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R8 - compact state/module contract batch
+Owner approval: Standing authorization applied because local-day conservative
+usage was 10/160 before this batch.
+
+### Objective
+
+Read remaining high-impact state/module contracts in one batch instead of
+page-by-page: Launch, Optimization detail/result, Save states, Drag states,
+Compare states, Edit, and Settings.
+
+### Planned Budget
+
+- Planned structured reads: 1
+- Hard cap: 2
+- Optional retry allowed only for truncation before target-state data.
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_use_figma` | `auto-svga` page | Compact state index plus selected state/module summaries | Yes | 9.6103s | State index complete; selected payload truncated in Preview states |
+| 2 | `_use_figma` | `auto-svga` page | Target-state-only retry for Launch / Optimization / Save / Drag / Compare / Edit / Settings | Yes | 9.7076s | Target list complete; payload still truncated before full Compare/Edit/Settings interiors |
+
+Actual total MCP attempts: 2
+
+Actual quota-counted reads, conservative: 2
+
+Measured MCP tool wall time total: 19.3179s
+
+Current local-day conservative usage after Batch 13: 12/160.
+
+### Result
+
+R8 confirmed:
+
+- the `auto-svga` page contains 25 visible implementation page-state frames;
+- all 14 requested target states were found;
+- Launch is `640 x 640`, titlebar `640 x 48`, launch module `640 x 592`;
+- Optimization detail and optimization result both use center/right module
+  composition with right module `360 x 800`, padding `16`, gap `4`;
+- Save states use Preview center plus status-specific Preview right surface;
+- Drag states use Compare center plus Preview right surface and include
+  `打开文件`, `添加对比文件`, and `不支持的文件格式` labels.
+
+R8 limitation:
+
+- The hard cap was reached and the second response still truncated before full
+  Compare loaded, Edit, and Settings interiors. R8 is not pixel-level authority
+  for those interiors.
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md`
+
+### Verification
+
+- No Figma write operation, screenshot archive, Figma Make action, or asset
+  commit occurred.
+- The second call stayed within the predeclared hard cap.
+- Future Compare/Edit/Settings implementation should use a narrower R9 read if
+  existing R6 top-level composition is insufficient.
+
+## Batch 14 - R9 Compare Edit Settings Target Read
+
+Date: 2026-07-09
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R9 - narrow missing-interior read
+Owner approval: Standing authorization applied because local-day conservative
+usage was 12/160 before this batch.
+
+### Objective
+
+Read only the interiors that R8 failed to return before truncation:
+
+- `对比 / 双文件已加载`;
+- `编辑 / 默认`;
+- `参考 / 设置面板`;
+- optional `对比 / 空态` if it fits in the same payload.
+
+This batch intentionally did not re-read screenshots, variables, the component
+library, all page states, or all descendant layers.
+
+### Planned Budget
+
+- Planned structured reads: 1
+- Hard cap: 2
+- Optional retry allowed only if the first call failed or returned no usable
+  target payload.
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_use_figma` | `auto-svga` page | Compact interiors for Compare loaded, Edit default, Settings, and optional Compare empty | Yes | 4.5433s | Compare loaded, Edit default, and Settings returned usable interiors; response tail truncated before optional Compare empty |
+
+Actual total MCP attempts: 1
+
+Actual quota-counted reads, conservative: 1
+
+Measured MCP tool wall time total: 4.5433s
+
+Current local-day conservative usage after Batch 14: 13/160.
+
+### Result
+
+R9 confirmed:
+
+- Compare loaded uses a `920 x 800` compare center module with two `460 x 800`
+  canvas regions and a `360 x 800` compare right surface;
+- Compare right surface uses padding `16`, gap `4`, header `312 x 54`,
+  divider `328 x 1`, and a two-column metric area `328 x 347`;
+- Edit default uses left `360`, center `560`, right `360`, with the left layer
+  list composed from `Molecule/图层列表行` rows sized `328 x 56`;
+- Settings uses a centered `Module/设置面板` at `360 x 298`, vertical gap `16`,
+  title row, appearance block, divider, and button area.
+
+Boundary note:
+
+- Figma includes Edit right placeholder text, but implementation must follow
+  the stricter PRD/DESIGN rule: short-term Edit right panel remains reserved and
+  must not expose inactive controls or future-function copy.
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r9-compare-edit-settings-target-read-20260709.md`
+
+### Verification
+
+- No Figma write operation, screenshot archive, Figma Make action, or asset
+  commit occurred.
+- The optional second read was skipped because the first read returned the
+  blocking target interiors.
+
+## Batch 15 - R10 Atom Molecule Contract Batch
+
+Date: 2026-07-09
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R10 - component-library Atom/Molecule contracts
+Owner approval: Standing authorization applied because local-day conservative
+usage was 13/160 before this batch.
+
+### Objective
+
+Read high-reuse component contracts from `🧱 组件库` instead of page-state
+screens:
+
+- button, icon button, mode switch, text input, metric optimization entry;
+- metric grid and metric block;
+- resource row, layer row, optimization candidate row, toast;
+- filter tabs, tab item, settings module when the payload allows.
+
+### Planned Budget
+
+- Planned structured reads: 1
+- Hard cap: 2
+- Optional retry allowed only if the first payload did not answer the priority
+  component contracts.
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_use_figma` | `🧱 组件库` | Priority Atom/Molecule contract batch | Yes | 4.3990s | Usable early payload; truncated during `Molecule/数据指标块` |
+| 2 | `_use_figma` | `🧱 组件库` | Remaining priority components only | Yes | 4.1878s | Complete usable JSON for row/toast/filter/settings targets |
+
+Actual total MCP attempts: 2
+
+Actual quota-counted reads, conservative: 2
+
+Measured MCP tool wall time total: 8.5868s
+
+Current local-day conservative usage after Batch 15: 15/160.
+
+### Result
+
+R10 confirmed reusable component details for:
+
+- `Atom/文字按钮`
+- `Atom/图标按钮`
+- `Atom/模式切换器`
+- `Atom/文字输入框`
+- `Atom/指标优化入口`
+- `Molecule/统计信息网格`
+- `Molecule/数据指标块`
+- `Molecule/资源列表行`
+- `Molecule/图层列表行`
+- `Molecule/优化候选项行`
+- `Molecule/toast`
+- `Atom/筛选标签栏`
+- `Atom/Tab Item`
+- `Module/设置面板`
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r10-atom-molecule-contract-batch-20260709.md`
+
+### Verification
+
+- No Figma write operation, screenshot archive, Figma Make action, or asset
+  commit occurred.
+- The second call was not a broad retry; it read only the remaining priority
+  components after the first response truncated.

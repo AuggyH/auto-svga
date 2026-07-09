@@ -70,6 +70,24 @@ promoted, watched, rejected, or kept historical.
 - Evidence: `docs/retrospectives/weekly/2026-W28.md`
 - Status: promote
 
+## Land Figma component contracts before page-level visual polish
+
+- Source: `docs/research/figma-mcp-read-packets/r6-design-system-system-read-20260709.md`
+- Area: UI/UX, implementation, validation, token-cost
+- Context: The Product Owner corrected the UI/UX lane away from scattered
+  page micro-tweaks and toward Figma token, atom, molecule, and module
+  implementation first.
+- Problem: Reading Figma once and then adjusting isolated page details can
+  still ignore the design system and make later pixel tuning fragile.
+- Candidate rule: Convert already-read Figma tokens/components/modules into
+  code trace points and design-system checks before page-level high-fidelity
+  polishing. Use new Figma MCP reads only when a component contract is missing
+  or blocked.
+- Evidence: WP-E through WP-H added trace/check coverage for right-surface
+  asset tabs, rows, optimization candidates/results, and launch empty canvas
+  without additional Figma reads.
+- Status: watch
+
 ## Use P6 retrospectives as a preflight anti-pattern checklist
 
 - Source: `docs/retrospectives/P6_POSTMORTEM.md`,
@@ -602,4 +620,206 @@ promoted, watched, rejected, or kept historical.
 - Evidence: One targeted read of `预览 / 优化详情` (`82:2669`) returned the
   candidate row size, padding, typography, and state backgrounds needed for a
   tokenized implementation pass.
+- Status: watch
+
+## Test component contracts, not incidental HTML order
+
+- Source task: `uiux-test-contract-alignment-after-componentization`
+- Area: UI/UX, validation, design system
+- Context: The short-term client test suite failed after component-system work
+  because several assertions still required exact HTML attribute adjacency,
+  broad global bans such as any `role="tablist"`, and old token names.
+- Problem: Those assertions caught stale implementation details rather than the
+  intended design-system contract, which created repeated false failures before
+  the next visual WP could proceed.
+- Candidate rule: UI tests for componentized surfaces should assert same-node
+  contracts, canonical component/module traces, scoped legacy bans, and semantic
+  token consumption. Avoid matching incidental attribute order or old raw token
+  plumbing unless that order is itself the product contract.
+- Evidence: Updating the playback, settings dialog, asset-filter, compare info,
+  optimization metric, and asset-list assertions restored the short-term test
+  suite to 36/36 without changing owner-visible UI behavior.
+- Status: watch
+
+## Land shared Figma atom contracts before page polish
+
+- Source task: `uiux-r10-shared-atom-contract-landing`
+- Area: UI/UX, Figma MCP, design system, implementation sequencing
+- Context: The design file already provided atom and molecule component
+  contracts for mode switch, text input, text button, metric optimization entry,
+  rows, filters, toast, and settings surfaces.
+- Problem: Starting with page-level visual tweaks can accidentally invent
+  one-off sizes or styles even when the design system already defines reusable
+  contracts.
+- Candidate rule: After a component-library Figma read, first land shared atom
+  and molecule tokens plus design-system checks. Only then move into page-level
+  polish.
+- Evidence: Landing `152 x 42` mode switch, `172 x 24` text input, `18px`
+  metric entry, and `72 x 30` header action contracts passed the design-system
+  check and the 36-test short-term suite without a new Figma read or package
+  build.
+- Status: watch
+
+## Remove forced scrollbar chrome at the shared surface layer
+
+- Source task: `uiux-scrollable-surface-quiet-chrome`
+- Area: UI/UX, design system, low-boundary canvas direction
+- Context: Right-side information surfaces are intentionally scrollable, but a
+  default visible scrollbar/gutter made the UI read like a web panel even after
+  spacing and divider tokens were softened.
+- Problem: Removing only `scrollbar-gutter: stable` was insufficient in smoke
+  evidence; Chromium still rendered a visible default scrollbar thumb.
+- Candidate rule: For the 0.1.x canvas-first client, scrollable right/side
+  surfaces should share a tokenized quiet-scrollbar contract. Preserve scroll
+  behavior and focus outlines, but do not let default scrollbar chrome become a
+  persistent hierarchy separator.
+- Evidence: Adding a shared `ScrollableSurface` token and pseudo-element rule
+  removed the visible scrollbar from Preview and Settings smoke screenshots
+  while keeping design-system check, unit tests, and smoke passing.
+- Status: watch
+
+## Reuse FileDropTarget language for file-selection empty states
+
+- Source task: `uiux-compare-empty-slot-drop-target`
+- Area: UI/UX, design system, canvas-first interaction
+- Context: Compare empty and half-empty slots need to invite the same local
+  open/drag workflow as Launch, but they must not add a new persistent Compare
+  entry point or extra product scope.
+- Problem: A lone `打开文件` button floating inside an empty compare canvas
+  looked like a disconnected action rather than a native drop target.
+- Candidate rule: Empty file-selection canvas states should reuse the shared
+  `FileDropTarget` component language when the PRD/Owner references already
+  allow open/drag selection: low-emphasis upload icon, approved drag prompt,
+  and existing Open action grouped together.
+- Evidence: The Compare half-empty smoke screenshot now shows the B slot as a
+  quiet drop target while A remains loaded; design-system check, unit tests,
+  and smoke passed.
+- Status: watch
+
+## Consolidate shared page-state surfaces before per-page polish
+
+- Source task: `uiux-side-surface-settings-sheet-contract`
+- Area: UI/UX, design system, visual high-fidelity sequencing
+- Context: Preview right information, Compare information, Edit side panels,
+  and Settings are distinct page states, but they should read as one coherent
+  macOS app surface family.
+- Problem: If each page state keeps direct visual references such as
+  right-panel background, dialog border, or one-off backdrop styles, later
+  high-fidelity polish becomes a set of selector tweaks rather than a design
+  system update.
+- Candidate rule: Before tuning individual page details, extract shared
+  surface material contracts such as `SideSurface` and `SettingsSheet` into
+  component tokens, aliases, CSS consumption, and design-system checks.
+- Evidence: Preview, Compare, Edit, and Settings now consume shared
+  SideSurface/SettingsSheet tokens; design-system check, 36-test suite, and
+  desktop smoke passed without new product copy or behavior changes.
+- Status: watch
+
+## Hide optional modules until approved content exists
+
+- Source task: `uiux-launch-empty-recent-copy-boundary`
+- Area: UI/UX, launch page, copy boundary, design-system checks
+- Context: The Launch recent-file area is approved when recent records exist,
+  but the Figma R4 contract and PRD do not approve an extra zero-record helper
+  sentence.
+- Problem: Removing the renderer's empty-copy row alone was not enough because
+  the initial HTML still showed a header-only recent block before async
+  refresh.
+- Candidate rule: Optional page modules should default hidden in static HTML
+  and be revealed only when approved content exists. Pair renderer checks with
+  initial-state checks so smoke cannot expose header-only half states.
+- Evidence: Launch now hides the recent block when no records are available;
+  design-system check, 36-test suite, and desktop smoke passed, and the smoke
+  launch screenshot no longer shows unapproved empty-copy or a header-only
+  recent shell.
+- Status: watch
+
+## Promote module spacing values into named component tokens
+
+- Source task: `uiux-settings-module-spacing-contract`
+- Area: UI/UX, design system, Figma-to-code
+- Context: The R10 component-library read gave the settings sheet module
+  spacing, appearance block, and action-area dimensions, but implementation had
+  some of those values hidden as generic spacing utilities.
+- Problem: Generic spacing variables inside component selectors make later
+  design tuning harder because it is unclear whether a value belongs to the
+  module contract or incidental CSS.
+- Candidate rule: When Figma provides a module-level value, expose it as a
+  named component token and consume the alias in CSS, even if the raw value is
+  currently equal to an existing spacing scale token.
+- Evidence: SettingsSheet / ThemeSegmentedControl now use explicit sheet gap,
+  appearance block height, block gap, and block padding tokens; design-system
+  check, 36-test suite, and smoke passed without new copy or behavior.
+- Status: watch
+
+## Promote reused atoms before adding more module variants
+
+- Source task: `uiux-icon-button-atom-contract`
+- Area: UI/UX, design system, component reuse
+- Context: The playback bar already used the Figma `Atom/图标按钮` dimensions,
+  but those values were still encoded as playback-specific tokens and selectors.
+- Problem: Leaving shared atom values inside the first consuming module makes
+  later icon buttons likely to fork into one-off systems.
+- Candidate rule: When a component-library atom is used by a module, promote
+  the reusable atom dimensions and states into named component tokens before
+  extending that control to other surfaces.
+- Evidence: IconButton now owns 44px size, 20px icon size, 8px radius, primary
+  and secondary state tokens; playback buttons consume those aliases. Design
+  system check, 36-test suite, and smoke passed.
+- Status: watch
+
+## Treat page-state frames as a third design-system source
+
+- Source task: `uiux-page-state-tri-source-contract`
+- Area: UI/UX, Figma-to-code, high-fidelity sequencing
+- Context: Token and component mapping were already improving, but page-level
+  polish still risked using CSS selectors or a single screenshot as the main
+  source of truth.
+- Problem: Launch, Preview, Compare, Edit, and Settings have different Figma
+  frame dimensions and module compositions. A global window or page-state CSS
+  rule can silently break one state while visually improving another.
+- Candidate rule: Before page-level polish, record the page-state contract as
+  data: Figma state name, code page state, frame size, root modules, read
+  packets, and implementation files. Then make the design-system check verify
+  the token, component, and page-state links together.
+- Evidence: `design-system-map.json` now includes Launch, Preview,
+  Optimization, Compare, Edit, and Settings page-state entries; design-system
+  check verifies read packets, HTML/module mapping, and frame-layout tokens;
+  unit tests passed `36/36`.
+- Status: watch
+
+## Align native window frames before page-detail polish
+
+- Source task: `uiux-workbench-frame-alignment`
+- Area: UI/UX, Figma-to-code, macOS window frame
+- Context: Figma page states use 640 x 640 for Launch and 1280 x 800 for the
+  workbench pages, while the runtime workbench still opened and captured most
+  short-term scenarios at the historical 1440 x 900 frame.
+- Problem: If runtime window bounds drift from the page-state design frame,
+  page-level screenshots, right-surface rhythm, and canvas proportions can all
+  appear slightly wrong even when component tokens are correct.
+- Candidate rule: Before high-fidelity page polish, verify the native window
+  sizing contract, CSS page tokens, design-system map, and screenshot scenario
+  sizing against the same Figma page-state frame.
+- Evidence: Short-term workbench mode now uses a 1280 x 800 sizing target while
+  the historical 1440 x 900 wide evidence scenario remains separate;
+  design-system check and the 36-test suite passed.
+- Status: watch
+
+## Guard page-level polish as module contracts, not selector tweaks
+
+- Source task: `uiux-compare-header-contract`
+- Area: UI/UX, compare mode, design-system checks
+- Context: The R9 Compare loaded contract includes a right-surface header row
+  and divider rhythm, but the implementation could easily drift through local
+  CSS changes.
+- Problem: Tiny visual polish becomes hard to evaluate when it changes a
+  selector but does not record which token, component, and page-state contract
+  it implements.
+- Candidate rule: A page-level visual adjustment should add or consume a named
+  component token and a design-system check when it claims Figma alignment.
+  Otherwise defer it until a larger visual batch can validate it.
+- Evidence: Compare mode header now consumes a 54px header-height token and
+  shared right-surface divider, with design-system and unit checks guarding the
+  contract.
 - Status: watch

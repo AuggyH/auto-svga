@@ -20,7 +20,7 @@ function clamp(value, min, max) {
 }
 
 function clampSizeToWorkArea(size, workArea, minimumSize) {
-  const fallbackSize = normalizeRect(size, { x: 0, y: 0, width: 720, height: 720 });
+  const fallbackSize = normalizeRect(size, { x: 0, y: 0, width: 640, height: 640 });
   const area = normalizeRect(workArea, { x: 0, y: 0, width: fallbackSize.width, height: fallbackSize.height });
   const minimum = normalizeRect(minimumSize, { x: 0, y: 0, width: 1, height: 1 });
   const minWidth = Math.min(minimum.width, area.width);
@@ -33,12 +33,12 @@ function clampSizeToWorkArea(size, workArea, minimumSize) {
 }
 
 function preserveWindowSizeAcrossDisplay({ currentBounds, preservedSize, workArea, minimumSize }) {
-  const area = normalizeRect(workArea, { x: 0, y: 0, width: 720, height: 720 });
+  const area = normalizeRect(workArea, { x: 0, y: 0, width: 640, height: 640 });
   const bounds = normalizeRect(currentBounds, {
     x: area.x,
     y: area.y,
-    width: preservedSize?.width ?? 720,
-    height: preservedSize?.height ?? 720
+    width: preservedSize?.width ?? 640,
+    height: preservedSize?.height ?? 640
   });
   const size = clampSizeToWorkArea(preservedSize ?? bounds, area, minimumSize);
   const maxX = area.x + area.width - size.width;

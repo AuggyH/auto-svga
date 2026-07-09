@@ -20,7 +20,7 @@ export function renderShortTermPreviewModel({ nodes, state }) {
   const overviewView = overviewTabView(model);
   renderFileHeader(nodes, state.displayName, overviewView.playbackMeta);
   renderOverviewFacts(nodes, overviewView);
-  renderAssetList(nodes, overviewView, model);
+  renderAssetList(nodes, overviewView, model, state.assetFilter);
   renderShortTermOptimization({ nodes, model: model.optimization });
   renderShortTermReplaceableImages({
     nodes,
@@ -36,5 +36,5 @@ export function renderShortTermPreviewModel({ nodes, state }) {
 }
 
 export function renderShortTermEditReserved({ nodes, state }) {
-  renderEditReservedLayers(nodes, editReservedLayerListView(state.model), state.model);
+  renderEditReservedLayers(nodes, editReservedLayerListView(state.model, state.displayName), state.model);
 }

@@ -45,7 +45,7 @@ button.primary,
 .largeOpenButton {
   border-color: transparent;
   background: var(--asv-action);
-  color: white;
+  color: var(--asv-on-action);
   font-weight: 620;
   box-shadow: var(--asv-shadow-control-primary);
 }
@@ -62,17 +62,17 @@ button.primary:disabled,
 button.danger {
   border-color: transparent;
   background: var(--asv-danger);
-  color: white;
+  color: var(--asv-on-action);
 }
 
 .spinner {
   display: inline-block;
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--asv-border);
+  width: var(--asv-spinner-size);
+  height: var(--asv-spinner-size);
+  border: var(--asv-spinner-border-width) solid var(--asv-border);
   border-top-color: var(--asv-action);
   border-radius: 50%;
-  animation: spin 900ms linear infinite;
+  animation: spin var(--asv-spinner-duration) linear infinite;
 }
 
 .thumb {
@@ -93,7 +93,7 @@ button.danger {
 .thumb.sequence {
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 1px;
+  gap: var(--asv-thumb-sequence-gap);
   background:
     linear-gradient(90deg, transparent 48%, var(--asv-border) 48%, var(--asv-border) 52%, transparent 52%),
     linear-gradient(0deg, transparent 48%, var(--asv-border) 48%, var(--asv-border) 52%, transparent 52%),
@@ -140,8 +140,7 @@ button.danger {
 
 .rowText span,
 .findingRow p,
-.sectionHead p,
-.textPreviewBlock p {
+.sectionHead p {
   margin: var(--asv-space-1) 0 0;
   color: var(--asv-muted);
   font-size: var(--asv-type-size-footnote);
@@ -184,13 +183,13 @@ button.danger {
 
 .badge.safe {
   background: var(--asv-color-success-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-success) 24%, transparent);
+  box-shadow: inset 0 0 0 1px var(--asv-badge-safe-border);
   color: var(--asv-success);
 }
 
 .badge.review {
   background: var(--asv-color-warning-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-warning) 24%, transparent);
+  box-shadow: inset 0 0 0 1px var(--asv-badge-review-border);
   color: var(--asv-warning);
 }
 
@@ -200,7 +199,7 @@ button.danger {
 
 .badge.fail {
   background: var(--asv-color-danger-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--asv-danger) 24%, transparent);
+  box-shadow: inset 0 0 0 1px var(--asv-badge-fail-border);
   color: var(--asv-danger);
 }
 

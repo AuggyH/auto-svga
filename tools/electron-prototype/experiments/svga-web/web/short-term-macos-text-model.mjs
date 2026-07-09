@@ -18,6 +18,7 @@ export function hasRuntimeTextPreview(textPreviewValues) {
 
 export function runtimeTextListView(model, textPreviewValues) {
   const texts = Array.isArray(model?.texts) ? model.texts : [];
+  const images = Array.isArray(model?.images) ? model.images : [];
   return {
     texts: texts.map((item) => ({
       ...item,
@@ -28,7 +29,7 @@ export function runtimeTextListView(model, textPreviewValues) {
     hasTextElements: texts.length > 0,
     hasTextPreview: hasRuntimeTextPreview(textPreviewValues),
     emptyCopy: "",
-    summaryCopy: `(${texts.length})`
+    summaryCopy: `(${images.length + texts.length})`
   };
 }
 

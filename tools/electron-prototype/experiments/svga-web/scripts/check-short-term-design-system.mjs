@@ -48,6 +48,7 @@ const allowedDataComponents = new Set([
   "ProductionSpecInlineRow",
   "MetricOptimizationEntry",
   "AssetRow",
+  "AssetFilterTabs",
   "SequenceThumbnail",
   "AudioAssetRow",
   "ReplaceableImageRow",
@@ -74,6 +75,7 @@ const allowedDataComponents = new Set([
   "CanvasToast",
   "PlaybackButtonGroup",
   "ContextMenuItem",
+  "TabItem",
   "RenameInput",
   "SaveButtonPair"
 ]);
@@ -86,6 +88,8 @@ const allowedModules = new Set([
   "GeneralCompareModule",
   "OptimizationCompareModule",
   "EditReservedModule",
+  "SettingsDialogModule",
+  "WindowChromeModule",
   "MenuBarCommandModel",
   "SaveStateModule"
 ]);
@@ -99,6 +103,64 @@ const requiredPageStates = [
   "Edit reserved"
 ];
 
+const requiredFigmaPageStates = [
+  { figma: "启动 / 默认", codePageState: "Launch", frame: { width: 640, height: 640 }, rootModules: ["WindowChromeModule", "LaunchModule"] },
+  { figma: "预览 / 默认", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
+  { figma: "预览 / 优化详情", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface"] },
+  { figma: "预览 / 优化结果对比", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "OptimizationCompareModule", "OptimizationDetailSurface"] },
+  { figma: "对比 / 空态", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
+  { figma: "对比 / 双文件已加载", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
+  { figma: "编辑 / 默认", codePageState: "Edit reserved", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "EditReservedModule", "PreviewCanvasModule"] },
+  { figma: "参考 / 设置面板", codePageState: "Settings dialog", frame: { width: 1280, height: 800 }, rootModules: ["SettingsDialogModule"] }
+];
+
+const requiredFigmaCatalog = {
+  atoms: [
+    "Atom/文字输入框",
+    "Atom/分割线",
+    "Atom/加载指示器",
+    "Atom/缩略图框",
+    "Atom/模式切换器",
+    "Atom/图标按钮",
+    "Atom/文字按钮",
+    "Atom/文件信息头部/默认",
+    "Atom/指标优化入口",
+    "Atom/最近文件行/正常",
+    "Atom/筛选标签栏",
+    "Atom/面板区块标题",
+    "Atom/Tab Item",
+    "Atom/状态徽标"
+  ],
+  molecules: [
+    "Molecule/动画占位",
+    "Molecule/加载提示文字",
+    "Molecule/统计信息网格",
+    "Molecule/拖拽决策",
+    "Molecule/资源列表行",
+    "Molecule/拖拽决策区",
+    "Molecule/保存反馈横幅",
+    "Molecule/空态画布",
+    "Molecule/错误恢复面板",
+    "Molecule/进度状态",
+    "Molecule/数据指标块",
+    "Molecule/图层列表行",
+    "Molecule/优化候选项行",
+    "Molecule/缺省",
+    "Molecule/toast"
+  ],
+  modules: [
+    "Module/启动页模块/默认",
+    "Module/中间面板",
+    "Module/右侧栏",
+    "Module/左侧栏",
+    "Module/设置面板",
+    "Module/播放控制栏/播放中",
+    "Module/窗口标题栏"
+  ]
+};
+const designSystemCatalogSections = Object.keys(requiredFigmaCatalog);
+const designSystemTraceSections = [...designSystemCatalogSections, "pageStates"];
+
 const expectedAppEntryImports = [
   "./short-term-macos-nodes.mjs",
   "./short-term-macos-event-bindings.mjs",
@@ -108,12 +170,13 @@ const expectedAppEntryImports = [
   "./short-term-macos-smoke-runner.mjs"
 ];
 
-const disallowedLaunchCopyPatterns = [
-  /本地预览/,
-  /不上传/,
-  /仅显示文件名/,
-  /父级位置/
-];
+  const disallowedLaunchCopyPatterns = [
+    /本地预览/,
+    /不上传/,
+    /仅显示文件名/,
+    /父级位置/,
+    /暂无最近打开记录/
+  ];
 
 const disallowedLegacySurfaceCopyPatterns = [
   /检查器/,
@@ -147,6 +210,13 @@ function countRawDimensions(source) {
 function collectRawColors(source) {
   return [...source.matchAll(/#[0-9a-fA-F]{3,8}|rgba?\(/g)].map((match) => ({
     value: match[0],
+    line: lineNumber(source, match.index ?? 0)
+  }));
+}
+
+function collectNamedVisualColors(source) {
+  return [...source.matchAll(/:\s*(white|black)\b/g)].map((match) => ({
+    value: match[1],
     line: lineNumber(source, match.index ?? 0)
   }));
 }
@@ -202,12 +272,60 @@ function collectMissingTokenValues(source, expectedTokens) {
   return missing;
 }
 
+function collectMappedValues(designSystemMap, fieldName, sections = designSystemCatalogSections) {
+  return sections
+    .flatMap((section) => designSystemMap[section] ?? [])
+    .flatMap((entry) => entry[fieldName] ?? []);
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values)].sort();
+}
+
+async function collectMissingImplementationFiles(designSystemMap) {
+  const files = uniqueSorted(collectMappedValues(designSystemMap, "implementationFiles", designSystemTraceSections));
+  const missing = [];
+  for (const file of files) {
+    try {
+      await readFile(path.join(experimentRoot, file), "utf8");
+    } catch {
+      missing.push(file);
+    }
+  }
+  return missing;
+}
+
+async function collectMissingReadPackets(designSystemMap) {
+  const files = uniqueSorted(collectMappedValues(designSystemMap, "readPackets", ["pageStates"]));
+  const missing = [];
+  for (const file of files) {
+    try {
+      await readFile(path.join(repoRoot, file), "utf8");
+    } catch {
+      missing.push(file);
+    }
+  }
+  return missing;
+}
+
+function arraysEqual(a = [], b = []) {
+  return JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+}
+
 async function main() {
   const page = await readFile(path.join(webRoot, "index.html"), "utf8");
   const appEntry = await readFile(path.join(webRoot, "short-term-macos-app.mjs"), "utf8");
   const launchRenderer = await readFile(path.join(webRoot, "short-term-macos-launch-renderers.mjs"), "utf8");
+  const overviewRenderer = await readFile(path.join(webRoot, "short-term-macos-overview-renderers.mjs"), "utf8");
+  const optimizationRenderer = await readFile(path.join(webRoot, "short-term-macos-optimization-renderers.mjs"), "utf8");
+  const recentFilesModel = await readFile(path.join(webRoot, "short-term-macos-recent-files-model.mjs"), "utf8");
+  const renderModel = await readFile(path.join(webRoot, "short-term-macos-render-model.mjs"), "utf8");
+  const compareModel = await readFile(path.join(webRoot, "short-term-macos-compare-model.mjs"), "utf8");
+  const mainProcess = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const windowBoundsPolicy = await readFile(path.join(experimentRoot, "short-term-window-bounds-policy.cjs"), "utf8");
   const designManifest = await readFile(path.join(repoRoot, "DESIGN.md"), "utf8");
   const executionPlan = await readFile(path.join(repoRoot, "docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md"), "utf8");
+  const designSystemMap = JSON.parse(await readFile(path.join(experimentRoot, "design-system-map.json"), "utf8"));
 
   const styleOrder = [...page.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((match) => match[1]);
   record("stylesheet-order", JSON.stringify(styleOrder) === JSON.stringify(expectedStyleOrder), {
@@ -236,11 +354,89 @@ async function main() {
     pageStateCount: pageStates.length
   });
 
+  for (const [section, requiredEntries] of Object.entries(requiredFigmaCatalog)) {
+    const mappedEntries = new Set((designSystemMap[section] ?? []).map((entry) => entry.figma));
+    const missingFigmaEntries = requiredEntries.filter((name) => !mappedEntries.has(name));
+    const extraFigmaEntries = [...mappedEntries].filter((name) => !requiredEntries.includes(name)).sort();
+    record(`figma-${section}-catalog-mapped`, missingFigmaEntries.length === 0 && extraFigmaEntries.length === 0, {
+      mappedCount: mappedEntries.size,
+      missingFigmaEntries,
+      extraFigmaEntries
+    });
+  }
+
+  const mappedCodeComponents = uniqueSorted(collectMappedValues(designSystemMap, "codeComponents"));
+  const unknownMappedComponents = mappedCodeComponents.filter((name) => !allowedDataComponents.has(name));
+  record("figma-map-code-components-are-canonical", unknownMappedComponents.length === 0, {
+    mappedCodeComponentCount: mappedCodeComponents.length,
+    unknownMappedComponents
+  });
+
+  const mappedCodeModules = uniqueSorted(collectMappedValues(designSystemMap, "codeModules"));
+  const unknownMappedModules = mappedCodeModules.filter((name) => !allowedModules.has(name));
+  record("figma-map-code-modules-are-canonical", unknownMappedModules.length === 0, {
+    mappedCodeModuleCount: mappedCodeModules.length,
+    unknownMappedModules
+  });
+
+  const missingImplementationFiles = await collectMissingImplementationFiles(designSystemMap);
+  record("figma-map-implementation-files-exist", missingImplementationFiles.length === 0, {
+    missingImplementationFiles
+  });
+  const missingReadPackets = await collectMissingReadPackets(designSystemMap);
+  record("figma-map-page-state-read-packets-exist", missingReadPackets.length === 0, {
+    missingReadPackets
+  });
+
+  const mappedPageStates = new Map((designSystemMap.pageStates ?? []).map((entry) => [entry.figma, entry]));
+  const missingFigmaPageStates = requiredFigmaPageStates
+    .filter((state) => !mappedPageStates.has(state.figma))
+    .map((state) => state.figma);
+  const pageStateMismatches = [];
+  for (const expected of requiredFigmaPageStates) {
+    const mapped = mappedPageStates.get(expected.figma);
+    if (!mapped) continue;
+    if (mapped.codePageState !== expected.codePageState) {
+      pageStateMismatches.push({ figma: expected.figma, field: "codePageState", expected: expected.codePageState, actual: mapped.codePageState });
+    }
+    if (mapped.frame?.width !== expected.frame.width || mapped.frame?.height !== expected.frame.height) {
+      pageStateMismatches.push({ figma: expected.figma, field: "frame", expected: expected.frame, actual: mapped.frame });
+    }
+    if (!arraysEqual(mapped.rootModules, expected.rootModules)) {
+      pageStateMismatches.push({ figma: expected.figma, field: "rootModules", expected: expected.rootModules, actual: mapped.rootModules });
+    }
+  }
+  record("figma-page-state-catalog-mapped", missingFigmaPageStates.length === 0 && pageStateMismatches.length === 0, {
+    mappedPageStateCount: mappedPageStates.size,
+    missingFigmaPageStates,
+    pageStateMismatches
+  });
+
+  const mappedPageStateNames = [...new Set((designSystemMap.pageStates ?? []).map((entry) => entry.codePageState))];
+  const missingMappedHtmlPageStates = mappedPageStateNames
+    .filter((state) => state !== "Settings dialog" && !pageStates.includes(state));
+  const mappedPageModules = uniqueSorted(collectMappedValues(designSystemMap, "rootModules", ["pageStates"]));
+  const unknownMappedPageModules = mappedPageModules.filter((name) => !allowedModules.has(name));
+  const dynamicMappedPageModules = ["OptimizationCompareModule", "SettingsDialogModule"];
+  const missingMappedHtmlModules = mappedPageModules
+    .filter((name) => !dynamicMappedPageModules.includes(name))
+    .filter((name) => !dataModules.includes(name));
+  record("figma-page-states-map-to-current-html", missingMappedHtmlPageStates.length === 0
+    && unknownMappedPageModules.length === 0
+    && missingMappedHtmlModules.length === 0
+    && /data-component="SettingsSheet" data-module="SettingsDialogModule"/.test(page)
+    && /moduleName:\s*"OptimizationCompareModule"/.test(compareModel), {
+    missingMappedHtmlPageStates,
+    unknownMappedPageModules,
+    missingMappedHtmlModules
+  });
+
   const launchCopySources = [page, launchRenderer].join("\n");
   const disallowedLaunchCopy = disallowedLaunchCopyPatterns
     .filter((pattern) => pattern.test(launchCopySources))
     .map((pattern) => pattern.source);
   record("launch-page-copy-stays-minimal", disallowedLaunchCopy.length === 0
+    && /<div class="launchPrompt" data-component="FileDropTarget" data-role="LaunchEmptyCanvas">/.test(page)
     && /<p>拖拽文件到此处<\/p>/.test(page)
     && /<button class="largeOpenButton"[^>]*>[\s\S]*?<span>打开文件<\/span>[\s\S]*?<\/button>/.test(page)
     && /<p class="recentNote" id="recentNote" hidden><\/p>/.test(page), {
@@ -268,6 +464,8 @@ async function main() {
     if (cssFile !== "short-term-macos.tokens.css") {
       const rawColors = collectRawColors(source);
       record(`no-raw-color-outside-tokens:${cssFile}`, rawColors.length === 0, { rawColors });
+      const namedVisualColors = collectNamedVisualColors(source);
+      record(`no-named-visual-color-outside-tokens:${cssFile}`, namedVisualColors.length === 0, { namedVisualColors });
       const rawDimensionCount = countRawDimensions(source);
       const limit = cssRawDimensionDebtLimit.get(cssFile) ?? 0;
       record(`raw-dimension-debt-not-increased:${cssFile}`, rawDimensionCount <= limit, {
@@ -285,10 +483,223 @@ async function main() {
   const pageStatesCss = await readFile(path.join(webRoot, "short-term-macos.page-states.css"), "utf8");
   const baseCss = await readFile(path.join(webRoot, "short-term-macos.css"), "utf8");
 
+  const rightSurfaceContractChecks = [
+    /--asv-component-right-panel-width:\s*360px/.test(tokens),
+    /--asv-component-right-panel-padding:\s*var\(--asv-space-4\)/.test(tokens),
+    /--asv-component-workbench-top-safe-area:\s*var\(--asv-component-toolbar-height\)/.test(tokens),
+    /--asv-component-workbench-floating-control-top:\s*calc\(var\(--asv-component-workbench-top-safe-area\) \+ var\(--asv-space-4\)\)/.test(tokens),
+    /--asv-component-right-panel-safe-padding-block-start:\s*calc\(var\(--asv-component-workbench-top-safe-area\) \+ var\(--asv-component-right-panel-padding\)\)/.test(tokens),
+    /--asv-component-right-surface-content-width:\s*calc\(var\(--asv-component-right-panel-width\) - \(var\(--asv-component-right-panel-padding\) \* 2\)\)/.test(tokens),
+    /--asv-component-right-panel-section-gap:\s*var\(--asv-space-1\)/.test(tokens),
+    /--asv-component-right-panel-section-margin-block-start:\s*var\(--asv-space-1\)/.test(tokens),
+    /--asv-component-right-panel-section-padding-block-start:\s*var\(--asv-space-1\)/.test(tokens),
+    /--asv-component-right-panel-separator-width:\s*0px/.test(tokens),
+    /--asv-component-side-surface-background:\s*var\(--asv-color-surface-right-panel\)/.test(tokens),
+    /--asv-side-surface-bg:\s*var\(--asv-component-side-surface-background\)/.test(tokens),
+    /--asv-component-file-header-width:\s*calc\(100% - \(var\(--asv-right-panel-padding\) \* 2\)\)/.test(tokens),
+    /--asv-component-file-header-padding-block:\s*var\(--asv-space-3\)/.test(tokens),
+    /--asv-component-right-section-title-size:\s*var\(--asv-type-size-footnote\)/.test(tokens),
+    /--asv-component-right-section-title-line-height:\s*18px/.test(tokens),
+    /--asv-component-right-section-title-weight:\s*540/.test(tokens),
+    /--asv-component-fact-grid-width:\s*328px/.test(tokens),
+    /--asv-component-fact-grid-padding-block:\s*var\(--asv-space-3\)/.test(tokens),
+    /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"/.test(page),
+    /id="panelOverview"[^>]*data-module="OverviewInformationModule"/.test(page),
+    /class="rightSurfaceHeader"/.test(page),
+    /id="assetListHeading">资产列表<\/h2>/.test(page),
+    /id="assetFilterTabs"[^>]*data-component="AssetFilterTabs"/.test(page),
+    /<section class="replaceableSection"[\s\S]*id="replaceableList" role="listbox" aria-label="imageKey"[\s\S]*id="textElementList" role="listbox" aria-label="运行时文本"[\s\S]*<\/section>/.test(page),
+    !/textPreviewBlock|textPreviewHeading|textPreviewSummary/.test(page),
+    /dataset\.action = "asset-filter"/.test(overviewRenderer),
+    /cell\.dataset\.component = "FactCell"/.test(overviewRenderer),
+    /assetListHeading\.textContent = `资产列表 \(\$\{view\.assets\.length\}\)`/.test(overviewRenderer),
+    /\.rightSurfaceHeader\s*\{[\s\S]*width: var\(--asv-file-header-width\)[\s\S]*margin: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) 0/.test(modules),
+    /\.rightPanel\s*\{[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
+    /\.rightSurfaceBody\s*\{[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
+    /\.rightSurfaceBody > \.factGrid,[\s\S]*\.compareInfo > \.resultGroup\s*\{[\s\S]*max-width: var\(--asv-right-surface-content-width\)/.test(modules),
+    /\.compareInfo\s*\{[\s\S]*gap: var\(--asv-right-panel-section-gap\)[\s\S]*padding: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) var\(--asv-right-panel-padding\)[\s\S]*background: var\(--asv-side-surface-bg\)/.test(modules),
+    /\.canvasModeSwitch\s*\{[\s\S]*top: var\(--asv-workbench-floating-control-top\)/.test(modules),
+    /\.sectionHead h2\s*\{[\s\S]*font-size: var\(--asv-right-section-title-size\)[\s\S]*line-height: var\(--asv-right-section-title-line-height\)/.test(modules),
+    /\.assetSection,[\s\S]*\.replaceableSection\s*\{[\s\S]*margin-top: var\(--asv-right-panel-section-margin-block-start\)[\s\S]*padding-top: var\(--asv-right-panel-section-padding-block-start\)/.test(modules),
+    /\.factGrid\s*\{[\s\S]*width: min\(var\(--asv-fact-grid-width\), 100%\)[\s\S]*padding: var\(--asv-fact-grid-padding-block\) 0 0/.test(modules)
+  ];
+  record("figma-r7-right-surface-default-contract-covered", rightSurfaceContractChecks.every(Boolean), {
+    failedIndexes: rightSurfaceContractChecks
+      .map((passed, index) => (passed ? undefined : index))
+      .filter((value) => value !== undefined)
+  });
+  record("right-surface-asset-row-copy-stays-figma-scoped", !/次引用/.test(overviewRenderer), {
+    disallowedCopy: "次引用"
+  });
+  record("scrollable-surfaces-do-not-force-visible-scrollbar-gutter", !/scrollbar-gutter:\s*stable/.test(baseCss + atoms + molecules + components + modules + pageStatesCss));
+  record("scrollable-surfaces-use-tokenized-hidden-scrollbar-contract", /--asv-component-scrollable-surface-scrollbar-size:\s*0px/.test(tokens)
+    && /--asv-scrollable-surface-scrollbar-size:\s*var\(--asv-component-scrollable-surface-scrollbar-size\)/.test(tokens)
+    && /\.rightSurfaceBody,\s*\.compareInfo,\s*\.layerPanel,\s*\.reservedPanel\s*\{[\s\S]*scrollbar-width: none/.test(modules)
+    && /\.rightSurfaceBody::-webkit-scrollbar,[\s\S]*\.reservedPanel::-webkit-scrollbar\s*\{[\s\S]*width: var\(--asv-scrollable-surface-scrollbar-size\)[\s\S]*height: var\(--asv-scrollable-surface-scrollbar-size\)/.test(modules));
+  record("figma-r4-launch-module-contract-covered", /data-view="launch"[^>]*data-module="LaunchModule"/.test(page)
+    && /class="launchCanvas"[^>]*data-component="LaunchDropCanvas"/.test(page)
+    && /class="launchPrompt"[^>]*data-component="FileDropTarget"[^>]*data-role="LaunchEmptyCanvas"/.test(page)
+    && /class="recentBlock"[^>]*data-component="LaunchRecentFilesList"[^>]*hidden/.test(page)
+    && /data-action="clear-recent"/.test(page)
+    && /--asv-component-launch-empty-canvas-size:\s*300px/.test(tokens)
+    && /--asv-component-launch-content-width:\s*300px/.test(tokens)
+    && /--asv-component-launch-content-offset-block-start:\s*46px/.test(tokens)
+    && /--asv-component-launch-action-width:\s*72px/.test(tokens)
+    && /--asv-component-launch-action-height:\s*30px/.test(tokens)
+    && /--asv-component-launch-recent-width:\s*360px/.test(tokens)
+    && /--asv-component-launch-recent-height:\s*200px/.test(tokens)
+    && /--asv-component-launch-recent-row-height:\s*32px/.test(tokens)
+    && /--asv-component-launch-recent-row-radius:\s*var\(--asv-base-radius-12\)/.test(tokens)
+    && /--asv-component-launch-recent-invalid-opacity:\s*0\.45/.test(tokens)
+    && /recentBlock\.hidden = records\.length === 0/.test(launchRenderer)
+    && /records\.map\(createRecentFileRow\)/.test(launchRenderer)
+    && /LAUNCH_RECENT_LIMIT = 5/.test(recentFilesModel)
+    && /records\.slice\(0, limit\)/.test(recentFilesModel)
+    && /文件不可访问/.test(launchRenderer)
+    && /\.launchCanvas:has\(\.recentBlock:not\(\[hidden\]\)\)\s*\{[\s\S]*align-content: start[\s\S]*padding-top: calc\(var\(--asv-toolbar-height\) \+ var\(--asv-launch-content-offset-block-start\)\)/.test(modules));
+  record("figma-r4-canvas-playback-contract-covered", /data-module="PreviewCanvasModule"[^>]*data-component="PreviewStage"/.test(page)
+    && /class="canvasModeSwitch"[^>]*data-component="CanvasModeSwitch"/.test(page)
+    && /class="playbackBar"[^>]*data-component="PlaybackControls"/.test(page)
+    && /class="playbackActions"[^>]*data-component="PlaybackButtonGroup"/.test(page)
+    && /class="playbackIconButton"[^>]*data-component="IconButton"/.test(page)
+    && /class="playbackIconButton primary"[^>]*data-component="IconButton"/.test(page)
+    && /--asv-component-playback-bar-height:\s*44px/.test(tokens)
+    && /--asv-component-playback-bar-padding-inline:\s*var\(--asv-space-6\)/.test(tokens)
+    && /--asv-component-playback-bar-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
+    && /--asv-component-playback-bar-gap:\s*var\(--asv-space-4\)/.test(tokens)
+    && /--asv-component-playback-actions-gap:\s*var\(--asv-space-4\)/.test(tokens)
+    && /--asv-component-icon-button-size:\s*44px/.test(tokens)
+    && /--asv-component-icon-button-radius:\s*var\(--asv-radius-md\)/.test(tokens)
+    && /--asv-component-icon-button-icon-size:\s*20px/.test(tokens)
+    && /--asv-component-playback-primary-size:\s*var\(--asv-component-icon-button-size\)/.test(tokens)
+    && /--asv-component-playback-control-size:\s*var\(--asv-component-icon-button-size\)/.test(tokens)
+    && /--asv-component-playback-icon-size:\s*var\(--asv-component-icon-button-icon-size\)/.test(tokens)
+    && /--asv-component-playback-progress-height:\s*3px/.test(tokens)
+    && /--asv-component-playback-time-line-height:\s*18px/.test(tokens)
+    && /--asv-component-mode-switch-width:\s*152px/.test(tokens)
+    && /--asv-component-mode-switch-height:\s*42px/.test(tokens)
+    && /--asv-component-mode-button-width:\s*72px/.test(tokens)
+    && /--asv-component-mode-button-height:\s*34px/.test(tokens)
+    && /--asv-component-mode-switch-padding:\s*var\(--asv-space-1\)/.test(tokens)
+    && /--asv-component-mode-button-padding-inline:\s*var\(--asv-space-3\)/.test(tokens)
+    && /--asv-component-mode-button-padding-block:\s*var\(--asv-space-2\)/.test(tokens)
+    && /--asv-component-mode-button-line-height:\s*18px/.test(tokens)
+    && /\.playbackBar\s*\{[\s\S]*grid-template-columns:[\s\S]*minmax\(var\(--asv-playback-progress-min-width\), var\(--asv-playback-progress-track-fr\)\)[\s\S]*padding: var\(--asv-playback-bar-padding-block\) var\(--asv-playback-bar-padding-inline\)/.test(modules)
+    && /\.playbackIconButton\s*\{[\s\S]*width: var\(--asv-icon-button-size\)[\s\S]*height: var\(--asv-icon-button-size\)[\s\S]*border-radius: var\(--asv-icon-button-radius\)/.test(modules)
+    && /\.playbackIconButton\.primary\s*\{[\s\S]*background: var\(--asv-icon-button-primary-bg\)[\s\S]*color: var\(--asv-icon-button-primary-color\)/.test(modules)
+    && /\.playbackProgress\s*\{[\s\S]*height: var\(--asv-playback-progress-height\)/.test(modules)
+    && /\.modeSwitch,[\s\S]*\.canvasModeSwitch\s*\{[\s\S]*width: var\(--asv-mode-switch-width\)[\s\S]*min-height: var\(--asv-mode-switch-height\)/.test(molecules)
+    && /\.modeSwitch button,[\s\S]*\.canvasModeSwitch button\s*\{[\s\S]*width: var\(--asv-mode-button-width\)[\s\S]*min-height: var\(--asv-mode-button-height\)/.test(molecules)
+    && /\.canvasModeSwitch\s*\{[\s\S]*top: var\(--asv-workbench-floating-control-top\)[\s\S]*left: 50%/.test(modules));
+  record("compare-empty-slots-use-file-drop-target-contract", /class="compareEmptyPrompt" data-component="FileDropTarget" data-role="CompareEmptySlot"[\s\S]*<p>拖拽文件到此处<\/p>[\s\S]*data-action="open-compare-a"/.test(page)
+    && /class="compareEmptyPrompt" data-component="FileDropTarget" data-role="CompareEmptySlot"[\s\S]*<p>拖拽文件到此处<\/p>[\s\S]*data-action="open-compare-b"/.test(page)
+    && /--asv-component-compare-empty-prompt-width:\s*var\(--asv-component-launch-content-width\)/.test(tokens)
+    && /\.compareEmptyPrompt\s*\{[\s\S]*gap: var\(--asv-compare-empty-prompt-gap\)[\s\S]*width: min\(var\(--asv-compare-empty-prompt-width\), 100%\)/.test(modules)
+    && /\.compareCanvasWrap\[data-compare-state="loaded"\] \.compareEmptyPrompt\s*\{[\s\S]*display: none/.test(modules));
+  record("optimization-detail-uses-figma-r5-candidate-row-contract", /dataset\.component = "OptimizationFindingRow"/.test(optimizationRenderer)
+    && /dataset\.role = "OptimizationCandidateRow"/.test(optimizationRenderer)
+    && /--asv-component-finding-row-min-height:\s*62px/.test(tokens)
+    && /--asv-component-finding-row-gap:\s*var\(--asv-space-2\)/.test(tokens)
+    && /--asv-component-finding-row-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
+    && /--asv-component-finding-row-padding-inline:\s*var\(--asv-space-3\)/.test(tokens)
+    && /--asv-component-finding-row-radius:\s*var\(--asv-base-radius-12\)/.test(tokens)
+    && /--asv-component-finding-row-title-line-height:\s*18px/.test(tokens)
+    && /--asv-component-finding-row-summary-line-height:\s*16px/.test(tokens)
+    && /\.findingRow\s*\{[\s\S]*min-height: var\(--asv-finding-row-min-height\)[\s\S]*padding: var\(--asv-finding-row-padding-block\) var\(--asv-finding-row-padding-inline\) var\(--asv-finding-row-padding-block\) var\(--asv-finding-row-padding-inline-start\)[\s\S]*border-radius: var\(--asv-finding-row-radius\)/.test(components)
+    && /\.findingRow\[data-disposition="safeExecutable"\]/.test(components)
+    && /\.findingRow\[data-disposition="reviewOnly"\]/.test(components)
+    && /\.findingRow\[data-disposition="unsupported"\]/.test(components));
+  record("optimization-result-metrics-use-figma-component-contract", /data-component="OptimizationResultCard" data-role="OptimizationMetricCell"/.test(baseCss + modules + components + renderModel)
+    && /--asv-optimization-metric-min-height:\s*var\(--asv-component-optimization-metric-min-height\)/.test(tokens)
+    && /gap:\s*var\(--asv-optimization-metric-gap\)/.test(modules)
+    && /padding:\s*var\(--asv-optimization-metric-padding-block\) var\(--asv-optimization-metric-padding-inline\)/.test(modules));
+  record("optimization-actions-use-figma-r5-button-rhythm", /<div class="compareActions optimizationActions">/.test(compareModel)
+    && /--asv-component-optimization-action-height:\s*30px/.test(tokens)
+    && /--asv-component-optimization-action-radius:\s*var\(--asv-radius-sm\)/.test(tokens)
+    && /--asv-component-optimization-action-gap:\s*var\(--asv-space-2\)/.test(tokens)
+    && /\.optimizationActions\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*gap: var\(--asv-optimization-action-gap\)/.test(modules)
+    && /\.optimizationActions \.toolbarButton\s*\{[\s\S]*min-height: var\(--asv-optimization-action-height\)[\s\S]*border-radius: var\(--asv-optimization-action-radius\)/.test(modules));
+  record("optimization-result-details-use-tokenized-row-contract", /data-component="OptimizationResultDetailRow"/.test(compareModel)
+    && /--asv-component-optimization-result-row-padding-block:\s*var\(--asv-base-space-4\)/.test(tokens)
+    && /--asv-component-optimization-result-row-radius:\s*var\(--asv-radius-md\)/.test(tokens)
+    && /\.resultGroup li\s*\{[\s\S]*padding: var\(--asv-optimization-result-row-padding-block\) var\(--asv-optimization-result-row-padding-inline\)[\s\S]*border-radius: var\(--asv-optimization-result-row-radius\)[\s\S]*background: var\(--asv-optimization-result-row-bg\)/.test(modules)
+    && /\.resultGroup\.muted li\s*\{[\s\S]*background: var\(--asv-optimization-result-muted-row-bg\)/.test(modules));
+  record("figma-r9-compare-edit-settings-contract-covered", /--asv-component-preview-gap:\s*var\(--asv-base-space-0\)/.test(tokens)
+    && /--asv-component-left-panel-width:\s*360px/.test(tokens)
+    && /--asv-component-edit-right-panel-min-width:\s*var\(--asv-component-right-panel-width\)/.test(tokens)
+    && /--asv-component-layer-row-min-height:\s*56px/.test(tokens)
+    && /--asv-component-layer-row-thumb-size:\s*48px/.test(tokens)
+    && /--asv-component-layer-panel-padding-block-start:\s*var\(--asv-base-space-48\)/.test(tokens)
+    && /--asv-component-compare-metric-column-min-height:\s*347px/.test(tokens)
+    && /--asv-component-compare-mode-header-min-height:\s*54px/.test(tokens)
+    && /--asv-compare-mode-header-divider:\s*var\(--asv-component-compare-mode-header-divider\)/.test(tokens)
+    && /--asv-component-dialog-backdrop-background:/.test(tokens)
+    && /--asv-component-settings-sheet-border:/.test(tokens)
+    && /--asv-component-settings-sheet-radius:/.test(tokens)
+    && /--asv-component-settings-sheet-background:/.test(tokens)
+    && /--asv-component-settings-sheet-shadow:/.test(tokens)
+    && /--asv-component-settings-sheet-padding:\s*var\(--asv-space-6\)/.test(tokens)
+    && /--asv-component-settings-sheet-gap:\s*var\(--asv-space-4\)/.test(tokens)
+    && /--asv-component-settings-title-row-height:\s*22px/.test(tokens)
+    && /--asv-component-settings-action-height:\s*44px/.test(tokens)
+    && /--asv-component-settings-appearance-block-height:\s*116px/.test(tokens)
+    && /--asv-component-settings-appearance-block-gap:\s*var\(--asv-base-space-10\)/.test(tokens)
+    && /--asv-component-settings-appearance-block-padding-block:\s*var\(--asv-base-space-8\)/.test(tokens)
+    && /--asv-component-settings-choice-height:\s*72px/.test(tokens)
+    && /--asv-component-settings-choice-icon-size:\s*20px/.test(tokens)
+    && /--asv-component-layer-panel-header-height:\s*50px/.test(tokens)
+    && /\.previewView\s*\{[\s\S]*gap: var\(--asv-preview-gap\)[\s\S]*padding: var\(--asv-preview-gap\)/.test(pageStatesCss)
+    && /\.compareMetricGrid\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)[\s\S]*gap: var\(--asv-compare-metric-column-gap\)/.test(modules)
+    && /\.compareModeHeader\s*\{[\s\S]*min-height: var\(--asv-compare-mode-header-min-height\)[\s\S]*border-bottom: var\(--asv-compare-mode-header-divider\)/.test(modules)
+    && /\.compareMetricColumn\s*\{[\s\S]*min-height: var\(--asv-compare-metric-column-min-height\)[\s\S]*background: var\(--asv-compare-metric-column-bg\)/.test(modules)
+    && /\.layerPanelHeader\s*\{[\s\S]*min-height: var\(--asv-layer-panel-header-height\)/.test(modules)
+    && /\.layerList\s*\{[\s\S]*gap: var\(--asv-layer-list-gap\)/.test(modules)
+    && /\.settingsDialog \.dialogBody\s*\{[\s\S]*gap: var\(--asv-settings-sheet-gap\)[\s\S]*padding: var\(--asv-settings-sheet-padding\) 0/.test(components)
+    && /\.appDialog::backdrop\s*\{[\s\S]*background: var\(--asv-dialog-backdrop-bg\)/.test(components)
+    && /\.settingsDialog\s*\{[\s\S]*border: var\(--asv-settings-sheet-border\)[\s\S]*border-radius: var\(--asv-settings-sheet-radius\)[\s\S]*background: var\(--asv-settings-sheet-bg\)[\s\S]*box-shadow: var\(--asv-settings-sheet-shadow\)/.test(components)
+    && /\.settingsHeader h2\s*\{[\s\S]*min-height: var\(--asv-settings-title-row-height\)/.test(components)
+    && /\.settingsDialog \.dialogActions button\s*\{[\s\S]*min-height: var\(--asv-settings-action-height\)/.test(components)
+    && /\.settingsGroup\s*\{[\s\S]*gap: var\(--asv-settings-appearance-block-gap\)[\s\S]*min-height: var\(--asv-settings-appearance-block-height\)[\s\S]*padding-block: var\(--asv-settings-appearance-block-padding-block\)/.test(components)
+    && /\.settingsChoice\s*\{[\s\S]*grid-template-columns: minmax\(0, 1fr\)[\s\S]*grid-template-rows: auto auto/.test(components)
+    && /const rows = renderCompareMetricColumns\(aModel, bModel\)/.test(compareModel)
+    && /data-diff="\$\{escapeHtml\(diff\)\}"/.test(compareModel)
+    && !/<span>\$\{escapeHtml\(aTitle\)\}<\/span>|<span>\$\{escapeHtml\(bTitle\)\}<\/span>/.test(compareModel)
+    && !/compareMetricRow/.test(compareModel));
+
+  record("figma-r10-atom-molecule-contract-covered", /--asv-component-text-input-width:\s*172px/.test(tokens)
+    && /--asv-component-text-input-height:\s*24px/.test(tokens)
+    && /--asv-component-text-input-padding-block:\s*var\(--asv-base-space-4\)/.test(tokens)
+    && /--asv-component-text-input-padding-inline:\s*var\(--asv-base-space-8\)/.test(tokens)
+    && /--asv-component-text-input-font-size:\s*var\(--asv-type-size-caption\)/.test(tokens)
+    && /--asv-component-file-header-action-width:\s*72px/.test(tokens)
+    && /--asv-component-metric-entry-gap:\s*var\(--asv-base-space-2\)/.test(tokens)
+    && /--asv-component-metric-entry-padding-block:\s*var\(--asv-base-space-2\)/.test(tokens)
+    && /--asv-component-asset-row-min-height:\s*56px/.test(tokens)
+    && /--asv-component-asset-row-gap:\s*var\(--asv-space-3\)/.test(tokens)
+    && /--asv-component-layer-row-min-height:\s*56px/.test(tokens)
+    && /--asv-component-layer-row-gap:\s*var\(--asv-base-space-10\)/.test(tokens)
+    && /--asv-component-finding-row-min-height:\s*62px/.test(tokens)
+    && /--asv-component-finding-row-gap:\s*var\(--asv-space-2\)/.test(tokens)
+    && /--asv-component-asset-filter-width:\s*235px/.test(tokens)
+    && /--asv-component-asset-filter-height:\s*34px/.test(tokens)
+    && /--asv-component-asset-section-head-gap:\s*var\(--asv-space-2\)/.test(tokens)
+    && /--asv-component-asset-filter-tab-font-size:\s*var\(--asv-type-size-micro\)/.test(tokens)
+    && /--asv-component-toast-height:\s*44px/.test(tokens)
+    && /--asv-component-toast-width:\s*280px/.test(tokens)
+    && /--asv-component-toast-failure-width:\s*320px/.test(tokens)
+    && /\.renameInputInline\s*\{[\s\S]*height: var\(--asv-text-input-height\)[\s\S]*padding: var\(--asv-text-input-padding-block\) var\(--asv-text-input-padding-inline\)/.test(molecules)
+    && /\.runtimeTextInput\s*\{[\s\S]*width: min\(var\(--asv-runtime-text-input-width\), 100%\)[\s\S]*height: var\(--asv-text-input-height\)[\s\S]*font-size: var\(--asv-text-input-font-size\)/.test(molecules)
+    && /\.metricOptimizationEntry\s*\{[\s\S]*gap: var\(--asv-metric-entry-gap\)[\s\S]*padding: var\(--asv-metric-entry-padding-block\) var\(--asv-metric-entry-padding-inline\)/.test(components)
+    && /\.sectionHead\.assetSectionHead\s*\{[\s\S]*display: grid[\s\S]*gap: var\(--asv-asset-section-head-gap\)/.test(modules)
+    && /\.sectionHead\.assetSectionHead h2\s*\{[\s\S]*white-space: nowrap/.test(modules)
+    && /\.assetFilterTabs\s*\{[\s\S]*width: min\(var\(--asv-asset-filter-width\), 100%\)[\s\S]*min-height: var\(--asv-asset-filter-height\)/.test(modules)
+    && /\.canvasToast\s*\{[\s\S]*width: min\(var\(--asv-toast-failure-width\), 60%\)[\s\S]*min-height: var\(--asv-toast-height\)/.test(modules));
+
   record("focus-visible-covered-by-ui-layers", [atoms, molecules, components, modules].every((source) => source.includes(":focus-visible")));
   record("reduced-motion-covered", /@media \(prefers-reduced-motion: reduce\)/.test(pageStatesCss)
-    && /animation-duration:\s*1ms !important/.test(pageStatesCss)
-    && /transition-duration:\s*1ms !important/.test(pageStatesCss));
+    && /animation-duration:\s*var\(--asv-reduced-motion-duration\) !important/.test(pageStatesCss)
+    && /transition-duration:\s*var\(--asv-reduced-motion-duration\) !important/.test(pageStatesCss)
+    && /--asv-reduced-motion-duration:\s*var\(--asv-motion-duration-reduced\)/.test(tokens));
   record("launch-checker-idle-motion-tokenized", /--asv-motion-duration-idle/.test(tokens)
     && /--asv-component-launch-checker-idle-duration:\s*var\(--asv-motion-duration-idle\)/.test(tokens)
     && /animation:\s*launchCheckerIdleDrift var\(--asv-launch-checker-idle-duration\) var\(--asv-launch-checker-idle-easing\) infinite/.test(modules)
@@ -303,10 +714,39 @@ async function main() {
     && /\.titlebar,\s*\.contextMenu,\s*\.dragDecisionOverlay\s*\{[\s\S]*backdrop-filter:\s*none/.test(pageStatesCss)
     && /backdrop-filter:\s*var\(--asv-effect-menu-backdrop-filter\)/.test(components)
     && /backdrop-filter:\s*var\(--asv-drag-overlay-backdrop-filter\)/.test(modules));
-  record("minimum-window-boundary-explicit", /min-width:\s*1060px/.test(baseCss)
-    && /min-height:\s*720px/.test(baseCss)
+  record("minimum-window-boundary-explicit", /--asv-layout-launch-min-width:\s*640px/.test(tokens)
+    && /--asv-layout-launch-min-height:\s*640px/.test(tokens)
+    && /--asv-layout-workbench-min-width:\s*1180px/.test(tokens)
+    && /--asv-layout-workbench-min-height:\s*760px/.test(tokens)
+    && /--asv-launch-min-width:\s*var\(--asv-layout-launch-min-width\)/.test(tokens)
+    && /--asv-workbench-min-width:\s*var\(--asv-layout-workbench-min-width\)/.test(tokens)
+    && /body\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(baseCss)
+    && /\.macApp\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(pageStatesCss)
+    && /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="edit"\]\s*\{[\s\S]*min-width:\s*var\(--asv-workbench-min-width\)[\s\S]*min-height:\s*var\(--asv-workbench-min-height\)/.test(pageStatesCss)
     && /@media \(max-width: 1080px\)/.test(pageStatesCss)
     && /@media \(max-height: 780px\)/.test(pageStatesCss));
+  record("figma-page-frame-layout-contract-covered", /--asv-layout-page-launch-frame-width:\s*640px/.test(tokens)
+    && /--asv-layout-page-launch-frame-height:\s*640px/.test(tokens)
+    && /--asv-layout-page-workbench-frame-width:\s*1280px/.test(tokens)
+    && /--asv-layout-page-workbench-frame-height:\s*800px/.test(tokens)
+    && /--asv-layout-page-workbench-center-width:\s*920px/.test(tokens)
+    && /--asv-layout-page-edit-center-width:\s*560px/.test(tokens)
+    && /--asv-page-launch-frame-width:\s*var\(--asv-layout-page-launch-frame-width\)/.test(tokens)
+    && /--asv-page-workbench-frame-width:\s*var\(--asv-layout-page-workbench-frame-width\)/.test(tokens)
+    && /launch:\s*\{\s*width:\s*640,\s*height:\s*640\s*\}/.test(mainProcess)
+    && /shortTermWorkbench:\s*\{\s*width:\s*1280,\s*height:\s*800\s*\}/.test(mainProcess)
+    && /comfortable:\s*\{\s*width:\s*1280,\s*height:\s*800\s*\}/.test(mainProcess)
+    && /const targetSize = isShortTermProduct[\s\S]*macosWorkbenchWindowSizing\.shortTermWorkbench[\s\S]*macosWorkbenchWindowSizing\.defaultWorkbench/.test(mainProcess)
+    && /scenario === "short-term-preview-overview"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/.test(mainProcess)
+    && /scenario === "short-term-preview-overview-wide"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/.test(mainProcess)
+    && /scenario === "short-term-general-compare"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/.test(mainProcess)
+    && /scenario === "short-term-settings-dialog"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/.test(mainProcess)
+    && /scenario === "short-term-edit-reserved"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/.test(mainProcess)
+    && /minimumLaunch:\s*\{\s*width:\s*640,\s*height:\s*640\s*\}/.test(mainProcess)
+    && /minimumSupported:\s*\{\s*width:\s*1180,\s*height:\s*760\s*\}/.test(mainProcess)
+    && /width:\s*640,\s*height:\s*640/.test(windowBoundsPolicy), {
+    source: "R6/R8/R9 page-state dimensions plus short-term window bounds policy"
+  });
 
   const figmaR2FoundationTokens = new Map([
     ["--asv-base-neutral-0", "#ffffff"],

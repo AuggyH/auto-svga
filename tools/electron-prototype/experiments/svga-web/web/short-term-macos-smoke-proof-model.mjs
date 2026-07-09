@@ -643,7 +643,7 @@ export async function collectShortTermRightSurfaceNavigationProof({ setTab, wait
   };
   setTab("overview", { focus: true });
   await waitForSmokeFrame();
-  const tabButtonsRemoved = document.querySelectorAll("[data-tab], [role='tab'], [role='tablist']").length === 0;
+  const tabButtonsRemoved = legacyPanelTabNavigationRemoved();
   const panelVisibilitySynced = panelOverview?.hidden === false
     && panelOptimization?.hidden === true;
   const proof = {
@@ -734,7 +734,7 @@ export function collectShortTermDesignInteractionProof({
     focusTargetCount: focusOrder.length,
     noVisibleCompareEntrypoint: compareIndex < 0,
     canvasModeSwitchReachable: previewModeIndex >= 0 && editModeIndex > previewModeIndex,
-    tabButtonsRemoved: document.querySelectorAll("[data-tab], [role='tab'], [role='tablist']").length === 0,
+    tabButtonsRemoved: legacyPanelTabNavigationRemoved(),
     panelScrollRegionFocusable: panelOverview?.tabIndex === 0,
     panelScrollRegionScrollable: ["auto", "scroll"].includes(panelStyle.overflowY),
     metadataSelectable: userSelectAllowsText(document.body)
@@ -857,6 +857,10 @@ export async function reportShortTermSmokeFailure({ bridge, phase, error, nodes,
 export function visibleFocusableElements() {
   return [...document.querySelectorAll("button, input, [tabindex]")]
     .filter((element) => !element.disabled && element.tabIndex >= 0 && isElementVisible(element));
+}
+
+function legacyPanelTabNavigationRemoved() {
+  return document.querySelectorAll("[data-tab], .tabs[role='tablist'], [aria-label='面板标签'][role='tablist']").length === 0;
 }
 
 export function isElementVisible(element) {

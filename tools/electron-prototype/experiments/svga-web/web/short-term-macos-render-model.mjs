@@ -37,7 +37,7 @@ export function renderOverviewFactCellHtml(fact) {
 
 export function renderCompareFactCellHtml(fact) {
   return `
-    <div class="factCell compareMetricCell" data-status="${escapeHtml(fact.status || "unknown")}">
+    <div class="factCell compareMetricCell" data-component="FactCell" data-status="${escapeHtml(fact.status || "unknown")}">
       <span>${escapeHtml(fact.label)}</span>
       <strong>${renderMetricValueHtml(fact.value)}</strong>
       <small><b>${escapeHtml(statusCopy(fact.status))}</b>${escapeHtml(fact.requirement)}</small>
@@ -59,7 +59,7 @@ export function renderOptimizationMetricCellHtml(metric) {
     ? renderMetricValueHtml(metric.after)
     : "";
   return `
-    <div class="optimizationMetricCell" data-component="OptimizationMetricCell" data-improved="${improved ? "true" : "false"}">
+    <div class="optimizationMetricCell" data-component="OptimizationResultCard" data-role="OptimizationMetricCell" data-improved="${improved ? "true" : "false"}">
       <span>${escapeHtml(metric.label)}</span>
       <strong class="optimizationMetricValue">
         <b>${beforeCopy}</b>

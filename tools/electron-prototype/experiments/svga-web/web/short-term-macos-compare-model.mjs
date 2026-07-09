@@ -41,24 +41,30 @@ function compareFactValue(facts, id) {
   return facts.find((fact) => fact.id === id)?.value || "";
 }
 
-function renderComparePairRows(aModel, bModel) {
+function renderCompareColumnFactHtml(fact, peerFacts) {
+  const peerValue = compareFactValue(peerFacts, fact.id);
+  const diff = peerValue && peerValue !== fact.value ? "different" : "same";
+  return `
+    <div class="compareMetricCell" data-component="FactCell" data-status="${escapeHtml(fact.status || "unknown")}" data-diff="${escapeHtml(diff)}">
+      <span>${escapeHtml(fact.label)}</span>
+      <strong>${renderMetricValueHtml(fact.value)}</strong>
+    </div>
+  `;
+}
+
+function renderCompareMetricColumnHtml(slot, facts, peerFacts) {
+  return `
+    <div class="compareMetricColumn" data-slot="${escapeHtml(slot)}">
+      ${facts.map((fact) => renderCompareColumnFactHtml(fact, peerFacts)).join("")}
+    </div>
+  `;
+}
+
+function renderCompareMetricColumns(aModel, bModel) {
   if (!aModel || !bModel) return "";
   const aFacts = compareFacts(aModel);
   const bFacts = compareFacts(bModel);
-  const ids = Array.from(new Set([...aFacts, ...bFacts].map((fact) => fact.id)));
-  return ids.map((id) => {
-    const label = aFacts.find((fact) => fact.id === id)?.label || bFacts.find((fact) => fact.id === id)?.label || id;
-    const aValue = compareFactValue(aFacts, id) || "未打开";
-    const bValue = compareFactValue(bFacts, id) || "未打开";
-    const status = bModel ? (aValue === bValue ? "same" : "different") : "empty";
-    return `
-      <div class="compareMetricRow" data-status="${escapeHtml(status)}">
-        <span>${escapeHtml(label)}</span>
-        <strong>${escapeHtml(aValue)}</strong>
-        <strong>${escapeHtml(bValue)}</strong>
-      </div>
-    `;
-  }).join("");
+  return `${renderCompareMetricColumnHtml("A", aFacts, bFacts)}${renderCompareMetricColumnHtml("B", bFacts, aFacts)}`;
 }
 
 export function renderGeneralComparePanelHtml({
@@ -71,7 +77,7 @@ export function renderGeneralComparePanelHtml({
   actions = []
 } = {}) {
   const actionHtml = actions.length ? `<div class="compareActions">${actions.join("")}</div>` : "";
-  const rows = renderComparePairRows(aModel, bModel);
+  const rows = renderCompareMetricColumns(aModel, bModel);
   return `
     <section class="compareSummary compareModeHeader">
       <h2>对比模式</h2>
@@ -79,11 +85,9 @@ export function renderGeneralComparePanelHtml({
     </section>
     <section class="comparePairHeader" aria-label="对比文件">
       <div>
-        <span>${escapeHtml(aTitle)}</span>
         <strong>${escapeHtml(aDisplayName || "未打开文件")}</strong>
       </div>
       <div>
-        <span>${escapeHtml(bTitle)}</span>
         <strong>${escapeHtml(bDisplayName || "未打开文件")}</strong>
       </div>
     </section>
@@ -109,14 +113,14 @@ export function renderOptimizationCompareResultHtml(model) {
   const tone = optimizationResultTone(model);
   const saveDisabled = canSaveOptimizationResult(model) ? "" : " disabled";
   const actionRows = (model.actions ?? []).map((action) => `
-    <li>
+    <li data-component="OptimizationResultDetailRow" data-result-disposition="executed">
       <strong>${escapeHtml(action.title)}</strong>
       <span>${escapeHtml(action.summary)}</span>
     </li>
   `).join("");
   const skippedRows = (model.methods ?? [])
     .filter((method) => method.disposition !== "executed")
-    .map((method) => `<li><strong>${escapeHtml(method.label)}</strong><span>${escapeHtml(method.reason)}</span></li>`)
+    .map((method) => `<li data-component="OptimizationResultDetailRow" data-result-disposition="skipped"><strong>${escapeHtml(method.label)}</strong><span>${escapeHtml(method.reason)}</span></li>`)
     .join("");
   return `
     <section class="compareSummary optimizationResultSummary" data-status="${escapeHtml(tone)}">

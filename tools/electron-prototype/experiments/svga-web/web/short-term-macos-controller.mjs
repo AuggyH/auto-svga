@@ -451,6 +451,11 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     renderShortTermPreviewModel({ nodes, state });
   }
 
+  function setAssetFilter(assetFilter) {
+    state.assetFilter = assetFilter || "all";
+    renderPreviewModel();
+  }
+
   function renderOptimization(model) {
     renderShortTermOptimization({ nodes, model });
   }
@@ -655,6 +660,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     closeSettings,
     setAppearance,
     openKeyboardResourceContextMenu,
+    setAssetFilter,
     setTab,
     openTab,
     handleTabListKeydown,

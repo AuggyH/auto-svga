@@ -8,6 +8,7 @@ export function createOptimizationFindingRow(item) {
   const row = document.createElement("article");
   row.className = "findingRow";
   row.dataset.component = "OptimizationFindingRow";
+  row.dataset.role = "OptimizationCandidateRow";
   row.dataset.disposition = item.disposition;
   row.title = `${item.title}: ${item.summary}`;
   row.innerHTML = renderOptimizationFindingHtml(item);

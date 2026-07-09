@@ -88,8 +88,8 @@ export function createTextElementRow(item, index, options) {
 }
 
 export function renderRuntimeTextElements(nodes, view, selectedTextKey) {
-  nodes.textPreviewSummary.textContent = view.summaryCopy;
-  nodes.textElementList.closest(".textPreviewBlock")?.setAttribute("data-empty", view.hasTextElements ? "false" : "true");
+  nodes.replaceableSummary.textContent = view.summaryCopy;
+  nodes.textElementList.dataset.empty = view.hasTextElements ? "false" : "true";
   if (!view.hasTextElements) {
     nodes.textElementList.replaceChildren();
     return;

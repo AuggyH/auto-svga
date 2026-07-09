@@ -2,12 +2,17 @@ import {
   escapeHtml,
   renderOverviewFactCellHtml
 } from "./short-term-macos-render-model.mjs";
+import {
+  filteredAssetsForTab,
+  normalizedAssetFilter
+} from "./short-term-macos-overview-model.mjs";
 import { renderThumbnailHtml } from "./short-term-macos-thumbnail-renderers.mjs";
 
 export function createOverviewFactCell(fact) {
   const cell = document.createElement("article");
   cell.className = "factCell";
-  cell.dataset.component = "ProductionSpecInlineRow";
+  cell.dataset.component = "FactCell";
+  cell.dataset.role = "ProductionSpecInlineRow";
   cell.dataset.factId = fact.id;
   cell.dataset.status = fact.status;
   cell.title = `${fact.label}: ${fact.value}`;
@@ -39,10 +44,10 @@ export function createAssetRow(asset, model) {
   row.dataset.attention = asset.findingCodes.length > 0 ? "true" : "false";
   const detail = asset.kind === "audio" && model.overview.audioGroup.status === "empty"
     ? model.overview.audioGroup.copy
-    : `${asset.dimensions} · ${asset.fileSize} · ${asset.usageCount} 次引用`;
+    : `${asset.dimensions} · ${asset.fileSize}`;
   const badgeCopy = asset.findingCodes.length > 0
     ? "需关注"
-    : asset.kind === "sequence" ? "序列" : asset.kind === "audio" ? "音频" : asset.replaceable ? "可替换" : "";
+    : "";
   const badgeClass = asset.findingCodes.length > 0 ? " review" : "";
   row.title = `${asset.name} ${detail}`;
   row.innerHTML = `
@@ -61,6 +66,29 @@ export function renderOverviewFacts(nodes, view) {
   nodes.factGrid.replaceChildren(...children);
 }
 
-export function renderAssetList(nodes, view, model) {
-  nodes.assetList.replaceChildren(...view.assets.map((asset) => createAssetRow(asset, model)));
+export function renderAssetFilterTabs(nodes, view, activeFilter) {
+  if (!nodes.assetFilterTabs) return;
+  const tabs = view.assetTabs ?? [];
+  nodes.assetFilterTabs.replaceChildren(...tabs.map((tab) => {
+    const selected = tab.id === activeFilter;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.component = "TabItem";
+    button.dataset.action = "asset-filter";
+    button.dataset.assetFilter = tab.id;
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-selected", selected ? "true" : "false");
+    button.tabIndex = selected ? 0 : -1;
+    button.classList.toggle("isSelected", selected);
+    button.textContent = `${tab.label} (${tab.count})`;
+    return button;
+  }));
+}
+
+export function renderAssetList(nodes, view, model, activeFilter = "all") {
+  const nextFilter = normalizedAssetFilter(activeFilter, view.assets);
+  const visibleAssets = filteredAssetsForTab(view.assets, nextFilter);
+  if (nodes.assetListHeading) nodes.assetListHeading.textContent = `资产列表 (${view.assets.length})`;
+  renderAssetFilterTabs(nodes, view, nextFilter);
+  nodes.assetList.replaceChildren(...visibleAssets.map((asset) => createAssetRow(asset, model)));
 }

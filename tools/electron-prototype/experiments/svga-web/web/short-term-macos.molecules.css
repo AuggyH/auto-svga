@@ -31,6 +31,8 @@
 .canvasModeSwitch {
   display: inline-grid;
   grid-template-columns: 1fr 1fr;
+  width: var(--asv-mode-switch-width);
+  min-height: var(--asv-mode-switch-height);
   gap: var(--asv-mode-switch-gap);
   padding: var(--asv-mode-switch-padding);
   border: 0;
@@ -47,8 +49,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: calc(var(--asv-control-height) * 2);
-  min-height: 0;
+  width: var(--asv-mode-button-width);
+  min-width: var(--asv-mode-button-width);
+  min-height: var(--asv-mode-button-height);
   padding: var(--asv-mode-button-padding-block) var(--asv-mode-button-padding-inline);
   border: 0;
   border-radius: var(--asv-base-radius-full);
@@ -96,13 +99,14 @@
 .renameInputInline {
   min-width: 0;
   width: 100%;
-  height: var(--asv-control-height);
-  padding: 0 var(--asv-space-2);
+  height: var(--asv-text-input-height);
+  padding: var(--asv-text-input-padding-block) var(--asv-text-input-padding-inline);
   border: 1px solid var(--asv-border-strong);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-panel);
   color: var(--asv-text);
-  font: inherit;
+  font-size: var(--asv-text-input-font-size);
+  line-height: var(--asv-text-input-line-height);
 }
 
 .renameInputInline:focus-visible {
@@ -114,13 +118,14 @@
   min-width: 0;
   justify-self: end;
   width: min(var(--asv-runtime-text-input-width), 100%);
-  height: var(--asv-control-height);
-  padding: 0 var(--asv-space-2);
+  height: var(--asv-text-input-height);
+  padding: var(--asv-text-input-padding-block) var(--asv-text-input-padding-inline);
   border: 1px solid var(--asv-control-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-panel);
   color: var(--asv-text);
-  font: inherit;
+  font-size: var(--asv-text-input-font-size);
+  line-height: var(--asv-text-input-line-height);
 }
 
 .runtimeTextInput::placeholder {

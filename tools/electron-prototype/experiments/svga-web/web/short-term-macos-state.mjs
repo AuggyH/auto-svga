@@ -12,6 +12,7 @@ export function createShortTermInitialState() {
     model: undefined,
     selectedImageKey: "",
     selectedTextKey: "",
+    assetFilter: "all",
     renameImageKey: "",
     activeOutput: undefined,
     cleanSaveAsVisible: false,

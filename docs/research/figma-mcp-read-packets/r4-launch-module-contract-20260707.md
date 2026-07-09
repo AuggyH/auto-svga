@@ -193,3 +193,45 @@ alignment, unless implementation hits one of these specific blockers:
 
 If any blocker appears, read only the named component involved. Do not rescan
 the component library.
+
+## Implementation Update - Launch Empty Recent Copy Boundary
+
+Date: 2026-07-09
+
+WP: `uiux-launch-empty-recent-copy-boundary`
+
+Figma source used: this R4 packet only. No new Figma MCP call was required.
+
+Change:
+
+- Removed the unapproved `暂无最近打开记录` empty-copy row from the Launch recent
+  file renderer.
+- Kept recent records as an optional launch convenience: when there are zero
+  visible recent records or the host recent-record bridge is unavailable, the
+  recent block stays hidden instead of showing a header-only shell.
+- Preserved approved visible Launch copy from the R4 contract:
+  `拖拽文件到此处`, `打开文件`, `最近打开`, recent filenames, parent/time metadata,
+  and `文件不可访问`.
+- Added a design-system check so the Launch recent block is hidden by default
+  and the disallowed empty-copy string cannot re-enter the renderer.
+
+Validation:
+
+- `npm run desktop:short-term:design-system-check` passed.
+- `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`
+  passed, 36/36.
+- `npm run desktop:smoke` passed.
+- Smoke Launch screenshot confirmed that an empty recent-record state no longer
+  shows a header/trash shell or extra empty-copy text. This is regression
+  evidence only, not owner-visible foreground acceptance.
+
+Retrospective:
+
+- Effective: this removed a visible implementation drift that contradicted the
+  Owner rule against unapproved helper/status copy.
+- Cost note: the first source-only change was insufficient because the initial
+  HTML still exposed the recent header before async recent-record refresh. The
+  correct boundary is both source default hidden and renderer-managed reveal.
+- Next-time rule: for optional UI modules, verify the initial static HTML state
+  and the runtime-rendered state together; otherwise smoke screenshots can still
+  expose a half-state even when render code is correct.

@@ -1,0 +1,304 @@
+{
+  "source": {
+    "figmaFile": "7hIydrsyIzxs6E5dJQ53tu",
+    "figmaPage": "🧱 组件库",
+    "readPacket": "docs/research/figma-mcp-read-packets/r6-design-system-system-read-20260709.md",
+    "note": "Maps the Owner-approved Atom/Molecule/Module catalog to implementation boundaries for Auto SVGA 0.1.x."
+  },
+  "pageStates": [
+    {
+      "figma": "启动 / 默认",
+      "codePageState": "Launch",
+      "appStates": ["launch"],
+      "frame": { "width": 640, "height": 640 },
+      "rootModules": ["WindowChromeModule", "LaunchModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r6-design-system-system-read-20260709.md", "docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["main.cjs", "short-term-window-bounds-policy.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css"]
+    },
+    {
+      "figma": "预览 / 默认",
+      "codePageState": "Preview ready",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r6-design-system-system-read-20260709.md", "docs/research/figma-mcp-read-packets/r7-right-surface-default-contract-20260709.md"],
+      "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-overview-renderers.mjs"]
+    },
+    {
+      "figma": "预览 / 优化详情",
+      "codePageState": "Preview ready",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-optimization-renderers.mjs"]
+    },
+    {
+      "figma": "预览 / 优化结果对比",
+      "codePageState": "General comparing",
+      "appStates": ["compare"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "OptimizationCompareModule", "OptimizationDetailSurface"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r8-state-module-contract-batch-20260709.md"],
+      "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-compare-model.mjs"]
+    },
+    {
+      "figma": "对比 / 空态",
+      "codePageState": "General comparing",
+      "appStates": ["compare"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "GeneralCompareModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r6-design-system-system-read-20260709.md", "docs/research/figma-mcp-read-packets/r9-compare-edit-settings-target-read-20260709.md"],
+      "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-compare-renderers.mjs"]
+    },
+    {
+      "figma": "对比 / 双文件已加载",
+      "codePageState": "General comparing",
+      "appStates": ["compare"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "GeneralCompareModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r9-compare-edit-settings-target-read-20260709.md"],
+      "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-compare-model.mjs"]
+    },
+    {
+      "figma": "编辑 / 默认",
+      "codePageState": "Edit reserved",
+      "appStates": ["edit"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "EditReservedModule", "PreviewCanvasModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r9-compare-edit-settings-target-read-20260709.md"],
+      "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-edit-reserved-renderers.mjs"]
+    },
+    {
+      "figma": "参考 / 设置面板",
+      "codePageState": "Settings dialog",
+      "appStates": ["dialog"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["SettingsDialogModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r9-compare-edit-settings-target-read-20260709.md", "docs/research/figma-mcp-read-packets/r10-atom-molecule-contract-batch-20260709.md"],
+      "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.components.css", "web/short-term-macos-settings-surface.mjs"]
+    }
+  ],
+  "atoms": [
+    {
+      "figma": "Atom/文字输入框",
+      "codeComponents": ["InlineTextReplacementInput", "RenameInput"],
+      "codeModules": [],
+      "implementationFiles": ["web/short-term-macos.atoms.css", "web/short-term-macos-runtime-text-surface.mjs", "web/short-term-macos-text-renderers.mjs"]
+    },
+    {
+      "figma": "Atom/分割线",
+      "codeComponents": ["RightInformationSurface", "SettingsSheet"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface"],
+      "implementationFiles": ["web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.components.css"]
+    },
+    {
+      "figma": "Atom/加载指示器",
+      "codeComponents": ["FileDropTarget", "ErrorRecoveryPanel"],
+      "codeModules": ["LaunchModule"],
+      "implementationFiles": ["web/short-term-macos.atoms.css", "web/short-term-macos-state-renderers.mjs"]
+    },
+    {
+      "figma": "Atom/缩略图框",
+      "codeComponents": ["SequenceThumbnail", "AssetRow", "LayerRow", "ReplaceableImageRow"],
+      "codeModules": ["OverviewInformationModule", "EditReservedModule"],
+      "implementationFiles": ["web/short-term-macos.atoms.css", "web/short-term-macos-thumbnail-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs"]
+    },
+    {
+      "figma": "Atom/模式切换器",
+      "codeComponents": ["CanvasModeSwitch"],
+      "codeModules": ["PreviewCanvasModule", "EditReservedModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-navigation-surface.mjs"]
+    },
+    {
+      "figma": "Atom/图标按钮",
+      "codeComponents": ["IconButton", "ToolbarButton", "PlaybackButtonGroup"],
+      "codeModules": ["PreviewCanvasModule"],
+      "implementationFiles": ["web/short-term-macos.atoms.css", "web/short-term-macos-playback-surface.mjs", "web/short-term-macos-command-surface.mjs"]
+    },
+    {
+      "figma": "Atom/文字按钮",
+      "codeComponents": ["ToolbarButton", "SaveButtonPair", "FileDropTarget", "ErrorRecoveryPanel", "SettingsSheet"],
+      "codeModules": ["LaunchModule", "OverviewInformationModule"],
+      "implementationFiles": ["web/short-term-macos.atoms.css", "web/short-term-macos-save-surface.mjs", "web/short-term-macos-state-renderers.mjs"]
+    },
+    {
+      "figma": "Atom/文件信息头部/默认",
+      "codeComponents": ["RightInformationSurface", "SaveButtonPair"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-file-surface.mjs", "web/short-term-macos-save-surface.mjs"]
+    },
+    {
+      "figma": "Atom/指标优化入口",
+      "codeComponents": ["MetricOptimizationEntry", "SpecStatusCell"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface"],
+      "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-optimization-renderers.mjs"]
+    },
+    {
+      "figma": "Atom/最近文件行/正常",
+      "codeComponents": ["LaunchRecentFilesList", "FileRecentSubmenu"],
+      "codeModules": ["LaunchModule", "MenuBarCommandModel"],
+      "implementationFiles": ["web/short-term-macos.modules.css", "web/short-term-macos-recent-files-surface.mjs", "web/short-term-macos-command-surface.mjs"]
+    },
+    {
+      "figma": "Atom/筛选标签栏",
+      "codeComponents": ["AssetFilterTabs", "ContextMenuItem", "AssetRow"],
+      "codeModules": ["OverviewInformationModule"],
+      "implementationFiles": ["web/short-term-macos.modules.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-resource-menu-surface.mjs"]
+    },
+    {
+      "figma": "Atom/面板区块标题",
+      "codeComponents": ["RightInformationSurface"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css"]
+    },
+    {
+      "figma": "Atom/Tab Item",
+      "codeComponents": ["TabItem", "ContextMenuItem"],
+      "codeModules": ["OverviewInformationModule"],
+      "implementationFiles": ["web/short-term-macos.modules.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-resource-menu-renderers.mjs"]
+    },
+    {
+      "figma": "Atom/状态徽标",
+      "codeComponents": ["InlineStatus", "SpecStatusCell", "OptimizationFindingRow"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface"],
+      "implementationFiles": ["web/short-term-macos.atoms.css", "web/short-term-macos-inline-status-renderers.mjs", "web/short-term-macos-optimization-renderers.mjs"]
+    }
+  ],
+  "molecules": [
+    {
+      "figma": "Molecule/动画占位",
+      "codeComponents": ["PreviewStage", "ComparePreviewCard", "FileDropTarget"],
+      "codeModules": ["PreviewCanvasModule", "GeneralCompareModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-state-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/加载提示文字",
+      "codeComponents": ["FileDropTarget", "ErrorRecoveryPanel", "InlineStatus"],
+      "codeModules": ["LaunchModule", "PreviewCanvasModule"],
+      "implementationFiles": ["web/short-term-macos-state-renderers.mjs", "web/short-term-macos-inline-status-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/统计信息网格",
+      "codeComponents": ["OverviewFactRow", "FactCell", "SpecStatusCell"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.components.css", "web/short-term-macos-overview-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/拖拽决策",
+      "codeComponents": ["DragDecisionOverlay"],
+      "codeModules": ["PreviewCanvasModule", "GeneralCompareModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-drag-decision-surface.mjs"]
+    },
+    {
+      "figma": "Molecule/资源列表行",
+      "codeComponents": ["AssetRow", "AudioAssetRow", "SequenceThumbnail", "ReplaceableImageRow", "ReplaceableTextRow"],
+      "codeModules": ["OverviewInformationModule"],
+      "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/拖拽决策区",
+      "codeComponents": ["DragDecisionOverlay", "FileDropTarget"],
+      "codeModules": ["PreviewCanvasModule", "GeneralCompareModule"],
+      "implementationFiles": ["web/short-term-macos.modules.css", "web/short-term-macos-drag-decision-model.mjs", "web/short-term-macos-drag-decision-surface.mjs"]
+    },
+    {
+      "figma": "Molecule/保存反馈横幅",
+      "codeComponents": ["SaveFeedbackBanner"],
+      "codeModules": ["SaveStateModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-feedback-surface.mjs", "web/short-term-macos-save-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/空态画布",
+      "codeComponents": ["LaunchDropCanvas", "FileDropTarget", "ComparePreviewCard"],
+      "codeModules": ["LaunchModule", "GeneralCompareModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-launch-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/错误恢复面板",
+      "codeComponents": ["ErrorRecoveryPanel"],
+      "codeModules": ["LaunchModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos-state-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/进度状态",
+      "codeComponents": ["SaveFeedbackBanner", "InlineStatus"],
+      "codeModules": ["SaveStateModule", "OptimizationDetailSurface"],
+      "implementationFiles": ["web/short-term-macos-feedback-surface.mjs", "web/short-term-macos-inline-status-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/数据指标块",
+      "codeComponents": ["FactCell", "MetricOptimizationEntry", "OptimizationResultCard"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface", "OptimizationCompareModule"],
+      "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-optimization-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/图层列表行",
+      "codeComponents": ["LayerRow"],
+      "codeModules": ["EditReservedModule"],
+      "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-edit-reserved-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/优化候选项行",
+      "codeComponents": ["OptimizationFindingRow"],
+      "codeModules": ["OptimizationDetailSurface"],
+      "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-optimization-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/缺省",
+      "codeComponents": ["ErrorRecoveryPanel", "RightInformationSurface"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface"],
+      "implementationFiles": ["web/short-term-macos-state-renderers.mjs", "web/short-term-macos-overview-renderers.mjs"]
+    },
+    {
+      "figma": "Molecule/toast",
+      "codeComponents": ["CanvasToast"],
+      "codeModules": [],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-feedback-surface.mjs"]
+    }
+  ],
+  "modules": [
+    {
+      "figma": "Module/启动页模块/默认",
+      "codeComponents": ["LaunchDropCanvas", "LaunchRecentFilesList"],
+      "codeModules": ["LaunchModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-recent-files-surface.mjs", "web/short-term-macos-launch-renderers.mjs"]
+    },
+    {
+      "figma": "Module/中间面板",
+      "codeComponents": ["PreviewStage", "CompareCanvasSurface", "DragDecisionOverlay", "CanvasModeSwitch"],
+      "codeModules": ["PreviewCanvasModule", "GeneralCompareModule", "OptimizationCompareModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-preview-surface.mjs", "web/short-term-macos-compare-surface.mjs"]
+    },
+    {
+      "figma": "Module/右侧栏",
+      "codeComponents": ["RightInformationSurface", "OverviewFactRow", "AssetRow", "OptimizationFindingRow", "OptimizationResultCard"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface", "OptimizationCompareModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-file-surface.mjs", "web/short-term-macos-optimization-surface.mjs"]
+    },
+    {
+      "figma": "Module/左侧栏",
+      "codeComponents": ["LayerRow", "ReservedOperationPanel"],
+      "codeModules": ["EditReservedModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-edit-reserved-renderers.mjs"]
+    },
+    {
+      "figma": "Module/设置面板",
+      "codeComponents": ["SettingsSheet", "ThemeSegmentedControl"],
+      "codeModules": ["SettingsDialogModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.components.css", "web/short-term-macos-settings-surface.mjs"]
+    },
+    {
+      "figma": "Module/播放控制栏/播放中",
+      "codeComponents": ["PlaybackControls", "PlaybackButtonGroup", "IconButton"],
+      "codeModules": ["PreviewCanvasModule", "GeneralCompareModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-playback-surface.mjs"]
+    },
+    {
+      "figma": "Module/窗口标题栏",
+      "codeComponents": ["WindowChrome"],
+      "codeModules": ["WindowChromeModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css"]
+    }
+  ]
+}

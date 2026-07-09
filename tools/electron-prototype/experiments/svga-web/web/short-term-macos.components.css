@@ -151,11 +151,11 @@
 .metricOptimizationEntry {
   display: inline-flex;
   align-items: center;
-  gap: var(--asv-space-1);
+  gap: var(--asv-metric-entry-gap);
   margin-top: var(--asv-fact-cell-meta-gap);
   justify-self: start;
   min-height: var(--asv-metric-entry-height);
-  padding: 0 var(--asv-metric-entry-padding-inline);
+  padding: var(--asv-metric-entry-padding-block) var(--asv-metric-entry-padding-inline);
   border: 0;
   border-radius: var(--asv-status-strip-radius);
   background: var(--asv-metric-entry-bg);
@@ -440,8 +440,8 @@
 }
 
 .messageRow[data-status="success"] {
-  border-color: color-mix(in srgb, var(--asv-success) 24%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-success-soft));
+  border-color: var(--asv-message-row-success-border);
+  background: var(--asv-message-row-success-bg);
 }
 
 .messageRow[data-status="success"]::before {
@@ -449,8 +449,8 @@
 }
 
 .messageRow[data-status="warning"] {
-  border-color: color-mix(in srgb, var(--asv-warning) 24%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-warning-soft));
+  border-color: var(--asv-message-row-warning-border);
+  background: var(--asv-message-row-warning-bg);
 }
 
 .messageRow[data-status="warning"]::before {
@@ -458,8 +458,8 @@
 }
 
 .messageRow[data-status="danger"] {
-  border-color: color-mix(in srgb, var(--asv-danger) 24%, var(--asv-border));
-  background: color-mix(in srgb, var(--asv-panel-strong) 84%, var(--asv-color-danger-soft));
+  border-color: var(--asv-message-row-danger-border);
+  background: var(--asv-message-row-danger-bg);
 }
 
 .messageRow[data-status="danger"]::before {
@@ -556,7 +556,7 @@
 }
 
 .appDialog::backdrop {
-  background: color-mix(in srgb, black 24%, transparent);
+  background: var(--asv-dialog-backdrop-bg);
 }
 
 .appDialog form,
@@ -608,9 +608,10 @@
 
 .settingsDialog {
   width: var(--asv-settings-sheet-width);
-  border-color: var(--asv-subtle-border);
-  background: var(--asv-panel-chrome);
-  box-shadow: var(--asv-shadow-floating);
+  border: var(--asv-settings-sheet-border);
+  border-radius: var(--asv-settings-sheet-radius);
+  background: var(--asv-settings-sheet-bg);
+  box-shadow: var(--asv-settings-sheet-shadow);
 }
 
 .settingsDialog::before {
@@ -618,42 +619,33 @@
 }
 
 .settingsDialog .dialogBody {
-  gap: var(--asv-base-space-0);
+  gap: var(--asv-settings-sheet-gap);
+  padding: var(--asv-settings-sheet-padding) 0;
 }
 
 .settingsHeader {
-  padding: var(--asv-settings-sheet-padding);
-  border-bottom: var(--asv-settings-divider-width) solid var(--asv-settings-divider-color);
+  padding: 0 var(--asv-settings-sheet-padding);
+  border-bottom: 0;
 }
 
 .settingsHeader h2 {
   display: inline-flex;
   align-items: center;
-  gap: var(--asv-space-2);
-}
-
-.settingsHeaderIcon {
-  width: var(--asv-settings-choice-icon-size);
-  height: var(--asv-settings-choice-icon-size);
-  color: var(--asv-action);
-}
-
-.settingsHeaderIcon path,
-.settingsHeaderIcon circle {
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: var(--asv-settings-choice-icon-stroke-width);
+  min-height: var(--asv-settings-title-row-height);
+  gap: var(--asv-base-space-0);
 }
 
 .settingsGroup {
   display: grid;
-  gap: var(--asv-space-3);
+  box-sizing: border-box;
+  gap: var(--asv-settings-appearance-block-gap);
   margin: 0;
-  padding: var(--asv-settings-sheet-padding);
+  min-height: var(--asv-settings-appearance-block-height);
+  padding: 0 var(--asv-settings-sheet-padding);
   border: 0;
+  border-top: var(--asv-settings-divider-width) solid var(--asv-settings-divider-color);
   border-bottom: var(--asv-settings-divider-width) solid var(--asv-settings-divider-color);
+  padding-block: var(--asv-settings-appearance-block-padding-block);
 }
 
 .settingsGroup legend {
@@ -675,7 +667,8 @@
 .settingsChoice {
   position: relative;
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
   place-items: center;
   align-content: center;
   justify-content: center;
@@ -735,23 +728,24 @@
 }
 
 .settingsDialog .dialogActions {
-  padding: var(--asv-settings-sheet-padding);
+  padding: 0 var(--asv-settings-sheet-padding);
 }
 
 .settingsDialog .dialogActions button {
   justify-content: center;
   width: 100%;
+  min-height: var(--asv-settings-action-height);
 }
 
 .contextMenu {
   position: fixed;
   z-index: 20;
   display: grid;
-  min-width: 190px;
-  gap: 2px;
+  min-width: var(--asv-context-menu-min-width);
+  gap: var(--asv-context-menu-gap);
   margin: 0;
-  padding: 5px;
-  border: 1px solid var(--asv-border);
+  padding: var(--asv-context-menu-padding);
+  border: var(--asv-context-menu-border-width) solid var(--asv-border);
   border-radius: var(--asv-radius-sm);
   background: var(--asv-panel-strong);
   box-shadow: var(--asv-shadow-menu);
@@ -772,7 +766,7 @@
 
 .contextMenu button:hover:not(:disabled),
 .contextMenu button:focus-visible {
-  background: color-mix(in srgb, var(--asv-action) 12%, transparent);
+  background: var(--asv-context-menu-item-hover-bg);
 }
 
 .contextMenu button:disabled {

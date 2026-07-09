@@ -158,6 +158,7 @@ export function prepareShortTermSourceLoad({
   state.displayName = displayName || "local.svga";
   state.selectedImageKey = "";
   state.selectedTextKey = "";
+  state.assetFilter = "all";
   state.renameImageKey = "";
   state.textPreview = "";
   state.textPreviewValues = {};
@@ -176,6 +177,7 @@ export function clearShortTermCurrentFile({ state, stopAllPlayback }) {
   state.model = undefined;
   state.selectedImageKey = "";
   state.selectedTextKey = "";
+  state.assetFilter = "all";
   state.renameImageKey = "";
   state.textPreview = "";
   state.textPreviewValues = {};

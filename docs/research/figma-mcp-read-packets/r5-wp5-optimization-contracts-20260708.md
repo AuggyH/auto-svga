@@ -61,3 +61,29 @@ first two reads were sufficient for this implementation pass.
   layers.
 - Do not add new user-visible states or explanatory copy.
 
+## WP-R Optimization Result Detail Row Contract Landing - 2026-07-09
+
+- Implemented scope: aligned optimization result detail rows with the existing
+  `OptimizationResultSurface` family by adding explicit
+  `OptimizationResultDetailRow` markers and tokenized row rhythm for executed
+  and skipped detail items.
+- Design-source alignment: reused this R5 optimization result contract plus R8
+  right-surface composition and R10 atom/molecule rules. No additional Figma
+  MCP read was made because the needed contract was already available.
+- Product boundary: preserved PRD-required `另存为 SVGA`, `覆盖保存`,
+  `放弃优化`, concrete executed items, skipped methods, save eligibility, and
+  optimization net-effect behavior. No new visible copy or future optimization
+  entry was added.
+- Visual result: the first row-surface pass improved detail readability but
+  made the right panel too tall. The row padding was then reduced from `6px`
+  to `4px` and list gaps to `2px`, keeping the hierarchy while avoiding an
+  unnecessary visible scrollbar in the smoke screenshot.
+- Verification: `npm run desktop:short-term:design-system-check`,
+  `node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs`,
+  and `npm run desktop:smoke` passed. Smoke screenshot inspected:
+  `.artifacts/product/short-term/short-term-optimization-result.png`.
+- Retrospective: effective because it moved a visible right-surface issue into
+  reusable tokens and component markers rather than another one-off page tweak.
+  Cost was reasonable after bundling checks; no package or foreground capture
+  was run because this was still a source-level UI WP, not an owner-handoff
+  build.

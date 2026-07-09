@@ -15,7 +15,7 @@
   </head>
   <body>
     <main class="macApp" data-app-state="launch">
-      <header class="titlebar" aria-label="窗口区域" data-component="WindowChrome">
+      <header class="titlebar" aria-label="窗口区域" data-component="WindowChrome" data-module="WindowChromeModule">
         <div class="windowControlSpace" aria-hidden="true"></div>
       </header>
 
@@ -23,8 +23,8 @@
 
       <section class="view launchView isActive" data-view="launch" aria-label="启动" data-page-state="Launch" data-module="LaunchModule">
         <div class="launchCanvas" id="dropZone" data-component="LaunchDropCanvas">
-          <div class="launchPrompt">
-            <span class="launchDropIcon" aria-hidden="true">
+          <div class="launchPrompt" data-component="FileDropTarget" data-role="LaunchEmptyCanvas">
+            <span class="launchDropIcon fileDropIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M12 15V4"></path>
                 <path d="M8 8l4-4 4 4"></path>
@@ -40,7 +40,7 @@
               <span>打开文件</span>
             </button>
           </div>
-          <section class="recentBlock" aria-label="最近打开" data-component="LaunchRecentFilesList">
+          <section class="recentBlock" aria-label="最近打开" data-component="LaunchRecentFilesList" hidden>
             <div class="recentHeader">
               <h2>最近打开</h2>
               <button class="recentClearButton" type="button" data-action="clear-recent" aria-label="清除最近记录" title="清除最近记录">
@@ -97,13 +97,13 @@
           </div>
           <div class="playbackBar" aria-label="播放控制" data-component="PlaybackControls">
             <div class="playbackActions" data-component="PlaybackButtonGroup">
-              <button type="button" class="playbackIconButton" data-action="replay" aria-label="重播" title="重播">
+              <button type="button" class="playbackIconButton" data-component="IconButton" data-action="replay" aria-label="重播" title="重播">
                 <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M5.5 12a6.5 6.5 0 1 0 2-4.7"></path>
                   <path d="M7.8 4.6v3.2H4.6"></path>
                 </svg>
               </button>
-              <button type="button" class="playbackIconButton primary" data-action="play-pause" data-playback-state="paused" aria-label="播放" title="播放">
+              <button type="button" class="playbackIconButton primary" data-component="IconButton" data-action="play-pause" data-playback-state="paused" aria-label="播放" title="播放">
                 <svg class="playbackIcon playbackIconPlay" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M8 5.5v13l10-6.5-10-6.5Z"></path>
                 </svg>
@@ -136,20 +136,18 @@
                 <h2 id="replaceableHeading">imageKey <span id="replaceableSummary"></span></h2>
               </div>
               <div class="replaceableList" id="replaceableList" role="listbox" aria-label="imageKey"></div>
+              <div class="textElementList" id="textElementList" role="listbox" aria-label="运行时文本"></div>
               <menu class="contextMenu" id="resourceContextMenu" role="menu" tabindex="-1" hidden>
                 <button type="button" role="menuitem" data-action="context-rename">重命名 imageKey</button>
                 <button type="button" role="menuitem" data-action="context-replace">替换预览图片</button>
                 <button type="button" role="menuitem" data-action="context-reset">重置预览图片</button>
               </menu>
             </section>
-            <section class="textPreviewBlock" aria-labelledby="textPreviewHeading">
-              <div class="sectionHead">
-                <h3 id="textPreviewHeading">运行时文本 <span id="textPreviewSummary"></span></h3>
-              </div>
-              <div class="textElementList" id="textElementList" role="listbox" aria-label="运行时文本"></div>
-            </section>
             <section class="assetSection" data-component="AssetRow">
-              <h2>资源</h2>
+              <div class="sectionHead assetSectionHead">
+                <h2 id="assetListHeading">资产列表</h2>
+                <div class="assetFilterTabs" id="assetFilterTabs" role="tablist" aria-label="资产类型" data-component="AssetFilterTabs"></div>
+              </div>
               <div class="assetList" id="assetList"></div>
             </section>
           </section>
@@ -181,13 +179,23 @@
                 <small id="compareCanvasMetaA"></small>
               </header>
               <canvas id="compareCanvasA" aria-label="A 文件预览"></canvas>
-              <button class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-a">
-                <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3.8 6.5A2.5 2.5 0 0 1 6.3 4h3l2 2h5.4a2.5 2.5 0 0 1 2.5 2.5v.8"></path>
-                  <path d="M4.4 8h15.2a1.6 1.6 0 0 1 1.5 2.1l-2.4 7.1A2.5 2.5 0 0 1 16.3 19H6.5a2.5 2.5 0 0 1-2.4-1.9L2.9 10A1.6 1.6 0 0 1 4.4 8Z"></path>
-                </svg>
-                <span>打开文件</span>
-              </button>
+              <div class="compareEmptyPrompt" data-component="FileDropTarget" data-role="CompareEmptySlot">
+                <span class="fileDropIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 15V4"></path>
+                    <path d="M8 8l4-4 4 4"></path>
+                    <path d="M5 14v3.5A2.5 2.5 0 0 0 7.5 20h9A2.5 2.5 0 0 0 19 17.5V14"></path>
+                  </svg>
+                </span>
+                <p>拖拽文件到此处</p>
+                <button class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-a">
+                  <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3.8 6.5A2.5 2.5 0 0 1 6.3 4h3l2 2h5.4a2.5 2.5 0 0 1 2.5 2.5v.8"></path>
+                    <path d="M4.4 8h15.2a1.6 1.6 0 0 1 1.5 2.1l-2.4 7.1A2.5 2.5 0 0 1 16.3 19H6.5a2.5 2.5 0 0 1-2.4-1.9L2.9 10A1.6 1.6 0 0 1 4.4 8Z"></path>
+                  </svg>
+                  <span>打开文件</span>
+                </button>
+              </div>
             </div>
             <div class="compareCanvasWrap" id="compareCanvasWrapB" data-component="ComparePreviewCard" data-compare-label="B" data-compare-state="empty">
               <header class="compareCanvasHeader">
@@ -196,13 +204,23 @@
                 <small id="compareCanvasMetaB"></small>
               </header>
               <canvas id="compareCanvasB" aria-label="B 文件预览"></canvas>
-              <button class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-b">
-                <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3.8 6.5A2.5 2.5 0 0 1 6.3 4h3l2 2h5.4a2.5 2.5 0 0 1 2.5 2.5v.8"></path>
-                  <path d="M4.4 8h15.2a1.6 1.6 0 0 1 1.5 2.1l-2.4 7.1A2.5 2.5 0 0 1 16.3 19H6.5a2.5 2.5 0 0 1-2.4-1.9L2.9 10A1.6 1.6 0 0 1 4.4 8Z"></path>
-                </svg>
-                <span>打开文件</span>
-              </button>
+              <div class="compareEmptyPrompt" data-component="FileDropTarget" data-role="CompareEmptySlot">
+                <span class="fileDropIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 15V4"></path>
+                    <path d="M8 8l4-4 4 4"></path>
+                    <path d="M5 14v3.5A2.5 2.5 0 0 0 7.5 20h9A2.5 2.5 0 0 0 19 17.5V14"></path>
+                  </svg>
+                </span>
+                <p>拖拽文件到此处</p>
+                <button class="largeOpenButton compareCanvasOpenButton" type="button" data-action="open-compare-b">
+                  <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3.8 6.5A2.5 2.5 0 0 1 6.3 4h3l2 2h5.4a2.5 2.5 0 0 1 2.5 2.5v.8"></path>
+                    <path d="M4.4 8h15.2a1.6 1.6 0 0 1 1.5 2.1l-2.4 7.1A2.5 2.5 0 0 1 16.3 19H6.5a2.5 2.5 0 0 1-2.4-1.9L2.9 10A1.6 1.6 0 0 1 4.4 8Z"></path>
+                  </svg>
+                  <span>打开文件</span>
+                </button>
+              </div>
             </div>
           </section>
           <div class="playbackBar comparePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled">
@@ -262,14 +280,10 @@
       </form>
     </dialog>
 
-    <dialog class="appDialog settingsDialog" id="settingsDialog" data-component="SettingsSheet" data-status="info">
+    <dialog class="appDialog settingsDialog" id="settingsDialog" data-component="SettingsSheet" data-module="SettingsDialogModule" data-status="info">
       <form method="dialog" class="dialogBody">
         <header class="dialogHeader settingsHeader">
           <h2>
-            <svg class="settingsHeaderIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"></path>
-              <path d="M19.3 13.5v-3l-2-.5a6.4 6.4 0 0 0-.6-1.4l1-1.8-2.1-2.1-1.8 1a6.4 6.4 0 0 0-1.4-.6l-.5-2h-3l-.5 2a6.4 6.4 0 0 0-1.4.6l-1.8-1-2.1 2.1 1 1.8a6.4 6.4 0 0 0-.6 1.4l-2 .5v3l2 .5c.1.5.3 1 .6 1.4l-1 1.8 2.1 2.1 1.8-1c.4.2.9.5 1.4.6l.5 2h3l.5-2c.5-.1 1-.3 1.4-.6l1.8 1 2.1-2.1-1-1.8c.2-.4.5-.9.6-1.4l2-.5Z"></path>
-            </svg>
             <span>设置</span>
           </h2>
         </header>

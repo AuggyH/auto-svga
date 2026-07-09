@@ -12,6 +12,25 @@ export function createEditLayerRow(asset, model) {
   return row;
 }
 
+export function createEditLayerHeader(view) {
+  const header = document.createElement("header");
+  header.className = "layerPanelHeader";
+  header.dataset.component = "RightInformationSurface";
+  header.innerHTML = `<h1>${escapeHtml(view.displayName)}</h1>`;
+  return header;
+}
+
+export function createEditLayerList(view, model) {
+  const list = document.createElement("section");
+  list.className = "layerList";
+  list.dataset.component = "LayerRow";
+  list.replaceChildren(...view.rows.map((asset) => createEditLayerRow(asset, model)));
+  return list;
+}
+
 export function renderEditReservedLayers(nodes, view, model) {
-  nodes.layerPanel.replaceChildren(...view.rows.map((asset) => createEditLayerRow(asset, model)));
+  nodes.layerPanel.replaceChildren(
+    createEditLayerHeader(view),
+    createEditLayerList(view, model)
+  );
 }

@@ -90,7 +90,8 @@ const rendererHtmlEntry = isShortTermProduct ? "web/index.html" : "web/workbench
 const rendererEntry = isShortTermProduct ? "web/short-term-macos-app.mjs" : "web/desktop-product-entry.mjs";
 const stylesEntry = isShortTermProduct ? "web/short-term-macos.css" : "web/styles.css";
 const macosWorkbenchWindowSizing = Object.freeze({
-  launch: { width: 720, height: 720 },
+  launch: { width: 640, height: 640 },
+  shortTermWorkbench: { width: 1280, height: 800 },
   defaultWorkbench: { width: 1440, height: 900 },
   comfortable: { width: 1280, height: 800 },
   compact: { width: 1180, height: 760 },
@@ -247,7 +248,10 @@ function chooseMacosLaunchWindowBounds(window) {
 }
 
 function chooseMacosWorkbenchWindowBounds(window) {
-  return chooseMacosWindowBounds(macosWorkbenchWindowSizing.defaultWorkbench, {
+  const targetSize = isShortTermProduct
+    ? macosWorkbenchWindowSizing.shortTermWorkbench
+    : macosWorkbenchWindowSizing.defaultWorkbench;
+  return chooseMacosWindowBounds(targetSize, {
     window,
     minimumSize: macosWorkbenchWindowSizing.minimumSupported,
     aspectRatio: macosWorkbenchWindowSizing.workbenchAspectRatio
@@ -4804,14 +4808,14 @@ async function captureProductArtifact(window, scenario) {
   const originalContentSize = window.getContentSize();
   if (scenario === "desktop-1280x800") window.setContentSize(macosWorkbenchWindowSizing.comfortable.width, macosWorkbenchWindowSizing.comfortable.height);
   if (scenario === "desktop-1440x900") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
-  if (scenario === "short-term-preview-overview") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
+  if (scenario === "short-term-preview-overview") window.setContentSize(macosWorkbenchWindowSizing.shortTermWorkbench.width, macosWorkbenchWindowSizing.shortTermWorkbench.height);
   if (scenario === "short-term-preview-overview-wide") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
-  if (scenario === "short-term-optimization-result") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
-  if (scenario === "short-term-general-compare") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
-  if (scenario === "short-term-settings-dialog") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
-  if (scenario === "short-term-edit-reserved") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
-  if (scenario === "short-term-drag-decision-supported") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
-  if (scenario === "short-term-drag-decision-unsupported") window.setContentSize(macosWorkbenchWindowSizing.defaultWorkbench.width, macosWorkbenchWindowSizing.defaultWorkbench.height);
+  if (scenario === "short-term-optimization-result") window.setContentSize(macosWorkbenchWindowSizing.shortTermWorkbench.width, macosWorkbenchWindowSizing.shortTermWorkbench.height);
+  if (scenario === "short-term-general-compare") window.setContentSize(macosWorkbenchWindowSizing.shortTermWorkbench.width, macosWorkbenchWindowSizing.shortTermWorkbench.height);
+  if (scenario === "short-term-settings-dialog") window.setContentSize(macosWorkbenchWindowSizing.shortTermWorkbench.width, macosWorkbenchWindowSizing.shortTermWorkbench.height);
+  if (scenario === "short-term-edit-reserved") window.setContentSize(macosWorkbenchWindowSizing.shortTermWorkbench.width, macosWorkbenchWindowSizing.shortTermWorkbench.height);
+  if (scenario === "short-term-drag-decision-supported") window.setContentSize(macosWorkbenchWindowSizing.shortTermWorkbench.width, macosWorkbenchWindowSizing.shortTermWorkbench.height);
+  if (scenario === "short-term-drag-decision-unsupported") window.setContentSize(macosWorkbenchWindowSizing.shortTermWorkbench.width, macosWorkbenchWindowSizing.shortTermWorkbench.height);
   if (scenario === "desktop-responsive-export-review-loaded-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-responsive-local-preview-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);
   if (scenario === "desktop-responsive-local-compare-at-900-x-720") window.setContentSize(macosWorkbenchWindowSizing.legacyStressViewport.width, macosWorkbenchWindowSizing.legacyStressViewport.height);

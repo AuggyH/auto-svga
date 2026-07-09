@@ -6,6 +6,8 @@
   width: 100vw;
   height: 100vh;
   height: 100dvh;
+  min-width: var(--asv-launch-min-width);
+  min-height: var(--asv-launch-min-height);
   grid-template-rows: auto minmax(0, 1fr);
 }
 
@@ -37,6 +39,13 @@
   grid-row: 2;
 }
 
+.macApp[data-app-state="preview"],
+.macApp[data-app-state="compare"],
+.macApp[data-app-state="edit"] {
+  min-width: var(--asv-workbench-min-width);
+  min-height: var(--asv-workbench-min-height);
+}
+
 .view[hidden] {
   display: none !important;
 }
@@ -63,7 +72,7 @@
 
 .previewView {
   display: grid;
-  grid-template-columns: minmax(520px, 1fr) var(--asv-right-panel-width);
+  grid-template-columns: minmax(var(--asv-preview-canvas-min-width), 1fr) var(--asv-right-panel-width);
   grid-template-rows: minmax(0, 1fr);
   gap: var(--asv-preview-gap);
   height: 100%;
@@ -98,8 +107,8 @@
   *,
   *::before,
   *::after {
-    animation-duration: 1ms !important;
-    transition-duration: 1ms !important;
+    animation-duration: var(--asv-reduced-motion-duration) !important;
+    transition-duration: var(--asv-reduced-motion-duration) !important;
   }
 
   .launchCanvas {
@@ -128,7 +137,7 @@
 @media (max-width: 1080px) {
   :root {
     --asv-right-panel-width: 360px;
-    --asv-left-width: 220px;
+    --asv-left-width: var(--asv-left-width-compact);
   }
 
   .titlebar {
@@ -143,12 +152,12 @@
   .previewView,
   .compareView,
   .editView {
-    gap: var(--asv-space-3);
-    padding: var(--asv-space-3);
+    gap: var(--asv-preview-gap);
+    padding: var(--asv-preview-gap);
   }
 
   .previewView {
-    grid-template-columns: minmax(480px, 1fr) var(--asv-right-panel-width);
+    grid-template-columns: minmax(var(--asv-preview-canvas-min-width-compact), 1fr) var(--asv-right-panel-width);
   }
 
   .compareView {
