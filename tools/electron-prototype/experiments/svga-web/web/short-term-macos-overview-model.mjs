@@ -25,6 +25,29 @@ export function normalizedAssetFilter(filter, assets = []) {
   return tabs.some((tab) => tab.id === filter) ? filter : "all";
 }
 
+function assetFilterIndex(filter, tabs = ASSET_FILTERS) {
+  const index = tabs.findIndex((tab) => tab.id === filter);
+  return index >= 0 ? index : 0;
+}
+
+export function nextAssetFilterForKey(currentFilter, key, tabs = ASSET_FILTERS) {
+  if (!tabs.length) return currentFilter || "all";
+  const currentIndex = assetFilterIndex(currentFilter, tabs);
+  if (key === "ArrowRight" || key === "ArrowDown") {
+    return tabs[(currentIndex + 1) % tabs.length].id;
+  }
+  if (key === "ArrowLeft" || key === "ArrowUp") {
+    return tabs[currentIndex > 0 ? currentIndex - 1 : tabs.length - 1].id;
+  }
+  if (key === "Home") return tabs[0].id;
+  if (key === "End") return tabs[tabs.length - 1].id;
+  return tabs[currentIndex].id;
+}
+
+export function assetFilterFocusTarget(activeFilter, previousFocusedFilter) {
+  return previousFocusedFilter ? activeFilter : "";
+}
+
 export function filteredAssetsForTab(assets = [], filter = "all") {
   if (filter === "all") return assets;
   return assets.filter((asset) => asset.kind === filter);

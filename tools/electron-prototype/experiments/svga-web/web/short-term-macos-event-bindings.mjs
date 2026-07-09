@@ -9,9 +9,23 @@ import {
   closeOpenDialog,
   hasOpenDialog
 } from "./short-term-macos-dialog-model.mjs";
+import { nextAssetFilterForKey } from "./short-term-macos-overview-model.mjs";
 
 function eventElement(event) {
-  return event.target instanceof Element ? event.target : undefined;
+  if (typeof Element !== "undefined" && event.target instanceof Element) return event.target;
+  return event.target && typeof event.target.closest === "function" ? event.target : undefined;
+}
+
+export function handleAssetFilterTabsKeydown(event, state, handlers) {
+  const eventTarget = eventElement(event);
+  const target = eventTarget?.closest("[data-action='asset-filter']");
+  if (!target) return false;
+  const currentFilter = target.dataset.assetFilter || state.assetFilter || "all";
+  const nextFilter = nextAssetFilterForKey(currentFilter, event.key);
+  if (nextFilter === currentFilter) return false;
+  consumeKeyboardEvent(event);
+  handlers.setAssetFilter(nextFilter);
+  return true;
 }
 
 function bindCanvasDragDecision(target, overlay, handlers) {
@@ -145,6 +159,9 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
   });
 
   nodes.resourceContextMenu.addEventListener("keydown", handlers.handleResourceContextMenuKeydown);
+  nodes.assetFilterTabs?.addEventListener("keydown", (event) => {
+    handleAssetFilterTabsKeydown(event, state, handlers);
+  });
 
   nodes.replacementFileInput.addEventListener("change", () => {
     handlers.applyReplacementFile(nodes.replacementFileInput.files?.[0]).catch(handlers.showFailure);

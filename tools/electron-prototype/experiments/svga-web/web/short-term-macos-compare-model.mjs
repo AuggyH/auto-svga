@@ -2,6 +2,7 @@ import {
   escapeHtml,
   overviewVisibleFacts,
   renderCompareFactCellHtml,
+  renderMetricValueHtml,
   renderOptimizationMetricCellHtml
 } from "./short-term-macos-render-model.mjs";
 import {
@@ -41,9 +42,41 @@ function compareFactValue(facts, id) {
   return facts.find((fact) => fact.id === id)?.value || "";
 }
 
-function renderCompareColumnFactHtml(fact, peerFacts) {
-  const peerValue = compareFactValue(peerFacts, fact.id);
-  const diff = peerValue && peerValue !== fact.value ? "different" : "same";
+function compareFactIds(aFacts, bFacts) {
+  return [...aFacts, ...bFacts].reduce((ids, fact) => {
+    if (fact?.id && !ids.includes(fact.id)) ids.push(fact.id);
+    return ids;
+  }, []);
+}
+
+function compareAlignedFacts(facts, peerFacts) {
+  return compareFactIds(facts, peerFacts).map((id) => {
+    const fact = facts.find((item) => item.id === id);
+    const peer = peerFacts.find((item) => item.id === id);
+    return {
+      id,
+      fact,
+      peer,
+      label: fact?.label || peer?.label || id
+    };
+  });
+}
+
+function compareFactDiff(fact, peer) {
+  if (!fact || !peer) return "unavailable";
+  return compareFactValue([peer], fact.id) !== fact.value ? "different" : "same";
+}
+
+function renderCompareColumnFactHtml({ fact, peer, label }) {
+  const diff = compareFactDiff(fact, peer);
+  if (!fact) {
+    return `
+      <div class="compareMetricCell" data-component="FactCell" data-status="unavailable" data-diff="unavailable">
+        <span>${escapeHtml(label)}</span>
+        <strong>${renderMetricValueHtml("不可用")}</strong>
+      </div>
+    `;
+  }
   return `
     <div class="compareMetricCell" data-component="FactCell" data-status="${escapeHtml(fact.status || "unknown")}" data-diff="${escapeHtml(diff)}">
       <span>${escapeHtml(fact.label)}</span>
@@ -55,7 +88,7 @@ function renderCompareColumnFactHtml(fact, peerFacts) {
 function renderCompareMetricColumnHtml(slot, facts, peerFacts) {
   return `
     <div class="compareMetricColumn" data-slot="${escapeHtml(slot)}">
-      ${facts.map((fact) => renderCompareColumnFactHtml(fact, peerFacts)).join("")}
+      ${compareAlignedFacts(facts, peerFacts).map(renderCompareColumnFactHtml).join("")}
     </div>
   `;
 }

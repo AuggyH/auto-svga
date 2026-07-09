@@ -3,6 +3,7 @@ import {
   renderOverviewFactCellHtml
 } from "./short-term-macos-render-model.mjs";
 import {
+  assetFilterFocusTarget,
   filteredAssetsForTab,
   normalizedAssetFilter
 } from "./short-term-macos-overview-model.mjs";
@@ -69,6 +70,10 @@ export function renderOverviewFacts(nodes, view) {
 export function renderAssetFilterTabs(nodes, view, activeFilter) {
   if (!nodes.assetFilterTabs) return;
   const tabs = view.assetTabs ?? [];
+  const activeElement = nodes.assetFilterTabs.ownerDocument?.activeElement;
+  const previousFocusedFilter = nodes.assetFilterTabs.contains(activeElement)
+    ? activeElement?.dataset?.assetFilter || ""
+    : "";
   nodes.assetFilterTabs.replaceChildren(...tabs.map((tab) => {
     const selected = tab.id === activeFilter;
     const button = document.createElement("button");
@@ -83,6 +88,11 @@ export function renderAssetFilterTabs(nodes, view, activeFilter) {
     button.textContent = `${tab.label} (${tab.count})`;
     return button;
   }));
+  const focusTarget = assetFilterFocusTarget(activeFilter, previousFocusedFilter);
+  if (!focusTarget) return;
+  const nextFocus = [...nodes.assetFilterTabs.querySelectorAll("[data-action='asset-filter']")]
+    .find((button) => button.dataset.assetFilter === focusTarget);
+  nextFocus?.focus({ preventScroll: true });
 }
 
 export function renderAssetList(nodes, view, model, activeFilter = "all") {

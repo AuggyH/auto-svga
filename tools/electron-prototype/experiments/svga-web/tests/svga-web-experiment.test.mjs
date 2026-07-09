@@ -49,6 +49,109 @@ test("short-term metric values split units only for simple numeric facts", async
   }), /302 <span class="factValueUnit">B<\/span>[\s\S]*242 <span class="factValueUnit">B<\/span>/);
 });
 
+test("short-term general compare renders loaded A/B facts through shared metric renderer", async () => {
+  const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
+  const aModel = {
+    overview: {
+      facts: [
+        { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "warning" },
+        { id: "canvas", label: "画布尺寸", value: "300 x 300 px", status: "pass" }
+      ]
+    }
+  };
+  const bModel = {
+    overview: {
+      facts: [
+        { id: "fileSize", label: "文件体积", value: "1.2 MiB", status: "pass" },
+        { id: "canvas", label: "画布尺寸", value: "300 x 300 px", status: "pass" }
+      ]
+    }
+  };
+
+  const html = renderGeneralComparePanelHtml({
+    aModel,
+    aDisplayName: "a.svga",
+    bModel,
+    bDisplayName: "b.svga"
+  });
+
+  assert.match(html, /data-slot="A"/);
+  assert.match(html, /data-slot="B"/);
+  assert.match(html, /2.4 <span class="factValueUnit">MiB<\/span>/);
+  assert.match(html, /1.2 <span class="factValueUnit">MiB<\/span>/);
+  assert.equal((html.match(/data-diff="different"/g) ?? []).length, 2);
+  assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
+});
+
+test("short-term general compare marks asymmetric visible facts unavailable", async () => {
+  const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
+  const aModel = {
+    overview: {
+      facts: [
+        { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "warning" },
+        { id: "runtimeStructure", label: "运行结构风险", value: "高风险", status: "warning" }
+      ]
+    }
+  };
+  const bModel = {
+    overview: {
+      facts: [
+        { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "pass" }
+      ]
+    }
+  };
+
+  const html = renderGeneralComparePanelHtml({ aModel, bModel });
+
+  assert.match(html, /运行结构风险/);
+  assert.equal((html.match(/data-diff="unavailable"/g) ?? []).length, 2);
+  assert.match(html, />不可用<\/strong>/);
+  assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
+});
+
+test("short-term asset filters support roving keyboard model and interaction handler", async () => {
+  const { nextAssetFilterForKey, assetFilterFocusTarget } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-overview-model.mjs")).href);
+  const { handleAssetFilterTabsKeydown } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-event-bindings.mjs")).href);
+
+  assert.equal(nextAssetFilterForKey("all", "ArrowRight"), "image");
+  assert.equal(nextAssetFilterForKey("image", "ArrowDown"), "sequence");
+  assert.equal(nextAssetFilterForKey("all", "ArrowLeft"), "audio");
+  assert.equal(nextAssetFilterForKey("sequence", "Home"), "all");
+  assert.equal(nextAssetFilterForKey("image", "End"), "audio");
+  assert.equal(nextAssetFilterForKey("sequence", "Tab"), "sequence");
+  assert.equal(assetFilterFocusTarget("sequence", "image"), "sequence");
+  assert.equal(assetFilterFocusTarget("sequence", ""), "");
+
+  let prevented = false;
+  let stopped = false;
+  let selectedFilter = "";
+  const target = {
+    dataset: { assetFilter: "all" },
+    closest(selector) {
+      return selector === "[data-action='asset-filter']" ? this : null;
+    }
+  };
+  const handled = handleAssetFilterTabsKeydown({
+    key: "End",
+    target,
+    preventDefault() {
+      prevented = true;
+    },
+    stopPropagation() {
+      stopped = true;
+    }
+  }, { assetFilter: "all" }, {
+    setAssetFilter(nextFilter) {
+      selectedFilter = nextFilter;
+    }
+  });
+
+  assert.equal(handled, true);
+  assert.equal(selectedFilter, "audio");
+  assert.equal(prevented, true);
+  assert.equal(stopped, true);
+});
+
 test("macOS internal package scaffold avoids unsupported Finder .svga document association", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
   const entitlements = await readFile(path.join(experimentRoot, "packaging/macos/entitlements.plist"), "utf8");

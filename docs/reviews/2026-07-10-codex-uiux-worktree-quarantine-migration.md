@@ -42,7 +42,8 @@ The remaining 3 failures depend on `tools/electron-prototype/experiments/svga-we
 ## Notes
 
 - No frontend app was launched.
-- No product behavior was changed.
+- No out-of-scope product capability was added.
+- The migrated UI/UX commit contains in-scope runtime behavior changes: launch/workbench frame targets, asset filtering, hidden empty recent block, missing recent-file presentation, and general compare metric rendering/alignment.
 - No product, QA, or packaging lane files were restored onto the UI/UX branch.
 - No lockfile or package dependency declaration was changed.
 - A temporary dependency install attempt occurred before PM's environment clarification; generated visible artifacts were removed, and validation used an ignored symlink to the existing main-worktree `node_modules`.
