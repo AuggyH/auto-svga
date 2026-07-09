@@ -49,8 +49,8 @@ function compareFactIds(aFacts, bFacts) {
   }, []);
 }
 
-function compareAlignedFacts(facts, peerFacts) {
-  return compareFactIds(facts, peerFacts).map((id) => {
+function compareAlignedFacts(rowIds, facts, peerFacts) {
+  return rowIds.map((id) => {
     const fact = facts.find((item) => item.id === id);
     const peer = peerFacts.find((item) => item.id === id);
     return {
@@ -67,28 +67,28 @@ function compareFactDiff(fact, peer) {
   return compareFactValue([peer], fact.id) !== fact.value ? "different" : "same";
 }
 
-function renderCompareColumnFactHtml({ fact, peer, label }) {
+function renderCompareColumnFactHtml({ id, fact, peer, label }) {
   const diff = compareFactDiff(fact, peer);
   if (!fact) {
     return `
-      <div class="compareMetricCell" data-component="FactCell" data-status="unavailable" data-diff="unavailable">
+      <div class="compareMetricCell" data-component="FactCell" data-fact-id="${escapeHtml(id)}" data-status="unavailable" data-diff="unavailable">
         <span>${escapeHtml(label)}</span>
         <strong>${renderMetricValueHtml("不可用")}</strong>
       </div>
     `;
   }
   return `
-    <div class="compareMetricCell" data-component="FactCell" data-status="${escapeHtml(fact.status || "unknown")}" data-diff="${escapeHtml(diff)}">
+    <div class="compareMetricCell" data-component="FactCell" data-fact-id="${escapeHtml(id)}" data-status="${escapeHtml(fact.status || "unknown")}" data-diff="${escapeHtml(diff)}">
       <span>${escapeHtml(fact.label)}</span>
       <strong>${renderMetricValueHtml(fact.value)}</strong>
     </div>
   `;
 }
 
-function renderCompareMetricColumnHtml(slot, facts, peerFacts) {
+function renderCompareMetricColumnHtml(slot, rowIds, facts, peerFacts) {
   return `
     <div class="compareMetricColumn" data-slot="${escapeHtml(slot)}">
-      ${compareAlignedFacts(facts, peerFacts).map(renderCompareColumnFactHtml).join("")}
+      ${compareAlignedFacts(rowIds, facts, peerFacts).map(renderCompareColumnFactHtml).join("")}
     </div>
   `;
 }
@@ -97,7 +97,8 @@ function renderCompareMetricColumns(aModel, bModel) {
   if (!aModel || !bModel) return "";
   const aFacts = compareFacts(aModel);
   const bFacts = compareFacts(bModel);
-  return `${renderCompareMetricColumnHtml("A", aFacts, bFacts)}${renderCompareMetricColumnHtml("B", bFacts, aFacts)}`;
+  const rowIds = compareFactIds(aFacts, bFacts);
+  return `${renderCompareMetricColumnHtml("A", rowIds, aFacts, bFacts)}${renderCompareMetricColumnHtml("B", rowIds, bFacts, aFacts)}`;
 }
 
 export function renderGeneralComparePanelHtml({

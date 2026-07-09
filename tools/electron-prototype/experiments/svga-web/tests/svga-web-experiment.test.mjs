@@ -109,6 +109,54 @@ test("short-term general compare marks asymmetric visible facts unavailable", as
   assert.equal((html.match(/data-diff="same"/g) ?? []).length, 2);
 });
 
+test("short-term general compare keeps identical row order when both sides have unique facts", async () => {
+  const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
+  const aModel = {
+    overview: {
+      facts: [
+        { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "pass" },
+        { id: "decodedMemory", label: "估算内存", value: "20.6 MiB", status: "pass" },
+        { id: "runtimeInvisibleRatio", label: "不可见记录占比", value: "32%", status: "warning" },
+        { id: "canvas", label: "画布", value: "300 x 300 px", status: "pass" },
+        { id: "fps", label: "FPS", value: "30 fps", status: "pass" },
+        { id: "assetCount", label: "资源数量", value: "60", status: "pass" }
+      ]
+    }
+  };
+  const bModel = {
+    overview: {
+      facts: [
+        { id: "fileSize", label: "文件体积", value: "2.4 MiB", status: "pass" },
+        { id: "decodedMemory", label: "估算内存", value: "20.6 MiB", status: "pass" },
+        { id: "sequenceFanoutRisk", label: "序列帧展开风险", value: "高风险", status: "warning" },
+        { id: "canvas", label: "画布", value: "300 x 300 px", status: "pass" },
+        { id: "fps", label: "FPS", value: "30 fps", status: "pass" },
+        { id: "assetCount", label: "资源数量", value: "60", status: "pass" }
+      ]
+    }
+  };
+  const factIdsForSlot = (html, slot) => {
+    const column = html.match(new RegExp(`<div class="compareMetricColumn" data-slot="${slot}">([\\s\\S]*?)(?=\\s*<div class="compareMetricColumn" data-slot="|\\s*</section>)`))?.[1] ?? "";
+    return [...column.matchAll(/data-fact-id="([^"]+)"/g)].map((match) => match[1]);
+  };
+
+  const html = renderGeneralComparePanelHtml({ aModel, bModel });
+  const aIds = factIdsForSlot(html, "A");
+  const bIds = factIdsForSlot(html, "B");
+
+  assert.deepEqual(aIds, [
+    "fileSize",
+    "decodedMemory",
+    "runtimeInvisibleRatio",
+    "canvas",
+    "fps",
+    "assetCount",
+    "sequenceFanoutRisk"
+  ]);
+  assert.deepEqual(bIds, aIds);
+  assert.equal((html.match(/data-diff="unavailable"/g) ?? []).length, 4);
+});
+
 test("short-term asset filters support roving keyboard model and interaction handler", async () => {
   const { nextAssetFilterForKey, assetFilterFocusTarget } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-overview-model.mjs")).href);
   const { handleAssetFilterTabsKeydown } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-event-bindings.mjs")).href);
