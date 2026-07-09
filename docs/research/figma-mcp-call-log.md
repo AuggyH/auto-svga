@@ -858,3 +858,65 @@ Repository packet:
   tool list changes.
 - The truncated third response was sufficient for this WP; no extra read was
   made after the hard cap.
+
+## Batch 10 - R5 Optimization Detail Surface
+
+Date: 2026-07-09
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R5 - Preview optimization detail surface
+Owner approval: Standing authorization applied because local-day conservative
+usage was 3/160 before this batch.
+
+### Objective
+
+Read the smallest useful context needed to align the Auto SVGA `0.1.x`
+optimization detail surface with the Figma candidate-row rhythm, without
+reading unrelated pages or redefining product scope.
+
+### Planned Budget
+
+- Planned structured reads: 1
+- Hard cap: 2
+- Stop after extracting the optimization detail row contract, or earlier on
+  quota/rate/permission errors.
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_use_figma` | `预览 / 优化详情` (`82:2669`) | Compact right-surface and optimization-row layout inventory | Yes | 5.1170s | Complete usable JSON; no truncation |
+
+Actual total MCP attempts: 1
+
+Actual quota-counted reads, conservative: 1
+
+Measured MCP tool wall time total: 5.1170s
+
+Current local-day conservative usage after Batch 10: 4/160.
+
+### Result
+
+R5 captured enough optimization detail row facts for a tokenized implementation
+slice:
+
+- `预览 / 优化详情` frame (`82:2669`)
+- right module size `360 x 800`
+- right module padding `16px`
+- optimization candidate row size `328 x 62`
+- candidate row gap `8`
+- candidate row padding `12px`
+- candidate title `12px / 18px`
+- candidate summary `11px / 16px`
+- state backgrounds for safe, review, and unsupported rows
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r5-optimization-detail-surface-20260709.md`
+
+### Verification
+
+- No Figma write operation, Figma Make action, screenshot archive, or asset
+  commit occurred.
+- The first read returned enough compact data; the optional second read was not
+  used.

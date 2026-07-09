@@ -585,3 +585,21 @@ promoted, watched, rejected, or kept historical.
   token implementation and smoke validation succeeded without another Figma
   call.
 - Status: watch
+
+## Ask one precise Figma question for each visual WP
+
+- Source:
+  `docs/reviews/2026-07-09-codex-uiux-optimization-detail-row-polish.md`
+- Area: UI/UX, Figma MCP, design system
+- Context: The optimization detail surface looked visually heavier than the
+  Figma design, but the implementation question was narrow: whether candidate
+  findings should be large multi-line cards or compact rows.
+- Problem: Broad frame reads can be costly and still fail to answer the specific
+  design-to-code decision if the request is too vague.
+- Candidate rule: Before a Figma MCP read, phrase the next implementation
+  decision as one concrete question, then read only the node or component needed
+  to answer it. Stop once the row, token, or module contract is captured.
+- Evidence: One targeted read of `预览 / 优化详情` (`82:2669`) returned the
+  candidate row size, padding, typography, and state backgrounds needed for a
+  tokenized implementation pass.
+- Status: watch
