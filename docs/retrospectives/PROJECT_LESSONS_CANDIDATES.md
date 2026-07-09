@@ -931,3 +931,22 @@ promoted, watched, rejected, or kept historical.
   empty `vapc`, extended-size boxes, size-zero boxes, declared overflow, and
   damaged trailing data now stay at `candidate` with `parse_precondition`.
 - Status: watch
+
+## Treat Lottie external assets as metadata until a resolver is approved
+
+- Source:
+  `docs/reviews/2026-07-10-codex-0.2-multiformat-wp2a.md`
+- Area: multi-format, Lottie, path safety
+- Context: WP2A inspects Lottie JSON with built-in parsing only and must not
+  read production assets or expose visible Lottie support.
+- Problem: Trusting image asset paths during parser inspection can leak local
+  paths, cross package boundaries, or quietly turn metadata inspection into
+  unsupported asset loading.
+- Candidate rule: Normalize relative image references as metadata only, reject
+  absolute paths, parent traversal, URL schemes, missing paths, duplicate asset
+  ids, and missing layer references, and defer file reads to an approved host
+  resolver gate.
+- Evidence: WP2A synthetic tests cover safe relative metadata, absolute paths,
+  parent traversal, file URLs, missing `p`, duplicate ids, missing references,
+  and bounded reads without asset access.
+- Status: watch
