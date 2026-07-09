@@ -5291,6 +5291,13 @@ function installShortTermApplicationMenu(window) {
           label: "重播",
           enabled: menuState.canReplay,
           click: () => invokeShortTermAction("replay")
+        },
+        {
+          label: "循环播放",
+          type: "checkbox",
+          checked: menuState.loopEnabled !== false,
+          enabled: menuState.canLoop,
+          click: () => invokeShortTermAction("toggleLoop")
         }
       ]
     },

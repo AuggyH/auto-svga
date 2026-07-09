@@ -62,6 +62,7 @@ export function bindShortTermInteractionEvents({ documentRef = document, nodes, 
     if (action === "mode-edit") handlers.setMode("edit");
     if (action === "play-pause") handlers.togglePrimaryPlayback();
     if (action === "replay") handlers.replayPrimary();
+    if (action === "loop-toggle") handlers.togglePrimaryPlaybackLoop();
     if (action === "open-optimization") handlers.openTab("optimization");
     if (action === "asset-filter") handlers.setAssetFilter(target.dataset.assetFilter);
     if (action === "run-optimization") handlers.runOptimization().catch(handlers.showFailure);

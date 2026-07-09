@@ -5,6 +5,7 @@ import {
   replayPrimaryPlayback,
   stopAllPlayback,
   stopPlayback,
+  togglePrimaryPlaybackLoop,
   svgaWebPlayerPrototype,
   togglePrimaryPlayback
 } from "./short-term-macos-playback-model.mjs";
@@ -41,6 +42,10 @@ export function toggleShortTermPrimaryPlayback({ state, onPlaybackStateChange })
 
 export function replayShortTermPrimaryPlayback({ state, onPlaybackStateChange }) {
   replayPrimaryPlayback(state, onPlaybackStateChange);
+}
+
+export function toggleShortTermPrimaryPlaybackLoop({ state, onPlaybackStateChange }) {
+  togglePrimaryPlaybackLoop(state, onPlaybackStateChange);
 }
 
 export function renderShortTermPlaybackProgress(nodes, playback) {

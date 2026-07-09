@@ -536,6 +536,14 @@ canvas {
   pointer-events: auto;
 }
 
+.playbackRightActions {
+  display: flex;
+  justify-self: start;
+  align-items: center;
+  gap: var(--asv-playback-actions-gap);
+  pointer-events: auto;
+}
+
 .playbackIconButton {
   display: grid;
   place-items: center;
@@ -569,6 +577,11 @@ canvas {
 .playbackIconButton.primary:hover:not(:disabled) {
   background: var(--asv-icon-button-primary-bg);
   color: var(--asv-icon-button-primary-color);
+}
+
+.playbackIconButton.isSelected:not(.primary):not(:disabled) {
+  background: var(--asv-icon-button-selected-bg);
+  color: var(--asv-icon-button-selected-color);
 }
 
 .playbackIconButton:disabled {

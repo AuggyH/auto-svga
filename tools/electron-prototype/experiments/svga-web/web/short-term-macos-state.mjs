@@ -16,6 +16,7 @@ export function createShortTermInitialState() {
     renameImageKey: "",
     activeOutput: undefined,
     cleanSaveAsVisible: false,
+    primaryPlaybackLooping: true,
     primaryPlayback: undefined,
     compareAPlayback: undefined,
     compareBPlayback: undefined,

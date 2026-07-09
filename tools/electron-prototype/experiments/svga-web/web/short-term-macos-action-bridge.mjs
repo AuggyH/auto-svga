@@ -28,6 +28,7 @@ export function installShortTermActionBridge({
     openCompareB: handlers.openCompareBFromHost,
     playPause: handlers.togglePrimaryPlayback,
     replay: handlers.replayPrimary,
+    toggleLoop: handlers.togglePrimaryPlaybackLoop,
     previewMode: () => handlers.setMode("preview"),
     editMode: () => handlers.setMode("edit"),
     toggleCompare: () => (state.view === "compare" ? handlers.setMode("preview") : handlers.enterGeneralCompare()),

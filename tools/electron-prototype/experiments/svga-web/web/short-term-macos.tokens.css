@@ -221,6 +221,8 @@
   --asv-component-icon-button-secondary-color: var(--asv-color-text-secondary);
   --asv-component-icon-button-secondary-hover-background: var(--asv-color-surface-playback-control-hover);
   --asv-component-icon-button-secondary-hover-color: var(--asv-color-text-primary);
+  --asv-component-icon-button-selected-background: var(--asv-color-surface-control-selected);
+  --asv-component-icon-button-selected-color: var(--asv-color-action-primary);
   --asv-component-icon-button-shadow: none;
   --asv-component-mode-switch-width: 152px;
   --asv-component-mode-switch-height: 42px;
@@ -647,6 +649,8 @@
   --asv-icon-button-secondary-color: var(--asv-component-icon-button-secondary-color);
   --asv-icon-button-secondary-hover-bg: var(--asv-component-icon-button-secondary-hover-background);
   --asv-icon-button-secondary-hover-color: var(--asv-component-icon-button-secondary-hover-color);
+  --asv-icon-button-selected-bg: var(--asv-component-icon-button-selected-background);
+  --asv-icon-button-selected-color: var(--asv-component-icon-button-selected-color);
   --asv-icon-button-shadow: var(--asv-component-icon-button-shadow);
   --asv-mode-switch-bg: var(--asv-color-surface-mode-switch);
   --asv-mode-selected-bg: var(--asv-color-surface-mode-selected);

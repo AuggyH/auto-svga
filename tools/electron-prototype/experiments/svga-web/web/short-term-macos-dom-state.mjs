@@ -59,4 +59,11 @@ export function applyCommandState(commandState) {
     replayButton.setAttribute("aria-label", "重播");
     if (!replayButton.disabled) replayButton.title = "重播";
   }
+  const loopButton = document.querySelector("[data-action='loop-toggle']");
+  if (loopButton) {
+    loopButton.classList.toggle("isSelected", commandState.loopEnabled === true);
+    loopButton.setAttribute("aria-pressed", commandState.loopEnabled === true ? "true" : "false");
+    loopButton.setAttribute("aria-label", "循环播放");
+    if (!loopButton.disabled) loopButton.title = "循环播放";
+  }
 }

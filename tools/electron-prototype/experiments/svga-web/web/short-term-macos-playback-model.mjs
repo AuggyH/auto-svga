@@ -1,5 +1,6 @@
 import { FILL_MODE, Parser as SvgaWebParser, Player as SvgaWebPlayer } from "/vendor/svga-web-2.4.4.js";
 import { toParserArrayBuffer } from "./short-term-macos-byte-model.mjs";
+import { togglePrimaryPlaybackLoopState } from "./short-term-macos-playback-loop-model.mjs";
 import { playbackCanvasFitSize } from "./short-term-macos-playback-fit-model.mjs";
 
 export async function mountPlayback({
@@ -21,10 +22,11 @@ export async function mountPlayback({
   fitPlaybackCanvasToContainer(canvas, movieWidth, movieHeight);
   const resizeObserver = observePlaybackCanvasContainer(canvas, movieWidth, movieHeight);
   const player = new SvgaWebPlayer(canvas);
-  player.set({ loop: true, fillMode: FILL_MODE.FORWARDS, noExecutionDelay: false });
+  const looping = options.loop ?? playbackState[`${key}PlaybackLooping`] ?? true;
+  player.set({ loop: looping, fillMode: FILL_MODE.FORWARDS, noExecutionDelay: false });
   await player.mount(videoItem);
   if (options.start !== false) player.start();
-  playbackState[`${key}Playback`] = { player, videoItem, playing: options.start !== false, resizeObserver };
+  playbackState[`${key}Playback`] = { player, videoItem, playing: options.start !== false, looping, resizeObserver };
   onPlaybackStateChange();
   return playbackState[`${key}Playback`];
 }
@@ -63,6 +65,14 @@ export function replayPrimaryPlayback(playbackState, onPlaybackStateChange = () 
   playback.player.clear();
   playback.player.start();
   playback.playing = true;
+  onPlaybackStateChange();
+}
+
+export function togglePrimaryPlaybackLoop(playbackState, onPlaybackStateChange = () => {}) {
+  const { playback, looping } = togglePrimaryPlaybackLoopState(playbackState);
+  if (playback) {
+    playback.player.set({ loop: looping, fillMode: FILL_MODE.FORWARDS, noExecutionDelay: false });
+  }
   onPlaybackStateChange();
 }
 

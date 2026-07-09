@@ -22,6 +22,7 @@ import {
   renderShortTermPlaybackProgress,
   stopAllShortTermPlayback,
   stopShortTermPlayback,
+  toggleShortTermPrimaryPlaybackLoop,
   toggleShortTermPrimaryPlayback
 } from "./short-term-macos-playback-surface.mjs";
 import {
@@ -561,6 +562,10 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     replayShortTermPrimaryPlayback({ state, onPlaybackStateChange: renderCommandState });
   }
 
+  function togglePrimaryPlaybackLoop() {
+    toggleShortTermPrimaryPlaybackLoop({ state, onPlaybackStateChange: renderCommandState });
+  }
+
   function clearCanvas(canvas) {
     clearShortTermPlaybackCanvas(canvas);
   }
@@ -640,6 +645,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     setMode,
     togglePrimaryPlayback,
     replayPrimary,
+    togglePrimaryPlaybackLoop,
     runOptimization,
     saveActiveOutput,
     openCompareAFromHost,

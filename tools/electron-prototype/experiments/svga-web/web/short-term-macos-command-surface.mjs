@@ -19,6 +19,7 @@ export function renderShortTermCommandSurface({ bridge, documentRef = document, 
     canEditText: canEditText === true,
     textPreviewValues: state.textPreviewValues,
     primaryPlaybackPlaying: state.primaryPlayback?.playing === true,
+    primaryPlaybackLooping: state.primaryPlaybackLooping !== false,
     renameImageKey: state.renameImageKey,
     dialogOpen: hasOpenDialog(documentRef)
   });

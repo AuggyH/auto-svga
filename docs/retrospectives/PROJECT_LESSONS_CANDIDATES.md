@@ -823,3 +823,22 @@ promoted, watched, rejected, or kept historical.
   shared right-surface divider, with design-system and unit checks guarding the
   contract.
 - Status: watch
+
+## Gate reference-design icons through product scope before implementation
+
+- Source task: `uiux-playback-loop-control`
+- Area: UI/UX, design-to-code, product scope control
+- Context: The Figma playback area contains icon controls, while the 0.1.x
+  UI/UX brief names the supported playback action group as Play/Pause, Replay,
+  and Loop if supported.
+- Problem: A high-fidelity implementation can accidentally promote every icon
+  seen in a design reference into product behavior, adding undocumented entries
+  such as fullscreen or future controls.
+- Candidate rule: Before implementing a control from a Figma page or component,
+  classify it against the PRD/action contract: documented action, visual-only
+  reference, deferred capability, or out-of-scope. Implement only documented
+  actions unless Owner/PM explicitly expands scope.
+- Evidence: Playback loop was implemented because it is documented; fullscreen
+  was explicitly blocked by design-system checks. Direct loop-state tests,
+  design-system check, focused tests, and full spike suite passed.
+- Status: watch

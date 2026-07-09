@@ -49,6 +49,28 @@ test("short-term metric values split units only for simple numeric facts", async
   }), /302 <span class="factValueUnit">B<\/span>[\s\S]*242 <span class="factValueUnit">B<\/span>/);
 });
 
+test("short-term playback loop toggle updates player loop state", async () => {
+  const { togglePrimaryPlaybackLoopState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-playback-loop-model.mjs")).href);
+  const state = {
+    primaryPlaybackLooping: true,
+    primaryPlayback: {
+      looping: true
+    }
+  };
+
+  const first = togglePrimaryPlaybackLoopState(state);
+
+  assert.equal(state.primaryPlaybackLooping, false);
+  assert.equal(state.primaryPlayback.looping, false);
+  assert.equal(first.looping, false);
+
+  const second = togglePrimaryPlaybackLoopState(state);
+
+  assert.equal(state.primaryPlaybackLooping, true);
+  assert.equal(state.primaryPlayback.looping, true);
+  assert.equal(second.looping, true);
+});
+
 test("short-term general compare renders loaded A/B facts through shared metric renderer", async () => {
   const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
   const aModel = {
@@ -1483,6 +1505,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /class="playbackIcon playbackIconPlay"/);
   assert.match(page, /class="playbackIcon playbackIconPause"/);
   assert.match(page, /class="playbackIconButton"(?=[^>]*data-component="IconButton")(?=[^>]*data-action="replay")[^>]*>/);
+  assert.match(page, /class="playbackRightActions" data-component="PlaybackButtonGroup"/);
+  assert.match(page, /class="playbackIconButton isSelected"(?=[^>]*data-component="IconButton")(?=[^>]*data-action="loop-toggle")(?=[^>]*aria-pressed="true")[^>]*>/);
+  assert.doesNotMatch(page, /data-action="fullscreen"/);
   assert.doesNotMatch(page, /<button type="button" data-action="play-pause">播放<\/button>/);
   assert.doesNotMatch(page, /<button type="button" data-action="replay">重播<\/button>/);
   assert.match(page, /class="playbackProgress" id="playbackProgress" role="progressbar" aria-label="播放进度"/);
@@ -2232,10 +2257,15 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermDomState, /setActionEnabled\(action, actionState\.enabled, actionState\.reason\)/);
   assert.match(shortTermDomState, /playPauseButton\.dataset\.playbackState = playing \? "playing" : "paused"/);
   assert.match(shortTermDomState, /playPauseButton\.setAttribute\("aria-label", commandState\.playPauseCopy\)/);
+  assert.match(shortTermDomState, /loopButton\.classList\.toggle\("isSelected", commandState\.loopEnabled === true\)/);
+  assert.match(shortTermDomState, /loopButton\.setAttribute\("aria-pressed", commandState\.loopEnabled === true \? "true" : "false"\)/);
   assert.doesNotMatch(shortTermDomState, /textContent = commandState\.playPauseCopy/);
+  assert.match(shortTermCommandState, /"loop-toggle": \{ enabled: hasFile, reason: "请先打开 SVGA" \}/);
   assert.match(shortTermCommandState, /"run-optimization": \{ enabled: canRunOptimization, reason: "没有可安全执行的优化项" \}/);
   assert.match(shortTermCommandState, /"save-overwrite": \{ enabled: canOverwrite/);
   assert.match(shortTermCommandState, /playPauseCopy: input\.primaryPlaybackPlaying \? "暂停" : "播放"/);
+  assert.match(shortTermCommandState, /loopEnabled: input\.primaryPlaybackLooping !== false/);
+  assert.match(main, /label: "循环播放"[\s\S]*type: "checkbox"[\s\S]*click: \(\) => invokeShortTermAction\("toggleLoop"\)/);
   assert.match(shortTermCommandState, /canShowOptimizationComparison/);
   assert.match(shortTermCommandState, /hasTransientState/);
   assert.match(shortTermCompareModel, /export function renderCompareInfoHtml/);
@@ -2621,6 +2651,12 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPlaybackModel, /export function stopAllPlayback/);
   assert.match(shortTermPlaybackModel, /export function togglePrimaryPlayback/);
   assert.match(shortTermPlaybackModel, /export function replayPrimaryPlayback/);
+  assert.match(shortTermPlaybackModel, /export function togglePrimaryPlaybackLoop/);
+  assert.match(shortTermPlaybackModel, /togglePrimaryPlaybackLoopState\(playbackState\)/);
+  assert.match(shortTermPlaybackModel, /playback\.player\.set\(\{ loop: looping, fillMode: FILL_MODE\.FORWARDS, noExecutionDelay: false \}\)/);
+  assert.match(shortTermPlaybackSurface, /export function toggleShortTermPrimaryPlaybackLoop/);
+  assert.match(shortTermActionBridge, /toggleLoop: handlers\.togglePrimaryPlaybackLoop/);
+  assert.match(shortTermEventBindings, /if \(action === "loop-toggle"\) handlers\.togglePrimaryPlaybackLoop\(\)/);
   assert.match(shortTermPlaybackModel, /export function playbackProgressView/);
   assert.match(shortTermPlaybackModel, /formatPlaybackTime/);
   assert.match(shortTermPlaybackModel, /export function clearCanvas/);
