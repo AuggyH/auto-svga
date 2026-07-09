@@ -412,6 +412,31 @@ Real-use bugs, regressions, and acceptance failures must follow
   the Product Manager before implementation.
 - Do not commit real production assets while reproducing bugs.
 
+## Project Code Review Workflow
+
+High-risk source changes must follow
+`docs/engineering/CODE_REVIEW_WORKFLOW.md`. Code Review is separate from QA:
+QA owns user-visible reproduction, regression, and closure; Code Review owns
+source-level architecture, maintainability, dependency, safety, and test
+adequacy.
+
+Require Code Review before QA acceptance or local-stable promotion when a task
+touches save/overwrite/export bytes, optimization output, parsing/encoding,
+playback, Electron main/preload/IPC, filesystem/dialog/menu/clipboard host
+boundaries, packaging/runtime closure, new dependencies, broad refactors,
+security/privacy, or production-asset handling.
+
+High-risk handoff should normally flow:
+
+```text
+Implementation Ready -> Code Review -> QA Acceptance -> Packaging / Owner-visible promotion
+```
+
+Code Review approval does not mean product acceptance or QA pass. QA pass does
+not mean source-level risk is acceptable. Use exact review states such as
+`Approved For QA`, `Approved For Packaging`, `Changes Requested`, or
+`Advisory Findings`.
+
 ## Token-saving Skills
 
 Repository-local reusable skills live under `codex-skills/`:
