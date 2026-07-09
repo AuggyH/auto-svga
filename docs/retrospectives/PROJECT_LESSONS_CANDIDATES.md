@@ -971,3 +971,23 @@ promoted, watched, rejected, or kept historical.
   referenced embedded image represented as a non-replaceable metadata resource
   and non-replaceable image layer.
 - Status: watch
+
+## Pin renderer approval to one entry point and one hidden spike
+
+- Source:
+  `docs/reviews/2026-07-10-codex-0.2-multiformat-wp2b-dependency-decision.md`
+- Area: multi-format, dependency governance, Lottie playback
+- Context: WP2B needed a current dependency decision after WP2A metadata
+  inspection passed QA, but renderer adoption itself still required Owner
+  approval.
+- Problem: A dependency review can accidentally turn into broad renderer
+  approval if it accepts an entire package family, every renderer backend, or
+  visible UI at once.
+- Candidate rule: Dependency gates should name the exact package, version,
+  entry point, import boundary, fixture scope, and non-claims before any
+  install or lockfile mutation.
+- Evidence: WP2B recommends only `lottie-web@5.13.0` with
+  `lottie-web/build/player/lottie_svg` for a hidden SVG spike, and defers
+  `@lottiefiles/dotlottie-web@0.77.0` because WASM and `.lottie` scope exceed
+  the first JSON playback gate.
+- Status: watch
