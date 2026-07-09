@@ -42,17 +42,27 @@
 
 .modeSwitch button,
 .canvasModeSwitch button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: calc(var(--asv-control-height) * 2);
   min-height: 0;
   padding: var(--asv-mode-button-padding-block) var(--asv-mode-button-padding-inline);
   border: 0;
   border-radius: var(--asv-base-radius-full);
   background: transparent;
+  background-image: none;
   box-shadow: var(--asv-mode-button-shadow);
   color: var(--asv-mode-button-color);
+  cursor: default;
+  font-family: inherit;
   font-size: var(--asv-mode-button-font-size);
   font-weight: var(--asv-mode-button-font-weight);
   line-height: var(--asv-mode-button-line-height);
+  text-align: center;
+  white-space: nowrap;
 }
 
 .modeSwitch button:hover:not(.isSelected),
@@ -64,9 +74,16 @@
 .modeSwitch button.isSelected,
 .canvasModeSwitch button.isSelected {
   background: var(--asv-mode-selected-bg);
+  background-color: var(--asv-mode-selected-bg);
+  background-image: none;
   box-shadow: var(--asv-mode-selected-shadow);
   color: var(--asv-mode-selected-color);
   font-weight: var(--asv-mode-button-font-weight);
+}
+
+.modeSwitch button:focus-visible,
+.canvasModeSwitch button:focus-visible {
+  box-shadow: var(--asv-focus);
 }
 
 .renameEditor {

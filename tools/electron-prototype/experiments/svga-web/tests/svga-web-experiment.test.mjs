@@ -1400,7 +1400,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermTokens, /inspector/);
   assert.match(shortTermTokens, /--asv-color-surface-control/);
   assert.match(shortTermTokens, /--asv-color-surface-mode-switch: var\(--asv-color-border-default\)/);
-  assert.match(shortTermTokens, /--asv-color-surface-mode-selected: var\(--asv-color-surface-panel-strong\)/);
+  assert.match(shortTermTokens, /--asv-color-surface-mode-selected: var\(--asv-color-surface-overlay\)/);
   assert.match(shortTermTokens, /--asv-mode-switch-bg: var\(--asv-color-surface-mode-switch\)/);
   assert.match(shortTermTokens, /--asv-mode-selected-bg: var\(--asv-color-surface-mode-selected\)/);
   assert.match(shortTermTokens, /--asv-mode-switch-gap: var\(--asv-component-mode-switch-gap\)/);
@@ -1546,9 +1546,14 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermMolecules, /\.modeSwitch,[\s\S]*\.canvasModeSwitch\s*\{[^}]*gap: var\(--asv-mode-switch-gap\)/s);
   assert.match(shortTermMolecules, /\.modeSwitch,[\s\S]*\.canvasModeSwitch\s*\{[^}]*background: var\(--asv-mode-switch-bg\)/s);
   assert.match(shortTermMolecules, /\.modeSwitch,[\s\S]*\.canvasModeSwitch\s*\{[^}]*box-shadow: var\(--asv-mode-switch-shadow\)/s);
+  assert.match(shortTermMolecules, /\.modeSwitch button,[\s\S]*\.canvasModeSwitch button\s*\{[^}]*all: unset/s);
+  assert.match(shortTermMolecules, /\.modeSwitch button,[\s\S]*\.canvasModeSwitch button\s*\{[^}]*display: inline-flex/s);
+  assert.match(shortTermMolecules, /\.modeSwitch button,[\s\S]*\.canvasModeSwitch button\s*\{[^}]*background-image: none/s);
   assert.match(shortTermMolecules, /\.modeSwitch button:hover:not\(\.isSelected\),[\s\S]*\.canvasModeSwitch button:hover:not\(\.isSelected\)\s*\{[^}]*background: var\(--asv-mode-button-hover-bg\)/s);
   assert.match(shortTermMolecules, /\.modeSwitch button\.isSelected,[\s\S]*\.canvasModeSwitch button\.isSelected\s*\{[^}]*background: var\(--asv-mode-selected-bg\)/s);
+  assert.match(shortTermMolecules, /\.modeSwitch button\.isSelected,[\s\S]*\.canvasModeSwitch button\.isSelected\s*\{[^}]*background-color: var\(--asv-mode-selected-bg\)/s);
   assert.match(shortTermMolecules, /\.modeSwitch button\.isSelected,[\s\S]*\.canvasModeSwitch button\.isSelected\s*\{[^}]*box-shadow: var\(--asv-mode-selected-shadow\)/s);
+  assert.match(shortTermMolecules, /\.modeSwitch button:focus-visible,[\s\S]*\.canvasModeSwitch button:focus-visible\s*\{[^}]*box-shadow: var\(--asv-focus\)/s);
   assert.doesNotMatch(shortTermMolecules, /\.modeSwitch,[\s\S]*\.canvasModeSwitch\s*\{[^}]*box-shadow: var\(--asv-shadow-overlay\)/s);
   assert.doesNotMatch(shortTermMolecules, /\.tabs/);
   assert.match(shortTermMolecules, /\.rowMenuButton/);

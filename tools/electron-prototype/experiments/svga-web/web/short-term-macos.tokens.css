@@ -125,7 +125,7 @@
   --asv-color-surface-control-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 92%, var(--asv-color-action-primary) 3%);
   --asv-color-surface-control-disabled: color-mix(in srgb, var(--asv-color-surface-panel-strong) 70%, transparent);
   --asv-color-surface-mode-switch: var(--asv-color-border-default);
-  --asv-color-surface-mode-selected: var(--asv-color-surface-panel-strong);
+  --asv-color-surface-mode-selected: var(--asv-color-surface-overlay);
   --asv-color-surface-row: color-mix(in srgb, var(--asv-color-surface-panel-strong) 54%, var(--asv-color-surface-panel-recessed));
   --asv-color-surface-row-hover: color-mix(in srgb, var(--asv-color-surface-panel-strong) 90%, var(--asv-color-status-info-soft));
   --asv-color-surface-row-selected: color-mix(in srgb, var(--asv-color-surface-panel-strong) 94%, var(--asv-color-status-info-soft));
