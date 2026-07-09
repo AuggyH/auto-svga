@@ -106,6 +106,60 @@ test("reports unsupported Lottie features without rejecting metadata inspection"
   assert.equal((lottieMetadata(result).unsupportedFeatures as unknown[]).length, 5);
 });
 
+test("reports unsupported features nested inside precomp assets", async () => {
+  const result = await service().inspect(
+    memorySource("precomp-unsupported.json", minimalLottie({
+      assets: [{
+        id: "pre_masked",
+        layers: [{
+          ind: 10,
+          ty: 4,
+          nm: "masked nested shape",
+          hasMask: true,
+          masksProperties: [{}],
+          ef: [{}]
+        }]
+      }],
+      layers: [{ ind: 1, ty: 0, nm: "Precomp layer", refId: "pre_masked" }]
+    })),
+    { gate: LOTTIE_JSON_INSPECTION_WP2A_GATE }
+  );
+
+  assert.ok(result.value);
+  assert.deepEqual(
+    result.issues.map(({ details }) => details?.feature),
+    ["mask", "effect"]
+  );
+  assert.deepEqual(
+    result.issues.map(({ details }) => details?.path),
+    ["assets.0.layers.0.masksProperties", "assets.0.layers.0.ef"]
+  );
+  assert.deepEqual(
+    (lottieMetadata(result).unsupportedFeatures as Array<{ path: string }>).map(({ path }) => path),
+    ["assets.0.layers.0.masksProperties", "assets.0.layers.0.ef"]
+  );
+});
+
+test("keeps referenced embedded image assets from producing dangling layer resources", async () => {
+  const result = await service().inspect(
+    memorySource("embedded-image.json", minimalLottie({
+      assets: [{ id: "img_embedded", w: 64, h: 64, e: 1, p: "data:image/png;base64,AA==" }],
+      layers: [{ ind: 1, ty: 2, nm: "Embedded image", refId: "img_embedded" }]
+    })),
+    { gate: LOTTIE_JSON_INSPECTION_WP2A_GATE }
+  );
+
+  assert.ok(result.value);
+  assert.deepEqual(result.issues.map(({ details }) => details?.feature), ["embedded_image_asset"]);
+  assert.equal(result.value.resources.length, 1);
+  assert.equal(result.value.resources[0]?.id, "img_embedded");
+  assert.equal(result.value.resources[0]?.replaceable, false);
+  assert.equal(result.value.resources[0]?.metadata?.embedded, true);
+  assert.deepEqual(result.value.layers[0]?.resourceIds, ["img_embedded"]);
+  const resourceIds = new Set(result.value.resources.map(({ id }) => id));
+  assert.ok(result.value.layers[0]?.resourceIds.every((id) => resourceIds.has(id)));
+});
+
 test("fails closed for malformed JSON and redacts local source paths", async () => {
   const result = await service().inspect(
     memorySource("/Users/designer/Secret Campaign/broken.json", textEncoder.encode("{\"v\":\"5.7.4\"")),

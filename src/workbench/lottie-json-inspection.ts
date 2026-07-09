@@ -67,7 +67,7 @@ interface LottieAsset {
   u?: unknown;
   p?: unknown;
   e?: unknown;
-  layers?: unknown;
+  layers?: readonly LottieLayer[];
 }
 
 interface LottieFont {
@@ -314,6 +314,27 @@ function normalizeAssets(
 
     if (asset.p !== undefined || asset.u !== undefined || asset.e === 1) {
       imageAssetCount += 1;
+      if (asset.e === 1) {
+        issues.push(issue(
+          feedback,
+          "unsupported_feature",
+          "Embedded Lottie image payloads are metadata-only and not supported in WP2A.",
+          { feature: "embedded_image_asset", path: `assets.${index}.e` }
+        ));
+        resources.push({
+          id,
+          name: id,
+          kind: "image",
+          dimensions: dimensionsFrom(asset),
+          replaceable: false,
+          metadata: {
+            lottieAssetType: "image",
+            embedded: true,
+            unsupported: true
+          }
+        });
+        return;
+      }
       const reference = normalizeImageReference(asset, index, feedback);
       issues.push(...reference.issues);
       if (reference.value) {
@@ -346,16 +367,6 @@ function normalizeImageReference(
 ): InternalResult<{ path: string; basename: string }> {
   const rawPath = typeof asset.p === "string" ? asset.p.trim() : "";
   const rawDirectory = typeof asset.u === "string" ? asset.u.trim() : "";
-  if (asset.e === 1) {
-    return {
-      issues: [issue(
-        feedback,
-        "unsupported_feature",
-        "Embedded Lottie image payloads are metadata-only and not supported in WP2A.",
-        { feature: "embedded_image_asset", path: `assets.${index}.e` }
-      )]
-    };
-  }
   if (!rawPath) {
     return {
       issues: [issue(
@@ -456,20 +467,34 @@ function normalizeLayers(
 
 function collectUnsupportedFeatures(document: LottieDocument): UnsupportedFeature[] {
   const features: UnsupportedFeature[] = [];
-  document.layers.forEach((layer, index) => {
-    if (layer.ddd === 1) features.push({ feature: "3d_layer", path: `layers.${index}.ddd` });
-    if (layer.hasMask === true || Array.isArray(layer.masksProperties)) {
-      features.push({ feature: "mask", path: `layers.${index}.masksProperties` });
+  collectLayerUnsupportedFeatures(document.layers, "layers", features);
+  (document.assets ?? []).forEach((asset, index) => {
+    if (Array.isArray(asset.layers)) {
+      collectLayerUnsupportedFeatures(asset.layers, `assets.${index}.layers`, features);
     }
-    if (Array.isArray(layer.ef) && layer.ef.length > 0) {
-      features.push({ feature: "effect", path: `layers.${index}.ef` });
-    }
-    if (layer.tm !== undefined) features.push({ feature: "time_remap", path: `layers.${index}.tm` });
-    if (layer.xp !== undefined) features.push({ feature: "expression", path: `layers.${index}.xp` });
-    if (layer.ty === 1) features.push({ feature: "solid_layer", path: `layers.${index}.ty` });
-    if (layer.ty === 13) features.push({ feature: "camera_layer", path: `layers.${index}.ty` });
   });
   return features;
+}
+
+function collectLayerUnsupportedFeatures(
+  layers: readonly LottieLayer[],
+  pathPrefix: string,
+  features: UnsupportedFeature[]
+): void {
+  layers.forEach((layer, index) => {
+    const path = `${pathPrefix}.${index}`;
+    if (layer.ddd === 1) features.push({ feature: "3d_layer", path: `${path}.ddd` });
+    if (layer.hasMask === true || Array.isArray(layer.masksProperties)) {
+      features.push({ feature: "mask", path: `${path}.masksProperties` });
+    }
+    if (Array.isArray(layer.ef) && layer.ef.length > 0) {
+      features.push({ feature: "effect", path: `${path}.ef` });
+    }
+    if (layer.tm !== undefined) features.push({ feature: "time_remap", path: `${path}.tm` });
+    if (layer.xp !== undefined) features.push({ feature: "expression", path: `${path}.xp` });
+    if (layer.ty === 1) features.push({ feature: "solid_layer", path: `${path}.ty` });
+    if (layer.ty === 13) features.push({ feature: "camera_layer", path: `${path}.ty` });
+  });
 }
 
 function isLottieDocument(value: unknown): value is LottieDocument {

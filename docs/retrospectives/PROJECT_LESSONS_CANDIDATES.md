@@ -950,3 +950,22 @@ promoted, watched, rejected, or kept historical.
   parent traversal, file URLs, missing `p`, duplicate ids, missing references,
   and bounded reads without asset access.
 - Status: watch
+
+## Keep normalized Lottie resource references internally consistent
+
+- Source:
+  `docs/reviews/2026-07-10-codex-0.2-multiformat-wp2a.md`
+- Area: multi-format, Lottie, parser normalization
+- Context: WP2A Code Review found that top-level inspection missed unsupported
+  markers nested inside precomp assets and that embedded image layers could
+  reference an asset id with no corresponding resource.
+- Problem: Metadata-only inspection can still mislead downstream tooling if
+  unsupported markers are hidden or layer `resourceIds` point at resources that
+  were not emitted.
+- Candidate rule: For every Lottie structure normalized into `MotionAssetInfo`,
+  traverse the nested layer arrays represented by that structure and ensure
+  every emitted layer resource reference resolves to an emitted resource, even
+  when the payload itself remains unsupported.
+- Evidence: WP2A repair tests cover nested precomp mask/effect paths and a
+  referenced embedded image represented as a non-replaceable metadata resource.
+- Status: watch
