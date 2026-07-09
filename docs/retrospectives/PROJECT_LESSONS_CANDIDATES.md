@@ -875,3 +875,22 @@ promoted, watched, rejected, or kept historical.
   `autoSvgaPrototype`, deferred save methods, artifact scan, reference-media,
   proof helpers, and AEB intake exposure in formal short-term mode.
 - Status: watch
+
+## Approve motion-format dependencies before installing renderers
+
+- Source:
+  `docs/reviews/2026-07-10-codex-0.2-multiformat-wp0.md`
+- Area: multi-format, dependency governance, preview playback
+- Context: The 0.2 multi-format lane needs Lottie and VAP playback/inspection,
+  but the current owner-visible 0.1 client must remain SVGA-only and offline.
+- Problem: Installing a renderer before license, maintenance, size, offline,
+  redistribution, and rollback review can make a research spike look like
+  supported product surface.
+- Candidate rule: For each new motion-format renderer or player, complete and
+  record dependency review before adding it to `package.json`, then keep the
+  adapter behind a 0.2-only gate with typed missing-dependency and unsupported
+  feature states.
+- Evidence: WP0 reviewed `lottie-web`, `@lottiefiles/dotlottie-web`, Tencent
+  VAP references, and `video-animation-player` without adding dependencies;
+  the only code change was a 0.1 command-menu guard test.
+- Status: watch

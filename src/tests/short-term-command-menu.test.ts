@@ -65,6 +65,16 @@ test("short-term command menu covers app state commands and redacts recent paths
   assert.equal(flatItems.find((item) => item.id === "showLogs")?.label, "显示日志");
 });
 
+test("short-term command menu keeps 0.2 multi-format entries out of 0.1 visible surface", () => {
+  const flatItems = flattenShortTermCommandMenuItems(createShortTermCommandMenuModel(createShortTermLaunchAppState()));
+  const visibleCommandText = flatItems
+    .flatMap((item) => [item.id, item.label, item.sourceCommandId])
+    .filter((value): value is string => typeof value === "string")
+    .join("\n");
+
+  assert.doesNotMatch(visibleCommandText, /vap|lottie|format|import[-_ ]?package|格式|导入包/iu);
+});
+
 test("short-term command menu exposes product PRD trace for menu entries", () => {
   const ready = completeShortTermLocalOpen(
     startShortTermLocalOpen(createShortTermLaunchAppState({
