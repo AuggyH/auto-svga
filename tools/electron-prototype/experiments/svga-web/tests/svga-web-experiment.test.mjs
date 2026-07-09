@@ -1631,8 +1631,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermComponents, /\.stateCard::before\s*\{[^}]*display: none/s);
   assert.match(shortTermComponents, /\.stateRecoveryButton\s*\{[^}]*display: inline-flex/s);
   assert.doesNotMatch(shortTermComponents, /\.stateCard\.error h1\s*\{[^}]*color: var\(--asv-danger\)/s);
-  assert.match(shortTermHtml, /class="toolbarButton primary stateRecoveryButton"/);
-  assert.match(shortTermHtml, /class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true"/);
+  assert.match(page, /class="toolbarButton primary stateRecoveryButton"/);
+  assert.match(page, /class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true"/);
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="loading"\] \.stateView,[\s\S]*\.macApp\[data-app-state="failed"\] \.stateView\s*\{[^}]*grid-row: 1 \/ -1/s);
   assert.match(shortTermComponents, /\.appDialog\[data-status="warning"\]::before/);
   assert.match(shortTermComponents, /\.dialogHeader/);
