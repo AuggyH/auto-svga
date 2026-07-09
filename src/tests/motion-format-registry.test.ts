@@ -62,6 +62,18 @@ test("keeps extension-only and header-only SVGA evidence as candidates", async (
   }
 });
 
+test("keeps invalid zlib CINFO SVGA headers as candidates", async () => {
+  const result = await service().probe(
+    memorySource("invalid-window.svga", new Uint8Array([0x88, 0x1c])),
+    { gate: MULTIFORMAT_PREVIEW_WP1_GATE }
+  );
+
+  assert.equal(result.status, "candidate");
+  assert.equal(result.format, "svga");
+  assert.equal(result.issues[0]?.code, "parse_precondition");
+  assert.equal(result.evidence.some(({ kind }) => kind === "header"), false);
+});
+
 test("detects Lottie from a bounded JSON shape with or without a json extension", async () => {
   for (const source of [
     memorySource("animation.json", lottieBytes()),
@@ -122,6 +134,17 @@ test("keeps ordinary or malformed MP4 input as a VAP candidate with a preconditi
     mp4Box("ftyp", textEncoder.encode("isom\u0000\u0000\u0002\u0000isom")),
     mp4Box("free", new Uint8Array([1, 2, 3]))
   );
+  const headerOnlyVap = concatBytes(mp4Box("ftyp", new Uint8Array()), mp4Box("vapc", new Uint8Array()));
+  const emptyVapc = concatBytes(
+    mp4Box("ftyp", textEncoder.encode("isom\u0000\u0000\u0002\u0000isom")),
+    mp4Box("vapc", new Uint8Array())
+  );
+  const extendedSizeVap = concatBytes(
+    mp4ExtendedSizeBox("ftyp", textEncoder.encode("isom\u0000\u0000\u0002\u0000isom")),
+    mp4Box("vapc", textEncoder.encode("{}"))
+  );
+  const sizeZeroVap = mp4SizeZeroBox("ftyp", textEncoder.encode("isom\u0000\u0000\u0002\u0000isom"));
+  const declaredOverflow = new Uint8Array([0, 0, 0, 100, 0x66, 0x74, 0x79, 0x70]);
   const malformedMp4 = new Uint8Array([0, 0, 0, 4, 0x66, 0x74, 0x79, 0x70]);
   const damagedVap = concatBytes(
     mp4Box("ftyp", textEncoder.encode("isom\u0000\u0000\u0002\u0000isom")),
@@ -129,7 +152,16 @@ test("keeps ordinary or malformed MP4 input as a VAP candidate with a preconditi
     new Uint8Array([0])
   );
 
-  for (const bytes of [ordinaryMp4, malformedMp4, damagedVap]) {
+  for (const bytes of [
+    ordinaryMp4,
+    headerOnlyVap,
+    emptyVapc,
+    extendedSizeVap,
+    sizeZeroVap,
+    declaredOverflow,
+    malformedMp4,
+    damagedVap
+  ]) {
     const result = await service().probe(
       memorySource("effect.mp4", bytes, { mediaType: "video/mp4" }),
       { gate: MULTIFORMAT_PREVIEW_WP1_GATE }
@@ -235,6 +267,35 @@ test("uses bounded range reads and never falls back to a full read for large sou
   assert.deepEqual(ranges, [[0, 262_144]]);
 });
 
+test("uses range reads when available instead of trusting underreported size metadata", async () => {
+  const bytes = concatBytes(
+    mp4Box("ftyp", textEncoder.encode("isom\u0000\u0000\u0002\u0000isom")),
+    mp4Box("vapc", textEncoder.encode("{}"))
+  );
+  let fullReads = 0;
+  const ranges: Array<[number, number]> = [];
+  const source: MotionFormatProbeSource = {
+    id: "underreported-vap",
+    name: "underreported.mp4",
+    sizeBytes: 1,
+    mediaType: "video/mp4",
+    async read() {
+      fullReads += 1;
+      return concatBytes(bytes, new Uint8Array(300_000));
+    },
+    async readRange(offset, length) {
+      ranges.push([offset, length]);
+      return bytes.slice(offset, offset + length);
+    }
+  };
+  const result = await service().probe(source, { gate: MULTIFORMAT_PREVIEW_WP1_GATE });
+
+  assert.equal(result.status, "detected");
+  assert.equal(result.format, "vap");
+  assert.equal(fullReads, 0);
+  assert.deepEqual(ranges, [[0, 262_144]]);
+});
+
 test("large sources without range reads fail closed instead of loading the full asset", async () => {
   let reads = 0;
   const source: MotionFormatProbeSource = {
@@ -298,6 +359,28 @@ function mp4Box(type: string, payload: Uint8Array): Uint8Array {
   const bytes = new Uint8Array(8 + payload.byteLength);
   const view = new DataView(bytes.buffer);
   view.setUint32(0, bytes.byteLength);
+  bytes.set(textEncoder.encode(type), 4);
+  bytes.set(payload, 8);
+  return bytes;
+}
+
+function mp4ExtendedSizeBox(type: string, payload: Uint8Array): Uint8Array {
+  assert.equal(type.length, 4);
+  const bytes = new Uint8Array(16 + payload.byteLength);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, 1);
+  bytes.set(textEncoder.encode(type), 4);
+  view.setUint32(8, 0);
+  view.setUint32(12, bytes.byteLength);
+  bytes.set(payload, 16);
+  return bytes;
+}
+
+function mp4SizeZeroBox(type: string, payload: Uint8Array): Uint8Array {
+  assert.equal(type.length, 4);
+  const bytes = new Uint8Array(8 + payload.byteLength);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0);
   bytes.set(textEncoder.encode(type), 4);
   bytes.set(payload, 8);
   return bytes;

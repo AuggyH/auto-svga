@@ -285,12 +285,17 @@ async function readBoundedSample(
 ): Promise<BoundedSample> {
   try {
     context?.onProgress?.({ phase: "format_probe_read", completed: 0, total: 1 });
-    if (source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES && !source.readRange) {
+    if (!Number.isFinite(source.sizeBytes) || source.sizeBytes < 0) {
       return { truncated: true, issueReason: "bounded_read_required" };
     }
-    const bytes = source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
-      ? await source.readRange!(0, MOTION_FORMAT_PROBE_MAX_BYTES)
-      : await source.read();
+    const bytes = source.readRange
+      ? await source.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
+      : source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
+        ? undefined
+        : await source.read();
+    if (!bytes) {
+      return { truncated: true, issueReason: "bounded_read_required" };
+    }
     context?.onProgress?.({ phase: "format_probe_read", completed: 1, total: 1 });
     return {
       bytes: bytes.slice(0, MOTION_FORMAT_PROBE_MAX_BYTES),
@@ -389,29 +394,17 @@ function inspectMp4Boxes(bytes: Uint8Array): {
     const type = ascii(bytes, offset + 4, 4);
     let headerSize = 8;
     let size = size32;
-    if (size32 === 1) {
-      if (bytes.byteLength - offset < 16) {
-        malformed = true;
-        break;
-      }
-      const high = view.getUint32(offset + 8);
-      const low = view.getUint32(offset + 12);
-      const extendedSize = high * 0x1_0000_0000 + low;
-      if (!Number.isSafeInteger(extendedSize)) {
-        malformed = true;
-        break;
-      }
-      size = extendedSize;
-      headerSize = 16;
-    } else if (size32 === 0) {
-      size = bytes.byteLength - offset;
+    if (size32 === 1 || size32 === 0) {
+      malformed = true;
+      break;
     }
     if (size < headerSize || size > bytes.byteLength - offset) {
       malformed = true;
       break;
     }
-    if (offset === 0 && type === "ftyp") ftyp = true;
-    if (type === "vapc") vapc = true;
+    const payloadSize = size - headerSize;
+    if (offset === 0 && type === "ftyp" && payloadSize >= 8) ftyp = true;
+    if (type === "vapc" && payloadSize > 0) vapc = true;
     offset += size;
   }
 
@@ -434,7 +427,11 @@ function isZlibHeader(bytes: Uint8Array): boolean {
   if (bytes.byteLength < 2) return false;
   const cmf = bytes[0];
   const flg = bytes[1];
-  return (cmf & 0x0f) === 8 && ((cmf << 8) + flg) % 31 === 0;
+  const compressionMethod = cmf & 0x0f;
+  const compressionInfo = cmf >> 4;
+  return compressionMethod === 8
+    && compressionInfo <= 7
+    && ((cmf << 8) + flg) % 31 === 0;
 }
 
 function resultWithIssue(

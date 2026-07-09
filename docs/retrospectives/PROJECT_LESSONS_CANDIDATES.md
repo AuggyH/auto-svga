@@ -912,3 +912,22 @@ promoted, watched, rejected, or kept historical.
   extension/media/content, and single-signal SVGA fixtures all fail closed in
   WP1 tests while path feedback remains redacted.
 - Status: watch
+
+## Add failure-first tests for every detected-threshold field
+
+- Source:
+  `docs/reviews/2026-07-10-codex-0.2-multiformat-wp1.md`
+- Area: multi-format, parser boundary, Code Review repair
+- Context: Code Review found that WP1 correctly separated candidates from
+  detected formats in common cases, but still let malformed binary minima cross
+  the detected threshold.
+- Problem: A detector can satisfy byte-size arithmetic while missing semantic
+  requirements such as zlib CINFO bounds, MP4 `ftyp` payload minima, or
+  non-empty `vapc` payload evidence.
+- Candidate rule: Whenever a field or structure is required to move from
+  candidate to detected, add the matching negative fixture before treating the
+  detector as implementation ready.
+- Evidence: Invalid zlib bytes `0x88 0x1c`, header-only `ftyp`/`vapc`,
+  empty `vapc`, extended-size boxes, size-zero boxes, declared overflow, and
+  damaged trailing data now stay at `candidate` with `parse_precondition`.
+- Status: watch
