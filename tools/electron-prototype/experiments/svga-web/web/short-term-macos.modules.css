@@ -653,11 +653,14 @@ canvas {
 }
 
 .rightSurfaceHeader {
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--asv-space-3);
   align-items: center;
   width: var(--asv-file-header-width);
+  max-width: var(--asv-file-header-width);
+  overflow: hidden;
   padding: var(--asv-file-header-padding-block) 0;
   margin: 0 var(--asv-right-panel-padding);
   border-bottom: 0;

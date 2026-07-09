@@ -1012,6 +1012,7 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /window\.on\("move"/);
 	  assert.match(main, /window\.on\("resize"/);
 	  assert.match(main, /scenario === "desktop-1440x900"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
+	  assert.match(main, /scenario === "short-term-preview-overview"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-preview-overview-wide"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-optimization-result"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-general-compare"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
@@ -1429,7 +1430,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-right-panel-width: 360px/);
   assert.match(shortTermTokens, /--asv-component-right-panel-padding: var\(--asv-space-4\)/);
   assert.match(shortTermTokens, /--asv-component-right-panel-section-gap: var\(--asv-space-2\)/);
-  assert.match(shortTermTokens, /--asv-component-file-header-width: auto/);
+  assert.match(shortTermTokens, /--asv-component-file-header-width: calc\(100% - \(var\(--asv-right-panel-padding\) \* 2\)\)/);
   assert.match(shortTermTokens, /--asv-component-file-header-action-width: 60px/);
   assert.match(shortTermTokens, /--asv-component-tab-selected-background: var\(--asv-color-surface-canvas\)/);
   assert.match(shortTermTokens, /--asv-component-tab-selected-ring: none/);
@@ -1651,7 +1652,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /box-shadow: inset var\(--asv-right-panel-separator-width\) 0 0 var\(--asv-right-panel-separator\)/);
   assert.match(shortTermModules, /\.fileIdentity\s*\{[^}]*max-width: 100%/s);
   assert.match(shortTermModules, /\.toolbarClusterSave\s*\{[^}]*min-width: 0/s);
+  assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*box-sizing: border-box/s);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*width: var\(--asv-file-header-width\)/s);
+  assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*max-width: var\(--asv-file-header-width\)/s);
+  assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*overflow: hidden/s);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*padding: var\(--asv-file-header-padding-block\) 0/s);
   assert.match(shortTermModules, /\.rightSurfaceBody\s*\{[^}]*background: var\(--asv-right-panel\)/s);
   assert.match(shortTermModules, /\.launchCanvas\s*\{[^}]*background:[^}]*var\(--asv-canvas-checker-pattern\)/s);
