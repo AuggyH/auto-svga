@@ -894,3 +894,21 @@ promoted, watched, rejected, or kept historical.
   VAP references, and `video-animation-player` without adding dependencies;
   the only code change was a 0.1 command-menu guard test.
 - Status: watch
+
+## Treat motion-format metadata as hints until content evidence agrees
+
+- Source:
+  `docs/reviews/2026-07-10-codex-0.2-multiformat-wp1.md`
+- Area: multi-format, format detection, false-positive prevention
+- Context: WP1 needed to distinguish SVGA, Lottie JSON, and VAP/MP4 without
+  installing a parser, renderer, codec, or player.
+- Problem: Extension and media-type routing alone can misclassify generic JSON,
+  renamed compressed files, or ordinary MP4 as supported motion formats.
+- Candidate rule: Keep extension and media type as low-confidence hints. Return
+  a confirmed probe result only when bounded content evidence agrees; otherwise
+  return a candidate, typed precondition, or ambiguous result without selecting
+  a production parser/player.
+- Evidence: Generic and malformed JSON, ordinary and malformed MP4, conflicting
+  extension/media/content, and single-signal SVGA fixtures all fail closed in
+  WP1 tests while path feedback remains redacted.
+- Status: watch
