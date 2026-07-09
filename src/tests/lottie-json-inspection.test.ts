@@ -65,6 +65,7 @@ test("normalizes relative image metadata precomps text candidates and fonts with
   assert.deepEqual(result.value?.resources[0]?.dimensions, { width: 128, height: 64 });
   assert.equal(result.value?.resources[0]?.replaceable, true);
   assert.deepEqual(result.value?.layers.map(({ kind }) => kind), ["image", "precomp", "text"]);
+  assert.equal(result.value?.layers[0]?.replaceable, true);
   assert.equal(result.value?.layers[2]?.replaceable, true);
   assert.equal(result.value?.layers[2]?.metadata?.text, "Hello");
   assert.equal(lottieMetadata(result).imageAssetCount, 1);
@@ -156,6 +157,7 @@ test("keeps referenced embedded image assets from producing dangling layer resou
   assert.equal(result.value.resources[0]?.replaceable, false);
   assert.equal(result.value.resources[0]?.metadata?.embedded, true);
   assert.deepEqual(result.value.layers[0]?.resourceIds, ["img_embedded"]);
+  assert.equal(result.value.layers[0]?.replaceable, false);
   const resourceIds = new Set(result.value.resources.map(({ id }) => id));
   assert.ok(result.value.layers[0]?.resourceIds.every((id) => resourceIds.has(id)));
 });

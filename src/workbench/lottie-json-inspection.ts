@@ -94,6 +94,7 @@ interface LottieLayer {
 interface NormalizedAssets {
   resources: MotionResourceInfo[];
   assetIds: Set<string>;
+  nonReplaceableAssetIds: Set<string>;
   imageAssetCount: number;
   precompAssetCount: number;
 }
@@ -197,7 +198,12 @@ export class LottieJsonInspectionService {
     if (!normalizedAssets) {
       return { issues: assetResult.issues };
     }
-    const layers = normalizeLayers(parsed.layers, normalizedAssets.assetIds, feedback);
+    const layers = normalizeLayers(
+      parsed.layers,
+      normalizedAssets.assetIds,
+      normalizedAssets.nonReplaceableAssetIds,
+      feedback
+    );
     const layerErrors = layers.issues.filter(({ severity }) => severity === "error");
     if (layerErrors.length > 0) {
       return { issues: [...assetResult.issues, ...layers.issues, ...unsupportedIssues] };
@@ -282,6 +288,7 @@ function normalizeAssets(
   const resources: MotionResourceInfo[] = [];
   const issues: LottieJsonInspectionIssue[] = [];
   const assetIds = new Set<string>();
+  const nonReplaceableAssetIds = new Set<string>();
   let imageAssetCount = 0;
   let precompAssetCount = 0;
 
@@ -315,6 +322,7 @@ function normalizeAssets(
     if (asset.p !== undefined || asset.u !== undefined || asset.e === 1) {
       imageAssetCount += 1;
       if (asset.e === 1) {
+        nonReplaceableAssetIds.add(id);
         issues.push(issue(
           feedback,
           "unsupported_feature",
@@ -355,7 +363,7 @@ function normalizeAssets(
   });
 
   return {
-    value: { resources, assetIds, imageAssetCount, precompAssetCount },
+    value: { resources, assetIds, nonReplaceableAssetIds, imageAssetCount, precompAssetCount },
     issues
   };
 }
@@ -424,6 +432,7 @@ function normalizeFonts(fonts: LottieDocument["fonts"]): MotionResourceInfo[] {
 function normalizeLayers(
   layers: readonly LottieLayer[],
   assetIds: Set<string>,
+  nonReplaceableAssetIds: Set<string>,
   feedback: SourceFeedback
 ): InternalResult<readonly MotionLayerInfo[]> {
   const issues: LottieJsonInspectionIssue[] = [];
@@ -453,7 +462,7 @@ function normalizeLayers(
       kind,
       resourceIds: refId ? [refId] : [],
       visible: layer.hd === true ? false : undefined,
-      replaceable: kind === "image" || kind === "text",
+      replaceable: kind === "text" || (kind === "image" && !!refId && !nonReplaceableAssetIds.has(refId)),
       metadata: {
         lottieLayerIndex: index,
         lottieType: layer.ty,

@@ -964,8 +964,10 @@ promoted, watched, rejected, or kept historical.
   were not emitted.
 - Candidate rule: For every Lottie structure normalized into `MotionAssetInfo`,
   traverse the nested layer arrays represented by that structure and ensure
-  every emitted layer resource reference resolves to an emitted resource, even
-  when the payload itself remains unsupported.
+  every emitted layer resource reference resolves to an emitted resource and
+  that layer-level replacement candidate flags agree with unsupported resource
+  metadata, even when the payload itself remains unsupported.
 - Evidence: WP2A repair tests cover nested precomp mask/effect paths and a
-  referenced embedded image represented as a non-replaceable metadata resource.
+  referenced embedded image represented as a non-replaceable metadata resource
+  and non-replaceable image layer.
 - Status: watch
