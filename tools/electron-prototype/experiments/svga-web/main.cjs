@@ -23,6 +23,10 @@ const {
   validateSequenceProductRepairProof,
   validateSequenceRepairReportBinding
 } = require("./sequence-repair-proof-contract.cjs");
+const {
+  MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
+  createMultiFormatDesktopPreviewSession
+} = require("./multiformat-desktop-session.cjs");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -88,9 +92,11 @@ const playerIdentity = "svga-web@2.4.4";
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "short-term";
 const isShortTermProduct = productMilestoneId === "short-term";
-const rendererHtmlEntry = isShortTermProduct ? "web/index.html" : "web/workbench.html";
-const rendererEntry = isShortTermProduct ? "web/short-term-macos-app.mjs" : "web/desktop-product-entry.mjs";
-const stylesEntry = isShortTermProduct ? "web/short-term-macos.css" : "web/styles.css";
+const isMultiFormatDesktopProduct = productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;
+const usesShortTermPreviewShell = isShortTermProduct || isMultiFormatDesktopProduct;
+const rendererHtmlEntry = usesShortTermPreviewShell ? "web/index.html" : "web/workbench.html";
+const rendererEntry = usesShortTermPreviewShell ? "web/short-term-macos-app.mjs" : "web/desktop-product-entry.mjs";
+const stylesEntry = usesShortTermPreviewShell ? "web/short-term-macos.css" : "web/styles.css";
 const macosWorkbenchWindowSizing = Object.freeze({
   launch: { width: 640, height: 640 },
   shortTermWorkbench: { width: 1280, height: 800 },
@@ -105,6 +111,7 @@ const macosWorkbenchWindowSizing = Object.freeze({
 });
 const productMilestoneTitle = {
   "short-term": "Short-term SVGA Preview, Inspection, Replacement, And Optimization",
+  [MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID]: "Auto SVGA 0.2 Multi-format Preview Candidate",
   P2: "Desktop Product Shell And Web Preview Parity",
   P3: "Basic Image Resource Replacement And Save As",
   P4: "Multi-Resource Editing, Undo/Redo And Export Integrity",
@@ -153,7 +160,7 @@ let auditFinished = false;
 let cspViolationSeen = false;
 let cleanedUp = false;
 let activeMainWindow;
-let shortTermWindowMode = isShortTermProduct ? "launch" : "workbench";
+let shortTermWindowMode = usesShortTermPreviewShell ? "launch" : "workbench";
 let shortTermLaunchWindowSize = { ...macosWorkbenchWindowSizing.launch };
 let shortTermWindowBoundsTimer;
 let applyingShortTermWindowBounds = false;
@@ -185,6 +192,7 @@ let shortTermMenuState = { ...defaultShortTermMenuState };
 const blockedExternalRequests = [];
 const sourceFilePaths = new Map();
 const referenceFileIds = new Set();
+let multiFormatDesktopSession;
 const maxShortTermRecentFiles = 10;
 const productArtifactIndex = {
   milestoneId: productMilestoneId,
@@ -250,7 +258,7 @@ function chooseMacosLaunchWindowBounds(window) {
 }
 
 function chooseMacosWorkbenchWindowBounds(window) {
-  const targetSize = isShortTermProduct
+  const targetSize = usesShortTermPreviewShell
     ? macosWorkbenchWindowSizing.shortTermWorkbench
     : macosWorkbenchWindowSizing.defaultWorkbench;
   return chooseMacosWindowBounds(targetSize, {
@@ -285,7 +293,7 @@ function setWindowBoundsWithoutRecordingUserResize(window, bounds, animate = fal
 }
 
 function preserveShortTermLaunchWindowBounds(window = activeMainWindow, reason = "unknown") {
-  if (!isShortTermProduct || !window || window.isDestroyed()) return { status: "ignored" };
+  if (!usesShortTermPreviewShell || !window || window.isDestroyed()) return { status: "ignored" };
   if (smokeMode || auditMode || normalProofMode) return { status: "ignored" };
   if (shortTermWindowMode !== "launch") return { status: "ignored", mode: shortTermWindowMode };
 
@@ -311,7 +319,7 @@ function preserveShortTermLaunchWindowBounds(window = activeMainWindow, reason =
 }
 
 function scheduleShortTermLaunchWindowBoundsPreservation(window = activeMainWindow, reason = "unknown") {
-  if (!isShortTermProduct || !window || window.isDestroyed()) return;
+  if (!usesShortTermPreviewShell || !window || window.isDestroyed()) return;
   if (smokeMode || auditMode || normalProofMode) return;
   if (shortTermWindowMode !== "launch") return;
   clearTimeout(shortTermWindowBoundsTimer);
@@ -321,7 +329,7 @@ function scheduleShortTermLaunchWindowBoundsPreservation(window = activeMainWind
 }
 
 function installShortTermWindowBoundsPolicy(window) {
-  if (!isShortTermProduct || smokeMode || auditMode || normalProofMode) return;
+  if (!usesShortTermPreviewShell || smokeMode || auditMode || normalProofMode) return;
 
   window.on("will-resize", (_event, newBounds) => {
     if (shortTermWindowMode !== "launch" || applyingShortTermWindowBounds) return;
@@ -3378,7 +3386,7 @@ function updateShortTermMenuState(input) {
 }
 
 function setShortTermWindowMode(input, window = activeMainWindow) {
-  if (!isShortTermProduct || !window || window.isDestroyed()) return { status: "ignored" };
+  if (!usesShortTermPreviewShell || !window || window.isDestroyed()) return { status: "ignored" };
   if (smokeMode || auditMode || normalProofMode) return { status: "ignored" };
   const mode = stringEnum(input, ["launch", "workbench"], "workbench");
   const previousMode = shortTermWindowMode;
@@ -5047,6 +5055,56 @@ async function openReferenceMediaFile() {
   return openReferenceMediaFileBytes(result.filePaths[0]);
 }
 
+function getMultiFormatDesktopSession() {
+  if (!isMultiFormatDesktopProduct) {
+    throw new Error("Multi-format desktop preview is available only in the formal 0.2 product mode.");
+  }
+  multiFormatDesktopSession ??= createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: sourceFilePaths
+  });
+  return multiFormatDesktopSession;
+}
+
+async function openMultiFormatFilePath(filePath, source = "fileButton") {
+  return getMultiFormatDesktopSession().openLocalFilePath(filePath, source);
+}
+
+async function openMultiFormatFile() {
+  const result = await dialog.showOpenDialog({
+    title: "打开 0.2 预览候选",
+    filters: [
+      { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["svga", "json", "mp4"] },
+      { name: "SVGA", extensions: ["svga"] },
+      { name: "Lottie JSON", extensions: ["json"] },
+      { name: "VAP MP4", extensions: ["mp4"] }
+    ],
+    properties: ["openFile"]
+  });
+  if (result.canceled || !result.filePaths?.[0]) {
+    return { status: "cancelled" };
+  }
+  return openMultiFormatFilePath(result.filePaths[0], "fileButton");
+}
+
+async function openDroppedMultiFormatFile(input) {
+  return getMultiFormatDesktopSession().openDroppedFile(input);
+}
+
+async function controlMultiFormatPreview(input) {
+  return getMultiFormatDesktopSession().control(input);
+}
+
+async function applyMultiFormatReplacement(input) {
+  return getMultiFormatDesktopSession().applyReplacement(input);
+}
+
+async function resetMultiFormatReplacement(input) {
+  void input;
+  return getMultiFormatDesktopSession().resetReplacement();
+}
+
 function writeClipboardText(value) {
   if (typeof value !== "string" || value.length === 0 || value.length > 200_000) {
     throw new Error("Invalid clipboard text payload.");
@@ -5092,8 +5150,8 @@ async function injectOpenedFile(window, selector, opened) {
 }
 
 function rebuildShortTermApplicationMenu() {
-  if (isShortTermProduct && activeMainWindow && !activeMainWindow.isDestroyed()) {
-    installShortTermApplicationMenu(activeMainWindow);
+  if (usesShortTermPreviewShell && activeMainWindow && !activeMainWindow.isDestroyed()) {
+    installApplicationMenu(activeMainWindow);
   }
 }
 
@@ -5385,9 +5443,207 @@ function installShortTermApplicationMenu(window) {
   ]));
 }
 
+function installMultiFormatDesktopApplicationMenu(window) {
+  const invokePreviewAction = (name, ...args) => {
+    window.webContents.executeJavaScript(
+      `window.__autoSvgaShortTermActions?.[${JSON.stringify(name)}]?.(...${JSON.stringify(args)})`
+    ).catch((error) => {
+      console.error(`AUTO_SVGA_MENU_ACTION_ERROR ${name} ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+    });
+  };
+  const menuState = shortTermMenuState;
+  const hasFile = menuState.hasFile;
+  const appMenu = process.platform === "darwin"
+    ? [{
+        label: "Auto SVGA",
+        submenu: [
+          { role: "about", label: "关于 Auto SVGA" },
+          { type: "separator" },
+          {
+            label: "设置...",
+            accelerator: "CommandOrControl+,",
+            click: () => invokePreviewAction("openSettings")
+          },
+          { type: "separator" },
+          { role: "services", label: "服务" },
+          { type: "separator" },
+          { role: "hide", label: "隐藏 Auto SVGA" },
+          { role: "hideOthers", label: "隐藏其他" },
+          { role: "unhide", label: "全部显示" },
+          { type: "separator" },
+          { role: "quit", label: "退出 Auto SVGA" }
+        ]
+      }]
+    : [];
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    ...appMenu,
+    {
+      label: "文件",
+      submenu: [
+        {
+          label: "打开预览候选...",
+          accelerator: "CommandOrControl+O",
+          click: () => invokePreviewAction("openFromHostDialog")
+        },
+        {
+          label: "关闭文件",
+          accelerator: "CommandOrControl+W",
+          enabled: hasFile,
+          click: () => invokePreviewAction("closeFile")
+        },
+        ...(process.platform === "darwin" ? [] : [
+          { type: "separator" },
+          { role: "quit", label: "退出 Auto SVGA" }
+        ])
+      ]
+    },
+    {
+      label: "编辑",
+      submenu: [
+        { label: "剪切", role: "cut" },
+        { label: "复制", role: "copy" },
+        { label: "粘贴", role: "paste" },
+        { label: "全选", role: "selectAll" },
+        { type: "separator" },
+        {
+          label: "取消当前操作",
+          accelerator: "Esc",
+          enabled: menuState.hasTransientState,
+          click: () => invokePreviewAction("cancel")
+        }
+      ]
+    },
+    {
+      label: "视图",
+      submenu: [
+        {
+          label: "预览模式",
+          type: "checkbox",
+          checked: menuState.mode === "preview",
+          enabled: hasFile,
+          click: () => invokePreviewAction("previewMode")
+        },
+        {
+          label: "总览",
+          enabled: hasFile,
+          type: "checkbox",
+          checked: menuState.tab === "overview",
+          click: () => invokePreviewAction("overviewTab")
+        },
+        {
+          label: "可替换元素",
+          enabled: hasFile,
+          type: "checkbox",
+          checked: menuState.tab === "replaceable",
+          click: () => invokePreviewAction("replaceableTab")
+        },
+        { type: "separator" },
+        {
+          label: "外观",
+          submenu: [
+            {
+              label: "跟随系统",
+              type: "radio",
+              checked: menuState.appearance === "system",
+              click: () => invokePreviewAction("setAppearance", "system", { persist: true })
+            },
+            {
+              label: "浅色",
+              type: "radio",
+              checked: menuState.appearance === "light",
+              click: () => invokePreviewAction("setAppearance", "light", { persist: true })
+            },
+            {
+              label: "深色",
+              type: "radio",
+              checked: menuState.appearance === "dark",
+              click: () => invokePreviewAction("setAppearance", "dark", { persist: true })
+            }
+          ]
+        }
+      ]
+    },
+    {
+      label: "播放",
+      submenu: [
+        {
+          label: "播放/暂停",
+          accelerator: "Space",
+          enabled: menuState.canPlay,
+          click: () => invokePreviewAction("playPause")
+        },
+        {
+          label: "重播/恢复",
+          enabled: menuState.canReplay,
+          click: () => invokePreviewAction("replay")
+        },
+        {
+          label: "循环播放",
+          type: "checkbox",
+          checked: menuState.loopEnabled !== false,
+          enabled: menuState.canLoop,
+          click: () => invokePreviewAction("toggleLoop")
+        }
+      ]
+    },
+    {
+      label: "资源",
+      submenu: [
+        {
+          label: "替换预览图片...",
+          enabled: menuState.canReplaceImage,
+          click: () => invokePreviewAction("replaceImage")
+        },
+        {
+          label: "重置预览图片",
+          enabled: menuState.canResetImageReplacement,
+          click: () => invokePreviewAction("resetImageReplacement")
+        },
+        { type: "separator" },
+        {
+          label: "编辑文本预览",
+          enabled: menuState.canEditText,
+          click: () => invokePreviewAction("editTextPreview")
+        },
+        {
+          label: "重置文本预览",
+          enabled: menuState.canResetText,
+          click: () => invokePreviewAction("resetTextPreview")
+        }
+      ]
+    },
+    {
+      label: "窗口",
+      submenu: [
+        { role: "minimize", label: "最小化" },
+        { role: "zoom", label: "缩放" },
+        ...(process.platform === "darwin" ? [
+          { type: "separator" },
+          { role: "front", label: "全部置于最前" }
+        ] : [
+          { role: "close", label: "关闭窗口" }
+        ])
+      ]
+    },
+    {
+      label: "帮助",
+      submenu: [
+        {
+          label: "复制当前状态摘要",
+          click: () => invokePreviewAction("copyStateSummary")
+        }
+      ]
+    }
+  ]));
+}
+
 function installApplicationMenu(window) {
   if (isShortTermProduct) {
     installShortTermApplicationMenu(window);
+    return;
+  }
+  if (isMultiFormatDesktopProduct) {
+    installMultiFormatDesktopApplicationMenu(window);
     return;
   }
   const runRendererMenuAction = (label, code) => {
@@ -5967,7 +6223,7 @@ async function createExperimentWindow() {
   );
   experimentServer = await startSvgaWebExperimentServer({ appRoot, reportToken, desktopArtifacts });
   expectedOrigin = experimentServer.origin;
-  const launchBounds = isShortTermProduct
+  const launchBounds = usesShortTermPreviewShell
     ? chooseMacosLaunchWindowBounds()
     : chooseMacosWorkbenchWindowBounds();
 
@@ -5976,10 +6232,10 @@ async function createExperimentWindow() {
     ...(smokeMode ? { x: -20000, y: -20000 } : { x: launchBounds.x, y: launchBounds.y }),
     width: launchBounds.width,
     height: launchBounds.height,
-    minWidth: isShortTermProduct
+    minWidth: usesShortTermPreviewShell
       ? macosWorkbenchWindowSizing.minimumLaunch.width
       : macosWorkbenchWindowSizing.minimumSupported.width,
-    minHeight: isShortTermProduct
+    minHeight: usesShortTermPreviewShell
       ? macosWorkbenchWindowSizing.minimumLaunch.height
       : macosWorkbenchWindowSizing.minimumSupported.height,
     ...(process.platform === "darwin"
@@ -6104,6 +6360,31 @@ async function createExperimentWindow() {
   ipcMain.handle(IPC_CHANNELS.openSvgaFile, async (event) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     return openSvgaFile();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.openMultiFormatFile, async (event) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return openMultiFormatFile();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.openDroppedMultiFormatFile, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return openDroppedMultiFormatFile(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.controlMultiFormatPreview, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return controlMultiFormatPreview(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.applyMultiFormatReplacement, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return applyMultiFormatReplacement(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.resetMultiFormatReplacement, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    return resetMultiFormatReplacement(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.openReferenceMediaFile, async (event) => {
@@ -6449,7 +6730,7 @@ async function createExperimentWindow() {
     : smokeMode
       ? `?mode=smoke${productSmokeMode ? "&artifacts=1" : ""}`
       : "";
-  const rendererPath = isShortTermProduct ? "/" : "/workbench.html";
+  const rendererPath = usesShortTermPreviewShell ? "/" : "/workbench.html";
   const rendererUrl = auditMode ? `${expectedOrigin}/audit.html?player=${auditPlayer}` : `${expectedOrigin}${rendererPath}${productMode}`;
   if (productSmokeMode) {
     const smokeIdentity = runtimeIdentity("smoke", rendererUrl);

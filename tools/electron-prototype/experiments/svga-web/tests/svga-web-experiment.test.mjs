@@ -36,6 +36,10 @@ const {
   validateSequenceProductRepairProof,
   validateSequenceRepairReportBinding
 } = require("../sequence-repair-proof-contract.cjs");
+const {
+  MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
+  createMultiFormatDesktopPreviewSession
+} = require("../multiformat-desktop-session.cjs");
 
 async function exposePreloadGlobals(productMilestoneId, hostBoundaryMode = "formal") {
   const preloadSource = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
@@ -895,6 +899,97 @@ test("short-term future compatibility guardrails keep current behavior bounded",
   assert.match(shortTermSources["short-term-macos-feedback-surface.mjs"], /showShortTermOperationFailure/);
 });
 
+test("formal preload isolates short-term SVGA from 0.2 multi-format APIs", async () => {
+  const { exposed } = await exposePreloadGlobals("short-term", "formal");
+  const api = exposed.autoSvgaElectronHost;
+
+  assert.deepEqual([...api.capabilities.documentTypes], ["svga"]);
+  assert.equal(typeof api.openSvgaFile, "function");
+  assert.equal(typeof api.saveShortTermSvgaOutput, "function");
+  assert.equal(api.openMultiFormatFile, undefined);
+  assert.equal(api.openDroppedMultiFormatFile, undefined);
+  assert.equal(api.controlMultiFormatPreview, undefined);
+  assert.equal(api.applyMultiFormatReplacement, undefined);
+  assert.equal(api.resetMultiFormatReplacement, undefined);
+  assert.equal(exposed.autoSvgaPrototype, undefined);
+});
+
+test("formal 0.2 multi-format preload exposes only the gated preview bridge", async () => {
+  const { exposed, invocations } = await exposePreloadGlobals("0.2-multiformat-preview", "formal");
+  const api = exposed.autoSvgaElectronHost;
+
+  assert.deepEqual([...api.capabilities.documentTypes], ["svga", "lottie-json", "vap-mp4"]);
+  assert.equal(api.capabilities.saveAs, false);
+  assert.equal(api.capabilities.overwriteSave, false);
+  assert.equal(api.capabilities.export, false);
+  assert.equal(api.capabilities.visibleIn01, false);
+  assert.equal(api.capabilities.supportClaim, false);
+  assert.equal(api.openSvgaFile, undefined);
+  assert.equal(api.saveShortTermSvgaOutput, undefined);
+  assert.equal(exposed.autoSvgaPrototype, undefined);
+
+  api.openMultiFormatFile();
+  api.openDroppedMultiFormatFile({ displayName: "fixture.json", bytes: [123, 125] });
+  api.controlMultiFormatPreview({ action: "play" });
+  api.applyMultiFormatReplacement({ targetId: "asset", kind: "image", value: "data:image/png;base64,AA==" });
+  api.resetMultiFormatReplacement();
+
+  assert.deepEqual(invocations.map(({ channel }) => channel), [
+    "svga-web-experiment:open-multiformat-file",
+    "svga-web-experiment:open-dropped-multiformat-file",
+    "svga-web-experiment:control-multiformat-preview",
+    "svga-web-experiment:apply-multiformat-replacement",
+    "svga-web-experiment:reset-multiformat-replacement"
+  ]);
+});
+
+test("0.2 multi-format desktop mode reuses the preview shell without widening short-term identity", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const appEntry = await readFile(path.join(experimentRoot, "web/short-term-macos-app.mjs"), "utf8");
+  const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
+  const session = await readFile(path.join(experimentRoot, "multiformat-desktop-session.cjs"), "utf8");
+
+  assert.match(main, /const isShortTermProduct = productMilestoneId === "short-term";/);
+  assert.match(main, /const isMultiFormatDesktopProduct = productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;/);
+  assert.match(main, /const usesShortTermPreviewShell = isShortTermProduct \|\| isMultiFormatDesktopProduct;/);
+  assert.match(main, /const rendererPath = usesShortTermPreviewShell \? "\/" : "\/workbench\.html";/);
+  assert.match(main, /function installMultiFormatDesktopApplicationMenu/);
+  assert.match(main, /openDroppedMultiFormatFile\(input\)/);
+  assert.match(appEntry, /bridge\?\.productMilestoneId === "0\.2-multiformat-preview"/);
+  assert.match(appEntry, /createMultiFormatDesktopPreviewController/);
+  assert.match(controller, /saveAs: false|0\.2 预览候选不支持保存/);
+  assert.match(session, /rendererHasFullPath|pathRedacted/);
+  assert.match(session, /lottieLoads|vapLoads|objectUrlsRevoked/);
+});
+
+test("0.2 multi-format desktop session rejects unsupported drops before source registration", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-wp6-session-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore
+  });
+
+  assert.equal(MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID, "0.2-multiformat-preview");
+  try {
+    await assert.rejects(
+      session.openDroppedFile({
+        displayName: "../unsafe-preview.gif",
+        bytes: [71, 73, 70, 56]
+      }),
+      (error) => {
+        assert.match(String(error?.message ?? error), /Only local SVGA, Lottie JSON, and VAP\/MP4 candidates/);
+        assert.doesNotMatch(String(error?.message ?? error), /auto-svga-wp6-session|unsafe-preview/);
+        return true;
+      }
+    );
+    assert.equal(sourceStore.size, 0);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
 test("server uses bounded internal-trial CSP and keeps report API token-bound", async () => {
   assert.match(strictCsp, /script-src 'self'/);
   assert.match(strictCsp, /wasm-unsafe-eval/);
@@ -1407,13 +1502,13 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /defaultWorkbench:\s*\{\s*width:\s*1440,\s*height:\s*900\s*\}/);
 	  assert.match(main, /minimumSupported:\s*\{\s*width:\s*1180,\s*height:\s*760\s*\}/);
 	  assert.match(main, /legacyStressViewport:\s*\{\s*width:\s*900,\s*height:\s*720\s*\}/);
-	  assert.match(main, /let shortTermWindowMode = isShortTermProduct \? "launch" : "workbench"/);
+	  assert.match(main, /let shortTermWindowMode = usesShortTermPreviewShell \? "launch" : "workbench"/);
 	  assert.match(main, /function installShortTermWindowBoundsPolicy/);
 	  assert.match(main, /preserveShortTermLaunchWindowBounds/);
 	  assert.match(main, /display-metrics-changed/);
 	  assert.match(main, /window\.on\("move"/);
 	  assert.match(main, /window\.on\("resize"/);
-	  assert.match(main, /const targetSize = isShortTermProduct[\s\S]*macosWorkbenchWindowSizing\.shortTermWorkbench[\s\S]*macosWorkbenchWindowSizing\.defaultWorkbench/);
+	  assert.match(main, /const targetSize = usesShortTermPreviewShell[\s\S]*macosWorkbenchWindowSizing\.shortTermWorkbench[\s\S]*macosWorkbenchWindowSizing\.defaultWorkbench/);
 	  assert.match(main, /scenario === "desktop-1440x900"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-preview-overview"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/);
 	  assert.match(main, /scenario === "short-term-preview-overview-wide"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/);
@@ -1427,8 +1522,8 @@ test("main process keeps sandboxed Electron security settings", async () => {
 	  assert.match(main, /"short-term-drag-decision-supported",/);
 	  assert.match(main, /"short-term-drag-decision-unsupported",/);
 	  assert.match(main, /scenario === "desktop-1280x800"\) window\.setContentSize\(macosWorkbenchWindowSizing\.comfortable\.width, macosWorkbenchWindowSizing\.comfortable\.height\)/);
-	  assert.match(main, /minWidth:\s*isShortTermProduct[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.width[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.width/);
-	  assert.match(main, /minHeight:\s*isShortTermProduct[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.height[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.height/);
+	  assert.match(main, /minWidth:\s*usesShortTermPreviewShell[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.width[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.width/);
+	  assert.match(main, /minHeight:\s*usesShortTermPreviewShell[\s\S]*macosWorkbenchWindowSizing\.minimumLaunch\.height[\s\S]*macosWorkbenchWindowSizing\.minimumSupported\.height/);
 	  assert.match(main, /environmentOverrides: \{\}/);
   assert.match(main, /rendererQuery: rendererProbe\.rendererQuery/);
   assert.match(main, /noProofMode: true/);
@@ -3423,8 +3518,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
     desktopEntry.indexOf("class CompatibleSvgaParser") < desktopEntry.indexOf("installSvgaWebCompatibility();"),
     "svga-web compatibility classes must be defined before installation"
   );
-  assert.match(main, /rendererEntry = isShortTermProduct \? "web\/short-term-macos-app\.mjs"/);
-  assert.match(main, /rendererPath = isShortTermProduct \? "\/" : "\/workbench\.html"/);
+  assert.match(main, /rendererEntry = usesShortTermPreviewShell \? "web\/short-term-macos-app\.mjs"/);
+  assert.match(main, /rendererPath = usesShortTermPreviewShell \? "\/" : "\/workbench\.html"/);
   assert.match(main, /const productArtifactRoot = process\.env\.AUTO_SVGA_PRODUCT_ARTIFACTS[\s\S]*path\.join\(repoRoot, "\.artifacts\/product", productMilestoneId\)/);
   assert.match(main, /path: `\.artifacts\/product\/\$\{productMilestoneId\}\/\$\{fileName\}`/);
   assert.doesNotMatch(main, /productArtifactRoot[\s\S]{0,160}\.artifacts\/internal-trial/);

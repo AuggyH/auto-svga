@@ -3,6 +3,7 @@
 const ELECTRON_HOST_ADAPTER_VERSION = 1;
 const ELECTRON_HOST_BRIDGE_NAME = "autoSvgaElectronHost";
 const LEGACY_PROTOTYPE_BRIDGE_NAME = "autoSvgaPrototype";
+const MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID = "0.2-multiformat-preview";
 
 const IPC_CHANNELS = Object.freeze({
   smokeResult: "svga-web-experiment:smoke-result",
@@ -16,6 +17,11 @@ const IPC_CHANNELS = Object.freeze({
   getRecentSvgaFiles: "svga-web-experiment:get-recent-svga-files",
   openRecentSvgaFile: "svga-web-experiment:open-recent-svga-file",
   clearRecentSvgaFiles: "svga-web-experiment:clear-recent-svga-files",
+  openMultiFormatFile: "svga-web-experiment:open-multiformat-file",
+  openDroppedMultiFormatFile: "svga-web-experiment:open-dropped-multiformat-file",
+  controlMultiFormatPreview: "svga-web-experiment:control-multiformat-preview",
+  applyMultiFormatReplacement: "svga-web-experiment:apply-multiformat-replacement",
+  resetMultiFormatReplacement: "svga-web-experiment:reset-multiformat-replacement",
   getAebIntakeReport: "svga-web-experiment:get-aeb-intake-report",
   writeClipboardText: "svga-web-experiment:write-clipboard-text",
   updateShortTermMenuState: "svga-web-experiment:update-short-term-menu-state",
@@ -30,6 +36,7 @@ const IPC_CHANNELS = Object.freeze({
 });
 
 const DOCUMENT_TYPES = Object.freeze(["svga"]);
+const MULTIFORMAT_DOCUMENT_TYPES = Object.freeze(["svga", "lottie-json", "vap-mp4"]);
 
 function createSecureWebPreferences({ preloadPath, reportToken, productMilestoneId, hostBoundaryMode = "formal" }) {
   return {
@@ -113,6 +120,58 @@ function createAebProductPreloadApi(invoke, { productMilestoneId }) {
     },
     getAebIntakeReport() {
       return invoke(IPC_CHANNELS.getAebIntakeReport);
+    }
+  });
+}
+
+function createMultiFormatDesktopProductPreloadApi(invoke, { reportToken, productMilestoneId }) {
+  return freezePreloadApi({
+    hostAdapterVersion: ELECTRON_HOST_ADAPTER_VERSION,
+    productMilestoneId,
+    reportToken,
+    localOnly: true,
+    telemetry: "disabled",
+    capabilities: {
+      documentTypes: MULTIFORMAT_DOCUMENT_TYPES,
+      fileOpen: "host-dialog-svga-lottie-json-vap-mp4",
+      dragDrop: "renderer-file-copy-to-session-temp-path-redacted",
+      recentFiles: "not-enabled-for-0.2-candidate",
+      clipboardWrite: "host-clipboard-write-text-only",
+      finderDocumentAssociation: "not-declared",
+      replacementPreview: "runtime-only-no-save-export",
+      saveAs: false,
+      overwriteSave: false,
+      export: false,
+      arbitraryFileSystemAccess: false,
+      shellAccess: false,
+      remoteNavigation: false,
+      newWindows: false,
+      supportClaim: false,
+      visibleIn01: false
+    },
+    openMultiFormatFile() {
+      return invoke(IPC_CHANNELS.openMultiFormatFile);
+    },
+    openDroppedMultiFormatFile(input) {
+      return invoke(IPC_CHANNELS.openDroppedMultiFormatFile, input);
+    },
+    controlMultiFormatPreview(input) {
+      return invoke(IPC_CHANNELS.controlMultiFormatPreview, input);
+    },
+    applyMultiFormatReplacement(input) {
+      return invoke(IPC_CHANNELS.applyMultiFormatReplacement, input);
+    },
+    resetMultiFormatReplacement(input) {
+      return invoke(IPC_CHANNELS.resetMultiFormatReplacement, input);
+    },
+    writeClipboardText(text) {
+      return invoke(IPC_CHANNELS.writeClipboardText, text);
+    },
+    updateShortTermMenuState(state) {
+      return invoke(IPC_CHANNELS.updateShortTermMenuState, state);
+    },
+    setShortTermWindowMode(mode) {
+      return invoke(IPC_CHANNELS.setShortTermWindowMode, mode);
     }
   });
 }
@@ -250,6 +309,9 @@ function createProductPreloadApi(invoke, options) {
   if (options.productMilestoneId === "aeb") {
     return createAebProductPreloadApi(invoke, options);
   }
+  if (options.productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID) {
+    return createMultiFormatDesktopProductPreloadApi(invoke, options);
+  }
   if (options.productMilestoneId === "short-term") {
     if ((options.hostBoundaryMode ?? "formal") === "formal") {
       return createShortTermProductPreloadApi(invoke, options);
@@ -287,8 +349,11 @@ module.exports = {
   ELECTRON_HOST_BRIDGE_NAME,
   IPC_CHANNELS,
   LEGACY_PROTOTYPE_BRIDGE_NAME,
+  MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
+  MULTIFORMAT_DOCUMENT_TYPES,
   createAebProductPreloadApi,
   createLegacyPrototypePreloadApi,
+  createMultiFormatDesktopProductPreloadApi,
   createPreloadApi,
   createProductPreloadApi,
   createSecureWebPreferences,

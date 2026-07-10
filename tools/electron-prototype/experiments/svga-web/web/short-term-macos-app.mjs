@@ -8,7 +8,12 @@ import { runShortTermSmokeIfRequested } from "./short-term-macos-smoke-runner.mj
 const bridge = globalThis.autoSvgaElectronHost;
 const state = createShortTermInitialState();
 const nodes = collectShortTermNodes();
-const controller = createShortTermAppController({ bridge, nodes, state });
+const multiFormatModule = bridge?.productMilestoneId === "0.2-multiformat-preview"
+  ? await import("./multiformat-desktop-preview-controller.mjs")
+  : undefined;
+const controller = multiFormatModule
+  ? multiFormatModule.createMultiFormatDesktopPreviewController({ bridge, nodes, state })
+  : createShortTermAppController({ bridge, nodes, state });
 
 bindShortTermInteractionEvents({
   nodes,
@@ -23,9 +28,11 @@ installShortTermActionBridge({
 });
 
 controller.initialize();
-runShortTermSmokeIfRequested({
-  bridge,
-  nodes,
-  state,
-  ...controller.handlers
-}).catch(() => {});
+if (bridge?.productMilestoneId !== "0.2-multiformat-preview") {
+  runShortTermSmokeIfRequested({
+    bridge,
+    nodes,
+    state,
+    ...controller.handlers
+  }).catch(() => {});
+}

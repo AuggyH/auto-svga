@@ -1184,3 +1184,17 @@ promoted, watched, rejected, or kept historical.
   reload fails after preflight.
 - Status: Candidate pending Code Review re-review and reuse in WP6 desktop
   integration.
+
+## 2026-07-11: Split Product-mode Bridges Instead Of Widening 0.1 Formal APIs
+
+- Candidate lesson: When a future product mode becomes visible, give it a
+  separate preload/API bridge and menu contract instead of adding optional
+  future-format methods to the current formal `0.1` bridge. This keeps current
+  owner-visible behavior auditable and makes support claims explicit.
+- Evidence: WP6 adds the formal `0.2-multiformat-preview` desktop mode on the
+  canonical UIUX/HB host base. The 0.2 bridge exposes local SVGA/Lottie/VAP
+  preview operations, while the `short-term` formal bridge continues to expose
+  only SVGA open/save APIs. Focused Electron tests prove both bridge shapes and
+  the short-term design-system guard still pass.
+- Status: Candidate pending WP6 Code Review and future package-candidate
+  validation.

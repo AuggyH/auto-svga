@@ -794,7 +794,7 @@ async function main() {
     && /launch:\s*\{\s*width:\s*640,\s*height:\s*640\s*\}/.test(mainProcess)
     && /shortTermWorkbench:\s*\{\s*width:\s*1280,\s*height:\s*800\s*\}/.test(mainProcess)
     && /comfortable:\s*\{\s*width:\s*1280,\s*height:\s*800\s*\}/.test(mainProcess)
-    && /const targetSize = isShortTermProduct[\s\S]*macosWorkbenchWindowSizing\.shortTermWorkbench[\s\S]*macosWorkbenchWindowSizing\.defaultWorkbench/.test(mainProcess)
+    && /const targetSize = usesShortTermPreviewShell[\s\S]*macosWorkbenchWindowSizing\.shortTermWorkbench[\s\S]*macosWorkbenchWindowSizing\.defaultWorkbench/.test(mainProcess)
     && /scenario === "short-term-preview-overview"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/.test(mainProcess)
     && /scenario === "short-term-preview-overview-wide"\) window\.setContentSize\(macosWorkbenchWindowSizing\.defaultWorkbench\.width, macosWorkbenchWindowSizing\.defaultWorkbench\.height\)/.test(mainProcess)
     && /scenario === "short-term-general-compare"\) window\.setContentSize\(macosWorkbenchWindowSizing\.shortTermWorkbench\.width, macosWorkbenchWindowSizing\.shortTermWorkbench\.height\)/.test(mainProcess)
