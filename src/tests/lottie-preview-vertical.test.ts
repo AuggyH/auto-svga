@@ -216,6 +216,91 @@ test("hidden Lottie vertical maps renderer load failures to typed playback failu
   assert.equal(animations.length, 1);
 });
 
+test("hidden Lottie vertical ignores a stale slow open after a faster newer open wins", async () => {
+  const slowPath = "/Users/designer/Secret Campaign/slow.json";
+  const fastPath = "/Users/designer/Secret Campaign/fast.json";
+  const host = memoryHost({
+    [slowPath]: minimalLottie({ w: 111, h: 100, layers: [{ ind: 1, ty: 4, nm: "slow shape" }] }),
+    [fastPath]: minimalLottie({ w: 222, h: 100, layers: [{ ind: 1, ty: 4, nm: "fast shape" }] })
+  });
+  const slowReadGate = deferred<void>();
+  const originalReadRange = host.readLocalFileRange.bind(host);
+  let slowReadBlocked = false;
+  host.readLocalFileRange = async (localPath, offset, length) => {
+    if (localPath === slowPath && !slowReadBlocked) {
+      slowReadBlocked = true;
+      await slowReadGate.promise;
+    }
+    return originalReadRange(localPath, offset, length);
+  };
+  const loadCalls: LottieSvgLoadOptions[] = [];
+  const session = createHiddenLottiePreviewVerticalSession({
+    host,
+    target: { container: {} },
+    rendererLoader: async () => fakeRenderer(loadCalls)
+  });
+
+  const slowOpen = session.openLocalCandidate({
+    gate: HIDDEN_LOTTIE_PREVIEW_VERTICAL_GATE,
+    requestId: "slow",
+    source: "fileButton",
+    localPath: slowPath
+  });
+  await waitUntil(() => slowReadBlocked);
+
+  const fastModel = await session.openLocalCandidate({
+    gate: HIDDEN_LOTTIE_PREVIEW_VERTICAL_GATE,
+    requestId: "fast",
+    source: "dragDrop",
+    localPath: fastPath
+  });
+
+  assert.equal(fastModel.status, "ready");
+  assert.equal(fastModel.requestId, "fast");
+  assert.equal(fastModel.displayName, "fast.json");
+  assert.equal(fastModel.overview?.dimensions, "222 x 100");
+
+  slowReadGate.resolve();
+  const staleReturn = await slowOpen;
+  const finalModel = session.getModel();
+
+  assert.equal(staleReturn.requestId, "fast");
+  assert.equal(staleReturn.displayName, "fast.json");
+  assert.equal(staleReturn.overview?.dimensions, "222 x 100");
+  assert.equal(finalModel.requestId, "fast");
+  assert.equal(finalModel.displayName, "fast.json");
+  assert.equal(finalModel.overview?.dimensions, "222 x 100");
+  assert.equal(loadCalls.length, 1);
+  assertNoLocalPaths(finalModel);
+});
+
+test("hidden Lottie vertical keeps disposed sessions terminal for later public controls", async () => {
+  const localPath = "/Users/designer/Secret Campaign/inline.json";
+  const session = createHiddenLottiePreviewVerticalSession({
+    host: memoryHost({ [localPath]: minimalLottie({ layers: [{ ind: 1, ty: 4 }] }) }),
+    target: { container: {} },
+    rendererLoader: async () => fakeRenderer()
+  });
+
+  const opened = await session.openLocalCandidate({
+    gate: HIDDEN_LOTTIE_PREVIEW_VERTICAL_GATE,
+    requestId: "open-1",
+    source: "fileButton",
+    localPath
+  });
+  assert.equal(opened.status, "ready");
+
+  const disposed = session.dispose();
+  assert.equal(disposed.status, "disposed");
+
+  assert.equal((await session.play()).status, "disposed");
+  assert.equal(session.pause().status, "disposed");
+  assert.equal(session.seek(250).status, "disposed");
+  assert.equal(session.setLoop(true).status, "disposed");
+  assert.equal((await session.recoverPlayback()).status, "disposed");
+  assert.equal(session.getModel().issues.some(({ code }) => code === "playback_failure"), false);
+});
+
 test("Node hidden Lottie host proves range reads and adjacent resource resolution on synthetic temp files", async () => {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-"));
   try {
@@ -389,6 +474,24 @@ class FakeAnimation implements LottieSvgAnimationItem {
   emit(eventName: string): void {
     for (const handler of this.listeners.get(eventName) ?? []) handler();
   }
+}
+
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reject: (reason?: unknown) => void } {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+async function waitUntil(predicate: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  throw new Error("Timed out waiting for asynchronous test condition.");
 }
 
 function assertNoLocalPaths(value: unknown): void {

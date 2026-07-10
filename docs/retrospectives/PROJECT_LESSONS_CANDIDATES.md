@@ -1031,3 +1031,18 @@ promoted, watched, rejected, or kept historical.
   explicitly allowed.
 - Status: Candidate pending reuse in VAP fusion resources or visible 0.2
   integration.
+
+## 2026-07-10: Bind Local Opens To Request Generations
+
+- Candidate lesson: Local open flows that cross host reads, format probing,
+  inspection, resource resolution, and renderer preparation need a request
+  generation guard after every awaited boundary. Request ids and display names
+  on the current model are not enough to prove stale async work still owns the
+  source content it is about to commit.
+- Evidence: The hidden Lottie preview vertical Code Review probe showed a slow
+  first open could overwrite a faster second open with stale inspection and
+  playback content while leaving the newer request id visible. A delayed
+  range-read regression plus generation/session binding now keeps the fast
+  model final and prevents disposed sessions from later controls.
+- Status: Candidate pending reuse in visible 0.2 open integration and VAP
+  inspector/playback paths.

@@ -203,6 +203,7 @@ export class HiddenLottiePreviewVerticalSession {
   private playbackSession?: PlaybackSession;
   private prepared?: PreparedPlayback;
   private model: HiddenLottiePreviewModel = idleModel();
+  private activeRequestGeneration = 0;
 
   constructor(options: CreateHiddenLottiePreviewVerticalSessionOptions) {
     this.host = options.host;
@@ -215,8 +216,7 @@ export class HiddenLottiePreviewVerticalSession {
   }
 
   async openLocalCandidate(input: HiddenLottiePreviewOpenInput): Promise<HiddenLottiePreviewModel> {
-    this.disposePlaybackSession();
-    this.prepared = undefined;
+    const generation = this.beginOpenRequest();
 
     const validationIssue = validateOpenInput(input);
     if (validationIssue) {
@@ -235,6 +235,7 @@ export class HiddenLottiePreviewVerticalSession {
     };
 
     const sourceResult = await this.createBoundedSource(input.localPath, displayName);
+    if (!this.isActiveRequest(generation)) return this.getModel();
     if (!sourceResult.value) {
       this.model = {
         ...this.model,
@@ -249,6 +250,7 @@ export class HiddenLottiePreviewVerticalSession {
     const detection = await this.probeService.probe(source, {
       gate: MULTIFORMAT_PREVIEW_WP1_GATE
     });
+    if (!this.isActiveRequest(generation)) return this.getModel();
     if (detection.status !== "detected" || detection.format !== "lottie") {
       this.model = {
         ...this.model,
@@ -262,6 +264,7 @@ export class HiddenLottiePreviewVerticalSession {
     const inspection = await this.inspectionService.inspect(source, {
       gate: LOTTIE_JSON_INSPECTION_WP2A_GATE
     });
+    if (!this.isActiveRequest(generation)) return this.getModel();
     if (!inspection.value) {
       this.model = {
         ...this.model,
@@ -293,6 +296,7 @@ export class HiddenLottiePreviewVerticalSession {
     }
 
     const imageResolution = await resolveImageResources(this.host, source, inspection.value);
+    if (!this.isActiveRequest(generation)) return this.getModel();
     const assetRows = mergeResolvedAssetRows(this.model.assets, imageResolution.rows);
     if (imageResolution.issues.length > 0) {
       this.model = {
@@ -310,6 +314,7 @@ export class HiddenLottiePreviewVerticalSession {
     }
 
     const animationData = await inlineResolvedImageData(source, imageResolution.dataUris);
+    if (!this.isActiveRequest(generation)) return this.getModel();
     if (!animationData.value) {
       this.model = {
         ...this.model,
@@ -334,22 +339,29 @@ export class HiddenLottiePreviewVerticalSession {
       inspection,
       allowResolvedImageResources: imageResolution.dataUris.size > 0
     };
-    await this.loadPreparedPlayback();
+    await this.loadPreparedPlayback(generation);
     return this.getModel();
   }
 
   async play(): Promise<HiddenLottiePreviewModel> {
-    if (!this.playbackSession) return this.playbackOperationFailed("play", "playback_session_missing");
+    if (this.isDisposed()) return this.getModel();
+    const playbackSession = this.playbackSession;
+    if (!playbackSession) return this.playbackOperationFailed("play", "playback_session_missing");
+    const generation = this.activeRequestGeneration;
     try {
-      await this.playbackSession.play();
-      this.model = { ...this.model, status: "playing", playback: this.playbackSession.getState() };
+      await playbackSession.play();
+      if (!this.isActivePlaybackSession(playbackSession, generation)) return this.getModel();
+      this.model = { ...this.model, status: "playing", playback: playbackSession.getState() };
     } catch (error) {
-      this.failPlaybackOperation(error, "play", "playback_play_failed");
+      if (this.isActivePlaybackSession(playbackSession, generation)) {
+        this.failPlaybackOperation(error, "play", "playback_play_failed");
+      }
     }
     return this.getModel();
   }
 
   pause(): HiddenLottiePreviewModel {
+    if (this.isDisposed()) return this.getModel();
     if (!this.playbackSession) return this.playbackOperationFailed("pause", "playback_session_missing");
     try {
       this.playbackSession.pause();
@@ -361,6 +373,7 @@ export class HiddenLottiePreviewVerticalSession {
   }
 
   seek(timeMs: number): HiddenLottiePreviewModel {
+    if (this.isDisposed()) return this.getModel();
     if (!this.playbackSession) return this.playbackOperationFailed("seek", "playback_session_missing");
     try {
       this.playbackSession.seek(timeMs);
@@ -372,6 +385,7 @@ export class HiddenLottiePreviewVerticalSession {
   }
 
   setLoop(loop: boolean): HiddenLottiePreviewModel {
+    if (this.isDisposed()) return this.getModel();
     if (!this.playbackSession) return this.playbackOperationFailed("loop", "playback_session_missing");
     try {
       this.playbackSession.setLoop(loop);
@@ -383,13 +397,16 @@ export class HiddenLottiePreviewVerticalSession {
   }
 
   async recoverPlayback(): Promise<HiddenLottiePreviewModel> {
+    if (this.isDisposed()) return this.getModel();
     if (!this.prepared) return this.playbackOperationFailed("recover", "playback_recovery_unavailable");
+    const generation = this.activeRequestGeneration;
     this.disposePlaybackSession();
-    await this.loadPreparedPlayback();
+    await this.loadPreparedPlayback(generation);
     return this.getModel();
   }
 
   dispose(): HiddenLottiePreviewModel {
+    this.activeRequestGeneration += 1;
     this.disposePlaybackSession();
     this.prepared = undefined;
     this.model = {
@@ -438,25 +455,35 @@ export class HiddenLottiePreviewVerticalSession {
     }
   }
 
-  private async loadPreparedPlayback(): Promise<void> {
-    if (!this.prepared) return;
-    const inspection = this.prepared.inspection;
+  private async loadPreparedPlayback(generation: number): Promise<void> {
+    if (!this.isActiveRequest(generation) || !this.prepared) return;
+    const prepared = this.prepared;
+    const inspection = prepared.inspection;
     const adapter = new LottieSvgPlaybackAdapter({
       gate: LOTTIE_SVG_PLAYBACK_WP2B_GATE,
       ...(this.rendererLoader ? { rendererLoader: this.rendererLoader } : {}),
       inspectionService: {
         inspect: async () => inspection
       } as LottieJsonInspectionService,
-      allowResolvedImageResources: this.prepared.allowResolvedImageResources
+      allowResolvedImageResources: prepared.allowResolvedImageResources
     });
-    this.playbackSession = adapter.createSession(this.target);
-    const loaded = await this.playbackSession.load(this.prepared.source);
+    const playbackSession = adapter.createSession(this.target);
+    if (!this.isActiveRequest(generation) || this.prepared !== prepared) {
+      playbackSession.dispose();
+      return;
+    }
+    this.playbackSession = playbackSession;
+    const loaded = await playbackSession.load(prepared.source);
+    if (!this.isActivePlaybackSession(playbackSession, generation) || this.prepared !== prepared) {
+      playbackSession.dispose();
+      return;
+    }
     if (!loaded.value) {
       this.model = {
         ...this.model,
         status: "playbackFailed",
-        issues: [...this.model.issues, ...mapIssues(loaded.issues, this.prepared.source, "playback_failure")],
-        playback: this.playbackSession.getState()
+        issues: [...this.model.issues, ...mapIssues(loaded.issues, prepared.source, "playback_failure")],
+        playback: playbackSession.getState()
       };
       this.disposePlaybackSession();
       return;
@@ -464,9 +491,28 @@ export class HiddenLottiePreviewVerticalSession {
     this.model = {
       ...this.model,
       status: "ready",
-      issues: [...this.model.issues, ...mapIssues(loaded.issues, this.prepared.source, "playback_failure")],
-      playback: this.playbackSession.getState()
+      issues: [...this.model.issues, ...mapIssues(loaded.issues, prepared.source, "playback_failure")],
+      playback: playbackSession.getState()
     };
+  }
+
+  private beginOpenRequest(): number {
+    this.activeRequestGeneration += 1;
+    this.disposePlaybackSession();
+    this.prepared = undefined;
+    return this.activeRequestGeneration;
+  }
+
+  private isActiveRequest(generation: number): boolean {
+    return this.activeRequestGeneration === generation && !this.isDisposed();
+  }
+
+  private isActivePlaybackSession(playbackSession: PlaybackSession, generation: number): boolean {
+    return this.playbackSession === playbackSession && this.isActiveRequest(generation);
+  }
+
+  private isDisposed(): boolean {
+    return this.model.status === "disposed";
   }
 
   private disposePlaybackSession(): void {
