@@ -962,6 +962,41 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
   assert.match(session, /lottieLoads|vapLoads|objectUrlsRevoked/);
 });
 
+test("formal 0.1 direct multi-format IPC calls are guarded before host side effects", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const openFunctionStart = main.indexOf("async function openMultiFormatFile()");
+  const openDropFunctionStart = main.indexOf("async function openDroppedMultiFormatFile", openFunctionStart + 1);
+  assert.notEqual(openFunctionStart, -1);
+  assert.notEqual(openDropFunctionStart, -1);
+
+  const openFunctionSource = main.slice(openFunctionStart, openDropFunctionStart);
+  assert.match(openFunctionSource, /assertMultiFormatDesktopProduct\(\);[\s\S]*dialog\.showOpenDialog/);
+  assert.ok(
+    openFunctionSource.indexOf("assertMultiFormatDesktopProduct();") < openFunctionSource.indexOf("dialog.showOpenDialog"),
+    "multi-format file dialog must be gated before showOpenDialog"
+  );
+
+  const guardedChannels = [
+    ["openMultiFormatFile", "openMultiFormatFile()"],
+    ["openDroppedMultiFormatFile", "openDroppedMultiFormatFile(input)"],
+    ["controlMultiFormatPreview", "controlMultiFormatPreview(input)"],
+    ["applyMultiFormatReplacement", "applyMultiFormatReplacement(input)"],
+    ["resetMultiFormatReplacement", "resetMultiFormatReplacement(input)"]
+  ];
+  for (const [channel, targetCall] of guardedChannels) {
+    const handlerStart = main.indexOf(`ipcMain.handle(IPC_CHANNELS.${channel}`);
+    const nextHandlerStart = main.indexOf("ipcMain.handle(", handlerStart + 1);
+    assert.notEqual(handlerStart, -1, `${channel} IPC handler must exist`);
+    assert.notEqual(nextHandlerStart, -1, `${channel} IPC handler must be bounded by the next handler`);
+    const handlerSource = main.slice(handlerStart, nextHandlerStart);
+    assert.match(handlerSource, /assertMultiFormatDesktopProduct\(\);/);
+    assert.ok(
+      handlerSource.indexOf("assertMultiFormatDesktopProduct();") < handlerSource.indexOf(targetCall),
+      `${channel} must reject non-0.2 callers before ${targetCall}`
+    );
+  }
+});
+
 test("0.2 multi-format desktop session rejects unsupported drops before source registration", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-wp6-session-"));
   const sourceStore = new Map();

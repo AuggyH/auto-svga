@@ -5055,10 +5055,14 @@ async function openReferenceMediaFile() {
   return openReferenceMediaFileBytes(result.filePaths[0]);
 }
 
-function getMultiFormatDesktopSession() {
+function assertMultiFormatDesktopProduct() {
   if (!isMultiFormatDesktopProduct) {
     throw new Error("Multi-format desktop preview is available only in the formal 0.2 product mode.");
   }
+}
+
+function getMultiFormatDesktopSession() {
+  assertMultiFormatDesktopProduct();
   multiFormatDesktopSession ??= createMultiFormatDesktopPreviewSession({
     repoRoot,
     sessionRoot,
@@ -5072,6 +5076,7 @@ async function openMultiFormatFilePath(filePath, source = "fileButton") {
 }
 
 async function openMultiFormatFile() {
+  assertMultiFormatDesktopProduct();
   const result = await dialog.showOpenDialog({
     title: "打开 0.2 预览候选",
     filters: [
@@ -6364,26 +6369,31 @@ async function createExperimentWindow() {
 
   ipcMain.handle(IPC_CHANNELS.openMultiFormatFile, async (event) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
     return openMultiFormatFile();
   });
 
   ipcMain.handle(IPC_CHANNELS.openDroppedMultiFormatFile, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
     return openDroppedMultiFormatFile(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.controlMultiFormatPreview, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
     return controlMultiFormatPreview(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.applyMultiFormatReplacement, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
     return applyMultiFormatReplacement(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.resetMultiFormatReplacement, async (event, input) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
     return resetMultiFormatReplacement(input);
   });
 

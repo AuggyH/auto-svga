@@ -1198,3 +1198,17 @@ promoted, watched, rejected, or kept historical.
   the short-term design-system guard still pass.
 - Status: Candidate pending WP6 Code Review and future package-candidate
   validation.
+
+## 2026-07-11: Guard Hidden IPC Before Host UI Side Effects
+
+- Candidate lesson: Preload isolation is not enough for future product modes.
+  Hidden main-process IPC channels must perform product-mode rejection before
+  file dialogs, session construction, source registration, renderer calls, or
+  replacement/playback side effects.
+- Evidence: WP6 repair for `MF-WP6-CR-001` adds a pre-dialog guard to
+  `openMultiFormatFile()` and repeats the product-mode assertion in every
+  multi-format IPC handler before delegating to open/drop/control/replace/reset
+  targets. Focused regression proves the guard order without foreground
+  Electron automation.
+- Status: Candidate pending WP6 Code Review re-review and reuse for future
+  desktop host-boundary work.
