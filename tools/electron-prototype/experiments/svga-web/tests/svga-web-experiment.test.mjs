@@ -194,6 +194,53 @@ test("short-term loading and load-failed states expose recovery actions", async 
   );
 });
 
+test("short-term preview right surface exposes page-state trace semantics", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const { applyTabState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs")).href);
+
+  assert.match(page, /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"[^>]*data-panel-state="overview"/);
+  assert.match(page, /id="panelOverview"[^>]*data-panel="overview"[^>]*data-page-state="Preview overview"[^>]*data-module="OverviewInformationModule"/);
+  assert.match(page, /id="panelOptimization"[^>]*data-panel="optimization"[^>]*data-page-state="Preview optimization"[^>]*data-module="OptimizationDetailSurface"/);
+  assert.match(page, /id="settingsDialog"[^>]*data-component="SettingsSheet"[^>]*data-module="SettingsDialogModule"[^>]*data-page-state="Settings dialog"/);
+
+  const rightPanel = { dataset: { panelState: "overview" } };
+  const overviewPanel = {
+    dataset: { panel: "overview" },
+    hidden: false,
+    classList: { toggle() {} }
+  };
+  const optimizationPanel = {
+    dataset: { panel: "optimization" },
+    hidden: true,
+    classList: { toggle() {} }
+  };
+  const originalDocument = globalThis.document;
+  globalThis.document = {
+    querySelector(selector) {
+      if (selector === ".rightPanel") return rightPanel;
+      if (selector === "[data-panel=\"optimization\"]") return optimizationPanel;
+      if (selector === ".replaceableSection") return { focus() {}, scrollIntoView() {} };
+      return null;
+    },
+    querySelectorAll(selector) {
+      return selector === "[data-panel]" ? [overviewPanel, optimizationPanel] : [];
+    }
+  };
+  try {
+    applyTabState("optimization");
+    assert.equal(rightPanel.dataset.panelState, "optimization");
+    assert.equal(overviewPanel.hidden, true);
+    assert.equal(optimizationPanel.hidden, false);
+
+    applyTabState("replaceable");
+    assert.equal(rightPanel.dataset.panelState, "replaceable");
+    assert.equal(overviewPanel.hidden, false);
+    assert.equal(optimizationPanel.hidden, true);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("short-term general compare renders loaded A/B facts through shared metric renderer", async () => {
   const { renderGeneralComparePanelHtml } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
   const aModel = {
@@ -1828,10 +1875,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(page, /class="toolbarCluster toolbarClusterSave" data-component="SaveButtonPair"/);
   assert.match(page, /data-component="ReservedOperationPanel"/);
   assert.doesNotMatch(page, /class="tabs"[^>]*role="tablist"|data-component="TabItem"|role="tab"|aria-selected="true"/);
-  assert.match(page, /id="panelOverview" data-panel="overview" tabindex="0" aria-label="文件信息"/);
+  assert.match(page, /id="panelOverview"(?=[^>]*data-panel="overview")(?=[^>]*data-page-state="Preview overview")(?=[^>]*tabindex="0")(?=[^>]*aria-label="文件信息")(?=[^>]*data-module="OverviewInformationModule")[^>]*>/);
   assert.doesNotMatch(page, /id="overviewSummary"/);
   assert.doesNotMatch(page, /id="assetSummary"/);
-  assert.match(page, /id="panelOptimization" data-panel="optimization" tabindex="0" aria-label="优化"/);
+  assert.match(page, /id="panelOptimization"(?=[^>]*data-panel="optimization")(?=[^>]*data-page-state="Preview optimization")(?=[^>]*tabindex="0")(?=[^>]*aria-label="优化")(?=[^>]*data-module="OptimizationDetailSurface")[^>]*>/);
   assert.doesNotMatch(page, /id="panelReplaceable"/);
   assert.match(page, /id="replaceableList" role="listbox" aria-label="imageKey"/);
   assert.match(page, /id="textElementList" role="listbox" aria-label="运行时文本"/);
@@ -2013,6 +2060,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-empty-state-width: 312px/);
   assert.match(shortTermTokens, /--asv-component-state-surface-width/);
   assert.match(shortTermTokens, /--asv-state-surface-width: var\(--asv-component-state-surface-width\)/);
+  assert.match(shortTermTokens, /--asv-component-state-canvas-checker-size: var\(--asv-component-preview-checker-size\)/);
+  assert.match(shortTermTokens, /--asv-component-state-canvas-background:[\s\S]*var\(--asv-component-canvas-checker-pattern\),[\s\S]*var\(--asv-color-surface-canvas\)/);
+  assert.match(shortTermTokens, /--asv-state-canvas-bg: var\(--asv-component-state-canvas-background\)/);
+  assert.match(shortTermPageStates, /\.stateView\s*\{[\s\S]*background: var\(--asv-state-canvas-bg\)[\s\S]*background-size: var\(--asv-state-canvas-checker-size\) var\(--asv-state-canvas-checker-size\), auto/);
   assert.match(shortTermTokens, /--asv-layout-launch-min-width: 640px/);
   assert.match(shortTermTokens, /--asv-layout-launch-min-height: 640px/);
   assert.match(shortTermTokens, /--asv-layout-workbench-min-width: 1180px/);
@@ -2029,6 +2080,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-layout-page-edit-center-width: 560px/);
   assert.match(shortTermTokens, /--asv-page-launch-frame-width: var\(--asv-layout-page-launch-frame-width\)/);
   assert.match(shortTermTokens, /--asv-page-workbench-frame-width: var\(--asv-layout-page-workbench-frame-width\)/);
+  assert.match(shortTermTokens, /--asv-component-settings-divider-width: 0px/);
   assert.match(shortTermTokens, /--asv-component-layer-row-min-height/);
   assert.match(shortTermTokens, /--asv-component-layer-row-divider: 0 solid transparent/);
   assert.match(shortTermTokens, /--asv-layer-list-gap: var\(--asv-component-layer-list-gap\)/);
@@ -3018,6 +3070,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeRunner, /state\.smokeSurfaceCaptureStates = \[\]/);
   assert.match(shortTermSmokeRunner, /const setSmokeSurface = async \(surface, artifactName = ""\)/);
   assert.match(shortTermSmokeRunner, /setTab\(surface, \{ focus: true, scroll: true \}\)/);
+  assert.match(shortTermSmokeRunner, /rightSurfaceState: document\.querySelector\("\.rightPanel"\)\?\.dataset\.panelState \|\| ""/);
   assert.match(shortTermSmokeRunner, /document\.activeElement\?\.blur\?\.\(\)/);
   assert.ok(shortTermSmokeRunner.includes('document.querySelector(`[data-panel="${expectedPanel}"]`)?.hidden === false'));
   assert.match(shortTermSmokeRunner, /captureSmokeArtifact\("short-term-launch"\)/);
@@ -3093,6 +3146,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermSmokeProofModel, /visibleFocusableElements/);
   assert.match(shortTermSmokeProofModel, /metadataSelectable/);
   assert.match(shortTermSmokeProofModel, /surfaceCaptureStatesSynced/);
+  assert.match(shortTermSmokeProofModel, /rightSurfaceState === "optimization"/);
+  assert.match(shortTermSmokeProofModel, /rightSurfaceState === "replaceable"/);
+  assert.match(shortTermSmokeProofModel, /captureState\?\.rightSurfaceState === expected\.expectedSurface/);
+  assert.match(shortTermSmokeProofModel, /rightSurfaceState: boundedSmokeText\(rightSurfaceState, 40\)/);
   assert.match(shortTermSmokeProofModel, /menuStateDiscoverable/);
   assert.match(shortTermSmokeProofModel, /settingsSheetAvailable/);
   assert.match(shortTermSmokeProofModel, /appearanceSwitchingWorks/);
@@ -3150,6 +3207,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(main, /item\.activeElementId\.length > 80/);
   assert.match(main, /short-term-preview-optimization", "optimization", "panelOptimization"/);
   assert.match(main, /short-term-preview-replaceable", "replaceable", "panelOverview"/);
+  assert.match(main, /rightSurfaceState: String\(item\.rightSurfaceState \|\| ""\)/);
+  assert.match(main, /captureState\?\.rightSurfaceState === expectedSurface/);
   assert.match(main, /shortTermDesignInteractionProof = validateShortTermDesignInteractionProof/);
   assert.match(main, /short-term-design-interaction-proof\.json/);
   assert.match(main, /shortTermDesignInteractionProof: Boolean\(shortTermDesignInteractionProof\)/);

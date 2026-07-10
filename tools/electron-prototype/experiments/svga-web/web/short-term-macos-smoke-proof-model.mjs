@@ -617,10 +617,12 @@ export async function collectShortTermRightSurfaceNavigationProof({ setTab, wait
   const panelOverview = document.querySelector("#panelOverview");
   const panelOptimization = document.querySelector("#panelOptimization");
   const replaceableSection = document.querySelector(".replaceableSection");
+  const rightPanel = document.querySelector(".rightPanel");
   setTab("overview");
   await waitForSmokeFrame();
   const overviewState = {
     selectedSurface: state.tab,
+    rightSurfaceState: rightPanel?.dataset.panelState || "",
     overviewPanelVisible: panelOverview?.hidden === false,
     optimizationPanelHidden: panelOptimization?.hidden === true
   };
@@ -628,6 +630,7 @@ export async function collectShortTermRightSurfaceNavigationProof({ setTab, wait
   await waitForSmokeFrame();
   const optimizationState = {
     selectedSurface: state.tab,
+    rightSurfaceState: rightPanel?.dataset.panelState || "",
     focusedPanelId: document.activeElement?.id || "",
     overviewPanelHidden: panelOverview?.hidden === true,
     optimizationPanelVisible: panelOptimization?.hidden === false
@@ -636,6 +639,7 @@ export async function collectShortTermRightSurfaceNavigationProof({ setTab, wait
   await waitForSmokeFrame();
   const replaceableState = {
     selectedSurface: state.tab,
+    rightSurfaceState: rightPanel?.dataset.panelState || "",
     focusedClass: document.activeElement?.className || "",
     overviewPanelVisible: panelOverview?.hidden === false,
     optimizationPanelHidden: panelOptimization?.hidden === true,
@@ -655,13 +659,16 @@ export async function collectShortTermRightSurfaceNavigationProof({ setTab, wait
     model: "surfaceReplacement",
     tabButtonsRemoved,
     overviewSurfaceVisible: overviewState.selectedSurface === "overview"
+      && overviewState.rightSurfaceState === "overview"
       && overviewState.overviewPanelVisible
       && overviewState.optimizationPanelHidden,
     optimizationSurfaceVisible: optimizationState.selectedSurface === "optimization"
+      && optimizationState.rightSurfaceState === "optimization"
       && optimizationState.focusedPanelId === "panelOptimization"
       && optimizationState.overviewPanelHidden
       && optimizationState.optimizationPanelVisible,
     replaceableSurfaceReturnsToDefault: replaceableState.selectedSurface === "replaceable"
+      && replaceableState.rightSurfaceState === "replaceable"
       && replaceableState.overviewPanelVisible
       && replaceableState.optimizationPanelHidden
       && replaceableState.replaceableTargetFocusable
@@ -722,6 +729,7 @@ export function collectShortTermDesignInteractionProof({
     const captureState = surfaceCaptureStateByArtifact.get(expected.artifactName);
     return captureState?.expectedSurface === expected.expectedSurface
       && captureState?.stateSurface === expected.expectedSurface
+      && captureState?.rightSurfaceState === expected.expectedSurface
       && captureState?.visiblePanelIds?.length === 1
       && captureState.visiblePanelIds[0] === expected.expectedPanelId;
   });
@@ -802,7 +810,7 @@ export function collectShortTermDesignInteractionProof({
   return proof;
 }
 
-export function collectShortTermRightSurfaceCaptureState({ artifactName, expectedSurface, stateSurface }) {
+export function collectShortTermRightSurfaceCaptureState({ artifactName, expectedSurface, stateSurface, rightSurfaceState }) {
   const expectedPanel = expectedSurface === "optimization" ? "optimization" : "overview";
   const panelSelector = `[data-panel="${CSS.escape(expectedPanel)}"]`;
   const expectedPanelId = document.querySelector(panelSelector)?.id || "";
@@ -814,6 +822,7 @@ export function collectShortTermRightSurfaceCaptureState({ artifactName, expecte
     artifactName: boundedSmokeText(artifactName, 120),
     expectedSurface: boundedSmokeText(expectedSurface, 40),
     stateSurface: boundedSmokeText(stateSurface, 40),
+    rightSurfaceState: boundedSmokeText(rightSurfaceState, 40),
     expectedPanelId: boundedSmokeText(expectedPanelId, 80),
     visiblePanelIds,
     activeElementId: boundedSmokeText(document.activeElement?.id || "", 80),

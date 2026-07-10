@@ -138,7 +138,7 @@
           </div>
         </section>
 
-        <aside class="rightPanel" aria-label="信息" data-component="RightInformationSurface">
+        <aside class="rightPanel" aria-label="信息" data-component="RightInformationSurface" data-panel-state="overview">
           <div class="rightSurfaceHeader">
             <h1 class="fileIdentity" id="fileIdentity">等待打开文件</h1>
             <div class="toolbarCluster toolbarClusterSave" data-component="SaveButtonPair">
@@ -146,7 +146,7 @@
               <button class="toolbarButton primary" type="button" data-action="save-as" disabled title="没有可保存的输出" aria-keyshortcuts="Meta+Shift+S">另存为</button>
             </div>
           </div>
-          <section class="rightSurfaceBody isActive" id="panelOverview" data-panel="overview" tabindex="0" aria-label="文件信息" data-module="OverviewInformationModule">
+          <section class="rightSurfaceBody isActive" id="panelOverview" data-panel="overview" data-page-state="Preview overview" tabindex="0" aria-label="文件信息" data-module="OverviewInformationModule">
             <section class="factGrid" id="factGrid" aria-label="文件信息" data-component="OverviewFactRow"></section>
             <section class="replaceableSection" data-component="ReplaceableImageRow" aria-labelledby="replaceableHeading" tabindex="-1">
               <div class="sectionHead">
@@ -169,7 +169,7 @@
             </section>
           </section>
 
-          <section class="rightSurfaceBody" id="panelOptimization" data-panel="optimization" tabindex="0" aria-label="优化" data-module="OptimizationDetailSurface" hidden>
+          <section class="rightSurfaceBody" id="panelOptimization" data-panel="optimization" data-page-state="Preview optimization" tabindex="0" aria-label="优化" data-module="OptimizationDetailSurface" hidden>
             <div class="sectionHead">
               <div>
                 <h2>优化</h2>
@@ -307,7 +307,7 @@
       </form>
     </dialog>
 
-    <dialog class="appDialog settingsDialog" id="settingsDialog" data-component="SettingsSheet" data-module="SettingsDialogModule" data-status="info">
+    <dialog class="appDialog settingsDialog" id="settingsDialog" data-component="SettingsSheet" data-module="SettingsDialogModule" data-page-state="Settings dialog" data-status="info">
       <form method="dialog" class="dialogBody">
         <header class="dialogHeader settingsHeader">
           <h2>

@@ -873,6 +873,7 @@ function validateShortTermDesignInteractionProof(value) {
       artifactName: String(item.artifactName || ""),
       expectedSurface: String(item.expectedSurface || ""),
       stateSurface: String(item.stateSurface || ""),
+      rightSurfaceState: String(item.rightSurfaceState || ""),
       expectedPanelId: String(item.expectedPanelId || ""),
       activeElementId: String(item.activeElementId || ""),
       visiblePanelIds: normalizeBoundedStringList(item.visiblePanelIds, 4, 80),
@@ -882,6 +883,7 @@ function validateShortTermDesignInteractionProof(value) {
       !isBoundedString(normalized.artifactName, 120)
       || !isBoundedString(normalized.expectedSurface, 40)
       || !isBoundedString(normalized.stateSurface, 40)
+      || !isBoundedString(normalized.rightSurfaceState, 40)
       || !isBoundedString(normalized.expectedPanelId, 80)
       || typeof normalized.activeElementId !== "string"
       || normalized.activeElementId.length > 80
@@ -954,6 +956,7 @@ function validateShortTermDesignInteractionProof(value) {
     const captureState = captureStateByArtifact.get(artifactName);
     return captureState?.expectedSurface === expectedSurface
       && captureState?.stateSurface === expectedSurface
+      && captureState?.rightSurfaceState === expectedSurface
       && captureState?.expectedPanelId === expectedPanelId
       && captureState?.visiblePanelIds.length === 1
       && captureState.visiblePanelIds[0] === expectedPanelId
@@ -1042,6 +1045,7 @@ function describeShortTermDesignInteractionProofFailure(value) {
       [item.artifactName, 120],
       [item.expectedSurface, 40],
       [item.stateSurface, 40],
+      [item.rightSurfaceState, 40],
       [item.expectedPanelId, 80],
     ];
     const lists = [item.visiblePanelIds];
@@ -1089,6 +1093,7 @@ function describeShortTermDesignInteractionProofFailure(value) {
     const captureState = captureStateByArtifact.get(artifactName);
     return captureState?.expectedSurface === expectedSurface
       && captureState?.stateSurface === expectedSurface
+      && captureState?.rightSurfaceState === expectedSurface
       && captureState?.expectedPanelId === expectedPanelId
       && captureState?.visiblePanelIds?.length === 1
       && captureState.visiblePanelIds[0] === expectedPanelId

@@ -17,6 +17,9 @@ export function applyModeButtons(mode) {
 
 export function applyTabState(tab, options = {}) {
   const activePanel = tab === "optimization" ? "optimization" : "overview";
+  const surfaceState = tab === "replaceable" ? "replaceable" : activePanel;
+  const rightPanel = document.querySelector(".rightPanel");
+  if (rightPanel) rightPanel.dataset.panelState = surfaceState;
   document.querySelectorAll("[data-panel]").forEach((panel) => {
     const active = panel.dataset.panel === activePanel;
     panel.hidden = !active;

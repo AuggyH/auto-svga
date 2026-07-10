@@ -398,6 +398,10 @@
   --asv-component-state-surface-title-margin: 0;
   --asv-component-state-surface-message-max-width: 320px;
   --asv-component-state-surface-action-margin-block-start: var(--asv-space-1);
+  --asv-component-state-canvas-checker-size: var(--asv-component-preview-checker-size);
+  --asv-component-state-canvas-background:
+    var(--asv-component-canvas-checker-pattern),
+    var(--asv-color-surface-canvas);
   --asv-component-layer-row-min-height: 56px;
   --asv-component-layer-row-gap: var(--asv-base-space-10);
   --asv-component-layer-row-padding-block: var(--asv-space-1);
@@ -575,7 +579,7 @@
   --asv-component-settings-sheet-shadow: var(--asv-shadow-floating);
   --asv-component-settings-sheet-padding: var(--asv-space-6);
   --asv-component-settings-sheet-gap: var(--asv-space-4);
-  --asv-component-settings-divider-width: 1px;
+  --asv-component-settings-divider-width: 0px;
   --asv-component-settings-divider-color: var(--asv-color-border-subtle);
   --asv-component-settings-title-row-height: 22px;
   --asv-component-settings-action-height: 44px;
@@ -900,6 +904,8 @@
   --asv-state-surface-title-margin: var(--asv-component-state-surface-title-margin);
   --asv-state-surface-message-max-width: var(--asv-component-state-surface-message-max-width);
   --asv-state-surface-action-margin-block-start: var(--asv-component-state-surface-action-margin-block-start);
+  --asv-state-canvas-checker-size: var(--asv-component-state-canvas-checker-size);
+  --asv-state-canvas-bg: var(--asv-component-state-canvas-background);
   --asv-layer-row-min-height: var(--asv-component-layer-row-min-height);
   --asv-layer-row-gap: var(--asv-component-layer-row-gap);
   --asv-layer-row-padding-block: var(--asv-component-layer-row-padding-block);

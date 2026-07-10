@@ -58,6 +58,11 @@
   overflow: auto;
 }
 
+.stateView {
+  background: var(--asv-state-canvas-bg);
+  background-size: var(--asv-state-canvas-checker-size) var(--asv-state-canvas-checker-size), auto;
+}
+
 .launchView {
   grid-row: 1 / -1;
   place-items: stretch;

@@ -115,7 +115,8 @@ async function runShortTermSmoke({
       state.smokeSurfaceCaptureStates.push(collectShortTermRightSurfaceCaptureState({
         artifactName,
         expectedSurface: surface,
-        stateSurface: state.tab
+        stateSurface: state.tab,
+        rightSurfaceState: document.querySelector(".rightPanel")?.dataset.panelState || ""
       }));
       document.activeElement?.blur?.();
       await waitForSmokeFrame();

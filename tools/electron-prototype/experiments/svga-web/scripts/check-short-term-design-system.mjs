@@ -710,6 +710,23 @@ async function main() {
     && /\.assetFilterTabs\s*\{[\s\S]*width: min\(var\(--asv-asset-filter-width\), 100%\)[\s\S]*min-height: var\(--asv-asset-filter-height\)/.test(modules)
     && /\.canvasToast\s*\{[\s\S]*width: min\(var\(--asv-toast-failure-width\), 60%\)[\s\S]*min-height: var\(--asv-toast-height\)/.test(modules));
 
+  record("page-state-recovery-uses-canvas-first-contract", /--asv-component-state-canvas-checker-size:\s*var\(--asv-component-preview-checker-size\)/.test(tokens)
+    && /--asv-component-state-canvas-background:\s*[\s\S]*var\(--asv-component-canvas-checker-pattern\),[\s\S]*var\(--asv-color-surface-canvas\)/.test(tokens)
+    && /--asv-state-canvas-bg:\s*var\(--asv-component-state-canvas-background\)/.test(tokens)
+    && /\.stateView\s*\{[\s\S]*background: var\(--asv-state-canvas-bg\)[\s\S]*background-size: var\(--asv-state-canvas-checker-size\) var\(--asv-state-canvas-checker-size\), auto/.test(pageStatesCss)
+    && /<section class="view stateView" data-view="loading"[\s\S]*data-page-state="Loading"/.test(page)
+    && /<section class="view stateView" data-view="failed"[\s\S]*data-page-state="Load failed"/.test(page));
+
+  record("page-state-surface-trace-contract", /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"[^>]*data-panel-state="overview"/.test(page)
+    && /id="panelOverview"[^>]*data-panel="overview"[^>]*data-page-state="Preview overview"[^>]*data-module="OverviewInformationModule"/.test(page)
+    && /id="panelOptimization"[^>]*data-panel="optimization"[^>]*data-page-state="Preview optimization"[^>]*data-module="OptimizationDetailSurface"/.test(page)
+    && /id="settingsDialog"[^>]*data-component="SettingsSheet"[^>]*data-module="SettingsDialogModule"[^>]*data-page-state="Settings dialog"/.test(page)
+    && /const surfaceState = tab === "replaceable" \? "replaceable" : activePanel/.test(await readFile(path.join(webRoot, "short-term-macos-dom-state.mjs"), "utf8"))
+    && /rightPanel\.dataset\.panelState = surfaceState/.test(await readFile(path.join(webRoot, "short-term-macos-dom-state.mjs"), "utf8")));
+
+  record("settings-sheet-keeps-boundary-light-grouping", /--asv-component-settings-divider-width:\s*0px/.test(tokens)
+    && /\.settingsGroup\s*\{[\s\S]*border-top: var\(--asv-settings-divider-width\) solid var\(--asv-settings-divider-color\)[\s\S]*border-bottom: var\(--asv-settings-divider-width\) solid var\(--asv-settings-divider-color\)/.test(components));
+
   record("focus-visible-covered-by-ui-layers", [atoms, molecules, components, modules].every((source) => source.includes(":focus-visible")));
   record("reduced-motion-covered", /@media \(prefers-reduced-motion: reduce\)/.test(pageStatesCss)
     && /animation-duration:\s*var\(--asv-reduced-motion-duration\) !important/.test(pageStatesCss)
