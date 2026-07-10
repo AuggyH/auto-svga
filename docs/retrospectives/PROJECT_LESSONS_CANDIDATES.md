@@ -1018,3 +1018,16 @@ promoted, watched, rejected, or kept historical.
   disposed or reloaded sessions, and renderer errors left the failed animation
   alive. Instance binding plus one cleanup path closed all three probes.
 - Status: Candidate pending reuse in another player adapter.
+
+## 2026-07-10: Resolve External Motion Resources Through A Bounded Host Gate
+
+- Candidate lesson: External motion resources should pass through a host-owned
+  bounded resolver before renderer load. The renderer should receive sanitized
+  data or a typed failure, not raw local paths.
+- Evidence: The hidden Lottie preview vertical resolves deterministic adjacent
+  image references with bounded host reads, inlines safe images as data URIs,
+  blocks missing/oversized/unsupported resources before renderer load, and keeps
+  the WP2B adapter strict by default unless resolved image resources are
+  explicitly allowed.
+- Status: Candidate pending reuse in VAP fusion resources or visible 0.2
+  integration.

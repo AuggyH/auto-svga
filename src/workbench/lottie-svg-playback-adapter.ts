@@ -69,6 +69,7 @@ export interface LottieSvgPlaybackAdapterOptions {
   gate: string;
   rendererLoader?: LottieSvgRendererLoader;
   inspectionService?: LottieJsonInspectionService;
+  allowResolvedImageResources?: boolean;
 }
 
 interface SourceFeedback {
@@ -88,11 +89,13 @@ export class LottieSvgPlaybackAdapter implements PlaybackAdapter<LottieSvgPlayba
   private readonly gate: string;
   private readonly rendererLoader: LottieSvgRendererLoader;
   private readonly inspectionService: LottieJsonInspectionService;
+  private readonly allowResolvedImageResources: boolean;
 
   constructor(options: LottieSvgPlaybackAdapterOptions) {
     this.gate = options.gate;
     this.rendererLoader = options.rendererLoader ?? loadDefaultLottieSvgRenderer;
     this.inspectionService = options.inspectionService ?? new LottieJsonInspectionService();
+    this.allowResolvedImageResources = options.allowResolvedImageResources === true;
   }
 
   createSession(target: LottieSvgPlaybackTarget): PlaybackSession {
@@ -100,7 +103,8 @@ export class LottieSvgPlaybackAdapter implements PlaybackAdapter<LottieSvgPlayba
       target,
       this.gate,
       this.rendererLoader,
-      this.inspectionService
+      this.inspectionService,
+      this.allowResolvedImageResources
     );
   }
 }
@@ -141,6 +145,7 @@ class LottieSvgPlaybackSession implements PlaybackSession {
   private readonly gate: string;
   private readonly rendererLoader: LottieSvgRendererLoader;
   private readonly inspectionService: LottieJsonInspectionService;
+  private readonly allowResolvedImageResources: boolean;
   private animation?: LottieSvgAnimationItem;
   private rendererFailureBinding?: {
     animation: LottieSvgAnimationItem;
@@ -156,12 +161,14 @@ class LottieSvgPlaybackSession implements PlaybackSession {
     target: LottieSvgPlaybackTarget,
     gate: string,
     rendererLoader: LottieSvgRendererLoader,
-    inspectionService: LottieJsonInspectionService
+    inspectionService: LottieJsonInspectionService,
+    allowResolvedImageResources: boolean
   ) {
     this.target = target;
     this.gate = gate;
     this.rendererLoader = rendererLoader;
     this.inspectionService = inspectionService;
+    this.allowResolvedImageResources = allowResolvedImageResources;
   }
 
   async load(
@@ -203,7 +210,9 @@ class LottieSvgPlaybackSession implements PlaybackSession {
     );
     context?.cancellation?.throwIfCancelled();
 
-    const preconditionIssues = playbackPreconditionIssues(inspected, feedback);
+    const preconditionIssues = playbackPreconditionIssues(inspected, feedback, {
+      allowResolvedImageResources: this.allowResolvedImageResources
+    });
     if (preconditionIssues.length > 0 || !inspected.value) {
       return this.fail(...preconditionIssues.length > 0
         ? preconditionIssues
@@ -360,7 +369,8 @@ class LottieSvgPlaybackSession implements PlaybackSession {
 
 function playbackPreconditionIssues(
   inspected: WorkbenchResult<MotionAssetInfo>,
-  feedback: SourceFeedback
+  feedback: SourceFeedback,
+  options: { allowResolvedImageResources: boolean }
 ): LottieSvgPlaybackIssue[] {
   const errors = inspected.issues.filter(({ severity }) => severity === "error");
   if (errors.length > 0) {
@@ -391,14 +401,20 @@ function playbackPreconditionIssues(
   }
 
   const resources = inspected.value?.resources ?? [];
-  const deferredResources = resources.filter(({ kind }) => kind === "image" || kind === "font");
+  const deferredResources = resources.filter(({ kind }) =>
+    kind === "font" || (kind === "image" && !options.allowResolvedImageResources)
+  );
   if (deferredResources.length > 0) {
     return [issue(
       feedback,
       "parse_precondition",
-      "External Lottie image and font resources are deferred from the animationData-only WP2B spike.",
+      options.allowResolvedImageResources
+        ? "External Lottie font resources are deferred from the hidden Lottie preview spike."
+        : "External Lottie image and font resources are deferred from the animationData-only WP2B spike.",
       {
-        reason: "external_resources_deferred",
+        reason: options.allowResolvedImageResources
+          ? "external_font_resources_deferred"
+          : "external_resources_deferred",
         resourceIds: deferredResources.map(({ id }) => id),
         resourceKinds: deferredResources.map(({ kind }) => kind)
       }
