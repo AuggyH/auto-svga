@@ -1262,3 +1262,97 @@ Repository packet:
   commit occurred.
 - The second call was not a broad retry; it read only the remaining priority
   components after the first response truncated.
+
+## Batch 16 - R11 Current-Head Fidelity Audit
+
+Date: 2026-07-10
+Operator: Codex UI/UX lane
+Figma file: `7hIydrsyIzxs6E5dJQ53tu`
+Read round: R11 - current-head fidelity audit
+Owner approval: Standing authorization applied because reconstructed
+current-day usage was `0/160` before this batch.
+
+### Objective
+
+Fresh-read the current Figma page-state targets required by the fidelity gate
+for exact source and installed build
+`552bf77991bcf3a85d1e438454b888a734984ec8`.
+
+This batch intentionally did not use Figma Make, Figma AI, write tools, broad
+token inventories, broad component inventories, or the excluded `备份` page.
+
+### Planned Budget
+
+- Planned quota-counted reads: 11
+- Hard cap: 12
+- Optional retry allowed only if required target metadata was truncated or
+  unusable.
+
+### Actual Usage
+
+| # | Tool | Target | Purpose | Counts against read quota | Time | Result |
+| ---: | --- | --- | --- | --- | ---: | --- |
+| 1 | `_use_figma` | `auto-svga` page | Initial target metadata and page summary | Yes | 10.0049s | Usable, but truncated during Preview default visible text |
+| 2 | `_use_figma` | `auto-svga` page | Compact metadata retry for the same target list | Yes | 6.8444s | Complete usable target JSON |
+| 3 | `_get_screenshot` | Launch `37:154` | Current target screenshot | Yes | 4.0271s | Complete, `720 x 720` |
+| 4 | `_get_screenshot` | Loading `80:16365` | Current target screenshot | Yes | 4.5925s | Complete, `1360 x 880` |
+| 5 | `_get_screenshot` | Load failed `80:16612` | Current target screenshot | Yes | 4.3587s | Complete, `1360 x 880` |
+| 6 | `_get_screenshot` | Preview default `27:2` | Current target screenshot | Yes | 4.7091s | Complete, `1360 x 880` |
+| 7 | `_get_screenshot` | Preview replaceable `82:616` | Current target screenshot | Yes | 3.8256s | Complete, `1360 x 880` |
+| 8 | `_get_screenshot` | Preview optimization `82:2669` | Current target screenshot | Yes | 4.3539s | Complete, `1360 x 880` |
+| 9 | `_get_screenshot` | Compare empty `66:522` | Current target screenshot | Yes | 4.2906s | Complete, `1360 x 880` |
+| 10 | `_get_screenshot` | Compare loaded `64:1320` | Current target screenshot | Yes | 4.3320s | Complete, `1360 x 880` |
+| 11 | `_get_screenshot` | Edit reserved `55:535` | Current target screenshot | Yes | 4.6630s | Complete, `1360 x 880` |
+| 12 | `_get_screenshot` | Settings `83:2069` | Current target screenshot | Yes | 3.2401s | Complete, `1280 x 800` |
+
+Actual total MCP attempts: 12
+
+Actual quota-counted reads, conservative: 12
+
+Measured MCP tool wall time total: 59.2419s
+
+Current local-day conservative usage after Batch 16: 12/160.
+
+### Result
+
+R11 confirmed the fresh Figma target screenshots and compact metadata for:
+
+- Launch `37:154`
+- Loading `80:16365`
+- Load failed `80:16612`
+- Preview default `27:2`
+- Preview replaceable `82:616`
+- Preview optimization `82:2669`
+- Compare empty `66:522`
+- Compare loaded `64:1320`
+- Edit reserved `55:535`
+- Settings `83:2069`
+
+Repository packet:
+
+`docs/research/figma-mcp-read-packets/r11-current-head-fidelity-audit-20260710.md`
+
+Local non-Git screenshot archive:
+
+`/Users/huangtengxin/.codex/visualizations/2026/07/10/019f4aaa-c716-7e23-99a0-27823726a5be/r11-figma-fidelity/`
+
+### Discrepancy Summary
+
+The largest Phase A mismatch candidate is the Loading / Load failed page-state
+family:
+
+- R11 Figma keeps these states inside the workbench shell with center canvas,
+  right information surface, titlebar, and mode/playback context.
+- Current source uses standalone full-window `stateView` recovery panels.
+- This may be an intentional product/accessibility divergence because the
+  execution plan also requires no stale metadata in loading/failure states.
+
+No UI source repair was performed in Phase A. Phase B must bind packaged-app
+foreground screenshots to R11 targets before deciding whether a bundled Figma
+fidelity repair is needed.
+
+### Verification
+
+- No Figma write operation, Figma Make action, or Figma AI action occurred.
+- No PNG was committed to the repository.
+- The batch stopped exactly at the predeclared hard cap.
