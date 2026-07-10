@@ -1046,3 +1046,17 @@ promoted, watched, rejected, or kept historical.
   model final and prevents disposed sessions from later controls.
 - Status: Candidate pending reuse in visible 0.2 open integration and VAP
   inspector/playback paths.
+
+## 2026-07-10: Cancel Before Renderer Side Effects
+
+- Candidate lesson: Player adapter `load()` calls are not atomic if they await
+  dependency loading, inspection, or bounded data reads before invoking a real
+  renderer. Request freshness must be checked immediately before renderer
+  entry points such as `loadAnimation()` that can mutate a shared DOM/container.
+- Evidence: The hidden Lottie preview vertical first repair protected final
+  model commits, but Code Review still reproduced stale `loadAnimation()` after
+  a newer open won. Passing request cancellation into `PlaybackSession.load()`
+  and re-checking cancellation/disposed state before `renderer.loadAnimation()`
+  prevents stale container mutation in the delayed renderer-loader regression.
+- Status: Candidate pending reuse in VAP playback and any visible 0.2
+  renderer integration.

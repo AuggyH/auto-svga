@@ -5,6 +5,7 @@ import type {
   MotionResourceInfo,
   PlaybackSession,
   PlaybackState,
+  CancellationToken,
   WorkbenchIssue,
   WorkbenchResult
 } from "./contracts.js";
@@ -473,7 +474,32 @@ export class HiddenLottiePreviewVerticalSession {
       return;
     }
     this.playbackSession = playbackSession;
-    const loaded = await playbackSession.load(prepared.source);
+    let loaded: WorkbenchResult<MotionAssetInfo>;
+    try {
+      loaded = await playbackSession.load(prepared.source, {
+        cancellation: this.createRequestCancellationToken(generation)
+      });
+    } catch (error) {
+      playbackSession.dispose();
+      if (!this.isActivePlaybackSession(playbackSession, generation) || isSupersededRequestError(error)) return;
+      this.model = {
+        ...this.model,
+        status: "playbackFailed",
+        issues: [
+          ...this.model.issues,
+          issue(
+            "playback_failure",
+            "Hidden Lottie playback load failed.",
+            "error",
+            { reason: "playback_load_failed", cause: redactLocalPathsFromError(error, "playback load failed", [prepared.source.id]) },
+            prepared.source.id
+          )
+        ],
+        playback: playbackState("error", this.model.playback.durationMs)
+      };
+      this.disposePlaybackSession();
+      return;
+    }
     if (!this.isActivePlaybackSession(playbackSession, generation) || this.prepared !== prepared) {
       playbackSession.dispose();
       return;
@@ -513,6 +539,20 @@ export class HiddenLottiePreviewVerticalSession {
 
   private isDisposed(): boolean {
     return this.model.status === "disposed";
+  }
+
+  private createRequestCancellationToken(generation: number): CancellationToken {
+    const session = this;
+    return {
+      get cancelled() {
+        return !session.isActiveRequest(generation);
+      },
+      throwIfCancelled() {
+        if (!session.isActiveRequest(generation)) {
+          throw new SupersededHiddenLottiePreviewRequestError();
+        }
+      }
+    };
   }
 
   private disposePlaybackSession(): void {
@@ -555,6 +595,17 @@ export class HiddenLottiePreviewVerticalSession {
       playback: playbackState("error", this.model.playback.durationMs)
     };
   }
+}
+
+class SupersededHiddenLottiePreviewRequestError extends Error {
+  constructor() {
+    super("Hidden Lottie preview request was superseded.");
+    this.name = "SupersededHiddenLottiePreviewRequestError";
+  }
+}
+
+function isSupersededRequestError(error: unknown): boolean {
+  return error instanceof SupersededHiddenLottiePreviewRequestError;
 }
 
 function validateOpenInput(input: HiddenLottiePreviewOpenInput): HiddenLottiePreviewIssue | undefined {

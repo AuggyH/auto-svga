@@ -225,6 +225,7 @@ class LottieSvgPlaybackSession implements PlaybackSession {
     }
 
     const animationData = await readBoundedAnimationData(source, feedback);
+    context?.cancellation?.throwIfCancelled();
     if (!animationData.value) {
       return this.fail(animationData.issue ?? issue(
         feedback,
@@ -250,8 +251,11 @@ class LottieSvgPlaybackSession implements PlaybackSession {
         }
       ));
     }
+    context?.cancellation?.throwIfCancelled();
 
     try {
+      if (this.state.status === "disposed") return { issues: [] };
+      context?.cancellation?.throwIfCancelled();
       const animation = renderer.loadAnimation({
         container: this.target.container,
         renderer: "svg",

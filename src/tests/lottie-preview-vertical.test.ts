@@ -274,6 +274,69 @@ test("hidden Lottie vertical ignores a stale slow open after a faster newer open
   assertNoLocalPaths(finalModel);
 });
 
+test("hidden Lottie vertical prevents stale renderer loadAnimation after a newer open wins", async () => {
+  const slowPath = "/Users/designer/Secret Campaign/slow-renderer.json";
+  const fastPath = "/Users/designer/Secret Campaign/fast-renderer.json";
+  const host = memoryHost({
+    [slowPath]: minimalLottie({ w: 111, h: 100, layers: [{ ind: 1, ty: 4, nm: "slow renderer shape" }] }),
+    [fastPath]: minimalLottie({ w: 222, h: 100, layers: [{ ind: 1, ty: 4, nm: "fast renderer shape" }] })
+  });
+  const rendererGate = deferred<void>();
+  const target = { mutations: [] as string[] };
+  const loadLabels: string[] = [];
+  let rendererLoaderCalls = 0;
+  let slowRendererBlocked = false;
+  const session = createHiddenLottiePreviewVerticalSession({
+    host,
+    target: { container: target },
+    rendererLoader: async () => {
+      rendererLoaderCalls += 1;
+      if (rendererLoaderCalls === 1) {
+        slowRendererBlocked = true;
+        await rendererGate.promise;
+        return labeledRenderer("slow", loadLabels);
+      }
+      return labeledRenderer("fast", loadLabels);
+    }
+  });
+
+  const slowOpen = session.openLocalCandidate({
+    gate: HIDDEN_LOTTIE_PREVIEW_VERTICAL_GATE,
+    requestId: "slow",
+    source: "fileButton",
+    localPath: slowPath
+  });
+  await waitUntil(() => slowRendererBlocked);
+
+  const fastModel = await session.openLocalCandidate({
+    gate: HIDDEN_LOTTIE_PREVIEW_VERTICAL_GATE,
+    requestId: "fast",
+    source: "dragDrop",
+    localPath: fastPath
+  });
+
+  assert.equal(fastModel.status, "ready");
+  assert.equal(fastModel.requestId, "fast");
+  assert.equal(fastModel.displayName, "fast-renderer.json");
+  assert.equal(fastModel.overview?.dimensions, "222 x 100");
+  assert.deepEqual(loadLabels, ["fast"]);
+  assert.deepEqual(target.mutations, ["fast"]);
+
+  rendererGate.resolve();
+  const staleReturn = await slowOpen;
+  const finalModel = session.getModel();
+
+  assert.equal(staleReturn.requestId, "fast");
+  assert.equal(staleReturn.displayName, "fast-renderer.json");
+  assert.equal(staleReturn.overview?.dimensions, "222 x 100");
+  assert.equal(finalModel.requestId, "fast");
+  assert.equal(finalModel.displayName, "fast-renderer.json");
+  assert.equal(finalModel.overview?.dimensions, "222 x 100");
+  assert.deepEqual(loadLabels, ["fast"]);
+  assert.deepEqual(target.mutations, ["fast"]);
+  assertNoLocalPaths(finalModel);
+});
+
 test("hidden Lottie vertical keeps disposed sessions terminal for later public controls", async () => {
   const localPath = "/Users/designer/Secret Campaign/inline.json";
   const session = createHiddenLottiePreviewVerticalSession({
@@ -428,6 +491,16 @@ function fakeRenderer(
       const animation = new FakeAnimation();
       animations.push(animation);
       return animation;
+    }
+  };
+}
+
+function labeledRenderer(label: string, loadLabels: string[]): LottieSvgRendererModule {
+  return {
+    loadAnimation(options) {
+      loadLabels.push(label);
+      (options.container as { mutations?: string[] }).mutations?.push(label);
+      return new FakeAnimation();
     }
   };
 }
