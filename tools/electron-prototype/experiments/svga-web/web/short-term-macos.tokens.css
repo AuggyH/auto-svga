@@ -402,6 +402,15 @@
   --asv-component-state-canvas-background:
     var(--asv-component-canvas-checker-pattern),
     var(--asv-color-surface-canvas);
+  --asv-component-state-info-header-padding-block: var(--asv-file-header-padding-block);
+  --asv-component-state-info-body-padding-block-start: var(--asv-space-4);
+  --asv-component-state-info-body-gap: var(--asv-space-3);
+  --asv-component-state-skeleton-line-height: var(--asv-control-height-sm);
+  --asv-component-state-skeleton-line-radius: var(--asv-radius-sm);
+  --asv-component-state-skeleton-line-background: color-mix(in srgb, var(--asv-color-text-tertiary) 14%, transparent);
+  --asv-component-state-skeleton-line-width: 68%;
+  --asv-component-state-skeleton-line-width-secondary: 48%;
+  --asv-component-state-text-color: var(--asv-color-text-secondary);
   --asv-component-layer-row-min-height: 56px;
   --asv-component-layer-row-gap: var(--asv-base-space-10);
   --asv-component-layer-row-padding-block: var(--asv-space-1);

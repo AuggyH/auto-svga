@@ -16,6 +16,24 @@
       "implementationFiles": ["main.cjs", "short-term-window-bounds-policy.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css"]
     },
     {
+      "figma": "加载 / 加载中",
+      "codePageState": "Loading",
+      "appStates": ["loading"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r11-current-head-fidelity-audit-20260710.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-state-renderers.mjs"]
+    },
+    {
+      "figma": "加载 / 加载失败",
+      "codePageState": "Load failed",
+      "appStates": ["failed"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r11-current-head-fidelity-audit-20260710.md"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-state-renderers.mjs"]
+    },
+    {
       "figma": "预览 / 默认",
       "codePageState": "Preview ready",
       "appStates": ["preview"],
@@ -175,7 +193,7 @@
     {
       "figma": "Molecule/加载提示文字",
       "codeComponents": ["FileDropTarget", "ErrorRecoveryPanel", "InlineStatus"],
-      "codeModules": ["LaunchModule", "PreviewCanvasModule"],
+      "codeModules": ["LaunchModule", "PreviewCanvasModule", "StateRecoveryModule"],
       "implementationFiles": ["web/short-term-macos-state-renderers.mjs", "web/short-term-macos-inline-status-renderers.mjs"]
     },
     {
@@ -217,7 +235,7 @@
     {
       "figma": "Molecule/错误恢复面板",
       "codeComponents": ["ErrorRecoveryPanel"],
-      "codeModules": ["LaunchModule"],
+      "codeModules": ["LaunchModule", "StateRecoveryModule"],
       "implementationFiles": ["web/index.html", "web/short-term-macos-state-renderers.mjs"]
     },
     {
@@ -273,8 +291,14 @@
     {
       "figma": "Module/右侧栏",
       "codeComponents": ["RightInformationSurface", "OverviewFactRow", "AssetRow", "OptimizationFindingRow", "OptimizationResultCard"],
-      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface", "OptimizationCompareModule"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface", "OptimizationCompareModule", "StateRecoveryModule"],
       "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-file-surface.mjs", "web/short-term-macos-optimization-surface.mjs"]
+    },
+    {
+      "figma": "Module/状态恢复面板",
+      "codeComponents": ["RightInformationSurface", "FileDropTarget", "ErrorRecoveryPanel", "PlaybackControls"],
+      "codeModules": ["StateRecoveryModule", "PreviewCanvasModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-state-renderers.mjs"]
     },
     {
       "figma": "Module/左侧栏",

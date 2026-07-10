@@ -11,15 +11,11 @@
   grid-template-rows: auto minmax(0, 1fr);
 }
 
-.macApp[data-app-state="launch"],
-.macApp[data-app-state="loading"],
-.macApp[data-app-state="failed"] {
+.macApp[data-app-state="launch"] {
   grid-template-rows: 1fr;
 }
 
-.macApp[data-app-state="launch"] .titlebar,
-.macApp[data-app-state="loading"] .titlebar,
-.macApp[data-app-state="failed"] .titlebar {
+.macApp[data-app-state="launch"] .titlebar {
   min-height: var(--asv-toolbar-height);
 }
 
@@ -35,13 +31,17 @@
 
 .macApp[data-app-state="preview"] .view,
 .macApp[data-app-state="compare"] .view,
-.macApp[data-app-state="edit"] .view {
+.macApp[data-app-state="edit"] .view,
+.macApp[data-app-state="loading"] .view,
+.macApp[data-app-state="failed"] .view {
   grid-row: 2;
 }
 
 .macApp[data-app-state="preview"],
 .macApp[data-app-state="compare"],
-.macApp[data-app-state="edit"] {
+.macApp[data-app-state="edit"],
+.macApp[data-app-state="loading"],
+.macApp[data-app-state="failed"] {
   min-width: var(--asv-workbench-min-width);
   min-height: var(--asv-workbench-min-height);
 }
@@ -70,12 +70,8 @@
   background: var(--asv-window);
 }
 
-.macApp[data-app-state="loading"] .stateView,
-.macApp[data-app-state="failed"] .stateView {
-  grid-row: 1 / -1;
-}
-
-.previewView {
+.previewView,
+.workbenchStateView {
   display: grid;
   grid-template-columns: minmax(var(--asv-preview-canvas-min-width), 1fr) var(--asv-right-panel-width);
   grid-template-rows: minmax(0, 1fr);
@@ -84,6 +80,11 @@
   min-height: 0;
   padding: var(--asv-preview-gap);
   background: var(--asv-workbench);
+}
+
+.workbenchStateView {
+  place-items: stretch;
+  overflow: hidden;
 }
 
 .compareView {
@@ -155,13 +156,15 @@
   }
 
   .previewView,
+  .workbenchStateView,
   .compareView,
   .editView {
     gap: var(--asv-preview-gap);
     padding: var(--asv-preview-gap);
   }
 
-  .previewView {
+  .previewView,
+  .workbenchStateView {
     grid-template-columns: minmax(var(--asv-preview-canvas-min-width-compact), 1fr) var(--asv-right-panel-width);
   }
 
@@ -172,6 +175,7 @@
 
 @media (max-height: 780px) {
   .previewView,
+  .workbenchStateView,
   .compareView,
   .editView {
     gap: var(--asv-preview-gap);

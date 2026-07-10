@@ -260,6 +260,105 @@ micro-tasks per selector or per copy string.
 If no repair is required, return an evidence-only fidelity report. Neither
 Phase A nor Phase B can claim Product Owner acceptance.
 
+## Phase B Composite Evidence Update
+
+Date: 2026-07-10
+Status: PM-disposition superseded; repair required
+
+PM supplied the deterministic foreground retry fact after Phase A:
+
+- Installed app:
+  `/Users/huangtengxin/Applications/Auto SVGA.app`.
+- Installed build:
+  `552bf77991bcf3a85d1e438454b888a734984ec8`.
+- QA commit: `7d358be8`.
+- QA report:
+  `/Users/huangtengxin/.codex/worktrees/ed2a/auto-svga/docs/quality/reports/UIUX-0.1-page-state-owner-visible-visual-regression.md`.
+- QA proved clean Launch, reversible Recent, real-material Preview overview,
+  Preview optimization, Preview replaceable, Edit reserved, and Compare empty.
+- QA did not complete Compare loaded, Loading, Load failed, Settings, dark/light
+  appearance switching, minimum-window, or keyboard/focus visual acceptance.
+- PM will not authorize a third equivalent foreground retry.
+
+Phase B therefore uses a composite model:
+
+1. Exact installed-app foreground screenshots where QA already proved identity
+   and state.
+2. Exact-head source and source-side QA proof for difficult static states not
+   covered by foreground.
+3. Fresh R11 Figma facts and screenshots from this packet.
+
+This composite evidence can classify mismatch risk, but it cannot claim final
+Product Owner visual acceptance.
+
+### Composite Target Matrix
+
+| Target | Available evidence | Phase B classification |
+| --- | --- | --- |
+| Launch | R11 Figma screenshot/facts; exact installed-app foreground retry screenshot; source tokens map `640 x 640` launch | No confirmed repair. Native outer-window dimensions remain a platform comparison limitation. |
+| Preview default | R11 Figma screenshot/facts; exact installed-app foreground real-material preview screenshot; source right-surface token map | No confirmed repair. Runtime header save visibility should remain verified by command state, not static HTML. |
+| Preview optimization | R11 Figma screenshot/facts; exact installed-app foreground optimization tab screenshot; source `OptimizationDetailSurface` | No confirmed repair from R11. |
+| Preview replaceable | R11 Figma screenshot/facts; exact installed-app foreground replaceable tab screenshot; source replaceable rows | No confirmed repair from R11. |
+| Compare empty | R11 Figma screenshot/facts; exact installed-app foreground Compare empty screenshot; source disabled playback / empty slot prompts | No confirmed repair from R11. |
+| Compare loaded | R11 Figma screenshot/facts; exact-head source proof for shared compare row order; no foreground loaded-compare screenshot | Evidence limitation. No confirmed visual repair without deterministic foreground or static screenshot binding. |
+| Edit reserved | R11 Figma screenshot/facts; exact installed-app foreground Edit reserved screenshot; source left-layer-only boundary | Intentional PRD divergence for Figma placeholder/future copy and filter operations. No repair. |
+| Settings | R11 Figma screenshot/facts; source settings module proof; no foreground settings screenshot in retry | Evidence limitation. No confirmed repair from R11. |
+| Loading | R11 Figma screenshot/facts; exact source `Loading` standalone `stateView`; source-side QA traceability; no foreground loading screenshot in retry | Confirmed unintended structural fidelity gap. Repair by preserving the workbench shell and replacing stale facts with loading-specific neutral/skeleton content. |
+| Load failed | R11 Figma screenshot/facts; exact source `Load failed` standalone `stateView`; source-side QA traceability; no foreground load-failed screenshot in retry | Confirmed unintended structural fidelity gap. Repair by preserving the workbench shell and replacing stale facts with failure/recovery content. |
+
+### Resolution Of High-impact Candidate
+
+R11-D01, R11-D02, and R11-D03 are resolved by PM as an implementable combined
+contract, not as an intentional divergence.
+
+Rationale:
+
+- `docs/product/PRODUCT_ROADMAP.md` S2 requires invalid, parse, loading, and
+  playback failures to show a visible user message and recover when a valid
+  file is opened.
+- The PRD state table allows `Loading` to be either a main-surface skeleton or
+  loading feedback; it does not require preserving loaded-file right metadata.
+- The PRD and sample validation table require invalid or non-SVGA files to
+  avoid stale metadata.
+- `docs/product/SHORT_TERM_UI_UX_DESIGN_BRIEF.md` requires Load failed to show
+  human-readable error, no stale file data, and recovery.
+- `docs/product/SHORT_TERM_UI_UX_REDESIGN_EXECUTION_PLAN.md` explicitly lists
+  `no stale metadata in loading/failure states` as a verification gate.
+- The older UI/UX screenshot audit recorded stale file identity and stale mode
+  state in Load failed as defects to avoid.
+
+The R11 Figma Loading / Load failed frames preserve the workbench shell. PM
+confirmed that shell/spatial context is required, while stale previous-source
+facts remain forbidden. The repair target is therefore:
+
+- preserve native titlebar, canvas region, mode/playback context, and the right
+  information-surface footprint;
+- keep primary loading/error feedback and the existing Open File recovery
+  action in the canvas;
+- replace previous-source facts with loading-specific neutral/skeleton content
+  or failure/recovery content;
+- suppress stale metadata, assets, optimization results, and actionable save
+  state;
+- keep unavailable controls disabled and avoid fullscreen/deferred scope.
+
+This packet now routes R11-D01/D02/D03 into one bundled R11 Figma fidelity
+repair milestone. The only intentional divergence is stale demo/source content,
+not shell geometry.
+
+### Evidence Limitations Left Open
+
+- Compare loaded still lacks owner-visible foreground proof.
+- Loading and Load failed still lack owner-visible foreground proof; source
+  repair must be validated through direct state/shell tests and design-system
+  checks before later owner-visible acceptance.
+- Settings still lacks the retry foreground screenshot.
+- Dark/light, reduced motion/transparency, minimum supported window, and
+  keyboard/focus visual checks remain outside this R11 composite pass.
+
+These limitations mean final visual acceptance remains open. They do not block
+the source-side shell repair because PM has already confirmed the mismatch as a
+repairable Figma fidelity gap.
+
 ## Retrospective
 
 - Effective: yes. R11 refreshed all required fidelity targets in one bounded
@@ -268,8 +367,8 @@ Phase A nor Phase B can claim Product Owner acceptance.
 - Cost control: acceptable. The batch used exactly the predeclared hard cap
   because the first metadata read truncated and the compact retry was required.
 - Design-source alignment: stronger. The audit distinguishes real Figma/source
-  mismatch from intentional PRD/platform/accessibility divergence so the next
-  repair does not blindly chase screenshots.
-- Main lesson: Loading and Load failed need a product/design decision before
-  implementation if Phase B confirms the current installed app does not match
-  R11. This is a page-state family decision, not a small styling fix.
+  mismatch from stale-content divergence so the next repair preserves shell
+  fidelity without leaking previous-file facts.
+- Main lesson: product/design reconciliation can produce a combined contract:
+  preserve Figma shell geometry, but replace stale source content with
+  state-specific loading/error content.

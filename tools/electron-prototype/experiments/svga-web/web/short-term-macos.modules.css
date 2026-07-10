@@ -392,6 +392,10 @@
   overflow: hidden;
 }
 
+.stateStagePanel {
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .compareStage {
   position: relative;
 }
@@ -476,6 +480,10 @@
   transform: translateX(-50%);
 }
 
+.stateModeSwitch {
+  pointer-events: none;
+}
+
 .canvasWrap,
 .compareCanvasWrap {
   position: relative;
@@ -487,6 +495,12 @@
     var(--asv-canvas-checker-pattern),
     var(--asv-canvas);
   background-size: var(--asv-preview-checker-size) var(--asv-preview-checker-size);
+}
+
+.stateCanvasWrap {
+  background:
+    var(--asv-state-canvas-bg);
+  background-size: var(--asv-state-canvas-checker-size) var(--asv-state-canvas-checker-size), auto;
 }
 
 canvas {
@@ -627,6 +641,10 @@ canvas {
   color: var(--asv-subtle);
 }
 
+.statePlaybackBar {
+  pointer-events: none;
+}
+
 .playbackIcon {
   display: block;
   width: var(--asv-icon-button-icon-size);
@@ -697,6 +715,71 @@ canvas {
   padding: var(--asv-file-header-padding-block) 0;
   margin: var(--asv-right-panel-safe-padding-block-start) var(--asv-right-panel-padding) 0;
   border-bottom: var(--asv-right-panel-header-divider);
+}
+
+.stateInfoPanel {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.stateInfoHeader {
+  box-sizing: border-box;
+  display: grid;
+  align-items: center;
+  width: var(--asv-file-header-width);
+  max-width: var(--asv-file-header-width);
+  overflow: hidden;
+  padding: var(--asv-component-state-info-header-padding-block) 0;
+  margin: var(--asv-right-panel-safe-padding-block-start) var(--asv-right-panel-padding) 0;
+  border-bottom: var(--asv-right-panel-header-divider);
+}
+
+.stateInfoHeader h1 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--asv-text);
+  font-size: var(--asv-type-size-state-title);
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stateInfoBody {
+  display: grid;
+  align-content: start;
+  gap: var(--asv-component-state-info-body-gap);
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--asv-component-state-info-body-padding-block-start) var(--asv-right-panel-padding) var(--asv-right-panel-padding);
+  background: var(--asv-side-surface-bg);
+}
+
+.stateSkeletonList {
+  display: grid;
+  gap: var(--asv-component-state-info-body-gap);
+  width: 100%;
+  max-width: var(--asv-right-surface-content-width);
+}
+
+.stateSkeletonList span {
+  display: block;
+  width: var(--asv-component-state-skeleton-line-width);
+  min-height: var(--asv-component-state-skeleton-line-height);
+  border-radius: var(--asv-component-state-skeleton-line-radius);
+  background: var(--asv-component-state-skeleton-line-background);
+}
+
+.stateSkeletonList span:nth-child(even) {
+  width: var(--asv-component-state-skeleton-line-width-secondary);
+}
+
+.stateInfoText {
+  width: 100%;
+  max-width: var(--asv-right-surface-content-width);
+  margin: 0;
+  color: var(--asv-component-state-text-color);
+  font-size: var(--asv-type-size-body);
+  line-height: var(--asv-type-line-normal);
 }
 
 .rightSurfaceBody > .factGrid,

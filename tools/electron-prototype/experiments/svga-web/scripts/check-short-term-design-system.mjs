@@ -91,7 +91,8 @@ const allowedModules = new Set([
   "SettingsDialogModule",
   "WindowChromeModule",
   "MenuBarCommandModel",
-  "SaveStateModule"
+  "SaveStateModule",
+  "StateRecoveryModule"
 ]);
 
 const requiredPageStates = [
@@ -105,6 +106,8 @@ const requiredPageStates = [
 
 const requiredFigmaPageStates = [
   { figma: "启动 / 默认", codePageState: "Launch", frame: { width: 640, height: 640 }, rootModules: ["WindowChromeModule", "LaunchModule"] },
+  { figma: "加载 / 加载中", codePageState: "Loading", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
+  { figma: "加载 / 加载失败", codePageState: "Load failed", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
   { figma: "预览 / 默认", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
   { figma: "预览 / 优化详情", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface"] },
   { figma: "预览 / 优化结果对比", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "OptimizationCompareModule", "OptimizationDetailSurface"] },
@@ -154,6 +157,7 @@ const requiredFigmaCatalog = {
     "Module/右侧栏",
     "Module/左侧栏",
     "Module/设置面板",
+    "Module/状态恢复面板",
     "Module/播放控制栏/播放中",
     "Module/窗口标题栏"
   ]
@@ -431,9 +435,24 @@ async function main() {
     missingMappedHtmlModules
   });
 
+  const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
+  const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
+  const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
   record("loading-and-load-failed-states-keep-recovery-contract",
-    /<section class="view stateView" data-view="loading"[^>]*aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"[\s\S]*?<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/.test(page)
-    && /<section class="view stateView" data-view="failed"[^>]*aria-live="assertive"[^>]*role="alert"[^>]*data-page-state="Load failed"[\s\S]*?<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/.test(page));
+    /aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"/.test(loadingSection)
+    && /data-module="PreviewCanvasModule"/.test(loadingSection)
+    && /data-module="StateRecoveryModule"/.test(loadingSection)
+    && /data-role="LoadingCanvasRecovery"/.test(loadingSection)
+    && /<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/.test(loadingSection)
+    && /<div class="playbackBar statePlaybackBar"[^>]*data-state="disabled"/.test(loadingSection)
+    && !staleStateContentPattern.test(loadingSection)
+    && /aria-live="assertive"[^>]*role="alert"[^>]*data-page-state="Load failed"/.test(failedSection)
+    && /data-module="PreviewCanvasModule"/.test(failedSection)
+    && /data-module="StateRecoveryModule"/.test(failedSection)
+    && /data-role="FailureCanvasRecovery"/.test(failedSection)
+    && /<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/.test(failedSection)
+    && /<div class="playbackBar statePlaybackBar"[^>]*data-state="disabled"/.test(failedSection)
+    && !staleStateContentPattern.test(failedSection));
 
   const launchCopySources = [page, launchRenderer].join("\n");
   const disallowedLaunchCopy = disallowedLaunchCopyPatterns
@@ -663,7 +682,7 @@ async function main() {
     && /--asv-component-settings-choice-height:\s*72px/.test(tokens)
     && /--asv-component-settings-choice-icon-size:\s*20px/.test(tokens)
     && /--asv-component-layer-panel-header-height:\s*50px/.test(tokens)
-    && /\.previewView\s*\{[\s\S]*gap: var\(--asv-preview-gap\)[\s\S]*padding: var\(--asv-preview-gap\)/.test(pageStatesCss)
+    && /\.previewView,\s*\.workbenchStateView\s*\{[\s\S]*gap: var\(--asv-preview-gap\)[\s\S]*padding: var\(--asv-preview-gap\)/.test(pageStatesCss)
     && /\.compareMetricGrid\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)[\s\S]*gap: var\(--asv-compare-metric-column-gap\)/.test(modules)
     && /\.compareModeHeader\s*\{[\s\S]*min-height: var\(--asv-compare-mode-header-min-height\)[\s\S]*border-bottom: var\(--asv-compare-mode-header-divider\)/.test(modules)
     && /\.compareMetricColumn\s*\{[\s\S]*min-height: var\(--asv-compare-metric-column-min-height\)[\s\S]*background: var\(--asv-compare-metric-column-bg\)/.test(modules)
@@ -713,9 +732,10 @@ async function main() {
   record("page-state-recovery-uses-canvas-first-contract", /--asv-component-state-canvas-checker-size:\s*var\(--asv-component-preview-checker-size\)/.test(tokens)
     && /--asv-component-state-canvas-background:\s*[\s\S]*var\(--asv-component-canvas-checker-pattern\),[\s\S]*var\(--asv-color-surface-canvas\)/.test(tokens)
     && /--asv-state-canvas-bg:\s*var\(--asv-component-state-canvas-background\)/.test(tokens)
-    && /\.stateView\s*\{[\s\S]*background: var\(--asv-state-canvas-bg\)[\s\S]*background-size: var\(--asv-state-canvas-checker-size\) var\(--asv-state-canvas-checker-size\), auto/.test(pageStatesCss)
-    && /<section class="view stateView" data-view="loading"[\s\S]*data-page-state="Loading"/.test(page)
-    && /<section class="view stateView" data-view="failed"[\s\S]*data-page-state="Load failed"/.test(page));
+    && /\.stateCanvasWrap\s*\{[\s\S]*background:\s*[\s\S]*var\(--asv-state-canvas-bg\)[\s\S]*background-size: var\(--asv-state-canvas-checker-size\) var\(--asv-state-canvas-checker-size\), auto/.test(modules)
+    && /<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*data-page-state="Loading"/.test(page)
+    && /<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*data-page-state="Load failed"/.test(page)
+    && /\.workbenchStateView\s*\{[^}]*place-items: stretch/s.test(pageStatesCss));
 
   record("page-state-surface-trace-contract", /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"[^>]*data-panel-state="overview"/.test(page)
     && /id="panelOverview"[^>]*data-panel="overview"[^>]*data-page-state="Preview overview"[^>]*data-module="OverviewInformationModule"/.test(page)
@@ -760,7 +780,7 @@ async function main() {
     && /--asv-workbench-min-width:\s*var\(--asv-layout-workbench-min-width\)/.test(tokens)
     && /body\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(baseCss)
     && /\.macApp\s*\{[\s\S]*min-width:\s*var\(--asv-launch-min-width\)[\s\S]*min-height:\s*var\(--asv-launch-min-height\)/.test(pageStatesCss)
-    && /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="edit"\]\s*\{[\s\S]*min-width:\s*var\(--asv-workbench-min-width\)[\s\S]*min-height:\s*var\(--asv-workbench-min-height\)/.test(pageStatesCss)
+    && /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="failed"\]\s*\{[\s\S]*min-width:\s*var\(--asv-workbench-min-width\)[\s\S]*min-height:\s*var\(--asv-workbench-min-height\)/.test(pageStatesCss)
     && /@media \(max-width: 1080px\)/.test(pageStatesCss)
     && /@media \(max-height: 780px\)/.test(pageStatesCss));
   record("figma-page-frame-layout-contract-covered", /--asv-layout-page-launch-frame-width:\s*640px/.test(tokens)

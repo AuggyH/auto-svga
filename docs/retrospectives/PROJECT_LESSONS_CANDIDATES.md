@@ -88,6 +88,21 @@ promoted, watched, rejected, or kept historical.
   without additional Figma reads.
 - Status: watch
 
+## Reconcile Figma fidelity conflicts into combined contracts
+
+- Source: `docs/reviews/2026-07-10-codex-uiux-r11-loading-failure-shell-repair.md`
+- Area: UI/UX, product, validation
+- Context: R11 found that Figma Loading and Load failed preserved the workbench
+  shell while product rules forbade stale previous-source metadata.
+- Problem: Treating this as either "copy Figma exactly" or "do not repair"
+  would lose one side of the requirement.
+- Candidate rule: Ask whether the conflict can become a combined contract:
+  preserve the Figma shell geometry while replacing disallowed stale content
+  with state-specific neutral or recovery content.
+- Evidence: The R11 shell repair added `StateRecoveryModule`, direct no-stale
+  content tests, and design-system checks for Loading and Load failed.
+- Status: watch
+
 ## Use P6 retrospectives as a preflight anti-pattern checklist
 
 - Source: `docs/retrospectives/P6_POSTMORTEM.md`,

@@ -181,17 +181,25 @@ test("short-term save banner states expose direct accessible page-state semantic
 
 test("short-term loading and load-failed states expose recovery actions", async () => {
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+  const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
+  const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
+  const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
 
-  assert.match(
-    page,
-    /<section class="view stateView" data-view="loading"[^>]*aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"[\s\S]*?<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/,
-    "Loading state must keep a visible Open File recovery action"
-  );
-  assert.match(
-    page,
-    /<section class="view stateView" data-view="failed"[^>]*aria-live="assertive"[^>]*role="alert"[^>]*data-page-state="Load failed"[\s\S]*?<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/,
-    "Load failed state must keep an assertive recovery action"
-  );
+  assert.match(loadingSection, /aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"/);
+  assert.match(loadingSection, /data-module="PreviewCanvasModule"/);
+  assert.match(loadingSection, /data-module="StateRecoveryModule"/);
+  assert.match(loadingSection, /data-role="LoadingCanvasRecovery"/);
+  assert.match(loadingSection, /<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/);
+  assert.match(loadingSection, /<div class="playbackBar statePlaybackBar"[^>]*data-state="disabled"/);
+  assert.doesNotMatch(loadingSection, staleStateContentPattern);
+
+  assert.match(failedSection, /aria-live="assertive"[^>]*role="alert"[^>]*data-page-state="Load failed"/);
+  assert.match(failedSection, /data-module="PreviewCanvasModule"/);
+  assert.match(failedSection, /data-module="StateRecoveryModule"/);
+  assert.match(failedSection, /data-role="FailureCanvasRecovery"/);
+  assert.match(failedSection, /<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/);
+  assert.match(failedSection, /<div class="playbackBar statePlaybackBar"[^>]*data-state="disabled"/);
+  assert.doesNotMatch(failedSection, staleStateContentPattern);
 });
 
 test("short-term preview right surface exposes page-state trace semantics", async () => {
@@ -2080,7 +2088,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-state-canvas-checker-size: var\(--asv-component-preview-checker-size\)/);
   assert.match(shortTermTokens, /--asv-component-state-canvas-background:[\s\S]*var\(--asv-component-canvas-checker-pattern\),[\s\S]*var\(--asv-color-surface-canvas\)/);
   assert.match(shortTermTokens, /--asv-state-canvas-bg: var\(--asv-component-state-canvas-background\)/);
-  assert.match(shortTermPageStates, /\.stateView\s*\{[\s\S]*background: var\(--asv-state-canvas-bg\)[\s\S]*background-size: var\(--asv-state-canvas-checker-size\) var\(--asv-state-canvas-checker-size\), auto/);
+  assert.match(shortTermModules, /\.stateCanvasWrap\s*\{[\s\S]*background:\s*[\s\S]*var\(--asv-state-canvas-bg\)[\s\S]*background-size: var\(--asv-state-canvas-checker-size\) var\(--asv-state-canvas-checker-size\), auto/);
   assert.match(shortTermTokens, /--asv-layout-launch-min-width: 640px/);
   assert.match(shortTermTokens, /--asv-layout-launch-min-height: 640px/);
   assert.match(shortTermTokens, /--asv-layout-workbench-min-width: 1180px/);
@@ -2229,7 +2237,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.doesNotMatch(shortTermComponents, /\.stateCard\.error h1\s*\{[^}]*color: var\(--asv-danger\)/s);
   assert.match(page, /class="toolbarButton primary stateRecoveryButton"/);
   assert.match(page, /class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true"/);
-  assert.match(shortTermPageStates, /\.macApp\[data-app-state="loading"\] \.stateView,[\s\S]*\.macApp\[data-app-state="failed"\] \.stateView\s*\{[^}]*grid-row: 1 \/ -1/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="loading"\] \.view,[\s\S]*\.macApp\[data-app-state="failed"\] \.view\s*\{[^}]*grid-row: 2/s);
+  assert.match(shortTermPageStates, /\.workbenchStateView\s*\{[^}]*place-items: stretch/s);
   assert.match(shortTermComponents, /\.appDialog\[data-status="warning"\]::before/);
   assert.match(shortTermComponents, /\.dialogHeader/);
   assert.match(shortTermComponents, /\.dialogActions/);
@@ -2431,11 +2440,11 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermPageStates, /\.macApp\[data-app-state="launch"\]/);
   assert.match(shortTermStyles, /body\s*\{[^}]*min-width: var\(--asv-launch-min-width\)[^}]*min-height: var\(--asv-launch-min-height\)/s);
   assert.match(shortTermPageStates, /\.macApp\s*\{[^}]*min-width: var\(--asv-launch-min-width\)[^}]*min-height: var\(--asv-launch-min-height\)/s);
-  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="edit"\]\s*\{[^}]*min-width: var\(--asv-workbench-min-width\)[^}]*min-height: var\(--asv-workbench-min-height\)/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\],[\s\S]*\.macApp\[data-app-state="failed"\]\s*\{[^}]*min-width: var\(--asv-workbench-min-width\)[^}]*min-height: var\(--asv-workbench-min-height\)/s);
   assert.match(shortTermPageStates, /\.launchView\s*\{[^}]*place-items: stretch/s);
   assert.match(shortTermPageStates, /\.saveBanner\s*\{[^}]*grid-row: 1/s);
-  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\] \.view,[\s\S]*\.macApp\[data-app-state="compare"\] \.view,[\s\S]*\.macApp\[data-app-state="edit"\] \.view\s*\{[^}]*grid-row: 2/s);
-  assert.match(shortTermPageStates, /\.previewView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
+  assert.match(shortTermPageStates, /\.macApp\[data-app-state="preview"\] \.view,[\s\S]*\.macApp\[data-app-state="failed"\] \.view\s*\{[^}]*grid-row: 2/s);
+  assert.match(shortTermPageStates, /\.previewView,\s*\.workbenchStateView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
   assert.match(shortTermPageStates, /\.compareView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);
   assert.match(shortTermPageStates, /\.editView\s*\{[^}]*grid-template-columns: var\(--asv-left-width\) minmax\(var\(--asv-edit-canvas-min-width\), 1fr\) minmax\(var\(--asv-edit-right-panel-min-width\), var\(--asv-right-panel-width\)\)/s);
   assert.match(shortTermPageStates, /\.editView\s*\{[^}]*grid-template-rows: minmax\(0, 1fr\)/s);

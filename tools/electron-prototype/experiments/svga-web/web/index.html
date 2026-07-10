@@ -59,33 +59,127 @@
         </div>
       </section>
 
-      <section class="view stateView" data-view="loading" aria-live="polite" aria-busy="true" role="status" data-page-state="Loading" hidden>
-        <div class="stateCard" data-component="FileDropTarget">
-          <span class="spinner" aria-hidden="true"></span>
-          <h1>正在打开 SVGA</h1>
-          <p id="loadingMessage">读取文件并准备预览。</p>
-          <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">
-            <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 7.8A2.8 2.8 0 0 1 5.8 5h3.9l2 2H18A3 3 0 0 1 21 10v6.2A2.8 2.8 0 0 1 18.2 19H5.8A2.8 2.8 0 0 1 3 16.2Z"></path>
-              <path d="M3.2 9.5h17.6"></path>
-            </svg>
-            <span>打开文件</span>
-          </button>
-        </div>
+      <section class="view stateView workbenchStateView" data-view="loading" aria-live="polite" aria-busy="true" role="status" data-page-state="Loading" hidden>
+        <section class="previewStagePanel stateStagePanel" aria-label="加载" data-module="PreviewCanvasModule" data-component="PreviewStage">
+          <div class="canvasModeSwitch stateModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch" aria-disabled="true">
+            <button type="button" class="isSelected" aria-pressed="true" disabled>预览模式</button>
+            <button type="button" aria-pressed="false" disabled>编辑模式</button>
+          </div>
+          <div class="canvasWrap stateCanvasWrap" data-component="FileDropTarget" data-role="LoadingCanvasRecovery">
+            <div class="stateCard" data-component="FileDropTarget">
+              <span class="spinner" aria-hidden="true"></span>
+              <h1>正在加载</h1>
+              <p id="loadingMessage">读取文件并准备预览。</p>
+              <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">
+                <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 7.8A2.8 2.8 0 0 1 5.8 5h3.9l2 2H18A3 3 0 0 1 21 10v6.2A2.8 2.8 0 0 1 18.2 19H5.8A2.8 2.8 0 0 1 3 16.2Z"></path>
+                  <path d="M3.2 9.5h17.6"></path>
+                </svg>
+                <span>打开文件</span>
+              </button>
+            </div>
+          </div>
+          <div class="playbackBar statePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled">
+            <div class="playbackActions" data-component="PlaybackButtonGroup">
+              <button type="button" class="playbackIconButton" data-component="IconButton" aria-label="重播" title="重播" disabled>
+                <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5.5 12a6.5 6.5 0 1 0 2-4.7"></path>
+                  <path d="M7.8 4.6v3.2H4.6"></path>
+                </svg>
+              </button>
+              <button type="button" class="playbackIconButton primary" data-component="IconButton" aria-label="播放" title="播放" disabled>
+                <svg class="playbackIcon playbackIconPlay" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5.5v13l10-6.5-10-6.5Z"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="playbackProgress" role="progressbar" aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span></span>
+            </div>
+            <span class="playbackTime">0:00 / 0:00</span>
+            <div class="playbackRightActions" data-component="PlaybackButtonGroup">
+              <button type="button" class="playbackIconButton" data-component="IconButton" aria-label="循环播放" title="循环播放" disabled>
+                <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17 2.8l3.2 3.2L17 9.2"></path>
+                  <path d="M4 11V9.5A3.5 3.5 0 0 1 7.5 6h12.2"></path>
+                  <path d="M7 21.2 3.8 18 7 14.8"></path>
+                  <path d="M20 13v1.5a3.5 3.5 0 0 1-3.5 3.5H4.3"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+        <aside class="rightPanel stateInfoPanel" aria-label="加载信息" data-component="RightInformationSurface" data-module="StateRecoveryModule" data-panel-state="loading">
+          <div class="stateInfoHeader">
+            <h1>正在加载</h1>
+          </div>
+          <section class="stateInfoBody" aria-label="加载状态">
+            <div class="stateSkeletonList" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </section>
+        </aside>
       </section>
 
-      <section class="view stateView" data-view="failed" aria-live="assertive" role="alert" data-page-state="Load failed" hidden>
-        <div class="stateCard error" data-component="ErrorRecoveryPanel">
-          <h1>无法打开这个 SVGA</h1>
-          <p id="errorMessage">文件未能解析，源文件没有被修改。</p>
-          <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">
-            <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 7.8A2.8 2.8 0 0 1 5.8 5h3.9l2 2H18A3 3 0 0 1 21 10v6.2A2.8 2.8 0 0 1 18.2 19H5.8A2.8 2.8 0 0 1 3 16.2Z"></path>
-              <path d="M3.2 9.5h17.6"></path>
-            </svg>
-            <span>打开文件</span>
-          </button>
-        </div>
+      <section class="view stateView workbenchStateView" data-view="failed" aria-live="assertive" role="alert" data-page-state="Load failed" hidden>
+        <section class="previewStagePanel stateStagePanel" aria-label="加载失败" data-module="PreviewCanvasModule" data-component="PreviewStage">
+          <div class="canvasModeSwitch stateModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch" aria-disabled="true">
+            <button type="button" class="isSelected" aria-pressed="true" disabled>预览模式</button>
+            <button type="button" aria-pressed="false" disabled>编辑模式</button>
+          </div>
+          <div class="canvasWrap stateCanvasWrap" data-component="ErrorRecoveryPanel" data-role="FailureCanvasRecovery">
+            <div class="stateCard error" data-component="ErrorRecoveryPanel">
+              <h1>文件加载失败</h1>
+              <p id="errorMessage">文件未能解析，源文件没有被修改。</p>
+              <button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">
+                <svg class="buttonIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 7.8A2.8 2.8 0 0 1 5.8 5h3.9l2 2H18A3 3 0 0 1 21 10v6.2A2.8 2.8 0 0 1 18.2 19H5.8A2.8 2.8 0 0 1 3 16.2Z"></path>
+                  <path d="M3.2 9.5h17.6"></path>
+                </svg>
+                <span>打开文件</span>
+              </button>
+            </div>
+          </div>
+          <div class="playbackBar statePlaybackBar" aria-label="播放控制" data-component="PlaybackControls" data-state="disabled">
+            <div class="playbackActions" data-component="PlaybackButtonGroup">
+              <button type="button" class="playbackIconButton" data-component="IconButton" aria-label="重播" title="重播" disabled>
+                <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5.5 12a6.5 6.5 0 1 0 2-4.7"></path>
+                  <path d="M7.8 4.6v3.2H4.6"></path>
+                </svg>
+              </button>
+              <button type="button" class="playbackIconButton primary" data-component="IconButton" aria-label="播放" title="播放" disabled>
+                <svg class="playbackIcon playbackIconPlay" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5.5v13l10-6.5-10-6.5Z"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="playbackProgress" role="progressbar" aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span></span>
+            </div>
+            <span class="playbackTime">0:00 / 0:00</span>
+            <div class="playbackRightActions" data-component="PlaybackButtonGroup">
+              <button type="button" class="playbackIconButton" data-component="IconButton" aria-label="循环播放" title="循环播放" disabled>
+                <svg class="playbackIcon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17 2.8l3.2 3.2L17 9.2"></path>
+                  <path d="M4 11V9.5A3.5 3.5 0 0 1 7.5 6h12.2"></path>
+                  <path d="M7 21.2 3.8 18 7 14.8"></path>
+                  <path d="M20 13v1.5a3.5 3.5 0 0 1-3.5 3.5H4.3"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+        <aside class="rightPanel stateInfoPanel" aria-label="加载失败信息" data-component="RightInformationSurface" data-module="StateRecoveryModule" data-panel-state="failed">
+          <div class="stateInfoHeader">
+            <h1>加载失败</h1>
+          </div>
+          <section class="stateInfoBody" aria-label="恢复状态">
+            <p class="stateInfoText">源文件没有被修改。</p>
+          </section>
+        </aside>
       </section>
 
       <section class="view previewView" data-view="preview" data-page-state="Preview ready" hidden>
