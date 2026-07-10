@@ -130,6 +130,58 @@ test("owner-visible 0.2 candidate applies and resets Lottie image and text runti
   assert.equal(lottieText(loadCalls[3]?.animationData, 2), "Hello");
 });
 
+test("owner-visible 0.2 candidate fails Lottie reset closed when the original source cannot reopen", async () => {
+  const localPath = "/Users/designer/private/card.json";
+  const loadCalls: LottieSvgLoadOptions[] = [];
+  const files: Record<string, Uint8Array> = {
+    [localPath]: minimalLottie({
+      assets: [{ id: "avatar", p: "avatar.png", w: 20, h: 20 }],
+      layers: [{ ind: 1, ty: 2, nm: "Avatar", refId: "avatar" }]
+    }),
+    [`${localPath}::avatar.png`]: Uint8Array.from([1, 2, 3])
+  };
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host: memoryHost(files),
+    lottieTarget: { container: {} },
+    lottieRendererLoader: async () => fakeLottieRenderer(loadCalls)
+  });
+
+  await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-lottie",
+    source: "fileButton",
+    localPath
+  });
+  const applied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-lottie",
+    targetId: "avatar",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.equal(applied.replacement.dirty, true);
+  assert.equal(loadCalls.length, 2);
+
+  delete files[localPath];
+  const reset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-missing-lottie"
+  });
+
+  assert.equal(reset.status, "previewReady");
+  assert.equal(reset.replacement.status, "failed");
+  assert.equal(reset.replacement.dirty, true);
+  assert.equal(reset.replacement.resetEnabled, true);
+  assert.equal(reset.replacement.active[0]?.targetId, "avatar");
+  assert.equal(reset.replacement.lastAction?.type, "resetReplacement");
+  assert.equal(reset.replacement.lastAction?.status, "failed");
+  assert.equal(reset.replacement.lastAction?.diagnostic?.code, "parse_precondition");
+  assert.equal(reset.replacement.playerAction, "keepCurrentPreview");
+  assert.equal(loadCalls.length, 2);
+  assert.equal(lottieAssetPath(loadCalls[1]?.animationData, "avatar"), "data:image/png;base64,QUJD");
+  assertNoLocalPaths(reset);
+});
+
 test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacements", async () => {
   const localPath = "/Users/designer/private/fusion.mp4";
   const runtime = fakeVapRuntime();
@@ -175,6 +227,56 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   assert.equal(reset.status, "playbackBlocked");
   assert.equal(reset.replacement.dirty, false);
   assert.equal(host.revoked.includes("blob:vap/fusion.mp4"), true);
+  assertNoLocalPaths(reset);
+});
+
+test("owner-visible 0.2 candidate fails VAP reset closed when the original source cannot reopen", async () => {
+  const localPath = "/Users/designer/private/fusion.mp4";
+  const runtime = fakeVapRuntime();
+  const files: Record<string, Uint8Array> = {
+    [localPath]: validVapBytes(fusionImageConfig())
+  };
+  const host = memoryHost(files);
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host,
+    vapTarget: {},
+    vapHostReadiness: readyVapHost(),
+    vapRuntimeLoader: async () => runtime.constructor
+  });
+
+  await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-vap",
+    source: "menuOpen",
+    localPath
+  });
+  const applied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-vap",
+    targetId: "avatar",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.equal(applied.replacement.dirty, true);
+  assert.equal(runtime.configs.length, 1);
+
+  delete files[localPath];
+  const reset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-missing-vap"
+  });
+
+  assert.equal(reset.status, "previewReady");
+  assert.equal(reset.replacement.status, "failed");
+  assert.equal(reset.replacement.dirty, true);
+  assert.equal(reset.replacement.resetEnabled, true);
+  assert.equal(reset.replacement.active[0]?.targetId, "avatar");
+  assert.equal(reset.replacement.lastAction?.type, "resetReplacement");
+  assert.equal(reset.replacement.lastAction?.status, "failed");
+  assert.equal(reset.replacement.lastAction?.diagnostic?.code, "parse_precondition");
+  assert.equal(reset.replacement.playerAction, "keepCurrentPreview");
+  assert.equal(runtime.configs.length, 1);
+  assert.equal(host.revoked.includes("blob:vap/fusion.mp4"), false);
   assertNoLocalPaths(reset);
 });
 

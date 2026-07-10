@@ -10,6 +10,7 @@ import {
   createHiddenMultiFormatPreviewWorkspace,
   type CreateHiddenMultiFormatPreviewWorkspaceOptions,
   type HiddenMultiFormatPreviewAssetRow,
+  type HiddenMultiFormatPreviewHost,
   type HiddenMultiFormatPreviewIssue,
   type HiddenMultiFormatPreviewModel,
   type HiddenMultiFormatPreviewOpenInput,
@@ -221,6 +222,7 @@ export function createOwnerVisibleMultiFormatPreviewCandidate(
 
 export class OwnerVisibleMultiFormatPreviewCandidateSession {
   private readonly workspace: ReturnType<typeof createHiddenMultiFormatPreviewWorkspace>;
+  private readonly host: HiddenMultiFormatPreviewHost;
   private readonly svgaReplacementController: OwnerVisibleSvgaReplacementController | undefined;
   private activeGeneration = 0;
   private currentOpen?: OpenContext;
@@ -228,6 +230,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
   private model: OwnerVisibleMultiFormatPreviewModel = idleModel();
 
   constructor(options: CreateOwnerVisibleMultiFormatPreviewCandidateOptions) {
+    this.host = options.host;
     this.workspace = createHiddenMultiFormatPreviewWorkspace(options);
     this.svgaReplacementController = options.svgaReplacementController;
   }
@@ -405,12 +408,35 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       return this.resetSvgaReplacement(input, generation);
     }
 
+    const resetPreflightDiagnostic = await this.preflightResetSource();
+    if (!this.isActive(generation)) return this.getModel();
+    if (resetPreflightDiagnostic) {
+      return this.failReplacement(
+        input.requestId,
+        "resetReplacement",
+        "Runtime replacement reset could not reopen the original source.",
+        resetPreflightDiagnostic
+      );
+    }
+
     const nextReplacements = emptyReplacementContext(this.replacements.revision + 1);
     const workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput({
       ...this.currentOpen,
       requestId: input.requestId
     }, nextReplacements));
     if (!this.isActive(generation)) return this.getModel();
+    const accepted = ["inspectionReady", "ready", "playing", "paused", "playbackBlocked"].includes(workspaceModel.status);
+    if (!accepted) {
+      return this.failReplacement(
+        input.requestId,
+        "resetReplacement",
+        "Runtime replacement reset was rejected by the active format vertical.",
+        firstIssueDiagnostic(workspaceModel.issues) ?? {
+          code: "parse_precondition",
+          message: "The original source could not be reopened for reset."
+        }
+      );
+    }
     this.currentOpen = { ...this.currentOpen, requestId: input.requestId };
     this.replacements = nextReplacements;
     this.model = modelFromWorkspace(workspaceModel, this.replacements, {
@@ -420,6 +446,33 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       message: "Runtime replacement preview has been reset to the opened source."
     }, "idle", "remountSource");
     return this.getModel();
+  }
+
+  private async preflightResetSource(): Promise<{ code: string; message: string } | undefined> {
+    const localPath = this.currentOpen?.localPath;
+    if (!localPath) {
+      return {
+        code: "replacement_requires_open_asset",
+        message: "Reset requires an opened motion asset."
+      };
+    }
+    try {
+      const stat = await this.host.statLocalFile(localPath);
+      const boundedLength = Number.isFinite(stat.sizeBytes) && stat.sizeBytes > 0
+        ? Math.min(1, Math.trunc(stat.sizeBytes))
+        : 1;
+      await this.host.readLocalFileRange(localPath, 0, boundedLength);
+      return undefined;
+    } catch (error) {
+      return {
+        code: "parse_precondition",
+        message: `Original source could not be reopened for runtime replacement reset: ${redactLocalPathsFromError(
+          error,
+          "Source unavailable.",
+          [localPath]
+        )}`
+      };
+    }
   }
 
   dispose(): OwnerVisibleMultiFormatPreviewModel {

@@ -1155,3 +1155,17 @@ promoted, watched, rejected, or kept historical.
   command-menu isolation.
 - Status: Candidate pending reuse in visible shell integration and Packaging
   QA.
+
+## 2026-07-11: Preflight Reset Before Reopening Delegated Preview Workspaces
+
+- Candidate lesson: Runtime reset is not just apply-with-empty-replacements.
+  If reset calls a delegated workspace that disposes active renderer/runtime
+  state before proving the original source is still readable, a missing source
+  can erase dirty/reset context and report a false accepted reset.
+- Evidence: WP5 repair for `MF-WP5-CR-001` stores the candidate host for a
+  bounded preflight before Lottie/VAP reset. Failure-first tests remove the
+  original source after a runtime replacement and prove reset now fails closed,
+  keeps the active replacement record, keeps reset enabled, and redacts the
+  path for both Lottie and VAP.
+- Status: Candidate pending reuse in WP6 desktop integration and any future
+  cross-format replacement shell.
