@@ -17,6 +17,9 @@ importers:
       protobufjs:
         specifier: ^8.5.0
         version: 8.5.0
+      video-animation-player:
+        specifier: 1.0.5
+        version: 1.0.5
     devDependencies:
       '@types/node':
         specifier: ^20.12.12
@@ -231,6 +234,9 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
+  video-animation-player@1.0.5:
+    resolution: {integrity: sha512-KLz+uL6zojOYXEPFxL2AB0iKSLHnmKQPBnXmFWHpGtAdB6/j9EWCbWcUDCg0KVOBTFRHa2UfiSNK0y1I+LEfpA==}
+
 snapshots:
 
   '@esbuild/aix-ppc64@0.28.0':
@@ -373,3 +379,5 @@ snapshots:
   typescript@5.9.3: {}
 
   undici-types@6.21.0: {}
+
+  video-animation-player@1.0.5: {}

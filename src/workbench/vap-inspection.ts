@@ -305,6 +305,7 @@ export class VapInspectionService {
             path: vapcBox.path,
             payloadBytes: vapcPayload.byteLength
           },
+          config: vapc.value,
           container: {
             ftyp: facts.ftyp,
             topLevelBoxes: facts.topLevelBoxes,

@@ -1111,3 +1111,17 @@ promoted, watched, rejected, or kept historical.
   unsupported codec, duplicate fusion tags, missing fusion replacements,
   dangling resource references, and cancellation.
 - Status: Candidate pending reuse in the eventual VAP playback spike.
+
+## 2026-07-11: Reject Network-Capable Renderer Inputs Before Runtime Load
+
+- Candidate lesson: Hidden player adapters should validate replacement/resource
+  values before a stopped-maintenance renderer sees them. A local object URL for
+  the main media is not enough if fusion image strings can still become
+  `Image.src`, XHR, or CDN/network loads inside the runtime.
+- Evidence: The VAP runtime spike passes embedded `vapc` config objects and
+  host-owned `blob:` MP4 URLs, disables runtime precache, and rejects fusion
+  image replacements unless they are `blob:` or `data:image/...`. Regression
+  coverage proves network image replacement input fails before local reads,
+  object URL creation, or runtime construction.
+- Status: Candidate pending reuse in visible 0.2 multi-format resource
+  replacement UI and future renderer integrations.
