@@ -142,6 +142,10 @@ class LottieSvgPlaybackSession implements PlaybackSession {
   private readonly rendererLoader: LottieSvgRendererLoader;
   private readonly inspectionService: LottieJsonInspectionService;
   private animation?: LottieSvgAnimationItem;
+  private rendererFailureBinding?: {
+    animation: LottieSvgAnimationItem;
+    handler: () => void;
+  };
   private state: PlaybackState = {
     status: "idle",
     currentTimeMs: 0,
@@ -190,6 +194,7 @@ class LottieSvgPlaybackSession implements PlaybackSession {
       ));
     }
 
+    this.disposeAnimation();
     this.state = { ...this.state, status: "loading", currentTimeMs: 0 };
     context?.cancellation?.throwIfCancelled();
     const inspected = await this.inspectionService.inspect(
@@ -238,15 +243,15 @@ class LottieSvgPlaybackSession implements PlaybackSession {
     }
 
     try {
-      this.disposeAnimation();
-      this.animation = renderer.loadAnimation({
+      const animation = renderer.loadAnimation({
         container: this.target.container,
         renderer: "svg",
         loop: this.state.loop,
         autoplay: false,
         animationData: animationData.value
       });
-      this.bindRendererFailure();
+      this.animation = animation;
+      this.bindRendererFailure(animation);
       this.state = {
         status: "ready",
         currentTimeMs: 0,
@@ -255,6 +260,7 @@ class LottieSvgPlaybackSession implements PlaybackSession {
       };
       return { value: inspected.value, issues: inspected.issues };
     } catch (error) {
+      this.disposeAnimation();
       return this.fail(issue(
         feedback,
         "renderer_failure",
@@ -328,18 +334,27 @@ class LottieSvgPlaybackSession implements PlaybackSession {
     }
   }
 
-  private bindRendererFailure(): void {
-    this.animation?.addEventListener?.("data_failed", () => {
+  private bindRendererFailure(animation: LottieSvgAnimationItem): void {
+    const handler = () => {
+      if (this.animation !== animation || this.state.status === "disposed") return;
+      this.disposeAnimation();
       this.state = { ...this.state, status: "error" };
-    });
-    this.animation?.addEventListener?.("error", () => {
-      this.state = { ...this.state, status: "error" };
-    });
+    };
+    animation.addEventListener?.("data_failed", handler);
+    animation.addEventListener?.("error", handler);
+    this.rendererFailureBinding = { animation, handler };
   }
 
   private disposeAnimation(): void {
-    this.animation?.destroy();
+    const animation = this.animation;
     this.animation = undefined;
+    const binding = this.rendererFailureBinding;
+    this.rendererFailureBinding = undefined;
+    if (binding && binding.animation === animation) {
+      animation?.removeEventListener?.("data_failed", binding.handler);
+      animation?.removeEventListener?.("error", binding.handler);
+    }
+    animation?.destroy();
   }
 }
 

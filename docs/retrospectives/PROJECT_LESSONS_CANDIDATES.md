@@ -1009,3 +1009,12 @@ promoted, watched, rejected, or kept historical.
   default loader fails typed in a non-DOM test host, and record dynamic
   renderer chunk size without adding UI/open-flow integration.
 - Status: watch
+## 2026-07-10: Bind Renderer Failures To The Active Instance
+
+- Candidate lesson: Player adapters should remove renderer listeners during
+  unload and also guard callbacks by active-instance identity. Listener removal
+  alone cannot neutralize callbacks already queued by the renderer.
+- Evidence: WP2B failure-first probes showed old Lottie callbacks could mutate
+  disposed or reloaded sessions, and renderer errors left the failed animation
+  alive. Instance binding plus one cleanup path closed all three probes.
+- Status: Candidate pending reuse in another player adapter.

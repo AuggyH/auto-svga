@@ -217,6 +217,40 @@ test("maps renderer load failures and data_failed callbacks to error state", asy
   assert.ok(loaded.value);
   animations[0]?.emit("data_failed");
   assert.equal(session.getState().status, "error");
+  assert.equal(animations[0]?.destroys, 1);
+});
+
+test("ignores a stale renderer failure callback after session disposal", async () => {
+  const animations: FakeAnimation[] = [];
+  const session = new LottieSvgPlaybackAdapter({
+    gate: LOTTIE_SVG_PLAYBACK_WP2B_GATE,
+    rendererLoader: async () => fakeRenderer([], animations)
+  }).createSession({ container: {} });
+
+  await session.load(memorySource("first.json", minimalLottie()));
+  const staleFailure = animations[0]?.snapshotHandlers("data_failed")[0];
+  session.dispose();
+  staleFailure?.();
+
+  assert.equal(session.getState().status, "disposed");
+  assert.equal(animations[0]?.destroys, 1);
+});
+
+test("ignores a stale renderer failure callback after loading a newer animation", async () => {
+  const animations: FakeAnimation[] = [];
+  const session = new LottieSvgPlaybackAdapter({
+    gate: LOTTIE_SVG_PLAYBACK_WP2B_GATE,
+    rendererLoader: async () => fakeRenderer([], animations)
+  }).createSession({ container: {} });
+
+  await session.load(memorySource("first.json", minimalLottie()));
+  const staleFailure = animations[0]?.snapshotHandlers("error")[0];
+  await session.load(memorySource("second.json", minimalLottie()));
+  staleFailure?.();
+
+  assert.equal(session.getState().status, "ready");
+  assert.equal(animations[0]?.destroys, 1);
+  assert.equal(animations[1]?.destroys, 0);
 });
 
 function minimalLottie(overrides: Record<string, unknown> = {}): Uint8Array {
@@ -304,5 +338,9 @@ class FakeAnimation implements LottieSvgAnimationItem {
 
   emit(eventName: string): void {
     for (const handler of this.listeners.get(eventName) ?? []) handler();
+  }
+
+  snapshotHandlers(eventName: string): Array<() => void> {
+    return [...(this.listeners.get(eventName) ?? [])];
   }
 }
