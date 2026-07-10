@@ -1060,3 +1060,26 @@ promoted, watched, rejected, or kept historical.
   prevents stale container mutation in the delayed renderer-loader regression.
 - Status: Candidate pending reuse in VAP playback and any visible 0.2
   renderer integration.
+
+## 2026-07-10: Keep VAP Inspection Separate From VAP Runtime Adoption
+
+- Candidate lesson: VAP parser/readiness work should land before a player
+  dependency. `vapc` extraction, fusion metadata, ordinary MP4 false positives,
+  corrupt box handling, over-limit dimensions, and codec/audio facts can be
+  tested with synthetic bytes without installing a stopped-maintenance WebGL
+  runtime.
+- Evidence: The hidden VAP inspection milestone normalizes MP4/vapc facts and
+  produces the Tencent Web dependency decision while leaving package.json and
+  pnpm-lock unchanged. Runtime adoption remains a Product Owner gate.
+- Status: Candidate pending reuse in VAP playback dependency approval.
+
+## 2026-07-10: Validate Fusion Element References Before Candidate UI
+
+- Candidate lesson: Fusion element placeholders are future replacement
+  candidates only when their source ids are unique and frame placement
+  references close over known sources. Missing runtime replacement data can be
+  a warning, but duplicate ids or dangling frame references should fail closed.
+- Evidence: The hidden VAP inspection tests cover image/text fusion sources,
+  missing runtime tags, duplicate `srcId`, and frame objects that reference a
+  missing source before any visible replacement UI exists.
+- Status: Candidate pending reuse in visible 0.2 assets/fusion surface.
