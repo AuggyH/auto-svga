@@ -11,6 +11,7 @@ import {
   saveProofSourceImageKey
 } from "./short-term-macos-save-model.mjs";
 import { canSaveOptimizationResult } from "./short-term-macos-optimization-model.mjs";
+import { sourceUnmodifiedMessage } from "./short-term-macos-feedback-model.mjs";
 
 export async function createShortTermSaveProofOutput({
   state,
@@ -128,7 +129,7 @@ export async function saveShortTermActiveOutput({
   } catch (error) {
     state.saveStatus = "failed";
     renderCommandState();
-    showSaveBanner("保存失败。", error instanceof Error ? error.message : String(error));
+    showSaveBanner("保存失败。", sourceUnmodifiedMessage(error instanceof Error ? error.message : String(error)));
     throw error;
   }
 }

@@ -431,6 +431,10 @@ async function main() {
     missingMappedHtmlModules
   });
 
+  record("loading-and-load-failed-states-keep-recovery-contract",
+    /<section class="view stateView" data-view="loading"[^>]*aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"[\s\S]*?<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/.test(page)
+    && /<section class="view stateView" data-view="failed"[^>]*aria-live="assertive"[^>]*role="alert"[^>]*data-page-state="Load failed"[\s\S]*?<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/.test(page));
+
   const launchCopySources = [page, launchRenderer].join("\n");
   const disallowedLaunchCopy = disallowedLaunchCopyPatterns
     .filter((pattern) => pattern.test(launchCopySources))

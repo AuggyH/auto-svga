@@ -117,7 +117,8 @@ test("short-term save banner states expose direct accessible page-state semantic
   const {
     bannerTone,
     saveBannerA11yState,
-    saveBannerView
+    saveBannerView,
+    sourceUnmodifiedMessage
   } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-feedback-model.mjs")).href);
   const { showSaveFeedbackBanner, clearSaveFeedbackBanner } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-save-renderers.mjs")).href);
 
@@ -171,6 +172,26 @@ test("short-term save banner states expose direct accessible page-state semantic
   assert.equal(attributes.has("role"), false);
   assert.equal(attributes.get("aria-live"), "polite");
   assert.equal(attributes.get("aria-busy"), "false");
+
+  assert.equal(sourceUnmodifiedMessage("磁盘写入失败。"), "磁盘写入失败。 源文件没有被修改。");
+  const saveSurface = await readFile(path.join(experimentRoot, "web/short-term-macos-save-surface.mjs"), "utf8");
+  assert.match(saveSurface, /import \{ sourceUnmodifiedMessage \} from "\.\/short-term-macos-feedback-model\.mjs";/);
+  assert.match(saveSurface, /showSaveBanner\("保存失败。", sourceUnmodifiedMessage/);
+});
+
+test("short-term loading and load-failed states expose recovery actions", async () => {
+  const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
+
+  assert.match(
+    page,
+    /<section class="view stateView" data-view="loading"[^>]*aria-live="polite"[^>]*aria-busy="true"[^>]*role="status"[^>]*data-page-state="Loading"[\s\S]*?<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/,
+    "Loading state must keep a visible Open File recovery action"
+  );
+  assert.match(
+    page,
+    /<section class="view stateView" data-view="failed"[^>]*aria-live="assertive"[^>]*role="alert"[^>]*data-page-state="Load failed"[\s\S]*?<button class="toolbarButton primary stateRecoveryButton" type="button" data-action="open">[\s\S]*?<span>打开文件<\/span>/,
+    "Load failed state must keep an assertive recovery action"
+  );
 });
 
 test("short-term general compare renders loaded A/B facts through shared metric renderer", async () => {
