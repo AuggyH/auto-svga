@@ -1169,3 +1169,18 @@ promoted, watched, rejected, or kept historical.
   path for both Lottie and VAP.
 - Status: Candidate pending reuse in WP6 desktop integration and any future
   cross-format replacement shell.
+
+## 2026-07-11: Define Reset Success By Format-aware Issue Semantics
+
+- Candidate lesson: A cross-format reset flow must not accept a coarse
+  workspace status such as `playbackBlocked` without checking why the format
+  is blocked. Some blocked source states are valid reset targets, while
+  missing source dependencies, parse failures, and renderer/session reload
+  failures must keep the current replacement preview dirty and reset-enabled.
+- Evidence: WP5 repair 2 for `MF-WP5-CR-001R` records the second consecutive
+  review finding, preflights Lottie adjacent image dependencies captured from
+  the original source-open model, accepts only format-aware VAP blocked-reset
+  reasons, and rolls back to the prior replacement session when Lottie renderer
+  reload fails after preflight.
+- Status: Candidate pending Code Review re-review and reuse in WP6 desktop
+  integration.

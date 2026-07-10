@@ -182,6 +182,125 @@ test("owner-visible 0.2 candidate fails Lottie reset closed when the original so
   assertNoLocalPaths(reset);
 });
 
+test("owner-visible 0.2 candidate fails Lottie reset before renderer mutation when an adjacent resource is missing", async () => {
+  const localPath = "/Users/designer/private/card.json";
+  const loadCalls: LottieSvgLoadOptions[] = [];
+  const rendererEvents: string[] = [];
+  const files: Record<string, Uint8Array> = {
+    [localPath]: minimalLottie({
+      assets: [{ id: "avatar", p: "avatar.png", w: 20, h: 20 }],
+      layers: [{ ind: 1, ty: 2, nm: "Avatar", refId: "avatar" }]
+    }),
+    [`${localPath}::avatar.png`]: Uint8Array.from([1, 2, 3])
+  };
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host: memoryHost(files),
+    lottieTarget: { container: {} },
+    lottieRendererLoader: async () => fakeLottieRenderer(loadCalls, rendererEvents)
+  });
+
+  await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-lottie",
+    source: "fileButton",
+    localPath
+  });
+  const applied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-lottie",
+    targetId: "avatar",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.equal(applied.replacement.dirty, true);
+  assert.equal(loadCalls.length, 2);
+  const rendererEventsBeforeReset = rendererEvents.length;
+
+  delete files[`${localPath}::avatar.png`];
+  const reset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-missing-adjacent"
+  });
+
+  assert.equal(reset.status, "previewReady");
+  assert.equal(reset.replacement.status, "failed");
+  assert.equal(reset.replacement.dirty, true);
+  assert.equal(reset.replacement.resetEnabled, true);
+  assert.equal(reset.replacement.active[0]?.targetId, "avatar");
+  assert.equal(reset.replacement.lastAction?.type, "resetReplacement");
+  assert.equal(reset.replacement.lastAction?.status, "failed");
+  assert.equal(reset.replacement.lastAction?.diagnostic?.code, "missing_resource");
+  assert.equal(reset.replacement.playerAction, "keepCurrentPreview");
+  assert.equal(loadCalls.length, 2);
+  assert.equal(rendererEvents.length, rendererEventsBeforeReset);
+  assert.equal(lottieAssetPath(loadCalls[1]?.animationData, "avatar"), "data:image/png;base64,QUJD");
+  assert.equal((await session.play()).status, "playing");
+  assertNoLocalPaths(reset);
+});
+
+test("owner-visible 0.2 candidate rolls back Lottie reset when renderer reload fails after preflight", async () => {
+  const localPath = "/Users/designer/private/card.json";
+  const loadCalls: LottieSvgLoadOptions[] = [];
+  const rendererEvents: string[] = [];
+  let rendererLoadCount = 0;
+  const host = memoryHost({
+    [localPath]: minimalLottie({
+      assets: [{ id: "avatar", p: "avatar.png", w: 20, h: 20 }],
+      layers: [{ ind: 1, ty: 2, nm: "Avatar", refId: "avatar" }]
+    }),
+    [`${localPath}::avatar.png`]: Uint8Array.from([1, 2, 3])
+  });
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host,
+    lottieTarget: { container: {} },
+    lottieRendererLoader: async () => ({
+      loadAnimation(options) {
+        rendererLoadCount += 1;
+        loadCalls.push(options);
+        if (rendererLoadCount === 3) {
+          throw new Error("reset renderer failed");
+        }
+        return new FakeLottieAnimation(rendererEvents);
+      }
+    })
+  });
+
+  await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-lottie",
+    source: "fileButton",
+    localPath
+  });
+  const applied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-lottie",
+    targetId: "avatar",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.equal(applied.replacement.dirty, true);
+  assert.equal(lottieAssetPath(loadCalls[1]?.animationData, "avatar"), "data:image/png;base64,QUJD");
+
+  const reset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-renderer-fails"
+  });
+
+  assert.equal(reset.status, "previewReady");
+  assert.equal(reset.replacement.status, "failed");
+  assert.equal(reset.replacement.dirty, true);
+  assert.equal(reset.replacement.resetEnabled, true);
+  assert.equal(reset.replacement.active[0]?.targetId, "avatar");
+  assert.equal(reset.replacement.lastAction?.type, "resetReplacement");
+  assert.equal(reset.replacement.lastAction?.status, "failed");
+  assert.equal(reset.replacement.lastAction?.diagnostic?.code, "playback_failure");
+  assert.equal(reset.replacement.playerAction, "keepCurrentPreview");
+  assert.equal(loadCalls.length, 4);
+  assert.equal(lottieAssetPath(loadCalls[3]?.animationData, "avatar"), "data:image/png;base64,QUJD");
+  assert.equal((await session.play()).status, "playing");
+  assertNoLocalPaths(reset);
+});
+
 test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacements", async () => {
   const localPath = "/Users/designer/private/fusion.mp4";
   const runtime = fakeVapRuntime();
@@ -226,6 +345,10 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   });
   assert.equal(reset.status, "playbackBlocked");
   assert.equal(reset.replacement.dirty, false);
+  assert.equal(reset.replacement.lastAction?.status, "accepted");
+  assert.equal(reset.rightPanel.issues.some((entry) =>
+    entry.code === "missing_resource" && entry.details?.reason === "fusion_replacement_required"
+  ), true);
   assert.equal(host.revoked.includes("blob:vap/fusion.mp4"), true);
   assertNoLocalPaths(reset);
 });
@@ -516,11 +639,14 @@ function memoryHost(files: Record<string, Uint8Array>): MemoryHost {
   return host;
 }
 
-function fakeLottieRenderer(loadCalls: LottieSvgLoadOptions[] = []): LottieSvgRendererModule {
+function fakeLottieRenderer(
+  loadCalls: LottieSvgLoadOptions[] = [],
+  events: string[] = []
+): LottieSvgRendererModule {
   return {
     loadAnimation(options) {
       loadCalls.push(options);
-      return new FakeLottieAnimation();
+      return new FakeLottieAnimation(events);
     }
   };
 }
@@ -535,9 +661,13 @@ function labeledLottieRenderer(label: string, loadLabels: string[]): LottieSvgRe
 }
 
 class FakeLottieAnimation implements LottieSvgAnimationItem {
+  constructor(private readonly events: string[] = []) {}
+
   play(): void {}
   pause(): void {}
-  destroy(): void {}
+  destroy(): void {
+    this.events.push("destroy");
+  }
   goToAndStop(): void {}
   addEventListener(): void {}
   removeEventListener(): void {}

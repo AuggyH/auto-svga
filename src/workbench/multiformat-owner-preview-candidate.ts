@@ -3,7 +3,10 @@ import type {
   PlaybackState,
   WorkbenchIssue
 } from "./contracts.js";
-import type { HiddenLottiePreviewReplacement } from "./lottie-preview-vertical.js";
+import {
+  LOTTIE_ADJACENT_RESOURCE_MAX_BYTES,
+  type HiddenLottiePreviewReplacement
+} from "./lottie-preview-vertical.js";
 import type { HiddenVapPreviewFusionReplacement } from "./vap-preview-vertical.js";
 import {
   HIDDEN_MULTIFORMAT_PREVIEW_WORKSPACE_GATE,
@@ -214,6 +217,10 @@ interface ReplacementContext {
   revision: number;
 }
 
+interface ResetSourceDependencies {
+  lottieAdjacentResources: readonly string[];
+}
+
 export function createOwnerVisibleMultiFormatPreviewCandidate(
   options: CreateOwnerVisibleMultiFormatPreviewCandidateOptions
 ): OwnerVisibleMultiFormatPreviewCandidateSession {
@@ -227,6 +234,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
   private activeGeneration = 0;
   private currentOpen?: OpenContext;
   private replacements: ReplacementContext = emptyReplacementContext();
+  private resetSourceDependencies: ResetSourceDependencies = emptyResetSourceDependencies();
   private model: OwnerVisibleMultiFormatPreviewModel = idleModel();
 
   constructor(options: CreateOwnerVisibleMultiFormatPreviewCandidateOptions) {
@@ -245,6 +253,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
     if (validationIssue) {
       this.currentOpen = undefined;
       this.replacements = emptyReplacementContext();
+      this.resetSourceDependencies = emptyResetSourceDependencies();
       this.model = failedModel([validationIssue], "failed");
       return this.getModel();
     }
@@ -256,6 +265,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       ...(input.displayName ? { displayName: input.displayName } : {})
     };
     this.replacements = emptyReplacementContext();
+    this.resetSourceDependencies = emptyResetSourceDependencies();
     this.model = {
       ...idleModel(),
       status: "loading",
@@ -271,6 +281,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
 
     const workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput(this.currentOpen, this.replacements));
     if (!this.isActive(generation)) return this.getModel();
+    this.resetSourceDependencies = resetSourceDependenciesFromWorkspace(workspaceModel);
     this.model = modelFromWorkspace(workspaceModel, this.replacements, undefined);
     return this.getModel();
   }
@@ -419,26 +430,30 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       );
     }
 
+    const previousOpen = { ...this.currentOpen };
+    const previousReplacements = cloneReplacementContext(this.replacements);
+    const previousDependencies = cloneResetSourceDependencies(this.resetSourceDependencies);
     const nextReplacements = emptyReplacementContext(this.replacements.revision + 1);
     const workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput({
       ...this.currentOpen,
       requestId: input.requestId
     }, nextReplacements));
     if (!this.isActive(generation)) return this.getModel();
-    const accepted = ["inspectionReady", "ready", "playing", "paused", "playbackBlocked"].includes(workspaceModel.status);
-    if (!accepted) {
-      return this.failReplacement(
+    const resetFailureDiagnostic = resetFailureDiagnosticForWorkspace(workspaceModel, this.model.detectedFormat);
+    if (resetFailureDiagnostic) {
+      return this.failResetWithRollback(
         input.requestId,
-        "resetReplacement",
         "Runtime replacement reset was rejected by the active format vertical.",
-        firstIssueDiagnostic(workspaceModel.issues) ?? {
-          code: "parse_precondition",
-          message: "The original source could not be reopened for reset."
-        }
+        resetFailureDiagnostic,
+        previousOpen,
+        previousReplacements,
+        previousDependencies,
+        generation
       );
     }
     this.currentOpen = { ...this.currentOpen, requestId: input.requestId };
     this.replacements = nextReplacements;
+    this.resetSourceDependencies = resetSourceDependenciesFromWorkspace(workspaceModel);
     this.model = modelFromWorkspace(workspaceModel, this.replacements, {
       requestId: input.requestId,
       type: "resetReplacement",
@@ -462,7 +477,6 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
         ? Math.min(1, Math.trunc(stat.sizeBytes))
         : 1;
       await this.host.readLocalFileRange(localPath, 0, boundedLength);
-      return undefined;
     } catch (error) {
       return {
         code: "parse_precondition",
@@ -473,6 +487,39 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
         )}`
       };
     }
+    if (this.model.detectedFormat === "lottie") {
+      return this.preflightLottieResetResources(localPath);
+    }
+    return undefined;
+  }
+
+  private async preflightLottieResetResources(localPath: string): Promise<{ code: string; message: string } | undefined> {
+    for (const relativePath of this.resetSourceDependencies.lottieAdjacentResources) {
+      try {
+        const read = await this.host.readAdjacentResource({
+          sourceLocalPath: localPath,
+          relativePath,
+          maxBytes: LOTTIE_ADJACENT_RESOURCE_MAX_BYTES
+        });
+        const sizeBytes = read.sizeBytes ?? read.bytes.byteLength;
+        if (sizeBytes > LOTTIE_ADJACENT_RESOURCE_MAX_BYTES || read.bytes.byteLength > LOTTIE_ADJACENT_RESOURCE_MAX_BYTES) {
+          return {
+            code: "capability",
+            message: "Original Lottie adjacent image resource exceeds the runtime reset bound."
+          };
+        }
+      } catch (error) {
+        return {
+          code: "missing_resource",
+          message: `Original Lottie adjacent image resource could not be reopened for runtime reset: ${redactLocalPathsFromError(
+            error,
+            "Adjacent resource unavailable.",
+            [localPath]
+          )}`
+        };
+      }
+    }
+    return undefined;
   }
 
   dispose(): OwnerVisibleMultiFormatPreviewModel {
@@ -480,6 +527,7 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
     this.workspace.dispose();
     this.currentOpen = undefined;
     this.replacements = emptyReplacementContext(this.replacements.revision);
+    this.resetSourceDependencies = emptyResetSourceDependencies();
     this.model = {
       ...this.model,
       status: "disposed",
@@ -627,6 +675,36 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       status: "failed",
       message,
       ...(diagnostic ? { diagnostic } : {})
+    }, "failed", "keepCurrentPreview");
+    return this.getModel();
+  }
+
+  private async failResetWithRollback(
+    requestId: string,
+    message: string,
+    diagnostic: { code: string; message: string },
+    previousOpen: OpenContext,
+    previousReplacements: ReplacementContext,
+    previousDependencies: ResetSourceDependencies,
+    generation: number
+  ): Promise<OwnerVisibleMultiFormatPreviewModel> {
+    const rollbackModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput({
+      ...previousOpen,
+      requestId: `${requestId}:rollback`
+    }, previousReplacements));
+    if (!this.isActive(generation)) return this.getModel();
+    this.currentOpen = { ...previousOpen, requestId };
+    this.replacements = previousReplacements;
+    this.resetSourceDependencies = previousDependencies;
+    this.model = modelFromWorkspace({
+      ...rollbackModel,
+      requestId
+    }, this.replacements, {
+      requestId,
+      type: "resetReplacement",
+      status: "failed",
+      message,
+      diagnostic
     }, "failed", "keepCurrentPreview");
     return this.getModel();
   }
@@ -965,12 +1043,30 @@ function emptyReplacementContext(revision = 0): ReplacementContext {
   return { lottie: {}, vap: {}, active: [], revision };
 }
 
+function emptyResetSourceDependencies(): ResetSourceDependencies {
+  return { lottieAdjacentResources: [] };
+}
+
+function resetSourceDependenciesFromWorkspace(model: HiddenMultiFormatPreviewModel): ResetSourceDependencies {
+  if (model.detectedFormat !== "lottie") return emptyResetSourceDependencies();
+  const lottieAdjacentResources = uniqueStrings(model.assets
+    .filter(({ kind, referencePath }) => kind === "image" && isNonEmptyString(referencePath))
+    .map(({ referencePath }) => referencePath as string));
+  return { lottieAdjacentResources };
+}
+
 function cloneReplacementContext(context: ReplacementContext): ReplacementContext {
   return {
     lottie: { ...context.lottie },
     vap: { ...context.vap },
     active: context.active.map((entry) => ({ ...entry })),
     revision: context.revision
+  };
+}
+
+function cloneResetSourceDependencies(dependencies: ResetSourceDependencies): ResetSourceDependencies {
+  return {
+    lottieAdjacentResources: [...dependencies.lottieAdjacentResources]
   };
 }
 
@@ -1014,6 +1110,54 @@ function diagnosticFromIssue(issue: WorkbenchIssue): { code: string; message: st
 function firstIssueDiagnostic(issues: readonly HiddenMultiFormatPreviewIssue[]): { code: string; message: string } | undefined {
   const issue = issues.find(({ severity }) => severity === "error") ?? issues[0];
   return issue ? diagnosticFromIssue(issue) : undefined;
+}
+
+function resetFailureDiagnosticForWorkspace(
+  workspaceModel: HiddenMultiFormatPreviewModel,
+  format: MotionFormat | undefined
+): { code: string; message: string } | undefined {
+  if (isAcceptedResetWorkspaceModel(workspaceModel, format)) return undefined;
+  return firstIssueDiagnostic(workspaceModel.issues) ?? {
+    code: "parse_precondition",
+    message: "The original source could not be reopened into a viable reset session."
+  };
+}
+
+function isAcceptedResetWorkspaceModel(
+  workspaceModel: HiddenMultiFormatPreviewModel,
+  format: MotionFormat | undefined
+): boolean {
+  if (["inspectionReady", "ready", "playing", "paused"].includes(workspaceModel.status)) {
+    return !workspaceModel.issues.some((entry) => entry.severity === "error" && isFatalResetIssue(entry, format));
+  }
+  if (workspaceModel.status !== "playbackBlocked" || format !== "vap") return false;
+  const errorIssues = workspaceModel.issues.filter(({ severity }) => severity === "error");
+  return errorIssues.length > 0 && errorIssues.every(isAllowedVapResetBlockedIssue);
+}
+
+function isFatalResetIssue(issue: HiddenMultiFormatPreviewIssue, format: MotionFormat | undefined): boolean {
+  if (format === "vap" && isAllowedVapResetBlockedIssue(issue)) return false;
+  return ["missing_resource", "parse_precondition", "ambiguous", "playback_failure", "unsupported_feature"].includes(issue.code);
+}
+
+function isAllowedVapResetBlockedIssue(issue: HiddenMultiFormatPreviewIssue): boolean {
+  const reason = issueReason(issue);
+  if (issue.code === "missing_resource" && reason === "fusion_replacement_required") return true;
+  if (issue.code === "capability") {
+    return [
+      "webgl_required",
+      "h264_mp4_decode_required",
+      "local_object_url_required",
+      "blob_media_csp_required",
+      "gpu_compositing_required"
+    ].includes(reason);
+  }
+  return false;
+}
+
+function issueReason(issue: HiddenMultiFormatPreviewIssue): string {
+  const reason = issue.details?.reason;
+  return typeof reason === "string" ? reason : "";
 }
 
 function issue(
@@ -1063,6 +1207,10 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values)];
 }
 
 function isPathLike(value: string): boolean {
