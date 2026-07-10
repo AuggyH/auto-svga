@@ -197,11 +197,17 @@ test("short-term loading and load-failed states expose recovery actions", async 
 test("short-term preview right surface exposes page-state trace semantics", async () => {
   const page = await readFile(path.join(experimentRoot, "web/index.html"), "utf8");
   const { applyTabState } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-dom-state.mjs")).href);
+  const {
+    generalCompareTraceView,
+    optimizationCompareTraceView
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-model.mjs")).href);
+  const { applyCompareTraceView } = await import(pathToFileURL(path.join(experimentRoot, "web/short-term-macos-compare-renderers.mjs")).href);
 
   assert.match(page, /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"[^>]*data-panel-state="overview"/);
   assert.match(page, /id="panelOverview"[^>]*data-panel="overview"[^>]*data-page-state="Preview overview"[^>]*data-module="OverviewInformationModule"/);
   assert.match(page, /id="panelOptimization"[^>]*data-panel="optimization"[^>]*data-page-state="Preview optimization"[^>]*data-module="OptimizationDetailSurface"/);
   assert.match(page, /id="settingsDialog"[^>]*data-component="SettingsSheet"[^>]*data-module="SettingsDialogModule"[^>]*data-page-state="Settings dialog"/);
+  assert.match(page, /data-view="compare"[^>]*data-page-state="General comparing"[^>]*data-module="GeneralCompareModule"[^>]*data-state-mode="general"/);
 
   const rightPanel = { dataset: { panelState: "overview" } };
   const overviewPanel = {
@@ -236,6 +242,17 @@ test("short-term preview right surface exposes page-state trace semantics", asyn
     assert.equal(rightPanel.dataset.panelState, "replaceable");
     assert.equal(overviewPanel.hidden, false);
     assert.equal(optimizationPanel.hidden, true);
+
+    const compareView = { dataset: {} };
+    applyCompareTraceView(compareView, generalCompareTraceView());
+    assert.equal(compareView.dataset.module, "GeneralCompareModule");
+    assert.equal(compareView.dataset.pageState, "General comparing");
+    assert.equal(compareView.dataset.stateMode, "general");
+
+    applyCompareTraceView(compareView, optimizationCompareTraceView());
+    assert.equal(compareView.dataset.module, "OptimizationCompareModule");
+    assert.equal(compareView.dataset.pageState, "General comparing");
+    assert.equal(compareView.dataset.stateMode, "optimization");
   } finally {
     globalThis.document = originalDocument;
   }

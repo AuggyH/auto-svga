@@ -132,14 +132,16 @@ export function renderGeneralComparePanelHtml({
 export function generalCompareTraceView() {
   return {
     moduleName: "GeneralCompareModule",
-    pageState: "General comparing"
+    pageState: "General comparing",
+    stateMode: "general"
   };
 }
 
 export function optimizationCompareTraceView() {
   return {
     moduleName: "OptimizationCompareModule",
-    pageState: "Optimization compare"
+    pageState: "General comparing",
+    stateMode: "optimization"
   };
 }
 

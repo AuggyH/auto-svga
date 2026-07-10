@@ -16,6 +16,7 @@ export function applyCompareTraceView(node, view) {
   if (!node) return;
   node.dataset.module = view.moduleName;
   node.dataset.pageState = view.pageState;
+  node.dataset.stateMode = view.stateMode;
 }
 
 export function renderCompareInfoPanel(nodes, slot, html) {

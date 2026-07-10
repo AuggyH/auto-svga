@@ -721,8 +721,14 @@ async function main() {
     && /id="panelOverview"[^>]*data-panel="overview"[^>]*data-page-state="Preview overview"[^>]*data-module="OverviewInformationModule"/.test(page)
     && /id="panelOptimization"[^>]*data-panel="optimization"[^>]*data-page-state="Preview optimization"[^>]*data-module="OptimizationDetailSurface"/.test(page)
     && /id="settingsDialog"[^>]*data-component="SettingsSheet"[^>]*data-module="SettingsDialogModule"[^>]*data-page-state="Settings dialog"/.test(page)
+    && /data-view="compare"[^>]*data-page-state="General comparing"[^>]*data-module="GeneralCompareModule"[^>]*data-state-mode="general"/.test(page)
+    && /stateMode:\s*"general"/.test(compareModel)
+    && /stateMode:\s*"optimization"/.test(compareModel)
+    && /pageState:\s*"General comparing"/.test(compareModel)
+    && !/pageState:\s*"Optimization compare"/.test(compareModel)
     && /const surfaceState = tab === "replaceable" \? "replaceable" : activePanel/.test(await readFile(path.join(webRoot, "short-term-macos-dom-state.mjs"), "utf8"))
-    && /rightPanel\.dataset\.panelState = surfaceState/.test(await readFile(path.join(webRoot, "short-term-macos-dom-state.mjs"), "utf8")));
+    && /rightPanel\.dataset\.panelState = surfaceState/.test(await readFile(path.join(webRoot, "short-term-macos-dom-state.mjs"), "utf8"))
+    && /node\.dataset\.stateMode = view\.stateMode/.test(await readFile(path.join(webRoot, "short-term-macos-compare-renderers.mjs"), "utf8")));
 
   record("settings-sheet-keeps-boundary-light-grouping", /--asv-component-settings-divider-width:\s*0px/.test(tokens)
     && /\.settingsGroup\s*\{[\s\S]*border-top: var\(--asv-settings-divider-width\) solid var\(--asv-settings-divider-color\)[\s\S]*border-bottom: var\(--asv-settings-divider-width\) solid var\(--asv-settings-divider-color\)/.test(components));
