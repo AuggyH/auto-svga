@@ -26,7 +26,7 @@ export const FORMAT_CAPABILITY_BASELINES = [
   {
     format: "vap",
     assessments: [
-      { capability: "playback", maturity: "research", boundary: "Candidate upstream player is unmaintained and not integrated." },
+      { capability: "playback", maturity: "research", boundary: "Hidden 0.2 runtime decision and dependency-free preparation contracts only; no integrated player, runtime dependency, visible UI, or support claim." },
       { capability: "parse", maturity: "partial", boundary: "Hidden 0.2 VAP MP4/vapc inspection readiness only; no playback, UI, production support, or runtime dependency." },
       { capability: "replaceable_content", maturity: "research", boundary: "Fusion/resource replacement semantics require format study." },
       { capability: "convert", maturity: "planned", boundary: "Requires frame-sequence intermediate and encoder decision." },

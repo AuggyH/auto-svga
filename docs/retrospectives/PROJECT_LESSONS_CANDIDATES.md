@@ -1098,3 +1098,16 @@ promoted, watched, rejected, or kept historical.
   damaged bytes.
 - Status: Candidate pending reuse in future VAP playback host reads and other
   bounded media/container inspectors.
+
+## 2026-07-11: Bind VAP Runtime Approval To A Preparation Model Before Import
+
+- Candidate lesson: VAP runtime approval should be represented as a typed
+  preparation state before importing a WebGL player. The model should bind the
+  exact dependency/version, host capabilities, H.264/container facts,
+  1504-limit warnings, fusion replacement bindings, cancellation boundaries,
+  disposal steps, and support-claim falsehood in one place.
+- Evidence: WP3B adds a dependency-free VAP playback preparation service and
+  tests for pending dependency, approved-but-prepared, missing host capability,
+  unsupported codec, duplicate fusion tags, missing fusion replacements,
+  dangling resource references, and cancellation.
+- Status: Candidate pending reuse in the eventual VAP playback spike.
