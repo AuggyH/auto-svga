@@ -1083,3 +1083,18 @@ promoted, watched, rejected, or kept historical.
   missing runtime tags, duplicate `srcId`, and frame objects that reference a
   missing source before any visible replacement UI exists.
 - Status: Candidate pending reuse in visible 0.2 assets/fusion surface.
+
+## 2026-07-10: Prefer Range Reads And Preserve Complete Config Prefixes
+
+- Candidate lesson: Format inspectors should prefer an available bounded
+  `readRange` over caller-provided size metadata. Bounded-prefix parsers should
+  keep complete metadata/config facts before intentionally clipped media
+  payloads, while keeping malformed metadata boxes fail-closed.
+- Evidence: The VAP inspection repair for `MF-VAP-CR-001` now accepts a valid
+  range-readable source with `sizeBytes=NaN` using `readRange(0, 262144)` and
+  preserves complete `ftyp`/`moov`/`vapc` facts before clipped trailing
+  `mdat`. Regression tests still reject clipped `mdat` before `vapc`, clipped
+  `vapc`, duplicate/missing `vapc`, invalid JSON, ordinary MP4, and trailing
+  damaged bytes.
+- Status: Candidate pending reuse in future VAP playback host reads and other
+  bounded media/container inspectors.

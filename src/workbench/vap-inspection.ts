@@ -74,6 +74,10 @@ interface Mp4ParseResult {
   boxes: Mp4Box[];
   malformedReason?: string;
   malformedBoxPath?: string;
+  truncatedAfterVapc?: {
+    boxPath: string;
+    boxType: string;
+  };
 }
 
 interface Mp4Facts {
@@ -274,7 +278,9 @@ export class VapInspectionService {
     const asset: MotionAssetInfo = {
       format: "vap",
       name: safeSourceName(source.name) || safeSourceName(source.id) || "effect.mp4",
-      sizeBytes: source.sizeBytes,
+      sizeBytes: Number.isFinite(source.sizeBytes) && source.sizeBytes >= 0
+        ? source.sizeBytes
+        : sample.bytes.byteLength,
       dimensions: displayDimensions,
       timing: {
         fps,
@@ -308,7 +314,9 @@ export class VapInspectionService {
             audioPresent: facts.audioPresent,
             videoPresent: facts.videoPresent,
             mp4DurationMs: facts.durationMs,
-            trackDimensions: facts.trackDimensions
+            trackDimensions: facts.trackDimensions,
+            boundedSampleTruncated: sample.truncated,
+            clippedTrailingMediaData: mp4.truncatedAfterVapc
           },
           fusion: {
             sourceCount: fusion.resources.length,
@@ -338,20 +346,22 @@ async function readBoundedSample(
 ): Promise<BoundedSample> {
   try {
     context?.onProgress?.({ phase: "vap_mp4_read", completed: 0, total: 1 });
-    if (!Number.isFinite(source.sizeBytes) || source.sizeBytes < 0) {
-      return { truncated: true, issueReason: "bounded_read_required" };
-    }
+    const finiteSize = Number.isFinite(source.sizeBytes) && source.sizeBytes >= 0
+      ? source.sizeBytes
+      : undefined;
     const bytes = source.readRange
       ? await source.readRange(0, MOTION_FORMAT_PROBE_MAX_BYTES)
-      : source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
+      : finiteSize === undefined || finiteSize > MOTION_FORMAT_PROBE_MAX_BYTES
         ? undefined
         : await source.read();
     if (!bytes) return { truncated: true, issueReason: "bounded_read_required" };
+    const boundedBytes = bytes.slice(0, MOTION_FORMAT_PROBE_MAX_BYTES);
     context?.onProgress?.({ phase: "vap_mp4_read", completed: 1, total: 1 });
     return {
-      bytes: bytes.slice(0, MOTION_FORMAT_PROBE_MAX_BYTES),
-      truncated: source.sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES
+      bytes: boundedBytes,
+      truncated: (finiteSize !== undefined && finiteSize > MOTION_FORMAT_PROBE_MAX_BYTES)
         || bytes.byteLength > MOTION_FORMAT_PROBE_MAX_BYTES
+        || bytes.byteLength === MOTION_FORMAT_PROBE_MAX_BYTES
     };
   } catch (error) {
     return {
@@ -425,13 +435,26 @@ function parseBoxRange(
       result.malformedBoxPath = boxPath(parentPath, type, result.boxes.length);
       return;
     }
+    const path = boxPath(parentPath, type, result.boxes.length);
     if (size > remaining) {
+      if (canKeepClippedTrailingMediaBox(parentPath, type, result)) {
+        result.boxes.push({
+          type,
+          path,
+          start: offset,
+          size: remaining,
+          headerSize,
+          payloadStart: offset + headerSize,
+          payloadEnd: end
+        });
+        result.truncatedAfterVapc = { boxPath: path, boxType: type };
+        return;
+      }
       result.malformedReason = "box_size_overflow";
-      result.malformedBoxPath = boxPath(parentPath, type, result.boxes.length);
+      result.malformedBoxPath = path;
       return;
     }
 
-    const path = boxPath(parentPath, type, result.boxes.length);
     const box: Mp4Box = {
       type,
       path,
@@ -450,6 +473,17 @@ function parseBoxRange(
 }
 
 const MP4_CONTAINER_BOXES = new Set(["moov", "trak", "mdia", "minf", "stbl"]);
+const MP4_BOUNDED_TRAILING_MEDIA_BOXES = new Set(["mdat"]);
+
+function canKeepClippedTrailingMediaBox(
+  parentPath: string,
+  type: string,
+  result: Mp4ParseResult
+): boolean {
+  return parentPath === ""
+    && MP4_BOUNDED_TRAILING_MEDIA_BOXES.has(type)
+    && result.boxes.some(({ type: boxType }) => boxType === "vapc");
+}
 
 function boxPath(parentPath: string, type: string, index: number): string {
   return parentPath ? `${parentPath}.${type}[${index}]` : `${type}[${index}]`;

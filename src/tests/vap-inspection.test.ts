@@ -143,6 +143,28 @@ test("fails closed for ordinary MP4 false positives and corrupt vapc states", as
   }
 });
 
+test("retains VAP readiness facts when a bounded prefix clips trailing media data after vapc", async () => {
+  const bytes = concatBytes(
+    validVapBytes(),
+    declaredSizeBox("mdat", new Uint8Array([1, 2, 3, 4]), 2_000_000)
+  );
+  const result = await service().inspect(
+    memorySource("bounded-prefix.mp4", bytes, {
+      sizeBytes: 3_000_000,
+      readRange: true
+    }),
+    { gate: VAP_INSPECTION_READINESS_GATE }
+  );
+
+  assert.ok(result.value);
+  assert.equal(result.value.format, "vap");
+  assert.equal(vapMetadata(result).container.videoCodec, "avc1");
+  assert.equal(vapMetadata(result).container.videoPresent, true);
+  assert.equal(vapMetadata(result).container.boundedSampleTruncated, true);
+  assert.equal(vapMetadata(result).container.clippedTrailingMediaData?.boxType, "mdat");
+  assert.notEqual(result.issues[0]?.details?.reason, "valid_mp4_boxes_required");
+});
+
 test("fails closed for malformed MP4 boxes including overflow and ambiguous vapc", async () => {
   const declaredOverflow = new Uint8Array([0, 0, 0, 100, 0x66, 0x74, 0x79, 0x70]);
   const sizeZero = mp4SizeZeroBox("ftyp", textEncoder.encode("isom\u0000\u0000\u0002\u0000isom"));
@@ -151,11 +173,23 @@ test("fails closed for malformed MP4 boxes including overflow and ambiguous vapc
     mp4Box("vapc", vapcPayload({ info: vapInfo() })),
     mp4Box("vapc", vapcPayload({ info: vapInfo() }))
   );
+  const clippedMdatBeforeVapc = concatBytes(
+    ftypBox(),
+    declaredSizeBox("mdat", new Uint8Array([1, 2, 3, 4]), 2_000_000),
+    mp4Box("vapc", vapcPayload({ info: vapInfo() }))
+  );
+  const clippedVapc = concatBytes(
+    ftypBox(),
+    moovBox(),
+    declaredSizeBox("vapc", vapcPayload({ info: vapInfo() }).slice(0, 12), 2_000)
+  );
 
   for (const [bytes, code] of [
     [declaredOverflow, "parse_precondition"],
     [sizeZero, "parse_precondition"],
-    [ambiguous, "ambiguous"]
+    [ambiguous, "ambiguous"],
+    [clippedMdatBeforeVapc, "parse_precondition"],
+    [clippedVapc, "parse_precondition"]
   ] as const) {
     const result = await service().inspect(
       memorySource("malformed.mp4", bytes),
@@ -232,6 +266,33 @@ test("uses bounded range reads when available and does not trust underreported s
   const result = await service().inspect(source, { gate: VAP_INSPECTION_READINESS_GATE });
 
   assert.ok(result.value);
+  assert.equal(fullReads, 0);
+  assert.deepEqual(ranges, [[0, 262_144]]);
+});
+
+test("uses bounded range reads when size metadata is unavailable", async () => {
+  const bytes = validVapBytes();
+  let fullReads = 0;
+  const ranges: Array<[number, number]> = [];
+  const source: VapInspectionSource = {
+    id: "unknown-size-vap",
+    name: "unknown-size.mp4",
+    sizeBytes: Number.NaN,
+    mediaType: "video/mp4",
+    async read() {
+      fullReads += 1;
+      return concatBytes(bytes, new Uint8Array(300_000));
+    },
+    async readRange(offset, length) {
+      ranges.push([offset, length]);
+      return bytes.slice(offset, offset + length);
+    }
+  };
+  const result = await service().inspect(source, { gate: VAP_INSPECTION_READINESS_GATE });
+
+  assert.ok(result.value);
+  assert.equal(result.value.format, "vap");
+  assert.equal(result.value.sizeBytes, bytes.byteLength);
   assert.equal(fullReads, 0);
   assert.deepEqual(ranges, [[0, 262_144]]);
 });
@@ -369,6 +430,17 @@ function mp4SizeZeroBox(type: string, payload: Uint8Array): Uint8Array {
   return bytes;
 }
 
+function declaredSizeBox(type: string, payload: Uint8Array, declaredSize: number): Uint8Array {
+  assert.equal(type.length, 4);
+  assert.ok(declaredSize >= 8);
+  const bytes = new Uint8Array(8 + payload.byteLength);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, declaredSize);
+  bytes.set(textEncoder.encode(type), 4);
+  bytes.set(payload, 8);
+  return bytes;
+}
+
 function u32(value: number): Uint8Array {
   const bytes = new Uint8Array(4);
   new DataView(bytes.buffer).setUint32(0, value);
@@ -392,18 +464,23 @@ function memorySource(
   options: {
     id?: string;
     mediaType?: string;
+    sizeBytes?: number;
     onRead?: () => void;
+    readRange?: boolean;
   } = {}
 ): VapInspectionSource {
   return {
     id: options.id ?? name,
     name,
-    sizeBytes: bytes.byteLength,
+    sizeBytes: options.sizeBytes ?? bytes.byteLength,
     mediaType: options.mediaType,
     async read() {
       options.onRead?.();
       return new Uint8Array(bytes);
-    }
+    },
+    readRange: options.readRange
+      ? async (offset, length) => bytes.slice(offset, offset + length)
+      : undefined
   };
 }
 
