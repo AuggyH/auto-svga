@@ -92,6 +92,12 @@ export interface HiddenLottiePreviewOpenInput {
   source: HiddenLottiePreviewOpenSource;
   localPath: string;
   displayName?: string;
+  replacements?: Readonly<Record<string, HiddenLottiePreviewReplacement>>;
+}
+
+export interface HiddenLottiePreviewReplacement {
+  kind: "image" | "text";
+  value: string;
 }
 
 export interface HiddenLottiePreviewOverview {
@@ -176,6 +182,11 @@ interface ImageResolution {
   rows: HiddenLottiePreviewAssetRow[];
   dataUris: Map<string, string>;
   issues: HiddenLottiePreviewIssue[];
+}
+
+interface ValidatedLottieReplacements {
+  imageDataUris: Map<string, string>;
+  textValues: Map<string, string>;
 }
 
 interface HiddenLottieResult<T> {
@@ -296,7 +307,23 @@ export class HiddenLottiePreviewVerticalSession {
       return this.getModel();
     }
 
-    const imageResolution = await resolveImageResources(this.host, source, inspection.value);
+    const replacementValidation = validateLottieReplacements(input.replacements, inspection.value, source);
+    if (replacementValidation.issues.length > 0 || !replacementValidation.value) {
+      this.model = {
+        ...this.model,
+        status: "failed",
+        issues: [...this.model.issues, ...replacementValidation.issues],
+        playback: playbackState("error", inspection.value.timing.durationMs)
+      };
+      return this.getModel();
+    }
+
+    const imageResolution = await resolveImageResources(
+      this.host,
+      source,
+      inspection.value,
+      replacementValidation.value.imageDataUris
+    );
     if (!this.isActiveRequest(generation)) return this.getModel();
     const assetRows = mergeResolvedAssetRows(this.model.assets, imageResolution.rows);
     if (imageResolution.issues.length > 0) {
@@ -314,7 +341,11 @@ export class HiddenLottiePreviewVerticalSession {
       return this.getModel();
     }
 
-    const animationData = await inlineResolvedImageData(source, imageResolution.dataUris);
+    const animationData = await inlineResolvedImageData(
+      source,
+      imageResolution.dataUris,
+      replacementValidation.value.textValues
+    );
     if (!this.isActiveRequest(generation)) return this.getModel();
     if (!animationData.value) {
       this.model = {
@@ -714,12 +745,24 @@ function playbackBlockingIssues(
 async function resolveImageResources(
   host: HiddenLottiePreviewHost,
   source: MotionAssetSource,
-  asset: MotionAssetInfo
+  asset: MotionAssetInfo,
+  imageReplacementDataUris: ReadonlyMap<string, string> = new Map()
 ): Promise<ImageResolution> {
   const rows: HiddenLottiePreviewAssetRow[] = [];
   const dataUris = new Map<string, string>();
   const issues: HiddenLottiePreviewIssue[] = [];
   for (const resource of asset.resources.filter(({ kind }) => kind === "image")) {
+    const replacementDataUri = imageReplacementDataUris.get(resource.id);
+    if (replacementDataUri) {
+      dataUris.set(resource.id, replacementDataUri);
+      rows.push({
+        ...assetRow(resource),
+        resolutionStatus: "resolved",
+        mediaType: mediaTypeFromDataImageUri(replacementDataUri)
+      });
+      continue;
+    }
+
     const referencePath = stringFromMetadata(resource, "referencePath");
     if (!referencePath || !isDeterministicRelativePath(referencePath)) {
       rows.push({ ...assetRow(resource), resolutionStatus: "unsupported" });
@@ -796,7 +839,8 @@ async function resolveImageResources(
 
 async function inlineResolvedImageData(
   source: MotionAssetSource,
-  dataUris: ReadonlyMap<string, string>
+  dataUris: ReadonlyMap<string, string>,
+  textValues: ReadonlyMap<string, string> = new Map()
 ): Promise<HiddenLottieResult<MotionAssetSource>> {
   try {
     const rangeSource = source as MotionAssetSource & {
@@ -815,9 +859,12 @@ async function inlineResolvedImageData(
       };
     }
     const animationData = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-    const transformed = dataUris.size > 0
+    const transformedWithImages = dataUris.size > 0
       ? inlineImageAssetDataUris(animationData, dataUris)
       : animationData;
+    const transformed = textValues.size > 0
+      ? inlineTextLayerValues(transformedWithImages, textValues)
+      : transformedWithImages;
     const transformedBytes = new TextEncoder().encode(JSON.stringify(transformed));
     if (transformedBytes.byteLength > MOTION_FORMAT_PROBE_MAX_BYTES) {
       return {
@@ -872,6 +919,135 @@ function inlineImageAssetDataUris(animationData: unknown, dataUris: ReadonlyMap<
     };
   });
   return cloned;
+}
+
+function inlineTextLayerValues(animationData: unknown, textValues: ReadonlyMap<string, string>): unknown {
+  if (!isRecord(animationData)) return animationData;
+  const cloned = structuredClone(animationData) as Record<string, unknown>;
+  if (!Array.isArray(cloned.layers)) return cloned;
+  cloned.layers = cloned.layers.map((entry) => replaceTextLayerValue(entry, textValues));
+  return cloned;
+}
+
+function replaceTextLayerValue(layer: unknown, textValues: ReadonlyMap<string, string>): unknown {
+  if (!isRecord(layer)) return layer;
+  const layerId = stringValue(layer.ind);
+  const replacement = textValues.get(`text:${layerId}`) ?? textValues.get(layerId);
+  if (replacement === undefined) return layer;
+  const cloned = structuredClone(layer) as Record<string, unknown>;
+  const textDocument = (cloned.t as { d?: { k?: unknown } } | undefined)?.d?.k;
+  if (!Array.isArray(textDocument)) return cloned;
+  cloned.t = {
+    ...(isRecord(cloned.t) ? cloned.t : {}),
+    d: {
+      ...(isRecord((cloned.t as { d?: unknown }).d) ? (cloned.t as { d: Record<string, unknown> }).d : {}),
+      k: textDocument.map((item) => {
+        if (!isRecord(item)) return item;
+        return {
+          ...item,
+          s: {
+            ...(isRecord(item.s) ? item.s : {}),
+            t: replacement
+          }
+        };
+      })
+    }
+  };
+  return cloned;
+}
+
+function validateLottieReplacements(
+  replacements: HiddenLottiePreviewOpenInput["replacements"],
+  asset: MotionAssetInfo,
+  source: MotionAssetSource
+): HiddenLottieResult<ValidatedLottieReplacements> {
+  const imageDataUris = new Map<string, string>();
+  const textValues = new Map<string, string>();
+  const issues: HiddenLottiePreviewIssue[] = [];
+  const replaceableImages = new Set(asset.resources
+    .filter(({ kind, replaceable }) => kind === "image" && replaceable === true)
+    .map(({ id }) => id));
+  const replaceableTexts = new Set(asset.layers
+    .filter(({ kind, replaceable }) => kind === "text" && replaceable === true)
+    .flatMap(({ id }) => [id, `text:${id}`]));
+
+  for (const [rawTargetId, replacement] of Object.entries(replacements ?? {})) {
+    const targetId = rawTargetId.trim();
+    if (!targetId || !isRecord(replacement) || (replacement.kind !== "image" && replacement.kind !== "text")) {
+      issues.push(issue(
+        "parse_precondition",
+        "Lottie preview replacements must target a known image asset or text layer with an explicit kind.",
+        "error",
+        { reason: "lottie_replacement_input_invalid", targetId },
+        source.id
+      ));
+      continue;
+    }
+    if (typeof replacement.value !== "string") {
+      issues.push(issue(
+        "parse_precondition",
+        "Lottie preview replacement values must be strings.",
+        "error",
+        { reason: "lottie_replacement_value_required", targetId, kind: replacement.kind },
+        source.id
+      ));
+      continue;
+    }
+
+    if (replacement.kind === "image") {
+      if (!replaceableImages.has(targetId)) {
+        issues.push(issue(
+          "missing_resource",
+          "Lottie image replacement target is not a supported replaceable asset.",
+          "error",
+          { reason: "lottie_image_replacement_target_unavailable", targetId },
+          source.id
+        ));
+        continue;
+      }
+      const dataUri = replacement.value.trim();
+      if (!isSafeDataImageUri(dataUri)) {
+        issues.push(issue(
+          "unsupported_feature",
+          "Lottie image replacements must be inline data images for the hidden local preview candidate.",
+          "error",
+          { reason: "lottie_image_replacement_must_be_inline_data", targetId },
+          source.id
+        ));
+        continue;
+      }
+      imageDataUris.set(targetId, dataUri);
+      continue;
+    }
+
+    const textTargetId = targetId.startsWith("text:") ? targetId : `text:${targetId}`;
+    if (!replaceableTexts.has(targetId) && !replaceableTexts.has(textTargetId)) {
+      issues.push(issue(
+        "missing_resource",
+        "Lottie text replacement target is not a supported text candidate.",
+        "error",
+        { reason: "lottie_text_replacement_target_unavailable", targetId },
+        source.id
+      ));
+      continue;
+    }
+    if (replacement.value.length > 4_096) {
+      issues.push(issue(
+        "capability",
+        "Lottie text replacement is too large for the hidden local preview candidate.",
+        "error",
+        { reason: "lottie_text_replacement_too_large", targetId, maxCharacters: 4_096 },
+        source.id
+      ));
+      continue;
+    }
+    textValues.set(textTargetId, replacement.value);
+  }
+
+  return {
+    value: { imageDataUris, textValues },
+    issues
+  };
 }
 
 function mergeResolvedAssetRows(
@@ -1021,6 +1197,17 @@ function imageMediaType(referencePath: string, mediaType: string | undefined): s
     : undefined;
 }
 
+function mediaTypeFromDataImageUri(value: string): string | undefined {
+  const match = /^data:(image\/(?:png|jpeg|webp|gif));base64,/iu.exec(value.trim());
+  return match?.[1].toLocaleLowerCase("en-US");
+}
+
+function isSafeDataImageUri(value: string): boolean {
+  const trimmed = value.trim();
+  return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/iu.test(trimmed)
+    && trimmed.length <= LOTTIE_ADJACENT_RESOURCE_MAX_BYTES;
+}
+
 function idleModel(): HiddenLottiePreviewModel {
   return {
     schemaVersion: HIDDEN_LOTTIE_PREVIEW_SCHEMA_VERSION,
@@ -1069,6 +1256,11 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function stringValue(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function isDeterministicRelativePath(value: string): boolean {

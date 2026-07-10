@@ -1,0 +1,1029 @@
+import type {
+  MotionFormat,
+  PlaybackState,
+  WorkbenchIssue
+} from "./contracts.js";
+import type { HiddenLottiePreviewReplacement } from "./lottie-preview-vertical.js";
+import type { HiddenVapPreviewFusionReplacement } from "./vap-preview-vertical.js";
+import {
+  HIDDEN_MULTIFORMAT_PREVIEW_WORKSPACE_GATE,
+  createHiddenMultiFormatPreviewWorkspace,
+  type CreateHiddenMultiFormatPreviewWorkspaceOptions,
+  type HiddenMultiFormatPreviewAssetRow,
+  type HiddenMultiFormatPreviewIssue,
+  type HiddenMultiFormatPreviewModel,
+  type HiddenMultiFormatPreviewOpenInput,
+  type HiddenMultiFormatPreviewOpenSource,
+  type HiddenMultiFormatPreviewStatus,
+  type HiddenMultiFormatPreviewTextCandidate
+} from "./multiformat-preview-workspace.js";
+import type { VapPreparedFusionElement } from "./vap-playback-preparation.js";
+import {
+  redactLocalPathsFromError,
+  redactLocalPathsInValue
+} from "./local-path-redaction.js";
+
+export const OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE = "0.2-owner-visible-multiformat-preview-wp5" as const;
+export const OWNER_VISIBLE_MULTIFORMAT_PREVIEW_SCHEMA_VERSION = 1 as const;
+export const OWNER_VISIBLE_MULTIFORMAT_PREVIEW_PRODUCT_VERSION = "0.2.0-alpha.1" as const;
+
+export type OwnerVisibleMultiFormatPreviewStatus =
+  | "launch"
+  | "loading"
+  | "previewReady"
+  | "playing"
+  | "paused"
+  | "playbackBlocked"
+  | "playbackFailed"
+  | "failed"
+  | "disposed";
+
+export type OwnerVisibleMultiFormatPreviewIssueCode =
+  | "unsupported"
+  | "missing_dependency"
+  | "missing_resource"
+  | "parse_precondition"
+  | "ambiguous"
+  | "capability"
+  | "unsupported_feature"
+  | "playback_failure";
+
+export interface OwnerVisibleMultiFormatPreviewIssue extends WorkbenchIssue {
+  code: OwnerVisibleMultiFormatPreviewIssueCode;
+}
+
+export interface OwnerVisibleMultiFormatPreviewOpenInput {
+  gate: string;
+  requestId: string;
+  source: HiddenMultiFormatPreviewOpenSource;
+  localPath: string;
+  displayName?: string;
+}
+
+export interface OwnerVisibleMultiFormatPreviewReplacementInput {
+  gate: string;
+  requestId: string;
+  targetId: string;
+  kind: "image" | "text";
+  value: string;
+}
+
+export interface OwnerVisibleMultiFormatPreviewResetInput {
+  gate: string;
+  requestId: string;
+}
+
+export interface OwnerVisibleMultiFormatPreviewCommandState {
+  openFile: boolean;
+  dragDrop: boolean;
+  play: boolean;
+  pause: boolean;
+  seek: boolean;
+  loop: boolean;
+  recover: boolean;
+  replace: boolean;
+  resetReplacement: boolean;
+  save: false;
+  export: false;
+}
+
+export interface OwnerVisibleMultiFormatPreviewCanvasState {
+  status: OwnerVisibleMultiFormatPreviewStatus;
+  format?: MotionFormat;
+  dimensions?: string;
+  playback: PlaybackState;
+  emptyCopy: string;
+}
+
+export interface OwnerVisibleMultiFormatPreviewFactRow {
+  id: string;
+  label: string;
+  value: string;
+  status: "pass" | "warning" | "fail" | "unknown";
+}
+
+export interface OwnerVisibleMultiFormatPreviewRightPanel {
+  facts: readonly OwnerVisibleMultiFormatPreviewFactRow[];
+  layers: HiddenMultiFormatPreviewModel["layers"];
+  assets: readonly HiddenMultiFormatPreviewAssetRow[];
+  lottieTexts: readonly HiddenMultiFormatPreviewTextCandidate[];
+  vapFusionImages: readonly VapPreparedFusionElement[];
+  vapFusionTexts: readonly VapPreparedFusionElement[];
+  unsupportedFeatures: HiddenMultiFormatPreviewModel["unsupportedFeatures"];
+  issues: readonly OwnerVisibleMultiFormatPreviewIssue[];
+}
+
+export interface OwnerVisibleMultiFormatPreviewReplacementRecord {
+  format: "svga" | "lottie" | "vap";
+  targetId: string;
+  kind: "image" | "text";
+  valuePreview: string;
+}
+
+export interface OwnerVisibleMultiFormatPreviewReplacementState {
+  status: "idle" | "previewDirty" | "blocked" | "failed";
+  revision: number;
+  dirty: boolean;
+  resetEnabled: boolean;
+  playerAction: "none" | "reloadPreview" | "remountPreview" | "remountSource" | "keepCurrentPreview";
+  active: readonly OwnerVisibleMultiFormatPreviewReplacementRecord[];
+  lastAction?: {
+    requestId: string;
+    type: "applyReplacement" | "resetReplacement";
+    status: "accepted" | "blocked" | "failed";
+    message: string;
+    diagnostic?: {
+      code: string;
+      message: string;
+    };
+  };
+}
+
+export interface OwnerVisibleMultiFormatPreviewPackageCandidateReadiness {
+  productVersion: typeof OWNER_VISIBLE_MULTIFORMAT_PREVIEW_PRODUCT_VERSION;
+  channel: "internal-candidate";
+  packagePromotionAllowed: false;
+  localStableReplacementAllowed: false;
+  supportClaim: false;
+  requiredBeforePromotion: readonly ["code_review", "qa_acceptance", "packaging_gate"];
+}
+
+export interface OwnerVisibleMultiFormatPreviewModel {
+  schemaVersion: typeof OWNER_VISIBLE_MULTIFORMAT_PREVIEW_SCHEMA_VERSION;
+  source: "owner-visible-0.2-multiformat-preview-candidate";
+  productMode: "0.2-multiformat-preview-candidate";
+  productVersion: typeof OWNER_VISIBLE_MULTIFORMAT_PREVIEW_PRODUCT_VERSION;
+  status: OwnerVisibleMultiFormatPreviewStatus;
+  requestId?: string;
+  openedFrom?: HiddenMultiFormatPreviewOpenSource;
+  displayName?: string;
+  detectedFormat?: MotionFormat;
+  pathRedacted: true;
+  rendererHasFullPath: false;
+  visibleIn01: false;
+  supportClaim: false;
+  saveExportSupported: false;
+  packageReadiness: OwnerVisibleMultiFormatPreviewPackageCandidateReadiness;
+  commands: OwnerVisibleMultiFormatPreviewCommandState;
+  canvas: OwnerVisibleMultiFormatPreviewCanvasState;
+  rightPanel: OwnerVisibleMultiFormatPreviewRightPanel;
+  replacement: OwnerVisibleMultiFormatPreviewReplacementState;
+}
+
+export interface OwnerVisibleSvgaReplacementControllerResult {
+  accepted: boolean;
+  message: string;
+  playerAction?: "remountPreview" | "remountSource" | "keepCurrentPreview";
+  playback?: PlaybackState;
+  diagnostic?: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface OwnerVisibleSvgaReplacementController {
+  applyImage(input: {
+    requestId: string;
+    targetId: string;
+    value: string;
+    workspaceModel: HiddenMultiFormatPreviewModel;
+  }): Promise<OwnerVisibleSvgaReplacementControllerResult>;
+  reset(input: {
+    requestId: string;
+    workspaceModel: HiddenMultiFormatPreviewModel;
+  }): Promise<OwnerVisibleSvgaReplacementControllerResult>;
+}
+
+export interface CreateOwnerVisibleMultiFormatPreviewCandidateOptions
+  extends CreateHiddenMultiFormatPreviewWorkspaceOptions {
+  svgaReplacementController?: OwnerVisibleSvgaReplacementController;
+}
+
+interface OpenContext {
+  requestId: string;
+  source: HiddenMultiFormatPreviewOpenSource;
+  localPath: string;
+  displayName?: string;
+}
+
+interface ReplacementContext {
+  lottie: Record<string, HiddenLottiePreviewReplacement>;
+  vap: Record<string, HiddenVapPreviewFusionReplacement>;
+  active: OwnerVisibleMultiFormatPreviewReplacementRecord[];
+  revision: number;
+}
+
+export function createOwnerVisibleMultiFormatPreviewCandidate(
+  options: CreateOwnerVisibleMultiFormatPreviewCandidateOptions
+): OwnerVisibleMultiFormatPreviewCandidateSession {
+  return new OwnerVisibleMultiFormatPreviewCandidateSession(options);
+}
+
+export class OwnerVisibleMultiFormatPreviewCandidateSession {
+  private readonly workspace: ReturnType<typeof createHiddenMultiFormatPreviewWorkspace>;
+  private readonly svgaReplacementController: OwnerVisibleSvgaReplacementController | undefined;
+  private activeGeneration = 0;
+  private currentOpen?: OpenContext;
+  private replacements: ReplacementContext = emptyReplacementContext();
+  private model: OwnerVisibleMultiFormatPreviewModel = idleModel();
+
+  constructor(options: CreateOwnerVisibleMultiFormatPreviewCandidateOptions) {
+    this.workspace = createHiddenMultiFormatPreviewWorkspace(options);
+    this.svgaReplacementController = options.svgaReplacementController;
+  }
+
+  getModel(): OwnerVisibleMultiFormatPreviewModel {
+    return cloneModel(this.model);
+  }
+
+  async openLocalCandidate(input: OwnerVisibleMultiFormatPreviewOpenInput): Promise<OwnerVisibleMultiFormatPreviewModel> {
+    const generation = this.beginOperation();
+    const validationIssue = validateOpenInput(input);
+    if (validationIssue) {
+      this.currentOpen = undefined;
+      this.replacements = emptyReplacementContext();
+      this.model = failedModel([validationIssue], "failed");
+      return this.getModel();
+    }
+
+    this.currentOpen = {
+      requestId: input.requestId,
+      source: input.source,
+      localPath: input.localPath,
+      ...(input.displayName ? { displayName: input.displayName } : {})
+    };
+    this.replacements = emptyReplacementContext();
+    this.model = {
+      ...idleModel(),
+      status: "loading",
+      requestId: input.requestId,
+      openedFrom: input.source,
+      displayName: safeSourceName(input.displayName ?? input.localPath) || "motion asset",
+      canvas: {
+        ...idleModel().canvas,
+        status: "loading",
+        playback: playbackState("loading")
+      }
+    };
+
+    const workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput(this.currentOpen, this.replacements));
+    if (!this.isActive(generation)) return this.getModel();
+    this.model = modelFromWorkspace(workspaceModel, this.replacements, undefined);
+    return this.getModel();
+  }
+
+  async play(): Promise<OwnerVisibleMultiFormatPreviewModel> {
+    if (this.model.status === "disposed") return this.getModel();
+    const workspaceModel = await this.workspace.play();
+    this.model = modelFromWorkspace(workspaceModel, this.replacements, this.model.replacement.lastAction);
+    return this.getModel();
+  }
+
+  pause(): OwnerVisibleMultiFormatPreviewModel {
+    if (this.model.status === "disposed") return this.getModel();
+    this.model = modelFromWorkspace(this.workspace.pause(), this.replacements, this.model.replacement.lastAction);
+    return this.getModel();
+  }
+
+  seek(timeMs: number): OwnerVisibleMultiFormatPreviewModel {
+    if (this.model.status === "disposed") return this.getModel();
+    this.model = modelFromWorkspace(this.workspace.seek(timeMs), this.replacements, this.model.replacement.lastAction);
+    return this.getModel();
+  }
+
+  setLoop(loop: boolean): OwnerVisibleMultiFormatPreviewModel {
+    if (this.model.status === "disposed") return this.getModel();
+    this.model = modelFromWorkspace(this.workspace.setLoop(loop), this.replacements, this.model.replacement.lastAction);
+    return this.getModel();
+  }
+
+  async recoverPlayback(): Promise<OwnerVisibleMultiFormatPreviewModel> {
+    if (this.model.status === "disposed") return this.getModel();
+    const workspaceModel = await this.workspace.recoverPlayback();
+    this.model = modelFromWorkspace(workspaceModel, this.replacements, this.model.replacement.lastAction);
+    return this.getModel();
+  }
+
+  async applyReplacement(
+    input: OwnerVisibleMultiFormatPreviewReplacementInput
+  ): Promise<OwnerVisibleMultiFormatPreviewModel> {
+    const generation = this.beginOperation();
+    const validationIssue = validateReplacementInput(input);
+    if (validationIssue) {
+      this.model = withReplacementAction(this.model, this.replacements, {
+        requestId: input.requestId,
+        type: "applyReplacement",
+        status: "blocked",
+        message: validationIssue.message,
+        diagnostic: diagnosticFromIssue(validationIssue)
+      }, "blocked", "keepCurrentPreview");
+      return this.getModel();
+    }
+    if (!this.currentOpen || !this.model.detectedFormat) {
+      return this.blockReplacement(input.requestId, "applyReplacement", "No opened motion asset is available for replacement preview.", {
+        code: "replacement_requires_open_asset",
+        message: "Replacement preview requires an opened SVGA, Lottie, or VAP candidate."
+      });
+    }
+
+    const target = resolveReplacementTarget(this.model, input);
+    if (!target) {
+      return this.blockReplacement(input.requestId, "applyReplacement", "Replacement target is not available in the current candidate.", {
+        code: "replacement_target_unavailable",
+        message: "The selected target is not replaceable for the active format."
+      });
+    }
+
+    if (target.format === "svga") {
+      return this.applySvgaReplacement(input, target, generation);
+    }
+
+    const nextReplacements = cloneReplacementContext(this.replacements);
+    nextReplacements.active = upsertReplacementRecord(nextReplacements.active, {
+      format: target.format,
+      targetId: target.runtimeTargetId,
+      kind: input.kind,
+      valuePreview: replacementValuePreview(input.kind, input.value)
+    });
+    nextReplacements.revision += 1;
+
+    if (target.format === "lottie") {
+      nextReplacements.lottie[target.runtimeTargetId] = { kind: input.kind, value: input.value };
+    } else {
+      nextReplacements.vap[target.runtimeTargetId] = { kind: input.kind, value: input.value };
+    }
+
+    const workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput({
+      ...this.currentOpen,
+      requestId: input.requestId
+    }, nextReplacements));
+    if (!this.isActive(generation)) return this.getModel();
+    const accepted = workspaceModel.status === "ready" || workspaceModel.status === "playing" || workspaceModel.status === "paused";
+    if (!accepted) {
+      this.model = modelFromWorkspace(workspaceModel, this.replacements, {
+        requestId: input.requestId,
+        type: "applyReplacement",
+        status: "failed",
+        message: "Replacement preview was rejected by the active format vertical.",
+        diagnostic: firstIssueDiagnostic(workspaceModel.issues)
+      }, "failed", "keepCurrentPreview");
+      return this.getModel();
+    }
+
+    this.currentOpen = { ...this.currentOpen, requestId: input.requestId };
+    this.replacements = nextReplacements;
+    this.model = modelFromWorkspace(workspaceModel, this.replacements, {
+      requestId: input.requestId,
+      type: "applyReplacement",
+      status: "accepted",
+      message: "Replacement preview is applied to the runtime candidate only."
+    }, "previewDirty", "reloadPreview");
+    return this.getModel();
+  }
+
+  async resetReplacement(input: OwnerVisibleMultiFormatPreviewResetInput): Promise<OwnerVisibleMultiFormatPreviewModel> {
+    const generation = this.beginOperation();
+    const validationIssue = validateResetInput(input);
+    if (validationIssue) {
+      this.model = withReplacementAction(this.model, this.replacements, {
+        requestId: input.requestId,
+        type: "resetReplacement",
+        status: "blocked",
+        message: validationIssue.message,
+        diagnostic: diagnosticFromIssue(validationIssue)
+      }, "blocked", "keepCurrentPreview");
+      return this.getModel();
+    }
+    if (!this.currentOpen || !this.model.detectedFormat || !this.replacements.active.length) {
+      return this.blockReplacement(input.requestId, "resetReplacement", "There is no runtime replacement preview to reset.", {
+        code: "replacement_reset_not_needed",
+        message: "Reset is enabled only after a runtime replacement preview is applied."
+      });
+    }
+
+    if (this.model.detectedFormat === "svga") {
+      return this.resetSvgaReplacement(input, generation);
+    }
+
+    const nextReplacements = emptyReplacementContext(this.replacements.revision + 1);
+    const workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput({
+      ...this.currentOpen,
+      requestId: input.requestId
+    }, nextReplacements));
+    if (!this.isActive(generation)) return this.getModel();
+    this.currentOpen = { ...this.currentOpen, requestId: input.requestId };
+    this.replacements = nextReplacements;
+    this.model = modelFromWorkspace(workspaceModel, this.replacements, {
+      requestId: input.requestId,
+      type: "resetReplacement",
+      status: "accepted",
+      message: "Runtime replacement preview has been reset to the opened source."
+    }, "idle", "remountSource");
+    return this.getModel();
+  }
+
+  dispose(): OwnerVisibleMultiFormatPreviewModel {
+    this.activeGeneration += 1;
+    this.workspace.dispose();
+    this.currentOpen = undefined;
+    this.replacements = emptyReplacementContext(this.replacements.revision);
+    this.model = {
+      ...this.model,
+      status: "disposed",
+      canvas: {
+        ...this.model.canvas,
+        status: "disposed",
+        playback: playbackState("disposed", this.model.canvas.playback.durationMs)
+      },
+      commands: commandState("disposed", this.model.replacement),
+      replacement: {
+        ...this.model.replacement,
+        playerAction: "none"
+      }
+    };
+    return this.getModel();
+  }
+
+  private async applySvgaReplacement(
+    input: OwnerVisibleMultiFormatPreviewReplacementInput,
+    target: ReplacementTarget,
+    generation: number
+  ): Promise<OwnerVisibleMultiFormatPreviewModel> {
+    if (input.kind !== "image") {
+      return this.blockReplacement(input.requestId, "applyReplacement", "SVGA runtime preview currently accepts imageKey replacements only.", {
+        code: "svga_text_replacement_unsupported",
+        message: "Text replacement is not a supported SVGA runtime preview operation in WP5."
+      });
+    }
+    if (!this.svgaReplacementController) {
+      return this.blockReplacement(input.requestId, "applyReplacement", "SVGA runtime replacement preview controller is not configured.", {
+        code: "svga_replacement_controller_missing",
+        message: "The owner-preview candidate fails closed without an injected SVGA replacement controller."
+      });
+    }
+    const workspaceModel = this.workspace.getModel();
+    let result: OwnerVisibleSvgaReplacementControllerResult;
+    try {
+      result = await this.svgaReplacementController.applyImage({
+        requestId: input.requestId,
+        targetId: target.runtimeTargetId,
+        value: input.value,
+        workspaceModel
+      });
+    } catch (error) {
+      if (!this.isActive(generation)) return this.getModel();
+      return this.failReplacement(input.requestId, "applyReplacement", "SVGA replacement controller failed.", {
+        code: "svga_replacement_controller_failed",
+        message: redactLocalPathsFromError(error, "SVGA replacement controller failed.")
+      });
+    }
+    if (!this.isActive(generation)) return this.getModel();
+    if (!result.accepted) {
+      return this.blockReplacement(input.requestId, "applyReplacement", result.message, result.diagnostic);
+    }
+    this.replacements = cloneReplacementContext(this.replacements);
+    this.replacements.revision += 1;
+    this.replacements.active = upsertReplacementRecord(this.replacements.active, {
+      format: "svga",
+      targetId: target.runtimeTargetId,
+      kind: "image",
+      valuePreview: replacementValuePreview("image", input.value)
+    });
+    const baseModel = this.workspace.getModel();
+    const updated = {
+      ...baseModel,
+      requestId: input.requestId,
+      playback: result.playback ?? baseModel.playback
+    };
+    this.model = modelFromWorkspace(updated, this.replacements, {
+      requestId: input.requestId,
+      type: "applyReplacement",
+      status: "accepted",
+      message: result.message
+    }, "previewDirty", result.playerAction ?? "remountPreview");
+    return this.getModel();
+  }
+
+  private async resetSvgaReplacement(
+    input: OwnerVisibleMultiFormatPreviewResetInput,
+    generation: number
+  ): Promise<OwnerVisibleMultiFormatPreviewModel> {
+    if (!this.svgaReplacementController) {
+      return this.blockReplacement(input.requestId, "resetReplacement", "SVGA runtime replacement preview controller is not configured.", {
+        code: "svga_replacement_controller_missing",
+        message: "The owner-preview candidate cannot reset a controller it does not own."
+      });
+    }
+    let result: OwnerVisibleSvgaReplacementControllerResult;
+    try {
+      result = await this.svgaReplacementController.reset({
+        requestId: input.requestId,
+        workspaceModel: this.workspace.getModel()
+      });
+    } catch (error) {
+      if (!this.isActive(generation)) return this.getModel();
+      return this.failReplacement(input.requestId, "resetReplacement", "SVGA replacement controller reset failed.", {
+        code: "svga_replacement_reset_failed",
+        message: redactLocalPathsFromError(error, "SVGA replacement controller reset failed.")
+      });
+    }
+    if (!this.isActive(generation)) return this.getModel();
+    if (!result.accepted) {
+      return this.blockReplacement(input.requestId, "resetReplacement", result.message, result.diagnostic);
+    }
+    this.replacements = emptyReplacementContext(this.replacements.revision + 1);
+    const baseModel = this.workspace.getModel();
+    this.model = modelFromWorkspace({
+      ...baseModel,
+      requestId: input.requestId,
+      playback: result.playback ?? baseModel.playback
+    }, this.replacements, {
+      requestId: input.requestId,
+      type: "resetReplacement",
+      status: "accepted",
+      message: result.message
+    }, "idle", result.playerAction ?? "remountSource");
+    return this.getModel();
+  }
+
+  private blockReplacement(
+    requestId: string,
+    type: "applyReplacement" | "resetReplacement",
+    message: string,
+    diagnostic?: { code: string; message: string }
+  ): OwnerVisibleMultiFormatPreviewModel {
+    this.model = withReplacementAction(this.model, this.replacements, {
+      requestId,
+      type,
+      status: "blocked",
+      message,
+      ...(diagnostic ? { diagnostic } : {})
+    }, "blocked", "keepCurrentPreview");
+    return this.getModel();
+  }
+
+  private failReplacement(
+    requestId: string,
+    type: "applyReplacement" | "resetReplacement",
+    message: string,
+    diagnostic?: { code: string; message: string }
+  ): OwnerVisibleMultiFormatPreviewModel {
+    this.model = withReplacementAction(this.model, this.replacements, {
+      requestId,
+      type,
+      status: "failed",
+      message,
+      ...(diagnostic ? { diagnostic } : {})
+    }, "failed", "keepCurrentPreview");
+    return this.getModel();
+  }
+
+  private beginOperation(): number {
+    this.activeGeneration += 1;
+    return this.activeGeneration;
+  }
+
+  private isActive(generation: number): boolean {
+    return this.activeGeneration === generation && this.model.status !== "disposed";
+  }
+}
+
+interface ReplacementTarget {
+  format: "svga" | "lottie" | "vap";
+  runtimeTargetId: string;
+}
+
+function toWorkspaceOpenInput(
+  open: OpenContext,
+  replacements: ReplacementContext
+): HiddenMultiFormatPreviewOpenInput {
+  return {
+    gate: HIDDEN_MULTIFORMAT_PREVIEW_WORKSPACE_GATE,
+    requestId: open.requestId,
+    source: open.source,
+    localPath: open.localPath,
+    ...(open.displayName ? { displayName: open.displayName } : {}),
+    ...(Object.keys(replacements.lottie).length > 0 ? { lottieReplacements: replacements.lottie } : {}),
+    ...(Object.keys(replacements.vap).length > 0 ? { vapFusionReplacements: replacements.vap } : {})
+  };
+}
+
+function modelFromWorkspace(
+  workspaceModel: HiddenMultiFormatPreviewModel,
+  replacements: ReplacementContext,
+  lastReplacementAction: OwnerVisibleMultiFormatPreviewReplacementState["lastAction"],
+  replacementStatus?: OwnerVisibleMultiFormatPreviewReplacementState["status"],
+  playerAction?: OwnerVisibleMultiFormatPreviewReplacementState["playerAction"]
+): OwnerVisibleMultiFormatPreviewModel {
+  const status = ownerStatus(workspaceModel.status);
+  const replacement = replacementState(replacements, lastReplacementAction, replacementStatus, playerAction);
+  return {
+    schemaVersion: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_SCHEMA_VERSION,
+    source: "owner-visible-0.2-multiformat-preview-candidate",
+    productMode: "0.2-multiformat-preview-candidate",
+    productVersion: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_PRODUCT_VERSION,
+    status,
+    requestId: workspaceModel.requestId,
+    openedFrom: workspaceModel.openedFrom,
+    displayName: workspaceModel.displayName,
+    detectedFormat: workspaceModel.detectedFormat,
+    pathRedacted: true,
+    rendererHasFullPath: false,
+    visibleIn01: false,
+    supportClaim: false,
+    saveExportSupported: false,
+    packageReadiness: packageReadiness(),
+    commands: commandState(status, replacement),
+    canvas: {
+      status,
+      format: workspaceModel.detectedFormat,
+      dimensions: workspaceModel.overview?.dimensions,
+      playback: { ...workspaceModel.playback },
+      emptyCopy: workspaceModel.detectedFormat
+        ? "Preview candidate is available only inside the 0.2 gated workflow."
+        : "Open or drop a local SVGA, Lottie JSON, or VAP/MP4 candidate."
+    },
+    rightPanel: {
+      facts: factRows(workspaceModel),
+      layers: workspaceModel.layers.map((entry) => ({ ...entry, resourceIds: [...entry.resourceIds] })),
+      assets: workspaceModel.assets.map((entry) => ({ ...entry })),
+      lottieTexts: workspaceModel.replaceable.texts.map((entry) => ({ ...entry })),
+      vapFusionImages: workspaceModel.replaceable.fusionImages.map(cloneFusionElement),
+      vapFusionTexts: workspaceModel.replaceable.fusionTexts.map(cloneFusionElement),
+      unsupportedFeatures: workspaceModel.unsupportedFeatures.map((entry) => ({ ...entry })),
+      issues: workspaceModel.issues.map(cloneIssue)
+    },
+    replacement
+  };
+}
+
+function ownerStatus(status: HiddenMultiFormatPreviewStatus): OwnerVisibleMultiFormatPreviewStatus {
+  switch (status) {
+    case "idle": return "launch";
+    case "inspectionReady":
+    case "ready": return "previewReady";
+    default: return status;
+  }
+}
+
+function factRows(model: HiddenMultiFormatPreviewModel): OwnerVisibleMultiFormatPreviewFactRow[] {
+  const overview = model.overview;
+  if (!overview) {
+    return [{
+      id: "mode",
+      label: "Mode",
+      value: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_PRODUCT_VERSION,
+      status: "unknown"
+    }];
+  }
+  const rows: OwnerVisibleMultiFormatPreviewFactRow[] = [
+    { id: "format", label: "Format", value: overview.format.toUpperCase(), status: "pass" },
+    { id: "dimensions", label: "Canvas", value: overview.dimensions ?? "unknown", status: overview.dimensions ? "pass" : "unknown" },
+    { id: "duration", label: "Duration", value: formatDuration(overview.durationMs), status: overview.durationMs ? "pass" : "unknown" },
+    { id: "layers", label: "Layers", value: String(overview.layerCount), status: "pass" },
+    { id: "assets", label: "Assets", value: String(overview.resourceCount), status: "pass" },
+    { id: "replaceable", label: "Replaceable", value: String(
+      model.replaceable.images.length
+        + model.replaceable.texts.length
+        + model.replaceable.fusionImages.length
+        + model.replaceable.fusionTexts.length
+    ), status: "pass" },
+    { id: "maturity", label: "Maturity", value: overview.sourceMaturity, status: overview.sourceMaturity === "current" ? "pass" : "warning" }
+  ];
+  if (overview.videoCodec) rows.push({ id: "videoCodec", label: "Video codec", value: overview.videoCodec, status: overview.videoCodec === "avc1" || overview.videoCodec === "avc3" ? "pass" : "warning" });
+  if (overview.audioPresent !== undefined) rows.push({ id: "audio", label: "Audio", value: overview.audioPresent ? "present" : "not present", status: "pass" });
+  if (overview.unsupportedFeatureCount > 0) rows.push({ id: "unsupported", label: "Unsupported", value: String(overview.unsupportedFeatureCount), status: "warning" });
+  return rows;
+}
+
+function replacementState(
+  replacements: ReplacementContext,
+  lastAction: OwnerVisibleMultiFormatPreviewReplacementState["lastAction"],
+  status?: OwnerVisibleMultiFormatPreviewReplacementState["status"],
+  playerAction?: OwnerVisibleMultiFormatPreviewReplacementState["playerAction"]
+): OwnerVisibleMultiFormatPreviewReplacementState {
+  const active = replacements.active.map((entry) => ({ ...entry }));
+  const dirty = active.length > 0;
+  return {
+    status: status ?? (dirty ? "previewDirty" : "idle"),
+    revision: replacements.revision,
+    dirty,
+    resetEnabled: dirty,
+    playerAction: playerAction ?? "none",
+    active,
+    ...(lastAction ? { lastAction: { ...lastAction, diagnostic: lastAction.diagnostic ? { ...lastAction.diagnostic } : undefined } } : {})
+  };
+}
+
+function commandState(
+  status: OwnerVisibleMultiFormatPreviewStatus,
+  replacement: OwnerVisibleMultiFormatPreviewReplacementState
+): OwnerVisibleMultiFormatPreviewCommandState {
+  const hasPreview = ["previewReady", "playing", "paused", "playbackBlocked", "playbackFailed"].includes(status);
+  return {
+    openFile: status !== "disposed",
+    dragDrop: status !== "disposed",
+    play: status === "previewReady" || status === "paused",
+    pause: status === "playing",
+    seek: hasPreview,
+    loop: hasPreview,
+    recover: status === "playbackBlocked" || status === "playbackFailed",
+    replace: hasPreview,
+    resetReplacement: replacement.resetEnabled,
+    save: false,
+    export: false
+  };
+}
+
+function resolveReplacementTarget(
+  model: OwnerVisibleMultiFormatPreviewModel,
+  input: OwnerVisibleMultiFormatPreviewReplacementInput
+): ReplacementTarget | undefined {
+  if (model.detectedFormat === "svga" && input.kind === "image") {
+    const asset = model.rightPanel.assets.find((entry) => entry.replaceable && (
+      entry.id === input.targetId || entry.name === input.targetId
+    ));
+    return asset ? { format: "svga", runtimeTargetId: asset.id } : undefined;
+  }
+  if (model.detectedFormat === "lottie") {
+    if (input.kind === "image") {
+      const asset = model.rightPanel.assets.find((entry) => entry.kind === "image" && entry.replaceable && entry.id === input.targetId);
+      return asset ? { format: "lottie", runtimeTargetId: asset.id } : undefined;
+    }
+    const text = model.rightPanel.lottieTexts.find((entry) =>
+      entry.id === input.targetId || entry.layerId === input.targetId || entry.name === input.targetId
+    );
+    return text ? { format: "lottie", runtimeTargetId: text.id } : undefined;
+  }
+  if (model.detectedFormat === "vap") {
+    const candidates = input.kind === "image" ? model.rightPanel.vapFusionImages : model.rightPanel.vapFusionTexts;
+    const target = candidates.find((entry) =>
+      entry.srcTag === input.targetId
+        || entry.runtimeBindingKey === input.targetId
+        || entry.id === input.targetId
+        || entry.resourceId === input.targetId
+    );
+    const key = target?.srcTag ?? target?.runtimeBindingKey;
+    return key ? { format: "vap", runtimeTargetId: key } : undefined;
+  }
+  return undefined;
+}
+
+function validateOpenInput(input: OwnerVisibleMultiFormatPreviewOpenInput): OwnerVisibleMultiFormatPreviewIssue | undefined {
+  if (input.gate !== OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE) {
+    return issue("unsupported", "Owner-visible multi-format preview candidate is unavailable outside the authorized 0.2 gate.", "error", {
+      reason: "gate_required"
+    });
+  }
+  if (!isNonEmptyString(input.requestId) || !isOpenSource(input.source) || !isNonEmptyString(input.localPath)) {
+    return issue("parse_precondition", "Owner-visible multi-format preview open input is incomplete.", "error", {
+      reason: "open_input_invalid"
+    }, input.localPath);
+  }
+  return undefined;
+}
+
+function validateReplacementInput(
+  input: OwnerVisibleMultiFormatPreviewReplacementInput
+): OwnerVisibleMultiFormatPreviewIssue | undefined {
+  if (input.gate !== OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE) {
+    return issue("unsupported", "Runtime replacement preview is unavailable outside the authorized 0.2 gate.", "error", {
+      reason: "gate_required"
+    });
+  }
+  if (!isNonEmptyString(input.requestId) || !isNonEmptyString(input.targetId) || (input.kind !== "image" && input.kind !== "text")) {
+    return issue("parse_precondition", "Runtime replacement preview input is incomplete.", "error", {
+      reason: "replacement_input_invalid"
+    });
+  }
+  if (typeof input.value !== "string") {
+    return issue("parse_precondition", "Runtime replacement preview value must be a string.", "error", {
+      reason: "replacement_value_invalid"
+    });
+  }
+  if (input.kind === "image" && !isSafeInlineOrBlobImage(input.value)) {
+    return issue("unsupported_feature", "Runtime image replacement must be an inline data image or local object URL.", "error", {
+      reason: "replacement_image_must_be_local"
+    });
+  }
+  if (input.kind === "text" && input.value.length > 4_096) {
+    return issue("capability", "Runtime text replacement exceeds the 0.2 candidate limit.", "error", {
+      reason: "replacement_text_too_large",
+      maxCharacters: 4_096
+    });
+  }
+  return undefined;
+}
+
+function validateResetInput(input: OwnerVisibleMultiFormatPreviewResetInput): OwnerVisibleMultiFormatPreviewIssue | undefined {
+  if (input.gate !== OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE) {
+    return issue("unsupported", "Runtime replacement reset is unavailable outside the authorized 0.2 gate.", "error", {
+      reason: "gate_required"
+    });
+  }
+  if (!isNonEmptyString(input.requestId)) {
+    return issue("parse_precondition", "Runtime replacement reset input is incomplete.", "error", {
+      reason: "replacement_reset_input_invalid"
+    });
+  }
+  return undefined;
+}
+
+function withReplacementAction(
+  model: OwnerVisibleMultiFormatPreviewModel,
+  replacements: ReplacementContext,
+  lastAction: NonNullable<OwnerVisibleMultiFormatPreviewReplacementState["lastAction"]>,
+  status: OwnerVisibleMultiFormatPreviewReplacementState["status"],
+  playerAction: OwnerVisibleMultiFormatPreviewReplacementState["playerAction"]
+): OwnerVisibleMultiFormatPreviewModel {
+  const replacement = replacementState(replacements, lastAction, status, playerAction);
+  return {
+    ...model,
+    replacement,
+    commands: commandState(model.status, replacement)
+  };
+}
+
+function failedModel(
+  issues: readonly OwnerVisibleMultiFormatPreviewIssue[],
+  status: OwnerVisibleMultiFormatPreviewStatus
+): OwnerVisibleMultiFormatPreviewModel {
+  return {
+    ...idleModel(),
+    status,
+    canvas: {
+      ...idleModel().canvas,
+      status,
+      playback: playbackState("error")
+    },
+    rightPanel: {
+      ...idleModel().rightPanel,
+      issues: issues.map(cloneIssue)
+    }
+  };
+}
+
+function idleModel(): OwnerVisibleMultiFormatPreviewModel {
+  const replacement = replacementState(emptyReplacementContext(), undefined);
+  return {
+    schemaVersion: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_SCHEMA_VERSION,
+    source: "owner-visible-0.2-multiformat-preview-candidate",
+    productMode: "0.2-multiformat-preview-candidate",
+    productVersion: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_PRODUCT_VERSION,
+    status: "launch",
+    pathRedacted: true,
+    rendererHasFullPath: false,
+    visibleIn01: false,
+    supportClaim: false,
+    saveExportSupported: false,
+    packageReadiness: packageReadiness(),
+    commands: commandState("launch", replacement),
+    canvas: {
+      status: "launch",
+      playback: playbackState("idle"),
+      emptyCopy: "Open or drop a local SVGA, Lottie JSON, or VAP/MP4 candidate."
+    },
+    rightPanel: {
+      facts: [],
+      layers: [],
+      assets: [],
+      lottieTexts: [],
+      vapFusionImages: [],
+      vapFusionTexts: [],
+      unsupportedFeatures: [],
+      issues: []
+    },
+    replacement
+  };
+}
+
+function packageReadiness(): OwnerVisibleMultiFormatPreviewPackageCandidateReadiness {
+  return {
+    productVersion: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_PRODUCT_VERSION,
+    channel: "internal-candidate",
+    packagePromotionAllowed: false,
+    localStableReplacementAllowed: false,
+    supportClaim: false,
+    requiredBeforePromotion: ["code_review", "qa_acceptance", "packaging_gate"]
+  };
+}
+
+function emptyReplacementContext(revision = 0): ReplacementContext {
+  return { lottie: {}, vap: {}, active: [], revision };
+}
+
+function cloneReplacementContext(context: ReplacementContext): ReplacementContext {
+  return {
+    lottie: { ...context.lottie },
+    vap: { ...context.vap },
+    active: context.active.map((entry) => ({ ...entry })),
+    revision: context.revision
+  };
+}
+
+function upsertReplacementRecord(
+  entries: readonly OwnerVisibleMultiFormatPreviewReplacementRecord[],
+  next: OwnerVisibleMultiFormatPreviewReplacementRecord
+): OwnerVisibleMultiFormatPreviewReplacementRecord[] {
+  return [
+    ...entries.filter((entry) => !(entry.format === next.format && entry.targetId === next.targetId)),
+    next
+  ];
+}
+
+function replacementValuePreview(kind: "image" | "text", value: string): string {
+  if (kind === "image") return value.startsWith("blob:") ? "[local object URL image]" : "[inline image]";
+  return value.length > 32 ? `${value.slice(0, 32)}...` : value;
+}
+
+function cloneFusionElement(element: VapPreparedFusionElement): VapPreparedFusionElement {
+  return {
+    ...element,
+    zValues: [...element.zValues],
+    placementSamples: [...element.placementSamples]
+  };
+}
+
+function cloneIssue<T extends WorkbenchIssue>(entry: T): T {
+  return {
+    ...entry,
+    details: entry.details ? { ...entry.details } : undefined
+  };
+}
+
+function diagnosticFromIssue(issue: WorkbenchIssue): { code: string; message: string } {
+  return {
+    code: issue.code,
+    message: issue.message
+  };
+}
+
+function firstIssueDiagnostic(issues: readonly HiddenMultiFormatPreviewIssue[]): { code: string; message: string } | undefined {
+  const issue = issues.find(({ severity }) => severity === "error") ?? issues[0];
+  return issue ? diagnosticFromIssue(issue) : undefined;
+}
+
+function issue(
+  code: OwnerVisibleMultiFormatPreviewIssueCode,
+  message: string,
+  severity: WorkbenchIssue["severity"],
+  details: Readonly<Record<string, unknown>> = {},
+  sensitivePath?: string
+): OwnerVisibleMultiFormatPreviewIssue {
+  const sensitivePaths = sensitivePath && isPathLike(sensitivePath) ? [sensitivePath] : [];
+  return {
+    severity,
+    code,
+    message,
+    path: sensitivePaths.length > 0 ? "[local path]" : undefined,
+    details: redactLocalPathsInValue(details, sensitivePaths)
+  };
+}
+
+function playbackState(status: PlaybackState["status"], durationMs?: number): PlaybackState {
+  return {
+    status,
+    currentTimeMs: 0,
+    ...(durationMs !== undefined ? { durationMs } : {}),
+    loop: false
+  };
+}
+
+function formatDuration(durationMs: number | undefined): string {
+  if (!Number.isFinite(durationMs)) return "unknown";
+  return `${Math.round((durationMs ?? 0) / 100) / 10}s`;
+}
+
+function isSafeInlineOrBlobImage(value: string): boolean {
+  const trimmed = value.trim();
+  return /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/iu.test(trimmed)
+    || trimmed.startsWith("blob:");
+}
+
+function isOpenSource(value: unknown): value is HiddenMultiFormatPreviewOpenSource {
+  return value === "fileButton" || value === "dragDrop" || value === "menuOpen";
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function isPathLike(value: string): boolean {
+  return /[\\/]/u.test(value) || /^[A-Za-z]:/u.test(value);
+}
+
+function safeSourceName(value: string): string {
+  const parts = value.trim().split(/[\\/]+/u).filter(Boolean);
+  return (parts.at(-1) ?? "")
+    .replace(/[\p{Cc}\p{Cf}]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function cloneModel(model: OwnerVisibleMultiFormatPreviewModel): OwnerVisibleMultiFormatPreviewModel {
+  return structuredClone(model) as OwnerVisibleMultiFormatPreviewModel;
+}

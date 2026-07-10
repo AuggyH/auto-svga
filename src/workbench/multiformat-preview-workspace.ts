@@ -18,6 +18,7 @@ import {
   type HiddenLottiePreviewHost,
   type HiddenLottiePreviewModel,
   type HiddenLottiePreviewOpenSource,
+  type HiddenLottiePreviewReplacement,
   type HiddenLottiePreviewStatus
 } from "./lottie-preview-vertical.js";
 import type {
@@ -89,6 +90,7 @@ export interface HiddenMultiFormatPreviewOpenInput {
   source: HiddenMultiFormatPreviewOpenSource;
   localPath: string;
   displayName?: string;
+  lottieReplacements?: Readonly<Record<string, HiddenLottiePreviewReplacement>>;
   vapFusionReplacements?: Readonly<Record<string, HiddenVapPreviewFusionReplacement>>;
 }
 
@@ -484,7 +486,8 @@ export class HiddenMultiFormatPreviewWorkspaceSession {
       requestId: input.requestId,
       source: input.source as HiddenLottiePreviewOpenSource,
       localPath: input.localPath,
-      displayName: input.displayName
+      displayName: input.displayName,
+      replacements: input.lottieReplacements
     });
     if (!this.isActiveDelegate(delegate)) return this.getModel();
     this.model = mapLottieModel(model, "lottie");

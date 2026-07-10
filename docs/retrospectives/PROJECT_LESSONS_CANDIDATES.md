@@ -1139,3 +1139,19 @@ promoted, watched, rejected, or kept historical.
   renderer load or final-model overwrite occurs.
 - Status: Candidate pending reuse in any visible 0.2 workspace or future
   format-selection/open-flow integration.
+
+## 2026-07-11: Keep Runtime Replacement Preview Separate From Save/Export
+
+- Candidate lesson: A visible-candidate multi-format preview should treat
+  replacement as a runtime preview/remount state until each format has an
+  approved persistent edit/save contract. Lottie `animationData`, VAP fusion
+  params, and SVGA imageKey preview bytes can share a dirty/reset model without
+  implying authoring, export, or package support.
+- Evidence: WP5 adds a gated `0.2.0-alpha.1` owner-preview candidate model that
+  reloads Lottie image/text replacements into bounded renderer data, passes VAP
+  fusion replacements into the hidden runtime config, and exposes SVGA
+  imageKey replacement through an injected preview controller. Tests prove
+  reset, stale replacement cancellation, unsafe URL rejection, and `0.1.x`
+  command-menu isolation.
+- Status: Candidate pending reuse in visible shell integration and Packaging
+  QA.
