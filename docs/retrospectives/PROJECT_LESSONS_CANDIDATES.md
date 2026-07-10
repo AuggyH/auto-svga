@@ -991,3 +991,21 @@ promoted, watched, rejected, or kept historical.
   `@lottiefiles/dotlottie-web@0.77.0` because WASM and `.lottie` scope exceed
   the first JSON playback gate.
 - Status: watch
+
+## Keep renderer spikes hidden until host playback evidence exists
+
+- Source:
+  `docs/reviews/2026-07-10-codex-0.2-multiformat-wp2b-spike.md`
+- Area: multi-format, Lottie playback, dependency integration
+- Context: WP2B adopted `lottie-web@5.13.0` for a hidden SVG adapter after
+  Product Owner approval, while keeping 0.1 visible behavior SVGA-only.
+- Problem: A dependency import and lifecycle adapter can be mistaken for
+  product support if review language does not separate hidden adapter evidence
+  from host-rendered playback evidence.
+- Candidate rule: For browser-oriented renderers, prove lifecycle, typed
+  failures, bundle chunks, and 0.1 isolation first; require separate host DOM
+  playback evidence before claiming user-visible support.
+- Evidence: WP2B focused tests use injected renderer doubles, verify the real
+  default loader fails typed in a non-DOM test host, and record dynamic
+  renderer chunk size without adding UI/open-flow integration.
+- Status: watch

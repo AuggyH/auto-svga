@@ -38,7 +38,7 @@ export const FORMAT_CAPABILITY_BASELINES = [
   {
     format: "lottie",
     assessments: [
-      { capability: "playback", maturity: "research", boundary: "lottie-web is a candidate, not a dependency." },
+      { capability: "playback", maturity: "partial", boundary: "Hidden 0.2-WP2B SVG adapter spike only; no visible UI, external assets, production support, or 0.1 entry." },
       { capability: "parse", maturity: "partial", boundary: "Built-in JSON inspection normalizes metadata only; no renderer, playback, asset loading, or production support." },
       { capability: "replaceable_content", maturity: "research", boundary: "Replacement support varies by renderer and asset type." },
       { capability: "convert", maturity: "planned", boundary: "Vector semantics cannot be preserved through a raster-only intermediate." },
