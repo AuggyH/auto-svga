@@ -1125,3 +1125,17 @@ promoted, watched, rejected, or kept historical.
   object URL creation, or runtime construction.
 - Status: Candidate pending reuse in visible 0.2 multi-format resource
   replacement UI and future renderer integrations.
+
+## 2026-07-11: Guard Multi-format Composition Separately From Child Verticals
+
+- Candidate lesson: A combined workspace must own request-generation and stale
+  side-effect checks even when each delegated format vertical is already
+  guarded. The composition layer can still mix active model, source, playback,
+  or container state across formats if it only trusts child session correctness.
+- Evidence: WP4 adds a hidden multi-format workspace that delegates Lottie and
+  VAP to their accepted verticals and maps SVGA through an injected adapter.
+  Regression coverage blocks an old Lottie request inside renderer loading,
+  completes a newer SVGA open, releases the old request, and asserts no stale
+  renderer load or final-model overwrite occurs.
+- Status: Candidate pending reuse in any visible 0.2 workspace or future
+  format-selection/open-flow integration.

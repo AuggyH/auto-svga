@@ -26,9 +26,9 @@ export const FORMAT_CAPABILITY_BASELINES = [
   {
     format: "vap",
     assessments: [
-      { capability: "playback", maturity: "research", boundary: "Hidden 0.2 runtime decision and dependency-free preparation contracts only; no integrated player, runtime dependency, visible UI, or support claim." },
-      { capability: "parse", maturity: "partial", boundary: "Hidden 0.2 VAP MP4/vapc inspection readiness only; no playback, UI, production support, or runtime dependency." },
-      { capability: "replaceable_content", maturity: "research", boundary: "Fusion/resource replacement semantics require format study." },
+      { capability: "playback", maturity: "partial", boundary: "Hidden 0.2-WP3C local runtime spike only; no visible UI, production support, package promotion, or visual success claim." },
+      { capability: "parse", maturity: "partial", boundary: "Hidden 0.2 VAP MP4/vapc inspection readiness; no visible UI or production support." },
+      { capability: "replaceable_content", maturity: "partial", boundary: "Hidden fusion image/text metadata and local replacement binding only; no editing or save/export workflow." },
       { capability: "convert", maturity: "planned", boundary: "Requires frame-sequence intermediate and encoder decision." },
       { capability: "export", maturity: "research", boundary: "No approved encoder toolchain." },
       { capability: "spec_check", maturity: "planned", boundary: "Platform limits are not encoded." },
@@ -39,8 +39,8 @@ export const FORMAT_CAPABILITY_BASELINES = [
     format: "lottie",
     assessments: [
       { capability: "playback", maturity: "partial", boundary: "Hidden 0.2-WP2B SVG adapter spike only; no visible UI, external assets, production support, or 0.1 entry." },
-      { capability: "parse", maturity: "partial", boundary: "Built-in JSON inspection normalizes metadata only; no renderer, playback, asset loading, or production support." },
-      { capability: "replaceable_content", maturity: "research", boundary: "Replacement support varies by renderer and asset type." },
+      { capability: "parse", maturity: "partial", boundary: "Built-in JSON inspection normalizes metadata for hidden 0.2 preview only; no production support." },
+      { capability: "replaceable_content", maturity: "partial", boundary: "Hidden metadata and adjacent image/text candidate display only; no editing or save/export workflow." },
       { capability: "convert", maturity: "planned", boundary: "Vector semantics cannot be preserved through a raster-only intermediate." },
       { capability: "export", maturity: "unsupported", boundary: "No authoring/export scope in the current product." },
       { capability: "spec_check", maturity: "planned", boundary: "Feature compatibility checks require a Lottie feature model." },

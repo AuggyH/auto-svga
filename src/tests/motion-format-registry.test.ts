@@ -296,6 +296,35 @@ test("uses range reads when available instead of trusting underreported size met
   assert.deepEqual(ranges, [[0, 262_144]]);
 });
 
+test("uses range reads when size metadata is unknown or NaN", async () => {
+  const bytes = concatBytes(
+    mp4Box("ftyp", textEncoder.encode("isom\u0000\u0000\u0002\u0000isom")),
+    mp4Box("vapc", textEncoder.encode("{}"))
+  );
+  let fullReads = 0;
+  const ranges: Array<[number, number]> = [];
+  const source: MotionFormatProbeSource = {
+    id: "unknown-size-vap",
+    name: "unknown-size.mp4",
+    sizeBytes: Number.NaN,
+    mediaType: "video/mp4",
+    async read() {
+      fullReads += 1;
+      return bytes;
+    },
+    async readRange(offset, length) {
+      ranges.push([offset, length]);
+      return bytes.slice(offset, offset + length);
+    }
+  };
+  const result = await service().probe(source, { gate: MULTIFORMAT_PREVIEW_WP1_GATE });
+
+  assert.equal(result.status, "detected");
+  assert.equal(result.format, "vap");
+  assert.equal(fullReads, 0);
+  assert.deepEqual(ranges, [[0, 262_144]]);
+});
+
 test("large sources without range reads fail closed instead of loading the full asset", async () => {
   let reads = 0;
   const source: MotionFormatProbeSource = {
