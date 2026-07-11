@@ -41,6 +41,23 @@ const repoRoot = path.resolve(appRoot, "../../../..");
 const productIdentity = "auto-svga";
 const productDisplayName = "Auto SVGA";
 app.setName(productDisplayName);
+function readPackagedRuntimeBuildInfo() {
+  try {
+    const buildInfo = JSON.parse(readFileSync(path.join(appRoot, ".runtime/build-info.json"), "utf8"));
+    return buildInfo && typeof buildInfo === "object" ? buildInfo : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function runtimeBuildInfoProductMilestoneId(buildInfo) {
+  if (buildInfo?.productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID) {
+    return MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;
+  }
+  if (buildInfo?.productMilestoneId === "short-term") {
+    return "short-term";
+  }
+  return undefined;
+}
 const hostMenuActions = Object.freeze([
   "open-primary-svga",
   "open-secondary-svga",
@@ -90,7 +107,8 @@ const mainEntry = "main.cjs";
 const preloadEntry = "preload.cjs";
 const playerIdentity = "svga-web@2.4.4";
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
-const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? "short-term";
+const packagedRuntimeBuildInfo = app.isPackaged ? readPackagedRuntimeBuildInfo() : undefined;
+const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? runtimeBuildInfoProductMilestoneId(packagedRuntimeBuildInfo) ?? "short-term";
 const isShortTermProduct = productMilestoneId === "short-term";
 const isMultiFormatDesktopProduct = productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;
 const usesShortTermPreviewShell = isShortTermProduct || isMultiFormatDesktopProduct;
@@ -4054,7 +4072,7 @@ function gitHeadCommit() {
 
 function packagedBuildCommit() {
   try {
-    const buildInfo = JSON.parse(readFileSync(path.join(appRoot, ".runtime/build-info.json"), "utf8"));
+    const buildInfo = packagedRuntimeBuildInfo ?? readPackagedRuntimeBuildInfo();
     if (typeof buildInfo.buildCommit === "string" && /^[a-f0-9]{40}$/.test(buildInfo.buildCommit)) {
       return buildInfo.buildCommit;
     }

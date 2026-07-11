@@ -1293,3 +1293,18 @@ promoted, watched, rejected, or kept historical.
   owner-visible inventory output.
 - Status: Candidate pending WP7 Code Review repair 2 re-review and reuse for
   future privacy helpers.
+
+## 2026-07-11: Bind Installed Product Mode, Not Just Package Version
+
+- Candidate lesson: A packaged alpha can have correct Info.plist version
+  stamps and runtime dependencies while still launching the wrong product mode.
+  Package candidates need an explicit packaged runtime mode marker that the
+  Electron main process consumes when LaunchServices does not provide the
+  development environment.
+- Evidence: ASV-QA-20260711-001 foreground QA showed installed alpha2 opened
+  SVGA but Lottie/VAP silently stayed on the prior SVGA state. The repair
+  stamps `.runtime/build-info.json` with
+  `productMilestoneId: "0.2-multiformat-preview"` and reads that marker only
+  for packaged apps before falling back to formal `short-term`.
+- Status: Candidate pending QA regression on a rebuilt installed alpha2 repair
+  package.

@@ -622,7 +622,9 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(packageScript, /assertPackagedRuntimeDependencies/);
   assert.match(packageScript, /Contents\/Resources\/app\.asar/);
   assert.match(packageScript, /\.runtime\/build-info\.json/);
-  assert.match(packageScript, /writeRuntimeBuildInfo\(buildCommit\)/);
+  assert.match(packageScript, /const internalTrialProductMilestoneId = "0\.2-multiformat-preview";/);
+  assert.match(packageScript, /writeRuntimeBuildInfo\(buildCommit, internalTrialProductMilestoneId\)/);
+  assert.match(packageScript, /productMilestoneId: internalTrialProductMilestoneId/);
   assert.match(packageScript, /assertPackagedRuntimeClosure/);
   assert.match(packageScript, /productVersionLine/);
   assert.match(packageScript, /candidateChannel/);
@@ -633,6 +635,8 @@ test("macOS package proof manifest records audit boundaries without final App ac
     ["lottie-web@5.13.0", "video-animation-player@1.0.5"]
   );
   assert.match(mainProcess, /packagedBuildCommit\(\) \?\? "unknown"/);
+  assert.match(mainProcess, /const packagedRuntimeBuildInfo = app\.isPackaged \? readPackagedRuntimeBuildInfo\(\) : undefined;/);
+  assert.match(mainProcess, /runtimeBuildInfoProductMilestoneId\(packagedRuntimeBuildInfo\) \?\? "short-term"/);
   assert.match(mainProcess, /\.runtime\/build-info\.json/);
   assert.doesNotMatch(packageScript, /--sequesterRsrc/);
 });
@@ -1147,6 +1151,23 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
   assert.match(controller, /dataset\.group = group\.id/);
   assert.match(session, /rendererHasFullPath|pathRedacted/);
   assert.match(session, /lottieLoads|vapLoads|objectUrlsRevoked/);
+});
+
+test("0.2 alpha package runtime identity selects the multi-format desktop product before defaulting to 0.1", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const packageScript = await readFile(path.join(experimentRoot, "scripts/package-internal-trial.mjs"), "utf8");
+
+  assert.match(packageScript, /const internalTrialProductMilestoneId = "0\.2-multiformat-preview";/);
+  assert.match(packageScript, /productMilestoneId: internalTrialProductMilestoneId/);
+  assert.match(packageScript, /writeRuntimeBuildInfo\(buildCommit, internalTrialProductMilestoneId\)/);
+  assert.match(main, /function runtimeBuildInfoProductMilestoneId\(buildInfo\)/);
+  assert.match(main, /if \(buildInfo\?\.productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID\)/);
+  assert.match(main, /if \(buildInfo\?\.productMilestoneId === "short-term"\)/);
+  assert.match(main, /const packagedRuntimeBuildInfo = app\.isPackaged \? readPackagedRuntimeBuildInfo\(\) : undefined;/);
+  assert.match(
+    main,
+    /const productMilestoneId = process\.env\.AUTO_SVGA_PRODUCT_MILESTONE \?\? runtimeBuildInfoProductMilestoneId\(packagedRuntimeBuildInfo\) \?\? "short-term";/
+  );
 });
 
 test("formal 0.1 direct multi-format IPC calls are guarded before host side effects", async () => {

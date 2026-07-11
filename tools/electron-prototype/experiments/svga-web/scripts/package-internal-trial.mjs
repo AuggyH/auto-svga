@@ -38,6 +38,7 @@ const archivePath = path.join(artifactsRoot, `${appName}-darwin-arm64.zip`);
 const manifestPath = path.join(artifactsRoot, "internal-trial-manifest.json");
 const runtimeBuildInfoPath = path.join(experimentRoot, ".runtime/build-info.json");
 const localElectronVersionPath = path.join(experimentRoot, "../../node_modules/electron/dist/version");
+const internalTrialProductMilestoneId = "0.2-multiformat-preview";
 
 function run(command, args, options = {}) {
   execFileSync(command, args, {
@@ -90,10 +91,11 @@ function assertCleanZipEntries(entries, label) {
   }
 }
 
-async function writeRuntimeBuildInfo(buildCommit) {
+async function writeRuntimeBuildInfo(buildCommit, productMilestoneId) {
   const buildInfo = {
     schemaVersion: 1,
     buildCommit,
+    productMilestoneId,
     source: "package-internal-trial"
   };
   await writeFile(runtimeBuildInfoPath, `${JSON.stringify(buildInfo, null, 2)}\n`);
@@ -186,7 +188,7 @@ async function main() {
   await mkdir(artifactsRoot, { recursive: true });
 
   run("npm", ["run", "spike:svga-web:prepare"]);
-  await writeRuntimeBuildInfo(buildCommit);
+  await writeRuntimeBuildInfo(buildCommit, internalTrialProductMilestoneId);
   const cachedElectronZipDir = await findCachedElectronZip();
   const packagerArgs = cachedElectronZipDir
     ? [...macosPackagerArgs(artifactsRoot), `--electron-zip-dir=${cachedElectronZipDir}`]
@@ -224,6 +226,7 @@ async function main() {
       candidateChannel,
       ownerVisibleLabel
     },
+    productMilestoneId: internalTrialProductMilestoneId,
     buildCommit,
     platform,
     architecture,
