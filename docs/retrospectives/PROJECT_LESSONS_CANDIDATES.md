@@ -1212,3 +1212,17 @@ promoted, watched, rejected, or kept historical.
   Electron automation.
 - Status: Candidate pending WP6 Code Review re-review and reuse for future
   desktop host-boundary work.
+
+## 2026-07-11: Bind Candidate Package Identity To Packaged Runtime Closure
+
+- Candidate lesson: Multi-version package candidates must prove both outer
+  bundle identity and embedded runtime identity. A matching Info.plist stamp is
+  not enough if packaged `app.asar` still carries stale `.runtime/build-info`
+  or omits newly approved runtime dependencies.
+- Evidence: The 0.2 alpha.1 packaging proof repair stamps
+  `0.2.0-alpha.1`, records product/stage/channel identity, reads packaged
+  `app.asar` runtime build info, and validates `lottie-web@5.13.0` plus
+  `video-animation-player@1.0.5` closure with failure-first tests for stale
+  identity, stale runtime commit, missing Lottie entry, and stale VAP version.
+- Status: Candidate pending Code Review and the later 0.2 package-candidate
+  retry gate.
