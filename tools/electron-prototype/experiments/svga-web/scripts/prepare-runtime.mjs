@@ -19,7 +19,15 @@ const expectedVendorHashes = new Map([
 const expectedLegacyVendorHashes = new Map([
   ["pako-2.1.0.min.js", "ede2693a4a6a5126b9d35669062b358ecab6ae7b9b86a1cf302feb45a8514907"]
 ]);
-const runtimeNodeDependencies = ["protobufjs", "long", "fast-png", "fflate", "iobuffer"];
+const runtimeNodeDependencies = [
+  "protobufjs",
+  "long",
+  "fast-png",
+  "fflate",
+  "iobuffer",
+  "lottie-web",
+  "video-animation-player"
+];
 
 await verifyVendorAssets();
 await verifyLegacyVendorAssets();
@@ -92,11 +100,28 @@ async function verifyLegacyVendorAssets() {
 }
 
 async function copyRuntimeNodeDependency(packageName) {
+  const packageRoot = await resolveRuntimeNodeDependency(packageName);
   await cp(
-    path.join(prototypeRoot, "node_modules", packageName),
+    packageRoot,
     path.join(runtimeRoot, "node_modules", packageName),
     { recursive: true }
   );
+}
+
+async function resolveRuntimeNodeDependency(packageName) {
+  const candidates = [
+    path.join(prototypeRoot, "node_modules", packageName),
+    path.join(repoRoot, "node_modules", packageName)
+  ];
+  for (const candidate of candidates) {
+    try {
+      const packageJson = JSON.parse(await readFile(path.join(candidate, "package.json"), "utf8"));
+      if (packageJson.name === packageName) return candidate;
+    } catch {
+      // Try the next declared runtime dependency source.
+    }
+  }
+  throw new Error(`Runtime dependency is not installed for packaging: ${packageName}`);
 }
 
 async function ensureWebBaselineFixture() {

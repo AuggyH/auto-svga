@@ -6,12 +6,20 @@
   <string>Integration Coordinator</string>
   <key>AutoSVGAInternalUseOnly</key>
   <true/>
+  <key>AutoSVGAPackageCandidate</key>
+  <true/>
   <key>AutoSVGANotarized</key>
   <false/>
+  <key>AutoSVGAProductVersion</key>
+  <string>0.2.0</string>
   <key>AutoSVGAProductionApproved</key>
   <false/>
+  <key>AutoSVGAReleaseStage</key>
+  <string>alpha.1</string>
   <key>AutoSVGASigned</key>
   <false/>
+  <key>AutoSVGADistributionChannel</key>
+  <string>internal</string>
   <key>CFBundleDisplayName</key>
   <string>Auto SVGA</string>
   <key>CFBundleIdentifier</key>
@@ -19,9 +27,9 @@
   <key>CFBundleName</key>
   <string>Auto SVGA</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.0.0-internal</string>
+  <string>0.2.0-alpha.1</string>
   <key>CFBundleVersion</key>
-  <string>0.0.0-internal</string>
+  <string>0.2.0-alpha.1</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.developer-tools</string>
 </dict>

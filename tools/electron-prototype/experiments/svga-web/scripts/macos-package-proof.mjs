@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -11,8 +12,15 @@ import { internalTrialCsp } from "../server.mjs";
 export const appName = "Auto SVGA";
 export const bundleIdentifier = "local.auto-svga.internal-prototype";
 export const bundleDisplayName = "Auto SVGA";
-export const bundleShortVersion = "0.0.0-internal";
+export const productVersionLine = "0.2.x";
+export const productVersion = "0.2.0";
+export const productName = "Multi-format Preview MVP";
+export const releaseStage = "alpha.1";
+export const distributionChannel = "internal";
+export const candidateChannel = "local/internal candidate";
+export const bundleShortVersion = "0.2.0-alpha.1";
 export const bundleVersion = bundleShortVersion;
+export const ownerVisibleLabel = `${appName} ${bundleShortVersion} ${distributionChannel} candidate`;
 export const platform = "darwin";
 export const architecture = "arm64";
 export const proofSchemaVersion = 1;
@@ -20,6 +28,8 @@ export const finalAcceptanceOwner = "Integration Coordinator";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
+const prototypeRoot = path.resolve(experimentRoot, "../..");
+const requireFromPrototype = createRequire(path.join(prototypeRoot, "package.json"));
 const artifactsRoot = path.join(experimentRoot, ".artifacts/internal-trial");
 const proofPath = path.join(artifactsRoot, "macos-package-proof.json");
 const plistPath = path.join(experimentRoot, "packaging/macos/Info.plist");
@@ -71,6 +81,44 @@ const forbiddenArbitraryNetworkKeys = [
   "NSAllowsArbitraryLoadsInWebContent",
   "NSExceptionAllowsInsecureHTTPLoads"
 ];
+export const packagedRuntimeDependencies = [
+  {
+    packageName: "protobufjs",
+    requiredEntries: ["package.json", "index.js"]
+  },
+  {
+    packageName: "long",
+    requiredEntries: ["package.json", "index.js"]
+  },
+  {
+    packageName: "fast-png",
+    requiredEntries: ["package.json", "lib/index.js"]
+  },
+  {
+    packageName: "fflate",
+    requiredEntries: ["package.json"]
+  },
+  {
+    packageName: "iobuffer",
+    requiredEntries: ["package.json"]
+  },
+  {
+    packageName: "lottie-web",
+    expectedVersion: "5.13.0",
+    requiredEntries: ["package.json", "build/player/lottie_svg.js"]
+  },
+  {
+    packageName: "video-animation-player",
+    expectedVersion: "1.0.5",
+    requiredEntries: ["package.json", "dist/vap.js"]
+  }
+];
+export const requiredPackagedRuntimeEntries = [
+  "/.runtime/build-info.json",
+  ...packagedRuntimeDependencies.flatMap((dependency) => (
+    dependency.requiredEntries.map((entry) => `/.runtime/node_modules/${dependency.packageName}/${entry}`)
+  ))
+];
 
 export function macosPackagerArgs(outputRoot = ".artifacts/internal-trial") {
   return [
@@ -101,10 +149,15 @@ export async function buildMacosPackageProof(options = {}) {
     : path.join(artifactsRoot, `${appName}-darwin-arm64.zip`);
   const sourcePlist = await readFile(plistPath, "utf8");
   const packagedPlistPath = path.join(appBundle, "Contents/Info.plist");
+  const packagedAsarPath = path.join(appBundle, "Contents/Resources/app.asar");
   const validatePackagedApp = options.validatePackagedApp !== false;
   const packagedPlist = validatePackagedApp && existsSync(packagedPlistPath)
     ? await readFile(packagedPlistPath, "utf8")
     : sourcePlist;
+  const buildCommit = git(["rev-parse", "HEAD"]);
+  const packagedRuntimeClosure = validatePackagedApp
+    ? readPackagedRuntimeClosure(packagedAsarPath, buildCommit)
+    : skippedPackagedRuntimeClosure(packagedAsarPath, "packaged app validation disabled");
   const privacyAudit = await runPrivacyAudit(sourcePlist);
   const sourceInfoPlistSecurityAudit = auditInfoPlistSecurity(sourcePlist);
   const packagedInfoPlistSecurityAudit = auditInfoPlistSecurity(packagedPlist);
@@ -126,11 +179,23 @@ export async function buildMacosPackageProof(options = {}) {
     bundleDisplayName,
     bundleVersion,
     bundleShortVersion,
+    productIdentity: {
+      productVersionLine,
+      productVersion,
+      productName,
+      releaseStage,
+      distributionChannel,
+      candidateChannel,
+      ownerVisibleLabel
+    },
     branch: git(["rev-parse", "--abbrev-ref", "HEAD"]),
-    buildCommit: git(["rev-parse", "HEAD"]),
+    buildCommit,
     platform,
     architecture,
     distribution: {
+      channel: distributionChannel,
+      candidateChannel,
+      packageCandidate: true,
       internalUseOnly: true,
       unsigned: true,
       notarized: false,
@@ -188,6 +253,8 @@ export async function buildMacosPackageProof(options = {}) {
       extendInfoPath: path.relative(repoRoot, plistPath),
       packagedInfoPlistPath: path.relative(repoRoot, packagedPlistPath),
       packagedInfoPlistValidated: validatePackagedApp && existsSync(packagedPlistPath),
+      packagedRuntimeBuildInfo: packagedRuntimeClosure.buildInfo,
+      packagedRuntimeClosure,
       entitlementsPath: path.relative(repoRoot, entitlementsPath),
       electronPackagerArgs: macosPackagerArgs(path.relative(experimentRoot, artifactsRoot))
     },
@@ -218,11 +285,19 @@ export async function writeMacosPackageProof(options = {}) {
 
 export function validateProof(plist, proof, packagedPlist = plist) {
   const packagedInfoPlistValidated = packagedPlist !== plist;
+  const packagedRuntimeClosure = proof.packagingScaffold.packagedRuntimeClosure;
   const checks = [
     ["sourceAppIdentity", plistStringValue(plist, "CFBundleName") === appName && plistStringValue(plist, "CFBundleDisplayName") === bundleDisplayName],
     ["packagedAppIdentity", plistStringValue(packagedPlist, "CFBundleName") === appName && plistStringValue(packagedPlist, "CFBundleDisplayName") === bundleDisplayName],
     ["packagedExecutableIdentity", !packagedInfoPlistValidated || plistStringValue(packagedPlist, "CFBundleExecutable") === appName],
+    ["sourceBundleVersionStamp", plistStringValue(plist, "CFBundleShortVersionString") === bundleShortVersion && plistStringValue(plist, "CFBundleVersion") === bundleVersion],
+    ["packagedBundleVersionStamp", plistStringValue(packagedPlist, "CFBundleShortVersionString") === bundleShortVersion && plistStringValue(packagedPlist, "CFBundleVersion") === bundleVersion],
+    ["sourceProductIdentity", plistStringValue(plist, "AutoSVGAProductVersion") === productVersion && plistStringValue(plist, "AutoSVGAReleaseStage") === releaseStage && plistStringValue(plist, "AutoSVGADistributionChannel") === distributionChannel && plistBooleanTrue(plist, "AutoSVGAPackageCandidate")],
+    ["packagedProductIdentity", plistStringValue(packagedPlist, "AutoSVGAProductVersion") === productVersion && plistStringValue(packagedPlist, "AutoSVGAReleaseStage") === releaseStage && plistStringValue(packagedPlist, "AutoSVGADistributionChannel") === distributionChannel && plistBooleanTrue(packagedPlist, "AutoSVGAPackageCandidate")],
+    ["productIdentity", proof.productIdentity?.productVersion === productVersion && proof.productIdentity?.releaseStage === releaseStage && proof.productIdentity?.distributionChannel === distributionChannel && proof.productIdentity?.candidateChannel === candidateChannel && proof.productIdentity?.ownerVisibleLabel === ownerVisibleLabel],
+    ["packagedRuntimeClosure", proof.packagingScaffold.packagedInfoPlistValidated !== true || (packagedRuntimeClosure?.validated === true && packagedRuntimeClosure?.buildInfo?.buildCommit === proof.buildCommit)],
     ["internalUseOnly", proof.distribution.internalUseOnly === true && plist.includes("<key>AutoSVGAInternalUseOnly</key>")],
+    ["distributionChannel", proof.distribution.channel === distributionChannel && proof.distribution.candidateChannel === candidateChannel && proof.distribution.packageCandidate === true],
     ["unsigned", proof.distribution.unsigned === true && plist.includes("<key>AutoSVGASigned</key>")],
     ["unnotarized", proof.distribution.notarized === false && plist.includes("<key>AutoSVGANotarized</key>")],
     ["productionApprovedFalse", proof.distribution.productionApproved === false && plist.includes("<key>AutoSVGAProductionApproved</key>")],
@@ -249,6 +324,116 @@ export function validateProof(plist, proof, packagedPlist = plist) {
 
 async function sha256(filePath) {
   return createHash("sha256").update(await readFile(filePath)).digest("hex");
+}
+
+export function assertPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
+  const closure = readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit);
+  if (closure.validated !== true) {
+    throw new Error(`packagedRuntimeClosure failed: ${closure.findings.join("; ")}`);
+  }
+  return closure;
+}
+
+function skippedPackagedRuntimeClosure(packagedAsarPath, skippedReason) {
+  return {
+    asarPath: path.relative(repoRoot, packagedAsarPath),
+    buildInfoPath: ".runtime/build-info.json",
+    validated: false,
+    buildInfo: {
+      validated: false,
+      buildCommit: null,
+      source: null,
+      skippedReason
+    },
+    requiredEntries: requiredPackagedRuntimeEntries,
+    missingEntries: [],
+    dependencies: packagedRuntimeDependencies.map((dependency) => ({
+      packageName: dependency.packageName,
+      expectedVersion: dependency.expectedVersion ?? null,
+      version: null,
+      validated: false,
+      skippedReason
+    })),
+    findings: [],
+    skippedReason
+  };
+}
+
+function readPackagedRuntimeClosure(packagedAsarPath, expectedBuildCommit) {
+  const base = skippedPackagedRuntimeClosure(packagedAsarPath, undefined);
+  delete base.skippedReason;
+  const findings = [];
+  if (!existsSync(packagedAsarPath)) {
+    return {
+      ...base,
+      findings: ["packaged app.asar is missing"],
+      error: "packaged app.asar is missing"
+    };
+  }
+
+  try {
+    const asar = requireFromPrototype("@electron/asar");
+    const entries = new Set(asar.listPackage(packagedAsarPath));
+    const missingEntries = requiredPackagedRuntimeEntries.filter((entry) => !entries.has(entry));
+    for (const entry of missingEntries) findings.push(`missing ${entry}`);
+
+    const buildInfo = readAsarJson(asar, packagedAsarPath, ".runtime/build-info.json");
+    const buildCommit = typeof buildInfo.buildCommit === "string" ? buildInfo.buildCommit : null;
+    const source = typeof buildInfo.source === "string" ? buildInfo.source : null;
+    if (!buildCommit) findings.push("packaged runtime build-info is missing buildCommit");
+    if (buildCommit && buildCommit !== expectedBuildCommit) {
+      findings.push(`packaged runtime buildCommit ${buildCommit} does not match ${expectedBuildCommit}`);
+    }
+
+    const dependencies = packagedRuntimeDependencies.map((dependency) => {
+      const packageJsonPath = `.runtime/node_modules/${dependency.packageName}/package.json`;
+      let version = null;
+      let error = null;
+      try {
+        const packageJson = readAsarJson(asar, packagedAsarPath, packageJsonPath);
+        version = typeof packageJson.version === "string" ? packageJson.version : null;
+      } catch (readError) {
+        error = readError instanceof Error ? readError.message : String(readError);
+      }
+      const versionMatches = !dependency.expectedVersion || version === dependency.expectedVersion;
+      if (error) findings.push(`${dependency.packageName} package metadata could not be read`);
+      if (!versionMatches) {
+        findings.push(`${dependency.packageName} version ${version ?? "missing"} does not match ${dependency.expectedVersion}`);
+      }
+      return {
+        packageName: dependency.packageName,
+        expectedVersion: dependency.expectedVersion ?? null,
+        version,
+        requiredEntries: dependency.requiredEntries.map((entry) => `/.runtime/node_modules/${dependency.packageName}/${entry}`),
+        validated: !error && versionMatches,
+        error
+      };
+    });
+
+    return {
+      ...base,
+      validated: findings.length === 0,
+      buildInfo: {
+        validated: Boolean(buildCommit) && buildCommit === expectedBuildCommit,
+        buildCommit,
+        source,
+        error: Boolean(buildCommit) ? null : "packaged runtime build-info is missing buildCommit"
+      },
+      missingEntries,
+      dependencies,
+      findings
+    };
+  } catch (error) {
+    return {
+      ...base,
+      findings: [error instanceof Error ? error.message : String(error)],
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+function readAsarJson(asar, packagedAsarPath, relativePath) {
+  return JSON.parse(asar.extractFile(packagedAsarPath, relativePath).toString("utf8"));
 }
 
 function mergeInfoPlistSecurityAudits({ sourceInfoPlistSecurityAudit, packagedInfoPlistSecurityAudit }) {

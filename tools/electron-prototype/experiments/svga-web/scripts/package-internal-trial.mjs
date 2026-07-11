@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,20 +9,26 @@ import { internalTrialCsp } from "../server.mjs";
 import {
   appName,
   architecture,
+  assertPackagedRuntimeClosure,
   bundleDisplayName,
   bundleIdentifier,
   bundleShortVersion,
   bundleVersion,
+  candidateChannel,
+  distributionChannel,
   finalAcceptanceOwner,
   macosPackagerArgs,
+  ownerVisibleLabel,
   platform,
+  productName,
+  productVersion,
+  productVersionLine,
+  releaseStage,
   writeMacosPackageProof
 } from "./macos-package-proof.mjs";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
-const prototypeRoot = path.resolve(experimentRoot, "../..");
-const requireFromPrototype = createRequire(path.join(prototypeRoot, "package.json"));
 const artifactsRoot = path.join(experimentRoot, ".artifacts/internal-trial");
 const appDirectory = path.join(artifactsRoot, `${appName}-darwin-arm64`);
 const appBundle = path.join(appDirectory, `${appName}.app`);
@@ -85,11 +90,6 @@ function assertCleanZipEntries(entries, label) {
   }
 }
 
-function asarEntries(asarPath) {
-  const asar = requireFromPrototype("@electron/asar");
-  return asar.listPackage(asarPath).sort();
-}
-
 async function writeRuntimeBuildInfo(buildCommit) {
   const buildInfo = {
     schemaVersion: 1,
@@ -99,32 +99,8 @@ async function writeRuntimeBuildInfo(buildCommit) {
   await writeFile(runtimeBuildInfoPath, `${JSON.stringify(buildInfo, null, 2)}\n`);
 }
 
-function readAsarJson(asarPath, relativePath) {
-  const asar = requireFromPrototype("@electron/asar");
-  return JSON.parse(asar.extractFile(asarPath, relativePath).toString("utf8"));
-}
-
 function assertPackagedRuntimeDependencies(buildCommit) {
-  const entries = new Set(asarEntries(packagedAsarPath));
-  const requiredEntries = [
-    "/.runtime/build-info.json",
-    "/.runtime/node_modules/protobufjs/package.json",
-    "/.runtime/node_modules/protobufjs/index.js",
-    "/.runtime/node_modules/long/package.json",
-    "/.runtime/node_modules/long/index.js",
-    "/.runtime/node_modules/fast-png/package.json",
-    "/.runtime/node_modules/fast-png/lib/index.js",
-    "/.runtime/node_modules/fflate/package.json",
-    "/.runtime/node_modules/iobuffer/package.json"
-  ];
-  const missing = requiredEntries.filter((entry) => !entries.has(entry));
-  if (missing.length > 0) {
-    throw new Error(`macOS internal App is missing runtime dependencies: ${missing.join(", ")}`);
-  }
-  const buildInfo = readAsarJson(packagedAsarPath, ".runtime/build-info.json");
-  if (buildInfo.buildCommit !== buildCommit) {
-    throw new Error("macOS internal App runtime build info does not match the current HEAD");
-  }
+  return assertPackagedRuntimeClosure(packagedAsarPath, buildCommit);
 }
 
 function createCleanAppArchive() {
@@ -232,6 +208,22 @@ async function main() {
     prototypeLabel: "内部原型，非生产版本，仅供内部测试",
     version: bundleShortVersion,
     bundleVersion,
+    productVersionLine,
+    productVersion,
+    productName,
+    releaseStage,
+    distributionChannel,
+    candidateChannel,
+    ownerVisibleLabel,
+    productIdentity: {
+      productVersionLine,
+      productVersion,
+      productName,
+      releaseStage,
+      distributionChannel,
+      candidateChannel,
+      ownerVisibleLabel
+    },
     buildCommit,
     platform,
     architecture,
@@ -241,6 +233,7 @@ async function main() {
     documentTypes: proof.documentTypes,
     appIcon: proof.appIcon,
     distribution: proof.distribution,
+    packagedRuntimeClosure: proof.packagingScaffold.packagedRuntimeClosure,
     securityFlags: {
       contextIsolation: true,
       nodeIntegration: false,

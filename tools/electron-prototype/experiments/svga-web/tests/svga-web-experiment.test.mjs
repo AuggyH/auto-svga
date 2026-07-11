@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import os from "node:os";
 import { test } from "node:test";
@@ -14,17 +14,30 @@ import protobuf from "protobufjs";
 import { legacyBrowserBaselineAuditCsp, strictCsp, startSvgaWebExperimentServer } from "../server.mjs";
 import {
   appName,
+  assertPackagedRuntimeClosure,
   auditInfoPlistSecurity,
   buildMacosPackageProof,
   bundleIdentifier,
+  bundleShortVersion,
+  bundleVersion,
+  candidateChannel,
+  distributionChannel,
   finalAcceptanceOwner,
   macosPackagerArgs,
+  ownerVisibleLabel,
+  packagedRuntimeDependencies,
+  productName,
+  productVersion,
+  productVersionLine,
+  releaseStage,
+  requiredPackagedRuntimeEntries,
   validateProof
 } from "../scripts/macos-package-proof.mjs";
 
 const require = createRequire(import.meta.url);
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(experimentRoot, "../../../..");
+const requireFromPrototype = createRequire(path.join(experimentRoot, "../..", "package.json"));
 const vendorPath = path.join(experimentRoot, "vendor/svga-web-2.4.4.js");
 const hostContract = require("../host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("../desktop-artifact-catalog.cjs");
@@ -421,12 +434,71 @@ test("short-term asset filters support roving keyboard model and interaction han
   assert.equal(stopped, true);
 });
 
+async function createPackagedProofFixture({
+  root,
+  buildCommit,
+  omitRuntimeEntries = [],
+  packageVersionOverrides = {},
+  plistTransform = (plist) => plist
+}) {
+  const appBundle = path.join(root, "Auto SVGA.app");
+  const contents = path.join(appBundle, "Contents");
+  const resources = path.join(contents, "Resources");
+  await mkdir(resources, { recursive: true });
+
+  const sourcePlist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
+  await writeFile(
+    path.join(contents, "Info.plist"),
+    plistTransform(sourcePlist.replace("</dict>", "  <key>CFBundleExecutable</key>\n  <string>Auto SVGA</string>\n</dict>"))
+  );
+  await copyFile(
+    path.join(experimentRoot, "packaging/macos/app-icon.icns"),
+    path.join(resources, "electron.icns")
+  );
+
+  const omitted = new Set(omitRuntimeEntries);
+  const asarSource = path.join(root, "asar-source");
+  for (const entry of requiredPackagedRuntimeEntries) {
+    if (omitted.has(entry)) continue;
+    const relativeEntry = entry.replace(/^\//, "");
+    const entryPath = path.join(asarSource, relativeEntry);
+    await mkdir(path.dirname(entryPath), { recursive: true });
+    if (relativeEntry === ".runtime/build-info.json") {
+      await writeFile(entryPath, `${JSON.stringify({ schemaVersion: 1, buildCommit, source: "test-package-proof" }, null, 2)}\n`);
+    } else if (relativeEntry.endsWith("/package.json")) {
+      const packageName = relativeEntry.split("/node_modules/")[1].replace(/\/package\.json$/, "");
+      const expected = packagedRuntimeDependencies.find((dependency) => dependency.packageName === packageName)?.expectedVersion;
+      await writeFile(entryPath, `${JSON.stringify({
+        name: packageName,
+        version: packageVersionOverrides[packageName] ?? expected ?? "0.0.0-test"
+      }, null, 2)}\n`);
+    } else {
+      await writeFile(entryPath, "module.exports = {};\n");
+    }
+  }
+
+  const asar = requireFromPrototype("@electron/asar");
+  const packagedAsarPath = path.join(resources, "app.asar");
+  await asar.createPackage(asarSource, packagedAsarPath);
+  return {
+    appBundle,
+    packagedAsarPath,
+    archivePath: path.join(root, "Auto SVGA-darwin-arm64.zip")
+  };
+}
+
 test("macOS internal package scaffold avoids unsupported Finder .svga document association", async () => {
   const plist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
   const entitlements = await readFile(path.join(experimentRoot, "packaging/macos/entitlements.plist"), "utf8");
   assert.equal(appName, "Auto SVGA");
   assert.match(plist, /CFBundleDisplayName[\s\S]*<string>Auto SVGA<\/string>/);
   assert.match(plist, /CFBundleName[\s\S]*<string>Auto SVGA<\/string>/);
+  assert.match(plist, new RegExp(`CFBundleShortVersionString[\\s\\S]*<string>${bundleShortVersion.replaceAll(".", "\\.")}</string>`));
+  assert.match(plist, new RegExp(`CFBundleVersion[\\s\\S]*<string>${bundleVersion.replaceAll(".", "\\.")}</string>`));
+  assert.match(plist, new RegExp(`AutoSVGAProductVersion[\\s\\S]*<string>${productVersion.replaceAll(".", "\\.")}</string>`));
+  assert.match(plist, new RegExp(`AutoSVGAReleaseStage[\\s\\S]*<string>${releaseStage.replaceAll(".", "\\.")}</string>`));
+  assert.match(plist, new RegExp(`AutoSVGADistributionChannel[\\s\\S]*<string>${distributionChannel}</string>`));
+  assert.match(plist, /AutoSVGAPackageCandidate[\s\S]*<true\/>/);
   assert.doesNotMatch(plist, /AutoSVGAInternalPrototype|Auto SVGA Internal Prototype/);
   assert.match(plist, /AutoSVGAInternalUseOnly/);
   assert.match(plist, /AutoSVGASigned/);
@@ -454,8 +526,8 @@ test("macOS internal package scaffold avoids unsupported Finder .svga document a
   assert.ok(packagerArgs.includes("--platform=darwin"));
   assert.ok(packagerArgs.includes("--arch=arm64"));
   assert.ok(packagerArgs.includes(`--app-bundle-id=${bundleIdentifier}`));
-  assert.ok(packagerArgs.includes("--app-version=0.0.0-internal"));
-  assert.ok(packagerArgs.includes("--build-version=0.0.0-internal"));
+  assert.ok(packagerArgs.includes(`--app-version=${bundleShortVersion}`));
+  assert.ok(packagerArgs.includes(`--build-version=${bundleVersion}`));
   assert.ok(packagerArgs.includes("--icon=packaging/macos/app-icon"));
   assert.ok(packagerArgs.some((arg) => arg === "--extend-info=packaging/macos/Info.plist"));
   assert.match(entitlements, /com\.apple\.security\.cs\.allow-jit/);
@@ -477,8 +549,22 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.equal(proof.schemaVersion, 1);
   assert.equal(proof.appName, "Auto SVGA");
   assert.equal(proof.bundleDisplayName, "Auto SVGA");
+  assert.equal(proof.bundleShortVersion, bundleShortVersion);
+  assert.equal(proof.bundleVersion, bundleVersion);
+  assert.deepEqual(proof.productIdentity, {
+    productVersionLine,
+    productVersion,
+    productName,
+    releaseStage,
+    distributionChannel,
+    candidateChannel,
+    ownerVisibleLabel
+  });
   assert.equal(proof.platform, "darwin");
   assert.equal(proof.architecture, "arm64");
+  assert.equal(proof.distribution.channel, distributionChannel);
+  assert.equal(proof.distribution.candidateChannel, candidateChannel);
+  assert.equal(proof.distribution.packageCandidate, true);
   assert.equal(proof.distribution.internalUseOnly, true);
   assert.equal(proof.distribution.unsigned, true);
   assert.equal(proof.distribution.notarized, false);
@@ -528,20 +614,24 @@ test("macOS package proof manifest records audit boundaries without final App ac
   assert.match(packageScript, /assertCleanZipEntries/);
   assert.match(packageScript, /sanitizePackagedInfoPlist/);
   assert.match(packageScript, /NSAudioCaptureUsageDescription/);
-  assert.match(prepareRuntime, /const runtimeNodeDependencies = \["protobufjs", "long", "fast-png", "fflate", "iobuffer"\]/);
+  assert.match(prepareRuntime, /"lottie-web"/);
+  assert.match(prepareRuntime, /"video-animation-player"/);
+  assert.match(prepareRuntime, /resolveRuntimeNodeDependency/);
   assert.match(prepareRuntime, /copyRuntimeNodeDependency\(packageName\)/);
   assert.match(prepareRuntime, /runtimeDependencies: runtimeNodeDependencies\.map/);
-  assert.match(prepareRuntime, /path\.join\(runtimeRoot, "node_modules", packageName\)/);
   assert.match(packageScript, /assertPackagedRuntimeDependencies/);
   assert.match(packageScript, /Contents\/Resources\/app\.asar/);
   assert.match(packageScript, /\.runtime\/build-info\.json/);
   assert.match(packageScript, /writeRuntimeBuildInfo\(buildCommit\)/);
-  assert.match(packageScript, /readAsarJson\(packagedAsarPath, "\.runtime\/build-info\.json"\)/);
-  assert.match(packageScript, /\/\.runtime\/node_modules\/protobufjs\/package\.json/);
-  assert.match(packageScript, /\/\.runtime\/node_modules\/long\/package\.json/);
-  assert.match(packageScript, /\/\.runtime\/node_modules\/fast-png\/package\.json/);
-  assert.match(packageScript, /\/\.runtime\/node_modules\/fflate\/package\.json/);
-  assert.match(packageScript, /\/\.runtime\/node_modules\/iobuffer\/package\.json/);
+  assert.match(packageScript, /assertPackagedRuntimeClosure/);
+  assert.match(packageScript, /productVersionLine/);
+  assert.match(packageScript, /candidateChannel/);
+  assert.deepEqual(
+    proof.packagingScaffold.packagedRuntimeClosure.dependencies
+      .filter((dependency) => dependency.expectedVersion)
+      .map((dependency) => `${dependency.packageName}@${dependency.expectedVersion}`),
+    ["lottie-web@5.13.0", "video-animation-player@1.0.5"]
+  );
   assert.match(mainProcess, /packagedBuildCommit\(\) \?\? "unknown"/);
   assert.match(mainProcess, /\.runtime\/build-info\.json/);
   assert.doesNotMatch(packageScript, /--sequesterRsrc/);
@@ -572,6 +662,100 @@ test("macOS package proof rejects packaged App identity drift", async () => {
     () => validateProof(sourcePlist, proof, packagedPlist.replace("<key>CFBundleExecutable</key>\n  <string>Auto SVGA</string>", "<key>CFBundleExecutable</key>\n  <string>Electron</string>")),
     /packagedExecutableIdentity/
   );
+});
+
+test("macOS package proof rejects stale package version and channel identity", async () => {
+  const sourcePlist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
+  const proof = await buildMacosPackageProof({
+    appBundle: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64/Auto SVGA.app"),
+    archivePath: path.join(experimentRoot, ".artifacts/internal-trial/Auto SVGA-darwin-arm64.zip"),
+    validatePackagedApp: false
+  });
+  const packagedPlist = sourcePlist.replace(
+    "</dict>",
+    "  <key>CFBundleExecutable</key>\n  <string>Auto SVGA</string>\n</dict>"
+  );
+
+  assert.throws(
+    () => validateProof(
+      sourcePlist,
+      proof,
+      packagedPlist.replace("<string>0.2.0-alpha.1</string>", "<string>0.0.0-internal</string>")
+    ),
+    /packagedBundleVersionStamp/
+  );
+  assert.throws(
+    () => validateProof(
+      sourcePlist,
+      proof,
+      packagedPlist.replace("<key>AutoSVGADistributionChannel</key>\n  <string>internal</string>", "<key>AutoSVGADistributionChannel</key>\n  <string>local</string>")
+    ),
+    /packagedProductIdentity/
+  );
+});
+
+test("macOS package proof rejects stale packaged runtime build identity", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "auto-svga-package-proof-"));
+  try {
+    const { appBundle, archivePath } = await createPackagedProofFixture({
+      root,
+      buildCommit: "stale-build-commit"
+    });
+
+    await assert.rejects(
+      () => buildMacosPackageProof({
+        appBundle,
+        archivePath
+      }),
+      /packagedRuntimeClosure/
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("macOS package proof rejects missing or stale 0.2 runtime dependency closure", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "auto-svga-package-proof-"));
+  try {
+    const expectedBuildCommit = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repoRoot,
+      encoding: "utf8"
+    }).trim();
+    const valid = await createPackagedProofFixture({
+      root,
+      buildCommit: expectedBuildCommit
+    });
+    const closure = assertPackagedRuntimeClosure(valid.packagedAsarPath, expectedBuildCommit);
+    assert.equal(closure.validated, true);
+    assert.deepEqual(
+      closure.dependencies
+        .filter((dependency) => dependency.expectedVersion)
+        .map((dependency) => `${dependency.packageName}@${dependency.version}`),
+      ["lottie-web@5.13.0", "video-animation-player@1.0.5"]
+    );
+
+    const missing = await createPackagedProofFixture({
+      root: path.join(root, "missing"),
+      buildCommit: expectedBuildCommit,
+      omitRuntimeEntries: ["/.runtime/node_modules/lottie-web/build/player/lottie_svg.js"]
+    });
+    assert.throws(
+      () => assertPackagedRuntimeClosure(missing.packagedAsarPath, expectedBuildCommit),
+      /lottie-web\/build\/player\/lottie_svg\.js/
+    );
+
+    const staleVersion = await createPackagedProofFixture({
+      root: path.join(root, "stale-version"),
+      buildCommit: expectedBuildCommit,
+      packageVersionOverrides: { "video-animation-player": "1.0.4" }
+    });
+    assert.throws(
+      () => assertPackagedRuntimeClosure(staleVersion.packagedAsarPath, expectedBuildCommit),
+      /video-animation-player version 1\.0\.4 does not match 1\.0\.5/
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("macOS Info.plist security audit rejects arbitrary network, unused permissions, and Finder associations", () => {
