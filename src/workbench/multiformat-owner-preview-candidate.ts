@@ -33,7 +33,7 @@ import {
 
 export const OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE = "0.2-owner-visible-multiformat-preview-wp5" as const;
 export const OWNER_VISIBLE_MULTIFORMAT_PREVIEW_SCHEMA_VERSION = 1 as const;
-export const OWNER_VISIBLE_MULTIFORMAT_PREVIEW_PRODUCT_VERSION = "0.2.0-alpha.1" as const;
+export const OWNER_VISIBLE_MULTIFORMAT_PREVIEW_PRODUCT_VERSION = "0.2.0-alpha.2" as const;
 
 export type OwnerVisibleMultiFormatPreviewStatus =
   | "launch"

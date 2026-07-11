@@ -15,7 +15,7 @@
   <key>AutoSVGAProductionApproved</key>
   <false/>
   <key>AutoSVGAReleaseStage</key>
-  <string>alpha.1</string>
+  <string>alpha.2</string>
   <key>AutoSVGASigned</key>
   <false/>
   <key>AutoSVGADistributionChannel</key>
@@ -27,9 +27,9 @@
   <key>CFBundleName</key>
   <string>Auto SVGA</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.2.0-alpha.1</string>
+  <string>0.2.0-alpha.2</string>
   <key>CFBundleVersion</key>
-  <string>0.2.0-alpha.1</string>
+  <string>0.2.0-alpha.2</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.developer-tools</string>
 </dict>

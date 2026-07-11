@@ -86,7 +86,7 @@ test("owner-visible 0.2 candidate applies and resets Lottie image and text runti
 
   assert.equal(opened.status, "previewReady");
   assert.equal(opened.detectedFormat, "lottie");
-  assert.equal(opened.productVersion, "0.2.0-alpha.1");
+  assert.equal(opened.productVersion, "0.2.0-alpha.2");
   assert.equal(opened.rightPanel.lottieTexts[0]?.initialText, "Hello");
   assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
   assert.equal(opened.rightPanel.assetInventory.summary.textCount, 1);

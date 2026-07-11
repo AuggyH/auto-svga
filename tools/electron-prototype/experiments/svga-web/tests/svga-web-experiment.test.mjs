@@ -680,7 +680,7 @@ test("macOS package proof rejects stale package version and channel identity", a
     () => validateProof(
       sourcePlist,
       proof,
-      packagedPlist.replace("<string>0.2.0-alpha.1</string>", "<string>0.0.0-internal</string>")
+      packagedPlist.replace("<string>0.2.0-alpha.2</string>", "<string>0.0.0-internal</string>")
     ),
     /packagedBundleVersionStamp/
   );
