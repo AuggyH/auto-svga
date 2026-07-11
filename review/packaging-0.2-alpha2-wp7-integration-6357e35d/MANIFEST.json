@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "packet": "packaging-0.2-alpha2-wp7-integration",
+  "status": "Implementation Ready / Code Review Required",
+  "branch": "codex/packaging-0.2-alpha2-wp7-integration-20260711",
+  "packageRuntimeProofBase": "29480173e855ea87e2a1aba8709cb4cd501471d5",
+  "packageProofRepairCommit": "530a9d743b5174091588078781ce018941029ea2",
+  "qaAcceptedWp7Head": "f18d8b9790af5f219f7335168692a221d93fd677",
+  "integrationImplementationHead": "6357e35dbcddbf5b9081bdc3f3243eacafb5dd03",
+  "candidateIdentity": {
+    "productVersion": "0.2.0",
+    "releaseStage": "alpha.2",
+    "distributionChannel": "internal",
+    "candidateChannel": "local/internal candidate",
+    "bundleShortVersion": "0.2.0-alpha.2",
+    "bundleVersion": "0.2.0-alpha.2",
+    "ownerVisibleLabel": "Auto SVGA 0.2.0-alpha.2 internal candidate"
+  },
+  "artifacts": {
+    "reviewNote": "docs/reviews/2026-07-11-codex-packaging-0.2-alpha2-wp7-integration.md",
+    "reviewPacket": "review/packaging-0.2-alpha2-wp7-integration-6357e35d/REVIEW_PACKET.md"
+  },
+  "validation": {
+    "build": "PASS",
+    "wp7FocusedTests": "PASS 21/21",
+    "macosPackageProofTests": "PASS 5/5",
+    "desktopGuardTests": "PASS 4/4",
+    "designSystemCheck": "PASS",
+    "directAlpha2ProofIdentityProbe": "PASS",
+    "diffCheck": "PASS",
+    "jsonlParse": "PASS",
+    "packageLockScan": "PASS no matches",
+    "mediaArchiveScan": "PASS no matches",
+    "fullRootSuite": "LIMITED 523/524, dependency-hiding fixture affected by temporary node_modules symlink"
+  },
+  "nonClaims": [
+    "no package archive generation",
+    "no installed app replacement",
+    "no local-stable promotion",
+    "no Product Owner acceptance",
+    "no foreground visual acceptance",
+    "no real-material playback success",
+    "no Lottie/VAP product support",
+    "no save/export/conversion support",
+    "no signing or notarization",
+    "no public distribution",
+    "no release readiness"
+  ]
+}

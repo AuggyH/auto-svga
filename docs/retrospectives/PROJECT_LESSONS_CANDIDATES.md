@@ -1253,6 +1253,18 @@ promoted, watched, rejected, or kept historical.
   fusion unsupported handling, and VAP fusion resource de-duplication.
 - Status: Candidate pending WP7 Code Review and QA source-side acceptance.
 
+## 2026-07-11: Integrate Product-line Alphas Through Packaging Proof Line
+
+- Candidate lesson: A successor alpha package branch should integrate accepted
+  product source and packaging proof hardening before any archive is generated.
+  The source-facing candidate version and macOS package proof version must move
+  together.
+- Evidence: The `0.2.0-alpha.2` packaging integration branch cherry-picks WP7
+  onto the accepted `0.2.0-alpha.1` runtime-proof line, preserves app.asar
+  runtime binding checks, and updates both owner-preview product version and
+  package proof identity to `0.2.0-alpha.2`.
+- Status: Candidate pending Code Review before any package-candidate rebuild.
+
 ## 2026-07-11: Redact At Derived Inventory Boundaries
 
 - Candidate lesson: A derived owner-visible inventory is a privacy boundary in
