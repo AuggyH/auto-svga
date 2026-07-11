@@ -1226,3 +1226,29 @@ promoted, watched, rejected, or kept historical.
   identity, stale runtime commit, missing Lottie entry, and stale VAP version.
 - Status: Candidate pending Code Review and the later 0.2 package-candidate
   retry gate.
+
+## 2026-07-11: Keep Real-material Qualification Metadata-only Until Foreground QA
+
+- Candidate lesson: A source-side qualification matrix can inventory approved
+  local material categories with filename/size metadata only, but it must not
+  be treated as playback, visual, package, or product-support evidence.
+- Evidence: WP7 adds a read-only multi-format qualification harness for
+  `/Users/huangtengxin/Downloads/auto-svga测试物料`. It scans directory entries
+  and file sizes only, reports aggregate SVGA/Lottie JSON/VAP-MP4 bucket
+  coverage, and commits no raw paths, bytes, screenshots, frames, media, or
+  production assets.
+- Status: Candidate pending WP7 Code Review and any future foreground/package
+  acceptance route.
+
+## 2026-07-11: Derive Multi-format Inventory From Accepted Preview Models
+
+- Candidate lesson: Cross-format right-panel inventory should be a derived
+  view model over accepted parser/playback contracts, not a new parser or
+  replacement authority. This keeps SVGA imageKey, Lottie image/text, and VAP
+  fusion tag behavior consistent while making unsupported and not-applicable
+  format capabilities explicit.
+- Evidence: WP7 introduces `buildMultiFormatAssetInventory()` and wires it into
+  the owner candidate and desktop right panel. Tests cover SVGA resource and
+  sequence roles, Lottie image/text candidates, VAP fusion/media facts, unknown
+  fusion unsupported handling, and VAP fusion resource de-duplication.
+- Status: Candidate pending WP7 Code Review and QA source-side acceptance.

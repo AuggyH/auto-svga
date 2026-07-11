@@ -23,6 +23,10 @@ import {
 } from "./multiformat-preview-workspace.js";
 import type { VapPreparedFusionElement } from "./vap-playback-preparation.js";
 import {
+  buildMultiFormatAssetInventory,
+  type MultiFormatAssetInventory
+} from "./multiformat-asset-qualification.js";
+import {
   redactLocalPathsFromError,
   redactLocalPathsInValue
 } from "./local-path-redaction.js";
@@ -108,6 +112,7 @@ export interface OwnerVisibleMultiFormatPreviewFactRow {
 
 export interface OwnerVisibleMultiFormatPreviewRightPanel {
   facts: readonly OwnerVisibleMultiFormatPreviewFactRow[];
+  assetInventory: MultiFormatAssetInventory;
   layers: HiddenMultiFormatPreviewModel["layers"];
   assets: readonly HiddenMultiFormatPreviewAssetRow[];
   lottieTexts: readonly HiddenMultiFormatPreviewTextCandidate[];
@@ -776,6 +781,18 @@ function modelFromWorkspace(
     },
     rightPanel: {
       facts: factRows(workspaceModel),
+      assetInventory: buildMultiFormatAssetInventory({
+        format: workspaceModel.detectedFormat,
+        videoCodec: workspaceModel.overview?.videoCodec,
+        audioPresent: workspaceModel.overview?.audioPresent,
+        assets: workspaceModel.assets,
+        layers: workspaceModel.layers,
+        lottieTexts: workspaceModel.replaceable.texts,
+        vapFusionImages: workspaceModel.replaceable.fusionImages,
+        vapFusionTexts: workspaceModel.replaceable.fusionTexts,
+        issues: workspaceModel.issues,
+        unsupportedFeatures: workspaceModel.unsupportedFeatures
+      }),
       layers: workspaceModel.layers.map((entry) => ({ ...entry, resourceIds: [...entry.resourceIds] })),
       assets: workspaceModel.assets.map((entry) => ({ ...entry })),
       lottieTexts: workspaceModel.replaceable.texts.map((entry) => ({ ...entry })),
@@ -1016,6 +1033,7 @@ function idleModel(): OwnerVisibleMultiFormatPreviewModel {
     },
     rightPanel: {
       facts: [],
+      assetInventory: buildMultiFormatAssetInventory({}),
       layers: [],
       assets: [],
       lottieTexts: [],

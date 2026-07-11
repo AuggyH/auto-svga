@@ -1142,6 +1142,9 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
   assert.match(appEntry, /bridge\?\.productMilestoneId === "0\.2-multiformat-preview"/);
   assert.match(appEntry, /createMultiFormatDesktopPreviewController/);
   assert.match(controller, /saveAs: false|0\.2 预览候选不支持保存/);
+  assert.match(controller, /model\.rightPanel\?\.assetInventory/);
+  assert.match(controller, /function createAssetGroup/);
+  assert.match(controller, /dataset\.group = group\.id/);
   assert.match(session, /rendererHasFullPath|pathRedacted/);
   assert.match(session, /lottieLoads|vapLoads|objectUrlsRevoked/);
 });

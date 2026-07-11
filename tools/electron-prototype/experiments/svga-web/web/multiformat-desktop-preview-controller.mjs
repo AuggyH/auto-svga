@@ -33,6 +33,8 @@ const factLabels = new Map([
   ["Layers", "图层"],
   ["Assets", "资源"],
   ["Replaceable", "可替换"],
+  ["Inventory", "资产清单"],
+  ["Media", "媒体"],
   ["Maturity", "阶段"],
   ["Video codec", "视频编码"],
   ["Audio", "音频"],
@@ -278,8 +280,29 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   }
 
   function renderAssets(model) {
+    const inventory = model.rightPanel?.assetInventory;
+    if (inventory?.groups?.length) {
+      const groups = inventory.groups.filter((group) => group.items?.length > 0);
+      if (nodes.assetListHeading) {
+        nodes.assetListHeading.textContent = `资产清单 (${inventory.summary.totalItems})`;
+      }
+      nodes.assetFilterTabs?.setAttribute("role", "list");
+      nodes.assetFilterTabs?.setAttribute("aria-label", "资产清单摘要");
+      nodes.assetFilterTabs?.replaceChildren(
+        createInventorySummaryChip("图片", inventory.summary.imageCount),
+        createInventorySummaryChip("文本", inventory.summary.textCount),
+        createInventorySummaryChip("序列", inventory.summary.sequenceFrameCount),
+        createInventorySummaryChip("媒体", inventory.summary.audioVideoCount),
+        createInventorySummaryChip("问题", inventory.summary.unsupportedOrMissingCount)
+      );
+      nodes.assetList.replaceChildren(...groups.map(createAssetGroup));
+      return;
+    }
+
     const assets = model.rightPanel?.assets ?? [];
     if (nodes.assetListHeading) nodes.assetListHeading.textContent = `资产列表 (${assets.length})`;
+    nodes.assetFilterTabs?.setAttribute("role", "tablist");
+    nodes.assetFilterTabs?.setAttribute("aria-label", "资产类型");
     nodes.assetFilterTabs?.replaceChildren();
     nodes.assetList.replaceChildren(...assets.map((asset) => {
       const row = document.createElement("article");
@@ -294,6 +317,76 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       `;
       return row;
     }));
+  }
+
+  function createInventorySummaryChip(label, count) {
+    const chip = document.createElement("span");
+    chip.className = "badge";
+    chip.dataset.component = "AssetInventorySummaryChip";
+    chip.dataset.count = String(count);
+    chip.textContent = `${label} ${count}`;
+    return chip;
+  }
+
+  function createAssetGroup(group) {
+    const section = document.createElement("section");
+    section.className = "assetGroup";
+    section.dataset.component = "AssetInventoryGroup";
+    section.dataset.group = group.id;
+    section.dataset.status = group.status;
+
+    const heading = document.createElement("header");
+    heading.className = "assetGroupHeader";
+    heading.innerHTML = `
+      <span class="rowText"><strong>${escapeHtml(group.label)}</strong><span>${escapeHtml(groupStatusCopy(group))}</span></span>
+      <span class="badge">${escapeHtml(String(group.count))}</span>
+    `;
+
+    const list = document.createElement("div");
+    list.className = "assetGroupList";
+    list.replaceChildren(...group.items.map(createInventoryItemRow));
+    section.replaceChildren(heading, list);
+    return section;
+  }
+
+  function createInventoryItemRow(item) {
+    const row = document.createElement("article");
+    row.className = "assetRow";
+    row.dataset.component = "AssetInventoryItem";
+    row.dataset.group = item.groupId;
+    row.dataset.kind = item.kind || "unknown";
+    row.dataset.source = item.source;
+    row.dataset.status = item.status;
+    row.dataset.replaceable = item.replaceable ? "true" : "false";
+    if (item.runtimeTargetId) row.dataset.runtimeTargetId = item.runtimeTargetId;
+    const detail = item.detail?.length ? item.detail.join(" · ") : assetStatusCopy(item.status);
+    row.innerHTML = `
+      <span class="thumb">${escapeHtml((item.kind || "?").slice(0, 1).toUpperCase())}</span>
+      <span class="rowText"><strong>${escapeHtml(item.label || item.id)}</strong><span>${escapeHtml(detail)}</span></span>
+      ${item.replaceable ? `<span class="badge">可替换</span>` : `<span class="badge">${escapeHtml(assetStatusCopy(item.status))}</span>`}
+    `;
+    return row;
+  }
+
+  function groupStatusCopy(group) {
+    const replaceable = group.replaceableCount > 0 ? `${group.replaceableCount} 可替换` : "无运行时替换";
+    if (group.status === "not_applicable") return "当前格式不适用";
+    if (group.status === "blocked") return `${replaceable} · 存在缺失或阻断`;
+    if (group.status === "warning") return `${replaceable} · 存在不支持项`;
+    if (group.status === "empty") return "无条目";
+    return replaceable;
+  }
+
+  function assetStatusCopy(status) {
+    switch (status) {
+      case "replaceable": return "可替换";
+      case "missing": return "缺失";
+      case "unsupported": return "不支持";
+      case "blocked": return "阻断";
+      case "not_applicable": return "不适用";
+      case "available":
+      default: return "可用";
+    }
   }
 
   function renderIssues(model) {

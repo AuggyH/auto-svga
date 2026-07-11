@@ -88,6 +88,9 @@ test("owner-visible 0.2 candidate applies and resets Lottie image and text runti
   assert.equal(opened.detectedFormat, "lottie");
   assert.equal(opened.productVersion, "0.2.0-alpha.1");
   assert.equal(opened.rightPanel.lottieTexts[0]?.initialText, "Hello");
+  assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
+  assert.equal(opened.rightPanel.assetInventory.summary.textCount, 1);
+  assert.equal(opened.rightPanel.assetInventory.groups.find(({ id }) => id === "vap_fusion_images")?.status, "not_applicable");
   assert.equal(loadCalls.length, 1);
 
   const textApplied = await session.applyReplacement({
@@ -322,6 +325,9 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   assert.equal(opened.detectedFormat, "vap");
   assert.equal(opened.status, "playbackBlocked");
   assert.equal(opened.rightPanel.vapFusionImages[0]?.srcTag, "avatar");
+  assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
+  assert.equal(opened.rightPanel.assetInventory.summary.audioVideoCount, 2);
+  assert.equal(opened.rightPanel.assetInventory.groups.find(({ id }) => id === "text_candidates")?.status, "not_applicable");
   assert.equal(runtime.configs.length, 0);
 
   const applied = await session.applyReplacement({
@@ -444,6 +450,8 @@ test("owner-visible 0.2 candidate delegates SVGA imageKey replacement without ch
   assert.equal(opened.status, "previewReady");
   assert.equal(opened.detectedFormat, "svga");
   assert.equal(opened.rightPanel.assets[0]?.id, "img_frame");
+  assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
+  assert.equal(opened.rightPanel.assetInventory.groups.find(({ id }) => id === "vap_fusion_images")?.status, "not_applicable");
   assert.equal((await session.play()).status, "playing");
   assert.equal(session.pause().status, "paused");
   assert.equal(session.seek(500).canvas.playback.currentTimeMs, 500);
