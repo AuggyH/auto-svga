@@ -1252,3 +1252,18 @@ promoted, watched, rejected, or kept historical.
   sequence roles, Lottie image/text candidates, VAP fusion/media facts, unknown
   fusion unsupported handling, and VAP fusion resource de-duplication.
 - Status: Candidate pending WP7 Code Review and QA source-side acceptance.
+
+## 2026-07-11: Redact At Derived Inventory Boundaries
+
+- Candidate lesson: A derived owner-visible inventory is a privacy boundary in
+  its own right. Even when upstream parser or candidate models are expected to
+  be redacted, the inventory builder must sanitize all copied identifiers,
+  labels, runtime target ids, detail text, issue messages, and unsupported
+  feature paths before it can truthfully return `pathRedacted=true`.
+- Evidence: WP7 repair for `MF-WP7-CR-001` adds failure-first coverage for
+  POSIX and Windows local paths flowing through asset ids/names, Lottie text
+  metadata, VAP fusion tags/bindings/resource ids, issue messages, and
+  unsupported feature paths. The repair centralizes `redactLocalPaths()` at
+  `buildMultiFormatAssetInventory()` output assignment.
+- Status: Candidate pending WP7 Code Review re-review and reuse for future
+  derived UI/readiness view models.

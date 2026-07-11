@@ -146,6 +146,63 @@ test("read-only qualification matrix classifies local material metadata without 
   assert.equal(matrix.matrixReady, true);
 });
 
+test("unified asset inventory redacts path-like strings at the shared boundary", () => {
+  const inventory = buildMultiFormatAssetInventory({
+    format: "vap",
+    assets: [{
+      id: "/Users/alice/Secret Campaign/avatar.png",
+      name: "C:\\Users\\alice\\Desktop\\avatar.png",
+      kind: "image",
+      dimensions: "/Users/alice/Secret Campaign/size.txt",
+      replaceable: true
+    }],
+    lottieTexts: [{
+      id: "/Users/alice/Secret Campaign/text-layer",
+      layerId: "C:\\Users\\alice\\Desktop\\layer",
+      name: "/Users/alice/Secret Campaign/title",
+      initialText: "/Users/alice/Secret Campaign/copy.txt",
+      replaceable: true
+    }],
+    vapFusionImages: [{
+      id: "/Users/alice/Secret Campaign/fusion-image",
+      kind: "image",
+      resourceId: "/Users/alice/Secret Campaign/resource.png",
+      srcTag: "/Users/alice/Secret Campaign/avatar",
+      runtimeBindingKey: "C:\\Users\\alice\\Desktop\\runtime",
+      replaceable: true,
+      replacementRequired: true,
+      replacementProvided: true
+    }],
+    vapFusionTexts: [{
+      id: "C:\\Users\\alice\\Desktop\\fusion-text",
+      kind: "text",
+      resourceId: "C:\\Users\\alice\\Desktop\\resource.txt",
+      srcTag: "/Users/alice/Secret Campaign/name",
+      runtimeBindingKey: "C:\\Users\\alice\\Desktop\\name-runtime",
+      replaceable: true,
+      replacementRequired: true,
+      replacementProvided: false
+    }],
+    issues: [{
+      code: "missing_resource",
+      severity: "warning",
+      message: "Missing /Users/alice/Secret Campaign/avatar.png and C:\\Users\\alice\\Desktop\\avatar.png",
+      path: "/Users/alice/Secret Campaign/avatar.png"
+    }],
+    unsupportedFeatures: [{
+      feature: "mask /Users/alice/Secret Campaign/private",
+      path: "assets.0.layers.0.ef /Users/alice/Secret Campaign/private.json"
+    }]
+  });
+
+  const serialized = JSON.stringify(inventory);
+  assert.equal(inventory.pathRedacted, true);
+  assert.doesNotMatch(serialized, /\/Users\/alice/u);
+  assert.doesNotMatch(serialized, /Secret Campaign/u);
+  assert.doesNotMatch(serialized, /C:\\Users\\alice/u);
+  assert.match(serialized, /\[local path\]/u);
+});
+
 type Inventory = ReturnType<typeof buildMultiFormatAssetInventory>;
 type Matrix = ReturnType<typeof buildMultiFormatQualificationReadinessMatrix>;
 

@@ -3,6 +3,7 @@ import type {
   MotionResourceInfo,
   WorkbenchIssue
 } from "./contracts.js";
+import { redactLocalPaths } from "./local-path-redaction.js";
 
 export type MultiFormatAssetInventoryGroupId =
   | "image_resources"
@@ -254,16 +255,16 @@ function assetItems(input: MultiFormatAssetInventoryInput): MultiFormatAssetInve
       const groupId = groupIdForAsset(asset);
       const status = statusForAsset(asset);
       return {
-        id: asset.id,
-        label: asset.name || asset.id,
+        id: inventoryText(asset.id, "asset"),
+        label: inventoryText(asset.name || asset.id, "asset"),
         groupId,
         format: input.format,
-        kind: asset.kind,
+        kind: inventoryText(asset.kind, "asset"),
         source: "asset",
         status,
         replaceable: asset.replaceable && status !== "missing" && status !== "unsupported",
-        runtimeTargetId: asset.replaceable ? asset.id : undefined,
-        detail: compact([
+        runtimeTargetId: asset.replaceable ? inventoryText(asset.id, "asset") : undefined,
+        detail: inventoryDetails([
           asset.role,
           asset.dimensions,
           asset.sizeBytes !== undefined ? `${asset.sizeBytes} bytes` : undefined,
@@ -276,16 +277,16 @@ function assetItems(input: MultiFormatAssetInventoryInput): MultiFormatAssetInve
 
 function lottieTextItems(input: MultiFormatAssetInventoryInput): MultiFormatAssetInventoryItem[] {
   return (input.lottieTexts ?? []).map((text) => ({
-    id: text.id,
-    label: text.name || text.layerId || text.id,
+    id: inventoryText(text.id, "text"),
+    label: inventoryText(text.name || text.layerId || text.id, "text"),
     groupId: "text_candidates",
     format: input.format,
     kind: "text",
     source: "text",
     status: text.replaceable ? "replaceable" : "available",
     replaceable: text.replaceable,
-    runtimeTargetId: text.replaceable ? text.id : undefined,
-    detail: compact([text.layerId, text.initialText ? "initial text present" : undefined]),
+    runtimeTargetId: text.replaceable ? inventoryText(text.id, "text") : undefined,
+    detail: inventoryDetails([text.layerId, text.initialText ? "initial text present" : undefined]),
     pathRedacted: true
   }));
 }
@@ -298,21 +299,22 @@ function vapFusionItems(input: MultiFormatAssetInventoryInput): MultiFormatAsset
   return fusion.map((element) => {
     const missing = element.replacementRequired === true && element.replacementProvided !== true;
     const unsupported = element.kind === "unknown";
+    const runtimeTarget = element.srcTag || element.runtimeBindingKey;
     return {
-      id: element.id,
-      label: element.srcTag || element.runtimeBindingKey || element.id,
+      id: inventoryText(element.id, "fusion"),
+      label: inventoryText(element.srcTag || element.runtimeBindingKey || element.id, "fusion"),
       groupId: element.kind === "image"
         ? "vap_fusion_images"
         : element.kind === "text"
           ? "vap_fusion_texts"
           : "unsupported_or_missing",
       format: input.format,
-      kind: `fusion_${element.kind}`,
+      kind: inventoryText(`fusion_${element.kind}`, "fusion"),
       source: "fusion",
       status: unsupported ? "unsupported" : missing ? "missing" : element.replaceable ? "replaceable" : "available",
       replaceable: element.replaceable && !missing && !unsupported,
-      runtimeTargetId: element.srcTag ?? element.runtimeBindingKey,
-      detail: compact([
+      runtimeTargetId: runtimeTarget ? inventoryText(runtimeTarget, "fusion") : undefined,
+      detail: inventoryDetails([
         element.resourceId,
         dimensionsLabel(element.dimensions),
         element.zValues && element.zValues.length > 0 ? `z:${element.zValues.join(",")}` : undefined,
@@ -361,34 +363,40 @@ function mediaFactItems(input: MultiFormatAssetInventoryInput): MultiFormatAsset
 function issueItems(input: MultiFormatAssetInventoryInput): MultiFormatAssetInventoryItem[] {
   const issues = (input.issues ?? [])
     .filter(({ code, severity }) => severity === "error" || code === "missing_resource" || code === "unsupported_feature" || code === "capability");
-  const issueRows = issues.map((entry, index): MultiFormatAssetInventoryItem => ({
-    id: `issue:${index}:${entry.code}`,
-    label: entry.code,
-    groupId: "unsupported_or_missing",
-    format: input.format,
-    kind: "issue",
-    source: "issue",
-    status: entry.code === "missing_resource" ? "missing" : entry.severity === "error" ? "blocked" : "unsupported",
-    replaceable: false,
-    detail: [entry.message],
-    issueCode: entry.code,
-    severity: entry.severity,
-    pathRedacted: true
-  }));
-  const unsupported = (input.unsupportedFeatures ?? []).map((entry, index): MultiFormatAssetInventoryItem => ({
-    id: `unsupported:${index}:${entry.feature}`,
-    label: entry.feature,
-    groupId: "unsupported_or_missing",
-    format: input.format,
-    kind: "unsupported_feature",
-    source: "issue",
-    status: "unsupported",
-    replaceable: false,
-    detail: [entry.path],
-    issueCode: "unsupported_feature",
-    severity: "warning",
-    pathRedacted: true
-  }));
+  const issueRows = issues.map((entry, index): MultiFormatAssetInventoryItem => {
+    const code = inventoryText(entry.code, "issue");
+    return {
+      id: `issue:${index}:${code}`,
+      label: code,
+      groupId: "unsupported_or_missing",
+      format: input.format,
+      kind: "issue",
+      source: "issue",
+      status: entry.code === "missing_resource" ? "missing" : entry.severity === "error" ? "blocked" : "unsupported",
+      replaceable: false,
+      detail: inventoryDetails([entry.message]),
+      issueCode: code,
+      severity: entry.severity,
+      pathRedacted: true
+    };
+  });
+  const unsupported = (input.unsupportedFeatures ?? []).map((entry, index): MultiFormatAssetInventoryItem => {
+    const feature = inventoryText(entry.feature, "unsupported_feature");
+    return {
+      id: `unsupported:${index}:${feature}`,
+      label: feature,
+      groupId: "unsupported_or_missing",
+      format: input.format,
+      kind: "unsupported_feature",
+      source: "issue",
+      status: "unsupported",
+      replaceable: false,
+      detail: inventoryDetails([entry.path]),
+      issueCode: "unsupported_feature",
+      severity: "warning",
+      pathRedacted: true
+    };
+  });
   return [...issueRows, ...unsupported];
 }
 
@@ -482,6 +490,15 @@ function compact(values: readonly (string | number | undefined)[]): string[] {
   return values
     .filter((value): value is string | number => value !== undefined && value !== "")
     .map(String);
+}
+
+function inventoryDetails(values: readonly (string | number | undefined)[]): string[] {
+  return compact(values).map((value) => inventoryText(value, "metadata"));
+}
+
+function inventoryText(value: string | number, fallback: string): string {
+  const redacted = redactLocalPaths(String(value)).trim();
+  return redacted || fallback;
 }
 
 function isFinitePositiveNumber(value: unknown): value is number {
