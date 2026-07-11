@@ -25,6 +25,21 @@ test("short-term local path redaction handles generic macOS and Windows paths", 
   assert.match(redacted, /\[local path\]/u);
 });
 
+test("short-term local path redaction handles mixed POSIX and Windows paths without fragments", () => {
+  const redacted = redactShortTermLocalPaths(
+    "Missing /Users/alice/Secret Campaign/avatar.png and C:\\Users\\alice\\Desktop\\avatar.png"
+  );
+
+  assert.equal(redacted.includes("/Users/alice"), false);
+  assert.equal(redacted.includes("C:\\Users\\alice"), false);
+  assert.equal(redacted.includes(":\\Users\\alice"), false);
+  assert.equal(redacted.includes("\\Users\\alice"), false);
+  assert.equal(redacted.includes("alice"), false);
+  assert.equal(redacted.includes("Secret Campaign"), false);
+  assert.equal(redacted.includes("Desktop"), false);
+  assert.match(redacted, /\[local path\]/u);
+});
+
 test("short-term local path redaction keeps apostrophes inside generic path matches", () => {
   const redacted = redactShortTermLocalPaths(
     "Cannot inspect /Users/designer/Frame's Folder/private/source.svga; retry later."

@@ -1267,3 +1267,17 @@ promoted, watched, rejected, or kept historical.
   `buildMultiFormatAssetInventory()` output assignment.
 - Status: Candidate pending WP7 Code Review re-review and reuse for future
   derived UI/readiness view models.
+
+## 2026-07-11: Test Redaction Helpers With Mixed Path Families
+
+- Candidate lesson: Local-path redaction helpers should cover mixed POSIX and
+  Windows paths in the same string, including residual fragments that no
+  longer contain the original drive-letter prefix.
+- Evidence: WP7 repair 2 for `MF-WP7-CR-001R` changes the shared redactor to
+  match Windows drive-letter paths before greedy POSIX paths and adds a
+  residual `:\Users\...` / `\Users\...` fallback. Focused helper and inventory
+  regressions reject `/Users/alice`, `C:\Users\alice`, `:\Users\alice`,
+  `\Users\alice`, usernames, and sensitive project names in serialized
+  owner-visible inventory output.
+- Status: Candidate pending WP7 Code Review repair 2 re-review and reuse for
+  future privacy helpers.

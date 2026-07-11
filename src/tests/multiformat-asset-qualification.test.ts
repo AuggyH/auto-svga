@@ -198,8 +198,12 @@ test("unified asset inventory redacts path-like strings at the shared boundary",
   const serialized = JSON.stringify(inventory);
   assert.equal(inventory.pathRedacted, true);
   assert.doesNotMatch(serialized, /\/Users\/alice/u);
+  assert.doesNotMatch(serialized, /C:\\\\Users\\\\alice/u);
+  assert.doesNotMatch(serialized, /:\\\\Users\\\\alice/u);
+  assert.doesNotMatch(serialized, /\\\\Users\\\\alice/u);
+  assert.doesNotMatch(serialized, /alice/u);
   assert.doesNotMatch(serialized, /Secret Campaign/u);
-  assert.doesNotMatch(serialized, /C:\\Users\\alice/u);
+  assert.doesNotMatch(serialized, /Desktop/u);
   assert.match(serialized, /\[local path\]/u);
 });
 
