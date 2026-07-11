@@ -38,6 +38,7 @@ const normalVisibleStartupMode = !(smokeMode || auditMode || normalProofMode);
 const hostBoundaryMode = normalVisibleStartupMode ? "formal" : "proof";
 const appRoot = app.getAppPath();
 const repoRoot = path.resolve(appRoot, "../../../..");
+const multiFormatDesktopRuntimeRoot = app.isPackaged ? path.join(appRoot, ".runtime") : repoRoot;
 const productIdentity = "auto-svga";
 const productDisplayName = "Auto SVGA";
 app.setName(productDisplayName);
@@ -5082,7 +5083,7 @@ function assertMultiFormatDesktopProduct() {
 function getMultiFormatDesktopSession() {
   assertMultiFormatDesktopProduct();
   multiFormatDesktopSession ??= createMultiFormatDesktopPreviewSession({
-    repoRoot,
+    repoRoot: multiFormatDesktopRuntimeRoot,
     sessionRoot,
     sourceStore: sourceFilePaths
   });

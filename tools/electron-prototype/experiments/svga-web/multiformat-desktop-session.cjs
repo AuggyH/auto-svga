@@ -9,6 +9,7 @@ const MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID = "0.2-multiformat-preview";
 const MULTIFORMAT_DESKTOP_GATE = "0.2-owner-visible-multiformat-preview-wp5";
 const MULTIFORMAT_MAX_DROPPED_BYTES = 50 * 1024 * 1024;
 const MULTIFORMAT_MAX_RANGE_BYTES = 262_144;
+const MULTIFORMAT_OPEN_TERMINAL_DEADLINE_MS = 15_000;
 
 const allowedExtensions = new Set([".svga", ".json", ".mp4"]);
 const mediaTypes = new Map([
@@ -34,6 +35,9 @@ class MultiFormatDesktopPreviewSession {
     this.sessionPromise = undefined;
     this.requestSequence = 0;
     this.objectUrlSequence = 0;
+    this.openTimeoutMs = Number.isFinite(Number(options.openTimeoutMs))
+      ? Math.max(100, Math.trunc(Number(options.openTimeoutMs)))
+      : MULTIFORMAT_OPEN_TERMINAL_DEADLINE_MS;
     this.lifecycle = {
       lottieLoads: 0,
       lottieDestroys: 0,
@@ -47,15 +51,40 @@ class MultiFormatDesktopPreviewSession {
   async openLocalFilePath(filePath, source) {
     const normalizedPath = normalizeLocalPath(filePath);
     validateSupportedPath(normalizedPath);
+    const requestId = this.nextRequestId(source);
+    const displayName = path.basename(normalizedPath);
     const sourceId = this.rememberSource(normalizedPath);
-    const session = await this.ensureSession();
-    const model = await session.openLocalCandidate({
-      gate: MULTIFORMAT_DESKTOP_GATE,
-      requestId: this.nextRequestId(source),
-      source,
-      localPath: normalizedPath,
-      displayName: path.basename(normalizedPath)
-    });
+    let model;
+    try {
+      model = await this.openWithTerminalDeadline(
+        (async () => {
+          const session = await this.ensureSession();
+          return session.openLocalCandidate({
+            gate: MULTIFORMAT_DESKTOP_GATE,
+            requestId,
+            source,
+            localPath: normalizedPath,
+            displayName
+          });
+        })(),
+        {
+          requestId,
+          source,
+          displayName,
+          localPath: normalizedPath
+        }
+      );
+    } catch (error) {
+      model = createOpenFailureModel({
+        requestId,
+        source,
+        displayName,
+        localPath: normalizedPath,
+        reason: "desktop_open_failed",
+        message: "The 0.2 preview host could not open this local candidate.",
+        cause: error
+      });
+    }
     return this.publicResult(model, sourceId);
   }
 
@@ -148,6 +177,41 @@ class MultiFormatDesktopPreviewSession {
       svgaPlaybackAdapter: createHeadlessPlaybackAdapter("svga"),
       svgaPlaybackTarget: { role: "desktop-source-contract-svga-target" }
     });
+  }
+
+  async openWithTerminalDeadline(openPromise, context) {
+    let timeout;
+    const timeoutPromise = new Promise((resolve) => {
+      timeout = setTimeout(() => {
+        this.disposePendingSession();
+        resolve(createOpenFailureModel({
+          ...context,
+          reason: "desktop_open_deadline_exceeded",
+          message: "The 0.2 preview host did not reach a terminal open state within the bounded deadline."
+        }));
+      }, this.openTimeoutMs);
+    });
+    try {
+      const model = await Promise.race([openPromise, timeoutPromise]);
+      if (model && typeof model === "object" && typeof model.status === "string") return model;
+      return createOpenFailureModel({
+        ...context,
+        reason: "desktop_open_model_missing",
+        message: "The 0.2 preview host finished without a visible terminal model."
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  disposePendingSession() {
+    const pendingSession = this.sessionPromise;
+    this.sessionPromise = undefined;
+    pendingSession?.then((session) => {
+      try {
+        session?.dispose?.();
+      } catch {}
+    }).catch(() => {});
   }
 
   async loadModules() {
@@ -400,7 +464,135 @@ function mediaTypeFromPath(filePath) {
   return mediaTypes.get(path.extname(String(filePath)).toLowerCase()) ?? "application/octet-stream";
 }
 
+function createOpenFailureModel(input) {
+  const detectedFormat = formatFromPath(input.localPath);
+  const displayName = safeDisplayName(input.displayName);
+  const issue = {
+    code: "playback_failure",
+    severity: "error",
+    message: input.message,
+    path: displayName,
+    details: {
+      reason: input.reason,
+      detectedFormat,
+      cause: input.cause ? "redacted open failure" : undefined
+    }
+  };
+  return {
+    schemaVersion: 1,
+    source: "owner-visible-0.2-multiformat-preview-candidate",
+    productMode: "0.2-multiformat-preview-candidate",
+    productVersion: "0.2.0-alpha.2",
+    status: "failed",
+    requestId: input.requestId,
+    openedFrom: input.source,
+    displayName,
+    ...(detectedFormat ? { detectedFormat } : {}),
+    pathRedacted: true,
+    rendererHasFullPath: false,
+    visibleIn01: false,
+    supportClaim: false,
+    saveExportSupported: false,
+    packageReadiness: {
+      productVersion: "0.2.0-alpha.2",
+      channel: "internal-candidate",
+      packagePromotionAllowed: false,
+      localStableReplacementAllowed: false,
+      supportClaim: false,
+      requiredBeforePromotion: ["code_review", "qa_acceptance", "packaging_gate"]
+    },
+    commands: {
+      openFile: true,
+      dragDrop: true,
+      play: false,
+      pause: false,
+      seek: false,
+      loop: false,
+      recover: false,
+      replace: false,
+      resetReplacement: false,
+      save: false,
+      export: false
+    },
+    canvas: {
+      status: "failed",
+      ...(detectedFormat ? { format: detectedFormat } : {}),
+      playback: { status: "error", currentTimeMs: 0, loop: false },
+      emptyCopy: "The 0.2 preview candidate reached a path-redacted terminal failure."
+    },
+    rightPanel: {
+      facts: [{
+        id: "mode",
+        label: "Mode",
+        value: "0.2.0-alpha.2",
+        status: "fail"
+      }],
+      assetInventory: emptyAssetInventory(detectedFormat),
+      layers: [],
+      assets: [],
+      lottieTexts: [],
+      vapFusionImages: [],
+      vapFusionTexts: [],
+      unsupportedFeatures: [],
+      issues: [issue]
+    },
+    replacement: {
+      status: "idle",
+      revision: 0,
+      dirty: false,
+      resetEnabled: false,
+      playerAction: "none",
+      active: []
+    }
+  };
+}
+
+function emptyAssetInventory(format) {
+  const groups = [
+    "image_resources",
+    "text_candidates",
+    "vap_fusion_images",
+    "vap_fusion_texts",
+    "sequence_frames",
+    "audio_video_media",
+    "other_resources",
+    "unsupported_or_missing"
+  ].map((id) => ({
+    id,
+    label: id.replace(/_/g, " "),
+    count: 0,
+    replaceableCount: 0,
+    status: "empty",
+    items: []
+  }));
+  return {
+    schemaVersion: 1,
+    format,
+    pathRedacted: true,
+    groups,
+    summary: {
+      totalItems: 0,
+      replaceableItems: 0,
+      imageCount: 0,
+      textCount: 0,
+      sequenceFrameCount: 0,
+      audioVideoCount: 0,
+      unsupportedOrMissingCount: 0
+    },
+    capabilityMarkers: []
+  };
+}
+
+function formatFromPath(filePath) {
+  const extension = path.extname(String(filePath)).toLowerCase();
+  if (extension === ".json") return "lottie";
+  if (extension === ".mp4") return "vap";
+  if (extension === ".svga") return "svga";
+  return undefined;
+}
+
 module.exports = {
   MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
+  MULTIFORMAT_OPEN_TERMINAL_DEADLINE_MS,
   createMultiFormatDesktopPreviewSession
 };

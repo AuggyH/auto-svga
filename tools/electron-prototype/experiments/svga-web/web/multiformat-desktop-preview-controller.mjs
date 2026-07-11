@@ -26,6 +26,7 @@ import { createOverviewFactCell } from "./short-term-macos-overview-renderers.mj
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
 
 const supportedDropPattern = /\.(svga|json|mp4)$/i;
+export const MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS = 15_000;
 const factLabels = new Map([
   ["Format", "格式"],
   ["Canvas", "画布"],
@@ -66,26 +67,28 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   async function openFromHostDialog() {
     const request = beginRequest();
     setLoading("选择并读取本地预览候选。");
-    const result = await bridge.openMultiFormatFile();
+    const outcome = await resolveMultiFormatOpenOutcome(
+      Promise.resolve().then(() => bridge.openMultiFormatFile()),
+      { deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS }
+    );
     if (!isActiveRequest(request)) return;
-    if (result?.status === "cancelled") {
-      if (!state.model) setView("launch");
-      return;
-    }
-    applyHostResult(result);
+    applyOpenOutcome(outcome);
   }
 
   async function loadDroppedFile(file) {
     const request = beginRequest();
     setLoading("读取拖拽的本地预览候选。");
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const result = await bridge.openDroppedMultiFormatFile({
-      displayName: file.name || "dropped-motion-asset",
-      mediaType: file.type || "",
-      bytes: Array.from(bytes)
-    });
+    const outcome = await resolveMultiFormatOpenOutcome(
+      Promise.resolve().then(() => bridge.openDroppedMultiFormatFile({
+        displayName: file.name || "dropped-motion-asset",
+        mediaType: file.type || "",
+        bytes: Array.from(bytes)
+      })),
+      { deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS }
+    );
     if (!isActiveRequest(request)) return;
-    applyHostResult(result);
+    applyOpenOutcome(outcome);
   }
 
   async function dropCanvasFile(event, target, overlay) {
@@ -235,7 +238,10 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   }
 
   function applyHostResult(result, options = {}) {
-    if (!result?.model) return;
+    if (!result?.model) {
+      showFailure("0.2 预览主机没有返回可见的终态结果，源文件没有被修改。");
+      return;
+    }
     const model = result.model;
     state.model = model;
     state.sourceId = result.sourceId || state.sourceId || "";
@@ -254,6 +260,18 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     renderLoadingMessage(nodes, copy);
     clearSurfaces();
     setView("loading");
+  }
+
+  function applyOpenOutcome(outcome) {
+    if (outcome.kind === "cancelled") {
+      if (!state.model) setView("launch");
+      return;
+    }
+    if (outcome.kind === "failure") {
+      showFailure(outcome.message);
+      return;
+    }
+    applyHostResult(outcome.result);
   }
 
   function renderModel(result) {
@@ -686,6 +704,50 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   }
 
   return { handlers, initialize };
+}
+
+export async function resolveMultiFormatOpenOutcome(openPromise, options = {}) {
+  const deadlineMs = Number.isFinite(Number(options.deadlineMs))
+    ? Math.max(10, Math.trunc(Number(options.deadlineMs)))
+    : MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS;
+  let timeout;
+  try {
+    const result = await Promise.race([
+      Promise.resolve(openPromise),
+      new Promise((resolve) => {
+        timeout = setTimeout(() => {
+          resolve({
+            kind: "failure",
+            message: "0.2 预览请求没有在限定时间内到达加载或错误终态，已中止本次打开。"
+          });
+        }, deadlineMs);
+      })
+    ]);
+    return normalizeMultiFormatOpenOutcome(result);
+  } catch {
+    return {
+      kind: "failure",
+      message: "0.2 预览主机打开本地候选失败，源文件没有被修改。"
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export function normalizeMultiFormatOpenOutcome(result) {
+  if (result?.kind === "failure" || result?.kind === "cancelled" || result?.kind === "model") return result;
+  if (result?.status === "cancelled") return { kind: "cancelled" };
+  if (result?.model) return { kind: "model", result };
+  if (result?.status === "opened") {
+    return {
+      kind: "failure",
+      message: "0.2 预览主机没有返回可见的终态结果，源文件没有被修改。"
+    };
+  }
+  return {
+    kind: "failure",
+    message: "0.2 预览主机返回了无法识别的结果，源文件没有被修改。"
+  };
 }
 
 function applyProductCopy(documentRef = document) {

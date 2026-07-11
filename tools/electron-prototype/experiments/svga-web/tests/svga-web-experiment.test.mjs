@@ -1137,20 +1137,24 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
   const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
   const session = await readFile(path.join(experimentRoot, "multiformat-desktop-session.cjs"), "utf8");
 
+  assert.match(main, /const multiFormatDesktopRuntimeRoot = app\.isPackaged \? path\.join\(appRoot, "\.runtime"\) : repoRoot;/);
   assert.match(main, /const isShortTermProduct = productMilestoneId === "short-term";/);
   assert.match(main, /const isMultiFormatDesktopProduct = productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;/);
   assert.match(main, /const usesShortTermPreviewShell = isShortTermProduct \|\| isMultiFormatDesktopProduct;/);
   assert.match(main, /const rendererPath = usesShortTermPreviewShell \? "\/" : "\/workbench\.html";/);
   assert.match(main, /function installMultiFormatDesktopApplicationMenu/);
+  assert.match(main, /repoRoot: multiFormatDesktopRuntimeRoot/);
   assert.match(main, /openDroppedMultiFormatFile\(input\)/);
   assert.match(appEntry, /bridge\?\.productMilestoneId === "0\.2-multiformat-preview"/);
   assert.match(appEntry, /createMultiFormatDesktopPreviewController/);
   assert.match(controller, /saveAs: false|0\.2 预览候选不支持保存/);
+  assert.match(controller, /resolveMultiFormatOpenOutcome/);
   assert.match(controller, /model\.rightPanel\?\.assetInventory/);
   assert.match(controller, /function createAssetGroup/);
   assert.match(controller, /dataset\.group = group\.id/);
   assert.match(session, /rendererHasFullPath|pathRedacted/);
   assert.match(session, /lottieLoads|vapLoads|objectUrlsRevoked/);
+  assert.match(session, /openWithTerminalDeadline/);
 });
 
 test("0.2 alpha package runtime identity selects the multi-format desktop product before defaulting to 0.1", async () => {
@@ -1231,6 +1235,84 @@ test("0.2 multi-format desktop session rejects unsupported drops before source r
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
+});
+
+test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates to terminal states", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-terminal-session-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore,
+    openTimeoutMs: 1000
+  });
+  const lottiePath = path.join(sessionRoot, "synthetic-lottie.json");
+  const vapPath = path.join(sessionRoot, "synthetic-vap.mp4");
+
+  try {
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.7.4",
+      w: 120,
+      h: 80,
+      fr: 30,
+      ip: 0,
+      op: 30,
+      layers: [],
+      assets: []
+    }));
+    await writeFile(vapPath, createSyntheticVapMp4Bytes());
+
+    const lottie = await withTerminalTestDeadline(session.openLocalFilePath(lottiePath, "fileButton"), "lottie");
+    assert.equal(lottie.status, "opened");
+    assert.equal(lottie.pathRedacted, true);
+    assert.equal(lottie.model.detectedFormat, "lottie");
+    assert.equal(lottie.model.status, "previewReady");
+    assert.notEqual(lottie.model.status, "launch");
+    assert.notEqual(lottie.model.status, "loading");
+    assert.equal(lottie.lifecycle.lottieLoads, 1);
+    assert.equal(sourceStore.size, 1);
+
+    const vap = await withTerminalTestDeadline(session.openLocalFilePath(vapPath, "fileButton"), "vap");
+    assert.equal(vap.status, "opened");
+    assert.equal(vap.pathRedacted, true);
+    assert.equal(vap.model.detectedFormat, "vap");
+    assert.equal(vap.model.status, "previewReady");
+    assert.notEqual(vap.model.status, "launch");
+    assert.notEqual(vap.model.status, "loading");
+    assert.equal(vap.lifecycle.vapLoads, 1);
+    assert.equal(vap.lifecycle.objectUrlsCreated, 1);
+    assert.equal(sourceStore.size, 2);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 renderer open contract turns missing model rejected and stalled bridge results into terminal failures", async () => {
+  const {
+    normalizeMultiFormatOpenOutcome,
+    resolveMultiFormatOpenOutcome
+  } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+
+  assert.equal(normalizeMultiFormatOpenOutcome({ status: "cancelled" }).kind, "cancelled");
+  assert.equal(normalizeMultiFormatOpenOutcome({ status: "opened", model: { status: "previewReady" } }).kind, "model");
+
+  const missingModel = normalizeMultiFormatOpenOutcome({ status: "opened" });
+  assert.equal(missingModel.kind, "failure");
+  assert.match(missingModel.message, /终态结果/);
+  assert.doesNotMatch(missingModel.message, /\/Users|C:\\|alice/i);
+
+  const rejected = await resolveMultiFormatOpenOutcome(
+    Promise.reject(new Error("/Users/alice/Desktop/secret.json")),
+    { deadlineMs: 10 }
+  );
+  assert.equal(rejected.kind, "failure");
+  assert.match(rejected.message, /打开本地候选失败/);
+  assert.doesNotMatch(rejected.message, /\/Users|alice|secret/i);
+
+  const stalled = await resolveMultiFormatOpenOutcome(new Promise(() => {}), { deadlineMs: 10 });
+  assert.equal(stalled.kind, "failure");
+  assert.match(stalled.message, /限定时间/);
+  assert.doesNotMatch(stalled.message, /\/Users|C:\\|alice/i);
 });
 
 test("server uses bounded internal-trial CSP and keeps report API token-bound", async () => {
@@ -4361,6 +4443,112 @@ function createOptimizerFrames() {
     clipPath: "",
     shapes: []
   }));
+}
+
+function createSyntheticVapMp4Bytes() {
+  return concatFixtureBytes(
+    fixtureFtypBox(),
+    fixtureMoovBox(),
+    fixtureMp4Box("vapc", fixtureTextEncoder.encode(JSON.stringify({
+      info: {
+        v: 2,
+        f: 60,
+        w: 720,
+        h: 405,
+        videoW: 720,
+        videoH: 810,
+        fps: 30,
+        isVapx: false,
+        aFrame: { x: 0, y: 405, w: 720, h: 405 },
+        rgbFrame: { x: 0, y: 0, w: 720, h: 405 }
+      }
+    })))
+  );
+}
+
+async function withTerminalTestDeadline(promise, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} desktop open did not reach a terminal state`)), 1500);
+    })
+  ]);
+}
+
+const fixtureTextEncoder = new TextEncoder();
+
+function fixtureFtypBox() {
+  return fixtureMp4Box("ftyp", concatFixtureBytes(
+    fixtureTextEncoder.encode("isom"),
+    fixtureU32(512),
+    fixtureTextEncoder.encode("isom"),
+    fixtureTextEncoder.encode("mp42")
+  ));
+}
+
+function fixtureMoovBox() {
+  return fixtureMp4Box("moov", concatFixtureBytes(
+    fixtureMvhdBox(),
+    fixtureTrackBox()
+  ));
+}
+
+function fixtureTrackBox() {
+  return fixtureMp4Box("trak", fixtureMp4Box("mdia", concatFixtureBytes(
+    fixtureHdlrBox("vide"),
+    fixtureMp4Box("minf", fixtureMp4Box("stbl", fixtureStsdBox("avc1")))
+  )));
+}
+
+function fixtureMvhdBox() {
+  const payload = new Uint8Array(20);
+  const view = new DataView(payload.buffer);
+  view.setUint32(12, 1_000);
+  view.setUint32(16, 2_000);
+  return fixtureMp4Box("mvhd", payload);
+}
+
+function fixtureHdlrBox(handler) {
+  assert.equal(handler.length, 4);
+  const payload = new Uint8Array(12);
+  payload.set(fixtureTextEncoder.encode(handler), 8);
+  return fixtureMp4Box("hdlr", payload);
+}
+
+function fixtureStsdBox(sampleEntry) {
+  assert.equal(sampleEntry.length, 4);
+  const payload = new Uint8Array(16);
+  const view = new DataView(payload.buffer);
+  view.setUint32(4, 1);
+  view.setUint32(8, 8);
+  payload.set(fixtureTextEncoder.encode(sampleEntry), 12);
+  return fixtureMp4Box("stsd", payload);
+}
+
+function fixtureMp4Box(type, payload) {
+  assert.equal(type.length, 4);
+  const bytes = new Uint8Array(8 + payload.byteLength);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, bytes.byteLength);
+  bytes.set(fixtureTextEncoder.encode(type), 4);
+  bytes.set(payload, 8);
+  return bytes;
+}
+
+function fixtureU32(value) {
+  const bytes = new Uint8Array(4);
+  new DataView(bytes.buffer).setUint32(0, value);
+  return bytes;
+}
+
+function concatFixtureBytes(...parts) {
+  const bytes = new Uint8Array(parts.reduce((sum, part) => sum + part.byteLength, 0));
+  let offset = 0;
+  for (const part of parts) {
+    bytes.set(part, offset);
+    offset += part.byteLength;
+  }
+  return bytes;
 }
 
 test("real sample audit harness stores aliases and avoids absolute paths in report output", async () => {

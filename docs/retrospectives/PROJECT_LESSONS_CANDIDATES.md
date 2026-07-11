@@ -1308,3 +1308,19 @@ promoted, watched, rejected, or kept historical.
   for packaged apps before falling back to formal `short-term`.
 - Status: Candidate pending QA regression on a rebuilt installed alpha2 repair
   package.
+
+## 2026-07-11: Terminalize Desktop Open Results At The UI Boundary
+
+- Candidate lesson: Desktop open flows should convert rejected, malformed,
+  missing-model, and stalled host results into typed path-redacted terminal
+  states at the renderer boundary. Returning to Launch or staying Loading after
+  a user-selected file hides the true failure and blocks QA from diagnosing the
+  next gate.
+- Evidence: ASV-QA-20260711-001 permit 028 showed installed Lottie returned
+  from Loading to Launch and VAP stayed Loading after the package mode binding
+  repair. The terminal-state repair adds packaged `.runtime` root binding plus
+  main-process and renderer terminalization, with focused regressions for
+  missing model, rejection, timeout, and synthetic Lottie/VAP open terminal
+  states.
+- Status: Candidate pending Code Review and rebuilt-package foreground QA
+  regression.
