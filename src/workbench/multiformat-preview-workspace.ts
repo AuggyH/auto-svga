@@ -56,7 +56,7 @@ import {
 export const HIDDEN_MULTIFORMAT_PREVIEW_WORKSPACE_GATE = "0.2-hidden-multiformat-preview-workspace" as const;
 export const HIDDEN_MULTIFORMAT_PREVIEW_WORKSPACE_SCHEMA_VERSION = 1 as const;
 
-export type HiddenMultiFormatPreviewOpenSource = "fileButton" | "dragDrop" | "menuOpen";
+export type HiddenMultiFormatPreviewOpenSource = "fileButton" | "dragDrop" | "menuOpen" | "fileOpenEvent";
 export type HiddenMultiFormatPreviewStatus =
   | "idle"
   | "loading"
@@ -1157,5 +1157,5 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function isOpenSource(value: string): value is HiddenMultiFormatPreviewOpenSource {
-  return value === "fileButton" || value === "dragDrop" || value === "menuOpen";
+  return value === "fileButton" || value === "dragDrop" || value === "menuOpen" || value === "fileOpenEvent";
 }

@@ -1352,3 +1352,16 @@ promoted, watched, rejected, or kept historical.
   gaps, so the incomplete VM-smoke additions were removed per PM stop route.
 - Status: Candidate pending Code Review and reuse for future browser/runtime
   evidence ladders.
+
+## 2026-07-13: Replay Desktop Intake Discriminants Through The Whole Session
+
+- Candidate lesson: A desktop host event is not covered when tests only prove
+  that main receives it and renderer can consume a fabricated result. Replay
+  the exact source discriminant through validation, detection, session result,
+  runtime preparation, controls, and remount identity in one test.
+- Evidence: permit 016 showed installed Lottie and VAP all failed as incomplete
+  input because main used `fileOpenEvent` while downstream validators accepted
+  only dialog/menu/drag sources. The repair adds same-shape temporary-file tests
+  and keeps the active hashed source id through play/pause/replacement/reset.
+- Status: Candidate pending Code Review and rebuilt-package foreground
+  regression.

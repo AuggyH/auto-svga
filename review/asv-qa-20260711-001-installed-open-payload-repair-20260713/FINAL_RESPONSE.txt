@@ -1,0 +1,8 @@
+Fix Ready: ASV-QA-20260711-001 permit 016 input-chain repair.
+
+The exact installed fileOpenEvent source now reaches positive Lottie and
+bounded VAP session/runtime paths. Active hashed source identity survives
+playback and replacement/reset controls, while over-limit VAP reaches the 1504
+policy. Focused checks, build, full 525/525 regression, and design-system check
+pass. Independent Code Review is the next gate; packaging and foreground QA
+remain blocked until approval.

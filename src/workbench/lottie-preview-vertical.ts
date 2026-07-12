@@ -37,7 +37,7 @@ export const HIDDEN_LOTTIE_PREVIEW_VERTICAL_GATE = "0.2-hidden-lottie-preview-ve
 export const HIDDEN_LOTTIE_PREVIEW_SCHEMA_VERSION = 1 as const;
 export const LOTTIE_ADJACENT_RESOURCE_MAX_BYTES = 1_048_576;
 
-export type HiddenLottiePreviewOpenSource = "fileButton" | "dragDrop" | "menuOpen";
+export type HiddenLottiePreviewOpenSource = "fileButton" | "dragDrop" | "menuOpen" | "fileOpenEvent";
 export type HiddenLottiePreviewStatus =
   | "idle"
   | "loading"
@@ -1247,7 +1247,7 @@ function cloneModel(model: HiddenLottiePreviewModel): HiddenLottiePreviewModel {
 }
 
 function isOpenSource(value: unknown): value is HiddenLottiePreviewOpenSource {
-  return value === "fileButton" || value === "dragDrop" || value === "menuOpen";
+  return value === "fileButton" || value === "dragDrop" || value === "menuOpen" || value === "fileOpenEvent";
 }
 
 function isNonEmptyString(value: unknown): value is string {

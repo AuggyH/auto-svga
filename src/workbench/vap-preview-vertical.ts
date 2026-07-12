@@ -38,7 +38,7 @@ import {
 export const HIDDEN_VAP_PREVIEW_VERTICAL_GATE = "0.2-hidden-vap-preview-runtime-vertical" as const;
 export const HIDDEN_VAP_PREVIEW_SCHEMA_VERSION = 1 as const;
 
-export type HiddenVapPreviewOpenSource = "fileButton" | "dragDrop" | "menuOpen";
+export type HiddenVapPreviewOpenSource = "fileButton" | "dragDrop" | "menuOpen" | "fileOpenEvent";
 export type HiddenVapPreviewStatus =
   | "idle"
   | "loading"
@@ -865,7 +865,7 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function isOpenSource(value: string): value is HiddenVapPreviewOpenSource {
-  return value === "fileButton" || value === "dragDrop" || value === "menuOpen";
+  return value === "fileButton" || value === "dragDrop" || value === "menuOpen" || value === "fileOpenEvent";
 }
 
 function isSafeFusionImageReplacement(value: string): boolean {

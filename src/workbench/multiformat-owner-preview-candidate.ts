@@ -1216,7 +1216,7 @@ function isSafeInlineOrBlobImage(value: string): boolean {
 }
 
 function isOpenSource(value: unknown): value is HiddenMultiFormatPreviewOpenSource {
-  return value === "fileButton" || value === "dragDrop" || value === "menuOpen";
+  return value === "fileButton" || value === "dragDrop" || value === "menuOpen" || value === "fileOpenEvent";
 }
 
 function isNonEmptyString(value: unknown): value is string {

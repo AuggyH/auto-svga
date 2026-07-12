@@ -36,6 +36,7 @@ class MultiFormatDesktopPreviewSession {
     this.sessionPromise = undefined;
     this.requestSequence = 0;
     this.objectUrlSequence = 0;
+    this.activeSourceId = "";
     this.openTimeoutMs = Number.isFinite(Number(options.openTimeoutMs))
       ? Math.max(100, Math.trunc(Number(options.openTimeoutMs)))
       : MULTIFORMAT_OPEN_TERMINAL_DEADLINE_MS;
@@ -86,7 +87,7 @@ class MultiFormatDesktopPreviewSession {
         cause: error
       });
     }
-    return this.publicResult(model, sourceId);
+    return this.publicResult(model, model?.requestId === requestId ? sourceId : "");
   }
 
   async openDroppedFile(input) {
@@ -473,10 +474,11 @@ class MultiFormatDesktopPreviewSession {
   }
 
   publicResult(model, sourceId = "") {
+    if (sourceId) this.activeSourceId = sourceId;
     return {
       status: "opened",
       model,
-      sourceId,
+      sourceId: sourceId || this.activeSourceId,
       pathRedacted: true,
       lifecycle: { ...this.lifecycle },
       visualEvidence: {

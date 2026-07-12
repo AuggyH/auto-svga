@@ -568,8 +568,9 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   function mountRuntimePreview(result) {
     const model = result?.model;
     const format = model?.detectedFormat;
+    const sourceId = result?.sourceId || state.sourceId;
     const mountable = (format === "lottie" || format === "vap")
-      && result?.sourceId
+      && sourceId
       && ["previewReady", "playing", "paused"].includes(model.status);
     if (!mountable || !bridge?.prepareMultiFormatRuntimePreview) {
       clearRuntimePreview();
@@ -583,7 +584,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     mount.dataset.runtimeFormat = format;
     if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "hidden";
     bridge.prepareMultiFormatRuntimePreview({
-      sourceId: result.sourceId,
+      sourceId,
       format,
       requestId: model.requestId,
       replacements: model.replacement

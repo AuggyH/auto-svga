@@ -1468,6 +1468,115 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
   }
 });
 
+test("0.2 installed file-open source reaches positive Lottie and sidecar VAP session states", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-file-open-session-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore,
+    openTimeoutMs: 1000
+  });
+  const lottiePath = path.join(sessionRoot, "file-open-lottie.json");
+  const vapPath = path.join(sessionRoot, "file-open-vap.mp4");
+  const vapSidecarPath = path.join(sessionRoot, "file-open-vap.json");
+  const overLimitVapPath = path.join(sessionRoot, "file-open-vap-over-limit.mp4");
+  const overLimitVapSidecarPath = path.join(sessionRoot, "file-open-vap-over-limit.json");
+
+  try {
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.7.4",
+      w: 120,
+      h: 160,
+      fr: 30,
+      ip: 0,
+      op: 30,
+      layers: [{
+        ind: 1,
+        ty: 5,
+        nm: "Foreground title",
+        t: { d: { k: [{ s: { t: "Task-owned Lottie" } }] } }
+      }],
+      assets: []
+    }));
+    await writeFile(vapPath, createSyntheticVapMp4WithoutEmbeddedVapcBytes());
+    await writeFile(vapSidecarPath, JSON.stringify(createSyntheticVapcDocument({
+      info: {
+        ...createSyntheticVapcDocument().info,
+        w: 120,
+        h: 160,
+        videoW: 120,
+        videoH: 320,
+        aFrame: { x: 0, y: 160, w: 120, h: 160 },
+        rgbFrame: { x: 0, y: 0, w: 120, h: 160 }
+      }
+    })));
+    await writeFile(overLimitVapPath, createSyntheticVapMp4WithoutEmbeddedVapcBytes());
+    await writeFile(overLimitVapSidecarPath, JSON.stringify(createSyntheticVapcDocument({
+      info: {
+        ...createSyntheticVapcDocument().info,
+        w: 1136,
+        h: 1632,
+        videoW: 1136,
+        videoH: 3264,
+        aFrame: { x: 0, y: 1632, w: 1136, h: 1632 },
+        rgbFrame: { x: 0, y: 0, w: 1136, h: 1632 }
+      }
+    })));
+
+    const lottie = await withTerminalTestDeadline(
+      session.openLocalFilePath(lottiePath, "fileOpenEvent"),
+      "installed-file-open-lottie"
+    );
+    assert.equal(lottie.model.status, "previewReady");
+    assert.equal(lottie.model.openedFrom, "fileOpenEvent");
+    assert.equal(lottie.model.detectedFormat, "lottie");
+    assert.equal(lottie.model.rightPanel.lottieTexts.length, 1);
+    assert.doesNotMatch(JSON.stringify(lottie), /auto-svga-file-open-session/);
+    const lottieRuntime = await session.prepareRuntimePreview({
+      sourceId: lottie.sourceId,
+      format: "lottie",
+      requestId: lottie.model.requestId,
+      replacements: lottie.model.replacement
+    });
+    assert.equal(lottieRuntime.status, "prepared");
+    assert.equal((await session.control({ action: "play" })).model.status, "playing");
+    assert.equal((await session.control({ action: "pause" })).model.status, "paused");
+
+    const vap = await withTerminalTestDeadline(
+      session.openLocalFilePath(vapPath, "fileOpenEvent"),
+      "installed-file-open-vap"
+    );
+    assert.equal(vap.model.status, "previewReady");
+    assert.equal(vap.model.openedFrom, "fileOpenEvent");
+    assert.equal(vap.model.detectedFormat, "vap");
+    assert.equal(vap.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
+    assert.equal(vap.model.rightPanel.vapFusionTexts.length, 0);
+    assert.doesNotMatch(JSON.stringify(vap), /auto-svga-file-open-session/);
+    const vapRuntime = await session.prepareRuntimePreview({
+      sourceId: vap.sourceId,
+      format: "vap",
+      requestId: vap.model.requestId,
+      replacements: vap.model.replacement
+    });
+    assert.equal(vapRuntime.status, "prepared");
+    assert.equal((await session.control({ action: "play" })).model.status, "playing");
+    assert.equal((await session.control({ action: "pause" })).model.status, "paused");
+
+    const overLimitVap = await withTerminalTestDeadline(
+      session.openLocalFilePath(overLimitVapPath, "fileOpenEvent"),
+      "installed-file-open-vap-over-limit"
+    );
+    assert.equal(overLimitVap.model.status, "playbackBlocked");
+    assert.equal(overLimitVap.model.detectedFormat, "vap");
+    assert.equal(overLimitVap.model.rightPanel.issues.some((issue) => issue.details?.reason === "vap_dimensions_over_1504"), true);
+    assert.equal(overLimitVap.model.rightPanel.issues.some((issue) => issue.details?.reason === "open_input_invalid"), false);
+    assert.doesNotMatch(JSON.stringify(overLimitVap), /auto-svga-file-open-session/);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
 test("0.2 renderer open contract turns missing model rejected and stalled bridge results into terminal failures", async () => {
   const {
     normalizeMultiFormatOpenOutcome,
@@ -1614,6 +1723,208 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     globalThis.lottie = originalLottie;
     globalThis.Vap = originalVap;
     globalThis.URL = originalUrl;
+  }
+});
+
+test("0.2 installed file-open keeps source identity through renderer playback and VAP fusion replacement", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-file-open-renderer-"));
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: new Map(),
+    openTimeoutMs: 1000
+  });
+  const lottiePath = path.join(sessionRoot, "renderer-lottie.json");
+  const lottieImagePath = path.join(sessionRoot, "images", "avatar.png");
+  const vapPath = path.join(sessionRoot, "renderer-vap.mp4");
+  const vapSidecarPath = path.join(sessionRoot, "renderer-vap.json");
+  const vapFusionPath = path.join(sessionRoot, "renderer-vap-fusion.mp4");
+  const vapFusionSidecarPath = path.join(sessionRoot, "renderer-vap-fusion.json");
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const originalVap = globalThis.Vap;
+  const originalUrl = globalThis.URL;
+  const nodes = createMultiFormatControllerTestNodes();
+  const lottieCalls = [];
+  const vapCalls = [];
+  const runtimeEvents = [];
+  globalThis.document = createMultiFormatControllerTestDocument(nodes);
+  globalThis.lottie = {
+    loadAnimation(options) {
+      lottieCalls.push(options);
+      return {
+        play() { runtimeEvents.push("lottie:play"); },
+        pause() { runtimeEvents.push("lottie:pause"); },
+        destroy() { runtimeEvents.push("lottie:destroy"); },
+        goToAndStop() { runtimeEvents.push("lottie:seek"); }
+      };
+    }
+  };
+  globalThis.Vap = {
+    canWebGL() {
+      return true;
+    },
+    default(options) {
+      vapCalls.push(options);
+      return {
+        on() { return this; },
+        play() { runtimeEvents.push("vap:play"); return this; },
+        pause() { runtimeEvents.push("vap:pause"); },
+        destroy() { runtimeEvents.push("vap:destroy"); },
+        setTime() { runtimeEvents.push("vap:seek"); }
+      };
+    }
+  };
+  globalThis.URL = {
+    createObjectURL() {
+      return `blob:file-open-${vapCalls.length + 1}`;
+    },
+    revokeObjectURL() {
+      runtimeEvents.push("vap:revoke");
+    }
+  };
+
+  try {
+    await mkdir(path.dirname(lottieImagePath), { recursive: true });
+    await writeFile(lottieImagePath, new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]));
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.7.4",
+      w: 120,
+      h: 160,
+      fr: 30,
+      ip: 0,
+      op: 30,
+      layers: [
+        {
+          ind: 1,
+          ty: 5,
+          nm: "Foreground title",
+          t: { d: { k: [{ s: { t: "Task-owned Lottie" } }] } }
+        },
+        {
+          ind: 2,
+          ty: 2,
+          nm: "Avatar image",
+          refId: "avatar"
+        }
+      ],
+      assets: [{ id: "avatar", w: 24, h: 24, u: "images/", p: "avatar.png" }]
+    }));
+    await writeFile(vapPath, createSyntheticVapMp4WithoutEmbeddedVapcBytes());
+    await writeFile(vapSidecarPath, JSON.stringify(createSyntheticVapcDocument({
+      info: {
+        ...createSyntheticVapcDocument().info,
+        w: 120,
+        h: 160,
+        videoW: 120,
+        videoH: 320,
+        aFrame: { x: 0, y: 160, w: 120, h: 160 },
+        rgbFrame: { x: 0, y: 0, w: 120, h: 160 }
+      }
+    })));
+    await writeFile(vapFusionPath, createSyntheticVapMp4WithoutEmbeddedVapcBytes());
+    await writeFile(vapFusionSidecarPath, JSON.stringify(createSyntheticVapcDocument({
+      info: {
+        ...createSyntheticVapcDocument().info,
+        w: 120,
+        h: 160,
+        videoW: 120,
+        videoH: 320,
+        aFrame: { x: 0, y: 160, w: 120, h: 160 },
+        rgbFrame: { x: 0, y: 0, w: 120, h: 160 }
+      },
+      src: [{ srcId: 1, srcType: "text", srcTag: "title" }],
+      frame: [{
+        i: 0,
+        obj: [{
+          srcId: 1,
+          z: 1,
+          frame: { x: 8, y: 8, w: 96, h: 24 },
+          mFrame: { x: 0, y: 0, w: 96, h: 24 },
+          mt: 0
+        }]
+      }]
+    })));
+
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const bridge = createSessionBackedMultiFormatRuntimeMountTestBridge(session);
+    const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+    controller.initialize();
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "installed-lottie" }), true);
+    const lottie = await session.openLocalFilePath(lottiePath, "fileOpenEvent");
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "installed-lottie", result: lottie }), true);
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.openedFrom, "fileOpenEvent");
+    assert.equal(state.model.rightPanel.lottieTexts.length, 1);
+    assert.equal(state.model.rightPanel.assets.some((asset) => asset.id === "avatar" && asset.replaceable), true);
+    assert.equal(state.model.rightPanel.assetInventory.summary.imageCount > 0, true);
+    assert.equal(state.model.rightPanel.assetInventory.summary.textCount > 0, true);
+    assert.equal(lottieCalls.length, 1);
+    assert.match(lottieCalls[0].animationData.assets[0].p, /^data:image\/png;base64,/);
+    assert.equal(lottieCalls[0].animationData.assets[0].u, "");
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+
+    await controller.handlers.togglePrimaryPlayback();
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "playing");
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    await controller.handlers.togglePrimaryPlayback();
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "paused");
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "installed-vap" }), true);
+    const vap = await session.openLocalFilePath(vapPath, "fileOpenEvent");
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "installed-vap", result: vap }), true);
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.detectedFormat, "vap");
+    assert.equal(state.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
+    assert.equal(vapCalls.length > 0, true);
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    await controller.handlers.togglePrimaryPlayback();
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "playing");
+    await controller.handlers.togglePrimaryPlayback();
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "paused");
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "installed-vap-fusion" }), true);
+    const vapFusion = await session.openLocalFilePath(vapFusionPath, "fileOpenEvent");
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "installed-vap-fusion", result: vapFusion }), true);
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "playbackBlocked");
+    assert.equal(state.model.rightPanel.vapFusionTexts.some((entry) => entry.srcTag === "title"), true);
+    controller.handlers.updateRuntimeText("title", "Runtime VAP title");
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "previewReady");
+    assert.equal(vapCalls.at(-1).title, "Runtime VAP title");
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    await controller.handlers.resetRuntimeText();
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "playbackBlocked");
+    assert.equal(state.model.replacement.dirty, false);
+    assert.equal(nodes.runtimeMount.hidden, true);
+
+    assert.doesNotMatch(JSON.stringify(state.model), /auto-svga-file-open-renderer|\/Users|C:\\/i);
+    assert.equal(runtimeEvents.includes("lottie:play"), true);
+    assert.equal(runtimeEvents.includes("vap:play"), true);
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+    globalThis.Vap = originalVap;
+    globalThis.URL = originalUrl;
+    await rm(sessionRoot, { recursive: true, force: true });
   }
 });
 
@@ -4888,6 +5199,30 @@ function createMultiFormatRuntimeMountTestBridge() {
   };
 }
 
+function createSessionBackedMultiFormatRuntimeMountTestBridge(session) {
+  return {
+    productMilestoneId: "0.2-multiformat-preview",
+    updateShortTermMenuState() {
+      return Promise.resolve();
+    },
+    setShortTermWindowMode() {
+      return Promise.resolve();
+    },
+    prepareMultiFormatRuntimePreview(input) {
+      return session.prepareRuntimePreview(input);
+    },
+    controlMultiFormatPreview(input) {
+      return session.control(input);
+    },
+    applyMultiFormatReplacement(input) {
+      return session.applyReplacement(input);
+    },
+    resetMultiFormatReplacement() {
+      return session.resetReplacement();
+    }
+  };
+}
+
 function createRuntimeMountOpenResult(format, options = {}) {
   const activeReplacements = Array.isArray(options.active) ? options.active : [];
   return {
@@ -5258,6 +5593,7 @@ class FakeDomElement {
 async function flushRuntimeMountPromises() {
   await Promise.resolve();
   await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
   await Promise.resolve();
 }
 
