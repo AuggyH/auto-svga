@@ -27,6 +27,10 @@ const {
   MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
   createMultiFormatDesktopPreviewSession
 } = require("./multiformat-desktop-session.cjs");
+const {
+  createMultiFormatOpenRuntimeTrace,
+  resolveMultiFormatTraceRunId
+} = require("./multiformat-open-runtime-trace.cjs");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -112,6 +116,13 @@ const packagedRuntimeBuildInfo = app.isPackaged ? readPackagedRuntimeBuildInfo()
 const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? runtimeBuildInfoProductMilestoneId(packagedRuntimeBuildInfo) ?? "short-term";
 const isShortTermProduct = productMilestoneId === "short-term";
 const isMultiFormatDesktopProduct = productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;
+const multiFormatTrace = createMultiFormatOpenRuntimeTrace({
+  runId: resolveMultiFormatTraceRunId({
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    environment: process.env
+  })
+});
 const usesShortTermPreviewShell = isShortTermProduct || isMultiFormatDesktopProduct;
 const rendererHtmlEntry = usesShortTermPreviewShell ? "web/index.html" : "web/workbench.html";
 const rendererEntry = usesShortTermPreviewShell ? "web/short-term-macos-app.mjs" : "web/desktop-product-entry.mjs";
@@ -216,6 +227,13 @@ let multiFormatDesktopRendererReady = false;
 let multiFormatOpenFileEventSequence = 0;
 let multiFormatOpenFileEventFlushActive = false;
 const pendingMultiFormatOpenFileEvents = [];
+multiFormatTrace.record({
+  phase: "main_started",
+  productMilestoneId,
+  formalRuntimeMode: isMultiFormatDesktopProduct,
+  queueDepth: 0,
+  bridgeReady: false
+});
 const maxShortTermRecentFiles = 10;
 const productArtifactIndex = {
   milestoneId: productMilestoneId,
@@ -5124,20 +5142,50 @@ async function prepareMultiFormatRuntimePreview(input) {
   return getMultiFormatDesktopSession().prepareRuntimePreview(input);
 }
 
-function enqueueMultiFormatOpenFileEvent(filePath) {
+function enqueueMultiFormatOpenFileEvent(filePath, sourceId = traceSourceId(filePath)) {
   if (!isMultiFormatDesktopProduct || typeof filePath !== "string" || filePath.length === 0) return;
   multiFormatOpenFileEventSequence += 1;
-  pendingMultiFormatOpenFileEvents.push({
-    eventId: `fileOpenEvent:${multiFormatOpenFileEventSequence}`,
-    filePath
+  const eventId = `fileOpenEvent:${multiFormatOpenFileEventSequence}`;
+  pendingMultiFormatOpenFileEvents.push({ eventId, filePath, sourceId });
+  multiFormatTrace.record({
+    phase: "open_file_queued",
+    eventId,
+    sourceId,
+    productMilestoneId,
+    formalRuntimeMode: isMultiFormatDesktopProduct,
+    queueDepth: pendingMultiFormatOpenFileEvents.length,
+    bridgeReady: multiFormatDesktopRendererReady
   });
   void flushPendingMultiFormatOpenFileEvents();
 }
 
 async function flushPendingMultiFormatOpenFileEvents() {
+  multiFormatTrace.record({
+    phase: "flush_attempt",
+    productMilestoneId,
+    formalRuntimeMode: isMultiFormatDesktopProduct,
+    queueDepth: pendingMultiFormatOpenFileEvents.length,
+    bridgeReady: multiFormatDesktopRendererReady
+  });
   if (!isMultiFormatDesktopProduct || multiFormatOpenFileEventFlushActive) return;
-  if (!multiFormatDesktopRendererReady || !activeMainWindow || activeMainWindow.isDestroyed()) return;
+  if (!multiFormatDesktopRendererReady || !activeMainWindow || activeMainWindow.isDestroyed()) {
+    multiFormatTrace.record({
+      phase: "flush_deferred",
+      productMilestoneId,
+      formalRuntimeMode: isMultiFormatDesktopProduct,
+      queueDepth: pendingMultiFormatOpenFileEvents.length,
+      bridgeReady: multiFormatDesktopRendererReady
+    });
+    return;
+  }
   multiFormatOpenFileEventFlushActive = true;
+  multiFormatTrace.record({
+    phase: "flush_started",
+    productMilestoneId,
+    formalRuntimeMode: isMultiFormatDesktopProduct,
+    queueDepth: pendingMultiFormatOpenFileEvents.length,
+    bridgeReady: multiFormatDesktopRendererReady
+  });
   try {
     while (pendingMultiFormatOpenFileEvents.length > 0) {
       if (!multiFormatDesktopRendererReady || !activeMainWindow || activeMainWindow.isDestroyed()) return;
@@ -5145,6 +5193,16 @@ async function flushPendingMultiFormatOpenFileEvents() {
       try {
         await dispatchMultiFormatOpenFileEvent(activeMainWindow, item);
       } catch (error) {
+        multiFormatTrace.record({
+          phase: "dispatch_failed",
+          eventId: item.eventId,
+          sourceId: item.sourceId,
+          productMilestoneId,
+          formalRuntimeMode: isMultiFormatDesktopProduct,
+          queueDepth: pendingMultiFormatOpenFileEvents.length,
+          bridgeReady: multiFormatDesktopRendererReady,
+          issueCode: "dispatch_failed"
+        });
         console.error(`AUTO_SVGA_MULTI_FORMAT_FILE_OPEN_EVENT_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
       }
     }
@@ -5154,13 +5212,45 @@ async function flushPendingMultiFormatOpenFileEvents() {
 }
 
 async function dispatchMultiFormatOpenFileEvent(window, item) {
+  multiFormatTrace.record({
+    phase: "dispatch_started",
+    eventId: item.eventId,
+    sourceId: item.sourceId,
+    productMilestoneId,
+    formalRuntimeMode: isMultiFormatDesktopProduct,
+    queueDepth: pendingMultiFormatOpenFileEvents.length,
+    bridgeReady: multiFormatDesktopRendererReady
+  });
   const begun = await invokeMultiFormatRendererAction(window, "beginHostFileOpen", {
     eventId: item.eventId
+  });
+  multiFormatTrace.record({
+    phase: "renderer_begin_result",
+    eventId: item.eventId,
+    sourceId: item.sourceId,
+    productMilestoneId,
+    formalRuntimeMode: isMultiFormatDesktopProduct,
+    queueDepth: pendingMultiFormatOpenFileEvents.length,
+    bridgeReady: multiFormatDesktopRendererReady,
+    actionAccepted: begun
   });
   if (!begun) throw new Error("Multi-format renderer did not accept the host file-open begin action.");
   let result;
   try {
     result = await openMultiFormatFilePath(item.filePath, "fileOpenEvent");
+    multiFormatTrace.record({
+      phase: "session_open_completed",
+      eventId: item.eventId,
+      requestId: result?.model?.requestId,
+      format: result?.model?.detectedFormat,
+      sourceId: result?.sourceId || item.sourceId,
+      productMilestoneId,
+      formalRuntimeMode: isMultiFormatDesktopProduct,
+      queueDepth: pendingMultiFormatOpenFileEvents.length,
+      bridgeReady: multiFormatDesktopRendererReady,
+      modelStatus: result?.model?.status,
+      issueCode: firstMultiFormatIssueCode(result?.model)
+    });
   } catch (error) {
     await invokeMultiFormatRendererAction(window, "failHostFileOpen", {
       eventId: item.eventId,
@@ -5172,7 +5262,30 @@ async function dispatchMultiFormatOpenFileEvent(window, item) {
     eventId: item.eventId,
     result
   });
+  multiFormatTrace.record({
+    phase: "renderer_complete_result",
+    eventId: item.eventId,
+    requestId: result?.model?.requestId,
+    format: result?.model?.detectedFormat,
+    sourceId: result?.sourceId || item.sourceId,
+    productMilestoneId,
+    formalRuntimeMode: isMultiFormatDesktopProduct,
+    queueDepth: pendingMultiFormatOpenFileEvents.length,
+    bridgeReady: multiFormatDesktopRendererReady,
+    modelStatus: result?.model?.status,
+    issueCode: firstMultiFormatIssueCode(result?.model),
+    actionAccepted: completed
+  });
   if (!completed) throw new Error("Multi-format renderer did not accept the host file-open terminal action.");
+}
+
+function traceSourceId(filePath) {
+  return createHash("sha256").update(String(filePath ?? "")).digest("hex").slice(0, 24);
+}
+
+function firstMultiFormatIssueCode(model) {
+  const issue = model?.rightPanel?.issues?.[0];
+  return typeof issue?.code === "string" ? issue.code : undefined;
 }
 
 async function invokeMultiFormatRendererAction(window, name, payload) {
@@ -6494,6 +6607,20 @@ async function createExperimentWindow() {
     return resetMultiFormatReplacement(input);
   });
 
+  ipcMain.handle(IPC_CHANNELS.multiFormatRendererReady, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
+    if (input?.phase !== "renderer_action_bridge_ready") throw new Error("Invalid multi-format renderer phase.");
+    multiFormatTrace.record({
+      phase: "renderer_action_bridge_ready",
+      productMilestoneId,
+      formalRuntimeMode: isMultiFormatDesktopProduct,
+      queueDepth: pendingMultiFormatOpenFileEvents.length,
+      bridgeReady: true
+    });
+    return { accepted: true };
+  });
+
   ipcMain.handle(IPC_CHANNELS.openReferenceMediaFile, async (event) => {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     rejectFormalShortTermHostCapability(productMilestoneId, hostBoundaryMode, "openReferenceMediaFile");
@@ -6845,6 +6972,13 @@ async function createExperimentWindow() {
   }
   multiFormatDesktopRendererReady = false;
   await window.loadURL(rendererUrl);
+  multiFormatTrace.record({
+    phase: "renderer_load_completed",
+    productMilestoneId,
+    formalRuntimeMode: isMultiFormatDesktopProduct,
+    queueDepth: pendingMultiFormatOpenFileEvents.length,
+    bridgeReady: false
+  });
   if (isMultiFormatDesktopProduct) {
     multiFormatDesktopRendererReady = true;
     await flushPendingMultiFormatOpenFileEvents();
@@ -6857,9 +6991,28 @@ async function createExperimentWindow() {
 }
 
 app.on("open-file", (event, filePath) => {
-  if (!isMultiFormatDesktopProduct) return;
+  const sourceId = traceSourceId(filePath);
+  multiFormatTrace.record({
+    phase: "open_file_received",
+    sourceId,
+    productMilestoneId,
+    formalRuntimeMode: isMultiFormatDesktopProduct,
+    queueDepth: pendingMultiFormatOpenFileEvents.length,
+    bridgeReady: multiFormatDesktopRendererReady
+  });
+  if (!isMultiFormatDesktopProduct) {
+    multiFormatTrace.record({
+      phase: "open_file_rejected_mode",
+      sourceId,
+      productMilestoneId,
+      formalRuntimeMode: false,
+      queueDepth: pendingMultiFormatOpenFileEvents.length,
+      bridgeReady: multiFormatDesktopRendererReady
+    });
+    return;
+  }
   event.preventDefault();
-  enqueueMultiFormatOpenFileEvent(filePath);
+  enqueueMultiFormatOpenFileEvent(filePath, sourceId);
 });
 
 app.whenReady().then(createExperimentWindow).catch((error) => {
