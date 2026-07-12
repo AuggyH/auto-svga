@@ -1324,3 +1324,17 @@ promoted, watched, rejected, or kept historical.
   states.
 - Status: Candidate pending Code Review and rebuilt-package foreground QA
   regression.
+
+## 2026-07-12: Treat Installed File-open As Its Own Desktop Intake
+
+- Candidate lesson: macOS installed app file-open events are a separate
+  Electron intake path from menu/dialog open and drag/drop. Foreground QA that
+  opens files through LaunchServices needs a first-class `open-file` contract
+  that enters the same terminal preview/failure model as other open paths.
+- Evidence: `ASV-QA-20260711-001` permit `ASV-APR-20260712-009` showed Lottie
+  and VAP aliases returning to Launch after exact installed app file-open
+  events, even though menu/dialog and session contracts were covered. The
+  repair adds formal-0.2-only `app.on("open-file")` queuing, renderer-ready
+  flushing, hidden terminal actions, and eventId/request-generation guards.
+- Status: Candidate pending Code Review, package rebuild/install, and QA
+  foreground regression.

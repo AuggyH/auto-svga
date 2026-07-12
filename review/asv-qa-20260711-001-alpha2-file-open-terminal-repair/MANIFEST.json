@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "task": "ASV-QA-20260711-001 alpha2 file-open terminal repair",
+  "requirement": "ASV-REQ-20260709-003",
+  "ticket": "ASV-QA-20260711-001",
+  "branch": "codex/0.2-alpha2-file-open-terminal-repair",
+  "base": "046cf503f4f65d603c44923bc2a5ba60d718fd3a",
+  "sourceFixCommit": "2a33790f8ab48530bf29d2785a6afd5565b37457",
+  "status": "fix-ready-pending-code-review",
+  "changedFiles": [
+    "tools/electron-prototype/experiments/svga-web/main.cjs",
+    "tools/electron-prototype/experiments/svga-web/web/multiformat-desktop-preview-controller.mjs",
+    "tools/electron-prototype/experiments/svga-web/web/short-term-macos-action-bridge.mjs",
+    "tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+    "docs/quality/reports/ASV-QA-20260711-001-file-open-terminal-repair.md",
+    "docs/reviews/2026-07-12-codex-asv-qa-20260711-001-alpha2-file-open-terminal-repair.md",
+    "docs/retrospectives/TASK_RETRO_LEDGER.jsonl",
+    "docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md"
+  ],
+  "validation": [
+    "node --test --test-name-pattern \"0.2 installed file-open events route\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs: PASS 1/1",
+    "node --test --test-name-pattern \"formal 0.1 direct multi-format|0.2 installed file-open|0.2 multi-format desktop session|0.2 renderer open contract\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs: PASS 5/5",
+    "node --check tools/electron-prototype/experiments/svga-web/main.cjs: PASS",
+    "node --check tools/electron-prototype/experiments/svga-web/preload.cjs: PASS",
+    "npm run build: PASS",
+    "npm run test:all: PASS 524/524",
+    "npm run desktop:short-term:design-system-check: PASS",
+    "git diff --check: PASS"
+  ],
+  "boundaries": [
+    "no package rebuild",
+    "no installed app promotion",
+    "no foreground launch",
+    "no QA acceptance",
+    "no Product Owner acceptance",
+    "no Lottie/VAP product support claim",
+    "no release readiness claim"
+  ]
+}

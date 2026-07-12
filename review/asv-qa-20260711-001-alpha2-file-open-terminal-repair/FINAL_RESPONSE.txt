@@ -1,0 +1,21 @@
+Fix Ready for ASV-QA-20260711-001 alpha2 file-open terminal repair.
+
+Source fix commit: 2a33790f8ab48530bf29d2785a6afd5565b37457
+Branch: codex/0.2-alpha2-file-open-terminal-repair
+
+What changed:
+- Installed macOS open-file events are now handled only in formal 0.2 mode.
+- Early file-open events are queued until the renderer action bridge is ready.
+- Routed file-open events now enter the shared multi-format desktop session as fileOpenEvent and complete through visible renderer terminal actions.
+- Renderer completion is eventId plus active-generation bound, so stale file-open results cannot overwrite newer user actions.
+- Formal 0.1 remains SVGA-only.
+
+Validation:
+- Focused installed file-open contract: PASS 1/1.
+- Related 0.1 guard/session/renderer contracts: PASS 5/5.
+- build: PASS.
+- test:all: PASS 524/524.
+- design-system: PASS.
+- diff/package-lock/media scans: PASS.
+
+Next gate: Code Review, then Packaging rebuild/install, then QA foreground regression. No package, promotion, foreground run, QA acceptance, Product Owner acceptance, support claim, or release readiness is claimed here.
