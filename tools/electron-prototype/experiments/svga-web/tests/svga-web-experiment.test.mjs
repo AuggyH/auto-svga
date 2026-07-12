@@ -1233,10 +1233,12 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   const appOpenFileStart = main.indexOf('app.on("open-file", handleMultiFormatOpenFileEvent);');
   const mainStartedTraceStart = main.indexOf('phase: "main_started"');
   const handlerStart = main.indexOf("function handleMultiFormatOpenFileEvent");
+  const rendererReadyHandlerStart = main.indexOf("ipcMain.handle(IPC_CHANNELS.multiFormatRendererReady");
   const whenReadyStart = main.indexOf("app.whenReady().then(createExperimentWindow)");
   assert.notEqual(appOpenFileStart, -1, "installed macOS file-open events must be handled");
   assert.notEqual(mainStartedTraceStart, -1, "main startup trace must remain present");
   assert.notEqual(handlerStart, -1, "installed macOS file-open handler must be named for early registration");
+  assert.notEqual(rendererReadyHandlerStart, -1, "renderer-ready IPC must exist");
   assert.ok(
     appOpenFileStart < mainStartedTraceStart,
     "file-open listener must be registered before startup trace so launch-time events are not missed"
@@ -1261,6 +1263,23 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   assert.match(main, /completeHostFileOpen/);
   assert.match(main, /failHostFileOpen/);
   assert.match(main, /flushPendingMultiFormatOpenFileEvents\(\)/);
+  const rendererLoadCompletedStart = main.indexOf('phase: "renderer_load_completed"');
+  const normalVisibleStartupStart = main.indexOf("if (normalVisibleStartupMode)");
+  assert.notEqual(rendererLoadCompletedStart, -1, "renderer load completion trace must remain present");
+  const rendererLoadCompletedSource = main.slice(rendererLoadCompletedStart, normalVisibleStartupStart);
+  assert.doesNotMatch(
+    rendererLoadCompletedSource,
+    /multiFormatDesktopRendererReady\s*=\s*true|flushPendingMultiFormatOpenFileEvents\(\)/,
+    "loadURL completion alone must not mark the renderer bridge ready or flush launch-time file-open events"
+  );
+  const rendererReadySource = main.slice(rendererReadyHandlerStart, main.indexOf("ipcMain.handle(", rendererReadyHandlerStart + 1));
+  assert.match(rendererReadySource, /input\?\.phase !== "renderer_action_bridge_ready"/);
+  assert.match(rendererReadySource, /multiFormatDesktopRendererReady\s*=\s*true/);
+  assert.match(rendererReadySource, /await flushPendingMultiFormatOpenFileEvents\(\)/);
+  assert.ok(
+    rendererReadySource.indexOf("multiFormatDesktopRendererReady = true") < rendererReadySource.indexOf("await flushPendingMultiFormatOpenFileEvents()"),
+    "renderer-ready IPC must flip readiness before flushing queued file-open events"
+  );
   assert.doesNotMatch(
     appOpenFileSource,
     /dialog\.showOpenDialog/,
@@ -1275,6 +1294,41 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   assert.match(controller, /function failHostFileOpen/);
   assert.match(controller, /resolveMultiFormatOpenOutcome\(Promise\.resolve\(payload\?\.result\)/);
   assert.match(controller, /isActiveRequest\(hostFileOpenRequest\)/);
+});
+
+test("0.2 launch-time file-open queue survives loadURL until renderer-ready IPC", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const flushStart = main.indexOf("async function flushPendingMultiFormatOpenFileEvents()");
+  const dispatchStart = main.indexOf("async function dispatchMultiFormatOpenFileEvent");
+  const rendererLoadCompletedStart = main.indexOf('phase: "renderer_load_completed"');
+  const normalVisibleStartupStart = main.indexOf("if (normalVisibleStartupMode)");
+  const rendererReadyHandlerStart = main.indexOf("ipcMain.handle(IPC_CHANNELS.multiFormatRendererReady");
+  const nextIpcHandlerStart = main.indexOf("ipcMain.handle(", rendererReadyHandlerStart + 1);
+
+  assert.notEqual(flushStart, -1, "flush function must exist");
+  assert.notEqual(dispatchStart, -1, "dispatch function must exist");
+  assert.notEqual(rendererLoadCompletedStart, -1, "renderer load completion trace must exist");
+  assert.notEqual(rendererReadyHandlerStart, -1, "renderer-ready IPC handler must exist");
+
+  const rendererLoadCompletedSource = main.slice(rendererLoadCompletedStart, normalVisibleStartupStart);
+  assert.doesNotMatch(rendererLoadCompletedSource, /multiFormatDesktopRendererReady\s*=\s*true/);
+  assert.doesNotMatch(rendererLoadCompletedSource, /flushPendingMultiFormatOpenFileEvents\(\)/);
+
+  const rendererReadySource = main.slice(rendererReadyHandlerStart, nextIpcHandlerStart);
+  assert.match(rendererReadySource, /phase: "renderer_action_bridge_ready"/);
+  assert.match(rendererReadySource, /multiFormatDesktopRendererReady\s*=\s*true/);
+  assert.match(rendererReadySource, /await flushPendingMultiFormatOpenFileEvents\(\)/);
+
+  const flushSource = main.slice(flushStart, dispatchStart);
+  assert.match(flushSource, /const item = pendingMultiFormatOpenFileEvents\[0\]/);
+  assert.match(flushSource, /await dispatchMultiFormatOpenFileEvent\(activeMainWindow, item\);[\s\S]*pendingMultiFormatOpenFileEvents\.shift\(\);/);
+  assert.match(flushSource, /phase: "dispatch_failed"/);
+  assert.match(flushSource, /return;/);
+  assert.doesNotMatch(
+    flushSource,
+    /const item = pendingMultiFormatOpenFileEvents\.shift\(\);/,
+    "queued launch-time file-open event must not be removed before renderer action bridge accepts it"
+  );
 });
 
 test("0.2 multi-format desktop session rejects unsupported drops before source registration", async () => {

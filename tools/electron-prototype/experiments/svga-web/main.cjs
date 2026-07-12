@@ -5190,9 +5190,10 @@ async function flushPendingMultiFormatOpenFileEvents() {
   try {
     while (pendingMultiFormatOpenFileEvents.length > 0) {
       if (!multiFormatDesktopRendererReady || !activeMainWindow || activeMainWindow.isDestroyed()) return;
-      const item = pendingMultiFormatOpenFileEvents.shift();
+      const item = pendingMultiFormatOpenFileEvents[0];
       try {
         await dispatchMultiFormatOpenFileEvent(activeMainWindow, item);
+        pendingMultiFormatOpenFileEvents.shift();
       } catch (error) {
         multiFormatTrace.record({
           phase: "dispatch_failed",
@@ -5205,6 +5206,7 @@ async function flushPendingMultiFormatOpenFileEvents() {
           issueCode: "dispatch_failed"
         });
         console.error(`AUTO_SVGA_MULTI_FORMAT_FILE_OPEN_EVENT_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+        return;
       }
     }
   } finally {
@@ -6619,6 +6621,8 @@ async function createExperimentWindow() {
       queueDepth: pendingMultiFormatOpenFileEvents.length,
       bridgeReady: true
     });
+    multiFormatDesktopRendererReady = true;
+    await flushPendingMultiFormatOpenFileEvents();
     return { accepted: true };
   });
 
@@ -6980,10 +6984,6 @@ async function createExperimentWindow() {
     queueDepth: pendingMultiFormatOpenFileEvents.length,
     bridgeReady: false
   });
-  if (isMultiFormatDesktopProduct) {
-    multiFormatDesktopRendererReady = true;
-    await flushPendingMultiFormatOpenFileEvents();
-  }
   if (normalVisibleStartupMode) {
     window.showInactive();
     await writeVisibleNormalStartupProof(window, rendererUrl);
