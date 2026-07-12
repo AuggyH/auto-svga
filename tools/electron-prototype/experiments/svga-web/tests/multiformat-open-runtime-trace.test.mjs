@@ -83,7 +83,7 @@ test("multi-format runtime trace enables only from an exact packaged marker or s
   }
 });
 
-test("packaged open-file trace covers A-D phases without changing the diagnostic flush timing", async () => {
+test("packaged open-file trace covers A-D phases and waits for renderer-ready IPC before flush", async () => {
   const [main, preload, app] = await Promise.all([
     readFile(path.join(experimentRoot, "main.cjs"), "utf8"),
     readFile(path.join(experimentRoot, "preload.cjs"), "utf8"),
@@ -107,7 +107,22 @@ test("packaged open-file trace covers A-D phases without changing the diagnostic
   assert.match(app, /installShortTermActionBridge[\s\S]*await bridge\?\.notifyMultiFormatRendererReady\?\.\(\)/);
 
   const loadIndex = main.indexOf("await window.loadURL(rendererUrl)");
-  const earlyReadyIndex = main.indexOf("multiFormatDesktopRendererReady = true", loadIndex);
-  const flushIndex = main.indexOf("await flushPendingMultiFormatOpenFileEvents()", earlyReadyIndex);
-  assert.ok(loadIndex >= 0 && earlyReadyIndex > loadIndex && flushIndex > earlyReadyIndex);
+  const rendererLoadCompletedIndex = main.indexOf('phase: "renderer_load_completed"', loadIndex);
+  const normalVisibleStartupIndex = main.indexOf("if (normalVisibleStartupMode)", rendererLoadCompletedIndex);
+  assert.ok(loadIndex >= 0 && rendererLoadCompletedIndex > loadIndex && normalVisibleStartupIndex > rendererLoadCompletedIndex);
+  const rendererLoadCompletedSource = main.slice(rendererLoadCompletedIndex, normalVisibleStartupIndex);
+  assert.doesNotMatch(rendererLoadCompletedSource, /multiFormatDesktopRendererReady\s*=\s*true/);
+  assert.doesNotMatch(rendererLoadCompletedSource, /flushPendingMultiFormatOpenFileEvents\(\)/);
+
+  const rendererReadyHandlerIndex = main.indexOf("ipcMain.handle(IPC_CHANNELS.multiFormatRendererReady");
+  const nextIpcHandlerIndex = main.indexOf("ipcMain.handle(", rendererReadyHandlerIndex + 1);
+  assert.ok(rendererReadyHandlerIndex >= 0 && nextIpcHandlerIndex > rendererReadyHandlerIndex);
+  const rendererReadySource = main.slice(rendererReadyHandlerIndex, nextIpcHandlerIndex);
+  assert.match(rendererReadySource, /input\?\.phase !== "renderer_action_bridge_ready"/);
+  assert.match(rendererReadySource, /phase: "renderer_action_bridge_ready"/);
+  assert.match(rendererReadySource, /multiFormatDesktopRendererReady\s*=\s*true/);
+  assert.match(rendererReadySource, /await flushPendingMultiFormatOpenFileEvents\(\)/);
+  assert.ok(
+    rendererReadySource.indexOf("multiFormatDesktopRendererReady = true") < rendererReadySource.indexOf("await flushPendingMultiFormatOpenFileEvents()")
+  );
 });
