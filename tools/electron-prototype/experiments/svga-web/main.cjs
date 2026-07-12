@@ -123,6 +123,14 @@ const multiFormatTrace = createMultiFormatOpenRuntimeTrace({
     environment: process.env
   })
 });
+const sourceFilePaths = new Map();
+const referenceFileIds = new Set();
+let multiFormatDesktopSession;
+let multiFormatDesktopRendererReady = false;
+let multiFormatOpenFileEventSequence = 0;
+let multiFormatOpenFileEventFlushActive = false;
+const pendingMultiFormatOpenFileEvents = [];
+app.on("open-file", handleMultiFormatOpenFileEvent);
 const usesShortTermPreviewShell = isShortTermProduct || isMultiFormatDesktopProduct;
 const rendererHtmlEntry = usesShortTermPreviewShell ? "web/index.html" : "web/workbench.html";
 const rendererEntry = usesShortTermPreviewShell ? "web/short-term-macos-app.mjs" : "web/desktop-product-entry.mjs";
@@ -220,13 +228,6 @@ const defaultShortTermMenuState = Object.freeze({
 });
 let shortTermMenuState = { ...defaultShortTermMenuState };
 const blockedExternalRequests = [];
-const sourceFilePaths = new Map();
-const referenceFileIds = new Set();
-let multiFormatDesktopSession;
-let multiFormatDesktopRendererReady = false;
-let multiFormatOpenFileEventSequence = 0;
-let multiFormatOpenFileEventFlushActive = false;
-const pendingMultiFormatOpenFileEvents = [];
 multiFormatTrace.record({
   phase: "main_started",
   productMilestoneId,
@@ -6990,7 +6991,7 @@ async function createExperimentWindow() {
   if (normalProofMode) await driveCanonicalNormalProof(window);
 }
 
-app.on("open-file", (event, filePath) => {
+function handleMultiFormatOpenFileEvent(event, filePath) {
   const sourceId = traceSourceId(filePath);
   multiFormatTrace.record({
     phase: "open_file_received",
@@ -7013,7 +7014,7 @@ app.on("open-file", (event, filePath) => {
   }
   event.preventDefault();
   enqueueMultiFormatOpenFileEvent(filePath, sourceId);
-});
+}
 
 app.whenReady().then(createExperimentWindow).catch((error) => {
   console.error(`AUTO_SVGA_WEB_EXPERIMENT_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);

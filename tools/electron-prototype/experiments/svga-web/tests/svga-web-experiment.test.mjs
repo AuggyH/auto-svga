@@ -1230,21 +1230,30 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
   const actionBridge = await readFile(path.join(experimentRoot, "web/short-term-macos-action-bridge.mjs"), "utf8");
 
-  const appOpenFileStart = main.indexOf('app.on("open-file"');
+  const appOpenFileStart = main.indexOf('app.on("open-file", handleMultiFormatOpenFileEvent);');
+  const mainStartedTraceStart = main.indexOf('phase: "main_started"');
+  const handlerStart = main.indexOf("function handleMultiFormatOpenFileEvent");
   const whenReadyStart = main.indexOf("app.whenReady().then(createExperimentWindow)");
   assert.notEqual(appOpenFileStart, -1, "installed macOS file-open events must be handled");
+  assert.notEqual(mainStartedTraceStart, -1, "main startup trace must remain present");
+  assert.notEqual(handlerStart, -1, "installed macOS file-open handler must be named for early registration");
+  assert.ok(
+    appOpenFileStart < mainStartedTraceStart,
+    "file-open listener must be registered before startup trace so launch-time events are not missed"
+  );
   assert.ok(
     appOpenFileStart < whenReadyStart,
     "file-open events can arrive before app.whenReady and must be queued early"
   );
-  const appOpenFileSource = main.slice(appOpenFileStart, whenReadyStart);
-  assert.match(appOpenFileSource, /if \(!isMultiFormatDesktopProduct\) return;/);
+  const appOpenFileSource = main.slice(handlerStart, whenReadyStart);
+  assert.match(appOpenFileSource, /if \(!isMultiFormatDesktopProduct\) \{/);
+  assert.match(appOpenFileSource, /return;/);
   assert.match(appOpenFileSource, /event\.preventDefault\(\);/);
   assert.ok(
-    appOpenFileSource.indexOf("if (!isMultiFormatDesktopProduct) return;") < appOpenFileSource.indexOf("event.preventDefault();"),
+    appOpenFileSource.indexOf("if (!isMultiFormatDesktopProduct) {") < appOpenFileSource.indexOf("event.preventDefault();"),
     "formal 0.1 must not see a multi-format file-open side effect"
   );
-  assert.match(appOpenFileSource, /enqueueMultiFormatOpenFileEvent\(filePath\)/);
+  assert.match(appOpenFileSource, /enqueueMultiFormatOpenFileEvent\(filePath, sourceId\)/);
 
   assert.match(main, /pendingMultiFormatOpenFileEvents/);
   assert.match(main, /openMultiFormatFilePath\(item\.filePath, "fileOpenEvent"\)/);
@@ -1572,6 +1581,57 @@ test("0.2 installed file-open source reaches positive Lottie and sidecar VAP ses
     assert.equal(overLimitVap.model.rightPanel.issues.some((issue) => issue.details?.reason === "vap_dimensions_over_1504"), true);
     assert.equal(overLimitVap.model.rightPanel.issues.some((issue) => issue.details?.reason === "open_input_invalid"), false);
     assert.doesNotMatch(JSON.stringify(overLimitVap), /auto-svga-file-open-session/);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 installed file-open source surfaces embedded-image Lottie as a visible typed limitation", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-file-open-embedded-lottie-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore,
+    openTimeoutMs: 1000
+  });
+  const lottiePath = path.join(sessionRoot, "embedded-image-lottie.json");
+
+  try {
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.12.2",
+      w: 288,
+      h: 288,
+      fr: 60,
+      ip: 0,
+      op: 300,
+      assets: [
+        { id: "image_0", w: 96, h: 96, e: 1, p: "data:image/png;base64,AA==" },
+        { id: "image_1", w: 64, h: 64, e: 1, p: "data:image/png;base64,AA==" }
+      ],
+      layers: [
+        { ind: 1, ty: 2, nm: "Embedded avatar", refId: "image_0" },
+        { ind: 2, ty: 2, nm: "Embedded badge", refId: "image_1" },
+        { ind: 3, ty: 4, nm: "Vector accent", shapes: [] }
+      ]
+    }));
+
+    const result = await withTerminalTestDeadline(
+      session.openLocalFilePath(lottiePath, "fileOpenEvent"),
+      "installed-file-open-embedded-lottie"
+    );
+    assert.equal(result.status, "opened");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(result.model.openedFrom, "fileOpenEvent");
+    assert.equal(result.model.detectedFormat, "lottie");
+    assert.equal(result.model.status, "playbackBlocked");
+    assert.equal(result.model.rightPanel.assets.length, 2);
+    assert.equal(result.model.rightPanel.assets.every((asset) => asset.replaceable === false), true);
+    assert.equal(result.model.rightPanel.assetInventory.summary.imageCount, 2);
+    assert.equal(result.model.rightPanel.assetInventory.summary.unsupportedOrMissingCount > 0, true);
+    assert.equal(result.model.rightPanel.issues.some((issue) => issue.code === "unsupported_feature"), true);
+    assert.equal(result.lifecycle.lottieLoads, 0);
+    assert.doesNotMatch(JSON.stringify(result), /auto-svga-file-open-embedded-lottie|\/Users|C:\\\\Users/);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
