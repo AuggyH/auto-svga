@@ -1209,6 +1209,49 @@ test("formal 0.1 direct multi-format IPC calls are guarded before host side effe
   }
 });
 
+test("0.2 installed file-open events route to a visible terminal multi-format state", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
+  const actionBridge = await readFile(path.join(experimentRoot, "web/short-term-macos-action-bridge.mjs"), "utf8");
+
+  const appOpenFileStart = main.indexOf('app.on("open-file"');
+  const whenReadyStart = main.indexOf("app.whenReady().then(createExperimentWindow)");
+  assert.notEqual(appOpenFileStart, -1, "installed macOS file-open events must be handled");
+  assert.ok(
+    appOpenFileStart < whenReadyStart,
+    "file-open events can arrive before app.whenReady and must be queued early"
+  );
+  const appOpenFileSource = main.slice(appOpenFileStart, whenReadyStart);
+  assert.match(appOpenFileSource, /if \(!isMultiFormatDesktopProduct\) return;/);
+  assert.match(appOpenFileSource, /event\.preventDefault\(\);/);
+  assert.ok(
+    appOpenFileSource.indexOf("if (!isMultiFormatDesktopProduct) return;") < appOpenFileSource.indexOf("event.preventDefault();"),
+    "formal 0.1 must not see a multi-format file-open side effect"
+  );
+  assert.match(appOpenFileSource, /enqueueMultiFormatOpenFileEvent\(filePath\)/);
+
+  assert.match(main, /pendingMultiFormatOpenFileEvents/);
+  assert.match(main, /openMultiFormatFilePath\(item\.filePath, "fileOpenEvent"\)/);
+  assert.match(main, /beginHostFileOpen/);
+  assert.match(main, /completeHostFileOpen/);
+  assert.match(main, /failHostFileOpen/);
+  assert.match(main, /flushPendingMultiFormatOpenFileEvents\(\)/);
+  assert.doesNotMatch(
+    appOpenFileSource,
+    /dialog\.showOpenDialog/,
+    "installed file-open events must not open a second dialog"
+  );
+
+  assert.match(actionBridge, /beginHostFileOpen/);
+  assert.match(actionBridge, /completeHostFileOpen/);
+  assert.match(actionBridge, /failHostFileOpen/);
+  assert.match(controller, /function beginHostFileOpen/);
+  assert.match(controller, /function completeHostFileOpen/);
+  assert.match(controller, /function failHostFileOpen/);
+  assert.match(controller, /resolveMultiFormatOpenOutcome\(Promise\.resolve\(payload\?\.result\)/);
+  assert.match(controller, /isActiveRequest\(hostFileOpenRequest\)/);
+});
+
 test("0.2 multi-format desktop session rejects unsupported drops before source registration", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-wp6-session-"));
   const sourceStore = new Map();

@@ -212,6 +212,10 @@ const blockedExternalRequests = [];
 const sourceFilePaths = new Map();
 const referenceFileIds = new Set();
 let multiFormatDesktopSession;
+let multiFormatDesktopRendererReady = false;
+let multiFormatOpenFileEventSequence = 0;
+let multiFormatOpenFileEventFlushActive = false;
+const pendingMultiFormatOpenFileEvents = [];
 const maxShortTermRecentFiles = 10;
 const productArtifactIndex = {
   milestoneId: productMilestoneId,
@@ -5116,6 +5120,70 @@ async function openDroppedMultiFormatFile(input) {
   return getMultiFormatDesktopSession().openDroppedFile(input);
 }
 
+function enqueueMultiFormatOpenFileEvent(filePath) {
+  if (!isMultiFormatDesktopProduct || typeof filePath !== "string" || filePath.length === 0) return;
+  multiFormatOpenFileEventSequence += 1;
+  pendingMultiFormatOpenFileEvents.push({
+    eventId: `fileOpenEvent:${multiFormatOpenFileEventSequence}`,
+    filePath
+  });
+  void flushPendingMultiFormatOpenFileEvents();
+}
+
+async function flushPendingMultiFormatOpenFileEvents() {
+  if (!isMultiFormatDesktopProduct || multiFormatOpenFileEventFlushActive) return;
+  if (!multiFormatDesktopRendererReady || !activeMainWindow || activeMainWindow.isDestroyed()) return;
+  multiFormatOpenFileEventFlushActive = true;
+  try {
+    while (pendingMultiFormatOpenFileEvents.length > 0) {
+      if (!multiFormatDesktopRendererReady || !activeMainWindow || activeMainWindow.isDestroyed()) return;
+      const item = pendingMultiFormatOpenFileEvents.shift();
+      try {
+        await dispatchMultiFormatOpenFileEvent(activeMainWindow, item);
+      } catch (error) {
+        console.error(`AUTO_SVGA_MULTI_FORMAT_FILE_OPEN_EVENT_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+      }
+    }
+  } finally {
+    multiFormatOpenFileEventFlushActive = false;
+  }
+}
+
+async function dispatchMultiFormatOpenFileEvent(window, item) {
+  const begun = await invokeMultiFormatRendererAction(window, "beginHostFileOpen", {
+    eventId: item.eventId
+  });
+  if (!begun) throw new Error("Multi-format renderer did not accept the host file-open begin action.");
+  let result;
+  try {
+    result = await openMultiFormatFilePath(item.filePath, "fileOpenEvent");
+  } catch (error) {
+    await invokeMultiFormatRendererAction(window, "failHostFileOpen", {
+      eventId: item.eventId,
+      message: "0.2 预览主机未能打开系统传入的本地候选，源文件没有被修改。"
+    });
+    throw error;
+  }
+  const completed = await invokeMultiFormatRendererAction(window, "completeHostFileOpen", {
+    eventId: item.eventId,
+    result
+  });
+  if (!completed) throw new Error("Multi-format renderer did not accept the host file-open terminal action.");
+}
+
+async function invokeMultiFormatRendererAction(window, name, payload) {
+  if (!isMultiFormatDesktopProduct || !window || window.isDestroyed()) return false;
+  const actionName = JSON.stringify(name);
+  const actionPayload = JSON.stringify(payload ?? {});
+  return window.webContents.executeJavaScript(`
+    (() => {
+      const action = window.__autoSvgaShortTermActions?.[${actionName}];
+      if (typeof action !== "function") return false;
+      return Promise.resolve(action(${actionPayload})).then(() => true);
+    })()
+  `);
+}
+
 async function controlMultiFormatPreview(input) {
   return getMultiFormatDesktopSession().control(input);
 }
@@ -6765,13 +6833,24 @@ async function createExperimentWindow() {
     const smokeIdentity = runtimeIdentity("smoke", rendererUrl);
     writeJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
   }
+  multiFormatDesktopRendererReady = false;
   await window.loadURL(rendererUrl);
+  if (isMultiFormatDesktopProduct) {
+    multiFormatDesktopRendererReady = true;
+    await flushPendingMultiFormatOpenFileEvents();
+  }
   if (normalVisibleStartupMode) {
     window.showInactive();
     await writeVisibleNormalStartupProof(window, rendererUrl);
   }
   if (normalProofMode) await driveCanonicalNormalProof(window);
 }
+
+app.on("open-file", (event, filePath) => {
+  if (!isMultiFormatDesktopProduct) return;
+  event.preventDefault();
+  enqueueMultiFormatOpenFileEvent(filePath);
+});
 
 app.whenReady().then(createExperimentWindow).catch((error) => {
   console.error(`AUTO_SVGA_WEB_EXPERIMENT_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);

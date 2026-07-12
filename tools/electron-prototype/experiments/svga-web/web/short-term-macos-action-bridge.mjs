@@ -7,7 +7,7 @@ export function installShortTermActionBridge({
   state,
   handlers
 }) {
-  windowRef.__autoSvgaShortTermActions = Object.freeze({
+  const actions = {
     openFromHostDialog: handlers.openFromHostDialog,
     openRecentFromMenu: handlers.openRecentFromMenu,
     clearRecentFiles: handlers.clearRecentFiles,
@@ -40,5 +40,9 @@ export function installShortTermActionBridge({
       if (state.view === "compare") handlers.setMode("preview");
     },
     copyStateSummary: () => bridge?.writeClipboardText?.(handlers.currentStateSummary())
-  });
+  };
+  if (typeof handlers.beginHostFileOpen === "function") actions.beginHostFileOpen = handlers.beginHostFileOpen;
+  if (typeof handlers.completeHostFileOpen === "function") actions.completeHostFileOpen = handlers.completeHostFileOpen;
+  if (typeof handlers.failHostFileOpen === "function") actions.failHostFileOpen = handlers.failHostFileOpen;
+  windowRef.__autoSvgaShortTermActions = Object.freeze(actions);
 }

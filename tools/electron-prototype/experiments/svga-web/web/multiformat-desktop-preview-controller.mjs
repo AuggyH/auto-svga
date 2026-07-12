@@ -44,6 +44,8 @@ const factLabels = new Map([
 
 export function createMultiFormatDesktopPreviewController({ bridge, nodes, state }) {
   let activeRequest = 0;
+  let hostFileOpenEventId = "";
+  let hostFileOpenRequest = 0;
 
   function setView(view) {
     state.view = view;
@@ -89,6 +91,45 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     );
     if (!isActiveRequest(request)) return;
     applyOpenOutcome(outcome);
+  }
+
+  function beginHostFileOpen(payload = {}) {
+    if (typeof payload?.eventId !== "string" || payload.eventId.length === 0) return false;
+    hostFileOpenEventId = payload.eventId;
+    hostFileOpenRequest = beginRequest();
+    setLoading("读取系统打开的本地预览候选。");
+    return true;
+  }
+
+  async function completeHostFileOpen(payload = {}) {
+    if (!hostFileOpenIsActive(payload)) return false;
+    const outcome = await resolveMultiFormatOpenOutcome(Promise.resolve(payload?.result), {
+      deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS
+    });
+    if (!hostFileOpenIsActive(payload)) return false;
+    clearHostFileOpenRequest();
+    applyOpenOutcome(outcome);
+    return true;
+  }
+
+  function failHostFileOpen(payload = {}) {
+    if (!hostFileOpenIsActive(payload)) return false;
+    clearHostFileOpenRequest();
+    showFailure(typeof payload.message === "string" && payload.message.length > 0
+      ? payload.message
+      : "0.2 预览主机未能打开系统传入的本地候选，源文件没有被修改。");
+    return true;
+  }
+
+  function hostFileOpenIsActive(payload = {}) {
+    return typeof payload?.eventId === "string"
+      && payload.eventId === hostFileOpenEventId
+      && isActiveRequest(hostFileOpenRequest);
+  }
+
+  function clearHostFileOpenRequest() {
+    hostFileOpenEventId = "";
+    hostFileOpenRequest = 0;
   }
 
   async function dropCanvasFile(event, target, overlay) {
@@ -647,6 +688,9 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   const unsupportedSync = () => {};
   const handlers = {
     openFromHostDialog,
+    beginHostFileOpen,
+    completeHostFileOpen,
+    failHostFileOpen,
     openRecentFromMenu: unsupportedAsync,
     clearRecentFiles: unsupportedAsync,
     closeFile,
