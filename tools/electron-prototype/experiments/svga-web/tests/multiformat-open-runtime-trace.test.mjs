@@ -121,8 +121,8 @@ test("packaged open-file trace covers A-D phases and waits for renderer-ready IP
   assert.match(rendererReadySource, /input\?\.phase !== "renderer_action_bridge_ready"/);
   assert.match(rendererReadySource, /phase: "renderer_action_bridge_ready"/);
   assert.match(rendererReadySource, /multiFormatDesktopRendererReady\s*=\s*true/);
-  assert.match(rendererReadySource, /await flushPendingMultiFormatOpenFileEvents\(\)/);
+  assert.match(rendererReadySource, /void flushPendingMultiFormatOpenFileEvents\(\)\.catch/);
   assert.ok(
-    rendererReadySource.indexOf("multiFormatDesktopRendererReady = true") < rendererReadySource.indexOf("await flushPendingMultiFormatOpenFileEvents()")
+    rendererReadySource.indexOf("multiFormatDesktopRendererReady = true") < rendererReadySource.indexOf("void flushPendingMultiFormatOpenFileEvents().catch")
   );
 });

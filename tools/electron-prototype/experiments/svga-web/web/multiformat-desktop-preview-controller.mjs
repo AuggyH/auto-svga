@@ -936,6 +936,10 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     state.mode = "preview";
     state.tab = "overview";
     setAppearance(state.appearance);
+    if (state.model) {
+      setView(state.model.status === "failed" ? "failed" : "preview");
+      return;
+    }
     setView("launch");
   }
 

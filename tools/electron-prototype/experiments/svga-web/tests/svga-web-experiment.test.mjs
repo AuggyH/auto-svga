@@ -1229,6 +1229,7 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
   const actionBridge = await readFile(path.join(experimentRoot, "web/short-term-macos-action-bridge.mjs"), "utf8");
+  const app = await readFile(path.join(experimentRoot, "web/short-term-macos-app.mjs"), "utf8");
 
   const appOpenFileStart = main.indexOf('app.on("open-file", handleMultiFormatOpenFileEvent);');
   const mainStartedTraceStart = main.indexOf('phase: "main_started"');
@@ -1275,10 +1276,14 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   const rendererReadySource = main.slice(rendererReadyHandlerStart, main.indexOf("ipcMain.handle(", rendererReadyHandlerStart + 1));
   assert.match(rendererReadySource, /input\?\.phase !== "renderer_action_bridge_ready"/);
   assert.match(rendererReadySource, /multiFormatDesktopRendererReady\s*=\s*true/);
-  assert.match(rendererReadySource, /await flushPendingMultiFormatOpenFileEvents\(\)/);
+  assert.match(rendererReadySource, /void flushPendingMultiFormatOpenFileEvents\(\)\.catch/);
   assert.ok(
-    rendererReadySource.indexOf("multiFormatDesktopRendererReady = true") < rendererReadySource.indexOf("await flushPendingMultiFormatOpenFileEvents()"),
+    rendererReadySource.indexOf("multiFormatDesktopRendererReady = true") < rendererReadySource.indexOf("void flushPendingMultiFormatOpenFileEvents().catch"),
     "renderer-ready IPC must flip readiness before flushing queued file-open events"
+  );
+  assert.ok(
+    rendererReadySource.indexOf("void flushPendingMultiFormatOpenFileEvents().catch") < rendererReadySource.indexOf("return { accepted: true }"),
+    "renderer-ready IPC must start queued file-open processing before returning accepted"
   );
   assert.doesNotMatch(
     appOpenFileSource,
@@ -1294,6 +1299,10 @@ test("0.2 installed file-open events route to a visible terminal multi-format st
   assert.match(controller, /function failHostFileOpen/);
   assert.match(controller, /resolveMultiFormatOpenOutcome\(Promise\.resolve\(payload\?\.result\)/);
   assert.match(controller, /isActiveRequest\(hostFileOpenRequest\)/);
+  assert.ok(
+    app.indexOf("controller.initialize();") < app.indexOf("await bridge?.notifyMultiFormatRendererReady?.();"),
+    "renderer action bridge must initialize visible state before notifying main to flush launch-time file-open events"
+  );
 });
 
 test("0.2 launch-time file-open queue survives loadURL until renderer-ready IPC", async () => {
@@ -1317,7 +1326,7 @@ test("0.2 launch-time file-open queue survives loadURL until renderer-ready IPC"
   const rendererReadySource = main.slice(rendererReadyHandlerStart, nextIpcHandlerStart);
   assert.match(rendererReadySource, /phase: "renderer_action_bridge_ready"/);
   assert.match(rendererReadySource, /multiFormatDesktopRendererReady\s*=\s*true/);
-  assert.match(rendererReadySource, /await flushPendingMultiFormatOpenFileEvents\(\)/);
+  assert.match(rendererReadySource, /void flushPendingMultiFormatOpenFileEvents\(\)\.catch/);
 
   const flushSource = main.slice(flushStart, dispatchStart);
   assert.match(flushSource, /const item = pendingMultiFormatOpenFileEvents\[0\]/);
@@ -1837,6 +1846,97 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     globalThis.lottie = originalLottie;
     globalThis.Vap = originalVap;
     globalThis.URL = originalUrl;
+  }
+});
+
+test("0.2 first-launch file-open survives delayed renderer-ready flush and late initialization", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-first-launch-open-"));
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: new Map(),
+    openTimeoutMs: 1000
+  });
+  const lottiePath = path.join(sessionRoot, "first-launch-lottie.json");
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const nodes = createMultiFormatControllerTestNodes();
+  const lottieCalls = [];
+  const runtimeEvents = [];
+
+  globalThis.document = createMultiFormatControllerTestDocument(nodes);
+  globalThis.lottie = {
+    loadAnimation(options) {
+      lottieCalls.push(options);
+      return {
+        play() { runtimeEvents.push("lottie:play"); },
+        pause() { runtimeEvents.push("lottie:pause"); },
+        destroy() { runtimeEvents.push("lottie:destroy"); },
+        goToAndStop() { runtimeEvents.push("lottie:seek"); }
+      };
+    }
+  };
+
+  try {
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.7.4",
+      w: 120,
+      h: 160,
+      fr: 30,
+      ip: 0,
+      op: 30,
+      assets: [],
+      layers: [{
+        ind: 1,
+        ty: 5,
+        nm: "Foreground title",
+        t: { d: { k: [{ s: { t: "Task-owned first launch Lottie" } }] } }
+      }]
+    }));
+
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const bridge = createSessionBackedMultiFormatRuntimeMountTestBridge(session);
+    const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+
+    controller.initialize();
+    assert.equal(state.view, "launch");
+    await Promise.resolve();
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "first-launch-lottie" }), true);
+    const lottie = await session.openLocalFilePath(lottiePath, "fileOpenEvent");
+    assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "first-launch-lottie", result: lottie }), true);
+    await flushRuntimeMountPromises();
+
+    assert.equal(state.view, "preview");
+    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.openedFrom, "fileOpenEvent");
+    assert.equal(state.model.detectedFormat, "lottie");
+    assert.equal(state.model.rightPanel.lottieTexts.length, 1);
+    assert.equal(lottieCalls.length, 1);
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+
+    controller.initialize();
+    await flushRuntimeMountPromises();
+
+    assert.equal(state.view, "preview");
+    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.openedFrom, "fileOpenEvent");
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    assert.notEqual(state.view, "launch");
+    assert.equal(runtimeEvents.includes("lottie:destroy"), false);
+    assert.doesNotMatch(JSON.stringify(state.model), /auto-svga-first-launch-open|\/Users|C:\\/i);
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+    await rm(sessionRoot, { recursive: true, force: true });
   }
 });
 

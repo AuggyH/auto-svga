@@ -27,9 +27,9 @@ installShortTermActionBridge({
   handlers: controller.handlers
 });
 
+controller.initialize();
 await bridge?.notifyMultiFormatRendererReady?.();
 
-controller.initialize();
 if (bridge?.productMilestoneId !== "0.2-multiformat-preview") {
   runShortTermSmokeIfRequested({
     bridge,

@@ -6622,7 +6622,9 @@ async function createExperimentWindow() {
       bridgeReady: true
     });
     multiFormatDesktopRendererReady = true;
-    await flushPendingMultiFormatOpenFileEvents();
+    void flushPendingMultiFormatOpenFileEvents().catch((error) => {
+      console.error(`AUTO_SVGA_MULTI_FORMAT_FILE_OPEN_FLUSH_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
+    });
     return { accepted: true };
   });
 
