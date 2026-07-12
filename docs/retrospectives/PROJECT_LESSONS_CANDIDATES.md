@@ -1338,3 +1338,17 @@ promoted, watched, rejected, or kept historical.
   flushing, hidden terminal actions, and eventId/request-generation guards.
 - Status: Candidate pending Code Review, package rebuild/install, and QA
   foreground regression.
+
+## 2026-07-13: Stop Fake Browser Proofs At Repeated Environment Gaps
+
+- Candidate lesson: When a source-local fake browser/VM smoke repeatedly fails
+  on browser-environment primitives instead of product logic, stop expanding
+  the fake runtime. Preserve source/runtime contracts and move actual playback
+  proof to the package plus bounded foreground gate.
+- Evidence: The owner-visible Lottie/VAP preview vertical reached prepared
+  payload, self-hosted endpoint, renderer mount, sidecar VAP, and
+  replacement/reset source contracts. A temporary self-hosted VM smoke then hit
+  read-only `navigator`, UMD branch, canvas/script discovery, and timer/runtime
+  gaps, so the incomplete VM-smoke additions were removed per PM stop route.
+- Status: Candidate pending Code Review and reuse for future browser/runtime
+  evidence ladders.

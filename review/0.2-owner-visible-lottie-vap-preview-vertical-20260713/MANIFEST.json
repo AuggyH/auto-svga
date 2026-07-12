@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "task": "0.2 owner-visible Lottie/VAP preview vertical",
+  "requirement": "ASV-REQ-20260709-003",
+  "branch": "codex/0.2-owner-visible-lottie-vap-preview-vertical-20260713",
+  "base": "b694fa86e7965dac87b8ad3b59da3a292c0117c0",
+  "status": "implementation-ready-pending-code-review",
+  "reviewFile": "docs/reviews/2026-07-13-codex-owner-visible-lottie-vap-preview-vertical.md",
+  "changedFiles": [
+    "src/workbench/vap-inspection.ts",
+    "src/workbench/vap-preview-vertical.ts",
+    "src/workbench/multiformat-preview-workspace.ts",
+    "src/tests/vap-inspection.test.ts",
+    "tools/electron-prototype/experiments/svga-web/host-adapter-contract.cjs",
+    "tools/electron-prototype/experiments/svga-web/main.cjs",
+    "tools/electron-prototype/experiments/svga-web/preload.cjs",
+    "tools/electron-prototype/experiments/svga-web/server.mjs",
+    "tools/electron-prototype/experiments/svga-web/multiformat-desktop-session.cjs",
+    "tools/electron-prototype/experiments/svga-web/web/multiformat-desktop-preview-controller.mjs",
+    "tools/electron-prototype/experiments/svga-web/web/short-term-macos.modules.css",
+    "tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+    "docs/product/requirements/ASV-REQ-20260709-003.md",
+    "docs/reviews/2026-07-13-codex-owner-visible-lottie-vap-preview-vertical.md",
+    "docs/retrospectives/TASK_RETRO_LEDGER.jsonl",
+    "docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md"
+  ],
+  "validation": [
+    "focused Electron/source runtime suites: PASS 8/8",
+    "npm run build: PASS",
+    "node --test dist/tests/vap-inspection.test.js: PASS 14/14",
+    "focused multi-format workspace/owner-preview/asset qualification: PASS 23/23",
+    "npm run test:all: PASS 525/525",
+    "npm run desktop:short-term:design-system-check: PASS",
+    "git diff --check: PASS",
+    "package/lockfile drift scan: PASS",
+    "production media/archive changed-path scan: PASS",
+    "incomplete VM-smoke leftover scan: PASS"
+  ],
+  "boundaries": [
+    "no package rebuild",
+    "no installed app promotion",
+    "no foreground launch",
+    "no QA acceptance",
+    "no Product Owner acceptance",
+    "no real-material visual success claim",
+    "no Lottie/VAP production-support claim",
+    "no save/export/conversion support",
+    "no release readiness claim"
+  ]
+}

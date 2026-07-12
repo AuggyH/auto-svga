@@ -5120,6 +5120,10 @@ async function openDroppedMultiFormatFile(input) {
   return getMultiFormatDesktopSession().openDroppedFile(input);
 }
 
+async function prepareMultiFormatRuntimePreview(input) {
+  return getMultiFormatDesktopSession().prepareRuntimePreview(input);
+}
+
 function enqueueMultiFormatOpenFileEvent(filePath) {
   if (!isMultiFormatDesktopProduct || typeof filePath !== "string" || filePath.length === 0) return;
   multiFormatOpenFileEventSequence += 1;
@@ -6464,6 +6468,12 @@ async function createExperimentWindow() {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     assertMultiFormatDesktopProduct();
     return openDroppedMultiFormatFile(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.prepareMultiFormatRuntimePreview, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
+    return prepareMultiFormatRuntimePreview(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.controlMultiFormatPreview, async (event, input) => {

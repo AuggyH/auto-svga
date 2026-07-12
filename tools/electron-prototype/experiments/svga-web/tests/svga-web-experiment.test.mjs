@@ -1118,6 +1118,7 @@ test("formal 0.2 multi-format preload exposes only the gated preview bridge", as
 
   api.openMultiFormatFile();
   api.openDroppedMultiFormatFile({ displayName: "fixture.json", bytes: [123, 125] });
+  api.prepareMultiFormatRuntimePreview({ sourceId: "0123456789abcdef01234567", format: "lottie" });
   api.controlMultiFormatPreview({ action: "play" });
   api.applyMultiFormatReplacement({ targetId: "asset", kind: "image", value: "data:image/png;base64,AA==" });
   api.resetMultiFormatReplacement();
@@ -1125,6 +1126,7 @@ test("formal 0.2 multi-format preload exposes only the gated preview bridge", as
   assert.deepEqual(invocations.map(({ channel }) => channel), [
     "svga-web-experiment:open-multiformat-file",
     "svga-web-experiment:open-dropped-multiformat-file",
+    "svga-web-experiment:prepare-multiformat-runtime-preview",
     "svga-web-experiment:control-multiformat-preview",
     "svga-web-experiment:apply-multiformat-replacement",
     "svga-web-experiment:reset-multiformat-replacement"
@@ -1136,6 +1138,7 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
   const appEntry = await readFile(path.join(experimentRoot, "web/short-term-macos-app.mjs"), "utf8");
   const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
   const session = await readFile(path.join(experimentRoot, "multiformat-desktop-session.cjs"), "utf8");
+  const server = await readFile(path.join(experimentRoot, "server.mjs"), "utf8");
 
   assert.match(main, /const multiFormatDesktopRuntimeRoot = app\.isPackaged \? path\.join\(appRoot, "\.runtime"\) : repoRoot;/);
   assert.match(main, /const isShortTermProduct = productMilestoneId === "short-term";/);
@@ -1152,9 +1155,22 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
   assert.match(controller, /model\.rightPanel\?\.assetInventory/);
   assert.match(controller, /function createAssetGroup/);
   assert.match(controller, /dataset\.group = group\.id/);
+  assert.match(controller, /prepareMultiFormatRuntimePreview/);
+  assert.match(controller, /function mountLottieRuntimePreview/);
+  assert.match(controller, /function mountVapRuntimePreview/);
+  assert.match(controller, /src\.startsWith\("\/runtime-node-modules\/"\)/);
+  assert.match(controller, /beginRuntimePreviewGeneration/);
   assert.match(session, /rendererHasFullPath|pathRedacted/);
   assert.match(session, /lottieLoads|vapLoads|objectUrlsRevoked/);
   assert.match(session, /openWithTerminalDeadline/);
+  assert.match(session, /prepareRuntimePreview/);
+  assert.match(session, /prepareLottieRuntimePreview/);
+  assert.match(session, /prepareVapRuntimePreview/);
+  assert.match(session, /\/runtime-node-modules\/lottie-web\/build\/player\/lottie_svg\.js/);
+  assert.match(session, /\/runtime-node-modules\/video-animation-player\/dist\/vap\.js/);
+  assert.match(server, /runtimeVendorMappings/);
+  assert.match(server, /runtime-node-modules\/lottie-web\/build\/player\/lottie_svg\.js/);
+  assert.match(server, /runtime-node-modules\/video-animation-player\/dist\/vap\.js/);
 });
 
 test("0.2 alpha package runtime identity selects the multi-format desktop product before defaulting to 0.1", async () => {
@@ -1291,6 +1307,9 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
   });
   const lottiePath = path.join(sessionRoot, "synthetic-lottie.json");
   const vapPath = path.join(sessionRoot, "synthetic-vap.mp4");
+  const vapSidecarPath = path.join(sessionRoot, "synthetic-vap-sidecar.mp4");
+  const vapSidecarConfigPath = path.join(sessionRoot, "synthetic-vap-sidecar.json");
+  const vapFusionPath = path.join(sessionRoot, "synthetic-vap-fusion.mp4");
 
   try {
     await writeFile(lottiePath, JSON.stringify({
@@ -1300,10 +1319,38 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
       fr: 30,
       ip: 0,
       op: 30,
-      layers: [],
+      layers: [
+        {
+          ind: 1,
+          ty: 5,
+          nm: "Greeting",
+          t: {
+            d: {
+              k: [
+                { s: { t: "Original greeting" } }
+              ]
+            }
+          }
+        }
+      ],
       assets: []
     }));
     await writeFile(vapPath, createSyntheticVapMp4Bytes());
+    await writeFile(vapSidecarPath, createSyntheticVapMp4WithoutEmbeddedVapcBytes());
+    await writeFile(vapSidecarConfigPath, JSON.stringify(createSyntheticVapcDocument()));
+    await writeFile(vapFusionPath, createSyntheticVapMp4Bytes({
+      src: [
+        { srcId: 1, srcType: "image", srcTag: "avatar", w: 120, h: 120, fitType: "centerCrop" },
+        { srcId: 2, srcType: "text", srcTag: "title", color: "#ffffff", style: "bold" }
+      ],
+      frame: [{
+        i: 0,
+        obj: [
+          { srcId: 1, z: 3, frame: { x: 10, y: 20, w: 120, h: 120 }, mFrame: { x: 0, y: 0, w: 120, h: 120 }, mt: 0 },
+          { srcId: 2, z: 4, frame: { x: 160, y: 20, w: 200, h: 40 }, mFrame: { x: 0, y: 0, w: 200, h: 40 }, mt: 0 }
+        ]
+      }]
+    }));
 
     const lottie = await withTerminalTestDeadline(session.openLocalFilePath(lottiePath, "fileButton"), "lottie");
     assert.equal(lottie.status, "opened");
@@ -1313,6 +1360,35 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
     assert.notEqual(lottie.model.status, "launch");
     assert.notEqual(lottie.model.status, "loading");
     assert.equal(lottie.lifecycle.lottieLoads, 1);
+    const lottieRuntime = await session.prepareRuntimePreview({
+      sourceId: lottie.sourceId,
+      format: "lottie",
+      requestId: lottie.model.requestId,
+      replacements: lottie.model.replacement
+    });
+    assert.equal(lottieRuntime.status, "prepared");
+    assert.equal(lottieRuntime.pathRedacted, true);
+    assert.equal(lottieRuntime.rendererHasFullPath, false);
+    assert.deepEqual(lottieRuntime.runtimeScripts, ["/runtime-node-modules/lottie-web/build/player/lottie_svg.js"]);
+    assert.equal(lottieRuntime.animationData.v, "5.7.4");
+    assert.doesNotMatch(JSON.stringify(lottieRuntime), /\/Users|auto-svga-terminal-session/i);
+    const lottieReplacementRuntime = await session.prepareRuntimePreview({
+      sourceId: lottie.sourceId,
+      format: "lottie",
+      requestId: `${lottie.model.requestId}:replacement`,
+      replacements: {
+        active: [
+          {
+            targetId: "text:1",
+            kind: "text",
+            valuePreview: "Runtime greeting"
+          }
+        ]
+      }
+    });
+    assert.equal(lottieReplacementRuntime.status, "prepared");
+    assert.equal(lottieReplacementRuntime.animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
+    assert.doesNotMatch(JSON.stringify(lottieReplacementRuntime), /\/Users|auto-svga-terminal-session/i);
     assert.equal(sourceStore.size, 1);
 
     const vap = await withTerminalTestDeadline(session.openLocalFilePath(vapPath, "fileButton"), "vap");
@@ -1324,7 +1400,69 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
     assert.notEqual(vap.model.status, "loading");
     assert.equal(vap.lifecycle.vapLoads, 1);
     assert.equal(vap.lifecycle.objectUrlsCreated, 1);
-    assert.equal(sourceStore.size, 2);
+    const vapSidecar = await withTerminalTestDeadline(session.openLocalFilePath(vapSidecarPath, "fileButton"), "vap-sidecar");
+    assert.equal(vapSidecar.status, "opened");
+    assert.equal(vapSidecar.model.detectedFormat, "vap");
+    assert.equal(vapSidecar.model.status, "previewReady");
+    assert.equal(vapSidecar.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
+    assert.equal(vapSidecar.lifecycle.vapLoads, 2);
+    assert.equal(vapSidecar.lifecycle.objectUrlsCreated, 2);
+    const vapRuntime = await session.prepareRuntimePreview({
+      sourceId: vap.sourceId,
+      format: "vap",
+      requestId: vap.model.requestId,
+      replacements: vap.model.replacement
+    });
+    assert.equal(vapRuntime.status, "prepared");
+    assert.equal(vapRuntime.pathRedacted, true);
+    assert.equal(vapRuntime.rendererHasFullPath, false);
+    assert.deepEqual(vapRuntime.runtimeScripts, ["/runtime-node-modules/video-animation-player/dist/vap.js"]);
+    assert.match(vapRuntime.mp4Base64, /^[A-Za-z0-9+/=]+$/);
+    assert.equal(vapRuntime.vapConfig.info.w, 720);
+    assert.doesNotMatch(JSON.stringify(vapRuntime), /\/Users|auto-svga-terminal-session/i);
+    const vapReplacementRuntime = await session.prepareRuntimePreview({
+      sourceId: vap.sourceId,
+      format: "vap",
+      requestId: `${vap.model.requestId}:replacement`,
+      replacements: {
+        active: [
+          {
+            targetId: "title",
+            kind: "text",
+            valuePreview: "Runtime VAP title"
+          }
+        ]
+      }
+    });
+    assert.equal(vapReplacementRuntime.status, "prepared");
+    assert.equal(vapReplacementRuntime.fusionParams.title, "Runtime VAP title");
+    assert.doesNotMatch(JSON.stringify(vapReplacementRuntime), /\/Users|auto-svga-terminal-session/i);
+    const vapFusionSourceId = session.rememberSource(vapFusionPath);
+    const vapFusionRuntime = await session.prepareRuntimePreview({
+      sourceId: vapFusionSourceId,
+      format: "vap",
+      requestId: "vap:fusion:replacement",
+      replacements: {
+        active: [
+          {
+            targetId: "avatar",
+            kind: "image",
+            valuePreview: `data:image/png;base64,${Buffer.from([1, 2, 3, 4]).toString("base64")}`
+          },
+          {
+            targetId: "title",
+            kind: "text",
+            valuePreview: "Runtime VAP title"
+          }
+        ]
+      }
+    });
+    assert.equal(vapFusionRuntime.status, "prepared");
+    assert.deepEqual(Object.keys(vapFusionRuntime.fusionParams).sort(), ["avatar", "title"]);
+    assert.equal(vapFusionRuntime.vapConfig.src[0].srcTag, "avatar");
+    assert.equal(vapFusionRuntime.vapConfig.src[1].srcTag, "title");
+    assert.doesNotMatch(JSON.stringify(vapFusionRuntime), /\/Users|auto-svga-terminal-session/i);
+    assert.equal(sourceStore.size, 4);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
@@ -1356,6 +1494,127 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
   assert.equal(stalled.kind, "failure");
   assert.match(stalled.message, /限定时间/);
   assert.doesNotMatch(stalled.message, /\/Users|C:\\|alice/i);
+});
+
+test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host file-open", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const originalVap = globalThis.Vap;
+  const originalUrl = globalThis.URL;
+  const nodes = createMultiFormatControllerTestNodes();
+  const documentRef = createMultiFormatControllerTestDocument(nodes);
+  const lottieCalls = [];
+  const vapCalls = [];
+  const objectUrls = [];
+  globalThis.document = documentRef;
+  globalThis.lottie = {
+    loadAnimation(options) {
+      lottieCalls.push(options);
+      return {
+        play() {},
+        pause() {},
+        destroy() {},
+        goToAndStop(frame) {
+          this.frame = frame;
+        }
+      };
+    }
+  };
+  globalThis.Vap = {
+    canWebGL() {
+      return true;
+    },
+    default(options) {
+      vapCalls.push(options);
+      return {
+        on() { return this; },
+        play() { return this; },
+        pause() {},
+        destroy() {},
+        setTime(seconds) {
+          this.seconds = seconds;
+        }
+      };
+    }
+  };
+  globalThis.URL = {
+    createObjectURL() {
+      const objectUrl = `blob:test-${objectUrls.length + 1}`;
+      objectUrls.push(objectUrl);
+      return objectUrl;
+    },
+    revokeObjectURL() {}
+  };
+
+  try {
+    const bridge = createMultiFormatRuntimeMountTestBridge();
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+    controller.initialize();
+
+    bridge.markOpened("lottie");
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "lottie-open" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({
+      eventId: "lottie-open",
+      result: createRuntimeMountOpenResult("lottie")
+    }), true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.equal(lottieCalls.length, 1);
+    assert.equal(lottieCalls[0].container.dataset.runtimeFormat, "lottie");
+    assert.equal(lottieCalls[0].animationData.v, "5.7.4");
+    assert.equal(lottieCalls[0].loop, true);
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+
+    controller.handlers.updateRuntimeText("text:1", "Runtime greeting");
+    await flushRuntimeMountPromises();
+    assert.equal(lottieCalls.length, 2);
+    assert.equal(lottieCalls[1].animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
+    assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["text:1"]);
+
+    await controller.handlers.resetRuntimeText();
+    await flushRuntimeMountPromises();
+    assert.equal(lottieCalls.length, 3);
+    assert.equal(lottieCalls[2].animationData.layers[0].t.d.k[0].s.t, "Original greeting");
+    assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
+
+    bridge.markOpened("vap");
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "vap-open" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({
+      eventId: "vap-open",
+      result: createRuntimeMountOpenResult("vap")
+    }), true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.equal(vapCalls.length, 1);
+    assert.equal(vapCalls[0].container.dataset.runtimeFormat, "vap");
+    assert.equal(vapCalls[0].config.info.w, 120);
+    assert.equal(vapCalls[0].precache, false);
+    assert.equal(vapCalls[0].src, "blob:test-1");
+    assert.equal(objectUrls.length, 1);
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+
+    controller.handlers.updateRuntimeText("title", "Runtime VAP title");
+    await flushRuntimeMountPromises();
+    assert.equal(vapCalls.length, 2);
+    assert.equal(vapCalls[1].title, "Runtime VAP title");
+    assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["title"]);
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+    globalThis.Vap = originalVap;
+    globalThis.URL = originalUrl;
+  }
 });
 
 test("server uses bounded internal-trial CSP and keeps report API token-bound", async () => {
@@ -1405,6 +1664,10 @@ test("server uses bounded internal-trial CSP and keeps report API token-bound", 
     const workbenchPage = await fetch(`${server.origin}/workbench.html`).then((response) => response.text());
     assert.match(workbenchPage, /productShellMount/);
     assert.match(workbenchPage, /desktop-product-entry\.mjs/);
+    const lottieRuntime = await fetch(`${server.origin}/runtime-node-modules/lottie-web/build/player/lottie_svg.js`).then((response) => response.text());
+    assert.match(lottieRuntime, /global\.lottie = factory\(\)/);
+    const vapRuntime = await fetch(`${server.origin}/runtime-node-modules/video-animation-player/dist/vap.js`).then((response) => response.text());
+    assert.match(vapRuntime, /factory\(global\.Vap = \{\}\)/);
     const sharedShell = await fetch(`${server.origin}/tools/shared/product-frontend/product-shell.html`).then((response) => response.text());
     assert.match(sharedShell, /brandMark/);
     assert.match(sharedShell, /本地预览/);
@@ -4488,25 +4751,514 @@ function createOptimizerFrames() {
   }));
 }
 
-function createSyntheticVapMp4Bytes() {
+function createSyntheticVapMp4Bytes(vapcOverrides = {}) {
   return concatFixtureBytes(
     fixtureFtypBox(),
     fixtureMoovBox(),
-    fixtureMp4Box("vapc", fixtureTextEncoder.encode(JSON.stringify({
-      info: {
-        v: 2,
-        f: 60,
-        w: 720,
-        h: 405,
-        videoW: 720,
-        videoH: 810,
-        fps: 30,
-        isVapx: false,
-        aFrame: { x: 0, y: 405, w: 720, h: 405 },
-        rgbFrame: { x: 0, y: 0, w: 720, h: 405 }
-      }
-    })))
+    fixtureMp4Box("vapc", fixtureTextEncoder.encode(JSON.stringify(createSyntheticVapcDocument(vapcOverrides))))
   );
+}
+
+function createSyntheticVapMp4WithoutEmbeddedVapcBytes() {
+  return concatFixtureBytes(
+    fixtureFtypBox(),
+    fixtureMoovBox(),
+    fixtureMp4Box("free", new Uint8Array([1, 2, 3]))
+  );
+}
+
+function createSyntheticVapcDocument(vapcOverrides = {}) {
+  return {
+    info: {
+      v: 2,
+      f: 60,
+      w: 720,
+      h: 405,
+      videoW: 720,
+      videoH: 810,
+      fps: 30,
+      isVapx: false,
+      aFrame: { x: 0, y: 405, w: 720, h: 405 },
+      rgbFrame: { x: 0, y: 0, w: 720, h: 405 }
+    },
+    ...vapcOverrides
+  };
+}
+
+function createMultiFormatRuntimeMountTestBridge() {
+  const bridgeState = {
+    format: "lottie",
+    active: []
+  };
+  return {
+    prepareInputs: [],
+    productMilestoneId: "0.2-multiformat-preview",
+    updateShortTermMenuState() {
+      return Promise.resolve();
+    },
+    setShortTermWindowMode() {
+      return Promise.resolve();
+    },
+    prepareMultiFormatRuntimePreview(input) {
+      this.prepareInputs.push(input);
+      if (input?.format === "lottie") {
+        const textValue = input?.replacements?.active?.find((record) => record.targetId === "text:1")?.valuePreview
+          ?? "Original greeting";
+        return Promise.resolve({
+          status: "prepared",
+          format: "lottie",
+          pathRedacted: true,
+          rendererHasFullPath: false,
+          runtimeScripts: ["/runtime-node-modules/lottie-web/build/player/lottie_svg.js"],
+          animationData: {
+            v: "5.7.4",
+            w: 120,
+            h: 80,
+            fr: 30,
+            ip: 0,
+            op: 30,
+            layers: [
+              {
+                ind: 1,
+                ty: 5,
+                nm: "Greeting",
+                t: {
+                  d: {
+                    k: [
+                      { s: { t: textValue } }
+                    ]
+                  }
+                }
+              }
+            ],
+            assets: []
+          },
+          playback: {
+            fps: 30,
+            durationMs: 1000
+          }
+        });
+      }
+      const fusionParams = Object.fromEntries(
+        (input?.replacements?.active ?? []).map((record) => [record.targetId, record.valuePreview])
+      );
+      const mergedFusionParams = {
+        avatar: `data:image/png;base64,${Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]).toString("base64")}`,
+        title: "Original VAP title",
+        ...fusionParams
+      };
+      return Promise.resolve({
+        status: "prepared",
+        format: "vap",
+        pathRedacted: true,
+        rendererHasFullPath: false,
+        runtimeScripts: ["/runtime-node-modules/video-animation-player/dist/vap.js"],
+        mp4Base64: Buffer.from([0, 0, 0, 8, 102, 116, 121, 112]).toString("base64"),
+        mediaType: "video/mp4",
+        vapConfig: createRuntimeCompatibleVapConfig(),
+        fusionParams: mergedFusionParams,
+        dimensions: {
+          width: 120,
+          height: 80
+        },
+        playback: {
+          fps: 30,
+          durationMs: 1000
+        }
+      });
+    },
+    applyMultiFormatReplacement(input) {
+      bridgeState.active = [
+        {
+          targetId: String(input?.targetId ?? ""),
+          kind: input?.kind === "text" ? "text" : "image",
+          valuePreview: String(input?.value ?? "")
+        }
+      ];
+      return Promise.resolve(createRuntimeMountOpenResult(bridgeState.format, { active: bridgeState.active }));
+    },
+    resetMultiFormatReplacement() {
+      bridgeState.active = [];
+      return Promise.resolve(createRuntimeMountOpenResult(bridgeState.format, { active: [] }));
+    },
+    markOpened(format) {
+      bridgeState.format = format;
+      bridgeState.active = [];
+    }
+  };
+}
+
+function createRuntimeMountOpenResult(format, options = {}) {
+  const activeReplacements = Array.isArray(options.active) ? options.active : [];
+  return {
+    status: "opened",
+    sourceId: format === "lottie" ? "aaaaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbbbb",
+    pathRedacted: true,
+    model: {
+      schemaVersion: 1,
+      source: "owner-visible-0.2-multiformat-preview-candidate",
+      productMode: "0.2-multiformat-preview-candidate",
+      productVersion: "0.2.0-alpha.2",
+      status: "previewReady",
+      requestId: `${format}:request`,
+      displayName: `${format}.fixture`,
+      detectedFormat: format,
+      pathRedacted: true,
+      rendererHasFullPath: false,
+      visibleIn01: false,
+      supportClaim: false,
+      saveExportSupported: false,
+      commands: {
+        openFile: true,
+        dragDrop: true,
+        play: true,
+        pause: true,
+        seek: true,
+        loop: true,
+        recover: true,
+        replace: true,
+        resetReplacement: activeReplacements.length > 0,
+        save: false,
+        export: false
+      },
+      canvas: {
+        status: "previewReady",
+        format,
+        dimensions: "120 x 80",
+        playback: {
+          status: "ready",
+          currentTimeMs: 250,
+          durationMs: 1000,
+          loop: true
+        },
+        emptyCopy: ""
+      },
+      rightPanel: {
+        facts: [],
+        assetInventory: {
+          groups: [],
+          summary: {
+            totalItems: 0,
+            imageCount: 0,
+            textCount: 0,
+            sequenceFrameCount: 0,
+            audioVideoCount: 0,
+            unsupportedOrMissingCount: 0
+          }
+        },
+        layers: [],
+        assets: [],
+        lottieTexts: format === "lottie"
+          ? [
+              {
+                id: "text:1",
+                layerId: "1",
+                name: "Greeting",
+                initialText: "Original greeting",
+                replaceable: true
+              }
+            ]
+          : [],
+        vapFusionImages: [],
+        vapFusionTexts: format === "vap"
+          ? [
+              {
+                id: "title",
+                srcTag: "title",
+                runtimeBindingKey: "title",
+                replaceable: true
+              }
+            ]
+          : [],
+        unsupportedFeatures: [],
+        issues: []
+      },
+      replacement: {
+        status: activeReplacements.length ? "applied" : "idle",
+        revision: activeReplacements.length ? 1 : 0,
+        dirty: activeReplacements.length > 0,
+        resetEnabled: activeReplacements.length > 0,
+        playerAction: activeReplacements.length ? "remountSource" : "none",
+        active: activeReplacements
+      }
+    },
+    visualEvidence: {
+      lottieDomPlaybackVerified: false,
+      vapVisualPlaybackVerified: false
+    }
+  };
+}
+
+function createRuntimeCompatibleVapConfig() {
+  return {
+    info: {
+      w: 120,
+      h: 80,
+      videoW: 120,
+      videoH: 160,
+      fps: 30,
+      aFrame: [0, 80, 120, 80],
+      rgbFrame: [0, 0, 120, 80]
+    },
+    src: [
+      {
+        srcId: "avatar",
+        srcTag: "avatar",
+        srcType: "img",
+        w: 24,
+        h: 24,
+        fitType: "cover"
+      },
+      {
+        srcId: "title",
+        srcTag: "title",
+        srcType: "txt",
+        w: 80,
+        h: 24,
+        color: "#ffffff"
+      }
+    ],
+    frame: [
+      {
+        i: 0,
+        obj: [
+          {
+            srcId: "avatar",
+            frame: [8, 8, 24, 24],
+            mFrame: [0, 0, 24, 24]
+          },
+          {
+            srcId: "title",
+            frame: [36, 16, 80, 24],
+            mFrame: [0, 0, 80, 24]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function createMultiFormatControllerTestNodes() {
+  const canvasWrap = new FakeDomElement("div");
+  const primaryCanvas = new FakeDomElement("canvas");
+  primaryCanvas.parentElement = canvasWrap;
+  primaryCanvas.getContext = () => ({
+    clearRect() {},
+    fillRect() {},
+    strokeRect() {},
+    fillText() {},
+    set fillStyle(_value) {},
+    set strokeStyle(_value) {},
+    set font(_value) {},
+    set textAlign(_value) {}
+  });
+  primaryCanvas.getBoundingClientRect = () => ({ width: 640, height: 420 });
+  canvasWrap.children.push(primaryCanvas);
+  const playbackProgress = new FakeDomElement("div");
+  const playbackProgressBar = new FakeDomElement("span");
+  playbackProgress.replaceChildren(playbackProgressBar);
+  return {
+    app: new FakeDomElement("main"),
+    loadingMessage: new FakeDomElement("p"),
+    errorMessage: new FakeDomElement("p"),
+    fileIdentity: new FakeDomElement("div"),
+    playbackMeta: new FakeDomElement("span"),
+    factGrid: new FakeDomElement("div"),
+    assetListHeading: new FakeDomElement("h2"),
+    assetFilterTabs: new FakeDomElement("div"),
+    assetList: new FakeDomElement("div"),
+    findingList: new FakeDomElement("div"),
+    replaceableList: new FakeDomElement("div"),
+    textElementList: new FakeDomElement("div"),
+    replaceableSummary: new FakeDomElement("p"),
+    playbackProgress,
+    playbackTime: new FakeDomElement("span"),
+    primaryCanvas,
+    replacementFileInput: new FakeDomElement("input"),
+    appearanceChoices: [],
+    settingsDialog: new FakeDomElement("dialog"),
+    runtimeMount: undefined
+  };
+}
+
+function createMultiFormatControllerTestDocument(nodes) {
+  const head = new FakeDomElement("head");
+  const body = new FakeDomElement("body");
+  const documentElement = new FakeDomElement("html");
+  head.append = (node) => {
+    head.appendChild(node);
+    node.dispatchEvent("load");
+  };
+  return {
+    head,
+    body,
+    documentElement,
+    createElement(tagName) {
+      const node = new FakeDomElement(tagName);
+      if (tagName === "div") {
+        Object.defineProperty(node, "id", {
+          get() {
+            return this.attributes.id || "";
+          },
+          set(value) {
+            this.attributes.id = String(value);
+            if (value === "multiFormatRuntimeMount") nodes.runtimeMount = this;
+          }
+        });
+      }
+      return node;
+    },
+    querySelector(selector) {
+      if (selector === ".rightPanel") return new FakeDomElement("aside");
+      if (selector === "#multiFormatRuntimeMount") return nodes.runtimeMount;
+      return null;
+    },
+    querySelectorAll() {
+      return [];
+    }
+  };
+}
+
+class FakeDomElement {
+  constructor(tagName = "div") {
+    this.tagName = tagName.toUpperCase();
+    this.nodeName = this.tagName;
+    this.nodeType = 1;
+    this.dataset = {};
+    this.style = {};
+    this.attributes = {};
+    this.children = [];
+    this.childNodes = this.children;
+    this.hidden = false;
+    this.textContent = "";
+    this.innerHTML = "";
+    this.parentElement = undefined;
+    this.eventListeners = new Map();
+    this.classList = {
+      toggle() {}
+    };
+  }
+
+  set id(value) {
+    this.attributes.id = String(value);
+  }
+
+  get id() {
+    return this.attributes.id || "";
+  }
+
+  get parentNode() {
+    return this.parentElement;
+  }
+
+  set parentNode(value) {
+    this.parentElement = value;
+  }
+
+  get firstChild() {
+    return this.children[0] ?? null;
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = String(value);
+  }
+
+  setAttributeNS(_namespace, name, value) {
+    this.setAttribute(name, value);
+  }
+
+  getAttribute(name) {
+    return this.attributes[name] ?? null;
+  }
+
+  removeAttribute(name) {
+    delete this.attributes[name];
+  }
+
+  removeAttributeNS(_namespace, name) {
+    this.removeAttribute(name);
+  }
+
+  replaceChildren(...children) {
+    this.children = children;
+    this.childNodes = this.children;
+    children.forEach((child) => {
+      if (child) child.parentElement = this;
+    });
+  }
+
+  append(child) {
+    return this.appendChild(child);
+  }
+
+  appendChild(child) {
+    if (child) child.parentElement = this;
+    this.children.push(child);
+    return child;
+  }
+
+  insertBefore(child, before) {
+    if (!before) return this.appendChild(child);
+    const index = this.children.indexOf(before);
+    if (index < 0) return this.appendChild(child);
+    if (child) child.parentElement = this;
+    this.children.splice(index, 0, child);
+    return child;
+  }
+
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+    if (index >= 0) this.children.splice(index, 1);
+    if (child) child.parentElement = undefined;
+    return child;
+  }
+
+  querySelector(selector) {
+    if (selector === "span") return this.children.find((child) => child.tagName === "SPAN") ?? null;
+    if (selector === "#multiFormatRuntimeMount") {
+      return this.children.find((child) => child.id === "multiFormatRuntimeMount") ?? null;
+    }
+    if (selector === "script") return this.querySelectorAll(selector)[0] ?? null;
+    return null;
+  }
+
+  querySelectorAll(selector = "*") {
+    const matches = [];
+    const normalized = selector.toUpperCase();
+    const visit = (node) => {
+      node.children.forEach((child) => {
+        if (selector === "*" || child.tagName === normalized) matches.push(child);
+        visit(child);
+      });
+    };
+    visit(this);
+    return matches;
+  }
+
+  addEventListener(name, handler) {
+    const handlers = this.eventListeners.get(name) ?? [];
+    handlers.push(handler);
+    this.eventListeners.set(name, handlers);
+  }
+
+  removeEventListener(name, handler) {
+    const handlers = this.eventListeners.get(name) ?? [];
+    this.eventListeners.set(name, handlers.filter((candidate) => candidate !== handler));
+  }
+
+  dispatchEvent(name) {
+    const event = typeof name === "string" ? { type: name, target: this } : name;
+    (this.eventListeners.get(event.type) ?? []).forEach((handler) => handler.call(this, event));
+  }
+
+  focus() {}
+  select() {}
+}
+
+async function flushRuntimeMountPromises() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
 }
 
 async function withTerminalTestDeadline(promise, label) {

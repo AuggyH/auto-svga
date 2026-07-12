@@ -39,6 +39,8 @@ export interface VapInspectionIssue extends WorkbenchIssue {
 
 export interface VapInspectionSource extends MotionAssetSource {
   readRange?(offset: number, length: number): Promise<Uint8Array>;
+  vapcJsonBytes?: Uint8Array;
+  vapcJsonName?: string;
 }
 
 export interface VapInspectionOptions {
@@ -209,18 +211,24 @@ export class VapInspectionService {
       };
     }
 
+    const sidecarVapcPayload = source.vapcJsonBytes instanceof Uint8Array && source.vapcJsonBytes.byteLength > 0
+      ? source.vapcJsonBytes
+      : undefined;
+    const sidecarVapcPath = safeSourceName(source.vapcJsonName ?? "") || "adjacent-vapc.json";
     const vapcBoxes = mp4.boxes.filter(({ type }) => type === "vapc");
     if (vapcBoxes.length === 0) {
-      return {
-        issues: [issue(
-          feedback,
-          "parse_precondition",
-          sample.truncated
-            ? "A bounded MP4 sample did not include an embedded vapc box."
-            : "Ordinary MP4 input is not a VAP package without embedded vapc metadata.",
-          { reason: sample.truncated ? "vapc_not_found_in_bounded_sample" : "embedded_vapc_box_required" }
-        )]
-      };
+      if (!sidecarVapcPayload) {
+        return {
+          issues: [issue(
+            feedback,
+            "parse_precondition",
+            sample.truncated
+              ? "A bounded MP4 sample did not include embedded or adjacent vapc metadata."
+              : "Ordinary MP4 input is not a VAP package without embedded or adjacent vapc metadata.",
+            { reason: sample.truncated ? "vapc_not_found_in_bounded_sample" : "embedded_or_adjacent_vapc_required" }
+          )]
+        };
+      }
     }
     if (vapcBoxes.length > 1) {
       return {
@@ -234,19 +242,22 @@ export class VapInspectionService {
     }
 
     const vapcBox = vapcBoxes[0];
-    const vapcPayload = sample.bytes.slice(vapcBox.payloadStart, vapcBox.payloadEnd);
-    if (vapcPayload.byteLength === 0) {
+    const vapcPayload = vapcBox
+      ? sample.bytes.slice(vapcBox.payloadStart, vapcBox.payloadEnd)
+      : sidecarVapcPayload;
+    const vapcPath = vapcBox?.path ?? sidecarVapcPath;
+    if (!vapcPayload || vapcPayload.byteLength === 0) {
       return {
         issues: [issue(
           feedback,
           "parse_precondition",
-          "The embedded vapc box must contain JSON configuration bytes.",
-          { reason: "vapc_payload_required", vapcPath: vapcBox.path }
+          "The VAP vapc metadata must contain JSON configuration bytes.",
+          { reason: "vapc_payload_required", vapcPath }
         )]
       };
     }
 
-    const vapc = parseVapcJson(vapcPayload, feedback, vapcBox.path);
+    const vapc = parseVapcJson(vapcPayload, feedback, vapcPath);
     if (!vapc.value) return { issues: vapc.issues };
 
     const info = vapc.value.info;
@@ -302,8 +313,9 @@ export class VapInspectionService {
           alphaFrame: info.aFrame,
           rgbFrame: info.rgbFrame,
           vapc: {
-            path: vapcBox.path,
-            payloadBytes: vapcPayload.byteLength
+            path: vapcPath,
+            payloadBytes: vapcPayload.byteLength,
+            source: vapcBox ? "embedded_box" : "adjacent_json"
           },
           config: vapc.value,
           container: {

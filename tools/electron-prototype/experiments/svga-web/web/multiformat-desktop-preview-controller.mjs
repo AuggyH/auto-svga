@@ -44,6 +44,8 @@ const factLabels = new Map([
 
 export function createMultiFormatDesktopPreviewController({ bridge, nodes, state }) {
   let activeRequest = 0;
+  let runtimePreviewGeneration = 0;
+  let activeRuntimePreview;
   let hostFileOpenEventId = "";
   let hostFileOpenRequest = 0;
 
@@ -161,6 +163,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
 
   async function closeFile() {
     activeRequest += 1;
+    clearRuntimePreview();
     await bridge.controlMultiFormatPreview({ action: "dispose" }).catch(() => {});
     state.model = undefined;
     state.sourceId = "";
@@ -298,6 +301,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
 
   function setLoading(copy) {
     state.model = undefined;
+    clearRuntimePreview();
     renderLoadingMessage(nodes, copy);
     clearSurfaces();
     setView("loading");
@@ -324,6 +328,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     renderReplaceableTargets();
     renderTextTargets();
     renderCanvasState(model, result.visualEvidence);
+    mountRuntimePreview(result);
     renderPlaybackState(model);
     if (model.status === "failed") {
       renderFailureMessage(nodes, issueSummary(model) || "文件未能解析，源文件没有被修改。");
@@ -560,6 +565,191 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     context.fillText(visualEvidence?.vapVisualPlaybackVerified || visualEvidence?.lottieDomPlaybackVerified ? "visual verified" : "source-side preview contract", width / 2, height / 2 + 16);
   }
 
+  function mountRuntimePreview(result) {
+    const model = result?.model;
+    const format = model?.detectedFormat;
+    const mountable = (format === "lottie" || format === "vap")
+      && result?.sourceId
+      && ["previewReady", "playing", "paused"].includes(model.status);
+    if (!mountable || !bridge?.prepareMultiFormatRuntimePreview) {
+      clearRuntimePreview();
+      return;
+    }
+
+    const generation = beginRuntimePreviewGeneration();
+    const mount = ensureRuntimeMount();
+    mount.hidden = false;
+    mount.dataset.runtimePreviewState = "preparing";
+    mount.dataset.runtimeFormat = format;
+    if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "hidden";
+    bridge.prepareMultiFormatRuntimePreview({
+      sourceId: result.sourceId,
+      format,
+      requestId: model.requestId,
+      replacements: model.replacement
+    }).then(async (payload) => {
+      if (!isActiveRuntimePreviewGeneration(generation)) return;
+      if (payload?.status !== "prepared") {
+        throw new RuntimePreviewPayloadError(payload?.issue);
+      }
+      if (format === "lottie") {
+        await mountLottieRuntimePreview(payload, mount, model, generation);
+      } else {
+        await mountVapRuntimePreview(payload, mount, model, generation);
+      }
+    }).catch((error) => {
+      if (!isActiveRuntimePreviewGeneration(generation)) return;
+      clearRuntimePreview({ preserveGeneration: true });
+      showFailure(runtimePreviewErrorCopy(error));
+    });
+  }
+
+  function beginRuntimePreviewGeneration() {
+    runtimePreviewGeneration += 1;
+    disposeActiveRuntimePreview();
+    return runtimePreviewGeneration;
+  }
+
+  function isActiveRuntimePreviewGeneration(generation) {
+    return runtimePreviewGeneration === generation;
+  }
+
+  function clearRuntimePreview(options = {}) {
+    if (options.preserveGeneration !== true) runtimePreviewGeneration += 1;
+    disposeActiveRuntimePreview();
+  }
+
+  function disposeActiveRuntimePreview() {
+    const active = activeRuntimePreview;
+    activeRuntimePreview = undefined;
+    try {
+      active?.animation?.destroy?.();
+    } catch {}
+    try {
+      active?.player?.destroy?.();
+    } catch {}
+    if (active?.objectUrl) {
+      try {
+        URL.revokeObjectURL(active.objectUrl);
+      } catch {}
+    }
+    const mount = runtimeMountNode();
+    if (mount) {
+      mount.replaceChildren();
+      mount.hidden = true;
+      mount.dataset.runtimePreviewState = "idle";
+      delete mount.dataset.runtimeFormat;
+    }
+    if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "";
+  }
+
+  function ensureRuntimeMount() {
+    const existing = runtimeMountNode();
+    if (existing) return existing;
+    const mount = document.createElement("div");
+    mount.id = "multiFormatRuntimeMount";
+    mount.className = "multiFormatRuntimeMount";
+    mount.dataset.component = "MultiFormatRuntimeMount";
+    mount.dataset.runtimePreviewState = "idle";
+    mount.hidden = true;
+    nodes.primaryCanvas?.parentElement?.append(mount);
+    return mount;
+  }
+
+  function runtimeMountNode() {
+    return nodes.primaryCanvas?.parentElement?.querySelector("#multiFormatRuntimeMount");
+  }
+
+  async function mountLottieRuntimePreview(payload, mount, model, generation) {
+    await loadRuntimeScript(payload.runtimeScripts?.[0], "lottie");
+    if (!isActiveRuntimePreviewGeneration(generation)) return;
+    const lottie = globalThis.lottie;
+    if (!lottie?.loadAnimation) throw new Error("The approved Lottie SVG runtime did not expose loadAnimation.");
+    mount.replaceChildren();
+    const animation = lottie.loadAnimation({
+      container: mount,
+      renderer: "svg",
+      loop: state.primaryPlaybackLooping !== false,
+      autoplay: model.status === "playing",
+      animationData: payload.animationData
+    });
+    activeRuntimePreview = { format: "lottie", animation };
+    const frame = lottieFrameFromPlayback(model, payload);
+    if (model.status === "paused" || model.status === "previewReady") animation.goToAndStop?.(frame, true);
+    if (model.status === "playing") animation.play?.();
+    mount.dataset.runtimePreviewState = "loaded";
+    mount.dataset.runtimeFormat = "lottie";
+  }
+
+  async function mountVapRuntimePreview(payload, mount, model, generation) {
+    await loadRuntimeScript(payload.runtimeScripts?.[0], "vap");
+    if (!isActiveRuntimePreviewGeneration(generation)) return;
+    const vapModule = globalThis.Vap;
+    const VapConstructor = typeof vapModule?.default === "function" ? vapModule.default : typeof vapModule === "function" ? vapModule : undefined;
+    if (!VapConstructor) throw new Error("The approved VAP runtime did not expose a constructor.");
+    if (typeof vapModule?.canWebGL === "function" && vapModule.canWebGL() !== true) {
+      throw new Error("The current renderer cannot create a WebGL VAP preview.");
+    }
+    mount.replaceChildren();
+    const blob = new Blob([base64ToBytes(payload.mp4Base64)], { type: payload.mediaType || "video/mp4" });
+    const objectUrl = URL.createObjectURL(blob);
+    const player = VapConstructor({
+      container: mount,
+      src: objectUrl,
+      config: payload.vapConfig,
+      width: payload.dimensions?.width,
+      height: payload.dimensions?.height,
+      fps: payload.playback?.fps,
+      loop: state.primaryPlaybackLooping !== false,
+      mute: true,
+      precache: false,
+      accurate: true,
+      ...(payload.fusionParams ?? {}),
+      onLoadError: (error) => {
+        if (!isActiveRuntimePreviewGeneration(generation)) return;
+        clearRuntimePreview({ preserveGeneration: true });
+        showFailure(runtimePreviewErrorCopy(new RuntimePreviewPayloadError({
+          code: "playback_failure",
+          message: "VAP runtime preview reached a typed playback failure.",
+          details: { reason: "vap_runtime_load_error", cause: error ? "redacted runtime error" : undefined }
+        })));
+      }
+    });
+    activeRuntimePreview = { format: "vap", player, objectUrl };
+    const currentTimeMs = Number(model.canvas?.playback?.currentTimeMs) || 0;
+    if (currentTimeMs > 0) player.setTime?.(currentTimeMs / 1000);
+    if (model.status === "paused" || model.status === "previewReady") player.pause?.();
+    if (model.status === "playing") player.play?.();
+    mount.dataset.runtimePreviewState = "loaded";
+    mount.dataset.runtimeFormat = "vap";
+  }
+
+  function loadRuntimeScript(src, runtimeName) {
+    if (!src || typeof src !== "string" || !src.startsWith("/runtime-node-modules/")) {
+      return Promise.reject(new Error(`${runtimeName} runtime script is unavailable.`));
+    }
+    const existing = document.querySelector(`script[data-multiformat-runtime="${cssEscape(runtimeName)}"]`);
+    if (existing?.dataset.loaded === "true") return Promise.resolve();
+    if (existing) {
+      return new Promise((resolve, reject) => {
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", reject, { once: true });
+      });
+    }
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.dataset.multiformatRuntime = runtimeName;
+      script.addEventListener("load", () => {
+        script.dataset.loaded = "true";
+        resolve();
+      }, { once: true });
+      script.addEventListener("error", () => reject(new Error(`${runtimeName} runtime script failed to load.`)), { once: true });
+      document.head.append(script);
+    });
+  }
+
   function renderPlaybackState(model) {
     const playback = model.canvas?.playback ?? {};
     const duration = playback.durationMs || 0;
@@ -668,6 +858,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   }
 
   function showFailure(error) {
+    clearRuntimePreview();
     renderFailureMessage(nodes, error instanceof Error ? error.message : String(error));
     setView("failed");
   }
@@ -853,6 +1044,39 @@ function hasTextTarget(model, targetId) {
     || (model.rightPanel?.vapFusionTexts ?? []).some((entry) =>
       entry.replaceable && [entry.srcTag, entry.runtimeBindingKey, entry.id].includes(targetId)
     );
+}
+
+class RuntimePreviewPayloadError extends Error {
+  constructor(issue) {
+    super(issue?.message || "0.2 预览运行时没有返回可播放的本地载荷。");
+    this.name = "RuntimePreviewPayloadError";
+    this.issue = issue;
+  }
+}
+
+function runtimePreviewErrorCopy(error) {
+  if (error instanceof RuntimePreviewPayloadError) {
+    const code = error.issue?.code ? `${error.issue.code}: ` : "";
+    return `${code}${error.message}`;
+  }
+  return error instanceof Error
+    ? error.message
+    : "0.2 预览运行时未能挂载本地播放视图。";
+}
+
+function base64ToBytes(value) {
+  const binary = atob(String(value || ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function lottieFrameFromPlayback(model, payload) {
+  const fps = Number(payload?.playback?.fps) || Number(payload?.animationData?.fr) || 30;
+  const currentTimeMs = Math.max(0, Number(model?.canvas?.playback?.currentTimeMs) || 0);
+  return Math.max(0, Math.round((currentTimeMs / 1000) * fps));
 }
 
 function cssEscape(value) {

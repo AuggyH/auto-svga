@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
@@ -174,6 +174,19 @@ function isPngBytes(bytes) {
 
 function resolveStaticPath(appRoot, pathname) {
   const runtimeRoot = path.join(appRoot, ".runtime");
+  const repoRoot = path.resolve(appRoot, "../../../..");
+  const runtimeVendorMappings = new Map([
+    ["/runtime-node-modules/lottie-web/build/player/lottie_svg.js", [
+      path.join(runtimeRoot, "node_modules/lottie-web/build/player/lottie_svg.js"),
+      path.join(repoRoot, "node_modules/lottie-web/build/player/lottie_svg.js")
+    ]],
+    ["/runtime-node-modules/video-animation-player/dist/vap.js", [
+      path.join(runtimeRoot, "node_modules/video-animation-player/dist/vap.js"),
+      path.join(repoRoot, "node_modules/video-animation-player/dist/vap.js")
+    ]]
+  ]);
+  const runtimeVendorPaths = runtimeVendorMappings.get(pathname);
+  if (runtimeVendorPaths) return runtimeVendorPaths.find((candidate) => existsSync(candidate));
   const mappings = [
     ["/vendor/", path.join(appRoot, "vendor")],
     ["/legacy-vendor/", path.join(runtimeRoot, "legacy-vendor")],
@@ -190,7 +203,9 @@ function resolveStaticPath(appRoot, pathname) {
     if (!pathname.startsWith(prefix)) continue;
     const relativePath = pathname === "/" ? "index.html" : pathname.slice(prefix.length);
     const requestedPath = path.resolve(root, relativePath);
-    if (requestedPath === root || requestedPath.startsWith(`${root}${path.sep}`)) return requestedPath;
+    if ((requestedPath === root || requestedPath.startsWith(`${root}${path.sep}`)) && existsSync(requestedPath)) {
+      return requestedPath;
+    }
   }
   return undefined;
 }

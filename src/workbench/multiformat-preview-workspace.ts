@@ -38,6 +38,7 @@ import type {
   VapPlaybackHostReadiness,
   VapPreparedFusionElement
 } from "./vap-playback-preparation.js";
+import type { VapInspectionSource } from "./vap-inspection.js";
 import type { VapRuntimeLoader } from "./vap-web-playback-adapter.js";
 import {
   MOTION_FORMAT_PROBE_MAX_BYTES,
@@ -279,7 +280,10 @@ export class HiddenMultiFormatPreviewWorkspaceSession {
       context: { cancellation: this.createRequestCancellationToken(generation) }
     });
     if (!this.isActiveRequest(generation)) return this.getModel();
-    if (detection.status !== "detected" || !detection.format) {
+    const adjacentVapcCandidate = detection.status === "candidate"
+      && detection.format === "vap"
+      && hasAdjacentVapcMetadata(source);
+    if ((detection.status !== "detected" || !detection.format) && !adjacentVapcCandidate) {
       this.model = {
         ...this.model,
         detectedFormat: detection.format,
@@ -289,20 +293,21 @@ export class HiddenMultiFormatPreviewWorkspaceSession {
       };
       return this.getModel();
     }
+    const detectedFormat = adjacentVapcCandidate ? "vap" : detection.format;
 
     this.model = {
       ...this.model,
-      detectedFormat: detection.format,
-      issues: mapIssues(detection.issues, source, "unsupported")
+      detectedFormat,
+      issues: adjacentVapcCandidate ? [] : mapIssues(detection.issues, source, "unsupported")
     };
 
-    if (detection.format === "lottie") {
+    if (detectedFormat === "lottie") {
       return this.openLottie(input, generation);
     }
-    if (detection.format === "vap") {
+    if (detectedFormat === "vap") {
       return this.openVap(input, generation);
     }
-    if (detection.format === "svga") {
+    if (detectedFormat === "svga") {
       await this.openSvga(source, generation);
       return this.getModel();
     }
@@ -578,17 +583,23 @@ export class HiddenMultiFormatPreviewWorkspaceSession {
   private async createBoundedSource(
     localPath: string,
     requestedDisplayName: string
-  ): Promise<HiddenMultiFormatResult<MotionFormatProbeSource>> {
+  ): Promise<HiddenMultiFormatResult<MotionFormatProbeSource & VapInspectionSource>> {
     try {
       const stat = await this.host.statLocalFile(localPath);
       const displayName = safeSourceName(requestedDisplayName || stat.displayName || localPath) || "motion asset";
       const sizeBytes = stat.sizeBytes;
       const host = this.host;
-      const source: MotionFormatProbeSource = {
+      const adjacentVapc = await host.readAdjacentVapcJson?.({
+        localPath,
+        maxBytes: MOTION_FORMAT_PROBE_MAX_BYTES
+      }).catch(() => undefined);
+      const source: MotionFormatProbeSource & VapInspectionSource = {
         id: localPath,
         name: displayName,
         sizeBytes,
         mediaType: stat.mediaType ?? mediaTypeFromPath(displayName),
+        vapcJsonBytes: adjacentVapc?.bytes,
+        vapcJsonName: adjacentVapc?.displayName,
         async read() {
           if (!Number.isFinite(sizeBytes) || sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES) {
             throw new Error("A bounded range read is required for this local motion source.");
@@ -981,6 +992,10 @@ function detectionIssues(
     { reason: "workspace_detection_required", detectedFormat: detection.format, status: detection.status },
     source.id
   )];
+}
+
+function hasAdjacentVapcMetadata(source: VapInspectionSource): boolean {
+  return source.vapcJsonBytes instanceof Uint8Array && source.vapcJsonBytes.byteLength > 0;
 }
 
 function mapIssues(

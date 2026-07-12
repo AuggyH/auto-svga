@@ -126,7 +126,7 @@ test("fails closed for ambiguous or dangling VAP fusion structure", async () => 
 
 test("fails closed for ordinary MP4 false positives and corrupt vapc states", async () => {
   for (const [bytes, reason] of [
-    [ordinaryMp4Bytes(), "embedded_vapc_box_required"],
+    [ordinaryMp4Bytes(), "embedded_or_adjacent_vapc_required"],
     [concatBytes(ftypBox(), mp4Box("vapc", new Uint8Array())), "vapc_payload_required"],
     [concatBytes(ftypBox(), mp4Box("vapc", textEncoder.encode("{"))), "valid_vapc_json_required"],
     [concatBytes(ftypBox(), mp4Box("vapc", textEncoder.encode("{}"))), "vapc_info_required"],
@@ -141,6 +141,36 @@ test("fails closed for ordinary MP4 false positives and corrupt vapc states", as
     assert.equal(result.value, undefined);
     assert.equal(result.issues[0]?.details?.reason, reason);
   }
+});
+
+test("uses bounded adjacent vapc JSON only when explicitly provided with an MP4 container", async () => {
+  const result = await service().inspect(
+    memorySource("sidecar.mp4", ordinaryMp4Bytes(), {
+      vapcJsonBytes: vapcPayload({
+        info: vapInfo(),
+        src: [
+          { srcId: 1, srcType: "image", srcTag: "avatar", w: 120, h: 120 },
+          { srcId: 2, srcType: "text", srcTag: "title" }
+        ],
+        frame: [{
+          i: 0,
+          obj: [
+            { srcId: 1, z: 3, frame: { x: 10, y: 20, w: 120, h: 120 } },
+            { srcId: 2, z: 4, frame: { x: 160, y: 20, w: 200, h: 40 } }
+          ]
+        }]
+      }),
+      vapcJsonName: "vapc.json"
+    }),
+    { gate: VAP_INSPECTION_READINESS_GATE, providedFusionTags: ["avatar", "title"] }
+  );
+
+  assert.ok(result.value);
+  assert.equal(result.value.format, "vap");
+  assert.equal(vapMetadata(result).vapc.source, "adjacent_json");
+  assert.equal(vapMetadata(result).fusion.imageSourceCount, 1);
+  assert.equal(vapMetadata(result).fusion.textSourceCount, 1);
+  assert.equal(vapMetadata(result).fusion.missingReplacementCount, 0);
 });
 
 test("retains VAP readiness facts when a bounded prefix clips trailing media data after vapc", async () => {
@@ -467,6 +497,8 @@ function memorySource(
     sizeBytes?: number;
     onRead?: () => void;
     readRange?: boolean;
+    vapcJsonBytes?: Uint8Array;
+    vapcJsonName?: string;
   } = {}
 ): VapInspectionSource {
   return {
@@ -480,7 +512,9 @@ function memorySource(
     },
     readRange: options.readRange
       ? async (offset, length) => bytes.slice(offset, offset + length)
-      : undefined
+      : undefined,
+    vapcJsonBytes: options.vapcJsonBytes,
+    vapcJsonName: options.vapcJsonName
   };
 }
 

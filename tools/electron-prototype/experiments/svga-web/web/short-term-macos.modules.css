@@ -523,6 +523,27 @@ canvas {
   box-shadow: var(--asv-shadow-overlay);
 }
 
+.multiFormatRuntimeMount {
+  position: absolute;
+  z-index: 2;
+  inset: var(--asv-space-6);
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  pointer-events: none;
+}
+
+.multiFormatRuntimeMount svg,
+.multiFormatRuntimeMount canvas,
+.multiFormatRuntimeMount video {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
 .playbackBar {
   position: absolute;
   z-index: 5;

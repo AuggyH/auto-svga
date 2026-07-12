@@ -9,6 +9,7 @@ const MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID = "0.2-multiformat-preview";
 const MULTIFORMAT_DESKTOP_GATE = "0.2-owner-visible-multiformat-preview-wp5";
 const MULTIFORMAT_MAX_DROPPED_BYTES = 50 * 1024 * 1024;
 const MULTIFORMAT_MAX_RANGE_BYTES = 262_144;
+const MULTIFORMAT_MAX_RUNTIME_JSON_BYTES = 5 * 1024 * 1024;
 const MULTIFORMAT_OPEN_TERMINAL_DEADLINE_MS = 15_000;
 
 const allowedExtensions = new Set([".svga", ".json", ".mp4"]);
@@ -98,6 +99,44 @@ class MultiFormatDesktopPreviewSession {
     const filePath = path.join(dropRoot, `${hash.slice(0, 16)}-${displayName}`);
     writeFileSync(filePath, bytes);
     return this.openLocalFilePath(filePath, "dragDrop");
+  }
+
+  async prepareRuntimePreview(input) {
+    const sourceId = String(input?.sourceId ?? "");
+    const format = input?.format === "lottie" || input?.format === "vap" ? input.format : "";
+    if (!/^[a-f0-9]{24}$/iu.test(sourceId) || !format) {
+      return runtimePreviewFailure({
+        format,
+        code: "parse_precondition",
+        message: "Owner-visible multi-format runtime preview open input is incomplete.",
+        reason: "runtime_preview_input_invalid"
+      });
+    }
+    const filePath = this.sourceStore?.get(sourceId);
+    if (!filePath) {
+      return runtimePreviewFailure({
+        format,
+        code: "missing_resource",
+        message: "Owner-visible multi-format runtime preview source is no longer available.",
+        reason: "runtime_preview_source_missing"
+      });
+    }
+    const normalizedPath = normalizeLocalPath(filePath);
+    const replacements = normalizeRuntimePreviewReplacements(input?.replacements);
+    try {
+      if (format === "lottie") {
+        return this.prepareLottieRuntimePreview(normalizedPath, replacements);
+      }
+      return await this.prepareVapRuntimePreview(normalizedPath, replacements);
+    } catch (error) {
+      return runtimePreviewFailure({
+        format,
+        code: "playback_failure",
+        message: "Owner-visible multi-format runtime preview could not prepare a local playback payload.",
+        reason: "runtime_preview_prepare_failed",
+        cause: error
+      });
+    }
   }
 
   async control(input) {
@@ -214,6 +253,131 @@ class MultiFormatDesktopPreviewSession {
     }).catch(() => {});
   }
 
+  prepareLottieRuntimePreview(filePath, replacements) {
+    const stat = statSync(filePath);
+    if (!stat.isFile()) {
+      return runtimePreviewFailure({
+        format: "lottie",
+        code: "missing_resource",
+        message: "Lottie runtime preview requires a readable local JSON file.",
+        reason: "lottie_source_file_required"
+      });
+    }
+    if (stat.size <= 0 || stat.size > MULTIFORMAT_MAX_RUNTIME_JSON_BYTES) {
+      return runtimePreviewFailure({
+        format: "lottie",
+        code: "parse_precondition",
+        message: "Lottie runtime preview requires a bounded local JSON file.",
+        reason: "bounded_lottie_json_required"
+      });
+    }
+    let animationData;
+    try {
+      animationData = JSON.parse(readFileSync(filePath, "utf8"));
+    } catch (error) {
+      return runtimePreviewFailure({
+        format: "lottie",
+        code: "parse_precondition",
+        message: "Lottie runtime preview requires valid JSON animation data.",
+        reason: "valid_lottie_json_required",
+        cause: error
+      });
+    }
+    if (!animationData || typeof animationData !== "object" || Array.isArray(animationData)) {
+      return runtimePreviewFailure({
+        format: "lottie",
+        code: "parse_precondition",
+        message: "Lottie runtime preview requires object animation data.",
+        reason: "lottie_animation_object_required"
+      });
+    }
+
+    const cloned = JSON.parse(JSON.stringify(animationData));
+    const inlineResult = inlineLottieRuntimeImageAssets(cloned, filePath, replacements.image);
+    if (inlineResult.status === "failed") return inlineResult;
+    applyLottieRuntimeTextReplacements(cloned, replacements.text);
+    return {
+      status: "prepared",
+      format: "lottie",
+      pathRedacted: true,
+      rendererHasFullPath: false,
+      runtimeScripts: ["/runtime-node-modules/lottie-web/build/player/lottie_svg.js"],
+      animationData: cloned,
+      dimensions: {
+        width: Number(cloned.w) || undefined,
+        height: Number(cloned.h) || undefined
+      },
+      playback: {
+        fps: Number(cloned.fr) || undefined,
+        durationMs: Number.isFinite(Number(cloned.op) - Number(cloned.ip)) && Number(cloned.fr) > 0
+          ? Math.round(((Number(cloned.op) - Number(cloned.ip)) / Number(cloned.fr)) * 1000)
+          : undefined
+      }
+    };
+  }
+
+  async prepareVapRuntimePreview(filePath, replacements) {
+    const stat = statSync(filePath);
+    if (!stat.isFile()) {
+      return runtimePreviewFailure({
+        format: "vap",
+        code: "missing_resource",
+        message: "VAP runtime preview requires a readable local MP4 file.",
+        reason: "vap_source_file_required"
+      });
+    }
+    if (stat.size <= 0 || stat.size > MULTIFORMAT_MAX_DROPPED_BYTES) {
+      return runtimePreviewFailure({
+        format: "vap",
+        code: "parse_precondition",
+        message: "VAP runtime preview requires a bounded local MP4 file.",
+        reason: "bounded_vap_mp4_required"
+      });
+    }
+    const modules = await this.loadModules();
+    const bytes = readFileSync(filePath);
+    const adjacentVapc = readAdjacentVapcJsonForFile(filePath, MULTIFORMAT_MAX_RANGE_BYTES);
+    const source = runtimePreviewSource(filePath, bytes, adjacentVapc);
+    const fusionParams = vapFusionParamsFromReplacements(replacements);
+    const inspection = await new modules.VapInspectionService().inspect(source, {
+      gate: modules.VAP_INSPECTION_READINESS_GATE,
+      providedFusionTags: Object.keys(fusionParams)
+    });
+    if (!inspection.value) {
+      return runtimePreviewFailure({
+        format: "vap",
+        code: inspection.issues[0]?.code ?? "parse_precondition",
+        message: inspection.issues[0]?.message ?? "VAP runtime preview requires successful vapc inspection.",
+        reason: "vap_inspection_required"
+      });
+    }
+    const vapConfig = inspection.value.metadata?.vap?.config;
+    if (!vapConfig || typeof vapConfig !== "object" || Array.isArray(vapConfig)) {
+      return runtimePreviewFailure({
+        format: "vap",
+        code: "parse_precondition",
+        message: "VAP runtime preview requires extracted vapc JSON configuration.",
+        reason: "vapc_config_required"
+      });
+    }
+    return {
+      status: "prepared",
+      format: "vap",
+      pathRedacted: true,
+      rendererHasFullPath: false,
+      runtimeScripts: ["/runtime-node-modules/video-animation-player/dist/vap.js"],
+      mp4Base64: Buffer.from(bytes).toString("base64"),
+      mediaType: mediaTypeFromPath(filePath),
+      vapConfig,
+      fusionParams,
+      dimensions: inspection.value.dimensions,
+      playback: {
+        fps: inspection.value.timing.fps,
+        durationMs: inspection.value.timing.durationMs
+      }
+    };
+  }
+
   async loadModules() {
     if (!this.modulesPromise) {
       const moduleUrl = (relativePath) => pathToFileURL(path.join(this.repoRoot, relativePath)).href;
@@ -222,13 +386,16 @@ class MultiFormatDesktopPreviewSession {
         import(moduleUrl("dist/workbench/svga/format-adapter.js")),
         import(moduleUrl("dist/workbench/svga/node-protobuf-inspector.js")),
         import(moduleUrl("dist/hosts/fast-png-alpha-analyzer.js")),
-        import(moduleUrl("dist/hosts/sha256-resource-hasher.js"))
-      ]).then(([ownerPreview, svgaFormat, svgaInspector, alphaAnalyzer, resourceHasher]) => ({
+        import(moduleUrl("dist/hosts/sha256-resource-hasher.js")),
+        import(moduleUrl("dist/workbench/vap-inspection.js"))
+      ]).then(([ownerPreview, svgaFormat, svgaInspector, alphaAnalyzer, resourceHasher, vapInspection]) => ({
         createOwnerVisibleMultiFormatPreviewCandidate: ownerPreview.createOwnerVisibleMultiFormatPreviewCandidate,
         SvgaFormatAdapter: svgaFormat.SvgaFormatAdapter,
         NodeProtobufSvgaInspector: svgaInspector.NodeProtobufSvgaInspector,
         FastPngAlphaAnalyzer: alphaAnalyzer.FastPngAlphaAnalyzer,
-        Sha256ResourceHasher: resourceHasher.Sha256ResourceHasher
+        Sha256ResourceHasher: resourceHasher.Sha256ResourceHasher,
+        VapInspectionService: vapInspection.VapInspectionService,
+        VAP_INSPECTION_READINESS_GATE: vapInspection.VAP_INSPECTION_READINESS_GATE
       }));
     }
     return this.modulesPromise;
@@ -273,6 +440,11 @@ class MultiFormatDesktopPreviewSession {
           sizeBytes: stat.size,
           mediaType: mediaTypeFromPath(resourcePath)
         };
+      },
+      async readAdjacentVapcJson(input) {
+        const sourcePath = normalizeLocalPath(input?.localPath);
+        const maxBytes = Math.max(0, Math.min(Number(input?.maxBytes) || 0, MULTIFORMAT_MAX_RANGE_BYTES));
+        return readAdjacentVapcJsonForFile(sourcePath, maxBytes);
       },
       async createLocalObjectUrl(input) {
         const filePath = normalizeLocalPath(input?.localPath);
@@ -429,6 +601,192 @@ function validateDroppedSize(bytes) {
   }
 }
 
+function normalizeRuntimePreviewReplacements(value) {
+  const records = Array.isArray(value?.active)
+    ? value.active
+    : Array.isArray(value)
+      ? value
+      : [];
+  const image = new Map();
+  const text = new Map();
+  for (const record of records) {
+    const targetId = String(record?.targetId ?? "").trim();
+    const kind = record?.kind === "text" ? "text" : record?.kind === "image" ? "image" : "";
+    const valuePreview = typeof record?.valuePreview === "string" ? record.valuePreview : "";
+    if (!targetId || !kind || !valuePreview) continue;
+    if (kind === "image" && isSafeRuntimeImageValue(valuePreview)) image.set(targetId, valuePreview);
+    if (kind === "text" && valuePreview.length <= 4000) text.set(targetId, valuePreview);
+  }
+  return { image, text };
+}
+
+function inlineLottieRuntimeImageAssets(documentValue, sourcePath, imageReplacements) {
+  if (!Array.isArray(documentValue?.assets)) return { status: "ok" };
+  for (const asset of documentValue.assets) {
+    if (!isRecord(asset) || Array.isArray(asset.layers)) continue;
+    const id = stringValue(asset.id);
+    const replacement = id ? imageReplacements.get(id) : undefined;
+    if (replacement) {
+      asset.p = replacement;
+      asset.u = "";
+      asset.e = 1;
+      continue;
+    }
+    if (typeof asset.p === "string" && isSafeRuntimeImageValue(asset.p)) {
+      asset.u = "";
+      asset.e = 1;
+      continue;
+    }
+    if (asset.p === undefined && asset.u === undefined) continue;
+    const rawPath = typeof asset.p === "string" ? asset.p.trim() : "";
+    const rawDirectory = typeof asset.u === "string" ? asset.u.trim() : "";
+    const candidate = rawDirectory ? `${rawDirectory.replace(/[\\/]+$/u, "")}/${rawPath}` : rawPath;
+    if (!isDeterministicRuntimeRelativePath(candidate)) {
+      return runtimePreviewFailure({
+        format: "lottie",
+        code: "asset_reference_precondition",
+        message: "Lottie runtime preview only accepts deterministic relative image resources.",
+        reason: "unsafe_lottie_image_reference"
+      });
+    }
+    try {
+      const normalized = normalizeRuntimeRelativePath(candidate);
+      const resourcePath = resolveAdjacentResource(sourcePath, normalized);
+      const stat = statSync(resourcePath);
+      if (!stat.isFile() || stat.size <= 0 || stat.size > 5 * 1024 * 1024) {
+        return runtimePreviewFailure({
+          format: "lottie",
+          code: "missing_resource",
+          message: "Lottie runtime preview requires bounded readable adjacent image resources.",
+          reason: "bounded_adjacent_image_required"
+        });
+      }
+      const mediaType = mediaTypeFromPath(resourcePath);
+      if (!mediaType.startsWith("image/")) {
+        return runtimePreviewFailure({
+          format: "lottie",
+          code: "unsupported_feature",
+          message: "Lottie runtime preview supports PNG, JPEG, and WebP adjacent image resources only.",
+          reason: "unsupported_adjacent_image_type"
+        });
+      }
+      asset.p = `data:${mediaType};base64,${readFileSync(resourcePath).toString("base64")}`;
+      asset.u = "";
+      asset.e = 1;
+    } catch (error) {
+      return runtimePreviewFailure({
+        format: "lottie",
+        code: "missing_resource",
+        message: "Lottie runtime preview could not read an adjacent image resource.",
+        reason: "adjacent_image_read_failed",
+        cause: error
+      });
+    }
+  }
+  return { status: "ok" };
+}
+
+function applyLottieRuntimeTextReplacements(documentValue, textReplacements) {
+  const visitLayers = (layers) => {
+    if (!Array.isArray(layers)) return;
+    layers.forEach((layer, index) => {
+      if (!isRecord(layer)) return;
+      const id = stringValue(layer.ind) || `layer_${index}`;
+      const replacement = textReplacements.get(`text:${id}`) ?? textReplacements.get(id);
+      if (layer.ty === 5 && replacement !== undefined) setLottieTextLayerValue(layer, replacement);
+    });
+  };
+  visitLayers(documentValue.layers);
+  if (Array.isArray(documentValue.assets)) {
+    documentValue.assets.forEach((asset) => {
+      if (isRecord(asset)) visitLayers(asset.layers);
+    });
+  }
+}
+
+function setLottieTextLayerValue(layer, value) {
+  if (!isRecord(layer.t)) layer.t = {};
+  if (!isRecord(layer.t.d)) layer.t.d = {};
+  if (!Array.isArray(layer.t.d.k) || layer.t.d.k.length === 0) layer.t.d.k = [{ s: { t: "" } }];
+  const first = layer.t.d.k[0];
+  if (!isRecord(first.s)) first.s = {};
+  first.s.t = value;
+}
+
+function vapFusionParamsFromReplacements(replacements) {
+  const params = {};
+  for (const [tag, value] of replacements.image.entries()) params[tag] = value;
+  for (const [tag, value] of replacements.text.entries()) params[tag] = value;
+  return params;
+}
+
+function runtimePreviewSource(filePath, bytes, adjacentVapc) {
+  const byteView = new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return {
+    id: filePath,
+    name: path.basename(filePath),
+    sizeBytes: byteView.byteLength,
+    mediaType: mediaTypeFromPath(filePath),
+    vapcJsonBytes: adjacentVapc?.bytes,
+    vapcJsonName: adjacentVapc?.displayName,
+    async read() {
+      return byteView;
+    },
+    async readRange(offset, length) {
+      const start = Math.max(0, Math.trunc(Number(offset) || 0));
+      const end = Math.min(byteView.byteLength, start + Math.max(0, Math.trunc(Number(length) || 0)));
+      return byteView.slice(start, end);
+    }
+  };
+}
+
+function readAdjacentVapcJsonForFile(filePath, maxBytes = MULTIFORMAT_MAX_RANGE_BYTES) {
+  if (path.extname(filePath).toLowerCase() !== ".mp4") return undefined;
+  const sidecarPath = findAdjacentVapcJsonPath(filePath);
+  if (!sidecarPath) return undefined;
+  const stat = statSync(sidecarPath);
+  if (!stat.isFile() || stat.size <= 0 || stat.size > maxBytes) return undefined;
+  return {
+    bytes: new Uint8Array(readFileSync(sidecarPath)),
+    displayName: path.basename(sidecarPath)
+  };
+}
+
+function findAdjacentVapcJsonPath(filePath) {
+  const directory = path.dirname(filePath);
+  const basename = path.basename(filePath, path.extname(filePath));
+  const candidates = [
+    path.join(directory, `${basename}.json`),
+    path.join(directory, "vapc.json")
+  ];
+  return candidates.find((candidate) => {
+    try {
+      return existsSync(candidate) && statSync(candidate).isFile();
+    } catch {
+      return false;
+    }
+  });
+}
+
+function runtimePreviewFailure(input) {
+  return {
+    status: "failed",
+    format: input.format || undefined,
+    pathRedacted: true,
+    rendererHasFullPath: false,
+    issue: {
+      code: input.code || "playback_failure",
+      severity: "error",
+      message: input.message,
+      path: "[local path]",
+      details: {
+        reason: input.reason,
+        cause: input.cause ? "redacted runtime preview failure" : undefined
+      }
+    }
+  };
+}
+
 function normalizeLocalPath(value) {
   const filePath = path.resolve(String(value ?? ""));
   if (!filePath || filePath.includes("\0")) throw new Error("Invalid local motion source path.");
@@ -458,6 +816,32 @@ function resolveAdjacentResource(sourceLocalPath, relativePath) {
     throw new Error("Adjacent Lottie resource path escapes the source directory.");
   }
   return resolved;
+}
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function stringValue(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function isSafeRuntimeImageValue(value) {
+  return typeof value === "string"
+    && (/^data:image\/(?:png|jpeg|jpg|webp);base64,[a-z0-9+/=]+$/iu.test(value) || value.startsWith("blob:"));
+}
+
+function isDeterministicRuntimeRelativePath(value) {
+  if (!value || /^[A-Za-z][A-Za-z0-9+.-]*:/u.test(value) || /^[\\/]/u.test(value) || /^[A-Za-z]:[\\/]/u.test(value)) {
+    return false;
+  }
+  const parts = value.split(/[\\/]+/u);
+  return parts.every((part) => part.length > 0 && part !== "." && part !== "..");
+}
+
+function normalizeRuntimeRelativePath(value) {
+  return value.split(/[\\/]+/u).filter(Boolean).join("/");
 }
 
 function mediaTypeFromPath(filePath) {

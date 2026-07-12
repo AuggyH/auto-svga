@@ -79,6 +79,10 @@ export interface HiddenVapPreviewObjectUrl {
 export interface HiddenVapPreviewHost {
   statLocalFile(localPath: string): Promise<HiddenVapPreviewHostFileStat>;
   readLocalFileRange(localPath: string, offset: number, length: number): Promise<Uint8Array>;
+  readAdjacentVapcJson?(input: {
+    localPath: string;
+    maxBytes: number;
+  }): Promise<{ bytes: Uint8Array; displayName?: string } | undefined>;
   createLocalObjectUrl(input: {
     localPath: string;
     mediaType: string;
@@ -214,7 +218,10 @@ export class HiddenVapPreviewVerticalSession {
       gate: MULTIFORMAT_PREVIEW_WP1_GATE
     });
     if (!this.isActiveRequest(generation)) return this.getModel();
-    if (detection.status !== "detected" || detection.format !== "vap") {
+    const adjacentVapcCandidate = detection.status === "candidate"
+      && detection.format === "vap"
+      && hasAdjacentVapcMetadata(source);
+    if ((detection.status !== "detected" || detection.format !== "vap") && !adjacentVapcCandidate) {
       this.model = {
         ...this.model,
         status: detection.status === "ambiguous" ? "failed" : "playbackBlocked",
@@ -381,11 +388,17 @@ export class HiddenVapPreviewVerticalSession {
       const displayName = safeSourceName(requestedDisplayName || stat.displayName || localPath) || "effect.mp4";
       const sizeBytes = stat.sizeBytes;
       const host = this.host;
+      const adjacentVapc = await host.readAdjacentVapcJson?.({
+        localPath,
+        maxBytes: MOTION_FORMAT_PROBE_MAX_BYTES
+      }).catch(() => undefined);
       const source: MotionFormatProbeSource & VapInspectionSource = {
         id: localPath,
         name: displayName,
         sizeBytes,
         mediaType: stat.mediaType ?? mediaTypeFromPath(displayName),
+        vapcJsonBytes: adjacentVapc?.bytes,
+        vapcJsonName: adjacentVapc?.displayName,
         async read() {
           if (!Number.isFinite(sizeBytes) || sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES) {
             throw new Error("A bounded range read is required for this local VAP source.");
@@ -701,11 +714,15 @@ function detectionIssues(
   if (detection.issues.length > 0) return mapIssues(detection.issues, source, fallbackCode);
   return [issue(
     fallbackCode,
-    "Hidden VAP preview requires a detected VAP/MP4 source with embedded vapc metadata.",
+    "Hidden VAP preview requires a detected VAP/MP4 source with embedded or adjacent vapc metadata.",
     "error",
     { reason: "vap_detection_required", detectedFormat: detection.format, status: detection.status },
     source.id
   )];
+}
+
+function hasAdjacentVapcMetadata(source: VapInspectionSource): boolean {
+  return source.vapcJsonBytes instanceof Uint8Array && source.vapcJsonBytes.byteLength > 0;
 }
 
 function mapIssues(
