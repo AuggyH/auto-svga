@@ -544,6 +544,10 @@ canvas {
   height: auto;
 }
 
+.multiFormatRuntimeMount canvas {
+  aspect-ratio: auto;
+}
+
 .playbackBar {
   position: absolute;
   z-index: 5;

@@ -25,6 +25,7 @@ export async function mountPlayback({
   const looping = options.loop ?? playbackState[`${key}PlaybackLooping`] ?? true;
   player.set({ loop: looping, fillMode: FILL_MODE.FORWARDS, noExecutionDelay: false });
   await player.mount(videoItem);
+  drawFrame(player, videoItem, 0);
   if (options.start !== false) player.start();
   playbackState[`${key}Playback`] = { player, videoItem, playing: options.start !== false, looping, resizeObserver };
   onPlaybackStateChange();
@@ -101,6 +102,16 @@ export function playbackProgressView(playback) {
 
 export function svgaWebPlayerPrototype() {
   return SvgaWebPlayer.prototype;
+}
+
+function drawFrame(player, videoItem, frame) {
+  if (!videoItem || !player?.renderer?.drawFrame) return;
+  const safeFrame = Math.max(0, Math.min((videoItem.frames ?? 1) - 1, Number(frame) || 0));
+  try {
+    player.animator?.stop?.();
+  } catch {}
+  player.currentFrame = safeFrame;
+  player.renderer.drawFrame(videoItem.images, videoItem.sprites, videoItem.dynamicElements, safeFrame);
 }
 
 function formatPlaybackTime(seconds) {

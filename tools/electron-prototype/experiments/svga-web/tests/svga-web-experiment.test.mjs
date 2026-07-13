@@ -1455,6 +1455,60 @@ test("0.2 host replacement picker fails closed for missing source and bounded re
   }
 });
 
+test("0.2 SVGA runtime payload reads complete bounded files across partial reads", async () => {
+  const sessionSource = await readFile(path.join(experimentRoot, "multiformat-desktop-session.cjs"), "utf8");
+  const readSource = extractFunctionSource(sessionSource, "function readBoundedFileBuffer(filePath, maxBytes)");
+
+  const createReadHarness = ({ statSize = 5, data = [1, 2, 3, 4, 5], chunkSize = 2 } = {}) => {
+    const bytes = Buffer.from(data);
+    const context = {
+      Buffer,
+      cursor: 0,
+      closeCalls: 0,
+      openSync() {
+        return 11;
+      },
+      fstatSync() {
+        return { isFile: () => true, size: statSize };
+      },
+      readSync(_fd, scratch, offset, length) {
+        const available = Math.max(0, bytes.byteLength - context.cursor);
+        const count = Math.min(length, chunkSize, available);
+        if (count <= 0) return 0;
+        bytes.copy(scratch, offset, context.cursor, context.cursor + count);
+        context.cursor += count;
+        return count;
+      },
+      closeSync() {
+        context.closeCalls += 1;
+      }
+    };
+    vm.runInNewContext(`${readSource}; globalThis.readBounded = readBoundedFileBuffer;`, context);
+    return context;
+  };
+
+  {
+    const context = createReadHarness({ statSize: 5, data: [1, 2, 3, 4, 5], chunkSize: 2 });
+    const result = context.readBounded("/Users/alice/source.svga", 8);
+    assert.equal(Buffer.isBuffer(result), true);
+    assert.deepEqual([...result], [1, 2, 3, 4, 5]);
+    assert.equal(context.closeCalls, 1);
+  }
+
+  for (const fixture of [
+    { name: "shrink", statSize: 5, data: [1, 2], chunkSize: 2 },
+    { name: "growth", statSize: 5, data: [1, 2, 3, 4, 5, 6], chunkSize: 3 }
+  ]) {
+    const context = createReadHarness(fixture);
+    assert.throws(
+      () => context.readBounded(`/Users/alice/${fixture.name}.svga`, 8),
+      /File changed outside the bounded read limit\./,
+      `${fixture.name} must reject instead of returning truncated or grown payload bytes`
+    );
+    assert.equal(context.closeCalls, 1);
+  }
+});
+
 test("0.2 installed file-open events route to a visible terminal multi-format state", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
@@ -1598,7 +1652,7 @@ test("0.2 multi-format desktop session rejects unsupported drops before source r
   }
 });
 
-test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates to terminal states", async () => {
+test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP candidates to terminal states", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-terminal-session-"));
   const sourceStore = new Map();
   const session = createMultiFormatDesktopPreviewSession({
@@ -1607,6 +1661,7 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
     sourceStore,
     openTimeoutMs: 1000
   });
+  const svgaPath = path.join(sessionRoot, "synthetic-svga.svga");
   const lottiePath = path.join(sessionRoot, "synthetic-lottie.json");
   const vapPath = path.join(sessionRoot, "synthetic-vap.mp4");
   const vapSidecarPath = path.join(sessionRoot, "synthetic-vap-sidecar.mp4");
@@ -1614,6 +1669,7 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
   const vapFusionPath = path.join(sessionRoot, "synthetic-vap-fusion.mp4");
 
   try {
+    await copyFile(path.join(experimentRoot, ".runtime/fixture/avatar-frame-smoke.svga"), svgaPath);
     await writeFile(lottiePath, JSON.stringify({
       v: "5.7.4",
       w: 120,
@@ -1654,6 +1710,26 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
       }]
     }));
 
+    const svga = await withTerminalTestDeadline(session.openLocalFilePath(svgaPath, "fileButton"), "svga");
+    assert.equal(svga.status, "opened");
+    assert.equal(svga.pathRedacted, true);
+    assert.equal(svga.model.detectedFormat, "svga");
+    assert.equal(svga.model.status, "previewReady");
+    assert.notEqual(svga.model.status, "launch");
+    assert.notEqual(svga.model.status, "loading");
+    const svgaRuntime = await session.prepareRuntimePreview({
+      sourceId: svga.sourceId,
+      format: "svga",
+      requestId: svga.model.requestId,
+      replacements: svga.model.replacement
+    });
+    assert.equal(svgaRuntime.status, "prepared");
+    assert.equal(svgaRuntime.pathRedacted, true);
+    assert.equal(svgaRuntime.rendererHasFullPath, false);
+    assert.deepEqual(svgaRuntime.runtimeScripts, ["/vendor/svga-web-2.4.4.js"]);
+    assert.match(svgaRuntime.svgaBase64, /^[A-Za-z0-9+/=]+$/);
+    assert.doesNotMatch(JSON.stringify(svgaRuntime), /\/Users|auto-svga-terminal-session/i);
+
     const lottie = await withTerminalTestDeadline(session.openLocalFilePath(lottiePath, "fileButton"), "lottie");
     assert.equal(lottie.status, "opened");
     assert.equal(lottie.pathRedacted, true);
@@ -1691,7 +1767,7 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
     assert.equal(lottieReplacementRuntime.status, "prepared");
     assert.equal(lottieReplacementRuntime.animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
     assert.doesNotMatch(JSON.stringify(lottieReplacementRuntime), /\/Users|auto-svga-terminal-session/i);
-    assert.equal(sourceStore.size, 1);
+    assert.equal(sourceStore.size, 2);
 
     const vap = await withTerminalTestDeadline(session.openLocalFilePath(vapPath, "fileButton"), "vap");
     assert.equal(vap.status, "opened");
@@ -1764,7 +1840,7 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
     assert.equal(vapFusionRuntime.vapConfig.src[0].srcTag, "avatar");
     assert.equal(vapFusionRuntime.vapConfig.src[1].srcTag, "title");
     assert.doesNotMatch(JSON.stringify(vapFusionRuntime), /\/Users|auto-svga-terminal-session/i);
-    assert.equal(sourceStore.size, 4);
+    assert.equal(sourceStore.size, 5);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
@@ -2094,6 +2170,13 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     globalThis.Vap = originalVap;
     globalThis.URL = originalUrl;
   }
+});
+
+test("0.2 runtime mount preserves VAP canvas intrinsic aspect ratio", async () => {
+  const modulesCss = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+
+  assert.match(modulesCss, /(?:^|\n)canvas\s*\{[^}]*aspect-ratio:\s*var\(--asv-playback-aspect,\s*1\s*\/\s*1\);/s);
+  assert.match(modulesCss, /\.multiFormatRuntimeMount canvas\s*\{[^}]*aspect-ratio:\s*auto;/s);
 });
 
 test("0.2 first-launch file-open survives delayed renderer-ready flush and late initialization", async () => {

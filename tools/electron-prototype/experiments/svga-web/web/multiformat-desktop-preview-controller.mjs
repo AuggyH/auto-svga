@@ -46,6 +46,9 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   let activeRequest = 0;
   let runtimePreviewGeneration = 0;
   let activeRuntimePreview;
+  let runtimePlaybackProgressFrame = 0;
+  let cancelRuntimePlaybackProgressFrame = () => {};
+  let svgaPlaybackModulePromise;
   let runtimeReplacementValues = new Map();
   let hostFileOpenEventId = "";
   let hostFileOpenRequest = 0;
@@ -355,11 +358,15 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     renderIssues(model);
     renderReplaceableTargets();
     renderTextTargets();
-    renderCanvasState(model, result.visualEvidence);
-    mountRuntimePreview(result);
+    if (!activeRuntimePreviewOwnsPrimaryCanvas(result)) {
+      renderCanvasState(model, result.visualEvidence);
+    }
     renderPlaybackState(model);
+    mountRuntimePreview(result);
     if (model.status === "failed") {
       renderFailureMessage(nodes, issueSummary(model) || "文件未能解析，源文件没有被修改。");
+    } else {
+      renderFailureMessage(nodes, "");
     }
   }
 
@@ -597,7 +604,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     const model = result?.model;
     const format = model?.detectedFormat;
     const sourceId = result?.sourceId || state.sourceId;
-    const mountable = (format === "lottie" || format === "vap")
+    const mountable = (format === "svga" || format === "lottie" || format === "vap")
       && sourceId
       && ["previewReady", "playing", "paused"].includes(model.status);
     if (!mountable || !bridge?.prepareMultiFormatRuntimePreview) {
@@ -609,6 +616,12 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       sourceId,
       replacementSignature: runtimeReplacementSignature(model)
     };
+    if (format === "svga" && syncReusableSvgaRuntimePreview(runtimeIdentity, model)) {
+      return;
+    }
+    if (format === "lottie" && syncReusableLottieRuntimePreview(runtimeIdentity, model)) {
+      return;
+    }
     if (format === "vap" && syncReusableVapRuntimePreview(runtimeIdentity, model)) {
       return;
     }
@@ -618,6 +631,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     mount.hidden = false;
     mount.dataset.runtimePreviewState = "preparing";
     mount.dataset.runtimeFormat = format;
+    delete mount.dataset.runtimePlayerReady;
     if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "hidden";
     bridge.prepareMultiFormatRuntimePreview({
       sourceId,
@@ -629,8 +643,10 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       if (payload?.status !== "prepared") {
         throw new RuntimePreviewPayloadError(payload?.issue);
       }
-      if (format === "lottie") {
-        await mountLottieRuntimePreview(payload, mount, model, generation);
+      if (format === "svga") {
+        await mountSvgaRuntimePreview(payload, mount, model, generation, runtimeIdentity);
+      } else if (format === "lottie") {
+        await mountLottieRuntimePreview(payload, mount, model, generation, runtimeIdentity);
       } else {
         await mountVapRuntimePreview(payload, mount, model, generation, runtimeIdentity);
       }
@@ -657,6 +673,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   }
 
   function disposeActiveRuntimePreview() {
+    stopRuntimePlaybackProgressLoop();
     const active = activeRuntimePreview;
     activeRuntimePreview = undefined;
     try {
@@ -671,6 +688,11 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     try {
       active?.player?.destroy?.();
     } catch {}
+    if (active?.format === "svga") {
+      try {
+        active.stopPlayback?.({ key: "multiFormatSvga", playbackState: state });
+      } catch {}
+    }
     if (active?.objectUrl) {
       try {
         URL.revokeObjectURL(active.objectUrl);
@@ -682,6 +704,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       mount.hidden = true;
       mount.dataset.runtimePreviewState = "idle";
       delete mount.dataset.runtimeFormat;
+      delete mount.dataset.runtimePlayerReady;
     }
     if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "";
   }
@@ -703,7 +726,67 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     return nodes.primaryCanvas?.parentElement?.querySelector("#multiFormatRuntimeMount");
   }
 
-  async function mountLottieRuntimePreview(payload, mount, model, generation) {
+  function activeRuntimePreviewOwnsPrimaryCanvas(result) {
+    const model = result?.model;
+    if (model?.detectedFormat !== "svga") return false;
+    const sourceId = result?.sourceId || state.sourceId;
+    const mount = runtimeMountNode();
+    return Boolean(sourceId)
+      && activeRuntimePreview?.format === "svga"
+      && activeRuntimePreview.sourceId === sourceId
+      && activeRuntimePreview.replacementSignature === runtimeReplacementSignature(model)
+      && mount?.dataset.runtimePreviewState === "loaded"
+      && mount?.dataset.runtimeFormat === "svga"
+      && mount?.dataset.runtimePlayerReady === "svga-web";
+  }
+
+  async function mountSvgaRuntimePreview(payload, mount, model, generation, runtimeIdentity) {
+    if (payload?.status !== "prepared" || payload.format !== "svga") {
+      throw new RuntimePreviewPayloadError(payload?.issue);
+    }
+    const bytes = base64ToBytes(payload.svgaBase64);
+    mount.replaceChildren();
+    mount.hidden = true;
+    mount.dataset.runtimePreviewState = "preparing";
+    mount.dataset.runtimeFormat = "svga";
+    delete mount.dataset.runtimePlayerReady;
+    if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "";
+    const svgaPlayback = await loadSvgaPlaybackModule();
+    const playback = await svgaPlayback.mountPlayback({
+      key: "multiFormatSvga",
+      canvas: nodes.primaryCanvas,
+      bytes,
+      options: {
+        loop: state.primaryPlaybackLooping !== false,
+        start: model.status === "playing"
+      },
+      playbackState: state,
+      onPlaybackStateChange: () => renderRuntimePlaybackProgress()
+    });
+    if (!isActiveRuntimePreviewGeneration(generation)) {
+      svgaPlayback.stopPlayback({ key: "multiFormatSvga", playbackState: state });
+      return;
+    }
+    if (model.status === "paused" || model.status === "previewReady") {
+      playback?.player?.pause?.();
+      if (playback) playback.playing = false;
+    }
+    mount.dataset.runtimePreviewState = "loaded";
+    mount.dataset.runtimeFormat = "svga";
+    mount.dataset.runtimePlayerReady = playback?.player ? "svga-web" : "";
+    activeRuntimePreview = {
+      format: "svga",
+      sourceId: runtimeIdentity.sourceId,
+      replacementSignature: runtimeIdentity.replacementSignature,
+      playback,
+      playbackProgressView: svgaPlayback.playbackProgressView,
+      stopPlayback: svgaPlayback.stopPlayback
+    };
+    renderRuntimePlaybackProgress();
+    startRuntimePlaybackProgressLoop();
+  }
+
+  async function mountLottieRuntimePreview(payload, mount, model, generation, runtimeIdentity) {
     await loadRuntimeScript(payload.runtimeScripts?.[0], "lottie");
     if (!isActiveRuntimePreviewGeneration(generation)) return;
     const lottie = globalThis.lottie;
@@ -716,12 +799,21 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       autoplay: model.status === "playing",
       animationData: payload.animationData
     });
-    activeRuntimePreview = { format: "lottie", animation };
+    activeRuntimePreview = {
+      format: "lottie",
+      animation,
+      sourceId: runtimeIdentity.sourceId,
+      replacementSignature: runtimeIdentity.replacementSignature,
+      fps: Number(payload?.playback?.fps) || Number(payload?.animationData?.fr) || 30,
+      durationMs: Number(payload?.playback?.durationMs) || Number(model?.canvas?.playback?.durationMs) || 0
+    };
     const frame = lottieFrameFromPlayback(model, payload);
     if (model.status === "paused" || model.status === "previewReady") animation.goToAndStop?.(frame, true);
     if (model.status === "playing") animation.play?.();
     mount.dataset.runtimePreviewState = "loaded";
     mount.dataset.runtimeFormat = "lottie";
+    renderRuntimePlaybackProgress();
+    startRuntimePlaybackProgressLoop();
   }
 
   async function mountVapRuntimePreview(payload, mount, model, generation, runtimeIdentity) {
@@ -734,6 +826,8 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       throw new Error("The current renderer cannot create a WebGL VAP preview.");
     }
     mount.replaceChildren();
+    mount.dataset.runtimePreviewState = "preparing";
+    mount.dataset.runtimeFormat = "vap";
     const blob = new Blob([base64ToBytes(payload.mp4Base64)], { type: payload.mediaType || "video/mp4" });
     const objectUrl = URL.createObjectURL(blob);
     const player = VapConstructor({
@@ -777,6 +871,46 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     });
     mount.dataset.runtimePreviewState = "loaded";
     mount.dataset.runtimeFormat = "vap";
+    renderRuntimePlaybackProgress();
+    startRuntimePlaybackProgressLoop();
+  }
+
+  function syncReusableSvgaRuntimePreview(runtimeIdentity, model) {
+    const active = activeRuntimePreview;
+    if (active?.format !== "svga" || !active.playback) return false;
+    if (active.sourceId !== runtimeIdentity.sourceId) return false;
+    if (active.replacementSignature !== runtimeIdentity.replacementSignature) return false;
+    if (model.status === "playing") {
+      if (!active.playback.playing) {
+        active.playback.player?.start?.();
+        active.playback.playing = true;
+      }
+    } else if (model.status === "paused" || model.status === "previewReady") {
+      active.playback.player?.pause?.();
+      active.playback.playing = false;
+    }
+    renderRuntimePlaybackProgress();
+    startRuntimePlaybackProgressLoop();
+    return true;
+  }
+
+  function syncReusableLottieRuntimePreview(runtimeIdentity, model) {
+    const active = activeRuntimePreview;
+    if (active?.format !== "lottie" || !active.animation) return false;
+    if (active.sourceId !== runtimeIdentity.sourceId) return false;
+    if (active.replacementSignature !== runtimeIdentity.replacementSignature) return false;
+    const mount = runtimeMountNode();
+    if (!mount || mount.dataset.runtimePreviewState !== "loaded" || mount.dataset.runtimeFormat !== "lottie") return false;
+    if (model.status === "playing") {
+      active.animation.play?.();
+    } else if (model.status === "paused" || model.status === "previewReady") {
+      active.animation.pause?.();
+    }
+    mount.hidden = false;
+    if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "hidden";
+    renderRuntimePlaybackProgress();
+    startRuntimePlaybackProgressLoop();
+    return true;
   }
 
   function syncReusableVapRuntimePreview(runtimeIdentity, model) {
@@ -811,6 +945,81 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       if (options.forcePlayback || active.playbackStatus !== model.status) player.pause?.();
       active.playbackStatus = model.status;
     }
+  }
+
+  function startRuntimePlaybackProgressLoop() {
+    if (runtimePlaybackProgressFrame) return;
+    const tick = () => {
+      renderRuntimePlaybackProgress();
+      if (!activeRuntimePreview) {
+        runtimePlaybackProgressFrame = 0;
+        cancelRuntimePlaybackProgressFrame = () => {};
+        return;
+      }
+      runtimePlaybackProgressFrame = scheduleRuntimePlaybackProgress(tick);
+    };
+    tick();
+  }
+
+  function stopRuntimePlaybackProgressLoop() {
+    if (runtimePlaybackProgressFrame) cancelRuntimePlaybackProgressFrame(runtimePlaybackProgressFrame);
+    runtimePlaybackProgressFrame = 0;
+    cancelRuntimePlaybackProgressFrame = () => {};
+  }
+
+  function scheduleRuntimePlaybackProgress(callback) {
+    if (typeof globalThis.requestAnimationFrame === "function") {
+      cancelRuntimePlaybackProgressFrame = (frame) => globalThis.cancelAnimationFrame?.(frame);
+      return globalThis.requestAnimationFrame(callback);
+    }
+    cancelRuntimePlaybackProgressFrame = (frame) => clearTimeout(frame);
+    const frame = setTimeout(() => callback(Date.now()), 100);
+    frame?.unref?.();
+    return frame;
+  }
+
+  function renderRuntimePlaybackProgress() {
+    const active = activeRuntimePreview;
+    if (!active || !nodes.playbackTime) return;
+    let progress = 0;
+    let timeCopy = "";
+    if (active.format === "svga" && active.playback) {
+      const view = active.playbackProgressView(active.playback);
+      progress = view.progress;
+      timeCopy = view.timeCopy;
+    } else if (active.format === "vap") {
+      const video = active.player?.video;
+      const durationMs = Number(state.model?.canvas?.playback?.durationMs) || (Number(video?.duration) > 0 ? Number(video.duration) * 1000 : 0);
+      const currentMs = Number(video?.currentTime) > 0 ? Number(video.currentTime) * 1000 : Number(state.model?.canvas?.playback?.currentTimeMs) || 0;
+      progress = durationMs > 0 ? Math.max(0, Math.min(100, (currentMs / durationMs) * 100)) : 0;
+      timeCopy = `${formatTime(currentMs)} / ${formatTime(durationMs)}`;
+    } else if (active.format === "lottie") {
+      const currentFrame = Number(active.animation?.currentFrame) || 0;
+      const fps = Number(active.fps) || 30;
+      const currentMs = fps > 0 ? (currentFrame / fps) * 1000 : 0;
+      const durationMs = Number(active.durationMs) || Number(state.model?.canvas?.playback?.durationMs) || 0;
+      progress = durationMs > 0 ? Math.max(0, Math.min(100, (currentMs / durationMs) * 100)) : 0;
+      timeCopy = `${formatTime(currentMs)} / ${formatTime(durationMs)}`;
+    }
+    if (timeCopy) nodes.playbackTime.textContent = timeCopy;
+    const mount = runtimeMountNode();
+    if (mount) {
+      mount.dataset.runtimePlaybackProgress = String(Math.round(progress));
+      mount.dataset.runtimePlaybackTimeCopy = timeCopy;
+      if (active.format === "svga" && active.playback?.player) {
+        mount.dataset.runtimePlayerReady = "svga-web";
+      }
+    }
+    nodes.playbackProgress?.setAttribute("aria-valuenow", String(Math.round(progress)));
+    const bar = nodes.playbackProgress?.querySelector("span");
+    if (bar) bar.style.width = `${Math.round(progress)}%`;
+  }
+
+  function loadSvgaPlaybackModule() {
+    if (!svgaPlaybackModulePromise) {
+      svgaPlaybackModulePromise = import("./short-term-macos-playback-model.mjs");
+    }
+    return svgaPlaybackModulePromise;
   }
 
   function bindVapPlaybackReadinessGuards(mount, player, generation) {

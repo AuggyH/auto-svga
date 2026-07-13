@@ -1,7 +1,7 @@
 "use strict";
 
 const { createHash } = require("node:crypto");
-const { closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, writeFileSync } = require("node:fs");
+const { closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync, statSync, writeFileSync } = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
@@ -104,7 +104,7 @@ class MultiFormatDesktopPreviewSession {
 
   async prepareRuntimePreview(input) {
     const sourceId = String(input?.sourceId ?? "");
-    const format = input?.format === "lottie" || input?.format === "vap" ? input.format : "";
+    const format = input?.format === "svga" || input?.format === "lottie" || input?.format === "vap" ? input.format : "";
     if (!/^[a-f0-9]{24}$/iu.test(sourceId) || !format) {
       return runtimePreviewFailure({
         format,
@@ -127,6 +127,9 @@ class MultiFormatDesktopPreviewSession {
     try {
       if (format === "lottie") {
         return this.prepareLottieRuntimePreview(normalizedPath, replacements);
+      }
+      if (format === "svga") {
+        return this.prepareSvgaRuntimePreview(normalizedPath);
       }
       return await this.prepareVapRuntimePreview(normalizedPath, replacements);
     } catch (error) {
@@ -314,6 +317,46 @@ class MultiFormatDesktopPreviewSession {
           ? Math.round(((Number(cloned.op) - Number(cloned.ip)) / Number(cloned.fr)) * 1000)
           : undefined
       }
+    };
+  }
+
+  prepareSvgaRuntimePreview(filePath) {
+    const stat = statSync(filePath);
+    if (!stat.isFile()) {
+      return runtimePreviewFailure({
+        format: "svga",
+        code: "missing_resource",
+        message: "SVGA runtime preview requires a readable local SVGA file.",
+        reason: "svga_source_file_required"
+      });
+    }
+    if (stat.size <= 0 || stat.size > MULTIFORMAT_MAX_DROPPED_BYTES) {
+      return runtimePreviewFailure({
+        format: "svga",
+        code: "parse_precondition",
+        message: "SVGA runtime preview requires a bounded local SVGA file.",
+        reason: "bounded_svga_required"
+      });
+    }
+    let bytes;
+    try {
+      bytes = readBoundedFileBuffer(filePath, MULTIFORMAT_MAX_DROPPED_BYTES);
+    } catch {
+      return runtimePreviewFailure({
+        format: "svga",
+        code: "parse_precondition",
+        message: "SVGA runtime preview source changed outside the bounded read limit.",
+        reason: "bounded_svga_read_required"
+      });
+    }
+    return {
+      status: "prepared",
+      format: "svga",
+      pathRedacted: true,
+      rendererHasFullPath: false,
+      runtimeScripts: ["/vendor/svga-web-2.4.4.js"],
+      svgaBase64: Buffer.from(bytes).toString("base64"),
+      mediaType: mediaTypeFromPath(filePath)
     };
   }
 
@@ -774,6 +817,33 @@ function runtimePreviewSource(filePath, bytes, adjacentVapc) {
       return byteView.slice(start, end);
     }
   };
+}
+
+function readBoundedFileBuffer(filePath, maxBytes) {
+  const limit = Math.max(0, Math.trunc(Number(maxBytes) || 0));
+  const fd = openSync(filePath, "r");
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size <= 0 || stat.size > limit) {
+      throw new Error("File is outside the bounded read limit.");
+    }
+    const chunks = [];
+    const scratch = Buffer.allocUnsafe(Math.min(64 * 1024, limit + 1));
+    let totalBytes = 0;
+    while (totalBytes <= limit) {
+      const remaining = limit + 1 - totalBytes;
+      const bytesRead = readSync(fd, scratch, 0, Math.min(scratch.byteLength, remaining), null);
+      if (bytesRead === 0) break;
+      chunks.push(Buffer.from(scratch.subarray(0, bytesRead)));
+      totalBytes += bytesRead;
+    }
+    if (totalBytes <= 0 || totalBytes > limit || totalBytes !== stat.size) {
+      throw new Error("File changed outside the bounded read limit.");
+    }
+    return Buffer.concat(chunks, totalBytes);
+  } finally {
+    closeSync(fd);
+  }
 }
 
 function readAdjacentVapcJsonForFile(filePath, maxBytes = MULTIFORMAT_MAX_RANGE_BYTES) {
