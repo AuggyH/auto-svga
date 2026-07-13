@@ -2126,13 +2126,104 @@ test("0.2 strict-CSP Lottie runtime blocks unsafe or malformed expression shapes
       expression: "$bm_rt = loopOut();",
       keyframes: [{ t: 0, s: [80, 80, 100] }, { t: 144, s: [90, 90, 100] }],
       reason: "safe_loop_out_timing_required"
+    },
+    {
+      id: "reviewed-malformed-metadata",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [
+        {
+          t: 0,
+          s: [80, 80, 100],
+          i: { x: ["not-a-number"], y: [1] },
+          e: ["bad", 90, 100],
+          h: "yes"
+        },
+        { t: 24, s: [90, 90, 100] }
+      ],
+      reason: "safe_loop_out_keyframe_metadata_required"
+    },
+    {
+      id: "end-vector-dimension",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 0, s: [80, 80, 100], e: [90, 90] }, { t: 24, s: [90, 90, 100] }],
+      reason: "safe_loop_out_keyframe_metadata_required"
+    },
+    {
+      id: "end-vector-type",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 0, s: [80, 80, 100], e: [90, "90", 100] }, { t: 24, s: [90, 90, 100] }],
+      reason: "safe_loop_out_keyframe_metadata_required"
+    },
+    {
+      id: "unpaired-easing",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 0, s: [80, 80, 100], i: { x: [0.667], y: [1] } }, { t: 24, s: [90, 90, 100] }],
+      reason: "safe_loop_out_keyframe_metadata_required"
+    },
+    {
+      id: "easing-vector-type",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [
+        {
+          t: 0,
+          s: [80, 80, 100],
+          i: { x: ["not-a-number"], y: [1] },
+          o: { x: [0.333], y: [0] }
+        },
+        { t: 24, s: [90, 90, 100] }
+      ],
+      reason: "safe_loop_out_keyframe_metadata_required"
+    },
+    {
+      id: "easing-vector-dimension",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [
+        {
+          t: 0,
+          s: [80, 80, 100],
+          i: { x: [0.667, 0.667], y: [1, 1] },
+          o: { x: [0.333, 0.333], y: [0, 0] }
+        },
+        { t: 24, s: [90, 90, 100] }
+      ],
+      reason: "safe_loop_out_keyframe_metadata_required"
+    },
+    {
+      id: "spatial-tangent-type",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [
+        { t: 0, s: [80, 80, 100], to: [0, "bad", 0], ti: [0, 0, 0] },
+        { t: 24, s: [90, 90, 100] }
+      ],
+      reason: "safe_loop_out_keyframe_metadata_required"
+    },
+    {
+      id: "spatial-tangent-dimension",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [
+        { t: 0, s: [80, 80, 100], to: [0, 0], ti: [0, 0, 0] },
+        { t: 24, s: [90, 90, 100] }
+      ],
+      reason: "safe_loop_out_keyframe_metadata_required"
+    },
+    {
+      id: "hold-flag-type",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 0, s: [80, 80, 100], h: "yes" }, { t: 24, s: [90, 90, 100] }],
+      reason: "safe_loop_out_keyframe_metadata_required"
+    },
+    {
+      id: "unknown-keyframe-field",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 0, s: [80, 80, 100], ambiguous: true }, { t: 24, s: [90, 90, 100] }],
+      reason: "safe_loop_out_keyframe_metadata_required"
     }
   ];
 
   try {
     for (const input of cases) {
       const filePath = path.join(sessionRoot, `${input.id}.json`);
-      await writeFile(filePath, JSON.stringify({
+      const sourceDocument = {
         v: "5.12.2",
         w: 120,
         h: 120,
@@ -2146,7 +2237,8 @@ test("0.2 strict-CSP Lottie runtime blocks unsafe or malformed expression shapes
           nm: "Expression fixture",
           ks: { s: { a: 1, k: input.keyframes, x: input.expression } }
         }]
-      }));
+      };
+      await writeFile(filePath, JSON.stringify(sourceDocument));
       const opened = await session.openLocalFilePath(filePath, "fileOpenEvent");
       assert.equal(opened.status, "opened");
       const runtime = await session.prepareRuntimePreview({
@@ -2159,6 +2251,9 @@ test("0.2 strict-CSP Lottie runtime blocks unsafe or malformed expression shapes
       assert.equal(runtime.issue.code, "unsupported_feature");
       assert.equal(runtime.issue.details.reason, input.reason);
       assert.equal(runtime.pathRedacted, true);
+      assert.equal(runtime.animationData, undefined);
+      assert.equal(runtime.runtimeScripts, undefined);
+      assert.deepEqual(JSON.parse(await readFile(filePath, "utf8")), sourceDocument);
       assert.doesNotMatch(JSON.stringify(runtime), /auto-svga-lottie-expression-block|\/Users|C:\\Users/i);
     }
   } finally {

@@ -10,6 +10,7 @@ This milestone replaces the owner-visible multi-format placeholder paths with re
 - SVGA now prepares a bounded runtime payload and mounts through the existing `svga-web` playback path instead of the source-side preview placeholder.
 - The shared SVGA playback model draws frame 0 immediately after `svga-web` mount so `previewReady` exposes decoded artwork pixels instead of a transparent backing store.
 - Owner Lottie now keeps embedded images local and normalizes only the exact safe no-argument `loopOut()` form into bounded cloned keyframes under strict CSP; every other expression shape remains typed blocked.
+- The strict-CSP normalizer validates the complete preserved keyframe grammar before cloning: end vectors, paired easing records, paired spatial tangents, hold flags, field names, numeric types, and applicable dimensions all fail closed when malformed.
 - Owner VAP no longer treats the historical `1504` threshold as a playback block. It mounts through the real WebGL/video runtime while the Canvas fact carries one truthful warning.
 - Lottie play/pause reuses the same animation instance for the same source and replacement identity, so pause preserves the advanced frame instead of remounting to frame 0.
 - SVGA runtime state stays `preparing` until the real player mount completes, then exposes the active `svga-web` player identity only for the active SVGA generation.
@@ -26,8 +27,9 @@ This is source-level Fix Ready pending PM/A0 independent final-head review. It i
 
 | Finding | Reviewed head | External result | Root cause | Repair evidence required | State |
 |---|---|---|---|---|---|
-| `MF-REAL-RENDER-CR-001` | `7fa16c1785931f30b1d435e71822e38ca69a12c6` | Changes Requested | SVGA awaited a mutating mount against the shared primary canvas and fixed playback key, then checked generation ownership only after completion. | Deferred old/new resolution inversion must leave the newer generation canvas, key, and readiness identity untouched. | Source/dev closed; re-review pending |
-| `MF-REAL-RENDER-CR-002` | `7fa16c1785931f30b1d435e71822e38ca69a12c6` | Changes Requested | Temporal advancement and nonblank-pixel checks were independent, and pause recorded only one pixel sample. | Time-only advance, pixel-only advance, and paused pixel drift must all fail the proof oracle. | Source/dev closed; re-review pending |
+| `MF-REAL-RENDER-CR-001` | `7fa16c1785931f30b1d435e71822e38ca69a12c6` | Changes Requested | SVGA awaited a mutating mount against the shared primary canvas and fixed playback key, then checked generation ownership only after completion. | Deferred old/new resolution inversion must leave the newer generation canvas, key, and readiness identity untouched. | Closed by independent CR at `8087faad` |
+| `MF-REAL-RENDER-CR-002` | `7fa16c1785931f30b1d435e71822e38ca69a12c6` | Changes Requested | Temporal advancement and nonblank-pixel checks were independent, and pause recorded only one pixel sample. | Time-only advance, pixel-only advance, and paused pixel drift must all fail the proof oracle. | Closed by independent CR at `8087faad` |
+| `MF-REAL-RENDER-CR-003` | `8087faad7606476a8ef1f323aa154093678cd704` | Changes Requested | The strict-CSP normalizer validated only keyframe `t` and `s`, then cloned every optional field without defining or validating the preserved metadata grammar. | The exact malformed `i.x` / `e` / `h` probe and dimension/type variants must return typed path-redacted `unsupported_feature` before a runtime payload is exposed, while the approved owner record remains byte-preserved except repeated `t` values and expression removal. | Source/dev repaired; independent re-review pending |
 | `MF-REAL-RENDER-PO-001` | Product Owner correction `1a53018b` | Scope correction | The historical `1504` compatibility threshold was incorrectly promoted from risk metadata to a runtime playback block. | `1136x1632` H.264 owner VAP must mount/play/pause with a warning Canvas fact and no dimension-only playback block. | Source/dev closed; PM review pending |
 | `MF-REAL-RENDER-LT-001` | Local discriminator `5867284e` | Repair contract active | Strict CSP blocks lottie-web's `eval`-based expression execution, so the owner animation clock advances while its `loopOut()` transform remains static. | Normalize only the exact safe no-argument owner `loopOut()` form into validated repeated keyframes; all other expression forms stay typed blocked. | Source/dev closed; PM review pending |
 
@@ -54,6 +56,17 @@ This is source-level Fix Ready pending PM/A0 independent final-head review. It i
   only through the declared composition `op`; never evaluate source text; and
   fail closed for parameters, modes, malformed keyframes, or any other
   expression.
+- `MF-REAL-RENDER-CR-003` is a whole-record validation gap, not a new
+  expression feature request. The prior gate proved the expression text,
+  composition timing, ordered `t` values, and numeric `s` vectors, but treated
+  the remaining cloned keyframe fields as trusted. The repair accepts only
+  known keyframe fields. Optional `e`, `to`, and `ti` values must be finite
+  vectors matching the source vector dimension; optional `i` and `o` must be
+  paired easing records with finite `x` / `y` scalar-or-vector values of one or
+  the source dimension; optional `h` must be numeric `0` or `1`. Unknown,
+  malformed, mismatched, or unpaired metadata fails with the stable reason
+  `safe_loop_out_keyframe_metadata_required`. The caller document remains
+  immutable and no expression text is evaluated.
 
 ### Failure-first tests
 
@@ -66,6 +79,12 @@ This is source-level Fix Ready pending PM/A0 independent final-head review. It i
 4. Prove the owner-shape expression is static/blocked before normalization,
    expands without mutating its source keyframes, advances real SVG pixels
    after normalization, and rejects parameterized or malformed expressions.
+5. Reproduce the reviewed `i.x=["not-a-number"]`, `e=["bad",90,100]`, and
+   `h="yes"` record, plus malformed easing pairs, end/tangent dimension
+   mismatches, invalid hold flags, and unknown preserved fields. Every case
+   must fail before runtime payload exposure with `unsupported_feature`,
+   `safe_loop_out_keyframe_metadata_required`, path redaction, and no source
+   mutation.
 
 ### Stop conditions
 
@@ -75,9 +94,15 @@ This is source-level Fix Ready pending PM/A0 independent final-head review. It i
   gates remain clean, strict CSP remains free of generic `unsafe-eval`, all
   unsupported Lottie expressions stay typed blocked, and focused plus full
   regression pass.
+- Success for `MF-REAL-RENDER-CR-003` additionally requires the exact reviewed
+  malformed record and every accepted dimension/type mutation to fail with the
+  stable typed reason, while the owner hash keeps real SVG time/pixel advance
+  and two-sample pause stability in the exact-head proof.
 - Failure: any stale shared mutation, permissive proof mutation, dimension-only
-  VAP block, raw-path leak, unbounded read, or second recurrence stops this
-  repair before lifecycle routing and returns the exact discriminator.
+  VAP block, malformed optional keyframe metadata reaching `prepared`, source
+  mutation, raw-path leak, unbounded read, or recurrence after independent
+  re-review stops this repair before lifecycle routing and returns the exact
+  discriminator.
 
 ## 2. Git state
 
@@ -137,11 +162,14 @@ PASS
 node --test --test-name-pattern "strict-CSP Lottie runtime|embedded-image Lottie" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs
 PASS 3/3
 
-focused Electron real-rendering/runtime/session group
-PASS 15/15
+direct reviewed malformed-keyframe probe before repair
+FAILURE REPRODUCED: runtimeStatus=prepared, safeLoopOutProperties=1
 
-related workbench Lottie/VAP/owner-preview group
-PASS 56/56
+direct reviewed malformed-keyframe probe after repair
+PASS: unsupported_feature / safe_loop_out_keyframe_metadata_required / pathRedacted=true / payloadExposed=false / sourceUnchanged=true
+
+related workbench Lottie/VAP/workspace/owner-preview group
+PASS 75/75
 
 npm run build
 PASS
@@ -150,7 +178,10 @@ npm run desktop:short-term:design-system-check
 PASS
 
 npm run test:all
-PASS 530/530
+COMPLETED; direct captured compiled suite below is the count-bearing result
+
+node --test --test-reporter=spec dist/tests/*.test.js
+PASS 530/530, exit 0
 ```
 
 Latest pre-commit hidden packaged-equivalent proof after the complete repair batch:
@@ -175,6 +206,7 @@ A final head-bound proof is rerun after the milestone commit and is supplied to 
 
 - SVGA: approved owner input opens to `previewReady`, mounts the real `svga-web` canvas, exposes direct decoded backing-store pixels, couples frame advancement to pixel changes, and preserves both while paused.
 - Lottie: approved embedded-image owner JSON mounts the real `lottie-web` SVG runtime. The exact safe no-argument `loopOut()` shape is cloned into bounded keyframes under strict CSP; unsupported expressions remain typed blocked.
+- Strict-CSP metadata: malformed end vectors, easing/tangent records, hold flags, dimensions, types, and unknown preserved fields return typed path-redacted `unsupported_feature` without exposing `animationData` or runtime scripts. Valid owner keyframe records remain clone-only and source-immutable.
 - VAP: approved owner H.264 input mounts the real `video-animation-player` WebGL/video runtime despite its size warning, advances time and pixels, pauses truthfully, fits fully above controls, and keeps exactly one Canvas risk warning.
 - VAP replacement/reset: a bounded task-owned fixture remounts for image replacement and resets to source state.
 - Negative cases: missing-resource Lottie remains typed blocked; unsafe/malformed Lottie expressions remain typed blocked.
@@ -216,6 +248,7 @@ A final head-bound proof is rerun after the milestone commit and is supplied to 
 - Avoidable costs: positive capability gates should reject placeholder text and require nonblank runtime pixels plus time-separated playing/paused samples before installed foreground claims.
 - Product lessons: owner-visible playback acceptance must be renderer-backed for every format row; source-side preview contract is a limitation state, not playback.
 - Technical lessons: SVGA needed a bounded full runtime payload path separate from detection probes, visible playback time must be synchronized after runtime progress is available, Lottie must reuse the active animation across play/pause, and runtime-owned canvases must not inherit a generic square aspect contract.
+- Code Review repair lesson: a normalizer that promises semantic preservation must validate the complete record it clones, not only the fields whose values it rewrites.
 - Design / interaction lessons: visible status labels can be misleading if placeholder content remains; proof should inspect the canvas/runtime surface, not only labels.
 - Process lessons: treat upstream PASS claims as untrusted until the evidence directly proves the claimed behavior.
 - Follow-up candidate for `docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md`: Yes

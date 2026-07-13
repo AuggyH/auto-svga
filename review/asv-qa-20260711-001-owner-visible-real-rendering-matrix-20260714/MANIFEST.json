@@ -4,7 +4,9 @@
   "qaTicket": "ASV-QA-20260711-001",
   "branch": "codex/0.2-owner-visible-real-rendering-matrix-20260714",
   "base": "19d668f01fc1ebeb026a1a519e4d6e8fa6c1d1f1",
-  "state": "fix-ready-pending-pm-independent-review",
+  "reviewedHead": "8087faad7606476a8ef1f323aa154093678cd704",
+  "activeFinding": "MF-REAL-RENDER-CR-003",
+  "state": "source-repair-complete-pending-pm-independent-final-head-review",
   "files": [
     "README.md",
     "REVIEW_PACKET.md",

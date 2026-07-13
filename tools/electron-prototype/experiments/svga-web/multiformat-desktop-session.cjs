@@ -609,6 +609,9 @@ function normalizeSafeNoArgumentLoopOutProperty(property, compositionStart, comp
     if (keyframe.s.length !== vectorLength) {
       return { status: "failed", reason: "safe_loop_out_numeric_vectors_required" };
     }
+    if (!isValidSafeLoopOutKeyframeMetadata(keyframe, vectorLength)) {
+      return { status: "failed", reason: "safe_loop_out_keyframe_metadata_required" };
+    }
     previousTime = keyframe.t;
   }
   const firstTime = keyframes[0].t;
@@ -634,6 +637,57 @@ function normalizeSafeNoArgumentLoopOutProperty(property, compositionStart, comp
   property.k = expanded;
   delete property.x;
   return { status: "ok" };
+}
+
+function isValidSafeLoopOutKeyframeMetadata(keyframe, vectorLength) {
+  const allowedFields = new Set(["t", "s", "e", "i", "o", "h", "to", "ti"]);
+  if (Object.keys(keyframe).some((field) => !allowedFields.has(field))) return false;
+
+  if (hasOwn(keyframe, "e") && !isFiniteVector(keyframe.e, vectorLength)) return false;
+  if (hasOwn(keyframe, "h") && keyframe.h !== 0 && keyframe.h !== 1) return false;
+
+  const hasInEasing = hasOwn(keyframe, "i");
+  const hasOutEasing = hasOwn(keyframe, "o");
+  if (hasInEasing !== hasOutEasing) return false;
+  if (hasInEasing && (
+    !isValidLottieEasingRecord(keyframe.i, vectorLength)
+    || !isValidLottieEasingRecord(keyframe.o, vectorLength)
+  )) return false;
+
+  const hasOutTangent = hasOwn(keyframe, "to");
+  const hasInTangent = hasOwn(keyframe, "ti");
+  if (hasOutTangent !== hasInTangent) return false;
+  if (hasOutTangent && (
+    !isFiniteVector(keyframe.to, vectorLength)
+    || !isFiniteVector(keyframe.ti, vectorLength)
+  )) return false;
+
+  return true;
+}
+
+function isValidLottieEasingRecord(value, vectorLength) {
+  if (!isRecord(value)) return false;
+  const fields = Object.keys(value);
+  if (fields.length !== 2 || !hasOwn(value, "x") || !hasOwn(value, "y")) return false;
+  return isValidLottieEasingComponent(value.x, vectorLength)
+    && isValidLottieEasingComponent(value.y, vectorLength);
+}
+
+function isValidLottieEasingComponent(value, vectorLength) {
+  if (Number.isFinite(value)) return true;
+  return Array.isArray(value)
+    && (value.length === 1 || value.length === vectorLength)
+    && value.every((entry) => Number.isFinite(entry));
+}
+
+function isFiniteVector(value, vectorLength) {
+  return Array.isArray(value)
+    && value.length === vectorLength
+    && value.every((entry) => Number.isFinite(entry));
+}
+
+function hasOwn(value, field) {
+  return Object.prototype.hasOwnProperty.call(value, field);
 }
 
 function createHeadlessLottieRendererLoader(lifecycle) {

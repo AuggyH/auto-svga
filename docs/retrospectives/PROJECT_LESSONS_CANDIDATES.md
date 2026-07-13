@@ -1365,3 +1365,17 @@ promoted, watched, rejected, or kept historical.
   and keeps the active hashed source id through play/pause/replacement/reset.
 - Status: Candidate pending Code Review and rebuilt-package foreground
   regression.
+
+## 2026-07-14: Validate Every Field A Security Normalizer Preserves
+
+- Candidate lesson: A security or CSP normalizer must validate the complete
+  record it clones, not only the fields it rewrites. Otherwise malformed
+  optional metadata can cross the declared fail-closed boundary unchanged.
+- Evidence: `MF-REAL-RENDER-CR-003` reproduced a Lottie loopOut property whose
+  ordered numeric `t/s` values passed while malformed `i.x`, `e`, and `h`
+  fields still reached a prepared runtime payload. The repair defines a narrow
+  whole-keyframe grammar and tests end vectors, paired easing and spatial
+  tangents, hold flags, dimensions, types, unknown fields, path redaction, and
+  source immutability.
+- Status: Candidate pending independent Code Review re-review and reuse at a
+  second normalization boundary.
