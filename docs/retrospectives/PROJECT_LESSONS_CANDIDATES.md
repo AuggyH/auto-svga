@@ -1410,6 +1410,7 @@ promoted, watched, rejected, or kept historical.
   also needs its own canonical-key uniqueness check. The repair uses public
   `resourceId`, rejects zero/duplicate/malformed/nonreplaceable/stale bindings
   without mutation, and requires the accepted owner result to return the exact
-  unique canonical runtime key.
+  unique canonical runtime key. Product proof harnesses must traverse that same
+  authority instead of returning the requested public id as a runtime key.
 - Status: Candidate pending independent Code Review re-review and installed
   replacement/reset QA.

@@ -27,6 +27,7 @@ The normalized VAP `resourceId` is now the only public fusion selection identity
 - Missing/stale source ids and a binding token changed while the host picker is pending reject before replacement apply.
 - VAP image/text rows use `resourceId` as their public id; duplicate fusion-backed generic asset rows are suppressed.
 - Accepted host results carry `replacementRuntimeValue.targetId`; renderer storage/remount requires that nonblank canonical key and cannot reconstruct it from aliases.
+- The hidden proof's isolated picker handler follows the same selection snapshot and explicit canonical-return contract; a static mutation guard rejects returning the requested public id directly.
 
 ## Positive Direct-Pixel Evidence
 

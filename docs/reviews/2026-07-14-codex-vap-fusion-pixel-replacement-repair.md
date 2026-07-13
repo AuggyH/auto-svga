@@ -103,6 +103,7 @@ Pre-commit proof facts:
 - Lifecycle: VAP load/destroy `3/3`; object URL create/revoke `3/3`; external requests empty.
 - Exact final-head proof is generated after commit and supplied separately to PM/A0 so `proof.sourceHead` equals the final commit.
 - The first post-commit proof attempt failed closed because its frame callback was registered after the Reset seek had already presented frame zero. The harness now registers the callback before the target seek and awaits seek plus presentation together; no product source changed for that evidence-timing correction.
+- The first successor-head proof attempt also failed closed because the isolated proof IPC handler returned the public `resourceId` as `replacementRuntimeValue.targetId`, bypassing the repaired host authority and recreating the old missing-texture shape. The proof handler now snapshots owner selection around its bounded read, requires the accepted owner result to echo the canonical key, and returns only that key; the static proof contract rejects the former public-id fallback.
 - The first complete Electron experiment run in this repair passed 72/74 runnable checks and failed only two package-proof fixtures because the local prototype dependency tree was absent. After package/lock hashes were independently matched to the established `d657` tree, a temporary ignored symlink overlay produced 74/74; it is removed before final status.
 
 ## 7. Risks And Boundaries

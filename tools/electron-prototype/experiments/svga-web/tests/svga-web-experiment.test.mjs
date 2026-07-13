@@ -3143,6 +3143,9 @@ test("VAP fusion pixel proof requires bound runtime texture, frame presentation,
   assert.match(proofSource, /sourceFrame\.sha256 !== replacementFrame\.sha256/);
   assert.match(proofSource, /sourceFrame\.sha256 === resetFrame\.sha256/);
   assert.match(proofSource, /replacementFrame\.sha256 === replacementPausedFrame\.sha256/);
+  assert.match(proofSource, /resolveReplacementSelection\(\{ targetId, kind: "image" \}\)/);
+  assert.match(proofSource, /targetId: acceptedRuntimeTargetId/);
+  assert.doesNotMatch(proofSource, /replacementRuntimeValue:\s*\{\s*kind: "image",\s*targetId,\s*value: dataUri/);
   assert.match(proofSource, /waitForBalancedLifecycle\(3\)/);
 });
 
