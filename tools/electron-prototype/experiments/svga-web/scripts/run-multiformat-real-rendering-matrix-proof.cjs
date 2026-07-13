@@ -32,25 +32,35 @@ const repoRoot = path.resolve(appRoot, "../../../..");
 const taskVapRoot = "/private/tmp/auto-svga-qa-multiformat-positive-20260713-016/bounded-vap";
 const taskVapPath = path.join(taskVapRoot, "bounded-vap.mp4");
 const taskVapcPath = path.join(taskVapRoot, "vapc.json");
-const svgaFixturePath = path.join(appRoot, ".runtime/fixture/avatar-frame-smoke.svga");
-const expectedFixtureHashes = Object.freeze({
+const expectedTaskFixtureHashes = Object.freeze({
   [taskVapPath]: "25ce657cf3de383e368c829bfcb9a17879d2bc7c7ebe151f66ebf5d64b73dd64",
-  [taskVapcPath]: "d1e9160d3d7f9d25c6b789f39c077603ff8ef50abaa19ccaf9192052ff55dc77",
-  [svgaFixturePath]: "ba61641e4faf4e749baf2c9bcecd0cba5f1c460ffdcb147460168ed3c11c012c"
+  [taskVapcPath]: "d1e9160d3d7f9d25c6b789f39c077603ff8ef50abaa19ccaf9192052ff55dc77"
+});
+const ownerInputSpecs = Object.freeze({
+  svga: {
+    alias: "OWNER-SVGA-A",
+    env: "AUTO_SVGA_OWNER_SVGA_PATH",
+    sha256: "74f26895f704f1ae33a5c72dba2cc6da027507b39512c2890d1d7b89985b4b07"
+  },
+  lottie: {
+    alias: "OWNER-LOTTIE-A",
+    env: "AUTO_SVGA_OWNER_LOTTIE_PATH",
+    sha256: "d7d55bb511e78d3f59da22eaab1e04e734b84f4bf5c8c40a19e05c516878532d"
+  },
+  vap: {
+    alias: "OWNER-VAP-A",
+    env: "AUTO_SVGA_OWNER_VAP_PATH",
+    sha256: "22cb7c516cba552ba5347e82aea7d17b8a3f988b68befbb7e6f69743b096de9d",
+    sidecarSha256: "025378648238f3736228bdcbb5b1607f516daf4841fb525d94ece316f0dd96b7"
+  }
 });
 const tinyPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mP8z8BQz0AEYBxVSFIAAA7ABAPik4nGAAAAAElFTkSuQmCC";
 
 const proofRoot = path.join(os.tmpdir(), `auto-svga-real-rendering-matrix-proof-${process.pid}`);
 const proofOutputPath = path.join(proofRoot, "real-rendering-matrix-proof.json");
 const replacementPngPath = path.join(proofRoot, "task-owned-vap-replacement.png");
-const lottiePath = path.join(proofRoot, "task-owned-lottie.json");
-const lottieImageDirectory = path.join(proofRoot, "images");
-const lottieImagePath = path.join(lottieImageDirectory, "dot.png");
-const svgaPath = path.join(proofRoot, "task-owned-svga.svga");
 const vapPath = path.join(proofRoot, "bounded-vap.mp4");
 const vapcPath = path.join(proofRoot, "vapc.json");
-const overLimitVapPath = path.join(proofRoot, "over-limit-vap.mp4");
-const overLimitVapcPath = path.join(proofRoot, "over-limit-vap.json");
 const userDataRoot = path.join(proofRoot, "userData");
 
 const sourceStore = new Map();
@@ -65,6 +75,7 @@ const consoleMessages = [];
 const ipcEvents = [];
 let server;
 let windowRef;
+let ownerInputs;
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.commandLine.appendSwitch("disable-background-timer-throttling");
@@ -142,36 +153,49 @@ async function main() {
   );
 
   const svgaEvidence = await provePlayableFormat({
-    label: "SVGA-A",
+    label: ownerInputs.svga.alias,
     format: "svga",
-    filePath: svgaPath,
-    expectedCanvas: "primary"
-  });
-  const lottieEvidence = await provePlayableFormat({
-    label: "LOTTIE-A",
-    format: "lottie",
-    filePath: lottiePath,
+    filePath: ownerInputs.svga.filePath,
     expectedCanvas: "runtime"
   });
+  const lottieEvidence = await provePlayableFormat({
+    label: ownerInputs.lottie.alias,
+    format: "lottie",
+    filePath: ownerInputs.lottie.filePath,
+    expectedCanvas: "runtime",
+    expectedImageCount: 2
+  });
   const vapEvidence = await provePlayableFormat({
-    label: "VAP-A",
+    label: ownerInputs.vap.alias,
+    format: "vap",
+    filePath: ownerInputs.vap.filePath,
+    expectedCanvas: "runtime",
+    requireVideo: true,
+    requireWebgl: true,
+    requireCanvasRisk: true,
+    expectedBacking: { width: 750, height: 1624 }
+  });
+  const boundedVapEvidence = await provePlayableFormat({
+    label: "VAP-FUSION-BOUNDED",
     format: "vap",
     filePath: vapPath,
     expectedCanvas: "runtime",
     requireVideo: true,
-    requireWebgl: true
+    requireWebgl: true,
+    expectedBacking: { width: 120, height: 80 }
   });
   const vapReplacementEvidence = await proveVapReplacementAndReset();
-  const overLimitEvidence = await proveOverLimitVapPolicy();
   const invalidLottieEvidence = await proveMissingLottieAssetFailure();
   const placeholderRegression = provePlaceholderSuccessGateRejectsSourceSideContract();
   const pauseRegression = provePauseGateRejectsNonzeroReset();
   const svgaIdentityRegression = proveSvgaIdentityGateRejectsGenericCanvas();
   const svgaPixelRegression = proveSvgaPixelGateRejectsBlankCanvas();
   const svgaOpaquePlaceholderRegression = proveSvgaPixelGateRejectsOpaquePlaceholderCanvas();
+  const svgaCoupledPlaybackRegressions = proveSvgaCoupledPlaybackGateRejectsFalsePositives();
   const lottieChildPixelRegression = proveRuntimeChildPixelGateRejectsStaticOrBlankChild("lottie");
   const vapChildPixelRegression = proveRuntimeChildPixelGateRejectsStaticOrBlankChild("vap");
   const vapAspectRatioRegression = proveVapAspectRatioGateRejectsSquareCssRect();
+  const vapClippedChildRegression = proveVapVisibilityGateRejectsClippedChild();
 
   if (externalRequests.length > 0) {
     throw new Error(`Unexpected external requests during real-rendering proof: ${JSON.stringify(externalRequests)}`);
@@ -189,11 +213,11 @@ async function main() {
     productMilestoneId: MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID,
     sourceHead: await gitHead(),
     input: {
-      svgaSha256: expectedFixtureHashes[svgaFixturePath],
-      lottieSha256: sha256File(lottiePath),
-      lottieImageSha256: sha256File(lottieImagePath),
-      boundedVapSha256: expectedFixtureHashes[taskVapPath],
-      vapcSha256: expectedFixtureHashes[taskVapcPath],
+      ownerSvga: ownerInputEvidence(ownerInputs.svga),
+      ownerLottie: ownerInputEvidence(ownerInputs.lottie),
+      ownerVap: ownerInputEvidence(ownerInputs.vap),
+      boundedVapSha256: expectedTaskFixtureHashes[taskVapPath],
+      vapcSha256: expectedTaskFixtureHashes[taskVapcPath],
       replacementPngSha256: sha256File(replacementPngPath),
       pathRedacted: true
     },
@@ -201,17 +225,19 @@ async function main() {
       svga: svgaEvidence,
       lottie: lottieEvidence,
       vap: vapEvidence,
+      boundedVap: boundedVapEvidence,
       vapReplacement: vapReplacementEvidence,
-      overLimit: overLimitEvidence,
       invalidLottie: invalidLottieEvidence,
       placeholderRegression,
       pauseRegression,
       svgaIdentityRegression,
       svgaPixelRegression,
       svgaOpaquePlaceholderRegression,
+      svgaCoupledPlaybackRegressions,
       lottieChildPixelRegression,
       vapChildPixelRegression,
       vapAspectRatioRegression,
+      vapClippedChildRegression,
       lifecycle: previewSession.lifecycle,
       externalRequests,
       consoleMessages: consoleMessages.slice(-20),
@@ -243,6 +269,7 @@ async function provePlayableFormat(input) {
       && (input.requireWebgl !== true || snapshot.runtimeWebglCanvasCount > 0)
   );
   assertSuccessfulPlayableSnapshot(input.label, "loaded", input, loadedSnapshot);
+  assertExpectedOwnerFacts(input, loadedSnapshot);
   const loadedPixels = await captureRuntimePixels(input.format);
   assertRenderablePixels(input.label, "loaded", loadedPixels, { requireBackingStore: input.format === "svga" });
 
@@ -258,14 +285,21 @@ async function provePlayableFormat(input) {
       && (input.requireVideo !== true || snapshot.anyVideoPaused === false)
   );
   const playingFirstPixels = await captureRuntimePixels(input.format);
-  await delay(700);
-  const playingSecond = await pageSnapshot();
-  const playingSecondPixels = await captureRuntimePixels(input.format);
-  assertSuccessfulPlayableSnapshot(input.label, "playing-first", input, playingFirst);
-  assertSuccessfulPlayableSnapshot(input.label, "playing-second", input, playingSecond);
-  assertRenderablePixels(input.label, "playing-first", playingFirstPixels, { requireBackingStore: input.format === "svga" });
-  assertRenderablePixels(input.label, "playing-second", playingSecondPixels, { requireBackingStore: input.format === "svga" });
-  assertPlaybackAdvanced(input.label, playingFirst, playingSecond, loadedPixels, playingSecondPixels);
+  const playingSamples = [{ snapshot: playingFirst, pixels: playingFirstPixels }];
+  for (const intervalMs of [275, 425, 350]) {
+    await delay(intervalMs);
+    const snapshot = await pageSnapshot();
+    const pixels = await captureRuntimePixels(input.format);
+    playingSamples.push({ snapshot, pixels });
+  }
+  for (const [index, sample] of playingSamples.entries()) {
+    const phase = `playing-${index + 1}`;
+    assertSuccessfulPlayableSnapshot(input.label, phase, input, sample.snapshot);
+    assertRenderablePixels(input.label, phase, sample.pixels, { requireBackingStore: input.format === "svga" });
+  }
+  assertCoupledPlayingSampleSequence(input.label, playingSamples);
+  const playingSecond = playingSamples.at(-1).snapshot;
+  const playingSecondPixels = playingSamples.at(-1).pixels;
 
   const playingBeforePause = await pageSnapshot();
   assertSuccessfulPlayableSnapshot(input.label, "playing-before-pause", input, playingBeforePause);
@@ -279,28 +313,32 @@ async function provePlayableFormat(input) {
       && successfulRendererIdentity(input, snapshot)
       && (input.requireVideo !== true || snapshot.anyVideoPaused === true)
   );
+  const pausedFirstPixels = await captureRuntimePixels(input.format);
   await delay(500);
   const pausedSecond = await pageSnapshot();
+  const pausedSecondPixels = await captureRuntimePixels(input.format);
   assertSuccessfulPlayableSnapshot(input.label, "paused-first", input, pausedFirst);
   assertSuccessfulPlayableSnapshot(input.label, "paused-second", input, pausedSecond);
-  const pausedPixels = await captureRuntimePixels(input.format);
-  assertRenderablePixels(input.label, "paused", pausedPixels, { requireBackingStore: input.format === "svga" });
+  assertRenderablePixels(input.label, "paused-first", pausedFirstPixels, { requireBackingStore: input.format === "svga" });
+  assertRenderablePixels(input.label, "paused-second", pausedSecondPixels, { requireBackingStore: input.format === "svga" });
   assertPausePreservedAdvancedFrame(input.label, playingBeforePause, pausedFirst, pausedSecond);
   if (input.format === "svga") {
     assertSvgaCanvasEvidence(input.label, {
       loadedPixels,
-      playingPixels: playingSecondPixels,
-      pausedPixels,
+      playingSamples,
+      pausedFirstPixels,
+      pausedSecondPixels,
       loadedSnapshot,
-      playingSnapshot: playingBeforePause,
-      pausedSnapshot: pausedSecond
+      pausedFirstSnapshot: pausedFirst,
+      pausedSecondSnapshot: pausedSecond
     });
   } else if (input.format === "lottie" || input.format === "vap") {
     assertRuntimeChildAnimationPixels(input.label, input.format, {
       loadedPixels,
-      playingFirstPixels,
-      playingSecondPixels
-    });
+      playingSamples,
+      pausedFirstPixels,
+      pausedSecondPixels
+    }, { expectedBacking: input.expectedBacking });
   }
 
   return {
@@ -309,12 +347,17 @@ async function provePlayableFormat(input) {
     loadedPixels,
     playingFirst: compactSnapshot(playingFirst),
     playingSecond: compactSnapshot(playingSecond),
+    playingSamples: playingSamples.map((sample) => ({
+      snapshot: compactSnapshot(sample.snapshot),
+      pixels: sample.pixels
+    })),
     playingBeforePause: compactSnapshot(playingBeforePause),
     playingFirstPixels,
     playingSecondPixels,
     pausedFirst: compactSnapshot(pausedFirst),
     pausedSecond: compactSnapshot(pausedSecond),
-    pausedPixels
+    pausedFirstPixels,
+    pausedSecondPixels
   };
 }
 
@@ -356,19 +399,6 @@ async function proveVapReplacementAndReset() {
     reset: compactSnapshot(reset),
     resetPixels
   };
-}
-
-async function proveOverLimitVapPolicy() {
-  const openAction = await openFileInProduct(overLimitVapPath, "VAP-OVER-LIMIT");
-  const snapshot = await waitForPage("VAP over-limit typed policy", () => pageSnapshot(), (candidate) =>
-    modelFormat(candidate) === "vap"
-      && candidate.hostModel?.model?.status === "playbackBlocked"
-      && candidate.hostModel?.model?.rightPanel?.issues?.some((issue) => issue.details?.reason === "vap_dimensions_over_1504")
-  );
-  if (snapshot.runtimeFormat === "vap" && snapshot.runtimeMountState === "loaded") {
-    throw new Error("Over-limit VAP reached runtime mount instead of failing before runtime creation.");
-  }
-  return { openAction, snapshot: compactSnapshot(snapshot) };
 }
 
 async function proveMissingLottieAssetFailure() {
@@ -470,6 +500,7 @@ async function pageSnapshot() {
           height: Number(canvas.height) || 0,
           clientWidth: Number(canvas.clientWidth) || 0,
           clientHeight: Number(canvas.clientHeight) || 0,
+          runtimePlayer: canvas.dataset.runtimePlayer || "",
           webgl,
           experimentalWebgl,
           webgl2
@@ -481,6 +512,18 @@ async function pageSnapshot() {
       try { hostModel = bridge?.controlMultiFormatPreview ? await bridge.controlMultiFormatPreview({ action: "model" }) : undefined; } catch {}
       const bodyText = document.body?.innerText || "";
       const primaryCanvas = document.querySelector("#primaryCanvas");
+      const lottieSvg = mount?.querySelector("svg");
+      const lottieDomState = lottieSvg
+        ? Array.from(lottieSvg.querySelectorAll("g,image,path")).slice(0, 32).map((element) => {
+            return {
+              tag: element.tagName,
+              transform: element.getAttribute("transform") || "",
+              style: element.getAttribute("style") || "",
+              opacity: element.getAttribute("opacity") || "",
+              display: element.getAttribute("display") || ""
+            };
+          })
+        : [];
       return {
         productMilestoneId: bridge?.productMilestoneId,
         bridgeReady: !!bridge?.prepareMultiFormatRuntimePreview,
@@ -496,10 +539,14 @@ async function pageSnapshot() {
         runtimeFormat: mount?.dataset.runtimeFormat || "",
         runtimePlayerReady: mount?.dataset.runtimePlayerReady || "",
         runtimePlaybackProgress: Number(mount?.dataset.runtimePlaybackProgress) || 0,
+        runtimePlaybackFrame: Number(mount?.dataset.runtimePlaybackFrame) || 0,
+        runtimePlaybackFrames: Number(mount?.dataset.runtimePlaybackFrames) || 0,
         runtimePlaybackTimeCopy: mount?.dataset.runtimePlaybackTimeCopy || "",
         runtimeCanvasCount: runtimeCanvases.length,
+        runtimeSvgaCanvasCount: runtimeCanvasDetails.filter((canvas) => canvas.runtimePlayer === "svga-web").length,
         runtimeRenderableCount: runtimeCanvases.length + (mount?.querySelectorAll("svg").length || 0),
         runtimeSvgCount: mount?.querySelectorAll("svg").length || 0,
+        lottieDomState,
         runtimeWebglCanvasCount: runtimeCanvasDetails.filter((canvas) =>
           canvas.width > 0 && canvas.height > 0 && (canvas.webgl || canvas.experimentalWebgl || canvas.webgl2)
         ).length,
@@ -541,12 +588,47 @@ async function captureRuntimePixels(format) {
       }
       if (!element) return undefined;
       const rect = element.getBoundingClientRect();
+      const viewportWidths = [
+        Number(globalThis.visualViewport?.width),
+        Number(document.documentElement?.clientWidth),
+        Number(globalThis.innerWidth)
+      ].filter((value) => Number.isFinite(value) && value > 0);
+      const viewportHeights = [
+        Number(globalThis.visualViewport?.height),
+        Number(document.documentElement?.clientHeight),
+        Number(globalThis.innerHeight)
+      ].filter((value) => Number.isFinite(value) && value > 0);
+      const viewportWidth = viewportWidths.length > 0 ? Math.min(...viewportWidths) : rect.right;
+      const viewportHeight = viewportHeights.length > 0 ? Math.min(...viewportHeights) : rect.bottom;
+      const intersectionLeft = Math.max(0, rect.left);
+      const intersectionTop = Math.max(0, rect.top);
+      const intersectionRight = Math.min(viewportWidth, rect.right);
+      const playbackRect = mount?.parentElement?.querySelector?.(".playbackBar")?.getBoundingClientRect?.();
+      const playbackTop = Number(playbackRect?.top);
+      const visibleBottomBoundary = Number.isFinite(playbackTop) && playbackTop > intersectionTop
+        ? Math.min(viewportHeight, playbackTop)
+        : viewportHeight;
+      const intersectionBottom = Math.min(visibleBottomBoundary, rect.bottom);
       return {
         selector: ${JSON.stringify(format)} === "lottie" ? "#multiFormatRuntimeMount svg" : ${JSON.stringify(format)} === "vap" ? "#multiFormatRuntimeMount canvas[webgl]" : "#multiFormatRuntimeMount",
         backingWidth: Number(element.width) || 0,
         backingHeight: Number(element.height) || 0,
         cssWidth: rect.width,
         cssHeight: rect.height,
+        cssLeft: rect.left,
+        cssTop: rect.top,
+        cssRight: rect.right,
+        cssBottom: rect.bottom,
+        viewportWidth,
+        viewportHeight,
+        playbackTop: Number.isFinite(playbackTop) ? playbackTop : undefined,
+        visibleWidth: Math.max(0, intersectionRight - intersectionLeft),
+        visibleHeight: Math.max(0, intersectionBottom - intersectionTop),
+        fullyVisible: intersectionLeft <= rect.left + 0.5
+          && intersectionTop <= rect.top + 0.5
+          && intersectionRight >= rect.right - 0.5
+          && intersectionBottom >= rect.bottom - 0.5,
+        deviceScaleFactor: Number(globalThis.devicePixelRatio) || 1,
         x: Math.max(0, Math.floor(rect.x)),
         y: Math.max(0, Math.floor(rect.y)),
         width: Math.max(1, Math.ceil(rect.width)),
@@ -557,6 +639,8 @@ async function captureRuntimePixels(format) {
   if (!rect || rect.width <= 1 || rect.height <= 1) {
     throw new Error(`${format} runtime child element did not have a capturable rectangle.`);
   }
+  if (typeof windowRef.webContents.invalidate === "function") windowRef.webContents.invalidate();
+  await delay(50);
   const image = await windowRef.webContents.capturePage(rect);
   const size = image.getSize();
   const bitmap = image.toBitmap();
@@ -581,6 +665,19 @@ async function captureRuntimePixels(format) {
     backingHeight: rect.backingHeight,
     cssWidth: rect.cssWidth,
     cssHeight: rect.cssHeight,
+    cssLeft: rect.cssLeft,
+    cssTop: rect.cssTop,
+    cssRight: rect.cssRight,
+    cssBottom: rect.cssBottom,
+    viewportWidth: rect.viewportWidth,
+    viewportHeight: rect.viewportHeight,
+    playbackTop: rect.playbackTop,
+    visibleWidth: rect.visibleWidth,
+    visibleHeight: rect.visibleHeight,
+    fullyVisible: rect.fullyVisible,
+    deviceScaleFactor: rect.deviceScaleFactor,
+    effectiveScaleX: rect.cssWidth > 0 ? size.width / rect.cssWidth : 0,
+    effectiveScaleY: rect.cssHeight > 0 ? size.height / rect.cssHeight : 0,
     backingAspectRatio: rect.backingHeight > 0 ? rect.backingWidth / rect.backingHeight : 0,
     cssAspectRatio: rect.cssHeight > 0 ? rect.cssWidth / rect.cssHeight : 0,
     captureAspectRatio: size.height > 0 ? size.width / size.height : 0,
@@ -592,15 +689,15 @@ async function captureRuntimePixels(format) {
 }
 
 async function captureSvgaCanvasBackingStorePixels() {
-  const pixels = await runInPage("svga primary canvas backing store pixels", `
+  const pixels = await runInPage("svga runtime canvas backing store pixels", `
     (() => {
-      const canvas = document.querySelector("#primaryCanvas");
+      const canvas = document.querySelector('#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]');
       if (!canvas) return undefined;
       const width = Number(canvas.width) || 0;
       const height = Number(canvas.height) || 0;
-      if (width <= 0 || height <= 0) return { source: "canvas-backing-store", selector: "#primaryCanvas", width, height, error: "empty_canvas" };
+      if (width <= 0 || height <= 0) return { source: "canvas-backing-store", selector: '#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]', width, height, error: "empty_canvas" };
       const context = canvas.getContext("2d", { willReadFrequently: true });
-      if (!context) return { source: "canvas-backing-store", selector: "#primaryCanvas", width, height, error: "missing_2d_context" };
+      if (!context) return { source: "canvas-backing-store", selector: '#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]', width, height, error: "missing_2d_context" };
       const image = context.getImageData(0, 0, width, height);
       const data = image.data;
       let nonWhite = 0;
@@ -622,7 +719,7 @@ async function captureSvgaCanvasBackingStorePixels() {
       }
       return {
         source: "canvas-backing-store",
-        selector: "#primaryCanvas",
+        selector: '#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]',
         width,
         height,
         nonWhite,
@@ -633,10 +730,10 @@ async function captureSvgaCanvasBackingStorePixels() {
     })()
   `);
   if (!pixels) {
-    throw new Error("SVGA primary canvas was unavailable for backing-store readback.");
+    throw new Error("SVGA runtime canvas was unavailable for backing-store readback.");
   }
   if (pixels.error) {
-    throw new Error(`SVGA primary canvas backing-store readback failed: ${pixels.error}`);
+    throw new Error(`SVGA runtime canvas backing-store readback failed: ${pixels.error}`);
   }
   const rawPixels = Buffer.from(String(pixels.dataBase64 ?? ""), "base64");
   return {
@@ -661,14 +758,47 @@ function assertRenderablePixels(label, phase, pixels, options = {}) {
 }
 
 function assertSvgaCanvasEvidence(label, evidence) {
-  const { loadedPixels, playingPixels, pausedPixels, loadedSnapshot, playingSnapshot, pausedSnapshot } = evidence;
-  for (const [phase, pixels] of Object.entries({ loaded: loadedPixels, playing: playingPixels, paused: pausedPixels })) {
+  const {
+    loadedPixels,
+    playingSamples,
+    pausedFirstPixels,
+    pausedSecondPixels,
+    loadedSnapshot,
+    pausedFirstSnapshot,
+    pausedSecondSnapshot
+  } = evidence;
+  const phasePixels = {
+    loaded: loadedPixels,
+    ...Object.fromEntries(playingSamples.map((sample, index) => [`playing${index + 1}`, sample.pixels])),
+    pausedFirst: pausedFirstPixels,
+    pausedSecond: pausedSecondPixels
+  };
+  for (const [phase, pixels] of Object.entries(phasePixels)) {
     assertRenderablePixels(label, phase, pixels, { requireBackingStore: true });
     assertSvgaCanvasNotOpaquePlaceholder(label, phase, pixels);
   }
-  const sizes = [loadedPixels, playingPixels, pausedPixels].map((pixels) => `${pixels.width}x${pixels.height}`);
+  const sizes = Object.values(phasePixels).map((pixels) => `${pixels.width}x${pixels.height}`);
   if (new Set(sizes).size !== 1) {
-    throw new Error(`${label} SVGA backing-store dimensions changed across play/pause: ${JSON.stringify({ sizes, loaded: compactSnapshot(loadedSnapshot), playing: compactSnapshot(playingSnapshot), paused: compactSnapshot(pausedSnapshot) })}`);
+    throw new Error(`${label} SVGA backing-store dimensions changed across play/pause: ${JSON.stringify({ sizes, loaded: compactSnapshot(loadedSnapshot), playing: playingSamples.map((sample) => compactSnapshot(sample.snapshot)), pausedFirst: compactSnapshot(pausedFirstSnapshot), pausedSecond: compactSnapshot(pausedSecondSnapshot) })}`);
+  }
+  assertSvgaCoupledPlaybackEvidence(label, {
+    playingSamples,
+    pausedFirstSnapshot,
+    pausedSecondSnapshot,
+    pausedFirstPixels,
+    pausedSecondPixels
+  });
+}
+
+function assertSvgaCoupledPlaybackEvidence(label, evidence) {
+  const playingSamples = evidence.playingSamples ?? [
+    { snapshot: evidence.playingFirstSnapshot, pixels: evidence.playingFirstPixels },
+    { snapshot: evidence.playingSecondSnapshot, pixels: evidence.playingSecondPixels }
+  ];
+  assertCoupledPlayingSampleSequence(label, playingSamples);
+  assertPausePreservedAdvancedFrame(label, playingSamples.at(-1).snapshot, evidence.pausedFirstSnapshot, evidence.pausedSecondSnapshot);
+  if (evidence.pausedFirstPixels.sha256 !== evidence.pausedSecondPixels.sha256) {
+    throw new Error(`${label} SVGA rendered pixels changed between paused samples: ${JSON.stringify({ pausedFirst: compactSnapshot(evidence.pausedFirstSnapshot), pausedSecond: compactSnapshot(evidence.pausedSecondSnapshot), pausedFirstPixels: evidence.pausedFirstPixels, pausedSecondPixels: evidence.pausedSecondPixels })}`);
   }
 }
 
@@ -681,20 +811,47 @@ function assertSvgaCanvasNotOpaquePlaceholder(label, phase, pixels) {
   }
 }
 
-function assertRuntimeChildAnimationPixels(label, format, evidence) {
-  const { loadedPixels, playingFirstPixels, playingSecondPixels } = evidence;
-  for (const [phase, pixels] of Object.entries({ loaded: loadedPixels, playingFirst: playingFirstPixels, playingSecond: playingSecondPixels })) {
+function assertRuntimeChildAnimationPixels(label, format, evidence, options = {}) {
+  const playingSamples = evidence.playingSamples ?? [
+    { snapshot: evidence.playingFirstSnapshot, pixels: evidence.playingFirstPixels },
+    { snapshot: evidence.playingSecondSnapshot, pixels: evidence.playingSecondPixels }
+  ];
+  const loadedPixels = evidence.loadedPixels;
+  const pausedFirstPixels = evidence.pausedFirstPixels ?? playingSamples.at(-1).pixels;
+  const pausedSecondPixels = evidence.pausedSecondPixels ?? pausedFirstPixels;
+  const phasePixels = {
+    loaded: loadedPixels,
+    ...Object.fromEntries(playingSamples.map((sample, index) => [`playing${index + 1}`, sample.pixels])),
+    pausedFirst: pausedFirstPixels,
+    pausedSecond: pausedSecondPixels
+  };
+  for (const [phase, pixels] of Object.entries(phasePixels)) {
     assertRenderablePixels(label, phase, pixels);
-    if (format === "vap" && (Number(pixels.backingWidth) !== 120 || Number(pixels.backingHeight) !== 80)) {
-      throw new Error(`${label} ${phase} VAP pixels are not bound to the expected 120x80 WebGL child backing store: ${JSON.stringify(pixels)}`);
+    const expectedBacking = options.expectedBacking;
+    if (format === "vap" && expectedBacking
+      && (Number(pixels.backingWidth) !== expectedBacking.width || Number(pixels.backingHeight) !== expectedBacking.height)) {
+      throw new Error(`${label} ${phase} VAP pixels are not bound to the expected ${expectedBacking.width}x${expectedBacking.height} WebGL child backing store: ${JSON.stringify(pixels)}`);
     }
     if (format === "vap") assertVapRuntimeAspectRatio(label, phase, pixels);
   }
-  if (loadedPixels.sha256 === playingFirstPixels.sha256 && playingFirstPixels.sha256 === playingSecondPixels.sha256) {
-    throw new Error(`${label} ${format} child pixels stayed static across loaded and time-separated playing samples: ${JSON.stringify({ loadedPixels, playingFirstPixels, playingSecondPixels })}`);
+  assertCoupledPlayingSampleSequence(label, playingSamples);
+  if (pausedFirstPixels.sha256 !== pausedSecondPixels.sha256) {
+    throw new Error(`${label} ${format} child pixels changed between paused samples: ${JSON.stringify({ pausedFirstPixels, pausedSecondPixels })}`);
   }
-  if (playingFirstPixels.sha256 === playingSecondPixels.sha256) {
-    throw new Error(`${label} ${format} child pixels did not change between time-separated playing samples: ${JSON.stringify({ playingFirstPixels, playingSecondPixels })}`);
+}
+
+function assertExpectedOwnerFacts(input, snapshot) {
+  const model = snapshot?.hostModel?.model;
+  if (Number.isFinite(input.expectedImageCount)
+    && model?.rightPanel?.assetInventory?.summary?.imageCount !== input.expectedImageCount) {
+    throw new Error(`${input.label} did not expose the expected image inventory: ${JSON.stringify(compactSnapshot(snapshot))}`);
+  }
+  if (input.requireCanvasRisk === true) {
+    const canvasFact = model?.rightPanel?.facts?.find((fact) => fact.id === "dimensions");
+    const riskIssues = model?.rightPanel?.issues?.filter((issue) => issue.details?.reason === "vap_dimensions_over_1504") ?? [];
+    if (canvasFact?.status !== "warning" || canvasFact.value !== "750 x 1624" || riskIssues.length !== 1 || riskIssues[0]?.severity !== "warning") {
+      throw new Error(`${input.label} did not preserve one truthful oversized Canvas risk while playing: ${JSON.stringify({ canvasFact, riskIssues, snapshot: compactSnapshot(snapshot) })}`);
+    }
   }
 }
 
@@ -702,12 +859,20 @@ function assertVapRuntimeAspectRatio(label, phase, pixels) {
   const backingRatio = Number(pixels?.backingWidth) / Number(pixels?.backingHeight);
   const cssRatio = Number(pixels?.cssWidth) / Number(pixels?.cssHeight);
   const captureRatio = Number(pixels?.width) / Number(pixels?.height);
-  const tolerance = 0.02;
+  const tolerance = 0.005;
+  const deviceScaleFactor = Number(pixels?.deviceScaleFactor);
+  const expectedCaptureWidth = Number(pixels?.cssWidth) * deviceScaleFactor;
+  const expectedCaptureHeight = Number(pixels?.cssHeight) * deviceScaleFactor;
+  const captureTolerance = 2;
   if (![backingRatio, cssRatio, captureRatio].every(Number.isFinite)
     || backingRatio <= 0
     || Math.abs(cssRatio - backingRatio) > tolerance
-    || Math.abs(captureRatio - backingRatio) > tolerance) {
-    throw new Error(`${label} ${phase} VAP child aspect ratio does not match its backing store: ${JSON.stringify({ backingRatio, cssRatio, captureRatio, pixels })}`);
+    || Math.abs(captureRatio - backingRatio) > tolerance
+    || pixels?.fullyVisible !== true
+    || !Number.isFinite(deviceScaleFactor)
+    || Math.abs(Number(pixels?.width) - expectedCaptureWidth) > captureTolerance
+    || Math.abs(Number(pixels?.height) - expectedCaptureHeight) > captureTolerance) {
+    throw new Error(`${label} ${phase} VAP child is distorted or clipped relative to its backing store: ${JSON.stringify({ backingRatio, cssRatio, captureRatio, expectedCaptureWidth, expectedCaptureHeight, pixels })}`);
   }
 }
 
@@ -729,9 +894,7 @@ function assertSuccessfulPlayableSnapshot(label, phase, input, snapshot) {
 function successfulRendererIdentity(input, snapshot) {
   if (!snapshot || snapshot.runtimeMountState !== "loaded" || snapshot.runtimeFormat !== input.format) return false;
   if (input.format === "svga") {
-    return snapshot.primaryCanvasVisible === true
-      && Number(snapshot.primaryCanvasWidth) > 0
-      && Number(snapshot.primaryCanvasHeight) > 0
+    return Number(snapshot.runtimeSvgaCanvasCount) === 1
       && snapshot.runtimePlayerReady === "svga-web";
   }
   if (input.format === "lottie") {
@@ -744,17 +907,64 @@ function successfulRendererIdentity(input, snapshot) {
   return false;
 }
 
-function assertPlaybackAdvanced(label, first, second, firstPixels, secondPixels) {
-  const firstProgress = Number(first?.runtimePlaybackProgress) || 0;
-  const secondProgress = Number(second?.runtimePlaybackProgress) || 0;
+function assertCoupledPlayingSampleSequence(label, samples) {
+  if (!Array.isArray(samples) || samples.length < 2) {
+    throw new Error(`${label} requires at least two paired playing samples.`);
+  }
+  let temporalAdvanceObserved = false;
+  let pixelChangeObserved = false;
+  for (let index = 1; index < samples.length; index += 1) {
+    const previous = samples[index - 1];
+    const current = samples[index];
+    const temporalAdvanced = playbackPositionAdvanced(previous.snapshot, current.snapshot);
+    const pixelsChanged = previous.pixels?.sha256 !== current.pixels?.sha256;
+    temporalAdvanceObserved ||= temporalAdvanced;
+    pixelChangeObserved ||= pixelsChanged;
+    if (temporalAdvanced && pixelsChanged) return;
+  }
+  throw new Error(`${label} did not produce one paired transition with both playback advance and rendered-pixel change: ${JSON.stringify({ temporalAdvanceObserved, pixelChangeObserved, samples: samples.map((sample) => ({ snapshot: compactSnapshot(sample.snapshot), pixels: sample.pixels })) })}`);
+}
+
+function playbackPositionAdvanced(first, second) {
+  const firstFrames = Number(first?.runtimePlaybackFrames) || 0;
+  const secondFrames = Number(second?.runtimePlaybackFrames) || 0;
+  if (firstFrames > 0 && secondFrames === firstFrames) {
+    const firstFrame = Number(first?.runtimePlaybackFrame) || 0;
+    const secondFrame = Number(second?.runtimePlaybackFrame) || 0;
+    const delta = secondFrame >= firstFrame
+      ? secondFrame - firstFrame
+      : (firstFrames - firstFrame) + secondFrame;
+    return delta > 0.05 && delta < firstFrames * 0.75;
+  }
   const firstVideoTime = Number(first?.maxVideoCurrentTime) || 0;
   const secondVideoTime = Number(second?.maxVideoCurrentTime) || 0;
-  if (secondProgress <= firstProgress && secondVideoTime <= firstVideoTime) {
-    throw new Error(`${label} playback did not advance between samples: ${JSON.stringify({ first: compactSnapshot(first), second: compactSnapshot(second), firstPixels, secondPixels })}`);
-  }
+  if (secondVideoTime > firstVideoTime + 0.01) return true;
+  const firstProgress = Number(first?.runtimePlaybackProgress) || 0;
+  const secondProgress = Number(second?.runtimePlaybackProgress) || 0;
+  if (secondProgress > firstProgress) return true;
+  return firstProgress > 75 && secondProgress < 25;
 }
 
 function assertPausePreservedAdvancedFrame(label, playing, firstPaused, secondPaused) {
+  const totalFrames = Number(playing?.runtimePlaybackFrames) || 0;
+  if (totalFrames > 0
+    && Number(firstPaused?.runtimePlaybackFrames) === totalFrames
+    && Number(secondPaused?.runtimePlaybackFrames) === totalFrames) {
+    const playingFrame = Number(playing?.runtimePlaybackFrame) || 0;
+    const firstFrame = Number(firstPaused?.runtimePlaybackFrame) || 0;
+    const secondFrame = Number(secondPaused?.runtimePlaybackFrame) || 0;
+    const circularDistance = (left, right) => {
+      const direct = Math.abs(left - right);
+      return Math.min(direct, Math.max(0, totalFrames - direct));
+    };
+    if (circularDistance(playingFrame, firstFrame) > 1.25) {
+      throw new Error(`${label} pause jumped away from the last playing frame: ${JSON.stringify({ playing: compactSnapshot(playing), firstPaused: compactSnapshot(firstPaused), secondPaused: compactSnapshot(secondPaused) })}`);
+    }
+    if (circularDistance(firstFrame, secondFrame) > 0.25) {
+      throw new Error(`${label} playback frame did not remain stable after pause: ${JSON.stringify({ playing: compactSnapshot(playing), firstPaused: compactSnapshot(firstPaused), secondPaused: compactSnapshot(secondPaused) })}`);
+    }
+    return;
+  }
   const playingProgress = Number(playing?.runtimePlaybackProgress) || 0;
   const firstProgress = Number(firstPaused?.runtimePlaybackProgress) || 0;
   const secondProgress = Number(secondPaused?.runtimePlaybackProgress) || 0;
@@ -810,6 +1020,7 @@ function proveSvgaIdentityGateRejectsGenericCanvas() {
     primaryCanvasVisible: true,
     primaryCanvasWidth: 320,
     primaryCanvasHeight: 300,
+    runtimeSvgaCanvasCount: 0,
     runtimePlayerReady: "",
     errorMessage: "",
     bodyTextIncludes: []
@@ -818,6 +1029,67 @@ function proveSvgaIdentityGateRejectsGenericCanvas() {
     throw new Error("SVGA identity regression accepted a generic visible canvas without svga-web player identity.");
   }
   return { status: "passed", rejected: true };
+}
+
+function proveSvgaCoupledPlaybackGateRejectsFalsePositives() {
+  const basePixels = {
+    source: "canvas-backing-store",
+    selector: '#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]',
+    width: 300,
+    height: 300,
+    nonWhite: 20000,
+    nonTransparent: 40000,
+    channelDelta: 1000
+  };
+  const cases = [
+    {
+      id: "time-only",
+      evidence: {
+        playingFirstSnapshot: { runtimePlaybackProgress: 10 },
+        playingSecondSnapshot: { runtimePlaybackProgress: 20 },
+        playingFirstPixels: { ...basePixels, sha256: sha256Text("same-frame") },
+        playingSecondPixels: { ...basePixels, sha256: sha256Text("same-frame") },
+        pausedFirstSnapshot: { runtimePlaybackProgress: 20 },
+        pausedSecondSnapshot: { runtimePlaybackProgress: 20 },
+        pausedFirstPixels: { ...basePixels, sha256: sha256Text("same-frame") },
+        pausedSecondPixels: { ...basePixels, sha256: sha256Text("same-frame") }
+      }
+    },
+    {
+      id: "pixel-only",
+      evidence: {
+        playingFirstSnapshot: { runtimePlaybackProgress: 20 },
+        playingSecondSnapshot: { runtimePlaybackProgress: 20 },
+        playingFirstPixels: { ...basePixels, sha256: sha256Text("frame-a") },
+        playingSecondPixels: { ...basePixels, sha256: sha256Text("frame-b") },
+        pausedFirstSnapshot: { runtimePlaybackProgress: 20 },
+        pausedSecondSnapshot: { runtimePlaybackProgress: 20 },
+        pausedFirstPixels: { ...basePixels, sha256: sha256Text("frame-b") },
+        pausedSecondPixels: { ...basePixels, sha256: sha256Text("frame-b") }
+      }
+    },
+    {
+      id: "paused-pixel-drift",
+      evidence: {
+        playingFirstSnapshot: { runtimePlaybackProgress: 10 },
+        playingSecondSnapshot: { runtimePlaybackProgress: 20 },
+        playingFirstPixels: { ...basePixels, sha256: sha256Text("frame-a") },
+        playingSecondPixels: { ...basePixels, sha256: sha256Text("frame-b") },
+        pausedFirstSnapshot: { runtimePlaybackProgress: 20 },
+        pausedSecondSnapshot: { runtimePlaybackProgress: 20 },
+        pausedFirstPixels: { ...basePixels, sha256: sha256Text("frame-b") },
+        pausedSecondPixels: { ...basePixels, sha256: sha256Text("frame-c") }
+      }
+    }
+  ];
+  return cases.map(({ id, evidence }) => {
+    try {
+      assertSvgaCoupledPlaybackEvidence(`SVGA-${id.toUpperCase()}-REGRESSION`, evidence);
+    } catch (error) {
+      return { id, status: "passed", rejected: true, message: error instanceof Error ? error.message : String(error) };
+    }
+    throw new Error(`SVGA ${id} false-positive regression was accepted.`);
+  });
 }
 
 function proveSvgaPixelGateRejectsBlankCanvas() {
@@ -916,6 +1188,10 @@ function proveVapAspectRatioGateRejectsSquareCssRect() {
     backingHeight: 80,
     cssWidth: 120,
     cssHeight: 120,
+    visibleWidth: 120,
+    visibleHeight: 120,
+    fullyVisible: true,
+    deviceScaleFactor: 2,
     nonWhite: 57600,
     nonTransparent: 57600,
     channelDelta: 1200,
@@ -927,6 +1203,33 @@ function proveVapAspectRatioGateRejectsSquareCssRect() {
     return { status: "passed", rejected: true, message: error instanceof Error ? error.message : String(error) };
   }
   throw new Error("VAP aspect-ratio regression accepted a square CSS child for a 120x80 backing store.");
+}
+
+function proveVapVisibilityGateRejectsClippedChild() {
+  const pixels = {
+    source: "compositor-capture",
+    selector: "#multiFormatRuntimeMount canvas[webgl]",
+    width: 616,
+    height: 1292,
+    backingWidth: 750,
+    backingHeight: 1624,
+    cssWidth: 308,
+    cssHeight: 668,
+    visibleWidth: 308,
+    visibleHeight: 646,
+    fullyVisible: false,
+    deviceScaleFactor: 2,
+    nonWhite: 795300,
+    nonTransparent: 795872,
+    channelDelta: 86912,
+    sha256: sha256Text("vap-bottom-clipped-under-loose-aspect-tolerance")
+  };
+  try {
+    assertVapRuntimeAspectRatio("VAP-CLIPPED-CHILD-REGRESSION", "loaded", pixels);
+  } catch (error) {
+    return { status: "passed", rejected: true, message: error instanceof Error ? error.message : String(error) };
+  }
+  throw new Error("VAP clipped-child regression was accepted by the aspect/visibility gate.");
 }
 
 function visiblePlaybackTimeMatchesRuntime(snapshot) {
@@ -962,14 +1265,20 @@ function compactSnapshot(snapshot) {
       severity: issue.severity,
       reason: issue.details?.reason
     })),
+    canvasFact: snapshot?.hostModel?.model?.rightPanel?.facts?.find((fact) => fact.id === "dimensions"),
+    assetSummary: snapshot?.hostModel?.model?.rightPanel?.assetInventory?.summary,
     runtimeMountState: snapshot?.runtimeMountState,
     runtimeFormat: snapshot?.runtimeFormat,
     runtimePlayerReady: snapshot?.runtimePlayerReady,
     runtimePlaybackProgress: snapshot?.runtimePlaybackProgress,
+    runtimePlaybackFrame: snapshot?.runtimePlaybackFrame,
+    runtimePlaybackFrames: snapshot?.runtimePlaybackFrames,
     runtimePlaybackTimeCopy: snapshot?.runtimePlaybackTimeCopy,
     runtimeCanvasCount: snapshot?.runtimeCanvasCount,
+    runtimeSvgaCanvasCount: snapshot?.runtimeSvgaCanvasCount,
     runtimeRenderableCount: snapshot?.runtimeRenderableCount,
     runtimeSvgCount: snapshot?.runtimeSvgCount,
+    lottieDomState: snapshot?.lottieDomState,
     runtimeWebglCanvasCount: snapshot?.runtimeWebglCanvasCount,
     runtimeCanvasMaxWidth: snapshot?.runtimeCanvasMaxWidth,
     runtimeCanvasMaxHeight: snapshot?.runtimeCanvasMaxHeight,
@@ -995,27 +1304,55 @@ function modelFormat(snapshot) {
 }
 
 function prepareFixtures() {
-  for (const [filePath, expected] of Object.entries(expectedFixtureHashes)) {
+  for (const [filePath, expected] of Object.entries(expectedTaskFixtureHashes)) {
     if (!existsSync(filePath)) throw new Error(`Required task-owned fixture is missing: ${path.basename(filePath)}`);
     const actual = sha256File(filePath);
     if (actual !== expected) throw new Error(`Fixture hash drift for ${path.basename(filePath)}: ${actual}`);
   }
-  mkdirSync(lottieImageDirectory, { recursive: true });
+  ownerInputs = resolveOwnerInputs();
   const pngBytes = Buffer.from(tinyPngBase64, "base64");
   writeFileSync(replacementPngPath, pngBytes);
-  writeFileSync(lottieImagePath, pngBytes);
-  writeFileSync(lottiePath, JSON.stringify(createTaskOwnedLottieDocument("images/dot.png")));
-  copyFileSync(svgaFixturePath, svgaPath);
   copyFileSync(taskVapPath, vapPath);
   copyFileSync(taskVapcPath, vapcPath);
-  copyFileSync(taskVapPath, overLimitVapPath);
-  const overLimitConfig = JSON.parse(readFileSync(taskVapcPath, "utf8"));
-  overLimitConfig.info = {
-    ...(overLimitConfig.info ?? {}),
-    w: 1600,
-    h: 1600
+}
+
+function resolveOwnerInputs() {
+  const resolved = {};
+  for (const [key, spec] of Object.entries(ownerInputSpecs)) {
+    const filePath = String(process.env[spec.env] ?? "").trim();
+    if (!filePath || !path.isAbsolute(filePath) || !existsSync(filePath)) {
+      throw new Error(`Required ${spec.alias} input is unavailable through ${spec.env}.`);
+    }
+    const actual = sha256File(filePath);
+    if (actual !== spec.sha256) {
+      throw new Error(`${spec.alias} hash drift: ${actual}`);
+    }
+    const entry = { ...spec, filePath };
+    if (key === "vap") {
+      const sidecarCandidates = [
+        path.join(path.dirname(filePath), `${path.basename(filePath, path.extname(filePath))}.json`),
+        path.join(path.dirname(filePath), "vapc.json")
+      ];
+      const sidecarPath = sidecarCandidates.find((candidate) =>
+        existsSync(candidate) && sha256File(candidate) === spec.sidecarSha256
+      );
+      if (!sidecarPath) {
+        throw new Error(`${spec.alias} sidecar identity is unavailable or drifted.`);
+      }
+      entry.sidecarPath = sidecarPath;
+    }
+    resolved[key] = entry;
+  }
+  return resolved;
+}
+
+function ownerInputEvidence(input) {
+  return {
+    alias: input.alias,
+    sha256: input.sha256,
+    ...(input.sidecarSha256 ? { sidecarSha256: input.sidecarSha256 } : {}),
+    pathRedacted: true
   };
-  writeFileSync(overLimitVapcPath, JSON.stringify(overLimitConfig));
 }
 
 function createTaskOwnedLottieDocument(imagePath) {

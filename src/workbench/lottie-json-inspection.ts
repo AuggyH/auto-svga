@@ -323,12 +323,15 @@ function normalizeAssets(
       imageAssetCount += 1;
       if (asset.e === 1) {
         nonReplaceableAssetIds.add(id);
-        issues.push(issue(
-          feedback,
-          "unsupported_feature",
-          "Embedded Lottie image payloads are metadata-only and not supported in WP2A.",
-          { feature: "embedded_image_asset", path: `assets.${index}.e` }
-        ));
+        const embeddedMediaType = embeddedImageMediaType(asset.p);
+        if (!embeddedMediaType) {
+          issues.push(issue(
+            feedback,
+            "unsupported_feature",
+            "Embedded Lottie image payloads require a bounded supported data-image URI.",
+            { feature: "embedded_image_asset", path: `assets.${index}.p` }
+          ));
+        }
         resources.push({
           id,
           name: id,
@@ -338,7 +341,7 @@ function normalizeAssets(
           metadata: {
             lottieAssetType: "image",
             embedded: true,
-            unsupported: true
+            ...(embeddedMediaType ? { mediaType: embeddedMediaType } : { unsupported: true })
           }
         });
         return;
@@ -366,6 +369,12 @@ function normalizeAssets(
     value: { resources, assetIds, nonReplaceableAssetIds, imageAssetCount, precompAssetCount },
     issues
   };
+}
+
+function embeddedImageMediaType(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const match = /^data:(image\/(?:png|jpeg|webp|gif));base64,[A-Za-z0-9+/]+={0,2}$/iu.exec(value.trim());
+  return match?.[1].toLocaleLowerCase("en-US");
 }
 
 function normalizeImageReference(

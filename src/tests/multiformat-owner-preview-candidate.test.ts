@@ -366,6 +366,47 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   assertNoLocalPaths(reset);
 });
 
+test("owner-visible oversized VAP remains playable with a truthful Canvas warning", async () => {
+  const localPath = "/Users/designer/private/owner-oversized-vap.mp4";
+  const runtime = fakeVapRuntime();
+  const host = memoryHost({
+    [localPath]: validVapBytes({
+      info: {
+        ...vapInfo(),
+        w: 750,
+        h: 1624,
+        videoW: 1136,
+        videoH: 1632
+      }
+    })
+  });
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host,
+    vapTarget: { id: "vap-target" },
+    vapHostReadiness: readyVapHost(),
+    vapRuntimeLoader: async () => runtime.constructor
+  });
+
+  const opened = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-owner-oversized-vap",
+    source: "menuOpen",
+    localPath
+  });
+
+  assert.equal(opened.status, "previewReady");
+  assert.equal(opened.detectedFormat, "vap");
+  assert.equal(opened.rightPanel.facts.find(({ id }) => id === "dimensions")?.value, "750 x 1624");
+  assert.equal(opened.rightPanel.facts.find(({ id }) => id === "dimensions")?.status, "warning");
+  assert.equal(opened.rightPanel.issues.filter(({ details, severity }) =>
+    details?.reason === "vap_dimensions_over_1504" && severity === "warning"
+  ).length, 1);
+  assert.equal(runtime.configs.length, 1);
+  assert.equal((await session.play()).status, "playing");
+  assert.equal((await session.pause()).status, "paused");
+  assertNoLocalPaths(opened);
+});
+
 test("owner-visible 0.2 candidate fails VAP reset closed when the original source cannot reopen", async () => {
   const localPath = "/Users/designer/private/fusion.mp4";
   const runtime = fakeVapRuntime();

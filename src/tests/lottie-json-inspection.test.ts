@@ -141,7 +141,7 @@ test("reports unsupported features nested inside precomp assets", async () => {
   );
 });
 
-test("keeps referenced embedded image assets from producing dangling layer resources", async () => {
+test("keeps bounded embedded image assets playable without making them replaceable", async () => {
   const result = await service().inspect(
     memorySource("embedded-image.json", minimalLottie({
       assets: [{ id: "img_embedded", w: 64, h: 64, e: 1, p: "data:image/png;base64,AA==" }],
@@ -151,11 +151,12 @@ test("keeps referenced embedded image assets from producing dangling layer resou
   );
 
   assert.ok(result.value);
-  assert.deepEqual(result.issues.map(({ details }) => details?.feature), ["embedded_image_asset"]);
+  assert.deepEqual(result.issues, []);
   assert.equal(result.value.resources.length, 1);
   assert.equal(result.value.resources[0]?.id, "img_embedded");
   assert.equal(result.value.resources[0]?.replaceable, false);
   assert.equal(result.value.resources[0]?.metadata?.embedded, true);
+  assert.equal(result.value.resources[0]?.metadata?.mediaType, "image/png");
   assert.deepEqual(result.value.layers[0]?.resourceIds, ["img_embedded"]);
   assert.equal(result.value.layers[0]?.replaceable, false);
   const resourceIds = new Set(result.value.resources.map(({ id }) => id));

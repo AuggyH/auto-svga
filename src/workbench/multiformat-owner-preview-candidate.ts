@@ -753,6 +753,7 @@ function modelFromWorkspace(
 ): OwnerVisibleMultiFormatPreviewModel {
   const status = ownerStatus(workspaceModel.status);
   const replacement = replacementState(replacements, lastReplacementAction, replacementStatus, playerAction);
+  const visibleIssues = uniqueIssues(workspaceModel.issues);
   return {
     schemaVersion: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_SCHEMA_VERSION,
     source: "owner-visible-0.2-multiformat-preview-candidate",
@@ -790,7 +791,7 @@ function modelFromWorkspace(
         lottieTexts: workspaceModel.replaceable.texts,
         vapFusionImages: workspaceModel.replaceable.fusionImages,
         vapFusionTexts: workspaceModel.replaceable.fusionTexts,
-        issues: workspaceModel.issues,
+        issues: visibleIssues,
         unsupportedFeatures: workspaceModel.unsupportedFeatures
       }),
       layers: workspaceModel.layers.map((entry) => ({ ...entry, resourceIds: [...entry.resourceIds] })),
@@ -799,10 +800,22 @@ function modelFromWorkspace(
       vapFusionImages: workspaceModel.replaceable.fusionImages.map(cloneFusionElement),
       vapFusionTexts: workspaceModel.replaceable.fusionTexts.map(cloneFusionElement),
       unsupportedFeatures: workspaceModel.unsupportedFeatures.map((entry) => ({ ...entry })),
-      issues: workspaceModel.issues.map(cloneIssue)
+      issues: visibleIssues.map(cloneIssue)
     },
     replacement
   };
+}
+
+function uniqueIssues<T extends WorkbenchIssue>(issues: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return issues.filter((entry) => {
+    const key = entry.details?.reason === "vap_dimensions_over_1504"
+      ? JSON.stringify([entry.code, entry.severity, entry.details.reason, entry.details.limit ?? null])
+      : JSON.stringify([entry.code, entry.severity, entry.message, entry.details ?? null]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function ownerStatus(status: HiddenMultiFormatPreviewStatus): OwnerVisibleMultiFormatPreviewStatus {
@@ -824,9 +837,12 @@ function factRows(model: HiddenMultiFormatPreviewModel): OwnerVisibleMultiFormat
       status: "unknown"
     }];
   }
+  const oversizedVapCanvas = overview.format === "vap" && model.issues.some(({ details }) =>
+    details?.reason === "vap_dimensions_over_1504"
+  );
   const rows: OwnerVisibleMultiFormatPreviewFactRow[] = [
     { id: "format", label: "Format", value: overview.format.toUpperCase(), status: "pass" },
-    { id: "dimensions", label: "Canvas", value: overview.dimensions ?? "unknown", status: overview.dimensions ? "pass" : "unknown" },
+    { id: "dimensions", label: "Canvas", value: overview.dimensions ?? "unknown", status: overview.dimensions ? (oversizedVapCanvas ? "warning" : "pass") : "unknown" },
     { id: "duration", label: "Duration", value: formatDuration(overview.durationMs), status: overview.durationMs ? "pass" : "unknown" },
     { id: "layers", label: "Layers", value: String(overview.layerCount), status: "pass" },
     { id: "assets", label: "Assets", value: String(overview.resourceCount), status: "pass" },

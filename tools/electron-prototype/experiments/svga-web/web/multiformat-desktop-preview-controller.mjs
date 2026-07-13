@@ -42,7 +42,12 @@ const factLabels = new Map([
   ["Unsupported", "不支持特性"]
 ]);
 
-export function createMultiFormatDesktopPreviewController({ bridge, nodes, state }) {
+export function createMultiFormatDesktopPreviewController({
+  bridge,
+  nodes,
+  state,
+  svgaPlaybackModuleLoader = () => import("./short-term-macos-playback-model.mjs")
+}) {
   let activeRequest = 0;
   let runtimePreviewGeneration = 0;
   let activeRuntimePreview;
@@ -358,7 +363,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     renderIssues(model);
     renderReplaceableTargets();
     renderTextTargets();
-    if (!activeRuntimePreviewOwnsPrimaryCanvas(result)) {
+    if (!activeRuntimePreviewOwnsCanvasOutput(result)) {
       renderCanvasState(model, result.visualEvidence);
     }
     renderPlaybackState(model);
@@ -632,6 +637,8 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     mount.dataset.runtimePreviewState = "preparing";
     mount.dataset.runtimeFormat = format;
     delete mount.dataset.runtimePlayerReady;
+    delete mount.dataset.runtimePlaybackFrame;
+    delete mount.dataset.runtimePlaybackFrames;
     if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "hidden";
     bridge.prepareMultiFormatRuntimePreview({
       sourceId,
@@ -690,7 +697,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     } catch {}
     if (active?.format === "svga") {
       try {
-        active.stopPlayback?.({ key: "multiFormatSvga", playbackState: state });
+        active.stopPlayback?.({ key: active.playbackKey, playbackState: state });
       } catch {}
     }
     if (active?.objectUrl) {
@@ -705,6 +712,8 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       mount.dataset.runtimePreviewState = "idle";
       delete mount.dataset.runtimeFormat;
       delete mount.dataset.runtimePlayerReady;
+      delete mount.dataset.runtimePlaybackFrame;
+      delete mount.dataset.runtimePlaybackFrames;
     }
     if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "";
   }
@@ -726,7 +735,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     return nodes.primaryCanvas?.parentElement?.querySelector("#multiFormatRuntimeMount");
   }
 
-  function activeRuntimePreviewOwnsPrimaryCanvas(result) {
+  function activeRuntimePreviewOwnsCanvasOutput(result) {
     const model = result?.model;
     if (model?.detectedFormat !== "svga") return false;
     const sourceId = result?.sourceId || state.sourceId;
@@ -737,7 +746,9 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       && activeRuntimePreview.replacementSignature === runtimeReplacementSignature(model)
       && mount?.dataset.runtimePreviewState === "loaded"
       && mount?.dataset.runtimeFormat === "svga"
-      && mount?.dataset.runtimePlayerReady === "svga-web";
+      && mount?.dataset.runtimePlayerReady === "svga-web"
+      && activeRuntimePreview.canvas?.parentElement === mount
+      && activeRuntimePreview.canvas?.dataset.runtimePlayer === "svga-web";
   }
 
   async function mountSvgaRuntimePreview(payload, mount, model, generation, runtimeIdentity) {
@@ -745,16 +756,21 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       throw new RuntimePreviewPayloadError(payload?.issue);
     }
     const bytes = base64ToBytes(payload.svgaBase64);
-    mount.replaceChildren();
-    mount.hidden = true;
+    const svgaPlayback = await loadSvgaPlaybackModule();
+    if (!isActiveRuntimePreviewGeneration(generation)) return;
+    const canvas = document.createElement("canvas");
+    const playbackKey = `multiFormatSvga:${generation}`;
+    canvas.className = "multiFormatSvgaRuntimeCanvas";
+    canvas.dataset.runtimeGeneration = String(generation);
+    mount.replaceChildren(canvas);
+    mount.hidden = false;
     mount.dataset.runtimePreviewState = "preparing";
     mount.dataset.runtimeFormat = "svga";
     delete mount.dataset.runtimePlayerReady;
-    if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "";
-    const svgaPlayback = await loadSvgaPlaybackModule();
+    if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "hidden";
     const playback = await svgaPlayback.mountPlayback({
-      key: "multiFormatSvga",
-      canvas: nodes.primaryCanvas,
+      key: playbackKey,
+      canvas,
       bytes,
       options: {
         loop: state.primaryPlaybackLooping !== false,
@@ -763,23 +779,31 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       playbackState: state,
       onPlaybackStateChange: () => renderRuntimePlaybackProgress()
     });
-    if (!isActiveRuntimePreviewGeneration(generation)) {
-      svgaPlayback.stopPlayback({ key: "multiFormatSvga", playbackState: state });
+    if (!isActiveRuntimePreviewGeneration(generation) || canvas.parentElement !== mount || mount.children?.[0] !== canvas) {
+      svgaPlayback.stopPlayback({ key: playbackKey, playbackState: state });
       return;
     }
     if (model.status === "paused" || model.status === "previewReady") {
-      playback?.player?.pause?.();
-      if (playback) playback.playing = false;
+      if (svgaPlayback.pausePlaybackAtCurrentFrame) {
+        svgaPlayback.pausePlaybackAtCurrentFrame(playback);
+      } else {
+        playback?.player?.pause?.();
+        if (playback) playback.playing = false;
+      }
     }
     mount.dataset.runtimePreviewState = "loaded";
     mount.dataset.runtimeFormat = "svga";
     mount.dataset.runtimePlayerReady = playback?.player ? "svga-web" : "";
+    canvas.dataset.runtimePlayer = playback?.player ? "svga-web" : "";
     activeRuntimePreview = {
       format: "svga",
       sourceId: runtimeIdentity.sourceId,
       replacementSignature: runtimeIdentity.replacementSignature,
+      canvas,
+      playbackKey,
       playback,
       playbackProgressView: svgaPlayback.playbackProgressView,
+      pausePlaybackAtCurrentFrame: svgaPlayback.pausePlaybackAtCurrentFrame,
       stopPlayback: svgaPlayback.stopPlayback
     };
     renderRuntimePlaybackProgress();
@@ -797,6 +821,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       renderer: "svg",
       loop: state.primaryPlaybackLooping !== false,
       autoplay: model.status === "playing",
+      rendererSettings: { runExpressions: false },
       animationData: payload.animationData
     });
     activeRuntimePreview = {
@@ -852,6 +877,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
         })));
       }
     });
+    fitVapRuntimeCanvas(mount);
     activeRuntimePreview = {
       format: "vap",
       player,
@@ -880,17 +906,25 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     if (active?.format !== "svga" || !active.playback) return false;
     if (active.sourceId !== runtimeIdentity.sourceId) return false;
     if (active.replacementSignature !== runtimeIdentity.replacementSignature) return false;
+    const mount = runtimeMountNode();
+    if (!mount || active.canvas?.parentElement !== mount || active.canvas?.dataset.runtimePlayer !== "svga-web") return false;
     if (model.status === "playing") {
       if (!active.playback.playing) {
         active.playback.player?.start?.();
         active.playback.playing = true;
       }
     } else if (model.status === "paused" || model.status === "previewReady") {
-      active.playback.player?.pause?.();
-      active.playback.playing = false;
+      if (active.pausePlaybackAtCurrentFrame) {
+        active.pausePlaybackAtCurrentFrame(active.playback);
+      } else {
+        active.playback.player?.pause?.();
+        active.playback.playing = false;
+      }
     }
     renderRuntimePlaybackProgress();
     startRuntimePlaybackProgressLoop();
+    mount.hidden = false;
+    if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "hidden";
     return true;
   }
 
@@ -987,6 +1021,11 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       const view = active.playbackProgressView(active.playback);
       progress = view.progress;
       timeCopy = view.timeCopy;
+      const mount = runtimeMountNode();
+      if (mount) {
+        mount.dataset.runtimePlaybackFrame = String(view.frame ?? 0);
+        mount.dataset.runtimePlaybackFrames = String(view.frames ?? 0);
+      }
     } else if (active.format === "vap") {
       const video = active.player?.video;
       const durationMs = Number(state.model?.canvas?.playback?.durationMs) || (Number(video?.duration) > 0 ? Number(video.duration) * 1000 : 0);
@@ -1000,6 +1039,11 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       const durationMs = Number(active.durationMs) || Number(state.model?.canvas?.playback?.durationMs) || 0;
       progress = durationMs > 0 ? Math.max(0, Math.min(100, (currentMs / durationMs) * 100)) : 0;
       timeCopy = `${formatTime(currentMs)} / ${formatTime(durationMs)}`;
+      const mount = runtimeMountNode();
+      if (mount) {
+        mount.dataset.runtimePlaybackFrame = String(currentFrame);
+        mount.dataset.runtimePlaybackFrames = String(durationMs > 0 && fps > 0 ? (durationMs / 1000) * fps : 0);
+      }
     }
     if (timeCopy) nodes.playbackTime.textContent = timeCopy;
     const mount = runtimeMountNode();
@@ -1009,6 +1053,10 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       if (active.format === "svga" && active.playback?.player) {
         mount.dataset.runtimePlayerReady = "svga-web";
       }
+      if (active.format === "vap") {
+        delete mount.dataset.runtimePlaybackFrame;
+        delete mount.dataset.runtimePlaybackFrames;
+      }
     }
     nodes.playbackProgress?.setAttribute("aria-valuenow", String(Math.round(progress)));
     const bar = nodes.playbackProgress?.querySelector("span");
@@ -1017,7 +1065,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
 
   function loadSvgaPlaybackModule() {
     if (!svgaPlaybackModulePromise) {
-      svgaPlaybackModulePromise = import("./short-term-macos-playback-model.mjs");
+      svgaPlaybackModulePromise = Promise.resolve().then(() => svgaPlaybackModuleLoader());
     }
     return svgaPlaybackModulePromise;
   }
@@ -1025,11 +1073,13 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   function bindVapPlaybackReadinessGuards(mount, player, generation) {
     let video;
     let discoveryTimer;
+    let resizeObserver;
     let discoveryAttempts = 0;
     const syncDesiredPlayback = (event) => {
       if (!isActiveRuntimePreviewGeneration(generation)) return;
       if (activeRuntimePreview?.player !== player) return;
       if (event?.type === "playing") activeRuntimePreview.runtimeReady = true;
+      fitVapRuntimeCanvas(mount);
       syncVapRuntimePlayback(activeRuntimePreview, state.model ?? {}, { forcePlayback: true });
     };
     const bindVideo = () => {
@@ -1039,16 +1089,76 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       video.addEventListener("playing", syncDesiredPlayback);
       return true;
     };
-    if (!bindVideo()) {
+    const discoverRuntimeChildren = () => {
+      const videoReady = bindVideo() || Boolean(video);
+      const canvasReady = fitVapRuntimeCanvas(mount);
+      return videoReady && canvasReady;
+    };
+    if (typeof globalThis.ResizeObserver === "function") {
+      resizeObserver = new globalThis.ResizeObserver(() => fitVapRuntimeCanvas(mount));
+      resizeObserver.observe(mount);
+    }
+    if (!discoverRuntimeChildren()) {
       discoveryTimer = setInterval(() => {
         discoveryAttempts += 1;
-        if (bindVideo() || discoveryAttempts >= 40) clearInterval(discoveryTimer);
+        if (discoverRuntimeChildren() || discoveryAttempts >= 40) clearInterval(discoveryTimer);
       }, 25);
     }
     return () => {
       if (discoveryTimer) clearInterval(discoveryTimer);
+      resizeObserver?.disconnect?.();
       video?.removeEventListener?.("playing", syncDesiredPlayback);
     };
+  }
+
+  function fitVapRuntimeCanvas(mount) {
+    const canvas = Array.from(mount?.querySelectorAll?.("canvas") ?? []).find((candidate) => {
+      try {
+        return Boolean(candidate.getContext?.("webgl") || candidate.getContext?.("experimental-webgl") || candidate.getContext?.("webgl2"));
+      } catch {
+        return false;
+      }
+    });
+    if (!canvas) return false;
+    const backingWidth = Math.max(1, Number(canvas.width) || 1);
+    const backingHeight = Math.max(1, Number(canvas.height) || 1);
+    const bounds = mount.getBoundingClientRect?.();
+    const mountWidth = Math.max(1, Number(bounds?.width) || Number(mount.clientWidth) || backingWidth);
+    const mountHeight = Math.max(1, Number(bounds?.height) || Number(mount.clientHeight) || backingHeight);
+    const viewportWidths = [
+      Number(globalThis.visualViewport?.width),
+      Number(globalThis.document?.documentElement?.clientWidth),
+      Number(globalThis.innerWidth)
+    ].filter((value) => Number.isFinite(value) && value > 0);
+    const viewportHeights = [
+      Number(globalThis.visualViewport?.height),
+      Number(globalThis.document?.documentElement?.clientHeight),
+      Number(globalThis.innerHeight)
+    ].filter((value) => Number.isFinite(value) && value > 0);
+    const viewportWidth = viewportWidths.length > 0 ? Math.min(...viewportWidths) : 0;
+    const viewportHeight = viewportHeights.length > 0 ? Math.min(...viewportHeights) : 0;
+    const left = Number(bounds?.left) || 0;
+    const top = Number(bounds?.top) || 0;
+    const right = left + mountWidth;
+    const bottom = top + mountHeight;
+    const playbackBounds = mount.parentElement?.querySelector?.(".playbackBar")?.getBoundingClientRect?.();
+    const playbackTop = Number(playbackBounds?.top);
+    const visibleLeft = Math.max(left, 0);
+    const visibleTop = Math.max(top, 0);
+    const visibleRight = viewportWidth > 0 ? Math.min(right, viewportWidth) : right;
+    let visibleBottom = viewportHeight > 0 ? Math.min(bottom, viewportHeight) : bottom;
+    if (Number.isFinite(playbackTop) && playbackTop > visibleTop && playbackTop < visibleBottom) {
+      visibleBottom = playbackTop;
+    }
+    const availableWidth = Math.max(1, Math.min(mountWidth, visibleRight - visibleLeft));
+    const availableHeight = Math.max(1, Math.min(mountHeight, visibleBottom - visibleTop));
+    mount.style.boxSizing = "border-box";
+    mount.style.padding = `${Math.max(0, visibleTop - top)}px ${Math.max(0, right - visibleRight)}px ${Math.max(0, bottom - visibleBottom)}px ${Math.max(0, visibleLeft - left)}px`;
+    const scale = Math.min(1, availableWidth / backingWidth, availableHeight / backingHeight);
+    canvas.style.width = `${Math.max(1, Math.round(backingWidth * scale))}px`;
+    canvas.style.height = `${Math.max(1, Math.round(backingHeight * scale))}px`;
+    canvas.style.aspectRatio = `${backingWidth} / ${backingHeight}`;
+    return true;
   }
 
   function runtimeReplacementSignature(model) {

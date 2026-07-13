@@ -318,8 +318,8 @@ function containerIssues(
     issues.push(issue(
       feedback,
       "capability",
-      "VAP dimensions exceed the documented 1504 compatibility limit for the first playback path.",
-      "error",
+      "VAP dimensions exceed the documented 1504 compatibility threshold; playback remains available with a canvas-size risk marker.",
+      "warning",
       { reason: "vap_dimensions_over_1504", limit: VAP_COMPATIBILITY_MAX_DIMENSION }
     ));
   }

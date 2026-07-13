@@ -117,10 +117,9 @@ test("fails closed for ambiguous fusion bindings", () => {
   ));
 });
 
-test("blocks unsupported codec, missing host capabilities, and over-limit VAP dimensions", () => {
+test("blocks unsupported codec and missing host capabilities", () => {
   const result = service().prepare(validVapAsset({
-    videoCodec: "hvc1",
-    displayWidth: VAP_COMPATIBILITY_MAX_DIMENSION + 1
+    videoCodec: "hvc1"
   }), {
     gate: VAP_PLAYBACK_PREPARATION_WP3B_GATE,
     dependencyApproval: "approved",
@@ -142,9 +141,21 @@ test("blocks unsupported codec, missing host capabilities, and over-limit VAP di
   assert.ok(result.issues.some(({ code, details }) =>
     code === "capability" && details?.reason === "blob_media_csp_required"
   ));
-  assert.ok(result.issues.some(({ code, details }) =>
-    code === "capability" && details?.reason === "vap_dimensions_over_1504"
-  ));
+});
+
+test("keeps oversized H.264 VAP prepared with a compatibility warning", () => {
+  const result = service().prepare(validVapAsset({
+    displayWidth: VAP_COMPATIBILITY_MAX_DIMENSION + 1
+  }), {
+    gate: VAP_PLAYBACK_PREPARATION_WP3B_GATE,
+    dependencyApproval: "approved",
+    hostReadiness: readyHost(),
+    providedFusionTags: ["avatar", "nickname"]
+  });
+
+  assert.equal(result.value?.status, "prepared");
+  assert.equal(result.value?.container.overCompatibilityLimit, true);
+  assert.deepEqual(result.issues.filter(({ details }) => details?.reason === "vap_dimensions_over_1504").map(({ severity }) => severity), ["warning"]);
 });
 
 test("fails closed for non-VAP assets, missing VAP metadata, and dangling layer resource ids", () => {

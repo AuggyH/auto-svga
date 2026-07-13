@@ -1864,7 +1864,7 @@ test("0.2 multi-format desktop session headless SVGA playback load returns a val
   assert.match(adapterSource, /layers:\s*\[\]/);
 });
 
-test("0.2 installed file-open source reaches positive Lottie and sidecar VAP session states", async () => {
+test("0.2 installed file-open source reaches positive Lottie and sidecar VAP states including oversized VAP", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-file-open-session-"));
   const sourceStore = new Map();
   const session = createMultiFormatDesktopPreviewSession({
@@ -1963,17 +1963,31 @@ test("0.2 installed file-open source reaches positive Lottie and sidecar VAP ses
       session.openLocalFilePath(overLimitVapPath, "fileOpenEvent"),
       "installed-file-open-vap-over-limit"
     );
-    assert.equal(overLimitVap.model.status, "playbackBlocked");
+    assert.equal(overLimitVap.model.status, "previewReady");
     assert.equal(overLimitVap.model.detectedFormat, "vap");
-    assert.equal(overLimitVap.model.rightPanel.issues.some((issue) => issue.details?.reason === "vap_dimensions_over_1504"), true);
+    assert.equal(overLimitVap.model.rightPanel.issues.some((issue) =>
+      issue.details?.reason === "vap_dimensions_over_1504" && issue.severity === "warning"
+    ), true);
+    assert.equal(overLimitVap.model.rightPanel.facts.some((fact) =>
+      fact.id === "dimensions" && fact.value === "1136 x 1632" && fact.status === "warning"
+    ), true);
     assert.equal(overLimitVap.model.rightPanel.issues.some((issue) => issue.details?.reason === "open_input_invalid"), false);
+    const overLimitRuntime = await session.prepareRuntimePreview({
+      sourceId: overLimitVap.sourceId,
+      format: "vap",
+      requestId: overLimitVap.model.requestId,
+      replacements: overLimitVap.model.replacement
+    });
+    assert.equal(overLimitRuntime.status, "prepared");
+    assert.equal((await session.control({ action: "play" })).model.status, "playing");
+    assert.equal((await session.control({ action: "pause" })).model.status, "paused");
     assert.doesNotMatch(JSON.stringify(overLimitVap), /auto-svga-file-open-session/);
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
 });
 
-test("0.2 installed file-open source surfaces embedded-image Lottie as a visible typed limitation", async () => {
+test("0.2 installed file-open source keeps bounded embedded-image Lottie playable and nonreplaceable", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-file-open-embedded-lottie-"));
   const sourceStore = new Map();
   const session = createMultiFormatDesktopPreviewSession({
@@ -1993,11 +2007,27 @@ test("0.2 installed file-open source surfaces embedded-image Lottie as a visible
       ip: 0,
       op: 300,
       assets: [
-        { id: "image_0", w: 96, h: 96, e: 1, p: "data:image/png;base64,AA==" },
-        { id: "image_1", w: 64, h: 64, e: 1, p: "data:image/png;base64,AA==" }
+        { id: "image_0", w: 96, h: 96, e: 1, p: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR42mP8z8AABQMBgF7gywAAAABJRU5ErkJggg==" },
+        { id: "image_1", w: 64, h: 64, e: 1, p: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR42mP8z8AABQMBgF7gywAAAABJRU5ErkJggg==" }
       ],
       layers: [
-        { ind: 1, ty: 2, nm: "Embedded avatar", refId: "image_0" },
+        {
+          ind: 1,
+          ty: 2,
+          nm: "Embedded avatar",
+          refId: "image_0",
+          ks: {
+            s: {
+              a: 1,
+              k: [
+                { t: 0, s: [80, 80, 100], i: { x: [0.667], y: [1] }, o: { x: [0.333], y: [0] } },
+                { t: 30, s: [110, 110, 100], h: 0 },
+                { t: 60, s: [80, 80, 100] }
+              ],
+              x: "var $bm_rt;\n$bm_rt = loopOut();"
+            }
+          }
+        },
         { ind: 2, ty: 2, nm: "Embedded badge", refId: "image_1" },
         { ind: 3, ty: 4, nm: "Vector accent", shapes: [] }
       ]
@@ -2011,14 +2041,182 @@ test("0.2 installed file-open source surfaces embedded-image Lottie as a visible
     assert.equal(result.pathRedacted, true);
     assert.equal(result.model.openedFrom, "fileOpenEvent");
     assert.equal(result.model.detectedFormat, "lottie");
-    assert.equal(result.model.status, "playbackBlocked");
+    assert.equal(result.model.status, "previewReady");
     assert.equal(result.model.rightPanel.assets.length, 2);
     assert.equal(result.model.rightPanel.assets.every((asset) => asset.replaceable === false), true);
     assert.equal(result.model.rightPanel.assetInventory.summary.imageCount, 2);
-    assert.equal(result.model.rightPanel.assetInventory.summary.unsupportedOrMissingCount > 0, true);
-    assert.equal(result.model.rightPanel.issues.some((issue) => issue.code === "unsupported_feature"), true);
-    assert.equal(result.lifecycle.lottieLoads, 0);
+    assert.equal(result.model.rightPanel.assetInventory.summary.unsupportedOrMissingCount, 0);
+    assert.equal(result.model.rightPanel.issues.some((issue) => issue.code === "unsupported_feature"), false);
+    const runtime = await session.prepareRuntimePreview({
+      sourceId: result.sourceId,
+      format: "lottie",
+      requestId: result.model.requestId,
+      replacements: result.model.replacement
+    });
+    assert.equal(runtime.status, "prepared");
+    assert.deepEqual(runtime.expressionNormalization, {
+      safeLoopOutProperties: 1,
+      sourceEvaluationAllowed: false
+    });
+    const normalizedScale = runtime.animationData.layers[0].ks.s;
+    assert.equal(normalizedScale.x, undefined);
+    assert.deepEqual(normalizedScale.k.map((keyframe) => keyframe.t), [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300]);
+    const sourceDocument = JSON.parse(await readFile(lottiePath, "utf8"));
+    assert.deepEqual(normalizedScale.k.slice(0, 3), sourceDocument.layers[0].ks.s.k);
+    assert.equal(runtime.animationData.ip, sourceDocument.ip);
+    assert.equal(runtime.animationData.op, sourceDocument.op);
+    assert.equal(runtime.animationData.fr, sourceDocument.fr);
+    assert.equal(sourceDocument.layers[0].ks.s.x, "var $bm_rt;\n$bm_rt = loopOut();");
+    assert.equal((await session.control({ action: "play" })).model.status, "playing");
+    assert.equal((await session.control({ action: "pause" })).model.status, "paused");
+    assert.equal(result.lifecycle.lottieLoads, 1);
     assert.doesNotMatch(JSON.stringify(result), /auto-svga-file-open-embedded-lottie|\/Users|C:\\\\Users/);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 strict-CSP Lottie runtime blocks unsafe or malformed expression shapes", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-expression-block-"));
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: new Map(),
+    openTimeoutMs: 1000
+  });
+  const cases = [
+    {
+      id: "parameterized",
+      expression: '$bm_rt = loopOut("cycle");',
+      keyframes: [{ t: 0, s: [80, 80, 100] }, { t: 24, s: [80, 80, 100] }],
+      reason: "unsupported_lottie_expression"
+    },
+    {
+      id: "other-expression",
+      expression: "$bm_rt = time * 2;",
+      keyframes: [{ t: 0, s: [80, 80, 100] }, { t: 24, s: [80, 80, 100] }],
+      reason: "unsupported_lottie_expression"
+    },
+    {
+      id: "malformed-keyframes",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 0, s: [80, 80, 100] }],
+      reason: "safe_loop_out_keyframes_required"
+    },
+    {
+      id: "unordered-keyframes",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 24, s: [80, 80, 100] }, { t: 12, s: [90, 90, 100] }],
+      reason: "safe_loop_out_keyframes_required"
+    },
+    {
+      id: "string-vector",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 0, s: ["80", 80, 100] }, { t: 24, s: [90, 90, 100] }],
+      reason: "safe_loop_out_numeric_vectors_required"
+    },
+    {
+      id: "mismatched-vector",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 0, s: [80, 80, 100] }, { t: 24, s: [90, 90] }],
+      reason: "safe_loop_out_numeric_vectors_required"
+    },
+    {
+      id: "ambiguous-timing",
+      expression: "$bm_rt = loopOut();",
+      keyframes: [{ t: 0, s: [80, 80, 100] }, { t: 144, s: [90, 90, 100] }],
+      reason: "safe_loop_out_timing_required"
+    }
+  ];
+
+  try {
+    for (const input of cases) {
+      const filePath = path.join(sessionRoot, `${input.id}.json`);
+      await writeFile(filePath, JSON.stringify({
+        v: "5.12.2",
+        w: 120,
+        h: 120,
+        fr: 24,
+        ip: 0,
+        op: 120,
+        assets: [],
+        layers: [{
+          ind: 1,
+          ty: 2,
+          nm: "Expression fixture",
+          ks: { s: { a: 1, k: input.keyframes, x: input.expression } }
+        }]
+      }));
+      const opened = await session.openLocalFilePath(filePath, "fileOpenEvent");
+      assert.equal(opened.status, "opened");
+      const runtime = await session.prepareRuntimePreview({
+        sourceId: opened.sourceId,
+        format: "lottie",
+        requestId: opened.model.requestId,
+        replacements: opened.model.replacement
+      });
+      assert.equal(runtime.status, "failed");
+      assert.equal(runtime.issue.code, "unsupported_feature");
+      assert.equal(runtime.issue.details.reason, input.reason);
+      assert.equal(runtime.pathRedacted, true);
+      assert.doesNotMatch(JSON.stringify(runtime), /auto-svga-lottie-expression-block|\/Users|C:\\Users/i);
+    }
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
+test("0.2 strict-CSP Lottie runtime accepts only deliberate no-argument loopOut whitespace forms", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-lottie-safe-loop-out-"));
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore: new Map(),
+    openTimeoutMs: 1000
+  });
+  const safeExpressions = [
+    "$bm_rt = loopOut()",
+    "  var   $bm_rt ;\n  $bm_rt = loopOut ( ) ;  "
+  ];
+
+  try {
+    for (const [index, expression] of safeExpressions.entries()) {
+      const filePath = path.join(sessionRoot, `safe-${index}.json`);
+      await writeFile(filePath, JSON.stringify({
+        v: "5.12.2",
+        w: 120,
+        h: 120,
+        fr: 24,
+        ip: 0,
+        op: 120,
+        assets: [],
+        layers: [{
+          ind: 1,
+          ty: 4,
+          nm: "Safe loop fixture",
+          ks: {
+            s: {
+              a: 1,
+              k: [{ t: 0, s: [80, 80, 100] }, { t: 24, s: [110, 110, 100] }, { t: 48, s: [80, 80, 100] }],
+              x: expression
+            }
+          },
+          shapes: []
+        }]
+      }));
+      const opened = await session.openLocalFilePath(filePath, "fileOpenEvent");
+      const runtime = await session.prepareRuntimePreview({
+        sourceId: opened.sourceId,
+        format: "lottie",
+        requestId: opened.model.requestId,
+        replacements: opened.model.replacement
+      });
+      assert.equal(runtime.status, "prepared");
+      assert.equal(runtime.expressionNormalization.safeLoopOutProperties, 1);
+      assert.equal(runtime.expressionNormalization.sourceEvaluationAllowed, false);
+      assert.equal(runtime.animationData.layers[0].ks.s.x, undefined);
+      assert.deepEqual(runtime.animationData.layers[0].ks.s.k.map((keyframe) => keyframe.t), [0, 24, 48, 72, 96, 120]);
+    }
   } finally {
     await rm(sessionRoot, { recursive: true, force: true });
   }
@@ -2129,6 +2327,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieCalls[0].container.dataset.runtimeFormat, "lottie");
     assert.equal(lottieCalls[0].animationData.v, "5.7.4");
     assert.equal(lottieCalls[0].loop, true);
+    assert.deepEqual(lottieCalls[0].rendererSettings, { runExpressions: false });
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
 
     controller.handlers.updateRuntimeText("text:1", "Runtime greeting");
@@ -2172,11 +2371,131 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
   }
 });
 
+test("0.2 deferred SVGA mount completion cannot overwrite a newer runtime generation", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const nodes = createMultiFormatControllerTestNodes();
+  globalThis.document = createMultiFormatControllerTestDocument(nodes);
+  const mountCalls = [];
+  const stopCalls = [];
+  const pauseCalls = [];
+  const deferredMounts = [];
+  const svgaPlaybackModule = {
+    mountPlayback(input) {
+      mountCalls.push(input);
+      return new Promise((resolve) => deferredMounts.push({ input, resolve }));
+    },
+    stopPlayback(input) {
+      stopCalls.push(input);
+      delete input.playbackState[`${input.key}Playback`];
+    },
+    playbackProgressView(playback) {
+      return { progress: playback?.progress ?? 0, frame: playback?.player?.currentFrame ?? 0, frames: 60, timeCopy: "0:00 / 0:01" };
+    },
+    pausePlaybackAtCurrentFrame(playback) {
+      pauseCalls.push(playback?.label);
+      playback.player.pause();
+      playback.playing = false;
+      return playback.player.currentFrame;
+    }
+  };
+  const bridge = {
+    productMilestoneId: "0.2-multiformat-preview",
+    updateShortTermMenuState() { return Promise.resolve(); },
+    setShortTermWindowMode() { return Promise.resolve(); },
+    prepareMultiFormatRuntimePreview(input) {
+      return Promise.resolve({
+        status: "prepared",
+        format: "svga",
+        svgaBase64: Buffer.from([0x78, 0x9c, 0x03, 0x00]).toString("base64"),
+        sourceId: input.sourceId
+      });
+    },
+    controlMultiFormatPreview(input) {
+      const result = createRuntimeMountOpenResult("svga", { sourceId: "svga-source-new" });
+      result.model.status = input.action === "play" ? "playing" : "paused";
+      result.model.canvas.playback.status = result.model.status;
+      return Promise.resolve(result);
+    }
+  };
+  const state = {
+    view: "launch",
+    mode: "preview",
+    tab: "overview",
+    appearance: "light",
+    primaryPlaybackLooping: true,
+    textPreviewValues: {}
+  };
+
+  try {
+    const controller = createMultiFormatDesktopPreviewController({
+      bridge,
+      nodes,
+      state,
+      svgaPlaybackModuleLoader: async () => svgaPlaybackModule
+    });
+    controller.initialize();
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "svga-old" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({
+      eventId: "svga-old",
+      result: createRuntimeMountOpenResult("svga", { sourceId: "svga-source-old" })
+    }), true);
+    await flushRuntimeMountPromises();
+    assert.equal(mountCalls.length, 1);
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "svga-new" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({
+      eventId: "svga-new",
+      result: createRuntimeMountOpenResult("svga", { sourceId: "svga-source-new" })
+    }), true);
+    await flushRuntimeMountPromises();
+    assert.equal(mountCalls.length, 2);
+    assert.notEqual(mountCalls[0].key, mountCalls[1].key);
+    assert.notEqual(mountCalls[0].canvas, mountCalls[1].canvas);
+
+    const newPlayback = fakeDeferredSvgaPlayback("new");
+    deferredMounts[1].resolve(newPlayback);
+    await flushRuntimeMountPromises();
+    const currentCanvas = nodes.runtimeMount.children[0];
+    assert.equal(currentCanvas, mountCalls[1].canvas);
+    assert.equal(currentCanvas.dataset.runtimePlayer, "svga-web");
+    assert.equal(nodes.runtimeMount.dataset.runtimePlayerReady, "svga-web");
+
+    deferredMounts[0].resolve(fakeDeferredSvgaPlayback("old"));
+    await flushRuntimeMountPromises();
+    assert.equal(nodes.runtimeMount.children[0], currentCanvas);
+    assert.equal(nodes.runtimeMount.dataset.runtimePlayerReady, "svga-web");
+    assert.deepEqual(stopCalls.map(({ key }) => key), [mountCalls[0].key]);
+    assert.deepEqual(pauseCalls, ["new"]);
+
+    const mountCount = mountCalls.length;
+    await controller.handlers.togglePrimaryPlayback();
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "playing");
+    assert.equal(mountCalls.length, mountCount);
+    assert.deepEqual(pauseCalls, ["new"]);
+    await controller.handlers.togglePrimaryPlayback();
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "paused");
+    assert.equal(mountCalls.length, mountCount);
+    assert.deepEqual(pauseCalls, ["new", "new"]);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("0.2 runtime mount preserves VAP canvas intrinsic aspect ratio", async () => {
   const modulesCss = await readFile(path.join(experimentRoot, "web/short-term-macos.modules.css"), "utf8");
+  const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
 
   assert.match(modulesCss, /(?:^|\n)canvas\s*\{[^}]*aspect-ratio:\s*var\(--asv-playback-aspect,\s*1\s*\/\s*1\);/s);
   assert.match(modulesCss, /\.multiFormatRuntimeMount canvas\s*\{[^}]*aspect-ratio:\s*auto;/s);
+  assert.match(controller, /function fitVapRuntimeCanvas\(mount\)/);
+  assert.match(controller, /querySelector\?\.\("\.playbackBar"\)\?\.getBoundingClientRect/);
+  assert.match(controller, /mount\.style\.padding =/);
+  assert.match(controller, /Math\.min\(1, availableWidth \/ backingWidth, availableHeight \/ backingHeight\)/);
+  assert.match(controller, /canvas\.style\.aspectRatio = `\$\{backingWidth\} \/ \$\{backingHeight\}`/);
 });
 
 test("0.2 first-launch file-open survives delayed renderer-ready flush and late initialization", async () => {
@@ -5825,7 +6144,7 @@ function createRuntimeMountOpenResult(format, options = {}) {
   const activeReplacements = Array.isArray(options.active) ? options.active : [];
   return {
     status: "opened",
-    sourceId: format === "lottie" ? "aaaaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbbbb",
+    sourceId: options.sourceId ?? (format === "lottie" ? "aaaaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbbbb"),
     pathRedacted: true,
     model: {
       schemaVersion: 1,
@@ -5919,6 +6238,19 @@ function createRuntimeMountOpenResult(format, options = {}) {
       lottieDomPlaybackVerified: false,
       vapVisualPlaybackVerified: false
     }
+  };
+}
+
+function fakeDeferredSvgaPlayback(label) {
+  return {
+    label,
+    player: {
+      currentFrame: label === "new" ? 12 : 6,
+      start() {},
+      pause() {}
+    },
+    playing: false,
+    progress: label === "new" ? 20 : 10
   };
 }
 

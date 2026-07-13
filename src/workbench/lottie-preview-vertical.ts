@@ -369,7 +369,9 @@ export class HiddenLottiePreviewVerticalSession {
     this.prepared = {
       source: animationData.value,
       inspection,
-      allowResolvedImageResources: imageResolution.dataUris.size > 0
+      allowResolvedImageResources: imageResolution.rows.some(({ kind, resolutionStatus }) =>
+        kind === "image" && resolutionStatus === "resolved"
+      )
     };
     await this.loadPreparedPlayback(generation);
     return this.getModel();
@@ -761,6 +763,18 @@ async function resolveImageResources(
         mediaType: mediaTypeFromDataImageUri(replacementDataUri)
       });
       continue;
+    }
+
+    if (resource.metadata?.embedded === true) {
+      const mediaType = stringFromMetadata(resource, "mediaType");
+      if (mediaType?.startsWith("image/")) {
+        rows.push({
+          ...assetRow(resource),
+          resolutionStatus: "resolved",
+          mediaType
+        });
+        continue;
+      }
     }
 
     const referencePath = stringFromMetadata(resource, "referencePath");

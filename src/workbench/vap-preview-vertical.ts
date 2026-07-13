@@ -699,10 +699,7 @@ function surfaceFromPreparation(
       textFusionCount: fusionElements.filter(({ kind }) => kind === "text").length
     },
     fusionElements,
-    issues: mapIssues([
-      ...preparation.issues,
-      ...(preparation.value?.issues ?? [])
-    ], { id: displayName, name: displayName }, "playback_failure")
+    issues: mapIssues(preparation.issues, { id: displayName, name: displayName }, "playback_failure")
   };
 }
 

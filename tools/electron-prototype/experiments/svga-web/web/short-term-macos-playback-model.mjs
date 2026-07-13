@@ -96,8 +96,21 @@ export function playbackProgressView(playback) {
   const currentSeconds = fps > 0 ? Math.min(durationSeconds, currentFrame / fps) : 0;
   return {
     progress,
+    frame: currentFrame,
+    frames,
     timeCopy: `${formatPlaybackTime(currentSeconds)} / ${formatPlaybackTime(durationSeconds)}`
   };
+}
+
+export function pausePlaybackAtCurrentFrame(playback) {
+  if (!playback?.player) return undefined;
+  playback.player.pause?.();
+  playback.player.animator?.stop?.();
+  const frame = Math.max(0, Number(playback.player.currentFrame) || 0);
+  if (playback.player.animator) playback.player.animator.onUpdate = () => {};
+  drawFrame(playback.player, playback.videoItem, frame);
+  playback.playing = false;
+  return frame;
 }
 
 export function svgaWebPlayerPrototype() {

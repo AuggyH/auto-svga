@@ -297,6 +297,15 @@ class MultiFormatDesktopPreviewSession {
     }
 
     const cloned = JSON.parse(JSON.stringify(animationData));
+    const expressionResult = normalizeLottieRuntimeExpressions(cloned);
+    if (expressionResult.status === "failed") {
+      return runtimePreviewFailure({
+        format: "lottie",
+        code: "unsupported_feature",
+        message: "Lottie runtime preview cannot safely execute this animation expression under strict CSP.",
+        reason: expressionResult.reason
+      });
+    }
     const inlineResult = inlineLottieRuntimeImageAssets(cloned, filePath, replacements.image);
     if (inlineResult.status === "failed") return inlineResult;
     applyLottieRuntimeTextReplacements(cloned, replacements.text);
@@ -307,6 +316,10 @@ class MultiFormatDesktopPreviewSession {
       rendererHasFullPath: false,
       runtimeScripts: ["/runtime-node-modules/lottie-web/build/player/lottie_svg.js"],
       animationData: cloned,
+      expressionNormalization: {
+        safeLoopOutProperties: expressionResult.normalizedCount,
+        sourceEvaluationAllowed: false
+      },
       dimensions: {
         width: Number(cloned.w) || undefined,
         height: Number(cloned.h) || undefined
@@ -545,6 +558,82 @@ class MultiFormatDesktopPreviewSession {
       }
     };
   }
+}
+
+function normalizeLottieRuntimeExpressions(documentValue) {
+  const compositionStart = documentValue?.ip;
+  const compositionEnd = documentValue?.op;
+  if (!Number.isFinite(compositionStart) || !Number.isFinite(compositionEnd) || compositionEnd <= compositionStart) {
+    return { status: "failed", reason: "valid_lottie_composition_timing_required" };
+  }
+  let normalizedCount = 0;
+  let failureReason;
+  const visit = (value) => {
+    if (failureReason || !value || typeof value !== "object") return;
+    if (!Array.isArray(value) && typeof value.x === "string") {
+      const result = normalizeSafeNoArgumentLoopOutProperty(value, compositionStart, compositionEnd);
+      if (result.status === "failed") {
+        failureReason = result.reason;
+        return;
+      }
+      normalizedCount += 1;
+    }
+    for (const child of Array.isArray(value) ? value : Object.values(value)) visit(child);
+  };
+  visit(documentValue);
+  return failureReason
+    ? { status: "failed", reason: failureReason }
+    : { status: "ok", normalizedCount };
+}
+
+function normalizeSafeNoArgumentLoopOutProperty(property, compositionStart, compositionEnd) {
+  const expression = String(property.x ?? "");
+  const safeExpression = /^\s*(?:var\s+\$bm_rt\s*;\s*)?\$bm_rt\s*=\s*loopOut\s*\(\s*\)\s*;?\s*$/u;
+  if (!safeExpression.test(expression)) {
+    return { status: "failed", reason: "unsupported_lottie_expression" };
+  }
+  const keyframes = property.a === 1 && Array.isArray(property.k) ? property.k : undefined;
+  if (!keyframes || keyframes.length < 2 || keyframes.length > 2048) {
+    return { status: "failed", reason: "safe_loop_out_keyframes_required" };
+  }
+  let vectorLength;
+  let previousTime = -Infinity;
+  for (const keyframe of keyframes) {
+    if (!isRecord(keyframe) || !Number.isFinite(keyframe.t) || keyframe.t <= previousTime) {
+      return { status: "failed", reason: "safe_loop_out_keyframes_required" };
+    }
+    if (!Array.isArray(keyframe.s) || keyframe.s.length === 0 || keyframe.s.some((entry) => !Number.isFinite(entry))) {
+      return { status: "failed", reason: "safe_loop_out_numeric_vectors_required" };
+    }
+    vectorLength ??= keyframe.s.length;
+    if (keyframe.s.length !== vectorLength) {
+      return { status: "failed", reason: "safe_loop_out_numeric_vectors_required" };
+    }
+    previousTime = keyframe.t;
+  }
+  const firstTime = keyframes[0].t;
+  const lastTime = keyframes.at(-1).t;
+  const cycleFrames = lastTime - firstTime;
+  if (firstTime < compositionStart || lastTime > compositionEnd || cycleFrames <= 0) {
+    return { status: "failed", reason: "safe_loop_out_timing_required" };
+  }
+  const sourceKeyframes = keyframes.map((keyframe) => JSON.parse(JSON.stringify(keyframe)));
+  const expanded = sourceKeyframes.map((keyframe) => JSON.parse(JSON.stringify(keyframe)));
+  for (let offset = cycleFrames; firstTime + offset <= compositionEnd; offset += cycleFrames) {
+    for (let index = 1; index < sourceKeyframes.length; index += 1) {
+      const repeatedTime = sourceKeyframes[index].t + offset;
+      if (repeatedTime > compositionEnd) continue;
+      const repeated = JSON.parse(JSON.stringify(sourceKeyframes[index]));
+      repeated.t = repeatedTime;
+      expanded.push(repeated);
+      if (expanded.length > 4096) {
+        return { status: "failed", reason: "safe_loop_out_expansion_bound_exceeded" };
+      }
+    }
+  }
+  property.k = expanded;
+  delete property.x;
+  return { status: "ok" };
 }
 
 function createHeadlessLottieRendererLoader(lifecycle) {
