@@ -428,6 +428,20 @@ class MultiFormatDesktopPreviewSession {
           closeSync(fd);
         }
       },
+      async readLocalFile(input) {
+        const filePath = normalizeLocalPath(input?.localPath);
+        const maxBytes = Math.max(0, Math.min(Number(input?.maxBytes) || 0, MULTIFORMAT_MAX_DROPPED_BYTES));
+        const stat = statSync(filePath);
+        if (!stat.isFile()) throw new Error("Local motion source is not a file.");
+        if (stat.size <= 0 || stat.size > maxBytes) {
+          throw new Error("Local motion source is outside the bounded full-read limit.");
+        }
+        const bytes = readFileSync(filePath);
+        if (bytes.byteLength <= 0 || bytes.byteLength > maxBytes) {
+          throw new Error("Local motion source changed outside the bounded full-read limit.");
+        }
+        return new Uint8Array(bytes);
+      },
       async readAdjacentResource(input) {
         const sourcePath = normalizeLocalPath(input?.sourceLocalPath);
         const resourcePath = resolveAdjacentResource(sourcePath, String(input?.relativePath ?? ""));
@@ -549,8 +563,19 @@ function createHeadlessPlaybackAdapter(format) {
       return {
         async load(_source, context) {
           context?.cancellation?.throwIfCancelled();
+          const source = _source && typeof _source === "object" ? _source : {};
           state = { ...state, status: "ready", currentTimeMs: 0 };
-          return { issues: [] };
+          return {
+            value: {
+              format,
+              name: typeof source.name === "string" && source.name ? source.name : `${format} source`,
+              sizeBytes: Number.isFinite(Number(source.sizeBytes)) ? Number(source.sizeBytes) : 0,
+              timing: {},
+              resources: [],
+              layers: []
+            },
+            issues: []
+          };
         },
         async play() {
           state = { ...state, status: "playing" };

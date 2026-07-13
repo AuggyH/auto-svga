@@ -55,6 +55,7 @@ import {
 
 export const HIDDEN_MULTIFORMAT_PREVIEW_WORKSPACE_GATE = "0.2-hidden-multiformat-preview-workspace" as const;
 export const HIDDEN_MULTIFORMAT_PREVIEW_WORKSPACE_SCHEMA_VERSION = 1 as const;
+export const MULTIFORMAT_LOCAL_SOURCE_MAX_BYTES = 50 * 1024 * 1024;
 
 export type HiddenMultiFormatPreviewOpenSource = "fileButton" | "dragDrop" | "menuOpen" | "fileOpenEvent";
 export type HiddenMultiFormatPreviewStatus =
@@ -83,7 +84,12 @@ export interface HiddenMultiFormatPreviewIssue extends WorkbenchIssue {
   code: HiddenMultiFormatPreviewIssueCode;
 }
 
-export interface HiddenMultiFormatPreviewHost extends HiddenLottiePreviewHost, HiddenVapPreviewHost {}
+export interface HiddenMultiFormatPreviewHost extends HiddenLottiePreviewHost, HiddenVapPreviewHost {
+  readLocalFile?(input: {
+    localPath: string;
+    maxBytes: number;
+  }): Promise<Uint8Array>;
+}
 
 export interface HiddenMultiFormatPreviewOpenInput {
   gate: string;
@@ -601,8 +607,14 @@ export class HiddenMultiFormatPreviewWorkspaceSession {
         vapcJsonBytes: adjacentVapc?.bytes,
         vapcJsonName: adjacentVapc?.displayName,
         async read() {
-          if (!Number.isFinite(sizeBytes) || sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES) {
+          if (!Number.isFinite(sizeBytes) || sizeBytes < 0 || sizeBytes > MULTIFORMAT_LOCAL_SOURCE_MAX_BYTES) {
             throw new Error("A bounded range read is required for this local motion source.");
+          }
+          if (sizeBytes > MOTION_FORMAT_PROBE_MAX_BYTES) {
+            if (!host.readLocalFile) {
+              throw new Error("A bounded full read is required for this local motion source.");
+            }
+            return host.readLocalFile({ localPath, maxBytes: MULTIFORMAT_LOCAL_SOURCE_MAX_BYTES });
           }
           return host.readLocalFileRange(localPath, 0, Math.min(sizeBytes, MOTION_FORMAT_PROBE_MAX_BYTES));
         },

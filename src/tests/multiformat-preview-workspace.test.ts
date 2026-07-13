@@ -191,6 +191,41 @@ test("hidden multi-format workspace normalizes SVGA inspection and optional play
   assert.equal(workspace.seek(250).playback.currentTimeMs, 250);
 });
 
+test("hidden multi-format workspace reads accepted SVGA payloads beyond the probe window for playback", async () => {
+  const localPath = "/Users/designer/Secret Campaign/accepted-owner.svga";
+  const bytes = new Uint8Array(350_793);
+  bytes.set(svgaHintBytes());
+  const host = memoryHost({ [localPath]: bytes });
+  const svgaAdapter = new FakeSvgaAdapter();
+  const playbackAdapter = new FakePlaybackAdapter("svga");
+  const workspace = createHiddenMultiFormatPreviewWorkspace({
+    host,
+    svgaAdapter,
+    svgaPlaybackAdapter: playbackAdapter,
+    svgaPlaybackTarget: { id: "hidden-svga-target" }
+  });
+
+  const opened = await workspace.openLocalCandidate({
+    gate: HIDDEN_MULTIFORMAT_PREVIEW_WORKSPACE_GATE,
+    requestId: "svga-large-1",
+    source: "fileOpenEvent",
+    localPath,
+    displayName: localPath
+  });
+
+  assert.equal(opened.status, "ready");
+  assert.equal(opened.detectedFormat, "svga");
+  assert.equal(svgaAdapter.parseCalls, 1);
+  assert.equal(playbackAdapter.sessions[0]?.loads, 1);
+  assert.equal(host.fullReads, 1);
+  assert.equal(host.rangeReads.some(({ length }) => length === 262_144), true);
+  assert.equal(host.rangeReads.every(({ length }) => length <= 262_144), true);
+  assertNoLocalPaths(opened);
+
+  assert.equal((await workspace.play()).status, "playing");
+  assert.equal(workspace.pause().status, "paused");
+});
+
 test("hidden multi-format workspace fails closed for unsupported candidates and network VAP fusion images", async () => {
   const textPath = "/Users/designer/Secret Campaign/readme.txt";
   const vapPath = "/Users/designer/Secret Campaign/network-fusion.mp4";
@@ -362,6 +397,13 @@ function memoryHost(files: Record<string, Uint8Array>): MemoryHost {
       const bytes = files[localPath];
       if (!bytes) throw new Error(`Cannot read ${localPath}`);
       return bytes.slice(offset, offset + length);
+    },
+    async readLocalFile(input) {
+      host.fullReads += 1;
+      const bytes = files[input.localPath];
+      if (!bytes) throw new Error(`Cannot read ${input.localPath}`);
+      if (bytes.byteLength > input.maxBytes) throw new Error(`Cannot read ${input.localPath}; max bytes exceeded`);
+      return bytes;
     },
     async readAdjacentResource(input) {
       host.resourceReads.push(input);

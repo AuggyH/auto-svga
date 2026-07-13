@@ -1545,6 +1545,24 @@ test("0.2 multi-format desktop session opens synthetic Lottie and VAP candidates
   }
 });
 
+test("0.2 multi-format desktop session headless SVGA playback load returns a value contract", async () => {
+  const sessionSource = await readFile(path.join(experimentRoot, "multiformat-desktop-session.cjs"), "utf8");
+  const adapterStart = sessionSource.indexOf("function createHeadlessPlaybackAdapter(format)");
+  const adapterEnd = sessionSource.indexOf("function droppedBytes(input)", adapterStart);
+  assert.notEqual(adapterStart, -1);
+  assert.notEqual(adapterEnd, -1);
+  const adapterSource = sessionSource.slice(adapterStart, adapterEnd);
+
+  assert.match(adapterSource, /async load\(_source, context\)/);
+  assert.match(adapterSource, /value:\s*\{/);
+  assert.match(adapterSource, /format,/);
+  assert.match(adapterSource, /name:/);
+  assert.match(adapterSource, /sizeBytes:/);
+  assert.match(adapterSource, /timing:\s*\{\}/);
+  assert.match(adapterSource, /resources:\s*\[\]/);
+  assert.match(adapterSource, /layers:\s*\[\]/);
+});
+
 test("0.2 installed file-open source reaches positive Lottie and sidecar VAP session states", async () => {
   const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-file-open-session-"));
   const sourceStore = new Map();
