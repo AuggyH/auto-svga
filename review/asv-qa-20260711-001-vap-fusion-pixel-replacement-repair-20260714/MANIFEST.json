@@ -9,6 +9,7 @@
   "selectionAuthority": {
     "publicIdentity": "resourceId",
     "canonicalRuntimeKeyRequired": true,
+    "canonicalRuntimeKeyUnique": true,
     "pickerBindingSnapshotRequired": true,
     "rendererAliasFallbackAllowed": false
   },

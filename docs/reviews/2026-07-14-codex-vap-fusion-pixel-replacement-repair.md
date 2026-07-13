@@ -34,7 +34,7 @@ State: `Fix Ready / PM Independent Review Required`. This is not installed QA ac
 | Finding | State | Evidence |
 |---|---|---|
 | `MF-VAP-FUSION-PIXEL-001` | Source repair complete; installed ticket remains open | Permit 058 source/replacement aligned frames were identical although replacement state changed. Failure-first real-runtime diagnostics showed instance 2 had parser/video/frame readiness but no `avatar` option, decoded source, or texture. |
-| `MF-VAP-FUSION-CR-001` | Fix Ready; independent re-review required | The exact cross-namespace fixture failed before repair: public `resourceId=vap_fusion_2` resolved to an earlier record whose `srcTag` was `vap_fusion_2` instead of the selected record's canonical `badge` key. Owner, host-picker, and renderer regressions now bind `vap_fusion_2 -> badge`; zero, duplicate, malformed, nonreplaceable, stale source, and changed picker binding cases reject without revision, dirty state, runtime-value storage, or remount. |
+| `MF-VAP-FUSION-CR-001` | Fix Ready; independent re-review required | The exact cross-namespace fixture failed before repair: public `resourceId=vap_fusion_2` resolved to an earlier record whose `srcTag` was `vap_fusion_2` instead of the selected record's canonical `badge` key. A follow-up failure-first case proved that two unique public resources could also expose the same canonical key: preparation returned `status=failed` with `ambiguous_fusion_source_tag` but retained both fusion records, while owner selection still accepted one. Owner, host-picker, and renderer regressions now require one public record and one canonical-key owner; zero, duplicate-public, duplicate-canonical, malformed, nonreplaceable, stale source, and changed picker binding cases reject without revision, dirty state, runtime-value storage, or remount. |
 
 - Root-cause hypothesis: the selected inventory/resource id was being reused as the runtime fusion key instead of resolving the sidecar's canonical `srcTag` / `runtimeBindingKey`.
 - Why the prior proof passed falsely: it manually selected canonical `avatar` and asserted dirty/remount state. It bypassed the owner-visible default resource alias and did not require direct pixel change or exact Reset restoration.
@@ -47,7 +47,7 @@ State: `Fix Ready / PM Independent Review Required`. This is not installed QA ac
 
 - Root-cause hypothesis: display ids, normalized resource ids, source ids, tags, and runtime keys were treated as one ordered alias namespace in both owner-model acceptance and renderer remount preparation.
 - Why the first repair missed it: its exact-head proof used one collision-free `avatar` record and proved the resolved happy path, but it never asked whether a second record could own the same string in a different identity namespace.
-- Failure-first evidence: the reviewer-shaped two-record fixture failed with actual target `vap_fusion_2` instead of expected `badge` before source changes. Behavioral host probes also showed changed picker bindings could proceed without an authority snapshot.
+- Failure-first evidence: the reviewer-shaped two-record fixture failed with actual target `vap_fusion_2` instead of expected `badge` before source changes. The follow-up unique-public/duplicate-canonical fixture returned `accepted` before the guard even though preparation's exact duplicate-tag model was `failed` and carried both `avatar` runtime keys. Behavioral host probes also showed changed picker bindings could proceed without an authority snapshot.
 - Success stop: public VAP selection uses one unique `resourceId`, resolves to exactly one replaceable well-formed canonical key, survives unchanged across the picker, is returned explicitly to the renderer, and all rejected cases remain mutation-free while the exact-head pixel proof stays green.
 - Failure stop: any alias reinterpretation, fallback to requested id, stale picker acceptance, rejected-case mutation, wrong runtime constructor key, equal replacement/source pixels, Reset mismatch, path leak, unbalanced lifecycle, or external request stops the repair.
 - Budget: one consolidated owner/host/renderer authority change and one final exact-head proof; no adjacent runtime or UI redesign.
@@ -70,6 +70,9 @@ PASS
 
 focused owner authority tests
 PASS 13/13
+
+combined owner authority and VAP preparation tests
+PASS 23/23
 
 focused host/controller authority tests
 PASS 4/4

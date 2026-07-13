@@ -1011,12 +1011,26 @@ function resolveReplacementSelection(
         "The selected VAP fusion resource is not replaceable."
       );
     }
+    const canonicalRuntimeKey = target.runtimeBindingKey.trim();
+    const canonicalMatches = [
+      ...model.rightPanel.vapFusionImages,
+      ...model.rightPanel.vapFusionTexts
+    ].filter((entry) =>
+      isNonEmptyString(entry.runtimeBindingKey)
+      && entry.runtimeBindingKey.trim() === canonicalRuntimeKey
+    );
+    if (canonicalMatches.length !== 1) {
+      return blockedReplacementSelection(
+        "replacement_target_ambiguous",
+        "The selected VAP fusion runtime binding is ambiguous."
+      );
+    }
     return acceptedReplacementSelection(
       model,
       input.kind,
       "vap",
       target.resourceId,
-      target.runtimeBindingKey
+      canonicalRuntimeKey
     );
   }
   return blockedReplacementSelection(

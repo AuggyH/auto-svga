@@ -1405,8 +1405,11 @@ promoted, watched, rejected, or kept historical.
 - Evidence: `MF-VAP-FUSION-CR-001` reproduced a VAP record whose public
   `resourceId` matched an earlier record's `srcTag`. Ordered cross-namespace
   lookup selected the wrong fusion target even though the collision-free pixel
-  proof passed. The repair uses public `resourceId`, rejects zero/duplicate/
-  malformed/nonreplaceable/stale bindings without mutation, and requires the
-  accepted owner result to return the exact canonical runtime key.
+  proof passed. A second failure-first case showed preparation marked duplicate
+  `srcTag` bindings failed but still carried both records, so the owner boundary
+  also needs its own canonical-key uniqueness check. The repair uses public
+  `resourceId`, rejects zero/duplicate/malformed/nonreplaceable/stale bindings
+  without mutation, and requires the accepted owner result to return the exact
+  unique canonical runtime key.
 - Status: Candidate pending independent Code Review re-review and installed
   replacement/reset QA.

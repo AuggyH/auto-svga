@@ -438,6 +438,19 @@ test("owner-visible 0.2 candidate rejects invalid VAP selection authority withou
       code: "replacement_target_ambiguous"
     },
     {
+      name: "duplicate canonical runtime identity",
+      targetId: target.resourceId,
+      targets: [target, {
+        ...target,
+        id: "2",
+        resourceId: "vap_fusion_2",
+        srcId: "2",
+        srcTag: target.runtimeBindingKey,
+        runtimeBindingKey: target.runtimeBindingKey
+      }],
+      code: "replacement_target_ambiguous"
+    },
+    {
       name: "blank canonical runtime key",
       targetId: target.resourceId,
       targets: [{ ...target, runtimeBindingKey: "   " }],

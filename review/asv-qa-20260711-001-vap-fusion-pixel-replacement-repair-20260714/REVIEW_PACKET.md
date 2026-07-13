@@ -22,7 +22,8 @@ The normalized VAP `resourceId` is now the only public fusion selection identity
 ## Selection Authority Evidence
 
 - Exact collision now resolves public `vap_fusion_2` to canonical runtime key `badge` in both owner-model and renderer integration.
-- Zero, duplicate public id, blank/non-string canonical fields, and nonreplaceable targets remain revision `0`, dirty `false`, active replacement empty, and cause no runtime reload.
+- Zero, duplicate public id, duplicate canonical runtime key across unique resources, blank/non-string canonical fields, and nonreplaceable targets remain revision `0`, dirty `false`, active replacement empty, and cause no runtime reload.
+- Upstream duplicate `srcTag` preparation is independently asserted as `status=failed` with `ambiguous_fusion_source_tag`; because both records remain in the prepared model, owner authority still performs its own canonical-key uniqueness check before picker access.
 - Missing/stale source ids and a binding token changed while the host picker is pending reject before replacement apply.
 - VAP image/text rows use `resourceId` as their public id; duplicate fusion-backed generic asset rows are suppressed.
 - Accepted host results carry `replacementRuntimeValue.targetId`; renderer storage/remount requires that nonblank canonical key and cannot reconstruct it from aliases.
@@ -44,6 +45,7 @@ The normalized VAP `resourceId` is now the only public fusion selection identity
 
 - Build: PASS.
 - Focused owner authority: PASS 13/13.
+- Combined owner authority and VAP preparation: PASS 23/23.
 - Focused host/controller authority: PASS 4/4.
 - Complete Electron experiment suite: PASS 74/74 with a temporary hash-matched dependency overlay.
 - Related VAP/Lottie/multi-format suites: PASS 89/89.

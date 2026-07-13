@@ -115,6 +115,10 @@ test("fails closed for ambiguous fusion bindings", () => {
   assert.ok(duplicateTags.issues.some(({ code, details }) =>
     code === "ambiguous" && details?.reason === "ambiguous_fusion_source_tag"
   ));
+  assert.deepEqual(
+    duplicateTags.value?.fusionElements.map(({ runtimeBindingKey }) => runtimeBindingKey),
+    ["avatar", "avatar"]
+  );
 });
 
 test("blocks unsupported codec and missing host capabilities", () => {
