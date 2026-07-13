@@ -1395,3 +1395,18 @@ promoted, watched, rejected, or kept historical.
   lifecycle, and no-network gates.
 - Status: Candidate pending independent source review and rebuilt installed
   replacement/reset QA.
+
+## 2026-07-14: Give Replacement Selection One Public Namespace
+
+- Candidate lesson: A public replacement selector must use one collision-checked
+  identity namespace. Resolve that identity once to a canonical runtime key at
+  the owner/host authority boundary, snapshot the binding across asynchronous
+  pickers, and make renderers consume the accepted key without alias fallback.
+- Evidence: `MF-VAP-FUSION-CR-001` reproduced a VAP record whose public
+  `resourceId` matched an earlier record's `srcTag`. Ordered cross-namespace
+  lookup selected the wrong fusion target even though the collision-free pixel
+  proof passed. The repair uses public `resourceId`, rejects zero/duplicate/
+  malformed/nonreplaceable/stale bindings without mutation, and requires the
+  accepted owner result to return the exact canonical runtime key.
+- Status: Candidate pending independent Code Review re-review and installed
+  replacement/reset QA.

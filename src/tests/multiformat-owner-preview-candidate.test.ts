@@ -20,6 +20,7 @@ import type {
 import {
   OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
   createOwnerVisibleMultiFormatPreviewCandidate,
+  type OwnerVisibleMultiFormatPreviewModel,
   type OwnerVisibleSvgaReplacementController
 } from "../workbench/multiformat-owner-preview-candidate.js";
 import type {
@@ -337,7 +338,7 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   const applied = await session.applyReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
     requestId: "replace-vap",
-    targetId: "avatar",
+    targetId: "vap_fusion_1",
     kind: "image",
     value: "data:image/png;base64,QUJD"
   });
@@ -364,6 +365,123 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   assert.equal(runtime.configs[2]?.avatar, undefined);
   assert.equal(host.revoked.includes("blob:vap/fusion.mp4"), true);
   assertNoLocalPaths(reset);
+});
+
+test("owner-visible 0.2 candidate resolves a VAP public resource identity without cross-namespace alias collisions", async () => {
+  const localPath = "/Users/designer/private/colliding-fusion.mp4";
+  const runtime = fakeVapRuntime();
+  const host = memoryHost({ [localPath]: validVapBytes(collidingFusionImageConfig()) });
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host,
+    vapTarget: { id: "vap-target" },
+    vapHostReadiness: readyVapHost(),
+    vapRuntimeLoader: async () => runtime.constructor
+  });
+
+  const opened = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-colliding-vap",
+    source: "menuOpen",
+    localPath
+  });
+  assert.equal(opened.rightPanel.vapFusionImages[0]?.srcTag, "vap_fusion_2");
+  assert.equal(opened.rightPanel.vapFusionImages[1]?.resourceId, "vap_fusion_2");
+  assert.equal(opened.rightPanel.vapFusionImages[1]?.srcTag, "badge");
+
+  const applied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-colliding-vap",
+    targetId: "vap_fusion_2",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+
+  assert.equal(applied.replacement.lastAction?.status, "accepted");
+  assert.equal(applied.replacement.lastAction?.publicTargetId, "vap_fusion_2");
+  assert.equal(applied.replacement.lastAction?.runtimeTargetId, "badge");
+  assert.equal(applied.replacement.active[0]?.targetId, "badge");
+  assert.equal(runtime.configs.at(-1)?.badge, "data:image/png;base64,QUJD");
+  assert.equal(runtime.configs.at(-1)?.vap_fusion_2, undefined);
+  assertNoLocalPaths(applied);
+});
+
+test("owner-visible 0.2 candidate rejects invalid VAP selection authority without replacement mutation", async () => {
+  const localPath = "/Users/designer/private/fusion-authority.mp4";
+  const runtime = fakeVapRuntime();
+  const host = memoryHost({ [localPath]: validVapBytes(fusionImageConfig()) });
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host,
+    vapTarget: { id: "vap-target" },
+    vapHostReadiness: readyVapHost(),
+    vapRuntimeLoader: async () => runtime.constructor
+  });
+  const opened = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-authority-vap",
+    source: "menuOpen",
+    localPath
+  });
+  const target = opened.rightPanel.vapFusionImages[0];
+  assert.ok(target);
+  const internal = session as unknown as { model: OwnerVisibleMultiFormatPreviewModel };
+  const cases = [
+    {
+      name: "zero match",
+      targetId: "missing-resource",
+      targets: [target],
+      code: "replacement_target_unavailable"
+    },
+    {
+      name: "duplicate public resource identity",
+      targetId: target.resourceId,
+      targets: [target, { ...target, id: "2", srcId: "2", srcTag: "badge", runtimeBindingKey: "badge" }],
+      code: "replacement_target_ambiguous"
+    },
+    {
+      name: "blank canonical runtime key",
+      targetId: target.resourceId,
+      targets: [{ ...target, runtimeBindingKey: "   " }],
+      code: "replacement_target_malformed"
+    },
+    {
+      name: "malformed canonical runtime field",
+      targetId: target.resourceId,
+      targets: [{ ...target, srcTag: 17 as unknown as string }],
+      code: "replacement_target_malformed"
+    },
+    {
+      name: "nonreplaceable target",
+      targetId: target.resourceId,
+      targets: [{ ...target, replaceable: false }],
+      code: "replacement_target_not_replaceable"
+    }
+  ] as const;
+
+  for (const fixture of cases) {
+    internal.model = {
+      ...structuredClone(opened),
+      rightPanel: {
+        ...structuredClone(opened.rightPanel),
+        vapFusionImages: fixture.targets
+      }
+    };
+    const before = session.getModel();
+    const blocked = await session.applyReplacement({
+      gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+      requestId: `reject-${fixture.name}`,
+      targetId: fixture.targetId,
+      kind: "image",
+      value: "data:image/png;base64,QUJD"
+    });
+
+    assert.equal(blocked.replacement.lastAction?.status, "blocked", fixture.name);
+    assert.equal(blocked.replacement.lastAction?.diagnostic?.code, fixture.code, fixture.name);
+    assert.equal(blocked.replacement.revision, before.replacement.revision, fixture.name);
+    assert.equal(blocked.replacement.dirty, false, fixture.name);
+    assert.deepEqual(blocked.replacement.active, [], fixture.name);
+    assert.equal(runtime.configs.length, 1, fixture.name);
+    assertNoLocalPaths(blocked);
+  }
 });
 
 test("owner-visible oversized VAP remains playable with a truthful Canvas warning", async () => {
@@ -430,7 +548,7 @@ test("owner-visible 0.2 candidate fails VAP reset closed when the original sourc
   const applied = await session.applyReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
     requestId: "replace-vap",
-    targetId: "avatar",
+    targetId: "vap_fusion_1",
     kind: "image",
     value: "data:image/png;base64,QUJD"
   });
@@ -910,6 +1028,22 @@ function fusionImageConfig(): Record<string, unknown> {
       i: 0,
       obj: [
         { srcId: 1, z: 3, frame: { x: 10, y: 20, w: 120, h: 120 }, mFrame: { x: 0, y: 0, w: 120, h: 120 }, mt: 0 }
+      ]
+    }]
+  };
+}
+
+function collidingFusionImageConfig(): Record<string, unknown> {
+  return {
+    src: [
+      { srcId: 1, srcType: "img", srcTag: "vap_fusion_2", w: 120, h: 120, fitType: "centerCrop" },
+      { srcId: 2, srcType: "img", srcTag: "badge", w: 80, h: 80, fitType: "centerCrop" }
+    ],
+    frame: [{
+      i: 0,
+      obj: [
+        { srcId: 1, z: 3, frame: { x: 10, y: 20, w: 120, h: 120 }, mFrame: { x: 0, y: 0, w: 120, h: 120 }, mt: 0 },
+        { srcId: 2, z: 4, frame: { x: 140, y: 20, w: 80, h: 80 }, mFrame: { x: 120, y: 0, w: 80, h: 80 }, mt: 0 }
       ]
     }]
   };

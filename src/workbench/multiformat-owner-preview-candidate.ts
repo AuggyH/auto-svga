@@ -81,6 +81,30 @@ export interface OwnerVisibleMultiFormatPreviewResetInput {
   requestId: string;
 }
 
+export interface OwnerVisibleMultiFormatPreviewReplacementSelectionInput {
+  targetId: string;
+  kind: "image" | "text";
+}
+
+export type OwnerVisibleMultiFormatPreviewReplacementSelection =
+  | {
+      status: "accepted";
+      format: "svga" | "lottie" | "vap";
+      kind: "image" | "text";
+      publicTargetId: string;
+      runtimeTargetId: string;
+      bindingToken: string;
+      pathRedacted: true;
+    }
+  | {
+      status: "blocked";
+      diagnostic: {
+        code: string;
+        message: string;
+      };
+      pathRedacted: true;
+    };
+
 export interface OwnerVisibleMultiFormatPreviewCommandState {
   openFile: boolean;
   dragDrop: boolean;
@@ -141,6 +165,9 @@ export interface OwnerVisibleMultiFormatPreviewReplacementState {
     type: "applyReplacement" | "resetReplacement";
     status: "accepted" | "blocked" | "failed";
     message: string;
+    publicTargetId?: string;
+    runtimeTargetId?: string;
+    bindingToken?: string;
     diagnostic?: {
       code: string;
       message: string;
@@ -252,6 +279,12 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
     return cloneModel(this.model);
   }
 
+  resolveReplacementSelection(
+    input: OwnerVisibleMultiFormatPreviewReplacementSelectionInput
+  ): OwnerVisibleMultiFormatPreviewReplacementSelection {
+    return structuredClone(resolveReplacementSelection(this.model, input));
+  }
+
   async openLocalCandidate(input: OwnerVisibleMultiFormatPreviewOpenInput): Promise<OwnerVisibleMultiFormatPreviewModel> {
     const generation = this.beginOperation();
     const validationIssue = validateOpenInput(input);
@@ -345,13 +378,19 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       });
     }
 
-    const target = resolveReplacementTarget(this.model, input);
-    if (!target) {
-      return this.blockReplacement(input.requestId, "applyReplacement", "Replacement target is not available in the current candidate.", {
-        code: "replacement_target_unavailable",
-        message: "The selected target is not replaceable for the active format."
-      });
+    const selection = resolveReplacementSelection(this.model, input);
+    if (selection.status !== "accepted") {
+      return this.blockReplacement(
+        input.requestId,
+        "applyReplacement",
+        selection.diagnostic.message,
+        selection.diagnostic
+      );
     }
+    const target: ReplacementTarget = {
+      format: selection.format,
+      runtimeTargetId: selection.runtimeTargetId
+    };
 
     if (target.format === "svga") {
       return this.applySvgaReplacement(input, target, generation);
@@ -395,7 +434,10 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       requestId: input.requestId,
       type: "applyReplacement",
       status: "accepted",
-      message: "Replacement preview is applied to the runtime candidate only."
+      message: "Replacement preview is applied to the runtime candidate only.",
+      publicTargetId: selection.publicTargetId,
+      runtimeTargetId: selection.runtimeTargetId,
+      bindingToken: selection.bindingToken
     }, "previewDirty", "reloadPreview");
     return this.getModel();
   }
@@ -899,38 +941,139 @@ function commandState(
   };
 }
 
-function resolveReplacementTarget(
+function resolveReplacementSelection(
   model: OwnerVisibleMultiFormatPreviewModel,
-  input: OwnerVisibleMultiFormatPreviewReplacementInput
-): ReplacementTarget | undefined {
+  input: OwnerVisibleMultiFormatPreviewReplacementSelectionInput
+): OwnerVisibleMultiFormatPreviewReplacementSelection {
+  const requestedTargetId = isNonEmptyString(input.targetId) ? input.targetId.trim() : "";
+  if (!requestedTargetId || (input.kind !== "image" && input.kind !== "text")) {
+    return blockedReplacementSelection(
+      "replacement_target_malformed",
+      "Replacement target identity is malformed."
+    );
+  }
   if (model.detectedFormat === "svga" && input.kind === "image") {
     const asset = model.rightPanel.assets.find((entry) => entry.replaceable && (
-      entry.id === input.targetId || entry.name === input.targetId
+      entry.id === requestedTargetId || entry.name === requestedTargetId
     ));
-    return asset ? { format: "svga", runtimeTargetId: asset.id } : undefined;
+    return asset
+      ? acceptedReplacementSelection(model, input.kind, "svga", requestedTargetId, asset.id)
+      : blockedReplacementSelection(
+          "replacement_target_unavailable",
+          "The selected target is not replaceable for the active format."
+        );
   }
   if (model.detectedFormat === "lottie") {
     if (input.kind === "image") {
-      const asset = model.rightPanel.assets.find((entry) => entry.kind === "image" && entry.replaceable && entry.id === input.targetId);
-      return asset ? { format: "lottie", runtimeTargetId: asset.id } : undefined;
+      const asset = model.rightPanel.assets.find((entry) => entry.kind === "image" && entry.replaceable && entry.id === requestedTargetId);
+      return asset
+        ? acceptedReplacementSelection(model, input.kind, "lottie", requestedTargetId, asset.id)
+        : blockedReplacementSelection(
+            "replacement_target_unavailable",
+            "The selected target is not replaceable for the active format."
+          );
     }
     const text = model.rightPanel.lottieTexts.find((entry) =>
-      entry.id === input.targetId || entry.layerId === input.targetId || entry.name === input.targetId
+      entry.id === requestedTargetId || entry.layerId === requestedTargetId || entry.name === requestedTargetId
     );
-    return text ? { format: "lottie", runtimeTargetId: text.id } : undefined;
+    return text
+      ? acceptedReplacementSelection(model, input.kind, "lottie", requestedTargetId, text.id)
+      : blockedReplacementSelection(
+          "replacement_target_unavailable",
+          "The selected target is not replaceable for the active format."
+        );
   }
   if (model.detectedFormat === "vap") {
     const candidates = input.kind === "image" ? model.rightPanel.vapFusionImages : model.rightPanel.vapFusionTexts;
-    const target = candidates.find((entry) =>
-      entry.srcTag === input.targetId
-        || entry.runtimeBindingKey === input.targetId
-        || entry.id === input.targetId
-        || entry.resourceId === input.targetId
+    const matches = candidates.filter((entry) => entry.resourceId === requestedTargetId);
+    if (matches.length === 0) {
+      return blockedReplacementSelection(
+        "replacement_target_unavailable",
+        "The selected VAP fusion resource is not available."
+      );
+    }
+    if (matches.length !== 1) {
+      return blockedReplacementSelection(
+        "replacement_target_ambiguous",
+        "The selected VAP fusion resource identity is ambiguous."
+      );
+    }
+    const target = matches[0];
+    if (!isValidVapReplacementBinding(target, input.kind)) {
+      return blockedReplacementSelection(
+        "replacement_target_malformed",
+        "The selected VAP fusion resource has a malformed runtime binding."
+      );
+    }
+    if (!target.replaceable) {
+      return blockedReplacementSelection(
+        "replacement_target_not_replaceable",
+        "The selected VAP fusion resource is not replaceable."
+      );
+    }
+    return acceptedReplacementSelection(
+      model,
+      input.kind,
+      "vap",
+      target.resourceId,
+      target.runtimeBindingKey
     );
-    const key = target?.srcTag ?? target?.runtimeBindingKey;
-    return key ? { format: "vap", runtimeTargetId: key } : undefined;
   }
-  return undefined;
+  return blockedReplacementSelection(
+    "replacement_target_unavailable",
+    "The selected target is not replaceable for the active format."
+  );
+}
+
+function acceptedReplacementSelection(
+  model: OwnerVisibleMultiFormatPreviewModel,
+  kind: "image" | "text",
+  format: "svga" | "lottie" | "vap",
+  publicTargetId: string,
+  runtimeTargetId: string
+): OwnerVisibleMultiFormatPreviewReplacementSelection {
+  const normalizedRuntimeTargetId = runtimeTargetId.trim();
+  return {
+    status: "accepted",
+    format,
+    kind,
+    publicTargetId,
+    runtimeTargetId: normalizedRuntimeTargetId,
+    bindingToken: JSON.stringify([
+      model.requestId ?? "",
+      model.detectedFormat ?? "",
+      model.replacement.revision,
+      kind,
+      publicTargetId,
+      normalizedRuntimeTargetId
+    ]),
+    pathRedacted: true
+  };
+}
+
+function blockedReplacementSelection(
+  code: string,
+  message: string
+): OwnerVisibleMultiFormatPreviewReplacementSelection {
+  return {
+    status: "blocked",
+    diagnostic: { code, message },
+    pathRedacted: true
+  };
+}
+
+function isValidVapReplacementBinding(
+  target: VapPreparedFusionElement,
+  kind: "image" | "text"
+): target is VapPreparedFusionElement & { runtimeBindingKey: string } {
+  if (target.kind !== kind) return false;
+  if (!isNonEmptyString(target.id) || !isNonEmptyString(target.resourceId) || !isNonEmptyString(target.runtimeBindingKey)) {
+    return false;
+  }
+  for (const optional of [target.layerId, target.srcId, target.srcTag]) {
+    if (optional !== undefined && !isNonEmptyString(optional)) return false;
+  }
+  return true;
 }
 
 function validateOpenInput(input: OwnerVisibleMultiFormatPreviewOpenInput): OwnerVisibleMultiFormatPreviewIssue | undefined {

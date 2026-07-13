@@ -10,13 +10,22 @@
 
 ## Change
 
-The owner-visible selected VAP resource id is now resolved through `vapFusionImages` to its canonical `runtimeBindingKey` / `srcTag` before the private renderer replacement value is prepared. UI selection, command target, model state, host picker authority, and other formats are unchanged.
+The normalized VAP `resourceId` is now the only public fusion selection identity. The owner model rejects zero, duplicate, malformed, and nonreplaceable records, resolves one accepted record to its canonical runtime key, and returns that key explicitly. The host snapshots the binding before and after the picker; stale bindings reject before apply. The renderer consumes only the accepted key and has no alias search or requested-id fallback. Other formats, VAP text behavior, source identity guards, playback, and Reset semantics remain bounded by their existing contracts.
 
 ## Failure-First Evidence
 
 - Permit 058 changed model inventory/issues and enabled Reset, but aligned source/replacement frame bytes were identical.
 - Real runtime diagnostics reached replacement player instance 2 with parser, video, and frame-zero readiness but no constructor `avatar` option, no `srcData.avatar`, and no `textureMap.avatar`.
 - The IPC discriminator showed a private runtime value under the selected display/resource id rather than the sidecar's canonical `avatar` key.
+- The CR failure-first collision used `resourceId=vap_fusion_2` for canonical `badge` while an earlier record had `srcTag=vap_fusion_2`; current source initially remounted the wrong key and the new test failed on `badge`.
+
+## Selection Authority Evidence
+
+- Exact collision now resolves public `vap_fusion_2` to canonical runtime key `badge` in both owner-model and renderer integration.
+- Zero, duplicate public id, blank/non-string canonical fields, and nonreplaceable targets remain revision `0`, dirty `false`, active replacement empty, and cause no runtime reload.
+- Missing/stale source ids and a binding token changed while the host picker is pending reject before replacement apply.
+- VAP image/text rows use `resourceId` as their public id; duplicate fusion-backed generic asset rows are suppressed.
+- Accepted host results carry `replacementRuntimeValue.targetId`; renderer storage/remount requires that nonblank canonical key and cannot reconstruct it from aliases.
 
 ## Positive Direct-Pixel Evidence
 
@@ -34,11 +43,13 @@ The owner-visible selected VAP resource id is now resolved through `vapFusionIma
 ## Validation
 
 - Build: PASS.
-- Focused controller/proof contract: PASS 2/2.
-- Related VAP/multi-format suites: PASS 67/67.
-- Full suite: PASS 530/530.
+- Focused owner authority: PASS 13/13.
+- Focused host/controller authority: PASS 4/4.
+- Complete Electron experiment suite: PASS 74/74 with a temporary hash-matched dependency overlay.
+- Related VAP/Lottie/multi-format suites: PASS 89/89.
+- Full suite: PASS 532/532.
 - Design-system: PASS.
-- Diff, JSONL, dependency, and media hygiene: required before final callback.
+- Diff, JSONL, dependency, and media hygiene: PASS before commit; repeated at final callback.
 
 ## Boundaries
 

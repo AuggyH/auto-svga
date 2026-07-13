@@ -259,11 +259,16 @@ export function createMultiFormatDesktopPreviewController({
       showFailure(result.message || "Replacement preview image could not be selected.");
       return;
     }
-    if (replacementActionAccepted(result) && result.replacementRuntimeValue?.value) {
+    const runtimeValue = acceptedRuntimeReplacementValue(result, "image");
+    if (replacementActionAccepted(result) && !runtimeValue) {
+      showFailure("Replacement preview did not return an accepted runtime target binding.");
+      return;
+    }
+    if (runtimeValue) {
       setRuntimeReplacementValue(
         "image",
-        runtimeReplacementImageTargetId(imageKey, result.model),
-        result.replacementRuntimeValue.value
+        runtimeValue.targetId,
+        runtimeValue.value
       );
     }
     applyHostResult(result, { keepView: true });
@@ -274,14 +279,20 @@ export function createMultiFormatDesktopPreviewController({
     const dataUri = await fileToDataUri(file);
     const result = await bridge.applyMultiFormatReplacement({
       targetId: state.selectedImageKey,
+      sourceId: state.sourceId,
       kind: "image",
       value: dataUri
     });
-    if (replacementActionAccepted(result)) {
+    const runtimeValue = acceptedRuntimeReplacementValue(result, "image");
+    if (replacementActionAccepted(result) && !runtimeValue) {
+      showFailure("Replacement preview did not return an accepted runtime target binding.");
+      return;
+    }
+    if (runtimeValue) {
       setRuntimeReplacementValue(
         "image",
-        runtimeReplacementImageTargetId(state.selectedImageKey, result.model),
-        dataUri
+        runtimeValue.targetId,
+        runtimeValue.value
       );
     }
     applyHostResult(result, { keepView: true });
@@ -305,11 +316,17 @@ export function createMultiFormatDesktopPreviewController({
     state.textPreviewValues[textKey] = value;
     bridge.applyMultiFormatReplacement({
       targetId: textKey,
+      sourceId: state.sourceId,
       kind: "text",
       value
     }).then((result) => {
-      if (replacementActionAccepted(result)) {
-        setRuntimeReplacementValue("text", textKey, value);
+      const runtimeValue = acceptedRuntimeReplacementValue(result, "text");
+      if (replacementActionAccepted(result) && !runtimeValue) {
+        showFailure("Replacement preview did not return an accepted runtime target binding.");
+        return;
+      }
+      if (runtimeValue) {
+        setRuntimeReplacementValue("text", runtimeValue.targetId, runtimeValue.value);
       }
       applyHostResult(result, { keepView: true });
     }).catch(showFailure);
@@ -521,8 +538,11 @@ export function createMultiFormatDesktopPreviewController({
 
   function renderReplaceableTargets() {
     const model = state.model;
-    const assets = model?.rightPanel?.assets?.filter((asset) => asset.replaceable) ?? [];
     const fusionImages = model?.rightPanel?.vapFusionImages ?? [];
+    const fusionResourceIds = new Set(fusionImages.map((entry) => entry.resourceId));
+    const assets = model?.rightPanel?.assets?.filter((asset) =>
+      asset.replaceable && (model.detectedFormat !== "vap" || !fusionResourceIds.has(asset.id))
+    ) ?? [];
     const targets = [
       ...assets.map((asset) => ({
         id: asset.id,
@@ -530,7 +550,7 @@ export function createMultiFormatDesktopPreviewController({
         detail: [model.detectedFormat?.toUpperCase(), asset.kind, asset.dimensions].filter(Boolean).join(" · ")
       })),
       ...fusionImages.filter((entry) => entry.replaceable).map((entry) => ({
-        id: entry.srcTag || entry.runtimeBindingKey || entry.id,
+        id: entry.resourceId,
         name: entry.srcTag || entry.id,
         detail: ["VAP fusion image", entry.dimensions ? `${entry.dimensions.width} x ${entry.dimensions.height}` : ""].filter(Boolean).join(" · ")
       }))
@@ -566,7 +586,7 @@ export function createMultiFormatDesktopPreviewController({
         detail: "Lottie text"
       })),
       ...vapTexts.filter((entry) => entry.replaceable).map((entry) => ({
-        id: entry.srcTag || entry.runtimeBindingKey || entry.id,
+        id: entry.resourceId,
         name: entry.srcTag || entry.id,
         value: "",
         detail: "VAP fusion text"
@@ -1203,20 +1223,6 @@ export function createMultiFormatDesktopPreviewController({
     });
   }
 
-  function runtimeReplacementImageTargetId(targetId, model) {
-    const requestedTargetId = String(targetId ?? "").trim();
-    if (!requestedTargetId || model?.detectedFormat !== "vap") return requestedTargetId;
-    const target = (model.rightPanel?.vapFusionImages ?? []).find((entry) => [
-      entry.id,
-      entry.resourceId,
-      entry.layerId,
-      entry.srcId,
-      entry.srcTag,
-      entry.runtimeBindingKey
-    ].includes(requestedTargetId));
-    return String(target?.runtimeBindingKey || target?.srcTag || target?.srcId || target?.id || requestedTargetId).trim();
-  }
-
   function clearRuntimeReplacementValues(kind) {
     if (kind !== "image" && kind !== "text") {
       runtimeReplacementValues = new Map();
@@ -1229,6 +1235,25 @@ export function createMultiFormatDesktopPreviewController({
 
   function replacementActionAccepted(result) {
     return result?.model?.replacement?.lastAction?.status === "accepted";
+  }
+
+  function acceptedRuntimeReplacementValue(result, kind) {
+    if (!replacementActionAccepted(result)) return undefined;
+    const runtimeValue = result?.replacementRuntimeValue;
+    if (
+      runtimeValue?.kind !== kind
+      || typeof runtimeValue.targetId !== "string"
+      || !runtimeValue.targetId.trim()
+      || typeof runtimeValue.value !== "string"
+      || !runtimeValue.value
+    ) {
+      return undefined;
+    }
+    return {
+      kind,
+      targetId: runtimeValue.targetId.trim(),
+      value: runtimeValue.value
+    };
   }
 
   function loadRuntimeScript(src, runtimeName) {
@@ -1359,13 +1384,11 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function selectDefaultTargets(model) {
-    const imageTarget = model.rightPanel?.assets?.find((asset) => asset.replaceable)?.id
-      ?? model.rightPanel?.vapFusionImages?.find((entry) => entry.replaceable)?.srcTag
-      ?? model.rightPanel?.vapFusionImages?.find((entry) => entry.replaceable)?.runtimeBindingKey
-      ?? "";
+    const imageTarget = (model.detectedFormat === "vap"
+      ? model.rightPanel?.vapFusionImages?.find((entry) => entry.replaceable)?.resourceId
+      : model.rightPanel?.assets?.find((asset) => asset.replaceable)?.id) ?? "";
     const textTarget = model.rightPanel?.lottieTexts?.find((entry) => entry.replaceable)?.id
-      ?? model.rightPanel?.vapFusionTexts?.find((entry) => entry.replaceable)?.srcTag
-      ?? model.rightPanel?.vapFusionTexts?.find((entry) => entry.replaceable)?.runtimeBindingKey
+      ?? model.rightPanel?.vapFusionTexts?.find((entry) => entry.replaceable)?.resourceId
       ?? "";
     if (!state.selectedImageKey || !hasImageTarget(model, state.selectedImageKey)) state.selectedImageKey = imageTarget;
     if (!state.selectedTextKey || !hasTextTarget(model, state.selectedTextKey)) state.selectedTextKey = textTarget;
@@ -1555,14 +1578,14 @@ function formatTime(timeMs) {
 function hasImageTarget(model, targetId) {
   return (model.rightPanel?.assets ?? []).some((asset) => asset.replaceable && asset.id === targetId)
     || (model.rightPanel?.vapFusionImages ?? []).some((entry) =>
-      entry.replaceable && [entry.srcTag, entry.runtimeBindingKey, entry.id].includes(targetId)
+      entry.replaceable && entry.resourceId === targetId
     );
 }
 
 function hasTextTarget(model, targetId) {
   return (model.rightPanel?.lottieTexts ?? []).some((entry) => entry.replaceable && entry.id === targetId)
     || (model.rightPanel?.vapFusionTexts ?? []).some((entry) =>
-      entry.replaceable && [entry.srcTag, entry.runtimeBindingKey, entry.id].includes(targetId)
+      entry.replaceable && entry.resourceId === targetId
     );
 }
 

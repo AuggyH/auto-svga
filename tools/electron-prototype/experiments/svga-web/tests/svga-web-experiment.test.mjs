@@ -1138,7 +1138,12 @@ test("formal 0.2 multi-format preload exposes only the gated preview bridge", as
   api.prepareMultiFormatRuntimePreview({ sourceId: "0123456789abcdef01234567", format: "lottie" });
   api.controlMultiFormatPreview({ action: "play" });
   api.chooseMultiFormatReplacementImage({ targetId: "asset", sourceId: "0123456789abcdef01234567", kind: "image" });
-  api.applyMultiFormatReplacement({ targetId: "asset", kind: "image", value: "data:image/png;base64,AA==" });
+  api.applyMultiFormatReplacement({
+    targetId: "asset",
+    sourceId: "0123456789abcdef01234567",
+    kind: "image",
+    value: "data:image/png;base64,AA=="
+  });
   api.resetMultiFormatReplacement();
 
   assert.deepEqual(invocations.map(({ channel }) => channel), [
@@ -1272,9 +1277,13 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   assert.match(pickerSource, /expectedSourceId/);
   assert.match(pickerSource, /if \(!expectedSourceId\) \{/);
   assert.match(pickerSource, /activeSourceId !== expectedSourceId/);
+  assert.match(pickerSource, /resolveReplacementSelection/);
+  assert.match(pickerSource, /selectionBeforePicker/);
+  assert.match(pickerSource, /selectionAfterPicker/);
+  assert.match(pickerSource, /bindingToken !== selectionBeforePicker\.bindingToken/);
   assert.doesNotMatch(pickerSource, /if \(expectedSourceId && session\.activeSourceId !== expectedSourceId\)/);
   assert.match(pickerSource, /applyMultiFormatReplacement\(\{/);
-  assert.match(pickerSource, /replacementRuntimeValue/);
+  assert.match(pickerSource, /selectionToken: selectionAfterPicker\.bindingToken/);
   assert.ok(
     pickerSource.indexOf("if (!expectedSourceId)") < pickerSource.indexOf("openMultiFormatReplacementImageFile()"),
     "missing or blank sourceId must fail before the host picker can show a dialog"
@@ -1310,9 +1319,14 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   const chooseStart = controller.indexOf("async function chooseReplacementImage");
   const applyStart = controller.indexOf("async function applyReplacementFile", chooseStart + 1);
   const chooseSource = controller.slice(chooseStart, applyStart);
+  const applySource = controller.slice(applyStart, controller.indexOf("async function resetImageReplacement", applyStart + 1));
   assert.match(chooseSource, /bridge\.chooseMultiFormatReplacementImage/);
   assert.match(chooseSource, /sourceId: state\.sourceId/);
-  assert.match(chooseSource, /replacementRuntimeValue/);
+  assert.match(controller, /function acceptedRuntimeReplacementValue[\s\S]*result\?\.replacementRuntimeValue/);
+  assert.match(chooseSource, /runtimeValue\.targetId/);
+  assert.match(applySource, /sourceId: state\.sourceId/);
+  assert.match(applySource, /runtimeValue\.targetId/);
+  assert.doesNotMatch(controller, /runtimeReplacementImageTargetId/);
   assert.doesNotMatch(chooseSource, /replacementFileInput\.click\(\)|\.click\(\)/);
   assert.match(controller, /openResourceContextMenu\(_event, imageKey\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(showFailure\);/);
   assert.match(controller, /aria-label="替换预览图片"/);
@@ -1321,11 +1335,26 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
 test("0.2 host replacement picker fails closed for missing source and bounded read races", async () => {
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const chooseSource = extractFunctionSource(main, "async function chooseMultiFormatReplacementImage(input)");
+  const selectionFailureSource = extractFunctionSource(main, "function replacementSelectionFailure(selection)");
+  const applySource = extractFunctionSource(main, "async function applyMultiFormatReplacement(input)");
   const readSource = extractFunctionSource(main, "function readMultiFormatReplacementImageFile(filePath)");
 
-  const createChooseHarness = ({ activeSourceId = "active-source", picker } = {}) => {
+  const createChooseHarness = ({ activeSourceId = "active-source", picker, resolveSelection } = {}) => {
     const context = {
-      session: { activeSourceId },
+      session: {
+        activeSourceId,
+        selectionRevision: 0,
+        async resolveReplacementSelection(input) {
+          if (resolveSelection) return resolveSelection(context, input);
+          return {
+            status: "accepted",
+            publicTargetId: String(input?.targetId ?? ""),
+            runtimeTargetId: "avatar",
+            bindingToken: `selection:${context.session.selectionRevision}`,
+            pathRedacted: true
+          };
+        }
+      },
       dialogCalls: 0,
       applied: [],
       assertMultiFormatDesktopProduct() {},
@@ -1345,10 +1374,18 @@ test("0.2 host replacement picker fails closed for missing source and bounded re
       },
       async applyMultiFormatReplacement(input) {
         context.applied.push(input);
-        return { status: "previewReady", sourceId: context.session.activeSourceId };
+        return {
+          status: "previewReady",
+          sourceId: context.session.activeSourceId,
+          replacementRuntimeValue: {
+            kind: input.kind,
+            targetId: "avatar",
+            value: input.value
+          }
+        };
       }
     };
-    vm.runInNewContext(`${chooseSource}; globalThis.callPicker = chooseMultiFormatReplacementImage;`, context);
+    vm.runInNewContext(`${selectionFailureSource}; ${chooseSource}; globalThis.callPicker = chooseMultiFormatReplacementImage;`, context);
     return context;
   };
 
@@ -1392,6 +1429,144 @@ test("0.2 host replacement picker fails closed for missing source and bounded re
     assert.equal(result.code, "parse_precondition");
     assert.equal(result.pathRedacted, true);
     assert.equal(context.applied.length, 0, "stale source after picker must not apply replacement");
+  }
+
+  {
+    const context = createChooseHarness({
+      activeSourceId: "stable-source",
+      picker(pickerContext) {
+        pickerContext.session.selectionRevision += 1;
+        return {
+          status: "opened",
+          mediaType: "image/png",
+          sizeBytes: 1,
+          sha256: "replacement-sha",
+          value: "data:image/png;base64,AA==",
+          pathRedacted: true
+        };
+      }
+    });
+    const result = await context.callPicker({ targetId: "vap_fusion_1", sourceId: "stable-source" });
+    assert.equal(context.dialogCalls, 1);
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "replacement_target_stale");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(context.applied.length, 0, "changed model binding must reject before replacement mutation");
+  }
+
+  const createApplyHarness = ({
+    activeSourceId = "active-source",
+    selection,
+    returnedRuntimeTargetId = "badge"
+  } = {}) => {
+    const context = {
+      assertMultiFormatDesktopProduct() {},
+      applyCalls: [],
+      session: {
+        activeSourceId,
+        async resolveReplacementSelection() {
+          return selection ?? {
+            status: "accepted",
+            format: "vap",
+            kind: "image",
+            publicTargetId: "vap_fusion_2",
+            runtimeTargetId: "badge",
+            bindingToken: "binding:1",
+            pathRedacted: true
+          };
+        },
+        async applyReplacement(input) {
+          context.applyCalls.push(input);
+          return {
+            status: "opened",
+            sourceId: context.session.activeSourceId,
+            model: {
+              replacement: {
+                lastAction: {
+                  status: "accepted",
+                  ...(returnedRuntimeTargetId ? { runtimeTargetId: returnedRuntimeTargetId } : {})
+                }
+              }
+            }
+          };
+        }
+      },
+      getMultiFormatDesktopSession() {
+        return context.session;
+      }
+    };
+    vm.runInNewContext(`${selectionFailureSource}; ${applySource}; globalThis.applyReplacement = applyMultiFormatReplacement;`, context);
+    return context;
+  };
+
+  for (const input of [
+    { targetId: "vap_fusion_2", sourceId: "" },
+    { targetId: "", sourceId: "active-source" }
+  ]) {
+    const context = createApplyHarness();
+    const result = await context.applyReplacement({ ...input, kind: "image", value: "data:image/png;base64,AA==" });
+    assert.equal(result.status, "failed");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(context.applyCalls.length, 0);
+  }
+
+  {
+    const context = createApplyHarness({
+      selection: {
+        status: "blocked",
+        diagnostic: { code: "replacement_target_ambiguous", message: "Ambiguous target." },
+        pathRedacted: true
+      }
+    });
+    const result = await context.applyReplacement({
+      targetId: "vap_fusion_2",
+      sourceId: "active-source",
+      kind: "image",
+      value: "data:image/png;base64,AA=="
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "replacement_target_ambiguous");
+    assert.equal(context.applyCalls.length, 0);
+  }
+
+  {
+    const context = createApplyHarness({ returnedRuntimeTargetId: "" });
+    const result = await context.applyReplacement({
+      targetId: "vap_fusion_2",
+      sourceId: "active-source",
+      selectionToken: "binding:1",
+      kind: "image",
+      value: "data:image/png;base64,AA=="
+    });
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "replacement_target_malformed");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(result.replacementRuntimeValue, undefined);
+  }
+
+  {
+    const context = createApplyHarness();
+    const stale = await context.applyReplacement({
+      targetId: "vap_fusion_2",
+      sourceId: "active-source",
+      selectionToken: "binding:stale",
+      kind: "image",
+      value: "data:image/png;base64,AA=="
+    });
+    assert.equal(stale.status, "failed");
+    assert.equal(stale.code, "replacement_target_stale");
+    assert.equal(context.applyCalls.length, 0);
+
+    const accepted = await context.applyReplacement({
+      targetId: "vap_fusion_2",
+      sourceId: "active-source",
+      selectionToken: "binding:1",
+      kind: "image",
+      value: "data:image/png;base64,AA=="
+    });
+    assert.equal(accepted.replacementRuntimeValue.targetId, "badge");
+    assert.equal(context.applyCalls.length, 1);
+    assert.equal(context.applyCalls[0].targetId, "vap_fusion_2");
   }
 
   const createReadHarness = ({ openSync, fstatSync, readSync }) => {
@@ -2798,8 +2973,9 @@ test("0.2 installed file-open keeps source identity through renderer playback an
         rgbFrame: { x: 0, y: 0, w: 120, h: 160 }
       },
       src: [
-        { srcId: 1, srcType: "image", srcTag: "avatar", w: 24, h: 24, fitType: "cover" },
-        { srcId: 2, srcType: "text", srcTag: "title" }
+        { srcId: 1, srcType: "image", srcTag: "vap_fusion_2", w: 24, h: 24, fitType: "cover" },
+        { srcId: 2, srcType: "image", srcTag: "badge", w: 20, h: 20, fitType: "cover" },
+        { srcId: 3, srcType: "text", srcTag: "title" }
       ],
       frame: [{
         i: 0,
@@ -2814,8 +2990,15 @@ test("0.2 installed file-open keeps source identity through renderer playback an
           {
             srcId: 2,
             z: 2,
-            frame: { x: 36, y: 8, w: 80, h: 24 },
-            mFrame: { x: 0, y: 0, w: 80, h: 24 },
+            frame: { x: 36, y: 8, w: 20, h: 20 },
+            mFrame: { x: 24, y: 0, w: 20, h: 20 },
+            mt: 0
+          },
+          {
+            srcId: 3,
+            z: 3,
+            frame: { x: 60, y: 8, w: 56, h: 24 },
+            mFrame: { x: 44, y: 0, w: 56, h: 24 },
             mt: 0
           }
         ]
@@ -2888,13 +3071,14 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     await flushRuntimeMountPromises();
     assert.equal(state.model.status, "previewReady");
     assert.equal(state.model.rightPanel.vapFusionTexts.some((entry) => entry.srcTag === "title"), true);
-    assert.equal(state.model.rightPanel.vapFusionImages.some((entry) => entry.srcTag === "avatar"), true);
+    assert.equal(state.model.rightPanel.vapFusionImages.some((entry) => entry.srcTag === "badge"), true);
     assert.equal(state.model.rightPanel.issues.some((entry) =>
       entry.code === "missing_resource" && entry.details?.reason === "fusion_replacement_required"
     ), true);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     const vapFusionBaseCallCount = vapCalls.length;
-    assert.equal(state.selectedImageKey, "vap_fusion_1");
+    controller.handlers.selectImageKey("vap_fusion_2");
+    assert.equal(state.selectedImageKey, "vap_fusion_2");
     await controller.handlers.applyReplacementFile({
       type: "image/png",
       async arrayBuffer() {
@@ -2904,8 +3088,8 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     await flushRuntimeMountPromises();
     assert.equal(state.model.status, "previewReady");
     assert.equal(vapCalls.length, vapFusionBaseCallCount + 1);
-    assert.match(vapCalls.at(-1).avatar, /^data:image\/png;base64,/);
-    assert.equal(vapCalls.at(-1).vap_fusion_avatar, undefined);
+    assert.match(vapCalls.at(-1).badge, /^data:image\/png;base64,/);
+    assert.equal(vapCalls.at(-1).vap_fusion_2, undefined);
     assert.equal(state.model.replacement.dirty, true);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     await controller.handlers.resetImageReplacement();
@@ -2913,10 +3097,11 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     assert.equal(state.model.status, "previewReady");
     assert.equal(state.model.replacement.dirty, false);
     assert.equal(vapCalls.length, vapFusionBaseCallCount + 2);
-    assert.equal(vapCalls.at(-1).avatar, undefined);
+    assert.equal(vapCalls.at(-1).badge, undefined);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     const vapFusionAfterImageResetCallCount = vapCalls.length;
-    controller.handlers.updateRuntimeText("title", "Runtime VAP title");
+    assert.equal(state.selectedTextKey, "vap_fusion_3");
+    controller.handlers.updateRuntimeText(state.selectedTextKey, "Runtime VAP title");
     await flushRuntimeMountPromises();
     assert.equal(state.model.status, "previewReady");
     assert.equal(vapCalls.length, vapFusionAfterImageResetCallCount + 1);
@@ -6247,8 +6432,33 @@ function createSessionBackedMultiFormatRuntimeMountTestBridge(session) {
     controlMultiFormatPreview(input) {
       return session.control(input);
     },
-    applyMultiFormatReplacement(input) {
-      return session.applyReplacement(input);
+    async applyMultiFormatReplacement(input) {
+      if (!input?.sourceId || input.sourceId !== session.activeSourceId) {
+        return { status: "failed", code: "parse_precondition", pathRedacted: true };
+      }
+      const selection = await session.resolveReplacementSelection(input);
+      if (selection.status !== "accepted") {
+        return {
+          status: "failed",
+          code: selection.diagnostic.code,
+          message: selection.diagnostic.message,
+          pathRedacted: true
+        };
+      }
+      const result = await session.applyReplacement({
+        targetId: selection.publicTargetId,
+        kind: input.kind,
+        value: input.value
+      });
+      if (result.model?.replacement?.lastAction?.status !== "accepted") return result;
+      return {
+        ...result,
+        replacementRuntimeValue: {
+          kind: input.kind,
+          targetId: selection.runtimeTargetId,
+          value: input.value
+        }
+      };
     },
     resetMultiFormatReplacement() {
       return session.resetReplacement();

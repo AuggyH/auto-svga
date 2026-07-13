@@ -5146,7 +5146,7 @@ async function prepareMultiFormatRuntimePreview(input) {
 
 async function chooseMultiFormatReplacementImage(input) {
   assertMultiFormatDesktopProduct();
-  const targetId = String(input?.targetId ?? "");
+  const targetId = String(input?.targetId ?? "").trim();
   const expectedSourceId = String(input?.sourceId ?? "").trim();
   if (!targetId) {
     return {
@@ -5173,6 +5173,13 @@ async function chooseMultiFormatReplacementImage(input) {
       pathRedacted: true
     };
   }
+  const selectionBeforePicker = await session.resolveReplacementSelection({
+    targetId,
+    kind: "image"
+  });
+  if (selectionBeforePicker.status !== "accepted") {
+    return replacementSelectionFailure(selectionBeforePicker);
+  }
   const picked = await openMultiFormatReplacementImageFile();
   if (picked.status !== "opened") return picked;
   if (session.activeSourceId !== expectedSourceId) {
@@ -5183,18 +5190,30 @@ async function chooseMultiFormatReplacementImage(input) {
       pathRedacted: true
     };
   }
-  const result = await applyMultiFormatReplacement({
+  const selectionAfterPicker = await session.resolveReplacementSelection({
     targetId,
+    kind: "image"
+  });
+  if (
+    selectionAfterPicker.status !== "accepted"
+    || selectionAfterPicker.bindingToken !== selectionBeforePicker.bindingToken
+  ) {
+    return {
+      status: "failed",
+      code: "replacement_target_stale",
+      message: "Replacement preview target changed while the local image picker was open.",
+      pathRedacted: true
+    };
+  }
+  const result = await applyMultiFormatReplacement({
+    targetId: selectionAfterPicker.publicTargetId,
+    sourceId: expectedSourceId,
+    selectionToken: selectionAfterPicker.bindingToken,
     kind: "image",
     value: picked.value
   });
   return {
     ...result,
-    replacementRuntimeValue: {
-      kind: "image",
-      targetId,
-      value: picked.value
-    },
     picker: {
       status: "opened",
       mediaType: picked.mediaType,
@@ -5202,6 +5221,15 @@ async function chooseMultiFormatReplacementImage(input) {
       sha256: picked.sha256,
       pathRedacted: true
     }
+  };
+}
+
+function replacementSelectionFailure(selection) {
+  return {
+    status: "failed",
+    code: selection?.diagnostic?.code || "replacement_target_unavailable",
+    message: selection?.diagnostic?.message || "Replacement preview target is unavailable.",
+    pathRedacted: true
   };
 }
 
@@ -5459,7 +5487,79 @@ async function controlMultiFormatPreview(input) {
 }
 
 async function applyMultiFormatReplacement(input) {
-  return getMultiFormatDesktopSession().applyReplacement(input);
+  assertMultiFormatDesktopProduct();
+  const expectedSourceId = String(input?.sourceId ?? "").trim();
+  const targetId = String(input?.targetId ?? "").trim();
+  const kind = input?.kind === "text" ? "text" : "image";
+  if (!expectedSourceId || !targetId) {
+    return {
+      status: "failed",
+      code: "parse_precondition",
+      message: "Runtime replacement source and target identity are required.",
+      pathRedacted: true
+    };
+  }
+  const session = getMultiFormatDesktopSession();
+  if (session.activeSourceId !== expectedSourceId) {
+    return {
+      status: "failed",
+      code: "parse_precondition",
+      message: "Replacement preview request no longer matches the active local source.",
+      pathRedacted: true
+    };
+  }
+  const selection = await session.resolveReplacementSelection({ targetId, kind });
+  if (selection.status !== "accepted") return replacementSelectionFailure(selection);
+  if (input?.selectionToken && input.selectionToken !== selection.bindingToken) {
+    return {
+      status: "failed",
+      code: "replacement_target_stale",
+      message: "Replacement preview target changed before the replacement could be applied.",
+      pathRedacted: true
+    };
+  }
+  const result = await session.applyReplacement({
+    targetId: selection.publicTargetId,
+    kind,
+    value: String(input?.value ?? "")
+  });
+  if (session.activeSourceId !== expectedSourceId) {
+    return {
+      status: "failed",
+      code: "replacement_target_stale",
+      message: "Replacement preview request was superseded by a newer local source.",
+      pathRedacted: true
+    };
+  }
+  if (result?.model?.replacement?.lastAction?.status !== "accepted") return result;
+  const returnedRuntimeTargetId = String(
+    result.model.replacement.lastAction.runtimeTargetId || ""
+  ).trim();
+  if (selection.format === "vap" && !returnedRuntimeTargetId) {
+    return {
+      status: "failed",
+      code: "replacement_target_malformed",
+      message: "VAP replacement preview did not return its accepted runtime target binding.",
+      pathRedacted: true
+    };
+  }
+  const acceptedRuntimeTargetId = returnedRuntimeTargetId || selection.runtimeTargetId;
+  if (!acceptedRuntimeTargetId || acceptedRuntimeTargetId !== selection.runtimeTargetId) {
+    return {
+      status: "failed",
+      code: "replacement_target_malformed",
+      message: "Replacement preview did not return the accepted runtime target binding.",
+      pathRedacted: true
+    };
+  }
+  return {
+    ...result,
+    replacementRuntimeValue: {
+      kind,
+      targetId: acceptedRuntimeTargetId,
+      value: String(input?.value ?? "")
+    }
+  };
 }
 
 async function resetMultiFormatReplacement(input) {

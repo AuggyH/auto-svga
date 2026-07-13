@@ -164,6 +164,14 @@ class MultiFormatDesktopPreviewSession {
     }
   }
 
+  async resolveReplacementSelection(input) {
+    const session = await this.ensureSession();
+    return session.resolveReplacementSelection({
+      targetId: String(input?.targetId ?? ""),
+      kind: input?.kind === "text" ? "text" : "image"
+    });
+  }
+
   async applyReplacement(input) {
     const session = await this.ensureSession();
     return this.publicResult(await session.applyReplacement({
