@@ -106,17 +106,18 @@ test("hidden VAP vertical inspects, binds fusion data, plays, seeks, loops, disp
   assert.deepEqual(host.revoked, ["blob:vap/fusion.mp4"]);
 });
 
-test("hidden VAP vertical fails closed for missing fusion replacements before runtime/object URL", async () => {
+test("hidden VAP vertical mounts base runtime while marking missing fusion replacements", async () => {
   let runtimeLoads = 0;
   const localPath = "/Users/designer/Secret Campaign/missing-fusion.mp4";
   const host = memoryHost({ [localPath]: validVapBytes(fusionConfig()) });
+  const runtime = fakeRuntime();
   const session = createHiddenVapPreviewVerticalSession({
     host,
     target: { container: {} },
     hostReadiness: readyHost(),
     runtimeLoader: async () => {
       runtimeLoads += 1;
-      return fakeRuntime().constructor;
+      return runtime.constructor;
     }
   });
 
@@ -127,10 +128,16 @@ test("hidden VAP vertical fails closed for missing fusion replacements before ru
     localPath
   });
 
-  assert.equal(model.status, "playbackBlocked");
-  assert.equal(model.issues.some(({ code }) => code === "missing_resource"), true);
-  assert.equal(host.objectUrlCreates.length, 0);
-  assert.equal(runtimeLoads, 0);
+  assert.equal(model.status, "ready");
+  assert.equal(model.issues.some(({ code, details, severity }) =>
+    code === "missing_resource" && details?.reason === "fusion_replacement_required" && severity === "warning"
+  ), true);
+  assert.equal(model.fusionElements.every(({ replacementRequired }) => replacementRequired), true);
+  assert.equal(host.objectUrlCreates.length, 1);
+  assert.equal(runtimeLoads, 1);
+  assert.equal(runtime.configs.length, 1);
+  assert.equal(runtime.configs[0]?.avatar, undefined);
+  assert.equal(runtime.configs[0]?.nickname, undefined);
   assertNoLocalPaths(model);
 });
 

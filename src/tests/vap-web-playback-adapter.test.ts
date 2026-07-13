@@ -74,6 +74,24 @@ test("VAP Web adapter loads the approved runtime with local object URL config an
   assert.equal(session.getState().status, "disposed");
 });
 
+test("VAP Web adapter mounts base video when fusion replacements are not provided", async () => {
+  const runtime = fakeRuntime();
+  const source = playbackSource({ fusionParams: {} });
+  const session = new VapWebPlaybackAdapter({
+    gate: VAP_WEB_PLAYBACK_WP3C_GATE,
+    runtimeLoader: async () => runtime.constructor
+  }).createSession({ container: { id: "target" }, hostReadiness: readyHost() });
+
+  const loaded = await session.load(source);
+
+  assert.equal(loaded.value?.format, "vap");
+  assert.equal(session.getState().status, "ready");
+  assert.equal(runtime.configs.length, 1);
+  assert.equal(runtime.configs[0]?.avatar, undefined);
+  assert.equal(runtime.configs[0]?.nickname, undefined);
+  assert.equal(source.releases, 0);
+});
+
 test("VAP Web adapter maps missing dependency to typed feedback and revokes the object URL", async () => {
   const source = playbackSource();
   const session = new VapWebPlaybackAdapter({

@@ -87,12 +87,23 @@ test("maps fusion image and text elements into deterministic runtime bindings", 
   assert.equal(result.value.fusionElements[1]?.style, "bold");
 });
 
-test("fails closed for missing runtime replacement tags and ambiguous fusion bindings", () => {
+test("warns for missing runtime replacement tags without blocking base playback", () => {
   const missing = service().prepare(validVapAsset(), {
     gate: VAP_PLAYBACK_PREPARATION_WP3B_GATE,
     dependencyApproval: "approved",
     hostReadiness: readyHost()
   });
+  const missingReplacementIssues = missing.issues.filter(({ code, details }) =>
+    code === "missing_resource" && details?.reason === "fusion_replacement_required"
+  );
+
+  assert.equal(missing.value?.status, "prepared");
+  assert.equal(missingReplacementIssues.length, 2);
+  assert.equal(missingReplacementIssues.every(({ severity }) => severity === "warning"), true);
+  assert.equal(missing.value?.fusionElements[0]?.replacementRequired, true);
+});
+
+test("fails closed for ambiguous fusion bindings", () => {
   const duplicateTags = service().prepare(validVapAsset({ duplicateTag: true }), {
     gate: VAP_PLAYBACK_PREPARATION_WP3B_GATE,
     dependencyApproval: "approved",
@@ -100,9 +111,6 @@ test("fails closed for missing runtime replacement tags and ambiguous fusion bin
     providedFusionTags: ["avatar"]
   });
 
-  assert.equal(missing.value?.status, "blocked");
-  assert.equal(missing.issues.filter(({ code }) => code === "missing_resource").length, 2);
-  assert.equal(missing.value?.fusionElements[0]?.replacementRequired, true);
   assert.equal(duplicateTags.value?.status, "failed");
   assert.ok(duplicateTags.issues.some(({ code, details }) =>
     code === "ambiguous" && details?.reason === "ambiguous_fusion_source_tag"

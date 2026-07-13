@@ -46,6 +46,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   let activeRequest = 0;
   let runtimePreviewGeneration = 0;
   let activeRuntimePreview;
+  let runtimeReplacementValues = new Map();
   let hostFileOpenEventId = "";
   let hostFileOpenRequest = 0;
 
@@ -164,6 +165,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
   async function closeFile() {
     activeRequest += 1;
     clearRuntimePreview();
+    clearRuntimeReplacementValues();
     await bridge.controlMultiFormatPreview({ action: "dispose" }).catch(() => {});
     state.model = undefined;
     state.sourceId = "";
@@ -248,11 +250,15 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       kind: "image",
       value: dataUri
     });
+    if (replacementActionAccepted(result)) {
+      setRuntimeReplacementValue("image", state.selectedImageKey, dataUri);
+    }
     applyHostResult(result, { keepView: true });
   }
 
   async function resetImageReplacement() {
     const result = await bridge.resetMultiFormatReplacement({ kind: "image" });
+    if (replacementActionAccepted(result)) clearRuntimeReplacementValues("image");
     applyHostResult(result, { keepView: true });
   }
 
@@ -271,13 +277,19 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       kind: "text",
       value
     }).then((result) => {
+      if (replacementActionAccepted(result)) {
+        setRuntimeReplacementValue("text", textKey, value);
+      }
       applyHostResult(result, { keepView: true });
     }).catch(showFailure);
   }
 
   async function resetRuntimeText() {
     const result = await bridge.resetMultiFormatReplacement({ kind: "text" });
-    state.textPreviewValues = {};
+    if (replacementActionAccepted(result)) {
+      clearRuntimeReplacementValues("text");
+      state.textPreviewValues = {};
+    }
     applyHostResult(result, { keepView: true });
   }
 
@@ -301,6 +313,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
 
   function setLoading(copy) {
     state.model = undefined;
+    clearRuntimeReplacementValues();
     clearRuntimePreview();
     renderLoadingMessage(nodes, copy);
     clearSurfaces();
@@ -577,6 +590,14 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       return;
     }
 
+    const runtimeIdentity = {
+      sourceId,
+      replacementSignature: runtimeReplacementSignature(model)
+    };
+    if (format === "vap" && syncReusableVapRuntimePreview(runtimeIdentity, model)) {
+      return;
+    }
+
     const generation = beginRuntimePreviewGeneration();
     const mount = ensureRuntimeMount();
     mount.hidden = false;
@@ -587,7 +608,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       sourceId,
       format,
       requestId: model.requestId,
-      replacements: model.replacement
+      replacements: runtimePreviewReplacementPayload(model.replacement)
     }).then(async (payload) => {
       if (!isActiveRuntimePreviewGeneration(generation)) return;
       if (payload?.status !== "prepared") {
@@ -596,7 +617,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       if (format === "lottie") {
         await mountLottieRuntimePreview(payload, mount, model, generation);
       } else {
-        await mountVapRuntimePreview(payload, mount, model, generation);
+        await mountVapRuntimePreview(payload, mount, model, generation, runtimeIdentity);
       }
     }).catch((error) => {
       if (!isActiveRuntimePreviewGeneration(generation)) return;
@@ -624,7 +645,13 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     const active = activeRuntimePreview;
     activeRuntimePreview = undefined;
     try {
+      active?.cleanup?.();
+    } catch {}
+    try {
       active?.animation?.destroy?.();
+    } catch {}
+    try {
+      active?.player?.pause?.();
     } catch {}
     try {
       active?.player?.destroy?.();
@@ -682,8 +709,8 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     mount.dataset.runtimeFormat = "lottie";
   }
 
-  async function mountVapRuntimePreview(payload, mount, model, generation) {
-    await loadRuntimeScript(payload.runtimeScripts?.[0], "vap");
+  async function mountVapRuntimePreview(payload, mount, model, generation, runtimeIdentity) {
+    await loadVapRuntimeScript(payload.runtimeScripts?.[0]);
     if (!isActiveRuntimePreviewGeneration(generation)) return;
     const vapModule = globalThis.Vap;
     const VapConstructor = typeof vapModule?.default === "function" ? vapModule.default : typeof vapModule === "function" ? vapModule : undefined;
@@ -716,17 +743,142 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
         })));
       }
     });
-    activeRuntimePreview = { format: "vap", player, objectUrl };
+    activeRuntimePreview = {
+      format: "vap",
+      player,
+      objectUrl,
+      sourceId: runtimeIdentity.sourceId,
+      replacementSignature: runtimeIdentity.replacementSignature,
+      desiredStatus: model.status,
+      runtimeReady: false,
+      cleanup: bindVapPlaybackReadinessGuards(mount, player, generation),
+      currentTimeMs: undefined,
+      playbackStatus: undefined
+    };
     const currentTimeMs = Number(model.canvas?.playback?.currentTimeMs) || 0;
-    if (currentTimeMs > 0) player.setTime?.(currentTimeMs / 1000);
-    if (model.status === "paused" || model.status === "previewReady") player.pause?.();
-    if (model.status === "playing") player.play?.();
+    syncVapRuntimePlayback(activeRuntimePreview, model, {
+      forceSeek: currentTimeMs > 0,
+      deferPlaybackUntilReady: true
+    });
     mount.dataset.runtimePreviewState = "loaded";
     mount.dataset.runtimeFormat = "vap";
   }
 
+  function syncReusableVapRuntimePreview(runtimeIdentity, model) {
+    const active = activeRuntimePreview;
+    if (active?.format !== "vap" || !active.player) return false;
+    if (active.sourceId !== runtimeIdentity.sourceId) return false;
+    if (active.replacementSignature !== runtimeIdentity.replacementSignature) return false;
+    const mount = runtimeMountNode();
+    if (!mount || mount.dataset.runtimePreviewState !== "loaded" || mount.dataset.runtimeFormat !== "vap") return false;
+    syncVapRuntimePlayback(active, model);
+    mount.hidden = false;
+    if (nodes.primaryCanvas) nodes.primaryCanvas.style.visibility = "hidden";
+    return true;
+  }
+
+  function syncVapRuntimePlayback(active, model, options = {}) {
+    const player = active?.player;
+    if (!player) return;
+    active.desiredStatus = model.status;
+    const currentTimeMs = Math.max(0, Number(model.canvas?.playback?.currentTimeMs) || 0);
+    if (options.forceSeek || active.currentTimeMs !== currentTimeMs) {
+      player.setTime?.(currentTimeMs / 1000);
+      active.currentTimeMs = currentTimeMs;
+    }
+    if (options.deferPlaybackUntilReady && active.runtimeReady !== true) return;
+    if (model.status === "playing") {
+      if (options.forcePlayback || active.playbackStatus !== "playing") player.play?.();
+      active.playbackStatus = "playing";
+      return;
+    }
+    if (model.status === "paused" || model.status === "previewReady") {
+      if (options.forcePlayback || active.playbackStatus !== model.status) player.pause?.();
+      active.playbackStatus = model.status;
+    }
+  }
+
+  function bindVapPlaybackReadinessGuards(mount, player, generation) {
+    let video;
+    let discoveryTimer;
+    let discoveryAttempts = 0;
+    const syncDesiredPlayback = (event) => {
+      if (!isActiveRuntimePreviewGeneration(generation)) return;
+      if (activeRuntimePreview?.player !== player) return;
+      if (event?.type === "playing") activeRuntimePreview.runtimeReady = true;
+      syncVapRuntimePlayback(activeRuntimePreview, state.model ?? {}, { forcePlayback: true });
+    };
+    const bindVideo = () => {
+      const candidate = player?.video;
+      if (!candidate || candidate === video || typeof candidate.addEventListener !== "function") return false;
+      video = candidate;
+      video.addEventListener("playing", syncDesiredPlayback);
+      return true;
+    };
+    if (!bindVideo()) {
+      discoveryTimer = setInterval(() => {
+        discoveryAttempts += 1;
+        if (bindVideo() || discoveryAttempts >= 40) clearInterval(discoveryTimer);
+      }, 25);
+    }
+    return () => {
+      if (discoveryTimer) clearInterval(discoveryTimer);
+      video?.removeEventListener?.("playing", syncDesiredPlayback);
+    };
+  }
+
+  function runtimeReplacementSignature(model) {
+    const replacement = model?.replacement ?? {};
+    const active = Array.isArray(replacement.active)
+      ? replacement.active.map((entry) => ({
+          format: entry.format,
+          kind: entry.kind,
+          targetId: entry.targetId,
+          valuePreview: entry.valuePreview
+        }))
+      : [];
+    return JSON.stringify({
+      revision: Number(replacement.revision) || 0,
+      active
+    });
+  }
+
+  function runtimePreviewReplacementPayload(replacement) {
+    const runtimeValues = Array.from(runtimeReplacementValues.values());
+    if (runtimeValues.length === 0) return replacement;
+    return {
+      ...(replacement ?? {}),
+      runtimeValues
+    };
+  }
+
+  function setRuntimeReplacementValue(kind, targetId, value) {
+    if (!targetId || (kind !== "image" && kind !== "text")) return;
+    runtimeReplacementValues.set(`${kind}:${targetId}`, {
+      kind,
+      targetId,
+      value
+    });
+  }
+
+  function clearRuntimeReplacementValues(kind) {
+    if (kind !== "image" && kind !== "text") {
+      runtimeReplacementValues = new Map();
+      return;
+    }
+    for (const [key, record] of runtimeReplacementValues.entries()) {
+      if (record.kind === kind) runtimeReplacementValues.delete(key);
+    }
+  }
+
+  function replacementActionAccepted(result) {
+    return result?.model?.replacement?.lastAction?.status === "accepted";
+  }
+
   function loadRuntimeScript(src, runtimeName) {
-    if (!src || typeof src !== "string" || !src.startsWith("/runtime-node-modules/")) {
+    const allowedRuntimeScript = typeof src === "string"
+      && (src.startsWith("/runtime-node-modules/") || src === "/vap-regenerator-runtime-global-shim.js");
+    if (!allowedRuntimeScript) {
       return Promise.reject(new Error(`${runtimeName} runtime script is unavailable.`));
     }
     const existing = document.querySelector(`script[data-multiformat-runtime="${cssEscape(runtimeName)}"]`);
@@ -749,6 +901,11 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       script.addEventListener("error", () => reject(new Error(`${runtimeName} runtime script failed to load.`)), { once: true });
       document.head.append(script);
     });
+  }
+
+  async function loadVapRuntimeScript(src) {
+    await loadRuntimeScript("/vap-regenerator-runtime-global-shim.js", "vap-regenerator-runtime-global");
+    await loadRuntimeScript(src, "vap");
   }
 
   function renderPlaybackState(model) {

@@ -323,12 +323,16 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   });
 
   assert.equal(opened.detectedFormat, "vap");
-  assert.equal(opened.status, "playbackBlocked");
+  assert.equal(opened.status, "previewReady");
   assert.equal(opened.rightPanel.vapFusionImages[0]?.srcTag, "avatar");
   assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
   assert.equal(opened.rightPanel.assetInventory.summary.audioVideoCount, 2);
   assert.equal(opened.rightPanel.assetInventory.groups.find(({ id }) => id === "text_candidates")?.status, "not_applicable");
-  assert.equal(runtime.configs.length, 0);
+  assert.equal(opened.rightPanel.issues.some((entry) =>
+    entry.code === "missing_resource" && entry.details?.reason === "fusion_replacement_required"
+  ), true);
+  assert.equal(runtime.configs.length, 1);
+  assert.equal(runtime.configs[0]?.avatar, undefined);
 
   const applied = await session.applyReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
@@ -341,20 +345,23 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   assert.equal(applied.status, "previewReady");
   assert.equal(applied.replacement.dirty, true);
   assert.equal(applied.replacement.active[0]?.targetId, "avatar");
-  assert.equal(runtime.configs[0]?.src, "blob:vap/fusion.mp4");
-  assert.equal(runtime.configs[0]?.avatar, "data:image/png;base64,QUJD");
-  assert.equal(runtime.configs[0]?.precache, false);
+  assert.equal(runtime.configs.length, 2);
+  assert.equal(runtime.configs[1]?.src, "blob:vap/fusion.mp4");
+  assert.equal(runtime.configs[1]?.avatar, "data:image/png;base64,QUJD");
+  assert.equal(runtime.configs[1]?.precache, false);
 
   const reset = await session.resetReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
     requestId: "reset-vap"
   });
-  assert.equal(reset.status, "playbackBlocked");
+  assert.equal(reset.status, "previewReady");
   assert.equal(reset.replacement.dirty, false);
   assert.equal(reset.replacement.lastAction?.status, "accepted");
   assert.equal(reset.rightPanel.issues.some((entry) =>
     entry.code === "missing_resource" && entry.details?.reason === "fusion_replacement_required"
   ), true);
+  assert.equal(runtime.configs.length, 3);
+  assert.equal(runtime.configs[2]?.avatar, undefined);
   assert.equal(host.revoked.includes("blob:vap/fusion.mp4"), true);
   assertNoLocalPaths(reset);
 });
@@ -387,8 +394,9 @@ test("owner-visible 0.2 candidate fails VAP reset closed when the original sourc
     value: "data:image/png;base64,QUJD"
   });
   assert.equal(applied.replacement.dirty, true);
-  assert.equal(runtime.configs.length, 1);
+  assert.equal(runtime.configs.length, 2);
 
+  const revokedBeforeReset = host.revoked.length;
   delete files[localPath];
   const reset = await session.resetReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
@@ -404,8 +412,8 @@ test("owner-visible 0.2 candidate fails VAP reset closed when the original sourc
   assert.equal(reset.replacement.lastAction?.status, "failed");
   assert.equal(reset.replacement.lastAction?.diagnostic?.code, "parse_precondition");
   assert.equal(reset.replacement.playerAction, "keepCurrentPreview");
-  assert.equal(runtime.configs.length, 1);
-  assert.equal(host.revoked.includes("blob:vap/fusion.mp4"), false);
+  assert.equal(runtime.configs.length, 2);
+  assert.equal(host.revoked.length, revokedBeforeReset);
   assertNoLocalPaths(reset);
 });
 

@@ -1,0 +1,30 @@
+{
+  "packet": "asv-qa-20260711-001-real-vap-runtime-product-vertical-20260713",
+  "requirement": "ASV-REQ-20260709-003",
+  "ticket": "ASV-QA-20260711-001",
+  "branch": "codex/0.2-real-vap-runtime-product-vertical-20260713",
+  "base": "55f3da3b617855013bb3a142715c1f6d3c0cdb9c",
+  "state": "Fix Ready / Code Review Required",
+  "proof": {
+    "kind": "hidden-non-foreground-electron-real-vap-runtime",
+    "sha256": "dc0c7b74ff1fa464d0310ff01462851f30a815ecf419a3a4bf89312639bea3a1",
+    "foreground": false,
+    "ownerInstalledAppMutated": false
+  },
+  "files": [
+    "REVIEW_PACKET.md",
+    "README.md",
+    "FINAL_RESPONSE.txt",
+    "MANIFEST.json"
+  ],
+  "boundaries": {
+    "packageBuild": false,
+    "installedAppMutation": false,
+    "foregroundRun": false,
+    "qaRoute": false,
+    "productionAssetCommit": false,
+    "saveExportConversion": false,
+    "supportClaim": false,
+    "releaseReadiness": false
+  }
+}

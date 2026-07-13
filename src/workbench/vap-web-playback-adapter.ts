@@ -441,7 +441,7 @@ function playbackBlockingIssues(
 ): VapWebPlaybackIssue[] {
   const issues = [...preparation.issues, ...(preparation.value?.issues ?? [])];
   return issues
-    .filter(({ severity, code }) => severity === "error" || code !== "missing_dependency")
+    .filter(({ severity }) => severity === "error")
     .map((entry) => issue(
       feedback,
       mapIssueCode(entry.code),

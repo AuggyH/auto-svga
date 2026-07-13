@@ -609,6 +609,7 @@ function normalizeRuntimePreviewReplacements(value) {
     : Array.isArray(value)
       ? value
       : [];
+  const runtimeValues = Array.isArray(value?.runtimeValues) ? value.runtimeValues : [];
   const image = new Map();
   const text = new Map();
   for (const record of records) {
@@ -618,6 +619,14 @@ function normalizeRuntimePreviewReplacements(value) {
     if (!targetId || !kind || !valuePreview) continue;
     if (kind === "image" && isSafeRuntimeImageValue(valuePreview)) image.set(targetId, valuePreview);
     if (kind === "text" && valuePreview.length <= 4000) text.set(targetId, valuePreview);
+  }
+  for (const record of runtimeValues) {
+    const targetId = String(record?.targetId ?? "").trim();
+    const kind = record?.kind === "text" ? "text" : record?.kind === "image" ? "image" : "";
+    const runtimeValue = typeof record?.value === "string" ? record.value : "";
+    if (!targetId || !kind || !runtimeValue) continue;
+    if (kind === "image" && isSafeRuntimeImageValue(runtimeValue)) image.set(targetId, runtimeValue);
+    if (kind === "text" && runtimeValue.length <= 4000) text.set(targetId, runtimeValue);
   }
   return { image, text };
 }

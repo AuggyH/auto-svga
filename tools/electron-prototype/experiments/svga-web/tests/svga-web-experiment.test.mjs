@@ -1139,6 +1139,7 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
   const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
   const session = await readFile(path.join(experimentRoot, "multiformat-desktop-session.cjs"), "utf8");
   const server = await readFile(path.join(experimentRoot, "server.mjs"), "utf8");
+  const vapRegeneratorShim = await readFile(path.join(experimentRoot, "web/vap-regenerator-runtime-global-shim.js"), "utf8");
 
   assert.match(main, /const multiFormatDesktopRuntimeRoot = app\.isPackaged \? path\.join\(appRoot, "\.runtime"\) : repoRoot;/);
   assert.match(main, /const isShortTermProduct = productMilestoneId === "short-term";/);
@@ -1159,6 +1160,10 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
   assert.match(controller, /function mountLottieRuntimePreview/);
   assert.match(controller, /function mountVapRuntimePreview/);
   assert.match(controller, /src\.startsWith\("\/runtime-node-modules\/"\)/);
+  assert.match(controller, /loadRuntimeScript\("\/vap-regenerator-runtime-global-shim\.js", "vap-regenerator-runtime-global"\)/);
+  assert.match(controller, /await loadVapRuntimeScript\(payload\.runtimeScripts\?\.\[0\]\)/);
+  assert.match(vapRegeneratorShim, /globalThis\.regeneratorRuntime \|\|= \{\}/);
+  assert.doesNotMatch(vapRegeneratorShim, /Function\(|unsafe-eval/);
   assert.match(controller, /beginRuntimePreviewGeneration/);
   assert.match(session, /rendererHasFullPath|pathRedacted/);
   assert.match(session, /lottieLoads|vapLoads|objectUrlsRevoked/);
@@ -1962,6 +1967,7 @@ test("0.2 installed file-open keeps source identity through renderer playback an
   const nodes = createMultiFormatControllerTestNodes();
   const lottieCalls = [];
   const vapCalls = [];
+  const vapVideos = [];
   const runtimeEvents = [];
   globalThis.document = createMultiFormatControllerTestDocument(nodes);
   globalThis.lottie = {
@@ -1981,7 +1987,11 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     },
     default(options) {
       vapCalls.push(options);
+      const video = new FakeDomElement("video");
+      vapVideos.push(video);
+      options.container?.appendChild?.(video);
       return {
+        video,
         on() { return this; },
         play() { runtimeEvents.push("vap:play"); return this; },
         pause() { runtimeEvents.push("vap:pause"); },
@@ -2048,16 +2058,28 @@ test("0.2 installed file-open keeps source identity through renderer playback an
         aFrame: { x: 0, y: 160, w: 120, h: 160 },
         rgbFrame: { x: 0, y: 0, w: 120, h: 160 }
       },
-      src: [{ srcId: 1, srcType: "text", srcTag: "title" }],
+      src: [
+        { srcId: 1, srcType: "image", srcTag: "avatar", w: 24, h: 24, fitType: "cover" },
+        { srcId: 2, srcType: "text", srcTag: "title" }
+      ],
       frame: [{
         i: 0,
-        obj: [{
-          srcId: 1,
-          z: 1,
-          frame: { x: 8, y: 8, w: 96, h: 24 },
-          mFrame: { x: 0, y: 0, w: 96, h: 24 },
-          mt: 0
-        }]
+        obj: [
+          {
+            srcId: 1,
+            z: 1,
+            frame: { x: 8, y: 8, w: 24, h: 24 },
+            mFrame: { x: 0, y: 0, w: 24, h: 24 },
+            mt: 0
+          },
+          {
+            srcId: 2,
+            z: 2,
+            frame: { x: 36, y: 8, w: 80, h: 24 },
+            mFrame: { x: 0, y: 0, w: 80, h: 24 },
+            mt: 0
+          }
+        ]
       }]
     })));
 
@@ -2106,29 +2128,66 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     assert.equal(state.model.rightPanel.facts.some((fact) => fact.id === "format" && fact.value === "VAP"), true);
     assert.equal(vapCalls.length > 0, true);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    const vapPreviewPauseCount = runtimeEvents.filter((event) => event === "vap:pause").length;
+    vapVideos.at(-1)?.dispatchEvent("playing");
+    await flushRuntimeMountPromises();
+    assert.equal(runtimeEvents.filter((event) => event === "vap:pause").length > vapPreviewPauseCount, true);
+    const vapOpenCallCount = vapCalls.length;
     await controller.handlers.togglePrimaryPlayback();
     await flushRuntimeMountPromises();
     assert.equal(state.model.status, "playing");
+    assert.equal(vapCalls.length, vapOpenCallCount);
     await controller.handlers.togglePrimaryPlayback();
     await flushRuntimeMountPromises();
     assert.equal(state.model.status, "paused");
+    assert.equal(vapCalls.length, vapOpenCallCount);
+    assert.equal(runtimeEvents.filter((event) => event === "vap:destroy").length, 0);
 
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "installed-vap-fusion" }), true);
     const vapFusion = await session.openLocalFilePath(vapFusionPath, "fileOpenEvent");
     assert.equal(await controller.handlers.completeHostFileOpen({ eventId: "installed-vap-fusion", result: vapFusion }), true);
     await flushRuntimeMountPromises();
-    assert.equal(state.model.status, "playbackBlocked");
+    assert.equal(state.model.status, "previewReady");
     assert.equal(state.model.rightPanel.vapFusionTexts.some((entry) => entry.srcTag === "title"), true);
+    assert.equal(state.model.rightPanel.vapFusionImages.some((entry) => entry.srcTag === "avatar"), true);
+    assert.equal(state.model.rightPanel.issues.some((entry) =>
+      entry.code === "missing_resource" && entry.details?.reason === "fusion_replacement_required"
+    ), true);
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    const vapFusionBaseCallCount = vapCalls.length;
+    controller.handlers.selectImageKey("avatar");
+    await controller.handlers.applyReplacementFile({
+      type: "image/png",
+      async arrayBuffer() {
+        return Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR42mP8z8AABQMBgF7gywAAAABJRU5ErkJggg=="), (char) => char.charCodeAt(0)).buffer;
+      }
+    });
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "previewReady");
+    assert.equal(vapCalls.length, vapFusionBaseCallCount + 1);
+    assert.match(vapCalls.at(-1).avatar, /^data:image\/png;base64,/);
+    assert.equal(state.model.replacement.dirty, true);
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    await controller.handlers.resetImageReplacement();
+    await flushRuntimeMountPromises();
+    assert.equal(state.model.status, "previewReady");
+    assert.equal(state.model.replacement.dirty, false);
+    assert.equal(vapCalls.length, vapFusionBaseCallCount + 2);
+    assert.equal(vapCalls.at(-1).avatar, undefined);
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    const vapFusionAfterImageResetCallCount = vapCalls.length;
     controller.handlers.updateRuntimeText("title", "Runtime VAP title");
     await flushRuntimeMountPromises();
     assert.equal(state.model.status, "previewReady");
+    assert.equal(vapCalls.length, vapFusionAfterImageResetCallCount + 1);
     assert.equal(vapCalls.at(-1).title, "Runtime VAP title");
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     await controller.handlers.resetRuntimeText();
     await flushRuntimeMountPromises();
-    assert.equal(state.model.status, "playbackBlocked");
+    assert.equal(state.model.status, "previewReady");
     assert.equal(state.model.replacement.dirty, false);
-    assert.equal(nodes.runtimeMount.hidden, true);
+    assert.equal(vapCalls.length, vapFusionAfterImageResetCallCount + 2);
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
 
     assert.doesNotMatch(JSON.stringify(state.model), /auto-svga-file-open-renderer|\/Users|C:\\/i);
     assert.equal(runtimeEvents.includes("lottie:play"), true);

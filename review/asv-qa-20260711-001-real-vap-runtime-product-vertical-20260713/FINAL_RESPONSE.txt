@@ -1,0 +1,10 @@
+Fix Ready for Code Review: ASV-QA-20260711-001 / ASV-REQ-20260709-003 Real VAP Runtime Product Vertical.
+
+Branch: codex/0.2-real-vap-runtime-product-vertical-20260713
+Base: 55f3da3b617855013bb3a142715c1f6d3c0cdb9c
+
+Implemented: real hidden Electron renderer VAP runtime mount using approved video-animation-player@1.0.5, active-runtime reuse for play/pause, remount only on source/replacement revision changes, private runtime replacement payload values, VAP-only regenerator shim under strict CSP, and task-owned hidden proof for loaded/play/pause/replacement/reset.
+
+Validation: build PASS; focused Electron runtime/controller/CSP 3/3 PASS; VAP focused 27/27 PASS; owner-preview 10/10 PASS; hidden real VAP proof PASS with SHA dc0c7b74ff1fa464d0310ff01462851f30a815ecf419a3a4bf89312639bea3a1; design-system PASS; full test:all PASS 527/527; diff/package-lock/media scans PASS.
+
+Boundaries: no package build, no installed app mutation, no foreground run, no QA route, no save/export/conversion, no production asset commit, no Product Owner acceptance or support/release claim.

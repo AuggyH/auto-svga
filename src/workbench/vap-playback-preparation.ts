@@ -405,8 +405,8 @@ function mapFusionElements(
       issues.push(issue(
         feedback,
         "missing_resource",
-        "VAP fusion playback requires runtime replacement data for this source tag.",
-        "error",
+        "VAP fusion source tag has no runtime replacement value yet; base video preview can still load.",
+        "warning",
         { reason: "fusion_replacement_required", srcId, srcTag, resourceId: resource.id }
       ));
     }
@@ -448,14 +448,15 @@ function statusFromIssues(
   runtime: VapPreparedRuntimeDecision,
   issues: readonly VapPlaybackPreparationIssue[]
 ): VapPlaybackPreparationStatus {
-  if (issues.some(({ code }) => code === "parse_precondition" || code === "ambiguous")) return "failed";
-  if (issues.some(({ code, details }) =>
+  const errorIssues = issues.filter(({ severity }) => severity === "error");
+  if (errorIssues.some(({ code }) => code === "parse_precondition" || code === "ambiguous")) return "failed";
+  if (errorIssues.some(({ code, details }) =>
     code === "missing_resource"
     && (details?.reason === "fusion_layer_resource_missing" || details?.reason === "fusion_resource_layer_missing")
   )) {
     return "failed";
   }
-  if (issues.some(({ code }) => code !== "missing_dependency")) return "blocked";
+  if (errorIssues.some(({ code }) => code !== "missing_dependency")) return "blocked";
   if (runtime.approvalState !== "approved") return "dependency_pending";
   return "prepared";
 }
