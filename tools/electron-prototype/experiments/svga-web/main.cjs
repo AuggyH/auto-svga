@@ -1,6 +1,6 @@
 const { execFileSync } = require("node:child_process");
 const { createHash, randomBytes } = require("node:crypto");
-const { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync, writeSync } = require("node:fs");
+const { closeSync, existsSync, fstatSync, fsyncSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, unlinkSync, writeFileSync, writeSync } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -45,6 +45,7 @@ const repoRoot = path.resolve(appRoot, "../../../..");
 const multiFormatDesktopRuntimeRoot = app.isPackaged ? path.join(appRoot, ".runtime") : repoRoot;
 const productIdentity = "auto-svga";
 const productDisplayName = "Auto SVGA";
+const MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES = 10 * 1024 * 1024;
 app.setName(productDisplayName);
 function readPackagedRuntimeBuildInfo() {
   try {
@@ -5146,7 +5147,7 @@ async function prepareMultiFormatRuntimePreview(input) {
 async function chooseMultiFormatReplacementImage(input) {
   assertMultiFormatDesktopProduct();
   const targetId = String(input?.targetId ?? "");
-  const expectedSourceId = String(input?.sourceId ?? "");
+  const expectedSourceId = String(input?.sourceId ?? "").trim();
   if (!targetId) {
     return {
       status: "failed",
@@ -5155,8 +5156,16 @@ async function chooseMultiFormatReplacementImage(input) {
       pathRedacted: true
     };
   }
+  if (!expectedSourceId) {
+    return {
+      status: "failed",
+      code: "parse_precondition",
+      message: "Runtime image replacement source identity is incomplete.",
+      pathRedacted: true
+    };
+  }
   const session = getMultiFormatDesktopSession();
-  if (expectedSourceId && session.activeSourceId !== expectedSourceId) {
+  if (session.activeSourceId !== expectedSourceId) {
     return {
       status: "failed",
       code: "parse_precondition",
@@ -5166,7 +5175,7 @@ async function chooseMultiFormatReplacementImage(input) {
   }
   const picked = await openMultiFormatReplacementImageFile();
   if (picked.status !== "opened") return picked;
-  if (expectedSourceId && session.activeSourceId !== expectedSourceId) {
+  if (session.activeSourceId !== expectedSourceId) {
     return {
       status: "failed",
       code: "parse_precondition",
@@ -5227,34 +5236,61 @@ function readMultiFormatReplacementImageFile(filePath) {
       pathRedacted: true
     };
   }
-  let stat;
+  let fd;
   try {
-    stat = statSync(normalizedPath);
+    fd = openSync(normalizedPath, "r");
+    const stat = fstatSync(fd);
+    if (!stat.isFile() || stat.size <= 0 || stat.size > MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES) {
+      return {
+        status: "failed",
+        code: "parse_precondition",
+        message: "Replacement preview image must be a bounded local file.",
+        pathRedacted: true
+      };
+    }
+    const chunks = [];
+    const scratch = Buffer.allocUnsafe(Math.min(64 * 1024, MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES + 1));
+    let totalBytes = 0;
+    while (totalBytes <= MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES) {
+      const remaining = MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES + 1 - totalBytes;
+      const bytesRead = readSync(fd, scratch, 0, Math.min(scratch.byteLength, remaining), null);
+      if (bytesRead === 0) break;
+      chunks.push(Buffer.from(scratch.subarray(0, bytesRead)));
+      totalBytes += bytesRead;
+    }
+    if (totalBytes <= 0 || totalBytes > MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES) {
+      return {
+        status: "failed",
+        code: "parse_precondition",
+        message: "Replacement preview image must be a bounded local file.",
+        pathRedacted: true
+      };
+    }
+    const bytes = Buffer.concat(chunks, totalBytes);
+    return {
+      status: "opened",
+      mediaType,
+      sizeBytes: bytes.byteLength,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      value: `data:${mediaType};base64,${bytes.toString("base64")}`,
+      pathRedacted: true
+    };
   } catch {
     return {
       status: "failed",
       code: "missing_resource",
-      message: "Replacement preview image is no longer available.",
+      message: "Replacement preview image could not be read.",
       pathRedacted: true
     };
+  } finally {
+    if (typeof fd === "number") {
+      try {
+        closeSync(fd);
+      } catch {
+        // Ignore close errors after a redacted read result has already been decided.
+      }
+    }
   }
-  if (!stat.isFile() || stat.size <= 0 || stat.size > 10 * 1024 * 1024) {
-    return {
-      status: "failed",
-      code: "parse_precondition",
-      message: "Replacement preview image must be a bounded local file.",
-      pathRedacted: true
-    };
-  }
-  const bytes = readFileSync(normalizedPath);
-  return {
-    status: "opened",
-    mediaType,
-    sizeBytes: bytes.byteLength,
-    sha256: createHash("sha256").update(bytes).digest("hex"),
-    value: `data:${mediaType};base64,${Buffer.from(bytes).toString("base64")}`,
-    pathRedacted: true
-  };
 }
 
 function enqueueMultiFormatOpenFileEvent(filePath, sourceId = traceSourceId(filePath)) {

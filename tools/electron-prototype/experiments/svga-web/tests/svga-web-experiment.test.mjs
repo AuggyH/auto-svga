@@ -54,6 +54,23 @@ const {
   createMultiFormatDesktopPreviewSession
 } = require("../multiformat-desktop-session.cjs");
 
+function extractFunctionSource(source, signature) {
+  const start = source.indexOf(signature);
+  assert.notEqual(start, -1, `missing function signature: ${signature}`);
+  const bodyStart = source.indexOf("{", start);
+  assert.notEqual(bodyStart, -1, `missing function body: ${signature}`);
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, index + 1);
+    }
+  }
+  throw new Error(`unterminated function source: ${signature}`);
+}
+
 async function exposePreloadGlobals(productMilestoneId, hostBoundaryMode = "formal") {
   const preloadSource = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
   const exposed = {};
@@ -1253,15 +1270,33 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   assert.match(pickerSource, /assertMultiFormatDesktopProduct\(\);/);
   assert.match(pickerSource, /targetId/);
   assert.match(pickerSource, /expectedSourceId/);
+  assert.match(pickerSource, /if \(!expectedSourceId\) \{/);
   assert.match(pickerSource, /activeSourceId !== expectedSourceId/);
+  assert.doesNotMatch(pickerSource, /if \(expectedSourceId && session\.activeSourceId !== expectedSourceId\)/);
   assert.match(pickerSource, /applyMultiFormatReplacement\(\{/);
   assert.match(pickerSource, /replacementRuntimeValue/);
+  assert.ok(
+    pickerSource.indexOf("if (!expectedSourceId)") < pickerSource.indexOf("openMultiFormatReplacementImageFile()"),
+    "missing or blank sourceId must fail before the host picker can show a dialog"
+  );
+  assert.ok(
+    pickerSource.indexOf("session.activeSourceId !== expectedSourceId") < pickerSource.indexOf("openMultiFormatReplacementImageFile()"),
+    "stale sourceId must fail before the host picker can show a dialog"
+  );
   assert.match(pickerFileSource, /dialog\.showOpenDialog/);
   assert.match(pickerFileSource, /extensions: \["png", "jpg", "jpeg", "webp"\]/);
   assert.match(pickerFileSource, /status: "cancelled"/);
   assert.match(pickerReadSource, /status: "failed"/);
   assert.match(pickerReadSource, /pathRedacted: true/);
   assert.doesNotMatch(pickerReadSource, /message:[^\n]+normalizedPath/);
+  assert.match(pickerReadSource, /openSync\(normalizedPath, "r"\)/);
+  assert.match(pickerReadSource, /fstatSync\(fd\)/);
+  assert.match(pickerReadSource, /readSync\(fd,/);
+  assert.match(pickerReadSource, /MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES \+ 1/);
+  assert.match(pickerReadSource, /totalBytes > MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES/);
+  assert.match(pickerReadSource, /closeSync\(fd\)/);
+  assert.match(pickerReadSource, /message: "Replacement preview image could not be read\."/);
+  assert.doesNotMatch(pickerReadSource, /statSync\(normalizedPath\)|readFileSync\(normalizedPath\)/);
 
   const handlerStart = main.indexOf("ipcMain.handle(IPC_CHANNELS.chooseMultiFormatReplacementImage");
   const nextHandlerStart = main.indexOf("ipcMain.handle(", handlerStart + 1);
@@ -1281,6 +1316,143 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   assert.doesNotMatch(chooseSource, /replacementFileInput\.click\(\)|\.click\(\)/);
   assert.match(controller, /openResourceContextMenu\(_event, imageKey\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(showFailure\);/);
   assert.match(controller, /aria-label="替换预览图片"/);
+});
+
+test("0.2 host replacement picker fails closed for missing source and bounded read races", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const chooseSource = extractFunctionSource(main, "async function chooseMultiFormatReplacementImage(input)");
+  const readSource = extractFunctionSource(main, "function readMultiFormatReplacementImageFile(filePath)");
+
+  const createChooseHarness = ({ activeSourceId = "active-source", picker } = {}) => {
+    const context = {
+      session: { activeSourceId },
+      dialogCalls: 0,
+      applied: [],
+      assertMultiFormatDesktopProduct() {},
+      getMultiFormatDesktopSession() {
+        return context.session;
+      },
+      async openMultiFormatReplacementImageFile() {
+        context.dialogCalls += 1;
+        return picker ? picker(context) : {
+          status: "opened",
+          mediaType: "image/png",
+          sizeBytes: 1,
+          sha256: "replacement-sha",
+          value: "data:image/png;base64,AA==",
+          pathRedacted: true
+        };
+      },
+      async applyMultiFormatReplacement(input) {
+        context.applied.push(input);
+        return { status: "previewReady", sourceId: context.session.activeSourceId };
+      }
+    };
+    vm.runInNewContext(`${chooseSource}; globalThis.callPicker = chooseMultiFormatReplacementImage;`, context);
+    return context;
+  };
+
+  for (const sourceId of [undefined, "", "   "]) {
+    const context = createChooseHarness();
+    const result = await context.callPicker({ targetId: "avatar", sourceId });
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "parse_precondition");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(context.dialogCalls, 0, "missing or blank sourceId must reject before dialog");
+    assert.equal(context.applied.length, 0);
+  }
+
+  {
+    const context = createChooseHarness({ activeSourceId: "current-source" });
+    const result = await context.callPicker({ targetId: "avatar", sourceId: "stale-source" });
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "parse_precondition");
+    assert.equal(context.dialogCalls, 0, "stale sourceId must reject before dialog");
+    assert.equal(context.applied.length, 0);
+  }
+
+  {
+    const context = createChooseHarness({
+      activeSourceId: "source-before-picker",
+      picker(pickerContext) {
+        pickerContext.session.activeSourceId = "source-after-picker";
+        return {
+          status: "opened",
+          mediaType: "image/png",
+          sizeBytes: 1,
+          sha256: "replacement-sha",
+          value: "data:image/png;base64,AA==",
+          pathRedacted: true
+        };
+      }
+    });
+    const result = await context.callPicker({ targetId: "avatar", sourceId: "source-before-picker" });
+    assert.equal(context.dialogCalls, 1);
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "parse_precondition");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(context.applied.length, 0, "stale source after picker must not apply replacement");
+  }
+
+  const createReadHarness = ({ openSync, fstatSync, readSync }) => {
+    const context = {
+      Buffer,
+      path,
+      createHash,
+      closeCalls: 0,
+      MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES: 8,
+      openSync,
+      fstatSync,
+      readSync,
+      closeSync() {
+        context.closeCalls += 1;
+      }
+    };
+    vm.runInNewContext(`${readSource}; globalThis.readReplacement = readMultiFormatReplacementImageFile;`, context);
+    return context;
+  };
+
+  {
+    const context = createReadHarness({
+      openSync() {
+        return 7;
+      },
+      fstatSync() {
+        return { isFile: () => true, size: 1 };
+      },
+      readSync() {
+        throw new Error("/Users/alice/Desktop/secret.png");
+      }
+    });
+    const result = context.readReplacement("/Users/alice/Desktop/secret.png");
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "missing_resource");
+    assert.equal(result.message, "Replacement preview image could not be read.");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(context.closeCalls, 1);
+    assert.doesNotMatch(JSON.stringify(result), /Users|alice|Desktop|secret/);
+  }
+
+  {
+    const context = createReadHarness({
+      openSync() {
+        return 8;
+      },
+      fstatSync() {
+        return { isFile: () => true, size: 1 };
+      },
+      readSync(_fd, _buffer, _offset, length) {
+        return length;
+      }
+    });
+    const result = context.readReplacement("/Users/alice/Desktop/growing.png");
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "parse_precondition");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(result.value, undefined, "oversized post-stat growth must not return an opened data URI");
+    assert.equal(context.closeCalls, 1);
+    assert.doesNotMatch(JSON.stringify(result), /Users|alice|Desktop|growing/);
+  }
 });
 
 test("0.2 installed file-open events route to a visible terminal multi-format state", async () => {
