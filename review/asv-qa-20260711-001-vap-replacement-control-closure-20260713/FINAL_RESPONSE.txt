@@ -1,0 +1,15 @@
+Implementation Ready for ASV-QA-20260711-001 / ASV-REQ-20260709-003 VAP replacement-control closure.
+
+Branch: codex/0.2-vap-replacement-control-20260713
+Base: 2795dcb786a8579125fc8fdfe92cebeb014d0766
+
+The native/menu replacement command and row replacement action now share a 0.2-gated host picker path with target/source identity guards, redacted feedback, and VAP runtime replacement/remount/reset behavior.
+
+Validation before handoff:
+- npm run build: PASS
+- npm run test:all: PASS 528/528
+- desktop:short-term:design-system-check: PASS
+- focused replacement/runtime/control tests: PASS
+- hidden real VAP runtime proof: PASS
+
+No QA, Packaging, installed-app mutation, foreground action, save/export/conversion, Product Owner acceptance, support claim, production claim, or release readiness claim.

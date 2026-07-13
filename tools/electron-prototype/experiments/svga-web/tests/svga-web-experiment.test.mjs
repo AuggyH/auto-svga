@@ -1120,6 +1120,7 @@ test("formal 0.2 multi-format preload exposes only the gated preview bridge", as
   api.openDroppedMultiFormatFile({ displayName: "fixture.json", bytes: [123, 125] });
   api.prepareMultiFormatRuntimePreview({ sourceId: "0123456789abcdef01234567", format: "lottie" });
   api.controlMultiFormatPreview({ action: "play" });
+  api.chooseMultiFormatReplacementImage({ targetId: "asset", sourceId: "0123456789abcdef01234567", kind: "image" });
   api.applyMultiFormatReplacement({ targetId: "asset", kind: "image", value: "data:image/png;base64,AA==" });
   api.resetMultiFormatReplacement();
 
@@ -1128,6 +1129,7 @@ test("formal 0.2 multi-format preload exposes only the gated preview bridge", as
     "svga-web-experiment:open-dropped-multiformat-file",
     "svga-web-experiment:prepare-multiformat-runtime-preview",
     "svga-web-experiment:control-multiformat-preview",
+    "svga-web-experiment:choose-multiformat-replacement-image",
     "svga-web-experiment:apply-multiformat-replacement",
     "svga-web-experiment:reset-multiformat-replacement"
   ]);
@@ -1213,6 +1215,7 @@ test("formal 0.1 direct multi-format IPC calls are guarded before host side effe
     ["openMultiFormatFile", "openMultiFormatFile()"],
     ["openDroppedMultiFormatFile", "openDroppedMultiFormatFile(input)"],
     ["controlMultiFormatPreview", "controlMultiFormatPreview(input)"],
+    ["chooseMultiFormatReplacementImage", "chooseMultiFormatReplacementImage(input)"],
     ["applyMultiFormatReplacement", "applyMultiFormatReplacement(input)"],
     ["resetMultiFormatReplacement", "resetMultiFormatReplacement(input)"]
   ];
@@ -1228,6 +1231,56 @@ test("formal 0.1 direct multi-format IPC calls are guarded before host side effe
       `${channel} must reject non-0.2 callers before ${targetCall}`
     );
   }
+});
+
+test("0.2 image replacement controls use a host picker instead of renderer file-input clicks", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
+  const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
+
+  assert.match(preload, /chooseMultiFormatReplacementImage\(input\)/);
+  assert.match(preload, /IPC_CHANNELS\.chooseMultiFormatReplacementImage/);
+
+  const pickerStart = main.indexOf("async function chooseMultiFormatReplacementImage(input)");
+  const pickerFileStart = main.indexOf("async function openMultiFormatReplacementImageFile()", pickerStart + 1);
+  const pickerReadStart = main.indexOf("function readMultiFormatReplacementImageFile(filePath)", pickerFileStart + 1);
+  assert.notEqual(pickerStart, -1, "host replacement picker must exist");
+  assert.notEqual(pickerFileStart, -1, "host replacement picker file dialog helper must exist");
+  assert.notEqual(pickerReadStart, -1, "host replacement picker file read helper must exist");
+  const pickerSource = main.slice(pickerStart, pickerFileStart);
+  const pickerFileSource = main.slice(pickerFileStart, pickerReadStart);
+  const pickerReadSource = main.slice(pickerReadStart, main.indexOf("function enqueueMultiFormatOpenFileEvent", pickerReadStart));
+  assert.match(pickerSource, /assertMultiFormatDesktopProduct\(\);/);
+  assert.match(pickerSource, /targetId/);
+  assert.match(pickerSource, /expectedSourceId/);
+  assert.match(pickerSource, /activeSourceId !== expectedSourceId/);
+  assert.match(pickerSource, /applyMultiFormatReplacement\(\{/);
+  assert.match(pickerSource, /replacementRuntimeValue/);
+  assert.match(pickerFileSource, /dialog\.showOpenDialog/);
+  assert.match(pickerFileSource, /extensions: \["png", "jpg", "jpeg", "webp"\]/);
+  assert.match(pickerFileSource, /status: "cancelled"/);
+  assert.match(pickerReadSource, /status: "failed"/);
+  assert.match(pickerReadSource, /pathRedacted: true/);
+  assert.doesNotMatch(pickerReadSource, /message:[^\n]+normalizedPath/);
+
+  const handlerStart = main.indexOf("ipcMain.handle(IPC_CHANNELS.chooseMultiFormatReplacementImage");
+  const nextHandlerStart = main.indexOf("ipcMain.handle(", handlerStart + 1);
+  assert.notEqual(handlerStart, -1, "replacement picker IPC handler must exist");
+  const handlerSource = main.slice(handlerStart, nextHandlerStart);
+  assert.ok(
+    handlerSource.indexOf("assertMultiFormatDesktopProduct();") < handlerSource.indexOf("chooseMultiFormatReplacementImage(input)"),
+    "replacement picker IPC must reject non-0.2 callers before host file dialog or reads"
+  );
+
+  const chooseStart = controller.indexOf("async function chooseReplacementImage");
+  const applyStart = controller.indexOf("async function applyReplacementFile", chooseStart + 1);
+  const chooseSource = controller.slice(chooseStart, applyStart);
+  assert.match(chooseSource, /bridge\.chooseMultiFormatReplacementImage/);
+  assert.match(chooseSource, /sourceId: state\.sourceId/);
+  assert.match(chooseSource, /replacementRuntimeValue/);
+  assert.doesNotMatch(chooseSource, /replacementFileInput\.click\(\)|\.click\(\)/);
+  assert.match(controller, /openResourceContextMenu\(_event, imageKey\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(showFailure\);/);
+  assert.match(controller, /aria-label="替换预览图片"/);
 });
 
 test("0.2 installed file-open events route to a visible terminal multi-format state", async () => {
@@ -1848,8 +1901,7 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
       eventId: "vap-open",
       result: createRuntimeMountOpenResult("vap")
     }), true);
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushRuntimeMountPromises();
 
     assert.equal(vapCalls.length, 1);
     assert.equal(vapCalls[0].container.dataset.runtimeFormat, "vap");

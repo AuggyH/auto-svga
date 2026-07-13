@@ -16,6 +16,7 @@ const IPC_CHANNELS = Object.freeze({
   openDroppedMultiFormatFile: "svga-web-experiment:open-dropped-multiformat-file",
   prepareMultiFormatRuntimePreview: "svga-web-experiment:prepare-multiformat-runtime-preview",
   controlMultiFormatPreview: "svga-web-experiment:control-multiformat-preview",
+  chooseMultiFormatReplacementImage: "svga-web-experiment:choose-multiformat-replacement-image",
   applyMultiFormatReplacement: "svga-web-experiment:apply-multiformat-replacement",
   resetMultiFormatReplacement: "svga-web-experiment:reset-multiformat-replacement",
   multiFormatRendererReady: "svga-web-experiment:multiformat-renderer-ready",
@@ -175,23 +176,15 @@ async function main() {
       && snapshot.anyVideoPaused === true
   );
 
-  const replacementAction = await runInPage("apply VAP replacement file", `
+  const replacementAction = await runInPage("choose VAP replacement image through action bridge", `
     (async () => {
-      const input = document.querySelector("#replacementFileInput");
-      const bytes = Uint8Array.from(atob(${JSON.stringify(replacementBytes.toString("base64"))}), (char) => char.charCodeAt(0));
-      const file = new File([bytes], "task-owned-vap-replacement.png", { type: "image/png" });
-      try {
-        const transfer = new DataTransfer();
-        transfer.items.add(file);
-        input.files = transfer.files;
-      } catch {
-        Object.defineProperty(input, "files", { value: [file], configurable: true });
-      }
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
+      await window.__autoSvgaShortTermActions.replaceImage();
+      return window.autoSvgaElectronHost.controlMultiFormatPreview({ action: "model" });
     })()
   `);
-  if (replacementAction !== true) throw new Error("VAP replacement file action was not dispatched.");
+  if (replacementAction?.model?.replacement?.dirty !== true) {
+    throw new Error(`VAP host replacement picker action did not apply a dirty model: ${JSON.stringify(compactSnapshot({ hostModel: replacementAction }))}`);
+  }
   const replacementSnapshot = await waitForPage("VAP image replacement remounted", () => pageSnapshot(), (snapshot) =>
     snapshot.hostModel?.model?.replacement?.dirty === true
       && snapshot.hostModel?.model?.replacement?.active?.some((entry) => entry.kind === "image")
@@ -205,6 +198,37 @@ async function main() {
 
   await runInPage("reset VAP image replacement", "window.__autoSvgaShortTermActions.resetImageReplacement()");
   const resetSnapshot = await waitForPage("VAP replacement reset", () => pageSnapshot(), (snapshot) =>
+    snapshot.hostModel?.model?.replacement?.dirty === false
+      && snapshot.hostModel?.model?.replacement?.resetEnabled === false
+      && snapshot.runtimeMountState === "loaded"
+      && snapshot.runtimeCanvasCount > 0
+      && snapshot.runtimeWebglCanvasCount > 0
+      && snapshot.runtimeCanvasMaxWidth > 0
+      && snapshot.runtimeCanvasMaxHeight > 0
+      && snapshot.maxVideoReadyState >= 2
+  );
+
+  await runInPage("choose VAP replacement image through row action", `
+    (() => {
+      const button = document.querySelector("[data-action='row-menu'][data-image-key]");
+      if (!button) throw new Error("VAP replacement row action is unavailable.");
+      button.click();
+      return true;
+    })()
+  `);
+  const rowReplacementSnapshot = await waitForPage("VAP row image replacement remounted", () => pageSnapshot(), (snapshot) =>
+    snapshot.hostModel?.model?.replacement?.dirty === true
+      && snapshot.hostModel?.model?.replacement?.active?.some((entry) => entry.kind === "image")
+      && snapshot.runtimeMountState === "loaded"
+      && snapshot.runtimeCanvasCount > 0
+      && snapshot.runtimeWebglCanvasCount > 0
+      && snapshot.runtimeCanvasMaxWidth > 0
+      && snapshot.runtimeCanvasMaxHeight > 0
+      && snapshot.maxVideoReadyState >= 2
+  );
+
+  await runInPage("reset VAP row image replacement", "window.__autoSvgaShortTermActions.resetImageReplacement()");
+  const rowResetSnapshot = await waitForPage("VAP row replacement reset", () => pageSnapshot(), (snapshot) =>
     snapshot.hostModel?.model?.replacement?.dirty === false
       && snapshot.hostModel?.model?.replacement?.resetEnabled === false
       && snapshot.runtimeMountState === "loaded"
@@ -232,6 +256,8 @@ async function main() {
       paused: compactSnapshot(pausedSnapshot),
       replacement: compactSnapshot(replacementSnapshot),
       reset: compactSnapshot(resetSnapshot),
+      rowReplacement: compactSnapshot(rowReplacementSnapshot),
+      rowReset: compactSnapshot(rowResetSnapshot),
       lifecycle: previewSession.lifecycle,
       externalRequests,
       consoleMessages: consoleMessages.slice(-10),
@@ -257,6 +283,34 @@ function installIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.controlMultiFormatPreview, async (_event, input) => {
     ipcEvents.push({ phase: "control", action: input?.action });
     return previewSession.control(input);
+  });
+  ipcMain.handle(IPC_CHANNELS.chooseMultiFormatReplacementImage, async (_event, input) => {
+    const targetId = String(input?.targetId ?? "");
+    const sourceId = String(input?.sourceId ?? "");
+    if (sourceId && sourceId !== previewSession.activeSourceId) {
+      return { status: "failed", code: "parse_precondition", message: "stale replacement request", pathRedacted: true };
+    }
+    const dataUri = `data:image/png;base64,${readFileSync(replacementPngPath).toString("base64")}`;
+    ipcEvents.push({ phase: "choose_replacement_image", targetIdHash: hashId(targetId), sourceIdHash: hashId(sourceId), sha256: sha256File(replacementPngPath) });
+    const result = await previewSession.applyReplacement({
+      targetId,
+      kind: "image",
+      value: dataUri
+    });
+    return {
+      ...result,
+      replacementRuntimeValue: {
+        kind: "image",
+        targetId,
+        value: dataUri
+      },
+      picker: {
+        status: "opened",
+        mediaType: "image/png",
+        sha256: sha256File(replacementPngPath),
+        pathRedacted: true
+      }
+    };
   });
   ipcMain.handle(IPC_CHANNELS.applyMultiFormatReplacement, async (_event, input) => {
     ipcEvents.push({ phase: "apply_replacement", kind: input?.kind, targetIdHash: hashId(input?.targetId) });

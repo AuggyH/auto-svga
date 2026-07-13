@@ -1,6 +1,6 @@
 const { execFileSync } = require("node:child_process");
 const { createHash, randomBytes } = require("node:crypto");
-const { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync, writeSync } = require("node:fs");
+const { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync, writeSync } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -5143,6 +5143,120 @@ async function prepareMultiFormatRuntimePreview(input) {
   return getMultiFormatDesktopSession().prepareRuntimePreview(input);
 }
 
+async function chooseMultiFormatReplacementImage(input) {
+  assertMultiFormatDesktopProduct();
+  const targetId = String(input?.targetId ?? "");
+  const expectedSourceId = String(input?.sourceId ?? "");
+  if (!targetId) {
+    return {
+      status: "failed",
+      code: "parse_precondition",
+      message: "Runtime image replacement target is incomplete.",
+      pathRedacted: true
+    };
+  }
+  const session = getMultiFormatDesktopSession();
+  if (expectedSourceId && session.activeSourceId !== expectedSourceId) {
+    return {
+      status: "failed",
+      code: "parse_precondition",
+      message: "Replacement preview request no longer matches the active local source.",
+      pathRedacted: true
+    };
+  }
+  const picked = await openMultiFormatReplacementImageFile();
+  if (picked.status !== "opened") return picked;
+  if (expectedSourceId && session.activeSourceId !== expectedSourceId) {
+    return {
+      status: "failed",
+      code: "parse_precondition",
+      message: "Replacement preview request was superseded by a newer local source.",
+      pathRedacted: true
+    };
+  }
+  const result = await applyMultiFormatReplacement({
+    targetId,
+    kind: "image",
+    value: picked.value
+  });
+  return {
+    ...result,
+    replacementRuntimeValue: {
+      kind: "image",
+      targetId,
+      value: picked.value
+    },
+    picker: {
+      status: "opened",
+      mediaType: picked.mediaType,
+      sizeBytes: picked.sizeBytes,
+      sha256: picked.sha256,
+      pathRedacted: true
+    }
+  };
+}
+
+async function openMultiFormatReplacementImageFile() {
+  const result = await dialog.showOpenDialog({
+    title: "选择替换预览图片",
+    filters: [
+      { name: "Local image", extensions: ["png", "jpg", "jpeg", "webp"] }
+    ],
+    properties: ["openFile"]
+  });
+  if (result.canceled || !result.filePaths?.[0]) {
+    return { status: "cancelled", pathRedacted: true };
+  }
+  return readMultiFormatReplacementImageFile(result.filePaths[0]);
+}
+
+function readMultiFormatReplacementImageFile(filePath) {
+  const normalizedPath = path.resolve(String(filePath ?? ""));
+  const extension = path.extname(normalizedPath).toLowerCase();
+  const mediaType = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp"
+  }[extension];
+  if (!mediaType) {
+    return {
+      status: "failed",
+      code: "unsupported_feature",
+      message: "Replacement preview requires a local PNG, JPEG, or WebP image.",
+      pathRedacted: true
+    };
+  }
+  let stat;
+  try {
+    stat = statSync(normalizedPath);
+  } catch {
+    return {
+      status: "failed",
+      code: "missing_resource",
+      message: "Replacement preview image is no longer available.",
+      pathRedacted: true
+    };
+  }
+  if (!stat.isFile() || stat.size <= 0 || stat.size > 10 * 1024 * 1024) {
+    return {
+      status: "failed",
+      code: "parse_precondition",
+      message: "Replacement preview image must be a bounded local file.",
+      pathRedacted: true
+    };
+  }
+  const bytes = readFileSync(normalizedPath);
+  return {
+    status: "opened",
+    mediaType,
+    sizeBytes: bytes.byteLength,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    value: `data:${mediaType};base64,${Buffer.from(bytes).toString("base64")}`,
+    pathRedacted: true
+  };
+}
+
 function enqueueMultiFormatOpenFileEvent(filePath, sourceId = traceSourceId(filePath)) {
   if (!isMultiFormatDesktopProduct || typeof filePath !== "string" || filePath.length === 0) return;
   multiFormatOpenFileEventSequence += 1;
@@ -6596,6 +6710,12 @@ async function createExperimentWindow() {
     if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
     assertMultiFormatDesktopProduct();
     return controlMultiFormatPreview(input);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.chooseMultiFormatReplacementImage, async (event, input) => {
+    if (!isExpectedSender(event)) throw new Error("Unexpected IPC sender");
+    assertMultiFormatDesktopProduct();
+    return chooseMultiFormatReplacementImage(input);
   });
 
   ipcMain.handle(IPC_CHANNELS.applyMultiFormatReplacement, async (event, input) => {

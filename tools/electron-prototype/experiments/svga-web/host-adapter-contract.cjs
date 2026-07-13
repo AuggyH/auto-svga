@@ -21,6 +21,7 @@ const IPC_CHANNELS = Object.freeze({
   openDroppedMultiFormatFile: "svga-web-experiment:open-dropped-multiformat-file",
   prepareMultiFormatRuntimePreview: "svga-web-experiment:prepare-multiformat-runtime-preview",
   controlMultiFormatPreview: "svga-web-experiment:control-multiformat-preview",
+  chooseMultiFormatReplacementImage: "svga-web-experiment:choose-multiformat-replacement-image",
   applyMultiFormatReplacement: "svga-web-experiment:apply-multiformat-replacement",
   resetMultiFormatReplacement: "svga-web-experiment:reset-multiformat-replacement",
   multiFormatRendererReady: "svga-web-experiment:multiformat-renderer-ready",
@@ -162,6 +163,9 @@ function createMultiFormatDesktopProductPreloadApi(invoke, { reportToken, produc
     },
     controlMultiFormatPreview(input) {
       return invoke(IPC_CHANNELS.controlMultiFormatPreview, input);
+    },
+    chooseMultiFormatReplacementImage(input) {
+      return invoke(IPC_CHANNELS.chooseMultiFormatReplacementImage, input);
     },
     applyMultiFormatReplacement(input) {
       return invoke(IPC_CHANNELS.applyMultiFormatReplacement, input);

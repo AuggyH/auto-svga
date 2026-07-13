@@ -235,11 +235,26 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     renderCommandState();
   }
 
-  function chooseReplacementImage(imageKey = state.selectedImageKey) {
+  async function chooseReplacementImage(imageKey = state.selectedImageKey) {
     if (!imageKey) return;
     state.selectedImageKey = imageKey;
-    nodes.replacementFileInput.value = "";
-    nodes.replacementFileInput.click();
+    const result = await bridge.chooseMultiFormatReplacementImage?.({
+      targetId: imageKey,
+      sourceId: state.sourceId,
+      kind: "image"
+    });
+    if (!result || result.status === "cancelled") {
+      renderCommandState();
+      return;
+    }
+    if (result.status === "failed") {
+      showFailure(result.message || "Replacement preview image could not be selected.");
+      return;
+    }
+    if (replacementActionAccepted(result) && result.replacementRuntimeValue?.value) {
+      setRuntimeReplacementValue("image", imageKey, result.replacementRuntimeValue.value);
+    }
+    applyHostResult(result, { keepView: true });
   }
 
   async function applyReplacementFile(file) {
@@ -514,7 +529,7 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
       row.classList.toggle("isSelected", selected);
       row.innerHTML = `
         <span class="rowText"><strong>${escapeHtml(target.name)}</strong><span>${escapeHtml(target.detail)}</span></span>
-        <button type="button" data-action="row-menu" data-image-key="${escapeHtml(target.id)}" aria-label="打开资源菜单">...</button>
+        <button type="button" data-action="row-menu" data-image-key="${escapeHtml(target.id)}" aria-label="替换预览图片">...</button>
       `;
       return row;
     }));
@@ -1053,7 +1068,9 @@ export function createMultiFormatDesktopPreviewController({ bridge, nodes, state
     openCompareAFromHost: unsupportedAsync,
     openCompareBFromHost: unsupportedAsync,
     selectImageKey,
-    openResourceContextMenu: unsupportedSync,
+    openResourceContextMenu(_event, imageKey) {
+      chooseReplacementImage(imageKey).catch(showFailure);
+    },
     closeResourceContextMenu: unsupportedSync,
     selectTextKey,
     confirmInlineRename: unsupportedAsync,
