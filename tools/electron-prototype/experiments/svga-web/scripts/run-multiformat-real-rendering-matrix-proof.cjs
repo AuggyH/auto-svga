@@ -448,19 +448,49 @@ function installIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.chooseMultiFormatReplacementImage, async (_event, input) => {
     const targetId = String(input?.targetId ?? "").trim();
     const sourceId = String(input?.sourceId ?? "").trim();
-    if (!sourceId || sourceId !== previewSession.activeSourceId) {
+    if (!targetId || !sourceId || sourceId !== previewSession.activeSourceId) {
       return { status: "failed", code: "parse_precondition", message: "stale replacement request", pathRedacted: true };
     }
+    const selectionBeforeRead = await previewSession.resolveReplacementSelection({ targetId, kind: "image" });
+    if (selectionBeforeRead.status !== "accepted") {
+      return {
+        status: "failed",
+        code: selectionBeforeRead.diagnostic?.code || "replacement_target_unavailable",
+        message: selectionBeforeRead.diagnostic?.message || "replacement target unavailable",
+        pathRedacted: true
+      };
+    }
     const dataUri = `data:image/png;base64,${readFileSync(replacementPngPath).toString("base64")}`;
+    const selectionAfterRead = await previewSession.resolveReplacementSelection({ targetId, kind: "image" });
+    if (
+      selectionAfterRead.status !== "accepted"
+      || selectionAfterRead.bindingToken !== selectionBeforeRead.bindingToken
+    ) {
+      return { status: "failed", code: "replacement_target_stale", message: "replacement target changed", pathRedacted: true };
+    }
     ipcEvents.push({ phase: "choose_replacement_image", targetIdHash: hashId(targetId), sourceIdHash: hashId(sourceId), sha256: sha256File(replacementPngPath) });
     const result = await previewSession.applyReplacement({
-      targetId,
+      targetId: selectionAfterRead.publicTargetId,
       kind: "image",
       value: dataUri
     });
+    const acceptedRuntimeTargetId = String(result?.model?.replacement?.lastAction?.runtimeTargetId ?? "").trim();
+    if (!acceptedRuntimeTargetId || acceptedRuntimeTargetId !== selectionAfterRead.runtimeTargetId) {
+      return {
+        status: "failed",
+        code: "replacement_target_malformed",
+        message: "replacement did not return its accepted runtime target",
+        pathRedacted: true
+      };
+    }
+    ipcEvents.push({
+      phase: "replacement_binding_accepted",
+      publicTargetIdHash: hashId(selectionAfterRead.publicTargetId),
+      runtimeTargetIdHash: hashId(acceptedRuntimeTargetId)
+    });
     return {
       ...result,
-      replacementRuntimeValue: { kind: "image", targetId, value: dataUri },
+      replacementRuntimeValue: { kind: "image", targetId: acceptedRuntimeTargetId, value: dataUri },
       picker: {
         status: "opened",
         mediaType: "image/png",

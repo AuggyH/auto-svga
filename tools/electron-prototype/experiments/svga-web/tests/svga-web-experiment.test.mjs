@@ -3126,11 +3126,13 @@ test("0.2 installed file-open keeps source identity through renderer playback an
   }
 });
 
-test("VAP fusion pixel proof requires bound runtime texture, frame presentation, reset restoration, and balanced cleanup", () => {
-  const proofSource = readFileSync(
-    path.join(experimentRoot, "scripts/run-vap-fusion-replacement-pixel-proof.cjs"),
-    "utf8"
-  );
+test("VAP real-runtime proofs require canonical replacement authority without public-id fallback", () => {
+  const proofSources = [
+    "run-vap-fusion-replacement-pixel-proof.cjs",
+    "run-multiformat-real-vap-runtime-proof.cjs",
+    "run-multiformat-real-rendering-matrix-proof.cjs"
+  ].map((fileName) => readFileSync(path.join(experimentRoot, `scripts/${fileName}`), "utf8"));
+  const [proofSource] = proofSources;
   assert.match(proofSource, /sourceReadiness\.ready\.instanceCount === 1/);
   assert.match(proofSource, /replacementReadiness\.ready\.instanceCount === 2/);
   assert.match(proofSource, /resetReadiness\.ready\.instanceCount === 3/);
@@ -3143,9 +3145,14 @@ test("VAP fusion pixel proof requires bound runtime texture, frame presentation,
   assert.match(proofSource, /sourceFrame\.sha256 !== replacementFrame\.sha256/);
   assert.match(proofSource, /sourceFrame\.sha256 === resetFrame\.sha256/);
   assert.match(proofSource, /replacementFrame\.sha256 === replacementPausedFrame\.sha256/);
-  assert.match(proofSource, /resolveReplacementSelection\(\{ targetId, kind: "image" \}\)/);
-  assert.match(proofSource, /targetId: acceptedRuntimeTargetId/);
-  assert.doesNotMatch(proofSource, /replacementRuntimeValue:\s*\{\s*kind: "image",\s*targetId,\s*value: dataUri/);
+  for (const source of proofSources) {
+    assert.match(source, /selectionBeforeRead = await previewSession\.resolveReplacementSelection\(\{ targetId, kind: "image" \}\)/);
+    assert.match(source, /selectionAfterRead = await previewSession\.resolveReplacementSelection\(\{ targetId, kind: "image" \}\)/);
+    assert.match(source, /selectionAfterRead\.bindingToken !== selectionBeforeRead\.bindingToken/);
+    assert.match(source, /acceptedRuntimeTargetId !== selectionAfterRead\.runtimeTargetId/);
+    assert.match(source, /targetId: acceptedRuntimeTargetId/);
+    assert.doesNotMatch(source, /replacementRuntimeValue:\s*\{\s*kind: "image",\s*targetId,\s*value: dataUri/);
+  }
   assert.match(proofSource, /waitForBalancedLifecycle\(3\)/);
 });
 

@@ -1413,4 +1413,6 @@ promoted, watched, rejected, or kept historical.
   unique canonical runtime key. Product proof harnesses must traverse that same
   authority instead of returning the requested public id as a runtime key.
 - Status: Candidate pending independent Code Review re-review and installed
-  replacement/reset QA.
+  replacement/reset QA. `MF-VAP-FUSION-PM-001` extended the regression from
+  the dedicated pixel proof to both shared real-runtime proof shims after they
+  were found echoing the public id directly.

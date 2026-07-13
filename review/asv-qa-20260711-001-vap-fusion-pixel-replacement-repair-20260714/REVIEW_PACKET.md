@@ -10,7 +10,7 @@
 
 ## Change
 
-The normalized VAP `resourceId` is now the only public fusion selection identity. The owner model rejects zero, duplicate, malformed, and nonreplaceable records, resolves one accepted record to its canonical runtime key, and returns that key explicitly. The host snapshots the binding before and after the picker; stale bindings reject before apply. The renderer consumes only the accepted key and has no alias search or requested-id fallback. Other formats, VAP text behavior, source identity guards, playback, and Reset semantics remain bounded by their existing contracts.
+The normalized VAP `resourceId` is now the only public fusion selection identity. The owner model rejects zero, duplicate, malformed, and nonreplaceable records, resolves one accepted record to its canonical runtime key, and returns that key explicitly. The host snapshots the binding before and after the picker; stale bindings reject before apply. The renderer consumes only the accepted key and has no alias search or requested-id fallback. The dedicated pixel proof and both shared real-runtime proof shims now use that same authority contract. Other formats, VAP text behavior, source identity guards, playback, and Reset semantics remain bounded by their existing contracts.
 
 ## Failure-First Evidence
 
@@ -28,6 +28,7 @@ The normalized VAP `resourceId` is now the only public fusion selection identity
 - VAP image/text rows use `resourceId` as their public id; duplicate fusion-backed generic asset rows are suppressed.
 - Accepted host results carry `replacementRuntimeValue.targetId`; renderer storage/remount requires that nonblank canonical key and cannot reconstruct it from aliases.
 - The hidden proof's isolated picker handler follows the same selection snapshot and explicit canonical-return contract; a static mutation guard rejects returning the requested public id directly.
+- `MF-VAP-FUSION-PM-001` found that the shared VAP-runtime and rendering-matrix shims still echoed the public id. One failure-first regression now enumerates all three proof scripts, requires before/after binding-token checks plus explicit canonical echo, and rejects public-id fallback everywhere.
 
 ## Positive Direct-Pixel Evidence
 
@@ -48,6 +49,7 @@ The normalized VAP `resourceId` is now the only public fusion selection identity
 - Focused owner authority: PASS 13/13.
 - Combined owner authority and VAP preparation: PASS 23/23.
 - Focused host/controller authority: PASS 4/4.
+- Three-script proof authority regression: PASS 1/1 after failing on both shared shims before repair.
 - Complete Electron experiment suite: PASS 74/74 with a temporary hash-matched dependency overlay.
 - Related VAP/Lottie/multi-format suites: PASS 89/89.
 - Full suite: PASS 532/532.
