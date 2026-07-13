@@ -2894,7 +2894,7 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     ), true);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     const vapFusionBaseCallCount = vapCalls.length;
-    controller.handlers.selectImageKey("avatar");
+    assert.equal(state.selectedImageKey, "vap_fusion_1");
     await controller.handlers.applyReplacementFile({
       type: "image/png",
       async arrayBuffer() {
@@ -2905,6 +2905,7 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     assert.equal(state.model.status, "previewReady");
     assert.equal(vapCalls.length, vapFusionBaseCallCount + 1);
     assert.match(vapCalls.at(-1).avatar, /^data:image\/png;base64,/);
+    assert.equal(vapCalls.at(-1).vap_fusion_avatar, undefined);
     assert.equal(state.model.replacement.dirty, true);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     await controller.handlers.resetImageReplacement();
@@ -2938,6 +2939,26 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     globalThis.URL = originalUrl;
     await rm(sessionRoot, { recursive: true, force: true });
   }
+});
+
+test("VAP fusion pixel proof requires bound runtime texture, frame presentation, reset restoration, and balanced cleanup", () => {
+  const proofSource = readFileSync(
+    path.join(experimentRoot, "scripts/run-vap-fusion-replacement-pixel-proof.cjs"),
+    "utf8"
+  );
+  assert.match(proofSource, /sourceReadiness\.ready\.instanceCount === 1/);
+  assert.match(proofSource, /replacementReadiness\.ready\.instanceCount === 2/);
+  assert.match(proofSource, /resetReadiness\.ready\.instanceCount === 3/);
+  assert.match(proofSource, /replacementReadiness\.ready\.hasAvatarOption/);
+  assert.match(proofSource, /sourceIds\.includes\("avatar"\)/);
+  assert.match(proofSource, /textureIds\.includes\("avatar"\)/);
+  assert.match(proofSource, /avatarTextureIndex > 0/);
+  assert.match(proofSource, /frame\.seekedEvents > 0/);
+  assert.match(proofSource, /frame\.videoFrameCallbacks > 0/);
+  assert.match(proofSource, /sourceFrame\.sha256 !== replacementFrame\.sha256/);
+  assert.match(proofSource, /sourceFrame\.sha256 === resetFrame\.sha256/);
+  assert.match(proofSource, /replacementFrame\.sha256 === replacementPausedFrame\.sha256/);
+  assert.match(proofSource, /waitForBalancedLifecycle\(3\)/);
 });
 
 test("server uses bounded internal-trial CSP and keeps report API token-bound", async () => {

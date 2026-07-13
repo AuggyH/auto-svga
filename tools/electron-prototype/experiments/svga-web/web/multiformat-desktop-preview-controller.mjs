@@ -260,7 +260,11 @@ export function createMultiFormatDesktopPreviewController({
       return;
     }
     if (replacementActionAccepted(result) && result.replacementRuntimeValue?.value) {
-      setRuntimeReplacementValue("image", imageKey, result.replacementRuntimeValue.value);
+      setRuntimeReplacementValue(
+        "image",
+        runtimeReplacementImageTargetId(imageKey, result.model),
+        result.replacementRuntimeValue.value
+      );
     }
     applyHostResult(result, { keepView: true });
   }
@@ -274,7 +278,11 @@ export function createMultiFormatDesktopPreviewController({
       value: dataUri
     });
     if (replacementActionAccepted(result)) {
-      setRuntimeReplacementValue("image", state.selectedImageKey, dataUri);
+      setRuntimeReplacementValue(
+        "image",
+        runtimeReplacementImageTargetId(state.selectedImageKey, result.model),
+        dataUri
+      );
     }
     applyHostResult(result, { keepView: true });
   }
@@ -1193,6 +1201,20 @@ export function createMultiFormatDesktopPreviewController({
       targetId,
       value
     });
+  }
+
+  function runtimeReplacementImageTargetId(targetId, model) {
+    const requestedTargetId = String(targetId ?? "").trim();
+    if (!requestedTargetId || model?.detectedFormat !== "vap") return requestedTargetId;
+    const target = (model.rightPanel?.vapFusionImages ?? []).find((entry) => [
+      entry.id,
+      entry.resourceId,
+      entry.layerId,
+      entry.srcId,
+      entry.srcTag,
+      entry.runtimeBindingKey
+    ].includes(requestedTargetId));
+    return String(target?.runtimeBindingKey || target?.srcTag || target?.srcId || target?.id || requestedTargetId).trim();
   }
 
   function clearRuntimeReplacementValues(kind) {

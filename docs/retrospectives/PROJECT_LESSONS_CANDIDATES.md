@@ -1379,3 +1379,19 @@ promoted, watched, rejected, or kept historical.
   source immutability.
 - Status: Candidate pending independent Code Review re-review and reuse at a
   second normalization boundary.
+
+## 2026-07-14: Bind Replacement Evidence To Runtime Keys And Pixels
+
+- Candidate lesson: Owner-visible replacement ids and runtime binding keys are
+  separate contracts. A dirty model and successful remount are insufficient;
+  evidence must prove the packaged runtime received the canonical binding,
+  decoded it, changed a deterministic rendered frame, and restored the exact
+  source frame after Reset.
+- Evidence: Permit 058 changed inventory/issues and enabled Reset while source
+  and replacement frames stayed byte-identical. The real runtime discriminator
+  showed the selected resource id never became the VAP `avatar` constructor
+  option, `srcData`, or texture. The repair canonicalizes only the private VAP
+  image runtime value and adds exact frame-zero pixel, paused-stability, reset,
+  lifecycle, and no-network gates.
+- Status: Candidate pending independent source review and rebuilt installed
+  replacement/reset QA.
