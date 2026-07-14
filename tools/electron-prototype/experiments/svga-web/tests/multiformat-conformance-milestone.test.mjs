@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -7,9 +8,18 @@ import {
   containMotionMedia,
   projectMultiFormatRightPanel
 } from "../web/multiformat-product-conformance.mjs";
-import { createMultiFormatDesktopPreviewController } from "../web/multiformat-desktop-preview-controller.mjs";
+import {
+  createMultiFormatDesktopPreviewController,
+  resolveMultiFormatChooserOutcome
+} from "../web/multiformat-desktop-preview-controller.mjs";
 
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const require = createRequire(import.meta.url);
+const {
+  chooseMultiFormatLocalFile,
+  createMultiFormatOpenDialogOptions,
+  validateMultiFormatPickerSelection
+} = require("../multiformat-native-picker.cjs");
 
 function source(relativePath) {
   return readFileSync(path.join(experimentRoot, relativePath), "utf8");
@@ -48,6 +58,70 @@ test("host chooser cancellation cannot enter loading or resize the Launch window
 
   assert.ok(invokeIndex >= 0);
   assert.ok(loadingIndex < 0 || loadingIndex > invokeIndex);
+  assert.doesNotMatch(openBody, /resolveMultiFormatOpenOutcome/u);
+  assert.match(openBody, /resolveMultiFormatChooserOutcome/u);
+});
+
+test("macOS multi-format picker exposes files and validates the selected extension in the host", () => {
+  const mainSource = source("main.cjs");
+  const pickerSource = source("multiformat-native-picker.cjs");
+  const openStart = mainSource.indexOf("async function openMultiFormatFile()");
+  const openEnd = mainSource.indexOf("async function openDroppedMultiFormatFile", openStart);
+  const openBody = mainSource.slice(openStart, openEnd);
+
+  assert.match(openBody, /chooseMultiFormatLocalFile/u);
+  assert.match(pickerSource, /platform === "darwin"[\s\S]*extensions:\s*\["\*"\]/u);
+  assert.match(pickerSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
+
+  const options = createMultiFormatOpenDialogOptions("darwin");
+  assert.deepEqual(options.filters, [{ name: "SVGA / Lottie JSON / VAP MP4", extensions: ["*"] }]);
+  for (const filePath of ["/private/tmp/example.svga", "/private/tmp/example.JSON", "/private/tmp/example.mp4"]) {
+    assert.deepEqual(validateMultiFormatPickerSelection(filePath), { status: "selected", filePath });
+  }
+  assert.deepEqual(validateMultiFormatPickerSelection("/private/tmp/example.txt"), {
+    status: "failed",
+    code: "unsupported_file_type",
+    message: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。",
+    pathRedacted: true
+  });
+});
+
+test("host picker cancellation waits for the human decision without a renderer deadline", async () => {
+  let finishPicker;
+  const pendingPicker = new Promise((resolve) => {
+    finishPicker = resolve;
+  });
+  const pendingOutcome = resolveMultiFormatChooserOutcome(pendingPicker);
+  const earlyResult = await Promise.race([
+    pendingOutcome.then(() => "settled"),
+    new Promise((resolve) => setTimeout(() => resolve("waiting"), 20))
+  ]);
+
+  assert.equal(earlyResult, "waiting");
+  finishPicker({ status: "cancelled" });
+  assert.deepEqual(await pendingOutcome, { kind: "cancelled" });
+});
+
+test("host picker returns cancel, selected formats, and redacted invalid input without opening early", async () => {
+  const observedOptions = [];
+  for (const filePath of ["/private/tmp/example.svga", "/private/tmp/example.json", "/private/tmp/example.mp4"]) {
+    const result = await chooseMultiFormatLocalFile({
+      platform: "darwin",
+      async showOpenDialog(options) {
+        observedOptions.push(options);
+        return { canceled: false, filePaths: [filePath] };
+      }
+    });
+    assert.deepEqual(result, { status: "selected", filePath });
+  }
+  assert.deepEqual(await chooseMultiFormatLocalFile({
+    platform: "darwin",
+    async showOpenDialog() {
+      return { canceled: true, filePaths: [] };
+    }
+  }), { status: "cancelled" });
+  assert.equal(observedOptions.length, 3);
+  assert.ok(observedOptions.every(({ filters }) => filters[0].extensions[0] === "*"));
 });
 
 test("cancelled host chooser preserves Launch state and window geometry behaviorally", async () => {
@@ -271,6 +345,10 @@ test("real-material source proof validates the private binding and emits aliases
   assert.match(proofSource, /AUTO_SVGA_CONFORMANCE_INPUT_BINDING/u);
   assert.match(proofSource, /bindingStat\.mode & 0o777/u);
   assert.match(proofSource, /inputStat\.isFile\(\) \|\| inputStat\.isSymbolicLink\(\)/u);
+  assert.match(proofSource, /chooseMultiFormatLocalFile/u);
+  assert.match(proofSource, /pickerStatus: selection\.status/u);
+  assert.match(proofSource, /nativeButtonAcceptanceRequiresInstalledQa: true/u);
+  assert.match(proofSource, /waitedForHumanDecision: true/u);
   assert.match(proofSource, /assertNoPathLeak/u);
   assert.match(proofSource, /runtimePixelPlayback: false/u);
   assert.match(proofSource, /fusionReplacementRuntimeRerun: false/u);

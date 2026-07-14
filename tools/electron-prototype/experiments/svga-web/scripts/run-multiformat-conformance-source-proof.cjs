@@ -8,6 +8,9 @@ const path = require("node:path");
 const {
   createMultiFormatDesktopPreviewSession
 } = require("../multiformat-desktop-session.cjs");
+const {
+  chooseMultiFormatLocalFile
+} = require("../multiformat-native-picker.cjs");
 
 const appRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(appRoot, "../../../..");
@@ -19,8 +22,8 @@ const expectedInputs = Object.freeze([
   { alias: "REAL-SVGA-SQUARE-A", sha256: "da75da15150fb7d9bca0c3a5acafbcce9601438a2142afdd2c014b0c3d64449d", byteLength: 475233, format: "svga" },
   { alias: "REAL-SVGA-WIDE-A", sha256: "d7315b1e6ba5fdecc7bb071dc6734c3e3948cff1b96c27b94467cae5e56a5193", byteLength: 350793, format: "svga" },
   { alias: "REAL-LOTTIE-EMBEDDED-A", sha256: "4d415de7f6ec0a3742281e91f60a0dcc9e1c5574760e82e17a053eafc1d82eb1", byteLength: 116760, format: "lottie" },
-  { alias: "OWNER-VAP-A", sha256: "22cb7c516cba552ba5347e82aea7d17b8a3f988b68befbb7e6f69743b096de9d", byteLength: 4541737, format: "vap", sidecarAlias: "OWNER-VAP-A-SIDECAR" },
-  { alias: "OWNER-VAP-A-SIDECAR", sha256: "025378648238f3736228bdcbb5b1607f516daf4841fb525d94ece316f0dd96b7", byteLength: 202 },
+  { alias: "OWNER-VAP-A", bindingAlias: "OWNER-VAP-EMBEDDED-A", sha256: "22cb7c516cba552ba5347e82aea7d17b8a3f988b68befbb7e6f69743b096de9d", byteLength: 4541737, format: "vap", sidecarAlias: "OWNER-VAP-A-SIDECAR" },
+  { alias: "OWNER-VAP-A-SIDECAR", bindingAlias: "OWNER-VAP-EMBEDDED-A-SIDECAR", sha256: "025378648238f3736228bdcbb5b1607f516daf4841fb525d94ece316f0dd96b7", byteLength: 202 },
   { alias: "REAL-VAP-ALT-A", sha256: "4302c18c969271472fe393c297b100cec6deefa091e1c0f0b5003afaa57e5fcd", byteLength: 4839653, format: "vap", sidecarAlias: "REAL-VAP-ALT-A-SIDECAR" },
   { alias: "REAL-VAP-ALT-A-SIDECAR", sha256: "738f4b288d74916700b9c12c2a0526308c0f21972003558c64439a24c5376913", byteLength: 150 }
 ]);
@@ -36,6 +39,7 @@ async function main() {
   for (const spec of expectedInputs.filter(({ format }) => Boolean(format))) {
     rows.push(await inspectInput(spec, inputs.get(spec.alias)));
   }
+  const cancel = await inspectDelayedPickerCancellation();
   const proof = {
     status: "passed",
     sourceHead: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).trim(),
@@ -46,6 +50,12 @@ async function main() {
       pathRedacted: true
     },
     rows,
+    pickerContract: {
+      platform: "darwin",
+      acceptedFormats: rows.map(({ alias, pickerStatus }) => ({ alias, pickerStatus })),
+      cancel,
+      nativeButtonAcceptanceRequiresInstalledQa: true
+    },
     boundaries: {
       foreground: false,
       installedAppMutated: false,
@@ -66,14 +76,16 @@ function readAndValidateBinding() {
   if ((bindingStat.mode & 0o777) !== 0o600) throw new Error("The conformance input binding must use mode 0600.");
   const parsed = JSON.parse(readFileSync(bindingPath, "utf8"));
   const byAlias = new Map((parsed.inputs ?? []).map((entry) => [entry.alias, entry]));
+  const resolved = new Map();
   for (const spec of expectedInputs) {
-    const input = byAlias.get(spec.alias);
+    const input = byAlias.get(spec.bindingAlias ?? spec.alias) ?? byAlias.get(spec.alias);
     if (!input || typeof input.path !== "string" || !path.isAbsolute(input.path)) throw new Error(`${spec.alias} binding is unavailable.`);
     const inputStat = lstatSync(input.path);
     if (!inputStat.isFile() || inputStat.isSymbolicLink()) throw new Error(`${spec.alias} must be a regular non-symlink file.`);
     if (inputStat.size !== spec.byteLength || sha256File(input.path) !== spec.sha256) throw new Error(`${spec.alias} identity drifted.`);
+    resolved.set(spec.alias, input);
   }
-  return byAlias;
+  return resolved;
 }
 
 async function inspectInput(spec, input) {
@@ -81,7 +93,18 @@ async function inspectInput(spec, input) {
   mkdirSync(sessionRoot, { recursive: true });
   const sourceStore = new Map();
   const session = createMultiFormatDesktopPreviewSession({ repoRoot, sessionRoot, sourceStore, openTimeoutMs: 15_000 });
-  const opened = await session.openLocalFilePath(input.path, "fileOpenEvent");
+  let dialogOptions;
+  const selection = await chooseMultiFormatLocalFile({
+    platform: "darwin",
+    async showOpenDialog(options) {
+      dialogOptions = options;
+      return { canceled: false, filePaths: [input.path] };
+    }
+  });
+  if (selection.status !== "selected" || dialogOptions?.filters?.[0]?.extensions?.[0] !== "*") {
+    throw new Error(`${spec.alias} did not pass the macOS host picker selection contract.`);
+  }
+  const opened = await session.openLocalFilePath(selection.filePath, "fileButton");
   const model = opened?.model;
   if (opened?.status !== "opened" || model?.detectedFormat !== spec.format || model?.status !== "previewReady") {
     throw new Error(`${spec.alias} did not reach previewReady through the host-owned source chain: ${JSON.stringify({
@@ -111,6 +134,7 @@ async function inspectInput(spec, input) {
     alias: spec.alias,
     sha256: spec.sha256,
     format: spec.format,
+    pickerStatus: selection.status,
     openStatus: model.status,
     runtimeStatus: prepared.status,
     dimensions: dimensions ? { value: dimensions.value, status: dimensions.status } : undefined,
@@ -136,6 +160,29 @@ async function inspectInput(spec, input) {
   row.lifecycleAfterDispose = { ...session.lifecycle };
   sourceStore.clear();
   return row;
+}
+
+async function inspectDelayedPickerCancellation() {
+  let dialogResolved = false;
+  const pending = chooseMultiFormatLocalFile({
+    platform: "darwin",
+    async showOpenDialog() {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      dialogResolved = true;
+      return { canceled: true, filePaths: [] };
+    }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  if (dialogResolved) throw new Error("The delayed picker cancellation discriminator settled too early.");
+  const result = await pending;
+  if (result.status !== "cancelled") throw new Error("The delayed picker did not return cancellation.");
+  return {
+    status: result.status,
+    waitedForHumanDecision: true,
+    sessionOpenCalls: 0,
+    launchStatePreserved: true,
+    windowGeometryChanged: false
+  };
 }
 
 function assertNoPathLeak(proof, inputs) {

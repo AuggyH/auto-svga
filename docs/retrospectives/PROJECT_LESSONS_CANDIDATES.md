@@ -1429,3 +1429,17 @@ promoted, watched, rejected, or kept historical.
   short-term controller and keeps one host-owned intake contract for all
   formats.
 - Status: Candidate pending independent Code Review and rebuilt installed QA.
+
+## 2026-07-15: Keep Human Picker Time Outside Loading Deadlines
+
+- Candidate lesson: A native chooser is an unbounded human interaction phase,
+  not a parser/loading terminal phase. Start bounded loading deadlines only
+  after accepted input reaches the host-owned intake contract.
+- Evidence: Permit 069 left the chooser open long enough for the renderer's
+  15-second race to synthesize a failed Preview before exact Cancel returned.
+  The same installed gate also showed extension-filtered macOS files selected
+  but not submittable. The repair waits for chooser completion, exposes files
+  on macOS, and applies extension plus content validation in the host/parser
+  chain.
+- Status: Candidate pending independent Code Review and rebuilt installed
+  native-picker QA.

@@ -31,6 +31,9 @@ const {
   createMultiFormatOpenRuntimeTrace,
   resolveMultiFormatTraceRunId
 } = require("./multiformat-open-runtime-trace.cjs");
+const {
+  chooseMultiFormatLocalFile
+} = require("./multiformat-native-picker.cjs");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -5129,20 +5132,12 @@ async function openMultiFormatFilePath(filePath, source = "fileButton") {
 
 async function openMultiFormatFile() {
   assertMultiFormatDesktopProduct();
-  const result = await dialog.showOpenDialog({
-    title: "打开文件",
-    filters: [
-      { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["svga", "json", "mp4"] },
-      { name: "SVGA", extensions: ["svga"] },
-      { name: "Lottie JSON", extensions: ["json"] },
-      { name: "VAP MP4", extensions: ["mp4"] }
-    ],
-    properties: ["openFile"]
+  const selection = await chooseMultiFormatLocalFile({
+    showOpenDialog: (options) => dialog.showOpenDialog(options),
+    platform: process.platform
   });
-  if (result.canceled || !result.filePaths?.[0]) {
-    return { status: "cancelled" };
-  }
-  return openMultiFormatFilePath(result.filePaths[0], "fileButton");
+  if (selection.status !== "selected") return selection;
+  return openMultiFormatFilePath(selection.filePath, "fileButton");
 }
 
 async function openDroppedMultiFormatFile(input) {

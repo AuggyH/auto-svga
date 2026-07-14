@@ -87,9 +87,8 @@ export function createMultiFormatDesktopPreviewController({
   async function openFromHostDialog() {
     if (!(await confirmSvgaSourceReplacement("打开新文件会放弃当前未保存的 SVGA 输出。"))) return;
     const request = beginRequest();
-    const outcome = await resolveMultiFormatOpenOutcome(
-      Promise.resolve().then(() => bridge.openMultiFormatFile()),
-      { deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS }
+    const outcome = await resolveMultiFormatChooserOutcome(
+      Promise.resolve().then(() => bridge.openMultiFormatFile())
     );
     if (!isActiveRequest(request)) return;
     await applyOpenOutcome(outcome);
@@ -1610,6 +1609,17 @@ export async function resolveMultiFormatOpenOutcome(openPromise, options = {}) {
     };
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+export async function resolveMultiFormatChooserOutcome(openPromise) {
+  try {
+    return normalizeMultiFormatOpenOutcome(await Promise.resolve(openPromise));
+  } catch {
+    return {
+      kind: "failure",
+      message: "无法打开文件选择器，源文件没有被修改。"
+    };
   }
 }
 
