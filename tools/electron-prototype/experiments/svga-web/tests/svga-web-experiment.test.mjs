@@ -1339,7 +1339,7 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   assert.match(applySource, /runtimeValue\.targetId/);
   assert.doesNotMatch(controller, /runtimeReplacementImageTargetId/);
   assert.doesNotMatch(chooseSource, /replacementFileInput\.click\(\)|\.click\(\)/);
-  assert.match(controller, /openResourceContextMenu\(event, imageKey, returnFocus\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(showFailure\);/);
+  assert.match(controller, /openResourceContextMenu\(event, imageKey, returnFocus\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(\(\) => showFailure\(\{ code: "replacement_preview_failed" \}\)\);/);
   assert.match(controller, /directReplace:\s*true/);
   assert.match(replaceableRenderer, /class="replaceImageButton"/);
   assert.match(replaceableRenderer, /data-action="row-menu"/);
@@ -2606,6 +2606,161 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
   assert.equal(stalled.kind, "failure");
   assert.equal(stalled.message, "文件加载超时，请重新打开文件。源文件没有被修改。");
   assert.doesNotMatch(stalled.message, /\/Users|C:\\|alice/i);
+
+  const missingRecent = normalizeMultiFormatOpenOutcome({
+    status: "missing",
+    message: "中文路径 /Users/alice/Secret/recent.svga",
+    path: "/Users/alice/Secret/recent.svga"
+  });
+  assert.deepEqual(missingRecent, {
+    kind: "failure",
+    code: "recent_file_missing",
+    message: "这个最近文件已缺失或不可访问。"
+  });
+
+  const unknownFailure = normalizeMultiFormatOpenOutcome({
+    kind: "failure",
+    code: "unknown_host_code",
+    message: "中文主机错误 /Users/alice/Secret/input.json",
+    feature: "expression",
+    path: "layers.0.xp"
+  });
+  assert.deepEqual(unknownFailure, {
+    kind: "failure",
+    message: "操作未能完成，源文件没有被修改。"
+  });
+});
+
+test("0.2 owner failure rendering trusts only reviewed codes and never raw host text", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const nodes = createMultiFormatControllerTestNodes();
+  globalThis.document = createMultiFormatControllerTestDocument(nodes);
+  const genericCopy = "操作未能完成，源文件没有被修改。";
+  let codeGetterRead = false;
+  const accessorFailure = {};
+  Object.defineProperty(accessorFailure, "code", {
+    get() {
+      codeGetterRead = true;
+      return "file_picker_failed";
+    }
+  });
+  const coercibleFailure = {
+    toString() {
+      return "中文主机错误 /Users/alice/Secret layers.0.xp";
+    }
+  };
+  const cases = [
+    {
+      input: {
+        code: "file_picker_failed",
+        message: "中文路径 /Users/alice/Secret/input.json and layers.0.xp",
+        feature: "expression",
+        path: "layers.0.xp"
+      },
+      expected: "无法打开文件选择器，源文件没有被修改。"
+    },
+    {
+      input: {
+        code: "unsupported_file_type",
+        message: "混合 technical host detail /Users/alice/Secret/input.txt"
+      },
+      expected: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。"
+    },
+    {
+      input: {
+        code: "missing_resource",
+        message: "resource missing at /Users/alice/Secret/assets/avatar.png"
+      },
+      expected: "预览所需资源缺失，源文件没有被修改。"
+    },
+    {
+      input: {
+        code: "parse_precondition",
+        message: "Complete bounded JSON is required at /Users/alice/Secret/input.json",
+        path: "layers.0.xp"
+      },
+      expected: "文件内容不完整或格式异常，无法预览。"
+    },
+    {
+      input: {
+        code: "unknown_host_code",
+        message: "中文路径 /Users/alice/Secret/input.json",
+        feature: "expression",
+        path: "layers.0.xp"
+      },
+      expected: genericCopy
+    },
+    {
+      input: new Error("中文主机错误 /Users/alice/Secret/input.json; Complete bounded JSON is required"),
+      expected: genericCopy
+    },
+    {
+      input: ["file_picker_failed", "中文路径 /Users/alice/Secret/input.json"],
+      expected: genericCopy
+    },
+    {
+      input: { message: "中文主机错误 /Users/alice/Secret/input.json", path: "layers.0.xp" },
+      expected: genericCopy
+    },
+    { input: accessorFailure, expected: genericCopy },
+    { input: coercibleFailure, expected: genericCopy }
+  ];
+
+  try {
+    const controller = createMultiFormatDesktopPreviewController({
+      bridge: {
+        updateShortTermMenuState() {
+          return Promise.resolve();
+        },
+        setShortTermWindowMode() {
+          return Promise.resolve();
+        },
+        controlMultiFormatPreview() {
+          return Promise.resolve({ status: "disposed" });
+        }
+      },
+      nodes,
+      state: {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      },
+      svgaController: { handlers: {} }
+    });
+
+    for (const { input, expected } of cases) {
+      controller.handlers.showFailure(input);
+      assert.equal(nodes.errorMessage.textContent, expected);
+      assert.doesNotMatch(nodes.errorMessage.textContent, /\/Users|alice|layers\.0\.xp|Complete bounded JSON|technical host detail/i);
+    }
+    assert.equal(codeGetterRead, false, "owner copy must not execute an untrusted code getter");
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "raw-host-failure" }), true);
+    assert.equal(controller.handlers.failHostFileOpen({
+      eventId: "raw-host-failure",
+      message: "中文路径 /Users/alice/Secret/input.json and layers.0.xp",
+      feature: "expression",
+      path: "layers.0.xp"
+    }), true);
+    assert.equal(nodes.errorMessage.textContent, genericCopy);
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "known-host-failure" }), true);
+    assert.equal(controller.handlers.failHostFileOpen({
+      eventId: "known-host-failure",
+      code: "file_picker_failed",
+      message: "mixed 中文 technical /Users/alice/Secret/input.json",
+      feature: "expression",
+      path: "layers.0.xp"
+    }), true);
+    assert.equal(nodes.errorMessage.textContent, "无法打开文件选择器，源文件没有被修改。");
+    assert.doesNotMatch(nodes.errorMessage.textContent, /\/Users|alice|layers\.0\.xp|expression|technical/i);
+  } finally {
+    globalThis.document = originalDocument;
+  }
 });
 
 test("0.2 composed open cancellation preserves active authority while accepted failure revokes every format", async () => {
@@ -2701,9 +2856,18 @@ test("0.2 composed open cancellation preserves active authority while accepted f
       assert.equal(state.selectedImageKey, activeImageKey, `${format} cancel must preserve image selection`);
       assert.equal(state.selectedTextKey, activeTextKey, `${format} cancel must preserve text selection`);
 
-      chooserResult = { status: "failed", code: "file_picker_failed", pathRedacted: true };
+      chooserResult = {
+        status: "failed",
+        code: "file_picker_failed",
+        pathRedacted: true,
+        message: "中文路径 /Users/alice/Secret/input.json and layers.0.xp",
+        feature: "expression",
+        path: "layers.0.xp"
+      };
       await controller.handlers.openFromHostDialog();
       assert.equal(state.view, "failed", `${format} failure must enter failed view`);
+      assert.equal(nodes.errorMessage.textContent, "无法打开文件选择器，源文件没有被修改。");
+      assert.doesNotMatch(nodes.errorMessage.textContent, /\/Users|alice|layers\.0\.xp|expression/i);
       assert.equal(state.model, undefined, `${format} failure must clear model`);
       assert.equal(state.sourceBytes, undefined, `${format} failure must clear source bytes`);
       assert.equal(state.previewBytes, undefined, `${format} failure must clear preview bytes`);

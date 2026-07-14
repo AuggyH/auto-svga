@@ -177,7 +177,7 @@ test("unsupported picker selection stays typed and mutation-free through the ren
     pathRedacted: false
   });
   assert.equal(untrustedResult.code, undefined);
-  assert.equal(untrustedResult.message, "无法识别文件处理结果，源文件没有被修改。");
+  assert.equal(untrustedResult.message, "操作未能完成，源文件没有被修改。");
   assert.doesNotMatch(JSON.stringify(untrustedResult), /Users\/alice|Secret Project/u);
 });
 

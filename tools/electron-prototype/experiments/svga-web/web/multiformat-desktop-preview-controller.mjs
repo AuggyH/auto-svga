@@ -35,10 +35,23 @@ import {
 } from "./multiformat-product-conformance.mjs";
 
 export const MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS = 15_000;
-const reviewedPickerFailureMessages = new Map([
-  ["unsupported_file_type", "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。"],
-  ["file_picker_failed", "无法打开文件选择器，源文件没有被修改。"]
-]);
+const genericOwnerFailureCopy = "操作未能完成，源文件没有被修改。";
+const reviewedOwnerFailureCopyByCode = Object.freeze({
+  unsupported_file_type: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。",
+  file_picker_failed: "无法打开文件选择器，源文件没有被修改。",
+  open_failed: "无法打开本地文件，源文件没有被修改。",
+  open_timeout: "文件加载超时，请重新打开文件。源文件没有被修改。",
+  recent_file_missing: "这个最近文件已缺失或不可访问。",
+  host_file_open_failed: "无法打开系统传入的本地文件，源文件没有被修改。",
+  svga_preview_data_missing: "SVGA 文件没有返回可验证的本地预览数据，源文件没有被修改。",
+  replacement_preview_failed: "无法更新替换预览，源文件没有被修改。",
+  missing_resource: "预览所需资源缺失，源文件没有被修改。",
+  unsupported_feature: "当前文件包含暂不支持的内容，无法完整预览。",
+  parse_precondition: "文件内容不完整或格式异常，无法预览。",
+  asset_reference_precondition: "文件内容不完整或格式异常，无法预览。",
+  playback_failure: "文件预览播放出现问题。",
+  runtime_preview_failed: "无法挂载本地预览，源文件没有被修改。"
+});
 const factLabels = new Map([
   ["Format", "格式"],
   ["Canvas", "画布"],
@@ -142,9 +155,7 @@ export function createMultiFormatDesktopPreviewController({
   function failHostFileOpen(payload = {}) {
     if (!hostFileOpenIsActive(payload)) return false;
     clearHostFileOpenRequest();
-    showOpenFailure(typeof payload.message === "string" && payload.message.length > 0
-      ? payload.message
-      : "无法打开系统传入的本地文件，源文件没有被修改。");
+    showOpenFailure(payload);
     return true;
   }
 
@@ -308,12 +319,12 @@ export function createMultiFormatDesktopPreviewController({
       return;
     }
     if (result.status === "failed") {
-      showFailure("无法更新替换预览，源文件没有被修改。");
+      showFailure({ code: "replacement_preview_failed" });
       return;
     }
     const runtimeValue = acceptedRuntimeReplacementValue(result, "image");
     if (replacementActionAccepted(result) && !runtimeValue) {
-      showFailure("无法更新替换预览，源文件没有被修改。");
+      showFailure({ code: "replacement_preview_failed" });
       return;
     }
     if (runtimeValue) {
@@ -338,7 +349,7 @@ export function createMultiFormatDesktopPreviewController({
     });
     const runtimeValue = acceptedRuntimeReplacementValue(result, "image");
     if (replacementActionAccepted(result) && !runtimeValue) {
-      showFailure("无法更新替换预览，源文件没有被修改。");
+      showFailure({ code: "replacement_preview_failed" });
       return;
     }
     if (runtimeValue) {
@@ -378,14 +389,14 @@ export function createMultiFormatDesktopPreviewController({
     }).then((result) => {
       const runtimeValue = acceptedRuntimeReplacementValue(result, "text");
       if (replacementActionAccepted(result) && !runtimeValue) {
-        showFailure("无法更新替换预览，源文件没有被修改。");
+        showFailure({ code: "replacement_preview_failed" });
         return;
       }
       if (runtimeValue) {
         setRuntimeReplacementValue("text", runtimeValue.targetId, runtimeValue.value);
       }
       applyHostResult(result, { keepView: true });
-    }).catch(showFailure);
+    }).catch(() => showFailure({ code: "replacement_preview_failed" }));
   }
 
   async function resetRuntimeText() {
@@ -400,7 +411,7 @@ export function createMultiFormatDesktopPreviewController({
 
   function applyHostResult(result, options = {}) {
     if (!result?.model) {
-      showFailure("无法打开本地文件，源文件没有被修改。");
+      showFailure({ code: options.keepView ? "replacement_preview_failed" : "open_failed" });
       return;
     }
     const model = result.model;
@@ -420,7 +431,7 @@ export function createMultiFormatDesktopPreviewController({
     if (result?.model?.detectedFormat === "svga" && svgaController?.handlers?.loadOpenedSource) {
       const bytes = result?.svgaSource?.bytes;
       if (!bytes?.byteLength) {
-        showOpenFailure("SVGA 文件没有返回可验证的本地预览数据，源文件没有被修改。");
+        showOpenFailure({ code: "svga_preview_data_missing" });
         return;
       }
       clearRuntimePreview();
@@ -459,7 +470,7 @@ export function createMultiFormatDesktopPreviewController({
       return;
     }
     if (outcome.kind === "failure") {
-      showOpenFailure(outcome.message);
+      showOpenFailure(outcome);
       return;
     }
     await applyOpenedHostResult(outcome.result);
@@ -762,7 +773,7 @@ export function createMultiFormatDesktopPreviewController({
     }).catch((error) => {
       if (!isActiveRuntimePreviewGeneration(generation)) return;
       clearRuntimePreview({ preserveGeneration: true });
-      showFailure(runtimePreviewErrorCopy(error));
+      showFailure(runtimePreviewFailure(error));
     });
   }
 
@@ -974,7 +985,7 @@ export function createMultiFormatDesktopPreviewController({
       onLoadError: (error) => {
         if (!isActiveRuntimePreviewGeneration(generation)) return;
         clearRuntimePreview({ preserveGeneration: true });
-        showFailure(runtimePreviewErrorCopy(new RuntimePreviewPayloadError({
+        showFailure(runtimePreviewFailure(new RuntimePreviewPayloadError({
           code: "playback_failure",
           message: "VAP runtime preview reached a typed playback failure.",
           details: { reason: "vap_runtime_load_error", cause: error ? "redacted runtime error" : undefined }
@@ -1589,7 +1600,7 @@ export function createMultiFormatDesktopPreviewController({
       if (svgaWorkflowActive()) {
         return svgaController?.handlers?.openResourceContextMenu?.(event, imageKey, returnFocus);
       }
-      chooseReplacementImage(imageKey).catch(showFailure);
+      chooseReplacementImage(imageKey).catch(() => showFailure({ code: "replacement_preview_failed" }));
     },
     closeResourceContextMenu: (...args) => delegateSvga("closeResourceContextMenu", ...args),
     selectTextKey,
@@ -1653,17 +1664,14 @@ export async function resolveMultiFormatOpenOutcome(openPromise, options = {}) {
         timeout = setTimeout(() => {
           resolve({
             kind: "failure",
-            message: "文件加载超时，请重新打开文件。源文件没有被修改。"
+            code: "open_timeout"
           });
         }, deadlineMs);
       })
     ]);
     return normalizeMultiFormatOpenOutcome(result);
   } catch {
-    return {
-      kind: "failure",
-      message: "无法打开本地文件，源文件没有被修改。"
-    };
+    return ownerFailureOutcome("open_failed");
   } finally {
     clearTimeout(timeout);
   }
@@ -1673,44 +1681,32 @@ export async function resolveMultiFormatChooserOutcome(openPromise) {
   try {
     return normalizeMultiFormatOpenOutcome(await Promise.resolve(openPromise));
   } catch {
-    return {
-      kind: "failure",
-      message: "无法打开文件选择器，源文件没有被修改。"
-    };
+    return ownerFailureOutcome("file_picker_failed", { pathRedacted: true });
   }
 }
 
 export function normalizeMultiFormatOpenOutcome(result) {
-  if (result?.kind === "failure" || result?.kind === "cancelled" || result?.kind === "model") return result;
+  if (result?.kind === "failure") {
+    return ownerFailureOutcome(trustedOwnerFailureCode(result), {
+      pathRedacted: result?.pathRedacted === true
+    });
+  }
+  if (result?.kind === "cancelled" || result?.kind === "model") return result;
   if (result?.status === "cancelled") return { kind: "cancelled" };
-  const reviewedPickerFailureMessage = result?.status === "failed" && result?.pathRedacted === true
-    ? reviewedPickerFailureMessages.get(result.code)
-    : undefined;
-  if (reviewedPickerFailureMessage) {
-    return {
-      kind: "failure",
-      code: result.code,
-      message: reviewedPickerFailureMessage,
-      pathRedacted: true
-    };
+  const reviewedPickerFailureCode = result?.status === "failed" && result?.pathRedacted === true
+    ? trustedOwnerFailureCode(result)
+    : "";
+  if (reviewedPickerFailureCode) {
+    return ownerFailureOutcome(reviewedPickerFailureCode, { pathRedacted: true });
   }
   if (result?.status === "missing") {
-    return {
-      kind: "failure",
-      message: result.message || "这个最近文件已缺失或不可访问。"
-    };
+    return ownerFailureOutcome("recent_file_missing");
   }
   if (result?.model) return { kind: "model", result };
   if (result?.status === "opened") {
-    return {
-      kind: "failure",
-      message: "无法打开本地文件，源文件没有被修改。"
-    };
+    return ownerFailureOutcome("open_failed");
   }
-  return {
-    kind: "failure",
-    message: "无法识别文件处理结果，源文件没有被修改。"
-  };
+  return ownerFailureOutcome("");
 }
 
 function applyProductCopy(documentRef = document) {
@@ -1745,11 +1741,34 @@ function issueSummary(model) {
   return issue ? "文件未能解析，源文件没有被修改。" : "";
 }
 
-function ownerFailureCopy(error) {
-  const message = error instanceof Error ? error.message : String(error ?? "");
-  return /[\u3400-\u9fff]/u.test(message) && !/0\.2 预览(?:主机|请求|运行时)/u.test(message)
-    ? message
-    : "操作未能完成，源文件没有被修改。";
+function ownerFailureCopy(failure) {
+  const code = trustedOwnerFailureCode(failure);
+  return code ? reviewedOwnerFailureCopyByCode[code] : genericOwnerFailureCopy;
+}
+
+function ownerFailureOutcome(code, options = {}) {
+  const trustedCode = trustedOwnerFailureCode({ code });
+  return {
+    kind: "failure",
+    ...(trustedCode ? { code: trustedCode } : {}),
+    message: trustedCode ? reviewedOwnerFailureCopyByCode[trustedCode] : genericOwnerFailureCopy,
+    ...(options.pathRedacted === true && trustedCode ? { pathRedacted: true } : {})
+  };
+}
+
+function trustedOwnerFailureCode(failure) {
+  if (!failure || typeof failure !== "object" || Array.isArray(failure)) return "";
+  try {
+    const prototype = Object.getPrototypeOf(failure);
+    if (prototype !== Object.prototype && prototype !== null) return "";
+    const descriptor = Object.getOwnPropertyDescriptor(failure, "code");
+    const code = descriptor && "value" in descriptor && typeof descriptor.value === "string"
+      ? descriptor.value
+      : "";
+    return Object.hasOwn(reviewedOwnerFailureCopyByCode, code) ? code : "";
+  } catch {
+    return "";
+  }
 }
 
 function statusCopy(status) {
@@ -1794,13 +1813,20 @@ class RuntimePreviewPayloadError extends Error {
   }
 }
 
-function runtimePreviewErrorCopy(error) {
+function runtimePreviewFailure(error) {
   if (error instanceof RuntimePreviewPayloadError) {
-    if (error.issue?.code === "missing_resource") return "预览所需资源缺失，源文件没有被修改。";
-    if (error.issue?.code === "unsupported_feature") return "当前文件包含暂不支持的内容，无法完整预览。";
-    return error.message;
+    const issueCode = trustedOwnerFailureCode(error.issue);
+    if ([
+      "missing_resource",
+      "unsupported_feature",
+      "parse_precondition",
+      "asset_reference_precondition",
+      "playback_failure"
+    ].includes(issueCode)) {
+      return { code: issueCode };
+    }
   }
-  return "无法挂载本地预览，源文件没有被修改。";
+  return { code: "runtime_preview_failed" };
 }
 
 function base64ToBytes(value) {
