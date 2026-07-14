@@ -510,6 +510,76 @@ test("accepted R12 shell affordances remain present in the composed 0.2 shell", 
   assert.match(domStateSource, /rightSurfaceHeader\.hidden = surfaceState === "optimization"/u);
 });
 
+test("owner issue projection uses a closed Chinese vocabulary for known and unknown diagnostics", () => {
+  const projection = projectMultiFormatRightPanel({
+    detectedFormat: "lottie",
+    rightPanel: {
+      assetInventory: {
+        groups: [{
+          id: "unsupported_or_missing",
+          label: "Unsupported or missing",
+          status: "blocked",
+          items: [
+            {
+              id: "issue:missing",
+              source: "issue",
+              issueCode: "missing_resource",
+              status: "missing",
+              label: "missing_resource",
+              detail: ["Embedded image /Users/alice/Secret/hero.png is missing."]
+            },
+            {
+              id: "unsupported:expression",
+              source: "issue",
+              issueCode: "unsupported_feature",
+              status: "unsupported",
+              label: "expression",
+              detail: ["layers.0.xp"]
+            },
+            {
+              id: "issue:unknown",
+              source: "issue",
+              issueCode: "runtime_internal_fault",
+              status: "blocked",
+              label: "runtime_internal_fault",
+              detail: ["Complete bounded JSON is required for hidden Lottie playback."]
+            }
+          ]
+        }]
+      },
+      unsupportedFeatures: [
+        { feature: "expression", path: "layers.0.xp", severity: "warning" },
+        { feature: "private_runtime_hook", path: "/Users/alice/Secret/internal.json", severity: "warning" }
+      ],
+      issues: [
+        { code: "missing_resource", message: "Embedded image /Users/alice/Secret/hero.png is missing.", severity: "error" },
+        { code: "runtime_internal_fault", message: "Complete bounded JSON is required for hidden Lottie playback.", severity: "error" }
+      ]
+    }
+  });
+
+  assert.deepEqual(projection.issues.map(({ message }) => message), [
+    "预览所需资源缺失。",
+    "当前文件存在无法显示的检查问题。"
+  ]);
+  assert.deepEqual(projection.unsupportedFeatures.map(({ message, path }) => ({ message, path })), [
+    { message: "暂不支持：表达式", path: "" },
+    { message: "当前文件包含暂不支持的内容。", path: "" }
+  ]);
+  assert.deepEqual(
+    projection.assetInventory.groups[0].items.map(({ label, detail }) => ({ label, detail })),
+    [
+      { label: "预览所需资源缺失。", detail: [] },
+      { label: "暂不支持：表达式", detail: [] },
+      { label: "当前文件存在无法显示的检查问题。", detail: [] }
+    ]
+  );
+
+  const ownerOutput = JSON.stringify(projection);
+  assert.doesNotMatch(ownerOutput, /Complete bounded JSON|hidden Lottie|runtime_internal_fault|private_runtime_hook/iu);
+  assert.doesNotMatch(ownerOutput, /Users\/alice|layers\.0\.xp|internal\.json|Embedded image/iu);
+});
+
 test("multi-format UI reuses shared rows and keeps unavailable Edit explicitly disabled", () => {
   const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
   const modulesSource = source("web/short-term-macos.modules.css");

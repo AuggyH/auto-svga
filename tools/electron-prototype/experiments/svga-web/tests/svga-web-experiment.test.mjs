@@ -2608,6 +2608,128 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
   assert.doesNotMatch(stalled.message, /\/Users|C:\\|alice/i);
 });
 
+test("0.2 composed open cancellation preserves active authority while accepted failure revokes every format", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    for (const format of ["lottie", "vap", "svga"]) {
+      const nodes = createMultiFormatControllerTestNodes();
+      globalThis.document = createMultiFormatControllerTestDocument(nodes);
+      const menuStates = [];
+      const disposeCalls = [];
+      const legacyCalls = [];
+      let chooserResult = { status: "cancelled" };
+      const state = {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      };
+      const bridge = {
+        openMultiFormatFile() {
+          return Promise.resolve(chooserResult);
+        },
+        updateShortTermMenuState(snapshot) {
+          menuStates.push(structuredClone(snapshot));
+          return Promise.resolve();
+        },
+        setShortTermWindowMode() {
+          return Promise.resolve();
+        },
+        controlMultiFormatPreview(input) {
+          disposeCalls.push(input);
+          return Promise.resolve({ status: "disposed" });
+        }
+      };
+      const svgaController = {
+        handlers: {
+          confirmDiscardUnsavedOutput() {
+            return true;
+          },
+          loadOpenedSource(input) {
+            legacyCalls.push(["load", input.sourceId]);
+            state.sourceBytes = new Uint8Array(input.bytes);
+            state.previewBytes = new Uint8Array(input.bytes);
+            state.sourceId = input.sourceId;
+            state.displayName = input.displayName;
+            state.model = { status: "previewReady", detectedFormat: "svga" };
+            state.selectedImageKey = "avatar";
+            state.selectedTextKey = "title";
+            state.textPreviewValues = { title: "旧文字" };
+          },
+          refreshRecentFiles() {},
+          deactivateForMultiFormat() {
+            legacyCalls.push(["deactivate"]);
+          },
+          saveActiveOutput() {
+            legacyCalls.push(["save"]);
+            return "stale-save";
+          },
+          renderCommandState() {}
+        }
+      };
+      const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state, svgaController });
+
+      if (format === "svga") {
+        assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${format}-initial` }), true);
+        assert.equal(await controller.handlers.completeHostFileOpen({
+          eventId: `${format}-initial`,
+          result: {
+            sourceId: `source:${format}`,
+            model: { detectedFormat: "svga", displayName: `${format}.fixture`, status: "previewReady" },
+            svgaSource: { displayName: `${format}.fixture`, bytes: Uint8Array.from([1, 2, 3]) }
+          }
+        }), true);
+      } else {
+        assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${format}-initial` }), true);
+        assert.equal(await controller.handlers.completeHostFileOpen({
+          eventId: `${format}-initial`,
+          result: createRuntimeMountOpenResult(format, { sourceId: `source:${format}` })
+        }), true);
+      }
+
+      const activeModel = state.model;
+      const activeSourceId = state.sourceId;
+      const activeImageKey = state.selectedImageKey;
+      const activeTextKey = state.selectedTextKey;
+      await controller.handlers.openFromHostDialog();
+      assert.equal(state.model, activeModel, `${format} cancel must preserve model`);
+      assert.equal(state.sourceId, activeSourceId, `${format} cancel must preserve source`);
+      assert.equal(state.selectedImageKey, activeImageKey, `${format} cancel must preserve image selection`);
+      assert.equal(state.selectedTextKey, activeTextKey, `${format} cancel must preserve text selection`);
+
+      chooserResult = { status: "failed", code: "file_picker_failed", pathRedacted: true };
+      await controller.handlers.openFromHostDialog();
+      assert.equal(state.view, "failed", `${format} failure must enter failed view`);
+      assert.equal(state.model, undefined, `${format} failure must clear model`);
+      assert.equal(state.sourceBytes, undefined, `${format} failure must clear source bytes`);
+      assert.equal(state.previewBytes, undefined, `${format} failure must clear preview bytes`);
+      assert.equal(state.sourceId, "", `${format} failure must clear source id`);
+      assert.equal(state.displayName, "", `${format} failure must clear display name`);
+      assert.equal(state.selectedImageKey, "", `${format} failure must clear image selection`);
+      assert.equal(state.selectedTextKey, "", `${format} failure must clear text selection`);
+      assert.deepEqual(state.textPreviewValues, {}, `${format} failure must clear text replacements`);
+      assert.deepEqual(disposeCalls.at(-1), { action: "dispose" }, `${format} failure must dispose host preview`);
+
+      const terminalMenu = menuStates.at(-1);
+      assert.equal(terminalMenu.hasFile, false, `${format} failure must disable file commands`);
+      for (const key of ["canPlay", "canReplay", "canLoop", "canReplaceImage", "canResetImageReplacement", "canEditText", "canResetText"]) {
+        assert.equal(terminalMenu[key], false, `${format} failure must disable ${key}`);
+      }
+      assert.equal(controller.handlers.saveActiveOutput(), undefined, `${format} failure must disable SVGA delegation`);
+      assert.equal(legacyCalls.filter(([name]) => name === "save").length, 0, `${format} failure must not reach stale save`);
+      if (format === "svga") {
+        assert.equal(legacyCalls.filter(([name]) => name === "deactivate").length, 1);
+      }
+    }
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host file-open", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;

@@ -142,7 +142,7 @@ export function createMultiFormatDesktopPreviewController({
   function failHostFileOpen(payload = {}) {
     if (!hostFileOpenIsActive(payload)) return false;
     clearHostFileOpenRequest();
-    showFailure(typeof payload.message === "string" && payload.message.length > 0
+    showOpenFailure(typeof payload.message === "string" && payload.message.length > 0
       ? payload.message
       : "无法打开系统传入的本地文件，源文件没有被修改。");
     return true;
@@ -420,7 +420,7 @@ export function createMultiFormatDesktopPreviewController({
     if (result?.model?.detectedFormat === "svga" && svgaController?.handlers?.loadOpenedSource) {
       const bytes = result?.svgaSource?.bytes;
       if (!bytes?.byteLength) {
-        showFailure("SVGA 文件没有返回可验证的本地预览数据，源文件没有被修改。");
+        showOpenFailure("SVGA 文件没有返回可验证的本地预览数据，源文件没有被修改。");
         return;
       }
       clearRuntimePreview();
@@ -449,11 +449,8 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function setLoading(copy) {
-    state.model = undefined;
-    clearRuntimeReplacementValues();
-    clearRuntimePreview();
+    revokeActiveDocumentAuthority({ disposeHost: false });
     renderLoadingMessage(nodes, copy);
-    clearSurfaces();
     setView("loading");
   }
 
@@ -462,7 +459,7 @@ export function createMultiFormatDesktopPreviewController({
       return;
     }
     if (outcome.kind === "failure") {
-      showFailure(outcome.message);
+      showOpenFailure(outcome.message);
       return;
     }
     await applyOpenedHostResult(outcome.result);
@@ -626,7 +623,7 @@ export function createMultiFormatDesktopPreviewController({
       ...(rightPanel.unsupportedFeatures ?? []).map((entry) => ({
         code: "unsupported_feature",
         severity: "warning",
-        message: `${entry.feature} · ${entry.path}`
+        message: entry.message
       }))
     ];
     nodes.findingList.replaceChildren(...issues.map((issue) => {
@@ -1494,6 +1491,45 @@ export function createMultiFormatDesktopPreviewController({
     clearRuntimePreview();
     renderFailureMessage(nodes, ownerFailureCopy(error));
     setView("failed");
+  }
+
+  function showOpenFailure(error) {
+    revokeActiveDocumentAuthority();
+    renderFailureMessage(nodes, ownerFailureCopy(error));
+    setView("failed");
+  }
+
+  function revokeActiveDocumentAuthority(options = {}) {
+    if (activeFormat === "svga") svgaController?.handlers?.deactivateForMultiFormat?.();
+    activeFormat = "";
+    clearRuntimePreview();
+    clearRuntimeReplacementValues();
+    if (options.disposeHost !== false) {
+      Promise.resolve(bridge?.controlMultiFormatPreview?.({ action: "dispose" })).catch(() => {});
+    }
+    state.sourceBytes = undefined;
+    state.previewBytes = undefined;
+    state.sourceId = "";
+    state.displayName = "";
+    state.model = undefined;
+    state.selectedImageKey = "";
+    state.selectedTextKey = "";
+    state.assetFilter = "all";
+    state.renameImageKey = "";
+    state.textPreview = "";
+    state.textPreviewValues = {};
+    state.activeOutput = undefined;
+    state.cleanSaveAsVisible = false;
+    state.primaryPlayback = undefined;
+    state.compareAPlayback = undefined;
+    state.compareBPlayback = undefined;
+    state.editPlayback = undefined;
+    state.resourceMenuReturnFocus = undefined;
+    state.mode = "preview";
+    state.tab = "overview";
+    state.lastMenuStateSnapshot = "";
+    renderFileHeader(nodes, "", "");
+    clearSurfaces();
   }
 
   function currentStateSummary() {

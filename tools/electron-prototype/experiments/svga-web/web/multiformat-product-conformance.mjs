@@ -81,6 +81,33 @@ const assetKindLabels = new Map([
   ["text", "文本"]
 ]);
 
+const ownerIssueCopyByCode = new Map([
+  ["missing_resource", { code: "missing_resource", message: "预览所需资源缺失。" }],
+  ["unsupported_feature", { code: "unsupported_feature", message: "当前文件包含暂不支持的内容。" }],
+  ["parse_precondition", { code: "invalid_file", message: "文件内容不完整或格式异常，无法预览。" }],
+  ["asset_reference_precondition", { code: "invalid_file", message: "文件内容不完整或格式异常，无法预览。" }],
+  ["playback_failure", { code: "playback_failure", message: "文件预览播放出现问题。" }]
+]);
+
+const ownerUnsupportedFeatureLabels = new Map([
+  ["expression", "表达式"],
+  ["mask", "蒙版"],
+  ["effect", "特效"],
+  ["time_remap", "时间重映射"],
+  ["3d_layer", "3D 图层"],
+  ["camera_layer", "摄像机图层"],
+  ["solid_layer", "纯色图层"],
+  ["embedded_image_asset", "内嵌图片资源"],
+  ["non_h264_video_codec", "非 H.264 视频编码"],
+  ["unknown_fusion_source_type", "未识别的融合元素类型"]
+]);
+
+const genericOwnerIssue = Object.freeze({
+  code: "owner_issue",
+  message: "当前文件存在无法显示的检查问题。"
+});
+const genericUnsupportedFeatureMessage = "当前文件包含暂不支持的内容。";
+
 export function multiFormatDragDecisionForEvent(target, event, options = {}) {
   const file = dragFileFromEvent(event);
   const supported = !file || multiFormatDropPattern.test(file.name || "");
@@ -116,10 +143,10 @@ export function projectMultiFormatRightPanel(model = {}) {
     assetInventory: inventory,
     unsupportedFeatures: (source.unsupportedFeatures ?? [])
       .filter(isOwnerVisibleUnsupportedFeature)
-      .map((entry) => ({ ...entry, feature: ownerCopy(entry.feature), path: ownerCopy(entry.path) })),
+      .map(projectOwnerUnsupportedFeature),
     issues: (source.issues ?? [])
       .filter(isOwnerVisibleIssue)
-      .map((issue) => ({ ...issue, message: ownerCopy(issue.message) }))
+      .map(projectOwnerIssue)
   };
 }
 
@@ -192,13 +219,47 @@ function projectInventory(inventory, format) {
   };
 }
 
-function projectInventoryItem(item) {
+function projectInventoryItem(item, index) {
+  if (item.source === "issue") {
+    const projection = item.issueCode === "unsupported_feature"
+      ? projectOwnerUnsupportedFeature({ feature: item.label, severity: item.severity })
+      : projectOwnerIssue({ code: item.issueCode, severity: item.severity });
+    return {
+      ...item,
+      id: `owner-issue:${index}`,
+      label: projection.message,
+      detail: [],
+      issueCode: projection.code,
+      pathRedacted: true
+    };
+  }
   const detail = (item.detail ?? []).map(localizeOwnerText).filter(Boolean);
-  const issueLabel = item.source === "issue" ? detail[0] : "";
   return {
     ...item,
-    label: issueLabel || inventoryItemLabels.get(item.label) || ownerCopy(item.label),
-    detail: issueLabel ? detail.slice(1) : detail
+    label: inventoryItemLabels.get(item.label) || ownerCopy(item.label),
+    detail
+  };
+}
+
+function projectOwnerIssue(issue = {}) {
+  const projection = ownerIssueCopyByCode.get(String(issue.code ?? "").trim()) ?? genericOwnerIssue;
+  return {
+    code: projection.code,
+    severity: issue.severity || "warning",
+    message: projection.message,
+    pathRedacted: true
+  };
+}
+
+function projectOwnerUnsupportedFeature(entry = {}) {
+  const label = ownerUnsupportedFeatureLabels.get(String(entry.feature ?? "").trim());
+  return {
+    code: "unsupported_feature",
+    severity: entry.severity || "warning",
+    feature: label || genericUnsupportedFeatureMessage,
+    path: "",
+    message: label ? `暂不支持：${label}` : genericUnsupportedFeatureMessage,
+    pathRedacted: true
   };
 }
 
