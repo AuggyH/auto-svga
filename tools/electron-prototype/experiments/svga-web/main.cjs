@@ -5577,8 +5577,52 @@ async function applyMultiFormatReplacement(input) {
 }
 
 async function resetMultiFormatReplacement(input) {
-  void input;
-  return getMultiFormatDesktopSession().resetReplacement();
+  assertMultiFormatDesktopProduct();
+  const expectedSourceId = String(input?.sourceId ?? "").trim();
+  const targetId = String(input?.targetId ?? "").trim();
+  const kind = input?.kind === "text" ? "text" : input?.kind === "image" ? "image" : "";
+  if (!expectedSourceId || !targetId || !kind) {
+    return {
+      status: "failed",
+      code: "parse_precondition",
+      message: "Runtime replacement reset source and target identity are required.",
+      pathRedacted: true
+    };
+  }
+  const session = getMultiFormatDesktopSession();
+  if (session.activeSourceId !== expectedSourceId) {
+    return {
+      status: "failed",
+      code: "replacement_target_stale",
+      message: "Runtime replacement reset no longer matches the active local source.",
+      pathRedacted: true
+    };
+  }
+  const selection = await session.resolveReplacementSelection({ targetId, kind });
+  if (selection.status !== "accepted") return replacementSelectionFailure(selection);
+  const result = await session.resetReplacement({
+    targetId: selection.publicTargetId,
+    kind
+  });
+  if (session.activeSourceId !== expectedSourceId) {
+    return {
+      status: "failed",
+      code: "replacement_target_stale",
+      message: "Runtime replacement reset was superseded by a newer local source.",
+      pathRedacted: true
+    };
+  }
+  if (result?.model?.replacement?.lastAction?.status !== "accepted") return result;
+  const returnedRuntimeTargetId = String(result.model.replacement.lastAction.runtimeTargetId || "").trim();
+  if (!returnedRuntimeTargetId || returnedRuntimeTargetId !== selection.runtimeTargetId) {
+    return {
+      status: "failed",
+      code: "replacement_target_malformed",
+      message: "Runtime replacement reset did not return the accepted runtime target binding.",
+      pathRedacted: true
+    };
+  }
+  return result;
 }
 
 function writeClipboardText(value) {

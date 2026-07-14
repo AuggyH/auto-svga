@@ -1640,6 +1640,92 @@ test("0.2 host replacement picker fails closed for missing source and bounded re
   }
 });
 
+test("0.2 host reset requires active source and canonical target authority", async () => {
+  const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const resetSource = extractFunctionSource(main, "async function resetMultiFormatReplacement(input)");
+  const selectionFailureSource = extractFunctionSource(main, "function replacementSelectionFailure(selection)");
+  const createHarness = ({ activeSourceId = "active-source", runtimeTargetId = "avatar", returnedTargetId = "avatar" } = {}) => {
+    const context = {
+      sessionCalls: 0,
+      resetCalls: [],
+      assertMultiFormatDesktopProduct() {},
+      getMultiFormatDesktopSession() {
+        context.sessionCalls += 1;
+        return {
+          activeSourceId,
+          async resolveReplacementSelection(input) {
+            return {
+              status: "accepted",
+              publicTargetId: String(input?.targetId ?? ""),
+              runtimeTargetId,
+              bindingToken: "selection:1",
+              pathRedacted: true
+            };
+          },
+          async resetReplacement(input) {
+            context.resetCalls.push(input);
+            return {
+              status: "previewReady",
+              model: {
+                replacement: {
+                  lastAction: {
+                    type: "resetReplacement",
+                    status: "accepted",
+                    runtimeTargetId: returnedTargetId
+                  }
+                }
+              }
+            };
+          }
+        };
+      }
+    };
+    vm.runInNewContext(`${selectionFailureSource}; ${resetSource}; globalThis.callReset = resetMultiFormatReplacement;`, context);
+    return context;
+  };
+
+  for (const input of [
+    { targetId: "avatar", kind: "image" },
+    { sourceId: "active-source", targetId: "", kind: "image" },
+    { sourceId: "active-source", targetId: "avatar", kind: "unknown" }
+  ]) {
+    const context = createHarness();
+    const result = await context.callReset(input);
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "parse_precondition");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(context.sessionCalls, 0);
+    assert.deepEqual(context.resetCalls, []);
+  }
+
+  {
+    const context = createHarness({ activeSourceId: "current-source" });
+    const result = await context.callReset({ sourceId: "stale-source", targetId: "avatar", kind: "image" });
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "replacement_target_stale");
+    assert.deepEqual(context.resetCalls, []);
+  }
+
+  {
+    const context = createHarness();
+    const result = await context.callReset({ sourceId: "active-source", targetId: "vap_fusion_1", kind: "image" });
+    assert.equal(result.status, "previewReady");
+    assert.equal(context.resetCalls.length, 1);
+    assert.equal(context.resetCalls[0].targetId, "vap_fusion_1");
+    assert.equal(context.resetCalls[0].kind, "image");
+    assert.equal(result.model.replacement.lastAction.runtimeTargetId, "avatar");
+  }
+
+  {
+    const context = createHarness({ runtimeTargetId: "avatar", returnedTargetId: "wrong-target" });
+    const result = await context.callReset({ sourceId: "active-source", targetId: "vap_fusion_1", kind: "image" });
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "replacement_target_malformed");
+    assert.equal(result.pathRedacted, true);
+    assert.doesNotMatch(JSON.stringify(result), /Users|Desktop|private/iu);
+  }
+});
+
 test("0.2 SVGA runtime payload reads complete bounded files across partial reads", async () => {
   const sessionSource = await readFile(path.join(experimentRoot, "multiformat-desktop-session.cjs"), "utf8");
   const readSource = extractFunctionSource(sessionSource, "function readBoundedFileBuffer(filePath, maxBytes)");
@@ -2689,11 +2775,37 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
     assert.equal(lottieCalls[1].animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["text:1"]);
 
-    await controller.handlers.resetRuntimeText();
+    controller.handlers.selectImageKey("avatar");
+    await controller.handlers.applyReplacementFile({
+      type: "image/png",
+      async arrayBuffer() {
+        return Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]).buffer;
+      }
+    });
     await flushRuntimeMountPromises();
     assert.equal(lottieCalls.length, 3);
-    assert.equal(lottieCalls[2].animationData.layers[0].t.d.k[0].s.t, "Original greeting");
+    assert.equal(lottieCalls[2].animationData.layers[0].t.d.k[0].s.t, "Runtime greeting");
+    assert.match(lottieCalls[2].animationData.assets[0].p, /^data:image\/png;base64,/u);
+    assert.deepEqual(
+      bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId).sort(),
+      ["avatar", "text:1"]
+    );
+
+    await controller.handlers.resetRuntimeText("text:1");
+    await flushRuntimeMountPromises();
+    assert.equal(lottieCalls.length, 4);
+    assert.equal(lottieCalls[3].animationData.layers[0].t.d.k[0].s.t, "Original greeting");
+    assert.match(lottieCalls[3].animationData.assets[0].p, /^data:image\/png;base64,/u);
+    assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active.map((record) => record.targetId), ["avatar"]);
+    assert.equal(bridge.menuStates.at(-1).canResetImageReplacement, true);
+    assert.equal(bridge.menuStates.at(-1).canResetText, false);
+
+    await controller.handlers.resetImageReplacement("avatar");
+    await flushRuntimeMountPromises();
+    assert.equal(lottieCalls.length, 5);
+    assert.equal(lottieCalls[4].animationData.assets[0].p, "data:image/png;base64,AQID");
     assert.deepEqual(bridge.prepareInputs.at(-1).replacements.active, []);
+    assert.equal(bridge.menuStates.at(-1).canResetImageReplacement, false);
 
     bridge.markOpened("vap");
     assert.equal(controller.handlers.beginHostFileOpen({ eventId: "vap-open" }), true);
@@ -3217,8 +3329,10 @@ test("VAP real-runtime proofs require canonical replacement authority without pu
   ].map((fileName) => readFileSync(path.join(experimentRoot, `scripts/${fileName}`), "utf8"));
   const [proofSource] = proofSources;
   assert.match(proofSource, /sourceReadiness\.ready\.instanceCount === 1/);
-  assert.match(proofSource, /replacementReadiness\.ready\.instanceCount === 2/);
-  assert.match(proofSource, /resetReadiness\.ready\.instanceCount === 3/);
+  assert.match(proofSource, /textReadiness\.ready\.instanceCount === 2/);
+  assert.match(proofSource, /replacementReadiness\.ready\.instanceCount === 3/);
+  assert.match(proofSource, /textResetReadiness\.ready\.instanceCount === 4/);
+  assert.match(proofSource, /resetReadiness\.ready\.instanceCount === 5/);
   assert.match(proofSource, /replacementReadiness\.ready\.hasAvatarOption/);
   assert.match(proofSource, /sourceIds\.includes\("avatar"\)/);
   assert.match(proofSource, /textureIds\.includes\("avatar"\)/);
@@ -3236,7 +3350,25 @@ test("VAP real-runtime proofs require canonical replacement authority without pu
     assert.match(source, /targetId: acceptedRuntimeTargetId/);
     assert.doesNotMatch(source, /replacementRuntimeValue:\s*\{\s*kind: "image",\s*targetId,\s*value: dataUri/);
   }
-  assert.match(proofSource, /waitForBalancedLifecycle\(3\)/);
+  assert.match(proofSource, /waitForBalancedLifecycle\(5\)/);
+});
+
+test("VAP pixel proof requires target-scoped sibling isolation and source restoration", () => {
+  const proofSource = readFileSync(
+    path.join(experimentRoot, "scripts/run-vap-fusion-replacement-pixel-proof.cjs"),
+    "utf8"
+  );
+  assert.match(proofSource, /resetTextPreview\(\$\{JSON\.stringify\(textTargetId\)\}\)/u);
+  assert.match(proofSource, /active\[0\]\?\.targetId === "avatar"/u);
+  assert.match(proofSource, /textResetReadiness\.ready\.hasAvatarOption/u);
+  assert.match(proofSource, /!textResetReadiness\.ready\.hasTitleOption/u);
+  assert.match(proofSource, /sourceFrame\.sha256 !== textResetFrame\.sha256/u);
+  assert.match(proofSource, /replacementFrame\.sha256 !== textResetFrame\.sha256/u);
+  assert.match(proofSource, /resetImageReplacement\(\$\{JSON\.stringify\(imageTargetId\)\}\)/u);
+  assert.match(proofSource, /sourceFrame\.sha256 === resetFrame\.sha256/u);
+  assert.match(proofSource, /waitForBalancedLifecycle\(5\)/u);
+  assert.match(proofSource, /phase: "apply_replacement_binding_accepted"/u);
+  assert.match(proofSource, /phase: "reset_binding_accepted"/u);
 });
 
 test("server uses bounded internal-trial CSP and keeps report API token-bound", async () => {
@@ -6417,8 +6549,10 @@ function createMultiFormatRuntimeMountTestBridge() {
   };
   return {
     prepareInputs: [],
+    menuStates: [],
     productMilestoneId: "0.2-multiformat-preview",
-    updateShortTermMenuState() {
+    updateShortTermMenuState(snapshot) {
+      this.menuStates.push(snapshot);
       return Promise.resolve();
     },
     setShortTermWindowMode() {
@@ -6429,6 +6563,8 @@ function createMultiFormatRuntimeMountTestBridge() {
       if (input?.format === "lottie") {
         const textValue = input?.replacements?.active?.find((record) => record.targetId === "text:1")?.valuePreview
           ?? "Original greeting";
+        const imageValue = input?.replacements?.active?.find((record) => record.targetId === "avatar")?.valuePreview
+          ?? "data:image/png;base64,AQID";
         return Promise.resolve({
           status: "prepared",
           format: "lottie",
@@ -6454,9 +6590,14 @@ function createMultiFormatRuntimeMountTestBridge() {
                     ]
                   }
                 }
+              },
+              {
+                ind: 2,
+                ty: 2,
+                refId: "avatar"
               }
             ],
-            assets: []
+            assets: [{ id: "avatar", p: imageValue, u: "" }]
           },
           playback: {
             fps: 30,
@@ -6494,17 +6635,45 @@ function createMultiFormatRuntimeMountTestBridge() {
     },
     applyMultiFormatReplacement(input) {
       bridgeState.active = [
+        ...bridgeState.active.filter((record) => !(
+          record.targetId === String(input?.targetId ?? "")
+          && record.kind === (input?.kind === "text" ? "text" : "image")
+        )),
         {
+          format: bridgeState.format,
           targetId: String(input?.targetId ?? ""),
           kind: input?.kind === "text" ? "text" : "image",
           valuePreview: String(input?.value ?? "")
         }
       ];
-      return Promise.resolve(createRuntimeMountOpenResult(bridgeState.format, { active: bridgeState.active }));
+      const result = createRuntimeMountOpenResult(bridgeState.format, { active: bridgeState.active });
+      result.model.replacement.lastAction = {
+        type: "applyReplacement",
+        status: "accepted",
+        publicTargetId: String(input?.targetId ?? ""),
+        runtimeTargetId: String(input?.targetId ?? "")
+      };
+      result.replacementRuntimeValue = {
+        kind: input?.kind === "text" ? "text" : "image",
+        targetId: String(input?.targetId ?? ""),
+        value: String(input?.value ?? "")
+      };
+      return Promise.resolve(result);
     },
-    resetMultiFormatReplacement() {
-      bridgeState.active = [];
-      return Promise.resolve(createRuntimeMountOpenResult(bridgeState.format, { active: [] }));
+    resetMultiFormatReplacement(input) {
+      const targetId = String(input?.targetId ?? "");
+      const kind = input?.kind === "text" ? "text" : "image";
+      const active = bridgeState.active.some((record) => record.targetId === targetId && record.kind === kind);
+      const result = createRuntimeMountOpenResult(bridgeState.format, {
+        active: active
+          ? bridgeState.active.filter((record) => !(record.targetId === targetId && record.kind === kind))
+          : bridgeState.active
+      });
+      result.model.replacement.lastAction = active
+        ? { type: "resetReplacement", status: "accepted", publicTargetId: targetId, runtimeTargetId: targetId }
+        : { type: "resetReplacement", status: "blocked", diagnostic: { code: "replacement_reset_not_needed" } };
+      if (active) bridgeState.active = result.model.replacement.active;
+      return Promise.resolve(result);
     },
     markOpened(format) {
       bridgeState.format = format;
@@ -6556,8 +6725,30 @@ function createSessionBackedMultiFormatRuntimeMountTestBridge(session) {
         }
       };
     },
-    resetMultiFormatReplacement() {
-      return session.resetReplacement();
+    async resetMultiFormatReplacement(input) {
+      if (!input?.sourceId || input.sourceId !== session.activeSourceId) {
+        return { status: "failed", code: "parse_precondition", pathRedacted: true };
+      }
+      const selection = await session.resolveReplacementSelection(input);
+      if (selection.status !== "accepted") {
+        return {
+          status: "failed",
+          code: selection.diagnostic.code,
+          message: selection.diagnostic.message,
+          pathRedacted: true
+        };
+      }
+      const result = await session.resetReplacement({
+        targetId: selection.publicTargetId,
+        kind: input.kind
+      });
+      if (
+        result.model?.replacement?.lastAction?.status !== "accepted"
+        || result.model.replacement.lastAction.runtimeTargetId !== selection.runtimeTargetId
+      ) {
+        return { status: "failed", code: "replacement_binding_mismatch", pathRedacted: true };
+      }
+      return result;
     }
   };
 }
@@ -6621,7 +6812,9 @@ function createRuntimeMountOpenResult(format, options = {}) {
           }
         },
         layers: [],
-        assets: [],
+        assets: format === "lottie"
+          ? [{ id: "avatar", name: "Avatar", kind: "image", replaceable: true }]
+          : [],
         lottieTexts: format === "lottie"
           ? [
               {

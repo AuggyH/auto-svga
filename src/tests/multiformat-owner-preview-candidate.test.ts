@@ -134,6 +134,76 @@ test("owner-visible 0.2 candidate applies and resets Lottie image and text runti
   assert.equal(lottieText(loadCalls[3]?.animationData, 2), "Hello");
 });
 
+test("owner-visible 0.2 candidate resets one Lottie target without clearing sibling replacements", async () => {
+  const localPath = "/Users/designer/private/card.json";
+  const loadCalls: LottieSvgLoadOptions[] = [];
+  const host = memoryHost({
+    [localPath]: minimalLottie({
+      assets: [{ id: "avatar", u: "images", p: "avatar.png", w: 20, h: 20 }],
+      layers: [
+        { ind: 1, ty: 2, nm: "Avatar", refId: "avatar" },
+        { ind: 2, ty: 5, nm: "Title", t: { d: { k: [{ s: { t: "Hello" } }] } } }
+      ]
+    }),
+    [`${localPath}::images/avatar.png`]: Uint8Array.from([1, 2, 3])
+  });
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host,
+    lottieTarget: { container: { id: "lottie-target" } },
+    lottieRendererLoader: async () => fakeLottieRenderer(loadCalls)
+  });
+
+  await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-lottie-target-reset",
+    source: "fileButton",
+    localPath
+  });
+  await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-lottie-text",
+    targetId: "text:2",
+    kind: "text",
+    value: "Welcome"
+  });
+  await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-lottie-image",
+    targetId: "avatar",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+
+  const textReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-lottie-text-only",
+    targetId: "text:2",
+    kind: "text"
+  } as Parameters<typeof session.resetReplacement>[0]);
+
+  assert.equal(textReset.replacement.dirty, true);
+  assert.equal(textReset.replacement.resetEnabled, true);
+  assert.equal(textReset.replacement.active.length, 1);
+  assert.equal(textReset.replacement.active[0]?.targetId, "avatar");
+  assert.equal(textReset.replacement.playerAction, "reloadPreview");
+  assert.equal(textReset.replacement.lastAction?.publicTargetId, "text:2");
+  assert.equal(lottieText(loadCalls.at(-1)?.animationData, 2), "Hello");
+  assert.equal(lottieAssetPath(loadCalls.at(-1)?.animationData, "avatar"), "data:image/png;base64,QUJD");
+
+  const imageReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-lottie-image-only",
+    targetId: "avatar",
+    kind: "image"
+  } as Parameters<typeof session.resetReplacement>[0]);
+
+  assert.equal(imageReset.replacement.dirty, false);
+  assert.equal(imageReset.replacement.resetEnabled, false);
+  assert.equal(imageReset.replacement.active.length, 0);
+  assert.equal(imageReset.replacement.playerAction, "remountSource");
+  assert.equal(lottieAssetPath(loadCalls.at(-1)?.animationData, "avatar"), "data:image/png;base64,AQID");
+});
+
 test("owner-visible 0.2 candidate fails Lottie reset closed when the original source cannot reopen", async () => {
   const localPath = "/Users/designer/private/card.json";
   const loadCalls: LottieSvgLoadOptions[] = [];
@@ -365,6 +435,87 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   assert.equal(runtime.configs[2]?.avatar, undefined);
   assert.equal(host.revoked.includes("blob:vap/fusion.mp4"), true);
   assertNoLocalPaths(reset);
+});
+
+test("owner-visible 0.2 candidate resets one VAP fusion target without clearing its sibling", async () => {
+  const localPath = "/Users/designer/private/fusion-image-text.mp4";
+  const runtime = fakeVapRuntime();
+  const host = memoryHost({ [localPath]: validVapBytes(fusionImageTextConfig()) });
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host,
+    vapTarget: { id: "vap-target" },
+    vapHostReadiness: readyVapHost(),
+    vapRuntimeLoader: async () => runtime.constructor
+  });
+
+  const opened = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-vap-image-text",
+    source: "menuOpen",
+    localPath
+  });
+  assert.equal(opened.status, "previewReady");
+  assert.equal(opened.rightPanel.vapFusionImages[0]?.resourceId, "vap_fusion_1");
+  assert.equal(opened.rightPanel.vapFusionTexts[0]?.resourceId, "vap_fusion_2");
+
+  await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-vap-title",
+    targetId: "vap_fusion_2",
+    kind: "text",
+    value: "Replacement title"
+  });
+  const bothApplied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-vap-avatar",
+    targetId: "vap_fusion_1",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.equal(bothApplied.replacement.active.length, 2);
+  assert.equal(runtime.configs.at(-1)?.avatar, "data:image/png;base64,QUJD");
+  assert.equal(runtime.configs.at(-1)?.title, "Replacement title");
+
+  const titleReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-vap-title",
+    targetId: "vap_fusion_2",
+    kind: "text"
+  });
+  assert.equal(titleReset.replacement.lastAction?.status, "accepted");
+  assert.equal(titleReset.replacement.lastAction?.runtimeTargetId, "title");
+  assert.equal(titleReset.replacement.dirty, true);
+  assert.equal(titleReset.replacement.resetEnabled, true);
+  assert.deepEqual(titleReset.replacement.active.map(({ targetId }) => targetId), ["avatar"]);
+  assert.equal(runtime.configs.at(-1)?.avatar, "data:image/png;base64,QUJD");
+  assert.equal(runtime.configs.at(-1)?.title, undefined);
+
+  const beforeBlocked = session.getModel();
+  const blocked = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-vap-title-again",
+    targetId: "vap_fusion_2",
+    kind: "text"
+  });
+  assert.equal(blocked.replacement.lastAction?.status, "blocked");
+  assert.equal(blocked.replacement.lastAction?.diagnostic?.code, "replacement_reset_not_needed");
+  assert.equal(blocked.replacement.revision, beforeBlocked.replacement.revision);
+  assert.deepEqual(blocked.replacement.active, beforeBlocked.replacement.active);
+  assert.equal(runtime.configs.length, 4);
+
+  const avatarReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-vap-avatar",
+    targetId: "vap_fusion_1",
+    kind: "image"
+  });
+  assert.equal(avatarReset.replacement.lastAction?.status, "accepted");
+  assert.equal(avatarReset.replacement.dirty, false);
+  assert.equal(avatarReset.replacement.resetEnabled, false);
+  assert.deepEqual(avatarReset.replacement.active, []);
+  assert.equal(runtime.configs.at(-1)?.avatar, undefined);
+  assert.equal(runtime.configs.at(-1)?.title, undefined);
+  assertNoLocalPaths(avatarReset);
 });
 
 test("owner-visible 0.2 candidate resolves a VAP public resource identity without cross-namespace alias collisions", async () => {
@@ -651,10 +802,13 @@ test("owner-visible 0.2 candidate delegates SVGA imageKey replacement without ch
 
   const reset = await session.resetReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
-    requestId: "reset-svga"
+    requestId: "reset-svga",
+    targetId: "img_frame",
+    kind: "image"
   });
   assert.equal(reset.replacement.dirty, false);
   assert.equal(reset.replacement.playerAction, "remountSource");
+  assert.equal(reset.replacement.lastAction?.runtimeTargetId, "img_frame");
   assert.deepEqual(controllerCalls, ["apply:img_frame", "reset"]);
 
   const commandMenu = await import("../workbench/short-term-command-menu.js");
@@ -1041,6 +1195,22 @@ function fusionImageConfig(): Record<string, unknown> {
       i: 0,
       obj: [
         { srcId: 1, z: 3, frame: { x: 10, y: 20, w: 120, h: 120 }, mFrame: { x: 0, y: 0, w: 120, h: 120 }, mt: 0 }
+      ]
+    }]
+  };
+}
+
+function fusionImageTextConfig(): Record<string, unknown> {
+  return {
+    src: [
+      { srcId: 1, srcType: "img", srcTag: "avatar", w: 120, h: 120, fitType: "centerCrop" },
+      { srcId: 2, srcType: "text", srcTag: "title", color: "#ffffff", style: "bold" }
+    ],
+    frame: [{
+      i: 0,
+      obj: [
+        { srcId: 1, z: 3, frame: { x: 10, y: 20, w: 120, h: 120 }, mFrame: { x: 0, y: 0, w: 120, h: 120 }, mt: 0 },
+        { srcId: 2, z: 4, frame: { x: 140, y: 20, w: 200, h: 40 }, mFrame: { x: 120, y: 0, w: 200, h: 40 }, mt: 0 }
       ]
     }]
   };

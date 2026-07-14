@@ -79,6 +79,8 @@ export interface OwnerVisibleMultiFormatPreviewReplacementInput {
 export interface OwnerVisibleMultiFormatPreviewResetInput {
   gate: string;
   requestId: string;
+  targetId?: string;
+  kind?: "image" | "text";
 }
 
 export interface OwnerVisibleMultiFormatPreviewReplacementSelectionInput {
@@ -462,8 +464,34 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       });
     }
 
+    const targetedReset = input.targetId !== undefined || input.kind !== undefined;
+    const selection = targetedReset
+      ? resolveReplacementSelection(this.model, {
+          targetId: input.targetId ?? "",
+          kind: input.kind === "text" ? "text" : "image"
+        })
+      : undefined;
+    if (selection?.status === "blocked") {
+      return this.blockReplacement(
+        input.requestId,
+        "resetReplacement",
+        selection.diagnostic.message,
+        selection.diagnostic
+      );
+    }
+    if (selection?.status === "accepted" && !hasActiveReplacement(this.replacements, selection)) {
+      return this.blockReplacement(input.requestId, "resetReplacement", "The selected runtime replacement is not active.", {
+        code: "replacement_reset_not_needed",
+        message: "Reset is enabled only for an active runtime replacement target."
+      });
+    }
+
     if (this.model.detectedFormat === "svga") {
-      return this.resetSvgaReplacement(input, generation);
+      return this.resetSvgaReplacement(
+        input,
+        generation,
+        selection?.status === "accepted" ? selection : undefined
+      );
     }
 
     const resetPreflightDiagnostic = await this.preflightResetSource();
@@ -480,7 +508,9 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
     const previousOpen = { ...this.currentOpen };
     const previousReplacements = cloneReplacementContext(this.replacements);
     const previousDependencies = cloneResetSourceDependencies(this.resetSourceDependencies);
-    const nextReplacements = emptyReplacementContext(this.replacements.revision + 1);
+    const nextReplacements = selection?.status === "accepted"
+      ? replacementContextWithoutTarget(this.replacements, selection)
+      : emptyReplacementContext(this.replacements.revision + 1);
     const workspaceModel = await this.workspace.openLocalCandidate(toWorkspaceOpenInput({
       ...this.currentOpen,
       requestId: input.requestId
@@ -501,12 +531,20 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
     this.currentOpen = { ...this.currentOpen, requestId: input.requestId };
     this.replacements = nextReplacements;
     this.resetSourceDependencies = resetSourceDependenciesFromWorkspace(workspaceModel);
+    const hasRemainingReplacements = nextReplacements.active.length > 0;
     this.model = modelFromWorkspace(workspaceModel, this.replacements, {
       requestId: input.requestId,
       type: "resetReplacement",
       status: "accepted",
-      message: "Runtime replacement preview has been reset to the opened source."
-    }, "idle", "remountSource");
+      message: hasRemainingReplacements
+        ? "The selected runtime replacement preview has been reset."
+        : "Runtime replacement preview has been reset to the opened source.",
+      ...(selection?.status === "accepted" ? {
+        publicTargetId: selection.publicTargetId,
+        runtimeTargetId: selection.runtimeTargetId,
+        bindingToken: selection.bindingToken
+      } : {})
+    }, hasRemainingReplacements ? "previewDirty" : "idle", hasRemainingReplacements ? "reloadPreview" : "remountSource");
     return this.getModel();
   }
 
@@ -654,7 +692,8 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
 
   private async resetSvgaReplacement(
     input: OwnerVisibleMultiFormatPreviewResetInput,
-    generation: number
+    generation: number,
+    selection?: Extract<OwnerVisibleMultiFormatPreviewReplacementSelection, { status: "accepted" }>
   ): Promise<OwnerVisibleMultiFormatPreviewModel> {
     if (!this.svgaReplacementController) {
       return this.blockReplacement(input.requestId, "resetReplacement", "SVGA runtime replacement preview controller is not configured.", {
@@ -689,7 +728,12 @@ export class OwnerVisibleMultiFormatPreviewCandidateSession {
       requestId: input.requestId,
       type: "resetReplacement",
       status: "accepted",
-      message: result.message
+      message: result.message,
+      ...(selection ? {
+        publicTargetId: selection.publicTargetId,
+        runtimeTargetId: selection.runtimeTargetId,
+        bindingToken: selection.bindingToken
+      } : {})
     }, "idle", result.playerAction ?? "remountSource");
     return this.getModel();
   }
@@ -1147,6 +1191,13 @@ function validateResetInput(input: OwnerVisibleMultiFormatPreviewResetInput): Ow
       reason: "replacement_reset_input_invalid"
     });
   }
+  const hasTargetId = input.targetId !== undefined;
+  const hasKind = input.kind !== undefined;
+  if (hasTargetId !== hasKind || (hasTargetId && !isNonEmptyString(input.targetId)) || (hasKind && input.kind !== "image" && input.kind !== "text")) {
+    return issue("parse_precondition", "Runtime replacement reset target is incomplete.", "error", {
+      reason: "replacement_reset_target_invalid"
+    });
+  }
   return undefined;
 }
 
@@ -1253,6 +1304,33 @@ function cloneReplacementContext(context: ReplacementContext): ReplacementContex
     active: context.active.map((entry) => ({ ...entry })),
     revision: context.revision
   };
+}
+
+function hasActiveReplacement(
+  context: ReplacementContext,
+  selection: Extract<OwnerVisibleMultiFormatPreviewReplacementSelection, { status: "accepted" }>
+): boolean {
+  return context.active.some((entry) =>
+    entry.format === selection.format
+    && entry.kind === selection.kind
+    && entry.targetId === selection.runtimeTargetId
+  );
+}
+
+function replacementContextWithoutTarget(
+  context: ReplacementContext,
+  selection: Extract<OwnerVisibleMultiFormatPreviewReplacementSelection, { status: "accepted" }>
+): ReplacementContext {
+  const next = cloneReplacementContext(context);
+  next.active = next.active.filter((entry) => !(
+    entry.format === selection.format
+    && entry.kind === selection.kind
+    && entry.targetId === selection.runtimeTargetId
+  ));
+  if (selection.format === "lottie") delete next.lottie[selection.runtimeTargetId];
+  if (selection.format === "vap") delete next.vap[selection.runtimeTargetId];
+  next.revision += 1;
+  return next;
 }
 
 function cloneResetSourceDependencies(dependencies: ResetSourceDependencies): ResetSourceDependencies {

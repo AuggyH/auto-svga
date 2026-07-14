@@ -343,10 +343,21 @@ export function createMultiFormatDesktopPreviewController({
     applyHostResult(result, { keepView: true });
   }
 
-  async function resetImageReplacement() {
+  async function resetImageReplacement(imageKey = state.selectedImageKey) {
     if (svgaWorkflowActive()) return svgaController.handlers.resetImageReplacement?.();
-    const result = await bridge.resetMultiFormatReplacement({ kind: "image" });
-    if (replacementActionAccepted(result)) clearRuntimeReplacementValues("image");
+    if (!imageKey) return;
+    state.selectedImageKey = imageKey;
+    const result = await bridge.resetMultiFormatReplacement({
+      targetId: imageKey,
+      sourceId: state.sourceId,
+      kind: "image"
+    });
+    const runtimeTargetId = acceptedResetRuntimeTargetId(result);
+    if (replacementActionAccepted(result) && !runtimeTargetId) {
+      showFailure("Replacement reset did not return an accepted runtime target binding.");
+      return;
+    }
+    if (runtimeTargetId) clearRuntimeReplacementValues("image", runtimeTargetId);
     applyHostResult(result, { keepView: true });
   }
 
@@ -380,12 +391,23 @@ export function createMultiFormatDesktopPreviewController({
     }).catch(showFailure);
   }
 
-  async function resetRuntimeText() {
+  async function resetRuntimeText(textKey = state.selectedTextKey) {
     if (svgaWorkflowActive()) return svgaController.handlers.resetRuntimeText?.();
-    const result = await bridge.resetMultiFormatReplacement({ kind: "text" });
+    if (!textKey) return;
+    state.selectedTextKey = textKey;
+    const result = await bridge.resetMultiFormatReplacement({
+      targetId: textKey,
+      sourceId: state.sourceId,
+      kind: "text"
+    });
+    const runtimeTargetId = acceptedResetRuntimeTargetId(result);
+    if (replacementActionAccepted(result) && !runtimeTargetId) {
+      showFailure("Replacement reset did not return an accepted runtime target binding.");
+      return;
+    }
     if (replacementActionAccepted(result)) {
-      clearRuntimeReplacementValues("text");
-      state.textPreviewValues = {};
+      clearRuntimeReplacementValues("text", runtimeTargetId);
+      delete state.textPreviewValues[textKey];
     }
     applyHostResult(result, { keepView: true });
   }
@@ -680,7 +702,7 @@ export function createMultiFormatDesktopPreviewController({
       row.innerHTML = `
         <span class="rowText"><strong>${escapeHtml(target.name)}</strong><span>${escapeHtml(target.detail)}</span></span>
         <input data-text-input data-text-key="${escapeHtml(target.id)}" value="${escapeHtml(state.textPreviewValues[target.id] ?? target.value)}" aria-label="${escapeHtml(target.name)}">
-        <button type="button" data-action="runtime-text-reset" data-text-key="${escapeHtml(target.id)}">重置</button>
+        <button type="button" data-action="runtime-text-reset" data-text-key="${escapeHtml(target.id)}"${activeReplacementForPublicTarget(state.model, "text", target.id) ? "" : " disabled"}>重置</button>
       `;
       return row;
     }));
@@ -1301,13 +1323,13 @@ export function createMultiFormatDesktopPreviewController({
     });
   }
 
-  function clearRuntimeReplacementValues(kind) {
+  function clearRuntimeReplacementValues(kind, targetId) {
     if (kind !== "image" && kind !== "text") {
       runtimeReplacementValues = new Map();
       return;
     }
     for (const [key, record] of runtimeReplacementValues.entries()) {
-      if (record.kind === kind) runtimeReplacementValues.delete(key);
+      if (record.kind === kind && (!targetId || record.targetId === targetId)) runtimeReplacementValues.delete(key);
     }
   }
 
@@ -1332,6 +1354,19 @@ export function createMultiFormatDesktopPreviewController({
       targetId: runtimeValue.targetId.trim(),
       value: runtimeValue.value
     };
+  }
+
+  function acceptedResetRuntimeTargetId(result) {
+    if (!replacementActionAccepted(result)) return undefined;
+    const lastAction = result?.model?.replacement?.lastAction;
+    if (
+      lastAction?.type !== "resetReplacement"
+      || typeof lastAction.runtimeTargetId !== "string"
+      || !lastAction.runtimeTargetId.trim()
+    ) {
+      return undefined;
+    }
+    return lastAction.runtimeTargetId.trim();
   }
 
   function loadRuntimeScript(src, runtimeName) {
@@ -1403,9 +1438,11 @@ export function createMultiFormatDesktopPreviewController({
       loopEnabled: state.primaryPlaybackLooping !== false,
       canRenameImageKey: false,
       canReplaceImage: commands.replace === true && Boolean(state.selectedImageKey),
-      canResetImageReplacement: commands.resetReplacement === true,
+      canResetImageReplacement: commands.resetReplacement === true
+        && activeReplacementForPublicTarget(model, "image", state.selectedImageKey),
       canEditText: commands.replace === true && selectedText,
-      canResetText: commands.resetReplacement === true,
+      canResetText: commands.resetReplacement === true
+        && activeReplacementForPublicTarget(model, "text", state.selectedTextKey),
       canRunOptimization: false,
       canShowOptimizationComparison: false,
       isRenaming: false,
@@ -1719,6 +1756,24 @@ function hasTextTarget(model, targetId) {
     || (model.rightPanel?.vapFusionTexts ?? []).some((entry) =>
       entry.replaceable && entry.resourceId === targetId
     );
+}
+
+function activeReplacementForPublicTarget(model, kind, publicTargetId) {
+  if (!publicTargetId || (kind !== "image" && kind !== "text")) return false;
+  let runtimeTargetId = publicTargetId;
+  if (model?.detectedFormat === "vap") {
+    const targets = kind === "image"
+      ? model.rightPanel?.vapFusionImages
+      : model.rightPanel?.vapFusionTexts;
+    const target = (targets ?? []).find((entry) => entry.resourceId === publicTargetId);
+    if (!target?.runtimeBindingKey) return false;
+    runtimeTargetId = target.runtimeBindingKey;
+  }
+  return (model?.replacement?.active ?? []).some((entry) =>
+    entry?.format === model?.detectedFormat
+    && entry?.kind === kind
+    && entry?.targetId === runtimeTargetId
+  );
 }
 
 class RuntimePreviewPayloadError extends Error {

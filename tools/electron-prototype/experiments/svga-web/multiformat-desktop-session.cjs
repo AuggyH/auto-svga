@@ -187,11 +187,13 @@ class MultiFormatDesktopPreviewSession {
     }));
   }
 
-  async resetReplacement() {
+  async resetReplacement(input = {}) {
     const session = await this.ensureSession();
     return this.publicResult(await session.resetReplacement({
       gate: MULTIFORMAT_DESKTOP_GATE,
-      requestId: this.nextRequestId("reset")
+      requestId: this.nextRequestId("reset"),
+      ...(typeof input.targetId === "string" ? { targetId: input.targetId } : {}),
+      ...(input.kind === "image" || input.kind === "text" ? { kind: input.kind } : {})
     }));
   }
 

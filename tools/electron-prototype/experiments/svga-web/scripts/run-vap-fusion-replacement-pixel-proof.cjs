@@ -31,11 +31,11 @@ const repoRoot = path.resolve(appRoot, "../../../..");
 const boundedVapPath = requiredEvidencePath("AUTO_SVGA_VAP_FUSION_INPUT");
 const sidecarVapcPath = requiredEvidencePath("AUTO_SVGA_VAP_FUSION_SIDECAR");
 const expectedFixtureHashes = Object.freeze({
-  [boundedVapPath]: "25ce657cf3de383e368c829bfcb9a17879d2bc7c7ebe151f66ebf5d64b73dd64",
-  [sidecarVapcPath]: "d1e9160d3d7f9d25c6b789f39c077603ff8ef50abaa19ccaf9192052ff55dc77"
+  [boundedVapPath]: "1d0e9ff1f51c82a39dbebc37b2fec59fd420bdbe31bb4976264f8effdd4c1fb8",
+  [sidecarVapcPath]: "27e03ca25c914cb2697ac4492c9f4d7dfb1ade2797c846f81804b8b1068e2959"
 });
 const replacementPngPath = requiredEvidencePath("AUTO_SVGA_VAP_REPLACEMENT_INPUT");
-const expectedReplacementPngSha256 = "bb976694f005e2b23fa1ef783162b1c4f483ad6fe7f0232b49eb86014502f27c";
+const expectedReplacementPngSha256 = "840e365ce9074cf667f9aa093db7c33bbd460eee50457c62179af658af37e3f1";
 
 const proofRoot = path.join(os.tmpdir(), `auto-svga-vap-fusion-replacement-pixel-proof-${process.pid}`);
 const proofOutputPath = path.join(proofRoot, "vap-fusion-replacement-pixel-proof.json");
@@ -163,8 +163,37 @@ async function main() {
   );
   const sourceFrame = await captureBoundVapFrame("source", 0);
 
+  const imageTargetId = loadedSnapshot.hostModel?.model?.rightPanel?.vapFusionImages
+    ?.find((entry) => entry.srcTag === "avatar")?.resourceId;
+  const textTargetId = loadedSnapshot.hostModel?.model?.rightPanel?.vapFusionTexts
+    ?.find((entry) => entry.srcTag === "title")?.resourceId;
+  if (!imageTargetId || !textTargetId) {
+    throw new Error("VAP target-isolation proof requires public avatar and title resource identities.");
+  }
+
+  await runInPage("apply VAP text replacement", `
+    (() => {
+      const input = document.querySelector('[data-text-input][data-text-key=${JSON.stringify(textTargetId)}]');
+      if (!input) throw new Error("VAP title replacement input is unavailable.");
+      input.value = "Runtime VAP title";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      return true;
+    })()
+  `);
+  const textReadiness = await waitForVapRuntimeReady("text replacement runtime", 2, { title: true });
+  const textSnapshot = await waitForPage("VAP text replacement remounted", () => pageSnapshot(), (snapshot) =>
+    snapshot.hostModel?.model?.replacement?.active?.length === 1
+      && snapshot.hostModel.model.replacement.active[0]?.kind === "text"
+      && snapshot.hostModel.model.replacement.active[0]?.targetId === "title"
+      && snapshot.runtimeMountState === "loaded"
+  );
+  const textFrame = await captureBoundVapFrame("text-replacement", 0);
+
   const replacementAction = await runInPage("choose VAP replacement image through action bridge", `
     (async () => {
+      const row = document.querySelector('[data-image-key=${JSON.stringify(imageTargetId)}][data-action="select-resource"]');
+      if (!row) throw new Error("VAP avatar replacement row is unavailable.");
+      row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await window.__autoSvgaShortTermActions.replaceImage();
       return window.autoSvgaElectronHost.controlMultiFormatPreview({ action: "model" });
     })()
@@ -172,10 +201,12 @@ async function main() {
   if (replacementAction?.model?.replacement?.dirty !== true) {
     throw new Error(`VAP host replacement picker action did not apply a dirty model: ${JSON.stringify(compactSnapshot({ hostModel: replacementAction }))}`);
   }
-  const replacementReadiness = await waitForVapRuntimeReady("replacement runtime", 2, true);
-  const replacementSnapshot = await waitForPage("VAP image replacement remounted", () => pageSnapshot(), (snapshot) =>
+  const replacementReadiness = await waitForVapRuntimeReady("image and text replacement runtime", 3, { avatar: true, title: true });
+  const replacementSnapshot = await waitForPage("VAP image and text replacements remounted", () => pageSnapshot(), (snapshot) =>
     snapshot.hostModel?.model?.replacement?.dirty === true
+      && snapshot.hostModel?.model?.replacement?.active?.length === 2
       && snapshot.hostModel?.model?.replacement?.active?.some((entry) => entry.kind === "image")
+      && snapshot.hostModel?.model?.replacement?.active?.some((entry) => entry.kind === "text")
       && snapshot.runtimeMountState === "loaded"
       && snapshot.runtimeCanvasCount > 0
       && snapshot.runtimeWebglCanvasCount > 0
@@ -187,9 +218,26 @@ async function main() {
   await delay(180);
   const replacementPausedFrame = await captureBoundVapFrame("replacement-paused", 0);
 
-  await runInPage("reset VAP image replacement", "window.__autoSvgaShortTermActions.resetImageReplacement()");
-  const resetReadiness = await waitForVapRuntimeReady("reset runtime", 3, false);
-  const resetSnapshot = await waitForPage("VAP replacement reset", () => pageSnapshot(), (snapshot) =>
+  await runInPage("reset VAP text replacement", `window.__autoSvgaShortTermActions.resetTextPreview(${JSON.stringify(textTargetId)})`);
+  const textResetReadiness = await waitForVapRuntimeReady("text reset runtime", 4, { avatar: true });
+  const textResetSnapshot = await waitForPage("VAP text reset preserved image replacement", () => pageSnapshot(), (snapshot) =>
+    snapshot.hostModel?.model?.replacement?.dirty === true
+      && snapshot.hostModel?.model?.replacement?.resetEnabled === true
+      && snapshot.hostModel?.model?.replacement?.active?.length === 1
+      && snapshot.hostModel.model.replacement.active[0]?.kind === "image"
+      && snapshot.hostModel.model.replacement.active[0]?.targetId === "avatar"
+      && snapshot.runtimeMountState === "loaded"
+      && snapshot.runtimeCanvasCount > 0
+      && snapshot.runtimeWebglCanvasCount > 0
+      && snapshot.maxVideoReadyState >= 2
+  );
+  const textResetFrame = await captureBoundVapFrame("text-reset", 0);
+  await delay(180);
+  const textResetPausedFrame = await captureBoundVapFrame("text-reset-paused", 0);
+
+  await runInPage("reset VAP image replacement", `window.__autoSvgaShortTermActions.resetImageReplacement(${JSON.stringify(imageTargetId)})`);
+  const resetReadiness = await waitForVapRuntimeReady("source reset runtime", 5, {});
+  const resetSnapshot = await waitForPage("VAP source reset", () => pageSnapshot(), (snapshot) =>
     snapshot.hostModel?.model?.replacement?.dirty === false
       && snapshot.hostModel?.model?.replacement?.resetEnabled === false
       && snapshot.runtimeMountState === "loaded"
@@ -201,33 +249,72 @@ async function main() {
   );
   const resetFrame = await captureBoundVapFrame("reset", 0);
 
+  const textPixelsChanged = sourceFrame.sha256 !== textFrame.sha256;
   const pixelsChanged = sourceFrame.sha256 !== replacementFrame.sha256;
+  const textResetPreservedImage = sourceFrame.sha256 !== textResetFrame.sha256;
+  const textResetRemovedText = replacementFrame.sha256 !== textResetFrame.sha256;
   const resetRestored = sourceFrame.sha256 === resetFrame.sha256;
-  const pausedStable = replacementFrame.sha256 === replacementPausedFrame.sha256;
+  const pausedStable = replacementFrame.sha256 === replacementPausedFrame.sha256
+    && textResetFrame.sha256 === textResetPausedFrame.sha256;
   const instanceChainBound = sourceReadiness.ready.instanceCount === 1
-    && replacementReadiness.ready.instanceCount === 2
-    && resetReadiness.ready.instanceCount === 3;
+    && textReadiness.ready.instanceCount === 2
+    && replacementReadiness.ready.instanceCount === 3
+    && textResetReadiness.ready.instanceCount === 4
+    && resetReadiness.ready.instanceCount === 5;
+  const textFusionBound = textReadiness.ready.hasTitleOption
+    && textReadiness.ready.sourceIds.includes("title")
+    && textReadiness.ready.textureIds.includes("title")
+    && textReadiness.ready.titleTextureIndex > 0
+    && textReadiness.ready.titleImageReady
+    && textReadiness.ready.frameZeroReferencesTitle;
   const replacementFusionBound = replacementReadiness.ready.hasAvatarOption
+    && replacementReadiness.ready.hasTitleOption
     && replacementReadiness.ready.sourceIds.includes("avatar")
+    && replacementReadiness.ready.sourceIds.includes("title")
     && replacementReadiness.ready.textureIds.includes("avatar")
+    && replacementReadiness.ready.textureIds.includes("title")
     && replacementReadiness.ready.avatarTextureIndex > 0
+    && replacementReadiness.ready.titleTextureIndex > 0
     && replacementReadiness.ready.avatarImageReady
+    && replacementReadiness.ready.titleImageReady
     && replacementReadiness.ready.frameZeroReferencesAvatar;
-  const capturesFrameBound = [sourceFrame, replacementFrame, replacementPausedFrame, resetFrame].every((frame) =>
+  const targetedResetBound = textResetReadiness.ready.hasAvatarOption
+    && !textResetReadiness.ready.hasTitleOption
+    && textResetReadiness.ready.sourceIds.includes("avatar")
+    && !textResetReadiness.ready.sourceIds.includes("title")
+    && textResetReadiness.ready.textureIds.includes("avatar")
+    && !textResetReadiness.ready.textureIds.includes("title")
+    && textResetReadiness.ready.avatarTextureIndex > 0
+    && textResetReadiness.ready.avatarImageReady
+    && textResetReadiness.ready.frameZeroReferencesAvatar;
+  const capturesFrameBound = [
+    sourceFrame,
+    textFrame,
+    replacementFrame,
+    replacementPausedFrame,
+    textResetFrame,
+    textResetPausedFrame,
+    resetFrame
+  ].every((frame) =>
     frame.expectedFrame === 0
       && frame.seekedEvents > 0
       && frame.videoFrameCallbacks > 0
   );
   const directPixelGate = {
     instanceChainBound,
+    textFusionBound,
     replacementFusionBound,
+    targetedResetBound,
     capturesFrameBound,
+    textPixelsChanged,
     pixelsChanged,
+    textResetPreservedImage,
+    textResetRemovedText,
     resetRestored,
     pausedStable
   };
   await runInPage("dispose VAP proof runtime", "window.__autoSvgaShortTermActions.closeFile()");
-  const finalLifecycle = await waitForBalancedLifecycle(3);
+  const finalLifecycle = await waitForBalancedLifecycle(5);
   const passed = Object.values(directPixelGate).every(Boolean);
 
   await writeProof({
@@ -245,10 +332,17 @@ async function main() {
       loaded: compactSnapshot(loadedSnapshot),
       sourceReadiness,
       sourceFrame,
+      text: compactSnapshot(textSnapshot),
+      textReadiness,
+      textFrame,
       replacement: compactSnapshot(replacementSnapshot),
       replacementReadiness,
       replacementFrame,
       replacementPausedFrame,
+      textReset: compactSnapshot(textResetSnapshot),
+      textResetReadiness,
+      textResetFrame,
+      textResetPausedFrame,
       reset: compactSnapshot(resetSnapshot),
       resetReadiness,
       resetFrame,
@@ -355,12 +449,85 @@ function installIpcHandlers() {
     };
   });
   ipcMain.handle(IPC_CHANNELS.applyMultiFormatReplacement, async (_event, input) => {
-    ipcEvents.push({ phase: "apply_replacement", kind: input?.kind, targetIdHash: hashId(input?.targetId) });
-    return previewSession.applyReplacement(input);
+    const sourceId = String(input?.sourceId ?? "").trim();
+    const targetId = String(input?.targetId ?? "").trim();
+    const kind = input?.kind === "text" ? "text" : input?.kind === "image" ? "image" : "";
+    const value = String(input?.value ?? "");
+    if (!sourceId || !targetId || !kind || sourceId !== previewSession.activeSourceId) {
+      return { status: "failed", code: "parse_precondition", message: "stale replacement request", pathRedacted: true };
+    }
+    const selection = await previewSession.resolveReplacementSelection({ targetId, kind });
+    if (selection.status !== "accepted") {
+      return {
+        status: "failed",
+        code: selection.diagnostic?.code || "replacement_target_unavailable",
+        message: selection.diagnostic?.message || "replacement target unavailable",
+        pathRedacted: true
+      };
+    }
+    const result = await previewSession.applyReplacement({
+      targetId: selection.publicTargetId,
+      kind,
+      value
+    });
+    if (sourceId !== previewSession.activeSourceId) {
+      return { status: "failed", code: "replacement_target_stale", message: "replacement target changed", pathRedacted: true };
+    }
+    if (result?.model?.replacement?.lastAction?.status !== "accepted") return result;
+    const acceptedRuntimeTargetId = String(result.model.replacement.lastAction.runtimeTargetId ?? "").trim();
+    if (!acceptedRuntimeTargetId || acceptedRuntimeTargetId !== selection.runtimeTargetId) {
+      return { status: "failed", code: "replacement_target_malformed", message: "replacement binding changed", pathRedacted: true };
+    }
+    ipcEvents.push({
+      phase: "apply_replacement_binding_accepted",
+      kind,
+      publicTargetIdHash: hashId(selection.publicTargetId),
+      runtimeTargetIdHash: hashId(acceptedRuntimeTargetId)
+    });
+    return {
+      ...result,
+      replacementRuntimeValue: {
+        kind,
+        targetId: acceptedRuntimeTargetId,
+        value
+      }
+    };
   });
   ipcMain.handle(IPC_CHANNELS.resetMultiFormatReplacement, async (_event, input) => {
-    ipcEvents.push({ phase: "reset_replacement", kind: input?.kind });
-    return previewSession.resetReplacement(input);
+    const sourceId = String(input?.sourceId ?? "").trim();
+    const targetId = String(input?.targetId ?? "").trim();
+    const kind = input?.kind === "text" ? "text" : input?.kind === "image" ? "image" : "";
+    if (!sourceId || !targetId || !kind || sourceId !== previewSession.activeSourceId) {
+      return { status: "failed", code: "parse_precondition", message: "stale reset request", pathRedacted: true };
+    }
+    const selection = await previewSession.resolveReplacementSelection({ targetId, kind });
+    if (selection.status !== "accepted") {
+      return {
+        status: "failed",
+        code: selection.diagnostic?.code || "replacement_target_unavailable",
+        message: selection.diagnostic?.message || "replacement target unavailable",
+        pathRedacted: true
+      };
+    }
+    const result = await previewSession.resetReplacement({
+      targetId: selection.publicTargetId,
+      kind
+    });
+    if (sourceId !== previewSession.activeSourceId) {
+      return { status: "failed", code: "replacement_target_stale", message: "reset target changed", pathRedacted: true };
+    }
+    if (result?.model?.replacement?.lastAction?.status !== "accepted") return result;
+    const acceptedRuntimeTargetId = String(result.model.replacement.lastAction.runtimeTargetId ?? "").trim();
+    if (!acceptedRuntimeTargetId || acceptedRuntimeTargetId !== selection.runtimeTargetId) {
+      return { status: "failed", code: "replacement_target_malformed", message: "reset binding changed", pathRedacted: true };
+    }
+    ipcEvents.push({
+      phase: "reset_binding_accepted",
+      kind,
+      publicTargetIdHash: hashId(selection.publicTargetId),
+      runtimeTargetIdHash: hashId(acceptedRuntimeTargetId)
+    });
+    return result;
   });
   ipcMain.handle(IPC_CHANNELS.multiFormatRendererReady, async (_event, input) => {
     ipcEvents.push({ phase: String(input?.phase ?? "renderer_ready") });
@@ -417,6 +584,7 @@ async function vapDiagnosticSnapshot() {
       const player = record?.player;
       const parser = player?.vapFrameParser;
       const avatar = parser?.srcData?.avatar;
+      const title = parser?.srcData?.title;
       const mount = document.querySelector("#multiFormatRuntimeMount");
       const canvas = player?.canvas;
       return {
@@ -433,6 +601,13 @@ async function vapDiagnosticSnapshot() {
         avatarImageWidth: Number(avatar?.img?.naturalWidth) || Number(avatar?.img?.width) || 0,
         avatarImageHeight: Number(avatar?.img?.naturalHeight) || Number(avatar?.img?.height) || 0,
         frameZeroReferencesAvatar: !!parser?.config?.frame?.find((frame) => frame.i === 0)?.obj?.some((entry) => entry.srcId === "avatar"),
+        hasTitleOption: typeof record?.options?.title === "string",
+        titleOptionValue: typeof record?.options?.title === "string" ? record.options.title : "",
+        titleTextureIndex: Number(parser?.textureMap?.title) || 0,
+        titleImageReady: !!title?.img && (Number(title.img.naturalWidth) > 0 || Number(title.img.width) > 0),
+        titleImageWidth: Number(title?.img?.naturalWidth) || Number(title?.img?.width) || 0,
+        titleImageHeight: Number(title?.img?.naturalHeight) || Number(title?.img?.height) || 0,
+        frameZeroReferencesTitle: !!parser?.config?.frame?.find((frame) => frame.i === 0)?.obj?.some((entry) => entry.srcId === "title"),
         canvasReady: !!canvas && Number(canvas.width) > 0 && Number(canvas.height) > 0,
         canvasWidth: Number(canvas?.width) || 0,
         canvasHeight: Number(canvas?.height) || 0,
@@ -444,7 +619,7 @@ async function vapDiagnosticSnapshot() {
   `);
 }
 
-async function waitForVapRuntimeReady(label, expectedInstanceCount, requireAvatar) {
+async function waitForVapRuntimeReady(label, expectedInstanceCount, requirements = {}) {
   const deadline = Date.now() + 20_000;
   const timeline = [];
   let lastSignature = "";
@@ -460,7 +635,7 @@ async function waitForVapRuntimeReady(label, expectedInstanceCount, requireAvata
       && last.parserReady
       && last.canvasReady
       && last.videoReadyState >= 2;
-    const fusionReady = !requireAvatar || (
+    const avatarReady = requirements.avatar !== true || (
       last.hasAvatarOption
         && last.sourceIds.includes("avatar")
         && last.textureIds.includes("avatar")
@@ -468,7 +643,16 @@ async function waitForVapRuntimeReady(label, expectedInstanceCount, requireAvata
         && last.avatarImageReady
         && last.frameZeroReferencesAvatar
     );
-    if (baseReady && fusionReady) return { timeline, ready: last };
+    const titleReady = requirements.title !== true || (
+      last.hasTitleOption
+        && last.titleOptionValue === "Runtime VAP title"
+        && last.sourceIds.includes("title")
+        && last.textureIds.includes("title")
+        && last.titleTextureIndex > 0
+        && last.titleImageReady
+        && last.frameZeroReferencesTitle
+    );
+    if (baseReady && avatarReady && titleReady) return { timeline, ready: last };
     await delay(20);
   }
   throw new Error(`${label} did not reach parser/texture readiness: ${JSON.stringify(last)}`);

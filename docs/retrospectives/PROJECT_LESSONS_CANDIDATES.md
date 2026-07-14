@@ -1445,3 +1445,16 @@ promoted, watched, rejected, or kept historical.
   only tests missed safe typed failures degrading to generic copy.
 - Status: Candidate pending Code Re-review and rebuilt installed
   native-picker QA.
+
+## 2026-07-15: Per-row Reset Requires Per-target Runtime Authority
+
+- Candidate lesson: An owner-visible Reset control attached to one asset or text
+  row must carry that row's public identity through host authority and remove
+  only its accepted canonical runtime key. A kind-only or global reset contract
+  is destructive when multiple replacement previews are active.
+- Evidence: Failure-first Lottie and VAP tests showed the prior kind-only reset
+  cleared sibling replacements. The repaired hidden real VAP proof activated
+  `title` and `avatar` together, reset `title` while decoded/textured `avatar`
+  pixels remained, then reset `avatar` and restored the exact source digest.
+- Status: Candidate pending independent Code Review and later installed matrix
+  acceptance; source/dev proof is not Product Owner acceptance.
