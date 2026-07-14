@@ -5,6 +5,7 @@ import {
   hideShortTermSaveBanner
 } from "./short-term-macos-feedback-surface.mjs";
 import {
+  renderFailureMessage,
   renderFileHeader,
   renderLoadingMessage
 } from "./short-term-macos-state-renderers.mjs";
@@ -152,6 +153,7 @@ export function prepareShortTermSourceLoad({
 }) {
   if (!bytes?.byteLength) throw new Error("文件为空。");
   clearTransientOutput();
+  renderFailureMessage(nodes, "");
   state.sourceBytes = new Uint8Array(bytes);
   state.previewBytes = new Uint8Array(bytes);
   state.sourceId = sourceId || "";

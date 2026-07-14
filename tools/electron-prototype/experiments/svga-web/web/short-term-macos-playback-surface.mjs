@@ -53,6 +53,17 @@ export function renderShortTermPlaybackProgress(nodes, playback) {
   nodes.playbackProgress?.style.setProperty("--asv-playback-progress", `${view.progress}%`);
   nodes.playbackProgress?.setAttribute("aria-valuenow", String(Math.round(view.progress)));
   if (nodes.playbackTime) nodes.playbackTime.textContent = view.timeCopy;
+  if (playback?.canvas?.dataset?.runtimePlayer === "svga-web") {
+    playback.canvas.dataset.runtimePlaybackState = playback.playing
+      ? "playing"
+      : playback.hasPlayed
+        ? "paused"
+        : "previewReady";
+    playback.canvas.dataset.runtimePlaybackProgress = String(view.progress);
+    playback.canvas.dataset.runtimePlaybackFrame = String(view.frame);
+    playback.canvas.dataset.runtimePlaybackFrames = String(view.frames);
+    playback.canvas.dataset.runtimePlaybackTimeCopy = view.timeCopy;
+  }
 }
 
 export function clearShortTermPlaybackCanvas(canvas) {

@@ -390,6 +390,8 @@
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
+  --asv-runtime-stage-top: calc(var(--asv-workbench-floating-control-top) + var(--asv-mode-switch-height) + var(--asv-space-4));
+  --asv-runtime-stage-bottom: calc(var(--asv-playback-bar-height) + var(--asv-playback-bar-padding-block) + var(--asv-playback-bar-padding-block) + var(--asv-space-3));
 }
 
 .stateStagePanel {
@@ -480,6 +482,10 @@
   transform: translateX(-50%);
 }
 
+.compareModeSwitch {
+  pointer-events: none;
+}
+
 .stateModeSwitch {
   pointer-events: none;
 }
@@ -495,6 +501,19 @@
     var(--asv-canvas-checker-pattern),
     var(--asv-canvas);
   background-size: var(--asv-preview-checker-size) var(--asv-preview-checker-size);
+}
+
+.runtimeStageViewport {
+  position: absolute;
+  top: var(--asv-runtime-stage-top);
+  right: var(--asv-space-6);
+  bottom: var(--asv-runtime-stage-bottom);
+  left: var(--asv-space-6);
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .stateCanvasWrap {
@@ -526,7 +545,7 @@ canvas {
 .multiFormatRuntimeMount {
   position: absolute;
   z-index: 2;
-  inset: var(--asv-space-6);
+  inset: 0;
   display: grid;
   place-items: center;
   min-width: 0;
@@ -740,6 +759,21 @@ canvas {
   padding: var(--asv-file-header-padding-block) 0;
   margin: var(--asv-right-panel-safe-padding-block-start) var(--asv-right-panel-padding) 0;
   border-bottom: var(--asv-right-panel-header-divider);
+}
+
+.rightPanel[data-panel-state="optimization"] {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.rightPanel[data-panel-state="optimization"] .rightSurfaceHeader {
+  display: none;
+}
+
+.rightPanel[data-panel-state="optimization"] #panelOptimization {
+  display: grid;
+  align-content: start;
+  gap: var(--asv-right-panel-section-gap);
+  padding-top: var(--asv-right-panel-safe-padding-block-start);
 }
 
 .stateInfoPanel {
@@ -1000,6 +1034,44 @@ canvas {
   white-space: nowrap;
 }
 
+.rightPanel[data-panel-state="optimization"] #panelOptimization > .sectionHead {
+  display: contents;
+}
+
+.rightPanel[data-panel-state="optimization"] #panelOptimization > .sectionHead > div {
+  order: 1;
+  display: grid;
+  gap: var(--asv-space-1);
+  min-width: 0;
+  padding-bottom: var(--asv-file-header-padding-block);
+  border-bottom: var(--asv-right-panel-header-divider);
+}
+
+.rightPanel[data-panel-state="optimization"] #panelOptimization > .sectionHead h2 {
+  margin: 0;
+  color: var(--asv-text);
+  font-size: var(--asv-type-size-dialog-title);
+  font-weight: 650;
+  line-height: var(--asv-file-header-title-line-height);
+}
+
+.rightPanel[data-panel-state="optimization"] #optimizationSummary {
+  display: none;
+}
+
+.rightPanel[data-panel-state="optimization"] #findingList {
+  order: 2;
+  padding-bottom: var(--asv-right-panel-section-gap);
+  border-bottom: var(--asv-right-panel-section-divider);
+}
+
+.rightPanel[data-panel-state="optimization"] #panelOptimization > .sectionHead .toolbarButton {
+  order: 3;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--asv-optimization-action-height);
+}
+
 .sectionHead h2 span,
 .sectionHead h3 span {
   color: var(--asv-subtle);
@@ -1111,9 +1183,13 @@ canvas {
 }
 
 .compareCanvasOpenButton {
-  min-width: var(--asv-launch-action-width);
+  min-width: var(--asv-compare-open-button-width);
   min-height: var(--asv-launch-action-height);
   padding: 0 var(--asv-space-3);
+}
+
+.compareCanvasOpenButton .buttonIcon {
+  display: none;
 }
 
 .compareCanvasWrap[data-compare-state="loaded"] .compareEmptyPrompt {
@@ -1155,6 +1231,21 @@ canvas {
   border-top: 0;
 }
 
+.compareExitButton {
+  min-width: var(--asv-compare-exit-button-width);
+  min-height: var(--asv-file-header-action-height);
+  border-color: var(--asv-compare-exit-button-border);
+  background: var(--asv-compare-exit-button-bg);
+  box-shadow: var(--asv-compare-exit-button-shadow);
+  color: var(--asv-compare-exit-button-color);
+}
+
+.compareExitButton:hover:not(:disabled) {
+  background: var(--asv-compare-exit-button-hover-bg);
+  box-shadow: var(--asv-compare-exit-button-shadow);
+  color: var(--asv-compare-exit-button-color);
+}
+
 .compareSummary h2 {
   margin: 0;
   color: var(--asv-text);
@@ -1192,6 +1283,14 @@ canvas {
   white-space: nowrap;
 }
 
+.comparePairOpenButton {
+  justify-self: start;
+  min-width: var(--asv-compare-open-button-width);
+  min-height: var(--asv-compare-open-button-height);
+  padding: 0 var(--asv-space-3);
+  font-size: var(--asv-type-size-footnote);
+}
+
 .compareMetricGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1210,6 +1309,41 @@ canvas {
   background: var(--asv-compare-metric-column-bg);
 }
 
+.compareMetricCell {
+  display: grid;
+  align-content: start;
+  gap: var(--asv-compare-metric-cell-gap);
+  min-height: var(--asv-compare-metric-row-min-height);
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.compareMetricCell span,
+.optimizationMetricCell span {
+  overflow: hidden;
+  color: var(--asv-fact-cell-label-color);
+  font-size: var(--asv-fact-cell-label-size);
+  font-weight: 400;
+  letter-spacing: var(--asv-fact-cell-label-letter-spacing);
+  line-height: var(--asv-fact-cell-label-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compareMetricCell strong,
+.optimizationMetricValue {
+  display: flex;
+  align-items: baseline;
+  gap: var(--asv-fact-cell-unit-gap);
+  min-width: 0;
+  color: var(--asv-fact-cell-value-color);
+  font-size: var(--asv-fact-cell-value-size);
+  font-weight: 650;
+  line-height: var(--asv-fact-cell-value-line-height);
+  white-space: nowrap;
+}
+
 .optimizationMetricGrid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   row-gap: var(--asv-optimization-metric-grid-row-gap);
@@ -1225,24 +1359,8 @@ canvas {
   padding: var(--asv-optimization-metric-padding-block) var(--asv-optimization-metric-padding-inline);
 }
 
-.optimizationMetricCell span {
-  overflow: hidden;
-  color: var(--asv-muted);
-  font-size: var(--asv-type-size-footnote);
-  line-height: var(--asv-component-fact-cell-label-line-height);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .optimizationMetricValue {
-  display: flex;
   gap: var(--asv-optimization-metric-value-gap);
-  align-items: baseline;
-  min-width: 0;
-  color: var(--asv-text);
-  font-size: var(--asv-type-size-metric);
-  line-height: var(--asv-component-fact-cell-value-line-height);
-  white-space: nowrap;
 }
 
 .optimizationMetricValue b,
@@ -1277,42 +1395,16 @@ canvas {
   font-weight: 700;
 }
 
-.compareMetricCell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: baseline;
-  min-height: var(--asv-compare-metric-row-min-height);
-  padding: var(--asv-space-1) 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
 .compareMetricCell[data-status="warning"],
 .compareMetricCell[data-status="fail"] {
   background: transparent;
 }
 
 .compareMetricCell strong {
-  grid-column: 1;
-  grid-row: 2;
-  font-size: var(--asv-type-size-metric);
   text-align: left;
 }
 
-.compareMetricCell span {
-  grid-column: 1;
-  grid-row: 1;
-  overflow: hidden;
-  color: var(--asv-muted);
-  font-size: var(--asv-type-size-footnote);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .compareMetricCell small {
-  grid-column: 1 / -1;
-  grid-row: 3;
   color: var(--asv-subtle);
 }
 

@@ -510,8 +510,8 @@ async function main() {
     /--asv-component-right-panel-width:\s*360px/.test(tokens),
     /--asv-component-right-panel-padding:\s*var\(--asv-space-4\)/.test(tokens),
     /--asv-component-workbench-top-safe-area:\s*var\(--asv-component-toolbar-height\)/.test(tokens),
-    /--asv-component-workbench-floating-control-top:\s*calc\(var\(--asv-component-workbench-top-safe-area\) \+ var\(--asv-space-4\)\)/.test(tokens),
-    /--asv-component-right-panel-safe-padding-block-start:\s*calc\(var\(--asv-component-workbench-top-safe-area\) \+ var\(--asv-component-right-panel-padding\)\)/.test(tokens),
+    /--asv-component-workbench-floating-control-top:\s*var\(--asv-space-4\)/.test(tokens),
+    /--asv-component-right-panel-safe-padding-block-start:\s*var\(--asv-component-right-panel-padding\)/.test(tokens),
     /--asv-component-right-surface-content-width:\s*calc\(var\(--asv-component-right-panel-width\) - \(var\(--asv-component-right-panel-padding\) \* 2\)\)/.test(tokens),
     /--asv-component-right-panel-section-gap:\s*var\(--asv-space-1\)/.test(tokens),
     /--asv-component-right-panel-section-margin-block-start:\s*var\(--asv-space-1\)/.test(tokens),
@@ -595,7 +595,7 @@ async function main() {
     && /data-action="loop-toggle"[\s\S]*aria-pressed="true"/.test(page)
     && !/data-action="fullscreen"/.test(page)
     && /--asv-component-playback-bar-height:\s*44px/.test(tokens)
-    && /--asv-component-playback-bar-padding-inline:\s*var\(--asv-space-6\)/.test(tokens)
+    && /--asv-component-playback-bar-padding-inline:\s*var\(--asv-base-space-40\)/.test(tokens)
     && /--asv-component-playback-bar-padding-block:\s*var\(--asv-space-3\)/.test(tokens)
     && /--asv-component-playback-bar-gap:\s*var\(--asv-space-4\)/.test(tokens)
     && /--asv-component-playback-actions-gap:\s*var\(--asv-space-4\)/.test(tokens)
@@ -609,9 +609,9 @@ async function main() {
     && /--asv-component-playback-icon-size:\s*var\(--asv-component-icon-button-icon-size\)/.test(tokens)
     && /--asv-component-playback-progress-height:\s*3px/.test(tokens)
     && /--asv-component-playback-time-line-height:\s*18px/.test(tokens)
-    && /--asv-component-mode-switch-width:\s*152px/.test(tokens)
+    && /--asv-component-mode-switch-width:\s*192px/.test(tokens)
     && /--asv-component-mode-switch-height:\s*42px/.test(tokens)
-    && /--asv-component-mode-button-width:\s*72px/.test(tokens)
+    && /--asv-component-mode-button-width:\s*92px/.test(tokens)
     && /--asv-component-mode-button-height:\s*34px/.test(tokens)
     && /--asv-component-mode-switch-padding:\s*var\(--asv-space-1\)/.test(tokens)
     && /--asv-component-mode-button-padding-inline:\s*var\(--asv-space-3\)/.test(tokens)

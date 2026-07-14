@@ -87,7 +87,11 @@ class MultiFormatDesktopPreviewSession {
         cause: error
       });
     }
-    return this.publicResult(model, model?.requestId === requestId ? sourceId : "");
+    return this.publicResult(
+      model,
+      model?.requestId === requestId ? sourceId : "",
+      normalizedPath
+    );
   }
 
   async openDroppedFile(input) {
@@ -551,12 +555,16 @@ class MultiFormatDesktopPreviewSession {
     return `${prefix || "request"}:${this.requestSequence}`;
   }
 
-  publicResult(model, sourceId = "") {
+  publicResult(model, sourceId = "", sourcePath = "") {
     if (sourceId) this.activeSourceId = sourceId;
+    const svgaSource = sourceId && sourcePath && model?.detectedFormat === "svga"
+      ? publicSvgaSource(sourcePath)
+      : undefined;
     return {
       status: "opened",
       model,
       sourceId: sourceId || this.activeSourceId,
+      ...(svgaSource ? { svgaSource } : {}),
       pathRedacted: true,
       lifecycle: { ...this.lifecycle },
       visualEvidence: {
@@ -565,6 +573,19 @@ class MultiFormatDesktopPreviewSession {
         note: "Desktop WP6 integrates the formal 0.2 shell and source-side runtime contracts; real-material visual success still requires CR/QA/Packaging evidence."
       }
     };
+  }
+}
+
+function publicSvgaSource(filePath) {
+  try {
+    const bytes = readBoundedFileBuffer(filePath, MULTIFORMAT_MAX_DROPPED_BYTES);
+    return {
+      displayName: path.basename(filePath),
+      bytes: new Uint8Array(bytes),
+      pathRedacted: true
+    };
+  } catch {
+    return undefined;
   }
 }
 

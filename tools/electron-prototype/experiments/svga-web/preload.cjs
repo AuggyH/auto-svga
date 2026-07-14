@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 const ELECTRON_HOST_BRIDGE_NAME = "autoSvgaElectronHost";
 const LEGACY_PROTOTYPE_BRIDGE_NAME = "autoSvgaPrototype";
@@ -199,13 +199,13 @@ function createMultiFormatDesktopProductPreloadApi() {
     capabilities: {
       documentTypes: Object.freeze(["svga", "lottie-json", "vap-mp4"]),
       fileOpen: "host-dialog-svga-lottie-json-vap-mp4",
-      dragDrop: "renderer-file-copy-to-session-temp-path-redacted",
-      recentFiles: "not-enabled-for-0.2-candidate",
+      dragDrop: "host-path-intake-with-adjacent-resource-context",
+      recentFiles: "host-user-data-redacted",
       clipboardWrite: "host-clipboard-write-text-only",
       finderDocumentAssociation: "not-declared",
       replacementPreview: "runtime-only-no-save-export",
-      saveAs: false,
-      overwriteSave: false,
+      saveAs: "host-dialog-svga-only",
+      overwriteSave: "host-source-path-from-file-picker-only",
       export: false,
       arbitraryFileSystemAccess: false,
       shellAccess: false,
@@ -217,8 +217,32 @@ function createMultiFormatDesktopProductPreloadApi() {
     openMultiFormatFile() {
       return invoke(IPC_CHANNELS.openMultiFormatFile);
     },
-    openDroppedMultiFormatFile(input) {
-      return invoke(IPC_CHANNELS.openDroppedMultiFormatFile, input);
+    openSvgaFile() {
+      return invoke(IPC_CHANNELS.openSvgaFile);
+    },
+    openDroppedMultiFormatFile(file) {
+      let filePath = "";
+      try {
+        filePath = webUtils.getPathForFile(file);
+      } catch {}
+      if (!filePath) {
+        return Promise.resolve({
+          status: "failed",
+          code: "parse_precondition",
+          message: "拖拽文件没有提供可验证的本地来源。",
+          pathRedacted: true
+        });
+      }
+      return invoke(IPC_CHANNELS.openDroppedMultiFormatFile, { filePath });
+    },
+    getRecentSvgaFiles() {
+      return invoke(IPC_CHANNELS.getRecentSvgaFiles);
+    },
+    openRecentSvgaFile(recentFileId) {
+      return invoke(IPC_CHANNELS.openRecentSvgaFile, recentFileId);
+    },
+    clearRecentSvgaFiles() {
+      return invoke(IPC_CHANNELS.clearRecentSvgaFiles);
     },
     prepareMultiFormatRuntimePreview(input) {
       return invoke(IPC_CHANNELS.prepareMultiFormatRuntimePreview, input);
@@ -246,6 +270,9 @@ function createMultiFormatDesktopProductPreloadApi() {
     },
     setShortTermWindowMode(mode) {
       return invoke(IPC_CHANNELS.setShortTermWindowMode, mode);
+    },
+    saveShortTermSvgaOutput(input) {
+      return invoke(IPC_CHANNELS.saveShortTermSvgaOutput, input);
     }
   });
 }

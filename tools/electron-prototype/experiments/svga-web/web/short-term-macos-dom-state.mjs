@@ -20,6 +20,8 @@ export function applyTabState(tab, options = {}) {
   const surfaceState = tab === "replaceable" ? "replaceable" : activePanel;
   const rightPanel = document.querySelector(".rightPanel");
   if (rightPanel) rightPanel.dataset.panelState = surfaceState;
+  const rightSurfaceHeader = document.querySelector(".rightSurfaceHeader");
+  if (rightSurfaceHeader) rightSurfaceHeader.hidden = surfaceState === "optimization";
   document.querySelectorAll("[data-panel]").forEach((panel) => {
     const active = panel.dataset.panel === activePanel;
     panel.hidden = !active;

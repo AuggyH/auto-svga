@@ -3350,9 +3350,14 @@ function shortTermRecentId(filePath) {
 
 function normalizeShortTermRecentRecord(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-  if (typeof value.path !== "string" || !value.path.toLowerCase().endsWith(".svga")) return undefined;
+  if (typeof value.path !== "string") return undefined;
   const filePath = path.resolve(value.path);
   if (filePath.includes("\0")) return undefined;
+  const extension = path.extname(filePath).toLowerCase();
+  const allowedRecentExtensions = isMultiFormatDesktopProduct
+    ? new Set([".svga", ".json", ".mp4"])
+    : new Set([".svga"]);
+  if (!allowedRecentExtensions.has(extension)) return undefined;
   const lastOpenedAt = typeof value.lastOpenedAt === "string" && value.lastOpenedAt.length <= 40
     ? value.lastOpenedAt
     : new Date(0).toISOString();
@@ -3366,7 +3371,7 @@ function normalizeShortTermRecentRecord(value) {
 }
 
 function readShortTermRecentRecords() {
-  if (!isShortTermProduct) return [];
+  if (!usesShortTermPreviewShell) return [];
   try {
     const parsed = JSON.parse(readFileSync(shortTermRecentStorePath(), "utf8"));
     if (!Array.isArray(parsed?.records)) return [];
@@ -3380,7 +3385,7 @@ function readShortTermRecentRecords() {
 }
 
 function writeShortTermRecentRecords(records) {
-  if (!isShortTermProduct) return;
+  if (!usesShortTermPreviewShell) return;
   mkdirSync(path.dirname(shortTermRecentStorePath()), { recursive: true });
   writeFileSync(shortTermRecentStorePath(), `${JSON.stringify({
     schemaVersion: 1,
@@ -3393,7 +3398,7 @@ function writeShortTermRecentRecords(records) {
 }
 
 function rememberShortTermRecentFile(filePath) {
-  if (!isShortTermProduct) return;
+  if (!usesShortTermPreviewShell) return;
   const normalized = normalizeShortTermRecentRecord({
     path: filePath,
     lastOpenedAt: new Date().toISOString()
@@ -3493,7 +3498,7 @@ function stringEnum(value, allowed, fallback) {
   return allowed.includes(value) ? value : fallback;
 }
 
-function openShortTermRecentFile(recentFileId) {
+async function openShortTermRecentFile(recentFileId) {
   if (!isBoundedString(recentFileId, 80)) return { status: "missing", message: "最近文件记录无效。" };
   const records = readShortTermRecentRecords();
   const record = records.find(({ id }) => id === recentFileId);
@@ -3502,11 +3507,13 @@ function openShortTermRecentFile(recentFileId) {
     rebuildShortTermApplicationMenu();
     return { status: "missing", message: "这个最近文件已缺失或不可访问。" };
   }
-  return openSvgaFileBytes(record.path);
+  return isMultiFormatDesktopProduct
+    ? openMultiFormatFilePath(record.path, "recentFile")
+    : openSvgaFileBytes(record.path);
 }
 
 function clearShortTermRecentFiles() {
-  if (!isShortTermProduct) return { status: "cleared", count: 0 };
+  if (!usesShortTermPreviewShell) return { status: "cleared", count: 0 };
   const count = readShortTermRecentRecords().length;
   writeShortTermRecentRecords([]);
   rebuildShortTermApplicationMenu();
@@ -5115,13 +5122,15 @@ function getMultiFormatDesktopSession() {
 }
 
 async function openMultiFormatFilePath(filePath, source = "fileButton") {
-  return getMultiFormatDesktopSession().openLocalFilePath(filePath, source);
+  const result = await getMultiFormatDesktopSession().openLocalFilePath(filePath, source);
+  if (result?.sourceId && result?.model?.status !== "failed") rememberShortTermRecentFile(filePath);
+  return result;
 }
 
 async function openMultiFormatFile() {
   assertMultiFormatDesktopProduct();
   const result = await dialog.showOpenDialog({
-    title: "打开 0.2 预览候选",
+    title: "打开文件",
     filters: [
       { name: "SVGA / Lottie JSON / VAP MP4", extensions: ["svga", "json", "mp4"] },
       { name: "SVGA", extensions: ["svga"] },
@@ -5137,7 +5146,17 @@ async function openMultiFormatFile() {
 }
 
 async function openDroppedMultiFormatFile(input) {
-  return getMultiFormatDesktopSession().openDroppedFile(input);
+  assertMultiFormatDesktopProduct();
+  const filePath = typeof input?.filePath === "string" ? input.filePath : "";
+  if (!filePath) {
+    return {
+      status: "failed",
+      code: "parse_precondition",
+      message: "拖拽文件没有提供可验证的本地来源。",
+      pathRedacted: true
+    };
+  }
+  return openMultiFormatFilePath(filePath, "dragDrop");
 }
 
 async function prepareMultiFormatRuntimePreview(input) {
@@ -5435,7 +5454,7 @@ async function dispatchMultiFormatOpenFileEvent(window, item) {
   } catch (error) {
     await invokeMultiFormatRendererAction(window, "failHostFileOpen", {
       eventId: item.eventId,
-      message: "0.2 预览主机未能打开系统传入的本地候选，源文件没有被修改。"
+      message: "无法打开系统传入的本地文件，源文件没有被修改。"
     });
     throw error;
   }
@@ -5671,7 +5690,7 @@ function installShortTermApplicationMenu(window) {
       label: "文件",
       submenu: [
         {
-          label: "打开 SVGA...",
+          label: "打开文件...",
           accelerator: "CommandOrControl+O",
           click: () => invokeShortTermAction("openFromHostDialog")
         },
@@ -5943,7 +5962,7 @@ function installMultiFormatDesktopApplicationMenu(window) {
       label: "文件",
       submenu: [
         {
-          label: "打开预览候选...",
+          label: "打开文件...",
           accelerator: "CommandOrControl+O",
           click: () => invokePreviewAction("openFromHostDialog")
         },
@@ -6100,12 +6119,8 @@ function installMultiFormatDesktopApplicationMenu(window) {
 }
 
 function installApplicationMenu(window) {
-  if (isShortTermProduct) {
+  if (usesShortTermPreviewShell) {
     installShortTermApplicationMenu(window);
-    return;
-  }
-  if (isMultiFormatDesktopProduct) {
-    installMultiFormatDesktopApplicationMenu(window);
     return;
   }
   const runRendererMenuAction = (label, code) => {
@@ -6375,7 +6390,7 @@ function installApplicationMenu(window) {
 }
 
 async function saveShortTermSvgaOutput(input) {
-  if (!isShortTermProduct) throw new Error("Short-term save is only available in the short-term product.");
+  if (!usesShortTermPreviewShell) throw new Error("SVGA save is only available in the preview shell.");
   const value = validateShortTermSvgaSaveInput(input);
   if (!value) throw new Error("Invalid short-term save payload");
   const originalPath = value.sourceId ? sourceFilePaths.get(value.sourceId) : "";

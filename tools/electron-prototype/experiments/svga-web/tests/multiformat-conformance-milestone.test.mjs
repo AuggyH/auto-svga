@@ -1,0 +1,278 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+import {
+  containMotionMedia,
+  projectMultiFormatRightPanel
+} from "../web/multiformat-product-conformance.mjs";
+import { createMultiFormatDesktopPreviewController } from "../web/multiformat-desktop-preview-controller.mjs";
+
+const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+function source(relativePath) {
+  return readFileSync(path.join(experimentRoot, relativePath), "utf8");
+}
+
+test("0.2 composes the established SVGA controller instead of globally disabling its workflow", () => {
+  const appSource = source("web/short-term-macos-app.mjs");
+  const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+  const mainSource = source("main.cjs");
+
+  assert.match(appSource, /createShortTermAppController\(\{ bridge, nodes, state \}\)/u);
+  assert.match(appSource, /svgaController/u);
+  assert.doesNotMatch(controllerSource, /saveActiveOutput:\s*unsupportedAsync/u);
+  assert.doesNotMatch(controllerSource, /renameSelectedImageKey:\s*unsupportedAsync/u);
+  assert.doesNotMatch(controllerSource, /runOptimization:\s*unsupportedAsync/u);
+  assert.match(mainSource, /async function saveShortTermSvgaOutput[\s\S]*if \(!usesShortTermPreviewShell\)/u);
+  assert.doesNotMatch(mainSource, /async function saveShortTermSvgaOutput[\s\S]{0,200}if \(!isShortTermProduct\)/u);
+});
+
+test("0.2 owner copy uses Open File without candidate or proof language", () => {
+  const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+  const mainSource = source("main.cjs");
+
+  assert.doesNotMatch(controllerSource, /打开预览候选/u);
+  assert.doesNotMatch(mainSource, /title:\s*"打开 0\.2 预览候选"|label:\s*"打开预览候选/u);
+  assert.match(controllerSource, /打开文件/u);
+});
+
+test("host chooser cancellation cannot enter loading or resize the Launch window", () => {
+  const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+  const openStart = controllerSource.indexOf("async function openFromHostDialog()");
+  const openEnd = controllerSource.indexOf("async function loadDroppedFile", openStart);
+  const openBody = controllerSource.slice(openStart, openEnd);
+  const invokeIndex = openBody.indexOf("bridge.openMultiFormatFile()");
+  const loadingIndex = openBody.indexOf("setLoading(");
+
+  assert.ok(invokeIndex >= 0);
+  assert.ok(loadingIndex < 0 || loadingIndex > invokeIndex);
+});
+
+test("cancelled host chooser preserves Launch state and window geometry behaviorally", async () => {
+  let openCalls = 0;
+  const windowModes = [];
+  const state = { view: "launch" };
+  const controller = createMultiFormatDesktopPreviewController({
+    bridge: {
+      async openMultiFormatFile() {
+        openCalls += 1;
+        return { status: "cancelled" };
+      },
+      async setShortTermWindowMode(mode) {
+        windowModes.push(mode);
+      }
+    },
+    nodes: {},
+    state
+  });
+
+  await controller.handlers.openFromHostDialog();
+
+  assert.equal(openCalls, 1);
+  assert.equal(state.view, "launch");
+  assert.deepEqual(windowModes, []);
+});
+
+test("host-opened SVGA delegates established save, optimize, and rename workflows", async () => {
+  const calls = [];
+  const svgaController = {
+    handlers: {
+      async loadOpenedSource(input) {
+        calls.push(["load", input]);
+      },
+      async refreshRecentFiles() {
+        calls.push(["refresh"]);
+      },
+      saveActiveOutput() {
+        calls.push(["save"]);
+        return "saved";
+      },
+      runOptimization() {
+        calls.push(["optimize"]);
+        return "optimized";
+      },
+      renameSelectedImageKey() {
+        calls.push(["rename"]);
+        return "renamed";
+      }
+    }
+  };
+  const controller = createMultiFormatDesktopPreviewController({
+    bridge: {},
+    nodes: {},
+    state: { view: "launch" },
+    svgaController
+  });
+
+  assert.equal(controller.handlers.beginHostFileOpen({ eventId: "svga-open-1" }), true);
+  assert.equal(await controller.handlers.completeHostFileOpen({
+    eventId: "svga-open-1",
+    result: {
+      sourceId: "sha256:svga-source",
+      model: {
+        detectedFormat: "svga",
+        displayName: "SVGA-A",
+        status: "previewReady"
+      },
+      svgaSource: {
+        displayName: "SVGA-A",
+        bytes: Uint8Array.from([1, 2, 3])
+      }
+    }
+  }), true);
+
+  assert.equal(controller.handlers.saveActiveOutput(), "saved");
+  assert.equal(controller.handlers.runOptimization(), "optimized");
+  assert.equal(controller.handlers.renameSelectedImageKey(), "renamed");
+  assert.deepEqual(calls.map(([name]) => name), ["load", "refresh", "save", "optimize", "rename"]);
+  assert.equal(calls[0][1].sourceId, "sha256:svga-source");
+  assert.deepEqual(Array.from(calls[0][1].bytes), [1, 2, 3]);
+});
+
+test("drag intake keeps host path authority and does not serialize renderer bytes", () => {
+  const preloadSource = source("preload.cjs");
+  const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+  const mainSource = source("main.cjs");
+
+  assert.match(preloadSource, /webUtils/u);
+  assert.match(preloadSource, /getPathForFile/u);
+  assert.doesNotMatch(controllerSource, /Array\.from\(bytes\)/u);
+  assert.match(mainSource, /openMultiFormatFilePath\([^,]+,\s*"dragDrop"\)/u);
+});
+
+test("formal 0.2 exposes redacted recent files and SVGA save through the established shell", () => {
+  const preloadSource = source("preload.cjs");
+  const multiApiStart = preloadSource.indexOf("function createMultiFormatDesktopProductPreloadApi()");
+  const multiApiEnd = preloadSource.indexOf("function withShortTermProductApi", multiApiStart);
+  const multiApi = preloadSource.slice(multiApiStart, multiApiEnd);
+  const mainSource = source("main.cjs");
+
+  assert.match(multiApi, /recentFiles:\s*"host-user-data-redacted"/u);
+  assert.match(multiApi, /getRecentSvgaFiles\(/u);
+  assert.match(multiApi, /openRecentSvgaFile\(/u);
+  assert.match(multiApi, /clearRecentSvgaFiles\(/u);
+  assert.match(multiApi, /saveShortTermSvgaOutput\(/u);
+  assert.match(mainSource, /if \(usesShortTermPreviewShell\) \{\s*installShortTermApplicationMenu/u);
+});
+
+test("recent-file normalization accepts only the three 0.2 local motion formats", () => {
+  const mainSource = source("main.cjs");
+  assert.match(mainSource, /\.svga[\s\S]*\.json[\s\S]*\.mp4/u);
+  assert.match(mainSource, /openMultiFormatFilePath\(record\.path,\s*"recentFile"\)/u);
+});
+
+test("right-panel rendering projects only format-applicable groups and hides internal phases", () => {
+  const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+  assert.match(controllerSource, /projectMultiFormatRightPanel/u);
+  assert.doesNotMatch(controllerSource, /\["Maturity",\s*"阶段"\]/u);
+  const projected = projectMultiFormatRightPanel({
+    detectedFormat: "lottie",
+    rightPanel: {
+      facts: [
+        { id: "format", label: "Format", value: "LOTTIE" },
+        { id: "maturity", label: "Maturity", value: "hidden_0.2_spike" },
+        { id: "videoCodec", label: "Video codec", value: "not applicable" }
+      ],
+      assetInventory: {
+        groups: [
+          { id: "image_resources", status: "available", items: [{ source: "asset", status: "available", replaceable: false }] },
+          { id: "vap_fusion_images", status: "not_applicable", items: [{ source: "capability", status: "not_applicable", replaceable: false }] }
+        ]
+      },
+      issues: [
+        { code: "missing_resource", message: "Embedded image is missing." },
+        { code: "capability", message: "hidden_0.2_spike" }
+      ]
+    }
+  });
+  assert.deepEqual(projected.facts.map(({ id }) => id), ["format"]);
+  assert.deepEqual(projected.assetInventory.groups.map(({ id }) => id), ["image_resources"]);
+  assert.deepEqual(projected.issues.map(({ code }) => code), ["missing_resource"]);
+});
+
+test("accepted R12 shell affordances remain present in the composed 0.2 shell", () => {
+  const htmlSource = source("web/index.html");
+  const controllerSource = source("web/short-term-macos-controller.mjs");
+  const compareModelSource = source("web/short-term-macos-compare-model.mjs");
+  const domStateSource = source("web/short-term-macos-dom-state.mjs");
+
+  assert.match(htmlSource, /class="canvasModeSwitch compareModeSwitch"/u);
+  assert.match(compareModelSource, /comparePairOpenButton[\s\S]*打开文件/u);
+  assert.match(compareModelSource, /compareExitButton/u);
+  assert.match(controllerSource, /loadDroppedCompareFile,/u);
+  assert.match(domStateSource, /rightSurfaceHeader\.hidden = surfaceState === "optimization"/u);
+});
+
+test("composed SVGA playback exposes and cleans an exact primary-player identity", () => {
+  const playbackSource = source("web/short-term-macos-playback-model.mjs");
+  const playbackSurfaceSource = source("web/short-term-macos-playback-surface.mjs");
+  const fileSurfaceSource = source("web/short-term-macos-file-surface.mjs");
+  const proofSource = source("scripts/run-multiformat-real-rendering-matrix-proof.cjs");
+  const mountIndex = playbackSource.indexOf("await player.mount(videoItem)");
+  const readyIndex = playbackSource.indexOf('canvas.dataset.runtimePlayer = "svga-web"');
+
+  assert.ok(mountIndex >= 0 && readyIndex > mountIndex);
+  assert.match(playbackSource, /delete playback\.canvas\.dataset\.runtimePlayer/u);
+  assert.match(playbackSource, /hasPlayed: options\.start !== false/u);
+  assert.match(playbackSurfaceSource, /runtimePlaybackFrame/u);
+  assert.match(playbackSurfaceSource, /runtimePlaybackState/u);
+  assert.match(fileSurfaceSource, /renderFailureMessage\(nodes, ""\)/u);
+  assert.match(source("web/multiformat-desktop-preview-controller.mjs"), /startPlayback: false/u);
+  assert.match(source("web/multiformat-desktop-preview-controller.mjs"), /delete mount\.dataset\.runtimePlaybackProgress/u);
+  assert.match(proofSource, /format: "svga",[\s\S]*?expectedCanvas: "primary"/u);
+  assert.match(proofSource, /#primaryCanvas\[data-runtime-player="svga-web"\]/u);
+  assert.doesNotMatch(proofSource, /svga_failure_discriminator/u);
+});
+
+test("preview runtime has a reserved stage viewport between mode and transport controls", () => {
+  const htmlSource = source("web/index.html");
+  const cssSource = source("web/short-term-macos.modules.css");
+
+  assert.match(htmlSource, /class="runtimeStageViewport"/u);
+  assert.match(cssSource, /\.runtimeStageViewport/u);
+  assert.match(cssSource, /--asv-runtime-stage-top/u);
+  assert.match(cssSource, /--asv-runtime-stage-bottom/u);
+});
+
+test("square, wide, and tall media fit wholly inside the reserved stage", () => {
+  assert.deepEqual(containMotionMedia({ width: 300, height: 300 }, { width: 600, height: 400 }), {
+    width: 400,
+    height: 400,
+    scale: 4 / 3
+  });
+  assert.deepEqual(containMotionMedia({ width: 900, height: 300 }, { width: 600, height: 400 }), {
+    width: 600,
+    height: 200,
+    scale: 2 / 3
+  });
+  assert.deepEqual(containMotionMedia({ width: 300, height: 900 }, { width: 600, height: 400 }), {
+    width: 133,
+    height: 400,
+    scale: 4 / 9
+  });
+});
+
+test("real-rendering evidence binds the current routed material aliases without durable local paths", () => {
+  const proofSource = source("scripts/run-multiformat-real-rendering-matrix-proof.cjs");
+
+  assert.match(proofSource, /alias: "REAL-SVGA-SQUARE-A"[\s\S]*da75da15150fb7d9bca0c3a5acafbcce9601438a2142afdd2c014b0c3d64449d/u);
+  assert.match(proofSource, /alias: "REAL-LOTTIE-EMBEDDED-A"[\s\S]*4d415de7f6ec0a3742281e91f60a0dcc9e1c5574760e82e17a053eafc1d82eb1/u);
+  assert.match(proofSource, /alias: "OWNER-VAP-A"[\s\S]*22cb7c516cba552ba5347e82aea7d17b8a3f988b68befbb7e6f69743b096de9d/u);
+  assert.match(proofSource, /AUTO_SVGA_SKIP_FUSION_FIXTURE === "1"/u);
+  assert.match(proofSource, /status: "notRun", reason: "task_owned_fusion_fixture_unavailable"/u);
+  assert.doesNotMatch(proofSource, /Users\/huangtengxin\/Downloads/u);
+});
+
+test("real-material source proof validates the private binding and emits aliases only", () => {
+  const proofSource = source("scripts/run-multiformat-conformance-source-proof.cjs");
+
+  assert.match(proofSource, /AUTO_SVGA_CONFORMANCE_INPUT_BINDING/u);
+  assert.match(proofSource, /bindingStat\.mode & 0o777/u);
+  assert.match(proofSource, /inputStat\.isFile\(\) \|\| inputStat\.isSymbolicLink\(\)/u);
+  assert.match(proofSource, /assertNoPathLeak/u);
+  assert.match(proofSource, /runtimePixelPlayback: false/u);
+  assert.match(proofSource, /fusionReplacementRuntimeRerun: false/u);
+  assert.doesNotMatch(proofSource, /Users\/huangtengxin\/Downloads/u);
+});

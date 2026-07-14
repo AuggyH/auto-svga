@@ -27,7 +27,17 @@ export async function mountPlayback({
   await player.mount(videoItem);
   drawFrame(player, videoItem, 0);
   if (options.start !== false) player.start();
-  playbackState[`${key}Playback`] = { player, videoItem, playing: options.start !== false, looping, resizeObserver };
+  canvas.dataset.runtimePlayer = "svga-web";
+  canvas.dataset.runtimePlayerReady = "true";
+  playbackState[`${key}Playback`] = {
+    player,
+    videoItem,
+    canvas,
+    playing: options.start !== false,
+    hasPlayed: options.start !== false,
+    looping,
+    resizeObserver
+  };
   onPlaybackStateChange();
   return playbackState[`${key}Playback`];
 }
@@ -40,6 +50,15 @@ export function stopPlayback({ key, playbackState }) {
     // Renderer cleanup should never block opening another local file.
   }
   playback?.resizeObserver?.disconnect?.();
+  if (playback?.canvas?.dataset?.runtimePlayer === "svga-web") {
+    delete playback.canvas.dataset.runtimePlayer;
+    delete playback.canvas.dataset.runtimePlayerReady;
+    delete playback.canvas.dataset.runtimePlaybackState;
+    delete playback.canvas.dataset.runtimePlaybackProgress;
+    delete playback.canvas.dataset.runtimePlaybackFrame;
+    delete playback.canvas.dataset.runtimePlaybackFrames;
+    delete playback.canvas.dataset.runtimePlaybackTimeCopy;
+  }
   playbackState[`${key}Playback`] = undefined;
 }
 
@@ -56,6 +75,7 @@ export function togglePrimaryPlayback(playbackState, onPlaybackStateChange = () 
   } else {
     playback.player.start();
     playback.playing = true;
+    playback.hasPlayed = true;
   }
   onPlaybackStateChange();
 }
@@ -66,6 +86,7 @@ export function replayPrimaryPlayback(playbackState, onPlaybackStateChange = () 
   playback.player.clear();
   playback.player.start();
   playback.playing = true;
+  playback.hasPlayed = true;
   onPlaybackStateChange();
 }
 

@@ -100,6 +100,11 @@ async function exposePreloadGlobals(productMilestoneId, hostBoundaryMode = "form
               invocations.push({ channel, input });
               return { channel, input };
             }
+          },
+          webUtils: {
+            getPathForFile(file) {
+              return typeof file?.path === "string" ? file.path : "";
+            }
           }
         };
       }
@@ -1119,22 +1124,25 @@ test("formal preload isolates short-term SVGA from 0.2 multi-format APIs", async
   assert.equal(exposed.autoSvgaPrototype, undefined);
 });
 
-test("formal 0.2 multi-format preload exposes only the gated preview bridge", async () => {
+test("formal 0.2 multi-format preload preserves the SVGA host workflow beside the gated preview bridge", async () => {
   const { exposed, invocations } = await exposePreloadGlobals("0.2-multiformat-preview", "formal");
   const api = exposed.autoSvgaElectronHost;
 
   assert.deepEqual([...api.capabilities.documentTypes], ["svga", "lottie-json", "vap-mp4"]);
-  assert.equal(api.capabilities.saveAs, false);
-  assert.equal(api.capabilities.overwriteSave, false);
+  assert.equal(api.capabilities.saveAs, "host-dialog-svga-only");
+  assert.equal(api.capabilities.overwriteSave, "host-source-path-from-file-picker-only");
   assert.equal(api.capabilities.export, false);
   assert.equal(api.capabilities.visibleIn01, false);
   assert.equal(api.capabilities.supportClaim, false);
-  assert.equal(api.openSvgaFile, undefined);
-  assert.equal(api.saveShortTermSvgaOutput, undefined);
+  assert.equal(typeof api.openSvgaFile, "function");
+  assert.equal(typeof api.saveShortTermSvgaOutput, "function");
+  assert.equal(typeof api.getRecentSvgaFiles, "function");
+  assert.equal(typeof api.openRecentSvgaFile, "function");
+  assert.equal(typeof api.clearRecentSvgaFiles, "function");
   assert.equal(exposed.autoSvgaPrototype, undefined);
 
   api.openMultiFormatFile();
-  api.openDroppedMultiFormatFile({ displayName: "fixture.json", bytes: [123, 125] });
+  api.openDroppedMultiFormatFile({ path: "/private/tmp/fixture.json" });
   api.prepareMultiFormatRuntimePreview({ sourceId: "0123456789abcdef01234567", format: "lottie" });
   api.controlMultiFormatPreview({ action: "play" });
   api.chooseMultiFormatReplacementImage({ targetId: "asset", sourceId: "0123456789abcdef01234567", kind: "image" });
@@ -1170,14 +1178,16 @@ test("0.2 multi-format desktop mode reuses the preview shell without widening sh
   assert.match(main, /const isMultiFormatDesktopProduct = productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;/);
   assert.match(main, /const usesShortTermPreviewShell = isShortTermProduct \|\| isMultiFormatDesktopProduct;/);
   assert.match(main, /const rendererPath = usesShortTermPreviewShell \? "\/" : "\/workbench\.html";/);
-  assert.match(main, /function installMultiFormatDesktopApplicationMenu/);
+  assert.match(main, /if \(usesShortTermPreviewShell\) \{\s*installShortTermApplicationMenu/);
   assert.match(main, /repoRoot: multiFormatDesktopRuntimeRoot/);
   assert.match(main, /openDroppedMultiFormatFile\(input\)/);
   assert.match(appEntry, /bridge\?\.productMilestoneId === "0\.2-multiformat-preview"/);
   assert.match(appEntry, /createMultiFormatDesktopPreviewController/);
-  assert.match(controller, /saveAs: false|0\.2 预览候选不支持保存/);
+  assert.match(appEntry, /const svgaController = createShortTermAppController/);
+  assert.match(controller, /const saveActiveOutput = \(\.\.\.args\) => delegateSvga\("saveActiveOutput"/);
+  assert.match(controller, /const renameSelectedImageKey = \(\.\.\.args\) => delegateSvga\("renameSelectedImageKey"/);
   assert.match(controller, /resolveMultiFormatOpenOutcome/);
-  assert.match(controller, /model\.rightPanel\?\.assetInventory/);
+  assert.match(controller, /projectMultiFormatRightPanel/);
   assert.match(controller, /function createAssetGroup/);
   assert.match(controller, /dataset\.group = group\.id/);
   assert.match(controller, /prepareMultiFormatRuntimePreview/);
@@ -1328,7 +1338,7 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   assert.match(applySource, /runtimeValue\.targetId/);
   assert.doesNotMatch(controller, /runtimeReplacementImageTargetId/);
   assert.doesNotMatch(chooseSource, /replacementFileInput\.click\(\)|\.click\(\)/);
-  assert.match(controller, /openResourceContextMenu\(_event, imageKey\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(showFailure\);/);
+  assert.match(controller, /openResourceContextMenu\(event, imageKey, returnFocus\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(showFailure\);/);
   assert.match(controller, /aria-label="替换预览图片"/);
 });
 
@@ -2021,6 +2031,79 @@ test("0.2 multi-format desktop session opens synthetic SVGA, Lottie, and VAP can
   }
 });
 
+test("0.2 host-owned drag intake preserves embedded, adjacent, absent, and Lottie resource context", async () => {
+  const sessionRoot = await mkdtemp(path.join(os.tmpdir(), "auto-svga-host-intake-context-"));
+  const sourceStore = new Map();
+  const session = createMultiFormatDesktopPreviewSession({
+    repoRoot,
+    sessionRoot,
+    sourceStore,
+    openTimeoutMs: 1000
+  });
+  const embeddedVapPath = path.join(sessionRoot, "embedded-vap.mp4");
+  const adjacentVapPath = path.join(sessionRoot, "adjacent-vap.mp4");
+  const adjacentVapcPath = path.join(sessionRoot, "adjacent-vap.json");
+  const isolatedVapPath = path.join(sessionRoot, "isolated-vap.mp4");
+  const lottiePath = path.join(sessionRoot, "external-image-lottie.json");
+  const lottieImagePath = path.join(sessionRoot, "avatar.png");
+
+  try {
+    await writeFile(embeddedVapPath, createSyntheticVapMp4Bytes());
+    await writeFile(adjacentVapPath, createSyntheticVapMp4WithoutEmbeddedVapcBytes());
+    await writeFile(adjacentVapcPath, JSON.stringify(createSyntheticVapcDocument()));
+    await writeFile(isolatedVapPath, createSyntheticVapMp4WithoutEmbeddedVapcBytes());
+    await writeFile(lottieImagePath, Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAFgAI/1C1Z4QAAAABJRU5ErkJggg==",
+      "base64"
+    ));
+    await writeFile(lottiePath, JSON.stringify({
+      v: "5.13.0",
+      w: 120,
+      h: 80,
+      fr: 30,
+      ip: 0,
+      op: 30,
+      layers: [{ ind: 1, ty: 2, refId: "image_0" }],
+      assets: [{ id: "image_0", u: "", p: "avatar.png", w: 1, h: 1 }]
+    }));
+
+    const embedded = await session.openLocalFilePath(embeddedVapPath, "dragDrop");
+    assert.equal(embedded.model.status, "previewReady");
+    assert.equal(embedded.model.detectedFormat, "vap");
+    assert.equal(embedded.model.openedFrom, "dragDrop");
+
+    const adjacent = await session.openLocalFilePath(adjacentVapPath, "dragDrop");
+    assert.equal(adjacent.model.status, "previewReady");
+    assert.equal(adjacent.model.detectedFormat, "vap");
+    assert.equal(adjacent.model.openedFrom, "dragDrop");
+
+    const isolated = await session.openLocalFilePath(isolatedVapPath, "dragDrop");
+    assert.notEqual(isolated.model.status, "previewReady");
+    assert.equal(isolated.model.detectedFormat, "vap");
+    assert.equal(isolated.model.rightPanel.issues.some((issue) =>
+      issue.details?.reason === "embedded_vapc_box_required"
+      || issue.message?.includes("vapc")
+    ), true, JSON.stringify(isolated.model.rightPanel.issues));
+
+    const lottie = await session.openLocalFilePath(lottiePath, "dragDrop");
+    assert.equal(lottie.model.status, "previewReady");
+    assert.equal(lottie.model.detectedFormat, "lottie");
+    const lottieRuntime = await session.prepareRuntimePreview({
+      sourceId: lottie.sourceId,
+      format: "lottie",
+      requestId: lottie.model.requestId,
+      replacements: lottie.model.replacement
+    });
+    assert.equal(lottieRuntime.status, "prepared");
+    assert.match(lottieRuntime.animationData.assets[0].p, /^data:image\/png;base64,/u);
+
+    const serialized = JSON.stringify({ embedded, adjacent, isolated, lottie, lottieRuntime });
+    assert.doesNotMatch(serialized, /auto-svga-host-intake-context|\/Users\//u);
+  } finally {
+    await rm(sessionRoot, { recursive: true, force: true });
+  }
+});
+
 test("0.2 multi-format desktop session headless SVGA playback load returns a value contract", async () => {
   const sessionSource = await readFile(path.join(experimentRoot, "multiformat-desktop-session.cjs"), "utf8");
   const adapterStart = sessionSource.indexOf("function createHeadlessPlaybackAdapter(format)");
@@ -2511,7 +2594,7 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
     { deadlineMs: 10 }
   );
   assert.equal(rejected.kind, "failure");
-  assert.match(rejected.message, /打开本地候选失败/);
+  assert.match(rejected.message, /无法打开本地文件/);
   assert.doesNotMatch(rejected.message, /\/Users|alice|secret/i);
 
   const stalled = await resolveMultiFormatOpenOutcome(new Promise(() => {}), { deadlineMs: 10 });
@@ -4199,9 +4282,9 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-text-input-width: 172px/);
   assert.match(shortTermTokens, /--asv-component-text-input-height: 24px/);
   assert.match(shortTermTokens, /--asv-text-input-height: var\(--asv-component-text-input-height\)/);
-  assert.match(shortTermTokens, /--asv-component-mode-switch-width: 152px/);
+  assert.match(shortTermTokens, /--asv-component-mode-switch-width: 192px/);
   assert.match(shortTermTokens, /--asv-component-mode-switch-height: 42px/);
-  assert.match(shortTermTokens, /--asv-component-mode-button-width: 72px/);
+  assert.match(shortTermTokens, /--asv-component-mode-button-width: 92px/);
   assert.match(shortTermTokens, /--asv-component-mode-button-height: 34px/);
   assert.match(shortTermTokens, /--asv-mode-switch-gap: var\(--asv-component-mode-switch-gap\)/);
   assert.match(shortTermTokens, /--asv-mode-switch-shadow: var\(--asv-component-mode-switch-shadow\)/);
@@ -4241,7 +4324,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-tab-selected-ring: none/);
   assert.match(shortTermTokens, /--asv-component-asset-row-divider: 0 solid transparent/);
   assert.match(shortTermTokens, /--asv-component-asset-row-hover-background: color-mix\(in srgb, var\(--asv-color-surface-row-hover\) 18%, transparent\)/);
-  assert.match(shortTermTokens, /--asv-component-asset-row-detail-letter-spacing: 0\.1px/);
+  assert.match(shortTermTokens, /--asv-component-asset-row-detail-letter-spacing: 0/);
   assert.match(shortTermTokens, /--asv-component-row-menu-size/);
   assert.match(shortTermTokens, /--asv-row-menu-icon-size: var\(--asv-component-row-menu-icon-size\)/);
   assert.match(shortTermTokens, /--asv-component-runtime-text-input-width: var\(--asv-component-text-input-width\)/);
@@ -4344,7 +4427,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermTokens, /--asv-component-asset-row-padding-block: var\(--asv-space-1\)/);
   assert.match(shortTermTokens, /--asv-asset-row-divider: var\(--asv-component-asset-row-divider\)/);
   assert.match(shortTermTokens, /--asv-asset-row-hover-bg: var\(--asv-component-asset-row-hover-background\)/);
-  assert.match(shortTermTokens, /--asv-component-replaceable-row-gap/);
+  assert.match(shortTermTokens, /--asv-component-replaceable-row-gap: var\(--asv-space-2\)/);
   assert.match(shortTermTokens, /--asv-replaceable-row-divider: var\(--asv-component-replaceable-row-divider\)/);
   assert.match(shortTermTokens, /--asv-replaceable-row-selected-bg: var\(--asv-component-replaceable-row-selected-background\)/);
   assert.match(shortTermTokens, /--asv-component-empty-state-width: 312px/);
@@ -4549,8 +4632,8 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*overflow: hidden/s);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*padding: var\(--asv-file-header-padding-block\) 0/s);
   assert.match(shortTermTokens, /--asv-component-workbench-top-safe-area: var\(--asv-component-toolbar-height\)/);
-  assert.match(shortTermTokens, /--asv-component-workbench-floating-control-top: calc\(var\(--asv-component-workbench-top-safe-area\) \+ var\(--asv-space-4\)\)/);
-  assert.match(shortTermTokens, /--asv-component-right-panel-safe-padding-block-start: calc\(var\(--asv-component-workbench-top-safe-area\) \+ var\(--asv-component-right-panel-padding\)\)/);
+  assert.match(shortTermTokens, /--asv-component-workbench-floating-control-top: var\(--asv-space-4\)/);
+  assert.match(shortTermTokens, /--asv-component-right-panel-safe-padding-block-start: var\(--asv-component-right-panel-padding\)/);
   assert.match(shortTermModules, /\.rightSurfaceHeader\s*\{[^}]*margin: var\(--asv-right-panel-safe-padding-block-start\) var\(--asv-right-panel-padding\) 0/s);
   assert.match(shortTermModules, /\.rightPanel\s*\{[^}]*background: var\(--asv-side-surface-bg\)/s);
   assert.match(shortTermModules, /\.rightSurfaceBody\s*\{[^}]*background: var\(--asv-side-surface-bg\)/s);
@@ -4674,7 +4757,10 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermModules, /\.comparePairHeader/);
   assert.doesNotMatch(shortTermModules, /\.compareMetricRow/);
   assert.match(shortTermModules, /\.compareMetricColumn/);
-  assert.match(shortTermModules, /\.compareMetricCell/);
+  assert.match(shortTermModules, /\.compareMetricCell\s*\{[^}]*gap: var\(--asv-compare-metric-cell-gap\)[^}]*min-height: var\(--asv-compare-metric-row-min-height\)/s);
+  assert.match(shortTermModules, /\.compareMetricCell span,[\s\S]*\.optimizationMetricCell span\s*\{[^}]*font-size: var\(--asv-fact-cell-label-size\)[^}]*line-height: var\(--asv-fact-cell-label-line-height\)/s);
+  assert.match(shortTermModules, /\.compareMetricCell strong,[\s\S]*\.optimizationMetricValue\s*\{[^}]*font-size: var\(--asv-fact-cell-value-size\)[^}]*line-height: var\(--asv-fact-cell-value-line-height\)/s);
+  assert.equal((shortTermModules.match(/\.compareMetricCell\s*\{/g) ?? []).length, 1);
   assert.match(shortTermModules, /\.optimizationMetricCell/);
   assert.match(shortTermModules, /\.compareSummary/);
   assert.match(shortTermModules, /\.compareSummary\s*\{[^}]*border-bottom: 0/s);
@@ -4899,7 +4985,7 @@ test("default Electron renderer is the short-term macOS client and keeps legacy 
   assert.match(shortTermCompareModel, /export function renderOptimizationCompareResultHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePlaceholderHtml/);
   assert.match(shortTermCompareModel, /export function renderGeneralComparePanelHtml/);
-  assert.match(shortTermCompareModel, /class="toolbarButton primary" type="button" data-action="back-preview">退出对比/);
+  assert.match(shortTermCompareModel, /class="toolbarButton compareExitButton" type="button" data-action="back-preview">退出对比/);
   assert.match(shortTermCompareModel, /if \(!aModel \|\| !bModel\) return ""/);
   assert.match(shortTermCompareModel, /const rows = renderCompareMetricColumns\(aModel, bModel\)/);
   assert.match(shortTermCompareModel, /rows \? `<section class="compareMetricGrid" aria-label="对比信息">/);

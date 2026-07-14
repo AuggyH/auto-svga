@@ -8,12 +8,11 @@ import { runShortTermSmokeIfRequested } from "./short-term-macos-smoke-runner.mj
 const bridge = globalThis.autoSvgaElectronHost;
 const state = createShortTermInitialState();
 const nodes = collectShortTermNodes();
-const multiFormatModule = bridge?.productMilestoneId === "0.2-multiformat-preview"
-  ? await import("./multiformat-desktop-preview-controller.mjs")
-  : undefined;
+const multiFormatModule = bridge?.productMilestoneId === "0.2-multiformat-preview" ? await import("./multiformat-desktop-preview-controller.mjs") : undefined;
+const svgaController = createShortTermAppController({ bridge, nodes, state });
 const controller = multiFormatModule
-  ? multiFormatModule.createMultiFormatDesktopPreviewController({ bridge, nodes, state })
-  : createShortTermAppController({ bridge, nodes, state });
+  ? multiFormatModule.createMultiFormatDesktopPreviewController({ bridge, nodes, state, svgaController })
+  : svgaController;
 
 bindShortTermInteractionEvents({
   nodes,

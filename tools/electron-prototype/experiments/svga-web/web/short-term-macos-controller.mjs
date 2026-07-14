@@ -220,7 +220,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     });
   }
 
-  async function loadOpenedSource({ bytes, displayName, sourceId }) {
+  async function loadOpenedSource({ bytes, displayName, sourceId, startPlayback = true }) {
     hideShortTermCanvasToast(nodes);
     return loadShortTermOpenedSource({
       nodes,
@@ -232,7 +232,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
       setView,
       inspectShortTerm,
       renderPreviewModel,
-      mountPrimaryPlayback: (nextBytes) => mountPlayback("primary", nodes.primaryCanvas, nextBytes),
+      mountPrimaryPlayback: (nextBytes) => mountPlayback("primary", nodes.primaryCanvas, nextBytes, { start: startPlayback }),
       stopAllPlayback,
       showFailure
     });
@@ -448,6 +448,17 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     });
   }
 
+  function deactivateForMultiFormat() {
+    resetShortTermLaunchSurface({
+      nodes,
+      state,
+      stopAllPlayback,
+      setTab,
+      setView,
+      refreshRecentFiles
+    });
+  }
+
   function renderPreviewModel() {
     renderShortTermPreviewModel({ nodes, state });
   }
@@ -639,6 +650,7 @@ export function createShortTermAppController({ bridge, nodes, state }) {
   const handlers = {
     openFromHostDialog,
     openRecentFromMenu,
+    refreshRecentFiles,
     clearRecentFiles,
     closeFile,
     enterGeneralCompare,
@@ -673,10 +685,13 @@ export function createShortTermAppController({ bridge, nodes, state }) {
     handleResourceContextMenuKeydown,
     applyReplacementFile,
     loadDroppedFile,
+    loadDroppedCompareFile,
     showCanvasDragDecision,
     hideCanvasDragDecision,
     dropCanvasFile,
     loadOpenedSource,
+    confirmDiscardUnsavedOutput,
+    deactivateForMultiFormat,
     clearTransientOutput,
     showFailure,
     showOptimizationComparison,

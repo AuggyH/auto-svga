@@ -191,11 +191,13 @@
           <section class="dragDecisionOverlay" id="previewDragOverlay" data-component="DragDecisionOverlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
             <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>
             <div class="dragDecisionZone" data-drag-zone="open"><strong>打开新文件</strong></div>
-          </section>
-          <div class="canvasWrap" id="primaryCanvasWrap">
-            <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
-            <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
-          </div>
+              </section>
+              <div class="canvasWrap" id="primaryCanvasWrap">
+                <div class="runtimeStageViewport">
+                  <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
+                  <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
+                </div>
+              </div>
           <div class="playbackBar" aria-label="播放控制" data-component="PlaybackControls">
             <div class="playbackActions" data-component="PlaybackButtonGroup">
               <button type="button" class="playbackIconButton" data-component="IconButton" data-action="replay" aria-label="重播" title="重播">
@@ -278,6 +280,10 @@
 
       <section class="view compareView" data-view="compare" data-page-state="General comparing" data-module="GeneralCompareModule" data-state-mode="general" hidden>
         <section class="compareCanvasSurface" data-component="CompareCanvasSurface">
+          <div class="canvasModeSwitch compareModeSwitch" role="group" aria-label="模式" data-component="CanvasModeSwitch" aria-disabled="true">
+            <button type="button" class="isSelected" aria-pressed="true" disabled>预览模式</button>
+            <button type="button" aria-pressed="false" disabled>编辑模式</button>
+          </div>
           <section class="compareStage" id="compareStage">
             <section class="dragDecisionOverlay" id="compareDragOverlay" data-component="DragDecisionOverlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
               <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>

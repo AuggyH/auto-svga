@@ -24,6 +24,7 @@ import {
 import { syncShortTermMenuState, syncShortTermWindowMode } from "./short-term-macos-host-client.mjs";
 import { createOverviewFactCell } from "./short-term-macos-overview-renderers.mjs";
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
+import { projectMultiFormatRightPanel } from "./multiformat-product-conformance.mjs";
 
 const supportedDropPattern = /\.(svga|json|mp4)$/i;
 export const MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS = 15_000;
@@ -36,7 +37,6 @@ const factLabels = new Map([
   ["Replaceable", "可替换"],
   ["Inventory", "资产清单"],
   ["Media", "媒体"],
-  ["Maturity", "阶段"],
   ["Video codec", "视频编码"],
   ["Audio", "音频"],
   ["Unsupported", "不支持特性"]
@@ -46,6 +46,7 @@ export function createMultiFormatDesktopPreviewController({
   bridge,
   nodes,
   state,
+  svgaController,
   svgaPlaybackModuleLoader = () => import("./short-term-macos-playback-model.mjs")
 }) {
   let activeRequest = 0;
@@ -57,6 +58,11 @@ export function createMultiFormatDesktopPreviewController({
   let runtimeReplacementValues = new Map();
   let hostFileOpenEventId = "";
   let hostFileOpenRequest = 0;
+  let activeFormat = "";
+
+  function svgaWorkflowActive() {
+    return activeFormat === "svga" && Boolean(svgaController?.handlers);
+  }
 
   function setView(view) {
     state.view = view;
@@ -69,46 +75,42 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function setMode(mode) {
+    if (svgaWorkflowActive()) return svgaController.handlers.setMode?.(mode);
     state.mode = "preview";
     applyModeButtons("preview");
     if (mode === "edit") {
-      showShortTermCanvasToast(nodes, "0.2 预览候选暂不开放持久编辑。");
+      showShortTermCanvasToast(nodes, "当前格式仅支持运行时预览。");
     }
     if (state.model) setView("preview");
   }
 
   async function openFromHostDialog() {
+    if (!(await confirmSvgaSourceReplacement("打开新文件会放弃当前未保存的 SVGA 输出。"))) return;
     const request = beginRequest();
-    setLoading("选择并读取本地预览候选。");
     const outcome = await resolveMultiFormatOpenOutcome(
       Promise.resolve().then(() => bridge.openMultiFormatFile()),
       { deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS }
     );
     if (!isActiveRequest(request)) return;
-    applyOpenOutcome(outcome);
+    await applyOpenOutcome(outcome);
   }
 
   async function loadDroppedFile(file) {
+    if (!(await confirmSvgaSourceReplacement("拖入新文件会放弃当前未保存的 SVGA 输出。"))) return;
     const request = beginRequest();
-    setLoading("读取拖拽的本地预览候选。");
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    setLoading("读取拖拽的本地文件。");
     const outcome = await resolveMultiFormatOpenOutcome(
-      Promise.resolve().then(() => bridge.openDroppedMultiFormatFile({
-        displayName: file.name || "dropped-motion-asset",
-        mediaType: file.type || "",
-        bytes: Array.from(bytes)
-      })),
+      Promise.resolve().then(() => bridge.openDroppedMultiFormatFile(file)),
       { deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS }
     );
     if (!isActiveRequest(request)) return;
-    applyOpenOutcome(outcome);
+    await applyOpenOutcome(outcome);
   }
 
   function beginHostFileOpen(payload = {}) {
     if (typeof payload?.eventId !== "string" || payload.eventId.length === 0) return false;
     hostFileOpenEventId = payload.eventId;
     hostFileOpenRequest = beginRequest();
-    setLoading("读取系统打开的本地预览候选。");
     return true;
   }
 
@@ -118,8 +120,12 @@ export function createMultiFormatDesktopPreviewController({
       deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS
     });
     if (!hostFileOpenIsActive(payload)) return false;
+    if (!(await confirmSvgaSourceReplacement("打开系统文件会放弃当前未保存的 SVGA 输出。"))) {
+      clearHostFileOpenRequest();
+      return false;
+    }
     clearHostFileOpenRequest();
-    applyOpenOutcome(outcome);
+    await applyOpenOutcome(outcome);
     return true;
   }
 
@@ -128,7 +134,7 @@ export function createMultiFormatDesktopPreviewController({
     clearHostFileOpenRequest();
     showFailure(typeof payload.message === "string" && payload.message.length > 0
       ? payload.message
-      : "0.2 预览主机未能打开系统传入的本地候选，源文件没有被修改。");
+      : "无法打开系统传入的本地文件，源文件没有被修改。");
     return true;
   }
 
@@ -141,6 +147,27 @@ export function createMultiFormatDesktopPreviewController({
   function clearHostFileOpenRequest() {
     hostFileOpenEventId = "";
     hostFileOpenRequest = 0;
+  }
+
+  async function confirmSvgaSourceReplacement(message) {
+    if (!svgaWorkflowActive()) return true;
+    const confirm = svgaController?.handlers?.confirmDiscardUnsavedOutput;
+    return typeof confirm === "function" ? confirm(message) : true;
+  }
+
+  async function openRecentFromMenu(recentFileId) {
+    if (!(await confirmSvgaSourceReplacement("打开最近文件会放弃当前未保存的 SVGA 输出。"))) return;
+    const request = beginRequest();
+    const outcome = await resolveMultiFormatOpenOutcome(
+      Promise.resolve().then(() => bridge.openRecentSvgaFile(recentFileId)),
+      { deadlineMs: MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS }
+    );
+    if (!isActiveRequest(request)) return;
+    if (outcome?.result?.status === "missing") {
+      await svgaController?.handlers?.refreshRecentFiles?.();
+    }
+    await applyOpenOutcome(outcome);
+    await svgaController?.handlers?.refreshRecentFiles?.();
   }
 
   async function dropCanvasFile(event, target, overlay) {
@@ -171,6 +198,11 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   async function closeFile() {
+    if (svgaWorkflowActive()) {
+      await svgaController?.handlers?.closeFile?.();
+      if (!state.sourceBytes) activeFormat = "";
+      return;
+    }
     activeRequest += 1;
     clearRuntimePreview();
     clearRuntimeReplacementValues();
@@ -181,6 +213,7 @@ export function createMultiFormatDesktopPreviewController({
     state.selectedImageKey = "";
     state.selectedTextKey = "";
     state.textPreviewValues = {};
+    activeFormat = "";
     clearSurfaces();
     setView("launch");
   }
@@ -192,6 +225,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   async function togglePrimaryPlayback() {
+    if (svgaWorkflowActive()) return svgaController.handlers.togglePrimaryPlayback?.();
     const status = state.model?.status;
     if (status === "playing") {
       await control("pause");
@@ -205,6 +239,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   async function replayPrimary() {
+    if (svgaWorkflowActive()) return svgaController.handlers.replayPrimary?.();
     const status = state.model?.status;
     if (status === "playbackBlocked" || status === "playbackFailed") {
       await control("recover");
@@ -215,21 +250,25 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   async function togglePrimaryPlaybackLoop() {
+    if (svgaWorkflowActive()) return svgaController.handlers.togglePrimaryPlaybackLoop?.();
     state.primaryPlaybackLooping = state.primaryPlaybackLooping === false;
     await control("loop", { loop: state.primaryPlaybackLooping });
   }
 
   function setTab(tab, options = {}) {
+    if (svgaWorkflowActive()) return svgaController.handlers.setTab?.(tab, options);
     state.tab = tab === "replaceable" ? "replaceable" : "overview";
     applyTabState(state.tab, options);
     renderCommandState();
   }
 
   function openTab(tab) {
+    if (svgaWorkflowActive()) return svgaController.handlers.openTab?.(tab);
     setTab(tab, { focus: true, scroll: true });
   }
 
   function selectImageKey(imageKey) {
+    if (svgaWorkflowActive()) return svgaController.handlers.selectImageKey?.(imageKey);
     if (!imageKey) return;
     state.selectedImageKey = imageKey;
     renderReplaceableTargets();
@@ -237,6 +276,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function selectTextKey(textKey) {
+    if (svgaWorkflowActive()) return svgaController.handlers.selectTextKey?.(textKey);
     if (!textKey) return;
     state.selectedTextKey = textKey;
     renderTextTargets();
@@ -244,6 +284,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   async function chooseReplacementImage(imageKey = state.selectedImageKey) {
+    if (svgaWorkflowActive()) return svgaController.handlers.chooseReplacementImage?.(imageKey);
     if (!imageKey) return;
     state.selectedImageKey = imageKey;
     const result = await bridge.chooseMultiFormatReplacementImage?.({
@@ -275,6 +316,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   async function applyReplacementFile(file) {
+    if (svgaWorkflowActive()) return svgaController.handlers.applyReplacementFile?.(file);
     if (!file || !state.selectedImageKey) return;
     const dataUri = await fileToDataUri(file);
     const result = await bridge.applyMultiFormatReplacement({
@@ -299,18 +341,21 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   async function resetImageReplacement() {
+    if (svgaWorkflowActive()) return svgaController.handlers.resetImageReplacement?.();
     const result = await bridge.resetMultiFormatReplacement({ kind: "image" });
     if (replacementActionAccepted(result)) clearRuntimeReplacementValues("image");
     applyHostResult(result, { keepView: true });
   }
 
   function editRuntimeText() {
+    if (svgaWorkflowActive()) return svgaController.handlers.editRuntimeText?.();
     const input = nodes.textElementList.querySelector(`[data-text-input][data-text-key="${cssEscape(state.selectedTextKey)}"]`);
     input?.focus();
     input?.select?.();
   }
 
   function updateRuntimeText(textKey, value) {
+    if (svgaWorkflowActive()) return svgaController.handlers.updateRuntimeText?.(textKey, value);
     if (!textKey) return;
     state.selectedTextKey = textKey;
     state.textPreviewValues[textKey] = value;
@@ -333,6 +378,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   async function resetRuntimeText() {
+    if (svgaWorkflowActive()) return svgaController.handlers.resetRuntimeText?.();
     const result = await bridge.resetMultiFormatReplacement({ kind: "text" });
     if (replacementActionAccepted(result)) {
       clearRuntimeReplacementValues("text");
@@ -359,6 +405,31 @@ export function createMultiFormatDesktopPreviewController({
     setView(model.status === "failed" ? "failed" : "preview");
   }
 
+  async function applyOpenedHostResult(result) {
+    if (result?.model?.detectedFormat === "svga" && svgaController?.handlers?.loadOpenedSource) {
+      const bytes = result?.svgaSource?.bytes;
+      if (!bytes?.byteLength) {
+        showFailure("SVGA 文件没有返回可验证的本地预览数据，源文件没有被修改。");
+        return;
+      }
+      clearRuntimePreview();
+      clearRuntimeReplacementValues();
+      activeFormat = "svga";
+      await svgaController.handlers.loadOpenedSource({
+        bytes,
+        displayName: result.svgaSource.displayName || result.model.displayName || "local.svga",
+        sourceId: result.sourceId || "",
+        openedFromHost: true,
+        startPlayback: false
+      });
+      await svgaController.handlers.refreshRecentFiles?.();
+      return;
+    }
+    if (activeFormat === "svga") svgaController?.handlers?.deactivateForMultiFormat?.();
+    activeFormat = result?.model?.detectedFormat || "";
+    applyHostResult(result);
+  }
+
   function setLoading(copy) {
     state.model = undefined;
     clearRuntimeReplacementValues();
@@ -368,21 +439,20 @@ export function createMultiFormatDesktopPreviewController({
     setView("loading");
   }
 
-  function applyOpenOutcome(outcome) {
+  async function applyOpenOutcome(outcome) {
     if (outcome.kind === "cancelled") {
-      if (!state.model) setView("launch");
       return;
     }
     if (outcome.kind === "failure") {
       showFailure(outcome.message);
       return;
     }
-    applyHostResult(outcome.result);
+    await applyOpenedHostResult(outcome.result);
   }
 
   function renderModel(result) {
     const model = result.model;
-    renderFileHeader(nodes, model.displayName || "预览候选", playbackMeta(model));
+    renderFileHeader(nodes, model.displayName || "本地文件", playbackMeta(model));
     renderFacts(model);
     renderAssets(model);
     renderIssues(model);
@@ -401,7 +471,8 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function renderFacts(model) {
-    const facts = (model.rightPanel?.facts ?? []).map((fact) => ({
+    const rightPanel = projectMultiFormatRightPanel(model);
+    const facts = (rightPanel.facts ?? []).map((fact) => ({
       ...fact,
       label: factLabels.get(fact.label) ?? fact.label
     }));
@@ -409,7 +480,8 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function renderAssets(model) {
-    const inventory = model.rightPanel?.assetInventory;
+    const rightPanel = projectMultiFormatRightPanel(model);
+    const inventory = rightPanel.assetInventory;
     if (inventory?.groups?.length) {
       const groups = inventory.groups.filter((group) => group.items?.length > 0);
       if (nodes.assetListHeading) {
@@ -428,7 +500,7 @@ export function createMultiFormatDesktopPreviewController({
       return;
     }
 
-    const assets = model.rightPanel?.assets ?? [];
+    const assets = rightPanel.assets ?? [];
     if (nodes.assetListHeading) nodes.assetListHeading.textContent = `资产列表 (${assets.length})`;
     nodes.assetFilterTabs?.setAttribute("role", "tablist");
     nodes.assetFilterTabs?.setAttribute("aria-label", "资产类型");
@@ -519,9 +591,10 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function renderIssues(model) {
+    const rightPanel = projectMultiFormatRightPanel(model);
     const issues = [
-      ...(model.rightPanel?.issues ?? []),
-      ...(model.rightPanel?.unsupportedFeatures ?? []).map((entry) => ({
+      ...(rightPanel.issues ?? []),
+      ...(rightPanel.unsupportedFeatures ?? []).map((entry) => ({
         code: "unsupported_feature",
         severity: "warning",
         message: `${entry.feature} · ${entry.path}`
@@ -556,8 +629,8 @@ export function createMultiFormatDesktopPreviewController({
       }))
     ];
     nodes.replaceableSummary.textContent = targets.length
-      ? `${targets.length} 个运行时图片替换候选`
-      : "当前候选没有可替换图片。";
+      ? `${targets.length} 个运行时图片替换项`
+      : "当前文件没有可替换图片。";
     nodes.replaceableList.replaceChildren(...targets.map((target) => {
       const selected = state.selectedImageKey === target.id;
       const row = document.createElement("article");
@@ -630,7 +703,7 @@ export function createMultiFormatDesktopPreviewController({
     context.fillText(`${(model.detectedFormat || "motion").toUpperCase()} · ${statusCopy(model.status)}`, width / 2, height / 2 - 12);
     context.font = "13px system-ui, sans-serif";
     context.fillStyle = "#64748b";
-    context.fillText(visualEvidence?.vapVisualPlaybackVerified || visualEvidence?.lottieDomPlaybackVerified ? "visual verified" : "source-side preview contract", width / 2, height / 2 + 16);
+    context.fillText(visualEvidence?.vapVisualPlaybackVerified || visualEvidence?.lottieDomPlaybackVerified ? "本地渲染已就绪" : "正在准备本地预览", width / 2, height / 2 + 16);
   }
 
   function mountRuntimePreview(result) {
@@ -740,6 +813,8 @@ export function createMultiFormatDesktopPreviewController({
       mount.dataset.runtimePreviewState = "idle";
       delete mount.dataset.runtimeFormat;
       delete mount.dataset.runtimePlayerReady;
+      delete mount.dataset.runtimePlaybackProgress;
+      delete mount.dataset.runtimePlaybackTimeCopy;
       delete mount.dataset.runtimePlaybackFrame;
       delete mount.dataset.runtimePlaybackFrames;
     }
@@ -1302,6 +1377,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function renderCommandState() {
+    if (svgaWorkflowActive()) return svgaController.handlers.renderCommandState?.();
     const model = state.model;
     const commands = model?.commands ?? {};
     const hasFile = Boolean(model);
@@ -1334,14 +1410,14 @@ export function createMultiFormatDesktopPreviewController({
     };
     applyCommandState({
       actionStates: {
-        compare: { enabled: false, reason: "0.2 预览候选暂不开放对比" },
-        "play-pause": { enabled: menuState.canPlay, reason: "请先打开预览候选" },
-        replay: { enabled: menuState.canReplay, reason: "请先打开预览候选" },
-        "loop-toggle": { enabled: menuState.canLoop, reason: "请先打开预览候选" },
-        "run-optimization": { enabled: false, reason: "0.2 预览候选暂不开放优化" },
-        "save-as": { enabled: false, reason: "0.2 预览候选不支持保存" },
-        "save-overwrite": { enabled: false, reason: "0.2 预览候选不支持覆盖保存" },
-        "edit-text": { enabled: menuState.canEditText, reason: "当前候选没有可预览文本" },
+        compare: { enabled: false, reason: "当前格式不支持对比" },
+        "play-pause": { enabled: menuState.canPlay, reason: "请先打开文件" },
+        replay: { enabled: menuState.canReplay, reason: "请先打开文件" },
+        "loop-toggle": { enabled: menuState.canLoop, reason: "请先打开文件" },
+        "run-optimization": { enabled: false, reason: "当前格式不支持优化" },
+        "save-as": { enabled: false, reason: "当前格式不支持保存" },
+        "save-overwrite": { enabled: false, reason: "当前格式不支持覆盖保存" },
+        "edit-text": { enabled: menuState.canEditText, reason: "当前文件没有可预览文本" },
         "reset-text": { enabled: menuState.canResetText, reason: "当前没有运行时文本替换" }
       },
       headerSaveAsVisible: false,
@@ -1401,6 +1477,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function currentStateSummary() {
+    if (svgaWorkflowActive()) return svgaController.handlers.currentStateSummary?.();
     return JSON.stringify({
       productMilestoneId: bridge?.productMilestoneId,
       status: state.model?.status ?? state.view,
@@ -1412,34 +1489,57 @@ export function createMultiFormatDesktopPreviewController({
     }, null, 2);
   }
 
-  const unsupportedAsync = async () => {};
-  const unsupportedSync = () => {};
+  function delegateSvga(handlerName, ...args) {
+    if (!svgaWorkflowActive()) return undefined;
+    return svgaController?.handlers?.[handlerName]?.(...args);
+  }
+
+  const enterGeneralCompare = (...args) => delegateSvga("enterGeneralCompare", ...args);
+  const runOptimization = (...args) => delegateSvga("runOptimization", ...args);
+  const saveActiveOutput = (...args) => delegateSvga("saveActiveOutput", ...args);
+  const openCompareAFromHost = (...args) => delegateSvga("openCompareAFromHost", ...args);
+  const openCompareBFromHost = (...args) => delegateSvga("openCompareBFromHost", ...args);
+  const confirmInlineRename = (...args) => delegateSvga("confirmInlineRename", ...args);
+  const cancelInlineRename = (...args) => delegateSvga("cancelInlineRename", ...args);
+  const renameSelectedImageKey = (...args) => delegateSvga("renameSelectedImageKey", ...args);
+  const openKeyboardResourceContextMenu = (...args) => delegateSvga("openKeyboardResourceContextMenu", ...args);
+  const setAssetFilter = (...args) => delegateSvga("setAssetFilter", ...args);
+  const handleTabListKeydown = (...args) => delegateSvga("handleTabListKeydown", ...args);
+  const handleResourceContextMenuKeydown = (...args) => delegateSvga("handleResourceContextMenuKeydown", ...args);
+  const clearTransientOutput = (...args) => delegateSvga("clearTransientOutput", ...args);
+  const showOptimizationComparison = (...args) => delegateSvga("showOptimizationComparison", ...args);
+  const createSaveProofOutput = (...args) => delegateSvga("createSaveProofOutput", ...args);
+  const createSaveFailureProofOutput = (...args) => delegateSvga("createSaveFailureProofOutput", ...args);
+
   const handlers = {
     openFromHostDialog,
     beginHostFileOpen,
     completeHostFileOpen,
     failHostFileOpen,
-    openRecentFromMenu: unsupportedAsync,
-    clearRecentFiles: unsupportedAsync,
+    openRecentFromMenu,
+    clearRecentFiles: (...args) => svgaController?.handlers?.clearRecentFiles?.(...args),
     closeFile,
-    enterGeneralCompare: unsupportedAsync,
+    enterGeneralCompare,
     setMode,
     togglePrimaryPlayback,
     replayPrimary,
     togglePrimaryPlaybackLoop,
-    runOptimization: unsupportedAsync,
-    saveActiveOutput: unsupportedAsync,
-    openCompareAFromHost: unsupportedAsync,
-    openCompareBFromHost: unsupportedAsync,
+    runOptimization,
+    saveActiveOutput,
+    openCompareAFromHost,
+    openCompareBFromHost,
     selectImageKey,
-    openResourceContextMenu(_event, imageKey) {
+    openResourceContextMenu(event, imageKey, returnFocus) {
+      if (svgaWorkflowActive()) {
+        return svgaController?.handlers?.openResourceContextMenu?.(event, imageKey, returnFocus);
+      }
       chooseReplacementImage(imageKey).catch(showFailure);
     },
-    closeResourceContextMenu: unsupportedSync,
+    closeResourceContextMenu: (...args) => delegateSvga("closeResourceContextMenu", ...args),
     selectTextKey,
-    confirmInlineRename: unsupportedAsync,
-    cancelInlineRename: unsupportedSync,
-    renameSelectedImageKey: unsupportedAsync,
+    confirmInlineRename,
+    cancelInlineRename,
+    renameSelectedImageKey,
     chooseReplacementImage,
     resetImageReplacement,
     editRuntimeText,
@@ -1448,29 +1548,30 @@ export function createMultiFormatDesktopPreviewController({
     openSettings,
     closeSettings,
     setAppearance,
-    openKeyboardResourceContextMenu: unsupportedSync,
-    setAssetFilter: unsupportedSync,
+    openKeyboardResourceContextMenu,
+    setAssetFilter,
     setTab,
     openTab,
-    handleTabListKeydown: unsupportedSync,
-    handleResourceContextMenuKeydown: unsupportedSync,
+    handleTabListKeydown,
+    handleResourceContextMenuKeydown,
     applyReplacementFile,
     loadDroppedFile,
     showCanvasDragDecision,
     hideCanvasDragDecision,
     dropCanvasFile,
-    loadOpenedSource: unsupportedAsync,
-    clearTransientOutput: unsupportedSync,
+    loadOpenedSource: (...args) => svgaController?.handlers?.loadOpenedSource?.(...args),
+    clearTransientOutput,
     showFailure,
-    showOptimizationComparison: unsupportedAsync,
-    createSaveProofOutput: unsupportedAsync,
-    createSaveFailureProofOutput: unsupportedSync,
+    showOptimizationComparison,
+    createSaveProofOutput,
+    createSaveFailureProofOutput,
     currentStateSummary,
     renderCommandState
   };
 
   function initialize() {
     applyProductCopy();
+    svgaController?.initialize?.();
     state.mode = "preview";
     state.tab = "overview";
     setAppearance(state.appearance);
@@ -1505,7 +1606,7 @@ export async function resolveMultiFormatOpenOutcome(openPromise, options = {}) {
   } catch {
     return {
       kind: "failure",
-      message: "0.2 预览主机打开本地候选失败，源文件没有被修改。"
+      message: "无法打开本地文件，源文件没有被修改。"
     };
   } finally {
     clearTimeout(timeout);
@@ -1515,6 +1616,12 @@ export async function resolveMultiFormatOpenOutcome(openPromise, options = {}) {
 export function normalizeMultiFormatOpenOutcome(result) {
   if (result?.kind === "failure" || result?.kind === "cancelled" || result?.kind === "model") return result;
   if (result?.status === "cancelled") return { kind: "cancelled" };
+  if (result?.status === "missing") {
+    return {
+      kind: "failure",
+      message: result.message || "这个最近文件已缺失或不可访问。"
+    };
+  }
   if (result?.model) return { kind: "model", result };
   if (result?.status === "opened") {
     return {
@@ -1531,7 +1638,7 @@ export function normalizeMultiFormatOpenOutcome(result) {
 function applyProductCopy(documentRef = document) {
   documentRef.querySelector(".launchPrompt p")?.replaceChildren("拖拽 SVGA / Lottie JSON / VAP MP4 到此处");
   documentRef.querySelectorAll("[data-action='open'] span").forEach((node) => {
-    node.textContent = "打开预览候选";
+    node.textContent = "打开文件";
   });
   documentRef.querySelector("#previewStagePanel")?.setAttribute("aria-label", "多格式预览");
   documentRef.querySelector("#primaryCanvas")?.setAttribute("aria-label", "多格式预览画布");

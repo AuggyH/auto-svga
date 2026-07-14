@@ -21,6 +21,9 @@ const IPC_CHANNELS = Object.freeze({
   applyMultiFormatReplacement: "svga-web-experiment:apply-multiformat-replacement",
   resetMultiFormatReplacement: "svga-web-experiment:reset-multiformat-replacement",
   multiFormatRendererReady: "svga-web-experiment:multiformat-renderer-ready",
+  getRecentSvgaFiles: "svga-web-experiment:get-recent-svga-files",
+  openRecentSvgaFile: "svga-web-experiment:open-recent-svga-file",
+  clearRecentSvgaFiles: "svga-web-experiment:clear-recent-svga-files",
   writeClipboardText: "svga-web-experiment:write-clipboard-text",
   updateShortTermMenuState: "svga-web-experiment:update-short-term-menu-state",
   setShortTermWindowMode: "svga-web-experiment:set-short-term-window-mode"
@@ -32,20 +35,21 @@ const repoRoot = path.resolve(appRoot, "../../../..");
 const taskVapRoot = "/private/tmp/auto-svga-qa-multiformat-positive-20260713-016/bounded-vap";
 const taskVapPath = path.join(taskVapRoot, "bounded-vap.mp4");
 const taskVapcPath = path.join(taskVapRoot, "vapc.json");
+const skipFusionFixture = process.env.AUTO_SVGA_SKIP_FUSION_FIXTURE === "1";
 const expectedTaskFixtureHashes = Object.freeze({
   [taskVapPath]: "25ce657cf3de383e368c829bfcb9a17879d2bc7c7ebe151f66ebf5d64b73dd64",
   [taskVapcPath]: "d1e9160d3d7f9d25c6b789f39c077603ff8ef50abaa19ccaf9192052ff55dc77"
 });
 const ownerInputSpecs = Object.freeze({
   svga: {
-    alias: "OWNER-SVGA-A",
+    alias: "REAL-SVGA-SQUARE-A",
     env: "AUTO_SVGA_OWNER_SVGA_PATH",
-    sha256: "74f26895f704f1ae33a5c72dba2cc6da027507b39512c2890d1d7b89985b4b07"
+    sha256: "da75da15150fb7d9bca0c3a5acafbcce9601438a2142afdd2c014b0c3d64449d"
   },
   lottie: {
-    alias: "OWNER-LOTTIE-A",
+    alias: "REAL-LOTTIE-EMBEDDED-A",
     env: "AUTO_SVGA_OWNER_LOTTIE_PATH",
-    sha256: "d7d55bb511e78d3f59da22eaab1e04e734b84f4bf5c8c40a19e05c516878532d"
+    sha256: "4d415de7f6ec0a3742281e91f60a0dcc9e1c5574760e82e17a053eafc1d82eb1"
   },
   vap: {
     alias: "OWNER-VAP-A",
@@ -156,7 +160,7 @@ async function main() {
     label: ownerInputs.svga.alias,
     format: "svga",
     filePath: ownerInputs.svga.filePath,
-    expectedCanvas: "runtime"
+    expectedCanvas: "primary"
   });
   const lottieEvidence = await provePlayableFormat({
     label: ownerInputs.lottie.alias,
@@ -175,16 +179,20 @@ async function main() {
     requireCanvasRisk: true,
     expectedBacking: { width: 750, height: 1624 }
   });
-  const boundedVapEvidence = await provePlayableFormat({
-    label: "VAP-FUSION-BOUNDED",
-    format: "vap",
-    filePath: vapPath,
-    expectedCanvas: "runtime",
-    requireVideo: true,
-    requireWebgl: true,
-    expectedBacking: { width: 120, height: 80 }
-  });
-  const vapReplacementEvidence = await proveVapReplacementAndReset();
+  const boundedVapEvidence = skipFusionFixture
+    ? { status: "notRun", reason: "task_owned_fusion_fixture_unavailable" }
+    : await provePlayableFormat({
+        label: "VAP-FUSION-BOUNDED",
+        format: "vap",
+        filePath: vapPath,
+        expectedCanvas: "runtime",
+        requireVideo: true,
+        requireWebgl: true,
+        expectedBacking: { width: 120, height: 80 }
+      });
+  const vapReplacementEvidence = skipFusionFixture
+    ? { status: "notRun", reason: "task_owned_fusion_fixture_unavailable" }
+    : await proveVapReplacementAndReset();
   const invalidLottieEvidence = await proveMissingLottieAssetFailure();
   const placeholderRegression = provePlaceholderSuccessGateRejectsSourceSideContract();
   const pauseRegression = provePauseGateRejectsNonzeroReset();
@@ -216,9 +224,11 @@ async function main() {
       ownerSvga: ownerInputEvidence(ownerInputs.svga),
       ownerLottie: ownerInputEvidence(ownerInputs.lottie),
       ownerVap: ownerInputEvidence(ownerInputs.vap),
-      boundedVapSha256: expectedTaskFixtureHashes[taskVapPath],
-      vapcSha256: expectedTaskFixtureHashes[taskVapcPath],
-      replacementPngSha256: sha256File(replacementPngPath),
+      ...(skipFusionFixture ? {} : {
+        boundedVapSha256: expectedTaskFixtureHashes[taskVapPath],
+        vapcSha256: expectedTaskFixtureHashes[taskVapcPath],
+        replacementPngSha256: sha256File(replacementPngPath)
+      }),
       pathRedacted: true
     },
     evidence: {
@@ -423,8 +433,12 @@ async function openFileInProduct(filePath, label) {
     (async () => {
       const actions = window.__autoSvgaShortTermActions;
       const eventId = ${JSON.stringify(eventId)};
+      const openResult = ${JSON.stringify(openResult)};
+      if (openResult?.svgaSource?.bytes && !(openResult.svgaSource.bytes instanceof Uint8Array)) {
+        openResult.svgaSource.bytes = Uint8Array.from(Object.values(openResult.svgaSource.bytes));
+      }
       const begun = actions.beginHostFileOpen({ eventId });
-      const completed = await actions.completeHostFileOpen({ eventId, result: ${JSON.stringify(openResult)} });
+      const completed = await actions.completeHostFileOpen({ eventId, result: openResult });
       return { begun, completed };
     })()
   `);
@@ -436,6 +450,9 @@ async function openFileInProduct(filePath, label) {
 
 function installIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.openMultiFormatFile, async () => ({ status: "cancelled" }));
+  ipcMain.handle(IPC_CHANNELS.getRecentSvgaFiles, async () => []);
+  ipcMain.handle(IPC_CHANNELS.openRecentSvgaFile, async () => ({ status: "missing", pathRedacted: true }));
+  ipcMain.handle(IPC_CHANNELS.clearRecentSvgaFiles, async () => ({ status: "cleared", count: 0 }));
   ipcMain.handle(IPC_CHANNELS.openDroppedMultiFormatFile, async (_event, input) => previewSession.openDroppedFile(input));
   ipcMain.handle(IPC_CHANNELS.prepareMultiFormatRuntimePreview, async (_event, input) => {
     ipcEvents.push({ phase: "prepare_runtime_preview", format: input?.format, sourceIdHash: hashId(input?.sourceId) });
@@ -542,6 +559,8 @@ async function pageSnapshot() {
       try { hostModel = bridge?.controlMultiFormatPreview ? await bridge.controlMultiFormatPreview({ action: "model" }) : undefined; } catch {}
       const bodyText = document.body?.innerText || "";
       const primaryCanvas = document.querySelector("#primaryCanvas");
+      const primarySvgaReady = primaryCanvas?.dataset.runtimePlayer === "svga-web"
+        && primaryCanvas?.dataset.runtimePlayerReady === "true";
       const lottieSvg = mount?.querySelector("svg");
       const lottieDomState = lottieSvg
         ? Array.from(lottieSvg.querySelectorAll("g,image,path")).slice(0, 32).map((element) => {
@@ -565,15 +584,16 @@ async function pageSnapshot() {
         primaryCanvasVisible: !!primaryCanvas && primaryCanvas.style.visibility !== "hidden",
         primaryCanvasWidth: Number(primaryCanvas?.width) || 0,
         primaryCanvasHeight: Number(primaryCanvas?.height) || 0,
-        runtimeMountState: mount?.dataset.runtimePreviewState || "",
-        runtimeFormat: mount?.dataset.runtimeFormat || "",
-        runtimePlayerReady: mount?.dataset.runtimePlayerReady || "",
-        runtimePlaybackProgress: Number(mount?.dataset.runtimePlaybackProgress) || 0,
-        runtimePlaybackFrame: Number(mount?.dataset.runtimePlaybackFrame) || 0,
-        runtimePlaybackFrames: Number(mount?.dataset.runtimePlaybackFrames) || 0,
-        runtimePlaybackTimeCopy: mount?.dataset.runtimePlaybackTimeCopy || "",
+        runtimeMountState: primarySvgaReady ? "loaded" : mount?.dataset.runtimePreviewState || "",
+        runtimeFormat: primarySvgaReady ? "svga" : mount?.dataset.runtimeFormat || "",
+        runtimePlayerReady: primarySvgaReady ? "svga-web" : mount?.dataset.runtimePlayerReady || "",
+        runtimePlaybackState: primarySvgaReady ? primaryCanvas.dataset.runtimePlaybackState || "" : "",
+        runtimePlaybackProgress: Number(primarySvgaReady ? primaryCanvas.dataset.runtimePlaybackProgress : mount?.dataset.runtimePlaybackProgress) || 0,
+        runtimePlaybackFrame: Number(primarySvgaReady ? primaryCanvas.dataset.runtimePlaybackFrame : mount?.dataset.runtimePlaybackFrame) || 0,
+        runtimePlaybackFrames: Number(primarySvgaReady ? primaryCanvas.dataset.runtimePlaybackFrames : mount?.dataset.runtimePlaybackFrames) || 0,
+        runtimePlaybackTimeCopy: primarySvgaReady ? primaryCanvas.dataset.runtimePlaybackTimeCopy || "" : mount?.dataset.runtimePlaybackTimeCopy || "",
         runtimeCanvasCount: runtimeCanvases.length,
-        runtimeSvgaCanvasCount: runtimeCanvasDetails.filter((canvas) => canvas.runtimePlayer === "svga-web").length,
+        runtimeSvgaCanvasCount: primarySvgaReady ? 1 : runtimeCanvasDetails.filter((canvas) => canvas.runtimePlayer === "svga-web").length,
         runtimeRenderableCount: runtimeCanvases.length + (mount?.querySelectorAll("svg").length || 0),
         runtimeSvgCount: mount?.querySelectorAll("svg").length || 0,
         lottieDomState,
@@ -588,7 +608,7 @@ async function pageSnapshot() {
         anyVideoPaused: videos.length > 0 ? videos.some((video) => video.paused) : undefined,
         maxVideoCurrentTime: videos.reduce((max, video) => Math.max(max, Number(video.currentTime) || 0), 0),
         playbackTime: document.querySelector("#playbackTime")?.textContent || "",
-        errorMessage: document.querySelector("#errorMessage")?.textContent || "",
+        errorMessage: document.querySelector('.view[data-view="failed"].isActive #errorMessage')?.textContent || "",
         bodyTextIncludes: ["SVGA", "LOTTIE", "VAP", "avatar", "image_0", "播放受限", "source-side preview contract"].filter((token) => bodyText.includes(token))
       };
     })()
@@ -721,13 +741,13 @@ async function captureRuntimePixels(format) {
 async function captureSvgaCanvasBackingStorePixels() {
   const pixels = await runInPage("svga runtime canvas backing store pixels", `
     (() => {
-      const canvas = document.querySelector('#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]');
+      const canvas = document.querySelector('#primaryCanvas[data-runtime-player="svga-web"], #multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]');
       if (!canvas) return undefined;
       const width = Number(canvas.width) || 0;
       const height = Number(canvas.height) || 0;
-      if (width <= 0 || height <= 0) return { source: "canvas-backing-store", selector: '#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]', width, height, error: "empty_canvas" };
+      if (width <= 0 || height <= 0) return { source: "canvas-backing-store", selector: '#primaryCanvas[data-runtime-player="svga-web"], #multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]', width, height, error: "empty_canvas" };
       const context = canvas.getContext("2d", { willReadFrequently: true });
-      if (!context) return { source: "canvas-backing-store", selector: '#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]', width, height, error: "missing_2d_context" };
+      if (!context) return { source: "canvas-backing-store", selector: '#primaryCanvas[data-runtime-player="svga-web"], #multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]', width, height, error: "missing_2d_context" };
       const image = context.getImageData(0, 0, width, height);
       const data = image.data;
       let nonWhite = 0;
@@ -749,7 +769,7 @@ async function captureSvgaCanvasBackingStorePixels() {
       }
       return {
         source: "canvas-backing-store",
-        selector: '#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]',
+        selector: canvas.id === "primaryCanvas" ? '#primaryCanvas[data-runtime-player="svga-web"]' : '#multiFormatRuntimeMount canvas[data-runtime-player="svga-web"]',
         width,
         height,
         nonWhite,
@@ -1300,6 +1320,7 @@ function compactSnapshot(snapshot) {
     runtimeMountState: snapshot?.runtimeMountState,
     runtimeFormat: snapshot?.runtimeFormat,
     runtimePlayerReady: snapshot?.runtimePlayerReady,
+    runtimePlaybackState: snapshot?.runtimePlaybackState,
     runtimePlaybackProgress: snapshot?.runtimePlaybackProgress,
     runtimePlaybackFrame: snapshot?.runtimePlaybackFrame,
     runtimePlaybackFrames: snapshot?.runtimePlaybackFrames,
@@ -1326,6 +1347,9 @@ function compactSnapshot(snapshot) {
 }
 
 function modelStatus(snapshot) {
+  if (snapshot?.runtimeFormat === "svga" && snapshot?.runtimePlaybackState) {
+    return snapshot.runtimePlaybackState;
+  }
   return snapshot?.summary?.status ?? snapshot?.hostModel?.model?.status;
 }
 
@@ -1334,12 +1358,13 @@ function modelFormat(snapshot) {
 }
 
 function prepareFixtures() {
+  ownerInputs = resolveOwnerInputs();
+  if (skipFusionFixture) return;
   for (const [filePath, expected] of Object.entries(expectedTaskFixtureHashes)) {
     if (!existsSync(filePath)) throw new Error(`Required task-owned fixture is missing: ${path.basename(filePath)}`);
     const actual = sha256File(filePath);
     if (actual !== expected) throw new Error(`Fixture hash drift for ${path.basename(filePath)}: ${actual}`);
   }
-  ownerInputs = resolveOwnerInputs();
   const pngBytes = Buffer.from(tinyPngBase64, "base64");
   writeFileSync(replacementPngPath, pngBytes);
   copyFileSync(taskVapPath, vapPath);

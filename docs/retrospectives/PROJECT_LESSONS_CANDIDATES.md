@@ -1416,3 +1416,16 @@ promoted, watched, rejected, or kept historical.
   replacement/reset QA. `MF-VAP-FUSION-PM-001` extended the regression from
   the dedicated pixel proof to both shared real-runtime proof shims after they
   were found echoing the public id directly.
+
+## 2026-07-14: Extend The Owner Workflow Instead Of Replacing It
+
+- Candidate lesson: A new-format shell should compose the accepted workflow for
+  the current format and add capability-specific behavior. Replacing that
+  workflow with a generic candidate controller can preserve playback while
+  silently dropping editing, save, recent-file, menu, and recovery contracts.
+- Evidence: `ASV-QA-20260714-002` through `008` traced one split 0.2 controller
+  and intake architecture to layout, copy, recent-file, capability-panel, and
+  formal 0.1 SVGA regressions. The repair delegates SVGA to the accepted
+  short-term controller and keeps one host-owned intake contract for all
+  formats.
+- Status: Candidate pending independent Code Review and rebuilt installed QA.
