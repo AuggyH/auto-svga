@@ -41,6 +41,13 @@ export const windowPlacementPackagedSourceFiles = [
   "short-term-window-bounds-policy.cjs",
   "short-term-window-placement-store.cjs"
 ];
+export const windowPlacementPackagedSourceAuthorities = Object.freeze({
+  acceptanceParser: "short-term-window-bounds-policy.cjs",
+  boundsPolicy: "short-term-window-bounds-policy.cjs",
+  preferenceStore: "short-term-window-placement-store.cjs",
+  candidateChannel: "main.cjs",
+  executionBinding: "short-term-window-bounds-policy.cjs"
+});
 const sourceAuditFiles = [
   ...windowPlacementPackagedSourceFiles,
   "preload.cjs",
@@ -300,6 +307,15 @@ export async function writeMacosPackageProof(options = {}) {
 export function validateProof(plist, proof, packagedPlist = plist) {
   const packagedInfoPlistValidated = packagedPlist !== plist;
   const packagedRuntimeClosure = proof.packagingScaffold.packagedRuntimeClosure;
+  const windowPlacementSourceClosure = proof.packagingScaffold.windowPlacementSourceClosure;
+  const windowPlacementClosureRequired = proof.packagingScaffold.packagedInfoPlistValidated === true;
+  const windowPlacementAuthoritiesMatch = Object.entries(windowPlacementPackagedSourceAuthorities).every(
+    ([authority, relativePath]) => windowPlacementSourceClosure?.authorities?.some((entry) => (
+      entry.authority === authority
+      && entry.path === relativePath
+      && (!windowPlacementClosureRequired || entry.matchesSource === true)
+    ))
+  );
   const checks = [
     ["sourceAppIdentity", plistStringValue(plist, "CFBundleName") === appName && plistStringValue(plist, "CFBundleDisplayName") === bundleDisplayName],
     ["packagedAppIdentity", plistStringValue(packagedPlist, "CFBundleName") === appName && plistStringValue(packagedPlist, "CFBundleDisplayName") === bundleDisplayName],
@@ -310,7 +326,7 @@ export function validateProof(plist, proof, packagedPlist = plist) {
     ["packagedProductIdentity", plistStringValue(packagedPlist, "AutoSVGAProductVersion") === productVersion && plistStringValue(packagedPlist, "AutoSVGAReleaseStage") === releaseStage && plistStringValue(packagedPlist, "AutoSVGADistributionChannel") === distributionChannel && plistBooleanTrue(packagedPlist, "AutoSVGAPackageCandidate")],
     ["productIdentity", proof.productIdentity?.productVersion === productVersion && proof.productIdentity?.releaseStage === releaseStage && proof.productIdentity?.distributionChannel === distributionChannel && proof.productIdentity?.candidateChannel === candidateChannel && proof.productIdentity?.ownerVisibleLabel === ownerVisibleLabel],
     ["packagedRuntimeClosure", proof.packagingScaffold.packagedInfoPlistValidated !== true || (packagedRuntimeClosure?.validated === true && packagedRuntimeClosure?.buildInfo?.buildCommit === proof.buildCommit)],
-    ["windowPlacementSourceClosure", proof.packagingScaffold.packagedInfoPlistValidated !== true || proof.packagingScaffold.windowPlacementSourceClosure?.validated === true],
+    ["windowPlacementSourceClosure", (!windowPlacementClosureRequired || windowPlacementSourceClosure?.validated === true) && windowPlacementAuthoritiesMatch],
     ["internalUseOnly", proof.distribution.internalUseOnly === true && plist.includes("<key>AutoSVGAInternalUseOnly</key>")],
     ["distributionChannel", proof.distribution.channel === distributionChannel && proof.distribution.candidateChannel === candidateChannel && proof.distribution.packageCandidate === true],
     ["unsigned", proof.distribution.unsigned === true && plist.includes("<key>AutoSVGASigned</key>")],
@@ -338,13 +354,18 @@ export function validateProof(plist, proof, packagedPlist = plist) {
 }
 
 function skippedPackagedWindowPlacementSourceClosure(sourceHashes, skippedReason) {
+  const files = windowPlacementPackagedSourceFiles.map((relativePath) => ({
+    path: relativePath,
+    sourceSha256: sourceHashes[relativePath],
+    packagedSha256: null,
+    matchesSource: null
+  }));
   return {
     validated: false,
-    files: windowPlacementPackagedSourceFiles.map((relativePath) => ({
-      path: relativePath,
-      sourceSha256: sourceHashes[relativePath],
-      packagedSha256: null,
-      matchesSource: null
+    files,
+    authorities: Object.entries(windowPlacementPackagedSourceAuthorities).map(([authority, relativePath]) => ({
+      authority,
+      ...files.find((file) => file.path === relativePath)
     })),
     missingEntries: [],
     findings: [],
@@ -393,6 +414,10 @@ function readPackagedWindowPlacementSourceClosure(packagedAsarPath, sourceHashes
       ...base,
       validated: findings.length === 0,
       files,
+      authorities: Object.entries(windowPlacementPackagedSourceAuthorities).map(([authority, relativePath]) => ({
+        authority,
+        ...files.find((file) => file.path === relativePath)
+      })),
       missingEntries: files.filter((file) => file.packagedSha256 === null).map((file) => `/${file.path}`),
       findings
     };

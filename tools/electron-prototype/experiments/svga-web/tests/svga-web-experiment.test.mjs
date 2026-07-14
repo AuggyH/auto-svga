@@ -32,6 +32,7 @@ import {
   releaseStage,
   requiredPackagedRuntimeEntries,
   validateProof,
+  windowPlacementPackagedSourceAuthorities,
   windowPlacementPackagedSourceFiles
 } from "../scripts/macos-package-proof.mjs";
 
@@ -582,6 +583,7 @@ test("macOS package proof manifest records audit boundaries without final App ac
   const mainProcess = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const signingWorkflow = await readFile(path.join(experimentRoot, "scripts/macos-signing-workflow.mjs"), "utf8");
   const packageJson = JSON.parse(await readFile(path.join(experimentRoot, "package.json"), "utf8"));
+  const sourcePlist = await readFile(path.join(experimentRoot, "packaging/macos/Info.plist"), "utf8");
   assert.equal(proof.schemaVersion, 1);
   assert.equal(proof.appName, "Auto SVGA");
   assert.equal(proof.bundleDisplayName, "Auto SVGA");
@@ -682,6 +684,24 @@ test("macOS package proof manifest records audit boundaries without final App ac
     && file.packagedSha256 === null
     && file.matchesSource === null
   )));
+  assert.deepEqual(
+    Object.fromEntries(proof.packagingScaffold.windowPlacementSourceClosure.authorities.map((entry) => [
+      entry.authority,
+      entry.path
+    ])),
+    windowPlacementPackagedSourceAuthorities
+  );
+  assert.ok(proof.packagingScaffold.windowPlacementSourceClosure.authorities.every((entry) => (
+    typeof entry.sourceSha256 === "string"
+    && entry.sourceSha256.length === 64
+    && entry.packagedSha256 === null
+    && entry.matchesSource === null
+  )));
+  const authorityDrift = structuredClone(proof);
+  authorityDrift.packagingScaffold.windowPlacementSourceClosure.authorities = authorityDrift
+    .packagingScaffold.windowPlacementSourceClosure.authorities
+    .filter((entry) => entry.authority !== "executionBinding");
+  assert.throws(() => validateProof(sourcePlist, authorityDrift), /windowPlacementSourceClosure/u);
   assert.match(mainProcess, /packagedBuildCommit\(\) \?\? "unknown"/);
   assert.match(mainProcess, /const packagedRuntimeBuildInfo = app\.isPackaged \? readPackagedRuntimeBuildInfo\(\) : undefined;/);
   assert.match(mainProcess, /runtimeBuildInfoProductMilestoneId\(packagedRuntimeBuildInfo\) \?\? "short-term"/);
@@ -792,6 +812,16 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
     assert.equal(validProof.packagingScaffold.windowPlacementSourceClosure.validated, true);
     assert.ok(validProof.packagingScaffold.windowPlacementSourceClosure.files.every((file) => (
       file.matchesSource === true && file.sourceSha256 === file.packagedSha256
+    )));
+    assert.deepEqual(
+      Object.fromEntries(validProof.packagingScaffold.windowPlacementSourceClosure.authorities.map((entry) => [
+        entry.authority,
+        entry.path
+      ])),
+      windowPlacementPackagedSourceAuthorities
+    );
+    assert.ok(validProof.packagingScaffold.windowPlacementSourceClosure.authorities.every((entry) => (
+      entry.matchesSource === true && entry.sourceSha256 === entry.packagedSha256
     )));
 
     const sourceDrift = await createPackagedProofFixture({

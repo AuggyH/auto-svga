@@ -9,7 +9,9 @@ const require = createRequire(import.meta.url);
 const experimentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const {
   isWindowContainedInWorkArea,
+  normalizeWindowPlacementRecord,
   parseAcceptanceDisplayRequest,
+  revalidateAcceptanceLaunchPlacement,
   resolveAcceptanceLaunchPlacement,
   resolveNormalLaunchPlacement,
   windowPlacementRecordFromBounds
@@ -43,7 +45,9 @@ test("normal launch restores a validated placement and falls back before first f
     storedPlacement: {
       schemaVersion: 1,
       source: "owner-normal-window",
-      bounds: { x: 3000, y: 800, width: 900, height: 760 }
+      displayId: 200,
+      bounds: { x: 3000, y: 800, width: 900, height: 760 },
+      savedAt: "2026-07-15T08:00:00.000Z"
     },
     displays: [primary, secondary],
     primaryDisplay: primary,
@@ -59,7 +63,9 @@ test("normal launch restores a validated placement and falls back before first f
     storedPlacement: {
       schemaVersion: 1,
       source: "owner-normal-window",
-      bounds: { x: -9000, y: -9000, width: 900, height: 760 }
+      displayId: 200,
+      bounds: { x: -9000, y: -9000, width: 900, height: 760 },
+      savedAt: "2026-07-15T08:00:00.000Z"
     },
     displays: [primary, secondary],
     primaryDisplay: primary,
@@ -77,7 +83,9 @@ test("normal placement uses maximum display intersection with a deterministic ti
   const placement = {
     schemaVersion: 1,
     source: "owner-normal-window",
-    bounds: { x: -320, y: 100, width: 640, height: 640 }
+    displayId: 20,
+    bounds: { x: -320, y: 100, width: 640, height: 640 },
+    savedAt: "2026-07-15T08:00:00.000Z"
   };
   const resolved = resolveNormalLaunchPlacement({
     storedPlacement: placement,
@@ -96,7 +104,9 @@ test("normal placement rejects malformed and undersized display inputs", () => {
     storedPlacement: {
       schemaVersion: 1,
       source: "owner-normal-window",
-      bounds: { x: "120", y: 40, width: 640, height: 640 }
+      displayId: 100,
+      bounds: { x: "120", y: 40, width: 640, height: 640 },
+      savedAt: "2026-07-15T08:00:00.000Z"
     },
     displays: [primary],
     primaryDisplay: primary,
@@ -115,6 +125,40 @@ test("normal placement rejects malformed and undersized display inputs", () => {
   });
   assert.equal(tooSmallPrimary.status, "rejected");
   assert.equal(tooSmallPrimary.reason, "primary_display_too_small");
+});
+
+test("normal placement schema is exact, integer-bound, and contains the full native frame", () => {
+  const valid = {
+    schemaVersion: 1,
+    source: "owner-normal-window",
+    displayId: 20,
+    bounds: { x: -940, y: -180, width: 800, height: 700 },
+    savedAt: "2026-07-15T08:00:00.000Z"
+  };
+  assert.deepEqual(normalizeWindowPlacementRecord(valid), valid);
+  for (const malformed of [
+    { ...valid, unexpected: true },
+    { ...valid, displayId: undefined },
+    { ...valid, savedAt: undefined },
+    { ...valid, savedAt: "2026-07-15" },
+    { ...valid, bounds: { ...valid.bounds, width: 800.5 } },
+    { ...valid, bounds: { ...valid.bounds, extra: 1 } }
+  ]) {
+    assert.equal(normalizeWindowPlacementRecord(malformed), undefined);
+  }
+
+  const negativeDisplay = { id: 20, workArea: { x: -1200, y: -200, width: 1200, height: 900 } };
+  const restored = resolveNormalLaunchPlacement({
+    storedPlacement: valid,
+    displays: [primary, negativeDisplay],
+    primaryDisplay: primary,
+    defaultSize: launchSize,
+    minimumSize
+  });
+  assert.equal(restored.status, "restored");
+  assert.equal(restored.displayId, 20);
+  assert.equal(isWindowContainedInWorkArea(restored.bounds, negativeDisplay.workArea), true);
+  assert.ok(restored.bounds.y >= negativeDisplay.workArea.y, "native titlebar must remain in the work area");
 });
 
 test("acceptance display input is singular, internal-only, and execution-bound", () => {
@@ -152,6 +196,30 @@ test("acceptance display input is singular, internal-only, and execution-bound",
     },
     {
       argv: ["Auto SVGA", "--auto-svga-acceptance-display-id=4294967296"],
+      environment: { AUTO_SVGA_ACCEPTANCE_EXECUTION_ID: "ASV-APR-20260715-001" },
+      internalCandidate: true,
+      reason: "acceptance_display_malformed"
+    },
+    {
+      argv: ["Auto SVGA", "--auto-svga-acceptance-display-id", "200"],
+      environment: { AUTO_SVGA_ACCEPTANCE_EXECUTION_ID: "ASV-APR-20260715-001" },
+      internalCandidate: true,
+      reason: "acceptance_argument_forbidden"
+    },
+    {
+      argv: ["Auto SVGA", "--auto-svga-acceptance-display-id==200"],
+      environment: { AUTO_SVGA_ACCEPTANCE_EXECUTION_ID: "ASV-APR-20260715-001" },
+      internalCandidate: true,
+      reason: "acceptance_display_malformed"
+    },
+    {
+      argv: ["Auto SVGA", "--auto-svga-acceptance-display-id=+200"],
+      environment: { AUTO_SVGA_ACCEPTANCE_EXECUTION_ID: "ASV-APR-20260715-001" },
+      internalCandidate: true,
+      reason: "acceptance_display_malformed"
+    },
+    {
+      argv: ["Auto SVGA", "--auto-svga-acceptance-display-id=0200"],
       environment: { AUTO_SVGA_ACCEPTANCE_EXECUTION_ID: "ASV-APR-20260715-001" },
       internalCandidate: true,
       reason: "acceptance_display_malformed"
@@ -219,6 +287,37 @@ test("accepted display is resolved before construction and never persists", () =
   });
   assert.equal(duplicate.status, "rejected");
   assert.equal(duplicate.reason, "acceptance_display_ambiguous");
+
+  const tooSmall = resolveAcceptanceLaunchPlacement({
+    request,
+    displays: [{ id: 200, workArea: { x: -900, y: -100, width: 600, height: 600 } }],
+    defaultSize: launchSize,
+    minimumSize
+  });
+  assert.equal(tooSmall.status, "rejected");
+  assert.equal(tooSmall.reason, "acceptance_display_too_small");
+
+  const stable = revalidateAcceptanceLaunchPlacement({
+    placement: resolved,
+    displays: [primary, secondary],
+    minimumSize
+  });
+  assert.equal(stable.status, "accepted");
+  assert.deepEqual(stable.bounds, resolved.bounds);
+
+  for (const changedDisplays of [
+    [primary],
+    [primary, { ...secondary, workArea: { ...secondary.workArea, height: 1040 } }],
+    [primary, secondary, { ...secondary }]
+  ]) {
+    const drifted = revalidateAcceptanceLaunchPlacement({
+      placement: resolved,
+      displays: changedDisplays,
+      minimumSize
+    });
+    assert.equal(drifted.status, "rejected");
+    assert.match(drifted.reason, /^acceptance_display_(?:unknown|ambiguous|set_changed)$/u);
+  }
 });
 
 test("only normal owner bounds become a placement preference", () => {
@@ -237,6 +336,8 @@ test("only normal owner bounds become a placement preference", () => {
   for (const input of [
     { launchMode: "acceptance", windowState: { minimized: false, fullscreen: false, maximized: false } },
     { launchMode: "proof", windowState: { minimized: false, fullscreen: false, maximized: false } },
+    { launchMode: "smoke", windowState: { minimized: false, fullscreen: false, maximized: false } },
+    { launchMode: "audit", windowState: { minimized: false, fullscreen: false, maximized: false } },
     { launchMode: "normal", windowState: { minimized: true, fullscreen: false, maximized: false } },
     { launchMode: "normal", windowState: { minimized: false, fullscreen: true, maximized: false } },
     { launchMode: "normal", windowState: { minimized: false, fullscreen: false, maximized: true } }
@@ -266,13 +367,22 @@ test("only normal owner bounds become a placement preference", () => {
 
 test("main resolves placement before BrowserWindow and persists only owner-driven normal bounds", async () => {
   const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const policySource = await readFile(path.join(experimentRoot, "short-term-window-bounds-policy.cjs"), "utf8");
+  const storeSource = await readFile(path.join(experimentRoot, "short-term-window-placement-store.cjs"), "utf8");
   const resolverIndex = source.indexOf("resolveInitialMultiFormatWindowPlacement()");
   const displaysIndex = source.indexOf("screen.getAllDisplays()", resolverIndex);
   const browserWindowIndex = source.indexOf("new BrowserWindow", resolverIndex);
   assert.ok(resolverIndex >= 0, "missing initial placement resolver");
   assert.ok(displaysIndex > resolverIndex, "online displays must resolve inside the initial placement boundary");
   assert.ok(browserWindowIndex > displaysIndex, "display placement must resolve before BrowserWindow construction");
+  assert.equal(source.match(/new BrowserWindow\s*\(/gu)?.length, 1, "startup must have one BrowserWindow constructor");
+  assert.match(source, /app\.whenReady\(\)\.then\(createExperimentWindow\)/u);
+  assert.match(source.slice(resolverIndex, browserWindowIndex), /revalidateAcceptanceLaunchPlacement[\s\S]*screen\.getAllDisplays\(\)/u);
   assert.match(source.slice(browserWindowIndex, browserWindowIndex + 900), /x: launchBounds\.x,[\s\S]*y: launchBounds\.y/u);
+  const createStart = source.indexOf("async function createExperimentWindow()");
+  const ownershipIndex = source.indexOf("activeMainWindow = window", browserWindowIndex);
+  const initialConstructionBody = source.slice(createStart, ownershipIndex);
+  assert.doesNotMatch(initialConstructionBody, /\.(?:setBounds|setPosition|center)\s*\(/u);
   assert.match(source, /normal-window-placement-v1\.json/u);
   assert.match(source, /readWindowPlacementPreference/u);
   assert.match(source, /writeWindowPlacementPreference/u);
@@ -281,6 +391,12 @@ test("main resolves placement before BrowserWindow and persists only owner-drive
   assert.match(source, /window\.on\("will-resize"/u);
   assert.match(source, /window\.isMinimized\(\)[\s\S]*window\.isFullScreen\(\)[\s\S]*window\.isMaximized\(\)/u);
   assert.match(source, /app\.isPackaged[\s\S]*normalVisibleStartupMode[\s\S]*isMultiFormatDesktopProduct[\s\S]*source === "package-internal-trial"/u);
+  assert.match(policySource, /function parseAcceptanceDisplayRequest/u);
+  assert.match(policySource, /AUTO_SVGA_ACCEPTANCE_EXECUTION_ID/u);
+  assert.match(policySource, /function revalidateAcceptanceLaunchPlacement/u);
+  assert.match(storeSource, /O_NOFOLLOW/u);
+  assert.match(storeSource, /fstatSync/u);
+  assert.match(storeSource, /linkSync/u);
   assert.doesNotMatch(source, /AUTO_SVGA_(?:WINDOW|PLACEMENT)_(?:PATH|FILE)/u);
   assert.doesNotMatch(source, /--auto-svga-acceptance-(?:x|y|width|height)=/u);
 });

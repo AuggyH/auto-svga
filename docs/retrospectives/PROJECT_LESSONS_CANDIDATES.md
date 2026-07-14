@@ -1485,5 +1485,10 @@ promoted, watched, rejected, or kept historical.
   intersection with deterministic ties, validates full outer bounds and minimum
   size, rejects coordinate-style acceptance arguments, and binds the enforcing
   host modules into the macOS package proof by exact hashes.
+- Follow-up evidence: pre-handoff adversarial tests showed that one successful
+  display lookup and one symlink check were insufficient. The hardened boundary
+  revalidates the complete display set immediately before construction and
+  binds preference parent/file descriptor identity, link count, size, and
+  no-overwrite first publication.
 - Status: Candidate pending combined Reset/UIUX/placement integration and one
   rebuilt installed placement discriminator.

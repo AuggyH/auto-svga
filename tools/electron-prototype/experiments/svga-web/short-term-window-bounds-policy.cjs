@@ -79,6 +79,20 @@ function strictRect(value) {
   return rect;
 }
 
+function exactObjectKeys(value, expectedKeys) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function strictStoredRect(value) {
+  if (!exactObjectKeys(value, ["x", "y", "width", "height"])) return undefined;
+  if (![value.x, value.y, value.width, value.height].every(Number.isSafeInteger)) return undefined;
+  if (value.width <= 0 || value.height <= 0) return undefined;
+  return { x: value.x, y: value.y, width: value.width, height: value.height };
+}
+
 function boundedDisplayId(value) {
   return Number.isSafeInteger(value) && value >= 0 && value <= MAX_DISPLAY_ID
     ? value
@@ -120,20 +134,23 @@ function centeredBounds(size, workArea, minimumSize) {
 }
 
 function normalizeWindowPlacementRecord(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (!exactObjectKeys(value, ["schemaVersion", "source", "displayId", "bounds", "savedAt"])) return undefined;
   if (value.schemaVersion !== 1 || value.source !== "owner-normal-window") return undefined;
-  const bounds = strictRect(value.bounds);
+  const bounds = strictStoredRect(value.bounds);
   if (!bounds) return undefined;
-  if (value.displayId !== undefined && boundedDisplayId(value.displayId) === undefined) return undefined;
-  if (value.savedAt !== undefined && (typeof value.savedAt !== "string" || !Number.isFinite(Date.parse(value.savedAt)))) {
+  if (boundedDisplayId(value.displayId) === undefined) return undefined;
+  if (typeof value.savedAt !== "string"
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value.savedAt)
+    || !Number.isFinite(Date.parse(value.savedAt))
+    || new Date(value.savedAt).toISOString() !== value.savedAt) {
     return undefined;
   }
   return {
     schemaVersion: 1,
     source: "owner-normal-window",
+    displayId: value.displayId,
     bounds,
-    ...(value.displayId === undefined ? {} : { displayId: value.displayId }),
-    ...(value.savedAt === undefined ? {} : { savedAt: value.savedAt })
+    savedAt: value.savedAt
   };
 }
 
@@ -148,6 +165,21 @@ function intersectionArea(bounds, workArea) {
 
 function onlineDisplays(displays) {
   return Array.isArray(displays) ? displays.map(normalizeDisplay).filter(Boolean) : [];
+}
+
+function displaySetIdentity(displays) {
+  if (!Array.isArray(displays) || displays.length === 0) return undefined;
+  const normalized = displays.map(normalizeDisplay);
+  if (normalized.some((display) => !display)) return undefined;
+  const ordered = normalized.sort((a, b) => a.id - b.id);
+  if (ordered.some((display, index) => index > 0 && display.id === ordered[index - 1].id)) return undefined;
+  return ordered.map((display) => [
+    display.id,
+    display.workArea.x,
+    display.workArea.y,
+    display.workArea.width,
+    display.workArea.height
+  ].join(":")).join("|");
 }
 
 function primaryOnlineDisplay(displays, primaryDisplay) {
@@ -226,6 +258,9 @@ function parseAcceptanceDisplayRequest({ argv, environment, internalCandidate })
 
   const rawDisplayId = displayArguments[0].slice(ACCEPTANCE_DISPLAY_ARGUMENT.length);
   if (!/^\d{1,10}$/u.test(rawDisplayId)) return { status: "rejected", reason: "acceptance_display_malformed" };
+  if (rawDisplayId.length > 1 && rawDisplayId.startsWith("0")) {
+    return { status: "rejected", reason: "acceptance_display_malformed" };
+  }
   const displayId = Number(rawDisplayId);
   if (boundedDisplayId(displayId) === undefined) return { status: "rejected", reason: "acceptance_display_malformed" };
   return {
@@ -240,6 +275,10 @@ function resolveAcceptanceLaunchPlacement({ request, displays, defaultSize, mini
   const matches = onlineDisplays(displays).filter((display) => display.id === request.displayId);
   if (matches.length === 0) return { status: "rejected", reason: "acceptance_display_unknown", persist: false };
   if (matches.length !== 1) return { status: "rejected", reason: "acceptance_display_ambiguous", persist: false };
+  const resolvedDisplaySetIdentity = displaySetIdentity(displays);
+  if (!resolvedDisplaySetIdentity) {
+    return { status: "rejected", reason: "acceptance_display_set_invalid", persist: false };
+  }
   const display = matches[0];
   const bounds = centeredBounds(defaultSize, display.workArea, minimumSize);
   if (!bounds) return { status: "rejected", reason: "acceptance_display_too_small", persist: false };
@@ -247,9 +286,34 @@ function resolveAcceptanceLaunchPlacement({ request, displays, defaultSize, mini
     status: "accepted",
     displayId: display.id,
     executionId: request.executionId,
+    displaySetIdentity: resolvedDisplaySetIdentity,
+    workArea: { ...display.workArea },
     bounds,
     persist: false
   };
+}
+
+function revalidateAcceptanceLaunchPlacement({ placement, displays, minimumSize }) {
+  if (placement?.status !== "accepted"
+    || boundedDisplayId(placement.displayId) === undefined
+    || typeof placement.executionId !== "string"
+    || typeof placement.displaySetIdentity !== "string"
+    || !strictRect(placement.bounds)
+    || !strictRect(placement.workArea)) {
+    return { status: "rejected", reason: "acceptance_request_invalid", persist: false };
+  }
+  const matches = onlineDisplays(displays).filter((display) => display.id === placement.displayId);
+  if (matches.length === 0) return { status: "rejected", reason: "acceptance_display_unknown", persist: false };
+  if (matches.length !== 1) return { status: "rejected", reason: "acceptance_display_ambiguous", persist: false };
+  const currentDisplaySetIdentity = displaySetIdentity(displays);
+  if (!currentDisplaySetIdentity || currentDisplaySetIdentity !== placement.displaySetIdentity) {
+    return { status: "rejected", reason: "acceptance_display_set_changed", persist: false };
+  }
+  if (!minimumFitsWorkArea(minimumSize, matches[0].workArea)
+    || !isWindowContainedInWorkArea(placement.bounds, matches[0].workArea)) {
+    return { status: "rejected", reason: "acceptance_display_set_changed", persist: false };
+  }
+  return { ...placement, persist: false };
 }
 
 function windowPlacementRecordFromBounds({ bounds, displayId, windowState, launchMode, savedAt, workArea }) {
@@ -265,7 +329,10 @@ function windowPlacementRecordFromBounds({ bounds, displayId, windowState, launc
   if (workArea !== undefined && !isWindowContainedInWorkArea(normalizedBounds, workArea)) {
     return { status: "rejected", reason: "placement_out_of_bounds" };
   }
-  if (typeof savedAt !== "string" || !Number.isFinite(Date.parse(savedAt))) {
+  if (typeof savedAt !== "string"
+    || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(savedAt)
+    || !Number.isFinite(Date.parse(savedAt))
+    || new Date(savedAt).toISOString() !== savedAt) {
     return { status: "rejected", reason: "placement_timestamp_malformed" };
   }
   return {
@@ -286,6 +353,7 @@ module.exports = {
   parseAcceptanceDisplayRequest,
   clampSizeToWorkArea,
   preserveWindowSizeAcrossDisplay,
+  revalidateAcceptanceLaunchPlacement,
   resolveAcceptanceLaunchPlacement,
   resolveNormalLaunchPlacement,
   selectDisplayForPlacement,

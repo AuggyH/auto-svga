@@ -16,6 +16,7 @@ const { createDesktopArtifactCatalog } = require("./desktop-artifact-catalog.cjs
 const {
   parseAcceptanceDisplayRequest,
   preserveWindowSizeAcrossDisplay,
+  revalidateAcceptanceLaunchPlacement,
   resolveAcceptanceLaunchPlacement,
   resolveNormalLaunchPlacement,
   selectDisplayForPlacement,
@@ -6883,9 +6884,20 @@ async function createExperimentWindow() {
   );
   experimentServer = await startSvgaWebExperimentServer({ appRoot, reportToken, desktopArtifacts });
   expectedOrigin = experimentServer.origin;
-  const initialPlacement = isMultiFormatDesktopProduct
+  let initialPlacement = isMultiFormatDesktopProduct
     ? resolveInitialMultiFormatWindowPlacement()
     : undefined;
+  if (initialPlacement?.mode === "acceptance") {
+    const revalidatedPlacement = revalidateAcceptanceLaunchPlacement({
+      placement: initialPlacement,
+      displays: screen.getAllDisplays(),
+      minimumSize: macosWorkbenchWindowSizing.minimumLaunch
+    });
+    if (revalidatedPlacement.status === "rejected") {
+      throw new Error(`window_placement_rejected:${revalidatedPlacement.reason}`);
+    }
+    initialPlacement = { ...revalidatedPlacement, mode: "acceptance", preferenceStatus: "not-read" };
+  }
   activeWindowPlacementMode = initialPlacement?.mode ?? "legacy";
   const launchBounds = initialPlacement?.bounds ?? (
     usesShortTermPreviewShell
