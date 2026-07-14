@@ -124,6 +124,67 @@ test("host picker returns cancel, selected formats, and redacted invalid input w
   assert.ok(observedOptions.every(({ filters }) => filters[0].extensions[0] === "*"));
 });
 
+test("unsupported picker selection stays typed and mutation-free through the renderer contract", async () => {
+  const authority = { view: "launch", windowMode: "launch", sourceId: "", sessionOpenCalls: 0 };
+  const hostResult = await chooseMultiFormatLocalFile({
+    platform: "darwin",
+    async showOpenDialog() {
+      return { canceled: false, filePaths: ["/Users/alice/Secret Project/input.txt"] };
+    }
+  });
+  if (hostResult.status === "selected") authority.sessionOpenCalls += 1;
+  const rendererResult = await resolveMultiFormatChooserOutcome(hostResult);
+
+  assert.deepEqual(rendererResult, {
+    kind: "failure",
+    code: "unsupported_file_type",
+    message: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。",
+    pathRedacted: true
+  });
+  assert.deepEqual(authority, { view: "launch", windowMode: "launch", sourceId: "", sessionOpenCalls: 0 });
+  assert.doesNotMatch(JSON.stringify({ hostResult, rendererResult }), /Users\/alice|Secret Project/u);
+
+  const fixedCopyResult = await resolveMultiFormatChooserOutcome({
+    status: "failed",
+    code: "unsupported_file_type",
+    message: "Leaked /Users/alice/Secret Project/input.txt",
+    pathRedacted: true
+  });
+  assert.deepEqual(fixedCopyResult, rendererResult);
+  assert.doesNotMatch(JSON.stringify(fixedCopyResult), /Users\/alice|Secret Project/u);
+
+  const untrustedResult = await resolveMultiFormatChooserOutcome({
+    status: "failed",
+    code: "unsupported_file_type",
+    message: "Leaked /Users/alice/Secret Project/input.txt",
+    pathRedacted: false
+  });
+  assert.equal(untrustedResult.code, undefined);
+  assert.match(untrustedResult.message, /无法识别的结果/u);
+  assert.doesNotMatch(JSON.stringify(untrustedResult), /Users\/alice|Secret Project/u);
+});
+
+test("picker exception stays typed and mutation-free through the renderer contract", async () => {
+  const authority = { view: "launch", windowMode: "launch", sourceId: "", sessionOpenCalls: 0 };
+  const hostResult = await chooseMultiFormatLocalFile({
+    platform: "darwin",
+    async showOpenDialog() {
+      throw new Error("Picker failed at /Users/alice/Secret Project/input.svga");
+    }
+  });
+  if (hostResult.status === "selected") authority.sessionOpenCalls += 1;
+  const rendererResult = await resolveMultiFormatChooserOutcome(hostResult);
+
+  assert.deepEqual(rendererResult, {
+    kind: "failure",
+    code: "file_picker_failed",
+    message: "无法打开文件选择器，源文件没有被修改。",
+    pathRedacted: true
+  });
+  assert.deepEqual(authority, { view: "launch", windowMode: "launch", sourceId: "", sessionOpenCalls: 0 });
+  assert.doesNotMatch(JSON.stringify({ hostResult, rendererResult }), /Users\/alice|Secret Project/u);
+});
+
 test("cancelled host chooser preserves Launch state and window geometry behaviorally", async () => {
   let openCalls = 0;
   const windowModes = [];

@@ -1440,6 +1440,8 @@ promoted, watched, rejected, or kept historical.
   The same installed gate also showed extension-filtered macOS files selected
   but not submittable. The repair waits for chooser completion, exposes files
   on macOS, and applies extension plus content validation in the host/parser
-  chain.
-- Status: Candidate pending independent Code Review and rebuilt installed
+  chain. `MF-NATIVE-PICKER-CR-001` added that every new terminal host result
+  must also be tested through its final owner-visible renderer consumer; helper-
+  only tests missed safe typed failures degrading to generic copy.
+- Status: Candidate pending Code Re-review and rebuilt installed
   native-picker QA.

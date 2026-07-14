@@ -8,7 +8,7 @@ This successor repair addresses the shared installed intake blocker reported by
 bundled conformance milestone at `3231f2be` and changes only the macOS native
 picker and renderer chooser-wait boundary.
 
-Status: Fix Ready for independent Code Review and rebuilt installed QA. The QA
+Status: Fix Ready for PM-owned Code Re-review and rebuilt installed QA. The QA
 tickets remain open.
 
 ## 2. Git State
@@ -41,6 +41,11 @@ The prior cancellation test returned immediately, and its material proof
 injected paths directly into the desktop session. Neither exercised a delayed
 human chooser nor the packaged macOS filter boundary.
 
+Code Review then found one additional composed-boundary gap: picker helper
+tests ended at the safe host result. The renderer normalizer did not recognize
+the reviewed `status: "failed"` result and replaced both typed failures with a
+generic unrecognized-result message.
+
 ### Failure-first evidence
 
 - The original controller source failed the new contract because
@@ -50,6 +55,9 @@ human chooser nor the packaged macOS filter boundary.
   only `svga/json/mp4` filters and had no post-selection host validator.
 - Permit 069 independently reproduced both installed failures before this
   source change.
+- Before the Code Review repair, composed unsupported-extension and picker-
+  exception tests failed `2/2`: both safe host failures degraded to the generic
+  unrecognized-result owner copy.
 
 ### Repair
 
@@ -62,6 +70,10 @@ human chooser nor the packaged macOS filter boundary.
   fail typed and path-redacted.
 - The chooser helper catches host failures without returning raw filesystem
   paths.
+- The renderer recognizes only the two reviewed host failure codes when the
+  result is explicitly path-redacted. Owner-visible copy is renderer-owned;
+  arbitrary host messages and fields are discarded. Unknown or unredacted
+  failures remain generic and cannot open a session.
 
 ### Success stop
 
@@ -98,14 +110,17 @@ pre-delivery symptom.
 | `ASV-QA-20260714-006` | Open/cancel is a Launch and geometry no-op | delayed human-decision test and proof row | Repaired in source |
 | `ASV-QA-20260714-007..008` | Capability panel and SVGA workflow remain conformant | related Electron/formal 0.1 regressions | Preserved; installed QA pending |
 | `ASV-QA-20260714-009` | Native chooser can submit supported SVGA/Lottie/VAP files | macOS wildcard filter plus host extension validation and real-input source proof | Repaired in source; native installed gate pending |
+| `MF-NATIVE-PICKER-CR-001` | Safe host picker failures remain typed through the renderer boundary | composed unsupported/exception tests with immutable Launch authority and zero session calls | Repaired; Code Re-review pending |
 
 ## 6. Validation
 
 - Failure-first focused chooser tests: FAIL `2/3` before repair for the two
   expected boundaries; PASS `5/5` after repair.
-- Bundled conformance suite: PASS `18/18`.
-- Related Electron host/preload/session/runtime suite: PASS `80/80` with a
-  temporary hash-matched dependency overlay.
+- Code Review failure-first composed tests: FAIL `2/2` before repair, PASS
+  `2/2` after repair.
+- Bundled conformance suite: PASS `20/20`.
+- All Electron experiment tests: PASS `104/104` with a temporary hash-matched
+  dependency overlay.
 - `npm run build`: PASS.
 - `npm run test:all`: PASS; existing compiled suite count unchanged at
   `532/532`.
@@ -123,6 +138,7 @@ pre-delivery symptom.
 | `ASV-QA-20260714-006` | Repaired with no-deadline chooser wait | Native cancel QA |
 | `ASV-QA-20260714-007..008` | Prior repair preserved | Rebuilt installed matrix |
 | `ASV-QA-20260714-009` | Repaired with macOS exposure plus host validation | Native SVGA/Lottie/VAP submit QA |
+| `MF-NATIVE-PICKER-CR-001` | Repaired with reviewed-code allowlist and renderer-owned safe copy | PM-owned exact-head Code Re-review |
 
 ## 8. Risks And Boundaries
 
@@ -143,6 +159,8 @@ pre-delivery symptom.
   boundary.
 - Evidence lesson: direct session injection proves parsing, not native chooser
   submission. Keep that installed gate explicit.
+- Review lesson: a new terminal host result is incomplete until a composed test
+  proves the final renderer consumer preserves its safe typed semantics.
 - Avoid next time: test delayed cancel and packaged picker acceptance before
   treating an intake architecture repair as installed-conformant.
 

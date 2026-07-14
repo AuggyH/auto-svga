@@ -28,6 +28,10 @@ import { projectMultiFormatRightPanel } from "./multiformat-product-conformance.
 
 const supportedDropPattern = /\.(svga|json|mp4)$/i;
 export const MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS = 15_000;
+const reviewedPickerFailureMessages = new Map([
+  ["unsupported_file_type", "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。"],
+  ["file_picker_failed", "无法打开文件选择器，源文件没有被修改。"]
+]);
 const factLabels = new Map([
   ["Format", "格式"],
   ["Canvas", "画布"],
@@ -1626,6 +1630,17 @@ export async function resolveMultiFormatChooserOutcome(openPromise) {
 export function normalizeMultiFormatOpenOutcome(result) {
   if (result?.kind === "failure" || result?.kind === "cancelled" || result?.kind === "model") return result;
   if (result?.status === "cancelled") return { kind: "cancelled" };
+  const reviewedPickerFailureMessage = result?.status === "failed" && result?.pathRedacted === true
+    ? reviewedPickerFailureMessages.get(result.code)
+    : undefined;
+  if (reviewedPickerFailureMessage) {
+    return {
+      kind: "failure",
+      code: result.code,
+      message: reviewedPickerFailureMessage,
+      pathRedacted: true
+    };
+  }
   if (result?.status === "missing") {
     return {
       kind: "failure",
