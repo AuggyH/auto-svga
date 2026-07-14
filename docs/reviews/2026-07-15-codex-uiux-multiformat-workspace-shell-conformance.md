@@ -28,15 +28,42 @@ Completed owner-visible changes:
 No new product scope, deferred editor controls, save/export behavior, host
 authority, package, or installed application was added by this milestone.
 
+### Code Review repair
+
+The repair closes both findings from governance review `e1795ce7`:
+
+- `UIUX-MF-SHELL-CR-001`: owner-visible issues, unsupported features, and
+  issue inventory rows now use an explicit closed Chinese vocabulary. Unknown
+  codes, messages, feature names, and paths collapse to fixed generic Chinese
+  copy; raw input is not forwarded.
+- `UIUX-MF-SHELL-CR-002`: chooser Cancel preserves the active document, while
+  an accepted Open attempt that fails revokes the old model/source/selection,
+  runtime replacements, command state, and SVGA legacy delegation before the
+  failure state renders.
+
+The authority cleanup repair is
+`8b8f9221ee70d6e1df6fdcf2a88307ff6dfb7034`. The exact final product repair
+after the Early Advisory follow-up is
+`2247303be8a58049c7600ea77a37fd42c78d57f5`; it replaces the residual
+Chinese-text heuristic in `ownerFailureCopy()` with an immutable exact-code
+allowlist. Raw Chinese paths, mixed-language technical text, unknown codes,
+objects, arrays, accessors, coercible values, and additional host fields now
+all collapse to one fixed generic Chinese failure. Reviewed codes render only
+renderer-owned fixed copy.
+Its validation byte record is
+`review/uiux-multiformat-workspace-shell-conformance-20260715/VALIDATION_SUMMARY.json`
+with SHA-256
+`9b2e11b958273ba0de08c643de6f83c68144daeed2dab34f7b2f54d4a64b81c6`.
+
 ## 2. Git state
 
 - Branch: `codex/uiux-multiformat-r12-conformance-20260715`
 - Commit before work: `7cba862ed25986a0a50970222077dc5820e5f0aa`
-- Uncommitted changes at review authoring: the 15 owned UI/UX source/test files
-  listed below, plus this review, the visible review packet, and one
-  retrospective ledger entry
-- Untracked files at review authoring: only this task's new formal review and
-  ignored visible review packet; no unrelated untracked files
+- Original milestone head: `1ca67dce21a185559a7821ccf746747cb4c09273`
+- Authority repair head: `8b8f9221ee70d6e1df6fdcf2a88307ff6dfb7034`
+- Final product repair head: `2247303be8a58049c7600ea77a37fd42c78d57f5`
+- Final handoff head: the docs-only descendant reported in the Fix Ready
+  callback
 
 ## 3. Changed files
 
@@ -58,6 +85,7 @@ authority, package, or installed application was added by this milestone.
 - `docs/reviews/2026-07-15-codex-uiux-multiformat-workspace-shell-conformance.md`
 - `docs/retrospectives/TASK_RETRO_LEDGER.jsonl`
 - `review/uiux-multiformat-workspace-shell-conformance-20260715/REVIEW_PACKET.md`
+- `review/uiux-multiformat-workspace-shell-conformance-20260715/VALIDATION_SUMMARY.json`
 
 ## 4. Requirement checks
 
@@ -84,15 +112,20 @@ node --test --test-name-pattern "short-term general compare|image replacement|op
   tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs
 PASS 3/3
 
+node --test --test-name-pattern \
+  "image replacement controls use a host picker|owner failure rendering trusts only reviewed codes|open cancellation preserves active authority|renderer open contract" \
+  tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs
+PASS 4/4
+
 node --test \
   tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs
-PASS 25/25
+PASS 26/26
 
 npm run desktop:short-term:design-system-check
 PASS
 
 npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test
-PASS 109/109
+PASS 112/112
 
 git diff --check
 PASS
@@ -143,7 +176,9 @@ both symlinks were removed after the checks. No lockfile was modified.
 
 ## 9. Commit
 
-- Commit: recorded in the Implementation Ready callback
+- Authority repair commit: `8b8f9221ee70d6e1df6fdcf2a88307ff6dfb7034`
+- Owner-copy boundary repair commit: `2247303be8a58049c7600ea77a37fd42c78d57f5`
+- Handoff commit: recorded in the Fix Ready callback
 - Branch: `codex/uiux-multiformat-r12-conformance-20260715`
 - Tag: none
 
@@ -165,6 +200,20 @@ both symlinks were removed after the checks. No lockfile was modified.
   more reliable than repeated package/foreground loops; FBP and MCP are
   complementary evidence paths
 - Follow-up candidate for `docs/retrospectives/PROJECT_LESSONS_CANDIDATES.md`: No
+
+Repair retrospective:
+
+- The first milestone centralized copy but still trusted raw diagnostic
+  payloads. The durable fix is a closed product vocabulary at the projection
+  boundary, not another regex over rendered strings.
+- The Early Advisory proved that checking for Chinese characters is not a
+  trust boundary. Visible failure copy now depends only on an exact reviewed
+  code and never evaluates raw host text, getters, or coercion hooks.
+- A generic failure renderer cannot decide document authority. Separating
+  action failure from accepted-Open failure keeps replacement errors local
+  while preventing stale file commands after intake failure.
+- One two-test failure-first slice plus the existing bundled suites was enough;
+  no foreground or package loop was needed.
 
 ## 11. Token usage
 

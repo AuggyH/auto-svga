@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "task": "uiux-multiformat-workspace-shell-conformance-cr-repair",
+  "branch": "codex/uiux-multiformat-r12-conformance-20260715",
+  "reviewedBaseHead": "1ca67dce21a185559a7821ccf746747cb4c09273",
+  "authorityRepairHead": "8b8f9221ee70d6e1df6fdcf2a88307ff6dfb7034",
+  "productRepairHead": "2247303be8a58049c7600ea77a37fd42c78d57f5",
+  "productRepairDiffSha256": "657f18c69dd28e8c9d580325ad6344fea81490edb5b85bab2760f694ad2235b7",
+  "sourceFiles": {
+    "tools/electron-prototype/experiments/svga-web/web/multiformat-product-conformance.mjs": "c29c300d7651e60c3a57b3b0f6a92239e5ff4e12da36da67801d22305ba182bb",
+    "tools/electron-prototype/experiments/svga-web/web/multiformat-desktop-preview-controller.mjs": "03fa858c3ebf3f69a739b8de3df7c9e46c00189d7de372a17894a43f5e3465e5",
+    "tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs": "4a570f1a54c8318da6e3063e61bad1e43f5c2f8a4e79ed150cb04aad83d50e39",
+    "tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs": "519367e7f98b79ca0fbbc374eda0db0a6dae994882dbb50e60d6fc349d43ab7c"
+  },
+  "failureFirst": {
+    "ownerIssueProjection": "failed-with-raw-English-message-and-path-before-repair",
+    "composedOpenAuthority": "test-load-blocked-before-repair-by-missing-isolated-worktree-protobufjs",
+    "ownerFailureCopy": "failed-known-code-mapping-before-repair-after-test-stub-was-corrected"
+  },
+  "validation": {
+    "directRepairTests": "4/4 passed",
+    "multiFormatConformance": "26/26 passed",
+    "electronPrototype": "112/112 passed",
+    "designSystem": "passed",
+    "nodeCheck": "passed",
+    "diffCheck": "passed",
+    "retroLedgerJsonl": "passed"
+  },
+  "dependencyOverlay": {
+    "rootLockMatchedDonor": "/.codex/worktrees/116b/auto-svga",
+    "electronPrototypeLockMatchedDonor": "/Documents/Auto_SVGA/tools/electron-prototype",
+    "committed": false,
+    "removedAfterValidation": true
+  },
+  "nonclaims": {
+    "foregroundVisualAcceptance": false,
+    "productOwnerAcceptance": false,
+    "packagedOrPromoted": false,
+    "windowPlacementImplemented": false
+  }
+}
