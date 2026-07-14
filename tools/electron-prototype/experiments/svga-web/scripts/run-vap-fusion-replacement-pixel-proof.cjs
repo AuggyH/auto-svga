@@ -517,8 +517,16 @@ function installIpcHandlers() {
       return { status: "failed", code: "replacement_target_stale", message: "reset target changed", pathRedacted: true };
     }
     if (result?.model?.replacement?.lastAction?.status !== "accepted") return result;
-    const acceptedRuntimeTargetId = String(result.model.replacement.lastAction.runtimeTargetId ?? "").trim();
-    if (!acceptedRuntimeTargetId || acceptedRuntimeTargetId !== selection.runtimeTargetId) {
+    const resetReceipt = result.model.replacement.lastAction;
+    const acceptedPublicTargetId = String(resetReceipt.publicTargetId ?? "").trim();
+    const acceptedRuntimeTargetId = String(resetReceipt.runtimeTargetId ?? "").trim();
+    const acceptedBindingToken = String(resetReceipt.bindingToken ?? "");
+    if (
+      resetReceipt.type !== "resetReplacement"
+      || acceptedPublicTargetId !== selection.publicTargetId
+      || acceptedRuntimeTargetId !== selection.runtimeTargetId
+      || acceptedBindingToken !== selection.bindingToken
+    ) {
       return { status: "failed", code: "replacement_target_malformed", message: "reset binding changed", pathRedacted: true };
     }
     ipcEvents.push({

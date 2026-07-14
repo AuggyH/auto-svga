@@ -204,6 +204,153 @@ test("owner-visible 0.2 candidate resets one Lottie target without clearing sibl
   assert.equal(lottieAssetPath(loadCalls.at(-1)?.animationData, "avatar"), "data:image/png;base64,AQID");
 });
 
+test("owner-visible 0.2 candidate rejects ambiguous Lottie image and text identities before mutation", async () => {
+  const localPath = "/Users/designer/private/ambiguous-card.json";
+  const loadCalls: LottieSvgLoadOptions[] = [];
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host: memoryHost({
+      [localPath]: minimalLottie({
+        assets: [{ id: "text:1", p: "avatar.png", w: 20, h: 20 }],
+        layers: [
+          { ind: 2, ty: 2, nm: "Avatar", refId: "text:1" },
+          { ind: 1, ty: 5, nm: "Title", t: { d: { k: [{ s: { t: "Hello" } }] } } }
+        ]
+      }),
+      [`${localPath}::avatar.png`]: Uint8Array.from([1, 2, 3])
+    }),
+    lottieTarget: { container: { id: "lottie-target" } },
+    lottieRendererLoader: async () => fakeLottieRenderer(loadCalls)
+  });
+
+  const opened = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-lottie-cross-kind",
+    source: "fileButton",
+    localPath
+  });
+  assert.equal(opened.status, "previewReady");
+  assert.equal(loadCalls.length, 1);
+
+  for (const kind of ["image", "text"] as const) {
+    const before = session.getModel();
+    const blocked = await session.applyReplacement({
+      gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+      requestId: `replace-cross-kind-${kind}`,
+      targetId: "text:1",
+      kind,
+      value: kind === "image" ? "data:image/png;base64,QUJD" : "Welcome"
+    });
+
+    assert.equal(blocked.replacement.lastAction?.status, "blocked");
+    assert.equal(blocked.replacement.lastAction?.diagnostic?.code, "replacement_target_ambiguous");
+    assert.equal(blocked.replacement.revision, before.replacement.revision);
+    assert.deepEqual(blocked.replacement.active, before.replacement.active);
+    assert.equal(loadCalls.length, 1);
+    assertNoLocalPaths(blocked);
+  }
+});
+
+test("owner-visible 0.2 candidate rejects duplicate Lottie aliases and ambiguous reset without mutation", async () => {
+  const localPath = "/Users/designer/private/duplicate-text-card.json";
+  const loadCalls: LottieSvgLoadOptions[] = [];
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host: memoryHost({
+      [localPath]: minimalLottie({
+        assets: [{ id: "avatar", p: "avatar.png", w: 20, h: 20 }],
+        layers: [
+          { ind: 3, ty: 2, nm: "Avatar", refId: "avatar" },
+          { ind: 1, ty: 5, nm: "Same", t: { d: { k: [{ s: { t: "One" } }] } } },
+          { ind: 2, ty: 5, nm: "Same", t: { d: { k: [{ s: { t: "Two" } }] } } }
+        ]
+      }),
+      [`${localPath}::avatar.png`]: Uint8Array.from([1, 2, 3])
+    }),
+    lottieTarget: { container: { id: "lottie-target" } },
+    lottieRendererLoader: async () => fakeLottieRenderer(loadCalls)
+  });
+
+  await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "open-lottie-duplicate-alias",
+    source: "fileButton",
+    localPath
+  });
+  const beforeAliasApply = session.getModel();
+  const duplicateAlias = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-lottie-duplicate-alias",
+    targetId: "Same",
+    kind: "text",
+    value: "Blocked"
+  });
+  assert.equal(duplicateAlias.replacement.lastAction?.status, "blocked");
+  assert.equal(duplicateAlias.replacement.lastAction?.diagnostic?.code, "replacement_target_ambiguous");
+  assert.equal(duplicateAlias.replacement.revision, beforeAliasApply.replacement.revision);
+  assert.deepEqual(duplicateAlias.replacement.active, beforeAliasApply.replacement.active);
+  assert.equal(loadCalls.length, 1);
+
+  const textApplied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-lottie-unique-text-id",
+    targetId: "text:1",
+    kind: "text",
+    value: "Welcome"
+  });
+  assert.equal(textApplied.replacement.lastAction?.status, "accepted");
+  const beforeDuplicateReset = session.getModel();
+  const duplicateResetLoadCount = loadCalls.length;
+  const duplicateAliasReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-lottie-duplicate-alias",
+    targetId: "Same",
+    kind: "text"
+  });
+  assert.equal(duplicateAliasReset.replacement.lastAction?.status, "blocked");
+  assert.equal(duplicateAliasReset.replacement.lastAction?.diagnostic?.code, "replacement_target_ambiguous");
+  assert.equal(duplicateAliasReset.replacement.revision, beforeDuplicateReset.replacement.revision);
+  assert.deepEqual(duplicateAliasReset.replacement.active, beforeDuplicateReset.replacement.active);
+  assert.equal(loadCalls.length, duplicateResetLoadCount);
+
+  const textReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-lottie-unique-text-id",
+    targetId: "text:1",
+    kind: "text"
+  });
+  assert.equal(textReset.replacement.lastAction?.status, "accepted");
+
+  const imageApplied = await session.applyReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "replace-lottie-image-before-ambiguous-reset",
+    targetId: "avatar",
+    kind: "image",
+    value: "data:image/png;base64,QUJD"
+  });
+  assert.equal(imageApplied.replacement.lastAction?.status, "accepted");
+  const internal = session as unknown as { model: OwnerVisibleMultiFormatPreviewModel };
+  internal.model = {
+    ...structuredClone(imageApplied),
+    rightPanel: {
+      ...structuredClone(imageApplied.rightPanel),
+      lottieTexts: [{ id: "avatar", layerId: "1", name: "Collision", replaceable: true }]
+    }
+  };
+  const beforeReset = session.getModel();
+  const resetLoadCount = loadCalls.length;
+  const blockedReset = await session.resetReplacement({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "reset-lottie-cross-kind",
+    targetId: "avatar",
+    kind: "image"
+  });
+  assert.equal(blockedReset.replacement.lastAction?.status, "blocked");
+  assert.equal(blockedReset.replacement.lastAction?.diagnostic?.code, "replacement_target_ambiguous");
+  assert.equal(blockedReset.replacement.revision, beforeReset.replacement.revision);
+  assert.deepEqual(blockedReset.replacement.active, beforeReset.replacement.active);
+  assert.equal(loadCalls.length, resetLoadCount);
+  assertNoLocalPaths(blockedReset);
+});
+
 test("owner-visible 0.2 candidate fails Lottie reset closed when the original source cannot reopen", async () => {
   const localPath = "/Users/designer/private/card.json";
   const loadCalls: LottieSvgLoadOptions[] = [];

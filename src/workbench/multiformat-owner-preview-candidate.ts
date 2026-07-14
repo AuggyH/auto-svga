@@ -1008,24 +1008,60 @@ function resolveReplacementSelection(
         );
   }
   if (model.detectedFormat === "lottie") {
-    if (input.kind === "image") {
-      const asset = model.rightPanel.assets.find((entry) => entry.kind === "image" && entry.replaceable && entry.id === requestedTargetId);
-      return asset
-        ? acceptedReplacementSelection(model, input.kind, "lottie", requestedTargetId, asset.id)
-        : blockedReplacementSelection(
-            "replacement_target_unavailable",
-            "The selected target is not replaceable for the active format."
-          );
+    const candidates = [
+      ...model.rightPanel.assets
+        .filter((entry) => entry.kind === "image" && entry.replaceable)
+        .map((entry) => ({
+          kind: "image" as const,
+          publicAliases: uniqueStrings([entry.id]),
+          runtimeTargetId: entry.id
+        })),
+      ...model.rightPanel.lottieTexts
+        .filter((entry) => entry.replaceable)
+        .map((entry) => ({
+          kind: "text" as const,
+          publicAliases: uniqueStrings([entry.id, entry.layerId, entry.name]),
+          runtimeTargetId: entry.id
+        }))
+    ];
+    const publicMatches = candidates.filter((entry) => entry.publicAliases.includes(requestedTargetId));
+    if (publicMatches.length === 0) {
+      return blockedReplacementSelection(
+        "replacement_target_unavailable",
+        "The selected target is not replaceable for the active format."
+      );
     }
-    const text = model.rightPanel.lottieTexts.find((entry) =>
-      entry.id === requestedTargetId || entry.layerId === requestedTargetId || entry.name === requestedTargetId
+    if (publicMatches.length !== 1 || publicMatches[0].kind !== input.kind) {
+      return blockedReplacementSelection(
+        "replacement_target_ambiguous",
+        "The selected Lottie replacement identity is ambiguous."
+      );
+    }
+    const target = publicMatches[0];
+    if (!isNonEmptyString(target.runtimeTargetId)) {
+      return blockedReplacementSelection(
+        "replacement_target_malformed",
+        "The selected Lottie replacement has a malformed runtime binding."
+      );
+    }
+    const canonicalRuntimeKey = target.runtimeTargetId.trim();
+    const canonicalMatches = candidates.filter((entry) =>
+      isNonEmptyString(entry.runtimeTargetId)
+      && entry.runtimeTargetId.trim() === canonicalRuntimeKey
     );
-    return text
-      ? acceptedReplacementSelection(model, input.kind, "lottie", requestedTargetId, text.id)
-      : blockedReplacementSelection(
-          "replacement_target_unavailable",
-          "The selected target is not replaceable for the active format."
-        );
+    if (canonicalMatches.length !== 1) {
+      return blockedReplacementSelection(
+        "replacement_target_ambiguous",
+        "The selected Lottie runtime binding is ambiguous."
+      );
+    }
+    return acceptedReplacementSelection(
+      model,
+      input.kind,
+      "lottie",
+      requestedTargetId,
+      canonicalRuntimeKey
+    );
   }
   if (model.detectedFormat === "vap") {
     const candidates = input.kind === "image" ? model.rightPanel.vapFusionImages : model.rightPanel.vapFusionTexts;

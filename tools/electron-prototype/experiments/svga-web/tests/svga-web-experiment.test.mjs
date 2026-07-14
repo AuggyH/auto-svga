@@ -1644,7 +1644,14 @@ test("0.2 host reset requires active source and canonical target authority", asy
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const resetSource = extractFunctionSource(main, "async function resetMultiFormatReplacement(input)");
   const selectionFailureSource = extractFunctionSource(main, "function replacementSelectionFailure(selection)");
-  const createHarness = ({ activeSourceId = "active-source", runtimeTargetId = "avatar", returnedTargetId = "avatar" } = {}) => {
+  const createHarness = ({
+    activeSourceId = "active-source",
+    runtimeTargetId = "avatar",
+    returnedType = "resetReplacement",
+    returnedPublicTargetId = "vap_fusion_1",
+    returnedTargetId = "avatar",
+    returnedBindingToken = "selection:1"
+  } = {}) => {
     const context = {
       sessionCalls: 0,
       resetCalls: [],
@@ -1669,9 +1676,11 @@ test("0.2 host reset requires active source and canonical target authority", asy
               model: {
                 replacement: {
                   lastAction: {
-                    type: "resetReplacement",
+                    type: returnedType,
                     status: "accepted",
-                    runtimeTargetId: returnedTargetId
+                    publicTargetId: returnedPublicTargetId,
+                    runtimeTargetId: returnedTargetId,
+                    bindingToken: returnedBindingToken
                   }
                 }
               }
@@ -1722,6 +1731,21 @@ test("0.2 host reset requires active source and canonical target authority", asy
     assert.equal(result.status, "failed");
     assert.equal(result.code, "replacement_target_malformed");
     assert.equal(result.pathRedacted, true);
+    assert.doesNotMatch(JSON.stringify(result), /Users|Desktop|private/iu);
+  }
+
+  for (const receipt of [
+    { returnedType: "applyReplacement" },
+    { returnedPublicTargetId: "vap_fusion_2" },
+    { returnedBindingToken: "selection:stale" }
+  ]) {
+    const context = createHarness(receipt);
+    const result = await context.callReset({ sourceId: "active-source", targetId: "vap_fusion_1", kind: "image" });
+    assert.equal(result.status, "failed");
+    assert.equal(result.code, "replacement_target_malformed");
+    assert.equal(result.pathRedacted, true);
+    assert.equal(result.model, undefined, "contradictory reset receipts must not reach renderer bookkeeping");
+    assert.equal(context.resetCalls.length, 1);
     assert.doesNotMatch(JSON.stringify(result), /Users|Desktop|private/iu);
   }
 });
@@ -3369,6 +3393,10 @@ test("VAP pixel proof requires target-scoped sibling isolation and source restor
   assert.match(proofSource, /waitForBalancedLifecycle\(5\)/u);
   assert.match(proofSource, /phase: "apply_replacement_binding_accepted"/u);
   assert.match(proofSource, /phase: "reset_binding_accepted"/u);
+  assert.match(proofSource, /resetReceipt\.type !== "resetReplacement"/u);
+  assert.match(proofSource, /acceptedPublicTargetId !== selection\.publicTargetId/u);
+  assert.match(proofSource, /acceptedRuntimeTargetId !== selection\.runtimeTargetId/u);
+  assert.match(proofSource, /acceptedBindingToken !== selection\.bindingToken/u);
 });
 
 test("server uses bounded internal-trial CSP and keeps report API token-bound", async () => {

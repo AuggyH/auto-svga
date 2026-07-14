@@ -17,6 +17,14 @@ sibling replacements remain active and dirty, while the final target Reset
 restores the source. SVGA keeps its existing controller behavior and now echoes
 the resolved key required by the shared host contract.
 
+Code Review then exposed two authority gaps. Lottie image and text candidates
+did not share one collision-checked public/canonical namespace, and the host
+accepted a Reset result after checking only status plus runtime key. The repair
+now rejects duplicate aliases and cross-kind canonical collisions before any
+revision or renderer mutation. Main and the real-runtime proof host require a
+Reset receipt bound to action type, public target, canonical runtime target, and
+the exact selection token.
+
 State: `Fix Ready / PM Independent Review Required`. This is not installed QA,
 Packaging, Product Owner acceptance, support, distribution, or release readiness.
 
@@ -60,16 +68,22 @@ Packaging, Product Owner acceptance, support, distribution, or release readiness
 |---|---|---|
 | `MF-CAP-MATRIX-001` | Closed at source/dev boundary | Per-row Reset previously called a global reset contract. New tests prove Lottie and VAP sibling isolation and final source restoration. |
 | `MF-CAP-MATRIX-EVIDENCE-001` | Closed | First real proof attempt exposed that the proof-only text IPC returned model state without the production canonical runtime value. The proof host now uses the same source/selection/canonical authority as production. |
+| `MF-TARGET-RESET-CR-001` | Closed in repair source | Cross-kind `text:1` and duplicate text aliases now return `replacement_target_ambiguous` before revision, active replacement, or renderer-load mutation. Both Apply and targeted Reset have failure-first coverage. |
+| `MF-TARGET-RESET-CR-002` | Closed in repair source | Main and proof host require `resetReplacement` plus matching public target, canonical runtime target, and binding token. Apply receipts and changed receipt fields fail typed and path-redacted before renderer bookkeeping. |
 | Current installed matrix | Open downstream gate | Frozen `7cba862e` Packaging/QA is separate; this successor has no installed or foreground acceptance. |
 
-- Root cause: Reset carried only replacement kind at the host boundary, so the
-  selected row identity was lost and owner state rebuilt from an empty context.
+- Root cause: Reset originally carried only replacement kind at the host
+  boundary. The first repair added per-target authority but inherited Lottie's
+  ordered alias lookup and a partial Apply-era receipt check instead of making
+  canonical uniqueness and action-bound receipts shared invariants.
 - Why the prior behavior passed tests: earlier tests applied one replacement at
   a time; a global reset and a target reset are indistinguishable in that shape.
 - Failure-first evidence: two-replacement Lottie and VAP tests showed the first
   Reset cleared both records and disabled Reset. The first direct runtime attempt
   also rejected state-only proof when the proof host omitted the canonical text
-  runtime value.
+  runtime value. Code Review repair probes then showed cross-kind `text:1` and
+  duplicate `Same` aliases were accepted, while an accepted Apply receipt could
+  satisfy the host Reset check.
 - Success stop: targeted Reset removes exactly one accepted canonical key,
   preserves sibling dirty/reset state and runtime pixels, final Reset restores
   exact source pixels, paused frames stay stable, lifecycle balances, and network
@@ -87,19 +101,22 @@ npm run build
 PASS
 
 node --test dist/tests/multiformat-owner-preview-candidate.test.js
-PASS 15/15
+PASS 17/17
 
 focused host/controller/proof contract group
-PASS 7/7
+PASS 9/9
+
+related Lottie/VAP/workspace group
+PASS 74/74
 
 npm run test:all
-PASS 532/532
+PASS 534/534
 
 npm run desktop:short-term:design-system-check
 PASS
 
-hidden non-foreground real VAP target-isolation proof before commit
-PASS, SHA-256 e2d4b39eb6183cb5b3adeb9d2b7ad2ccab994ec64fd435d171df06d1abe5c162
+hidden non-foreground real VAP target-isolation proof before repair
+PASS, SHA-256 af0576e3d33fb1f7013b96d5a23557fd8b249aa3333c28a8c2716cbc7211fc22
 ```
 
 Pre-commit proof facts:
@@ -142,7 +159,8 @@ decides one Code Review route. Implementation does not route QA or Packaging.
 - Product lesson: per-row affordances require per-row mutation authority;
   labeling a button by target does not make a global host operation targeted.
 - Technical lesson: keep public row identity and canonical runtime key separate,
-  and return the accepted canonical key on both Apply and Reset.
+  require one-to-one binding across format namespaces, and bind accepted Reset
+  receipts to operation type, both identities, and selection generation.
 - Evidence lesson: prove sibling preservation with simultaneous active values,
   direct runtime bindings, and pixels; one-at-a-time replacement cannot expose a
   destructive global Reset.

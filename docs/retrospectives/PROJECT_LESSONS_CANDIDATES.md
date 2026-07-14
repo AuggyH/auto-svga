@@ -1458,3 +1458,17 @@ promoted, watched, rejected, or kept historical.
   pixels remained, then reset `avatar` and restored the exact source digest.
 - Status: Candidate pending independent Code Review and later installed matrix
   acceptance; source/dev proof is not Product Owner acceptance.
+
+## 2026-07-15: Bind Reset Receipts To Action And Unique Identity
+
+- Candidate lesson: A target-scoped mutation is safe only when its public alias
+  identifies exactly one canonical runtime target across every exposed kind,
+  and the completion receipt binds the action type, public target, canonical
+  target, and selection generation.
+- Evidence: `MF-TARGET-RESET-CR-001` reproduced Lottie image/text `text:1`
+  collisions and duplicate text aliases that mutated the first matching row.
+  `MF-TARGET-RESET-CR-002` showed an accepted Apply receipt could pass the host
+  Reset check. The repair rejects both before renderer bookkeeping and retains
+  the existing five-instance VAP sibling/reset pixel oracle.
+- Status: Candidate pending independent Code Re-review and downstream installed
+  matrix acceptance.

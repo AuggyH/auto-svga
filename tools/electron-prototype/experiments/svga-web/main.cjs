@@ -5613,12 +5613,20 @@ async function resetMultiFormatReplacement(input) {
     };
   }
   if (result?.model?.replacement?.lastAction?.status !== "accepted") return result;
-  const returnedRuntimeTargetId = String(result.model.replacement.lastAction.runtimeTargetId || "").trim();
-  if (!returnedRuntimeTargetId || returnedRuntimeTargetId !== selection.runtimeTargetId) {
+  const resetReceipt = result.model.replacement.lastAction;
+  const returnedPublicTargetId = String(resetReceipt.publicTargetId || "").trim();
+  const returnedRuntimeTargetId = String(resetReceipt.runtimeTargetId || "").trim();
+  const returnedBindingToken = String(resetReceipt.bindingToken || "");
+  if (
+    resetReceipt.type !== "resetReplacement"
+    || returnedPublicTargetId !== selection.publicTargetId
+    || returnedRuntimeTargetId !== selection.runtimeTargetId
+    || returnedBindingToken !== selection.bindingToken
+  ) {
     return {
       status: "failed",
       code: "replacement_target_malformed",
-      message: "Runtime replacement reset did not return the accepted runtime target binding.",
+      message: "Runtime replacement reset did not return the accepted action and target binding.",
       pathRedacted: true
     };
   }
