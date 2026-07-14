@@ -23,10 +23,17 @@ import {
 } from "./short-term-macos-state-renderers.mjs";
 import { syncShortTermMenuState, syncShortTermWindowMode } from "./short-term-macos-host-client.mjs";
 import { createOverviewFactCell } from "./short-term-macos-overview-renderers.mjs";
+import {
+  createReplaceableImageRow,
+  createTextElementRow
+} from "./short-term-macos-replaceable-renderers.mjs";
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
-import { projectMultiFormatRightPanel } from "./multiformat-product-conformance.mjs";
+import {
+  multiFormatDragDecisionForEvent,
+  multiFormatInventorySummaryItems,
+  projectMultiFormatRightPanel
+} from "./multiformat-product-conformance.mjs";
 
-const supportedDropPattern = /\.(svga|json|mp4)$/i;
 export const MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS = 15_000;
 const reviewedPickerFailureMessages = new Map([
   ["unsupported_file_type", "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。"],
@@ -39,7 +46,7 @@ const factLabels = new Map([
   ["Layers", "图层"],
   ["Assets", "资源"],
   ["Replaceable", "可替换"],
-  ["Inventory", "资产清单"],
+  ["Inventory", "资产列表"],
   ["Media", "媒体"],
   ["Video codec", "视频编码"],
   ["Audio", "音频"],
@@ -81,10 +88,10 @@ export function createMultiFormatDesktopPreviewController({
   function setMode(mode) {
     if (svgaWorkflowActive()) return svgaController.handlers.setMode?.(mode);
     state.mode = "preview";
-    applyModeButtons("preview");
-    if (mode === "edit") {
-      showShortTermCanvasToast(nodes, "当前格式仅支持运行时预览。");
-    }
+    applyModeButtons("preview", {
+      editEnabled: false,
+      editReason: "当前格式仅支持预览"
+    });
     if (state.model) setView("preview");
   }
 
@@ -177,7 +184,11 @@ export function createMultiFormatDesktopPreviewController({
     const decision = showCanvasDragDecision(event, target, overlay);
     hideCanvasDragDecision();
     if (!decision.file) return;
+    if (svgaWorkflowActive() && (!decision.supported || decision.focusZone === "compare")) {
+      return svgaController.handlers.dropCanvasFile?.(event, target, overlay);
+    }
     if (!decision.supported) {
+      await closeFile();
       showShortTermCanvasToast(nodes, "不支持的文件格式");
       renderCommandState();
       return;
@@ -186,12 +197,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function showCanvasDragDecision(event, target, overlay) {
-    const file = event.dataTransfer?.files?.[0];
-    const decision = {
-      file,
-      focusZone: "open",
-      supported: !file || supportedDropPattern.test(file.name || "")
-    };
+    const decision = multiFormatDragDecisionForEvent(target, event, { activeFormat });
     showShortTermDragDecisionOverlay(overlay, decision);
     return decision;
   }
@@ -216,6 +222,8 @@ export function createMultiFormatDesktopPreviewController({
     state.selectedImageKey = "";
     state.selectedTextKey = "";
     state.textPreviewValues = {};
+    state.mode = "preview";
+    state.tab = "overview";
     activeFormat = "";
     clearSurfaces();
     setView("launch");
@@ -300,12 +308,12 @@ export function createMultiFormatDesktopPreviewController({
       return;
     }
     if (result.status === "failed") {
-      showFailure(result.message || "Replacement preview image could not be selected.");
+      showFailure("无法更新替换预览，源文件没有被修改。");
       return;
     }
     const runtimeValue = acceptedRuntimeReplacementValue(result, "image");
     if (replacementActionAccepted(result) && !runtimeValue) {
-      showFailure("Replacement preview did not return an accepted runtime target binding.");
+      showFailure("无法更新替换预览，源文件没有被修改。");
       return;
     }
     if (runtimeValue) {
@@ -330,7 +338,7 @@ export function createMultiFormatDesktopPreviewController({
     });
     const runtimeValue = acceptedRuntimeReplacementValue(result, "image");
     if (replacementActionAccepted(result) && !runtimeValue) {
-      showFailure("Replacement preview did not return an accepted runtime target binding.");
+      showFailure("无法更新替换预览，源文件没有被修改。");
       return;
     }
     if (runtimeValue) {
@@ -370,7 +378,7 @@ export function createMultiFormatDesktopPreviewController({
     }).then((result) => {
       const runtimeValue = acceptedRuntimeReplacementValue(result, "text");
       if (replacementActionAccepted(result) && !runtimeValue) {
-        showFailure("Replacement preview did not return an accepted runtime target binding.");
+        showFailure("无法更新替换预览，源文件没有被修改。");
         return;
       }
       if (runtimeValue) {
@@ -392,7 +400,7 @@ export function createMultiFormatDesktopPreviewController({
 
   function applyHostResult(result, options = {}) {
     if (!result?.model) {
-      showFailure("0.2 预览主机没有返回可见的终态结果，源文件没有被修改。");
+      showFailure("无法打开本地文件，源文件没有被修改。");
       return;
     }
     const model = result.model;
@@ -430,6 +438,13 @@ export function createMultiFormatDesktopPreviewController({
     }
     if (activeFormat === "svga") svgaController?.handlers?.deactivateForMultiFormat?.();
     activeFormat = result?.model?.detectedFormat || "";
+    state.mode = "preview";
+    state.tab = "overview";
+    applyModeButtons("preview", {
+      editEnabled: false,
+      editReason: "当前格式仅支持预览"
+    });
+    applyTabState("overview");
     applyHostResult(result);
   }
 
@@ -461,9 +476,7 @@ export function createMultiFormatDesktopPreviewController({
     renderIssues(model);
     renderReplaceableTargets();
     renderTextTargets();
-    if (!activeRuntimePreviewOwnsCanvasOutput(result)) {
-      renderCanvasState(model, result.visualEvidence);
-    }
+    if (!activeRuntimePreviewOwnsCanvasOutput(result)) renderCanvasState();
     renderPlaybackState(model);
     mountRuntimePreview(result);
     if (model.status === "failed") {
@@ -488,66 +501,79 @@ export function createMultiFormatDesktopPreviewController({
     if (inventory?.groups?.length) {
       const groups = inventory.groups.filter((group) => group.items?.length > 0);
       if (nodes.assetListHeading) {
-        nodes.assetListHeading.textContent = `资产清单 (${inventory.summary.totalItems})`;
+        nodes.assetListHeading.textContent = `资产列表 (${inventory.summary.totalItems})`;
+      }
+      const summaryItems = multiFormatInventorySummaryItems(inventory.summary);
+      if (nodes.assetFilterTabs) {
+        nodes.assetFilterTabs.hidden = summaryItems.length === 0;
+        nodes.assetFilterTabs.dataset.presentation = "summary";
       }
       nodes.assetFilterTabs?.setAttribute("role", "list");
-      nodes.assetFilterTabs?.setAttribute("aria-label", "资产清单摘要");
+      nodes.assetFilterTabs?.setAttribute("aria-label", "资产类型");
       nodes.assetFilterTabs?.replaceChildren(
-        createInventorySummaryChip("图片", inventory.summary.imageCount),
-        createInventorySummaryChip("文本", inventory.summary.textCount),
-        createInventorySummaryChip("序列", inventory.summary.sequenceFrameCount),
-        createInventorySummaryChip("媒体", inventory.summary.audioVideoCount),
-        createInventorySummaryChip("问题", inventory.summary.unsupportedOrMissingCount)
+        ...summaryItems.map(createInventorySummaryItem)
       );
+      nodes.assetList.removeAttribute("role");
       nodes.assetList.replaceChildren(...groups.map(createAssetGroup));
       return;
     }
 
     const assets = rightPanel.assets ?? [];
     if (nodes.assetListHeading) nodes.assetListHeading.textContent = `资产列表 (${assets.length})`;
+    if (nodes.assetFilterTabs) {
+      nodes.assetFilterTabs.hidden = true;
+      nodes.assetFilterTabs.dataset.presentation = "empty";
+    }
     nodes.assetFilterTabs?.setAttribute("role", "tablist");
     nodes.assetFilterTabs?.setAttribute("aria-label", "资产类型");
     nodes.assetFilterTabs?.replaceChildren();
+    nodes.assetList.setAttribute("role", "list");
     nodes.assetList.replaceChildren(...assets.map((asset) => {
       const row = document.createElement("article");
       row.className = "assetRow";
       row.dataset.component = "AssetRow";
+      row.setAttribute("role", "listitem");
       row.dataset.kind = asset.kind || "unknown";
-      const detail = [asset.dimensions, asset.sizeBytes ? `${asset.sizeBytes} B` : "", asset.resolutionStatus].filter(Boolean).join(" · ") || "metadata";
+      const detail = [asset.dimensions, asset.fileSize, asset.resolutionStatus].filter(Boolean).join(" · ");
       row.innerHTML = `
-        <span class="thumb">${escapeHtml((asset.kind || "?").slice(0, 1).toUpperCase())}</span>
-        <span class="rowText"><strong>${escapeHtml(asset.name || asset.id)}</strong><span>${escapeHtml(detail)}</span></span>
+        <span class="thumb">${escapeHtml((asset.ownerKind || "资源").slice(0, 1))}</span>
+        <span class="rowText"><strong>${escapeHtml(asset.name || asset.id)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}</span>
         ${asset.replaceable ? `<span class="badge">可替换</span>` : ""}
       `;
       return row;
     }));
   }
 
-  function createInventorySummaryChip(label, count) {
-    const chip = document.createElement("span");
-    chip.className = "badge";
-    chip.dataset.component = "AssetInventorySummaryChip";
-    chip.dataset.count = String(count);
-    chip.textContent = `${label} ${count}`;
-    return chip;
+  function createInventorySummaryItem(item) {
+    const summary = document.createElement("span");
+    summary.className = "assetSummaryItem";
+    summary.dataset.summaryId = item.id;
+    summary.dataset.count = String(item.count);
+    summary.setAttribute("role", "listitem");
+    summary.textContent = `${item.label} ${item.count}`;
+    return summary;
   }
 
   function createAssetGroup(group) {
     const section = document.createElement("section");
     section.className = "assetGroup";
-    section.dataset.component = "AssetInventoryGroup";
+    section.dataset.role = "AssetInventoryGroup";
     section.dataset.group = group.id;
     section.dataset.status = group.status;
+    section.setAttribute("role", "group");
+    section.setAttribute("aria-label", group.label);
 
     const heading = document.createElement("header");
     heading.className = "assetGroupHeader";
+    const statusCopy = groupStatusCopy(group);
     heading.innerHTML = `
-      <span class="rowText"><strong>${escapeHtml(group.label)}</strong><span>${escapeHtml(groupStatusCopy(group))}</span></span>
+      <span class="rowText"><strong>${escapeHtml(group.label)}</strong>${statusCopy ? `<span>${escapeHtml(statusCopy)}</span>` : ""}</span>
       <span class="badge">${escapeHtml(String(group.count))}</span>
     `;
 
     const list = document.createElement("div");
     list.className = "assetGroupList";
+    list.setAttribute("role", "list");
     list.replaceChildren(...group.items.map(createInventoryItemRow));
     section.replaceChildren(heading, list);
     return section;
@@ -556,29 +582,29 @@ export function createMultiFormatDesktopPreviewController({
   function createInventoryItemRow(item) {
     const row = document.createElement("article");
     row.className = "assetRow";
-    row.dataset.component = "AssetInventoryItem";
+    row.dataset.component = "AssetRow";
     row.dataset.group = item.groupId;
     row.dataset.kind = item.kind || "unknown";
     row.dataset.source = item.source;
     row.dataset.status = item.status;
+    row.dataset.attention = ["missing", "unsupported", "blocked"].includes(item.status) ? "true" : "false";
     row.dataset.replaceable = item.replaceable ? "true" : "false";
+    row.setAttribute("role", "listitem");
     if (item.runtimeTargetId) row.dataset.runtimeTargetId = item.runtimeTargetId;
-    const detail = item.detail?.length ? item.detail.join(" · ") : assetStatusCopy(item.status);
+    const detail = item.detail?.length ? item.detail.join(" · ") : "";
     row.innerHTML = `
       <span class="thumb">${escapeHtml((item.kind || "?").slice(0, 1).toUpperCase())}</span>
-      <span class="rowText"><strong>${escapeHtml(item.label || item.id)}</strong><span>${escapeHtml(detail)}</span></span>
+      <span class="rowText"><strong>${escapeHtml(item.label || item.id)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}</span>
       ${item.replaceable ? `<span class="badge">可替换</span>` : `<span class="badge">${escapeHtml(assetStatusCopy(item.status))}</span>`}
     `;
     return row;
   }
 
   function groupStatusCopy(group) {
-    const replaceable = group.replaceableCount > 0 ? `${group.replaceableCount} 可替换` : "无运行时替换";
-    if (group.status === "not_applicable") return "当前格式不适用";
-    if (group.status === "blocked") return `${replaceable} · 存在缺失或阻断`;
-    if (group.status === "warning") return `${replaceable} · 存在不支持项`;
-    if (group.status === "empty") return "无条目";
-    return replaceable;
+    if (group.status === "blocked") return "存在缺失或阻断";
+    if (group.status === "warning") return "存在不支持项";
+    if (group.replaceableCount > 0) return `${group.replaceableCount} 可替换`;
+    return "";
   }
 
   function assetStatusCopy(status) {
@@ -607,48 +633,42 @@ export function createMultiFormatDesktopPreviewController({
       const row = document.createElement("article");
       row.className = "findingRow";
       row.dataset.severity = issue.severity || "warning";
-      row.innerHTML = `<strong>${escapeHtml(issue.code || "issue")}</strong><span>${escapeHtml(issue.message || "")}</span>`;
+      row.innerHTML = `<strong>${escapeHtml(issue.message || "")}</strong>`;
       return row;
     }));
   }
 
   function renderReplaceableTargets() {
     const model = state.model;
+    const rightPanel = projectMultiFormatRightPanel(model);
     const fusionImages = model?.rightPanel?.vapFusionImages ?? [];
     const fusionResourceIds = new Set(fusionImages.map((entry) => entry.resourceId));
-    const assets = model?.rightPanel?.assets?.filter((asset) =>
+    const assets = rightPanel.assets?.filter((asset) =>
       asset.replaceable && (model.detectedFormat !== "vap" || !fusionResourceIds.has(asset.id))
     ) ?? [];
     const targets = [
       ...assets.map((asset) => ({
-        id: asset.id,
-        name: asset.name || asset.id,
-        detail: [model.detectedFormat?.toUpperCase(), asset.kind, asset.dimensions].filter(Boolean).join(" · ")
+        imageKey: asset.id,
+        resourceId: asset.id,
+        displayName: asset.name || asset.id,
+        detail: [asset.dimensions, asset.fileSize].filter(Boolean).join(" · ")
       })),
       ...fusionImages.filter((entry) => entry.replaceable).map((entry) => ({
-        id: entry.resourceId,
-        name: entry.srcTag || entry.id,
-        detail: ["VAP fusion image", entry.dimensions ? `${entry.dimensions.width} x ${entry.dimensions.height}` : ""].filter(Boolean).join(" · ")
+        imageKey: entry.resourceId,
+        resourceId: entry.resourceId,
+        displayName: entry.srcTag || entry.id,
+        detail: ["VAP 融合图片", entry.dimensions ? `${entry.dimensions.width} x ${entry.dimensions.height}` : ""].filter(Boolean).join(" · ")
       }))
     ];
     nodes.replaceableSummary.textContent = targets.length
-      ? `${targets.length} 个运行时图片替换项`
+      ? `${targets.length} 个可替换图片`
       : "当前文件没有可替换图片。";
-    nodes.replaceableList.replaceChildren(...targets.map((target) => {
-      const selected = state.selectedImageKey === target.id;
-      const row = document.createElement("article");
-      row.className = "replaceableRow";
-      row.dataset.imageKey = target.id;
-      row.dataset.action = "select-resource";
-      row.tabIndex = 0;
-      row.setAttribute("aria-selected", selected ? "true" : "false");
-      row.classList.toggle("isSelected", selected);
-      row.innerHTML = `
-        <span class="rowText"><strong>${escapeHtml(target.name)}</strong><span>${escapeHtml(target.detail)}</span></span>
-        <button type="button" data-action="row-menu" data-image-key="${escapeHtml(target.id)}" aria-label="替换预览图片">...</button>
-      `;
-      return row;
-    }));
+    nodes.replaceableList.replaceChildren(...targets.map((target, index) => createReplaceableImageRow(target, index, {
+      model,
+      selected: state.selectedImageKey === target.imageKey,
+      renaming: false,
+      directReplace: true
+    })));
   }
 
   function renderTextTargets() {
@@ -656,37 +676,28 @@ export function createMultiFormatDesktopPreviewController({
     const vapTexts = state.model?.rightPanel?.vapFusionTexts ?? [];
     const targets = [
       ...lottieTexts.filter((entry) => entry.replaceable).map((entry) => ({
-        id: entry.id,
-        name: entry.name || entry.layerId || entry.id,
-        value: entry.initialText || "",
-        detail: "Lottie text"
+        textKey: entry.id,
+        displayName: entry.name || entry.layerId || entry.id,
+        initialText: entry.initialText || "",
+        inputValue: state.textPreviewValues[entry.id] ?? entry.initialText ?? "",
+        placeholder: "输入文字以预览",
+        resetDisabled: false
       })),
       ...vapTexts.filter((entry) => entry.replaceable).map((entry) => ({
-        id: entry.resourceId,
-        name: entry.srcTag || entry.id,
-        value: "",
-        detail: "VAP fusion text"
+        textKey: entry.resourceId,
+        displayName: entry.srcTag || entry.id,
+        initialText: "VAP 融合文字",
+        inputValue: state.textPreviewValues[entry.resourceId] ?? "",
+        placeholder: "输入文字以预览",
+        resetDisabled: false
       }))
     ];
-    nodes.textElementList.replaceChildren(...targets.map((target) => {
-      const selected = state.selectedTextKey === target.id;
-      const row = document.createElement("article");
-      row.className = "textElementRow";
-      row.dataset.textKey = target.id;
-      row.dataset.action = "select-text";
-      row.tabIndex = 0;
-      row.setAttribute("aria-selected", selected ? "true" : "false");
-      row.classList.toggle("isSelected", selected);
-      row.innerHTML = `
-        <span class="rowText"><strong>${escapeHtml(target.name)}</strong><span>${escapeHtml(target.detail)}</span></span>
-        <input data-text-input data-text-key="${escapeHtml(target.id)}" value="${escapeHtml(state.textPreviewValues[target.id] ?? target.value)}" aria-label="${escapeHtml(target.name)}">
-        <button type="button" data-action="runtime-text-reset" data-text-key="${escapeHtml(target.id)}">重置</button>
-      `;
-      return row;
-    }));
+    nodes.textElementList.replaceChildren(...targets.map((target, index) => createTextElementRow(target, index, {
+      selected: state.selectedTextKey === target.textKey
+    })));
   }
 
-  function renderCanvasState(model, visualEvidence) {
+  function renderCanvasState() {
     const canvas = nodes.primaryCanvas;
     const context = canvas?.getContext?.("2d");
     if (!canvas || !context) return;
@@ -696,17 +707,7 @@ export function createMultiFormatDesktopPreviewController({
     canvas.width = width;
     canvas.height = height;
     context.clearRect(0, 0, width, height);
-    context.fillStyle = "#f6f7f8";
-    context.fillRect(0, 0, width, height);
-    context.strokeStyle = "#d7dce2";
-    context.strokeRect(0.5, 0.5, width - 1, height - 1);
-    context.fillStyle = "#1f2937";
-    context.font = "600 18px system-ui, sans-serif";
-    context.textAlign = "center";
-    context.fillText(`${(model.detectedFormat || "motion").toUpperCase()} · ${statusCopy(model.status)}`, width / 2, height / 2 - 12);
-    context.font = "13px system-ui, sans-serif";
-    context.fillStyle = "#64748b";
-    context.fillText(visualEvidence?.vapVisualPlaybackVerified || visualEvidence?.lottieDomPlaybackVerified ? "本地渲染已就绪" : "正在准备本地预览", width / 2, height / 2 + 16);
+    canvas.dataset.surfaceState = "preparing";
   }
 
   function mountRuntimePreview(result) {
@@ -830,7 +831,7 @@ export function createMultiFormatDesktopPreviewController({
     const mount = document.createElement("div");
     mount.id = "multiFormatRuntimeMount";
     mount.className = "multiFormatRuntimeMount";
-    mount.dataset.component = "MultiFormatRuntimeMount";
+    mount.dataset.role = "MultiFormatRuntimeMount";
     mount.dataset.runtimePreviewState = "idle";
     mount.hidden = true;
     nodes.primaryCanvas?.parentElement?.append(mount);
@@ -1380,7 +1381,10 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function renderCommandState() {
-    if (svgaWorkflowActive()) return svgaController.handlers.renderCommandState?.();
+    if (svgaWorkflowActive()) {
+      applyModeButtons(state.mode);
+      return svgaController.handlers.renderCommandState?.();
+    }
     const model = state.model;
     const commands = model?.commands ?? {};
     const hasFile = Boolean(model);
@@ -1427,6 +1431,11 @@ export function createMultiFormatDesktopPreviewController({
       playPauseCopy: model?.status === "playing" ? "暂停" : "播放",
       loopEnabled: state.primaryPlaybackLooping !== false
     });
+    applyModeButtons("preview", {
+      previewEnabled: hasFile,
+      editEnabled: false,
+      editReason: "当前格式仅支持预览"
+    });
     state.lastMenuStateSnapshot = syncShortTermMenuState(bridge, menuState, state.lastMenuStateSnapshot);
   }
 
@@ -1437,6 +1446,14 @@ export function createMultiFormatDesktopPreviewController({
     nodes.replaceableList.replaceChildren();
     nodes.textElementList.replaceChildren();
     nodes.replaceableSummary.textContent = "";
+    if (nodes.assetListHeading) nodes.assetListHeading.textContent = "";
+    if (nodes.assetFilterTabs) {
+      nodes.assetFilterTabs.replaceChildren();
+      nodes.assetFilterTabs.hidden = true;
+      nodes.assetFilterTabs.dataset.presentation = "empty";
+      nodes.assetFilterTabs.setAttribute("role", "tablist");
+      nodes.assetFilterTabs.setAttribute("aria-label", "资产类型");
+    }
     nodes.playbackTime.textContent = "0:00 / 0:00";
   }
 
@@ -1475,7 +1492,7 @@ export function createMultiFormatDesktopPreviewController({
 
   function showFailure(error) {
     clearRuntimePreview();
-    renderFailureMessage(nodes, error instanceof Error ? error.message : String(error));
+    renderFailureMessage(nodes, ownerFailureCopy(error));
     setView("failed");
   }
 
@@ -1600,7 +1617,7 @@ export async function resolveMultiFormatOpenOutcome(openPromise, options = {}) {
         timeout = setTimeout(() => {
           resolve({
             kind: "failure",
-            message: "0.2 预览请求没有在限定时间内到达加载或错误终态，已中止本次打开。"
+            message: "文件加载超时，请重新打开文件。源文件没有被修改。"
           });
         }, deadlineMs);
       })
@@ -1651,12 +1668,12 @@ export function normalizeMultiFormatOpenOutcome(result) {
   if (result?.status === "opened") {
     return {
       kind: "failure",
-      message: "0.2 预览主机没有返回可见的终态结果，源文件没有被修改。"
+      message: "无法打开本地文件，源文件没有被修改。"
     };
   }
   return {
     kind: "failure",
-    message: "0.2 预览主机返回了无法识别的结果，源文件没有被修改。"
+    message: "无法识别文件处理结果，源文件没有被修改。"
   };
 }
 
@@ -1684,7 +1701,19 @@ function playbackMeta(model) {
 }
 
 function issueSummary(model) {
-  return model.rightPanel?.issues?.[0]?.message || model.rightPanel?.unsupportedFeatures?.[0]?.feature || "";
+  const issue = model.rightPanel?.issues?.[0];
+  if (issue?.code === "missing_resource") return "预览所需资源缺失，源文件没有被修改。";
+  if (issue?.code === "unsupported_feature" || model.rightPanel?.unsupportedFeatures?.length) {
+    return "当前文件包含暂不支持的内容，无法完整预览。";
+  }
+  return issue ? "文件未能解析，源文件没有被修改。" : "";
+}
+
+function ownerFailureCopy(error) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /[\u3400-\u9fff]/u.test(message) && !/0\.2 预览(?:主机|请求|运行时)/u.test(message)
+    ? message
+    : "操作未能完成，源文件没有被修改。";
 }
 
 function statusCopy(status) {
@@ -1723,7 +1752,7 @@ function hasTextTarget(model, targetId) {
 
 class RuntimePreviewPayloadError extends Error {
   constructor(issue) {
-    super(issue?.message || "0.2 预览运行时没有返回可播放的本地载荷。");
+    super("无法准备本地预览，源文件没有被修改。");
     this.name = "RuntimePreviewPayloadError";
     this.issue = issue;
   }
@@ -1731,12 +1760,11 @@ class RuntimePreviewPayloadError extends Error {
 
 function runtimePreviewErrorCopy(error) {
   if (error instanceof RuntimePreviewPayloadError) {
-    const code = error.issue?.code ? `${error.issue.code}: ` : "";
-    return `${code}${error.message}`;
+    if (error.issue?.code === "missing_resource") return "预览所需资源缺失，源文件没有被修改。";
+    if (error.issue?.code === "unsupported_feature") return "当前文件包含暂不支持的内容，无法完整预览。";
+    return error.message;
   }
-  return error instanceof Error
-    ? error.message
-    : "0.2 预览运行时未能挂载本地播放视图。";
+  return "无法挂载本地预览，源文件没有被修改。";
 }
 
 function base64ToBytes(value) {

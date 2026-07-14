@@ -87,7 +87,7 @@ function renderCompareColumnFactHtml({ id, fact, peer, label }) {
 
 function renderCompareMetricColumnHtml(slot, rowIds, facts, peerFacts) {
   return `
-    <div class="compareMetricColumn" data-slot="${escapeHtml(slot)}">
+    <div class="compareMetricColumn" data-component="CompareMetricColumn" data-slot="${escapeHtml(slot)}">
       ${compareAlignedFacts(rowIds, facts, peerFacts).map(renderCompareColumnFactHtml).join("")}
     </div>
   `;

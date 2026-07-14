@@ -392,7 +392,7 @@ test("short-term general compare keeps identical row order when both sides have 
     }
   };
   const factIdsForSlot = (html, slot) => {
-    const column = html.match(new RegExp(`<div class="compareMetricColumn" data-slot="${slot}">([\\s\\S]*?)(?=\\s*<div class="compareMetricColumn" data-slot="|\\s*</section>)`))?.[1] ?? "";
+    const column = html.match(new RegExp(`<div class="compareMetricColumn"[^>]*data-slot="${slot}"[^>]*>([\\s\\S]*?)(?=\\s*<div class="compareMetricColumn"|\\s*</section>)`))?.[1] ?? "";
     return [...column.matchAll(/data-fact-id="([^"]+)"/g)].map((match) => match[1]);
   };
 
@@ -1269,6 +1269,7 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
   const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
+  const replaceableRenderer = await readFile(path.join(experimentRoot, "web/short-term-macos-replaceable-renderers.mjs"), "utf8");
 
   assert.match(preload, /chooseMultiFormatReplacementImage\(input\)/);
   assert.match(preload, /IPC_CHANNELS\.chooseMultiFormatReplacementImage/);
@@ -1339,7 +1340,11 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   assert.doesNotMatch(controller, /runtimeReplacementImageTargetId/);
   assert.doesNotMatch(chooseSource, /replacementFileInput\.click\(\)|\.click\(\)/);
   assert.match(controller, /openResourceContextMenu\(event, imageKey, returnFocus\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(showFailure\);/);
-  assert.match(controller, /aria-label="替换预览图片"/);
+  assert.match(controller, /directReplace:\s*true/);
+  assert.match(replaceableRenderer, /class="replaceImageButton"/);
+  assert.match(replaceableRenderer, /data-action="row-menu"/);
+  assert.match(replaceableRenderer, />替换图片<\/button>/);
+  assert.doesNotMatch(replaceableRenderer, /type="file"|replacementFileInput\.click\(\)/);
 });
 
 test("0.2 host replacement picker fails closed for missing source and bounded read races", async () => {
@@ -2586,7 +2591,7 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
 
   const missingModel = normalizeMultiFormatOpenOutcome({ status: "opened" });
   assert.equal(missingModel.kind, "failure");
-  assert.match(missingModel.message, /终态结果/);
+  assert.equal(missingModel.message, "无法打开本地文件，源文件没有被修改。");
   assert.doesNotMatch(missingModel.message, /\/Users|C:\\|alice/i);
 
   const rejected = await resolveMultiFormatOpenOutcome(
@@ -2599,7 +2604,7 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
 
   const stalled = await resolveMultiFormatOpenOutcome(new Promise(() => {}), { deadlineMs: 10 });
   assert.equal(stalled.kind, "failure");
-  assert.match(stalled.message, /限定时间/);
+  assert.equal(stalled.message, "文件加载超时，请重新打开文件。源文件没有被修改。");
   assert.doesNotMatch(stalled.message, /\/Users|C:\\|alice/i);
 });
 

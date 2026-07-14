@@ -6,8 +6,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   containMotionMedia,
+  multiFormatDragDecisionForEvent,
+  multiFormatInventorySummaryItems,
   projectMultiFormatRightPanel
 } from "../web/multiformat-product-conformance.mjs";
+import { applyModeButtons } from "../web/short-term-macos-dom-state.mjs";
+import { showShortTermDragDecisionOverlay } from "../web/short-term-macos-drag-decision-surface.mjs";
 import {
   createMultiFormatDesktopPreviewController,
   resolveMultiFormatChooserOutcome
@@ -46,6 +50,19 @@ test("0.2 owner copy uses Open File without candidate or proof language", () => 
   assert.doesNotMatch(controllerSource, /打开预览候选/u);
   assert.doesNotMatch(mainSource, /title:\s*"打开 0\.2 预览候选"|label:\s*"打开预览候选/u);
   assert.match(controllerSource, /打开文件/u);
+});
+
+test("multi-format owner copy hides host and runtime implementation language", () => {
+  const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+
+  assert.doesNotMatch(controllerSource, /Replacement preview/u);
+  assert.doesNotMatch(controllerSource, /0\.2 预览(?:主机|请求|运行时)/u);
+  assert.match(controllerSource, /无法更新替换预览，源文件没有被修改。/u);
+  assert.match(controllerSource, /文件加载超时，请重新打开文件。源文件没有被修改。/u);
+  assert.match(controllerSource, /资产列表/u);
+  assert.match(controllerSource, /个可替换图片/u);
+  assert.match(controllerSource, /renderFailureMessage\(nodes, ownerFailureCopy\(error\)\)/u);
+  assert.doesNotMatch(controllerSource, /renderFailureMessage\(nodes, error instanceof Error \? error\.message/u);
 });
 
 test("host chooser cancellation cannot enter loading or resize the Launch window", () => {
@@ -160,7 +177,7 @@ test("unsupported picker selection stays typed and mutation-free through the ren
     pathRedacted: false
   });
   assert.equal(untrustedResult.code, undefined);
-  assert.match(untrustedResult.message, /无法识别的结果/u);
+  assert.equal(untrustedResult.message, "无法识别文件处理结果，源文件没有被修改。");
   assert.doesNotMatch(JSON.stringify(untrustedResult), /Users\/alice|Secret Project/u);
 });
 
@@ -277,6 +294,117 @@ test("drag intake keeps host path authority and does not serialize renderer byte
   assert.match(mainSource, /openMultiFormatFilePath\([^,]+,\s*"dragDrop"\)/u);
 });
 
+test("multi-format drag decisions preserve SVGA Compare opt-in without exposing unsupported compare", () => {
+  const target = {
+    getBoundingClientRect() {
+      return { top: 20, height: 400 };
+    }
+  };
+  const event = (name, clientY) => ({
+    clientY,
+    dataTransfer: { files: [{ name }] }
+  });
+
+  assert.deepEqual(
+    multiFormatDragDecisionForEvent(target, event("current.svga", 40), { activeFormat: "svga" }),
+    {
+      file: { name: "current.svga" },
+      focusZone: "compare",
+      supported: true,
+      compareAvailable: true
+    }
+  );
+  assert.deepEqual(
+    multiFormatDragDecisionForEvent(target, event("next.json", 40), { activeFormat: "svga" }),
+    {
+      file: { name: "next.json" },
+      focusZone: "open",
+      supported: true,
+      compareAvailable: false
+    }
+  );
+  assert.equal(
+    multiFormatDragDecisionForEvent(target, event("current.svga", 220), { activeFormat: "svga" }).focusZone,
+    "open"
+  );
+  assert.equal(
+    multiFormatDragDecisionForEvent(target, event("current.svga", 40), { activeFormat: "lottie" }).compareAvailable,
+    false
+  );
+});
+
+test("multi-format inventory summary exposes only meaningful localized counts", () => {
+  assert.deepEqual(multiFormatInventorySummaryItems({
+    imageCount: 4,
+    textCount: 0,
+    sequenceFrameCount: 12,
+    audioVideoCount: 1,
+    unsupportedOrMissingCount: 0
+  }), [
+    { id: "images", label: "图片", count: 4 },
+    { id: "sequences", label: "序列", count: 12 },
+    { id: "media", label: "媒体", count: 1 }
+  ]);
+});
+
+test("multi-format mode availability and drag overlay expose the capability state directly", () => {
+  const classNames = new Set();
+  const buttons = ["mode-preview", "mode-edit"].map((action) => ({
+    dataset: { action },
+    classList: {
+      toggle(name, active) {
+        if (active) classNames.add(`${action}:${name}`);
+        else classNames.delete(`${action}:${name}`);
+      }
+    },
+    setAttribute(name, value) {
+      this[name] = value;
+    },
+    disabled: false,
+    title: ""
+  }));
+  const originalDocument = globalThis.document;
+  globalThis.document = { querySelectorAll: () => buttons };
+  try {
+    applyModeButtons("preview", { editEnabled: false, editReason: "当前格式仅支持预览" });
+  } finally {
+    globalThis.document = originalDocument;
+  }
+  assert.equal(buttons[0].disabled, false);
+  assert.equal(buttons[0]["aria-pressed"], "true");
+  assert.equal(buttons[1].disabled, true);
+  assert.equal(buttons[1]["aria-disabled"], "true");
+  assert.equal(buttons[1].title, "当前格式仅支持预览");
+
+  const zones = ["compare", "open"].map((dragZone) => {
+    const label = { textContent: "" };
+    return {
+      dataset: { dragZone },
+      hidden: false,
+      querySelector: () => label,
+      setAttribute(name, value) {
+        this[name] = value;
+      },
+      label
+    };
+  });
+  const overlay = {
+    hidden: true,
+    dataset: {},
+    querySelectorAll: () => zones
+  };
+  showShortTermDragDecisionOverlay(overlay, {
+    focusZone: "open",
+    supported: true,
+    compareAvailable: false
+  });
+  assert.equal(overlay.dataset.compareAvailable, "false");
+  assert.equal(zones[0].hidden, true);
+  assert.equal(zones[0]["aria-hidden"], "true");
+  assert.equal(zones[1].hidden, false);
+  assert.equal(zones[1].label.textContent, "打开新文件");
+});
+
 test("formal 0.2 exposes redacted recent files and SVGA save through the established shell", () => {
   const preloadSource = source("preload.cjs");
   const multiApiStart = preloadSource.indexOf("function createMultiFormatDesktopProductPreloadApi()");
@@ -310,9 +438,24 @@ test("right-panel rendering projects only format-applicable groups and hides int
         { id: "maturity", label: "Maturity", value: "hidden_0.2_spike" },
         { id: "videoCodec", label: "Video codec", value: "not applicable" }
       ],
+      assets: [
+        { id: "cover", name: "cover.png", kind: "image", sizeBytes: 1536, dimensions: "320 x 180", resolutionStatus: "available", replaceable: true },
+        { id: "missing", name: "missing.png", kind: "image", sizeBytes: 0, resolutionStatus: "missing", replaceable: false }
+      ],
       assetInventory: {
         groups: [
-          { id: "image_resources", status: "available", items: [{ source: "asset", status: "available", replaceable: false }] },
+          {
+            id: "image_resources",
+            label: "Images",
+            status: "available",
+            items: [{ source: "asset", status: "available", replaceable: false, label: "cover.png", detail: [] }]
+          },
+          {
+            id: "audio_video_media",
+            label: "Audio / video",
+            status: "available",
+            items: [{ source: "media", status: "available", replaceable: false, label: "Video track", detail: ["codec:avc1"] }]
+          },
           { id: "vap_fusion_images", status: "not_applicable", items: [{ source: "capability", status: "not_applicable", replaceable: false }] }
         ]
       },
@@ -324,7 +467,34 @@ test("right-panel rendering projects only format-applicable groups and hides int
   });
   assert.deepEqual(projected.facts.map(({ id }) => id), ["format"]);
   assert.deepEqual(projected.assetInventory.groups.map(({ id }) => id), ["image_resources"]);
+  assert.deepEqual(projected.assetInventory.groups.map(({ label }) => label), ["图片"]);
   assert.deepEqual(projected.issues.map(({ code }) => code), ["missing_resource"]);
+  assert.deepEqual(projected.assets.map(({ ownerKind, fileSize, resolutionStatus }) => ({ ownerKind, fileSize, resolutionStatus })), [
+    { ownerKind: "图片", fileSize: "1.5 KiB", resolutionStatus: "" },
+    { ownerKind: "图片", fileSize: "", resolutionStatus: "缺失" }
+  ]);
+
+  const vapProjection = projectMultiFormatRightPanel({
+    detectedFormat: "vap",
+    rightPanel: {
+      facts: [
+        { id: "audio", label: "Audio", value: "present" },
+        { id: "dimensions", label: "Canvas", value: "unknown" }
+      ],
+      assetInventory: {
+        groups: [{
+          id: "audio_video_media",
+          label: "Audio / video",
+          status: "available",
+          items: [{ source: "media", status: "available", replaceable: false, label: "Video track", detail: ["codec:avc1"] }]
+        }]
+      }
+    }
+  });
+  assert.equal(vapProjection.assetInventory.groups[0].label, "音视频");
+  assert.equal(vapProjection.assetInventory.groups[0].items[0].label, "视频轨道");
+  assert.deepEqual(vapProjection.assetInventory.groups[0].items[0].detail, ["编码：avc1"]);
+  assert.deepEqual(vapProjection.facts.map(({ value }) => value), ["存在", "未知"]);
 });
 
 test("accepted R12 shell affordances remain present in the composed 0.2 shell", () => {
@@ -338,6 +508,37 @@ test("accepted R12 shell affordances remain present in the composed 0.2 shell", 
   assert.match(compareModelSource, /compareExitButton/u);
   assert.match(controllerSource, /loadDroppedCompareFile,/u);
   assert.match(domStateSource, /rightSurfaceHeader\.hidden = surfaceState === "optimization"/u);
+});
+
+test("multi-format UI reuses shared rows and keeps unavailable Edit explicitly disabled", () => {
+  const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
+  const modulesSource = source("web/short-term-macos.modules.css");
+  const tokensSource = source("web/short-term-macos.tokens.css");
+
+  assert.match(controllerSource, /createReplaceableImageRow/u);
+  assert.match(controllerSource, /createTextElementRow/u);
+  assert.match(controllerSource, /directReplace:\s*true/u);
+  assert.match(controllerSource, /row\.dataset\.component = "AssetRow"/u);
+  assert.match(controllerSource, /section\.dataset\.role = "AssetInventoryGroup"/u);
+  assert.match(controllerSource, /mount\.dataset\.role = "MultiFormatRuntimeMount"/u);
+  assert.doesNotMatch(controllerSource, /dataset\.component = "AssetInventory(?:Group|Item)"/u);
+  assert.doesNotMatch(controllerSource, /dataset\.component = "MultiFormatRuntimeMount"/u);
+  assert.doesNotMatch(controllerSource, /无运行时替换|无可替换项/u);
+  assert.doesNotMatch(controllerSource, /:\s*assetStatusCopy\(item\.status\)/u);
+  assert.match(controllerSource, /editEnabled:\s*false/u);
+  assert.doesNotMatch(controllerSource, />\.\.\.<\/button>/u);
+  assert.doesNotMatch(controllerSource, /#f6f7f8|#d7dce2|#1f2937|#64748b/u);
+  assert.doesNotMatch(controllerSource, /本地渲染已就绪|正在准备本地预览/u);
+  assert.doesNotMatch(controllerSource, /asset\.sizeBytes \? `\$\{asset\.sizeBytes\} B`/u);
+  assert.match(controllerSource, /\[asset\.dimensions, asset\.fileSize, asset\.resolutionStatus\]/u);
+  assert.match(controllerSource, /function clearSurfaces\(\)[\s\S]*assetFilterTabs\.replaceChildren\(\)[\s\S]*assetFilterTabs\.hidden = true/u);
+  assert.match(controllerSource, /activeFormat = result\?\.model\?\.detectedFormat[\s\S]*state\.mode = "preview"[\s\S]*state\.tab = "overview"[\s\S]*applyTabState\("overview"\)/u);
+  assert.match(modulesSource, /\.assetGroup\s*\{[\s\S]*var\(--asv-asset-group-gap\)/u);
+  assert.match(modulesSource, /\.assetGroupHeader\s*\{[\s\S]*var\(--asv-asset-group-header-padding-block\)/u);
+  assert.match(tokensSource, /--asv-component-asset-group-gap:/u);
+  assert.match(tokensSource, /--asv-asset-group-gap:\s*var\(--asv-component-asset-group-gap\)/u);
+  assert.match(tokensSource, /--asv-component-replace-image-action-height:/u);
+  assert.match(tokensSource, /--asv-replace-image-action-height:\s*var\(--asv-component-replace-image-action-height\)/u);
 });
 
 test("composed SVGA playback exposes and cleans an exact primary-player identity", () => {

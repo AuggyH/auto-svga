@@ -7,11 +7,19 @@ export function applyViewState(app, view) {
   });
 }
 
-export function applyModeButtons(mode) {
+export function applyModeButtons(mode, options = {}) {
+  const previewEnabled = options.previewEnabled !== false;
+  const editEnabled = options.editEnabled !== false;
   document.querySelectorAll("[data-action='mode-preview'], [data-action='mode-edit']").forEach((button) => {
+    const enabled = button.dataset.action === "mode-edit" ? editEnabled : previewEnabled;
     const selected = button.dataset.action === `mode-${mode}`;
     button.classList.toggle("isSelected", selected);
     button.setAttribute("aria-pressed", selected ? "true" : "false");
+    button.setAttribute("aria-disabled", enabled ? "false" : "true");
+    button.disabled = !enabled;
+    button.title = enabled ? "" : button.dataset.action === "mode-edit"
+      ? options.editReason || "当前文件不支持编辑"
+      : options.previewReason || "请先打开文件";
   });
 }
 

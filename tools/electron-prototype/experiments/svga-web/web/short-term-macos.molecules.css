@@ -220,3 +220,28 @@
   outline: none;
   box-shadow: var(--asv-focus);
 }
+
+.replaceImageButton {
+  height: var(--asv-replace-image-action-height);
+  padding: 0 var(--asv-replace-image-action-padding-inline);
+  border: 0;
+  border-radius: var(--asv-replace-image-action-radius);
+  background: var(--asv-replace-image-action-bg);
+  color: var(--asv-replace-image-action-color);
+  font: inherit;
+  font-size: var(--asv-replace-image-action-font-size);
+  font-weight: var(--asv-replace-image-action-font-weight);
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.replaceImageButton:hover,
+.replaceImageButton:focus-visible {
+  background: var(--asv-replace-image-action-hover-bg);
+  color: var(--asv-replace-image-action-color);
+}
+
+.replaceImageButton:focus-visible {
+  outline: none;
+  box-shadow: var(--asv-focus);
+}

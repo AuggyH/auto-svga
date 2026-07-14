@@ -21,11 +21,16 @@ export function dragDecisionForEvent(target, event) {
 
 export function showShortTermDragDecisionOverlay(overlay, decision) {
   if (!overlay) return;
+  const compareAvailable = decision.compareAvailable !== false;
   overlay.hidden = false;
   overlay.dataset.status = decision.supported ? "supported" : "unsupported";
   overlay.dataset.focusZone = decision.focusZone;
+  overlay.dataset.compareAvailable = compareAvailable ? "true" : "false";
   overlay.querySelectorAll("[data-drag-zone]").forEach((zone) => {
+    const available = compareAvailable || zone.dataset.dragZone !== "compare";
     const active = zone.dataset.dragZone === decision.focusZone;
+    zone.hidden = !available;
+    zone.setAttribute("aria-hidden", available ? "false" : "true");
     zone.querySelector("strong").textContent = decision.supported || !active
       ? zoneLabels[zone.dataset.dragZone]
       : zoneLabels.unsupported;
