@@ -36,11 +36,15 @@ const plistPath = path.join(experimentRoot, "packaging/macos/Info.plist");
 const entitlementsPath = path.join(experimentRoot, "packaging/macos/entitlements.plist");
 const appIconSourcePath = path.join(experimentRoot, "packaging/macos/app-icon-source.png");
 const appIconPath = path.join(experimentRoot, "packaging/macos/app-icon.icns");
-const sourceAuditFiles = [
+export const windowPlacementPackagedSourceFiles = [
   "main.cjs",
+  "short-term-window-bounds-policy.cjs",
+  "short-term-window-placement-store.cjs"
+];
+const sourceAuditFiles = [
+  ...windowPlacementPackagedSourceFiles,
   "preload.cjs",
   "server.mjs",
-  "short-term-window-bounds-policy.cjs",
   "scripts/macos-signing-workflow.mjs",
   "web/index.html",
   "web/short-term-macos-app.mjs",
@@ -158,6 +162,15 @@ export async function buildMacosPackageProof(options = {}) {
   const packagedRuntimeClosure = validatePackagedApp
     ? readPackagedRuntimeClosure(packagedAsarPath, buildCommit)
     : skippedPackagedRuntimeClosure(packagedAsarPath, "packaged app validation disabled");
+  const windowPlacementSourceHashes = Object.fromEntries(await Promise.all(
+    windowPlacementPackagedSourceFiles.map(async (relativePath) => [
+      relativePath,
+      await sha256(path.join(experimentRoot, relativePath))
+    ])
+  ));
+  const windowPlacementSourceClosure = validatePackagedApp
+    ? readPackagedWindowPlacementSourceClosure(packagedAsarPath, windowPlacementSourceHashes)
+    : skippedPackagedWindowPlacementSourceClosure(windowPlacementSourceHashes, "packaged app validation disabled");
   const privacyAudit = await runPrivacyAudit(sourcePlist);
   const sourceInfoPlistSecurityAudit = auditInfoPlistSecurity(sourcePlist);
   const packagedInfoPlistSecurityAudit = auditInfoPlistSecurity(packagedPlist);
@@ -255,6 +268,7 @@ export async function buildMacosPackageProof(options = {}) {
       packagedInfoPlistValidated: validatePackagedApp && existsSync(packagedPlistPath),
       packagedRuntimeBuildInfo: packagedRuntimeClosure.buildInfo,
       packagedRuntimeClosure,
+      windowPlacementSourceClosure,
       entitlementsPath: path.relative(repoRoot, entitlementsPath),
       electronPackagerArgs: macosPackagerArgs(path.relative(experimentRoot, artifactsRoot))
     },
@@ -296,6 +310,7 @@ export function validateProof(plist, proof, packagedPlist = plist) {
     ["packagedProductIdentity", plistStringValue(packagedPlist, "AutoSVGAProductVersion") === productVersion && plistStringValue(packagedPlist, "AutoSVGAReleaseStage") === releaseStage && plistStringValue(packagedPlist, "AutoSVGADistributionChannel") === distributionChannel && plistBooleanTrue(packagedPlist, "AutoSVGAPackageCandidate")],
     ["productIdentity", proof.productIdentity?.productVersion === productVersion && proof.productIdentity?.releaseStage === releaseStage && proof.productIdentity?.distributionChannel === distributionChannel && proof.productIdentity?.candidateChannel === candidateChannel && proof.productIdentity?.ownerVisibleLabel === ownerVisibleLabel],
     ["packagedRuntimeClosure", proof.packagingScaffold.packagedInfoPlistValidated !== true || (packagedRuntimeClosure?.validated === true && packagedRuntimeClosure?.buildInfo?.buildCommit === proof.buildCommit)],
+    ["windowPlacementSourceClosure", proof.packagingScaffold.packagedInfoPlistValidated !== true || proof.packagingScaffold.windowPlacementSourceClosure?.validated === true],
     ["internalUseOnly", proof.distribution.internalUseOnly === true && plist.includes("<key>AutoSVGAInternalUseOnly</key>")],
     ["distributionChannel", proof.distribution.channel === distributionChannel && proof.distribution.candidateChannel === candidateChannel && proof.distribution.packageCandidate === true],
     ["unsigned", proof.distribution.unsigned === true && plist.includes("<key>AutoSVGASigned</key>")],
@@ -320,6 +335,73 @@ export function validateProof(plist, proof, packagedPlist = plist) {
   ];
   const failed = checks.filter(([, passed]) => !passed).map(([name]) => name);
   if (failed.length > 0) throw new Error(`macOS package proof failed: ${failed.join(", ")}`);
+}
+
+function skippedPackagedWindowPlacementSourceClosure(sourceHashes, skippedReason) {
+  return {
+    validated: false,
+    files: windowPlacementPackagedSourceFiles.map((relativePath) => ({
+      path: relativePath,
+      sourceSha256: sourceHashes[relativePath],
+      packagedSha256: null,
+      matchesSource: null
+    })),
+    missingEntries: [],
+    findings: [],
+    skippedReason
+  };
+}
+
+function readPackagedWindowPlacementSourceClosure(packagedAsarPath, sourceHashes) {
+  const base = skippedPackagedWindowPlacementSourceClosure(sourceHashes, undefined);
+  delete base.skippedReason;
+  const findings = [];
+  if (!existsSync(packagedAsarPath)) {
+    return {
+      ...base,
+      findings: ["packaged app.asar is missing"]
+    };
+  }
+
+  try {
+    const asar = requireFromPrototype("@electron/asar");
+    const entries = new Set(asar.listPackage(packagedAsarPath));
+    const files = windowPlacementPackagedSourceFiles.map((relativePath) => {
+      const packagedEntry = `/${relativePath}`;
+      if (!entries.has(packagedEntry)) {
+        findings.push(`missing ${packagedEntry}`);
+        return {
+          path: relativePath,
+          sourceSha256: sourceHashes[relativePath],
+          packagedSha256: null,
+          matchesSource: false
+        };
+      }
+      const packagedSha256 = createHash("sha256")
+        .update(asar.extractFile(packagedAsarPath, relativePath))
+        .digest("hex");
+      const matchesSource = packagedSha256 === sourceHashes[relativePath];
+      if (!matchesSource) findings.push(`${packagedEntry} does not match source`);
+      return {
+        path: relativePath,
+        sourceSha256: sourceHashes[relativePath],
+        packagedSha256,
+        matchesSource
+      };
+    });
+    return {
+      ...base,
+      validated: findings.length === 0,
+      files,
+      missingEntries: files.filter((file) => file.packagedSha256 === null).map((file) => `/${file.path}`),
+      findings
+    };
+  } catch {
+    return {
+      ...base,
+      findings: ["packaged window-placement source closure could not be read"]
+    };
+  }
 }
 
 async function sha256(filePath) {

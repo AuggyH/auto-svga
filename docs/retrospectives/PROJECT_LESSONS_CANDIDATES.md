@@ -1472,3 +1472,18 @@ promoted, watched, rejected, or kept historical.
   the existing five-instance VAP sibling/reset pixel oracle.
 - Status: Candidate pending independent Code Re-review and downstream installed
   matrix acceptance.
+
+## 2026-07-15: Separate Owner Placement From Acceptance Placement
+
+- Candidate lesson: Resolve initial window bounds from current displays before
+  constructing the desktop window. Persist only validated owner-driven normal
+  placement; keep an internal acceptance-display override execution-bound,
+  process-only, and incapable of writing owner preference.
+- Evidence: The prior pre-window helper had no window identity and therefore
+  defaulted to the primary display. A post-show move would hide this cause while
+  producing a visible wrong first frame. The successor uses maximum display
+  intersection with deterministic ties, validates full outer bounds and minimum
+  size, rejects coordinate-style acceptance arguments, and binds the enforcing
+  host modules into the macOS package proof by exact hashes.
+- Status: Candidate pending combined Reset/UIUX/placement integration and one
+  rebuilt installed placement discriminator.

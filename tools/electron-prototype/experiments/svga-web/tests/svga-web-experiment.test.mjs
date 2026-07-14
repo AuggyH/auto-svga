@@ -31,7 +31,8 @@ import {
   productVersionLine,
   releaseStage,
   requiredPackagedRuntimeEntries,
-  validateProof
+  validateProof,
+  windowPlacementPackagedSourceFiles
 } from "../scripts/macos-package-proof.mjs";
 
 const require = createRequire(import.meta.url);
@@ -461,6 +462,7 @@ async function createPackagedProofFixture({
   buildCommit,
   omitRuntimeEntries = [],
   packageVersionOverrides = {},
+  windowPlacementSourceTransforms = {},
   plistTransform = (plist) => plist
 }) {
   const appBundle = path.join(root, "Auto SVGA.app");
@@ -498,6 +500,14 @@ async function createPackagedProofFixture({
       await writeFile(entryPath, "module.exports = {};\n");
     }
   }
+  for (const relativePath of windowPlacementPackagedSourceFiles) {
+    const source = await readFile(path.join(experimentRoot, relativePath));
+    const transform = windowPlacementSourceTransforms[relativePath];
+    const packagedSource = transform ? Buffer.from(transform(source.toString("utf8")), "utf8") : source;
+    const destination = path.join(asarSource, relativePath);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, packagedSource);
+  }
 
   const asar = requireFromPrototype("@electron/asar");
   const packagedAsarPath = path.join(resources, "app.asar");
@@ -530,6 +540,10 @@ test("macOS internal package scaffold avoids unsupported Finder .svga document a
   assert.match(
     await readFile(path.join(experimentRoot, "scripts/macos-package-proof.mjs"), "utf8"),
     /"short-term-window-bounds-policy\.cjs"/
+  );
+  assert.match(
+    await readFile(path.join(experimentRoot, "scripts/macos-package-proof.mjs"), "utf8"),
+    /"short-term-window-placement-store\.cjs"/
   );
   assert.doesNotMatch(plist, /CFBundleDocumentTypes/);
   assert.doesNotMatch(plist, /CFBundleTypeRole[\s\S]*Viewer/);
@@ -656,6 +670,18 @@ test("macOS package proof manifest records audit boundaries without final App ac
       .map((dependency) => `${dependency.packageName}@${dependency.expectedVersion}`),
     ["lottie-web@5.13.0", "video-animation-player@1.0.5"]
   );
+  assert.equal(proof.packagingScaffold.windowPlacementSourceClosure.validated, false);
+  assert.equal(proof.packagingScaffold.windowPlacementSourceClosure.skippedReason, "packaged app validation disabled");
+  assert.deepEqual(
+    proof.packagingScaffold.windowPlacementSourceClosure.files.map((file) => file.path),
+    windowPlacementPackagedSourceFiles
+  );
+  assert.ok(proof.packagingScaffold.windowPlacementSourceClosure.files.every((file) => (
+    typeof file.sourceSha256 === "string"
+    && file.sourceSha256.length === 64
+    && file.packagedSha256 === null
+    && file.matchesSource === null
+  )));
   assert.match(mainProcess, /packagedBuildCommit\(\) \?\? "unknown"/);
   assert.match(mainProcess, /const packagedRuntimeBuildInfo = app\.isPackaged \? readPackagedRuntimeBuildInfo\(\) : undefined;/);
   assert.match(mainProcess, /runtimeBuildInfoProductMilestoneId\(packagedRuntimeBuildInfo\) \?\? "short-term"/);
@@ -758,6 +784,29 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
         .filter((dependency) => dependency.expectedVersion)
         .map((dependency) => `${dependency.packageName}@${dependency.version}`),
       ["lottie-web@5.13.0", "video-animation-player@1.0.5"]
+    );
+    const validProof = await buildMacosPackageProof({
+      appBundle: valid.appBundle,
+      archivePath: valid.archivePath
+    });
+    assert.equal(validProof.packagingScaffold.windowPlacementSourceClosure.validated, true);
+    assert.ok(validProof.packagingScaffold.windowPlacementSourceClosure.files.every((file) => (
+      file.matchesSource === true && file.sourceSha256 === file.packagedSha256
+    )));
+
+    const sourceDrift = await createPackagedProofFixture({
+      root: path.join(root, "source-drift"),
+      buildCommit: expectedBuildCommit,
+      windowPlacementSourceTransforms: {
+        "short-term-window-placement-store.cjs": (source) => `${source}\n// packaged drift\n`
+      }
+    });
+    await assert.rejects(
+      () => buildMacosPackageProof({
+        appBundle: sourceDrift.appBundle,
+        archivePath: sourceDrift.archivePath
+      }),
+      /windowPlacementSourceClosure/
     );
 
     const missing = await createPackagedProofFixture({

@@ -14,9 +14,18 @@ const {
 } = require("./host-adapter-contract.cjs");
 const { createDesktopArtifactCatalog } = require("./desktop-artifact-catalog.cjs");
 const {
+  parseAcceptanceDisplayRequest,
   preserveWindowSizeAcrossDisplay,
+  resolveAcceptanceLaunchPlacement,
+  resolveNormalLaunchPlacement,
+  selectDisplayForPlacement,
+  windowPlacementRecordFromBounds,
   sameWindowBounds
 } = require("./short-term-window-bounds-policy.cjs");
+const {
+  readWindowPlacementPreference,
+  writeWindowPlacementPreference
+} = require("./short-term-window-placement-store.cjs");
 const {
   describeSequenceProductRepairProofValidationFailure,
   validateSequenceByteRepairProof,
@@ -43,13 +52,14 @@ const auditPlayer = auditPlayerArgument?.split("=")[1];
 const auditMode = auditPlayer === "svga-web" || auditPlayer === "svgaplayerweb";
 const normalVisibleStartupMode = !(smokeMode || auditMode || normalProofMode);
 const hostBoundaryMode = normalVisibleStartupMode ? "formal" : "proof";
-const appRoot = app.getAppPath();
-const repoRoot = path.resolve(appRoot, "../../../..");
-const multiFormatDesktopRuntimeRoot = app.isPackaged ? path.join(appRoot, ".runtime") : repoRoot;
 const productIdentity = "auto-svga";
 const productDisplayName = "Auto SVGA";
-const MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES = 10 * 1024 * 1024;
 app.setName(productDisplayName);
+const appRoot = app.getAppPath();
+const ownerPersistentUserDataRoot = app.getPath("userData");
+const repoRoot = path.resolve(appRoot, "../../../..");
+const multiFormatDesktopRuntimeRoot = app.isPackaged ? path.join(appRoot, ".runtime") : repoRoot;
+const MAX_MULTI_FORMAT_REPLACEMENT_IMAGE_BYTES = 10 * 1024 * 1024;
 function readPackagedRuntimeBuildInfo() {
   try {
     const buildInfo = JSON.parse(readFileSync(path.join(appRoot, ".runtime/build-info.json"), "utf8"));
@@ -120,6 +130,10 @@ const packagedRuntimeBuildInfo = app.isPackaged ? readPackagedRuntimeBuildInfo()
 const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? runtimeBuildInfoProductMilestoneId(packagedRuntimeBuildInfo) ?? "short-term";
 const isShortTermProduct = productMilestoneId === "short-term";
 const isMultiFormatDesktopProduct = productMilestoneId === MULTIFORMAT_DESKTOP_PRODUCT_MILESTONE_ID;
+const isInternalMultiFormatCandidate = app.isPackaged
+  && normalVisibleStartupMode
+  && isMultiFormatDesktopProduct
+  && packagedRuntimeBuildInfo?.source === "package-internal-trial";
 const multiFormatTrace = createMultiFormatOpenRuntimeTrace({
   runId: resolveMultiFormatTraceRunId({
     isPackaged: app.isPackaged,
@@ -193,6 +207,10 @@ const desktopArtifacts = createDesktopArtifactCatalog({
   ]
 });
 const sessionRoot = path.join(os.tmpdir(), `auto-svga-desktop-baseline-${process.pid}`);
+const ownerWindowPlacementPreferencePath = path.join(
+  ownerPersistentUserDataRoot,
+  "normal-window-placement-v1.json"
+);
 const reportToken = randomBytes(24).toString("hex");
 const runtimeInstanceId = randomBytes(12).toString("hex");
 let experimentServer;
@@ -206,6 +224,9 @@ let shortTermWindowMode = usesShortTermPreviewShell ? "launch" : "workbench";
 let shortTermLaunchWindowSize = { ...macosWorkbenchWindowSizing.launch };
 let shortTermWindowBoundsTimer;
 let applyingShortTermWindowBounds = false;
+let activeWindowPlacementMode = "legacy";
+let ownerWindowPlacementDirty = false;
+let ownerWindowPlacementSaveTimer;
 const defaultShortTermMenuState = Object.freeze({
   view: "launch",
   mode: "preview",
@@ -303,6 +324,61 @@ function chooseMacosLaunchWindowBounds(window) {
   });
 }
 
+function resolveInitialMultiFormatWindowPlacement() {
+  const displays = screen.getAllDisplays();
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const acceptanceRequest = parseAcceptanceDisplayRequest({
+    argv: process.argv,
+    environment: process.env,
+    internalCandidate: isInternalMultiFormatCandidate
+  });
+  if (acceptanceRequest.status === "rejected") {
+    throw new Error(`window_placement_rejected:${acceptanceRequest.reason}`);
+  }
+
+  let placement;
+  let mode;
+  let preferenceStatus = "not-read";
+  if (acceptanceRequest.status === "accepted") {
+    placement = resolveAcceptanceLaunchPlacement({
+      request: acceptanceRequest,
+      displays,
+      defaultSize: macosWorkbenchWindowSizing.launch,
+      minimumSize: macosWorkbenchWindowSizing.minimumLaunch
+    });
+    mode = "acceptance";
+  } else {
+    const preference = normalVisibleStartupMode
+      ? readWindowPlacementPreference(ownerWindowPlacementPreferencePath)
+      : { status: "missing" };
+    preferenceStatus = preference.status;
+    const storedPlacement = preference.status === "loaded"
+      ? preference.value
+      : preference.status === "missing"
+        ? undefined
+        : { invalid: true };
+    placement = resolveNormalLaunchPlacement({
+      storedPlacement,
+      displays,
+      primaryDisplay,
+      defaultSize: macosWorkbenchWindowSizing.launch,
+      minimumSize: macosWorkbenchWindowSizing.minimumLaunch
+    });
+    mode = normalVisibleStartupMode ? "normal" : "proof";
+  }
+  if (placement.status === "rejected") {
+    throw new Error(`window_placement_rejected:${placement.reason}`);
+  }
+
+  const selectedDisplay = displays.filter((display) => display?.id === placement.displayId);
+  if (selectedDisplay.length !== 1) throw new Error("window_placement_rejected:display_identity_ambiguous");
+  return {
+    ...placement,
+    mode,
+    preferenceStatus
+  };
+}
+
 function chooseMacosWorkbenchWindowBounds(window) {
   const targetSize = usesShortTermPreviewShell
     ? macosWorkbenchWindowSizing.shortTermWorkbench
@@ -336,6 +412,45 @@ function setWindowBoundsWithoutRecordingUserResize(window, bounds, animate = fal
       applyingShortTermWindowBounds = false;
     });
   }
+}
+
+function persistOwnerWindowPlacement(window = activeMainWindow) {
+  if (!ownerWindowPlacementDirty || activeWindowPlacementMode !== "normal") return { status: "ignored" };
+  if (!isMultiFormatDesktopProduct || !normalVisibleStartupMode || !window || window.isDestroyed()) {
+    return { status: "ignored" };
+  }
+  const bounds = window.getBounds();
+  const display = selectDisplayForPlacement(bounds, screen.getAllDisplays());
+  if (!display) return { status: "ignored" };
+  const preference = windowPlacementRecordFromBounds({
+    bounds,
+    displayId: display.id,
+    workArea: display.workArea,
+    windowState: {
+      minimized: window.isMinimized(),
+      fullscreen: window.isFullScreen(),
+      maximized: window.isMaximized()
+    },
+    launchMode: activeWindowPlacementMode,
+    savedAt: new Date().toISOString()
+  });
+  if (preference.status !== "accepted") return preference;
+  const result = writeWindowPlacementPreference(ownerWindowPlacementPreferencePath, preference.record);
+  if (result.status === "saved") ownerWindowPlacementDirty = false;
+  return result;
+}
+
+function scheduleOwnerWindowPlacementPersistence(window = activeMainWindow) {
+  if (!ownerWindowPlacementDirty || activeWindowPlacementMode !== "normal") return;
+  clearTimeout(ownerWindowPlacementSaveTimer);
+  ownerWindowPlacementSaveTimer = setTimeout(() => {
+    persistOwnerWindowPlacement(window);
+  }, 300);
+}
+
+function markOwnerWindowPlacementDirty() {
+  if (activeWindowPlacementMode !== "normal" || applyingShortTermWindowBounds) return;
+  ownerWindowPlacementDirty = true;
 }
 
 function preserveShortTermLaunchWindowBounds(window = activeMainWindow, reason = "unknown") {
@@ -377,24 +492,45 @@ function scheduleShortTermLaunchWindowBoundsPreservation(window = activeMainWind
 function installShortTermWindowBoundsPolicy(window) {
   if (!usesShortTermPreviewShell || smokeMode || auditMode || normalProofMode) return;
 
+  window.on("will-move", () => {
+    markOwnerWindowPlacementDirty();
+  });
   window.on("will-resize", (_event, newBounds) => {
+    markOwnerWindowPlacementDirty();
     if (shortTermWindowMode !== "launch" || applyingShortTermWindowBounds) return;
     shortTermLaunchWindowSize = {
       width: Math.max(macosWorkbenchWindowSizing.minimumLaunch.width, Math.round(newBounds.width)),
       height: Math.max(macosWorkbenchWindowSizing.minimumLaunch.height, Math.round(newBounds.height))
     };
   });
-  window.on("move", () => scheduleShortTermLaunchWindowBoundsPreservation(window, "window-move"));
-  window.on("moved", () => scheduleShortTermLaunchWindowBoundsPreservation(window, "window-moved"));
-  window.on("resize", () => scheduleShortTermLaunchWindowBoundsPreservation(window, "window-resize"));
-  window.on("resized", () => scheduleShortTermLaunchWindowBoundsPreservation(window, "window-resized"));
+  window.on("move", () => {
+    scheduleShortTermLaunchWindowBoundsPreservation(window, "window-move");
+    scheduleOwnerWindowPlacementPersistence(window);
+  });
+  window.on("moved", () => {
+    scheduleShortTermLaunchWindowBoundsPreservation(window, "window-moved");
+    scheduleOwnerWindowPlacementPersistence(window);
+  });
+  window.on("resize", () => {
+    scheduleShortTermLaunchWindowBoundsPreservation(window, "window-resize");
+    scheduleOwnerWindowPlacementPersistence(window);
+  });
+  window.on("resized", () => {
+    scheduleShortTermLaunchWindowBoundsPreservation(window, "window-resized");
+    scheduleOwnerWindowPlacementPersistence(window);
+  });
 
   const handleDisplayMetricsChanged = () => {
     scheduleShortTermLaunchWindowBoundsPreservation(window, "display-metrics-changed");
   };
   screen.on("display-metrics-changed", handleDisplayMetricsChanged);
+  window.on("close", () => {
+    clearTimeout(ownerWindowPlacementSaveTimer);
+    persistOwnerWindowPlacement(window);
+  });
   window.on("closed", () => {
     clearTimeout(shortTermWindowBoundsTimer);
+    clearTimeout(ownerWindowPlacementSaveTimer);
     screen.removeListener("display-metrics-changed", handleDisplayMetricsChanged);
   });
 }
@@ -6747,9 +6883,15 @@ async function createExperimentWindow() {
   );
   experimentServer = await startSvgaWebExperimentServer({ appRoot, reportToken, desktopArtifacts });
   expectedOrigin = experimentServer.origin;
-  const launchBounds = usesShortTermPreviewShell
-    ? chooseMacosLaunchWindowBounds()
-    : chooseMacosWorkbenchWindowBounds();
+  const initialPlacement = isMultiFormatDesktopProduct
+    ? resolveInitialMultiFormatWindowPlacement()
+    : undefined;
+  activeWindowPlacementMode = initialPlacement?.mode ?? "legacy";
+  const launchBounds = initialPlacement?.bounds ?? (
+    usesShortTermPreviewShell
+      ? chooseMacosLaunchWindowBounds()
+      : chooseMacosWorkbenchWindowBounds()
+  );
 
   const window = new BrowserWindow({
     title: productDisplayName,
