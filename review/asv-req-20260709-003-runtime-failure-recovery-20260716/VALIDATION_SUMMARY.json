@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "task": "asv-req-20260709-003-runtime-failure-recovery",
+  "baseHead": "0f430fa2b63abe7b9e87a9336a087c4b2533e87f",
+  "branch": "codex/0.2-multiformat-daily-use-stability-20260716",
+  "productDiffSha256": "a7beed276675217274844b4e50d98fba32f8ac94e1a5957ddcf4adcc7ab56675",
+  "validation": [
+    {
+      "command": "node --test --test-name-pattern \"runtime prepare failure preserves\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "failed-before-fix",
+      "details": "Expected preview state but current source entered failed view."
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/web/multiformat-desktop-preview-controller.mjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --test --test-name-pattern \"runtime prepare failure preserves\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "passed",
+      "details": "1/1"
+    },
+    {
+      "command": "node --test --test-name-pattern \"renderer open contract|owner failure rendering|composed open cancellation|renderer mounts prepared Lottie and VAP|runtime prepare failure preserves|deferred SVGA mount\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "passed",
+      "details": "6/6"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed"
+    },
+    {
+      "command": "npm run test:all",
+      "status": "passed",
+      "details": "538/538"
+    },
+    {
+      "command": "npm run desktop:short-term:design-system-check",
+      "status": "passed"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "partial",
+      "details": "78/80; two package-proof fixture tests fail because @electron/asar is absent in this worktree."
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    },
+    {
+      "command": "package-lock changed-path scan",
+      "status": "passed",
+      "details": "No output."
+    },
+    {
+      "command": "media/generated-output changed-path scan",
+      "status": "passed",
+      "details": "No output."
+    }
+  ],
+  "boundaries": {
+    "foregroundUsed": false,
+    "electronLaunched": false,
+    "installedAppMutated": false,
+    "qaRouted": false,
+    "packagingRouted": false,
+    "codeReviewRouted": false,
+    "ownerMaterialMutated": false
+  }
+}

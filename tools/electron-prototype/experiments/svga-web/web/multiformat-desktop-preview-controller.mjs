@@ -768,8 +768,7 @@ export function createMultiFormatDesktopPreviewController({
       }
     }).catch((error) => {
       if (!isActiveRuntimePreviewGeneration(generation)) return;
-      clearRuntimePreview({ preserveGeneration: true });
-      showFailure(runtimePreviewFailure(error));
+      showRuntimePreviewFailure(error);
     });
   }
 
@@ -980,12 +979,11 @@ export function createMultiFormatDesktopPreviewController({
       ...(payload.fusionParams ?? {}),
       onLoadError: (error) => {
         if (!isActiveRuntimePreviewGeneration(generation)) return;
-        clearRuntimePreview({ preserveGeneration: true });
-        showFailure(runtimePreviewFailure(new RuntimePreviewPayloadError({
+        showRuntimePreviewFailure(new RuntimePreviewPayloadError({
           code: "playback_failure",
           message: "VAP runtime preview reached a typed playback failure.",
           details: { reason: "vap_runtime_load_error", cause: error ? "redacted runtime error" : undefined }
-        })));
+        }));
       }
     });
     fitVapRuntimeCanvas(mount);
@@ -1536,6 +1534,19 @@ export function createMultiFormatDesktopPreviewController({
     setView("failed");
   }
 
+  function showRuntimePreviewFailure(error) {
+    const failure = runtimePreviewFailure(error);
+    clearRuntimePreview({ preserveGeneration: true });
+    if (!state.model || svgaWorkflowActive()) {
+      showFailure(failure);
+      return;
+    }
+    state.model = runtimePreviewFailureModel(state.model);
+    renderModel({ model: state.model, sourceId: state.sourceId });
+    renderFailureMessage(nodes, ownerFailureCopy(failure));
+    setView("preview");
+  }
+
   function showOpenFailure(error) {
     revokeActiveDocumentAuthority();
     renderFailureMessage(nodes, ownerFailureCopy(error));
@@ -1869,6 +1880,34 @@ function runtimePreviewFailure(error) {
     }
   }
   return { code: "runtime_preview_failed" };
+}
+
+function runtimePreviewFailureModel(model) {
+  const commands = model?.commands ?? {};
+  return {
+    ...model,
+    status: "playbackFailed",
+    commands: {
+      ...commands,
+      play: false,
+      pause: false,
+      recover: true,
+      seek: commands.seek === true,
+      loop: commands.loop === true,
+      replace: commands.replace === true,
+      resetReplacement: commands.resetReplacement === true,
+      save: false,
+      export: false
+    },
+    canvas: {
+      ...(model?.canvas ?? {}),
+      status: "playbackFailed",
+      playback: {
+        ...(model?.canvas?.playback ?? {}),
+        status: "error"
+      }
+    }
+  };
 }
 
 function base64ToBytes(value) {

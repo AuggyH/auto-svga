@@ -3253,6 +3253,93 @@ test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host fi
   }
 });
 
+test("0.2 renderer runtime prepare failure preserves current multi-format source and recovers through host control", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const originalLottie = globalThis.lottie;
+  const nodes = createMultiFormatControllerTestNodes();
+  const documentRef = createMultiFormatControllerTestDocument(nodes);
+  const baseBridge = createMultiFormatRuntimeMountTestBridge();
+  const controlCalls = [];
+  let prepareAttempts = 0;
+  globalThis.document = documentRef;
+  globalThis.lottie = {
+    loadAnimation() {
+      return {
+        play() {},
+        pause() {},
+        destroy() {},
+        goToAndStop() {}
+      };
+    }
+  };
+
+  try {
+    baseBridge.markOpened("lottie");
+    const bridge = {
+      ...baseBridge,
+      prepareMultiFormatRuntimePreview(input) {
+        prepareAttempts += 1;
+        if (prepareAttempts === 1) {
+          return Promise.reject(new Error("runtime prepare failed for /Users/alice/Secret/lottie.json"));
+        }
+        return baseBridge.prepareMultiFormatRuntimePreview(input);
+      },
+      controlMultiFormatPreview(input) {
+        controlCalls.push(input);
+        return Promise.resolve(createRuntimeMountOpenResult("lottie", { sourceId: "lottie-runtime-source" }));
+      }
+    };
+    const state = {
+      view: "launch",
+      mode: "preview",
+      tab: "overview",
+      appearance: "light",
+      primaryPlaybackLooping: true,
+      textPreviewValues: {}
+    };
+    const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state });
+    controller.initialize();
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "runtime-failure-lottie" }), true);
+    assert.equal(await controller.handlers.completeHostFileOpen({
+      eventId: "runtime-failure-lottie",
+      result: createRuntimeMountOpenResult("lottie", { sourceId: "lottie-runtime-source" })
+    }), true);
+    await flushRuntimeMountPromises();
+
+    assert.equal(prepareAttempts, 1);
+    assert.equal(state.view, "preview");
+    assert.equal(state.sourceId, "lottie-runtime-source");
+    assert.equal(state.displayName, "lottie.fixture");
+    assert.equal(state.model.status, "playbackFailed");
+    assert.equal(state.selectedImageKey, "avatar");
+    assert.equal(state.selectedTextKey, "text:1");
+    assert.equal(nodes.playbackMeta.textContent.includes("播放失败"), true);
+    assert.equal(nodes.errorMessage.textContent, "无法挂载本地预览，源文件没有被修改。");
+    assert.doesNotMatch(JSON.stringify(state.model), /\/Users|alice|Secret|lottie\.json/i);
+
+    const failureMenu = bridge.menuStates.at(-1);
+    assert.equal(failureMenu.view, "preview");
+    assert.equal(failureMenu.hasFile, true);
+    assert.equal(failureMenu.canPlay, true);
+    assert.equal(failureMenu.canReplay, true);
+    assert.equal(failureMenu.canReplaceImage, true);
+
+    await controller.handlers.togglePrimaryPlayback();
+    await flushRuntimeMountPromises();
+
+    assert.deepEqual(controlCalls.map((input) => input.action), ["recover"]);
+    assert.equal(state.view, "preview");
+    assert.equal(state.model.status, "previewReady");
+    assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
+    assert.equal(nodes.errorMessage.textContent, "");
+  } finally {
+    globalThis.document = originalDocument;
+    globalThis.lottie = originalLottie;
+  }
+});
+
 test("0.2 deferred SVGA mount completion cannot overwrite a newer runtime generation", async () => {
   const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
   const originalDocument = globalThis.document;
