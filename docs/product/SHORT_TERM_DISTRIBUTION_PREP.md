@@ -171,8 +171,10 @@ npm run svga-workbench:v1:promote-local-stable -- --help
 ```
 
 `--inspect` is strictly read-only. It reports the current candidate, installed
-app, previous app, and any named rollback journal without registering Launch
-Services, copying an app, or changing a manifest.
+app, and previous app without accepting rollback authority, registering Launch
+Services, copying an app, or changing a manifest. It rejects duplicate flags,
+rollback ids, rollback bindings, and conflicting target sources before any
+rollback path is derived.
 
 `--rollback-previous` is a separate single-use operation. It requires a safe
 `--rollback-id` plus caller-supplied full build commit, `Info.plist` SHA-256,
@@ -187,10 +189,13 @@ pass their exact postconditions. The final no-overwrite rollback manifest is
 fsynced and records `retrySafe=false` and one invocation.
 
 `--recover-rollback` never starts another rollback attempt. Under a separate
-explicit recovery authority, it reads an existing durable journal and either
-removes pre-swap residue while preserving the original roles, or completes
-manifest/registration work for an already atomically exchanged pair. Any
-unbound or mixed role state remains failed closed for manual governance review.
+explicit recovery authority and safe `--rollback-id`, it reads an existing
+durable journal and either removes pre-swap residue while preserving the
+original roles, or completes manifest/registration work for an already
+atomically exchanged pair. Recovery re-derives the final installed/previous
+byte catalogs from disk and refuses stale, partial, or tampered existing
+manifests before journal cleanup. Any unbound or mixed role state remains
+failed closed for manual governance review.
 Neither rollback nor recovery downloads dependencies, rebuilds a package,
 launches the app, uses Finder, or manually copies an app into Applications.
 

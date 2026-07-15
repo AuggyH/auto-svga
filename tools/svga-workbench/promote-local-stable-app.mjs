@@ -56,7 +56,23 @@ function usage() {
   ].join("\n");
 }
 
-export function parseArgs(argv) {
+function assertSafeRollbackIdValue(value, label = "rollback-id") {
+  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value)) {
+    throw new Error(`${label} must contain only safe alphanumeric, dot, underscore, or dash characters`);
+  }
+}
+
+function assertHexValue(value, length, label) {
+  if (typeof value !== "string" || !new RegExp(`^[0-9a-f]{${length}}$`).test(value)) {
+    throw new Error(`${label} must be a ${length}-character lowercase hexadecimal value`);
+  }
+}
+
+export function parseArgs(argv, env = process.env) {
+  const envTarget = Object.prototype.hasOwnProperty.call(env, "AUTO_SVGA_LOCAL_STABLE_APP_PATH")
+    ? env.AUTO_SVGA_LOCAL_STABLE_APP_PATH
+    : undefined;
+  if (envTarget === "") throw new Error("AUTO_SVGA_LOCAL_STABLE_APP_PATH must not be empty");
   const options = {
     inspect: false,
     rollbackPrevious: false,
@@ -64,22 +80,48 @@ export function parseArgs(argv) {
     useExisting: false,
     allowDirty: false,
     skipRegister: false,
-    target: process.env.AUTO_SVGA_LOCAL_STABLE_APP_PATH
-      ? path.resolve(process.env.AUTO_SVGA_LOCAL_STABLE_APP_PATH)
+    target: envTarget
+      ? path.resolve(envTarget)
       : path.join(os.homedir(), "Applications", "Auto SVGA.app")
   };
+  const seenOptions = new Set();
+
+  function markOption(flag) {
+    if (seenOptions.has(flag)) throw new Error(`Duplicate option: ${flag}`);
+    seenOptions.add(flag);
+  }
+
+  function readOptionValue(flag, index) {
+    const value = argv[index + 1];
+    if (!value || value.startsWith("--")) throw new Error(`${flag} requires a value`);
+    return value;
+  }
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === "--inspect") options.inspect = true;
-    else if (arg === "--rollback-previous") options.rollbackPrevious = true;
-    else if (arg === "--recover-rollback") options.recoverRollback = true;
-    else if (arg === "--use-existing") options.useExisting = true;
-    else if (arg === "--allow-dirty") options.allowDirty = true;
-    else if (arg === "--skip-register") options.skipRegister = true;
+    if (arg === "--inspect") {
+      markOption(arg);
+      options.inspect = true;
+    } else if (arg === "--rollback-previous") {
+      markOption(arg);
+      options.rollbackPrevious = true;
+    } else if (arg === "--recover-rollback") {
+      markOption(arg);
+      options.recoverRollback = true;
+    } else if (arg === "--use-existing") {
+      markOption(arg);
+      options.useExisting = true;
+    } else if (arg === "--allow-dirty") {
+      markOption(arg);
+      options.allowDirty = true;
+    } else if (arg === "--skip-register") {
+      markOption(arg);
+      options.skipRegister = true;
+    }
     else if (arg === "--target") {
-      const target = argv[index + 1];
-      if (!target) throw new Error("--target requires a path");
+      markOption(arg);
+      if (envTarget) throw new Error("--target cannot be combined with AUTO_SVGA_LOCAL_STABLE_APP_PATH environment authority");
+      const target = readOptionValue(arg, index);
       options.target = path.resolve(target.replace(/^~/, os.homedir()));
       index += 1;
     } else if ([
@@ -93,8 +135,11 @@ export function parseArgs(argv) {
       "--expected-previous-app-asar-sha256",
       "--expected-previous-build-info-sha256"
     ].includes(arg)) {
-      const value = argv[index + 1];
-      if (!value) throw new Error(`${arg} requires a value`);
+      markOption(arg);
+      const value = readOptionValue(arg, index);
+      if (arg === "--rollback-id") assertSafeRollbackIdValue(value, "rollback-id");
+      else if (arg.endsWith("-build")) assertHexValue(value, 40, arg.slice(2));
+      else assertHexValue(value, 64, arg.slice(2));
       const property = arg.slice(2).replace(/-([a-z])/g, (_, character) => character.toUpperCase());
       options[property] = value;
       index += 1;
@@ -112,8 +157,8 @@ export function parseArgs(argv) {
   if ((options.rollbackPrevious || options.recoverRollback) && (options.useExisting || options.allowDirty || options.skipRegister)) {
     throw new Error("Rollback modes do not accept packaging or registration-bypass options");
   }
-  if (options.inspect && (options.useExisting || options.allowDirty || options.skipRegister || bindingOptionPresent)) {
-    throw new Error("Inspect mode does not accept packaging, registration-bypass, or rollback-binding options");
+  if (options.inspect && (options.useExisting || options.allowDirty || options.skipRegister || options.rollbackId || bindingOptionPresent)) {
+    throw new Error("Inspect mode does not accept packaging, registration-bypass, rollback-id, or rollback-binding options");
   }
   if (!options.rollbackPrevious && !options.recoverRollback && !options.inspect && (options.rollbackId || bindingOptionPresent)) {
     throw new Error("Rollback identifiers and bindings require an explicit inspect, rollback, or recovery mode");
@@ -141,6 +186,7 @@ function rollbackBindingsFromOptions(options) {
 
 function rollbackPathsForId(rollbackId) {
   if (!rollbackId) throw new Error("--rollback-id is required for rollback and recovery modes");
+  assertSafeRollbackIdValue(rollbackId, "rollback-id");
   return {
     rollbackManifestPath: path.join(rollbackManifestRoot, `${rollbackId}.json`),
     rollbackJournalPath: path.join(rollbackJournalRoot, `${rollbackId}.json`)

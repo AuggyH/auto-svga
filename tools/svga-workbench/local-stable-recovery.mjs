@@ -2,8 +2,10 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   closeSync,
+  constants,
   existsSync,
   fsyncSync,
+  fstatSync,
   lstatSync,
   mkdirSync,
   openSync,
@@ -15,14 +17,11 @@ import {
   rmSync,
   writeFileSync
 } from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const modulePath = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(modulePath), "../..");
-const prototypeRoot = path.join(repoRoot, "tools/electron-prototype");
-const requireFromPrototype = createRequire(path.join(prototypeRoot, "package.json"));
 
 const runtimeDependencies = [
   { packageName: "protobufjs", expectedVersion: "8.6.4", entries: ["package.json", "index.js"] },
@@ -54,6 +53,7 @@ function statIdentity(stat) {
     dev: String(stat.dev),
     ino: String(stat.ino),
     mode: stat.mode,
+    nlink: stat.nlink,
     size: stat.size,
     mtimeMs: stat.mtimeMs,
     ctimeMs: stat.ctimeMs
@@ -63,6 +63,34 @@ function statIdentity(stat) {
 function isInsidePath(candidate, root) {
   const relative = path.relative(root, candidate);
   return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
+}
+
+function normalizeBundlePath(relativePath) {
+  return relativePath.split(path.sep).join("/");
+}
+
+function isSafeRelativeLinkTarget(target) {
+  return typeof target === "string"
+    && target.length > 0
+    && !path.isAbsolute(target)
+    && !target.split("/").includes("..");
+}
+
+function isAllowedBundleSymlink(relativePath, target) {
+  const normalizedPath = normalizeBundlePath(relativePath);
+  if (!normalizedPath.startsWith("Contents/Frameworks/")) return false;
+  if (!isSafeRelativeLinkTarget(target)) return false;
+
+  const frameworkMatch = normalizedPath.match(/(^|\/)([^/]+\.framework)\/(.+)$/);
+  if (!frameworkMatch) return false;
+  const frameworkName = frameworkMatch[2].replace(/\.framework$/, "");
+  const frameworkRelativePath = frameworkMatch[3];
+  if (frameworkRelativePath === "Versions/Current") return target === "A";
+  if (frameworkRelativePath === frameworkName) return target === `Versions/Current/${frameworkName}`;
+  if (["Resources", "Libraries", "Helpers"].includes(frameworkRelativePath)) {
+    return target === `Versions/Current/${frameworkRelativePath}`;
+  }
+  return false;
 }
 
 function inspectBundleCatalog(appPath, rootRealPath) {
@@ -75,21 +103,25 @@ function inspectBundleCatalog(appPath, rootRealPath) {
       const relativePath = path.relative(appPath, entryPath);
       const stat = lstatSync(entryPath);
       if (stat.isSymbolicLink()) {
+        const linkTarget = readlinkSync(entryPath);
+        if (!isAllowedBundleSymlink(relativePath, linkTarget)) {
+          throw new Error(`App bundle symlink is not allowed: ${entryPath} -> ${linkTarget}`);
+        }
         const resolved = realpathSync.native(entryPath);
         if (!isInsidePath(resolved, rootRealPath)) {
           throw new Error(`App bundle symlink escapes its bundle: ${entryPath} -> ${resolved}`);
         }
-        catalog.push({ path: relativePath, type: "symlink", target: readlinkSync(entryPath) });
+        catalog.push({ path: normalizeBundlePath(relativePath), type: "symlink", target: linkTarget });
         continue;
       }
       if (stat.isFile()) {
         if (stat.nlink !== 1) throw new Error(`App bundle hardlink is not allowed: ${entryPath}`);
         sizeBytes += stat.size;
-        catalog.push({ path: relativePath, type: "file", ...statIdentity(stat) });
+        catalog.push({ path: normalizeBundlePath(relativePath), type: "file", ...statIdentity(stat) });
         continue;
       }
       if (stat.isDirectory()) {
-        catalog.push({ path: relativePath, type: "directory", ...statIdentity(stat) });
+        catalog.push({ path: normalizeBundlePath(relativePath), type: "directory", ...statIdentity(stat) });
         visit(entryPath);
         continue;
       }
@@ -112,42 +144,163 @@ function assertRegularUniqueFile(filePath) {
   return stat;
 }
 
-export function readDefaultPlistIdentity(plistPath) {
-  const plist = JSON.parse(execFileSync("/usr/bin/plutil", ["-convert", "json", "-o", "-", plistPath], {
-    encoding: "utf8",
-    stdio: "pipe"
-  }));
+function assertSameStatIdentity(left, right, label) {
+  if (JSON.stringify(statIdentity(left)) !== JSON.stringify(statIdentity(right))) {
+    throw new Error(`${label} changed while it was being inspected`);
+  }
+}
+
+function assertFileStatIsRegularUnique(stat, filePath) {
+  if (!stat.isFile()) throw new Error(`Expected a regular file: ${filePath}`);
+  if (stat.nlink !== 1) throw new Error(`Critical app file is hardlinked: ${filePath}`);
+}
+
+function readNoFollowCriticalFile(filePath, label) {
+  const statBefore = assertRegularUniqueFile(filePath);
+  let descriptor;
+  try {
+    descriptor = openSync(filePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+  } catch (error) {
+    throw new Error(`${label} must be opened as a no-follow regular file: ${error.message}`);
+  }
+  try {
+    const descriptorStatBefore = fstatSync(descriptor);
+    assertFileStatIsRegularUnique(descriptorStatBefore, filePath);
+    assertSameStatIdentity(statBefore, descriptorStatBefore, label);
+    const bytes = readFileSync(descriptor);
+    const descriptorStatAfter = fstatSync(descriptor);
+    assertFileStatIsRegularUnique(descriptorStatAfter, filePath);
+    assertSameStatIdentity(descriptorStatBefore, descriptorStatAfter, label);
+    const pathStatAfter = assertRegularUniqueFile(filePath);
+    assertSameStatIdentity(descriptorStatAfter, pathStatAfter, label);
+    return {
+      path: filePath,
+      bytes,
+      sha256: sha256Buffer(bytes),
+      object: statIdentity(descriptorStatBefore)
+    };
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
+function alignInt(value, alignment) {
+  return value + ((alignment - (value % alignment)) % alignment);
+}
+
+function readPickleUInt32(buffer, label) {
+  if (buffer.length < 8) throw new Error(`${label} pickle is too short`);
+  const payloadSize = buffer.readUInt32LE(0);
+  const headerSize = buffer.length - payloadSize;
+  if (payloadSize !== 4 || headerSize < 4 || headerSize !== alignInt(headerSize, 4)) {
+    throw new Error(`${label} has an invalid pickle header`);
+  }
+  return buffer.readUInt32LE(headerSize);
+}
+
+function readPickleString(buffer, label) {
+  if (buffer.length < 8) throw new Error(`${label} pickle is too short`);
+  const payloadSize = buffer.readUInt32LE(0);
+  const headerSize = buffer.length - payloadSize;
+  if (payloadSize <= 4 || headerSize < 4 || headerSize !== alignInt(headerSize, 4)) {
+    throw new Error(`${label} has an invalid pickle header`);
+  }
+  const stringLength = buffer.readInt32LE(headerSize);
+  if (stringLength < 0 || alignInt(4 + stringLength, 4) > payloadSize) {
+    throw new Error(`${label} has an invalid pickle string length`);
+  }
+  return buffer.subarray(headerSize + 4, headerSize + 4 + stringLength).toString("utf8");
+}
+
+function readAsarArchiveFromBytes(bytes) {
+  if (bytes.length < 8) throw new Error("app.asar is too small to contain an ASAR header");
+  const headerSize = readPickleUInt32(bytes.subarray(0, 8), "app.asar size");
+  const headerEnd = 8 + headerSize;
+  if (headerEnd > bytes.length) throw new Error("app.asar header exceeds archive size");
+  const headerString = readPickleString(bytes.subarray(8, headerEnd), "app.asar header");
   return {
-    name: plist.CFBundleName,
-    displayName: plist.CFBundleDisplayName,
-    executable: plist.CFBundleExecutable,
-    shortVersion: plist.CFBundleShortVersionString ?? null,
-    bundleVersion: plist.CFBundleVersion ?? null,
-    productVersion: plist.AutoSVGAProductVersion ?? null,
-    releaseStage: plist.AutoSVGAReleaseStage ?? null,
-    distributionChannel: plist.AutoSVGADistributionChannel ?? null,
-    internalUseOnly: plist.AutoSVGAInternalUseOnly ?? null,
-    signed: plist.AutoSVGASigned ?? null,
-    notarized: plist.AutoSVGANotarized ?? null,
-    productionApproved: plist.AutoSVGAProductionApproved ?? null
+    bytes,
+    headerSize,
+    dataOffset: headerEnd,
+    header: JSON.parse(headerString)
   };
 }
 
-export function readDefaultRuntimeIdentity(asarPath) {
-  let asar;
-  try {
-    asar = requireFromPrototype("@electron/asar");
-  } catch (error) {
-    throw new Error(`Cannot inspect app.asar without the lockfile-bound @electron/asar dependency: ${error.message}`);
+function asarEntryForPath(archive, filePath) {
+  const segments = filePath.replace(/^\/+/, "").split("/").filter(Boolean);
+  let node = archive.header;
+  for (const segment of segments) {
+    if (!node?.files?.[segment]) throw new Error(`Missing ASAR entry: ${filePath}`);
+    node = node.files[segment];
   }
+  if (!node || node.files || node.link) throw new Error(`ASAR entry is not a regular file: ${filePath}`);
+  if (node.unpacked) throw new Error(`ASAR entry is unexpectedly unpacked: ${filePath}`);
+  if (!Number.isInteger(node.size) || node.size < 0 || typeof node.offset !== "string") {
+    throw new Error(`ASAR entry has invalid size/offset: ${filePath}`);
+  }
+  return node;
+}
 
-  const entries = new Set(asar.listPackage(asarPath));
+function extractAsarFile(archive, filePath) {
+  const entry = asarEntryForPath(archive, filePath);
+  const offset = archive.dataOffset + Number.parseInt(entry.offset, 10);
+  const end = offset + entry.size;
+  if (!Number.isSafeInteger(offset) || offset < archive.dataOffset || end > archive.bytes.length) {
+    throw new Error(`ASAR entry is outside archive byte bounds: ${filePath}`);
+  }
+  return archive.bytes.subarray(offset, end);
+}
+
+function listAsarFiles(archive) {
+  const files = [];
+  function visit(node, prefix) {
+    for (const [name, child] of Object.entries(node.files ?? {}).sort(([left], [right]) => left.localeCompare(right))) {
+      const childPath = `${prefix}/${name}`;
+      if (child.files) visit(child, childPath);
+      else files.push(childPath);
+    }
+  }
+  visit(archive.header, "");
+  return files;
+}
+
+export function readDefaultPlistIdentity(plistFile) {
+  const bytes = plistFile?.bytes ?? readNoFollowCriticalFile(plistFile, "Info.plist").bytes;
+  const trimmed = bytes.toString("utf8").trimStart();
+  const plist = trimmed.startsWith("{")
+    ? JSON.parse(trimmed)
+    : JSON.parse(execFileSync("/usr/bin/plutil", ["-convert", "json", "-o", "-", "--", "-"], {
+      input: bytes,
+      encoding: "utf8",
+      stdio: "pipe"
+    }));
+  return {
+    name: plist.CFBundleName ?? plist.name,
+    displayName: plist.CFBundleDisplayName ?? plist.displayName,
+    executable: plist.CFBundleExecutable ?? plist.executable,
+    shortVersion: plist.CFBundleShortVersionString ?? plist.shortVersion ?? null,
+    bundleVersion: plist.CFBundleVersion ?? plist.bundleVersion ?? null,
+    productVersion: plist.AutoSVGAProductVersion ?? plist.productVersion ?? null,
+    releaseStage: plist.AutoSVGAReleaseStage ?? plist.releaseStage ?? null,
+    distributionChannel: plist.AutoSVGADistributionChannel ?? plist.distributionChannel ?? null,
+    internalUseOnly: plist.AutoSVGAInternalUseOnly ?? plist.internalUseOnly ?? null,
+    signed: plist.AutoSVGASigned ?? plist.signed ?? null,
+    notarized: plist.AutoSVGANotarized ?? plist.notarized ?? null,
+    productionApproved: plist.AutoSVGAProductionApproved ?? plist.productionApproved ?? null,
+    marker: plist.marker
+  };
+}
+
+export function readDefaultRuntimeIdentity(asarFile) {
+  const bytes = asarFile?.bytes ?? readNoFollowCriticalFile(asarFile, "app.asar").bytes;
+  const archive = readAsarArchiveFromBytes(bytes);
+  const entries = new Set(listAsarFiles(archive));
   const missingEntries = requiredRuntimeEntries.filter((entry) => !entries.has(entry));
-  const buildInfoBuffer = asar.extractFile(asarPath, ".runtime/build-info.json");
+  const buildInfoBuffer = extractAsarFile(archive, ".runtime/build-info.json");
   const buildInfo = JSON.parse(buildInfoBuffer.toString("utf8"));
   const dependencies = runtimeDependencies.map((dependency) => {
     const packageJsonPath = `.runtime/node_modules/${dependency.packageName}/package.json`;
-    const packageJson = JSON.parse(asar.extractFile(asarPath, packageJsonPath).toString("utf8"));
+    const packageJson = JSON.parse(extractAsarFile(archive, packageJsonPath).toString("utf8"));
     return {
       packageName: dependency.packageName,
       expectedVersion: dependency.expectedVersion,
@@ -174,12 +327,24 @@ export function readDefaultRuntimeIdentity(asarPath) {
     buildInfoSha256: sha256Buffer(buildInfoBuffer),
     runtimeClosure: {
       validated: true,
-      requiredEntries,
+      requiredEntries: requiredRuntimeEntries,
       missingEntries,
       dependencies,
       findings: []
     }
   };
+}
+
+/*
+ * Compatibility entry points kept for tests and callers that import the default
+ * readers directly. inspectAppBundle itself passes descriptor-bound objects.
+ */
+export function readDefaultPlistIdentityFromPath(plistPath) {
+  return readDefaultPlistIdentity(plistPath);
+}
+
+export function readDefaultRuntimeIdentityFromPath(asarPath) {
+  return readDefaultRuntimeIdentity(asarPath);
 }
 
 export function inspectAppBundle(appPath, dependencies = {}) {
@@ -207,12 +372,11 @@ export function inspectAppBundle(appPath, dependencies = {}) {
 
   const readPlistIdentity = dependencies.readPlistIdentity ?? readDefaultPlistIdentity;
   const readRuntimeIdentity = dependencies.readRuntimeIdentity ?? readDefaultRuntimeIdentity;
-  const plistSha256 = sha256File(plistPath);
-  const asarSha256 = sha256File(asarPath);
-  const plistIdentity = readPlistIdentity(plistPath);
-  if (plistSha256 !== sha256File(plistPath)) {
-    throw new Error(`Info.plist changed while it was being parsed: ${plistPath}`);
-  }
+  const plistFile = readNoFollowCriticalFile(plistPath, "Info.plist");
+  const asarFile = readNoFollowCriticalFile(asarPath, "app.asar");
+  const plistSha256 = plistFile.sha256;
+  const asarSha256 = asarFile.sha256;
+  const plistIdentity = readPlistIdentity(plistFile);
   if (
     plistIdentity.name !== "Auto SVGA"
     || plistIdentity.displayName !== "Auto SVGA"
@@ -222,10 +386,7 @@ export function inspectAppBundle(appPath, dependencies = {}) {
       `Unexpected app identity: name=${plistIdentity.name}, displayName=${plistIdentity.displayName}, executable=${plistIdentity.executable}`
     );
   }
-  const runtimeIdentity = readRuntimeIdentity(asarPath);
-  if (asarSha256 !== sha256File(asarPath)) {
-    throw new Error(`app.asar changed while runtime identity was being read: ${asarPath}`);
-  }
+  const runtimeIdentity = readRuntimeIdentity(asarFile);
   const catalog = inspectBundleCatalog(resolvedInput, rootRealPath);
   const rootStatAfter = lstatSync(resolvedInput);
   if (JSON.stringify(statIdentity(rootStatBefore)) !== JSON.stringify(statIdentity(rootStatAfter))) {
@@ -600,6 +761,64 @@ function buildRollbackManifest({ rollbackId, target, previous, processPrecheck, 
   };
 }
 
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => (
+      `${JSON.stringify(key)}:${stableStringify(value[key])}`
+    )).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function assertJsonObject(value, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be a JSON object`);
+  }
+}
+
+function assertIsoDate(value, label) {
+  if (typeof value !== "string") throw new Error(`${label} must be an ISO timestamp`);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime()) || date.toISOString() !== value) {
+    throw new Error(`${label} must be an ISO timestamp`);
+  }
+  return date;
+}
+
+function assertRecoveryManifestMatches({
+  manifest,
+  rollbackId,
+  target,
+  previous,
+  bindings,
+  journal,
+  installed,
+  previousIdentity
+}) {
+  assertJsonObject(manifest, "Existing rollback manifest");
+  assertJsonObject(manifest.processPrecheck, "Existing rollback manifest processPrecheck");
+  assertIdentityMatchesBinding(journal.before.installed, bindings.installed, "Journal installed app");
+  assertIdentityMatchesBinding(journal.before.previous, bindings.previous, "Journal previous app");
+  assertIdentityMatchesBinding(installed, bindings.previous, "Recovered installed app");
+  assertIdentityMatchesBinding(previousIdentity, bindings.installed, "Recovered previous app");
+
+  const expected = buildRollbackManifest({
+    rollbackId,
+    target,
+    previous,
+    processPrecheck: manifest.processPrecheck,
+    installedBefore: journal.before.installed,
+    previousBefore: journal.before.previous,
+    installedAfter: installed,
+    previousAfter: previousIdentity,
+    now: assertIsoDate(manifest.performedAt, "Existing rollback manifest performedAt")
+  });
+  if (stableStringify(manifest) !== stableStringify(expected)) {
+    throw new Error("Existing rollback manifest does not exactly match recovered byte roles and journal authority");
+  }
+}
+
 export function rollbackPreviousApp({
   target,
   rollbackId,
@@ -830,13 +1049,16 @@ export function recoverRollbackTransaction({
     dependencies.writeManifestExclusive(rollbackManifestPath, manifest);
   } else {
     const manifest = dependencies.readJson(rollbackManifestPath);
-    if (
-      manifest.rollbackId !== rollbackId
-      || manifest.after?.installed?.buildInfo?.buildCommit !== bindings.previous.buildCommit
-      || manifest.after?.previous?.buildInfo?.buildCommit !== bindings.installed.buildCommit
-    ) {
-      throw new Error("Existing rollback manifest does not match the recovered byte roles");
-    }
+    assertRecoveryManifestMatches({
+      manifest,
+      rollbackId,
+      target,
+      previous,
+      bindings,
+      journal,
+      installed,
+      previousIdentity
+    });
   }
   if (dependencies.exists(stage)) dependencies.removeDurably(stage);
   if (dependencies.exists(journalNextPath)) dependencies.removeDurably(journalNextPath);

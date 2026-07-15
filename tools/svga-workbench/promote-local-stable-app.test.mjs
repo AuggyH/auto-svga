@@ -66,11 +66,12 @@ function createFixtureApp(appPath, buildCommit, marker = buildCommit) {
 }
 
 function readFixturePlistIdentity(plistPath) {
+  if (plistPath?.bytes) return JSON.parse(plistPath.bytes.toString("utf8"));
   return JSON.parse(readFileSync(plistPath, "utf8"));
 }
 
 function readFixtureRuntimeIdentity(asarPath) {
-  const payload = JSON.parse(readFileSync(asarPath, "utf8"));
+  const payload = JSON.parse((asarPath?.bytes ?? readFileSync(asarPath)).toString("utf8"));
   const buildInfoBuffer = Buffer.from(JSON.stringify(payload.buildInfo));
   return {
     buildInfo: payload.buildInfo,
@@ -164,9 +165,8 @@ function assertRoleState(fixture, expected) {
 }
 
 test("CLI parses separate inspect, rollback, and recovery modes with exact bindings", () => {
-  const inspect = parseArgs(["--inspect", "--rollback-id", "ASV-TEST-1"]);
+  const inspect = parseArgs(["--inspect"]);
   assert.equal(inspect.inspect, true);
-  assert.equal(inspect.rollbackId, "ASV-TEST-1");
 
   const rollback = parseArgs([
     "--rollback-previous",
@@ -183,6 +183,25 @@ test("CLI parses separate inspect, rollback, and recovery modes with exact bindi
   assert.equal(rollback.rollbackPrevious, true);
   assert.equal(rollback.expectedInstalledBuild, installedBuild);
   assert.throws(() => parseArgs(["--inspect", "--rollback-previous"]), /mutually exclusive/);
+  assert.throws(() => parseArgs(["--inspect", "--inspect"]), /Duplicate option/);
+  assert.throws(() => parseArgs(["--inspect", "--rollback-id", "ASV-TEST-1"]), /Inspect mode/);
+  assert.throws(() => parseArgs(["--inspect", "--target", "/tmp/a", "--target", "/tmp/b"]), /Duplicate option/);
+  assert.throws(() => parseArgs(["--recover-rollback", "--rollback-id", "../../outside"]), /rollback-id/);
+  assert.throws(() => parseArgs([
+    "--rollback-previous",
+    "--rollback-id", "ASV-TEST-2",
+    "--expected-installed-build", "not-a-sha",
+    "--expected-installed-info-plist-sha256", "1".repeat(64),
+    "--expected-installed-app-asar-sha256", "2".repeat(64),
+    "--expected-installed-build-info-sha256", "3".repeat(64),
+    "--expected-previous-build", previousBuild,
+    "--expected-previous-info-plist-sha256", "4".repeat(64),
+    "--expected-previous-app-asar-sha256", "5".repeat(64),
+    "--expected-previous-build-info-sha256", "6".repeat(64)
+  ]), /expected-installed-build/);
+  assert.throws(() => parseArgs(["--inspect", "--target", "/tmp/cli"], {
+    AUTO_SVGA_LOCAL_STABLE_APP_PATH: "/tmp/env"
+  }), /target.*environment/i);
   assert.throws(() => parseArgs(["--rollback-previous", "--use-existing"]), /do not accept packaging/);
 });
 
@@ -216,7 +235,7 @@ test("bundle inspection rejects root aliases, escaping symlinks, and hardlinks",
 
     const escaping = path.join(fixture.target, "Contents", "escape");
     symlinkSync("/private/tmp", escaping);
-    assert.throws(() => fixtureInspector(fixture.target), /symlink escapes/);
+    assert.throws(() => fixtureInspector(fixture.target), /symlink/);
     rmSync(escaping);
 
     const executable = path.join(fixture.target, "Contents/MacOS/Auto SVGA");
@@ -227,21 +246,69 @@ test("bundle inspection rejects root aliases, escaping symlinks, and hardlinks",
   }
 });
 
-test("bundle inspection accepts contained framework-style symlinks and rejects mid-read replacement", () => {
+test("bundle inspection rejects arbitrary contained symlinks but permits known framework symlinks", () => {
   const fixture = makeRollbackFixture();
   try {
     symlinkSync("marker.txt", path.join(fixture.target, "Contents/Resources/marker-link"));
-    assert.equal(fixtureInspector(fixture.target).buildInfo.buildCommit, installedBuild);
+    assert.throws(() => fixtureInspector(fixture.target), /symlink.*not allowed/i);
+    rmSync(path.join(fixture.target, "Contents/Resources/marker-link"));
 
+    const frameworkRoot = path.join(fixture.target, "Contents/Frameworks/Electron Framework.framework");
+    mkdirSync(path.join(frameworkRoot, "Versions/A"), { recursive: true });
+    writeFileSync(path.join(frameworkRoot, "Versions/A/Electron Framework"), "framework");
+    symlinkSync("A", path.join(frameworkRoot, "Versions/Current"));
+    symlinkSync("Versions/Current/Electron Framework", path.join(frameworkRoot, "Electron Framework"));
+    assert.equal(fixtureInspector(fixture.target).buildInfo.buildCommit, installedBuild);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("bundle inspection binds critical parsing to descriptor-read bytes", () => {
+  const fixture = makeRollbackFixture();
+  try {
     const plistPath = path.join(fixture.target, "Contents/Info.plist");
+    const asarPath = path.join(fixture.target, "Contents/Resources/app.asar");
+
+    const plistIdentity = inspectAppBundle(fixture.target, {
+      readPlistIdentity: (input) => {
+        if (input?.bytes) {
+          return readFixturePlistIdentity(input);
+        }
+        return {
+          ...readFixturePlistIdentity(input),
+          marker: "path-contaminated"
+        };
+      },
+      readRuntimeIdentity: readFixtureRuntimeIdentity
+    });
+    assert.equal(plistIdentity.infoPlist.marker, "installed");
+
+    const runtimeIdentity = inspectAppBundle(fixture.target, {
+      readPlistIdentity: readFixturePlistIdentity,
+      readRuntimeIdentity: (input) => {
+        if (input?.bytes) {
+          return readFixtureRuntimeIdentity(input);
+        }
+        return {
+          ...readFixtureRuntimeIdentity(input),
+          buildInfo: {
+            ...readFixtureRuntimeIdentity(input).buildInfo,
+            buildCommit: candidateBuild
+          }
+        };
+      }
+    });
+    assert.equal(runtimeIdentity.buildInfo.buildCommit, installedBuild);
+
     assert.throws(() => inspectAppBundle(fixture.target, {
-      readPlistIdentity: (inputPath) => {
-        const identity = readFixturePlistIdentity(inputPath);
-        writeFileSync(inputPath, `${readFileSync(inputPath, "utf8")} `);
+      readPlistIdentity: (input) => {
+        const identity = readFixturePlistIdentity(input);
+        writeFileSync(input.path ?? input, `${readFileSync(input.path ?? input, "utf8")} `);
         return identity;
       },
       readRuntimeIdentity: readFixtureRuntimeIdentity
-    }), /Info\.plist changed/);
+    }), /Info\.plist|Critical app file changed/);
     writeFileSync(plistPath, JSON.stringify({
       name: "Auto SVGA",
       displayName: "Auto SVGA",
@@ -252,12 +319,13 @@ test("bundle inspection accepts contained framework-style symlinks and rejects m
 
     assert.throws(() => inspectAppBundle(fixture.target, {
       readPlistIdentity: readFixturePlistIdentity,
-      readRuntimeIdentity: (asarPath) => {
-        const identity = readFixtureRuntimeIdentity(asarPath);
-        writeFileSync(asarPath, `${readFileSync(asarPath, "utf8")} `);
+      readRuntimeIdentity: (input) => {
+        const identity = readFixtureRuntimeIdentity(input);
+        writeFileSync(input.path ?? input, `${readFileSync(input.path ?? input, "utf8")} `);
         return identity;
       }
-    }), /app\.asar changed/);
+    }), /app\.asar|Critical app file changed/);
+    assert.equal(readFixtureRuntimeIdentity(asarPath).buildInfo.buildCommit, installedBuild);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -449,6 +517,35 @@ test("manifest publication failure leaves swapped roles journaled for recovery",
     assert.equal(recovery.disposition, "completed-after-atomic-swap");
     assertRoleState(fixture, "swapped-roles");
     assert.equal(existsSync(fixture.rollbackManifestPath), true);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("recovery rejects a tampered manifest for already swapped app roles", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    assert.throws(() => rollbackPreviousApp({
+      ...fixture,
+      dependencies: fixtureDependencies({
+        checkpoint: (phase) => {
+          if (phase === "after-manifest-published") throw new Error("simulated crash after manifest");
+        }
+      })
+    }), /simulated crash after manifest/);
+    assertRoleState(fixture, "swapped-roles");
+    assert.equal(existsSync(fixture.rollbackJournalPath), true);
+    assert.equal(existsSync(fixture.rollbackManifestPath), true);
+
+    const manifest = JSON.parse(readFileSync(fixture.rollbackManifestPath, "utf8"));
+    manifest.after.installed.appAsar.sha256 = "0".repeat(64);
+    writeFileSync(fixture.rollbackManifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    assert.throws(() => recoverRollbackTransaction({
+      ...fixture,
+      dependencies: fixtureDependencies()
+    }), /manifest/i);
+    assert.equal(existsSync(fixture.rollbackJournalPath), true, "journal must remain for a later audited recovery");
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }
