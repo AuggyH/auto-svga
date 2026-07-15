@@ -584,9 +584,10 @@ test("main resolves placement before BrowserWindow and persists only owner-drive
   assert.ok(browserWindowIndex > displaysIndex, "display placement must resolve before BrowserWindow construction");
   assert.ok(electronRequireIndex >= 0, "missing Electron require");
   assert.ok(firstLocalRequireIndex > electronRequireIndex, "missing first local require boundary");
-  assert.ok(bootstrapWriterIndex > electronRequireIndex, "bootstrap writer must have Electron app access");
+  assert.ok(bootstrapWriterIndex < electronRequireIndex, "bootstrap writer must be available before Electron require can abort");
   assert.ok(bootstrapWriterIndex < firstLocalRequireIndex, "bootstrap writer must be installed before local module loading can fail");
   assert.ok(fatalHandlerIndex > bootstrapWriterIndex, "fatal handler must use the bootstrap writer");
+  assert.ok(fatalHandlerIndex < electronRequireIndex, "fatal handler must be installed before Electron require can fail");
   assert.ok(fatalHandlerIndex < firstLocalRequireIndex, "fatal handler must be installed before local module loading can fail");
   const entrypointBootstrap = source.slice(bootstrapWriterIndex, firstLocalRequireIndex);
   assert.match(entrypointBootstrap, /openSync\(proofPath, "wx", 0o600\)/u);
@@ -645,4 +646,61 @@ test("entrypoint bootstrap rejection guard survives current-turn async local req
   assert.match(source, /app\.whenReady\(\)\.then\(createExperimentWindow\)\.catch/u);
   assert.match(source, /scheduleAcceptanceStartupFatalHandlerRelease\(\);/u);
   assert.doesNotMatch(source, /app\.whenReady\(\)\.then\(createExperimentWindow\)\.catch\([\s\S]*?\}\);\s*releaseAcceptanceStartupFatalHandlers\(\);/u);
+});
+
+test("acceptance startup bootstrap phase trace distinguishes no-proof startup stops", async () => {
+  const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const phaseFileIndex = source.indexOf('const acceptanceStartupBootstrapPhaseFileName = "acceptance-startup-bootstrap-phases.jsonl"');
+  const phaseWriterIndex = source.indexOf("function writeAcceptanceStartupBootstrapPhase");
+  const entrypointPhaseIndex = source.indexOf('writeAcceptanceStartupBootstrapPhase("entrypoint_loaded")');
+  const electronRequireBeginIndex = source.indexOf('writeAcceptanceStartupBootstrapPhase("electron_require_begin")');
+  const electronRequireIndex = source.indexOf('require("electron")');
+  const electronRequiredIndex = source.indexOf('writeAcceptanceStartupBootstrapPhase("electron_required")');
+  const localRequiresBeginIndex = source.indexOf('writeAcceptanceStartupBootstrapPhase("local_requires_begin")');
+  const firstLocalRequireIndex = source.indexOf('require("./host-adapter-contract.cjs")');
+  const localRequiresCompleteIndex = source.indexOf('writeAcceptanceStartupBootstrapPhase("local_requires_complete")');
+  const appReadyRegisterBeginIndex = source.indexOf('writeAcceptanceStartupBootstrapPhase("app_ready_handler_register_begin")');
+  const appReadyIndex = source.indexOf("app.whenReady().then(createExperimentWindow)");
+  const appReadyRegisteredIndex = source.indexOf('writeAcceptanceStartupBootstrapPhase("app_ready_handler_registered")');
+  assert.ok(phaseFileIndex >= 0, "missing bootstrap phase file name");
+  assert.ok(phaseWriterIndex >= 0, "missing bootstrap phase writer");
+  assert.ok(entrypointPhaseIndex > phaseWriterIndex, "entrypoint phase must use the bounded phase writer");
+  assert.ok(electronRequireBeginIndex > entrypointPhaseIndex, "Electron require begin must follow entrypoint phase");
+  assert.ok(electronRequireIndex > electronRequireBeginIndex, "Electron require begin phase must be written before require");
+  assert.ok(electronRequiredIndex > electronRequireIndex, "Electron required phase must prove Electron module load completed");
+  assert.ok(localRequiresBeginIndex > electronRequiredIndex, "local require begin must follow Electron module load");
+  assert.ok(firstLocalRequireIndex > localRequiresBeginIndex, "local require begin must be written before first local require");
+  assert.ok(localRequiresCompleteIndex > firstLocalRequireIndex, "local require complete must prove local startup module load completed");
+  assert.ok(appReadyRegisterBeginIndex > localRequiresCompleteIndex, "app-ready registration must follow local startup load");
+  assert.ok(appReadyIndex > appReadyRegisterBeginIndex, "app-ready registration begin must precede app.whenReady");
+  assert.ok(appReadyRegisteredIndex > appReadyIndex, "app-ready registered phase must follow handler registration");
+
+  const createStart = source.indexOf("async function createExperimentWindow()");
+  const createEnd = source.indexOf("\n}\n\nfunction handleMultiFormatOpenFileEvent", createStart);
+  const createSource = source.slice(createStart, createEnd);
+  const createPhases = [
+    "app_ready_create_window_begin",
+    "server_import_begin",
+    "server_imported",
+    "server_started",
+    "placement_resolve_begin",
+    "placement_resolved",
+    "browser_window_construct_begin",
+    "browser_window_constructed",
+    "renderer_load_begin",
+    "renderer_load_completed"
+  ];
+  let previousIndex = -1;
+  for (const phase of createPhases) {
+    const index = createSource.indexOf(`writeAcceptanceStartupBootstrapPhase("${phase}"`);
+    assert.ok(index > previousIndex, `phase ${phase} must appear in runtime order`);
+    previousIndex = index;
+  }
+  assert.match(source, /writeAcceptanceStartupBootstrapPhase\("placement_proof_publish_begin"\)/u);
+  assert.match(source, /writeAcceptanceStartupBootstrapPhase\("placement_proof_published"\)/u);
+  assert.match(source, /writeAcceptanceStartupBootstrapPhase\("placement_proof_rejected"/u);
+  assert.match(source, /writeAcceptanceStartupBootstrapPhase\("app_ready_create_window_failed"/u);
+  assert.match(source, /writeAcceptanceStartupBootstrapPhase\("bootstrap_failure_artifact_begin"/u);
+  assert.match(source, /pathRedacted: true/u);
+  assert.doesNotMatch(source, /acceptance-startup-bootstrap-phases\.jsonl[\s\S]{0,120}targetPath|rawPath|ownerPath/u);
 });

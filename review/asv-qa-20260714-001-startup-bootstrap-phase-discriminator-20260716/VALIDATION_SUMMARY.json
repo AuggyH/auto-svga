@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "reviewPacket": "asv-qa-20260714-001-startup-bootstrap-phase-discriminator-20260716",
+  "status": "implementation-ready-pending-pm-review",
+  "baseInstalledSource": "0f430fa2b63abe7b9e87a9336a087c4b2533e87f",
+  "predecessorHead": "34c59c2cf77df088ec8829cc28dde6b97f10c79c",
+  "productDiffSha256": "40291df65d7e4317313a9299a7738984363fdeb4708770a4ed45c4c58527d199",
+  "qaFactSource": "914e36c5af87a94437a8c12fd5781b5835704d1f",
+  "qaStop": {
+    "permit": "ASV-APR-20260716-097",
+    "installedSource": "0f430fa2b63abe7b9e87a9336a087c4b2533e87f",
+    "exitCode": 134,
+    "placementProofObserved": false,
+    "artifactRootEmpty": true,
+    "productInputCount": 0
+  },
+  "validations": [
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/short-term-window-placement.test.mjs",
+      "status": "passed",
+      "tests": "12/12"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs",
+      "status": "passed",
+      "tests": "28/28"
+    },
+    {
+      "command": "node --test --test-name-pattern \"native picker|picker|Cancel|cancel|acceptance startup|placement proof|window placement\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "passed",
+      "tests": "3/3"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed"
+    },
+    {
+      "command": "npm run test:all",
+      "status": "passed",
+      "tests": "538/538"
+    },
+    {
+      "command": "npm run desktop:short-term:design-system-check",
+      "status": "passed"
+    }
+  ],
+  "boundaries": {
+    "electronLaunched": false,
+    "autoSvgalaunched": false,
+    "foregroundUsed": false,
+    "installedAppMutated": false,
+    "packagingRouted": false,
+    "qaRouted": false,
+    "codeReviewRouted": false,
+    "ownerMaterialMutated": false,
+    "pathRedacted": true
+  }
+}

@@ -4,11 +4,13 @@ const { closeSync, existsSync, fstatSync, fsyncSync, mkdirSync, openSync, readFi
 const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, screen, session } = require("electron");
 
 const acceptanceStartupPlacementProofFileName = "acceptance-startup-placement-proof.json";
+const acceptanceStartupBootstrapPhaseFileName = "acceptance-startup-bootstrap-phases.jsonl";
 const earlyAcceptanceRuntimeInstanceId = randomBytes(12).toString("hex");
 let acceptanceStartupFatalHandlerReleaseScheduled = false;
+let acceptanceStartupBootstrapPhaseSequence = 0;
+let electronAppForFatalExit;
 
 function strictAcceptanceStartupDisplayArgument(argv = process.argv) {
   const displayArguments = argv.filter((argument) => argument.startsWith("--auto-svga-acceptance-display-id="));
@@ -24,19 +26,84 @@ function isAcceptanceStartupProofLaunch() {
     || typeof process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID === "string";
 }
 
+function acceptanceStartupArtifactRoot() {
+  const root = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS;
+  if (typeof root !== "string" || root.length === 0) return { status: "rejected", reason: "acceptance_artifact_root_missing" };
+  if (root.includes("\0") || !path.isAbsolute(root)) return { status: "rejected", reason: "acceptance_artifact_root_invalid" };
+  return { status: "accepted", root };
+}
+
 function acceptanceStartupFailureReason(error) {
   const message = error instanceof Error ? error.message : String(error);
   const match = /^window_placement_rejected:([a-z0-9_]+)$/u.exec(message);
   return match?.[1] ?? "acceptance_startup_bootstrap_failed";
 }
 
-function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
+function writeAcceptanceStartupBootstrapPhase(phase, fields = {}) {
   if (!isAcceptanceStartupProofLaunch()) return { status: "ignored", reason: "acceptance_launch_not_requested" };
-  const root = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS;
-  if (typeof root !== "string" || root.length === 0) return { status: "rejected", reason: "acceptance_artifact_root_missing" };
-  if (root.includes("\0") || !path.isAbsolute(root)) return { status: "rejected", reason: "acceptance_artifact_root_invalid" };
+  const root = acceptanceStartupArtifactRoot();
+  if (root.status !== "accepted") return root;
 
-  const proofPath = path.join(root, acceptanceStartupPlacementProofFileName);
+  const phasePath = path.join(root.root, acceptanceStartupBootstrapPhaseFileName);
+  const executionId = typeof process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID === "string"
+    && process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID.length > 0
+    ? process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID
+    : undefined;
+  const requestedDisplayId = strictAcceptanceStartupDisplayArgument();
+  const record = {
+    schemaVersion: 1,
+    proofId: "acceptance-startup-bootstrap-phase",
+    phase,
+    phaseSequence: ++acceptanceStartupBootstrapPhaseSequence,
+    executionId,
+    requestedDisplayId,
+    runtimeInstanceId: earlyAcceptanceRuntimeInstanceId,
+    pid: process.pid,
+    platform: process.platform,
+    arch: process.arch,
+    generatedAt: new Date().toISOString(),
+    privacy: {
+      pathRedacted: true,
+      screenshots: false,
+      axTree: false,
+      materialNames: false,
+      ownerPreferenceMutated: false
+    },
+    ...fields
+  };
+  let fd;
+  try {
+    mkdirSync(root.root, { recursive: true });
+    fd = openSync(phasePath, "a", 0o600);
+    const bytes = Buffer.from(`${JSON.stringify(record)}\n`);
+    writeSync(fd, bytes, 0, bytes.length);
+    fsyncSync(fd);
+    return { status: "written", fileName: acceptanceStartupBootstrapPhaseFileName, record };
+  } catch (writeError) {
+    return {
+      status: "rejected",
+      reason: writeError?.code === "EEXIST" ? "acceptance_bootstrap_phase_exists" : "acceptance_bootstrap_phase_write_failed"
+    };
+  } finally {
+    if (fd !== undefined) {
+      try {
+        closeSync(fd);
+      } catch {
+        // The phase record is diagnostic-only; startup behavior is governed by the primary proof/failure artifact.
+      }
+    }
+  }
+}
+
+function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
+  writeAcceptanceStartupBootstrapPhase("bootstrap_failure_artifact_begin", {
+    reason: typeof reason === "string" && reason.length > 0 ? reason : "acceptance_startup_bootstrap_failed"
+  });
+  if (!isAcceptanceStartupProofLaunch()) return { status: "ignored", reason: "acceptance_launch_not_requested" };
+  const root = acceptanceStartupArtifactRoot();
+  if (root.status !== "accepted") return root;
+
+  const proofPath = path.join(root.root, acceptanceStartupPlacementProofFileName);
   const executionId = typeof process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID === "string"
     && process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID.length > 0
     ? process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID
@@ -70,13 +137,19 @@ function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
   };
   let fd;
   try {
-    mkdirSync(root, { recursive: true });
+    mkdirSync(root.root, { recursive: true });
     fd = openSync(proofPath, "wx", 0o600);
     const bytes = Buffer.from(`${JSON.stringify(proof, null, 2)}\n`);
     writeSync(fd, bytes, 0, bytes.length);
     fsyncSync(fd);
+    writeAcceptanceStartupBootstrapPhase("bootstrap_failure_artifact_written", {
+      reason: proof.reason
+    });
     return { status: "written", fileName: acceptanceStartupPlacementProofFileName, proof };
   } catch (writeError) {
+    writeAcceptanceStartupBootstrapPhase("bootstrap_failure_artifact_rejected", {
+      reason: writeError?.code === "EEXIST" ? "acceptance_placement_proof_exists" : "acceptance_bootstrap_artifact_write_failed"
+    });
     return {
       status: "rejected",
       reason: writeError?.code === "EEXIST" ? "acceptance_placement_proof_exists" : "acceptance_bootstrap_artifact_write_failed"
@@ -110,7 +183,7 @@ function handleAcceptanceStartupFatalError(source, error) {
     reason: bootstrapProofResult.proof?.reason ?? bootstrapProofResult.reason ?? acceptanceStartupFailureReason(error)
   })}`);
   try {
-    app.exit(1);
+    electronAppForFatalExit?.exit?.(1);
   } catch {
     // The process will exit below after the artifact is fsynced.
   }
@@ -140,6 +213,12 @@ function scheduleAcceptanceStartupFatalHandlerRelease() {
 
 process.once("uncaughtException", acceptanceStartupUncaughtExceptionHandler);
 process.once("unhandledRejection", acceptanceStartupUnhandledRejectionHandler);
+writeAcceptanceStartupBootstrapPhase("entrypoint_loaded");
+writeAcceptanceStartupBootstrapPhase("electron_require_begin");
+const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, screen, session } = require("electron");
+electronAppForFatalExit = app;
+writeAcceptanceStartupBootstrapPhase("electron_required");
+writeAcceptanceStartupBootstrapPhase("local_requires_begin");
 
 const {
   IPC_CHANNELS,
@@ -180,6 +259,7 @@ const {
 const {
   chooseMultiFormatLocalFile
 } = require("./multiformat-native-picker.cjs");
+writeAcceptanceStartupBootstrapPhase("local_requires_complete");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -545,8 +625,10 @@ function displaySnapshot(display) {
 function loadAcceptanceStartupPlacementProofWriter() {
   if (cachedAcceptanceStartupPlacementProofWriter) return cachedAcceptanceStartupPlacementProofWriter;
   try {
+    writeAcceptanceStartupBootstrapPhase("placement_proof_module_require_begin");
     cachedAcceptanceStartupPlacementProofWriter = require("./acceptance-startup-placement-proof.cjs")
       .writeAcceptanceStartupPlacementProof;
+    writeAcceptanceStartupBootstrapPhase("placement_proof_module_required");
     return cachedAcceptanceStartupPlacementProofWriter;
   } catch (error) {
     writeAcceptanceStartupBootstrapFailureArtifact("acceptance_placement_proof_module_unavailable", error);
@@ -556,6 +638,7 @@ function loadAcceptanceStartupPlacementProofWriter() {
 
 function requireAcceptanceStartupPlacementProof(window, placement) {
   if (placement?.mode !== "acceptance") return;
+  writeAcceptanceStartupBootstrapPhase("placement_proof_publish_begin");
   const displays = screen.getAllDisplays();
   const selectedDisplayMatches = displays.filter((display) => display?.id === placement.displayId);
   const selectedDisplay = selectedDisplayMatches.length === 1 ? selectedDisplayMatches[0] : undefined;
@@ -573,6 +656,9 @@ function requireAcceptanceStartupPlacementProof(window, placement) {
     packagedRuntimeBuildInfo
   });
   if (proofResult.status !== "written" || proofResult.proof?.status !== "accepted") {
+    writeAcceptanceStartupBootstrapPhase("placement_proof_rejected", {
+      reason: proofResult.proof?.reason ?? proofResult.reason ?? "acceptance_placement_proof_failed"
+    });
     try {
       window.destroy();
     } catch {
@@ -580,6 +666,7 @@ function requireAcceptanceStartupPlacementProof(window, placement) {
     }
     throw new Error(`window_placement_rejected:${proofResult.proof?.reason ?? proofResult.reason ?? "acceptance_placement_proof_failed"}`);
   }
+  writeAcceptanceStartupBootstrapPhase("placement_proof_published");
 }
 
 function setWindowBoundsWithoutRecordingUserResize(window, bounds, animate = false) {
@@ -7064,25 +7151,46 @@ async function cleanupRuntime() {
 }
 
 async function createExperimentWindow() {
+  writeAcceptanceStartupBootstrapPhase("app_ready_create_window_begin");
+  writeAcceptanceStartupBootstrapPhase("server_import_begin");
   const { startSvgaWebExperimentServer } = await import(
     pathToFileURL(path.join(appRoot, "server.mjs")).href
   );
+  writeAcceptanceStartupBootstrapPhase("server_imported");
   experimentServer = await startSvgaWebExperimentServer({ appRoot, reportToken, desktopArtifacts });
+  writeAcceptanceStartupBootstrapPhase("server_started");
   expectedOrigin = experimentServer.origin;
+  writeAcceptanceStartupBootstrapPhase("placement_resolve_begin");
   let initialPlacement = isMultiFormatDesktopProduct
     ? resolveInitialMultiFormatWindowPlacement()
     : undefined;
+  writeAcceptanceStartupBootstrapPhase("placement_resolved", {
+    placementMode: initialPlacement?.mode,
+    requestedDisplayId: initialPlacement?.requestedDisplayId,
+    resolvedDisplayId: initialPlacement?.displayId
+  });
   if (initialPlacement?.mode === "acceptance") {
     const requestedDisplayId = initialPlacement.requestedDisplayId;
+    writeAcceptanceStartupBootstrapPhase("placement_revalidate_begin", {
+      requestedDisplayId,
+      resolvedDisplayId: initialPlacement.displayId
+    });
     const revalidatedPlacement = revalidateAcceptanceLaunchPlacement({
       placement: initialPlacement,
       displays: screen.getAllDisplays(),
       minimumSize: macosWorkbenchWindowSizing.minimumLaunch
     });
     if (revalidatedPlacement.status === "rejected") {
+      writeAcceptanceStartupBootstrapPhase("placement_revalidate_rejected", {
+        reason: revalidatedPlacement.reason
+      });
       throw new Error(`window_placement_rejected:${revalidatedPlacement.reason}`);
     }
     initialPlacement = { ...revalidatedPlacement, mode: "acceptance", preferenceStatus: "not-read", requestedDisplayId };
+    writeAcceptanceStartupBootstrapPhase("placement_revalidated", {
+      requestedDisplayId,
+      resolvedDisplayId: initialPlacement.displayId
+    });
   }
   activeWindowPlacementMode = initialPlacement?.mode ?? "legacy";
   const launchBounds = initialPlacement?.bounds ?? (
@@ -7091,6 +7199,11 @@ async function createExperimentWindow() {
       : chooseMacosWorkbenchWindowBounds()
   );
 
+  writeAcceptanceStartupBootstrapPhase("browser_window_construct_begin", {
+    placementMode: initialPlacement?.mode,
+    requestedDisplayId: initialPlacement?.requestedDisplayId,
+    resolvedDisplayId: initialPlacement?.displayId
+  });
   const window = new BrowserWindow({
     title: productDisplayName,
     ...(smokeMode ? { x: -20000, y: -20000 } : { x: launchBounds.x, y: launchBounds.y }),
@@ -7119,6 +7232,7 @@ async function createExperimentWindow() {
       })
     }
   });
+  writeAcceptanceStartupBootstrapPhase("browser_window_constructed");
   requireAcceptanceStartupPlacementProof(window, initialPlacement);
   activeMainWindow = window;
   installApplicationMenu(window);
@@ -7637,7 +7751,9 @@ async function createExperimentWindow() {
     writeJsonProductArtifact("runtime-identity.json", "runtime-identity", smokeIdentity);
   }
   multiFormatDesktopRendererReady = false;
+  writeAcceptanceStartupBootstrapPhase("renderer_load_begin");
   await window.loadURL(rendererUrl);
+  writeAcceptanceStartupBootstrapPhase("renderer_load_completed");
   multiFormatTrace.record({
     phase: "renderer_load_completed",
     productMilestoneId,
@@ -7677,7 +7793,11 @@ function handleMultiFormatOpenFileEvent(event, filePath) {
   enqueueMultiFormatOpenFileEvent(filePath, sourceId);
 }
 
+writeAcceptanceStartupBootstrapPhase("app_ready_handler_register_begin");
 app.whenReady().then(createExperimentWindow).catch((error) => {
+  writeAcceptanceStartupBootstrapPhase("app_ready_create_window_failed", {
+    reason: acceptanceStartupFailureReason(error)
+  });
   const bootstrapProofResult = writeAcceptanceStartupBootstrapFailureArtifact(acceptanceStartupFailureReason(error), error);
   if (bootstrapProofResult.status !== "ignored") {
     console.error(`AUTO_SVGA_ACCEPTANCE_STARTUP_PLACEMENT_PROOF ${JSON.stringify({
@@ -7689,6 +7809,7 @@ app.whenReady().then(createExperimentWindow).catch((error) => {
   console.error(`AUTO_SVGA_WEB_EXPERIMENT_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
   app.exit(1);
 });
+writeAcceptanceStartupBootstrapPhase("app_ready_handler_registered");
 scheduleAcceptanceStartupFatalHandlerRelease();
 
 app.on("window-all-closed", async () => {
