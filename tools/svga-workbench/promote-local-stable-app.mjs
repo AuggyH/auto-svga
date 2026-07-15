@@ -4,8 +4,10 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   writeFileSync
@@ -15,6 +17,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
+  atomicSwapApps,
+  inspectAppBundle,
   inspectRecoveryState,
   recoverRollbackTransaction,
   rollbackPreviousApp
@@ -229,6 +233,62 @@ function directorySizeBytes(directoryPath) {
   return total;
 }
 
+function assertRealDirectory(directoryPath, label) {
+  const stat = lstatSync(directoryPath);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    throw new Error(`${label} must be a real directory: ${directoryPath}`);
+  }
+  return stat;
+}
+
+function assertSameAppPayload(left, right, label) {
+  const mismatches = [];
+  if (left.infoPlist?.sha256 !== right.infoPlist?.sha256) mismatches.push("Info.plist sha256");
+  if (left.appAsar?.sha256 !== right.appAsar?.sha256) mismatches.push("app.asar sha256");
+  if (left.buildInfo?.sha256 !== right.buildInfo?.sha256) mismatches.push("build-info sha256");
+  if (left.buildInfo?.buildCommit !== right.buildInfo?.buildCommit) mismatches.push("buildCommit");
+  if (left.entryCount !== right.entryCount) mismatches.push("bundle entry count");
+  if (left.sizeBytes !== right.sizeBytes) mismatches.push("bundle size");
+  if (right.runtimeClosure?.validated !== true || right.runtimeClosure?.missingEntries?.length !== 0) {
+    mismatches.push("runtime closure");
+  }
+  if (mismatches.length > 0) {
+    throw new Error(`${label} does not match expected app payload: ${mismatches.join(", ")}`);
+  }
+}
+
+function defaultPromotionStagingRoot() {
+  const stagingRoot = mkdtempSync(path.join("/private/tmp", `auto-svga-promote-${process.pid}-`));
+  const resolved = realpathSync.native(stagingRoot);
+  if (!resolved.startsWith("/private/tmp/auto-svga-promote-")) {
+    throw new Error(`Promotion staging root is outside /private/tmp: ${resolved}`);
+  }
+  return stagingRoot;
+}
+
+function findPromotionResidue(targetParent) {
+  if (!existsSync(targetParent)) return [];
+  return readdirSync(targetParent).filter((name) => (
+    name.startsWith(".Auto SVGA.promote-")
+    || name.startsWith(".Auto-SVGA.promote-")
+    || name.startsWith(".Auto SVGA.rollback-")
+    || name.startsWith(".Auto-SVGA.rollback-")
+  ));
+}
+
+function assertNoPromotionResidue(targetParent) {
+  const residue = findPromotionResidue(targetParent);
+  if (residue.length > 0) {
+    throw new Error(`Refusing local-stable promotion with existing staging or journal residue: ${residue.join(", ")}`);
+  }
+}
+
+function assertDestinationWritable(targetParent) {
+  const probePath = path.join(targetParent, `.Auto-SVGA.promote-probe-${process.pid}-${Date.now()}`);
+  mkdirSync(probePath, { mode: 0o700 });
+  rmSync(probePath, { recursive: true, force: false });
+}
+
 function plistValue(plistPath, key) {
   return execFileSync("/usr/libexec/PlistBuddy", ["-c", `Print :${key}`, plistPath], {
     encoding: "utf8",
@@ -318,27 +378,83 @@ function validateAppIdentity(appBundle) {
   }
 }
 
-function installApp({ sourceApp, target }) {
+export function installApp({ sourceApp, target, dependencies = {} }) {
+  const {
+    atomicSwap = atomicSwapApps,
+    clearQuarantine = (appBundle) => run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", appBundle], { stdio: "ignore" }),
+    copyBundle = (source, destination) => run("/usr/bin/ditto", [source, destination], { stdio: "inherit" }),
+    createStagingRoot = defaultPromotionStagingRoot,
+    inspectBundle = inspectAppBundle,
+    preflightDestination = assertDestinationWritable,
+    validateIdentity = validateAppIdentity
+  } = dependencies;
   const targetParent = path.dirname(target);
-  const temporaryTarget = path.join(targetParent, `.Auto SVGA.promote-${process.pid}.app`);
   const backupTarget = path.join(targetParent, "Auto SVGA.previous.app");
+  let stagingRoot;
+  let finalExchangeStarted = false;
+  let finalExchangeCompleted = false;
 
-  mkdirSync(targetParent, { recursive: true });
-  rmSync(temporaryTarget, { recursive: true, force: true });
-  run("/usr/bin/ditto", [sourceApp, temporaryTarget], { stdio: "inherit" });
-  run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", temporaryTarget], { stdio: "ignore" });
-  validateAppIdentity(temporaryTarget);
-
-  rmSync(backupTarget, { recursive: true, force: true });
-  if (existsSync(target)) renameSync(target, backupTarget);
   try {
-    renameSync(temporaryTarget, target);
-  } catch (error) {
-    if (existsSync(backupTarget) && !existsSync(target)) renameSync(backupTarget, target);
-    throw error;
+    mkdirSync(targetParent, { recursive: true });
+    assertRealDirectory(targetParent, "Local stable target parent");
+    assertNoPromotionResidue(targetParent);
+
+    const sourceIdentity = inspectBundle(sourceApp);
+    stagingRoot = createStagingRoot();
+    if (!path.isAbsolute(stagingRoot)) throw new Error(`Promotion staging root must be absolute: ${stagingRoot}`);
+    assertRealDirectory(stagingRoot, "Promotion staging root");
+    const stagedApp = path.join(stagingRoot, "Auto SVGA.app");
+    if (existsSync(stagedApp)) throw new Error(`Promotion staging app already exists: ${stagedApp}`);
+
+    copyBundle(sourceApp, stagedApp);
+    clearQuarantine(stagedApp);
+    validateIdentity(stagedApp);
+    const stagedIdentity = inspectBundle(stagedApp);
+    assertSameAppPayload(sourceIdentity, stagedIdentity, "Staged candidate");
+
+    preflightDestination(targetParent);
+    assertNoPromotionResidue(targetParent);
+    const installedBefore = existsSync(target) ? inspectBundle(target) : null;
+    const previousBefore = existsSync(backupTarget) ? inspectBundle(backupTarget) : null;
+    if (installedBefore) {
+      assertRealDirectory(target, "Installed app");
+      if (previousBefore) assertRealDirectory(backupTarget, "Previous app");
+      finalExchangeStarted = true;
+      atomicSwap(stagedApp, target, {
+        leftObject: stagedIdentity.rootObject,
+        rightObject: installedBefore.rootObject
+      });
+      const installedAfter = inspectBundle(target);
+      const displacedInstalled = inspectBundle(stagedApp);
+      assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after promotion");
+      assertSameAppPayload(installedBefore, displacedInstalled, "Displaced installed app");
+
+      if (previousBefore) {
+        atomicSwap(stagedApp, backupTarget, {
+          leftObject: displacedInstalled.rootObject,
+          rightObject: previousBefore.rootObject
+        });
+      } else {
+        renameSync(stagedApp, backupTarget);
+      }
+      const previousAfter = inspectBundle(backupTarget);
+      assertSameAppPayload(installedBefore, previousAfter, "Previous app after promotion");
+      finalExchangeCompleted = true;
+    } else {
+      finalExchangeStarted = true;
+      renameSync(stagedApp, target);
+      const installedAfter = inspectBundle(target);
+      assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after first promotion");
+      finalExchangeCompleted = true;
+    }
+
+    validateIdentity(target);
+    return { backupTarget: existsSync(backupTarget) ? backupTarget : undefined };
+  } finally {
+    if (stagingRoot && (!finalExchangeStarted || finalExchangeCompleted)) {
+      rmSync(stagingRoot, { recursive: true, force: true });
+    }
   }
-  validateAppIdentity(target);
-  return { backupTarget: existsSync(backupTarget) ? backupTarget : undefined };
 }
 
 function registerLaunchServices(target) {

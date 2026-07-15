@@ -9,6 +9,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync
@@ -24,7 +25,7 @@ import {
   recoverRollbackTransaction,
   rollbackPreviousApp
 } from "./local-stable-recovery.mjs";
-import { parseArgs } from "./promote-local-stable-app.mjs";
+import { installApp, parseArgs } from "./promote-local-stable-app.mjs";
 
 const installedBuild = "a".repeat(40);
 const previousBuild = "b".repeat(40);
@@ -134,6 +135,35 @@ function fixtureDependencies(overrides = {}) {
   };
 }
 
+function assertBundleBinding(appPath, expected) {
+  assert.deepEqual(bindingFromIdentity(fixtureInspector(appPath)), bindingFromIdentity(expected));
+}
+
+function swapFixtureDirectories(left, right) {
+  const temporary = path.join(path.dirname(left), `.swap-${process.pid}-${Date.now()}`);
+  renameSync(left, temporary);
+  renameSync(right, left);
+  renameSync(temporary, right);
+}
+
+function promoteFixtureDependencies(fixture, overrides = {}) {
+  const stagingRoot = path.join(fixture.root, "promotion-stage");
+  return {
+    inspectBundle: fixtureInspector,
+    validateIdentity: (appPath) => fixtureInspector(appPath),
+    clearQuarantine: () => {},
+    copyBundle: (source, destination) => cpSync(source, destination, { recursive: true }),
+    createStagingRoot: () => {
+      mkdirSync(stagingRoot);
+      return stagingRoot;
+    },
+    preflightDestination: () => {},
+    atomicSwap: (left, right) => swapFixtureDirectories(left, right),
+    stagingRoot,
+    ...overrides
+  };
+}
+
 function snapshotTree(root) {
   const result = [];
   function visit(entryPath) {
@@ -221,6 +251,116 @@ test("inspect is behaviorally read-only for installed, previous, and candidate a
     assert.equal(report.installed.buildInfo.buildCommit, installedBuild);
     assert.equal(report.previous.buildInfo.buildCommit, previousBuild);
     assert.equal(report.candidate.buildInfo.buildCommit, candidateBuild);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion stages and validates under task-owned private tmp before installing", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
+    const candidateBefore = fixtureInspector(fixture.candidate);
+    const events = [];
+    const dependencies = promoteFixtureDependencies(fixture, {
+      copyBundle: (source, destination) => {
+        assert.equal(source, fixture.candidate);
+        assert.ok(destination.startsWith("/private/tmp/"), "candidate staging must stay under /private/tmp");
+        assertBundleBinding(fixture.target, installedBefore);
+        assertBundleBinding(fixture.previous, previousBefore);
+        cpSync(source, destination, { recursive: true });
+        events.push("copy");
+      },
+      preflightDestination: () => {
+        assertBundleBinding(fixture.target, installedBefore);
+        assertBundleBinding(fixture.previous, previousBefore);
+        events.push("destination-preflight");
+      },
+      atomicSwap: (left, right) => {
+        events.push(`swap:${path.basename(right)}`);
+        swapFixtureDirectories(left, right);
+      }
+    });
+
+    const result = installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    });
+
+    assert.equal(result.backupTarget, fixture.previous);
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, installedBefore);
+    assert.equal(existsSync(dependencies.stagingRoot), false);
+    assert.deepEqual(events, [
+      "copy",
+      "destination-preflight",
+      "swap:Auto SVGA.app",
+      "swap:Auto SVGA.previous.app"
+    ]);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion staging-copy and destination denials fail closed before owner-app mutation", () => {
+  for (const scenario of ["staging-copy-denial", "destination-denial"]) {
+    const fixture = makeRollbackFixture();
+    try {
+      const installedBefore = fixtureInspector(fixture.target);
+      const previousBefore = fixtureInspector(fixture.previous);
+      const dependencies = promoteFixtureDependencies(fixture, scenario === "staging-copy-denial"
+        ? {
+            copyBundle: (_source, destination) => {
+              mkdirSync(destination, { recursive: true });
+              writeFileSync(path.join(destination, "partial"), "partial");
+              throw new Error("simulated staging-copy denial");
+            }
+          }
+        : {
+            preflightDestination: () => {
+              throw new Error("simulated destination denial");
+            }
+          });
+
+      assert.throws(() => installApp({
+        sourceApp: fixture.candidate,
+        target: fixture.target,
+        dependencies
+      }), new RegExp(scenario === "staging-copy-denial" ? "staging-copy denial" : "destination denial"));
+      assertBundleBinding(fixture.target, installedBefore);
+      assertBundleBinding(fixture.previous, previousBefore);
+      assert.equal(existsSync(dependencies.stagingRoot), false, "failed pre-mutation promotion must not leave staging residue");
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("promotion refuses pre-existing staging or journal residue before copying", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
+    mkdirSync(path.join(fixture.root, ".Auto SVGA.promote-stale.app"));
+    writeFileSync(path.join(fixture.root, ".Auto-SVGA.promote-stale.journal.json"), "{}");
+    let stagingRequested = false;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      createStagingRoot: () => {
+        stagingRequested = true;
+        return path.join(fixture.root, "promotion-stage");
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /staging or journal residue/);
+    assert.equal(stagingRequested, false, "residue must fail before any staging root is created");
+    assertBundleBinding(fixture.target, installedBefore);
+    assertBundleBinding(fixture.previous, previousBefore);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
   }
