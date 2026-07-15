@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -76,6 +77,31 @@ function acceptedProofInput(overrides = {}) {
     generatedAt: "2026-07-15T08:00:00.000Z",
     ...overrides
   };
+}
+
+function observeUnhandledRejectionWithRelease(releaseMode) {
+  const script = `
+let observed;
+const safetyHandler = () => {};
+const candidateHandler = (error) => {
+  observed = error instanceof Error ? error.message : String(error);
+};
+const release = () => process.off("unhandledRejection", candidateHandler);
+process.on("unhandledRejection", safetyHandler);
+process.once("unhandledRejection", candidateHandler);
+Promise.reject(new Error("entrypoint-async-rejection"));
+if (${JSON.stringify(releaseMode)} === "immediate") release();
+if (${JSON.stringify(releaseMode)} === "setImmediate") setImmediate(release);
+setImmediate(() => setImmediate(() => {
+  process.off("unhandledRejection", safetyHandler);
+  process.off("unhandledRejection", candidateHandler);
+  console.log(JSON.stringify({ observed: observed ?? null }));
+}));
+`;
+  const result = spawnSync(process.execPath, ["-e", script], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout.trim());
+  return output.observed ?? undefined;
 }
 
 test("normal launch restores a validated placement and falls back before first frame", () => {
@@ -552,7 +578,7 @@ test("main resolves placement before BrowserWindow and persists only owner-drive
   const proofCallIndex = source.indexOf("requireAcceptanceStartupPlacementProof(window, initialPlacement)", browserWindowIndex);
   const loadUrlIndex = source.indexOf("window.loadURL(rendererUrl)", browserWindowIndex);
   const whenReadyIndex = source.indexOf("app.whenReady().then(createExperimentWindow)");
-  const fatalReleaseIndex = source.indexOf("releaseAcceptanceStartupFatalHandlers();", whenReadyIndex);
+  const fatalReleaseIndex = source.indexOf("scheduleAcceptanceStartupFatalHandlerRelease();", whenReadyIndex);
   assert.ok(resolverIndex >= 0, "missing initial placement resolver");
   assert.ok(displaysIndex > resolverIndex, "online displays must resolve inside the initial placement boundary");
   assert.ok(browserWindowIndex > displaysIndex, "display placement must resolve before BrowserWindow construction");
@@ -575,7 +601,7 @@ test("main resolves placement before BrowserWindow and persists only owner-drive
   assert.ok(proofCallIndex < loadUrlIndex, "acceptance placement proof must run before renderer load or product input");
   assert.equal(source.match(/new BrowserWindow\s*\(/gu)?.length, 1, "startup must have one BrowserWindow constructor");
   assert.match(source, /app\.whenReady\(\)\.then\(createExperimentWindow\)/u);
-  assert.ok(fatalReleaseIndex > whenReadyIndex, "entrypoint fatal handler should release after whenReady catch is installed");
+  assert.ok(fatalReleaseIndex > whenReadyIndex, "entrypoint fatal handler release should be scheduled after whenReady catch is installed");
   assert.match(source, /writeAcceptanceStartupBootstrapFailureArtifact\(acceptanceStartupFailureReason\(error\), error\)/u);
   assert.match(source, /proofResult\.status !== "written" \|\| proofResult\.proof\?\.status !== "accepted"/u);
   assert.match(source.slice(resolverIndex, browserWindowIndex), /revalidateAcceptanceLaunchPlacement[\s\S]*screen\.getAllDisplays\(\)/u);
@@ -602,4 +628,21 @@ test("main resolves placement before BrowserWindow and persists only owner-drive
   assert.match(storeSource, /linkSync/u);
   assert.doesNotMatch(source, /AUTO_SVGA_(?:WINDOW|PLACEMENT)_(?:PATH|FILE)/u);
   assert.doesNotMatch(source, /--auto-svga-acceptance-(?:x|y|width|height)=/u);
+});
+
+test("entrypoint bootstrap rejection guard survives current-turn async local require rejection", async () => {
+  const source = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
+  const immediateReleaseObservation = observeUnhandledRejectionWithRelease("immediate");
+  assert.equal(
+    immediateReleaseObservation,
+    undefined,
+    "removing the guard in the same turn misses Node's later unhandledRejection delivery"
+  );
+  const delayedReleaseObservation = observeUnhandledRejectionWithRelease("setImmediate");
+  assert.equal(delayedReleaseObservation, "entrypoint-async-rejection");
+  assert.match(source, /function scheduleAcceptanceStartupFatalHandlerRelease/u);
+  assert.match(source, /setImmediate\(\(\) => \{\s*releaseAcceptanceStartupFatalHandlers\(\);/u);
+  assert.match(source, /app\.whenReady\(\)\.then\(createExperimentWindow\)\.catch/u);
+  assert.match(source, /scheduleAcceptanceStartupFatalHandlerRelease\(\);/u);
+  assert.doesNotMatch(source, /app\.whenReady\(\)\.then\(createExperimentWindow\)\.catch\([\s\S]*?\}\);\s*releaseAcceptanceStartupFatalHandlers\(\);/u);
 });

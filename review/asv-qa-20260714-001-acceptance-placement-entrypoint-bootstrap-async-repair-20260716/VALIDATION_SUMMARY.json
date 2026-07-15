@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "task": "acceptance-placement-entrypoint-bootstrap-async-repair",
+  "requirement": "ASV-REQ-20260709-003",
+  "qaContext": "ASV-QA-20260714-001",
+  "finding": "MF-ENTRYPOINT-BOOTSTRAP-CR-001",
+  "branch": "codex/0.2-acceptance-placement-entrypoint-bootstrap-20260716",
+  "rejectedHead": "1104eb72ff7af79d701f2063e4253e8000018923",
+  "productDiffSha256": "406a2e6702edb9b6ba263c2ed87740e57f59bcc127a0317b5b677591d559feea",
+  "failureFirst": {
+    "test": "node --test tools/electron-prototype/experiments/svga-web/tests/short-term-window-placement.test.mjs",
+    "beforeRepair": "failed because main.cjs lacked scheduleAcceptanceStartupFatalHandlerRelease",
+    "orderingProbe": "child Node process proves immediate release misses current-turn unhandledRejection and setImmediate release catches it"
+  },
+  "validation": [
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/acceptance-startup-placement-proof.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/short-term-window-placement.test.mjs",
+      "status": "passed",
+      "tests": "11/11"
+    },
+    {
+      "command": "node --test --test-name-pattern \"placement|acceptance startup|native picker|picker|host dialog|file-open\" tools/electron-prototype/experiments/svga-web/tests/short-term-window-placement.test.mjs tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs",
+      "status": "passed",
+      "tests": "25/25"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed"
+    },
+    {
+      "command": "npm run test:all",
+      "status": "passed",
+      "tests": "538/538"
+    },
+    {
+      "command": "npm --prefix tools/electron-prototype/experiments/svga-web run desktop:short-term:design-system-check",
+      "status": "passed"
+    }
+  ],
+  "boundaries": {
+    "foregroundUsed": false,
+    "electronLaunched": false,
+    "installedAppMutated": false,
+    "packageBuilt": false,
+    "qaRouted": false,
+    "codeReviewRouted": false,
+    "productOwnerAcceptanceClaimed": false
+  }
+}

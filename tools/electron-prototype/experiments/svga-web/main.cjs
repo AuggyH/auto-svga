@@ -8,6 +8,7 @@ const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, screen, session } 
 
 const acceptanceStartupPlacementProofFileName = "acceptance-startup-placement-proof.json";
 const earlyAcceptanceRuntimeInstanceId = randomBytes(12).toString("hex");
+let acceptanceStartupFatalHandlerReleaseScheduled = false;
 
 function strictAcceptanceStartupDisplayArgument(argv = process.argv) {
   const displayArguments = argv.filter((argument) => argument.startsWith("--auto-svga-acceptance-display-id="));
@@ -127,6 +128,14 @@ function acceptanceStartupUnhandledRejectionHandler(error) {
 function releaseAcceptanceStartupFatalHandlers() {
   process.off("uncaughtException", acceptanceStartupUncaughtExceptionHandler);
   process.off("unhandledRejection", acceptanceStartupUnhandledRejectionHandler);
+}
+
+function scheduleAcceptanceStartupFatalHandlerRelease() {
+  if (acceptanceStartupFatalHandlerReleaseScheduled) return;
+  acceptanceStartupFatalHandlerReleaseScheduled = true;
+  setImmediate(() => {
+    releaseAcceptanceStartupFatalHandlers();
+  });
 }
 
 process.once("uncaughtException", acceptanceStartupUncaughtExceptionHandler);
@@ -7680,7 +7689,7 @@ app.whenReady().then(createExperimentWindow).catch((error) => {
   console.error(`AUTO_SVGA_WEB_EXPERIMENT_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
   app.exit(1);
 });
-releaseAcceptanceStartupFatalHandlers();
+scheduleAcceptanceStartupFatalHandlerRelease();
 
 app.on("window-all-closed", async () => {
   await cleanupRuntime();
