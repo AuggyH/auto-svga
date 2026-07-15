@@ -5,6 +5,133 @@ const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { app, BrowserWindow, Menu, clipboard, dialog, ipcMain, screen, session } = require("electron");
+
+const acceptanceStartupPlacementProofFileName = "acceptance-startup-placement-proof.json";
+const earlyAcceptanceRuntimeInstanceId = randomBytes(12).toString("hex");
+
+function strictAcceptanceStartupDisplayArgument(argv = process.argv) {
+  const displayArguments = argv.filter((argument) => argument.startsWith("--auto-svga-acceptance-display-id="));
+  if (displayArguments.length !== 1) return undefined;
+  const raw = displayArguments[0].slice("--auto-svga-acceptance-display-id=".length);
+  if (!/^(?:0|[1-9]\d*)$/u.test(raw)) return undefined;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value <= 0xffffffff ? value : undefined;
+}
+
+function isAcceptanceStartupProofLaunch() {
+  return process.argv.some((argument) => argument.startsWith("--auto-svga-acceptance-display-id"))
+    || typeof process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID === "string";
+}
+
+function acceptanceStartupFailureReason(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const match = /^window_placement_rejected:([a-z0-9_]+)$/u.exec(message);
+  return match?.[1] ?? "acceptance_startup_bootstrap_failed";
+}
+
+function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
+  if (!isAcceptanceStartupProofLaunch()) return { status: "ignored", reason: "acceptance_launch_not_requested" };
+  const root = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS;
+  if (typeof root !== "string" || root.length === 0) return { status: "rejected", reason: "acceptance_artifact_root_missing" };
+  if (root.includes("\0") || !path.isAbsolute(root)) return { status: "rejected", reason: "acceptance_artifact_root_invalid" };
+
+  const proofPath = path.join(root, acceptanceStartupPlacementProofFileName);
+  const executionId = typeof process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID === "string"
+    && process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID.length > 0
+    ? process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID
+    : undefined;
+  const requestedDisplayId = strictAcceptanceStartupDisplayArgument();
+  const proof = {
+    schemaVersion: 1,
+    proofId: "acceptance-startup-placement-proof",
+    status: "rejected",
+    phase: "bootstrap",
+    placementMode: "acceptance",
+    reason: typeof reason === "string" && reason.length > 0 ? reason : "acceptance_startup_bootstrap_failed",
+    executionId,
+    requestedDisplayId,
+    runtimeInstanceId: earlyAcceptanceRuntimeInstanceId,
+    productIdentity: {
+      productMilestoneId: typeof process.env.AUTO_SVGA_PRODUCT_MILESTONE === "string"
+        ? process.env.AUTO_SVGA_PRODUCT_MILESTONE
+        : undefined
+    },
+    privacy: {
+      pathRedacted: true,
+      screenshots: false,
+      axTree: false,
+      materialNames: false,
+      ownerPreferenceMutated: false
+    },
+    errorClass: error instanceof Error && typeof error.name === "string" ? error.name : undefined,
+    generatedAt: new Date().toISOString(),
+    passed: false
+  };
+  let fd;
+  try {
+    mkdirSync(root, { recursive: true });
+    fd = openSync(proofPath, "wx", 0o600);
+    const bytes = Buffer.from(`${JSON.stringify(proof, null, 2)}\n`);
+    writeSync(fd, bytes, 0, bytes.length);
+    fsyncSync(fd);
+    return { status: "written", fileName: acceptanceStartupPlacementProofFileName, proof };
+  } catch (writeError) {
+    return {
+      status: "rejected",
+      reason: writeError?.code === "EEXIST" ? "acceptance_placement_proof_exists" : "acceptance_bootstrap_artifact_write_failed"
+    };
+  } finally {
+    if (fd !== undefined) {
+      try {
+        closeSync(fd);
+      } catch {
+        // The app is already failing before product input; the write result above is authoritative.
+      }
+    }
+  }
+}
+
+function handleAcceptanceStartupFatalError(source, error) {
+  const reason = source === "uncaught_exception"
+    ? "acceptance_startup_entrypoint_exception"
+    : "acceptance_startup_entrypoint_rejection";
+  const bootstrapProofResult = writeAcceptanceStartupBootstrapFailureArtifact(reason, error);
+  if (bootstrapProofResult.status !== "ignored") {
+    console.error(`AUTO_SVGA_ACCEPTANCE_STARTUP_PLACEMENT_PROOF ${JSON.stringify({
+      status: bootstrapProofResult.status,
+      reason: bootstrapProofResult.reason ?? bootstrapProofResult.proof?.reason ?? null,
+      fileName: bootstrapProofResult.fileName ?? null
+    })}`);
+  }
+  console.error(`AUTO_SVGA_WEB_EXPERIMENT_FATAL_BOOTSTRAP ${JSON.stringify({
+    source,
+    acceptanceLaunch: isAcceptanceStartupProofLaunch(),
+    reason: bootstrapProofResult.proof?.reason ?? bootstrapProofResult.reason ?? acceptanceStartupFailureReason(error)
+  })}`);
+  try {
+    app.exit(1);
+  } catch {
+    // The process will exit below after the artifact is fsynced.
+  }
+  process.exit(1);
+}
+
+function acceptanceStartupUncaughtExceptionHandler(error) {
+  handleAcceptanceStartupFatalError("uncaught_exception", error);
+}
+
+function acceptanceStartupUnhandledRejectionHandler(error) {
+  handleAcceptanceStartupFatalError("unhandled_rejection", error);
+}
+
+function releaseAcceptanceStartupFatalHandlers() {
+  process.off("uncaughtException", acceptanceStartupUncaughtExceptionHandler);
+  process.off("unhandledRejection", acceptanceStartupUnhandledRejectionHandler);
+}
+
+process.once("uncaughtException", acceptanceStartupUncaughtExceptionHandler);
+process.once("unhandledRejection", acceptanceStartupUnhandledRejectionHandler);
+
 const {
   IPC_CHANNELS,
   createSecureWebPreferences,
@@ -127,7 +254,6 @@ const mainEntry = "main.cjs";
 const preloadEntry = "preload.cjs";
 const playerIdentity = "svga-web@2.4.4";
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
-const acceptanceStartupPlacementProofFileName = "acceptance-startup-placement-proof.json";
 const packagedRuntimeBuildInfo = app.isPackaged ? readPackagedRuntimeBuildInfo() : undefined;
 const productMilestoneId = process.env.AUTO_SVGA_PRODUCT_MILESTONE ?? runtimeBuildInfoProductMilestoneId(packagedRuntimeBuildInfo) ?? "short-term";
 const isShortTermProduct = productMilestoneId === "short-term";
@@ -214,7 +340,7 @@ const ownerWindowPlacementPreferencePath = path.join(
   "normal-window-placement-v1.json"
 );
 const reportToken = randomBytes(24).toString("hex");
-const runtimeInstanceId = randomBytes(12).toString("hex");
+const runtimeInstanceId = earlyAcceptanceRuntimeInstanceId;
 let experimentServer;
 let expectedOrigin;
 let smokeFinished = false;
@@ -405,94 +531,6 @@ function displaySnapshot(display) {
     bounds: display?.bounds,
     workArea: display?.workArea
   };
-}
-
-function strictAcceptanceStartupDisplayArgument() {
-  const displayArguments = process.argv.filter((argument) => argument.startsWith("--auto-svga-acceptance-display-id="));
-  if (displayArguments.length !== 1) return undefined;
-  const raw = displayArguments[0].slice("--auto-svga-acceptance-display-id=".length);
-  if (!/^(?:0|[1-9]\d*)$/u.test(raw)) return undefined;
-  const value = Number(raw);
-  return Number.isSafeInteger(value) && value <= 0xffffffff ? value : undefined;
-}
-
-function isAcceptanceStartupProofLaunch() {
-  return process.argv.some((argument) => argument.startsWith("--auto-svga-acceptance-display-id"))
-    || typeof process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID === "string";
-}
-
-function acceptanceStartupFailureReason(error) {
-  const message = error instanceof Error ? error.message : String(error);
-  const match = /^window_placement_rejected:([a-z0-9_]+)$/u.exec(message);
-  return match?.[1] ?? "acceptance_startup_bootstrap_failed";
-}
-
-function writeAcceptanceStartupBootstrapFailureArtifact(reason, error) {
-  if (!isAcceptanceStartupProofLaunch()) return { status: "ignored", reason: "acceptance_launch_not_requested" };
-  const root = process.env.AUTO_SVGA_PRODUCT_ARTIFACTS;
-  if (typeof root !== "string" || root.length === 0) return { status: "rejected", reason: "acceptance_artifact_root_missing" };
-  if (root.includes("\0") || !path.isAbsolute(root)) return { status: "rejected", reason: "acceptance_artifact_root_invalid" };
-
-  const proofPath = path.join(root, acceptanceStartupPlacementProofFileName);
-  const executionId = typeof process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID === "string"
-    && process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID.length > 0
-    ? process.env.AUTO_SVGA_ACCEPTANCE_EXECUTION_ID
-    : undefined;
-  const requestedDisplayId = strictAcceptanceStartupDisplayArgument();
-  const proof = {
-    schemaVersion: 1,
-    proofId: "acceptance-startup-placement-proof",
-    status: "rejected",
-    phase: "bootstrap",
-    placementMode: "acceptance",
-    reason: typeof reason === "string" && reason.length > 0 ? reason : "acceptance_startup_bootstrap_failed",
-    executionId,
-    requestedDisplayId,
-    runtimeInstanceId,
-    productIdentity: {
-      productMilestoneId,
-      headCommit: productArtifactIndex.headCommit,
-      packagedRuntimeBuildInfo: packagedRuntimeBuildInfo
-        ? {
-            buildCommit: typeof packagedRuntimeBuildInfo.buildCommit === "string" ? packagedRuntimeBuildInfo.buildCommit : undefined,
-            source: typeof packagedRuntimeBuildInfo.source === "string" ? packagedRuntimeBuildInfo.source : undefined,
-            productMilestoneId: typeof packagedRuntimeBuildInfo.productMilestoneId === "string" ? packagedRuntimeBuildInfo.productMilestoneId : undefined
-          }
-        : undefined
-    },
-    privacy: {
-      pathRedacted: true,
-      screenshots: false,
-      axTree: false,
-      materialNames: false,
-      ownerPreferenceMutated: false
-    },
-    errorClass: error instanceof Error && typeof error.name === "string" ? error.name : undefined,
-    generatedAt: new Date().toISOString(),
-    passed: false
-  };
-  let fd;
-  try {
-    mkdirSync(root, { recursive: true });
-    fd = openSync(proofPath, "wx", 0o600);
-    const bytes = Buffer.from(`${JSON.stringify(proof, null, 2)}\n`);
-    writeSync(fd, bytes, 0, bytes.length);
-    fsyncSync(fd);
-    return { status: "written", fileName: acceptanceStartupPlacementProofFileName, proof };
-  } catch (writeError) {
-    return {
-      status: "rejected",
-      reason: writeError?.code === "EEXIST" ? "acceptance_placement_proof_exists" : "acceptance_bootstrap_artifact_write_failed"
-    };
-  } finally {
-    if (fd !== undefined) {
-      try {
-        closeSync(fd);
-      } catch {
-        // The proof is best-effort once the app is already failing closed before product input.
-      }
-    }
-  }
 }
 
 function loadAcceptanceStartupPlacementProofWriter() {
@@ -7642,6 +7680,7 @@ app.whenReady().then(createExperimentWindow).catch((error) => {
   console.error(`AUTO_SVGA_WEB_EXPERIMENT_ERROR ${redactLogMessage(error instanceof Error ? error.message : error)}`);
   app.exit(1);
 });
+releaseAcceptanceStartupFatalHandlers();
 
 app.on("window-all-closed", async () => {
   await cleanupRuntime();

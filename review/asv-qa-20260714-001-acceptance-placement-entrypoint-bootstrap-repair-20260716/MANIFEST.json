@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "packet": "asv-qa-20260714-001-acceptance-placement-entrypoint-bootstrap-repair-20260716",
+  "startingHead": "5019ec4725f7af077b82b5108d60543bafd1717a",
+  "branch": "codex/0.2-acceptance-placement-entrypoint-bootstrap-20260716",
+  "productDiffSha256": "de19b7d47f12d55cf587a51be238bfd5936e0ee65e30dbe7eb8f67ac441be202",
+  "members": [
+    {
+      "path": "README.md",
+      "sha256": "ad66e984a1112e6f0a1315ec17218806d6cb752ab9a9ccab155aaa92e7655946"
+    },
+    {
+      "path": "REVIEW_PACKET.md",
+      "sha256": "8b8ad9e8cf4aea304a39d8b868017c66f500b0b566cb606cf7d6aea6b24b247c"
+    },
+    {
+      "path": "VALIDATION_SUMMARY.json",
+      "sha256": "76ae540b314632531540503f973daaab80f729fefd9c4f669e82d4c93ab9b1d0"
+    },
+    {
+      "path": "../../docs/reviews/2026-07-16-codex-acceptance-placement-entrypoint-bootstrap-repair.md",
+      "sha256": "96da20cae36e48d5f45b82f2afae809dfd245a1132b79db7b5a7d8cc07a6f79a"
+    }
+  ],
+  "boundaries": {
+    "foregroundUsed": false,
+    "electronLaunched": false,
+    "installedAppMutated": false,
+    "packageBuilt": false,
+    "qaRouted": false,
+    "codeReviewRouted": false
+  }
+}
