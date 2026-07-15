@@ -30,6 +30,16 @@ function source(relativePath) {
   return readFileSync(path.join(experimentRoot, relativePath), "utf8");
 }
 
+function extractFunctionSource(moduleSource, functionSignature) {
+  const start = moduleSource.indexOf(functionSignature);
+  assert.notEqual(start, -1, `${functionSignature} must exist`);
+  const nextFunction = moduleSource.indexOf("\nfunction ", start + functionSignature.length);
+  const nextAsyncFunction = moduleSource.indexOf("\nasync function ", start + functionSignature.length);
+  const candidates = [nextFunction, nextAsyncFunction].filter((index) => index > start);
+  const end = candidates.length ? Math.min(...candidates) : moduleSource.length;
+  return moduleSource.slice(start, end);
+}
+
 function ownerEnvelope(snapshot) {
   const normalized = {
     schemaVersion: 1,
@@ -149,6 +159,34 @@ test("macOS multi-format picker exposes files and validates the selected extensi
     message: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。",
     pathRedacted: true
   });
+});
+
+test("multi-format native picker is owned by the active BrowserWindow and fails typed without an owner", async () => {
+  const mainSource = source("main.cjs");
+  const openStart = mainSource.indexOf("async function openMultiFormatFile()");
+  const openEnd = mainSource.indexOf("async function openDroppedMultiFormatFile", openStart);
+  const openBody = mainSource.slice(openStart, openEnd);
+  const ownerHelper = extractFunctionSource(mainSource, "function showOpenDialogForActiveMainWindow(options)");
+
+  assert.match(openBody, /showOpenDialogForActiveMainWindow/);
+  assert.doesNotMatch(openBody, /dialog\.showOpenDialog\(options\)/);
+  assert.match(ownerHelper, /activeMainWindow/);
+  assert.match(ownerHelper, /activeMainWindow\.isDestroyed\(\)/);
+  assert.match(ownerHelper, /dialog\.showOpenDialog\(activeMainWindow, options\)/);
+
+  const ownerMissing = await chooseMultiFormatLocalFile({
+    platform: "darwin",
+    async showOpenDialog() {
+      throw new Error("active picker owner unavailable at /Users/alice/Secret Project/input.svga");
+    }
+  });
+  assert.deepEqual(ownerMissing, {
+    status: "failed",
+    code: "file_picker_failed",
+    message: "无法打开文件选择器，源文件没有被修改。",
+    pathRedacted: true
+  });
+  assert.doesNotMatch(JSON.stringify(ownerMissing), /Users\/alice|Secret Project/u);
 });
 
 test("host picker cancellation waits for the human decision without a renderer deadline", async () => {

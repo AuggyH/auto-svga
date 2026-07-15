@@ -5270,11 +5270,18 @@ async function openMultiFormatFilePath(filePath, source = "fileButton") {
 async function openMultiFormatFile() {
   assertMultiFormatDesktopProduct();
   const selection = await chooseMultiFormatLocalFile({
-    showOpenDialog: (options) => dialog.showOpenDialog(options),
+    showOpenDialog: showOpenDialogForActiveMainWindow,
     platform: process.platform
   });
   if (selection.status !== "selected") return selection;
   return openMultiFormatFilePath(selection.filePath, "fileButton");
+}
+
+function showOpenDialogForActiveMainWindow(options) {
+  if (!activeMainWindow || activeMainWindow.isDestroyed()) {
+    throw new Error("active multi-format picker owner window is unavailable");
+  }
+  return dialog.showOpenDialog(activeMainWindow, options);
 }
 
 async function openDroppedMultiFormatFile(input) {

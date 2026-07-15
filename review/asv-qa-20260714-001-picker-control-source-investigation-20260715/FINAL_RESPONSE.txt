@@ -1,0 +1,10 @@
+Implementation Ready for PM audit / Code Review routing.
+
+Exact branch: codex/0.2-picker-control-source-investigation-20260715
+Baseline source: a0958d82330c62d348eb236ea0248c91ce08e583
+
+Change: native multi-format Open now invokes the file picker through the active BrowserWindow owner. Missing/destroyed owner fails closed through the existing typed, path-redacted picker failure contract.
+
+Validation: main syntax PASS; focused picker owner/cancel/filter 3/3 PASS; conformance 28/28 PASS; npm run build PASS; npm run test:all 538/538 PASS; design-system PASS.
+
+Boundary: source-only. No Electron, installed app, Finder, native chooser, foreground, Packaging, QA, Product Owner acceptance, support, distribution, or release claim.

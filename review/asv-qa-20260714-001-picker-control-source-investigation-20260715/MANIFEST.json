@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "requirementId": "ASV-REQ-20260709-003",
+  "parentTicketId": "ASV-QA-20260714-001",
+  "branch": "codex/0.2-picker-control-source-investigation-20260715",
+  "baseCommit": "a0958d82330c62d348eb236ea0248c91ce08e583",
+  "status": "implementation-ready-pending-pm-audit-and-code-review-routing",
+  "exactHeadBinding": "Fix Ready callback after commit",
+  "productDiffSha256": "47341497bab2f8572fa17869f9d12a4e7ba2f75af16befcef1cece69d760b45d",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "81d3b2c3eb000934fce77e0ef7c342f57110076dca1145ad3ad5853cb1da779c"
+    },
+    {
+      "path": "REVIEW_PACKET.md",
+      "sha256": "1b4aa08a1e39c71d75cf10c54d76a19eb4234c92e788fcd79241ee84435f2445"
+    },
+    {
+      "path": "VALIDATION_SUMMARY.json",
+      "sha256": "0f058ae358425908125da81e8d53c66f01c36eb2aa58161986768aa230f4ff68"
+    },
+    {
+      "path": "FINAL_RESPONSE.txt",
+      "sha256": "6a79d67f69cc2e9fadcc268ee21e40d969d21261095fac4cdb376ced077f4e6c"
+    }
+  ],
+  "boundaries": {
+    "electronLaunched": false,
+    "installedAppMutated": false,
+    "foregroundUsed": false,
+    "nativeChooserOpened": false,
+    "ownerMaterialUsed": false,
+    "qaRouted": false,
+    "packagingRouted": false,
+    "productOwnerAcceptanceClaimed": false
+  }
+}
