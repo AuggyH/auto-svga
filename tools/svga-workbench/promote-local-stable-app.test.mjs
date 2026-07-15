@@ -25,7 +25,7 @@ import {
   recoverRollbackTransaction,
   rollbackPreviousApp
 } from "./local-stable-recovery.mjs";
-import { installApp, parseArgs } from "./promote-local-stable-app.mjs";
+import { installApp, parseArgs, recoverPromotionTransaction } from "./promote-local-stable-app.mjs";
 
 const installedBuild = "a".repeat(40);
 const previousBuild = "b".repeat(40);
@@ -148,20 +148,60 @@ function swapFixtureDirectories(left, right) {
 
 function promoteFixtureDependencies(fixture, overrides = {}) {
   const stagingRoot = path.join(fixture.root, "promotion-stage");
+  const promotionJournalPath = path.join(fixture.root, "evidence", "promotion-journal.json");
+  const promotionManifestPath = path.join(fixture.root, "evidence", "promotion-manifest.json");
   return {
     inspectBundle: fixtureInspector,
     validateIdentity: (appPath) => fixtureInspector(appPath),
     clearQuarantine: () => {},
     copyBundle: (source, destination) => cpSync(source, destination, { recursive: true }),
+    createOperationId: () => "ASV-TEST-PROMOTION-001",
     createStagingRoot: () => {
       mkdirSync(stagingRoot);
       return stagingRoot;
     },
+    promotionTransactionPaths: () => ({
+      journalPath: promotionJournalPath,
+      manifestPath: promotionManifestPath
+    }),
     preflightDestination: () => {},
     atomicSwap: (left, right) => swapFixtureDirectories(left, right),
     stagingRoot,
+    promotionJournalPath,
+    promotionManifestPath,
     ...overrides
   };
+}
+
+function stagedPromotionApp(dependencies) {
+  return path.join(dependencies.stagingRoot, "Auto SVGA.app");
+}
+
+function recoverPromotionFixture(dependencies, overrides = {}) {
+  return recoverPromotionTransaction({
+    journalPath: dependencies.promotionJournalPath,
+    dependencies: {
+      inspectBundle: fixtureInspector,
+      atomicSwap: (left, right) => swapFixtureDirectories(left, right),
+      ...overrides
+    }
+  });
+}
+
+function assertPromotionTransactionClean(dependencies) {
+  assert.equal(existsSync(dependencies.stagingRoot), false, "promotion staging root must be removed");
+  assert.equal(existsSync(dependencies.promotionJournalPath), false, "promotion journal must be removed");
+  assert.equal(existsSync(`${dependencies.promotionJournalPath}.next`), false, "promotion journal update residue must be removed");
+}
+
+function assertPromotionManifest(dependencies, expectedInstalled, expectedPrevious) {
+  assert.equal(existsSync(dependencies.promotionManifestPath), true, "promotion exchange manifest must exist");
+  const manifest = JSON.parse(readFileSync(dependencies.promotionManifestPath, "utf8"));
+  assert.equal(manifest.operation, "promote-local-stable-install-exchange");
+  assert.equal(manifest.retrySafe, false);
+  assert.equal(manifest.invocationCount, 1);
+  assert.deepEqual(bindingFromIdentity(manifest.after.installed), bindingFromIdentity(expectedInstalled));
+  assert.deepEqual(bindingFromIdentity(manifest.after.previous), bindingFromIdentity(expectedPrevious));
 }
 
 function snapshotTree(root) {
@@ -292,7 +332,8 @@ test("promotion stages and validates under task-owned private tmp before install
     assert.equal(result.backupTarget, fixture.previous);
     assertBundleBinding(fixture.target, candidateBefore);
     assertBundleBinding(fixture.previous, installedBefore);
-    assert.equal(existsSync(dependencies.stagingRoot), false);
+    assertPromotionManifest(dependencies, candidateBefore, installedBefore);
+    assertPromotionTransactionClean(dependencies);
     assert.deepEqual(events, [
       "copy",
       "destination-preflight",
@@ -338,6 +379,37 @@ test("promotion staging-copy and destination denials fail closed before owner-ap
   }
 });
 
+test("promotion requires an existing real target parent before source inspection or staging", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const missingParent = path.join(fixture.root, "missing-owner-applications");
+    const missingTarget = path.join(missingParent, "Auto SVGA.app");
+    let inspected = false;
+    let staged = false;
+    const dependencies = promoteFixtureDependencies(fixture, {
+      inspectBundle: () => {
+        inspected = true;
+        return fixtureInspector(fixture.candidate);
+      },
+      createStagingRoot: () => {
+        staged = true;
+        return path.join(fixture.root, "promotion-stage");
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: missingTarget,
+      dependencies
+    }), /Local stable target parent/);
+    assert.equal(existsSync(missingParent), false, "promotion must not create a missing target parent");
+    assert.equal(inspected, false, "source inspection must wait for target parent authority");
+    assert.equal(staged, false, "staging must not start without target parent authority");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("promotion refuses pre-existing staging or journal residue before copying", () => {
   const fixture = makeRollbackFixture();
   try {
@@ -363,6 +435,208 @@ test("promotion refuses pre-existing staging or journal residue before copying",
     assertBundleBinding(fixture.previous, previousBefore);
   } finally {
     rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion refuses transaction journal or manifest residue before staging", () => {
+  for (const residue of ["journal", "journal-next", "manifest"]) {
+    const fixture = makeRollbackFixture();
+    try {
+      const dependencies = promoteFixtureDependencies(fixture);
+      mkdirSync(path.dirname(dependencies.promotionJournalPath), { recursive: true });
+      if (residue === "journal") writeFileSync(dependencies.promotionJournalPath, "{}");
+      if (residue === "journal-next") writeFileSync(`${dependencies.promotionJournalPath}.next`, "{}");
+      if (residue === "manifest") writeFileSync(dependencies.promotionManifestPath, "{}");
+      let stagingRequested = false;
+      const guardedDependencies = {
+        ...dependencies,
+        createStagingRoot: () => {
+          stagingRequested = true;
+          return dependencies.stagingRoot;
+        }
+      };
+
+      assert.throws(() => installApp({
+        sourceApp: fixture.candidate,
+        target: fixture.target,
+        dependencies: guardedDependencies
+      }), /transaction residue/);
+      assert.equal(stagingRequested, false, `${residue} residue must fail before staging`);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+const promotionRecoveryCases = [
+  {
+    checkpoint: "after-promotion-journal",
+    state: "original",
+    recovery: "aborted-before-exchange",
+    manifestExpected: false
+  },
+  {
+    checkpoint: "after-first-exchange",
+    state: "after-first",
+    recovery: "completed-after-interrupted-exchange",
+    manifestExpected: true
+  },
+  {
+    checkpoint: "before-second-exchange",
+    state: "after-first",
+    recovery: "completed-after-interrupted-exchange",
+    manifestExpected: true
+  },
+  {
+    checkpoint: "after-second-exchange",
+    state: "complete",
+    recovery: "completed-after-interrupted-exchange",
+    manifestExpected: true
+  },
+  {
+    checkpoint: "before-exchange-manifest-write",
+    state: "complete",
+    recovery: "completed-after-interrupted-exchange",
+    manifestExpected: true
+  },
+  {
+    checkpoint: "after-exchange-manifest",
+    state: "complete",
+    recovery: "completed-after-interrupted-exchange",
+    manifestExpected: true
+  }
+];
+
+for (const { checkpoint, state, recovery, manifestExpected } of promotionRecoveryCases) {
+  test(`promotion recovery handles interrupted ${checkpoint}`, () => {
+    const fixture = makeRollbackFixture();
+    try {
+      const installedBefore = fixtureInspector(fixture.target);
+      const previousBefore = fixtureInspector(fixture.previous);
+      const candidateBefore = fixtureInspector(fixture.candidate);
+      const dependencies = promoteFixtureDependencies(fixture, {
+        checkpoint: (phase) => {
+          if (phase === checkpoint) throw new Error(`simulated promotion crash:${phase}`);
+        }
+      });
+
+      assert.throws(() => installApp({
+        sourceApp: fixture.candidate,
+        target: fixture.target,
+        dependencies
+      }), new RegExp(`simulated promotion crash:${checkpoint}`));
+      assert.equal(existsSync(dependencies.promotionJournalPath), true, "interrupted promotion must leave a journal");
+
+      if (state === "original") {
+        assertBundleBinding(fixture.target, installedBefore);
+        assertBundleBinding(fixture.previous, previousBefore);
+        assertBundleBinding(stagedPromotionApp(dependencies), candidateBefore);
+      } else if (state === "after-first") {
+        assertBundleBinding(fixture.target, candidateBefore);
+        assertBundleBinding(fixture.previous, previousBefore);
+        assertBundleBinding(stagedPromotionApp(dependencies), installedBefore);
+      } else {
+        assertBundleBinding(fixture.target, candidateBefore);
+        assertBundleBinding(fixture.previous, installedBefore);
+        assertBundleBinding(stagedPromotionApp(dependencies), previousBefore);
+      }
+
+      const result = recoverPromotionFixture(dependencies);
+      assert.equal(result.disposition, recovery);
+      if (manifestExpected) {
+        assertBundleBinding(fixture.target, candidateBefore);
+        assertBundleBinding(fixture.previous, installedBefore);
+        assertPromotionManifest(dependencies, candidateBefore, installedBefore);
+      } else {
+        assertBundleBinding(fixture.target, installedBefore);
+        assertBundleBinding(fixture.previous, previousBefore);
+        assert.equal(existsSync(dependencies.promotionManifestPath), false);
+      }
+      assertPromotionTransactionClean(dependencies);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+}
+
+test("promotion recovery keeps the journal when manifest bytes lack journal authority", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const installedBefore = fixtureInspector(fixture.target);
+    const candidateBefore = fixtureInspector(fixture.candidate);
+    const dependencies = promoteFixtureDependencies(fixture, {
+      checkpoint: (phase) => {
+        if (phase === "after-exchange-manifest-write-before-journal") {
+          throw new Error("simulated manifest write crash before journal hash");
+        }
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /manifest write crash/);
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, installedBefore);
+    assert.equal(existsSync(dependencies.promotionManifestPath), true);
+    assert.equal(existsSync(dependencies.promotionJournalPath), true);
+
+    assert.throws(() => recoverPromotionFixture(dependencies), /without journal-bound sha256 authority/);
+    assert.equal(existsSync(dependencies.promotionJournalPath), true, "journal must remain for audited recovery");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion second exchange and manifest publication failures are recoverable without role loss", () => {
+  for (const scenario of ["second-exchange-failure", "manifest-publication-failure"]) {
+    const fixture = makeRollbackFixture();
+    try {
+      const installedBefore = fixtureInspector(fixture.target);
+      const previousBefore = fixtureInspector(fixture.previous);
+      const candidateBefore = fixtureInspector(fixture.candidate);
+      let swaps = 0;
+      const dependencies = promoteFixtureDependencies(fixture, scenario === "second-exchange-failure"
+        ? {
+            atomicSwap: (left, right) => {
+              swaps += 1;
+              if (swaps === 2) throw new Error("simulated second exchange failure");
+              swapFixtureDirectories(left, right);
+            }
+          }
+        : {
+            writeManifestExclusive: () => {
+              throw new Error("simulated manifest publication failure");
+            }
+          });
+
+      assert.throws(() => installApp({
+        sourceApp: fixture.candidate,
+        target: fixture.target,
+        dependencies
+      }), new RegExp(scenario === "second-exchange-failure" ? "second exchange failure" : "manifest publication failure"));
+
+      if (scenario === "second-exchange-failure") {
+        assertBundleBinding(fixture.target, candidateBefore);
+        assertBundleBinding(fixture.previous, previousBefore);
+        assertBundleBinding(stagedPromotionApp(dependencies), installedBefore);
+      } else {
+        assertBundleBinding(fixture.target, candidateBefore);
+        assertBundleBinding(fixture.previous, installedBefore);
+        assert.equal(existsSync(dependencies.promotionManifestPath), false);
+      }
+      assert.equal(existsSync(dependencies.promotionJournalPath), true);
+
+      const result = recoverPromotionFixture(dependencies);
+      assert.equal(result.disposition, "completed-after-interrupted-exchange");
+      assertBundleBinding(fixture.target, candidateBefore);
+      assertBundleBinding(fixture.previous, installedBefore);
+      assertPromotionManifest(dependencies, candidateBefore, installedBefore);
+      assertPromotionTransactionClean(dependencies);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
   }
 });
 

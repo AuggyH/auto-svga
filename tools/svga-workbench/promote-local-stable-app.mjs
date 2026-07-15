@@ -1,10 +1,13 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  closeSync,
   existsSync,
+  fsyncSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readdirSync,
   readFileSync,
   realpathSync,
@@ -32,6 +35,8 @@ const manifestPath = path.join(trialRoot, "internal-trial-manifest.json");
 const proofPath = path.join(trialRoot, "macos-package-proof.json");
 const localStableRoot = path.join(repoRoot, ".artifacts/local-stable-app");
 const promotionManifestPath = path.join(localStableRoot, "promotion-manifest.json");
+const promotionExchangeManifestRoot = path.join(localStableRoot, "promotion-manifests");
+const promotionExchangeJournalPath = path.join(localStableRoot, "promotion-journal.json");
 const rollbackManifestRoot = path.join(localStableRoot, "rollback-manifests");
 const rollbackJournalRoot = path.join(localStableRoot, "rollback-journals");
 
@@ -233,12 +238,81 @@ function directorySizeBytes(directoryPath) {
   return total;
 }
 
+function fsyncDirectory(directoryPath) {
+  const descriptor = openSync(directoryPath, "r");
+  try {
+    fsyncSync(descriptor);
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
+function writeJsonExclusive(filePath, value) {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  let descriptor;
+  let created = false;
+  try {
+    descriptor = openSync(filePath, "wx", 0o600);
+    created = true;
+    writeFileSync(descriptor, `${JSON.stringify(value, null, 2)}\n`);
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
+    fsyncDirectory(path.dirname(filePath));
+  } catch (error) {
+    if (descriptor !== undefined) closeSync(descriptor);
+    if (created) {
+      rmSync(filePath, { force: true });
+      fsyncDirectory(path.dirname(filePath));
+    }
+    throw error;
+  }
+}
+
+function replaceJsonDurably(filePath, value) {
+  const temporaryPath = `${filePath}.next`;
+  if (existsSync(temporaryPath)) throw new Error(`Promotion journal update residue already exists: ${temporaryPath}`);
+  writeJsonExclusive(temporaryPath, value);
+  renameSync(temporaryPath, filePath);
+  fsyncDirectory(path.dirname(filePath));
+}
+
+function removeDurably(filePath) {
+  rmSync(filePath, { recursive: true, force: false });
+  fsyncDirectory(path.dirname(filePath));
+}
+
 function assertRealDirectory(directoryPath, label) {
-  const stat = lstatSync(directoryPath);
+  let stat;
+  try {
+    stat = lstatSync(directoryPath);
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      throw new Error(`${label} must be an existing real directory: ${directoryPath}`);
+    }
+    throw error;
+  }
   if (!stat.isDirectory() || stat.isSymbolicLink()) {
     throw new Error(`${label} must be a real directory: ${directoryPath}`);
   }
   return stat;
+}
+
+function compactAppIdentity(identity) {
+  if (!identity) return null;
+  return {
+    appPath: identity.appPath,
+    realPath: identity.realPath,
+    rootObject: identity.rootObject,
+    catalogDigest: identity.catalogDigest,
+    entryCount: identity.entryCount,
+    sizeBytes: identity.sizeBytes,
+    stabilityFingerprint: identity.stabilityFingerprint,
+    infoPlist: identity.infoPlist,
+    appAsar: identity.appAsar,
+    buildInfo: identity.buildInfo,
+    runtimeClosure: identity.runtimeClosure
+  };
 }
 
 function assertSameAppPayload(left, right, label) {
@@ -255,6 +329,20 @@ function assertSameAppPayload(left, right, label) {
   if (mismatches.length > 0) {
     throw new Error(`${label} does not match expected app payload: ${mismatches.join(", ")}`);
   }
+}
+
+function appPayloadMatches(identity, expected) {
+  if (!identity && !expected) return true;
+  if (!identity || !expected) return false;
+  return identity.catalogDigest === expected.catalogDigest
+    && identity.infoPlist?.sha256 === expected.infoPlist?.sha256
+    && identity.appAsar?.sha256 === expected.appAsar?.sha256
+    && identity.buildInfo?.sha256 === expected.buildInfo?.sha256
+    && identity.buildInfo?.buildCommit === expected.buildInfo?.buildCommit
+    && identity.entryCount === expected.entryCount
+    && identity.sizeBytes === expected.sizeBytes
+    && identity.runtimeClosure?.validated === true
+    && identity.runtimeClosure?.missingEntries?.length === 0;
 }
 
 function defaultPromotionStagingRoot() {
@@ -281,6 +369,151 @@ function assertNoPromotionResidue(targetParent) {
   if (residue.length > 0) {
     throw new Error(`Refusing local-stable promotion with existing staging or journal residue: ${residue.join(", ")}`);
   }
+}
+
+function defaultPromotionOperationId() {
+  return `promote-${new Date().toISOString().replace(/[^0-9A-Za-z]/g, "")}-${process.pid}`;
+}
+
+function defaultPromotionTransactionPaths(operationId) {
+  return {
+    journalPath: promotionExchangeJournalPath,
+    manifestPath: path.join(promotionExchangeManifestRoot, `${operationId}.json`)
+  };
+}
+
+function assertNoPromotionTransactionResidue({ journalPath, manifestPath }) {
+  const residues = [];
+  if (existsSync(journalPath)) residues.push(journalPath);
+  if (existsSync(`${journalPath}.next`)) residues.push(`${journalPath}.next`);
+  if (existsSync(manifestPath)) residues.push(manifestPath);
+  if (residues.length > 0) {
+    throw new Error(`Refusing local-stable promotion with existing promotion transaction residue: ${residues.join(", ")}`);
+  }
+}
+
+function buildPromotionExchangeManifest({
+  operationId,
+  target,
+  backupTarget,
+  sourceApp,
+  stagedApp,
+  installedBefore,
+  previousBefore,
+  installedAfter,
+  previousAfter,
+  completedAt
+}) {
+  return {
+    schemaVersion: 1,
+    operation: "promote-local-stable-install-exchange",
+    operationId,
+    completedAt: completedAt.toISOString(),
+    retrySafe: false,
+    invocationCount: 1,
+    target,
+    backupTarget,
+    sourceApp,
+    stagedApp,
+    before: {
+      installed: compactAppIdentity(installedBefore),
+      previous: compactAppIdentity(previousBefore)
+    },
+    after: {
+      installed: compactAppIdentity(installedAfter),
+      previous: compactAppIdentity(previousAfter)
+    }
+  };
+}
+
+function buildPromotionJournal({
+  operationId,
+  target,
+  backupTarget,
+  sourceApp,
+  stagingRoot,
+  stagedApp,
+  manifestPath,
+  sourceIdentity,
+  stagedIdentity,
+  installedBefore,
+  previousBefore,
+  phase,
+  now
+}) {
+  return {
+    schemaVersion: 1,
+    operation: "promote-local-stable-install-journal",
+    operationId,
+    target,
+    backupTarget,
+    sourceApp,
+    stagingRoot,
+    stagedApp,
+    manifestPath,
+    retrySafe: false,
+    invocationCount: 1,
+    phase,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    expected: {
+      source: compactAppIdentity(sourceIdentity),
+      stagedCandidate: compactAppIdentity(stagedIdentity),
+      installedBefore: compactAppIdentity(installedBefore),
+      previousBefore: compactAppIdentity(previousBefore)
+    }
+  };
+}
+
+function updatePromotionJournalPhase(dependencies, journalPath, journal, phase, extra = {}) {
+  const nextJournal = {
+    ...journal,
+    ...extra,
+    phase,
+    updatedAt: dependencies.now().toISOString()
+  };
+  dependencies.updateJournal(journalPath, nextJournal);
+  return nextJournal;
+}
+
+function inspectIfExists(appPath, inspectBundle) {
+  return existsSync(appPath) ? inspectBundle(appPath) : null;
+}
+
+function classifyPromotionTransaction({ installed, previous, stage, expected }) {
+  const original = appPayloadMatches(installed, expected.installedBefore)
+    && appPayloadMatches(previous, expected.previousBefore)
+    && appPayloadMatches(stage, expected.stagedCandidate);
+  if (original) return "original-roles";
+
+  const afterFirstExchange = appPayloadMatches(installed, expected.stagedCandidate)
+    && appPayloadMatches(previous, expected.previousBefore)
+    && appPayloadMatches(stage, expected.installedBefore);
+  if (afterFirstExchange) return "after-first-exchange";
+
+  const complete = appPayloadMatches(installed, expected.stagedCandidate)
+    && appPayloadMatches(previous, expected.installedBefore)
+    && (!stage || appPayloadMatches(stage, expected.previousBefore));
+  if (complete) return "complete";
+
+  return "ambiguous-role-bytes";
+}
+
+function inspectPromotionTransaction(journal, inspectBundle) {
+  const installed = inspectIfExists(journal.target, inspectBundle);
+  const previous = inspectIfExists(journal.backupTarget, inspectBundle);
+  const stage = inspectIfExists(journal.stagedApp, inspectBundle);
+  return {
+    installed,
+    previous,
+    stage,
+    state: classifyPromotionTransaction({
+      installed,
+      previous,
+      stage,
+      expected: journal.expected
+    })
+  };
 }
 
 function assertDestinationWritable(targetParent) {
@@ -378,80 +611,209 @@ function validateAppIdentity(appBundle) {
   }
 }
 
+function promotionInstallDependencies(overrides = {}) {
+  return {
+    atomicSwap: atomicSwapApps,
+    clearQuarantine: (appBundle) => run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", appBundle], { stdio: "ignore" }),
+    copyBundle: (source, destination) => run("/usr/bin/ditto", [source, destination], { stdio: "inherit" }),
+    createOperationId: defaultPromotionOperationId,
+    createStagingRoot: defaultPromotionStagingRoot,
+    inspectBundle: inspectAppBundle,
+    promotionTransactionPaths: defaultPromotionTransactionPaths,
+    preflightDestination: assertDestinationWritable,
+    removeDurably,
+    updateJournal: replaceJsonDurably,
+    validateIdentity: validateAppIdentity,
+    writeJournalInitial: writeJsonExclusive,
+    writeManifestExclusive: writeJsonExclusive,
+    now: () => new Date(),
+    checkpoint: () => {},
+    ...overrides
+  };
+}
+
+function publishPromotionExchangeManifest({ dependencies, journal, journalPath }) {
+  const state = inspectPromotionTransaction(journal, dependencies.inspectBundle);
+  if (state.state !== "complete") {
+    throw new Error(`Promotion exchange is not complete; current state is ${state.state}`);
+  }
+
+  if (existsSync(journal.manifestPath)) {
+    if (!journal.manifestSha256) {
+      throw new Error(`Promotion exchange manifest exists without journal-bound sha256 authority: ${journal.manifestPath}`);
+    }
+    const existingManifestSha256 = sha256(journal.manifestPath);
+    if (existingManifestSha256 !== journal.manifestSha256) {
+      throw new Error(
+        `Promotion exchange manifest sha256 ${existingManifestSha256} does not match journal ${journal.manifestSha256}`
+      );
+    }
+    return journal;
+  }
+
+  const manifest = buildPromotionExchangeManifest({
+    operationId: journal.operationId,
+    target: journal.target,
+    backupTarget: journal.backupTarget,
+    sourceApp: journal.sourceApp,
+    stagedApp: journal.stagedApp,
+    installedBefore: journal.expected.installedBefore,
+    previousBefore: journal.expected.previousBefore,
+    installedAfter: state.installed,
+    previousAfter: state.previous,
+    completedAt: dependencies.now()
+  });
+  dependencies.checkpoint("before-exchange-manifest-write");
+  dependencies.writeManifestExclusive(journal.manifestPath, manifest);
+  dependencies.checkpoint("after-exchange-manifest-write-before-journal");
+  const manifestSha256 = sha256(journal.manifestPath);
+  return updatePromotionJournalPhase(dependencies, journalPath, journal, "manifest-published", { manifestSha256 });
+}
+
+function cleanupCompletedPromotion({ dependencies, journal, journalPath }) {
+  if (existsSync(journal.stagingRoot)) {
+    dependencies.removeDurably(journal.stagingRoot);
+  }
+  const afterCleanup = updatePromotionJournalPhase(dependencies, journalPath, journal, "stage-cleaned");
+  dependencies.removeDurably(journalPath);
+  return afterCleanup;
+}
+
+export function recoverPromotionTransaction({
+  journalPath = promotionExchangeJournalPath,
+  dependencies: dependencyOverrides = {}
+} = {}) {
+  const dependencies = promotionInstallDependencies(dependencyOverrides);
+  if (!existsSync(journalPath)) throw new Error(`Promotion journal is missing: ${journalPath}`);
+  let journal = readJson(journalPath);
+  const state = inspectPromotionTransaction(journal, dependencies.inspectBundle);
+
+  if (state.state === "original-roles") {
+    if (existsSync(journal.stagingRoot)) dependencies.removeDurably(journal.stagingRoot);
+    journal = updatePromotionJournalPhase(dependencies, journalPath, journal, "aborted-before-exchange");
+    dependencies.removeDurably(journalPath);
+    return { disposition: "aborted-before-exchange", mutationPerformed: false };
+  }
+
+  if (state.state === "after-first-exchange") {
+    journal = updatePromotionJournalPhase(dependencies, journalPath, journal, "recovering-after-first-exchange");
+    if (journal.expected.previousBefore) {
+      dependencies.atomicSwap(journal.stagedApp, journal.backupTarget, {
+        leftObject: state.stage.rootObject,
+        rightObject: state.previous.rootObject
+      });
+    } else {
+      renameSync(journal.stagedApp, journal.backupTarget);
+    }
+    journal = updatePromotionJournalPhase(dependencies, journalPath, journal, "exchange-complete");
+  } else if (state.state !== "complete") {
+    throw new Error(`Promotion journal state is not safely recoverable: ${state.state}`);
+  }
+
+  journal = publishPromotionExchangeManifest({ dependencies, journal, journalPath });
+  cleanupCompletedPromotion({ dependencies, journal, journalPath });
+  return { disposition: "completed-after-interrupted-exchange", mutationPerformed: true, manifestPath: journal.manifestPath };
+}
+
 export function installApp({ sourceApp, target, dependencies = {} }) {
-  const {
-    atomicSwap = atomicSwapApps,
-    clearQuarantine = (appBundle) => run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", appBundle], { stdio: "ignore" }),
-    copyBundle = (source, destination) => run("/usr/bin/ditto", [source, destination], { stdio: "inherit" }),
-    createStagingRoot = defaultPromotionStagingRoot,
-    inspectBundle = inspectAppBundle,
-    preflightDestination = assertDestinationWritable,
-    validateIdentity = validateAppIdentity
-  } = dependencies;
+  const resolvedDependencies = promotionInstallDependencies(dependencies);
   const targetParent = path.dirname(target);
   const backupTarget = path.join(targetParent, "Auto SVGA.previous.app");
+  const operationId = resolvedDependencies.createOperationId();
+  const transactionPaths = resolvedDependencies.promotionTransactionPaths(operationId);
+  const journalPath = transactionPaths.journalPath;
+  const exchangeManifestPath = transactionPaths.manifestPath;
   let stagingRoot;
-  let finalExchangeStarted = false;
-  let finalExchangeCompleted = false;
+  let journal;
+  let journalCreated = false;
+  let transactionCompleted = false;
 
   try {
-    mkdirSync(targetParent, { recursive: true });
     assertRealDirectory(targetParent, "Local stable target parent");
     assertNoPromotionResidue(targetParent);
+    assertNoPromotionTransactionResidue({ journalPath, manifestPath: exchangeManifestPath });
 
-    const sourceIdentity = inspectBundle(sourceApp);
-    stagingRoot = createStagingRoot();
+    const sourceIdentity = resolvedDependencies.inspectBundle(sourceApp);
+    stagingRoot = resolvedDependencies.createStagingRoot();
     if (!path.isAbsolute(stagingRoot)) throw new Error(`Promotion staging root must be absolute: ${stagingRoot}`);
     assertRealDirectory(stagingRoot, "Promotion staging root");
     const stagedApp = path.join(stagingRoot, "Auto SVGA.app");
     if (existsSync(stagedApp)) throw new Error(`Promotion staging app already exists: ${stagedApp}`);
 
-    copyBundle(sourceApp, stagedApp);
-    clearQuarantine(stagedApp);
-    validateIdentity(stagedApp);
-    const stagedIdentity = inspectBundle(stagedApp);
+    resolvedDependencies.copyBundle(sourceApp, stagedApp);
+    resolvedDependencies.clearQuarantine(stagedApp);
+    resolvedDependencies.validateIdentity(stagedApp);
+    const stagedIdentity = resolvedDependencies.inspectBundle(stagedApp);
     assertSameAppPayload(sourceIdentity, stagedIdentity, "Staged candidate");
 
-    preflightDestination(targetParent);
+    resolvedDependencies.preflightDestination(targetParent);
     assertNoPromotionResidue(targetParent);
-    const installedBefore = existsSync(target) ? inspectBundle(target) : null;
-    const previousBefore = existsSync(backupTarget) ? inspectBundle(backupTarget) : null;
+    const installedBefore = existsSync(target) ? resolvedDependencies.inspectBundle(target) : null;
+    const previousBefore = existsSync(backupTarget) ? resolvedDependencies.inspectBundle(backupTarget) : null;
+    journal = buildPromotionJournal({
+      operationId,
+      target,
+      backupTarget,
+      sourceApp,
+      stagingRoot,
+      stagedApp,
+      manifestPath: exchangeManifestPath,
+      sourceIdentity,
+      stagedIdentity,
+      installedBefore,
+      previousBefore,
+      phase: "staged",
+      now: resolvedDependencies.now()
+    });
+    resolvedDependencies.writeJournalInitial(journalPath, journal);
+    journalCreated = true;
+    resolvedDependencies.checkpoint("after-promotion-journal");
+
     if (installedBefore) {
       assertRealDirectory(target, "Installed app");
       if (previousBefore) assertRealDirectory(backupTarget, "Previous app");
-      finalExchangeStarted = true;
-      atomicSwap(stagedApp, target, {
+      resolvedDependencies.checkpoint("before-first-exchange");
+      resolvedDependencies.atomicSwap(stagedApp, target, {
         leftObject: stagedIdentity.rootObject,
         rightObject: installedBefore.rootObject
       });
-      const installedAfter = inspectBundle(target);
-      const displacedInstalled = inspectBundle(stagedApp);
+      journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "first-exchange-complete");
+      resolvedDependencies.checkpoint("after-first-exchange");
+      const installedAfter = resolvedDependencies.inspectBundle(target);
+      const displacedInstalled = resolvedDependencies.inspectBundle(stagedApp);
       assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after promotion");
       assertSameAppPayload(installedBefore, displacedInstalled, "Displaced installed app");
 
       if (previousBefore) {
-        atomicSwap(stagedApp, backupTarget, {
+        resolvedDependencies.checkpoint("before-second-exchange");
+        resolvedDependencies.atomicSwap(stagedApp, backupTarget, {
           leftObject: displacedInstalled.rootObject,
           rightObject: previousBefore.rootObject
         });
       } else {
         renameSync(stagedApp, backupTarget);
       }
-      const previousAfter = inspectBundle(backupTarget);
+      journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "exchange-complete");
+      resolvedDependencies.checkpoint("after-second-exchange");
+      const previousAfter = resolvedDependencies.inspectBundle(backupTarget);
       assertSameAppPayload(installedBefore, previousAfter, "Previous app after promotion");
-      finalExchangeCompleted = true;
     } else {
-      finalExchangeStarted = true;
+      resolvedDependencies.checkpoint("before-first-install");
       renameSync(stagedApp, target);
-      const installedAfter = inspectBundle(target);
+      journal = updatePromotionJournalPhase(resolvedDependencies, journalPath, journal, "exchange-complete");
+      resolvedDependencies.checkpoint("after-first-install");
+      const installedAfter = resolvedDependencies.inspectBundle(target);
       assertSameAppPayload(stagedIdentity, installedAfter, "Installed app after first promotion");
-      finalExchangeCompleted = true;
     }
 
-    validateIdentity(target);
+    journal = publishPromotionExchangeManifest({ dependencies: resolvedDependencies, journal, journalPath });
+    resolvedDependencies.checkpoint("after-exchange-manifest");
+    cleanupCompletedPromotion({ dependencies: resolvedDependencies, journal, journalPath });
+    transactionCompleted = true;
+    resolvedDependencies.validateIdentity(target);
     return { backupTarget: existsSync(backupTarget) ? backupTarget : undefined };
   } finally {
-    if (stagingRoot && (!finalExchangeStarted || finalExchangeCompleted)) {
+    if (stagingRoot && !journalCreated && !transactionCompleted) {
       rmSync(stagingRoot, { recursive: true, force: true });
     }
   }
