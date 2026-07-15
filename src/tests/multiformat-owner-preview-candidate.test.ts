@@ -166,6 +166,13 @@ test("owner-visible 0.2 candidate applies and resets Lottie image and text runti
   assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
   assert.equal(opened.rightPanel.assetInventory.summary.textCount, 1);
   assert.equal(opened.rightPanel.assetInventory.groups.some(({ id }) => id === "vap_fusion_images"), false);
+  const ownerSnapshot = JSON.parse(opened.ownerRightPanelSnapshotEnvelope.snapshotJson);
+  assert.deepEqual(ownerSnapshot.assetInventory.groups.map(({ id }: { id: string }) => id), [
+    "image_resources",
+    "text_candidates"
+  ]);
+  assert.deepEqual(ownerSnapshot.imageTargets.map(({ resourceId }: { resourceId: string }) => resourceId), ["avatar"]);
+  assert.deepEqual(ownerSnapshot.textTargets.map(({ textKey }: { textKey: string }) => textKey), ["text:2"]);
   assert.equal(loadCalls.length, 1);
 
   const textApplied = await session.applyReplacement({
@@ -683,6 +690,20 @@ test("owner-visible 0.2 candidate resets one VAP fusion target without clearing 
   assert.notEqual(imageTargetId, textTargetId);
   assert.equal(opened.rightPanel.vapFusionImages.some((target) => target.resourceId === textTargetId), false);
   assert.equal(opened.rightPanel.vapFusionTexts.some((target) => target.resourceId === imageTargetId), false);
+  const ownerSnapshot = JSON.parse(opened.ownerRightPanelSnapshotEnvelope.snapshotJson);
+  assert.deepEqual(ownerSnapshot.assets, []);
+  assert.deepEqual(ownerSnapshot.assetInventory.groups.map(({ id }: { id: string }) => id), [
+    "vap_fusion_images",
+    "vap_fusion_texts",
+    "audio_video_media",
+    "unsupported_or_missing"
+  ]);
+  assert.equal(ownerSnapshot.issues.length, 1);
+  const replaceableInventoryIds = ownerSnapshot.assetInventory.groups
+    .flatMap(({ items }: { items: Array<{ id: string; replaceable: boolean }> }) => items)
+    .filter(({ replaceable }: { replaceable: boolean }) => replaceable)
+    .map(({ id }: { id: string }) => id);
+  assert.deepEqual(replaceableInventoryIds, [imageTargetId, textTargetId]);
 
   const textApplied = await session.applyReplacement({
     gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,

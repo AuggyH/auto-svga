@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "packet": "asv-req-20260709-003-owner-envelope-fixture-closure-20260716",
+  "generatedAt": "2026-07-16T00:00:00Z",
+  "sourceBase": "5d3be93149aa2875acaa53cef2cee06e0788d537",
+  "sourceHead": "commit-containing-this-packet",
+  "productDiffSha256": "342a5a92ad9da6a1fae02d5e91edc2f6e6442955b1882407e6d4113670a1b465",
+  "members": [
+    {
+      "path": "review/asv-req-20260709-003-owner-envelope-fixture-closure-20260716/README.md",
+      "byteLength": 237,
+      "sha256": "743b5b5afef42998674b286077d474897333066a727070173b16f5d24d9076d6"
+    },
+    {
+      "path": "review/asv-req-20260709-003-owner-envelope-fixture-closure-20260716/REVIEW_PACKET.md",
+      "byteLength": 2007,
+      "sha256": "930f557fde0dd7f91720531061a17159dc9540f2c35e15e08cc77540f69a0450"
+    },
+    {
+      "path": "review/asv-req-20260709-003-owner-envelope-fixture-closure-20260716/VALIDATION_SUMMARY.json",
+      "byteLength": 1396,
+      "sha256": "ca7aa214f952e4cdd88d6ff83dc4bd9e67f2c1c61d473426202791f5bf0ac9ea"
+    }
+  ]
+}

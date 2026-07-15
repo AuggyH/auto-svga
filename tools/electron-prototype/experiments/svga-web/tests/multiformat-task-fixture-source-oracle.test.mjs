@@ -95,6 +95,7 @@ test("task-owned source oracle binds external-image Lottie and fusion VAP withou
     assert.equal(proof.fixtureContract.status, "passed");
     assert.equal(proof.fixtureContract.fixtures.lottie.externalImage.relativeResource, "images/avatar.png");
     assert.equal(proof.lottie.open.format, "lottie");
+    assert.deepEqual(proof.lottie.open.ownerGroupIds, ["image_resources", "text_candidates"]);
     assert.equal(proof.lottie.runtime.externalImageInlined, true);
     assert.equal(proof.lottie.replacement.resetRestoredSource, true);
     assert.equal(proof.lottie.replacement.siblingPreserved, true);
@@ -103,6 +104,13 @@ test("task-owned source oracle binds external-image Lottie and fusion VAP withou
 
     assert.equal(proof.fixtureContract.fixtures.vap.expectedFusionTargets.length, 2);
     assert.equal(proof.vap.open.format, "vap");
+    assert.deepEqual(proof.vap.open.ownerGroupIds, [
+      "vap_fusion_images",
+      "vap_fusion_texts",
+      "audio_video_media",
+      "unsupported_or_missing"
+    ]);
+    assert.equal(proof.vap.open.ownerIssueCount, 1);
     assert.equal(proof.vap.runtime.vapConfigSource, "adjacent_json");
     assert.equal(proof.vap.replacement.imageRuntimeTarget, "avatar");
     assert.equal(proof.vap.replacement.textRuntimeTarget, "title");

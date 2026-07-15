@@ -100,10 +100,21 @@ async function proveLottieFlow({ session, fixtureSet, replacementDataUri, signal
   if (opened.model.detectedFormat !== "lottie" || opened.model.status !== "previewReady") {
     throw new Error("Task external-image Lottie did not reach previewReady.");
   }
+  const ownerSnapshot = requireOwnerSnapshot(opened, "lottie");
+  const imageTarget = ownerSnapshot.imageTargets.find((entry) => entry.resourceId === "avatar");
+  const textTarget = ownerSnapshot.textTargets[0]?.textKey;
+  if (!imageTarget || !textTarget) {
+    throw new Error("Task external-image Lottie owner snapshot did not expose deterministic image/text targets.");
+  }
+  assertOwnerInventoryProjection(ownerSnapshot, {
+    expectedGroupIds: ["image_resources", "text_candidates"],
+    expectedTargetIds: [imageTarget.resourceId, textTarget]
+  });
   signals.push(signal("lottie_external_opened", {
     modelStatus: opened.model.status,
-    imageCount: opened.model.rightPanel.assetInventory.summary.imageCount,
-    textCount: opened.model.rightPanel.assetInventory.summary.textCount
+    imageCount: ownerSnapshot.assetInventory.summary.imageCount,
+    textCount: ownerSnapshot.assetInventory.summary.textCount,
+    ownerSnapshotHash: opened.model.ownerRightPanelSnapshotEnvelope.snapshotSha256
   }));
 
   const prepared = await session.prepareRuntimePreview({
@@ -136,7 +147,7 @@ async function proveLottieFlow({ session, fixtureSet, replacementDataUri, signal
 
   const imageApply = await applyReplacementWithAuthority({
     session,
-    targetId: "avatar",
+    targetId: imageTarget.resourceId,
     kind: "image",
     value: replacementDataUri
   });
@@ -155,8 +166,6 @@ async function proveLottieFlow({ session, fixtureSet, replacementDataUri, signal
     replacementValueHash: sha256Text(replacementDataUri)
   }));
 
-  const textTarget = opened.model.rightPanel.lottieTexts[0]?.id;
-  if (!textTarget) throw new Error("Task external-image Lottie text target is unavailable.");
   const textApply = await applyReplacementWithAuthority({
     session,
     targetId: textTarget,
@@ -180,7 +189,7 @@ async function proveLottieFlow({ session, fixtureSet, replacementDataUri, signal
 
   const resetImage = await resetReplacementWithAuthority({
     session,
-    targetId: "avatar",
+    targetId: imageTarget.resourceId,
     kind: "image"
   });
   clearRuntimeValue(runtimeValues, resetImage.selection);
@@ -226,8 +235,10 @@ async function proveLottieFlow({ session, fixtureSet, replacementDataUri, signal
     open: {
       status: opened.model.status,
       format: opened.model.detectedFormat,
-      imageCount: opened.model.rightPanel.assetInventory.summary.imageCount,
-      textCount: opened.model.rightPanel.assetInventory.summary.textCount
+      imageCount: ownerSnapshot.assetInventory.summary.imageCount,
+      textCount: ownerSnapshot.assetInventory.summary.textCount,
+      ownerSnapshotHash: opened.model.ownerRightPanelSnapshotEnvelope.snapshotSha256,
+      ownerGroupIds: ownerSnapshot.assetInventory.groups.map(({ id }) => id)
     },
     runtime: {
       status: prepared.status,
@@ -260,13 +271,22 @@ async function proveVapFlow({ session, fixtureSet, replacementDataUri, signals }
   if (opened.model.detectedFormat !== "vap" || opened.model.status !== "previewReady") {
     throw new Error("Task fusion VAP did not reach previewReady.");
   }
-  const imageTarget = opened.model.rightPanel.vapFusionImages.find((entry) => entry.srcTag === "avatar");
-  const textTarget = opened.model.rightPanel.vapFusionTexts.find((entry) => entry.srcTag === "title");
+  const ownerSnapshot = requireOwnerSnapshot(opened, "vap");
+  const imageTarget = ownerSnapshot.imageTargets.find((entry) => entry.resourceId === "vap_fusion_avatar");
+  const textTarget = ownerSnapshot.textTargets.find((entry) => entry.textKey === "vap_fusion_title");
   if (!imageTarget || !textTarget) throw new Error("Task fusion VAP did not expose deterministic image/text targets.");
+  assertOwnerInventoryProjection(ownerSnapshot, {
+    expectedGroupIds: ["vap_fusion_images", "vap_fusion_texts", "audio_video_media", "unsupported_or_missing"],
+    expectedTargetIds: [imageTarget.resourceId, textTarget.textKey]
+  });
+  if (ownerSnapshot.issues.length !== 1) {
+    throw new Error("Task fusion VAP owner snapshot repeated equivalent owner-visible issues.");
+  }
   signals.push(signal("vap_fusion_opened", {
     modelStatus: opened.model.status,
     imageTargetHash: sha256Text(imageTarget.resourceId),
-    textTargetHash: sha256Text(textTarget.resourceId)
+    textTargetHash: sha256Text(textTarget.textKey),
+    ownerSnapshotHash: opened.model.ownerRightPanelSnapshotEnvelope.snapshotSha256
   }));
 
   const prepared = await session.prepareRuntimePreview({
@@ -321,7 +341,7 @@ async function proveVapFlow({ session, fixtureSet, replacementDataUri, signals }
 
   const textApply = await applyReplacementWithAuthority({
     session,
-    targetId: textTarget.resourceId,
+    targetId: textTarget.textKey,
     kind: "text",
     value: "Runtime VAP title"
   });
@@ -357,7 +377,7 @@ async function proveVapFlow({ session, fixtureSet, replacementDataUri, signals }
   }
   const resetText = await resetReplacementWithAuthority({
     session,
-    targetId: textTarget.resourceId,
+    targetId: textTarget.textKey,
     kind: "text"
   });
   clearRuntimeValue(runtimeValues, resetText.selection);
@@ -384,9 +404,11 @@ async function proveVapFlow({ session, fixtureSet, replacementDataUri, signals }
     open: {
       status: opened.model.status,
       format: opened.model.detectedFormat,
-      fusionImageCount: opened.model.rightPanel.vapFusionImages.length,
-      fusionTextCount: opened.model.rightPanel.vapFusionTexts.length,
-      issueReasons: opened.model.rightPanel.issues.map((issue) => issue.details?.reason).filter(Boolean)
+      fusionImageCount: ownerSnapshot.imageTargets.length,
+      fusionTextCount: ownerSnapshot.textTargets.length,
+      ownerIssueCount: ownerSnapshot.issues.length,
+      ownerSnapshotHash: opened.model.ownerRightPanelSnapshotEnvelope.snapshotSha256,
+      ownerGroupIds: ownerSnapshot.assetInventory.groups.map(({ id }) => id)
     },
     runtime: {
       status: prepared.status,
@@ -511,6 +533,41 @@ function findLottieAsset(runtime, id) {
 function findLottieTextValue(runtime) {
   const textLayer = runtime.animationData?.layers?.find((layer) => layer?.ty === 5);
   return textLayer?.t?.d?.k?.[0]?.s?.t;
+}
+
+function requireOwnerSnapshot(opened, expectedFormat) {
+  const envelope = opened?.model?.ownerRightPanelSnapshotEnvelope;
+  if (!envelope || envelope.sourceId !== opened.sourceId || envelope.pathRedacted !== true) {
+    throw new Error("Owner right-panel snapshot envelope is not bound to the active source.");
+  }
+  if (Buffer.byteLength(envelope.snapshotJson, "utf8") !== envelope.snapshotByteLength) {
+    throw new Error("Owner right-panel snapshot byte length is invalid.");
+  }
+  if (sha256Text(envelope.snapshotJson) !== envelope.snapshotSha256) {
+    throw new Error("Owner right-panel snapshot digest is invalid.");
+  }
+  const snapshot = JSON.parse(envelope.snapshotJson);
+  if (snapshot.pathRedacted !== true || snapshot.assetInventory?.format !== expectedFormat) {
+    throw new Error("Owner right-panel snapshot format or privacy contract is invalid.");
+  }
+  return snapshot;
+}
+
+function assertOwnerInventoryProjection(snapshot, expected) {
+  const groupIds = snapshot.assetInventory.groups.map(({ id }) => id);
+  if (JSON.stringify(groupIds) !== JSON.stringify(expected.expectedGroupIds)) {
+    throw new Error(`Owner inventory groups drifted: ${groupIds.join(",")}`);
+  }
+  const inventoryTargetIds = snapshot.assetInventory.groups
+    .flatMap(({ items }) => items)
+    .filter(({ replaceable }) => replaceable)
+    .map(({ id }) => id);
+  if (new Set(inventoryTargetIds).size !== inventoryTargetIds.length) {
+    throw new Error("Owner inventory repeats a replaceable public target.");
+  }
+  if (!expected.expectedTargetIds.every((targetId) => inventoryTargetIds.includes(targetId))) {
+    throw new Error("Owner inventory omitted a deterministic replacement target.");
+  }
 }
 
 function signal(phase, detail = {}) {

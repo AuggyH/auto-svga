@@ -252,15 +252,17 @@ export function serializeOwnerRightPanelSnapshot(
 
 function createOwnerRightPanelSnapshot(input: CreateOwnerRightPanelSnapshotInput): OwnerRightPanelSnapshotV1 {
   const format = ownerFormat(input.detectedFormat);
-  const issues = input.issues.map((issue) => ownerIssue(issue));
+  const issues = uniqueOwnerIssues(input.issues.map((issue) => ownerIssue(issue)));
   const unsupportedFeatures = input.unsupportedFeatures.map((entry) => ownerUnsupportedFeature(entry));
-  const assets = input.assets.map((asset, index) => ownerAsset(asset, index));
   const vapFusionTargetIds = new Set(format === "vap"
     ? [
         ...input.vapFusionImages.map((entry, index) => safeIdentifier(entry.resourceId, `vap-image-${index + 1}`)),
         ...input.vapFusionTexts.map((entry, index) => safeIdentifier(entry.resourceId, `vap-text-${index + 1}`))
       ]
     : []);
+  const assets = input.assets
+    .map((asset, index) => ownerAsset(asset, index))
+    .filter((asset) => format !== "vap" || !vapFusionTargetIds.has(asset.id));
   const imageTargets = [
     ...assets
       .filter((asset) => asset.replaceable && !(format === "vap" && vapFusionTargetIds.has(asset.id)))
@@ -319,6 +321,18 @@ function createOwnerRightPanelSnapshot(input: CreateOwnerRightPanelSnapshotInput
   freezeTree(snapshot);
   ownerSnapshotBrand.add(snapshot);
   return snapshot;
+}
+
+function uniqueOwnerIssues(
+  issues: readonly OwnerRightPanelSnapshotIssue[]
+): OwnerRightPanelSnapshotIssue[] {
+  const seen = new Set<string>();
+  return issues.filter((issue) => {
+    const key = `${issue.code}\u0000${issue.severity}\u0000${issue.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function ownerFact(fact: OwnerRightPanelSnapshotFactInput, format?: OwnerSnapshotFormat): OwnerRightPanelSnapshotFact[] {

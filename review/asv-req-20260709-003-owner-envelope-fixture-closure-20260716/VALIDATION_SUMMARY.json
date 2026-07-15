@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "sourceBase": "5d3be93149aa2875acaa53cef2cee06e0788d537",
+  "sourceBranch": "codex/0.2-task-fixture-owner-envelope-20260716",
+  "sourceHead": "commit-containing-this-packet",
+  "productDiffSha256": "342a5a92ad9da6a1fae02d5e91edc2f6e6442955b1882407e6d4113670a1b465",
+  "failureFirst": {
+    "status": "failed-as-expected",
+    "reason": "unexpected duplicate VAP owner group other_resources"
+  },
+  "checks": [
+    { "name": "build", "status": "passed" },
+    { "name": "owner-candidate-focused", "status": "passed", "cases": 2 },
+    { "name": "owner-candidate-complete", "status": "passed", "cases": 19 },
+    { "name": "task-fixture-source-oracle", "status": "passed", "cases": 2 },
+    { "name": "multiformat-conformance", "status": "passed", "cases": 28 },
+    { "name": "host-file-open-session-related", "status": "passed", "cases": 8 },
+    { "name": "test-all", "status": "passed", "cases": 538 },
+    { "name": "design-system", "status": "passed" },
+    { "name": "final-hygiene", "status": "passed" }
+  ],
+  "boundaries": {
+    "sourceOnly": true,
+    "electronLaunched": false,
+    "foregroundUsed": false,
+    "installedAppTouched": false,
+    "ownerMaterialUsed": false,
+    "productionMediaCommitted": false,
+    "packagingRouted": false,
+    "qaRouted": false,
+    "codeReviewRouted": false,
+    "productAcceptanceClaim": false
+  }
+}
