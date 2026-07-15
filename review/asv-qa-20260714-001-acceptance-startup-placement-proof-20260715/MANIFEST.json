@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "packet": "asv-qa-20260714-001-acceptance-startup-placement-proof-20260715",
+  "baseSource": "57b8ef1f1ec55d872514766536f8b1c2df84156e",
+  "branch": "codex/0.2-acceptance-placement-proof-20260715",
+  "productDiffSha256": "9c320367ca6c076d32e16e4b630282c60760c94710ffec5cd638651525cc0a61",
+  "members": [
+    {
+      "path": "README.md",
+      "sizeBytes": 598,
+      "sha256": "8c33ed23ccb31f1d05c0c544b3586aa13c9ffb6250f4a0caa20abbe865d9f883"
+    },
+    {
+      "path": "REVIEW_PACKET.md",
+      "sizeBytes": 1286,
+      "sha256": "328a0be2f6249146832f27f0d393459cde83c9e95e454a2b1726ccf00754c90f"
+    },
+    {
+      "path": "VALIDATION_SUMMARY.json",
+      "sizeBytes": 2028,
+      "sha256": "16c58de7b4b9b7b0b91f00324c465fc5ab1f18571e6bc77f42837bfa24602c3a"
+    }
+  ],
+  "generatedAt": "2026-07-15T15:36:17.017Z"
+}

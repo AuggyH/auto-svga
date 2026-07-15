@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "task": "acceptance-startup-placement-proof",
+  "baseSource": "57b8ef1f1ec55d872514766536f8b1c2df84156e",
+  "branch": "codex/0.2-acceptance-placement-proof-20260715",
+  "productDiffSha256": "9c320367ca6c076d32e16e4b630282c60760c94710ffec5cd638651525cc0a61",
+  "changedProductFiles": [
+    "tools/electron-prototype/experiments/svga-web/acceptance-startup-placement-proof.cjs",
+    "tools/electron-prototype/experiments/svga-web/main.cjs",
+    "tools/electron-prototype/experiments/svga-web/tests/short-term-window-placement.test.mjs"
+  ],
+  "validation": [
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/acceptance-startup-placement-proof.cjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/short-term-window-placement.test.mjs",
+      "status": "PASS",
+      "result": "10/10"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs",
+      "status": "PASS",
+      "result": "28/28"
+    },
+    {
+      "command": "node --test --test-name-pattern <picker/file-open focused group> tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "PASS",
+      "result": "9/9"
+    },
+    {
+      "command": "npm run build",
+      "status": "PASS"
+    },
+    {
+      "command": "npm run test:all",
+      "status": "PASS",
+      "result": "538/538"
+    },
+    {
+      "command": "npm run desktop:short-term:design-system-check",
+      "status": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "status": "PASS"
+    }
+  ],
+  "runtimeActions": {
+    "electronLaunched": false,
+    "autoSvgaLaunched": false,
+    "finderOrChooserOpened": false,
+    "foregroundUsed": false,
+    "installedAppMutated": false,
+    "qaOrPackagingRouted": false
+  }
+}

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -16,6 +18,11 @@ const {
   resolveNormalLaunchPlacement,
   windowPlacementRecordFromBounds
 } = require("../short-term-window-bounds-policy.cjs");
+const {
+  ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE,
+  buildAcceptanceStartupPlacementProof,
+  writeAcceptanceStartupPlacementProof
+} = require("../acceptance-startup-placement-proof.cjs");
 
 const launchSize = { width: 640, height: 640 };
 const minimumSize = { width: 640, height: 640 };
@@ -27,6 +34,49 @@ const secondary = {
   id: 200,
   workArea: { x: 1440, y: 0, width: 1920, height: 1080 }
 };
+const proofPrimary = {
+  id: primary.id,
+  bounds: { x: 0, y: 0, width: 1440, height: 900 },
+  workArea: primary.workArea,
+  scaleFactor: 2
+};
+const proofSecondary = {
+  id: secondary.id,
+  bounds: { x: 1440, y: 0, width: 1920, height: 1080 },
+  workArea: secondary.workArea,
+  scaleFactor: 2
+};
+const acceptedProofPlacement = {
+  status: "accepted",
+  mode: "acceptance",
+  displayId: secondary.id,
+  requestedDisplayId: secondary.id,
+  executionId: "ASV-APR-20260715-089",
+  bounds: { x: 2080, y: 220, width: 640, height: 640 },
+  persist: false
+};
+
+function acceptedProofInput(overrides = {}) {
+  return {
+    artifactRoot: overrides.artifactRoot,
+    placement: overrides.placement ?? acceptedProofPlacement,
+    requestedDisplayId: overrides.requestedDisplayId ?? secondary.id,
+    selectedDisplay: overrides.selectedDisplay ?? proofSecondary,
+    primaryDisplay: overrides.primaryDisplay ?? proofPrimary,
+    windowBounds: overrides.windowBounds ?? acceptedProofPlacement.bounds,
+    runtimeInstanceId: "runtime-instance-proof",
+    productMilestoneId: "0.2-multiformat-preview",
+    headCommit: "57b8ef1f1ec55d872514766536f8b1c2df84156e",
+    packagedRuntimeBuildInfo: {
+      buildCommit: "57b8ef1f1ec55d872514766536f8b1c2df84156e",
+      source: "package-internal-trial",
+      productMilestoneId: "0.2-multiformat-preview",
+      privatePath: "/must/not/appear"
+    },
+    generatedAt: "2026-07-15T08:00:00.000Z",
+    ...overrides
+  };
+}
 
 test("normal launch restores a validated placement and falls back before first frame", () => {
   const fallback = resolveNormalLaunchPlacement({
@@ -320,6 +370,106 @@ test("accepted display is resolved before construction and never persists", () =
   }
 });
 
+test("acceptance startup placement proof writes a bounded pre-input artifact", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "auto-svga-acceptance-proof-"));
+  try {
+    const result = writeAcceptanceStartupPlacementProof(acceptedProofInput({ artifactRoot: root }));
+    assert.equal(result.status, "written");
+    assert.equal(result.fileName, ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE);
+    const proofPath = path.join(root, ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE);
+    assert.equal(existsSync(proofPath), true);
+    const proofText = readFileSync(proofPath, "utf8");
+    const proof = JSON.parse(proofText);
+    assert.equal(proof.status, "accepted");
+    assert.equal(proof.executionId, "ASV-APR-20260715-089");
+    assert.equal(proof.requestedDisplayId, secondary.id);
+    assert.equal(proof.resolvedDisplayId, secondary.id);
+    assert.equal(proof.mainDisplayId, primary.id);
+    assert.deepEqual(proof.windowBounds, acceptedProofPlacement.bounds);
+    assert.equal(proof.selectedDisplay.id, secondary.id);
+    assert.equal(proof.primaryDisplay.id, primary.id);
+    assert.equal(proof.containment, true);
+    assert.equal(proof.disjointFromPrimary, true);
+    assert.equal(proof.placementMode, "acceptance");
+    assert.equal(proof.runtimeInstanceId, "runtime-instance-proof");
+    assert.equal(proof.productIdentity.productMilestoneId, "0.2-multiformat-preview");
+    assert.equal(proof.productIdentity.packagedRuntimeBuildInfo.buildCommit, "57b8ef1f1ec55d872514766536f8b1c2df84156e");
+    assert.equal(proof.productIdentity.packagedRuntimeBuildInfo.privatePath, undefined);
+    assert.equal(proof.privacy.pathRedacted, true);
+    assert.equal(proof.privacy.screenshots, false);
+    assert.equal(proof.privacy.axTree, false);
+    assert.equal(proof.privacy.materialNames, false);
+    assert.equal(proof.privacy.ownerPreferenceMutated, false);
+    assert.equal(proof.passed, true);
+    assert.equal(proofText.includes(root), false);
+    assert.equal(proofText.includes("/must/not/appear"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("acceptance startup placement proof rejects unsafe or inexact launches before product input", () => {
+  const rejectionCases = [
+    {
+      name: "missing execution id",
+      input: acceptedProofInput({ placement: { ...acceptedProofPlacement, executionId: "" } }),
+      reason: "acceptance_execution_unbound"
+    },
+    {
+      name: "wrong requested display",
+      input: acceptedProofInput({ requestedDisplayId: 201 }),
+      reason: "acceptance_display_mismatch"
+    },
+    {
+      name: "window bounds drift",
+      input: acceptedProofInput({ windowBounds: { ...acceptedProofPlacement.bounds, x: acceptedProofPlacement.bounds.x + 1 } }),
+      reason: "acceptance_window_bounds_drift"
+    },
+    {
+      name: "selected display is primary",
+      input: acceptedProofInput({
+        placement: { ...acceptedProofPlacement, displayId: primary.id, requestedDisplayId: primary.id, bounds: { x: 400, y: 142, width: 640, height: 640 } },
+        requestedDisplayId: primary.id,
+        selectedDisplay: proofPrimary,
+        windowBounds: { x: 400, y: 142, width: 640, height: 640 }
+      }),
+      reason: "acceptance_primary_overlap"
+    },
+    {
+      name: "window is outside selected display",
+      input: acceptedProofInput({
+        placement: { ...acceptedProofPlacement, bounds: { x: 120, y: 120, width: 640, height: 640 } },
+        windowBounds: { x: 120, y: 120, width: 640, height: 640 }
+      }),
+      reason: "acceptance_window_not_contained"
+    },
+    {
+      name: "runtime identity missing",
+      input: acceptedProofInput({ runtimeInstanceId: "" }),
+      reason: "acceptance_runtime_instance_missing"
+    }
+  ];
+  for (const fixture of rejectionCases) {
+    const result = buildAcceptanceStartupPlacementProof(fixture.input);
+    assert.equal(result.status, "rejected", fixture.name);
+    assert.equal(result.reason, fixture.reason, fixture.name);
+  }
+
+  const invalidRoot = writeAcceptanceStartupPlacementProof(acceptedProofInput({ artifactRoot: "relative-artifacts" }));
+  assert.equal(invalidRoot.status, "rejected");
+  assert.equal(invalidRoot.reason, "acceptance_artifact_root_invalid");
+
+  const root = mkdtempSync(path.join(os.tmpdir(), "auto-svga-acceptance-proof-collision-"));
+  try {
+    assert.equal(writeAcceptanceStartupPlacementProof(acceptedProofInput({ artifactRoot: root })).status, "written");
+    const collision = writeAcceptanceStartupPlacementProof(acceptedProofInput({ artifactRoot: root }));
+    assert.equal(collision.status, "rejected");
+    assert.equal(collision.reason, "acceptance_placement_proof_exists");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("only normal owner bounds become a placement preference", () => {
   const saved = windowPlacementRecordFromBounds({
     bounds: { x: 1500, y: 80, width: 1280, height: 800 },
@@ -372,9 +522,15 @@ test("main resolves placement before BrowserWindow and persists only owner-drive
   const resolverIndex = source.indexOf("resolveInitialMultiFormatWindowPlacement()");
   const displaysIndex = source.indexOf("screen.getAllDisplays()", resolverIndex);
   const browserWindowIndex = source.indexOf("new BrowserWindow", resolverIndex);
+  const proofImportIndex = source.indexOf("acceptance-startup-placement-proof.cjs");
+  const proofCallIndex = source.indexOf("requireAcceptanceStartupPlacementProof(window, initialPlacement)", browserWindowIndex);
+  const loadUrlIndex = source.indexOf("window.loadURL(rendererUrl)", browserWindowIndex);
   assert.ok(resolverIndex >= 0, "missing initial placement resolver");
   assert.ok(displaysIndex > resolverIndex, "online displays must resolve inside the initial placement boundary");
   assert.ok(browserWindowIndex > displaysIndex, "display placement must resolve before BrowserWindow construction");
+  assert.ok(proofImportIndex >= 0, "missing acceptance startup placement proof contract import");
+  assert.ok(proofCallIndex > browserWindowIndex, "acceptance placement proof must run after BrowserWindow construction");
+  assert.ok(proofCallIndex < loadUrlIndex, "acceptance placement proof must run before renderer load or product input");
   assert.equal(source.match(/new BrowserWindow\s*\(/gu)?.length, 1, "startup must have one BrowserWindow constructor");
   assert.match(source, /app\.whenReady\(\)\.then\(createExperimentWindow\)/u);
   assert.match(source.slice(resolverIndex, browserWindowIndex), /revalidateAcceptanceLaunchPlacement[\s\S]*screen\.getAllDisplays\(\)/u);
@@ -383,6 +539,8 @@ test("main resolves placement before BrowserWindow and persists only owner-drive
   const ownershipIndex = source.indexOf("activeMainWindow = window", browserWindowIndex);
   const initialConstructionBody = source.slice(createStart, ownershipIndex);
   assert.doesNotMatch(initialConstructionBody, /\.(?:setBounds|setPosition|center)\s*\(/u);
+  assert.match(source, /process\.env\.AUTO_SVGA_PRODUCT_ARTIFACTS/u);
+  assert.match(source, /window\.destroy\(\)[\s\S]*window_placement_rejected/u);
   assert.match(source, /normal-window-placement-v1\.json/u);
   assert.match(source, /readWindowPlacementPreference/u);
   assert.match(source, /writeWindowPlacementPreference/u);

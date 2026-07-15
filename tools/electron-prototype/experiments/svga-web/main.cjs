@@ -44,6 +44,9 @@ const {
 const {
   chooseMultiFormatLocalFile
 } = require("./multiformat-native-picker.cjs");
+const {
+  writeAcceptanceStartupPlacementProof
+} = require("./acceptance-startup-placement-proof.cjs");
 
 const smokeMode = process.argv.includes("--smoke");
 const productSmokeMode = smokeMode && process.argv.includes("--product-smoke");
@@ -376,7 +379,8 @@ function resolveInitialMultiFormatWindowPlacement() {
   return {
     ...placement,
     mode,
-    preferenceStatus
+    preferenceStatus,
+    requestedDisplayId: acceptanceRequest.status === "accepted" ? acceptanceRequest.displayId : undefined
   };
 }
 
@@ -402,6 +406,33 @@ function displaySnapshot(display) {
     bounds: display?.bounds,
     workArea: display?.workArea
   };
+}
+
+function requireAcceptanceStartupPlacementProof(window, placement) {
+  if (placement?.mode !== "acceptance") return;
+  const displays = screen.getAllDisplays();
+  const selectedDisplayMatches = displays.filter((display) => display?.id === placement.displayId);
+  const selectedDisplay = selectedDisplayMatches.length === 1 ? selectedDisplayMatches[0] : undefined;
+  const proofResult = writeAcceptanceStartupPlacementProof({
+    artifactRoot: process.env.AUTO_SVGA_PRODUCT_ARTIFACTS,
+    placement,
+    requestedDisplayId: placement.requestedDisplayId,
+    selectedDisplay,
+    primaryDisplay: screen.getPrimaryDisplay(),
+    windowBounds: window.getBounds(),
+    runtimeInstanceId,
+    productMilestoneId,
+    headCommit: productArtifactIndex.headCommit,
+    packagedRuntimeBuildInfo
+  });
+  if (proofResult.status !== "written") {
+    try {
+      window.destroy();
+    } catch {
+      // The launch is already failing closed; destruction errors are not owner-visible.
+    }
+    throw new Error(`window_placement_rejected:${proofResult.reason ?? "acceptance_placement_proof_failed"}`);
+  }
 }
 
 function setWindowBoundsWithoutRecordingUserResize(window, bounds, animate = false) {
@@ -6895,6 +6926,7 @@ async function createExperimentWindow() {
     ? resolveInitialMultiFormatWindowPlacement()
     : undefined;
   if (initialPlacement?.mode === "acceptance") {
+    const requestedDisplayId = initialPlacement.requestedDisplayId;
     const revalidatedPlacement = revalidateAcceptanceLaunchPlacement({
       placement: initialPlacement,
       displays: screen.getAllDisplays(),
@@ -6903,7 +6935,7 @@ async function createExperimentWindow() {
     if (revalidatedPlacement.status === "rejected") {
       throw new Error(`window_placement_rejected:${revalidatedPlacement.reason}`);
     }
-    initialPlacement = { ...revalidatedPlacement, mode: "acceptance", preferenceStatus: "not-read" };
+    initialPlacement = { ...revalidatedPlacement, mode: "acceptance", preferenceStatus: "not-read", requestedDisplayId };
   }
   activeWindowPlacementMode = initialPlacement?.mode ?? "legacy";
   const launchBounds = initialPlacement?.bounds ?? (
@@ -6940,6 +6972,7 @@ async function createExperimentWindow() {
       })
     }
   });
+  requireAcceptanceStartupPlacementProof(window, initialPlacement);
   activeMainWindow = window;
   installApplicationMenu(window);
   installShortTermWindowBoundsPolicy(window);
