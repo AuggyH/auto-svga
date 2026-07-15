@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "task": "acceptance-placement-bootstrap-proof-repair",
+  "requirementId": "ASV-REQ-20260709-003",
+  "qaTicketId": "ASV-QA-20260714-001",
+  "baseHead": "02cacf279d2a5b047b526f0d10241560681cec87",
+  "branch": "codex/0.2-acceptance-placement-bootstrap-proof-20260716",
+  "productDiffSha256": "cdd1c9756df2e9007e4d478d98668d0f55ec1b3a60015d9e5d3ac949dbb72603",
+  "validation": [
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/main.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/acceptance-startup-placement-proof.cjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --check tools/electron-prototype/experiments/svga-web/scripts/macos-package-proof.mjs",
+      "status": "passed"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/short-term-window-placement.test.mjs",
+      "status": "passed",
+      "summary": "10/10"
+    },
+    {
+      "command": "env NODE_PATH=/Users/huangtengxin/.codex/worktrees/d657/auto-svga/tools/electron-prototype/node_modules node --test --test-name-pattern \"macOS internal package scaffold|macOS package proof rejects missing or stale\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "passed",
+      "summary": "2/2",
+      "dependencySource": "read-only hash-matched d657 node_modules; no install/download/symlink"
+    },
+    {
+      "command": "node --test --test-name-pattern \"native picker|picker|open file|open/cancel|Cancel|chooser|file picker|host-owned intake|unsupported extension|picker exception\" tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs",
+      "status": "passed",
+      "summary": "8/8"
+    },
+    {
+      "command": "node --test --test-name-pattern \"native picker|picker|open file|open/cancel|Cancel|chooser|file picker|host-owned intake|unsupported extension|picker exception|0\\\\.2 installed file-open\" tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs",
+      "status": "passed",
+      "summary": "6/6"
+    },
+    {
+      "command": "node --test tools/electron-prototype/experiments/svga-web/tests/short-term-window-placement-store.test.mjs",
+      "status": "passed",
+      "summary": "9/9"
+    },
+    {
+      "command": "npm run build",
+      "status": "passed"
+    },
+    {
+      "command": "npm run test:all",
+      "status": "passed",
+      "summary": "538/538"
+    },
+    {
+      "command": "node tools/electron-prototype/experiments/svga-web/scripts/check-short-term-design-system.mjs",
+      "status": "passed"
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    },
+    {
+      "command": "strict TASK_RETRO_LEDGER JSONL parse",
+      "status": "passed"
+    },
+    {
+      "command": "package/lockfile changed-path scan",
+      "status": "passed",
+      "summary": "no output"
+    },
+    {
+      "command": "media/archive changed-path scan",
+      "status": "passed",
+      "summary": "no output"
+    },
+    {
+      "command": "env NODE_PATH=/Users/huangtengxin/.codex/worktrees/d657/auto-svga/tools/electron-prototype/node_modules npm --prefix tools/electron-prototype/experiments/svga-web run spike:svga-web:test",
+      "status": "not_passed_environment_blocked",
+      "summary": "stopped during prepare-runtime.mjs because local runtime dependency long is absent; no Electron launch"
+    }
+  ],
+  "boundaries": {
+    "electronLaunched": false,
+    "foregroundUsed": false,
+    "finderOrDialogUsed": false,
+    "installedAppMutated": false,
+    "packagingRouted": false,
+    "qaRouted": false,
+    "codeReviewRouted": false,
+    "ownerMaterialMutated": false,
+    "productOwnerAcceptanceClaimed": false,
+    "supportDistributionOrReleaseClaimed": false
+  }
+}

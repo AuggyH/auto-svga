@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "packet": "asv-qa-20260714-001-acceptance-placement-bootstrap-proof-repair-20260716",
+  "requirementId": "ASV-REQ-20260709-003",
+  "qaTicketId": "ASV-QA-20260714-001",
+  "baseHead": "02cacf279d2a5b047b526f0d10241560681cec87",
+  "branch": "codex/0.2-acceptance-placement-bootstrap-proof-20260716",
+  "productDiffSha256": "cdd1c9756df2e9007e4d478d98668d0f55ec1b3a60015d9e5d3ac949dbb72603",
+  "members": [
+    {
+      "path": "README.md",
+      "sha256": "b2f2cc45a87423ccd938b4fdff693c3dc7c04d41a0808a5b146a24e44bb83863"
+    },
+    {
+      "path": "REVIEW_PACKET.md",
+      "sha256": "bfec3d4ff4952cb4630a21b87fbeda007f70b5a9be8a0d8b3793fbf902407a26"
+    },
+    {
+      "path": "VALIDATION_SUMMARY.json",
+      "sha256": "cfca320645e8408b75374dae26bf526e1ad848a6b39e3b854a9aa11180aaa742"
+    },
+    {
+      "path": "../../docs/reviews/2026-07-16-codex-acceptance-placement-bootstrap-proof-repair.md",
+      "sha256": "3d57b0851da8366cbe360ca923dde4843368275c978b2c885918d46a31c79991"
+    }
+  ],
+  "boundaries": {
+    "sourceOnly": true,
+    "electronLaunched": false,
+    "foregroundUsed": false,
+    "installedAppMutated": false,
+    "qaRouted": false,
+    "packagingRouted": false,
+    "codeReviewRouted": false
+  }
+}

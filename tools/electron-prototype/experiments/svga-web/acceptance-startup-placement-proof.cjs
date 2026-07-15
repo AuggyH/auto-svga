@@ -146,6 +146,73 @@ function buildAcceptanceStartupPlacementProof(input) {
   return { status: "accepted", proof };
 }
 
+function buildRejectedAcceptanceStartupPlacementProof(input, reason) {
+  const executionId = typeof input?.placement?.executionId === "string" && input.placement.executionId.length > 0
+    ? input.placement.executionId
+    : undefined;
+  const requestedDisplayId = Number.isSafeInteger(input?.requestedDisplayId ?? input?.placement?.requestedDisplayId ?? input?.placement?.displayId)
+    ? input.requestedDisplayId ?? input.placement.requestedDisplayId ?? input.placement.displayId
+    : undefined;
+  const resolvedDisplayId = Number.isSafeInteger(input?.placement?.displayId)
+    ? input.placement.displayId
+    : undefined;
+  const selectedDisplay = snapshotDisplay(input?.selectedDisplay);
+  const primaryDisplay = snapshotDisplay(input?.primaryDisplay);
+  const windowBounds = strictRect(input?.windowBounds);
+  const containment = Boolean(windowBounds && selectedDisplay && isWindowContainedInWorkArea(windowBounds, selectedDisplay.workArea));
+  const disjointFromPrimary = Boolean(windowBounds && selectedDisplay && primaryDisplay
+    && selectedDisplay.id !== primaryDisplay.id
+    && rectIntersectionArea(windowBounds, primaryDisplay.bounds) === 0);
+  const generatedAt = typeof input?.generatedAt === "string" ? input.generatedAt : new Date().toISOString();
+  const runtimeInstanceId = typeof input?.runtimeInstanceId === "string" && input.runtimeInstanceId.length > 0
+    ? input.runtimeInstanceId
+    : undefined;
+  const proof = {
+    schemaVersion: 1,
+    proofId: "acceptance-startup-placement-proof",
+    status: "rejected",
+    placementMode: input?.placement?.mode === "acceptance" ? "acceptance" : "unknown",
+    reason: typeof reason === "string" && reason.length > 0 ? reason : "acceptance_placement_proof_failed",
+    executionId,
+    requestedDisplayId,
+    resolvedDisplayId,
+    mainDisplayId: primaryDisplay?.id,
+    windowBounds,
+    selectedDisplay,
+    primaryDisplay,
+    containment,
+    disjointFromPrimary,
+    runtimeInstanceId,
+    productIdentity: {
+      productMilestoneId: typeof input?.productMilestoneId === "string" ? input.productMilestoneId : undefined,
+      headCommit: typeof input?.headCommit === "string" ? input.headCommit : undefined,
+      packagedRuntimeBuildInfo: publicBuildInfo(input?.packagedRuntimeBuildInfo)
+    },
+    privacy: {
+      pathRedacted: true,
+      screenshots: false,
+      axTree: false,
+      materialNames: false,
+      ownerPreferenceMutated: false
+    },
+    generatedAt,
+    passed: false
+  };
+  proof.digest = createHash("sha256").update(JSON.stringify({
+    status: proof.status,
+    reason: proof.reason,
+    executionId,
+    requestedDisplayId,
+    resolvedDisplayId,
+    windowBounds,
+    selectedDisplay,
+    primaryDisplay,
+    runtimeInstanceId,
+    productIdentity: proof.productIdentity
+  })).digest("hex");
+  return proof;
+}
+
 function validateArtifactRoot(root) {
   if (typeof root !== "string" || root.length === 0) return rejected("acceptance_artifact_root_missing");
   if (root.includes("\0") || !path.isAbsolute(root)) return rejected("acceptance_artifact_root_invalid");
@@ -156,9 +223,11 @@ function writeAcceptanceStartupPlacementProof(input, fsApi = { mkdirSync, openSy
   const root = validateArtifactRoot(input?.artifactRoot);
   if (root.status !== "accepted") return root;
   const built = buildAcceptanceStartupPlacementProof(input);
-  if (built.status !== "accepted") return built;
+  const proof = built.status === "accepted"
+    ? built.proof
+    : buildRejectedAcceptanceStartupPlacementProof(input, built.reason);
   const proofPath = path.join(root.root, ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE);
-  const bytes = Buffer.from(`${JSON.stringify(built.proof, null, 2)}\n`);
+  const bytes = Buffer.from(`${JSON.stringify(proof, null, 2)}\n`);
   let fd;
   try {
     fsApi.mkdirSync(root.root, { recursive: true });
@@ -182,12 +251,13 @@ function writeAcceptanceStartupPlacementProof(input, fsApi = { mkdirSync, openSy
   return {
     status: "written",
     fileName: ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE,
-    proof: built.proof
+    proof
   };
 }
 
 module.exports = {
   ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE,
   buildAcceptanceStartupPlacementProof,
+  buildRejectedAcceptanceStartupPlacementProof,
   writeAcceptanceStartupPlacementProof
 };

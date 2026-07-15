@@ -459,6 +459,27 @@ test("acceptance startup placement proof rejects unsafe or inexact launches befo
   assert.equal(invalidRoot.status, "rejected");
   assert.equal(invalidRoot.reason, "acceptance_artifact_root_invalid");
 
+  const rejectedRoot = mkdtempSync(path.join(os.tmpdir(), "auto-svga-acceptance-proof-rejected-"));
+  try {
+    const rejectedWrite = writeAcceptanceStartupPlacementProof(acceptedProofInput({
+      artifactRoot: rejectedRoot,
+      windowBounds: { ...acceptedProofPlacement.bounds, x: acceptedProofPlacement.bounds.x + 1 }
+    }));
+    assert.equal(rejectedWrite.status, "written");
+    assert.equal(rejectedWrite.proof.status, "rejected");
+    assert.equal(rejectedWrite.proof.reason, "acceptance_window_bounds_drift");
+    assert.equal(rejectedWrite.proof.passed, false);
+    const rejectedProofText = readFileSync(path.join(rejectedRoot, ACCEPTANCE_STARTUP_PLACEMENT_PROOF_FILE), "utf8");
+    const rejectedProof = JSON.parse(rejectedProofText);
+    assert.equal(rejectedProof.status, "rejected");
+    assert.equal(rejectedProof.reason, "acceptance_window_bounds_drift");
+    assert.equal(rejectedProof.privacy.pathRedacted, true);
+    assert.equal(rejectedProofText.includes(rejectedRoot), false);
+    assert.equal(rejectedProofText.includes("/must/not/appear"), false);
+  } finally {
+    rmSync(rejectedRoot, { recursive: true, force: true });
+  }
+
   const root = mkdtempSync(path.join(os.tmpdir(), "auto-svga-acceptance-proof-collision-"));
   try {
     assert.equal(writeAcceptanceStartupPlacementProof(acceptedProofInput({ artifactRoot: root })).status, "written");
@@ -522,17 +543,22 @@ test("main resolves placement before BrowserWindow and persists only owner-drive
   const resolverIndex = source.indexOf("resolveInitialMultiFormatWindowPlacement()");
   const displaysIndex = source.indexOf("screen.getAllDisplays()", resolverIndex);
   const browserWindowIndex = source.indexOf("new BrowserWindow", resolverIndex);
-  const proofImportIndex = source.indexOf("acceptance-startup-placement-proof.cjs");
+  const proofLoaderIndex = source.indexOf("function loadAcceptanceStartupPlacementProofWriter()");
+  const proofRequireIndex = source.indexOf('require("./acceptance-startup-placement-proof.cjs")');
   const proofCallIndex = source.indexOf("requireAcceptanceStartupPlacementProof(window, initialPlacement)", browserWindowIndex);
   const loadUrlIndex = source.indexOf("window.loadURL(rendererUrl)", browserWindowIndex);
   assert.ok(resolverIndex >= 0, "missing initial placement resolver");
   assert.ok(displaysIndex > resolverIndex, "online displays must resolve inside the initial placement boundary");
   assert.ok(browserWindowIndex > displaysIndex, "display placement must resolve before BrowserWindow construction");
-  assert.ok(proofImportIndex >= 0, "missing acceptance startup placement proof contract import");
+  assert.ok(proofLoaderIndex >= 0, "missing acceptance startup placement proof lazy loader");
+  assert.ok(proofRequireIndex > proofLoaderIndex, "placement proof helper must load inside the bootstrap-safe lazy loader");
+  assert.doesNotMatch(source.slice(0, proofLoaderIndex), /acceptance-startup-placement-proof\.cjs/u);
   assert.ok(proofCallIndex > browserWindowIndex, "acceptance placement proof must run after BrowserWindow construction");
   assert.ok(proofCallIndex < loadUrlIndex, "acceptance placement proof must run before renderer load or product input");
   assert.equal(source.match(/new BrowserWindow\s*\(/gu)?.length, 1, "startup must have one BrowserWindow constructor");
   assert.match(source, /app\.whenReady\(\)\.then\(createExperimentWindow\)/u);
+  assert.match(source, /writeAcceptanceStartupBootstrapFailureArtifact\(acceptanceStartupFailureReason\(error\), error\)/u);
+  assert.match(source, /proofResult\.status !== "written" \|\| proofResult\.proof\?\.status !== "accepted"/u);
   assert.match(source.slice(resolverIndex, browserWindowIndex), /revalidateAcceptanceLaunchPlacement[\s\S]*screen\.getAllDisplays\(\)/u);
   assert.match(source.slice(browserWindowIndex, browserWindowIndex + 900), /x: launchBounds\.x,[\s\S]*y: launchBounds\.y/u);
   const createStart = source.indexOf("async function createExperimentWindow()");

@@ -38,11 +38,13 @@ const appIconSourcePath = path.join(experimentRoot, "packaging/macos/app-icon-so
 const appIconPath = path.join(experimentRoot, "packaging/macos/app-icon.icns");
 export const windowPlacementPackagedSourceFiles = [
   "main.cjs",
+  "acceptance-startup-placement-proof.cjs",
   "short-term-window-bounds-policy.cjs",
   "short-term-window-placement-store.cjs"
 ];
 export const windowPlacementPackagedSourceAuthorities = Object.freeze({
   acceptanceParser: "short-term-window-bounds-policy.cjs",
+  startupProof: "acceptance-startup-placement-proof.cjs",
   boundsPolicy: "short-term-window-bounds-policy.cjs",
   preferenceStore: "short-term-window-placement-store.cjs",
   candidateChannel: "main.cjs",

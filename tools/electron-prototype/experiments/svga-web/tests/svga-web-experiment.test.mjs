@@ -463,6 +463,7 @@ async function createPackagedProofFixture({
   buildCommit,
   omitRuntimeEntries = [],
   packageVersionOverrides = {},
+  omitWindowPlacementSourceFiles = [],
   windowPlacementSourceTransforms = {},
   plistTransform = (plist) => plist
 }) {
@@ -502,6 +503,7 @@ async function createPackagedProofFixture({
     }
   }
   for (const relativePath of windowPlacementPackagedSourceFiles) {
+    if (omitWindowPlacementSourceFiles.includes(relativePath)) continue;
     const source = await readFile(path.join(experimentRoot, relativePath));
     const transform = windowPlacementSourceTransforms[relativePath];
     const packagedSource = transform ? Buffer.from(transform(source.toString("utf8")), "utf8") : source;
@@ -678,6 +680,10 @@ test("macOS package proof manifest records audit boundaries without final App ac
     proof.packagingScaffold.windowPlacementSourceClosure.files.map((file) => file.path),
     windowPlacementPackagedSourceFiles
   );
+  assert.ok(
+    proof.packagingScaffold.windowPlacementSourceClosure.files.some((file) => file.path === "acceptance-startup-placement-proof.cjs"),
+    "acceptance startup proof helper must be part of the package source closure"
+  );
   assert.ok(proof.packagingScaffold.windowPlacementSourceClosure.files.every((file) => (
     typeof file.sourceSha256 === "string"
     && file.sourceSha256.length === 64
@@ -835,6 +841,19 @@ test("macOS package proof rejects missing or stale 0.2 runtime dependency closur
       () => buildMacosPackageProof({
         appBundle: sourceDrift.appBundle,
         archivePath: sourceDrift.archivePath
+      }),
+      /windowPlacementSourceClosure/
+    );
+
+    const missingPlacementProof = await createPackagedProofFixture({
+      root: path.join(root, "missing-placement-proof"),
+      buildCommit: expectedBuildCommit,
+      omitWindowPlacementSourceFiles: ["acceptance-startup-placement-proof.cjs"]
+    });
+    await assert.rejects(
+      () => buildMacosPackageProof({
+        appBundle: missingPlacementProof.appBundle,
+        archivePath: missingPlacementProof.archivePath
       }),
       /windowPlacementSourceClosure/
     );
