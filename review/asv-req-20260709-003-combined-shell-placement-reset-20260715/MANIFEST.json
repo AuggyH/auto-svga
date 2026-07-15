@@ -8,6 +8,12 @@
     "VALIDATION_SUMMARY.json",
     "MANIFEST.json"
   ],
+  "fileSha256": {
+    "README.md": "4a9648a5adf5a1fa79055cd2f155b296cd31d39e53113285fdf545e9d5f20fee",
+    "REVIEW_PACKET.md": "f74081182d96a5b092e381ee0da57427fba266ffc23bf0352d81d4f076c5d07d",
+    "VALIDATION_SUMMARY.json": "3b5780ea4d1b40cc1d01284e2a29ba9c090ff5d9778d2052e8c3f8ffbd344016"
+  },
+  "selfHashPolicy": "MANIFEST.json and review ZIP hashes are bound by the final Implementation Ready callback because embedding their own final hashes would be self-referential.",
   "inputHeads": {
     "reset": "6a4640875a8bddf5ae2ecbe04334b5cd167a21b3",
     "placement": "093fcdc7329e11095832fa5ccd2ebbc900bae3b2",

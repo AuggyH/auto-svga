@@ -20,12 +20,17 @@
     {"command": "npm run test:all", "result": "PASS 538/538"},
     {"command": "npm run desktop:short-term:design-system-check", "result": "PASS"},
     {"command": "git diff --check", "result": "PASS"},
-    {"command": "TASK_RETRO_LEDGER JSONL parse", "result": "PASS"}
+    {"command": "TASK_RETRO_LEDGER strict line-by-line JSONL parse", "result": "PASS 172/172"}
   ],
   "dependencyOverlay": {
     "used": true,
     "reason": "all Electron source tests required hash-matched local dependency tree",
     "removedAfterValidation": true
+  },
+  "handoffHygieneRepair": {
+    "blankJsonlLineRemoved": true,
+    "productSourceChangedAfterC517bc0f": false,
+    "packetResealed": true
   },
   "nonclaims": [
     "installed QA",

@@ -67,7 +67,7 @@ git diff --check
 PASS
 
 TASK_RETRO_LEDGER JSONL parse
-PASS
+PASS strict line-by-line parse, 172 rows
 ```
 
 ## Dependency Overlay
@@ -81,6 +81,7 @@ The all-Electron source test group used the established temporary ignored overla
 - No installed app mutation.
 - No foreground action.
 - Classified `.pnpm-store/` residue preserved.
+- Blank-line JSONL handoff artifact repaired and packet resealed.
 
 ## Boundaries
 

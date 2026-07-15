@@ -110,7 +110,7 @@ git diff --check
 PASS
 
 TASK_RETRO_LEDGER JSONL parse
-PASS 171 rows before final appended row
+PASS strict line-by-line parse, 172 rows
 ```
 
 Temporary dependency overlay note:
@@ -123,6 +123,7 @@ Temporary dependency overlay note:
 
 - Package/lockfile changed-path scan: no package or lockfile drift.
 - Media/archive scan: only approved UI/UX review ZIPs plus this combined review ZIP are expected.
+- Handoff hygiene repair: removed the blank JSONL line before the combined milestone ledger entry and resealed the review packet ZIP.
 - Production/owner assets: no production assets added or committed.
 - Foreground/install: not run.
 
