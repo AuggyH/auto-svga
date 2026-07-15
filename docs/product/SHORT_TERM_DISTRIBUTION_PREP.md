@@ -160,6 +160,45 @@ The promotion command is intentionally stricter than a manual copy:
 7. Registers the installed app with Launch Services.
 8. Writes a local promotion manifest under `.artifacts/local-stable-app/`.
 
+### Local Recovery Inspection And Rollback
+
+The same repository-owned command exposes recovery modes, but none of them is
+an implicit promotion or rollback permit:
+
+```bash
+npm run svga-workbench:v1:promote-local-stable -- --inspect
+npm run svga-workbench:v1:promote-local-stable -- --help
+```
+
+`--inspect` is strictly read-only. It reports the current candidate, installed
+app, and previous app without accepting rollback authority, registering Launch
+Services, copying an app, or changing a manifest. It rejects duplicate flags,
+rollback ids, rollback bindings, and conflicting target sources before any
+rollback path is derived.
+
+`--rollback-previous` is a separate single-use operation. It requires a safe
+`--rollback-id` plus caller-supplied full build commit, `Info.plist` SHA-256,
+`app.asar` SHA-256, and embedded build-info SHA-256 for both the installed and
+previous apps. It rejects stale or same-build identities, running or ambiguous
+target processes, path aliases, escaping symlinks, hardlinks, mid-read object
+replacement, residue, and manifest collisions. After staging and validating a
+copy of the previous app, it exchanges the installed and previous directory
+entries with macOS `renameatx_np(RENAME_SWAP)`; there is no sequential rename
+fallback. Launch Services registration occurs only after the exchanged bytes
+pass their exact postconditions. The final no-overwrite rollback manifest is
+fsynced and records `retrySafe=false` and one invocation.
+
+`--recover-rollback` never starts another rollback attempt. Under a separate
+explicit recovery authority and safe `--rollback-id`, it reads an existing
+durable journal and either removes pre-swap residue while preserving the
+original roles, or completes manifest/registration work for an already
+atomically exchanged pair. Recovery re-derives the final installed/previous
+byte catalogs from disk and refuses stale, partial, or tampered existing
+manifests before journal cleanup. Any unbound or mixed role state remains
+failed closed for manual governance review.
+Neither rollback nor recovery downloads dependencies, rebuilds a package,
+launches the app, uses Finder, or manually copies an app into Applications.
+
 `--use-existing` may be used only when a current-head internal package already
 exists and the agent wants to avoid rebuilding from an unrelated dirty
 worktree. It must not be used to claim uncommitted work is installed. If the
