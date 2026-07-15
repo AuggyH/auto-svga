@@ -551,6 +551,99 @@ test("recovery rejects a tampered manifest for already swapped app roles", () =>
   }
 });
 
+test("recovery rejects non-journal-bound rollback manifest mutations and preserves the journal", () => {
+  const tamperCases = [
+    {
+      name: "processPrecheck",
+      mutate: (manifest) => {
+        manifest.processPrecheck = { tampered: "accepted" };
+      }
+    },
+    {
+      name: "performedAt",
+      mutate: (manifest) => {
+        manifest.performedAt = "2026-01-01T00:00:00.000Z";
+      }
+    },
+    {
+      name: "extra field",
+      mutate: (manifest) => {
+        manifest.extraAuthority = "not-durable";
+      }
+    },
+    {
+      name: "missing field",
+      mutate: (manifest) => {
+        delete manifest.processPrecheck;
+      }
+    },
+    {
+      name: "journal manifest hash mismatch",
+      mutate: (_manifest, journal) => {
+        journal.manifestSha256 = "0".repeat(64);
+      }
+    }
+  ];
+
+  for (const { name, mutate } of tamperCases) {
+    const fixture = makeRollbackFixture();
+    try {
+      assert.throws(() => rollbackPreviousApp({
+        ...fixture,
+        dependencies: fixtureDependencies({
+          checkpoint: (phase) => {
+            if (phase === "after-manifest-published") throw new Error(`simulated crash after manifest:${name}`);
+          }
+        })
+      }), /simulated crash after manifest/);
+      assertRoleState(fixture, "swapped-roles");
+      assert.equal(existsSync(fixture.rollbackManifestPath), true);
+      assert.equal(existsSync(fixture.rollbackJournalPath), true);
+
+      const manifest = JSON.parse(readFileSync(fixture.rollbackManifestPath, "utf8"));
+      const journal = JSON.parse(readFileSync(fixture.rollbackJournalPath, "utf8"));
+      mutate(manifest, journal);
+      writeFileSync(fixture.rollbackManifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+      writeFileSync(fixture.rollbackJournalPath, `${JSON.stringify(journal, null, 2)}\n`);
+
+      assert.throws(() => recoverRollbackTransaction({
+        ...fixture,
+        dependencies: fixtureDependencies()
+      }), /manifest/i, name);
+      assert.equal(existsSync(fixture.rollbackJournalPath), true, `journal must remain for ${name}`);
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("recovery rejects an existing manifest that was written before journal hash authority", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    assert.throws(() => rollbackPreviousApp({
+      ...fixture,
+      dependencies: fixtureDependencies({
+        checkpoint: (phase) => {
+          if (phase === "after-manifest-write-before-journal") {
+            throw new Error("simulated crash before manifest hash journal");
+          }
+        }
+      })
+    }), /simulated crash before manifest hash journal/);
+    assertRoleState(fixture, "swapped-roles");
+    assert.equal(existsSync(fixture.rollbackManifestPath), true);
+    assert.equal(existsSync(fixture.rollbackJournalPath), true);
+
+    assert.throws(() => recoverRollbackTransaction({
+      ...fixture,
+      dependencies: fixtureDependencies()
+    }), /manifest/i);
+    assert.equal(existsSync(fixture.rollbackJournalPath), true, "journal must remain when manifest hash is not durable");
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("inspect reports a durable journal-update residue and recovery cleans only matching authority", () => {
   const fixture = makeRollbackFixture();
   try {

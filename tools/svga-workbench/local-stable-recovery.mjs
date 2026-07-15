@@ -691,6 +691,7 @@ function defaultDependencies(overrides = {}) {
     exists: existsSync,
     readJson: (filePath) => JSON.parse(readFileSync(filePath, "utf8")),
     inspectBundle: inspectAppBundle,
+    sha256File,
     assertNoProcess: assertNoTargetProcess,
     copyBundle,
     atomicSwap: atomicSwapApps,
@@ -816,6 +817,15 @@ function assertRecoveryManifestMatches({
   });
   if (stableStringify(manifest) !== stableStringify(expected)) {
     throw new Error("Existing rollback manifest does not exactly match recovered byte roles and journal authority");
+  }
+}
+
+function assertJournalBoundManifestBytes({ journal, manifestSha256 }) {
+  if (typeof journal.manifestSha256 !== "string" || !/^[0-9a-f]{64}$/.test(journal.manifestSha256)) {
+    throw new Error("Existing rollback manifest is not bound to a durable journal manifestSha256");
+  }
+  if (manifestSha256 !== journal.manifestSha256) {
+    throw new Error("Existing rollback manifest SHA-256 does not match the durable journal authority");
   }
 }
 
@@ -1047,7 +1057,19 @@ export function recoverRollbackTransaction({
       now: dependencies.now()
     });
     dependencies.writeManifestExclusive(rollbackManifestPath, manifest);
+    dependencies.updateJournal(rollbackJournalPath, {
+      ...journal,
+      phase: "recovery-manifest-published",
+      after: manifest.after,
+      launchServicesRegistered: true,
+      manifestSha256: dependencies.sha256File(rollbackManifestPath),
+      updatedAt: dependencies.now().toISOString()
+    });
   } else {
+    assertJournalBoundManifestBytes({
+      journal,
+      manifestSha256: dependencies.sha256File(rollbackManifestPath)
+    });
     const manifest = dependencies.readJson(rollbackManifestPath);
     assertRecoveryManifestMatches({
       manifest,
