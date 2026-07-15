@@ -12,7 +12,13 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+import {
+  inspectRecoveryState,
+  recoverRollbackTransaction,
+  rollbackPreviousApp
+} from "./local-stable-recovery.mjs";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(scriptPath), "../..");
@@ -22,12 +28,26 @@ const manifestPath = path.join(trialRoot, "internal-trial-manifest.json");
 const proofPath = path.join(trialRoot, "macos-package-proof.json");
 const localStableRoot = path.join(repoRoot, ".artifacts/local-stable-app");
 const promotionManifestPath = path.join(localStableRoot, "promotion-manifest.json");
+const rollbackManifestRoot = path.join(localStableRoot, "rollback-manifests");
+const rollbackJournalRoot = path.join(localStableRoot, "rollback-journals");
 
 function usage() {
   return [
     "Usage: node tools/svga-workbench/promote-local-stable-app.mjs [options]",
     "",
     "Options:",
+    "  --inspect             Read and report installed, previous, and candidate identities without mutation.",
+    "  --rollback-previous   Atomically exchange exact-bound installed and previous apps.",
+    "  --recover-rollback    Resolve an interrupted durable rollback journal; never starts a new rollback.",
+    "  --rollback-id <id>    Required single-use operation identifier for rollback/recovery.",
+    "  --expected-installed-build <sha>",
+    "  --expected-installed-info-plist-sha256 <sha>",
+    "  --expected-installed-app-asar-sha256 <sha>",
+    "  --expected-installed-build-info-sha256 <sha>",
+    "  --expected-previous-build <sha>",
+    "  --expected-previous-info-plist-sha256 <sha>",
+    "  --expected-previous-app-asar-sha256 <sha>",
+    "  --expected-previous-build-info-sha256 <sha>",
     "  --use-existing        Reuse the current-head internal package instead of rebuilding.",
     "  --allow-dirty         Allow packaging from a dirty worktree. Not allowed by default.",
     "  --target <path>       Install target. Defaults to ~/Applications/Auto SVGA.app.",
@@ -36,8 +56,11 @@ function usage() {
   ].join("\n");
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const options = {
+    inspect: false,
+    rollbackPrevious: false,
+    recoverRollback: false,
     useExisting: false,
     allowDirty: false,
     skipRegister: false,
@@ -48,13 +71,32 @@ function parseArgs(argv) {
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === "--use-existing") options.useExisting = true;
+    if (arg === "--inspect") options.inspect = true;
+    else if (arg === "--rollback-previous") options.rollbackPrevious = true;
+    else if (arg === "--recover-rollback") options.recoverRollback = true;
+    else if (arg === "--use-existing") options.useExisting = true;
     else if (arg === "--allow-dirty") options.allowDirty = true;
     else if (arg === "--skip-register") options.skipRegister = true;
     else if (arg === "--target") {
       const target = argv[index + 1];
       if (!target) throw new Error("--target requires a path");
       options.target = path.resolve(target.replace(/^~/, os.homedir()));
+      index += 1;
+    } else if ([
+      "--rollback-id",
+      "--expected-installed-build",
+      "--expected-installed-info-plist-sha256",
+      "--expected-installed-app-asar-sha256",
+      "--expected-installed-build-info-sha256",
+      "--expected-previous-build",
+      "--expected-previous-info-plist-sha256",
+      "--expected-previous-app-asar-sha256",
+      "--expected-previous-build-info-sha256"
+    ].includes(arg)) {
+      const value = argv[index + 1];
+      if (!value) throw new Error(`${arg} requires a value`);
+      const property = arg.slice(2).replace(/-([a-z])/g, (_, character) => character.toUpperCase());
+      options[property] = value;
       index += 1;
     } else if (arg === "--help" || arg === "-h") {
       console.log(usage());
@@ -64,7 +106,45 @@ function parseArgs(argv) {
     }
   }
 
+  const modeCount = [options.inspect, options.rollbackPrevious, options.recoverRollback].filter(Boolean).length;
+  if (modeCount > 1) throw new Error("--inspect, --rollback-previous, and --recover-rollback are mutually exclusive");
+  const bindingOptionPresent = Object.keys(options).some((key) => key.startsWith("expectedInstalled") || key.startsWith("expectedPrevious"));
+  if ((options.rollbackPrevious || options.recoverRollback) && (options.useExisting || options.allowDirty || options.skipRegister)) {
+    throw new Error("Rollback modes do not accept packaging or registration-bypass options");
+  }
+  if (options.inspect && (options.useExisting || options.allowDirty || options.skipRegister || bindingOptionPresent)) {
+    throw new Error("Inspect mode does not accept packaging, registration-bypass, or rollback-binding options");
+  }
+  if (!options.rollbackPrevious && !options.recoverRollback && !options.inspect && (options.rollbackId || bindingOptionPresent)) {
+    throw new Error("Rollback identifiers and bindings require an explicit inspect, rollback, or recovery mode");
+  }
+
   return options;
+}
+
+function rollbackBindingsFromOptions(options) {
+  return {
+    installed: {
+      buildCommit: options.expectedInstalledBuild,
+      infoPlistSha256: options.expectedInstalledInfoPlistSha256,
+      appAsarSha256: options.expectedInstalledAppAsarSha256,
+      buildInfoSha256: options.expectedInstalledBuildInfoSha256
+    },
+    previous: {
+      buildCommit: options.expectedPreviousBuild,
+      infoPlistSha256: options.expectedPreviousInfoPlistSha256,
+      appAsarSha256: options.expectedPreviousAppAsarSha256,
+      buildInfoSha256: options.expectedPreviousBuildInfoSha256
+    }
+  };
+}
+
+function rollbackPathsForId(rollbackId) {
+  if (!rollbackId) throw new Error("--rollback-id is required for rollback and recovery modes");
+  return {
+    rollbackManifestPath: path.join(rollbackManifestRoot, `${rollbackId}.json`),
+    rollbackJournalPath: path.join(rollbackJournalRoot, `${rollbackId}.json`)
+  };
 }
 
 function run(command, args, options = {}) {
@@ -230,6 +310,31 @@ function writePromotionManifest(summary) {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   assertDarwin();
+
+  if (options.inspect) {
+    const packageInfo = loadAndValidatePackage({ ...options, useExisting: true });
+    const rollbackPaths = options.rollbackId ? rollbackPathsForId(options.rollbackId) : {};
+    console.log(JSON.stringify(inspectRecoveryState({
+      target: options.target,
+      candidateApp: packageInfo.sourceApp,
+      ...rollbackPaths
+    }), null, 2));
+    return;
+  }
+
+  if (options.rollbackPrevious || options.recoverRollback) {
+    const rollbackPaths = rollbackPathsForId(options.rollbackId);
+    const operation = options.recoverRollback ? recoverRollbackTransaction : rollbackPreviousApp;
+    const result = operation({
+      target: options.target,
+      rollbackId: options.rollbackId,
+      bindings: rollbackBindingsFromOptions(options),
+      ...rollbackPaths
+    });
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
   assertCleanWorktreeUnlessAllowed(options);
 
   if (!options.useExisting) {
@@ -260,7 +365,9 @@ async function main() {
   console.log(JSON.stringify(summary, null, 2));
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}
