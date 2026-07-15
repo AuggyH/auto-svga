@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "packetId": "asv-req-20260709-003-owner-envelope-oracle-cr-repair-20260716",
+  "status": "fix-ready",
+  "finding": "MF-OWNER-ENVELOPE-CR-001",
+  "branch": "codex/0.2-owner-envelope-oracle-cr-repair-20260716",
+  "baseHead": "e41fed4d3993191f2506a1eb39e811fd5576f834",
+  "successorHead": "commit-containing-this-packet",
+  "actualModelProfile": "gpt-5.5/xhigh fallback",
+  "productDiffSha256": "8e48e5f3c9a656765b72d5710924aac8037c326b08a64f27ecb4ff282473302c",
+  "sourceReview": {
+    "path": "docs/reviews/2026-07-16-codex-multiformat-owner-envelope-oracle-cr-repair.md",
+    "sha256": "ea6193181783b855e0cd91580abc681af9bc5fc2fc3ec443d9b0fe1dc5fa81d6",
+    "byteLength": 4121
+  },
+  "members": [
+    {
+      "path": "README.md",
+      "sha256": "c460c613ee30c3607cf0bae97f6d19403e124d1342c21e141c01106c8df2bdc9",
+      "byteLength": 476
+    },
+    {
+      "path": "REVIEW_PACKET.md",
+      "sha256": "ab5bcae397b51b30c3bb2b5c3209339a6855c7ed0de66e20d3ea043cac8d7d17",
+      "byteLength": 1736
+    },
+    {
+      "path": "VALIDATION_SUMMARY.json",
+      "sha256": "301cf3dc673c8c44d1e2525592570959150e821c2e83c757edfea26d1426b980",
+      "byteLength": 2257
+    }
+  ],
+  "validation": {
+    "failureFirst": "PASS after repair; failed before repair with missing expected exception",
+    "sourceOracle": "PASS 3/3",
+    "ownerPreviewCandidate": "PASS 19/19",
+    "conformance": "PASS 28/28",
+    "build": "PASS",
+    "testAll": "PASS 538/538",
+    "designSystem": "PASS",
+    "diffCheck": "PASS"
+  },
+  "boundaries": {
+    "sourceOnly": true,
+    "electronLaunched": false,
+    "foregroundUsed": false,
+    "installedAppMutated": false,
+    "qaRouted": false,
+    "packagingRouted": false,
+    "ownerMaterialUsed": false
+  }
+}

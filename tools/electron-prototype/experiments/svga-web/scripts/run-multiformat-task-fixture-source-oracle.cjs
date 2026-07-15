@@ -5,6 +5,7 @@ const { createHash } = require("node:crypto");
 const { mkdirSync, mkdtempSync, readFileSync, writeFileSync } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const {
   createMultiFormatDesktopPreviewSession
 } = require("../multiformat-desktop-session.cjs");
@@ -25,11 +26,14 @@ const proofRoot = process.env.AUTO_SVGA_TASK_FIXTURE_SOURCE_ORACLE_ROOT && path.
   : mkdtempSync(path.join(os.tmpdir(), "auto-svga-task-fixture-source-oracle-"));
 const fixtureRoot = path.join(proofRoot, "fixtures");
 const proofOutputPath = path.join(proofRoot, "multiformat-task-fixture-source-oracle.json");
+let ownerConformanceModulePromise;
 
-main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  });
+}
 
 async function main() {
   mkdirSync(proofRoot, { recursive: true });
@@ -100,16 +104,17 @@ async function proveLottieFlow({ session, fixtureSet, replacementDataUri, signal
   if (opened.model.detectedFormat !== "lottie" || opened.model.status !== "previewReady") {
     throw new Error("Task external-image Lottie did not reach previewReady.");
   }
-  const ownerSnapshot = requireOwnerSnapshot(opened, "lottie");
+  const ownerSnapshot = await requireOwnerSnapshot(opened, "lottie");
+  assertOwnerInventoryProjection(ownerSnapshot, {
+    expectedGroupIds: ["image_resources", "text_candidates"],
+    expectedImageTargetIds: ["avatar"],
+    expectedTextTargetIds: ["text:2"]
+  });
   const imageTarget = ownerSnapshot.imageTargets.find((entry) => entry.resourceId === "avatar");
-  const textTarget = ownerSnapshot.textTargets[0]?.textKey;
+  const textTarget = ownerSnapshot.textTargets.find((entry) => entry.textKey === "text:2")?.textKey;
   if (!imageTarget || !textTarget) {
     throw new Error("Task external-image Lottie owner snapshot did not expose deterministic image/text targets.");
   }
-  assertOwnerInventoryProjection(ownerSnapshot, {
-    expectedGroupIds: ["image_resources", "text_candidates"],
-    expectedTargetIds: [imageTarget.resourceId, textTarget]
-  });
   signals.push(signal("lottie_external_opened", {
     modelStatus: opened.model.status,
     imageCount: ownerSnapshot.assetInventory.summary.imageCount,
@@ -271,14 +276,15 @@ async function proveVapFlow({ session, fixtureSet, replacementDataUri, signals }
   if (opened.model.detectedFormat !== "vap" || opened.model.status !== "previewReady") {
     throw new Error("Task fusion VAP did not reach previewReady.");
   }
-  const ownerSnapshot = requireOwnerSnapshot(opened, "vap");
+  const ownerSnapshot = await requireOwnerSnapshot(opened, "vap");
+  assertOwnerInventoryProjection(ownerSnapshot, {
+    expectedGroupIds: ["vap_fusion_images", "vap_fusion_texts", "audio_video_media", "unsupported_or_missing"],
+    expectedImageTargetIds: ["vap_fusion_avatar"],
+    expectedTextTargetIds: ["vap_fusion_title"]
+  });
   const imageTarget = ownerSnapshot.imageTargets.find((entry) => entry.resourceId === "vap_fusion_avatar");
   const textTarget = ownerSnapshot.textTargets.find((entry) => entry.textKey === "vap_fusion_title");
   if (!imageTarget || !textTarget) throw new Error("Task fusion VAP did not expose deterministic image/text targets.");
-  assertOwnerInventoryProjection(ownerSnapshot, {
-    expectedGroupIds: ["vap_fusion_images", "vap_fusion_texts", "audio_video_media", "unsupported_or_missing"],
-    expectedTargetIds: [imageTarget.resourceId, textTarget.textKey]
-  });
   if (ownerSnapshot.issues.length !== 1) {
     throw new Error("Task fusion VAP owner snapshot repeated equivalent owner-visible issues.");
   }
@@ -535,18 +541,16 @@ function findLottieTextValue(runtime) {
   return textLayer?.t?.d?.k?.[0]?.s?.t;
 }
 
-function requireOwnerSnapshot(opened, expectedFormat) {
+async function requireOwnerSnapshot(opened, expectedFormat) {
   const envelope = opened?.model?.ownerRightPanelSnapshotEnvelope;
   if (!envelope || envelope.sourceId !== opened.sourceId || envelope.pathRedacted !== true) {
     throw new Error("Owner right-panel snapshot envelope is not bound to the active source.");
   }
-  if (Buffer.byteLength(envelope.snapshotJson, "utf8") !== envelope.snapshotByteLength) {
-    throw new Error("Owner right-panel snapshot byte length is invalid.");
+  const { validateOwnerRightPanelSnapshotEnvelope } = await ownerConformanceModule();
+  const snapshot = validateOwnerRightPanelSnapshotEnvelope(envelope);
+  if (!snapshot) {
+    throw new Error("Owner right-panel snapshot envelope is not canonical OwnerRightPanelSnapshotV1.");
   }
-  if (sha256Text(envelope.snapshotJson) !== envelope.snapshotSha256) {
-    throw new Error("Owner right-panel snapshot digest is invalid.");
-  }
-  const snapshot = JSON.parse(envelope.snapshotJson);
   if (snapshot.pathRedacted !== true || snapshot.assetInventory?.format !== expectedFormat) {
     throw new Error("Owner right-panel snapshot format or privacy contract is invalid.");
   }
@@ -558,16 +562,76 @@ function assertOwnerInventoryProjection(snapshot, expected) {
   if (JSON.stringify(groupIds) !== JSON.stringify(expected.expectedGroupIds)) {
     throw new Error(`Owner inventory groups drifted: ${groupIds.join(",")}`);
   }
+  const expectedImageTargetIds = expected.expectedImageTargetIds ?? [];
+  const expectedTextTargetIds = expected.expectedTextTargetIds ?? [];
+  assertExactStringSet(
+    snapshot.imageTargets.map(({ resourceId }) => resourceId),
+    expectedImageTargetIds,
+    "Owner image targets drifted"
+  );
+  assertExactStringSet(
+    snapshot.textTargets.map(({ textKey }) => textKey),
+    expectedTextTargetIds,
+    "Owner text targets drifted"
+  );
   const inventoryTargetIds = snapshot.assetInventory.groups
     .flatMap(({ items }) => items)
     .filter(({ replaceable }) => replaceable)
     .map(({ id }) => id);
-  if (new Set(inventoryTargetIds).size !== inventoryTargetIds.length) {
-    throw new Error("Owner inventory repeats a replaceable public target.");
+  assertExactStringSet(
+    inventoryTargetIds,
+    [...expectedImageTargetIds, ...expectedTextTargetIds],
+    "Owner inventory replacement targets drifted"
+  );
+  assertInventorySummaryMatchesGroups(snapshot.assetInventory);
+}
+
+function assertExactStringSet(actual, expected, message) {
+  const actualValues = actual.map((value) => typeof value === "string" ? value.trim() : "");
+  const expectedValues = expected.map((value) => typeof value === "string" ? value.trim() : "");
+  if (actualValues.some((value) => !value) || expectedValues.some((value) => !value)) {
+    throw new Error(`${message}: blank target id`);
   }
-  if (!expected.expectedTargetIds.every((targetId) => inventoryTargetIds.includes(targetId))) {
-    throw new Error("Owner inventory omitted a deterministic replacement target.");
+  if (new Set(actualValues).size !== actualValues.length) {
+    throw new Error(`${message}: duplicate target id`);
   }
+  if (new Set(expectedValues).size !== expectedValues.length) {
+    throw new Error(`${message}: duplicate expected target id`);
+  }
+  const actualSorted = [...actualValues].sort();
+  const expectedSorted = [...expectedValues].sort();
+  if (JSON.stringify(actualSorted) !== JSON.stringify(expectedSorted)) {
+    throw new Error(`${message}: expected ${expectedSorted.join(",")} got ${actualSorted.join(",")}`);
+  }
+}
+
+function assertInventorySummaryMatchesGroups(inventory) {
+  const groups = Array.isArray(inventory?.groups) ? inventory.groups : [];
+  const summary = inventory?.summary ?? {};
+  const totalItems = groups.reduce((sum, group) => sum + group.count, 0);
+  const replaceableItems = groups.reduce((sum, group) => sum + group.replaceableCount, 0);
+  const countGroups = (ids) => groups.filter(({ id }) => ids.includes(id)).reduce((sum, group) => sum + group.count, 0);
+  const expectedSummary = {
+    totalItems,
+    replaceableItems,
+    imageCount: countGroups(["image_resources", "vap_fusion_images"]),
+    textCount: countGroups(["text_candidates", "vap_fusion_texts"]),
+    sequenceFrameCount: countGroups(["sequence_frames"]),
+    audioVideoCount: countGroups(["audio_video_media"]),
+    unsupportedOrMissingCount: countGroups(["unsupported_or_missing"])
+  };
+  for (const [key, expectedValue] of Object.entries(expectedSummary)) {
+    if (summary[key] !== expectedValue) {
+      throw new Error(`Owner inventory summary drifted: ${key}`);
+    }
+  }
+}
+
+async function ownerConformanceModule() {
+  if (!ownerConformanceModulePromise) {
+    ownerConformanceModulePromise = import(pathToFileURL(path.join(appRoot, "web/multiformat-product-conformance.mjs")).href);
+  }
+  return ownerConformanceModulePromise;
 }
 
 function signal(phase, detail = {}) {
@@ -592,3 +656,8 @@ function gitHead() {
 function sha256File(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
 }
+
+module.exports = {
+  assertOwnerInventoryProjection,
+  requireOwnerSnapshot
+};

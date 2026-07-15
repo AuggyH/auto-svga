@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -16,6 +17,10 @@ const {
   createTaskRuntimeFixtureSet,
   readTaskRuntimeFixtureContract
 } = require("../scripts/multiformat-task-runtime-fixtures.cjs");
+const {
+  assertOwnerInventoryProjection,
+  requireOwnerSnapshot
+} = require("../scripts/run-multiformat-task-fixture-source-oracle.cjs");
 
 test("task-owned runtime fixture contract fails closed for missing resources and malformed external contracts", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "auto-svga-task-fixture-negative-"));
@@ -125,3 +130,225 @@ test("task-owned source oracle binds external-image Lottie and fusion VAP withou
     await rm(path.dirname(result.proofOutputPath), { recursive: true, force: true });
   }
 });
+
+test("task fixture source oracle rejects adversarial owner snapshot envelopes", async () => {
+  const validSnapshot = ownerSnapshot({
+    assetInventory: {
+      ...ownerInventory(),
+      format: "lottie",
+      groups: [{
+        id: "image_resources",
+        label: "图片",
+        count: 1,
+        replaceableCount: 1,
+        status: "available",
+        items: [ownerInventoryItem({ id: "avatar", groupId: "image_resources", kind: "image", source: "asset", runtimeTargetId: "avatar" })]
+      }, {
+        id: "text_candidates",
+        label: "文本",
+        count: 1,
+        replaceableCount: 1,
+        status: "available",
+        items: [ownerInventoryItem({ id: "text:2", groupId: "text_candidates", kind: "text", source: "text", runtimeTargetId: "text:2" })]
+      }],
+      summary: {
+        totalItems: 2,
+        replaceableItems: 2,
+        imageCount: 1,
+        textCount: 1,
+        sequenceFrameCount: 0,
+        audioVideoCount: 0,
+        unsupportedOrMissingCount: 0
+      }
+    },
+    imageTargets: [{ imageKey: "avatar", resourceId: "avatar", displayName: "Avatar", detail: "1 x 1" }],
+    textTargets: [{ textKey: "text:2", displayName: "Title", initialText: "Task title", placeholder: "输入文字以预览", resetDisabled: false }]
+  });
+  const opened = openedWithEnvelope(envelopeFromSnapshot(validSnapshot));
+  const accepted = await requireOwnerSnapshot(opened, "lottie");
+  assertOwnerInventoryProjection(accepted, {
+    expectedGroupIds: ["image_resources", "text_candidates"],
+    expectedImageTargetIds: ["avatar"],
+    expectedTextTargetIds: ["text:2"]
+  });
+
+  const extraField = ownerSnapshot({
+    ...validSnapshot,
+    ownerPath: "/Users/owner/private/source.json"
+  });
+  await assert.rejects(() => requireOwnerSnapshot(openedWithEnvelope(envelopeFromSnapshot(extraField)), "lottie"), /owner|snapshot|canonical|invalid/i);
+
+  const extraTarget = ownerSnapshot({
+    ...validSnapshot,
+    assetInventory: {
+      ...validSnapshot.assetInventory,
+      groups: validSnapshot.assetInventory.groups.map((group) => group.id === "image_resources"
+        ? {
+            ...group,
+            count: 2,
+            replaceableCount: 2,
+            items: [
+              ...group.items,
+              ownerInventoryItem({
+                id: "unexpected-extra-image",
+                groupId: "image_resources",
+                kind: "image",
+                source: "asset",
+                runtimeTargetId: "unexpected-extra-image"
+              })
+            ]
+          }
+        : group),
+      summary: {
+        ...validSnapshot.assetInventory.summary,
+        totalItems: 3,
+        replaceableItems: 3,
+        imageCount: 2
+      }
+    },
+    imageTargets: [
+      ...validSnapshot.imageTargets,
+      { imageKey: "unexpected-extra-image", resourceId: "unexpected-extra-image", displayName: "Extra", detail: "1 x 1" }
+    ]
+  });
+  const extraTargetSnapshot = await requireOwnerSnapshot(openedWithEnvelope(envelopeFromSnapshot(extraTarget)), "lottie");
+  assert.throws(() => assertOwnerInventoryProjection(extraTargetSnapshot, {
+    expectedGroupIds: ["image_resources", "text_candidates"],
+    expectedImageTargetIds: ["avatar"],
+    expectedTextTargetIds: ["text:2"]
+  }), /extra|target|inventory|drift/i);
+
+  const missingTarget = ownerSnapshot({
+    ...validSnapshot,
+    assetInventory: {
+      ...validSnapshot.assetInventory,
+      groups: validSnapshot.assetInventory.groups.filter((group) => group.id !== "text_candidates"),
+      summary: {
+        ...validSnapshot.assetInventory.summary,
+        totalItems: 1,
+        replaceableItems: 1,
+        textCount: 0
+      }
+    },
+    textTargets: []
+  });
+  const missingTargetSnapshot = await requireOwnerSnapshot(openedWithEnvelope(envelopeFromSnapshot(missingTarget)), "lottie");
+  assert.throws(() => assertOwnerInventoryProjection(missingTargetSnapshot, {
+    expectedGroupIds: ["image_resources", "text_candidates"],
+    expectedImageTargetIds: ["avatar"],
+    expectedTextTargetIds: ["text:2"]
+  }), /missing|target|groups|inventory/i);
+
+  const duplicateTarget = ownerSnapshot({
+    ...validSnapshot,
+    imageTargets: [
+      ...validSnapshot.imageTargets,
+      { imageKey: "avatar-copy", resourceId: "avatar", displayName: "Avatar Copy", detail: "1 x 1" }
+    ]
+  });
+  const duplicateTargetSnapshot = await requireOwnerSnapshot(openedWithEnvelope(envelopeFromSnapshot(duplicateTarget)), "lottie");
+  assert.throws(() => assertOwnerInventoryProjection(duplicateTargetSnapshot, {
+    expectedGroupIds: ["image_resources", "text_candidates"],
+    expectedImageTargetIds: ["avatar"],
+    expectedTextTargetIds: ["text:2"]
+  }), /duplicate|target|snapshot|invalid/i);
+
+  const fakeDigestEnvelope = envelopeFromSnapshot(ownerSnapshot({
+    ...validSnapshot,
+    rawPath: "/Users/owner/private/source.json"
+  }));
+  await assert.rejects(() => requireOwnerSnapshot(openedWithEnvelope(fakeDigestEnvelope), "lottie"), /owner|snapshot|canonical|invalid/i);
+
+  const noncanonicalSnapshotJson = JSON.stringify(validSnapshot);
+  assert.notEqual(noncanonicalSnapshotJson, stableStringify(validSnapshot));
+  await assert.rejects(() => requireOwnerSnapshot(openedWithEnvelope({
+    schemaVersion: 1,
+    sourceId: "source-a",
+    snapshotJson: noncanonicalSnapshotJson,
+    snapshotByteLength: Buffer.byteLength(noncanonicalSnapshotJson, "utf8"),
+    snapshotSha256: createHash("sha256").update(noncanonicalSnapshotJson).digest("hex"),
+    pathRedacted: true
+  }), "lottie"), /canonical|snapshot|invalid/i);
+
+});
+
+function openedWithEnvelope(envelope) {
+  return {
+    sourceId: "source-a",
+    model: {
+      ownerRightPanelSnapshotEnvelope: envelope
+    }
+  };
+}
+
+function envelopeFromSnapshot(snapshot) {
+  const snapshotJson = stableStringify(snapshot);
+  return {
+    schemaVersion: 1,
+    sourceId: "source-a",
+    snapshotJson,
+    snapshotByteLength: Buffer.byteLength(snapshotJson, "utf8"),
+    snapshotSha256: createHash("sha256").update(snapshotJson).digest("hex"),
+    pathRedacted: true
+  };
+}
+
+function ownerSnapshot(overrides = {}) {
+  return {
+    assetInventory: ownerInventory(),
+    assets: [],
+    facts: [{ id: "format", label: "格式", status: "pass", value: "LOTTIE" }],
+    imageTargets: [],
+    issues: [],
+    pathRedacted: true,
+    schemaVersion: 1,
+    textTargets: [],
+    unsupportedFeatures: [],
+    ...overrides
+  };
+}
+
+function ownerInventory(overrides = {}) {
+  return {
+    capabilityMarkers: [],
+    format: "lottie",
+    groups: [],
+    pathRedacted: true,
+    schemaVersion: 1,
+    summary: {
+      audioVideoCount: 0,
+      imageCount: 0,
+      replaceableItems: 0,
+      sequenceFrameCount: 0,
+      textCount: 0,
+      totalItems: 0,
+      unsupportedOrMissingCount: 0
+    },
+    ...overrides
+  };
+}
+
+function ownerInventoryItem(overrides = {}) {
+  return {
+    detail: [],
+    groupId: "image_resources",
+    id: "avatar",
+    kind: "image",
+    label: "Avatar",
+    pathRedacted: true,
+    replaceable: true,
+    runtimeTargetId: "avatar",
+    source: "asset",
+    status: "replaceable",
+    ...overrides
+  };
+}
+
+function stableStringify(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}

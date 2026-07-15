@@ -130,7 +130,7 @@ function readTaskRuntimeFixtureContract(options = {}) {
         },
         expectedTargets: [
           { kind: "image", publicTargetId: "avatar", runtimeTargetId: "avatar" },
-          { kind: "text", publicTargetId: "2", runtimeTargetId: "2" }
+          { kind: "text", publicTargetId: "text:2", runtimeTargetId: "text:2" }
         ]
       },
       vap: {
