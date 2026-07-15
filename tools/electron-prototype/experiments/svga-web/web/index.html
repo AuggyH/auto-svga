@@ -19,7 +19,7 @@
         <div class="windowControlSpace" aria-hidden="true"></div>
       </header>
 
-      <section class="saveBanner" id="saveBanner" aria-live="polite" hidden></section>
+      <section class="saveBanner" id="saveBanner" aria-live="polite" data-component="SaveFeedbackBanner" hidden></section>
 
       <section class="view launchView isActive" data-view="launch" aria-label="启动" data-page-state="Launch" data-module="LaunchModule">
         <div class="launchCanvas" id="dropZone" data-component="LaunchDropCanvas">
@@ -191,13 +191,13 @@
           <section class="dragDecisionOverlay" id="previewDragOverlay" data-component="DragDecisionOverlay" data-drag-overlay data-focus-zone="open" data-status="supported" hidden>
             <div class="dragDecisionZone" data-drag-zone="compare"><strong>添加为对比文件</strong></div>
             <div class="dragDecisionZone" data-drag-zone="open"><strong>打开新文件</strong></div>
-              </section>
-              <div class="canvasWrap" id="primaryCanvasWrap">
-                <div class="runtimeStageViewport">
-                  <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
-                  <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
-                </div>
-              </div>
+          </section>
+          <div class="canvasWrap" id="primaryCanvasWrap">
+            <div class="runtimeStageViewport">
+              <canvas id="primaryCanvas" aria-label="SVGA 预览画布"></canvas>
+              <div class="runtimeOverlay" id="runtimeTextOverlay" hidden></div>
+            </div>
+          </div>
           <div class="playbackBar" aria-label="播放控制" data-component="PlaybackControls">
             <div class="playbackActions" data-component="PlaybackButtonGroup">
               <button type="button" class="playbackIconButton" data-component="IconButton" data-action="replay" aria-label="重播" title="重播">
@@ -244,7 +244,7 @@
           </div>
           <section class="rightSurfaceBody isActive" id="panelOverview" data-panel="overview" data-page-state="Preview overview" tabindex="0" aria-label="文件信息" data-module="OverviewInformationModule">
             <section class="factGrid" id="factGrid" aria-label="文件信息" data-component="OverviewFactRow"></section>
-            <section class="replaceableSection" data-component="ReplaceableImageRow" aria-labelledby="replaceableHeading" tabindex="-1">
+            <section class="replaceableSection" data-component="ReplaceableImageRow" data-module="ReplaceableElementsSurface" data-page-state="Preview replaceable" aria-labelledby="replaceableHeading" tabindex="-1">
               <div class="sectionHead">
                 <h2 id="replaceableHeading">imageKey <span id="replaceableSummary"></span></h2>
               </div>
@@ -374,7 +374,7 @@
             </div>
           </div>
         </section>
-        <aside class="compareInfo" id="compareInfoB" data-component="RightInformationSurface">
+        <aside class="compareInfo" id="compareInfoB" data-component="RightInformationSurface" data-role="CompareInfoPanel">
           <button class="toolbarButton" type="button" data-action="back-preview">退出对比</button>
         </aside>
       </section>

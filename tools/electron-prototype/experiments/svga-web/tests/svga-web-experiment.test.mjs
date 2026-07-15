@@ -394,7 +394,7 @@ test("short-term general compare keeps identical row order when both sides have 
     }
   };
   const factIdsForSlot = (html, slot) => {
-    const column = html.match(new RegExp(`<div class="compareMetricColumn" data-slot="${slot}">([\\s\\S]*?)(?=\\s*<div class="compareMetricColumn" data-slot="|\\s*</section>)`))?.[1] ?? "";
+    const column = html.match(new RegExp(`<div class="compareMetricColumn"[^>]*data-slot="${slot}"[^>]*>([\\s\\S]*?)(?=\\s*<div class="compareMetricColumn"|\\s*</section>)`))?.[1] ?? "";
     return [...column.matchAll(/data-fact-id="([^"]+)"/g)].map((match) => match[1]);
   };
 
@@ -1348,6 +1348,7 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   const main = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const preload = await readFile(path.join(experimentRoot, "preload.cjs"), "utf8");
   const controller = await readFile(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs"), "utf8");
+  const replaceableRenderer = await readFile(path.join(experimentRoot, "web/short-term-macos-replaceable-renderers.mjs"), "utf8");
 
   assert.match(preload, /chooseMultiFormatReplacementImage\(input\)/);
   assert.match(preload, /IPC_CHANNELS\.chooseMultiFormatReplacementImage/);
@@ -1417,8 +1418,12 @@ test("0.2 image replacement controls use a host picker instead of renderer file-
   assert.match(applySource, /runtimeValue\.targetId/);
   assert.doesNotMatch(controller, /runtimeReplacementImageTargetId/);
   assert.doesNotMatch(chooseSource, /replacementFileInput\.click\(\)|\.click\(\)/);
-  assert.match(controller, /openResourceContextMenu\(event, imageKey, returnFocus\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(showFailure\);/);
-  assert.match(controller, /aria-label="替换预览图片"/);
+  assert.match(controller, /openResourceContextMenu\(event, imageKey, returnFocus\) \{[\s\S]*chooseReplacementImage\(imageKey\)\.catch\(\(\) => showFailure\(\{ code: "replacement_preview_failed" \}\)\);/);
+  assert.match(controller, /directReplace:\s*true/);
+  assert.match(replaceableRenderer, /class="replaceImageButton"/);
+  assert.match(replaceableRenderer, /data-action="row-menu"/);
+  assert.match(replaceableRenderer, />替换图片<\/button>/);
+  assert.doesNotMatch(replaceableRenderer, /type="file"|replacementFileInput\.click\(\)/);
 });
 
 test("0.2 host replacement picker fails closed for missing source and bounded read races", async () => {
@@ -2270,8 +2275,9 @@ test("0.2 host-owned drag intake preserves embedded, adjacent, absent, and Lotti
     assert.notEqual(isolated.model.status, "previewReady");
     assert.equal(isolated.model.detectedFormat, "vap");
     assert.equal(isolated.model.rightPanel.issues.some((issue) =>
-      issue.details?.reason === "embedded_vapc_box_required"
-      || issue.message?.includes("vapc")
+      issue.code === "invalid_file"
+      && issue.message === "文件内容不完整或格式异常，无法预览。"
+      && issue.pathRedacted === true
     ), true, JSON.stringify(isolated.model.rightPanel.issues));
 
     const lottie = await session.openLocalFilePath(lottiePath, "dragDrop");
@@ -2413,7 +2419,10 @@ test("0.2 installed file-open source reaches positive Lottie and sidecar VAP sta
     assert.equal(overLimitVap.model.status, "previewReady");
     assert.equal(overLimitVap.model.detectedFormat, "vap");
     assert.equal(overLimitVap.model.rightPanel.issues.some((issue) =>
-      issue.details?.reason === "vap_dimensions_over_1504" && issue.severity === "warning"
+      issue.code === "owner_issue"
+      && issue.message === "当前文件存在无法显示的检查问题。"
+      && issue.severity === "warning"
+      && issue.pathRedacted === true
     ), true);
     assert.equal(overLimitVap.model.rightPanel.facts.some((fact) =>
       fact.id === "dimensions" && fact.value === "1136 x 1632" && fact.status === "warning"
@@ -2775,7 +2784,7 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
 
   const missingModel = normalizeMultiFormatOpenOutcome({ status: "opened" });
   assert.equal(missingModel.kind, "failure");
-  assert.match(missingModel.message, /终态结果/);
+  assert.equal(missingModel.message, "无法打开本地文件，源文件没有被修改。");
   assert.doesNotMatch(missingModel.message, /\/Users|C:\\|alice/i);
 
   const rejected = await resolveMultiFormatOpenOutcome(
@@ -2788,8 +2797,294 @@ test("0.2 renderer open contract turns missing model rejected and stalled bridge
 
   const stalled = await resolveMultiFormatOpenOutcome(new Promise(() => {}), { deadlineMs: 10 });
   assert.equal(stalled.kind, "failure");
-  assert.match(stalled.message, /限定时间/);
+  assert.equal(stalled.message, "文件加载超时，请重新打开文件。源文件没有被修改。");
   assert.doesNotMatch(stalled.message, /\/Users|C:\\|alice/i);
+
+  const missingRecent = normalizeMultiFormatOpenOutcome({
+    status: "missing",
+    message: "中文路径 /Users/alice/Secret/recent.svga",
+    path: "/Users/alice/Secret/recent.svga"
+  });
+  assert.deepEqual(missingRecent, {
+    kind: "failure",
+    code: "recent_file_missing",
+    message: "这个最近文件已缺失或不可访问。"
+  });
+
+  const unknownFailure = normalizeMultiFormatOpenOutcome({
+    kind: "failure",
+    code: "unknown_host_code",
+    message: "中文主机错误 /Users/alice/Secret/input.json",
+    feature: "expression",
+    path: "layers.0.xp"
+  });
+  assert.deepEqual(unknownFailure, {
+    kind: "failure",
+    message: "操作未能完成，源文件没有被修改。"
+  });
+});
+
+test("0.2 owner failure rendering trusts only reviewed codes and never raw host text", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+  const nodes = createMultiFormatControllerTestNodes();
+  globalThis.document = createMultiFormatControllerTestDocument(nodes);
+  const genericCopy = "操作未能完成，源文件没有被修改。";
+  let codeGetterRead = false;
+  const accessorFailure = {};
+  Object.defineProperty(accessorFailure, "code", {
+    get() {
+      codeGetterRead = true;
+      return "file_picker_failed";
+    }
+  });
+  const coercibleFailure = {
+    toString() {
+      return "中文主机错误 /Users/alice/Secret layers.0.xp";
+    }
+  };
+  const cases = [
+    {
+      input: {
+        code: "file_picker_failed",
+        message: "中文路径 /Users/alice/Secret/input.json and layers.0.xp",
+        feature: "expression",
+        path: "layers.0.xp"
+      },
+      expected: "无法打开文件选择器，源文件没有被修改。"
+    },
+    {
+      input: {
+        code: "unsupported_file_type",
+        message: "混合 technical host detail /Users/alice/Secret/input.txt"
+      },
+      expected: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。"
+    },
+    {
+      input: {
+        code: "missing_resource",
+        message: "resource missing at /Users/alice/Secret/assets/avatar.png"
+      },
+      expected: "预览所需资源缺失，源文件没有被修改。"
+    },
+    {
+      input: {
+        code: "parse_precondition",
+        message: "Complete bounded JSON is required at /Users/alice/Secret/input.json",
+        path: "layers.0.xp"
+      },
+      expected: "文件内容不完整或格式异常，无法预览。"
+    },
+    {
+      input: {
+        code: "unknown_host_code",
+        message: "中文路径 /Users/alice/Secret/input.json",
+        feature: "expression",
+        path: "layers.0.xp"
+      },
+      expected: genericCopy
+    },
+    {
+      input: new Error("中文主机错误 /Users/alice/Secret/input.json; Complete bounded JSON is required"),
+      expected: genericCopy
+    },
+    {
+      input: ["file_picker_failed", "中文路径 /Users/alice/Secret/input.json"],
+      expected: genericCopy
+    },
+    {
+      input: { message: "中文主机错误 /Users/alice/Secret/input.json", path: "layers.0.xp" },
+      expected: genericCopy
+    },
+    { input: accessorFailure, expected: genericCopy },
+    { input: coercibleFailure, expected: genericCopy }
+  ];
+
+  try {
+    const controller = createMultiFormatDesktopPreviewController({
+      bridge: {
+        updateShortTermMenuState() {
+          return Promise.resolve();
+        },
+        setShortTermWindowMode() {
+          return Promise.resolve();
+        },
+        controlMultiFormatPreview() {
+          return Promise.resolve({ status: "disposed" });
+        }
+      },
+      nodes,
+      state: {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      },
+      svgaController: { handlers: {} }
+    });
+
+    for (const { input, expected } of cases) {
+      controller.handlers.showFailure(input);
+      assert.equal(nodes.errorMessage.textContent, expected);
+      assert.doesNotMatch(nodes.errorMessage.textContent, /\/Users|alice|layers\.0\.xp|Complete bounded JSON|technical host detail/i);
+    }
+    assert.equal(codeGetterRead, false, "owner copy must not execute an untrusted code getter");
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "raw-host-failure" }), true);
+    assert.equal(controller.handlers.failHostFileOpen({
+      eventId: "raw-host-failure",
+      message: "中文路径 /Users/alice/Secret/input.json and layers.0.xp",
+      feature: "expression",
+      path: "layers.0.xp"
+    }), true);
+    assert.equal(nodes.errorMessage.textContent, genericCopy);
+
+    assert.equal(controller.handlers.beginHostFileOpen({ eventId: "known-host-failure" }), true);
+    assert.equal(controller.handlers.failHostFileOpen({
+      eventId: "known-host-failure",
+      code: "file_picker_failed",
+      message: "mixed 中文 technical /Users/alice/Secret/input.json",
+      feature: "expression",
+      path: "layers.0.xp"
+    }), true);
+    assert.equal(nodes.errorMessage.textContent, "无法打开文件选择器，源文件没有被修改。");
+    assert.doesNotMatch(nodes.errorMessage.textContent, /\/Users|alice|layers\.0\.xp|expression|technical/i);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test("0.2 composed open cancellation preserves active authority while accepted failure revokes every format", async () => {
+  const { createMultiFormatDesktopPreviewController } = await import(pathToFileURL(path.join(experimentRoot, "web/multiformat-desktop-preview-controller.mjs")).href);
+  const originalDocument = globalThis.document;
+
+  try {
+    for (const format of ["lottie", "vap", "svga"]) {
+      const nodes = createMultiFormatControllerTestNodes();
+      globalThis.document = createMultiFormatControllerTestDocument(nodes);
+      const menuStates = [];
+      const disposeCalls = [];
+      const legacyCalls = [];
+      let chooserResult = { status: "cancelled" };
+      const state = {
+        view: "launch",
+        mode: "preview",
+        tab: "overview",
+        appearance: "light",
+        primaryPlaybackLooping: true,
+        textPreviewValues: {}
+      };
+      const bridge = {
+        openMultiFormatFile() {
+          return Promise.resolve(chooserResult);
+        },
+        updateShortTermMenuState(snapshot) {
+          menuStates.push(structuredClone(snapshot));
+          return Promise.resolve();
+        },
+        setShortTermWindowMode() {
+          return Promise.resolve();
+        },
+        controlMultiFormatPreview(input) {
+          disposeCalls.push(input);
+          return Promise.resolve({ status: "disposed" });
+        }
+      };
+      const svgaController = {
+        handlers: {
+          confirmDiscardUnsavedOutput() {
+            return true;
+          },
+          loadOpenedSource(input) {
+            legacyCalls.push(["load", input.sourceId]);
+            state.sourceBytes = new Uint8Array(input.bytes);
+            state.previewBytes = new Uint8Array(input.bytes);
+            state.sourceId = input.sourceId;
+            state.displayName = input.displayName;
+            state.model = { status: "previewReady", detectedFormat: "svga" };
+            state.selectedImageKey = "avatar";
+            state.selectedTextKey = "title";
+            state.textPreviewValues = { title: "旧文字" };
+          },
+          refreshRecentFiles() {},
+          deactivateForMultiFormat() {
+            legacyCalls.push(["deactivate"]);
+          },
+          saveActiveOutput() {
+            legacyCalls.push(["save"]);
+            return "stale-save";
+          },
+          renderCommandState() {}
+        }
+      };
+      const controller = createMultiFormatDesktopPreviewController({ bridge, nodes, state, svgaController });
+
+      if (format === "svga") {
+        assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${format}-initial` }), true);
+        assert.equal(await controller.handlers.completeHostFileOpen({
+          eventId: `${format}-initial`,
+          result: {
+            sourceId: `source:${format}`,
+            model: { detectedFormat: "svga", displayName: `${format}.fixture`, status: "previewReady" },
+            svgaSource: { displayName: `${format}.fixture`, bytes: Uint8Array.from([1, 2, 3]) }
+          }
+        }), true);
+      } else {
+        assert.equal(controller.handlers.beginHostFileOpen({ eventId: `${format}-initial` }), true);
+        assert.equal(await controller.handlers.completeHostFileOpen({
+          eventId: `${format}-initial`,
+          result: createRuntimeMountOpenResult(format, { sourceId: `source:${format}` })
+        }), true);
+      }
+
+      const activeModel = state.model;
+      const activeSourceId = state.sourceId;
+      const activeImageKey = state.selectedImageKey;
+      const activeTextKey = state.selectedTextKey;
+      await controller.handlers.openFromHostDialog();
+      assert.equal(state.model, activeModel, `${format} cancel must preserve model`);
+      assert.equal(state.sourceId, activeSourceId, `${format} cancel must preserve source`);
+      assert.equal(state.selectedImageKey, activeImageKey, `${format} cancel must preserve image selection`);
+      assert.equal(state.selectedTextKey, activeTextKey, `${format} cancel must preserve text selection`);
+
+      chooserResult = {
+        status: "failed",
+        code: "file_picker_failed",
+        pathRedacted: true,
+        message: "中文路径 /Users/alice/Secret/input.json and layers.0.xp",
+        feature: "expression",
+        path: "layers.0.xp"
+      };
+      await controller.handlers.openFromHostDialog();
+      assert.equal(state.view, "failed", `${format} failure must enter failed view`);
+      assert.equal(nodes.errorMessage.textContent, "无法打开文件选择器，源文件没有被修改。");
+      assert.doesNotMatch(nodes.errorMessage.textContent, /\/Users|alice|layers\.0\.xp|expression/i);
+      assert.equal(state.model, undefined, `${format} failure must clear model`);
+      assert.equal(state.sourceBytes, undefined, `${format} failure must clear source bytes`);
+      assert.equal(state.previewBytes, undefined, `${format} failure must clear preview bytes`);
+      assert.equal(state.sourceId, "", `${format} failure must clear source id`);
+      assert.equal(state.displayName, "", `${format} failure must clear display name`);
+      assert.equal(state.selectedImageKey, "", `${format} failure must clear image selection`);
+      assert.equal(state.selectedTextKey, "", `${format} failure must clear text selection`);
+      assert.deepEqual(state.textPreviewValues, {}, `${format} failure must clear text replacements`);
+      assert.deepEqual(disposeCalls.at(-1), { action: "dispose" }, `${format} failure must dispose host preview`);
+
+      const terminalMenu = menuStates.at(-1);
+      assert.equal(terminalMenu.hasFile, false, `${format} failure must disable file commands`);
+      for (const key of ["canPlay", "canReplay", "canLoop", "canReplaceImage", "canResetImageReplacement", "canEditText", "canResetText"]) {
+        assert.equal(terminalMenu[key], false, `${format} failure must disable ${key}`);
+      }
+      assert.equal(controller.handlers.saveActiveOutput(), undefined, `${format} failure must disable SVGA delegation`);
+      assert.equal(legacyCalls.filter(([name]) => name === "save").length, 0, `${format} failure must not reach stale save`);
+      if (format === "svga") {
+        assert.equal(legacyCalls.filter(([name]) => name === "deactivate").length, 1);
+      }
+    }
+  } finally {
+    globalThis.document = originalDocument;
+  }
 });
 
 test("0.2 renderer mounts prepared Lottie and VAP runtime payloads after host file-open", async () => {
@@ -3371,7 +3666,9 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     assert.equal(state.model.rightPanel.vapFusionTexts.some((entry) => entry.srcTag === "title"), true);
     assert.equal(state.model.rightPanel.vapFusionImages.some((entry) => entry.srcTag === "badge"), true);
     assert.equal(state.model.rightPanel.issues.some((entry) =>
-      entry.code === "missing_resource" && entry.details?.reason === "fusion_replacement_required"
+      entry.code === "missing_resource"
+      && entry.message === "预览所需资源缺失。"
+      && entry.pathRedacted === true
     ), true);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     const vapFusionBaseCallCount = vapCalls.length;
@@ -6862,9 +7159,61 @@ function createSessionBackedMultiFormatRuntimeMountTestBridge(session) {
 
 function createRuntimeMountOpenResult(format, options = {}) {
   const activeReplacements = Array.isArray(options.active) ? options.active : [];
+  const ownerRightPanelSnapshotEnvelope = createTestOwnerRightPanelSnapshotEnvelope({
+    facts: [{ id: "format", label: "格式", value: format.toUpperCase(), status: "pass" }],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      format,
+      groups: [],
+      summary: {
+        totalItems: 0,
+        replaceableItems: 0,
+        imageCount: 0,
+        textCount: format === "lottie" || format === "vap" ? 1 : 0,
+        sequenceFrameCount: 0,
+        audioVideoCount: 0,
+        unsupportedOrMissingCount: 0
+      },
+      capabilityMarkers: []
+    },
+    imageTargets: format === "lottie"
+      ? [{
+          imageKey: "avatar",
+          resourceId: "avatar",
+          displayName: "Avatar",
+          detail: "120 x 80"
+        }]
+      : format === "vap"
+        ? [{
+            imageKey: "avatar",
+            resourceId: "avatar",
+            displayName: "avatar",
+            detail: "VAP 融合图片 · 120 x 80"
+          }]
+        : [],
+    textTargets: format === "lottie"
+      ? [{
+          textKey: "text:1",
+          displayName: "Greeting",
+          initialText: "Original greeting",
+          placeholder: "输入文字以预览",
+          resetDisabled: false
+        }]
+      : format === "vap"
+        ? [{
+            textKey: "title",
+            displayName: "title",
+            initialText: "VAP 融合文字",
+            placeholder: "输入文字以预览",
+            resetDisabled: false
+          }]
+        : []
+  }, options.sourceId ?? (format === "lottie" ? "aaaaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbbbb"));
   return {
     status: "opened",
     sourceId: options.sourceId ?? (format === "lottie" ? "aaaaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbbbb"),
+    ownerRightPanelSnapshotEnvelope,
     pathRedacted: true,
     model: {
       schemaVersion: 1,
@@ -6947,6 +7296,7 @@ function createRuntimeMountOpenResult(format, options = {}) {
         unsupportedFeatures: [],
         issues: []
       },
+      ownerRightPanelSnapshotEnvelope,
       replacement: {
         status: activeReplacements.length ? "applied" : "idle",
         revision: activeReplacements.length ? 1 : 0,
@@ -6961,6 +7311,53 @@ function createRuntimeMountOpenResult(format, options = {}) {
       vapVisualPlaybackVerified: false
     }
   };
+}
+
+function createTestOwnerRightPanelSnapshotEnvelope(snapshot, sourceId = "test-source") {
+  const normalized = {
+    schemaVersion: 1,
+    pathRedacted: true,
+    facts: [],
+    assets: [],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      groups: [],
+      summary: {
+        totalItems: 0,
+        replaceableItems: 0,
+        imageCount: 0,
+        textCount: 0,
+        sequenceFrameCount: 0,
+        audioVideoCount: 0,
+        unsupportedOrMissingCount: 0
+      },
+      capabilityMarkers: []
+    },
+    unsupportedFeatures: [],
+    issues: [],
+    imageTargets: [],
+    textTargets: [],
+    ...snapshot
+  };
+  const snapshotJson = stableTestJson(normalized);
+  return {
+    schemaVersion: 1,
+    sourceId,
+    snapshotJson,
+    snapshotByteLength: Buffer.byteLength(snapshotJson, "utf8"),
+    snapshotSha256: createHash("sha256").update(snapshotJson).digest("hex"),
+    pathRedacted: true
+  };
+}
+
+function stableTestJson(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `[${value.map(stableTestJson).join(",")}]`;
+  if (typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableTestJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function fakeDeferredSvgaPlayback(label) {

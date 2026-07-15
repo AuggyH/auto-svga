@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "task": "uiux-multiformat-workspace-shell-conformance-cr001-root-cause-repair",
+  "branch": "codex/uiux-multiformat-r12-conformance-20260715",
+  "reviewedBaseHead": "1ca67dce21a185559a7821ccf746747cb4c09273",
+  "authorityRepairHead": "8b8f9221ee70d6e1df6fdcf2a88307ff6dfb7034",
+  "firstProductRepairHead": "2247303be8a58049c7600ea77a37fd42c78d57f5",
+  "productRepairHead": "5f6f1b781f5d9d3e8c33fc5f6b90c3123368be88",
+  "productRepairDiffSha256": "efa2f8e911c90ad9780d612739dfa20edb85e03b77465c33555e1a502980f068",
+  "sourceFiles": {
+    "tools/electron-prototype/experiments/svga-web/web/multiformat-product-conformance.mjs": "885b8891c3f5979829ed959fa0a6babe1c3904f347b07c3367148f0a62f3af72",
+    "tools/electron-prototype/experiments/svga-web/web/multiformat-desktop-preview-controller.mjs": "03fa858c3ebf3f69a739b8de3df7c9e46c00189d7de372a17894a43f5e3465e5",
+    "tools/electron-prototype/experiments/svga-web/tests/multiformat-conformance-milestone.test.mjs": "44220db5006998a022e1b6d024bc1d97a79fa949fff784b2a17c91abf8d9600d",
+    "tools/electron-prototype/experiments/svga-web/tests/svga-web-experiment.test.mjs": "519367e7f98b79ca0fbbc374eda0db0a6dae994882dbb50e60d6fc349d43ab7c"
+  },
+  "failureFirst": {
+    "ownerIssueProjection": "failed-with-raw-English-message-and-path-before-repair",
+    "composedOpenAuthority": "test-load-blocked-before-repair-by-missing-isolated-worktree-protobufjs",
+    "ownerFailureCopy": "failed-known-code-mapping-before-repair-after-test-stub-was-corrected",
+    "rightPanelProjection": "failed-with-symbol-coercion-and-open-ended-nested-records-before-root-cause-repair"
+  },
+  "validation": {
+    "directRepairTests": "4/4 passed",
+    "projectorRootCauseTests": "2/2 passed",
+    "multiFormatConformance": "27/27 passed",
+    "electronPrototype": "113/113 passed",
+    "designSystem": "passed",
+    "nodeCheck": "passed",
+    "diffCheck": "passed",
+    "retroLedgerJsonl": "passed",
+    "privacyRawFieldScan": "passed",
+    "getterInvocationCount": 0,
+    "coercionInvocationCount": 0
+  },
+  "dependencyOverlay": {
+    "rootLockMatchedDonor": "/.codex/worktrees/116b/auto-svga",
+    "electronPrototypeLockMatchedDonor": "/Documents/Auto_SVGA/tools/electron-prototype",
+    "committed": false,
+    "removedAfterValidation": true
+  },
+  "nonclaims": {
+    "foregroundVisualAcceptance": false,
+    "productOwnerAcceptance": false,
+    "packagedOrPromoted": false,
+    "windowPlacementImplemented": false
+  }
+}

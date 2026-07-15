@@ -17,6 +17,8 @@ const runtimeTextResetIconHtml = `
 `;
 
 export function createReplaceableImageRow(item, index, options) {
+  const label = item.displayName || item.imageKey;
+  const detail = item.detail || [item.dimensions, item.fileSize].filter(Boolean).join(" · ");
   const row = document.createElement("article");
   row.className = "replaceableRow";
   row.tabIndex = 0;
@@ -27,7 +29,7 @@ export function createReplaceableImageRow(item, index, options) {
   row.classList.toggle("isSelected", options.selected);
   row.classList.toggle("isRenaming", options.renaming);
   row.setAttribute("aria-selected", options.selected ? "true" : "false");
-  row.title = `${item.imageKey} ${item.dimensions} ${item.fileSize}`;
+  row.title = [label, detail].filter(Boolean).join(" · ");
   if (options.renaming) {
     row.innerHTML = `
       <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
@@ -41,11 +43,14 @@ export function createReplaceableImageRow(item, index, options) {
       </span>
     `;
   } else {
+    const trailingAction = options.directReplace
+      ? `<button type="button" class="replaceImageButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="替换 ${escapeHtml(label)} 图片">替换图片</button>`
+      : `<button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(label)} 操作">${rowMenuIconHtml}</button>`;
     row.innerHTML = `
       <span class="rowIndex" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
       <span class="thumb">${renderThumbnailHtml({ type: "image", resourceIds: [item.resourceId] }, options.model)}</span>
-      <span class="rowText"><strong>${escapeHtml(item.imageKey)}</strong><span>${escapeHtml(item.dimensions)} · ${escapeHtml(item.fileSize)}</span></span>
-      <button type="button" class="rowMenuButton" data-action="row-menu" data-image-key="${escapeHtml(item.imageKey)}" aria-label="${escapeHtml(item.imageKey)} 操作">${rowMenuIconHtml}</button>
+      <span class="rowText"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(detail)}</span></span>
+      ${trailingAction}
     `;
   }
   return row;

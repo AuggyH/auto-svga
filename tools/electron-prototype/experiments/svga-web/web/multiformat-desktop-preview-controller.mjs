@@ -23,15 +23,35 @@ import {
 } from "./short-term-macos-state-renderers.mjs";
 import { syncShortTermMenuState, syncShortTermWindowMode } from "./short-term-macos-host-client.mjs";
 import { createOverviewFactCell } from "./short-term-macos-overview-renderers.mjs";
+import {
+  createReplaceableImageRow,
+  createTextElementRow
+} from "./short-term-macos-replaceable-renderers.mjs";
 import { escapeHtml } from "./short-term-macos-render-model.mjs";
-import { projectMultiFormatRightPanel } from "./multiformat-product-conformance.mjs";
+import {
+  multiFormatDragDecisionForEvent,
+  multiFormatInventorySummaryItems,
+  projectMultiFormatRightPanel
+} from "./multiformat-product-conformance.mjs";
 
-const supportedDropPattern = /\.(svga|json|mp4)$/i;
 export const MULTIFORMAT_RENDERER_OPEN_TERMINAL_DEADLINE_MS = 15_000;
-const reviewedPickerFailureMessages = new Map([
-  ["unsupported_file_type", "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。"],
-  ["file_picker_failed", "无法打开文件选择器，源文件没有被修改。"]
-]);
+const genericOwnerFailureCopy = "操作未能完成，源文件没有被修改。";
+const reviewedOwnerFailureCopyByCode = Object.freeze({
+  unsupported_file_type: "仅支持 SVGA、Lottie JSON 或 VAP MP4 文件。",
+  file_picker_failed: "无法打开文件选择器，源文件没有被修改。",
+  open_failed: "无法打开本地文件，源文件没有被修改。",
+  open_timeout: "文件加载超时，请重新打开文件。源文件没有被修改。",
+  recent_file_missing: "这个最近文件已缺失或不可访问。",
+  host_file_open_failed: "无法打开系统传入的本地文件，源文件没有被修改。",
+  svga_preview_data_missing: "SVGA 文件没有返回可验证的本地预览数据，源文件没有被修改。",
+  replacement_preview_failed: "无法更新替换预览，源文件没有被修改。",
+  missing_resource: "预览所需资源缺失，源文件没有被修改。",
+  unsupported_feature: "当前文件包含暂不支持的内容，无法完整预览。",
+  parse_precondition: "文件内容不完整或格式异常，无法预览。",
+  asset_reference_precondition: "文件内容不完整或格式异常，无法预览。",
+  playback_failure: "文件预览播放出现问题。",
+  runtime_preview_failed: "无法挂载本地预览，源文件没有被修改。"
+});
 const factLabels = new Map([
   ["Format", "格式"],
   ["Canvas", "画布"],
@@ -39,7 +59,7 @@ const factLabels = new Map([
   ["Layers", "图层"],
   ["Assets", "资源"],
   ["Replaceable", "可替换"],
-  ["Inventory", "资产清单"],
+  ["Inventory", "资产列表"],
   ["Media", "媒体"],
   ["Video codec", "视频编码"],
   ["Audio", "音频"],
@@ -60,6 +80,7 @@ export function createMultiFormatDesktopPreviewController({
   let cancelRuntimePlaybackProgressFrame = () => {};
   let svgaPlaybackModulePromise;
   let runtimeReplacementValues = new Map();
+  let publicRuntimeReplacementTargets = new Map();
   let hostFileOpenEventId = "";
   let hostFileOpenRequest = 0;
   let activeFormat = "";
@@ -81,10 +102,10 @@ export function createMultiFormatDesktopPreviewController({
   function setMode(mode) {
     if (svgaWorkflowActive()) return svgaController.handlers.setMode?.(mode);
     state.mode = "preview";
-    applyModeButtons("preview");
-    if (mode === "edit") {
-      showShortTermCanvasToast(nodes, "当前格式仅支持运行时预览。");
-    }
+    applyModeButtons("preview", {
+      editEnabled: false,
+      editReason: "当前格式仅支持预览"
+    });
     if (state.model) setView("preview");
   }
 
@@ -135,9 +156,7 @@ export function createMultiFormatDesktopPreviewController({
   function failHostFileOpen(payload = {}) {
     if (!hostFileOpenIsActive(payload)) return false;
     clearHostFileOpenRequest();
-    showFailure(typeof payload.message === "string" && payload.message.length > 0
-      ? payload.message
-      : "无法打开系统传入的本地文件，源文件没有被修改。");
+    showOpenFailure(payload);
     return true;
   }
 
@@ -177,7 +196,11 @@ export function createMultiFormatDesktopPreviewController({
     const decision = showCanvasDragDecision(event, target, overlay);
     hideCanvasDragDecision();
     if (!decision.file) return;
+    if (svgaWorkflowActive() && (!decision.supported || decision.focusZone === "compare")) {
+      return svgaController.handlers.dropCanvasFile?.(event, target, overlay);
+    }
     if (!decision.supported) {
+      await closeFile();
       showShortTermCanvasToast(nodes, "不支持的文件格式");
       renderCommandState();
       return;
@@ -186,12 +209,7 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function showCanvasDragDecision(event, target, overlay) {
-    const file = event.dataTransfer?.files?.[0];
-    const decision = {
-      file,
-      focusZone: "open",
-      supported: !file || supportedDropPattern.test(file.name || "")
-    };
+    const decision = multiFormatDragDecisionForEvent(target, event, { activeFormat });
     showShortTermDragDecisionOverlay(overlay, decision);
     return decision;
   }
@@ -216,6 +234,8 @@ export function createMultiFormatDesktopPreviewController({
     state.selectedImageKey = "";
     state.selectedTextKey = "";
     state.textPreviewValues = {};
+    state.mode = "preview";
+    state.tab = "overview";
     activeFormat = "";
     clearSurfaces();
     setView("launch");
@@ -300,15 +320,16 @@ export function createMultiFormatDesktopPreviewController({
       return;
     }
     if (result.status === "failed") {
-      showFailure(result.message || "Replacement preview image could not be selected.");
+      showFailure({ code: "replacement_preview_failed" });
       return;
     }
     const runtimeValue = acceptedRuntimeReplacementValue(result, "image");
     if (replacementActionAccepted(result) && !runtimeValue) {
-      showFailure("Replacement preview did not return an accepted runtime target binding.");
+      showFailure({ code: "replacement_preview_failed" });
       return;
     }
     if (runtimeValue) {
+      setPublicRuntimeReplacementTarget(result, "image", imageKey, runtimeValue.targetId);
       setRuntimeReplacementValue(
         "image",
         runtimeValue.targetId,
@@ -330,10 +351,11 @@ export function createMultiFormatDesktopPreviewController({
     });
     const runtimeValue = acceptedRuntimeReplacementValue(result, "image");
     if (replacementActionAccepted(result) && !runtimeValue) {
-      showFailure("Replacement preview did not return an accepted runtime target binding.");
+      showFailure({ code: "replacement_preview_failed" });
       return;
     }
     if (runtimeValue) {
+      setPublicRuntimeReplacementTarget(result, "image", state.selectedImageKey, runtimeValue.targetId);
       setRuntimeReplacementValue(
         "image",
         runtimeValue.targetId,
@@ -381,14 +403,15 @@ export function createMultiFormatDesktopPreviewController({
     }).then((result) => {
       const runtimeValue = acceptedRuntimeReplacementValue(result, "text");
       if (replacementActionAccepted(result) && !runtimeValue) {
-        showFailure("Replacement preview did not return an accepted runtime target binding.");
+        showFailure({ code: "replacement_preview_failed" });
         return;
       }
       if (runtimeValue) {
+        setPublicRuntimeReplacementTarget(result, "text", textKey, runtimeValue.targetId);
         setRuntimeReplacementValue("text", runtimeValue.targetId, runtimeValue.value);
       }
       applyHostResult(result, { keepView: true });
-    }).catch(showFailure);
+    }).catch(() => showFailure({ code: "replacement_preview_failed" }));
   }
 
   async function resetRuntimeText(textKey = state.selectedTextKey) {
@@ -414,15 +437,18 @@ export function createMultiFormatDesktopPreviewController({
 
   function applyHostResult(result, options = {}) {
     if (!result?.model) {
-      showFailure("0.2 预览主机没有返回可见的终态结果，源文件没有被修改。");
+      showFailure({ code: options.keepView ? "replacement_preview_failed" : "open_failed" });
       return;
     }
-    const model = result.model;
+    const model = result.ownerRightPanelSnapshotEnvelope && !result.model.ownerRightPanelSnapshotEnvelope
+      ? { ...result.model, ownerRightPanelSnapshotEnvelope: result.ownerRightPanelSnapshotEnvelope }
+      : result.model;
+    const normalizedResult = model === result.model ? result : { ...result, model };
     state.model = model;
     state.sourceId = result.sourceId || state.sourceId || "";
     state.displayName = model.displayName || state.displayName || "";
     selectDefaultTargets(model);
-    renderModel(result);
+    renderModel(normalizedResult);
     if (options.keepView && state.view === "preview") {
       renderCommandState();
       return;
@@ -434,7 +460,7 @@ export function createMultiFormatDesktopPreviewController({
     if (result?.model?.detectedFormat === "svga" && svgaController?.handlers?.loadOpenedSource) {
       const bytes = result?.svgaSource?.bytes;
       if (!bytes?.byteLength) {
-        showFailure("SVGA 文件没有返回可验证的本地预览数据，源文件没有被修改。");
+        showOpenFailure({ code: "svga_preview_data_missing" });
         return;
       }
       clearRuntimePreview();
@@ -452,15 +478,19 @@ export function createMultiFormatDesktopPreviewController({
     }
     if (activeFormat === "svga") svgaController?.handlers?.deactivateForMultiFormat?.();
     activeFormat = result?.model?.detectedFormat || "";
+    state.mode = "preview";
+    state.tab = "overview";
+    applyModeButtons("preview", {
+      editEnabled: false,
+      editReason: "当前格式仅支持预览"
+    });
+    applyTabState("overview");
     applyHostResult(result);
   }
 
   function setLoading(copy) {
-    state.model = undefined;
-    clearRuntimeReplacementValues();
-    clearRuntimePreview();
+    revokeActiveDocumentAuthority({ disposeHost: false });
     renderLoadingMessage(nodes, copy);
-    clearSurfaces();
     setView("loading");
   }
 
@@ -469,7 +499,7 @@ export function createMultiFormatDesktopPreviewController({
       return;
     }
     if (outcome.kind === "failure") {
-      showFailure(outcome.message);
+      showOpenFailure(outcome);
       return;
     }
     await applyOpenedHostResult(outcome.result);
@@ -483,9 +513,7 @@ export function createMultiFormatDesktopPreviewController({
     renderIssues(model);
     renderReplaceableTargets();
     renderTextTargets();
-    if (!activeRuntimePreviewOwnsCanvasOutput(result)) {
-      renderCanvasState(model, result.visualEvidence);
-    }
+    if (!activeRuntimePreviewOwnsCanvasOutput(result)) renderCanvasState();
     renderPlaybackState(model);
     mountRuntimePreview(result);
     if (model.status === "failed") {
@@ -510,66 +538,79 @@ export function createMultiFormatDesktopPreviewController({
     if (inventory?.groups?.length) {
       const groups = inventory.groups.filter((group) => group.items?.length > 0);
       if (nodes.assetListHeading) {
-        nodes.assetListHeading.textContent = `资产清单 (${inventory.summary.totalItems})`;
+        nodes.assetListHeading.textContent = `资产列表 (${inventory.summary.totalItems})`;
+      }
+      const summaryItems = multiFormatInventorySummaryItems(inventory.summary);
+      if (nodes.assetFilterTabs) {
+        nodes.assetFilterTabs.hidden = summaryItems.length === 0;
+        nodes.assetFilterTabs.dataset.presentation = "summary";
       }
       nodes.assetFilterTabs?.setAttribute("role", "list");
-      nodes.assetFilterTabs?.setAttribute("aria-label", "资产清单摘要");
+      nodes.assetFilterTabs?.setAttribute("aria-label", "资产类型");
       nodes.assetFilterTabs?.replaceChildren(
-        createInventorySummaryChip("图片", inventory.summary.imageCount),
-        createInventorySummaryChip("文本", inventory.summary.textCount),
-        createInventorySummaryChip("序列", inventory.summary.sequenceFrameCount),
-        createInventorySummaryChip("媒体", inventory.summary.audioVideoCount),
-        createInventorySummaryChip("问题", inventory.summary.unsupportedOrMissingCount)
+        ...summaryItems.map(createInventorySummaryItem)
       );
+      nodes.assetList.removeAttribute("role");
       nodes.assetList.replaceChildren(...groups.map(createAssetGroup));
       return;
     }
 
     const assets = rightPanel.assets ?? [];
     if (nodes.assetListHeading) nodes.assetListHeading.textContent = `资产列表 (${assets.length})`;
+    if (nodes.assetFilterTabs) {
+      nodes.assetFilterTabs.hidden = true;
+      nodes.assetFilterTabs.dataset.presentation = "empty";
+    }
     nodes.assetFilterTabs?.setAttribute("role", "tablist");
     nodes.assetFilterTabs?.setAttribute("aria-label", "资产类型");
     nodes.assetFilterTabs?.replaceChildren();
+    nodes.assetList.setAttribute("role", "list");
     nodes.assetList.replaceChildren(...assets.map((asset) => {
       const row = document.createElement("article");
       row.className = "assetRow";
       row.dataset.component = "AssetRow";
+      row.setAttribute("role", "listitem");
       row.dataset.kind = asset.kind || "unknown";
-      const detail = [asset.dimensions, asset.sizeBytes ? `${asset.sizeBytes} B` : "", asset.resolutionStatus].filter(Boolean).join(" · ") || "metadata";
+      const detail = [asset.dimensions, asset.fileSize, asset.resolutionStatus].filter(Boolean).join(" · ");
       row.innerHTML = `
-        <span class="thumb">${escapeHtml((asset.kind || "?").slice(0, 1).toUpperCase())}</span>
-        <span class="rowText"><strong>${escapeHtml(asset.name || asset.id)}</strong><span>${escapeHtml(detail)}</span></span>
+        <span class="thumb">${escapeHtml((asset.ownerKind || "资源").slice(0, 1))}</span>
+        <span class="rowText"><strong>${escapeHtml(asset.name || asset.id)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}</span>
         ${asset.replaceable ? `<span class="badge">可替换</span>` : ""}
       `;
       return row;
     }));
   }
 
-  function createInventorySummaryChip(label, count) {
-    const chip = document.createElement("span");
-    chip.className = "badge";
-    chip.dataset.component = "AssetInventorySummaryChip";
-    chip.dataset.count = String(count);
-    chip.textContent = `${label} ${count}`;
-    return chip;
+  function createInventorySummaryItem(item) {
+    const summary = document.createElement("span");
+    summary.className = "assetSummaryItem";
+    summary.dataset.summaryId = item.id;
+    summary.dataset.count = String(item.count);
+    summary.setAttribute("role", "listitem");
+    summary.textContent = `${item.label} ${item.count}`;
+    return summary;
   }
 
   function createAssetGroup(group) {
     const section = document.createElement("section");
     section.className = "assetGroup";
-    section.dataset.component = "AssetInventoryGroup";
+    section.dataset.role = "AssetInventoryGroup";
     section.dataset.group = group.id;
     section.dataset.status = group.status;
+    section.setAttribute("role", "group");
+    section.setAttribute("aria-label", group.label);
 
     const heading = document.createElement("header");
     heading.className = "assetGroupHeader";
+    const statusCopy = groupStatusCopy(group);
     heading.innerHTML = `
-      <span class="rowText"><strong>${escapeHtml(group.label)}</strong><span>${escapeHtml(groupStatusCopy(group))}</span></span>
+      <span class="rowText"><strong>${escapeHtml(group.label)}</strong>${statusCopy ? `<span>${escapeHtml(statusCopy)}</span>` : ""}</span>
       <span class="badge">${escapeHtml(String(group.count))}</span>
     `;
 
     const list = document.createElement("div");
     list.className = "assetGroupList";
+    list.setAttribute("role", "list");
     list.replaceChildren(...group.items.map(createInventoryItemRow));
     section.replaceChildren(heading, list);
     return section;
@@ -578,29 +619,29 @@ export function createMultiFormatDesktopPreviewController({
   function createInventoryItemRow(item) {
     const row = document.createElement("article");
     row.className = "assetRow";
-    row.dataset.component = "AssetInventoryItem";
+    row.dataset.component = "AssetRow";
     row.dataset.group = item.groupId;
     row.dataset.kind = item.kind || "unknown";
     row.dataset.source = item.source;
     row.dataset.status = item.status;
+    row.dataset.attention = ["missing", "unsupported", "blocked"].includes(item.status) ? "true" : "false";
     row.dataset.replaceable = item.replaceable ? "true" : "false";
+    row.setAttribute("role", "listitem");
     if (item.runtimeTargetId) row.dataset.runtimeTargetId = item.runtimeTargetId;
-    const detail = item.detail?.length ? item.detail.join(" · ") : assetStatusCopy(item.status);
+    const detail = item.detail?.length ? item.detail.join(" · ") : "";
     row.innerHTML = `
       <span class="thumb">${escapeHtml((item.kind || "?").slice(0, 1).toUpperCase())}</span>
-      <span class="rowText"><strong>${escapeHtml(item.label || item.id)}</strong><span>${escapeHtml(detail)}</span></span>
+      <span class="rowText"><strong>${escapeHtml(item.label || item.id)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ""}</span>
       ${item.replaceable ? `<span class="badge">可替换</span>` : `<span class="badge">${escapeHtml(assetStatusCopy(item.status))}</span>`}
     `;
     return row;
   }
 
   function groupStatusCopy(group) {
-    const replaceable = group.replaceableCount > 0 ? `${group.replaceableCount} 可替换` : "无运行时替换";
-    if (group.status === "not_applicable") return "当前格式不适用";
-    if (group.status === "blocked") return `${replaceable} · 存在缺失或阻断`;
-    if (group.status === "warning") return `${replaceable} · 存在不支持项`;
-    if (group.status === "empty") return "无条目";
-    return replaceable;
+    if (group.status === "blocked") return "存在缺失或阻断";
+    if (group.status === "warning") return "存在不支持项";
+    if (group.replaceableCount > 0) return `${group.replaceableCount} 可替换`;
+    return "";
   }
 
   function assetStatusCopy(status) {
@@ -622,93 +663,45 @@ export function createMultiFormatDesktopPreviewController({
       ...(rightPanel.unsupportedFeatures ?? []).map((entry) => ({
         code: "unsupported_feature",
         severity: "warning",
-        message: `${entry.feature} · ${entry.path}`
+        message: entry.message
       }))
     ];
     nodes.findingList.replaceChildren(...issues.map((issue) => {
       const row = document.createElement("article");
       row.className = "findingRow";
       row.dataset.severity = issue.severity || "warning";
-      row.innerHTML = `<strong>${escapeHtml(issue.code || "issue")}</strong><span>${escapeHtml(issue.message || "")}</span>`;
+      row.innerHTML = `<strong>${escapeHtml(issue.message || "")}</strong>`;
       return row;
     }));
   }
 
   function renderReplaceableTargets() {
     const model = state.model;
-    const fusionImages = model?.rightPanel?.vapFusionImages ?? [];
-    const fusionResourceIds = new Set(fusionImages.map((entry) => entry.resourceId));
-    const assets = model?.rightPanel?.assets?.filter((asset) =>
-      asset.replaceable && (model.detectedFormat !== "vap" || !fusionResourceIds.has(asset.id))
-    ) ?? [];
-    const targets = [
-      ...assets.map((asset) => ({
-        id: asset.id,
-        name: asset.name || asset.id,
-        detail: [model.detectedFormat?.toUpperCase(), asset.kind, asset.dimensions].filter(Boolean).join(" · ")
-      })),
-      ...fusionImages.filter((entry) => entry.replaceable).map((entry) => ({
-        id: entry.resourceId,
-        name: entry.srcTag || entry.id,
-        detail: ["VAP fusion image", entry.dimensions ? `${entry.dimensions.width} x ${entry.dimensions.height}` : ""].filter(Boolean).join(" · ")
-      }))
-    ];
+    const rightPanel = projectMultiFormatRightPanel(model);
+    const targets = rightPanel.imageTargets ?? [];
     nodes.replaceableSummary.textContent = targets.length
-      ? `${targets.length} 个运行时图片替换项`
+      ? `${targets.length} 个可替换图片`
       : "当前文件没有可替换图片。";
-    nodes.replaceableList.replaceChildren(...targets.map((target) => {
-      const selected = state.selectedImageKey === target.id;
-      const row = document.createElement("article");
-      row.className = "replaceableRow";
-      row.dataset.imageKey = target.id;
-      row.dataset.action = "select-resource";
-      row.tabIndex = 0;
-      row.setAttribute("aria-selected", selected ? "true" : "false");
-      row.classList.toggle("isSelected", selected);
-      row.innerHTML = `
-        <span class="rowText"><strong>${escapeHtml(target.name)}</strong><span>${escapeHtml(target.detail)}</span></span>
-        <button type="button" data-action="row-menu" data-image-key="${escapeHtml(target.id)}" aria-label="替换预览图片">...</button>
-      `;
-      return row;
-    }));
+    nodes.replaceableList.replaceChildren(...targets.map((target, index) => createReplaceableImageRow(target, index, {
+      model,
+      selected: state.selectedImageKey === target.imageKey,
+      renaming: false,
+      directReplace: true
+    })));
   }
 
   function renderTextTargets() {
-    const lottieTexts = state.model?.rightPanel?.lottieTexts ?? [];
-    const vapTexts = state.model?.rightPanel?.vapFusionTexts ?? [];
-    const targets = [
-      ...lottieTexts.filter((entry) => entry.replaceable).map((entry) => ({
-        id: entry.id,
-        name: entry.name || entry.layerId || entry.id,
-        value: entry.initialText || "",
-        detail: "Lottie text"
-      })),
-      ...vapTexts.filter((entry) => entry.replaceable).map((entry) => ({
-        id: entry.resourceId,
-        name: entry.srcTag || entry.id,
-        value: "",
-        detail: "VAP fusion text"
-      }))
-    ];
-    nodes.textElementList.replaceChildren(...targets.map((target) => {
-      const selected = state.selectedTextKey === target.id;
-      const row = document.createElement("article");
-      row.className = "textElementRow";
-      row.dataset.textKey = target.id;
-      row.dataset.action = "select-text";
-      row.tabIndex = 0;
-      row.setAttribute("aria-selected", selected ? "true" : "false");
-      row.classList.toggle("isSelected", selected);
-      row.innerHTML = `
-        <span class="rowText"><strong>${escapeHtml(target.name)}</strong><span>${escapeHtml(target.detail)}</span></span>
-        <input data-text-input data-text-key="${escapeHtml(target.id)}" value="${escapeHtml(state.textPreviewValues[target.id] ?? target.value)}" aria-label="${escapeHtml(target.name)}">
-        <button type="button" data-action="runtime-text-reset" data-text-key="${escapeHtml(target.id)}"${activeReplacementForPublicTarget(state.model, "text", target.id) ? "" : " disabled"}>重置</button>
-      `;
-      return row;
+    const rightPanel = projectMultiFormatRightPanel(state.model);
+    const targets = (rightPanel.textTargets ?? []).map((target) => ({
+      ...target,
+      inputValue: state.textPreviewValues[target.textKey] ?? target.initialText ?? ""
     }));
+    nodes.textElementList.replaceChildren(...targets.map((target, index) => createTextElementRow(target, index, {
+      selected: state.selectedTextKey === target.textKey
+    })));
   }
 
-  function renderCanvasState(model, visualEvidence) {
+  function renderCanvasState() {
     const canvas = nodes.primaryCanvas;
     const context = canvas?.getContext?.("2d");
     if (!canvas || !context) return;
@@ -718,17 +711,7 @@ export function createMultiFormatDesktopPreviewController({
     canvas.width = width;
     canvas.height = height;
     context.clearRect(0, 0, width, height);
-    context.fillStyle = "#f6f7f8";
-    context.fillRect(0, 0, width, height);
-    context.strokeStyle = "#d7dce2";
-    context.strokeRect(0.5, 0.5, width - 1, height - 1);
-    context.fillStyle = "#1f2937";
-    context.font = "600 18px system-ui, sans-serif";
-    context.textAlign = "center";
-    context.fillText(`${(model.detectedFormat || "motion").toUpperCase()} · ${statusCopy(model.status)}`, width / 2, height / 2 - 12);
-    context.font = "13px system-ui, sans-serif";
-    context.fillStyle = "#64748b";
-    context.fillText(visualEvidence?.vapVisualPlaybackVerified || visualEvidence?.lottieDomPlaybackVerified ? "本地渲染已就绪" : "正在准备本地预览", width / 2, height / 2 + 16);
+    canvas.dataset.surfaceState = "preparing";
   }
 
   function mountRuntimePreview(result) {
@@ -786,7 +769,7 @@ export function createMultiFormatDesktopPreviewController({
     }).catch((error) => {
       if (!isActiveRuntimePreviewGeneration(generation)) return;
       clearRuntimePreview({ preserveGeneration: true });
-      showFailure(runtimePreviewErrorCopy(error));
+      showFailure(runtimePreviewFailure(error));
     });
   }
 
@@ -852,7 +835,7 @@ export function createMultiFormatDesktopPreviewController({
     const mount = document.createElement("div");
     mount.id = "multiFormatRuntimeMount";
     mount.className = "multiFormatRuntimeMount";
-    mount.dataset.component = "MultiFormatRuntimeMount";
+    mount.dataset.role = "MultiFormatRuntimeMount";
     mount.dataset.runtimePreviewState = "idle";
     mount.hidden = true;
     nodes.primaryCanvas?.parentElement?.append(mount);
@@ -998,7 +981,7 @@ export function createMultiFormatDesktopPreviewController({
       onLoadError: (error) => {
         if (!isActiveRuntimePreviewGeneration(generation)) return;
         clearRuntimePreview({ preserveGeneration: true });
-        showFailure(runtimePreviewErrorCopy(new RuntimePreviewPayloadError({
+        showFailure(runtimePreviewFailure(new RuntimePreviewPayloadError({
           code: "playback_failure",
           message: "VAP runtime preview reached a typed playback failure.",
           details: { reason: "vap_runtime_load_error", cause: error ? "redacted runtime error" : undefined }
@@ -1323,13 +1306,37 @@ export function createMultiFormatDesktopPreviewController({
     });
   }
 
+  function setPublicRuntimeReplacementTarget(result, kind, fallbackPublicTargetId, runtimeTargetId) {
+    if (kind !== "image" && kind !== "text") return;
+    const lastAction = result?.model?.replacement?.lastAction;
+    if (lastAction?.type !== "applyReplacement" || lastAction.status !== "accepted") return;
+    const publicTargetId = typeof lastAction.publicTargetId === "string" && lastAction.publicTargetId.trim()
+      ? lastAction.publicTargetId.trim()
+      : String(fallbackPublicTargetId || "").trim();
+    const acceptedRuntimeTargetId = typeof lastAction.runtimeTargetId === "string" && lastAction.runtimeTargetId.trim()
+      ? lastAction.runtimeTargetId.trim()
+      : String(runtimeTargetId || "").trim();
+    if (!publicTargetId || !acceptedRuntimeTargetId || acceptedRuntimeTargetId !== String(runtimeTargetId || "").trim()) return;
+    publicRuntimeReplacementTargets.set(`${kind}:${publicTargetId}`, {
+      kind,
+      publicTargetId,
+      runtimeTargetId: acceptedRuntimeTargetId
+    });
+  }
+
   function clearRuntimeReplacementValues(kind, targetId) {
     if (kind !== "image" && kind !== "text") {
       runtimeReplacementValues = new Map();
+      publicRuntimeReplacementTargets = new Map();
       return;
     }
     for (const [key, record] of runtimeReplacementValues.entries()) {
       if (record.kind === kind && (!targetId || record.targetId === targetId)) runtimeReplacementValues.delete(key);
+    }
+    for (const [key, record] of publicRuntimeReplacementTargets.entries()) {
+      if (record.kind === kind && (!targetId || record.runtimeTargetId === targetId)) {
+        publicRuntimeReplacementTargets.delete(key);
+      }
     }
   }
 
@@ -1415,7 +1422,10 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function renderCommandState() {
-    if (svgaWorkflowActive()) return svgaController.handlers.renderCommandState?.();
+    if (svgaWorkflowActive()) {
+      applyModeButtons(state.mode);
+      return svgaController.handlers.renderCommandState?.();
+    }
     const model = state.model;
     const commands = model?.commands ?? {};
     const hasFile = Boolean(model);
@@ -1439,10 +1449,10 @@ export function createMultiFormatDesktopPreviewController({
       canRenameImageKey: false,
       canReplaceImage: commands.replace === true && Boolean(state.selectedImageKey),
       canResetImageReplacement: commands.resetReplacement === true
-        && activeReplacementForPublicTarget(model, "image", state.selectedImageKey),
+        && activeReplacementForPublicTarget(model, "image", state.selectedImageKey, publicRuntimeReplacementTargets),
       canEditText: commands.replace === true && selectedText,
       canResetText: commands.resetReplacement === true
-        && activeReplacementForPublicTarget(model, "text", state.selectedTextKey),
+        && activeReplacementForPublicTarget(model, "text", state.selectedTextKey, publicRuntimeReplacementTargets),
       canRunOptimization: false,
       canShowOptimizationComparison: false,
       isRenaming: false,
@@ -1464,6 +1474,11 @@ export function createMultiFormatDesktopPreviewController({
       playPauseCopy: model?.status === "playing" ? "暂停" : "播放",
       loopEnabled: state.primaryPlaybackLooping !== false
     });
+    applyModeButtons("preview", {
+      previewEnabled: hasFile,
+      editEnabled: false,
+      editReason: "当前格式仅支持预览"
+    });
     state.lastMenuStateSnapshot = syncShortTermMenuState(bridge, menuState, state.lastMenuStateSnapshot);
   }
 
@@ -1474,6 +1489,14 @@ export function createMultiFormatDesktopPreviewController({
     nodes.replaceableList.replaceChildren();
     nodes.textElementList.replaceChildren();
     nodes.replaceableSummary.textContent = "";
+    if (nodes.assetListHeading) nodes.assetListHeading.textContent = "";
+    if (nodes.assetFilterTabs) {
+      nodes.assetFilterTabs.replaceChildren();
+      nodes.assetFilterTabs.hidden = true;
+      nodes.assetFilterTabs.dataset.presentation = "empty";
+      nodes.assetFilterTabs.setAttribute("role", "tablist");
+      nodes.assetFilterTabs.setAttribute("aria-label", "资产类型");
+    }
     nodes.playbackTime.textContent = "0:00 / 0:00";
   }
 
@@ -1500,20 +1523,56 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function selectDefaultTargets(model) {
-    const imageTarget = (model.detectedFormat === "vap"
-      ? model.rightPanel?.vapFusionImages?.find((entry) => entry.replaceable)?.resourceId
-      : model.rightPanel?.assets?.find((asset) => asset.replaceable)?.id) ?? "";
-    const textTarget = model.rightPanel?.lottieTexts?.find((entry) => entry.replaceable)?.id
-      ?? model.rightPanel?.vapFusionTexts?.find((entry) => entry.replaceable)?.resourceId
-      ?? "";
+    const rightPanel = projectMultiFormatRightPanel(model);
+    const imageTarget = rightPanel.imageTargets?.[0]?.imageKey ?? "";
+    const textTarget = rightPanel.textTargets?.[0]?.textKey ?? "";
     if (!state.selectedImageKey || !hasImageTarget(model, state.selectedImageKey)) state.selectedImageKey = imageTarget;
     if (!state.selectedTextKey || !hasTextTarget(model, state.selectedTextKey)) state.selectedTextKey = textTarget;
   }
 
   function showFailure(error) {
     clearRuntimePreview();
-    renderFailureMessage(nodes, error instanceof Error ? error.message : String(error));
+    renderFailureMessage(nodes, ownerFailureCopy(error));
     setView("failed");
+  }
+
+  function showOpenFailure(error) {
+    revokeActiveDocumentAuthority();
+    renderFailureMessage(nodes, ownerFailureCopy(error));
+    setView("failed");
+  }
+
+  function revokeActiveDocumentAuthority(options = {}) {
+    if (activeFormat === "svga") svgaController?.handlers?.deactivateForMultiFormat?.();
+    activeFormat = "";
+    clearRuntimePreview();
+    clearRuntimeReplacementValues();
+    if (options.disposeHost !== false) {
+      Promise.resolve(bridge?.controlMultiFormatPreview?.({ action: "dispose" })).catch(() => {});
+    }
+    state.sourceBytes = undefined;
+    state.previewBytes = undefined;
+    state.sourceId = "";
+    state.displayName = "";
+    state.model = undefined;
+    state.selectedImageKey = "";
+    state.selectedTextKey = "";
+    state.assetFilter = "all";
+    state.renameImageKey = "";
+    state.textPreview = "";
+    state.textPreviewValues = {};
+    state.activeOutput = undefined;
+    state.cleanSaveAsVisible = false;
+    state.primaryPlayback = undefined;
+    state.compareAPlayback = undefined;
+    state.compareBPlayback = undefined;
+    state.editPlayback = undefined;
+    state.resourceMenuReturnFocus = undefined;
+    state.mode = "preview";
+    state.tab = "overview";
+    state.lastMenuStateSnapshot = "";
+    renderFileHeader(nodes, "", "");
+    clearSurfaces();
   }
 
   function currentStateSummary() {
@@ -1573,7 +1632,7 @@ export function createMultiFormatDesktopPreviewController({
       if (svgaWorkflowActive()) {
         return svgaController?.handlers?.openResourceContextMenu?.(event, imageKey, returnFocus);
       }
-      chooseReplacementImage(imageKey).catch(showFailure);
+      chooseReplacementImage(imageKey).catch(() => showFailure({ code: "replacement_preview_failed" }));
     },
     closeResourceContextMenu: (...args) => delegateSvga("closeResourceContextMenu", ...args),
     selectTextKey,
@@ -1637,17 +1696,14 @@ export async function resolveMultiFormatOpenOutcome(openPromise, options = {}) {
         timeout = setTimeout(() => {
           resolve({
             kind: "failure",
-            message: "0.2 预览请求没有在限定时间内到达加载或错误终态，已中止本次打开。"
+            code: "open_timeout"
           });
         }, deadlineMs);
       })
     ]);
     return normalizeMultiFormatOpenOutcome(result);
   } catch {
-    return {
-      kind: "failure",
-      message: "无法打开本地文件，源文件没有被修改。"
-    };
+    return ownerFailureOutcome("open_failed");
   } finally {
     clearTimeout(timeout);
   }
@@ -1657,44 +1713,32 @@ export async function resolveMultiFormatChooserOutcome(openPromise) {
   try {
     return normalizeMultiFormatOpenOutcome(await Promise.resolve(openPromise));
   } catch {
-    return {
-      kind: "failure",
-      message: "无法打开文件选择器，源文件没有被修改。"
-    };
+    return ownerFailureOutcome("file_picker_failed", { pathRedacted: true });
   }
 }
 
 export function normalizeMultiFormatOpenOutcome(result) {
-  if (result?.kind === "failure" || result?.kind === "cancelled" || result?.kind === "model") return result;
+  if (result?.kind === "failure") {
+    return ownerFailureOutcome(trustedOwnerFailureCode(result), {
+      pathRedacted: result?.pathRedacted === true
+    });
+  }
+  if (result?.kind === "cancelled" || result?.kind === "model") return result;
   if (result?.status === "cancelled") return { kind: "cancelled" };
-  const reviewedPickerFailureMessage = result?.status === "failed" && result?.pathRedacted === true
-    ? reviewedPickerFailureMessages.get(result.code)
-    : undefined;
-  if (reviewedPickerFailureMessage) {
-    return {
-      kind: "failure",
-      code: result.code,
-      message: reviewedPickerFailureMessage,
-      pathRedacted: true
-    };
+  const reviewedPickerFailureCode = result?.status === "failed" && result?.pathRedacted === true
+    ? trustedOwnerFailureCode(result)
+    : "";
+  if (reviewedPickerFailureCode) {
+    return ownerFailureOutcome(reviewedPickerFailureCode, { pathRedacted: true });
   }
   if (result?.status === "missing") {
-    return {
-      kind: "failure",
-      message: result.message || "这个最近文件已缺失或不可访问。"
-    };
+    return ownerFailureOutcome("recent_file_missing");
   }
   if (result?.model) return { kind: "model", result };
   if (result?.status === "opened") {
-    return {
-      kind: "failure",
-      message: "0.2 预览主机没有返回可见的终态结果，源文件没有被修改。"
-    };
+    return ownerFailureOutcome("open_failed");
   }
-  return {
-    kind: "failure",
-    message: "0.2 预览主机返回了无法识别的结果，源文件没有被修改。"
-  };
+  return ownerFailureOutcome("");
 }
 
 function applyProductCopy(documentRef = document) {
@@ -1721,7 +1765,43 @@ function playbackMeta(model) {
 }
 
 function issueSummary(model) {
-  return model.rightPanel?.issues?.[0]?.message || model.rightPanel?.unsupportedFeatures?.[0]?.feature || "";
+  const rightPanel = projectMultiFormatRightPanel(model);
+  const issue = rightPanel.issues?.[0];
+  if (issue?.code === "missing_resource") return "预览所需资源缺失，源文件没有被修改。";
+  if (issue?.code === "unsupported_feature" || rightPanel.unsupportedFeatures?.length) {
+    return "当前文件包含暂不支持的内容，无法完整预览。";
+  }
+  return issue ? "文件未能解析，源文件没有被修改。" : "";
+}
+
+function ownerFailureCopy(failure) {
+  const code = trustedOwnerFailureCode(failure);
+  return code ? reviewedOwnerFailureCopyByCode[code] : genericOwnerFailureCopy;
+}
+
+function ownerFailureOutcome(code, options = {}) {
+  const trustedCode = trustedOwnerFailureCode({ code });
+  return {
+    kind: "failure",
+    ...(trustedCode ? { code: trustedCode } : {}),
+    message: trustedCode ? reviewedOwnerFailureCopyByCode[trustedCode] : genericOwnerFailureCopy,
+    ...(options.pathRedacted === true && trustedCode ? { pathRedacted: true } : {})
+  };
+}
+
+function trustedOwnerFailureCode(failure) {
+  if (!failure || typeof failure !== "object" || Array.isArray(failure)) return "";
+  try {
+    const prototype = Object.getPrototypeOf(failure);
+    if (prototype !== Object.prototype && prototype !== null) return "";
+    const descriptor = Object.getOwnPropertyDescriptor(failure, "code");
+    const code = descriptor && "value" in descriptor && typeof descriptor.value === "string"
+      ? descriptor.value
+      : "";
+    return Object.hasOwn(reviewedOwnerFailureCopyByCode, code) ? code : "";
+  } catch {
+    return "";
+  }
 }
 
 function statusCopy(status) {
@@ -1745,30 +1825,21 @@ function formatTime(timeMs) {
 }
 
 function hasImageTarget(model, targetId) {
-  return (model.rightPanel?.assets ?? []).some((asset) => asset.replaceable && asset.id === targetId)
-    || (model.rightPanel?.vapFusionImages ?? []).some((entry) =>
-      entry.replaceable && entry.resourceId === targetId
-    );
+  return (projectMultiFormatRightPanel(model).imageTargets ?? []).some((target) =>
+    target.imageKey === targetId || target.resourceId === targetId
+  );
 }
 
 function hasTextTarget(model, targetId) {
-  return (model.rightPanel?.lottieTexts ?? []).some((entry) => entry.replaceable && entry.id === targetId)
-    || (model.rightPanel?.vapFusionTexts ?? []).some((entry) =>
-      entry.replaceable && entry.resourceId === targetId
-    );
+  return (projectMultiFormatRightPanel(model).textTargets ?? []).some((target) =>
+    target.textKey === targetId
+  );
 }
 
-function activeReplacementForPublicTarget(model, kind, publicTargetId) {
+function activeReplacementForPublicTarget(model, kind, publicTargetId, publicRuntimeReplacementTargets = new Map()) {
   if (!publicTargetId || (kind !== "image" && kind !== "text")) return false;
-  let runtimeTargetId = publicTargetId;
-  if (model?.detectedFormat === "vap") {
-    const targets = kind === "image"
-      ? model.rightPanel?.vapFusionImages
-      : model.rightPanel?.vapFusionTexts;
-    const target = (targets ?? []).find((entry) => entry.resourceId === publicTargetId);
-    if (!target?.runtimeBindingKey) return false;
-    runtimeTargetId = target.runtimeBindingKey;
-  }
+  const acceptedBinding = publicRuntimeReplacementTargets.get(`${kind}:${publicTargetId}`);
+  const runtimeTargetId = acceptedBinding?.runtimeTargetId || publicTargetId;
   return (model?.replacement?.active ?? []).some((entry) =>
     entry?.format === model?.detectedFormat
     && entry?.kind === kind
@@ -1778,20 +1849,26 @@ function activeReplacementForPublicTarget(model, kind, publicTargetId) {
 
 class RuntimePreviewPayloadError extends Error {
   constructor(issue) {
-    super(issue?.message || "0.2 预览运行时没有返回可播放的本地载荷。");
+    super("无法准备本地预览，源文件没有被修改。");
     this.name = "RuntimePreviewPayloadError";
     this.issue = issue;
   }
 }
 
-function runtimePreviewErrorCopy(error) {
+function runtimePreviewFailure(error) {
   if (error instanceof RuntimePreviewPayloadError) {
-    const code = error.issue?.code ? `${error.issue.code}: ` : "";
-    return `${code}${error.message}`;
+    const issueCode = trustedOwnerFailureCode(error.issue);
+    if ([
+      "missing_resource",
+      "unsupported_feature",
+      "parse_precondition",
+      "asset_reference_precondition",
+      "playback_failure"
+    ].includes(issueCode)) {
+      return { code: issueCode };
+    }
   }
-  return error instanceof Error
-    ? error.message
-    : "0.2 预览运行时未能挂载本地播放视图。";
+  return { code: "runtime_preview_failed" };
 }
 
 function base64ToBytes(value) {

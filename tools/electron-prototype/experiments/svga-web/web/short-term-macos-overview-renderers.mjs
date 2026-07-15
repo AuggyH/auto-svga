@@ -70,6 +70,10 @@ export function renderOverviewFacts(nodes, view) {
 export function renderAssetFilterTabs(nodes, view, activeFilter) {
   if (!nodes.assetFilterTabs) return;
   const tabs = view.assetTabs ?? [];
+  nodes.assetFilterTabs.hidden = false;
+  nodes.assetFilterTabs.dataset.presentation = "filters";
+  nodes.assetFilterTabs.setAttribute("role", "tablist");
+  nodes.assetFilterTabs.setAttribute("aria-label", "资产类型");
   const activeElement = nodes.assetFilterTabs.ownerDocument?.activeElement;
   const previousFocusedFilter = nodes.assetFilterTabs.contains(activeElement)
     ? activeElement?.dataset?.assetFilter || ""

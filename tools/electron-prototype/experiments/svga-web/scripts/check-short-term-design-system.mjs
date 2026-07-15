@@ -55,7 +55,10 @@ const allowedDataComponents = new Set([
   "ReplaceableTextRow",
   "OptimizationFindingRow",
   "OptimizationResultCard",
+  "OptimizationResultDetailRow",
   "CompareCanvasSurface",
+  "CompareInfoPanel",
+  "CompareMetricColumn",
   "ComparePreviewCard",
   "InlineTextReplacementInput",
   "SettingsSheet",
@@ -84,6 +87,7 @@ const allowedModules = new Set([
   "LaunchModule",
   "PreviewCanvasModule",
   "OverviewInformationModule",
+  "ReplaceableElementsSurface",
   "OptimizationDetailSurface",
   "GeneralCompareModule",
   "OptimizationCompareModule",
@@ -100,6 +104,7 @@ const requiredPageStates = [
   "Loading",
   "Load failed",
   "Preview ready",
+  "Preview replaceable",
   "General comparing",
   "Edit reserved"
 ];
@@ -109,6 +114,7 @@ const requiredFigmaPageStates = [
   { figma: "加载 / 加载中", codePageState: "Loading", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
   { figma: "加载 / 加载失败", codePageState: "Load failed", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "StateRecoveryModule"] },
   { figma: "预览 / 默认", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"] },
+  { figma: "预览 / 可替换元素", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "ReplaceableElementsSurface"] },
   { figma: "预览 / 优化详情", codePageState: "Preview ready", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "PreviewCanvasModule", "OptimizationDetailSurface"] },
   { figma: "预览 / 优化结果对比", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "OptimizationCompareModule", "OptimizationDetailSurface"] },
   { figma: "对比 / 空态", codePageState: "General comparing", frame: { width: 1280, height: 800 }, rootModules: ["WindowChromeModule", "GeneralCompareModule"] },
@@ -163,7 +169,7 @@ const requiredFigmaCatalog = {
   ]
 };
 const designSystemCatalogSections = Object.keys(requiredFigmaCatalog);
-const designSystemTraceSections = [...designSystemCatalogSections, "pageStates"];
+const designSystemTraceSections = [...designSystemCatalogSections, "pageStates", "extensions"];
 
 const expectedAppEntryImports = [
   "./short-term-macos-nodes.mjs",
@@ -325,6 +331,8 @@ async function main() {
   const recentFilesModel = await readFile(path.join(webRoot, "short-term-macos-recent-files-model.mjs"), "utf8");
   const renderModel = await readFile(path.join(webRoot, "short-term-macos-render-model.mjs"), "utf8");
   const compareModel = await readFile(path.join(webRoot, "short-term-macos-compare-model.mjs"), "utf8");
+  const multiFormatController = await readFile(path.join(webRoot, "multiformat-desktop-preview-controller.mjs"), "utf8");
+  const multiFormatConformance = await readFile(path.join(webRoot, "multiformat-product-conformance.mjs"), "utf8");
   const mainProcess = await readFile(path.join(experimentRoot, "main.cjs"), "utf8");
   const windowBoundsPolicy = await readFile(path.join(experimentRoot, "short-term-window-bounds-policy.cjs"), "utf8");
   const designManifest = await readFile(path.join(repoRoot, "DESIGN.md"), "utf8");
@@ -343,6 +351,12 @@ async function main() {
     unknownComponents,
     componentCount: dataComponents.length
   });
+
+  record("multiformat-dynamic-components-reuse-canonical-system",
+    /row\.dataset\.component = "AssetRow"/.test(multiFormatController)
+      && /section\.dataset\.role = "AssetInventoryGroup"/.test(multiFormatController)
+      && /mount\.dataset\.role = "MultiFormatRuntimeMount"/.test(multiFormatController)
+      && !/dataset\.component = "(?:AssetInventoryGroup|AssetInventoryItem|MultiFormatRuntimeMount)"/.test(multiFormatController));
 
   const dataModules = [...new Set(collectAttributeValues(page, "data-module"))].sort();
   const unknownModules = dataModules.filter((name) => !allowedModules.has(name));
@@ -435,6 +449,43 @@ async function main() {
     missingMappedHtmlModules
   });
 
+  const multiFormatExtension = (designSystemMap.extensions ?? [])
+    .find(({ productMilestone }) => productMilestone === "0.2-multiformat-preview");
+  const requiredMultiFormatComponents = [
+    "CanvasModeSwitch",
+    "DragDecisionOverlay",
+    "PlaybackControls",
+    "OverviewFactRow",
+    "AssetFilterTabs",
+    "AssetRow",
+    "ReplaceableImageRow",
+    "ReplaceableTextRow",
+    "RightInformationSurface"
+  ];
+  const requiredMultiFormatModules = [
+    "LaunchModule",
+    "PreviewCanvasModule",
+    "OverviewInformationModule",
+    "GeneralCompareModule",
+    "SettingsDialogModule",
+    "StateRecoveryModule"
+  ];
+  record("multiformat-preview-inherits-canonical-ui-system", Boolean(multiFormatExtension)
+    && requiredMultiFormatComponents.every((name) => multiFormatExtension.codeComponents?.includes(name))
+    && requiredMultiFormatModules.every((name) => multiFormatExtension.codeModules?.includes(name))
+    && /createReplaceableImageRow/.test(multiFormatController)
+    && /createTextElementRow/.test(multiFormatController)
+    && /directReplace:\s*true/.test(multiFormatController)
+    && /multiFormatDragDecisionForEvent/.test(multiFormatController)
+    && /editEnabled:\s*false/.test(multiFormatController)
+    && /multiFormatInventorySummaryItems/.test(multiFormatConformance)
+    && !/#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})\b/iu.test(multiFormatController)
+    && !/本地渲染已就绪|正在准备本地预览/u.test(multiFormatController), {
+    extensionFound: Boolean(multiFormatExtension),
+    missingComponents: requiredMultiFormatComponents.filter((name) => !multiFormatExtension?.codeComponents?.includes(name)),
+    missingModules: requiredMultiFormatModules.filter((name) => !multiFormatExtension?.codeModules?.includes(name))
+  });
+
   const loadingSection = page.match(/<section class="view stateView workbenchStateView" data-view="loading"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const failedSection = page.match(/<section class="view stateView workbenchStateView" data-view="failed"[\s\S]*?<\/aside>\s*<\/section>/)?.[0] ?? "";
   const staleStateContentPattern = /id="fileIdentity"|class="factGrid"|id="assetList"|id="replaceableList"|toolbarClusterSave|data-action="save-as"|data-action="save-overwrite"/;
@@ -505,6 +556,12 @@ async function main() {
   const modules = await readFile(path.join(webRoot, "short-term-macos.modules.css"), "utf8");
   const pageStatesCss = await readFile(path.join(webRoot, "short-term-macos.page-states.css"), "utf8");
   const baseCss = await readFile(path.join(webRoot, "short-term-macos.css"), "utf8");
+
+  record("multiformat-asset-groups-use-tokenized-layout",
+    /--asv-component-asset-group-gap:\s*var\(--asv-space-1\)/.test(tokens)
+      && /--asv-asset-group-gap:\s*var\(--asv-component-asset-group-gap\)/.test(tokens)
+      && /\.assetGroup\s*\{[\s\S]*gap:\s*var\(--asv-asset-group-gap\)/.test(modules)
+      && /\.assetGroupHeader\s*\{[\s\S]*padding:\s*var\(--asv-asset-group-header-padding-block\) 0/.test(modules));
 
   const rightSurfaceContractChecks = [
     /--asv-component-right-panel-width:\s*360px/.test(tokens),
@@ -739,12 +796,15 @@ async function main() {
 
   record("page-state-surface-trace-contract", /<aside class="rightPanel"[^>]*data-component="RightInformationSurface"[^>]*data-panel-state="overview"/.test(page)
     && /id="panelOverview"[^>]*data-panel="overview"[^>]*data-page-state="Preview overview"[^>]*data-module="OverviewInformationModule"/.test(page)
+    && /class="replaceableSection"(?=[^>]*data-module="ReplaceableElementsSurface")(?=[^>]*data-page-state="Preview replaceable")[^>]*>/.test(page)
     && /id="panelOptimization"[^>]*data-panel="optimization"[^>]*data-page-state="Preview optimization"[^>]*data-module="OptimizationDetailSurface"/.test(page)
     && /id="settingsDialog"[^>]*data-component="SettingsSheet"[^>]*data-module="SettingsDialogModule"[^>]*data-page-state="Settings dialog"/.test(page)
     && /data-view="compare"[^>]*data-page-state="General comparing"[^>]*data-module="GeneralCompareModule"[^>]*data-state-mode="general"/.test(page)
+    && /id="compareInfoB"(?=[^>]*data-component="RightInformationSurface")(?=[^>]*data-role="CompareInfoPanel")[^>]*>/.test(page)
     && /stateMode:\s*"general"/.test(compareModel)
     && /stateMode:\s*"optimization"/.test(compareModel)
     && /pageState:\s*"General comparing"/.test(compareModel)
+    && /class="compareMetricColumn" data-component="CompareMetricColumn"/.test(compareModel)
     && !/pageState:\s*"Optimization compare"/.test(compareModel)
     && /const surfaceState = tab === "replaceable" \? "replaceable" : activePanel/.test(await readFile(path.join(webRoot, "short-term-macos-dom-state.mjs"), "utf8"))
     && /rightPanel\.dataset\.panelState = surfaceState/.test(await readFile(path.join(webRoot, "short-term-macos-dom-state.mjs"), "utf8"))

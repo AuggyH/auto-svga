@@ -5,6 +5,17 @@
     "readPacket": "docs/research/figma-mcp-read-packets/r6-design-system-system-read-20260709.md",
     "note": "Maps the Owner-approved Atom/Molecule/Module catalog to implementation boundaries for Auto SVGA 0.1.x."
   },
+  "extensions": [
+    {
+      "productMilestone": "0.2-multiformat-preview",
+      "authority": "docs/product/PRODUCT_ROADMAP.md",
+      "referenceBoundary": "Inherits the accepted 0.1 Figma shell and component contracts; format-specific content is capability-projected from the 0.2 PRD.",
+      "inheritsPageStates": ["Launch", "Loading", "Load failed", "Preview ready", "General comparing", "Settings dialog"],
+      "codeComponents": ["CanvasModeSwitch", "DragDecisionOverlay", "PlaybackControls", "OverviewFactRow", "AssetFilterTabs", "AssetRow", "ReplaceableImageRow", "ReplaceableTextRow", "RightInformationSurface"],
+      "codeModules": ["LaunchModule", "PreviewCanvasModule", "OverviewInformationModule", "GeneralCompareModule", "SettingsDialogModule", "StateRecoveryModule"],
+      "implementationFiles": ["web/multiformat-desktop-preview-controller.mjs", "web/multiformat-product-conformance.mjs", "web/short-term-macos-dom-state.mjs", "web/short-term-macos-drag-decision-surface.mjs", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css"]
+    }
+  ],
   "pageStates": [
     {
       "figma": "启动 / 默认",
@@ -41,6 +52,15 @@
       "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule"],
       "readPackets": ["docs/research/figma-mcp-read-packets/r6-design-system-system-read-20260709.md", "docs/research/figma-mcp-read-packets/r7-right-surface-default-contract-20260709.md"],
       "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-overview-renderers.mjs"]
+    },
+    {
+      "figma": "预览 / 可替换元素",
+      "codePageState": "Preview ready",
+      "appStates": ["preview"],
+      "frame": { "width": 1280, "height": 800 },
+      "rootModules": ["WindowChromeModule", "PreviewCanvasModule", "OverviewInformationModule", "ReplaceableElementsSurface"],
+      "readPackets": ["docs/research/figma-mcp-read-packets/r11-current-head-fidelity-audit-20260710.md"],
+      "implementationFiles": ["main.cjs", "web/index.html", "web/short-term-macos.tokens.css", "web/short-term-macos.modules.css", "web/short-term-macos.page-states.css", "web/short-term-macos-replaceable-renderers.mjs"]
     },
     {
       "figma": "预览 / 优化详情",
@@ -211,7 +231,7 @@
     {
       "figma": "Molecule/资源列表行",
       "codeComponents": ["AssetRow", "AudioAssetRow", "SequenceThumbnail", "ReplaceableImageRow", "ReplaceableTextRow"],
-      "codeModules": ["OverviewInformationModule"],
+      "codeModules": ["OverviewInformationModule", "ReplaceableElementsSurface"],
       "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-replaceable-renderers.mjs"]
     },
     {
@@ -246,9 +266,9 @@
     },
     {
       "figma": "Molecule/数据指标块",
-      "codeComponents": ["FactCell", "MetricOptimizationEntry", "OptimizationResultCard"],
-      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface", "OptimizationCompareModule"],
-      "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-optimization-renderers.mjs"]
+      "codeComponents": ["FactCell", "MetricOptimizationEntry", "OptimizationResultCard", "CompareMetricColumn"],
+      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface", "OptimizationCompareModule", "GeneralCompareModule"],
+      "implementationFiles": ["web/short-term-macos.components.css", "web/short-term-macos-overview-renderers.mjs", "web/short-term-macos-optimization-renderers.mjs", "web/short-term-macos-compare-model.mjs"]
     },
     {
       "figma": "Molecule/图层列表行",
@@ -290,9 +310,9 @@
     },
     {
       "figma": "Module/右侧栏",
-      "codeComponents": ["RightInformationSurface", "OverviewFactRow", "AssetRow", "OptimizationFindingRow", "OptimizationResultCard"],
-      "codeModules": ["OverviewInformationModule", "OptimizationDetailSurface", "OptimizationCompareModule", "StateRecoveryModule"],
-      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-file-surface.mjs", "web/short-term-macos-optimization-surface.mjs"]
+      "codeComponents": ["RightInformationSurface", "CompareInfoPanel", "OverviewFactRow", "AssetRow", "OptimizationFindingRow", "OptimizationResultCard", "OptimizationResultDetailRow"],
+      "codeModules": ["OverviewInformationModule", "ReplaceableElementsSurface", "OptimizationDetailSurface", "GeneralCompareModule", "OptimizationCompareModule", "StateRecoveryModule"],
+      "implementationFiles": ["web/index.html", "web/short-term-macos.modules.css", "web/short-term-macos-file-surface.mjs", "web/short-term-macos-optimization-surface.mjs", "web/short-term-macos-compare-model.mjs"]
     },
     {
       "figma": "Module/状态恢复面板",
