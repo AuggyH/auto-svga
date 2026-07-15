@@ -414,12 +414,15 @@ export function createMultiFormatDesktopPreviewController({
       showFailure({ code: options.keepView ? "replacement_preview_failed" : "open_failed" });
       return;
     }
-    const model = result.model;
+    const model = result.ownerRightPanelSnapshotEnvelope && !result.model.ownerRightPanelSnapshotEnvelope
+      ? { ...result.model, ownerRightPanelSnapshotEnvelope: result.ownerRightPanelSnapshotEnvelope }
+      : result.model;
+    const normalizedResult = model === result.model ? result : { ...result, model };
     state.model = model;
     state.sourceId = result.sourceId || state.sourceId || "";
     state.displayName = model.displayName || state.displayName || "";
     selectDefaultTargets(model);
-    renderModel(result);
+    renderModel(normalizedResult);
     if (options.keepView && state.view === "preview") {
       renderCommandState();
       return;
@@ -649,25 +652,7 @@ export function createMultiFormatDesktopPreviewController({
   function renderReplaceableTargets() {
     const model = state.model;
     const rightPanel = projectMultiFormatRightPanel(model);
-    const fusionImages = model?.rightPanel?.vapFusionImages ?? [];
-    const fusionResourceIds = new Set(fusionImages.map((entry) => entry.resourceId));
-    const assets = rightPanel.assets?.filter((asset) =>
-      asset.replaceable && (model.detectedFormat !== "vap" || !fusionResourceIds.has(asset.id))
-    ) ?? [];
-    const targets = [
-      ...assets.map((asset) => ({
-        imageKey: asset.id,
-        resourceId: asset.id,
-        displayName: asset.name || asset.id,
-        detail: [asset.dimensions, asset.fileSize].filter(Boolean).join(" · ")
-      })),
-      ...fusionImages.filter((entry) => entry.replaceable).map((entry) => ({
-        imageKey: entry.resourceId,
-        resourceId: entry.resourceId,
-        displayName: entry.srcTag || entry.id,
-        detail: ["VAP 融合图片", entry.dimensions ? `${entry.dimensions.width} x ${entry.dimensions.height}` : ""].filter(Boolean).join(" · ")
-      }))
-    ];
+    const targets = rightPanel.imageTargets ?? [];
     nodes.replaceableSummary.textContent = targets.length
       ? `${targets.length} 个可替换图片`
       : "当前文件没有可替换图片。";
@@ -680,26 +665,11 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function renderTextTargets() {
-    const lottieTexts = state.model?.rightPanel?.lottieTexts ?? [];
-    const vapTexts = state.model?.rightPanel?.vapFusionTexts ?? [];
-    const targets = [
-      ...lottieTexts.filter((entry) => entry.replaceable).map((entry) => ({
-        textKey: entry.id,
-        displayName: entry.name || entry.layerId || entry.id,
-        initialText: entry.initialText || "",
-        inputValue: state.textPreviewValues[entry.id] ?? entry.initialText ?? "",
-        placeholder: "输入文字以预览",
-        resetDisabled: false
-      })),
-      ...vapTexts.filter((entry) => entry.replaceable).map((entry) => ({
-        textKey: entry.resourceId,
-        displayName: entry.srcTag || entry.id,
-        initialText: "VAP 融合文字",
-        inputValue: state.textPreviewValues[entry.resourceId] ?? "",
-        placeholder: "输入文字以预览",
-        resetDisabled: false
-      }))
-    ];
+    const rightPanel = projectMultiFormatRightPanel(state.model);
+    const targets = (rightPanel.textTargets ?? []).map((target) => ({
+      ...target,
+      inputValue: state.textPreviewValues[target.textKey] ?? target.initialText ?? ""
+    }));
     nodes.textElementList.replaceChildren(...targets.map((target, index) => createTextElementRow(target, index, {
       selected: state.selectedTextKey === target.textKey
     })));
@@ -1488,12 +1458,9 @@ export function createMultiFormatDesktopPreviewController({
   }
 
   function selectDefaultTargets(model) {
-    const imageTarget = (model.detectedFormat === "vap"
-      ? model.rightPanel?.vapFusionImages?.find((entry) => entry.replaceable)?.resourceId
-      : model.rightPanel?.assets?.find((asset) => asset.replaceable)?.id) ?? "";
-    const textTarget = model.rightPanel?.lottieTexts?.find((entry) => entry.replaceable)?.id
-      ?? model.rightPanel?.vapFusionTexts?.find((entry) => entry.replaceable)?.resourceId
-      ?? "";
+    const rightPanel = projectMultiFormatRightPanel(model);
+    const imageTarget = rightPanel.imageTargets?.[0]?.imageKey ?? "";
+    const textTarget = rightPanel.textTargets?.[0]?.textKey ?? "";
     if (!state.selectedImageKey || !hasImageTarget(model, state.selectedImageKey)) state.selectedImageKey = imageTarget;
     if (!state.selectedTextKey || !hasTextTarget(model, state.selectedTextKey)) state.selectedTextKey = textTarget;
   }
@@ -1733,9 +1700,10 @@ function playbackMeta(model) {
 }
 
 function issueSummary(model) {
-  const issue = model.rightPanel?.issues?.[0];
+  const rightPanel = projectMultiFormatRightPanel(model);
+  const issue = rightPanel.issues?.[0];
   if (issue?.code === "missing_resource") return "预览所需资源缺失，源文件没有被修改。";
-  if (issue?.code === "unsupported_feature" || model.rightPanel?.unsupportedFeatures?.length) {
+  if (issue?.code === "unsupported_feature" || rightPanel.unsupportedFeatures?.length) {
     return "当前文件包含暂不支持的内容，无法完整预览。";
   }
   return issue ? "文件未能解析，源文件没有被修改。" : "";
@@ -1792,17 +1760,15 @@ function formatTime(timeMs) {
 }
 
 function hasImageTarget(model, targetId) {
-  return (model.rightPanel?.assets ?? []).some((asset) => asset.replaceable && asset.id === targetId)
-    || (model.rightPanel?.vapFusionImages ?? []).some((entry) =>
-      entry.replaceable && entry.resourceId === targetId
-    );
+  return (projectMultiFormatRightPanel(model).imageTargets ?? []).some((target) =>
+    target.imageKey === targetId || target.resourceId === targetId
+  );
 }
 
 function hasTextTarget(model, targetId) {
-  return (model.rightPanel?.lottieTexts ?? []).some((entry) => entry.replaceable && entry.id === targetId)
-    || (model.rightPanel?.vapFusionTexts ?? []).some((entry) =>
-      entry.replaceable && entry.resourceId === targetId
-    );
+  return (projectMultiFormatRightPanel(model).textTargets ?? []).some((target) =>
+    target.textKey === targetId
+  );
 }
 
 class RuntimePreviewPayloadError extends Error {

@@ -2086,8 +2086,9 @@ test("0.2 host-owned drag intake preserves embedded, adjacent, absent, and Lotti
     assert.notEqual(isolated.model.status, "previewReady");
     assert.equal(isolated.model.detectedFormat, "vap");
     assert.equal(isolated.model.rightPanel.issues.some((issue) =>
-      issue.details?.reason === "embedded_vapc_box_required"
-      || issue.message?.includes("vapc")
+      issue.code === "invalid_file"
+      && issue.message === "文件内容不完整或格式异常，无法预览。"
+      && issue.pathRedacted === true
     ), true, JSON.stringify(isolated.model.rightPanel.issues));
 
     const lottie = await session.openLocalFilePath(lottiePath, "dragDrop");
@@ -2229,7 +2230,10 @@ test("0.2 installed file-open source reaches positive Lottie and sidecar VAP sta
     assert.equal(overLimitVap.model.status, "previewReady");
     assert.equal(overLimitVap.model.detectedFormat, "vap");
     assert.equal(overLimitVap.model.rightPanel.issues.some((issue) =>
-      issue.details?.reason === "vap_dimensions_over_1504" && issue.severity === "warning"
+      issue.code === "owner_issue"
+      && issue.message === "当前文件存在无法显示的检查问题。"
+      && issue.severity === "warning"
+      && issue.pathRedacted === true
     ), true);
     assert.equal(overLimitVap.model.rightPanel.facts.some((fact) =>
       fact.id === "dimensions" && fact.value === "1136 x 1632" && fact.status === "warning"
@@ -3447,7 +3451,9 @@ test("0.2 installed file-open keeps source identity through renderer playback an
     assert.equal(state.model.rightPanel.vapFusionTexts.some((entry) => entry.srcTag === "title"), true);
     assert.equal(state.model.rightPanel.vapFusionImages.some((entry) => entry.srcTag === "badge"), true);
     assert.equal(state.model.rightPanel.issues.some((entry) =>
-      entry.code === "missing_resource" && entry.details?.reason === "fusion_replacement_required"
+      entry.code === "missing_resource"
+      && entry.message === "预览所需资源缺失。"
+      && entry.pathRedacted === true
     ), true);
     assert.equal(nodes.runtimeMount.dataset.runtimePreviewState, "loaded");
     const vapFusionBaseCallCount = vapCalls.length;
@@ -6855,9 +6861,46 @@ function createSessionBackedMultiFormatRuntimeMountTestBridge(session) {
 
 function createRuntimeMountOpenResult(format, options = {}) {
   const activeReplacements = Array.isArray(options.active) ? options.active : [];
+  const ownerRightPanelSnapshotEnvelope = createTestOwnerRightPanelSnapshotEnvelope({
+    facts: [{ id: "format", label: "格式", value: format.toUpperCase(), status: "pass" }],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      format,
+      groups: [],
+      summary: {
+        totalItems: 0,
+        replaceableItems: 0,
+        imageCount: 0,
+        textCount: format === "lottie" || format === "vap" ? 1 : 0,
+        sequenceFrameCount: 0,
+        audioVideoCount: 0,
+        unsupportedOrMissingCount: 0
+      },
+      capabilityMarkers: []
+    },
+    textTargets: format === "lottie"
+      ? [{
+          textKey: "text:1",
+          displayName: "Greeting",
+          initialText: "Original greeting",
+          placeholder: "输入文字以预览",
+          resetDisabled: false
+        }]
+      : format === "vap"
+        ? [{
+            textKey: "title",
+            displayName: "title",
+            initialText: "VAP 融合文字",
+            placeholder: "输入文字以预览",
+            resetDisabled: false
+          }]
+        : []
+  }, options.sourceId ?? (format === "lottie" ? "aaaaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbbbb"));
   return {
     status: "opened",
     sourceId: options.sourceId ?? (format === "lottie" ? "aaaaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbbbb"),
+    ownerRightPanelSnapshotEnvelope,
     pathRedacted: true,
     model: {
       schemaVersion: 1,
@@ -6938,6 +6981,7 @@ function createRuntimeMountOpenResult(format, options = {}) {
         unsupportedFeatures: [],
         issues: []
       },
+      ownerRightPanelSnapshotEnvelope,
       replacement: {
         status: activeReplacements.length ? "applied" : "idle",
         revision: activeReplacements.length ? 1 : 0,
@@ -6952,6 +6996,53 @@ function createRuntimeMountOpenResult(format, options = {}) {
       vapVisualPlaybackVerified: false
     }
   };
+}
+
+function createTestOwnerRightPanelSnapshotEnvelope(snapshot, sourceId = "test-source") {
+  const normalized = {
+    schemaVersion: 1,
+    pathRedacted: true,
+    facts: [],
+    assets: [],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      groups: [],
+      summary: {
+        totalItems: 0,
+        replaceableItems: 0,
+        imageCount: 0,
+        textCount: 0,
+        sequenceFrameCount: 0,
+        audioVideoCount: 0,
+        unsupportedOrMissingCount: 0
+      },
+      capabilityMarkers: []
+    },
+    unsupportedFeatures: [],
+    issues: [],
+    imageTargets: [],
+    textTargets: [],
+    ...snapshot
+  };
+  const snapshotJson = stableTestJson(normalized);
+  return {
+    schemaVersion: 1,
+    sourceId,
+    snapshotJson,
+    snapshotByteLength: Buffer.byteLength(snapshotJson, "utf8"),
+    snapshotSha256: createHash("sha256").update(snapshotJson).digest("hex"),
+    pathRedacted: true
+  };
+}
+
+function stableTestJson(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `[${value.map(stableTestJson).join(",")}]`;
+  if (typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableTestJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function fakeDeferredSvgaPlayback(label) {

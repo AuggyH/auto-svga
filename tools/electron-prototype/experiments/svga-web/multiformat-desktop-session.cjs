@@ -557,13 +557,22 @@ class MultiFormatDesktopPreviewSession {
 
   publicResult(model, sourceId = "", sourcePath = "") {
     if (sourceId) this.activeSourceId = sourceId;
+    const publicSourceId = sourceId || this.activeSourceId;
+    const ownerRightPanelSnapshotEnvelope = withOwnerSnapshotSourceId(
+      model?.ownerRightPanelSnapshotEnvelope,
+      publicSourceId
+    );
+    const publicModel = ownerRightPanelSnapshotEnvelope
+      ? { ...model, ownerRightPanelSnapshotEnvelope }
+      : model;
     const svgaSource = sourceId && sourcePath && model?.detectedFormat === "svga"
       ? publicSvgaSource(sourcePath)
       : undefined;
     return {
       status: "opened",
-      model,
-      sourceId: sourceId || this.activeSourceId,
+      model: publicModel,
+      sourceId: publicSourceId,
+      ...(ownerRightPanelSnapshotEnvelope ? { ownerRightPanelSnapshotEnvelope } : {}),
       ...(svgaSource ? { svgaSource } : {}),
       pathRedacted: true,
       lifecycle: { ...this.lifecycle },
@@ -574,6 +583,21 @@ class MultiFormatDesktopPreviewSession {
       }
     };
   }
+}
+
+function withOwnerSnapshotSourceId(envelope, sourceId) {
+  if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) return undefined;
+  if (envelope.schemaVersion !== 1 || envelope.pathRedacted !== true) return undefined;
+  if (typeof envelope.snapshotJson !== "string" || typeof envelope.snapshotSha256 !== "string") return undefined;
+  if (!Number.isSafeInteger(envelope.snapshotByteLength) || envelope.snapshotByteLength <= 0) return undefined;
+  return {
+    schemaVersion: 1,
+    sourceId: typeof sourceId === "string" && /^[A-Za-z0-9._:-]{0,128}$/u.test(sourceId) ? sourceId : "",
+    snapshotJson: envelope.snapshotJson,
+    snapshotByteLength: envelope.snapshotByteLength,
+    snapshotSha256: envelope.snapshotSha256,
+    pathRedacted: true
+  };
 }
 
 function publicSvgaSource(filePath) {

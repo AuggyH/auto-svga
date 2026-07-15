@@ -23,6 +23,10 @@ import {
   type OwnerVisibleMultiFormatPreviewModel,
   type OwnerVisibleSvgaReplacementController
 } from "../workbench/multiformat-owner-preview-candidate.js";
+import {
+  serializeOwnerRightPanelSnapshot,
+  type OwnerRightPanelSnapshotV1
+} from "../workbench/owner-right-panel-snapshot.js";
 import type {
   HiddenMultiFormatPreviewHost
 } from "../workbench/multiformat-preview-workspace.js";
@@ -58,6 +62,76 @@ test("owner-visible 0.2 candidate requires the explicit gate before host reads",
   assertNoLocalPaths(model);
 });
 
+test("owner right-panel snapshot rejects unbranded live objects before property access", () => {
+  let trapCalls = 0;
+  const proxy = new Proxy({}, {
+    get() {
+      trapCalls += 1;
+      return undefined;
+    },
+    getOwnPropertyDescriptor() {
+      trapCalls += 1;
+      return undefined;
+    },
+    ownKeys() {
+      trapCalls += 1;
+      return [];
+    }
+  });
+
+  assert.throws(() => serializeOwnerRightPanelSnapshot(proxy as OwnerRightPanelSnapshotV1));
+  assert.equal(trapCalls, 0);
+});
+
+test("owner right-panel snapshot carries only bounded display data and fixed copy", async () => {
+  const localPath = "/Users/designer/private/card.json";
+  const host = memoryHost({
+    [localPath]: minimalLottie({
+      assets: [{ id: "avatar", u: "images", p: "/Users/designer/private/hero.png", w: 20, h: 20 }],
+      layers: [
+        { ind: 1, ty: 2, nm: "layers.0.xp /Users/designer/private", refId: "avatar" },
+        { ind: 2, ty: 5, nm: "Complete bounded JSON is required", t: { d: { k: [{ s: { t: "/Users/designer/private/name" } }] } } }
+      ]
+    }),
+    [`${localPath}::images//Users/designer/private/hero.png`]: Uint8Array.from([1, 2, 3])
+  });
+  const session = createOwnerVisibleMultiFormatPreviewCandidate({
+    host,
+    lottieTarget: { container: {} },
+    lottieRendererLoader: async () => fakeLottieRenderer()
+  });
+
+  const opened = await session.openLocalCandidate({
+    gate: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE,
+    requestId: "snapshot-open",
+    source: "fileButton",
+    localPath,
+    displayName: localPath
+  });
+
+  const envelope = opened.ownerRightPanelSnapshotEnvelope;
+  assert.equal(envelope.schemaVersion, 1);
+  assert.equal(envelope.pathRedacted, true);
+  assert.equal(envelope.sourceId, "");
+  assert.equal(envelope.snapshotByteLength, textEncoder.encode(envelope.snapshotJson).byteLength);
+  const snapshot = JSON.parse(envelope.snapshotJson);
+  assert.equal(snapshot.pathRedacted, true);
+  assert.equal(snapshot.schemaVersion, 1);
+  assert.deepEqual(Object.keys(snapshot).sort(), [
+    "assetInventory",
+    "assets",
+    "facts",
+    "imageTargets",
+    "issues",
+    "pathRedacted",
+    "schemaVersion",
+    "textTargets",
+    "unsupportedFeatures"
+  ]);
+  assert.doesNotMatch(envelope.snapshotJson, /\/Users|private|layers\.0\.xp|Complete bounded JSON/u);
+  assertNoLocalPaths(opened);
+});
+
 test("owner-visible 0.2 candidate applies and resets Lottie image and text runtime replacements", async () => {
   const localPath = "/Users/designer/private/card.json";
   const loadCalls: LottieSvgLoadOptions[] = [];
@@ -91,7 +165,7 @@ test("owner-visible 0.2 candidate applies and resets Lottie image and text runti
   assert.equal(opened.rightPanel.lottieTexts[0]?.initialText, "Hello");
   assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
   assert.equal(opened.rightPanel.assetInventory.summary.textCount, 1);
-  assert.equal(opened.rightPanel.assetInventory.groups.find(({ id }) => id === "vap_fusion_images")?.status, "not_applicable");
+  assert.equal(opened.rightPanel.assetInventory.groups.some(({ id }) => id === "vap_fusion_images"), false);
   assert.equal(loadCalls.length, 1);
 
   const textApplied = await session.applyReplacement({
@@ -328,9 +402,9 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   assert.equal(opened.rightPanel.vapFusionImages[0]?.srcTag, "avatar");
   assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
   assert.equal(opened.rightPanel.assetInventory.summary.audioVideoCount, 2);
-  assert.equal(opened.rightPanel.assetInventory.groups.find(({ id }) => id === "text_candidates")?.status, "not_applicable");
+  assert.equal(opened.rightPanel.assetInventory.groups.some(({ id }) => id === "text_candidates"), false);
   assert.equal(opened.rightPanel.issues.some((entry) =>
-    entry.code === "missing_resource" && entry.details?.reason === "fusion_replacement_required"
+    entry.code === "missing_resource" && entry.message === "预览所需资源缺失。"
   ), true);
   assert.equal(runtime.configs.length, 1);
   assert.equal(runtime.configs[0]?.avatar, undefined);
@@ -359,7 +433,7 @@ test("owner-visible 0.2 candidate applies and resets VAP fusion runtime replacem
   assert.equal(reset.replacement.dirty, false);
   assert.equal(reset.replacement.lastAction?.status, "accepted");
   assert.equal(reset.rightPanel.issues.some((entry) =>
-    entry.code === "missing_resource" && entry.details?.reason === "fusion_replacement_required"
+    entry.code === "missing_resource" && entry.message === "预览所需资源缺失。"
   ), true);
   assert.equal(runtime.configs.length, 3);
   assert.equal(runtime.configs[2]?.avatar, undefined);
@@ -529,8 +603,8 @@ test("owner-visible oversized VAP remains playable with a truthful Canvas warnin
   assert.equal(opened.detectedFormat, "vap");
   assert.equal(opened.rightPanel.facts.find(({ id }) => id === "dimensions")?.value, "750 x 1624");
   assert.equal(opened.rightPanel.facts.find(({ id }) => id === "dimensions")?.status, "warning");
-  assert.equal(opened.rightPanel.issues.filter(({ details, severity }) =>
-    details?.reason === "vap_dimensions_over_1504" && severity === "warning"
+  assert.equal(opened.rightPanel.issues.filter(({ code, severity }) =>
+    String(code) === "owner_issue" && severity === "warning"
   ).length, 1);
   assert.equal(runtime.configs.length, 1);
   assert.equal((await session.play()).status, "playing");
@@ -631,7 +705,7 @@ test("owner-visible 0.2 candidate delegates SVGA imageKey replacement without ch
   assert.equal(opened.detectedFormat, "svga");
   assert.equal(opened.rightPanel.assets[0]?.id, "img_frame");
   assert.equal(opened.rightPanel.assetInventory.summary.imageCount, 1);
-  assert.equal(opened.rightPanel.assetInventory.groups.find(({ id }) => id === "vap_fusion_images")?.status, "not_applicable");
+  assert.equal(opened.rightPanel.assetInventory.groups.some(({ id }) => id === "vap_fusion_images"), false);
   assert.equal((await session.play()).status, "playing");
   assert.equal(session.pause().status, "paused");
   assert.equal(session.seek(500).canvas.playback.currentTimeMs, 500);

@@ -30,6 +30,10 @@ import {
   redactLocalPathsFromError,
   redactLocalPathsInValue
 } from "./local-path-redaction.js";
+import {
+  createOwnerRightPanelSnapshotEnvelope,
+  type OwnerRightPanelSnapshotEnvelopeV1
+} from "./owner-right-panel-snapshot.js";
 
 export const OWNER_VISIBLE_MULTIFORMAT_PREVIEW_WP5_GATE = "0.2-owner-visible-multiformat-preview-wp5" as const;
 export const OWNER_VISIBLE_MULTIFORMAT_PREVIEW_SCHEMA_VERSION = 1 as const;
@@ -203,6 +207,7 @@ export interface OwnerVisibleMultiFormatPreviewModel {
   commands: OwnerVisibleMultiFormatPreviewCommandState;
   canvas: OwnerVisibleMultiFormatPreviewCanvasState;
   rightPanel: OwnerVisibleMultiFormatPreviewRightPanel;
+  ownerRightPanelSnapshotEnvelope: OwnerRightPanelSnapshotEnvelopeV1;
   replacement: OwnerVisibleMultiFormatPreviewReplacementState;
 }
 
@@ -796,6 +801,41 @@ function modelFromWorkspace(
   const status = ownerStatus(workspaceModel.status);
   const replacement = replacementState(replacements, lastReplacementAction, replacementStatus, playerAction);
   const visibleIssues = uniqueIssues(workspaceModel.issues);
+  const facts = factRows(workspaceModel);
+  const rightPanel: OwnerVisibleMultiFormatPreviewRightPanel = {
+    facts,
+    assetInventory: buildMultiFormatAssetInventory({
+      format: workspaceModel.detectedFormat,
+      videoCodec: workspaceModel.overview?.videoCodec,
+      audioPresent: workspaceModel.overview?.audioPresent,
+      assets: workspaceModel.assets,
+      layers: workspaceModel.layers,
+      lottieTexts: workspaceModel.replaceable.texts,
+      vapFusionImages: workspaceModel.replaceable.fusionImages,
+      vapFusionTexts: workspaceModel.replaceable.fusionTexts,
+      issues: visibleIssues,
+      unsupportedFeatures: workspaceModel.unsupportedFeatures
+    }),
+    layers: workspaceModel.layers.map((entry) => ({ ...entry, resourceIds: [...entry.resourceIds] })),
+    assets: workspaceModel.assets.map((entry) => ({ ...entry })),
+    lottieTexts: workspaceModel.replaceable.texts.map((entry) => ({ ...entry })),
+    vapFusionImages: workspaceModel.replaceable.fusionImages.map(cloneFusionElement),
+    vapFusionTexts: workspaceModel.replaceable.fusionTexts.map(cloneFusionElement),
+    unsupportedFeatures: workspaceModel.unsupportedFeatures.map((entry) => ({ ...entry })),
+    issues: visibleIssues.map(cloneIssue)
+  };
+  const ownerRightPanelSnapshotEnvelope = createOwnerRightPanelSnapshotEnvelope({
+    detectedFormat: workspaceModel.detectedFormat,
+    facts,
+    assets: workspaceModel.assets,
+    lottieTexts: workspaceModel.replaceable.texts,
+    vapFusionImages: workspaceModel.replaceable.fusionImages,
+    vapFusionTexts: workspaceModel.replaceable.fusionTexts,
+    issues: visibleIssues,
+    unsupportedFeatures: workspaceModel.unsupportedFeatures,
+    videoCodec: workspaceModel.overview?.videoCodec,
+    audioPresent: workspaceModel.overview?.audioPresent
+  });
   return {
     schemaVersion: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_SCHEMA_VERSION,
     source: "owner-visible-0.2-multiformat-preview-candidate",
@@ -822,28 +862,8 @@ function modelFromWorkspace(
         ? "Preview candidate is available only inside the 0.2 gated workflow."
         : "Open or drop a local SVGA, Lottie JSON, or VAP/MP4 candidate."
     },
-    rightPanel: {
-      facts: factRows(workspaceModel),
-      assetInventory: buildMultiFormatAssetInventory({
-        format: workspaceModel.detectedFormat,
-        videoCodec: workspaceModel.overview?.videoCodec,
-        audioPresent: workspaceModel.overview?.audioPresent,
-        assets: workspaceModel.assets,
-        layers: workspaceModel.layers,
-        lottieTexts: workspaceModel.replaceable.texts,
-        vapFusionImages: workspaceModel.replaceable.fusionImages,
-        vapFusionTexts: workspaceModel.replaceable.fusionTexts,
-        issues: visibleIssues,
-        unsupportedFeatures: workspaceModel.unsupportedFeatures
-      }),
-      layers: workspaceModel.layers.map((entry) => ({ ...entry, resourceIds: [...entry.resourceIds] })),
-      assets: workspaceModel.assets.map((entry) => ({ ...entry })),
-      lottieTexts: workspaceModel.replaceable.texts.map((entry) => ({ ...entry })),
-      vapFusionImages: workspaceModel.replaceable.fusionImages.map(cloneFusionElement),
-      vapFusionTexts: workspaceModel.replaceable.fusionTexts.map(cloneFusionElement),
-      unsupportedFeatures: workspaceModel.unsupportedFeatures.map((entry) => ({ ...entry })),
-      issues: visibleIssues.map(cloneIssue)
-    },
+    rightPanel,
+    ownerRightPanelSnapshotEnvelope,
     replacement
   };
 }
@@ -1169,6 +1189,7 @@ function failedModel(
   issues: readonly OwnerVisibleMultiFormatPreviewIssue[],
   status: OwnerVisibleMultiFormatPreviewStatus
 ): OwnerVisibleMultiFormatPreviewModel {
+  const ownerRightPanelSnapshotEnvelope = emptyOwnerRightPanelSnapshotEnvelope(issues);
   return {
     ...idleModel(),
     status,
@@ -1180,12 +1201,14 @@ function failedModel(
     rightPanel: {
       ...idleModel().rightPanel,
       issues: issues.map(cloneIssue)
-    }
+    },
+    ownerRightPanelSnapshotEnvelope
   };
 }
 
 function idleModel(): OwnerVisibleMultiFormatPreviewModel {
   const replacement = replacementState(emptyReplacementContext(), undefined);
+  const ownerRightPanelSnapshotEnvelope = emptyOwnerRightPanelSnapshotEnvelope();
   return {
     schemaVersion: OWNER_VISIBLE_MULTIFORMAT_PREVIEW_SCHEMA_VERSION,
     source: "owner-visible-0.2-multiformat-preview-candidate",
@@ -1215,8 +1238,23 @@ function idleModel(): OwnerVisibleMultiFormatPreviewModel {
       unsupportedFeatures: [],
       issues: []
     },
+    ownerRightPanelSnapshotEnvelope,
     replacement
   };
+}
+
+function emptyOwnerRightPanelSnapshotEnvelope(
+  issues: readonly OwnerVisibleMultiFormatPreviewIssue[] = []
+): OwnerRightPanelSnapshotEnvelopeV1 {
+  return createOwnerRightPanelSnapshotEnvelope({
+    facts: [],
+    assets: [],
+    lottieTexts: [],
+    vapFusionImages: [],
+    vapFusionTexts: [],
+    issues,
+    unsupportedFeatures: []
+  });
 }
 
 function packageReadiness(): OwnerVisibleMultiFormatPreviewPackageCandidateReadiness {
@@ -1417,5 +1455,102 @@ function safeSourceName(value: string): string {
 }
 
 function cloneModel(model: OwnerVisibleMultiFormatPreviewModel): OwnerVisibleMultiFormatPreviewModel {
-  return structuredClone(model) as OwnerVisibleMultiFormatPreviewModel;
+  const clone = structuredClone(model) as OwnerVisibleMultiFormatPreviewModel;
+  return {
+    ...clone,
+    rightPanel: safePublicRightPanelFromSnapshot(clone)
+  };
+}
+
+function safePublicRightPanelFromSnapshot(
+  model: OwnerVisibleMultiFormatPreviewModel
+): OwnerVisibleMultiFormatPreviewRightPanel {
+  let snapshot: {
+    facts?: OwnerVisibleMultiFormatPreviewFactRow[];
+    assets?: Array<{
+      id: string;
+      name: string;
+      kind: HiddenMultiFormatPreviewAssetRow["kind"] | "unknown";
+      dimensions?: string;
+      fileSize?: string;
+      resolutionStatus?: string;
+      replaceable: boolean;
+    }>;
+    assetInventory?: MultiFormatAssetInventory;
+    unsupportedFeatures?: Array<{ feature: string; path: ""; message?: string; pathRedacted: true }>;
+    issues?: OwnerVisibleMultiFormatPreviewIssue[];
+    imageTargets?: Array<{ imageKey: string; resourceId: string; displayName: string; detail: string }>;
+    textTargets?: Array<{ textKey: string; displayName: string; initialText: string }>;
+  };
+  try {
+    snapshot = JSON.parse(model.ownerRightPanelSnapshotEnvelope.snapshotJson);
+  } catch {
+    snapshot = {};
+  }
+  const assets = (snapshot.assets ?? []).map((asset) => ({
+    id: asset.id,
+    name: asset.name,
+    kind: asset.kind === "unknown" ? "image" : asset.kind,
+    dimensions: asset.dimensions || undefined,
+    replaceable: asset.replaceable,
+    pathRedacted: true as const,
+    resolutionStatus: asset.resolutionStatus === "缺失"
+      ? "missing" as const
+      : asset.resolutionStatus === "不支持"
+        ? "unsupported" as const
+        : "not_required" as const
+  }));
+  return {
+    facts: snapshot.facts ?? [],
+    assetInventory: snapshot.assetInventory ?? buildMultiFormatAssetInventory({}),
+    layers: [],
+    assets,
+    lottieTexts: (snapshot.textTargets ?? []).map((target) => ({
+      id: target.textKey,
+      layerId: target.textKey,
+      name: target.displayName,
+      initialText: target.initialText,
+      replaceable: true
+    })),
+    vapFusionImages: model.detectedFormat === "vap"
+      ? (snapshot.imageTargets ?? []).map((target) => ({
+          id: target.resourceId,
+          resourceId: target.resourceId,
+          srcTag: target.displayName,
+          runtimeBindingKey: target.resourceId,
+          kind: "image" as const,
+          replaceable: true,
+          replacementProvided: false,
+          replacementRequired: false,
+          placementCount: 0,
+          zValues: [],
+          placementSamples: []
+        }))
+      : [],
+    vapFusionTexts: model.detectedFormat === "vap"
+      ? (snapshot.textTargets ?? []).map((target) => ({
+          id: target.textKey,
+          resourceId: target.textKey,
+          srcTag: target.displayName,
+          runtimeBindingKey: target.textKey,
+          kind: "text" as const,
+          replaceable: true,
+          replacementProvided: false,
+          replacementRequired: false,
+          placementCount: 0,
+          zValues: [],
+          placementSamples: []
+        }))
+      : [],
+    unsupportedFeatures: (snapshot.unsupportedFeatures ?? []).map((entry) => ({
+      feature: entry.feature,
+      path: ""
+    })),
+    issues: (snapshot.issues ?? []).map((entry) => ({
+      code: entry.code as OwnerVisibleMultiFormatPreviewIssueCode,
+      severity: entry.severity,
+      message: entry.message,
+      pathRedacted: true
+    }))
+  };
 }

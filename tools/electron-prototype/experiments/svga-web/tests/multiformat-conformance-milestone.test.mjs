@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -27,6 +28,53 @@ const {
 
 function source(relativePath) {
   return readFileSync(path.join(experimentRoot, relativePath), "utf8");
+}
+
+function ownerEnvelope(snapshot) {
+  const normalized = {
+    schemaVersion: 1,
+    pathRedacted: true,
+    facts: [],
+    assets: [],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      groups: [],
+      summary: {
+        totalItems: 0,
+        replaceableItems: 0,
+        imageCount: 0,
+        textCount: 0,
+        sequenceFrameCount: 0,
+        audioVideoCount: 0,
+        unsupportedOrMissingCount: 0
+      },
+      capabilityMarkers: []
+    },
+    unsupportedFeatures: [],
+    issues: [],
+    imageTargets: [],
+    textTargets: [],
+    ...snapshot
+  };
+  const snapshotJson = stableStringify(normalized);
+  return {
+    schemaVersion: 1,
+    sourceId: "owner-snapshot-test",
+    snapshotJson,
+    snapshotByteLength: Buffer.byteLength(snapshotJson, "utf8"),
+    snapshotSha256: createHash("sha256").update(snapshotJson).digest("hex"),
+    pathRedacted: true
+  };
+}
+
+function stableStringify(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 test("0.2 composes the established SVGA controller instead of globally disabling its workflow", () => {
@@ -430,41 +478,49 @@ test("right-panel rendering projects only format-applicable groups and hides int
   const controllerSource = source("web/multiformat-desktop-preview-controller.mjs");
   assert.match(controllerSource, /projectMultiFormatRightPanel/u);
   assert.doesNotMatch(controllerSource, /\["Maturity",\s*"阶段"\]/u);
-  const projected = projectMultiFormatRightPanel({
-    detectedFormat: "lottie",
-    rightPanel: {
-      facts: [
-        { id: "format", label: "Format", value: "LOTTIE" },
-        { id: "maturity", label: "Maturity", value: "hidden_0.2_spike" },
-        { id: "videoCodec", label: "Video codec", value: "not applicable" }
-      ],
-      assets: [
-        { id: "cover", name: "cover.png", kind: "image", sizeBytes: 1536, dimensions: "320 x 180", resolutionStatus: "available", replaceable: true },
-        { id: "missing", name: "missing.png", kind: "image", sizeBytes: 0, resolutionStatus: "missing", replaceable: false }
-      ],
-      assetInventory: {
-        groups: [
-          {
-            id: "image_resources",
-            label: "Images",
-            status: "available",
-            items: [{ source: "asset", status: "available", replaceable: false, label: "cover.png", detail: [] }]
-          },
-          {
-            id: "audio_video_media",
-            label: "Audio / video",
-            status: "available",
-            items: [{ source: "media", status: "available", replaceable: false, label: "Video track", detail: ["codec:avc1"] }]
-          },
-          { id: "vap_fusion_images", status: "not_applicable", items: [{ source: "capability", status: "not_applicable", replaceable: false }] }
-        ]
+  const projected = projectMultiFormatRightPanel(ownerEnvelope({
+    facts: [{ id: "format", label: "格式", value: "LOTTIE", status: "pass" }],
+    assets: [
+      { id: "cover", name: "cover.png", kind: "image", ownerKind: "图片", fileSize: "1.5 KiB", dimensions: "320 x 180", resolutionStatus: "", replaceable: true },
+      { id: "missing", name: "missing.png", kind: "image", ownerKind: "图片", fileSize: "", dimensions: "", resolutionStatus: "缺失", replaceable: false }
+    ],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      format: "lottie",
+      groups: [{
+        id: "image_resources",
+        label: "图片",
+        count: 1,
+        replaceableCount: 0,
+        status: "available",
+        items: [{
+          id: "cover",
+          label: "cover.png",
+          groupId: "image_resources",
+          kind: "image",
+          source: "asset",
+          status: "available",
+          replaceable: false,
+          runtimeTargetId: "cover",
+          detail: [],
+          pathRedacted: true
+        }]
+      }],
+      summary: {
+        totalItems: 1,
+        replaceableItems: 0,
+        imageCount: 1,
+        textCount: 0,
+        sequenceFrameCount: 0,
+        audioVideoCount: 0,
+        unsupportedOrMissingCount: 0
       },
-      issues: [
-        { code: "missing_resource", message: "Embedded image is missing." },
-        { code: "capability", message: "hidden_0.2_spike" }
-      ]
-    }
-  });
+      capabilityMarkers: []
+    },
+    issues: [{ code: "missing_resource", severity: "error", message: "预览所需资源缺失。", pathRedacted: true }],
+    imageTargets: [{ imageKey: "cover", resourceId: "cover", displayName: "cover.png", detail: "320 x 180 · 1.5 KiB" }]
+  }));
   assert.deepEqual(projected.facts.map(({ id }) => id), ["format"]);
   assert.deepEqual(projected.assetInventory.groups.map(({ id }) => id), ["image_resources"]);
   assert.deepEqual(projected.assetInventory.groups.map(({ label }) => label), ["图片"]);
@@ -474,23 +530,45 @@ test("right-panel rendering projects only format-applicable groups and hides int
     { ownerKind: "图片", fileSize: "", resolutionStatus: "缺失" }
   ]);
 
-  const vapProjection = projectMultiFormatRightPanel({
-    detectedFormat: "vap",
-    rightPanel: {
-      facts: [
-        { id: "audio", label: "Audio", value: "present" },
-        { id: "dimensions", label: "Canvas", value: "unknown" }
-      ],
-      assetInventory: {
-        groups: [{
-          id: "audio_video_media",
-          label: "Audio / video",
+  const vapProjection = projectMultiFormatRightPanel(ownerEnvelope({
+    facts: [
+      { id: "audio", label: "音频", value: "存在", status: "pass" },
+      { id: "dimensions", label: "画布", value: "未知", status: "unknown" }
+    ],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      format: "vap",
+      groups: [{
+        id: "audio_video_media",
+        label: "音视频",
+        count: 1,
+        replaceableCount: 0,
+        status: "available",
+        items: [{
+          id: "vap-video",
+          label: "视频轨道",
+          groupId: "audio_video_media",
+          kind: "video",
+          source: "media",
           status: "available",
-          items: [{ source: "media", status: "available", replaceable: false, label: "Video track", detail: ["codec:avc1"] }]
+          replaceable: false,
+          detail: ["编码：avc1"],
+          pathRedacted: true
         }]
-      }
+      }],
+      summary: {
+        totalItems: 1,
+        replaceableItems: 0,
+        imageCount: 0,
+        textCount: 0,
+        sequenceFrameCount: 0,
+        audioVideoCount: 1,
+        unsupportedOrMissingCount: 0
+      },
+      capabilityMarkers: []
     }
-  });
+  }));
   assert.equal(vapProjection.assetInventory.groups[0].label, "音视频");
   assert.equal(vapProjection.assetInventory.groups[0].items[0].label, "视频轨道");
   assert.deepEqual(vapProjection.assetInventory.groups[0].items[0].detail, ["编码：avc1"]);
@@ -510,77 +588,7 @@ test("accepted R12 shell affordances remain present in the composed 0.2 shell", 
   assert.match(domStateSource, /rightSurfaceHeader\.hidden = surfaceState === "optimization"/u);
 });
 
-test("owner issue projection uses a closed Chinese vocabulary for known and unknown diagnostics", () => {
-  const projection = projectMultiFormatRightPanel({
-    detectedFormat: "lottie",
-    rightPanel: {
-      assetInventory: {
-        groups: [{
-          id: "unsupported_or_missing",
-          label: "Unsupported or missing",
-          status: "blocked",
-          items: [
-            {
-              id: "issue:missing",
-              source: "issue",
-              issueCode: "missing_resource",
-              status: "missing",
-              label: "missing_resource",
-              detail: ["Embedded image /Users/alice/Secret/hero.png is missing."]
-            },
-            {
-              id: "unsupported:expression",
-              source: "issue",
-              issueCode: "unsupported_feature",
-              status: "unsupported",
-              label: "expression",
-              detail: ["layers.0.xp"]
-            },
-            {
-              id: "issue:unknown",
-              source: "issue",
-              issueCode: "runtime_internal_fault",
-              status: "blocked",
-              label: "runtime_internal_fault",
-              detail: ["Complete bounded JSON is required for hidden Lottie playback."]
-            }
-          ]
-        }]
-      },
-      unsupportedFeatures: [
-        { feature: "expression", path: "layers.0.xp", severity: "warning" },
-        { feature: "private_runtime_hook", path: "/Users/alice/Secret/internal.json", severity: "warning" }
-      ],
-      issues: [
-        { code: "missing_resource", message: "Embedded image /Users/alice/Secret/hero.png is missing.", severity: "error" },
-        { code: "runtime_internal_fault", message: "Complete bounded JSON is required for hidden Lottie playback.", severity: "error" }
-      ]
-    }
-  });
-
-  assert.deepEqual(projection.issues.map(({ message }) => message), [
-    "预览所需资源缺失。",
-    "当前文件存在无法显示的检查问题。"
-  ]);
-  assert.deepEqual(projection.unsupportedFeatures.map(({ message, path }) => ({ message, path })), [
-    { message: "暂不支持：表达式", path: "" },
-    { message: "当前文件包含暂不支持的内容。", path: "" }
-  ]);
-  assert.deepEqual(
-    projection.assetInventory.groups[0].items.map(({ label, detail }) => ({ label, detail })),
-    [
-      { label: "预览所需资源缺失。", detail: [] },
-      { label: "暂不支持：表达式", detail: [] },
-      { label: "当前文件存在无法显示的检查问题。", detail: [] }
-    ]
-  );
-
-  const ownerOutput = JSON.stringify(projection);
-  assert.doesNotMatch(ownerOutput, /Complete bounded JSON|hidden Lottie|runtime_internal_fault|private_runtime_hook/iu);
-  assert.doesNotMatch(ownerOutput, /Users\/alice|layers\.0\.xp|internal\.json|Embedded image/iu);
-});
-
-test("owner right-panel projection is descriptor-only and allowlisted at every nested boundary", () => {
+test("owner right-panel projection consumes only a verified snapshot envelope", () => {
   let getterCalls = 0;
   let coercionCalls = 0;
   const accessorIssue = {};
@@ -601,7 +609,7 @@ test("owner right-panel projection is descriptor-only and allowlisted at every n
       return "expression";
     }
   };
-  const source = {
+  const rawRightPanel = {
     facts: [{ id: "format", label: "Format", value: "LOTTIE", status: "pass", rawPath: "/Users/alice/fact.json" }],
     assets: [{
       id: "cover",
@@ -655,7 +663,7 @@ test("owner right-panel projection is descriptor-only and allowlisted at every n
     rawPath: "/Users/alice/right-panel.json",
     diagnostics: { feature: "expression", path: "/Users/alice/diagnostics.json" }
   };
-  Object.defineProperty(source, "accessorPath", {
+  Object.defineProperty(rawRightPanel, "accessorPath", {
     enumerable: true,
     get() {
       getterCalls += 1;
@@ -663,10 +671,10 @@ test("owner right-panel projection is descriptor-only and allowlisted at every n
     }
   });
   [
-    [source.assetInventory, "inventoryAccessor"],
-    [source.assetInventory.groups[0], "groupAccessor"],
-    [source.assets[0], "assetAccessor"],
-    [source.assetInventory.groups[0].items[0], "itemAccessor"]
+    [rawRightPanel.assetInventory, "inventoryAccessor"],
+    [rawRightPanel.assetInventory.groups[0], "groupAccessor"],
+    [rawRightPanel.assets[0], "assetAccessor"],
+    [rawRightPanel.assetInventory.groups[0].items[0], "itemAccessor"]
   ].forEach(([record, key]) => {
     Object.defineProperty(record, key, {
       enumerable: true,
@@ -679,7 +687,7 @@ test("owner right-panel projection is descriptor-only and allowlisted at every n
 
   let projection;
   assert.doesNotThrow(() => {
-    projection = projectMultiFormatRightPanel({ detectedFormat: "lottie", rightPanel: source });
+    projection = projectMultiFormatRightPanel({ detectedFormat: "lottie", rightPanel: rawRightPanel });
   });
 
   assert.equal(getterCalls, 0);
@@ -688,63 +696,42 @@ test("owner right-panel projection is descriptor-only and allowlisted at every n
     "assetInventory",
     "assets",
     "facts",
+    "imageTargets",
     "issues",
-    "unsupportedFeatures"
-  ]);
-  assert.deepEqual(Object.keys(projection.facts[0]).sort(), ["id", "label", "status", "value"]);
-  assert.deepEqual(Object.keys(projection.assets[0]).sort(), [
-    "dimensions",
-    "fileSize",
-    "id",
-    "kind",
-    "name",
-    "ownerKind",
-    "replaceable",
-    "resolutionStatus"
-  ]);
-  assert.deepEqual(Object.keys(projection.assetInventory).sort(), [
-    "capabilityMarkers",
-    "format",
-    "groups",
     "pathRedacted",
     "schemaVersion",
-    "summary"
+    "textTargets",
+    "unsupportedFeatures"
   ]);
-  assert.deepEqual(Object.keys(projection.assetInventory.groups[0]).sort(), [
-    "count",
-    "id",
-    "items",
-    "label",
-    "replaceableCount",
-    "status"
-  ]);
-  assert.deepEqual(Object.keys(projection.assetInventory.groups[0].items[0]).sort(), [
-    "detail",
-    "groupId",
-    "id",
-    "kind",
-    "label",
-    "pathRedacted",
-    "replaceable",
-    "runtimeTargetId",
-    "source",
-    "status"
-  ]);
-  assert.deepEqual(projection.issues.map(({ code, message }) => ({ code, message })), [
-    { code: "missing_resource", message: "预览所需资源缺失。" },
-    { code: "owner_issue", message: "当前文件存在无法显示的检查问题。" },
-    { code: "owner_issue", message: "当前文件存在无法显示的检查问题。" },
-    { code: "owner_issue", message: "当前文件存在无法显示的检查问题。" },
-    { code: "owner_issue", message: "当前文件存在无法显示的检查问题。" }
-  ]);
-  assert.deepEqual(projection.unsupportedFeatures.map(({ message }) => message), [
-    "暂不支持：表达式",
-    "当前文件包含暂不支持的内容。",
-    "当前文件包含暂不支持的内容。",
-    "当前文件包含暂不支持的内容。",
-    "当前文件包含暂不支持的内容。"
-  ]);
-  assert.doesNotMatch(JSON.stringify(projection), /Users\/alice|rawPath|accessorPath|diagnostics|layers\.0\.xp/iu);
+  assert.deepEqual(projection.facts, []);
+  assert.deepEqual(projection.assets, []);
+  assert.deepEqual(projection.assetInventory.groups, []);
+  assert.deepEqual(projection.imageTargets, []);
+  assert.deepEqual(projection.textTargets, []);
+  assert.deepEqual(projection.issues, [{
+    code: "owner_issue",
+    severity: "warning",
+    message: "当前文件存在无法显示的检查问题。",
+    pathRedacted: true
+  }]);
+  assert.doesNotMatch(JSON.stringify(projection), /Users\/alice|rawPath|accessorPath|diagnostics|layers\.0\.xp|Complete bounded JSON|expression/iu);
+});
+
+test("owner snapshot envelope rejects tampering and noncanonical payloads", () => {
+  const envelope = ownerEnvelope({
+    facts: [{ id: "format", label: "格式", value: "LOTTIE", status: "pass" }]
+  });
+  assert.deepEqual(projectMultiFormatRightPanel(envelope).facts.map(({ value }) => value), ["LOTTIE"]);
+  assert.deepEqual(projectMultiFormatRightPanel({ ...envelope, schemaVersion: 2 }).facts, []);
+  assert.deepEqual(projectMultiFormatRightPanel({ ...envelope, pathRedacted: false }).facts, []);
+  assert.deepEqual(projectMultiFormatRightPanel({ ...envelope, snapshotByteLength: envelope.snapshotByteLength + 1 }).facts, []);
+  assert.deepEqual(projectMultiFormatRightPanel({ ...envelope, snapshotSha256: "0".repeat(64) }).facts, []);
+  assert.deepEqual(projectMultiFormatRightPanel({
+    ...envelope,
+    snapshotJson: `{"facts":[],"facts":[{"id":"format","label":"格式","status":"pass","value":"LOTTIE"}],"assets":[],"assetInventory":{"capabilityMarkers":[],"groups":[],"pathRedacted":true,"schemaVersion":1,"summary":{"audioVideoCount":0,"imageCount":0,"replaceableItems":0,"sequenceFrameCount":0,"textCount":0,"totalItems":0,"unsupportedOrMissingCount":0}},"imageTargets":[],"issues":[],"pathRedacted":true,"schemaVersion":1,"textTargets":[],"unsupportedFeatures":[]}`,
+    snapshotByteLength: Buffer.byteLength(`{"facts":[],"facts":[{"id":"format","label":"格式","status":"pass","value":"LOTTIE"}],"assets":[],"assetInventory":{"capabilityMarkers":[],"groups":[],"pathRedacted":true,"schemaVersion":1,"summary":{"audioVideoCount":0,"imageCount":0,"replaceableItems":0,"sequenceFrameCount":0,"textCount":0,"totalItems":0,"unsupportedOrMissingCount":0}},"imageTargets":[],"issues":[],"pathRedacted":true,"schemaVersion":1,"textTargets":[],"unsupportedFeatures":[]}`, "utf8"),
+    snapshotSha256: createHash("sha256").update(`{"facts":[],"facts":[{"id":"format","label":"格式","status":"pass","value":"LOTTIE"}],"assets":[],"assetInventory":{"capabilityMarkers":[],"groups":[],"pathRedacted":true,"schemaVersion":1,"summary":{"audioVideoCount":0,"imageCount":0,"replaceableItems":0,"sequenceFrameCount":0,"textCount":0,"totalItems":0,"unsupportedOrMissingCount":0}},"imageTargets":[],"issues":[],"pathRedacted":true,"schemaVersion":1,"textTargets":[],"unsupportedFeatures":[]}`).digest("hex")
+  }).facts, []);
 });
 
 test("multi-format UI reuses shared rows and keeps unavailable Edit explicitly disabled", () => {

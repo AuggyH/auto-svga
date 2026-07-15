@@ -131,7 +131,7 @@ const ownerIssueSeverities = new Set(["info", "warning", "error"]);
 const ownerInventorySources = new Set(["asset", "text", "fusion", "media", "issue", "capability"]);
 const ownerInventoryStatuses = new Set(["available", "replaceable", "missing", "unsupported", "blocked", "not_applicable"]);
 const ownerGroupStatuses = new Set(["available", "empty", "warning", "blocked", "not_applicable"]);
-const ownerAssetKinds = new Set(["image", "sequence", "audio", "video", "text"]);
+const ownerAssetKinds = new Set(["image", "sequence", "audio", "video", "text", "unknown"]);
 const ownerFormats = new Set(["svga", "lottie", "vap"]);
 const ownerPathPattern = /(?:file:\/\/|(?:^|[\s"'(=])\/(?:Users|Volumes|private|tmp|var|home)\/|[A-Za-z]:[\\/]|\\\\Users\\)/iu;
 
@@ -140,6 +140,23 @@ const genericOwnerIssue = Object.freeze({
   message: "当前文件存在无法显示的检查问题。"
 });
 const genericUnsupportedFeatureMessage = "当前文件包含暂不支持的内容。";
+const ownerSnapshotMaxBytes = 128 * 1024;
+const ownerSnapshotSchemas = Object.freeze({
+  envelope: Object.freeze(["pathRedacted", "schemaVersion", "snapshotByteLength", "snapshotJson", "snapshotSha256", "sourceId"]),
+  snapshot: Object.freeze(["assetInventory", "assets", "facts", "imageTargets", "issues", "pathRedacted", "schemaVersion", "textTargets", "unsupportedFeatures"]),
+  fact: Object.freeze(["id", "label", "status", "value"]),
+  asset: Object.freeze(["dimensions", "fileSize", "id", "kind", "name", "ownerKind", "replaceable", "resolutionStatus"]),
+  inventory: Object.freeze(["capabilityMarkers", "format", "groups", "pathRedacted", "schemaVersion", "summary"]),
+  inventoryNoFormat: Object.freeze(["capabilityMarkers", "groups", "pathRedacted", "schemaVersion", "summary"]),
+  inventorySummary: Object.freeze(["audioVideoCount", "imageCount", "replaceableItems", "sequenceFrameCount", "textCount", "totalItems", "unsupportedOrMissingCount"]),
+  inventoryGroup: Object.freeze(["count", "id", "items", "label", "replaceableCount", "status"]),
+  inventoryItem: Object.freeze(["detail", "groupId", "id", "issueCode", "kind", "label", "pathRedacted", "replaceable", "runtimeTargetId", "severity", "source", "status"]),
+  inventoryItemBase: Object.freeze(["detail", "groupId", "id", "kind", "label", "pathRedacted", "replaceable", "source", "status"]),
+  issue: Object.freeze(["code", "message", "pathRedacted", "severity"]),
+  unsupportedFeature: Object.freeze(["code", "feature", "message", "path", "pathRedacted", "severity"]),
+  imageTarget: Object.freeze(["detail", "displayName", "imageKey", "resourceId"]),
+  textTarget: Object.freeze(["displayName", "initialText", "placeholder", "resetDisabled", "textKey"])
+});
 
 export function multiFormatDragDecisionForEvent(target, event, options = {}) {
   const file = dragFileFromEvent(event);
@@ -161,29 +178,284 @@ export function multiFormatInventorySummaryItems(summary = {}) {
   });
 }
 
-export function projectMultiFormatRightPanel(model = {}) {
-  const candidateFormat = ownString(model, "detectedFormat");
-  const format = ownerFormats.has(candidateFormat) ? candidateFormat : "";
-  const source = ownRecord(model, "rightPanel") ?? {};
-  const allowedFacts = formatFactIds[format] ?? commonFactIds;
-  const facts = ownArrayValues(source, "facts")
-    .flatMap((fact) => projectOwnerFact(fact, allowedFacts));
-  const assets = ownArrayValues(source, "assets")
-    .flatMap((asset, index) => projectFallbackAsset(asset, index));
-  const inventory = projectInventory(ownRecord(source, "assetInventory"), format);
-  const unsupportedFeatures = ownArrayValues(source, "unsupportedFeatures")
-    .filter(isOwnerVisibleUnsupportedFeature)
-    .map(projectOwnerUnsupportedFeature);
-  const issues = ownArrayValues(source, "issues")
-    .filter(isOwnerVisibleIssue)
-    .map(projectOwnerIssue);
-  return buildOwnerRecord("rightPanel", {
-    facts,
-    assets,
-    assetInventory: inventory,
-    unsupportedFeatures,
-    issues
-  });
+export function projectMultiFormatRightPanel(modelOrEnvelope = {}) {
+  return validateOwnerRightPanelSnapshotEnvelope(ownerSnapshotEnvelope(modelOrEnvelope))
+    ?? emptyOwnerRightPanelProjection();
+}
+
+export function validateOwnerRightPanelSnapshotEnvelope(envelope) {
+  if (!isPlainJsonRecord(envelope) || !exactKeys(envelope, ownerSnapshotSchemas.envelope)) return undefined;
+  if (envelope.schemaVersion !== 1 || envelope.pathRedacted !== true) return undefined;
+  if (typeof envelope.sourceId !== "string" || !/^[A-Za-z0-9._:-]{0,128}$/u.test(envelope.sourceId)) return undefined;
+  if (typeof envelope.snapshotJson !== "string" || typeof envelope.snapshotSha256 !== "string") return undefined;
+  if (!Number.isSafeInteger(envelope.snapshotByteLength) || envelope.snapshotByteLength <= 0 || envelope.snapshotByteLength > ownerSnapshotMaxBytes) return undefined;
+  if (utf8ByteLength(envelope.snapshotJson) !== envelope.snapshotByteLength) return undefined;
+  if (sha256Hex(envelope.snapshotJson) !== envelope.snapshotSha256) return undefined;
+  let snapshot;
+  try {
+    snapshot = JSON.parse(envelope.snapshotJson);
+  } catch {
+    return undefined;
+  }
+  if (!validateOwnerSnapshot(snapshot)) return undefined;
+  if (stableStringify(snapshot) !== envelope.snapshotJson) return undefined;
+  return snapshot;
+}
+
+function ownerSnapshotEnvelope(modelOrEnvelope) {
+  if (isPlainJsonRecord(modelOrEnvelope) && exactKeys(modelOrEnvelope, ownerSnapshotSchemas.envelope)) return modelOrEnvelope;
+  return ownRecord(modelOrEnvelope, "ownerRightPanelSnapshotEnvelope");
+}
+
+function emptyOwnerRightPanelProjection() {
+  return {
+    schemaVersion: 1,
+    pathRedacted: true,
+    facts: [],
+    assets: [],
+    assetInventory: {
+      schemaVersion: 1,
+      pathRedacted: true,
+      groups: [],
+      summary: {
+        totalItems: 0,
+        replaceableItems: 0,
+        imageCount: 0,
+        textCount: 0,
+        sequenceFrameCount: 0,
+        audioVideoCount: 0,
+        unsupportedOrMissingCount: 0
+      },
+      capabilityMarkers: []
+    },
+    unsupportedFeatures: [],
+    issues: [{
+      code: genericOwnerIssue.code,
+      severity: "warning",
+      message: genericOwnerIssue.message,
+      pathRedacted: true
+    }],
+    imageTargets: [],
+    textTargets: []
+  };
+}
+
+function validateOwnerSnapshot(snapshot) {
+  if (!isPlainJsonRecord(snapshot) || !exactKeys(snapshot, ownerSnapshotSchemas.snapshot)) return false;
+  if (snapshot.schemaVersion !== 1 || snapshot.pathRedacted !== true) return false;
+  if (!arrayOf(snapshot.facts, validateSnapshotFact, 64)) return false;
+  if (!arrayOf(snapshot.assets, validateSnapshotAsset, 1000)) return false;
+  if (!validateSnapshotInventory(snapshot.assetInventory)) return false;
+  if (!arrayOf(snapshot.unsupportedFeatures, validateSnapshotUnsupportedFeature, 256)) return false;
+  if (!arrayOf(snapshot.issues, validateSnapshotIssue, 256)) return false;
+  if (!arrayOf(snapshot.imageTargets, validateSnapshotImageTarget, 1000)) return false;
+  if (!arrayOf(snapshot.textTargets, validateSnapshotTextTarget, 1000)) return false;
+  return true;
+}
+
+function validateSnapshotFact(fact) {
+  return isPlainJsonRecord(fact)
+    && exactKeys(fact, ownerSnapshotSchemas.fact)
+    && ownerIdentifier(fact.id)
+    && typeof fact.label === "string"
+    && fact.label.length > 0
+    && fact.label.length <= 32
+    && typeof fact.value === "string"
+    && fact.value.length <= 64
+    && ownerFactStatuses.has(fact.status);
+}
+
+function validateSnapshotAsset(asset) {
+  return isPlainJsonRecord(asset)
+    && exactKeys(asset, ownerSnapshotSchemas.asset)
+    && ownerIdentifier(asset.id)
+    && ownerSafeCopy(asset.name, 96)
+    && ownerAssetKinds.has(asset.kind)
+    && ownerSafeCopy(asset.ownerKind, 32)
+    && typeof asset.dimensions === "string"
+    && asset.dimensions.length <= 32
+    && typeof asset.fileSize === "string"
+    && asset.fileSize.length <= 32
+    && typeof asset.resolutionStatus === "string"
+    && asset.resolutionStatus.length <= 32
+    && typeof asset.replaceable === "boolean";
+}
+
+function validateSnapshotInventory(inventory) {
+  if (!isPlainJsonRecord(inventory)) return false;
+  const schema = typeof inventory.format === "string" ? ownerSnapshotSchemas.inventory : ownerSnapshotSchemas.inventoryNoFormat;
+  return exactKeys(inventory, schema)
+    && inventory.schemaVersion === 1
+    && inventory.pathRedacted === true
+    && (inventory.format === undefined || ownerFormats.has(inventory.format))
+    && arrayOf(inventory.groups, validateSnapshotInventoryGroup, 32)
+    && validateSnapshotInventorySummary(inventory.summary)
+    && Array.isArray(inventory.capabilityMarkers)
+    && inventory.capabilityMarkers.length === 0;
+}
+
+function validateSnapshotInventorySummary(summary) {
+  return isPlainJsonRecord(summary)
+    && exactKeys(summary, ownerSnapshotSchemas.inventorySummary)
+    && Object.values(summary).every((value) => Number.isSafeInteger(value) && value >= 0 && value <= 100000);
+}
+
+function validateSnapshotInventoryGroup(group) {
+  return isPlainJsonRecord(group)
+    && exactKeys(group, ownerSnapshotSchemas.inventoryGroup)
+    && ownerIdentifier(group.id)
+    && ownerSafeCopy(group.label, 64)
+    && Number.isSafeInteger(group.count)
+    && group.count >= 0
+    && Number.isSafeInteger(group.replaceableCount)
+    && group.replaceableCount >= 0
+    && ownerGroupStatuses.has(group.status)
+    && arrayOf(group.items, validateSnapshotInventoryItem, 1000);
+}
+
+function validateSnapshotInventoryItem(item) {
+  if (!isPlainJsonRecord(item)) return false;
+  const keys = Object.keys(item);
+  const allowed = new Set(ownerSnapshotSchemas.inventoryItem);
+  return ownerSnapshotSchemas.inventoryItemBase.every((key) => keys.includes(key))
+    && keys.every((key) => allowed.has(key))
+    && ownerIdentifier(item.id)
+    && ownerSafeCopy(item.label, 120)
+    && ownerIdentifier(item.groupId)
+    && ownerIdentifier(item.kind)
+    && ownerInventorySources.has(item.source)
+    && ownerInventoryStatuses.has(item.status)
+    && typeof item.replaceable === "boolean"
+    && (item.runtimeTargetId === undefined || ownerIdentifier(item.runtimeTargetId))
+    && arrayOf(item.detail, (entry) => ownerSafeCopy(entry, 80), 16)
+    && (item.issueCode === undefined || ownerIdentifier(item.issueCode))
+    && (item.severity === undefined || ownerIssueSeverities.has(item.severity))
+    && item.pathRedacted === true;
+}
+
+function validateSnapshotIssue(issue) {
+  return isPlainJsonRecord(issue)
+    && exactKeys(issue, ownerSnapshotSchemas.issue)
+    && ownerIdentifier(issue.code)
+    && ownerIssueSeverities.has(issue.severity)
+    && ownerSafeCopy(issue.message, 120)
+    && issue.pathRedacted === true;
+}
+
+function validateSnapshotUnsupportedFeature(feature) {
+  return isPlainJsonRecord(feature)
+    && exactKeys(feature, ownerSnapshotSchemas.unsupportedFeature)
+    && feature.code === "unsupported_feature"
+    && ownerIssueSeverities.has(feature.severity)
+    && ownerSafeCopy(feature.feature, 80)
+    && feature.path === ""
+    && ownerSafeCopy(feature.message, 120)
+    && feature.pathRedacted === true;
+}
+
+function validateSnapshotImageTarget(target) {
+  return isPlainJsonRecord(target)
+    && exactKeys(target, ownerSnapshotSchemas.imageTarget)
+    && ownerIdentifier(target.imageKey)
+    && ownerIdentifier(target.resourceId)
+    && ownerSafeCopy(target.displayName, 96)
+    && typeof target.detail === "string"
+    && target.detail.length <= 160;
+}
+
+function validateSnapshotTextTarget(target) {
+  return isPlainJsonRecord(target)
+    && exactKeys(target, ownerSnapshotSchemas.textTarget)
+    && ownerIdentifier(target.textKey)
+    && ownerSafeCopy(target.displayName, 96)
+    && typeof target.initialText === "string"
+    && target.initialText.length <= 160
+    && target.placeholder === "输入文字以预览"
+    && target.resetDisabled === false;
+}
+
+function arrayOf(value, validator, maxLength) {
+  return Array.isArray(value)
+    && value.length <= maxLength
+    && value.every((entry) => validator(entry));
+}
+
+function isPlainJsonRecord(value) {
+  return value !== null
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+}
+
+function exactKeys(record, expected) {
+  const keys = Object.keys(record).sort();
+  return keys.length === expected.length && keys.every((key, index) => key === expected[index]);
+}
+
+function ownerSafeCopy(value, maxLength) {
+  if (typeof value !== "string") return false;
+  if (!value || value.length > maxLength || /[\u0000-\u001f\u007f]/u.test(value)) return false;
+  return !ownerPathPattern.test(value) && !/(?:layers|assets|src|frame|obj)\.\d+|\bbounded JSON\b|\bhidden\b|\bpreview candidate\b/iu.test(value);
+}
+
+function utf8ByteLength(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+
+function stableStringify(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(value);
+  const words = [];
+  for (let index = 0; index < bytes.length; index += 1) {
+    words[index >> 2] |= bytes[index] << (24 - (index % 4) * 8);
+  }
+  words[bytes.length >> 2] |= 0x80 << (24 - (bytes.length % 4) * 8);
+  words[(((bytes.length + 8) >> 6) << 4) + 15] = bytes.length * 8;
+  const k = [
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+  ];
+  const hash = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const rightRotate = (number, bits) => (number >>> bits) | (number << (32 - bits));
+  for (let offset = 0; offset < words.length; offset += 16) {
+    const w = words.slice(offset, offset + 16);
+    for (let index = 16; index < 64; index += 1) {
+      const word15 = w[index - 15] ?? 0;
+      const word2 = w[index - 2] ?? 0;
+      const s0 = rightRotate(word15, 7) ^ rightRotate(word15, 18) ^ (word15 >>> 3);
+      const s1 = rightRotate(word2, 17) ^ rightRotate(word2, 19) ^ (word2 >>> 10);
+      w[index] = ((((w[index - 16] ?? 0) + s0) >>> 0) + (((w[index - 7] ?? 0) + s1) >>> 0)) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = hash;
+    for (let index = 0; index < 64; index += 1) {
+      const s1 = rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (((((h + s1) >>> 0) + ch) >>> 0) + ((k[index] + (w[index] ?? 0)) >>> 0)) >>> 0;
+      const s0 = rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (s0 + maj) >>> 0;
+      h = g; g = f; f = e; e = (d + temp1) >>> 0;
+      d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;
+    }
+    [a, b, c, d, e, f, g, h].forEach((value, index) => {
+      hash[index] = (hash[index] + value) >>> 0;
+    });
+  }
+  return hash.map((value) => value.toString(16).padStart(8, "0")).join("");
 }
 
 function projectOwnerFact(fact, allowedFacts) {

@@ -1,0 +1,38 @@
+{
+  "task": "uiux-owner-right-panel-snapshot-v1",
+  "lane": "UI/UX",
+  "branch": "codex/uiux-multiformat-r12-conformance-20260715",
+  "baseHead": "5f9ddff1411b1e4811328bcc7554c38ab026afab",
+  "actualModelProfile": "gpt-5.5/xhigh compatible fallback",
+  "finding": "UIUX-MF-SHELL-CR-001",
+  "status": "fix-ready-pending-pm-a0-code-review-routing",
+  "productSourceChanged": true,
+  "foregroundUsed": false,
+  "packagedOrPromoted": false,
+  "qaRouted": false,
+  "ownerAcceptanceClaimed": false,
+  "validation": {
+    "nodeCheckChangedFiles": "passed",
+    "build": "passed",
+    "ownerPreviewCandidateTests": "15/15 passed",
+    "multiformatConformanceTests": "27/27 passed",
+    "focusedElectronPattern": "12/12 passed",
+    "fullElectronPrototype": "113/113 passed",
+    "designSystem": "passed",
+    "diffCheck": "passed",
+    "jsonlParse": "passed",
+    "packageLockScan": "passed-no-matches",
+    "productionMediaScan": "passed-no-matches"
+  },
+  "nonclaims": [
+    "no-qa-acceptance",
+    "no-foreground-visual-acceptance",
+    "no-installed-app-validation",
+    "no-packaging-or-promotion",
+    "no-product-owner-acceptance",
+    "no-target-reset-integration-branch",
+    "no-placement-host-source-edit",
+    "no-release-or-support-claim"
+  ],
+  "reviewFile": "docs/reviews/2026-07-15-codex-uiux-owner-right-panel-snapshot-v1.md"
+}
