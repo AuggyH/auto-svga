@@ -48,6 +48,7 @@ function usage() {
     "  --inspect             Read and report installed, previous, and candidate identities without mutation.",
     "  --rollback-previous   Atomically exchange exact-bound installed and previous apps.",
     "  --recover-rollback    Resolve an interrupted durable rollback journal; never starts a new rollback.",
+    "  --recover-promotion   Resolve an interrupted durable promotion journal; never starts a new promotion.",
     "  --rollback-id <id>    Required single-use operation identifier for rollback/recovery.",
     "  --expected-installed-build <sha>",
     "  --expected-installed-info-plist-sha256 <sha>",
@@ -86,6 +87,7 @@ export function parseArgs(argv, env = process.env) {
     inspect: false,
     rollbackPrevious: false,
     recoverRollback: false,
+    recoverPromotion: false,
     useExisting: false,
     allowDirty: false,
     skipRegister: false,
@@ -117,6 +119,9 @@ export function parseArgs(argv, env = process.env) {
     } else if (arg === "--recover-rollback") {
       markOption(arg);
       options.recoverRollback = true;
+    } else if (arg === "--recover-promotion") {
+      markOption(arg);
+      options.recoverPromotion = true;
     } else if (arg === "--use-existing") {
       markOption(arg);
       options.useExisting = true;
@@ -160,16 +165,36 @@ export function parseArgs(argv, env = process.env) {
     }
   }
 
-  const modeCount = [options.inspect, options.rollbackPrevious, options.recoverRollback].filter(Boolean).length;
-  if (modeCount > 1) throw new Error("--inspect, --rollback-previous, and --recover-rollback are mutually exclusive");
+  const modeCount = [options.inspect, options.rollbackPrevious, options.recoverRollback, options.recoverPromotion]
+    .filter(Boolean).length;
+  if (modeCount > 1) {
+    throw new Error("--inspect, --rollback-previous, --recover-rollback, and --recover-promotion are mutually exclusive");
+  }
   const bindingOptionPresent = Object.keys(options).some((key) => key.startsWith("expectedInstalled") || key.startsWith("expectedPrevious"));
   if ((options.rollbackPrevious || options.recoverRollback) && (options.useExisting || options.allowDirty || options.skipRegister)) {
     throw new Error("Rollback modes do not accept packaging or registration-bypass options");
   }
+  const targetOptionPresent = seenOptions.has("--target") || envTarget !== undefined;
+  if (options.recoverPromotion && (
+    options.useExisting
+    || options.allowDirty
+    || options.skipRegister
+    || options.rollbackId
+    || bindingOptionPresent
+    || targetOptionPresent
+  )) {
+    throw new Error("Promotion recovery does not accept packaging, target, registration-bypass, rollback-id, or rollback-binding options");
+  }
   if (options.inspect && (options.useExisting || options.allowDirty || options.skipRegister || options.rollbackId || bindingOptionPresent)) {
     throw new Error("Inspect mode does not accept packaging, registration-bypass, rollback-id, or rollback-binding options");
   }
-  if (!options.rollbackPrevious && !options.recoverRollback && !options.inspect && (options.rollbackId || bindingOptionPresent)) {
+  if (
+    !options.rollbackPrevious
+    && !options.recoverRollback
+    && !options.recoverPromotion
+    && !options.inspect
+    && (options.rollbackId || bindingOptionPresent)
+  ) {
     throw new Error("Rollback identifiers and bindings require an explicit inspect, rollback, or recovery mode");
   }
 
@@ -831,8 +856,23 @@ function writePromotionManifest(summary) {
   writeFileSync(promotionManifestPath, `${JSON.stringify(summary, null, 2)}\n`);
 }
 
-async function main() {
-  const options = parseArgs(process.argv.slice(2));
+export function recoverPromotionCommand({
+  journalPath = promotionExchangeJournalPath,
+  dependencies = {},
+  writeOutput = (value) => console.log(JSON.stringify(value, null, 2))
+} = {}) {
+  const result = recoverPromotionTransaction({ journalPath, dependencies });
+  const summary = {
+    schemaVersion: 1,
+    mode: "recover-promotion",
+    ...result
+  };
+  writeOutput(summary);
+  return summary;
+}
+
+export async function runCli(argv = process.argv.slice(2), env = process.env, hooks = {}) {
+  const options = parseArgs(argv, env);
   assertDarwin();
 
   if (options.inspect) {
@@ -843,6 +883,15 @@ async function main() {
       candidateApp: packageInfo.sourceApp,
       ...rollbackPaths
     }), null, 2));
+    return;
+  }
+
+  if (options.recoverPromotion) {
+    recoverPromotionCommand({
+      journalPath: hooks.promotionJournalPath,
+      dependencies: hooks.promotionRecoveryDependencies ?? {},
+      writeOutput: hooks.writeOutput
+    });
     return;
   }
 
@@ -890,7 +939,7 @@ async function main() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  main().catch((error) => {
+  runCli().catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   });

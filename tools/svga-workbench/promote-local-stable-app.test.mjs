@@ -25,7 +25,13 @@ import {
   recoverRollbackTransaction,
   rollbackPreviousApp
 } from "./local-stable-recovery.mjs";
-import { installApp, parseArgs, recoverPromotionTransaction } from "./promote-local-stable-app.mjs";
+import {
+  installApp,
+  parseArgs,
+  recoverPromotionCommand,
+  recoverPromotionTransaction,
+  runCli
+} from "./promote-local-stable-app.mjs";
 
 const installedBuild = "a".repeat(40);
 const previousBuild = "b".repeat(40);
@@ -237,6 +243,8 @@ function assertRoleState(fixture, expected) {
 test("CLI parses separate inspect, rollback, and recovery modes with exact bindings", () => {
   const inspect = parseArgs(["--inspect"]);
   assert.equal(inspect.inspect, true);
+  const promotionRecovery = parseArgs(["--recover-promotion"]);
+  assert.equal(promotionRecovery.recoverPromotion, true);
 
   const rollback = parseArgs([
     "--rollback-previous",
@@ -253,6 +261,13 @@ test("CLI parses separate inspect, rollback, and recovery modes with exact bindi
   assert.equal(rollback.rollbackPrevious, true);
   assert.equal(rollback.expectedInstalledBuild, installedBuild);
   assert.throws(() => parseArgs(["--inspect", "--rollback-previous"]), /mutually exclusive/);
+  assert.throws(() => parseArgs(["--recover-promotion", "--recover-rollback"]), /mutually exclusive/);
+  assert.throws(() => parseArgs(["--recover-promotion", "--use-existing"]), /Promotion recovery/);
+  assert.throws(() => parseArgs(["--recover-promotion", "--target", "/private/tmp/x"]), /Promotion recovery/);
+  assert.throws(() => parseArgs(["--recover-promotion"], {
+    AUTO_SVGA_LOCAL_STABLE_APP_PATH: "/private/tmp/x"
+  }), /Promotion recovery/);
+  assert.throws(() => parseArgs(["--recover-promotion", "--rollback-id", "ASV-TEST-1"]), /Promotion recovery/);
   assert.throws(() => parseArgs(["--inspect", "--inspect"]), /Duplicate option/);
   assert.throws(() => parseArgs(["--inspect", "--rollback-id", "ASV-TEST-1"]), /Inspect mode/);
   assert.throws(() => parseArgs(["--inspect", "--target", "/tmp/a", "--target", "/tmp/b"]), /Duplicate option/);
@@ -563,6 +578,7 @@ test("promotion recovery keeps the journal when manifest bytes lack journal auth
   const fixture = makeRollbackFixture();
   try {
     const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
     const candidateBefore = fixtureInspector(fixture.candidate);
     const dependencies = promoteFixtureDependencies(fixture, {
       checkpoint: (phase) => {
@@ -637,6 +653,99 @@ test("promotion second exchange and manifest publication failures are recoverabl
     } finally {
       rmSync(fixture.root, { recursive: true, force: true });
     }
+  }
+});
+
+test("promotion recovery is reachable through CLI dispatch and is not replayed", async () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const installedBefore = fixtureInspector(fixture.target);
+    const previousBefore = fixtureInspector(fixture.previous);
+    const candidateBefore = fixtureInspector(fixture.candidate);
+    const dependencies = promoteFixtureDependencies(fixture, {
+      checkpoint: (phase) => {
+        if (phase === "after-first-exchange") throw new Error("simulated interrupted CLI recovery input");
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /interrupted CLI recovery input/);
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, previousBefore);
+    assertBundleBinding(stagedPromotionApp(dependencies), installedBefore);
+
+    const output = [];
+    await runCli(["--recover-promotion"], {}, {
+      promotionJournalPath: dependencies.promotionJournalPath,
+      promotionRecoveryDependencies: {
+        inspectBundle: fixtureInspector,
+        atomicSwap: (left, right) => swapFixtureDirectories(left, right)
+      },
+      writeOutput: (value) => output.push(value)
+    });
+
+    assert.equal(output.length, 1);
+    assert.equal(output[0].mode, "recover-promotion");
+    assert.equal(output[0].disposition, "completed-after-interrupted-exchange");
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, installedBefore);
+    assertPromotionManifest(dependencies, candidateBefore, installedBefore);
+    assertPromotionTransactionClean(dependencies);
+
+    await assert.rejects(() => runCli(["--recover-promotion"], {}, {
+      promotionJournalPath: dependencies.promotionJournalPath,
+      promotionRecoveryDependencies: {
+        inspectBundle: fixtureInspector,
+        atomicSwap: (left, right) => swapFixtureDirectories(left, right)
+      },
+      writeOutput: () => {}
+    }), /Promotion journal is missing/);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("promotion recovery command keeps residue when manifest hash authority drifts", () => {
+  const fixture = makeRollbackFixture();
+  try {
+    const installedBefore = fixtureInspector(fixture.target);
+    const candidateBefore = fixtureInspector(fixture.candidate);
+    const dependencies = promoteFixtureDependencies(fixture, {
+      checkpoint: (phase) => {
+        if (phase === "after-exchange-manifest") throw new Error("simulated crash after promotion manifest");
+      }
+    });
+
+    assert.throws(() => installApp({
+      sourceApp: fixture.candidate,
+      target: fixture.target,
+      dependencies
+    }), /promotion manifest/);
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, installedBefore);
+    assert.equal(existsSync(dependencies.promotionJournalPath), true);
+    assert.equal(existsSync(dependencies.promotionManifestPath), true);
+
+    const manifest = JSON.parse(readFileSync(dependencies.promotionManifestPath, "utf8"));
+    manifest.after.installed.appAsar.sha256 = "0".repeat(64);
+    writeFileSync(dependencies.promotionManifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    assert.throws(() => recoverPromotionCommand({
+      journalPath: dependencies.promotionJournalPath,
+      dependencies: {
+        inspectBundle: fixtureInspector,
+        atomicSwap: (left, right) => swapFixtureDirectories(left, right)
+      },
+      writeOutput: () => {}
+    }), /does not match journal/);
+    assert.equal(existsSync(dependencies.promotionJournalPath), true, "journal must remain for audited recovery");
+    assertBundleBinding(fixture.target, candidateBefore);
+    assertBundleBinding(fixture.previous, installedBefore);
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true });
   }
 });
 
